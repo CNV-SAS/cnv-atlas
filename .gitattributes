@@ -1,0 +1,15 @@
+# Normaliza finales de linea a LF dentro del repo, sin importar el SO del autor.
+# Evita que el CRLF de Windows ensucie diffs y rompa el build en Vercel (Linux).
+* text=auto eol=lf
+
+# Binarios: git no intenta normalizarlos.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.xlsx binary
+*.woff  binary
+*.woff2 binary

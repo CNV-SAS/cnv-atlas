@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Atlas: material de referencia (HTMLs de Gildardo, XLSX de muestra de Biody).
+# Pesado y posible portador de PII; se consulta local, no se versiona.
+/reference/
