@@ -7,7 +7,7 @@
 > Nota de reconciliación: el LMS aprendió que `minimumReleaseAge: 10080` (7 días) bloquea deps transitivas legítimas. Atlas usa **1440 (24h)**, que es el valor probado. Esto supersede la mención a "7 días" en `SECURITY.md`/`CLAUDE.md`; alinéalas a 1440.
 
 ## Cuentas y servicios necesarios
-GitHub (repo privado `cnv-atlas`), Supabase, Vercel, Cloudflare (zona `cnvsystem.com`), Resend, Groq y Gemini, Upstash (Redis para rate limiting), Sentry, Wompi (pagos), Alegra (contabilidad), y un gestor de secretos del equipo (Bitwarden o 1Password) para credenciales de Biody Manager.
+GitHub (repo privado `cnv-atlas`), Supabase, Vercel, Cloudflare (zona `cnvsystem.com`), Resend, Groq y Gemini, Upstash (Redis para rate limiting), Sentry, Wompi (pagos), Alegra (contabilidad), y Bitwarden (plan Free) como gestor de secretos del equipo para las credenciales de Biody Manager.
 
 ## Variables de entorno
 `.env.local.example` (sin valores) va al repo:
@@ -72,18 +72,20 @@ pnpm 11 ya no lee settings non-auth de `.npmrc`; viven en `pnpm-workspace.yaml`.
 
 `pnpm-workspace.yaml`:
 ```yaml
-minimumReleaseAge: 1440        # 24h de cuarentena (7 días bloquea transitivas legítimas)
-blockExoticSubdeps: true       # rechaza deps de git/tarballs
-ignoreScripts: true            # bloquea postinstall (vector principal de supply-chain)
-saveExact: true                # versiones exactas, sin ^ ni ~
-allowBuilds:                    # whitelist de postinstall verificados
+minimumReleaseAge: 1440          # 24h de cuarentena (7 días bloquea transitivas legítimas)
+minimumReleaseAgeStrict: false   # ante una version muy nueva, cae a una mas vieja que cumpla
+minimumReleaseAgeExclude:        # paquetes sin codigo ejecutable, menos friccion
+  - "@types/*"
+blockExoticSubdeps: true         # rechaza deps de git/tarballs
+savePrefix: ''                   # versiones exactas, sin ^ ni ~ (en pnpm 11 NO existe saveExact)
+allowBuilds:                     # whitelist (mapa) de postinstall verificados
   sharp: true
   esbuild: true
   "@sentry/cli": true
   supabase: true
-overrides: {}                  # parches de versión por CVE conocido
+overrides: {}                    # parches de versión por CVE conocido
 ```
-Cada entrada de `allowBuilds` requiere verificación previa del package y justificación inline. Si una instalación falla pidiendo aprobación, NO desactives la protección global: verifica el package y agrégalo a `allowBuilds`.
+Cada entrada de `allowBuilds` requiere verificación previa del package y justificación inline. Si una instalación falla pidiendo aprobación, NO desactives la protección global: verifica el package y agrégalo a `allowBuilds`. No se usa `ignoreScripts: true`: en pnpm 10+ los build scripts de dependencias ya se bloquean por defecto y `allowBuilds` actúa como lista de aprobación, así que `ignoreScripts` solo anularía esa whitelist (incluidos los 4 verificados). El pinning exacto en pnpm 11 es `savePrefix: ''`; la clave `saveExact` no existe (no aparece en pnpm.io/settings) y, si se pusiera, se ignoraría en silencio.
 
 ### 3. Dependencias clave
 ```bash
@@ -154,7 +156,7 @@ Zona `cnvsystem.com`: CNAME `atlas` → `cname.vercel-dns.com`, proxy activado, 
 - Verificar firma HMAC e idempotencia en cada webhook (ver `SECURITY.md`).
 
 ### 11. Gestor de secretos (Biody Manager)
-Crear en Bitwarden/1Password una colección para las credenciales de Biody Manager por equipo (correo `biody+assetcode@cnvsystem.com` + contraseña aleatoria única por equipo). La bandeja compartida `biody@cnvsystem.com` con contraseña fuerte + MFA.
+Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Manager por equipo (correo `biody+assetcode@cnvsystem.com` + contraseña aleatoria única por equipo). La bandeja compartida `biody@cnvsystem.com` con contraseña fuerte + MFA.
 
 ### 12. Verificación final
 `https://atlas.cnvsystem.com` responde; Sentry recibe un evento de prueba (con PHI scrubbed); las migraciones iniciales están aplicadas; deploy automático al pushear a `main`.
