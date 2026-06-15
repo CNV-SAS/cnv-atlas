@@ -39,6 +39,10 @@ create type assignment_status as enum ('active', 'completed', 'breach');
 create type report_status as enum ('draft', 'approved', 'sent');
 create type transaction_status as enum ('pending', 'paid', 'failed', 'refunded');
 create type ai_suggestion_status as enum ('success', 'timeout', 'parse_failed', 'provider_error');
+create type consent_type_enum as enum (
+  'servicio', 'datos_sensibles', 'internacional_ia',
+  'investigacion', 'comunicaciones_continuidad', 'comunicaciones_comerciales'
+);
 ```
 
 ## Tablas
@@ -143,12 +147,19 @@ create table public.patient_contacts (
 create table public.patient_consents (
   id uuid primary key default gen_random_uuid(),
   patient_id uuid not null references patients(id) on delete cascade,
-  consent_type text not null,
+  consent_type consent_type_enum not null,
   consent_version text not null,            -- version exacta del texto
   document_hash text not null,              -- hash del texto aceptado
-  signed_at timestamptz not null default now()
+  signed_at timestamptz not null default now(),
+  revoked_at timestamptz                    -- null = autorizacion vigente; con valor = revocada (no se borra el registro)
 );
 create index patient_consents_patient_idx on patient_consents(patient_id);
+-- Una sola autorizacion activa por (paciente, tipo): re-consentir revoca primero
+-- la anterior en la misma transaccion. No usar unique(patient_id, consent_type) a
+-- secas, romperia el re-consentimiento.
+create unique index patient_consents_one_active_idx
+  on public.patient_consents (patient_id, consent_type)
+  where revoked_at is null;
 
 create table public.patient_professional_relationships (
   id uuid primary key default gen_random_uuid(),
@@ -228,7 +239,7 @@ create table public.efr_states (
   irc_band int not null,
   ffmi_band int not null,
   fmi_band int not null,
-  diagnosis_name text not null,             -- DB[].d
+  diagnosis_name text not null,             -- DB[].d; lenguaje FUNCIONAL ("Estado funcional deteriorado"), no de enfermedad; contenido validado con Gildardo al poblar el registry (B11)
   mechanism text,                           -- DB[].m
   biomarkers text,                          -- DB[].b
   risks text,                               -- DB[].r
@@ -326,6 +337,7 @@ create table public.devices (
   asset_code text not null unique,          -- CNV-BIS-0001
   manufacturer_serial text not null unique, -- serial de fabrica
   system_email text not null unique,        -- login Biody Manager (clave en vault, NO aqui)
+  brand text,                               -- marca del fabricante; el asset_code es agnostico de ella
   model text not null,                      -- Biody B.I.S ZM
   supplier text,                            -- Aminogram
   purchase_date date,
