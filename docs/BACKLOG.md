@@ -35,6 +35,12 @@
 - **Feature flags genéricos** (el caso "distintos profesionales, distinta versión" se resuelve por el model-registry, no por flags).
 - **Knowledge gate opcional** en el link de seguimiento, si se decide endurecer (no la cédula).
 
+## Portal del paciente (v1.1)
+Acceso directo del paciente, fuera del alcance del MVP (donde el paciente solo recibe el reporte por correo si el profesional lo aprueba y dispara el envío, con preview y audit).
+- **Portal de informes:** el paciente consulta en línea sus reportes históricos, no solo el adjunto que recibe por correo.
+- **Sección de noticias y educación:** contenido divulgativo y educativo para el paciente dentro del portal.
+- **Cuenta de paciente con login propio:** autenticación propia del paciente, distinta de las cuentas clínicas de profesionales y staff, con su gobernanza de acceso y de consentimiento.
+
 ## Operación y cumplimiento
 - **Proceso semi-automatizado de derechos del titular** (en MVP es manual).
 - **Cierre de la parte legal de `SECURITY.md` y `DATA_GOVERNANCE.md`** (chat dedicado + jurídico): consentimiento, retención, residencia del dato, plazos de notificación a la SIC.
