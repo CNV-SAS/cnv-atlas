@@ -10,18 +10,46 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "0.24.1",
+    "@hookform/resolvers": "5.4.0",
+    "@react-pdf/renderer": "4.5.1",
+    "@sentry/nextjs": "10.57.0",
+    "@supabase/ssr": "0.12.0",
+    "@supabase/supabase-js": "2.108.1",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.0",
+    "clsx": "2.1.1",
+    "date-fns": "4.4.0",
+    "drizzle-orm": "0.45.2",
+    "groq-sdk": "1.2.1",
+    "isomorphic-dompurify": "3.17.0",
+    "lucide-react": "1.18.0",
     "next": "16.2.9",
+    "postgres": "3.4.9",
+    "qrcode": "1.5.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-hook-form": "7.79.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "resend": "6.12.4",
+    "sonner": "2.0.7",
+    "tailwind-merge": "3.6.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "prettier": "3.8.4",
+    "prettier-plugin-tailwindcss": "0.8.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.8"
   }
 }

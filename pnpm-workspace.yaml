@@ -52,3 +52,12 @@ overrides:
   # postcss <8.5.10 tiene XSS (GHSA-qx2v-qp2m-jg93); entra transitivo via next.
   # Se fuerza el rango parcheado en todo el arbol.
   postcss: '>=8.5.10'
+
+# esbuild: NO se overridea a proposito. Tiene GHSA-gv7w-rqvm-qjhr (RCE, high) y
+# GHSA-67mh-4wv8-2f99 (SSRF del dev-server, moderate), pero entra SOLO como devDep
+# transitiva de drizzle-kit (y del @esbuild-kit deprecado). Ninguna es explotable
+# en nuestro uso: no usamos Deno (la RCE requiere NPM_CONFIG_REGISTRY bajo Deno) ni
+# exponemos el dev-server de esbuild (drizzle-kit solo bundlea su propia config).
+# Forzar esbuild >=0.28.1 podria romper el @esbuild-kit, escrito para esbuild 0.18.
+# Se revisa cuando drizzle-kit actualice su cadena de esbuild. pnpm audit dejara
+# visibles estos dos avisos, documentados aqui. (B0, decision de Santiago.)
