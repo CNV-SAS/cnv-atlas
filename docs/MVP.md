@@ -28,7 +28,7 @@ Espera HTML: Sí (congelado hasta Gildardo), Parcial (la infra avanza ya), No (l
 | patients | Núcleo | No | `patients` (identidad mínima) y `patient_profiles` (PII); resolución de identidad en el intake; consentimiento versionado; relación paciente-profesional. |
 | professionals | Núcleo | No | Registro por admin; perfil; estado de habilitación (gate de certificación); `commission_rate` editable (default 20%); vínculo a `auth.user`. |
 | evaluations (encuesta) | Núcleo | Parcial | Infra libre: flujo QR público con token opaco, auto-fill del profesional, recolección pura, `survey_version` sellada, dos modos (inicial/seguimiento), orquestación encuesta+BIS+cálculo. Contenido de la encuesta congelado. |
-| bis | Núcleo | Parcial | Import del CSV de Biody Manager (Zod, rangos, `bis_import_logs`) e ingreso manual; persistir valores crudos; vincular a evaluación. Necesita un CSV de muestra real. |
+| bis | Núcleo | Parcial | Import del XLSX de Biody Manager (Zod, rangos, `bis_import_logs`) e ingreso manual; persistir valores crudos; vincular a evaluación. Necesita un XLSX de muestra real. |
 | indicators | Núcleo | Sí | Llama al clinical-engine con crudos y respuestas; persiste `indicator_values` con la constelación de versiones. |
 | diagnosis | Núcleo | Sí | Ubica en la salida de la Diana; registra diagnóstico con versión; visualiza indicadores, mapas y guías; el profesional confirma y registra; snapshot; IA de apoyo mínima. |
 | treatment | Núcleo | No (depende de diagnosis) | Registrar ruta de intervención, nutracéuticos sugeridos/usados, guías alimentarias, observaciones, derivaciones; vinculado al diagnóstico. |
@@ -41,6 +41,11 @@ Espera HTML: Sí (congelado hasta Gildardo), Parcial (la infra avanza ya), No (l
 | research-datasets | Ligero | No | Export anonimizado/agregado gobernado para ObBIA. Mínimo en MVP. |
 
 ## Flujos transversales (decisiones congeladas)
+
+### Consentimiento, gate de autorización y mayoría de edad
+- **Consentimiento por capas:** antes de la encuesta (inicial y seguimiento) se presenta el consentimiento por capas: intro corta, tres casillas necesarias (`servicio`, `datos_sensibles`, `internacional_ia`) que habilitan "continuar", tres casillas opcionales que se registran de forma independiente, y "ver más" con el texto completo. Las casillas no vienen pre-marcadas. El `document_hash` cubre el texto de cara al paciente, no el resumen (ver `CONSENT_ATLAS.md`).
+- **Gate de autorización (regla dura 15):** Atlas verifica que las tres autorizaciones necesarias estén presentes y vigentes (`consent_type IN ('servicio','datos_sensibles','internacional_ia')` y `revoked_at IS NULL`) antes de crear cualquier evaluación. Si falta una, bloquea y solicita renovación. Aplica también al seguimiento; si la versión del consentimiento subió de número MAYOR, se requiere re-consentir. Vive en la policy `evaluations/can-create-evaluation`, no como chequeo suelto.
+- **Mayoría de edad:** el MVP opera solo con mayores de 18. El flujo de la encuesta valida la declaración de mayoría de edad (`CONSENT_ATLAS.md`, sección 11) antes de continuar.
 
 ### Encuesta y resolución de identidad
 - Dos modos: inicial (paciente nuevo) y seguimiento (paciente conocido).
@@ -88,7 +93,7 @@ Espera HTML: Sí (congelado hasta Gildardo), Parcial (la infra avanza ya), No (l
 - research-datasets, ligero (solo export gobernado).
 
 ## Dependencias externas (no son Gildardo, destrabar ya)
-- CSV de muestra real de Biody Manager (cierra el esquema de import de `bis`).
+- XLSX de muestra real de Biody Manager (cierra el esquema de import de `bis`).
 - Credenciales/sandbox de Wompi y Alegra (tienen tiempo de aprobación; empezar el registro ya).
 
 ## Plan de bloques
@@ -100,7 +105,7 @@ Scaffold Next.js + TS + Tailwind, config de supply-chain (pnpm), Drizzle, Sentry
 
 ### B1, Datos y RLS
 Esquema completo (Drizzle para DDL, SQL crudo para RLS/triggers/funciones/enums), helpers con hardening, el trigger append-only del audit, seed determinístico.
-**Criterio:** el seed carga; queries sin sesión fallan por RLS; con sesión, cada rol ve solo lo suyo; UPDATE/DELETE sobre `clinical_audit_log` falla incluso con service role.
+**Criterio:** el seed carga; queries sin sesión fallan por RLS; con sesión, cada rol ve solo lo suyo; UPDATE/DELETE sobre `clinical_audit_log` falla incluso con service role; el esquema incluye `revoked_at` en `patient_consents` y el enum `consent_type_enum`.
 
 ### B2, Auth y roles
 Login con correo propio del profesional, invitación para fijar contraseña, MFA para admin/internos, recuperación forzada por admin, RLS por rol, sin auto-registro.
@@ -124,7 +129,7 @@ Checkout (token, 24h, orden + monto, idempotencia), webhook Wompi (HMAC), transa
 
 ### B7, Encuesta e identidad
 QR público con token opaco, recolección pura, `survey_version`, dos modos (inicial/seguimiento), resolución de identidad por documento, alerta de posible duplicado, link de seguimiento pre-llenado (un uso, colchón 30 días). El contenido de la encuesta es placeholder hasta Gildardo; la infra se construye ya.
-**Criterio:** el paciente llena la encuesta vía QR; Atlas resuelve inicial vs seguimiento por documento; un parecido sin match exacto genera alerta; el profesional confirma la identidad.
+**Criterio:** el paciente llena la encuesta vía QR; Atlas resuelve inicial vs seguimiento por documento; un parecido sin match exacto genera alerta; el profesional confirma la identidad; no se crea evaluación sin las tres autorizaciones necesarias vigentes (gate, regla dura 15) y se valida la mayoría de edad (+18).
 
 ### B8, Import BIS (XLSX)
 Import del export de Biody Manager con SheetJS, validación Zod + rangos, `bis_import_logs`, persistencia de crudos.
@@ -158,7 +163,7 @@ Admin (usuarios/roles, comodato, auditoría, **config de IA: cambiar proveedor/m
 
 ### B15, Pulido y seguridad final
 Headers/CSP, rate limiting, scrubbing de PHI, revisión de seguridad, smoke E2E completo.
-**Criterio:** el smoke end-to-end pasa; sin errores recurrentes en Sentry en 24h; checklist de seguridad cumplido.
+**Criterio:** el smoke end-to-end pasa; sin errores recurrentes en Sentry en 24h; checklist de seguridad cumplido; checklist documental de DPA de sub-encargados archivados.
 
 ## Criterio de aceptación del MVP
 - Ruta ANI-BIS-E completa funcionando con un caso real.
@@ -169,5 +174,7 @@ Headers/CSP, rate limiting, scrubbing de PHI, revisión de seguridad, smoke E2E 
 - Smoke, `tsc --noEmit`, lint y tests en verde.
 
 ## Items abiertos
-- Marco legal y ético del dato (consentimiento, retención, comodato): chat dedicado y revisión jurídica.
-- Texto y versión del consentimiento informado.
+- Texto y versión final del consentimiento informado (pendiente de revisión jurídica).
+- Marco legal y ético del dato (retención, comodato): chat dedicado y revisión jurídica.
+
+Decididos (ya no abiertos): residencia del dato en Estados Unidos (`DATA_GOVERNANCE.md` decisión #3); gestor de secretos Bitwarden (plan Free).
