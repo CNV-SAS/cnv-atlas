@@ -7,7 +7,7 @@
 **Marco aplicable:** Ley 1581 de 2012 (arts. 6 y 26); Decreto 1074 de 2015; Resoluciones 1995/1999 y 839/2017; Ley 527 de 1999  
 
 > **Aviso interno — no se muestra al paciente.**  
-> Este archivo es la fuente de verdad del texto del consentimiento. El hash que se almacena en `patient_consents.document_hash` se calcula sobre el contenido de este archivo en su versión exacta. Antes de cualquier cambio sustantivo, crear una nueva versión (bump de versión + nueva entrada en el historial de cambios al final). El MVP restringe la operación a **mayores de 18 años**; el flujo de menores se incorpora en v1.1 post-MVP.
+> Este archivo es la fuente de verdad del texto del consentimiento. El hash que se almacena en `patient_consents.document_hash` se calcula según la regla precisa del bloque "Registro técnico" al final (texto de cara al paciente, secciones 1 a 13, con los placeholders intactos, excluyendo los bloques internos; normalización UTF-8 y LF). Antes de cualquier cambio sustantivo, crear una nueva versión (bump de versión + nueva entrada en el historial de cambios al final). El MVP restringe la operación a **mayores de 18 años**; el flujo de menores se incorpora en v1.1 post-MVP.
 
 ---
 
@@ -136,7 +136,7 @@ Al marcar las casillas anteriores y confirmar con su nombre completo en el campo
 > Cada autorización otorgada se almacena como un registro independiente en `patient_consents`, con los siguientes campos:  
 > - `consent_type`: tipo de autorización (`servicio` | `datos_sensibles` | `internacional_ia` | `investigacion` | `comunicaciones_continuidad` | `comunicaciones_comerciales`)  
 > - `consent_version`: versión de este documento (`1.2`)  
-> - `document_hash`: hash SHA-256 del contenido exacto de este archivo en esta versión  
+> - `document_hash`: SHA-256 sobre el **texto de cara al paciente (secciones 1 a 13)** con los placeholders intactos (`{{...}}` literales, sin rellenar), **excluyendo** los bloques internos ("Aviso interno", "Registro técnico", "Historial de versiones"). Normalización antes de hashear: UTF-8, saltos de línea LF, sin espacios en blanco al final de línea. El cálculo y su verificación reproducible se implementan en B7  
 > - `signed_at`: marca de tiempo inmutable del momento de aceptación  
 > - `revoked_at`: marca de tiempo de revocación (null si vigente) — **campo requerido en el esquema**  
 >
