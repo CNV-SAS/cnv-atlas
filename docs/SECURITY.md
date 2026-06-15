@@ -24,6 +24,8 @@ Policies contextuales, no chequeos de rol regados. Prohibido `if (user.role === 
 
 Catálogo inicial (cada una con su test): `auth/can-access-admin`, `patients/can-view-patient`, `evaluations/can-create-evaluation`, `diagnosis/can-diagnose`, `diagnosis/can-confirm-diagnosis`, `reports/can-approve-report`, `reports/can-send-report`, `comodato/can-manage-devices`, `payments/can-view-revenue`, `research/can-view-aggregate-data`, `admin/can-manage-users`.
 
+La policy `evaluations/can-create-evaluation` verifica además que las tres autorizaciones necesarias del paciente (`servicio`, `datos_sensibles`, `internacional_ia`) estén vigentes (`revoked_at IS NULL`) antes de crear cualquier evaluación, inicial o de seguimiento (regla dura 15).
+
 ## Service role: regla crítica
 La `SUPABASE_SERVICE_ROLE_KEY` bypassa RLS. Es la llave maestra.
 - Nunca se expone al cliente.
@@ -72,7 +74,7 @@ Software de terceros (nube + escritorio) que aloja data cruda y PII del paciente
 - **En tránsito:** HTTPS obligatorio; TLS 1.2+ a Supabase, Resend, Groq/Gemini, Wompi, Alegra; HSTS por header; cookies de sesión `HttpOnly`, `Secure`, `SameSite=Lax` (Supabase Auth por defecto).
 - **En reposo:** Supabase cifra DB, Storage y backups con AES-256 a nivel de disco. Contraseñas con bcrypt (Supabase Auth), nunca en plano ni en logs.
 - **PDFs del paciente:** URLs firmadas con expiración para acceso interno desde Storage; adjunto al correo para el paciente.
-- **A nivel de columna (PHI):** Atlas sí maneja dato de salud, así que el cifrado a nivel de campo con `pgcrypto` o KMS para los identificadores directos más sensibles se evalúa en serio (no se difiere a "futuro" como en el LMS). Decisión final pendiente del chat de gobernanza/legal.
+- **A nivel de columna (PHI):** para el MVP, la protección de la PII descansa en RLS estricto, el cifrado en reposo de Supabase y el aislamiento de PII en `patient_profiles`. El cifrado a nivel de columna (`pgcrypto` o KMS) sobre los identificadores directos se evalúa post-MVP, salvo que jurídico lo exija explícitamente.
 
 ## Headers de seguridad
 En `next.config.ts` con `headers()`. Mínimo del MVP, no se difiere: HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restringido, y CSP con `default-src 'self'`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. El `connect-src` lista solo lo que la app llama desde el navegador: Supabase (datos + realtime), Sentry, y nada de PII hacia el LLM desde el cliente (la IA se llama server-side). YouTube y demás del LMS se eliminan. La CSP se valida en el bloque de layout y se afina en pulido.
@@ -82,7 +84,7 @@ Atlas es app cerrada: front y back en `atlas.cnvsystem.com`, así que CORS no ap
 
 ## Input sanitization
 - **Markdown/HTML:** notas clínicas, observaciones y feedback se renderizan con `react-markdown` sin `allowDangerousHtml` y sin `rehype-raw`. Prohibido `dangerouslySetInnerHTML`. Para HTML enriquecido futuro, `DOMPurify` en servidor.
-- **CSV de Biody Manager:** validación estricta de tipos y rangos con Zod, registrada en `bis_import_logs`. Es la frontera de confianza crítica.
+- **XLSX de Biody Manager:** validación estricta de tipos y rangos con Zod, registrada en `bis_import_logs`. Es la frontera de confianza crítica.
 - **Archivos:** MIME validado contra allowlist, tamaño máximo, renombrado a UUID en servidor; los PDFs se sirven como adjunto/visor, nunca como HTML.
 - **SQL injection:** queries parametrizadas vía Drizzle/cliente Supabase; nunca concatenación de strings; nunca `rpc` con SQL del usuario. Protegido además por la regla dura 1 (todo acceso por repositorios).
 
@@ -95,13 +97,13 @@ Desde MVP, con Upstash Ratelimit. Un bot puede agotar créditos de IA, saturar R
 | Encuesta pública (submit) | por IP y por token, agresivo |
 | Checkout (crear sesión) | acotado por hora |
 | IA (sugerencia de diagnóstico) | 20 / 1 h por usuario |
-| Subir archivo / import CSV | acotado por hora por usuario |
+| Subir archivo / import XLSX | acotado por hora por usuario |
 | Cualquier otra mutación | 100 / 1 min por usuario |
 
 Identificación: IP para endpoints sin sesión; `userId` para los autenticados. Webhooks no se rate-limitan por volumen, se protegen con HMAC + idempotencia. Defensa en capas: Cloudflare (Bot Fight si hace falta), Vercel Edge, y los límites nativos de Supabase Auth.
 
 ## Tests de seguridad mínimos
-En `tests/policies.test.ts`: `canViewPatient` (solo su profesional y admin; nunca otro profesional), `canDiagnose`, `canConfirmDiagnosis`, `canApproveReport`, `canSendReport`, `canManageDevices`, `canAccessAdmin`, `canViewAggregateData` (solo obbia/admin, sin acceso a PII). Más tests de RLS por rol. Los golden tests del motor también son seguridad clínica: si rompen, hay riesgo clínico.
+En `tests/policies.test.ts`: `canViewPatient` (solo su profesional y admin; nunca otro profesional), `canCreateEvaluation` (bloquea sin las tres autorizaciones necesarias vigentes, regla dura 15), `canDiagnose`, `canConfirmDiagnosis`, `canApproveReport`, `canSendReport`, `canManageDevices`, `canAccessAdmin`, `canViewAggregateData` (solo obbia/admin, sin acceso a PII). Más tests de RLS por rol. Los golden tests del motor también son seguridad clínica: si rompen, hay riesgo clínico.
 
 ## Respuesta a incidentes
 1. **Aislar:** revocar el secreto comprometido o desactivar el usuario sospechoso.
@@ -116,13 +118,9 @@ En MVP el equipo de respuesta es Santiago.
 
 ## Tratamiento de datos personales y de salud
 
-> **PENDIENTE DE PROFUNDIZACIÓN JURÍDICA.** Esta sección es una base esencial, NO definitiva. Se profundiza en el chat dedicado a lo legal y debe pasar por revisión del personal jurídico de CNV antes del lanzamiento. Las afirmaciones legales aquí son de trabajo, no asesoría legal.
+> La gobernanza del dato (marco legal, finalidades, consentimiento, retención, derechos del titular, anonimización y comodato) vive en `DATA_GOVERNANCE.md`, **fuente de verdad de la gobernanza del dato**. Aquí quedan solo los controles técnicos que la implementan.
 
-- Atlas maneja **dato sensible de salud** (a diferencia del LMS, que no lo hacía). Aplica la Ley 1581 de 2012 y el Decreto 1377 de 2013.
-- **Datos recolectados:** identificación (nombre, documento, contacto), data clínica (BIS, indicadores, diagnóstico, tratamiento, seguimiento) y respuestas epigenéticas.
-- **Consentimiento:** el dato sensible de salud requiere consentimiento explícito y reforzado. Se registra versionado (`consent_version` + hash del texto + timestamp inmutable). El texto del consentimiento está pendiente y debe pasar por jurídico.
-- **Seudonimización vs anonimización:** operación seudonimizada (data clínica por `patient_id`, PII aparte). Para investigación se produce dato anonimizado, que requiere quitar el ID **más** tratar cuasi-identificadores; quitar el ID no basta.
-- **Uso para entrenamiento externo:** regla dura. La data de pacientes NO se usa para entrenar modelos externos. Al LLM solo va lo seudonimizado y como uso operativo.
-- **Derechos del titular** (conocer, actualizar, suprimir): proceso manual en MVP. El "derecho al olvido" se atiende por anonimización, no destruyendo evidencia clínica.
-- **Retención:** pendiente de definir con jurídico. Nota clave: ser dueño del equipo (Biody) no da propiedad del dato del paciente; el derecho a conservarlo y usarlo nace del consentimiento y de un propósito lícito.
-- **Comodato:** las cláusulas de resguardo, confidencialidad y no-borrado de data por el profesional saliente deben pasar por jurídico.
+- **Seudonimización operativa:** la data clínica va por `patient_id` (UUID); la PII se aísla en `patient_profiles` con RLS estricto.
+- **Anonimización (publicación/externo):** quitar el ID no basta; hay que tratar también los cuasi-identificadores antes de exportar.
+- **Sin entrenamiento externo ni PII al LLM:** la data de pacientes no entrena modelos externos; al LLM solo va lo seudonimizado (ver "Manejo de PHI y el LLM").
+- **Residencia del dato:** decidida en Estados Unidos (ver `DATA_GOVERNANCE.md`).
