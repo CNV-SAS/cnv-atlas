@@ -1,0 +1,275 @@
+# DATA_GOVERNANCE.md — Gobernanza del dato en Atlas (CNV)
+
+**Versión:** 1.0
+**Estado:** Base operativa aprobada internamente. Los puntos marcados PENDIENTE JURÍDICO requieren validación final del asesor legal de CNV antes del lanzamiento en producción. El documento es la fuente de verdad de gobernanza; los cambios se registran en el Registro de Decisiones al final.
+**Relación:** `SECURITY.md` cubre los controles técnicos de protección (RLS, cifrado, secretos, rate limiting). Este documento cubre el ciclo de vida y la gobernanza del dato (clasificación, base legal, consentimiento, seudonimización, retención, derechos del titular, sub-encargados). Donde se solapan, este remite a `SECURITY.md`.
+
+> **Aviso.** Atlas maneja **dato sensible de salud** (Ley 1581 de 2012, art. 5). Las decisiones tomadas en este documento son posiciones de trabajo defendibles; antes del lanzamiento en producción deben ser validadas por el asesor jurídico de CNV. Las marcas PENDIENTE JURÍDICO identifican los puntos que requieren ratificación específica.
+
+---
+
+## Lenguaje estandarizado (transversal a todos los documentos y materiales)
+
+Estas reglas aplican a Atlas, contratos, consentimientos, web, diplomado y marketing. Son tanto una exigencia legal como una decisión de diseño de producto.
+
+- **ATLAS calcula, clasifica y estima.** No diagnostica enfermedades. Nunca usar "diagnóstico automático" o "diagnóstica" referido al software.
+- **El profesional diagnostica y decide.** Atlas apoya la toma de decisiones; la decisión clínica es del profesional.
+- **El equipo Biody BIS** opera bajo la finalidad declarada por el fabricante: **composición corporal / bienestar funcional**, no dispositivo médico. No atribuirle finalidad diagnóstica o terapéutica.
+- **Nutracéuticos:** claims exclusivamente nutricionales/funcionales (apoyo a la recuperación de propiedades bioeléctricas). Prohibido: claims de prevención, tratamiento o cura de enfermedades.
+- **"ANI-BIS-E"** siempre en mayúsculas con guiones. No: "ANI BIS-E", "ANV-BIS-e", minúsculas.
+- **"Encuesta de determinantes y factores epigenéticos"** — no "prueba epigenética" ni "análisis genético" (el MVP solo recoge respuestas de encuesta, sin muestras ni laboratorio).
+- **Integrante CNV** (no "Profesional Conectado", no "Profesional Certificado").
+
+---
+
+## Principios
+
+1. **Minimización.** Solo se recolecta lo necesario para el propósito declarado.
+2. **Propósito explícito.** Cada dato tiene un propósito declarado y un consentimiento o base legal que lo cubre.
+3. **Seudonimización por defecto en la operación; anonimización real para investigación externa.**
+4. **Nunca PII al LLM.** Solo variables clínicas seudonimizadas.
+5. **Trazabilidad y evidencia.** Todo registro clínico lleva su constelación de versiones y su snapshot; el log clínico es inmutable.
+6. **La propiedad del hardware no da propiedad del dato del paciente.** El derecho a procesar y conservar nace del consentimiento y de un propósito lícito.
+7. **CNV no es propietaria de datos personales.** Solo es propietaria de datos efectivamente anonimizados y de derivados no personales (agregados, estadísticas, modelos, algoritmos). Los datos personales pertenecen a sus titulares.
+
+---
+
+## Mapa de roles de tratamiento (DECISIÓN CENTRAL)
+
+Esta arquitectura fue definida deliberadamente para que CNV no quede configurada como prestador de servicios de salud ni como corresponsable de la atención clínica.
+
+### Capa asistencial (atención del paciente)
+- **Responsable del Tratamiento:** el profesional de salud (Integrante CNV). Controla la finalidad del tratamiento, obtiene el consentimiento y es custodio de la historia clínica.
+- **Encargado del Tratamiento:** CNV, a través de ATLAS. Trata los datos por cuenta y bajo las instrucciones del profesional, materializadas en el Acuerdo de Tratamiento (Anexo 3 del contrato). CNV no usa estos datos para fines propios en esta capa.
+- **Nota:** el hecho de que CNV haya diseñado el modelo y la plataforma no altera los roles. Lo que importa es la finalidad: en la capa asistencial, CNV trata datos del paciente exclusivamente para que el profesional preste el servicio.
+
+### Capa secundaria (investigación, mejora del modelo, control de calidad, analítica)
+- **Responsable del Tratamiento:** CNV, de forma autónoma, con base en la autorización que el paciente otorga directamente a CNV en el consentimiento de ATLAS (casilla opcional).
+- Investigación con datos identificables/seudonimizados: requiere la casilla opt-in del paciente.
+- Estadística anonimizada: no requiere consentimiento adicional (ya no es dato personal); se informa como finalidad en las casillas necesarias.
+
+### Datos del Integrante CNV (profesional)
+- **Responsable del Tratamiento:** CNV.
+
+### Validación jurídica pendiente
+- PENDIENTE JURÍDICO: confirmar que la arquitectura Responsable (profesional) / Encargado (CNV) es sostenible y que CNV no queda configurada como corresponsable de la atención.
+
+---
+
+## Clasificación del dato (3 niveles)
+
+Cada campo se clasifica en `survey_questions.data_class`. La clasificación maneja automáticamente qué sale al LLM, qué se anonimiza y qué se cifra.
+
+| Nivel | Ejemplos | LLM | Export investigación | Cifrado |
+|---|---|---|---|---|
+| Identificador directo | Nombre, cédula, celular, correo | Nunca | Nunca | Candidato a cifrado de columna |
+| Cuasi-identificador | Ciudad, fecha de nacimiento, sexo | Solo si tiene valor clínico | Generalizado (región, rango etario) | No |
+| Clínico | Hábitos, BIS, indicadores, síntomas | Sí (seudonimizado) | Sí (seudonimizado) | No |
+
+**Nota:** quitar el identificador directo no basta para anonimizar. Los cuasi-identificadores re-identifican en combinación. Ver estándar de anonimización abajo.
+
+---
+
+## Categorías de dato que Atlas almacena
+
+- **Identificación:** nombre, documento, contacto. (Identificadores directos; PII separada de las tablas clínicas.)
+- **Clínico/funcional:** mediciones BIS (Cole-Cole, composición corporal), indicadores (IFC, IRC, IEHH, ISCM-BIS, EB-BIS, IAE, PABU), clasificaciones, diagnóstico funcional (Diana), tratamiento, seguimiento.
+- **Determinantes y factores de estilo de vida (encuesta):** respuestas sobre hábitos, antecedentes, alimentación, sueño, estrés. (En el MVP: solo respuestas de encuesta. No se realizan análisis genéticos de laboratorio ni se toman muestras; el análisis epigenético del MVP se basa en estas respuestas.)
+- **Operativo/comercial:** comodato, inventario, transacciones, comisiones.
+- **Técnico/auditoría:** logs, IP, user agent (en `clinical_audit_log`, acceso solo admin).
+- **Datos del Integrante:** identificación, registro profesional, estado de habilitación, datos de desempeño operativo.
+
+---
+
+## Consentimiento (estructura y técnica)
+
+### Arquitectura del consentimiento de ATLAS
+El consentimiento opera por capas y se presenta antes de la encuesta. El texto completo está disponible (expandible), con casillas que el usuario marca activamente (no pre-marcadas).
+
+**Autorizaciones necesarias para el servicio** (sin ellas no se puede continuar):
+1. Tratamiento de datos personales (identificación) para la evaluación.
+2. Tratamiento de datos sensibles de salud para la evaluación y plan personalizados. (Nota: responder preguntas sobre datos sensibles es facultativo conforme al art. 6 de la Ley 1581.)
+3. Informado sobre tratamiento internacional (EE. UU. y Francia) y uso de sistemas automatizados (IA).
+
+**Autorizaciones opcionales** (la atención no depende de ellas):
+4. Uso de datos identificables/seudonimizados para investigación científica del modelo (Observatorio Latinoamericano de Bioimpedancia).
+5. Comunicaciones de continuidad de atención dentro de la red CNV.
+6. Comunicaciones comerciales sobre servicios y novedades del ecosistema CNV.
+
+### Técnica de registro
+- Un registro en `patient_consents` por cada tipo de autorización otorgada.
+- Campos: `consent_type`, `consent_version`, `document_hash` (hash del texto exacto), `signed_at` (timestamp inmutable).
+- PENDIENTE DE IMPLEMENTACIÓN: agregar campo `revoked_at` (o equivalente) para registrar la revocación de cada autorización.
+- Ningún paciente entra al flujo sin las autorizaciones necesarias (1–3) registradas.
+
+### Versiones del consentimiento
+- Versionado semántico: versión MAYOR cuando el cambio requiere nueva aceptación; versión menor para ajustes no sustantivos.
+- El hash asegura que lo que firmó el titular coincide con el texto de esa versión exacta.
+- Las versiones anteriores se conservan durante el periodo de retención (no se borran).
+
+---
+
+## Seudonimización vs. anonimización
+
+**Operación día a día: seudonimización.** La data clínica cuelga de `patient_id` (UUID); la PII vive aparte con RLS estricto. Ninguna tabla clínica carga nombre ni documento. Sigue siendo dato personal bajo Ley 1581.
+
+**Investigación interna (CNV Research / ObBIA):** trabajan sobre data seudonimizada bajo gobernanza y consentimiento (pueden usar un `research_id` estable para análisis longitudinal, sin ruta de vuelta a la persona).
+
+**Investigación externa / publicación:** anonimización real:
+- Quitar identificadores directos, **más**
+- Tratar cuasi-identificadores: generalizar (región, no ciudad; rango etario, no fecha exacta), agregar, aplicar k-anonimato.
+- **Estándar de anonimización (PENDIENTE JURÍDICO para ratificación):** k-anonimato con k ≥ 5 para compartición externa; l-diversidad para atributos sensibles. Documentado aquí; ratificación jurídica antes de primer export externo.
+
+Los exports de investigación se gobiernan vía `research_datasets` y nunca incluyen identificadores directos.
+
+---
+
+## Flujos del dato por propósito
+
+| Propósito | Nivel de dato | Notas |
+|---|---|---|
+| Atención clínica (operativo) | Seudonimizado | Atlas es el sistema de registro oficial tras importar y validar el XLSX de Biody. |
+| Investigación interna | Seudonimizado | Bajo gobernanza y consentimiento opt-in. |
+| Investigación externa / publicación | Anonimizado real | Solo tras anonimización k ≥ 5 + tratamiento de cuasi-identificadores. |
+| LLM (Groq/Gemini) | Clínico seudonimizado | Nunca PII. No se usa para entrenar modelos externos. Se loguea modelo y versión de prompt. |
+| Comercial (pagos) | Mínimo necesario | Wompi (pasarela), Alegra (contabilidad). |
+| Biody Manager / Connect | PII + BIS crudos | Alojamiento en Francia (Aminogram, certificación HDS). Dato en superficie externa; punto de control real es la validación del XLSX al importar a Atlas. |
+
+---
+
+## Sub-encargados del tratamiento
+
+Lista completa de proveedores que tocan datos personales. CNV mantiene o gestiona DPA con cada uno. Lista actualizable con aviso previo al Integrante.
+
+| Proveedor | Qué dato toca | Región / Nota |
+|---|---|---|
+| Supabase | DB, Auth, Storage (clínico + PII) | **Estados Unidos** (estándar CNV). DPA firmado. EE. UU. en lista de nivel adecuado (Circular SIC 005/2017). |
+| Vercel | Hosting (datos en tránsito) | Estados Unidos. DPA. |
+| Resend | Correos transaccionales (reportes, invitaciones) | Estados Unidos. DPA. |
+| Groq / Gemini | Variables clínicas seudonimizadas para el menú | Estados Unidos. Sin uso para entrenamiento de modelos externos. |
+| Wompi | Datos de pago | Colombia. Pasarela. |
+| Alegra | Datos de facturación | Colombia. Contabilidad. |
+| Aminogram / Biody Manager / Biody Connect | Mediciones BIS + PII en el equipo | **Francia**. Certificación HDS (hosting de datos de salud). Francia (UE) en lista de nivel adecuado. |
+| Sentry | Metadatos de errores (IP, agente) | Estados Unidos. DPA. Scrubbing de PHI activo: no debe recibir dato de salud. |
+| Cloudflare | DNS, CDN, protección de tráfico (IP) | Estados Unidos. DPA. |
+| Upstash | Rate limiting (IP, ID de usuario) | Estados Unidos. DPA. |
+
+**Transferencia vs. transmisión:** como todos actúan como encargados, lo que ocurre es una **transmisión** (no transferencia). Para transmisiones a encargados no se requiere autorización del titular; basta el contrato de transmisión/DPA. PENDIENTE JURÍDICO: verificar suficiencia de cada DPA.
+
+**Estándar de región:** todos los proyectos nuevos de infraestructura en **Estados Unidos** (región US de Supabase, Vercel US, etc.). No mezclar regiones salvo por necesidad justificada documentada.
+
+---
+
+## Retención y borrado
+
+| Categoría | Periodo de retención | Base |
+|---|---|---|
+| Historia clínica | **15 años** desde la última atención | Resoluciones 1995/1999 y 839/2017 |
+| Información comercial y contable | **10 años** | Código de Comercio y normativa tributaria |
+| Datos del Integrante | Durante la relación + término de prescripción de acciones derivadas | General |
+| Logs técnicos y de seguridad | Según política interna de seguridad (`SECURITY.md`) | — |
+
+PENDIENTE JURÍDICO: ratificación de periodos por categoría, en especial el comercial y los técnicos.
+
+**Derecho al olvido / supresión:** se atiende por **anonimización o desvinculación de identidad**, no destruyendo evidencia clínica sujeta a retención legal. El `clinical_audit_log` es append-only e inmutable; no se borra por solicitud de supresión.
+
+**Biody Manager:** el dato del paciente en el equipo se conserva bajo el consentimiento, no por la propiedad del hardware. El contrato con el Integrante obliga a no borrar ni conservar copias al devolver el equipo.
+
+---
+
+## Derechos del titular
+
+El titular puede: conocer, actualizar, rectificar, suprimir y revocar la autorización, solicitar prueba de la autorización y presentar quejas ante la SIC.
+
+- **Canal:** `protecciondatos@cnvsystem.com`
+- **Plazos:** consultas, 10 días hábiles; reclamos, 15 días hábiles (Ley 1581).
+- **En MVP:** atención manual (Santiago, con apoyo de la Dirección Científica para lo clínico).
+- **Oficial de Protección de Datos:** Santiago Arroyo (CTO / Head de CNV Data). Designación formal en acta de junta directiva (PENDIENTE DE FORMALIZACIÓN).
+
+---
+
+## Incidentes de seguridad
+
+Ver `SECURITY.md` para el procedimiento técnico completo.
+
+- CNV notifica a la SIC dentro de los **15 días hábiles** siguientes a la detección. PENDIENTE JURÍDICO: confirmar plazo exacto.
+- Notificación a los titulares afectados sin dilación indebida.
+- Post-mortem documentado en `docs/incidents/AAAA-MM-DD-titulo.md`.
+
+---
+
+## Acceso a la historia clínica y auditoría operativa
+
+CNV no es parte del equipo tratante del paciente. Como Encargado:
+
+- **Acceso técnico/operativo** (mantener Atlas, QA, integridad): sobre datos seudonimizados siempre que sea posible; accesos logueados; bajo confidencialidad. No requiere permiso adicional (es necesario para prestar el servicio).
+- **Acceso sustantivo** (mejorar algoritmos, investigación, analítica): finalidad propia de CNV → requiere la autorización del paciente dada directamente a CNV (casillas 4–6 del consentimiento).
+- **Auditoría de cumplimiento del modelo:** sobre la **data operativa de ATLAS** (metadatos, actividad), no sobre el contenido clínico reservado. El acceso a contenido identificado para auditoría puntual requiere la autorización del paciente recogida en el consentimiento.
+
+---
+
+## Anonimización real (estándar técnico)
+
+Para que un dataset deje de ser dato personal y CNV pueda ser propietaria de los derivados:
+
+1. Suprimir todos los identificadores directos (nombre, documento, celular, correo, `patient_id`).
+2. Generalizar cuasi-identificadores: ciudad → región; fecha exacta → rango etario de 5 años; sexo puede conservarse si k ≥ 5.
+3. Verificar k-anonimato: ningún registro debe ser único en la combinación de cuasi-identificadores. **k ≥ 5** para exports externos.
+4. Para atributos sensibles (diagnóstico, indicadores de riesgo): verificar l-diversidad.
+5. Documentar el proceso de anonimización y el dataset resultante en `research_datasets`.
+
+PENDIENTE JURÍDICO: ratificación del umbral k ≥ 5 y del método.
+
+---
+
+## Menores de edad
+
+El MVP restringe la operación a **personas mayores de 18 años**. El flujo de menores (autorización del representante legal, asentimiento del menor) se implementa en **v1.1 post-MVP**. El consentimiento de ATLAS incluye declaración de mayoría de edad; Atlas debe validar esto en el flujo de la encuesta.
+
+---
+
+## Hallazgos de la tabla `patient_consents` (pendientes de implementación)
+
+1. **Falta campo `revoked_at`** (o equivalente `status`) para registrar la revocación de cada autorización. Añadir en B1 (esquema y RLS).
+2. **Convención de `consent_type`:** un registro por tipo de autorización (`servicio`, `datos_sensibles`, `internacional_ia`, `investigacion`, `comunicaciones_continuidad`, `comunicaciones_comerciales`).
+3. **Tabla `devices`:** añadir columnas `brand` y `model` (el `asset_code` es agnóstico del fabricante; la marca y modelo van en campos separados).
+
+---
+
+## Roles y gobernanza interna
+
+- **Oficial de Protección de Datos / Responsable técnico:** Santiago (CTO / Head de CNV Data). Monitorea `protecciondatos@cnvsystem.com`. Designación por acta de junta (PENDIENTE).
+- **Autoridad científica del dato clínico:** Dirección Científica (Gildardo).
+- **Cambios de gobernanza:** se documentan primero en este archivo, con justificación, y luego se implementan. Los cambios sustantivos se registran en el Registro de Decisiones.
+- **Incidentes:** Santiago coordina; ver procedimiento en `SECURITY.md`.
+
+---
+
+## Lo que la revisión jurídica debe confirmar (lista consolidada)
+
+1. Solidez del mapa de roles (Responsable profesional / Encargado CNV en capa asistencial).
+2. Suficiencia de los DPA de cada sub-encargado.
+3. Ratificación del plazo de notificación de incidentes a la SIC (referencia: 15 días hábiles).
+4. Ratificación de los periodos de retención por categoría.
+5. Ratificación del estándar de anonimización (k ≥ 5).
+6. Aplicabilidad o no del RNBD (umbral de activos: 100.000 UVT ≈ COP 5.200M para 2026).
+7. Estatus INVIMA del equipo Biody BIS y sus implicaciones para el comodato (en pausa por revisión jurídica en curso).
+
+---
+
+## Registro de decisiones
+
+| # | Fecha | Decisión | Razón |
+|---|---|---|---|
+| 1 | 2026-06 | **Mapa de roles:** Responsable (profesional) / Encargado (CNV) en capa asistencial; CNV Responsable autónomo en capa secundaria. | Protege a CNV de ser configurada como prestador de salud o corresponsable clínico. |
+| 2 | 2026-06 | **Propiedad de datos:** CNV solo es propietaria de derivados anonimizados y datos no personales. No de datos personales. | Ley 1581; los datos personales pertenecen a sus titulares. |
+| 3 | 2026-06 | **Región estándar de infraestructura:** Estados Unidos (Supabase US, Vercel US). | EE. UU. en lista de nivel adecuado SIC; ecosistema CNV ya alojado ahí; simplifica gestión. |
+| 4 | 2026-06 | **Retención HC:** 15 años desde la última atención. | Resoluciones 1995/1999 y 839/2017. |
+| 5 | 2026-06 | **Supresión por anonimización:** el derecho al olvido se atiende desvinculando identidad, no destruyendo evidencia clínica. | Obligación legal de retención de HC. |
+| 6 | 2026-06 | **k-anonimato ≥ 5** como estándar para exports externos. Sujeto a ratificación jurídica. | Práctica internacional; equilibrio entre privacidad y utilidad investigativa. |
+| 7 | 2026-06 | **MVP restringido a mayores de 18 años.** Flujo de menores en v1.1. | Reducir complejidad de arranque; menores requieren flujo de representante legal. |
+| 8 | 2026-06 | **Lenguaje estandarizado:** Atlas "calcula, clasifica, estima"; el profesional "diagnostica"; Biody BIS es equipo de "composición corporal / bienestar funcional"; sin claims de enfermedad. | Protección regulatoria (INVIMA, ATLAS como no-dispositivo médico); autonomía profesional. |
+| 9 | 2026-06 | **Biody Manager / Connect aloja en Francia (Aminogram, HDS).** Transmisión válida por DPA con encargado; Francia (UE) en lista de nivel adecuado. | Hallazgo al cruzar con API_INTEGRATIONS. Ajustado en Anexo 3 v1.1 y consentimiento v1.1. |
+| 10 | 2026-06 | **Consentimiento por capas:** autorizaciones necesarias separadas de opcionales. Datos sensibles: facultativos (art. 6 Ley 1581). | Validez del consentimiento libre; exigencia legal expresa. |
+| 11 | 2026-06 | **Comodato y contratos con profesionales: en pausa** hasta resolución jurídica del estatus de importación del Biody BIS. | Equipos sin declaración de importación; revisión con asesor jurídico en curso. |
+| 12 | 2026-06 | **Speech CNV:** operar bajo finalidad no médica alineada con el fabricante (composición corporal / bienestar funcional), asumiendo riesgo residual del discurso de analítica/ciencia. Ajuste de web pendiente. | Decisión de junta/equipo CNV. |
