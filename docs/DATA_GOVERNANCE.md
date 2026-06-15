@@ -83,6 +83,8 @@ Cada campo se clasifica en `survey_questions.data_class`. La clasificación mane
 
 ## Consentimiento (estructura y técnica)
 
+> El texto del consentimiento y la regla de cálculo del `document_hash` viven en `docs/CONSENT_ATLAS.md`, que es la fuente de verdad. Aquí se describen la estructura y la técnica de registro.
+
 ### Arquitectura del consentimiento de ATLAS
 El consentimiento opera por capas y se presenta antes de la encuesta. El texto completo está disponible (expandible), con casillas que el usuario marca activamente (no pre-marcadas).
 
@@ -98,7 +100,7 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 
 ### Técnica de registro
 - Un registro en `patient_consents` por cada tipo de autorización otorgada.
-- Campos: `consent_type`, `consent_version`, `document_hash` (hash del texto exacto), `signed_at` (timestamp inmutable).
+- Campos: `consent_type`, `consent_version`, `document_hash` (ver la regla de cálculo del hash en `CONSENT_ATLAS.md`), `signed_at` (timestamp inmutable).
 - PENDIENTE DE IMPLEMENTACIÓN: agregar campo `revoked_at` (o equivalente) para registrar la revocación de cada autorización.
 - Ningún paciente entra al flujo sin las autorizaciones necesarias (1–3) registradas.
 
@@ -184,7 +186,7 @@ El titular puede: conocer, actualizar, rectificar, suprimir y revocar la autoriz
 - **Canal:** `protecciondatos@cnvsystem.com`
 - **Plazos:** consultas, 10 días hábiles; reclamos, 15 días hábiles (Ley 1581).
 - **En MVP:** atención manual (Santiago, con apoyo de la Dirección Científica para lo clínico).
-- **Oficial de Protección de Datos:** Santiago Arroyo (CTO / Head de CNV Data). Designación formal en acta de junta directiva (PENDIENTE DE FORMALIZACIÓN).
+- **Oficial de Protección de Datos:** Santiago Arroyave (CTO / Head de CNV Data). Designación formal en acta de junta directiva (PENDIENTE DE FORMALIZACIÓN).
 
 ---
 
