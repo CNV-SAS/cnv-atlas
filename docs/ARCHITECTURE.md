@@ -61,7 +61,7 @@ El HTML es un prototipo de laboratorio. **Su superficie clínico-científica (ma
 | Capa | Herramienta | Notas para Atlas |
 |---|---|---|
 | Framework | Next.js (App Router) + TypeScript | Motor clínico **solo server-side** |
-| DB/Auth/Storage | Supabase (Postgres, RLS, Auth, Storage) | Verificar residencia + DPA (Bloque 3) |
+| DB/Auth/Storage | Supabase (Postgres, RLS, Auth, Storage) | Residencia decidida (Estados Unidos); archivado de DPA en B15 |
 | ORM/migraciones | **Drizzle ORM** | Migraciones forward-only, SQL visible, amigable con RLS |
 | UI | shadcn/ui + Tailwind | — |
 | DNS/CDN/WAF | Cloudflare | Rate limiting de borde para superficies públicas |
@@ -74,7 +74,7 @@ El HTML es un prototipo de laboratorio. **Su superficie clínico-científica (ma
 | Iconos | Lucide-React | — |
 | Testing | Vitest | Golden tests del motor, clasificaciones, RLS, propagación |
 | MFA | Supabase Auth (TOTP) | Admin/internos en MVP; profesionales Post-MVP |
-| Secretos | Gestor (Bitwarden/1Password) *(por confirmar)* | Credenciales de Biody Manager por equipo |
+| Secretos | Bitwarden (Free) | Credenciales de Biody Manager por equipo |
 
 **Justificación:** TS es el lenguaje más cercano al origen → menor riesgo de port. Supabase entrega RLS, Auth, cifrado en reposo y Storage con URLs firmadas. La familiaridad del equipo reduce el riesgo bajo deadline. Postgres escala años por delante del volumen real; el motor aislado es portable si el resto cambia.
 
@@ -212,7 +212,7 @@ Joya de la corona, con el límite más estricto del proyecto.
 ---
 
 ## Integraciones externas
-- **Biody Manager (terceros, nube + escritorio):** aloja data cruda + PII. Superficie externa de PHI (ver `SECURITY.md`). Punto de control real: **validación del CSV al importar** (`bis_import_logs`, Zod, rangos). Identificadores en `devices`: `manufacturer_serial` + `asset_code` + `system_email`.
+- **Biody Manager (terceros, nube + escritorio):** aloja data cruda + PII. Superficie externa de PHI (ver `SECURITY.md`). Punto de control real: **validación del XLSX al importar** (`bis_import_logs`, Zod, rangos). Identificadores en `devices`: `manufacturer_serial` + `asset_code` + `system_email`.
 - **Wompi:** checkout; webhooks verificados + idempotencia.
 - **Alegra:** contabilidad; sincronización de transacciones/facturas.
 - **Groq / Gemini:** apoyo a la decisión; sin PII; aprobado por profesional; modelo + versión de prompt logueados.
@@ -243,11 +243,13 @@ Node.js para todo. Excepción acotada: `proxy.ts` en Edge para refresco de sesi�
 Diana como reglas declarativas gobernadas; infraestructura de datasets de investigación versionados/reproducibles; capa científica en Python; analítica avanzada y comercialización de data; MFA de profesionales; hash-chain en el log clínico; event bus durable + jobs (Inngest); feature flags genéricos; LMS integrado real; scoring avanzado; E2E con Playwright; backups externos automatizados.
 
 ## Items abiertos por verificar
-- [ ] Marco legal y ético del dato (consentimiento, retención, comodato): chat dedicado + revisión jurídica.
-- [ ] Texto y versión del consentimiento informado.
+- [ ] Texto y versión final del consentimiento informado: revisión jurídica.
+- [ ] Marco legal y ético del dato (retención, comodato): chat dedicado + revisión jurídica.
+
+Decididos (ya no abiertos): residencia del dato en Estados Unidos (`DATA_GOVERNANCE.md` decisión #3); gestor de secretos Bitwarden (plan Free).
 
 ## Documentos relacionados
-`SCIENTIFIC_MODEL.md` (qué es ANI-BIS-E) · `CLINICAL_ENGINE.md` (cómo se implementa el motor) · `CLAUDE.md` · `BOUNDARIES.md` · `DATABASE.md` · `SECURITY.md` · `DATA_GOVERNANCE.md` · `TESTING.md` · `GLOSSARY.md` · `API_INTEGRATIONS.md` · `DEPLOY.md` · `BRAND.md` · `BACKLOG.md` · `README.md`
+`SCIENTIFIC_MODEL.md` (qué es ANI-BIS-E) · `CLINICAL_ENGINE.md` (cómo se implementa el motor) · `CLAUDE.md` · `BOUNDARIES.md` · `DATABASE.md` · `SECURITY.md` · `DATA_GOVERNANCE.md` · `CONSENT_ATLAS.md` · `TESTING.md` · `GLOSSARY.md` · `API_INTEGRATIONS.md` · `DEPLOY.md` · `BRAND.md` · `BACKLOG.md` · `README.md`
 
 ## Disciplina arquitectónica
 1. Toda PR se revisa contra las reglas duras.
