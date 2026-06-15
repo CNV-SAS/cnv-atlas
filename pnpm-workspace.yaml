@@ -1,0 +1,54 @@
+# Protecciones de supply chain de Atlas.
+# Fuente de verdad: DEPLOY.md seccion 2bis y CLAUDE.md.
+# En pnpm 11 los settings no-auth viven aqui, NO en .npmrc.
+# Verificado contra https://pnpm.io/settings antes de escribir.
+
+# Cuarentena de 24h (1440 min): solo instala versiones publicadas hace al
+# menos un dia, ventana en la que se detecta la mayoria del malware de npm.
+minimumReleaseAge: 1440
+
+# Si la version requerida es mas nueva que la cuarentena, cae a una version
+# anterior que cumpla en lugar de fallar la instalacion (false = no estricto).
+minimumReleaseAgeStrict: false
+
+# Excluidos de la cuarentena: los @types/* son solo definiciones de tipos,
+# sin codigo ejecutable, asi que excluirlos reduce friccion sin abrir riesgo.
+minimumReleaseAgeExclude:
+  - '@types/*'
+
+# Rechaza dependencias que vengan de git o de tarballs (fuentes exoticas) en
+# subdependencias; solo las dependencias directas pueden usar esas fuentes.
+blockExoticSubdeps: true
+
+# Nota sobre postinstall: en pnpm 10+ los build scripts de las dependencias YA
+# estan bloqueados por defecto y requieren aprobacion explicita via allowBuilds
+# (mas abajo). Por eso NO se usa ignoreScripts: true; ese flag es un bloqueo
+# total que tambien anularia la whitelist de allowBuilds, dejando inertes a los
+# paquetes verificados (Sentry, supabase). El vector postinstall queda cerrado
+# igual: todo lo que no este en allowBuilds no corre scripts. Cuando un build
+# legitimo se bloquee, se agrega aqui con justificacion y aprobacion (CLAUDE.md).
+
+# Versiones exactas, sin ^ ni ~. En pnpm 11 el setting documentado es
+# savePrefix con cadena vacia; la clave saveExact no figura en pnpm.io/settings
+# (pendiente de actualizar en DEPLOY.md, ver nota a Santiago).
+savePrefix: ''
+
+# Whitelist de los unicos paquetes autorizados a correr scripts de build, cada
+# uno verificado y justificado. En pnpm 11 es un mapa, no una lista.
+allowBuilds:
+  sharp: true # optimizacion de imagenes de next/image
+  esbuild: true # bundler que usan Vitest y parte del tooling
+  '@sentry/cli': true # subida de sourcemaps a Sentry durante el build
+  supabase: true # descarga del binario del CLI de Supabase (via dlx)
+  # unrs-resolver: resolver nativo (Rust) de eslint-import-resolver-typescript,
+  # transitivo de eslint-config-next, solo dev/lint. Bloqueado por defecto
+  # (default-deny). Sus binarios suelen venir prebuilt como deps opcionales de
+  # plataforma, asi que bloquear el postinstall es seguro. Si el lint lo
+  # requiriera, se verifica y se cambia a true con aprobacion (CLAUDE.md).
+  unrs-resolver: false
+
+# Overrides de version por CVE conocido.
+overrides:
+  # postcss <8.5.10 tiene XSS (GHSA-qx2v-qp2m-jg93); entra transitivo via next.
+  # Se fuerza el rango parcheado en todo el arbol.
+  postcss: '>=8.5.10'
