@@ -3,17 +3,12 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// Espeja el enum app_role de la BD. Unica fuente para los call sites de auth.
-export type AppRole = "admin" | "direccion" | "soporte" | "obbia" | "professional";
+import { type AppRole, type CurrentUser, hasAnyRole, hasRole } from "./roles";
 
-export type CurrentUser = {
-  id: string; // = auth.users.id = profiles.id
-  email: string;
-  fullName: string;
-  organizationId: string;
-  status: "active" | "inactive";
-  roles: AppRole[];
-};
+// Reexporta los helpers puros para que los call sites de servidor importen todo
+// desde "./session" como antes.
+export type { AppRole, CurrentUser };
+export { hasAnyRole, hasRole };
 
 // Usuario autenticado actual con sus roles, leido bajo RLS (datos propios).
 // getUser() valida el JWT contra el servidor de Auth (no confia en la cookie).
@@ -52,12 +47,4 @@ export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user || user.status !== "active") redirect("/login");
   return user;
-}
-
-export function hasRole(user: CurrentUser, role: AppRole): boolean {
-  return user.roles.includes(role);
-}
-
-export function hasAnyRole(user: CurrentUser, roles: readonly AppRole[]): boolean {
-  return roles.some((r) => user.roles.includes(r));
 }

@@ -16,3 +16,7 @@ import * as schema from "./schema";
 const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 
 export const db = drizzle(client, { schema });
+
+// Tipo de la transaccion que pasa db.transaction(...). Se importa como tipo (se
+// borra en runtime), asi quien lo use no carga este modulo server-only.
+export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
