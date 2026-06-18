@@ -15,6 +15,13 @@
       "when": 1781807407812,
       "tag": "0001_helpers_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781807690482,
+      "tag": "0002_triggers",
+      "breakpoints": true
     }
   ]
 }
