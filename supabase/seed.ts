@@ -1,0 +1,203 @@
+// Seed deterministico de Atlas. DATABASE.md, seccion "Seed deterministico".
+//
+// Como se corre:  pnpm db:seed   (node --env-file=.env.local supabase/seed.ts)
+// Node 24 ejecuta TypeScript de forma nativa; --env-file carga .env.local.
+//
+// Idempotente: usa UUIDs fijos y upsert, asi que recorrerlo no duplica. Los
+// usuarios de auth se crean por la API admin (no permite fijar el id), por eso se
+// resuelven por email: si ya existen, se reutilizan. El trigger handle_new_user
+// materializa public.profiles leyendo organization_id y full_name del metadata.
+// Todo lo demas se inserta con service role (BYPASSRLS).
+
+import { createClient } from "@supabase/supabase-js";
+
+// ---- Variables de entorno requeridas -------------------------------------
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
+const PROFESSIONAL_PASSWORD = process.env.SEED_PROFESSIONAL_PASSWORD;
+
+function requireEnv(name: string, value: string | undefined): string {
+  if (!value || value.trim() === "") {
+    throw new Error(`Falta la variable de entorno ${name} en .env.local`);
+  }
+  return value;
+}
+
+// ---- UUIDs fijos (determinismo) ------------------------------------------
+const ORG_ID = "11111111-1111-1111-1111-111111111111";
+const ROLE_IDS = {
+  admin: "22222222-0000-0000-0000-000000000001",
+  direccion: "22222222-0000-0000-0000-000000000002",
+  soporte: "22222222-0000-0000-0000-000000000003",
+  obbia: "22222222-0000-0000-0000-000000000004",
+  professional: "22222222-0000-0000-0000-000000000005",
+} as const;
+const PROFESSIONAL_PROFILE_ID = "33333333-3333-3333-3333-333333333333";
+const MODEL_VERSION_ID = "44444444-4444-4444-4444-444444444444";
+const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
+const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555552";
+const DEVICE_IDS = ["66666666-6666-6666-6666-666666666601", "66666666-6666-6666-6666-666666666602"];
+const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702"];
+const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
+
+// ---- Identidad de los usuarios sembrados ---------------------------------
+const ADMIN_EMAIL = "sau.idk001@gmail.com";
+const ADMIN_NAME = "Santiago Arroyave";
+const PROFESSIONAL_EMAIL = "profesional.demo@cnvsystem.com";
+const PROFESSIONAL_NAME = "Profesional Demo";
+
+async function main() {
+  const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL);
+  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY", SERVICE_ROLE_KEY);
+  const adminPassword = requireEnv("SEED_ADMIN_PASSWORD", ADMIN_PASSWORD);
+  const professionalPassword = requireEnv("SEED_PROFESSIONAL_PASSWORD", PROFESSIONAL_PASSWORD);
+
+  const supabase = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // Falla ruidosamente ante cualquier error de escritura.
+  function check(label: string, error: { message: string } | null) {
+    if (error) throw new Error(`${label}: ${error.message}`);
+  }
+
+  // Crea el usuario de auth o reutiliza el existente (resuelto por email).
+  async function ensureUser(email: string, password: string, fullName: string): Promise<string> {
+    const list = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    check("listUsers", list.error);
+    const existing = list.data.users.find((u) => u.email === email);
+    if (existing) return existing.id;
+
+    const created = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { organization_id: ORG_ID, full_name: fullName },
+    });
+    check(`createUser ${email}`, created.error);
+    return created.data.user!.id;
+  }
+
+  // 1. Organizacion (debe existir antes de crear usuarios: el trigger la referencia).
+  check(
+    "organizations",
+    (
+      await supabase
+        .from("organizations")
+        .upsert({ id: ORG_ID, name: "Connected Nutrition Ventures", type: "unidad CNV", country: "Colombia", city: "Medellin" }, { onConflict: "id" })
+    ).error,
+  );
+
+  // 2. Los 5 roles.
+  check(
+    "roles",
+    (
+      await supabase.from("roles").upsert(
+        [
+          { id: ROLE_IDS.admin, name: "admin", description: "Administrador CNV" },
+          { id: ROLE_IDS.direccion, name: "direccion", description: "Direccion CNV" },
+          { id: ROLE_IDS.soporte, name: "soporte", description: "Soporte operativo" },
+          { id: ROLE_IDS.obbia, name: "obbia", description: "Observatorio / investigacion" },
+          { id: ROLE_IDS.professional, name: "professional", description: "Profesional de salud" },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  // 3. Admin: auth user (el trigger crea el profile) + rol admin.
+  const adminId = await ensureUser(ADMIN_EMAIL, adminPassword, ADMIN_NAME);
+  check(
+    "user_roles admin",
+    (await supabase.from("user_roles").upsert({ user_id: adminId, role_id: ROLE_IDS.admin }, { onConflict: "user_id,role_id" })).error,
+  );
+
+  // 4. Profesional de prueba: auth user + professional_profile + rol professional.
+  const professionalId = await ensureUser(PROFESSIONAL_EMAIL, professionalPassword, PROFESSIONAL_NAME);
+  check(
+    "professional_profiles",
+    (
+      await supabase.from("professional_profiles").upsert(
+        { id: PROFESSIONAL_PROFILE_ID, profile_id: professionalId, license: "DEMO-0001", specialty: "Nutricion", certification_status: "habilitado", commission_rate: "0.20" },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "user_roles professional",
+    (await supabase.from("user_roles").upsert({ user_id: professionalId, role_id: ROLE_IDS.professional }, { onConflict: "user_id,role_id" })).error,
+  );
+
+  // 5. model_version placeholder en estado active (contenido clinico congelado).
+  check(
+    "model_versions",
+    (
+      await supabase.from("model_versions").upsert(
+        { id: MODEL_VERSION_ID, version_name: "ANI-BIS-E placeholder", rules_version: "placeholder", description: "Placeholder; el contenido real se carga al entregar Gildardo (B11).", status: "active" },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  // 6. survey_template + survey_version con estructura placeholder.
+  check(
+    "survey_templates",
+    (await supabase.from("survey_templates").upsert({ id: SURVEY_TEMPLATE_ID, name: "Encuesta ANI-BIS-E (placeholder)", description: "Estructura placeholder; preguntas reales al entregar Gildardo." }, { onConflict: "id" })).error,
+  );
+  check(
+    "survey_versions",
+    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 1 }, { onConflict: "id" })).error,
+  );
+
+  // 7. 2 devices en estados distintos.
+  check(
+    "devices",
+    (
+      await supabase.from("devices").upsert(
+        [
+          { id: DEVICE_IDS[0], organization_id: ORG_ID, asset_code: "CNV-BIS-0001", manufacturer_serial: "SN-DEMO-0001", system_email: "biody+0001@cnvsystem.com", brand: "Aminogram", model: "Biody B.I.S ZM", supplier: "Aminogram", status: "available" },
+          { id: DEVICE_IDS[1], organization_id: ORG_ID, asset_code: "CNV-BIS-0002", manufacturer_serial: "SN-DEMO-0002", system_email: "biody+0002@cnvsystem.com", brand: "Aminogram", model: "Biody B.I.S ZM", supplier: "Aminogram", status: "in_use" },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  // 8. 2 nutraceuticos con inventario.
+  check(
+    "nutraceuticals",
+    (
+      await supabase.from("nutraceuticals").upsert(
+        [
+          { id: NUTRA_IDS[0], organization_id: ORG_ID, name: "Nutraceutico Demo A", description: "Placeholder", unit: "capsula", unit_price: "50000" },
+          { id: NUTRA_IDS[1], organization_id: ORG_ID, name: "Nutraceutico Demo B", description: "Placeholder", unit: "sobre", unit_price: "75000" },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "nutraceutical_inventory",
+    (
+      await supabase.from("nutraceutical_inventory").upsert(
+        [
+          { id: INVENTORY_IDS[0], nutraceutical_id: NUTRA_IDS[0], stock_quantity: 100 },
+          { id: INVENTORY_IDS[1], nutraceutical_id: NUTRA_IDS[1], stock_quantity: 60 },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  console.log("Seed completo:");
+  console.log(`  organizacion: ${ORG_ID}`);
+  console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
+  console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
+  console.log(`  model_version active, survey v1, 2 devices, 2 nutraceuticos`);
+}
+
+main().catch((err) => {
+  console.error("Seed fallido:", err instanceof Error ? err.message : err);
+  process.exit(1);
+});
