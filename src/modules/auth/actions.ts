@@ -1,12 +1,18 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitLoginByIp } from "@/core/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { loginSchema, mfaCodeSchema, type AuthFormState } from "./validations";
+import {
+  loginSchema,
+  mfaCodeSchema,
+  setPasswordSchema,
+  type AuthFormState,
+} from "./validations";
 
 // Login con correo y contrasena. Si el usuario tiene MFA verificada, el AAL pide
 // aal2 y se desvia al challenge; si no, va al dashboard. Mensajes de error
@@ -69,6 +75,41 @@ export async function verifyMfaAction(
   });
   if (verifyError) return { error: "Codigo incorrecto. Intenta de nuevo." };
 
+  redirect("/dashboard");
+}
+
+// Fija la contrasena tras invitacion/recuperacion. Exige la cookie atlas-pwd-reset
+// que solo pone /auth/confirm tras verificar un token valido server-side: una
+// sesion sin ese token no puede llegar aqui. Consume la cookie al terminar.
+export async function setPasswordAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = setPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos invalidos." };
+  }
+
+  const cookieStore = await cookies();
+  if (cookieStore.get("atlas-pwd-reset")?.value !== "1") {
+    return { error: "Enlace no valido o expirado. Solicita uno nuevo." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Sesion no valida. Abre de nuevo el enlace del correo." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { error: "No se pudo fijar la contrasena." };
+
+  cookieStore.delete("atlas-pwd-reset"); // un solo uso
   redirect("/dashboard");
 }
 

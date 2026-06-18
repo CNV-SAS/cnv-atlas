@@ -11,3 +11,13 @@ export const loginSchema = z.object({
 export const mfaCodeSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
+
+export const setPasswordSchema = z
+  .object({
+    password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres."),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "Las contrasenas no coinciden.",
+    path: ["confirm"],
+  });

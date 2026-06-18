@@ -248,10 +248,15 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Plantillas de Atlas: el enlace apunta a /auth/confirm con token_hash, para que
+# el token se intercambie server-side (verifyOtp) y no en el cliente.
+[auth.email.template.invite]
+subject = "Invitacion a Atlas"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Restablece tu contrasena de Atlas"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
