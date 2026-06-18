@@ -219,8 +219,11 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-# Atlas: sin auto-registro (ver nota en [auth]).
-enable_signup = false
+# DEBE quedar en true: poner false aqui apaga EXTERNAL_EMAIL_ENABLED y deshabilita
+# el LOGIN por email, no solo el registro. El "sin auto-registro" de Atlas lo da
+# el enable_signup=false global de [auth] (DISABLE_SIGNUP=true), que bloquea el
+# alta dejando el login intacto.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
