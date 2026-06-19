@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { mfaRequirement } from "../modules/auth/mfa-policy";
 import { canAccessAdmin } from "../modules/auth/policies/can-access-admin";
 import { canManageUsers } from "../modules/auth/policies/can-manage-users";
 import type { AppRole, CurrentUser } from "../modules/auth/roles";
@@ -27,5 +28,27 @@ describe("policies de administracion", () => {
     expect(canManageUsers(userWith(["admin"]))).toBe(true);
     expect(canManageUsers(userWith(["soporte"]))).toBe(false);
     expect(canManageUsers(userWith([]))).toBe(false);
+  });
+});
+
+describe("enforcement de MFA (mfaRequirement)", () => {
+  it("professional nunca se fuerza, aun sin MFA", () => {
+    expect(mfaRequirement(userWith(["professional"]), false, "aal1")).toBe("ok");
+    expect(mfaRequirement(userWith(["professional"]), false, null)).toBe("ok");
+  });
+
+  it("interno sin factor verificado -> enroll", () => {
+    expect(mfaRequirement(userWith(["admin"]), false, "aal1")).toBe("enroll");
+    expect(mfaRequirement(userWith(["soporte"]), false, "aal1")).toBe("enroll");
+    expect(mfaRequirement(userWith(["direccion"]), false, "aal1")).toBe("enroll");
+    expect(mfaRequirement(userWith(["obbia"]), false, "aal1")).toBe("enroll");
+  });
+
+  it("interno con factor pero sin elevar (aal1) -> challenge", () => {
+    expect(mfaRequirement(userWith(["admin"]), true, "aal1")).toBe("challenge");
+  });
+
+  it("interno con factor y aal2 -> ok", () => {
+    expect(mfaRequirement(userWith(["admin"]), true, "aal2")).toBe("ok");
   });
 });
