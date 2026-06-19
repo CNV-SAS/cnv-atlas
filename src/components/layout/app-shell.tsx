@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   Menu,
   MonitorSmartphone,
+  Pill,
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   reportes: FileText,
   comercial: CreditCard,
   comodato: MonitorSmartphone,
+  nutraceuticos: Pill,
   admin: ShieldCheck,
 };
 
