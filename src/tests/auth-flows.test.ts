@@ -51,9 +51,15 @@ function totp(secret: string, timeMs: number): string {
 }
 
 async function deleteUserByEmail(email: string) {
+  // Borra el usuario de auth para no dejar cuentas fantasma. Primero via API
+  // (service role); luego un hard-delete directo en auth.users que cascada a
+  // profiles/user_roles y, sobre todo, a auth.one_time_tokens (el token de
+  // invitacion), que es lo que hacia que Supabase reenviara la invitacion si el
+  // borrado por API no completaba.
   const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const u = data.users.find((x) => x.email === email);
   if (u) await admin.auth.admin.deleteUser(u.id);
+  await sql`delete from auth.users where email = ${email}`;
 }
 
 async function mailpitFindHtml(email: string): Promise<string | null> {
