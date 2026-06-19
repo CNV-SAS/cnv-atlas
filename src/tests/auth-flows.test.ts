@@ -172,8 +172,14 @@ describe("B2: MFA del admin end-to-end", () => {
     });
     expect(loginError).toBeNull();
 
-    const pre = await sb.auth.mfa.listFactors();
-    for (const f of pre.data?.all ?? []) await sb.auth.mfa.unenroll({ factorId: f.id });
+    // Estado MFA limpio: se borran los factores via SQL (autoritativo e
+    // independiente del AAL). unenroll() desde aal1 no puede quitar un factor
+    // verificado, asi que un factor remanente (p. ej. de una prueba manual)
+    // rompia el enroll siguiente por conflicto de nombre.
+    const {
+      data: { user: adminUser },
+    } = await sb.auth.getUser();
+    await sql`delete from auth.mfa_factors where user_id = ${adminUser!.id}`;
 
     const { data: enrolled, error: enrollError } = await sb.auth.mfa.enroll({ factorType: "totp" });
     expect(enrollError).toBeNull();
