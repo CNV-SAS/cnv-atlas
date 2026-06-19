@@ -21,6 +21,32 @@ function isActive(a: DeviceAssignment): boolean {
   return a.status === "active" && a.actual_return_date === null;
 }
 
+// Item de asignacion reutilizado en "comodato activo" y en el historial. El form
+// de devolucion solo se muestra cuando es el activo y el usuario puede gestionar.
+function AssignmentItem({
+  a,
+  proName,
+  showReturn,
+}: {
+  a: DeviceAssignment;
+  proName: (id: string) => string;
+  showReturn: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>{proName(a.professional_id)}</span>
+        <AssignmentStatusBadge status={a.status} />
+      </div>
+      <div className="text-muted-foreground">
+        {a.start_date} a {a.expected_end_date}
+        {a.actual_return_date ? ` · devuelto el ${a.actual_return_date}` : ""}
+      </div>
+      {showReturn && isActive(a) ? <ReturnComodatoForm assignmentId={a.id} /> : null}
+    </div>
+  );
+}
+
 // Inventario de equipos y comodatos. Lectura admin/soporte (policy + RLS); la
 // gestion (crear, asignar, estado, devolver) es admin.
 export default async function ComodatoPage() {
@@ -89,6 +115,7 @@ export default async function ComodatoPage() {
           <div className="flex flex-col gap-4">
             {devices.map((d) => {
               const history = assignmentsByDevice.get(d.id) ?? [];
+              const active = history.find(isActive) ?? null;
               return (
                 <Card key={d.id}>
                   <CardHeader>
@@ -99,6 +126,11 @@ export default async function ComodatoPage() {
                           {d.model}
                           {d.brand ? `, ${d.brand}` : ""} · {d.system_email}
                         </CardDescription>
+                        {active ? (
+                          <p className="text-sm text-foreground">
+                            En comodato con <strong>{proName(active.professional_id)}</strong>
+                          </p>
+                        ) : null}
                       </div>
                       <DeviceStatusBadge status={d.status} />
                     </div>
@@ -109,41 +141,40 @@ export default async function ComodatoPage() {
                         <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                           Estado del equipo
                         </span>
-                        <DeviceStatusForm deviceId={d.id} currentStatus={d.status} />
+                        {/* key: remonta el form al revalidar, asi el select toma el estado nuevo */}
+                        <DeviceStatusForm
+                          key={`${d.id}-${d.status}`}
+                          deviceId={d.id}
+                          currentStatus={d.status}
+                        />
                       </div>
                     ) : null}
 
                     <div className="flex flex-col gap-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        Historial de comodato
+                        Comodato activo
                       </span>
-                      {history.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Sin asignaciones.</p>
+                      {active ? (
+                        <AssignmentItem a={active} proName={proName} showReturn={isManager} />
                       ) : (
-                        <ul className="flex flex-col gap-2">
+                        <p className="text-sm text-muted-foreground">Sin comodato activo.</p>
+                      )}
+                    </div>
+
+                    {history.length > 0 ? (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                          Historial completo ({history.length})
+                        </summary>
+                        <ul className="mt-2 flex flex-col gap-2">
                           {history.map((a) => (
-                            <li
-                              key={a.id}
-                              className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 text-sm"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span>{proName(a.professional_id)}</span>
-                                <AssignmentStatusBadge status={a.status} />
-                              </div>
-                              <div className="text-muted-foreground">
-                                {a.start_date} a {a.expected_end_date}
-                                {a.actual_return_date
-                                  ? ` · devuelto el ${a.actual_return_date}`
-                                  : ""}
-                              </div>
-                              {isManager && isActive(a) ? (
-                                <ReturnComodatoForm assignmentId={a.id} />
-                              ) : null}
+                            <li key={a.id}>
+                              <AssignmentItem a={a} proName={proName} showReturn={false} />
                             </li>
                           ))}
                         </ul>
-                      )}
-                    </div>
+                      </details>
+                    ) : null}
                   </CardContent>
                 </Card>
               );

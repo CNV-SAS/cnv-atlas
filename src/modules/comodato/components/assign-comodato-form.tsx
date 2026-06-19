@@ -10,8 +10,9 @@ import { assignComodatoFormAction } from "../actions";
 import type { AssignableProfessional, Device } from "../types";
 import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
+import { useComodatoToast } from "./use-comodato-toast";
 
-const initial: ComodatoFormState = { error: null, success: null };
+const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
 export function AssignComodatoForm({
   devices,
@@ -21,6 +22,7 @@ export function AssignComodatoForm({
   professionals: AssignableProfessional[];
 }) {
   const [state, action, pending] = useActionState(assignComodatoFormAction, initial);
+  useComodatoToast(state);
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -66,12 +68,6 @@ export function AssignComodatoForm({
           <Input id="expectedEndDate" name="expectedEndDate" type="date" required />
         </div>
       </div>
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
-      {state.success ? <p className="text-sm text-clinical-optimal">{state.success}</p> : null}
       <div>
         <Button type="submit" disabled={pending || devices.length === 0 || professionals.length === 0}>
           {pending ? "Asignando..." : "Asignar comodato"}

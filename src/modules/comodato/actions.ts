@@ -60,7 +60,7 @@ export async function createDeviceAction(
 
 export async function updateDeviceStatusAction(
   input: UpdateDeviceStatusInput,
-): Promise<Result<null, AppError>> {
+): Promise<Result<{ warning: string | null }, AppError>> {
   const { error: authzError } = await requireManager();
   if (authzError) return err(authzError);
 
@@ -68,10 +68,18 @@ export async function updateDeviceStatusAction(
   if (!parsed.success) return err(appError("validation", "Estado invalido."));
 
   try {
-    await service.changeDeviceStatus(parsed.data.deviceId, parsed.data.status);
+    const { warning } = await service.changeDeviceStatus(parsed.data.deviceId, parsed.data.status);
     revalidatePath("/comodato");
-    return ok(null);
-  } catch {
+    return ok({ warning });
+  } catch (e) {
+    if (e instanceof service.DeviceHasActiveComodatoError) {
+      return err(
+        appError(
+          "conflict",
+          "No puedes marcar el equipo como disponible: tiene un comodato activo. Registra primero la devolucion.",
+        ),
+      );
+    }
     return err(appError("internal", "No se pudo actualizar el estado del equipo."));
   }
 }
@@ -140,8 +148,8 @@ export async function createDeviceFormAction(
     purchaseDate: str("purchaseDate"),
     lastCalibrationDate: str("lastCalibrationDate"),
   });
-  if (!result.ok) return { error: result.error.message, success: null };
-  return { error: null, success: "Equipo creado." };
+  if (!result.ok) return { error: result.error.message, success: null, warning: null };
+  return { error: null, success: "Equipo creado.", warning: null };
 }
 
 export async function assignComodatoFormAction(
@@ -154,8 +162,8 @@ export async function assignComodatoFormAction(
     startDate: String(formData.get("startDate") ?? ""),
     expectedEndDate: String(formData.get("expectedEndDate") ?? ""),
   });
-  if (!result.ok) return { error: result.error.message, success: null };
-  return { error: null, success: "Comodato asignado." };
+  if (!result.ok) return { error: result.error.message, success: null, warning: null };
+  return { error: null, success: "Comodato asignado.", warning: null };
 }
 
 export async function updateDeviceStatusFormAction(
@@ -166,8 +174,12 @@ export async function updateDeviceStatusFormAction(
     deviceId: String(formData.get("deviceId") ?? ""),
     status: String(formData.get("status") ?? "") as UpdateDeviceStatusInput["status"],
   });
-  if (!result.ok) return { error: result.error.message, success: null };
-  return { error: null, success: "Estado actualizado." };
+  if (!result.ok) return { error: result.error.message, success: null, warning: null };
+  // Exito con comodato activo: el cambio se aplico, pero se avisa (toast.warning).
+  if (result.value.warning) {
+    return { error: null, success: null, warning: `Estado actualizado. ${result.value.warning}` };
+  }
+  return { error: null, success: "Estado actualizado.", warning: null };
 }
 
 export async function returnComodatoFormAction(
@@ -181,6 +193,6 @@ export async function returnComodatoFormAction(
       | "completed"
       | "breach",
   });
-  if (!result.ok) return { error: result.error.message, success: null };
-  return { error: null, success: "Devolucion registrada." };
+  if (!result.ok) return { error: result.error.message, success: null, warning: null };
+  return { error: null, success: "Devolucion registrada.", warning: null };
 }

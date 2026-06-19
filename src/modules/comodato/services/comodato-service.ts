@@ -17,6 +17,7 @@ import type {
 
 export class DeviceNotFoundError extends Error {}
 export class DeviceAlreadyAssignedError extends Error {}
+export class DeviceHasActiveComodatoError extends Error {}
 
 // ----- Lecturas (superficie unica para la UI) -----
 export const listDevices = repo.listDevices;
@@ -53,9 +54,28 @@ export function createDevice(input: CreateDeviceInput, organizationId: string): 
   );
 }
 
-// El estado del equipo se gestiona aparte del contrato (no se acopla al asignar).
-export function changeDeviceStatus(deviceId: string, status: DeviceStatus): Promise<Device> {
-  return repo.updateDeviceStatus(deviceId, status);
+// Estados de no-uso: con comodato activo se permiten, pero se avisa (warning).
+const NON_USE_STATES: DeviceStatus[] = ["maintenance", "out_of_service", "lost", "retired"];
+
+// Cambio de estado del equipo (separado del contrato), con una salvaguarda: no se
+// puede marcar 'available' si hay un comodato activo (primero la devolucion).
+// Devuelve un warning cuando el cambio es valido pero conviene avisar.
+export async function changeDeviceStatus(
+  deviceId: string,
+  status: DeviceStatus,
+): Promise<{ device: Device; warning: string | null }> {
+  const active = await repo.getActiveAssignmentForDevice(deviceId);
+
+  if (active && status === "available") {
+    throw new DeviceHasActiveComodatoError();
+  }
+
+  const device = await repo.updateDeviceStatus(deviceId, status);
+  const warning =
+    active && NON_USE_STATES.includes(status)
+      ? "El equipo tiene un comodato activo; revisa si debe registrarse la devolucion."
+      : null;
+  return { device, warning };
 }
 
 export async function assignComodato(input: AssignComodatoInput): Promise<DeviceAssignment> {

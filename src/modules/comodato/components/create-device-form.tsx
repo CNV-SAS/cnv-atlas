@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 
 import { createDeviceFormAction } from "../actions";
 import type { ComodatoFormState } from "../validations";
+import { useComodatoToast } from "./use-comodato-toast";
 
-const initial: ComodatoFormState = { error: null, success: null };
+const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
 function Field({
   name,
@@ -34,6 +35,7 @@ function Field({
 
 export function CreateDeviceForm() {
   const [state, action, pending] = useActionState(createDeviceFormAction, initial);
+  useComodatoToast(state);
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -47,12 +49,6 @@ export function CreateDeviceForm() {
         <Field name="purchaseDate" label="Fecha de compra" type="date" />
         <Field name="lastCalibrationDate" label="Ultima calibracion" type="date" />
       </div>
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      ) : null}
-      {state.success ? <p className="text-sm text-clinical-optimal">{state.success}</p> : null}
       <div>
         <Button type="submit" disabled={pending}>
           {pending ? "Creando..." : "Crear equipo"}

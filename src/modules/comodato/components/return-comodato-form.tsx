@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { returnComodatoFormAction } from "../actions";
 import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
+import { useComodatoToast } from "./use-comodato-toast";
 
-const initial: ComodatoFormState = { error: null, success: null };
+const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
 // Registrar devolucion de un comodato activo: fecha real + cierre del contrato.
 export function ReturnComodatoForm({ assignmentId }: { assignmentId: string }) {
   const [state, action, pending] = useActionState(returnComodatoFormAction, initial);
+  useComodatoToast(state);
 
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
@@ -38,7 +40,6 @@ export function ReturnComodatoForm({ assignmentId }: { assignmentId: string }) {
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "..." : "Registrar devolucion"}
       </Button>
-      {state.error ? <span className="text-xs text-destructive">{state.error}</span> : null}
     </form>
   );
 }

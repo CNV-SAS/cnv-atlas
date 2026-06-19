@@ -7,6 +7,11 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Usa una fecha valida (YYYY-MM-DD).");
 
+// Ids que vienen de nuestra propia BD. Se usa z.guid() (GUID laxo) en vez de
+// z.uuid(): Zod 4 valida los bits de version/variante RFC y rechazaria los UUIDs
+// fijos del seed (ej. 66666666-...). guid() acepta esos y los v4 reales de prod.
+const dbUuid = z.guid();
+
 export const deviceStatusEnum = z.enum([
   "available",
   "in_use",
@@ -31,7 +36,7 @@ export type CreateDeviceInput = z.infer<typeof createDeviceSchema>;
 
 // El estado del equipo se gestiona aparte del contrato (no se acoplan al asignar).
 export const updateDeviceStatusSchema = z.object({
-  deviceId: z.string().uuid(),
+  deviceId: dbUuid,
   status: deviceStatusEnum,
 });
 export type UpdateDeviceStatusInput = z.infer<typeof updateDeviceStatusSchema>;
@@ -39,8 +44,8 @@ export type UpdateDeviceStatusInput = z.infer<typeof updateDeviceStatusSchema>;
 // Asignar comodato. expected_end_date no puede ser anterior a start_date.
 export const assignComodatoSchema = z
   .object({
-    deviceId: z.string().uuid(),
-    professionalId: z.string().uuid(),
+    deviceId: dbUuid,
+    professionalId: dbUuid,
     startDate: isoDate,
     expectedEndDate: isoDate,
   })
@@ -52,11 +57,16 @@ export type AssignComodatoInput = z.infer<typeof assignComodatoSchema>;
 
 // Registrar devolucion. Cierra el contrato (completed) o lo marca en incumplimiento.
 export const returnComodatoSchema = z.object({
-  assignmentId: z.string().uuid(),
+  assignmentId: dbUuid,
   actualReturnDate: isoDate,
   status: z.enum(["completed", "breach"]).default("completed"),
 });
 export type ReturnComodatoInput = z.infer<typeof returnComodatoSchema>;
 
-// Estado para los formularios de comodato (useActionState).
-export type ComodatoFormState = { error: string | null; success: string | null };
+// Estado para los formularios de comodato (useActionState). Exactamente uno de
+// error/success/warning queda no-nulo; el cliente dispara el toast segun cual sea.
+export type ComodatoFormState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};

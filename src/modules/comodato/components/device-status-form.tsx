@@ -9,8 +9,9 @@ import type { DeviceStatus } from "../types";
 import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
 import { DEVICE_STATUS_LABELS, DEVICE_STATUS_OPTIONS } from "./status-meta";
+import { useComodatoToast } from "./use-comodato-toast";
 
-const initial: ComodatoFormState = { error: null, success: null };
+const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
 // Cambio de estado del equipo, inline. Independiente del contrato (no se acopla).
 export function DeviceStatusForm({
@@ -21,6 +22,7 @@ export function DeviceStatusForm({
   currentStatus: DeviceStatus;
 }) {
   const [state, action, pending] = useActionState(updateDeviceStatusFormAction, initial);
+  useComodatoToast(state);
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
@@ -40,8 +42,6 @@ export function DeviceStatusForm({
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending ? "..." : "Cambiar estado"}
       </Button>
-      {state.error ? <span className="text-xs text-destructive">{state.error}</span> : null}
-      {state.success ? <span className="text-xs text-clinical-optimal">{state.success}</span> : null}
     </form>
   );
 }
