@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import type { Database } from "@/types/database.generated";
+
 // Cliente de Supabase para Server Components, server actions y route handlers.
 // Usa la anon key + RLS (el 99% de los casos). La sesion vive en cookies.
+// Tipado con la Database generada: los repos obtienen columnas y filas tipadas.
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,7 +16,7 @@ export async function createSupabaseServerClient() {
     );
   }
 
-  return createServerClient(url, anonKey, {
+  return createServerClient<Database>(url, anonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
