@@ -1,18 +1,20 @@
-import { logoutAction } from "@/modules/auth/actions";
+import { requireUser } from "@/modules/auth/session";
 
-export const metadata = { title: "Panel - Atlas" };
+export const metadata = { title: "Tablero - Atlas" };
 
-// Landing minima (B2). El shell con marca llega en B3.
-export default function DashboardPage() {
+// Landing del shell. El cierre de sesion vive en el header (avatar). El
+// contenido real del tablero llega en bloques posteriores.
+export default async function DashboardPage() {
+  const user = await requireUser();
+
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">Atlas</h1>
-      <p>Sesion iniciada.</p>
-      <form action={logoutAction}>
-        <button type="submit" className="border p-2">
-          Cerrar sesion
-        </button>
-      </form>
-    </main>
+    <div className="flex flex-col gap-2">
+      <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+        Hola, {user.fullName}
+      </h1>
+      <p className="text-muted-foreground">
+        Este es tu tablero de Atlas. Las secciones disponibles dependen de tu rol.
+      </p>
+    </div>
   );
 }

@@ -1,8 +1,22 @@
-// Layout minimo de las paginas de auth (sin marca; el shell con marca es B3).
+import Image from "next/image";
+
+// Layout de las paginas de auth: marca minima (logo sobre el formulario),
+// centrado. El shell completo por rol vive en el grupo (app).
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
-      {children}
-    </main>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-8 bg-muted p-6">
+      <Image
+        src="/brand/logo-horizontal.svg"
+        alt="Atlas"
+        width={160}
+        height={32}
+        priority
+        unoptimized
+        className="h-8 w-auto"
+      />
+      <main className="flex w-full max-w-sm flex-col gap-6 rounded-2xl border border-border bg-card p-8 shadow-sm">
+        {children}
+      </main>
+    </div>
   );
 }

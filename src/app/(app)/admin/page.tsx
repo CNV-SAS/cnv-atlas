@@ -23,19 +23,19 @@ export default async function AdminPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
-      <h1 className="text-xl font-semibold">Usuarios</h1>
-      <ul className="flex flex-col gap-1">
+    <div className="flex max-w-2xl flex-col gap-6">
+      <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Usuarios</h1>
+      <ul className="flex flex-col gap-1 text-sm">
         {(users ?? []).map((u) => (
           <li key={u.id}>
-            {u.email} — {u.full_name} ({u.status})
+            {u.email}, {u.full_name} ({u.status})
           </li>
         ))}
       </ul>
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold">Crear usuario</h2>
+        <h2 className="font-bold">Crear usuario</h2>
         <CreateUserForm />
       </section>
-    </main>
+    </div>
   );
 }
