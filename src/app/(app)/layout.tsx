@@ -16,12 +16,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (hasAnyRole(user, INTERNAL_ROLES)) {
     const supabase = await createSupabaseServerClient();
-    const [{ data: aal }, { data: factors }] = await Promise.all([
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    // getClaims valida el JWT server-side (como getUser; en local cae a getUser)
+    // y expone el claim aal sin tocar el user de getSession, asi que no dispara la
+    // advertencia de uso inseguro de getSession. listFactors ya usa getUser.
+    const [{ data: claimsData }, { data: factors }] = await Promise.all([
+      supabase.auth.getClaims(),
       supabase.auth.mfa.listFactors(),
     ]);
     const hasVerifiedTotp = (factors?.totp?.length ?? 0) > 0;
-    const req = mfaRequirement(user, hasVerifiedTotp, aal?.currentLevel ?? null);
+    const currentLevel = claimsData?.claims.aal ?? null;
+    const req = mfaRequirement(user, hasVerifiedTotp, currentLevel);
     if (req === "enroll") redirect("/mfa-setup");
     if (req === "challenge") redirect("/mfa-challenge");
   }

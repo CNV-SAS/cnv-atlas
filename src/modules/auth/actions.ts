@@ -38,10 +38,17 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: "Correo o contrasena incorrectos." };
 
-  // Step-up de MFA: si hay un factor verificado, la sesion queda en aal1 y el
-  // siguiente nivel exigido es aal2.
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+  // Step-up de MFA: si hay un factor TOTP verificado, la sesion queda en aal1 y
+  // se exige subir a aal2. getClaims valida el JWT server-side (como getUser) y
+  // expone aal sin tocar el user de getSession (evita la advertencia); listFactors
+  // ya usa getUser.
+  const [{ data: claimsData }, { data: factors }] = await Promise.all([
+    supabase.auth.getClaims(),
+    supabase.auth.mfa.listFactors(),
+  ]);
+  const hasVerifiedTotp = (factors?.totp?.length ?? 0) > 0;
+  const currentLevel = claimsData?.claims.aal ?? null;
+  if (hasVerifiedTotp && currentLevel !== "aal2") {
     redirect("/mfa-challenge");
   }
 
