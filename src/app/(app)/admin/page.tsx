@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
@@ -5,15 +7,12 @@ import { requireUser } from "@/modules/auth/session";
 
 export const metadata = { title: "Administracion - Atlas" };
 
-// UI minima (B2). El shell con marca y la pagina /no-autorizado dedicada son B3/B6.
+// UI minima (B2). El shell con marca es B3. La autorizacion de ruta va por policy
+// (regla 3): sin permiso, a /no-autorizado.
 export default async function AdminPage() {
   const user = await requireUser();
   if (!canAccessAdmin(user)) {
-    return (
-      <main className="p-6">
-        <h1 className="text-xl font-semibold">No autorizado</h1>
-      </main>
-    );
+    redirect("/no-autorizado");
   }
 
   // Lectura bajo RLS: solo admin ve a todos los profiles (policy de B1).

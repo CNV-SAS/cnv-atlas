@@ -42,9 +42,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   };
 }
 
-// Exige sesion activa; si no, redirige a /login. Para usar en layouts y actions.
+// Exige sesion activa. Sin sesion: a /login. Con sesion pero status inactivo:
+// a /auth/logout, que hace signOut() y limpia las cookies (logout inmediato, no
+// solo un rebote; una cuenta desactivada no debe conservar sesion valida).
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user || user.status !== "active") redirect("/login");
+  if (!user) redirect("/login");
+  if (user.status !== "active") redirect("/auth/logout");
   return user;
 }
