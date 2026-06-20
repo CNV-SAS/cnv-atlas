@@ -22,3 +22,30 @@ export async function listTransactions(): Promise<TransactionWithItems[]> {
   // se castea a la vista de dominio que consume la UI.
   return (data ?? []) as unknown as TransactionWithItems[];
 }
+
+// professional_profiles.id del usuario actual (si es profesional). RLS:
+// professional_profiles_select deja al profesional leer su propia fila.
+export async function getProfessionalProfileIdByUser(userId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .select("id")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (error) fail("getProfessionalProfileIdByUser", error.message);
+  return data?.id ?? null;
+}
+
+// professional_profiles.id del profesional asignado a un paciente (via ppr). RLS:
+// ppr_select deja a admin/soporte leerlo. Sirve para sellar la comision cuando el
+// checkout lo crea un admin (no un profesional).
+export async function getProfessionalIdForPatient(patientId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patient_professional_relationships")
+    .select("professional_id")
+    .eq("patient_id", patientId)
+    .limit(1);
+  if (error) fail("getProfessionalIdForPatient", error.message);
+  return data?.[0]?.professional_id ?? null;
+}
