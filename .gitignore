@@ -45,3 +45,6 @@ next-env.d.ts
 # Atlas: material de referencia (HTMLs de Gildardo, XLSX de muestra de Biody).
 # Pesado y posible portador de PII; se consulta local, no se versiona.
 /reference/
+
+# Snippets generados por Supabase Studio en local; no son fuente del proyecto.
+/supabase/snippets/
