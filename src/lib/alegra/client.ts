@@ -2,13 +2,20 @@ import "server-only";
 
 import { fetchJson } from "@/core/http/fetch-json";
 
-// Cliente de Alegra (facturacion). Auth: Basic base64(email:api_key). Endpoint y
-// formato del body verificados contra la doc oficial vigente (api.alegra.com/api/v1).
-// La idempotencia (no facturar dos veces la misma transaccion) la garantiza el
-// servicio chequeando transactions.alegra_invoice_id antes de llamar aqui.
+// Cliente de Alegra (facturacion). Auth: Basic base64(email:api_key). Formato del
+// body verificado contra la doc oficial vigente. La idempotencia (no facturar dos
+// veces la misma transaccion) la garantiza el servicio chequeando
+// transactions.alegra_invoice_id antes de llamar aqui.
 
-const ALEGRA_BASE = "https://api.alegra.com/api/v1";
+// Base URL desde el entorno: sandbox y produccion tienen hosts distintos, no se
+// hardcodea. Fallback a produccion si la env no esta puesta.
+const ALEGRA_DEFAULT_BASE = "https://api.alegra.com/api/v1";
 const ALEGRA_TIMEOUT_MS = 15_000;
+
+function baseUrl(): string {
+  const base = process.env.ALEGRA_BASE_URL ?? ALEGRA_DEFAULT_BASE;
+  return base.replace(/\/+$/, ""); // sin barra final, para no duplicar al concatenar
+}
 
 export type AlegraInvoiceItem = {
   id: number; // id del item en el catalogo de Alegra
@@ -45,7 +52,7 @@ export async function createAlegraInvoice(
     date: input.date,
     dueDate: input.dueDate,
   };
-  const res = await fetchJson<{ id: number | string }>(`${ALEGRA_BASE}/invoices`, {
+  const res = await fetchJson<{ id: number | string }>(`${baseUrl()}/invoices`, {
     method: "POST",
     headers: { authorization: authHeader(), accept: "application/json" },
     body,

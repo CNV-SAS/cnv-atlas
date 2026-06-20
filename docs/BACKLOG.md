@@ -43,6 +43,8 @@ Acceso directo del paciente, fuera del alcance del MVP (donde el paciente solo r
 
 ## Pagos
 - **Reembolsos (`refunded`).** El enum `transaction_status` incluye `refunded`, pero en el MVP no hay flujo de reembolso: solo se manejan `paid` y `failed`. La reversa de un pago (notificarla, recalcular comision/ingreso, anular o abonar la factura en Alegra) es post-MVP.
+- **Autocompletar datos del paciente en el checkout de Wompi.** Wompi soporta `customer-data` (nombre, correo, telefono, documento) para prellenar el checkout. En el MVP el checkout va sin esos datos. Cuando se integre, sale del paciente y nunca como PII en la URL si se puede evitar.
+- **Boton de QR en la pagina de pagos.** Generar un QR del link de checkout para mostrarlo en consultorio, ademas del link copiable. En el MVP solo se comparte el link.
 
 ## Operación y cumplimiento
 - **Proceso semi-automatizado de derechos del titular** (en MVP es manual).

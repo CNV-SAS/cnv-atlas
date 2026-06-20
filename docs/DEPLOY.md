@@ -36,6 +36,9 @@ WOMPI_EVENTS_SECRET=                 # solo server, valida firma HMAC de webhook
 WOMPI_INTEGRITY_SECRET=              # solo server, firma de integridad del checkout
 ALEGRA_EMAIL=                        # solo server
 ALEGRA_API_KEY=                      # solo server
+ALEGRA_BASE_URL=                     # solo server, base de la API (sandbox vs produccion)
+ALEGRA_DEFAULT_CLIENT_ID=            # solo server, cliente por defecto para la factura (MVP)
+ALEGRA_DEFAULT_ITEM_ID=              # solo server, item generico por defecto (MVP)
 
 # ===== Rate limiting =====
 UPSTASH_REDIS_REST_URL=
