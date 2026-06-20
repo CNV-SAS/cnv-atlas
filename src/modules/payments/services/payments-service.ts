@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import * as Sentry from "@sentry/nextjs";
 
+import { baseFromTotal } from "@/core/iva";
 import { createAlegraInvoice } from "@/lib/alegra/client";
 import { computeIntegritySignature } from "@/lib/wompi/signatures";
 import type { CurrentUser } from "@/modules/auth/roles";
@@ -203,9 +204,12 @@ async function tryCreateAlegraInvoice(sealed: SealedTransaction): Promise<void> 
 
   try {
     const today = isoDate();
+    // Alegra recibe el precio BASE sin IVA; el item de Alegra (configurado con IVA
+    // 19%) aplica el impuesto y la factura queda con el desglose correcto.
+    // sealed.amount es PVP con IVA incluido.
     const invoice = await createAlegraInvoice({
       clientId,
-      items: [{ id: itemId, price: Number(sealed.amount), quantity: 1 }],
+      items: [{ id: itemId, price: baseFromTotal(Number(sealed.amount)), quantity: 1 }],
       date: today,
       dueDate: today,
     });

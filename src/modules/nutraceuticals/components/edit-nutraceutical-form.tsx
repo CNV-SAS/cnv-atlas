@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { updateNutraceuticalFormAction } from "../actions";
 import type { Nutraceutical } from "../types";
 import type { NutraceuticalFormState } from "../validations";
+import { PriceIvaField } from "./price-iva-field";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -33,17 +34,10 @@ export function EditNutraceuticalForm({ nutraceutical: n }: { nutraceutical: Nut
           <Label htmlFor={`unit-${n.id}`}>Unidad</Label>
           <Input id={`unit-${n.id}`} name="unit" defaultValue={n.unit ?? ""} />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`price-${n.id}`}>Precio unitario (COP)</Label>
-          <Input
-            id={`price-${n.id}`}
-            name="unitPrice"
-            type="number"
-            min={0}
-            step={1}
-            defaultValue={n.unit_price ?? undefined}
-          />
-        </div>
+        <PriceIvaField
+          id={`price-${n.id}`}
+          initialValue={n.unit_price != null ? Number(n.unit_price) : null}
+        />
       </div>
       <div>
         <Button type="submit" size="sm" disabled={pending}>

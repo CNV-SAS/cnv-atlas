@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
+import { baseFromTotal } from "@/core/iva";
 import {
   cnvRevenue,
   paymentWebhookEvents,
@@ -138,7 +139,10 @@ export async function sealPaidTransaction(
       });
     if (updated.length === 0) return null; // ya sellada u otro estado: idempotente
     const t = updated[0];
-    const amount = Number(t.amount);
+    // amount es PVP con IVA incluido. La comision y el ingreso se calculan sobre la
+    // BASE sin IVA: el IVA es recaudo (va a la factura y a la DIAN), no es ingreso
+    // (decision de B6). Ver core/iva.
+    const base = baseFromTotal(Number(t.amount));
 
     let commission = 0;
     if (t.professionalId) {
@@ -147,7 +151,7 @@ export async function sealPaidTransaction(
         .from(professionalProfiles)
         .where(eq(professionalProfiles.id, t.professionalId));
       const rate = Number(prof?.rate ?? 0);
-      commission = Math.round(amount * rate * 100) / 100;
+      commission = Math.round(base * rate * 100) / 100;
       await tx.insert(professionalRevenue).values({
         transactionId: t.id,
         professionalId: t.professionalId,
@@ -155,10 +159,10 @@ export async function sealPaidTransaction(
         commissionAmount: String(commission),
       });
     }
-    // El resto es ingreso de CNV (comision sobre el monto total; decision de B6).
+    // El resto de la base (sin IVA) es ingreso de CNV.
     await tx.insert(cnvRevenue).values({
       transactionId: t.id,
-      amount: String(Math.round((amount - commission) * 100) / 100),
+      amount: String(Math.round((base - commission) * 100) / 100),
     });
     return t;
   });

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { createNutraceuticalFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { PriceIvaField } from "./price-iva-field";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -31,10 +32,7 @@ export function CreateNutraceuticalForm() {
           <Label htmlFor="unit">Unidad</Label>
           <Input id="unit" name="unit" placeholder="capsula, sobre" />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="unitPrice">Precio unitario (COP)</Label>
-          <Input id="unitPrice" name="unitPrice" type="number" min={0} step={1} />
-        </div>
+        <PriceIvaField id="unitPrice" />
       </div>
       <div>
         <Button type="submit" disabled={pending}>
