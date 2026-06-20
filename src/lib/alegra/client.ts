@@ -43,6 +43,9 @@ function authHeader(): string {
 // Crea una factura de venta. Lanza HttpError si Alegra responde != 2xx; el llamador
 // decide que hacer (reintentar acotado, marcar pendiente). Nunca dentro de una
 // transaccion de BD: es una llamada externa.
+//
+// Se deja como BORRADOR a proposito (no se envia status:'open'): en el MVP se
+// revisa manualmente antes de emitirla a la DIAN. Emitir/automatizar es post-MVP.
 export async function createAlegraInvoice(
   input: AlegraInvoiceInput,
 ): Promise<AlegraInvoiceResult> {
@@ -51,6 +54,10 @@ export async function createAlegraInvoice(
     items: input.items,
     date: input.date,
     dueDate: input.dueDate,
+    // Alegra Colombia exige la forma de pago ("La forma de pago es obligatoria").
+    // El checkout de Wompi se paga al contado, asi que CASH. CREDIT exigiria ademas
+    // periodicity.
+    paymentForm: "CASH",
   };
   const res = await fetchJson<{ id: number | string }>(`${baseUrl()}/invoices`, {
     method: "POST",
