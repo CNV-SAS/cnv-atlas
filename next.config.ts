@@ -58,7 +58,9 @@ function buildCsp(): string {
     `connect-src ${buildConnectSrc()}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    // El checkout publico envia su form (Web Checkout por redirect) al dominio
+    // alojado de Wompi; sin esto la CSP bloquearia el pago.
+    "form-action 'self' https://checkout.wompi.co",
     "object-src 'none'",
     "manifest-src 'self'",
   ].join("; ");
@@ -85,6 +87,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Solo dev: permite que el tunel publico (Cloudflare Tunnel) sirva recursos del
+  // dev server (HMR) durante el smoke del webhook de Wompi. No aplica en produccion.
+  allowedDevOrigins: ["examples-herself-tribute-aimed.trycloudflare.com"],
 };
 
 // La subida de sourcemaps (org, project, SENTRY_AUTH_TOKEN) se configura en el
