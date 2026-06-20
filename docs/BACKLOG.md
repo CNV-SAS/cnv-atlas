@@ -41,6 +41,9 @@ Acceso directo del paciente, fuera del alcance del MVP (donde el paciente solo r
 - **Sección de noticias y educación:** contenido divulgativo y educativo para el paciente dentro del portal.
 - **Cuenta de paciente con login propio:** autenticación propia del paciente, distinta de las cuentas clínicas de profesionales y staff, con su gobernanza de acceso y de consentimiento.
 
+## Pagos
+- **Reembolsos (`refunded`).** El enum `transaction_status` incluye `refunded`, pero en el MVP no hay flujo de reembolso: solo se manejan `paid` y `failed`. La reversa de un pago (notificarla, recalcular comision/ingreso, anular o abonar la factura en Alegra) es post-MVP.
+
 ## Operación y cumplimiento
 - **Proceso semi-automatizado de derechos del titular** (en MVP es manual).
 - **Cierre de la parte legal de `SECURITY.md` y `DATA_GOVERNANCE.md`** (chat dedicado + jurídico): consentimiento, retención, residencia del dato, plazos de notificación a la SIC.

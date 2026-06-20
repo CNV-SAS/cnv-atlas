@@ -36,6 +36,13 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+
+  // Las rutas /api nunca se redirigen a /login: los webhooks de pago (Wompi,
+  // Alegra) llegan sin sesion y deben alcanzar su handler. Las APIs que requieran
+  // sesion se protegen en su propio handler, no aqui. El refresco de sesion de
+  // arriba ya corrio, asi que las cookies quedan frescas para esas rutas.
+  if (path.startsWith("/api")) return response;
+
   const isPublic =
     PUBLIC_PREFIXES.some((p) => path.startsWith(p)) ||
     AUTH_PREFIXES.some((p) => path.startsWith(p));
