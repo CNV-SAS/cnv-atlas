@@ -11,6 +11,7 @@ export type NavIconKey =
   | "comercial"
   | "comodato"
   | "nutraceuticos"
+  | "pagos"
   | "admin";
 
 export type NavItem = {
@@ -57,6 +58,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/nutraceuticos",
     icon: "nutraceuticos",
     roles: ["admin", "soporte", "direccion"],
+  },
+  {
+    label: "Pagos",
+    href: "/pagos",
+    icon: "pagos",
+    roles: ["admin", "direccion", "professional"],
   },
   {
     label: "Usuarios",

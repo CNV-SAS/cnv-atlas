@@ -49,3 +49,22 @@ export async function getProfessionalIdForPatient(patientId: string): Promise<st
   if (error) fail("getProfessionalIdForPatient", error.message);
   return data?.[0]?.professional_id ?? null;
 }
+
+export type SelectablePatient = { id: string; label: string };
+
+// Pacientes seleccionables para el form de checkout. RLS patients_select filtra
+// (el profesional ve los suyos, admin/soporte todos). Lectura minima y temporal
+// hasta que aterrice el modulo de pacientes (bloque posterior); solo expone el id
+// y una etiqueta por documento para identificarlos en el selector.
+export async function listSelectablePatients(): Promise<SelectablePatient[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, document_type, document_number")
+    .order("document_number", { ascending: true });
+  if (error) fail("listSelectablePatients", error.message);
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    label: `${p.document_type} ${p.document_number}`,
+  }));
+}

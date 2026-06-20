@@ -13,6 +13,7 @@ import {
   Menu,
   MonitorSmartphone,
   Pill,
+  Receipt,
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
@@ -41,6 +42,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   comercial: CreditCard,
   comodato: MonitorSmartphone,
   nutraceuticos: Pill,
+  pagos: Receipt,
   admin: ShieldCheck,
 };
 
