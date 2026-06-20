@@ -40,6 +40,8 @@ const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555552";
 const DEVICE_IDS = ["66666666-6666-6666-6666-666666666601", "66666666-6666-6666-6666-666666666602"];
 const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702"];
 const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
+const PATIENT_ID = "99999999-9999-9999-9999-999999999901";
+const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
 
 // ---- Identidad de los usuarios sembrados ---------------------------------
 const ADMIN_EMAIL = "sau.idk001@gmail.com";
@@ -190,11 +192,34 @@ async function main() {
     ).error,
   );
 
+  // 9. Paciente demo + relacion con el profesional de prueba. Habilita el smoke de
+  // pagos (B6: el admin crea el checkout y la comision se sella al profesional
+  // asignado) y futuras demos. Documento claramente ficticio.
+  check(
+    "patients",
+    (
+      await supabase.from("patients").upsert(
+        { id: PATIENT_ID, organization_id: ORG_ID, document_type: "CC", document_number: "DEMO-0001" },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "patient_professional_relationships",
+    (
+      await supabase.from("patient_professional_relationships").upsert(
+        { id: PATIENT_PROF_REL_ID, patient_id: PATIENT_ID, professional_id: PROFESSIONAL_PROFILE_ID },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
   console.log("Seed completo:");
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
   console.log(`  model_version active, survey v1, 2 devices, 2 nutraceuticos`);
+  console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
 }
 
 main().catch((err) => {
