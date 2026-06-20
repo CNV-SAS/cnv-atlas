@@ -87,9 +87,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  // Solo dev: permite que el tunel publico (Cloudflare Tunnel) sirva recursos del
-  // dev server (HMR) durante el smoke del webhook de Wompi. No aplica en produccion.
-  allowedDevOrigins: ["examples-herself-tribute-aimed.trycloudflare.com"],
+  // Solo dev: si se expone el dev server por un tunel publico (Cloudflare/ngrok)
+  // para probar webhooks, su origen se pasa por DEV_TUNNEL_ORIGIN y se permite el
+  // HMR. No se hardcodea (los tuneles son efimeros) ni aplica en produccion.
+  ...(isDev && process.env.DEV_TUNNEL_ORIGIN
+    ? { allowedDevOrigins: [process.env.DEV_TUNNEL_ORIGIN] }
+    : {}),
 };
 
 // La subida de sourcemaps (org, project, SENTRY_AUTH_TOKEN) se configura en el
