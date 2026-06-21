@@ -53,6 +53,10 @@ const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7
 const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
 const PATIENT_ID = "99999999-9999-9999-9999-999999999901";
 const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
+// Link de encuesta inicial (reusable) del profesional demo, para smoke del intake.
+// El token es fijo y claramente de prueba: /encuesta/<token>.
+const SURVEY_LINK_ID = "99999999-9999-9999-9999-999999999903";
+const SURVEY_LINK_TOKEN = "demo-encuesta-inicial-0001";
 
 // ---- Identidad de los usuarios sembrados ---------------------------------
 const ADMIN_EMAIL = "sau.idk001@gmail.com";
@@ -252,12 +256,30 @@ async function main() {
     ).error,
   );
 
+  // 10. Link de encuesta inicial (reusable) del profesional demo.
+  check(
+    "survey_links",
+    (
+      await supabase.from("survey_links").upsert(
+        {
+          id: SURVEY_LINK_ID,
+          organization_id: ORG_ID,
+          professional_id: PROFESSIONAL_PROFILE_ID,
+          type: "inicial",
+          token: SURVEY_LINK_TOKEN,
+        },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
   console.log("Seed completo:");
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
   console.log(`  model_version active, survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
+  console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }
 
 main().catch((err) => {

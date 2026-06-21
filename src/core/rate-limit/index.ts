@@ -61,3 +61,73 @@ export async function limitLoginByIp(ip: string): Promise<LimitResult> {
   }
   return memoryLogin.check(ip);
 }
+
+// ---- Encuesta publica (intake, B7) ---------------------------------------
+// Superficie sin sesion: rate limit AGRESIVO por IP y por token (SECURITY.md).
+// - Por IP: corta a un bot que martillea distintos tokens desde una misma IP.
+// - Por token: acota el abuso sobre un token concreto. El link inicial es reusable
+//   (lo comparte el profesional), asi que el limite por token es por hora y holgado
+//   para no bloquear a varios pacientes legitimos del mismo profesional; el de
+//   seguimiento es de un solo uso de todos modos.
+const SURVEY_IP_LIMIT = 8;
+const SURVEY_IP_WINDOW = "10 m" as const;
+const SURVEY_IP_WINDOW_MS = 10 * 60 * 1000;
+const SURVEY_TOKEN_LIMIT = 15;
+const SURVEY_TOKEN_WINDOW = "1 h" as const;
+const SURVEY_TOKEN_WINDOW_MS = 60 * 60 * 1000;
+
+const memorySurveyIp = new MemoryFixedWindow(SURVEY_IP_LIMIT, SURVEY_IP_WINDOW_MS);
+const memorySurveyToken = new MemoryFixedWindow(SURVEY_TOKEN_LIMIT, SURVEY_TOKEN_WINDOW_MS);
+
+let upstashSurveyIp: Ratelimit | null = null;
+let upstashSurveyToken: Ratelimit | null = null;
+function getUpstash(
+  cache: "ip" | "token",
+  limit: number,
+  window: `${number} ${"m" | "h"}`,
+  prefix: string,
+): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  const existing = cache === "ip" ? upstashSurveyIp : upstashSurveyToken;
+  if (existing) return existing;
+  const rl = new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(limit, window),
+    prefix,
+  });
+  if (cache === "ip") upstashSurveyIp = rl;
+  else upstashSurveyToken = rl;
+  return rl;
+}
+
+// Falla CERRADO si Upstash da error (a diferencia del login): es una superficie de
+// escritura publica, preferimos negar ante incertidumbre. La ventana en memoria es
+// el respaldo cuando Upstash no esta configurado.
+async function limitSurvey(
+  kind: "ip" | "token",
+  key: string,
+  limit: number,
+  window: `${number} ${"m" | "h"}`,
+  memory: MemoryFixedWindow,
+): Promise<LimitResult> {
+  const upstash = getUpstash(kind, limit, window, `atlas:survey:${kind}`);
+  if (upstash) {
+    try {
+      const r = await upstash.limit(key);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: false, remaining: 0 };
+    }
+  }
+  return memory.check(key);
+}
+
+export function limitSurveyByIp(ip: string): Promise<LimitResult> {
+  return limitSurvey("ip", ip, SURVEY_IP_LIMIT, SURVEY_IP_WINDOW, memorySurveyIp);
+}
+
+export function limitSurveyByToken(token: string): Promise<LimitResult> {
+  return limitSurvey("token", token, SURVEY_TOKEN_LIMIT, SURVEY_TOKEN_WINDOW, memorySurveyToken);
+}
