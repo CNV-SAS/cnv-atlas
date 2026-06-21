@@ -37,6 +37,17 @@ const PROFESSIONAL_PROFILE_ID = "33333333-3333-3333-3333-333333333333";
 const MODEL_VERSION_ID = "44444444-4444-4444-4444-444444444444";
 const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555552";
+// Preguntas placeholder, una por nivel de data_class, para que la encuesta
+// renderice y se pueda probar end-to-end. Las preguntas reales llegan con Gildardo.
+const SURVEY_QUESTION_IDS = {
+  identifier: "55555555-5555-5555-5555-555555555561",
+  quasi: "55555555-5555-5555-5555-555555555562",
+  clinical: "55555555-5555-5555-5555-555555555563",
+} as const;
+const SURVEY_OPTION_IDS = [
+  "55555555-5555-5555-5555-555555555571",
+  "55555555-5555-5555-5555-555555555572",
+] as const;
 const DEVICE_IDS = ["66666666-6666-6666-6666-666666666601", "66666666-6666-6666-6666-666666666602"];
 const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702"];
 const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
@@ -151,6 +162,33 @@ async function main() {
     "survey_versions",
     (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 1 }, { onConflict: "id" })).error,
   );
+  // 3 preguntas placeholder (una por data_class). Contenido y scoring reales al
+  // entregar Gildardo (congelado). Solo dan forma para probar el flujo del intake.
+  check(
+    "survey_questions",
+    (
+      await supabase.from("survey_questions").upsert(
+        [
+          { id: SURVEY_QUESTION_IDS.identifier, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (identificador)", question_type: "texto", order_index: 1, data_class: "identifier" },
+          { id: SURVEY_QUESTION_IDS.quasi, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (cuasi-identificador)", question_type: "opcion", order_index: 2, data_class: "quasi_identifier" },
+          { id: SURVEY_QUESTION_IDS.clinical, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (clinica)", question_type: "texto", order_index: 3, data_class: "clinical" },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "survey_options",
+    (
+      await supabase.from("survey_options").upsert(
+        [
+          { id: SURVEY_OPTION_IDS[0], question_id: SURVEY_QUESTION_IDS.quasi, option_text: "Opcion A", value: "1", order_index: 1 },
+          { id: SURVEY_OPTION_IDS[1], question_id: SURVEY_QUESTION_IDS.quasi, option_text: "Opcion B", value: "2", order_index: 2 },
+        ],
+        { onConflict: "id" },
+      )
+    ).error,
+  );
 
   // 7. 2 devices en estados distintos.
   check(
@@ -218,7 +256,7 @@ async function main() {
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version active, survey v1, 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version active, survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
 }
 

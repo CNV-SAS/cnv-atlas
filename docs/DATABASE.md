@@ -302,6 +302,31 @@ create table public.survey_answers (
   answer_value text
 );
 create index survey_answers_response_idx on survey_answers(response_id);
+
+-- Links de acceso a la encuesta publica (B7). El token opaco de la URL mapea, en
+-- servidor, a (profesional, organizacion); aqui vive ese mapeo y el estado del
+-- link. Una sola tabla cubre los dos tipos de link de la encuesta:
+--   - inicial: link generico reusable que el profesional comparte como QR; no
+--     carga PII de nadie (patient_id/prefill null); no expira ni se consume.
+--   - seguimiento: emitido para un paciente concreto, de un solo uso; pre-carga
+--     cuasi-identificadores estables (ciudad, celular), se vence al completar
+--     (consumed_at) con colchon de 30 dias (expires_at).
+-- Lectura del token en el intake: via service_role (sin sesion del paciente). El
+-- profesional emite links con su sesion (RLS); consumir/expirar lo hace el intake.
+create table public.survey_links (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id),
+  professional_id uuid not null references professional_profiles(id) on delete restrict,
+  type evaluation_type not null,            -- inicial (reusable) | seguimiento (un uso)
+  token text not null unique,               -- opaco, alta entropia
+  patient_id uuid references patients(id) on delete cascade,  -- solo seguimiento
+  prefill jsonb,                            -- solo seguimiento: cuasi-identificadores editables
+  expires_at timestamptz,                   -- seguimiento: now()+30d; inicial: null
+  consumed_at timestamptz,                  -- seguimiento: al completar; inicial: null
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+create index survey_links_professional_idx on survey_links(professional_id);
 ```
 
 ### Grupo 5: evaluaciones (la ruta)

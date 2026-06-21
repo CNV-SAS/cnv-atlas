@@ -3,6 +3,7 @@ import {
   index,
   inet,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -12,8 +13,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
-import { fieldDataClass } from "./enums";
+import { evaluationType, fieldDataClass } from "./enums";
 import { evaluations } from "./evaluations";
+import { organizations, professionalProfiles, profiles } from "./organizations";
+import { patients } from "./patients";
 
 // Grupo 4: encuesta. Estructura congelada hasta la entrega de Gildardo; las
 // preguntas reales se cargan en el bloque clinico.
@@ -95,4 +98,42 @@ export const surveyAnswers = pgTable(
     answerValue: text("answer_value"),
   },
   (t) => [index("survey_answers_response_idx").on(t.responseId)],
+);
+
+// Links de acceso a la encuesta publica (B7). El token opaco de la URL mapea, en
+// servidor, a (profesional, organizacion); aqui vive ese mapeo y el estado del
+// link. Una sola tabla cubre los dos tipos:
+//   - inicial: link generico y reusable que el profesional comparte como QR. No
+//     carga PII de nadie (patient_id/prefill null); no expira ni se consume.
+//   - seguimiento: emitido para un paciente concreto, de un solo uso. Pre-carga
+//     campos estables (cuasi-identificadores: ciudad, celular), se vence al
+//     completar (consumed_at) con colchon de 30 dias (expires_at).
+// Lectura publica del token en el intake: via service_role (sin sesion), por eso
+// no lleva policy de SELECT para anon. El profesional emite links con su sesion
+// (INSERT con RLS); consumir/expirar lo hace el intake con service_role.
+export const surveyLinks = pgTable(
+  "survey_links",
+  {
+    id: pk(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "restrict" }),
+    type: evaluationType("type").notNull(), // inicial (reusable) | seguimiento (un uso)
+    token: text("token").notNull(), // opaco, alta entropia
+    patientId: uuid("patient_id").references(() => patients.id, {
+      onDelete: "cascade",
+    }), // solo seguimiento
+    prefill: jsonb("prefill"), // solo seguimiento: cuasi-identificadores editables
+    expiresAt: timestamp("expires_at", { withTimezone: true }), // seguimiento: now()+30d
+    consumedAt: timestamp("consumed_at", { withTimezone: true }), // seguimiento: al completar
+    createdBy: uuid("created_by").references(() => profiles.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("survey_links_token_unique").on(t.token),
+    index("survey_links_professional_idx").on(t.professionalId),
+  ],
 );

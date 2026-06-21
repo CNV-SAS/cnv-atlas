@@ -1734,6 +1734,77 @@ export type Database = {
           },
         ]
       }
+      survey_links: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          organization_id: string
+          patient_id: string | null
+          prefill: Json | null
+          professional_id: string
+          token: string
+          type: Database["public"]["Enums"]["evaluation_type"]
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          organization_id: string
+          patient_id?: string | null
+          prefill?: Json | null
+          professional_id: string
+          token: string
+          type: Database["public"]["Enums"]["evaluation_type"]
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          organization_id?: string
+          patient_id?: string | null
+          prefill?: Json | null
+          professional_id?: string
+          token?: string
+          type?: Database["public"]["Enums"]["evaluation_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_links_created_by_profiles_id_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_links_organization_id_organizations_id_fk"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_links_patient_id_patients_id_fk"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_links_professional_id_professional_profiles_id_fk"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_options: {
         Row: {
           id: string
