@@ -39,6 +39,7 @@ ALEGRA_API_KEY=                      # solo server
 ALEGRA_BASE_URL=                     # solo server, base de la API (sandbox vs produccion)
 ALEGRA_DEFAULT_CLIENT_ID=            # solo server, cliente por defecto para la factura (MVP)
 ALEGRA_DEFAULT_ITEM_ID=              # solo server, item generico por defecto (MVP)
+ALEGRA_IVA_TAX_ID=                   # solo server, id del impuesto IVA 19% en Alegra
 
 # ===== Rate limiting =====
 UPSTASH_REDIS_REST_URL=

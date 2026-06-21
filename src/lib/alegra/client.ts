@@ -21,6 +21,9 @@ export type AlegraInvoiceItem = {
   id: number; // id del item en el catalogo de Alegra
   price: number;
   quantity: number;
+  // Impuestos del item por id (ej. IVA 19%). Sin esto, Alegra no aplica el impuesto
+  // aunque el item lo tenga configurado, y la factura sale con IVA en 0.
+  tax?: { id: number }[];
 };
 
 export type AlegraInvoiceInput = {

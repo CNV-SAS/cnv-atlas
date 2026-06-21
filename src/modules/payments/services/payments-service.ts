@@ -204,12 +204,19 @@ async function tryCreateAlegraInvoice(sealed: SealedTransaction): Promise<void> 
 
   try {
     const today = isoDate();
-    // Alegra recibe el precio BASE sin IVA; el item de Alegra (configurado con IVA
-    // 19%) aplica el impuesto y la factura queda con el desglose correcto.
-    // sealed.amount es PVP con IVA incluido.
+    // Alegra recibe el precio BASE sin IVA y el item lleva el impuesto referenciado
+    // por id (ALEGRA_IVA_TAX_ID): sin ese tax explicito Alegra factura con IVA en 0
+    // aunque el item lo tenga configurado. sealed.amount es PVP con IVA incluido.
+    const ivaTaxId = Number(process.env.ALEGRA_IVA_TAX_ID ?? 0);
+    const item = {
+      id: itemId,
+      price: baseFromTotal(Number(sealed.amount)),
+      quantity: 1,
+      ...(ivaTaxId ? { tax: [{ id: ivaTaxId }] } : {}),
+    };
     const invoice = await createAlegraInvoice({
       clientId,
-      items: [{ id: itemId, price: baseFromTotal(Number(sealed.amount)), quantity: 1 }],
+      items: [item],
       date: today,
       dueDate: today,
     });
