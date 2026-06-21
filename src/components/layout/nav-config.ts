@@ -7,6 +7,7 @@ import type { AppRole } from "@/modules/auth/roles";
 export type NavIconKey =
   | "dashboard"
   | "clinica"
+  | "evaluaciones"
   | "reportes"
   | "comercial"
   | "comodato"
@@ -34,6 +35,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/pacientes",
     icon: "clinica",
     roles: ["admin", "direccion", "obbia", "professional"],
+  },
+  {
+    label: "Evaluaciones",
+    href: "/evaluaciones",
+    icon: "evaluaciones",
+    roles: ["admin", "professional"],
   },
   {
     label: "Reportes",

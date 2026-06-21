@@ -1,4 +1,9 @@
-import type { DocumentType, IdentityInput, IdentityResolution } from "../types";
+import type {
+  DocumentType,
+  DuplicateCandidate,
+  IdentityInput,
+  IdentityResolution,
+} from "../types";
 import { nameSimilarity } from "./name-matching";
 
 // Resolucion de identidad del intake (MVP.md, "Encuesta y resolucion de identidad").
@@ -56,12 +61,31 @@ export async function resolveIdentity(
     birthDate: input.birthDate,
     lastName: input.lastName,
   });
-  const fullName = `${input.firstName} ${input.lastName}`;
-  const duplicateCandidates = rows
+  const duplicateCandidates = rankDuplicateCandidates(
+    `${input.firstName} ${input.lastName}`,
+    input.birthDate,
+    rows,
+  );
+
+  return { mode: "inicial", matchedPatientId: null, duplicateCandidates };
+}
+
+// Puntua y filtra candidatos a duplicado contra un nombre/fecha de referencia.
+// Un candidato pasa si su nombre es casi identico (STRONG) o si es similar y ademas
+// coincide la fecha de nacimiento (WITH_BIRTHDATE). Se ordenan por score desc para
+// que el profesional vea primero el mas parecido. excludePatientId omite al propio
+// paciente cuando se reutiliza para una identidad ya registrada.
+export function rankDuplicateCandidates(
+  fullName: string,
+  birthDate: string | null,
+  rows: CandidateRow[],
+  excludePatientId?: string,
+): DuplicateCandidate[] {
+  return rows
+    .filter((r) => r.patientId !== excludePatientId)
     .map((r) => {
       const score = nameSimilarity(fullName, `${r.firstName} ${r.lastName}`);
-      const birthDateMatches =
-        !!input.birthDate && !!r.birthDate && input.birthDate === r.birthDate;
+      const birthDateMatches = !!birthDate && !!r.birthDate && birthDate === r.birthDate;
       return { ...r, score, birthDateMatches };
     })
     .filter(
@@ -70,6 +94,41 @@ export async function resolveIdentity(
         (c.score >= NAME_MATCH_WITH_BIRTHDATE && c.birthDateMatches),
     )
     .sort((a, b) => b.score - a.score);
+}
 
-  return { mode: "inicial", matchedPatientId: null, duplicateCandidates };
+// Identidad minima de un paciente ya registrado (para recomputar duplicados en la
+// confirmacion del profesional).
+export type PatientIdentityRow = {
+  organizationId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+};
+
+export type PatientDuplicatesDeps = {
+  getPatientIdentityById: (patientId: string) => Promise<PatientIdentityRow | null>;
+  findDuplicateCandidates: (
+    organizationId: string,
+    criteria: { birthDate: string | null; lastName: string },
+  ) => Promise<CandidateRow[]>;
+};
+
+// Posibles duplicados de un paciente YA registrado, para que el profesional confirme
+// su identidad con los candidatos y su score a la vista. Excluye al propio paciente.
+export async function findDuplicatesForPatient(
+  deps: PatientDuplicatesDeps,
+  patientId: string,
+): Promise<DuplicateCandidate[]> {
+  const identity = await deps.getPatientIdentityById(patientId);
+  if (!identity) return [];
+  const rows = await deps.findDuplicateCandidates(identity.organizationId, {
+    birthDate: identity.birthDate,
+    lastName: identity.lastName,
+  });
+  return rankDuplicateCandidates(
+    `${identity.firstName} ${identity.lastName}`,
+    identity.birthDate,
+    rows,
+    patientId,
+  );
 }

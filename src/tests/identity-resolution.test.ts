@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   type CandidateRow,
+  findDuplicatesForPatient,
   type IdentityResolutionDeps,
+  type PatientDuplicatesDeps,
+  rankDuplicateCandidates,
   resolveIdentity,
 } from "@/modules/patients/services/identity-resolution";
 import { nameSimilarity, normalizeName } from "@/modules/patients/services/name-matching";
@@ -102,5 +105,47 @@ describe("resolveIdentity", () => {
     expect(res.duplicateCandidates[0].score).toBeGreaterThanOrEqual(
       res.duplicateCandidates[1].score,
     );
+  });
+});
+
+describe("rankDuplicateCandidates", () => {
+  it("excluye al propio paciente por id", () => {
+    const ranked = rankDuplicateCandidates("Maria Gomez", "1990-05-10", [
+      candidate({ patientId: "self", firstName: "Maria", lastName: "Gomez" }),
+      candidate({ patientId: "otro", firstName: "Maria", lastName: "Gomez" }),
+    ], "self");
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].patientId).toBe("otro");
+  });
+});
+
+describe("findDuplicatesForPatient", () => {
+  function dupDeps(
+    identity: { organizationId: string; firstName: string; lastName: string; birthDate: string | null } | null,
+    rows: CandidateRow[],
+  ): PatientDuplicatesDeps {
+    return {
+      getPatientIdentityById: async () => identity,
+      findDuplicateCandidates: async () => rows,
+    };
+  }
+
+  it("recomputa duplicados de un paciente existente excluyendolo", async () => {
+    const dups = await findDuplicatesForPatient(
+      dupDeps(
+        { organizationId: "org", firstName: "Maria", lastName: "Gomez", birthDate: "1990-05-10" },
+        [
+          candidate({ patientId: "self", firstName: "Maria", lastName: "Gomez" }),
+          candidate({ patientId: "dup", firstName: "Maria", lastName: "Gomes", birthDate: "1990-05-10" }),
+        ],
+      ),
+      "self",
+    );
+    expect(dups.map((d) => d.patientId)).toEqual(["dup"]);
+  });
+
+  it("devuelve vacio si el paciente no existe", async () => {
+    const dups = await findDuplicatesForPatient(dupDeps(null, []), "x");
+    expect(dups).toHaveLength(0);
   });
 });

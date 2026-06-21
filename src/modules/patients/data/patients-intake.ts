@@ -2,7 +2,10 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-import type { CandidateRow } from "../services/identity-resolution";
+import type {
+  CandidateRow,
+  PatientIdentityRow,
+} from "../services/identity-resolution";
 import type { DocumentType } from "../types";
 
 // Lecturas del intake de la encuesta publica. Van por service role (BYPASSA RLS) a
@@ -87,4 +90,34 @@ export async function findDuplicateCandidates(
       documentNumber: row.document_number,
     };
   });
+}
+
+// Identidad minima de un paciente por id (org + nombre + fecha), para recomputar sus
+// posibles duplicados en la confirmacion del profesional. Via service role: la
+// comparacion de duplicados cruza pacientes de toda la organizacion.
+export async function getPatientIdentityById(
+  patientId: string,
+): Promise<PatientIdentityRow | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("organization_id, patient_profiles!inner(first_name, last_name, birth_date)")
+    .eq("id", patientId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`patients-intake: getPatientIdentityById: ${error.message}`);
+  }
+  if (!data) return null;
+  const profile = (
+    Array.isArray(data.patient_profiles)
+      ? data.patient_profiles[0]
+      : data.patient_profiles
+  ) as ProfileEmbed | undefined;
+  return {
+    organizationId: data.organization_id,
+    firstName: profile?.first_name ?? "",
+    lastName: profile?.last_name ?? "",
+    birthDate: profile?.birth_date ?? null,
+  };
 }

@@ -44,3 +44,16 @@ export type SurveyFormState = {
   fields: Record<string, string> | null;
   done: boolean;
 };
+
+// Estado de la confirmacion de identidad (panel del profesional).
+export type ConfirmIdentityState = {
+  error: string | null;
+  confirmed: boolean;
+};
+
+// Estado de la emision de un link de seguimiento. linkPath lleva la ruta relativa
+// (/encuesta/<token>); la UI la combina con el origen para mostrar el link completo.
+export type FollowupLinkState = {
+  error: string | null;
+  linkPath: string | null;
+};

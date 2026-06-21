@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  ClipboardCheck,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -38,6 +39,7 @@ import { logoutAction } from "@/modules/auth/actions";
 const ICONS: Record<NavIconKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   clinica: Stethoscope,
+  evaluaciones: ClipboardCheck,
   reportes: FileText,
   comercial: CreditCard,
   comodato: MonitorSmartphone,

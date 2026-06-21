@@ -1,14 +1,31 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitSurveyByIp, limitSurveyByToken } from "@/core/rate-limit";
+import { requireUser } from "@/modules/auth/session";
+import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
+import {
+  getEvaluationOwnership,
+  getPatientPrefill,
+} from "./data/evaluations-repository";
+import { confirmEvaluationIdentity } from "./data/evaluations-writer";
+import { emitFollowupLink } from "./data/survey-links-writer";
 import { getActiveSurvey } from "./data/survey-reader";
 import { resolveSurveyLinkByToken } from "./data/survey-links-reader";
+import {
+  canConfirmIdentity,
+  canEmitFollowupLink,
+} from "./policies/can-manage-evaluations";
 import { submitSurveyIntake } from "./services/survey-intake";
-import type { SurveyFormState } from "./validations";
+import type {
+  ConfirmIdentityState,
+  FollowupLinkState,
+  SurveyFormState,
+} from "./validations";
 
 // Lee una casilla del formulario: presente y "on" => true.
 function checkbox(form: FormData, name: string): boolean {
@@ -97,4 +114,68 @@ export async function submitSurveyAction(
   // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya
   // quedo consumido).
   redirect("/encuesta/gracias");
+}
+
+// Confirma la identidad de una evaluacion (draft -> in_progress) tras la revision del
+// profesional. La RLS (getEvaluationOwnership) verifica que sea su paciente; el audit
+// evaluation.identity_confirmed queda inline en la transaccion del escritor.
+export async function confirmIdentityAction(
+  _prev: ConfirmIdentityState,
+  form: FormData,
+): Promise<ConfirmIdentityState> {
+  const user = await requireUser();
+  if (!canConfirmIdentity(user)) return { error: "No autorizado.", confirmed: false };
+
+  const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
+  if (!evaluationId) return { error: "Evaluacion invalida.", confirmed: false };
+
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluacion no encontrada.", confirmed: false };
+  if (ownership.status !== "draft") {
+    return { error: "Esta evaluacion ya fue confirmada.", confirmed: true };
+  }
+
+  const ip = await getClientIp();
+  const { confirmed } = await confirmEvaluationIdentity({
+    evaluationId,
+    patientId: ownership.patientId,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!confirmed) return { error: "No se pudo confirmar.", confirmed: false };
+
+  revalidatePath("/evaluaciones");
+  return { error: null, confirmed: true };
+}
+
+// Emite un link de seguimiento (un solo uso, colchon 30 dias) para un paciente del
+// profesional. Devuelve la ruta /encuesta/<token> para compartir.
+export async function emitFollowupLinkAction(
+  _prev: FollowupLinkState,
+  form: FormData,
+): Promise<FollowupLinkState> {
+  const user = await requireUser();
+  if (!canEmitFollowupLink(user)) return { error: "No autorizado.", linkPath: null };
+
+  const patientId = (form.get("patientId") as string | null)?.trim() ?? "";
+  if (!patientId) return { error: "Paciente invalido.", linkPath: null };
+
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return { error: "No tienes perfil profesional.", linkPath: null };
+
+  // RLS: solo devuelve el prefill si el paciente es del profesional.
+  const prefill = await getPatientPrefill(patientId);
+  if (!prefill) return { error: "Paciente no encontrado.", linkPath: null };
+
+  const result = await emitFollowupLink({
+    organizationId: user.organizationId,
+    professionalId,
+    patientId,
+    createdBy: user.id,
+    prefill,
+  });
+  if (!result) return { error: "No se pudo crear el link.", linkPath: null };
+
+  return { error: null, linkPath: `/encuesta/${result.token}` };
 }
