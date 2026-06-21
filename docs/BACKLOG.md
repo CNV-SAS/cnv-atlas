@@ -35,6 +35,9 @@
 - **Feature flags genéricos** (el caso "distintos profesionales, distinta versión" se resuelve por el model-registry, no por flags).
 - **Knowledge gate opcional** en el link de seguimiento, si se decide endurecer (no la cédula).
 
+## Admin
+- **Modo sandbox para pagos (solo admin).** Toggle en el panel de admin que alterna entre credenciales de produccion y sandbox de Wompi/Alegra sin tocar `.env`. Muestra un banner visible en toda la app cuando el modo sandbox esta activo. Requiere dos sets de credenciales en variables de entorno (sufijo `_SANDBOX`). En el MVP el entorno se fija por las variables desplegadas, no se cambia en caliente.
+
 ## Portal del paciente (v1.1)
 Acceso directo del paciente, fuera del alcance del MVP (donde el paciente solo recibe el reporte por correo si el profesional lo aprueba y dispara el envío, con preview y audit).
 - **Portal de informes:** el paciente consulta en línea sus reportes históricos, no solo el adjunto que recibe por correo.
