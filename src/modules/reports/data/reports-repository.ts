@@ -46,6 +46,60 @@ export async function getReportForEvaluation(
   };
 }
 
+export type ReportListItem = {
+  reportId: string;
+  evaluationId: string;
+  status: ReportStatus;
+  evaluationType: "inicial" | "seguimiento";
+  createdAt: string;
+  documentLabel: string;
+  patientName: string;
+};
+
+type ListPatientEmbed = {
+  document_type: string;
+  document_number: string;
+  patient_profiles:
+    | { first_name: string; last_name: string }
+    | { first_name: string; last_name: string }[]
+    | null;
+};
+
+type ListEvaluationEmbed = {
+  type: "inicial" | "seguimiento";
+  patients: ListPatientEmbed | ListPatientEmbed[] | null;
+};
+
+// Reportes del paciente del profesional (RLS). Lo consumen el panel (filtrando los
+// pendientes) y la pagina /reportes (todos).
+export async function listReports(): Promise<ReportListItem[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("reports")
+    .select(
+      "id, status, evaluation_id, created_at, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
+    )
+    .eq("type", "paciente")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`reports-repository: listReports: ${error.message}`);
+  return (data ?? []).map((row) => {
+    const evaluation = one<ListEvaluationEmbed>(
+      row.evaluations as ListEvaluationEmbed | ListEvaluationEmbed[] | null,
+    );
+    const patient = one<ListPatientEmbed>(evaluation?.patients ?? null);
+    const profile = one(patient?.patient_profiles ?? null);
+    return {
+      reportId: row.id,
+      evaluationId: row.evaluation_id,
+      status: row.status as ReportStatus,
+      evaluationType: evaluation?.type ?? "inicial",
+      createdAt: row.created_at,
+      documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
+      patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
+    };
+  });
+}
+
 export type ReportDispatch = {
   reportId: string;
   evaluationId: string;

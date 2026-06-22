@@ -5,6 +5,8 @@ import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import { listEvaluationsForBisImport } from "@/modules/bis/data/bis-evaluations-reader";
 import { PipelineRunner } from "@/modules/clinical-pipeline/components/pipeline-runner";
 import { listEvaluationsForDiagnosis } from "@/modules/clinical-pipeline/data/pipeline-evaluations-reader";
+import { ReportCard } from "@/modules/reports/components/report-card";
+import { listReports } from "@/modules/reports/data/reports-repository";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
@@ -31,11 +33,16 @@ export default async function EvaluacionesPage() {
     redirect("/no-autorizado");
   }
 
-  const [pending, bisPending, diagnosisPending] = await Promise.all([
+  const [pending, bisPending, diagnosisPending, reports] = await Promise.all([
     listPendingIdentityChecks(),
     listEvaluationsForBisImport(),
     listEvaluationsForDiagnosis(),
+    listReports(),
   ]);
+
+  // En el panel solo los reportes con accion pendiente (borrador o aprobado); los
+  // enviados se consultan en /reportes.
+  const pendingReports = reports.filter((r) => r.status !== "sent");
 
   // Duplicados solo para iniciales (en seguimiento el paciente ya quedo resuelto por
   // documento). Se computan en paralelo, via service role (cruzan toda la org).
@@ -122,6 +129,38 @@ export default async function EvaluacionesPage() {
           <div className="flex flex-col gap-4">
             {diagnosisPending.map((e) => (
               <PipelineRunner key={e.evaluationId} evaluation={e} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Reportes por aprobar y enviar
+          </h2>
+          <p className="text-muted-foreground">
+            Revisa el preview, aprueba (confirma el diagnostico) y envia el reporte al
+            paciente. Los enviados quedan en Reportes.
+          </p>
+        </header>
+
+        {pendingReports.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay reportes pendientes.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {pendingReports.map((r) => (
+              <ReportCard
+                key={r.reportId}
+                report={{
+                  reportId: r.reportId,
+                  evaluationType: r.evaluationType,
+                  status: r.status,
+                  documentLabel: r.documentLabel,
+                  patientName: r.patientName,
+                  createdAt: r.createdAt,
+                }}
+              />
             ))}
           </div>
         )}

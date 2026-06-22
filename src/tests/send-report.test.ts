@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ok as okResult } from "@/core/errors";
+import type { ReportDispatch } from "@/modules/reports/data/reports-repository";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/modules/reports/services/render-report", () => ({
@@ -26,13 +27,14 @@ const email = await import("@/lib/email/resend");
 const writer = await import("@/modules/reports/data/reports-writer");
 const { sendReport } = await import("@/modules/reports/services/send-report");
 
-function dispatch(over: Record<string, unknown> = {}) {
+function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
   return {
     reportId: "rep-1",
     evaluationId: "ev-1",
     patientId: "pat-1",
     status: "approved",
-    snapshot: { versions: { engine: "stub-0.1.0" } },
+    // snapshot parcial: sendReport solo se lo pasa a renderReportPdf, que esta mockeado.
+    snapshot: { versions: { engine: "stub-0.1.0" } } as unknown as ReportDispatch["snapshot"],
     storagePath: null,
     patientName: "Ana",
     documentLabel: "CC 1",
