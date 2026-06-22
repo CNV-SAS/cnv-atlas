@@ -52,6 +52,7 @@ export type ReportDispatch = {
   patientId: string;
   status: ReportStatus;
   snapshot: EngineOutput;
+  storagePath: string | null;
   patientName: string;
   documentLabel: string;
   email: string | null;
@@ -75,7 +76,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, evaluation_id, patient_id, status, snapshot, created_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
+      "id, evaluation_id, patient_id, status, snapshot, storage_path, created_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
     )
     .eq("id", reportId)
     .maybeSingle();
@@ -90,6 +91,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     patientId: data.patient_id,
     status: data.status as ReportStatus,
     snapshot: data.snapshot as EngineOutput,
+    storagePath: data.storage_path,
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     email: contact?.email ?? null,

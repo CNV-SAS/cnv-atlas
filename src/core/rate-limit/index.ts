@@ -170,3 +170,38 @@ export async function limitImportByUser(userId: string): Promise<LimitResult> {
   }
   return memoryImport.check(userId);
 }
+
+// ---- Envio de reportes por correo (B10) ----------------------------------
+// Acotado por usuario para no saturar Resend (un reporte por evaluacion; 10/h cubre
+// reenvios legitimos). Falla abierto (superficie autenticada), como el import.
+const REPORT_SEND_LIMIT = 10;
+const REPORT_SEND_WINDOW = "1 h" as const;
+const REPORT_SEND_WINDOW_MS = 60 * 60 * 1000;
+
+const memoryReportSend = new MemoryFixedWindow(REPORT_SEND_LIMIT, REPORT_SEND_WINDOW_MS);
+
+let upstashReportSend: Ratelimit | null = null;
+function getUpstashReportSend(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashReportSend ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(REPORT_SEND_LIMIT, REPORT_SEND_WINDOW),
+    prefix: "atlas:report-send",
+  });
+  return upstashReportSend;
+}
+
+export async function limitReportSendByUser(userId: string): Promise<LimitResult> {
+  const upstash = getUpstashReportSend();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(userId);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: true, remaining: REPORT_SEND_LIMIT };
+    }
+  }
+  return memoryReportSend.check(userId);
+}
