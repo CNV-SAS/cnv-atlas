@@ -131,3 +131,42 @@ export function limitSurveyByIp(ip: string): Promise<LimitResult> {
 export function limitSurveyByToken(token: string): Promise<LimitResult> {
   return limitSurvey("token", token, SURVEY_TOKEN_LIMIT, SURVEY_TOKEN_WINDOW, memorySurveyToken);
 }
+
+// ---- Import XLSX de Biody (B8) --------------------------------------------
+// Subida de archivo acotada por hora por usuario (SECURITY.md). El parseo del XLSX
+// cuesta CPU y persiste datos; el limite frena bucles o subidas masivas. Holgado
+// para reimportes/correcciones legitimas del profesional.
+const IMPORT_LIMIT = 20;
+const IMPORT_WINDOW = "1 h" as const;
+const IMPORT_WINDOW_MS = 60 * 60 * 1000;
+
+const memoryImport = new MemoryFixedWindow(IMPORT_LIMIT, IMPORT_WINDOW_MS);
+
+let upstashImport: Ratelimit | null = null;
+function getUpstashImport(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashImport ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(IMPORT_LIMIT, IMPORT_WINDOW),
+    prefix: "atlas:import",
+  });
+  return upstashImport;
+}
+
+// Falla ABIERTO si Upstash da error: superficie autenticada (el profesional es
+// responsable y rastreable), priorizamos no bloquear trabajo clinico legitimo. El
+// abuso queda acotado por la sesion y los limites generales.
+export async function limitImportByUser(userId: string): Promise<LimitResult> {
+  const upstash = getUpstashImport();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(userId);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: true, remaining: IMPORT_LIMIT };
+    }
+  }
+  return memoryImport.check(userId);
+}
