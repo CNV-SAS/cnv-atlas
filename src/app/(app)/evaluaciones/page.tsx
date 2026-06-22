@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/modules/auth/session";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import { listEvaluationsForBisImport } from "@/modules/bis/data/bis-evaluations-reader";
+import { PipelineRunner } from "@/modules/clinical-pipeline/components/pipeline-runner";
+import { listEvaluationsForDiagnosis } from "@/modules/clinical-pipeline/data/pipeline-evaluations-reader";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
@@ -29,9 +31,10 @@ export default async function EvaluacionesPage() {
     redirect("/no-autorizado");
   }
 
-  const [pending, bisPending] = await Promise.all([
+  const [pending, bisPending, diagnosisPending] = await Promise.all([
     listPendingIdentityChecks(),
     listEvaluationsForBisImport(),
+    listEvaluationsForDiagnosis(),
   ]);
 
   // Duplicados solo para iniciales (en seguimiento el paciente ya quedo resuelto por
@@ -95,6 +98,30 @@ export default async function EvaluacionesPage() {
           <div className="flex flex-col gap-4">
             {bisPending.map((e) => (
               <BisImportForm key={e.evaluationId} evaluation={e} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Generar diagnostico
+          </h2>
+          <p className="text-muted-foreground">
+            Con la medicion BIS importada, genera indicadores, diagnostico, tratamiento
+            y reporte (motor stub hasta la entrega del modelo final).
+          </p>
+        </header>
+
+        {diagnosisPending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay evaluaciones listas para generar diagnostico.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {diagnosisPending.map((e) => (
+              <PipelineRunner key={e.evaluationId} evaluation={e} />
             ))}
           </div>
         )}
