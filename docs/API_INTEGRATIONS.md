@@ -13,9 +13,9 @@
 
 ## 1. Biody Manager (Aminogram) — import de mediciones
 - **Tipo:** software de terceros (nube + escritorio). No tiene API de integración con nosotros; el intercambio es por **archivo XLSX** que el profesional exporta.
-- **Costura:** el profesional sube el XLSX a Atlas; se parsea con **SheetJS (`xlsx`)**, se valida con Zod (tipos, rangos), se persiste en `bis_measurements` + `bis_raw_values` (modelo flexible nombre-valor), y se registra en `bis_import_logs`. **Una vez importado y validado, Atlas es el sistema de registro oficial.**
-- **Validación:** rangos fisiológicos por variable, columnas requeridas, una fila por medición. Filas malformadas se rechazan con detalle en `bis_import_logs`.
-- **PENDIENTE:** el mapeo exacto de columnas del export real (Re, Ri, Rinf, C, FMI, FFMI, MCA, SMM, AF, ECW, ICW, etc.). Requiere un **XLSX de muestra real** para cerrar el esquema de parseo.
+- **Costura:** el profesional sube el XLSX a Atlas; se parsea con **`exceljs`** (elegido sobre SheetJS en B8: el parche de SheetJS solo vive en su CDN y rompe `minimumReleaseAge`; ver `DEPLOY.md`), se valida con Zod (tipos, rangos), se persiste en `bis_measurements` + `bis_raw_values` (modelo flexible nombre-valor), y se registra en `bis_import_logs`. **Una vez importado y validado, Atlas es el sistema de registro oficial.**
+- **Validación:** rangos fisiológicos por variable, columnas requeridas, una fila por medición. Filas malformadas se rechazan con detalle en `bis_import_logs`. La identidad del paciente que trae el XLSX (nombre, fecha de nacimiento) se excluye explícitamente: nunca entra a `bis_raw_values`.
+- **Mapeo de columnas (B8, provisional hasta B11):** el export real trae 180 columnas con encabezados ruidosos (español/inglés/francés, tokens internos de BiodyLife, unidades incrustadas). B8 persiste fielmente todos los valores numéricos usando como nombre de variable el encabezado normalizado; el mapeo canónico definitivo a las variables del motor (Re, Ri, Rinf, C, FMI, FFMI, MCA, SMM, AF, ECW, ICW, etc.) se acopla al motor y se cierra en B11. Los rangos fisiológicos son un subconjunto curado provisional. El XLSX de muestra real vive solo en `/reference` (gitignored, con PII); los tests usan un fixture sintético anonimizado.
 
 ## 2. Wompi — pagos (checkout de nutracéuticos)
 - **Flujo:** Atlas crea una transacción interna (`transactions`, estado `pending`, con `idempotency_key`), genera el checkout (link/QR válido 24h, atado a orden y monto) y el paciente paga en Wompi.
@@ -38,6 +38,6 @@
 - **Env:** `GROQ_API_KEY`/`GROQ_MODEL`, `GEMINI_API_KEY`/`GEMINI_MODEL`.
 
 ## Pendientes que destraban esta integración
-- XLSX de muestra real de Biody Manager (cierra el parseo de `bis`).
+- ~~XLSX de muestra real de Biody Manager~~ recibido; parseo y validación cerrados en B8 (mapeo canónico de variables provisional hasta B11, ver arriba).
 - Credenciales de sandbox de Wompi y Alegra (cierran pagos y facturación).
 - Verificar, en el bloque correspondiente, los formatos exactos de firma y los endpoints contra la documentación vigente de cada proveedor.
