@@ -53,6 +53,20 @@ overrides:
   # Se fuerza el rango parcheado en todo el arbol.
   postcss: '>=8.5.10'
 
+  # undici <7.28.0 acumula 3 high segun pnpm audit: bypass de validacion TLS en
+  # SOCKS5 ProxyAgent, DoS de WebSocket por fragment count (GHSA-vxpw-j846-p89q),
+  # y routing cross-origin por reuso del pool SOCKS5; todas corregidas en 7.28.0.
+  # Entra transitivo via isomorphic-dompurify > jsdom > undici (dep de B0, no de
+  # exceljs). Se fuerza el rango parcheado en todo el arbol. (B8, Santiago.)
+  undici: '>=7.28.0'
+
+  # NOTA (no es override): exceljs@4.4.0 arrastra uuid@8.3.2, que tiene
+  # GHSA-w5hq-g745-h8pq (moderate, falta de bounds check en v3/v5/v6 cuando se
+  # pasa un buffer). NO se fuerza el upgrade: exceljs solo usa uuid.v4() sin
+  # buffer, asi que el aviso no es explotable en nuestro uso; forzar uuid v11
+  # (ESM, breaking) arriesga romper exceljs. Queda visible en pnpm audit,
+  # documentado aqui. (B8, decision de Santiago.)
+
 # esbuild: NO se overridea a proposito. Tiene GHSA-gv7w-rqvm-qjhr (RCE, high) y
 # GHSA-67mh-4wv8-2f99 (SSRF del dev-server, moderate), pero entra SOLO como devDep
 # transitiva de drizzle-kit (y del @esbuild-kit deprecado). Ninguna es explotable

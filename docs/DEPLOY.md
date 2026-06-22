@@ -108,14 +108,29 @@ pnpm add -D \
   drizzle-kit vitest @types/node prettier prettier-plugin-tailwindcss @types/qrcode
 ```
 - `drizzle-orm` + `drizzle-kit` + `postgres`: ORM y migraciones.
-- `xlsx` (SheetJS): import del export de Biody Manager. DIFERIDO a B8, NO se
-  instala en B0. La version de npm (`xlsx@0.18.5`) esta permanentemente
-  vulnerable (Prototype Pollution GHSA-4r6h-8v6p-xvw6 y ReDoS
-  GHSA-5pgg-2g8v-p4x9) y SheetJS solo publica los parches (>=0.20.2) en su CDN
-  oficial (`cdn.sheetjs.com`), no en npm. Antes de B8 hay que decidir el origen:
-  tarball del CDN oficial de SheetJS (pnpm lo permite como dep directa pese a
-  `blockExoticSubdeps`) vs una alternativa. Es la frontera de confianza critica
-  del import (ver `SECURITY.md`), asi que no entra sin esa decision.
+- `exceljs@4.4.0` (APROBADA en B8): parser del export XLSX de Biody Manager. Se
+  eligio sobre `xlsx` (SheetJS) porque la version de npm de SheetJS (`xlsx@0.18.5`)
+  esta permanentemente vulnerable (Prototype Pollution GHSA-4r6h-8v6p-xvw6 y ReDoS
+  GHSA-5pgg-2g8v-p4x9) y el parche (>=0.20.2) solo vive en el CDN oficial
+  (`cdn.sheetjs.com`), no en npm: un tarball de CDN no puede pasar por
+  `minimumReleaseAge` ni pinearse a una version de registro, rompiendo la postura
+  de supply-chain. exceljs entra desde el registro npm, MIT, pin exacto, sin
+  scripts de install/postinstall (no requiere `allowBuilds`). Es la frontera de
+  confianza critica del import (ver `SECURITY.md`); se usa SOLO para lectura,
+  server-side, y nunca se renderiza una celda como HTML.
+  - Verificacion previa a instalar (socket.dev bloquea fetch automatizado con 403;
+    se verifico con OSV + registro npm, la data sustantiva que socket.dev agrega):
+    el unico aviso directo (GHSA-2j2j-8rrv-264g, XSS) esta corregido en 1.6.0 (no
+    aplica a 4.4.0 y ademas no renderizamos celdas como HTML); las deps transitivas
+    de mayor riesgo ya estan parcheadas en los rangos que exceljs fija (`unzipper`
+    ^0.10.11 con el zip-slip GHSA-884w-698f-927f corregido desde 0.8.13; `jszip`
+    ^3.10.1 con path traversal y prototype pollution corregidos desde 3.8.0/3.7.0).
+  - Reserva conocida: mantenimiento estancado (ultima estable 2023-10). Aceptable
+    por el uso acotado; el parser se aisla tras una interfaz para poder cambiarlo.
+  - Tests: fixture sintetico anonimizado en `src/tests/fixtures/biody_synthetic.xlsx`
+    (misma estructura de 180 columnas, valores ficticios, SIN PII), reproducible con
+    `src/tests/fixtures/generate-biody-fixture.mjs`. El XLSX de muestra real con PII
+    vive solo en `/reference` (gitignored) y NUNCA entra al repo.
 - `qrcode`: QR de encuesta y checkout (render server-side a data URL).
 - El CLI de `supabase` NO va como devDep (su tarball no trae el binario; lo descarga el postinstall). Se invoca siempre con `pnpm dlx supabase ...`. Se mantiene `allowBuilds.supabase: true` para que dlx pueda descargar el binario.
 - Tras cada `pnpm add` masivo: `pnpm audit`. Si hay `high`/`critical`, detente.
