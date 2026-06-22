@@ -26,12 +26,18 @@ function syntheticValue(header, kind, i) {
     if (h === "Version de la aplicación") return "1.1.4";
     return "N/A";
   }
-  // numericas: algunos casos humanos legibles, el resto determinista y positivo.
+  // numericas: casos humanos legibles dentro de rangos fisiologicos plausibles
+  // (para que el fixture sea un export VALIDO frente a import-schema), el resto un
+  // valor determinista pequeno y positivo (5..94) que pasa el limite global.
   if (h === "Peso kg") return 70;
   if (h === "Altura cm") return 170;
   if (h === "Edad") return 35;
-  if (h.startsWith("# ") || h === "#" || h === "Identifiant de la mesure") return 100000 + i;
-  return Math.round(((i * 37 + 13) % 480 + 5) * 1000) / 1000;
+  if (h === "Ángulo de fase a 50 kHz °") return 6.2;
+  if (h === "Resistencia a 50khz Ohm") return 520;
+  if (h === "Reactancia à 50khz Ohm") return 55;
+  if (h.includes("Body Mass Index (BMI)") && h.includes("VALEURCALCULEE")) return 24.5;
+  if (h === "#" || h.startsWith("# ") || h === "Identifiant de la mesure") return 100000 + i;
+  return Math.round(((i * 37 + 13) % 90 + 5) * 100) / 100;
 }
 
 async function main() {
