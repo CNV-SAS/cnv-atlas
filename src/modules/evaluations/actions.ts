@@ -6,7 +6,10 @@ import { revalidatePath } from "next/cache";
 import { getClientIp } from "@/core/http/client-ip";
 import { limitSurveyByIp, limitSurveyByToken } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
-import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
+import {
+  getProfessionalIdForPatient,
+  getProfessionalProfileIdByUser,
+} from "@/modules/payments/data/payments-repository";
 
 import {
   getEvaluationOwnership,
@@ -161,8 +164,15 @@ export async function emitFollowupLinkAction(
   const patientId = (form.get("patientId") as string | null)?.trim() ?? "";
   if (!patientId) return { error: "Paciente invalido.", linkPath: null };
 
-  const professionalId = await getProfessionalProfileIdByUser(user.id);
-  if (!professionalId) return { error: "No tienes perfil profesional.", linkPath: null };
+  // El profesional emite con su propio perfil; un admin lo emite a nombre del
+  // profesional asignado al paciente (mismo patron que el checkout de B6). El link
+  // siempre queda atribuido a un profesional (professional_id es NOT NULL).
+  const professionalId =
+    (await getProfessionalProfileIdByUser(user.id)) ??
+    (await getProfessionalIdForPatient(patientId));
+  if (!professionalId) {
+    return { error: "El paciente no tiene un profesional asignado.", linkPath: null };
+  }
 
   // RLS: solo devuelve el prefill si el paciente es del profesional.
   const prefill = await getPatientPrefill(patientId);

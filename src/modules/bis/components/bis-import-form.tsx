@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { useFormToast } from "@/components/shared/use-form-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,8 @@ export type BisImportEvaluationView = {
 
 const initialState: ImportBisState = {
   error: null,
+  success: null,
+  warning: null,
   fields: null,
   imported: false,
   valueCount: null,
@@ -29,6 +32,8 @@ const initialState: ImportBisState = {
 
 export function BisImportForm({ evaluation }: { evaluation: BisImportEvaluationView }) {
   const [state, action, pending] = useActionState(importBisAction, initialState);
+  // Toast de exito/error (el detalle por variable se sigue mostrando inline).
+  useFormToast(state);
 
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
   const done = evaluation.alreadyImported || state.imported;

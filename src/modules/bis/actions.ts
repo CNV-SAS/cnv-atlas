@@ -10,9 +10,13 @@ import { requireUser } from "@/modules/auth/session";
 import { canImportBis } from "./policies/can-import-bis";
 import { importBisMeasurement } from "./services/bis-import";
 
-// Estado del formulario de import (useActionState). El componente lo consume.
+// Estado del formulario de import (useActionState). Incluye la forma de
+// FormToastState (error/success/warning) para que el componente dispare el toast con
+// useFormToast; ademas lleva el detalle por variable y el resultado del import.
 export type ImportBisState = {
   error: string | null;
+  success: string | null;
+  warning: string | null;
   fields: Record<string, string> | null;
   imported: boolean;
   valueCount: number | null;
@@ -40,6 +44,8 @@ export async function importBisAction(
 ): Promise<ImportBisState> {
   const fail = (error: string, fields: Record<string, string> | null = null): ImportBisState => ({
     error,
+    success: null,
+    warning: null,
     fields,
     imported: false,
     valueCount: null,
@@ -88,5 +94,12 @@ export async function importBisAction(
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
 
   revalidatePath("/evaluaciones");
-  return { error: null, fields: null, imported: true, valueCount: result.value.valueCount };
+  return {
+    error: null,
+    success: `Medicion BIS importada (${result.value.valueCount} variables).`,
+    warning: null,
+    fields: null,
+    imported: true,
+    valueCount: result.value.valueCount,
+  };
 }
