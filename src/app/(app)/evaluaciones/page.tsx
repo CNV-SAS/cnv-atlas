@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { BisImportForm } from "@/modules/bis/components/bis-import-form";
+import { listEvaluationsForBisImport } from "@/modules/bis/data/bis-evaluations-reader";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
@@ -27,7 +29,10 @@ export default async function EvaluacionesPage() {
     redirect("/no-autorizado");
   }
 
-  const pending = await listPendingIdentityChecks();
+  const [pending, bisPending] = await Promise.all([
+    listPendingIdentityChecks(),
+    listEvaluationsForBisImport(),
+  ]);
 
   // Duplicados solo para iniciales (en seguimiento el paciente ya quedo resuelto por
   // documento). Se computan en paralelo, via service role (cruzan toda la org).
@@ -43,31 +48,57 @@ export default async function EvaluacionesPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Evaluaciones por confirmar
-        </h1>
-        <p className="text-muted-foreground">
-          Revisa la identidad de cada paciente y confirma para continuar la atencion.
-        </p>
-      </header>
+    <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            Evaluaciones por confirmar
+          </h1>
+          <p className="text-muted-foreground">
+            Revisa la identidad de cada paciente y confirma para continuar la atencion.
+          </p>
+        </header>
 
-      {pending.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay evaluaciones pendientes de confirmar.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {pending.map((e) => (
-            <IdentityConfirmation
-              key={e.evaluationId}
-              evaluation={e}
-              duplicateCandidates={candidatesByPatient.get(e.patientId) ?? []}
-            />
-          ))}
-        </div>
-      )}
+        {pending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay evaluaciones pendientes de confirmar.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {pending.map((e) => (
+              <IdentityConfirmation
+                key={e.evaluationId}
+                evaluation={e}
+                duplicateCandidates={candidatesByPatient.get(e.patientId) ?? []}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Mediciones BIS por importar
+          </h2>
+          <p className="text-muted-foreground">
+            Sube el XLSX exportado de Biody Manager para cada evaluacion con la
+            identidad ya confirmada.
+          </p>
+        </header>
+
+        {bisPending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay evaluaciones listas para importar BIS.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {bisPending.map((e) => (
+              <BisImportForm key={e.evaluationId} evaluation={e} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
