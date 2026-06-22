@@ -28,6 +28,12 @@ GEMINI_MODEL=
 RESEND_API_KEY=re_...
 EMAIL_FROM=noreply@atlas.cnvsystem.com
 EMAIL_REPLY_TO=soporte@cnvsystem.com
+# REQUISITO (B10): el dominio de EMAIL_FROM debe estar VERIFICADO en Resend
+# (resend.com/domains). Sin verificar, Resend solo permite enviar al correo dueno de
+# la cuenta y desde onboarding@resend.dev; el envio de reportes en produccion fallara
+# con "This API key is not authorized to send emails from <dominio>". Verificado en el
+# smoke de B10: el codigo maneja el fallo (el reporte queda approved, reintentable),
+# pero hay que verificar el dominio antes de enviar reportes reales.
 
 # ===== Pagos =====
 NEXT_PUBLIC_WOMPI_PUBLIC_KEY=        # público por diseño (widget de checkout)
