@@ -157,6 +157,30 @@ async function main() {
     ).error,
   );
 
+  // 5bis. indicator_definitions placeholder bajo el model_version activo. Andamiaje
+  // ESTRUCTURAL para B9 (la propagacion del stub persiste indicator_values, que exige
+  // este FK); los nombres/rangos clinicos reales se cargan en B11 (congelado). Los
+  // codigos son los del contrato del motor (clinical-engine INDICATOR_CODES). Upsert
+  // por la unique (model_version_id, code), sin id fijo: el pipeline los resuelve por
+  // codigo en runtime.
+  const INDICATOR_CODES = [
+    "IFC", "IRC", "PABU", "ICA-BIS", "ISCM", "IEHH", "IAE", "EB", "FMI", "FFMI", "AF", "IR",
+  ];
+  check(
+    "indicator_definitions",
+    (
+      await supabase.from("indicator_definitions").upsert(
+        INDICATOR_CODES.map((code) => ({
+          model_version_id: MODEL_VERSION_ID,
+          code,
+          name: `${code} (placeholder)`,
+          description: "Placeholder estructural; nombre y rangos reales en B11.",
+        })),
+        { onConflict: "model_version_id,code" },
+      )
+    ).error,
+  );
+
   // 6. survey_template + survey_version con estructura placeholder.
   check(
     "survey_templates",
@@ -277,7 +301,7 @@ async function main() {
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version active, survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version active (12 indicator_definitions placeholder), survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
   console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }
