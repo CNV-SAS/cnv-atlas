@@ -28,4 +28,11 @@ describe("B3: navegacion adaptativa por rol", () => {
     expect(soporteHrefs).not.toContain("/pacientes");
     expect(soporteHrefs).not.toContain("/admin");
   });
+
+  it("el consentimiento vigente es visible para todos los roles (DELTA2 C1)", () => {
+    for (const role of ["admin", "direccion", "soporte", "obbia", "professional"] as const) {
+      const hrefs = navItemsForRoles([role]).map((i) => i.href);
+      expect(hrefs).toContain("/consentimiento");
+    }
+  });
 });

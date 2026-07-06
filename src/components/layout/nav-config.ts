@@ -13,6 +13,7 @@ export type NavIconKey =
   | "comodato"
   | "nutraceuticos"
   | "pagos"
+  | "consentimiento"
   | "admin";
 
 export type NavItem = {
@@ -71,6 +72,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/pagos",
     icon: "pagos",
     roles: ["admin", "direccion", "professional"],
+  },
+  {
+    // Referencia de solo lectura del consentimiento vigente (DELTA2 C1). Aplica a
+    // cualquier rol autenticado; la pagina solo exige sesion, sin policy especial.
+    label: "Consentimiento vigente",
+    href: "/consentimiento",
+    icon: "consentimiento",
+    roles: ["admin", "direccion", "soporte", "obbia", "professional"],
   },
   {
     label: "Usuarios",

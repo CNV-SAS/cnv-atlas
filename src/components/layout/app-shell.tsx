@@ -15,6 +15,7 @@ import {
   MonitorSmartphone,
   Pill,
   Receipt,
+  ScrollText,
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
@@ -45,6 +46,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   comodato: MonitorSmartphone,
   nutraceuticos: Pill,
   pagos: Receipt,
+  consentimiento: ScrollText,
   admin: ShieldCheck,
 };
 
