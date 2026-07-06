@@ -15,7 +15,10 @@ import {
   getEvaluationOwnership,
   getPatientPrefill,
 } from "./data/evaluations-repository";
-import { confirmEvaluationIdentity } from "./data/evaluations-writer";
+import {
+  confirmEvaluationIdentity,
+  ConsentBranchMismatchError,
+} from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
 import { getActiveSurvey } from "./data/survey-reader";
 import { resolveSurveyLinkByToken } from "./data/survey-links-reader";
@@ -152,14 +155,22 @@ export async function confirmIdentityAction(
   }
 
   const ip = await getClientIp();
-  const { confirmed } = await confirmEvaluationIdentity({
-    evaluationId,
-    patientId: ownership.patientId,
-    actorId: user.id,
-    actorEmail: user.email,
-    ip: ip === "unknown" ? null : ip,
-  });
-  if (!confirmed) return { error: "No se pudo confirmar.", confirmed: false };
+  try {
+    const { confirmed } = await confirmEvaluationIdentity({
+      evaluationId,
+      patientId: ownership.patientId,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    if (!confirmed) return { error: "No se pudo confirmar.", confirmed: false };
+  } catch (e) {
+    // Discrepancia edad/rama de consentimiento (DELTA2 B3): mensaje claro, sin confirmar.
+    if (e instanceof ConsentBranchMismatchError) {
+      return { error: e.message, confirmed: false };
+    }
+    throw e;
+  }
 
   revalidatePath("/evaluaciones");
   return { error: null, confirmed: true };
