@@ -4,6 +4,8 @@
 **Estado:** contrato e implementación definidos; contenido numérico pendiente de la entrega final de Gildardo.
 **Relación:** `SCIENTIFIC_MODEL.md` define *qué es* ANI-BIS-E (la ciencia, propiedad de Gildardo/Research). Este documento define *cómo se implementa y se porta* el motor en Atlas (la ingeniería).
 
+> **Actualización B11 (port hecho).** El motor real de Gildardo ya se portó. La ciencia entra **verbatim** como JavaScript CommonJS en `src/clinical-engine/frozen/` (`engine.core.js`, `engine.indices.js`, `engine.dfi.js`): excepción nombrada a la regla dura 12 (ver `ARCHITECTURE.md`); nunca se convierte a TS ni se edita, cualquier cambio lo entrega Gildardo. El borde (normalización de sexo, contrato de 94 columnas del Biody, puerta dura fail-loud) vive en `edge/`; el adaptador (`analysis.ts`) y el mapeo al contrato (`engine.ts`) son TS nuestros. Los golden tests (paridad con el HTML, tolerancia 1e-3) están en `src/tests/clinical-engine-golden.test.ts`. La taxonomía real (81 EFR / 9 estructural / 9 FyR / DFI de 5 dominios) tiene autoridad sobre F1-F12/PBI/EIEC. Hallazgo informativo reportado a Gildardo: el `index.ts` de conveniencia de su paquete omitía FMI al calcular ISCM (corregido en nuestro adaptador, la ciencia congelada intacta). Pendiente aparte: el contenido real de la encuesta (IDs `d*`), que enciende el DFI completo; hasta entonces corre degradado y marcado.
+
 ## Principios
 - **Fidelidad absoluta.** El motor no cambia ni un decimal al portar. Primero equivalencia (golden tests), después optimización. Nunca al revés.
 - **Server-side exclusivo, TS puro.** `src/clinical-engine/` no importa Next, React ni Supabase. Entran objetos tipados, salen objetos tipados.

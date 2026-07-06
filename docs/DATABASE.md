@@ -4,7 +4,8 @@
 **Motor:** PostgreSQL 15+ vía Supabase. ORM/migraciones: Drizzle.
 **Acompaña a:** `ARCHITECTURE.md`, `SECURITY.md`, `MVP.md`, `CLINICAL_ENGINE.md`.
 
-> Cambios v1.1: `diagnosis_definitions` reemplazado por catálogos validados contra el v7 (`phenotypes` F1-F12, `fr_sectors` S1-S9, `efr_states` la Diana de 81 con su contenido clínico, indexada por 4 bandas); `diagnoses` ahora referencia fenotipo/sector/estado EFR; import de BIS corregido a XLSX (Biody Manager + SheetJS); `ai_diagnosis_suggestions` renombrado a `ai_menu_suggestions` (la IA genera el menú, no el diagnóstico).
+> Cambios v1.1: `diagnosis_definitions` reemplazado por catálogos del registry (`phenotypes`, `fr_sectors`, `efr_states` la Diana de 81 indexada por 4 bandas); `diagnoses` ahora referencia fenotipo/sector/estado EFR; import de BIS corregido a XLSX (Biody Manager + exceljs); `ai_diagnosis_suggestions` renombrado a `ai_menu_suggestions` (la IA genera el menú, no el diagnóstico).
+> Cambios B11 (taxonomía real, autoridad del código sobre las especulaciones): `phenotypes` = 9 fenotipos estructurales (FFMI x FMI), `fr_sectors` = 9 sectores FyR (IFC x IRC); F1-F12/S1-S9/PBI/EIEC ya no aplican. `indicator_values.value` pasa a nullable (indicadores no calculables). La ciencia y los cortes viven congelados en `src/clinical-engine/frozen/`.
 
 > El contenido clínico (indicadores, rangos, preguntas de la encuesta, escenarios de la Diana) está congelado hasta la entrega de Gildardo. Este documento define la **estructura** que lo contiene; el contenido se llena en el bloque clínico.
 
@@ -218,21 +219,25 @@ create table public.indicator_ranges (
   classification indicator_classification not null
 );
 
--- Catálogo de fenotipos MCCB (F1-F12, FMI x FFMI x MCA). Validado contra el v7.
+-- Catálogo de fenotipos ESTRUCTURALES (9 = FFMI x FMI). Taxonomía REAL del motor de
+-- Gildardo (B11: STRUCT_LABELS). code = la clave del par de bandas ("A_B", "N_A", ...).
+-- (La nomenclatura vieja "F1-F12 MCCB con MCA" era especulativa y ya no aplica.)
 create table public.phenotypes (
   id uuid primary key default gen_random_uuid(),
   model_version_id uuid not null references model_versions(id) on delete cascade,
-  code text not null,                       -- F1..F12
+  code text not null,                       -- clave estructural: "A_B", "N_N", "B_A", ...
   name text not null,
   risk text,
   unique (model_version_id, code)
 );
 
--- Catálogo de sectores funcionales FR (S1-S9, IFC x IRC). Validado contra el v7.
+-- Catálogo de sectores funcionales FyR (9 = IFC x IRC). Taxonomía REAL del motor
+-- (B11: FYR_LABELS). code = clave del par de bandas ("3_1" = IFC alto x IRC bajo, ...).
+-- (La nomenclatura vieja "S1-S9" ya no aplica.)
 create table public.fr_sectors (
   id uuid primary key default gen_random_uuid(),
   model_version_id uuid not null references model_versions(id) on delete cascade,
-  code text not null,                       -- S1..S9
+  code text not null,                       -- clave FyR: "3_1", "2_2", "1_3", ...
   name text not null,
   unique (model_version_id, code)
 );
@@ -247,16 +252,16 @@ create table public.efr_states (
   irc_band int not null,
   ffmi_band int not null,
   fmi_band int not null,
-  diagnosis_name text not null,             -- DB[].d; lenguaje FUNCIONAL ("Estado funcional deteriorado"), no de enfermedad; contenido validado con Gildardo al poblar el registry (B11)
-  mechanism text,                           -- DB[].m
-  biomarkers text,                          -- DB[].b
-  risks text,                               -- DB[].r
-  suggested_nutraceuticals text,            -- DB[].n
+  diagnosis_name text not null,             -- DX[key].dx del motor congelado (contenido REAL de Gildardo, verbatim; se puebla corriendo getDX por las 81 bandas en B11)
+  mechanism text,                           -- DX[key].mec
+  biomarkers text,                          -- DX[key].bio
+  risks text,                               -- DX[key].rsk
+  suggested_nutraceuticals text,            -- DX[key].n
   unique (model_version_id, state_number),
   unique (model_version_id, ifc_band, irc_band, ffmi_band, fmi_band)
 );
 ```
-> Nota del inventario: el v7 también tiene PBI (9 estados, AF x IR) y EIEC (equilibrio hídrico). Se modelan como catálogos del registry cuando se porte el motor; se difieren a ese momento para no fijar su forma antes de confirmarla con Gildardo.
+> Nota B11 (taxonomía real): al portar el motor de Gildardo, la taxonomía REAL del código tiene autoridad sobre las especulaciones previas. PBI (9 estados, AF x IR) y EIEC ya NO aplican; el diagnóstico funcional integrado lo da el DFI (5 dominios + riesgo + rutas), no un catálogo PBI/EIEC. Los cortes de los clasificadores viven en el motor congelado (`src/clinical-engine/frozen/`), fuente única; el registry es su espejo consultable. Ver `SCIENTIFIC_MODEL.md` y `CLINICAL_ENGINE.md`.
 
 ### Grupo 4: encuesta
 ```sql
@@ -422,7 +427,7 @@ create table public.indicator_values (
   id uuid primary key default gen_random_uuid(),
   evaluation_id uuid not null references evaluations(id) on delete cascade,
   indicator_definition_id uuid not null references indicator_definitions(id),
-  value numeric not null,
+  value numeric,                            -- nullable (B11): el motor devuelve null para indicadores no calculables (EB/IAE sin encuesta; ISCM/IEHH sin insumos secundarios). No se inventa un 0.
   classification indicator_classification,
   -- Constelacion de versiones (procedencia):
   engine_version text not null,
@@ -440,9 +445,9 @@ create table public.diagnoses (
   id uuid primary key default gen_random_uuid(),
   evaluation_id uuid not null references evaluations(id) on delete restrict,
   -- Estado resuelto por el motor (determinista, vía la Diana). No es IA.
-  efr_state_number int not null,            -- 1..81
-  phenotype_id uuid references phenotypes(id),  -- F1..F12
-  fr_sector_id uuid references fr_sectors(id),  -- S1..S9
+  efr_state_number int not null,            -- 1..81 (clave IFC_IRC_FFMI_FMI)
+  phenotype_id uuid references phenotypes(id),  -- fenotipo estructural (9, FFMI x FMI)
+  fr_sector_id uuid references fr_sectors(id),  -- sector FyR (9, IFC x IRC)
   diagnosis_name text not null,
   -- Constelacion de versiones:
   engine_version text not null,

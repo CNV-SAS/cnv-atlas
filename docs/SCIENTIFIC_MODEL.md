@@ -6,6 +6,8 @@
 
 > **Autoridad y alcance.** La ciencia, las fórmulas, los puntos de corte y su validez clínica son autoridad de Gildardo / CNV Research. Lo que sigue es la estructura formal del modelo más lo que el inventario del v7 reveló, transcrito para que Gildardo lo valide y complete. Las afirmaciones clínicas aquí son transcripción de lo que el v7 computa, no asesoría médica ni validación de Claude o Santiago. Los golden tests prueban paridad con el HTML, no corrección clínica: eso lo firma Gildardo.
 
+> **Actualización B11 (taxonomía real, autoridad del código).** Al portar el motor final de Gildardo (`ATLAS_v7.html`), la taxonomía REAL del código tiene autoridad sobre las nomenclaturas especulativas que este documento escribió antes de tener el código. En concreto: **F1-F12, PBI y EIEC ya NO aplican**. La estructura real entregada es: 12 indicadores (IFC, IRC, PABU, ICA-BIS, ISCM, IEHH, IAE, EB, FMI, FFMI, AF, IR); **fenotipo EFR de 81 estados** (clave IFC_IRC_FFMI_FMI, mapa `DX`); **fenotipo estructural de 9** (FFMI x FMI, `STRUCT_LABELS`); **sector funcional FyR de 9** (IFC x IRC, `FYR_LABELS`); y el **DFI (Diagnóstico Funcional Integral)**: árbol de 5 dominios + riesgo integrado + rutas de atención autoritativas (integra encuesta + BIS). La ciencia congelada vive verbatim en `src/clinical-engine/frozen/`; es la fuente de verdad. Las secciones de abajo que hablan de F1-F12/PBI/EIEC quedan superadas por esta nota.
+
 ## Qué es ANI-BIS-E
 Alimentación y Nutrición Informada basada en Bioimpedancia Espectroscópica y Epigenética. Convierte mediciones bioeléctricas y datos de la persona en indicadores de función y riesgo celular, un estado integrado (la Diana EFR) y un protocolo de intervención nutricional.
 

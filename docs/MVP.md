@@ -146,8 +146,8 @@ Reporte clínico del paciente (PDF, snapshot inmutable, aprobación con preview 
 ### Frontera: entrega del HTML final por Gildardo
 
 ### B11, Port del motor real y golden tests
-Inventario fino, captura de valores oro, port a TS en `clinical-engine`, golden tests en verde, firma de muestra por Gildardo, poblar el `model-registry` (cortes, mapas, 81 estados EFR), cambiar stub por motor real.
-**Criterio:** golden tests en verde (paridad con el HTML); Gildardo firma la muestra; el `model-registry` queda poblado; la propagación del B9 sigue pasando con el motor real.
+Inventario fino, captura de valores oro, port de la ciencia congelada (JS verbatim en `clinical-engine/frozen/`, excepción a la regla 12), golden tests en verde, poblar el `model-registry` (81 EFR / 9 estructural / 9 FyR, generados de la ciencia), cambiar stub por motor real, reconciliar contrato + registry + docs con la taxonomía real (F1-F12/PBI/EIEC ya no aplican).
+**Criterio:** golden tests en verde (paridad con el HTML, 1e-3); Gildardo firma la muestra; el `model-registry` poblado; la propagación pasa con el motor real. **El contenido real de la encuesta (IDs `d*`) es su propio ítem, después de B11 y antes de B12**: hasta entonces el DFI corre degradado y marcado (dfi.complete=false).
 
 ### B12, Indicadores y diagnóstico reales
 `indicator_values` con constelación de versiones, `diagnoses` con fenotipo/sector/estado EFR, visualización (incluida la Diana), IA del menú (sin PII), confirmación del profesional.
