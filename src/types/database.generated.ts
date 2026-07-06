@@ -1181,6 +1181,10 @@ export type Database = {
           consent_version: string
           document_hash: string
           id: string
+          legal_representative_document: string | null
+          legal_representative_email: string | null
+          legal_representative_name: string | null
+          legal_representative_relationship: string | null
           patient_id: string
           revoked_at: string | null
           signed_at: string
@@ -1190,6 +1194,10 @@ export type Database = {
           consent_version: string
           document_hash: string
           id?: string
+          legal_representative_document?: string | null
+          legal_representative_email?: string | null
+          legal_representative_name?: string | null
+          legal_representative_relationship?: string | null
           patient_id: string
           revoked_at?: string | null
           signed_at?: string
@@ -1199,6 +1207,10 @@ export type Database = {
           consent_version?: string
           document_hash?: string
           id?: string
+          legal_representative_document?: string | null
+          legal_representative_email?: string | null
+          legal_representative_name?: string | null
+          legal_representative_relationship?: string | null
           patient_id?: string
           revoked_at?: string | null
           signed_at?: string
@@ -2266,6 +2278,8 @@ export type Database = {
         | "investigacion"
         | "comunicaciones_continuidad"
         | "comunicaciones_comerciales"
+        | "representante_legal"
+        | "asentimiento_menor"
       device_status:
         | "available"
         | "in_use"
@@ -2428,6 +2442,8 @@ export const Constants = {
         "investigacion",
         "comunicaciones_continuidad",
         "comunicaciones_comerciales",
+        "representante_legal",
+        "asentimiento_menor",
       ],
       device_status: [
         "available",

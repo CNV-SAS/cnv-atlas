@@ -41,7 +41,8 @@ create type transaction_status as enum ('pending', 'paid', 'failed', 'refunded')
 create type ai_suggestion_status as enum ('success', 'timeout', 'parse_failed', 'provider_error');
 create type consent_type_enum as enum (
   'servicio', 'datos_sensibles', 'internacional_ia',
-  'investigacion', 'comunicaciones_continuidad', 'comunicaciones_comerciales'
+  'investigacion', 'comunicaciones_continuidad', 'comunicaciones_comerciales',
+  'representante_legal', 'asentimiento_menor'  -- menores de edad (DELTA2 A1)
 );
 ```
 
@@ -151,7 +152,14 @@ create table public.patient_consents (
   consent_version text not null,            -- version exacta del texto
   document_hash text not null,              -- hash del texto aceptado
   signed_at timestamptz not null default now(),
-  revoked_at timestamptz                    -- null = autorizacion vigente; con valor = revocada (no se borra el registro)
+  revoked_at timestamptz,                   -- null = autorizacion vigente; con valor = revocada (no se borra el registro)
+  -- Menores de edad (DELTA2 A2). Nullable; solo se llenan cuando
+  -- consent_type = 'representante_legal'. El registro del representante es una
+  -- autorizacion mas, con campos adicionales; no una tabla nueva.
+  legal_representative_name text,
+  legal_representative_document text,
+  legal_representative_relationship text,
+  legal_representative_email text
 );
 create index patient_consents_patient_idx on patient_consents(patient_id);
 -- Una sola autorizacion activa por (paciente, tipo): re-consentir revoca primero

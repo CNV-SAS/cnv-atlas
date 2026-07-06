@@ -77,4 +77,8 @@ export const consentType = pgEnum("consent_type_enum", [
   "investigacion",
   "comunicaciones_continuidad",
   "comunicaciones_comerciales",
+  // Menores de edad (DELTA2 A1). Se anexan al final para que Postgres emita
+  // ALTER TYPE ADD VALUE y no recree el tipo (destructivo por las FK/columnas).
+  "representante_legal",
+  "asentimiento_menor",
 ]);

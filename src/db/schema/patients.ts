@@ -78,6 +78,13 @@ export const patientConsents = pgTable(
     documentHash: text("document_hash").notNull(), // hash del texto aceptado
     signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }), // null = vigente
+    // Menores de edad (DELTA2 A2). Nullable; solo se llenan cuando
+    // consent_type = 'representante_legal'. Viven aqui, no en una tabla nueva:
+    // el representante es una autorizacion mas, con campos adicionales.
+    legalRepresentativeName: text("legal_representative_name"),
+    legalRepresentativeDocument: text("legal_representative_document"),
+    legalRepresentativeRelationship: text("legal_representative_relationship"),
+    legalRepresentativeEmail: text("legal_representative_email"),
   },
   (t) => [
     index("patient_consents_patient_idx").on(t.patientId),
