@@ -165,6 +165,9 @@ Admin (usuarios/roles, comodato, auditoría, **config de IA: cambiar proveedor/m
 Headers/CSP, rate limiting, scrubbing de PHI, revisión de seguridad, smoke E2E completo.
 **Criterio:** el smoke end-to-end pasa; sin errores recurrentes en Sentry en 24h; checklist de seguridad cumplido; checklist documental de DPA de sub-encargados archivados.
 
+### Post-B15, bloque futuro: Alegra Producción
+El paso de Alegra de sandbox a producción real es un bloque propio (no un ajuste de B6): credenciales de producción, re-mapeo completo de IDs con IVA 19%, numeración/resolución de factura electrónica, captura de CUFE/estado DIAN, idempotencia estricta y conciliación con Wompi. El detalle y las decisiones ya tomadas viven en `BACKLOG.md` (sección Pagos, "Alegra Producción"). Queda anotado aquí para que no se pierda en la planificación.
+
 ## Criterio de aceptación del MVP
 - Ruta ANI-BIS-E completa funcionando con un caso real.
 - Golden tests del motor en verde (paridad con el HTML, muestra firmada por Gildardo).
