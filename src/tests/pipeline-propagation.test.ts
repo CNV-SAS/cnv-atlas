@@ -2,14 +2,17 @@ import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 
 import { eq, inArray, sql } from "drizzle-orm";
 
-// Test de propagacion de B9: input sintetico conocido -> stub -> persistencia ->
-// relectura, asertando IDENTIDAD (el dato no se pierde al fluir) y AISLAMIENTO (dos
-// evaluaciones no se mezclan). Es el bug cronico de ATLAS que este bloque previene.
+import { normalizeHeader } from "@/modules/bis/services/header-map";
+import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+
+// Propagacion (B11 ST7): input REAL (fila anonimizada del Biody, guardada como la guarda
+// B8: header normalizado -> valor) -> motor real -> persistencia -> relectura. Aserta
+// IDENTIDAD (el dato no se pierde ni cambia al fluir), AISLAMIENTO (dos evaluaciones no
+// se mezclan) y ademas es el smoke de la cadena B8 -> build-engine-input -> motor -> BD.
+// La fuente de verdad de la salida es el snapshot inmutable del reporte.
 //
-// Corre contra la BD local seedada (necesita el model_version activo, sus
-// indicator_definitions y un survey_version). Se AUTO-SALTA si no hay DATABASE_URL
-// (CI sin BD), por eso vive aqui commiteado como regresion viva sin romper otros
-// entornos. La fuente de verdad de la salida del motor es el snapshot del reporte.
+// Corre contra la BD local seedada (model_version real + registry poblado). Se AUTO-SALTA
+// sin DATABASE_URL (CI sin BD).
 
 vi.mock("server-only", () => ({}));
 
@@ -17,25 +20,33 @@ let HAS_DB = false;
 try {
   process.loadEnvFile(".env.local");
 } catch {
-  // sin .env.local: el guard de abajo salta el bloque.
+  // sin .env.local: el guard salta el bloque.
 }
 HAS_DB = Boolean(process.env.DATABASE_URL);
 
-// TODO(B11 ST7): reescribir para el motor REAL. Deshabilitado A PROPOSITO (no en
-// silencio): el pipeline ahora corre la ciencia real fail-loud y necesita (a) el mapa
-// BIS completo de ST6 para que el motor no lance por insumos faltantes, y (b) aserciones
-// nuevas por el cambio de forma del EngineOutput (efrPhenotype en vez de efrState,
-// indicadores nullable, engine "anibise-1.0.0"). Se reactiva y reescribe en ST7; no se
-// elimina, es la regresion viva de propagacion (sin perdida + aislamiento).
-const SKIP_PENDING_ST7_REWRITE = true;
+const biody = biodyJson as Record<string, unknown>;
+const FM_HEADER = "Masa grasa bruta measurementDetails.VALEURCALCULEEEXPORT kg";
+
+// Convierte una fila del Biody (headers exactos) a filas de bis_raw_values como las
+// guarda B8: variable_name = normalizeHeader(header), value = numero. Solo numericos.
+function bisRawRows(fixture: Record<string, unknown>): { name: string; value: string }[] {
+  const rows: { name: string; value: string }[] = [];
+  for (const [k, v] of Object.entries(fixture)) {
+    if (typeof v === "number" && Number.isFinite(v)) {
+      rows.push({ name: normalizeHeader(k), value: String(v) });
+    }
+  }
+  return rows;
+}
 
 type Snapshot = {
-  indicators: Record<string, number>;
-  efrState: { number: number };
+  indicators: Record<string, number | null>;
+  efrPhenotype: { key: string; stateNumber: number };
+  dfi: { complete: boolean };
   versions: { engine: string };
 };
 
-describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -> diagnostico (BD real)", () => {
+describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let db: any;
   let schema: any;
@@ -44,7 +55,7 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
 
   const created: { evaluationId: string; patientId: string }[] = [];
 
-  async function makeEvaluation(docSuffix: string, birthDate: string) {
+  async function makeEvaluation(docSuffix: string, fixture: Record<string, unknown>) {
     const patientId = (
       await db
         .insert(schema.patients)
@@ -55,8 +66,8 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
       patientId,
       firstName: "Prop",
       lastName: docSuffix,
-      sex: "Female",
-      birthDate,
+      sex: "Male",
+      birthDate: "1971-11-05",
     });
     await db
       .insert(schema.patientProfessionalRelationships)
@@ -78,13 +89,12 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
     const measId = (
       await db
         .insert(schema.bisMeasurements)
-        .values({ evaluationId, measurementDate: new Date("2026-04-12T19:18:00Z") })
+        .values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") })
         .returning({ id: schema.bisMeasurements.id })
     )[0].id;
-    await db.insert(schema.bisRawValues).values([
-      { measurementId: measId, variableName: "Peso kg", value: "70" },
-      { measurementId: measId, variableName: "Ángulo de fase a 50 kHz °", value: "6.2" },
-    ]);
+    await db.insert(schema.bisRawValues).values(
+      bisRawRows(fixture).map((r) => ({ measurementId: measId, variableName: r.name, value: r.value })),
+    );
     created.push({ evaluationId, patientId });
     return evaluationId;
   }
@@ -131,6 +141,12 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
       await tx.execute(sql`set local session_replication_role = replica`);
       await tx.delete(schema.reports).where(inArray(schema.reports.evaluationId, evalIds));
       await tx.delete(schema.indicatorValues).where(inArray(schema.indicatorValues.evaluationId, evalIds));
+      await tx.delete(schema.bisRawValues).where(
+        inArray(
+          schema.bisRawValues.measurementId,
+          db.select({ id: schema.bisMeasurements.id }).from(schema.bisMeasurements).where(inArray(schema.bisMeasurements.evaluationId, evalIds)),
+        ),
+      );
       await tx.delete(schema.bisMeasurements).where(inArray(schema.bisMeasurements.evaluationId, evalIds));
       await tx.delete(schema.surveyResponses).where(inArray(schema.surveyResponses.evaluationId, evalIds));
       if (diagIds.length) {
@@ -142,32 +158,53 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
     });
   });
 
-  it("persiste sin perdida: los 12 indicadores del motor llegan al snapshot y a la BD", async () => {
-    const evaluationId = await makeEvaluation("A", "1990-01-01");
+  it("persiste el diagnostico REAL sin perdida y con la constelacion sellada", async () => {
+    const evaluationId = await makeEvaluation("A", biody);
     const res = await runClinicalPipeline({ evaluationId, actorId, actorEmail: "prop@cnv", ip: null });
     expect(res.ok).toBe(true);
 
     const { indicators, diag, snapshot } = await readPersisted(evaluationId);
-    // identidad: el multiset de valores persistidos == el del output del motor (snapshot).
+
+    // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 42.
+    expect(snapshot.efrPhenotype.key).toBe("N_N_N_A");
+    expect(diag.efrStateNumber).toBe(42);
+    expect(diag.diagnosisName).toBe("Composición saludable con grasa alta → riesgo de progresión");
+    // los FK del registry se resolvieron por clave (fenotipo estructural + sector FyR).
+    expect(diag.phenotypeId).not.toBeNull();
+    expect(diag.frSectorId).not.toBeNull();
+    // sin encuesta real, el DFI quedo marcado incompleto (no null silencioso).
+    expect(snapshot.dfi.complete).toBe(false);
+
+    // identidad sin perdida: 12 indicadores; los no-null persistidos == los del snapshot.
     expect(indicators).toHaveLength(12);
-    const persisted = indicators.map((r: { value: string }) => Number(r.value)).sort((a: number, b: number) => a - b);
-    const fromEngine = Object.values(snapshot.indicators).sort((a, b) => a - b);
-    expect(persisted).toEqual(fromEngine);
-    // el diagnostico refleja el estado EFR del motor (no se pierde ni cambia).
-    expect(diag.efrStateNumber).toBe(snapshot.efrState.number);
-    expect(snapshot.versions.engine).toBe("stub-0.1.0");
-    // constelacion sellada en cada indicador.
+    const snapVals = Object.values(snapshot.indicators);
+    const snapNonNull = snapVals.filter((v): v is number => v != null).sort((a, b) => a - b);
+    const persistedNonNull = indicators
+      .map((r: { value: string | null }) => r.value)
+      .filter((v: string | null): v is string => v != null)
+      .map(Number)
+      .sort((a: number, b: number) => a - b);
+    expect(persistedNonNull).toEqual(snapNonNull);
+    // el conteo de null tambien coincide (EB/IAE null sin encuesta).
+    expect(indicators.filter((r: { value: string | null }) => r.value == null)).toHaveLength(
+      snapVals.filter((v) => v == null).length,
+    );
+
+    // constelacion del motor real sellada en cada indicador.
+    expect(snapshot.versions.engine).toBe("anibise-1.0.0");
     expect(
       indicators.every(
         (r: { engineVersion: string; surveyVersionId: string; modelVersionId: string; rulesVersion: string }) =>
-          r.engineVersion === "stub-0.1.0" && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
+          r.engineVersion === "anibise-1.0.0" && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
       ),
     ).toBe(true);
   });
 
-  it("aisla: dos evaluaciones distintas no mezclan sus datos", async () => {
-    const evalA = await makeEvaluation("ISOA", "1990-01-01");
-    const evalB = await makeEvaluation("ISOB", "1960-01-01"); // edad distinta -> salida distinta
+  it("aisla: dos BIS distintos dan diagnosticos distintos, cada uno el suyo", async () => {
+    // Variante con FM bajo -> FMI derivado Normal -> fenotipo N_N_N_N (estado 41).
+    const bajoFM = { ...biody, [FM_HEADER]: 10 };
+    const evalA = await makeEvaluation("ISOA", biody);
+    const evalB = await makeEvaluation("ISOB", bajoFM);
 
     const [ra, rb] = await Promise.all([
       runClinicalPipeline({ evaluationId: evalA, actorId, actorEmail: "prop@cnv", ip: null }),
@@ -178,18 +215,12 @@ describe.skipIf(!HAS_DB || SKIP_PENDING_ST7_REWRITE)("propagacion encuesta/BIS -
     const a = await readPersisted(evalA);
     const b = await readPersisted(evalB);
 
-    // las salidas difieren (edades distintas): si se hubieran mezclado, serian iguales.
+    expect(a.snapshot.efrPhenotype.key).toBe("N_N_N_A");
+    expect(b.snapshot.efrPhenotype.key).toBe("N_N_N_N");
+    expect(a.diag.efrStateNumber).toBe(42);
+    expect(b.diag.efrStateNumber).toBe(41);
+    // los outputs difieren: si se hubieran mezclado, serian iguales.
     expect(a.snapshot.indicators).not.toEqual(b.snapshot.indicators);
-
-    // cada evaluacion persiste EXACTAMENTE su propio output, no el de la otra.
-    const valuesA = a.indicators.map((r: { value: string }) => Number(r.value)).sort((x: number, y: number) => x - y);
-    const valuesB = b.indicators.map((r: { value: string }) => Number(r.value)).sort((x: number, y: number) => x - y);
-    expect(valuesA).toEqual(Object.values(a.snapshot.indicators).sort((x, y) => x - y));
-    expect(valuesB).toEqual(Object.values(b.snapshot.indicators).sort((x, y) => x - y));
-    expect(valuesA).not.toEqual(valuesB);
-
-    // cada snapshot pertenece a su evaluacion (el reporte se ato bien).
-    expect(a.diag.efrStateNumber).toBe(a.snapshot.efrState.number);
-    expect(b.diag.efrStateNumber).toBe(b.snapshot.efrState.number);
+    expect(a.diag.efrStateNumber).not.toBe(b.diag.efrStateNumber);
   });
 });

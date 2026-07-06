@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { BIODY_COLUMNS } from "@/clinical-engine";
+import { normalizeHeader } from "@/modules/bis/services/header-map";
 import {
   buildEngineInput,
   computeAge,
   normalizeSex,
-  PROVISIONAL_FIELD_TO_B8HEADER,
 } from "@/modules/clinical-pipeline/services/build-engine-input";
 
 const NOW = new Date("2026-06-22T00:00:00Z");
@@ -38,13 +38,14 @@ describe("buildEngineInput", () => {
   const model = { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" };
 
   it("arma el input y reconstruye la fila con headers EXACTOS del Biody", () => {
+    // bisRaw se indexa por el header NORMALIZADO (como lo guarda B8).
     const raw = {
       sex: "Female",
       birthDate: "2000-06-22",
       surveyAnswers: { q1: "a", q2: "b" },
       bisRaw: {
-        [PROVISIONAL_FIELD_TO_B8HEADER.peso]: 70,
-        [PROVISIONAL_FIELD_TO_B8HEADER.AF]: 6.2,
+        [normalizeHeader(BIODY_COLUMNS.peso.header)]: 70,
+        [normalizeHeader(BIODY_COLUMNS.AF.header)]: 6.2,
       },
     };
     const input = buildEngineInput(raw, model, NOW);
@@ -64,7 +65,7 @@ describe("buildEngineInput", () => {
       sex: null,
       birthDate: null,
       surveyAnswers: {},
-      bisRaw: { [PROVISIONAL_FIELD_TO_B8HEADER.peso]: Number.NaN },
+      bisRaw: { [normalizeHeader(BIODY_COLUMNS.peso.header)]: Number.NaN },
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBeUndefined();

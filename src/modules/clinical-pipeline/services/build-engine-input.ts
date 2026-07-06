@@ -1,16 +1,15 @@
 import { BIODY_COLUMNS, type EngineInput, type EngineModelContext, type Sex } from "@/clinical-engine";
+import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 // Arma el EngineInput desde los datos persistidos de una evaluacion. PURO (sin BD).
 //
 // El motor real consume la fila CRUDA del Biody con los headers EXACTOS del contrato de
-// 94 columnas (corre su puerta dura, fail-loud). B8 guarda los crudos con headers
-// NORMALIZADOS, asi que aqui se reconstruye la fila exacta: engineField -> header exacto
-// (BIODY_COLUMNS) tomando el valor de bisRaw por el header normalizado de B8.
-//
-// El mapa header-normalizado <- engineField es PROVISIONAL/incompleto (le falta FM y los
-// secundarios); se completa y se verifica contra el sample real en ST6 (cierre del
-// PROVISIONAL_BIS_MAP). Mientras tanto, si falta un insumo requerido, el motor LANZA
-// (fail-loud), que es el comportamiento correcto: nunca un diagnostico con datos a medias.
+// 94 columnas (corre su puerta dura, fail-loud). B8 guarda los crudos con el header
+// NORMALIZADO como nombre de variable (normalizeHeader: trim + tokens BiodyLife +
+// colapsar espacios). Aqui se reconstruye la fila exacta aplicando la MISMA
+// normalizacion al header del contrato: bisRaw[normalizeHeader(BIODY_COLUMNS[f].header)].
+// Asi el mapeo es completo (los 94 campos, incluido FM y los secundarios) y no puede
+// desincronizarse de B8: usa su misma funcion (fuente unica de la normalizacion).
 
 export type RawEvaluationData = {
   sex: string | null;
@@ -37,35 +36,13 @@ export function normalizeSex(sex: string | null): Sex {
   return (sex ?? "").trim().toLowerCase().startsWith("f") ? "F" : "M";
 }
 
-// engineField -> header NORMALIZADO de B8 (bis_raw_values.variable_name). PROVISIONAL,
-// se cierra en ST6 (faltan FM y los secundarios FFW/MCA_dif/ECW_sg/ICW_sg).
-export const PROVISIONAL_FIELD_TO_B8HEADER: Record<string, string> = {
-  Re: "Extracellular resistance",
-  Ri: "Intracellular resistance Ω",
-  Rinf: "Infinite resistance",
-  C: "Membrane capacitance nF",
-  FFMI: "Indice de masa sin grasa (FFMI) valor kg/m²",
-  FFM: "Masa sin grasa valor kg",
-  peso: "Peso kg",
-  talla: "Altura cm",
-  imc: "Body Mass Index (BMI) valor kg/m²",
-  AF: "Ángulo de fase a 50 kHz °",
-  IR: "Impedance Ratio (IR)",
-  MCA: "Masa celular activa valor kg",
-  MCA_ref: "Masa celular activa referencia kg",
-  smmW: "Skeletal muscle mass over weight (SMM/W) valor %",
-  ASMI: "Indice de masa muscular esquelética des membres (ASMI) valor kg/m²",
-  ECW: "Extracellular water valor L",
-  ICW: "Intracellular water (ICW) valor L",
-};
-
-// Reconstruye la fila cruda con headers EXACTOS del Biody desde los crudos normalizados.
-function buildBisRow(bisRaw: Record<string, number>): Record<string, unknown> {
+// Reconstruye la fila cruda con headers EXACTOS del Biody desde los crudos normalizados
+// de B8, aplicando la misma normalizacion a cada header del contrato de columnas.
+export function buildBisRow(bisRaw: Record<string, number>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
-  for (const [field, b8Header] of Object.entries(PROVISIONAL_FIELD_TO_B8HEADER)) {
-    const col = BIODY_COLUMNS[field];
-    const v = bisRaw[b8Header];
-    if (col && typeof v === "number" && Number.isFinite(v)) {
+  for (const col of Object.values(BIODY_COLUMNS)) {
+    const v = bisRaw[normalizeHeader(col.header)];
+    if (typeof v === "number" && Number.isFinite(v)) {
       row[col.header] = v;
     }
   }
