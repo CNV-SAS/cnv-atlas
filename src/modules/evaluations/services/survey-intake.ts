@@ -1,6 +1,11 @@
 import { appError, err, ok, type Result } from "@/core/errors";
 import { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } from "@/modules/consent/consent-hash";
-import { consentSchema, grantedConsentTypes } from "@/modules/consent/validations";
+import {
+  assentApplies,
+  computeAgeYears,
+  consentSchema,
+  grantedConsentTypes,
+} from "@/modules/consent/validations";
 import {
   findDuplicateCandidates,
   findPatientByDocument,
@@ -67,6 +72,33 @@ export async function submitSurveyIntake(
     consentVersion: CONSENT_VERSION,
     documentHash: CONSENT_DOCUMENT_HASH,
   }));
+
+  // Rama menor (DELTA2 B4): se agrega el registro del representante legal (con sus
+  // datos, que la validacion garantizo presentes) y, si el menor tiene 14-17, el
+  // asentimiento. Mismos version y hash vigentes.
+  if (consent.data.ageBranch === "menor") {
+    consents.push({
+      type: "representante_legal",
+      consentVersion: CONSENT_VERSION,
+      documentHash: CONSENT_DOCUMENT_HASH,
+      legalRepresentative: {
+        name: consent.data.legalRepresentativeName!,
+        document: consent.data.legalRepresentativeDocument!,
+        relationship: consent.data.legalRepresentativeRelationship!,
+        email: consent.data.legalRepresentativeEmail!,
+      },
+    });
+    const age = consent.data.minorBirthDate
+      ? computeAgeYears(consent.data.minorBirthDate, new Date())
+      : null;
+    if (assentApplies(age)) {
+      consents.push({
+        type: "asentimiento_menor",
+        consentVersion: CONSENT_VERSION,
+        documentHash: CONSENT_DOCUMENT_HASH,
+      });
+    }
+  }
 
   // El link de seguimiento es de un solo uso: se consume. El inicial es reusable.
   const linkId = input.link.type === "seguimiento" ? input.link.id : null;

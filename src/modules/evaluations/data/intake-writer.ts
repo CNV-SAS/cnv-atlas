@@ -35,11 +35,20 @@ export class ConsentGateError extends Error {
 }
 
 // Un consentimiento otorgado a persistir. El document_hash y la version los fija el
-// servicio desde el texto canonico vigente; aqui solo se guardan.
+// servicio desde el texto canonico vigente; aqui solo se guardan. En la rama menor
+// (DELTA2 B4) el servicio agrega los tipos derivados representante_legal (con los datos
+// del representante) y asentimiento_menor.
 export type IntakeConsent = {
-  type: ConsentType;
+  type: ConsentType | "representante_legal" | "asentimiento_menor";
   consentVersion: string;
   documentHash: string;
+  // Solo para representante_legal: se materializa en las columnas del registro.
+  legalRepresentative?: {
+    name: string;
+    document: string;
+    relationship: string;
+    email: string;
+  };
 };
 
 export type IntakeWriteInput = {
@@ -134,6 +143,11 @@ export async function writeIntakeEvaluation(
           consentType: c.type,
           consentVersion: c.consentVersion,
           documentHash: c.documentHash,
+          // Columnas del representante legal: solo se llenan en representante_legal.
+          legalRepresentativeName: c.legalRepresentative?.name ?? null,
+          legalRepresentativeDocument: c.legalRepresentative?.document ?? null,
+          legalRepresentativeRelationship: c.legalRepresentative?.relationship ?? null,
+          legalRepresentativeEmail: c.legalRepresentative?.email ?? null,
         })),
       );
       await recordAudit(tx, {

@@ -112,6 +112,55 @@ describe("submitSurveyIntake", () => {
     expect(call.consents.map((c) => c.type)).toContain("investigacion");
   });
 
+  const minorConsent = {
+    servicio: true,
+    datos_sensibles: true,
+    internacional_ia: true,
+    ageBranch: "menor",
+    legalRepresentativeName: "Maria Perez",
+    legalRepresentativeDocument: "CC 123456",
+    legalRepresentativeRelationship: "madre",
+    legalRepresentativeEmail: "madre@example.com",
+    minorBirthDate: "2010-01-01", // 14-17 en 2026
+    asentimiento_menor: true,
+  };
+
+  it("rama menor 14-17 -> agrega representante_legal (con datos) y asentimiento_menor", async () => {
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
+    await submitSurveyIntake(
+      input({ consent: minorConsent, identity: { ...validIdentity, birthDate: "2010-01-01" } }),
+    );
+    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const types = call.consents.map((c) => c.type);
+    expect(types).toContain("representante_legal");
+    expect(types).toContain("asentimiento_menor");
+    const rep = call.consents.find((c) => c.type === "representante_legal");
+    expect(rep?.legalRepresentative).toEqual({
+      name: "Maria Perez",
+      document: "CC 123456",
+      relationship: "madre",
+      email: "madre@example.com",
+    });
+    // Las 3 necesarias siguen presentes, firmadas por el representante (gate sin cambios).
+    expect(types).toEqual(
+      expect.arrayContaining(["servicio", "datos_sensibles", "internacional_ia"]),
+    );
+  });
+
+  it("rama menor bajo 14 -> representante_legal sin asentimiento_menor", async () => {
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
+    await submitSurveyIntake(
+      input({
+        consent: { ...minorConsent, minorBirthDate: "2020-01-01" },
+        identity: { ...validIdentity, birthDate: "2020-01-01" },
+      }),
+    );
+    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const types = call.consents.map((c) => c.type);
+    expect(types).toContain("representante_legal");
+    expect(types).not.toContain("asentimiento_menor");
+  });
+
   it("rechaza (validation) si falta una autorizacion necesaria; no escribe", async () => {
     const res = await submitSurveyIntake(
       input({ consent: { ...validConsent, internacional_ia: false } }),
