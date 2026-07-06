@@ -20,10 +20,32 @@ const DOCUMENT_TYPES: { value: string; label: string }[] = [
   { value: "NIT", label: "NIT" },
 ];
 
+// Parentesco/calidad del representante legal (CONSENT_ATLAS seccion 11). El valor es
+// el corto que persiste el esquema; la etiqueta es la que ve el usuario.
+const RELATIONSHIPS: { value: string; label: string }[] = [
+  { value: "padre", label: "Padre" },
+  { value: "madre", label: "Madre" },
+  { value: "tutor", label: "Tutor legal" },
+  { value: "curador", label: "Curador" },
+];
+
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
 
 const checkboxClass = "mt-1 size-4 shrink-0 accent-primary";
+
+// Edad en años cumplidos a partir de una fecha YYYY-MM-DD (UTC). null si vacia o
+// invalida. Se calcula en cliente solo para mostrar/ocultar el asentimiento; el
+// servidor revalida con el mismo criterio (consent/validations).
+function ageFromISO(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - Number(m[1]);
+  const monthDiff = now.getUTCMonth() + 1 - Number(m[2]);
+  if (monthDiff < 0 || (monthDiff === 0 && now.getUTCDate() < Number(m[3]))) age -= 1;
+  return age;
+}
 
 export type SurveyIntakeFormProps = {
   token: string;
@@ -57,19 +79,53 @@ export function SurveyIntakeForm({
 }: SurveyIntakeFormProps) {
   const [state, action, pending] = useActionState(submitSurveyAction, initial);
 
-  // Capa de consentimiento: las 3 necesarias + la declaracion de mayoria de edad
-  // habilitan el envio. Las opcionales no influyen. Se controlan en cliente solo
-  // para habilitar el boton; el servidor revalida con Zod de todos modos.
-  const [adult, setAdult] = useState(false);
+  // Capa de consentimiento. La rama de edad (mayor/menor) es una eleccion explicita
+  // y obligatoria (DELTA2 B2). En menor se abre el bloque del representante legal y,
+  // si el menor tiene 14-17, el asentimiento. Todo se controla en cliente solo para
+  // habilitar el envio; el servidor revalida con Zod de todos modos.
+  const [ageBranch, setAgeBranch] = useState<"" | "mayor" | "menor">("");
   const [necessary, setNecessary] = useState({
     servicio: false,
     datos_sensibles: false,
     internacional_ia: false,
   });
+  const [rep, setRep] = useState({
+    name: "",
+    document: "",
+    relationship: "",
+    email: "",
+  });
+  const [minorBirthDate, setMinorBirthDate] = useState("");
+  const [assent, setAssent] = useState(false);
+  // Nombre del menor: se toma de identificacion (mismo paciente) para interpolarlo en
+  // el texto del asentimiento. Controlado para poder mostrarlo en vivo.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [showFullText, setShowFullText] = useState(false);
 
-  const canContinue =
-    adult && necessary.servicio && necessary.datos_sensibles && necessary.internacional_ia;
+  const isMinor = ageBranch === "menor";
+  const minorAge = isMinor ? ageFromISO(minorBirthDate) : null;
+  const assentRequired = minorAge !== null && minorAge >= 14 && minorAge <= 17;
+  const minorName = `${firstName} ${lastName}`.trim();
+
+  const necessaryOk =
+    necessary.servicio && necessary.datos_sensibles && necessary.internacional_ia;
+  const branchOk =
+    ageBranch === "mayor"
+      ? true
+      : isMinor
+        ? Boolean(
+            rep.name.trim() &&
+              rep.document.trim().length >= 3 &&
+              rep.relationship &&
+              rep.email.trim() &&
+              minorBirthDate &&
+              minorAge !== null &&
+              minorAge < 18 &&
+              (!assentRequired || assent),
+          )
+        : false;
+  const canContinue = necessaryOk && branchOk;
 
   return (
     <form action={action} className="flex w-full flex-col gap-8">
@@ -91,23 +147,135 @@ export function SurveyIntakeForm({
           </p>
         </div>
 
-        {/* Mayoria de edad: va antes de las casillas (CONSENT_ATLAS seccion 11) */}
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="mayoria_de_edad"
-            className={checkboxClass}
-            checked={adult}
-            onChange={(e) => setAdult(e.target.checked)}
-          />
-          <span>Declaro que soy mayor de 18 años.</span>
-        </label>
+        {/* Selector de edad: eleccion explicita y obligatoria (CONSENT_ATLAS seccion 11) */}
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4">
+          <legend className="px-1 text-xs font-medium text-muted-foreground">
+            Antes de continuar, indica tu situacion
+          </legend>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="ageBranch"
+              value="mayor"
+              className={checkboxClass}
+              checked={ageBranch === "mayor"}
+              onChange={() => setAgeBranch("mayor")}
+            />
+            <span>Soy mayor de 18 años y actuo en nombre propio.</span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="ageBranch"
+              value="menor"
+              className={checkboxClass}
+              checked={isMinor}
+              onChange={() => setAgeBranch("menor")}
+            />
+            <span>Soy menor de 18 años; firma mi representante legal.</span>
+          </label>
+        </fieldset>
+
+        {/* Bloque del representante legal (solo rama menor) */}
+        {isMinor ? (
+          <fieldset className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <legend className="px-1 text-xs font-medium text-muted-foreground">
+              Datos del representante legal
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              El representante legal otorga el consentimiento en nombre del menor y firma
+              las autorizaciones.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Nombre completo del representante">
+                <Input
+                  name="legalRepresentativeName"
+                  className="h-9"
+                  value={rep.name}
+                  onChange={(e) => setRep((s) => ({ ...s, name: e.target.value }))}
+                />
+              </Field>
+              <Field label="Tipo y numero de documento">
+                <Input
+                  name="legalRepresentativeDocument"
+                  className="h-9"
+                  value={rep.document}
+                  onChange={(e) => setRep((s) => ({ ...s, document: e.target.value }))}
+                />
+              </Field>
+              <Field label="Parentesco o calidad">
+                <select
+                  name="legalRepresentativeRelationship"
+                  className={selectClass}
+                  value={rep.relationship}
+                  onChange={(e) =>
+                    setRep((s) => ({ ...s, relationship: e.target.value }))
+                  }
+                >
+                  <option value="">Selecciona una opcion</option>
+                  {RELATIONSHIPS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Correo del representante">
+                <Input
+                  name="legalRepresentativeEmail"
+                  type="email"
+                  className="h-9"
+                  value={rep.email}
+                  onChange={(e) => setRep((s) => ({ ...s, email: e.target.value }))}
+                />
+              </Field>
+              <Field label="Fecha de nacimiento del menor">
+                <Input
+                  name="minorBirthDate"
+                  type="date"
+                  className="h-9"
+                  value={minorBirthDate}
+                  onChange={(e) => setMinorBirthDate(e.target.value)}
+                />
+              </Field>
+            </div>
+
+            {/* Asentimiento del menor: solo entre 14 y 17 años (CONSENT_ATLAS seccion 11) */}
+            {assentRequired ? (
+              <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+                <p className="text-xs italic text-muted-foreground">
+                  &ldquo;Yo, {minorName || "el/la menor evaluado/a"}, he sido informado/a
+                  de forma adecuada a mi edad sobre esta evaluacion y estoy de acuerdo en
+                  participar.&rdquo;
+                </p>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="asentimiento_menor"
+                    className={checkboxClass}
+                    checked={assent}
+                    onChange={(e) => setAssent(e.target.checked)}
+                  />
+                  <span>
+                    El menor (14 a 17 años) otorga su asentimiento en los terminos
+                    anteriores.
+                  </span>
+                </label>
+              </div>
+            ) : null}
+          </fieldset>
+        ) : null}
 
         {/* Necesarias */}
         <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4">
           <legend className="px-1 text-xs font-medium text-muted-foreground">
             Autorizaciones necesarias para el servicio
           </legend>
+          {isMinor ? (
+            <p className="text-xs text-muted-foreground">
+              El representante legal las autoriza en nombre del menor.
+            </p>
+          ) : null}
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -117,7 +285,7 @@ export function SurveyIntakeForm({
               onChange={(e) => setNecessary((s) => ({ ...s, servicio: e.target.checked }))}
             />
             <span>
-              Autorizo el tratamiento de mis datos personales para las finalidades del
+              Autorizo el tratamiento de los datos personales para las finalidades del
               servicio.
             </span>
           </label>
@@ -132,8 +300,8 @@ export function SurveyIntakeForm({
               }
             />
             <span>
-              Autorizo el tratamiento de mis datos sensibles de salud, de forma
-              voluntaria, para mi evaluacion.
+              Autorizo el tratamiento de los datos sensibles de salud, de forma
+              voluntaria, para la evaluacion.
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
@@ -148,7 +316,7 @@ export function SurveyIntakeForm({
             />
             <span>
               He sido informado del tratamiento internacional y del uso de sistemas
-              automatizados, y conozco mis derechos.
+              automatizados, y conozco los derechos aplicables.
             </span>
           </label>
         </fieldset>
@@ -156,12 +324,13 @@ export function SurveyIntakeForm({
         {/* Opcionales, separadas */}
         <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
           <legend className="px-1 text-xs font-medium text-muted-foreground">
-            Autorizaciones opcionales (no afectan tu atencion)
+            Autorizaciones opcionales (no afectan la atencion)
           </legend>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="investigacion" className={checkboxClass} />
             <span>
-              Autorizo el uso de mis datos para investigacion cientifica del modelo.
+              Autorizo el uso de los datos seudonimizados para investigacion cientifica
+              del modelo.
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
@@ -170,7 +339,7 @@ export function SurveyIntakeForm({
               name="comunicaciones_continuidad"
               className={checkboxClass}
             />
-            <span>Autorizo recibir comunicaciones de continuidad de mi atencion.</span>
+            <span>Autorizo recibir comunicaciones de continuidad de la atencion.</span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -201,9 +370,11 @@ export function SurveyIntakeForm({
         </div>
       </section>
 
-      {/* 2. Identificacion */}
+      {/* 2. Identificacion (datos del paciente; en rama menor, del menor evaluado) */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Tus datos</h2>
+        <h2 className="text-lg font-semibold text-foreground">
+          {isMinor ? "Datos del menor evaluado" : "Tus datos"}
+        </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de documento">
             <select name="documentType" required className={selectClass} defaultValue="CC">
@@ -218,13 +389,35 @@ export function SurveyIntakeForm({
             <Input name="documentNumber" required className="h-9" />
           </Field>
           <Field label="Nombres">
-            <Input name="firstName" required className="h-9" />
+            <Input
+              name="firstName"
+              required
+              className="h-9"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
           </Field>
           <Field label="Apellidos">
-            <Input name="lastName" required className="h-9" />
+            <Input
+              name="lastName"
+              required
+              className="h-9"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
           </Field>
           <Field label="Fecha de nacimiento">
-            <Input name="birthDate" type="date" className="h-9" />
+            {isMinor ? (
+              // Ya se pidio en el consentimiento; se reutiliza y no se vuelve a pedir.
+              <>
+                <input type="hidden" name="birthDate" value={minorBirthDate} />
+                <p className="flex h-9 items-center text-sm text-muted-foreground">
+                  {minorBirthDate || "Indicala en el bloque del representante legal"}
+                </p>
+              </>
+            ) : (
+              <Input name="birthDate" type="date" className="h-9" />
+            )}
           </Field>
           <Field label="Sexo">
             <Input name="sex" className="h-9" />
@@ -269,8 +462,8 @@ export function SurveyIntakeForm({
       <div className="flex flex-col gap-2">
         {!canContinue ? (
           <p className="text-xs text-muted-foreground">
-            Marca la declaracion de mayoria de edad y las tres autorizaciones
-            necesarias para continuar.
+            Indica tu situacion de edad, completa el bloque que corresponda y marca las
+            tres autorizaciones necesarias para continuar.
           </p>
         ) : null}
         <Button type="submit" disabled={!canContinue || pending} className="w-full sm:w-auto">

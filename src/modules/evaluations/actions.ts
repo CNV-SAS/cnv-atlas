@@ -73,7 +73,12 @@ export async function submitSurveyAction(
   const survey = await getActiveSurvey();
   if (!survey) return fail("La encuesta no esta disponible en este momento.");
 
-  // Consentimiento por capas: 3 necesarias + mayoria de edad + 3 opcionales.
+  // Consentimiento por capas: rama de edad (mayor/menor) + 3 necesarias + 3 opcionales.
+  // mayoria_de_edad se deriva de una seleccion EXPLICITA de "mayor" (no de un default):
+  // sin seleccion, la rama mayor se rechaza por falta de la declaracion. Los campos del
+  // representante van undefined cuando estan vacios para no fallar la validacion de la
+  // rama mayor (un correo "" no es un email valido; undefined si es opcional ausente).
+  const ageBranchRaw = str(form, "ageBranch");
   const consent = {
     servicio: checkbox(form, "servicio"),
     datos_sensibles: checkbox(form, "datos_sensibles"),
@@ -81,7 +86,15 @@ export async function submitSurveyAction(
     investigacion: checkbox(form, "investigacion"),
     comunicaciones_continuidad: checkbox(form, "comunicaciones_continuidad"),
     comunicaciones_comerciales: checkbox(form, "comunicaciones_comerciales"),
-    mayoria_de_edad: checkbox(form, "mayoria_de_edad"),
+    ageBranch: ageBranchRaw === "menor" ? "menor" : "mayor",
+    mayoria_de_edad: ageBranchRaw === "mayor",
+    legalRepresentativeName: str(form, "legalRepresentativeName") || undefined,
+    legalRepresentativeDocument: str(form, "legalRepresentativeDocument") || undefined,
+    legalRepresentativeRelationship:
+      str(form, "legalRepresentativeRelationship") || undefined,
+    legalRepresentativeEmail: str(form, "legalRepresentativeEmail") || undefined,
+    minorBirthDate: str(form, "minorBirthDate") || undefined,
+    asentimiento_menor: checkbox(form, "asentimiento_menor"),
   };
 
   const identity = {
