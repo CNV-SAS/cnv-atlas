@@ -7,9 +7,11 @@ import {
   bisMeasurements,
   bisRawValues,
   evaluations,
+  frSectors,
   indicatorDefinitions,
   modelVersions,
   patientProfiles,
+  phenotypes,
   surveyAnswers,
   surveyResponses,
 } from "@/db/schema";
@@ -94,10 +96,14 @@ export type ActiveModel = {
   versionName: string;
   rulesVersion: string;
   indicatorDefIdByCode: Record<string, string>;
+  // Mapas clave -> id para los FK del diagnostico: fenotipo estructural (STRUCT, code
+  // "A_B"...) y sector FyR (code "3_1"...). El writer los resuelve por la clave del output.
+  phenotypeIdByKey: Record<string, string>;
+  frSectorIdByKey: Record<string, string>;
 };
 
-// La version del modelo activa (una sola, indice parcial) + el mapa codigo -> id de sus
-// indicator_definitions, para sellar la constelacion y resolver los FK al persistir.
+// La version del modelo activa (una sola, indice parcial) + los mapas codigo/clave -> id
+// de sus catalogos, para sellar la constelacion y resolver los FK al persistir.
 export async function readActiveModel(): Promise<ActiveModel | null> {
   const [model] = await db
     .select({
@@ -110,18 +116,34 @@ export async function readActiveModel(): Promise<ActiveModel | null> {
     .limit(1);
   if (!model) return null;
 
-  const defs = await db
-    .select({ id: indicatorDefinitions.id, code: indicatorDefinitions.code })
-    .from(indicatorDefinitions)
-    .where(eq(indicatorDefinitions.modelVersionId, model.id));
+  const [defs, phenos, sectors] = await Promise.all([
+    db
+      .select({ id: indicatorDefinitions.id, code: indicatorDefinitions.code })
+      .from(indicatorDefinitions)
+      .where(eq(indicatorDefinitions.modelVersionId, model.id)),
+    db
+      .select({ id: phenotypes.id, code: phenotypes.code })
+      .from(phenotypes)
+      .where(eq(phenotypes.modelVersionId, model.id)),
+    db
+      .select({ id: frSectors.id, code: frSectors.code })
+      .from(frSectors)
+      .where(eq(frSectors.modelVersionId, model.id)),
+  ]);
 
   const indicatorDefIdByCode: Record<string, string> = {};
   for (const d of defs) indicatorDefIdByCode[d.code] = d.id;
+  const phenotypeIdByKey: Record<string, string> = {};
+  for (const p of phenos) phenotypeIdByKey[p.code] = p.id;
+  const frSectorIdByKey: Record<string, string> = {};
+  for (const s of sectors) frSectorIdByKey[s.code] = s.id;
 
   return {
     id: model.id,
     versionName: model.versionName,
     rulesVersion: model.rulesVersion,
     indicatorDefIdByCode,
+    phenotypeIdByKey,
+    frSectorIdByKey,
   };
 }

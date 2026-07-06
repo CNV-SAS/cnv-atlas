@@ -61,6 +61,8 @@ export async function runClinicalPipeline(
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,
+      phenotypeIdByKey: model.phenotypeIdByKey,
+      frSectorIdByKey: model.frSectorIdByKey,
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,

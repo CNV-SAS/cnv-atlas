@@ -9,7 +9,38 @@
 // materializa public.profiles leyendo organization_id y full_name del metadata.
 // Todo lo demas se inserta con service role (BYPASSRLS).
 
+import { readFileSync } from "node:fs";
+
 import { createClient } from "@supabase/supabase-js";
+
+// Datos del model-registry DERIVADOS de la ciencia congelada, generados por
+// registry-data.ts (canonico, testeado) y materializados en un JSON committeado. El
+// seed lo LEE con fs (no importa modulos TS de src/: node no resuelve sus imports sin
+// extension). registry-data.test.ts guarda que el JSON no se desincronice del generador.
+type RegistryData = {
+  indicators: { code: string; name: string; unit: string | null }[];
+  phenotypes: { code: string; name: string }[];
+  frSectors: { code: string; name: string }[];
+  efrStates: {
+    stateNumber: number;
+    ifcBand: number;
+    ircBand: number;
+    ffmiBand: number;
+    fmiBand: number;
+    key: string;
+    diagnosisName: string;
+    mechanism: string;
+    biomarkers: string;
+    risks: string;
+    suggestedNutraceuticals: string;
+  }[];
+};
+const registry: RegistryData = JSON.parse(
+  readFileSync(
+    new URL("../src/clinical-engine/registry-data.generated.json", import.meta.url),
+    "utf8",
+  ),
+);
 
 // ---- Variables de entorno requeridas -------------------------------------
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -146,37 +177,80 @@ async function main() {
     (await supabase.from("user_roles").upsert({ user_id: professionalId, role_id: ROLE_IDS.professional }, { onConflict: "user_id,role_id" })).error,
   );
 
-  // 5. model_version placeholder en estado active (contenido clinico congelado).
+  // 5. model_version REAL en estado active (B11: motor de Gildardo portado).
   check(
     "model_versions",
     (
       await supabase.from("model_versions").upsert(
-        { id: MODEL_VERSION_ID, version_name: "ANI-BIS-E placeholder", rules_version: "placeholder", description: "Placeholder; el contenido real se carga al entregar Gildardo (B11).", status: "active" },
+        { id: MODEL_VERSION_ID, version_name: "ANI-BIS-E 1.0", rules_version: "1.0", description: "Modelo ANI-BIS-E portado del prototipo final de Gildardo (B11). Ciencia congelada en src/clinical-engine/frozen; los cortes viven en el motor.", status: "active" },
         { onConflict: "id" },
       )
     ).error,
   );
 
-  // 5bis. indicator_definitions placeholder bajo el model_version activo. Andamiaje
-  // ESTRUCTURAL para B9 (la propagacion del stub persiste indicator_values, que exige
-  // este FK); los nombres/rangos clinicos reales se cargan en B11 (congelado). Los
-  // codigos son los del contrato del motor (clinical-engine INDICATOR_CODES). Upsert
-  // por la unique (model_version_id, code), sin id fijo: el pipeline los resuelve por
-  // codigo en runtime.
-  const INDICATOR_CODES = [
-    "IFC", "IRC", "PABU", "ICA-BIS", "ISCM", "IEHH", "IAE", "EB", "FMI", "FFMI", "AF", "IR",
-  ];
+  // 5bis. Catalogos del registry DERIVADOS de la ciencia congelada (B11): 12 indicadores,
+  // 9 fenotipos estructurales (STRUCT), 9 sectores FyR y los 81 estados EFR. Se generan
+  // corriendo el motor congelado (registry-data), no se transcriben. Upsert por sus
+  // unique keys; el pipeline resuelve los FK por codigo/clave en runtime. Los cortes de
+  // los clasificadores NO se duplican aqui: viven en el motor (fuente unica).
   check(
     "indicator_definitions",
     (
       await supabase.from("indicator_definitions").upsert(
-        INDICATOR_CODES.map((code) => ({
+        registry.indicators.map((d) => ({
           model_version_id: MODEL_VERSION_ID,
-          code,
-          name: `${code} (placeholder)`,
-          description: "Placeholder estructural; nombre y rangos reales en B11.",
+          code: d.code,
+          name: d.name,
+          unit: d.unit,
         })),
         { onConflict: "model_version_id,code" },
+      )
+    ).error,
+  );
+  check(
+    "phenotypes",
+    (
+      await supabase.from("phenotypes").upsert(
+        registry.phenotypes.map((p) => ({
+          model_version_id: MODEL_VERSION_ID,
+          code: p.code,
+          name: p.name,
+        })),
+        { onConflict: "model_version_id,code" },
+      )
+    ).error,
+  );
+  check(
+    "fr_sectors",
+    (
+      await supabase.from("fr_sectors").upsert(
+        registry.frSectors.map((s) => ({
+          model_version_id: MODEL_VERSION_ID,
+          code: s.code,
+          name: s.name,
+        })),
+        { onConflict: "model_version_id,code" },
+      )
+    ).error,
+  );
+  check(
+    "efr_states",
+    (
+      await supabase.from("efr_states").upsert(
+        registry.efrStates.map((s) => ({
+          model_version_id: MODEL_VERSION_ID,
+          state_number: s.stateNumber,
+          ifc_band: s.ifcBand,
+          irc_band: s.ircBand,
+          ffmi_band: s.ffmiBand,
+          fmi_band: s.fmiBand,
+          diagnosis_name: s.diagnosisName,
+          mechanism: s.mechanism,
+          biomarkers: s.biomarkers,
+          risks: s.risks,
+          suggested_nutraceuticals: s.suggestedNutraceuticals,
+        })),
+        { onConflict: "model_version_id,state_number" },
       )
     ).error,
   );
@@ -301,7 +375,7 @@ async function main() {
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version active (12 indicator_definitions placeholder), survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
   console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }
