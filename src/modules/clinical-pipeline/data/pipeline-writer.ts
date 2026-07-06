@@ -2,7 +2,11 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 
-import type { EngineIndicators, EngineOutput } from "@/clinical-engine";
+import {
+  type EngineIndicators,
+  type EngineOutput,
+  INDICATOR_KEY_TO_CODE,
+} from "@/clinical-engine";
 import { db } from "@/db";
 import {
   diagnoses,
@@ -17,23 +21,8 @@ import { recordAudit } from "@/modules/audit/log";
 // -> diagnoses -> treatments (+ guias) -> reports (snapshot draft), con la constelacion
 // de versiones en cada registro que la lleva (regla 7) y el audit diagnosis.created /
 // treatment.created INLINE (regla 8). Si algo falla, no queda nada a medias. La
-// autorizacion se verifico antes en el action bajo RLS (regla 3).
-
-// Mapeo de cada indicador del output a su codigo canonico (= code de indicator_definitions).
-const INDICATOR_KEY_TO_CODE: Record<keyof EngineIndicators, string> = {
-  ifc: "IFC",
-  irc: "IRC",
-  pabu: "PABU",
-  icaBis: "ICA-BIS",
-  iscm: "ISCM",
-  iehh: "IEHH",
-  iae: "IAE",
-  eb: "EB",
-  FMI: "FMI",
-  FFMI: "FFMI",
-  AF: "AF",
-  IR: "IR",
-};
+// autorizacion se verifico antes en el action bajo RLS (regla 3). El mapeo indicador ->
+// codigo canonico vive en el contrato del motor (INDICATOR_KEY_TO_CODE).
 
 // La evaluacion ya tiene un diagnostico: re-propagar duplicaria registros clinicos. Se
 // rechaza; el servicio la mapea a conflicto. No deja rastro parcial.
@@ -51,6 +40,10 @@ export type PipelineWriteInput = {
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
+  // Mapas clave -> id del registry para los FK del diagnostico (opcionales: null si el
+  // registry aun no esta poblado). structural.key (STRUCT) y frSector.key (FyR).
+  phenotypeIdByKey?: Record<string, string>;
+  frSectorIdByKey?: Record<string, string>;
   actorId: string; // profiles.id: createdBy del tratamiento y actor del audit
   actorEmail: string;
   ip: string | null;
@@ -83,10 +76,12 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
         if (!definitionId) {
           throw new Error(`pipeline-writer: falta indicator_definition para el codigo ${code}`);
         }
+        const v = output.indicators[key];
         return {
           evaluationId: input.evaluationId,
           indicatorDefinitionId: definitionId,
-          value: String(output.indicators[key]),
+          // null se persiste como null (indicador no calculable): no se inventa un 0.
+          value: v == null ? null : String(v),
           engineVersion: output.versions.engine,
           surveyVersionId: input.surveyVersionId,
           modelVersionId: input.modelVersionId,
@@ -101,8 +96,12 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       .insert(diagnoses)
       .values({
         evaluationId: input.evaluationId,
-        efrStateNumber: output.efrState.number,
-        diagnosisName: output.efrState.diagnostico,
+        efrStateNumber: output.efrPhenotype.stateNumber,
+        // FK al fenotipo estructural (9) y sector FyR (9) del registry, resueltos por
+        // clave. null si el registry aun no los tiene poblados (best-effort).
+        phenotypeId: input.phenotypeIdByKey?.[output.structural.key] ?? null,
+        frSectorId: input.frSectorIdByKey?.[output.frSector.key] ?? null,
+        diagnosisName: output.efrPhenotype.diagnostico,
         engineVersion: output.versions.engine,
         modelVersionId: input.modelVersionId,
         rulesVersion: output.versions.rules,
@@ -114,7 +113,12 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       actorEmail: input.actorEmail,
       entityType: "diagnosis",
       entityId: diagnosis.id,
-      payload: { evaluation_id: input.evaluationId, efr_state_number: output.efrState.number },
+      payload: {
+        evaluation_id: input.evaluationId,
+        efr_state_number: output.efrPhenotype.stateNumber,
+        efr_key: output.efrPhenotype.key,
+        dfi_complete: output.dfi.complete,
+      },
       ip: input.ip,
     });
 
@@ -123,10 +127,10 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       .insert(treatments)
       .values({ diagnosisId: diagnosis.id, createdBy: input.actorId })
       .returning({ id: treatments.id });
-    if (output.protocol.resumenClinico) {
+    if (output.resumenClinico) {
       await tx.insert(treatmentDietGuidelines).values({
         treatmentId: treatment.id,
-        guidelineText: output.protocol.resumenClinico,
+        guidelineText: output.resumenClinico,
       });
     }
     await recordAudit(tx, {

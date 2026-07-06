@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { BIODY_COLUMNS } from "@/clinical-engine";
 import {
   buildEngineInput,
   computeAge,
   normalizeSex,
-  PROVISIONAL_BIS_MAP,
+  PROVISIONAL_FIELD_TO_B8HEADER,
 } from "@/modules/clinical-pipeline/services/build-engine-input";
 
 const NOW = new Date("2026-06-22T00:00:00Z");
@@ -34,33 +35,38 @@ describe("normalizeSex", () => {
 });
 
 describe("buildEngineInput", () => {
-  const model = { version: "ANI-BIS-E placeholder", rulesVersion: "placeholder" };
+  const model = { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" };
 
-  it("arma el input: sexo, edad, survey y modelo; mapea BIS provisional", () => {
+  it("arma el input y reconstruye la fila con headers EXACTOS del Biody", () => {
     const raw = {
       sex: "Female",
       birthDate: "2000-06-22",
       surveyAnswers: { q1: "a", q2: "b" },
-      bisRaw: { [PROVISIONAL_BIS_MAP.peso]: 70, [PROVISIONAL_BIS_MAP.AF]: 6.2 },
+      bisRaw: {
+        [PROVISIONAL_FIELD_TO_B8HEADER.peso]: 70,
+        [PROVISIONAL_FIELD_TO_B8HEADER.AF]: 6.2,
+      },
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.sexo).toBe("F");
     expect(input.edad).toBe(26);
     expect(input.survey).toEqual({ q1: "a", q2: "b" });
     expect(input.model).toEqual(model);
-    expect(input.bis.peso).toBe(70);
-    expect(input.bis.AF).toBe(6.2);
-    // un campo sin candidato en bisRaw queda en 0 (provisional)
-    expect(input.bis.Re).toBe(0);
+    // bisRow indexado por el header EXACTO del contrato de columnas.
+    expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBe(70);
+    expect(input.bisRow[BIODY_COLUMNS.AF.header]).toBe(6.2);
+    // un campo sin valor en bisRaw no entra a la fila (no se inventa).
+    expect(input.bisRow[BIODY_COLUMNS.Re.header]).toBeUndefined();
   });
 
-  it("ignora valores no finitos del mapa BIS (caen a 0)", () => {
+  it("ignora valores no finitos (no entran a bisRow)", () => {
     const raw = {
       sex: null,
       birthDate: null,
       surveyAnswers: {},
-      bisRaw: { [PROVISIONAL_BIS_MAP.peso]: Number.NaN },
+      bisRaw: { [PROVISIONAL_FIELD_TO_B8HEADER.peso]: Number.NaN },
     };
-    expect(buildEngineInput(raw, model, NOW).bis.peso).toBe(0);
+    const input = buildEngineInput(raw, model, NOW);
+    expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBeUndefined();
   });
 });

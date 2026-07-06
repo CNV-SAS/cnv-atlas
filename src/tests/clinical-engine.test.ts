@@ -1,63 +1,65 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  ENGINE_VERSION,
-  type EngineInput,
-  INDICATOR_CODES,
-  runEngine,
-} from "@/clinical-engine";
+import { ENGINE_VERSION, type EngineInput, runEngine } from "@/clinical-engine";
 
-function input(edad: number): EngineInput {
+import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+
+// Prueba de FORMA y comportamiento del motor real (engine.ts): mapeo del adaptador al
+// EngineOutput, determinismo y el flag de degradacion del DFI. La paridad numerica con
+// el HTML la cubre clinical-engine-golden.test.ts (regla 6).
+
+function input(survey: Record<string, unknown> = {}): EngineInput {
   return {
     sexo: "M",
-    edad,
-    bis: {
-      Re: 500, Ri: 50, Rinf: 450, C: 2,
-      FMI: 8, FFMI: 18, MCA: 30, MCA_ref: 32,
-      smmW: 0.4, ASMI: 8, AF: 6, IR: 0.8,
-      ECW: 18, ICW: 24, FFM: 60,
-      peso: 70, talla: 1.7, imc: 24,
-    },
-    survey: { d1: "a" },
-    model: { version: "ANI-BIS-E placeholder", rulesVersion: "placeholder" },
+    edad: 54,
+    bisRow: biody as Record<string, unknown>,
+    survey,
+    model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
 }
 
-describe("clinical-engine stub", () => {
-  it("devuelve un EngineOutput con la forma completa del contrato", () => {
-    const out = runEngine(input(40));
+describe("clinical-engine runEngine (motor real)", () => {
+  it("produce la forma completa del EngineOutput real", () => {
+    const out = runEngine(input());
     expect(Object.keys(out.indicators)).toHaveLength(12);
-    expect(Object.keys(out.classifications).sort()).toEqual([...INDICATOR_CODES].sort());
-    expect(out.fenotipo.id).toBeTruthy();
-    expect(out.sectorFR.id).toBeTruthy();
-    expect(out.estadoPBI.id).toBeTruthy();
-    expect(out.estadoEIEC.nombre).toBeTruthy();
-    expect(Array.isArray(out.alerts)).toBe(true);
-    expect(out.protocol).toBeDefined();
+    expect(out.efrPhenotype.key).toBe("N_N_N_A");
+    expect(out.efrPhenotype.stateNumber).toBe(42); // N_N_N_A -> bandas (2,2,2,3)
+    expect(out.structural.nombre).toBeTruthy();
+    expect(out.frSector.nombre).toBeTruthy();
+    expect(out.nutraceuticos).toBeTruthy();
+    expect(out.resumenClinico).toContain("N_N_N_A");
   });
 
-  it("es determinista: el mismo input produce el mismo output", () => {
-    expect(runEngine(input(40))).toEqual(runEngine(input(40)));
+  it("determinista: mismo input produce el mismo output", () => {
+    expect(runEngine(input())).toEqual(runEngine(input()));
   });
 
-  it("echa la version del motor y la del modelo en versions", () => {
-    const out = runEngine(input(40));
+  it("echa la version del motor (ya no stub) y la del modelo", () => {
+    const out = runEngine(input());
     expect(out.versions.engine).toBe(ENGINE_VERSION);
-    expect(out.versions.engine.startsWith("stub-")).toBe(true);
-    expect(out.versions.model).toBe("ANI-BIS-E placeholder");
-    expect(out.versions.rules).toBe("placeholder");
+    expect(out.versions.engine.startsWith("stub-")).toBe(false);
+    expect(out.versions.model).toBe("ANI-BIS-E 1.0");
+    expect(out.versions.rules).toBe("1.0");
   });
 
-  it("es sensible al input: edades distintas dan indicadores distintos", () => {
-    // Necesario para que los tests de propagacion detecten mezclas entre evaluaciones.
-    expect(runEngine(input(30)).indicators.ifc).not.toBe(runEngine(input(50)).indicators.ifc);
+  it("marca el DFI DEGRADADO sin encuesta (EB/IAE null, flag explicito)", () => {
+    const out = runEngine(input({}));
+    expect(out.dfi.complete).toBe(false);
+    expect(out.dfi.degradedReason).toBeTruthy();
+    expect(out.dfi.le8Total).toBeNull();
+    expect(out.indicators.eb).toBeNull();
+    expect(out.indicators.iae).toBeNull();
+  });
+
+  it("marca el DFI COMPLETO cuando hay datos de encuesta", () => {
+    const out = runEngine(input({ d1_9: "3", d3_23: "5", d3_24: "Más de 60 min" }));
+    expect(out.dfi.complete).toBe(true);
+    expect(out.dfi.degradedReason).toBeNull();
+    expect(out.dfi.le8Total).not.toBeNull();
   });
 
   it("el estado EFR cae en el rango 1..81", () => {
-    for (const edad of [0, 18, 40, 80, 120]) {
-      const n = runEngine(input(edad)).efrState.number;
-      expect(n).toBeGreaterThanOrEqual(1);
-      expect(n).toBeLessThanOrEqual(81);
-    }
+    expect(runEngine(input()).efrPhenotype.stateNumber).toBeGreaterThanOrEqual(1);
+    expect(runEngine(input()).efrPhenotype.stateNumber).toBeLessThanOrEqual(81);
   });
 });

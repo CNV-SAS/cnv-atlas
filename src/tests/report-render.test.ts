@@ -3,19 +3,17 @@ import { describe, expect, it } from "vitest";
 import { type EngineInput, runEngine } from "@/clinical-engine";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
+import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+
 function sampleSnapshot() {
+  // Fila cruda real (anonimizada) del Biody: pasa la puerta dura del motor. Sin encuesta
+  // el DFI corre degradado (el output lo marca), lo cual el PDF debe renderizar bien.
   const input: EngineInput = {
-    sexo: "F",
-    edad: 42,
-    bis: {
-      Re: 500, Ri: 50, Rinf: 450, C: 2,
-      FMI: 8, FFMI: 18, MCA: 30, MCA_ref: 32,
-      smmW: 0.4, ASMI: 8, AF: 6, IR: 0.8,
-      ECW: 18, ICW: 24, FFM: 60,
-      peso: 70, talla: 1.7, imc: 24,
-    },
+    sexo: "M",
+    edad: 54,
+    bisRow: biody as Record<string, unknown>,
     survey: {},
-    model: { version: "ANI-BIS-E placeholder", rulesVersion: "placeholder" },
+    model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
   return runEngine(input);
 }

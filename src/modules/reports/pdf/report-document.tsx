@@ -67,12 +67,12 @@ const styles = StyleSheet.create({
   },
 });
 
-function isStub(engine: string): boolean {
-  return engine.startsWith("stub-");
+function fmt(v: number | null): string {
+  return v == null ? "—" : String(v);
 }
 
 export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; meta: ReportMeta }) {
-  const { indicators, efrState, protocol, fenotipo, sectorFR, estadoPBI, estadoEIEC, versions } =
+  const { indicators, efrPhenotype, structural, frSector, dfi, nutraceuticos, versions } =
     snapshot;
   return (
     <Document
@@ -98,11 +98,11 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
           </View>
         </View>
 
-        {isStub(versions.engine) ? (
+        {!dfi.complete ? (
           <Text style={styles.notice}>
-            Resultado preliminar generado con el motor en modo de prueba (stub). El
-            contenido clinico definitivo se emite con el modelo validado; no usar para
-            decisiones clinicas.
+            Diagnostico funcional integral INCOMPLETO: {dfi.degradedReason} Los indicadores
+            de composicion y el fenotipo EFR son definitivos; los dominios de estilo de
+            vida, la edad biologica (EB/IAE) y las rutas dependen de la encuesta.
           </Text>
         ) : null}
 
@@ -111,30 +111,44 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
           {INDICATOR_LABELS.map(({ key, label }) => (
             <View key={key} style={styles.tableRow}>
               <Text style={styles.cellLabel}>{label}</Text>
-              <Text style={styles.cellValue}>{String(indicators[key])}</Text>
+              <Text style={styles.cellValue}>{fmt(indicators[key])}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Diagnostico funcional</Text>
+          <Text style={styles.sectionTitle}>Diagnostico funcional (EFR)</Text>
           <Text style={styles.para}>
-            <Text style={styles.bold}>Estado EFR {efrState.number}: </Text>
-            {efrState.diagnostico}
+            <Text style={styles.bold}>
+              Estado EFR {efrPhenotype.stateNumber} ({efrPhenotype.key}):{" "}
+            </Text>
+            {efrPhenotype.diagnostico}
           </Text>
-          <Text style={styles.para}>Fenotipo: {fenotipo.nombre}</Text>
-          <Text style={styles.para}>Sector funcional: {sectorFR.nombre}</Text>
-          <Text style={styles.para}>Estado PBI: {estadoPBI.nombre}</Text>
-          <Text style={styles.para}>Equilibrio hidrico: {estadoEIEC.nombre}</Text>
+          <Text style={styles.para}>Fenotipo estructural: {structural.nombre}</Text>
+          <Text style={styles.para}>Sector funcional (FyR): {frSector.nombre}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Protocolo</Text>
-          <Text style={styles.para}>Estrategia: {protocol.estrategia}</Text>
-          <Text style={styles.para}>
-            Proteina: {String(protocol.protMin)} a {String(protocol.protMax)} g/kg
+          <Text style={styles.sectionTitle}>
+            Diagnostico funcional integral (DFI){dfi.complete ? "" : " — incompleto"}
           </Text>
-          <Text style={styles.para}>{protocol.resumenClinico}</Text>
+          <Text style={styles.para}>
+            <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
+            (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
+          </Text>
+          {dfi.domains.map((d) => (
+            <Text key={d.id} style={styles.para}>
+              {d.nombre} (sev {String(d.sev)}): {d.lectura}
+            </Text>
+          ))}
+          <Text style={styles.para}>
+            Rutas de atencion: {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recomendacion de nutraceuticos</Text>
+          <Text style={styles.para}>{nutraceuticos}</Text>
         </View>
 
         <Text style={styles.footer} fixed>

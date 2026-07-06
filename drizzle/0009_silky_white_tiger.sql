@@ -1,0 +1,1 @@
+ALTER TABLE "indicator_values" ALTER COLUMN "value" DROP NOT NULL;

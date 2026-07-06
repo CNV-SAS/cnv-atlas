@@ -19,7 +19,10 @@ export const indicatorValues = pgTable(
     indicatorDefinitionId: uuid("indicator_definition_id")
       .notNull()
       .references(() => indicatorDefinitions.id),
-    value: numeric("value").notNull(),
+    // Nullable (B11): el motor real devuelve null para indicadores no calculables con
+    // los insumos presentes (EB/IAE sin encuesta; ISCM/IEHH sin insumos secundarios).
+    // No se inventan valores; el registro conserva su constelacion de versiones (regla 7).
+    value: numeric("value"),
     classification: indicatorClassification("classification"),
     // Constelacion de versiones:
     engineVersion: text("engine_version").notNull(),
