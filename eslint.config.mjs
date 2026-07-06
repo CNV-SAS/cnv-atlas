@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Material de referencia local (gitignored): HTML/motor de Gildardo y
+    // muestras. No es codigo de la app; no debe romper el lint del proyecto.
+    "reference/**",
   ]),
 ]);
 
