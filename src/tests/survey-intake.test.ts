@@ -89,7 +89,7 @@ describe("submitSurveyIntake", () => {
       "internacional_ia",
     ]);
     // sella version y hash canonicos vigentes
-    expect(call.consents[0].consentVersion).toBe("1.2");
+    expect(call.consents[0].consentVersion).toBe("1.5");
     expect(call.consents[0].documentHash).toHaveLength(64);
   });
 

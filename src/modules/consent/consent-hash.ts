@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { CONSENT_TEXT_V1_2, CONSENT_VERSION } from "./text/consent-v1.2";
+import { CONSENT_TEXT_V1_5, CONSENT_VERSION } from "./text/consent-v1.5";
 
 // Calculo reproducible de patient_consents.document_hash (regla C1 de DELTA.md).
 //
@@ -25,9 +25,9 @@ export function computeConsentHash(text: string): string {
   return createHash("sha256").update(normalizeConsentText(text), "utf8").digest("hex");
 }
 
-// Hash vigente del consentimiento v1.2. Se computa desde el texto canonico, no se
+// Hash vigente del consentimiento v1.5. Se computa desde el texto canonico, no se
 // fija como literal: el test ancla el valor esperado para que cualquier cambio del
 // texto rompa la prueba (protege la trazabilidad legal).
-export const CONSENT_DOCUMENT_HASH = computeConsentHash(CONSENT_TEXT_V1_2);
+export const CONSENT_DOCUMENT_HASH = computeConsentHash(CONSENT_TEXT_V1_5);
 
 export { CONSENT_VERSION };

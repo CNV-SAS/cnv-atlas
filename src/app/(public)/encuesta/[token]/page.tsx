@@ -3,7 +3,7 @@ import Image from "next/image";
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import { resolveSurveyLinkByToken } from "@/modules/evaluations/data/survey-links-reader";
-import { CONSENT_TEXT_V1_2 } from "@/modules/consent/text/consent-v1.2";
+import { CONSENT_TEXT_V1_5 } from "@/modules/consent/text/consent-v1.5";
 
 export const metadata = { title: "Encuesta - Atlas" };
 
@@ -87,7 +87,7 @@ export default async function EncuestaPage({
         isFollowup={link.type === "seguimiento"}
         prefill={link.prefill}
         questions={survey.questions}
-        consentText={CONSENT_TEXT_V1_2}
+        consentText={CONSENT_TEXT_V1_5}
       />
     </Shell>
   );
