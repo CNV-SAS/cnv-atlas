@@ -1,6 +1,6 @@
 # DATA_GOVERNANCE.md — Gobernanza del dato en Atlas (CNV)
 
-**Versión:** 1.0
+**Versión:** 1.1
 **Estado:** Base operativa aprobada internamente. Los puntos marcados PENDIENTE JURÍDICO requieren validación final del asesor legal de CNV antes del lanzamiento en producción. El documento es la fuente de verdad de gobernanza; los cambios se registran en el Registro de Decisiones al final.
 **Relación:** `SECURITY.md` cubre los controles técnicos de protección (RLS, cifrado, secretos, rate limiting). Este documento cubre el ciclo de vida y la gobernanza del dato (clasificación, base legal, consentimiento, seudonimización, retención, derechos del titular, sub-encargados). Donde se solapan, este remite a `SECURITY.md`.
 
@@ -45,7 +45,7 @@ Esta arquitectura fue definida deliberadamente para que CNV no quede configurada
 
 ### Capa secundaria (investigación, mejora del modelo, control de calidad, analítica)
 - **Responsable del Tratamiento:** CNV, de forma autónoma, con base en la autorización que el paciente otorga directamente a CNV en el consentimiento de ATLAS (casilla opcional).
-- Investigación con datos identificables/seudonimizados: requiere la casilla opt-in del paciente.
+- Investigación con datos **seudonimizados** (nunca identificables): requiere la casilla opt-in del paciente.
 - Estadística anonimizada: no requiere consentimiento adicional (ya no es dato personal); se informa como finalidad en las casillas necesarias.
 
 ### Datos del Integrante CNV (profesional)
@@ -83,7 +83,7 @@ Cada campo se clasifica en `survey_questions.data_class`. La clasificación mane
 
 ## Consentimiento (estructura y técnica)
 
-> El texto del consentimiento y la regla de cálculo del `document_hash` viven en `docs/CONSENT_ATLAS.md`, que es la fuente de verdad. Aquí se describen la estructura y la técnica de registro.
+**Consentimiento de ATLAS:** término estándar usado en toda la documentación de CNV (contractual y técnica) para referirse al texto de consentimiento informado vigente en cada momento, presentado al paciente dentro de la plataforma Atlas antes de cada evaluación, mediante el cual otorga las autorizaciones descritas en esta sección. La fuente de verdad de su texto es el archivo `CONSENT_ATLAS.md` del repositorio.
 
 ### Arquitectura del consentimiento de ATLAS
 El consentimiento opera por capas y se presenta antes de la encuesta. El texto completo está disponible (expandible), con casillas que el usuario marca activamente (no pre-marcadas).
@@ -94,13 +94,13 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 3. Informado sobre tratamiento internacional (EE. UU. y Francia) y uso de sistemas automatizados (IA).
 
 **Autorizaciones opcionales** (la atención no depende de ellas):
-4. Uso de datos identificables/seudonimizados para investigación científica del modelo (Observatorio Latinoamericano de Bioimpedancia).
+4. Uso de datos **seudonimizados** (nunca identificables) para investigación científica del modelo (Observatorio Latinoamericano de Bioimpedancia).
 5. Comunicaciones de continuidad de atención dentro de la red CNV.
 6. Comunicaciones comerciales sobre servicios y novedades del ecosistema CNV.
 
 ### Técnica de registro
 - Un registro en `patient_consents` por cada tipo de autorización otorgada.
-- Campos: `consent_type`, `consent_version`, `document_hash` (ver la regla de cálculo del hash en `CONSENT_ATLAS.md`), `signed_at` (timestamp inmutable).
+- Campos: `consent_type`, `consent_version`, `document_hash` (hash del texto exacto), `signed_at` (timestamp inmutable).
 - PENDIENTE DE IMPLEMENTACIÓN: agregar campo `revoked_at` (o equivalente) para registrar la revocación de cada autorización.
 - Ningún paciente entra al flujo sin las autorizaciones necesarias (1–3) registradas.
 
@@ -117,12 +117,22 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 
 **Investigación interna (CNV Research / ObBIA):** trabajan sobre data seudonimizada bajo gobernanza y consentimiento (pueden usar un `research_id` estable para análisis longitudinal, sin ruta de vuelta a la persona).
 
+**Alcance limitado a datos estructurados.** La capa de investigación accede únicamente a datos clínicos y funcionales **estructurados**: mediciones de bioimpedancia, indicadores calculados, respuestas de la encuesta, protocolo de tratamiento aplicado y resultados de seguimiento. **No incluye** el contenido narrativo u observaciones clínicas en texto libre registradas por el profesional, salvo que exista una autorización adicional, específica y expresa del titular para dicho fin. Nunca incluye identificadores directos.
+
 **Investigación externa / publicación:** anonimización real:
 - Quitar identificadores directos, **más**
 - Tratar cuasi-identificadores: generalizar (región, no ciudad; rango etario, no fecha exacta), agregar, aplicar k-anonimato.
 - **Estándar de anonimización (PENDIENTE JURÍDICO para ratificación):** k-anonimato con k ≥ 5 para compartición externa; l-diversidad para atributos sensibles. Documentado aquí; ratificación jurídica antes de primer export externo.
 
 Los exports de investigación se gobiernan vía `research_datasets` y nunca incluyen identificadores directos.
+
+---
+
+## Custodia de la historia clínica
+
+La obligación legal de conservar la historia clínica por el término de quince (15) años (Resoluciones 1995/1999 y 839/2017) corresponde al **Integrante** (profesional de salud), como Responsable y custodio de dicha información. **CNV no tiene esa obligación legal**; su rol es exclusivamente técnico: aloja y conserva la historia clínica en Atlas en su calidad de Encargado del tratamiento, mientras dure la vinculación contractual del Integrante con CNV, en apoyo del cumplimiento de esa obligación por parte del profesional.
+
+Al terminar la relación contractual, la custodia se transfiere al Integrante mediante la exportación de las historias clínicas en formato interoperable (PDF + JSON/CSV estructurado), dentro de los diez (10) días hábiles siguientes a la terminación, conforme al Anexo 3 (Cláusula de conservación y supresión) y al Anexo de Licencia de ATLAS. CNV conserva, después de esa exportación, únicamente los datos anonimizados y los derivados no personales.
 
 ---
 
@@ -186,7 +196,7 @@ El titular puede: conocer, actualizar, rectificar, suprimir y revocar la autoriz
 - **Canal:** `protecciondatos@cnvsystem.com`
 - **Plazos:** consultas, 10 días hábiles; reclamos, 15 días hábiles (Ley 1581).
 - **En MVP:** atención manual (Santiago, con apoyo de la Dirección Científica para lo clínico).
-- **Oficial de Protección de Datos:** Santiago Arroyave (CTO / Head de CNV Data). Designación formal en acta de junta directiva (PENDIENTE DE FORMALIZACIÓN).
+- **Oficial de Protección de Datos:** Santiago Arroyo (CTO / Head de CNV Data). Designación formal en acta de junta directiva (PENDIENTE DE FORMALIZACIÓN).
 
 ---
 
@@ -226,7 +236,7 @@ PENDIENTE JURÍDICO: ratificación del umbral k ≥ 5 y del método.
 
 ## Menores de edad
 
-El MVP restringe la operación a **personas mayores de 18 años**. El flujo de menores (autorización del representante legal, asentimiento del menor) se implementa en **v1.1 post-MVP**. El consentimiento de ATLAS incluye declaración de mayoría de edad; Atlas debe validar esto en el flujo de la encuesta.
+El MVP **soporta pacientes menores de 18 años**. El consentimiento de ATLAS incluye el bloque de representante legal (identificación, parentesco o calidad) y, para pacientes entre 14 y 17 años, el asentimiento del propio menor (ver Consentimiento de ATLAS, sección 11). **Pendiente técnico:** Atlas debe validar la fecha de nacimiento en el flujo de la encuesta para activar automáticamente este bloque en lugar de la declaración de mayoría de edad, y registrar los campos adicionales (`legal_representative_name`, `legal_representative_document`, `legal_representative_relationship`) en `patient_consents` o tabla relacionada.
 
 ---
 
@@ -235,6 +245,12 @@ El MVP restringe la operación a **personas mayores de 18 años**. El flujo de m
 1. **Falta campo `revoked_at`** (o equivalente `status`) para registrar la revocación de cada autorización. Añadir en B1 (esquema y RLS).
 2. **Convención de `consent_type`:** un registro por tipo de autorización (`servicio`, `datos_sensibles`, `internacional_ia`, `investigacion`, `comunicaciones_continuidad`, `comunicaciones_comerciales`).
 3. **Tabla `devices`:** añadir columnas `brand` y `model` (el `asset_code` es agnóstico del fabricante; la marca y modelo van en campos separados).
+
+---
+
+## Formato y control documental
+
+Los documentos de gobernanza y consentimiento de CNV tienen una **fuente de verdad única en formato Markdown** (`.md`), versionada en el repositorio de Atlas: `DATA_GOVERNANCE.md` (este documento) y `CONSENT_ATLAS.md`. Cualquier copia en Word o PDF de estos documentos (usada para revisión del asesor jurídico, presentación a la Junta, o auditorías) es una **copia de trabajo derivada**, no una versión independiente. Cuando el asesor jurídico aprueba cambios sobre una copia de trabajo, dichos cambios deben reflejarse de vuelta en el `.md` correspondiente antes de considerarse vigentes. Nunca deben coexistir dos versiones "oficiales" divergentes del mismo documento en distinto formato.
 
 ---
 
@@ -275,3 +291,6 @@ El MVP restringe la operación a **personas mayores de 18 años**. El flujo de m
 | 10 | 2026-06 | **Consentimiento por capas:** autorizaciones necesarias separadas de opcionales. Datos sensibles: facultativos (art. 6 Ley 1581). | Validez del consentimiento libre; exigencia legal expresa. |
 | 11 | 2026-06 | **Comodato y contratos con profesionales: en pausa** hasta resolución jurídica del estatus de importación del Biody BIS. | Equipos sin declaración de importación; revisión con asesor jurídico en curso. |
 | 12 | 2026-06 | **Speech CNV:** operar bajo finalidad no médica alineada con el fabricante (composición corporal / bienestar funcional), asumiendo riesgo residual del discurso de analítica/ciencia. Ajuste de web pendiente. | Decisión de junta/equipo CNV. |
+| 13 | 2026-07 | **Investigación restringida a datos seudonimizados** (nunca identificables) y acotada a datos clínicos/funcionales estructurados, excluyendo notas en texto libre del profesional salvo autorización adicional. | Minimización (Ley 1581); coherencia con Anexo 3 v1.5 y Consentimiento v1.4. |
+| 14 | 2026-07 | **Custodia de HC:** obligación legal es del Integrante; CNV solo aloja como Encargado mientras dura el contrato, con portabilidad garantizada a la terminación. | Evita que CNV fuerce al Integrante a incumplir su deber de custodia (Res. 1995/839). |
+| 15 | 2026-07 | **MVP soporta pacientes menores de edad** mediante bloque de representante legal (con asentimiento 14-17 años) en el Consentimiento de ATLAS. Revierte la decisión anterior de diferir a v1.1 post-MVP. | Diferirlo generaba mayor riesgo acumulado que implementarlo desde el MVP. |
