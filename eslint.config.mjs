@@ -15,6 +15,10 @@ const eslintConfig = defineConfig([
     // Material de referencia local (gitignored): HTML/motor de Gildardo y
     // muestras. No es codigo de la app; no debe romper el lint del proyecto.
     "reference/**",
+    // Ciencia clinica CONGELADA (verbatim del prototipo de Gildardo): excepcion
+    // nombrada a la regla 12 (ARCHITECTURE.md). No se estiliza ni se edita; su
+    // correccion la prueban los golden tests, no el lint.
+    "src/clinical-engine/frozen/**",
   ]),
 ]);
 

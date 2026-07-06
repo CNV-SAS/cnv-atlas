@@ -140,16 +140,24 @@ atlas/
 
 Joya de la corona, con el límite más estricto del proyecto.
 
-- **TypeScript puro, agnóstico del framework.** Cero imports de Next/React/Supabase. Frontera impuesta con ESLint (`no-restricted-imports`).
+- **TypeScript puro, agnóstico del framework.** Cero imports de Next/React/Supabase. Frontera impuesta con ESLint (`no-restricted-imports`). Excepción nombrada abajo para la ciencia congelada.
 - **Server-side exclusivo.** Consumido por los services; nunca al cliente.
 - **Versionado.** Versión interna del motor; todo registro clínico persiste su constelación de versiones.
 - **Extraíble.** Sin dependencias de la app, levantarlo a `packages/clinical-engine/` después cuesta casi nada.
 
+### Excepción nombrada a la regla dura 12: ciencia congelada en JavaScript
+
+**Qué.** Los tres archivos de ciencia del motor (`src/clinical-engine/frozen/engine.core.js`, `engine.indices.js`, `engine.dfi.js`) viven como **JavaScript CommonJS**, no como TypeScript. Es una excepción FORMAL y PERMANENTE a la regla dura 12 ("es TypeScript puro"), aprobada por Santiago (B11, 2026-07-06).
+
+**Por qué.** Son extractos *verbatim* (byte a byte) del prototipo final de Gildardo (`ATLAS_v7.html`). La fidelidad matemática (regla dura 6) manda sobre el estilo: convertirlos a TS los editaría, rompería la paridad exacta con el HTML y complicaría el reemplazo limpio cuando Gildardo entregue una versión nueva. Nunca se convierten a TS ni se editan a mano; cualquier cambio a la ciencia lo entrega Gildardo como un `.js` nuevo.
+
+**Alcance y salvaguardas.** La excepción cubre SOLO esos tres archivos, aislados en `frozen/`. Se auditó en B11 que son puros (sin imports de framework/app, sin I/O, sin red, sin secretos, deterministas: sin `Date`/`Math.random`). Están excluidos de ESLint (son verbatim, no se estilizan) y tipados con `.d.ts` hermanos. Todo lo demás del motor (el adaptador, el borde `edge/`, el contrato y los tipos) es TypeScript normal y envuelve a la ciencia congelada; la app nunca importa los `.js` directamente. Los golden tests prueban la paridad; el lint no aplica a la ciencia.
+
 ### Estrategia de migración (golden master)
 1. **Inventario del HTML** (al recibir la entrega final): funciones de cálculo, qué consumen, dónde y cómo está la Diana.
 2. **Capturar valores oro:** ejecutar las funciones del HTML *tal cual* contra cientos/miles de inputs. El código viejo decide la respuesta, no el agente.
-3. **Portar a TS** dentro de `clinical-engine`.
-4. **Test:** `output_TS == valor_oro` hasta el decimal que defina Gildardo.
+3. **Portar** dentro de `clinical-engine`: la ciencia congelada entra verbatim como `.js` en `frozen/` (ver excepción a la regla 12); el adaptador y el borde son TS.
+4. **Test:** `output_motor == valor_oro` hasta el decimal que defina Gildardo (tolerancia 1e-3).
 
 **Guardarraíles:** los golden tests prueban *port == HTML*, no *HTML == clínicamente correcto* (esto lo firma Gildardo sobre una muestra). **Motor y encuesta congelados** hasta la entrega final.
 
