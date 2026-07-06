@@ -1,0 +1,23 @@
+{
+  "_meta": "FIXTURE SINTÉTICO para golden del DFI — respuestas de ejemplo (NO paciente real). Revisar coherencia clínica con Gildardo. Perfil: hombre 54a, IMC 27.5, sobrepeso leve, sedentario moderado, sin TCA, 1 antecedente familiar.",
+  "sexo": "M",
+  "edad": 54.628,
+  "d1_9": 2,
+  "d1_10": 1,
+  "d1_16": 6,
+  "d2_19": "Sobrepeso",
+  "d2_20": "Insatisfecho/a",
+  "d2_21": [],
+  "d2_22": "Rara vez",
+  "d3_23": 2,
+  "d3_24": "30–45 min",
+  "d3_26": "6–7 horas",
+  "d3_29": 5,
+  "d3_30": "Nunca he fumado",
+  "d3_31": "Ocasional",
+  "d5_36": "No",
+  "d5_38": ["Diabetes tipo 2"],
+  "d5_39": [],
+  "d8_61": "Sí, siempre",
+  "d8_62": "No, nunca"
+}

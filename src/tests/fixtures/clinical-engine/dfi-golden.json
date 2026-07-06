@@ -1,0 +1,35 @@
+{
+ "le8": 80,
+ "EB": 29.9,
+ "IAE": -24.7,
+ "dominios": [
+  {
+   "id": "d1",
+   "sev": 2
+  },
+  {
+   "id": "d2",
+   "sev": 0
+  },
+  {
+   "id": "d3",
+   "sev": 0
+  },
+  {
+   "id": "d4",
+   "sev": 1
+  },
+  {
+   "id": "d5",
+   "sev": 0
+  }
+ ],
+ "riesgo": {
+  "l": "MEDIO",
+  "score": 25
+ },
+ "veto": false,
+ "rutas": [
+  "R1 · Restauración Celular"
+ ]
+}
