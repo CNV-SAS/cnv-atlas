@@ -1863,6 +1863,7 @@ export type Database = {
           order_index: number
           question_text: string
           question_type: string
+          section: string | null
           survey_version_id: string
           used_in_diagnosis: boolean
         }
@@ -1873,6 +1874,7 @@ export type Database = {
           order_index: number
           question_text: string
           question_type: string
+          section?: string | null
           survey_version_id: string
           used_in_diagnosis?: boolean
         }
@@ -1883,6 +1885,7 @@ export type Database = {
           order_index?: number
           question_text?: string
           question_type?: string
+          section?: string | null
           survey_version_id?: string
           used_in_diagnosis?: boolean
         }

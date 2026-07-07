@@ -11,6 +11,7 @@ export type SurveyQuestionView = {
   id: string;
   text: string;
   type: string; // texto, numero, opcion, opcion_multiple
+  section: string | null; // dominio para agrupar en el intake (B7.1)
   options: SurveyOptionView[];
 };
 export type ActiveSurvey = {
@@ -34,7 +35,7 @@ export async function getActiveSurvey(): Promise<ActiveSurvey | null> {
 
   const { data: questions, error: qErr } = await supabase
     .from("survey_questions")
-    .select("id, question_text, question_type, order_index, survey_options(id, option_text, order_index)")
+    .select("id, question_text, question_type, section, order_index, survey_options(id, option_text, order_index)")
     .eq("survey_version_id", version.id)
     .order("order_index", { ascending: true });
   if (qErr) throw new Error(`survey-reader: questions: ${qErr.message}`);
@@ -45,6 +46,7 @@ export async function getActiveSurvey(): Promise<ActiveSurvey | null> {
       id: q.id,
       text: q.question_text,
       type: q.question_type,
+      section: q.section,
       options: [...(q.survey_options ?? [])]
         .sort((a, b) => a.order_index - b.order_index)
         .map((o) => ({ id: o.id, text: o.option_text })),

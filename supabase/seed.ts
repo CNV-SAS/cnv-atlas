@@ -111,6 +111,24 @@ type SurveyQ = {
   engine?: boolean; // el motor lo lee -> field_key = key
 };
 
+// Dominio (D1-D8) por prefijo del d-field, para agrupar visualmente el intake (B7.1).
+// Etiquetas orientadas al paciente, sin jerga (nada de "LE8"), tuteo, sin em-dash.
+const SECTION_LABELS: Record<string, string> = {
+  d1: "Alimentación",
+  d2: "Percepción corporal",
+  d3: "Hábitos",
+  d4: "Conductas alimentarias",
+  d5: "Antecedentes y estilo de vida",
+  d6: "Alergias y digestión",
+  d7: "Hidratación",
+  d8: "Contexto social",
+};
+// Deriva la seccion del d-field (d1_1_i, d1f_sal_i, d7_agua -> d1/d1/d7).
+function sectionFor(key: string): string {
+  const m = /^d(\d)/.exec(key);
+  return m ? (SECTION_LABELS[`d${m[1]}`] ?? "Otras") : "Otras";
+}
+
 // Escala de frecuencia de consumo (D1, indice 0-4 en el prototipo).
 const FREQ_OPC = ["Nunca", "1–2 días", "3–4 días", "5–6 días", "Todos los días"];
 // Severidad de sintomas digestivos (D6, items 45-51).
@@ -382,6 +400,7 @@ async function main() {
     question_text: q.text,
     question_type: q.type,
     field_key: q.engine ? q.key : null,
+    section: sectionFor(q.key),
     order_index: i + 1,
     data_class: "clinical" as const, // toda respuesta de salud es dato clinico
     used_in_diagnosis: !!q.engine,

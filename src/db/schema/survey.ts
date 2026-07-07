@@ -58,6 +58,10 @@ export const surveyQuestions = pgTable(
     // encuesta (instrumento clinico completo) queda en null. Las cadenas de opcion
     // deben coincidir CARACTER por caracter con lo que espera el motor congelado.
     fieldKey: text("field_key"),
+    // Dominio de la encuesta (D1-D8) al que pertenece, para agrupar visualmente en el
+    // intake (B7.1). Etiqueta orientada al paciente, sin jerga. Nullable por si una
+    // pregunta no cae en un dominio; el intake la agrupa en "Otras" en ese caso.
+    section: text("section"),
     orderIndex: integer("order_index").notNull(),
     dataClass: fieldDataClass("data_class").notNull(), // clasificacion de 3 niveles
     usedInDiagnosis: boolean("used_in_diagnosis").notNull().default(false),
