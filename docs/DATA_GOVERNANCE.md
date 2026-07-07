@@ -20,6 +20,8 @@ Estas reglas aplican a Atlas, contratos, consentimientos, web, diplomado y marke
 - **"Encuesta de determinantes y factores epigenéticos"** — no "prueba epigenética" ni "análisis genético" (el MVP solo recoge respuestas de encuesta, sin muestras ni laboratorio).
 - **Integrante CNV** (no "Profesional Conectado", no "Profesional Certificado").
 
+Reporte al paciente — vista interna vs. documento final. El motor puede asociar patrones a condiciones clínicas conocidas (ej. "síndrome metabólico", "DM2") como apoyo al criterio del profesional en la vista previa interna, con el rótulo obligatorio "patrones asociados a valorar clínicamente, no constituye diagnóstico". Antes de enviar, el profesional elige qué recibe el paciente: el reporte de Atlas tal cual (con el rótulo siempre visible), sus propias notas de interpretación, o ambos. El snapshot original de Atlas nunca se edita ni se pierde; las notas del profesional se almacenan por separado como una capa adicional, no como reemplazo del registro clínico. La traducción del contenido de Atlas a lenguaje funcional (sin nombrar enfermedades) para el documento del paciente es una mejora prevista en BACKLOG, pendiente de autorización y contenido de la Dirección Científica.
+
 ---
 
 ## Principios
