@@ -284,7 +284,8 @@ create table public.survey_questions (
   id uuid primary key default gen_random_uuid(),
   survey_version_id uuid not null references survey_versions(id) on delete cascade,
   question_text text not null,
-  question_type text not null,              -- texto, numero, opcion
+  question_type text not null,              -- texto, numero, opcion, opcion_multiple
+  field_key text,                           -- d-field del motor (d5_39, d3_24...); nullable: solo las preguntas que alimentan el motor. Puente questionId->variable de calcLE8/DFI. Las opciones deben coincidir caracter por caracter con lo que lee el motor congelado.
   order_index int not null,
   data_class field_data_class not null,     -- clasificacion de 3 niveles
   used_in_diagnosis boolean not null default false,

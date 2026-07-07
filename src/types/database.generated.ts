@@ -1858,6 +1858,7 @@ export type Database = {
       survey_questions: {
         Row: {
           data_class: Database["public"]["Enums"]["field_data_class"]
+          field_key: string | null
           id: string
           order_index: number
           question_text: string
@@ -1867,6 +1868,7 @@ export type Database = {
         }
         Insert: {
           data_class: Database["public"]["Enums"]["field_data_class"]
+          field_key?: string | null
           id?: string
           order_index: number
           question_text: string
@@ -1876,6 +1878,7 @@ export type Database = {
         }
         Update: {
           data_class?: Database["public"]["Enums"]["field_data_class"]
+          field_key?: string | null
           id?: string
           order_index?: number
           question_text?: string

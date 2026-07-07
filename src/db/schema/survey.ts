@@ -51,7 +51,13 @@ export const surveyQuestions = pgTable(
       .notNull()
       .references(() => surveyVersions.id, { onDelete: "cascade" }),
     questionText: text("question_text").notNull(),
-    questionType: text("question_type").notNull(), // texto, numero, opcion
+    questionType: text("question_type").notNull(), // texto, numero, opcion, opcion_multiple
+    // Identificador estable del campo en el motor clinico (d-field: d5_39, d3_24...).
+    // Es el puente questionId (UUID) -> variable que leen calcLE8/computeDFIFromData.
+    // Nullable: solo las preguntas que alimentan el motor lo llevan; el resto de la
+    // encuesta (instrumento clinico completo) queda en null. Las cadenas de opcion
+    // deben coincidir CARACTER por caracter con lo que espera el motor congelado.
+    fieldKey: text("field_key"),
     orderIndex: integer("order_index").notNull(),
     dataClass: fieldDataClass("data_class").notNull(), // clasificacion de 3 niveles
     usedInDiagnosis: boolean("used_in_diagnosis").notNull().default(false),
