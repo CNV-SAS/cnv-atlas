@@ -57,7 +57,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           {report.documentLabel} · {new Date(report.createdAt).toLocaleDateString("es-CO")}
         </span>
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-3">
+      <CardContent className="flex flex-col items-start gap-3">
         <a
           href={`/reportes/${report.reportId}/pdf`}
           target="_blank"
@@ -68,18 +68,46 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         </a>
 
         {report.status === "draft" ? (
-          <form action={approve}>
+          <form action={approve} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
-            <Button type="submit" size="sm" disabled={approving}>
+            <label htmlFor={`notes-${report.reportId}`} className="text-xs text-muted-foreground">
+              Notas de interpretacion (opcional). Se congelan al aprobar.
+            </label>
+            <textarea
+              id={`notes-${report.reportId}`}
+              name="professionalNotes"
+              rows={3}
+              className="w-full rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              placeholder="Tus notas para el paciente (opcional)."
+            />
+            <Button type="submit" size="sm" disabled={approving} className="self-start">
               {approving ? "Aprobando..." : "Aprobar"}
             </Button>
           </form>
         ) : null}
 
         {report.status === "approved" ? (
-          <form action={send}>
+          <form action={send} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
-            <Button type="submit" size="sm" disabled={sending}>
+            <fieldset className="flex flex-col gap-1">
+              <legend className="text-xs text-muted-foreground">Modo de envio al paciente</legend>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="sendMode" value="atlas" defaultChecked className="accent-primary" />
+                Reporte de Atlas
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="sendMode" value="notas" className="accent-primary" />
+                Solo mis notas
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="sendMode" value="ambos" className="accent-primary" />
+                Reporte de Atlas y mis notas
+              </label>
+            </fieldset>
+            <span className="text-xs text-muted-foreground">
+              Los modos con notas requieren que las hayas escrito al aprobar.
+            </span>
+            <Button type="submit" size="sm" disabled={sending} className="self-start">
               {sending ? "Enviando..." : "Enviar al paciente"}
             </Button>
           </form>

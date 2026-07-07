@@ -33,13 +33,19 @@ export async function GET(
     return NextResponse.redirect(signed);
   }
 
-  // Preview: render del snapshot inmutable, en linea (visor del navegador).
-  const pdf = await renderReportPdf(dispatch.snapshot, {
-    patientName: dispatch.patientName || "Paciente",
-    documentLabel: dispatch.documentLabel,
-    evaluationDate: new Date(dispatch.evaluationDate).toLocaleDateString("es-CO"),
-    reportId: dispatch.reportId,
-  });
+  // Preview: render del snapshot inmutable, en linea (visor del navegador). Se muestra
+  // TODO lo disponible (modo 'ambos': reporte + notas si las hay) para que el profesional
+  // vea el contenido completo antes de elegir el modo de envio.
+  const pdf = await renderReportPdf(
+    dispatch.snapshot,
+    {
+      patientName: dispatch.patientName || "Paciente",
+      documentLabel: dispatch.documentLabel,
+      evaluationDate: new Date(dispatch.evaluationDate).toLocaleDateString("es-CO"),
+      reportId: dispatch.reportId,
+    },
+    { mode: "ambos", professionalNotes: dispatch.professionalNotes },
+  );
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

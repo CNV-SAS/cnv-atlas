@@ -6,6 +6,7 @@ import { sendReportEmail } from "@/lib/email/resend";
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
 import { markReportSent, ReportStateError } from "../data/reports-writer";
+import type { SendMode } from "../pdf/report-document";
 import { renderReportPdf } from "./render-report";
 
 // Orquesta el envio del reporte al paciente. Orden (D4, accion externa hacia afuera):
@@ -15,6 +16,7 @@ import { renderReportPdf } from "./render-report";
 
 export type SendReportInput = {
   reportId: string;
+  mode: SendMode; // que recibe el paciente: 'atlas' | 'notas' | 'ambos'
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -35,13 +37,31 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     return err(appError("validation", "El paciente no tiene un correo registrado."));
   }
 
-  // 1. Render del PDF desde el snapshot inmutable.
-  const pdf = await renderReportPdf(dispatch.snapshot, {
-    patientName: dispatch.patientName || "Paciente",
-    documentLabel: dispatch.documentLabel,
-    evaluationDate: formatDate(dispatch.evaluationDate),
-    reportId: dispatch.reportId,
-  });
+  // Validacion del modo (B10.1): si incluye las notas del profesional y no hay notas
+  // escritas, se bloquea el envio. Las notas se congelaron al aprobar; si faltan, el
+  // profesional debe enviar el reporte de Atlas o rehacer el flujo con notas.
+  const needsNotes = input.mode === "notas" || input.mode === "ambos";
+  const notes = (dispatch.professionalNotes ?? "").trim();
+  if (needsNotes && !notes) {
+    return err(
+      appError(
+        "validation",
+        "El modo elegido incluye las notas del profesional, pero el reporte no tiene notas. Elige enviar el reporte de Atlas, o vuelve a generar el reporte y escribe las notas antes de aprobar.",
+      ),
+    );
+  }
+
+  // 1. Render del PDF desde el snapshot inmutable, segun el modo elegido.
+  const pdf = await renderReportPdf(
+    dispatch.snapshot,
+    {
+      patientName: dispatch.patientName || "Paciente",
+      documentLabel: dispatch.documentLabel,
+      evaluationDate: formatDate(dispatch.evaluationDate),
+      reportId: dispatch.reportId,
+    },
+    { mode: input.mode, professionalNotes: dispatch.professionalNotes },
+  );
 
   // 2. Subida a Storage (service role). Si falla, no se envia.
   const uploaded = await uploadReportPdf(dispatch.patientId, dispatch.reportId, pdf);
@@ -62,6 +82,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     await markReportSent({
       reportId: dispatch.reportId,
       storagePath: uploaded.path,
+      sendMode: input.mode,
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,

@@ -84,9 +84,27 @@ function fmt(v: number | null): string {
   return v == null ? "Pendiente" : String(v);
 }
 
-export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; meta: ReportMeta }) {
+// Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
+// 'notas' = solo las notas del profesional; 'ambos' = los dos.
+export type SendMode = "atlas" | "notas" | "ambos";
+export const SEND_MODES: readonly SendMode[] = ["atlas", "notas", "ambos"];
+
+export function ReportDocument({
+  snapshot,
+  meta,
+  mode = "atlas",
+  professionalNotes = null,
+}: {
+  snapshot: EngineOutput;
+  meta: ReportMeta;
+  mode?: SendMode;
+  professionalNotes?: string | null;
+}) {
   const { indicators, efrPhenotype, structural, frSector, dfi, nutraceuticos, versions } =
     snapshot;
+  const notes = (professionalNotes ?? "").trim();
+  const showAtlas = mode === "atlas" || mode === "ambos";
+  const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;
   return (
     <Document
       title={`Reporte clinico ${meta.documentLabel}`}
@@ -115,7 +133,7 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
           Patrones asociados a valorar clínicamente, no constituye diagnóstico.
         </Text>
 
-        {!dfi.complete ? (
+        {showAtlas && !dfi.complete ? (
           <Text style={styles.notice}>
             Diagnostico funcional integral INCOMPLETO: {dfi.degradedReason} Los indicadores
             de composicion y el fenotipo EFR son definitivos; los dominios de estilo de
@@ -123,50 +141,62 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
           </Text>
         ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Indicadores</Text>
-          {INDICATOR_LABELS.map(({ key, label }) => (
-            <View key={key} style={styles.tableRow}>
-              <Text style={styles.cellLabel}>{label}</Text>
-              <Text style={styles.cellValue}>{fmt(indicators[key])}</Text>
+        {showAtlas ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Indicadores</Text>
+              {INDICATOR_LABELS.map(({ key, label }) => (
+                <View key={key} style={styles.tableRow}>
+                  <Text style={styles.cellLabel}>{label}</Text>
+                  <Text style={styles.cellValue}>{fmt(indicators[key])}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Diagnostico funcional (EFR)</Text>
-          <Text style={styles.para}>
-            <Text style={styles.bold}>
-              Estado EFR {efrPhenotype.stateNumber} ({efrPhenotype.key}):{" "}
-            </Text>
-            {efrPhenotype.diagnostico}
-          </Text>
-          <Text style={styles.para}>Fenotipo estructural: {structural.nombre}</Text>
-          <Text style={styles.para}>Sector funcional (FyR): {frSector.nombre}</Text>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Diagnostico funcional (EFR)</Text>
+              <Text style={styles.para}>
+                <Text style={styles.bold}>
+                  Estado EFR {efrPhenotype.stateNumber} ({efrPhenotype.key}):{" "}
+                </Text>
+                {efrPhenotype.diagnostico}
+              </Text>
+              <Text style={styles.para}>Fenotipo estructural: {structural.nombre}</Text>
+              <Text style={styles.para}>Sector funcional (FyR): {frSector.nombre}</Text>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Diagnostico funcional integral (DFI){dfi.complete ? "" : " (incompleto)"}
-          </Text>
-          <Text style={styles.para}>
-            <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
-            (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
-          </Text>
-          {dfi.domains.map((d) => (
-            <Text key={d.id} style={styles.para}>
-              {d.nombre} (sev {String(d.sev)}): {d.lectura}
-            </Text>
-          ))}
-          <Text style={styles.para}>
-            Rutas de atencion: {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
-          </Text>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Diagnostico funcional integral (DFI){dfi.complete ? "" : " (incompleto)"}
+              </Text>
+              <Text style={styles.para}>
+                <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
+                (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
+              </Text>
+              {dfi.domains.map((d) => (
+                <Text key={d.id} style={styles.para}>
+                  {d.nombre} (sev {String(d.sev)}): {d.lectura}
+                </Text>
+              ))}
+              <Text style={styles.para}>
+                Rutas de atencion:{" "}
+                {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
+              </Text>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recomendacion de nutraceuticos</Text>
-          <Text style={styles.para}>{nutraceuticos}</Text>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recomendacion de nutraceuticos</Text>
+              <Text style={styles.para}>{nutraceuticos}</Text>
+            </View>
+          </>
+        ) : null}
+
+        {showNotes ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notas del profesional</Text>
+            <Text style={styles.para}>{notes}</Text>
+          </View>
+        ) : null}
 
         <Text style={styles.footer} fixed>
           Motor {versions.engine} · Modelo {versions.model} · Reglas {versions.rules} ·

@@ -25,11 +25,20 @@ const meta = {
   reportId: "11111111-1111-1111-1111-111111111111",
 };
 
+const isPdf = (b: Buffer) =>
+  Buffer.isBuffer(b) && b.subarray(0, 5).toString("latin1") === "%PDF-" && b.length > 1000;
+
 describe("renderReportPdf", () => {
   it("genera un PDF valido (cabecera %PDF) desde el snapshot", async () => {
-    const buffer = await renderReportPdf(sampleSnapshot(), meta);
-    expect(Buffer.isBuffer(buffer)).toBe(true);
-    expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-");
-    expect(buffer.length).toBeGreaterThan(1000); // no es un PDF vacio
+    expect(isPdf(await renderReportPdf(sampleSnapshot(), meta))).toBe(true);
+  });
+
+  it("rinde en los tres modos (atlas, notas, ambos) con notas del profesional", async () => {
+    const snap = sampleSnapshot();
+    const notes = "Interpretacion del profesional para el paciente.";
+    for (const mode of ["atlas", "notas", "ambos"] as const) {
+      const buf = await renderReportPdf(snap, meta, { mode, professionalNotes: notes });
+      expect(isPdf(buf)).toBe(true);
+    }
   });
 });

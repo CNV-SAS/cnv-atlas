@@ -8,6 +8,7 @@ import { requireUser } from "@/modules/auth/session";
 
 import { getReportDispatch } from "./data/reports-repository";
 import { approveReport, ReportStateError } from "./data/reports-writer";
+import { SEND_MODES, type SendMode } from "./pdf/report-document";
 import { canManageReports } from "./policies/can-manage-reports";
 import { sendReport } from "./services/send-report";
 
@@ -38,10 +39,14 @@ export async function approveReportAction(
   const dispatch = await getReportDispatch(reportId);
   if (!dispatch) return fail("Reporte no encontrado.");
 
+  // Notas del profesional (opcionales): se escriben en draft y se congelan al aprobar.
+  const professionalNotes = (form.get("professionalNotes") as string | null)?.trim() || null;
+
   const ip = await getClientIp();
   try {
     await approveReport({
       reportId,
+      professionalNotes,
       actorId: user.id,
       actorEmail: user.email,
       ip: ip === "unknown" ? null : ip,
@@ -66,12 +71,18 @@ export async function sendReportAction(
   const reportId = reportIdOf(form);
   if (!reportId) return fail("Reporte invalido.");
 
+  // Modo de envio elegido por el profesional (mutuamente excluyente).
+  const rawMode = (form.get("sendMode") as string | null)?.trim() ?? "";
+  if (!SEND_MODES.includes(rawMode as SendMode)) return fail("Selecciona un modo de envio.");
+  const mode = rawMode as SendMode;
+
   const rl = await limitReportSendByUser(user.id);
   if (!rl.success) return fail("Has enviado demasiados reportes. Espera unos minutos.");
 
   const ip = await getClientIp();
   const result = await sendReport({
     reportId,
+    mode,
     actorId: user.id,
     actorEmail: user.email,
     ip: ip === "unknown" ? null : ip,

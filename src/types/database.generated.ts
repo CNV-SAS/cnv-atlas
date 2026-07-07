@@ -922,7 +922,7 @@ export type Database = {
           model_version_id: string
           rules_version: string
           survey_version_id: string
-          value: number
+          value: number | null
         }
         Insert: {
           classification?:
@@ -936,7 +936,7 @@ export type Database = {
           model_version_id: string
           rules_version: string
           survey_version_id: string
-          value: number
+          value?: number | null
         }
         Update: {
           classification?:
@@ -950,7 +950,7 @@ export type Database = {
           model_version_id?: string
           rules_version?: string
           survey_version_id?: string
-          value?: number
+          value?: number | null
         }
         Relationships: [
           {
@@ -1601,6 +1601,8 @@ export type Database = {
           evaluation_id: string
           id: string
           patient_id: string
+          professional_notes: string | null
+          send_mode: string | null
           sent_at: string | null
           snapshot: Json
           status: Database["public"]["Enums"]["report_status"]
@@ -1614,6 +1616,8 @@ export type Database = {
           evaluation_id: string
           id?: string
           patient_id: string
+          professional_notes?: string | null
+          send_mode?: string | null
           sent_at?: string | null
           snapshot: Json
           status?: Database["public"]["Enums"]["report_status"]
@@ -1627,6 +1631,8 @@ export type Database = {
           evaluation_id?: string
           id?: string
           patient_id?: string
+          professional_notes?: string | null
+          send_mode?: string | null
           sent_at?: string | null
           snapshot?: Json
           status?: Database["public"]["Enums"]["report_status"]

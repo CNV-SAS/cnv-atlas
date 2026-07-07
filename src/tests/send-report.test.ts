@@ -34,7 +34,9 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
     patientId: "pat-1",
     status: "approved",
     // snapshot parcial: sendReport solo se lo pasa a renderReportPdf, que esta mockeado.
-    snapshot: { versions: { engine: "stub-0.1.0" } } as unknown as ReportDispatch["snapshot"],
+    snapshot: { versions: { engine: "anibise-1.0.0" } } as unknown as ReportDispatch["snapshot"],
+    professionalNotes: null,
+    sendMode: null,
     storagePath: null,
     patientName: "Ana",
     documentLabel: "CC 1",
@@ -44,7 +46,13 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
   };
 }
 
-const input = { reportId: "rep-1", actorId: "u-1", actorEmail: "pro@cnv", ip: null };
+const input = {
+  reportId: "rep-1",
+  mode: "atlas" as const,
+  actorId: "u-1",
+  actorEmail: "pro@cnv",
+  ip: null,
+};
 
 describe("sendReport (orquestacion D4)", () => {
   beforeEach(() => {
@@ -63,11 +71,32 @@ describe("sendReport (orquestacion D4)", () => {
     const mark = vi.mocked(writer.markReportSent).mock.invocationCallOrder[0];
     expect(up).toBeLessThan(send);
     expect(send).toBeLessThan(mark);
-    // marca enviado con el path subido
+    // marca enviado con el path subido y el modo elegido (trazabilidad).
     expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({
       reportId: "rep-1",
       storagePath: "pat-1/rep-1.pdf",
+      sendMode: "atlas",
     });
+  });
+
+  it("bloquea el envio si el modo incluye notas y no hay notas escritas", async () => {
+    for (const mode of ["notas", "ambos"] as const) {
+      vi.mocked(repo.getReportDispatch).mockResolvedValue(dispatch({ professionalNotes: null }));
+      const res = await sendReport({ ...input, mode });
+      expect(res.ok).toBe(false);
+      if (res.ok) return;
+      expect(res.error.code).toBe("validation");
+      expect(storage.uploadReportPdf).not.toHaveBeenCalled();
+    }
+  });
+
+  it("permite modo 'ambos' cuando hay notas, y sella el modo", async () => {
+    vi.mocked(repo.getReportDispatch).mockResolvedValue(
+      dispatch({ professionalNotes: "Interpretacion del profesional." }),
+    );
+    const res = await sendReport({ ...input, mode: "ambos" });
+    expect(res.ok).toBe(true);
+    expect(vi.mocked(writer.markReportSent).mock.calls[0][0]).toMatchObject({ sendMode: "ambos" });
   });
 
   it("si el correo falla, NO marca enviado (reintentable)", async () => {

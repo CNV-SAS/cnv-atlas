@@ -23,6 +23,7 @@ export class ReportStateError extends Error {
 
 export type ApproveReportInput = {
   reportId: string;
+  professionalNotes: string | null; // notas del profesional; se congelan al aprobar
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -67,10 +68,17 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       ip: input.ip,
     });
 
-    // 2. Aprobar el reporte (no toca snapshot -> compatible con el trigger).
+    // 2. Aprobar el reporte + sellar las notas del profesional (no toca snapshot ->
+    //    compatible con el trigger; el UPDATE es draft->approved, asi que la escritura
+    //    de professional_notes pasa el trigger, y despues queda congelada).
     const approved = await tx
       .update(reports)
-      .set({ status: "approved", approvedBy: input.actorId, approvedAt: sql`now()` })
+      .set({
+        status: "approved",
+        approvedBy: input.actorId,
+        approvedAt: sql`now()`,
+        professionalNotes: input.professionalNotes,
+      })
       .where(and(eq(reports.id, report.id), eq(reports.status, "draft")))
       .returning({ id: reports.id });
     if (approved.length === 0) throw new ReportStateError("No se pudo aprobar el reporte.");
@@ -80,7 +88,10 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       actorEmail: input.actorEmail,
       entityType: "report",
       entityId: report.id,
-      payload: { evaluation_id: report.evaluationId },
+      payload: {
+        evaluation_id: report.evaluationId,
+        has_professional_notes: Boolean(input.professionalNotes),
+      },
       ip: input.ip,
     });
 
@@ -91,6 +102,7 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
 export type MarkReportSentInput = {
   reportId: string;
   storagePath: string;
+  sendMode: string; // 'atlas' | 'notas' | 'ambos': lo que efectivamente recibio el paciente
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -112,7 +124,12 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
     }
     const sent = await tx
       .update(reports)
-      .set({ status: "sent", sentAt: sql`now()`, storagePath: input.storagePath })
+      .set({
+        status: "sent",
+        sentAt: sql`now()`,
+        storagePath: input.storagePath,
+        sendMode: input.sendMode,
+      })
       .where(and(eq(reports.id, report.id), eq(reports.status, "approved")))
       .returning({ id: reports.id });
     if (sent.length === 0) throw new ReportStateError("No se pudo marcar el reporte como enviado.");
@@ -122,7 +139,8 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
       actorEmail: input.actorEmail,
       entityType: "report",
       entityId: report.id,
-      payload: { evaluation_id: report.evaluationId },
+      // Trazabilidad de QUE recibio el paciente (el modo elegido al enviar).
+      payload: { evaluation_id: report.evaluationId, send_mode: input.sendMode },
       ip: input.ip,
     });
   });
