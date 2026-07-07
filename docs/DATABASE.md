@@ -544,6 +544,8 @@ create table public.reports (
   type text not null,                       -- paciente, profesional, modelo
   status report_status not null default 'draft',
   snapshot jsonb not null,                  -- contenido exacto, inmutable, del reporte
+  professional_notes text,                  -- B10.1: notas del profesional, editable solo en draft; congelada al aprobar (trigger). Vive aparte del snapshot
+  send_mode text,                           -- B10.1: modo de envio, sellado al enviar: 'atlas' | 'notas' | 'ambos'
   storage_path text,                        -- PDF en Storage privado
   approved_by uuid references profiles(id),
   approved_at timestamptz,
@@ -552,6 +554,7 @@ create table public.reports (
 );
 create index reports_eval_idx on reports(evaluation_id);
 ```
+> Trigger `prevent_report_snapshot_mutation` (0003, extendido en 0010): bloquea DELETE, congela `snapshot` siempre y congela `professional_notes` cuando `status <> 'draft'` (se fija en draft->approved y luego es inmutable). Los UPDATE de estado (status, approved_by/at, sent_at, storage_path, send_mode) pasan.
 
 ### Grupo 12: comodato
 ```sql

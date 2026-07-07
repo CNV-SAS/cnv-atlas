@@ -22,6 +22,13 @@ export const reports = pgTable(
     type: text("type").notNull(), // paciente, profesional, modelo
     status: reportStatus("status").notNull().default("draft"),
     snapshot: jsonb("snapshot").notNull(), // contenido exacto, inmutable, del reporte
+    // Notas de interpretacion del profesional (B10.1). Nullable; editable SOLO en draft
+    // y se congela al aprobar (trigger + guard del writer). Viven aparte del snapshot,
+    // que nunca se toca.
+    professionalNotes: text("professional_notes"),
+    // Modo de envio elegido al enviar (B10.1): 'atlas' (reporte tal cual) | 'notas'
+    // (solo notas del profesional) | 'ambos'. Se sella en markReportSent.
+    sendMode: text("send_mode"),
     storagePath: text("storage_path"), // PDF en Storage privado
     approvedBy: uuid("approved_by").references(() => profiles.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
