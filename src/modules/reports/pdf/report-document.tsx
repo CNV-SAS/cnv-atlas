@@ -47,6 +47,19 @@ const styles = StyleSheet.create({
     color: "#8a5a00",
     fontSize: 9,
   },
+  // Rotulo de advertencia permanente (siempre visible; preview interno y version al
+  // paciente). El motor produce asociaciones a valorar, no un diagnostico.
+  disclaimer: {
+    backgroundColor: "#eef2f7",
+    borderColor: "#16324f",
+    borderWidth: 1,
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 12,
+    color: "#16324f",
+    fontSize: 9,
+    fontWeight: "bold",
+  },
   section: { marginBottom: 12 },
   sectionTitle: { fontSize: 12, fontWeight: "bold", marginBottom: 4, color: "#16324f" },
   tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#ddd", paddingVertical: 2 },
@@ -68,7 +81,7 @@ const styles = StyleSheet.create({
 });
 
 function fmt(v: number | null): string {
-  return v == null ? "—" : String(v);
+  return v == null ? "Pendiente" : String(v);
 }
 
 export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; meta: ReportMeta }) {
@@ -97,6 +110,10 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
             <Text>{meta.evaluationDate}</Text>
           </View>
         </View>
+
+        <Text style={styles.disclaimer}>
+          Patrones asociados a valorar clínicamente, no constituye diagnóstico.
+        </Text>
 
         {!dfi.complete ? (
           <Text style={styles.notice}>
@@ -130,7 +147,7 @@ export function ReportDocument({ snapshot, meta }: { snapshot: EngineOutput; met
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Diagnostico funcional integral (DFI){dfi.complete ? "" : " — incompleto"}
+            Diagnostico funcional integral (DFI){dfi.complete ? "" : " (incompleto)"}
           </Text>
           <Text style={styles.para}>
             <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
