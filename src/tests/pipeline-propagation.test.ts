@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
@@ -123,7 +123,15 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
     actorId = (await db.select({ id: schema.profiles.id }).from(schema.profiles).limit(1))[0].id;
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).limit(1))[0].id;
-    qId = (await db.select({ id: schema.surveyQuestions.id }).from(schema.surveyQuestions).limit(1))[0].id;
+    // Pregunta SIN field_key: su respuesta no llega al motor, asi el DFI corre degradado
+    // (dfi.complete=false), que es lo que valida este test (propagacion por la ruta BIS).
+    qId = (
+      await db
+        .select({ id: schema.surveyQuestions.id })
+        .from(schema.surveyQuestions)
+        .where(isNull(schema.surveyQuestions.fieldKey))
+        .limit(1)
+    )[0].id;
   });
 
   afterAll(async () => {

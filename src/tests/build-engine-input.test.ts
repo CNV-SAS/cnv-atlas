@@ -42,7 +42,10 @@ describe("buildEngineInput", () => {
     const raw = {
       sex: "Female",
       birthDate: "2000-06-22",
-      surveyAnswers: { q1: "a", q2: "b" },
+      surveyAnswers: [
+        { fieldKey: "d2_19", type: "opcion", value: "Normal" },
+        { fieldKey: "d5_39", type: "opcion_multiple", value: '["HTA","Prediabetes"]' },
+      ],
       bisRaw: {
         [normalizeHeader(BIODY_COLUMNS.peso.header)]: 70,
         [normalizeHeader(BIODY_COLUMNS.AF.header)]: 6.2,
@@ -51,7 +54,8 @@ describe("buildEngineInput", () => {
     const input = buildEngineInput(raw, model, NOW);
     expect(input.sexo).toBe("F");
     expect(input.edad).toBe(26);
-    expect(input.survey).toEqual({ q1: "a", q2: "b" });
+    // survey keyed por field_key; el multi-select se decodifica a array (JSON).
+    expect(input.survey).toEqual({ d2_19: "Normal", d5_39: ["HTA", "Prediabetes"] });
     expect(input.model).toEqual(model);
     // bisRow indexado por el header EXACTO del contrato de columnas.
     expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBe(70);
@@ -64,7 +68,7 @@ describe("buildEngineInput", () => {
     const raw = {
       sex: null,
       birthDate: null,
-      surveyAnswers: {},
+      surveyAnswers: [],
       bisRaw: { [normalizeHeader(BIODY_COLUMNS.peso.header)]: Number.NaN },
     };
     const input = buildEngineInput(raw, model, NOW);

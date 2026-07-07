@@ -13,8 +13,11 @@ import {
   patientProfiles,
   phenotypes,
   surveyAnswers,
+  surveyQuestions,
   surveyResponses,
 } from "@/db/schema";
+
+import type { SurveyFieldAnswer } from "../services/build-engine-input";
 
 // Lecturas de los insumos del pipeline por Drizzle owner (computo clinico server-side,
 // como los escritores). La autorizacion (que la evaluacion sea del profesional) se
@@ -25,7 +28,7 @@ export type PipelineInputs = {
   sex: string | null;
   birthDate: string | null;
   surveyVersionId: string | null;
-  surveyAnswers: Record<string, string>;
+  surveyAnswers: SurveyFieldAnswer[]; // solo las preguntas con field_key (alimentan el motor)
   bisRaw: Record<string, number>;
   hasBis: boolean;
 };
@@ -52,15 +55,24 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     .orderBy(desc(surveyResponses.createdAt))
     .limit(1);
 
-  const answers: Record<string, string> = {};
+  // Respuestas resueltas a su field_key via join con survey_questions: solo las que
+  // alimentan el motor (field_key no nulo). El motor las lee por d-field, no por questionId.
+  const answers: SurveyFieldAnswer[] = [];
   let surveyVersionId: string | null = null;
   if (response) {
     surveyVersionId = response.surveyVersionId;
     const rows = await db
-      .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
+      .select({
+        fieldKey: surveyQuestions.fieldKey,
+        type: surveyQuestions.questionType,
+        answerValue: surveyAnswers.answerValue,
+      })
       .from(surveyAnswers)
+      .innerJoin(surveyQuestions, eq(surveyAnswers.questionId, surveyQuestions.id))
       .where(eq(surveyAnswers.responseId, response.id));
-    for (const r of rows) answers[r.questionId] = r.answerValue ?? "";
+    for (const r of rows) {
+      if (r.fieldKey) answers.push({ fieldKey: r.fieldKey, type: r.type, value: r.answerValue ?? "" });
+    }
   }
 
   // Crudos BIS de la medicion de la evaluacion (B8): nombre normalizado -> valor.

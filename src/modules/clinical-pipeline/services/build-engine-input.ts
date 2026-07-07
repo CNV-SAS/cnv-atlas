@@ -11,12 +11,45 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 // Asi el mapeo es completo (los 94 campos, incluido FM y los secundarios) y no puede
 // desincronizarse de B8: usa su misma funcion (fuente unica de la normalizacion).
 
+// Respuesta de encuesta ya resuelta a la variable del motor (field_key: d5_39, d3_24...),
+// con el tipo de la pregunta para decodificar los multi-select. Solo llegan aqui las
+// preguntas con field_key (las que alimentan el motor); el resto del instrumento no.
+export type SurveyFieldAnswer = { fieldKey: string; type: string; value: string };
+
 export type RawEvaluationData = {
   sex: string | null;
   birthDate: string | null; // 'YYYY-MM-DD'
-  surveyAnswers: Record<string, string>;
+  surveyAnswers: SurveyFieldAnswer[];
   bisRaw: Record<string, number>; // header normalizado (B8) -> valor
 };
+
+// Decodifica el valor almacenado de una pregunta multi-select a array. El intake guarda
+// los multi como JSON (["HTA","Prediabetes"]); si no parsea a array, cae a valor unico o
+// vacio. El motor hace Array.isArray sobre estos campos (d2_21, d5_38, d5_39).
+function decodeMulti(value: string): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map((x) => String(x));
+  } catch {
+    // no era JSON; se trata como valor unico abajo
+  }
+  return [value];
+}
+
+// Arma el objeto survey que consume el motor, keyed por field_key (d-field). Los
+// multi-select se expanden a array; el resto queda como string. Con al menos un d-field
+// presente, el motor corre el DFI completo (hasSurveyData); sin encuesta, degradado.
+// Nota (GILDARDO_QUERIES.md Q3): la encuesta no aporta d1_9/d1_10/d1_16, asi que los
+// dominios Alimentacion e Hidratacion del LE8 quedan en su valor por defecto. No se
+// inventa mapeo: los campos simplemente no estan en el objeto.
+function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
+  const survey: Record<string, unknown> = {};
+  for (const a of answers) {
+    survey[a.fieldKey] = a.type === "opcion_multiple" ? decodeMulti(a.value) : a.value;
+  }
+  return survey;
+}
 
 // Edad en anos cumplidos desde birthDate hasta now (UTC, determinista). now se inyecta
 // para poder testear. Sin fecha o fecha invalida -> 0.
@@ -58,9 +91,9 @@ export function buildEngineInput(
     sexo: normalizeSex(raw.sex),
     edad: computeAge(raw.birthDate, now),
     bisRow: buildBisRow(raw.bisRaw),
-    // La encuesta se pasa tal cual; el contenido real (IDs d*) se integra en su propio
-    // item (post-B11). Hasta entonces el DFI corre degradado (marcado en el output).
-    survey: { ...raw.surveyAnswers },
+    // La encuesta llega keyed por field_key (d-field) con los multi ya decodificados a
+    // array. Con al menos un d-field presente, el DFI corre completo (dfi.complete=true).
+    survey: buildSurvey(raw.surveyAnswers),
     model,
   };
 }
