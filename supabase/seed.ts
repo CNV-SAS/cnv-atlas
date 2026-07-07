@@ -105,7 +105,9 @@ const PROFESSIONAL_NAME = "Profesional Demo";
 // en el prototipo. No se inventa mapeo alguno.
 type SurveyQ = {
   key: string; // clave del prototipo (d5_39, d1_1_i, d7_agua...)
-  type: "opcion" | "opcion_multiple" | "numero";
+  // opcion/opcion_multiple = pills; contador = +/- (cantidades); escala = slider 1-10.
+  // El intake (B7.1) renderiza el widget segun este tipo; el motor no lo usa.
+  type: "opcion" | "opcion_multiple" | "contador" | "escala";
   text: string;
   options?: string[];
   engine?: boolean; // el motor lo lee -> field_key = key
@@ -165,7 +167,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
   { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"] },
   { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
-  { key: "d3_29", type: "numero", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)" },
+  { key: "d3_29", type: "escala", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)" },
   { key: "d3_30", type: "opcion", text: "¿Su relación con el tabaco / nicotina?", options: ["Nunca he fumado", "Dejé hace 5 años o más", "Dejé hace menos de 5 años", "Fumo ocasionalmente", "Fumo diariamente", "Solo vapeo", "Exposición pasiva"], engine: true },
   { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"], engine: true },
   // D4 · Conductas alimentarias
@@ -192,12 +194,12 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC },
   { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC },
   // D7 · Hidratacion (bebidas: conteo por dia)
-  { key: "d7_52", type: "numero", text: "Café (tazas por día)" },
-  { key: "d7_53", type: "numero", text: "Té (tazas por día)" },
-  { key: "d7_54", type: "numero", text: "Jugos naturales (vasos por día)" },
-  { key: "d7_55", type: "numero", text: "Gaseosas (vasos por día)" },
-  { key: "d7_agua", type: "numero", text: "Agua (vasos de 200 ml por día)" },
-  { key: "d7_56", type: "numero", text: "Bebidas energéticas (latas por día)" },
+  { key: "d7_52", type: "contador", text: "Café (tazas por día)" },
+  { key: "d7_53", type: "contador", text: "Té (tazas por día)" },
+  { key: "d7_54", type: "contador", text: "Jugos naturales (vasos por día)" },
+  { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)" },
+  { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)" },
+  { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)" },
   { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"] },
   { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
   // D8 · Contexto social
