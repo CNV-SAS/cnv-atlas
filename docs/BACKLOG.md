@@ -28,7 +28,8 @@
 - **Supabase Pro + PITR** y **backups externos automatizados** (antes de datos clínicos reales se sube a Pro).
 
 ## Producto
-- **Edición/anotación del reporte** por el profesional antes de enviarlo (en MVP es aprobar y enviar tal cual).
+- **Edición/anotación del reporte** por el profesional antes de enviarlo (en MVP es aprobar y enviar tal cual; B10.1 ya agregó las notas del profesional como capa aparte y el modo de envío, falta edición rica del contenido).
+- **Traducción del reporte a lenguaje funcional para el paciente.** El documento que recibe el paciente traduce el contenido de Atlas a lenguaje funcional (sin nombrar enfermedades), distinto de la vista previa interna que sí asocia patrones a condiciones clínicas conocidas (con el rótulo "no constituye diagnóstico"). Pendiente de autorización y contenido de la Dirección Científica.
 - **Visualización longitudinal rica** del seguimiento (en MVP, comparación básica).
 - **Guardado de progreso parcial** en la encuesta (en MVP, reabrir el link re-precarga).
 - **Integración real con CNV Learning** (en MVP solo el gate de habilitación por API).
