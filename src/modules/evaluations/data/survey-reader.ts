@@ -10,7 +10,7 @@ export type SurveyOptionView = { id: string; text: string };
 export type SurveyQuestionView = {
   id: string;
   text: string;
-  type: string; // texto, numero, opcion
+  type: string; // texto, numero, opcion, opcion_multiple
   options: SurveyOptionView[];
 };
 export type ActiveSurvey = {

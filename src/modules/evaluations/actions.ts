@@ -114,9 +114,21 @@ export async function submitSurveyAction(
   };
 
   // Respuestas: se toman de las preguntas reales de la version activa (server-side),
-  // no de lo que el cliente diga existir. Campos del form: answer_<questionId>.
+  // no de lo que el cliente diga existir. Campos del form: answer_<questionId>. Se guarda
+  // el TEXTO de la opcion (option_text), no su id: es lo que compara el motor congelado.
+  // Los multi-select llegan como varios valores con el mismo name -> se codifican como
+  // JSON (["HTA","Prediabetes"]); build-engine-input los decodifica a array.
   const answers = survey.questions
-    .map((q) => ({ questionId: q.id, answerValue: str(form, `answer_${q.id}`) }))
+    .map((q) => {
+      if (q.type === "opcion_multiple") {
+        const selected = form
+          .getAll(`answer_${q.id}`)
+          .map((v) => String(v).trim())
+          .filter((v) => v.length > 0);
+        return { questionId: q.id, answerValue: selected.length ? JSON.stringify(selected) : "" };
+      }
+      return { questionId: q.id, answerValue: str(form, `answer_${q.id}`) };
+    })
     .filter((a) => a.answerValue.length > 0);
 
   const result = await submitSurveyIntake({

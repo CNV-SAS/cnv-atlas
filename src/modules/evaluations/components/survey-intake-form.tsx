@@ -437,24 +437,44 @@ export function SurveyIntakeForm({
       {questions.length > 0 ? (
         <section className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-foreground">Encuesta</h2>
-          {questions.map((q) => (
-            <Field key={q.id} label={q.text}>
-              {q.type === "opcion" && q.options.length > 0 ? (
-                <select name={`answer_${q.id}`} className={selectClass} defaultValue="">
-                  <option value="">Selecciona una opcion</option>
-                  {q.options.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.text}
-                    </option>
-                  ))}
-                </select>
-              ) : q.type === "numero" ? (
-                <Input name={`answer_${q.id}`} type="number" className="h-9" />
-              ) : (
-                <Input name={`answer_${q.id}`} className="h-9" />
-              )}
-            </Field>
-          ))}
+          {questions.map((q) =>
+            q.type === "opcion_multiple" && q.options.length > 0 ? (
+              // Multi-select: varias casillas con el mismo name; el servidor las agrupa.
+              // El value es el TEXTO (option_text), lo que compara el motor.
+              <fieldset key={q.id} className="flex flex-col gap-2">
+                <legend className="text-xs text-muted-foreground">{q.text}</legend>
+                {q.options.map((o) => (
+                  <label key={o.id} className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name={`answer_${q.id}`}
+                      value={o.text}
+                      className={checkboxClass}
+                    />
+                    <span>{o.text}</span>
+                  </label>
+                ))}
+              </fieldset>
+            ) : (
+              <Field key={q.id} label={q.text}>
+                {q.type === "opcion" && q.options.length > 0 ? (
+                  // Opcion unica: el value es el TEXTO (option_text), no el id.
+                  <select name={`answer_${q.id}`} className={selectClass} defaultValue="">
+                    <option value="">Selecciona una opcion</option>
+                    {q.options.map((o) => (
+                      <option key={o.id} value={o.text}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                ) : q.type === "numero" ? (
+                  <Input name={`answer_${q.id}`} type="number" className="h-9" />
+                ) : (
+                  <Input name={`answer_${q.id}`} className="h-9" />
+                )}
+              </Field>
+            ),
+          )}
         </section>
       ) : null}
 
