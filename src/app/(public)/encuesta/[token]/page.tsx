@@ -20,7 +20,10 @@ function Shell({ children }: { children: React.ReactNode }) {
           height={28}
           priority
           unoptimized
-          className="h-7 w-auto"
+          // self-start evita que el flex column (align-items: stretch) estire el logo al
+          // ancho del contenedor; con w-auto conserva la proporcion 140x28 y no dispara el
+          // warning de next/image ("width or height modified, but not the other").
+          className="h-7 w-auto self-start"
         />
         {children}
       </div>
