@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
 
 import { submitSurveyAction } from "../actions";
@@ -71,6 +72,47 @@ function Field({
   );
 }
 
+// Render de una pregunta de encuesta segun su tipo. El value enviado es el TEXTO de la
+// opcion (option_text), lo que compara el motor; los multi-select el servidor los agrupa.
+function SurveyQuestion({ q }: { q: SurveyQuestionView }) {
+  if (q.type === "opcion_multiple" && q.options.length > 0) {
+    return (
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium text-foreground">{q.text}</legend>
+        {q.options.map((o) => (
+          <label key={o.id} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name={`answer_${q.id}`}
+              value={o.text}
+              className={checkboxClass}
+            />
+            <span>{o.text}</span>
+          </label>
+        ))}
+      </fieldset>
+    );
+  }
+  return (
+    <Field label={q.text}>
+      {q.type === "opcion" && q.options.length > 0 ? (
+        <select name={`answer_${q.id}`} className={selectClass} defaultValue="">
+          <option value="">Selecciona una opcion</option>
+          {q.options.map((o) => (
+            <option key={o.id} value={o.text}>
+              {o.text}
+            </option>
+          ))}
+        </select>
+      ) : q.type === "numero" ? (
+        <Input name={`answer_${q.id}`} type="number" className="h-9" />
+      ) : (
+        <Input name={`answer_${q.id}`} className="h-9" />
+      )}
+    </Field>
+  );
+}
+
 export function SurveyIntakeForm({
   token,
   isFollowup,
@@ -79,6 +121,7 @@ export function SurveyIntakeForm({
   consentText,
 }: SurveyIntakeFormProps) {
   const [state, action, pending] = useActionState(submitSurveyAction, initial);
+  const topRef = useRef<HTMLDivElement>(null);
 
   // Capa de consentimiento. La rama de edad (mayor/menor) es una eleccion explicita
   // y obligatoria (DELTA2 B2). En menor se abre el bloque del representante legal y,
@@ -102,6 +145,9 @@ export function SurveyIntakeForm({
   // el texto del asentimiento. Controlado para poder mostrarlo en vivo.
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  // Identidad requerida controlada, para validar el paso en vivo (habilitar "Siguiente").
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [showFullText, setShowFullText] = useState(false);
 
   const isMinor = ageBranch === "menor";
@@ -126,11 +172,89 @@ export function SurveyIntakeForm({
               (!assentRequired || assent),
           )
         : false;
-  const canContinue = necessaryOk && branchOk;
+  const consentOk = necessaryOk && branchOk;
+
+  // Agrupa las preguntas por dominio (section), preservando el orden del reader.
+  const sections = useMemo(() => {
+    const groups: { title: string; questions: SurveyQuestionView[] }[] = [];
+    for (const q of questions) {
+      const title = q.section ?? "Otras";
+      const last = groups[groups.length - 1];
+      if (last && last.title === title) last.questions.push(q);
+      else groups.push({ title, questions: [q] });
+    }
+    return groups;
+  }, [questions]);
+
+  // Pasos del wizard: consentimiento, identificacion, y una seccion por dominio. Todos
+  // los paneles se MONTAN siempre (solo se ocultan con CSS) para que el unico <form>
+  // envie todos los campos en un solo server action; el stepper es solo presentacion.
+  const steps = useMemo(
+    () => [
+      { kind: "consent" as const, title: "Consentimiento" },
+      { kind: "identity" as const, title: isMinor ? "Datos del menor" : "Tus datos" },
+      ...sections.map((s) => ({ kind: "survey" as const, title: s.title, questions: s.questions })),
+    ],
+    [sections, isMinor],
+  );
+
+  const [step, setStep] = useState(0);
+  const total = steps.length;
+  const current = steps[Math.min(step, total - 1)];
+  const isLast = step === total - 1;
+
+  // Validacion liviana del paso de identidad (los required nativos se quitaron: en un
+  // panel oculto no serian enfocables al enviar). Deriva del estado controlado; el Zod
+  // del servidor sigue siendo la fuente de verdad.
+  const identityOk = Boolean(
+    documentNumber.trim() &&
+      firstName.trim() &&
+      lastName.trim() &&
+      (isMinor ? minorBirthDate : birthDate),
+  );
+
+  // Se puede avanzar si el paso actual esta completo. Consentimiento e identidad son
+  // compuertas; las secciones de encuesta son opcionales (recoleccion, el servidor no
+  // exige respuestas).
+  const canAdvance =
+    current.kind === "consent" ? consentOk : current.kind === "identity" ? identityOk : true;
+
+  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const goNext = () => {
+    if (!canAdvance || isLast) return;
+    setStep((s) => Math.min(s + 1, total - 1));
+    scrollTop();
+  };
+  const goBack = () => {
+    setStep((s) => Math.max(s - 1, 0));
+    scrollTop();
+  };
 
   return (
-    <form action={action} className="flex w-full flex-col gap-8">
+    <form
+      action={action}
+      className="flex w-full flex-col gap-6"
+      // Evita el envio implicito con Enter fuera del ultimo paso (no hay boton submit
+      // montado antes, pero Enter en un input podria dispararlo).
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !isLast && e.target instanceof HTMLElement && e.target.tagName !== "TEXTAREA") {
+          e.preventDefault();
+        }
+      }}
+    >
       <input type="hidden" name="token" value={token} />
+      <div ref={topRef} />
+
+      {/* Progreso */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-medium text-muted-foreground">
+            Paso {step + 1} de {total}
+          </p>
+          <p className="text-sm font-semibold text-foreground">{current.title}</p>
+        </div>
+        <Progress value={Math.round(((step + 1) / total) * 100)} />
+      </div>
 
       {state.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -138,8 +262,8 @@ export function SurveyIntakeForm({
         </p>
       ) : null}
 
-      {/* 1. Consentimiento informado */}
-      <section className="flex flex-col gap-4">
+      {/* Paso 1: Consentimiento informado */}
+      <section className={`flex flex-col gap-4 ${current.kind === "consent" ? "" : "hidden"}`}>
         <div>
           <h2 className="text-lg font-semibold text-foreground">Consentimiento informado</h2>
           <p className="text-sm text-muted-foreground">
@@ -369,14 +493,14 @@ export function SurveyIntakeForm({
         </div>
       </section>
 
-      {/* 2. Identificacion (datos del paciente; en rama menor, del menor evaluado) */}
-      <section className="flex flex-col gap-4">
+      {/* Paso 2: Identificacion (datos del paciente; en rama menor, del menor evaluado) */}
+      <section className={`flex flex-col gap-4 ${current.kind === "identity" ? "" : "hidden"}`}>
         <h2 className="text-lg font-semibold text-foreground">
           {isMinor ? "Datos del menor evaluado" : "Tus datos"}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de documento">
-            <select name="documentType" required className={selectClass} defaultValue="CC">
+            <select name="documentType" className={selectClass} defaultValue="CC">
               {DOCUMENT_TYPES.map((d) => (
                 <option key={d.value} value={d.value}>
                   {d.label}
@@ -385,12 +509,16 @@ export function SurveyIntakeForm({
             </select>
           </Field>
           <Field label="Numero de documento">
-            <Input name="documentNumber" required className="h-9" />
+            <Input
+              name="documentNumber"
+              className="h-9"
+              value={documentNumber}
+              onChange={(e) => setDocumentNumber(e.target.value)}
+            />
           </Field>
           <Field label="Nombres">
             <Input
               name="firstName"
-              required
               className="h-9"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
@@ -399,7 +527,6 @@ export function SurveyIntakeForm({
           <Field label="Apellidos">
             <Input
               name="lastName"
-              required
               className="h-9"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
@@ -415,7 +542,13 @@ export function SurveyIntakeForm({
                 </p>
               </>
             ) : (
-              <Input name="birthDate" type="date" className="h-9" />
+              <Input
+                name="birthDate"
+                type="date"
+                className="h-9"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+              />
             )}
           </Field>
           <Field label="Sexo">
@@ -433,61 +566,56 @@ export function SurveyIntakeForm({
         </div>
       </section>
 
-      {/* 3. Encuesta */}
-      {questions.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-foreground">Encuesta</h2>
-          {questions.map((q) =>
-            q.type === "opcion_multiple" && q.options.length > 0 ? (
-              // Multi-select: varias casillas con el mismo name; el servidor las agrupa.
-              // El value es el TEXTO (option_text), lo que compara el motor.
-              <fieldset key={q.id} className="flex flex-col gap-2">
-                <legend className="text-xs text-muted-foreground">{q.text}</legend>
-                {q.options.map((o) => (
-                  <label key={o.id} className="flex items-start gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name={`answer_${q.id}`}
-                      value={o.text}
-                      className={checkboxClass}
-                    />
-                    <span>{o.text}</span>
-                  </label>
-                ))}
-              </fieldset>
-            ) : (
-              <Field key={q.id} label={q.text}>
-                {q.type === "opcion" && q.options.length > 0 ? (
-                  // Opcion unica: el value es el TEXTO (option_text), no el id.
-                  <select name={`answer_${q.id}`} className={selectClass} defaultValue="">
-                    <option value="">Selecciona una opcion</option>
-                    {q.options.map((o) => (
-                      <option key={o.id} value={o.text}>
-                        {o.text}
-                      </option>
-                    ))}
-                  </select>
-                ) : q.type === "numero" ? (
-                  <Input name={`answer_${q.id}`} type="number" className="h-9" />
-                ) : (
-                  <Input name={`answer_${q.id}`} className="h-9" />
-                )}
-              </Field>
-            ),
-          )}
-        </section>
-      ) : null}
+      {/* Pasos 3..N: una seccion de encuesta (dominio) por paso */}
+      {sections.map((s, i) => {
+        const active = current.kind === "survey" && current.title === s.title && step === i + 2;
+        return (
+          <section key={s.title} className={`flex flex-col gap-4 ${active ? "" : "hidden"}`}>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">{s.title}</h2>
+              <p className="text-sm text-muted-foreground">
+                Responde lo que aplique a tu caso. Puedes dejar en blanco lo que no sepas.
+              </p>
+            </div>
+            {s.questions.map((q) => (
+              <SurveyQuestion key={q.id} q={q} />
+            ))}
+          </section>
+        );
+      })}
 
-      <div className="flex flex-col gap-2">
-        {!canContinue ? (
+      {/* Navegacion */}
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        {current.kind === "consent" && !consentOk ? (
           <p className="text-xs text-muted-foreground">
             Indica tu situacion de edad, completa el bloque que corresponda y marca las
             tres autorizaciones necesarias para continuar.
           </p>
         ) : null}
-        <Button type="submit" disabled={!canContinue || pending} className="w-full sm:w-auto">
-          {pending ? "Enviando..." : isFollowup ? "Enviar seguimiento" : "Enviar"}
-        </Button>
+        {current.kind === "identity" && !identityOk ? (
+          <p className="text-xs text-muted-foreground">
+            Completa documento, nombres, apellidos y fecha de nacimiento para continuar.
+          </p>
+        ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={goBack}
+            disabled={step === 0 || pending}
+          >
+            Anterior
+          </Button>
+          {isLast ? (
+            <Button type="submit" disabled={!consentOk || pending}>
+              {pending ? "Enviando..." : isFollowup ? "Enviar seguimiento" : "Enviar"}
+            </Button>
+          ) : (
+            <Button type="button" onClick={goNext} disabled={!canAdvance}>
+              Siguiente
+            </Button>
+          )}
+        </div>
       </div>
     </form>
   );
