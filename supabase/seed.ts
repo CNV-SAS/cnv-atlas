@@ -9,6 +9,7 @@
 // materializa public.profiles leyendo organization_id y full_name del metadata.
 // Todo lo demas se inserta con service role (BYPASSRLS).
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { createClient } from "@supabase/supabase-js";
@@ -68,17 +69,13 @@ const PROFESSIONAL_PROFILE_ID = "33333333-3333-3333-3333-333333333333";
 const MODEL_VERSION_ID = "44444444-4444-4444-4444-444444444444";
 const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555552";
-// Preguntas placeholder, una por nivel de data_class, para que la encuesta
-// renderice y se pueda probar end-to-end. Las preguntas reales llegan con Gildardo.
-const SURVEY_QUESTION_IDS = {
-  identifier: "55555555-5555-5555-5555-555555555561",
-  quasi: "55555555-5555-5555-5555-555555555562",
-  clinical: "55555555-5555-5555-5555-555555555563",
-} as const;
-const SURVEY_OPTION_IDS = [
-  "55555555-5555-5555-5555-555555555571",
-  "55555555-5555-5555-5555-555555555572",
-] as const;
+// UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
+// asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
+// para la columna uuid (el motor no usa estos ids; resuelve por field_key/option_text).
+function surveyUuid(...parts: string[]): string {
+  const h = createHash("sha1").update("atlas-survey-v1:" + parts.join(":")).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
 const DEVICE_IDS = ["66666666-6666-6666-6666-666666666601", "66666666-6666-6666-6666-666666666602"];
 const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702"];
 const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
@@ -94,6 +91,103 @@ const ADMIN_EMAIL = "sau.idk001@gmail.com";
 const ADMIN_NAME = "Santiago Arroyave";
 const PROFESSIONAL_EMAIL = "profesional.demo@cnvsystem.com";
 const PROFESSIONAL_NAME = "Profesional Demo";
+
+// ---- Contenido REAL de la encuesta ANI-BIS-E -----------------------------
+// Portado VERBATIM de reference/ATLAS-Patients_v7.html (prototipo final de Gildardo).
+// field_key (engine:true) = d-field que lee el motor congelado (calcLE8 /
+// computeDFIFromData en clinical-engine/frozen/engine.dfi.js). Sus option_text deben
+// coincidir CARACTER por caracter, incluidos los guiones cortos "-" (en-dash, dato de
+// Gildardo, no em-dash prohibido), o el LE8/DFI fallan en silencio (GILDARDO_QUERIES.md
+// Q3). El resto es el instrumento clinico completo (field_key null). Los guiones largos
+// de las etiquetas D1 se normalizaron a parentesis (CLAUDE.md prohibe em-dash en copy);
+// ninguna OPCION lleva em-dash. Nota (Q3): la encuesta no recolecta d1_9/d1_10/d1_16,
+// asi que los dominios Alimentacion e Hidratacion del LE8 corren degradados, igual que
+// en el prototipo. No se inventa mapeo alguno.
+type SurveyQ = {
+  key: string; // clave del prototipo (d5_39, d1_1_i, d7_agua...)
+  type: "opcion" | "opcion_multiple" | "numero";
+  text: string;
+  options?: string[];
+  engine?: boolean; // el motor lo lee -> field_key = key
+};
+
+// Escala de frecuencia de consumo (D1, indice 0-4 en el prototipo).
+const FREQ_OPC = ["Nunca", "1–2 días", "3–4 días", "5–6 días", "Todos los días"];
+// Severidad de sintomas digestivos (D6, items 45-51).
+const GI_OPC = ["Nunca", "A veces", "Frecuente", "Siempre"];
+
+const SURVEY_QUESTIONS: SurveyQ[] = [
+  // D1 · Patron alimentario (frecuencia de consumo)
+  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_6_i", type: "opcion", text: "Lácteos bajos en grasa / fermentados (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_8_i", type: "opcion", text: "Cereales integrales (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_9_i", type: "opcion", text: "Tubérculos y raíces (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_10_i", type: "opcion", text: "Carnes magras (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_12_i", type: "opcion", text: "Carnes rojas y procesadas (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_13_i", type: "opcion", text: "Azúcares y dulces (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1_14_i", type: "opcion", text: "Comida ultraprocesada (frecuencia de consumo)", options: FREQ_OPC },
+  { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"] },
+  { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"] },
+  { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"] },
+  // D2 · Percepcion corporal
+  { key: "d2_19", type: "opcion", text: "¿Cómo percibe su cuerpo actualmente?", options: ["Muy delgado/a", "Delgado/a", "Normal", "Sobrepeso", "Obesidad"], engine: true },
+  { key: "d2_20", type: "opcion", text: "¿Qué tan satisfecho/a está con su peso?", options: ["Muy insatisfecho/a", "Insatisfecho/a", "Neutral", "Satisfecho/a"], engine: true },
+  { key: "d2_21", type: "opcion_multiple", text: "¿Qué métodos ha usado para cambiar su peso?", options: ["Dieta propia", "Profesional de salud", "Ayunos", "Saltar comidas", "Laxantes", "Vómito", "Ejercicio excesivo", "Ninguno"], engine: true },
+  { key: "d2_22", type: "opcion", text: "¿Con qué frecuencia pierde el control al comer?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], engine: true },
+  // D3 · Habitos
+  { key: "d3_23", type: "opcion", text: "¿Cuántos días/semana hace actividad física (≥30 min)?", options: ["0", "1", "2", "3", "4", "5", "6", "7"], engine: true },
+  { key: "d3_24", type: "opcion", text: "¿Cuánto dura cada sesión?", options: ["Menos de 15", "15–30 min", "30–45 min", "45–60 min", "Más de 60 min"], engine: true },
+  { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna"] },
+  { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
+  { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"] },
+  { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
+  { key: "d3_29", type: "numero", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)" },
+  { key: "d3_30", type: "opcion", text: "¿Su relación con el tabaco / nicotina?", options: ["Nunca he fumado", "Dejé hace 5 años o más", "Dejé hace menos de 5 años", "Fumo ocasionalmente", "Fumo diariamente", "Solo vapeo", "Exposición pasiva"], engine: true },
+  { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"], engine: true },
+  // D4 · Conductas alimentarias
+  { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"] },
+  { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"] },
+  { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal"] },
+  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos"] },
+  // D5 · Epigenetico / LE8
+  { key: "d5_36", type: "opcion", text: "¿Le han diagnosticado hipertensión arterial?", options: ["Sí", "No", "No sé"], engine: true },
+  { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
+  { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna"], engine: true },
+  { key: "d5_39", type: "opcion_multiple", text: "¿Tiene alguno de estos diagnósticos personales?", options: ["Diabetes tipo 1", "Diabetes tipo 2", "Prediabetes", "HTA", "Dislipidemia (colesterol alto)", "Hipertrigliceridemia", "Hipotiroidismo", "Hipertiroidismo", "Obesidad", "Síndrome Metabólico", "Cáncer (activo)", "Cáncer (en remisión)", "Enfermedad cardiovascular", "Insuficiencia renal", "Enfermedad hepática", "Artritis/Artrosis", "Osteoporosis", "Depresión", "Ansiedad", "Trastornos de la conducta alimentaria", "Ninguna", "Otra"], engine: true },
+  { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"] },
+  { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
+  { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna"] },
+  // D6 · Alergias y salud digestiva
+  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos"] },
+  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa"] },
+  { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", options: GI_OPC },
+  { key: "d6_46", type: "opcion", text: "Gases / flatulencia", options: GI_OPC },
+  { key: "d6_47", type: "opcion", text: "Dolor abdominal", options: GI_OPC },
+  { key: "d6_48", type: "opcion", text: "Diarrea", options: GI_OPC },
+  { key: "d6_49", type: "opcion", text: "Estreñimiento", options: GI_OPC },
+  { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC },
+  { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC },
+  // D7 · Hidratacion (bebidas: conteo por dia)
+  { key: "d7_52", type: "numero", text: "Café (tazas por día)" },
+  { key: "d7_53", type: "numero", text: "Té (tazas por día)" },
+  { key: "d7_54", type: "numero", text: "Jugos naturales (vasos por día)" },
+  { key: "d7_55", type: "numero", text: "Gaseosas (vasos por día)" },
+  { key: "d7_agua", type: "numero", text: "Agua (vasos de 200 ml por día)" },
+  { key: "d7_56", type: "numero", text: "Bebidas energéticas (latas por día)" },
+  { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"] },
+  { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
+  // D8 · Contexto social
+  { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor"] },
+  { key: "d8_60", type: "opcion", text: "¿Con qué frecuencia come fuera de casa?", options: ["Nunca", "1–2 veces/semana", "3–4 veces/semana", "Todos los días"] },
+  { key: "d8_61", type: "opcion", text: "¿Tiene acceso fácil a alimentos frescos y saludables?", options: ["Sí, siempre", "A veces es difícil", "Generalmente es difícil"], engine: true },
+  { key: "d8_62", type: "opcion", text: "¿Hay momentos en que no tiene suficiente comida en el hogar?", options: ["No, nunca", "A veces", "Frecuentemente"], engine: true },
+];
 
 async function main() {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL);
@@ -255,42 +349,57 @@ async function main() {
     ).error,
   );
 
-  // 6. survey_template + survey_version con estructura placeholder.
+  // 6. survey_template + survey_version + contenido REAL (62 preguntas, D1-D8).
   check(
     "survey_templates",
-    (await supabase.from("survey_templates").upsert({ id: SURVEY_TEMPLATE_ID, name: "Encuesta ANI-BIS-E (placeholder)", description: "Estructura placeholder; preguntas reales al entregar Gildardo." }, { onConflict: "id" })).error,
+    (await supabase.from("survey_templates").upsert({ id: SURVEY_TEMPLATE_ID, name: "Encuesta ANI-BIS-E", description: "Instrumento clinico completo (D1-D8) portado del prototipo final de Gildardo. field_key marca las preguntas que alimentan el motor congelado." }, { onConflict: "id" })).error,
   );
   check(
     "survey_versions",
     (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 1 }, { onConflict: "id" })).error,
   );
-  // 3 preguntas placeholder (una por data_class). Contenido y scoring reales al
-  // entregar Gildardo (congelado). Solo dan forma para probar el flujo del intake.
-  check(
-    "survey_questions",
-    (
-      await supabase.from("survey_questions").upsert(
-        [
-          { id: SURVEY_QUESTION_IDS.identifier, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (identificador)", question_type: "texto", order_index: 1, data_class: "identifier" },
-          { id: SURVEY_QUESTION_IDS.quasi, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (cuasi-identificador)", question_type: "opcion", order_index: 2, data_class: "quasi_identifier" },
-          { id: SURVEY_QUESTION_IDS.clinical, survey_version_id: SURVEY_VERSION_ID, question_text: "Pregunta placeholder (clinica)", question_type: "texto", order_index: 3, data_class: "clinical" },
-        ],
-        { onConflict: "id" },
-      )
-    ).error,
+  // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
+  // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
+  // e insertar deja los mismos ids -> idempotente. Requiere una BD sin respuestas reales
+  // referenciando estas preguntas (contexto de seed dev), o el FK de survey_answers frena.
+  // Orden de borrado (dev): survey_answers -> survey_responses -> survey_questions, o el
+  // FK de answers frena el borrado de preguntas. Las answers se borran por question_id de
+  // esta version (survey_answers no tiene columna de version), cubriendo tambien answers
+  // huerfanas de smokes previos. En dev no hay historia clinica real que preservar; el
+  // seed reestablece el estado determinista.
+  const existingQ = await supabase.from("survey_questions").select("id").eq("survey_version_id", SURVEY_VERSION_ID);
+  check("survey_questions fetch", existingQ.error);
+  const existingQIds = (existingQ.data ?? []).map((r) => r.id);
+  if (existingQIds.length) {
+    check("survey_answers delete", (await supabase.from("survey_answers").delete().in("question_id", existingQIds)).error);
+  }
+  check("survey_responses delete", (await supabase.from("survey_responses").delete().eq("survey_version_id", SURVEY_VERSION_ID)).error);
+  check("survey_questions delete", (await supabase.from("survey_questions").delete().eq("survey_version_id", SURVEY_VERSION_ID)).error);
+
+  const surveyQuestionRows = SURVEY_QUESTIONS.map((q, i) => ({
+    id: surveyUuid("q", q.key),
+    survey_version_id: SURVEY_VERSION_ID,
+    question_text: q.text,
+    question_type: q.type,
+    field_key: q.engine ? q.key : null,
+    order_index: i + 1,
+    data_class: "clinical" as const, // toda respuesta de salud es dato clinico
+    used_in_diagnosis: !!q.engine,
+  }));
+  check("survey_questions", (await supabase.from("survey_questions").upsert(surveyQuestionRows, { onConflict: "id" })).error);
+
+  // El motor lee option_text (la cadena), no survey_options.value: value queda null (no se
+  // inventa scoring; los cortes viven en el motor). order_index preserva el orden del HTML.
+  const surveyOptionRows = SURVEY_QUESTIONS.flatMap((q) =>
+    (q.options ?? []).map((opt, j) => ({
+      id: surveyUuid("o", q.key, String(j)),
+      question_id: surveyUuid("q", q.key),
+      option_text: opt,
+      value: null,
+      order_index: j + 1,
+    })),
   );
-  check(
-    "survey_options",
-    (
-      await supabase.from("survey_options").upsert(
-        [
-          { id: SURVEY_OPTION_IDS[0], question_id: SURVEY_QUESTION_IDS.quasi, option_text: "Opcion A", value: "1", order_index: 1 },
-          { id: SURVEY_OPTION_IDS[1], question_id: SURVEY_QUESTION_IDS.quasi, option_text: "Opcion B", value: "2", order_index: 2 },
-        ],
-        { onConflict: "id" },
-      )
-    ).error,
-  );
+  check("survey_options", (await supabase.from("survey_options").upsert(surveyOptionRows, { onConflict: "id" })).error);
 
   // 7. 2 devices en estados distintos.
   check(
@@ -375,7 +484,7 @@ async function main() {
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v1 (3 preguntas placeholder), 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v1 (${SURVEY_QUESTIONS.length} preguntas reales D1-D8, ${SURVEY_QUESTIONS.filter((q) => q.engine).length} con field_key), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
   console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }
