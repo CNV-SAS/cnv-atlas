@@ -10,8 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
-import { addNoteAction, saveProtocolAction, type TreatmentActionState } from "../actions";
-import type { TreatmentProtocol } from "../data/treatment-reader";
+import {
+  addNoteAction,
+  generateMenuAction,
+  saveProtocolAction,
+  type TreatmentActionState,
+} from "../actions";
+import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-reader";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -47,9 +52,86 @@ export function TreatmentPanel({
           </p>
         ) : null}
         <ProtocolForm evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
         <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
       </CardContent>
     </Card>
+  );
+}
+
+// Etiqueta y color del estado de una sugerencia de IA (accesible: etiqueta ademas de color).
+const MENU_STATUS: Record<string, { label: string; cls: string }> = {
+  success: { label: "Generado", cls: "bg-clinical-optimal-bg text-clinical-optimal" },
+  timeout: { label: "Timeout", cls: "bg-clinical-warning-bg text-clinical-warning" },
+  provider_error: { label: "Error del proveedor", cls: "bg-clinical-critical-bg text-clinical-critical" },
+  parse_failed: { label: "Respuesta invalida", cls: "bg-clinical-critical-bg text-clinical-critical" },
+};
+
+function MenuSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(generateMenuAction, EMPTY);
+  useFormToast(state);
+
+  // La generacion usa los objetivos GUARDADOS (no el estado vivo del formulario).
+  const objetivosListos = protocol.kcalObjetivo != null && protocol.proteinaGramos != null;
+  const disabled = locked || pending || !objetivosListos;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Menu sugerido (IA)</h3>
+      <p className="text-sm text-muted-foreground">
+        La IA propone un menu diario a partir de los objetivos guardados. Es un borrador para
+        que lo revises; no se aplica al protocolo automaticamente. El diagnostico no usa IA.
+      </p>
+      <form action={formAction}>
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <Button type="submit" variant="outline" disabled={disabled}>
+          {pending ? "Generando..." : "Generar menu"}
+        </Button>
+        {!objetivosListos && !locked ? (
+          <p className="pt-2 text-xs text-muted-foreground">
+            Guarda el objetivo calorico y de proteina antes de generar el menu.
+          </p>
+        ) : null}
+      </form>
+
+      {protocol.menuSuggestions.length ? (
+        <ul className="flex flex-col gap-3">
+          {protocol.menuSuggestions.map((m) => (
+            <MenuCard key={m.id} suggestion={m} />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
+  const status = MENU_STATUS[m.status] ?? { label: m.status, cls: "bg-muted text-muted-foreground" };
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <Badge className={status.cls}>{status.label}</Badge>
+        <span>
+          {m.provider} · {m.model}
+        </span>
+        {m.latencyMs != null ? <span>· {m.latencyMs} ms</span> : null}
+        <span>· {new Date(m.generatedAt).toLocaleString("es-CO")}</span>
+        <span>· prompt {m.promptVersion}</span>
+      </div>
+      {m.generatedText ? (
+        <p className="whitespace-pre-wrap text-sm text-foreground">{m.generatedText}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Sin contenido (el intento fallo).</p>
+      )}
+    </li>
   );
 }
 

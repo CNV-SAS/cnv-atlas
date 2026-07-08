@@ -29,6 +29,17 @@ export type DietGuideline = { id: string; text: string };
 export type TreatmentNote = { id: string; note: string; createdAt: string };
 export type CatalogItem = { id: string; name: string; unit: string | null };
 
+export type MenuSuggestion = {
+  id: string;
+  provider: string;
+  model: string;
+  promptVersion: string;
+  generatedText: string | null;
+  status: string; // success, timeout, parse_failed, provider_error
+  latencyMs: number | null;
+  generatedAt: string;
+};
+
 export type TreatmentProtocol = {
   treatmentId: string;
   diagnosisConfirmed: boolean;
@@ -40,6 +51,7 @@ export type TreatmentProtocol = {
   guidelines: DietGuideline[];
   notes: TreatmentNote[];
   catalog: CatalogItem[];
+  menuSuggestions: MenuSuggestion[]; // sugerencias de IA (B13), la mas reciente primero
 };
 
 export async function getTreatmentProtocol(
@@ -71,7 +83,7 @@ export async function getTreatmentProtocol(
 
   const treatmentId = treatment.id;
 
-  const [nutras, guides, notes, catalog, get] = await Promise.all([
+  const [nutras, guides, notes, catalog, menus, get] = await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
       .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
@@ -86,6 +98,11 @@ export async function getTreatmentProtocol(
       .eq("treatment_id", treatmentId)
       .order("created_at", { ascending: false }),
     supabase.from("nutraceuticals").select("id, name, unit").order("name", { ascending: true }),
+    supabase
+      .from("ai_menu_suggestions")
+      .select("id, provider, model, prompt_version, generated_text, status, latency_ms, generated_at")
+      .eq("treatment_id", treatmentId)
+      .order("generated_at", { ascending: false }),
     // GET medido: bis_raw_values de la medicion de esta evaluacion (RLS via la evaluacion).
     supabase
       .from("bis_raw_values")
@@ -100,6 +117,7 @@ export async function getTreatmentProtocol(
   if (guides.error) throw new Error(`treatment-reader: guidelines: ${guides.error.message}`);
   if (notes.error) throw new Error(`treatment-reader: notes: ${notes.error.message}`);
   if (catalog.error) throw new Error(`treatment-reader: catalog: ${catalog.error.message}`);
+  if (menus.error) throw new Error(`treatment-reader: menu_suggestions: ${menus.error.message}`);
   if (get.error) throw new Error(`treatment-reader: get: ${get.error.message}`);
 
   const kcalSugerido = get.data?.value != null ? Math.round(Number(get.data.value)) : null;
@@ -126,6 +144,16 @@ export async function getTreatmentProtocol(
       createdAt: n.created_at,
     })),
     catalog: (catalog.data ?? []).map((c) => ({ id: c.id, name: c.name, unit: c.unit })),
+    menuSuggestions: (menus.data ?? []).map((m) => ({
+      id: m.id,
+      provider: m.provider,
+      model: m.model,
+      promptVersion: m.prompt_version,
+      generatedText: m.generated_text,
+      status: m.status,
+      latencyMs: m.latency_ms,
+      generatedAt: m.generated_at,
+    })),
   };
 }
 

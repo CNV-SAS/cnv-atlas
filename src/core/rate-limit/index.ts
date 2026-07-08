@@ -205,3 +205,38 @@ export async function limitReportSendByUser(userId: string): Promise<LimitResult
   }
   return memoryReportSend.check(userId);
 }
+
+// ---- Generacion de menu por IA (B13) -------------------------------------
+// Acotado por usuario: cada generacion es una llamada externa paga (Groq/Gemini).
+// 20/h cubre iteraciones legitimas del protocolo. Falla abierto (superficie autenticada).
+const AI_MENU_LIMIT = 20;
+const AI_MENU_WINDOW = "1 h" as const;
+const AI_MENU_WINDOW_MS = 60 * 60 * 1000;
+
+const memoryAiMenu = new MemoryFixedWindow(AI_MENU_LIMIT, AI_MENU_WINDOW_MS);
+
+let upstashAiMenu: Ratelimit | null = null;
+function getUpstashAiMenu(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashAiMenu ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(AI_MENU_LIMIT, AI_MENU_WINDOW),
+    prefix: "atlas:ai-menu",
+  });
+  return upstashAiMenu;
+}
+
+export async function limitAiMenuByUser(userId: string): Promise<LimitResult> {
+  const upstash = getUpstashAiMenu();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(userId);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: true, remaining: AI_MENU_LIMIT };
+    }
+  }
+  return memoryAiMenu.check(userId);
+}
