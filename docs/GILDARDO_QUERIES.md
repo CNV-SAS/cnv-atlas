@@ -39,3 +39,13 @@
 - **Consecuencia (idéntica en el prototipo de Gildardo):** para un paciente real, los dominios **Alimentación** e **Hidratación** del LE8 corren con los valores por defecto (30 y 20 respectivamente); los otros 6 dominios del LE8 y el DFI completo sí encienden con datos reales.
 - **Nuestra decisión (Santiago, 2026-07-07):** port fiel (Opción A). No se inventa ningún mapeo `d1_9_i → d1_9` ni `d7_agua → d1_16` (sería inventar matemática clínica). Los 2 dominios corren degradados, documentado. La encuesta se porta completa (63 campos) como instrumento clínico; solo 13 campos alimentan el motor.
 - **Pregunta a Gildardo:** ¿los dominios Alimentación e Hidratación del LE8 deben derivarse de las frecuencias `d1_*_i` y de `d7_agua` mediante una fórmula que él defina? Si sí, la entrega como parte de la ciencia (para portarla fiel); si no, quedan degradados por diseño. Mientras tanto, no se toca el motor.
+
+---
+
+## Q4 · Bug de pantalla en blanco en el prototipo (informativo, NO bloqueante)
+
+- **Fecha:** 2026-07-07 (B12)
+- **Estado:** INFORMATIVO (cortesia; no afecta a Atlas)
+- **Hallazgo:** en `ATLAS-Patients_v7.html`, al abrir las vistas de diagnostico/tratamiento el prototipo muestra una pantalla en blanco (error de render en su UI). No es un problema de la ciencia ni de los datos: ya extrajimos todo lo que necesitabamos de ese archivo (la ciencia congelada en B11 y el patron de UX de la encuesta en B7.1).
+- **Impacto en Atlas:** ninguno. Atlas tiene su propia vista de resultados (vista interna del profesional, B12) y su propio reporte, funcionando de forma independiente del HTML de referencia. No corregimos el HTML de Gildardo.
+- **Nota a Gildardo:** aviso de cortesia por si quiere revisar su prototipo; para nosotros no es un bloqueante.
