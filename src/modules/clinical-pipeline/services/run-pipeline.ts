@@ -57,6 +57,7 @@ export async function runClinicalPipeline(
     const written = await writePipeline({
       evaluationId: input.evaluationId,
       patientId: inputs.patientId,
+      evaluationType: inputs.evaluationType,
       output,
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,

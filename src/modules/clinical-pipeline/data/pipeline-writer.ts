@@ -10,6 +10,8 @@ import {
 import { db } from "@/db";
 import {
   diagnoses,
+  followupMetrics,
+  followups,
   indicatorValues,
   reports,
   treatmentDietGuidelines,
@@ -36,6 +38,7 @@ export class PipelineAlreadyRunError extends Error {
 export type PipelineWriteInput = {
   evaluationId: string;
   patientId: string;
+  evaluationType: string; // inicial | seguimiento
   output: EngineOutput;
   surveyVersionId: string;
   modelVersionId: string;
@@ -156,6 +159,39 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       })
       .returning({ id: reports.id });
 
+    // 5. Si la evaluacion es de SEGUIMIENTO, el ciclo registra un followup con su
+    //    fotografia de metricas (B13). El followup queda atado a la evaluacion de
+    //    seguimiento y al tratamiento de ESTE ciclo; la comparacion contra la evaluacion
+    //    previa la resuelve el comparador al leer (no se guardan deltas). Audit inline.
+    if (input.evaluationType === "seguimiento") {
+      const [followup] = await tx
+        .insert(followups)
+        .values({
+          patientId: input.patientId,
+          treatmentId: treatment.id,
+          evaluationId: input.evaluationId,
+        })
+        .returning({ id: followups.id });
+
+      const metricRows = buildFollowupMetrics(followup.id, output);
+      if (metricRows.length) await tx.insert(followupMetrics).values(metricRows);
+
+      await recordAudit(tx, {
+        event: "followup.recorded",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "followup",
+        entityId: followup.id,
+        payload: {
+          evaluation_id: input.evaluationId,
+          treatment_id: treatment.id,
+          efr_state_number: output.efrPhenotype.stateNumber,
+          metric_count: metricRows.length,
+        },
+        ip: input.ip,
+      });
+    }
+
     return {
       diagnosisId: diagnosis.id,
       treatmentId: treatment.id,
@@ -163,4 +199,35 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       indicatorCount: indicatorRows.length,
     };
   });
+}
+
+// Fotografia de metricas del seguimiento: los 12 indicadores + el estado EFR + el score de
+// riesgo del DFI, para la comparacion longitudinal. Un valor null se guarda como null (no
+// se inventa un 0). El nombre canonico es el codigo del indicador (o EFR_STATE /
+// DFI_RISK_SCORE), estable entre ciclos para poder comparar el mismo campo.
+function buildFollowupMetrics(
+  followupId: string,
+  output: EngineOutput,
+): { followupId: string; metricName: string; value: string | null }[] {
+  const rows: { followupId: string; metricName: string; value: string | null }[] = (
+    Object.keys(INDICATOR_KEY_TO_CODE) as (keyof EngineIndicators)[]
+  ).map((key) => {
+    const v = output.indicators[key];
+    return {
+      followupId,
+      metricName: INDICATOR_KEY_TO_CODE[key] as string,
+      value: v == null ? null : String(v),
+    };
+  });
+  rows.push({
+    followupId,
+    metricName: "EFR_STATE",
+    value: String(output.efrPhenotype.stateNumber),
+  });
+  rows.push({
+    followupId,
+    metricName: "DFI_RISK_SCORE",
+    value: String(output.dfi.riesgo.score),
+  });
+  return rows;
 }

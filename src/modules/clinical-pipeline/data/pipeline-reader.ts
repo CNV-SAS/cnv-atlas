@@ -25,6 +25,7 @@ import type { SurveyFieldAnswer } from "../services/build-engine-input";
 
 export type PipelineInputs = {
   patientId: string;
+  evaluationType: string; // inicial | seguimiento: decide si el ciclo registra un followup
   sex: string | null;
   birthDate: string | null;
   surveyVersionId: string | null;
@@ -35,7 +36,7 @@ export type PipelineInputs = {
 
 export async function readPipelineInputs(evaluationId: string): Promise<PipelineInputs | null> {
   const [ev] = await db
-    .select({ patientId: evaluations.patientId })
+    .select({ patientId: evaluations.patientId, evaluationType: evaluations.type })
     .from(evaluations)
     .where(eq(evaluations.id, evaluationId))
     .limit(1);
@@ -94,6 +95,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
 
   return {
     patientId: ev.patientId,
+    evaluationType: ev.evaluationType,
     sex: profile?.sex ?? null,
     birthDate: profile?.birthDate ?? null,
     surveyVersionId,
