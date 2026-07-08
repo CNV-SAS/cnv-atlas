@@ -53,6 +53,40 @@ function Line({ label, value }: { label: string; value: string | null }) {
 }
 
 export function EvaluationResults({ results }: { results: Results }) {
+  // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
+  // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
+  if (!results.compatible) {
+    return (
+      <div className="flex flex-col gap-8">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            Resultados de la evaluacion
+          </h1>
+          <p className="text-muted-foreground">
+            {results.patientName} · {results.documentLabel} ·{" "}
+            {new Date(results.evaluationDate).toLocaleDateString("es-CO")}
+          </p>
+        </header>
+        <Card>
+          <CardHeader>
+            <CardTitle>Diagnostico no disponible con este formato</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <p className="text-sm text-foreground">
+              El diagnostico de esta evaluacion se genero con una version anterior del motor
+              {results.engineVersion ? ` (${results.engineVersion})` : ""} y no puede mostrarse en
+              este formato.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Los datos siguen almacenados de forma inmutable. Para ver un diagnostico con el
+              formato actual, realiza una nueva evaluacion del paciente.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const { snapshot, efrState } = results;
   const { indicators, classifications, efrPhenotype, structural, frSector, dfi, versions } =
     snapshot;

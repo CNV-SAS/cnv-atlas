@@ -2,6 +2,7 @@ import "server-only";
 
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
+import { isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { AiError, generateText } from "@/lib/ai/provider";
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
@@ -46,6 +47,16 @@ export async function generateMenu(
       appError(
         "validation",
         "Define y guarda el objetivo calorico y de proteina antes de generar el menu.",
+      ),
+    );
+  }
+  // El menu se arma desde el snapshot; si es de una era anterior del motor no tiene la forma
+  // esperada (fenotipo/sector/rutas). Se bloquea con un mensaje claro en vez de tronar.
+  if (!isEngineOutput(results.snapshot)) {
+    return err(
+      appError(
+        "conflict",
+        "El diagnostico de esta evaluacion tiene un formato anterior. Realiza una nueva evaluacion para generar el menu.",
       ),
     );
   }

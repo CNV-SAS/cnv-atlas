@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/components/shared/markdown";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
 import {
@@ -127,7 +128,9 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
         <span>· prompt {m.promptVersion}</span>
       </div>
       {m.generatedText ? (
-        <p className="whitespace-pre-wrap text-sm text-foreground">{m.generatedText}</p>
+        <div className="text-sm text-foreground">
+          <Markdown text={m.generatedText} />
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground">Sin contenido (el intento fallo).</p>
       )}

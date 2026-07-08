@@ -118,6 +118,26 @@ export type EngineOutput = {
   versions: EngineVersions;
 };
 
+// Guard de contrato: un valor (p. ej. un snapshot persistido) coincide con la forma ACTUAL
+// de EngineOutput. Motivo: reports es inmutable y guarda snapshots de eras anteriores del
+// motor (el stub-0.1.0 pre-B11 tenia otra forma: efrState/fenotipo/sectorFR, sin
+// efrPhenotype/dfi/structural). Los consumidores usan este guard para degradar con gracia
+// en vez de tronar al leer un snapshot viejo. Chequea las claves estructurales minimas.
+export function isEngineOutput(v: unknown): v is EngineOutput {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.efrPhenotype === "object" &&
+    o.efrPhenotype !== null &&
+    typeof o.dfi === "object" &&
+    o.dfi !== null &&
+    typeof o.structural === "object" &&
+    o.structural !== null &&
+    typeof o.indicators === "object" &&
+    o.indicators !== null
+  );
+}
+
 // Codigos canonicos de los 12 indicadores (estables; el pipeline los mapea a su
 // indicator_definition en el registry). Orden por capas del v7.
 export const INDICATOR_CODES = [

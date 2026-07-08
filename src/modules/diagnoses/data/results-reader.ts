@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { EngineOutput } from "@/clinical-engine";
+import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getReportDispatch,
@@ -26,6 +26,10 @@ export type EfrStateContent = {
 
 export type EvaluationResults = {
   snapshot: EngineOutput;
+  // El snapshot coincide con la forma ACTUAL del motor. false para snapshots de eras
+  // anteriores (stub-0.1.0 pre-B11): la vista degrada en vez de tronar.
+  compatible: boolean;
+  engineVersion: string | null; // versions.engine del snapshot, para informar el formato
   efrState: EfrStateContent | null;
   confirmed: boolean;
   confirmedAt: string | null;
@@ -44,6 +48,28 @@ export async function getEvaluationResults(
   if (!report) return null;
   const dispatch = await getReportDispatch(report.reportId);
   if (!dispatch) return null;
+
+  // Compatibilidad del snapshot con la forma actual del motor. Los snapshots de eras
+  // anteriores (stub-0.1.0 pre-B11) no tienen efrPhenotype/dfi/structural: se degrada la
+  // vista en vez de tronar. reports es inmutable, no se pueden migrar.
+  const rawSnapshot = dispatch.snapshot as unknown;
+  const engineVersion =
+    (rawSnapshot as { versions?: { engine?: string } } | null)?.versions?.engine ?? null;
+  if (!isEngineOutput(rawSnapshot)) {
+    return {
+      snapshot: dispatch.snapshot,
+      compatible: false,
+      engineVersion,
+      efrState: null,
+      confirmed: false,
+      confirmedAt: null,
+      reportStatus: dispatch.status,
+      patientName: dispatch.patientName,
+      documentLabel: dispatch.documentLabel,
+      evaluationDate: dispatch.evaluationDate,
+      indicatorNames: {},
+    };
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: diag, error: dErr } = await supabase
@@ -87,6 +113,8 @@ export async function getEvaluationResults(
 
   return {
     snapshot: dispatch.snapshot,
+    compatible: true,
+    engineVersion,
     efrState,
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,

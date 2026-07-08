@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { EngineIndicators } from "@/clinical-engine";
+import { type EngineIndicators, isEngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getReportDispatch,
@@ -88,6 +88,10 @@ export async function getFollowupComparison(
 
   const cur = curDispatch.snapshot;
   const pre = prevDispatch.snapshot;
+
+  // Si alguno de los snapshots es de una era anterior del motor (stub-0.1.0 pre-B11), su
+  // forma no coincide y no se puede comparar campo a campo: se omite la comparacion.
+  if (!isEngineOutput(cur) || !isEngineOutput(pre)) return null;
 
   const indicators: IndicatorDelta[] = INDICATORS.map(({ code, key }) => {
     const current = cur.indicators[key];
