@@ -27,11 +27,12 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
 // Severidad de dominio DFI (0-3) -> etiqueta + color de la capa clinica (no solo color:
 // tambien la etiqueta, por accesibilidad; BRAND).
 const SEV_LABEL = ["Optimo", "Leve", "Moderado", "Alto"];
+// Capa clinica de color (tokens de BRAND, theme-aware): sev 0-1 optimo, 2 alerta, 3 critico.
 const SEV_CLS = [
-  "bg-[#ECFDF5] text-[#065F46]",
-  "bg-[#ECFDF5] text-[#065F46]",
-  "bg-[#FFFBEB] text-[#92400E]",
-  "bg-[#FEF2F2] text-[#991B1B]",
+  "bg-clinical-optimal-bg text-clinical-optimal",
+  "bg-clinical-optimal-bg text-clinical-optimal",
+  "bg-clinical-warning-bg text-clinical-warning",
+  "bg-clinical-critical-bg text-clinical-critical",
 ];
 // Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta).
 const RISK_SEV: Record<string, number> = { BAJO: 0, MEDIO: 1, ALTO: 2, "CRÍTICO": 3 };
@@ -65,7 +66,9 @@ export function EvaluationResults({ results }: { results: Results }) {
             Resultados de la evaluacion
           </h1>
           {results.confirmed ? (
-            <Badge className="bg-[#ECFDF5] text-[#065F46]">Diagnostico confirmado</Badge>
+            <Badge className="bg-clinical-optimal-bg text-clinical-optimal">
+              Diagnostico confirmado
+            </Badge>
           ) : (
             <Badge variant="outline">Pendiente de confirmar</Badge>
           )}
@@ -164,7 +167,7 @@ export function EvaluationResults({ results }: { results: Results }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!dfi.complete ? (
-            <p className="rounded-md border border-[#F59E0B]/40 bg-[#FFFBEB] px-3 py-2 text-sm text-[#92400E]">
+            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
               {dfi.degradedReason ?? "El DFI corrio incompleto."}
             </p>
           ) : null}

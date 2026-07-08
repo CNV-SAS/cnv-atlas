@@ -33,6 +33,7 @@ export default async function ReportesPage() {
               key={r.reportId}
               report={{
                 reportId: r.reportId,
+                evaluationId: r.evaluationId,
                 evaluationType: r.evaluationType,
                 status: r.status,
                 documentLabel: r.documentLabel,

@@ -11,6 +11,7 @@ import { approveReportAction, type ReportActionState, sendReportAction } from ".
 
 export type ReportCardView = {
   reportId: string;
+  evaluationId: string;
   evaluationType: "inicial" | "seguimiento";
   status: "draft" | "approved" | "sent";
   documentLabel: string;
@@ -58,14 +59,22 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         </span>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3">
-        <a
-          href={`/reportes/${report.reportId}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          {report.status === "sent" ? "Ver PDF enviado" : "Ver preview"}
-        </a>
+        <div className="flex flex-wrap items-center gap-4">
+          <a
+            href={`/evaluaciones/${report.evaluationId}`}
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Ver resultados
+          </a>
+          <a
+            href={`/reportes/${report.reportId}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {report.status === "sent" ? "Ver PDF enviado" : "Ver preview"}
+          </a>
+        </div>
 
         {report.status === "draft" ? (
           <form action={approve} className="flex w-full flex-col gap-2">

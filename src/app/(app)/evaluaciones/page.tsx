@@ -116,8 +116,8 @@ export default async function EvaluacionesPage() {
             Generar diagnostico
           </h2>
           <p className="text-muted-foreground">
-            Con la medicion BIS importada, genera indicadores, diagnostico, tratamiento
-            y reporte (motor stub hasta la entrega del modelo final).
+            Con la medicion BIS importada, genera indicadores, diagnostico y reporte con
+            el motor real ANI-BIS-E. Luego revisa los resultados y la Diana.
           </p>
         </header>
 
@@ -154,6 +154,7 @@ export default async function EvaluacionesPage() {
                 key={r.reportId}
                 report={{
                   reportId: r.reportId,
+                  evaluationId: r.evaluationId,
                   evaluationType: r.evaluationType,
                   status: r.status,
                   documentLabel: r.documentLabel,
