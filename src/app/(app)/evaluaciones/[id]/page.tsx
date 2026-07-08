@@ -4,6 +4,8 @@ import { requireUser } from "@/modules/auth/session";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
+import { TreatmentPanel } from "@/modules/treatment/components/treatment-panel";
+import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 
 export const metadata = { title: "Resultados - Atlas" };
 
@@ -22,5 +24,14 @@ export default async function ResultadosEvaluacionPage({
   const results = await getEvaluationResults(id);
   if (!results) notFound();
 
-  return <EvaluationResults results={results} />;
+  // Protocolo de tratamiento (B13): el tratamiento ya existe (lo crea el pipeline al
+  // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
+  const protocol = await getTreatmentProtocol(id);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <EvaluationResults results={results} />
+      {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
+    </div>
+  );
 }
