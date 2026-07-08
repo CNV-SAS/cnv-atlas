@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EngineIndicators } from "@/clinical-engine";
 
+import { Diana } from "./diana";
 import type { EvaluationResults as Results } from "../data/results-reader";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -99,6 +100,21 @@ export function EvaluationResults({ results }: { results: Results }) {
           <Line
             label="Nutraceuticos sugeridos"
             value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      {/* La Diana EFR: posicion del paciente entre los 81 estados */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Diana EFR</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Diana
+            bands={efrPhenotype.bands}
+            stateNumber={efrPhenotype.stateNumber}
+            frSectorName={frSector.nombre}
+            structuralName={structural.nombre}
           />
         </CardContent>
       </Card>
