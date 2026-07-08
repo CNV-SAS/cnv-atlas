@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
@@ -15,6 +16,16 @@ export const treatments = pgTable("treatments", {
   createdBy: uuid("created_by")
     .notNull()
     .references(() => profiles.id),
+  // Objetivos del protocolo (B13). El motor no los calcula: kcal se precarga del
+  // GET que mide el Biody (editable); proteina y restricciones las fija el
+  // profesional. Alimentan el prompt del menu (sin PII) y la comparacion del
+  // seguimiento. Nullable: el tratamiento puede existir antes de fijarlos.
+  kcalObjetivo: integer("kcal_objetivo"),
+  proteinaGramos: integer("proteina_g"),
+  restricciones: text("restricciones")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   createdAt: createdAt(),
 });
 

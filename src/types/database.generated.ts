@@ -2194,18 +2194,27 @@ export type Database = {
           created_by: string
           diagnosis_id: string
           id: string
+          kcal_objetivo: number | null
+          proteina_g: number | null
+          restricciones: string[]
         }
         Insert: {
           created_at?: string
           created_by: string
           diagnosis_id: string
           id?: string
+          kcal_objetivo?: number | null
+          proteina_g?: number | null
+          restricciones?: string[]
         }
         Update: {
           created_at?: string
           created_by?: string
           diagnosis_id?: string
           id?: string
+          kcal_objetivo?: number | null
+          proteina_g?: number | null
+          restricciones?: string[]
         }
         Relationships: [
           {

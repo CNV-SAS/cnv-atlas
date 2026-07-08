@@ -492,6 +492,13 @@ create table public.treatments (
   id uuid primary key default gen_random_uuid(),
   diagnosis_id uuid not null references diagnoses(id) on delete restrict,
   created_by uuid not null references profiles(id),
+  -- Objetivos del protocolo (B13, migracion 0013). El motor no los calcula:
+  -- kcal se precarga del GET medido por el Biody (editable), proteina y
+  -- restricciones las fija el profesional. Alimentan el prompt del menu (sin PII)
+  -- y la comparacion del seguimiento. Nullable: el tratamiento puede existir antes.
+  kcal_objetivo int,                        -- objetivo calorico diario
+  proteina_g int,                           -- objetivo de proteina diaria en gramos
+  restricciones text[] not null default '{}', -- ej. sin gluten, vegetariano
   created_at timestamptz not null default now()
 );
 
