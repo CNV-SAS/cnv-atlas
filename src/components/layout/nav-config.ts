@@ -17,7 +17,8 @@ export type NavIconKey =
   | "admin"
   | "ia"
   | "auditoria"
-  | "direccion";
+  | "direccion"
+  | "obbia";
 
 export type NavItem = {
   label: string;
@@ -39,6 +40,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/direccion",
     icon: "direccion",
     roles: ["admin", "direccion"],
+  },
+  {
+    label: "Investigacion",
+    href: "/obbia",
+    icon: "obbia",
+    roles: ["admin", "obbia"],
   },
   {
     // Pacientes es una vista clinica: por RLS solo la ven el profesional dueno, admin y

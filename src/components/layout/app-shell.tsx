@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   CreditCard,
   FileText,
+  FlaskConical,
   History,
   LayoutDashboard,
   LogOut,
@@ -54,6 +55,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   ia: Sparkles,
   auditoria: History,
   direccion: BarChart3,
+  obbia: FlaskConical,
 };
 
 type ShellUser = { fullName: string; email: string };
