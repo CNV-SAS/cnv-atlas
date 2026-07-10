@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   CreditCard,
   FileText,
+  History,
   LayoutDashboard,
   LogOut,
   type LucideIcon,
@@ -50,6 +51,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   consentimiento: ScrollText,
   admin: ShieldCheck,
   ia: Sparkles,
+  auditoria: History,
 };
 
 type ShellUser = { fullName: string; email: string };

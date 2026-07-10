@@ -15,7 +15,8 @@ export type NavIconKey =
   | "pagos"
   | "consentimiento"
   | "admin"
-  | "ia";
+  | "ia"
+  | "auditoria";
 
 export type NavItem = {
   label: string;
@@ -92,6 +93,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "IA",
     href: "/admin/ia",
     icon: "ia",
+    roles: ["admin"],
+  },
+  {
+    label: "Auditoria",
+    href: "/admin/auditoria",
+    icon: "auditoria",
     roles: ["admin"],
   },
 ];
