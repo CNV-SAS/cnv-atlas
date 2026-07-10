@@ -74,7 +74,7 @@ export async function generateMenu(
 
   let config;
   try {
-    config = resolveAiConfig();
+    config = await resolveAiConfig();
   } catch {
     return err(appError("internal", "La IA no esta configurada. Contacta al administrador."));
   }

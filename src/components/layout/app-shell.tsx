@@ -17,6 +17,7 @@ import {
   Receipt,
   ScrollText,
   ShieldCheck,
+  Sparkles,
   Stethoscope,
 } from "lucide-react";
 
@@ -48,6 +49,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   pagos: Receipt,
   consentimiento: ScrollText,
   admin: ShieldCheck,
+  ia: Sparkles,
 };
 
 type ShellUser = { fullName: string; email: string };
