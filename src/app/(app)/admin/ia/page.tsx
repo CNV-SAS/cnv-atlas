@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { AiConfigForm } from "@/modules/ai-admin/components/ai-config-form";
+import { AiPromptForm } from "@/modules/ai-admin/components/ai-prompt-form";
 import { getAiConfigView } from "@/modules/ai-admin/data/ai-config-reader";
+import { getPromptView } from "@/modules/ai-admin/data/ai-prompt-reader";
 import { canManageAi } from "@/modules/ai-admin/policies/can-manage-ai";
 import { requireUser } from "@/modules/auth/session";
 
@@ -15,7 +17,10 @@ export default async function AdminAiPage() {
     redirect("/no-autorizado");
   }
 
-  const view = await getAiConfigView();
+  const [view, promptView] = await Promise.all([
+    getAiConfigView(),
+    getPromptView("menu.generate"),
+  ]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
@@ -41,6 +46,15 @@ export default async function AdminAiPage() {
             Sin configuracion en base de datos: hoy se usa el proveedor definido en el entorno.
           </p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold text-foreground">Prompt del menu</h2>
+        <p className="text-sm text-muted-foreground">
+          Instrucciones con las que la IA genera el menu de apoyo. Cada cambio crea una version
+          nueva auditada; la version activa es la que se usa al generar.
+        </p>
+        <AiPromptForm view={promptView} />
       </section>
     </div>
   );

@@ -4,6 +4,7 @@ import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
+import { getActivePrompt } from "@/lib/ai/prompts";
 import { AiError, generateText } from "@/lib/ai/provider";
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 
@@ -19,9 +20,6 @@ import { buildMenuPrompt, MENU_PROMPT_KEY, MENU_PROMPT_VERSION } from "../ai/pro
 // nunca se aplica al protocolo automaticamente, el profesional decide.
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
-
-// Version de prompt que se guarda como procedencia (clave@version de la plantilla en codigo).
-const PROMPT_VERSION = `${MENU_PROMPT_KEY}@${MENU_PROMPT_VERSION}`;
 
 function classifyFailure(e: unknown): MenuSuggestionStatus {
   const msg = e instanceof Error ? `${e.name} ${e.message}` : String(e);
@@ -61,16 +59,25 @@ export async function generateMenu(
     );
   }
 
+  // Prompt de sistema: prefiere la version activa en BD (editable por admin, B14); si no hay,
+  // cae al texto canonico en codigo. La procedencia guardada refleja la version usada.
+  const activePrompt = await getActivePrompt(MENU_PROMPT_KEY);
+  const promptVersion = `${MENU_PROMPT_KEY}@${activePrompt?.version ?? MENU_PROMPT_VERSION}`;
+
   const { structural, frSector, dfi } = results.snapshot;
-  // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas.
-  const messages = buildMenuPrompt({
-    kcalObjetivo: protocol.kcalObjetivo,
-    proteinaGramos: protocol.proteinaGramos,
-    restricciones: protocol.restricciones,
-    fenotipoEstructural: structural.nombre,
-    sectorFuncional: frSector.nombre,
-    rutasAtencion: dfi.rutas,
-  });
+  // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas. El texto de
+  // sistema es lo unico parametrizable; el mensaje de usuario se arma dentro de buildMenuPrompt.
+  const messages = buildMenuPrompt(
+    {
+      kcalObjetivo: protocol.kcalObjetivo,
+      proteinaGramos: protocol.proteinaGramos,
+      restricciones: protocol.restricciones,
+      fenotipoEstructural: structural.nombre,
+      sectorFuncional: frSector.nombre,
+      rutasAtencion: dfi.rutas,
+    },
+    activePrompt?.content,
+  );
 
   let config;
   try {
@@ -85,7 +92,7 @@ export async function generateMenu(
       treatmentId: protocol.treatmentId,
       provider: completion.provider,
       model: completion.model,
-      promptVersion: PROMPT_VERSION,
+      promptVersion,
       generatedText: completion.text,
       rawResponse: {
         provider: completion.provider,
@@ -105,7 +112,7 @@ export async function generateMenu(
       treatmentId: protocol.treatmentId,
       provider: config.provider,
       model: config.model,
-      promptVersion: PROMPT_VERSION,
+      promptVersion,
       generatedText: null,
       rawResponse: { error: e instanceof AiError ? e.message : String(e) },
       status,

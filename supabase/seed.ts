@@ -43,6 +43,15 @@ const registry: RegistryData = JSON.parse(
   ),
 );
 
+// Texto canonico del prompt de menu (fuente unica; el mismo JSON que consume el builder del
+// prompt en la app). Se siembra como ai_prompts menu.generate v1.
+const menuSystemPrompt: string = JSON.parse(
+  readFileSync(
+    new URL("../src/modules/treatment/ai/prompts/menu.system.v1.json", import.meta.url),
+    "utf8",
+  ),
+).system;
+
 // ---- Variables de entorno requeridas -------------------------------------
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -497,6 +506,24 @@ async function main() {
           token: SURVEY_LINK_TOKEN,
         },
         { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  // 11. Prompt de IA versionado: menu.generate v1 (active) = texto canonico en codigo. Se
+  // usa ignoreDuplicates para NO sobrescribir ediciones del admin (v2+) al recorrer el seed.
+  check(
+    "ai_prompts",
+    (
+      await supabase.from("ai_prompts").upsert(
+        {
+          prompt_key: "menu.generate",
+          version: 1,
+          content: menuSystemPrompt,
+          status: "active",
+          created_by: adminId,
+        },
+        { onConflict: "prompt_key,version", ignoreDuplicates: true },
       )
     ).error,
   );

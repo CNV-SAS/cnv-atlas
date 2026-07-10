@@ -7,7 +7,8 @@ import { requireUser } from "@/modules/auth/session";
 
 import { canManageAi } from "./policies/can-manage-ai";
 import { saveAiConfig } from "./services/ai-config-service";
-import { saveAiConfigSchema } from "./validations";
+import { createPromptVersion } from "./services/ai-prompt-service";
+import { saveAiConfigSchema, savePromptSchema } from "./validations";
 
 // Actions del panel de IA (B14). Thin (regla 2): autorizan por policy, validan con Zod y
 // delegan en el service.
@@ -49,4 +50,34 @@ export async function saveAiConfigAction(
 
   revalidatePath("/admin/ia");
   return { error: null, success: "Configuracion de IA guardada.", warning: null };
+}
+
+export async function savePromptAction(
+  _prev: AiAdminActionState,
+  form: FormData,
+): Promise<AiAdminActionState> {
+  const user = await requireUser();
+  if (!canManageAi(user)) return fail("No autorizado.");
+
+  const parsed = savePromptSchema.safeParse({
+    promptKey: (form.get("promptKey") as string | null)?.trim() ?? "",
+    content: (form.get("content") as string | null)?.trim() ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Prompt invalido.");
+  }
+
+  const result = await createPromptVersion(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: await actorIp(),
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  revalidatePath("/admin/ia");
+  return {
+    error: null,
+    success: `Prompt guardado como version ${result.value.version}.`,
+    warning: null,
+  };
 }
