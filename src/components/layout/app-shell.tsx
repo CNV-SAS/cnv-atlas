@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  BarChart3,
   ClipboardCheck,
   CreditCard,
   FileText,
@@ -52,6 +53,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   admin: ShieldCheck,
   ia: Sparkles,
   auditoria: History,
+  direccion: BarChart3,
 };
 
 type ShellUser = { fullName: string; email: string };

@@ -16,7 +16,8 @@ export type NavIconKey =
   | "consentimiento"
   | "admin"
   | "ia"
-  | "auditoria";
+  | "auditoria"
+  | "direccion";
 
 export type NavItem = {
   label: string;
@@ -34,10 +35,19 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "direccion", "soporte", "obbia", "professional"],
   },
   {
+    label: "Direccion",
+    href: "/direccion",
+    icon: "direccion",
+    roles: ["admin", "direccion"],
+  },
+  {
+    // Pacientes es una vista clinica: por RLS solo la ven el profesional dueno, admin y
+    // soporte. Direccion y obbia no acceden a datos de paciente (sus tableros son agregados),
+    // por eso no aparece para ellos aunque el link exista.
     label: "Pacientes",
     href: "/pacientes",
     icon: "clinica",
-    roles: ["admin", "direccion", "obbia", "professional"],
+    roles: ["admin", "professional"],
   },
   {
     label: "Evaluaciones",
@@ -46,10 +56,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "professional"],
   },
   {
+    // Reportes tambien es clinico (RLS: profesional dueno o admin). Fuera para direccion/obbia.
     label: "Reportes",
     href: "/reportes",
     icon: "reportes",
-    roles: ["admin", "direccion", "obbia", "professional"],
+    roles: ["admin", "professional"],
   },
   {
     label: "Comercial",
