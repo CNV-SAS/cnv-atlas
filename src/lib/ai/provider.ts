@@ -81,6 +81,9 @@ export type AiConfig = {
   provider: AiProvider;
   model: string;
   fallback?: { provider: AiProvider; model: string };
+  // Procedencia de la config: "db" = eleccion explicita del admin (se honra sin fallback
+  // silencioso); "env" = default por entorno (admite fallback silencioso entre proveedores).
+  source?: "db" | "env";
 };
 
 // Genera texto con el proveedor primario; ante cualquier fallo, cae al secundario si hay.

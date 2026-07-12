@@ -46,12 +46,20 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
           onChange={(e) => onProviderChange(e.target.value)}
           className="rounded-lg border border-input bg-background p-2"
         >
-          {view.providers.map((p) => (
-            <option key={p.id} value={p.id} disabled={!p.hasKey}>
-              {p.id}
-              {p.hasKey ? "" : " (sin API key en el entorno)"}
-            </option>
-          ))}
+          {view.providers.map((p) => {
+            const usable = p.hasKey && p.models.length > 0;
+            const reason = !p.hasKey
+              ? " (sin API key en el entorno)"
+              : p.models.length === 0
+                ? " (sin modelo en el entorno)"
+                : "";
+            return (
+              <option key={p.id} value={p.id} disabled={!usable}>
+                {p.id}
+                {reason}
+              </option>
+            );
+          })}
         </select>
       </label>
 
@@ -65,7 +73,7 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
           className="rounded-lg border border-input bg-background p-2"
         >
           {currentModels.length === 0 ? (
-            <option value="">(sin modelos configurados)</option>
+            <option value="">(sin modelo en el entorno)</option>
           ) : (
             currentModels.map((m) => (
               <option key={m} value={m}>
@@ -74,6 +82,10 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
             ))
           )}
         </select>
+        <span className="text-xs text-muted-foreground">
+          El modelo lo fija el entorno para cada proveedor (garantizado que funciona). Eliges el
+          proveedor.
+        </span>
       </label>
 
       <button

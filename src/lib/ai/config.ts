@@ -9,26 +9,20 @@ import { AiError, type AiConfig, type AiProvider } from "./provider";
 
 // Resuelve el proveedor/modelo de IA activos. Prioridad (B14): la config en BD (tabla
 // ai_config, editable por admin) manda; si no hay fila, o el proveedor elegido no tiene su
-// API key en el entorno, se cae a la resolucion por entorno (Groq primario, Gemini fallback).
-// Las API keys viven SIEMPRE en el entorno, nunca en la BD. Se lee via Drizzle owner: el
-// flujo del profesional necesita saber el proveedor sin ser admin (la RLS admin-only aplica
-// al cliente anon, no al owner); es config global, no PII.
-
-function envModel(provider: AiProvider): string | undefined {
-  return provider === "groq" ? process.env.GROQ_MODEL : process.env.GEMINI_MODEL;
-}
+// API key en el entorno, se cae a la resolucion por entorno. Las API keys viven SIEMPRE en el
+// entorno, nunca en la BD. Se lee via Drizzle owner: el flujo del profesional necesita saber
+// el proveedor sin ser admin (la RLS admin-only aplica al cliente anon, no al owner); es
+// config global, no PII.
+//
+// Politica de fallback (Fix B14): una eleccion EXPLICITA del admin (fila en ai_config) se
+// honra SIN fallback cruzado (source "db"): si su proveedor falla, debe reflejarse como fallo,
+// no substituirse en silencio por el otro proveedor. El fallback silencioso queda solo para el
+// default por entorno (source "env"), donde no hubo eleccion del admin.
 
 function providerHasKey(provider: AiProvider): boolean {
   return provider === "groq"
     ? Boolean(process.env.GROQ_API_KEY)
     : Boolean(process.env.GEMINI_API_KEY);
-}
-
-// Fallback = el OTRO proveedor, si tiene key y modelo en el entorno.
-function otherProviderFallback(primary: AiProvider): AiConfig["fallback"] {
-  const other: AiProvider = primary === "groq" ? "gemini" : "groq";
-  const model = envModel(other);
-  return providerHasKey(other) && model ? { provider: other, model } : undefined;
 }
 
 function resolveFromEnv(): AiConfig {
@@ -42,10 +36,11 @@ function resolveFromEnv(): AiConfig {
       provider: "groq",
       model: groqModel as string,
       fallback: hasGemini ? { provider: "gemini", model: geminiModel as string } : undefined,
+      source: "env",
     };
   }
   if (hasGemini) {
-    return { provider: "gemini", model: geminiModel as string };
+    return { provider: "gemini", model: geminiModel as string, source: "env" };
   }
   throw new AiError(
     "IA no configurada: falta GROQ_API_KEY+GROQ_MODEL o GEMINI_API_KEY+GEMINI_MODEL.",
@@ -68,13 +63,10 @@ async function readActiveConfig(): Promise<{ provider: AiProvider; model: string
 export async function resolveAiConfig(): Promise<AiConfig> {
   const override = await readActiveConfig();
   // El override solo se honra si su proveedor tiene API key en el entorno; si no, se cae al
-  // entorno para no dejar la IA rota por una config invalida.
+  // entorno para no dejar la IA rota por una config invalida. Sin fallback cruzado: si el
+  // proveedor elegido por el admin falla, se refleja como fallo (no se substituye en silencio).
   if (override && providerHasKey(override.provider)) {
-    return {
-      provider: override.provider,
-      model: override.model,
-      fallback: otherProviderFallback(override.provider),
-    };
+    return { provider: override.provider, model: override.model, source: "db" };
   }
   return resolveFromEnv();
 }

@@ -114,11 +114,17 @@ export async function generateMenu(
       model: config.model,
       promptVersion,
       generatedText: null,
-      rawResponse: { error: e instanceof AiError ? e.message : String(e) },
+      rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
       status,
       latencyMs: null,
       ...actor,
     });
-    return err(appError("internal", "No se pudo generar el menu. Intenta de nuevo."));
+    // Con config explicita del admin (source "db") no hay fallback: el fallo del proveedor
+    // elegido se refleja tal cual, nombrandolo, para que quede claro que su config esta rota.
+    const message =
+      config.source === "db"
+        ? `El proveedor de IA configurado (${config.provider}) fallo al generar el menu. Avisa al administrador para revisar la configuracion.`
+        : "No se pudo generar el menu. Intenta de nuevo.";
+    return err(appError("internal", message));
   }
 }

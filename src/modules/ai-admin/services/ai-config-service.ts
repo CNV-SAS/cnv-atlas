@@ -9,10 +9,11 @@ import type { SaveAiConfigInput } from "../validations";
 
 // Servicio de la config de IA (la logica vive aqui; el action es thin, regla 2). Dos guardas
 // antes de persistir: (1) el proveedor elegido DEBE tener su API key en el entorno (activar
-// uno sin key dejaria la IA rota); (2) el modelo DEBE pertenecer al proveedor (evita guardar,
-// p. ej., gemini con un modelo de groq, que hace fallar la llamada y caer al fallback en
-// silencio). No basta con que el frontend refresque bien el selector: la consistencia se
-// exige aqui, en el servidor. Las keys viven solo en el entorno, nunca en BD.
+// uno sin key dejaria la IA rota); (2) el modelo DEBE ser el configurado en el entorno para
+// ese proveedor (modelsForProvider): es el unico garantizado de existir en la API, y evita
+// guardar un modelo que el endpoint rechaza con 404 y dispara el fallback en silencio. No
+// basta con que el frontend refresque bien el selector: la consistencia se exige aqui, en el
+// servidor. Las keys viven solo en el entorno, nunca en BD.
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
@@ -38,7 +39,7 @@ export async function saveAiConfig(
     return err(
       appError(
         "validation",
-        `El modelo ${input.activeModel} no pertenece al proveedor ${input.activeProvider}. Elige un modelo valido del proveedor.`,
+        `El modelo ${input.activeModel} no es el configurado en el entorno para ${input.activeProvider}. Elige el modelo del entorno.`,
       ),
     );
   }
