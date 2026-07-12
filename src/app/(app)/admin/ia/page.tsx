@@ -36,16 +36,9 @@ export default async function AdminAiPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-foreground">Proveedor y modelo</h2>
+        {/* El resumen "Activo" vive dentro del form (cliente) para reflejar el guardado al
+            instante, sin el lag del round-trip de revalidacion. */}
         <AiConfigForm view={view} />
-        {view.current ? (
-          <p className="text-xs text-muted-foreground">
-            Activo: {view.current.activeProvider} / {view.current.activeModel}.
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Sin configuracion en base de datos: hoy se usa el proveedor definido en el entorno.
-          </p>
-        )}
       </section>
 
       <section className="flex flex-col gap-3">

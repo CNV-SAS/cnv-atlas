@@ -18,12 +18,19 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
   const initialProvider =
     view.current?.activeProvider ?? firstUsable ?? view.providers[0]?.id ?? "groq";
 
-  // UNICA fuente de verdad: el proveedor. El modelo NO es un segundo estado editable (ops lo
-  // fija por entorno, un modelo por proveedor): se DERIVA del proveedor. Asi proveedor y modelo
-  // no pueden mostrar una combinacion inconsistente en pantalla (el bug del selector que
-  // "rebotaba" venia de mantener el modelo como estado propio y actualizar dos estados a la vez).
+  // UNICA fuente de verdad de la seleccion: el proveedor. El modelo NO es un segundo estado
+  // editable (ops lo fija por entorno, un modelo por proveedor): se DERIVA del proveedor.
   const [provider, setProvider] = useState<string>(initialProvider);
   const model = view.providers.find((p) => p.id === provider)?.models[0] ?? "";
+
+  // Confirmacion "Activo": lo que esta REALMENTE guardado. Deriva (sin estado ni efecto) del
+  // resultado de la accion si acaba de guardar; si no, del snapshot del servidor. Asi refleja
+  // el guardado al INSTANTE, sin el lag del round-trip de revalidacion.
+  const saved = state.saved
+    ? state.saved
+    : view.current
+      ? { provider: view.current.activeProvider, model: view.current.activeModel }
+      : null;
 
   return (
     <form action={action} className="flex max-w-md flex-col gap-4">
@@ -72,6 +79,16 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
       >
         {pending ? "Guardando..." : "Guardar configuracion"}
       </button>
+
+      {saved ? (
+        <p className="text-xs text-muted-foreground">
+          Activo: {saved.provider} / {saved.model}.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Sin configuracion en base de datos: hoy se usa el proveedor definido en el entorno.
+        </p>
+      )}
     </form>
   );
 }

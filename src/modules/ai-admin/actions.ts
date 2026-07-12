@@ -17,6 +17,9 @@ export type AiAdminActionState = {
   error: string | null;
   success: string | null;
   warning: string | null;
+  // Config recien guardada (solo en el exito de saveAiConfigAction). Deja que la UI muestre
+  // "Activo" al instante, sin esperar el round-trip de revalidacion del servidor.
+  saved?: { provider: string; model: string };
 };
 
 const fail = (error: string): AiAdminActionState => ({ error, success: null, warning: null });
@@ -49,7 +52,12 @@ export async function saveAiConfigAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath("/admin/ia");
-  return { error: null, success: "Configuracion de IA guardada.", warning: null };
+  return {
+    error: null,
+    success: "Configuracion de IA guardada.",
+    warning: null,
+    saved: { provider: parsed.data.activeProvider, model: parsed.data.activeModel },
+  };
 }
 
 export async function savePromptAction(
