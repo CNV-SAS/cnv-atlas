@@ -36,9 +36,9 @@ export async function saveAiConfigAction(
   const user = await requireUser();
   if (!canManageAi(user)) return fail("No autorizado.");
 
+  // Solo el proveedor viaja del cliente; el modelo lo deriva el servidor (service).
   const parsed = saveAiConfigSchema.safeParse({
     activeProvider: (form.get("activeProvider") as string | null)?.trim() ?? "",
-    activeModel: (form.get("activeModel") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Configuracion de IA invalida.");
@@ -51,12 +51,15 @@ export async function saveAiConfigAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath("/admin/ia");
+  // NO se revalida /admin/ia aqui: refrescar la ruta re-monta el form cliente y re-siembra el
+  // proveedor desde un snapshot rezagado (rebote visual). No hace falta: la pagina es dinamica
+  // y lee ai_config fresco en cada visita, generate-menu lee la BD directo, y el "Activo" en
+  // pantalla sale de este `saved` (el cliente es la fuente de verdad tras guardar).
   return {
     error: null,
     success: "Configuracion de IA guardada.",
     warning: null,
-    saved: { provider: parsed.data.activeProvider, model: parsed.data.activeModel },
+    saved: { provider: result.value.provider, model: result.value.model },
   };
 }
 

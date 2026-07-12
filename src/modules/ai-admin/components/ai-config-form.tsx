@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 
@@ -32,8 +32,18 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
       ? { provider: view.current.activeProvider, model: view.current.activeModel }
       : null;
 
+  // Se despacha la accion por onSubmit + startTransition (no por el prop `action` del form):
+  // React 19 auto-resetea un <form action={...}> al completar la accion, y ese form.reset()
+  // nativo repinta el <select> controlado a su opcion por defecto (rebote visual a Groq).
+  // Despachando manualmente se evita ese reset; el estado controlado no se toca.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => action(formData));
+  }
+
   return (
-    <form action={action} className="flex max-w-md flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Proveedor activo</span>
         <select
@@ -61,8 +71,8 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
 
       <div className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Modelo</span>
-        {/* Derivado del proveedor, no editable: se envia por un hidden y se muestra de solo lectura. */}
-        <input type="hidden" name="activeModel" value={model} />
+        {/* Solo display: el modelo NO se envia. El servidor lo deriva del proveedor recibido,
+            asi no puede llegar un par proveedor/modelo inconsistente desde el cliente. */}
         <p className="rounded-lg border border-input bg-muted/40 p-2 font-mono text-xs text-foreground">
           {model || "(sin modelo en el entorno)"}
         </p>

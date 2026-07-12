@@ -7,13 +7,11 @@ import { z } from "zod";
 export const AI_PROVIDERS = ["groq", "gemini"] as const;
 export type AiProviderId = (typeof AI_PROVIDERS)[number];
 
+// El cliente solo envia el PROVEEDOR. El modelo lo deriva el servidor del entorno para ese
+// proveedor (ver ai-config-service): asi es imposible que un submit rapido mande un par
+// proveedor/modelo inconsistente (el modelo del cliente ya no interviene).
 export const saveAiConfigSchema = z.object({
   activeProvider: z.enum(AI_PROVIDERS),
-  activeModel: z
-    .string()
-    .trim()
-    .min(1, "Indica el modelo.")
-    .max(100, "El nombre del modelo es demasiado largo."),
 });
 
 export type SaveAiConfigInput = z.infer<typeof saveAiConfigSchema>;

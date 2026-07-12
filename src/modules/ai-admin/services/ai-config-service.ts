@@ -7,13 +7,12 @@ import { saveAiConfig as writeAiConfig } from "../data/ai-config-writer";
 import { modelsForProvider } from "../models";
 import type { SaveAiConfigInput } from "../validations";
 
-// Servicio de la config de IA (la logica vive aqui; el action es thin, regla 2). Dos guardas
-// antes de persistir: (1) el proveedor elegido DEBE tener su API key en el entorno (activar
-// uno sin key dejaria la IA rota); (2) el modelo DEBE ser el configurado en el entorno para
-// ese proveedor (modelsForProvider): es el unico garantizado de existir en la API, y evita
-// guardar un modelo que el endpoint rechaza con 404 y dispara el fallback en silencio. No
-// basta con que el frontend refresque bien el selector: la consistencia se exige aqui, en el
-// servidor. Las keys viven solo en el entorno, nunca en BD.
+// Servicio de la config de IA (la logica vive aqui; el action es thin, regla 2). El cliente
+// solo elige el PROVEEDOR; el servidor DERIVA el modelo del entorno para ese proveedor. Asi
+// no puede llegar un par proveedor/modelo inconsistente desde el cliente (elimina la ventana
+// de carrera del submit rapido, no la sincroniza). Guardas: (1) el proveedor DEBE tener API
+// key en el entorno; (2) DEBE existir un modelo configurado en el entorno para el. Las keys y
+// el modelo viven solo en el entorno, nunca llegan del cliente ni se guardan sueltos en BD.
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
@@ -26,7 +25,7 @@ function providerHasKey(provider: string): boolean {
 export async function saveAiConfig(
   input: SaveAiConfigInput,
   actor: Actor,
-): Promise<Result<void>> {
+): Promise<Result<{ provider: string; model: string }>> {
   if (!providerHasKey(input.activeProvider)) {
     return err(
       appError(
@@ -35,14 +34,16 @@ export async function saveAiConfig(
       ),
     );
   }
-  if (!modelsForProvider(input.activeProvider).includes(input.activeModel)) {
+  // Modelo derivado del entorno para el proveedor recibido. No llega del cliente.
+  const model = modelsForProvider(input.activeProvider)[0];
+  if (!model) {
     return err(
       appError(
         "validation",
-        `El modelo ${input.activeModel} no es el configurado en el entorno para ${input.activeProvider}. Elige el modelo del entorno.`,
+        `No hay modelo configurado en el entorno para ${input.activeProvider}.`,
       ),
     );
   }
-  await writeAiConfig({ ...input, ...actor });
-  return ok(undefined);
+  await writeAiConfig({ activeProvider: input.activeProvider, activeModel: model, ...actor });
+  return ok({ provider: input.activeProvider, model });
 }
