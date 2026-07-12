@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { navItemsForRoles } from "../components/layout/nav-config";
+import { isNavItemActive, navItemsForRoles } from "../components/layout/nav-config";
 
 // B3: la navegacion es adaptativa por rol. Aqui se prueba la decision de
 // visibilidad (modulo puro); el render del shell se valida en el smoke de dev.
@@ -34,5 +34,30 @@ describe("B3: navegacion adaptativa por rol", () => {
       const hrefs = navItemsForRoles([role]).map((i) => i.href);
       expect(hrefs).toContain("/consentimiento");
     }
+  });
+});
+
+// B14: item activo por prefijo mas largo. Regresion del bug donde cualquier /admin/* marcaba
+// Usuarios (/admin) como activo por un startsWith generico.
+describe("B14: item de nav activo (gana el prefijo mas largo)", () => {
+  const items = navItemsForRoles(["admin"]);
+  const activos = (pathname: string) =>
+    items.filter((i) => isNavItemActive(i.href, pathname, items)).map((i) => i.href);
+
+  it("en /admin/ia solo se activa /admin/ia, no /admin", () => {
+    expect(activos("/admin/ia")).toEqual(["/admin/ia"]);
+  });
+
+  it("en /admin/auditoria solo se activa /admin/auditoria, no /admin", () => {
+    expect(activos("/admin/auditoria")).toEqual(["/admin/auditoria"]);
+  });
+
+  it("en /admin exacto solo se activa /admin", () => {
+    expect(activos("/admin")).toEqual(["/admin"]);
+  });
+
+  it("conserva el resaltado de la seccion en rutas de detalle sin item propio", () => {
+    // /evaluaciones/123 no tiene item propio: se resalta la seccion /evaluaciones.
+    expect(isNavItemActive("/evaluaciones", "/evaluaciones/123", items)).toBe(true);
   });
 });

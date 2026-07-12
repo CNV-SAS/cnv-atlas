@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import type { NavIconKey, NavItem } from "@/components/layout/nav-config";
+import { isNavItemActive, type NavIconKey, type NavItem } from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/modules/auth/actions";
 
@@ -98,7 +98,7 @@ function NavLinks({
     <>
       {items.map((item) => {
         const Icon = ICONS[item.icon];
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = isNavItemActive(item.href, pathname, items);
         return (
           <Link
             key={item.href}

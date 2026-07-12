@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 
@@ -13,13 +13,28 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
   const [state, action, pending] = useActionState(saveAiConfigAction, initial);
   useFormToast(state);
 
-  // Valor inicial: la config guardada, o el primer proveedor con key en el entorno.
-  const defaultProvider =
-    view.current?.activeProvider ?? view.providers.find((p) => p.hasKey)?.id ?? "groq";
-  const defaultModel =
-    view.current?.activeModel ??
-    view.providers.find((p) => p.id === defaultProvider)?.envModel ??
-    "";
+  // Proveedor inicial: el guardado, o el primero con key en el entorno.
+  const firstWithKey = view.providers.find((p) => p.hasKey)?.id;
+  const initialProvider = view.current?.activeProvider ?? firstWithKey ?? "groq";
+
+  const [provider, setProvider] = useState<string>(initialProvider);
+
+  const modelsOf = (id: string) => view.providers.find((p) => p.id === id)?.models ?? [];
+  const currentModels = modelsOf(provider);
+
+  // Modelo inicial: el guardado si pertenece al proveedor actual; si no, el primero valido.
+  const savedModel = view.current?.activeModel ?? "";
+  const [model, setModel] = useState<string>(
+    currentModels.includes(savedModel) ? savedModel : (currentModels[0] ?? ""),
+  );
+
+  // Al cambiar el proveedor, refresca el modelo a una opcion valida del nuevo proveedor (evita
+  // dejar un modelo del proveedor anterior, que el servidor rechazaria por inconsistente).
+  function onProviderChange(next: string) {
+    setProvider(next);
+    const nextModels = modelsOf(next);
+    setModel((cur) => (nextModels.includes(cur) ? cur : (nextModels[0] ?? "")));
+  }
 
   return (
     <form action={action} className="flex max-w-md flex-col gap-4">
@@ -27,7 +42,8 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
         <span className="font-medium text-foreground">Proveedor activo</span>
         <select
           name="activeProvider"
-          defaultValue={defaultProvider}
+          value={provider}
+          onChange={(e) => onProviderChange(e.target.value)}
           className="rounded-lg border border-input bg-background p-2"
         >
           {view.providers.map((p) => (
@@ -41,14 +57,23 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Modelo</span>
-        <input
+        <select
           name="activeModel"
-          type="text"
-          defaultValue={defaultModel}
-          placeholder="ej. llama-3.3-70b-versatile"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
           required
           className="rounded-lg border border-input bg-background p-2"
-        />
+        >
+          {currentModels.length === 0 ? (
+            <option value="">(sin modelos configurados)</option>
+          ) : (
+            currentModels.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))
+          )}
+        </select>
       </label>
 
       <button

@@ -125,3 +125,19 @@ export const NAV_ITEMS: readonly NavItem[] = [
 export function navItemsForRoles(roles: readonly AppRole[]): NavItem[] {
   return NAV_ITEMS.filter((item) => item.roles.some((r) => roles.includes(r)));
 }
+
+// Un item coincide con la ruta si es exacta o si es un prefijo de segmento (ancestro).
+export function pathMatches(href: string, pathname: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+// Item activo = gana el prefijo mas largo. Evita que /admin (Usuarios) se marque activo en
+// /admin/ia o /admin/auditoria, porque esos tienen un href mas largo que tambien coincide; a
+// la vez conserva el resaltado de la seccion en rutas de detalle como /evaluaciones/[id],
+// donde no existe un item mas especifico.
+export function isNavItemActive(href: string, pathname: string, items: NavItem[]): boolean {
+  if (!pathMatches(href, pathname)) return false;
+  return !items.some(
+    (other) => other.href.length > href.length && pathMatches(other.href, pathname),
+  );
+}

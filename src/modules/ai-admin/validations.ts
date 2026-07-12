@@ -5,6 +5,17 @@ import { z } from "zod";
 // catalogo). Las API keys NUNCA viajan por aqui: viven solo en el entorno.
 
 export const AI_PROVIDERS = ["groq", "gemini"] as const;
+export type AiProviderId = (typeof AI_PROVIDERS)[number];
+
+// Catalogo curado de modelos por proveedor. Acota la eleccion del admin a modelos que
+// pertenecen al proveedor: evita el footgun de guardar gemini con un modelo de groq (o al
+// reves), que hace fallar la llamada y caer al fallback en silencio. El modelo del entorno se
+// agrega ademas en el servidor (modelsForProvider), asi el modelo desplegado siempre es valido
+// aunque este catalogo se quede corto.
+export const AI_MODEL_CATALOG: Record<AiProviderId, readonly string[]> = {
+  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  gemini: ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+};
 
 export const saveAiConfigSchema = z.object({
   activeProvider: z.enum(AI_PROVIDERS),

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { modelsForProvider } from "../models";
 import { AI_PROVIDERS } from "../validations";
 
 // Estado de la config de IA para el panel admin. La fila de ai_config se lee por RLS
@@ -13,6 +14,7 @@ export type AiProviderStatus = {
   id: (typeof AI_PROVIDERS)[number];
   hasKey: boolean; // la API key existe en el entorno
   envModel: string | null; // modelo por defecto configurado en el entorno
+  models: string[]; // modelos validos para este proveedor (catalogo + entorno)
 };
 
 export type AiConfigView = {
@@ -34,11 +36,13 @@ export async function getAiConfigView(): Promise<AiConfigView> {
       id: "groq",
       hasKey: Boolean(process.env.GROQ_API_KEY),
       envModel: process.env.GROQ_MODEL ?? null,
+      models: modelsForProvider("groq"),
     },
     {
       id: "gemini",
       hasKey: Boolean(process.env.GEMINI_API_KEY),
       envModel: process.env.GEMINI_MODEL ?? null,
+      models: modelsForProvider("gemini"),
     },
   ];
 

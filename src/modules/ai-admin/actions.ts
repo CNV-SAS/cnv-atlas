@@ -75,6 +75,9 @@ export async function savePromptAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath("/admin/ia");
+  if (result.value.unchanged) {
+    return { error: null, success: null, warning: "Sin cambios que guardar." };
+  }
   return {
     error: null,
     success: `Prompt guardado como version ${result.value.version}.`,
