@@ -25,8 +25,11 @@ export class AiError extends Error {
   }
 }
 
-// La IA puede tardar mas que un pago; timeout generoso pero acotado.
-const AI_TIMEOUT_MS = 20_000;
+// La IA puede tardar mas que un pago; timeout generoso pero acotado. 45s da margen a la
+// latencia variable de Gemini (Groq responde en <1s). Medido: Gemini 2.5 Flash sin thinking
+// ~2s, con thinking hasta ~25s; con thinkingBudget:0 (abajo) baja a ~2s y este margen cubre
+// picos. Nota: en Vercel, el tope de duracion de la funcion serverless tambien aplica.
+const AI_TIMEOUT_MS = 45_000;
 
 type GroqResponse = { choices?: { message?: { content?: string } }[] };
 type GeminiResponse = { candidates?: { content?: { parts?: { text?: string }[] } }[] };
@@ -64,6 +67,10 @@ async function callGemini(messages: AiMessage[], model: string): Promise<string>
       body: {
         system_instruction: system ? { parts: [{ text: system }] } : undefined,
         contents: [{ role: "user", parts: [{ text: user }] }],
+        // Desactiva el "thinking" de Gemini 2.5 (thinkingBudget:0): para un menu no aporta y
+        // dispara la latencia (~9s con thinking vs ~2s sin el; picos >20s). Los modelos sin
+        // thinking (ej. 2.0-flash) aceptan el formato y lo ignoran, asi que es seguro enviarlo.
+        generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
       },
       timeoutMs: AI_TIMEOUT_MS,
     },
