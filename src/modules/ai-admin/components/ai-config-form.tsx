@@ -13,28 +13,17 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
   const [state, action, pending] = useActionState(saveAiConfigAction, initial);
   useFormToast(state);
 
-  // Proveedor inicial: el guardado, o el primero con key en el entorno.
-  const firstWithKey = view.providers.find((p) => p.hasKey)?.id;
-  const initialProvider = view.current?.activeProvider ?? firstWithKey ?? "groq";
+  // Proveedor inicial: el guardado, o el primero utilizable (con key y modelo en el entorno).
+  const firstUsable = view.providers.find((p) => p.hasKey && p.models.length > 0)?.id;
+  const initialProvider =
+    view.current?.activeProvider ?? firstUsable ?? view.providers[0]?.id ?? "groq";
 
+  // UNICA fuente de verdad: el proveedor. El modelo NO es un segundo estado editable (ops lo
+  // fija por entorno, un modelo por proveedor): se DERIVA del proveedor. Asi proveedor y modelo
+  // no pueden mostrar una combinacion inconsistente en pantalla (el bug del selector que
+  // "rebotaba" venia de mantener el modelo como estado propio y actualizar dos estados a la vez).
   const [provider, setProvider] = useState<string>(initialProvider);
-
-  const modelsOf = (id: string) => view.providers.find((p) => p.id === id)?.models ?? [];
-  const currentModels = modelsOf(provider);
-
-  // Modelo inicial: el guardado si pertenece al proveedor actual; si no, el primero valido.
-  const savedModel = view.current?.activeModel ?? "";
-  const [model, setModel] = useState<string>(
-    currentModels.includes(savedModel) ? savedModel : (currentModels[0] ?? ""),
-  );
-
-  // Al cambiar el proveedor, refresca el modelo a una opcion valida del nuevo proveedor (evita
-  // dejar un modelo del proveedor anterior, que el servidor rechazaria por inconsistente).
-  function onProviderChange(next: string) {
-    setProvider(next);
-    const nextModels = modelsOf(next);
-    setModel((cur) => (nextModels.includes(cur) ? cur : (nextModels[0] ?? "")));
-  }
+  const model = view.providers.find((p) => p.id === provider)?.models[0] ?? "";
 
   return (
     <form action={action} className="flex max-w-md flex-col gap-4">
@@ -43,7 +32,7 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
         <select
           name="activeProvider"
           value={provider}
-          onChange={(e) => onProviderChange(e.target.value)}
+          onChange={(e) => setProvider(e.target.value)}
           className="rounded-lg border border-input bg-background p-2"
         >
           {view.providers.map((p) => {
@@ -63,30 +52,18 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Modelo</span>
-        <select
-          name="activeModel"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          required
-          className="rounded-lg border border-input bg-background p-2"
-        >
-          {currentModels.length === 0 ? (
-            <option value="">(sin modelo en el entorno)</option>
-          ) : (
-            currentModels.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))
-          )}
-        </select>
+        {/* Derivado del proveedor, no editable: se envia por un hidden y se muestra de solo lectura. */}
+        <input type="hidden" name="activeModel" value={model} />
+        <p className="rounded-lg border border-input bg-muted/40 p-2 font-mono text-xs text-foreground">
+          {model || "(sin modelo en el entorno)"}
+        </p>
         <span className="text-xs text-muted-foreground">
           El modelo lo fija el entorno para cada proveedor (garantizado que funciona). Eliges el
           proveedor.
         </span>
-      </label>
+      </div>
 
       <button
         type="submit"
