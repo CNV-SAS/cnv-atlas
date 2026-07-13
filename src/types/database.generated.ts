@@ -1545,6 +1545,44 @@ export type Database = {
           },
         ]
       }
+      professional_document_signatures: {
+        Row: {
+          created_at: string
+          document_type: Database["public"]["Enums"]["professional_document_type"]
+          id: string
+          professional_id: string
+          signed_at: string
+          signed_version: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: Database["public"]["Enums"]["professional_document_type"]
+          id?: string
+          professional_id: string
+          signed_at: string
+          signed_version: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: Database["public"]["Enums"]["professional_document_type"]
+          id?: string
+          professional_id?: string
+          signed_at?: string
+          signed_version?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_document_signatures_professional_id_professional_p"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_profiles: {
         Row: {
           certification_status: string | null
@@ -2363,6 +2401,10 @@ export type Database = {
         Args: { p_patient_id: string }
         Returns: boolean
       }
+      patient_professional_anexo3_current: {
+        Args: { p_patient_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       access_grant_status: "pending" | "approved" | "denied" | "revoked"
@@ -2398,6 +2440,7 @@ export type Database = {
       indicator_classification: "normal" | "riesgo" | "critico"
       model_status: "draft" | "active" | "retired"
       patient_status: "active" | "inactive"
+      professional_document_type: "anexo3"
       profile_status: "active" | "inactive"
       report_status: "draft" | "approved" | "sent"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
@@ -2567,6 +2610,7 @@ export const Constants = {
       indicator_classification: ["normal", "riesgo", "critico"],
       model_status: ["draft", "active", "retired"],
       patient_status: ["active", "inactive"],
+      professional_document_type: ["anexo3"],
       profile_status: ["active", "inactive"],
       report_status: ["draft", "approved", "sent"],
       transaction_status: ["pending", "paid", "failed", "refunded"],

@@ -13,6 +13,12 @@ export const appRole = pgEnum("app_role", [
 
 export const documentType = pgEnum("document_type", ["CC", "CE", "TI", "PA", "NIT"]);
 
+// Tipos de documento que un Integrante firma (gestion documental por profesional).
+// Hoy solo se usa 'anexo3' (precondicion del Nivel b); los demas se anexan al final
+// con ALTER TYPE ADD VALUE cuando llegue el sistema documental completo, sin recrear
+// el tipo. Futuros: 'contrato_marco', 'anexo4', etc.
+export const professionalDocumentType = pgEnum("professional_document_type", ["anexo3"]);
+
 export const patientStatus = pgEnum("patient_status", ["active", "inactive"]);
 
 export const profileStatus = pgEnum("profile_status", ["active", "inactive"]);

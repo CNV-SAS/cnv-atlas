@@ -6,12 +6,13 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
 import { authUsers } from "./_auth";
 import { createdAt, pk, updatedAt } from "./_columns";
-import { appRole, profileStatus } from "./enums";
+import { appRole, profileStatus, professionalDocumentType } from "./enums";
 
 // Grupo 1: organizacion, usuarios, roles.
 
@@ -84,6 +85,31 @@ export const professionalProfiles = pgTable("professional_profiles", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// Firmas de documentos por Integrante (contrato marco, Anexo 3 de tratamiento, Anexo 4
+// de licenciamiento, etc.). Tabla generica y pequena: hoy este bloque solo usa
+// document_type = 'anexo3' para la precondicion del Nivel (b), pero la forma esta lista
+// para el sistema de gestion documental completo (su propio bloque futuro, ver BACKLOG),
+// sin migrar de nuevo. Una fila por (profesional, tipo de documento): la version vigente
+// que ese Integrante tiene firmada de ese documento.
+export const professionalDocumentSignatures = pgTable(
+  "professional_document_signatures",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id, { onDelete: "cascade" }),
+    documentType: professionalDocumentType("document_type").notNull(),
+    signedVersion: text("signed_version").notNull(),
+    signedAt: timestamp("signed_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("professional_document_signatures_prof_doc_unique").on(t.professionalId, t.documentType),
+    index("professional_document_signatures_prof_idx").on(t.professionalId),
+  ],
+);
 
 export const professionalCertifications = pgTable("professional_certifications", {
   id: pk(),

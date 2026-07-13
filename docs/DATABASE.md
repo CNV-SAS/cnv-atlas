@@ -28,6 +28,7 @@
 ```sql
 create type app_role as enum ('admin', 'direccion', 'soporte', 'obbia', 'professional');
 create type document_type as enum ('CC', 'CE', 'TI', 'PA', 'NIT');
+create type professional_document_type as enum ('anexo3');  -- gestion documental por Integrante; suma 'contrato_marco', 'anexo4', etc. despues
 create type patient_status as enum ('active', 'inactive');
 create type profile_status as enum ('active', 'inactive');
 create type evaluation_type as enum ('inicial', 'seguimiento');
@@ -112,6 +113,23 @@ create table public.professional_certifications (
   year int,
   created_at timestamptz not null default now()
 );
+
+-- Firmas de documentos por Integrante (contrato marco, Anexo 3 de tratamiento, Anexo 4
+-- de licenciamiento, etc.). Tabla generica: hoy este bloque solo usa document_type =
+-- 'anexo3' para la precondicion del Nivel (b); la forma esta lista para el sistema de
+-- gestion documental completo (bloque futuro, ver BACKLOG). Una fila por (profesional,
+-- tipo de documento): la version vigente que ese Integrante firmo de ese documento.
+create table public.professional_document_signatures (
+  id uuid primary key default gen_random_uuid(),
+  professional_id uuid not null references professional_profiles(id) on delete cascade,
+  document_type professional_document_type not null,
+  signed_version text not null,
+  signed_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (professional_id, document_type)
+);
+create index professional_document_signatures_prof_idx on professional_document_signatures(professional_id);
 ```
 
 ### Grupo 2: pacientes (seudonimización)
