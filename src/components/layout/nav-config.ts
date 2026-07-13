@@ -119,6 +119,27 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: "auditoria",
     roles: ["admin"],
   },
+  {
+    // Auditoria de notas seudonimizada (Nivel b). Visible para quien puede solicitar y
+    // sostener un grant; el contenido lo gobierna la RLS (grant activo + Anexo 3).
+    label: "Auditoria de notas",
+    href: "/auditoria/notas",
+    icon: "auditoria",
+    roles: ["admin", "soporte"],
+  },
+  {
+    label: "Solicitar acceso",
+    href: "/auditoria/solicitar",
+    icon: "auditoria",
+    roles: ["admin", "soporte"],
+  },
+  {
+    // Bandeja de aprobacion: admin aprueba a soporte, direccion aprueba a admin.
+    label: "Aprobaciones de acceso",
+    href: "/auditoria/aprobaciones",
+    icon: "auditoria",
+    roles: ["admin", "direccion"],
+  },
 ];
 
 // Devuelve los items visibles para un conjunto de roles, en el orden definido.

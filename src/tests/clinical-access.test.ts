@@ -286,3 +286,37 @@ describe("policies de notas: cierre de admin y apertura Nivel (b)", () => {
     expect(await visibleNotes(adminId)).toBe(0);
   });
 });
+
+describe("RLS de clinical_access_grants (SELECT): solicitante y aprobador", () => {
+  // Inserta un grant con requester/approver_role explicitos (bypass) y devuelve su id.
+  async function insertRaw(requesterId: string, approverRole: string): Promise<string> {
+    const [row] = await sql`insert into public.clinical_access_grants
+        (grant_type, reason_category, status, requester_id, approver_role, reason)
+      values ('notes_pseudonymous', 'auditoria_calidad', 'pending', ${requesterId}, ${approverRole}, 'test')
+      returning id`;
+    return row.id as string;
+  }
+
+  async function grantVisibleTo(userId: string, grantId: string): Promise<boolean> {
+    return asUser(userId, async (tx) => {
+      const rows = await tx`select id from public.clinical_access_grants where id = ${grantId}`;
+      return rows.length === 1;
+    });
+  }
+
+  it("el solicitante ve su grant; el aprobador (por approver_role) tambien; un tercero no", async () => {
+    await clearGrants();
+    // Grant cuyo aprobador designado es 'admin' (como una solicitud de soporte).
+    const g1 = await insertRaw(professionalId, "admin");
+    expect(await grantVisibleTo(professionalId, g1)).toBe(true); // solicitante
+    expect(await grantVisibleTo(adminId, g1)).toBe(true); // has_role('admin') = approver_role
+
+    // Grant cuyo aprobador designado es 'direccion': admin no lo ve (ni es solicitante ni
+    // tiene el rol), el solicitante si.
+    const g2 = await insertRaw(adminId, "direccion");
+    expect(await grantVisibleTo(adminId, g2)).toBe(true); // solicitante
+    expect(await grantVisibleTo(professionalId, g2)).toBe(false); // ni solicitante ni direccion
+
+    await clearGrants();
+  });
+});
