@@ -57,6 +57,8 @@ Los siguientes usos son necesarios para prestarle el servicio que solicitó; sin
 - Calcular indicadores y clasificaciones del estado funcional y de riesgo. El profesional interpreta y decide; ATLAS no diagnostica enfermedades.
 - Generar su reporte y dar continuidad y seguimiento a su atención.
 - **Generar y comercializar información estadística anonimizada que no permite identificarle.** Los datos personales no serán vendidos; solo se comercializan derivados que son irreversiblemente disociados de su identidad.
+- Verificar, sobre datos seudonimizados y sin conocer su identidad, que el modelo ANI-BIS-E se aplica correctamente por el profesional que le atiende, como parte del control de calidad del servicio.
+- En circunstancias excepcionales (como la atención de una queja o la verificación de una posible desviación grave del protocolo), acceder de forma minimizada y registrada a su historia clínica identificada, con fines de control de calidad y cumplimiento del modelo.
 
 ---
 
@@ -185,4 +187,4 @@ Al marcar las casillas anteriores y confirmar con el nombre completo en el campo
 | 1.3 | 2026-07 | La autorización de investigación (numeral 5) se limita a datos seudonimizados; se elimina la opción de datos identificables. Se acota el alcance a datos clínicos y funcionales estructurados, excluyendo el contenido narrativo u observaciones en texto libre del profesional. |
 | 1.4 | 2026-07 | Incorporado el bloque condicional de representante legal para pacientes menores de 18 años (numeral 11), con asentimiento del menor entre 14 y 17 años. Ajustada la sección 2 y la sección 13 (firma) para reflejar la firma del representante cuando aplica. Nuevos consent_type: representante_legal y asentimiento_menor. El MVP soporta pacientes menores de edad. |
 | 1.5 | 2026-07 | Ampliada la autorización de investigación (numeral 5 y numeral 12) para cubrir colaboraciones de investigación de terceros bajo la dirección científica de ObBIA-Latam, sin necesidad de modificar el consentimiento cada vez que se sume un nuevo colaborador. Aclarado que estudios con fines de identificación/publicación requieren un consentimiento de investigación adicional y separado (ver Consentimiento Informado de Investigación — Plantilla). |
-
+| 1.6 | 2026-07 | Incorporadas dos finalidades necesarias adicionales en el numeral 4: auditoría del cumplimiento del modelo sobre datos seudonimizados, y acceso excepcional a historia clínica identificada para control de calidad, minimizado y registrado. Ambas quedan cubiertas por la autorización necesaria existente del numeral 12 (checkbox 1), sin necesidad de una casilla nueva. |

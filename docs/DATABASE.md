@@ -45,6 +45,10 @@ create type consent_type_enum as enum (
   'investigacion', 'comunicaciones_continuidad', 'comunicaciones_comerciales',
   'representante_legal', 'asentimiento_menor'  -- menores de edad (DELTA2 A1)
 );
+-- Auditoria/control de calidad: grants temporales de acceso a las notas narrativas.
+create type access_grant_type as enum ('notes_pseudonymous', 'notes_identified');  -- Nivel (b) / Nivel (c)
+create type access_grant_status as enum ('pending', 'approved', 'denied', 'revoked');  -- la expiracion no es un estado
+create type access_reason_category as enum ('auditoria_calidad', 'soporte_tecnico');
 ```
 
 ## Tablas
@@ -696,6 +700,34 @@ create index clinical_audit_actor_idx on clinical_audit_log(actor_id);
 create index clinical_audit_event_idx on clinical_audit_log(event);
 create index clinical_audit_entity_idx on clinical_audit_log(entity_type, entity_id);
 create index clinical_audit_created_idx on clinical_audit_log(created_at desc);
+
+-- Grants temporales para el acceso auditado a las notas narrativas (bloque
+-- auditoria/control de calidad). MUTABLE (a diferencia del audit log): el grant
+-- cambia de estado. Los eventos inmutables (requested/approved/denied/used) van al
+-- audit log, inline. La expiracion se evalua por expires_at > now() en el helper
+-- has_active_grant, no por un cron; ni el Nivel (b) es continuo (tope duro 90d).
+-- approver_role se calcula al solicitar (soporte -> admin, admin -> direccion) y
+-- fija la matriz solicitante/aprobador (nunca la misma persona). resource_id apunta
+-- al paciente en Nivel (c); en Nivel (b) es null (alcance amplio, seudonimizado).
+create table public.clinical_access_grants (
+  id uuid primary key default gen_random_uuid(),
+  grant_type access_grant_type not null,
+  reason_category access_reason_category not null,
+  status access_grant_status not null default 'pending',
+  requester_id uuid not null references profiles(id),
+  approver_role app_role not null,
+  approver_id uuid references profiles(id),
+  resource_id uuid references patients(id),
+  reason text not null,
+  requested_at timestamptz not null default now(),
+  decided_at timestamptz,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index clinical_access_grants_requester_idx on clinical_access_grants(requester_id);
+create index clinical_access_grants_status_idx on clinical_access_grants(status);
+create index clinical_access_grants_resource_idx on clinical_access_grants(resource_id);
 ```
 
 ### Grupo 17: IA (config y prompts versionados)
