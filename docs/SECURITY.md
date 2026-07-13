@@ -1,6 +1,6 @@
 # Seguridad y privacidad de Atlas (CNV)
 
-**Versión:** 1.1
+**Versión:** 1.2
 **Estado:** base técnica firmada. El marco legal y de gobernanza del dato fue desarrollado en el chat legal dedicado y vive en `DATA_GOVERNANCE.md` (Política de Gobernanza del Dato), documento hermano de este. Este archivo conserva los controles técnicos de seguridad; donde antes remitía a "pendiente jurídico", ahora remite a esa política y, cuando aplica, añade las tareas técnicas concretas que quedan pendientes de implementar.
 
 > Atlas maneja datos de salud (PHI/PII). Esto eleva el listón frente a un sistema educativo: la seguridad y la trazabilidad clínica no son negociables.
@@ -22,7 +22,7 @@ Multi-tenant: `organization_id` en las tablas de dominio. Un profesional ve solo
 
 Policies contextuales, no chequeos de rol regados. Prohibido `if (user.role === 'professional')`; obligatorio `if (canViewPatient(user, patient))`. Las policies viven en `modules/<dominio>/policies/`, firma `(user, resource, context?)`. Internamente verifican rol (vía helper), ownership y estado; la interfaz pública es contextual, así que migrar a ABAC en el futuro no cambia los call sites.
 
-Catálogo inicial (cada una con su test): `auth/can-access-admin`, `patients/can-view-patient`, `evaluations/can-create-evaluation`, `diagnosis/can-diagnose`, `diagnosis/can-confirm-diagnosis`, `reports/can-approve-report`, `reports/can-send-report`, `comodato/can-manage-devices`, `payments/can-view-revenue`, `research/can-view-aggregate-data`, `admin/can-manage-users`.
+Catálogo inicial (cada una con su test): `auth/can-access-admin`, `patients/can-view-patient`, `evaluations/can-create-evaluation`, `diagnosis/can-diagnose`, `diagnosis/can-confirm-diagnosis`, `reports/can-approve-report`, `reports/can-send-report`, `comodato/can-manage-devices`, `payments/can-view-revenue`, `research/can-view-aggregate-data`, `admin/can-manage-users`, `clinical-access/can-request-access`, `clinical-access/can-approve-access`, `clinical-access/can-audit-notes`.
 
 `research/can-view-aggregate-data` tiene alcance limitado por decisión de gobernanza: solo datos clínicos y funcionales **estructurados** (mediciones, indicadores, respuestas de encuesta, tratamiento, seguimiento), **seudonimizados** (nunca identificables), y nunca el contenido narrativo en texto libre del profesional. La policy debe rechazar cualquier acceso que exceda ese alcance, incluso para `obbia`/`admin`.
 
@@ -34,11 +34,27 @@ La `SUPABASE_SERVICE_ROLE_KEY` bypassa RLS. Es la llave maestra.
 
 Casos legítimos en Atlas: el trigger de creación de perfil (staff/profesionales), el **intake del paciente** (la encuesta pública crea o vincula al paciente sin sesión, vía service role), la verificación de webhooks de pago, y el audit logging desde rutas sin sesión. Caso NO legítimo: leer datos del usuario actual (ahí aplica RLS naturalmente).
 
+### Acceso directo a la infraestructura (política interna)
+La `SUPABASE_SERVICE_ROLE_KEY` y las credenciales de la base (`DATABASE_URL`) dan acceso directo a los datos, por fuera de las policies y del audit de la aplicación. Hoy solo Santiago (responsable técnico) las custodia. Compromiso de gobierno: cualquier acceso directo futuro a la infraestructura (nuevas personas con la llave, consultas manuales sobre datos de producción, herramientas de administración de base) debe justificarse por escrito y registrarse, con el mismo criterio de causa y minimización que aplica dentro de la aplicación. El acceso directo no es una vía para saltarse el mecanismo de grants; es una superficie de mayor privilegio que se restringe al mínimo de personas y se audita fuera de banda.
+
+## Auditoría de contenido clínico: mecanismo de grants
+El acceso al **contenido clínico narrativo** (notas de evaluación, diagnóstico y tratamiento) no es libre para ningún rol interno. Se gobierna por un mecanismo único de permisos temporales (grants), en la tabla mutable `clinical_access_grants`, en tres niveles (materializa la Cláusula 17 del Anexo 3: causa puntual, minimizado, registrado):
+
+- **Nivel (a), metadatos y actividad:** el `clinical_audit_log`. No es contenido clínico; no requiere grant (solo `admin` lo lee).
+- **Nivel (b), narrativa seudonimizada:** las notas sin identidad del paciente. Requiere un grant `notes_pseudonymous` activo **más** la precondición de que el profesional del paciente firmó la versión vigente del Anexo 3 (`professional_document_signatures`). Se gobierna por RLS (las policies de las notas). No es monitoreo continuo: expiración por defecto de 30 días, **tope duro de 90 días**; renovar es pedir un grant nuevo, no extender.
+- **Nivel (c), narrativa identificada:** las notas de un paciente puntual, con su identidad. Excepcional (atención de una queja, verificación de una posible desviación grave). No pasa por RLS relajada: se resuelve por una acción de servidor auditada que exige un grant `notes_identified` con scope a ese paciente y registra el **uso efectivo** (`access.used`) antes de leer. Expiración por defecto de 48 horas, **tope duro de 7 días**.
+
+**Quién solicita y quién aprueba (nunca la misma persona):** solo `admin` y `soporte` solicitan (roles internos operativos, sin relación clínica directa). `soporte` lo aprueba `admin`; `admin` lo aprueba `direccion` (el admin no puede autoaprobarse). `direccion` solo aprueba, nunca solicita ni ve contenido clínico. El rol aprobador se sella al solicitar desde el rol real del solicitante, no se puede forjar desde el cliente. `professional` y `obbia` no participan (el profesional ve a sus pacientes por la vía normal; obbia tiene su propio camino seudonimizado y separado).
+
+**Ciclo de vida y trazabilidad:** cada grant emite eventos inmutables en el `clinical_audit_log`: `access.requested`, `access.approved` o `access.denied`, `access.used`, y `access.revoked`. Los topes duros (90 días Nivel b, 7 días Nivel c) son **controles de gobierno** que viven en el código (`grant-rules.ts`), no en el consentimiento; su base legal es el numeral 4 del Anexo 3 v1.6.
+
+**Brecha conocida (fuera del alcance de este bloque):** el cierre cubre las tres tablas de notas narrativas. El resto de la historia clínica identificada (`evaluations`, `bis_measurements`, `diagnoses`, `treatments`, `reports`, `patients` y demás) todavía tiene acceso amplio del `admin` por RLS. Se cerrará extendiendo este mismo mecanismo a esas superficies (ver `BACKLOG.md`, prioridad alta).
+
 ## Audit trail clínico (`clinical_audit_log`)
 - Append-only, inline en la transacción (regla dura 8). **Nunca por el bus** (el bus no es durable).
 - Append-only reforzado: RLS sin políticas de UPDATE/DELETE, más un trigger que bloquea modificación o borrado incluso con service role.
 - Campos: `actor_id`, `actor_email`, `event`, `entity_type`, `entity_id`, `payload` (jsonb), `model_version_id`, `ip_address`, `user_agent`, `created_at`.
-- Eventos que SIEMPRE generan audit: `patient.created`, `consent.signed`, `evaluation.created`, `bis.imported`, `diagnosis.created`, `diagnosis.confirmed`, `report.approved`, `report.sent`, `treatment.created`, `followup.created`, `user.created`, `user.role_changed`, `user.deactivated`, `device.assigned`, `device.returned`, `payment.confirmed`, `model.version_activated`, `admin.login`, `admin.password_reset_forced`, `consent.revoked` (pendiente: requiere el campo `revoked_at` en `patient_consents`, ver sección de pendientes de esquema).
+- Eventos que SIEMPRE generan audit: `patient.created`, `consent.signed`, `evaluation.created`, `bis.imported`, `diagnosis.created`, `diagnosis.confirmed`, `report.approved`, `report.sent`, `treatment.created`, `followup.created`, `user.created`, `user.role_changed`, `user.deactivated`, `device.assigned`, `device.returned`, `payment.confirmed`, `model.version_activated`, `admin.login`, `admin.password_reset_forced`, `consent.revoked` (pendiente: requiere el campo `revoked_at` en `patient_consents`, ver sección de pendientes de esquema), `access.requested`, `access.approved`, `access.denied`, `access.used`, `access.revoked` (ciclo de vida de los grants de acceso a las notas, ver sección "Auditoría de contenido clínico").
 - Solo `admin` lee (RLS). UI con paginación obligatoria. Sin edición ni borrado.
 
 ## MFA

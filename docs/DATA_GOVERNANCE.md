@@ -216,9 +216,11 @@ Ver `SECURITY.md` para el procedimiento técnico completo.
 
 CNV no es parte del equipo tratante del paciente. Como Encargado:
 
-- **Acceso técnico/operativo** (mantener Atlas, QA, integridad): sobre datos seudonimizados siempre que sea posible; accesos logueados; bajo confidencialidad. No requiere permiso adicional (es necesario para prestar el servicio).
+- **Acceso técnico/operativo** (mantener Atlas, QA, integridad): sobre datos seudonimizados siempre que sea posible; accesos logueados; bajo confidencialidad. Cuando ese acceso alcanza el contenido clínico narrativo (notas de evaluación, diagnóstico o tratamiento), deja de ser irrestricto: pasa por el mecanismo de grants (categoría "soporte técnico"), con causa, expiración y registro. Ya no existe acceso continuo e incondicional del admin a la narrativa.
 - **Acceso sustantivo** (mejorar algoritmos, investigación, analítica): finalidad propia de CNV → requiere la autorización del paciente dada directamente a CNV (casillas 4–6 del consentimiento).
-- **Auditoría de cumplimiento del modelo:** sobre la **data operativa de ATLAS** (metadatos, actividad), no sobre el contenido clínico reservado. El acceso a contenido identificado para auditoría puntual requiere la autorización del paciente recogida en el consentimiento.
+- **Auditoría de cumplimiento del modelo:** se realiza mediante el mecanismo de grants (detalle técnico en `SECURITY.md`), en tres niveles. (a) Metadatos y actividad: el `clinical_audit_log`, sin grant. (b) Contenido narrativo **seudonimizado** (sin identidad del paciente), por causa o muestreo basado en riesgo, gateado por un grant temporal y por la precondición de que el profesional del paciente firmó la versión vigente del Anexo 3; nunca monitoreo continuo (tope duro de 90 días). (c) Contenido **identificado**, excepcional (atención de una queja, verificación de una posible desviación grave), por paciente puntual, con motivo obligatorio, aprobación de un tercero, expiración corta (tope duro de 7 días) y registro de solicitud, decisión y uso efectivo. Las tres condiciones de la Cláusula 17 (causa puntual, minimizado, registrado) se materializan en este mecanismo.
+
+**Alcance del cierre (a la fecha de este bloque):** el mecanismo cubre las tres tablas de notas narrativas (`evaluation_notes`, `diagnosis_notes`, `treatment_notes`). El resto de la historia clínica identificada (evaluaciones, mediciones BIS, diagnósticos, tratamientos, reportes, identidad del paciente) todavía tiene acceso amplio del `admin` por RLS. Es una **brecha conocida**, deliberadamente fuera del alcance de este bloque para no agrandarlo; se cerrará extendiendo el mismo mecanismo de grants a esas superficies (ver `BACKLOG.md`, prioridad alta).
 
 ---
 
