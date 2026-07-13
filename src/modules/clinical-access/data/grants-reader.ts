@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { clinicalAccessGrants } from "@/db/schema";
@@ -9,20 +9,31 @@ import { clinicalAccessGrants } from "@/db/schema";
 // Nivel (c) identificado.
 export type AccessGrantType = "notes_pseudonymous" | "notes_identified";
 
-// Gemelo TS de public.has_active_grant (0016). Se usa en el gate del Nivel (c),
-// que lee con owner (Drizzle db) y por tanto NO tiene auth.uid(): el userId viene
-// de requireUser en el action, nunca del cliente. Misma regla que el helper SQL:
-// grant approved, del tipo pedido, no vencido (se compara contra now() de la BD para
-// no depender del reloj del server de app) y del recurso pedido si se pasa uno. Sin
-// resourceId el alcance es amplio (Nivel b). Devuelve solo un booleano; no expone
-// las filas.
-export async function hasActiveGrant(
+export type ActiveGrant = {
+  id: string;
+  grantType: AccessGrantType;
+  resourceId: string | null;
+  expiresAt: Date;
+};
+
+// Devuelve el grant activo del usuario para el tipo/recurso pedido, o null. Espejo
+// TS de public.has_active_grant (0016): approved, no vencido (expires_at > now() de la
+// BD, para no depender del reloj del server), y del recurso pedido si se pasa uno; sin
+// resourceId el alcance es amplio (Nivel b). El userId viene de requireUser, nunca del
+// cliente (owner no tiene auth.uid()). Si hubiera varios, toma el de expiracion mas
+// lejana. Es la fuente del id del grant para registrar access.used.
+export async function getActiveGrant(
   userId: string,
   grantType: AccessGrantType,
   resourceId?: string,
-): Promise<boolean> {
-  const rows = await db
-    .select({ id: clinicalAccessGrants.id })
+): Promise<ActiveGrant | null> {
+  const [row] = await db
+    .select({
+      id: clinicalAccessGrants.id,
+      grantType: clinicalAccessGrants.grantType,
+      resourceId: clinicalAccessGrants.resourceId,
+      expiresAt: clinicalAccessGrants.expiresAt,
+    })
     .from(clinicalAccessGrants)
     .where(
       and(
@@ -34,6 +45,23 @@ export async function hasActiveGrant(
         resourceId ? eq(clinicalAccessGrants.resourceId, resourceId) : undefined,
       ),
     )
+    .orderBy(desc(clinicalAccessGrants.expiresAt))
     .limit(1);
-  return rows.length > 0;
+
+  if (!row || !row.expiresAt) return null;
+  return {
+    id: row.id,
+    grantType: row.grantType as AccessGrantType,
+    resourceId: row.resourceId,
+    expiresAt: row.expiresAt,
+  };
+}
+
+// Booleano de conveniencia sobre getActiveGrant, para gates que no necesitan el id.
+export async function hasActiveGrant(
+  userId: string,
+  grantType: AccessGrantType,
+  resourceId?: string,
+): Promise<boolean> {
+  return (await getActiveGrant(userId, grantType, resourceId)) !== null;
 }
