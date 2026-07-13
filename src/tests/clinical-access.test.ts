@@ -270,4 +270,19 @@ describe("policies de notas: cierre de admin y apertura Nivel (b)", () => {
     await setAnexo3(null);
     expect(await visibleNotes(professionalId)).toBe(3);
   });
+
+  it("un grant notes_identified NO abre las notas por RLS (Nivel c va por servidor auditado)", async () => {
+    // Aun con un grant identificado valido y con scope a este paciente, la RLS de las
+    // notas (que solo responde a notes_pseudonymous) devuelve 0: el acceso identificado
+    // no se cuela por RLS, debe pasar por la accion de servidor auditada (access.used).
+    await clearGrants();
+    await setAnexo3("1.0");
+    await insertGrant({
+      grantType: "notes_identified",
+      status: "approved",
+      expiresInterval: "2 days",
+      resourceId: PATIENT_N,
+    });
+    expect(await visibleNotes(adminId)).toBe(0);
+  });
 });
