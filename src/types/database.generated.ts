@@ -285,6 +285,79 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_access_grants: {
+        Row: {
+          approver_id: string | null
+          approver_role: Database["public"]["Enums"]["app_role"]
+          created_at: string
+          decided_at: string | null
+          expires_at: string | null
+          grant_type: Database["public"]["Enums"]["access_grant_type"]
+          id: string
+          reason: string
+          reason_category: Database["public"]["Enums"]["access_reason_category"]
+          requested_at: string
+          requester_id: string
+          resource_id: string | null
+          status: Database["public"]["Enums"]["access_grant_status"]
+          updated_at: string
+        }
+        Insert: {
+          approver_id?: string | null
+          approver_role: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          grant_type: Database["public"]["Enums"]["access_grant_type"]
+          id?: string
+          reason: string
+          reason_category: Database["public"]["Enums"]["access_reason_category"]
+          requested_at?: string
+          requester_id: string
+          resource_id?: string | null
+          status?: Database["public"]["Enums"]["access_grant_status"]
+          updated_at?: string
+        }
+        Update: {
+          approver_id?: string | null
+          approver_role?: Database["public"]["Enums"]["app_role"]
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          grant_type?: Database["public"]["Enums"]["access_grant_type"]
+          id?: string
+          reason?: string
+          reason_category?: Database["public"]["Enums"]["access_reason_category"]
+          requested_at?: string
+          requester_id?: string
+          resource_id?: string | null
+          status?: Database["public"]["Enums"]["access_grant_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_access_grants_approver_id_profiles_id_fk"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_access_grants_requester_id_profiles_id_fk"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_access_grants_resource_id_patients_id_fk"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_audit_log: {
         Row: {
           actor_email: string | null
@@ -2275,6 +2348,13 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
       }
+      has_active_grant: {
+        Args: {
+          p_grant_type: Database["public"]["Enums"]["access_grant_type"]
+          p_resource_id?: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -2285,6 +2365,9 @@ export type Database = {
       }
     }
     Enums: {
+      access_grant_status: "pending" | "approved" | "denied" | "revoked"
+      access_grant_type: "notes_pseudonymous" | "notes_identified"
+      access_reason_category: "auditoria_calidad" | "soporte_tecnico"
       ai_suggestion_status:
         | "success"
         | "timeout"
@@ -2448,6 +2531,9 @@ export const Constants = {
   },
   public: {
     Enums: {
+      access_grant_status: ["pending", "approved", "denied", "revoked"],
+      access_grant_type: ["notes_pseudonymous", "notes_identified"],
+      access_reason_category: ["auditoria_calidad", "soporte_tecnico"],
       ai_suggestion_status: [
         "success",
         "timeout",
