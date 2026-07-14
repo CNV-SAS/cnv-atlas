@@ -41,6 +41,7 @@
 - **Knowledge gate opcional** en el link de seguimiento, si se decide endurecer (no la cédula).
 
 ## Admin
+- **Navegación de auditoría de notas: un solo camino.** A `/auditoria/notas` (Nivel b) se llega tanto por el nav directo como por el botón "Abrir" de la solicitud aprobada en `/auditoria/solicitar`, lo que da sensación de dos flujos para lo mismo. Unificar la experiencia (p. ej. que "Abrir" lleve a un contexto del grant, o quitar uno de los dos accesos). Mejora menor de navegación, no afecta funcionalidad.
 - **Modo sandbox para pagos (solo admin).** Toggle en el panel de admin que alterna entre credenciales de produccion y sandbox de Wompi/Alegra sin tocar `.env`. Muestra un banner visible en toda la app cuando el modo sandbox esta activo. Requiere dos sets de credenciales en variables de entorno (sufijo `_SANDBOX`). En el MVP el entorno se fija por las variables desplegadas, no se cambia en caliente.
 - **Selector de tipo de evento en `/admin/auditoria`.** Hoy el filtro de auditoría es un buscador de texto libre por nombre exacto de evento. Agregar un selector desplegable de categorías de evento (ej. treatment.*, ai.*, report.*, followup.*) para filtrar por categoría sin teclear, adicional al buscador actual.
 - **Automatización de la verificación de correo dual (Learning vs Atlas).** Cuando un profesional indica en el onboarding que su correo de Atlas es distinto al de CNV Learning, hoy se registra manualmente (10 personas, viable). A futuro, automatizar la validación/vinculación entre ambos correos.
