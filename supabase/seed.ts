@@ -94,12 +94,25 @@ const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
 // El token es fijo y claramente de prueba: /encuesta/<token>.
 const SURVEY_LINK_ID = "99999999-9999-9999-9999-999999999903";
 const SURVEY_LINK_TOKEN = "demo-encuesta-inicial-0001";
+// Cadena clinica minima del paciente demo (evaluacion -> diagnostico confirmado ->
+// tratamiento -> nota de tratamiento), para smoke del Nivel (b) de auditoria sin recorrer
+// todo el flujo clinico a mano.
+const DEMO_EVAL_ID = "99999999-9999-9999-9999-999999999904";
+const DEMO_DIAGNOSIS_ID = "99999999-9999-9999-9999-999999999905";
+const DEMO_TREATMENT_ID = "99999999-9999-9999-9999-999999999906";
+const DEMO_TREATMENT_NOTE_ID = "99999999-9999-9999-9999-999999999907";
 
 // ---- Identidad de los usuarios sembrados ---------------------------------
 const ADMIN_EMAIL = "sau.idk001@gmail.com";
 const ADMIN_NAME = "Santiago Arroyave";
 const PROFESSIONAL_EMAIL = "profesional.demo@cnvsystem.com";
 const PROFESSIONAL_NAME = "Profesional Demo";
+// Usuarios internos de prueba para el flujo de grants (soporte solicita, admin/direccion
+// aprueban). Su password reusa por defecto la del profesional (sin nueva config).
+const SOPORTE_EMAIL = "soporte.demo@cnvsystem.com";
+const SOPORTE_NAME = "Soporte Demo";
+const DIRECCION_EMAIL = "direccion.demo@cnvsystem.com";
+const DIRECCION_NAME = "Direccion Demo";
 
 // ---- Contenido REAL de la encuesta ANI-BIS-E -----------------------------
 // Portado VERBATIM de reference/ATLAS-Patients_v7.html (prototipo final de Gildardo).
@@ -223,6 +236,9 @@ async function main() {
   const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY", SERVICE_ROLE_KEY);
   const adminPassword = requireEnv("SEED_ADMIN_PASSWORD", ADMIN_PASSWORD);
   const professionalPassword = requireEnv("SEED_PROFESSIONAL_PASSWORD", PROFESSIONAL_PASSWORD);
+  // Internos de prueba: password propia si se define, si no la del profesional.
+  const soportePassword = process.env.SEED_SOPORTE_PASSWORD || professionalPassword;
+  const direccionPassword = process.env.SEED_DIRECCION_PASSWORD || professionalPassword;
 
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -298,6 +314,33 @@ async function main() {
   check(
     "user_roles professional",
     (await supabase.from("user_roles").upsert({ user_id: professionalId, role_id: ROLE_IDS.professional }, { onConflict: "user_id,role_id" })).error,
+  );
+  // Anexo 3 firmado por el profesional demo (onboardeado). Es la precondicion del Nivel (b):
+  // sin esta firma vigente, la auditoria seudonimizada no cubre a sus pacientes.
+  check(
+    "professional_document_signatures",
+    (
+      await supabase.from("professional_document_signatures").upsert(
+        { professional_id: PROFESSIONAL_PROFILE_ID, document_type: "anexo3", signed_version: "1.0", signed_at: new Date().toISOString() },
+        { onConflict: "professional_id,document_type" },
+      )
+    ).error,
+  );
+
+  // 4b. Soporte de prueba: auth user (el trigger crea el profile) + rol soporte. Solicita
+  // grants de acceso a las notas; lo aprueba admin.
+  const soporteId = await ensureUser(SOPORTE_EMAIL, soportePassword, SOPORTE_NAME);
+  check(
+    "user_roles soporte",
+    (await supabase.from("user_roles").upsert({ user_id: soporteId, role_id: ROLE_IDS.soporte }, { onConflict: "user_id,role_id" })).error,
+  );
+
+  // 4c. Direccion de prueba: auth user + rol direccion. Aprueba las solicitudes de admin;
+  // no solicita ni ve contenido clinico (su tablero es agregado).
+  const direccionId = await ensureUser(DIRECCION_EMAIL, direccionPassword, DIRECCION_NAME);
+  check(
+    "user_roles direccion",
+    (await supabase.from("user_roles").upsert({ user_id: direccionId, role_id: ROLE_IDS.direccion }, { onConflict: "user_id,role_id" })).error,
   );
 
   // 5. model_version REAL en estado active (B11: motor de Gildardo portado).
@@ -483,11 +526,63 @@ async function main() {
       )
     ).error,
   );
+  // PII demografica del paciente demo (un paciente real la tiene desde el intake). Da
+  // nombre a la vista identificada (Nivel c).
+  check(
+    "patient_profiles",
+    (
+      await supabase.from("patient_profiles").upsert(
+        { patient_id: PATIENT_ID, first_name: "Paciente", last_name: "Demo", sex: "M", city: "Medellin" },
+        { onConflict: "patient_id" },
+      )
+    ).error,
+  );
   check(
     "patient_professional_relationships",
     (
       await supabase.from("patient_professional_relationships").upsert(
         { id: PATIENT_PROF_REL_ID, patient_id: PATIENT_ID, professional_id: PROFESSIONAL_PROFILE_ID },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+
+  // 9b. Cadena clinica minima del paciente demo, para smoke del Nivel (b) de auditoria:
+  // una nota de tratamiento real, colgada de un tratamiento sobre un diagnostico
+  // confirmado de una evaluacion. El profesional es 33333333 (con Anexo 3 vigente en el
+  // smoke), asi la precondicion del Nivel (b) se cumple.
+  check(
+    "evaluations demo",
+    (
+      await supabase.from("evaluations").upsert(
+        { id: DEMO_EVAL_ID, patient_id: PATIENT_ID, professional_id: PROFESSIONAL_PROFILE_ID, organization_id: ORG_ID, type: "inicial", status: "completed" },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "diagnoses demo",
+    (
+      await supabase.from("diagnoses").upsert(
+        { id: DEMO_DIAGNOSIS_ID, evaluation_id: DEMO_EVAL_ID, efr_state_number: 42, diagnosis_name: "Estado 42 (demo)", engine_version: "anibise-1.0.0", model_version_id: MODEL_VERSION_ID, rules_version: "r1", confirmed_by: professionalId, confirmed_at: new Date().toISOString() },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "treatments demo",
+    (
+      await supabase.from("treatments").upsert(
+        { id: DEMO_TREATMENT_ID, diagnosis_id: DEMO_DIAGNOSIS_ID, created_by: professionalId },
+        { onConflict: "id" },
+      )
+    ).error,
+  );
+  check(
+    "treatment_notes demo",
+    (
+      await supabase.from("treatment_notes").upsert(
+        { id: DEMO_TREATMENT_NOTE_ID, treatment_id: DEMO_TREATMENT_ID, note: "Nota de tratamiento de prueba para el smoke de auditoria (Nivel b)." },
         { onConflict: "id" },
       )
     ).error,
@@ -531,6 +626,8 @@ async function main() {
   console.log("Seed completo:");
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
+  console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
+  console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
   console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v1 (${SURVEY_QUESTIONS.length} preguntas reales D1-D8, ${SURVEY_QUESTIONS.filter((q) => q.engine).length} con field_key), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);

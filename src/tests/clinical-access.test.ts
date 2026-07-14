@@ -34,6 +34,9 @@ let adminId: string;
 let professionalId: string;
 let professionalProfileId: string;
 let modelVersionId: string;
+// Firma Anexo 3 original del profesional (el seed la crea). Se captura para restaurarla
+// al final y no dejar borrada una fila del seed.
+let originalAnexo3: string | null = null;
 
 async function asUser<T>(userId: string, fn: (tx: postgres.TransactionSql) => Promise<T>): Promise<T> {
   return sql.begin(async (tx) => {
@@ -119,6 +122,10 @@ beforeAll(async () => {
     await sql`select id from public.professional_profiles where profile_id = ${professionalId} limit 1`;
   [{ id: modelVersionId }] = await sql`select id from public.model_versions limit 1`;
 
+  const [sig] = await sql`select signed_version from public.professional_document_signatures
+    where professional_id = ${professionalProfileId} and document_type = 'anexo3'`;
+  originalAnexo3 = sig?.signed_version ?? null;
+
   for (const p of [PATIENT_1, PATIENT_2, PATIENT_N, PATIENT_ORPHAN]) {
     await sql`insert into public.patients (id, organization_id, document_type, document_number)
       values (${p}, ${ORG_ID}, 'CC', ${"CA-TEST-" + p.slice(-4)}) on conflict (id) do nothing`;
@@ -142,7 +149,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await clearGrants();
-  await setAnexo3(null);
+  await setAnexo3(originalAnexo3);
   await sql`delete from public.evaluation_notes where id = ${NOTE_EVAL}`;
   await sql`delete from public.diagnosis_notes where id = ${NOTE_DIAG}`;
   await sql`delete from public.treatment_notes where id = ${NOTE_TREAT}`;
