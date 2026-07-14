@@ -114,12 +114,30 @@ Desde MVP, con Upstash Ratelimit. Un bot puede agotar créditos de IA, saturar R
 | Checkout (crear sesión) | acotado por hora |
 | IA (sugerencia de diagnóstico) | 20 / 1 h por usuario |
 | Subir archivo / import CSV | acotado por hora por usuario |
+| Envío de reporte por correo | 10 / 1 h por usuario |
+| Solicitud de acceso a las notas (grants) | 20 / 1 h por usuario |
 | Cualquier otra mutación | 100 / 1 min por usuario |
 
 Identificación: IP para endpoints sin sesión; `userId` para los autenticados. Webhooks no se rate-limitan por volumen, se protegen con HMAC + idempotencia. Defensa en capas: Cloudflare (Bot Fight si hace falta), Vercel Edge, y los límites nativos de Supabase Auth.
 
 ## Tests de seguridad mínimos
 En `tests/policies.test.ts`: `canViewPatient` (solo su profesional y admin; nunca otro profesional), `canDiagnose`, `canConfirmDiagnosis`, `canApproveReport`, `canSendReport`, `canManageDevices`, `canAccessAdmin`, `canViewAggregateData` (solo obbia/admin, sin acceso a PII, sin acceso a contenido narrativo en texto libre, solo datos estructurados seudonimizados). Más tests de RLS por rol. **Pendiente:** test del pipeline de anonimización para exports externos (`research_datasets`): verificar k-anonimato con k ≥ 5 y l-diversidad para atributos sensibles antes de cualquier exportación. Los golden tests del motor también son seguridad clínica: si rompen, hay riesgo clínico.
+
+## Checklist de seguridad de lanzamiento
+Controles técnicos verificados en B15 (barrido manual + `/security-review` sobre el diff, sin hallazgos):
+
+- [x] **RLS habilitada en TODAS las tablas** de `public` (verificado: cero tablas sin RLS, cero tablas con RLS y sin policy).
+- [x] **Autorización por policies**, no por chequeos de rol sueltos. El acceso a contenido clínico narrativo pasa por el mecanismo de grants (Niveles a/b/c), nunca por `has_role('admin')` incondicional.
+- [x] **`service_role`/owner** solo en superficies justificadas (intake público, storage de reportes, checkout, auth admin, y los writers/lectores owner del bloque de auditoría, todos gateados en app-layer o de menor sensibilidad).
+- [x] **Headers de seguridad + CSP** en todas las rutas (`next.config.ts`): CSP con `connect-src` derivado de env, HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. Baseline con `'unsafe-inline'` (endurecimiento a nonces diferido a post-MVP, ver BACKLOG).
+- [x] **Scrubbing de PHI en Sentry** cableado en los tres runtimes (server/edge/cliente), `sendDefaultPii: false`, Session Replay desactivado (no captura el DOM). Denylist incluye narrativa clínica (`nota`/`note`/`narrativa`) y el motivo de los grants.
+- [x] **Rate limiting** en login, encuesta pública, import, envío de reportes, IA y solicitud de grants; con fallback en memoria.
+- [x] **`clinical_audit_log` append-only** (RLS sin UPDATE/DELETE + trigger), inline en la transacción.
+- [x] **MFA (TOTP)** obligatorio para admin e internos.
+- [x] **Zod** en toda entrada externa; `Result<T, AppError>` sin throw para errores esperables.
+- [x] **Webhooks** protegidos por HMAC + idempotencia (no por rate limit de volumen).
+
+Pendientes de gobernanza/ops (no bloquean el control técnico, dependen de decisiones de Santiago): cifrado a nivel de columna PHI (diferido, DELTA), validación de edad en la encuesta, pipeline de anonimización para el primer export externo. Items operativos de lanzamiento en `DEPLOY.md`.
 
 ## Respuesta a incidentes
 1. **Aislar:** revocar el secreto comprometido o desactivar el usuario sospechoso.
@@ -140,9 +158,14 @@ Resueltos por la Política de Gobernanza del Dato (referencia, no repetir aquí)
 
 ### Pendientes técnicos de esquema (derivados de la Política de Gobernanza del Dato)
 
-- **`patient_consents.revoked_at`:** campo faltante para registrar la revocación de cada autorización. Bloqueante para implementar `consent.revoked` en el audit trail y para que el flujo clínico valide autorizaciones vigentes.
-- **`patient_consents.consent_type`:** ampliar el enum a ocho valores: `servicio`, `datos_sensibles`, `internacional_ia`, `investigacion`, `comunicaciones_continuidad`, `comunicaciones_comerciales`, `representante_legal`, `asentimiento_menor`.
-- **Campos del representante legal:** `legal_representative_name`, `legal_representative_document`, `legal_representative_relationship`, requeridos cuando `consent_type = representante_legal`. Definir si viven en `patient_consents` o en tabla relacionada.
-- **Validación de edad en el flujo de encuesta:** ver nota en "Superficies públicas" arriba.
-- **`devices`:** agregar columnas `brand` y `model` (el `asset_code` es agnóstico del fabricante; hoy solo existe `model` genérico).
-- **Pipeline de anonimización para `research_datasets`:** implementar k-anonimato (k ≥ 5) y l-diversidad para atributos sensibles antes de cualquier exportación externa, conforme al estándar técnico de la Política de Gobernanza del Dato.
+Resueltos (verificados contra el esquema en B15):
+
+- **`patient_consents.revoked_at`:** implementado (B7/DELTA). Registra la revocación de cada autorización; habilita `consent.revoked` y el gate de autorizaciones vigentes.
+- **`patient_consents.consent_type` a ocho valores:** implementado (DELTA2). `servicio`, `datos_sensibles`, `internacional_ia`, `investigacion`, `comunicaciones_continuidad`, `comunicaciones_comerciales`, `representante_legal`, `asentimiento_menor`.
+- **Campos del representante legal:** implementados en `patient_consents` (DELTA2): `legal_representative_name`, `legal_representative_document`, `legal_representative_relationship`, `legal_representative_email`.
+- **`devices.brand` y `devices.model`:** implementados (B8). El `asset_code` sigue siendo agnóstico del fabricante.
+
+Pendientes reales:
+
+- **Validación de edad en el flujo de encuesta:** ver nota en "Superficies públicas" arriba. Hoy la encuesta usa la declaración de mayoría de edad; falta validar la fecha de nacimiento para activar automáticamente el bloque de representante legal (menores de 18) y el asentimiento (14-17).
+- **Pipeline de anonimización para `research_datasets`:** implementar k-anonimato (k ≥ 5) y l-diversidad antes de cualquier exportación externa. Diferido: `research_datasets` está vacío en el MVP (no hay exports todavía); es prerrequisito del primer export externo real, no del lanzamiento.

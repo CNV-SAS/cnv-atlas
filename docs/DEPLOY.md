@@ -218,7 +218,30 @@ Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Man
 - **Vercel Hobby:** suficiente para piloto; revisar límites de funciones serverless para tareas largas (PDFs, sync Alegra → background post-MVP).
 
 ## Smoke test manual antes del lanzamiento
-Login con MFA (admin); crear profesional y comodato; generar QR de encuesta; llenar encuesta (inicial y seguimiento con pre-llenado); importar XLSX de Biody; ver indicadores/diagnóstico (con motor real o stub); aprobar y enviar reporte al paciente; checkout de nutracéutico end-to-end (pago → webhook → transacción → factura Alegra); verificar que el `clinical_audit_log` registró los eventos.
+Login con MFA (admin); crear profesional y comodato; generar QR de encuesta; llenar encuesta (inicial y seguimiento con pre-llenado); importar XLSX de Biody; ver indicadores/diagnóstico (con motor real o stub); aprobar y enviar reporte al paciente; checkout de nutracéutico end-to-end (pago → webhook → transacción → factura Alegra); **auditoría/grants**: como soporte solicitar acceso identificado a un paciente y como admin aprobarlo, abrir la vista identificada; como admin solicitar acceso seudonimizado y como dirección aprobarlo, abrir `/auditoria/notas`; verificar que `admin` sin grant NO ve las notas; verificar que el `clinical_audit_log` registró todos los eventos, incluidos `access.requested` / `access.approved` / `access.used`.
+
+## Checklist de lanzamiento (B15)
+
+### DPA documental de sub-encargados
+Confirmar que hay DPA firmado y **archivado** por cada sub-encargado. La tabla de sub-encargados con región y transferencia internacional es la de `DATA_GOVERNANCE.md` (fuente de verdad); aquí solo se rastrea el archivado del documento.
+
+- [ ] Supabase (DB/Auth/Storage, EE. UU.)
+- [ ] Vercel (hosting, EE. UU.)
+- [ ] Resend (correos, EE. UU.)
+- [ ] Groq / Gemini (variables clínicas seudonimizadas, EE. UU.)
+- [ ] Wompi (pagos, Colombia)
+- [ ] Alegra (facturación, Colombia)
+- [ ] Aminogram / Biody Manager / Connect (BIS + PII, Francia, HDS)
+- [ ] Sentry (metadatos de error, EE. UU.; scrubbing de PHI activo)
+- [ ] Cloudflare (DNS/CDN, EE. UU.)
+- [ ] Upstash (rate limiting, EE. UU.)
+
+### Items operativos (dependen de Santiago, no son código)
+- [ ] **Resend, dominio de envío:** `atlas.cnvsystem.com` NO se puede verificar en el plan Free de Resend (ya se usa el único dominio disponible en `cnvsystem.com`). Para el lanzamiento, `EMAIL_FROM = atlas-notificaciones@cnvsystem.com`. Verificar el subdominio propio queda pendiente de subir al plan Pro; es decisión operativa de Santiago.
+- [ ] **Upstash de producción** configurado (`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` en Vercel), para que el rate limiting sea multi-instancia y no solo la ventana en memoria.
+- [ ] **Sentry:** DSN de producción activo; monitorear 24h sin errores recurrentes tras el lanzamiento (criterio de aceptación de B15).
+- [ ] **Secretos** en Bitwarden y en las env de Vercel; ninguno en el repo. `SUPABASE_SERVICE_ROLE_KEY` solo server.
+- [ ] **Smoke E2E manual** (sección anterior) ejecutado en el entorno de lanzamiento.
 
 ## Próximos hitos operativos (post-MVP)
 Supabase Pro + PITR; jobs en background (Inngest) para PDFs/sync/exports; E2E con Playwright en CI; observabilidad ampliada.
