@@ -240,3 +240,40 @@ export async function limitAiMenuByUser(userId: string): Promise<LimitResult> {
   }
   return memoryAiMenu.check(userId);
 }
+
+// ---- Solicitud de acceso a las notas (grants, bloque auditoria) ----------
+// Acota el spam de SOLICITUDES por usuario (admin/soporte). decide/revoke no se
+// limitan: se auto-acotan (una vez decidido el grant deja de estar pending; revocar
+// transiciona el estado). 20/h cubre de sobra el uso legitimo (las solicitudes son
+// puntuales). Falla abierto (superficie autenticada y rastreable).
+const ACCESS_REQUEST_LIMIT = 20;
+const ACCESS_REQUEST_WINDOW = "1 h" as const;
+const ACCESS_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+
+const memoryAccessRequest = new MemoryFixedWindow(ACCESS_REQUEST_LIMIT, ACCESS_REQUEST_WINDOW_MS);
+
+let upstashAccessRequest: Ratelimit | null = null;
+function getUpstashAccessRequest(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashAccessRequest ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(ACCESS_REQUEST_LIMIT, ACCESS_REQUEST_WINDOW),
+    prefix: "atlas:access-request",
+  });
+  return upstashAccessRequest;
+}
+
+export async function limitAccessRequestByUser(userId: string): Promise<LimitResult> {
+  const upstash = getUpstashAccessRequest();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(userId);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: true, remaining: ACCESS_REQUEST_LIMIT };
+    }
+  }
+  return memoryAccessRequest.check(userId);
+}

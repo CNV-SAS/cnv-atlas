@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getClientIp } from "@/core/http/client-ip";
+import { limitAccessRequestByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
 import { canApproveAccess } from "./policies/can-approve-access";
@@ -35,6 +36,9 @@ export async function requestAccessAction(
 ): Promise<AccessActionState> {
   const user = await requireUser();
   if (!canRequestAccess(user)) return fail("No autorizado.");
+
+  const rl = await limitAccessRequestByUser(user.id);
+  if (!rl.success) return fail("Has enviado demasiadas solicitudes. Espera unos minutos.");
 
   const parsed = requestAccessSchema.safeParse({
     grantType: form.get("grantType"),
