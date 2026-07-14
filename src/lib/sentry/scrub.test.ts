@@ -21,11 +21,19 @@ describe("scrubPhiFromEvent", () => {
         headers: { cookie: "s=1", authorization: "Bearer x", "user-agent": "UA" },
         data: { nombre: "Juan", diagnostico: "X" },
       },
-      extra: { nombre: "Juan Perez", documento: "CC123", indicador_bis: 42, foo: "ok" },
+      extra: {
+        nombre: "Juan Perez",
+        documento: "CC123",
+        indicador_bis: 42,
+        note: "el paciente refiere dolor",
+        motivo: "verificacion de queja de Juan",
+        representante_documento: "CC456",
+        foo: "ok",
+      },
       tags: { paciente_id: "p1", modulo: "evaluations" },
       contexts: {
         os: { name: "Windows" },
-        paciente: { cedula: "999", nota: "texto" },
+        paciente: { cedula: "999", nota: "texto narrativo" },
       },
       breadcrumbs: [{ category: "x", data: { celular: "300", ok: "keep" } }],
     } as unknown as ErrorEvent;
@@ -43,10 +51,13 @@ describe("scrubPhiFromEvent", () => {
     expect(out.request?.headers?.authorization).toBeUndefined();
     expect(out.request?.headers?.["user-agent"]).toBe("UA");
 
-    // extra: PHI redactada, benigno intacto.
+    // extra: PHI redactada (incluida narrativa libre y motivo de grant), benigno intacto.
     expect(out.extra?.nombre).toBe(REDACTED);
     expect(out.extra?.documento).toBe(REDACTED);
     expect(out.extra?.indicador_bis).toBe(REDACTED);
+    expect(out.extra?.note).toBe(REDACTED);
+    expect(out.extra?.motivo).toBe(REDACTED);
+    expect(out.extra?.representante_documento).toBe(REDACTED);
     expect(out.extra?.foo).toBe("ok");
 
     // tags: id de paciente redactado, modulo intacto.
@@ -56,7 +67,7 @@ describe("scrubPhiFromEvent", () => {
     // contexts: estandar preservado, personalizado scrubbeado.
     expect((out.contexts?.os as { name?: string })?.name).toBe("Windows");
     expect((out.contexts?.paciente as { cedula?: string })?.cedula).toBe(REDACTED);
-    expect((out.contexts?.paciente as { nota?: string })?.nota).toBe("texto");
+    expect((out.contexts?.paciente as { nota?: string })?.nota).toBe(REDACTED);
 
     // breadcrumbs: data clinica redactada, resto intacto.
     expect((out.breadcrumbs?.[0].data as { celular?: string })?.celular).toBe(REDACTED);

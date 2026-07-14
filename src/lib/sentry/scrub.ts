@@ -19,10 +19,15 @@ const PHI_KEY_PATTERNS: readonly string[] = [
   "correo", "email", "e_mail",
   "celular", "telefono", "phone", "movil", "whatsapp", "contacto",
   "direccion", "address", "nacimiento", "birth", "fecha_nac",
+  "representante", "asentimiento",
   "paciente", "patient",
   "diagnostico", "diagnosis", "tratamiento", "treatment",
   "indicador", "indicator", "evaluacion", "evaluation", "encuesta", "survey",
   "biody", "diana",
+  // Narrativa clinica en texto libre (notas de evaluacion/diagnostico/tratamiento,
+  // notas del profesional en reportes) y el motivo de un grant de acceso, que el
+  // usuario escribe y podria nombrar al paciente.
+  "nota", "note", "narrativa", "motivo", "reason",
   "password", "secret", "token", "authorization", "api_key", "apikey", "cookie",
 ];
 
