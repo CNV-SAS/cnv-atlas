@@ -61,13 +61,13 @@ export default async function IdentifiedAccessPage({
   }
 
   const { view, expiresAt } = result.value;
+  const fullName = `${view.patient.firstName} ${view.patient.lastName}`.trim();
+  const heading = fullName || `${view.patient.documentType} ${view.patient.documentNumber}`;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          {view.patient.firstName} {view.patient.lastName}
-        </h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{heading}</h1>
         <p className="text-muted-foreground">
           {view.patient.documentType} {view.patient.documentNumber}. Acceso identificado
           excepcional; tu permiso vence el {fmt(expiresAt.toISOString())}. Este acceso

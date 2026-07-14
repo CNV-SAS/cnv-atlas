@@ -44,6 +44,10 @@ export type IdentifiedNotesView = {
 };
 
 export async function getIdentifiedNotes(patientId: string): Promise<IdentifiedNotesView | null> {
+  // Base en patients (la identidad minima, el documento, siempre existe) con leftJoin a
+  // patient_profiles: el nombre es PII complementaria que puede faltar (p. ej. un paciente
+  // resuelto por documento antes de completar sus datos demograficos). Un innerJoin haria
+  // "desaparecer" al paciente y romperia el Nivel c pese a que existe.
   const [p] = await db
     .select({
       id: patients.id,
@@ -53,7 +57,7 @@ export async function getIdentifiedNotes(patientId: string): Promise<IdentifiedN
       documentNumber: patients.documentNumber,
     })
     .from(patients)
-    .innerJoin(patientProfiles, eq(patientProfiles.patientId, patients.id))
+    .leftJoin(patientProfiles, eq(patientProfiles.patientId, patients.id))
     .where(eq(patients.id, patientId))
     .limit(1);
 
@@ -89,8 +93,8 @@ export async function getIdentifiedNotes(patientId: string): Promise<IdentifiedN
   return {
     patient: {
       id: p.id,
-      firstName: p.firstName,
-      lastName: p.lastName,
+      firstName: p.firstName ?? "",
+      lastName: p.lastName ?? "",
       documentType: p.documentType,
       documentNumber: p.documentNumber,
     },
