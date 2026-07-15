@@ -68,3 +68,23 @@
 - **Nuestra decisión (Santiago, 2026-07-10):** no se re-verifican golden tests (nada de lo que Atlas porta cambió). Las preguntas nuevas (suplementos, alergias, cirugías GI), el reorden del panel y la captura de prensil son UI/encuesta, candidatas a un ítem incremental futuro, no un port de ciencia.
 - **Pregunta a Gildardo:** ¿la fuerza prensil debe influir en el DFI y en la selección de rutas (es decir, en el diagnóstico que Atlas computa y persiste), o es solo un indicador de pantalla en su prototipo? Si debe influir, hay que entregarlo como un frozen delta nuevo (versión nueva de los `.js`, swap limpio) que wire `dxSarcopenia`/prensil dentro de `computeDFIFromData`, con golden tests actualizados. Si es solo de display, el ítem futuro se limita a capturar la prensil como dato de antropometría, sin tocar el motor. La respuesta define si ese ítem es "solo encuesta" o "encuesta + delta del motor".
 - **Resolución (Gildardo, 2026-07-15):** Por ahora, solo captura. La fuerza prensil se guarda como dato de antropometría, sin entrar al motor, coherente con el DFI congelado (que calcula la obesidad sarcopénica sin prensil: `_obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow)`). Si más adelante se decide que la prensil debe influir en el DFI y en la selección de rutas (criterio primario EWGSOP2 para riesgo de sarcopenia), se entrega como frozen delta nuevo (versión nueva de los `.js` que conecte `dxSarcopenia`/prensil en `computeDFIFromData`), con golden tests actualizados. El ítem futuro de encuesta queda, por ahora, como solo captura.
+
+---
+
+## Q6 · Alcohol (`d3_31`): marcado como campo del motor, pero `calcLE8` lo lee en una variable sin usar
+
+- **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
+- **Estado:** ABIERTO (esperando decisión de Gildardo)
+- **Hallazgo:** `d3_31` ("¿Con qué frecuencia consume alcohol?") está marcada `engine: true` (una de las 14 preguntas con `field_key`), así que el intake la entrega al motor. Pero en `calcLE8` (`frozen/engine.dfi.js`) el valor se asigna a `const alcohol = enc.d3_31 || ""` y esa variable **no se usa en ninguno de los 8 dominios** del LE8 (Actividad física, Alimentación, Tabaco, Sueño, Glucosa, Colesterol, Presión arterial, Hidratación). Ningún otro punto del motor (DFI, índices) lee `d3_31`. Resultado: el paciente responde alcohol, el dato viaja al motor y no influye en nada.
+- **Evidencia de que NO es un defecto del port:** el `.js` es verbatim de `ATLAS_v7.html`; la variable `alcohol` muerta viene de la fórmula de Gildardo, no de Atlas. Preservado byte a byte (regla dura 12).
+- **Pregunta a Gildardo:** ¿el alcohol debía ser un factor del LE8 (omisión latente en la fórmula, a entregar como frozen delta con su dominio/ponderación) o es solo registro clínico? Si es solo registro, se puede quitar el `field_key` de `d3_31` (deja de viajar al motor, sin efecto en el resultado). Si debía influir, entrega la fórmula y se porta fiel con golden actualizado. Mientras tanto, no se toca el motor.
+
+---
+
+## Q7 · Contaminantes (`d5_42`) y estrés (`d3_29`): el motor los lee solo en el path NO autoritativo `rutasPorCondicion`
+
+- **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
+- **Estado:** ABIERTO (informativo; sin impacto en el diagnóstico actual)
+- **Hallazgo:** `engine.indices.js` define `RUTA_COND` (predicados R1-R6); el predicado **R5** lee `d5_42` (contaminantes) y `d3_29` (estrés). Ninguna de las dos está marcada `engine: true`, así que el intake no las entrega al motor. Pero el propio motor rotula `rutasPorCondicion` como **no autoritativa** (comentario en `engine.indices.js` ~L79: "la selección AUTORITATIVA se hace vía DFI"), y `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData` (`analizarDFI`), no desde `rutasPorCondicion`. `computeDFIFromData` no lee `d5_42` ni `d3_29`.
+- **Consecuencia:** hoy `d5_42` y `d3_29` no tocan ningún indicador, DFI, ruta ni fenotipo del `EngineOutput`. Ambas preguntas SÍ están en la encuesta como registro clínico (`field_key` null). No hay degradación del diagnóstico actual.
+- **Pregunta a Gildardo:** ¿`rutasPorCondicion` (R5 con contaminantes y estrés) debe llegar a ser una vía autoritativa de selección de rutas? Si sí, habría que (a) marcar `d5_42` y `d3_29` como `field_key` y (b) cablear `rutasPorCondicion` en `engine.ts`, con golden actualizado. Si no, quedan como registro clínico y R5 sigue siendo lógica de reglas de referencia, sin efecto. Mientras tanto, no se toca el motor.
