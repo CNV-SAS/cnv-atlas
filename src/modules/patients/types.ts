@@ -40,3 +40,16 @@ export type IdentityResolution = {
   matchedPatientId: string | null;
   duplicateCandidates: DuplicateCandidate[];
 };
+
+// Fila del roster de pacientes del profesional (/pacientes). El alcance (solo los
+// pacientes propios, o todos para admin) lo resuelve RLS, no la app.
+export type PatientListItem = {
+  patientId: string;
+  documentType: DocumentType;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null; // yyyy-MM-dd
+  status: string;
+  evaluationCount: number;
+};
