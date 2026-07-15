@@ -3,20 +3,10 @@ import { redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
+import { edadEnAnios } from "@/modules/patients/format";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
 export const metadata = { title: "Pacientes - Atlas" };
-
-// Edad en anos a partir de la fecha de nacimiento (presentacion). Null si no hay fecha.
-function edad(birthDate: string | null): number | null {
-  if (!birthDate) return null;
-  const nacimiento = new Date(birthDate);
-  const hoy = new Date();
-  let anos = hoy.getFullYear() - nacimiento.getFullYear();
-  const m = hoy.getMonth() - nacimiento.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) anos -= 1;
-  return anos;
-}
 
 // Roster de pacientes del profesional. Autorizacion de ruta por policy (regla 3); el
 // alcance de datos (solo los propios, o todos para admin) lo impone RLS.
@@ -57,7 +47,7 @@ export default async function PacientesPage() {
             </thead>
             <tbody>
               {pacientes.map((p) => {
-                const anos = edad(p.birthDate);
+                const anos = edadEnAnios(p.birthDate);
                 return (
                   <tr key={p.patientId} className="border-b border-border/60 last:border-0">
                     <td className="px-3 py-2 font-medium text-foreground">

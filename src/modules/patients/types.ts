@@ -53,3 +53,30 @@ export type PatientListItem = {
   status: string;
   evaluationCount: number;
 };
+
+// Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la
+// vista de resultados que ya existe (/evaluaciones/[id]).
+export type PatientEvaluationItem = {
+  evaluationId: string;
+  type: EvaluationType;
+  status: string;
+  createdAt: string;
+};
+
+// Detalle del paciente para su historia (/pacientes/[id]): identidad, contacto y la
+// linea de tiempo de sus evaluaciones. RLS decide si la sesion puede verlo (null si no).
+export type PatientDetail = {
+  patientId: string;
+  documentType: DocumentType;
+  documentNumber: string;
+  status: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  sex: string | null;
+  city: string | null;
+  country: string | null;
+  email: string | null;
+  phone: string | null;
+  evaluations: PatientEvaluationItem[];
+};
