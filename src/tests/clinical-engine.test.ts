@@ -23,7 +23,7 @@ describe("clinical-engine runEngine (motor real)", () => {
     const out = runEngine(input());
     expect(Object.keys(out.indicators)).toHaveLength(12);
     expect(out.efrPhenotype.key).toBe("N_N_N_A");
-    expect(out.efrPhenotype.stateNumber).toBe(42); // N_N_N_A -> bandas (2,2,2,3)
+    expect(out.efrPhenotype.stateNumber).toBe(33); // N_N_N_A (bandas 2,2,2,3), numeracion de Gildardo
     expect(out.structural.nombre).toBeTruthy();
     expect(out.frSector.nombre).toBeTruthy();
     expect(out.nutraceuticos).toBeTruthy();

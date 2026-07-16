@@ -13,7 +13,7 @@ const anibiseSnapshot = {
   sexo: "M",
   indicators: { ifc: 1.2, irc: 0.9 },
   classifications: {},
-  efrPhenotype: { stateNumber: 42, key: "N_N_N_A", bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 3 } },
+  efrPhenotype: { stateNumber: 33, key: "N_N_N_A", bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 3 } },
   structural: { key: "N_A", nombre: "Fenotipo fuerte-adiposo" },
   frSector: { key: "N_N", nombre: "Desempeno normal, riesgo moderado" },
   dfi: { domains: [], riesgo: { nivel: "MEDIO", score: 3, descripcion: "" }, rutas: [] },

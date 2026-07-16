@@ -564,7 +564,7 @@ async function main() {
     "diagnoses demo",
     (
       await supabase.from("diagnoses").upsert(
-        { id: DEMO_DIAGNOSIS_ID, evaluation_id: DEMO_EVAL_ID, efr_state_number: 42, diagnosis_name: "Estado 42 (demo)", engine_version: "anibise-1.0.0", model_version_id: MODEL_VERSION_ID, rules_version: "r1", confirmed_by: professionalId, confirmed_at: new Date().toISOString() },
+        { id: DEMO_DIAGNOSIS_ID, evaluation_id: DEMO_EVAL_ID, efr_state_number: 33, diagnosis_name: "Estado 33 (demo)", engine_version: "anibise-1.0.0", model_version_id: MODEL_VERSION_ID, rules_version: "r1", confirmed_by: professionalId, confirmed_at: new Date().toISOString() },
         { onConflict: "id" },
       )
     ).error,

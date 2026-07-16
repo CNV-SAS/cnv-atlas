@@ -173,9 +173,9 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
 
     const { indicators, diag, snapshot } = await readPersisted(evaluationId);
 
-    // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 42.
+    // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 33 (numeracion de Gildardo).
     expect(snapshot.efrPhenotype.key).toBe("N_N_N_A");
-    expect(diag.efrStateNumber).toBe(42);
+    expect(diag.efrStateNumber).toBe(33);
     expect(diag.diagnosisName).toBe("Composición saludable con grasa alta → riesgo de progresión");
     // los FK del registry se resolvieron por clave (fenotipo estructural + sector FyR).
     expect(diag.phenotypeId).not.toBeNull();
@@ -225,8 +225,8 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
 
     expect(a.snapshot.efrPhenotype.key).toBe("N_N_N_A");
     expect(b.snapshot.efrPhenotype.key).toBe("N_N_N_N");
-    expect(a.diag.efrStateNumber).toBe(42);
-    expect(b.diag.efrStateNumber).toBe(41);
+    expect(a.diag.efrStateNumber).toBe(33);
+    expect(b.diag.efrStateNumber).toBe(31);
     // los outputs difieren: si se hubieran mezclado, serian iguales.
     expect(a.snapshot.indicators).not.toEqual(b.snapshot.indicators);
     expect(a.diag.efrStateNumber).not.toBe(b.diag.efrStateNumber);

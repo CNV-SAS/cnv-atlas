@@ -139,7 +139,7 @@
   ],
   "efrStates": [
     {
-      "stateNumber": 1,
+      "stateNumber": 61,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -152,7 +152,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE, OMEGA COMPLEX, GUT-IMMUNE PRO"
     },
     {
-      "stateNumber": 2,
+      "stateNumber": 62,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -165,7 +165,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 3,
+      "stateNumber": 63,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -178,7 +178,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 4,
+      "stateNumber": 57,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -191,7 +191,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, SARCO-PROTECT, MULTI-CELL BASE, D3-K2 OSTEO"
     },
     {
-      "stateNumber": 5,
+      "stateNumber": 58,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -204,7 +204,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 6,
+      "stateNumber": 60,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -217,7 +217,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 7,
+      "stateNumber": 55,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -230,7 +230,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, MULTICELL BASE"
     },
     {
-      "stateNumber": 8,
+      "stateNumber": 56,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -243,7 +243,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 9,
+      "stateNumber": 59,
       "ifcBand": 1,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -256,7 +256,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 10,
+      "stateNumber": 70,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -269,7 +269,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 11,
+      "stateNumber": 71,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -282,7 +282,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, SARCO-PROTECT, MULTI-CELL BASE, D3-K2 OSTEO, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 12,
+      "stateNumber": 72,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -295,7 +295,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, MITO-Q10 PLUS, SARCO-PROTECT, HEPA-DETOX"
     },
     {
-      "stateNumber": 13,
+      "stateNumber": 66,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -308,7 +308,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, MULTI-CELL BASE, OMEGA COMPLEX, ADAPTO-STRESS"
     },
     {
-      "stateNumber": 14,
+      "stateNumber": 67,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -321,7 +321,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 15,
+      "stateNumber": 69,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -334,7 +334,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, MITO-Q10 PLUS, HEPA-DETOX"
     },
     {
-      "stateNumber": 16,
+      "stateNumber": 64,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -347,7 +347,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 17,
+      "stateNumber": 65,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -360,7 +360,7 @@
       "suggestedNutraceuticals": "MITO-Q10 PLUS, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 18,
+      "stateNumber": 68,
       "ifcBand": 1,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -373,7 +373,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, MITO-Q10 PLUS, HEPA-DETOX"
     },
     {
-      "stateNumber": 19,
+      "stateNumber": 79,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -386,7 +386,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, SARCO-PROTECT, CURCUMIN BIOACTIV, MULTI-CELL BASE, D3-K2 OSTEO"
     },
     {
-      "stateNumber": 20,
+      "stateNumber": 80,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -399,7 +399,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, CURCUMIN BIOACTIV, SARCO-PROTECT, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 21,
+      "stateNumber": 81,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -412,7 +412,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, CURCUMIN BIOACTIV, BERBERINA METABO, SARCO-PROTECT, HEPA-DETOX"
     },
     {
-      "stateNumber": 22,
+      "stateNumber": 75,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -425,7 +425,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, CURCUMIN BIOACTIV, MULTI-CELL BASE, ADAPTO-STRESS"
     },
     {
-      "stateNumber": 23,
+      "stateNumber": 76,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -438,7 +438,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, CURCUMIN BIOACTIV, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 24,
+      "stateNumber": 78,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -451,7 +451,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, CURCUMIN BIOACTIV, BERBERINA METABO, HEPA-DETOX"
     },
     {
-      "stateNumber": 25,
+      "stateNumber": 73,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -464,7 +464,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 26,
+      "stateNumber": 74,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -477,7 +477,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 27,
+      "stateNumber": 77,
       "ifcBand": 1,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -490,7 +490,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, HEPA-DETOX"
     },
     {
-      "stateNumber": 28,
+      "stateNumber": 25,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -503,7 +503,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
     },
     {
-      "stateNumber": 29,
+      "stateNumber": 26,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -516,7 +516,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
     },
     {
-      "stateNumber": 30,
+      "stateNumber": 27,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -529,7 +529,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, BERBERINA METABO, HEPA DETOX, MULTICELL BASE"
     },
     {
-      "stateNumber": 31,
+      "stateNumber": 21,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -542,7 +542,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 32,
+      "stateNumber": 22,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -555,7 +555,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 33,
+      "stateNumber": 24,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -568,7 +568,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, HEPA DETOX, D3-K2 OSTEO, MULTICELL BASE"
     },
     {
-      "stateNumber": 34,
+      "stateNumber": 19,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -581,7 +581,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 35,
+      "stateNumber": 20,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -594,7 +594,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 36,
+      "stateNumber": 23,
       "ifcBand": 2,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -607,7 +607,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 37,
+      "stateNumber": 34,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -620,7 +620,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
     },
     {
-      "stateNumber": 38,
+      "stateNumber": 35,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -633,7 +633,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
     },
     {
-      "stateNumber": 39,
+      "stateNumber": 36,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -646,7 +646,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 40,
+      "stateNumber": 30,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -659,7 +659,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 41,
+      "stateNumber": 31,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -672,7 +672,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 42,
+      "stateNumber": 33,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -685,7 +685,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 43,
+      "stateNumber": 28,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -698,7 +698,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 44,
+      "stateNumber": 29,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -711,7 +711,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 45,
+      "stateNumber": 32,
       "ifcBand": 2,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -724,7 +724,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 46,
+      "stateNumber": 52,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -737,7 +737,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, SARCO-PROTECT, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 47,
+      "stateNumber": 53,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -750,7 +750,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, SARCO-PROTECT, MITO-Q10 PLUS"
     },
     {
-      "stateNumber": 48,
+      "stateNumber": 54,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -763,7 +763,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV, HEPA-DETOX"
     },
     {
-      "stateNumber": 49,
+      "stateNumber": 48,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -776,7 +776,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 50,
+      "stateNumber": 49,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -802,7 +802,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV, HEPA-DETOX"
     },
     {
-      "stateNumber": 52,
+      "stateNumber": 46,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -815,7 +815,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 53,
+      "stateNumber": 47,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -828,7 +828,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MITO-Q10 PLUS, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 54,
+      "stateNumber": 50,
       "ifcBand": 2,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -841,7 +841,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV, HEPA-DETOX"
     },
     {
-      "stateNumber": 55,
+      "stateNumber": 7,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -854,7 +854,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 56,
+      "stateNumber": 8,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -867,7 +867,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 57,
+      "stateNumber": 9,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 1,
@@ -880,7 +880,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 58,
+      "stateNumber": 3,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -893,7 +893,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 59,
+      "stateNumber": 4,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -906,7 +906,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 60,
+      "stateNumber": 6,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 2,
@@ -919,7 +919,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 61,
+      "stateNumber": 1,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -932,7 +932,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 62,
+      "stateNumber": 2,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -945,7 +945,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 63,
+      "stateNumber": 5,
       "ifcBand": 3,
       "ircBand": 1,
       "ffmiBand": 3,
@@ -958,7 +958,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 64,
+      "stateNumber": 16,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -971,7 +971,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 65,
+      "stateNumber": 17,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -984,7 +984,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 66,
+      "stateNumber": 18,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 1,
@@ -997,7 +997,7 @@
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 67,
+      "stateNumber": 12,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -1010,7 +1010,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 68,
+      "stateNumber": 13,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -1023,7 +1023,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 69,
+      "stateNumber": 15,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 2,
@@ -1036,7 +1036,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 70,
+      "stateNumber": 10,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -1049,7 +1049,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 71,
+      "stateNumber": 11,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -1062,7 +1062,7 @@
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 72,
+      "stateNumber": 14,
       "ifcBand": 3,
       "ircBand": 2,
       "ffmiBand": 3,
@@ -1075,7 +1075,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
-      "stateNumber": 73,
+      "stateNumber": 43,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -1088,7 +1088,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, SARCO-PROTECT, D3-K2 OSTEO"
     },
     {
-      "stateNumber": 74,
+      "stateNumber": 44,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -1101,7 +1101,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, SARCO-PROTECT, D3-K2 OSTEO"
     },
     {
-      "stateNumber": 75,
+      "stateNumber": 45,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 1,
@@ -1114,7 +1114,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV"
     },
     {
-      "stateNumber": 76,
+      "stateNumber": 39,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -1127,7 +1127,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 77,
+      "stateNumber": 40,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -1140,7 +1140,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 78,
+      "stateNumber": 42,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 2,
@@ -1153,7 +1153,7 @@
       "suggestedNutraceuticals": "BERBERINA METABO, OMEGA COMPLEX, CURCUMIN BIOACTIV"
     },
     {
-      "stateNumber": 79,
+      "stateNumber": 37,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -1166,7 +1166,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 80,
+      "stateNumber": 38,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 3,
@@ -1179,7 +1179,7 @@
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, MULTI-CELL BASE"
     },
     {
-      "stateNumber": 81,
+      "stateNumber": 41,
       "ifcBand": 3,
       "ircBand": 3,
       "ffmiBand": 3,

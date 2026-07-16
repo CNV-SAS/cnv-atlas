@@ -25,10 +25,10 @@ describe("registry-data derivado de la ciencia congelada", () => {
     expect(Math.max(...nums)).toBe(81);
   });
 
-  it("N_N_N_A coincide con el oro (stateNumber 42 y diagnostico del DX)", () => {
+  it("N_N_N_A coincide con el oro (stateNumber 33, numeracion de Gildardo, y diagnostico del DX)", () => {
     const s = r.efrStates.find((x) => x.key === "N_N_N_A");
     expect(s).toBeTruthy();
-    expect(s?.stateNumber).toBe(42);
+    expect(s?.stateNumber).toBe(33);
     expect(s?.diagnosisName).toBe(
       "Composición saludable con grasa alta → riesgo de progresión",
     );

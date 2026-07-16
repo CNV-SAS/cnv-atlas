@@ -178,13 +178,40 @@ export function bandToLetter(k: number): "A" | "N" | "B" {
   return k === 3 ? "A" : k === 1 ? "B" : "N";
 }
 
-// Numero de estado EFR (1..81) determinista desde las 4 bandas (cada una 1/2/3).
+// Orden de riesgo de las 9 combinaciones de banda, VERBATIM del prototipo de Gildardo
+// (ATLAS_v7.html, arrays SEC_EFR/RNG_EFR ~L5810): indice 0..8, de menor a mayor riesgo. El
+// mismo orden aplica al sector funcional (IFC x IRC) y al anillo estructural (FFMI x FMI).
+const EFR_RISK_ORDER: ReadonlyArray<readonly [number, number]> = [
+  [3, 1],
+  [3, 2],
+  [2, 1],
+  [2, 2],
+  [3, 3],
+  [2, 3],
+  [1, 1],
+  [1, 2],
+  [1, 3],
+];
+
+// Rango de riesgo (0..8) de un par de bandas, contra el orden de Gildardo. Clampa a 1..3.
+function efrRiskRank(a: number, b: number): number {
+  const c = (v: number) => Math.min(3, Math.max(1, v));
+  const ca = c(a);
+  const cb = c(b);
+  return EFR_RISK_ORDER.findIndex(([x, y]) => x === ca && y === cb);
+}
+
+// Numero de estado EFR (1..81) IGUAL al efrNum de Gildardo (ATLAS_v7.html L5815):
+// rango del sector (IFC x IRC) por 9, mas el rango del anillo (FFMI x FMI), mas 1. Antes
+// numerabamos base-3 posicional, que no coincidia con la Diana/reportes del prototipo
+// (nuestro estado 42 era su 33); se renumero para paridad (registry sin pacientes reales).
 export function efrStateNumber(bands: {
   ifc: number;
   irc: number;
   ffmi: number;
   fmi: number;
 }): number {
-  const n = (b: number) => Math.min(3, Math.max(1, b)) - 1; // 0..2
-  return n(bands.ifc) * 27 + n(bands.irc) * 9 + n(bands.ffmi) * 3 + n(bands.fmi) + 1;
+  const rSector = efrRiskRank(bands.ifc, bands.irc);
+  const rRing = efrRiskRank(bands.ffmi, bands.fmi);
+  return rSector * 9 + rRing + 1;
 }
