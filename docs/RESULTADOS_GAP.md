@@ -49,3 +49,78 @@ fenotipo estructural, sector FyR, mecanismo, biomarcadores, riesgos, nutracéuti
 - Diagnóstico antropométrico (b) — re-exponer BMI/ICC/ICT/cintura/cadera desde `bis_raw_values` +
   portar cortes de clasificación (ratios, no ciencia congelada). A confirmar en el plan.
 - Enriquecer Recomendaciones (a+b) y, opcional, Diana FyR / Resumen (b, cosmético).
+
+---
+
+# Parte 2 — Estructura y layout (cómo organiza la información el HTML)
+
+**Restricción de negocio (importante):** con este HTML se forma a los Integrantes. Su
+estructura/layout está "pagada" en la formación (familiaridad), así que **se preserva por
+defecto**. Solo nos apartamos donde la estructura del HTML esté **claramente rota o no
+funcional**, y esas desviaciones se marcan abajo para que Santiago las juzgue. Inventario leído
+del código fuente del HTML (el runtime tiene el bug de render de la Q4: la vista de
+diagnóstico/tratamiento sale en blanco, así que la estructura se infiere del código, no de la
+pantalla).
+
+## Navegación del HTML: módulos como pasos, cada uno con tabs internas
+
+El prototipo es un flujo de **módulos** (pasos del profesional), cada uno con su propia barra de
+tabs. Orden:
+
+1. **Módulo 1 · Encuesta CNV** (L64) — tabs D0-D8 (`TABS_ENC`, L2825). Intake del paciente.
+2. **Módulo 2 · Antropometría & BIS** (L2432) — captura manual de peso/talla/cintura/cadera y del
+   BIS, con diagnóstico antropométrico y de sarcopenia inmediatos. Tabs `📋 Datos · 🎯 EFR BIS ·
+   📈 Evolución` (`TABS`, L5453).
+3. **Módulo 3 · Resumen** (L6284) — vista resumen (`📊 Resumen`, L10416).
+4. **Módulo 4 · Diagnóstico integral** (L8342) — la vista de resultados principal. Tab por defecto
+   `integral`, más `📈 Evolución` y `💊 Recomendaciones` (`TABS`, L8436), y un salto a
+   `diagnostico` (L8612). Arriba, una **tarjeta de estado del paciente** (L10686).
+5. **Módulo 5 · Rutas & Reporte** (L9316) — rutas de atención + reporte.
+6. **Módulo Reporte / Historia Clínica completa** (L10347) — el documento imprimible (tabs
+   `📋 Encuesta · 📊 Resumen · ...`, L10405).
+
+## Jerarquía visual dentro de la vista de diagnóstico
+
+- **Tarjeta de estado del paciente** como cabecera (nombre + indicadores clave, L10686).
+- **`SectionTitle`** (rótulos pequeños en mayúsculas, L4213) sobre **`Card`** blancas redondeadas.
+- **KPI cards** (número grande + etiqueta): p. ej. "Anillo MCCB", índices (L10012).
+- **Chips/badges** para clasificaciones (antropométricas, sarcopenia) con color por severidad.
+- **Tablas** para indicadores y clasificaciones.
+- Las dos **Dianas** (EFR y FyR) como piezas visuales centrales.
+
+## Atlas hoy
+
+Una **única página con scroll** (`/evaluaciones/[id]`) de `Card` apiladas en orden fijo:
+Diagnóstico funcional → Diana EFR (monocroma) → Indicadores (tabla) → DFI (5 dominios + riesgo +
+rutas) → constelación de versiones. Sin tabs, sin módulos, sin tarjetas KPI de resumen. El
+**flujo de trabajo** (confirmar identidad, importar BIS, generar, aprobar/enviar) vive aparte, en
+el panel `/evaluaciones`.
+
+## Comparación estructural
+
+| Elemento estructural del HTML | Atlas hoy | Preservar / desviar | Nota |
+|---|---|---|---|
+| Navegación por **tabs** dentro del diagnóstico (Integral / Diana / Evolución / Recomendaciones) | Scroll único de cards | **Preservar** (familiaridad) | Candidato claro: organizar la vista de resultados en las tabs del HTML. |
+| **Tarjeta de estado del paciente** como cabecera con indicadores clave | Header simple (nombre, fecha, confirmado) | **Preservar** | Falta el resumen KPI de cabecera. |
+| **KPI cards** (número grande + etiqueta) para índices/anillo | Tabla de 12 indicadores | **Preservar/mezclar** | La tabla es correcta pero densa; el HTML jerarquiza con KPIs arriba + detalle abajo. |
+| **Clasificaciones antropométricas** en chips (IMC/IC/ICC/ICT) | No se muestran | Preservar (ver Parte 1, faltante (b)) | Estructura + dato faltan juntos. |
+| **Módulos como pasos** (Encuesta → Antropometría → Diagnóstico → Rutas → Reporte) | Flujo repartido: intake público + panel `/evaluaciones` + `/reportes` | **Desviación justificada** | Atlas separa por RLS/roles y por captura (encuesta pública, import de BIS), no por módulos de una SPA. No copiar la captura manual del HTML. |
+
+## Marcas: estructura del HTML rota / no funcional (para que Santiago juzgue)
+
+- **[ROTO EN RUNTIME] La vista de diagnóstico/tratamiento del HTML sale en blanco (Q4).** No hay
+  layout observable en pantalla; se preserva la **intención de estructura del código fuente**, no
+  un render roto. No se replica el bug.
+- **[DESVIACIÓN JUSTIFICADA] Módulo de Antropometría & BIS con captura manual.** En Atlas el BIS
+  entra por import de XLSX (B8) y la antropometría viene del mismo export; no hay entrada manual.
+  La estructura de "formulario de captura" del HTML no aplica; su parte de **resultados**
+  (clasificaciones antropométricas, sarcopenia) sí es candidata (Parte 1).
+- **[REDUNDANCIA] Múltiples superficies de reporte** (Módulo 5 Rutas&Reporte + Módulo Reporte/HC +
+  render de reporte al paciente). Atlas lo consolidó en un solo PDF (B10/B10.1). No replicar las
+  múltiples entradas de reporte del HTML; mantener una sola.
+- **[A JUZGAR] Tab "Evolución" dentro del diagnóstico.** En Atlas la comparación de seguimiento es
+  una superficie aparte (B13). Preservar como tab vs. mantener separada es decisión de Santiago.
+
+**Resumen de la Parte 2:** la estructura por tabs y la jerarquía KPI + cards del HTML se preservan
+como base de la vista de resultados de Atlas; las desviaciones (captura manual, reportes
+múltiples, runtime roto de la Q4) están marcadas y son justificadas o quedan a juicio de Santiago.
