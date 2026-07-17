@@ -3,7 +3,7 @@ import "server-only";
 import { runEngine } from "@/clinical-engine";
 import { appError, err, ok, type Result } from "@/core/errors";
 
-import { readActiveModel, readPipelineInputs } from "../data/pipeline-reader";
+import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
 import { buildEngineInput } from "./build-engine-input";
 
@@ -53,12 +53,17 @@ export async function runClinicalPipeline(
 
   const output = runEngine(engineInput);
 
+  // (ii) Contenido clinico del estado EFR, leido del registry por BANDAS al diagnosticar, para
+  // CONGELARLO en el snapshot: la vista de resultados no re-deriva evidencia del registry vivo.
+  const efrContent = await readEfrContent(model.id, output.efrPhenotype.bands);
+
   try {
     const written = await writePipeline({
       evaluationId: input.evaluationId,
       patientId: inputs.patientId,
       evaluationType: inputs.evaluationType,
       output,
+      efrContent,
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,

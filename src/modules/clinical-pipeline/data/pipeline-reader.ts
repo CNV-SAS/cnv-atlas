@@ -1,11 +1,12 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   bisMeasurements,
   bisRawValues,
+  efrStates,
   evaluations,
   frSectors,
   indicatorDefinitions,
@@ -160,4 +161,44 @@ export async function readActiveModel(): Promise<ActiveModel | null> {
     phenotypeIdByKey,
     frSectorIdByKey,
   };
+}
+
+// Contenido clinico del estado EFR (nombre/mecanismo/biomarcadores/riesgos/nutraceuticos) del
+// registry. Se lee por BANDAS, no por numero: la llave (model_version, bandas) es inmutable (la
+// renumeracion cambio el numero, no el mapeo bandas->contenido). Se congela en el snapshot al
+// DIAGNOSTICAR (ii): la vista de resultados lee la evidencia clinica del snapshot inmutable, no
+// del registry vivo, para que una edicion futura del contenido no re-escriba diagnosticos
+// historicos. Null si el registry no tiene el estado (defensivo; no ocurre con bandas validas).
+export type EfrContent = {
+  diagnosisName: string;
+  mechanism: string | null;
+  biomarkers: string | null;
+  risks: string | null;
+  suggestedNutraceuticals: string | null;
+};
+
+export async function readEfrContent(
+  modelVersionId: string,
+  bands: { ifc: number; irc: number; ffmi: number; fmi: number },
+): Promise<EfrContent | null> {
+  const [row] = await db
+    .select({
+      diagnosisName: efrStates.diagnosisName,
+      mechanism: efrStates.mechanism,
+      biomarkers: efrStates.biomarkers,
+      risks: efrStates.risks,
+      suggestedNutraceuticals: efrStates.suggestedNutraceuticals,
+    })
+    .from(efrStates)
+    .where(
+      and(
+        eq(efrStates.modelVersionId, modelVersionId),
+        eq(efrStates.ifcBand, bands.ifc),
+        eq(efrStates.ircBand, bands.irc),
+        eq(efrStates.ffmiBand, bands.ffmi),
+        eq(efrStates.fmiBand, bands.fmi),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }

@@ -19,6 +19,8 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
+import type { EfrContent } from "./pipeline-reader";
+
 // Persistencia de la propagacion en UNA db.transaction (Drizzle owner): indicator_values
 // -> diagnoses -> treatments (+ guias) -> reports (snapshot draft), con la constelacion
 // de versiones en cada registro que la lleva (regla 7) y el audit diagnosis.created /
@@ -40,6 +42,9 @@ export type PipelineWriteInput = {
   patientId: string;
   evaluationType: string; // inicial | seguimiento
   output: EngineOutput;
+  // Contenido clinico del estado EFR (del registry, por bandas), para CONGELARLO en el snapshot
+  // junto al EngineOutput. null si el registry no lo tiene (defensivo).
+  efrContent: EfrContent | null;
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
@@ -146,8 +151,10 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       ip: input.ip,
     });
 
-    // 4. report draft con el snapshot inmutable del EngineOutput (evidencia, principio 4).
-    //    La aprobacion/envio del reporte es B10.
+    // 4. report draft con el snapshot inmutable (evidencia, principio 4). Ademas del
+    //    EngineOutput se congela efrContent (contenido clinico del estado EFR del registry),
+    //    para que la vista de resultados sea autosuficiente y no re-derive evidencia del
+    //    registry vivo (ii). La aprobacion/envio del reporte es B10.
     const [report] = await tx
       .insert(reports)
       .values({
@@ -155,7 +162,7 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
         patientId: input.patientId,
         type: "paciente",
         status: "draft",
-        snapshot: output,
+        snapshot: { ...output, efrContent: input.efrContent },
       })
       .returning({ id: reports.id });
 
