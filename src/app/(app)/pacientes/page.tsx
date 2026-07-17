@@ -24,14 +24,14 @@ export default async function PacientesPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Pacientes</h1>
         <p className="text-muted-foreground">
-          Tus pacientes y el acceso a su historia clinica. Solo ves los pacientes asignados a ti.
+          Tus pacientes y el acceso a su historia clínica. Solo ves los pacientes asignados a ti.
         </p>
       </header>
 
       {pacientes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Todavia no tienes pacientes. Apareceran aqui cuando confirmes la identidad de una
-          evaluacion recibida por la encuesta.
+          Todavía no tienes pacientes. Aparecerán aquí cuando confirmes la identidad de una
+          evaluación recibida por la encuesta.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">

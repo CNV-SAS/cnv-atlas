@@ -37,14 +37,14 @@ export default async function HistoriaPacientePage({
   const nombre = `${paciente.firstName} ${paciente.lastName}`.trim() || "Sin nombre";
   const datos: { label: string; value: string }[] = [
     { label: "Documento", value: `${paciente.documentType} ${paciente.documentNumber}`.trim() },
-    { label: "Edad", value: anos === null ? "-" : `${anos} anos` },
+    { label: "Edad", value: anos === null ? "-" : `${anos} años` },
     { label: "Sexo", value: sexoLabel(paciente.sex) },
     {
-      label: "Ubicacion",
+      label: "Ubicación",
       value: [paciente.city, paciente.country].filter(Boolean).join(", ") || "-",
     },
     { label: "Correo", value: paciente.email ?? "-" },
-    { label: "Telefono", value: paciente.phone ?? "-" },
+    { label: "Teléfono", value: paciente.phone ?? "-" },
     { label: "Estado", value: estadoPacienteLabel(paciente.status) },
   ];
 
@@ -58,7 +58,7 @@ export default async function HistoriaPacientePage({
           Volver a pacientes
         </Link>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{nombre}</h1>
-        <p className="text-muted-foreground">Historia clinica del paciente.</p>
+        <p className="text-muted-foreground">Historia clínica del paciente.</p>
       </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -74,7 +74,7 @@ export default async function HistoriaPacientePage({
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Evaluaciones</h2>
         {paciente.evaluations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            Este paciente todavia no tiene evaluaciones.
+            Este paciente todavía no tiene evaluaciones.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border">

@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swa
 
 export const metadata: Metadata = {
   title: "Atlas",
-  description: "Plataforma clinica de Connected Nutrition Ventures.",
+  description: "Plataforma clínica de Connected Nutrition Ventures.",
 };
 
 export default function RootLayout({

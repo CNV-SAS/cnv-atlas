@@ -417,7 +417,7 @@ export function SurveyIntakeForm({
                   onChange={(e) => setRep((s) => ({ ...s, name: e.target.value }))}
                 />
               </Field>
-              <Field label="Tipo y numero de documento">
+              <Field label="Tipo y número de documento">
                 <Input
                   name="legalRepresentativeDocument"
                   className="h-9"
@@ -561,7 +561,7 @@ export function SurveyIntakeForm({
               name="comunicaciones_continuidad"
               className={checkboxClass}
             />
-            <span>Autorizo recibir comunicaciones de continuidad de la atencion.</span>
+            <span>Autorizo recibir comunicaciones de continuidad de la atención.</span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input

@@ -59,7 +59,7 @@ export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateV
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
             <Button type="submit" disabled={pending} className="w-fit">
-              {pending ? "Generando..." : "Generar diagnostico"}
+              {pending ? "Generando..." : "Generar diagnóstico"}
             </Button>
             <p className="text-xs text-muted-foreground">
               Genera indicadores, diagnostico, tratamiento y reporte con el motor stub.
