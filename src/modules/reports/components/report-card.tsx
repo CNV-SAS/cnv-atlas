@@ -80,7 +80,8 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           <form action={approve} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
             <label htmlFor={`notes-${report.reportId}`} className="text-xs text-muted-foreground">
-              Notas de interpretacion (opcional). Se congelan al aprobar.
+              Notas del reporte (opcional). Se escriben aquí y se congelan al aprobar; después no
+              se pueden editar. Son distintas de las notas del tratamiento, que sí se editan.
             </label>
             <textarea
               id={`notes-${report.reportId}`}
@@ -120,6 +121,15 @@ export function ReportCard({ report }: { report: ReportCardView }) {
               {sending ? "Enviando..." : "Enviar al paciente"}
             </Button>
           </form>
+        ) : null}
+
+        {report.status === "approved" || report.status === "sent" ? (
+          <p className="text-xs text-muted-foreground">
+            Este reporte está aprobado y es inmutable
+            {report.status === "sent" ? " y ya fue enviado al paciente" : ""}. Sus notas quedaron
+            congeladas al aprobar; para cambiar el contenido o las notas se genera una corrección
+            (una versión nueva del reporte).
+          </p>
         ) : null}
       </CardContent>
     </Card>
