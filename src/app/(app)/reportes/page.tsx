@@ -20,7 +20,8 @@ export default async function ReportesPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Reportes</h1>
         <p className="text-muted-foreground">
-          Reportes clinicos del paciente. Aprueba, envia y consulta el PDF.
+          Reportes clínicos del paciente: borradores, aprobados y enviados. Los enviados quedan
+          aquí como registro permanente.
         </p>
       </header>
 

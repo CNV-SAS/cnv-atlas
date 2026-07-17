@@ -90,5 +90,13 @@ export async function sendReportAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath("/evaluaciones");
-  return { error: null, success: "Reporte enviado al paciente.", warning: null };
+  // El reporte enviado sale de la bandeja de pendientes (/evaluaciones) y pasa a ser registro
+  // permanente en /reportes; se revalida para que aparezca alli de inmediato y se le avisa al
+  // profesional donde queda (si no, "desaparece" al enviar).
+  revalidatePath("/reportes");
+  return {
+    error: null,
+    success: "Reporte enviado al paciente. Queda disponible en Reportes.",
+    warning: null,
+  };
 }
