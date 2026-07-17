@@ -88,3 +88,14 @@
 - **Hallazgo:** `engine.indices.js` define `RUTA_COND` (predicados R1-R6); el predicado **R5** lee `d5_42` (contaminantes) y `d3_29` (estrés). Ninguna de las dos está marcada `engine: true`, así que el intake no las entrega al motor. Pero el propio motor rotula `rutasPorCondicion` como **no autoritativa** (comentario en `engine.indices.js` ~L79: "la selección AUTORITATIVA se hace vía DFI"), y `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData` (`analizarDFI`), no desde `rutasPorCondicion`. `computeDFIFromData` no lee `d5_42` ni `d3_29`.
 - **Consecuencia:** hoy `d5_42` y `d3_29` no tocan ningún indicador, DFI, ruta ni fenotipo del `EngineOutput`. Ambas preguntas SÍ están en la encuesta como registro clínico (`field_key` null). No hay degradación del diagnóstico actual.
 - **Pregunta a Gildardo:** ¿`rutasPorCondicion` (R5 con contaminantes y estrés) debe llegar a ser una vía autoritativa de selección de rutas? Si sí, habría que (a) marcar `d5_42` y `d3_29` como `field_key` y (b) cablear `rutasPorCondicion` en `engine.ts`, con golden actualizado. Si no, quedan como registro clínico y R5 sigue siendo lógica de reglas de referencia, sin efecto. Mientras tanto, no se toca el motor.
+
+---
+
+## Q8 · EB-BIS: edad biológica sistemáticamente joven cuando los hábitos reportados son buenos
+
+- **Fecha:** 2026-07-17 (caso golden-path, bloque prerrequisito "profesional primero")
+- **Estado:** ABIERTO (informativo; no bloquea nada)
+- **Hallazgo:** la EB-BIS (edad biológica celular) sale sistemáticamente por debajo de la edad cronológica cuando la encuesta reporta hábitos buenos (LE8/ICEC alto), **aunque el BIS muestre sobrepeso o grasa alta**. La EB-BIS depende del ICEC (derivado del LE8) y de la edad; un LE8 alto empuja la edad biológica hacia abajo, sin que la composición corporal (FMI alto) lo contrapese.
+- **Evidencia:** el fixture gold `dfi-golden.json` (perfil documentado "hombre 54a, IMC 27.5, sobrepeso leve") da EB 29.9 e IAE -24.7. El caso golden-path (mismo donante BIS, encuesta alineada al perfil, LE8 69) da EB 36.4 e IAE -17.6 "Desacelerado". En ambos, un hombre de 54 con grasa alta obtiene una edad biológica de 30-36.
+- **Evidencia de que NO es un defecto del port:** el cálculo de EB-BIS/ICEC es verbatim de la ciencia congelada (`engine.indices.js`, `computeEBBIS`); los golden anclan la EB-BIS a los valores del HTML (tolerancia 1e-3). Además el propio fixture gold ya lo marca en su `_meta`: "Revisar coherencia clínica con Gildardo". Es una característica de la fórmula, no de Atlas.
+- **Pregunta a Gildardo:** ¿es esperado que un perfil con sobrepeso/grasa alta pero hábitos reportados buenos dé una edad biológica marcadamente joven (54 → 30-36)? ¿La relación LE8/ICEC → EB-BIS debe atenuarse o ponderar la composición corporal, o es correcta por diseño? Mientras tanto, no se toca el motor.
