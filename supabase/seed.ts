@@ -399,10 +399,17 @@ async function main() {
       )
     ).error,
   );
+  // efr_states: delete + insert (no upsert) para ser RESEED-SAFE ante una renumeracion.
+  // La etiqueta-numero es una permutacion de las 4 bandas; un upsert por (model_version_id,
+  // state_number) chocaria con el unique (model_version_id, bands) al reasignar numeros sobre
+  // una BD ya seedada (el update pisaria bandas que otra fila ya tiene). En BD fresca no
+  // aplica; el delete previo la deja consistente en ambos casos. Sin FK entrante (diagnoses
+  // guarda efr_state_number como entero, no como FK), asi que borrar es seguro.
+  await supabase.from("efr_states").delete().eq("model_version_id", MODEL_VERSION_ID);
   check(
     "efr_states",
     (
-      await supabase.from("efr_states").upsert(
+      await supabase.from("efr_states").insert(
         registry.efrStates.map((s) => ({
           model_version_id: MODEL_VERSION_ID,
           state_number: s.stateNumber,
@@ -416,7 +423,6 @@ async function main() {
           risks: s.risks,
           suggested_nutraceuticals: s.suggestedNutraceuticals,
         })),
-        { onConflict: "model_version_id,state_number" },
       )
     ).error,
   );
