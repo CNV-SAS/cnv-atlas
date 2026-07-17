@@ -81,34 +81,45 @@ export async function getEvaluationResults(
     .maybeSingle();
   if (dErr) throw new Error(`results-reader: diagnoses: ${dErr.message}`);
 
-  let efrState: EfrStateContent | null = null;
+  // Contenido clinico del estado EFR: PRIMERO del snapshot inmutable, donde se congela al
+  // diagnosticar (ii). Asi la evidencia clinica no se re-deriva del registry vivo: una edicion
+  // futura del contenido de un estado no re-escribe diagnosticos historicos.
+  const efrFromSnapshot =
+    (rawSnapshot as { efrContent?: EfrStateContent | null }).efrContent ?? null;
+
+  let efrState: EfrStateContent | null = efrFromSnapshot;
   const indicatorNames: Record<string, string> = {};
   if (diag) {
-    // Contenido clinico del estado EFR y nombres de indicadores del registry activo.
-    const [state, defs] = await Promise.all([
-      supabase
+    // Nombres de indicadores del registry (rotulos, no evidencia clinica que decida: fuera del
+    // alcance de la congelacion ii; ver docs/RESULTADOS_GAP.md).
+    const { data: defs, error: defsErr } = await supabase
+      .from("indicator_definitions")
+      .select("code, name")
+      .eq("model_version_id", diag.model_version_id);
+    if (defsErr) throw new Error(`results-reader: indicator_definitions: ${defsErr.message}`);
+    for (const d of defs ?? []) indicatorNames[d.code] = d.name;
+
+    // FALLBACK al registry vivo SOLO para diagnosticos previos a (ii), que no congelaron el
+    // contenido en el snapshot. Se elimina en ST5 una vez limpios los diagnosticos rancios (#6):
+    // ojo, este fallback lee por state_number y por eso re-etiqueta si el registry cambio.
+    if (!efrState) {
+      const { data: state, error: stateErr } = await supabase
         .from("efr_states")
         .select("diagnosis_name, mechanism, biomarkers, risks, suggested_nutraceuticals")
         .eq("model_version_id", diag.model_version_id)
         .eq("state_number", diag.efr_state_number)
-        .maybeSingle(),
-      supabase
-        .from("indicator_definitions")
-        .select("code, name")
-        .eq("model_version_id", diag.model_version_id),
-    ]);
-    if (state.error) throw new Error(`results-reader: efr_states: ${state.error.message}`);
-    if (defs.error) throw new Error(`results-reader: indicator_definitions: ${defs.error.message}`);
-    if (state.data) {
-      efrState = {
-        diagnosisName: state.data.diagnosis_name,
-        mechanism: state.data.mechanism,
-        biomarkers: state.data.biomarkers,
-        risks: state.data.risks,
-        suggestedNutraceuticals: state.data.suggested_nutraceuticals,
-      };
+        .maybeSingle();
+      if (stateErr) throw new Error(`results-reader: efr_states: ${stateErr.message}`);
+      if (state) {
+        efrState = {
+          diagnosisName: state.diagnosis_name,
+          mechanism: state.mechanism,
+          biomarkers: state.biomarkers,
+          risks: state.risks,
+          suggestedNutraceuticals: state.suggested_nutraceuticals,
+        };
+      }
     }
-    for (const d of defs.data ?? []) indicatorNames[d.code] = d.name;
   }
 
   return {
