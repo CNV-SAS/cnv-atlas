@@ -4,6 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/auth/session";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { edadEnAnios, fechaCorta } from "@/modules/patients/format";
+import {
+  estadoEvaluacionLabel,
+  estadoPacienteLabel,
+  sexoLabel,
+} from "@/modules/patients/labels";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
 export const metadata = { title: "Historia del paciente - Atlas" };
@@ -33,14 +38,14 @@ export default async function HistoriaPacientePage({
   const datos: { label: string; value: string }[] = [
     { label: "Documento", value: `${paciente.documentType} ${paciente.documentNumber}`.trim() },
     { label: "Edad", value: anos === null ? "-" : `${anos} anos` },
-    { label: "Sexo", value: paciente.sex ?? "-" },
+    { label: "Sexo", value: sexoLabel(paciente.sex) },
     {
       label: "Ubicacion",
       value: [paciente.city, paciente.country].filter(Boolean).join(", ") || "-",
     },
     { label: "Correo", value: paciente.email ?? "-" },
     { label: "Telefono", value: paciente.phone ?? "-" },
-    { label: "Estado", value: paciente.status },
+    { label: "Estado", value: estadoPacienteLabel(paciente.status) },
   ];
 
   return (
@@ -91,7 +96,9 @@ export default async function HistoriaPacientePage({
                     <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
                       {fechaCorta(e.createdAt)}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{e.status}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {estadoEvaluacionLabel(e.status)}
+                    </td>
                     <td className="px-3 py-2 text-right">
                       <Link
                         href={`/evaluaciones/${e.evaluationId}`}

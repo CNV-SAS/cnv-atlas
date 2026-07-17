@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 import { edadEnAnios } from "@/modules/patients/format";
+import { estadoPacienteLabel } from "@/modules/patients/labels";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
 export const metadata = { title: "Pacientes - Atlas" };
@@ -59,7 +60,9 @@ export default async function PacientesPage() {
                     <td className="px-3 py-2 text-muted-foreground">
                       {anos === null ? "-" : anos}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{p.status}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {estadoPacienteLabel(p.status)}
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{p.evaluationCount}</td>
                     <td className="px-3 py-2 text-right">
                       <Link
