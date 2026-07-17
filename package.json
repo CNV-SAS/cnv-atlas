@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --env-file=.env.local supabase/seed.ts",
+    "seed:golden": "node scripts/seed-golden.mjs",
     "db:types": "pnpm dlx supabase gen types typescript --local > src/types/database.generated.ts"
   },
   "dependencies": {

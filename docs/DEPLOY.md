@@ -191,6 +191,23 @@ Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Man
 - **Pipeline:** push a `main` → Vercel build → tests en CI (`tsc`, `lint`, `vitest`, golden si tocó el motor) → deploy. PRs generan Preview deploys.
 - **Commits:** con el porqué (ver `CLAUDE.md`).
 
+## Datos de desarrollo local (seed)
+Dos pasos, en orden, contra la BD local (`DATABASE_URL` en `.env.local`):
+1. `pnpm db:seed` (node): siembra lo base (organización, usuarios de prueba, catálogos del
+   model-registry incluidos los 81 estados EFR, encuesta v1, devices, nutracéuticos, y una
+   cadena demo). Es idempotente y **reseed-safe**: `efr_states` se reescribe con delete+insert
+   (no upsert), porque la etiqueta-número de estado es una permutación de las 4 bandas y un
+   upsert chocaría con el unique `(model, bands)` al reasignar números sobre una BD ya sembrada.
+2. `pnpm seed:golden`: siembra un **caso golden-path completo por la vía real**. Corre bajo el
+   runner de vitest (el motor y el pipeline son `server-only` y node no resuelve sus imports),
+   ejerciendo el gate de consentimiento real y el pipeline real (encuesta → BIS → motor →
+   diagnóstico → reporte con snapshot genuino). El BIS sale de valores reales anonimizados
+   (`biody-juan-esteban-anon.json`), no del fixture sintético (ver `src/tests/fixtures/README.md`:
+   `biody_synthetic.xlsx` tiene valores placeholder, solo sirve para probar el import de B8, no
+   para alimentar el motor). Es idempotente y resumible (IDs fijos; reconoce lo ya hecho). Deja
+   un paciente "Demo GoldenPath" navegable de punta a punta: `/pacientes` → historia →
+   evaluación → resultados con salida real del motor. Requiere `pnpm db:seed` antes.
+
 ## Migraciones
 - DDL de tablas con `pnpm drizzle-kit generate` + `migrate` contra `DATABASE_URL`.
 - RLS/policies/triggers/funciones/enums como migraciones SQL crudas, `NNNN_descripcion.sql`, forward-only, con comentario del porqué. Orden por dependencias (helpers antes que policies/storage). Ver `DATABASE.md`.
