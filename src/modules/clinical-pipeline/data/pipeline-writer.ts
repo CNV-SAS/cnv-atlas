@@ -43,8 +43,8 @@ export type PipelineWriteInput = {
   evaluationType: string; // inicial | seguimiento
   output: EngineOutput;
   // Contenido clinico del estado EFR (del registry, por bandas), para CONGELARLO en el snapshot
-  // junto al EngineOutput. null si el registry no lo tiene (defensivo).
-  efrContent: EfrContent | null;
+  // junto al EngineOutput. REQUERIDO: run-pipeline garantiza que no sea null (falla fuerte).
+  efrContent: EfrContent;
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;

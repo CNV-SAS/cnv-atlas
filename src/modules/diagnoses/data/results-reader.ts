@@ -9,12 +9,13 @@ import {
 } from "@/modules/reports/data/reports-repository";
 
 // Lectura de los resultados clinicos de una evaluacion para la VISTA INTERNA del
-// profesional (B12). Fuente de verdad: el snapshot inmutable del reporte (EngineOutput,
-// 12 indicadores + clasificaciones + fenotipo EFR/estructural/FyR + DFI). Se enriquece con
-// el contenido clinico completo del estado EFR (efr_states: mecanismo, biomarcadores,
-// riesgos) y con el estado de confirmacion del diagnostico. Todo por RLS (regla dura 3):
-// el cliente anon con sesion solo ve las evaluaciones de los pacientes del profesional;
-// si no es suyo, no hay filas -> null (la pagina responde 404).
+// profesional (B12). Fuente de verdad UNICA: el snapshot inmutable del reporte (EngineOutput +
+// efrContent): 12 indicadores + clasificaciones + fenotipo EFR/estructural/FyR + DFI + el
+// contenido clinico del estado EFR (nombre/mecanismo/biomarcadores/riesgos), TODO congelado al
+// diagnosticar (ii). La vista es autosuficiente: NO cruza el registry vivo por state_number. Del
+// registry solo se leen el estado de confirmacion del diagnostico y los nombres de indicadores
+// (rotulos, por model_version_id). Todo por RLS (regla dura 3): el cliente anon con sesion solo
+// ve las evaluaciones de sus pacientes; si no es suyo, no hay filas -> null (la pagina 404).
 
 export type EfrStateContent = {
   diagnosisName: string;
@@ -23,6 +24,12 @@ export type EfrStateContent = {
   risks: string | null;
   suggestedNutraceuticals: string | null;
 };
+
+// Forma del snapshot inmutable que persiste el pipeline: el EngineOutput MAS el contenido
+// clinico del estado EFR congelado (efrContent, ii). efrContent es REQUERIDO: la vista lee toda
+// la evidencia clinica de aqui, sin cruzar el registry vivo. (En runtime un dato previo a ii
+// podria no traerlo; se maneja con `?? null` y la vista degrada, pero el contrato lo exige.)
+type StoredSnapshot = EngineOutput & { efrContent: EfrStateContent };
 
 export type EvaluationResults = {
   snapshot: EngineOutput;
@@ -113,55 +120,35 @@ export async function getEvaluationResults(
     };
   }
 
+  // Contenido clinico del estado EFR: SIEMPRE del snapshot inmutable, donde se congela al
+  // diagnosticar (ii). La vista es AUTOSUFICIENTE: NO cruza contra el registry vivo (ni efr_states
+  // ni nada por state_number), para que una edicion futura del contenido de un estado no
+  // re-escriba diagnosticos historicos. Un snapshot con la forma actual del motor trae efrContent
+  // (ST1); si faltara (dato previo a ii, ya limpiado), efrState es null y la vista degrada.
+  const efrState: EfrStateContent | null =
+    (rawSnapshot as StoredSnapshot).efrContent ?? null;
+
+  // Del registry solo quedan dos lecturas, ninguna por state_number ni evidencia clinica: el
+  // estado de confirmacion del diagnostico, y los NOMBRES de indicadores (rotulos, por
+  // model_version_id; fuera del alcance de ii por decision, ver docs/RESULTADOS_GAP.md).
   const supabase = await createSupabaseServerClient();
   const { data: diag, error: dErr } = await supabase
     .from("diagnoses")
-    .select("efr_state_number, model_version_id, confirmed_at")
+    .select("model_version_id, confirmed_at")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (dErr) throw new Error(`results-reader: diagnoses: ${dErr.message}`);
 
-  // Contenido clinico del estado EFR: PRIMERO del snapshot inmutable, donde se congela al
-  // diagnosticar (ii). Asi la evidencia clinica no se re-deriva del registry vivo: una edicion
-  // futura del contenido de un estado no re-escribe diagnosticos historicos.
-  const efrFromSnapshot =
-    (rawSnapshot as { efrContent?: EfrStateContent | null }).efrContent ?? null;
-
-  let efrState: EfrStateContent | null = efrFromSnapshot;
   const indicatorNames: Record<string, string> = {};
   if (diag) {
-    // Nombres de indicadores del registry (rotulos, no evidencia clinica que decida: fuera del
-    // alcance de la congelacion ii; ver docs/RESULTADOS_GAP.md).
     const { data: defs, error: defsErr } = await supabase
       .from("indicator_definitions")
       .select("code, name")
       .eq("model_version_id", diag.model_version_id);
     if (defsErr) throw new Error(`results-reader: indicator_definitions: ${defsErr.message}`);
     for (const d of defs ?? []) indicatorNames[d.code] = d.name;
-
-    // FALLBACK al registry vivo SOLO para diagnosticos previos a (ii), que no congelaron el
-    // contenido en el snapshot. Se elimina en ST5 una vez limpios los diagnosticos rancios (#6):
-    // ojo, este fallback lee por state_number y por eso re-etiqueta si el registry cambio.
-    if (!efrState) {
-      const { data: state, error: stateErr } = await supabase
-        .from("efr_states")
-        .select("diagnosis_name, mechanism, biomarkers, risks, suggested_nutraceuticals")
-        .eq("model_version_id", diag.model_version_id)
-        .eq("state_number", diag.efr_state_number)
-        .maybeSingle();
-      if (stateErr) throw new Error(`results-reader: efr_states: ${stateErr.message}`);
-      if (state) {
-        efrState = {
-          diagnosisName: state.diagnosis_name,
-          mechanism: state.mechanism,
-          biomarkers: state.biomarkers,
-          risks: state.risks,
-          suggestedNutraceuticals: state.suggested_nutraceuticals,
-        };
-      }
-    }
   }
 
   return {

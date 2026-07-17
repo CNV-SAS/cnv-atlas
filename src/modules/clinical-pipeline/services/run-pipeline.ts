@@ -55,7 +55,14 @@ export async function runClinicalPipeline(
 
   // (ii) Contenido clinico del estado EFR, leido del registry por BANDAS al diagnosticar, para
   // CONGELARLO en el snapshot: la vista de resultados no re-deriva evidencia del registry vivo.
+  // Es REQUERIDO: un estado con bandas validas siempre existe en el registry; si faltara, es un
+  // problema de integridad del registry y se falla fuerte (no se persiste un snapshot a medias).
   const efrContent = await readEfrContent(model.id, output.efrPhenotype.bands);
+  if (!efrContent) {
+    return err(
+      appError("internal", "El registry no tiene el contenido del estado EFR diagnosticado."),
+    );
+  }
 
   try {
     const written = await writePipeline({
