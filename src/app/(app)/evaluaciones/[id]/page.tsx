@@ -1,8 +1,12 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
-import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
+import {
+  getEvaluationHeaderForSession,
+  getEvaluationResults,
+} from "@/modules/diagnoses/data/results-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -24,7 +28,40 @@ export default async function ResultadosEvaluacionPage({
   if (!canManageReports(user)) redirect("/no-autorizado");
 
   const results = await getEvaluationResults(id);
-  if (!results) notFound();
+  if (!results) {
+    // Sin diagnostico todavia: si la evaluacion existe y es del profesional, estado vacio
+    // elegante (no un 404 crudo). Si no existe o no es suya (RLS), sigue siendo 404.
+    const header = await getEvaluationHeaderForSession(id);
+    if (!header) notFound();
+    return (
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            Resultados de la evaluación
+          </h1>
+          <p className="text-muted-foreground">
+            {header.patientName} · {header.documentLabel} ·{" "}
+            {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+          </p>
+        </header>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
+          <p className="text-sm text-foreground">
+            Esta evaluación aún no tiene un diagnóstico generado.
+          </p>
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Confirma la identidad, importa la medición BIS y genera el diagnóstico desde el panel
+            de Evaluaciones. Los resultados aparecerán aquí cuando el motor haya corrido.
+          </p>
+          <Link
+            href="/evaluaciones"
+            className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            Ir a Evaluaciones
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Protocolo de tratamiento (B13): el tratamiento ya existe (lo crea el pipeline al
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.

@@ -40,6 +40,48 @@ export type EvaluationResults = {
   indicatorNames: Record<string, string>; // codigo -> nombre del registry
 };
 
+export type EvaluationHeader = {
+  patientName: string;
+  documentLabel: string;
+  evaluationDate: string;
+};
+
+// Cabecera minima de una evaluacion por RLS (existe y es del profesional?). Distingue
+// "evaluacion sin diagnostico todavia" (estado vacio elegante) de "no existe o no es suya"
+// (404): getEvaluationResults devuelve null en ambos casos, esto rompe el empate.
+export async function getEvaluationHeaderForSession(
+  evaluationId: string,
+): Promise<EvaluationHeader | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select(
+      "created_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+    )
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (error) throw new Error(`results-reader: evaluation header: ${error.message}`);
+  if (!data) return null;
+  const one = <T,>(e: T | T[] | null): T | undefined => (Array.isArray(e) ? e[0] : (e ?? undefined));
+  const patient = one(
+    data.patients as
+      | { document_type: string; document_number: string; patient_profiles: unknown }
+      | { document_type: string; document_number: string; patient_profiles: unknown }[]
+      | null,
+  );
+  const profile = one(
+    (patient?.patient_profiles ?? null) as
+      | { first_name: string; last_name: string }
+      | { first_name: string; last_name: string }[]
+      | null,
+  );
+  return {
+    patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
+    documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
+    evaluationDate: data.created_at,
+  };
+}
+
 export async function getEvaluationResults(
   evaluationId: string,
 ): Promise<EvaluationResults | null> {
