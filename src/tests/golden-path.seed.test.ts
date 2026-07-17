@@ -42,6 +42,12 @@ const SEX = "Male"; // se conserva en ingles como el export real (borde de norma
 // Nombre de demo OBVIO: nadie debe confundirlo con un paciente real.
 const FIRST_NAME = "Demo";
 const LAST_NAME = "GoldenPath (motor real)";
+// IDs fijos de las notas del profesional. Demo GoldenPath es tambien el target del smoke de
+// auditoria (Nivel b/c): tiene notas reales en las 3 tablas narrativas. Reemplaza la cadena
+// demo fabricada a mano (99999999), retirada del node seed.
+const EVAL_NOTE_ID = "a0000000-0000-4000-8000-0000000000b1";
+const DIAG_NOTE_ID = "a0000000-0000-4000-8000-0000000000b2";
+const TREAT_NOTE_ID = "a0000000-0000-4000-8000-0000000000b3";
 
 // Construye en memoria el XLSX que consume el import BIS real, desde el gold JSON: hoja
 // "Measures" (la que exige el parser), fila 1 = headers exactos, fila 2 = valores reales.
@@ -272,10 +278,15 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       efrPhenotype?: { key?: string; stateNumber?: number };
       dfi?: { complete?: boolean; veto?: boolean };
       versions?: { engine?: string };
+      efrContent?: { mechanism?: string | null; risks?: string | null };
     };
     // Snapshot GENUINO del motor real (no fabricado a mano): forma actual + version real.
     expect(snap.efrPhenotype).toBeTruthy();
     expect(snap.versions?.engine).toBe("anibise-1.0.0");
+    // AUTOSUFICIENTE (ii): el contenido clinico del estado EFR quedo congelado en el snapshot,
+    // asi la vista de resultados no re-deriva evidencia del registry vivo.
+    expect(snap.efrContent?.mechanism).toBeTruthy();
+    expect(snap.efrContent?.risks).toBeTruthy();
     // Coherencia con el BIS real: el gold de Juan Esteban clasifica N_N_N_A (composicion
     // saludable con grasa alta), estado 33 en la numeracion de Gildardo. El EFR depende solo
     // del BIS, asi que esto ancla que el diagnostico lee coherente con la medicion.
@@ -286,5 +297,31 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     // BIS: cuerpo con grasa alta + habitos moderados = riesgo integrado MEDIO.
     expect(snap.dfi?.complete).toBe(true);
     expect(snap.dfi?.veto).toBe(false);
+  });
+
+  it("notas del profesional en las 3 tablas narrativas (smoke de auditoria) (idempotente)", async () => {
+    // Demo GoldenPath hospeda el smoke de auditoria (Nivel b/c): notas reales colgadas de la
+    // evaluacion, el diagnostico y el tratamiento del caso. Idempotente por IDs fijos.
+    const diag = (
+      await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, EVAL_ID)).limit(1)
+    )[0];
+    const treat = (
+      await db.select({ id: schema.treatments.id }).from(schema.treatments).where(eq(schema.treatments.diagnosisId, diag.id)).limit(1)
+    )[0];
+    expect(diag).toBeTruthy();
+    expect(treat).toBeTruthy();
+
+    await db
+      .insert(schema.evaluationNotes)
+      .values({ id: EVAL_NOTE_ID, evaluationId: EVAL_ID, authorId: actorId, note: "Nota de evaluacion (demo, smoke de auditoria)." })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.diagnosisNotes)
+      .values({ id: DIAG_NOTE_ID, diagnosisId: diag.id, note: "Nota de diagnostico (demo, smoke de auditoria)." })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.treatmentNotes)
+      .values({ id: TREAT_NOTE_ID, treatmentId: treat.id, note: "Nota de tratamiento (demo, smoke de auditoria)." })
+      .onConflictDoNothing();
   });
 });

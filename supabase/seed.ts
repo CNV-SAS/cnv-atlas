@@ -94,13 +94,6 @@ const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
 // El token es fijo y claramente de prueba: /encuesta/<token>.
 const SURVEY_LINK_ID = "99999999-9999-9999-9999-999999999903";
 const SURVEY_LINK_TOKEN = "demo-encuesta-inicial-0001";
-// Cadena clinica minima del paciente demo (evaluacion -> diagnostico confirmado ->
-// tratamiento -> nota de tratamiento), para smoke del Nivel (b) de auditoria sin recorrer
-// todo el flujo clinico a mano.
-const DEMO_EVAL_ID = "99999999-9999-9999-9999-999999999904";
-const DEMO_DIAGNOSIS_ID = "99999999-9999-9999-9999-999999999905";
-const DEMO_TREATMENT_ID = "99999999-9999-9999-9999-999999999906";
-const DEMO_TREATMENT_NOTE_ID = "99999999-9999-9999-9999-999999999907";
 
 // ---- Identidad de los usuarios sembrados ---------------------------------
 const ADMIN_EMAIL = "sau.idk001@gmail.com";
@@ -553,46 +546,13 @@ async function main() {
     ).error,
   );
 
-  // 9b. Cadena clinica minima del paciente demo, para smoke del Nivel (b) de auditoria:
-  // una nota de tratamiento real, colgada de un tratamiento sobre un diagnostico
-  // confirmado de una evaluacion. El profesional es 33333333 (con Anexo 3 vigente en el
-  // smoke), asi la precondicion del Nivel (b) se cumple.
-  check(
-    "evaluations demo",
-    (
-      await supabase.from("evaluations").upsert(
-        { id: DEMO_EVAL_ID, patient_id: PATIENT_ID, professional_id: PROFESSIONAL_PROFILE_ID, organization_id: ORG_ID, type: "inicial", status: "completed" },
-        { onConflict: "id" },
-      )
-    ).error,
-  );
-  check(
-    "diagnoses demo",
-    (
-      await supabase.from("diagnoses").upsert(
-        { id: DEMO_DIAGNOSIS_ID, evaluation_id: DEMO_EVAL_ID, efr_state_number: 33, diagnosis_name: "Estado 33 (demo)", engine_version: "anibise-1.0.0", model_version_id: MODEL_VERSION_ID, rules_version: "r1", confirmed_by: professionalId, confirmed_at: new Date().toISOString() },
-        { onConflict: "id" },
-      )
-    ).error,
-  );
-  check(
-    "treatments demo",
-    (
-      await supabase.from("treatments").upsert(
-        { id: DEMO_TREATMENT_ID, diagnosis_id: DEMO_DIAGNOSIS_ID, created_by: professionalId },
-        { onConflict: "id" },
-      )
-    ).error,
-  );
-  check(
-    "treatment_notes demo",
-    (
-      await supabase.from("treatment_notes").upsert(
-        { id: DEMO_TREATMENT_NOTE_ID, treatment_id: DEMO_TREATMENT_ID, note: "Nota de tratamiento de prueba para el smoke de auditoria (Nivel b)." },
-        { onConflict: "id" },
-      )
-    ).error,
-  );
+  // 9b. (Retirado) La cadena clinica demo fabricada a mano (evaluacion -> diagnostico sin
+  // snapshot -> tratamiento -> nota) se elimino: daba 404 en "Ver resultados" porque el
+  // diagnostico no tenia snapshot, y su numero quedaba rancio ante renumeraciones. El caso
+  // clinico real navegable es "Demo GoldenPath", sembrado por la VIA REAL con `pnpm seed:golden`
+  // (snapshot genuino y autosuficiente + notas para el smoke de auditoria Nivel b/c). El paciente
+  // demo 99999999 queda SIN evaluacion (solo sostiene el link de encuesta / intake), asi no
+  // muestra un diagnostico roto en /pacientes.
 
   // 10. Link de encuesta inicial (reusable) del profesional demo.
   check(

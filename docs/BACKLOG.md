@@ -26,6 +26,7 @@
 - **Event bus durable** (Inngest/Trigger.dev) en vez del bus in-memory no durable.
 - **Jobs en background** (Inngest) para procesos largos: PDFs masivos, sync con Alegra, exports, IA.
 - **E2E con Playwright** en CI.
+- **Los tests de integración deben limpiar tras de sí (deuda real).** Los tests que corren contra la BD local (`pipeline-propagation`, `clinical-access`, `nutraceuticals`, etc.) crean pacientes/evaluaciones/diagnósticos y **no los borran**, y ademas enlazan sus pacientes al profesional del seed, así que aparecen como pacientes fantasma en `/pacientes` y en la vista de resultados (algunos con snapshot rancio o sin snapshot). Se limpió una vez al cerrar #6, pero sin cleanup automático la basura **vuelve** en unas semanas de correr la suite. Arreglo: envolver cada test de integración en una transacción con rollback, o un `afterAll`/`afterEach` que borre lo que creó (IDs propios), o un prefijo de datos de test purgable. No se arregla en el MVP; queda trazado para no perderlo.
 - **Pruebas de carga y estrés**, fuzzing.
 - **Supabase Pro + PITR** y **backups externos automatizados** (antes de datos clínicos reales se sube a Pro).
 
