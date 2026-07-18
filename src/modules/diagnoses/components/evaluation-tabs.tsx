@@ -2,32 +2,41 @@
 
 import { useState, type ReactNode } from "react";
 
-// Shell de pestañas de una evaluacion (/evaluaciones/[id]). Adopta el flujo por etapas del HTML
-// como tabs internas (familiaridad de formacion); el sidebar sigue navegando entre entidades.
-// Este bloque construye SOLO la pestaña de Diagnostico; las demas quedan como placeholder (son
-// bloques posteriores). El contenido de Diagnostico se computa en el servidor y llega como prop
-// (ReactNode), asi el cambio de tab es client-side sin refetch ni perder la RLS del server.
+// Shell de pestañas de una evaluacion (/evaluaciones/[id]). Adopta las 4 etapas reales de la ruta
+// ANI-BIS-E como tabs internas (familiaridad de formacion); el sidebar sigue navegando entre
+// entidades. Encuesta y Antrop & BIS no son etapas propias: son las dos entradas de datos de la
+// evaluacion, viven como secciones dentro de Evaluacion. El contenido de cada etapa se computa en
+// el servidor y llega como prop (ReactNode), asi el cambio de tab es client-side sin refetch ni
+// perder la RLS del server. En este bloque solo se pule Diagnostico; las demas quedan reubicadas.
 
-type TabId = "encuesta" | "antropometria" | "diagnostico" | "rutas" | "seguimiento" | "reporte";
+type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "encuesta", label: "Encuesta" },
-  { id: "antropometria", label: "Antrop & BIS" },
+  { id: "evaluacion", label: "Evaluación" },
   { id: "diagnostico", label: "Diagnóstico" },
-  { id: "rutas", label: "Rutas" },
+  { id: "tratamiento", label: "Tratamiento" },
   { id: "seguimiento", label: "Seguimiento" },
-  { id: "reporte", label: "Reporte" },
 ];
 
-export function EvaluationTabs({ diagnostico }: { diagnostico: ReactNode }) {
+export function EvaluationTabs({
+  evaluacion,
+  diagnostico,
+  tratamiento,
+  seguimiento,
+}: {
+  evaluacion: ReactNode;
+  diagnostico: ReactNode;
+  tratamiento: ReactNode;
+  seguimiento: ReactNode;
+}) {
   const [active, setActive] = useState<TabId>("diagnostico");
-  const activeLabel = TABS.find((t) => t.id === active)?.label ?? "";
+  const content: Record<TabId, ReactNode> = { evaluacion, diagnostico, tratamiento, seguimiento };
 
   return (
     <div className="flex flex-col gap-6">
       <div
         role="tablist"
-        aria-label="Secciones de la evaluación"
+        aria-label="Etapas de la evaluación"
         className="flex flex-wrap gap-1 overflow-x-auto border-b border-border"
       >
         {TABS.map((t) => {
@@ -55,17 +64,7 @@ export function EvaluationTabs({ diagnostico }: { diagnostico: ReactNode }) {
       </div>
 
       <div role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`}>
-        {active === "diagnostico" ? (
-          diagnostico
-        ) : (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border p-10 text-center">
-            <p className="text-sm font-medium text-foreground">{activeLabel}</p>
-            <p className="max-w-prose text-sm text-muted-foreground">
-              Esta sección se construye en un bloque posterior. Por ahora, el diagnóstico completo
-              está en la pestaña Diagnóstico.
-            </p>
-          </div>
-        )}
+        {content[active]}
       </div>
     </div>
   );

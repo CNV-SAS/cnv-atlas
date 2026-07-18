@@ -20,6 +20,19 @@ import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader"
 
 export const metadata = { title: "Resultados - Atlas" };
 
+// Placeholder de una etapa aun sin construir (Evaluacion / Tratamiento / Seguimiento se reubican
+// en A2/A3; su pulido es de bloques futuros). Mover no es rediseñar.
+function StagePlaceholder({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border p-10 text-center">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Esta etapa se construye en un bloque posterior.
+      </p>
+    </div>
+  );
+}
+
 // Vista interna del profesional con los resultados clinicos de una evaluacion (B12).
 // La policy gobierna el rol (regla 3); el alcance fino (que sea su paciente) lo impone la
 // RLS en el reader: si no es suyo, getEvaluationResults devuelve null -> 404.
@@ -40,6 +53,9 @@ export default async function ResultadosEvaluacionPage({
     if (!header) notFound();
     return (
       <EvaluationTabs
+        evaluacion={<StagePlaceholder label="Evaluación" />}
+        tratamiento={<StagePlaceholder label="Tratamiento" />}
+        seguimiento={<StagePlaceholder label="Seguimiento" />}
         diagnostico={
           <div className="flex flex-col gap-6">
             <header className="flex flex-col gap-2">
@@ -91,6 +107,9 @@ export default async function ResultadosEvaluacionPage({
   // (los reparten Seguimiento / Rutas en bloques posteriores). El orden final es ST7.
   return (
     <EvaluationTabs
+      evaluacion={<StagePlaceholder label="Evaluación" />}
+      tratamiento={<StagePlaceholder label="Tratamiento" />}
+      seguimiento={<StagePlaceholder label="Seguimiento" />}
       diagnostico={
         <div className="flex flex-col gap-8">
           <EvaluationResults results={results} />
