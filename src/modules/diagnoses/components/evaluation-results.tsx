@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { EngineIndicators } from "@/clinical-engine";
+import { type EngineIndicators, indicatorSeverities } from "@/clinical-engine";
 
 import { DetailsSection } from "./details-section";
 import { DfiRadar } from "./dfi-radar";
@@ -40,6 +40,14 @@ const SEV_CLS = [
 ];
 // Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta).
 const RISK_SEV: Record<string, number> = { BAJO: 0, MEDIO: 1, ALTO: 2, "CRÍTICO": 3 };
+// Punto de color por severidad (0-3), paleta clinica de BRAND. Color SOLO en el veredicto de
+// riesgo, nunca decorativo; el label sigue siendo el señalizador principal (no depende del color).
+const DOT_CLS = [
+  "bg-clinical-optimal",
+  "bg-clinical-optimal",
+  "bg-clinical-warning",
+  "bg-clinical-critical",
+];
 
 function fmtNum(v: number | null): string {
   if (v == null) return "N/D";
@@ -129,6 +137,8 @@ export function EvaluationResults({
   const { snapshot, efrState } = results;
   const { indicators, classifications, efrPhenotype, structural, frSector, dfi, versions } =
     snapshot;
+  // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
+  const sevByCode = indicatorSeverities(snapshot);
 
   return (
     <div className="flex flex-col gap-8">
@@ -281,7 +291,15 @@ export function EvaluationResults({
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
                     <td className="py-2 text-muted-foreground">
-                      {classifications[code]?.label ?? "N/D"}
+                      <span className="inline-flex items-center gap-2">
+                        {sevByCode[code] != null ? (
+                          <span
+                            className={`size-2 shrink-0 rounded-full ${DOT_CLS[sevByCode[code] as number]}`}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <span>{classifications[code]?.label ?? "N/D"}</span>
+                      </span>
                     </td>
                   </tr>
                 ))}

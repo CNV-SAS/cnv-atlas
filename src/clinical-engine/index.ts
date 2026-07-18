@@ -8,3 +8,5 @@ export { runEngine } from "./engine";
 // Contrato de columnas del Biody (headers exactos) para que el pipeline reconstruya la
 // fila cruda desde el almacenamiento normalizado de B8 (build-engine-input).
 export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";
+// Severidad de riesgo por indicador (recomputada del snapshot) para la capa de color de BRAND.
+export { indicatorSeverities } from "./severity";
