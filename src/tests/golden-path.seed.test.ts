@@ -42,6 +42,9 @@ const SEX = "Male"; // se conserva en ingles como el export real (borde de norma
 // Nombre de demo OBVIO: nadie debe confundirlo con un paciente real.
 const FIRST_NAME = "Demo";
 const LAST_NAME = "GoldenPath (motor real)";
+// Correo del paciente demo: plus-addressing al buzon corporativo (+demo) para que el envio de
+// reporte quede ejercitable de punta a punta con un destino real.
+const PATIENT_EMAIL = "corporativo+demo@cnvsystem.com";
 // IDs fijos de las notas del profesional. Demo GoldenPath es tambien el target del smoke de
 // auditoria (Nivel b/c): tiene notas reales en las 3 tablas narrativas. Reemplaza la cadena
 // demo fabricada a mano (99999999), retirada del node seed.
@@ -145,6 +148,11 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     await db
       .insert(schema.patientProfessionalRelationships)
       .values({ patientId: PATIENT_ID, professionalId: proId })
+      .onConflictDoNothing();
+    // Contacto del paciente: correo demo para ejercitar el envio de reporte de punta a punta.
+    await db
+      .insert(schema.patientContacts)
+      .values({ patientId: PATIENT_ID, email: PATIENT_EMAIL })
       .onConflictDoNothing();
 
     // Los 3 consentimientos NECESARIOS vigentes, con la version y el hash reales del texto
