@@ -2,7 +2,9 @@
 
 **Propósito:** registrar, en un solo lugar, los hallazgos sobre la ciencia congelada (el motor de Gildardo) que requieren su confirmación o decisión. Nada de esto se corrige tocando los `.js` congelados de `src/clinical-engine/frozen/` (regla dura 12, excepción formal). Cuando se detecte algo nuevo que dependa de Gildardo, se anota aquí con fecha, en vez de quedar solo en el chat.
 
-**Convención de estado:** `ABIERTO` (esperando respuesta), `CONFIRMADO` (Gildardo respondió; se resume la resolución), `DESCARTADO` (se resolvió sin cambio), `CERRADO` (informativo, sin acción pendiente).
+**Convención de estado:** `ABIERTO` (esperando respuesta), `CONFIRMADO` (Gildardo respondió; se resume la resolución), `DESCARTADO` (se resolvió sin cambio), `CERRADO` (informativo, sin acción pendiente), `CONSOLIDADA` (fusionada en `docs/FROZEN_EXPORTS_REQUEST.md`; aquí queda solo el puntero histórico).
+
+**Dos lectores:** las queries abiertas o relevantes se estructuran en dos capas: primero **Para Gildardo** (breve, no técnica, con ejemplo si ayuda; él decide), luego **Para su CC** (detalle técnico; ellos ejecutan). Las queries que necesitan que Gildardo entregue algo del lado de la ciencia (exponer funciones o entregar datos) viven consolidadas en `docs/FROZEN_EXPORTS_REQUEST.md`, con el entregable concreto esperado.
 
 > **Ronda de respuestas de Gildardo (2026-07-15):** las cinco queries quedaron resueltas. Ninguna requiere cambio de código ni de golden tests ahora mismo; Q3 y Q5 dejan pendiente una posible entrega futura de ciencia (fórmula LE8 y frozen delta de prensil, respectivamente), que solo se portaría si Gildardo la entrega. La ciencia congelada no se toca.
 
@@ -47,14 +49,18 @@
 
 ---
 
-## Q4 · Bug de pantalla en blanco en el prototipo (informativo, NO bloqueante)
+## Q4 · Pantalla en blanco en el prototipo cuando no hay medición BIS cargada (informativo, NO bloqueante)
 
 - **Fecha:** 2026-07-07 (B12)
 - **Estado:** CERRADO (informativo; Gildardo notificado, sin acción)
-- **Hallazgo:** en `ATLAS-Patients_v7.html`, al abrir las vistas de diagnostico/tratamiento el prototipo muestra una pantalla en blanco (error de render en su UI). No es un problema de la ciencia ni de los datos: ya extrajimos todo lo que necesitabamos de ese archivo (la ciencia congelada en B11 y el patron de UX de la encuesta en B7.1).
-- **Impacto en Atlas:** ninguno. Atlas tiene su propia vista de resultados (vista interna del profesional, B12) y su propio reporte, funcionando de forma independiente del HTML de referencia. No corregimos el HTML de Gildardo.
-- **Nota a Gildardo:** aviso de cortesia por si quiere revisar su prototipo; para nosotros no es un bloqueante.
-- **Resolución (Gildardo, 2026-07-15):** Notificado, sin acción. Es un error de render de la UI del prototipo, sin impacto en Atlas (que tiene su propia vista de resultados y su reporte). Gildardo revisará su prototipo cuando lo estime; no es bloqueante. Query cerrada, informativa.
+
+**Para Gildardo (breve):** el prototipo se queda en blanco cuando se abre el diagnóstico de un paciente **sin haber subido su medición del Biody BIS**. No es un fallo de la ciencia ni de los datos: es que el prototipo no contempla ese estado "todavía sin datos", y al faltar la entrada la página no dibuja nada. Ejemplo: se crea el paciente, aún no se le hace la impedanciometría, se entra al diagnóstico, pantalla blanca.
+
+**Para su CC (detalle):**
+- **Causa real:** en `ATLAS-Patients_v7.html` la vista de diagnóstico/tratamiento no maneja el caso "sin fila BIS": no hay guardas para la ausencia de la medición, así que el render falla en silencio y deja la pantalla en blanco. No es un error de render genérico: es la falta del estado vacío.
+- **Impacto en Atlas:** ninguno. Ya extrajimos lo que necesitábamos de ese archivo (la ciencia congelada en B11, el patrón de UX de la encuesta en B7.1). No corregimos el HTML de Gildardo.
+- **Nota de valor:** este es justo el hueco que Atlas SÍ cubre. Atlas maneja explícitamente los estados vacíos: si la evaluación existe y es del profesional pero aún no tiene diagnóstico, muestra un estado vacío elegante con instrucciones (importar BIS, generar diagnóstico); si no existe o no es suya, un 404 limpio (nunca una pantalla en blanco). El manejo de estados vacíos es una diferencia concreta de Atlas sobre el prototipo.
+- **Resolución (Gildardo, 2026-07-15):** Notificado, sin acción. Es la falta del estado "sin medición BIS" en la UI del prototipo, sin impacto en Atlas (que sí maneja ese caso con estado vacío + 404). Gildardo revisará su prototipo cuando lo estime; no es bloqueante. Query cerrada, informativa.
 
 ---
 
@@ -75,9 +81,13 @@
 
 - **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
 - **Estado:** ABIERTO (esperando decisión de Gildardo)
-- **Hallazgo:** `d3_31` ("¿Con qué frecuencia consume alcohol?") está marcada `engine: true` (una de las 14 preguntas con `field_key`), así que el intake la entrega al motor. Pero en `calcLE8` (`frozen/engine.dfi.js`) el valor se asigna a `const alcohol = enc.d3_31 || ""` y esa variable **no se usa en ninguno de los 8 dominios** del LE8 (Actividad física, Alimentación, Tabaco, Sueño, Glucosa, Colesterol, Presión arterial, Hidratación). Ningún otro punto del motor (DFI, índices) lee `d3_31`. Resultado: el paciente responde alcohol, el dato viaja al motor y no influye en nada.
+
+**Para Gildardo (breve):** el paciente responde con qué frecuencia consume alcohol, pero ese dato hoy **no cambia nada** en el resultado del motor: la fórmula del LE8 lo recibe y no lo usa en ningún cálculo. Ejemplo: dos pacientes idénticos, uno abstemio y otro que bebe seguido, dan el mismo puntaje. La pregunta es: ¿el alcohol debía pesar en el LE8, o es solo un registro clínico para la historia?
+
+**Para su CC (detalle):**
+- **Hallazgo:** `d3_31` está marcada `engine: true` (una de las 14 preguntas con `field_key`), así que el intake la entrega al motor. Pero en `calcLE8` (`frozen/engine.dfi.js`) el valor se asigna a `const alcohol = enc.d3_31 || ""` y esa variable **no se usa en ninguno de los 8 dominios** del LE8 (Actividad física, Alimentación, Tabaco, Sueño, Glucosa, Colesterol, Presión arterial, Hidratación). Ningún otro punto del motor (DFI, índices) lee `d3_31`.
 - **Evidencia de que NO es un defecto del port:** el `.js` es verbatim de `ATLAS_v7.html`; la variable `alcohol` muerta viene de la fórmula de Gildardo, no de Atlas. Preservado byte a byte (regla dura 12).
-- **Pregunta a Gildardo:** ¿el alcohol debía ser un factor del LE8 (omisión latente en la fórmula, a entregar como frozen delta con su dominio/ponderación) o es solo registro clínico? Si es solo registro, se puede quitar el `field_key` de `d3_31` (deja de viajar al motor, sin efecto en el resultado). Si debía influir, entrega la fórmula y se porta fiel con golden actualizado. Mientras tanto, no se toca el motor.
+- **Vías:** (a) si el alcohol **debía** pesar (omisión latente en la fórmula): entrega un frozen delta con el dominio/ponderación del alcohol, se porta fiel con golden actualizado; (b) si es **solo registro**: Atlas quita el `field_key` de `d3_31` (deja de viajar al motor, sin efecto en el resultado). Mientras tanto, no se toca el motor.
 
 ---
 
@@ -85,9 +95,13 @@
 
 - **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
 - **Estado:** ABIERTO (informativo; sin impacto en el diagnóstico actual)
-- **Hallazgo:** `engine.indices.js` define `RUTA_COND` (predicados R1-R6); el predicado **R5** lee `d5_42` (contaminantes) y `d3_29` (estrés). Ninguna de las dos está marcada `engine: true`, así que el intake no las entrega al motor. Pero el propio motor rotula `rutasPorCondicion` como **no autoritativa** (comentario en `engine.indices.js` ~L79: "la selección AUTORITATIVA se hace vía DFI"), y `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData` (`analizarDFI`), no desde `rutasPorCondicion`. `computeDFIFromData` no lee `d5_42` ni `d3_29`.
-- **Consecuencia:** hoy `d5_42` y `d3_29` no tocan ningún indicador, DFI, ruta ni fenotipo del `EngineOutput`. Ambas preguntas SÍ están en la encuesta como registro clínico (`field_key` null). No hay degradación del diagnóstico actual.
-- **Pregunta a Gildardo:** ¿`rutasPorCondicion` (R5 con contaminantes y estrés) debe llegar a ser una vía autoritativa de selección de rutas? Si sí, habría que (a) marcar `d5_42` y `d3_29` como `field_key` y (b) cablear `rutasPorCondicion` en `engine.ts`, con golden actualizado. Si no, quedan como registro clínico y R5 sigue siendo lógica de reglas de referencia, sin efecto. Mientras tanto, no se toca el motor.
+
+**Para Gildardo (breve):** dos preguntas (exposición a contaminantes y nivel de estrés) hoy **no afectan el resultado**. El motor solo las usaría en una vía de rutas que el propio modelo marca como "no autoritativa" (no es la que decide el diagnóstico ni las rutas finales). Ejemplo: cambiar la respuesta de contaminantes o estrés no cambia el diagnóstico ni las rutas que ve el profesional. ¿Esa vía debe llegar a decidir rutas, o esas dos preguntas se quedan como registro clínico?
+
+**Para su CC (detalle):**
+- **Hallazgo:** `engine.indices.js` define `RUTA_COND` (predicados R1-R6); el predicado **R5** lee `d5_42` (contaminantes) y `d3_29` (estrés). Ninguna está marcada `engine: true`, así que el intake no las entrega al motor. Y el propio motor rotula `rutasPorCondicion` como **no autoritativa** (comentario en `engine.indices.js` ~L79: "la selección AUTORITATIVA se hace vía DFI"); `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData`, no desde `rutasPorCondicion`. `computeDFIFromData` no lee `d5_42` ni `d3_29`.
+- **Consecuencia:** hoy `d5_42` y `d3_29` no tocan ningún indicador, DFI, ruta ni fenotipo del `EngineOutput`. Ambas SÍ están en la encuesta como registro clínico (`field_key` null). No hay degradación del diagnóstico actual.
+- **Vías:** (a) si `rutasPorCondicion` (R5) **debe** ser autoritativa: marcar `d5_42` y `d3_29` como `field_key` y cablear `rutasPorCondicion` en `engine.ts`, con golden actualizado; (b) si **no**: quedan como registro clínico y R5 sigue siendo lógica de reglas de referencia, sin efecto. Mientras tanto, no se toca el motor.
 
 ---
 
@@ -95,39 +109,27 @@
 
 - **Fecha:** 2026-07-17 (caso golden-path, bloque prerrequisito "profesional primero")
 - **Estado:** ABIERTO (informativo; no bloquea nada)
-- **Hallazgo:** la EB-BIS (edad biológica celular) sale sistemáticamente por debajo de la edad cronológica cuando la encuesta reporta hábitos buenos (LE8/ICEC alto), **aunque el BIS muestre sobrepeso o grasa alta**. La EB-BIS depende del ICEC (derivado del LE8) y de la edad; un LE8 alto empuja la edad biológica hacia abajo, sin que la composición corporal (FMI alto) lo contrapese.
-- **Evidencia:** el fixture gold `dfi-golden.json` (perfil documentado "hombre 54a, IMC 27.5, sobrepeso leve") da EB 29.9 e IAE -24.7. El caso golden-path (mismo donante BIS, encuesta alineada al perfil, LE8 69) da EB 36.4 e IAE -17.6 "Desacelerado". En ambos, un hombre de 54 con grasa alta obtiene una edad biológica de 30-36.
-- **Evidencia de que NO es un defecto del port:** el cálculo de EB-BIS/ICEC es verbatim de la ciencia congelada (`engine.indices.js`, `computeEBBIS`); los golden anclan la EB-BIS a los valores del HTML (tolerancia 1e-3). Además el propio fixture gold ya lo marca en su `_meta`: "Revisar coherencia clínica con Gildardo". Es una característica de la fórmula, no de Atlas.
-- **Pregunta a Gildardo:** ¿es esperado que un perfil con sobrepeso/grasa alta pero hábitos reportados buenos dé una edad biológica marcadamente joven (54 → 30-36)? ¿La relación LE8/ICEC → EB-BIS debe atenuarse o ponderar la composición corporal, o es correcta por diseño? Mientras tanto, no se toca el motor.
+
+**Para Gildardo (breve):** la edad biológica (EB-BIS) sale marcadamente joven cuando el paciente reporta buenos hábitos, **aunque el BIS muestre sobrepeso o grasa alta**. Ejemplo real: un hombre de 54 años con grasa alta pero hábitos buenos da una edad biológica de 30-36 años. La pregunta clínica: ¿es correcto por diseño, o la composición corporal (la grasa) debería contrapesar el efecto de los buenos hábitos?
+
+**Para su CC (detalle):**
+- **Hallazgo:** la EB-BIS depende del ICEC (derivado del LE8) y de la edad; un LE8 alto empuja la edad biológica hacia abajo, sin que la composición corporal (FMI alto) lo contrapese.
+- **Evidencia:** el fixture gold `dfi-golden.json` (perfil "hombre 54a, IMC 27.5, sobrepeso leve") da EB 29.9 e IAE -24.7. El caso golden-path (mismo donante BIS, encuesta alineada, LE8 69) da EB 36.4 e IAE -17.6 "Desacelerado".
+- **Evidencia de que NO es un defecto del port:** el cálculo de EB-BIS/ICEC es verbatim de la ciencia congelada (`engine.indices.js`, `computeEBBIS`); los golden anclan la EB-BIS a los valores del HTML (tolerancia 1e-3). El propio fixture gold lo marca en su `_meta`: "Revisar coherencia clínica con Gildardo". Es una característica de la fórmula, no de Atlas.
+- **Vía:** si la relación LE8/ICEC → EB-BIS debe atenuarse o ponderar la composición corporal, se entrega como frozen delta (versión nueva de los `.js`) con golden actualizado. Si es correcta por diseño, se cierra informativa. Mientras tanto, no se toca el motor.
 
 ---
 
 ## Q9 · Abordaje por profesión: `efrProf` existe en el paquete congelado pero no se expone
 
-- **Fecha:** 2026-07-18 (planeación de la pestaña de Diagnóstico)
-- **Estado:** ABIERTO (bloquea SOLO la tarjeta de "abordaje por profesión"; el resto del Diagnóstico avanza)
-- **Hallazgo:** la vista de Diagnóstico del HTML muestra 6 campos por estado EFR. Cinco ya se congelan en el snapshot (`diagnosisName`, `mechanism`, `biomarkers`, `risks`, `suggestedNutraceuticals`), poblados desde `core.getDX` (exportado). El sexto, **"abordaje por profesión"**, lo compone `efrProf(role, i, r, f, m)` (`frozen/engine.core.js` L807): una función de reglas dependiente del rol (Médico / Psicólogo / Deportólogo / Nutricionista). Pero `efrProf` **NO** está en el `module.exports` del paquete (L936 exporta `getDX`/`efrCompose`/`DX`/…, no `efrProf`).
-- **Por qué no se resuelve del lado de Atlas:** (a) no se edita el `.js` frozen, ni siquiera el `module.exports` (rompe la propiedad verbatim que hace verificable la regla 12 y ensucia el swap limpio de la próxima entrega); (b) en CommonJS una `const` module-local no exportada es inalcanzable desde otro módulo sin re-evaluar el fuente (acceso raro, descartado); (c) re-implementar `efrProf` en TypeScript sería reingeniería de la ciencia congelada (prohibido). Además el contenido del abordaje NO existe como dato estático (mapa) que se pueda poblar: solo como salida algorítmica de `efrProf` (a diferencia de dx/mec/bio/rsk, que salen de `getDX`, exportado).
-- **Pregunta a Gildardo (dos vías, cualquiera sirve):**
-  1. **Exponer `efrProf` en el `module.exports`** de la próxima versión del `.js` (como ya se exponen `getDX`/`efrCompose`); Atlas lo consume limpio desde el adaptador y congela la salida.
-  2. **Entregar el contenido de los abordajes como datos** (mapa estado EFR × profesión → texto) y se pobla en el registry como el resto del contenido de la Diana (dx/mec/bio/rsk/n), sin llamar la función en runtime. **Esta es la más consistente** con cómo ya vive el contenido EFR y la preferida.
-  
-  Con cualquiera de las dos, Atlas congela el **conjunto completo** de abordajes (los 4 roles) en el snapshot al diagnosticar, sin acoplarse al rol logueado ni al registry vivo (un diagnóstico histórico mostrará el abordaje del rol tal como el modelo lo tenía cuando se decidió).
-- **Decisión de Atlas (2026-07-18):** se **difiere** la tarjeta de "abordaje por profesión" hasta la entrega de Gildardo. No se toca el frozen ni se inventa acceso. Las otras 5 tarjetas se muestran. El diseño de la pestaña de Diagnóstico deja el hueco listo (capas separables: contenido del modelo vs. rol).
-- **CONSOLIDADA:** esta query se fusiona en `docs/FROZEN_EXPORTS_REQUEST.md` (solicitud única a Gildardo con la propuesta técnica lista). NO se envía suelta; aquí queda el hallazgo con fecha. Ver la solicitud consolidada para la vía (exponer `efrProf` vs. entregar el abordaje como datos).
+- **Fecha:** 2026-07-18 (planeación de la pestaña de Diagnóstico).
+- **Estado:** **CONSOLIDADA → ver `docs/FROZEN_EXPORTS_REQUEST.md` (entrada 1).**
+- **Qué era:** el sexto campo del estado EFR ("abordaje por profesión") lo compone `efrProf`, que existe en el paquete pero no está en su `module.exports`. El detalle accionable y las vías de resolución viven ahora SOLO en la solicitud consolidada (para no duplicar); aquí queda el rastro histórico con su fecha.
 
 ---
 
 ## Q10 · Clasificadores de composición: existen en el paquete pero no se exponen (misma familia que Q9)
 
-- **Fecha:** 2026-07-18 (columna de diagnóstico de la tabla de composición, pestaña de Diagnóstico)
-- **Estado:** ABIERTO (bloquea la columna de diagnóstico de las filas de composición; las antropométricas y los indicadores ya resueltos)
-- **Hallazgo:** la tabla de composición de la pestaña de Diagnóstico es la versión INTERPRETADA (con una columna de diagnóstico por fila). El diagnóstico de las filas de masa/hidratación se computa con clasificadores que **existen en `frozen/engine.core.js` pero NO están en `module.exports`**: `cSMM` (SMM/peso), `cMMEM` (índice de miembros), `cASMI` (masa apendicular; además toca sarcopenia/prensil, Q5), `cFFW` (hidratación libre de grasa), `cEISG` (balance E/I). El `module.exports` solo expone los clasificadores de los 12 indicadores ANI-BIS-E (`cIFC`/`cIRC`/`cPABU`/`cFMI`/`cFFMI`/`cISCM`/`cIEHH`/`cIAE`/`cAF`/`cIR`), que sí se congelan en `snapshot.classifications`. Aparte, `AEC/MCA` usa `dAECMCA`, una función definida SOLO en el render del prototipo (no en el paquete congelado).
-- **Por qué no se resuelve del lado de Atlas:** idéntico a [[Q9]]. No se edita el `.js` frozen (regla 12), ni siquiera el `module.exports`. Una `const` module-local no exportada es inalcanzable desde el adaptador. Re-implementar los clasificadores en TS sería reingeniería de la ciencia congelada (prohibido). Y no existen como datos estáticos que poblar.
-- **Pregunta a Gildardo (dos vías, cualquiera sirve):**
-  1. **Exponer los clasificadores de composición en el `module.exports`** (`cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`; y decidir si `dAECMCA` entra al paquete o queda como referencia de display), para computarlos al diagnosticar y congelar su etiqueta en el snapshot.
-  2. **Entregar los cortes como datos** (mapa variable → umbrales por sexo → etiqueta), para poblarlos en el registry como el resto del contenido. **Preferida**, por consistencia con cómo ya vive el contenido EFR.
-  
-  Con cualquiera, la columna de diagnóstico se congela en el snapshot al diagnosticar (autosuficiente, sin cruzar el registry vivo).
-- **Decisión de Atlas (2026-07-18):** hasta la entrega, la columna de diagnóstico se puebla SOLO con lo disponible: (a) umbrales OMS de las filas antropométricas y (b) las clasificaciones de indicadores ya congeladas (FMI/FFMI/AF). Las filas de composición (SMM/W, MMEM, ASMI, hidratación, E/I, AEC/MCA) quedan con un rótulo PENDIENTE explícito ("No disponible aún", distinguible de un resultado clínico), no se inventa. `dAECMCA` es candidato a referencia de display si Gildardo lo confirma.
-- **CONSOLIDADA:** esta query se fusiona en `docs/FROZEN_EXPORTS_REQUEST.md` (solicitud única a Gildardo con la propuesta técnica lista). NO se envía suelta; aquí queda el hallazgo con fecha.
+- **Fecha:** 2026-07-18 (columna de diagnóstico de la tabla de composición).
+- **Estado:** **CONSOLIDADA → ver `docs/FROZEN_EXPORTS_REQUEST.md` (entrada 2).**
+- **Qué era:** el diagnóstico por fila de la tabla de composición usa clasificadores (`cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`) que existen en el paquete pero no están en su `module.exports`. El detalle accionable y las vías viven ahora SOLO en la solicitud consolidada (para no duplicar); aquí queda el rastro histórico con su fecha.
