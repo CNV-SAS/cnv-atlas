@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,15 @@ const DOT_CLS = [
   "bg-clinical-warning",
   "bg-clinical-critical",
 ];
+// Icono lucide por dominio del DFI (ayuda de lectura, NO emoji). Color neutro: el icono
+// identifica el dominio, no señala riesgo (eso lo hace el badge de severidad).
+const DOMAIN_ICON: Record<string, LucideIcon> = {
+  d1: Zap, // Celular-Electrico
+  d2: HeartPulse, // Metabolico-Estructural
+  d3: Hourglass, // Envejecimiento
+  d4: Brain, // Conductual-Perceptual
+  d5: Dna, // Epigenetico-Contextual
+};
 
 function fmtNum(v: number | null): string {
   if (v == null) return "N/D";
@@ -237,10 +247,15 @@ export function EvaluationResults({
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {dfi.domains.map((d) => (
+            {dfi.domains.map((d) => {
+              const Icon = DOMAIN_ICON[d.id];
+              return (
               <div key={d.id} className="flex flex-col gap-1 rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-foreground">{d.nombre}</span>
+                  <span className="flex items-center gap-2 font-medium text-foreground">
+                    {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
+                    {d.nombre}
+                  </span>
                   <Badge className={SEV_CLS[Math.min(3, Math.max(0, d.sev))]}>
                     {SEV_LABEL[Math.min(3, Math.max(0, d.sev))]}
                   </Badge>
@@ -255,7 +270,8 @@ export function EvaluationResults({
                   </ul>
                 ) : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
