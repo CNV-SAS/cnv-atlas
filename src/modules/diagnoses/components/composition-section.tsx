@@ -106,7 +106,7 @@ export function CompositionSection({
                       const delta =
                         r.value != null && r.reference != null ? r.value - r.reference : null;
                       return (
-                        <tr key={lvl.title + r.label} className="border-b border-border/40">
+                        <tr key={r.key} className="border-b border-border/40">
                           <td className="py-1.5 pr-4 text-foreground">
                             {r.label}
                             {r.unit ? (

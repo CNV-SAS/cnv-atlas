@@ -11,6 +11,7 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 // mapeo no puede desincronizarse. Solo display: no toca el snapshot ni el registry.
 
 export type CompositionRow = {
+  key: string; // clave estable del dato crudo (BIODY_COLUMNS), unica por fila
   label: string;
   value: number | null;
   reference: number | null;
@@ -121,6 +122,7 @@ export async function getCompositionForEvaluation(
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
     rows: lvl.rows.map(([label, valueKey, refKey, unit]) => ({
+      key: valueKey,
       label,
       value: get(valueKey),
       reference: refKey ? get(refKey) : null,
