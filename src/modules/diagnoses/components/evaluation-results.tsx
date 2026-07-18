@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EngineIndicators } from "@/clinical-engine";
 
+import { DfiRadar } from "./dfi-radar";
 import { Diana } from "./diana";
 import type { EvaluationResults as Results } from "../data/results-reader";
 
@@ -239,12 +240,21 @@ export function EvaluationResults({ results }: { results: Results }) {
             </p>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
-            <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
-              {dfi.riesgo.nivel} · {dfi.riesgo.score}
-            </Badge>
-            <span className="text-sm text-muted-foreground">{dfi.riesgo.descripcion}</span>
+          {/* Radar de los 5 dominios (forma de un vistazo) + riesgo integrado (titular). */}
+          <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-center lg:gap-8">
+            <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
+                <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
+                  {dfi.riesgo.nivel} · {dfi.riesgo.score}
+                </Badge>
+                {dfi.veto ? (
+                  <Badge className={SEV_CLS[3]}>Veto activo</Badge>
+                ) : null}
+              </div>
+              <p className="text-sm text-muted-foreground">{dfi.riesgo.descripcion}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
