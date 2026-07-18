@@ -33,6 +33,12 @@ Cada una se resuelve **exponiendo la función** (nos entregas el archivo con el 
 **entregando los datos** (una tabla con los cortes/textos). Abajo, el detalle técnico para tu CC y,
 en cada punto, **exactamente qué debe entregarnos**.
 
+**Un matiz, para que no te sorprenda:** la analogía del botón aplica limpio a la mayoría (la cuenta
+ya existe en tu paquete y solo falta exponerla, casos 1 y 2). Pero en uno o dos casos, además,
+necesitamos que **decidas algo** (caso 4: contra qué punto medir la desviación) o que nos **entregues
+contenido que hoy vive solo en tu prototipo, no dentro del motor** (caso 3: el patrón de consumo
+alimentario). Abajo se marca caso por caso.
+
 **Por qué una sola solicitud:** es el mismo tipo de bloqueo repetido. En vez de queries goteando, te
 llegamos con la solución propuesta lista para que solo aprueben y produzcan el entregable.
 
@@ -57,7 +63,7 @@ al hacer el swap del `.js` los valores no cambian; solo pasa a ser alcanzable de
 ## Detalle técnico (para su CC)
 
 ### 1. `efrProf` — abordaje por profesión (de Q9)
-- **Archivo:** `frozen/engine.core.js` (definida ~L807, no exportada).
+- **Archivo:** `frozen/engine.core.js` (definida en L807, no exportada). Verificado.
 - **Qué habilita:** la 6ª tarjeta de la Diana ("abordaje por profesión"), texto por rol
   (Médico / Psicólogo / Deportólogo / Nutricionista). Atlas congela el **conjunto de los 4 roles**
   en el snapshot al diagnosticar (para que un diagnóstico histórico muestre el abordaje del rol tal
@@ -73,8 +79,9 @@ al hacer el swap del `.js` los valores no cambian; solo pasa a ser alcanzable de
     y el texto del abordaje (columnas: `efr_key`, `profesion`, `texto`).
 
 ### 2. Clasificadores de composición (de Q10)
-- **Archivo:** `frozen/engine.core.js` (definidos, no exportados).
-- **Funciones:** `cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`.
+- **Archivo:** `frozen/engine.core.js` (definidos, no exportados). Verificado.
+- **Funciones (con su línea en `engine.core.js`):** `cSMM` (L151), `cMMEM` (L171), `cASMI` (L185),
+  `cFFW` (L222), `cEISG` (L233).
 - **Qué habilitan:** la columna de Diagnóstico de la tabla de composición (SMM/W, MMEM, ASMI,
   hidratación libre de grasa, balance E/I). `cASMI` además toca sarcopenia (Q5).
 - **Vía recomendada (exponer la función):** para clasificadores (funciones de corte), exponer es más
@@ -139,6 +146,11 @@ al hacer el swap del `.js` los valores no cambian; solo pasa a ser alcanzable de
 
 Aplica a las entradas que se resuelvan **exponiendo** (1 y 2, y la 3 si se elige incorporar la
 función). Es la línea EXACTA que proponemos que agreguen; no tocamos nada más.
+
+**Archivo confirmado:** las 6 funciones (`efrProf`, `cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`) están
+TODAS definidas en `frozen/engine.core.js`; ninguna vive en `engine.indices.js` ni en
+`engine.dfi.js`. Por eso la línea a modificar es el `module.exports` de `engine.core.js` (no el de
+los otros dos archivos).
 
 `frozen/engine.core.js`, `module.exports` actual:
 ```js

@@ -6,7 +6,9 @@
 
 **Dos lectores:** las queries abiertas o relevantes se estructuran en dos capas: primero **Para Gildardo** (breve, no técnica, con ejemplo si ayuda; él decide), luego **Para su CC** (detalle técnico; ellos ejecutan). Las queries que necesitan que Gildardo entregue algo del lado de la ciencia (exponer funciones o entregar datos) viven consolidadas en `docs/FROZEN_EXPORTS_REQUEST.md`, con el entregable concreto esperado.
 
-> **Ronda de respuestas de Gildardo (2026-07-15):** las cinco queries quedaron resueltas. Ninguna requiere cambio de código ni de golden tests ahora mismo; Q3 y Q5 dejan pendiente una posible entrega futura de ciencia (fórmula LE8 y frozen delta de prensil, respectivamente), que solo se portaría si Gildardo la entrega. La ciencia congelada no se toca.
+> **Ronda de respuestas de Gildardo (2026-07-15):** esta ronda cubrió **Q1-Q5**, que quedaron resueltas. Ninguna requiere cambio de código ni de golden tests ahora mismo; Q3 y Q5 dejan pendiente una posible entrega futura de ciencia (fórmula LE8 y frozen delta de prensil, respectivamente), que solo se portaría si Gildardo la entrega. La ciencia congelada no se toca.
+>
+> **OJO, no está todo respondido:** **Q6, Q7 y Q8 son posteriores** (auditoría de acoplamiento y caso golden-path) y siguen **ABIERTAS**, esperando la decisión de Gildardo. Q9 y Q10 se consolidaron en `docs/FROZEN_EXPORTS_REQUEST.md`. No cierres el documento pensando que la ronda de julio 15 respondió todo.
 
 ---
 
