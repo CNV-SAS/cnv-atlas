@@ -124,3 +124,89 @@ el panel `/evaluaciones`.
 **Resumen de la Parte 2:** la estructura por tabs y la jerarquía KPI + cards del HTML se preservan
 como base de la vista de resultados de Atlas; las desviaciones (captura manual, reportes
 múltiples, runtime roto de la Q4) están marcadas y son justificadas o quedan a juicio de Santiago.
+
+---
+
+# Parte 3 — Auditoría de fuente de la pestaña de Diagnóstico
+
+**Marco (decidido):** `/evaluaciones/[id]` adopta el flujo por etapas del HTML como pestañas
+internas (Encuesta / Antrop&BIS / **Diagnóstico** / Rutas / Seguimiento / Reporte); el sidebar
+sigue navegando entre entidades. Este bloque audita SOLO la pestaña de Diagnóstico. Leído del
+código fuente del HTML (`reference/ATLAS_v7.html`; el runtime tiene el bug de la Q4). Doc-only.
+
+**Origen de cada valor/clasificación:** (a) sale de un clasificador del motor congelado o ya está
+en el snapshot → display, portable directo; (b) umbral aplicado en el render (fuera del motor)
+→ señalado; (c) fuera de alcance. Los (b) de cálculo clínico se marcan para revisión, NO construir.
+
+## Tabla de origen por fila
+
+| Fila del Diagnóstico (HTML) | Qué muestra | Origen | Portabilidad / acción |
+|---|---|---|---|
+| **Composición Corporal — Niveles de Wang** (tabla V/IV/III/II, L6144) | Variable · valor obtenido · referencia · Δ | (a) valores y referencias del import BIS (`bis_raw_values`, inmutable por medición); Δ = resta en el render (trivial) | Portable como display. Los valores NO están en el snapshot del diagnóstico (viven en `bis_raw_values`). **Decisión:** congelarlos en el snapshot (autosuficiencia total) o leerlos de `bis_raw_values` (inmutable por medición, no del registry vivo → aceptable). No es clasificador clínico. |
+| **Clasificación antropométrica** (IMC / Cintura / ICT con etiqueta de diagnóstico, `clasifIMC`/`clasifCC`/`clasifICT` L6416-6470) | IMC "Obesidad I", cintura "Riesgo CV", ICT "Saludable" | (b) umbral aplicado en el render, FUERA del motor. **Umbrales médicos ESTÁNDAR** (OMS IMC 18.5/25/30/35/40; cintura CV 94/102 H · 80/88 M; ICT 0.4/0.5/0.6) | **Referencia de display**, NO ciencia congelada ANI-BIS-E: cutoffs universales publicados. Portables como umbrales documentados. Los valores (IMC/cintura/ICT) se derivan de `bis_raw_values` (BMI/cintura/talla). **Decisión menor:** congelar la clasificación en el snapshot, o computarla al mostrar desde los cutoffs estándar (que no cambian). NO requiere a Gildardo. |
+| **Indicadores ANI-BIS-E** (12) con clasificación | IFC/IRC/PABU/ICA-BIS/ISCM/IEHH/IAE/EB/FMI/FFMI/AF/IR + etiqueta | **(a)** clasificadores del motor congelado (`cIFC`, `cIRC`…), YA en el snapshot (`indicators` + `classifications`) | Portable directo. Atlas ya lo muestra. |
+| **Diagnóstico funcional + radar de 5 dominios (DFI)** | 5 dominios + severidad + riesgo integrado + rutas | **(a)** el DFI está en el snapshot (`dfi.domains/riesgo/rutas`). El RADAR es visual (b, presentación) | Datos portables directo (Atlas ya los muestra como tarjetas). El radar es un componente visual a construir (como la Diana). |
+| **Diana + 6 tarjetas de contenido** por estado EFR | (1) enfermedades/complicaciones, (2) mecanismos, (3) biomarcadores, (4) riesgos, (5) nutracéuticos, (6) abordaje por profesión | **(a) 5 de 6** congelados en `efrContent` (ST1/ST5); **(6) abordaje** = `efrProf(role)`, NO congelado, role-dependent | 5 portables del snapshot. El 6º requiere decisión (Verificación 3). |
+| **Diagnóstico de Sarcopenia** (`dxSarcopenia` + prensil, L6227) | Veredicto: Sin sarcopenia / probable / confirmada / severa | **(b-CLÍNICO)** el veredicto depende de la fuerza prensil (criterio primario EWGSOP2); sin prensil → "Ingrese fuerza prensil" | **NO se porta** (Q5). Ver Verificación 1. |
+
+## Verificación 1 — El veredicto de sarcopenia depende de la fuerza prensil
+
+Evidencia: `dxSarcopenia(fuerza, asmi, af, sexoM)` (`ATLAS_v7.html` L3434). La fuerza prensil es el
+criterio PRIMARIO EWGSOP2. Sin prensil (`fz <= 0`) devuelve `{ l: "Ingrese fuerza prensil" }`, sin
+veredicto (L3439). Todo veredicto real (probable/confirmada/severa) exige `fzLow` (prensil bajo).
+El DFI congelado, en cambio, calcula obesidad sarcopénica SIN prensil
+(`_obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow)`, Q5), y `EngineInput` ni siquiera tiene
+un campo `fuerzaPrensil`.
+
+→ **El veredicto de sarcopenia NO se porta.** Atlas no captura prensil. Queda como dato
+antropométrico sin veredicto; la sarcopenia real (EWGSOP2 con prensil) sería un **frozen delta**
+futuro de Gildardo, con golden actualizado. **Marcado para revisión, NO construir. Ubicación:** si
+algún día existe, va en la pestaña **Diagnóstico**, no en Antrop&BIS.
+
+## Verificación 2 — Contenido de la Diana: qué falta congelar
+
+El HTML compone 6 campos por estado (`efrCompose` L3994 + `efrProf` L4039): dx
+(enfermedades/complicaciones), mec, bio, rsk, n (nutracéuticos VITACELLEBIS), abordaje por
+profesión. Nuestro snapshot congela (`efrContent`, ST1): `diagnosisName`(=dx), `mechanism`(=mec),
+`biomarkers`(=bio), `risks`(=rsk), `suggestedNutraceuticals`(=n) → **5 de 6**.
+
+- **FALTA: "abordaje por profesión"** (`efrProf`), NO congelado. Tras el corte del fallback (ST5)
+  no hay de dónde leerlo si no se congela. → **Agregar al freeze al diagnosticar** (aplicable a
+  diagnósticos nuevos; Demo GoldenPath se regenera). La FORMA de congelarlo depende de la
+  Verificación 3 (es role-dependent).
+- **Matiz "enfermedades/complicaciones probables":** SÍ está congelado, es nuestro `diagnosisName`
+  (= dx.dx). Hoy Atlas lo muestra como TÍTULO del diagnóstico funcional, no como una tarjeta
+  rotulada. Es el mismo valor: mostrarlo como una de las 6 tarjetas es decisión de presentación,
+  no falta el dato.
+- **Vacíos:** evidencia: los 81 estados del registry tienen mec/bio/risks **NO vacíos** (0 vacíos;
+  N_N_N_A trae valores cortos, no vacíos). El display ya tolera el vacío: el helper `Line` retorna
+  `null` ante un valor falsy (no rompe); el snapshot guarda strings (vacío = `""`, tolerado). Si a
+  futuro Gildardo entrega contenido con campos vacíos, no rompe display ni snapshot.
+
+## Verificación 3 — "Abordaje por profesión" es role-dependent
+
+Evidencia: `efrProf(role, i, r, f, m)` (L4039) recibe `role` y ramifica el texto: **Médico**
+(L4043), **Psicólogo** (L4050), **Deportólogo/Entrenador** (L4053), **Nutricionista** (default,
+L4059). El texto CAMBIA según la profesión del profesional logueado; no es fijo por estado.
+
+→ Implicaciones de diseño (Atlas soportará varios tipos de profesional, bloque aparte): el
+contenido del MODELO y la acción específica del profesional deben quedar como **capas
+separables**: (i) el estado EFR define el conjunto de abordajes; (ii) el rol selecciona cuál se
+muestra. **Recomendación de congelado:** congelar en el snapshot el CONJUNTO de abordajes del
+estado (los de los 4 roles) y seleccionar por rol al mostrar; así el snapshot es autosuficiente y
+el contenido del modelo no se entreteje con el rol. (Alternativa mínima: congelar solo el abordaje
+del rol que diagnosticó; más chico, pero pierde los otros si otro rol revisa el caso.) Hoy Atlas es
+solo nutricionista (el default de `efrProf`); para el MVP podría congelarse solo ese, dejando el
+diseño listo para el conjunto.
+
+## Resumen: qué es cada cosa para el bloque de Diagnóstico
+
+- **Portable directo (a, ya en el snapshot):** indicadores ANI-BIS-E + clasificaciones; DFI (5
+  dominios + riesgo + rutas); 5 de las 6 tarjetas de la Diana. (+ color/posición de la Diana, ya
+  decidido en Parte 1.) El radar y el layout de tarjetas son visual a construir, sin dato nuevo.
+- **Re-exponer / decidir congelar (a-ish):** tabla de Wang (valores de `bis_raw_values`);
+  clasificación antropométrica (umbrales estándar de display). Ninguno toca el registry vivo.
+- **Congelar nuevo al diagnosticar (ii):** "abordaje por profesión" (role-dependent, Verificación
+  3). Aplica a diagnósticos nuevos.
+- **Marcado para revisión con Gildardo, NO construir:** veredicto de sarcopenia / fuerza prensil
+  (Verificación 1); y lo ya marcado en Parte 1 (MCCB-12 + PBI + EIEC).
