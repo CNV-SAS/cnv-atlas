@@ -12,7 +12,7 @@ type Bands = { ifc: number; irc: number; ffmi: number; fmi: number }; // k 1/2/3
 
 const SIZE = 320;
 const C = SIZE / 2;
-const R = 150;
+const R = 138; // deja margen para las etiquetas de sector en el borde
 const HOLE = 26;
 const SECTORS = 9;
 const RINGS = 9;
@@ -33,6 +33,11 @@ const STOPS = [
   { t: 0.9, r: 185, g: 28, b: 28 },
   { t: 1, r: 127, g: 29, b: 29 },
 ] as const;
+
+// Escala de referencia (gradiente de riesgo) para la leyenda, desde las mismas paradas del color.
+const SCALE_GRADIENT = STOPS.map((s) => `rgb(${s.r},${s.g},${s.b}) ${Math.round(s.t * 100)}%`).join(
+  ", ",
+);
 
 // Color de una celda a partir de los rangos de riesgo (1..9) de su sector y su anillo. Misma
 // interpolacion que el HTML: t = (a + b - 2) / 16, sobre las 10 paradas.
@@ -130,6 +135,54 @@ export function Diana({
             strokeWidth={1}
           />
         ))}
+        {/* Etiquetas de lectura: sectores S1-S9 en el borde (angular, IFC x IRC), anillos R1-R9
+            sobre el radio superior (radial, FFMI x FMI), y el centro. Son rotulos fijos de eje. */}
+        {Array.from({ length: SECTORS }, (_, sc) => {
+          const [lx, ly] = polar(R + 9, sc * SECTOR_DEG + SECTOR_DEG / 2);
+          return (
+            <text
+              key={`sl${sc}`}
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={8}
+              className="fill-muted-foreground"
+            >
+              S{sc + 1}
+            </text>
+          );
+        })}
+        {Array.from({ length: RINGS }, (_, rg) => {
+          const [lx, ly] = polar(HOLE + rg * BAND + BAND / 2, SECTOR_DEG / 2);
+          return (
+            <text
+              key={`rl${rg}`}
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={7}
+              fontWeight={700}
+              fill="white"
+              stroke="#0f172a"
+              strokeWidth={0.5}
+              style={{ paintOrder: "stroke" }}
+            >
+              R{rg + 1}
+            </text>
+          );
+        })}
+        <text
+          x={C}
+          y={C}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={7}
+          className="fill-muted-foreground"
+        >
+          EFR
+        </text>
         {/* Celda del paciente: contorno de alto contraste sobre el fondo saturado. */}
         <path d={patD} fill="none" className="stroke-foreground" strokeWidth={3} />
         {/* Marcador: aro blanco + numero de estado, para leer la posicion sin depender del color. */}
@@ -146,11 +199,26 @@ export function Diana({
           {stateNumber}
         </text>
       </svg>
+      {/* Escala de referencia: el gradiente de riesgo, de menor (izquierda) a mayor (derecha). */}
+      <div className="flex w-full max-w-[280px] flex-col gap-1">
+        <div
+          className="h-2 w-full rounded-full"
+          style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
+          aria-hidden
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>Menor riesgo</span>
+          <span>Mayor riesgo</span>
+        </div>
+      </div>
       <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         <span>
           Estado {stateNumber} de 81 · sector {frSectorName} · anillo {structuralName}
         </span>
-        <span>Menor riesgo al centro, mayor en el exterior.</span>
+        <span>
+          Sectores S1-S9: función celular y riesgo (IFC × IRC). Anillos R1-R9: fenotipo estructural
+          (FFMI × FMI), del centro (menor riesgo) al borde.
+        </span>
       </figcaption>
     </figure>
   );
