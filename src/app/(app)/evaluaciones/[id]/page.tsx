@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
+import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
@@ -72,19 +74,24 @@ export default async function ResultadosEvaluacionPage({
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
   // La comparacion de seguimiento aparece solo si hay una evaluacion previa (null si es
   // la primera del paciente).
-  const [protocol, comparison] = await Promise.all([
+  const [protocol, comparison, composition] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
+    getCompositionForEvaluation(id),
   ]);
 
-  // Shell de pestañas: solo Diagnostico activa (ST2). El contenido actual completo
-  // (resultados + comparacion + tratamiento) vive bajo Diagnostico de forma transitoria; los
-  // bloques posteriores lo reparten a Seguimiento / Rutas / etc. Sin regresion.
+  const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
+
+  // Shell de pestañas: solo Diagnostico activa (ST2). Contenido de Diagnostico (ST3): resultados
+  // del motor (indicadores + diagnostico funcional + Diana + DFI) + composicion corporal (Wang) y
+  // clasificacion antropometrica. La comparacion y el tratamiento viven aqui de forma transitoria
+  // (los reparten Seguimiento / Rutas en bloques posteriores). El orden final es ST7.
   return (
     <EvaluationTabs
       diagnostico={
         <div className="flex flex-col gap-8">
           <EvaluationResults results={results} />
+          {composition ? <CompositionSection composition={composition} sexoM={sexoM} /> : null}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
           {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
         </div>

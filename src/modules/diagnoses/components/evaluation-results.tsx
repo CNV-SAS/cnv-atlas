@@ -52,6 +52,35 @@ function Line({ label, value }: { label: string; value: string | null }) {
   );
 }
 
+// Tarjeta de contenido del estado EFR (una de las 6 de la Diana). Tolera el vacio (algunos
+// estados no traen todos los campos) y el caso "pendiente" (abordaje por profesion, Q9).
+function ContentCard({
+  label,
+  value,
+  pending,
+}: {
+  label: string;
+  value: string | null;
+  pending?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {pending ? (
+        <span className="text-sm italic text-muted-foreground">
+          Pendiente de la entrega de Gildardo (Q9).
+        </span>
+      ) : value ? (
+        <p className="text-sm text-foreground">{value}</p>
+      ) : (
+        <span className="text-sm text-muted-foreground">Sin dato para este estado.</span>
+      )}
+    </div>
+  );
+}
+
 export function EvaluationResults({ results }: { results: Results }) {
   // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
   // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
@@ -113,31 +142,35 @@ export function EvaluationResults({ results }: { results: Results }) {
         </p>
       </header>
 
-      {/* Diagnostico funcional (fenotipo EFR + estructural + sector FyR) */}
+      {/* Diagnostico funcional: identidad del estado + las 6 tarjetas de contenido de la Diana
+          (5 del snapshot inmutable + abordaje por profesion pendiente de Q9). */}
       <Card>
         <CardHeader>
-          <CardTitle>Diagnostico funcional</CardTitle>
+          <CardTitle>Diagnóstico funcional</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <p className="text-lg font-semibold text-foreground">
-              {efrState?.diagnosisName ?? (efrPhenotype.diagnostico || "Sin diagnostico")}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Estado EFR {efrPhenotype.stateNumber} de 81 · clave {efrPhenotype.key}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Line
+              label="Estado EFR"
+              value={`${efrPhenotype.stateNumber} de 81 · clave ${efrPhenotype.key}`}
+            />
             <Line label="Fenotipo estructural" value={structural.nombre} />
             <Line label="Sector funcional (FyR)" value={frSector.nombre} />
           </div>
-          <Line label="Mecanismo" value={efrState?.mechanism ?? null} />
-          <Line label="Biomarcadores" value={efrState?.biomarkers ?? null} />
-          <Line label="Riesgos" value={efrState?.risks ?? null} />
-          <Line
-            label="Nutraceuticos sugeridos"
-            value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ContentCard
+              label="Enfermedades / complicaciones probables"
+              value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
+            />
+            <ContentCard label="Mecanismos" value={efrState?.mechanism ?? null} />
+            <ContentCard label="Biomarcadores" value={efrState?.biomarkers ?? null} />
+            <ContentCard label="Riesgos" value={efrState?.risks ?? null} />
+            <ContentCard
+              label="Nutracéuticos sugeridos"
+              value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
+            />
+            <ContentCard label="Abordaje por profesión" value={null} pending />
+          </div>
         </CardContent>
       </Card>
 
