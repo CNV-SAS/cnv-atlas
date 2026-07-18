@@ -65,7 +65,8 @@ function Line({ label, value }: { label: string; value: string | null }) {
 }
 
 // Tarjeta de contenido del estado EFR (una de las 6 de la Diana). Tolera el vacio (algunos
-// estados no traen todos los campos) y el caso "pendiente" (abordaje por profesion, Q9).
+// estados no traen todos los campos) y el caso "pendiente" (abordaje por profesion). El motivo
+// tecnico (Q9: efrProf no expuesto) vive en docs/GILDARDO_QUERIES.md, no en pantalla.
 function ContentCard({
   label,
   value,
@@ -81,9 +82,7 @@ function ContentCard({
         {label}
       </span>
       {pending ? (
-        <span className="text-sm italic text-muted-foreground">
-          Pendiente de la entrega de Gildardo (Q9).
-        </span>
+        <span className="text-sm italic text-muted-foreground">Disponible proximamente.</span>
       ) : value ? (
         <p className="text-sm text-foreground">{value}</p>
       ) : (
