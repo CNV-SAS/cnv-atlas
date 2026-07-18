@@ -1,9 +1,16 @@
 # FROZEN_EXPORTS_REQUEST.md — solicitud consolidada a Gildardo (BORRADOR / WIP)
 
-**Estado:** BORRADOR en construcción. Se completa a medida que se construye la vista de Diagnóstico
-(ST4-ST7); cada función interna del frozen que Atlas necesite exponer se anota aquí al encontrarla.
-**NO se envía todavía:** Santiago la revisa con Gildardo y su CC antes de que salga. Consolida
-[[Q9]] y [[Q10]] (y lo que aparezca al construir el radar y el resto).
+**Estado:** LISTA CERRADA (2026-07-18). La vista de Diagnóstico (ST4-ST7) quedó construida; la
+lista dejó de crecer. Contiene las 4 cosas que Atlas necesita del lado de Gildardo. **Pendiente:
+Santiago la revisa y arma el mensaje final para Gildardo y su CC antes de enviarla** (Atlas no la
+envía). Consolida [[Q9]] y [[Q10]] más lo que aparecio al pulir la vista (patrón alimentario,
+rangos de referencia de indicadores).
+
+**Las 4 cosas (resumen):** (1) `efrProf` (abordaje por profesión); (2) clasificadores de
+composición (`cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`); (3) diagnóstico de consumo alimentario
+(patrón D1-D8); (4) rangos de referencia de los 12 indicadores (columnas Referencia y Δ). Las
+(1)/(2) se resuelven exponiendo funciones en `module.exports`; las (3)/(4) probablemente por
+entrega de datos. El detalle y las vías, abajo.
 
 **Por qué una sola solicitud:** encontramos el mismo bloqueo repetido (funciones que existen en el
 paquete congelado pero no están en el `module.exports`). En vez de queries goteando que piden
@@ -84,7 +91,7 @@ verifica (los valores no cambian; solo pasa a ser alcanzable desde el adaptador)
   definir contra que se mide la desviacion (borde mas cercano del rango, punto medio, etc.). Esa
   definicion tambien la da Gildardo; Atlas no la inventa.
 
-### (se agregarán más a medida que ST4-ST7 las encuentren)
+### Lista cerrada (fin de ST7). No se agregaron más al terminar la vista de Diagnóstico.
 
 ## Propuesta de línea exacta (a confirmar al cerrar la lista)
 
