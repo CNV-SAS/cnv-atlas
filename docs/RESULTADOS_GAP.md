@@ -215,3 +215,45 @@ diseño listo para el conjunto.
   omite hasta entonces.
 - **Marcado para revisión con Gildardo, NO construir:** veredicto de sarcopenia / fuerza prensil
   (Verificación 1); y lo ya marcado en Parte 1 (MCCB-12 + PBI + EIEC).
+
+---
+
+# Parte 4 — Auditoría de la columna de Diagnóstico de la tabla de composición (ST3)
+
+En la pestaña de Diagnóstico, la tabla de composición es la versión INTERPRETADA (5 columnas:
+Variable · Valor · Referencia · Δ · **Diagnóstico**). Esa 5ª columna es lo que la diferencia de la
+tabla cruda de Antrop&BIS. Auditoría fila por fila del ORIGEN de cada diagnóstico, antes de
+poblarlo (leído del HTML + verificado contra los exports de `frozen/engine.core.js`).
+
+## Origen por grupo de filas
+
+| Grupo de filas | Clasificador (HTML) | Origen | Disponible ahora |
+|---|---|---|---|
+| Antropométricas (IMC / cintura / ICT, Nivel V) | `clasifIMC`/`clasifCC`/`clasifICT` | **(a)** umbrales OMS de display | **Sí** (ya construidos en ST3) |
+| Filas que coinciden con un indicador ANI-BIS-E (FMI, FFMI, AF) | `cFMI`/`cFFMI`/`cAF` (EXPORTADOS) | **(b)** clasificador congelado, ya en `snapshot.classifications` | **Sí** (leer del snapshot) |
+| SMM/W, MMEM (índice), ASMI | `cSMM`/`cMMEM`/`cASMI` | **(c)** clasificador congelado pero **NO exportado** (no en `module.exports`, no en el snapshot) | **No** (bloqueado, Q10) |
+| Hidratación libre de grasa (FFW), balance E/I | `cFFW`/`cEISG` | **(c)** congelado pero NO exportado | **No** (bloqueado, Q10) |
+| AEC/MCA (ratio extracelular/celular) | `dAECMCA` (L12397) | **(c)** función SOLO de render (ni siquiera en el paquete congelado) | **No** (render-only; candidato a referencia de display) |
+| Masas crudas (MCA kg, sólidos EC, AEC/AIC en L, agua total, proteína, minerales, Re/Ri/R∞/C) | — | Sin clasificador dedicado en el port | **No** (no hay diagnóstico congelado; no se inventa) |
+
+## Verdicto
+
+- La columna de Diagnóstico se puede poblar HOY solo para **(a)** antropométricas + **(b)** FMI/FFMI/AF
+  (del snapshot).
+- El resto (SMM/W, MMEM, ASMI, hidratación, E/I, AEC/MCA) es **(c)**: sus clasificadores
+  (`cSMM`/`cMMEM`/`cASMI`/`cFFW`/`cEISG`) existen en el `.js` frozen pero **NO están expuestos** ni
+  se computan en el snapshot. Es el **mismo bloqueo que el abordaje por profesión (Q9)**: no se edita
+  el frozen, no se alcanza una const no exportada, no se re-implementa ni se inventa. Registrado como
+  **[[Q10]]** (exponer los clasificadores o entregarlos como datos). `ASMI` además toca sarcopenia
+  (Q5). `dAECMCA` es render-only: candidato a referencia de display si Gildardo lo confirma.
+
+## Decisión pendiente (de Santiago)
+
+1. **Construir la columna ahora con lo disponible:** poblar Diagnóstico para (a)+(b); dejar las (c)
+   como "sin clasificación del motor" / "—" (no inventar), con la columna lista para cuando Q10
+   resuelva. La tabla queda a 5 columnas de inmediato.
+2. **Diferir la columna completa** hasta Q10, dejando la tabla cruda (4 columnas) en Diagnóstico por
+   ahora.
+
+Recomendado: (1) — muestra la diferencia con Antrop&BIS ya (antropométricas + índices clasificados),
+es honesto sobre lo que falta, y no obliga a duplicar la tabla cruda. Sin inventar nada.

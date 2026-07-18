@@ -114,3 +114,18 @@
   
   Con cualquiera de las dos, Atlas congela el **conjunto completo** de abordajes (los 4 roles) en el snapshot al diagnosticar, sin acoplarse al rol logueado ni al registry vivo (un diagnóstico histórico mostrará el abordaje del rol tal como el modelo lo tenía cuando se decidió).
 - **Decisión de Atlas (2026-07-18):** se **difiere** la tarjeta de "abordaje por profesión" hasta la entrega de Gildardo. No se toca el frozen ni se inventa acceso. Las otras 5 tarjetas se muestran. El diseño de la pestaña de Diagnóstico deja el hueco listo (capas separables: contenido del modelo vs. rol).
+
+---
+
+## Q10 · Clasificadores de composición: existen en el paquete pero no se exponen (misma familia que Q9)
+
+- **Fecha:** 2026-07-18 (columna de diagnóstico de la tabla de composición, pestaña de Diagnóstico)
+- **Estado:** ABIERTO (bloquea la columna de diagnóstico de las filas de composición; las antropométricas y los indicadores ya resueltos)
+- **Hallazgo:** la tabla de composición de la pestaña de Diagnóstico es la versión INTERPRETADA (con una columna de diagnóstico por fila). El diagnóstico de las filas de masa/hidratación se computa con clasificadores que **existen en `frozen/engine.core.js` pero NO están en `module.exports`**: `cSMM` (SMM/peso), `cMMEM` (índice de miembros), `cASMI` (masa apendicular; además toca sarcopenia/prensil, Q5), `cFFW` (hidratación libre de grasa), `cEISG` (balance E/I). El `module.exports` solo expone los clasificadores de los 12 indicadores ANI-BIS-E (`cIFC`/`cIRC`/`cPABU`/`cFMI`/`cFFMI`/`cISCM`/`cIEHH`/`cIAE`/`cAF`/`cIR`), que sí se congelan en `snapshot.classifications`. Aparte, `AEC/MCA` usa `dAECMCA`, una función definida SOLO en el render del prototipo (no en el paquete congelado).
+- **Por qué no se resuelve del lado de Atlas:** idéntico a [[Q9]]. No se edita el `.js` frozen (regla 12), ni siquiera el `module.exports`. Una `const` module-local no exportada es inalcanzable desde el adaptador. Re-implementar los clasificadores en TS sería reingeniería de la ciencia congelada (prohibido). Y no existen como datos estáticos que poblar.
+- **Pregunta a Gildardo (dos vías, cualquiera sirve):**
+  1. **Exponer los clasificadores de composición en el `module.exports`** (`cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`; y decidir si `dAECMCA` entra al paquete o queda como referencia de display), para computarlos al diagnosticar y congelar su etiqueta en el snapshot.
+  2. **Entregar los cortes como datos** (mapa variable → umbrales por sexo → etiqueta), para poblarlos en el registry como el resto del contenido. **Preferida**, por consistencia con cómo ya vive el contenido EFR.
+  
+  Con cualquiera, la columna de diagnóstico se congela en el snapshot al diagnosticar (autosuficiente, sin cruzar el registry vivo).
+- **Decisión de Atlas (2026-07-18):** hasta la entrega, la columna de diagnóstico se puebla SOLO con lo disponible: (a) umbrales OMS de las filas antropométricas y (b) las clasificaciones de indicadores ya congeladas (FMI/FFMI/AF). Las filas de composición (SMM/W, MMEM, ASMI, hidratación, E/I, AEC/MCA) quedan sin etiqueta ("sin clasificación del motor"), no se inventa. `dAECMCA` es candidato a referencia de display si Gildardo lo confirma.
