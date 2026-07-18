@@ -15,6 +15,8 @@ import {
 } from "@/modules/diagnoses/data/results-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
+import { ReportCard } from "@/modules/reports/components/report-card";
+import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { TreatmentPanel } from "@/modules/treatment/components/treatment-panel";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -93,11 +95,12 @@ export default async function ResultadosEvaluacionPage({
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
   // La comparacion de seguimiento aparece solo si hay una evaluacion previa (null si es
   // la primera del paciente).
-  const [protocol, comparison, composition, criterion] = await Promise.all([
+  const [protocol, comparison, composition, criterion, reportCard] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
     getDiagnosisCriterion(id),
+    getReportCardForEvaluation(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -119,6 +122,14 @@ export default async function ResultadosEvaluacionPage({
           ) : (
             <StagePlaceholder label="Tratamiento" />
           )}
+          {/* Reporte: cierre de la etapa de Tratamiento (es su salida). La aprobacion/envio la
+              gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
+          {reportCard ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
+              <ReportCard report={reportCard} />
+            </section>
+          ) : null}
         </div>
       }
       seguimiento={

@@ -57,6 +57,10 @@ export async function approveReportAction(
   }
 
   revalidatePath("/evaluaciones");
+  // La ReportCard tambien vive como cierre de la etapa de Tratamiento en la vista de la
+  // evaluacion (ruta dinamica): se revalida para que el estado de la card (borrador -> aprobado)
+  // se refresque alli tras aprobar, no solo en la lista /reportes.
+  revalidatePath("/evaluaciones/[id]", "page");
   return { error: null, success: "Reporte aprobado.", warning: null };
 }
 
@@ -90,6 +94,9 @@ export async function sendReportAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath("/evaluaciones");
+  // La ReportCard tambien vive como cierre de Tratamiento en la vista de la evaluacion: se
+  // revalida la ruta dinamica para que el estado (aprobado -> enviado) se refresque alli.
+  revalidatePath("/evaluaciones/[id]", "page");
   // El reporte enviado sale de la bandeja de pendientes (/evaluaciones) y pasa a ser registro
   // permanente en /reportes; se revalida para que aparezca alli de inmediato y se le avisa al
   // profesional donde queda (si no, "desaparece" al enviar).

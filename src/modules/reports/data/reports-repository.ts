@@ -100,6 +100,41 @@ export async function listReports(): Promise<ReportListItem[]> {
   });
 }
 
+// Reporte del paciente de UNA evaluacion, con los campos que consume la ReportCard (mismo shape
+// que ReportListItem). El mas reciente (order created_at desc): si una correccion supero a un
+// reporte enviado, se muestra el vigente. Lo consume la etapa de Tratamiento como cierre (ST7).
+export async function getReportCardForEvaluation(
+  evaluationId: string,
+): Promise<ReportListItem | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: row, error } = await supabase
+    .from("reports")
+    .select(
+      "id, status, evaluation_id, created_at, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
+    )
+    .eq("type", "paciente")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`reports-repository: getReportCardForEvaluation: ${error.message}`);
+  if (!row) return null;
+  const evaluation = one<ListEvaluationEmbed>(
+    row.evaluations as ListEvaluationEmbed | ListEvaluationEmbed[] | null,
+  );
+  const patient = one<ListPatientEmbed>(evaluation?.patients ?? null);
+  const profile = one(patient?.patient_profiles ?? null);
+  return {
+    reportId: row.id,
+    evaluationId: row.evaluation_id,
+    status: row.status as ReportStatus,
+    evaluationType: evaluation?.type ?? "inicial",
+    createdAt: row.created_at,
+    documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
+    patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
+  };
+}
+
 export type ReportDispatch = {
   reportId: string;
   evaluationId: string;
