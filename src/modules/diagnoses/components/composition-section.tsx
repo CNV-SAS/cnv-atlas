@@ -44,12 +44,60 @@ function AnthroChip({ label, cls }: { label: string; cls: AnthroClass | null }) 
   );
 }
 
+type Classifications = Record<string, { label?: string } | null>;
+
+// Diagnostico por fila de la tabla de Wang. Disponible HOY: (a) antropometricas por umbral OMS
+// (imc/cintura) y (b) las clasificaciones del motor ya congeladas en el snapshot (FFMI/AF). El
+// resto queda como PENDIENTE EXPLICITO: nunca un guion silencioso, que un profesional podria leer
+// como "el modelo evaluo esto y salio normal" (falso). Ver docs/RESULTADOS_GAP.md Parte 4 y Q10.
+function DiagnosisCell({
+  rowKey,
+  value,
+  sexoM,
+  classifications,
+}: {
+  rowKey: string;
+  value: number | null;
+  sexoM: boolean;
+  classifications: Classifications;
+}) {
+  // (a) antropometricas OMS (referencia de display, rotulada como tal via tooltip).
+  const oms = rowKey === "imc" ? clasificarIMC(value) : rowKey === "cintura" ? clasificarCintura(value, sexoM) : null;
+  if (oms) {
+    return (
+      <span
+        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, oms.sev))]}`}
+        title="Referencia médica estándar (OMS), no output del motor ANI-BIS-E."
+      >
+        {oms.label}
+      </span>
+    );
+  }
+  // (b) clasificacion del motor congelada en el snapshot (FFMI, AF).
+  const snap =
+    rowKey === "FFMI" ? classifications.FFMI : rowKey === "AF" ? classifications.AF : null;
+  if (snap?.label) {
+    return <span className="text-xs text-foreground">{snap.label}</span>;
+  }
+  // (c) sin clasificacion del motor: PENDIENTE explicito, distinguible de un resultado clinico.
+  return (
+    <span
+      className="rounded-md border border-dashed border-border px-2 py-0.5 text-xs italic text-muted-foreground"
+      title="No disponible aún: el motor no clasifica esta variable todavía (pendiente de la entrega de Gildardo, Q10). No es un resultado clínico."
+    >
+      No disponible aún
+    </span>
+  );
+}
+
 export function CompositionSection({
   composition,
   sexoM,
+  classifications,
 }: {
   composition: Composition;
   sexoM: boolean;
+  classifications: Classifications;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -82,13 +130,14 @@ export function CompositionSection({
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-sm">
+            <table className="w-full min-w-[38rem] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-2 pr-4 font-medium">Variable</th>
                   <th className="py-2 pr-4 text-right font-medium">Valor</th>
                   <th className="py-2 pr-4 text-right font-medium">Referencia</th>
-                  <th className="py-2 text-right font-medium">Δ</th>
+                  <th className="py-2 pr-4 text-right font-medium">Δ</th>
+                  <th className="py-2 font-medium">Diagnóstico</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,7 +145,7 @@ export function CompositionSection({
                   <Fragment key={lvl.title}>
                     <tr className="border-b border-border/60 bg-muted/40">
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                       >
                         {lvl.title}
@@ -119,8 +168,16 @@ export function CompositionSection({
                           <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
                             {fmt(r.reference)}
                           </td>
-                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">
+                          <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
                             {delta == null ? "—" : `${delta >= 0 ? "+" : ""}${fmt(delta)}`}
+                          </td>
+                          <td className="py-1.5">
+                            <DiagnosisCell
+                              rowKey={r.key}
+                              value={r.value}
+                              sexoM={sexoM}
+                              classifications={classifications}
+                            />
                           </td>
                         </tr>
                       );

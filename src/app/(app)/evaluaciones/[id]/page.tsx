@@ -91,7 +91,13 @@ export default async function ResultadosEvaluacionPage({
       diagnostico={
         <div className="flex flex-col gap-8">
           <EvaluationResults results={results} />
-          {composition ? <CompositionSection composition={composition} sexoM={sexoM} /> : null}
+          {composition ? (
+            <CompositionSection
+              composition={composition}
+              sexoM={sexoM}
+              classifications={results.snapshot.classifications}
+            />
+          ) : null}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
           {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
         </div>
