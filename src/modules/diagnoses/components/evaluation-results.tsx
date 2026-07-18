@@ -278,17 +278,7 @@ export function EvaluationResults({ results }: { results: Results }) {
               </div>
             ))}
           </div>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-muted-foreground">Rutas de atencion</span>
-            <div className="flex flex-wrap gap-2">
-              {dfi.rutas.map((r) => (
-                <Badge key={r} variant="outline">
-                  {r}
-                </Badge>
-              ))}
-            </div>
-          </div>
+          {/* Las rutas de atencion (salida del DFI) se muestran en la etapa de Tratamiento. */}
         </CardContent>
       </Card>
 

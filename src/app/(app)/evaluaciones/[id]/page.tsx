@@ -6,6 +6,7 @@ import { CompositionSection } from "@/modules/diagnoses/components/composition-s
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
+import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import {
@@ -101,15 +102,32 @@ export default async function ResultadosEvaluacionPage({
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
 
-  // Shell de pestañas: solo Diagnostico activa (ST2). Contenido de Diagnostico (ST3): resultados
-  // del motor (indicadores + diagnostico funcional + Diana + DFI) + composicion corporal (Wang) y
-  // clasificacion antropometrica. La comparacion y el tratamiento viven aqui de forma transitoria
-  // (los reparten Seguimiento / Rutas en bloques posteriores). El orden final es ST7.
+  // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
+  // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
+  // protocolo. Seguimiento recibe la comparacion contra la evaluacion previa. El pulido de
+  // Evaluacion/Tratamiento/Seguimiento es de bloques futuros; aqui solo se reubica.
+  const rutas = results.compatible ? results.snapshot.dfi.rutas : [];
+
   return (
     <EvaluationTabs
       evaluacion={<StagePlaceholder label="Evaluación" />}
-      tratamiento={<StagePlaceholder label="Tratamiento" />}
-      seguimiento={<StagePlaceholder label="Seguimiento" />}
+      tratamiento={
+        <div className="flex flex-col gap-8">
+          <RutasSection rutas={rutas} />
+          {protocol ? (
+            <TreatmentPanel evaluationId={id} protocol={protocol} />
+          ) : (
+            <StagePlaceholder label="Tratamiento" />
+          )}
+        </div>
+      }
+      seguimiento={
+        comparison ? (
+          <FollowupComparison comparison={comparison} />
+        ) : (
+          <StagePlaceholder label="Seguimiento" />
+        )
+      }
       diagnostico={
         <div className="flex flex-col gap-8">
           <EvaluationResults results={results} />
@@ -124,8 +142,6 @@ export default async function ResultadosEvaluacionPage({
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />
           ) : null}
-          {comparison ? <FollowupComparison comparison={comparison} /> : null}
-          {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
         </div>
       }
     />
