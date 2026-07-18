@@ -5,7 +5,9 @@ import { requireUser } from "@/modules/auth/session";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
+import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
+import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
@@ -74,10 +76,11 @@ export default async function ResultadosEvaluacionPage({
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
   // La comparacion de seguimiento aparece solo si hay una evaluacion previa (null si es
   // la primera del paciente).
-  const [protocol, comparison, composition] = await Promise.all([
+  const [protocol, comparison, composition, criterion] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
+    getDiagnosisCriterion(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -97,6 +100,10 @@ export default async function ResultadosEvaluacionPage({
               sexoM={sexoM}
               classifications={results.snapshot.classifications}
             />
+          ) : null}
+          {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
+          {criterion ? (
+            <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />
           ) : null}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
           {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
