@@ -7,6 +7,7 @@ import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-res
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
+import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import {
@@ -155,6 +156,9 @@ export default async function ResultadosEvaluacionPage({
               ) : null
             }
           />
+          {/* Diagnostico de encuesta (D1-D8): contenido de otra naturaleza, detras de un clic,
+              para que no compita con el nucleo. Placeholder hasta que Gildardo lo entregue. */}
+          <SurveyDiagnosisSection />
           {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />

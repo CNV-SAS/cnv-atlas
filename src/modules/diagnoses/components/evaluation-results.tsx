@@ -1,10 +1,10 @@
 import { type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EngineIndicators } from "@/clinical-engine";
 
+import { DetailsSection } from "./details-section";
 import { DfiRadar } from "./dfi-radar";
 import { Diana } from "./diana";
 import type { EvaluationResults as Results } from "../data/results-reader";
@@ -82,36 +82,6 @@ function ContentCard({
         <span className="text-sm text-muted-foreground">Sin dato para este estado.</span>
       )}
     </div>
-  );
-}
-
-// Seccion colapsable para el DETALLE granular (indicadores, composicion). `<details>` nativo:
-// accesible, sin JS ni dependencia. Indicadores abiertos por defecto (valor diferencial de CNV,
-// debe verse); composicion cerrada (detalle extenso). El marcador nativo se oculta y se usa un
-// chevron que rota al abrir (via variante open de Tailwind).
-function DetailsSection({
-  title,
-  defaultOpen,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <details
-      {...(defaultOpen ? { open: true } : {})}
-      className="group rounded-xl border border-border bg-card"
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-foreground [&::-webkit-details-marker]:hidden">
-        <span>{title}</span>
-        <ChevronDown
-          className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="px-6 pb-6">{children}</div>
-    </details>
   );
 }
 

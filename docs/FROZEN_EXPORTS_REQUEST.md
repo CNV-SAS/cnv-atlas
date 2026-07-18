@@ -50,6 +50,22 @@ verifica (los valores no cambian; solo pasa a ser alcanzable desde el adaptador)
 - **Nota `dAECMCA` (AEC/MCA):** es render-only (no está en el paquete congelado). Decidir si Gildardo
   la incorpora al paquete o si Atlas la trata como referencia de display (como los umbrales OMS).
 
+### 3. Diagnóstico de consumo alimentario (D1-D8, patrón alimentario)
+- **Origen:** NO está en el paquete congelado. El patrón alimentario (alimentos protectores /
+  moderados / de riesgo, con su scoring por grupos) se computa en la **capa de render** del
+  prototipo (`ATLAS_v7.html`: categorización de alimentos ~L587-686, funciones de scoring
+  ~L2342 y ~L3234, `FREQ_GROUPS`). Es la misma familia que `calcularDominios`/`dAECMCA`:
+  lógica de presentación que nunca se porto al motor.
+- **Qué habilita:** la sección "Diagnóstico de encuesta" de la pestaña de Diagnóstico (hoy
+  placeholder "Disponible proximamente"). Es análisis clínico de la encuesta D1-D8.
+- **Por qué no se resuelve del lado de Atlas:** reimplementar la categorización y el scoring en
+  TS sería reingeniería de la lógica clínica de Gildardo (prohibido); no se deriva fielmente de
+  las respuestas crudas sin esa lógica.
+- **Vías (que su CC elija):** (a) **incorporar la función al paquete congelado** y exponerla en
+  `module.exports`, como el resto; o (b) **entregar la categorización + los cortes como datos**
+  (mapa alimento -> categoría, y los umbrales/pesos del scoring por grupo), para poblarlos en el
+  registry. Para contenido tan tabular, la vía de datos puede ser la más limpia.
+
 ### (se agregarán más a medida que ST4-ST7 las encuentren)
 
 ## Propuesta de línea exacta (a confirmar al cerrar la lista)
