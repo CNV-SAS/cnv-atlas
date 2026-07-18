@@ -66,6 +66,24 @@ verifica (los valores no cambian; solo pasa a ser alcanzable desde el adaptador)
   (mapa alimento -> categoría, y los umbrales/pesos del scoring por grupo), para poblarlos en el
   registry. Para contenido tan tabular, la vía de datos puede ser la más limpia.
 
+### 4. Rangos de referencia de los 12 indicadores (columnas Referencia y Δ)
+- **Origen:** los cortes que definen el rango esperado de cada indicador viven DENTRO de los
+  clasificadores congelados (`cIFC`, `cIRC`, `cPABU`, `cFMI`, `cFFMI`, `cISCM`, `cIEHH`, `cIAE`,
+  `cAF`, `cIR`): p. ej. `cIFC(v, sexo)` usa `lo/hi` (hombres 4.12/6.68, mujeres 2.08/3.28), pero
+  la funcion solo DEVUELVE `{ label, color, risk, k }`, no el `lo/hi`. El snapshot guarda
+  `IndicatorClass = { label, k }`, sin rango. Los umbrales no estan expuestos como dato.
+- **Qué habilita:** las columnas Referencia (rango esperado) y Δ (desviacion) en la tabla de los
+  12 indicadores de la pestaña de Diagnostico, que es como el profesional lee el porque de la
+  clasificacion. Hoy la tabla tiene 3 columnas (Indicador, Valor, Clasificacion); faltan esas dos.
+- **Por qué no se resuelve del lado de Atlas:** transcribir los `lo/hi` de cada clasificador en TS
+  duplicaria la ciencia congelada (drift si Gildardo recalibra), y viola la propiedad verbatim.
+- **Vías (que su CC elija):** (a) **entregar los cortes como datos** (tabla indicador × sexo →
+  `{ lo, hi, unidad }`), la mas natural para una columna de referencia; o (b) **exponer una
+  funcion** que dado el indicador/sexo devuelva el rango.
+- **Ojo con Δ:** la referencia es un RANGO (lo/hi), no un punto. Para una columna Δ hay que
+  definir contra que se mide la desviacion (borde mas cercano del rango, punto medio, etc.). Esa
+  definicion tambien la da Gildardo; Atlas no la inventa.
+
 ### (se agregarán más a medida que ST4-ST7 las encuentren)
 
 ## Propuesta de línea exacta (a confirmar al cerrar la lista)

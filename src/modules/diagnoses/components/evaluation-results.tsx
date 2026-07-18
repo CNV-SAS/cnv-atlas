@@ -254,34 +254,46 @@ export function EvaluationResults({
       {/* Detalle granular en colapsables: indicadores ABIERTOS (valor diferencial de CNV, deben
           verse), composicion CERRADA (30 filas de detalle). */}
       <DetailsSection title="Indicadores ANI-BIS-E" defaultOpen>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[28rem] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Indicador</th>
-                <th className="py-2 pr-4 font-medium">Valor</th>
-                <th className="py-2 font-medium">Clasificacion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {INDICATORS.map(({ code, key }) => (
-                <tr key={code} className="border-b border-border/60">
-                  <td className="py-2 pr-4">
-                    <span className="font-medium text-foreground">{code}</span>
-                    {results.indicatorNames[code] ? (
-                      <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
-                    ) : null}
-                  </td>
-                  <td className="py-2 pr-4 tabular-nums text-foreground">
-                    {fmtNum(indicators[key])}
-                  </td>
-                  <td className="py-2 text-muted-foreground">
-                    {classifications[code]?.label ?? "N/D"}
-                  </td>
+        <div className="flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-2 pr-4 font-medium">Indicador</th>
+                  <th className="py-2 pr-4 text-right font-medium">Valor</th>
+                  <th className="py-2 pr-4 text-right font-medium">Referencia</th>
+                  <th className="py-2 pr-4 text-right font-medium">Δ</th>
+                  <th className="py-2 font-medium">Clasificacion</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {INDICATORS.map(({ code, key }) => (
+                  <tr key={code} className="border-b border-border/60">
+                    <td className="py-2 pr-4">
+                      <span className="font-medium text-foreground">{code}</span>
+                      {results.indicatorNames[code] ? (
+                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-foreground">
+                      {fmtNum(indicators[key])}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
+                    <td className="py-2 text-muted-foreground">
+                      {classifications[code]?.label ?? "N/D"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Referencia y Δ se muestran vacias con aviso a nivel de seccion (no por fila): los
+              rangos son cortes internos del motor congelado, aun no expuestos como dato
+              (ver docs/FROZEN_EXPORTS_REQUEST.md). Se pueblan cuando Gildardo los entregue. */}
+          <p className="text-xs text-muted-foreground">
+            Rango de referencia y desviacion (Δ) por indicador: disponibles proximamente.
+          </p>
         </div>
       </DetailsSection>
 
