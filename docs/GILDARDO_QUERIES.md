@@ -114,6 +114,7 @@
   
   Con cualquiera de las dos, Atlas congela el **conjunto completo** de abordajes (los 4 roles) en el snapshot al diagnosticar, sin acoplarse al rol logueado ni al registry vivo (un diagnóstico histórico mostrará el abordaje del rol tal como el modelo lo tenía cuando se decidió).
 - **Decisión de Atlas (2026-07-18):** se **difiere** la tarjeta de "abordaje por profesión" hasta la entrega de Gildardo. No se toca el frozen ni se inventa acceso. Las otras 5 tarjetas se muestran. El diseño de la pestaña de Diagnóstico deja el hueco listo (capas separables: contenido del modelo vs. rol).
+- **CONSOLIDADA:** esta query se fusiona en `docs/FROZEN_EXPORTS_REQUEST.md` (solicitud única a Gildardo con la propuesta técnica lista). NO se envía suelta; aquí queda el hallazgo con fecha. Ver la solicitud consolidada para la vía (exponer `efrProf` vs. entregar el abordaje como datos).
 
 ---
 
@@ -128,4 +129,5 @@
   2. **Entregar los cortes como datos** (mapa variable → umbrales por sexo → etiqueta), para poblarlos en el registry como el resto del contenido. **Preferida**, por consistencia con cómo ya vive el contenido EFR.
   
   Con cualquiera, la columna de diagnóstico se congela en el snapshot al diagnosticar (autosuficiente, sin cruzar el registry vivo).
-- **Decisión de Atlas (2026-07-18):** hasta la entrega, la columna de diagnóstico se puebla SOLO con lo disponible: (a) umbrales OMS de las filas antropométricas y (b) las clasificaciones de indicadores ya congeladas (FMI/FFMI/AF). Las filas de composición (SMM/W, MMEM, ASMI, hidratación, E/I, AEC/MCA) quedan sin etiqueta ("sin clasificación del motor"), no se inventa. `dAECMCA` es candidato a referencia de display si Gildardo lo confirma.
+- **Decisión de Atlas (2026-07-18):** hasta la entrega, la columna de diagnóstico se puebla SOLO con lo disponible: (a) umbrales OMS de las filas antropométricas y (b) las clasificaciones de indicadores ya congeladas (FMI/FFMI/AF). Las filas de composición (SMM/W, MMEM, ASMI, hidratación, E/I, AEC/MCA) quedan con un rótulo PENDIENTE explícito ("No disponible aún", distinguible de un resultado clínico), no se inventa. `dAECMCA` es candidato a referencia de display si Gildardo lo confirma.
+- **CONSOLIDADA:** esta query se fusiona en `docs/FROZEN_EXPORTS_REQUEST.md` (solicitud única a Gildardo con la propuesta técnica lista). NO se envía suelta; aquí queda el hallazgo con fecha.
