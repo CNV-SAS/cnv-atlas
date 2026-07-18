@@ -77,15 +77,9 @@ function DiagnosisCell({
   if (snap?.label) {
     return <span className="text-xs text-foreground">{snap.label}</span>;
   }
-  // (c) sin clasificacion del motor: PENDIENTE explicito, distinguible de un resultado clinico.
-  return (
-    <span
-      className="rounded-md border border-dashed border-border px-2 py-0.5 text-xs italic text-muted-foreground"
-      title="No disponible aún: el motor no clasifica esta variable todavía (pendiente de la entrega de Gildardo, Q10). No es un resultado clínico."
-    >
-      No disponible aún
-    </span>
-  );
+  // (c) sin clasificacion del motor: guion neutro. La ausencia se comunica UNA vez a nivel de
+  // seccion (nota bajo la tabla), no se repite por fila.
+  return <span className="text-muted-foreground">-</span>;
 }
 
 export function CompositionSection({
@@ -180,6 +174,10 @@ export function CompositionSection({
               </tbody>
             </table>
           </div>
+        <p className="text-xs text-muted-foreground">
+          Varias variables de composición aún no tienen clasificación del motor (se muestran con un
+          guion en Diagnóstico); disponibles proximamente.
+        </p>
       </section>
     </div>
   );
