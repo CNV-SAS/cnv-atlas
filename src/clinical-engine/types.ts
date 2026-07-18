@@ -194,7 +194,9 @@ const EFR_RISK_ORDER: ReadonlyArray<readonly [number, number]> = [
 ];
 
 // Rango de riesgo (0..8) de un par de bandas, contra el orden de Gildardo. Clampa a 1..3.
-function efrRiskRank(a: number, b: number): number {
+// Exportado para la Diana visual (posicion y color de las celdas), que ordena por rango, no
+// por banda cruda. Es el MISMO orden que define el numero de estado (unica fuente).
+export function efrRiskRank(a: number, b: number): number {
   const c = (v: number) => Math.min(3, Math.max(1, v));
   const ca = c(a);
   const cb = c(b);

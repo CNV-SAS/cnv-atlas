@@ -1,8 +1,12 @@
-// La Diana EFR: gráfico polar de los 81 estados (imagen característica de Atlas, BRAND).
+import { efrRiskRank } from "@/clinical-engine";
+
+// La Diana EFR: grafico polar de los 81 estados (imagen caracteristica de Atlas, BRAND).
 // 9 sectores angulares (sector funcional FyR = IFC x IRC) x 9 anillos radiales (fenotipo
-// estructural = FFMI x FMI) = 81 celdas. Se resalta la celda del paciente. Accesible: no
-// depende solo del color (tambien posicion y etiqueta); SVG propio, sin librerias de charts.
-// Server component puro (sin estado); theme-aware via clases de Tailwind (fill/stroke).
+// estructural = FFMI x FMI) = 81 celdas. Cada celda se pinta con el gradiente de riesgo
+// verde->rojo del prototipo de Gildardo (menor riesgo al centro, mayor en el exterior); la
+// celda del paciente se resalta. Port de render fiel (ATLAS_v7.html, DianaEFyR ~L4375-4605):
+// no toca el motor congelado ni los golden clinicos, es presentacion. Accesible: la posicion
+// del paciente no depende solo del color (marcador, numero y etiqueta). Server component puro.
 
 type Bands = { ifc: number; irc: number; ffmi: number; fmi: number }; // k 1/2/3 cada uno
 
@@ -14,6 +18,37 @@ const SECTORS = 9;
 const RINGS = 9;
 const SECTOR_DEG = 360 / SECTORS;
 const BAND = (R - HOLE) / RINGS;
+
+// Paradas del gradiente de riesgo, VERBATIM del prototipo (ATLAS_v7.html, rc() ~L4517). Verde
+// (bajo riesgo) -> rojo oscuro (alto). El color es SEMANTICA de riesgo, no decoracion.
+const STOPS = [
+  { t: 0, r: 34, g: 197, b: 94 },
+  { t: 0.12, r: 74, g: 222, b: 128 },
+  { t: 0.25, r: 163, g: 230, b: 53 },
+  { t: 0.35, r: 234, g: 179, b: 8 },
+  { t: 0.45, r: 245, g: 158, b: 11 },
+  { t: 0.55, r: 249, g: 115, b: 22 },
+  { t: 0.65, r: 239, g: 68, b: 68 },
+  { t: 0.78, r: 220, g: 38, b: 38 },
+  { t: 0.9, r: 185, g: 28, b: 28 },
+  { t: 1, r: 127, g: 29, b: 29 },
+] as const;
+
+// Color de una celda a partir de los rangos de riesgo (1..9) de su sector y su anillo. Misma
+// interpolacion que el HTML: t = (a + b - 2) / 16, sobre las 10 paradas.
+function riskColor(a: number, b: number): string {
+  const t = (a + b - 2) / 16;
+  let i = 0;
+  while (i < STOPS.length - 1 && STOPS[i + 1].t < t) i++;
+  if (i >= STOPS.length - 1) {
+    const z = STOPS[STOPS.length - 1];
+    return `rgb(${z.r},${z.g},${z.b})`;
+  }
+  const x = STOPS[i];
+  const z = STOPS[i + 1];
+  const l = (t - x.t) / (z.t - x.t);
+  return `rgb(${Math.round(x.r + (z.r - x.r) * l)},${Math.round(x.g + (z.g - x.g) * l)},${Math.round(x.b + (z.b - x.b) * l)})`;
+}
 
 function polar(r: number, angleDeg: number): [number, number] {
   const a = ((angleDeg - 90) * Math.PI) / 180; // 0 grados arriba
@@ -41,21 +76,37 @@ export function Diana({
   frSectorName: string;
   structuralName: string;
 }) {
-  // Indice angular (sector) y radial (anillo) del paciente, a partir de las 4 bandas.
-  const sectorIndex = (bands.ifc - 1) * 3 + (bands.irc - 1); // 0..8
-  const ringIndex = (bands.ffmi - 1) * 3 + (bands.fmi - 1); // 0..8 (0 = interior)
-  const aStart = sectorIndex * SECTOR_DEG;
-  const aEnd = aStart + SECTOR_DEG;
-  const rInner = HOLE + ringIndex * BAND;
-  const rOuter = rInner + BAND;
+  // Posicion del paciente por RANGO de riesgo (no por banda cruda): asi la celda cae donde la
+  // pone la Diana de Gildardo. sectorIndex = rango de IFC x IRC; ringIndex = rango de FFMI x FMI.
+  const sectorIndex = efrRiskRank(bands.ifc, bands.irc); // 0..8
+  const ringIndex = efrRiskRank(bands.ffmi, bands.fmi); // 0..8 (0 = interior, menor riesgo)
 
-  // Marcador en el centroide de la celda del paciente.
-  const [mx, my] = polar((rInner + rOuter) / 2, aStart + SECTOR_DEG / 2);
+  // Las 81 celdas, ordenadas por rango: sc/rg 0..8 son directamente el rango. El color usa
+  // rango+1 (1..9), igual que el prototipo.
+  const cells: { key: string; d: string; fill: string; isPat: boolean }[] = [];
+  for (let rg = 0; rg < RINGS; rg++) {
+    const rInner = HOLE + rg * BAND;
+    const rOuter = rInner + BAND;
+    for (let sc = 0; sc < SECTORS; sc++) {
+      const aStart = sc * SECTOR_DEG;
+      const aEnd = aStart + SECTOR_DEG;
+      cells.push({
+        key: `${rg}-${sc}`,
+        d: segment(rInner, rOuter, aStart, aEnd),
+        fill: riskColor(sc + 1, rg + 1),
+        isPat: sc === sectorIndex && rg === ringIndex,
+      });
+    }
+  }
 
-  const ringCircles = Array.from({ length: RINGS + 1 }, (_, k) => HOLE + k * BAND);
-  const spokes = Array.from({ length: SECTORS }, (_, j) => j * SECTOR_DEG);
+  // Celda y marcador del paciente.
+  const patInner = HOLE + ringIndex * BAND;
+  const patOuter = patInner + BAND;
+  const patStart = sectorIndex * SECTOR_DEG;
+  const patD = segment(patInner, patOuter, patStart, patStart + SECTOR_DEG);
+  const [mx, my] = polar((patInner + patOuter) / 2, patStart + SECTOR_DEG / 2);
 
-  const label = `Diana EFR: estado ${stateNumber} de 81. Sector funcional ${frSectorName}, fenotipo estructural ${structuralName}.`;
+  const label = `Diana EFR: estado ${stateNumber} de 81, resaltado sobre el gradiente de riesgo (menor al centro, mayor en el exterior). Sector funcional ${frSectorName}, fenotipo estructural ${structuralName}.`;
 
   return (
     <figure className="flex flex-col items-center gap-3">
@@ -67,32 +118,39 @@ export function Diana({
         aria-label={label}
         className="max-w-full"
       >
-        {/* Rejilla: anillos concentricos */}
-        {ringCircles.map((r, i) => (
-          <circle
-            key={`r${i}`}
-            cx={C}
-            cy={C}
-            r={r}
-            fill="none"
-            className="stroke-border"
+        {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
+            (visibles sobre cualquier celda en ambos temas). */}
+        {cells.map((cell) => (
+          <path
+            key={cell.key}
+            d={cell.d}
+            fill={cell.fill}
+            stroke="white"
+            strokeOpacity={0.7}
             strokeWidth={1}
           />
         ))}
-        {/* Rejilla: radios (spokes) que separan los 9 sectores */}
-        {spokes.map((deg, j) => {
-          const [xi, yi] = polar(HOLE, deg);
-          const [xo, yo] = polar(R, deg);
-          return (
-            <line key={`s${j}`} x1={xi} y1={yi} x2={xo} y2={yo} className="stroke-border" strokeWidth={1} />
-          );
-        })}
-        {/* Celda del paciente resaltada */}
-        <path d={segment(rInner, rOuter, aStart, aEnd)} className="fill-primary stroke-primary" fillOpacity={0.85} />
-        <circle cx={mx} cy={my} r={4} className="fill-background stroke-primary" strokeWidth={2} />
+        {/* Celda del paciente: contorno de alto contraste sobre el fondo saturado. */}
+        <path d={patD} fill="none" className="stroke-foreground" strokeWidth={3} />
+        {/* Marcador: aro blanco + numero de estado, para leer la posicion sin depender del color. */}
+        <circle cx={mx} cy={my} r={11} fill="white" stroke="#111" strokeWidth={1.5} />
+        <text
+          x={mx}
+          y={my}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={10}
+          fontWeight={700}
+          fill="#111"
+        >
+          {stateNumber}
+        </text>
       </svg>
-      <figcaption className="text-center text-xs text-muted-foreground">
-        Estado {stateNumber} de 81 · sector {frSectorName} · anillo {structuralName}
+      <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+        <span>
+          Estado {stateNumber} de 81 · sector {frSectorName} · anillo {structuralName}
+        </span>
+        <span>Menor riesgo al centro, mayor en el exterior.</span>
       </figcaption>
     </figure>
   );
