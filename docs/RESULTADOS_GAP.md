@@ -143,7 +143,7 @@ en el snapshot → display, portable directo; (b) umbral aplicado en el render (
 | Fila del Diagnóstico (HTML) | Qué muestra | Origen | Portabilidad / acción |
 |---|---|---|---|
 | **Composición Corporal — Niveles de Wang** (tabla V/IV/III/II, L6144) | Variable · valor obtenido · referencia · Δ | (a) valores y referencias del import BIS (`bis_raw_values`, inmutable por medición); Δ = resta en el render (trivial) | Portable como display. Los valores NO están en el snapshot del diagnóstico (viven en `bis_raw_values`). **Decisión:** congelarlos en el snapshot (autosuficiencia total) o leerlos de `bis_raw_values` (inmutable por medición, no del registry vivo → aceptable). No es clasificador clínico. |
-| **Clasificación antropométrica** (IMC / Cintura / ICT con etiqueta de diagnóstico, `clasifIMC`/`clasifCC`/`clasifICT` L6416-6470) | IMC "Obesidad I", cintura "Riesgo CV", ICT "Saludable" | (b) umbral aplicado en el render, FUERA del motor. **Umbrales médicos ESTÁNDAR** (OMS IMC 18.5/25/30/35/40; cintura CV 94/102 H · 80/88 M; ICT 0.4/0.5/0.6) | **Referencia de display**, NO ciencia congelada ANI-BIS-E: cutoffs universales publicados. Portables como umbrales documentados. Los valores (IMC/cintura/ICT) se derivan de `bis_raw_values` (BMI/cintura/talla). **Decisión menor:** congelar la clasificación en el snapshot, o computarla al mostrar desde los cutoffs estándar (que no cambian). NO requiere a Gildardo. |
+| **Clasificación antropométrica** (IMC / Cintura / ICT con etiqueta de diagnóstico, `clasifIMC`/`clasifCC`/`clasifICT` L6416-6470) | IMC "Obesidad I", cintura "Riesgo CV", ICT "Saludable" | (b) umbral aplicado en el render, FUERA del motor. **Umbrales médicos ESTÁNDAR** (OMS/WHO: IMC 18.5/25/30/35/40 kg/m²; circunferencia de cintura riesgo CV 94/102 cm H · 80/88 cm M; índice cintura-talla 0.4/0.5/0.6) | **Referencia de display**, NO ciencia congelada ANI-BIS-E: cutoffs universales publicados (OMS). Portables como umbrales documentados con su fuente. Los valores (IMC/cintura/ICT) se derivan de `bis_raw_values` (BMI/cintura/talla). **Decisión menor:** computarlos al mostrar desde los cutoffs estándar (que no cambian) — recomendado — o congelar la clasificación en el snapshot. **La UI los rotula como referencia médica estándar (OMS), NO como output del motor ANI-BIS-E.** NO requiere a Gildardo. |
 | **Indicadores ANI-BIS-E** (12) con clasificación | IFC/IRC/PABU/ICA-BIS/ISCM/IEHH/IAE/EB/FMI/FFMI/AF/IR + etiqueta | **(a)** clasificadores del motor congelado (`cIFC`, `cIRC`…), YA en el snapshot (`indicators` + `classifications`) | Portable directo. Atlas ya lo muestra. |
 | **Diagnóstico funcional + radar de 5 dominios (DFI)** | 5 dominios + severidad + riesgo integrado + rutas | **(a)** el DFI está en el snapshot (`dfi.domains/riesgo/rutas`). El RADAR es visual (b, presentación) | Datos portables directo (Atlas ya los muestra como tarjetas). El radar es un componente visual a construir (como la Diana). |
 | **Diana + 6 tarjetas de contenido** por estado EFR | (1) enfermedades/complicaciones, (2) mecanismos, (3) biomarcadores, (4) riesgos, (5) nutracéuticos, (6) abordaje por profesión | **(a) 5 de 6** congelados en `efrContent` (ST1/ST5); **(6) abordaje** = `efrProf(role)`, NO congelado, role-dependent | 5 portables del snapshot. El 6º requiere decisión (Verificación 3). |
@@ -170,10 +170,13 @@ El HTML compone 6 campos por estado (`efrCompose` L3994 + `efrProf` L4039): dx
 profesión. Nuestro snapshot congela (`efrContent`, ST1): `diagnosisName`(=dx), `mechanism`(=mec),
 `biomarkers`(=bio), `risks`(=rsk), `suggestedNutraceuticals`(=n) → **5 de 6**.
 
-- **FALTA: "abordaje por profesión"** (`efrProf`), NO congelado. Tras el corte del fallback (ST5)
-  no hay de dónde leerlo si no se congela. → **Agregar al freeze al diagnosticar** (aplicable a
-  diagnósticos nuevos; Demo GoldenPath se regenera). La FORMA de congelarlo depende de la
-  Verificación 3 (es role-dependent).
+- **FALTA: "abordaje por profesión"** (`efrProf`), NO congelado. **DIFERIDO (Q9):** `efrProf` está
+  en el paquete congelado (`engine.core.js` L807) pero NO se exporta, y no se edita el `.js` frozen
+  (regla 12). No es alcanzable desde el adaptador (const module-local en CJS) ni existe como dato
+  estático que poblar (a diferencia de dx/mec/bio/rsk, que salen de `getDX`, exportado). Se pide a
+  Gildardo exponer `efrProf` o entregar el abordaje como datos (Q9). Hasta entonces, la tarjeta se
+  omite y el layout deja el hueco listo. La FORMA de congelarlo, cuando se destrabe, es el conjunto
+  completo de roles (Verificación 3).
 - **Matiz "enfermedades/complicaciones probables":** SÍ está congelado, es nuestro `diagnosisName`
   (= dx.dx). Hoy Atlas lo muestra como TÍTULO del diagnóstico funcional, no como una tarjeta
   rotulada. Es el mismo valor: mostrarlo como una de las 6 tarjetas es decisión de presentación,
@@ -206,7 +209,9 @@ diseño listo para el conjunto.
   decidido en Parte 1.) El radar y el layout de tarjetas son visual a construir, sin dato nuevo.
 - **Re-exponer / decidir congelar (a-ish):** tabla de Wang (valores de `bis_raw_values`);
   clasificación antropométrica (umbrales estándar de display). Ninguno toca el registry vivo.
-- **Congelar nuevo al diagnosticar (ii):** "abordaje por profesión" (role-dependent, Verificación
-  3). Aplica a diagnósticos nuevos.
+- **Diferido, bloqueado por Gildardo (Q9):** "abordaje por profesión". `efrProf` existe en el
+  paquete congelado pero no se exporta; no se edita el `.js` frozen. Se congelará el conjunto
+  completo (4 roles) cuando Gildardo lo exponga o entregue el abordaje como datos. La tarjeta se
+  omite hasta entonces.
 - **Marcado para revisión con Gildardo, NO construir:** veredicto de sarcopenia / fuerza prensil
   (Verificación 1); y lo ya marcado en Parte 1 (MCCB-12 + PBI + EIEC).
