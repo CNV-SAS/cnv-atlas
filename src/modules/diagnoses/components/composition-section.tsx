@@ -21,7 +21,7 @@ const SEV_CLS = [
 ];
 
 function fmt(v: number | null, dec = 1): string {
-  if (v == null) return "—";
+  if (v == null) return "-";
   return Number.isInteger(v) ? String(v) : v.toFixed(dec);
 }
 
@@ -65,7 +65,7 @@ function DiagnosisCell({
     return (
       <span
         className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, oms.sev))]}`}
-        title="Referencia médica estándar (OMS), no output del motor ANI-BIS-E."
+        title="Referencia medica estandar (OMS), no output del motor ANI-BIS-E."
       >
         {oms.label}
       </span>
@@ -94,7 +94,7 @@ export function CompositionSection({
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
-        <h3 className="text-base font-semibold text-foreground">Clasificación antropométrica</h3>
+        <h3 className="text-base font-semibold text-foreground">Clasificacion antropometrica</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
           <AnthroChip
@@ -102,19 +102,19 @@ export function CompositionSection({
             cls={clasificarCintura(composition.cintura, sexoM)}
           />
           <AnthroChip
-            label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
+            label={`Indice cintura-talla ${fmt(composition.ict, 2)}`}
             cls={clasificarICT(composition.ict)}
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
-          cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
+          Umbrales de referencia medica estandar (OMS): IMC, circunferencia de cintura e indice
+          cintura-talla. Son referencia clinica general, no un resultado del motor ANI-BIS-E.
         </p>
       </section>
 
       <section className="flex flex-col gap-3">
         <h3 className="text-base font-semibold text-foreground">
-          Composición corporal — Niveles de Wang
+          Composicion corporal - Niveles de Wang
         </h3>
         <div className="overflow-x-auto">
             <table className="w-full min-w-[38rem] text-sm">
@@ -124,7 +124,7 @@ export function CompositionSection({
                   <th className="py-2 pr-4 text-right font-medium">Valor</th>
                   <th className="py-2 pr-4 text-right font-medium">Referencia</th>
                   <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                  <th className="py-2 font-medium">Diagnóstico</th>
+                  <th className="py-2 font-medium">Diagnostico</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,7 +156,7 @@ export function CompositionSection({
                             {fmt(r.reference)}
                           </td>
                           <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-                            {delta == null ? "—" : `${delta >= 0 ? "+" : ""}${fmt(delta)}`}
+                            {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta)}`}
                           </td>
                           <td className="py-1.5">
                             <DiagnosisCell
@@ -175,8 +175,8 @@ export function CompositionSection({
             </table>
           </div>
         <p className="text-xs text-muted-foreground">
-          Varias variables de composición aún no tienen clasificación del motor (se muestran con un
-          guion en Diagnóstico); disponibles proximamente.
+          Varias variables de composicion aun no tienen clasificacion del motor (se muestran con un
+          guion en Diagnostico); disponibles proximamente.
         </p>
       </section>
     </div>

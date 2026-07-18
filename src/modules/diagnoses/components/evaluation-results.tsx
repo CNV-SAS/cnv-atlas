@@ -175,7 +175,7 @@ export function EvaluationResults({
           (5 del snapshot inmutable + abordaje por profesion pendiente de Q9). */}
       <Card>
         <CardHeader>
-          <CardTitle>Diagnóstico funcional</CardTitle>
+          <CardTitle>Diagnostico funcional</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -195,10 +195,10 @@ export function EvaluationResults({
             <ContentCard label="Biomarcadores" value={efrState?.biomarkers ?? null} />
             <ContentCard label="Riesgos" value={efrState?.risks ?? null} />
             <ContentCard
-              label="Nutracéuticos sugeridos"
+              label="Nutraceuticos sugeridos"
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
             />
-            <ContentCard label="Abordaje por profesión" value={null} pending />
+            <ContentCard label="Abordaje por profesion" value={null} pending />
           </div>
         </CardContent>
       </Card>
