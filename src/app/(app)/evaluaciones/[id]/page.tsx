@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
+import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
@@ -34,32 +35,36 @@ export default async function ResultadosEvaluacionPage({
     const header = await getEvaluationHeaderForSession(id);
     if (!header) notFound();
     return (
-      <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Resultados de la evaluación
-          </h1>
-          <p className="text-muted-foreground">
-            {header.patientName} · {header.documentLabel} ·{" "}
-            {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
-          </p>
-        </header>
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
-          <p className="text-sm text-foreground">
-            Esta evaluación aún no tiene un diagnóstico generado.
-          </p>
-          <p className="max-w-prose text-sm text-muted-foreground">
-            Confirma la identidad, importa la medición BIS y genera el diagnóstico desde el panel
-            de Evaluaciones. Los resultados aparecerán aquí cuando el motor haya corrido.
-          </p>
-          <Link
-            href="/evaluaciones"
-            className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            Ir a Evaluaciones
-          </Link>
-        </div>
-      </div>
+      <EvaluationTabs
+        diagnostico={
+          <div className="flex flex-col gap-6">
+            <header className="flex flex-col gap-2">
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+                Resultados de la evaluación
+              </h1>
+              <p className="text-muted-foreground">
+                {header.patientName} · {header.documentLabel} ·{" "}
+                {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+              </p>
+            </header>
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-foreground">
+                Esta evaluación aún no tiene un diagnóstico generado.
+              </p>
+              <p className="max-w-prose text-sm text-muted-foreground">
+                Confirma la identidad, importa la medición BIS y genera el diagnóstico desde el
+                panel de Evaluaciones. Los resultados aparecerán aquí cuando el motor haya corrido.
+              </p>
+              <Link
+                href="/evaluaciones"
+                className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Ir a Evaluaciones
+              </Link>
+            </div>
+          </div>
+        }
+      />
     );
   }
 
@@ -72,11 +77,18 @@ export default async function ResultadosEvaluacionPage({
     getFollowupComparison(id),
   ]);
 
+  // Shell de pestañas: solo Diagnostico activa (ST2). El contenido actual completo
+  // (resultados + comparacion + tratamiento) vive bajo Diagnostico de forma transitoria; los
+  // bloques posteriores lo reparten a Seguimiento / Rutas / etc. Sin regresion.
   return (
-    <div className="flex flex-col gap-8">
-      <EvaluationResults results={results} />
-      {comparison ? <FollowupComparison comparison={comparison} /> : null}
-      {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
-    </div>
+    <EvaluationTabs
+      diagnostico={
+        <div className="flex flex-col gap-8">
+          <EvaluationResults results={results} />
+          {comparison ? <FollowupComparison comparison={comparison} /> : null}
+          {protocol ? <TreatmentPanel evaluationId={id} protocol={protocol} /> : null}
+        </div>
+      }
+    />
   );
 }
