@@ -46,9 +46,10 @@ export function ProfessionalCriterion({
           <h2 className="text-lg font-semibold text-foreground">Criterio del profesional</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Tu interpretacion clinica. No forma parte del calculo del modelo, que es inmutable y
-          queda como evidencia arriba. Este es tu criterio: se agrega al historial y no se
-          reescribe.
+          Tu interpretacion clinica del diagnostico. No forma parte del calculo del modelo, que es
+          inmutable y queda como evidencia arriba. Se agrega al historial interno (no se reescribe)
+          y no se envia al paciente. Distinta de las notas del tratamiento y de las notas del
+          reporte.
         </p>
       </div>
 

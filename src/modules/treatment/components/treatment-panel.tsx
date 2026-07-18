@@ -418,7 +418,12 @@ function NotesSection({
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Notas clinicas</h3>
+      <h3 className="text-sm font-semibold text-foreground">Notas del tratamiento</h3>
+      <p className="text-xs text-muted-foreground">
+        Notas internas del protocolo de tratamiento. Se agregan al historial (no se editan ni se
+        borran) y no se envian al paciente. Distintas del criterio del diagnostico y de las notas
+        del reporte.
+      </p>
       {protocol.notes.length ? (
         <ul className="flex flex-col gap-2">
           {protocol.notes.map((n) => (

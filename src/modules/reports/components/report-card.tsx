@@ -80,8 +80,10 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           <form action={approve} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
             <label htmlFor={`notes-${report.reportId}`} className="text-xs text-muted-foreground">
-              Notas del reporte (opcional). Se escriben aquí y se congelan al aprobar; después no
-              se pueden editar. Son distintas de las notas del tratamiento, que sí se editan.
+              Notas del reporte (opcional). Se escriben aqui, se congelan al aprobar y pueden
+              enviarse al paciente segun el modo de envio. Son la unica superficie de notas que
+              llega al paciente: distintas del criterio del diagnostico y de las notas del
+              tratamiento, que son internas.
             </label>
             <textarea
               id={`notes-${report.reportId}`}
