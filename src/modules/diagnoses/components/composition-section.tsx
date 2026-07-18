@@ -1,7 +1,5 @@
 import { Fragment } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import {
   type AnthroClass,
   clasificarCintura,
@@ -101,35 +99,30 @@ export function CompositionSection({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Clasificación antropométrica</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
-            <AnthroChip
-              label={`Cintura ${fmt(composition.cintura, 0)} cm`}
-              cls={clasificarCintura(composition.cintura, sexoM)}
-            />
-            <AnthroChip
-              label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
-              cls={clasificarICT(composition.ict)}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
-            cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
-          </p>
-        </CardContent>
-      </Card>
+      <section className="flex flex-col gap-3">
+        <h3 className="text-base font-semibold text-foreground">Clasificación antropométrica</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
+          <AnthroChip
+            label={`Cintura ${fmt(composition.cintura, 0)} cm`}
+            cls={clasificarCintura(composition.cintura, sexoM)}
+          />
+          <AnthroChip
+            label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
+            cls={clasificarICT(composition.ict)}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
+          cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
+        </p>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Composición corporal — Niveles de Wang</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+      <section className="flex flex-col gap-3">
+        <h3 className="text-base font-semibold text-foreground">
+          Composición corporal — Niveles de Wang
+        </h3>
+        <div className="overflow-x-auto">
             <table className="w-full min-w-[38rem] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -187,8 +180,7 @@ export function CompositionSection({
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+      </section>
     </div>
   );
 }

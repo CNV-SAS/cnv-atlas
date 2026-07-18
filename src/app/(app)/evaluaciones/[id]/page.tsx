@@ -141,14 +141,20 @@ export default async function ResultadosEvaluacionPage({
       }
       diagnostico={
         <div className="flex flex-col gap-8">
-          <EvaluationResults results={results} />
-          {composition ? (
-            <CompositionSection
-              composition={composition}
-              sexoM={sexoM}
-              classifications={results.snapshot.classifications}
-            />
-          ) : null}
+          {/* Evidencia del modelo, orden conclusion -> detalle (cabecera, mapas, DFI, tablas
+              colapsables, versiones al pie). La composicion va como colapsable dentro. */}
+          <EvaluationResults
+            results={results}
+            composition={
+              composition ? (
+                <CompositionSection
+                  composition={composition}
+                  sexoM={sexoM}
+                  classifications={results.snapshot.classifications}
+                />
+              ) : null
+            }
+          />
           {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />

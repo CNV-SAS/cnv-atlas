@@ -1,3 +1,6 @@
+import { type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EngineIndicators } from "@/clinical-engine";
@@ -82,7 +85,43 @@ function ContentCard({
   );
 }
 
-export function EvaluationResults({ results }: { results: Results }) {
+// Seccion colapsable para el DETALLE granular (indicadores, composicion). `<details>` nativo:
+// accesible, sin JS ni dependencia. Indicadores abiertos por defecto (valor diferencial de CNV,
+// debe verse); composicion cerrada (detalle extenso). El marcador nativo se oculta y se usa un
+// chevron que rota al abrir (via variante open de Tailwind).
+function DetailsSection({
+  title,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      {...(defaultOpen ? { open: true } : {})}
+      className="group rounded-xl border border-border bg-card"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+        <span>{title}</span>
+        <ChevronDown
+          className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="px-6 pb-6">{children}</div>
+    </details>
+  );
+}
+
+export function EvaluationResults({
+  results,
+  composition,
+}: {
+  results: Results;
+  composition?: ReactNode;
+}) {
   // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
   // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
   if (!results.compatible) {
@@ -175,60 +214,27 @@ export function EvaluationResults({ results }: { results: Results }) {
         </CardContent>
       </Card>
 
-      {/* La Diana EFR: posicion del paciente entre los 81 estados */}
+      {/* Mapas del estado: la Diana (posicion entre los 81 estados) y el radar DFI (severidad por
+          dominio), juntos como lectura de un vistazo. */}
       <Card>
         <CardHeader>
-          <CardTitle>Diana EFR</CardTitle>
+          <CardTitle>Mapas del estado</CardTitle>
         </CardHeader>
         <CardContent>
-          <Diana
-            bands={efrPhenotype.bands}
-            stateNumber={efrPhenotype.stateNumber}
-            frSectorName={frSector.nombre}
-            structuralName={structural.nombre}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Indicadores (12, con clasificacion) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Indicadores ANI-BIS-E</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[28rem] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Indicador</th>
-                  <th className="py-2 pr-4 font-medium">Valor</th>
-                  <th className="py-2 font-medium">Clasificacion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INDICATORS.map(({ code, key }) => (
-                  <tr key={code} className="border-b border-border/60">
-                    <td className="py-2 pr-4">
-                      <span className="font-medium text-foreground">{code}</span>
-                      {results.indicatorNames[code] ? (
-                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4 tabular-nums text-foreground">
-                      {fmtNum(indicators[key])}
-                    </td>
-                    <td className="py-2 text-muted-foreground">
-                      {classifications[code]?.label ?? "N/D"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
+            <Diana
+              bands={efrPhenotype.bands}
+              stateNumber={efrPhenotype.stateNumber}
+              frSectorName={frSector.nombre}
+              structuralName={structural.nombre}
+            />
+            <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Diagnostico Funcional Integral (DFI): 5 dominios + riesgo + rutas */}
+      {/* DFI: riesgo integrado + los 5 dominios (desglose interpretativo). El radar vive arriba,
+          en Mapas; las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
       <Card>
         <CardHeader>
           <CardTitle>Diagnostico Funcional Integral (DFI)</CardTitle>
@@ -240,21 +246,15 @@ export function EvaluationResults({ results }: { results: Results }) {
             </p>
           ) : null}
 
-          {/* Radar de los 5 dominios (forma de un vistazo) + riesgo integrado (titular). */}
-          <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-center lg:gap-8">
-            <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
-                <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
-                  {dfi.riesgo.nivel} · {dfi.riesgo.score}
-                </Badge>
-                {dfi.veto ? (
-                  <Badge className={SEV_CLS[3]}>Veto activo</Badge>
-                ) : null}
-              </div>
-              <p className="text-sm text-muted-foreground">{dfi.riesgo.descripcion}</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
+              <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
+                {dfi.riesgo.nivel} · {dfi.riesgo.score}
+              </Badge>
+              {dfi.veto ? <Badge className={SEV_CLS[3]}>Veto activo</Badge> : null}
             </div>
+            <p className="text-sm text-muted-foreground">{dfi.riesgo.descripcion}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -278,11 +278,50 @@ export function EvaluationResults({ results }: { results: Results }) {
               </div>
             ))}
           </div>
-          {/* Las rutas de atencion (salida del DFI) se muestran en la etapa de Tratamiento. */}
         </CardContent>
       </Card>
 
-      {/* Constelacion de versiones (regla 7): trazabilidad del calculo */}
+      {/* Detalle granular en colapsables: indicadores ABIERTOS (valor diferencial de CNV, deben
+          verse), composicion CERRADA (30 filas de detalle). */}
+      <DetailsSection title="Indicadores ANI-BIS-E" defaultOpen>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Indicador</th>
+                <th className="py-2 pr-4 font-medium">Valor</th>
+                <th className="py-2 font-medium">Clasificacion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {INDICATORS.map(({ code, key }) => (
+                <tr key={code} className="border-b border-border/60">
+                  <td className="py-2 pr-4">
+                    <span className="font-medium text-foreground">{code}</span>
+                    {results.indicatorNames[code] ? (
+                      <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
+                    ) : null}
+                  </td>
+                  <td className="py-2 pr-4 tabular-nums text-foreground">
+                    {fmtNum(indicators[key])}
+                  </td>
+                  <td className="py-2 text-muted-foreground">
+                    {classifications[code]?.label ?? "N/D"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DetailsSection>
+
+      {composition ? (
+        <DetailsSection title="Composicion corporal y clasificacion antropometrica">
+          {composition}
+        </DetailsSection>
+      ) : null}
+
+      {/* Constelacion de versiones (regla 7): trazabilidad del calculo, discreta al pie. */}
       <p className="text-xs text-muted-foreground">
         Motor {versions.engine} · modelo {versions.model} · reglas {versions.rules}
       </p>
