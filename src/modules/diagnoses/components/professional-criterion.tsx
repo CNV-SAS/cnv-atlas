@@ -27,6 +27,16 @@ export function ProfessionalCriterion({
   const [state, formAction, pending] = useActionState(addDiagnosisNoteAction, EMPTY);
   useFormToast(state);
   const [note, setNote] = useState("");
+  // Append-only: al guardar con exito hay que limpiar el campo. Si no, el texto recien enviado
+  // queda visible como si fuera una nota nueva por agregar, y el profesional podria darle a
+  // "Agregar" otra vez y crear un duplicado permanente (la nota no se puede editar ni borrar).
+  // Se ajusta en render al cambiar el estado de la accion (patron oficial de React de "ajustar
+  // estado en render", guardando el estado previo en estado; sin efecto ni mutacion de ref).
+  const [seenState, setSeenState] = useState(state);
+  if (seenState !== state) {
+    setSeenState(state);
+    if (state.success && note !== "") setNote("");
+  }
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-5">

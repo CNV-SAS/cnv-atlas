@@ -405,6 +405,16 @@ function NotesSection({
   const [state, formAction, pending] = useActionState(addNoteAction, EMPTY);
   useFormToast(state);
   const [note, setNote] = useState("");
+  // Append-only: limpiar el campo tras un guardado exitoso. Si no, el texto recien enviado
+  // queda visible como si fuera una nota nueva por agregar, y el profesional podria darle a
+  // "Agregar" otra vez y crear un duplicado permanente (la nota no se puede editar ni borrar).
+  // Se ajusta en render al cambiar el estado de la accion (patron oficial de React de "ajustar
+  // estado en render", guardando el estado previo en estado; sin efecto ni mutacion de ref).
+  const [seenState, setSeenState] = useState(state);
+  if (seenState !== state) {
+    setSeenState(state);
+    if (state.success && note !== "") setNote("");
+  }
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
