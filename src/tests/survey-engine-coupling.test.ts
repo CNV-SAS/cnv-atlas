@@ -44,10 +44,11 @@ const ENGINE_ANSWERS: SurveyFieldAnswer[] = [
   { fieldKey: "d2_21", type: "opcion_multiple", value: JSON.stringify(["Vómito"]) },
 ];
 
-// Los 14 field_key que alimentan el motor (contrato estable con el seed).
+// Los 13 field_key que alimentan el motor (contrato estable con el seed). d3_31 (alcohol) se
+// quito: es registro clinico, no alimenta el motor (Q6, resuelto por Gildardo).
 const EXPECTED_FIELD_KEYS = [
   "d2_19", "d2_20", "d2_21", "d2_22",
-  "d3_23", "d3_24", "d3_26", "d3_30", "d3_31",
+  "d3_23", "d3_24", "d3_26", "d3_30",
   "d5_36", "d5_38", "d5_39",
   "d8_61", "d8_62",
 ].sort();
@@ -136,7 +137,7 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
     }
   });
 
-  it("el seed expone exactamente los 14 field_key esperados", () => {
+  it("el seed expone exactamente los 13 field_key esperados", () => {
     expect(seeded.map((r) => r.fieldKey).sort()).toEqual(EXPECTED_FIELD_KEYS);
   });
 

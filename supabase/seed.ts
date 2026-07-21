@@ -184,7 +184,10 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
   { key: "d3_29", type: "escala", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)" },
   { key: "d3_30", type: "opcion", text: "¿Su relación con el tabaco / nicotina?", options: ["Nunca he fumado", "Dejé hace 5 años o más", "Dejé hace menos de 5 años", "Fumo ocasionalmente", "Fumo diariamente", "Solo vapeo", "Exposición pasiva"], engine: true },
-  { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"], engine: true },
+  // Alcohol: registro clinico, NO alimenta el motor (Q6, resuelto por Gildardo 2026-07-21: calcLE8
+  // lo leia en una variable muerta). Sin field_key para que no viaje al LE8; efecto cero en el
+  // diagnostico. La pregunta sigue en la encuesta como registro.
+  { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"] },
   // D4 · Conductas alimentarias
   { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"] },
   { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"] },
