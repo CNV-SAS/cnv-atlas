@@ -31,7 +31,7 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
 
 // Severidad de dominio DFI (0-3) -> etiqueta + color de la capa clinica (no solo color:
 // tambien la etiqueta, por accesibilidad; BRAND).
-const SEV_LABEL = ["Optimo", "Leve", "Moderado", "Alto"];
+const SEV_LABEL = ["Óptimo", "Leve", "Moderado", "Alto"];
 // Capa clinica de color (tokens de BRAND, theme-aware): sev 0-1 optimo, 2 alerta, 3 critico.
 const SEV_CLS = [
   "bg-clinical-optimal-bg text-clinical-optimal",
@@ -92,7 +92,7 @@ function ContentCard({
         {label}
       </span>
       {pending ? (
-        <span className="text-sm italic text-muted-foreground">Disponible proximamente.</span>
+        <span className="text-sm italic text-muted-foreground">Disponible próximamente.</span>
       ) : value ? (
         <p className="text-sm text-foreground">{value}</p>
       ) : (
@@ -116,7 +116,7 @@ export function EvaluationResults({
       <div className="flex flex-col gap-8">
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Resultados de la evaluacion
+            Resultados de la evaluación
           </h1>
           <p className="text-muted-foreground">
             {results.patientName} · {results.documentLabel} ·{" "}
@@ -125,17 +125,17 @@ export function EvaluationResults({
         </header>
         <Card>
           <CardHeader>
-            <CardTitle>Diagnostico no disponible con este formato</CardTitle>
+            <CardTitle>Diagnóstico no disponible con este formato</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             <p className="text-sm text-foreground">
-              El diagnostico de esta evaluacion se genero con una version anterior del motor
+              El diagnóstico de esta evaluación se generó con una versión anterior del motor
               {results.engineVersion ? ` (${results.engineVersion})` : ""} y no puede mostrarse en
               este formato.
             </p>
             <p className="text-sm text-muted-foreground">
-              Los datos siguen almacenados de forma inmutable. Para ver un diagnostico con el
-              formato actual, realiza una nueva evaluacion del paciente.
+              Los datos siguen almacenados de forma inmutable. Para ver un diagnóstico con el
+              formato actual, realiza una nueva evaluación del paciente.
             </p>
           </CardContent>
         </Card>
@@ -155,11 +155,11 @@ export function EvaluationResults({
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Resultados de la evaluacion
+            Resultados de la evaluación
           </h1>
           {results.confirmed ? (
             <Badge className="bg-clinical-optimal-bg text-clinical-optimal">
-              Diagnostico confirmado
+              Diagnóstico confirmado
             </Badge>
           ) : (
             <Badge variant="outline">Pendiente de confirmar</Badge>
@@ -175,7 +175,7 @@ export function EvaluationResults({
           (5 del snapshot inmutable + abordaje por profesion pendiente de Q9). */}
       <Card>
         <CardHeader>
-          <CardTitle>Diagnostico funcional</CardTitle>
+          <CardTitle>Diagnóstico funcional</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -239,7 +239,7 @@ export function EvaluationResults({
           en Mapas; las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
       <Card>
         <CardHeader>
-          <CardTitle>Diagnostico Funcional Integral (DFI)</CardTitle>
+          <CardTitle>Diagnóstico Funcional Integral (DFI)</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!dfi.complete ? (
@@ -301,7 +301,7 @@ export function EvaluationResults({
                   <th className="py-2 pr-4 text-right font-medium">Valor</th>
                   <th className="py-2 pr-4 text-right font-medium">Referencia</th>
                   <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                  <th className="py-2 font-medium">Clasificacion</th>
+                  <th className="py-2 font-medium">Clasificación</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,13 +338,13 @@ export function EvaluationResults({
               rangos son cortes internos del motor congelado, aun no expuestos como dato
               (ver docs/FROZEN_EXPORTS_REQUEST.md). Se pueblan cuando Gildardo los entregue. */}
           <p className="text-xs text-muted-foreground">
-            Rango de referencia y desviacion (Δ) por indicador: disponibles proximamente.
+            Rango de referencia y desviación (Δ) por indicador: disponibles próximamente.
           </p>
         </div>
       </DetailsSection>
 
       {composition ? (
-        <DetailsSection title="Composicion corporal y clasificacion antropometrica">
+        <DetailsSection title="Composición corporal y clasificación antropométrica">
           {composition}
         </DetailsSection>
       ) : null}

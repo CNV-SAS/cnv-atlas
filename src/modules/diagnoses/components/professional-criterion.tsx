@@ -46,9 +46,9 @@ export function ProfessionalCriterion({
           <h2 className="text-lg font-semibold text-foreground">Criterio del profesional</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Tu interpretacion clinica del diagnostico. No forma parte del calculo del modelo, que es
+          Tu interpretación clínica del diagnóstico. No forma parte del cálculo del modelo, que es
           inmutable y queda como evidencia arriba. Se agrega al historial interno (no se reescribe)
-          y no se envia al paciente. Distinta de las notas del tratamiento y de las notas del
+          y no se envía al paciente. Distinta de las notas del tratamiento y de las notas del
           reporte.
         </p>
       </div>
@@ -66,7 +66,7 @@ export function ProfessionalCriterion({
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Aun no has registrado tu criterio para esta evaluacion.
+          Aún no has registrado tu criterio para esta evaluación.
         </p>
       )}
 
@@ -76,7 +76,7 @@ export function ProfessionalCriterion({
           name="note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Escribe tu interpretacion clinica de estos resultados"
+          placeholder="Escribe tu interpretación clínica de estos resultados"
           rows={3}
         />
         <div>

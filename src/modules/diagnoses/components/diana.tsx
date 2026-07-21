@@ -216,7 +216,7 @@ export function Diana({
           Estado {stateNumber} de 81 · sector {frSectorName} · anillo {structuralName}
         </span>
         <span>
-          Sectores S1-S9: funcion celular y riesgo (IFC x IRC). Anillos R1-R9: fenotipo estructural
+          Sectores S1-S9: función celular y riesgo (IFC x IRC). Anillos R1-R9: fenotipo estructural
           (FFMI x FMI), del centro (menor riesgo) al borde.
         </span>
       </figcaption>

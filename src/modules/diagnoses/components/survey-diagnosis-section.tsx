@@ -11,14 +11,14 @@ import { DetailsSection } from "./details-section";
 // docs/FROZEN_EXPORTS_REQUEST.md). Cuando llegue, esta seccion la renderiza.
 export function SurveyDiagnosisSection() {
   return (
-    <DetailsSection title="Diagnostico de encuesta">
+    <DetailsSection title="Diagnóstico de encuesta">
       <div className="flex flex-col gap-2">
         <p className="text-sm text-foreground">
-          Analisis del patron alimentario de la encuesta (D1-D8): alimentos protectores,
+          Análisis del patrón alimentario de la encuesta (D1-D8): alimentos protectores,
           moderados y de riesgo.
         </p>
         <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
-          Disponible proximamente.
+          Disponible próximamente.
         </p>
       </div>
     </DetailsSection>

@@ -57,14 +57,14 @@ export default async function ResultadosEvaluacionPage({
     if (!header) notFound();
     return (
       <EvaluationTabs
-        evaluacion={<StagePlaceholder label="Evaluacion" />}
+        evaluacion={<StagePlaceholder label="Evaluación" />}
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
         diagnostico={
           <div className="flex flex-col gap-6">
             <header className="flex flex-col gap-2">
               <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-                Resultados de la evaluacion
+                Resultados de la evaluación
               </h1>
               <p className="text-muted-foreground">
                 {header.patientName} · {header.documentLabel} ·{" "}
@@ -73,11 +73,11 @@ export default async function ResultadosEvaluacionPage({
             </header>
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
               <p className="text-sm text-foreground">
-                Esta evaluacion aun no tiene un diagnostico generado.
+                Esta evaluación aún no tiene un diagnóstico generado.
               </p>
               <p className="max-w-prose text-sm text-muted-foreground">
-                Confirma la identidad, importa la medicion BIS y genera el diagnostico desde el
-                panel de Evaluaciones. Los resultados apareceran aqui cuando el motor haya corrido.
+                Confirma la identidad, importa la medición BIS y genera el diagnóstico desde el
+                panel de Evaluaciones. Los resultados aparecerán aquí cuando el motor haya corrido.
               </p>
               <Link
                 href="/evaluaciones"

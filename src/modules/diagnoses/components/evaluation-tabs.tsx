@@ -12,8 +12,8 @@ import { useState, type ReactNode } from "react";
 type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "evaluacion", label: "Evaluacion" },
-  { id: "diagnostico", label: "Diagnostico" },
+  { id: "evaluacion", label: "Evaluación" },
+  { id: "diagnostico", label: "Diagnóstico" },
   { id: "tratamiento", label: "Tratamiento" },
   { id: "seguimiento", label: "Seguimiento" },
 ];
@@ -36,7 +36,7 @@ export function EvaluationTabs({
     <div className="flex flex-col gap-6">
       <div
         role="tablist"
-        aria-label="Etapas de la evaluacion"
+        aria-label="Etapas de la evaluación"
         className="flex flex-wrap gap-1 overflow-x-auto border-b border-border"
       >
         {TABS.map((t) => {

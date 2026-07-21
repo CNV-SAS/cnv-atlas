@@ -8,7 +8,7 @@ export function RutasSection({ rutas }: { rutas: string[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Rutas de atencion</CardTitle>
+        <CardTitle>Rutas de atención</CardTitle>
       </CardHeader>
       <CardContent>
         {rutas.length ? (
