@@ -15,7 +15,22 @@ const CY = 140;
 const RMAX = 95;
 const RINGS = 3; // sev 1, 2, 3
 
-const SEV_LABEL = ["Optimo", "Leve", "Moderado", "Alto"];
+// Nombres cortos de los 5 ejes, EXACTOS del HTML de referencia (ATLAS_v7.html, _RAD_SHORT
+// ~L11550). No se usan los nombres largos del snapshot ("Metabolico-Estructural", etc.): el
+// radar del HTML rotula asi. Se resuelve por id (d1..d5), no por texto.
+const RADAR_LABEL: Record<string, string> = {
+  d1: "Celular",
+  d2: "Metabólico",
+  d3: "Enveje.",
+  d4: "Conductual",
+  d5: "Epigenét.",
+};
+// Vocabulario de las 5 zonas del radar, VERBATIM del HTML (_RAD_ZONE_LBL ~L11548), de mejor a
+// peor. El HTML mapea la severidad (0..3) a la zona 1..4 (_RAD_SEV2ZONE); la zona 0
+// "Excepcional" corresponde a un nivel distinto que el snapshot no expone.
+const ZONE_LBL = ["Excepcional", "Muy bien", "En la norma", "A vigilar", "A tratar"];
+const SEV2ZONE = [1, 2, 3, 4];
+const zoneLabel = (sev: number): string => ZONE_LBL[SEV2ZONE[clampSev(sev)]];
 // Clase de color por severidad integrada (fill translucido + stroke solido). Tokens BRAND.
 const RISK_FILL = [
   "fill-clinical-optimal",
@@ -56,8 +71,8 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
       .join(" ");
   });
 
-  const label = `Radar DFI: ${domains
-    .map((d) => `${d.nombre} ${SEV_LABEL[clampSev(d.sev)]}`)
+  const label = `Radar funcional: ${domains
+    .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${zoneLabel(d.sev)}`)
     .join(", ")}.`;
 
   return (
@@ -89,12 +104,11 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
         {dataPts.map(([x, y], i) => (
           <circle key={`v${i}`} cx={x} cy={y} r={3} className={RISK_STROKE[rs].replace("stroke-", "fill-")} />
         ))}
-        {/* Etiquetas de eje: nombre del dominio + severidad (parte hifenadas en dos lineas) */}
+        {/* Etiquetas de eje: nombre corto fiel del HTML + zona (vocabulario del HTML). */}
         {domains.map((d, i) => {
           const [lx, ly] = axisPoint(i, n, RMAX + 14);
           const cos = Math.cos((-90 + (360 / n) * i) * (Math.PI / 180));
           const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
-          const parts = d.nombre.includes("-") ? d.nombre.split("-") : [d.nombre];
           return (
             <text
               key={`lbl${i}`}
@@ -105,20 +119,23 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
               className="fill-foreground"
               fontSize={10}
             >
-              {parts.map((p, k) => (
-                <tspan key={k} x={lx} dy={k === 0 ? (parts.length > 1 ? -6 : 0) : 12}>
-                  {parts.length > 1 && k === 0 ? `${p}-` : p}
-                </tspan>
-              ))}
+              <tspan x={lx}>{RADAR_LABEL[d.id] ?? d.nombre}</tspan>
               <tspan x={lx} dy={12} className="fill-muted-foreground" fontSize={9}>
-                {SEV_LABEL[clampSev(d.sev)]}
+                {zoneLabel(d.sev)}
               </tspan>
             </text>
           );
         })}
       </svg>
+      {/* Leyenda de zonas como texto (fiel al HTML, de mejor a peor). Las bandas de color van en
+          el bloque de fidelidad visual; aqui solo se deja el vocabulario presente. */}
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+        {ZONE_LBL.map((z) => (
+          <span key={z}>{z}</span>
+        ))}
+      </div>
       <figcaption className="text-center text-xs text-muted-foreground">
-        Severidad por dominio (centro optimo, borde alto).
+        A menor polígono, mejor estado.
       </figcaption>
     </figure>
   );
