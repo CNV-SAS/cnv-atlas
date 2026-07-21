@@ -44,23 +44,25 @@ describe("DfiRadar", () => {
       d5: "Epigenét.",
     };
     for (const d of DOMAINS) expect(markup).toContain(SHORT[d.id]);
-    // Zona por eje presente como texto (vocabulario del HTML), no solo color: sev 0 -> "Muy bien",
-    // sev 3 -> "A tratar".
-    expect(markup).toContain("Muy bien");
-    expect(markup).toContain("A tratar");
+    // Severidad por eje como texto (vocabulario del MOTOR, ver V0-b), no solo color: sev 0 ->
+    // "Óptimo", sev 3 -> "Alto".
+    expect(markup).toContain("Óptimo");
+    expect(markup).toContain("Alto");
   });
 
-  it("incluye la leyenda de zonas y la frase del poligono, fieles al HTML", () => {
+  it("incluye la leyenda de severidad del motor y la frase del poligono", () => {
     const markup = render(1);
-    for (const z of ["Excepcional", "Muy bien", "En la norma", "A vigilar", "A tratar"]) {
+    for (const z of ["Óptimo", "Leve", "Moderado", "Alto"]) {
       expect(markup).toContain(z);
     }
     expect(markup).toContain("A menor polígono, mejor estado.");
   });
 
-  it("el color del poligono sigue la severidad integrada", () => {
-    expect(render(0)).toContain("fill-clinical-optimal");
-    expect(render(2)).toContain("fill-clinical-warning");
-    expect(render(3)).toContain("fill-clinical-critical");
+  it("el color del poligono de datos sigue la severidad integrada", () => {
+    // stroke-clinical-* solo lo lleva el poligono de datos; las zonas de fondo usan fill-*-bg.
+    expect(render(0)).toContain("stroke-clinical-optimal");
+    expect(render(2)).toContain("stroke-clinical-warning");
+    expect(render(3)).toContain("stroke-clinical-critical");
+    expect(render(0)).not.toContain("stroke-clinical-warning");
   });
 });
