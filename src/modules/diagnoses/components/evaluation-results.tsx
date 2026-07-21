@@ -188,17 +188,22 @@ export function EvaluationResults({
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ContentCard
-              label="Enfermedades / complicaciones probables"
+              label="Enfermedades / Complicaciones probables"
               value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
             />
-            <ContentCard label="Mecanismos" value={efrState?.mechanism ?? null} />
-            <ContentCard label="Biomarcadores" value={efrState?.biomarkers ?? null} />
-            <ContentCard label="Riesgos" value={efrState?.risks ?? null} />
             <ContentCard
-              label="Nutraceuticos sugeridos"
+              label="Mecanismos bioquímicos / Disfunción celular"
+              value={efrState?.mechanism ?? null}
+            />
+            <ContentCard label="Biomarcadores clave" value={efrState?.biomarkers ?? null} />
+            <ContentCard label="Riesgos clínicos" value={efrState?.risks ?? null} />
+            {/* Excepcion de negocio: "Nutraceuticos sugeridos", no "Vitacellebis" del HTML; a
+                futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
+            <ContentCard
+              label="Nutracéuticos sugeridos"
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
             />
-            <ContentCard label="Abordaje por profesion" value={null} pending />
+            <ContentCard label="Abordaje por profesión" value={null} pending />
           </div>
         </CardContent>
       </Card>
