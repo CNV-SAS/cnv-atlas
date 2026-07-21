@@ -48,6 +48,8 @@ Estos colores codifican riesgo y estado. Son inequívocos y accesibles, y **nunc
 
 Como el azul es la acción primaria, "info/secundario" no se pinta de azul (chocaría); se resuelve con neutros o con el estado correspondiente.
 
+**Matiz de reserva del color de riesgo (2026-07).** El color que *codifica riesgo* (verde óptimo, ámbar alerta, rojo crítico) se reserva para los elementos **clínicos**: clasificaciones, severidades y veredictos (badges de banda, puntos de riesgo, zonas de la Diana y del radar). En todo lo demás (marca, estructura de la interfaz, encabezados de sección o de nivel de tabla, navegación) hay libertad de paleta y se usan neutros o el azul de marca. La consecuencia práctica: los headers estructurales (por ejemplo, las filas de nivel de la tabla de composición) van con **fondo neutro**, no con color de riesgo, para no insinuar una severidad donde solo hay estructura. El principio es que el color de riesgo signifique siempre riesgo y nunca decore.
+
 ### Implementación técnica (shadcn v4 + CSS vars)
 Los tokens semánticos son **CSS variables** en `src/app/globals.css` (no clases Tailwind crudas). Se overridean los vars de shadcn con `--primary` = azul de marca, `--foreground` = ink, neutros derivados del ink, y `--ring` = azul. La capa clínica vive como tokens propios (`--clinical-optimal`, `--clinical-warning`, `--clinical-critical`) o clases explícitas, separada del sistema de marca. Preferir tokens semánticos (`bg-background`, `text-foreground`, `border-border`) sobre crudos.
 

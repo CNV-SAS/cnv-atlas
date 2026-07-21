@@ -308,7 +308,7 @@ export function EvaluationResults({
               </thead>
               <tbody>
                 {INDICATORS.map(({ code, key }) => (
-                  <tr key={code} className="border-b border-border/60">
+                  <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
                       <span className="font-medium text-foreground">{code}</span>
                       {results.indicatorNames[code] ? (

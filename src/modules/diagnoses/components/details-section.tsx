@@ -16,16 +16,17 @@ export function DetailsSection({
   return (
     <details
       {...(defaultOpen ? { open: true } : {})}
-      className="group rounded-xl border border-border bg-card"
+      className="group overflow-hidden rounded-xl border border-border bg-card"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-6 py-4 text-lg font-semibold text-foreground transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
         <span>{title}</span>
         <ChevronDown
           className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
           aria-hidden
         />
       </summary>
-      <div className="px-6 pb-6">{children}</div>
+      {/* Divisor solo visible al abrir (el contenido oculto no muestra el borde). */}
+      <div className="border-t border-border px-6 py-6">{children}</div>
     </details>
   );
 }

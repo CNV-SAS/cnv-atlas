@@ -130,10 +130,12 @@ export function CompositionSection({
               <tbody>
                 {composition.levels.map((lvl) => (
                   <Fragment key={lvl.title}>
-                    <tr className="border-b border-border/60 bg-muted/40">
+                    {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver
+                        BRAND.md, matiz de reserva del color de riesgo). */}
+                    <tr className="border-y border-border bg-muted">
                       <td
                         colSpan={5}
-                        className="py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                        className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
                       >
                         {lvl.title}
                       </td>
@@ -142,7 +144,7 @@ export function CompositionSection({
                       const delta =
                         r.value != null && r.reference != null ? r.value - r.reference : null;
                       return (
-                        <tr key={r.key} className="border-b border-border/40">
+                        <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
                           <td className="py-1.5 pr-4 text-foreground">
                             {r.label}
                             {r.unit ? (
