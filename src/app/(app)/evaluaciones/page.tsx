@@ -7,6 +7,7 @@ import { PipelineRunner } from "@/modules/clinical-pipeline/components/pipeline-
 import { listEvaluationsForDiagnosis } from "@/modules/clinical-pipeline/data/pipeline-evaluations-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { listReports } from "@/modules/reports/data/reports-repository";
+import { ConsultorioLink } from "@/modules/evaluations/components/consultorio-link";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
@@ -59,6 +60,9 @@ export default async function EvaluacionesPage() {
 
   return (
     <div className="flex flex-col gap-10">
+      {/* Link/QR base de consultorio (get-or-create del profesional), arriba del panel. */}
+      <ConsultorioLink />
+
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
