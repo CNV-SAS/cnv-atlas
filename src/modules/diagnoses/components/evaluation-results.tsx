@@ -171,72 +171,9 @@ export function EvaluationResults({
         </p>
       </header>
 
-      {/* Diagnostico funcional: identidad del estado + las 6 tarjetas de contenido de la Diana
-          (5 del snapshot inmutable + abordaje por profesion pendiente de Q9). */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Diagnóstico funcional</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Line
-              label="Estado EFR"
-              value={`${efrPhenotype.stateNumber} de 81 · clave ${efrPhenotype.key}`}
-            />
-            <Line label="Fenotipo estructural" value={structural.nombre} />
-            <Line label="Sector funcional (FyR)" value={frSector.nombre} />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ContentCard
-              label="Enfermedades / Complicaciones probables"
-              value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
-            />
-            <ContentCard
-              label="Mecanismos bioquímicos / Disfunción celular"
-              value={efrState?.mechanism ?? null}
-            />
-            <ContentCard label="Biomarcadores clave" value={efrState?.biomarkers ?? null} />
-            <ContentCard label="Riesgos clínicos" value={efrState?.risks ?? null} />
-            {/* Excepcion de negocio: "Nutraceuticos sugeridos", no "Vitacellebis" del HTML; a
-                futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
-            <ContentCard
-              label="Nutracéuticos sugeridos"
-              value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
-            />
-            <ContentCard label="Abordaje por profesión" value={null} pending />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Mapas del estado: la Diana (posicion entre los 81 estados) y el radar DFI (severidad por
-          dominio), juntos como lectura de un vistazo. */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Mapas del estado</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
-            {/* Encabezado fiel al HTML. El original es "Diana EFR BIS — 81 Estados"; se usa el
-                separador "·" (no em-dash, prohibido) igual que en el radar. */}
-            <div className="flex flex-col items-center gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
-              <Diana
-                bands={efrPhenotype.bands}
-                stateNumber={efrPhenotype.stateNumber}
-                frSectorName={frSector.nombre}
-                structuralName={structural.nombre}
-              />
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
-              <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* DFI: riesgo integrado + los 5 dominios (desglose interpretativo). El radar vive arriba,
-          en Mapas; las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
+      {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba del
+          todo, luego los mapas, y pegado a la Diana el detalle de las 6 cards del estado. Las rutas
+          (salida del DFI) viven en la etapa de Tratamiento. */}
       <Card>
         <CardHeader>
           <CardTitle>Diagnóstico Funcional Integral (DFI)</CardTitle>
@@ -285,6 +222,71 @@ export function EvaluationResults({
               </div>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Mapas del estado: la Diana (posicion entre los 81 estados) y el radar (severidad por
+          dominio), juntos como lectura de un vistazo. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mapas del estado</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
+            {/* Encabezado fiel al HTML. El original es "Diana EFR BIS — 81 Estados"; se usa el
+                separador "·" (no em-dash, prohibido) igual que en el radar. */}
+            <div className="flex flex-col items-center gap-3">
+              <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
+              <Diana
+                bands={efrPhenotype.bands}
+                stateNumber={efrPhenotype.stateNumber}
+                frSectorName={frSector.nombre}
+                structuralName={structural.nombre}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
+              <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Detalle del estado EFR: identidad del estado + las 6 tarjetas de contenido, pegadas a la
+          Diana y ancladas al estado del paciente (5 del snapshot inmutable + abordaje pendiente de
+          Q9). Titulo distinto del DFI para no confundir la lectura del profesional. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalle del estado EFR</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Line
+              label="Estado EFR"
+              value={`${efrPhenotype.stateNumber} de 81 · clave ${efrPhenotype.key}`}
+            />
+            <Line label="Fenotipo estructural" value={structural.nombre} />
+            <Line label="Sector funcional (FyR)" value={frSector.nombre} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ContentCard
+              label="Enfermedades / Complicaciones probables"
+              value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
+            />
+            <ContentCard
+              label="Mecanismos bioquímicos / Disfunción celular"
+              value={efrState?.mechanism ?? null}
+            />
+            <ContentCard label="Biomarcadores clave" value={efrState?.biomarkers ?? null} />
+            <ContentCard label="Riesgos clínicos" value={efrState?.risks ?? null} />
+            {/* Excepcion de negocio: "Nutraceuticos sugeridos", no "Vitacellebis" del HTML; a
+                futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
+            <ContentCard
+              label="Nutracéuticos sugeridos"
+              value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
+            />
+            <ContentCard label="Abordaje por profesión" value={null} pending />
           </div>
         </CardContent>
       </Card>
