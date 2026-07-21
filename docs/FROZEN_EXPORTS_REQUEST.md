@@ -1,10 +1,14 @@
 # FROZEN_EXPORTS_REQUEST.md - solicitud consolidada a Gildardo
 
-**Estado:** LISTA CERRADA (2026-07-18). La vista de Diagnóstico (ST4-ST7) quedó construida; la
-lista dejó de crecer. Contiene las 4 cosas que Atlas necesita del lado de Gildardo. **Pendiente:
-Santiago la revisa y arma el mensaje final para Gildardo y su CC antes de enviarla** (Atlas no la
-envía). Consolida [[Q9]] y [[Q10]] más lo que apareció al pulir la vista (patrón alimentario,
-rangos de referencia de indicadores).
+**Estado:** RESPONDIDA POR GILDARDO (2026-07-21). Las **4 entradas fueron aprobadas en texto** por
+Gildardo; **faltan los ARCHIVOS** (el paquete: los `.js` nuevos + el changelog), que su CC entrega
+aparte y Santiago está esperando. Al llegar el paquete se ejecuta el bloque prioritario **"Frozen
+delta EB-BIS v5 + exports de Gildardo"** del `BACKLOG.md` (swap de los `.js`, golden de todo el
+bloque de indicadores, integración de las 4 entradas). Hasta entonces **no se toca el motor**.
+
+Historia: LISTA CERRADA (2026-07-18) al terminar la vista de Diagnóstico (ST4-ST7); la lista dejó de
+crecer. Contiene las 4 cosas que Atlas necesita del lado de Gildardo. Consolida [[Q9]] y [[Q10]] más
+lo que apareció al pulir la vista (patrón alimentario, rangos de referencia de indicadores).
 
 ## Para Gildardo (en breve)
 

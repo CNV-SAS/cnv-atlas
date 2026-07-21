@@ -3,6 +3,17 @@
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
+## Prioritario / entrante — Frozen delta EB-BIS v5 + exports de Gildardo (al llegar el paquete)
+
+Distinto del resto del BACKLOG (que es diferido post-MVP): esto es **trabajo prioritario que se ejecuta apenas llegue el paquete de Gildardo** (los `.js` nuevos + el changelog, que su CC entrega). Las 4 entradas de `FROZEN_EXPORTS_REQUEST.md` ya fueron **respondidas por Gildardo (2026-07-21)**; faltan los archivos. Q6/Q7/Q8 quedaron resueltas (ver `GILDARDO_QUERIES.md`). Al llegar el paquete, en orden:
+
+- [ ] **Swap limpio de los `.js` nuevos** (regla de custodia: nace del lado de Gildardo, Atlas solo intercambia el archivo; no se edita el frozen).
+- [ ] **Actualizar el golden de TODO el bloque de indicadores, no solo EB-BIS** (`ISCM`, `IEHH`, `EB-BIS`, `IAE`). Motivo: su CC va a diffear el **bloque completo**, no solo la EB-BIS; anclar la paridad a todos evita sorpresas.
+- [ ] **Regenerar el Demo GoldenPath** (`pnpm seed:golden`): sus valores de **EB e IAE van a cambiar** con el frozen delta EB-BIS v5.
+- [ ] **Verificar paridad** (golden en verde, 1e-3 contra los valores de referencia de Gildardo; verificación independiente).
+- [ ] **Integrar las 6 funciones expuestas** (`efrProf` + `cSMM`/`cMMEM`/`cASMI`/`cFFW`/`cEISG`) **+ `dAECMCA` + el patrón alimentario (D1-D8) + la función/tabla de rangos de referencia** de los 12 indicadores. Habilita: la 6ª card (abordaje por profesión, Q9), la columna de Diagnóstico de composición (Q10), la sección "Diagnóstico de encuesta" (hoy placeholder), y las columnas Referencia/Δ de la tabla de indicadores. Detalle y vías por entrada en `FROZEN_EXPORTS_REQUEST.md`.
+- [ ] **UI (indicación explícita de Gildardo): rotular la EB-BIS en el reporte para que NO se lea como "edad fisiológica".** Es un índice funcional/bioeléctrico (función celular / bioeléctrica / contexto), no la edad del cuerpo; el rótulo debe dejarlo inequívoco (una edad biológica joven con grasa alta es por diseño, ver Q8).
+
 ## Clínico y modelo
 - **Diana como reglas declarativas gobernadas.** En MVP se porta como datos (ya lo es en el v7). La evolución a un motor de reglas gobernado con flujo de aprobación es post-MVP, y solo si pasa por CI/tests/aprobación (mover lógica clínica a "configuración" sin ese control reubica el riesgo).
 - **Modelado formal de PBI (9 estados) y EIEC** como catálogos del registry (se difirió para confirmarlos con Gildardo al portar).

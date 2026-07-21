@@ -8,7 +8,7 @@
 
 > **Ronda de respuestas de Gildardo (2026-07-15):** esta ronda cubrió **Q1-Q5**, que quedaron resueltas. Ninguna requiere cambio de código ni de golden tests ahora mismo; Q3 y Q5 dejan pendiente una posible entrega futura de ciencia (fórmula LE8 y frozen delta de prensil, respectivamente), que solo se portaría si Gildardo la entrega. La ciencia congelada no se toca.
 >
-> **OJO, no está todo respondido:** **Q6, Q7 y Q8 son posteriores** (auditoría de acoplamiento y caso golden-path) y siguen **ABIERTAS**, esperando la decisión de Gildardo. Q9 y Q10 se consolidaron en `docs/FROZEN_EXPORTS_REQUEST.md`. No cierres el documento pensando que la ronda de julio 15 respondió todo.
+> **Estado (2026-07-21): TODO respondido.** Q1-Q5 se cerraron el 2026-07-15. **Q6, Q7 y Q8** (auditoría de acoplamiento y caso golden-path) fueron **RESUELTAS por Gildardo el 2026-07-21**. Q9 y Q10 se consolidaron en `docs/FROZEN_EXPORTS_REQUEST.md` (respondidas; esperando el paquete de archivos). El paquete de Gildardo (`.js` nuevos + changelog, incl. el frozen delta EB-BIS v5) está pendiente de llegar; su integración es el bloque prioritario del `BACKLOG.md`.
 
 ---
 
@@ -82,7 +82,9 @@
 ## Q6 · Alcohol (`d3_31`): marcado como campo del motor, pero `calcLE8` lo lee en una variable sin usar
 
 - **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
-- **Estado:** ABIERTO (esperando decisión de Gildardo)
+- **Estado:** RESUELTO (2026-07-21, Gildardo)
+
+**Resolución (Gildardo, 2026-07-21):** el alcohol es **registro clínico**, no debía pesar en el LE8 (la variable muerta era exactamente eso). **Acción de Atlas (hecha, sin tocar el motor):** se quita el `field_key` de `d3_31` para que deje de viajar al motor; efecto CERO en el diagnóstico (ya era inerte). La pregunta sigue en la encuesta como registro clínico. No hay frozen delta por Q6.
 
 **Para Gildardo (breve):** el paciente responde con qué frecuencia consume alcohol, pero ese dato hoy **no cambia nada** en el resultado del motor: la fórmula del LE8 lo recibe y no lo usa en ningún cálculo. Ejemplo: dos pacientes idénticos, uno abstemio y otro que bebe seguido, dan el mismo puntaje. La pregunta es: ¿el alcohol debía pesar en el LE8, o es solo un registro clínico para la historia?
 
@@ -96,7 +98,9 @@
 ## Q7 · Contaminantes (`d5_42`) y estrés (`d3_29`): el motor los lee solo en el path NO autoritativo `rutasPorCondicion`
 
 - **Fecha:** 2026-07-15 (auditoría de acoplamiento encuesta ↔ motor)
-- **Estado:** ABIERTO (informativo; sin impacto en el diagnóstico actual)
+- **Estado:** RESUELTO (2026-07-21, Gildardo)
+
+**Resolución (Gildardo, 2026-07-21):** contaminantes (`d5_42`) y estrés (`d3_29`) **se quedan igual**, como registro clínico; `rutasPorCondicion` (R5) sigue siendo la vía NO autoritativa. **Sin acción, sin cambio en el motor** y sin frozen delta por Q7.
 
 **Para Gildardo (breve):** dos preguntas (exposición a contaminantes y nivel de estrés) hoy **no afectan el resultado**. El motor solo las usaría en una vía de rutas que el propio modelo marca como "no autoritativa" (no es la que decide el diagnóstico ni las rutas finales). Ejemplo: cambiar la respuesta de contaminantes o estrés no cambia el diagnóstico ni las rutas que ve el profesional. ¿Esa vía debe llegar a decidir rutas, o esas dos preguntas se quedan como registro clínico?
 
@@ -110,7 +114,9 @@
 ## Q8 · EB-BIS: edad biológica sistemáticamente joven cuando los hábitos reportados son buenos
 
 - **Fecha:** 2026-07-17 (caso golden-path, bloque prerrequisito "profesional primero")
-- **Estado:** ABIERTO (informativo; no bloquea nada)
+- **Estado:** RESUELTO (2026-07-21, Gildardo)
+
+**Resolución (Gildardo, 2026-07-21):** dos cosas. (1) La EB-BIS **congelada quedó vieja**: viene una **v5 como frozen delta** dentro del paquete de Gildardo (se integra al llegar; ver el bloque prioritario del `BACKLOG.md`). (2) La edad biológica joven con grasa alta es **POR DISEÑO**: la EB-BIS lee **función celular / bioeléctrica / contexto**, NO adiposidad; la composición corporal (FMI/grasa) **no debe contrapesarla**. Al integrar la v5 hay que **regenerar el Demo GoldenPath** (sus valores de EB/IAE van a cambiar) y actualizar el golden del bloque de indicadores. **Nota de UI (indicación explícita de Gildardo):** rotular la EB-BIS en el reporte para que **no se lea como "edad fisiológica"** (es un índice funcional/bioeléctrico, no la edad del cuerpo). Anotado en el `BACKLOG.md`.
 
 **Para Gildardo (breve):** la edad biológica (EB-BIS) sale marcadamente joven cuando el paciente reporta buenos hábitos, **aunque el BIS muestre sobrepeso o grasa alta**. Ejemplo real: un hombre de 54 años con grasa alta pero hábitos buenos da una edad biológica de 30-36 años. La pregunta clínica: ¿es correcto por diseño, o la composición corporal (la grasa) debería contrapesar el efecto de los buenos hábitos?
 
