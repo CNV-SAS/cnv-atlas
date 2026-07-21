@@ -65,3 +65,10 @@ export type BaseSurveyLinkState = {
   error: string | null;
   linkPath: string | null;
 };
+
+// Estado del QR del link base. qrDataUrl es un data URL (image/png) del QR, generado en servidor y
+// PII-free (codifica solo la URL absoluta del token opaco).
+export type BaseSurveyQrState = {
+  error: string | null;
+  qrDataUrl: string | null;
+};

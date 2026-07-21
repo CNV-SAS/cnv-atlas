@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitSurveyByIp, limitSurveyByToken } from "@/core/rate-limit";
@@ -19,20 +20,19 @@ import {
   confirmEvaluationIdentity,
   ConsentBranchMismatchError,
 } from "./data/evaluations-writer";
-import { createBaseSurveyLink, emitFollowupLink } from "./data/survey-links-writer";
+import { emitFollowupLink } from "./data/survey-links-writer";
 import { getActiveSurvey } from "./data/survey-reader";
-import {
-  getBaseSurveyLinkForProfessional,
-  resolveSurveyLinkByToken,
-} from "./data/survey-links-reader";
+import { resolveSurveyLinkByToken } from "./data/survey-links-reader";
 import {
   canConfirmIdentity,
   canEmitFollowupLink,
   canManageBaseSurveyLink,
 } from "./policies/can-manage-evaluations";
+import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
 import { submitSurveyIntake } from "./services/survey-intake";
 import type {
   BaseSurveyLinkState,
+  BaseSurveyQrState,
   ConfirmIdentityState,
   FollowupLinkState,
   SurveyFormState,
@@ -245,16 +245,42 @@ export async function getOrCreateBaseSurveyLinkAction(): Promise<BaseSurveyLinkS
     return { error: "Tu cuenta no tiene un perfil profesional.", linkPath: null };
   }
 
-  let base = await getBaseSurveyLinkForProfessional(professionalId);
-  if (!base) {
-    base =
-      (await createBaseSurveyLink({
-        organizationId: user.organizationId,
-        professionalId,
-        createdBy: user.id,
-      })) ?? (await getBaseSurveyLinkForProfessional(professionalId));
-  }
+  const base = await getOrCreateBaseSurveyLink({
+    organizationId: user.organizationId,
+    professionalId,
+    createdBy: user.id,
+  });
   if (!base) return { error: "No se pudo obtener el link de consultorio.", linkPath: null };
 
   return { error: null, linkPath: `/encuesta/${base.token}` };
+}
+
+// Genera el QR del link base de consultorio (ST-I2). Server-side y PII-FREE: el QR codifica SOLO la
+// URL absoluta construida con el token OPACO existente (origin/encuesta/<token>); no lleva nombre,
+// documento ni professional_id. Reusa el get-or-create (el link es estable). El origin sale de
+// NEXT_PUBLIC_APP_URL (el QR se imprime, necesita URL absoluta, no relativa).
+export async function generateBaseSurveyQrAction(): Promise<BaseSurveyQrState> {
+  const user = await requireUser();
+  if (!canManageBaseSurveyLink(user)) return { error: "No autorizado.", qrDataUrl: null };
+
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) {
+    return { error: "Tu cuenta no tiene un perfil profesional.", qrDataUrl: null };
+  }
+
+  const base = await getOrCreateBaseSurveyLink({
+    organizationId: user.organizationId,
+    professionalId,
+    createdBy: user.id,
+  });
+  if (!base) return { error: "No se pudo obtener el link de consultorio.", qrDataUrl: null };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (!appUrl) return { error: "Falta configurar la URL de la app.", qrDataUrl: null };
+
+  const qrDataUrl = await QRCode.toDataURL(`${appUrl}/encuesta/${base.token}`, {
+    width: 320,
+    margin: 1,
+  });
+  return { error: null, qrDataUrl };
 }
