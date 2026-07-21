@@ -11,6 +11,10 @@ import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-di
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import {
+  type EfrStateRef,
+  getEfrStatesForModel,
+} from "@/modules/diagnoses/data/efr-states-reader";
+import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
 } from "@/modules/diagnoses/data/results-reader";
@@ -96,12 +100,16 @@ export default async function ResultadosEvaluacionPage({
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
   // La comparacion de seguimiento aparece solo si hay una evaluacion previa (null si es
   // la primera del paciente).
-  const [protocol, comparison, composition, criterion, reportCard] = await Promise.all([
+  const [protocol, comparison, composition, criterion, reportCard, efrStates] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
     getDiagnosisCriterion(id),
     getReportCardForEvaluation(id),
+    // Contenido de referencia de los 81 estados, por el model_version_id del diagnostico (V2).
+    results.modelVersionId
+      ? getEfrStatesForModel(results.modelVersionId)
+      : Promise.resolve<Record<number, EfrStateRef>>({}),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -146,6 +154,7 @@ export default async function ResultadosEvaluacionPage({
               colapsables, versiones al pie). La composicion va como colapsable dentro. */}
           <EvaluationResults
             results={results}
+            efrStates={efrStates}
             composition={
               composition ? (
                 <CompositionSection

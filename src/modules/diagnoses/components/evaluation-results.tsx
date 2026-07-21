@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities } from "@/clinical-engine";
 
 import { DetailsSection } from "./details-section";
-import { DfiRadar } from "./dfi-radar";
-import { Diana } from "./diana";
+import { MapsSection } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
+import type { EfrStateRef } from "../data/efr-states-reader";
 import { SEV_LABEL } from "../severity-labels";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -105,9 +105,13 @@ function ContentCard({
 export function EvaluationResults({
   results,
   composition,
+  efrStates,
 }: {
   results: Results;
   composition?: ReactNode;
+  // Contenido de referencia de los 81 estados para explorar la Diana (V2). Vacio si no hay
+  // diagnostico/registry: la exploracion queda deshabilitada.
+  efrStates: Record<number, EfrStateRef>;
 }) {
   // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
   // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
@@ -148,6 +152,15 @@ export function EvaluationResults({
     snapshot;
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
   const sevByCode = indicatorSeverities(snapshot);
+  // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
+  // para la celda propia durante la exploracion; nunca del registry).
+  const patientContent = {
+    diagnosisName: efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null,
+    mechanism: efrState?.mechanism ?? null,
+    biomarkers: efrState?.biomarkers ?? null,
+    risks: efrState?.risks ?? null,
+    suggestedNutraceuticals: efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null,
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -233,23 +246,16 @@ export function EvaluationResults({
           <CardTitle>Mapas del estado</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
-            {/* Encabezado fiel al HTML. El original es "Diana EFR BIS — 81 Estados"; se usa el
-                separador "·" (no em-dash, prohibido) igual que en el radar. */}
-            <div className="flex flex-col items-center gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
-              <Diana
-                bands={efrPhenotype.bands}
-                stateNumber={efrPhenotype.stateNumber}
-                frSectorName={frSector.nombre}
-                structuralName={structural.nombre}
-              />
-            </div>
-            <div className="flex flex-col items-center gap-3">
-              <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
-              <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
-            </div>
-          </div>
+          <MapsSection
+            bands={efrPhenotype.bands}
+            stateNumber={efrPhenotype.stateNumber}
+            frSectorName={frSector.nombre}
+            structuralName={structural.nombre}
+            patientContent={patientContent}
+            statesContent={efrStates}
+            radarDomains={dfi.domains}
+            radarRiskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1}
+          />
         </CardContent>
       </Card>
 

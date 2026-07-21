@@ -1,3 +1,5 @@
+"use client";
+
 import { efrRiskRank } from "@/clinical-engine";
 
 // La Diana EFR: grafico polar de los 81 estados (imagen caracteristica de Atlas, BRAND).
@@ -76,11 +78,20 @@ export function Diana({
   stateNumber,
   frSectorName,
   structuralName,
+  interactive = false,
+  selectedStateNumber = null,
+  onSelectCell,
 }: {
   bands: Bands;
   stateNumber: number;
   frSectorName: string;
   structuralName: string;
+  // Exploracion (V2): cuando `interactive`, las celdas son clicables y la seleccionada se resalta
+  // aparte de la del paciente. La celda del paciente NUNCA cambia: la exploracion es solo lectura de
+  // referencia. Sin `interactive`, la Diana es puramente presentacional.
+  interactive?: boolean;
+  selectedStateNumber?: number | null;
+  onSelectCell?: (stateNumber: number) => void;
 }) {
   // Posicion del paciente por RANGO de riesgo, fiel a la definicion: el ANILLO radial es IFC x IRC
   // y el SECTOR angular es FFMI x FMI (antes estaban transpuestos). El numero de estado es agnostico
@@ -91,7 +102,7 @@ export function Diana({
 
   // Las 81 celdas, ordenadas por rango: sc/rg 0..8 son directamente el rango. El color usa
   // rango+1 (1..9), igual que el prototipo.
-  const cells: { key: string; d: string; fill: string; isPat: boolean }[] = [];
+  const cells: { key: string; d: string; fill: string; isPat: boolean; num: number }[] = [];
   for (let rg = 0; rg < RINGS; rg++) {
     const rInner = HOLE + rg * BAND;
     const rOuter = rInner + BAND;
@@ -103,8 +114,20 @@ export function Diana({
         d: segment(rInner, rOuter, aStart, aEnd),
         fill: riskColor(sc + 1, rg + 1),
         isPat: sc === sectorIndex && rg === ringIndex,
+        // Numero de estado de la celda: anillo * 9 + sector + 1 (misma formula que efrStateNumber).
+        num: rg * 9 + sc + 1,
       });
     }
+  }
+
+  // Contorno de la celda explorada (V2), distinto del contorno del paciente. Solo en modo
+  // interactivo y si hay una celda seleccionada.
+  let selectedD: string | null = null;
+  if (interactive && selectedStateNumber != null) {
+    const sSc = (selectedStateNumber - 1) % SECTORS;
+    const sRg = Math.floor((selectedStateNumber - 1) / SECTORS);
+    const sInner = HOLE + sRg * BAND;
+    selectedD = segment(sInner, sInner + BAND, sSc * SECTOR_DEG, sSc * SECTOR_DEG + SECTOR_DEG);
   }
 
   // Celda y marcador del paciente.
@@ -136,6 +159,8 @@ export function Diana({
             stroke="white"
             strokeOpacity={0.7}
             strokeWidth={1}
+            className={interactive ? "cursor-pointer" : undefined}
+            onClick={interactive && onSelectCell ? () => onSelectCell(cell.num) : undefined}
           />
         ))}
         {/* Etiquetas de lectura, fieles a la definicion: radios R1-R9 en el borde (angular,
@@ -187,6 +212,10 @@ export function Diana({
         >
           EFR
         </text>
+        {/* Celda explorada (V2): contorno punteado de acento, distinto del paciente. */}
+        {selectedD ? (
+          <path d={selectedD} fill="none" className="stroke-primary" strokeWidth={3} strokeDasharray="4 2" />
+        ) : null}
         {/* Celda del paciente: contorno de alto contraste sobre el fondo saturado. */}
         <path d={patD} fill="none" className="stroke-foreground" strokeWidth={3} />
         {/* Marcador: aro blanco + numero de estado, para leer la posicion sin depender del color. */}

@@ -45,6 +45,10 @@ export type EvaluationResults = {
   documentLabel: string;
   evaluationDate: string;
   indicatorNames: Record<string, string>; // codigo -> nombre del registry
+  // model_version_id del diagnostico: para leer los 81 estados de referencia (efr_states) de la
+  // MISMA era del diagnostico del paciente (exploracion de la Diana, era-consistente). null si no
+  // hay diagnostico o el snapshot es incompatible.
+  modelVersionId: string | null;
 };
 
 export type EvaluationHeader = {
@@ -117,6 +121,7 @@ export async function getEvaluationResults(
       documentLabel: dispatch.documentLabel,
       evaluationDate: dispatch.evaluationDate,
       indicatorNames: {},
+      modelVersionId: null,
     };
   }
 
@@ -163,5 +168,6 @@ export async function getEvaluationResults(
     documentLabel: dispatch.documentLabel,
     evaluationDate: dispatch.evaluationDate,
     indicatorNames,
+    modelVersionId: diag?.model_version_id ?? null,
   };
 }
