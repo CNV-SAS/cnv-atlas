@@ -216,13 +216,21 @@ export function EvaluationResults({
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
-            <Diana
-              bands={efrPhenotype.bands}
-              stateNumber={efrPhenotype.stateNumber}
-              frSectorName={frSector.nombre}
-              structuralName={structural.nombre}
-            />
-            <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
+            {/* Encabezado fiel al HTML. El original es "Diana EFR BIS — 81 Estados"; se usa el
+                separador "·" (no em-dash, prohibido) igual que en el radar. */}
+            <div className="flex flex-col items-center gap-3">
+              <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
+              <Diana
+                bands={efrPhenotype.bands}
+                stateNumber={efrPhenotype.stateNumber}
+                frSectorName={frSector.nombre}
+                structuralName={structural.nombre}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
+              <DfiRadar domains={dfi.domains} riskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1} />
+            </div>
           </div>
         </CardContent>
       </Card>
