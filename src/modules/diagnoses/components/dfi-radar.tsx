@@ -1,5 +1,7 @@
 import type { DfiDomain } from "@/clinical-engine";
 
+import { SEV_LABEL } from "../severity-labels";
+
 // Radar de los 5 dominios del DFI (Diagnostico Funcional Integral): una lectura de forma, de un
 // vistazo, de la severidad por dominio. Cada eje es un dominio; el radio es la severidad (0 al
 // centro = optimo, 3 en el borde = alto), coherente con la Diana (exterior = mayor riesgo). Los
@@ -25,10 +27,8 @@ const RADAR_LABEL: Record<string, string> = {
   d4: "Conductual",
   d5: "Epigenét.",
 };
-// Vocabulario de severidad del MOTOR (sev 0..3), fuente de verdad (ver V0-b): el radar y las
-// tarjetas del DFI comparten estas palabras, no las 5 zonas de render del HTML. La consolidacion
-// en una fuente unica compartida es V7.
-const SEV_LABEL = ["Óptimo", "Leve", "Moderado", "Alto"];
+// Vocabulario de severidad del MOTOR: fuente unica compartida (severity-labels), la misma que usan
+// las tarjetas del DFI, para que no puedan divergir.
 // Zonas de fondo por severidad (fill claro de la paleta clinica). sev 0 y 1 comparten el verde,
 // igual que el modelo de riesgo (2 alerta, 3 critico). Se pintan del exterior al centro.
 const BAND_FILL = [

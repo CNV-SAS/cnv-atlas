@@ -9,6 +9,7 @@ import { DetailsSection } from "./details-section";
 import { DfiRadar } from "./dfi-radar";
 import { Diana } from "./diana";
 import type { EvaluationResults as Results } from "../data/results-reader";
+import { SEV_LABEL } from "../severity-labels";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
 // pura desde el snapshot inmutable + contenido EFR. Sin PII al exterior; el profesional
@@ -29,9 +30,8 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
   { code: "IR", key: "IR" },
 ];
 
-// Severidad de dominio DFI (0-3) -> etiqueta + color de la capa clinica (no solo color:
-// tambien la etiqueta, por accesibilidad; BRAND).
-const SEV_LABEL = ["Óptimo", "Leve", "Moderado", "Alto"];
+// Severidad de dominio DFI (0-3): la etiqueta (SEV_LABEL) viene de la fuente unica compartida con
+// el radar (severity-labels); aqui se define solo el color de la capa clinica.
 // Capa clinica de color (tokens de BRAND, theme-aware): sev 0-1 optimo, 2 alerta, 3 critico.
 const SEV_CLS = [
   "bg-clinical-optimal-bg text-clinical-optimal",
