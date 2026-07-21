@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -9,6 +10,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -145,5 +147,11 @@ export const surveyLinks = pgTable(
   (t) => [
     unique("survey_links_token_unique").on(t.token),
     index("survey_links_professional_idx").on(t.professionalId),
+    // Un solo link base (inicial reusable) por profesional: garantia a nivel de BD contra una
+    // condicion de carrera que crearia dos QR distintos para el mismo consultorio. Parcial: solo
+    // aplica a los links iniciales reusables (patient_id null); los de seguimiento no se limitan.
+    uniqueIndex("survey_links_base_unique")
+      .on(t.professionalId)
+      .where(sql`type = 'inicial' and patient_id is null`),
   ],
 );

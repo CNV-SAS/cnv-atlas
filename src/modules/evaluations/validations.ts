@@ -57,3 +57,11 @@ export type FollowupLinkState = {
   error: string | null;
   linkPath: string | null;
 };
+
+// Estado del link base (inicial reusable) de consultorio del profesional. linkPath lleva la ruta
+// relativa (/encuesta/<token>) del link estable; la UI la combina con el origen. Es get-or-create:
+// estable entre llamadas (no se regenera).
+export type BaseSurveyLinkState = {
+  error: string | null;
+  linkPath: string | null;
+};

@@ -35,3 +35,30 @@ export async function emitFollowupLink(
   if (error) return null; // RLS lo rechaza si el professional_id no es del usuario
   return { token };
 }
+
+export type CreateBaseLinkInput = {
+  organizationId: string;
+  professionalId: string;
+  createdBy: string;
+};
+
+// Crea el link base (inicial reusable) del profesional: token opaco, sin PII, sin expiracion ni
+// consumo (patient_id/prefill/expires_at/consumed_at quedan null). Va por el cliente con sesion
+// (survey_links_insert valida con WITH CHECK el professional_id). Devuelve null si choca con el
+// indice unico parcial (otra request lo creo primero) o si la RLS lo rechaza; el llamador re-lee
+// para resolver la carrera.
+export async function createBaseSurveyLink(
+  input: CreateBaseLinkInput,
+): Promise<{ token: string } | null> {
+  const supabase = await createSupabaseServerClient();
+  const token = generateOpaqueToken();
+  const { error } = await supabase.from("survey_links").insert({
+    organization_id: input.organizationId,
+    professional_id: input.professionalId,
+    type: "inicial",
+    token,
+    created_by: input.createdBy,
+  });
+  if (error) return null;
+  return { token };
+}

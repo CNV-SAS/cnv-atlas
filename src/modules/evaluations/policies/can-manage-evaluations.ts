@@ -16,3 +16,9 @@ export function canConfirmIdentity(user: CurrentUser): boolean {
 export function canEmitFollowupLink(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional", "admin"]);
 }
+
+// Gestionar el link base (inicial reusable) de consultorio del profesional. Es del
+// propio profesional; la accion resuelve el professional_id del usuario autenticado.
+export function canManageBaseSurveyLink(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["professional", "admin"]);
+}

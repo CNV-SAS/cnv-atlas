@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "survey_links_base_unique" ON "survey_links" USING btree ("professional_id") WHERE type = 'inicial' and patient_id is null;

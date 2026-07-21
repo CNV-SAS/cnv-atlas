@@ -19,15 +19,20 @@ import {
   confirmEvaluationIdentity,
   ConsentBranchMismatchError,
 } from "./data/evaluations-writer";
-import { emitFollowupLink } from "./data/survey-links-writer";
+import { createBaseSurveyLink, emitFollowupLink } from "./data/survey-links-writer";
 import { getActiveSurvey } from "./data/survey-reader";
-import { resolveSurveyLinkByToken } from "./data/survey-links-reader";
+import {
+  getBaseSurveyLinkForProfessional,
+  resolveSurveyLinkByToken,
+} from "./data/survey-links-reader";
 import {
   canConfirmIdentity,
   canEmitFollowupLink,
+  canManageBaseSurveyLink,
 } from "./policies/can-manage-evaluations";
 import { submitSurveyIntake } from "./services/survey-intake";
 import type {
+  BaseSurveyLinkState,
   ConfirmIdentityState,
   FollowupLinkState,
   SurveyFormState,
@@ -224,4 +229,32 @@ export async function emitFollowupLinkAction(
   if (!result) return { error: "No se pudo crear el link.", linkPath: null };
 
   return { error: null, linkPath: `/encuesta/${result.token}` };
+}
+
+// Get-or-create del link base (inicial reusable) de consultorio del profesional. ESTABLE: si ya
+// existe, devuelve el mismo (no se regenera en cada clic). El professional_id se resuelve del
+// usuario autenticado (atribucion por servidor, nunca del form); un admin no tiene perfil
+// profesional, asi que no aplica. El indice unico parcial garantiza uno solo por profesional; si
+// una request paralela lo crea justo antes, el insert choca (devuelve null) y se re-lee.
+export async function getOrCreateBaseSurveyLinkAction(): Promise<BaseSurveyLinkState> {
+  const user = await requireUser();
+  if (!canManageBaseSurveyLink(user)) return { error: "No autorizado.", linkPath: null };
+
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) {
+    return { error: "Tu cuenta no tiene un perfil profesional.", linkPath: null };
+  }
+
+  let base = await getBaseSurveyLinkForProfessional(professionalId);
+  if (!base) {
+    base =
+      (await createBaseSurveyLink({
+        organizationId: user.organizationId,
+        professionalId,
+        createdBy: user.id,
+      })) ?? (await getBaseSurveyLinkForProfessional(professionalId));
+  }
+  if (!base) return { error: "No se pudo obtener el link de consultorio.", linkPath: null };
+
+  return { error: null, linkPath: `/encuesta/${base.token}` };
 }
