@@ -1,9 +1,10 @@
 import { efrRiskRank } from "@/clinical-engine";
 
 // La Diana EFR: grafico polar de los 81 estados (imagen caracteristica de Atlas, BRAND).
-// 9 sectores angulares (sector funcional FyR = IFC x IRC) x 9 anillos radiales (fenotipo
-// estructural = FFMI x FMI) = 81 celdas. Cada celda se pinta con el gradiente de riesgo
-// verde->rojo del prototipo de Gildardo (menor riesgo al centro, mayor en el exterior); la
+// Fiel a la definicion del modelo (ATLAS_v7.html:11166,:11177): 9 ANILLOS radiales = IFC x IRC
+// (funcion y riesgo celular, PRIMARIO = sector funcional FyR) x 9 SECTORES angulares = FFMI x FMI
+// (estructura, secundario = fenotipo estructural) = 81 celdas. Cada celda se pinta con el gradiente
+// de riesgo verde->rojo del prototipo de Gildardo (menor riesgo al centro, mayor en el exterior); la
 // celda del paciente se resalta. Port de render fiel (ATLAS_v7.html, DianaEFyR ~L4375-4605):
 // no toca el motor congelado ni los golden clinicos, es presentacion. Accesible: la posicion
 // del paciente no depende solo del color (marcador, numero y etiqueta). Server component puro.
@@ -81,10 +82,12 @@ export function Diana({
   frSectorName: string;
   structuralName: string;
 }) {
-  // Posicion del paciente por RANGO de riesgo (no por banda cruda): asi la celda cae donde la
-  // pone la Diana de Gildardo. sectorIndex = rango de IFC x IRC; ringIndex = rango de FFMI x FMI.
-  const sectorIndex = efrRiskRank(bands.ifc, bands.irc); // 0..8
-  const ringIndex = efrRiskRank(bands.ffmi, bands.fmi); // 0..8 (0 = interior, menor riesgo)
+  // Posicion del paciente por RANGO de riesgo, fiel a la definicion: el ANILLO radial es IFC x IRC
+  // y el SECTOR angular es FFMI x FMI (antes estaban transpuestos). El numero de estado es agnostico
+  // al eje y el color es simetrico (t=(a+b-2)/16), asi que corregir la transposicion es presentacion
+  // pura: solo reubica la celda del paciente donde la pone la Diana de Gildardo.
+  const ringIndex = efrRiskRank(bands.ifc, bands.irc); // 0..8 (0 = anillo interno, menor riesgo)
+  const sectorIndex = efrRiskRank(bands.ffmi, bands.fmi); // 0..8 (sector angular)
 
   // Las 81 celdas, ordenadas por rango: sc/rg 0..8 son directamente el rango. El color usa
   // rango+1 (1..9), igual que el prototipo.
@@ -111,7 +114,7 @@ export function Diana({
   const patD = segment(patInner, patOuter, patStart, patStart + SECTOR_DEG);
   const [mx, my] = polar((patInner + patOuter) / 2, patStart + SECTOR_DEG / 2);
 
-  const label = `Diana EFR: estado ${stateNumber} de 81, resaltado sobre el gradiente de riesgo (menor al centro, mayor en el exterior). Sector funcional ${frSectorName}, fenotipo estructural ${structuralName}.`;
+  const label = `Diana EFR: estado ${stateNumber} de 81, resaltado sobre el gradiente de riesgo (menor al centro, mayor en el exterior). Anillo (IFC x IRC) ${frSectorName}, sector (FFMI x FMI) ${structuralName}.`;
 
   return (
     <figure className="flex flex-col items-center gap-3">
@@ -135,8 +138,9 @@ export function Diana({
             strokeWidth={1}
           />
         ))}
-        {/* Etiquetas de lectura: sectores S1-S9 en el borde (angular, IFC x IRC), anillos R1-R9
-            sobre el radio superior (radial, FFMI x FMI), y el centro. Son rotulos fijos de eje. */}
+        {/* Etiquetas de lectura, fieles a la definicion: radios R1-R9 en el borde (angular,
+            FFMI x FMI), anillos A1-A9 sobre el radio superior (radial, IFC x IRC), y el centro.
+            Son rotulos fijos de eje. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
           const [lx, ly] = polar(R + 9, sc * SECTOR_DEG + SECTOR_DEG / 2);
           return (
@@ -149,7 +153,7 @@ export function Diana({
               fontSize={8}
               className="fill-muted-foreground"
             >
-              S{sc + 1}
+              R{sc + 1}
             </text>
           );
         })}
@@ -169,7 +173,7 @@ export function Diana({
               strokeWidth={0.5}
               style={{ paintOrder: "stroke" }}
             >
-              R{rg + 1}
+              A{rg + 1}
             </text>
           );
         })}
@@ -199,7 +203,8 @@ export function Diana({
           {stateNumber}
         </text>
       </svg>
-      {/* Escala de referencia: el gradiente de riesgo, de menor (izquierda) a mayor (derecha). */}
+      {/* Escala de riesgo con palabras (fiel al HTML :11174): del optimo (centro) al riesgo maximo
+          (periferia), no solo degradado. */}
       <div className="flex w-full max-w-[280px] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
@@ -207,17 +212,19 @@ export function Diana({
           aria-hidden
         />
         <div className="flex justify-between text-[10px] text-muted-foreground">
-          <span>Menor riesgo</span>
-          <span>Mayor riesgo</span>
+          <span>Óptimo</span>
+          <span>Moderado</span>
+          <span>Riesgo máximo</span>
         </div>
       </div>
       <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         <span>
-          Estado {stateNumber} de 81 · sector {frSectorName} · anillo {structuralName}
+          Estado {stateNumber} de 81 · anillo A{ringIndex + 1} {frSectorName} · radio R
+          {sectorIndex + 1} {structuralName}
         </span>
         <span>
-          Sectores S1-S9: función celular y riesgo (IFC x IRC). Anillos R1-R9: fenotipo estructural
-          (FFMI x FMI), del centro (menor riesgo) al borde.
+          Anillos A1-A9: IFC x IRC (función y riesgo celular, primario). Radios R1-R9: FFMI x FMI
+          (estructura corporal, secundario). Centro #1 óptimo, periferia #81 riesgo máximo.
         </span>
       </figcaption>
     </figure>
