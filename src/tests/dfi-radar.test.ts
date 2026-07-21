@@ -31,12 +31,31 @@ describe("DfiRadar", () => {
     expect(pts.length).toBe(5);
   });
 
-  it("muestra los 5 nombres de dominio y su severidad en texto (accesible)", () => {
+  it("rotula los 5 ejes con los nombres cortos fieles del HTML (por id, no por d.nombre)", () => {
     const markup = render(1);
-    for (const d of DOMAINS) expect(markup).toContain(d.nombre.split("-")[0]);
-    // Severidades presentes como texto, no solo color.
-    expect(markup).toContain("Optimo");
-    expect(markup).toContain("Alto");
+    // Nombres cortos EXACTOS del HTML de referencia (_RAD_SHORT), resueltos por id. El fixture
+    // trae los nombres largos del snapshot ("Metabolico-Estructural"); si el radar los usara, el
+    // texto no coincidiria: esto prueba que rotula por id.
+    const SHORT: Record<string, string> = {
+      d1: "Celular",
+      d2: "Metabólico",
+      d3: "Enveje.",
+      d4: "Conductual",
+      d5: "Epigenét.",
+    };
+    for (const d of DOMAINS) expect(markup).toContain(SHORT[d.id]);
+    // Zona por eje presente como texto (vocabulario del HTML), no solo color: sev 0 -> "Muy bien",
+    // sev 3 -> "A tratar".
+    expect(markup).toContain("Muy bien");
+    expect(markup).toContain("A tratar");
+  });
+
+  it("incluye la leyenda de zonas y la frase del poligono, fieles al HTML", () => {
+    const markup = render(1);
+    for (const z of ["Excepcional", "Muy bien", "En la norma", "A vigilar", "A tratar"]) {
+      expect(markup).toContain(z);
+    }
+    expect(markup).toContain("A menor polígono, mejor estado.");
   });
 
   it("el color del poligono sigue la severidad integrada", () => {
