@@ -138,6 +138,24 @@ Al terminar la relación contractual, la custodia se transfiere al Integrante me
 
 ---
 
+## Reasignación paciente-profesional y consentimiento dinámico (reglas legales confirmadas)
+
+Reglas confirmadas por la revisión jurídica (2026-07). Cambian el diseño futuro del modelo de asignación paciente-profesional; se documentan aquí para no perderlas. La implementación es un bloque post primer-piloto (ver `BACKLOG.md`), NO del MVP inicial.
+
+**(a) El checkbox de continuidad autoriza CONTACTO, no reasignación ni retención.** La casilla opcional de continuidad del consentimiento habilita únicamente que CNV/el profesional puedan **contactar** al paciente; NO autoriza por sí sola reasignar su historia a otro profesional ni retenerla automáticamente. La **reasignación** de un paciente a un profesional entrante exige: (1) **consentimiento fresco del paciente hacia ese profesional entrante específico** (no un consentimiento genérico ni el del profesional saliente), y (2) una **transferencia formal de custodia** entre profesionales. La continuidad no es reasignación.
+
+**(b) Sin continuidad o sin aceptación: exportar al saliente + anonimizar en CNV.** Si el paciente no dio continuidad, o no acepta al profesional entrante, se aplica la ruta ya existente: **exportar la historia clínica al profesional saliente** (custodio legal por 15 años) y **anonimizar el dato en CNV**, conforme a la Cláusula 12 del Anexo 3 (ya vigente, no es nueva). Es el mismo mecanismo que el offboarding de un Integrante.
+
+**(c) Consentimiento dinámico: revocación por finalidad, hacia adelante.** El consentimiento se revoca **por finalidad** (por autorización concreta), no con un interruptor general. La revocación opera **hacia adelante, no retroactiva**; una **nueva** autorización aplica **desde que se otorga**. Casos:
+- Revocar una autorización **necesaria** (`servicio`, `datos_sensibles`, `internacional_ia`) **bloquea evaluaciones nuevas**, pero **no borra la historia ya capturada** (la obligación legal de conservar 15 años manda sobre la revocación; ver Custodia de la historia clínica).
+- Una revocación **a media sesión** detiene la captura **desde ese instante**, pero **no descarta lo ya capturado** en la sesión.
+
+**(d) Sellar cada dato con el consentimiento vigente al capturarlo.** Cada dato clínico (o cada sesión/lote) se **sella con el estado de consentimiento vigente en el momento de la captura**. Es la extensión del principio de **constelación de versiones** (`ARCHITECTURE.md` regla 7: `engine_version`, `survey_version_id`, `model_version_id`, `rules_version`) **al consentimiento**: un registro clínico sabe bajo qué autorizaciones se capturó, para que una revocación posterior (hacia adelante) no reescriba la base legal de lo ya capturado.
+
+**Pendiente de Arley (no jurídico, ético):** la **notificación al paciente** en una reasignación es un deber ético del profesional que **varía por disciplina**; queda pendiente de definición de Arley, separado de estas reglas legales.
+
+---
+
 ## Flujos del dato por propósito
 
 | Propósito | Nivel de dato | Notas |
