@@ -82,35 +82,43 @@ function DiagnosisCell({
   return <span className="text-muted-foreground">-</span>;
 }
 
+// showDiagnosis gobierna si se muestra el VEREDICTO (clasificacion antropometrica OMS + columna
+// Diagnostico). En Diagnostico es true (el veredicto es su materia). En Evaluacion es false: la
+// etapa de entrada muestra "que entro" (Variable, Valor, Referencia, Δ), no el veredicto (ese es de
+// Diagnostico). Un solo componente, sin duplicar. Cuando es false, sexoM/classifications no se usan.
 export function CompositionSection({
   composition,
-  sexoM,
-  classifications,
+  sexoM = true,
+  classifications = {},
+  showDiagnosis = true,
 }: {
   composition: Composition;
-  sexoM: boolean;
-  classifications: Classifications;
+  sexoM?: boolean;
+  classifications?: Classifications;
+  showDiagnosis?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
-        <h3 className="text-base font-semibold text-foreground">Clasificación antropométrica</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
-          <AnthroChip
-            label={`Cintura ${fmt(composition.cintura, 0)} cm`}
-            cls={clasificarCintura(composition.cintura, sexoM)}
-          />
-          <AnthroChip
-            label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
-            cls={clasificarICT(composition.ict)}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
-          cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
-        </p>
-      </section>
+      {showDiagnosis ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-base font-semibold text-foreground">Clasificación antropométrica</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
+            <AnthroChip
+              label={`Cintura ${fmt(composition.cintura, 0)} cm`}
+              cls={clasificarCintura(composition.cintura, sexoM)}
+            />
+            <AnthroChip
+              label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
+              cls={clasificarICT(composition.ict)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
+            cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
+          </p>
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h3 className="text-base font-semibold text-foreground">
@@ -124,7 +132,7 @@ export function CompositionSection({
                   <th className="py-2 pr-4 text-right font-medium">Valor</th>
                   <th className="py-2 pr-4 text-right font-medium">Referencia</th>
                   <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                  <th className="py-2 font-medium">Diagnóstico</th>
+                  {showDiagnosis ? <th className="py-2 font-medium">Diagnóstico</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -134,7 +142,7 @@ export function CompositionSection({
                         BRAND.md, matiz de reserva del color de riesgo). */}
                     <tr className="border-y border-border bg-muted">
                       <td
-                        colSpan={5}
+                        colSpan={showDiagnosis ? 5 : 4}
                         className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
                       >
                         {lvl.title}
@@ -160,14 +168,16 @@ export function CompositionSection({
                           <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
                             {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta)}`}
                           </td>
-                          <td className="py-1.5">
-                            <DiagnosisCell
-                              rowKey={r.key}
-                              value={r.value}
-                              sexoM={sexoM}
-                              classifications={classifications}
-                            />
-                          </td>
+                          {showDiagnosis ? (
+                            <td className="py-1.5">
+                              <DiagnosisCell
+                                rowKey={r.key}
+                                value={r.value}
+                                sexoM={sexoM}
+                                classifications={classifications}
+                              />
+                            </td>
+                          ) : null}
                         </tr>
                       );
                     })}
@@ -176,10 +186,12 @@ export function CompositionSection({
               </tbody>
             </table>
           </div>
-        <p className="text-xs text-muted-foreground">
-          Varias variables de composición aún no tienen clasificación del motor (se muestran con un
-          guion en Diagnóstico); disponibles próximamente.
-        </p>
+        {showDiagnosis ? (
+          <p className="text-xs text-muted-foreground">
+            Varias variables de composición aún no tienen clasificación del motor (se muestran con un
+            guion en Diagnóstico); disponibles próximamente.
+          </p>
+        ) : null}
       </section>
     </div>
   );

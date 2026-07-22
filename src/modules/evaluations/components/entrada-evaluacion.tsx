@@ -9,20 +9,18 @@ import type { SurveyDomain } from "../data/survey-answers-reader";
 
 // Etapa de ENTRADA (pestana Evaluacion): que entro y se verifico antes del diagnostico. Orden
 // consentimiento (la puerta) -> encuesta del paciente (solo lectura) -> composicion corporal cruda.
-// La composicion reusa CompositionSection SIN clasificaciones del snapshot (classifications={}), ya
-// que en la etapa de evaluacion aun no hay diagnostico: la columna Diagnostico degrada a guion. La
-// tabla numerica lee de bis_raw_values (crudo). Presentacion pura desde readers RLS. Las condiciones
-// de la toma BIS, la fuerza prensil y la meta de peso van en el sub-bloque B (esperan a Gildardo).
+// La composicion reusa CompositionSection con showDiagnosis=false: muestra solo "que entro"
+// (Variable, Valor, Referencia, Δ), SIN el veredicto (clasificacion OMS + columna Diagnostico), que
+// es materia de Diagnostico. Lee de bis_raw_values (crudo). Presentacion pura desde readers RLS. Las
+// condiciones de la toma BIS, la fuerza prensil y la meta de peso van en el sub-bloque B (Gildardo).
 export function EntradaEvaluacion({
   consentStatus,
   surveyDomains,
   composition,
-  sexoM,
 }: {
   consentStatus: ConsentStatus | null;
   surveyDomains: SurveyDomain[] | null;
   composition: Composition | null;
-  sexoM: boolean;
 }) {
   return (
     <div className="flex flex-col gap-8">
@@ -43,7 +41,7 @@ export function EntradaEvaluacion({
 
       <DetailsSection title="Composición corporal (Niveles de Wang)">
         {composition ? (
-          <CompositionSection composition={composition} sexoM={sexoM} classifications={{}} />
+          <CompositionSection composition={composition} showDiagnosis={false} />
         ) : (
           <p className="text-sm text-muted-foreground">
             Aún sin medición BIS importada para esta evaluación. La composición aparece aquí cuando

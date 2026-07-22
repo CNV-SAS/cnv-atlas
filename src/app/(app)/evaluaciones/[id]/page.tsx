@@ -20,7 +20,6 @@ import {
 } from "@/modules/diagnoses/data/results-reader";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
 import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
-import { getEvaluationPatientIsMale } from "@/modules/evaluations/data/evaluation-patient-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
@@ -66,11 +65,10 @@ export default async function ResultadosEvaluacionPage({
     // La etapa de ENTRADA existe desde el intake, con o sin diagnostico: consentimiento, encuesta y
     // composicion cruda. Es el uso principal de la pestana Evaluacion (revisar la entrada ANTES de
     // generar el diagnostico), asi que se puebla tambien en esta rama sin diagnostico.
-    const [entryConsent, entrySurvey, entryComposition, entryIsMale] = await Promise.all([
+    const [entryConsent, entrySurvey, entryComposition] = await Promise.all([
       getConsentStatusForEvaluation(id),
       getSurveyAnswersForEvaluation(id),
       getCompositionForEvaluation(id),
-      getEvaluationPatientIsMale(id),
     ]);
     return (
       <EvaluationTabs
@@ -79,7 +77,6 @@ export default async function ResultadosEvaluacionPage({
             consentStatus={entryConsent}
             surveyDomains={entrySurvey}
             composition={entryComposition}
-            sexoM={entryIsMale}
           />
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
@@ -129,7 +126,6 @@ export default async function ResultadosEvaluacionPage({
     efrStates,
     entryConsent,
     entrySurvey,
-    entryIsMale,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -140,10 +136,9 @@ export default async function ResultadosEvaluacionPage({
     results.modelVersionId
       ? getEfrStatesForModel(results.modelVersionId)
       : Promise.resolve<Record<number, EfrStateRef>>({}),
-    // Etapa de entrada (pestana Evaluacion): consentimiento + encuesta + sexo normalizado.
+    // Etapa de entrada (pestana Evaluacion): consentimiento + encuesta.
     getConsentStatusForEvaluation(id),
     getSurveyAnswersForEvaluation(id),
-    getEvaluationPatientIsMale(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -161,7 +156,6 @@ export default async function ResultadosEvaluacionPage({
           consentStatus={entryConsent}
           surveyDomains={entrySurvey}
           composition={composition}
-          sexoM={entryIsMale}
         />
       }
       tratamiento={
