@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { BisImportForm } from "@/modules/bis/components/bis-import-form";
+import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
@@ -19,11 +21,15 @@ export function EntradaEvaluacion({
   consentStatus,
   surveyDomains,
   composition,
+  bisImportEval,
 }: {
   evaluationId: string;
   consentStatus: ConsentStatus | null;
   surveyDomains: SurveyDomain[] | null;
   composition: Composition | null;
+  // Vista para importar BIS desde aqui (reusa el modulo bis del panel). null si la evaluacion no
+  // esta in_progress (identidad sin confirmar) o ya no aplica.
+  bisImportEval: BisImportEvaluation | null;
 }) {
   // Contador respondidas/total con el total REAL de preguntas del instrumento (no hardcodeado): el
   // reader devuelve todas las preguntas con answerValue null si no se respondio.
@@ -70,16 +76,25 @@ export function EntradaEvaluacion({
         )}
       </section>
 
-      <DetailsSection title="Composición corporal (Niveles de Wang)">
-        {composition ? (
+      {/* Con medicion BIS: la composicion (solo "que entro"). Sin medicion: el import BIS desde
+          aqui (reusa el modulo bis), o un aviso si la identidad aun no esta confirmada. */}
+      {composition ? (
+        <DetailsSection title="Composición corporal (Niveles de Wang)">
           <CompositionSection composition={composition} showDiagnosis={false} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Aún sin medición BIS importada para esta evaluación. La composición aparece aquí cuando
-            se importe el XLSX de Biody.
-          </p>
-        )}
-      </DetailsSection>
+        </DetailsSection>
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
+          {bisImportEval ? (
+            <BisImportForm evaluation={bisImportEval} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aún sin medición BIS. Confirma la identidad del paciente para poder importar la
+              medición (XLSX de Biody Manager).
+            </p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

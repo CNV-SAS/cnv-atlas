@@ -61,3 +61,39 @@ export async function listEvaluationsForBisImport(): Promise<BisImportEvaluation
     };
   });
 }
+
+// Version de una sola evaluacion (misma forma), para ofrecer el import BIS desde la pestana
+// Evaluacion. Devuelve null si la evaluacion no esta in_progress (aun sin identidad confirmada, no
+// se puede importar) o no es del profesional (RLS). Reusa el mismo modulo bis; no lo reconstruye.
+export async function getBisImportEvaluationForId(
+  evaluationId: string,
+): Promise<BisImportEvaluation | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select(
+      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), bis_measurements(id)",
+    )
+    .eq("id", evaluationId)
+    .eq("status", "in_progress")
+    .maybeSingle();
+  if (error) {
+    throw new Error(`bis-evaluations-reader: getBisImportEvaluationForId: ${error.message}`);
+  }
+  if (!data) return null;
+
+  const patient = one<PatientEmbed>(data.patients as PatientEmbed | PatientEmbed[] | null);
+  const profile = one(patient?.patient_profiles ?? null);
+  const measurements = (data.bis_measurements as { id: string }[] | null) ?? [];
+  return {
+    evaluationId: data.id,
+    patientId: data.patient_id,
+    type: data.type,
+    createdAt: data.created_at,
+    documentType: patient?.document_type ?? "",
+    documentNumber: patient?.document_number ?? "",
+    firstName: profile?.first_name ?? "",
+    lastName: profile?.last_name ?? "",
+    alreadyImported: measurements.length > 0,
+  };
+}

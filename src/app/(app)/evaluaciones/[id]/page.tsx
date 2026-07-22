@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { getBisImportEvaluationForId } from "@/modules/bis/data/bis-evaluations-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
@@ -65,10 +66,11 @@ export default async function ResultadosEvaluacionPage({
     // La etapa de ENTRADA existe desde el intake, con o sin diagnostico: consentimiento, encuesta y
     // composicion cruda. Es el uso principal de la pestana Evaluacion (revisar la entrada ANTES de
     // generar el diagnostico), asi que se puebla tambien en esta rama sin diagnostico.
-    const [entryConsent, entrySurvey, entryComposition] = await Promise.all([
+    const [entryConsent, entrySurvey, entryComposition, entryBisImport] = await Promise.all([
       getConsentStatusForEvaluation(id),
       getSurveyAnswersForEvaluation(id),
       getCompositionForEvaluation(id),
+      getBisImportEvaluationForId(id),
     ]);
     return (
       <EvaluationTabs
@@ -78,6 +80,7 @@ export default async function ResultadosEvaluacionPage({
             consentStatus={entryConsent}
             surveyDomains={entrySurvey}
             composition={entryComposition}
+            bisImportEval={entryBisImport}
           />
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
@@ -153,11 +156,14 @@ export default async function ResultadosEvaluacionPage({
   return (
     <EvaluationTabs
       evaluacion={
+        // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
+        // composicion y el import BIS no aplica (bisImportEval null).
         <EntradaEvaluacion
           evaluationId={id}
           consentStatus={entryConsent}
           surveyDomains={entrySurvey}
           composition={composition}
+          bisImportEval={null}
         />
       }
       tratamiento={
