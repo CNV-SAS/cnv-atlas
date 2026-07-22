@@ -34,6 +34,10 @@ const RUN = Boolean(process.env.DATABASE_URL) && process.env.SEED_GOLDEN === "1"
 // IDs fijos: la idempotencia (y la resumibilidad) se apoyan en poder reconocer lo ya hecho.
 const PATIENT_ID = "a0000000-0000-4000-8000-0000000000a1";
 const EVAL_ID = "a0000000-0000-4000-8000-0000000000a2";
+// Segunda evaluacion del MISMO paciente demo, SIN diagnostico (in_progress, encuesta parcial, sin
+// BIS): caso de prueba de la pestana Evaluacion, rama sin diagnostico (el uso principal: revisar la
+// entrada antes de generar). URL: /evaluaciones/a0000000-0000-4000-8000-0000000000a3
+const EVAL_ID_NODIAG = "a0000000-0000-4000-8000-0000000000a3";
 const DOC_NUMBER = "GOLDEN-0001";
 // DOB del donante real del BIS gold (~54 años): la edad alimenta EB-BIS/IAE, asi que debe
 // ser la suya para que el envejecimiento biologico lea coherente con su medicion.
@@ -331,5 +335,50 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .insert(schema.treatmentNotes)
       .values({ id: TREAT_NOTE_ID, treatmentId: treat.id, note: "Nota de tratamiento (demo, smoke de auditoria)." })
       .onConflictDoNothing();
+  });
+
+  it("evaluacion demo SIN diagnostico (encuesta parcial, sin BIS) para el smoke de la pestana Evaluacion (idempotente)", async () => {
+    // Segunda evaluacion del mismo paciente, in_progress (identidad ya confirmada) y SIN pipeline:
+    // getEvaluationResults devuelve null -> rama sin diagnostico. Encuesta PARCIAL (solo 3 preguntas
+    // respondidas) y sin medicion BIS: prueba que la vista de lectura muestra "sin responder" y la
+    // composicion su estado vacio, sin tronar.
+    await db
+      .insert(schema.evaluations)
+      .values({ id: EVAL_ID_NODIAG, patientId: PATIENT_ID, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
+      .onConflictDoNothing();
+
+    const existing = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, EVAL_ID_NODIAG))
+      .limit(1);
+    if (existing.length > 0) return; // ya sembrada; resumible
+
+    const respId = (
+      await db
+        .insert(schema.surveyResponses)
+        .values({ evaluationId: EVAL_ID_NODIAG, surveyVersionId: svId })
+        .returning({ id: schema.surveyResponses.id })
+    )[0].id;
+
+    // Solo estas 3 se responden; el resto de la encuesta queda sin responder a proposito.
+    const PARTIAL = ["d2_19", "d3_23", "d3_24"];
+    const questions = await db
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+    for (const q of questions as { id: string; fieldKey: string | null }[]) {
+      if (!q.fieldKey || !PARTIAL.includes(q.fieldKey)) continue;
+      const pick = ANSWERS[q.fieldKey];
+      const opts = await db
+        .select({ text: schema.surveyOptions.optionText })
+        .from(schema.surveyOptions)
+        .where(eq(schema.surveyOptions.questionId, q.id))
+        .orderBy(schema.surveyOptions.orderIndex);
+      const texts = opts.map((o: { text: string }) => o.text);
+      const chosen = pick.text ?? texts[pick.idx ?? 0];
+      const value = pick.multi ? JSON.stringify([chosen]) : chosen;
+      await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+    }
   });
 });

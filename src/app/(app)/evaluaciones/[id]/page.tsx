@@ -18,6 +18,10 @@ import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
 } from "@/modules/diagnoses/data/results-reader";
+import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
+import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
+import { getEvaluationPatientIsMale } from "@/modules/evaluations/data/evaluation-patient-reader";
+import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
@@ -59,9 +63,25 @@ export default async function ResultadosEvaluacionPage({
     // elegante (no un 404 crudo). Si no existe o no es suya (RLS), sigue siendo 404.
     const header = await getEvaluationHeaderForSession(id);
     if (!header) notFound();
+    // La etapa de ENTRADA existe desde el intake, con o sin diagnostico: consentimiento, encuesta y
+    // composicion cruda. Es el uso principal de la pestana Evaluacion (revisar la entrada ANTES de
+    // generar el diagnostico), asi que se puebla tambien en esta rama sin diagnostico.
+    const [entryConsent, entrySurvey, entryComposition, entryIsMale] = await Promise.all([
+      getConsentStatusForEvaluation(id),
+      getSurveyAnswersForEvaluation(id),
+      getCompositionForEvaluation(id),
+      getEvaluationPatientIsMale(id),
+    ]);
     return (
       <EvaluationTabs
-        evaluacion={<StagePlaceholder label="Evaluación" />}
+        evaluacion={
+          <EntradaEvaluacion
+            consentStatus={entryConsent}
+            surveyDomains={entrySurvey}
+            composition={entryComposition}
+            sexoM={entryIsMale}
+          />
+        }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
         diagnostico={
@@ -100,7 +120,17 @@ export default async function ResultadosEvaluacionPage({
   // generar el diagnostico); aqui se lee para que el profesional lo enriquezca.
   // La comparacion de seguimiento aparece solo si hay una evaluacion previa (null si es
   // la primera del paciente).
-  const [protocol, comparison, composition, criterion, reportCard, efrStates] = await Promise.all([
+  const [
+    protocol,
+    comparison,
+    composition,
+    criterion,
+    reportCard,
+    efrStates,
+    entryConsent,
+    entrySurvey,
+    entryIsMale,
+  ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
@@ -110,6 +140,10 @@ export default async function ResultadosEvaluacionPage({
     results.modelVersionId
       ? getEfrStatesForModel(results.modelVersionId)
       : Promise.resolve<Record<number, EfrStateRef>>({}),
+    // Etapa de entrada (pestana Evaluacion): consentimiento + encuesta + sexo normalizado.
+    getConsentStatusForEvaluation(id),
+    getSurveyAnswersForEvaluation(id),
+    getEvaluationPatientIsMale(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -122,7 +156,14 @@ export default async function ResultadosEvaluacionPage({
 
   return (
     <EvaluationTabs
-      evaluacion={<StagePlaceholder label="Evaluacion" />}
+      evaluacion={
+        <EntradaEvaluacion
+          consentStatus={entryConsent}
+          surveyDomains={entrySurvey}
+          composition={composition}
+          sexoM={entryIsMale}
+        />
+      }
       tratamiento={
         <div className="flex flex-col gap-8">
           <RutasSection rutas={rutas} />
