@@ -74,6 +74,7 @@ export default async function ResultadosEvaluacionPage({
       <EvaluationTabs
         evaluacion={
           <EntradaEvaluacion
+            evaluationId={id}
             consentStatus={entryConsent}
             surveyDomains={entrySurvey}
             composition={entryComposition}
@@ -153,6 +154,7 @@ export default async function ResultadosEvaluacionPage({
     <EvaluationTabs
       evaluacion={
         <EntradaEvaluacion
+          evaluationId={id}
           consentStatus={entryConsent}
           surveyDomains={entrySurvey}
           composition={composition}
