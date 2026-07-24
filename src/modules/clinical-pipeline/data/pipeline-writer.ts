@@ -17,6 +17,7 @@ import {
   treatmentDietGuidelines,
   treatments,
 } from "@/db/schema";
+import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { recordAudit } from "@/modules/audit/log";
 
 import type { EfrContent } from "./pipeline-reader";
@@ -45,6 +46,10 @@ export type PipelineWriteInput = {
   // Contenido clinico del estado EFR (del registry, por bandas), para CONGELARLO en el snapshot
   // junto al EngineOutput. REQUERIDO: run-pipeline garantiza que no sea null (falla fuerte).
   efrContent: EfrContent;
+  // Caveats de validez (condiciones que comprometen la validez respondidas "si"), para CONGELARLOS
+  // en el snapshot: la reserva del resultado debe sobrevivir al diagnostico (el intake es mutable).
+  // [] si no hay ninguna.
+  validityCaveats: ValidityCaveat[];
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
@@ -162,7 +167,7 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
         patientId: input.patientId,
         type: "paciente",
         status: "draft",
-        snapshot: { ...output, efrContent: input.efrContent },
+        snapshot: { ...output, efrContent: input.efrContent, validityCaveats: input.validityCaveats },
       })
       .returning({ id: reports.id });
 

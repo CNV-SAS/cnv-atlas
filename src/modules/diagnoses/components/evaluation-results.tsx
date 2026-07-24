@@ -184,6 +184,25 @@ export function EvaluationResults({
         </p>
       </header>
 
+      {/* Caveat de validez sellado en el snapshot: bajo que condicion(es) que comprometen la validez
+          se hizo la medicion. Solo si las hay (snapshots previos a este bloque no lo traen). */}
+      {results.validityCaveats.length > 0 ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-1 rounded-lg border-2 border-clinical-warning bg-clinical-warning-bg p-4"
+        >
+          <p className="text-sm font-bold text-clinical-warning">Resultado con reserva de validez</p>
+          <p className="text-sm text-foreground/90">
+            Medición realizada bajo{" "}
+            {results.validityCaveats.length === 1
+              ? "una condición que compromete"
+              : "condiciones que comprometen"}{" "}
+            la validez: {results.validityCaveats.map((c) => c.label).join(", ")}. El resultado debe
+            interpretarse con reserva.
+          </p>
+        </div>
+      ) : null}
+
       {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba del
           todo, luego los mapas, y pegado a la Diana el detalle de las 6 cards del estado. Las rutas
           (salida del DFI) viven en la etapa de Tratamiento. */}

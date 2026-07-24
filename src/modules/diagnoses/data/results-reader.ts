@@ -1,6 +1,7 @@
 import "server-only";
 
 import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
+import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   getReportDispatch,
@@ -29,7 +30,12 @@ export type EfrStateContent = {
 // clinico del estado EFR congelado (efrContent, ii). efrContent es REQUERIDO: la vista lee toda
 // la evidencia clinica de aqui, sin cruzar el registry vivo. (En runtime un dato previo a ii
 // podria no traerlo; se maneja con `?? null` y la vista degrada, pero el contrato lo exige.)
-type StoredSnapshot = EngineOutput & { efrContent: EfrStateContent };
+// validityCaveats es OPCIONAL: los snapshots generados antes de este bloque no lo traen (no se
+// reescribe el pasado, inmutabilidad); ausente = sin caveats.
+type StoredSnapshot = EngineOutput & {
+  efrContent: EfrStateContent;
+  validityCaveats?: ValidityCaveat[];
+};
 
 export type EvaluationResults = {
   snapshot: EngineOutput;
@@ -38,6 +44,9 @@ export type EvaluationResults = {
   compatible: boolean;
   engineVersion: string | null; // versions.engine del snapshot, para informar el formato
   efrState: EfrStateContent | null;
+  // Caveats de validez congelados en el snapshot (bajo que condicion(es) se hizo la medicion). []
+  // si no hay o si el snapshot es previo a este bloque.
+  validityCaveats: ValidityCaveat[];
   confirmed: boolean;
   confirmedAt: string | null;
   reportStatus: ReportStatus;
@@ -114,6 +123,7 @@ export async function getEvaluationResults(
       compatible: false,
       engineVersion,
       efrState: null,
+      validityCaveats: [],
       confirmed: false,
       confirmedAt: null,
       reportStatus: dispatch.status,
@@ -132,6 +142,8 @@ export async function getEvaluationResults(
   // (ST1); si faltara (dato previo a ii, ya limpiado), efrState es null y la vista degrada.
   const efrState: EfrStateContent | null =
     (rawSnapshot as StoredSnapshot).efrContent ?? null;
+  // Caveats de validez congelados en el snapshot. Ausente en snapshots previos a este bloque -> [].
+  const validityCaveats: ValidityCaveat[] = (rawSnapshot as StoredSnapshot).validityCaveats ?? [];
 
   // Del registry solo quedan dos lecturas, ninguna por state_number ni evidencia clinica: el
   // estado de confirmacion del diagnostico, y los NOMBRES de indicadores (rotulos, por
@@ -161,6 +173,7 @@ export async function getEvaluationResults(
     compatible: true,
     engineVersion,
     efrState,
+    validityCaveats,
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,
     reportStatus: dispatch.status,

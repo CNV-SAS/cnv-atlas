@@ -8,8 +8,9 @@ import type { BisCondition, BisConditionAnswers } from "../types";
 // interpreta con reserva.
 export type ValidityCaveat = { key: string; label: string };
 
+// Acepta cualquier fila con estas 3 propiedades (catalogo completo o proyeccion del reader).
 export function buildValidityCaveats(
-  conditions: BisCondition[],
+  conditions: Pick<BisCondition, "key" | "label" | "compromisesValidity">[],
   answers: BisConditionAnswers,
 ): ValidityCaveat[] {
   return conditions

@@ -1,8 +1,13 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
+
 import { normalizeSexo } from "@/clinical-engine/edge/normalize";
+import { db } from "@/db";
+import { bisConditions, evaluationBisIntake } from "@/db/schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { buildValidityCaveats, type ValidityCaveat } from "../services/validity";
 import type { BisConditionAnswers, BisConditionCatalog, BisIntakeRecord } from "../types";
 
 type ProfileEmbed = { sex: string | null };
@@ -101,4 +106,33 @@ export async function getBisIntakeForEvaluation(
     weightGoalKg: data.weight_goal_kg == null ? null : Number(data.weight_goal_kg),
     updatedAt: data.updated_at,
   };
+}
+
+// Caveats de validez de una evaluacion, resueltos contra la version SELLADA del intake (no la
+// activa): que condiciones que comprometen la validez se respondieron "si". Lo llama el PIPELINE
+// para congelarlos en el snapshot; por eso usa Drizzle owner (db), NO el cliente RLS: el pipeline
+// corre server-side y a veces fuera de un request scope (p. ej. el seed golden/tests), donde
+// cookies() no aplica. La autorizacion (ownership) ya se verifico en el action (regla 3), igual que
+// en pipeline-writer. [] si no hay intake o ninguna compromete la validez.
+export async function getSealedValidityCaveats(
+  evaluationId: string,
+): Promise<ValidityCaveat[]> {
+  const [intake] = await db
+    .select({
+      versionId: evaluationBisIntake.bisConditionVersionId,
+      answers: evaluationBisIntake.conditionAnswers,
+    })
+    .from(evaluationBisIntake)
+    .where(eq(evaluationBisIntake.evaluationId, evaluationId))
+    .limit(1);
+  if (!intake) return [];
+  const conditions = await db
+    .select({
+      key: bisConditions.key,
+      label: bisConditions.label,
+      compromisesValidity: bisConditions.compromisesValidity,
+    })
+    .from(bisConditions)
+    .where(eq(bisConditions.bisConditionVersionId, intake.versionId));
+  return buildValidityCaveats(conditions, intake.answers as BisConditionAnswers);
 }

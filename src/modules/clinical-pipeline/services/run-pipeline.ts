@@ -2,6 +2,7 @@ import "server-only";
 
 import { runEngine } from "@/clinical-engine";
 import { appError, err, ok, type Result } from "@/core/errors";
+import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
 
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
@@ -64,6 +65,10 @@ export async function runClinicalPipeline(
     );
   }
 
+  // Caveats de validez (de las condiciones de la toma BIS selladas), para congelarlos en el
+  // snapshot: bajo que condicion(es) que comprometen la validez se hizo la medicion.
+  const validityCaveats = await getSealedValidityCaveats(input.evaluationId);
+
   try {
     const written = await writePipeline({
       evaluationId: input.evaluationId,
@@ -71,6 +76,7 @@ export async function runClinicalPipeline(
       evaluationType: inputs.evaluationType,
       output,
       efrContent,
+      validityCaveats,
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,
