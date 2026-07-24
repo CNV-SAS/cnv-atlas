@@ -43,11 +43,14 @@ type Cond = {
   key: string;
   label: string;
   scope: "general" | "mujeres";
-  kind: "calidad" | "contraindicacion" | "advertencia";
+  kind: "calidad" | "contraindicacion" | "advertencia" | "validez";
   inputType: FieldType;
   requiresDetail: boolean;
   detailLabel: string | null;
   detailType: FieldType | null;
+  // true si responder "si" compromete la validez del resultado (se sella un caveat en el
+  // diagnostico). Data-driven: lo llevan las condiciones validez y el embarazo. Default false.
+  compromisesValidity?: boolean;
 };
 
 // Orden = posicion en este arreglo (order_index = i + 1). Fiel al HTML.
@@ -62,12 +65,19 @@ const CONDS: Cond[] = [
   { key: "ejercicio_intenso_4h", label: "¿Hizo ejercicio intenso hace menos de 4 horas?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null },
   { key: "diuretico", label: "¿Consume algún medicamento diurético?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cuál?", detailType: "text" },
   { key: "accesorios_metalicos_retirados", label: "¿Se retiraron los accesorios metálicos en contacto con la piel antes de la BIA?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null },
+  // ── 3 de VALIDEZ (generales): la medicion es SEGURA pero el RESULTADO no es confiable. NO bloquea
+  // ni exige reconocimiento; se mide "con la reserva correspondiente" y se sella un caveat. ──
+  { key: "amputacion", label: "¿Tiene amputación de algún segmento corporal?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
+  { key: "edema_anasarca", label: "¿Presenta edema severo o anasarca?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
+  { key: "febril_deshidratacion", label: "¿Está en estado febril agudo o con deshidratación marcada?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
   // ── 3 femeninas (solo mujeres) ──
-  // Embarazo: advertencia (NO bloquea; alerta seria + recordatorio del permiso del comite de etica).
+  // Embarazo: advertencia (NO bloquea; alerta seria + reconocimiento del permiso del comite de etica).
+  // Ademas COMPROMETE la validez (el modelo no esta validado en gestacion) -> sella caveat en el dx.
   // "Mes de gestacion" es mejora nuestra sobre el HTML: informativa, no altera calculos.
-  { key: "embarazo", label: "¿Está en embarazo?", scope: "mujeres", kind: "advertencia", inputType: "boolean", requiresDetail: true, detailLabel: "Mes de gestación", detailType: "number" },
+  { key: "embarazo", label: "¿Está en embarazo?", scope: "mujeres", kind: "advertencia", inputType: "boolean", requiresDetail: true, detailLabel: "Mes de gestación", detailType: "number", compromisesValidity: true },
   { key: "menstruacion", label: "¿Está menstruando?", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "Día del periodo", detailType: "number" },
-  // Semana del ciclo: numero directo 1-6, siempre visible, sin Si/No. Solo registro clinico.
+  // Semana del ciclo: numero directo 1-6, siempre visible, sin Si/No. Solo registro clinico. OPCIONAL
+  // (el dato puede no estar disponible, a diferencia de las si/no que siempre se pueden responder).
   { key: "semana_ciclo", label: "¿En qué semana de su ciclo se encuentra?", scope: "mujeres", kind: "calidad", inputType: "number", requiresDetail: false, detailLabel: null, detailType: null },
 ];
 
@@ -77,13 +87,13 @@ async function main() {
     {
       id: VERSION_ID,
       version_number: VERSION_NUMBER,
-      notes: "v1: lista fiel al HTML de Gildardo (ATLAS.html L10444-10480). 8 generales + 3 femeninas.",
+      notes: "v1: HTML de Gildardo (ATLAS.html L10444-10480) + tabla ampliada de contraindicaciones (validez). 8 generales + 3 validez + 3 femeninas. Contenido REEMPLAZADO en sitio pre-produccion (ver ARCHITECTURE.md).",
     },
     { onConflict: "id" },
   );
   if (v.error) throw v.error;
 
-  // 2. Las 11 condiciones (upsert por version + clave; order_index por posicion).
+  // 2. Las condiciones (upsert por version + clave; order_index por posicion). Reemplazo en sitio.
   const rows = CONDS.map((c, i) => ({
     id: uuidFromKey(`${VERSION_NUMBER}:${c.key}`),
     bis_condition_version_id: VERSION_ID,
@@ -95,17 +105,30 @@ async function main() {
     requires_detail: c.requiresDetail,
     detail_label: c.detailLabel,
     detail_type: c.detailType,
+    compromises_validity: c.compromisesValidity ?? false,
     order_index: i + 1,
   }));
-  const r = await supabase
+  // Reemplazo EN SITIO: borrar las condiciones de esta version y reinsertarlas. Idempotente y
+  // robusto ante reordenamientos/altas/bajas (el upsert por clave no maneja cambios de order_index).
+  // Seguro: evaluation_bis_intake referencia la VERSION, no filas de bis_conditions (no hay FK); y
+  // los intakes demo se limpian antes de un cambio de contenido (ver ARCHITECTURE.md, excepcion).
+  const del = await supabase
     .from("bis_conditions")
-    .upsert(rows, { onConflict: "bis_condition_version_id,key" });
+    .delete()
+    .eq("bis_condition_version_id", VERSION_ID);
+  if (del.error) throw del.error;
+  const r = await supabase.from("bis_conditions").insert(rows);
   if (r.error) throw r.error;
 
   console.log(`Sembradas ${rows.length} condiciones BIS (version ${VERSION_NUMBER}).`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// NOTA: en Windows, al salir puede aparecer una assertion de libuv (teardown del socket keep-alive
+// de supabase-js). Es benigna: ocurre DESPUES de que "Sembradas N" imprime y el delete+insert ya
+// commitearon (verificable con una consulta aparte). No afecta el contenido sembrado.
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

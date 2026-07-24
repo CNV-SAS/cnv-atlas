@@ -115,17 +115,22 @@ export const accessReasonCategory = pgEnum("access_reason_category", [
 // scope separa el bloque general del femenino; kind gobierna el efecto de la respuesta.
 export const bisConditionScope = pgEnum("bis_condition_scope", ["general", "mujeres"]);
 
-// Tres tipos, no dos:
+// Cuatro tipos (gobiernan el EFECTO de la respuesta; el sellado del caveat de validez es aparte,
+// data-driven via compromises_validity):
 //   - calidad: informativa (cafe, bano, ejercicio...). No bloquea.
 //   - contraindicacion: bloqueo DURO del import. Solo el marcapasos. Riesgo fisico (la
 //     corriente puede danar el dispositivo); nunca se hace la medicion.
-//   - advertencia: NO bloquea, pero muestra una alerta seria. El embarazo. La bioimpedancia
-//     no representa riesgo fisico; el permiso del comite de etica es requisito de
-//     procedimiento, no de seguridad. La medicion procede (responsabilidad del profesional).
+//   - advertencia: NO bloquea, pero muestra una alerta seria y exige reconocimiento del
+//     profesional. El embarazo (permiso del comite de etica). La medicion procede.
+//   - validez: la medicion es SEGURA para el paciente pero el RESULTADO no es confiable (el
+//     modelo no esta validado, o los fluidos estan distorsionados). NO bloquea ni exige
+//     reconocimiento; Gildardo permite medir "con la reserva correspondiente". Amputacion,
+//     edema/anasarca, estado febril/deshidratacion.
 export const bisConditionKind = pgEnum("bis_condition_kind", [
   "calidad",
   "contraindicacion",
   "advertencia",
+  "validez",
 ]);
 
 // Como se captura una respuesta (o su detalle) de una condicion BIS. El modelo NO es

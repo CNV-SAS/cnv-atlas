@@ -43,7 +43,12 @@ export const bisConditions = pgTable(
     key: text("key").notNull(),
     label: text("label").notNull(), // la pregunta que ve el profesional
     scope: bisConditionScope("scope").notNull(), // general | mujeres (bloque femenino)
-    kind: bisConditionKind("kind").notNull(), // calidad | contraindicacion | advertencia
+    kind: bisConditionKind("kind").notNull(), // calidad | contraindicacion | advertencia | validez
+    // Data-driven: true si responder "si" a esta condicion COMPROMETE la validez del resultado y
+    // debe sellarse un caveat visible en el diagnostico. Separado de kind: lo llevan tanto las
+    // condiciones kind='validez' como el embarazo (advertencia; el modelo no esta validado en
+    // gestacion). NO es por clave hardcodeada: el catalogo lo declara.
+    compromisesValidity: boolean("compromises_validity").notNull().default(false),
     // Como se captura la respuesta principal: boolean (Si/No, la mayoria) o number (semana del
     // ciclo, 1-6, siempre visible, sin Si/No). El JSONB de la captura guarda el valor con esta
     // forma; el widget se elige por este tipo, no por la clave.

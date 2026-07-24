@@ -162,6 +162,13 @@
       "when": 1784901295200,
       "tag": "0022_bis_conditions_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784922981074,
+      "tag": "0023_rare_golden_guardian",
+      "breakpoints": true
     }
   ]
 }
