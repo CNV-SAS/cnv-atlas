@@ -8,7 +8,43 @@ import { bisConditions, evaluationBisIntake } from "@/db/schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { buildValidityCaveats, type ValidityCaveat } from "../services/validity";
-import type { BisConditionAnswers, BisConditionCatalog, BisIntakeRecord } from "../types";
+import type {
+  BisCondition,
+  BisConditionAnswers,
+  BisConditionCatalog,
+  BisIntakeRecord,
+} from "../types";
+
+// Mapea una fila de bis_conditions (snake_case) al tipo BisCondition.
+type ConditionRow = {
+  key: string;
+  label: string;
+  scope: string;
+  kind: string;
+  input_type: string;
+  requires_detail: boolean;
+  detail_label: string | null;
+  detail_type: string | null;
+  compromises_validity: boolean;
+  order_index: number;
+};
+function mapConditionRow(r: ConditionRow): BisCondition {
+  return {
+    key: r.key,
+    label: r.label,
+    scope: r.scope as BisCondition["scope"],
+    kind: r.kind as BisCondition["kind"],
+    inputType: r.input_type as BisCondition["inputType"],
+    requiresDetail: r.requires_detail,
+    detailLabel: r.detail_label,
+    detailType: r.detail_type as BisCondition["detailType"],
+    compromisesValidity: r.compromises_validity,
+    orderIndex: r.order_index,
+  };
+}
+
+const CONDITION_COLUMNS =
+  "key, label, scope, kind, input_type, requires_detail, detail_label, detail_type, compromises_validity, order_index";
 
 type ProfileEmbed = { sex: string | null };
 type PatientEmbed = { patient_profiles: ProfileEmbed | ProfileEmbed[] | null };
@@ -57,9 +93,7 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
 
   const { data: rows, error: cErr } = await supabase
     .from("bis_conditions")
-    .select(
-      "key, label, scope, kind, input_type, requires_detail, detail_label, detail_type, compromises_validity, order_index",
-    )
+    .select(CONDITION_COLUMNS)
     .eq("bis_condition_version_id", version.id)
     .order("order_index", { ascending: true });
   if (cErr) throw new Error(`bis-conditions-reader: conditions: ${cErr.message}`);
@@ -67,19 +101,30 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
   return {
     versionId: version.id,
     versionNumber: version.version_number,
-    conditions: (rows ?? []).map((r) => ({
-      key: r.key,
-      label: r.label,
-      scope: r.scope as BisConditionCatalog["conditions"][number]["scope"],
-      kind: r.kind as BisConditionCatalog["conditions"][number]["kind"],
-      inputType: r.input_type as BisConditionCatalog["conditions"][number]["inputType"],
-      requiresDetail: r.requires_detail,
-      detailLabel: r.detail_label,
-      detailType: r.detail_type as BisConditionCatalog["conditions"][number]["detailType"],
-      compromisesValidity: r.compromises_validity,
-      orderIndex: r.order_index,
-    })),
+    conditions: (rows ?? []).map(mapConditionRow),
   };
+}
+
+// Captura sellada de una evaluacion en MODO LECTURA: las condiciones de la version SELLADA (para las
+// etiquetas tal como se respondieron) + las respuestas. Para la vista de solo lectura tras el
+// diagnostico (la captura ya no es editable). null si no hay intake.
+export type BisConditionsReadonly = {
+  conditions: BisCondition[];
+  answers: BisConditionAnswers;
+};
+export async function getBisConditionsReadonly(
+  evaluationId: string,
+): Promise<BisConditionsReadonly | null> {
+  const intake = await getBisIntakeForEvaluation(evaluationId);
+  if (!intake) return null;
+  const supabase = await createSupabaseServerClient();
+  const { data: rows, error } = await supabase
+    .from("bis_conditions")
+    .select(CONDITION_COLUMNS)
+    .eq("bis_condition_version_id", intake.versionId)
+    .order("order_index", { ascending: true });
+  if (error) throw new Error(`bis-conditions-reader: readonly: ${error.message}`);
+  return { conditions: (rows ?? []).map(mapConditionRow), answers: intake.answers };
 }
 
 // Captura ya persistida de una evaluacion (para la UI y el gate del import). null si aun no se

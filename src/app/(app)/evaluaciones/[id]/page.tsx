@@ -5,6 +5,7 @@ import { requireUser } from "@/modules/auth/session";
 import { getBisImportEvaluationForId } from "@/modules/bis/data/bis-evaluations-reader";
 import {
   getActiveBisConditionCatalog,
+  getBisConditionsReadonly,
   getBisIntakeForEvaluation,
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
@@ -100,6 +101,7 @@ export default async function ResultadosEvaluacionPage({
             bisCatalog={entryCatalog}
             bisIntake={entryIntake}
             patientIsFemale={entrySex === "F"}
+            bisReadonly={null}
           />
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
@@ -149,6 +151,7 @@ export default async function ResultadosEvaluacionPage({
     efrStates,
     entryConsent,
     entrySurvey,
+    entryReadonly,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -162,6 +165,8 @@ export default async function ResultadosEvaluacionPage({
     // Etapa de entrada (pestana Evaluacion): consentimiento + encuesta.
     getConsentStatusForEvaluation(id),
     getSurveyAnswersForEvaluation(id),
+    // Condiciones BIS selladas en solo lectura (la captura ya no es editable tras el diagnostico).
+    getBisConditionsReadonly(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -186,6 +191,7 @@ export default async function ResultadosEvaluacionPage({
           bisCatalog={null}
           bisIntake={null}
           patientIsFemale={false}
+          bisReadonly={entryReadonly}
         />
       }
       tratamiento={

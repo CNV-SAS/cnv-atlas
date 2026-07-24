@@ -4,6 +4,8 @@ import Link from "next/link";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
 import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-conditions-capture";
+import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-conditions-readonly";
+import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
@@ -29,6 +31,7 @@ export function EntradaEvaluacion({
   bisCatalog,
   bisIntake,
   patientIsFemale,
+  bisReadonly,
 }: {
   evaluationId: string;
   consentStatus: ConsentStatus | null;
@@ -42,6 +45,9 @@ export function EntradaEvaluacion({
   bisCatalog: BisConditionCatalog | null;
   bisIntake: BisIntakeRecord | null;
   patientIsFemale: boolean;
+  // Captura sellada en SOLO LECTURA (tras el diagnostico, ya no editable). null si no hay o si la
+  // captura editable aplica.
+  bisReadonly: BisConditionsReadonlyData | null;
 }) {
   // Identidad confirmada (in_progress): se puede capturar condiciones e importar. La ausencia de
   // bisImportEval significa que aun no esta lista (o ya paso a diagnostico, otra rama).
@@ -102,6 +108,8 @@ export function EntradaEvaluacion({
           intake={bisIntake}
           patientIsFemale={patientIsFemale}
         />
+      ) : bisReadonly ? (
+        <BisConditionsReadonly data={bisReadonly} />
       ) : null}
 
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
