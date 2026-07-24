@@ -110,3 +110,32 @@ export const accessReasonCategory = pgEnum("access_reason_category", [
   "auditoria_calidad",
   "soporte_tecnico",
 ]);
+
+// Condiciones de la toma BIS (Parte 2 de captura, pestana Evaluacion).
+// scope separa el bloque general del femenino; kind gobierna el efecto de la respuesta.
+export const bisConditionScope = pgEnum("bis_condition_scope", ["general", "mujeres"]);
+
+// Tres tipos, no dos:
+//   - calidad: informativa (cafe, bano, ejercicio...). No bloquea.
+//   - contraindicacion: bloqueo DURO del import. Solo el marcapasos. Riesgo fisico (la
+//     corriente puede danar el dispositivo); nunca se hace la medicion.
+//   - advertencia: NO bloquea, pero muestra una alerta seria. El embarazo. La bioimpedancia
+//     no representa riesgo fisico; el permiso del comite de etica es requisito de
+//     procedimiento, no de seguridad. La medicion procede (responsabilidad del profesional).
+export const bisConditionKind = pgEnum("bis_condition_kind", [
+  "calidad",
+  "contraindicacion",
+  "advertencia",
+]);
+
+// Como se captura una respuesta (o su detalle) de una condicion BIS. El modelo NO es
+// solo booleano: la semana del ciclo es un numero directo (sin Si/No), el diuretico pide
+// texto libre ("¿cual?") y varios detalles son numericos (dia del periodo, mes de gestacion).
+//   - boolean: Si/No (la mayoria de las condiciones).
+//   - number: numerico directo (semana del ciclo 1-6; o detalles como dia/mes).
+//   - text: texto libre (el "¿cual?" del diuretico).
+export const bisConditionFieldType = pgEnum("bis_condition_field_type", [
+  "boolean",
+  "number",
+  "text",
+]);

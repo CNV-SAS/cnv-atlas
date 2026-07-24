@@ -148,6 +148,20 @@
       "when": 1784649831961,
       "tag": "0020_lame_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784901295099,
+      "tag": "0021_lying_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784901295200,
+      "tag": "0022_bis_conditions_rls",
+      "breakpoints": true
     }
   ]
 }
