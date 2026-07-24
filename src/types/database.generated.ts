@@ -161,6 +161,83 @@ export type Database = {
           },
         ]
       }
+      bis_condition_versions: {
+        Row: {
+          id: string
+          notes: string | null
+          published_at: string
+          version_number: number
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          published_at?: string
+          version_number: number
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          published_at?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
+      bis_conditions: {
+        Row: {
+          bis_condition_version_id: string
+          detail_label: string | null
+          detail_type:
+            | Database["public"]["Enums"]["bis_condition_field_type"]
+            | null
+          id: string
+          input_type: Database["public"]["Enums"]["bis_condition_field_type"]
+          key: string
+          kind: Database["public"]["Enums"]["bis_condition_kind"]
+          label: string
+          order_index: number
+          requires_detail: boolean
+          scope: Database["public"]["Enums"]["bis_condition_scope"]
+        }
+        Insert: {
+          bis_condition_version_id: string
+          detail_label?: string | null
+          detail_type?:
+            | Database["public"]["Enums"]["bis_condition_field_type"]
+            | null
+          id?: string
+          input_type?: Database["public"]["Enums"]["bis_condition_field_type"]
+          key: string
+          kind: Database["public"]["Enums"]["bis_condition_kind"]
+          label: string
+          order_index: number
+          requires_detail?: boolean
+          scope: Database["public"]["Enums"]["bis_condition_scope"]
+        }
+        Update: {
+          bis_condition_version_id?: string
+          detail_label?: string | null
+          detail_type?:
+            | Database["public"]["Enums"]["bis_condition_field_type"]
+            | null
+          id?: string
+          input_type?: Database["public"]["Enums"]["bis_condition_field_type"]
+          key?: string
+          kind?: Database["public"]["Enums"]["bis_condition_kind"]
+          label?: string
+          order_index?: number
+          requires_detail?: boolean
+          scope?: Database["public"]["Enums"]["bis_condition_scope"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bis_conditions_bis_condition_version_id_bis_condition_versions_"
+            columns: ["bis_condition_version_id"]
+            isOneToOne: false
+            referencedRelation: "bis_condition_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bis_import_logs: {
         Row: {
           created_at: string
@@ -710,6 +787,57 @@ export type Database = {
             columns: ["model_version_id"]
             isOneToOne: false
             referencedRelation: "model_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_bis_intake: {
+        Row: {
+          bis_condition_version_id: string
+          condition_answers: Json
+          contraindicated: boolean
+          created_at: string
+          evaluation_id: string
+          grip_strength_kg: number | null
+          id: string
+          updated_at: string
+          weight_goal_kg: number | null
+        }
+        Insert: {
+          bis_condition_version_id: string
+          condition_answers: Json
+          contraindicated?: boolean
+          created_at?: string
+          evaluation_id: string
+          grip_strength_kg?: number | null
+          id?: string
+          updated_at?: string
+          weight_goal_kg?: number | null
+        }
+        Update: {
+          bis_condition_version_id?: string
+          condition_answers?: Json
+          contraindicated?: boolean
+          created_at?: string
+          evaluation_id?: string
+          grip_strength_kg?: number | null
+          id?: string
+          updated_at?: string
+          weight_goal_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_bis_intake_bis_condition_version_id_bis_condition_ve"
+            columns: ["bis_condition_version_id"]
+            isOneToOne: false
+            referencedRelation: "bis_condition_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_bis_intake_evaluation_id_evaluations_id_fk"
+            columns: ["evaluation_id"]
+            isOneToOne: true
+            referencedRelation: "evaluations"
             referencedColumns: ["id"]
           },
         ]
@@ -2417,6 +2545,9 @@ export type Database = {
         | "provider_error"
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
+      bis_condition_field_type: "boolean" | "number" | "text"
+      bis_condition_kind: "calidad" | "contraindicacion" | "advertencia"
+      bis_condition_scope: "general" | "mujeres"
       consent_type_enum:
         | "servicio"
         | "datos_sensibles"
@@ -2585,6 +2716,9 @@ export const Constants = {
       ],
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],
+      bis_condition_field_type: ["boolean", "number", "text"],
+      bis_condition_kind: ["calidad", "contraindicacion", "advertencia"],
+      bis_condition_scope: ["general", "mujeres"],
       consent_type_enum: [
         "servicio",
         "datos_sensibles",
