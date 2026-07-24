@@ -135,6 +135,65 @@ describe("validateBisConditionsCapture", () => {
     }
   });
 
+  it("mes de gestacion: valida 1-9 (el mes 10 no existe) con mensaje con contexto", () => {
+    const res = validateBisConditionsCapture(
+      CATALOG,
+      {
+        evaluationId: "e",
+        answers: {
+          ...generalAnswers(false),
+          embarazo: { value: true, detail: 10, acknowledged: true },
+          menstruacion: { value: false },
+        },
+      },
+      NOW,
+      true,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.fields?.embarazo).toContain("entre 1 y 9");
+  });
+
+  it("mes de gestacion vacio: el mensaje dice que falta, no un rango tecnico", () => {
+    const res = validateBisConditionsCapture(
+      CATALOG,
+      {
+        evaluationId: "e",
+        answers: {
+          ...generalAnswers(false),
+          embarazo: { value: true, acknowledged: true },
+          menstruacion: { value: false },
+        },
+      },
+      NOW,
+      true,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.fields?.embarazo).toMatch(/Ingresa/);
+      expect(res.error.fields?.embarazo).not.toContain("1-");
+    }
+  });
+
+  it("marcapasos + embarazo (con mes y reconocimiento) guarda limpio y queda contraindicado", () => {
+    // El caso raro del smoke era el mes vacio disparando la validacion, no un conflicto entre las
+    // dos condiciones: con el mes lleno, guarda y queda contraindicado (por el marcapasos).
+    const res = validateBisConditionsCapture(
+      CATALOG,
+      {
+        evaluationId: "e",
+        answers: {
+          ...generalAnswers(true),
+          embarazo: { value: true, detail: 5, acknowledged: true },
+          menstruacion: { value: false },
+        },
+      },
+      NOW,
+      true,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value.contraindicated).toBe(true);
+  });
+
   it("exige el detalle del diuretico cuando es true y lo sella como texto", () => {
     const sinDetalle = validateBisConditionsCapture(
       CATALOG,

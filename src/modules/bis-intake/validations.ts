@@ -12,9 +12,9 @@ const PRIMARY_RANGES: Record<string, { min: number; max: number }> = {
   semana_ciclo: { min: 1, max: 6 },
 };
 
-// Cotas clinicas holgadas de los detalles numericos (evitan valores absurdos sin ser pedantes).
+// Cotas clinicas de los detalles numericos. Un embarazo dura 9 meses: no existe un "mes 10".
 const DETAIL_RANGES: Record<string, { min: number; max: number }> = {
-  embarazo: { min: 1, max: 10 }, // mes de gestacion
+  embarazo: { min: 1, max: 9 }, // mes de gestacion
   menstruacion: { min: 1, max: 31 }, // dia del periodo
 };
 
@@ -101,15 +101,19 @@ export function validateBisConditionsCapture(
     const answer: BisConditionAnswer = { value: raw.value };
 
     if (c.requiresDetail && raw.value === true) {
+      // Mensajes que dicen QUE falta, no un rango tecnico sin contexto.
+      const label = c.detailLabel ?? "el dato";
       if (raw.detail == null || raw.detail === "") {
-        fields[c.key] = `Falta el detalle${c.detailLabel ? `: ${c.detailLabel}` : ""}.`;
+        fields[c.key] = `Ingresa ${label}.`;
         continue;
       }
       if (c.detailType === "number") {
         const n = typeof raw.detail === "number" ? raw.detail : Number(raw.detail);
         const dr = DETAIL_RANGES[c.key];
         if (!Number.isInteger(n) || (dr && (n < dr.min || n > dr.max))) {
-          fields[c.key] = `Detalle invalido${dr ? ` (${dr.min}-${dr.max})` : ""}.`;
+          fields[c.key] = dr
+            ? `${label} debe estar entre ${dr.min} y ${dr.max}.`
+            : `Ingresa un valor válido para ${label}.`;
           continue;
         }
         answer.detail = n;

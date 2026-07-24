@@ -119,7 +119,13 @@ export function BisConditionsCapture({
         value: a.bool,
       };
       if (c.requiresDetail && a.bool === true) {
-        entry.detail = c.detailType === "number" ? Number(a.detail) : a.detail;
+        if (c.detailType === "number") {
+          // Vacio -> undefined (no 0): asi la validacion dice "Ingresa ..." en vez de un error de
+          // rango confuso (un mes vacio no es un mes fuera de rango).
+          entry.detail = a.detail.trim() === "" ? undefined : Number(a.detail);
+        } else {
+          entry.detail = a.detail;
+        }
       }
       if (c.kind === "advertencia" && a.bool === true) entry.acknowledged = a.acknowledged;
       out[c.key] = entry;
