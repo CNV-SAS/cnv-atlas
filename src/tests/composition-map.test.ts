@@ -25,7 +25,7 @@ for (const [k, v] of Object.entries(fixture)) {
 }
 
 describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo CV)", () => {
-  const comp = buildComposition(raw);
+  const comp = buildComposition(raw, "2026-07-11T15:52:00+00:00");
 
   it("cintura lee la circunferencia MEDIDA (Waist Size cm = 98), no el umbral", () => {
     expect(comp.cintura).toBe(98);

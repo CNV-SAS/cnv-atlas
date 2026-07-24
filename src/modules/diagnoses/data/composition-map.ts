@@ -25,6 +25,8 @@ export type Composition = {
   cadera: number | null; // circunferencia MEDIDA (Hips Size cm)
   ict: number | null;
   icc: number | null;
+  // Fecha de la medicion BIS (del Biody), para confirmar QUE se importo. null si no se conoce.
+  measurementDate: string | null;
 };
 
 // Filas de la tabla por nivel de Wang: [etiqueta, clave de valor, clave de referencia|null, unidad].
@@ -90,7 +92,10 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
 // cm), NO desde BIODY_COLUMNS.cintura, que apunta al UMBRAL de referencia (102 cm = corte OMS
 // masculino) y causaba un falso positivo de riesgo CV sistematico (cada paciente comparado consigo
 // mismo). El resto de variables se resuelve por su header de contrato (BIODY_COLUMNS).
-export function buildComposition(raw: Record<string, number>): Composition {
+export function buildComposition(
+  raw: Record<string, number>,
+  measurementDate: string | null,
+): Composition {
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
   // Valor por clave de contrato: header exacto -> normalizeHeader -> crudo.
@@ -121,5 +126,6 @@ export function buildComposition(raw: Record<string, number>): Composition {
     cadera: measured(MEASURED_HIPS_HEADER),
     ict: get("ict"),
     icc: get("icc"),
+    measurementDate,
   };
 }

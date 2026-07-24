@@ -17,7 +17,7 @@ export async function getCompositionForEvaluation(
   const supabase = await createSupabaseServerClient();
   const { data: meas, error: mErr } = await supabase
     .from("bis_measurements")
-    .select("id")
+    .select("id, measurement_date")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -37,5 +37,5 @@ export async function getCompositionForEvaluation(
     if (Number.isFinite(v)) raw[r.variable_name] = v;
   }
 
-  return buildComposition(raw);
+  return buildComposition(raw, meas.measurement_date);
 }

@@ -122,7 +122,15 @@ export function EntradaEvaluacion({
             <div className="flex items-center gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2">
               <CheckCircle2 className="size-4 shrink-0 text-clinical-optimal" aria-hidden />
               <span className="text-sm font-medium text-clinical-optimal">
-                Medición importada correctamente.
+                Medición BIS importada
+                {composition.measurementDate
+                  ? ` · tomada el ${new Date(composition.measurementDate).toLocaleDateString("es-CO", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}`
+                  : ""}
+                .
               </span>
             </div>
             <DetailsSection title="Composición corporal (Niveles de Wang)">
