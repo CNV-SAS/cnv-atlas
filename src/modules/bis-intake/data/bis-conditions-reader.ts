@@ -1,8 +1,38 @@
 import "server-only";
 
+import { normalizeSexo } from "@/clinical-engine/edge/normalize";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { BisConditionAnswers, BisConditionCatalog, BisIntakeRecord } from "../types";
+
+type ProfileEmbed = { sex: string | null };
+type PatientEmbed = { patient_profiles: ProfileEmbed | ProfileEmbed[] | null };
+function one<T>(embed: T | T[] | null): T | undefined {
+  return Array.isArray(embed) ? embed[0] : (embed ?? undefined);
+}
+
+// Sexo canonico del paciente de una evaluacion (RLS), para decidir si se muestra el bloque
+// femenino de la captura. null si no se resuelve (dato ausente/desconocido): en ese caso la UI no
+// muestra el bloque femenino, pero el bloque general (incluido el marcapasos) sigue.
+export async function getEvaluationPatientSex(
+  evaluationId: string,
+): Promise<"M" | "F" | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select("patients!inner(patient_profiles!inner(sex))")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (error) throw new Error(`bis-conditions-reader: patientSex: ${error.message}`);
+  const patient = one<PatientEmbed>(data?.patients as PatientEmbed | PatientEmbed[] | null);
+  const profile = one(patient?.patient_profiles ?? null);
+  if (!profile?.sex) return null;
+  try {
+    return normalizeSexo(profile.sex);
+  } catch {
+    return null; // valor desconocido: no se asume sexo
+  }
+}
 
 // Lecturas RLS del catalogo de condiciones y de la captura por evaluacion. El catalogo es de
 // lectura amplia (authenticated); la captura la deja ver la RLS solo al profesional del paciente.

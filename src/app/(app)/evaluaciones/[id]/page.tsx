@@ -3,6 +3,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { getBisImportEvaluationForId } from "@/modules/bis/data/bis-evaluations-reader";
+import {
+  getActiveBisConditionCatalog,
+  getBisIntakeForEvaluation,
+  getEvaluationPatientSex,
+} from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
@@ -66,11 +71,22 @@ export default async function ResultadosEvaluacionPage({
     // La etapa de ENTRADA existe desde el intake, con o sin diagnostico: consentimiento, encuesta y
     // composicion cruda. Es el uso principal de la pestana Evaluacion (revisar la entrada ANTES de
     // generar el diagnostico), asi que se puebla tambien en esta rama sin diagnostico.
-    const [entryConsent, entrySurvey, entryComposition, entryBisImport] = await Promise.all([
+    const [
+      entryConsent,
+      entrySurvey,
+      entryComposition,
+      entryBisImport,
+      entryCatalog,
+      entryIntake,
+      entrySex,
+    ] = await Promise.all([
       getConsentStatusForEvaluation(id),
       getSurveyAnswersForEvaluation(id),
       getCompositionForEvaluation(id),
       getBisImportEvaluationForId(id),
+      getActiveBisConditionCatalog(),
+      getBisIntakeForEvaluation(id),
+      getEvaluationPatientSex(id),
     ]);
     return (
       <EvaluationTabs
@@ -81,6 +97,9 @@ export default async function ResultadosEvaluacionPage({
             surveyDomains={entrySurvey}
             composition={entryComposition}
             bisImportEval={entryBisImport}
+            bisCatalog={entryCatalog}
+            bisIntake={entryIntake}
+            patientIsFemale={entrySex === "F"}
           />
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
@@ -164,6 +183,9 @@ export default async function ResultadosEvaluacionPage({
           surveyDomains={entrySurvey}
           composition={composition}
           bisImportEval={null}
+          bisCatalog={null}
+          bisIntake={null}
+          patientIsFemale={false}
         />
       }
       tratamiento={

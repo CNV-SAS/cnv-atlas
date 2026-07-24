@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
+import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-conditions-capture";
+import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
+import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
@@ -22,6 +25,9 @@ export function EntradaEvaluacion({
   surveyDomains,
   composition,
   bisImportEval,
+  bisCatalog,
+  bisIntake,
+  patientIsFemale,
 }: {
   evaluationId: string;
   consentStatus: ConsentStatus | null;
@@ -30,7 +36,16 @@ export function EntradaEvaluacion({
   // Vista para importar BIS desde aqui (reusa el modulo bis del panel). null si la evaluacion no
   // esta in_progress (identidad sin confirmar) o ya no aplica.
   bisImportEval: BisImportEvaluation | null;
+  // Sub-bloque B: catalogo activo de condiciones + captura ya guardada (si existe) + sexo, para la
+  // captura de condiciones y el gate del import. null cuando la identidad no esta confirmada.
+  bisCatalog: BisConditionCatalog | null;
+  bisIntake: BisIntakeRecord | null;
+  patientIsFemale: boolean;
 }) {
+  // Identidad confirmada (in_progress): se puede capturar condiciones e importar. La ausencia de
+  // bisImportEval significa que aun no esta lista (o ya paso a diagnostico, otra rama).
+  const identityConfirmed = bisImportEval != null;
+  const gate = evaluateBisImportGate(bisIntake);
   // Contador respondidas/total con el total REAL de preguntas del instrumento (no hardcodeado): el
   // reader devuelve todas las preguntas con answerValue null si no se respondio.
   const domains = surveyDomains ?? [];
@@ -76,8 +91,21 @@ export function EntradaEvaluacion({
         )}
       </section>
 
+      {/* Condiciones de la toma BIS (Parte 2): se responden ANTES del import. El sistema impone el
+          orden; sin este checklist guardado, el import no se habilita. Se muestra tambien cuando ya
+          hay medicion (caso borde: registrar condiciones despues de un BIS previo). */}
+      {identityConfirmed && bisCatalog ? (
+        <BisConditionsCapture
+          evaluationId={evaluationId}
+          catalog={bisCatalog}
+          intake={bisIntake}
+          patientIsFemale={patientIsFemale}
+        />
+      ) : null}
+
       {/* Con medicion BIS: la composicion (solo "que entro"). Sin medicion: el import BIS desde
-          aqui (reusa el modulo bis), o un aviso si la identidad aun no esta confirmada. */}
+          aqui, GATEADO por las condiciones (orden + contraindicacion), o un aviso si la identidad
+          aun no esta confirmada. */}
       {composition ? (
         <DetailsSection title="Composición corporal (Niveles de Wang)">
           <CompositionSection composition={composition} showDiagnosis={false} />
@@ -85,12 +113,22 @@ export function EntradaEvaluacion({
       ) : (
         <section className="flex flex-col gap-3">
           <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
-          {bisImportEval ? (
-            <BisImportForm evaluation={bisImportEval} />
-          ) : (
+          {!identityConfirmed || !bisImportEval ? (
             <p className="text-sm text-muted-foreground">
               Aún sin medición BIS. Confirma la identidad del paciente para poder importar la
               medición (XLSX de Biody Manager).
+            </p>
+          ) : gate.allowed ? (
+            <BisImportForm evaluation={bisImportEval} />
+          ) : gate.reason === "contraindicated" ? (
+            <p className="text-sm font-semibold text-clinical-critical">
+              Import bloqueado: hay una contraindicación (marcapasos). No se realiza la
+              bioimpedancia. Ver el detalle en las condiciones de la toma, arriba.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Responde y guarda las condiciones de la toma para habilitar el import de la medición
+              BIS.
             </p>
           )}
         </section>
