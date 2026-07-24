@@ -55,6 +55,14 @@ const METADATA_HEADERS = new Set<string>([
 // Fecha de la medicion: alimenta bis_measurements.measurement_date.
 const MEASUREMENT_DATE_HEADERS = new Set<string>(["Measurement date"]);
 
+// Circunferencias MEDIDAS (las ingresa el profesional en el equipo), por header normalizado. Son
+// las columnas PLANAS del export, distintas de las de REFERENCIA/umbral (p.ej. "Patient risk
+// monitoring Waist Size ... referencia", que es el corte OMS, NO una medida: confundirlas causo un
+// falso positivo de riesgo CV sistematico). Se usan para el display de composicion (cintura) y para
+// el bloqueo del import por regla de negocio (cintura/cadera, sub-bloque B).
+export const MEASURED_WAIST_HEADER = "Waist Size cm"; // cintura
+export const MEASURED_HIPS_HEADER = "Hips Size cm"; // cadera
+
 function roleOf(normalized: string): HeaderRole {
   if (normalized === "") return "metadata"; // columna sin encabezado: se ignora
   if (PII_HEADERS.has(normalized)) return "pii";
