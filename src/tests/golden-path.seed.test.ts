@@ -47,6 +47,12 @@ const FEMALE_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c1";
 const FEMALE_EVAL_ID = "a0000000-0000-4000-8000-0000000000c2";
 const FEMALE_DOC = "GOLDEN-FEM-01";
 const FEMALE_BIRTH = "1990-03-08";
+// Segunda mujer demo, LIMPIA para el smoke de A/B/C desde cero: inicial in_progress, SIN condiciones
+// guardadas, SIN BIS, SIN diagnostico. URL: /evaluaciones/a0000000-0000-4000-8000-0000000000c4
+const FEMALE2_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c3";
+const FEMALE2_EVAL_ID = "a0000000-0000-4000-8000-0000000000c4";
+const FEMALE2_DOC = "GOLDEN-FEM-02";
+const FEMALE2_BIRTH = "1992-05-20";
 const DOC_NUMBER = "GOLDEN-0001";
 // DOB del donante real del BIS gold (~54 años): la edad alimenta EB-BIS/IAE, asi que debe
 // ser la suya para que el envejecimiento biologico lea coherente con su medicion.
@@ -447,6 +453,85 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       await db
         .insert(schema.surveyResponses)
         .values({ evaluationId: FEMALE_EVAL_ID, surveyVersionId: svId })
+        .returning({ id: schema.surveyResponses.id })
+    )[0].id;
+    const PARTIAL = ["d2_19", "d3_23", "d3_24"];
+    const questions = await db
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+    for (const q of questions as { id: string; fieldKey: string | null }[]) {
+      if (!q.fieldKey || !PARTIAL.includes(q.fieldKey)) continue;
+      const pick = ANSWERS[q.fieldKey];
+      const opts = await db
+        .select({ text: schema.surveyOptions.optionText })
+        .from(schema.surveyOptions)
+        .where(eq(schema.surveyOptions.questionId, q.id))
+        .orderBy(schema.surveyOptions.orderIndex);
+      const texts = opts.map((o: { text: string }) => o.text);
+      const chosen = pick.text ?? texts[pick.idx ?? 0];
+      const value = pick.multi ? JSON.stringify([chosen]) : chosen;
+      await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+    }
+  });
+
+  it("segunda mujer demo LIMPIA (sin condiciones, sin BIS, sin diagnostico) para el smoke A/B/C desde cero (idempotente)", async () => {
+    // Nueva paciente + evaluacion inicial in_progress, VIRGEN: sin captura de condiciones, sin BIS,
+    // sin diagnostico. Sirve para probar A (obligatoriedad), B (import que se habilita al guardar
+    // condiciones + exito persistente) y luego C (llevarla end-to-end hasta diagnostico y ver la
+    // lectura sellada). Distinta de c2, que ya quedo diagnosticada.
+    await db
+      .insert(schema.patients)
+      .values({ id: FEMALE2_PATIENT_ID, organizationId: orgId, documentType: "CC", documentNumber: FEMALE2_DOC })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientProfiles)
+      .values({ patientId: FEMALE2_PATIENT_ID, firstName: "Demo", lastName: "Mujer 2 (smoke A/B/C)", sex: "Female", birthDate: FEMALE2_BIRTH, city: "Medellin" })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientProfessionalRelationships)
+      .values({ patientId: FEMALE2_PATIENT_ID, professionalId: proId })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientContacts)
+      .values({ patientId: FEMALE2_PATIENT_ID, email: "corporativo+demofem2@cnvsystem.com" })
+      .onConflictDoNothing();
+    for (const t of NECESSARY_CONSENT_TYPES) {
+      const existing = await db
+        .select({ id: schema.patientConsents.id })
+        .from(schema.patientConsents)
+        .where(
+          and(
+            eq(schema.patientConsents.patientId, FEMALE2_PATIENT_ID),
+            eq(schema.patientConsents.consentType, t),
+            isNull(schema.patientConsents.revokedAt),
+          ),
+        )
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(schema.patientConsents).values({
+          patientId: FEMALE2_PATIENT_ID,
+          consentType: t,
+          consentVersion: CONSENT_VERSION,
+          documentHash: CONSENT_DOCUMENT_HASH,
+        });
+      }
+    }
+    await db
+      .insert(schema.evaluations)
+      .values({ id: FEMALE2_EVAL_ID, patientId: FEMALE2_PATIENT_ID, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
+      .onConflictDoNothing();
+
+    const existing = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, FEMALE2_EVAL_ID))
+      .limit(1);
+    if (existing.length > 0) return; // ya sembrada; resumible
+    const respId = (
+      await db
+        .insert(schema.surveyResponses)
+        .values({ evaluationId: FEMALE2_EVAL_ID, surveyVersionId: svId })
         .returning({ id: schema.surveyResponses.id })
     )[0].id;
     const PARTIAL = ["d2_19", "d3_23", "d3_24"];
