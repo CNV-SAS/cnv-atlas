@@ -3,15 +3,21 @@
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
-## Prioritario / entrante — Frozen delta EB-BIS v5 + exports de Gildardo (al llegar el paquete)
+## Prioritario / entrante — Exposición de funciones de Gildardo (entrega recibida 2026-07-24)
 
-Distinto del resto del BACKLOG (que es diferido post-MVP): esto es **trabajo prioritario que se ejecuta apenas llegue el paquete de Gildardo** (los `.js` nuevos + el changelog, que su CC entrega). Las 4 entradas de `FROZEN_EXPORTS_REQUEST.md` ya fueron **respondidas por Gildardo (2026-07-21)**; faltan los archivos. Q6/Q7/Q8 quedaron resueltas (ver `GILDARDO_QUERIES.md`). Al llegar el paquete, en orden:
+Distinto del resto del BACKLOG (que es diferido post-MVP): esto es **trabajo prioritario**. Las 4 entradas de `FROZEN_EXPORTS_REQUEST.md` fueron **respondidas por Gildardo (2026-07-21)**. Q6/Q7/Q8 resueltas (ver `GILDARDO_QUERIES.md`).
 
-- [ ] **Swap limpio de los `.js` nuevos** (regla de custodia: nace del lado de Gildardo, Atlas solo intercambia el archivo; no se edita el frozen).
-- [ ] **Actualizar el golden de TODO el bloque de indicadores, no solo EB-BIS** (`ISCM`, `IEHH`, `EB-BIS`, `IAE`). Motivo: su CC va a diffear el **bloque completo**, no solo la EB-BIS; anclar la paridad a todos evita sorpresas.
-- [ ] **Regenerar el Demo GoldenPath** (`pnpm seed:golden`): sus valores de **EB e IAE van a cambiar** con el frozen delta EB-BIS v5.
-- [ ] **Verificar paridad** (golden en verde, 1e-3 contra los valores de referencia de Gildardo; verificación independiente).
-- [ ] **Integrar las 6 funciones expuestas** (`efrProf` + `cSMM`/`cMMEM`/`cASMI`/`cFFW`/`cEISG`) **+ `dAECMCA` + el patrón alimentario (D1-D8) + la función/tabla de rangos de referencia** de los 12 indicadores. Habilita: la 6ª card (abordaje por profesión, Q9), la columna de Diagnóstico de composición (Q10), la sección "Diagnóstico de encuesta" (hoy placeholder), y las columnas Referencia/Δ de la tabla de indicadores. Detalle y vías por entrada en `FROZEN_EXPORTS_REQUEST.md`.
+**Actualización (2026-07-24): llegó la entrega** (`docs/entregas/gildardo-2026-07/`, inventario en `INVENTARIO.md`). Dos correcciones sobre el plan original de este bloque:
+
+1. **NO hay frozen delta EB-BIS. Verificado: el frozen vigente ya es v5, sin swap ni cambio de valores; pendiente solo la confirmación formal de Gildardo.** El HTML entregado (`ATLAS.html` L5706-5729) es byte-idéntico en coeficientes al frozen vigente (`engine.indices.js` L34-41). Por tanto **NO se regenera golden ni Demo GoldenPath por EB-BIS** (EB/IAE no cambian). Los tachados abajo reflejan esta corrección.
+2. La entrega **no vino** como el swap de custodia (`engine.core.js` nuevo), sino como una re-extracción en 7 módulos ES. Las 6 funciones igual se exponen con el **mecanismo del archivo derivado** (regla dura 12 intacta), porque ya existen en nuestro frozen `engine.core.js` (ver `INVENTARIO.md` punto 6).
+
+- [ ] ~~**Swap limpio de los `.js` nuevos**~~ → **No aplica.** No hay swap de EB-BIS (ya es v5). Las exposiciones van por el mecanismo del archivo derivado, no por reemplazo del frozen.
+- [ ] ~~**Actualizar el golden de TODO el bloque de indicadores**~~ → **No aplica por EB-BIS** (ISCM/IEHH/EB-BIS/IAE ya idénticos). Sí se corre el golden como criterio de aceptación del archivo derivado (verde antes y después, sin cambios de valor).
+- [ ] ~~**Regenerar el Demo GoldenPath** (sus valores de EB e IAE van a cambiar con el frozen delta)~~ → **No aplica** (no hay delta; EB/IAE no cambian).
+- [ ] **Exponer las 6 funciones vía archivo derivado** (`efrProf` + `cSMM`/`cMMEM`/`cASMI`/`cFFW`/`cEISG`): todas ya existen en `frozen/engine.core.js` (L807/L151/L171/L185/L222/L233), ninguna en su `module.exports` (L936). Script determinista + test de "original + una línea aditiva" + documentar el patrón en `ARCHITECTURE.md`. Habilita la 6ª card (abordaje por profesión, Q9) y la columna de Diagnóstico de composición (Q10). Planeación en `INVENTARIO.md` punto 6.
+- [ ] **Portar el patrón alimentario (D1-D8)** desde `atlas-encuesta-patron.js` (llegó completo, entrada 3 de `FROZEN_EXPORTS_REQUEST.md`). Habilita la sección "Diagnóstico de encuesta".
+- [ ] **Pendiente de Gildardo (NO se resuelve de nuestro lado):** la **función/tabla de rangos de referencia** (lo/hi por indicador×sexo, pedido 4) y **`dAECMCA`**. Ambos exigen autoría (función nueva), no un export aditivo; no se construyen aquí. Vuelven a Gildardo. Habilitarían las columnas Referencia/Δ de la tabla de indicadores.
 - [ ] **UI (indicación explícita de Gildardo): rotular la EB-BIS en el reporte para que NO se lea como "edad fisiológica".** Es un índice funcional/bioeléctrico (función celular / bioeléctrica / contexto), no la edad del cuerpo; el rótulo debe dejarlo inequívoco (una edad biológica joven con grasa alta es por diseño, ver Q8).
 - [ ] **Re-auditar la cobertura de la encuesta (las ~63 preguntas ↔ motor) contra el paquete nuevo.** NO antes: se hace cuando llegue el paquete. Verificar qué preguntas alimentan el motor con la ciencia v5, cerrar los gaps de Q3 si el paquete trae la fórmula que convierte frecuencias en puntaje LE8 (Alimentación/Hidratación degradados, `d1_9`/`d1_10`/`d1_16`/`d7_agua`), cablear el patrón alimentario D1-D8 (entrada 3 de `FROZEN_EXPORTS_REQUEST.md`), y reconfirmar que los `field_key` y el formato de las `option_text` siguen coincidiendo char-by-char (candado `survey-engine-coupling.test.ts`). Reevaluar también las decisiones de Q6/Q7 si el paquete cambiara algo.
 
