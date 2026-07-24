@@ -1,7 +1,30 @@
+import { BIODY_COLUMNS, ENGINE_REQUIRED } from "@/clinical-engine";
 import { appError, err, ok, type Result } from "@/core/errors";
 
-import { classifyHeaders } from "../services/header-map";
+import {
+  classifyHeaders,
+  MEASURED_HIPS_HEADER,
+  MEASURED_WAIST_HEADER,
+  normalizeHeader,
+} from "../services/header-map";
 import type { BisRawValue, ExtractedMeasurement, ParsedSheet } from "../types";
+
+// Datos cuya AUSENCIA bloquea el import (sub-bloque B). Dos razones DISTINTAS:
+//  - Motor (ENGINE_REQUIRED): sin ellos no hay diagnostico valido; su falta NO es display, corromperia
+//    el diagnostico. Es requisito del clinical-engine.
+//  - cintura y cadera (circunferencias MEDIDAS Waist/Hips Size cm): DECISION DE NEGOCIO por encima del
+//    motor (confirmada con Gildardo), NO un requisito del motor. Se exigen para el import aunque el
+//    motor no las necesite.
+// Se mapean al header normalizado (= variable_name persistido) para comprobar presencia.
+const REQUIRED_HEADERS: { header: string; label: string; business: boolean }[] = [
+  ...ENGINE_REQUIRED.map((key) => ({
+    header: normalizeHeader(BIODY_COLUMNS[key].header),
+    label: key,
+    business: false,
+  })),
+  { header: normalizeHeader(MEASURED_WAIST_HEADER), label: "cintura", business: true },
+  { header: normalizeHeader(MEASURED_HIPS_HEADER), label: "cadera", business: true },
+];
 
 // Validacion del export ya parseado: la frontera de confianza critica (SECURITY.md).
 // Decide que se persiste y rechaza con detalle lo malformado (-> validation_failed en
@@ -99,6 +122,7 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
 
   const fields: Record<string, string> = {};
   const values: BisRawValue[] = [];
+  const present = new Set<string>(); // variables con un valor numerico (para el chequeo de obligatorios)
   for (const { c, index } of variableColumns) {
     const variableName = c.variableName as string;
     const value = row.cells[index]?.value;
@@ -106,6 +130,7 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
     // Valor no numerico en columna-variable: se omite. Segunda red contra fugas de
     // PII (un texto inesperado nunca llega a bis_raw_values, que es numerico).
     if (typeof value !== "number") continue;
+    present.add(variableName); // presente aunque luego caiga fuera de rango (eso es otro error)
 
     if (!Number.isFinite(value) || Math.abs(value) > GLOBAL_VALUE_ABS_BOUND) {
       fields[variableName] = `Valor fuera del rango admisible: ${value}.`;
@@ -117,6 +142,27 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
       continue;
     }
     values.push({ variableName, value });
+  }
+
+  // Bloqueo por datos OBLIGATORIOS ausentes (sub-bloque B): los del motor (sin ellos no hay
+  // diagnostico valido) y cintura/cadera (circunferencias medidas, por DECISION DE NEGOCIO, no por
+  // requisito del motor). Si faltan, el remedio es re-tomar la medida en Biody Manager con esos
+  // datos y re-exportar; no se persiste nada parcial.
+  const missing = REQUIRED_HEADERS.filter((r) => !present.has(r.header));
+  if (missing.length > 0) {
+    const missingFields: Record<string, string> = {};
+    for (const m of missing) {
+      missingFields[m.label] = m.business
+        ? "Circunferencia medida obligatoria (decision de negocio, no requisito del motor)."
+        : "Requerido por el motor para un diagnostico valido.";
+    }
+    return err(
+      appError(
+        "validation",
+        "Faltan datos obligatorios de la medicion. Vuelve a tomar la medida en Biody Manager incluyendo estos datos y re-exporta el XLSX.",
+        missingFields,
+      ),
+    );
   }
 
   if (Object.keys(fields).length > 0) {

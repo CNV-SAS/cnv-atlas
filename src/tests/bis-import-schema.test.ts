@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { BIODY_COLUMNS, ENGINE_REQUIRED } from "@/clinical-engine";
+import { MEASURED_HIPS_HEADER, MEASURED_WAIST_HEADER } from "@/modules/bis/services/header-map";
 import {
   MEASUREMENT_DATE_HEADER,
   parseBiodyDate,
@@ -18,17 +20,31 @@ function sheet(cells: [string, CellValue][], rows = 1): ParsedSheet {
   return { sheetName: "Measures", headers, dataRows };
 }
 
-// Base valida: fecha + suficientes variables en rango (supera MIN_VARIABLE_COLUMNS).
+// Valores plausibles en rango para los obligatorios del motor (por clave de BIODY_COLUMNS).
+const ENGINE_VALUES: Record<string, number> = {
+  peso: 70,
+  talla: 170,
+  Re: 500,
+  Ri: 1400,
+  Rinf: 370,
+  C: 2,
+  FM: 20,
+  FFMI: 21,
+};
+
+// Base valida: fecha + PII (que se excluye) + los OBLIGATORIOS (motor + cintura/cadera) + relleno
+// para superar MIN_VARIABLE_COLUMNS. Se generan desde las fuentes canonicas para no desincronizar.
 function validCells(): [string, CellValue][] {
   const base: [string, CellValue][] = [
     [MEASUREMENT_DATE_HEADER, "12-04-2026 19:18"],
     ["Paciente ", "PACIENTE SINTETICO"],
     ["Fecha de nacimiento ", "01-01-1990 00:00"],
-    ["Peso kg", 70],
-    ["Altura cm", 170],
     ["Ángulo de fase a 50 kHz °", 6.2],
   ];
-  for (let i = 0; i < 12; i++) base.push([`Var ${i} u`, 10 + i]);
+  for (const key of ENGINE_REQUIRED) base.push([BIODY_COLUMNS[key].header, ENGINE_VALUES[key]]);
+  base.push([MEASURED_WAIST_HEADER, 90]); // cintura medida
+  base.push([MEASURED_HIPS_HEADER, 100]); // cadera medida
+  for (let i = 0; i < 6; i++) base.push([`Var ${i} u`, 10 + i]);
   return base;
 }
 
@@ -132,5 +148,36 @@ describe("validateBisMeasurement", () => {
   it("los rangos curados son un subconjunto documentado (provisional)", () => {
     expect(Object.keys(PHYSIOLOGICAL_RANGES).length).toBeGreaterThan(0);
     expect(PHYSIOLOGICAL_RANGES["Peso kg"]).toEqual({ min: 1, max: 500 });
+  });
+
+  // Sub-bloque B: obligatorios (motor + cintura/cadera de negocio).
+  it("bloquea el import si falta la cintura (circunferencia medida, decision de negocio)", () => {
+    const noCintura = validCells().filter((c) => c[0] !== MEASURED_WAIST_HEADER);
+    const res = validateBisMeasurement(sheet(noCintura));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.code).toBe("validation");
+    expect(res.error.fields?.cintura).toBeDefined();
+    expect(res.error.message).toContain("Biody Manager");
+  });
+
+  it("bloquea el import si falta la cadera (circunferencia medida, decision de negocio)", () => {
+    const noCadera = validCells().filter((c) => c[0] !== MEASURED_HIPS_HEADER);
+    const res = validateBisMeasurement(sheet(noCadera));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.fields?.cadera).toBeDefined();
+  });
+
+  it("bloquea el import si falta un dato del motor (corromperia el diagnostico, no es display)", () => {
+    const noRe = validCells().filter((c) => c[0] !== BIODY_COLUMNS.Re.header);
+    const res = validateBisMeasurement(sheet(noRe));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.fields?.Re).toBeDefined();
+  });
+
+  it("acepta cuando estan todos los obligatorios", () => {
+    expect(validateBisMeasurement(sheet(validCells())).ok).toBe(true);
   });
 });

@@ -14,6 +14,10 @@ const KINDS = ["num","str","str","num","str","num","num","str","num","num","empt
 // las numericas, un valor ficticio determinista y de magnitud plausible.
 function syntheticValue(header, kind, i) {
   const h = (header ?? "").trim();
+  // Circunferencias MEDIDAS: OBLIGATORIAS para el import (sub-bloque B, decision de negocio).
+  // Siempre numericas aunque el KINDS las marque vacias, para que el fixture sea un export valido.
+  if (h === "Waist Size cm") return 90; // cintura
+  if (h === "Hips Size cm") return 100; // cadera
   if (kind === "empty") return undefined;
   if (kind === "str") {
     if (h === "Paciente") return "PACIENTE SINTETICO";
