@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
@@ -103,36 +104,44 @@ export function EntradaEvaluacion({
         />
       ) : null}
 
-      {/* Con medicion BIS: la composicion (solo "que entro"). Sin medicion: el import BIS desde
-          aqui, GATEADO por las condiciones (orden + contraindicacion), o un aviso si la identidad
-          aun no esta confirmada. */}
-      {composition ? (
-        <DetailsSection title="Composición corporal (Niveles de Wang)">
-          <CompositionSection composition={composition} showDiagnosis={false} />
-        </DetailsSection>
-      ) : (
-        <section className="flex flex-col gap-3">
-          <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
-          {!identityConfirmed || !bisImportEval ? (
-            <p className="text-sm text-muted-foreground">
-              Aún sin medición BIS. Confirma la identidad del paciente para poder importar la
-              medición (XLSX de Biody Manager).
-            </p>
-          ) : gate.allowed ? (
-            <BisImportForm evaluation={bisImportEval} />
-          ) : gate.reason === "contraindicated" ? (
-            <p className="text-sm font-semibold text-clinical-critical">
-              Import bloqueado: hay una contraindicación (marcapasos). No se realiza la
-              bioimpedancia. Ver el detalle en las condiciones de la toma, arriba.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Responde y guarda las condiciones de la toma para habilitar el import de la medición
-              BIS.
-            </p>
-          )}
-        </section>
-      )}
+      {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
+          muestra un mensaje de exito PERSISTENTE + la composicion; sin medicion, el import GATEADO
+          (boton deshabilitado con explicacion en gris). Mismo criterio de "estados vacios limpios". */}
+      <section className="flex flex-col gap-3">
+        <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
+        {composition ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2">
+              <CheckCircle2 className="size-4 shrink-0 text-clinical-optimal" aria-hidden />
+              <span className="text-sm font-medium text-clinical-optimal">
+                Medición importada correctamente.
+              </span>
+            </div>
+            <DetailsSection title="Composición corporal (Niveles de Wang)">
+              <CompositionSection composition={composition} showDiagnosis={false} />
+            </DetailsSection>
+          </div>
+        ) : !identityConfirmed || !bisImportEval ? (
+          <p className="text-sm text-muted-foreground">
+            Aún sin medición BIS. Confirma la identidad del paciente para poder importar la medición
+            (XLSX de Biody Manager).
+          </p>
+        ) : !gate.allowed && gate.reason === "contraindicated" ? (
+          <p className="text-sm font-semibold text-clinical-critical">
+            Import bloqueado: hay una contraindicación (marcapasos). No se realiza la bioimpedancia.
+            Ver el detalle en las condiciones de la toma, arriba.
+          </p>
+        ) : (
+          <BisImportForm
+            evaluation={bisImportEval}
+            disabledReason={
+              gate.allowed
+                ? null
+                : "Responde y guarda las condiciones de la toma para habilitar el import."
+            }
+          />
+        )}
+      </section>
     </div>
   );
 }

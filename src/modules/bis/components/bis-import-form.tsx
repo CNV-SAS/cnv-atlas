@@ -30,13 +30,23 @@ const initialState: ImportBisState = {
   valueCount: null,
 };
 
-export function BisImportForm({ evaluation }: { evaluation: BisImportEvaluationView }) {
+export function BisImportForm({
+  evaluation,
+  disabledReason = null,
+}: {
+  evaluation: BisImportEvaluationView;
+  // Motivo por el que el import esta deshabilitado (p. ej. condiciones sin responder). Si no es
+  // null, el boton y el archivo quedan deshabilitados con la explicacion en gris (ensena que falta,
+  // en vez de esconder la seccion). null = habilitado.
+  disabledReason?: string | null;
+}) {
   const [state, action, pending] = useActionState(importBisAction, initialState);
   // Toast de exito/error (el detalle por variable se sigue mostrando inline).
   useFormToast(state);
 
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
   const done = evaluation.alreadyImported || state.imported;
+  const blocked = Boolean(disabledReason);
 
   return (
     <Card>
@@ -79,9 +89,13 @@ export function BisImportForm({ evaluation }: { evaluation: BisImportEvaluationV
                 type="file"
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 required
-                disabled={pending}
+                disabled={pending || blocked}
               />
             </div>
+
+            {disabledReason ? (
+              <p className="text-xs text-muted-foreground">{disabledReason}</p>
+            ) : null}
 
             {state.error ? (
               <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
@@ -98,7 +112,7 @@ export function BisImportForm({ evaluation }: { evaluation: BisImportEvaluationV
               </div>
             ) : null}
 
-            <Button type="submit" disabled={pending} className="w-fit">
+            <Button type="submit" disabled={pending || blocked} className="w-fit">
               {pending ? "Importando..." : "Importar medicion BIS"}
             </Button>
           </form>
