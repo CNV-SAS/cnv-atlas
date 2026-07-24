@@ -4,7 +4,8 @@ import {
   activeWarnings,
   computeContraindicated,
 } from "@/modules/bis-intake/services/contraindication";
-import type { BisCondition, BisConditionCatalog } from "@/modules/bis-intake/types";
+import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
+import type { BisCondition, BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import {
   type SaveBisConditionsInput,
   validateBisConditionsCapture,
@@ -134,5 +135,33 @@ describe("validateBisConditionsCapture", () => {
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.fields?.inventada).toBeDefined();
+  });
+});
+
+describe("evaluateBisImportGate (orden + seguridad del import)", () => {
+  const intake = (over: Partial<BisIntakeRecord>): BisIntakeRecord => ({
+    versionId: "v1",
+    answers: {},
+    contraindicated: false,
+    gripStrengthKg: null,
+    weightGoalKg: null,
+    updatedAt: NOW,
+    ...over,
+  });
+
+  it("sin captura de condiciones NO habilita el import (orden impuesto por el sistema)", () => {
+    const g = evaluateBisImportGate(null);
+    expect(g.allowed).toBe(false);
+    if (!g.allowed) expect(g.reason).toBe("conditions_missing");
+  });
+
+  it("con contraindicacion (marcapasos) bloquea el import", () => {
+    const g = evaluateBisImportGate(intake({ contraindicated: true }));
+    expect(g.allowed).toBe(false);
+    if (!g.allowed) expect(g.reason).toBe("contraindicated");
+  });
+
+  it("con condiciones respondidas y sin contraindicacion habilita el import", () => {
+    expect(evaluateBisImportGate(intake({})).allowed).toBe(true);
   });
 });
