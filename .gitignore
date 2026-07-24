@@ -48,3 +48,7 @@ next-env.d.ts
 
 # Snippets generados por Supabase Studio en local; no son fuente del proyecto.
 /supabase/snippets/
+
+# Bundle de git de Gildardo (repo divergente CNV-SAS/atlas-gil): binario que pertenece a otro
+# repo; su contenido ya esta documentado como especificacion en INVENTARIO.md. No se versiona.
+/docs/entregas/gildardo-2026-07/atlas-gil/
