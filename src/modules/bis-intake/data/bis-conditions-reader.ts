@@ -53,7 +53,7 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
   const { data: rows, error: cErr } = await supabase
     .from("bis_conditions")
     .select(
-      "key, label, scope, kind, input_type, requires_detail, detail_label, detail_type, order_index",
+      "key, label, scope, kind, input_type, requires_detail, detail_label, detail_type, compromises_validity, order_index",
     )
     .eq("bis_condition_version_id", version.id)
     .order("order_index", { ascending: true });
@@ -71,6 +71,7 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
       requiresDetail: r.requires_detail,
       detailLabel: r.detail_label,
       detailType: r.detail_type as BisConditionCatalog["conditions"][number]["detailType"],
+      compromisesValidity: r.compromises_validity,
       orderIndex: r.order_index,
     })),
   };

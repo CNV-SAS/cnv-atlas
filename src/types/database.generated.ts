@@ -185,6 +185,7 @@ export type Database = {
       bis_conditions: {
         Row: {
           bis_condition_version_id: string
+          compromises_validity: boolean
           detail_label: string | null
           detail_type:
             | Database["public"]["Enums"]["bis_condition_field_type"]
@@ -200,6 +201,7 @@ export type Database = {
         }
         Insert: {
           bis_condition_version_id: string
+          compromises_validity?: boolean
           detail_label?: string | null
           detail_type?:
             | Database["public"]["Enums"]["bis_condition_field_type"]
@@ -215,6 +217,7 @@ export type Database = {
         }
         Update: {
           bis_condition_version_id?: string
+          compromises_validity?: boolean
           detail_label?: string | null
           detail_type?:
             | Database["public"]["Enums"]["bis_condition_field_type"]
@@ -2546,7 +2549,11 @@ export type Database = {
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
       bis_condition_field_type: "boolean" | "number" | "text"
-      bis_condition_kind: "calidad" | "contraindicacion" | "advertencia"
+      bis_condition_kind:
+        | "calidad"
+        | "contraindicacion"
+        | "advertencia"
+        | "validez"
       bis_condition_scope: "general" | "mujeres"
       consent_type_enum:
         | "servicio"
@@ -2717,7 +2724,12 @@ export const Constants = {
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],
       bis_condition_field_type: ["boolean", "number", "text"],
-      bis_condition_kind: ["calidad", "contraindicacion", "advertencia"],
+      bis_condition_kind: [
+        "calidad",
+        "contraindicacion",
+        "advertencia",
+        "validez",
+      ],
       bis_condition_scope: ["general", "mujeres"],
       consent_type_enum: [
         "servicio",

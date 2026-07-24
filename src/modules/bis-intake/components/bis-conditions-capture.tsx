@@ -221,12 +221,13 @@ export function BisConditionsCapture({
         {c.kind === "advertencia" && a.bool === true ? (
           <div className="mt-1 flex flex-col gap-2 rounded-lg border-2 border-clinical-warning bg-clinical-warning-bg p-3">
             <p className="text-sm font-semibold text-clinical-warning">
-              Se requiere autorización del comité de ética
+              Embarazo: autorización del comité de ética y reserva de validez
             </p>
             <p className="text-xs text-foreground/80">
-              La bioimpedancia no representa un riesgo físico, pero evaluar a una paciente en
-              embarazo requiere la autorización del comité de ética. La medición procede bajo tu
-              responsabilidad profesional.
+              Dos cosas. (1) Evaluar a una paciente en embarazo requiere la autorización del comité
+              de ética: la bioimpedancia no representa un riesgo físico y la medición procede bajo tu
+              responsabilidad. (2) El modelo no está validado en gestación, así que el resultado debe
+              interpretarse con reserva. Ambas quedan registradas en el diagnóstico.
             </p>
             <label className="flex cursor-pointer items-start gap-2 text-sm font-medium text-foreground">
               <input
@@ -242,6 +243,19 @@ export function BisConditionsCapture({
                 paciente.
               </span>
             </label>
+          </div>
+        ) : null}
+
+        {c.kind === "validez" && a.bool === true ? (
+          <div className="mt-1 flex flex-col gap-1 rounded-lg border-2 border-clinical-warning bg-clinical-warning-bg p-3">
+            <p className="text-sm font-semibold text-clinical-warning">
+              Resultado con reserva de validez
+            </p>
+            <p className="text-xs text-foreground/80">
+              La medición procede (es segura para el paciente), pero bajo esta condición el modelo
+              puede no ser confiable: el resultado debe interpretarse con reserva. No bloquea el
+              import; queda registrado y visible en el diagnóstico.
+            </p>
           </div>
         ) : null}
 

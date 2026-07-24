@@ -5,20 +5,22 @@ import {
   computeContraindicated,
 } from "@/modules/bis-intake/services/contraindication";
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
+import { buildValidityCaveats } from "@/modules/bis-intake/services/validity";
 import type { BisCondition, BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import {
   type SaveBisConditionsInput,
   validateBisConditionsCapture,
 } from "@/modules/bis-intake/validations";
 
-// Catalogo de prueba fiel a la v1 (subconjunto suficiente): 3 generales + 3 femeninas.
+// Catalogo de prueba fiel a la v1 (subconjunto suficiente): generales + validez + femeninas.
 const CONDS: BisCondition[] = [
-  { key: "placas_metalicas", label: "Placas", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, orderIndex: 1 },
-  { key: "marcapasos", label: "Marcapasos", scope: "general", kind: "contraindicacion", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, orderIndex: 2 },
-  { key: "diuretico", label: "Diuretico", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cual?", detailType: "text", orderIndex: 3 },
-  { key: "embarazo", label: "Embarazo", scope: "mujeres", kind: "advertencia", inputType: "boolean", requiresDetail: true, detailLabel: "Mes de gestacion", detailType: "number", orderIndex: 4 },
-  { key: "menstruacion", label: "Menstruacion", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "Dia del periodo", detailType: "number", orderIndex: 5 },
-  { key: "semana_ciclo", label: "Semana del ciclo", scope: "mujeres", kind: "calidad", inputType: "number", requiresDetail: false, detailLabel: null, detailType: null, orderIndex: 6 },
+  { key: "placas_metalicas", label: "Placas", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 1 },
+  { key: "marcapasos", label: "Marcapasos", scope: "general", kind: "contraindicacion", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 2 },
+  { key: "diuretico", label: "Diuretico", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cual?", detailType: "text", compromisesValidity: false, orderIndex: 3 },
+  { key: "edema_anasarca", label: "Edema o anasarca", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true, orderIndex: 4 },
+  { key: "embarazo", label: "Embarazo", scope: "mujeres", kind: "advertencia", inputType: "boolean", requiresDetail: true, detailLabel: "Mes de gestacion", detailType: "number", compromisesValidity: true, orderIndex: 5 },
+  { key: "menstruacion", label: "Menstruacion", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "Dia del periodo", detailType: "number", compromisesValidity: false, orderIndex: 6 },
+  { key: "semana_ciclo", label: "Semana del ciclo", scope: "mujeres", kind: "calidad", inputType: "number", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 7 },
 ];
 const CATALOG: BisConditionCatalog = { versionId: "v1", versionNumber: 1, conditions: CONDS };
 const NOW = "2026-07-24T12:00:00.000Z";
@@ -29,6 +31,7 @@ function generalAnswers(marcapasos: boolean): SaveBisConditionsInput["answers"] 
     placas_metalicas: { value: false },
     marcapasos: { value: marcapasos },
     diuretico: { value: false },
+    edema_anasarca: { value: false },
   };
 }
 
@@ -135,6 +138,36 @@ describe("validateBisConditionsCapture", () => {
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.fields?.inventada).toBeDefined();
+  });
+});
+
+describe("validez (no bloquea, no exige reconocimiento, sella caveat)", () => {
+  it("una condicion validez respondida si NO dispara la contraindicacion", () => {
+    // edema_anasarca es kind='validez'; aunque sea true, no bloquea el import.
+    expect(computeContraindicated(CONDS, { edema_anasarca: { value: true } })).toBe(false);
+  });
+
+  it("validez NO exige reconocimiento (a diferencia del embarazo)", () => {
+    const res = validateBisConditionsCapture(
+      CATALOG,
+      { evaluationId: "e", answers: { ...generalAnswers(false), edema_anasarca: { value: true } } },
+      NOW,
+    );
+    expect(res.ok).toBe(true); // sin checkbox, se guarda igual
+  });
+
+  it("buildValidityCaveats sella las que comprometen validez respondidas si (validez + embarazo)", () => {
+    const caveats = buildValidityCaveats(CONDS, {
+      edema_anasarca: { value: true },
+      embarazo: { value: true, detail: 5, acknowledgedAt: NOW },
+      marcapasos: { value: true }, // contraindicacion, no compromete validez -> no entra
+      placas_metalicas: { value: true }, // calidad -> no entra
+    });
+    expect(caveats.map((c) => c.key).sort()).toEqual(["edema_anasarca", "embarazo"]);
+  });
+
+  it("sin condiciones que comprometan validez, no hay caveats", () => {
+    expect(buildValidityCaveats(CONDS, { placas_metalicas: { value: true } })).toEqual([]);
   });
 });
 

@@ -3,7 +3,7 @@
 
 export type BisFieldType = "boolean" | "number" | "text";
 export type BisConditionScope = "general" | "mujeres";
-export type BisConditionKind = "calidad" | "contraindicacion" | "advertencia";
+export type BisConditionKind = "calidad" | "contraindicacion" | "advertencia" | "validez";
 
 // Una condicion del catalogo activo (fila de bis_conditions).
 export type BisCondition = {
@@ -15,6 +15,8 @@ export type BisCondition = {
   requiresDetail: boolean;
   detailLabel: string | null;
   detailType: BisFieldType | null;
+  // true si responder "si" compromete la validez del resultado (sella caveat en el diagnostico).
+  compromisesValidity: boolean;
   orderIndex: number;
 };
 
