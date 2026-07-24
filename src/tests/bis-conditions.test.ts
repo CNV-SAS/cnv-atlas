@@ -57,11 +57,11 @@ describe("computeContraindicated (compuerta de seguridad)", () => {
 
 describe("validateBisConditionsCapture", () => {
   it("acepta el bloque general completo y computa contraindicated", () => {
-    const okRes = validateBisConditionsCapture(CATALOG, { evaluationId: "e", answers: generalAnswers(true) }, NOW);
+    const okRes = validateBisConditionsCapture(CATALOG, { evaluationId: "e", answers: generalAnswers(true) }, NOW, false);
     expect(okRes.ok).toBe(true);
     if (okRes.ok) expect(okRes.value.contraindicated).toBe(true);
 
-    const noRes = validateBisConditionsCapture(CATALOG, { evaluationId: "e", answers: generalAnswers(false) }, NOW);
+    const noRes = validateBisConditionsCapture(CATALOG, { evaluationId: "e", answers: generalAnswers(false) }, NOW, false);
     expect(noRes.ok && noRes.value.contraindicated).toBe(false);
   });
 
@@ -70,9 +70,27 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { placas_metalicas: { value: false }, marcapasos: { value: false } } },
       NOW,
+      false,
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.fields?.diuretico).toBeDefined();
+  });
+
+  it("con paciente mujer, las si/no femeninas son obligatorias; la semana (numero) no", () => {
+    // Solo el bloque general (omite las femeninas). Con patientIsFemale=true, embarazo y
+    // menstruacion (si/no) faltan -> error; semana_ciclo (numero) es opcional -> sin error.
+    const res = validateBisConditionsCapture(
+      CATALOG,
+      { evaluationId: "e", answers: generalAnswers(false) },
+      NOW,
+      true,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.fields?.embarazo).toBeDefined();
+      expect(res.error.fields?.menstruacion).toBeDefined();
+      expect(res.error.fields?.semana_ciclo).toBeUndefined();
+    }
   });
 
   it("valida el rango 1-6 de semana_ciclo y no lo trata como booleano", () => {
@@ -80,12 +98,14 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), semana_ciclo: { value: 3 } } },
       NOW,
+      false,
     );
     expect(good.ok).toBe(true);
     const bad = validateBisConditionsCapture(
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), semana_ciclo: { value: 9 } } },
       NOW,
+      false,
     );
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.error.fields?.semana_ciclo).toBeDefined();
@@ -96,6 +116,7 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), embarazo: { value: true, detail: 5 } } },
       NOW,
+      false,
     );
     expect(sinAck.ok).toBe(false);
     if (!sinAck.ok) expect(sinAck.error.fields?.embarazo).toBeDefined();
@@ -104,6 +125,7 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), embarazo: { value: true, detail: 5, acknowledged: true } } },
       NOW,
+      false,
     );
     expect(conAck.ok).toBe(true);
     if (conAck.ok) {
@@ -118,6 +140,7 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), diuretico: { value: true } } },
       NOW,
+      false,
     );
     expect(sinDetalle.ok).toBe(false);
 
@@ -125,6 +148,7 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), diuretico: { value: true, detail: "Furosemida" } } },
       NOW,
+      false,
     );
     expect(conDetalle.ok).toBe(true);
     if (conDetalle.ok) expect(conDetalle.value.answers.diuretico?.detail).toBe("Furosemida");
@@ -135,6 +159,7 @@ describe("validateBisConditionsCapture", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), inventada: { value: true } } },
       NOW,
+      false,
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.fields?.inventada).toBeDefined();
@@ -152,6 +177,7 @@ describe("validez (no bloquea, no exige reconocimiento, sella caveat)", () => {
       CATALOG,
       { evaluationId: "e", answers: { ...generalAnswers(false), edema_anasarca: { value: true } } },
       NOW,
+      false,
     );
     expect(res.ok).toBe(true); // sin checkbox, se guarda igual
   });

@@ -87,6 +87,11 @@ export function BisConditionsCapture({
     (c) => c.kind === "advertencia" && answers[c.key]?.bool === true,
   );
   const missingAck = activeAdvertencias.some((c) => !answers[c.key].acknowledged);
+  // Todas las si/no en alcance son OBLIGATORIAS (la numerica semana del ciclo es opcional): un
+  // checklist a medias no cumple, y "sin responder" no es "no" para una compuerta de seguridad.
+  const missingRequired = visible.some(
+    (c) => c.inputType === "boolean" && answers[c.key].bool === null,
+  );
 
   const setBool = (key: string, val: boolean) =>
     setAnswers((s) => ({ ...s, [key]: { ...s[key], bool: val } }));
@@ -338,12 +343,23 @@ export function BisConditionsCapture({
         </div>
 
         <div className="flex flex-col gap-2">
+          {missingRequired ? (
+            <span className="text-xs font-medium text-muted-foreground">
+              Responde todas las condiciones (Sí o No) para poder guardar. La semana del ciclo es
+              opcional.
+            </span>
+          ) : null}
           {missingAck ? (
             <span className="text-xs font-medium text-clinical-warning">
               Marca el reconocimiento del embarazo para poder guardar.
             </span>
           ) : null}
-          <Button type="button" onClick={onSubmit} disabled={pending || missingAck} className="w-fit">
+          <Button
+            type="button"
+            onClick={onSubmit}
+            disabled={pending || missingAck || missingRequired}
+            className="w-fit"
+          >
             {pending ? "Guardando..." : saved ? "Actualizar condiciones" : "Guardar condiciones"}
           </Button>
         </div>

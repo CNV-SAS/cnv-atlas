@@ -8,7 +8,10 @@ import { getClientIp } from "@/core/http/client-ip";
 import { requireUser } from "@/modules/auth/session";
 import { getEvaluationOwnership } from "@/modules/evaluations/data/evaluations-repository";
 
-import { getActiveBisConditionCatalog } from "./data/bis-conditions-reader";
+import {
+  getActiveBisConditionCatalog,
+  getEvaluationPatientSex,
+} from "./data/bis-conditions-reader";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
 import { saveBisConditionsSchema, validateBisConditionsCapture } from "./validations";
@@ -50,10 +53,19 @@ export async function saveBisConditionsAction(
     return err(appError("conflict", "Confirma la identidad del paciente antes de capturar las condiciones."));
   }
 
-  const catalog = await getActiveBisConditionCatalog();
+  const [catalog, sex] = await Promise.all([
+    getActiveBisConditionCatalog(),
+    getEvaluationPatientSex(input.evaluationId),
+  ]);
   if (!catalog) return err(appError("internal", "No hay un catalogo de condiciones BIS activo."));
 
-  const validated = validateBisConditionsCapture(catalog, input, new Date().toISOString());
+  // La obligatoriedad de las condiciones femeninas depende del sexo (autoritativo en el server).
+  const validated = validateBisConditionsCapture(
+    catalog,
+    input,
+    new Date().toISOString(),
+    sex === "F",
+  );
   if (!validated.ok) return validated;
 
   const ip = await getClientIp();

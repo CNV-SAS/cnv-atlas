@@ -53,10 +53,18 @@ export function validateBisConditionsCapture(
   catalog: BisConditionCatalog,
   input: SaveBisConditionsInput,
   nowIso: string,
+  patientIsFemale: boolean,
 ): Result<ValidatedBisCapture> {
   const byKey = new Map(catalog.conditions.map((c) => [c.key, c]));
   const fields: Record<string, string> = {};
   const sealed: BisConditionAnswers = {};
+
+  // Una condicion es OBLIGATORIA si es si/no y aplica al paciente (general siempre; femenina solo si
+  // es mujer). Las numericas (semana del ciclo) son OPCIONALES: el dato puede no estar disponible, a
+  // diferencia de las si/no que siempre se pueden responder. "sin responder" != "no" para una
+  // compuerta de seguridad.
+  const isRequired = (c: (typeof catalog.conditions)[number]): boolean =>
+    c.inputType === "boolean" && (c.scope === "general" || patientIsFemale);
 
   for (const key of Object.keys(input.answers)) {
     if (!byKey.has(key)) fields[key] = "Condicion desconocida.";
@@ -65,7 +73,7 @@ export function validateBisConditionsCapture(
   for (const c of catalog.conditions) {
     const raw = input.answers[c.key];
     if (raw == null) {
-      if (c.scope === "general") fields[c.key] = "Responde esta condicion.";
+      if (isRequired(c)) fields[c.key] = "Responde esta condicion.";
       continue;
     }
 
