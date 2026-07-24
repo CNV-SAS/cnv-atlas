@@ -36,8 +36,17 @@ const PATIENT_ID = "a0000000-0000-4000-8000-0000000000a1";
 const EVAL_ID = "a0000000-0000-4000-8000-0000000000a2";
 // Segunda evaluacion del MISMO paciente demo, SIN diagnostico (in_progress, encuesta parcial, sin
 // BIS): caso de prueba de la pestana Evaluacion, rama sin diagnostico (el uso principal: revisar la
-// entrada antes de generar). URL: /evaluaciones/a0000000-0000-4000-8000-0000000000a3
+// entrada antes de generar). Es de tipo SEGUIMIENTO, como la resolveria el flujo real por documento
+// (resolveIdentity: match de documento -> seguimiento); no dos "inicial" para el mismo paciente.
+// URL: /evaluaciones/a0000000-0000-4000-8000-0000000000a3
 const EVAL_ID_NODIAG = "a0000000-0000-4000-8000-0000000000a3";
+// Paciente MUJER demo + evaluacion inicial in_progress SIN BIS: para el smoke del bloque femenino de
+// la captura BIS (embarazo/menstruacion/semana del ciclo) y del flujo de import limpio (aun sin
+// medicion). URL: /evaluaciones/a0000000-0000-4000-8000-0000000000c2
+const FEMALE_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c1";
+const FEMALE_EVAL_ID = "a0000000-0000-4000-8000-0000000000c2";
+const FEMALE_DOC = "GOLDEN-FEM-01";
+const FEMALE_BIRTH = "1990-03-08";
 const DOC_NUMBER = "GOLDEN-0001";
 // DOB del donante real del BIS gold (~54 años): la edad alimenta EB-BIS/IAE, asi que debe
 // ser la suya para que el envejecimiento biologico lea coherente con su medicion.
@@ -344,7 +353,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     // composicion su estado vacio, sin tronar.
     await db
       .insert(schema.evaluations)
-      .values({ id: EVAL_ID_NODIAG, patientId: PATIENT_ID, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
+      .values({ id: EVAL_ID_NODIAG, patientId: PATIENT_ID, professionalId: proId, organizationId: orgId, type: "seguimiento", status: "in_progress" })
       .onConflictDoNothing();
 
     const existing = await db
@@ -362,6 +371,84 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     )[0].id;
 
     // Solo estas 3 se responden; el resto de la encuesta queda sin responder a proposito.
+    const PARTIAL = ["d2_19", "d3_23", "d3_24"];
+    const questions = await db
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+    for (const q of questions as { id: string; fieldKey: string | null }[]) {
+      if (!q.fieldKey || !PARTIAL.includes(q.fieldKey)) continue;
+      const pick = ANSWERS[q.fieldKey];
+      const opts = await db
+        .select({ text: schema.surveyOptions.optionText })
+        .from(schema.surveyOptions)
+        .where(eq(schema.surveyOptions.questionId, q.id))
+        .orderBy(schema.surveyOptions.orderIndex);
+      const texts = opts.map((o: { text: string }) => o.text);
+      const chosen = pick.text ?? texts[pick.idx ?? 0];
+      const value = pick.multi ? JSON.stringify([chosen]) : chosen;
+      await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+    }
+  });
+
+  it("paciente MUJER demo, inicial in_progress SIN BIS, para el bloque femenino e import limpio (idempotente)", async () => {
+    // Paciente distinto (mujer) con UNA sola evaluacion inicial: flujo de import LIMPIO (aun sin BIS,
+    // el formulario aparece tras guardar condiciones) y el bloque femenino de la captura BIS
+    // (embarazo con reconocimiento del comite de etica, menstruacion, semana del ciclo). Sin BIS.
+    await db
+      .insert(schema.patients)
+      .values({ id: FEMALE_PATIENT_ID, organizationId: orgId, documentType: "CC", documentNumber: FEMALE_DOC })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientProfiles)
+      .values({ patientId: FEMALE_PATIENT_ID, firstName: "Demo", lastName: "Mujer (bloque femenino)", sex: "Female", birthDate: FEMALE_BIRTH, city: "Medellin" })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientProfessionalRelationships)
+      .values({ patientId: FEMALE_PATIENT_ID, professionalId: proId })
+      .onConflictDoNothing();
+    await db
+      .insert(schema.patientContacts)
+      .values({ patientId: FEMALE_PATIENT_ID, email: "corporativo+demofem@cnvsystem.com" })
+      .onConflictDoNothing();
+    for (const t of NECESSARY_CONSENT_TYPES) {
+      const existing = await db
+        .select({ id: schema.patientConsents.id })
+        .from(schema.patientConsents)
+        .where(
+          and(
+            eq(schema.patientConsents.patientId, FEMALE_PATIENT_ID),
+            eq(schema.patientConsents.consentType, t),
+            isNull(schema.patientConsents.revokedAt),
+          ),
+        )
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(schema.patientConsents).values({
+          patientId: FEMALE_PATIENT_ID,
+          consentType: t,
+          consentVersion: CONSENT_VERSION,
+          documentHash: CONSENT_DOCUMENT_HASH,
+        });
+      }
+    }
+    await db
+      .insert(schema.evaluations)
+      .values({ id: FEMALE_EVAL_ID, patientId: FEMALE_PATIENT_ID, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
+      .onConflictDoNothing();
+
+    const existing = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, FEMALE_EVAL_ID))
+      .limit(1);
+    if (existing.length > 0) return; // ya sembrada; resumible
+    const respId = (
+      await db
+        .insert(schema.surveyResponses)
+        .values({ evaluationId: FEMALE_EVAL_ID, surveyVersionId: svId })
+        .returning({ id: schema.surveyResponses.id })
+    )[0].id;
     const PARTIAL = ["d2_19", "d3_23", "d3_24"];
     const questions = await db
       .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
