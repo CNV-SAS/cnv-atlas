@@ -175,7 +175,9 @@ export default async function ResultadosEvaluacionPage({
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
   // protocolo. Seguimiento recibe la comparacion contra la evaluacion previa. El pulido de
   // Evaluacion/Tratamiento/Seguimiento es de bloques futuros; aqui solo se reubica.
-  const rutas = results.compatible ? results.snapshot.dfi.rutas : [];
+  // Contenido de las rutas activas, congelado en el snapshot (T1). [] para snapshots incompatibles o
+  // previos a T1 (la seccion muestra "sin rutas" en vez de tronar).
+  const rutas = results.rutasContent;
 
   return (
     <EvaluationTabs
