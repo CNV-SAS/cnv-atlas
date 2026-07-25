@@ -53,6 +53,45 @@ export function resolveRutasContent(rutas: string[]): RutaContent[] {
     .filter((c): c is RutaContent => Boolean(c));
 }
 
+// Una remisión: destinatario + urgencia (string verbatim de Gildardo) + ruta de origen + indicaciones.
+export type Remision = {
+  profesional: string;
+  urgencia: string;
+  rutaId: string;
+  rutaLabel: string;
+  indicaciones: string[];
+};
+
+// Destinatario por profesión (rótulo verbatim del prototipo).
+const REMISION_PROF: Record<string, string> = {
+  medico: "Médico",
+  psicologico: "Psicólogo/a",
+  ejercicio: "Entrenador/Fisioterapeuta",
+};
+
+// Remisiones AGREGADAS de las rutas activas: los componentes medico/psicologico/ejercicio con
+// remision===true. Orden fiel al prototipo: por ruta, y dentro de cada ruta medico → psicologico →
+// ejercicio. La urgencia se conserva como STRING verbatim (la UI la diferencia visualmente sin
+// alterarla). El nutricional nunca remite (no aparece).
+export function buildRemisiones(rutas: RutaContent[]): Remision[] {
+  const out: Remision[] = [];
+  for (const r of rutas) {
+    for (const prof of ["medico", "psicologico", "ejercicio"] as const) {
+      const c = r.componentes[prof];
+      if (c.remision) {
+        out.push({
+          profesional: REMISION_PROF[prof],
+          urgencia: c.urgencia ?? "",
+          rutaId: r.id,
+          rutaLabel: r.label,
+          indicaciones: c.indicaciones,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 export const RUTAS_CONTENT: Record<string, RutaContent> = {
   R1: {
     id: "R1",

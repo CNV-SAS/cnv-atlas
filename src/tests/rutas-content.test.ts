@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildRemisiones,
   RUTAS_CONTENT,
   resolveRutasContent,
   type RutaContent,
@@ -81,5 +82,26 @@ describe("resolveRutasContent (rutas activas -> contenido, para congelar en el s
       "R1",
     ]);
     expect(resolveRutasContent([])).toEqual([]);
+  });
+});
+
+describe("buildRemisiones (agrega las remisiones de las rutas activas)", () => {
+  it("agrega medico/psicologico/ejercicio con remision, en orden por ruta (el nutricional nunca)", () => {
+    // R2 y R4 (las de la captura): cada una remite médico y ejercicio; su psicológico no aplica.
+    const rem = buildRemisiones([RUTAS_CONTENT.R2, RUTAS_CONTENT.R4]);
+    expect(rem.map((r) => `${r.rutaId}:${r.profesional}`)).toEqual([
+      "R2:Médico",
+      "R2:Entrenador/Fisioterapeuta",
+      "R4:Médico",
+      "R4:Entrenador/Fisioterapeuta",
+    ]);
+    // Urgencia VERBATIM.
+    expect(rem[0].urgencia).toBe("obligatoria si HTA o DM2 activa");
+    expect(rem[3].urgencia).toBe("OBLIGATORIA — sin ejercicio los nutracéuticos son insuficientes");
+  });
+
+  it("una ruta sin remisiones no aporta (R6)", () => {
+    expect(buildRemisiones([RUTAS_CONTENT.R6])).toEqual([]);
+    expect(buildRemisiones([])).toEqual([]);
   });
 });

@@ -13,6 +13,7 @@ import { CompositionSection } from "@/modules/diagnoses/components/composition-s
 import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
+import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
@@ -199,6 +200,7 @@ export default async function ResultadosEvaluacionPage({
       tratamiento={
         <div className="flex flex-col gap-8">
           <RutasSection rutas={rutas} />
+          <RemisionesSection rutas={rutas} />
           {protocol ? (
             <TreatmentPanel evaluationId={id} protocol={protocol} />
           ) : (
