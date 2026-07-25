@@ -17,6 +17,7 @@ import {
   treatmentDietGuidelines,
   treatments,
 } from "@/db/schema";
+import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { recordAudit } from "@/modules/audit/log";
 
@@ -50,6 +51,11 @@ export type PipelineWriteInput = {
   // en el snapshot: la reserva del resultado debe sobrevivir al diagnostico (el intake es mutable).
   // [] si no hay ninguna.
   validityCaveats: ValidityCaveat[];
+  // Contenido clinico de las rutas de atencion ACTIVAS (verbatim de Gildardo), para CONGELARLO en el
+  // snapshot: es lo que efectivamente se prescribio ese dia (indicaciones, remisiones, seguimiento),
+  // acto clinico como el fenotipo. Si Gildardo cambia una ruta despues, el diagnostico de hoy sigue
+  // mostrando lo prescrito. [] si no hay rutas activas.
+  rutasContent: RutaContent[];
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
@@ -167,7 +173,12 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
         patientId: input.patientId,
         type: "paciente",
         status: "draft",
-        snapshot: { ...output, efrContent: input.efrContent, validityCaveats: input.validityCaveats },
+        snapshot: {
+          ...output,
+          efrContent: input.efrContent,
+          validityCaveats: input.validityCaveats,
+          rutasContent: input.rutasContent,
+        },
       })
       .returning({ id: reports.id });
 

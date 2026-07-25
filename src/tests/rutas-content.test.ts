@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { RUTAS_CONTENT, type RutaContent } from "@/clinical-engine/rutas-content";
+import {
+  RUTAS_CONTENT,
+  resolveRutasContent,
+  type RutaContent,
+} from "@/clinical-engine/rutas-content";
 
 // Candado del contenido clínico de las rutas portado VERBATIM de Gildardo. Cualquier edición del
 // texto (que sería tocar autoría ajena, ver el encabezado de rutas-content.ts) rompe este test.
@@ -60,5 +64,22 @@ describe("RUTAS_CONTENT (contenido clínico verbatim de Gildardo)", () => {
         if (c.remision) expect(typeof c.urgencia).toBe("string");
       }
     }
+  });
+});
+
+describe("resolveRutasContent (rutas activas -> contenido, para congelar en el snapshot)", () => {
+  it("resuelve por el id (prefijo antes del primer espacio) de los strings de dfi.rutas", () => {
+    const res = resolveRutasContent([
+      "R2 · Reducción Riesgo Cardiometabólico",
+      "R4 · Desaceleración del Envejecimiento",
+    ]);
+    expect(res.map((r) => r.id)).toEqual(["R2", "R4"]);
+  });
+
+  it("omite ids desconocidos y tolera lista vacía", () => {
+    expect(resolveRutasContent(["R9 · inexistente", "R1 · Restauración Celular"]).map((r) => r.id)).toEqual([
+      "R1",
+    ]);
+    expect(resolveRutasContent([])).toEqual([]);
   });
 });

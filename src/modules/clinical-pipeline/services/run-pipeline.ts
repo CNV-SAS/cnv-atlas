@@ -1,6 +1,7 @@
 import "server-only";
 
 import { runEngine } from "@/clinical-engine";
+import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
 
@@ -69,6 +70,10 @@ export async function runClinicalPipeline(
   // snapshot: bajo que condicion(es) que comprometen la validez se hizo la medicion.
   const validityCaveats = await getSealedValidityCaveats(input.evaluationId);
 
+  // Contenido de las rutas de atencion ACTIVAS (verbatim de Gildardo), para congelarlo en el
+  // snapshot: lo que se prescribio ese dia. Se resuelve de dfi.rutas (ids) al contenido.
+  const rutasContent = resolveRutasContent(output.dfi.rutas);
+
   try {
     const written = await writePipeline({
       evaluationId: input.evaluationId,
@@ -77,6 +82,7 @@ export async function runClinicalPipeline(
       output,
       efrContent,
       validityCaveats,
+      rutasContent,
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,

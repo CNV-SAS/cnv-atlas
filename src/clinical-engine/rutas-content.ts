@@ -43,6 +43,16 @@ export type RutaContent = {
   seguimiento: RutaSeguimiento;
 };
 
+// Resuelve el contenido de las rutas ACTIVAS (las que trae dfi.rutas como strings
+// "R2 · Reducción Riesgo Cardiometabólico") a su contenido clínico. El id es el prefijo antes del
+// primer espacio ("R2"). Omite ids desconocidos. PURA: el pipeline la usa para CONGELAR el contenido
+// en el snapshot al diagnosticar (queda anclado a lo que efectivamente se prescribió ese día).
+export function resolveRutasContent(rutas: string[]): RutaContent[] {
+  return rutas
+    .map((r) => RUTAS_CONTENT[r.split(" ")[0]])
+    .filter((c): c is RutaContent => Boolean(c));
+}
+
 export const RUTAS_CONTENT: Record<string, RutaContent> = {
   R1: {
     id: "R1",

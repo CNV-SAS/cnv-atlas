@@ -1,6 +1,7 @@
 import "server-only";
 
 import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
+import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -35,6 +36,8 @@ export type EfrStateContent = {
 type StoredSnapshot = EngineOutput & {
   efrContent: EfrStateContent;
   validityCaveats?: ValidityCaveat[];
+  // Contenido de las rutas activas congelado (T1). OPCIONAL: snapshots previos no lo traen.
+  rutasContent?: RutaContent[];
 };
 
 export type EvaluationResults = {
@@ -47,6 +50,9 @@ export type EvaluationResults = {
   // Caveats de validez congelados en el snapshot (bajo que condicion(es) se hizo la medicion). []
   // si no hay o si el snapshot es previo a este bloque.
   validityCaveats: ValidityCaveat[];
+  // Contenido de las rutas de atencion activas, congelado en el snapshot (T1). [] si no hay o si el
+  // snapshot es previo a este bloque.
+  rutasContent: RutaContent[];
   confirmed: boolean;
   confirmedAt: string | null;
   reportStatus: ReportStatus;
@@ -124,6 +130,7 @@ export async function getEvaluationResults(
       engineVersion,
       efrState: null,
       validityCaveats: [],
+      rutasContent: [],
       confirmed: false,
       confirmedAt: null,
       reportStatus: dispatch.status,
@@ -144,6 +151,8 @@ export async function getEvaluationResults(
     (rawSnapshot as StoredSnapshot).efrContent ?? null;
   // Caveats de validez congelados en el snapshot. Ausente en snapshots previos a este bloque -> [].
   const validityCaveats: ValidityCaveat[] = (rawSnapshot as StoredSnapshot).validityCaveats ?? [];
+  // Contenido de las rutas activas congelado (T1). Ausente en snapshots previos -> [].
+  const rutasContent: RutaContent[] = (rawSnapshot as StoredSnapshot).rutasContent ?? [];
 
   // Del registry solo quedan dos lecturas, ninguna por state_number ni evidencia clinica: el
   // estado de confirmacion del diagnostico, y los NOMBRES de indicadores (rotulos, por
@@ -174,6 +183,7 @@ export async function getEvaluationResults(
     engineVersion,
     efrState,
     validityCaveats,
+    rutasContent,
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,
     reportStatus: dispatch.status,
