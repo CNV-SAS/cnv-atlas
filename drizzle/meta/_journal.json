@@ -169,6 +169,13 @@
       "when": 1784922981074,
       "tag": "0023_rare_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785185730333,
+      "tag": "0024_giant_shiver_man",
+      "breakpoints": true
     }
   ]
 }

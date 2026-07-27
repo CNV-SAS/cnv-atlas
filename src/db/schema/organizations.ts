@@ -12,7 +12,12 @@ import {
 
 import { authUsers } from "./_auth";
 import { createdAt, pk, updatedAt } from "./_columns";
-import { appRole, profileStatus, professionalDocumentType } from "./enums";
+import {
+  appRole,
+  profileStatus,
+  professionalDocumentType,
+  professionalProfession,
+} from "./enums";
 
 // Grupo 1: organizacion, usuarios, roles.
 
@@ -79,7 +84,9 @@ export const professionalProfiles = pgTable("professional_profiles", {
     .unique()
     .references(() => profiles.id, { onDelete: "cascade" }),
   license: text("license"), // registro profesional
-  specialty: text("specialty"),
+  // Antes texto libre 'specialty'. Ahora lista cerrada (T2 A1): gobierna la subpestana por
+  // profesion en Tratamiento y el abordaje por profesion del diagnostico (efrProf).
+  profession: professionalProfession("profession"),
   certificationStatus: text("certification_status"), // gate de habilitacion ANI-BIS-E
   commissionRate: numeric("commission_rate").notNull().default("0.20"), // editable por admin
   createdAt: createdAt(),

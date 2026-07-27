@@ -302,7 +302,7 @@ async function main() {
     "professional_profiles",
     (
       await supabase.from("professional_profiles").upsert(
-        { id: PROFESSIONAL_PROFILE_ID, profile_id: professionalId, license: "DEMO-0001", specialty: "Nutricion", certification_status: "habilitado", commission_rate: "0.20" },
+        { id: PROFESSIONAL_PROFILE_ID, profile_id: professionalId, license: "DEMO-0001", profession: "nutricionista", certification_status: "habilitado", commission_rate: "0.20" },
         { onConflict: "id" },
       )
     ).error,

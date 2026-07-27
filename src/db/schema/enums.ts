@@ -19,6 +19,18 @@ export const documentType = pgEnum("document_type", ["CC", "CE", "TI", "PA", "NI
 // el tipo. Futuros: 'contrato_marco', 'anexo4', etc.
 export const professionalDocumentType = pgEnum("professional_document_type", ["anexo3"]);
 
+// Profesion clinica del profesional (T2 A1). Lista cerrada que reemplaza el antiguo texto
+// libre professional_profiles.specialty. Las claves son coherentes con el substring-match de
+// efrProf en el motor congelado (engine.core.js:807): "med" -> medico, "psic" -> psicologo,
+// "deport" -> deportologo, y el resto (nutricionista) cae al else. Gobierna el abordaje por
+// profesion del diagnostico y que subpestana ve el profesional en Tratamiento.
+export const professionalProfession = pgEnum("professional_profession", [
+  "medico",
+  "psicologo",
+  "deportologo",
+  "nutricionista",
+]);
+
 export const patientStatus = pgEnum("patient_status", ["active", "inactive"]);
 
 export const profileStatus = pgEnum("profile_status", ["active", "inactive"]);

@@ -1721,8 +1721,10 @@ export type Database = {
           created_at: string
           id: string
           license: string | null
+          profession:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           profile_id: string
-          specialty: string | null
           updated_at: string
         }
         Insert: {
@@ -1731,8 +1733,10 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
+          profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           profile_id: string
-          specialty?: string | null
           updated_at?: string
         }
         Update: {
@@ -1741,8 +1745,10 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
+          profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           profile_id?: string
-          specialty?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2579,6 +2585,11 @@ export type Database = {
       model_status: "draft" | "active" | "retired"
       patient_status: "active" | "inactive"
       professional_document_type: "anexo3"
+      professional_profession:
+        | "medico"
+        | "psicologo"
+        | "deportologo"
+        | "nutricionista"
       profile_status: "active" | "inactive"
       report_status: "draft" | "approved" | "sent"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
@@ -2757,6 +2768,12 @@ export const Constants = {
       model_status: ["draft", "active", "retired"],
       patient_status: ["active", "inactive"],
       professional_document_type: ["anexo3"],
+      professional_profession: [
+        "medico",
+        "psicologo",
+        "deportologo",
+        "nutricionista",
+      ],
       profile_status: ["active", "inactive"],
       report_status: ["draft", "approved", "sent"],
       transaction_status: ["pending", "paid", "failed", "refunded"],
