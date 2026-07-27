@@ -180,7 +180,66 @@
 
 - **Vías:** (a) si la regla de umbrales **debe** ser la vigente, Gildardo entrega el criterio corregido como frozen delta, con golden actualizado; (b) si la del árbol es la vigente, la de umbrales queda como referencia histórica y se documenta que `rutasPorCondicion` no decide para R1-R6 (extendiendo formalmente la resolución de Q7). Mientras tanto, no se toca el motor.
 
-- **Evidencia:** `juan-esteban.json` (export real del Biody, medición 2026-06-22). Es el mismo donante BIS del fixture golden.
+- **Evidencia:** `juan-esteban.json` (export real del Biody, medición 2026-06-22). Es el mismo donante BIS del fixture golden. **En el extracto que se envía a Gildardo, este caso se cita como `BIS-01` (ver `reference/CASOS-ANONIMOS.md`, interno gitignored).**
+
+---
+
+## Q12 · La fila TOTAL del apartado E (plan por grupos) no cuadra con el objetivo calórico
+
+- **Fecha:** 2026-07-27 (planeación T2; apartados E/F del Nivel IV, fuera de alcance de T2, se registra el hallazgo)
+- **Estado:** ABIERTO
+
+**Para Gildardo (breve):** en el plan por grupos de alimentos (apartado E del Nivel IV), las nueve columnas de porciones suman correcto, verificadas una a una. Pero la casilla de kcal de la fila TOTAL muestra 2976 (el objetivo calórico exacto), mientras que las filas de alimentos suman 3134 kcal (947+358+1151+154+524). O sea, en la fila rotulada "total", nueve celdas son sumas reales y la décima es una meta. Implica que la matriz de porciones no reconcilia con el objetivo: se pasa por 158 kcal (5.3%). ¿Es una limitación aceptada de trabajar con porciones enteras, o la matriz debería reconciliar con el objetivo? ¿Qué debe mostrar esa celda?
+
+**Para su CC:** evidencia en la captura del plan alimentario del Nivel IV. No toca el motor calórico (apartado B/D); es la matriz de porciones del apartado E, que se construye en el bloque Plan alimentario, no en T2. Se registra ahora para no perderlo.
+
+---
+
+## Q13 · Los porcentajes por tiempo de comida suman 95%, no 100%, al desactivar un tiempo
+
+- **Fecha:** 2026-07-27
+- **Estado:** ABIERTO
+
+**Para Gildardo (breve):** en el reparto por tiempos de comida, con Merienda desactivada, los porcentajes muestran Desayuno 25 + Medias onces 10 + Almuerzo 30 + Algo 10 + Cena 20 = 95%. El encabezado dice "las porciones se redistribuyen automáticamente", pero el 5% de Merienda no se reasignó. Al desactivar un tiempo de comida, ¿los porcentajes deben renormalizarse a 100% entre los tiempos activos, o el porcentaje del tiempo desactivado se pierde a propósito?
+
+**Para su CC:** evidencia en la captura del plan alimentario. Nota neutral: el código inline del prototipo sí normaliza (reparte proporcionalmente entre los tiempos activos), así que la captura podría ser un estado viejo; se registra tal cual sin resolver, es su prototipo. Del bloque Plan alimentario, no de T2.
+
+---
+
+## Q14 · Dos modelos calóricos de Gildardo sin conciliar: inline de ATLAS.html (Cunningham) vs `atlas-motores-tratamiento.js` (Mifflin)
+
+- **Fecha:** 2026-07-27 (arranque de T2, port del modelo calórico)
+- **Estado:** ABIERTO. **BLOQUEA el primer paciente real** (gate del Hito 2, `LANZAMIENTO.md`).
+
+**Para Gildardo (breve):** hay dos formas distintas de calcular las calorías y la proteína que se le prescriben a un paciente, ambas suyas, y para un mismo paciente dan resultados distintos.
+- Una vive inline en `ATLAS.html` (es la que genera la pantalla del Nivel IV que ve el profesional): calcula el gasto basal con Cunningham (500 + 22 × masa magra) cuando hay masa magra disponible, y elige la estrategia calórica según el fenotipo.
+- La otra vive en el módulo `atlas-motores-tratamiento.js`: calcula el gasto basal con Mifflin sobre el peso medido, la proteína sobre el peso ideal, y elige la estrategia según la condición clínica. Su encabezado dice textualmente "Reemplazan el modelo calórico por Mifflin × FA prescrita".
+
+"Reemplazan" suena a decisión, no a extracción, así que el módulo podría ser su pensamiento más nuevo aunque su estructura venga de ATLAS_v7. No lo podemos resolver leyendo código. **¿Cuál de los dos representa su modelo vigente?**
+
+**Para su CC:** GEB inline = `ffm>0 ? 500+22*ffm (Cunningham) : Mifflin`; estrategia por fenotipo (F1..F11). Módulo = Mifflin sobre peso medido + estrategia por condición, encabezado "Reemplazan..." (L3), extraído de ATLAS_v7.html. Atlas porta el inline (verificado: reproduce la pantalla del Nivel IV al dígito). Q14 **no bloquea construir** con el inline: si el vigente resulta ser el módulo, revertir cuesta un archivo congelado + su golden; la aritmética TS sobrevive casi igual.
+
+---
+
+## Q15 · Divergencia de cálculo en el patrón alimentario (encuesta congelada)
+
+- **Fecha:** 2026-07-27 (auditoría de fidelidad de los módulos de la entrega, V1)
+- **Estado:** ABIERTO
+
+**Para Gildardo (breve):** el patrón alimentario, la clasificación de la dieta del paciente en protectora / moderada / de riesgo, se calcula de dos formas distintas entre sus artefactos, y dan puntajes distintos. El módulo `atlas-encuesta-patron.js` suma el bonus de "neutros" incluyendo un grupo extra (carnes rojas) que la versión dentro de `ATLAS.html` no incluye. No es diferencia de contenido, es el puntaje de calidad. Y la encuesta está congelada de nuestro lado. ¿Cuál de los dos cálculos es el correcto?
+
+**Para su CC:** `calcPatron` usa neutro `[8,9,10,15]` en el módulo (`:72`) vs `[8,9,10]` en `ATLAS.html:2324`; y `FREQ_GROUPS` tiene 15 grupos en el módulo vs 14 en el HTML (agrega "Carnes rojas" como neutro). Como el bonus suma por ítem con frecuencia alta, el score cambia. Es de la familia de la encuesta, congelada (CLAUDE.md); cualquier cambio de score requiere parar y decidir con Gildardo. Evidencia: auditoría de fidelidad V1.
+
+---
+
+## Q16 · Ambigüedad de versión de la entrega 2026-07: la autoridad es por pieza, no global
+
+- **Fecha:** 2026-07-27 (auditoría de fidelidad V1)
+- **Estado:** ABIERTO
+
+**Para Gildardo (breve):** los siete módulos de la entrega dicen "Extraído de ATLAS_v7.html", pero el `ATLAS.html` que también entregó es un archivo distinto, más nuevo en unas cosas y más viejo en otras. Hay contenido (el resumen clínico y la lista de intercambio de alimentos de ~350 ítems) que está en los módulos pero no aparece en ese `ATLAS.html`. No hay un artefacto único que sea "el más nuevo" para todo: para el modelo calórico manda el HTML, para la lista de intercambio manda el módulo. ¿Cuál artefacto representa su modelo vigente, y puede confirmarlo pieza por pieza (índices, patrón alimentario, DFI, resumen clínico, lista de intercambio, menú)?
+
+**Para su CC:** auditoría de fidelidad V1 (seis módulos vs ATLAS.html): `atlas-core-indices` coincide verbatim; `atlas-encuesta-patron` diverge en score (Q15); `atlas-dfi` coincide el motor pero agrega metas a 24 semanas atadas a un spec externo; `atlas-resumen-clinico` y `atlas-lista-intercambio` no existen en el HTML entregado; `atlas-menu-ciclo` coincide en alimentos con unidades convertidas. Corregido en `INVENTARIO.md` punto 0: la autoridad es por pieza, ninguna regla global la da.
 
 ---
 
