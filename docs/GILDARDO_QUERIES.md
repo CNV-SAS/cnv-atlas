@@ -148,36 +148,37 @@
 
 ---
 
-## Q11 · Discrepancia R2: el predicado de `RUTA_COND` y el ruteo del DFI no coinciden para un paciente real
+## Q11 · Dos reglas distintas activan la ruta R2: severidad del dominio 2 (`computeDFI`, autoritativa) vs umbrales (`RUTA_COND.R2`, referencia)
 
 - **Fecha del hallazgo:** anterior a 2026-07-26 (surgió en el chat de T1; **se registra aquí el 2026-07-26**, ver nota de proceso al final)
 - **Abierto desde:** 2026-07-26 (fecha de registro formal)
-- **Estado:** ABIERTO
-- **Bloquea:** nada hoy (ver "Impacto"). Es pregunta de coherencia del modelo, no defecto de Atlas.
+- **Estado:** ABIERTO del lado de Gildardo (coherencia del modelo). **Verificación de nuestro lado: CERRADA (2026-07-26), ver abajo.**
+- **Bloquea:** nada hoy. La discrepancia no puede llegar a la pantalla (T1 lee la vía autoritativa). Es pregunta de coherencia del modelo, no defecto de Atlas.
 
 **Para Gildardo (breve):** dos preguntas, una de fondo y una de confirmación.
 
-1. Hay dos formas dentro del modelo de decidir si a un paciente le corresponde la ruta **R2**, y para un paciente real dan respuestas distintas. Una la decide por umbrales de ICT, IR y FMI; la otra la decide por el ISCM como eje metabólico, que es la que el sistema usa de verdad. Ejemplo concreto: el paciente `juan-esteban.json` (hombre, 54 años, IMC 27.5, IR 0.798, ICT 0.544, FMI 6.37) queda dentro por un criterio y fuera por el otro. ¿Los dos criterios deberían coincidir, o uno de los dos quedó desactualizado respecto de su modelo actual?
+1. Dentro del modelo hay **dos reglas distintas que activan la misma ruta R2**, y no son dos copias de la misma fórmula: son dos criterios diferentes. Una la decide por la **severidad del dominio 2** del árbol del DFI (es la que el sistema usa de verdad). La otra la decide por **umbrales de FMI, ISCM, ICC, ICT e IR en OR** (una vía de referencia que hoy no alimenta el resultado). Para un paciente real dan respuestas distintas: `juan-esteban.json` (hombre, 54 años, IMC 27.5, IR 0.798, ICT 0.544, FMI 6.37) queda dentro por una y fuera por la otra. **¿Cuál de las dos reglas representa su modelo actual?** Si es la del árbol, la de umbrales queda como referencia histórica; si es la de umbrales, el ruteo del árbol necesita revisarse.
 
-2. El 21 de julio confirmó que la vía `rutasPorCondicion` **no es autoritativa**, refiriéndose a la ruta R5. Necesitamos confirmar que eso vale para **todas** las rutas de esa vía (R1 a R6), no solo para R5. Es la diferencia entre "una ruta de esa vía no decide" y "esa vía completa no decide". Si vale para todas, la discrepancia de arriba deja de tener efecto sobre lo que ve el profesional y queda como pregunta de coherencia del modelo.
+2. El 21 de julio confirmó que la vía `rutasPorCondicion` **no es autoritativa**, refiriéndose a la ruta R5. Necesitamos confirmar que eso vale para **todas** las rutas de esa vía (R1 a R6), no solo para R5. Es la diferencia entre "una ruta de esa vía no decide" y "esa vía completa no decide". Si vale para todas, la vía de umbrales queda formalmente como referencia y la discrepancia queda cerrada también como pregunta de coherencia del modelo.
 
 **Para su CC (detalle):**
 
-- **Hallazgo:** el predicado de R2 en `RUTA_COND` (`engine.indices.js`) dispara por umbrales de ICT/IR/FMI. El ruteo autoritativo, `computeDFIFromData` (`engine.dfi.js`), usa el ISCM como eje metabólico. Para `juan-esteban.json` los dos no concuerdan.
+- **Hallazgo (corregido respecto de la redacción inicial de esta query):** no es "una segunda definición" duplicada de R2; son **dos reglas distintas, en dos archivos distintos, que nombran la misma ruta**:
+  - **Vía autoritativa:** `computeDFI` (`engine.dfi.js:153`) activa R2 con `if(dom2.sev>=2) rutas.push("R2 · Reducción Cardiometabólica")`, o sea por **severidad del dominio 2** del árbol. Es la que arma `dfi.rutas`.
+  - **Vía de referencia:** el predicado `RUTA_COND.R2` (`engine.indices.js:56`) es un **OR de umbrales** (FMI, `ISCM > 1.0`, obesidad sarcopénica, ICC, `ICT ≥ 0.50`, IR). No autoritativa.
+  - Para `juan-esteban.json` las dos no concuerdan.
 
 - **Lo que dice el CÓDIGO (verificable, independiente de cualquier interpretación):**
-  - El propio motor rotula `rutasPorCondicion` como no autoritativa: comentario en `engine.indices.js` ~L79, "la selección AUTORITATIVA se hace vía DFI".
-  - `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData`, **no** desde `rutasPorCondicion`.
-  - Ese comentario y ese cableado no distinguen entre R1-R6: aplican a la función, no a una ruta.
-  - La visualización de rutas de T1 lee `dfi.rutas`, o sea la vía autoritativa. **Sobre esta evidencia sola, T1 está construido sobre la vía correcta y la discrepancia no puede llegar a la pantalla.**
+  - `engine.ts:120` fija `rutas: dfiRaw.rutas` desde `analizarDFI` → `computeDFIFromData` → `computeDFI` (`analysis.ts:169`), **no** desde `rutasPorCondicion`.
+  - `rutasPorCondicion` y `RUTA_COND` solo se usan, fuera del frozen, como re-export en `analysis.ts:117-123` y en el golden test `clinical-engine-golden.test.ts`. **Ningún path de producción los llama.**
+  - El propio motor rotula la vía de condición como no autoritativa: `engine.dfi.js:80` ("la selección AUTORITATIVA se hace vía DFI") y `engine.indices.js:79-82`.
+  - La visualización de rutas de T1 lee `dfi.rutas`, o sea la vía autoritativa. **La discrepancia no puede llegar a la pantalla.**
 
-- **Lo que estamos INFIRIENDO (nuestra lectura, pendiente de confirmar por Gildardo):** que su resolución del 2026-07-21 aplica a R1-R6 y no solo a R5. **Sus palabras textuales fueron "`rutasPorCondicion` (R5) sigue siendo la vía NO autoritativa".** La pregunta que respondía era sobre contaminantes y estrés, que viven en el predicado R5, así que el paréntesis puede leerse como el alcance de su respuesta o como el ejemplo que tenía delante. No lo damos por dicho. Es el punto 2 de "Para Gildardo" arriba.
+- **Verificación de nuestro lado: CERRADA (2026-07-26).** Confirmado por grep y lectura que existen las dos reglas (`engine.dfi.js:153` vs `engine.indices.js:56`), que la que alimenta el `EngineOutput` es la del árbol, y que `rutasPorCondicion` no alimenta nada en producción. Esto corrige la redacción previa de esta query, que hablaba de verificar que "no existe una segunda definición": sí existe la del árbol, pero es la autoritativa y esperada, no un duplicado descarriado. No hay nada más que verificar de nuestro lado.
 
-- **Por qué la conclusión se sostiene igual:** la evidencia de código es suficiente por sí sola para afirmar que hoy `rutasPorCondicion` no alimenta el `EngineOutput`. Lo que falta confirmar no es si el path está cableado (no lo está, es verificable), sino si **debe** estarlo, que es exactamente lo que solo Gildardo puede decidir.
+- **Lo que estamos INFIRIENDO (pendiente de confirmar por Gildardo, punto 2 de arriba):** que su resolución del 2026-07-21 aplica a R1-R6 y no solo a R5. **Sus palabras textuales fueron "`rutasPorCondicion` (R5) sigue siendo la vía NO autoritativa".** La pregunta que respondía era sobre contaminantes y estrés, que viven en el predicado R5, así que el paréntesis puede leerse como el alcance de su respuesta o como el ejemplo que tenía delante. No lo damos por dicho.
 
-- **Pendiente de verificar de nuestro lado (read-only, ver prompt de verificación 2026-07-26):** confirmar por grep que el R2 que discrepa es el de `RUTA_COND` y que **no existe una segunda definición de R2** dentro de `computeDFIFromData`, `computeDFI`, el adaptador o `engine.ts`. Si apareciera una segunda definición viva, el impacto deja de ser nulo y esta query sube de prioridad.
-
-- **Vías:** (a) si los dos criterios **deben** coincidir, Gildardo entrega el predicado corregido como frozen delta, con golden actualizado; (b) si el de `RUTA_COND` es lógica de referencia histórica que ya no representa su modelo, se cierra informativa y se documenta que el path está muerto por diseño para R1-R6 (extendiendo formalmente la resolución de Q7). Mientras tanto, no se toca el motor.
+- **Vías:** (a) si la regla de umbrales **debe** ser la vigente, Gildardo entrega el criterio corregido como frozen delta, con golden actualizado; (b) si la del árbol es la vigente, la de umbrales queda como referencia histórica y se documenta que `rutasPorCondicion` no decide para R1-R6 (extendiendo formalmente la resolución de Q7). Mientras tanto, no se toca el motor.
 
 - **Evidencia:** `juan-esteban.json` (export real del Biody, medición 2026-06-22). Es el mismo donante BIS del fixture golden.
 
