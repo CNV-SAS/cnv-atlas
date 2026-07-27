@@ -27,6 +27,7 @@ No negociables durante el MVP. Cambiarlas requiere revisión formal documentada 
 13. **Ningún tipo global monstruoso.** Los tipos viven en su módulo; los generados de la DB en `src/types/database.generated.ts`.
 14. **Ninguna cuenta clínica se recicla.** Offboarding = desactivar la cuenta + reasignar pacientes. Nunca se cambia el correo/clave de una cuenta para dársela a otra persona.
 15. **Ninguna evaluación sin las autorizaciones de consentimiento necesarias vigentes.** Las tres autorizaciones necesarias (`servicio`, `datos_sensibles`, `internacional_ia`) deben existir en `patient_consents` con `revoked_at IS NULL` para el paciente antes de crear cualquier evaluación, inicial o de seguimiento. Si la versión del consentimiento subió de número MAYOR, se requiere re-consentir. Esta verificación vive en la policy `evaluations/can-create-evaluation`, no como chequeo suelto.
+16. **La ciencia congelada no se edita.** Los archivos de `src/clinical-engine/frozen/` (`engine.core.js`, `engine.indices.js`, `engine.dfi.js`) no se editan, no se convierten a TypeScript, no se reformatean y no se corrigen, ni siquiera un bug conocido y confirmado (ver `GILDARDO_QUERIES.md` Q2, TDZ latente aceptado). Son extractos verbatim de la autoría de Gildardo y su fidelidad byte a byte es lo que hace demostrable la regla 6. Exponer funcionalidad que **ya existe** dentro de ellos se hace **únicamente** por el mecanismo de archivo derivado: copia byte a byte del original más una sola línea final aditiva `Object.assign(module.exports, { ... })`, con un test en CI que verifica que el diff contra el original es exactamente esa línea. Ese mecanismo admite **solo exports aditivos, nunca lógica ni fórmulas**. Cualquier cambio a la ciencia lo entrega Gildardo como `.js` nuevo y entra por swap limpio con golden actualizado (regla 6).
 
 ---
 
@@ -146,6 +147,8 @@ Joya de la corona, con el límite más estricto del proyecto.
 - **Extraíble.** Sin dependencias de la app, levantarlo a `packages/clinical-engine/` después cuesta casi nada.
 
 ### Excepción nombrada a la regla dura 12: ciencia congelada en JavaScript
+
+> **No confundir 12 con 16.** La regla **12** es sobre pureza (`clinical-engine` es TypeScript sin imports de la app); esta sección es su excepción, porque la ciencia congelada es JavaScript CommonJS. La regla **16** es sobre inmutabilidad (los `.js` congelados no se editan). Son cosas distintas: 12 explica *por qué son `.js`*, 16 explica *por qué no se tocan*. Citar la 12 para justificar que no se editan es incorrecto.
 
 **Qué.** Los tres archivos de ciencia del motor (`src/clinical-engine/frozen/engine.core.js`, `engine.indices.js`, `engine.dfi.js`) viven como **JavaScript CommonJS**, no como TypeScript. Es una excepción FORMAL y PERMANENTE a la regla dura 12 ("es TypeScript puro"), aprobada por Santiago (B11, 2026-07-06).
 

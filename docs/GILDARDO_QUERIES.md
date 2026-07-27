@@ -1,6 +1,6 @@
 # GILDARDO_QUERIES.md — Bitácora de hallazgos pendientes de confirmar
 
-**Propósito:** registrar, en un solo lugar, los hallazgos sobre la ciencia congelada (el motor de Gildardo) que requieren su confirmación o decisión. Nada de esto se corrige tocando los `.js` congelados de `src/clinical-engine/frozen/` (regla dura 12, excepción formal). Cuando se detecte algo nuevo que dependa de Gildardo, se anota aquí con fecha, en vez de quedar solo en el chat.
+**Propósito:** registrar, en un solo lugar, los hallazgos sobre la ciencia congelada (el motor de Gildardo) que requieren su confirmación o decisión. Nada de esto se corrige tocando los `.js` congelados de `src/clinical-engine/frozen/` (regla dura 16). Cuando se detecte algo nuevo que dependa de Gildardo, se anota aquí con fecha, en vez de quedar solo en el chat.
 
 **Convención de estado:** `ABIERTO` (esperando respuesta), `CONFIRMADO` (Gildardo respondió; se resume la resolución), `DESCARTADO` (se resolvió sin cambio), `CERRADO` (informativo, sin acción pendiente), `CONSOLIDADA` (fusionada en `docs/FROZEN_EXPORTS_REQUEST.md`; aquí queda solo el puntero histórico).
 
@@ -92,7 +92,7 @@
 
 **Para su CC (detalle):**
 - **Hallazgo:** `d3_31` está marcada `engine: true` (una de las 14 preguntas con `field_key`), así que el intake la entrega al motor. Pero en `calcLE8` (`frozen/engine.dfi.js`) el valor se asigna a `const alcohol = enc.d3_31 || ""` y esa variable **no se usa en ninguno de los 8 dominios** del LE8 (Actividad física, Alimentación, Tabaco, Sueño, Glucosa, Colesterol, Presión arterial, Hidratación). Ningún otro punto del motor (DFI, índices) lee `d3_31`.
-- **Evidencia de que NO es un defecto del port:** el `.js` es verbatim de `ATLAS_v7.html`; la variable `alcohol` muerta viene de la fórmula de Gildardo, no de Atlas. Preservado byte a byte (regla dura 12).
+- **Evidencia de que NO es un defecto del port:** el `.js` es verbatim de `ATLAS_v7.html`; la variable `alcohol` muerta viene de la fórmula de Gildardo, no de Atlas. Preservado byte a byte (regla dura 16).
 - **Vías:** (a) si el alcohol **debía** pesar (omisión latente en la fórmula): entrega un frozen delta con el dominio/ponderación del alcohol, se porta fiel con golden actualizado; (b) si es **solo registro**: Atlas quita el `field_key` de `d3_31` (deja de viajar al motor, sin efecto en el resultado). Mientras tanto, no se toca el motor.
 
 ---
@@ -145,3 +145,50 @@
 - **Fecha:** 2026-07-18 (columna de diagnóstico de la tabla de composición).
 - **Estado:** **CONSOLIDADA → ver `docs/FROZEN_EXPORTS_REQUEST.md` (entrada 2).**
 - **Qué era:** el diagnóstico por fila de la tabla de composición usa clasificadores (`cSMM`, `cMMEM`, `cASMI`, `cFFW`, `cEISG`) que existen en el paquete pero no están en su `module.exports`. El detalle accionable y las vías viven ahora SOLO en la solicitud consolidada (para no duplicar); aquí queda el rastro histórico con su fecha.
+
+---
+
+## Q11 · Discrepancia R2: el predicado de `RUTA_COND` y el ruteo del DFI no coinciden para un paciente real
+
+- **Fecha del hallazgo:** anterior a 2026-07-26 (surgió en el chat de T1; **se registra aquí el 2026-07-26**, ver nota de proceso al final)
+- **Abierto desde:** 2026-07-26 (fecha de registro formal)
+- **Estado:** ABIERTO
+- **Bloquea:** nada hoy (ver "Impacto"). Es pregunta de coherencia del modelo, no defecto de Atlas.
+
+**Para Gildardo (breve):** dos preguntas, una de fondo y una de confirmación.
+
+1. Hay dos formas dentro del modelo de decidir si a un paciente le corresponde la ruta **R2**, y para un paciente real dan respuestas distintas. Una la decide por umbrales de ICT, IR y FMI; la otra la decide por el ISCM como eje metabólico, que es la que el sistema usa de verdad. Ejemplo concreto: el paciente `juan-esteban.json` (hombre, 54 años, IMC 27.5, IR 0.798, ICT 0.544, FMI 6.37) queda dentro por un criterio y fuera por el otro. ¿Los dos criterios deberían coincidir, o uno de los dos quedó desactualizado respecto de su modelo actual?
+
+2. El 21 de julio confirmó que la vía `rutasPorCondicion` **no es autoritativa**, refiriéndose a la ruta R5. Necesitamos confirmar que eso vale para **todas** las rutas de esa vía (R1 a R6), no solo para R5. Es la diferencia entre "una ruta de esa vía no decide" y "esa vía completa no decide". Si vale para todas, la discrepancia de arriba deja de tener efecto sobre lo que ve el profesional y queda como pregunta de coherencia del modelo.
+
+**Para su CC (detalle):**
+
+- **Hallazgo:** el predicado de R2 en `RUTA_COND` (`engine.indices.js`) dispara por umbrales de ICT/IR/FMI. El ruteo autoritativo, `computeDFIFromData` (`engine.dfi.js`), usa el ISCM como eje metabólico. Para `juan-esteban.json` los dos no concuerdan.
+
+- **Lo que dice el CÓDIGO (verificable, independiente de cualquier interpretación):**
+  - El propio motor rotula `rutasPorCondicion` como no autoritativa: comentario en `engine.indices.js` ~L79, "la selección AUTORITATIVA se hace vía DFI".
+  - `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData`, **no** desde `rutasPorCondicion`.
+  - Ese comentario y ese cableado no distinguen entre R1-R6: aplican a la función, no a una ruta.
+  - La visualización de rutas de T1 lee `dfi.rutas`, o sea la vía autoritativa. **Sobre esta evidencia sola, T1 está construido sobre la vía correcta y la discrepancia no puede llegar a la pantalla.**
+
+- **Lo que estamos INFIRIENDO (nuestra lectura, pendiente de confirmar por Gildardo):** que su resolución del 2026-07-21 aplica a R1-R6 y no solo a R5. **Sus palabras textuales fueron "`rutasPorCondicion` (R5) sigue siendo la vía NO autoritativa".** La pregunta que respondía era sobre contaminantes y estrés, que viven en el predicado R5, así que el paréntesis puede leerse como el alcance de su respuesta o como el ejemplo que tenía delante. No lo damos por dicho. Es el punto 2 de "Para Gildardo" arriba.
+
+- **Por qué la conclusión se sostiene igual:** la evidencia de código es suficiente por sí sola para afirmar que hoy `rutasPorCondicion` no alimenta el `EngineOutput`. Lo que falta confirmar no es si el path está cableado (no lo está, es verificable), sino si **debe** estarlo, que es exactamente lo que solo Gildardo puede decidir.
+
+- **Pendiente de verificar de nuestro lado (read-only, ver prompt de verificación 2026-07-26):** confirmar por grep que el R2 que discrepa es el de `RUTA_COND` y que **no existe una segunda definición de R2** dentro de `computeDFIFromData`, `computeDFI`, el adaptador o `engine.ts`. Si apareciera una segunda definición viva, el impacto deja de ser nulo y esta query sube de prioridad.
+
+- **Vías:** (a) si los dos criterios **deben** coincidir, Gildardo entrega el predicado corregido como frozen delta, con golden actualizado; (b) si el de `RUTA_COND` es lógica de referencia histórica que ya no representa su modelo, se cierra informativa y se documenta que el path está muerto por diseño para R1-R6 (extendiendo formalmente la resolución de Q7). Mientras tanto, no se toca el motor.
+
+- **Evidencia:** `juan-esteban.json` (export real del Biody, medición 2026-06-22). Es el mismo donante BIS del fixture golden.
+
+---
+
+## Nota de proceso (2026-07-26)
+
+El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
+
+**Punto de aplicación (acuerdo fijo, igual que el de los hashes de commit al cerrar bloque):** en el resumen de cierre de cualquier bloque se responden dos preguntas explícitas, aunque la respuesta sea "ninguno":
+1. ¿Apareció algo que dependa de una decisión de Gildardo? Entra a `GILDARDO_QUERIES.md` con fecha, **antes** de cerrar el bloque.
+2. ¿Apareció algo que condicione un bloque futuro? Entra a `BACKLOG.md` con fecha, **antes** de cerrar el bloque.
+
+No queda en el chat. El chat es contexto perecedero; estos dos documentos no lo son.

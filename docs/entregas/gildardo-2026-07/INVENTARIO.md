@@ -8,7 +8,7 @@
 ## 0. Nomenclatura del HTML (rename)
 
 - **`ATLAS.html`** (este paquete, `docs/entregas/gildardo-2026-07/ATLAS.html`, 16.724 líneas): el **estado actual** del prototipo de Gildardo. De aquí en adelante, "el HTML de referencia" es este archivo con este nombre. Las referencias futuras apuntan a `ATLAS.html`.
-- **`reference/ATLAS_v7.html`** (16.878 líneas): la **referencia histórica** de lo ya portado. El motor congelado (`src/clinical-engine/frozen/*.js`) se extrajo verbatim de este archivo en B11. Los encabezados de los `.js` congelados citan `ATLAS_v7.html` a propósito, porque ese fue su byte-source. No se tocan (regla dura 12).
+- **`reference/ATLAS_v7.html`** (16.878 líneas): la **referencia histórica** de lo ya portado. El motor congelado (`src/clinical-engine/frozen/*.js`) se extrajo verbatim de este archivo en B11. Los encabezados de los `.js` congelados citan `ATLAS_v7.html` a propósito, porque ese fue su byte-source. No se tocan (regla dura 16).
 
 En resumen: `ATLAS_v7.html` = de dónde salió lo congelado; `ATLAS.html` = el estado más nuevo, para lo que venga. Son dos archivos distintos con dos roles distintos.
 
@@ -149,7 +149,7 @@ El propio instructivo repite: el deploy **no** aplica el contenido de la encuest
 
 ## 6. Mecanismo de custodia (archivo derivado) — planeación, NO ejecutado
 
-Autorizado por Santiago para resolver de nuestro lado los pedidos que no llegaron por la vía definida, **preservando la regla dura 12** (Atlas no edita el `.js` frozen). Pendiente de ejecución (planning-first).
+Autorizado por Santiago para resolver de nuestro lado los pedidos que no llegaron por la vía definida, **preservando la regla dura 16** (Atlas no edita el `.js` frozen). Pendiente de ejecución (planning-first).
 
 ### 6a. Viabilidad
 
@@ -182,7 +182,7 @@ Esto resuelve los **pedidos 1 y 2** completos (la 6ª card de abordaje por profe
 - **Pedido 3 (patrón alimentario):** ya llegó como módulo (`atlas-encuesta-patron.js`); su port es otro asunto, no el mecanismo de custodia.
 
 ### 6d. Al ejecutar (cuando Santiago dé el visto)
-- Documentar el mecanismo en `ARCHITECTURE.md` junto a la regla dura 12, como patrón sancionado para exponer sin editar, con la restricción "solo exports aditivos, nunca lógica".
+- Documentar el mecanismo en `ARCHITECTURE.md` junto a la regla dura 16, como patrón sancionado para exponer sin editar, con la restricción "solo exports aditivos, nunca lógica".
 - Golden en verde antes y después como criterio de aceptación.
 
 ---
