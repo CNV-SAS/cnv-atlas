@@ -1,4 +1,4 @@
-# ENTORNO.md — Levantar y restaurar el entorno local
+# ENTORNO.md · Levantar y restaurar el entorno local
 
 Guía práctica para tener Atlas corriendo en la máquina local. En lenguaje llano. Para el despliegue a la nube, ver `BACKLOG.md` (bloque "Despliegue a la nube", pendiente).
 
