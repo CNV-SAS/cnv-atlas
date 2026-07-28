@@ -2,8 +2,8 @@
 
 Mapa de una pantalla para orientarse en diez segundos. No es plan ni backlog: si algo tiene detalle, vive en `LANZAMIENTO.md` (gates), `BACKLOG.md` (diferido) o `docs/MVP.md` (histórico); aquí solo se nombra. Se actualiza al cerrar cada subtarea.
 
-> ## 📍 AHORA: Hito 1, Tratamiento T2, subtarea A2 (writer del protocolo).
-> A1 (campo `profession`) y la migración de A2 aplicados y comiteados. Falta cerrar A2: el diseño del writer + policy (`canApproveProtocol`, admin no) + trigger de inmutabilidad está en revisión. Después, A3.
+> ## 📍 AHORA: Hito 1, Tratamiento T2, subtarea A3 (costura del motor calórico).
+> A1 (`profession`) y A2 (migración + writer + policy + trigger de inmutabilidad) cerrados y comiteados. A3 es la pieza grande: portar `motorProtocolo` a `frozen/` verbatim + la cadena aritmética como TS nuestro, con golden. El `approveProtocol` (sella el set efectivo) va aquí, porque necesita el motor.
 
 ---
 
@@ -49,8 +49,8 @@ El tratamiento organizado por la jerarquía de composición corporal, en niveles
 | Sub | Qué hace | Estado |
 |---|---|---|
 | **A1** | Campo `profession` (lista cerrada) que gobierna la subpestaña por especialidad | ✅ hecho, comiteado (sin push) |
-| **A2** | Migración de `treatments` (sellado sugerido + aprobado, ajustes, aprobación) + writer/policy/trigger | migración ✅ aplicada; **writer en diseño** |
-| **A3** | Costura calórica: `motorProtocolo` a `frozen/` + la cadena aritmética como TS nuestro, con golden | pendiente (después de A2) |
+| **A2** | Migración de `treatments` (sellado sugerido + aprobado, ajustes, aprobación) + writer/policy/trigger | ✅ hecho (schema + writer + policy + trigger) |
+| **A3** | Costura calórica: `motorProtocolo` a `frozen/` + la cadena aritmética como TS nuestro, con golden; incluye `approveProtocol` (sella el efectivo) | **AHORA** |
 | **A4** | Registrar hallazgos E/F como Q12/Q13 en la bitácora | ✅ hecho |
 
 **T2b (superficie):**
