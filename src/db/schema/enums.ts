@@ -74,6 +74,15 @@ export const assignmentStatus = pgEnum("assignment_status", [
 
 export const reportStatus = pgEnum("report_status", ["draft", "approved", "sent"]);
 
+// Estado de aprobacion del protocolo de tratamiento (T2 A2). draft: en construccion, el
+// set efectivo se recomputa libre; approved: el profesional prescribio, se sella
+// protocol_approved y se congela por trigger. EL ENUM VA A CRECER: el flujo de correccion
+// post-diagnostico (gate del Hito 1) agregara un estado de reemplazo JUNTO CON su puntero
+// (replaced_by), disenado con las tablas hermanas (evaluations/diagnoses/reports) para no
+// romper la traza (un estado de "superado" sin puntero a que lo reemplazo pierde la traza).
+// No se anticipa aqui, solo la nota.
+export const treatmentStatus = pgEnum("treatment_status", ["draft", "approved"]);
+
 export const transactionStatus = pgEnum("transaction_status", [
   "pending",
   "paid",

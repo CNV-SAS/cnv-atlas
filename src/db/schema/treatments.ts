@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { date, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
+import { treatmentStatus } from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
 import { profiles } from "./organizations";
 
@@ -16,16 +17,73 @@ export const treatments = pgTable("treatments", {
   createdBy: uuid("created_by")
     .notNull()
     .references(() => profiles.id),
-  // Objetivos del protocolo (B13). El motor no los calcula: kcal se precarga del
-  // GET que mide el Biody (editable); proteina y restricciones las fija el
-  // profesional. Alimentan el prompt del menu (sin PII) y la comparacion del
-  // seguimiento. Nullable: el tratamiento puede existir antes de fijarlos.
+  // Objetivos del protocolo. En A2 pasan a ser los valores EFECTIVOS que escribe el service
+  // (ajuste ?? sugerido); la UI no los edita directo. proteina_g = round(gkg_efectivo x
+  // peso_efectivo). kcal_objetivo y proteina_g los sigue leyendo generate-menu.ts sin
+  // tocarse. restricciones es el text[] del PROFESIONAL (distinto de las del modelo, que
+  // viven en protocol_suggested). Nullable: el tratamiento puede existir antes de fijarlos.
   kcalObjetivo: integer("kcal_objetivo"),
   proteinaGramos: integer("proteina_g"),
   restricciones: text("restricciones")
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
+  // --- T2 A2: protocolo por especialidad (tabla de Wang, Nivel IV apartados A/B/D) ---
+  // Set SUGERIDO por el motor, sellado al crear el protocolo (inmutable, regla 7). Aloja
+  // estrategia, protMin/protMax (rango g/kg, valor NO numerico), pesoCalculo, formula, los
+  // derivados de D con los inputs sugeridos, los inputs de badges de Niveles II/III (sector,
+  // AF, MCA_dif, hidSG, hidSG_ref, ECM_BCM) y las restricciones del MODELO ({nombre,valor,
+  // ref}). Lo puebla el pipeline en A3. Constelacion (regla 7): el jsonb sella
+  // protocol_engine_version (la version del modelo calorico, que ningun registro upstream
+  // tiene y que Q14 hace critica); engine_version/model_version_id/rules_version se HEREDAN
+  // del diagnostico via diagnosis_id (diagnoses los sella); survey_version_id vive upstream
+  // en la respuesta de encuesta y no alimenta la cadena calorica.
+  protocolSuggested: jsonb("protocol_suggested"),
+  // Set EFECTIVO tal como se PRESCRIBIO, sellado en la transicion draft -> approved
+  // (inmutable, regla 7). Segundo sello, segundo momento clinico: campo aparte, no una clave
+  // dentro de protocol_suggested, para no mutar un campo ya inmutable. Aloja los inputs
+  // efectivos, los derivados de D con el peso efectivo, y las restricciones/micronutrientes
+  // como se prescribieron, con su propia constelacion (protocol_engine_version al aprobar).
+  // En borrador es NULL (el efectivo se recomputa en display); al aprobar lo escribe el
+  // service y el trigger lo congela junto con protocol_suggested y approved_*. Un protocolo
+  // aprobado NO se re-aprueba: para cambiarlo se crea un tratamiento nuevo (bloque de
+  // correccion, sin construir). Por eso protocol_engine_version puede diferir ENTRE
+  // tratamientos distintos, no entre aprobaciones del mismo.
+  protocolApproved: jsonb("protocol_approved"),
+  // Ajustes del profesional sobre el sugerido (apartados B/D + peso meta de Nivel V),
+  // editables en borrador. Efectivo = ajuste ?? sugerido (lo resuelve el service).
+  // peso_efectivo = adj_peso_meta ?? protocol_suggested.pesoCalculo, y entra a TODA la cadena
+  // donde el HTML usa pesoN (Mifflin y protG), no solo a la proteina. numeric sin precision
+  // por consistencia con el schema.
+  adjGeb: integer("adj_geb"),
+  adjPal: numeric("adj_pal"),
+  adjKcalObj: integer("adj_kcal_obj"),
+  adjProtGkg: numeric("adj_prot_gkg"),
+  adjFatPct: integer("adj_fat_pct"),
+  adjPesoMeta: numeric("adj_peso_meta"),
+  // Estado de aprobacion. default 'draft' es una decision SEMANTICA deliberada: los
+  // tratamientos previos (B13/demo) nunca pasaron por una aprobacion formal porque el
+  // concepto no existia, asi que draft es correcto; no es un default por conveniencia.
+  status: treatmentStatus("status").notNull().default("draft"),
+  // approved_by = quien PRESCRIBIO (convierte la sugerencia del modelo en prescripcion). NO
+  // forzosamente created_by: por regla 14, un profesional reasignado al paciente puede
+  // aprobar un borrador que no creo; la autoridad la gobierna una policy + RLS (regla 3).
+  // RESTRICT explicito (regla 14, escrito, no por defecto).
+  approvedBy: uuid("approved_by").references(() => profiles.id, { onDelete: "restrict" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  // Reconocimiento del profesional de las restricciones del MODELO antes de generar el menu
+  // (gate del generador, Opcion B). El "que se reconocio" no se duplica: son las
+  // restricciones de protocol_suggested (inmutable), asi que basta at + by. RESTRICT (regla 14).
+  restrictionsAckAt: timestamp("restrictions_ack_at", { withTimezone: true }),
+  restrictionsAckBy: uuid("restrictions_ack_by").references(() => profiles.id, {
+    onDelete: "restrict",
+  }),
+  // Nivel III: requerimientos especificos de micronutrientes, texto libre del profesional.
+  micronutrientesTexto: text("micronutrientes_texto"),
+  // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
+  // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
+  // esta implicita en created_by. Si algun dia hay agenda, se migra.
+  proximaCita: date("proxima_cita"),
   createdAt: createdAt(),
 });
 

@@ -2438,33 +2438,85 @@ export type Database = {
       }
       treatments: {
         Row: {
+          adj_fat_pct: number | null
+          adj_geb: number | null
+          adj_kcal_obj: number | null
+          adj_pal: number | null
+          adj_peso_meta: number | null
+          adj_prot_gkg: number | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string
           diagnosis_id: string
           id: string
           kcal_objetivo: number | null
+          micronutrientes_texto: string | null
           proteina_g: number | null
+          protocol_approved: Json | null
+          protocol_suggested: Json | null
+          proxima_cita: string | null
           restricciones: string[]
+          restrictions_ack_at: string | null
+          restrictions_ack_by: string | null
+          status: Database["public"]["Enums"]["treatment_status"]
         }
         Insert: {
+          adj_fat_pct?: number | null
+          adj_geb?: number | null
+          adj_kcal_obj?: number | null
+          adj_pal?: number | null
+          adj_peso_meta?: number | null
+          adj_prot_gkg?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by: string
           diagnosis_id: string
           id?: string
           kcal_objetivo?: number | null
+          micronutrientes_texto?: string | null
           proteina_g?: number | null
+          protocol_approved?: Json | null
+          protocol_suggested?: Json | null
+          proxima_cita?: string | null
           restricciones?: string[]
+          restrictions_ack_at?: string | null
+          restrictions_ack_by?: string | null
+          status?: Database["public"]["Enums"]["treatment_status"]
         }
         Update: {
+          adj_fat_pct?: number | null
+          adj_geb?: number | null
+          adj_kcal_obj?: number | null
+          adj_pal?: number | null
+          adj_peso_meta?: number | null
+          adj_prot_gkg?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string
           diagnosis_id?: string
           id?: string
           kcal_objetivo?: number | null
+          micronutrientes_texto?: string | null
           proteina_g?: number | null
+          protocol_approved?: Json | null
+          protocol_suggested?: Json | null
+          proxima_cita?: string | null
           restricciones?: string[]
+          restrictions_ack_at?: string | null
+          restrictions_ack_by?: string | null
+          status?: Database["public"]["Enums"]["treatment_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "treatments_approved_by_profiles_id_fk"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "treatments_created_by_profiles_id_fk"
             columns: ["created_by"]
@@ -2477,6 +2529,13 @@ export type Database = {
             columns: ["diagnosis_id"]
             isOneToOne: false
             referencedRelation: "diagnoses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_restrictions_ack_by_profiles_id_fk"
+            columns: ["restrictions_ack_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2593,6 +2652,7 @@ export type Database = {
       profile_status: "active" | "inactive"
       report_status: "draft" | "approved" | "sent"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
+      treatment_status: "draft" | "approved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2777,6 +2837,7 @@ export const Constants = {
       profile_status: ["active", "inactive"],
       report_status: ["draft", "approved", "sent"],
       transaction_status: ["pending", "paid", "failed", "refunded"],
+      treatment_status: ["draft", "approved"],
     },
   },
 } as const
