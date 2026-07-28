@@ -7,9 +7,23 @@ import { limitAiMenuByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
 import { generateMenu } from "./services/generate-menu";
+import {
+  canAcknowledgeRestrictions,
+  canEditProtocolDraft,
+} from "./policies/can-edit-protocol";
 import { canManageTreatment } from "./policies/can-manage-treatment";
-import { addNote, saveProtocol } from "./services/treatment-service";
-import { addNoteSchema, saveProtocolSchema } from "./validations";
+import {
+  acknowledgeRestrictions,
+  addNote,
+  saveAdjustments,
+  saveProtocol,
+} from "./services/treatment-service";
+import {
+  acknowledgeRestrictionsSchema,
+  addNoteSchema,
+  saveAdjustmentsSchema,
+  saveProtocolSchema,
+} from "./validations";
 
 // Actions del protocolo de tratamiento (B13). Thin (regla 2): autorizan por policy,
 // parsean/validan con Zod y delegan en el service. Los arreglos (restricciones,
@@ -35,6 +49,12 @@ function parseJsonArray(raw: FormDataEntryValue | null): unknown {
 function intOrNull(raw: FormDataEntryValue | null): number | null {
   const s = typeof raw === "string" ? raw.trim() : "";
   return s === "" ? null : Number(s);
+}
+
+// Vacio -> null (para que Zod no coaccione "" a 0); string -> lo coacciona Zod a numero.
+function strOrNull(raw: FormDataEntryValue | null): string | null {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  return s === "" ? null : s;
 }
 
 async function actor() {
@@ -96,6 +116,65 @@ export async function addNoteAction(
 
   revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
   return { error: null, success: "Nota agregada.", warning: null };
+}
+
+// T2 A2: guarda los ajustes del profesional sobre el sugerido. PROFESIONAL-SOLO (admin no):
+// los adj_* son inputs clinicos de la prescripcion (ver can-edit-protocol).
+export async function saveAdjustmentsAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canEditProtocolDraft(user)) return fail("No autorizado.");
+
+  const parsed = saveAdjustmentsSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    adjGeb: strOrNull(form.get("adjGeb")),
+    adjPal: strOrNull(form.get("adjPal")),
+    adjKcalObj: strOrNull(form.get("adjKcalObj")),
+    adjProtGkg: strOrNull(form.get("adjProtGkg")),
+    adjFatPct: strOrNull(form.get("adjFatPct")),
+    adjPesoMeta: strOrNull(form.get("adjPesoMeta")),
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Ajustes invalidos.");
+  }
+
+  const result = await saveAdjustments(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Ajustes guardados.", warning: null };
+}
+
+// T2 A2: reconocimiento de las restricciones del modelo. PROFESIONAL-SOLO (acto clinico).
+export async function acknowledgeRestrictionsAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canAcknowledgeRestrictions(user)) return fail("No autorizado.");
+
+  const parsed = acknowledgeRestrictionsSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Evaluacion invalida.");
+  }
+
+  const result = await acknowledgeRestrictions(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Restricciones reconocidas.", warning: null };
 }
 
 // Genera el menu por IA desde los objetivos guardados del protocolo (barrera PII en el

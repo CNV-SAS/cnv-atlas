@@ -59,6 +59,34 @@ export const saveProtocolSchema = z.object({
 
 export type SaveProtocolInput = z.infer<typeof saveProtocolSchema>;
 
+// Ajustes del profesional sobre el protocolo sugerido (T2 A2), apartados B/D + peso meta de
+// Nivel V. Todos opcionales (ajusta algunos, ninguno o todos); acotados a rangos clinicos
+// razonables para atajar errores obvios. El valor efectivo (ajuste ?? sugerido) y los
+// derivados los resuelve el service; la UI nunca escribe kcal_objetivo/proteina_g directo.
+const optInt = (min: number, max: number, msg: string) =>
+  z.coerce.number().int(msg).min(min, msg).max(max, msg).nullable();
+const optNum = (min: number, max: number, msg: string) =>
+  z.coerce.number().min(min, msg).max(max, msg).nullable();
+
+export const saveAdjustmentsSchema = z.object({
+  evaluationId: z.guid("Evaluacion invalida."),
+  adjGeb: optInt(500, 4000, "El gasto basal ajustado esta fuera de rango."),
+  adjPal: optNum(1, 2.5, "El factor de actividad esta fuera de rango."),
+  adjKcalObj: optInt(500, 6000, "El objetivo calorico ajustado esta fuera de rango."),
+  adjProtGkg: optNum(0, 4, "La proteina g/kg ajustada esta fuera de rango."),
+  adjFatPct: optInt(0, 100, "El porcentaje de grasa ajustado esta fuera de rango."),
+  adjPesoMeta: optNum(20, 400, "El peso meta esta fuera de rango."),
+});
+
+export type SaveAdjustmentsInput = z.infer<typeof saveAdjustmentsSchema>;
+
+// Reconocimiento de las restricciones del modelo (gate del generador de menu, Opcion B).
+export const acknowledgeRestrictionsSchema = z.object({
+  evaluationId: z.guid("Evaluacion invalida."),
+});
+
+export type AcknowledgeRestrictionsInput = z.infer<typeof acknowledgeRestrictionsSchema>;
+
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluacion invalida."),

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -133,6 +133,119 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
       ip: input.ip,
     });
   });
+}
+
+// --- T2 A2: ajustes del profesional y reconocimiento de restricciones ---
+
+export type SaveAdjustmentsWrite = {
+  treatmentId: string;
+  adjGeb: number | null;
+  adjPal: number | null;
+  adjKcalObj: number | null;
+  adjProtGkg: number | null;
+  adjFatPct: number | null;
+  adjPesoMeta: number | null;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda los ajustes del profesional sobre el protocolo sugerido, SOLO en borrador. Owner
+// client + audit inline. Si el protocolo ya esta aprobado, el trigger de inmutabilidad lo
+// congela; aqui se ataja antes con un error limpio. Los numeric van como string a Drizzle.
+export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertDraft(tx, input.treatmentId);
+    await tx
+      .update(treatments)
+      .set({
+        adjGeb: input.adjGeb,
+        adjPal: input.adjPal != null ? String(input.adjPal) : null,
+        adjKcalObj: input.adjKcalObj,
+        adjProtGkg: input.adjProtGkg != null ? String(input.adjProtGkg) : null,
+        adjFatPct: input.adjFatPct,
+        adjPesoMeta: input.adjPesoMeta != null ? String(input.adjPesoMeta) : null,
+      })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.adjustments_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: {
+        adj_geb: input.adjGeb,
+        adj_pal: input.adjPal,
+        adj_kcal_obj: input.adjKcalObj,
+        adj_prot_gkg: input.adjProtGkg,
+        adj_fat_pct: input.adjFatPct,
+        adj_peso_meta: input.adjPesoMeta,
+      },
+      ip: input.ip,
+    });
+  });
+}
+
+export type AcknowledgeRestrictionsWrite = {
+  treatmentId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Reconocimiento del profesional de las restricciones del MODELO (gate del generador de menu,
+// Opcion B). Depende de que protocol_suggested EXISTA: sus restricciones son las que se
+// reconocen (ajuste conocido: la operacion no tiene cobertura end-to-end hasta A3, que sella
+// protocol_suggested; se ejercita en test contra un protocol_suggested insertado a mano). Los
+// restrictions_ack_* NO los congela el trigger: el reconocimiento puede ocurrir al ir a
+// generar el menu, despues de aprobar el protocolo.
+export async function acknowledgeRestrictions(
+  input: AcknowledgeRestrictionsWrite,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ suggested: treatments.protocolSuggested })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .limit(1);
+    if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
+    if (row.suggested == null) {
+      throw new TreatmentStateError(
+        "El protocolo aun no se ha generado; no hay restricciones del modelo que reconocer.",
+      );
+    }
+    await tx
+      .update(treatments)
+      .set({ restrictionsAckAt: sql`now()`, restrictionsAckBy: input.actorId })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.restrictions_acknowledged",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: {},
+      ip: input.ip,
+    });
+  });
+}
+
+// Gate de estado: los ajustes solo se editan en borrador. Un protocolo aprobado es inmutable.
+async function assertDraft(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  treatmentId: string,
+): Promise<void> {
+  const [row] = await tx
+    .select({ status: treatments.status })
+    .from(treatments)
+    .where(eq(treatments.id, treatmentId))
+    .limit(1);
+  if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
+  if (row.status !== "draft") {
+    throw new TreatmentStateError(
+      "El protocolo ya fue aprobado; para cambiarlo se genera una correccion (version nueva).",
+    );
+  }
 }
 
 // Gate clinico compartido: el protocolo solo se edita sobre un diagnostico confirmado.
