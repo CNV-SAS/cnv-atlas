@@ -174,15 +174,8 @@ Este proyecto usa `pnpm`, NO `npm`. Traduce siempre: `npm install` a `pnpm insta
 
 Protecciones de supply chain (fuente de verdad: `DEPLOY.md`). En pnpm 11 estas protecciones viven en `pnpm-workspace.yaml`, NO en `.npmrc` (que queda solo para auth/registry):
 
-- `minimumReleaseAge: 1440` (cuarentena de 24h: solo instala versiones con al menos un día de publicadas, ventana en la que se detecta la mayoría del malware).
-- `minimumReleaseAgeStrict: false` (ante una versión demasiado nueva, cae a una más vieja que cumple, no falla la instalación).
-- `minimumReleaseAgeExclude: ["@types/*"]` (paquetes sin código ejecutable, para reducir fricción).
-- `blockExoticSubdeps: true` (rechaza deps de git/tarballs).
-- `ignoreScripts: true` (bloquea postinstall, vector principal de supply-chain).
-- `saveExact: true` (versiones exactas, sin `^` ni `~`).
-- `allowBuilds` como whitelist de los postinstall verificados (este es el setting de pnpm 11; NO uses el viejo `onlyBuiltDependencies`).
-- NUNCA pongas `minimumReleaseAge` en `.npmrc`.
-- Al configurar en B0, verifica la ubicación y el comportamiento exacto de cada setting contra la doc oficial (pnpm.io/settings). Si una protección queda en el archivo equivocado, se desactiva en silencio sin dar error.
+- Los settings vigentes viven en `pnpm-workspace.yaml`, cada uno comentado inline con su justificación, y están explicados en `DEPLOY.md` sección 2bis. No los dupliques aquí: la copia se desactualiza y contradice al original. Para verificar el comportamiento real: `pnpm config get <setting>`.
+- NUNCA pongas `minimumReleaseAge` en `.npmrc`. Si una protección queda en el archivo equivocado se desactiva en silencio, sin dar error.
 - Contexto: la campaña de supply chain en npm sigue activa (Shai-Hulud y variantes, 2025-2026). Estas protecciones son obligatorias.
 
 ### Antes de instalar cualquier paquete
@@ -235,16 +228,9 @@ Protecciones de supply chain (fuente de verdad: `DEPLOY.md`). En pnpm 11 estas p
 
 ## Variables de entorno
 
-Documentadas en `DEPLOY.md`. Todo lo sensitive NUNCA lleva prefijo `NEXT_PUBLIC_`.
+La lista completa, con la anotación de alcance (cliente OK / solo server) de cada variable, vive en `DEPLOY.md` sección "Variables de entorno". No la dupliques aquí.
 
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (cliente OK)
-- `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` (solo server)
-- `GROQ_API_KEY` / `GEMINI_API_KEY` + variables de modelo (solo server)
-- `RESEND_API_KEY` (solo server)
-- `WOMPI_PRIVATE_KEY`, `WOMPI_EVENTS_SECRET`, `WOMPI_INTEGRITY_SECRET` (solo server; el events secret valida la firma HMAC de webhooks)
-- `ALEGRA_API_KEY` (solo server)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (solo server; rate limiting)
-- `NEXT_PUBLIC_SENTRY_DSN` (público por diseño), `SENTRY_AUTH_TOKEN` (solo server/build), `NEXT_PUBLIC_APP_URL`
+**Regla crítica:** todo lo sensitive NUNCA lleva prefijo `NEXT_PUBLIC_`. Si una variable necesita ser pública, se decide y se documenta en `DEPLOY.md` antes de usarla.
 
 ---
 
