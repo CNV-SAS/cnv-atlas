@@ -38,6 +38,11 @@ export const treatments = pgTable("treatments", {
   // tiene y que Q14 hace critica); engine_version/model_version_id/rules_version se HEREDAN
   // del diagnostico via diagnosis_id (diagnoses los sella); survey_version_id vive upstream
   // en la respuesta de encuesta y no alimenta la cadena calorica.
+  // DEFAULTS QUE PROPAGAN (ajuste T2): se sella al DIAGNOSTICAR, sin profesional, asi que PAL=1.375
+  // y grasa=30% entran por DEFAULT (calorico.defaults=["pal","fatPct"]). PAL esta aguas arriba de
+  // GET->kcalObj->proteina/grasa/CHO, de modo que TODA la cadena calorica del set sugerido es
+  // PROVISIONAL, no solo esas dos claves: los valores efectivos los fija el profesional al aprobar
+  // (protocol_approved). No leer get/kcalObj de aqui como firmes.
   protocolSuggested: jsonb("protocol_suggested"),
   // Set EFECTIVO tal como se PRESCRIBIO, sellado en la transicion draft -> approved
   // (inmutable, regla 7). Segundo sello, segundo momento clinico: campo aparte, no una clave

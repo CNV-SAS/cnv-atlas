@@ -30,6 +30,7 @@ export type ProtocoloCaloricoOutput = {
   formula: "Cunningham" | "Mifflin";
   gebAuto: number;
   geb: number;
+  pal: number; // factor de actividad usado (1.375 por default; ver encabezado de atlas-protocolo.js)
   get: number;
   kcalObj: number;
   protGKg: number;
@@ -85,6 +86,7 @@ export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCa
     formula: ffm > 0 ? "Cunningham" : "Mifflin",
     gebAuto,
     geb: gebN,
+    pal: palN,
     get: getN,
     kcalObj,
     protGKg,

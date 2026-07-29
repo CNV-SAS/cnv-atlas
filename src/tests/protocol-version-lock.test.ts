@@ -41,7 +41,9 @@ describe("candado de version del protocolo (PROTOCOL_ENGINE_VERSION)", () => {
             ? "  OJO: cambio un archivo frozen/ (ciencia de Gildardo). El DIFF byte a byte deberia haber fallado tambien; si no fallo, hay algo peor. SUBE la version.\n"
             : "") +
           "  POR DEFECTO: sube PROTOCOL_ENGINE_VERSION y actualiza el SHA registrado en version.ts.\n" +
-          "  Actualizar SOLO el SHA (sin subir la version) requiere justificar por escrito que el cambio fue cosmetico (comentario, formato), no de logica ni de datos.",
+          "  Actualizar SOLO el SHA (sin subir la version) solo es aceptable bajo la EXENCION DE\n" +
+          "  ARRANQUE documentada en version.ts (valida mientras NINGUN protocol_suggested se haya\n" +
+          "  sellado con esta version). Tras el primer sellado, cualquier cambio exige subir la version.",
       );
     }
   });
