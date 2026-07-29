@@ -12,3 +12,12 @@ export const addDiagnosisNoteSchema = z.object({
 });
 
 export type AddDiagnosisNoteInput = z.infer<typeof addDiagnosisNoteSchema>;
+
+// Confirmar el diagnostico (mini-bloque): la firma clinica del analisis, que habilita prescribir. No
+// lleva payload mas alla de la evaluacion (el que confirma es el profesional asignado, resuelto en el
+// service; no hay dato del formulario que confiar).
+export const confirmDiagnosisSchema = z.object({
+  evaluationId: z.guid("Evaluacion invalida."),
+});
+
+export type ConfirmDiagnosisInput = z.infer<typeof confirmDiagnosisSchema>;

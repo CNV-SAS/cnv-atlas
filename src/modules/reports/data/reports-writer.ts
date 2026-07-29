@@ -44,8 +44,12 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       throw new ReportStateError("El reporte ya fue aprobado o enviado.");
     }
 
-    // 1. Confirmar el diagnostico de la evaluacion. Guard confirmedBy IS NULL: si ya
-    //    estaba confirmado, 0 filas y se revierte la transaccion entera.
+    // 1. Confirmar el diagnostico de la evaluacion, TOLERANTE (mini-bloque de confirmacion como acto
+    //    propio): la confirmacion ya no es exclusiva del reporte. Si el diagnostico YA estaba
+    //    confirmado (por el acto propio, diagnosis.confirmed), NO se re-confirma ni se bloquea. Si se
+    //    confirma AQUI (nadie lo hizo antes), se audita distinto (diagnosis.confirmed_via_report) para
+    //    que el audit distinga "confirmo y luego prescribio" de "aprobo el reporte sin confirmar" (con
+    //    la via propia disponible, esto ultimo significa que se salto un paso).
     const [diagnosis] = await tx
       .select({ id: diagnoses.id })
       .from(diagnoses)
@@ -57,16 +61,17 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       .set({ confirmedBy: input.actorId, confirmedAt: sql`now()` })
       .where(and(eq(diagnoses.id, diagnosis.id), isNull(diagnoses.confirmedBy)))
       .returning({ id: diagnoses.id });
-    if (confirmed.length === 0) throw new ReportStateError("El diagnostico ya estaba confirmado.");
-    await recordAudit(tx, {
-      event: "diagnosis.confirmed",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "diagnosis",
-      entityId: diagnosis.id,
-      payload: { evaluation_id: report.evaluationId },
-      ip: input.ip,
-    });
+    if (confirmed.length > 0) {
+      await recordAudit(tx, {
+        event: "diagnosis.confirmed_via_report",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "diagnosis",
+        entityId: diagnosis.id,
+        payload: { evaluation_id: report.evaluationId },
+        ip: input.ip,
+      });
+    }
 
     // 2. Aprobar el reporte + sellar las notas del profesional (no toca snapshot ->
     //    compatible con el trigger; el UPDATE es draft->approved, asi que la escritura
