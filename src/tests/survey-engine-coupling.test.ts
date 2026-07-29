@@ -9,6 +9,7 @@ import {
   type SurveyFieldAnswer,
 } from "@/modules/clinical-pipeline/services/build-engine-input";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+import { PROTOCOL_FLAG_TEXTS } from "./fixtures/clinical-engine/frozen-survey-texts";
 
 // CANDADO anti-fallo-silencioso del acoplamiento encuesta <-> motor congelado. El riesgo
 // (GILDARDO_QUERIES.md Q3, memoria del port): las option_text que emite la encuesta deben
@@ -91,6 +92,21 @@ describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
     expect(out.dfi.domains.find((d) => d.id === "d4")?.sev).toBe(3);
   });
 
+  // Candado de los flags de PROTOCOLO (motorProtocolo lee d5_39/d5_36 por texto). Consistencia pura
+  // (corre en CI, sin BD): la cadena que la semilla DEBE tener sigue conteniendo el substring que el
+  // frozen matchea. Si alguien edita el fixture y le quita el keyword, truena aqui; que el frozen
+  // realmente encienda el flag con esa cadena lo prueba el golden del orquestador.
+  it("cada texto de flag de protocolo sigue conteniendo el substring que el frozen matchea", () => {
+    for (const m of PROTOCOL_FLAG_TEXTS) {
+      if (m.match.type === "substring") {
+        expect(
+          m.optionText.toLowerCase(),
+          `"${m.optionText}" (${m.flag}) debe contener "${m.match.needle}"`,
+        ).toContain(m.match.needle);
+      }
+    }
+  });
+
   it("sin encuesta, el DFI queda degradado y marcado (no null silencioso)", () => {
     const input = buildEngineInput(
       { sex: "Male", birthDate: "1971-11-05", surveyAnswers: [], bisRaw: bisRawFromFixture() },
@@ -150,6 +166,20 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
       for (const v of values) {
         expect(row?.options, `${a.fieldKey} debe contener "${v}"`).toContain(v);
       }
+    }
+  });
+
+  // Candado de semilla de los flags de PROTOCOLO: los textos que motorProtocolo matchea (IRC,
+  // cancer, DM, HTA) existen en la BD char-by-char. ENGINE_ANSWERS solo cubria "Diabetes tipo 2";
+  // los de IRC y cancer voltean una prescripcion (proteina 1.2 -> 0.6) y no estaban anclados.
+  it("la semilla contiene los textos de los flags de protocolo char-by-char", () => {
+    for (const m of PROTOCOL_FLAG_TEXTS) {
+      const row = seeded.find((r) => r.fieldKey === m.fieldKey);
+      expect(row, `field_key ${m.fieldKey} presente en el seed`).toBeDefined();
+      expect(
+        row?.options,
+        `${m.fieldKey} debe contener "${m.optionText}" (${m.flag}: ${m.effect})`,
+      ).toContain(m.optionText);
     }
   });
 });
