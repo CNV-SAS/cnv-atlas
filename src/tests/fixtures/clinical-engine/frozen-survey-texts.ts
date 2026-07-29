@@ -1,3 +1,16 @@
+// ============================================================================================
+// ESTE ARCHIVO NO ES UNA LISTA DE CONSTANTES: ES EL CONTRATO ENTRE LA ENCUESTA Y LA CIENCIA.
+// ============================================================================================
+// El motor de Gildardo detecta las condiciones clinicas (insuficiencia renal, cancer, diabetes,
+// hipertension) haciendo SUBSTRING sobre el TEXTO de la respuesta, no sobre un codigo. Si el test
+// (survey-engine-coupling.test.ts) falla, la respuesta correcta CASI NUNCA es editar este archivo:
+// es que alguien cambio un texto de encuesta que la ciencia necesita. Cambiar un texto AQUI para
+// que el test pase, sin cambiar tambien la semilla, deja el flag APAGADO en produccion y la
+// prescripcion cambia (con IRC, la proteina pasa de 1.2 a 0.6 g/kg) SIN NINGUN ERROR VISIBLE.
+// Antes de tocar textos de encuesta (bloque pendiente en BACKLOG: P63, d1_15, "Otros/Otras",
+// patron D1), lee este archivo: si el texto que vas a cambiar esta aqui, afecta al MOTOR.
+// ============================================================================================
+//
 // Textos de opcion de encuesta que la CIENCIA CONGELADA matchea por substring o igualdad, con el
 // efecto clinico que disparan. La ciencia lee TEXTO MUTABLE de la BD (survey_options.option_text);
 // si alguien edita una de estas cadenas (semilla o script de contenido), el efecto deja de
