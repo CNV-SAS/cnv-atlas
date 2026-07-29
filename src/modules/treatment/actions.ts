@@ -9,18 +9,21 @@ import { requireUser } from "@/modules/auth/session";
 import { generateMenu } from "./services/generate-menu";
 import {
   canAcknowledgeRestrictions,
+  canApproveProtocol,
   canEditProtocolDraft,
 } from "./policies/can-edit-protocol";
 import { canManageTreatment } from "./policies/can-manage-treatment";
 import {
   acknowledgeRestrictions,
   addNote,
+  approveProtocol,
   saveAdjustments,
   saveProtocol,
 } from "./services/treatment-service";
 import {
   acknowledgeRestrictionsSchema,
   addNoteSchema,
+  approveProtocolSchema,
   saveAdjustmentsSchema,
   saveProtocolSchema,
 } from "./validations";
@@ -175,6 +178,33 @@ export async function acknowledgeRestrictionsAction(
 
   revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
   return { error: null, success: "Restricciones reconocidas.", warning: null };
+}
+
+// T2 A3: aprueba el protocolo (sella la prescripcion efectiva). PROFESIONAL-SOLO (admin no); la
+// asignacion explicita y los gates de estado los verifica el service.
+export async function approveProtocolAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canApproveProtocol(user)) return fail("No autorizado.");
+
+  const parsed = approveProtocolSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Evaluacion invalida.");
+  }
+
+  const result = await approveProtocol(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Protocolo aprobado.", warning: null };
 }
 
 // Genera el menu por IA desde los objetivos guardados del protocolo (barrera PII en el

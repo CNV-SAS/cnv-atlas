@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { ProtocoloAjustes, ProtocoloSnapshot } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
@@ -166,4 +167,81 @@ function nutraceuticalName(rel: unknown): string {
   }
   const obj = rel as { name?: string } | null;
   return obj?.name ?? "Nutraceutico";
+}
+
+// --- T2 A3: lectura para aprobar el protocolo ---
+// Lo que approveProtocol necesita, todo por RLS (regla 3): si la evaluacion no es del profesional,
+// las filas no existen -> null. Trae el professional_id de la evaluacion para el chequeo EXPLICITO
+// de asignacion (defensa en profundidad, no solo RLS), el sugerido y los adj_* para recomputar el
+// efectivo, el status para el gate de borrador, y la fecha de la medicion BIS para sellarla junto a
+// la de aprobacion (la distancia medicion<->prescripcion debe quedar auditable).
+export type TreatmentForApproval = {
+  treatmentId: string;
+  status: string;
+  protocolSuggested: ProtocoloSnapshot | null;
+  adjustments: ProtocoloAjustes;
+  evaluationProfessionalId: string;
+  bisMeasurementDate: string | null;
+};
+
+export async function getTreatmentForApproval(
+  evaluationId: string,
+): Promise<TreatmentForApproval | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: evalRow, error: eErr } = await supabase
+    .from("evaluations")
+    .select("professional_id")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (eErr) throw new Error(`treatment-reader(approval): evaluations: ${eErr.message}`);
+  if (!evalRow) return null;
+
+  const { data: diag, error: dErr } = await supabase
+    .from("diagnoses")
+    .select("id")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (dErr) throw new Error(`treatment-reader(approval): diagnoses: ${dErr.message}`);
+  if (!diag) return null;
+
+  const { data: t, error: tErr } = await supabase
+    .from("treatments")
+    .select(
+      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_peso_meta",
+    )
+    .eq("diagnosis_id", diag.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (tErr) throw new Error(`treatment-reader(approval): treatments: ${tErr.message}`);
+  if (!t) return null;
+
+  const { data: meas, error: mErr } = await supabase
+    .from("bis_measurements")
+    .select("measurement_date")
+    .eq("evaluation_id", evaluationId)
+    .order("measurement_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (mErr) throw new Error(`treatment-reader(approval): bis_measurements: ${mErr.message}`);
+
+  const n = (v: unknown): number | null => (v == null ? null : Number(v));
+  return {
+    treatmentId: t.id,
+    status: t.status,
+    protocolSuggested: (t.protocol_suggested as ProtocoloSnapshot | null) ?? null,
+    adjustments: {
+      geb: n(t.adj_geb),
+      pal: n(t.adj_pal),
+      kcalObj: n(t.adj_kcal_obj),
+      protGkg: n(t.adj_prot_gkg),
+      fatPct: n(t.adj_fat_pct),
+      pesoMeta: n(t.adj_peso_meta),
+    },
+    evaluationProfessionalId: evalRow.professional_id,
+    bisMeasurementDate: meas?.measurement_date ?? null,
+  };
 }

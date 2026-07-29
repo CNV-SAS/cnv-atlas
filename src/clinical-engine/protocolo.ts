@@ -20,7 +20,7 @@
 
 import { parseBiodyRow } from "./edge/biody-import";
 import { motorProtocolo } from "./frozen/atlas-protocolo.js";
-import { computeProtocoloCalorico } from "./protocolo-calorico";
+import { computeProtocoloCalorico, type ProtocoloCaloricoOutput } from "./protocolo-calorico";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 import type { Fenotipo } from "./fenotipos-mccb";
 import type { EngineInput, EngineOutput } from "./types";
@@ -50,6 +50,11 @@ export type ProtocoloSnapshot = {
   resumenClinico: string; // version del MODELO (la del profesional vive en treatmentDietGuidelines)
   alertaSindRealim: boolean;
   flags: { tieneIRC: boolean; tieneCancer: boolean; tieneDM: boolean; tieneHTA: boolean };
+  // Inputs de la cadena calorica, SELLADOS para que approveProtocol recompute el set EFECTIVO con
+  // los adj_* del profesional sobre EXACTAMENTE los mismos inputs del sugerido (el BIS es inmutable,
+  // pero asi el approve es self-contained y no re-deriva de la evaluacion). deficit/protMin/pesoCalculo
+  // ya viven arriba (motorProtocolo).
+  caloricoInputs: { ffm: number; talla: number; edad: number; sexoM: boolean };
   calorico: {
     defaults: string[]; // claves que son suposiciones del sistema (no modelo, no profesional)
     pal: number;
@@ -157,6 +162,7 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
       tieneDM: pr.tieneDM,
       tieneHTA: pr.tieneHTA,
     },
+    caloricoInputs: { ffm: imp.FFM, talla, edad: input.edad, sexoM },
     calorico: {
       defaults: ["pal", "fatPct"],
       pal: cal.pal,
@@ -176,4 +182,45 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
       choPct: cal.choPct,
     },
   };
+}
+
+// Ajustes del profesional sobre el sugerido (null = usar el default del sugerido/cadena).
+export type ProtocoloAjustes = {
+  geb: number | null;
+  pal: number | null;
+  kcalObj: number | null;
+  protGkg: number | null;
+  fatPct: number | null;
+  pesoMeta: number | null;
+};
+
+export type ProtocoloEfectivo = {
+  pesoEfectivo: number; // adj_peso_meta ?? sugerido.pesoCalculo, entra a TODA la cadena
+  calorico: ProtocoloCaloricoOutput; // recomputado con los adj_* sobre los inputs sellados del sugerido
+};
+
+// Recomputa el set EFECTIVO al aprobar: aplica los adj_* del profesional sobre EXACTAMENTE los inputs
+// sellados del sugerido (caloricoInputs + deficit/protMin), no sobre datos que llegaron despues. Los
+// adj_* cascadean (pal cambia GET -> kcalObj -> proteina/grasa/CHO), por eso se RE-CORRE la cadena, no
+// se sustituyen valores. PURO (regla 5): el sellado y la autorizacion los hace el modulo de tratamiento.
+export function computeProtocoloEfectivo(
+  sug: ProtocoloSnapshot,
+  adj: ProtocoloAjustes,
+): ProtocoloEfectivo {
+  const pesoEfectivo = adj.pesoMeta ?? sug.pesoCalculo;
+  const calorico = computeProtocoloCalorico({
+    ffm: sug.caloricoInputs.ffm,
+    pesoN: pesoEfectivo,
+    talla: sug.caloricoInputs.talla,
+    edad: sug.caloricoInputs.edad,
+    sexoM: sug.caloricoInputs.sexoM,
+    deficit: sug.estrategia.deficit,
+    protMin: sug.protMin,
+    geb: adj.geb ?? undefined,
+    pal: adj.pal ?? undefined,
+    kcalObj: adj.kcalObj ?? undefined,
+    protGkg: adj.protGkg ?? undefined,
+    fatPct: adj.fatPct ?? undefined,
+  });
+  return { pesoEfectivo, calorico };
 }

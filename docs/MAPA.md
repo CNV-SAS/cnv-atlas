@@ -2,8 +2,8 @@
 
 Mapa de una pantalla para orientarse en diez segundos. No es plan ni backlog: si algo tiene detalle, vive en `LANZAMIENTO.md` (gates), `BACKLOG.md` (diferido) o `docs/MVP.md` (histórico); aquí solo se nombra. Se actualiza al cerrar cada subtarea.
 
-> ## 📍 AHORA: Hito 1, Tratamiento T2, subtarea A3 (costura del motor calórico) — falta el último paso.
-> A1 y A2 cerrados. A3 casi cerrado: `motorProtocolo` frozen (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), fenotipo F1-F12 (A3.4), candado de versión, el **orquestador puro** con golden de mapeo, y el **sellado en el pipeline** (escribe `protocol_suggested` al diagnosticar; cerró la exención del candado de versión; el fallo va a null + audit `protocol.compute_failed` + Sentry, sin degradar el diagnóstico). **Falta solo `approveProtocol`** para cerrar T2a: sella el conjunto EFECTIVO (`protocol_approved`) al aprobar, con chequeo explícito de asignación (profesional dueño del paciente), profesional-solo (admin NO), y registrando LAS DOS versiones (la del motor al aprobar y la del sugerido del que partió).
+> ## 📍 AHORA: Hito 1, Tratamiento T2 — **T2a (cimiento) cerrado salvo el test del chequeo de asignación** (commit inmediato). Sigue T2b (superficie).
+> A1, A2 y A3 cerrados. A3 completo: `motorProtocolo` frozen (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), fenotipo F1-F12 (A3.4), candado de versión, el orquestador puro con golden, el sellado en el pipeline (E2E), y **`approveProtocol`**: sella el conjunto EFECTIVO (`protocol_approved`) con chequeo explícito de asignación (profesional dueño), profesional-solo, gates (draft + sugerido no nulo, SIN diagnóstico-confirmado, ver precondición de T2b en BACKLOG), y LAS DOS versiones + LAS DOS fechas (aprobación y medición BIS). **Sigue T2b (superficie)**, con su precondición registrada en BACKLOG (el gate `diagnosisConfirmed` de todo el módulo fuerza "reporte antes de prescribir"; resolver antes de construir T2b) y el requisito del aviso de mismatch de versión.
 
 ---
 
@@ -50,7 +50,7 @@ El tratamiento organizado por la jerarquía de composición corporal, en niveles
 |---|---|---|
 | **A1** | Campo `profession` (lista cerrada) que gobierna la subpestaña por especialidad | ✅ hecho, comiteado (sin push) |
 | **A2** | Migración de `treatments` (sellado sugerido + aprobado, ajustes, aprobación) + writer/policy/trigger | ✅ hecho (schema + writer + policy + trigger) |
-| **A3** | Costura calórica: `motorProtocolo` frozen (A3.1) + cadena TS con GOLDEN 1 (A3.2) + fenotipo F1-F12 (A3.4) + candado de versión + orquestador puro con golden + sellado en el pipeline (E2E) | ✅ hecho; falta solo `approveProtocol` |
+| **A3** | Costura calórica completa: `motorProtocolo` frozen (A3.1) + cadena TS GOLDEN 1 (A3.2) + fenotipo F1-F12 (A3.4) + candado de versión + orquestador + sellado en el pipeline + `approveProtocol` (efectivo, dos versiones, dos fechas) | ✅ **T2a cerrado** |
 | **A4** | Registrar hallazgos E/F como Q12/Q13 en la bitácora | ✅ hecho |
 
 **T2b (superficie):**

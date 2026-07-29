@@ -1,19 +1,23 @@
 import "server-only";
 
+import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
+import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
-import { getTreatmentProtocol } from "../data/treatment-reader";
+import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import {
   acknowledgeRestrictions as writeAcknowledge,
   addTreatmentNote,
   saveAdjustments as writeAdjustments,
   saveProtocol as writeProtocol,
   TreatmentStateError,
+  writeApproveProtocol,
 } from "../data/treatment-writer";
 import type {
   AcknowledgeRestrictionsInput,
   AddNoteInput,
+  ApproveProtocolInput,
   SaveAdjustmentsInput,
   SaveProtocolInput,
 } from "../validations";
@@ -101,6 +105,80 @@ export async function acknowledgeRestrictions(
   }
   try {
     await writeAcknowledge({ treatmentId: protocol.treatmentId, ...actor });
+  } catch (e) {
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// T2 A3: aprobar el protocolo = sellar la prescripcion EFECTIVA (el acto mas cargado). Gates, y solo
+// estos (ver la precondicion de T2b en BACKLOG sobre por que NO se gatea en diagnostico confirmado):
+//   - canApproveProtocol (rol profesional; admin NO) -> lo verifica la action.
+//   - Asignacion EXPLICITA: el profesional que aprueba es el asignado a la evaluacion (no solo RLS).
+//   - status == 'draft' (no re-aprobar).
+//   - protocol_suggested no nulo (no se aprueba lo que nunca se computo).
+// Sella protocol_approved con el set efectivo (adj_* sobre los inputs sellados del sugerido), LAS DOS
+// VERSIONES del motor (la de ahora y la del sugerido) + versionMismatch, y LAS DOS FECHAS (aprobacion
+// y medicion BIS), para que la traza no se rompa si el motor subio entre el diagnostico y la aprobacion.
+export async function approveProtocol(
+  input: ApproveProtocolInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const t = await getTreatmentForApproval(input.evaluationId);
+  if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
+
+  // Chequeo EXPLICITO de asignacion (defensa en profundidad, no solo el read RLS): el
+  // professional_profiles.id del actor debe ser el asignado a la evaluacion.
+  const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
+  if (!professionalId || professionalId !== t.evaluationProfessionalId) {
+    return err(appError("forbidden", "No estas asignado a este paciente."));
+  }
+  if (t.status !== "draft") {
+    return err(appError("conflict", "El protocolo ya fue aprobado."));
+  }
+  if (!t.protocolSuggested) {
+    return err(
+      appError("conflict", "No se puede aprobar un protocolo que nunca se computo (sin sugerido)."),
+    );
+  }
+
+  const suggested = t.protocolSuggested;
+  const efectivo = computeProtocoloEfectivo(suggested, t.adjustments);
+  const approvedAt = new Date();
+  const versionApproved = PROTOCOL_ENGINE_VERSION;
+  const versionSuggested = suggested.protocolEngineVersion;
+
+  const protocolApproved = {
+    protocolEngineVersionApproved: versionApproved,
+    protocolEngineVersionSuggested: versionSuggested,
+    versionMismatch: versionApproved !== versionSuggested,
+    approvedAt: approvedAt.toISOString(),
+    bisMeasurementDate: t.bisMeasurementDate,
+    fenotipo: suggested.fenotipo,
+    estrategia: suggested.estrategia,
+    protMin: suggested.protMin,
+    protMax: suggested.protMax,
+    protRef: suggested.protRef,
+    restricciones: suggested.restricciones,
+    examenes: suggested.examenes,
+    suplementacion: suggested.suplementacion,
+    pesoEfectivo: efectivo.pesoEfectivo,
+    ajustes: t.adjustments,
+    calorico: efectivo.calorico,
+  };
+
+  try {
+    await writeApproveProtocol({
+      treatmentId: t.treatmentId,
+      protocolApproved,
+      kcalObjetivo: efectivo.calorico.kcalObj,
+      proteinaGramos: efectivo.calorico.protG,
+      approvedAt,
+      versionApproved,
+      versionSuggested,
+      ...actor,
+    });
   } catch (e) {
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;

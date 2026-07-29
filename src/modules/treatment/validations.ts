@@ -87,6 +87,15 @@ export const acknowledgeRestrictionsSchema = z.object({
 
 export type AcknowledgeRestrictionsInput = z.infer<typeof acknowledgeRestrictionsSchema>;
 
+// Aprobar el protocolo (T2 A3): convierte el sugerido + ajustes en la prescripcion efectiva y la
+// sella. No lleva mas payload que la evaluacion: los adj_* ya estan guardados (saveAdjustments) y el
+// set efectivo se recomputa en el service; el profesional nunca escribe el efectivo directo.
+export const approveProtocolSchema = z.object({
+  evaluationId: z.guid("Evaluacion invalida."),
+});
+
+export type ApproveProtocolInput = z.infer<typeof approveProtocolSchema>;
+
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluacion invalida."),

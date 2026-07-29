@@ -5,8 +5,15 @@
 export * from "./types";
 export { ENGINE_VERSION, PROTOCOL_ENGINE_VERSION } from "./version";
 export { runEngine } from "./engine";
-// Orquestador del protocolo (T2 A3): encadena los tres motores y arma el protocol_suggested.
-export { computeProtocolo, type ProtocoloSnapshot } from "./protocolo";
+// Orquestador del protocolo (T2 A3): encadena los tres motores y arma el protocol_suggested; y el
+// computo del set EFECTIVO al aprobar (aplica los adj_* sobre los inputs sellados del sugerido).
+export {
+  computeProtocolo,
+  computeProtocoloEfectivo,
+  type ProtocoloAjustes,
+  type ProtocoloEfectivo,
+  type ProtocoloSnapshot,
+} from "./protocolo";
 // Contrato de columnas del Biody (headers exactos) para que el pipeline reconstruya la
 // fila cruda desde el almacenamiento normalizado de B8 (build-engine-input).
 export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";

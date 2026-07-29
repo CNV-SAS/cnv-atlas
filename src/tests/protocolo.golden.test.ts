@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { computeProtocolo, runEngine } from "@/clinical-engine";
+import { computeProtocolo, computeProtocoloEfectivo, runEngine } from "@/clinical-engine";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import {
   buildEngineInput,
@@ -103,6 +103,10 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(o._nota).toContain("protocol_approved");
   });
 
+  it("sella los inputs de la cadena calorica (para recomputar el efectivo al aprobar)", () => {
+    expect(o.caloricoInputs).toEqual({ ffm: 68.365, talla: 180, edad: 54, sexoM: true });
+  });
+
   it("sin encuesta, ningun flag clinico se enciende", () => {
     expect(o.flags).toEqual({ tieneIRC: false, tieneCancer: false, tieneDM: false, tieneHTA: false });
   });
@@ -155,5 +159,28 @@ describe("GOLDEN orquestador: flags clinicos desde el TEXTO exacto de encuesta (
     const o = run(d5_36("No"));
     expect(o.flags.tieneHTA).toBe(false);
     expect(N(o.restricciones)).not.toContain("Sodio");
+  });
+});
+
+describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)", () => {
+  const sug = run([]); // sugerido base (F5, sin flags)
+  const nada = { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, pesoMeta: null };
+
+  it("sin ajustes: el efectivo reproduce el sugerido (mismos inputs y defaults)", () => {
+    const ef = computeProtocoloEfectivo(sug, nada);
+    expect(ef.pesoEfectivo).toBeCloseTo(76.625, 3);
+    expect(ef.calorico.gebAuto).toBe(2004);
+    expect(ef.calorico.get).toBe(2756);
+    expect(ef.calorico.kcalObj).toBe(2456);
+    expect(ef.calorico.protG).toBe(61);
+  });
+
+  it("con peso meta y PAL ajustados: RE-CORRE la cadena completa (no sustituye)", () => {
+    const ef = computeProtocoloEfectivo(sug, { ...nada, pal: 1.55, pesoMeta: 80 });
+    expect(ef.pesoEfectivo).toBe(80);
+    expect(ef.calorico.gebAuto).toBe(2004); // Cunningham no usa peso
+    expect(ef.calorico.get).toBe(3106); // round(2004*1.55)=round(3106.2)
+    expect(ef.calorico.kcalObj).toBe(2806); // round(3106-300)
+    expect(ef.calorico.protG).toBe(64); // round(0.8*80), protMin sin cambiar
   });
 });

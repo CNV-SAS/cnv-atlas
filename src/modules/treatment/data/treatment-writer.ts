@@ -230,6 +230,73 @@ export async function acknowledgeRestrictions(
   });
 }
 
+// --- T2 A3: aprobacion del protocolo (sella el set efectivo) ---
+
+export type ApproveProtocolWrite = {
+  treatmentId: string;
+  protocolApproved: unknown; // jsonb efectivo (lo arma el service; incluye las dos versiones y fechas)
+  kcalObjetivo: number;
+  proteinaGramos: number;
+  approvedAt: Date;
+  versionApproved: string;
+  versionSuggested: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Sella la prescripcion EFECTIVA en la transicion draft -> approved. Owner client + audit inline.
+// Re-chequea DENTRO de la transaccion (TOCTOU) el borrador y que exista el sugerido: no se aprueba
+// lo que ya se aprobo ni lo que nunca se computo. El UPDATE dispara el trigger 0026, pero como
+// OLD.status='draft' la rama de congelado no aplica y protocol_suggested no cambia: pasa. A partir de
+// aqui (OLD.status='approved') el trigger congela la prescripcion.
+export async function writeApproveProtocol(input: ApproveProtocolWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ status: treatments.status, suggested: treatments.protocolSuggested })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .limit(1);
+    if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
+    if (row.status !== "draft") {
+      throw new TreatmentStateError(
+        "El protocolo ya fue aprobado; para cambiarlo se genera una correccion (version nueva).",
+      );
+    }
+    if (row.suggested == null) {
+      throw new TreatmentStateError(
+        "No se puede aprobar un protocolo que nunca se computo (protocol_suggested nulo).",
+      );
+    }
+    await tx
+      .update(treatments)
+      .set({
+        status: "approved",
+        protocolApproved: input.protocolApproved,
+        approvedBy: input.actorId,
+        approvedAt: input.approvedAt,
+        kcalObjetivo: input.kcalObjetivo,
+        proteinaGramos: input.proteinaGramos,
+      })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "protocol.approved",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: {
+        kcal_objetivo: input.kcalObjetivo,
+        proteina_g: input.proteinaGramos,
+        version_approved: input.versionApproved,
+        version_suggested: input.versionSuggested,
+        version_mismatch: input.versionApproved !== input.versionSuggested,
+      },
+      ip: input.ip,
+    });
+  });
+}
+
 // Gate de estado: los ajustes solo se editan en borrador. Un protocolo aprobado es inmutable.
 async function assertDraft(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
