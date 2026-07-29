@@ -2,7 +2,7 @@
 
 Mapa de una pantalla para orientarse en diez segundos. No es plan ni backlog: si algo tiene detalle, vive en `LANZAMIENTO.md` (gates), `BACKLOG.md` (diferido) o `docs/MVP.md` (histórico); aquí solo se nombra. Se actualiza al cerrar cada subtarea.
 
-> ## 📍 AHORA: Hito 1, Tratamiento T2 — **T2a (cimiento) cerrado salvo el test del chequeo de asignación** (commit inmediato). Sigue T2b (superficie).
+> ## 📍 AHORA: Hito 1, Tratamiento T2 — **T2a (cimiento) CERRADO** (incluido el test del chequeo de asignación). Sigue T2b (superficie).
 > A1, A2 y A3 cerrados. A3 completo: `motorProtocolo` frozen (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), fenotipo F1-F12 (A3.4), candado de versión, el orquestador puro con golden, el sellado en el pipeline (E2E), y **`approveProtocol`**: sella el conjunto EFECTIVO (`protocol_approved`) con chequeo explícito de asignación (profesional dueño), profesional-solo, gates (draft + sugerido no nulo, SIN diagnóstico-confirmado, ver precondición de T2b en BACKLOG), y LAS DOS versiones + LAS DOS fechas (aprobación y medición BIS). **Sigue T2b (superficie)**, con su precondición registrada en BACKLOG (el gate `diagnosisConfirmed` de todo el módulo fuerza "reporte antes de prescribir"; resolver antes de construir T2b) y el requisito del aviso de mismatch de versión.
 
 ---
