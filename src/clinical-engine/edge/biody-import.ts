@@ -18,8 +18,9 @@ export interface BiodyImport {
   Re: number; Ri: number; Rinf: number; C: number;
   // composición (obligatorios para FMI derivado y clasificación)
   FM: number; FFM: number; FFMI: number; peso: number; talla: number;
-  // derivado en el borde, igual que el prototipo (L5650)
+  // derivados en el borde, igual que el prototipo (FMI L5650; ASMI L5660/5734)
   FMI: number;
+  ASMI: number; // opcional: NaN si falta MMEM (alimenta la clasificación de fenotipo, no el núcleo)
   // resto de campos mapeados (opcionales) quedan en `raw`
   raw: Record<string, number | null>;
 }
@@ -66,10 +67,22 @@ export function parseBiodyRow(row: Record<string, unknown>): BiodyImport {
     ? parseFloat((raw.FM / (tallaM * tallaM)).toFixed(3))
     : NaN;
 
+  // ASMI derivado — MMEM / (tallaM^2), igual que FMI.
+  // DECISION: se DERIVA, NO se lee la columna reportada por el equipo ("Indice de masa muscular
+  // esquelética des membres (ASMI)"), aunque existe en el export. Motivo: fidelidad al modelo de
+  // Gildardo, que deriva (ATLAS.html:5660/5734). Si el modelo cambiara a usar el valor reportado,
+  // ESTE es el punto de cambio. Un test ancla que el derivado coincide con el reportado
+  // (protocolo-fenotipo.golden.test.ts), guardando contra el bug de `cintura` (leer la columna
+  // equivocada). ASMI alimenta la clasificación de fenotipo (asmiLow), NO el motor núcleo: es
+  // opcional; si falta MMEM queda NaN y el clasificador lo trata como ausente.
+  const ASMI = tallaM > 0 && raw.MMEM != null
+    ? parseFloat((raw.MMEM / (tallaM * tallaM)).toFixed(3))
+    : NaN;
+
   const imp = {
     Re: raw.Re!, Ri: raw.Ri!, Rinf: raw.Rinf!, C: raw.C!,
     FM: raw.FM!, FFM: raw.FFM!, FFMI: raw.FFMI!, peso: raw.peso!, talla: raw.talla!,
-    FMI, raw,
+    FMI, ASMI, raw,
   };
   assertEngineInputs(imp);
   return imp;

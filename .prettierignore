@@ -1,0 +1,6 @@
+# Archivos con CONTENIDO VERBATIM de Gildardo, generados por script y anclados byte a byte por sus
+# DIFF tests. Prettier los reformatearía (indentación, comillas) y rompería la comparación byte a
+# byte, que es justo el candado. Regenerar con el script de extracción; no editar ni formatear.
+src/clinical-engine/fenotipos-mccb.ts
+src/tests/fixtures/clinical-engine/fenotipo-harness.mjs
+src/tests/fixtures/clinical-engine/protocolo-chain-harness.mjs
