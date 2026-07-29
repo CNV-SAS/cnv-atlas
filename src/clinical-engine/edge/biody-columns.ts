@@ -1,6 +1,11 @@
-// AUTO-GENERADO desde ATLAS_v7.html (función importarComposicion COMPLETA, 94 campos)
-// + validado contra export real BiodyConnect android v1.2.2 (Juan_esteban.xlsx): 94/94 columnas existen.
-// Cada 'header' es el NOMBRE EXACTO de columna del Biody Manager (espacios/tildes/Ω/² tal cual). NO tocar.
+// EXTRAIDO (una vez) de ATLAS_v7.html (función importarComposicion, 94 campos) y validado contra
+// export real BiodyConnect android v1.2.2 (Juan_esteban.xlsx): 94/94 columnas existen. NO hay script
+// generador en el repo: la "auto-generación" fue una extracción puntual de B8, así que hoy este
+// archivo se MANTIENE A MANO. Cada 'header' es el NOMBRE EXACTO de columna del Biody Manager
+// (espacios/tildes/Ω/² tal cual). NO tocar los headers salvo para corregir un mapeo VERIFICADO.
+//
+// EXCEPCION (2026-07-29): `cintura` se deja FUERA a propósito (ver el comentario en su lugar); el
+// port de los otros 93 campos sigue fiel a importarComposicion.
 export interface BiodyColumn { header: string; unit: string; required: boolean; }
 export const BIODY_COLUMNS: Record<string, BiodyColumn> = {
   peso: { header: "Peso kg", unit: "kg", required: true },
@@ -22,7 +27,18 @@ export const BIODY_COLUMNS: Record<string, BiodyColumn> = {
   Z500: { header: "Z500 Ohm", unit: "Ω", required: false },
   R50: { header: "Resistencia a 50khz Ohm", unit: "Ω", required: false },
   imc: { header: "Body Mass Index (BMI) measurementDetails.VALEURCALCULEEEXPORT kg/m²", unit: "kg/m²", required: false },
-  cintura: { header: "Patient risk monitoring Waist Size  measurementDetails.REFERENCEESTIMEEEXPORT cm", unit: "cm", required: false },
+  // `cintura` NO se mapea aquí a propósito (divergencia deliberada de importarComposicion).
+  // VERIFICADO: la función de Gildardo mapea cintura al UMBRAL de referencia OMS, no a la medida,
+  // idéntico en reference/ATLAS_v7.html:5617 y docs/entregas/gildardo-2026-07/ATLAS.html:5568:
+  //   cintura: nv(row['Patient risk monitoring Waist Size ... REFERENCEESTIMEEEXPORT cm'])  // = 102
+  // No es error nuestro de extracción: es su mapeo. En Atlas ningún cálculo consume cintura (ICC/ICT/
+  // IR se LEEN como columnas propias; ISCM y sarcopenia usan otros campos; RUTA_COND no es la vía
+  // autoritativa de rutas), así que la trampa es inerte y la quitamos para que nadie calcule un ratio
+  // desde el valor equivocado (102 igual para todo paciente). La circunferencia MEDIDA vive en
+  // modules/bis/services/header-map.ts (MEASURED_WAIST_HEADER = "Waist Size cm") y la usan el import
+  // (bloqueo de negocio) y buildComposition (Nivel V). El candado de que no reaparezca es el test
+  // BIODY_COLUMNS.cintura === undefined (composition-map.test.ts). ¿El mapeo de Gildardo es
+  // deliberado? -> consulta consolidada.
   icc: { header: "Ratio Altura/Cadera measurementDetails.VALEURCALCULEEEXPORT ", unit: "", required: false },
   ict: { header: "Ratio Cintura/Altura measurementDetails.VALEURCALCULEEEXPORT ", unit: "", required: false },
   FM: { header: "Masa grasa bruta measurementDetails.VALEURCALCULEEEXPORT kg", unit: "kg", required: true },
