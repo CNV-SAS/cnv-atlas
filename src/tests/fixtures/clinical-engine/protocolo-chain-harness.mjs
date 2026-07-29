@@ -20,5 +20,5 @@ export function chainVerbatim(ffmN, sexoM_pn, pesoN, tallaP, edadN, formulaEditP
       var choG    = Math.round(choKcal/4);
       var choPct  = kcalObj>0 ? Math.round(choKcal/kcalObj*100) : 0;
   // <<< FIN SLICE VERBATIM <<<
-  return { gebAuto, gebN, palN, getN, kcalObj, protGKg, fatPct, protG, protKcal, fatKcal, choKcal, choG, choPct };
+  return { gebAuto, gebN, palN, getN, kcalObj, protGKg, fatPct, protG, protKcal, fatKcal, fatG, choKcal, choG, choPct };
 }
