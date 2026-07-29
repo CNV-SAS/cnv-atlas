@@ -12,6 +12,8 @@
 
 En resumen: `ATLAS_v7.html` = de dónde salió lo congelado; `ATLAS.html` = el estado más nuevo, para lo que venga. Son dos archivos distintos con dos roles distintos.
 
+**AVISO CRÍTICO (2026-07-29): los DOCUMENTOS de Gildardo llaman "ATLAS_v7.html" al artefacto ACTUAL, que es NUESTRO `docs/entregas/gildardo-2026-07/ATLAS.html` (16.724 líneas), NO nuestro `reference/ATLAS_v7.html` (16.878, el viejo).** Su documento `Decisiones_ANI-BIS-E_2026-07-29` cita "ATLAS_v7.html" con números de línea unas veinte veces; TODAS esas líneas aplican al archivo de la entrega de julio (16.724 líneas), no al de 16.878. Santiago renombró la entrega a `ATLAS.html` para no colisionar con el `reference/ATLAS_v7.html` que ya existía. **Distinción rápida: por conteo de líneas** (16.724 = actual, el de Gildardo; 16.878 = viejo, el de B11). Riesgo si se confunde: leer el archivo equivocado con las líneas cayendo en contenido plausible pero distinto (familia del bug de cintura: dato correcto, fuente equivocada, sin error visible). Como `reference/` está gitignored (local, no versionado), ESTE aviso en INVENTARIO (commiteado) es la fuente de verdad de la desambiguación; NO se renombra `reference/ATLAS_v7.html` (renombrar es una acción local que no propaga por git, y dejaría stale la cita de los encabezados de frozen de B11, que apuntan a ese archivo como su byte-source real).
+
 ---
 
 ## 1. Qué es cada archivo
