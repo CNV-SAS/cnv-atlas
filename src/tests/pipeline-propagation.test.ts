@@ -110,7 +110,10 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     const report = (
       await db.select().from(schema.reports).where(eq(schema.reports.evaluationId, evaluationId))
     )[0];
-    return { indicators, diag, snapshot: report.snapshot as Snapshot };
+    const treatment = (
+      await db.select().from(schema.treatments).where(eq(schema.treatments.diagnosisId, diag.id))
+    )[0];
+    return { indicators, diag, snapshot: report.snapshot as Snapshot, treatment };
   }
 
   beforeAll(async () => {
@@ -171,7 +174,18 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     const res = await runClinicalPipeline({ evaluationId, actorId, actorEmail: "prop@cnv", ip: null });
     expect(res.ok).toBe(true);
 
-    const { indicators, diag, snapshot } = await readPersisted(evaluationId);
+    const { indicators, diag, snapshot, treatment } = await readPersisted(evaluationId);
+
+    // T2 A3: el protocolo sugerido quedo SELLADO en el tratamiento (INSERT, write-once), poblado y
+    // COHERENTE con lo que el orquestador produce en aislamiento (mismos valores que su golden para
+    // este fixture male 89/180): F5, Cunningham gebAuto 2004, pesoCalculo 76.625.
+    const proto = treatment.protocolSuggested;
+    expect(proto).not.toBeNull();
+    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-1.0.0");
+    expect(proto.fenotipo.id).toBe("F5");
+    expect(proto.calorico.formula).toBe("Cunningham");
+    expect(proto.calorico.gebAuto).toBe(2004);
+    expect(proto.pesoCalculo).toBeCloseTo(76.625, 3);
 
     // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 33 (numeracion de Gildardo).
     expect(snapshot.efrPhenotype.key).toBe("N_N_N_A");

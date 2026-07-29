@@ -14,12 +14,13 @@ export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-1.0.0";
 // que la decision de subir PROTOCOL_ENGINE_VERSION se tome con informacion, no por olvido. Por
 // defecto un cambio sube la version. NO editar estos hashes a mano sin leer el mensaje del test.
 //
-// EXENCION DE ARRANQUE, valida SOLO hasta el primer sellado. Mientras NINGUN protocol_suggested
-// exista en la base con esta version, actualizar el SHA sin subir la version es aceptable: no hay
-// registro que quede ambiguo. A PARTIR DEL PRIMER PROTOCOLO SELLADO, cualquier cambio en los cuatro
-// artefactos exige subir PROTOCOL_ENGINE_VERSION, SIN EXCEPCION: dos protocolos sellados con la
-// misma version tienen que haber sido producidos por el mismo codigo. Esta exencion no se
-// reinterpreta ni se reutiliza; se cierra cuando el pipeline selle el primer protocolo.
+// EXENCION DE ARRANQUE: CERRADA (2026-07-29, con el sellado del protocolo en el pipeline).
+// El pipeline ya sella protocol_suggested (pipeline-writer), asi que a partir de aqui YA NO aplica:
+// cualquier cambio en los cuatro artefactos exige subir PROTOCOL_ENGINE_VERSION, SIN EXCEPCION (dos
+// protocolos sellados con la misma version tienen que haber sido producidos por el mismo codigo).
+// Se conserva el registro de la exencion para que nadie la reinterprete: era valida SOLO mientras
+// ningun protocol_suggested existiera en la base con 1.0.0; se uso una vez (exponer `pal`, ver el
+// SHA de protocolo-calorico.ts abajo) y se cerro. No se reutiliza.
 export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   "frozen/atlas-protocolo.js": "396d7d9ccf50f48f26d953b50ca6048af08234ce417b42648703e6765082a12e",
   // SHA actualizado (2026-07-29) bajo la EXENCION DE ARRANQUE de arriba (1.0.0 aun sin sellar): se

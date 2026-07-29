@@ -1,6 +1,8 @@
 import "server-only";
 
-import { runEngine } from "@/clinical-engine";
+import * as Sentry from "@sentry/nextjs";
+
+import { computeProtocolo, runEngine, type ProtocoloSnapshot } from "@/clinical-engine";
 import { resolveRutasContent } from "@/clinical-engine/rutas-content";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
@@ -55,6 +57,30 @@ export async function runClinicalPipeline(
 
   const output = runEngine(engineInput);
 
+  // Protocolo sugerido (T2 A3): PURO, se computa aqui (fuera de la transaccion) y se SELLA en
+  // writePipeline. Un fallo del protocolo NO degrada el diagnostico: se sella protocol_suggested =
+  // null. Se elige NULL, no un objeto de error, porque el trigger permite null -> valor: el backfill
+  // sigue posible tras arreglar el bug (un objeto de error, congelado, cerraria esa via). El
+  // profesional lo maneja en T2b (mensaje explicito). En la practica no se alcanza: peso/talla son
+  // ENGINE_REQUIRED. RASTRO del fallo, para que uno sistematico no sea invisible: (1) audit log
+  // protocol.compute_failed, durable y queryable en BD (lo escribe writePipeline inline, regla 8), y
+  // (2) Sentry, la ALERTA en prod (un console.error en Vercel rota y nadie lo mira). El motivo es de
+  // nivel motor (nombres de campo/rango), no PII, y Sentry ademas scrubbea.
+  let protocolSuggested: ProtocoloSnapshot | null = null;
+  let protocolFailMotive: string | null = null;
+  try {
+    protocolSuggested = computeProtocolo(engineInput, output);
+    if (!protocolSuggested) {
+      protocolFailMotive = "computeProtocolo devolvio null (sin composicion minima: peso/talla)";
+    }
+  } catch (e) {
+    protocolFailMotive = e instanceof Error ? e.message : String(e);
+    Sentry.captureException(e, {
+      tags: { area: "protocol-compute", evaluationId: input.evaluationId },
+    });
+    console.error(`[pipeline] computeProtocolo fallo (evaluacion ${input.evaluationId}):`, e);
+  }
+
   // (ii) Contenido clinico del estado EFR, leido del registry por BANDAS al diagnosticar, para
   // CONGELARLO en el snapshot: la vista de resultados no re-deriva evidencia del registry vivo.
   // Es REQUERIDO: un estado con bandas validas siempre existe en el registry; si faltara, es un
@@ -83,6 +109,8 @@ export async function runClinicalPipeline(
       efrContent,
       validityCaveats,
       rutasContent,
+      protocolSuggested,
+      protocolFailMotive,
       surveyVersionId: inputs.surveyVersionId,
       modelVersionId: model.id,
       indicatorDefIdByCode: model.indicatorDefIdByCode,

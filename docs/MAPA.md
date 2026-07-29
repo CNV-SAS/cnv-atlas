@@ -2,8 +2,8 @@
 
 Mapa de una pantalla para orientarse en diez segundos. No es plan ni backlog: si algo tiene detalle, vive en `LANZAMIENTO.md` (gates), `BACKLOG.md` (diferido) o `docs/MVP.md` (histórico); aquí solo se nombra. Se actualiza al cerrar cada subtarea.
 
-> ## 📍 AHORA: Hito 1, Tratamiento T2, subtarea A3 (costura del motor calórico) — casi cerrada.
-> A1 y A2 cerrados. A3 avanzado: `motorProtocolo` en `frozen/` verbatim (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), clasificador de fenotipo F1-F12 (A3.4), candado de versión del conjunto de protocolo, y el **orquestador puro** que encadena los tres motores + su golden de mapeo. **Quedan para cerrar T2a: el sellado en el pipeline** (escribe `protocol_suggested` al diagnosticar; ahí se cierra la exención de arranque del candado de versión) **y `approveProtocol`** (sella el efectivo, chequeo explícito de asignación, profesional-solo).
+> ## 📍 AHORA: Hito 1, Tratamiento T2, subtarea A3 (costura del motor calórico) — falta el último paso.
+> A1 y A2 cerrados. A3 casi cerrado: `motorProtocolo` frozen (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), fenotipo F1-F12 (A3.4), candado de versión, el **orquestador puro** con golden de mapeo, y el **sellado en el pipeline** (escribe `protocol_suggested` al diagnosticar; cerró la exención del candado de versión; el fallo va a null + audit `protocol.compute_failed` + Sentry, sin degradar el diagnóstico). **Falta solo `approveProtocol`** para cerrar T2a: sella el conjunto EFECTIVO (`protocol_approved`) al aprobar, con chequeo explícito de asignación (profesional dueño del paciente), profesional-solo (admin NO), y registrando LAS DOS versiones (la del motor al aprobar y la del sugerido del que partió).
 
 ---
 
@@ -50,7 +50,7 @@ El tratamiento organizado por la jerarquía de composición corporal, en niveles
 |---|---|---|
 | **A1** | Campo `profession` (lista cerrada) que gobierna la subpestaña por especialidad | ✅ hecho, comiteado (sin push) |
 | **A2** | Migración de `treatments` (sellado sugerido + aprobado, ajustes, aprobación) + writer/policy/trigger | ✅ hecho (schema + writer + policy + trigger) |
-| **A3** | Costura calórica: `motorProtocolo` frozen (A3.1) + cadena TS con GOLDEN 1 (A3.2) + fenotipo F1-F12 (A3.4) + candado de versión + orquestador puro con golden de mapeo | ✅ hecho; faltan sellado en pipeline + `approveProtocol` |
+| **A3** | Costura calórica: `motorProtocolo` frozen (A3.1) + cadena TS con GOLDEN 1 (A3.2) + fenotipo F1-F12 (A3.4) + candado de versión + orquestador puro con golden + sellado en el pipeline (E2E) | ✅ hecho; falta solo `approveProtocol` |
 | **A4** | Registrar hallazgos E/F como Q12/Q13 en la bitácora | ✅ hecho |
 
 **T2b (superficie):**

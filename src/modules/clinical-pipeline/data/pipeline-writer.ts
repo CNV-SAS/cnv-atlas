@@ -6,6 +6,7 @@ import {
   type EngineIndicators,
   type EngineOutput,
   INDICATOR_KEY_TO_CODE,
+  type ProtocoloSnapshot,
 } from "@/clinical-engine";
 import { db } from "@/db";
 import {
@@ -56,6 +57,14 @@ export type PipelineWriteInput = {
   // acto clinico como el fenotipo. Si Gildardo cambia una ruta despues, el diagnostico de hoy sigue
   // mostrando lo prescrito. [] si no hay rutas activas.
   rutasContent: RutaContent[];
+  // Protocolo sugerido (T2 A3), salida del orquestador. null si el orquestador fallo o no pudo
+  // computar: se sella null (no un objeto de error, para no cerrar el backfill) y se audita el
+  // fallo con protocolFailMotive. Constelacion: el jsonb ya trae protocol_engine_version; el resto
+  // se hereda del diagnostico via diagnosis_id.
+  protocolSuggested: ProtocoloSnapshot | null;
+  // Motivo del fallo del protocolo (nivel motor, sin PII), o null si se computo bien. Si no es null,
+  // se registra protocol.compute_failed INLINE (regla 8) para que un fallo sistematico sea buscable.
+  protocolFailMotive: string | null;
   surveyVersionId: string;
   modelVersionId: string;
   indicatorDefIdByCode: Record<string, string>;
@@ -141,10 +150,16 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       ip: input.ip,
     });
 
-    // 3. treatment + una guia dietaria con el resumen del protocolo (stub).
+    // 3. treatment + una guia dietaria con el resumen del protocolo (stub). protocol_suggested se
+    //    SELLA aqui, en el INSERT (write-once). El trigger de inmutabilidad es BEFORE UPDATE OR
+    //    DELETE, no INSERT, asi que sellar en el INSERT no choca con el.
     const [treatment] = await tx
       .insert(treatments)
-      .values({ diagnosisId: diagnosis.id, createdBy: input.actorId })
+      .values({
+        diagnosisId: diagnosis.id,
+        createdBy: input.actorId,
+        protocolSuggested: input.protocolSuggested,
+      })
       .returning({ id: treatments.id });
     if (output.resumenClinico) {
       await tx.insert(treatmentDietGuidelines).values({
@@ -158,9 +173,22 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: treatment.id,
-      payload: { diagnosis_id: diagnosis.id },
+      payload: { diagnosis_id: diagnosis.id, protocol_sealed: input.protocolSuggested != null },
       ip: input.ip,
     });
+    // Si el orquestador no produjo protocolo, se sello null; se deja rastro BUSCABLE inline (regla 8)
+    // para que un fallo sistematico no sea invisible ("la pestana no muestra nada"). Sin PII.
+    if (input.protocolFailMotive) {
+      await recordAudit(tx, {
+        event: "protocol.compute_failed",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "treatment",
+        entityId: treatment.id,
+        payload: { diagnosis_id: diagnosis.id, evaluation_id: input.evaluationId, motivo: input.protocolFailMotive },
+        ip: input.ip,
+      });
+    }
 
     // 4. report draft con el snapshot inmutable (evidencia, principio 4). Ademas del
     //    EngineOutput se congela efrContent (contenido clinico del estado EFR del registry),
