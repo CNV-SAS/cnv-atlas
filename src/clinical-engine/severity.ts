@@ -7,7 +7,9 @@
 // elegir el token clinico. Por eso se lee el tono, no el valor exacto: verde -> optimo (0),
 // ambar/naranja -> alerta (2), rojo -> critico (3), gris/desaturado -> sin color (null).
 
-import * as core from "./frozen/engine.core.js";
+// Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
+// derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
+import * as core from "./frozen/engine.core.derived.js";
 import type { EngineIndicators, EngineOutput } from "./types";
 
 export function colorSev(c: unknown): number | null {

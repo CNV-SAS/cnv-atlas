@@ -5,7 +5,9 @@
 //
 // TS puro; consume la ciencia congelada (frozen/) via el adaptador de tipos.
 
-import * as core from "./frozen/engine.core.js";
+// Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
+// derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
+import * as core from "./frozen/engine.core.derived.js";
 import { bandToLetter, efrStateNumber, INDICATOR_CODES } from "./types";
 
 export type IndicatorDef = { code: string; name: string; unit: string | null };

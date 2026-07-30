@@ -4,3 +4,7 @@
 src/clinical-engine/fenotipos-mccb.ts
 src/tests/fixtures/clinical-engine/fenotipo-harness.mjs
 src/tests/fixtures/clinical-engine/protocolo-chain-harness.mjs
+# Derivado del motor congelado: engine.core.js verbatim + 1 linea de export aditiva (mecanismo de
+# archivo derivado). Byte-identico al original salvo esa linea, anclado por DIFF C. Regenerar con
+# scripts/gen-derived-core.mjs; no formatear ni editar.
+src/clinical-engine/frozen/engine.core.derived.js

@@ -13,7 +13,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Clase } from "./frozen/engine.core";
-import * as core from "./frozen/engine.core.js";
+// Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
+// derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
+import * as core from "./frozen/engine.core.derived.js";
 import type { DFIResult } from "./frozen/engine.dfi";
 import * as dfi from "./frozen/engine.dfi.js";
 import * as ix from "./frozen/engine.indices.js";

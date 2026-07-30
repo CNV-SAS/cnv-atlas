@@ -7,7 +7,9 @@
 // silencioso). Cuando se porte la encuesta real, el DFI se enciende sin tocar el motor.
 
 import { analizarDesdeBiody, analizarDFI, calcLE8 } from "./analysis";
-import * as core from "./frozen/engine.core.js";
+// Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
+// derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
+import * as core from "./frozen/engine.core.derived.js";
 import {
   bandToLetter,
   efrStateNumber,
