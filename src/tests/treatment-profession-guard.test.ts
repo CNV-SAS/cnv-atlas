@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Guard interino de ambito de practica (T2b, 2026-07-30) EN AISLAMIENTO. Ninguna escritura del
-// tratamiento procede si el actor no tiene profesion configurada (profession = null): es la unica
-// defensa a NIVEL DE ACCION (las server actions se invocan sin pasar por la UI, ocultar la
+// tratamiento procede si el PROFESIONAL no tiene profesion configurada (profession = null): es la
+// unica defensa a NIVEL DE ACCION (las server actions se invocan sin pasar por la UI, ocultar la
 // subpestana no basta). Por operacion, positivo y negativo: profesion configurada PASA el guard
 // (llega al writer o al siguiente gate); null FALLA (forbidden) y NO toca el writer.
 //
+// El guard aplica SOLO al profesional: un actor sin perfil profesional (isProfessional=false, p.
+// ej. admin) NO cae aqui (su permiso lo gobierna la policy de la action; gobernanza aparte). Se
+// prueba explicitamente.
+//
 // Alcance deliberado: solo se distingue null de no-null. La matriz "que profesion puede aprobar
-// que protocolo" es gobernanza clinica (Gildardo, BACKLOG), fuera de este guard y de este test.
+// que protocolo" es gobernanza clinica (Gildardo Q17, BACKLOG), fuera de este guard y este test.
 //
 // approveProtocol tiene su propio caso null en treatment-approve-authz.test.ts (ya arma el
 // SUGGESTED real); aqui se cubren las otras cinco escrituras.
@@ -59,6 +63,11 @@ import {
 const profOf = vi.mocked(getActorProfession);
 const readProtocol = vi.mocked(getTreatmentProtocol);
 
+// Formas de actor que devuelve el reader: profesional con/sin profesion, y no-profesional (admin).
+const PRO = (profession: string) => ({ isProfessional: true, profession });
+const PRO_NULL = { isProfessional: true, profession: null };
+const NOT_PRO = { isProfessional: false, profession: null };
+
 const actor = { actorId: "user-x", actorEmail: "x@cnv", ip: null };
 // El servicio solo lee treatmentId + diagnosisConfirmed en estas ops; el resto no se toca.
 const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as TreatmentProtocol;
@@ -87,53 +96,62 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     readProtocol.mockResolvedValue(CONFIRMED);
   });
 
-  it("saveProtocol: null -> forbidden y no escribe; configurada -> escribe", async () => {
-    profOf.mockResolvedValueOnce(null);
+  it("saveProtocol: profesional sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
     let r = await saveProtocol(SAVE_INPUT, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(writeProtocol).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce("nutricionista");
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
     r = await saveProtocol(SAVE_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeProtocol).toHaveBeenCalledTimes(1);
   });
 
-  it("saveAdjustments: null -> forbidden y no escribe; configurada -> escribe", async () => {
-    profOf.mockResolvedValueOnce(null);
+  it("saveProtocol: un NO-profesional (admin, sin perfil) NO cae en el guard y escribe", async () => {
+    // El guard es de ambito de practica del profesional; admin queda gobernado por su policy, no
+    // por este guard (no le cambia lo que ya podia hacer via canManageTreatment).
+    profOf.mockResolvedValueOnce(NOT_PRO);
+    const r = await saveProtocol(SAVE_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeProtocol).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveAdjustments: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
     let r = await saveAdjustments(ADJ_INPUT, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(writeAdjustments).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce("medico");
+    profOf.mockResolvedValueOnce(PRO("medico"));
     r = await saveAdjustments(ADJ_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeAdjustments).toHaveBeenCalledTimes(1);
   });
 
-  it("acknowledgeRestrictions: null -> forbidden y no escribe; configurada -> escribe", async () => {
-    profOf.mockResolvedValueOnce(null);
+  it("acknowledgeRestrictions: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
     let r = await acknowledgeRestrictions({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(writeAcknowledge).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce("psicologo");
+    profOf.mockResolvedValueOnce(PRO("psicologo"));
     r = await acknowledgeRestrictions({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(true);
     expect(writeAcknowledge).toHaveBeenCalledTimes(1);
   });
 
-  it("addNote: null -> forbidden y no escribe; configurada -> escribe", async () => {
-    profOf.mockResolvedValueOnce(null);
+  it("addNote: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
     let r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(addTreatmentNote).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce("deportologo");
+    profOf.mockResolvedValueOnce(PRO("deportologo"));
     r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
     expect(r.ok).toBe(true);
     expect(addTreatmentNote).toHaveBeenCalledTimes(1);
@@ -154,13 +172,13 @@ describe("guard de profesion: generateMenu", () => {
     } as unknown as Awaited<ReturnType<typeof getEvaluationResults>>);
   });
 
-  it("null -> forbidden; configurada -> pasa el guard (frena en confirmado), sin persistir sugerencia", async () => {
-    profOf.mockResolvedValueOnce(null);
+  it("sin profesion -> forbidden; con profesion -> pasa el guard (frena en confirmado), sin persistir sugerencia", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
     let r = await generateMenu("E1", actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
 
-    profOf.mockResolvedValueOnce("nutricionista");
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
     r = await generateMenu("E1", actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("conflict");

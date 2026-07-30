@@ -73,7 +73,7 @@ describe("approveProtocol: control de asignacion (aislado)", () => {
     vi.clearAllMocks();
     reader.mockResolvedValue(treatment);
     writer.mockResolvedValue(undefined);
-    professionOf.mockResolvedValue("nutricionista"); // profesion configurada por defecto
+    professionOf.mockResolvedValue({ isProfessional: true, profession: "nutricionista" }); // por defecto
   });
 
   it("el profesional ASIGNADO aprueba (y se sella)", async () => {
@@ -85,7 +85,7 @@ describe("approveProtocol: control de asignacion (aislado)", () => {
 
   it("el profesional ASIGNADO pero SIN profesion configurada falla (forbidden) y NO sella nada", async () => {
     profileOf.mockResolvedValue(ASSIGNED);
-    professionOf.mockResolvedValue(null);
+    professionOf.mockResolvedValue({ isProfessional: true, profession: null });
     const r = await approveProtocol({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
