@@ -199,11 +199,14 @@ export async function approveProtocol(
   return ok(undefined);
 }
 
+// Nota clinica del tratamiento: es DOCUMENTACION, no prescripcion. A proposito NO lleva el guard de
+// profesion (a diferencia de las otras cinco escrituras): un profesional asignado al paciente puede
+// documentar una observacion aunque su profesion no este configurada; bloquearlo por un campo
+// administrativo vacio seria un gate de mas. El guard de profesion cubre solo los actos que crean o
+// producen la prescripcion, no la documentacion clinica.
 export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireConfiguredProfession(actor.actorId);
-  if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnostico debe estar confirmado antes de agregar notas."));
   }

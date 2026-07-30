@@ -144,15 +144,13 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     expect(writeAcknowledge).toHaveBeenCalledTimes(1);
   });
 
-  it("addNote: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(addTreatmentNote).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("deportologo"));
-    r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
+  it("addNote NO esta gateada por profesion (es documentacion, no prescripcion): sin profesion igual escribe", async () => {
+    // Decision explicita: la nota clinica es documentacion, no un acto de prescripcion. Un
+    // profesional sin profesion configurada igual puede documentar; el guard cubre solo las cinco
+    // escrituras que crean o producen la prescripcion. addNote NO llama a getActorProfession, por eso
+    // aqui no se encola ningun valor (encolarlo contaminaria la cola "once" de otros tests). Si esto
+    // cambia a forbidden, se rompio la decision (se le colo el guard a la nota).
+    const r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
     expect(r.ok).toBe(true);
     expect(addTreatmentNote).toHaveBeenCalledTimes(1);
   });
