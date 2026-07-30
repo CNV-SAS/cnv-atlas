@@ -193,7 +193,7 @@ Esto resuelve los **pedidos 1 y 2** completos (la 6ª card de abordaje por profe
 
 ### 6c. Qué NO se resuelve exponiendo (sigue requiriendo a Gildardo)
 
-- **Pedido 4 (función de rangos lo/hi):** los clasificadores tienen los umbrales como **literales embebidos** dentro de cada función (`v < 27`, `v < 5.7`...), no como datos expuestos. Sacar lo/hi por indicador×sexo exige **escribir una función nueva** que devuelva esos rangos. Eso es autoría/ciencia, NO un export aditivo. Se para y vuelve a Gildardo.
+- **Pedido 4 (función de rangos lo/hi): DESBLOQUEADO (2026-07-30).** Los clasificadores tienen los umbrales como **literales embebidos** dentro de cada función (`v < 27`, `v < 5.7`...), no como datos expuestos. Se creía autoría/ciencia; Gildardo lo reclasificó (ronda 1, punto 9): "transcribir los valores de las líneas 12828 a 12878 a una función consultable por indicador y sexo, sin cambiar un solo valor. Es transcripción, no reinterpretación". Con el archivo nuevo (`gildardo-2026-07-30/ATLAS_v7.html`, identidad PASÓ) la fuente de transcripción existe (las filas `R(...)` con sus rangos literales de la tabla Nivel V, líneas 12828-12878). YA se puede portar como función de rangos, verbatim, con su regla de los rangos de un solo límite (no se inventa el extremo faltante). Es lo que llena las columnas Referencia/Δ de la tabla de indicadores (hoy "-" hardcodeado). NO confundir con la CLASIFICACIÓN (columna aparte, sale de los clasificadores `cXXX`).
 - **`dAECMCA`:** no está en el frozen (es render-only inline en el HTML). No hay nada que exportar; exponerlo exigiría autoría. Vuelve a Gildardo / decisión.
 - **Pedido 3 (patrón alimentario):** ya llegó como módulo (`atlas-encuesta-patron.js`); su port es otro asunto, no el mecanismo de custodia.
 

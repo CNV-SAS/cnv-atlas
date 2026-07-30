@@ -266,6 +266,28 @@
 
 ---
 
+## Q18 · ¿Quién implementa las decisiones que cambian la ciencia congelada? (proceso, C1-C13)
+
+- **Fecha:** 2026-07-30 (verificación del archivo nuevo, ronda 2). **Estado:** ABIERTA, bloquea el re-port de los cambios que tocan la ciencia.
+- **Origen:** el documento `Decisiones_ANI-BIS-E_2026-07-29` anuncia decisiones ("se corrige la cintura", "se parte cáncer en dos"), pero verificado en su archivo nuevo (`gildardo-2026-07-30/ATLAS_v7.html`), varias NO están aplicadas: la cintura sigue leyendo el umbral `REFERENCEESTIMEE` (línea 5600), y el cáncer en remisión sigue disparando el hipercalórico por substring (línea 14025). Su doc es de DECISIONES, no de cambios aplicados; lo leímos como trabajo terminado. Regla de proceso registrada en `ARCHITECTURE.md` (un doc de decisiones no es evidencia de que el artefacto cambió).
+
+**Para Gildardo (breve):** en tu documento hay decisiones que cambian la ciencia (el campo de cintura, que la remisión no active el hipercalórico) y otras que son contenido o presentación. Para las que cambian la ciencia: ¿las aplicas tú en tu archivo y nos mandas la versión nueva, o nos autorizas a implementarlas de nuestro lado a partir de tu especificación escrita? Preguntamos porque nuestra regla es no editar tu ciencia, y necesitamos saber cuál es el camino para las trece (C1-C13).
+
+**Para su CC:** la regla dura 16 prohíbe que Atlas edite el `.js` congelado. Cambios como "remisión no activa hipercalórico" son lógica de la ciencia (motor por condición, `~14025`), no contenido; implementarlos de nuestro lado sería editar su modelo. Además, **la enumeración C1-C13 NO está en el repo** (solo se referencia en el doc que le enviamos); sin ella no podemos verificar los trece en el archivo, solo los que menciona el texto. Necesitamos: (a) la enumeración C1-C13 con sus números de línea, y (b) por cada uno, si ya está en el archivo (lo portamos, verificando la línea) o es decisión pendiente (define quién la implementa).
+
+---
+
+## Q19 · El "Fenotipo estructural" a mostrar: hay TRES clasificaciones del mismo paciente
+
+- **Fecha:** 2026-07-30 (T2b, cruce con la petición de fenotipo de la ronda 2). **Estado:** ABIERTA; toca registro clínico sellado, no solo display.
+- **Contexto verificado:** Atlas tiene tres clasificaciones, dos de ellas del MISMO eje: `structural` (STRUCT_LABELS, 9 estados FFMI×FMI, de su Excel "EFR Salidas", `engine.core.js:740`), el fenotipo MCCB (F1-F12, FFMI×FMI, de `FENOTIPOS_MCCB`, A3.4) y `frSector` (IFC×IRC, 9 sectores, el funcional). Su HTML nuevo usa AMBAS taxonomías del eje estructural: el MCCB (F1-F12) en la tabla del Nivel IV (`~12837`, "Fenotipo MCCB") y los 9 STRUCT en la composición del estado EFR (5 ocurrencias). El `structural` de 9 NO es display libre: **sella `diagnoses.phenotype_id`** (`pipeline-writer.ts:130`), alimenta el prompt del menú (`generate-menu.ts:80`) y el PDF. Su petición de fenotipo (ronda 2) pide mostrar "estructural (F7, normopeso sarcopénico) + funcional + sector EFR", donde F7 es el MCCB, no el STRUCT de 9.
+
+**Para Gildardo (breve):** en el diagnóstico tenemos dos formas del fenotipo estructural (FFMI×FMI): una de 9 estados (de tu Excel EFR Salidas) que usamos internamente para el mapa EFR, y la MCCB de 12 (F1-F12) que pides mostrar (F7 normopeso sarcopénico). Para la pantalla del profesional, ¿mostramos la MCCB (F1-F12) como "Fenotipo estructural" y dejamos la de 9 como dato interno del mapa EFR, o quieres las dos visibles? Queremos no confundir mostrando tres cosas del mismo paciente.
+
+**Para su CC:** `structural` (9-STRUCT) es insumo sellado (`phenotype_id`), no solo pantalla; cambiar cuál se muestra es display, pero cambiar cuál se SELLA tocaría registros clínicos y nomenclatura de código. La MCCB (F1-F12) hoy vive en el snapshot del protocolo (`ProtocoloSnapshot.fenotipo`, A3.4), no en el snapshot del diagnóstico. Según su respuesta: si solo cambia el display, lo resolvemos nosotros; si cambia qué se sella, es su decisión de taxonomía.
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
