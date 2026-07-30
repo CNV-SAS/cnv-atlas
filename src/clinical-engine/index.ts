@@ -19,6 +19,9 @@ export {
 export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";
 // Severidad de riesgo por indicador (recomputada del snapshot) para la capa de color de BRAND.
 export { indicatorSeverities } from "./severity";
+// Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se COMPUTA en tiempo de vista
+// (clave EFR sellada + profesion del que mira), no se sella. Ver el criterio en abordaje.ts.
+export { abordajeProfesional } from "./abordaje";
 // Normalizador canonico de sexo (M/F, fail-loud): el MISMO borde que usa el motor. La UI lo reusa
 // para no comparar sexo crudo (Biody exporta "Male", el motor clasifica con "M/Masculino").
 export { normalizeSexo } from "./edge/normalize";
