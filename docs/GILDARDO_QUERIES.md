@@ -199,7 +199,8 @@
 ## Q12 · La fila TOTAL del apartado E (plan por grupos) no cuadra con el objetivo calórico
 
 - **Fecha:** 2026-07-27 (planeación T2; apartados E/F del Nivel IV, fuera de alcance de T2, se registra el hallazgo)
-- **Estado:** ABIERTO
+- **Enviada:** `docs/entregas/GILDARDO_2026-07_PENDIENTES.md` punto 1.
+- **Estado:** CERRADA (Gildardo respondió, `Decisiones_ANI-BIS-E_2026-07-29`): la casilla TOTAL muestra la **suma real** de las filas de alimentos; el **objetivo calórico va aparte y rotulado**, no dentro de la fila total. No es defecto de la matriz; es cómo se presenta. Se aplica en el bloque Plan alimentario (no T2). **No re-preguntar en round 3.**
 
 **Para Gildardo (breve):** en el plan por grupos de alimentos (apartado E del Nivel IV), las nueve columnas de porciones suman correcto, verificadas una a una. Pero la casilla de kcal de la fila TOTAL muestra 2976 (el objetivo calórico exacto), mientras que las filas de alimentos suman 3134 kcal (947+358+1151+154+524). O sea, en la fila rotulada "total", nueve celdas son sumas reales y la décima es una meta. Implica que la matriz de porciones no reconcilia con el objetivo: se pasa por 158 kcal (5.3%). ¿Es una limitación aceptada de trabajar con porciones enteras, o la matriz debería reconciliar con el objetivo? ¿Qué debe mostrar esa celda?
 
@@ -210,7 +211,7 @@
 ## Q13 · Los porcentajes por tiempo de comida suman 95%, no 100%, al desactivar un tiempo
 
 - **Fecha:** 2026-07-27
-- **Estado:** ABIERTO
+- **Estado:** RETIRADA (verificación propia, no se envió a Gildardo). El código inline del prototipo SÍ normaliza los porcentajes proporcionalmente entre los tiempos activos; la captura que la motivó era un estado viejo del prototipo, no un defecto del modelo. Se retiró a propósito del documento enviado (quedó en la sección de "acciones que ya tomamos"). **No re-preguntar.**
 
 **Para Gildardo (breve):** en el reparto por tiempos de comida, con Merienda desactivada, los porcentajes muestran Desayuno 25 + Medias onces 10 + Almuerzo 30 + Algo 10 + Cena 20 = 95%. El encabezado dice "las porciones se redistribuyen automáticamente", pero el 5% de Merienda no se reasignó. Al desactivar un tiempo de comida, ¿los porcentajes deben renormalizarse a 100% entre los tiempos activos, o el porcentaje del tiempo desactivado se pierde a propósito?
 
@@ -236,7 +237,8 @@
 ## Q15 · Divergencia de cálculo en el patrón alimentario (encuesta congelada)
 
 - **Fecha:** 2026-07-27 (auditoría de fidelidad de los módulos de la entrega, V1)
-- **Estado:** ABIERTO
+- **Enviada:** `docs/entregas/GILDARDO_2026-07_PENDIENTES.md` punto 2.
+- **Estado:** CERRADA (Gildardo respondió, `Decisiones_ANI-BIS-E_2026-07-29`): **mandan los quince grupos** (el cálculo del módulo, con carnes rojas como neutro, es el correcto). Es el cambio **C9**. Consecuencia: la encuesta congelada necesita **versión nueva** (agregar el grupo carnes rojas + el neutro `[8,9,10,15]`), junto con el cambio de cáncer (dos cambios de encuesta que van juntos). Trabajo NUESTRO pendiente (versión de encuesta), no pregunta. **No re-preguntar en round 3.**
 
 **Para Gildardo (breve):** el patrón alimentario, la clasificación de la dieta del paciente en protectora / moderada / de riesgo, se calcula de dos formas distintas entre sus artefactos, y dan puntajes distintos. El módulo `atlas-encuesta-patron.js` suma el bonus de "neutros" incluyendo un grupo extra (carnes rojas) que la versión dentro de `ATLAS.html` no incluye. No es diferencia de contenido, es el puntaje de calidad. Y la encuesta está congelada de nuestro lado. ¿Cuál de los dos cálculos es el correcto?
 
@@ -270,6 +272,8 @@
 
 - **Fecha:** 2026-07-30 (verificación del archivo nuevo, ronda 2). **Estado:** ABIERTA, bloquea el re-port de los cambios que tocan la ciencia.
 - **Origen:** el documento `Decisiones_ANI-BIS-E_2026-07-29` anuncia decisiones ("se corrige la cintura", "se parte cáncer en dos"), pero verificado en su archivo nuevo (`gildardo-2026-07-30/ATLAS_v7.html`), varias NO están aplicadas: la cintura sigue leyendo el umbral `REFERENCEESTIMEE` (línea 5600), y el cáncer en remisión sigue disparando el hipercalórico por substring (línea 14025). Su doc es de DECISIONES, no de cambios aplicados; lo leímos como trabajo terminado. Regla de proceso registrada en `ARCHITECTURE.md` (un doc de decisiones no es evidencia de que el artefacto cambió).
+- **CONTRADICCIÓN CONCRETA con evidencia (2026-07-30):** en su respuesta (`GILDARDO_RESPUESTA_2026-07-30`, punto 3.3 y "Mi archivo actual") escribe explícitamente **"la corrección del campo de cintura va incluida en ese envío"**. No está: la línea 5600 del archivo que mandó sigue leyendo `REFERENCEESTIMEE`. Dice que sí, el archivo dice que no.
+- **POSIBILIDAD ABIERTA (a preguntar): nos envió una versión ANTERIOR.** La prueba de identidad verifica las líneas que cita su **documento del 29** (14077/14088/6529/12828) y pasó, pero la corrección de cintura la anunció el **30**. El archivo puede ser su estado del 29 (pasa identidad, trae C1-C13) y NO ser su última versión. **DISTINCIÓN QUE HABÍAMOS CONFUNDIDO: la prueba de identidad confirma que el archivo corresponde al documento del 29, NO que sea su versión más reciente.** Si es así, todo lo que portemos de este archivo estaría desactualizado en un día. Hay que pedirle que confirme que este es su estado ACTUAL (con la cintura corregida), o que reenvíe.
 
 **Para Gildardo (breve):** en tu documento hay decisiones que cambian la ciencia (el campo de cintura, que la remisión no active el hipercalórico) y otras que son contenido o presentación. Para las que cambian la ciencia: ¿las aplicas tú en tu archivo y nos mandas la versión nueva, o nos autorizas a implementarlas de nuestro lado a partir de tu especificación escrita? Preguntamos porque nuestra regla es no editar tu ciencia, y necesitamos saber cuál es el camino para las trece (C1-C13).
 
