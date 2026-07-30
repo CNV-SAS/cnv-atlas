@@ -103,16 +103,57 @@ function ContentCard({
   );
 }
 
+// Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se computa en tiempo de vista
+// (ver clinical-engine/abordaje.ts). Lo computa la pagina (tiene la profesion del actor + la clave
+// sellada) y lo pasa ya resuelto; esta card solo lo renderiza.
+export type AbordajeCardData =
+  | { kind: "text"; professionLabel: string; text: string } // profesional con profesion configurada
+  | { kind: "no-profession" } // profesional sin profesion configurada
+  | { kind: "not-professional" }; // no es profesional tratante (p. ej. admin)
+
+function AbordajeCard({ abordaje }: { abordaje: AbordajeCardData }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Abordaje por profesión
+      </span>
+      {abordaje.kind === "text" ? (
+        <>
+          {/* Rotulo de la profesion que el sistema cree que es la tuya: hace visible una mala
+              configuracion (un deportologo mal puesto como medico veria orientacion medica). */}
+          <span className="text-xs text-muted-foreground">Abordaje para: {abordaje.professionLabel}</span>
+          <p className="text-sm text-foreground">{abordaje.text}</p>
+          <span className="text-xs italic text-muted-foreground">
+            Orientación para ti; no se imprime en el reporte del paciente.
+          </span>
+        </>
+      ) : abordaje.kind === "no-profession" ? (
+        <span className="text-sm text-muted-foreground">
+          El abordaje se adapta a tu especialidad. Contacta al administrador para que configure tu
+          profesión y poder verlo.
+        </span>
+      ) : (
+        <span className="text-sm text-muted-foreground">
+          El abordaje por profesión es orientación para el profesional tratante.
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function EvaluationResults({
   results,
   composition,
   efrStates,
+  abordaje,
 }: {
   results: Results;
   composition?: ReactNode;
   // Contenido de referencia de los 81 estados para explorar la Diana (V2). Vacio si no hay
   // diagnostico/registry: la exploracion queda deshabilitada.
   efrStates: Record<number, EfrStateRef>;
+  // Abordaje por profesion ya resuelto por la pagina (tiempo de vista).
+  abordaje: AbordajeCardData;
 }) {
   // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
   // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
@@ -312,7 +353,7 @@ export function EvaluationResults({
               label="Nutracéuticos sugeridos"
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
             />
-            <ContentCard label="Abordaje por profesión" value={null} pending />
+            <AbordajeCard abordaje={abordaje} />
           </div>
         </CardContent>
       </Card>

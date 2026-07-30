@@ -10,7 +10,11 @@ import {
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
-import { EvaluationResults } from "@/modules/diagnoses/components/evaluation-results";
+import { abordajeProfesional } from "@/clinical-engine";
+import {
+  type AbordajeCardData,
+  EvaluationResults,
+} from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
@@ -176,6 +180,33 @@ export default async function ResultadosEvaluacionPage({
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
 
+  // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se computa en tiempo de vista
+  // (clinical-engine/abordaje.ts), no se sella. Depende de la profesion del que mira. Solo se computa
+  // el texto cuando el snapshot es compatible (si no, EvaluationResults ya retorna el aviso de
+  // "formato anterior" antes de la card).
+  const PROFESSION_LABEL: Record<string, string> = {
+    medico: "Médico",
+    psicologo: "Psicólogo",
+    deportologo: "Deportólogo",
+    nutricionista: "Nutricionista",
+  };
+  let abordaje: AbordajeCardData;
+  if (!actorProfession.isProfessional) {
+    abordaje = { kind: "not-professional" };
+  } else if (!actorProfession.profession) {
+    abordaje = { kind: "no-profession" };
+  } else {
+    const key = results.compatible ? results.snapshot.efrPhenotype.key : null;
+    const text = key ? abordajeProfesional(key, actorProfession.profession) : null;
+    abordaje = text
+      ? {
+          kind: "text",
+          professionLabel: PROFESSION_LABEL[actorProfession.profession] ?? actorProfession.profession,
+          text,
+        }
+      : { kind: "no-profession" }; // clave malformada (defensivo; no ocurre en snapshots compatibles)
+  }
+
   // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
   // protocolo. Seguimiento recibe la comparacion contra la evaluacion previa. El pulido de
@@ -234,6 +265,7 @@ export default async function ResultadosEvaluacionPage({
           <EvaluationResults
             results={results}
             efrStates={efrStates}
+            abordaje={abordaje}
             composition={
               composition ? (
                 <CompositionSection
