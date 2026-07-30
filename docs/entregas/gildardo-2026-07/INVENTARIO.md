@@ -18,6 +18,18 @@ En resumen: `ATLAS_v7.html` = de dónde salió lo congelado; `ATLAS.html` = el e
 
 ---
 
+## 0ter. Divergencias Atlas ⇄ archivo de Gildardo (VERIFICAR ANTES DE CUALQUIER PORT)
+
+Cada cambio que implementamos de nuestro lado (opción B: su instrucción escrita, no su archivo) crea una **divergencia**: Atlas calcula distinto de lo que dice su HTML. Quien porte algo de su HTML sin saberlo puede **reintroducir el bug**. Esta lista es corta hoy y va a crecer; es **verificación obligatoria antes de portar** cualquier región relacionada. Formato: qué hacemos distinto, la línea suya, y por qué.
+
+| Tema | En el archivo de Gildardo (`gildardo-2026-07-30/ATLAS_v7.html`) | En Atlas | Por qué |
+|---|---|---|---|
+| **Cintura** | línea 5600: lee el umbral `REFERENCEESTIMEE` como circunferencia | `edge/biody-columns.ts`: la entrada de cintura ELIMINADA; la medida vive en `header-map.ts` (`"Waist Size cm"`) | Su mapeo apunta al umbral (102, igual para todos), no a la medida; él dijo que lo corregiría pero su archivo aún no lo trae (Q18). NO reponer la entrada al portar: reintroduce el bug. |
+
+(Se agregan filas conforme se implementen cáncer-remisión, y cualquiera de los C1-C13 que apliquemos de nuestro lado. Cada uno con su línea y su motivo.)
+
+---
+
 ## 0bis. Tabla de resolución de archivos de Gildardo
 
 Para cualquier referencia de línea de un documento de Gildardo, esta tabla dice EN QUÉ ARCHIVO resolverla. El nombre no desambigua (todos se llaman `ATLAS_v7.html` para él); el **conteo de líneas** es la huella digital rápida. Convención (ARCHITECTURE regla 17): cada archivo nuevo entra en su carpeta `docs/entregas/gildardo-YYYY-MM-DD/` con la fecha del día, conservando el nombre original, y agrega una fila aquí.

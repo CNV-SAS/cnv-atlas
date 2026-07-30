@@ -25,7 +25,8 @@ Dos ejes, no una lista: **qué rol** (profesional → admin → soporte → dire
 - Bug de auto-envío de la encuesta (D8). Flujo de corrección post-diagnóstico.
 - Gate del generador de menú vs restricciones del modelo.
 - Módulo de documentos del Integrante. Dashboards. Notificaciones. Admin mínimo para operar la revisión.
-- Diseño gráfico de toda la app: **al final del Hito 1**, sobre todas las pantallas juntas (no pulir sueltas sobre la marcha).
+- **Pulido de fidelidad en CUATRO bloques** (decisión de Santiago, 2026-07-30): encuesta, evaluación, diagnóstico y tratamiento, cada uno con **comparación crítica contra el HTML de Gildardo** (fidelidad al modelo, no estética de marca). Van **después de terminar Tratamiento** y **antes** del diseño gráfico. Reemplazan la idea vieja de "un pulido general antes del diseño": ahora son cuatro, cada uno con su criterio propio por superficie.
+- Diseño gráfico de toda la app: **al final del Hito 1**, sobre todas las pantallas juntas (no pulir sueltas sobre la marcha), DESPUÉS de los cuatro bloques de pulido de fidelidad.
 - Revisión técnica interna de Gildardo del flujo, antes de pulir el diseño.
 
 ## Los cinco bloques de Tratamiento
