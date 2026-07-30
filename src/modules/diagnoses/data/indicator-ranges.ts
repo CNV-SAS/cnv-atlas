@@ -30,12 +30,18 @@ export function indicatorRange(
   sexM: boolean,
 ): IndicatorRange | null {
   switch (code) {
+    // IFC, IRC y FMI: la referencia de la tabla del HTML sale de los clasificadores de DISPLAY
+    // (dIFC/dIRC/dFMI), que NO coinciden con los clasificadores de CIENCIA (cIFC/cIRC/cFMI) que usa
+    // nuestro motor: cIFC es sexo-especifico (M 4.12-6.68) vs dIFC generico (3.5-6.0); cIRC opera en
+    // escala cruda (M 1.68-2.11) vs dIRC en v×10 (2.0-2.8); cFMI normal 3-6 vs dFMI 6-9. Mostrar esa
+    // referencia junto a nuestro valor+clasificacion (que son cXXX) da una lectura contradictoria
+    // (el color y la etiqueta dicen una cosa, la referencia otra). Se deja "-" hasta que Gildardo
+    // confirme cual clasificador manda en la tabla de diagnostico (GILDARDO_QUERIES Q20; toca tambien
+    // la CLASIFICACION, que se sella). AF/IR SI se muestran porque cAF==dAF y cIR==dIR (verificado).
     case "IFC":
-      return ind.ifc != null ? { reference: "3.5–6.0", delta: f(ind.ifc - 3.5, 2) } : null;
     case "IRC":
-      // El HTML muestra IRC ×10 (rango y delta en esa escala). Nuestra columna de VALOR muestra el
-      // IRC crudo -> inconsistencia de escala, reportada (no se resuelve inventando otro rango).
-      return ind.irc != null ? { reference: "2.0–2.8 (×10)", delta: f(ind.irc * 10 - 2.0, 3) } : null;
+    case "FMI":
+      return null;
     case "PABU":
       return ind.pabu != null ? { reference: "φ = 1.618", delta: f(ind.pabu - 1.618, 4) } : null;
     case "ICA-BIS":
@@ -54,10 +60,6 @@ export function indicatorRange(
       // falta sellar edad en el snapshot (solo diagnosticos nuevos) o pasar la fecha de nacimiento;
       // ver BACKLOG.
       return ind.eb != null ? { reference: "—", delta: ind.iae != null ? f(ind.iae, 1) : null } : null;
-    case "FMI":
-      return ind.FMI != null
-        ? { reference: sexM ? "6–9" : "9–13", delta: f(ind.FMI - (sexM ? 9 : 13), 2) }
-        : null;
     case "FFMI":
       return ind.FFMI != null
         ? { reference: sexM ? "17–25" : "15–23", delta: f(ind.FFMI - (sexM ? 17 : 15), 2) }

@@ -31,8 +31,10 @@ describe("indicatorRange (transcripcion verbatim del HTML)", () => {
     expect(indicatorRange("IR", ind, true)).toEqual({ reference: "<0.78", delta: "0.018" });
   });
 
-  it("IFC 5,3651: delta contra el borde inferior 3.5", () => {
-    expect(indicatorRange("IFC", ind, true)?.delta).toBe("1.87");
+  it("IFC/IRC/FMI: null (su referencia del HTML sale de dXXX, inconsistente con nuestro cXXX; Q20)", () => {
+    expect(indicatorRange("IFC", ind, true)).toBeNull();
+    expect(indicatorRange("IRC", ind, true)).toBeNull();
+    expect(indicatorRange("FMI", ind, true)).toBeNull();
   });
 
   it("ICA-BIS: referencia de punto 'φ = 1.618', delta = el valor mismo", () => {

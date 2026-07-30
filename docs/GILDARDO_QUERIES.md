@@ -292,6 +292,17 @@
 
 ---
 
+## Q20 · Dos juegos de clasificadores en el HTML (ciencia `cXXX` vs display `dXXX`): ¿cuál manda en la tabla de diagnóstico?
+
+- **Fecha:** 2026-07-30 (al portar los rangos de la tabla de indicadores). **Estado:** ABIERTA. **Toca la CLASIFICACIÓN, que se SELLA** (no solo display), así que es prioritaria.
+- **Contexto verificado:** el HTML tiene DOS clasificadores por indicador para varios de los 12: los de CIENCIA en `engine.core.js` (`cIFC`, `cIRC`, `cFMI`, …), que es lo que Atlas usa (motor congelado, B11), y los de DISPLAY en la capa de render del prototipo (`dIFC`:12740, `dIRC`:12741, `dFMI`:12730, …), que es lo que su TABLA de diagnóstico muestra. **No coinciden:** `cIFC` es sexo-específico (M 4.12–6.68) vs `dIFC` genérico (3.5–6.0); `cIRC` opera en escala cruda (M 1.68–2.11) vs `dIRC` en `v×10` (2.0–2.8); `cFMI` normal 3–6 vs `dFMI` 6–9. Para el donante golden, `cIRC` da "Riesgo moderado" pero `dIRC` daría "Alto riesgo celular". **Para AF/IR SÍ coinciden** (`cAF==dAF`, `cIR==dIR`, verificado). Detectado porque la referencia de la tabla (que transcribimos del mundo `dXXX`) contradecía nuestro valor+clasificación (que son `cXXX`): un IRC 1.82 con referencia "2.0–2.8 ×10" se leía "muy por debajo" cuando la clasificación decía alerta. Arreglo inmediato: se dejó "-" en la referencia de IFC/IRC/FMI (los inconsistentes) para no mostrar una lectura invertida; AF/IR y los demás consistentes sí muestran rango.
+
+**Para Gildardo (breve):** en tu HTML hay dos formas de clasificar algunos indicadores (IFC, IRC, FMI): una en el motor (por sexo) y otra en la tabla que ve el profesional (sin sexo, y en el caso de IRC en otra escala). Dan resultados distintos: para un paciente, el IRC sale "riesgo moderado" por una y "alto riesgo" por la otra. Atlas usa la del motor. ¿Cuál debe ver el profesional en la tabla de diagnóstico, la del motor (por sexo) o la de la tabla de tu prototipo? Importa porque esa clasificación se guarda de forma permanente con el diagnóstico.
+
+**Para su CC:** el motor de Atlas clasifica con `cXXX` (frozen, sexo-específico) y sella `classifications` en el snapshot. La tabla del prototipo usa `dXXX` (display). Difieren en IFC/IRC/FMI (cortes y, en IRC, escala ×10). Si manda `dXXX`, hay que decidir cómo se porta sin editar el frozen (¿exponer `dXXX` por el mecanismo derivado? ¿o son equivalentes clínicos y `cXXX` es el correcto?), y si cambia lo que se sella, entra un campo de versión de clasificación (familia de C2b / `protocol_engine_version`). Mientras tanto Atlas sigue con `cXXX` y la referencia de esos tres queda en "-".
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
