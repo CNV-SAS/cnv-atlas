@@ -48,8 +48,9 @@ export function TreatmentPanel({
       <CardContent className="flex flex-col gap-6">
         {locked ? (
           <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-            El protocolo se habilita cuando el diagnostico esta confirmado. Aprueba el reporte
-            para confirmarlo y luego edita el tratamiento.
+            El protocolo esta bloqueado porque el diagnostico aun no esta confirmado. Confirmalo en la
+            pestana Diagnostico (el boton de confirmar esta al final de esa pagina); al confirmarlo se
+            habilita editar y aprobar el tratamiento.
           </p>
         ) : null}
         <ProtocolForm evaluationId={evaluationId} protocol={protocol} locked={locked} />

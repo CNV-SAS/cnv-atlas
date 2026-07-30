@@ -8,6 +8,7 @@ import { type EngineIndicators, indicatorSeverities } from "@/clinical-engine";
 import { DetailsSection } from "./details-section";
 import { MapsSection } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
+import { ConfirmDiagnosisPanel } from "./confirm-diagnosis-panel";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { SEV_LABEL } from "../severity-labels";
 
@@ -380,6 +381,15 @@ export function EvaluationResults({
       <p className="text-xs text-muted-foreground">
         Motor {versions.engine} · modelo {versions.model} · reglas {versions.rules}
       </p>
+
+      {/* B-0: confirmacion del diagnostico. Al FINAL, despues de todo el contenido (decision 1):
+          confirmar obliga a haber pasado por lo que se confirma. */}
+      <ConfirmDiagnosisPanel
+        evaluationId={results.evaluationId}
+        confirmed={results.confirmed}
+        confirmedAt={results.confirmedAt}
+        confirmedByName={results.confirmedByName}
+      />
     </div>
   );
 }

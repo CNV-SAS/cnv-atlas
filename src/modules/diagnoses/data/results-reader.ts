@@ -53,8 +53,10 @@ export type EvaluationResults = {
   // Contenido de las rutas de atencion activas, congelado en el snapshot (T1). [] si no hay o si el
   // snapshot es previo a este bloque.
   rutasContent: RutaContent[];
+  evaluationId: string; // para la superficie de confirmacion (B-0)
   confirmed: boolean;
   confirmedAt: string | null;
+  confirmedByName: string | null; // full_name del profesional que confirmo (quien, decision 6)
   reportStatus: ReportStatus;
   patientName: string;
   documentLabel: string;
@@ -131,8 +133,10 @@ export async function getEvaluationResults(
       efrState: null,
       validityCaveats: [],
       rutasContent: [],
+      evaluationId,
       confirmed: false,
       confirmedAt: null,
+      confirmedByName: null,
       reportStatus: dispatch.status,
       patientName: dispatch.patientName,
       documentLabel: dispatch.documentLabel,
@@ -160,12 +164,24 @@ export async function getEvaluationResults(
   const supabase = await createSupabaseServerClient();
   const { data: diag, error: dErr } = await supabase
     .from("diagnoses")
-    .select("model_version_id, confirmed_at")
+    .select("model_version_id, confirmed_at, confirmed_by")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (dErr) throw new Error(`results-reader: diagnoses: ${dErr.message}`);
+
+  // Nombre del profesional que confirmo (quien, B-0). Solo si esta confirmado.
+  let confirmedByName: string | null = null;
+  if (diag?.confirmed_by) {
+    const { data: prof, error: pErr } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", diag.confirmed_by)
+      .maybeSingle();
+    if (pErr) throw new Error(`results-reader: profiles: ${pErr.message}`);
+    confirmedByName = prof?.full_name ?? null;
+  }
 
   const indicatorNames: Record<string, string> = {};
   if (diag) {
@@ -184,8 +200,10 @@ export async function getEvaluationResults(
     efrState,
     validityCaveats,
     rutasContent,
+    evaluationId,
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,
+    confirmedByName,
     reportStatus: dispatch.status,
     patientName: dispatch.patientName,
     documentLabel: dispatch.documentLabel,
