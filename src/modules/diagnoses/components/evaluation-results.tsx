@@ -10,6 +10,7 @@ import { MapsSection } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
 import { ConfirmDiagnosisPanel } from "./confirm-diagnosis-panel";
 import type { EfrStateRef } from "../data/efr-states-reader";
+import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -192,6 +193,7 @@ export function EvaluationResults({
   const { snapshot, efrState } = results;
   const { indicators, classifications, efrPhenotype, structural, frSector, dfi, versions } =
     snapshot;
+  const sexM = snapshot.sexo === "M"; // para los rangos de referencia por sexo (indicator-ranges)
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
   const sevByCode = indicatorSeverities(snapshot);
   // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
@@ -385,8 +387,12 @@ export function EvaluationResults({
                     <td className="py-2 pr-4 text-right tabular-nums text-foreground">
                       {fmtNum(indicators[key])}
                     </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">-</td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
+                      {indicatorRange(code, indicators, sexM)?.reference ?? "-"}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
+                      {indicatorRange(code, indicators, sexM)?.delta ?? "-"}
+                    </td>
                     <td className="py-2 text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
                         {sevByCode[code] != null ? (
@@ -403,12 +409,10 @@ export function EvaluationResults({
               </tbody>
             </table>
           </div>
-          {/* Referencia y Δ se muestran vacias con aviso a nivel de seccion (no por fila): los
-              rangos son cortes internos del motor congelado, aun no expuestos como dato
-              (ver docs/FROZEN_EXPORTS_REQUEST.md). Se pueblan cuando Gildardo los entregue. */}
-          <p className="text-xs text-muted-foreground">
-            Rango de referencia y desviación (Δ) por indicador: disponibles próximamente.
-          </p>
+          {/* Referencia y Δ: transcritas verbatim del HTML de Gildardo (indicator-ranges.ts). El Δ es
+              la distancia al borde clinicamente relevante que su codigo elige por indicador (no "el
+              mas cercano"; ver ARCHITECTURE). Los de un solo limite (ISCM, IEHH, IR) muestran su
+              umbral tal cual (p. ej. "<0.78"), no un rango con extremo inventado. */}
         </div>
       </DetailsSection>
 

@@ -40,5 +40,10 @@ export function indicatorSeverities(output: EngineOutput): Record<string, number
   if (i.iscm != null) sev.ISCM = colorSev(core.cISCM(i.iscm).c);
   if (i.iehh != null) sev.IEHH = colorSev(core.cIEHH(i.iehh).c);
   if (i.iae != null) sev.IAE = colorSev(core.cIAE(i.iae).c);
+  // AF/IR: sus clasificadores tambien existen (cAF/cIR); antes faltaban aqui como faltaban en
+  // engine.ts. Se computa al mostrar (desde el valor sellado), asi que el color aparece en TODOS los
+  // diagnosticos, viejos y nuevos (a diferencia de la etiqueta de clasificacion, que se sella).
+  if (i.AF > 0) sev.AF = colorSev(core.cAF(i.AF, sexo).c);
+  if (i.IR > 0) sev.IR = colorSev(core.cIR(i.IR, sexo).c);
   return sev;
 }
