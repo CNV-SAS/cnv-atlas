@@ -12,6 +12,18 @@
 >
 > **Actualización (2026-07-24): llegó la entrega.** Vive en `docs/entregas/gildardo-2026-07/` (inventario completo en `INVENTARIO.md`). Dos correcciones sobre lo que se esperaba: (1) **NO hay frozen delta EB-BIS**: el frozen vigente ya es v5 (verificado verbatim, ver Q8). (2) La entrega **no es** el paquete de custodia de `FROZEN_EXPORTS_REQUEST.md`, sino una re-extracción más amplia en 7 módulos ES; las 6 funciones (`efrProf`+clasificadores) igual se pueden exponer con el mecanismo del archivo derivado porque **ya existen en nuestro frozen `engine.core.js`** (ver `INVENTARIO.md` punto 6). Los pedidos 4 (función de rangos) y `dAECMCA` NO llegaron y siguen requiriendo a Gildardo.
 
+> **Segunda ronda de Gildardo (documento `Decisiones_ANI-BIS-E_2026-07-29`), procesada 2026-07-30.** Responde los once puntos. Se le envió a Gildardo el documento `docs/entregas/GILDARDO_2026-07-30_SEGUNDA_RONDA.md` (pedido del archivo + queries abiertas).
+>
+> **HALLAZGO QUE MANDA — escenario C (verificación de líneas): NO tenemos el archivo que su documento describe.** Su doc cita "ATLAS_v7.html" con ~20 números de línea; verificadas cinco (14024, 14077, 14088, 12828, 6516) contra nuestra entrega `docs/entregas/gildardo-2026-07/ATLAS.html`, TODAS caen sobre contenido distinto (UI de seguimiento, Vitacellebis, remisiones, setup React, scoring LE8), con desfases **inconsistentes** (no es corrimiento uniforme), y hay un cambio de **contenido**: él describe GEB por **Mifflin** en 14088; nuestro archivo tiene **Cunningham** en 14124. Es su copia ACTUAL (posterior a la entrega del 2026-07-24, con sus cambios C aplicados), que no tenemos. **RE-PORT EN PAUSA** hasta recibir su archivo: portar por número de línea contra otra revisión aterriza en contenido equivocado sin error visible (familia del bug de cintura, a escala de trece cambios).
+>
+> **PRUEBA DE IDENTIDAD del archivo que pedimos** (se corre apenas llegue): que las líneas **14077, 14088, 6529 y 12828** caigan sobre lo que su documento describe (motor nutricional, GEB, interruptor del índice contextual, rangos de referencia).
+>
+> **Reaseguro:** nuestra entrega calcula Cunningham (14124) y REPRODUCE la captura del Nivel IV (`1946 = 500+22×65.73`, verificado). A3.2 portó fielmente lo que la captura y el profesional ven HOY; el Mifflin es su decisión FUTURA (Q14). **Brecha de GOLDEN 1 CERRADA:** la FFM real es 65.73 → 1946 exacto (el 65.75→1947 era redondeo de display).
+>
+> **Cierres de esta ronda** (resueltos por su DOCUMENTO, no por su código; NO dependen del archivo): **Q3** (activa el mapeo del índice contextual, cambio C1 — port pendiente de su archivo); **Q8** (confirma AUTORÍA y VIGENCIA del modelo, NO validación empírica de la calibración del término contextual, que él declara provisional — dos cosas distintas); **Q11** (el DFI es el ÚNICO origen de R1-R6; `RUTA_COND` es referencia; confirma T1); **Q14** (ni inline ni módulo: un TERCERO — base = peso meta del módulo de antropometría, estrategia POR CONDICIÓN clínica [la de fenotipo desaparece, C7], fórmula abierta como P1); **Q16** (autoridad por pieza + los cuatro motores se resuelven con la estrategia por condición). Los pedidos de autoría de **rangos** (líneas 12828-12878) y **dAECMCA** (AEC L / MCA kg, 3 decimales, cortes <0,45 / 0,45-0,55 / >0,55) dejaron de ser autoría: son transcripción nuestra (port pendiente de su archivo).
+>
+> **P0 — edad biológica (DECISIÓN registrada, pendiente de confirmación de Gildardo):** es una CUARTA opción (no una de sus tres), que aprovecha que Atlas tiene dos superficies (profesional y paciente), distinción que su prototipo no hace pero el proyecto ya usa ("solo referencia profesional, no se imprime", apartado D del Nivel IV): (1) la cifra ABSOLUTA solo en la superficie del PROFESIONAL, con nota de calibración provisional, NUNCA en el reporte del paciente; (2) el reporte del paciente muestra solo la TRAYECTORIA, desde la segunda medición; (3) siempre se calcula y se guarda, con la versión de calibración registrada (su C2b); (4) el IAE sigue la misma regla (depende de la cifra absoluta).
+
 ---
 
 ## Q1 · ISCM: FMI omitido en el `index.ts` de conveniencia
@@ -209,7 +221,7 @@
 ## Q14 · Dos modelos calóricos de Gildardo sin conciliar: inline de ATLAS.html (Cunningham) vs `atlas-motores-tratamiento.js` (Mifflin)
 
 - **Fecha:** 2026-07-27 (arranque de T2, port del modelo calórico)
-- **Estado:** ABIERTO. **BLOQUEA el primer paciente real** (gate del Hito 2, `LANZAMIENTO.md`).
+- **Estado:** CONFIRMADO (Gildardo, `Decisiones_ANI-BIS-E_2026-07-29`; ver el banner de la segunda ronda arriba). No eligió entre los dos: definió un TERCERO (base = peso meta, estrategia por condición, fórmula abierta P1). El re-port queda EN PAUSA hasta recibir su archivo actual (escenario C). Lo portado en A3.2 (Cunningham) es fiel a la captura/entrega actual; se rehace la estrategia (por condición) y las entradas (peso meta) cuando llegue su archivo.
 
 **Para Gildardo (breve):** hay dos formas distintas de calcular las calorías y la proteína que se le prescriben a un paciente, ambas suyas, y para un mismo paciente dan resultados distintos.
 - Una vive inline en `ATLAS.html` (es la que genera la pantalla del Nivel IV que ve el profesional): calcula el gasto basal con Cunningham (500 + 22 × masa magra) cuando hay masa magra disponible, y elige la estrategia calórica según el fenotipo.
@@ -235,7 +247,7 @@
 ## Q16 · Ambigüedad de versión de la entrega 2026-07: la autoridad es por pieza, no global
 
 - **Fecha:** 2026-07-27 (auditoría de fidelidad V1)
-- **Estado:** ABIERTO
+- **Estado:** CONFIRMADO (Gildardo, `Decisiones_ANI-BIS-E_2026-07-29`; ver el banner de la segunda ronda arriba). La autoridad ES por pieza, no global; y la segunda ronda agregó una vuelta de tuerca: su documento cita líneas de un archivo que NO es nuestra entrega (escenario C), reforzando que ningún nombre ("ATLAS_v7.html") identifica un único artefacto. Pendiente su archivo actual + confirmación pieza por pieza. La lección de proceso (portar por número de línea exige el artefacto que citan) queda en `ARCHITECTURE.md`.
 
 **Para Gildardo (breve):** los siete módulos de la entrega dicen "Extraído de ATLAS_v7.html", pero el `ATLAS.html` que también entregó es un archivo distinto, más nuevo en unas cosas y más viejo en otras. Hay contenido (el resumen clínico y la lista de intercambio de alimentos de ~350 ítems) que está en los módulos pero no aparece en ese `ATLAS.html`. No hay un artefacto único que sea "el más nuevo" para todo: para el modelo calórico manda el HTML, para la lista de intercambio manda el módulo. ¿Cuál artefacto representa su modelo vigente, y puede confirmarlo pieza por pieza (índices, patrón alimentario, DFI, resumen clínico, lista de intercambio, menú)?
 
@@ -247,8 +259,8 @@
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
 
-**Punto de aplicación (acuerdo fijo, igual que el de los hashes de commit al cerrar bloque):** en el resumen de cierre de cualquier bloque se responden dos preguntas explícitas, aunque la respuesta sea "ninguno":
-1. ¿Apareció algo que dependa de una decisión de Gildardo? Entra a `GILDARDO_QUERIES.md` con fecha, **antes** de cerrar el bloque.
-2. ¿Apareció algo que condicione un bloque futuro? Entra a `BACKLOG.md` con fecha, **antes** de cerrar el bloque.
+**Punto de aplicación (acuerdo endurecido 2026-07-30): el registro se hace AL CERRAR CADA SUBTAREA, no al cerrar el bloque.** La regla de registrar existía hace veinte turnos y no se cumplió: se acumuló un lote doc-only de veinte turnos sin escribir, y varias queries envejecieron (las respuestas de Gildardo cambiaron algunas antes de que se escribieran). Cerrar por bloque deja la ventana demasiado grande. Al cerrar cada SUBTAREA se responden dos preguntas explícitas, aunque la respuesta sea "ninguno":
+1. ¿Apareció algo que dependa de una decisión de Gildardo? Entra a `GILDARDO_QUERIES.md` con fecha, **antes** de cerrar la subtarea.
+2. ¿Apareció algo que condicione un bloque futuro? Entra a `BACKLOG.md` con fecha, **antes** de cerrar la subtarea.
 
 No queda en el chat. El chat es contexto perecedero; estos dos documentos no lo son.
