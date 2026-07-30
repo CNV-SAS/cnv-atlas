@@ -16,6 +16,10 @@ export function cFFMI(v: number, s: Sexo): Clase & { k: number };
 export function cISCM(v: number): Clase;
 export function cIEHH(v: number): Clase;
 export function cIAE(v: number): Clase;
+// cAF/cIR: ya estaban en module.exports del .js (clasificadores de angulo de fase y radio de
+// impedancia), solo faltaba declararlos aqui. NO son parte de los 6 exports del mecanismo derivado.
+export function cAF(v: number, sexo: Sexo): Clase;
+export function cIR(v: number, sexo: Sexo): Clase;
 
 export function kl(k: number | string): string;
 export function getDX(ifcK: number, ircK: number, ffmiK: number, fmiK: number): DXResult;

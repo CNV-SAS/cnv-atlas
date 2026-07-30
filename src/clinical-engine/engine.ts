@@ -82,8 +82,12 @@ export function runEngine(input: EngineInput): EngineOutput {
     IR: typeof rawIR === "number" ? rawIR : 0,
   };
 
-  // Clasificaciones por codigo (las que el clasificador congelado produce). ICA-BIS, EB,
-  // AF, IR no tienen clasificador aqui: quedan null.
+  // Clasificaciones por codigo. AF e IR SI se clasifican: sus clasificadores cAF/cIR existen en el
+  // frozen y ahora estan expuestos (mecanismo de archivo derivado); antes quedaban null solo porque
+  // no se llamaban (port incompleto, no exclusion deliberada). Verificado que cAF/cIR del frozen ==
+  // los clasificadores del HTML (cortes y etiquetas identicos; cAF == dAF de la tabla). Es display
+  // (tabla + composicion), no toca DFI/rutas/severidad. ICA-BIS y EB no tienen clasificador en el
+  // frozen (no hay cICA/cEB): quedan null.
   const classifications: Record<string, IndicatorClass> = {
     IFC: { label: a.clases.IFC.l, k: a.clases.IFC.k },
     IRC: { label: a.clases.IRC.l, k: a.clases.IRC.k },
@@ -95,8 +99,8 @@ export function runEngine(input: EngineInput): EngineOutput {
     IAE: a.clases.IAE ? { label: a.clases.IAE.l } : null,
     "ICA-BIS": null,
     EB: null,
-    AF: null,
-    IR: null,
+    AF: indicators.AF > 0 ? { label: core.cAF(indicators.AF, sexo).l } : null,
+    IR: indicators.IR > 0 ? { label: core.cIR(indicators.IR, sexo).l } : null,
   };
 
   // DFI (autoritativo). Completo con encuesta; degradado sin ella (marcado explicito).
