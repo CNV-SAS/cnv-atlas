@@ -6,6 +6,7 @@ import { err, ok, type Result } from "@/core/errors/result";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
+import { requireConfiguredProfession } from "./require-profession";
 import {
   acknowledgeRestrictions as writeAcknowledge,
   addTreatmentNote,
@@ -36,6 +37,10 @@ export async function saveProtocol(
 ): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  // Guard interino de ambito de practica: sin profesion configurada no se escribe (ver
+  // require-profession.ts). Va tras el not_found (RLS) para no filtrar existencia.
+  const prof = await requireConfiguredProfession(actor.actorId);
+  if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(
       appError(
@@ -70,6 +75,8 @@ export async function saveAdjustments(
 ): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireConfiguredProfession(actor.actorId);
+  if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(
       appError("conflict", "El diagnostico debe estar confirmado antes de ajustar el protocolo."),
@@ -100,6 +107,8 @@ export async function acknowledgeRestrictions(
 ): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireConfiguredProfession(actor.actorId);
+  if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnostico debe estar confirmado."));
   }
@@ -134,6 +143,10 @@ export async function approveProtocol(
   if (!professionalId || professionalId !== t.evaluationProfessionalId) {
     return err(appError("forbidden", "No estas asignado a este paciente."));
   }
+  // Guard interino de ambito de practica: sin profesion configurada no se prescribe (aprobar es
+  // el acto mas cargado). Va tras la asignacion para no filtrar existencia (ver require-profession.ts).
+  const prof = await requireConfiguredProfession(actor.actorId);
+  if (!prof.ok) return err(prof.error);
   if (t.status !== "draft") {
     return err(appError("conflict", "El protocolo ya fue aprobado."));
   }
@@ -189,6 +202,8 @@ export async function approveProtocol(
 export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireConfiguredProfession(actor.actorId);
+  if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnostico debe estar confirmado antes de agregar notas."));
   }

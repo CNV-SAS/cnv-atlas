@@ -15,6 +15,9 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
 vi.mock("@/modules/payments/data/payments-repository", () => ({
   getProfessionalProfileIdByUser: vi.fn(),
 }));
+vi.mock("@/modules/treatment/data/actor-profession-reader", () => ({
+  getActorProfession: vi.fn(),
+}));
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   writeApproveProtocol: vi.fn(),
   saveAdjustments: vi.fn(),
@@ -28,6 +31,7 @@ import { computeProtocolo, runEngine } from "@/clinical-engine";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { buildEngineInput } from "@/modules/clinical-pipeline/services/build-engine-input";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import type { TreatmentForApproval } from "@/modules/treatment/data/treatment-reader";
 import { getTreatmentForApproval } from "@/modules/treatment/data/treatment-reader";
 import { writeApproveProtocol } from "@/modules/treatment/data/treatment-writer";
@@ -37,6 +41,7 @@ import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 
 const reader = vi.mocked(getTreatmentForApproval);
 const profileOf = vi.mocked(getProfessionalProfileIdByUser);
+const professionOf = vi.mocked(getActorProfession);
 const writer = vi.mocked(writeApproveProtocol);
 
 // SUGGESTED real (F5 del fixture), para que el camino feliz recompute el efectivo de verdad.
@@ -68,6 +73,7 @@ describe("approveProtocol: control de asignacion (aislado)", () => {
     vi.clearAllMocks();
     reader.mockResolvedValue(treatment);
     writer.mockResolvedValue(undefined);
+    professionOf.mockResolvedValue("nutricionista"); // profesion configurada por defecto
   });
 
   it("el profesional ASIGNADO aprueba (y se sella)", async () => {
@@ -75,6 +81,15 @@ describe("approveProtocol: control de asignacion (aislado)", () => {
     const r = await approveProtocol({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(true);
     expect(writer).toHaveBeenCalledTimes(1);
+  });
+
+  it("el profesional ASIGNADO pero SIN profesion configurada falla (forbidden) y NO sella nada", async () => {
+    profileOf.mockResolvedValue(ASSIGNED);
+    professionOf.mockResolvedValue(null);
+    const r = await approveProtocol({ evaluationId: "E1" }, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writer).not.toHaveBeenCalled();
   });
 
   it("un profesional NO asignado falla (forbidden) y NO sella nada", async () => {

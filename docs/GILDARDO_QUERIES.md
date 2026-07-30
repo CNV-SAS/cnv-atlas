@@ -255,6 +255,17 @@
 
 ---
 
+## Q17 · ¿Qué profesiones pueden aprobar el protocolo nutricional del Nivel IV?
+
+- **Fecha:** 2026-07-30 (T2b B1)
+- **Estado:** ABIERTA (gobernanza clínica; entra a la consulta consolidada cuando Gildardo responda la ronda actual). Ligada a [[Q9]] (abordaje por profesión) y al item de gobernanza de `BACKLOG.md`.
+
+**Para Gildardo (breve):** en Atlas cada profesional tiene su especialidad (médico, psicólogo, deportólogo, nutricionista). El protocolo del Nivel IV es nutricional (calorías, proteína, macros). ¿Quién puede aprobarlo, es decir firmarlo como prescripción? ¿Solo el nutricionista, o también el médico (que puede prescribir nutrición)? Un psicólogo suponemos que no. Necesitamos la regla por profesión para no dejar que cualquier profesión lo apruebe, ni bloquear a quien sí debe. La misma pregunta se repetirá para los otros protocolos (médico, ejercicio, psicológico) cuando lleguen sus motores.
+
+**Para su CC:** hoy los gates de las escrituras de tratamiento son rol (`professional`) + asignación, sin mirar `profession`; un guard interino (`treatment/services/require-profession.ts`) rechaza solo `profession = null`. La matriz profesión→acto (qué profesión aprueba/edita qué protocolo) es criterio clínico, no de código; no se inventa. Cuando llegue, se implementa extendiendo el guard o las policies. Es el mismo eje que Q9 y que el sistema multi-rol real (bloque aparte).
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
