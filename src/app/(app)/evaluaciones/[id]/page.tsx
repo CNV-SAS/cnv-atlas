@@ -34,7 +34,8 @@ import { getFollowupComparison } from "@/modules/followups/data/comparison-reade
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
-import { TreatmentPanel } from "@/modules/treatment/components/treatment-panel";
+import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 
 export const metadata = { title: "Resultados - Atlas" };
@@ -153,6 +154,7 @@ export default async function ResultadosEvaluacionPage({
     entryConsent,
     entrySurvey,
     entryReadonly,
+    actorProfession,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -168,6 +170,8 @@ export default async function ResultadosEvaluacionPage({
     getSurveyAnswersForEvaluation(id),
     // Condiciones BIS selladas en solo lectura (la captura ya no es editable tras el diagnostico).
     getBisConditionsReadonly(id),
+    // Perfil profesional del actor (B1): decide que seccion de tratamiento por profesion ve.
+    getActorProfession(user.id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -201,11 +205,11 @@ export default async function ResultadosEvaluacionPage({
         <div className="flex flex-col gap-8">
           <RutasSection rutas={rutas} />
           <RemisionesSection rutas={rutas} />
-          {protocol ? (
-            <TreatmentPanel evaluationId={id} protocol={protocol} />
-          ) : (
-            <StagePlaceholder label="Tratamiento" />
-          )}
+          <ProfessionTreatmentSection
+            evaluationId={id}
+            actor={actorProfession}
+            protocol={protocol}
+          />
           {/* Reporte: cierre de la etapa de Tratamiento (es su salida). La aprobacion/envio la
               gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
           {reportCard ? (
