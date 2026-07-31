@@ -20,7 +20,7 @@ En resumen: `ATLAS_v7.html` = de dónde salió lo congelado; `ATLAS.html` = el e
 
 ## 0ter. Divergencias Atlas ⇄ archivo de Gildardo (VERIFICAR ANTES DE CUALQUIER PORT)
 
-Cada cambio que implementamos de nuestro lado (opción B: su instrucción escrita, no su archivo) crea una **divergencia**: Atlas calcula distinto de lo que dice su HTML. Quien porte algo de su HTML sin saberlo puede **reintroducir el bug**. Esta lista es corta hoy y va a crecer; es **verificación obligatoria antes de portar** cualquier región relacionada. Formato: qué hacemos distinto, la línea suya, y por qué.
+Cada cambio que implementamos de nuestro lado (opción B: su instrucción escrita, no su archivo) crea una **divergencia**: Atlas calcula distinto de lo que dice su HTML. Quien porte algo de su HTML sin saberlo puede **reintroducir el bug**. Esta lista es corta hoy y va a crecer; es **verificación obligatoria antes de portar** cualquier región relacionada. Formato: qué hacemos distinto, la línea suya, y por qué. **Cada fila se cruza con su entrada en `docs/entregas/CAMBIOS_AUTORIZADOS.md`** (la instrucción verbatim de Gildardo, su aprobación y el estado); si los dos docs no se referencian, uno miente.
 
 | Tema | En el archivo de Gildardo (`gildardo-2026-07-30/ATLAS_v7.html`) | En Atlas | Por qué |
 |---|---|---|---|
