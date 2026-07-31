@@ -35,4 +35,14 @@ Cuando exista `docs/LANZAMIENTO.md` (hoy no existe, solo se referencia en MAPA/B
 - **Estado:** **aprobado.**
 - **Divergencia:** `INVENTARIO.md` 0ter, fila "Cintura". **OJO:** su archivo actual (`gildardo-2026-07-30`) TODAVÍA lee el umbral en la línea 5600; dice que lo corrigió pero no está (Q18). La divergencia sigue vigente hasta que su archivo la traiga; no reponer la entrada al portar.
 
+### CA-2 · Columna Δ: definición única (valor − referencia de normalidad)
+
+- **Instrucción de Gildardo (VERBATIM, `GILDARDO_RESPUESTA_..._TERCERA_RONDA (1).md` punto 4):** «Decisión: una sola definición, para todas las fórmulas y todos los indicadores. **Δ = valor obtenido − referencia de normalidad.** Cuando la referencia es un rango con dos bordes, la referencia es el **promedio del rango**. Cuando la referencia es un corte único, sin segundo borde, la referencia es **el corte**. […] esta regla sustituye el comportamiento del archivo HTML. Es una divergencia deliberada y debe quedar documentada como tal, no corregida hacia el archivo. […] un paciente dentro de rango pero por debajo del promedio pasa a mostrar Δ negativo donde antes mostraba cero. Conviene una prueba de regresión sobre el caso de referencia antes de publicar.»
+- **Qué implementamos (PENDIENTE, código):** `indicator-ranges.ts` recalcula la Δ = valor − (promedio del rango si tiene dos bordes; el corte si es de un solo límite), en vez de la distancia al borde clínicamente relevante que transcribimos del HTML. Los tres bloqueados por Q20 (IFC/IRC/FMI) siguen en "-". Con **prueba de regresión** sobre el donante golden antes de publicar (él lo pide).
+- **Descripción devuelta a Gildardo:** «Unificamos la Δ a valor − referencia (promedio del rango, o el corte cuando hay un solo límite), reemplazando la regla del archivo. Documentamos la divergencia y corremos la regresión.»
+- **Aprobación:** pendiente.
+- **Estado:** **pendiente de aprobación** (implementamos, él aprueba antes de producción).
+- **Sella-vs-computa:** la Δ **se computa al mostrar, NO se sella** (es ayuda de lectura, no valor clínico). Consecuencia dicha: cambiar la regla cambia la Δ mostrada en diagnósticos viejos (un profesional que vio Δ=0 verá Δ negativa). Hoy da igual (demo); con reales sería confuso pero aceptable porque la Δ es apoyo, no prescripción, y el valor+clasificación sellados no cambian. **NO agrega clave a emission_versions.**
+- **Divergencia:** `INVENTARIO.md` 0ter, fila "Delta".
+
 <!-- Próximas entradas conforme se implementen de opción B: cáncer-remisión (C, 3.2), y los C1-C13 que apliquemos de nuestro lado con su instrucción. Cada una con su fila de divergencia en INVENTARIO 0ter. -->

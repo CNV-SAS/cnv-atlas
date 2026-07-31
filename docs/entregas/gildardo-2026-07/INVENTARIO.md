@@ -24,7 +24,8 @@ Cada cambio que implementamos de nuestro lado (opción B: su instrucción escrit
 
 | Tema | En el archivo de Gildardo (`gildardo-2026-07-30/ATLAS_v7.html`) | En Atlas | Por qué |
 |---|---|---|---|
-| **Cintura** | línea 5600: lee el umbral `REFERENCEESTIMEE` como circunferencia | `edge/biody-columns.ts`: la entrada de cintura ELIMINADA; la medida vive en `header-map.ts` (`"Waist Size cm"`) | Su mapeo apunta al umbral (102, igual para todos), no a la medida; él dijo que lo corregiría pero su archivo aún no lo trae (Q18). NO reponer la entrada al portar: reintroduce el bug. |
+| **Cintura** | línea 5600: lee el umbral `REFERENCEESTIMEE` como circunferencia | `edge/biody-columns.ts`: la entrada de cintura ELIMINADA; la medida vive en `header-map.ts` (`"Waist Size cm"`) | Su mapeo apunta al umbral (102, igual para todos), no a la medida; él dijo que lo corregiría pero su archivo aún no lo trae (Q18). NO reponer la entrada al portar: reintroduce el bug. Ver `CAMBIOS_AUTORIZADOS.md` CA-1. |
+| **Δ (columna de diferencia)** | filas `R(...)` 12828-12878: Δ = valor − borde clínicamente relevante por indicador | `indicator-ranges.ts`: Δ = valor − referencia de normalidad (promedio del rango, o el corte si es de un solo límite) | Regla única de Gildardo (tercera ronda), **sustituye** el comportamiento del HTML A PROPÓSITO. NO "corregir" hacia el archivo en un port futuro. Ver `CAMBIOS_AUTORIZADOS.md` CA-2. |
 
 (Se agregan filas conforme se implementen cáncer-remisión, y cualquiera de los C1-C13 que apliquemos de nuestro lado. Cada uno con su línea y su motivo.)
 
