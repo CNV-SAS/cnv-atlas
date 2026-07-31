@@ -68,7 +68,7 @@ El tratamiento organizado por la jerarquía de composición corporal, en niveles
 - **DOC-1** ✅ extracto de pendientes para Gildardo (enviado 2026-07-27).
 - **DOC-2** regla de anonimización en `BACKLOG.md`. pendiente.
 - **DOC-3** línea de Aminogram en reportes + retirar el handoff a `BACKLOG`/`CLAUDE.md`. pendiente.
-- **DOC-4** `LANZAMIENTO.md` con los tres hitos de dos ejes + nota en `MVP.md`. pendiente.
+- **DOC-4** `LANZAMIENTO.md` con los tres hitos de dos ejes + nota en `MVP.md`. **HECHO (2026-07-30):** creado con los ~18 gates consolidados por hito (H1=4, H2=6, H3=8) y punteros a `BACKLOG.md`; la matriz rol × hito se completa por rol conforme se decida.
 
 ## Depende de Gildardo (no bloquea T2)
 

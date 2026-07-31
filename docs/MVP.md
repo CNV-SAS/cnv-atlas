@@ -3,6 +3,8 @@
 **Versión:** 1.0
 **Estado:** alcance congelado
 **Deadline objetivo:** martes 30 de junio de 2026 (MVP que haya pasado smoke + tests). Se planea por bloques, no por fechas.
+
+> **Nota (2026-07-30): para la definición de los GATES de lanzamiento (qué debe cerrarse antes de cada hito), la fuente es `docs/LANZAMIENTO.md`**, que consolida los gates dispersos y usa los dos ejes (rol × hito). MVP.md conserva el mínimo funcional por módulo; los gates de hito viven en LANZAMIENTO.
 **Acompaña a:** `ARCHITECTURE.md` (el cómo técnico). Este documento define el qué y el mínimo funcional por módulo.
 
 ## Principio rector
