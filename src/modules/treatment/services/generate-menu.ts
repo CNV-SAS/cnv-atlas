@@ -10,7 +10,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 
 import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
-import { requireConfiguredProfession } from "./require-profession";
+import { requireNutricionista } from "./require-profession";
 import { buildMenuPrompt, MENU_PROMPT_KEY, MENU_PROMPT_VERSION } from "../ai/prompts/menu.v1";
 
 // Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
@@ -38,7 +38,7 @@ export async function generateMenu(
   if (!protocol || !results) return err(appError("not_found", "Tratamiento no encontrado."));
   // Guard interino de ambito de practica: sin profesion configurada no se escribe (generar el
   // menu persiste una sugerencia). Ver require-profession.ts.
-  const prof = await requireConfiguredProfession(actor.actorId);
+  const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(

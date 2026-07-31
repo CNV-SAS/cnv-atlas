@@ -118,14 +118,14 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     expect(writeProtocol).toHaveBeenCalledTimes(1);
   });
 
-  it("saveAdjustments: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO_NULL);
+  it("saveAdjustments: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO("medico")); // Q17: solo nutricionista aprueba/edita el protocolo nutricional
     let r = await saveAdjustments(ADJ_INPUT, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(writeAdjustments).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce(PRO("medico"));
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
     r = await saveAdjustments(ADJ_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeAdjustments).toHaveBeenCalledTimes(1);
@@ -138,7 +138,7 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     if (!r.ok) expect(r.error.code).toBe("forbidden");
     expect(writeAcknowledge).not.toHaveBeenCalled();
 
-    profOf.mockResolvedValueOnce(PRO("psicologo"));
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
     r = await acknowledgeRestrictions({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(true);
     expect(writeAcknowledge).toHaveBeenCalledTimes(1);

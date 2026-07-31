@@ -15,7 +15,7 @@ export type ActorProfession = {
 // Lee el perfil profesional del actor (professional_profiles.profession por profile_id). RLS
 // professional_profiles_select deja al profesional leer su propia fila. Devuelve isProfessional
 // = false cuando NO hay fila (no es profesional). Sirve al guard interino de ambito de practica
-// de las escrituras de tratamiento (requireConfiguredProfession), que solo aplica al profesional.
+// de las escrituras de tratamiento (requireNutricionista), que solo aplica al profesional.
 export async function getActorProfession(userId: string): Promise<ActorProfession> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
