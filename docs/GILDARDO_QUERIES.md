@@ -356,6 +356,8 @@
 
 **Para Gildardo (breve):** Atlas hoy está pensado para que el nutricionista opere el modelo completo. Un médico o un deportólogo puede medir al paciente, ver el diagnóstico completo, consultar la orientación de su especialidad y dejar una nota clínica, pero no tiene una conducta propia que registrar en el sistema. ¿Qué debería poder hacer cada profesión dentro del modelo? ¿O el modelo está pensado para que el nutricionista sea quien opera y las demás profesiones participen de otra forma? La respuesta define si conviene vincular médicos y deportólogos como Integrantes ya, o arrancar solo con nutricionistas hasta que existan sus módulos.
 
+**Pregunta concreta que salió del smoke del panel médico (2026-08-01):** entre los exámenes sugeridos, "Telómeros/estrés oxidativo" cita como referencia **"ANI BIS-E 2026"**, o sea el propio modelo, no un protocolo de laboratorio estándar. No es un examen de laboratorio clínico habitual y un médico probablemente no sepa dónde ordenarlo. ¿Es deliberado (un examen propio del modelo), y cómo se ordena / dónde se procesa?
+
 ---
 
 ## Q23 · ¿Cómo funciona la remisión en el modelo? (registro del acto + remisión a la propia especialidad)
@@ -364,6 +366,8 @@
 - **Contexto verificado:** en Tratamiento se muestran las remisiones que activa cada ruta (Sección 3, contenido derivado del DFI), pero **remitir no es una acción**: es una indicación que el profesional lee, sin botón, sin registro, sin audit (ya anotado en BACKLOG como "falta una vía de remisión con su registro"). Y como la lista es profesión-agnóstica, cuando una ruta remite a la MISMA profesión del que atiende, el profesional lee una instrucción para **remitirse a sí mismo** (un médico ve "Remitir a Médico").
 
 **Para Gildardo (breve):** en Tratamiento se muestran las remisiones que activa cada ruta, pero hoy remitir no es una acción: es una indicación que el profesional lee. Y cuando la ruta remite a la misma profesión del que está atendiendo, el profesional lee una instrucción para remitirse a sí mismo. ¿Cómo funciona la remisión en tu modelo? ¿El profesional debería poder registrar que remitió, y a quién? ¿Y qué debería ver cuando la remisión es a su propia especialidad?
+
+**Evidencia del smoke (2026-08-01), la misma confusión vista desde ADENTRO del panel:** dentro del panel del médico, entre las indicaciones médicas de la ruta, aparece "Remisión médica si HTA o DM2 activa". Es un médico leyendo una instrucción para remitir a medicina, desde su propio panel. Confirma que el contenido de la ruta de una especialidad, mostrado a esa misma especialidad, necesita otro marco (no "remite a", sino "esto te corresponde").
 
 ---
 
