@@ -386,16 +386,16 @@ export function EvaluationResults({
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
                       <span className="font-medium text-foreground">{code}</span>
+                      {results.indicatorNames[code] ? (
+                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
+                      ) : null}
                       {ebIaeProvisional && (code === "EB" || code === "IAE") ? (
                         <span
-                          className="ml-1.5 rounded bg-clinical-warning-bg px-1 py-0.5 text-[10px] font-semibold text-clinical-warning"
+                          className="ml-2 rounded bg-clinical-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-clinical-warning"
                           title="Calibración provisional; no comunicable al paciente."
                         >
                           provisional
                         </span>
-                      ) : null}
-                      {results.indicatorNames[code] ? (
-                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
                       ) : null}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-foreground">

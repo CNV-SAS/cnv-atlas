@@ -422,6 +422,8 @@
 
 **Para Gildardo (breve):** encontramos que tu clasificador de PABU cambió entre versiones. La versión que Atlas tiene distingue ocho situaciones y gradúa la severidad en cuatro niveles, con colores que van de verde a rojo. La versión de tu archivo actual distingue tres (en zona óptima, por déficit, por exceso) y usa dos colores. El efecto práctico: un paciente con una desviación grande de PABU hoy le aparece al profesional en rojo; con la versión nueva le aparecería en ámbar, igual que una desviación leve. ¿La versión de tres es la que quieres, o la simplificaste para otra cosa y la gradación sigue siendo válida? Preguntamos porque es la única vez que una versión más nueva tuya distingue MENOS que la anterior, y no queremos quitarle al profesional una señal de alarma sin que sea tu decisión.
 
+**Evidencia concreta (paciente real del entorno de prueba, 2026-08-01):** un diagnóstico tiene **PABU 1.03 con IFC 5.26**. Con el clasificador que Atlas tiene hoy, al profesional le aparece **"Zona ambigua — evaluar EFRC"**, que le dice que MIRE OTRA COSA (una instrucción clínica). Con el de tu archivo actual le aparecería **"Desviación por exceso"**, sin esa indicación. No es solo que se pierda granularidad: **se pierde una instrucción clínica.** ¿Cuál quieres que vea? (Es justo el caso donde las dos versiones divergen: PABU por debajo de φ, donde la nuestra ramifica por IFC — 5.26 cae entre 3.5 y 6 → "ambigua" — y la tuya da "exceso" sin mirar el IFC.)
+
 ---
 
 ## Nota de proceso (2026-07-26)
