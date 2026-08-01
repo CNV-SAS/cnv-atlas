@@ -395,6 +395,7 @@
 ## Q25 · P0 Parte 2: redacción de las tres bandas + dos decisiones clínicas (autoría de Gildardo)
 
 - **Fecha:** 2026-08-01. **Estado:** ABIERTA. El MECANISMO ya está construido (bandas, gate de 12 semanas, corte ±2 provisional, selección de la previa comparable) con textos PLACEHOLDER neutros; lo que falta es autoría suya. La comunicación al paciente es criterio clínico, no decisión nuestra.
+- **EL CABLEADO ESPERA SU RESPUESTA, a propósito.** El núcleo (`followups/services/eb-trajectory.ts`) está DESCONECTADO: nada que genere un reporte lo importa (verificado 2026-08-01), así que ningún placeholder puede llegar a un paciente hoy. No se cablea al reporte hasta que Gildardo responda, por dos razones: (1) los textos son suyos, no nuestros; (2) su respuesta puede cambiar la FORMA del cableado, no solo el texto: si "empeoró" exige reconocimiento del profesional antes de aparecer, eso es un GATE en el flujo de aprobación del reporte, no una frase.
 - **Contexto:** desde la 2ª medición comparable (≥12 semanas), al paciente se le muestra el CAMBIO de la EB-BIS en tres bandas (mejoró / sin cambio / empeoró), no el nivel ni la cifra. Los placeholders no revelan el constructo ("edad bioeléctrica" es término retirado) ni el nivel.
 
 **Para Gildardo (tres cosas):**
