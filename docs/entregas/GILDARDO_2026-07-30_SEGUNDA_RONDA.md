@@ -188,3 +188,9 @@ Lo más urgente es el punto 1. Sin el archivo no podemos aplicar tus trece cambi
 - **Punto 4.3 (cintura):** el campo mapea el encabezado `...Waist Size...REFERENCEESTIMEE...cm` en vez de `Waist Size cm`. Corregido de nuestro lado como divergencia deliberada y documentada; los ratios ICC e ICT se leen del export y sí usan la medida real.
 - **Punto 4.4 (peso meta):** en Atlas el peso meta existe hoy como ajuste opcional del profesional, con respaldo al peso de cálculo. La decisión del punto 8 lo convierte en la base, lo que elimina ese respaldo y lo vuelve una dependencia obligatoria.
 - **Advertencia recibida y aplicada:** las etiquetas R1 a R9 se usan también para los anillos del mapa de estados funcionales. Registrada en nuestra documentación de arquitectura como trampa de implementación.
+
+---
+
+> **Nota de corrección (2026-08-01), añadida al pie. El cuerpo de arriba NO se edita: este documento es el registro de lo que le enviamos a Gildardo, y corregirlo por dentro lo inutiliza para saber qué leyó.**
+>
+> El punto sobre el fenotipo argumenta: «Lo preguntamos por dos razones. La primera es que **los profesionales se están formando con tu HTML**, así que aprenden a hablar de "F7" y luego no lo encuentran en Atlas». Ese hecho es **falso** y se corrigió después (dato de Santiago, 2026-07-31): los profesionales se forman en **Atlas Web, no en el HTML**. La preocupación de fondo (que el vocabulario de un artefacto no case con el otro) sigue siendo válida, pero no porque el profesional se entrene con el HTML, sino porque el HTML es la **expresión de la ciencia de Gildardo** y las divergencias de vocabulario aparecen en la revisión del Hito 2. Ver `GILDARDO_QUERIES.md` Q20/Q21.
