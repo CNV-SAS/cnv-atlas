@@ -349,6 +349,24 @@
 
 ---
 
+## Q22 · ¿Qué puede hacer un médico o un deportólogo dentro del modelo ANI-BIS-E?
+
+- **Fecha:** 2026-08-01 (Santiago decide mandarla a Gildardo). **Estado:** ABIERTA. Es flujo clínico / cómo opera el modelo, no decisión de producto nuestra. **Reemplaza** el "gate comercial del Hito 2" que estaba en BACKLOG como decisión abierta de Santiago.
+- **Contexto verificado:** Atlas hoy está construido para que el nutricionista opere el modelo completo (genera el protocolo, prescribe calorías y proteína, arma el plan alimentario; las escrituras de prescripción están gated a nutricionista). Un médico o un deportólogo puede medir al paciente, ver el diagnóstico completo, consultar la orientación de su especialidad (las pestañas de consulta que acabamos de construir) y dejar una **nota clínica** en el diagnóstico, pero no tiene una **conducta propia** que registrar en el sistema (no prescribe, no ordena exámenes con registro, no documenta su intervención).
+
+**Para Gildardo (breve):** Atlas hoy está pensado para que el nutricionista opere el modelo completo. Un médico o un deportólogo puede medir al paciente, ver el diagnóstico completo, consultar la orientación de su especialidad y dejar una nota clínica, pero no tiene una conducta propia que registrar en el sistema. ¿Qué debería poder hacer cada profesión dentro del modelo? ¿O el modelo está pensado para que el nutricionista sea quien opera y las demás profesiones participen de otra forma? La respuesta define si conviene vincular médicos y deportólogos como Integrantes ya, o arrancar solo con nutricionistas hasta que existan sus módulos.
+
+---
+
+## Q23 · ¿Cómo funciona la remisión en el modelo? (registro del acto + remisión a la propia especialidad)
+
+- **Fecha:** 2026-08-01 (Santiago decide mandarla a Gildardo). **Estado:** ABIERTA. Flujo clínico.
+- **Contexto verificado:** en Tratamiento se muestran las remisiones que activa cada ruta (Sección 3, contenido derivado del DFI), pero **remitir no es una acción**: es una indicación que el profesional lee, sin botón, sin registro, sin audit (ya anotado en BACKLOG como "falta una vía de remisión con su registro"). Y como la lista es profesión-agnóstica, cuando una ruta remite a la MISMA profesión del que atiende, el profesional lee una instrucción para **remitirse a sí mismo** (un médico ve "Remitir a Médico").
+
+**Para Gildardo (breve):** en Tratamiento se muestran las remisiones que activa cada ruta, pero hoy remitir no es una acción: es una indicación que el profesional lee. Y cuando la ruta remite a la misma profesión del que está atendiendo, el profesional lee una instrucción para remitirse a sí mismo. ¿Cómo funciona la remisión en tu modelo? ¿El profesional debería poder registrar que remitió, y a quién? ¿Y qué debería ver cuando la remisión es a su propia especialidad?
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.

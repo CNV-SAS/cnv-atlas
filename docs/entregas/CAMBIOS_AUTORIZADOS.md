@@ -6,11 +6,15 @@ Hasta ahora la garantía era **mecánica**: byte-identidad del frozen + golden c
 
 ---
 
-## GATE DE LANZAMIENTO (Hito 3)
+## Qué es "producción" (definición, para que el gate no sea ambiguo)
 
-> **No se lanza a producción con ningún cambio de opción B sin la aprobación de Gildardo registrada aquí (estado `aprobado`).** La condición la puso él ("yo lo apruebo antes de que entre a producción"); este gate la hace verificable en vez de depender de que alguien la recuerde.
+**Producción = cualquier despliegue accesible a Integrantes**, empezando por la **nube de revisión del Hito 2** (donde los Integrantes prueban y dan el visto bueno). **NO** es el commit, ni el entorno local de desarrollo, ni el DB demo local. Un cambio de opción B que está en un commit o en el DB local **todavía no está en producción**; lo estará cuando un Integrante pueda verlo. Esta definición existe porque sin ella "antes de producción" es ambiguo y se presta a que un cambio llegue a pantalla sin su visto bueno.
 
-Cuando exista `docs/LANZAMIENTO.md` (hoy no existe, solo se referencia en MAPA/BACKLOG), este gate se copia allí como gate del Hito 3. Mientras tanto, vive aquí.
+## GATE (Hito 2)
+
+> **Ningún cambio de opción B llega a producción (definición de arriba) sin la aprobación de Gildardo registrada aquí (estado `aprobado`).** La condición la puso él ("yo lo apruebo antes de que entre a producción"); este gate la hace verificable en vez de depender de que alguien la recuerde.
+
+**Por qué Hito 2 y no Hito 3:** los Integrantes revisan en el Hito 2, y ahí ya estarían viendo los cambios de opción B (sobre todo los que se COMPUTAN al mostrar, como la Δ, que aparecen en pantalla sin sellarse). Si Gildardo no los aprobó ANTES de esa revisión, se pierde el sentido de su condición. El gate vive también en `docs/LANZAMIENTO.md` como gate del Hito 2.
 
 ---
 
@@ -42,7 +46,7 @@ Cuando exista `docs/LANZAMIENTO.md` (hoy no existe, solo se referencia en MAPA/B
 - **Descripción devuelta a Gildardo:** «Unificamos la Δ a valor − referencia (promedio del rango, o el corte cuando hay un solo límite), reemplazando la regla del archivo. En el caso de referencia cambian AF, ISCM y FFMI; documentamos la divergencia y corrimos la regresión.»
 - **Aprobación:** pendiente (él aprueba en lenguaje llano ANTES de producción; si no aprueba, se revierte, regla de reversión).
 - **Estado:** **implementado, pendiente de aprobación.**
-- **Sella-vs-computa:** la Δ **se computa al mostrar, NO se sella** (es ayuda de lectura, no valor clínico). Consecuencia dicha: cambiar la regla cambia la Δ mostrada en diagnósticos viejos (un profesional que vio Δ=0 verá Δ negativa). Hoy da igual (demo); con reales sería confuso pero aceptable porque la Δ es apoyo, no prescripción, y el valor+clasificación sellados no cambian. **NO agrega clave a emission_versions.**
+- **Sella-vs-computa (efecto RETROACTIVO, escrito a propósito):** la Δ **se computa al mostrar, NO se sella** (es ayuda de lectura, no valor clínico). Consecuencia: el cambio es **retroactivo**, cambia la Δ mostrada en **diagnósticos YA emitidos**, no solo en los nuevos. Con demo da igual (nadie más entra). Con **pacientes reales**, un profesional vería **números distintos de un día para otro sin que nada cambiara en el paciente**, y no habría forma de explicárselo: por eso el gate del Hito 2 (aprobación de Gildardo ANTES de que un Integrante lo vea) importa más para los cambios que se COMPUTAN que para los que se sellan. Es la misma familia del criterio sella-vs-computa (ARCHITECTURE). Aceptable porque la Δ es apoyo, no prescripción, y el valor+clasificación sellados no cambian. **NO agrega clave a emission_versions.**
 - **Divergencia:** `INVENTARIO.md` 0ter, fila "Delta".
 
 <!-- Próximas entradas conforme se implementen de opción B: cáncer-remisión (C, 3.2), y los C1-C13 que apliquemos de nuestro lado con su instrucción. Cada una con su fila de divergencia en INVENTARIO 0ter. -->

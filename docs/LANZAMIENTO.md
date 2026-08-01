@@ -29,13 +29,13 @@
 8. **Rótulo de la EB-BIS** ("no leer como edad fisiológica", indicación de Gildardo). `BACKLOG.md`.
 9. **Aviso a los Integrantes del paso de confirmación del diagnóstico** (Atlas lo añade, el prototipo no lo tiene). `BACKLOG.md`.
 10. **Seed no destructivo** en staging (no `pnpm db:seed`, que borra). `BACKLOG.md` / `INVENTARIO.md`.
+11. **Gate de aprobación de Gildardo para los cambios de opción B** (él aprueba ANTES de producción = antes de que un Integrante lo vea en la nube del Hito 2). **Movido de Hito 3 a Hito 2 (2026-08-01):** los cambios de opción B que se COMPUTAN al mostrar (la Δ, CA-2) llegan a pantalla sin sellarse, así que un Integrante los vería en su revisión del Hito 2; si Gildardo no aprobó antes, se pierde el sentido de su condición. `docs/entregas/CAMBIOS_AUTORIZADOS.md`.
 
 ## Gates del Hito 3 (pacientes reales)
 
-11. **Q8 — firma del modelo de índices** (Gildardo confirma que la EB-BIS v5 vigente es la definitiva). `GILDARDO_QUERIES.md`. **CERRADA** (respondió), pendiente solo su OK formal.
-12. **Q14 — modelo calórico vigente** (el tercero: peso meta + estrategia por condición + fórmula P1). `GILDARDO_QUERIES.md`. **CERRADA** en decisión; el re-port depende de P1.
-13. **P0 — presentación de la edad biológica** (Gildardo decide entre sus tres o la 4ª propuesta). `GILDARDO_QUERIES.md`.
-14. **Gate de aprobación de Gildardo para los cambios de opción B** (él aprueba antes de producción). `docs/entregas/CAMBIOS_AUTORIZADOS.md`.
+12. **Q8 — firma del modelo de índices** (Gildardo confirma que la EB-BIS v5 vigente es la definitiva). `GILDARDO_QUERIES.md`. **CERRADA** (respondió), pendiente solo su OK formal.
+13. **Q14 — modelo calórico vigente** (el tercero: peso meta + estrategia por condición + fórmula P1). `GILDARDO_QUERIES.md`. **CERRADA** en decisión; el re-port depende de P1.
+14. **P0 — presentación de la edad biológica** (Gildardo decide entre sus tres o la 4ª propuesta). `GILDARDO_QUERIES.md`. **CERRADA** (2026-08-01); resta el trabajo de T4/Seguimiento.
 15. **Supabase Pro + PITR** y backups externos (antes de datos clínicos reales). `BACKLOG.md` / `DEPLOY.md`.
 16. **Separación operativo/clínico completa** (cerrar el `admin`-amplio sobre todo el contenido clínico identificado, mecanismo de grants). `BACKLOG.md` / `SECURITY.md` / `DATA_GOVERNANCE.md`.
 17. **Cierre legal de `SECURITY.md` y `DATA_GOVERNANCE.md`** (consentimiento, retención, residencia, plazos SIC). `BACKLOG.md`.
@@ -47,4 +47,4 @@
 
 ---
 
-**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 6 · Hito 3 = 8** (Q8/Q14 cerradas en decisión, pendientes de OK/re-port). **Total ~18.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
+**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 7 · Hito 3 = 7** (Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2). **Total ~18.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
