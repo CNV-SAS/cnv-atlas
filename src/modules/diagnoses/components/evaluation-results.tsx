@@ -10,6 +10,8 @@ import { MapsSection } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
 import { ConfirmDiagnosisPanel } from "./confirm-diagnosis-panel";
 import type { EfrStateRef } from "../data/efr-states-reader";
+import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
+
 import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 
@@ -194,6 +196,10 @@ export function EvaluationResults({
   const { indicators, classifications, efrPhenotype, structural, frSector, dfi, versions } =
     snapshot;
   const sexM = snapshot.sexo === "M"; // para los rangos de referencia por sexo (indicator-ranges)
+  // Marca de calibracion provisional de EB-BIS/IAE (P0). Se lee del campo SELLADO del diagnostico
+  // (emission_versions.calibration), NO de una constante: el dia que exista la calibracion
+  // poblacional, los diagnosticos nuevos dejan de marcarse solos. Primer uso real de emission_versions.
+  const ebIaeProvisional = isProvisionalCalibration(results.emissionVersions);
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
   const sevByCode = indicatorSeverities(snapshot);
   // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
@@ -380,6 +386,14 @@ export function EvaluationResults({
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
                       <span className="font-medium text-foreground">{code}</span>
+                      {ebIaeProvisional && (code === "EB" || code === "IAE") ? (
+                        <span
+                          className="ml-1.5 rounded bg-clinical-warning-bg px-1 py-0.5 text-[10px] font-semibold text-clinical-warning"
+                          title="Calibración provisional; no comunicable al paciente."
+                        >
+                          provisional
+                        </span>
+                      ) : null}
                       {results.indicatorNames[code] ? (
                         <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
                       ) : null}
@@ -415,6 +429,13 @@ export function EvaluationResults({
             Biody (otra fuente); por eso su referencia puede diferir entre las dos tablas, no es una
             contradicción.
           </p>
+          {ebIaeProvisional ? (
+            <p className="max-w-prose text-xs text-clinical-warning">
+              EB e IAE se calculan con una <span className="font-semibold">calibración provisional</span>{" "}
+              (aún sin población de referencia). Son para tu lectura clínica; no son comunicables al
+              paciente y no aparecen en su reporte.
+            </p>
+          ) : null}
           {/* Δ = valor − referencia de normalidad (CA-2 de Gildardo: promedio del rango si tiene dos
               bordes, el corte si es de un solo limite; SUSTITUYE la regla del HTML "distancia al borde",
               pendiente de su aprobacion). Referencia = rango clinico ANI-BIS-E sexo-ajustado

@@ -638,6 +638,7 @@ export type Database = {
           created_at: string
           diagnosis_name: string
           efr_state_number: number
+          emission_versions: Json | null
           engine_version: string
           evaluation_id: string
           fr_sector_id: string | null
@@ -652,6 +653,7 @@ export type Database = {
           created_at?: string
           diagnosis_name: string
           efr_state_number: number
+          emission_versions?: Json | null
           engine_version: string
           evaluation_id: string
           fr_sector_id?: string | null
@@ -666,6 +668,7 @@ export type Database = {
           created_at?: string
           diagnosis_name?: string
           efr_state_number?: number
+          emission_versions?: Json | null
           engine_version?: string
           evaluation_id?: string
           fr_sector_id?: string | null

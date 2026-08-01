@@ -14,16 +14,18 @@ export type ReportMeta = {
   reportId: string;
 };
 
-// Etiquetas de los 12 indicadores en orden de presentacion (codigo canonico).
-const INDICATOR_LABELS: { key: keyof EngineIndicators; label: string }[] = [
+// Indicadores en el reporte del PACIENTE. EB e IAE quedan FUERA a proposito (P0, decision de
+// Gildardo 2026-08-01): la cifra de EB-BIS nunca va al paciente, y como IAE = EB - edad, mostrar
+// IAE revela el constructo; la clase de IAE tampoco se imprime. La expresion "edad biologica" es
+// termino retirado del sistema. La EB-BIS/IAE SI las ve el profesional (con marca de calibracion
+// provisional), en la vista interna. Gate del Hito 3 en LANZAMIENTO.md.
+export const INDICATOR_LABELS: { key: keyof EngineIndicators; label: string }[] = [
   { key: "ifc", label: "IFC" },
   { key: "irc", label: "IRC" },
   { key: "pabu", label: "PABU" },
   { key: "icaBis", label: "ICA-BIS" },
   { key: "iscm", label: "ISCM" },
   { key: "iehh", label: "IEHH" },
-  { key: "iae", label: "IAE" },
-  { key: "eb", label: "EB" },
   { key: "FMI", label: "FMI" },
   { key: "FFMI", label: "FFMI" },
   { key: "AF", label: "AF" },
@@ -137,7 +139,7 @@ export function ReportDocument({
           <Text style={styles.notice}>
             Diagnostico funcional integral INCOMPLETO: {dfi.degradedReason} Los indicadores
             de composicion y el fenotipo EFR son definitivos; los dominios de estilo de
-            vida, la edad biologica (EB/IAE) y las rutas dependen de la encuesta.
+            vida y las rutas dependen de la encuesta.
           </Text>
         ) : null}
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { type EngineInput, runEngine } from "@/clinical-engine";
+import { INDICATOR_LABELS } from "@/modules/reports/pdf/report-document";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
 import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
@@ -40,5 +41,17 @@ describe("renderReportPdf", () => {
       const buf = await renderReportPdf(snap, meta, { mode, professionalNotes: notes });
       expect(isPdf(buf)).toBe(true);
     }
+  });
+
+  // GATE (Hito 3, P0): el reporte del PACIENTE nunca muestra la cifra de EB-BIS ni la de IAE. Gildardo
+  // decidio que ninguna se comunica al paciente (la de EB porque es no comunicable, la de IAE porque
+  // = EB - edad y revela el constructo). El profesional SI las ve, en la vista interna.
+  it("el reporte del paciente NO incluye EB ni IAE (P0, gate del Hito 3)", () => {
+    const keys = INDICATOR_LABELS.map((i) => i.key);
+    expect(keys).not.toContain("eb");
+    expect(keys).not.toContain("iae");
+    // guarda de que los demas si siguen (no se vacio la tabla por error)
+    expect(keys).toContain("ifc");
+    expect(keys.length).toBe(10);
   });
 });

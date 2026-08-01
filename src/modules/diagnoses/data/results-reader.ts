@@ -66,6 +66,10 @@ export type EvaluationResults = {
   // MISMA era del diagnostico del paciente (exploracion de la Diana, era-consistente). null si no
   // hay diagnostico o el snapshot es incompatible.
   modelVersionId: string | null;
+  // Versiones de emision SELLADAS del diagnostico (jsonb de diagnoses). null en diagnosticos previos
+  // a la columna. Alimenta la marca "calibracion provisional" de EB-BIS/IAE (P0), que se lee del dato
+  // sellado, no de una constante (ver isProvisionalCalibration).
+  emissionVersions: Record<string, unknown> | null;
 };
 
 export type EvaluationHeader = {
@@ -119,6 +123,10 @@ export async function getEvaluationResults(
   const dispatch = await getReportDispatch(report.reportId);
   if (!dispatch) return null;
 
+  // Versiones de emision selladas del diagnostico (columna aparte de diagnoses, NO en el snapshot
+  // del reporte). Para la marca de calibracion provisional (P0). RLS: si no es del profesional, null.
+  const emissionVersions = await getDiagnosisEmissionVersions(evaluationId);
+
   // Compatibilidad del snapshot con la forma actual del motor. Los snapshots de eras
   // anteriores (stub-0.1.0 pre-B11) no tienen efrPhenotype/dfi/structural: se degrada la
   // vista en vez de tronar. reports es inmutable, no se pueden migrar.
@@ -143,6 +151,7 @@ export async function getEvaluationResults(
       evaluationDate: dispatch.evaluationDate,
       indicatorNames: {},
       modelVersionId: null,
+      emissionVersions,
     };
   }
 
@@ -210,5 +219,24 @@ export async function getEvaluationResults(
     evaluationDate: dispatch.evaluationDate,
     indicatorNames,
     modelVersionId: diag?.model_version_id ?? null,
+    emissionVersions,
   };
+}
+
+// Lee las versiones de emision selladas del diagnostico mas reciente de la evaluacion (columna jsonb
+// de diagnoses). RLS: si la evaluacion no es del profesional, no hay fila -> null. Se lee aparte del
+// snapshot del reporte porque emission_versions NO viaja en el EngineOutput; es columna de diagnoses.
+async function getDiagnosisEmissionVersions(
+  evaluationId: string,
+): Promise<Record<string, unknown> | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("diagnoses")
+    .select("emission_versions")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`results-reader: emission_versions: ${error.message}`);
+  return (data?.emission_versions as Record<string, unknown> | null) ?? null;
 }

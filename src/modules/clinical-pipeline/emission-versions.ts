@@ -39,3 +39,19 @@ export function buildEmissionVersions(): EmissionVersions {
 export function emissionVersionsComplete(v: Record<string, unknown>): boolean {
   return EMISSION_VERSION_KEYS.every((k) => typeof v[k] === "string" && v[k] !== "");
 }
+
+// ¿La EB-BIS de ESTE diagnóstico se calculó con una calibración PROVISIONAL? Se lee del campo
+// SELLADO (emission_versions.calibration), no de una constante: la marca "calibración provisional"
+// en la vista del profesional (P0) sale del dato que el diagnóstico lleva sellado. Primer uso real
+// de emission_versions (2026-08-01).
+//   - null (diagnósticos previos a la columna, demo) => provisional: todos se emitieron con la
+//     calibración v5 provisional, así que la marca aplica.
+//   - un valor que termina en "-provisional" => provisional.
+// Cuando exista la calibración poblacional y CURRENT.calibration deje de terminar en "-provisional",
+// los diagnósticos NUEVOS sellan ese valor y la marca desaparece SOLA para ellos; los viejos la
+// conservan. No hay que tocar nada el día que llegue la calibración: es el punto de esa automática.
+export function isProvisionalCalibration(ev: Record<string, unknown> | null | undefined): boolean {
+  const cal = ev?.calibration;
+  if (ev == null || cal == null) return true;
+  return typeof cal === "string" && cal.endsWith("-provisional");
+}
