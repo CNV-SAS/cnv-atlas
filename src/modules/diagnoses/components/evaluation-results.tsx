@@ -409,10 +409,19 @@ export function EvaluationResults({
               </tbody>
             </table>
           </div>
-          {/* Referencia y Δ: transcritas verbatim del HTML de Gildardo (indicator-ranges.ts). El Δ es
-              la distancia al borde clinicamente relevante que su codigo elige por indicador (no "el
-              mas cercano"; ver ARCHITECTURE). Los de un solo limite (ISCM, IEHH, IR) muestran su
-              umbral tal cual (p. ej. "<0.78"), no un rango con extremo inventado. */}
+          <p className="max-w-prose text-xs text-muted-foreground">
+            Referencia = rango de normalidad clínico ANI-BIS-E, ajustado por sexo; Δ = valor menos esa
+            referencia. El FFMI también aparece en Composición corporal con la referencia del equipo
+            Biody (otra fuente); por eso su referencia puede diferir entre las dos tablas, no es una
+            contradicción.
+          </p>
+          {/* Δ = valor − referencia de normalidad (CA-2 de Gildardo: promedio del rango si tiene dos
+              bordes, el corte si es de un solo limite; SUSTITUYE la regla del HTML "distancia al borde",
+              pendiente de su aprobacion). Referencia = rango clinico ANI-BIS-E sexo-ajustado
+              (indicator-ranges.ts). Los de un solo limite (ISCM, IEHH, IR) muestran su umbral; IFC/IRC/
+              FMI van "-" hasta Q20. FFMI aparece tambien en la tabla de Composicion con la referencia del
+              EQUIPO Biody (columna del export): otra fuente, otro numero; la nota visible de arriba lo
+              aclara (hallazgo de smoke 2026-08-01). */}
         </div>
       </DetailsSection>
 

@@ -38,12 +38,33 @@ describe("indicatorRange (referencia verbatim + Δ unificada CA-2)", () => {
     expect(indicatorRange("FMI", ind, true)).toBeNull();
   });
 
-  it("ICA-BIS: referencia de coherencia 0, Δ = el valor mismo (sin cambio)", () => {
-    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "φ = 1.618", delta: "0.3745" });
+  it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
+    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0.3745" });
   });
 
-  it("EB: referencia '—' (edad no sellada en el snapshot), Δ = IAE", () => {
-    expect(indicatorRange("EB", ind, true)).toEqual({ reference: "—", delta: "-17.6" });
+  it("EB: referencia '—' (edad no sellada) → Δ TAMBIEN oculta (no se muestra una diferencia sin referencia)", () => {
+    expect(indicatorRange("EB", ind, true)).toEqual({ reference: "—", delta: null });
+  });
+});
+
+// Guard del bug de ICA-BIS (hallazgo de smoke 2026-08-01): la Δ debe resolverse por INDICADOR, no por
+// su referencia. ICA-BIS y PABU se veian con la misma Δ porque icaBis = pabu − φ por definicion; el
+// sintoma real era que ICA-BIS mostraba la referencia de PABU ("φ = 1.618"). Estos casos lo atrapan.
+describe("la Δ se resuelve por indicador, no por referencia (guard de ICA-BIS)", () => {
+  it("ICA-BIS y PABU NO comparten la referencia, y la de ICA-BIS no es φ", () => {
+    const pabu = indicatorRange("PABU", ind, true);
+    const ica = indicatorRange("ICA-BIS", ind, true);
+    expect(ica?.reference).not.toBe(pabu?.reference);
+    expect(ica?.reference).not.toContain("1.618");
+  });
+
+  it("cambiar el valor de un indicador cambia SOLO su Δ, no la de otro con referencia parecida", () => {
+    const a = { ...ind, icaBis: 0.1 } as unknown as EngineIndicators;
+    const b = { ...ind, icaBis: 0.5 } as unknown as EngineIndicators;
+    // La Δ de ICA-BIS sigue a su propio valor...
+    expect(indicatorRange("ICA-BIS", a, true)?.delta).not.toBe(indicatorRange("ICA-BIS", b, true)?.delta);
+    // ...y la de PABU no cambia (no se contamina por compartir la columna de referencia).
+    expect(indicatorRange("PABU", a, true)?.delta).toBe(indicatorRange("PABU", b, true)?.delta);
   });
 });
 

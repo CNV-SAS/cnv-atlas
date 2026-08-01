@@ -53,9 +53,11 @@ export function indicatorRange(
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618 (sin cambio respecto al HTML).
       return ind.pabu != null ? { reference: "φ = 1.618", delta: f(ind.pabu - 1.618, 4) } : null;
     case "ICA-BIS":
-      // ICA-BIS = PABU − φ: su referencia de normalidad es 0 (coherencia perfecta). Δ = valor − 0 =
-      // el valor mismo (sin cambio respecto al HTML).
-      return ind.icaBis != null ? { reference: "φ = 1.618", delta: f(ind.icaBis - 0, 4) } : null;
+      // ICA-BIS = PABU − φ: su referencia de normalidad es 0 (coherencia perfecta), NO φ. Δ = valor − 0
+      // = el valor mismo. La etiqueta de referencia decia "φ = 1.618" (copiada de PABU): era inconsistente
+      // con el delta (contra 0) y, como icaBis = pabu − φ por definicion, su Δ coincide con la de PABU,
+      // lo que en pantalla se leia como que ICA-BIS copiaba el delta de PABU. Referencia correcta: 0.
+      return ind.icaBis != null ? { reference: "0 (coherencia)", delta: f(ind.icaBis - 0, 4) } : null;
     case "ISCM":
       // CA-2: corte unico −1 (de "≤−1"); la referencia ES el corte. Δ = valor − (−1). ANTES el HTML
       // mostraba el valor crudo (referencia implicita 0); ahora es contra el corte.
@@ -67,12 +69,13 @@ export function indicatorRange(
       // CA-2: rango −5 a +5 → promedio 0. Δ = valor − 0 = valor (sin cambio).
       return ind.iae != null ? { reference: "−5 a +5 años", delta: f(ind.iae - 0, 1) } : null;
     case "EB":
-      // El HTML usa la edad cronologica como referencia, pero la edad NO se sella en el EngineOutput
-      // (vive en EngineInput). Sin edad sellada, la referencia queda "-"; el delta SI se muestra (es
-      // el IAE, edad biologica − cronologica, que si esta en indicators). Para mostrar la edad haria
-      // falta sellar edad en el snapshot (solo diagnosticos nuevos) o pasar la fecha de nacimiento;
-      // ver BACKLOG.
-      return ind.eb != null ? { reference: "—", delta: ind.iae != null ? f(ind.iae, 1) : null } : null;
+      // La referencia de EB es la edad cronologica, que NO se sella en el EngineOutput (vive en
+      // EngineInput). Sin edad sellada la referencia queda "—", y el delta TAMBIEN se oculta: una
+      // diferencia sin decir contra que es ININTERPRETABLE, peor que no mostrarla (ademas ese delta es
+      // el IAE, que ya tiene su propia fila; se mostraba dos veces, una sin explicacion). Para
+      // mostrarlos haria falta sellar la edad en el snapshot (solo diagnosticos nuevos); registrado en
+      // BACKLOG como mejora hacia adelante.
+      return ind.eb != null ? { reference: "—", delta: null } : null;
     case "FFMI": {
       if (ind.FFMI == null) return null;
       // CA-2: promedio del rango (M 17–25 → 21; F 15–23 → 19). ANTES el HTML restaba el borde inferior.
