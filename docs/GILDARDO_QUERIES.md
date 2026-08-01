@@ -414,6 +414,16 @@
 
 ---
 
+## Q27 · Tu clasificador de PABU distingue MENOS en la versión nueva (la única vez que el vigente es más pobre)
+
+- **Fecha:** 2026-08-01. **Estado:** ABIERTA. **DETIENE el swap de cPABU** (calcLE8 y cMMEM siguen aparte). Es la única vez que una versión más nueva tuya distingue MENOS que la anterior.
+- **Evidencia concreta (survey de los 15 clasificadores, nuestro vs vigente):** cPABU es el ÚNICO que cambia de granularidad; todos los demás tienen el mismo conteo de etiquetas y colores. Nuestro cPABU distingue **8 situaciones** (reserva/ambigua/colapso según IFC + 4 niveles de desviación: leve/moderada/severa/crítica) con colores **verde → ámbar → rojo → rojo oscuro**. El vigente distingue **3** (en zona óptima, por déficit, por exceso) con **2 colores** (verde/ámbar). Nuestro cPABU además depende de IFC (para PABU < φ); el vigente no. Efecto en el donante: 'Desviación leve' → 'Desviación por déficit'.
+- **Por qué se detiene (no es un swap normal):** un swap trae la ciencia vigente bajo el supuesto de que lo vigente es lo más elaborado. Aquí es al revés: más nuevo y más pobre. Puede ser deliberado (quizá la gradación no estaba respaldada) o una simplificación para otra cosa que no pretendía retirar la versión rica. La regla "su código especifica" vale cuando su código es más nuevo Y más completo; acá no. Y el impacto es display, pero **display es lo que el profesional usa para decidir**: un rojo que se vuelve ámbar cambia a qué le presta atención.
+
+**Para Gildardo (breve):** encontramos que tu clasificador de PABU cambió entre versiones. La versión que Atlas tiene distingue ocho situaciones y gradúa la severidad en cuatro niveles, con colores que van de verde a rojo. La versión de tu archivo actual distingue tres (en zona óptima, por déficit, por exceso) y usa dos colores. El efecto práctico: un paciente con una desviación grande de PABU hoy le aparece al profesional en rojo; con la versión nueva le aparecería en ámbar, igual que una desviación leve. ¿La versión de tres es la que quieres, o la simplificaste para otra cosa y la gradación sigue siendo válida? Preguntamos porque es la única vez que una versión más nueva tuya distingue MENOS que la anterior, y no queremos quitarle al profesional una señal de alarma sin que sea tu decisión.
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
