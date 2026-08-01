@@ -1,11 +1,18 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    ATLAS · MOTOR CLÍNICO ANI-BIS-E — DFI + LE8 (FROZEN CORE 3)
-   Extraído VERBATIM de ATLAS_v7.html (prototipo final de Gildardo):
-     · calcLE8              L6467–6520   (ICEC / Life's Essential 8)
-     · helpers _dfi*        L11297–11302
-     · computeDFI           L11304–11381 (árbol de 5 dominios + rutas)
-     · computeDFIFromData   L9456–9504   (adaptador encuesta+BIS → DFI)
+   Extraído VERBATIM del prototipo de Gildardo:
+     · calcLE8              (ICEC / Life's Essential 8)   ← SINCRONIZADO con la entrega
+       VIGENTE (gildardo-2026-07-30, L6509–6590): trae el interruptor LE8_MAPEO_CORREGIDO
+       (en OFF) y el mapeo del ICEC dormido. Comportamiento IDÉNTICO al anterior (con el
+       switch en off corre la rama vieja). ANCLADO por DIFF-dfi contra esa región.
+     · helpers _dfi*, computeDFI, computeDFIFromData (árbol de 5 dominios + rutas).
    NO EDITAR A MANO. Depende del núcleo congelado (engine.core.js).
+
+   ESTADO DE SINCRONÍA (2026-08-01): este archivo SÍ está al día con el vigente en su
+   pieza divergente (calcLE8). Contrasta con engine.core.js, que está DESACTUALIZADO a
+   propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27). Activar el mapeo (poner
+   LE8_MAPEO_CORREGIDO en true, C1) es un follow-on por el mecanismo de modificaciones,
+   NO parte de este swap: mueve la EB-BIS 1–8 años y necesita portar calcPatron (C9).
 
    NOTA (bug latente preservado, decisión de Gildardo): en computeDFIFromData
    'sexoM' se usa en el cálculo de 'pabu' una línea antes de declararse (TDZ).
@@ -14,7 +21,29 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 const { calcIFC, calcIRC, calcPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
 
-// ── calcLE8 (ICEC) ──
+// ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
+// Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
+// viven en el objeto DEMO, y por eso el defecto pasó inadvertido (al probar con el
+// caso demo, el LE8 parecía funcionar). En un paciente real las tres lecturas dan 0
+// y los dominios Alimentación e Hidratación quedan clavados en 30 y 20, para todos.
+//
+// Mapeo correcto, confirmado por la dirección científica el 2026-07-28:
+//   Alimentación → calcPatron(enc).score   · 0-100, calculado sobre d1_1_i … d1_15_i
+//   Hidratación  → enc.d7_agua             · vasos de 200 ml, la misma unidad que
+//                                            esperaba d1_16
+//
+// ⚠️ DESACTIVADO A PROPÓSITO — NO PONER EN true SIN RESOLVER LO SIGUIENTE.
+// Activarlo baja la EB-BIS de TODOS los pacientes entre 1 y 8 años (más cuanto más
+// sano está el paciente), porque el ICEC deja de estar artificialmente deprimido.
+// Antes hay que establecer de dónde salieron la media 58,578 y la desviación 13,332
+// del ICEC en la ecuación EB-BIS v5:
+//   · si se calcularon sobre un ICEC correcto → activar esto CORRIGE un sesgo real
+//     y las edades biológicas emitidas hasta hoy estaban infladas;
+//   · si se calcularon sobre el ICEC ya roto  → μ y σ incorporan el sesgo y hay que
+//     recalibrarlas ANTES, o todos quedarán con edad biológica demasiado joven.
+const LE8_MAPEO_CORREGIDO = false;
+
+// Diagnóstico LE8 simplificado
 const calcLE8 = enc => {
   const scores = [];
   const dx = Array.isArray(enc.d5_39) ? enc.d5_39 : [];
@@ -27,7 +56,9 @@ const calcLE8 = enc => {
     "Más de 60 min": 75
   }[enc.d3_24] || 0;
   const metMin = dias * mins;
-  const agua = Number(enc.d1_16) || 0;
+  const agua = LE8_MAPEO_CORREGIDO
+    ? (Number(enc.d7_agua) || 0)          // vasos de 200 ml que la encuesta sí captura
+    : (Number(enc.d1_16)   || 0);         // campo histórico inexistente → siempre 0
   const tabaco = enc.d3_30 || "";
   const alcohol = enc.d3_31 || "";
   const suenho = enc.d3_26 || "";
@@ -37,7 +68,10 @@ const calcLE8 = enc => {
   });
   scores.push({
     dom: "Alimentación",
-    v: (Number(enc.d1_9) || 0) >= 3 && (Number(enc.d1_10) || 0) >= 2 ? 100 : (Number(enc.d1_9) || 0) >= 2 ? 60 : 30
+    v: LE8_MAPEO_CORREGIDO
+      ? (function(){ try { var _p = calcPatron(enc); return (_p && _p.score != null) ? _p.score : 30; }
+                     catch (e) { return 30; } })()
+      : ((Number(enc.d1_9) || 0) >= 3 && (Number(enc.d1_10) || 0) >= 2 ? 100 : (Number(enc.d1_9) || 0) >= 2 ? 60 : 30)
   });
   scores.push({
     dom: "Tabaco",

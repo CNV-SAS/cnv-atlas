@@ -3,6 +3,19 @@
    Extraído VERBATIM de ATLAS_v7.html (prototipo final de Gildardo), líneas 3210–4137.
    NO EDITAR A MANO. Toda la ciencia (fórmulas, cortes, fenotipos) vive aquí.
    Cualquier cambio debe venir de Gildardo y romper el golden test si desalinea.
+
+   ⚠️ DESACTUALIZADO A PROPÓSITO respecto de la entrega VIGENTE (gildardo-2026-07-30).
+   Dos clasificadores difieren y están RETENIDOS esperando decisión de la dirección
+   científica:
+     · cPABU: el vigente distingue 3 situaciones donde este distingue 8, y pierde el
+       color ROJO de severidad. Retenido para no quitarle al profesional una señal de
+       alarma sin autorización (GILDARDO_QUERIES.md Q27).
+     · cMMEM: corte masculino 5.7 aquí, 7.0 en el vigente. Dormido (sin cablear),
+       retenido junto con cPABU para hacer el swap ENTERO de este archivo de una vez y
+       no dejarlo híbrido.
+   Por eso este archivo NO tiene DIFF contra el vigente (sería rojo). Cuando se
+   resuelva Q27, se hace el swap entero y entra su DIFF. (engine.dfi.js SÍ está
+   sincronizado, ver su encabezado.)
    ═══════════════════════════════════════════════════════════════════════════ */
 const calcIFC = (C, Rinf) => Rinf === 0 ? 0 : C / Rinf * 1000;
 const calcIRC = (Re, Ri, C) => Ri * C === 0 ? 0 : (Re / (Ri * C)) * 10;
