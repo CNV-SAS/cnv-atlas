@@ -37,7 +37,7 @@ const INDICATOR_NAMES: Record<string, { name: string; unit: string | null }> = {
   ISCM: { name: "Indice de Susceptibilidad Cardiometabolica (BIS)", unit: null },
   IEHH: { name: "Indice del Espectro de Hidratacion Humana", unit: null },
   IAE: { name: "Indice de Aceleracion del Envejecimiento", unit: "anos" },
-  EB: { name: "Edad Biologica Celular (EB-BIS)", unit: "anos" },
+  EB: { name: "Edad Bioeléctrica (EB-BIS)", unit: "anos" },
   FMI: { name: "Indice de Masa Grasa", unit: "kg/m2" },
   FFMI: { name: "Indice de Masa Libre de Grasa", unit: "kg/m2" },
   AF: { name: "Angulo de Fase a 50 kHz", unit: "grados" },
