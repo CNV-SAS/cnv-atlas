@@ -405,6 +405,15 @@
 
 ---
 
+## Q26 · El interruptor del mapeo del ICEC está APAGADO en tu archivo vigente (ligada a C1)
+
+- **Fecha:** 2026-08-01. **Estado:** ABIERTA. **NO bloquea el re-sync; bloquea el follow-on (C1/C9).**
+- **Consecuencia que salió del re-sync:** el mapeo del índice contextual (Alimentación → puntaje del patrón, Hidratación → vasos de agua) está ESCRITO en tu `ATLAS_v7.html`, pero el interruptor `LE8_MAPEO_CORREGIDO` está en `false`. O sea que **hoy tu propio prototipo calcula la EB-BIS con Alimentación e Hidratación en valores por defecto**, exactamente igual que Atlas. Tu instrucción C1 dice "activar", pero tu archivo dice lo contrario (es el patrón "un doc de decisiones no es evidencia de que el artefacto cambió"). Importa porque si Atlas lo activa y tú no, los dos sistemas divergen en el indicador que acabas de decidir que se muestre tal cual, sin correcciones (P0).
+
+**Para Gildardo (breve):** el mapeo del índice contextual está escrito en tu archivo pero el interruptor está apagado, así que hoy tu prototipo también calcula la EB-BIS con esos dos dominios en valores por defecto. Tu instrucción C1 dice que lo activemos. ¿Lo activas también en tu archivo, o Atlas queda con un valor distinto al de tu prototipo para el mismo paciente?
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
