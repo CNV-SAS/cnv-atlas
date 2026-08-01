@@ -62,14 +62,21 @@ Bajo opción B, nosotros implementamos y **tú apruebas en lenguaje llano ANTES 
 
 ---
 
-## 4. Anexo técnico (solo referencias, por si las quieres)
+## 4. Anexo
 
-- Registro completo y verificable de CA-1 y CA-2: `docs/entregas/CAMBIOS_AUTORIZADOS.md`.
-- Estado detallado de C1-C13, P0-P3 y las preguntas abiertas (Q8, Q14, Q19, Q20, Q22, Q23): `docs/GILDARDO_QUERIES.md`.
-- Tu documento de decisiones: `docs/entregas/Decisiones_ANI-BIS-E_2026-07-29.docx`.
-- La regresión de la Δ (antes → después sobre el donante golden): `src/tests/indicator-ranges.test.ts`.
+**La regresión de la Δ que pediste**, sobre el caso de referencia (lo que la columna Δ mostraba ANTES y muestra AHORA con la regla nueva). Cambian tres indicadores; el resto no:
 
-**Preguntas abiertas que también esperan tu respuesta** (registradas en `GILDARDO_QUERIES.md`): **Q19** (cuál fenotipo estructural se sella en el registro clínico — la de más peso, ver sección 2), **Q20** (cuál clasificador manda, toca C11), **Q22** (qué puede hacer un médico o un deportólogo dentro del modelo), **Q23** (cómo funciona la remisión).
+| Indicador | Δ antes | Δ ahora |
+|---|---|---|
+| AF | −0.70 | −0.95 |
+| ISCM | −2.07 | −1.07 |
+| FFMI | 4.10 | 0.10 |
+
+Con esos números puedes juzgar si el cambio te parece bien.
+
+**Documentos de nuestro repositorio, disponibles si los quieres:** el registro completo de CA-1 y CA-2 (`CAMBIOS_AUTORIZADOS.md`), el estado detallado de C1-C13, P0-P3 y las preguntas abiertas (`GILDARDO_QUERIES.md`), y tu documento de decisiones (`Decisiones_ANI-BIS-E_2026-07-29`).
+
+**Preguntas abiertas que también esperan tu respuesta:** **Q19** (cuál fenotipo estructural se sella en el registro clínico — la de más peso, ver sección 2) y **Q20** (cuál clasificador manda, toca C11). Hay otras (sobre el rol de cada profesión y las remisiones), pero van en una ronda aparte para no cargar esta con demasiadas decisiones.
 
 ---
 
