@@ -10,9 +10,16 @@
 
    ESTADO DE SINCRONÍA (2026-08-01): este archivo SÍ está al día con el vigente en su
    pieza divergente (calcLE8). Contrasta con engine.core.js, que está DESACTUALIZADO a
-   propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27). Activar el mapeo (poner
-   LE8_MAPEO_CORREGIDO en true, C1) es un follow-on por el mecanismo de modificaciones,
-   NO parte de este swap: mueve la EB-BIS 1–8 años y necesita portar calcPatron (C9).
+   propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27).
+
+   ⚠️ EL INTERRUPTOR LE8_MAPEO_CORREGIDO NO SE TOCA A MANO. Parece un flag de config
+   (por el nombre), pero es ciencia: activarlo (false→true) es C1, va por el MECANISMO
+   de modificaciones autorizadas y tiene su entrada en CAMBIOS_AUTORIZADOS.md. Un flip
+   a mano ROMPE DIFF-dfi (la constante está dentro de la región comparada; verificado
+   ejecutando). Y flipearlo SOLO no hace nada: calcPatron no está portado (la rama de
+   Alimentación cae al catch → 30) y d7_agua no está en la encuesta (Hidratación → 20),
+   así que ambos dominios quedan en los mismos defaults. C1 real = portar calcPatron
+   (C9) + capturar d7_agua en la encuesta + el flip. Mueve la EB-BIS 1–8 años (Q26).
 
    NOTA (bug latente preservado, decisión de Gildardo): en computeDFIFromData
    'sexoM' se usa en el cálculo de 'pabu' una línea antes de declararse (TDZ).
