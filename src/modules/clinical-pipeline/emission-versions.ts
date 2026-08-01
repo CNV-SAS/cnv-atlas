@@ -22,7 +22,12 @@ export type EmissionVersions = Record<EmissionVersionKey, string>;
 //    Si Q20 resuelve a favor de los `dXXX`, esta clave pasa a `dXXX-1.0` y los diagnósticos nuevos se
 //    sellan con ella (los viejos quedan con `cXXX-1.0`): es exactamente para lo que sirve el campo.
 //  - calibration: calibración de la EB-BIS (requisito C2b de Gildardo, confirmado en P0). Provisional
-//    hasta que exista población para recalibrar; al recalibrar se sube la versión y se reemite.
+//    hasta que exista población para recalibrar; al recalibrar se sube la versión y se REEMITE.
+//    VÍNCULO (escrito a propósito): esa REEMISIÓN es el mecanismo de SUCESIÓN DE VERSIONES que HOY NO
+//    EXISTE, el mismo del flujo de corrección post-diagnóstico (ver BACKLOG). La calibración
+//    poblacional es el primer caso concreto y PREVISTO de reemisión, y hoy no hay cómo hacerla:
+//    emission_versions marca CON QUÉ se emitió, pero reemitir un diagnóstico sellado necesita ese
+//    mecanismo. Las dos cosas son la misma; no se construye aquí.
 const CURRENT: EmissionVersions = {
   classification: "cXXX-1.0", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   calibration: "ebbis-v5-provisional",

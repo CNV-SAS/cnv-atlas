@@ -40,6 +40,7 @@
 16. **Separación operativo/clínico completa** (cerrar el `admin`-amplio sobre todo el contenido clínico identificado, mecanismo de grants). `BACKLOG.md` / `SECURITY.md` / `DATA_GOVERNANCE.md`.
 17. **Cierre legal de `SECURITY.md` y `DATA_GOVERNANCE.md`** (consentimiento, retención, residencia, plazos SIC). `BACKLOG.md`.
 18. **Verificación de residencia / DPA de Supabase** frente a la regulación colombiana de dato de salud. `BACKLOG.md`.
+19. **El reporte del paciente entrega la LECTURA FUNCIONAL de los indicadores, no sigla + número crudo (P0, movido de BACKLOG 2026-08-01).** Cita textual de Gildardo (P0, 2026-07-30): *"el reporte del paciente lleva la lectura funcional de los indicadores con su clasificación y su interpretación en lenguaje llano"*. HOY lleva **sigla y número crudo** (IFC 5.26 · IRC 2.03 · …), sin las tres cosas. Qué falta: (a) la **clasificación** ya está sellada en el diagnóstico → barato; (b) la **referencia** existe (`indicator-ranges.ts`) → barato (IFC/IRC/FMI en "-" hasta Q20); (c) la **interpretación en lenguaje llano** la genera una **IA** en el HTML (no es texto estático), así que necesita construir el resumen IA para el paciente (infra B12/B14, apta-paciente y PII-free) + su muestra de estilo. Parte de la Parte 1 de P0 solo QUITÓ lo peligroso (EB/IAE); el documento aún no es el que Gildardo describió. `BACKLOG.md` (item T4 original, ahora apunta aquí).
 
 ## Ya cerrados (registro)
 
@@ -47,4 +48,4 @@
 
 ---
 
-**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 7 · Hito 3 = 7** (Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2). **Total ~18.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
+**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 7 · Hito 3 = 8** (Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG). **Total ~19.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
