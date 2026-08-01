@@ -18,6 +18,7 @@
 
 1. **Flujo de corrección post-diagnóstico** (versionar evaluación/diagnóstico/reporte sin sobrescribir). `BACKLOG.md`. Bloquea porque hoy confirmar es un callejón sin salida.
 2. **Bug D8 de la encuesta** (auto-envío al llegar a Contexto Social → sección siempre incompleta en todos los pacientes). `BACKLOG.md`.
+2bis. **`dfi.complete` mide presencia, no completitud** (hoy `complete = hay al menos un campo`, así que CUALQUIER encuesta parcial se sella como completa; el valor es inmutable con el snapshot de `reports`, no se corrige sin el flujo del gate 1). Es el mismo síntoma que D8 pero del diagnóstico: aunque se arregle el auto-envío, sin redefinir `complete` una encuesta corta seguiría sellándose completa. Debe cerrarse ANTES de sellar diagnósticos reales, porque el campo es de definición única y sellada. `BACKLOG.md`.
 3. **Los cuatro bloques de pulido de fidelidad** (encuesta, evaluación, diagnóstico, tratamiento), cada uno con comparación crítica contra el HTML. `MAPA.md` / `BACKLOG.md`.
 4. **Diseño gráfico coherente** de toda la app (al final del Hito 1, después de los cuatro bloques de pulido). `BACKLOG.md`.
 
@@ -48,4 +49,4 @@
 
 ---
 
-**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 7 · Hito 3 = 8** (Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG). **Total ~19.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
+**Conteo de gates abiertos: Hito 1 = 5 · Hito 2 = 7 · Hito 3 = 8** (Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG; el gate 2bis, `dfi.complete`, se agregó al Hito 1 el 2026-08-01). **Total ~20.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
