@@ -21,6 +21,7 @@ import {
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { recordAudit } from "@/modules/audit/log";
+import { buildEmissionVersions } from "../emission-versions";
 
 import type { EfrContent } from "./pipeline-reader";
 
@@ -133,6 +134,8 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
         engineVersion: output.versions.engine,
         modelVersionId: input.modelVersionId,
         rulesVersion: output.versions.rules,
+        // Versiones de emision emergentes (Q20/C2b), set COMPLETO sellado write-once.
+        emissionVersions: buildEmissionVersions(),
       })
       .returning({ id: diagnoses.id });
     await recordAudit(tx, {

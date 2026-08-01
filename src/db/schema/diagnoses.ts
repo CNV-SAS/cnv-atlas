@@ -35,6 +35,11 @@ export const diagnoses = pgTable(
       .notNull()
       .references(() => modelVersions.id),
     rulesVersion: text("rules_version").notNull(),
+    // Versiones de emision emergentes (Q20 clasificacion, C2b calibracion), selladas write-once por
+    // el trigger 0028. Complementa la constelacion tipada de arriba (regla 7); las claves salen de
+    // constantes (clinical-pipeline/emission-versions.ts). NULL en diagnosticos previos a esta
+    // columna (solo demo, no hay reales); no es bug.
+    emissionVersions: jsonb("emission_versions"),
     confirmedBy: uuid("confirmed_by").references(() => profiles.id), // profesional que confirma
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: createdAt(),
