@@ -373,6 +373,19 @@
 
 ---
 
+## Q24 · Indicadores que miden el mismo fenómeno y alertan juntos (material para Gildardo, NO urgente)
+
+- **Fecha:** 2026-08-01. **Estado:** ABIERTA, prioridad BAJA (va cuando la cola baje). Es material de producto/comunicación, no bloquea nada.
+- **De dónde sale:** con C12, el donante golden muestra TRES indicadores en alerta que tocan el mismo fenómeno (el equilibrio compartimento extracelular ↔ celular): **IRC** "Riesgo moderado", **IFC** "Alerta funcional", **AEC/MCA** 0.462 "Alerta". Que coincidan es BUENA señal del modelo (los indicadores no se contradicen). Pero Atlas no dice en ninguna parte CÓMO se relacionan: un profesional ve tres alertas y no sabe si son tres problemas distintos o uno visto desde tres ángulos, y podría leer **redundancia como acumulación de riesgo**.
+- **Inventario de grupos que se mueven juntos POR CONSTRUCCIÓN (comparten insumos, verificado en las fórmulas):**
+  - **Compartimento extracelular/celular (Cole-Cole + agua):** IFC (C, Rinf), IRC (Re, Ri, C), PABU (Re, Ri, Rinf, C), AEC/MCA (ECW, MCA), IEHH (Re/Rinf, FFW, C). Comparten resistencias/capacitancia y agua → co-varían.
+  - **Derivados de IFC:** ISCM (usa IFC) y EB-BIS (usa IFC + PABU) → se mueven con IFC.
+  - **Masa/composición:** FMI, FFMI, ASMI, SMM/W comparten FFM/FM/masa muscular.
+
+**Para Gildardo (breve):** varios indicadores del sistema miden aspectos del mismo fenómeno (p. ej. IRC, IFC y AEC/MCA tocan el equilibrio extracelular↔celular) y tienden a alertar juntos. ¿Debería el profesional ver algo que lo indique (que son ángulos de un mismo estado, no riesgos independientes), o se espera que lo sepa por formación?
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
