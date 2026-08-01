@@ -392,6 +392,18 @@
 
 ---
 
+## Q25 · P0 Parte 2: redacción de las tres bandas + dos decisiones clínicas (autoría de Gildardo)
+
+- **Fecha:** 2026-08-01. **Estado:** ABIERTA. El MECANISMO ya está construido (bandas, gate de 12 semanas, corte ±2 provisional, selección de la previa comparable) con textos PLACEHOLDER neutros; lo que falta es autoría suya. La comunicación al paciente es criterio clínico, no decisión nuestra.
+- **Contexto:** desde la 2ª medición comparable (≥12 semanas), al paciente se le muestra el CAMBIO de la EB-BIS en tres bandas (mejoró / sin cambio / empeoró), no el nivel ni la cifra. Los placeholders no revelan el constructo ("edad bioeléctrica" es término retirado) ni el nivel.
+
+**Para Gildardo (tres cosas):**
+1. **La redacción de las tres bandas** de cara al paciente (mejoró / sin cambio / empeoró), sin nombrar "edad bioeléctrica" ni dar cifra. Hoy usamos placeholders neutros.
+2. **La banda "empeoró" — ¿la aprueba el profesional antes de que salga?** Como la banda se calcula sola y el reporte se aprueba y envía, es posible que el profesional apruebe el documento **sin haber leído esa sección**, y el paciente reciba un "empeoró" sin que nadie haya decidido comunicárselo. ¿El profesional debería tener que **confirmarlo** antes de que salga en el reporte (como el reconocimiento de restricciones del menú y la confirmación del diagnóstico), o el reporte lo lleva siempre? El mecanismo está construido para poder agregar ese gate sin rehacer nada. Y la redacción de "empeoró" probablemente **va acompañada de algo** (el plan, la próxima cita, contención): ¿de qué?
+3. **El corte de ±2 años es provisional, y eso afecta la redacción de "sin cambio".** Un cambio de **1.9 años** se comunica hoy como "sin cambio". Decirle a un paciente "se mantuvo estable" es una afirmación que el modelo, con el corte provisional, no sostiene del todo. ¿Es aceptable comunicarlo así mientras el corte sea provisional, o el texto debería ser más prudente (algo como "sin cambios significativos con la información disponible")?
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
