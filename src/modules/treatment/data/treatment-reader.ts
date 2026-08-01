@@ -53,6 +53,10 @@ export type TreatmentProtocol = {
   notes: TreatmentNote[];
   catalog: CatalogItem[];
   menuSuggestions: MenuSuggestion[]; // sugerencias de IA (B13), la mas reciente primero
+  // Snapshot del protocolo sugerido (write-once, sellado al crear el tratamiento). Solo lectura; lo
+  // usa el panel de consulta medica para mostrar examenes y suplementacion sugeridos. null si el
+  // tratamiento se creo antes de sellar protocol_suggested.
+  protocolSuggested: ProtocoloSnapshot | null;
 };
 
 export async function getTreatmentProtocol(
@@ -74,7 +78,7 @@ export async function getTreatmentProtocol(
   // El tratamiento que el pipeline creo para ese diagnostico.
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
-    .select("id, kcal_objetivo, proteina_g, restricciones")
+    .select("id, kcal_objetivo, proteina_g, restricciones, protocol_suggested")
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -155,6 +159,7 @@ export async function getTreatmentProtocol(
       latencyMs: m.latency_ms,
       generatedAt: m.generated_at,
     })),
+    protocolSuggested: (treatment.protocol_suggested as ProtocoloSnapshot | null) ?? null,
   };
 }
 

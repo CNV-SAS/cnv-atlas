@@ -38,6 +38,7 @@ import { getFollowupComparison } from "@/modules/followups/data/comparison-reade
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
+import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -214,6 +215,14 @@ export default async function ResultadosEvaluacionPage({
   // Contenido de las rutas activas, congelado en el snapshot (T1). [] para snapshots incompatibles o
   // previos a T1 (la seccion muestra "sin rutas" en vez de tronar).
   const rutas = results.rutasContent;
+  // Texto del abordaje del rol del actor para el panel de consulta (medico/deportologo); null si el
+  // snapshot es incompatible o la profesion no aplica.
+  const abordajeText = abordaje.kind === "text" ? abordaje.text : null;
+  // Estado del paciente para la cabecera comun de Tratamiento (sector EFR + fenotipo), ya sellado en el
+  // snapshot; solo cuando el snapshot es compatible (los previos a B11 no tienen esta forma).
+  const patientState = results.compatible
+    ? { sector: results.snapshot.frSector, fenotipo: results.snapshot.structural }
+    : null;
 
   return (
     <EvaluationTabs
@@ -234,12 +243,20 @@ export default async function ResultadosEvaluacionPage({
       }
       tratamiento={
         <div className="flex flex-col gap-8">
+          {/* Estado del paciente (sector EFR + fenotipo): contexto de una linea que hace legible el
+              abordaje del panel por profesion, sin ir y volver a Diagnostico (ajuste 2). Parte comun,
+              para todas las profesiones. */}
+          {patientState ? (
+            <PatientStateHeader sector={patientState.sector} fenotipo={patientState.fenotipo} />
+          ) : null}
           <RutasSection rutas={rutas} />
           <RemisionesSection rutas={rutas} />
           <ProfessionTreatmentSection
             evaluationId={id}
             actor={actorProfession}
             protocol={protocol}
+            abordaje={abordajeText}
+            rutas={rutas}
           />
           {/* Reporte: cierre de la etapa de Tratamiento (es su salida). La aprobacion/envio la
               gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
