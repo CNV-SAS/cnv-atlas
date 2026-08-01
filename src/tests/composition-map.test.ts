@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { BIODY_COLUMNS } from "@/clinical-engine";
-import { buildComposition } from "@/modules/diagnoses/data/composition-map";
+import { buildComposition, clasificarAecMca } from "@/modules/diagnoses/data/composition-map";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 // Candado del mapeo de circunferencias. Un bug real (2026-07-24) hacia que `cintura` leyera la
@@ -64,5 +64,27 @@ describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo 
     // Su importarComposicion la mapea al umbral de referencia (verificado en ATLAS_v7.html:5617);
     // Atlas la deja fuera a proposito. Si alguien la re-agrega, este candado cae.
     expect(BIODY_COLUMNS.cintura).toBeUndefined();
+  });
+
+  // C12: AEC/MCA = ECW/MCA (ATLAS_v7.html:5696), fila de Nivel III con referencia = corte 0.45.
+  it("AEC/MCA: ratio ECW/MCA desde los valores MEDIDOS (VALEURCALCULEE), no umbrales", () => {
+    const ecw = raw[normalizeHeader(BIODY_COLUMNS.ECW.header)];
+    const mca = raw[normalizeHeader(BIODY_COLUMNS.MCA.header)];
+    expect(ecw).toBeGreaterThan(0);
+    expect(mca).toBeGreaterThan(0);
+    expect(comp.aecMca).toBeCloseTo(ecw / mca, 3);
+    const nivelIII = comp.levels.find((l) => l.title.includes("Celular"));
+    const fila = nivelIII?.rows.find((r) => r.key === "aec_mca");
+    expect(fila?.value).toBe(comp.aecMca);
+    expect(fila?.reference).toBe(0.45); // corte, no referencia del dispositivo
+    expect(fila?.referenceLabel).toBe("<0.45");
+  });
+
+  it("clasificarAecMca: cortes verbatim 0.45/0.55 (12734)", () => {
+    expect(clasificarAecMca(0.4)?.label).toBe("Óptimo");
+    expect(clasificarAecMca(0.5)?.label).toBe("Alerta"); // CA-2: valor 0.50 -> Alerta, Δ +0.05 (contra 0.45)
+    expect(clasificarAecMca(0.6)?.label).toBe("Riesgo");
+    expect(clasificarAecMca(0.45)?.label).toBe("Alerta"); // 0.45 no es < 0.45
+    expect(clasificarAecMca(null)).toBeNull();
   });
 });

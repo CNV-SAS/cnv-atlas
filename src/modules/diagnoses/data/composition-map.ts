@@ -15,6 +15,8 @@ export type CompositionRow = {
   value: number | null;
   reference: number | null;
   unit: string;
+  decimals?: number; // decimales de display (default 1); AEC/MCA usa 3 (ratio)
+  referenceLabel?: string; // etiqueta de referencia si NO es el valor numerico (p. ej. "<0.45")
 };
 export type CompositionLevel = { title: string; rows: CompositionRow[] };
 export type Composition = {
@@ -25,9 +27,26 @@ export type Composition = {
   cadera: number | null; // circunferencia MEDIDA (Hips Size cm)
   ict: number | null;
   icc: number | null;
+  aecMca: number | null; // AEC/MCA = ECW/MCA (C12, ver clasificarAecMca)
   // Fecha de la medicion BIS (del Biody), para confirmar QUE se importo. null si no se conoce.
   measurementDate: string | null;
 };
+
+// Clasificacion de AEC/MCA (radio agua extracelular / masa celular activa). Cortes y etiquetas
+// PORTADOS VERBATIM del HTML vigente de Gildardo (ATLAS_v7.html:12734, `dAECMCA`): v<0.45 Óptimo,
+// v<=0.55 Alerta, else Riesgo. sev 0/2/3 para la capa de color de BRAND.
+//
+// OJO (familia Q20): este clasificador es de la familia de DISPLAY (`dAECMCA`); NO existe un
+// clasificador CIENTIFICO (`cAECMCA`, por sexo) para AEC/MCA. Q20 pregunta cual familia (c vs d) es
+// la vigente. Es la unica opcion disponible hoy, pero si Q20 resuelve a favor de los `c`, este
+// indicador necesitaria un clasificador que hoy no existe. No se sella (es display), asi que el
+// dia que aparezca el `c` se recomputa; no queda nada inmutable atado a esta eleccion.
+export function clasificarAecMca(v: number | null): { label: string; sev: number } | null {
+  if (v == null) return null;
+  if (v < 0.45) return { label: "Óptimo", sev: 0 };
+  if (v <= 0.55) return { label: "Alerta", sev: 2 };
+  return { label: "Riesgo", sev: 3 };
+}
 
 // Filas de la tabla por nivel de Wang: [etiqueta, clave de valor, clave de referencia|null, unidad].
 // Las claves son de BIODY_COLUMNS; se omiten las que el contrato no cubre.
@@ -60,6 +79,9 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
       ["Masa celular activa", "MCA", "MCA_ref", "kg"],
       ["Solidos extracelulares", "solEC", "solEC_ref", "kg"],
       ["Masa seca sin grasa", "masaSeca", "masaSeca_ref", "kg"],
+      // AEC/MCA (C12): ratio derivado ECW/MCA, no una columna cruda. Referencia = corte 0.45 (verbatim
+      // ATLAS_v7.html:12734). Valor y Δ especiales, se resuelven en buildComposition.
+      ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
       ["Agua extracelular", "ECW", "ECW_ref", "L"],
       ["Agua intracelular", "ICW", "ICW_ref", "L"],
     ],
@@ -106,17 +128,30 @@ export function buildComposition(
   // Valor por header MEDIDO directo (para las circunferencias planas del export).
   const measured = (header: string): number | null => num(raw[normalizeHeader(header)]);
   const cintura = measured(MEASURED_WAIST_HEADER);
+  // AEC/MCA = ECW / MCA (C12; ATLAS_v7.html:5696, `datos.aec_mca = ECW/MCA`). ECW ("Extracellular
+  // water") y MCA ("Masa celular activa") son los valores MEDIDOS (VALEURCALCULEE en BIODY_COLUMNS),
+  // no los umbrales de referencia: evita la familia del bug de cintura. Mismo redondeo que el HTML.
+  const _ecw = get("ECW");
+  const _mca = get("MCA");
+  const aecMca =
+    _ecw != null && _mca != null && _mca > 0 ? parseFloat((_ecw / _mca).toFixed(3)) : null;
 
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
-    rows: lvl.rows.map(([label, valueKey, refKey, unit]) => ({
-      key: valueKey,
-      label,
-      // La fila "Cintura" tambien usa la MEDIDA, no el umbral (BIODY_COLUMNS.cintura).
-      value: valueKey === "cintura" ? cintura : get(valueKey),
-      reference: refKey ? get(refKey) : null,
-      unit,
-    })),
+    rows: lvl.rows.map(([label, valueKey, refKey, unit]) => {
+      // AEC/MCA (C12): valor derivado + referencia = corte 0.45 (verbatim 12734), 3 decimales.
+      if (valueKey === "aec_mca") {
+        return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
+      }
+      return {
+        key: valueKey,
+        label,
+        // La fila "Cintura" tambien usa la MEDIDA, no el umbral (BIODY_COLUMNS.cintura).
+        value: valueKey === "cintura" ? cintura : get(valueKey),
+        reference: refKey ? get(refKey) : null,
+        unit,
+      };
+    }),
   }));
 
   return {
@@ -126,6 +161,7 @@ export function buildComposition(
     cadera: measured(MEASURED_HIPS_HEADER),
     ict: get("ict"),
     icc: get("icc"),
+    aecMca,
     measurementDate,
   };
 }

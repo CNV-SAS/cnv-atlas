@@ -6,6 +6,7 @@ import {
   clasificarICT,
   clasificarIMC,
 } from "../anthropometry";
+import { clasificarAecMca } from "../data/composition-map";
 import type { Composition } from "../data/composition-reader";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
@@ -70,6 +71,21 @@ function DiagnosisCell({
         {oms.label}
       </span>
     );
+  }
+  // (a2) AEC/MCA (C12): clasificador de DISPLAY de Gildardo (dAECMCA, ATLAS_v7:12734), no OMS ni
+  // motor sellado. Rotulado como tal; Q20 (familia c vs d) sigue abierta.
+  if (rowKey === "aec_mca") {
+    const aec = clasificarAecMca(value);
+    if (aec) {
+      return (
+        <span
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, aec.sev))]}`}
+          title="Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20."
+        >
+          {aec.label}
+        </span>
+      );
+    }
   }
   // (b) clasificacion del motor congelada en el snapshot (FFMI, AF).
   const snap =
@@ -149,6 +165,7 @@ export function CompositionSection({
                       </td>
                     </tr>
                     {lvl.rows.map((r) => {
+                      const dec = r.decimals ?? 1;
                       const delta =
                         r.value != null && r.reference != null ? r.value - r.reference : null;
                       return (
@@ -160,13 +177,13 @@ export function CompositionSection({
                             ) : null}
                           </td>
                           <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">
-                            {fmt(r.value)}
+                            {fmt(r.value, dec)}
                           </td>
                           <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-                            {fmt(r.reference)}
+                            {r.referenceLabel ?? fmt(r.reference, dec)}
                           </td>
                           <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-                            {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta)}`}
+                            {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
                           </td>
                           {showDiagnosis ? (
                             <td className="py-1.5">

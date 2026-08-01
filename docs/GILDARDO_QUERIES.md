@@ -307,6 +307,8 @@
 
 **Evidencia PARA la respuesta (no la sustituye):** tu propio cambio **C11** pide "exponer los rangos de referencia por indicador **y sexo**". Los `cXXX` SON por sexo (cIFC/cIRC/cFMI tienen cortes M/F distintos); los `dXXX` de la tabla que C11 cita NO (IFC/IRC son un solo umbral). Tu instrucción escrita orienta a `cXXX`, aunque cite la tabla display. No lo damos por dicho; lo señalamos.
 
+**Pregunta que puede orientar TODA la respuesta (evidencia concreta, 2026-08-01):** hay indicadores que tienen **solo** clasificador de display (`d`), sin uno científico (`c`). Caso: **AEC/MCA** (el indicador que acabamos de agregar, C12) tiene `dAECMCA` (cortes 0.45/0.55, sin sexo) y NO existe un `cAECMCA`. ¿Por qué unos indicadores tienen clasificador científico (por sexo) y otros solo de display? ¿Es deliberado, o falta el científico? **Importa para la respuesta entera:** si hay indicadores donde SOLO existe el `d`, entonces los `d` no son "una versión alternativa de los `c`" (que es como veníamos planteando Q20), son **otra cosa** (quizás una capa de display que convive con la científica, no que la reemplaza). Eso cambiaría cómo se resuelve Q20.
+
 **Para su CC:** el motor de Atlas clasifica con `cXXX` (frozen, sexo-específico) y sella `classifications` en el snapshot. La tabla del prototipo usa `dXXX` (display). Difieren en IFC/IRC/FMI (cortes y, en IRC, escala ×10). Si manda `dXXX`, hay que decidir cómo se porta sin editar el frozen (¿exponer `dXXX` por el mecanismo derivado? ¿o son equivalentes clínicos y `cXXX` es el correcto?), y si cambia lo que se sella, entra un campo de versión de clasificación (familia de C2b / `protocol_engine_version`). Mientras tanto Atlas sigue con `cXXX` y la referencia de esos tres queda en "-".
 
 ---
