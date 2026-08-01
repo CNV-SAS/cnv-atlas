@@ -3,7 +3,8 @@
 import { useState, type ReactNode } from "react";
 
 // Shell de pestañas de una evaluacion (/evaluaciones/[id]). Adopta las 4 etapas reales de la ruta
-// ANI-BIS-E como tabs internas (familiaridad de formacion); el sidebar sigue navegando entre
+// ANI-BIS-E como tabs internas (es la estructura real de la ruta clinica, no "familiaridad de
+// formacion": los profesionales se forman en Atlas, no en el HTML); el sidebar sigue navegando entre
 // entidades. Encuesta y Antrop & BIS no son etapas propias: son las dos entradas de datos de la
 // evaluacion, viven como secciones dentro de Evaluacion. El contenido de cada etapa se computa en
 // el servidor y llega como prop (ReactNode), asi el cambio de tab es client-side sin refetch ni

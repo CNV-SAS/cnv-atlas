@@ -54,10 +54,18 @@ fenotipo estructural, sector FyR, mecanismo, biomarcadores, riesgos, nutracéuti
 
 # Parte 2 — Estructura y layout (cómo organiza la información el HTML)
 
-**Restricción de negocio (importante):** con este HTML se forma a los Integrantes. Su
-estructura/layout está "pagada" en la formación (familiaridad), así que **se preserva por
-defecto**. Solo nos apartamos donde la estructura del HTML esté **claramente rota o no
-funcional**, y esas desviaciones se marcan abajo para que Santiago las juzgue. Inventario leído
+**Preferencia de diseño (no restricción de negocio):** la estructura/layout del HTML **se
+preserva por defecto** porque es una organización ya probada y coherente de la información, no
+porque forme a nadie. CORRECCIÓN (2026-07-31): antes esto se justificaba como "restricción de
+negocio: con este HTML se forma a los Integrantes, su layout está pagado en la formación". Ese
+hecho es falso. Los profesionales se forman en **Atlas Web, no en el HTML** (el HTML se usó como
+referencia porque no había versión web; hoy la hay). La preservación del layout sigue siendo
+razonable por consistencia, pero es una preferencia, no una obligación: donde una estructura
+propia de Atlas sirva mejor, se decide por mérito, no por "familiaridad". La fidelidad que sí es
+innegociable es la del **vocabulario y los datos clínicos**, y no por familiaridad tampoco, sino
+porque el HTML es la expresión de la ciencia de Gildardo y la fidelidad protege ESA ciencia. Solo
+nos apartamos del layout donde la estructura del HTML esté **claramente rota o no funcional**, y
+esas desviaciones se marcan abajo para que Santiago las juzgue. Inventario leído
 del código fuente del HTML (el runtime tiene el bug de render de la Q4: la vista de
 diagnóstico/tratamiento sale en blanco, así que la estructura se infiere del código, no de la
 pantalla).
@@ -100,7 +108,7 @@ el panel `/evaluaciones`.
 
 | Elemento estructural del HTML | Atlas hoy | Preservar / desviar | Nota |
 |---|---|---|---|
-| Navegación por **tabs** dentro del diagnóstico (Integral / Diana / Evolución / Recomendaciones) | Scroll único de cards | **Preservar** (familiaridad) | Candidato claro: organizar la vista de resultados en las tabs del HTML. |
+| Navegación por **tabs** dentro del diagnóstico (Integral / Diana / Evolución / Recomendaciones) | Scroll único de cards | **Preservar** (estructura probada) | Candidato claro: organizar la vista de resultados en las tabs del HTML. |
 | **Tarjeta de estado del paciente** como cabecera con indicadores clave | Header simple (nombre, fecha, confirmado) | **Preservar** | Falta el resumen KPI de cabecera. |
 | **KPI cards** (número grande + etiqueta) para índices/anillo | Tabla de 12 indicadores | **Preservar/mezclar** | La tabla es correcta pero densa; el HTML jerarquiza con KPIs arriba + detalle abajo. |
 | **Clasificaciones antropométricas** en chips (IMC/IC/ICC/ICT) | No se muestran | Preservar (ver Parte 1, faltante (b)) | Estructura + dato faltan juntos. |
