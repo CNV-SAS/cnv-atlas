@@ -40,6 +40,17 @@ export async function runClinicalPipeline(
   if (!inputs.surveyVersionId) {
     return err(appError("validation", "La evaluacion no tiene respuestas de encuesta."));
   }
+  // Fail-loud (dfi.complete, regla 7): sin la lista declarada por la version no se puede medir
+  // completitud, y NO se sella un complete que no se pudo evaluar. Es error de integridad (una
+  // version siempre declara sus field_key), no un caso normal: se falla, no se cae a un default.
+  if (inputs.expectedFieldKeys.length === 0) {
+    return err(
+      appError(
+        "internal",
+        "La version de la encuesta no declara field_key; no se puede medir la completitud del diagnostico.",
+      ),
+    );
+  }
 
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una version del modelo activa."));
@@ -49,6 +60,7 @@ export async function runClinicalPipeline(
       sex: inputs.sex,
       birthDate: inputs.birthDate,
       surveyAnswers: inputs.surveyAnswers,
+      expectedFieldKeys: inputs.expectedFieldKeys,
       bisRaw: inputs.bisRaw,
     },
     { version: model.versionName, rulesVersion: model.rulesVersion },

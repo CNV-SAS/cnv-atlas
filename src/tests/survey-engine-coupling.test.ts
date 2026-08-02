@@ -68,15 +68,18 @@ function bisRawFromFixture(): Record<string, number> {
 describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
   it("con las cadenas exactas, el DFI corre completo y el LE8 refleja cada dominio", () => {
     const input = buildEngineInput(
-      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: ENGINE_ANSWERS, bisRaw: bisRawFromFixture() },
+      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: ENGINE_ANSWERS, expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
       MODEL,
       NOW,
     );
     const out = runEngine(input);
 
-    // Wiring: al menos un d-field presente -> DFI completo, marcado explicito (no null).
-    expect(out.dfi.complete).toBe(true);
-    expect(out.dfi.degradedReason).toBeNull();
+    // ENGINE_ANSWERS responde 7 de los 13 field_key declarados: el DFI corre sobre lo presente
+    // (LE8/veto/rutas siguen validos) pero se marca INCOMPLETO (dfi.complete, definicion por
+    // version, regla 7). Antes bastaba "algun d-field" para marcar completo (bug corregido).
+    expect(out.dfi.complete).toBe(false);
+    expect(out.dfi.degradedReason).not.toBeNull();
+    expect(out.dfi.missingFieldKeys).toContain("d8_61");
 
     // LE8 total sensible a 5 dominios string-exact: AF 100 ("Mas de 60 min" x 5 dias),
     // Tabaco 100 ("Nunca he fumado"), Sueno 100 ("7-8 horas" en-dash), Glucosa 20
@@ -109,7 +112,7 @@ describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
 
   it("sin encuesta, el DFI queda degradado y marcado (no null silencioso)", () => {
     const input = buildEngineInput(
-      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: [], bisRaw: bisRawFromFixture() },
+      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
       MODEL,
       NOW,
     );

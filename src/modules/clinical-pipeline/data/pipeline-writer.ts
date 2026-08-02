@@ -209,6 +209,10 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
           efrContent: input.efrContent,
           validityCaveats: input.validityCaveats,
           rutasContent: input.rutasContent,
+          // survey_version_id SELLADO junto a dfi.complete: la lista de field_key contra la
+          // que se midio la completitud es reconstruible desde aqui (regla 7). Con el, un
+          // dfi.complete sellado no depende de que lista se le pase despues.
+          surveyVersionId: input.surveyVersionId,
         },
       })
       .returning({ id: reports.id });

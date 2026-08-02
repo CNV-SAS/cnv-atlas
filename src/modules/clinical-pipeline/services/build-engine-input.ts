@@ -20,6 +20,9 @@ export type RawEvaluationData = {
   sex: string | null;
   birthDate: string | null; // 'YYYY-MM-DD'
   surveyAnswers: SurveyFieldAnswer[];
+  // field_key que DECLARA la version de la encuesta (todas las preguntas con field_key de esa
+  // version, respondidas o no). Es la lista contra la cual el motor mide dfi.complete (regla 7).
+  expectedFieldKeys: string[];
   bisRaw: Record<string, number>; // header normalizado (B8) -> valor
 };
 
@@ -91,9 +94,11 @@ export function buildEngineInput(
     sexo: normalizeSex(raw.sex),
     edad: computeAge(raw.birthDate, now),
     bisRow: buildBisRow(raw.bisRaw),
-    // La encuesta llega keyed por field_key (d-field) con los multi ya decodificados a
-    // array. Con al menos un d-field presente, el DFI corre completo (dfi.complete=true).
+    // La encuesta llega keyed por field_key (d-field) con los multi ya decodificados a array.
     survey: buildSurvey(raw.surveyAnswers),
+    // Lista declarada por la version (regla 7): el motor mide dfi.complete contra ella. Viene
+    // del reader; si esta vacia, run-pipeline ya fallo antes (no se llega aqui con lista vacia).
+    expectedFieldKeys: raw.expectedFieldKeys,
     model,
   };
 }

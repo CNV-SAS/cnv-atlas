@@ -8,12 +8,25 @@ import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // EngineOutput, determinismo y el flag de degradacion del DFI. La paridad numerica con
 // el HTML la cubre clinical-engine-golden.test.ts (regla 6).
 
-function input(survey: Record<string, unknown> = {}): EngineInput {
+// Los 13 field_key que declara la version (regla 7): la lista contra la que se mide
+// dfi.complete. La encuesta esta completa solo si TODOS estan respondidos.
+const CANON = [
+  "d2_19", "d2_20", "d2_21", "d2_22",
+  "d3_23", "d3_24", "d3_26", "d3_30",
+  "d5_36", "d5_38", "d5_39",
+  "d8_61", "d8_62",
+];
+// Encuesta que responde los 13 (valores minimos: el motor no crashea con strings arbitrarios,
+// solo importa que esten respondidos para la completitud).
+const FULL_SURVEY = Object.fromEntries(CANON.map((k) => [k, "1"]));
+
+function input(survey: Record<string, unknown> = {}, expected: string[] = CANON): EngineInput {
   return {
     sexo: "M",
     edad: 54,
     bisRow: biody as Record<string, unknown>,
     survey,
+    expectedFieldKeys: expected,
     model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
 }
@@ -51,10 +64,23 @@ describe("clinical-engine runEngine (motor real)", () => {
     expect(out.indicators.iae).toBeNull();
   });
 
-  it("marca el DFI COMPLETO cuando hay datos de encuesta", () => {
-    const out = runEngine(input({ d1_9: "3", d3_23: "5", d3_24: "Más de 60 min" }));
+  it("marca el DFI COMPLETO solo cuando TODOS los field_key declarados estan respondidos", () => {
+    const out = runEngine(input(FULL_SURVEY));
     expect(out.dfi.complete).toBe(true);
+    expect(out.dfi.missingFieldKeys).toEqual([]);
     expect(out.dfi.degradedReason).toBeNull();
+    expect(out.dfi.le8Total).not.toBeNull();
+  });
+
+  // Regresion del bug dfi.complete (2026-08-02): una encuesta PARCIAL (por CUALQUIER razon)
+  // ya NO se sella como completa. Antes complete = "hay algun campo" -> este caso daba true.
+  it("una encuesta PARCIAL no se marca completa, y reporta que falta", () => {
+    const out = runEngine(input({ d3_23: "5", d3_24: "Más de 60 min" }));
+    expect(out.dfi.complete).toBe(false);
+    expect(out.dfi.missingFieldKeys).toHaveLength(CANON.length - 2);
+    expect(out.dfi.missingFieldKeys).toContain("d8_61");
+    expect(out.dfi.degradedReason).toContain("faltan");
+    // el DFI SIGUE computando sobre lo presente (LE8 no es null): parcial != vacio.
     expect(out.dfi.le8Total).not.toBeNull();
   });
 

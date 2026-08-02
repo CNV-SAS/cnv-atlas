@@ -46,6 +46,7 @@ describe("buildEngineInput", () => {
         { fieldKey: "d2_19", type: "opcion", value: "Normal" },
         { fieldKey: "d5_39", type: "opcion_multiple", value: '["HTA","Prediabetes"]' },
       ],
+      expectedFieldKeys: ["d2_19", "d5_39"],
       bisRaw: {
         [normalizeHeader(BIODY_COLUMNS.peso.header)]: 70,
         [normalizeHeader(BIODY_COLUMNS.AF.header)]: 6.2,
@@ -69,6 +70,7 @@ describe("buildEngineInput", () => {
       sex: null,
       birthDate: null,
       surveyAnswers: [],
+      expectedFieldKeys: ["d2_19"],
       bisRaw: { [normalizeHeader(BIODY_COLUMNS.peso.header)]: Number.NaN },
     };
     const input = buildEngineInput(raw, model, NOW);

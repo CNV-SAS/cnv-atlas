@@ -25,19 +25,48 @@ function r4(n: number): number {
   return Math.round(n * 10000) / 10000;
 }
 
-// La encuesta es util si trae algun campo con el patron de ID del prototipo (dN_M).
-function hasSurveyData(survey: Record<string, unknown>): boolean {
-  return Object.keys(survey).some(
-    (k) => /^d\d+_\d+$/.test(k) && survey[k] != null && survey[k] !== "",
-  );
+// Un campo de encuesta esta RESPONDIDO si no es null, ni cadena vacia, ni array vacio (un
+// multi-select sin marcar llega como []). Sirve tanto para "hay algun dato" como para medir
+// completitud campo a campo.
+function answered(v: unknown): boolean {
+  if (v == null || v === "") return false;
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
 }
 
-const DEGRADED_REASON =
-  "Sin datos de encuesta: el diagnostico funcional integral (dominios de encuesta, EB/IAE y LE8) esta incompleto hasta integrar la encuesta real.";
+// La encuesta trae ALGUN dato util (patron de ID del prototipo dN_M). Habilita el computo de
+// LE8/EB (se calcula con lo que haya); es DISTINTO de dfi.complete (que exige TODOS los
+// field_key declarados). Un parcial produce EB/rutas sobre lo presente, pero se marca incompleto.
+function hasSurveyData(survey: Record<string, unknown>): boolean {
+  return Object.keys(survey).some((k) => /^d\d+_\d+$/.test(k) && answered(survey[k]));
+}
+
+const NO_SURVEY_REASON =
+  "Sin datos de encuesta: el diagnostico funcional integral (dominios de encuesta, EB/IAE y LE8) esta incompleto hasta integrar la encuesta.";
 
 export function runEngine(input: EngineInput): EngineOutput {
-  const { sexo, edad, bisRow, survey, model } = input;
+  const { sexo, edad, bisRow, survey, expectedFieldKeys, model } = input;
   const surveyPresent = hasSurveyData(survey);
+
+  // Completitud REAL (regla 7, definicion aprobada 2026-08-02): la encuesta esta completa si
+  // TODOS los field_key que declara su version estan respondidos. expectedFieldKeys debe venir
+  // NO vacio (el que arma el input falla fuerte si no lo puede leer); si aun asi llega vacio, es
+  // una violacion de contrato y se falla fuerte aqui, NUNCA se cae a "completo" por defecto.
+  if (expectedFieldKeys.length === 0) {
+    throw new Error(
+      "runEngine: expectedFieldKeys vacio; no se puede medir dfi.complete sin la lista declarada por la version de la encuesta (regla 7).",
+    );
+  }
+  const missingFieldKeys = expectedFieldKeys.filter((k) => !answered(survey[k]));
+  const surveyComplete = missingFieldKeys.length === 0;
+  // degradedReason: sin encuesta -> mensaje de "sin datos"; parcial -> cuenta de lo que falta
+  // (la vista traduce missingFieldKeys a dominios). El "por que" no lleva etiquetas de dominio
+  // para que el texto sellado sea estable; los dominios se computan al mostrar.
+  const degradedReason = !surveyPresent
+    ? NO_SURVEY_REASON
+    : surveyComplete
+      ? null
+      : `Encuesta incompleta: faltan ${missingFieldKeys.length} de ${expectedFieldKeys.length} respuestas que usa el diagnostico. El profesional puede completarla en consulta.`;
 
   // LE8/ICEC desde la encuesta (solo si hay): habilita EB/IAE.
   const le8 = surveyPresent ? calcLE8(survey) : null;
@@ -103,11 +132,14 @@ export function runEngine(input: EngineInput): EngineOutput {
     IR: indicators.IR > 0 ? { label: core.cIR(indicators.IR, sexo).l } : null,
   };
 
-  // DFI (autoritativo). Completo con encuesta; degradado sin ella (marcado explicito).
+  // DFI (autoritativo). Se computa con lo que haya (LE8/EB sobre lo presente); la marca de
+  // completitud es surveyComplete (todos los field_key declarados), no "hay algun dato".
+  // Q28 (pendiente): complete=false NO impide emitir el diagnostico hoy, solo lo marca.
   const dfiRaw = analizarDFI(bisRow, { ...survey, sexo, edad });
   const dfi: EngineDfi = {
-    complete: surveyPresent,
-    degradedReason: surveyPresent ? null : DEGRADED_REASON,
+    complete: surveyComplete,
+    missingFieldKeys,
+    degradedReason,
     domains: dfiRaw.domains.map((d) => ({
       id: d.id,
       nombre: d.nombre,
@@ -131,7 +163,7 @@ export function runEngine(input: EngineInput): EngineOutput {
   const resumenClinico =
     `Fenotipo EFR ${efrKey}: ${a.fenotipoEFR.dx ?? "sin diagnostico"}. ` +
     `Nutraceuticos sugeridos: ${a.fenotipoEFR.nutraceuticos}. ` +
-    `Rutas de atencion (DFI${surveyPresent ? "" : ", incompleto sin encuesta"}): ${rutasTxt}.`;
+    `Rutas de atencion (DFI${surveyComplete ? "" : ", encuesta incompleta"}): ${rutasTxt}.`;
 
   return {
     sexo: a.sexo,

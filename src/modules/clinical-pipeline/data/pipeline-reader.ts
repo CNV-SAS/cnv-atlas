@@ -31,6 +31,9 @@ export type PipelineInputs = {
   birthDate: string | null;
   surveyVersionId: string | null;
   surveyAnswers: SurveyFieldAnswer[]; // solo las preguntas con field_key (alimentan el motor)
+  // Todos los field_key que DECLARA la version (respondidos o no): la lista contra la cual el
+  // motor mide dfi.complete (regla 7). Vacia si no hay respuesta/version (el orquestador falla).
+  expectedFieldKeys: string[];
   bisRaw: Record<string, number>;
   hasBis: boolean;
 };
@@ -61,6 +64,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
   // alimentan el motor (field_key no nulo). El motor las lee por d-field, no por questionId.
   const answers: SurveyFieldAnswer[] = [];
   let surveyVersionId: string | null = null;
+  let expectedFieldKeys: string[] = [];
   if (response) {
     surveyVersionId = response.surveyVersionId;
     const rows = await db
@@ -75,6 +79,17 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     for (const r of rows) {
       if (r.fieldKey) answers.push({ fieldKey: r.fieldKey, type: r.type, value: r.answerValue ?? "" });
     }
+    // La lista DECLARADA por la version: todas las preguntas con field_key de esa version
+    // (respondidas o no). Es la lista contra la cual se mide dfi.complete (regla 7). Se lee de
+    // survey_questions por survey_version_id; su ausencia es un error de integridad que el
+    // orquestador convierte en fallo (no se sella un complete que no se pudo evaluar).
+    const declared = await db
+      .select({ fieldKey: surveyQuestions.fieldKey })
+      .from(surveyQuestions)
+      .where(eq(surveyQuestions.surveyVersionId, surveyVersionId));
+    expectedFieldKeys = declared
+      .map((r) => r.fieldKey)
+      .filter((k): k is string => k != null);
   }
 
   // Crudos BIS de la medicion de la evaluacion (B8): nombre normalizado -> valor.
@@ -101,6 +116,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     birthDate: profile?.birthDate ?? null,
     surveyVersionId,
     surveyAnswers: answers,
+    expectedFieldKeys,
     bisRaw,
     hasBis,
   };

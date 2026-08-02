@@ -28,6 +28,12 @@ export type EngineInput = {
   // que se porte el contenido real de la encuesta (item posterior a B11): el DFI corre
   // degradado y se marca como tal.
   survey: Record<string, unknown>;
+  // field_key que DECLARA la version de la encuesta (regla 7): la lista contra la cual se
+  // mide dfi.complete. Debe venir NO vacia; el que arma el input la lee de survey_questions
+  // por survey_version_id y falla fuerte si no la puede obtener (no hay default silencioso).
+  // Anclarla a la version hace que dfi.complete sea reconstruible: survey_version_id (sellado
+  // en el snapshot) -> esta lista.
+  expectedFieldKeys: string[];
   model: EngineModelContext;
 };
 
@@ -88,7 +94,14 @@ export type DfiRisk = { nivel: string; score: number; descripcion: string };
 // dominios de encuesta y EB/IAE/LE8 no son fiables. Marca explicita (no null silencioso)
 // para que el reporte avise al profesional (condicion de Santiago, B11).
 export type EngineDfi = {
+  // complete = TODOS los field_key que declara la version de la encuesta estan presentes y
+  // no vacios (regla 7, definicion aprobada por Santiago 2026-08-02). NO es "hay algun campo".
+  // OJO (Q28, pendiente de la Direccion Cientifica): complete=false HOY solo MARCA, no impide
+  // emitir el diagnostico. Que deba impedirlo, y como, es Q28.
   complete: boolean;
+  // field_key esperados que faltaron al emitir (ids estables, no etiquetas). Se sella; la
+  // vista los traduce a dominios para decirle al profesional QUE completar en consulta.
+  missingFieldKeys: string[];
   degradedReason: string | null;
   domains: DfiDomain[];
   riesgo: DfiRisk;

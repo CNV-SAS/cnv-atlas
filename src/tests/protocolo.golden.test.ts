@@ -38,7 +38,7 @@ const FIX = bisRawFromFixture();
 
 function mkInput(surveyAnswers: SurveyFieldAnswer[]) {
   return buildEngineInput(
-    { sex: "Male", birthDate: "1971-11-05", surveyAnswers, bisRaw: FIX }, // edad 54 al 2026-06-22
+    { sex: "Male", birthDate: "1971-11-05", surveyAnswers, expectedFieldKeys: ["d2_19"], bisRaw: FIX }, // edad 54 al 2026-06-22
     MODEL,
     NOW,
   );
