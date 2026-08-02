@@ -28,6 +28,17 @@ describe("emission_versions", () => {
     expect(emissionVersionsComplete({})).toBe(false);
   });
 
+  // Q19: la clave structural_mccb marca que el diagnostico trae la 2a clasificacion estructural (el
+  // fenotipo MCCB). Su PRESENCIA distingue un diagnostico nuevo (con las dos) de uno viejo (solo la de
+  // nueve estados, emitido antes de la columna). No se rellena hacia atras.
+  it("structural_mccb distingue un diagnostico con el MCCB de uno viejo sin el", () => {
+    expect(buildEmissionVersions().structural_mccb).toBe("mccb-1.0");
+    // un diagnostico viejo (emitido con classification+calibration, antes del MCCB) no trae la clave:
+    const viejo = { classification: "cXXX-1.0", calibration: "ebbis-v5-provisional" };
+    expect("structural_mccb" in viejo).toBe(false);
+    expect(emissionVersionsComplete(viejo)).toBe(false); // le falta la clave nueva -> se distingue
+  });
+
   // La marca "calibracion provisional" (P0) sale del campo SELLADO, no de una constante. El dia que
   // exista la calibracion poblacional, un valor que NO termine en "-provisional" apaga la marca solo.
   it("isProvisionalCalibration: sellado provisional/null -> true; poblacional -> false", () => {

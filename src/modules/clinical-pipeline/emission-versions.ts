@@ -11,7 +11,7 @@
 // CLAVES DE CONSTANTES, nunca strings libres (mismo riesgo que el `event` del audit log: un typo
 // queda invisible para siempre, y aquí es un registro clínico SELLADO). El writer solo puede usar
 // estas. Se agregan nuevas dimensiones aquí (una línea), sin migración de esquema (el jsonb absorbe).
-export const EMISSION_VERSION_KEYS = ["classification", "calibration"] as const;
+export const EMISSION_VERSION_KEYS = ["classification", "calibration", "structural_mccb"] as const;
 export type EmissionVersionKey = (typeof EMISSION_VERSION_KEYS)[number];
 export type EmissionVersions = Record<EmissionVersionKey, string>;
 
@@ -28,9 +28,17 @@ export type EmissionVersions = Record<EmissionVersionKey, string>;
 //    poblacional es el primer caso concreto y PREVISTO de reemisión, y hoy no hay cómo hacerla:
 //    emission_versions marca CON QUÉ se emitió, pero reemitir un diagnóstico sellado necesita ese
 //    mecanismo. Las dos cosas son la misma; no se construye aquí.
+//  - structural_mccb: con qué versión del clasificador de fenotipo MCCB (F1-F12) se selló ese
+//    diagnóstico. Es la SEGUNDA clasificación estructural (Q19: se sellan las dos, ninguna deriva de
+//    la otra). Su PRESENCIA distingue un diagnóstico que trae el MCCB de uno que solo tiene la de
+//    nueve estados: los diagnósticos emitidos ANTES de esta fecha no tienen la clave (su
+//    emission_versions es null o no la incluye), y NO se rellenan hacia atrás (Gildardo: "de aquí en
+//    adelante"; si hiciera falta el MCCB en un paciente anterior, se emite una versión nueva). El
+//    fenotipo mismo se sella en el snapshot (id+nombre); esta clave marca CON QUÉ versión.
 const CURRENT: EmissionVersions = {
   classification: "cXXX-1.0", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   calibration: "ebbis-v5-provisional",
+  structural_mccb: "mccb-1.0", // etiqueta interna; la tabla FENOTIPOS_MCCB es verbatim de Gildardo
 };
 
 // Set COMPLETO de versiones vigentes. El writer lo sella ENTERO (regla de completitud): un jsonb

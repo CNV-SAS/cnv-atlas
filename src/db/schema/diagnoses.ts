@@ -26,8 +26,14 @@ export const diagnoses = pgTable(
       .notNull()
       .references(() => evaluations.id, { onDelete: "restrict" }),
     efrStateNumber: integer("efr_state_number").notNull(), // 1..81
-    phenotypeId: uuid("phenotype_id").references(() => phenotypes.id), // F1..F12
-    frSectorId: uuid("fr_sector_id").references(() => frSectors.id), // S1..S9
+    // Sella la clasificacion estructural de NUEVE estados (STRUCT, FFMI x FMI, band-pair como "N_A"),
+    // que es el componente estructural del estado EFR. NO es el MCCB F1-F12 (el comentario viejo
+    // "F1..F12" estaba mal): el MCCB es la OTRA clasificacion estructural (Q19), se sella en el
+    // snapshot de reports (no como columna: decision 2026-08-02, ver types.ts fenotipoMCCB), y se
+    // marca en emission_versions.structural_mccb. Son dos clasificaciones del mismo eje FFMI x FMI,
+    // ninguna deriva de la otra, cada una responde una pregunta distinta.
+    phenotypeId: uuid("phenotype_id").references(() => phenotypes.id), // STRUCT de 9 (FFMI x FMI)
+    frSectorId: uuid("fr_sector_id").references(() => frSectors.id), // sector FyR de 9 (IFC x IRC)
     diagnosisName: text("diagnosis_name").notNull(),
     // Constelacion de versiones:
     engineVersion: text("engine_version").notNull(),

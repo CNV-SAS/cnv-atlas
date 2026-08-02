@@ -84,6 +84,18 @@ describe("clinical-engine runEngine (motor real)", () => {
     expect(out.dfi.le8Total).not.toBeNull();
   });
 
+  it("sella el fenotipo MCCB (F1-F12) con id Y nombre (Q19, la 2a clasificacion estructural)", () => {
+    const out = runEngine(input());
+    // Donante golden (M, FMI 6.369, FFMI 21.1) -> F5. Se sella id+nombre (+riesgo/color) para que un
+    // diagnostico viejo no muestre un nombre nuevo sobre un id viejo si Gildardo renombra.
+    expect(out.fenotipoMCCB).toEqual({
+      id: "F5",
+      nombre: "Obesidad preclínica clásica",
+      riesgo: "moderado",
+      color: "#f97316",
+    });
+  });
+
   it("el estado EFR cae en el rango 1..81", () => {
     expect(runEngine(input()).efrPhenotype.stateNumber).toBeGreaterThanOrEqual(1);
     expect(runEngine(input()).efrPhenotype.stateNumber).toBeLessThanOrEqual(81);

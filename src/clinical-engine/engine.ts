@@ -7,6 +7,7 @@
 // silencioso). Cuando se porte la encuesta real, el DFI se enciende sin tocar el motor.
 
 import { analizarDesdeBiody, analizarDFI, calcLE8 } from "./analysis";
+import { classifyFenotipo } from "./protocolo-fenotipo";
 // Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
 // derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
 import * as core from "./frozen/engine.core.derived.js";
@@ -23,6 +24,12 @@ import { ENGINE_VERSION } from "./version";
 
 function r4(n: number): number {
   return Math.round(n * 10000) / 10000;
+}
+
+// Coercion de un crudo del Biody (number | null) a numero para el clasificador, igual que el
+// protocolo (num): null/NaN -> 0. classifyFenotipo tolera 0 en sus guardas.
+function num(v: number | null | undefined): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
 // Un campo de encuesta esta RESPONDIDO si no es null, ni cadena vacia, ni array vacio (un
@@ -111,6 +118,28 @@ export function runEngine(input: EngineInput): EngineOutput {
     IR: typeof rawIR === "number" ? rawIR : 0,
   };
 
+  // Fenotipo MCCB (F1-F12), la OTRA clasificacion estructural (Q19). Se computa aqui, a nivel del
+  // DIAGNOSTICO, con el mismo clasificador ya portado (classifyFenotipo, con golden+DIFF) y los mismos
+  // insumos que usa el protocolo. Depende SOLO de FMI/FFMI (mas MCA para partir el tramo alto); la
+  // rama de sarcopenia/prensil alimenta el protocolo, no este rotulo. Se sella id+nombre (+riesgo/color
+  // para el display) en el snapshot; ver types.ts (por que snapshot y no columna).
+  const fenMCCB = classifyFenotipo({
+    FMI: indicators.FMI,
+    FFMI: indicators.FFMI,
+    MCA: num(a.fuente.raw.MCA),
+    MCA_ref: num(a.fuente.raw.MCA_ref),
+    smmW: num(a.fuente.raw.smmW),
+    ASMI: a.fuente.ASMI,
+    AF: indicators.AF,
+    sexoM: sexo === "M",
+  }).fenotipo;
+  const fenotipoMCCB = {
+    id: fenMCCB.id,
+    nombre: fenMCCB.nombre,
+    riesgo: fenMCCB.riesgo,
+    color: fenMCCB.color,
+  };
+
   // Clasificaciones por codigo. AF e IR SI se clasifican: sus clasificadores cAF/cIR existen en el
   // frozen y ahora estan expuestos (mecanismo de archivo derivado); antes quedaban null solo porque
   // no se llamaban (port incompleto, no exclusion deliberada). Verificado que cAF/cIR del frozen ==
@@ -177,6 +206,7 @@ export function runEngine(input: EngineInput): EngineOutput {
       nutraceuticos: a.fenotipoEFR.nutraceuticos,
     },
     structural,
+    fenotipoMCCB,
     frSector,
     dfi,
     nutraceuticos: a.fenotipoEFR.nutraceuticos,

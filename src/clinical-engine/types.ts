@@ -74,6 +74,14 @@ export type EfrPhenotype = {
 // Fenotipo estructural (STRUCT_LABELS, FFMI x FMI): 9 combinaciones.
 export type StructuralPhenotype = { key: string; nombre: string };
 
+// Fenotipo MCCB (F1-F12, FMI x FFMI), la OTRA clasificacion estructural (Q19: se sellan las dos,
+// rotuladas por separado, ninguna deriva de la otra). Se sella id Y nombre (Gildardo, cuarta ronda):
+// si algun dia cambia un nombre, los diagnosticos viejos deben mostrar el nombre con que se emitieron,
+// no el nuevo sobre un id viejo. riesgo/color van tambien para que el display sea autosuficiente del
+// snapshot. Depende SOLO de FMI y FFMI (verificado): sarcopenia/prensil alimentan el protocolo, no
+// este rotulo, asi que sellarlo no depende de la prensil (Q5).
+export type MccbPhenotype = { id: string; nombre: string; riesgo: string; color: string };
+
 // Sector funcional FyR (FYR_LABELS, IFC x IRC): 9 combinaciones.
 export type FrSector = { key: string; nombre: string };
 
@@ -122,6 +130,11 @@ export type EngineOutput = {
   classifications: Record<string, IndicatorClass>;
   efrPhenotype: EfrPhenotype;
   structural: StructuralPhenotype;
+  // Fenotipo MCCB (F1-F12). Se SELLA en el snapshot (no como columna FK: decision de Santiago
+  // 2026-08-02, "de aqui en adelante", no hay consumidores que filtren por el, y evita duplicar el
+  // eje FMIxFFMI que ya guarda phenotype_id con la de nueve estados). Se movera a columna el dia que
+  // haya que filtrar, agregar o consultar por fenotipo MCCB. Marcado en emission_versions.structural_mccb.
+  fenotipoMCCB: MccbPhenotype;
   frSector: FrSector;
   dfi: EngineDfi;
   // Recomendacion de nutraceuticos (del fenotipo EFR) y resumen clinico preliminar para

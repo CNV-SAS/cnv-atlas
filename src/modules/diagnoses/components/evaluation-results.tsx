@@ -193,7 +193,7 @@ export function EvaluationResults({
   }
 
   const { snapshot, efrState } = results;
-  const { indicators, classifications, efrPhenotype, structural, frSector, dfi, versions } =
+  const { indicators, classifications, efrPhenotype, structural, fenotipoMCCB, frSector, dfi, versions } =
     snapshot;
   const sexM = snapshot.sexo === "M"; // para los rangos de referencia por sexo (indicator-ranges)
   // Marca de calibracion provisional de EB-BIS/IAE (P0). Se lee del campo SELLADO del diagnostico
@@ -341,9 +341,27 @@ export function EvaluationResults({
               label="Estado EFR"
               value={`${efrPhenotype.stateNumber} de 81 · clave ${efrPhenotype.key}`}
             />
-            <Line label="Fenotipo estructural" value={structural.nombre} />
-            <Line label="Sector funcional (FyR)" value={frSector.nombre} />
+            {/* Fenotipo estructural = MCCB (F1-F12), rotulo de Gildardo (Q19). Los diagnosticos
+                viejos no traen el MCCB en el snapshot: caen a la de nueve estados (el dato que si
+                tenian sellado), para no mostrar vacio. */}
+            <Line
+              label="Fenotipo estructural (FMI × FFMI)"
+              value={fenotipoMCCB ? `${fenotipoMCCB.id} · ${fenotipoMCCB.nombre}` : structural.nombre}
+            />
+            <Line label="Estado funcional bioeléctrico (IFC × IRC)" value={frSector.nombre} />
           </div>
+          {/* La clasificacion de nueve estados (FFMI x FMI) NO es un cuarto fenotipo: es el componente
+              estructural con que se compone el estado EFR (su mitad FFMI x FMI; la otra es el sector
+              funcional). Se muestra subordinada, rotulada por lo que es, para no competir con el MCCB
+              (que responde otra pregunta) y porque es lo que quedo sellado en phenotype_id de todos los
+              diagnosticos emitidos: si desapareciera de pantalla, habria un dato en el registro que
+              nadie podria ver. */}
+          {fenotipoMCCB ? (
+            <p className="text-xs text-muted-foreground">
+              El estado EFR combina el sector funcional (IFC × IRC) y el componente estructural
+              (FFMI × FMI): <span className="font-medium text-foreground">{structural.nombre}</span>.
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ContentCard
               label="Enfermedades / Complicaciones probables"
