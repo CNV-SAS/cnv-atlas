@@ -426,6 +426,16 @@
 
 ---
 
+## Q28 · ¿Debería el sistema emitir diagnóstico con la encuesta incompleta? (misma familia que "sin ICEC no hay EB-BIS")
+
+- **Fecha:** 2026-08-01. **Estado:** ABIERTA. Es flujo clínico, no decisión de producto nuestra. Ligada al gate 2bis del Hito 1 (`LANZAMIENTO.md`) y a la definición real de `dfi.complete`.
+- **Evidencia (experimento, misma medición BIS, donante anonimizado):** con la encuesta a **3/13** campos en vez de 13/13, el motor produce EB-BIS **29.9 → 50.8 (+20.9 años)**, riesgo **MEDIO → ALTO**, y activa una **ruta extra (R5 Contextual)**. ISCM no cambia (es solo-BIS). O sea: una encuesta a medias hace que el sistema **invente un paciente peor del que es**, ~20 años más viejo, un nivel de riesgo más alto, y una ruta que no le corresponde. Hoy nada lo impide: `dfi.complete` dice "completa" (mide presencia, no completitud), el profesional no ve advertencia, y el diagnóstico se sella.
+- **Por qué es tuya y no nuestra:** tu decisión de P0 fue que la fórmula NO se toca ni se acota, y estamos de acuerdo. Pero esa decisión **supone que la encuesta viene completa.** Qué hacer cuando NO lo está es criterio clínico. Es la misma familia que tu guarda `if (icec == null) return null` ("sin índice contextual no hay EB-BIS"): ya decidiste que un indicador sin insumo no se estima; esto es lo mismo un nivel arriba (el diagnóstico entero, no un indicador).
+
+**Para Gildardo (breve):** verificamos con la misma medición que una encuesta a la mitad produce una edad bioeléctrica veinte años mayor, sube el nivel de riesgo y activa una ruta de atención adicional. Tu decisión de P0 fue que la fórmula no se toca ni se acota, y estamos de acuerdo. Pero eso supone que la encuesta viene completa. ¿Qué debería hacer el sistema si el profesional intenta diagnosticar con la encuesta incompleta? ¿Diagnosticar sin la edad bioeléctrica, como ya hace cuando falta el índice contextual? ¿Diagnosticar con advertencia visible? ¿O no diagnosticar hasta que la encuesta esté completa? (Recuerda que tu prototipo ya prevé que el profesional complete la encuesta con el paciente en consulta si quedó a medias.)
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
