@@ -50,3 +50,21 @@ Pregunta: cuando el profesional no elige el factor, ¿usamos un valor fijo por d
 ---
 
 Gracias. Con estas cuatro decisiones y las dos confirmaciones cerramos la cadena calórica, que es lo que desbloquea también el protocolo del cáncer.
+
+---
+
+## Aparte (para tu firma de C11): la corrección de la tabla de indicadores, en lenguaje llano
+
+Esto no es una pregunta, es la descripción del cambio que pediste, para que puedas firmar C11.
+
+Nos dijiste: "corrijan la tabla contra el motor para IFC, IRC y FMI, no al revés." Lo hicimos, así:
+
+- **Antes:** el rango de referencia que veía el profesional para esos tres indicadores salía de tu **tabla de presentación**, que era genérica (no distinguía sexo) y, en el caso del IRC, estaba en otra escala. Por eso no coincidía con la clasificación del paciente, que sí sale de tu clasificador. Mientras eso estuvo sin resolver, esos tres los dejamos en blanco para no mostrar una referencia que contradijera la clasificación.
+- **Ahora:** el rango sale de tu **clasificador** (el del motor, el que distingue por sexo), que es la ciencia. Para el IFC mostramos el umbral por encima del cual la función es óptima; para el IRC, el umbral por debajo del cual el riesgo es bajo; para el FMI, la banda de masa grasa normal. Cada uno ajustado por sexo, con los mismos cortes que usa tu clasificador.
+- **Corregimos también la dirección:** en el IFC lo bueno es hacia arriba, en el IRC hacia abajo. La tabla vieja no lo comunicaba; ahora la referencia lo dice (por ejemplo "IFC mayor que 6,68" deja claro hacia dónde está lo óptimo).
+- Pusimos un candado automático: si en algún momento cambias un corte de tu clasificador, el sistema avisa que la referencia mostrada quedó desactualizada, para que las dos nunca se separen en silencio.
+
+Los otros indicadores (ángulo de fase, radio de reactancia, FFMI, y los índices integrados) ya coincidían con tu clasificador y no cambiaron.
+
+¿Confirmas que así es como querías la corrección? Con eso firmas C11.
+

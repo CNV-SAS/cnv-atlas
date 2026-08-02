@@ -424,7 +424,9 @@ export function EvaluationResults({
             </table>
           </div>
           <p className="max-w-prose text-xs text-muted-foreground">
-            Referencia = rango de normalidad clínico ANI-BIS-E, ajustado por sexo; Δ = valor menos esa
+            Referencia = rango de normalidad clínico ANI-BIS-E, ajustado por sexo, tomado del
+            clasificador del modelo: es el rango de normalidad cuando el indicador tiene dos límites,
+            o el umbral que lo separa de la alerta cuando tiene uno solo. Δ = valor menos esa
             referencia. El FFMI también aparece en Composición corporal con la referencia del equipo
             Biody (otra fuente); por eso su referencia puede diferir entre las dos tablas, no es una
             contradicción.

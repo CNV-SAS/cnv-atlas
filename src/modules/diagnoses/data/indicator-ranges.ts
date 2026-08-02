@@ -19,7 +19,11 @@ import type { EngineIndicators } from "@/clinical-engine";
 //
 // Efecto por indicador respecto al HTML: ISCM (referencia = corte −1, antes crudo), FFMI y AF
 // (promedio del rango, antes el borde inferior) CAMBIAN; PABU, ICA-BIS, IEHH, IAE, EB, IR quedan
-// igual (su referencia de normalidad ya coincidia con el promedio/corte). IFC/IRC/FMI siguen en "-".
+// igual (su referencia de normalidad ya coincidia con el promedio/corte). IFC/IRC/FMI: antes en "-";
+// desde 2026-08-02 salen del CLASIFICADOR DEL MOTOR sexo-especifico (Q20/C11), NO de la tabla de
+// display; IFC/IRC como umbral (sano vs alerta), FMI como rango (banda media, sano = Normal).
+// FUENTE de los rangos: el clasificador del motor, con un test-candado que lo verifica (ya no la
+// tabla de display, que coincidia por coincidencia y podia divergir en silencio).
 //
 // Rangos de UN SOLO LIMITE: ISCM (≤−1), IEHH (≤0), IR (<0.78/<0.82). PABU e ICA-BIS son referencia de
 // PUNTO (φ = 1.618 / coherencia 0). EB usa la edad cronologica como referencia.
@@ -37,18 +41,37 @@ export function indicatorRange(
   sexM: boolean,
 ): IndicatorRange | null {
   switch (code) {
-    // IFC, IRC y FMI: la referencia de la tabla del HTML sale de los clasificadores de DISPLAY
-    // (dIFC/dIRC/dFMI), que NO coinciden con los clasificadores de CIENCIA (cIFC/cIRC/cFMI) que usa
-    // nuestro motor: cIFC es sexo-especifico (M 4.12-6.68) vs dIFC generico (3.5-6.0); cIRC opera en
-    // escala cruda (M 1.68-2.11) vs dIRC en v×10 (2.0-2.8); cFMI normal 3-6 vs dFMI 6-9. Mostrar esa
-    // referencia junto a nuestro valor+clasificacion (que son cXXX) da una lectura contradictoria
-    // (el color y la etiqueta dicen una cosa, la referencia otra). Se deja "-" hasta que Gildardo
-    // confirme cual clasificador manda en la tabla de diagnostico (GILDARDO_QUERIES Q20; toca tambien
-    // la CLASIFICACION, que se sella). AF/IR SI se muestran porque cAF==dAF y cIR==dIR (verificado).
-    case "IFC":
-    case "IRC":
-    case "FMI":
-      return null;
+    // IFC, IRC y FMI: la referencia sale del CLASIFICADOR DEL MOTOR (cIFC/cIRC/cFMI), sexo-especifico,
+    // NO de la tabla de display del HTML (que era generica y divergia). Gildardo (Q20/C11, cuarta
+    // ronda 2026-08-02): "corrijan la tabla contra el motor para IFC, IRC y FMI, no al reves". Antes
+    // quedaban en "-" por esa divergencia; ahora se muestran con los cortes del motor. Los umbrales
+    // aqui deben COINCIDIR con los literales de los clasificadores en engine.core.js; el test-candado
+    // (indicator-ranges.test.ts) prueba cada clasificador en sus fronteras y truena si divergen, para
+    // que si Gildardo mueve un umbral no queden dos fuentes fuera de sincronia.
+    //
+    // Se muestra el UMBRAL que separa sano de alerta, no la banda (decision de Santiago 2026-08-02):
+    // es lo que el profesional necesita (que tan cerca del borde que importa), hace la Δ autoevidente
+    // (Δ = valor − ese umbral, CA-2 corte unico), y es honesto con la DIRECCION del riesgo (en IFC
+    // mas alto es mejor; en IRC mas bajo). FMI resulta banda MEDIA (sano = Normal, entre dos cortes),
+    // asi que va como RANGO igual que FFMI (Δ contra el promedio).
+    case "IFC": {
+      // cIFC: sano = optima (> hi). Umbral = hi (M 6.68, F 3.28). Δ = valor − hi (corte unico).
+      if (ind.ifc == null) return null;
+      const hi = sexM ? 6.68 : 3.28;
+      return { reference: `> ${hi}`, delta: f(ind.ifc - hi, 2) };
+    }
+    case "IRC": {
+      // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.68, F 2.27). Δ = valor − lo (corte unico).
+      if (ind.irc == null) return null;
+      const lo = sexM ? 1.68 : 2.27;
+      return { reference: `< ${lo}`, delta: f(ind.irc - lo, 2) };
+    }
+    case "FMI": {
+      // cFMI: sano = Normal, banda MEDIA (M 3-6, F 5-9). Como FFMI: referencia = rango, Δ = promedio.
+      if (ind.FMI == null) return null;
+      const [lo, hi] = sexM ? [3, 6] : [5, 9];
+      return { reference: `${lo}–${hi}`, delta: f(ind.FMI - (lo + hi) / 2, 2) };
+    }
     case "PABU":
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618 (sin cambio respecto al HTML).
       return ind.pabu != null ? { reference: "φ = 1.618", delta: f(ind.pabu - 1.618, 4) } : null;

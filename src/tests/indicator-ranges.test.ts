@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import type { EngineIndicators } from "@/clinical-engine";
+import {
+  cAF,
+  cFFMI,
+  cFMI,
+  cIAE,
+  cIEHH,
+  cIFC,
+  cIR,
+  cIRC,
+  cISCM,
+  cPABU,
+  type Sexo,
+} from "@/clinical-engine/frozen/engine.core.derived.js";
 import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
 
 // Rangos de referencia (verbatim del HTML) + DELTA unificada de Gildardo (CA-2, opcion B): Δ = valor −
@@ -32,10 +45,20 @@ describe("indicatorRange (referencia verbatim + Δ unificada CA-2)", () => {
     expect(indicatorRange("IR", ind, true)).toEqual({ reference: "<0.78", delta: "0.018" });
   });
 
-  it("IFC/IRC/FMI: null (su referencia del HTML sale de dXXX, inconsistente con nuestro cXXX; Q20)", () => {
-    expect(indicatorRange("IFC", ind, true)).toBeNull();
-    expect(indicatorRange("IRC", ind, true)).toBeNull();
-    expect(indicatorRange("FMI", ind, true)).toBeNull();
+  it("IFC/IRC/FMI (M): salen del CLASIFICADOR del motor (Q20/C11), no de la tabla de display", () => {
+    // IFC 5.3651: sano = optima (> hi 6.68). Umbral 6.68, Δ = valor − 6.68 = -1.31.
+    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6.68", delta: "-1.31" });
+    // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
+    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1.68", delta: "0.14" });
+    // FMI 6.369: banda media Normal 3–6 (como FFMI). Rango, Δ contra promedio 4.5 = 1.87.
+    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "1.87" });
+  });
+
+  it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
+    // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9 (promedio 7).
+    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3.28", delta: "2.09" });
+    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2.27", delta: "-0.45" });
+    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-0.63" });
   });
 
   it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
@@ -91,5 +114,59 @@ describe("CA-2 · regresion Δ sobre el donante golden (antes HTML → despues C
     expect(indicatorRange("PABU", ind, true)?.delta).toBe("0.3745");
     expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0.500");
     expect(indicatorRange("IAE", ind, true)?.delta).toBe("-17.6");
+  });
+});
+
+// CANDADO (Q20/C11, 2026-08-02): la referencia que muestra indicator-ranges debe salir del
+// CLASIFICADOR del motor, no de una tabla aparte. Prueba que cada umbral/borde que mostramos cae
+// EXACTAMENTE donde el clasificador cambia de banda. Si Gildardo mueve un corte en engine.core.js,
+// este test truena y obliga a actualizar la referencia: evita que las dos fuentes (tabla mostrada
+// vs clasificador) diverjan en silencio, que es como los tres (IFC/IRC/FMI) habian divergido.
+describe("CANDADO · la referencia sale del clasificador del motor (no de una tabla aparte)", () => {
+  const E = 0.01;
+  // El clasificador cambia de banda EXACTAMENTE en b: la etiqueta justo por debajo != justo por encima.
+  const b2 = (fn: (v: number, s: Sexo) => { l: string }, s: Sexo, b: number) =>
+    expect(fn(b - E, s).l, `frontera ${b} (${s})`).not.toBe(fn(b + E, s).l);
+  const b1 = (fn: (v: number) => { l: string }, b: number) =>
+    expect(fn(b - E).l, `frontera ${b}`).not.toBe(fn(b + E).l);
+
+  it("IFC: umbral sano/alerta 6.68 (M) / 3.28 (F)", () => {
+    b2(cIFC, "M", 6.68);
+    b2(cIFC, "F", 3.28);
+  });
+  it("IRC: umbral sano/alerta 1.68 (M) / 2.27 (F)", () => {
+    b2(cIRC, "M", 1.68);
+    b2(cIRC, "F", 2.27);
+  });
+  it("FMI: banda Normal 3–6 (M) / 5–9 (F)", () => {
+    b2(cFMI, "M", 3);
+    b2(cFMI, "M", 6);
+    b2(cFMI, "F", 5);
+    b2(cFMI, "F", 9);
+  });
+  it("FFMI: banda Normal 17–25 (M) / 15–23 (F)", () => {
+    b2(cFFMI, "M", 17);
+    b2(cFFMI, "M", 25);
+    b2(cFFMI, "F", 15);
+    b2(cFFMI, "F", 23);
+  });
+  it("AF: banda Normal 6.5–7.0 (M) / 6.0–6.5 (F)", () => {
+    b2(cAF, "M", 6.5);
+    b2(cAF, "M", 7.0);
+    b2(cAF, "F", 6.0);
+    b2(cAF, "F", 6.5);
+  });
+  it("IR: corte 0.78 (M) / 0.82 (F)", () => {
+    b2(cIR, "M", 0.78);
+    b2(cIR, "F", 0.82);
+  });
+  it("ISCM: corte -1", () => b1(cISCM, -1));
+  it("IEHH: corte 0", () => b1(cIEHH, 0));
+  it("IAE: cortes -5 y +5", () => {
+    b1(cIAE, -5);
+    b1(cIAE, 5);
+  });
+  it("PABU: el punto φ = 1.618 cae en la zona de homeostasis óptima del clasificador", () => {
+    expect(cPABU(1.618, 5).l).toContain("Homeostasis");
   });
 });
