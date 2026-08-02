@@ -2,7 +2,7 @@
 
 > **Estado:** BORRADOR. No enviado. Para que Santiago lo revise y apruebe antes de mandarlo. Ordenado por esfuerzo (primero lo que se responde en minutos, al final lo que exige sentarse). Marcado **[bloquea]** lo que detiene trabajo nuestro. Sin referencias de archivo ni línea en el cuerpo; el anexo técnico al final es para su asistente.
 >
-> **Nota de armado (para Santiago, no va a Gildardo):** se dejaron FUERA, a propósito, Q24 (indicadores que alertan juntos, material de comunicación, no bloquea) y Q26 (el interruptor del índice contextual, ligado a C1, que está en pausa). Ambas pueden esperar a una ronda posterior. Si quieres incluir Q26, la agrego (es un sí/no rápido para él y evita que su prototipo y Atlas calculen la edad bioeléctrica distinto).
+> **Nota de armado (para Santiago, no va a Gildardo):** queda fuera solo Q24 (indicadores que alertan juntos, material de comunicación, no bloquea; a una ronda posterior). Q26 (interruptor del índice contextual) entró como confirmación D del punto 1, y Q19 como confirmación C. Revisión aplicada (2026-08-02): el punto 3 se reescribió con el estado actual (el sistema ya detecta y avisa la encuesta incompleta, solo falta si debe impedirlo); el punto 6.4 aclara que el motor de ejercicio NO es imprescindible (sin él se pierde el default sugerido, no la función); los cortes de C11 se muestran en el cuerpo del punto 2, no solo en el anexo.
 
 ---
 
@@ -10,11 +10,15 @@ Gildardo:
 
 Un paquete corto. Están ordenadas de menos a más esfuerzo. Marcamos las que detienen trabajo de nuestro lado.
 
-## 1. Dos confirmaciones rápidas (sí / no)
+## 1. Cuatro confirmaciones rápidas (sí / no)
 
 **A. Sin peso de referencia registrado, no emitimos prescripción calórica ni proteica, sin respaldo por fórmula.** Tú dijiste que sin peso meta registrado, Atlas entrega el diagnóstico completo pero no emite la prescripción calórica ni la proteica, sin caer en silencio al peso medido. Tu archivo actual sí tiene un respaldo por fórmula cuando falta ese peso. Vamos a quitarlo, a propósito, siguiendo tu instrucción: es una divergencia deliberada respecto de tu archivo y te la avisamos. ¿Confirmas?
 
 **B. El peso de referencia es el que ingresa el profesional, no el que calcula una fórmula.** Entendimos que el peso de referencia es el que el profesional registra al medir (a dónde quiere llevar al paciente), no el peso ajustado que calcula el sistema con una fórmula sobre el peso medido. ¿Lo leímos bien?
+
+**C. Las dos clasificaciones estructurales se guardan juntas.** Entendimos que en el registro de cada paciente se guardan las dos: la de nueve estados que ya veníamos guardando, y el fenotipo F1 a F12, cada una con su rótulo, sin que una reemplace a la otra. Los diagnósticos ya emitidos conservan solo la de nueve, y el fenotipo se agrega de aquí en adelante. ¿Lo leímos bien? Preguntamos porque una vez guardado no se puede cambiar.
+
+**D. El interruptor del índice contextual.** En tu archivo, el mapeo que toma la alimentación y la hidratación desde la encuesta está escrito pero desactivado, así que hoy tu prototipo también calcula esos dos dominios con valores por defecto, igual que Atlas. Tu instrucción C1 dice que lo activemos. ¿Lo activas también en tu archivo, o Atlas quedaría con un valor distinto al tuyo para el mismo paciente?
 
 ## 2. Firma de C11: la corrección de la tabla de indicadores (ya hecha)
 
@@ -23,7 +27,7 @@ Esto no es pregunta, es la descripción del cambio que pediste, para que puedas 
 Nos dijiste: "corrijan la tabla contra el motor para IFC, IRC y FMI, no al revés." Lo hicimos así:
 
 - **Antes:** el rango de referencia que veía el profesional para esos tres salía de tu tabla de presentación, que era genérica (no distinguía sexo) y, en el IRC, estaba en otra escala. Por eso no coincidía con la clasificación del paciente, que sí sale de tu clasificador. Mientras eso estuvo sin resolver, esos tres los dejamos en blanco.
-- **Ahora:** el rango sale de tu clasificador (el del motor, el que distingue por sexo). Para el IFC mostramos el umbral por encima del cual la función es óptima; para el IRC, el umbral por debajo del cual el riesgo es bajo; para el FMI, la banda de masa grasa normal. Cada uno por sexo, con tus mismos cortes.
+- **Ahora:** el rango sale de tu clasificador (el del motor, el que distingue por sexo). Para el IFC mostramos el umbral por encima del cual la función es óptima (hombres 6,68 · mujeres 3,28); para el IRC, el umbral por debajo del cual el riesgo es bajo (hombres 1,68 · mujeres 2,27); para el FMI, la banda de masa grasa normal (hombres 3–6 · mujeres 5–9). Son tus mismos cortes.
 - **Corregimos también la dirección:** en el IFC lo bueno es hacia arriba, en el IRC hacia abajo. La tabla vieja no lo comunicaba; ahora la referencia lo dice.
 - Pusimos un candado automático: si en algún momento cambias un corte de tu clasificador, el sistema avisa que la referencia mostrada quedó desactualizada, para que las dos nunca se separen en silencio.
 
@@ -33,9 +37,9 @@ Los otros indicadores (ángulo de fase, radio de reactancia, FFMI y los índices
 
 Ahora las preguntas de la encuesta son opcionales para el paciente (el profesional la completa en consulta si quedó a medias, como en tu prototipo). Eso significa que muchas encuestas llegarán incompletas.
 
-Verificamos con la misma medición que una encuesta con la mayoría de respuestas en blanco cambia el cuadro: sube el nivel de riesgo, activa una ruta de atención que no corresponde, y mueve la edad bioeléctrica, porque los dominios sin responder corren con valores por defecto. Hoy nada lo impide: el sistema la trata como completa, el profesional no ve advertencia, y el diagnóstico se sella.
+Verificamos con la misma medición que una encuesta con la mayoría de respuestas en blanco cambia el cuadro: sube el nivel de riesgo, activa una ruta de atención que no corresponde, y mueve la edad bioeléctrica, porque los dominios sin responder corren con valores por defecto.
 
-Tu decisión de P0 fue que la fórmula no se toca ni se acota, y estamos de acuerdo. Pero eso supone que la encuesta viene completa. ¿Qué debería hacer el sistema si el profesional intenta diagnosticar con la encuesta incompleta? ¿Diagnosticar sin la edad bioeléctrica, como ya hace cuando falta el índice contextual? ¿Diagnosticar con advertencia visible? ¿O no diagnosticar hasta completarla? Es la misma familia que tu regla de "sin índice contextual no hay edad bioeléctrica", un nivel arriba.
+Hoy el sistema sí detecta que la encuesta está incompleta y se lo avisa al profesional, pero no lo impide: el diagnóstico se genera igual, con los dominios sin responder corriendo en valores por defecto, y queda sellado. Lo que falta decidir es si debería impedirlo. ¿Diagnosticar sin la edad bioeléctrica, como ya haces cuando falta el índice contextual? ¿Diagnosticar con la advertencia que ya mostramos? ¿O no diagnosticar hasta completarla? Es la misma familia que tu regla de "sin índice contextual no hay edad bioeléctrica", un nivel arriba.
 
 ## 4. ¿Qué puede hacer un médico o un deportólogo dentro del modelo?
 
@@ -61,7 +65,7 @@ Nos dijiste que el gasto se calcula con Mifflin sobre el peso de referencia y qu
 
 **6.3. ¿Cuánta proteína, y sobre qué peso?** Tus dos versiones dan cifras distintas para el mismo paciente (en cáncer, una indica un rango alto y la otra un valor más bajo), y una la calcula sobre el peso de referencia, la otra sobre el medido. ¿Qué cantidad de proteína por kilo usamos (un valor o un rango, por condición), y sobre cuál peso se multiplica?
 
-**6.4. El factor de actividad, cuando el profesional no lo elige.** En las dos versiones el profesional puede elegir el factor (sedentario, ligero, moderado, alto); eso no cambia. La diferencia es qué pasa cuando no lo elige: una usa un valor fijo por defecto (ligero); la otra calcula un valor sugerido según el ejercicio prescrito. ¿Usamos el valor fijo o el sugerido? La segunda opción exige construir tu motor de ejercicio, que hoy no está, así que agranda el trabajo. El profesional conserva la elección en cualquier caso.
+**6.4. El factor de actividad, cuando el profesional no lo elige.** En las dos versiones el profesional puede elegir el factor (sedentario, ligero, moderado, alto); eso no cambia. La diferencia es qué pasa cuando no lo elige: una usa un valor fijo por defecto (ligero); la otra calcula un valor sugerido según el ejercicio prescrito. ¿Usamos el valor fijo o el sugerido? La opción del sugerido no es imprescindible construirla (si falta, el sistema usa el valor fijo por defecto sin romperse); lo que se pierde sin ella es solo el default sugerido, no la función. El profesional conserva la elección en cualquier caso.
 
 ## 7. [bloquea] La comunicación al paciente del cambio de la edad bioeléctrica (segunda medición)
 
