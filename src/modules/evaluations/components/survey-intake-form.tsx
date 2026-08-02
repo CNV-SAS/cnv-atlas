@@ -559,6 +559,7 @@ export function SurveyIntakeForm({
         ) : null}
         <div className="flex items-center justify-between gap-3">
           <Button
+            key="nav-back"
             type="button"
             variant="outline"
             onClick={goBack}
@@ -566,12 +567,23 @@ export function SurveyIntakeForm({
           >
             Anterior
           </Button>
+          {/* keys DISTINTAS a proposito. NO SON COSMETICAS: si las quitas vuelve el bug D8.
+              Sin key, React reutiliza el mismo nodo DOM al pasar de "Siguiente" (type=button)
+              a "Enviar" (type=submit) en la ultima transicion; el re-render sincrono dentro
+              del onClick cambia el type a submit y, al devolver el control, el navegador
+              ejecuta la accion por defecto del clic sobre un boton que ya envia. Efecto: la
+              encuesta se autoenvia sola al ENTRAR a la ultima seccion (D8, Contexto Social)
+              y ese dominio se pierde en TODOS los pacientes; asi quedo degradado el entorno
+              demo semanas sin que nadie lo notara. Con keys distintas el nodo de "Siguiente"
+              se desmonta y "Enviar" se monta nuevo, asi el clic no puede disparar el submit.
+              NINGUN test automatico atrapa esto (jsdom no reproduce el default action nativo,
+              solo se ve en navegador); si tocas estos botones, pruebalo en un navegador real. */}
           {isLast ? (
-            <Button type="submit" disabled={!consentOk || pending}>
+            <Button key="nav-submit" type="submit" disabled={!consentOk || pending}>
               {pending ? "Enviando..." : isFollowup ? "Enviar seguimiento" : "Enviar"}
             </Button>
           ) : (
-            <Button type="button" onClick={goNext} disabled={!canAdvance}>
+            <Button key="nav-next" type="button" onClick={goNext} disabled={!canAdvance}>
               Siguiente
             </Button>
           )}
