@@ -22,7 +22,8 @@ Dos ejes, no una lista: **qué rol** (profesional → admin → soporte → dire
 
 - Superficies del profesional: **T2, T3, Plan alimentario, T4** y los cuatro motores de tratamiento.
 - Despliegue a la nube (es gate del Hito 2, pero se construye aquí). Ver `BACKLOG.md`.
-- Bug de auto-envío de la encuesta (D8). Flujo de corrección post-diagnóstico.
+- ~~Bug de auto-envío de la encuesta (D8)~~ **CERRADO (2026-08-02).** Flujo de corrección post-diagnóstico (sigue pendiente).
+- **Seguimiento: NO es una fase sin construir; es una fase CONSTRUIDA esperando TRES frases (Q25).** El mecanismo ya existe (`followups/services/eb-trajectory.ts`): comparación entre evaluaciones, gate de 12 semanas, las tres bandas (mejoró/sin cambio/empeoró), corte provisional ±2. Está DESCONECTADO a propósito y lo único que espera es la redacción de los tres textos al paciente (Q25, autoría de Gildardo) y las dos decisiones clínicas que la acompañan. No confundir "espera a Gildardo" (tres frases) con "sin construir".
 - Gate del generador de menú vs restricciones del modelo.
 - Módulo de documentos del Integrante. Dashboards. Notificaciones. Admin mínimo para operar la revisión.
 - **Pulido de fidelidad en CUATRO bloques** (decisión de Santiago, 2026-07-30): encuesta, evaluación, diagnóstico y tratamiento, cada uno con **comparación crítica contra el HTML de Gildardo** (fidelidad al modelo, no estética de marca). Van **después de terminar Tratamiento** y **antes** del diseño gráfico. Reemplazan la idea vieja de "un pulido general antes del diseño": ahora son cuatro, cada uno con su criterio propio por superficie.
