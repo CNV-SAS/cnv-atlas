@@ -48,7 +48,8 @@ export type TreatmentProtocol = {
   proteinaGramos: number | null;
   restricciones: string[];
   kcalSugerido: number | null; // GET medido por el Biody, si existe
-  nutraceuticals: PrescribedNutraceutical[];
+  nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
+  recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)
   guidelines: DietGuideline[];
   notes: TreatmentNote[];
   catalog: CatalogItem[];
@@ -88,7 +89,7 @@ export async function getTreatmentProtocol(
 
   const treatmentId = treatment.id;
 
-  const [nutras, guides, notes, catalog, menus, get] = await Promise.all([
+  const [nutras, guides, notes, catalog, menus, get, report] = await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
       .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
@@ -116,6 +117,16 @@ export async function getTreatmentProtocol(
       .eq("variable_name", GET_VARIABLE)
       .limit(1)
       .maybeSingle(),
+    // Nutraceuticos RECOMENDADOS por el modelo: viven en el snapshot inmutable del reporte
+    // (output.nutraceuticos, string). Se leen aparte de los nutraceuticos AGREGADOS por el
+    // profesional (treatment_nutraceuticals): son dos conceptos distintos (recomienda vs agrega).
+    supabase
+      .from("reports")
+      .select("snapshot")
+      .eq("evaluation_id", evaluationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (nutras.error) throw new Error(`treatment-reader: nutraceuticals: ${nutras.error.message}`);
@@ -124,8 +135,16 @@ export async function getTreatmentProtocol(
   if (catalog.error) throw new Error(`treatment-reader: catalog: ${catalog.error.message}`);
   if (menus.error) throw new Error(`treatment-reader: menu_suggestions: ${menus.error.message}`);
   if (get.error) throw new Error(`treatment-reader: get: ${get.error.message}`);
+  if (report.error) throw new Error(`treatment-reader: report snapshot: ${report.error.message}`);
 
   const kcalSugerido = get.data?.value != null ? Math.round(Number(get.data.value)) : null;
+  // Recomendacion del modelo (string plano, p. ej. "MULTI-CELL BASE, OMEGA COMPLEX"). El P1/P2/dosis
+  // estructurado es T3; hoy se muestra el string tal cual, separado de lo que agrega el profesional.
+  const snap = report.data?.snapshot as { nutraceuticos?: unknown } | null;
+  const recommendedNutraceuticals =
+    snap && typeof snap.nutraceuticos === "string" && snap.nutraceuticos.trim()
+      ? snap.nutraceuticos
+      : null;
 
   return {
     treatmentId,
@@ -142,6 +161,7 @@ export async function getTreatmentProtocol(
       dosage: n.dosage,
       durationDays: n.duration_days,
     })),
+    recommendedNutraceuticals,
     guidelines: (guides.data ?? []).map((g) => ({ id: g.id, text: g.guideline_text })),
     notes: (notes.data ?? []).map((n) => ({
       id: n.id,

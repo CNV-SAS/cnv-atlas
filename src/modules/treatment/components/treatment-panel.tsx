@@ -330,9 +330,23 @@ function ProtocolForm({
         </div>
       </fieldset>
 
-      {/* Nutraceuticos del protocolo */}
+      {/* Nutraceuticos: DOS conceptos separados. (1) lo que el MODELO recomienda (string sellado del
+          snapshot, solo lectura); (2) lo que el PROFESIONAL agrega (selector + prescripcion). Es la
+          misma separacion recomienda-vs-agrega de las restricciones. El P1/P2/dosis estructurado y el
+          "registrar despacho" son T3, no van aqui. */}
       <fieldset disabled={locked} className="flex flex-col gap-3">
         <legend className="text-sm font-semibold text-foreground">Nutraceuticos</legend>
+        {protocol.recommendedNutraceuticals ? (
+          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+            <span className="font-medium text-foreground">El modelo recomienda: </span>
+            <span className="text-muted-foreground">{protocol.recommendedNutraceuticals}</span>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">El modelo no recomendó nutracéuticos para este fenotipo.</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Abajo agregas los que prescribes; son tu decisión, distinta de la recomendación del modelo.
+        </p>
         <div className="flex gap-2">
           <select
             value={pickId}
