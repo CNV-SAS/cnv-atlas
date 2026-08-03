@@ -76,12 +76,22 @@ export const reportStatus = pgEnum("report_status", ["draft", "approved", "sent"
 
 // Estado de aprobacion del protocolo de tratamiento (T2 A2). draft: en construccion, el
 // set efectivo se recomputa libre; approved: el profesional prescribio, se sella
-// protocol_approved y se congela por trigger. EL ENUM VA A CRECER: el flujo de correccion
-// post-diagnostico (gate del Hito 1) agregara un estado de reemplazo JUNTO CON su puntero
-// (replaced_by), disenado con las tablas hermanas (evaluations/diagnoses/reports) para no
-// romper la traza (un estado de "superado" sin puntero a que lo reemplazo pierde la traza).
-// No se anticipa aqui, solo la nota.
+// protocol_approved y se congela por trigger. ESTE ENUM NO CRECE con el flujo de correccion:
+// el diseno landeo distinto (ver docs/PLAN_FLUJO_CORRECCION.md). La vigencia NO vive por
+// entidad ni como estado del tratamiento; vive en la EVALUACION (evaluations.superseded_at,
+// el hub del que cuelga todo) y la relacion old->new vive UNA vez en clinical_corrections.
+// diagnoses/treatments/reports heredan vigencia por el FK a la evaluacion; no ganan ni puntero
+// ni estado. Corregir un protocolo = corregir la evaluacion -> version nueva de toda la cadena.
 export const treatmentStatus = pgEnum("treatment_status", ["draft", "approved"]);
+
+// Disparador de una correccion post-diagnostico (flujo de correccion, gate del Hito 1). El
+// mecanismo de sucesion es agnostico al disparador (ver PLAN_FLUJO_CORRECCION.md (g)):
+// correccion_profesional = el profesional corrige un dato mal digitado; recalibracion_ciencia =
+// la reemision poblacional que preve Gildardo (misma maquinaria, otro disparador). Extensible.
+export const correctionTriggerType = pgEnum("correction_trigger_type", [
+  "correccion_profesional",
+  "recalibracion_ciencia",
+]);
 
 export const transactionStatus = pgEnum("transaction_status", [
   "pending",

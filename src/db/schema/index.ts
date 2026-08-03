@@ -23,3 +23,4 @@ export * from "./research"; // grupo 15
 export * from "./audit"; // grupo 16
 export * from "./ai"; // grupo 17
 export * from "./bis-conditions"; // grupo 18
+export * from "./corrections"; // flujo de correccion post-diagnostico (gate del Hito 1)

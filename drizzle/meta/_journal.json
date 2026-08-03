@@ -204,6 +204,20 @@
       "when": 1785590736831,
       "tag": "0028_emission_versions_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785763367499,
+      "tag": "0029_clinical_corrections",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785763539569,
+      "tag": "0030_clinical_corrections_triggers_rls",
+      "breakpoints": true
     }
   ]
 }
