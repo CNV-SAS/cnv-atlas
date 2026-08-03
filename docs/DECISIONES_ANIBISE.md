@@ -1,5 +1,8 @@
 # DECISIONES ANI-BIS-E — documento consolidado (borrador para firma de Gildardo)
 
+> **Gildardo:** este documento reemplaza las rondas de preguntas. Contiene todo lo decidido hasta hoy, numerado, para tu firma. Las preguntas abiertas están al final y ninguna nos bloquea; respóndelas cuando puedas. De aquí en adelante, antes de preguntarte algo revisamos si ya está aquí.
+
+
 **Qué es.** La fuente normativa única de las decisiones clínicas del modelo ANI-BIS-E. Firmado por la Dirección Científica (Gildardo), mantenido por el equipo de Atlas. Por la regla de autoridad, este documento manda sobre el archivo prototipo: donde discrepen, manda el documento, y la divergencia queda anotada aquí.
 
 **Cómo leerlo.** Una decisión por entrada, numerada `D-NNN` (número estable). Cada una lleva:
@@ -121,11 +124,9 @@ En tu prototipo la "cita" es un campo de fecha (con frecuencia opcional), sin ca
 **P-05 · PHQ-9/GAD-7 son consult-only (ligada a D-008). NO bloquea. Confirmación.**
 Al portar el motor psicológico verificamos que SCOFF se computa desde la encuesta (con conducta definida: remitir), pero PHQ-9 y GAD-7 quedan "aplicar en consulta" y el sistema no los captura ni computa. Así, Atlas nunca auto-detecta depresión/ansiedad/riesgo suicida. **Pregunta:** ¿es intencional dejar PHQ-9/GAD-7 a la consulta (fuera del sistema), o el sistema debería capturarlos?
 
-**P-06 · Alcohol inerte (Q6). NO bloquea.**
-(Trasladada de GILDARDO_QUERIES Q6.) Un predicado de alcohol quedó inerte en el acoplamiento de la encuesta. Ver Q6 para el detalle.
+**P-06 · Alcohol. NO bloquea.** El consumo de alcohol que el paciente reporta en la encuesta hoy no influye en ningún resultado del análisis. ¿Debería influir en algo?
 
-**P-07 · Path no autoritativo d5_42 / d3_29 (Q7). NO bloquea.**
-(Trasladada de Q7.) El diagnóstico lee contaminantes (`d5_42`) y estrés (`d3_29`) solo en el path NO autoritativo `rutasPorCondicion` (Atlas usa `dfi.rutas`). ACTUALIZACIÓN 2026-08-03: `d3_29` ya NO es puramente inerte, ahora alimenta los motores de TRATAMIENTO (psicología, y los párrafos); se le dio field_key (`used_in_diagnosis=false`). La pregunta se reduce a `d5_42` (contaminantes, sin consumidor vivo) y a si el path `rutasPorCondicion` en el diagnóstico es intencional o debería activarse. Ver Q7.
+**P-07 · Contaminantes ambientales. NO bloquea.** Lo que el paciente reporta sobre exposición a contaminantes ambientales hoy no cambia el diagnóstico ni activa ninguna ruta de atención. ¿Debería?
 
 **P-08 · Indicadores que alertan juntos (Q24). NO bloquea, material no urgente.**
 (Trasladada de Q24.) Indicadores que miden el mismo fenómeno y alertan a la vez; material para revisión de Gildardo, sin urgencia.
