@@ -314,6 +314,26 @@ Decididos (ya no abiertos): residencia del dato en Estados Unidos (`DATA_GOVERNA
 ## Documentos relacionados
 `SCIENTIFIC_MODEL.md` (qué es ANI-BIS-E) · `CLINICAL_ENGINE.md` (cómo se implementa el motor) · `CLAUDE.md` · `BOUNDARIES.md` · `DATABASE.md` · `SECURITY.md` · `DATA_GOVERNANCE.md` · `CONSENT_ATLAS.md` · `TESTING.md` · `GLOSSARY.md` · `API_INTEGRATIONS.md` · `DEPLOY.md` · `BRAND.md` · `BACKLOG.md` · `README.md`
 
+## Método de trabajo: dos carriles según riesgo (2026-08-03)
+
+El método planning-first (plan → revisión → construir → diff) evitó errores reales que ningún test habría detectado (el peso de referencia, fijar el modelo, cPABU, el bug de D8, el mapeo del ICEC). Se conserva PARA LO RIESGOSO, y se acelera lo demás.
+
+**CARRIL LENTO (plan → revisión → construir → diff):**
+- Cualquier cosa que toque la CIENCIA de Gildardo (frozen, manifiesto, port de sus motores).
+- Datos SELLADOS o inmutables. Migraciones.
+- CÁLCULO CLÍNICO: lo que determina un diagnóstico, una clasificación o una prescripción.
+- COMUNICACIÓN AL PACIENTE: cualquier texto o dato que llegue a su reporte.
+- AUTORIZACIÓN y ámbito de práctica.
+
+**CARRIL RÁPIDO (construir y reportar al final, sin plan previo ni diff, agrupando varios ítems por turno):**
+- UI y texto de pantalla que NO sea comunicación al paciente.
+- Registros en BACKLOG, ARCHITECTURE, el consolidado.
+- Refactors sin efecto en datos sellados.
+- Cableado de cosas ya portadas y verificadas.
+- Tests y candados.
+
+**La regla que lo hace seguro:** si a mitad de algo del carril rápido se descubre que toca datos sellados, ciencia o cálculo clínico, se PARA y se SUBE al carril lento (ya pasó tres veces por iniciativa propia: el peso de referencia, fijar el modelo, cPABU; esto lo vuelve norma). **Ante la duda de carril, va en el LENTO.**
+
 ## Disciplina arquitectónica
 1. Toda PR se revisa contra las reglas duras.
 2. Toda migración SQL, policy RLS, fórmula clínica, evento de dominio y prompt IA se commitea explicando el **porqué**.
