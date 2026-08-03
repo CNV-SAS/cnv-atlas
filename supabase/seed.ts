@@ -125,7 +125,12 @@ type SurveyQ = {
   type: "opcion" | "opcion_multiple" | "contador" | "escala";
   text: string;
   options?: string[];
-  engine?: boolean; // el motor lo lee -> field_key = key
+  engine?: boolean; // el motor de DIAGNOSTICO lo lee -> field_key = key + used_in_diagnosis = true
+  // El motor de TRATAMIENTO lo lee (no el diagnostico) -> field_key = key, pero used_in_diagnosis = FALSE.
+  // Asi el campo llega a los motores medico/ejercicio/psico/nutricional, pero NO entra a
+  // expectedFieldKeys ni gatea dfi.complete (que mide la completitud del DIAGNOSTICO). Ver BACKLOG y
+  // docs/PLAN_FIELDKEYS_TRATAMIENTO.md. Verificado: estos campos no los lee el frozen de diagnostico.
+  treatmentEngine?: boolean;
 };
 
 // Dominio (D1-D8) por prefijo del d-field, para agrupar visualmente el intake (B7.1).
@@ -182,7 +187,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
   { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"] },
   { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
-  { key: "d3_29", type: "escala", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)" },
+  { key: "d3_29", type: "escala", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)", treatmentEngine: true },
   { key: "d3_30", type: "opcion", text: "¿Su relación con el tabaco / nicotina?", options: ["Nunca he fumado", "Dejé hace 5 años o más", "Dejé hace menos de 5 años", "Fumo ocasionalmente", "Fumo diariamente", "Solo vapeo", "Exposición pasiva"], engine: true },
   // Alcohol: registro clinico, NO alimenta el motor (Q6, resuelto por Gildardo 2026-07-21: calcLE8
   // lo leia en una variable muerta). Sin field_key para que no viaje al LE8; efecto cero en el
@@ -198,7 +203,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
   { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna"], engine: true },
   { key: "d5_39", type: "opcion_multiple", text: "¿Tiene alguno de estos diagnósticos personales?", options: ["Diabetes tipo 1", "Diabetes tipo 2", "Prediabetes", "HTA", "Dislipidemia (colesterol alto)", "Hipertrigliceridemia", "Hipotiroidismo", "Hipertiroidismo", "Obesidad", "Síndrome Metabólico", "Cáncer (activo)", "Cáncer (en remisión)", "Enfermedad cardiovascular", "Insuficiencia renal", "Enfermedad hepática", "Artritis/Artrosis", "Osteoporosis", "Depresión", "Ansiedad", "Trastornos de la conducta alimentaria", "Ninguna", "Otra"], engine: true },
-  { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"] },
+  { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"], treatmentEngine: true },
   { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
   { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna"] },
   // D6 · Alergias y salud digestiva
@@ -218,7 +223,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)" },
   { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)" },
   { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)" },
-  { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"] },
+  { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], treatmentEngine: true },
   { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
   // D8 · Contexto social
   { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor"] },
@@ -455,7 +460,10 @@ async function main() {
     survey_version_id: SURVEY_VERSION_ID,
     question_text: q.text,
     question_type: q.type,
-    field_key: q.engine ? q.key : null,
+    // field_key si lo lee CUALQUIER motor (diagnostico o tratamiento); used_in_diagnosis solo si lo
+    // lee el DIAGNOSTICO. Los de tratamiento (treatmentEngine) reciben field_key pero NO cuentan para
+    // dfi.complete (que mide completitud del diagnostico, no de la encuesta). Ver PLAN_FIELDKEYS_TRATAMIENTO.
+    field_key: q.engine || q.treatmentEngine ? q.key : null,
     section: sectionFor(q.key),
     order_index: i + 1,
     data_class: "clinical" as const, // toda respuesta de salud es dato clinico

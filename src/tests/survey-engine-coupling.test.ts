@@ -144,6 +144,10 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
         and(
           eq(schema.surveyQuestions.surveyVersionId, ver.id),
           isNotNull(schema.surveyQuestions.fieldKey),
+          // Solo los del DIAGNOSTICO: este candado protege el acoplamiento de calcLE8/computeDFI. Los
+          // field_key de TRATAMIENTO (used_in_diagnosis=false, d3_29/d5_40/d7_57) los cubre su propio
+          // motor (el golden medico ya prueba d5_40 -> interacciones); no son de calcLE8/DFI.
+          eq(schema.surveyQuestions.usedInDiagnosis, true),
         ),
       );
     for (const q of qs) {

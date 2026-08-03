@@ -102,10 +102,13 @@ export type DfiRisk = { nivel: string; score: number; descripcion: string };
 // dominios de encuesta y EB/IAE/LE8 no son fiables. Marca explicita (no null silencioso)
 // para que el reporte avise al profesional (condicion de Santiago, B11).
 export type EngineDfi = {
-  // complete = TODOS los field_key que declara la version de la encuesta estan presentes y
-  // no vacios (regla 7, definicion aprobada por Santiago 2026-08-02). NO es "hay algun campo".
-  // OJO (Q28, pendiente de la Direccion Cientifica): complete=false HOY solo MARCA, no impide
-  // emitir el diagnostico. Que deba impedirlo, y como, es Q28.
+  // complete = TODOS los field_key del DIAGNOSTICO (used_in_diagnosis=true) estan presentes y no
+  // vacios. OJO CON EL NOMBRE (2026-08-03): mide la completitud de los INSUMOS DEL DIAGNOSTICO, NO de
+  // la encuesta entera. Los campos que solo alimentan el TRATAMIENTO (medicamentos, estres, sed) NO
+  // cuentan aqui: exigirlos para la completitud del diagnostico seria incorrecto (no lo alimentan). La
+  // completitud del TRATAMIENTO es un hueco aparte, ligado a D-007 (ver BACKLOG). Un rename a
+  // diagnosisInputsComplete es deseable pero toca el contrato; va como nota. Regla 7, def. 2026-08-02.
+  // OJO (Q28/D-007, pendiente): complete=false HOY solo MARCA, no impide emitir. Que deba impedirlo es Q28.
   complete: boolean;
   // field_key esperados que faltaron al emitir (ids estables, no etiquetas). Se sella; la
   // vista los traduce a dominios para decirle al profesional QUE completar en consulta.

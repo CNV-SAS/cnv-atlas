@@ -79,14 +79,16 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     for (const r of rows) {
       if (r.fieldKey) answers.push({ fieldKey: r.fieldKey, type: r.type, value: r.answerValue ?? "" });
     }
-    // La lista DECLARADA por la version: todas las preguntas con field_key de esa version
-    // (respondidas o no). Es la lista contra la cual se mide dfi.complete (regla 7). Se lee de
-    // survey_questions por survey_version_id; su ausencia es un error de integridad que el
-    // orquestador convierte en fallo (no se sella un complete que no se pudo evaluar).
+    // La lista de campos del DIAGNOSTICO declarados por la version: las preguntas con field_key Y
+    // used_in_diagnosis (respondidas o no). Contra ella se mide dfi.complete (regla 7). OJO CON EL
+    // NOMBRE: dfi.complete mide la completitud de los INSUMOS DEL DIAGNOSTICO, no de la encuesta entera.
+    // Los campos que solo alimentan el TRATAMIENTO (medicamentos, estres, sed) tienen field_key pero
+    // used_in_diagnosis=false, asi que NO entran aqui: no gatean la emision del diagnostico (seria
+    // incorrecto suprimir el diagnostico por un dato que no lo alimenta). Ver PLAN_FIELDKEYS_TRATAMIENTO.
     const declared = await db
       .select({ fieldKey: surveyQuestions.fieldKey })
       .from(surveyQuestions)
-      .where(eq(surveyQuestions.surveyVersionId, surveyVersionId));
+      .where(and(eq(surveyQuestions.surveyVersionId, surveyVersionId), eq(surveyQuestions.usedInDiagnosis, true)));
     expectedFieldKeys = declared
       .map((r) => r.fieldKey)
       .filter((k): k is string => k != null);
