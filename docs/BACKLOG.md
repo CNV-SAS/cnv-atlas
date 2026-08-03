@@ -278,3 +278,12 @@ reescribe). Verificado que el mecanismo está vivo (uno nuevo no lo trae). Pero 
 profesional. Polish futuro: la vista de consulta médica marca los exámenes del snapshot que ya fueron
 retirados del modelo ("retirado del modelo; aparece porque este diagnóstico se emitió antes"), cruzando
 contra el manifiesto de modificaciones autorizadas. Edge case (solo diagnósticos viejos), no urgente.
+
+## Test flaky: report-render bajo carga (2026-08-03)
+
+`src/tests/report-render.test.ts` ("rinde en los tres modos... con notas del profesional") falla de
+forma intermitente al correr la suite COMPLETA (aparecio dos veces, ~5s el test), pero pasa siempre
+AISLADO y en el re-run. Es un render de PDF (@react-pdf), pesado; probablemente contencion de
+recursos/timeout bajo la carga de la suite entera, no un bug de logica. NO investigado a fondo. Cuando
+haya CI, un test que falla bajo carga va a fallar alli; conviene diagnosticarlo con esto ya sabido
+(candidatos: subir el timeout del test, aislar el bloque de render, o mockear @react-pdf en ese caso).

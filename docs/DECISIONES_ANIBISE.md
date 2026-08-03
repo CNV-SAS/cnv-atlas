@@ -66,7 +66,7 @@ Decisión (regla general, aplica más allá de un indicador): cuando la ciencia 
 **D-008 · Los cuatro bloques de tratamiento por profesión se portan tal como están.**
 Decisión: el modelo tiene cuatro bloques (nutricionista, médico, deportólogo/ejercicio, psicólogo), cada uno con su motor, ya escritos y funcionando en el archivo. Se portan verbatim, sin interpretarlos. INVARIANTE: el tratamiento nutricional lo activa SOLO el nutricionista; ninguna otra profesión genera protocolo nutricional, prescribe calorías o proteína, ni arma el plan alimentario.
 - Fecha: 2026-08-03. · Origen: Q22 (ronda 2026-08-03 §4).
-- Estado: **PARCIAL** (solo el del nutricionista, y parcial; los otros tres pendientes de portar; orden psico→ejercicio→médico). · Afecta: pantalla + pipeline de tratamiento.
+- Estado: **PARCIAL (avanzado 2026-08-03).** Los TRES motores faltantes (médico, ejercicio, psicología) PORTADOS verbatim (`frozen/atlas-tratamiento.js`, DIFF + goldens) y CABLEADOS display-only en la vista del profesional (salida profesional-facing, nada al paciente). Se selló ASMI en el snapshot del diagnóstico (lo consumen médico/ejercicio) y se completó el port de los field_keys de tratamiento (d3_29 estrés, d5_40 medicamentos, d7_57 sed) con `used_in_diagnosis=false` (no gatean dfi.complete). Falta SOLO el del nutricionista: la cadena calórica (fórmula, validación, intercambio, menú), que espera C6. Invariante respetada: solo el nutricionista genera protocolo nutricional. · Afecta: frozen + pantalla + pipeline de tratamiento.
 
 **D-009 · Remisión es una acción registrable; a la propia profesión no es remisión.**
 Decisión: remitir se registra (a quién, motivo, fecha, si el paciente volvió). Cuando la ruta remite a la MISMA profesión del que atiende, no es remisión sino conducta propia; corregir la redacción de todas las rutas en ese sentido.
@@ -91,7 +91,7 @@ Decisión: se retira ese ítem del listado de exámenes sugeridos; ningún ítem
 **D-013 · Pantallas de las otras profesiones: decir que hay contenido pendiente de portar.**
 Decisión: mientras los otros tres bloques no estén portados, la pantalla de esas profesiones dice explícitamente que el modelo SÍ tiene contenido para su disciplina, pendiente de portar.
 - Fecha: 2026-08-03. · Origen: ronda 2026-08-03 §4.
-- Estado: **DECIDIDO / SIN IMPLEMENTAR.** · Afecta: pantalla.
+- Estado: **IMPLEMENTADO (2026-08-03).** Con los tres motores cableados (D-008), el texto se corrigió: ya no dice "llega en una entrega posterior" (falso) ni "en construcción" con el protocolo debajo (contradictorio); dice que es vista de consulta, el protocolo del modelo está para el criterio del profesional, y la conducta se registra fuera de Atlas. · Afecta: pantalla.
 
 ## Proceso
 
@@ -124,8 +124,8 @@ Al portar el motor psicológico verificamos que SCOFF se computa desde la encues
 **P-06 · Alcohol inerte (Q6). NO bloquea.**
 (Trasladada de GILDARDO_QUERIES Q6.) Un predicado de alcohol quedó inerte en el acoplamiento de la encuesta. Ver Q6 para el detalle.
 
-**P-07 · Path muerto d5_42 / d3_29 (Q7). NO bloquea.**
-(Trasladada de Q7.) El motor lee contaminantes (`d5_42`) y estrés (`d3_29`) solo en el path NO autoritativo `rutasPorCondicion`. Ver Q7.
+**P-07 · Path no autoritativo d5_42 / d3_29 (Q7). NO bloquea.**
+(Trasladada de Q7.) El diagnóstico lee contaminantes (`d5_42`) y estrés (`d3_29`) solo en el path NO autoritativo `rutasPorCondicion` (Atlas usa `dfi.rutas`). ACTUALIZACIÓN 2026-08-03: `d3_29` ya NO es puramente inerte, ahora alimenta los motores de TRATAMIENTO (psicología, y los párrafos); se le dio field_key (`used_in_diagnosis=false`). La pregunta se reduce a `d5_42` (contaminantes, sin consumidor vivo) y a si el path `rutasPorCondicion` en el diagnóstico es intencional o debería activarse. Ver Q7.
 
 **P-08 · Indicadores que alertan juntos (Q24). NO bloquea, material no urgente.**
 (Trasladada de Q24.) Indicadores que miden el mismo fenómeno y alertan a la vez; material para revisión de Gildardo, sin urgencia.
