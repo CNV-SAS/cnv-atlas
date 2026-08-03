@@ -41,8 +41,32 @@ En la evaluación/diagnóstico: si hubo correcciones, un aviso ("esta evaluació
 ## Gate de versión de encuesta (ya en el motor)
 Si la evaluación es de una versión de encuesta anterior a la vigente, el motor bloquea (mensaje claro). La UI debe mostrar ese caso como un estado, no un error genérico.
 
-## Alcance de S2 y decisiones para vos
-- **S2 = el flujo (edición de encuesta + confirmación con la lista de pérdidas + resultado) + la vista de la cadena + los avisos.** El motor no se toca (hecho).
-- **Decisión 1:** ¿el punto de entrada en Diagnóstico + Tratamiento + Evaluación (mi recomendación), o solo en uno?
-- **Decisión 2:** ¿se pierden los ajustes con aviso (mi recomendación, el lado seguro), o hay que intentar arrastrarlos? Arrastrar es riesgoso (se hicieron sobre otro diagnóstico); recomiendo perderlos y avisarlo fuerte.
-- Con esas dos, construyo S2 con checkpoints (el diff del flujo, el de la confirmación, el de la cadena).
+## El error que NO está en la encuesta (verificado 2026-08-03)
+
+El inventario enumeraba cuatro casos (encuesta, antropometría, condiciones BIS, medición re-importada). **Verificado: el servicio `correctEvaluation` cubre HOY solo la ENCUESTA** (acepta `correctedAnswers`, nada más). La antropometría (talla/peso, en `bis_raw_values`) y las condiciones BIS se copian VERBATIM, y la **Condición 1 (verificación de copia exacta) RECHAZA cualquier cambio** a la medición copiada (falla en voz alta si la copia difiere del origen).
+- **(a)** Antropometría y condiciones viven en la evaluación y la cascada las VERSIONA (las copia), pero NO las deja EDITAR: el servicio no acepta su delta y la Condición 1 lo bloquearía.
+- **(b) NO es barato** ("el mismo flujo con otro formulario" no alcanza): (1) el servicio debe aceptar el delta de medición/condiciones; (2) la Condición 1 debe relajarse para permitir el cambio INTENCIONAL verificando que TODO LO DEMÁS sí es idéntico (una verificación más fina, sobre datos sellados); (3) corregir talla/peso CAMBIA el diagnóstico (son insumos del motor), no es como los campos de tratamiento. Es una EXTENSIÓN del servicio (carril lento, toca el cálculo y la verificación de seguridad), no solo UI.
+- **(c) Por eso S2 cubre solo la ENCUESTA, y la pantalla LO DICE:** hoy se corrige la encuesta; para antropometría, condiciones o re-importar la medición no hay vía todavía. Sin ese mensaje, el profesional busca, no encuentra, y concluye que el sistema no lo permite cuando en realidad no está construido. La corrección de antropometría/condiciones va como bloque aparte (extiende el servicio).
+
+## Tres cosas al construir (2026-08-03)
+
+**a) El aviso de pérdida es ESPECÍFICO, no genérico.** La confirmación lee lo que ESE tratamiento tiene y lista solo eso: "vas a perder los 3 ajustes de objetivos y las 2 notas que escribiste". Si el tratamiento no tiene ajustes ni notas, NO se muestra el aviso (no hay nada que perder; asustar de más es un defecto). Se lee de las tablas reales (`adj_*` no nulos, `treatment_notes`, `treatment_diet_guidelines`, `treatment_nutraceuticals`, `micronutrientes_texto`, `proxima_cita`).
+
+**b) La cadena se ve DESDE DONDE ESTÁ el profesional.** En la vista de Diagnóstico/Tratamiento, si hubo correcciones, se ve ahí mismo (no hay que ir a otro lado): un aviso "esta evaluación reemplazó N versiones" que expande v1→v2→v3, y el MOTIVO de cada salto (lo único que explica por qué hay tres), con quién y cuándo (de `clinical_corrections`).
+
+**c) El gate de versión de encuesta es ESTADO, no error.** Si la evaluación es de una versión anterior de la encuesta, el botón "Corregir" se ve DESHABILITADO con la razón visible ("esta evaluación se hizo con una versión anterior del cuestionario; no puede recalcularse con el modelo actual"), NO un fallo al pulsarlo.
+
+## La confirmación, en palabras (lo que ve el profesional antes del acto irreversible)
+
+**Título:** "Corregir la evaluación (genera una versión nueva)".
+**Cuerpo (lista honesta, en este orden):**
+1. "Vas a corregir: [las respuestas que cambiaste]" y "Motivo: [el que escribiste]".
+2. "Se rehace el diagnóstico, el tratamiento y el reporte con los datos corregidos. La versión actual NO se borra: queda registrada como reemplazada."
+3. **Pérdidas específicas (solo si las hay):** "Vas a perder los [N] ajustes de objetivos, las [M] notas y las [K] guías que hiciste en el tratamiento actual." (Omitido si el tratamiento no tiene nada.)
+4. **Si el protocolo estaba aprobado:** "La aprobación del protocolo se invalida; habrá que aprobar el nuevo."
+5. **Si el reporte se envió:** "El reporte ya se le envió al paciente; tiene el anterior. La corrección genera uno nuevo."
+6. **Si el modelo cambió entremedio:** "El diagnóstico se recalcula con la versión vigente del modelo; además del dato que corregiste, algunas clasificaciones pueden diferir."
+**Acciones:** "Corregir" (confirma, dispara el motor) / "Cancelar".
+
+## Construcción (checkpoints)
+S2 = el flujo (edición de encuesta + la confirmación de arriba + resultado) + la vista de la cadena + el mensaje de "otros datos, todavía no". Checkpoints con diff: (1) el flujo + la confirmación, (2) la vista de la cadena, (3) el gate como estado + el mensaje de alcance.

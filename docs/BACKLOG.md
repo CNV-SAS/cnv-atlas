@@ -287,3 +287,14 @@ AISLADO y en el re-run. Es un render de PDF (@react-pdf), pesado; probablemente 
 recursos/timeout bajo la carga de la suite entera, no un bug de logica. NO investigado a fondo. Cuando
 haya CI, un test que falla bajo carga va a fallar alli; conviene diagnosticarlo con esto ya sabido
 (candidatos: subir el timeout del test, aislar el bloque de render, o mockear @react-pdf en ese caso).
+
+## Corrección de antropometría / condiciones BIS / re-import (extiende el flujo de corrección) — 2026-08-03
+
+El flujo de corrección (motor + S2) cubre la ENCUESTA. Los otros tres casos del inventario original
+(antropometría talla/peso, condiciones de la toma BIS, re-importar la medición) NO están: el servicio
+`correctEvaluation` solo acepta `correctedAnswers`, y la Condición 1 (verificación de copia exacta de
+la medición) RECHAZA cualquier cambio a la medición copiada. Extenderlo es carril lento: (1) el servicio
+acepta el delta de medición/condiciones; (2) la Condición 1 se relaja para permitir el cambio
+INTENCIONAL verificando que el resto es idéntico; (3) corregir talla/peso CAMBIA el diagnóstico (son
+insumos del motor). No es "otro formulario": es una extensión del servicio sobre datos sellados. S2
+lo dice en pantalla ("para otros datos no hay vía todavía") para que el profesional no lo busque en vano.
