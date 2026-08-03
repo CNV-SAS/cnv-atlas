@@ -15,6 +15,9 @@ export type PsicoTreatment = {
   remision: string[];
   salvaguarda: string | null;
   estres: number;
+  // El nivel de estres (d3_29) se CAPTURO en la encuesta? Hoy false siempre: d3_29 no tiene field_key
+  // (port pendiente, ver BACKLOG). Distingue "no capturado" de un negativo, para no leer "-/10" como dato.
+  estresCaptured: boolean;
 };
 
 // Decodifica un multi-select guardado como JSON (["Vómito",...]) a array; si no es JSON, valor unico.
@@ -63,5 +66,6 @@ export async function getPsicoTreatmentForEvaluation(
       q.question_type === "opcion_multiple" ? decodeMulti(r.answer_value) : (r.answer_value ?? "");
   }
 
-  return motorTratPsico(enc, {}) as PsicoTreatment;
+  const out = motorTratPsico(enc, {}) as Omit<PsicoTreatment, "estresCaptured">;
+  return { ...out, estresCaptured: "d3_29" in enc };
 }

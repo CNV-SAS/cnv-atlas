@@ -24,6 +24,9 @@ export type MedicoEjercicioTreatment = {
   // ASMI (masa apendicular) sellada en el snapshot? Si no (diagnostico viejo, emitido antes de sellarla),
   // los motores corren pero el criterio de sarcopenia por masa apendicular NO se evaluo: se avisa.
   asmiAvailable: boolean;
+  // La medicacion (d5_40) se capturo? Hoy false siempre: d5_40 no tiene field_key (port pendiente, ver
+  // BACKLOG). Sin ella, el motor medico no evalua interacciones farmaco-nutriente: se dice, no se calla.
+  medsCaptured: boolean;
 };
 
 const PESO_VAR = normalizeHeader("Peso kg");
@@ -131,5 +134,6 @@ export async function getMedicoEjercicioForEvaluation(
     medico: motorTratMedico(enc, bis) as MedicoTreatment,
     ejercicio: motorTratEjercicio(enc, bis) as EjercicioTreatment,
     asmiAvailable,
+    medsCaptured: "d5_40" in enc,
   };
 }

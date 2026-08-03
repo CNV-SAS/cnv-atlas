@@ -116,7 +116,16 @@ async function PsicoPanel({ evaluationId }: { evaluationId: string }) {
         </ul>
       </div>
       <PsicoList title="Enfoque" items={p.enfoque} />
-      <PsicoList title="Temas a trabajar" items={p.temas} />
+      <PsicoList
+        title="Temas a trabajar"
+        items={p.estresCaptured ? p.temas : p.temas.filter((x) => !/estr[eé]s/i.test(x))}
+      />
+      {p.estresCaptured ? null : (
+        <NoCapturedNote>
+          Nivel de estrés: no capturado en la encuesta todavía, por eso no alimenta este tamizaje (no es
+          un valor bajo, es un dato ausente).
+        </NoCapturedNote>
+      )}
       <PsicoList title="Remisión" items={p.remision} />
       <p className="text-xs text-muted-foreground">
         Tamizaje del modelo, para tu criterio. No constituye diagnóstico y no se muestra al paciente.
@@ -132,6 +141,16 @@ function AsmiCaveat() {
     <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
       La evaluación de sarcopenia por masa muscular apendicular no está disponible: este diagnóstico se
       emitió antes de que ese dato se registrara. El resto del protocolo se calcula con normalidad.
+    </p>
+  );
+}
+
+// "No capturado" != "negativo": un dato que la encuesta no alimenta al motor todavia (port pendiente)
+// se dice explicito, no se muestra como "-" ni se calla. Distinto de un tamizaje negativo real.
+function NoCapturedNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="rounded-md border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+      {children}
     </p>
   );
 }
@@ -195,9 +214,19 @@ async function MedicoSection({
             ["Metas", t.medico.metas],
             ["Monitoreo", t.medico.monitoreo],
             ["Remisión", t.medico.remision],
-            ["Interacciones fármaco-nutriente", t.medico.medNotas],
+            // Las interacciones farmaco-nutriente solo si se capturo la medicacion; si no, se avisa abajo.
+            ...(t.medsCaptured
+              ? ([["Interacciones fármaco-nutriente", t.medico.medNotas]] as [string, string[]][])
+              : []),
           ]}
-        />
+        >
+          {t.medsCaptured ? null : (
+            <NoCapturedNote>
+              No se pueden evaluar interacciones fármaco-nutriente: la medicación no se captura en la
+              encuesta todavía.
+            </NoCapturedNote>
+          )}
+        </MotorSection>
       ) : null}
     </div>
   );
