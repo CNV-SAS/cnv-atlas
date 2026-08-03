@@ -1,7 +1,10 @@
 // Clasificador de fenotipo MCCB (F1-F12) + obesidad sarcopenica.
 //
-// TRANSCRIPCION de la logica INLINE de motorDiagnostico (ATLAS.html:10864-10916) y de la funcion
-// dxSarcopenia (ATLAS.html:3414-3432). Cada linea va anotada con su origen.
+// TRANSCRIPCION de la logica INLINE de motorDiagnostico (ATLAS_v7.html:11060-11105, VIGENTE) y de la
+// funcion dxSarcopenia (ATLAS_v7.html:3417-3435). Cada linea va anotada con su origen. RE-ANCLADO al
+// vigente el 2026-08-02 (antes anclaba a julio): Gildardo unifico la frontera de desnutricion (FMI H
+// 3.5->3.0, FFMI H 17.92->17, M 15.64->15). Cambia la clasificacion sellada de pacientes en esas
+// franjas -> bump de emission_versions.structural_mccb. Ver GILDARDO_QUERIES Q19 y el re-sync en BACKLOG.
 //
 // POR QUE AQUI Y NO EN frozen/: la ciencia vive INLINE dentro de motorDiagnostico, no como un
 // artefacto/funcion independiente. frozen/ significa "byte-identico a un artefacto independiente",
@@ -81,9 +84,9 @@ export function dxSarcopenia(fuerza: number, asmi: number, af: number, sexoM: bo
 // tramo `alto` se parte en clinico/preclinico segun MCA_ok.
 function computeNivelFMI(FMI: number, MCA_ok: boolean, sexoM: boolean): NivelFMI {
   if (sexoM) {
-    if (FMI <= 0) return "normal"; // :10872
-    if (FMI < 3.5) return "bajo"; // :10873
-    if (FMI <= 6.0) return "normal"; // :10874
+    if (FMI <= 0) return "normal"; // :11068 (vigente)
+    if (FMI < 3.0) return "bajo"; // :11069 (vigente, unificado con cFMI: H<3; antes julio 3.5)
+    if (FMI <= 6.0) return "normal"; // :11070 (vigente)
     if (!MCA_ok) return "alto_clinico"; // :10875
     return "alto_preclinico"; // :10876
   } else {
@@ -95,10 +98,13 @@ function computeNivelFMI(FMI: number, MCA_ok: boolean, sexoM: boolean): NivelFMI
   }
 }
 
-// Bandas de FFMI (ATLAS.html:10886-10889): bajo/normal/alto, por sexo.
+// Bandas de FFMI (ATLAS_v7.html:11082-11088, VIGENTE): bajo/normal/alto, por sexo. La frontera de
+// 'bajo' esta UNIFICADA con cFFMI (H<17 · M<15; antes de julio: 17.92 / 15.64). La superior (21.59 /
+// 19.34) es la del mapa MCCB y NO coincide con cFFMI (25/23) a proposito: cFFMI usa 25/23 para
+// "sospecha de anabolizantes", otro concepto (ver GILDARDO_QUERIES Q19).
 function computeNivelFFMI(FFMI: number, sexoM: boolean): NivelFFMI {
-  if (sexoM) return FFMI < 17.92 ? "bajo" : FFMI <= 21.59 ? "normal" : "alto"; // :10887
-  return FFMI < 15.64 ? "bajo" : FFMI <= 19.34 ? "normal" : "alto"; // :10888
+  if (sexoM) return FFMI < 17 ? "bajo" : FFMI <= 21.59 ? "normal" : "alto"; // :11086 (vigente)
+  return FFMI < 15 ? "bajo" : FFMI <= 19.34 ? "normal" : "alto"; // :11087 (vigente)
 }
 
 // Fallback verbatim cuando la clave no existe en la tabla (ATLAS.html:10906).

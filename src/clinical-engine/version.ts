@@ -7,7 +7,11 @@ export const ENGINE_VERSION = "anibise-1.0.0";
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
 // protocol_suggested (regla 7); el resto de la constelacion se hereda via diagnosis_id.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-1.0.0";
+// Bump 2026-08-02 (1.0.0 -> 2026-07-30, fechada al vigente): re-sync de la frontera de desnutrición
+// del clasificador de fenotipo (protocolo-fenotipo.ts) contra el vigente. El fenotipo alimenta el
+// protocolo (obesidadSarcopenica -> estrategia/proteína), así que el protocol_suggested puede moverse
+// para pacientes en las franjas; por eso sube esta versión, además de emission_versions.structural_mccb.
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-07-30";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -28,6 +32,7 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   // FORMA de la salida (no meramente cosmetico), pero valido porque ningun registro afirma todavia
   // nada con 1.0.0. Tras el primer sellado esto ya NO seria aceptable sin subir la version.
   "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
-  "protocolo-fenotipo.ts": "74269b5726f661e8a52c6e696b389eeb69eaaecf5597fc86b16d823fea549318",
+  // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
+  "protocolo-fenotipo.ts": "3df943df89e2edc22a4a6b1d644c07b7461264765a326d99dd0feb59fd7488ad",
   "fenotipos-mccb.ts": "78b30afed8b0554c611b5e329ca0a46b3bb8fb300b860c49eaf0c812944f217a",
 };

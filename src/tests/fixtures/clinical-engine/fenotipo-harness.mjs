@@ -1,6 +1,7 @@
 // HARNESS Via C (T2 A3.4): ORACULO del golden del clasificador de fenotipo. Corre los BYTES
-// VERBATIM de Gildardo (dxSarcopenia ATLAS.html:3414-3432 + clasificador MCCB
-// 10864-10916), NO nuestra transcripcion. El envoltorio solo declara params (bis/enc/
+// VERBATIM de Gildardo (dxSarcopenia ATLAS_v7.html:3417-3435 + clasificador MCCB 11060-11105),
+// NO nuestra transcripcion. RE-ANCLADO al VIGENTE 2026-08-02 (antes anclaba a la entrega de julio):
+// Gildardo unifico la frontera de desnutricion (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15). El envoltorio solo declara params (bis/enc/
 // sexoM) y devuelve las variables; NINGUNA operacion aritmetica ni umbral propio. DIFF verifica
 // byte a byte. Generado por script; no editar a mano.
 export function classifyVerbatim(bis, enc, sexoM) {
@@ -35,7 +36,7 @@ const dxSarcopenia = (fuerza, asmi, af, sexoM) => {
   const nivelFMI = (() => {
     if (sexoM) {
       if (FMI <= 0) return 'normal';
-      if (FMI < 3.5) return 'bajo';
+      if (FMI < 3.0) return 'bajo';   // cFMI: H<3
       if (FMI <= 6.0) return 'normal';
       if (!MCA_ok) return 'alto_clinico';
       return 'alto_preclinico';
@@ -49,8 +50,11 @@ const dxSarcopenia = (fuerza, asmi, af, sexoM) => {
   })();
 
   const nivelFFMI = (() => {
-    if (sexoM) return FFMI < 17.92 ? 'bajo' : FFMI <= 21.59 ? 'normal' : 'alto';
-    return FFMI < 15.64 ? 'bajo' : FFMI <= 19.34 ? 'normal' : 'alto';
+    // Frontera de 'bajo' unificada con cFFMI (H<17 · M<15). La frontera superior
+    // (21,59 / 19,34) es la del mapa de fenotipos MCCB y se conserva: cFFMI usa 25/23
+    // para 'sospecha de anabolizantes', que es otro concepto.
+    if (sexoM) return FFMI < 17 ? 'bajo' : FFMI <= 21.59 ? 'normal' : 'alto';
+    return FFMI < 15 ? 'bajo' : FFMI <= 19.34 ? 'normal' : 'alto';
   })();
 
   const FENOTIPOS_MCCB = {

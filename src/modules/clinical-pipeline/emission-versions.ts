@@ -38,7 +38,13 @@ export type EmissionVersions = Record<EmissionVersionKey, string>;
 const CURRENT: EmissionVersions = {
   classification: "cXXX-1.0", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   calibration: "ebbis-v5-provisional",
-  structural_mccb: "mccb-1.0", // etiqueta interna; la tabla FENOTIPOS_MCCB es verbatim de Gildardo
+  // BUMP 2026-08-02 (mccb-1.0 -> mccb-2026-07-30, fechada al vigente): el re-sync unificó la frontera
+  // de desnutrición del clasificador MCCB con el vigente (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15).
+  // Un paciente en esas franjas cambia de banda -> su fenotipo MCCB sellado se movería; por eso sube.
+  // NO sube `classification`: esos cortes viven en `computeNivelFMI/FFMI` (el MCCB), NO en los cXXX
+  // (cIFC/cIRC/cFMI/cFFMI), que ya usaban los cortes del vigente; la clasificación de nueve estados y
+  // los indicadores no se mueven. Con demo da igual; con reales, distingue emisiones antes/después.
+  structural_mccb: "mccb-2026-07-30",
 };
 
 // Set COMPLETO de versiones vigentes. El writer lo sella ENTERO (regla de completitud): un jsonb

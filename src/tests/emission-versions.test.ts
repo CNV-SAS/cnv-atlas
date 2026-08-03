@@ -32,7 +32,7 @@ describe("emission_versions", () => {
   // fenotipo MCCB). Su PRESENCIA distingue un diagnostico nuevo (con las dos) de uno viejo (solo la de
   // nueve estados, emitido antes de la columna). No se rellena hacia atras.
   it("structural_mccb distingue un diagnostico con el MCCB de uno viejo sin el", () => {
-    expect(buildEmissionVersions().structural_mccb).toBe("mccb-1.0");
+    expect(buildEmissionVersions().structural_mccb).toBe("mccb-2026-07-30");
     // un diagnostico viejo (emitido con classification+calibration, antes del MCCB) no trae la clave:
     const viejo = { classification: "cXXX-1.0", calibration: "ebbis-v5-provisional" };
     expect("structural_mccb" in viejo).toBe(false);

@@ -58,11 +58,12 @@ function bordesBanda(field: "FMI" | "FFMI", sexoM: boolean, thr: number): Caso[]
   ];
 }
 
+// Cortes del VIGENTE (re-anclado 2026-08-02): inferiores unificados con cFFMI/cFMI (H 3.0/17, M 15).
 const BORDES: Caso[] = [
-  ...bordesBanda("FMI", true, 3.5), ...bordesBanda("FMI", true, 6.0),
+  ...bordesBanda("FMI", true, 3.0), ...bordesBanda("FMI", true, 6.0),
   ...bordesBanda("FMI", false, 5.0), ...bordesBanda("FMI", false, 9.0),
-  ...bordesBanda("FFMI", true, 17.92), ...bordesBanda("FFMI", true, 21.59),
-  ...bordesBanda("FFMI", false, 15.64), ...bordesBanda("FFMI", false, 19.34),
+  ...bordesBanda("FFMI", true, 17), ...bordesBanda("FFMI", true, 21.59),
+  ...bordesBanda("FFMI", false, 15), ...bordesBanda("FFMI", false, 19.34),
 ];
 
 // 9no umbral: MCA_ok = MCA >= MCA_ref. FMI en zona alta (7 > 6.0 H) para que MCA_ok parta
@@ -102,10 +103,24 @@ describe("GOLDEN A3.4: bandas (bordes) TS == harness Via C", () => {
 
   // Anclas de direccion del borde (< vs <=), por si TS y harness derivaran juntos (no pueden: el
   // harness es verbatim, pero documenta la intencion).
-  it("el borde exacto respeta < vs <= (3.5->normal, 17.92->normal, MCA==ref->alto_preclinico)", () => {
-    expect(classifyFenotipo({ ...base(true), FMI: 3.5 }).nivelFMI).toBe("normal"); // FMI<3.5 es false -> normal
-    expect(classifyFenotipo({ ...base(true), FFMI: 17.92 }).nivelFFMI).toBe("normal"); // FFMI<17.92 es false -> normal
+  it("el borde exacto respeta < vs <= (3.0->normal, 17->normal, MCA==ref->alto_preclinico)", () => {
+    expect(classifyFenotipo({ ...base(true), FMI: 3.0 }).nivelFMI).toBe("normal"); // FMI<3.0 es false -> normal
+    expect(classifyFenotipo({ ...base(true), FFMI: 17 }).nivelFFMI).toBe("normal"); // FFMI<17 es false -> normal
     expect(classifyFenotipo({ ...base(true), FMI: 7, MCA: 38, MCA_ref: 38 }).nivelFMI).toBe("alto_preclinico"); // MCA==ref -> MCA_ok
+  });
+
+  // FRANJA DE DESNUTRICION (re-sync 2026-08-02): casos que caen EN la banda donde el corte cambio de
+  // julio al vigente. Antes daban "bajo" (cortes 3.5 / 17.92 / 15.64), ahora "normal" (3.0 / 17 / 15).
+  // Sin estos casos, cambiar el corte no habria movido ningun golden: un golden que no cubre la
+  // frontera no protege la frontera. Cada uno assert el valor VIGENTE + TS==harness.
+  it("franja: FFMI 17.5 (H), FFMI 15.3 (M), FMI 3.2 (H) caen en 'normal' con el corte vigente", () => {
+    expect(classifyFenotipo({ ...base(true), FFMI: 17.5 }).nivelFFMI).toBe("normal"); // julio: bajo
+    expect(classifyFenotipo({ ...base(false), FFMI: 15.3 }).nivelFFMI).toBe("normal"); // julio: bajo
+    expect(classifyFenotipo({ ...base(true), FMI: 3.2 }).nivelFMI).toBe("normal"); // julio: bajo
+    // y coinciden con el oraculo verbatim del vigente:
+    expect(runTs({ ...base(true), FFMI: 17.5 })).toEqual(runHarness({ ...base(true), FFMI: 17.5 }));
+    expect(runTs({ ...base(false), FFMI: 15.3 })).toEqual(runHarness({ ...base(false), FFMI: 15.3 }));
+    expect(runTs({ ...base(true), FMI: 3.2 })).toEqual(runHarness({ ...base(true), FMI: 3.2 }));
   });
 });
 
