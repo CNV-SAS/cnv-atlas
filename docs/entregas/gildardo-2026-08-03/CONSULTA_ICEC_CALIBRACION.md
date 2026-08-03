@@ -1,6 +1,9 @@
 # Consulta a Gildardo: activar el mapeo del ICEC vs la calibración de la EB-BIS (2026-08-03)
 
-> Va junto con el documento consolidado y las tres consultas anteriores. Para revisión de Santiago antes de enviar.
+> SUPERSEDED (2026-08-03): NO se manda suelta. Absorbida en el documento consolidado como **P-01**
+> (canal único, ver ARCHITECTURE "Canal único"). Se conserva como redacción de referencia. El ICEC
+> no bloquea (no se puede activar hoy: falta calcPatron/C9 y d7_agua), así que no hay razón para un
+> mensaje aparte.
 
 ---
 

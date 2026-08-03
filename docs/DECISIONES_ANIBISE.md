@@ -49,7 +49,7 @@ Decisión: cortes FMI H 3.0, FFMI H 17 / M 15 (unificación de la frontera de de
 **D-006 · ICEC (índice contextual): activar el mapeo en Atlas sin esperar el archivo.**
 Decisión: se activa el mapeo del ICEC en Atlas; si el archivo prototipo difiere, el desactualizado es el archivo (divergencia deliberada).
 - Fecha: C1 2026-07-28, reactivación 2026-08-03. · Origen: C1 / D / Q26 (ronda 2026-08-03 §1.D).
-- Estado: **DECIDIDO / BLOQUEADO POR INTERACCIÓN (verificado 2026-08-03).** Activar el mapeo cambia la ESCALA del índice contextual, pero la media (58,578) y la desviación (13,332) con las que la EB-BIS v5 lo estandariza se derivaron con el mapeo APAGADO. Activarlo sin revisar esa calibración movería la edad bioeléctrica por un cambio de escala, no por el estado del paciente (el coeficiente del z-score es −7.982; subir el ICEC baja la EB-BIS). Pendiente de confirmación de la Dirección Científica. **AGRAVANTE:** el propio comentario de Gildardo en el vigente (L6520-6528) dice textual "DESACTIVADO A PROPÓSITO, NO PONER EN true SIN RESOLVER LO SIGUIENTE" y estima que activarlo baja la EB-BIS de todos 1-8 años; su instrucción de "actívenlo en Atlas" (D/Q26) contradice ese comentario. Y la procedencia de μ/σ está SIN documentar incluso por él (su comentario pregunta "de dónde salieron"). No se ejecuta hasta resolver la calibración. · Afecta: frozen `engine.dfi` (ciencia-frozen) + calibración EB-BIS (C2b).
+- Estado: **DECIDIDO / BLOQUEADO POR INTERACCIÓN (verificado 2026-08-03).** Activar el mapeo cambia la ESCALA del índice contextual, pero la media (58,578) y la desviación (13,332) con las que la EB-BIS v5 lo estandariza se derivaron con el mapeo APAGADO. Activarlo sin revisar esa calibración movería la edad bioeléctrica por un cambio de escala, no por el estado del paciente (el coeficiente del z-score es −7.982; subir el ICEC baja la EB-BIS). Pendiente de confirmación de la Dirección Científica. **AGRAVANTE:** el propio comentario de Gildardo en el vigente (L6520-6528) dice textual "DESACTIVADO A PROPÓSITO, NO PONER EN true SIN RESOLVER LO SIGUIENTE" y estima que activarlo baja la EB-BIS de todos 1-8 años; su instrucción de "actívenlo en Atlas" (D/Q26) contradice ese comentario. Y la procedencia de μ/σ está SIN documentar incluso por él (su comentario pregunta "de dónde salieron"). **DECISIÓN NUESTRA (excepción a D-014, ver ARCHITECTURE): NO se activa.** La instrucción manda sobre el archivo salvo cuando el archivo advierte explícitamente contra ella; aquí el archivo lo hace ("no poner en true sin resolver esto"). Tampoco se decide de nuestro lado (mueve la edad de todos): se registra y se pregunta cuando haya ocasión (ver P-01). Además, ni queriendo se puede activar hoy: requiere `calcPatron` (C9, no portado) + `d7_agua` (no capturado). · Afecta: frozen `engine.dfi` (ciencia-frozen) + calibración EB-BIS (C2b).
 
 **D-007 · Encuesta incompleta: se diagnostica el bioeléctrico, pero no lo que depende de lo que falta.**
 Decisión: el diagnóstico bioeléctrico se emite siempre (sale de la medición). Lo que depende de la encuesta NO se emite si está incompleta: no índice contextual con defaults, no edad bioeléctrica, no ruta derivada de esos dominios. El profesional ve qué dominios faltan y qué queda suspendido. La completitud se guarda con el diagnóstico; al completar, versión nueva sin sobrescribir.
@@ -101,6 +101,34 @@ Decisión: el archivo prototipo deja de ser la fuente de ejecución; la fuente e
 - Estado: **ADOPTADO.** · Afecta: proceso.
 
 ---
+
+## Preguntas abiertas (canal único, 2026-08-03)
+
+Desde ahora las preguntas a Gildardo viven AQUÍ, no en mensajes sueltos (ver ARCHITECTURE, "Canal único"). Se numeran `P-NNN`, en la misma secuencia estable que las decisiones. Él las lee cuando pueda; solo se le escribe suelto si algo BLOQUEA trabajo real y no hay alternativa. Cuando responde, la pregunta se resuelve y su respuesta entra como decisión `D-NNN`.
+
+**P-01 · ICEC y calibración de la EB-BIS (ligada a D-006). NO bloquea (no se puede activar hoy de todos modos).**
+La EB-BIS v5 estandariza el ICEC contra μ=58,578 y σ=13,332 (vigente L5758), constantes derivadas con el mapeo del ICEC APAGADO. Activar el mapeo cambia la escala del índice pero deja μ/σ viejas, moviendo la edad bioeléctrica por escala, no por el paciente. Su propio comentario (vigente L6520-6528) marca el interruptor "DESACTIVADO A PROPÓSITO, NO PONER EN true SIN RESOLVER LO SIGUIENTE", estima 1-8 años de bajada, y deja abierta la procedencia de μ/σ. **Pregunta:** ¿μ y σ se ajustan junto con el mapeo (recalibración), o hay algo que no estamos viendo? Mientras tanto queda preparado pero sin activar.
+
+**P-02 · Factor de actividad (ligada a D-002). NO bloquea.**
+En 6.4 instruiste no construir el factor de actividad sugerido (valor fijo ligero). Al inventariar el archivo vimos que YA existe: el motor de ejercicio calcula un factor recomendado (moderado si obesidad, ligero en el resto) y el nutricional lo usa como default, con la última palabra del profesional. **Pregunta:** al portar el motor de ejercicio, ¿usamos ese factor como default (como hace el archivo) o lo dejamos fuera y mantenemos el fijo ligero (como pediste en 6.4)?
+
+**P-03 · Salvaguarda de TCA (ligada a D-002). NO bloquea. Confirmación.**
+Confirmar que la leímos bien: con riesgo de conducta alimentaria y déficit calórico, el motor nutricional pone el déficit en cero, vuelve la dieta normocalórica y marca remitir. Detección doble: el nutricional por la encuesta directa + el motor de psicología (definición ampliada). ¿Correcto?
+
+**P-04 · Cita agendada (ligada a D-010). NO bloquea.**
+En tu prototipo la "cita" es un campo de fecha (con frecuencia opcional), sin calendario ni recordatorios. Nosotros tenemos exactamente eso. **Pregunta:** ¿el requisito "empeoró solo con cita agendada" se cumple con ese campo lleno, o hace falta agenda real?
+
+**P-05 · PHQ-9/GAD-7 son consult-only (ligada a D-008). NO bloquea. Confirmación.**
+Al portar el motor psicológico verificamos que SCOFF se computa desde la encuesta (con conducta definida: remitir), pero PHQ-9 y GAD-7 quedan "aplicar en consulta" y el sistema no los captura ni computa. Así, Atlas nunca auto-detecta depresión/ansiedad/riesgo suicida. **Pregunta:** ¿es intencional dejar PHQ-9/GAD-7 a la consulta (fuera del sistema), o el sistema debería capturarlos?
+
+**P-06 · Alcohol inerte (Q6). NO bloquea.**
+(Trasladada de GILDARDO_QUERIES Q6.) Un predicado de alcohol quedó inerte en el acoplamiento de la encuesta. Ver Q6 para el detalle.
+
+**P-07 · Path muerto d5_42 / d3_29 (Q7). NO bloquea.**
+(Trasladada de Q7.) El motor lee contaminantes (`d5_42`) y estrés (`d3_29`) solo en el path NO autoritativo `rutasPorCondicion`. Ver Q7.
+
+**P-08 · Indicadores que alertan juntos (Q24). NO bloquea, material no urgente.**
+(Trasladada de Q24.) Indicadores que miden el mismo fenómeno y alertan a la vez; material para revisión de Gildardo, sin urgencia.
 
 ### Pendiente de Gildardo (su lado)
 - **C6:** proteína y sobrecosto por condición, en cifras (destraba D-001/D-002).
