@@ -44,6 +44,7 @@ type Snapshot = {
   efrPhenotype: { key: string; stateNumber: number };
   dfi: { complete: boolean };
   versions: { engine: string };
+  asmi: number | null;
 };
 
 describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => {
@@ -211,6 +212,10 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     expect(indicators.filter((r: { value: string | null }) => r.value == null)).toHaveLength(
       snapVals.filter((v) => v == null).length,
     );
+
+    // ASMI (masa muscular apendicular) SELLADO en el snapshot del diagnostico: el donante trae MMEM,
+    // asi que es un numero (los motores medico/ejercicio la leen para sarcopenia; snapshots viejos = null).
+    expect(typeof snapshot.asmi).toBe("number");
 
     // constelacion del motor real sellada en cada indicador.
     expect(snapshot.versions.engine).toBe("anibise-1.0.0");

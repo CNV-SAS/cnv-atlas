@@ -141,6 +141,13 @@ export type EngineOutput = {
   // el tratamiento. El tratamiento real y el menu por IA son bloques posteriores.
   nutraceuticos: string;
   resumenClinico: string;
+  // ASMI (indice de masa muscular apendicular, kg/m2): medida de composicion DERIVADA (MMEM/talla^2),
+  // hermana de FMI/FFMI. Se SELLA aqui, en el snapshot del DIAGNOSTICO, porque es dato de composicion
+  // que el tratamiento CONSUME (los motores medico y ejercicio la leen para sarcopenia), no dato del
+  // tratamiento. Se computa siempre (a.fuente.ASMI); null si falta MMEM. Los diagnosticos emitidos
+  // ANTES de este campo no lo tienen (null): el consumidor lo trata como "no se pudo evaluar", distinto
+  // de un valor. NO es un indicator_value (no va a la tabla ni tiene definicion): solo vive en el snapshot.
+  asmi: number | null;
   versions: EngineVersions;
 };
 

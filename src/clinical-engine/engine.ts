@@ -211,6 +211,9 @@ export function runEngine(input: EngineInput): EngineOutput {
     dfi,
     nutraceuticos: a.fenotipoEFR.nutraceuticos,
     resumenClinico,
+    // ASMI ya esta computado (a.fuente.ASMI, alimenta el fenotipo); se SELLA para los motores de
+    // tratamiento (medico/ejercicio). null si falta MMEM (NaN -> null, JSON no tiene NaN).
+    asmi: Number.isFinite(a.fuente.ASMI) ? a.fuente.ASMI : null,
     versions: {
       engine: ENGINE_VERSION,
       model: model.version,

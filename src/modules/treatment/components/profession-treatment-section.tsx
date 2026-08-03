@@ -4,6 +4,7 @@ import type { RutaContent } from "@/clinical-engine/rutas-content";
 
 import type { ActorProfession } from "../data/actor-profession-reader";
 import { getCelularBadgesForEvaluation } from "../data/celular-badges-reader";
+import { getMedicoEjercicioForEvaluation } from "../data/medico-ejercicio-treatment-reader";
 import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
@@ -124,6 +125,121 @@ async function PsicoPanel({ evaluationId }: { evaluationId: string }) {
   );
 }
 
+// Aviso de "no se pudo evaluar" (misma distincion que las badges): cuando el diagnostico se emitio
+// antes de sellar ASMI, el criterio de sarcopenia por masa apendicular no se evaluo. Dice el PORQUE.
+function AsmiCaveat() {
+  return (
+    <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      La evaluación de sarcopenia por masa muscular apendicular no está disponible: este diagnóstico se
+      emitió antes de que ese dato se registrara. El resto del protocolo se calcula con normalidad.
+    </p>
+  );
+}
+
+// Salida de un motor de tratamiento (medico/ejercicio): titulo + aviso de ASMI (si falta) + listas.
+function MotorSection({
+  title,
+  asmiAvailable,
+  lists,
+  children,
+}: {
+  title: string;
+  asmiAvailable: boolean;
+  lists: [string, string[]][];
+  children?: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {asmiAvailable ? null : <AsmiCaveat />}
+      {children}
+      {lists.map(([t, items]) => (
+        <PsicoList key={t} title={t} items={items} />
+      ))}
+      <p className="text-xs text-muted-foreground">
+        Protocolo del modelo, para tu criterio. No constituye diagnóstico y no se muestra al paciente.
+      </p>
+    </section>
+  );
+}
+
+async function MedicoSection({
+  evaluationId,
+  abordaje,
+  rutas,
+  protocol,
+}: {
+  evaluationId: string;
+  abordaje: string | null;
+  rutas: RutaContent[];
+  protocol: TreatmentProtocol | null;
+}) {
+  const t = await getMedicoEjercicioForEvaluation(evaluationId);
+  return (
+    <div className="flex flex-col gap-4">
+      <ConsultationSection
+        title="Consulta de Medicina"
+        scope={SCOPE_MEDICO}
+        abordaje={abordaje}
+        rutaBlocksTitle="Indicaciones médicas por ruta activa"
+        rutaBlocks={professionRutaBlocks("medico", rutas)}
+        examenes={protocol?.protocolSuggested?.examenes ?? []}
+        suplementacion={protocol?.protocolSuggested?.suplementacion ?? []}
+        protocolPending={!protocol?.protocolSuggested}
+      />
+      {t ? (
+        <MotorSection
+          title="Protocolo médico del modelo"
+          asmiAvailable={t.asmiAvailable}
+          lists={[
+            ["Metas", t.medico.metas],
+            ["Monitoreo", t.medico.monitoreo],
+            ["Remisión", t.medico.remision],
+            ["Interacciones fármaco-nutriente", t.medico.medNotas],
+          ]}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+async function EjercicioSection({
+  evaluationId,
+  abordaje,
+  rutas,
+}: {
+  evaluationId: string;
+  abordaje: string | null;
+  rutas: RutaContent[];
+}) {
+  const t = await getMedicoEjercicioForEvaluation(evaluationId);
+  return (
+    <div className="flex flex-col gap-4">
+      <ConsultationSection
+        title="Consulta de Ejercicio"
+        scope={SCOPE_EJERCICIO}
+        abordaje={abordaje}
+        rutaBlocksTitle="Indicaciones de ejercicio por ruta activa"
+        rutaBlocks={professionRutaBlocks("ejercicio", rutas)}
+      />
+      {t ? (
+        <MotorSection
+          title="Prescripción de ejercicio del modelo"
+          asmiAvailable={t.asmiAvailable}
+          lists={[["Énfasis", t.ejercicio.enfasis]]}
+        >
+          <p className="text-sm text-foreground">{t.ejercicio.clearance}</p>
+          <p className="text-sm text-muted-foreground">
+            Factor de actividad recomendado: <span className="font-medium text-foreground">{t.ejercicio.faRec}</span>.
+            FITT: {t.ejercicio.fitt.frecuencia}, {t.ejercicio.fitt.intensidad}, {t.ejercicio.fitt.tiempo},{" "}
+            {t.ejercicio.fitt.tipo}.
+          </p>
+        </MotorSection>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProfessionTreatmentSection({
   evaluationId,
   actor,
@@ -142,32 +258,13 @@ export function ProfessionTreatmentSection({
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
   // hacer, no solo "a quien remitir", por eso se trae al panel (ajuste 3).
   if (actor.isProfessional && actor.profession === "medico") {
-    return (
-      <ConsultationSection
-        title="Consulta de Medicina"
-        scope={SCOPE_MEDICO}
-        abordaje={abordaje}
-        rutaBlocksTitle="Indicaciones médicas por ruta activa"
-        rutaBlocks={professionRutaBlocks("medico", rutas)}
-        examenes={protocol?.protocolSuggested?.examenes ?? []}
-        suplementacion={protocol?.protocolSuggested?.suplementacion ?? []}
-        protocolPending={!protocol?.protocolSuggested}
-      />
-    );
+    return <MedicoSection evaluationId={evaluationId} abordaje={abordaje} rutas={rutas} protocol={protocol} />;
   }
 
-  // Deportologo: panel de consulta con abordaje + indicaciones de ejercicio de las rutas. Sin examenes
-  // ni suplementacion (son contenido medico).
+  // Deportologo: consulta + prescripcion del motor de ejercicio (D-008). Sin examenes ni suplementacion
+  // (son contenido medico).
   if (actor.isProfessional && actor.profession === "deportologo") {
-    return (
-      <ConsultationSection
-        title="Consulta de Ejercicio"
-        scope={SCOPE_EJERCICIO}
-        abordaje={abordaje}
-        rutaBlocksTitle="Indicaciones de ejercicio por ruta activa"
-        rutaBlocks={professionRutaBlocks("ejercicio", rutas)}
-      />
-    );
+    return <EjercicioSection evaluationId={evaluationId} abordaje={abordaje} rutas={rutas} />;
   }
 
   // Psicologo: motor de tratamiento portado (D-008) y cableado display-only (no usa bis, no sella nada).
