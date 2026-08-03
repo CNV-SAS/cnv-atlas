@@ -40,3 +40,31 @@
 ## Consecuencia para B13 y el mapa
 
 **B13 es solo una parte de un hueco mayor.** Lo que queda de Tratamiento de verdad es: el Plan alimentario (E+F, bloque propio: intercambio + distribución + menú 7×5), T3 (nutracéuticos con P1/P2 + despacho + la desconexión), la cadena calórica (fórmula + validación, en pausa), el resumen clínico + meta (sin asignar), y las dos subpestañas (T2b). Absorber B13 sin ver este conjunto sería construir a ciegas. Se replantea qué queda de Tratamiento con este inventario a la vista.
+
+## Propuesta: replanteo por DEPENDENCIA (2026-08-02)
+
+**Alcance CONFIRMADO por Santiago:** el Hito 1 mantiene su alcance (producto completo para el Integrante, sin recortar). TODO lo del inventario es obligatorio antes del Hito 1; no hay nada que dejar fuera. Por eso se ordena por DEPENDENCIA, no por tamaño.
+
+**La restricción que manda:** casi todo lo que falta depende de la CADENA CALÓRICA. La fórmula ES la cadena; la validación de 17 nutrientes valida CONTRA el objetivo calórico; la distribución reparte ESAS calorías; el menú se genera contra ESE plan; las porciones del intercambio se calculan contra ESE objetivo. Así que las **cuatro respuestas de Gildardo son el cuello de botella de TODO Tratamiento**, no de un bloque.
+
+### (a) Construible HOY, sin la cadena — es POCO
+1. **Nutracéuticos: la desconexión.** Mostrar lo que el motor RECOMIENDA (`output.nutraceuticos`, hoy solo en el texto de la guía) en la sección de nutracéuticos, SEPARADO de lo que el profesional AGREGA (el selector de catálogo actual). No exige el catálogo estructurado (P1/P2/dosis) ni el despacho: eso es T3. Es la misma separación recomienda-vs-agrega de las restricciones. **Pequeño, alto valor (el hueco más visible), va PRIMERO.**
+2. **Resumen clínico narrativo.** Portar `atlas-resumen-clinico.js` (párrafos por profesión). **VERIFICADO: NO está portado** (Atlas solo tiene un `resumenClinico` de una línea, placeholder en `engine.ts`); es trabajo real (transcripción con golden, lee campos de encuesta d1_*). NO depende de la cadena (es el cuadro clínico, no la prescripción). **Medio.**
+3. **Las dos subpestañas** (navegación Rutas del DFI / Nutricionista). Ver el dilema abajo: probablemente ESPERAR.
+
+### (b) Lo que la cadena calórica desbloquea — es la MAYOR PARTE
+Fórmula sintética · validación de 17 nutrientes · distribución por tiempos · menú semanal 7×5 · las porciones del intercambio · la reconciliación del peso meta + Nivel V convencional · CA-3 · (posiblemente la meta terapéutica, si toca el peso meta). **~8-9 elementos de los 14: más de la mitad.**
+
+### (c) No depende de la cadena, tampoco urgente — es POCO
+T3 completo: el catálogo estructurado de nutracéuticos (P1/P2/dosis/vía) + "Registrar despacho". Independiente de la cadena, pero no urgente (la desconexión de (a) cubre lo visible).
+
+### Conclusión de grueso
+- **(a) construible hoy: ~2-3 elementos** (1 pequeño listo para hacer, 1 medio, 1 dudoso).
+- **(b) espera la cadena: más de la mitad del inventario.**
+- **(c) independiente no urgente: ~1 bloque.**
+
+**Lo que esto significa:** Tratamiento está más parado de lo que parecía, y el trabajo útil AHORA está en gran parte FUERA de Tratamiento (Seguimiento, que solo espera las tres frases de Q25; y los bloques de pulido). Dentro de Tratamiento, lo construible sin Gildardo es: la desconexión de nutracéuticos (ya) y el resumen narrativo (portar el módulo).
+
+### Las dos subpestañas: las dos opciones
+- **Construir la navegación AHORA:** hoy el workspace del nutricionista tendría dentro solo el protocolo, las badges y el resumen (si se porta); casi todo su contenido (fórmula, validación, intercambio, menú) espera la cadena. La barra de dos pestañas quedaría con una "Nutricionista" casi vacía hasta que llegue la cadena.
+- **Construir la navegación CUANDO haya contenido que separar** (al desbloquearse la cadena): la separación Rutas-vs-Nutricionista rinde cuando el workspace del nutricionista es grande, que es justo lo que la cadena desbloquea. **Recomendación: esperar.** La revisión de la decisión anterior NO la invalida: la separación SÍ va, pero cuando haya qué separar; hoy dejaría una pestaña casi vacía, el mismo argumento (correcto) por el que no se construyó la barra la primera vez.
