@@ -85,9 +85,27 @@ export type PipelineWriteResult = {
   indicatorCount: number;
 };
 
-export async function writePipeline(input: PipelineWriteInput): Promise<PipelineWriteResult> {
+// El tipo de la transaccion Drizzle, inferido del propio db.transaction: el parametro externo
+// acepta EXACTAMENTE la tx que abre este modulo, sin declarar un tipo paralelo que se desincronice.
+type PipelineTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Refactor ADITIVO (flujo de correccion, 2026-08-03): writePipeline puede unirse a una transaccion
+// EXTERNA para que la correccion copie insumos + escriba el diagnostico + inserte la correccion en
+// UNA sola tx atomica. SIN externalTx toma EXACTAMENTE el mismo camino que siempre (db.transaction):
+// el camino normal queda byte-identico (verificado ejecutando, 3a). El cuerpo NO cambia; solo se
+// extrae a run(tx) y se despacha al final.
+export async function writePipeline(
+  input: PipelineWriteInput,
+  // externalTx: para el flujo de correccion, que necesita escribir el diagnostico ATOMICAMENTE con
+  // la copia de insumos y la insercion de la correccion. QUIEN LO PASE SE HACE RESPONSABLE DE LA
+  // TRANSACCION COMPLETA: si algo falla despues, el diagnostico se revierte con ella; el diagnostico
+  // queda atado a un contexto que este modulo no controla. Hoy lo usa SOLO correctEvaluation. No usar
+  // por conveniencia ni para "agrupar" escrituras: el camino normal es SIN transaccion externa (abre
+  // la suya y aisla el diagnostico). Escribe diagnostico, indicadores, tratamiento, reporte y audit.
+  externalTx?: PipelineTx,
+): Promise<PipelineWriteResult> {
   const { output } = input;
-  return db.transaction(async (tx) => {
+  const run = async (tx: PipelineTx): Promise<PipelineWriteResult> => {
     // Guard de re-propagacion dentro de la transaccion (evita TOCTOU).
     const existing = await tx
       .select({ id: diagnoses.id })
@@ -256,7 +274,10 @@ export async function writePipeline(input: PipelineWriteInput): Promise<Pipeline
       reportId: report.id,
       indicatorCount: indicatorRows.length,
     };
-  });
+  };
+  // Sin tx externa: mismo camino de siempre (abre su propia transaccion). Con tx externa: se une a
+  // ella, para que la escritura del diagnostico sea atomica con la copia de insumos y la correccion.
+  return externalTx ? run(externalTx) : db.transaction(run);
 }
 
 // Fotografia de metricas del seguimiento: los 12 indicadores + el estado EFR + el score de
