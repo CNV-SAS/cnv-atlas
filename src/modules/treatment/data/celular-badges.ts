@@ -1,0 +1,81 @@
+import { BIODY_COLUMNS } from "@/clinical-engine";
+// cAF: clasificador de angulo de fase del frozen (mecanismo de archivo derivado). La badge de AF LEE
+// este clasificador en vez de duplicar el umbral 6.5/6.0: una sola fuente (misma disciplina que los
+// rangos con su candado). Su banda "Bajo" es exactamente H<6.5 / M<6.0, igual que la badge del HTML.
+import { cAF } from "@/clinical-engine/frozen/engine.core.derived.js";
+import { normalizeHeader } from "@/modules/bis/services/header-map";
+
+// Badges de "Nivel III · Salud celular" del panel de Tratamiento (PORTADO del vigente,
+// ATLAS_v7.html:15702-15706, bloque `celBadges`). PURO y testeable (candado del mapeo + de los
+// umbrales). Solo display/guia: no toca snapshot ni prescripcion.
+//
+// UMBRALES (verificado 2026-08-02, GILDARDO_QUERIES Q20 / BACKLOG re-sync):
+//  - AF: se lee de cAF (clasificador), no se duplica el 6.5/6.0.
+//  - MCA_dif < -1: umbral INLINE. OJO: el MISMO -1 vive tambien en el frozen (atlas-protocolo.js:95,
+//    suplementacion de Zinc por "Deficit MCA"); si Gildardo lo cambia, los DOS sitios se mueven
+//    juntos. El candado (celular-badges.test.ts) lo ancla contra el vigente.
+//  - hidSG < su propia referencia (hidSG_ref del Biody): comparacion por paciente, sin umbral fijo.
+//  - ECM_BCM > 1.4: umbral INLINE, solo en el vigente (no hay clasificador frozen).
+
+export type CelularBadge = { id: string; label: string; guidance: string; tone: "warn" | "info" | "alert" };
+
+export type CelularBadges = {
+  // false = los crudos necesarios NO llegaron (BIS viejo sin esas columnas o import parcial): es
+  // "no se pudo evaluar", DISTINTO de "sin alteraciones" (datos presentes y ninguna badge dispara).
+  dataAvailable: boolean;
+  badges: CelularBadge[];
+};
+
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+export function computeCelularBadges(raw: Record<string, number>, sexoM: boolean): CelularBadges {
+  const get = (key: string): number | null => {
+    const col = BIODY_COLUMNS[key];
+    return col ? num(raw[normalizeHeader(col.header)]) : null;
+  };
+  const AF = get("AF");
+  const mcaDif = get("MCA_dif");
+  const hidSG = get("hidSG");
+  const hidSGref = get("hidSG_ref");
+  const ecmBcm = get("ECM_BCM");
+
+  // Presente al menos uno de los cuatro insumos de badge -> se pudo evaluar (aunque no dispare nada).
+  const dataAvailable = [AF, mcaDif, hidSG, ecmBcm].some((v) => v != null);
+
+  const badges: CelularBadge[] = [];
+  // AF: dispara si el clasificador cAF dice "Bajo" (H<6.5 / M<6.0). No se duplica el numero.
+  if (AF != null && AF > 0 && cAF(AF, sexoM ? "M" : "F").l === "Bajo") {
+    badges.push({
+      id: "af",
+      label: "AF bajo",
+      guidance: "Priorizar vitamina D, zinc, magnesio, antioxidantes (vitamina C, E, selenio).",
+      tone: "warn",
+    });
+  }
+  if (mcaDif != null && mcaDif < -1) {
+    badges.push({
+      id: "mca",
+      label: "MCA reducida",
+      guidance: "Aumentar proteina de alta calidad y micronutrientes anabolicos.",
+      tone: "warn",
+    });
+  }
+  if (hidSG != null && hidSGref != null && hidSGref > 0 && hidSG < hidSGref) {
+    badges.push({
+      id: "hid",
+      label: "Hidratacion celular deficiente",
+      guidance: "Aumentar agua, electrolitos, reducir sodio.",
+      tone: "info",
+    });
+  }
+  if (ecmBcm != null && ecmBcm > 1.4) {
+    badges.push({
+      id: "ecm",
+      label: "ECM/BCM elevado",
+      guidance: "Antiinflamatorio nutricional prioritario.",
+      tone: "alert",
+    });
+  }
+  return { dataAvailable, badges };
+}

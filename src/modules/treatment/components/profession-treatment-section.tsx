@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 
 import type { ActorProfession } from "../data/actor-profession-reader";
+import { getCelularBadgesForEvaluation } from "../data/celular-badges-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
 import { ConsultationSection } from "./consultation-section";
@@ -48,7 +49,7 @@ function Notice({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Panel({
+async function Panel({
   evaluationId,
   protocol,
 }: {
@@ -65,7 +66,10 @@ function Panel({
       </div>
     );
   }
-  return <TreatmentPanel evaluationId={evaluationId} protocol={protocol} />;
+  // Badges de salud celular (Nivel III): se leen server-side de los crudos BIS (misma fuente que la
+  // composicion de Diagnostico) y se pasan al panel client. null si no hay medicion BIS.
+  const celular = await getCelularBadgesForEvaluation(evaluationId);
+  return <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />;
 }
 
 export function ProfessionTreatmentSection({
