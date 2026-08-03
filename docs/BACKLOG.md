@@ -252,3 +252,29 @@ Acceso directo del paciente, fuera del alcance del MVP (donde el paciente solo r
 **Fix (dos partes):**
 1. **Carril lento (port):** marcar d3_29 y d5_40 con `engine: true` (seed) + migración forward-only que setee su field_key en las preguntas existentes. CONSIDERACIÓN: `expectedFieldKeys` crece de 14 a 16 → la semántica de `dfi.complete` cambia (mide completitud contra 16); evaluar si amerita un bump de versión de encuesta. Verificar que las opciones de d5_40 casan con las regex del motor médico (metformina→B12, estatina→toronja, levotiroxina→calcio; "antihipertensivo"/"insulina" no matchean regex específica, igual que en el prototipo de Gildardo).
 2. **Carril rápido (display, NO cosmético):** distinguir en pantalla "sin banderas / negativo" de "no capturado". Hoy el estrés muestra "-/10" y los medicamentos no aparecen, que un profesional lee como dato cuando es ausencia de captura. Es la misma distinción de las badges y del aviso de ASMI: un tamizaje negativo no es lo mismo que un tamizaje no hecho.
+
+## Completitud del TRATAMIENTO (destapado por used_in_diagnosis, ligado a D-007) — 2026-08-03
+
+Al hacer que `expectedFieldKeys` filtre por `used_in_diagnosis`, `dfi.complete` pasa a medir la
+completitud del DIAGNÓSTICO (los campos que el diagnóstico consume), no de la encuesta entera.
+**Queda un hueco: nadie mide la completitud del TRATAMIENTO.** Un paciente puede tener el diagnóstico
+completo y el motor médico sin poder evaluar interacciones porque falta la medicación (o el estrés, o
+la sed). Hoy el display lo dice caso por caso (los avisos "no capturado"), pero no hay una noción de
+"la encuesta está completa para lo que el tratamiento necesita". **Cuando se construya D-007** (encuesta
+incompleta) habrá que decidir: ¿el tratamiento tiene su propio criterio de completitud, o basta con los
+avisos por campo? No se construye ahora; se decide con D-007.
+
+**Nota de nomenclatura (la lección de toda la sesión):** `dfi.complete` va a dejar de significar lo
+que su nombre sugiere (completitud de la encuesta) para significar "completitud de los insumos del
+DIAGNÓSTICO". Se comenta explícito donde se computa (pipeline-reader) y en el tipo (EngineDfi); un
+rename a `diagnosisInputsComplete` es deseable pero toca el contrato del motor, así que va como nota
+hasta que haya una pasada de contrato.
+
+## Aviso de examen retirado en diagnósticos VIEJOS (polish de display) — 2026-08-03
+
+Un examen retirado por modificación autorizada (CA-1/D-012, telómeros) sigue apareciendo en la lista de
+exámenes de diagnósticos emitidos ANTES del retiro, porque el snapshot es inmutable (correcto: no se
+reescribe). Verificado que el mecanismo está vivo (uno nuevo no lo trae). Pero es confuso para el
+profesional. Polish futuro: la vista de consulta médica marca los exámenes del snapshot que ya fueron
+retirados del modelo ("retirado del modelo; aparece porque este diagnóstico se emitió antes"), cruzando
+contra el manifiesto de modificaciones autorizadas. Edge case (solo diagnósticos viejos), no urgente.

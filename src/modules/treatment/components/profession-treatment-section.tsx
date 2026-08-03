@@ -42,15 +42,13 @@ function PsicoList({ title, items }: { title: string; items: string[] }) {
 // Linea de alcance por especialidad (ajuste 1): no prometer de mas ni de menos. Nombra lo unico que el
 // profesional SI puede escribir hoy (una nota de criterio en el diagnostico) y lo que NO existe aun.
 const SCOPE_MEDICO =
-  "Esta vista es de consulta. Hoy puedes registrar tu criterio clínico como nota en la pestaña " +
-  "Diagnóstico; los exámenes que ordenes y tu conducta clínica se registran por fuera de Atlas. El " +
-  "modelo SÍ tiene contenido de medicina para este paciente (metas, monitoreo, interacciones " +
-  "fármaco-nutriente); su visualización aquí está en construcción.";
+  "Esta vista es de consulta. Abajo está el protocolo médico del modelo (metas, monitoreo, remisión, " +
+  "interacciones fármaco-nutriente) para tu criterio; los exámenes que ordenes y tu conducta clínica " +
+  "se registran por fuera de Atlas, y tu criterio puedes anotarlo en la pestaña Diagnóstico.";
 const SCOPE_EJERCICIO =
-  "Esta vista es de consulta. Hoy puedes registrar tu criterio clínico como nota en la pestaña " +
-  "Diagnóstico; la prescripción de ejercicio que indiques se registra por fuera de Atlas. El modelo " +
-  "SÍ tiene contenido de ejercicio para este paciente (tamizaje ACSM, FITT, énfasis); su " +
-  "visualización aquí está en construcción.";
+  "Esta vista es de consulta. Abajo está la prescripción de ejercicio del modelo (tamizaje ACSM, FITT, " +
+  "énfasis) para tu criterio; lo que indiques se registra por fuera de Atlas, y tu criterio puedes " +
+  "anotarlo en la pestaña Diagnóstico.";
 
 function Notice({ title, children }: { title: string; children: ReactNode }) {
   return (
