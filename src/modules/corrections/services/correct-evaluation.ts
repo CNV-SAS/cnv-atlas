@@ -154,6 +154,15 @@ export async function correctEvaluation(
       return err(appError("validation", "Una correccion apunta a una pregunta que no se respondio."));
     }
   }
+  // Delta vacio o no-op: sin al menos UNA respuesta que REALMENTE cambie, no hay nada que corregir.
+  // Defensa en profundidad (la UI ya lo bloquea): generar una version identica seria rehacer la cascada,
+  // perder el tratamiento e invalidar la aprobacion sin que nada haya cambiado. No es correccion valida.
+  const anyRealChange = [...corrections.entries()].some(
+    ([qid, val]) => (answerByQuestion.get(qid)?.answerValue ?? "") !== val,
+  );
+  if (!anyRealChange) {
+    return err(appError("validation", "No hay cambios: no hay nada que corregir."));
+  }
 
   // Respuestas corregidas: para copiar (todas) y para el motor (solo las que llevan field_key).
   const correctedRows = answers.map((a) => ({

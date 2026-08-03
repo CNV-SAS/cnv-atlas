@@ -225,6 +225,17 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     expect(notAssigned.error.message).toContain("asignado");
   });
 
+  it("gate: sin cambios reales (mismo valor) se rechaza, no genera version identica", async () => {
+    const oldId = await makeEvaluationWithDiagnosis("NOOP");
+    // La respuesta actual es "original"; corregir a "original" es no-op.
+    const res = await correctEvaluation(
+      { ...baseInput(oldId), correctedAnswers: [{ questionId: nonFieldQId, answerValue: "original" }] },
+      actor(),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.error.message).toContain("No hay cambios");
+  });
+
   it("gate: no se corrige una ya reemplazada (segundo intento sobre la vieja)", async () => {
     const oldId = await makeEvaluationWithDiagnosis("TWICE");
     const first = await correctEvaluation(baseInput(oldId), actor());
