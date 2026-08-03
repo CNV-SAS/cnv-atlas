@@ -8,10 +8,14 @@ import { Label } from "@/components/ui/label";
 
 import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-reader";
 
-// Widgets de la encuesta por tipo de pregunta. Fuente unica: los usa el formulario publico del
-// paciente (survey-intake-form, interactivos) y la vista de solo lectura del profesional
-// (survey-readonly, via SurveyAnswerReadonly, que reusa la misma presentacion). El contrato de datos
-// con el server action NO cambia (los hidden input llevan el TEXTO de la opcion o el numero).
+// Widgets de la encuesta por tipo de pregunta. Fuente unica, TRES superficies que los consumen:
+//   1. el formulario PUBLICO del paciente (survey-intake-form, interactivos, sin valor previo);
+//   2. la vista de SOLO LECTURA del profesional (SurveyAnswerReadonly, presentacion pura);
+//   3. el formulario de EDICION del profesional (correccion/completitud, S2), con valor PREVIO.
+// UN CAMBIO EN UN WIDGET AFECTA A LAS TRES: al tocar cualquiera, verificar las tres (la 1 es superficie
+// sensible del paciente). El contrato de datos con el server action NO cambia (los hidden input llevan
+// el TEXTO de la opcion o el numero). El prop `defaultValue` es ADITIVO: el intake no lo pasa (arranca
+// vacio, como siempre); la edicion lo pasa con la respuesta actual para prefillear. Backward-compatible.
 
 // Estilo de una pastilla (pill) segun estado, con tokens de marca.
 export function pillClass(active: boolean): string {
@@ -24,8 +28,16 @@ export function pillClass(active: boolean): string {
 
 // Pills de seleccion UNICA. Un hidden input lleva el TEXTO elegido (option_text) al
 // FormData con el mismo name que ya lee el server action. Toca de nuevo para deseleccionar.
-export function PillsSingle({ id, options }: { id: string; options: SurveyOptionView[] }) {
-  const [value, setValue] = useState("");
+export function PillsSingle({
+  id,
+  options,
+  defaultValue = "",
+}: {
+  id: string;
+  options: SurveyOptionView[];
+  defaultValue?: string;
+}) {
+  const [value, setValue] = useState(defaultValue);
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => {
@@ -49,8 +61,16 @@ export function PillsSingle({ id, options }: { id: string; options: SurveyOption
 
 // Pills de seleccion MULTIPLE. Un hidden input por valor elegido; el server action agrupa
 // los repetidos con getAll y los serializa a JSON.
-export function PillsMulti({ id, options }: { id: string; options: SurveyOptionView[] }) {
-  const [selected, setSelected] = useState<string[]>([]);
+export function PillsMulti({
+  id,
+  options,
+  defaultValue = [],
+}: {
+  id: string;
+  options: SurveyOptionView[];
+  defaultValue?: string[];
+}) {
+  const [selected, setSelected] = useState<string[]>(defaultValue);
   const toggle = (t: string) =>
     setSelected((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
   return (
@@ -77,8 +97,8 @@ export function PillsMulti({ id, options }: { id: string; options: SurveyOptionV
 }
 
 // Contador +/- para cantidades (bebidas/dia). Rango 0-30 (como el prototipo).
-export function Counter({ id }: { id: string }) {
-  const [count, setCount] = useState(0);
+export function Counter({ id, defaultValue = 0 }: { id: string; defaultValue?: number }) {
+  const [count, setCount] = useState(defaultValue);
   return (
     <div className="flex items-center gap-3">
       <Button
@@ -107,8 +127,8 @@ export function Counter({ id }: { id: string }) {
 
 // Slider para escalas 1-10 (nivel de estres). Sin valor hasta que el usuario interactua;
 // el hidden input solo se emite cuando hay seleccion (no se asume un default).
-export function Scale({ id }: { id: string }) {
-  const [value, setValue] = useState<number | null>(null);
+export function Scale({ id, defaultValue }: { id: string; defaultValue?: number }) {
+  const [value, setValue] = useState<number | null>(defaultValue ?? null);
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground">1</span>
@@ -129,23 +149,25 @@ export function Scale({ id }: { id: string }) {
   );
 }
 
-// Render de una pregunta segun su widget (formulario publico). El value enviado es el TEXTO de la
-// opcion (option_text) o el numero; el contrato de datos con el server action no cambia.
-export function SurveyQuestion({ q }: { q: SurveyQuestionView }) {
+// Render de una pregunta segun su widget. El value enviado es el TEXTO de la opcion (option_text) o
+// el numero; el contrato de datos con el server action no cambia. `answer` (opcional) prefillea el
+// valor actual para la EDICION del profesional; el intake publico no lo pasa (arranca vacio).
+export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: string | null }) {
+  const a = answer ?? undefined;
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-sm font-medium text-foreground">{q.text}</Label>
       {q.type === "opcion" && q.options.length > 0 ? (
-        <PillsSingle id={q.id} options={q.options} />
+        <PillsSingle id={q.id} options={q.options} defaultValue={a ?? ""} />
       ) : q.type === "opcion_multiple" && q.options.length > 0 ? (
-        <PillsMulti id={q.id} options={q.options} />
+        <PillsMulti id={q.id} options={q.options} defaultValue={a ? parseMulti(a) : []} />
       ) : q.type === "contador" ? (
-        <Counter id={q.id} />
+        <Counter id={q.id} defaultValue={a ? Number(a) : 0} />
       ) : q.type === "escala" ? (
-        <Scale id={q.id} />
+        <Scale id={q.id} defaultValue={a ? Number(a) : undefined} />
       ) : (
         // Fallback defensivo (texto/numero sueltos, hoy no presentes en el seed).
-        <Input name={`answer_${q.id}`} className="h-9" />
+        <Input name={`answer_${q.id}`} defaultValue={a ?? ""} className="h-9" />
       )}
     </div>
   );

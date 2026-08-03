@@ -307,3 +307,13 @@ que pueden ser divergencias no listadas. **Disparador:** hacer el barrido comple
 cuando se porte lo que falta del prototipo (la cadena calórica, el plan alimentario, el resto de
 Tratamiento), lo que llegue primero. En cada port se pregunta explícito "¿esto diverge del prototipo?"
 y entra a DIVERGENCIAS con su DIV-N. Sin disparador, la lista viva se queda a medias.
+
+## Gancho: tercer valor de trigger_type para COMPLETAR (D-007) — 2026-08-03
+
+`clinical_corrections.trigger_type` (enum `correction_trigger_type`) tiene `correccion_profesional` y
+`recalibracion_ciencia`. Cuando se cablee COMPLETAR la encuesta (D-007, reusa el formulario de S2),
+hace falta un TERCER valor (`completitud_encuesta` o similar): completar genera versión nueva igual que
+corregir (Gildardo dixit), pero es clínicamente distinto (una completitud rutinaria, no un error), y el
+`trigger_type` es lo FILTRABLE (el motivo textual no). Es una migración pequeña (`ALTER TYPE ... ADD
+VALUE`, forward-only). NO se agrega en el checkpoint 1 de S2 (que solo cablea corregir → usa
+`correccion_profesional`); se agrega al cablear completar. Gancho dejado.
