@@ -9,6 +9,7 @@ import {
   getBisIntakeForEvaluation,
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
+import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { abordajeProfesional } from "@/clinical-engine";
 import {
@@ -229,17 +230,22 @@ export default async function ResultadosEvaluacionPage({
       evaluacion={
         // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
         // composicion y el import BIS no aplica (bisImportEval null).
-        <EntradaEvaluacion
-          evaluationId={id}
-          consentStatus={entryConsent}
-          surveyDomains={entrySurvey}
-          composition={composition}
-          bisImportEval={null}
-          bisCatalog={null}
-          bisIntake={null}
-          patientIsFemale={false}
-          bisReadonly={entryReadonly}
-        />
+        <div className="flex flex-col gap-8">
+          <EntradaEvaluacion
+            evaluationId={id}
+            consentStatus={entryConsent}
+            surveyDomains={entrySurvey}
+            composition={composition}
+            bisImportEval={null}
+            bisCatalog={null}
+            bisIntake={null}
+            patientIsFemale={false}
+            bisReadonly={entryReadonly}
+          />
+          {/* Corregir vive aqui porque la Entrada es donde el profesional revisa la encuesta y
+              notaria un dato mal digitado. Distinto de los actos de sellado (ver CorrectionEntry). */}
+          <CorrectionEntry evaluationId={id} />
+        </div>
       }
       tratamiento={
         <div className="flex flex-col gap-8">
@@ -266,6 +272,7 @@ export default async function ResultadosEvaluacionPage({
               <ReportCard report={reportCard} />
             </section>
           ) : null}
+          <CorrectionEntry evaluationId={id} />
         </div>
       }
       seguimiento={
@@ -300,6 +307,7 @@ export default async function ResultadosEvaluacionPage({
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />
           ) : null}
+          <CorrectionEntry evaluationId={id} />
         </div>
       }
     />
