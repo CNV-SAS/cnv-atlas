@@ -74,15 +74,13 @@ La cadena es: corregir encuesta → cambia el diagnóstico → cambia el protoco
 3. Trigger de coherencia: `superseded_at` de una evaluación está puesto ⟺ existe una fila en `clinical_corrections` con ese `old_evaluation_id`. Y un guard: no se puede corregir una evaluación que ya tiene `superseded_at` (solo se corrige la VIGENTE, la cabeza de la cadena — ver (c) del cierre).
 4. RLS de `clinical_corrections`: por el profesional asignado a la evaluación (regla 3, misma vía que el resto).
 
-**El servicio `correctEvaluation` (todo en UNA `db.transaction`, como el pipeline):**
-1. Policy: profesional asignado, chequeo explícito, admin no (c). Gate: la evaluación es la vigente (no superseded).
-2. Exige `reason` no vacío (d). Si el reporte vigente está `sent`, exige el reconocimiento de la advertencia (b) y lo audita.
-3. Crea la evaluación nueva (mismo paciente/profesional/org/type), copia la medición BIS + `bis_raw_values`, escribe el `survey_response` corregido.
-4. Corre `runClinicalPipeline` sobre la evaluación nueva → diagnóstico/tratamiento/reporte en `draft`.
-5. Marca la evaluación vieja `superseded_at = now()` (dentro de la tx).
-6. Inserta `clinical_corrections` (old→new, reason, trigger, actor).
-7. `clinical_audit_log` inline (regla 8): `evaluation.corrected`, con el motivo y el trigger.
-8. (Opcional, #2) compara snapshots; si idénticos, conserva la aprobación con nota de audit; si no, el reporte nuevo queda `draft` sin aprobar.
+**El servicio `correctEvaluation` (la MITAD DELICADA es la atomicidad; ver más abajo).**
+Orden correcto (el trigger `apply` marca `superseded_at`, el servicio NUNCA lo hace a mano; el guard exige que la vieja sea la vigente):
+1. Policy: profesional asignado, chequeo explícito, admin no (c). Gate: la evaluación es la vigente.
+2. Exige `reason` no vacío (d) + confirmación explícita (Condición 4). Si el reporte vigente está `sent`, exige el reconocimiento de la advertencia (b) y lo audita.
+3. Construye el `EngineInput` desde los insumos de la evaluación VIEJA (ya commiteados) con la corrección aplicada EN MEMORIA (el delta de respuestas), y computa `output`/`protocolo`/`efrContent`/caveats/rutas (puro + lecturas, fuera de la tx). Evita el problema de "leer una copia sin commitear" (ver atomicidad).
+4. En UNA `db.transaction`: (i) crea la evaluación nueva; (ii) copia `bis_measurements` (Condición 2) + `bis_raw_values` y VERIFICA exactitud (Condición 1, RAISE+rollback si difiere); (iii) copia `survey_responses` + `survey_answers` con la corrección; (iv) escribe indicator_values/diagnóstico/tratamiento/reporte para la nueva (la mitad de escritura de `writePipeline`, ver refactor); (v) inserta `clinical_corrections` (old→new, reason, trigger, actor) que dispara el trigger `apply` → marca la vieja superseded; (vi) `clinical_audit_log` inline (regla 8) `evaluation.corrected`. Todo o nada.
+5. (#2, invalidación) compara el contenido clínico del snapshot nuevo contra el aprobado; si idénticos, conserva la aprobación con nota de audit VISIBLE (no silenciosa); si difiere, el reporte nuevo queda `draft` sin aprobar.
 
 **Compromisos del servicio (condiciones de Santiago 2026-08-03, obligatorias en `correctEvaluation`):**
 - **Condición 1 — la copia de la medición BIS es verificablemente EXACTA (familia del bug de cintura, a escala de tabla).** Después de copiar `bis_measurements` + `bis_raw_values` a la evaluación nueva, VERIFICAR en tiempo de ejecución, dentro de la misma transacción, que la copia es idéntica al origen, y **abortar (rollback) si no lo es**. No un test: una verificación runtime que falla en voz alta. **Mecanismo propuesto (barato):** un hash del conjunto de filas de cada lado y comparación. Para `bis_raw_values`: `md5(string_agg(variable_name || '=' || value, ',' ORDER BY variable_name))` de origen vs copia; y comparación campo a campo de las columnas de `bis_measurements` (incluida `measurement_date`). Si difieren en un solo carácter, RAISE y rollback. El hash ordenado atrapa cualquier campo perdido o transformado.
@@ -118,3 +116,42 @@ Recomendación de partición (mejor que un flujo a medias sobre registros inmuta
 - **La recalibración (g)** NO es una parte aparte: es la Parte 1 con otro `trigger_type`; se construye con el mecanismo.
 
 **Decisiones abiertas para Santiago antes de construir la Parte 1:** (1) el diseño de sucesión (puntero por-entidad + tabla central, ¿lo aprobás?); (2) confirmar que la aprobación previa se invalida (f); (3) que las Partes 2 se separan. Con eso, la Parte 1 se puede planear en detalle (migración, el re-run del pipeline versionado, la UI de "corregir").
+
+## El servicio `correctEvaluation`: plan detallado (2026-08-03, planning-first)
+
+Con la migración hecha y el camino verificado ejecutando (9/9), esto es lo que falta construir.
+
+### (a) Qué se COPIA y qué se RECALCULA (la distinción que no se puede borrar)
+- **Se COPIA (insumos):** la medición BIS (`bis_measurements` + `bis_raw_values`) y las respuestas de encuesta (`survey_responses` + `survey_answers`), estas últimas CON la corrección aplicada. Son el dato de entrada; se conservan idénticos salvo el delta corregido.
+- **Se RECALCULA (conclusiones):** el diagnóstico, el protocolo y el reporte se GENERAN corriendo el motor sobre los insumos corregidos. NUNCA se copian. Copiar un diagnóstico sería copiar una conclusión en vez de derivarla; el registro clínico exige que cada diagnóstico salga del motor sobre sus insumos, con su constelación de versiones. `indicator_values`, `diagnoses`, `treatments`, `reports` de la nueva evaluación son todos nuevos, derivados.
+
+### (b) Qué versiones sella la nueva, y el modelo con el que corre (DECISIÓN a tomar)
+La evaluación nueva sella su propia constelación (`engine_version`, `model_version_id`, `rules_version`, `emission_versions`). La pregunta: ¿corre con el modelo ACTIVO de hoy o con el MISMO que produjo la vieja?
+- **Recomendación: para `correccion_profesional`, FIJAR el modelo al de la evaluación vieja** (leer su `model_version_id` y correr con ese). Motivo: aísla la variable. El profesional corrigió un dato; solo lo que cambia POR ese dato debe moverse. Si además cambiara el modelo (recalibrado entremedio), el diagnóstico cambiaría en cosas no relacionadas con su corrección y parecería que "el sistema hizo algo raro". Fijar el modelo hace que la corrección de un typo NO arrastre cambios de ciencia.
+- **Para `recalibracion_ciencia`, correr con el modelo NUEVO** (ese es justo el punto de esa reemisión).
+- Así el `trigger_type` decide el modelo, y `emission_versions` de la vieja vs la nueva documenta exactamente qué cambió y por qué (reconstruible). **Si en cambio se decide correr siempre con el modelo de hoy, entonces el aviso de "recalculado con modelo vigente, algunas clasificaciones pueden diferir" es OBLIGATORIO** en la superficie. Mi recomendación evita necesitar ese aviso para el caso común.
+
+### (c) El paciente NO se re-mide, y NO se le reabre la encuesta
+Confirmado: el profesional corrige el valor EN CONSULTA (es lo que describió Gildardo). No se le reabre la encuesta al paciente ni se le vuelve a preguntar. La corrección es un acto del profesional sobre el dato, no un nuevo intake. (El caso "el paciente respondió mal y hay que volver a preguntarle" no es este flujo; sería un intake nuevo, fuera de alcance.)
+
+### (d) La superficie y el VOCABULARIO
+- El botón vive en la vista de la evaluación/diagnóstico del profesional. **NO dice "Editar"** (editar promete que el registro cambia en su lugar, y acá no cambia: se genera una versión nueva). Dice algo como **"Corregir (genera una versión nueva)"** o "Generar versión corregida". El vocabulario comunica el versionado.
+- Al pulsarlo: la superficie de confirmación (Condición 4) que dice qué va a pasar (se rehace toda la cadena; la anterior queda registrada como reemplazada; si el reporte se envió, la advertencia (b)), el formulario para editar las respuestas de encuesta, y el campo de motivo obligatorio.
+
+### (e) Dónde se ve la cadena
+- Por defecto el profesional ve la evaluación VIGENTE. Si hubo correcciones, un aviso ("esta evaluación reemplazó una versión anterior; N correcciones") con acceso a expandir el historial.
+- El historial muestra las versiones (v1 → v2 → v3) y, por cada salto, el **motivo** (de `clinical_corrections.reason`), quién y cuándo. Ahí se ve "por qué se corrigió".
+
+### (f) El límite de alcance de la superficie
+- **El MECANISMO (la cascada) es general:** cubre corregir cualquier insumo aguas arriba (encuesta, antropometría, condiciones de la toma, re-import BIS: casos 1-4), porque todos se reducen a "copiar los insumos con el cambio y recalcular".
+- **La SUPERFICIE de este bloque cubre solo la ENCUESTA.** No se expone un "editar cualquier cosa" que la cascada no tenga cableado por UI. Antropometría y condiciones reusan el MISMO mecanismo pero con su propia superficie de edición, en un bloque posterior. Este bloque: encuesta primero.
+
+### Atomicidad (la mitad delicada, hallazgo del esquema)
+`writePipeline` abre su PROPIA `db.transaction`, y `readPipelineInputs` lee por conexión directa (no vería una copia sin commitear). Para que la corrección sea atómica (Condición: rollback si falla a mitad, sin estado a medias), NO se puede "copiar y luego llamar `runClinicalPipeline`" tal cual. Diseño recomendado: **construir el `EngineInput` desde la evaluación VIEJA (ya commiteada) con la corrección aplicada en memoria, computar el output fuera de la tx, y en UNA transacción hacer la copia de insumos + la escritura de las salidas + el insert de la corrección.** Esto exige **refactorizar la mitad de ESCRITURA de `writePipeline` para aceptar un `tx` y un `evaluationId` destino** (hoy abre su propia tx). Es la pieza técnica central del servicio; se verifica ejecutando, como la migración.
+
+### Dimensión: es GRANDE, se parte en dos
+- **S1 — el motor de la corrección (backend, sin UI de edición):** el refactor de `writePipeline` a `tx`, la cascada atómica (build-input-desde-la-vieja + aplicar corrección + copiar insumos con verificación exacta + escribir salidas + insertar corrección), la decisión de fijación de modelo (b), la invalidación (#2), el audit. Autocontenido y verificable ejecutando (como la migración). Es el núcleo.
+- **S2 — la superficie (UI):** el botón "Corregir" + la confirmación (Condición 4) + el formulario de edición de respuestas + el campo de motivo + la vista de la cadena (e) + los avisos (modelo/invalidación). Se apoya en S1.
+- Antropometría/condiciones (superficie) = bloque posterior, reusa S1.
+
+**Recomendación: construir S1 primero** (verificable por ejecución, sin depender de decisiones de UI) y S2 después. **Decisión que necesito de vos antes de S1:** la fijación de modelo (b) para `correccion_profesional` (fijar al viejo, mi recomendación, vs correr con el de hoy + aviso obligatorio).
