@@ -4,6 +4,7 @@ import type { RutaContent } from "@/clinical-engine/rutas-content";
 
 import type { ActorProfession } from "../data/actor-profession-reader";
 import { getCelularBadgesForEvaluation } from "../data/celular-badges-reader";
+import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
 import { ConsultationSection } from "./consultation-section";
@@ -21,24 +22,34 @@ import { TreatmentPanel } from "./treatment-panel";
 // honesto (su contenido llega despues). Cada panel de consulta dice su alcance en tamano de cuerpo:
 // que SI puede hacer hoy (registrar criterio en Diagnostico) y que NO (prescribir aqui).
 
-const PROFESSION_LABEL: Record<string, string> = {
-  medico: "Medicina",
-  psicologo: "Psicología",
-  deportologo: "Deportología",
-  nutricionista: "Nutrición",
-};
+// Lista simple con titulo, a nivel de modulo (no dentro de un componente): render de enfoque/temas/
+// remision del tamizaje psicologico. null si no hay items.
+function PsicoList({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      <ul className="ml-4 list-disc text-sm text-foreground">
+        {items.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // Linea de alcance por especialidad (ajuste 1): no prometer de mas ni de menos. Nombra lo unico que el
 // profesional SI puede escribir hoy (una nota de criterio en el diagnostico) y lo que NO existe aun.
 const SCOPE_MEDICO =
   "Esta vista es de consulta. Hoy puedes registrar tu criterio clínico como nota en la pestaña " +
   "Diagnóstico; los exámenes que ordenes y tu conducta clínica se registran por fuera de Atlas. El " +
-  "módulo de prescripción médica (ordenar exámenes con registro y documentar la intervención) llega " +
-  "en una entrega posterior.";
+  "modelo SÍ tiene contenido de medicina para este paciente (metas, monitoreo, interacciones " +
+  "fármaco-nutriente); su visualización aquí está en construcción.";
 const SCOPE_EJERCICIO =
   "Esta vista es de consulta. Hoy puedes registrar tu criterio clínico como nota en la pestaña " +
-  "Diagnóstico; la prescripción de ejercicio que indiques se registra por fuera de Atlas. El módulo " +
-  "de prescripción de ejercicio llega en una entrega posterior.";
+  "Diagnóstico; la prescripción de ejercicio que indiques se registra por fuera de Atlas. El modelo " +
+  "SÍ tiene contenido de ejercicio para este paciente (tamizaje ACSM, FITT, énfasis); su " +
+  "visualización aquí está en construcción.";
 
 function Notice({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -70,6 +81,47 @@ async function Panel({
   // composicion de Diagnostico) y se pasan al panel client. null si no hay medicion BIS.
   const celular = await getCelularBadgesForEvaluation(evaluationId);
   return <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />;
+}
+
+// Panel de tratamiento psicologico: corre el motor congelado (solo encuesta) y muestra su salida,
+// PROFESIONAL-FACING (nada al paciente). Solo lectura; no prescribe ni sella.
+async function PsicoPanel({ evaluationId }: { evaluationId: string }) {
+  const p = await getPsicoTreatmentForEvaluation(evaluationId);
+  if (!p) {
+    return (
+      <Notice title="Consulta de Psicología">
+        El tamizaje psicológico aparece cuando el paciente completó la encuesta. Puedes consultar el
+        análisis en la pestaña Diagnóstico, y las rutas y remisiones aquí mismo.
+      </Notice>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
+      <h3 className="text-base font-semibold text-foreground">Consulta de Psicología</h3>
+      {p.salvaguarda ? (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {p.salvaguarda}
+        </p>
+      ) : null}
+      <div className="flex flex-col gap-1">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tamizaje</h4>
+        <ul className="ml-4 list-disc text-sm text-foreground">
+          {p.tamizaje.map((t, i) => (
+            <li key={i}>
+              <span className="font-medium">{t.inst}: </span>
+              <span className="text-muted-foreground">{t.res}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <PsicoList title="Enfoque" items={p.enfoque} />
+      <PsicoList title="Temas a trabajar" items={p.temas} />
+      <PsicoList title="Remisión" items={p.remision} />
+      <p className="text-xs text-muted-foreground">
+        Tamizaje del modelo, para tu criterio. No constituye diagnóstico y no se muestra al paciente.
+      </p>
+    </section>
+  );
 }
 
 export function ProfessionTreatmentSection({
@@ -118,17 +170,9 @@ export function ProfessionTreatmentSection({
     );
   }
 
-  // Psicologo: contenido aun no disponible. Mensaje HONESTO (puede consultar el analisis + rutas/
-  // remisiones; su protocolo llega despues), no "en construccion" a secas.
+  // Psicologo: motor de tratamiento portado (D-008) y cableado display-only (no usa bis, no sella nada).
   if (actor.isProfessional && actor.profession === "psicologo") {
-    const label = PROFESSION_LABEL[actor.profession];
-    return (
-      <Notice title={`Protocolo de ${label}`}>
-        El protocolo de {label.toLowerCase()} todavía no está disponible en Atlas. Puedes consultar el
-        análisis del paciente en la pestaña Diagnóstico, y las rutas de atención y las remisiones aquí
-        mismo. El protocolo de tu especialidad llega en una próxima entrega.
-      </Notice>
-    );
+    return <PsicoPanel evaluationId={evaluationId} />;
   }
 
   // Profesional sin profesion configurada (estado de DEFECTO, no un modo soportado; ver BACKLOG,
