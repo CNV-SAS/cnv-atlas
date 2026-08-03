@@ -1,6 +1,12 @@
-# GILDARDO_QUERIES.md — Bitácora de hallazgos pendientes de confirmar
+# GILDARDO_QUERIES.md — ARCHIVO HISTÓRICO (ya no es la cola viva)
 
-**Propósito:** registrar, en un solo lugar, los hallazgos sobre la ciencia congelada (el motor de Gildardo) que requieren su confirmación o decisión. Nada de esto se corrige tocando los `.js` congelados de `src/clinical-engine/frozen/` (regla dura 16). Cuando se detecte algo nuevo que dependa de Gildardo, se anota aquí con fecha, en vez de quedar solo en el chat.
+> **RETIRADO como cola de preguntas abiertas (2026-08-03).** Las preguntas ABIERTAS a Gildardo viven
+> ahora en `docs/DECISIONES_ANIBISE.md`, sección "Preguntas abiertas" (`P-NNN`). Este documento se
+> conserva como REGISTRO HISTÓRICO de la conversación Q1-Q28 (útil para rastrear cómo se llegó a una
+> decisión), pero NO se le agregan preguntas nuevas ni se consulta para saber qué está abierto: para
+> eso, el consolidado. Las que quedaban vivas se trasladaron: Q6→P-06, Q7→P-07, Q24→P-08.
+
+**Propósito (histórico):** registrar, en un solo lugar, los hallazgos sobre la ciencia congelada (el motor de Gildardo) que requieren su confirmación o decisión. Nada de esto se corrige tocando los `.js` congelados de `src/clinical-engine/frozen/` (regla dura 16). Cuando se detecte algo nuevo que dependa de Gildardo, se anota aquí con fecha, en vez de quedar solo en el chat.
 
 **Convención de estado:** `ABIERTO` (esperando respuesta), `CONFIRMADO` (Gildardo respondió; se resume la resolución), `DESCARTADO` (se resolvió sin cambio), `CERRADO` (informativo, sin acción pendiente), `CONSOLIDADA` (fusionada en `docs/FROZEN_EXPORTS_REQUEST.md`; aquí queda solo el puntero histórico).
 
