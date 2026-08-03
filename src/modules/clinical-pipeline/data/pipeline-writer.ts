@@ -8,7 +8,7 @@ import {
   INDICATOR_KEY_TO_CODE,
   type ProtocoloSnapshot,
 } from "@/clinical-engine";
-import { db } from "@/db";
+import { db, type DbTransaction } from "@/db";
 import {
   diagnoses,
   followupMetrics,
@@ -85,10 +85,6 @@ export type PipelineWriteResult = {
   indicatorCount: number;
 };
 
-// El tipo de la transaccion Drizzle, inferido del propio db.transaction: el parametro externo
-// acepta EXACTAMENTE la tx que abre este modulo, sin declarar un tipo paralelo que se desincronice.
-type PipelineTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 // Refactor ADITIVO (flujo de correccion, 2026-08-03): writePipeline puede unirse a una transaccion
 // EXTERNA para que la correccion copie insumos + escriba el diagnostico + inserte la correccion en
 // UNA sola tx atomica. SIN externalTx toma EXACTAMENTE el mismo camino que siempre (db.transaction):
@@ -102,10 +98,10 @@ export async function writePipeline(
   // queda atado a un contexto que este modulo no controla. Hoy lo usa SOLO correctEvaluation. No usar
   // por conveniencia ni para "agrupar" escrituras: el camino normal es SIN transaccion externa (abre
   // la suya y aisla el diagnostico). Escribe diagnostico, indicadores, tratamiento, reporte y audit.
-  externalTx?: PipelineTx,
+  externalTx?: DbTransaction,
 ): Promise<PipelineWriteResult> {
   const { output } = input;
-  const run = async (tx: PipelineTx): Promise<PipelineWriteResult> => {
+  const run = async (tx: DbTransaction): Promise<PipelineWriteResult> => {
     // Guard de re-propagacion dentro de la transaccion (evita TOCTOU).
     const existing = await tx
       .select({ id: diagnoses.id })
