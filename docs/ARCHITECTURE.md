@@ -314,6 +314,8 @@ Decididos (ya no abiertos): residencia del dato en Estados Unidos (`DATA_GOVERNA
 ## Documentos relacionados
 `SCIENTIFIC_MODEL.md` (qué es ANI-BIS-E) · `CLINICAL_ENGINE.md` (cómo se implementa el motor) · `CLAUDE.md` · `BOUNDARIES.md` · `DATABASE.md` · `SECURITY.md` · `DATA_GOVERNANCE.md` · `CONSENT_ATLAS.md` · `TESTING.md` · `GLOSSARY.md` · `API_INTEGRATIONS.md` · `DEPLOY.md` · `BRAND.md` · `BACKLOG.md` · `README.md`
 
+**Documentación fantasma: referenciar un documento no lo crea (lección 2026-08-03).** `CAMBIOS_AUTORIZADOS.md` se citó muchas veces (en ARCHITECTURE, en memorias, en reportes) como si existiera; nunca existió como archivo. Es el mismo patrón de `LANZAMIENTO.md`, referenciado veinte turnos antes de crearlo. Una referencia repetida hace creer que el documento existe y que alguien lo mantiene, cuando no. **Regla: al citar un documento por primera vez, verificar que exista (`ls`); si no, crearlo con una línea o dejar explícito que está pendiente.** Un `[[link]]` a algo inexistente marca deuda, no un hecho.
+
 ## Método de trabajo: dos carriles según riesgo (2026-08-03)
 
 El método planning-first (plan → revisión → construir → diff) evitó errores reales que ningún test habría detectado (el peso de referencia, fijar el modelo, cPABU, el bug de D8, el mapeo del ICEC). Se conserva PARA LO RIESGOSO, y se acelera lo demás.

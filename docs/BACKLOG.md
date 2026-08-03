@@ -298,3 +298,12 @@ acepta el delta de medición/condiciones; (2) la Condición 1 se relaja para per
 INTENCIONAL verificando que el resto es idéntico; (3) corregir talla/peso CAMBIA el diagnóstico (son
 insumos del motor). No es "otro formulario": es una extensión del servicio sobre datos sellados. S2
 lo dice en pantalla ("para otros datos no hay vía todavía") para que el profesional no lo busque en vano.
+
+## Barrido exhaustivo de DIVERGENCIAS (con disparador) — 2026-08-03
+
+`DIVERGENCIAS.md` junta las divergencias CLARAS (frozen: telómeros DIV-1, ICEC DIV-2; permisos: admin
+DIV-3), pero no es un barrido exhaustivo: al portar el motor se tomaron decisiones de forma/permisos
+que pueden ser divergencias no listadas. **Disparador:** hacer el barrido completo ANTES del Hito 2, o
+cuando se porte lo que falta del prototipo (la cadena calórica, el plan alimentario, el resto de
+Tratamiento), lo que llegue primero. En cada port se pregunta explícito "¿esto diverge del prototipo?"
+y entra a DIVERGENCIAS con su DIV-N. Sin disparador, la lista viva se queda a medias.
