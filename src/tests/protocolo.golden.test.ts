@@ -97,7 +97,7 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
   });
 
   it("sella la version del protocolo y marca los defaults con la afirmacion de propagacion", () => {
-    expect(o.protocolEngineVersion).toBe("anibise-protocolo-2026-07-30");
+    expect(o.protocolEngineVersion).toBe("anibise-protocolo-2026-08-03");
     expect(o.calorico.defaults).toEqual(["pal", "fatPct"]);
     expect(o._nota).toContain("provisional");
     expect(o._nota).toContain("protocol_approved");

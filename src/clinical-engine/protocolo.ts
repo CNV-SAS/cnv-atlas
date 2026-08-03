@@ -19,7 +19,8 @@
 // schema (regla: escribirlo ahora cuesta una frase; write-once, despues cuesta una migracion).
 
 import { parseBiodyRow } from "./edge/biody-import";
-import { motorProtocolo } from "./frozen/atlas-protocolo.js";
+// El que CORRE es el GENERADO (original + modificaciones autorizadas del manifiesto), no el original.
+import { motorProtocolo } from "./frozen/atlas-protocolo.authorized.js";
 import { computeProtocoloCalorico, type ProtocoloCaloricoOutput } from "./protocolo-calorico";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 import type { Fenotipo } from "./fenotipos-mccb";

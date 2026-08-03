@@ -1,38 +1,9 @@
 /**
- * atlas-protocolo.js - CIENCIA CONGELADA (regla dura 16). NO editar, NO convertir, NO reformatear.
- *
- * REFERENCIA INTACTA, NO ES EL ARCHIVO QUE CORRE. Se conserva byte-identico al de Gildardo (su
- * DIFF-vs-fuente lo prueba). El que CORRE es atlas-protocolo.authorized.js (generado = este original
- * + el manifiesto authorized-modifications.js). Las modificaciones autorizadas por Gildardo NO se
- * hacen aqui: se agregan al manifiesto, y el original nunca se toca (asi sigue comparable con el suyo).
- *
- * Fuente: docs/entregas/gildardo-2026-07/ATLAS.html, funcion `motorProtocolo`, lineas
- *   13532-13603. Copiado VERBATIM (byte a byte) el 2026-07-28. La unica linea no presente en
- *   la fuente es el `module.exports` final (mecanismo de archivo derivado, regla 16: copia
- *   verbatim + un export aditivo). El test DIFF A verifica que el cuerpo coincide byte a byte
- *   con ese rango de la fuente.
- *
- * Que hace: fenotipo -> estrategia calorica, protMin/protMax, peso de calculo, restricciones,
- *   examenes y suplementacion. Autoria clinica de Gildardo; Atlas no la edita ni reinterpreta.
- *
- * AVISO (dos modelos caloricos sin conciliar): existe un segundo modelo calorico de Gildardo en
- *   docs/entregas/gildardo-2026-07/atlas-motores-tratamiento.js (`motorTratNutri`): Mifflin sobre
- *   peso medido, proteina por protKg x pesoMeta, estrategia por condicion clinica. Ese modulo NO
- *   produce la pantalla del Nivel IV; este inline si. Cual es el vigente esta ABIERTO en
- *   GILDARDO_QUERIES.md Q14. (Los otros tres motores del modulo tambien divergen del inline, pero
- *   parecen complementarios, no rivales; ver Q16.)
- *
- * PAL (factor de actividad): en este modelo el PAL es ENTRADA (lo elige el profesional; en la
- *   cadena TS entra como adj_pal / formulaEditPN.pal). Existe una via alternativa (el motor de
- *   ejercicio del modulo devuelve faRec, un PAL calculado); si Q14/Q16 resolvieran a favor del
- *   modulo, el PAL pasaria de elegido a calculado: cambia de donde viene el valor, no la forma
- *   de la cadena.
- *
- * La cadena aritmetica del plan (GEB/GET/objetivo/macros, ATLAS.html:14124-14137) NO vive aqui:
- *   es TS nuestro en clinical-engine/protocolo-calorico.ts (su fuente es inline, no un artefacto
- *   independiente; regla 5 no exige frozen/). Su paridad se prueba por golden, no por congelamiento.
+ * GENERADO - NO EDITAR A MANO. Este es el archivo que CORRE (los imports apuntan aqui).
+ * Se produce con `node scripts/gen-authorized.cjs` = original intacto + el manifiesto
+ * authorized-modifications.js. Para cambiarlo se edita el MANIFIESTO, no este archivo.
+ * El original (atlas-protocolo.js) queda intacto como referencia byte-identica a Gildardo.
  */
-
 const motorProtocolo = (bis, enc, motor) => {
   const sexoM = bis?.sexo==='M'||bis?.sexo==='Masculino'||enc?.sexo==='M'||enc?.sexo==='Masculino';
   const diagnosticos = Array.isArray(enc?.d5_39) ? enc.d5_39 : [];
@@ -92,7 +63,6 @@ const motorProtocolo = (bis, enc, motor) => {
     { nombre:'Zinc sérico', razon:'MCA reducida — déficit frecuente', protocolo:'ESPEN 2023', prioridad:'media' },
     tieneObesidadSarcopenica ? { nombre:'Prealbúmina', razon:'Marcador nutricional agudo', protocolo:'ASPEN 2023', prioridad:'alta' } : null,
     ['F7','F10'].includes(fenotipo) ? { nombre:'Fósforo, potasio, magnesio, tiamina', razon:'Síndrome de realimentación', protocolo:'ASPEN 2023', prioridad:'crítica' } : null,
-    iae > 5 ? { nombre:'Telómeros/estrés oxidativo', razon:'IAE acelerado +'+iae.toFixed(1)+' años', protocolo:'ANI BIS-E 2026', prioridad:'media' } : null,
   ].filter(Boolean);
   const suplementacion = [
     (iehh > 1 || sector==='S9' || sector==='S8') ? { nombre:'Omega-3', dosis:'3g/día', razon:'IEHH severo + sector '+sector, vitacellebis:'OMEGA-3 BIS' } : null,

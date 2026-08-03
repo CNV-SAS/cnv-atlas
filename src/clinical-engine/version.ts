@@ -11,7 +11,11 @@ export const ENGINE_VERSION = "anibise-1.0.0";
 // del clasificador de fenotipo (protocolo-fenotipo.ts) contra el vigente. El fenotipo alimenta el
 // protocolo (obesidadSarcopenica -> estrategia/proteína), así que el protocol_suggested puede moverse
 // para pacientes en las franjas; por eso sube esta versión, además de emission_versions.structural_mccb.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-07-30";
+// Bump 2026-08-03 (2026-07-30 -> 2026-08-03): primera MODIFICACION AUTORIZADA del frozen (CA-1/D-012,
+// retirar el examen de telomeros del listado sugerido). El listado de examenes se sella en
+// protocol_suggested, asi que el contenido sellado cambia para los protocolos con IAE>5; por eso sube
+// la version. El que corre pasa a ser atlas-protocolo.authorized.js (generado = original + manifiesto).
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-03";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -26,11 +30,14 @@ export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-07-30";
 // ningun protocol_suggested existiera en la base con 1.0.0; se uso una vez (exponer `pal`, ver el
 // SHA de protocolo-calorico.ts abajo) y se cerro. No se reutiliza.
 export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
-  "frozen/atlas-protocolo.js": "396d7d9ccf50f48f26d953b50ca6048af08234ce417b42648703e6765082a12e",
-  // SHA actualizado (2026-07-29) bajo la EXENCION DE ARRANQUE de arriba (1.0.0 aun sin sellar): se
-  // expuso `pal` (palN ya computado) en la salida para sellarlo en el snapshot. Es un cambio de
-  // FORMA de la salida (no meramente cosmetico), pero valido porque ningun registro afirma todavia
-  // nada con 1.0.0. Tras el primer sellado esto ya NO seria aceptable sin subir la version.
+  // El que CORRE y se sella es el GENERADO (original + manifiesto de modificaciones autorizadas), no
+  // el original. Se hashea el generado, no el manifiesto: el generado solo cambia cuando cambia el
+  // CODIGO que corre (la prosa del manifiesto puede cambiar sin afectar la ciencia; el generado no).
+  // El original (atlas-protocolo.js) queda como referencia byte-identica a Gildardo, guardada por su
+  // DIFF-vs-fuente (frozen-protocolo-diff), no por este candado.
+  "frozen/atlas-protocolo.authorized.js": "6bfdaa2957676f04dc2c31e09b9b68f32b57f72a235bf6a8689ee64e14e4e4f4",
+  // SHA de la primera modificacion autorizada (CA-1/D-012, retirar telomeros). Antes se hasheaba el
+  // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
   "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
   "protocolo-fenotipo.ts": "3df943df89e2edc22a4a6b1d644c07b7461264765a326d99dd0feb59fd7488ad",

@@ -14,7 +14,9 @@ import { PROTOCOL_ARTIFACTS_SHA, PROTOCOL_ENGINE_VERSION } from "@/clinical-engi
 // ante CUALQUIER cambio.
 
 const FILES: Record<string, string> = {
-  "frozen/atlas-protocolo.js": "src/clinical-engine/frozen/atlas-protocolo.js",
+  // El que CORRE y se sella es el generado (original + manifiesto de modificaciones autorizadas). El
+  // original queda como referencia guardada por su DIFF-vs-fuente, no por este candado.
+  "frozen/atlas-protocolo.authorized.js": "src/clinical-engine/frozen/atlas-protocolo.authorized.js",
   "protocolo-calorico.ts": "src/clinical-engine/protocolo-calorico.ts",
   "protocolo-fenotipo.ts": "src/clinical-engine/protocolo-fenotipo.ts",
   "fenotipos-mccb.ts": "src/clinical-engine/fenotipos-mccb.ts",

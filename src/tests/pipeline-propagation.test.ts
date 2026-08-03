@@ -181,7 +181,7 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // este fixture male 89/180): F5, Cunningham gebAuto 2004, pesoCalculo 76.625.
     const proto = treatment.protocolSuggested;
     expect(proto).not.toBeNull();
-    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-2026-07-30");
+    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-2026-08-03");
     expect(proto.fenotipo.id).toBe("F5");
     expect(proto.calorico.formula).toBe("Cunningham");
     expect(proto.calorico.gebAuto).toBe(2004);

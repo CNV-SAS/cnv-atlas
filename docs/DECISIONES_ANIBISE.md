@@ -86,7 +86,7 @@ Decisión: la cifra de EB-BIS nunca va al paciente; al profesional con marca "ca
 **D-012 · Retirar el examen de telómeros/estrés oxidativo; ningún ítem cita el propio modelo.**
 Decisión: se retira ese ítem del listado de exámenes sugeridos; ningún ítem del listado puede citar el propio modelo como referencia. (Verificado: es el único que lo hacía.)
 - Fecha: 2026-08-03. · Origen: ronda 2026-08-03 §4.
-- Estado: **DECIDIDO / SIN IMPLEMENTAR** (modificación autorizada del frozen: editar citando esta decisión, bump de versión, re-ancla de golden). · Afecta: frozen `atlas-protocolo` (ciencia-frozen).
+- Estado: **IMPLEMENTADO (2026-08-03), primera modificación autorizada del frozen (CA-1).** Se construyó por el MECANISMO de modificaciones autorizadas: el original `atlas-protocolo.js` queda intacto (byte-idéntico a Gildardo, su DIFF-vs-fuente sigue verde); el manifiesto `authorized-modifications.js` registra CA-1 (con la instrucción verbatim); un generador determinista produce `atlas-protocolo.authorized.js` (el que corre) = original menos el examen; un test byte-exacto prueba que el generado es original + manifiesto y nada más; `PROTOCOL_ENGINE_VERSION` subió a `anibise-protocolo-2026-08-03` (el listado de exámenes se sella). · Afecta: frozen `atlas-protocolo` (vía manifiesto, sin tocar el original).
 
 **D-013 · Pantallas de las otras profesiones: decir que hay contenido pendiente de portar.**
 Decisión: mientras los otros tres bloques no estén portados, la pantalla de esas profesiones dice explícitamente que el modelo SÍ tiene contenido para su disciplina, pendiente de portar.
