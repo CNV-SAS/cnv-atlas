@@ -137,7 +137,8 @@ Al portar el motor psicológico verificamos que SCOFF se computa desde la encues
 **P-09 · Dependencia de la suspensión por encuesta incompleta (D-007 Fase B). NO bloquea (Fase A ya informa).** (2026-08-04.) D-007 decidió que, con la encuesta incompleta, lo que depende de ella no se emite (edad bioeléctrica, ICEC, rutas derivadas), mientras el bioeléctrico de la medición se emite igual. Para construir la suspensión (Fase B) hace falta la dependencia exacta: ¿CUALQUIER dominio faltante suspende el trío entero (EB-BIS + ICEC + rutas dependientes), o cada salida depende de dominios específicos (p. ej. la EB-BIS depende de d2/d3/d5 vía LE8, pero no de d8)? Con la respuesta se decide si la suspensión es todo-o-nada o granular por salida. Fase A (el aviso que dice qué falta y qué se suspendería) ya está construida e informa; la suspensión real espera esto.
 
 ### Pendiente de Gildardo (su lado)
-- **C6:** proteína y sobrecosto por condición, en cifras (destraba D-001/D-002).
+> **PRIORIDAD (2026-08-04): C6 es lo que MÁS pesa.** Es lo único que bloquea trabajo grande (la cadena calórica y todo lo que depende de ella); las demás consultas no detienen nada construible hoy. Cuando Santiago le escriba a Gildardo, C6 va primero.
+- **C6:** proteína y sobrecosto por condición, en cifras (destraba D-001/D-002). **← el bloqueo de mayor peso.**
 - **P2:** destraba los nutracéuticos por ruta. **P3.**
 - Respuesta a las tres consultas del 2026-08-03 (factor de actividad, salvaguarda TCA, cita).
 - Sub-consulta ligada a D-006: sobre qué ICEC se calibró μ/σ de la EB-BIS (para activar el mapeo sin doble corrección).
