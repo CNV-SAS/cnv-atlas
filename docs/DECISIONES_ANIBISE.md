@@ -58,6 +58,7 @@ Decisión: se activa el mapeo del ICEC en Atlas; si el archivo prototipo difiere
 Decisión: el diagnóstico bioeléctrico se emite siempre (sale de la medición). Lo que depende de la encuesta NO se emite si está incompleta: no índice contextual con defaults, no edad bioeléctrica, no ruta derivada de esos dominios. El profesional ve qué dominios faltan y qué queda suspendido. La completitud se guarda con el diagnóstico; al completar, versión nueva sin sobrescribir.
 - Fecha: 2026-08-03. · Origen: Q28 (ronda 2026-08-03 §3).
 - Estado: **DECIDIDO / SIN IMPLEMENTAR** (bloque grande, toca el pipeline). · Afecta: pipeline + pantalla.
+- Avance (2026-08-04): la mitad de "completar sin sobrescribir" YA está construida y funciona (el flujo de corrección soporta agregar respuestas que faltaban, sin bloquear, y completar una pregunta con field_key mueve `dfi.complete`). Lo que falta es SOLO la otra mitad: suspender la emisión de lo que depende de la encuesta cuando está incompleta (completitud por dominio + gate + superficie de lo suspendido).
 
 **D-015 · Regla general: manda el clasificador del motor, no la tabla de presentación.**
 Decisión (regla general, aplica más allá de un indicador): cuando la ciencia (los clasificadores `cXXX` del motor) y la capa de presentación (`dXXX`) difieran, la referencia y la clasificación que valen son las del MOTOR. La tabla de presentación no define ciencia.
