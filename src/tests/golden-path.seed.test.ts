@@ -11,6 +11,9 @@ import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-e
 // fixture biody_synthetic.xlsx NO sirve aqui: sus valores son placeholder (fuera de rango
 // del motor), solo prueban el IMPORT de B8, no el motor. Ver src/tests/fixtures/README.md.
 import biodyGold from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+// BIS femenino real (ZM3 anonimizado): primer caso que ejercita la mitad SEXO-ESPECIFICA del motor
+// por el PIPELINE (no solo por unit test). Ver src/tests/fixtures/README.md.
+import biodyFemale from "./fixtures/clinical-engine/biody-mujer-zm3-anon.json";
 // Juego de respuestas que deja dfi.complete = true (fuente unica, compartida con el test de correccion).
 import { DFI_COMPLETE_ANSWERS as ANSWERS } from "./fixtures/clinical-engine/dfi-complete-answers";
 
@@ -55,6 +58,9 @@ const FEMALE2_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c3";
 const FEMALE2_EVAL_ID = "a0000000-0000-4000-8000-0000000000c4";
 const FEMALE2_DOC = "GOLDEN-FEM-02";
 const FEMALE2_BIRTH = "1992-05-20";
+// Mujer COMPLETA con BIS ZM3 real + diagnostico: el primer caso femenino que corre por el PIPELINE
+// (ejercita los clasificadores sexo-especificos). Reusa la paciente c1. URL: /evaluaciones/...-c5
+const FEMALE_COMPLETE_EVAL_ID = "a0000000-0000-4000-8000-0000000000c5";
 const DOC_NUMBER = "GOLDEN-0001";
 // DOB del donante real del BIS gold (~54 años): la edad alimenta EB-BIS/IAE, asi que debe
 // ser la suya para que el envejecimiento biologico lea coherente con su medicion.
@@ -75,10 +81,9 @@ const TREAT_NOTE_ID = "a0000000-0000-4000-8000-0000000000b3";
 
 // Construye en memoria el XLSX que consume el import BIS real, desde el gold JSON: hoja
 // "Measures" (la que exige el parser), fila 1 = headers exactos, fila 2 = valores reales.
-async function buildGoldXlsx(): Promise<ArrayBuffer> {
+async function buildXlsx(gold: Record<string, unknown>): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Measures");
-  const gold = biodyGold as Record<string, unknown>;
   const keys = Object.keys(gold);
   ws.addRow(keys);
   ws.addRow(keys.map((k) => (gold[k] ?? null) as ExcelJS.CellValue));
@@ -97,10 +102,12 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
   let actorId: string; // profiles.id (para audit + createdBy)
   let actorEmail: string;
   let svId: string; // survey_version activa
-  let xlsx: ArrayBuffer; // XLSX con valores reales, construido desde el gold JSON
+  let xlsx: ArrayBuffer; // XLSX del gold masculino, construido desde el JSON
+  let femaleXlsx: ArrayBuffer; // XLSX del BIS femenino real (ZM3), para el caso femenino completo
 
   beforeAll(async () => {
-    xlsx = await buildGoldXlsx();
+    xlsx = await buildXlsx(biodyGold as Record<string, unknown>);
+    femaleXlsx = await buildXlsx(biodyFemale as Record<string, unknown>);
     schema = await import("@/db/schema");
     db = (await import("@/db")).db;
     importBisMeasurement = (await import("@/modules/bis/services/bis-import"))
@@ -529,5 +536,64 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       const value = pick.multi ? JSON.stringify([chosen]) : chosen;
       await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
     }
+  });
+
+  it("mujer demo COMPLETA con BIS ZM3 real: primer caso femenino que corre por el PIPELINE (idempotente)", async () => {
+    // Reusa la paciente c1 (ya tiene los 3 consentimientos, sembrados arriba) con una evaluacion
+    // NUEVA que llega a diagnostico. Encuesta COMPLETA (mismo juego DFI) + BIS femenino real (ZM3):
+    // ejercita por primera vez la mitad sexo-especifica del motor de punta a punta, no solo por unit test.
+    await db
+      .insert(schema.evaluations)
+      .values({ id: FEMALE_COMPLETE_EVAL_ID, patientId: FEMALE_PATIENT_ID, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
+      .onConflictDoNothing();
+
+    const hasResp = await db
+      .select({ id: schema.surveyResponses.id })
+      .from(schema.surveyResponses)
+      .where(eq(schema.surveyResponses.evaluationId, FEMALE_COMPLETE_EVAL_ID))
+      .limit(1);
+    if (hasResp.length === 0) {
+      const respId = (
+        await db
+          .insert(schema.surveyResponses)
+          .values({ evaluationId: FEMALE_COMPLETE_EVAL_ID, surveyVersionId: svId })
+          .returning({ id: schema.surveyResponses.id })
+      )[0].id;
+      const questions = await db
+        .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+        .from(schema.surveyQuestions)
+        .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+      for (const q of questions as { id: string; fieldKey: string | null }[]) {
+        if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
+        const pick = ANSWERS[q.fieldKey];
+        const opts = await db
+          .select({ text: schema.surveyOptions.optionText })
+          .from(schema.surveyOptions)
+          .where(eq(schema.surveyOptions.questionId, q.id))
+          .orderBy(schema.surveyOptions.orderIndex);
+        const texts = opts.map((o: { text: string }) => o.text);
+        const chosen = pick.text ?? texts[pick.idx ?? 0];
+        const value = pick.multi ? JSON.stringify([chosen]) : chosen;
+        await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+      }
+    }
+
+    // Import del BIS femenino REAL (ZM3). Reimport = conflicto (ya importado): resumible.
+    const imp = await importBisMeasurement({ buffer: femaleXlsx, evaluationId: FEMALE_COMPLETE_EVAL_ID, deviceId: null, actorId, actorEmail, ip: null });
+    if (!imp.ok && imp.error?.code !== "conflict") throw new Error(`import BIS femenino fallo: ${imp.error?.message}`);
+
+    // Pipeline real. Re-propagar = conflicto (ya hay diagnostico): resumible.
+    const pipe = await runClinicalPipeline({ evaluationId: FEMALE_COMPLETE_EVAL_ID, actorId, actorEmail, ip: null });
+    if (!pipe.ok && pipe.error?.code !== "conflict") throw new Error(`pipeline femenino fallo: ${pipe.error?.message}`);
+
+    // Corrio como MUJER (sexo sellado F) y quedo con diagnostico completo: la mitad sexo-especifica
+    // del motor se ejercito por el pipeline.
+    const rep = (
+      await db.select({ snapshot: schema.reports.snapshot }).from(schema.reports).where(eq(schema.reports.evaluationId, FEMALE_COMPLETE_EVAL_ID)).limit(1)
+    )[0];
+    expect(rep).toBeTruthy();
+    const snap = rep.snapshot as { sexo?: string; dfi?: { complete?: boolean } };
+    expect(snap.sexo).toBe("F");
+    expect(snap.dfi?.complete).toBe(true);
   });
 });
