@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  BAND_TEXT_PLACEHOLDER,
+  BAND_TEXT,
   ebBand,
   MIN_COMPARABLE_WEEKS,
   pickComparablePrior,
   type PriorEvaluation,
+  resolveTrajectory,
 } from "@/modules/followups/services/eb-trajectory";
 
 // P0 Parte 2: el cambio de EB-BIS en tres bandas. Nucleo puro. La redaccion es de Gildardo; aqui se
@@ -57,12 +58,49 @@ describe("pickComparablePrior (3b: gate sobre el INTERVALO, no la posicion)", ()
   });
 });
 
-describe("placeholders de redaccion (provisionales, de Gildardo)", () => {
-  it("existen los tres y 'empeoro' NO comunica el juicio (dirige al profesional)", () => {
-    expect(BAND_TEXT_PLACEHOLDER.mejoro).toMatch(/mejora/i);
-    expect(BAND_TEXT_PLACEHOLDER.sin_cambio).toMatch(/estable/i);
-    // el placeholder de empeoro no debe contener un juicio negativo explicito
-    expect(BAND_TEXT_PLACEHOLDER.empeoro).not.toMatch(/empeor|peor|riesgo|mal/i);
-    expect(BAND_TEXT_PLACEHOLDER.empeoro).toMatch(/profesional/i);
+describe("resolveTrajectory (distingue POR QUÉ no hay banda: punto 3)", () => {
+  const current = "2026-08-01T00:00:00Z";
+  const p4w: PriorEvaluation = { evaluationId: "e4", date: "2026-07-04T00:00:00Z", eb: 40 };
+  const p20w: PriorEvaluation = { evaluationId: "e20", date: "2026-03-14T00:00:00Z", eb: 45 };
+
+  it("hay previa comparable -> band", () => {
+    const r = resolveTrajectory(current, 42, [p20w]);
+    expect(r.kind).toBe("band");
+  });
+
+  it("previa existe pero a <12 semanas -> interval_too_short (con las semanas)", () => {
+    const r = resolveTrajectory(current, 42, [p4w]);
+    expect(r.kind).toBe("interval_too_short");
+    if (r.kind === "interval_too_short") expect(r.nearestWeeks).toBe(4);
+  });
+
+  it("no hay previa con EB -> no_prior", () => {
+    expect(resolveTrajectory(current, 42, []).kind).toBe("no_prior");
+    expect(resolveTrajectory(current, 42, [{ ...p20w, eb: null }]).kind).toBe("no_prior");
+  });
+
+  it("EB actual null -> no_prior (degradado, nada con qué comparar)", () => {
+    expect(resolveTrajectory(current, null, [p20w]).kind).toBe("no_prior");
+  });
+});
+
+describe("textos VERBATIM de Gildardo (Q25 / RESPUESTA_GILDARDO 7.1)", () => {
+  it("son los tres exactos, con su puntuación (una coma movida = edición no autorizada)", () => {
+    expect(BAND_TEXT.mejoro).toBe(
+      "Los indicadores de tu evaluación muestran una evolución favorable respecto de tu medición anterior. Continúa con el plan acordado con tu profesional.",
+    );
+    expect(BAND_TEXT.sin_cambio).toBe(
+      "Tus indicadores se mantienen en un rango similar al de tu medición anterior, sin cambios significativos con la información disponible.",
+    );
+    expect(BAND_TEXT.empeoro).toBe(
+      "Tus indicadores muestran una evolución menos favorable que en tu medición anterior. Tu profesional revisará contigo el plan en la próxima consulta.",
+    );
+  });
+
+  it("ninguno revela el constructo (no dice 'edad bioeléctrica') ni una cifra", () => {
+    for (const t of Object.values(BAND_TEXT)) {
+      expect(t).not.toMatch(/bioeléctrica|edad biológica/i);
+      expect(t).not.toMatch(/\d/); // sin cifras
+    }
   });
 });
