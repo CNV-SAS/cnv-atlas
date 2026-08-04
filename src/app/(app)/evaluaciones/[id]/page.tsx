@@ -10,6 +10,8 @@ import {
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
+import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
+import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { abordajeProfesional } from "@/clinical-engine";
 import {
@@ -71,6 +73,10 @@ export default async function ResultadosEvaluacionPage({
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
+  // Si esta evaluacion fue reemplazada por una correccion, un banner lo avisa (C2-b): no debe leerse
+  // como vigente. Se resuelve para ambas ramas (con y sin diagnostico).
+  const supersession = await getSupersessionStatus(id);
+
   const results = await getEvaluationResults(id);
   if (!results) {
     // Sin diagnostico todavia: si la evaluacion existe y es del profesional, estado vacio
@@ -98,7 +104,11 @@ export default async function ResultadosEvaluacionPage({
       getEvaluationPatientSex(id),
     ]);
     return (
-      <EvaluationTabs
+      <div className="flex flex-col gap-4">
+        {supersession.superseded ? (
+          <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
+        ) : null}
+        <EvaluationTabs
         evaluacion={
           <EntradaEvaluacion
             evaluationId={id}
@@ -142,7 +152,8 @@ export default async function ResultadosEvaluacionPage({
             </div>
           </div>
         }
-      />
+        />
+      </div>
     );
   }
 
@@ -226,7 +237,11 @@ export default async function ResultadosEvaluacionPage({
     : null;
 
   return (
-    <EvaluationTabs
+    <div className="flex flex-col gap-4">
+      {supersession.superseded ? (
+        <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
+      ) : null}
+      <EvaluationTabs
       evaluacion={
         // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
         // composicion y el import BIS no aplica (bisImportEval null).
@@ -310,6 +325,7 @@ export default async function ResultadosEvaluacionPage({
           <CorrectionEntry evaluationId={id} />
         </div>
       }
-    />
+      />
+    </div>
   );
 }
