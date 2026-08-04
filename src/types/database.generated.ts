@@ -495,6 +495,58 @@ export type Database = {
           },
         ]
       }
+      clinical_corrections: {
+        Row: {
+          corrected_by: string
+          created_at: string
+          id: string
+          new_evaluation_id: string
+          old_evaluation_id: string
+          reason: string
+          trigger_type: Database["public"]["Enums"]["correction_trigger_type"]
+        }
+        Insert: {
+          corrected_by: string
+          created_at?: string
+          id?: string
+          new_evaluation_id: string
+          old_evaluation_id: string
+          reason: string
+          trigger_type: Database["public"]["Enums"]["correction_trigger_type"]
+        }
+        Update: {
+          corrected_by?: string
+          created_at?: string
+          id?: string
+          new_evaluation_id?: string
+          old_evaluation_id?: string
+          reason?: string
+          trigger_type?: Database["public"]["Enums"]["correction_trigger_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_corrections_corrected_by_profiles_id_fk"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_corrections_new_evaluation_id_evaluations_id_fk"
+            columns: ["new_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_corrections_old_evaluation_id_evaluations_id_fk"
+            columns: ["old_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cnv_revenue: {
         Row: {
           amount: number
@@ -895,6 +947,7 @@ export type Database = {
           patient_id: string
           professional_id: string
           status: Database["public"]["Enums"]["evaluation_status"]
+          superseded_at: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at: string
         }
@@ -905,6 +958,7 @@ export type Database = {
           patient_id: string
           professional_id: string
           status?: Database["public"]["Enums"]["evaluation_status"]
+          superseded_at?: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at?: string
         }
@@ -915,6 +969,7 @@ export type Database = {
           patient_id?: string
           professional_id?: string
           status?: Database["public"]["Enums"]["evaluation_status"]
+          superseded_at?: string | null
           type?: Database["public"]["Enums"]["evaluation_type"]
           updated_at?: string
         }
@@ -2632,6 +2687,10 @@ export type Database = {
         | "comunicaciones_comerciales"
         | "representante_legal"
         | "asentimiento_menor"
+      correction_trigger_type:
+        | "correccion_profesional"
+        | "recalibracion_ciencia"
+        | "completar_profesional"
       device_status:
         | "available"
         | "in_use"
@@ -2814,6 +2873,11 @@ export const Constants = {
         "comunicaciones_comerciales",
         "representante_legal",
         "asentimiento_menor",
+      ],
+      correction_trigger_type: [
+        "correccion_profesional",
+        "recalibracion_ciencia",
+        "completar_profesional",
       ],
       device_status: [
         "available",
