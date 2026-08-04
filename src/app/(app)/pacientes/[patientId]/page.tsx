@@ -92,9 +92,15 @@ export default async function HistoriaPacientePage({
                   <tr key={e.evaluationId} className="border-b border-border/60 last:border-0">
                     <td className="px-3 py-2 font-medium text-foreground">
                       {TIPO_LABEL[e.type] ?? e.type}
+                      {e.superseded ? (
+                        <span className="ml-2 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                          reemplazada
+                        </span>
+                      ) : null}
                     </td>
+                    {/* Fecha de MEDICION (cronologia clinica), no la de creacion del registro. */}
                     <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                      {fechaCorta(e.createdAt)}
+                      {fechaCorta(e.measurementDate ?? e.createdAt)}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {estadoEvaluacionLabel(e.status)}

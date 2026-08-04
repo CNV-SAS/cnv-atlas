@@ -18,10 +18,25 @@ type ProfileEmbed = {
   country: string | null;
 };
 type ContactEmbed = { email: string | null; phone: string | null };
-type EvaluationEmbed = { id: string; type: EvaluationType; status: string; created_at: string };
+type EvaluationEmbed = {
+  id: string;
+  type: EvaluationType;
+  status: string;
+  created_at: string;
+  superseded_at: string | null;
+  bis_measurements: { measurement_date: string | null }[] | null;
+};
 
 function one<T>(embed: T | T[] | null): T | undefined {
   return Array.isArray(embed) ? embed[0] : (embed ?? undefined);
+}
+
+// Fecha de medicion de una evaluacion = la mas reciente de sus mediciones (normalmente una); null si
+// aun no se midio (draft). La cronologia clinica ordena por esta fecha, no por created_at.
+function latestMeasDate(rows: { measurement_date: string | null }[] | null): string | null {
+  const dates = (rows ?? []).map((r) => r.measurement_date).filter((d): d is string => d != null);
+  if (dates.length === 0) return null;
+  return dates.reduce((max, d) => (d > max ? d : max), dates[0]);
 }
 
 export async function getPatientDetail(patientId: string): Promise<PatientDetail | null> {
@@ -29,7 +44,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country), patient_contacts(email, phone), evaluations(id, type, status, created_at)",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, bis_measurements(measurement_date))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -51,9 +66,17 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
       type: e.type,
       status: e.status,
       createdAt: e.created_at,
+      measurementDate: latestMeasDate(e.bis_measurements),
+      superseded: e.superseded_at != null,
     }))
-    // Mas reciente primero: la linea de tiempo se lee de arriba (hoy) hacia abajo.
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Mas reciente primero, por fecha de MEDICION (cronologia clinica), no por created_at: una
+    // corregida tiene created_at de hoy pero se ubica por su medicion original. Fallback a created_at
+    // para drafts sin medir. Desempate por created_at para un orden estable.
+    .sort((a, b) => {
+      const ka = a.measurementDate ?? a.createdAt;
+      const kb = b.measurementDate ?? b.createdAt;
+      return kb.localeCompare(ka) || b.createdAt.localeCompare(a.createdAt);
+    });
 
   return {
     patientId: data.id,

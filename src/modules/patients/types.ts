@@ -61,6 +61,8 @@ export type PatientEvaluationItem = {
   type: EvaluationType;
   status: string;
   createdAt: string;
+  measurementDate: string | null; // fecha de MEDICION (cronologia clinica); null si aun no se midio
+  superseded: boolean; // reemplazada por una correccion: se marca, no se oculta (la historia la conserva)
 };
 
 // Detalle del paciente para su historia (/pacientes/[id]): identidad, contacto y la

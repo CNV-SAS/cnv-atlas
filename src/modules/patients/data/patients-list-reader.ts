@@ -24,7 +24,10 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(count)",
+      // superseded_at por evaluacion (no `evaluations(count)`): el conteo debe excluir las
+      // reemplazadas por correccion (contarlas infla el numero de consultas del paciente). Se cuentan
+      // las vigentes del lado del cliente; el volumen por paciente es chico y va gateado por RLS.
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at)",
     )
     .is("deleted_at", null);
   if (error) {
@@ -35,9 +38,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     const profile = one<ProfileEmbed>(
       row.patient_profiles as ProfileEmbed | ProfileEmbed[] | null,
     );
-    const countRow = one<{ count: number }>(
-      row.evaluations as { count: number }[] | null,
-    );
+    const evals = (row.evaluations as { superseded_at: string | null }[] | null) ?? [];
+    const evaluationCount = evals.filter((e) => e.superseded_at == null).length;
     return {
       patientId: row.id,
       documentType: row.document_type as DocumentType,
@@ -46,7 +48,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       lastName: profile?.last_name ?? "",
       birthDate: profile?.birth_date ?? null,
       status: row.status,
-      evaluationCount: countRow?.count ?? 0,
+      evaluationCount,
     } satisfies PatientListItem;
   });
 
