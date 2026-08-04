@@ -96,9 +96,13 @@ export function PillsMulti({
   );
 }
 
-// Contador +/- para cantidades (bebidas/dia). Rango 0-30 (como el prototipo).
-export function Counter({ id, defaultValue = 0 }: { id: string; defaultValue?: number }) {
-  const [count, setCount] = useState(defaultValue);
+// Contador +/- para cantidades (bebidas/dia). Rango 0-30 (como el prototipo). Arranca SIN valor
+// (vacio, "-") hasta que alguien lo toca: un contador sin tocar NO es 0, es sin responder (Gildardo:
+// un dominio sin responder no se corre con defaults, eso inventa una respuesta que el paciente no dio).
+// El 0 deliberado si es alcanzable: el primer "-" desde vacio da 0, distinguible de no haberlo tocado.
+// El hidden input solo se emite cuando hay valor (igual que Scale); vacio no envia nada.
+export function Counter({ id, defaultValue = null }: { id: string; defaultValue?: number | null }) {
+  const [count, setCount] = useState<number | null>(defaultValue);
   return (
     <div className="flex items-center gap-3">
       <Button
@@ -106,21 +110,21 @@ export function Counter({ id, defaultValue = 0 }: { id: string; defaultValue?: n
         variant="outline"
         size="icon"
         aria-label="Restar"
-        onClick={() => setCount((c) => Math.max(0, c - 1))}
+        onClick={() => setCount((c) => Math.max(0, (c ?? 0) - 1))}
       >
         <span aria-hidden>-</span>
       </Button>
-      <span className="w-8 text-center text-sm font-semibold tabular-nums">{count}</span>
+      <span className="w-8 text-center text-sm font-semibold tabular-nums">{count ?? "-"}</span>
       <Button
         type="button"
         variant="outline"
         size="icon"
         aria-label="Sumar"
-        onClick={() => setCount((c) => Math.min(30, c + 1))}
+        onClick={() => setCount((c) => Math.min(30, (c ?? 0) + 1))}
       >
         <span aria-hidden>+</span>
       </Button>
-      <input type="hidden" name={`answer_${id}`} value={String(count)} />
+      {count !== null ? <input type="hidden" name={`answer_${id}`} value={String(count)} /> : null}
     </div>
   );
 }
@@ -162,7 +166,8 @@ export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: 
       ) : q.type === "opcion_multiple" && q.options.length > 0 ? (
         <PillsMulti id={q.id} options={q.options} defaultValue={a ? parseMulti(a) : []} />
       ) : q.type === "contador" ? (
-        <Counter id={q.id} defaultValue={a ? Number(a) : 0} />
+        // a === "0" es un cero real guardado (string truthy -> muestra 0); sin respuesta -> null (vacio).
+        <Counter id={q.id} defaultValue={a ? Number(a) : null} />
       ) : q.type === "escala" ? (
         <Scale id={q.id} defaultValue={a ? Number(a) : undefined} />
       ) : (
