@@ -65,7 +65,7 @@ export async function correctEvaluation(
     return err(appError("validation", "La correccion requiere confirmacion explicita."));
   }
   if (!input.reason.trim()) {
-    return err(appError("validation", "La correccion requiere un motivo."));
+    return err(appError("validation", "Escribe el motivo de la correccion para continuar."));
   }
 
   const [ev] = await db
@@ -145,24 +145,47 @@ export async function correctEvaluation(
     .innerJoin(surveyQuestions, eq(surveyQuestions.id, surveyAnswers.questionId))
     .where(eq(surveyAnswers.responseId, response.id));
 
-  // Validar que cada correccion apunta a una pregunta respondida en ESTA evaluacion (no se puede
-  // corregir algo que no se respondio; para agregar respuestas seria otro flujo).
+  // Catalogo COMPLETO de preguntas de la version de encuesta (no solo las respondidas). Sirve para
+  // dos cosas: validar que una correccion apunta a una pregunta real, y COMPLETAR (agregar la
+  // respuesta que faltaba), que necesita el type/field_key de una pregunta sin fila de respuesta.
+  const catalog = await db
+    .select({ id: surveyQuestions.id, type: surveyQuestions.questionType, fieldKey: surveyQuestions.fieldKey })
+    .from(surveyQuestions)
+    .where(eq(surveyQuestions.surveyVersionId, inputs.surveyVersionId));
+  const catalogByQuestion = new Map(catalog.map((q) => [q.id, q]));
+
+  // Cada correccion debe apuntar a una pregunta de ESTA encuesta. Puede NO tener respuesta previa:
+  // eso es COMPLETAR (agregar la respuesta que faltaba), el flujo normal cuando el paciente dejo la
+  // encuesta a medias y el profesional la termina en consulta (Gildardo). Solo se rechaza un
+  // questionId que no pertenece al cuestionario (imposible desde la UI; defensa).
   const answerByQuestion = new Map(answers.map((a) => [a.questionId, a]));
   const corrections = new Map(input.correctedAnswers.map((c) => [c.questionId, c.answerValue]));
   for (const qid of corrections.keys()) {
-    if (!answerByQuestion.has(qid)) {
-      return err(appError("validation", "Una correccion apunta a una pregunta que no se respondio."));
+    if (!catalogByQuestion.has(qid)) {
+      return err(
+        appError("validation", "Esa pregunta no pertenece a este cuestionario; recarga la evaluacion e intenta de nuevo."),
+      );
     }
   }
-  // Delta vacio o no-op: sin al menos UNA respuesta que REALMENTE cambie, no hay nada que corregir.
-  // Defensa en profundidad (la UI ya lo bloquea): generar una version identica seria rehacer la cascada,
-  // perder el tratamiento e invalidar la aprobacion sin que nada haya cambiado. No es correccion valida.
-  const anyRealChange = [...corrections.entries()].some(
+
+  // Cambios reales: al menos UNA respuesta que de verdad cambie (completar cuenta: de "" a un valor).
+  // Sin ninguno no hay nada que hacer; generar una version identica rehace la cascada, pierde el
+  // tratamiento e invalida la aprobacion sin que nada haya cambiado (la UI ya lo bloquea; defensa).
+  const realChanges = [...corrections.entries()].filter(
     ([qid, val]) => (answerByQuestion.get(qid)?.answerValue ?? "") !== val,
   );
-  if (!anyRealChange) {
-    return err(appError("validation", "No hay cambios: no hay nada que corregir."));
+  if (realChanges.length === 0) {
+    return err(
+      appError("validation", "No cambiaste ninguna respuesta; corrige o completa al menos una para continuar."),
+    );
   }
+
+  // Corregir vs completar (actos clinicamente distintos, ver el enum). Si TODOS los cambios reales son
+  // a preguntas SIN respuesta previa, es completar; si alguno toca una respuesta existente, es
+  // correccion (hubo un fallo). recalibracion_ciencia no pasa por aqui (no es a nivel de respuesta).
+  const allCompletions = realChanges.every(([qid]) => !answerByQuestion.has(qid));
+  const effectiveTrigger: "correccion_profesional" | "completar_profesional" | "recalibracion_ciencia" =
+    input.triggerType === "correccion_profesional" && allCompletions ? "completar_profesional" : input.triggerType;
 
   // Respuestas corregidas: para copiar (todas) y para el motor (solo las que llevan field_key).
   const correctedRows = answers.map((a) => ({
@@ -171,6 +194,15 @@ export async function correctEvaluation(
     fieldKey: a.fieldKey,
     type: a.type,
   }));
+  // Completar: preguntas corregidas SIN fila previa -> filas NUEVAS (type/field_key del catalogo).
+  // Solo con valor no vacio (una respuesta vacia no se inserta, igual que el intake no crea filas
+  // vacias). Asi una pregunta con field_key completada llega al motor y mueve dfi.complete.
+  for (const [qid, val] of corrections) {
+    if (!answerByQuestion.has(qid) && val.trim() !== "") {
+      const q = catalogByQuestion.get(qid)!; // garantizado por el gate de existencia de arriba
+      correctedRows.push({ questionId: qid, answerValue: val, fieldKey: q.fieldKey, type: q.type });
+    }
+  }
   const engineAnswers: SurveyFieldAnswer[] = correctedRows
     .filter((r) => r.fieldKey)
     .map((r) => ({ fieldKey: r.fieldKey!, type: r.type, value: r.answerValue ?? "" }));
@@ -344,7 +376,7 @@ export async function correctEvaluation(
         newEvaluationId: newEval.id,
         correctedBy: actor.actorId,
         reason: input.reason.trim(),
-        triggerType: input.triggerType,
+        triggerType: effectiveTrigger,
       });
 
       // (vi) audit inline (regla 8)
@@ -358,7 +390,7 @@ export async function correctEvaluation(
           old_evaluation_id: input.evaluationId,
           new_evaluation_id: newEval.id,
           reason: input.reason.trim(),
-          trigger_type: input.triggerType,
+          trigger_type: effectiveTrigger,
           corrected_questions: input.correctedAnswers.map((c) => c.questionId),
           model_changed: modelChanged,
         },

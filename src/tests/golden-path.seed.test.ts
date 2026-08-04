@@ -11,6 +11,8 @@ import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-e
 // fixture biody_synthetic.xlsx NO sirve aqui: sus valores son placeholder (fuera de rango
 // del motor), solo prueban el IMPORT de B8, no el motor. Ver src/tests/fixtures/README.md.
 import biodyGold from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+// Juego de respuestas que deja dfi.complete = true (fuente unica, compartida con el test de correccion).
+import { DFI_COMPLETE_ANSWERS as ANSWERS } from "./fixtures/clinical-engine/dfi-complete-answers";
 
 // SEED del caso golden-path por la VIA REAL (bloque prerrequisito "profesional primero").
 // No es un test de aserciones: es una rutina de sembrado idempotente y RESUMIBLE que corre
@@ -82,31 +84,6 @@ async function buildGoldXlsx(): Promise<ArrayBuffer> {
   ws.addRow(keys.map((k) => (gold[k] ?? null) as ExcelJS.CellValue));
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
-
-// Respuestas alineadas al perfil documentado que el golden del DFI empareja con este BIS
-// (encuesta-sintetica.json: "hombre 54a, IMC 27.5, sobrepeso leve, sedentario moderado, sin
-// TCA, 1 antecedente familiar"), pero expresadas con las OPCIONES REALES de la encuesta (la
-// sintetica usa d-fields del prototipo que la encuesta real no recolecta, p. ej. d1_9/d1_16).
-// Elegidas por indice/texto sobre las opciones ya sembradas, para que el acoplamiento
-// caracter-por-caracter con el motor no dependa de reescribir cadenas con en-dash. multi = se
-// guarda como JSON de option_text, como el intake real.
-type Pick = { multi: boolean; idx?: number; text?: string };
-const ANSWERS: Record<string, Pick> = {
-  d2_19: { multi: false, idx: 3 }, // percepcion corporal: Sobrepeso (coherente con IMC 27.5)
-  d2_20: { multi: false, idx: 1 }, // satisfaccion con el peso: Insatisfecho/a
-  d2_21: { multi: true, text: "Ninguno" }, // metodos para cambiar peso: ninguno (sin conducta de riesgo)
-  d2_22: { multi: false, idx: 1 }, // pierde control al comer: Rara vez
-  d3_23: { multi: false, idx: 2 }, // dias de actividad fisica: 2 (sedentario moderado)
-  d3_24: { multi: false, idx: 2 }, // duracion de la sesion: 30-45 min
-  d3_26: { multi: false, idx: 2 }, // horas de sueno: 6-7 horas
-  d3_30: { multi: false, idx: 0 }, // tabaco: Nunca he fumado
-  d3_31: { multi: false, idx: 1 }, // alcohol: 1-2 veces al mes (ocasional)
-  d5_36: { multi: false, idx: 1 }, // HTA diagnosticada: No
-  d5_38: { multi: true, text: "DM2 (diabetes)" }, // 1 antecedente familiar: DM2
-  d5_39: { multi: true, text: "Ninguna" }, // diagnosticos personales: Ninguna
-  d8_61: { multi: false, idx: 0 }, // acceso a alimentos frescos: Si, siempre
-  d8_62: { multi: false, idx: 0 }, // suficiente comida en el hogar: No, nunca
-};
 
 describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */

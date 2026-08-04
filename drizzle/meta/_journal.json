@@ -225,6 +225,13 @@
       "when": 1785782321090,
       "tag": "0031_treatment_field_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785844955708,
+      "tag": "0032_completar_trigger_type",
+      "breakpoints": true
     }
   ]
 }

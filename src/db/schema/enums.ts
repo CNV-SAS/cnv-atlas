@@ -86,11 +86,18 @@ export const treatmentStatus = pgEnum("treatment_status", ["draft", "approved"])
 
 // Disparador de una correccion post-diagnostico (flujo de correccion, gate del Hito 1). El
 // mecanismo de sucesion es agnostico al disparador (ver PLAN_FLUJO_CORRECCION.md (g)):
-// correccion_profesional = el profesional corrige un dato mal digitado; recalibracion_ciencia =
-// la reemision poblacional que preve Gildardo (misma maquinaria, otro disparador). Extensible.
+// correccion_profesional = el profesional corrige un dato mal digitado (hubo un fallo);
+// completar_profesional = el profesional agrega una respuesta que faltaba, tipico cuando el paciente
+//   dejo la encuesta a medias y se termina en consulta (la consulta siguio su curso, no hubo fallo);
+// recalibracion_ciencia = la reemision poblacional que preve Gildardo (misma maquinaria, otro
+// disparador). Corregir y completar son actos CLINICAMENTE distintos: al auditar la cadena de
+// versiones de un paciente hay que poder distinguir "aqui hubo errores" de "aqui la encuesta se
+// completo en varias consultas". El servicio DERIVA cual de los dos (correccion/completar) segun si
+// el cambio toca una respuesta existente o agrega una que faltaba. Extensible.
 export const correctionTriggerType = pgEnum("correction_trigger_type", [
   "correccion_profesional",
   "recalibracion_ciencia",
+  "completar_profesional",
 ]);
 
 export const transactionStatus = pgEnum("transaction_status", [
