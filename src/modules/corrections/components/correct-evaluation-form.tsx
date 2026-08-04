@@ -124,7 +124,10 @@ export function CorrectEvaluationForm({
     startTransition(async () => {
       const res = await correctEvaluationAction({ evaluationId, correctedAnswers, reason: reason.trim() });
       if (res.error) setError(res.error);
-      else window.location.href = backHref; // vuelve a ver la evaluación (ya versionada)
+      // Va a la evaluación NUEVA (la vigente), no a la vieja (ahora reemplazada): quedarse en la vieja
+      // dejaría al profesional leyendo datos obsoletos sin saberlo.
+      else if (res.newEvaluationId) window.location.href = `/evaluaciones/${res.newEvaluationId}`;
+      else window.location.href = backHref; // defensivo: sin id nuevo, al menos refresca la vista
     });
   }
 
