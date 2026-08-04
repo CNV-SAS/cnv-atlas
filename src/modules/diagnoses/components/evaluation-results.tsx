@@ -149,6 +149,7 @@ export function EvaluationResults({
   composition,
   efrStates,
   abordaje,
+  missingDomains = [],
 }: {
   results: Results;
   composition?: ReactNode;
@@ -157,6 +158,9 @@ export function EvaluationResults({
   efrStates: Record<number, EfrStateRef>;
   // Abordaje por profesion ya resuelto por la pagina (tiempo de vista).
   abordaje: AbordajeCardData;
+  // D-007 Fase A: dominios de encuesta (que alimentan el diagnostico) que quedaron incompletos. La
+  // pagina los deriva de dfi.missingFieldKeys + la seccion de cada pregunta. Solo INFORMA (no suprime).
+  missingDomains?: string[];
 }) {
   // Snapshot de una era anterior del motor (stub-0.1.0 pre-B11): forma incompatible con
   // esta vista. Se informa en vez de tronar (reports es inmutable, no se puede migrar).
@@ -262,9 +266,21 @@ export function EvaluationResults({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!dfi.complete ? (
-            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-              {dfi.degradedReason ?? "El DFI corrio incompleto."}
-            </p>
+            // D-007 Fase A: extiende (no duplica) el aviso de DFI incompleto. Dice QUE falta y POR QUE
+            // importa (que se suspenderia cuando la funcion este activa). Hoy solo informa, no suprime.
+            <div className="flex flex-col gap-1 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+              <span className="font-medium">
+                {dfi.degradedReason ?? "El diagnostico se emitio con la encuesta incompleta."}
+              </span>
+              {missingDomains.length ? (
+                <span>Faltan estos dominios de la encuesta: {missingDomains.join(", ")}.</span>
+              ) : null}
+              <span>
+                Cuando la suspension por completitud este activa, el diagnostico saldra sin edad
+                bioelectrica ni las rutas que dependen de la encuesta. El diagnostico bioelectrico (de la
+                medicion) se emite igual.
+              </span>
+            </div>
           ) : null}
 
           <div className="flex flex-col gap-2">

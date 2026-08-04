@@ -23,6 +23,7 @@ import { ProfessionalCriterion } from "@/modules/diagnoses/components/profession
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
+import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import {
@@ -305,6 +306,12 @@ export default async function ResultadosEvaluacionPage({
             results={results}
             efrStates={efrStates}
             abordaje={abordaje}
+            // D-007 Fase A: dominios de encuesta incompletos (derivados de lo sellado), para el aviso.
+            missingDomains={
+              results.compatible && !results.snapshot.dfi.complete
+                ? missingDomainsFrom(results.snapshot.dfi.missingFieldKeys, entrySurvey)
+                : []
+            }
             composition={
               composition ? (
                 <CompositionSection
