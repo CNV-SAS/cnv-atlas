@@ -36,6 +36,13 @@ type Change = {
   isMulti: boolean;
 };
 
+// Una respuesta cuenta como SIN RESPONDER si esta vacia (null, cadena vacia, o multi vacio "[]").
+// Solo informa cuanto falta; NO bloquea (el profesional completa de a poco, ver D-007).
+function isUnanswered(answerValue: string | null): boolean {
+  const v = (answerValue ?? "").trim();
+  return v === "" || v === "[]";
+}
+
 // Lee el FormData y compara con las respuestas originales -> los cambios REALES (con su antes/después).
 function computeChanges(fd: FormData, domains: SurveyDomain[]): Change[] {
   const changes: Change[] = [];
@@ -98,6 +105,17 @@ export function CorrectEvaluationForm({
 
   // Guarda el FormData del paso de edición para no re-leerlo al confirmar (el DOM del form se oculta).
   const [fdSnapshot, setFdSnapshot] = useState<FormData | null>(null);
+
+  // Conteo de lo que falta (solo informa; no cambia el comportamiento). Por dominio, total, y cuantas
+  // de las que faltan alimentan el diagnostico (used_in_diagnosis): esas son las que mantienen el
+  // diagnostico incompleto, a priorizar al completar en consulta.
+  const missingByDomain = domains.map((d) => d.questions.filter((q) => isUnanswered(q.answerValue)).length);
+  const totalQuestions = domains.reduce((n, d) => n + d.questions.length, 0);
+  const totalMissing = missingByDomain.reduce((n, m) => n + m, 0);
+  const missingDiagnosis = domains.reduce(
+    (n, d) => n + d.questions.filter((q) => isUnanswered(q.answerValue) && q.usedInDiagnosis).length,
+    0,
+  );
 
   function onReview(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -193,10 +211,30 @@ export function CorrectEvaluationForm({
         Corrige la(s) respuesta(s) equivocada(s). Al continuar verás la lista de cambios antes de confirmar.
       </p>
 
-      {domains.map((dom) => (
+      {totalMissing > 0 ? (
+        <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+          {totalMissing === 1 ? "Falta 1 respuesta" : `Faltan ${totalMissing} respuestas`} de {totalQuestions}.
+          {missingDiagnosis > 0 ? (
+            <>
+              {" "}
+              De las que faltan, {missingDiagnosis} {missingDiagnosis === 1 ? "alimenta" : "alimentan"} el
+              diagnóstico.
+            </>
+          ) : null}
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Puedes completar de a poco, en varias consultas; no hace falta responderlas todas ahora.
+          </span>
+        </div>
+      ) : null}
+
+      {domains.map((dom, i) => (
         <details key={dom.section} className="rounded-xl border border-border">
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
-            {dom.section} <span className="font-normal text-muted-foreground">({dom.questions.length} preguntas)</span>
+            {dom.section}{" "}
+            <span className="font-normal text-muted-foreground">
+              ({dom.questions.length} preguntas
+              {missingByDomain[i] > 0 ? ` · ${missingByDomain[i]} sin responder` : ""})
+            </span>
           </summary>
           <div className="flex flex-col gap-4 border-t border-border p-4">
             {dom.questions.map((q) => (

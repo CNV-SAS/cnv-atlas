@@ -14,6 +14,7 @@ export type SurveyAnswerView = {
   questionText: string;
   questionType: string; // texto | numero | opcion | opcion_multiple | contador | escala
   fieldKey: string | null; // marca si alimenta el motor (no se edita aqui: eso es recomputo)
+  usedInDiagnosis: boolean; // si alimenta el DIAGNOSTICO (gatea dfi.complete): a priorizar al completar
   answerValue: string | null; // opcion: option_text; opcion_multiple: JSON array; numeros: string
   options: string[]; // opciones (option_text) ordenadas; vacio para numero/texto/contador/escala
 };
@@ -25,6 +26,7 @@ type QuestionRow = {
   question_text: string;
   question_type: string;
   field_key: string | null;
+  used_in_diagnosis?: boolean | null; // opcional: los tests construyen filas sin este campo
   section: string | null;
   order_index: number;
 };
@@ -65,6 +67,7 @@ export function groupSurveyAnswers(
       questionText: q.question_text,
       questionType: q.question_type,
       fieldKey: q.field_key,
+      usedInDiagnosis: q.used_in_diagnosis ?? false,
       answerValue: answerByQ.get(q.id) ?? null,
       options: opts,
     });
@@ -90,7 +93,7 @@ export async function getSurveyAnswersForEvaluation(
   const [questionsRes, answersRes] = await Promise.all([
     supabase
       .from("survey_questions")
-      .select("id, question_text, question_type, field_key, section, order_index")
+      .select("id, question_text, question_type, field_key, used_in_diagnosis, section, order_index")
       .eq("survey_version_id", resp.survey_version_id)
       .order("order_index"),
     supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", resp.id),
