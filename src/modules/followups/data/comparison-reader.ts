@@ -2,6 +2,7 @@ import "server-only";
 
 import { type EngineIndicators, isEngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { pickPreviousEvaluation } from "./comparison-chronology";
 import {
   getReportDispatch,
   getReportForEvaluation,
@@ -46,37 +47,60 @@ export type FollowupComparison = {
   indicators: IndicatorDelta[];
 };
 
+// La fecha de medicion de una evaluacion = la mas reciente de sus mediciones (normalmente una).
+type MeasEmbed = { measurement_date: string | null };
+function latestMeasDate(embed: MeasEmbed[] | MeasEmbed | null | undefined): string | null {
+  if (!embed) return null;
+  const rows = Array.isArray(embed) ? embed : [embed];
+  const dates = rows.map((r) => r.measurement_date).filter((d): d is string => d != null);
+  if (dates.length === 0) return null;
+  return dates.reduce((max, d) => (new Date(d).getTime() > new Date(max).getTime() ? d : max), dates[0]);
+}
+
 export async function getFollowupComparison(
   evaluationId: string,
 ): Promise<FollowupComparison | null> {
   const supabase = await createSupabaseServerClient();
 
-  // Evaluacion actual: paciente y fecha, para ubicar la previa (RLS).
+  // Evaluacion actual con la fecha de su medicion (ancla de la cronologia clinica).
   const { data: current, error: cErr } = await supabase
     .from("evaluations")
-    .select("patient_id, created_at")
+    .select("patient_id, created_at, bis_measurements(measurement_date)")
     .eq("id", evaluationId)
     .maybeSingle();
   if (cErr) throw new Error(`comparison-reader: current evaluation: ${cErr.message}`);
   if (!current) return null;
 
-  // Evaluacion previa del mismo paciente (la mas reciente anterior a la actual).
-  const { data: prev, error: pErr } = await supabase
+  // Candidatas a "previa": las VIGENTES del mismo paciente (una reemplazada por correccion NO es
+  // candidata: superseded_at IS NULL), cada una con la fecha de su medicion. El pick lo hace
+  // pickPreviousEvaluation por measurement_date, no por created_at (ver su doc): asi un inicial
+  // corregido meses despues no queda ordenado como si fuera la consulta mas reciente.
+  const { data: cands, error: pErr } = await supabase
     .from("evaluations")
-    .select("id")
+    .select("id, created_at, bis_measurements(measurement_date)")
     .eq("patient_id", current.patient_id)
-    .lt("created_at", current.created_at)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (pErr) throw new Error(`comparison-reader: previous evaluation: ${pErr.message}`);
-  if (!prev) return null; // primera evaluacion: nada que comparar
+    .is("superseded_at", null)
+    .neq("id", evaluationId);
+  if (pErr) throw new Error(`comparison-reader: candidate evaluations: ${pErr.message}`);
+
+  const curMeasDate = latestMeasDate(current.bis_measurements);
+  const candidates = (cands ?? []).map((e) => ({
+    id: e.id,
+    measurementDate: latestMeasDate(e.bis_measurements),
+    createdAt: e.created_at,
+  }));
+  const prevId = pickPreviousEvaluation(
+    { id: evaluationId, measurementDate: curMeasDate, createdAt: current.created_at },
+    candidates,
+  );
+  if (!prevId) return null; // primera evaluacion comparable: nada contra que comparar
+  const prevMeasDate = candidates.find((e) => e.id === prevId)?.measurementDate ?? null;
 
   // Snapshots inmutables de ambas evaluaciones. Si a alguna le falta reporte (no completo
   // el ciclo), no hay comparacion posible.
   const [curReport, prevReport] = await Promise.all([
     getReportForEvaluation(evaluationId),
-    getReportForEvaluation(prev.id),
+    getReportForEvaluation(prevId),
   ]);
   if (!curReport || !prevReport) return null;
 
@@ -101,8 +125,11 @@ export async function getFollowupComparison(
   });
 
   return {
-    currentDate: curDispatch.evaluationDate,
-    previousDate: prevDispatch.evaluationDate,
+    // Las fechas MOSTRADAS son las de MEDICION (misma cronologia que el pick): mostrar la fecha del
+    // registro (report.created_at) diria "previa: hoy" para una medicion de enero corregida hoy. Cae
+    // a la fecha del reporte solo si faltara la medicion (no ocurre: comparar exige medicion).
+    currentDate: curMeasDate ?? curDispatch.evaluationDate,
+    previousDate: prevMeasDate ?? prevDispatch.evaluationDate,
     currentEfrState: cur.efrPhenotype.stateNumber,
     previousEfrState: pre.efrPhenotype.stateNumber,
     currentRisk: { nivel: cur.dfi.riesgo.nivel, score: cur.dfi.riesgo.score },
