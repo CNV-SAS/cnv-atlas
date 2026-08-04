@@ -180,4 +180,43 @@ describe("validateBisMeasurement", () => {
   it("acepta cuando estan todos los obligatorios", () => {
     expect(validateBisMeasurement(sheet(validCells())).ok).toBe(true);
   });
+
+  // Validacion de rango antropometrica (2026-08-04, tras los exports ZM3): atrapar errores de
+  // digitacion sin rechazar pacientes reales.
+  it("rechaza una cadera fuera de rango (1139 = 113,9 con el decimal perdido)", () => {
+    const bad = validCells().map((c) =>
+      c[0] === MEASURED_HIPS_HEADER ? ([MEASURED_HIPS_HEADER, 1139] as [string, CellValue]) : c,
+    );
+    const res = validateBisMeasurement(sheet(bad));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.fields?.["Hips Size cm"]).toContain("1139");
+  });
+
+  it("acepta una circunferencia grande pero REAL (una cintura de 160 cm existe)", () => {
+    const big = validCells().map((c) =>
+      c[0] === MEASURED_WAIST_HEADER ? ([MEASURED_WAIST_HEADER, 160] as [string, CellValue]) : c,
+    );
+    expect(validateBisMeasurement(sheet(big)).ok).toBe(true);
+  });
+
+  it("rechaza un ratio en 0 con mensaje propio (campo exportado vacio, no una medida)", () => {
+    const cells = validCells();
+    cells.push(["Ratio Cintura/Altura valor", 0]);
+    const res = validateBisMeasurement(sheet(cells));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.fields?.["Ratio Cintura/Altura valor"]).toContain("ratio");
+  });
+
+  it("distingue una MEDIDA en 0 de un RATIO en 0 (mensajes distintos)", () => {
+    // Una cintura en 0 cae por RANGO [30,250], con el mensaje de rango, no el de ratio.
+    const bad = validCells().map((c) =>
+      c[0] === MEASURED_WAIST_HEADER ? ([MEASURED_WAIST_HEADER, 0] as [string, CellValue]) : c,
+    );
+    const res = validateBisMeasurement(sheet(bad));
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.fields?.["Waist Size cm"]).toContain("rango");
+  });
 });

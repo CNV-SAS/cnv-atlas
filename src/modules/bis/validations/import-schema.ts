@@ -53,6 +53,15 @@ export const PHYSIOLOGICAL_RANGES: Record<string, { min: number; max: number }> 
   "Resistencia a 50khz Ohm": { min: 50, max: 2000 },
   "Reactancia à 50khz Ohm": { min: 0, max: 500 },
   "Body Mass Index (BMI) valor kg/m²": { min: 5, max: 80 },
+  // Circunferencias medidas (cm). Rangos GENEROSOS a proposito: el objetivo es atrapar errores de
+  // digitacion (un decimal perdido, un cero de mas), NO rechazar pacientes reales; rechazar a un
+  // paciente legitimo es peor que no validar (el integrante pierde la medicion sin saber por que).
+  //  - min 30 cm: por debajo de eso no hay circunferencia de un adulto (el mas delgado ronda 50-60);
+  //    <30 = un digito perdido o un valor mal ubicado. Generoso: no toca a nadie real.
+  //  - max 250 cm: la cintura/cadera humana real no llega ahi ni en obesidad extrema (records ~180);
+  //    >250 = un digito de mas o el decimal perdido (113,9 -> 1139 cae aqui). No rechaza a nadie real.
+  "Waist Size cm": { min: 30, max: 250 },
+  "Hips Size cm": { min: 30, max: 250 },
 };
 
 // Fecha de Biody: "DD-MM-YYYY HH:MM" (hora opcional). Se interpreta en UTC para que el
@@ -150,9 +159,21 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
       fields[variableName] = `Valor fuera del rango admisible: ${value}.`;
       continue;
     }
+    // Un RATIO (corporal o bioelectrico) de 0 o negativo es IMPOSIBLE: implicaria una circunferencia
+    // de cero. Casi siempre es un campo que el equipo exporto VACIO y relleno con 0 (falso negativo
+    // silencioso: un ICT de 0 clasificaria "sin riesgo"). Es DISTINTO de una MEDIDA en 0 (eso lo
+    // atrapa el rango de la circunferencia, con su propio mensaje). Mensaje propio para no confundir.
+    // La UI (bis-import-form) ya muestra el NOMBRE del campo como etiqueta de cada mensaje; aqui va el
+    // valor y la pista, sin repetir el campo.
+    if (/ratio/i.test(variableName) && value <= 0) {
+      fields[variableName] =
+        `llego en ${value}: un ratio no puede ser 0 ni negativo. Probablemente se exporto vacio; re-exporta con la medida completa.`;
+      continue;
+    }
     const range = PHYSIOLOGICAL_RANGES[variableName];
     if (range && (value < range.min || value > range.max)) {
-      fields[variableName] = `Valor ${value} fuera del rango fisiologico [${range.min}, ${range.max}].`;
+      fields[variableName] =
+        `llego en ${value}, fuera del rango esperado [${range.min}, ${range.max}]. Revisa si se perdio un decimal o sobra un digito.`;
       continue;
     }
     values.push({ variableName, value });
