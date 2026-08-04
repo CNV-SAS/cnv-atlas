@@ -80,11 +80,13 @@ Decisión: remitir se registra (a quién, motivo, fecha, si el paciente volvió)
 Decisión: tres textos (mejoró / sin cambio / empeoró), sin cifra y sin nombrar el indicador (textos en RESPUESTA_GILDARDO 7.1). "Empeoró" solo sale si el profesional lo CONFIRMA (acto aparte de aprobar el reporte) y acompañada de la próxima cita agendada; sin confirmación o sin cita, el reporte sale sin esa sección. Mientras la calibración sea provisional, "sin cambio" se comunica como "sin cambios significativos con la información disponible" (no "se mantuvo estable").
 - Fecha: 2026-08-03. · Origen: Q25 / ronda 2026-08-03 §7.
 - Estado: **DECIDIDO / SIN IMPLEMENTAR** (P0 Parte 2). · Afecta: reporte + seguimiento. · Consulta abierta: si "cita agendada" se cumple con el campo de fecha lleno.
+- Dependencia de implementación (hallazgo 2026-08-03): las tres bandas salen de comparar la medición actual contra la previa, y esa comparación debe anclarse a la versión VIGENTE, no a una reemplazada por corrección. Hoy la comparación no filtra las reemplazadas (bug conocido, ver `BACKLOG.md` flujo de corrección); mal anclada, las tres bandas comparan contra el yo pre-corrección del paciente. Es lo primero a arreglar del checkpoint 2 del flujo de corrección.
 
 **D-011 · Presentación de la EB-BIS (paciente vs profesional).**
 Decisión: la cifra de EB-BIS nunca va al paciente; al profesional con marca "calibración provisional, no comunicable". Primera medición del paciente: sin cifra ni la expresión "edad biológica", solo lectura funcional. Desde la segunda: el cambio en tres bandas (ver D-010).
 - Fecha: 2026-08-01. · Origen: P0.
 - Estado: **PARCIAL.** La cifra al profesional (terminología "Edad Bioeléctrica") está; la MARCA visible "calibración provisional / no comunicable" es gate del Hito 3 y está pendiente de verificar/implementar; las bandas al paciente son D-010, sin implementar. · Afecta: reporte.
+- Dependencia de implementación (2026-08-03): el "cambio en tres bandas desde la segunda medición" depende del anclaje correcto de la comparación (ver la nota en D-010): debe ser contra la versión vigente anterior, no una reemplazada.
 
 **D-012 · Retirar el examen de telómeros/estrés oxidativo; ningún ítem cita el propio modelo.**
 Decisión: se retira ese ítem del listado de exámenes sugeridos; ningún ítem del listado puede citar el propio modelo como referencia. (Verificado: es el único que lo hacía.)
