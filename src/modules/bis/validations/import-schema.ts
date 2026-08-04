@@ -120,6 +120,20 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
     );
   }
 
+  // La fecha no puede ser FUTURA: medir en el futuro es imposible, y una fecha futura por error del
+  // equipo desordenaria la cronologia clinica sin que nada lo indique (la comparacion de seguimiento
+  // ordena por measurement_date, C2-a). Margen de 1 dia por husos horarios. Una fecha muy ANTIGUA
+  // (posible backfill legitimo) NO se rechaza aqui: su umbral es decision de producto (BACKLOG).
+  const SKEW_MS = 24 * 60 * 60 * 1000;
+  if (measurementDate.getTime() > Date.now() + SKEW_MS) {
+    return err(
+      appError(
+        "validation",
+        `La fecha de medicion ("${MEASUREMENT_DATE_HEADER}") es futura; revisa la fecha del equipo Biody.`,
+      ),
+    );
+  }
+
   const fields: Record<string, string> = {};
   const values: BisRawValue[] = [];
   const present = new Set<string>(); // variables con un valor numerico (para el chequeo de obligatorios)
