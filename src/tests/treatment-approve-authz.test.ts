@@ -76,11 +76,15 @@ describe("approveProtocol: control de asignacion (aislado)", () => {
     professionOf.mockResolvedValue({ isProfessional: true, profession: "nutricionista" }); // por defecto
   });
 
-  it("el profesional ASIGNADO aprueba (y se sella)", async () => {
+  it("el profesional ASIGNADO aprueba (y se sella), y el acto SELLA la profesion con que aprobo", async () => {
     profileOf.mockResolvedValue(ASSIGNED);
     const r = await approveProtocol({ evaluationId: "E1" }, actor);
     expect(r.ok).toBe(true);
     expect(writer).toHaveBeenCalledTimes(1);
+    // La profesion queda EN el acto (protocol_approved), no solo approved_by = quien. Se lee del actor,
+    // no se asume: si el perfil cambia despues, el acto conserva la de la aprobacion (write-once).
+    const sealed = writer.mock.calls[0][0].protocolApproved as { approvedProfession?: string | null };
+    expect(sealed.approvedProfession).toBe("nutricionista");
   });
 
   it("el profesional ASIGNADO pero SIN profesion configurada falla (forbidden) y NO sella nada", async () => {

@@ -167,6 +167,12 @@ export async function approveProtocol(
     protocolEngineVersionSuggested: versionSuggested,
     versionMismatch: versionApproved !== versionSuggested,
     approvedAt: approvedAt.toISOString(),
+    // La PROFESION con que se aprobo, SELLADA en el acto (no solo approved_by = quien). Es la condicion
+    // que AUTORIZA la prescripcion nutricional (guard nutricionista); un acto clinico registra todas
+    // las condiciones bajo las que se ejecuto (familia de emission_versions). Se lee, no se asume: si
+    // manana la profesion del perfil cambia, este valor conserva la de la aprobacion (el momento de
+    // cerrarlo es AHORA: protocol_approved es write-once, no se puede agregar despues).
+    approvedProfession: prof.value.profession,
     bisMeasurementDate: t.bisMeasurementDate,
     fenotipo: suggested.fenotipo,
     estrategia: suggested.estrategia,

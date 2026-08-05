@@ -25,7 +25,9 @@ import { getActorProfession } from "../data/actor-profession-reader";
 // CURITA parcial: cuando lleguen los protocolos médico/ejercicio/psico, cada uno tendrá su profesión
 // habilitada (la matriz profesión→protocolo). Hoy solo existe el nutricional, así que solo
 // nutricionista. La solución de fondo (profesión NOT NULL + captura al invitar) sigue en BACKLOG.
-export async function requireNutricionista(actorId: string): Promise<Result<void>> {
+// Devuelve la profesion del actor en el OK (null si no es profesional, p. ej. admin): quien SELLA un
+// acto (approveProtocol) la registra EN el acto, no la asume. El resto de call sites solo chequean .ok.
+export async function requireNutricionista(actorId: string): Promise<Result<{ profession: string | null }>> {
   const { isProfessional, profession } = await getActorProfession(actorId);
   if (isProfessional && profession !== "nutricionista") {
     return err(
@@ -37,5 +39,5 @@ export async function requireNutricionista(actorId: string): Promise<Result<void
       ),
     );
   }
-  return ok(undefined);
+  return ok({ profession });
 }
