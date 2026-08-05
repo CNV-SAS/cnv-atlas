@@ -148,13 +148,20 @@ export async function forcePasswordReset(input: {
 // Desbloqueo de MFA (recuperacion del segundo factor). Con MFA obligatoria para profesionales, un
 // integrante que pierde el telefono queda fuera; el admin reinicia sus factores TOTP y en el proximo
 // login vuelve al enroll. Es el equivalente de "olvide mi clave" para el 2FA. Audit inline.
-export async function resetUserMfa(input: { userId: string }): Promise<Result<null, AppError>> {
+export async function resetUserMfa(input: {
+  userId: string;
+  reason: string;
+}): Promise<Result<null, AppError>> {
   const { user, error: authzError } = await requireAdmin();
   if (authzError) return err(authzError);
 
   const parsed = resetUserMfaSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Usuario invalido."));
-  const { userId } = parsed.data;
+  if (!parsed.success) {
+    // El motivo vacio es el error esperable mas comun; se distingue del usuario invalido.
+    const msg = parsed.error.issues[0]?.message ?? "Datos invalidos.";
+    return err(appError("validation", msg));
+  }
+  const { userId, reason } = parsed.data;
 
   const admin = createSupabaseAdminClient();
   const { data: list, error: listErr } = await admin.auth.admin.mfa.listFactors({ userId });
@@ -173,7 +180,7 @@ export async function resetUserMfa(input: { userId: string }): Promise<Result<nu
       actorEmail: user.email,
       entityType: "auth.user",
       entityId: userId,
-      payload: { factors_removed: factors.length },
+      payload: { factors_removed: factors.length, reason },
       ip,
       userAgent,
     });

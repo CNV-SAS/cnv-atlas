@@ -49,6 +49,9 @@ export const deactivateUserSchema = z.object({
 
 export const resetUserMfaSchema = z.object({
   userId: z.string().uuid(),
+  // Motivo obligatorio: el audit registra al admin que EJECUTA, no a quien PIDE. El reason es lo unico
+  // que deja rastro de por que y a pedido de quien se reinicio el factor (SECURITY.md, seccion MFA).
+  reason: z.string().trim().min(1, "Escribe el motivo del reinicio.").max(500),
 });
 
 // Estado para los formularios de admin (useActionState).
