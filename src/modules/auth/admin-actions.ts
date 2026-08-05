@@ -16,6 +16,7 @@ import {
   forcePasswordResetSchema,
   type AdminFormState,
   type CreateUserInput,
+  type Profession,
 } from "./admin-validations";
 import { canManageUsers } from "./policies/can-manage-users";
 import { getCurrentUser } from "./session";
@@ -191,10 +192,15 @@ export async function createUserFormAction(
   _prev: AdminFormState,
   formData: FormData,
 ): Promise<AdminFormState> {
+  const role = String(formData.get("role") ?? "") as AppRole;
+  const professionRaw = formData.get("profession");
   const result = await createUser({
     email: String(formData.get("email") ?? ""),
     fullName: String(formData.get("fullName") ?? ""),
-    role: String(formData.get("role") ?? "") as AppRole,
+    role,
+    // Solo para el rol professional; el schema la exige/ignora segun el rol. Si el select no se
+    // renderizo (rol interno), no viene en el FormData y queda undefined (no cuelga un valor viejo).
+    profession: professionRaw ? (String(professionRaw) as Profession) : undefined,
   });
   if (!result.ok) return { error: result.error.message, success: null };
   return { error: null, success: "Usuario creado. Se envio la invitacion por correo." };
