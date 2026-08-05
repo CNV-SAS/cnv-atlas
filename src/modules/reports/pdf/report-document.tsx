@@ -84,9 +84,11 @@ const styles = StyleSheet.create({
 
 function fmt(v: number | null, code?: string): string {
   if (v == null) return "Pendiente";
-  // D-016: el angulo de fase siempre con 1 decimal (los demas indicadores, tal cual).
+  // D-016: el angulo de fase siempre con 1 decimal.
   if (code === "AF") return v.toFixed(1);
-  return String(v);
+  // El resto, igual que la tabla del profesional (evaluation-results fmtNum): entero tal cual, o 2
+  // decimales. ANTES esto era String(v), que imprimia el float crudo (IFC 5.365137870630431...).
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;

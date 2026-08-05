@@ -69,9 +69,9 @@ const SEX = "Male"; // se conserva en ingles como el export real (borde de norma
 // Nombre de demo OBVIO: nadie debe confundirlo con un paciente real.
 const FIRST_NAME = "Demo";
 const LAST_NAME = "GoldenPath (motor real)";
-// Correo del paciente demo: plus-addressing al buzon corporativo (+demo) para que el envio de
-// reporte quede ejercitable de punta a punta con un destino real.
-const PATIENT_EMAIL = "corporativo+demo@cnvsystem.com";
+// Correo de TODOS los pacientes demo: el buzon de pruebas de Santiago, para que el envio de reporte
+// quede ejercitable de punta a punta con un destino real que el controla.
+const PATIENT_EMAIL = "sau.idk001@gmail.com";
 // IDs fijos de las notas del profesional. Demo GoldenPath es tambien el target del smoke de
 // auditoria (Nivel b/c): tiene notas reales en las 3 tablas narrativas. Reemplaza la cadena
 // demo fabricada a mano (99999999), retirada del node seed.
@@ -399,7 +399,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .onConflictDoNothing();
     await db
       .insert(schema.patientContacts)
-      .values({ patientId: FEMALE_PATIENT_ID, email: "corporativo+demofem@cnvsystem.com" })
+      .values({ patientId: FEMALE_PATIENT_ID, email: "sau.idk001@gmail.com" })
       .onConflictDoNothing();
     for (const t of NECESSARY_CONSENT_TYPES) {
       const existing = await db
@@ -478,7 +478,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .onConflictDoNothing();
     await db
       .insert(schema.patientContacts)
-      .values({ patientId: FEMALE2_PATIENT_ID, email: "corporativo+demofem2@cnvsystem.com" })
+      .values({ patientId: FEMALE2_PATIENT_ID, email: "sau.idk001@gmail.com" })
       .onConflictDoNothing();
     for (const t of NECESSARY_CONSENT_TYPES) {
       const existing = await db
