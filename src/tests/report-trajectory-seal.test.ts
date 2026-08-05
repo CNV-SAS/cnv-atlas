@@ -161,4 +161,56 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
     const follow = await makeDiagnosed("SHORT", "seguimiento", "2026-08-15T10:00:00Z", prior.patientId); // ~2 semanas
     expect(await trajectoryOf(follow.evaluationId)).toBeNull();
   });
+
+  // Fuerza la banda sellada a 'empeoro' para ejercitar el flujo de confirmacion P4 (el mismo BIS da
+  // sin_cambio; aqui interesa el CABLEADO de la confirmacion, no recomputar la banda).
+  async function forceEmpeoro(evaluationId: string) {
+    await db.transaction(async (tx: any) => {
+      await tx.execute(sql`set local session_replication_role = replica`); // saltar el trigger de inmutabilidad
+      await tx.execute(sql`update reports set trajectory = jsonb_set(trajectory, '{band}', '"empeoro"') where evaluation_id = ${evaluationId}`);
+    });
+  }
+
+  it("confirmar 'empeoro' es atomico: agenda la cita en el tratamiento Y sella la confirmacion", async () => {
+    const { confirmTrajectoryCommunication } = await import("@/modules/reports/data/reports-writer");
+    const prior = await makeDiagnosed("CONF", "inicial", "2026-04-01T10:00:00Z");
+    const follow = await makeDiagnosed("CONF", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId);
+    await forceEmpeoro(follow.evaluationId);
+    const report = (await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, follow.evaluationId)).limit(1))[0];
+
+    // APROBAR el tratamiento antes de confirmar: verifica que escribir proxima_cita pase el trigger de
+    // inmutabilidad de treatments (0026 lo deja editable tras aprobar por diseno; es la 1a vez que algo
+    // lo escribe de verdad). El status draft->approved es la transicion normal, el trigger la permite.
+    const diagPre = (await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, follow.evaluationId)).limit(1))[0];
+    await db.update(schema.treatments).set({ status: "approved" }).where(eq(schema.treatments.diagnosisId, diagPre.id));
+
+    // Sin cita: rechaza (el gate).
+    await expect(
+      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "", actorId, actorEmail: "traj@cnv", ip: null }),
+    ).rejects.toThrow(/proxima cita/i);
+
+    // Con cita: agenda en el tratamiento Y sella la confirmacion, en una tx.
+    await confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-11-01", actorId, actorEmail: "traj@cnv", ip: null });
+    const r = (await db.select({ at: schema.reports.trajectoryCommunicatedAt, by: schema.reports.trajectoryCommunicatedBy }).from(schema.reports).where(eq(schema.reports.id, report.id)).limit(1))[0];
+    expect(r.at).not.toBeNull();
+    expect(r.by).toBe(actorId);
+    const diag = (await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, follow.evaluationId)).limit(1))[0];
+    const treat = (await db.select({ cita: schema.treatments.proximaCita }).from(schema.treatments).where(eq(schema.treatments.diagnosisId, diag.id)).limit(1))[0];
+    expect(treat.cita).toBe("2026-11-01");
+
+    // No se puede re-confirmar.
+    await expect(
+      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-12-01", actorId, actorEmail: "traj@cnv", ip: null }),
+    ).rejects.toThrow(/ya fue confirmada/i);
+  });
+
+  it("solo 'empeoro' pide confirmacion (sin_cambio la rechaza)", async () => {
+    const { confirmTrajectoryCommunication } = await import("@/modules/reports/data/reports-writer");
+    const prior = await makeDiagnosed("NOEMP", "inicial", "2026-04-01T10:00:00Z");
+    const follow = await makeDiagnosed("NOEMP", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId); // sin_cambio
+    const report = (await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, follow.evaluationId)).limit(1))[0];
+    await expect(
+      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-11-01", actorId, actorEmail: "traj@cnv", ip: null }),
+    ).rejects.toThrow(/empeoro/i);
+  });
 });

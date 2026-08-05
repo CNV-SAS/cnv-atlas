@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { diagnoses, reports } from "@/db/schema";
+import { diagnoses, reports, treatments } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 // Escritura de la aprobacion y el envio del reporte (Drizzle owner, para el audit
@@ -101,6 +101,84 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
     });
 
     return { diagnosisId: diagnosis.id };
+  });
+}
+
+export type ConfirmTrajectoryInput = {
+  reportId: string;
+  proximaCita: string; // fecha YYYY-MM-DD; OBLIGATORIA (el gate de Gildardo: "empeoro" solo con cita)
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Confirma comunicar un "empeoro" al paciente (P0 Parte 2, P4). Acto APARTE de aprobar (Gildardo). En
+// UNA transaccion: agenda la proxima cita en el tratamiento Y sella la confirmacion en el reporte. Debe
+// ser atomico: si la confirmacion fallara despues de agendar, no puede quedar la cita puesta sin la
+// confirmacion (el profesional creeria que confirmo y no lo hizo). La autorizacion (ownership) se
+// verifica antes en el action bajo RLS.
+export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInput): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [report] = await tx
+      .select({
+        id: reports.id,
+        evaluationId: reports.evaluationId,
+        status: reports.status,
+        trajectory: reports.trajectory,
+        communicatedAt: reports.trajectoryCommunicatedAt,
+      })
+      .from(reports)
+      .where(eq(reports.id, input.reportId))
+      .limit(1);
+    if (!report) throw new ReportStateError("Reporte no encontrado.");
+    if (report.status !== "draft") {
+      throw new ReportStateError("El reporte ya fue aprobado o enviado; la comunicacion ya no se confirma aqui.");
+    }
+    const band = (report.trajectory as { band?: string } | null)?.band;
+    if (band !== "empeoro") {
+      throw new ReportStateError("Solo se confirma la comunicacion cuando el cambio empeoro.");
+    }
+    if (report.communicatedAt) throw new ReportStateError("La comunicacion ya fue confirmada.");
+    if (!input.proximaCita) {
+      throw new ReportStateError("Para comunicar este cambio hace falta agendar la proxima cita.");
+    }
+
+    // Agendar la cita en el tratamiento (evaluation -> diagnosis -> treatment). La condicion (cita) se
+    // evalua AQUI, al confirmar; si despues alguien borra proxima_cita, la confirmacion queda (el
+    // reporte ya decidio, no se reescribe). proxima_cita es editable tras aprobar por diseno (trigger
+    // 0026), asi que esta escritura pasa aunque el tratamiento este aprobado.
+    const [diag] = await tx
+      .select({ id: diagnoses.id })
+      .from(diagnoses)
+      .where(eq(diagnoses.evaluationId, report.evaluationId))
+      .limit(1);
+    if (!diag) throw new ReportStateError("La evaluacion no tiene diagnostico.");
+    const updatedT = await tx
+      .update(treatments)
+      .set({ proximaCita: input.proximaCita })
+      .where(eq(treatments.diagnosisId, diag.id))
+      .returning({ id: treatments.id });
+    if (updatedT.length === 0) {
+      throw new ReportStateError("La evaluacion no tiene tratamiento donde agendar la cita.");
+    }
+
+    // Sellar la confirmacion en el reporte (draft; se congela al aprobar).
+    const confirmed = await tx
+      .update(reports)
+      .set({ trajectoryCommunicatedAt: sql`now()`, trajectoryCommunicatedBy: input.actorId })
+      .where(and(eq(reports.id, report.id), eq(reports.status, "draft")))
+      .returning({ id: reports.id });
+    if (confirmed.length === 0) throw new ReportStateError("No se pudo confirmar la comunicacion.");
+
+    await recordAudit(tx, {
+      event: "report.trajectory_communication_confirmed",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "report",
+      entityId: report.id,
+      payload: { evaluation_id: report.evaluationId, band, proxima_cita: input.proximaCita },
+      ip: input.ip,
+    });
   });
 }
 

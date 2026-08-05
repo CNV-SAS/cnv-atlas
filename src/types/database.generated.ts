@@ -1913,6 +1913,9 @@ export type Database = {
           snapshot: Json
           status: Database["public"]["Enums"]["report_status"]
           storage_path: string | null
+          trajectory: Json | null
+          trajectory_communicated_at: string | null
+          trajectory_communicated_by: string | null
           type: string
         }
         Insert: {
@@ -1928,6 +1931,9 @@ export type Database = {
           snapshot: Json
           status?: Database["public"]["Enums"]["report_status"]
           storage_path?: string | null
+          trajectory?: Json | null
+          trajectory_communicated_at?: string | null
+          trajectory_communicated_by?: string | null
           type: string
         }
         Update: {
@@ -1943,6 +1949,9 @@ export type Database = {
           snapshot?: Json
           status?: Database["public"]["Enums"]["report_status"]
           storage_path?: string | null
+          trajectory?: Json | null
+          trajectory_communicated_at?: string | null
+          trajectory_communicated_by?: string | null
           type?: string
         }
         Relationships: [
@@ -1965,6 +1974,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_trajectory_communicated_by_profiles_id_fk"
+            columns: ["trajectory_communicated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

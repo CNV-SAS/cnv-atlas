@@ -7,7 +7,7 @@ import { limitReportSendByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
 import { getReportDispatch } from "./data/reports-repository";
-import { approveReport, ReportStateError } from "./data/reports-writer";
+import { approveReport, confirmTrajectoryCommunication, ReportStateError } from "./data/reports-writer";
 import { SEND_MODES, type SendMode } from "./pdf/report-document";
 import { canManageReports } from "./policies/can-manage-reports";
 import { sendReport } from "./services/send-report";
@@ -62,6 +62,46 @@ export async function approveReportAction(
   // se refresque alli tras aprobar, no solo en la lista /reportes.
   revalidatePath("/evaluaciones/[id]", "page");
   return { error: null, success: "Reporte aprobado.", warning: null };
+}
+
+// Confirma comunicar un "empeoro" al paciente (P0 Parte 2, P4): acto APARTE de aprobar. Agenda la
+// proxima cita (obligatoria) y sella la confirmacion, en una transaccion (writer). Ownership bajo RLS.
+export async function confirmTrajectoryCommunicationAction(
+  _prev: ReportActionState,
+  form: FormData,
+): Promise<ReportActionState> {
+  const user = await requireUser();
+  if (!canManageReports(user)) return fail("No autorizado.");
+  const reportId = reportIdOf(form);
+  if (!reportId) return fail("Reporte invalido.");
+
+  const proximaCita = (form.get("proximaCita") as string | null)?.trim() ?? "";
+  if (!proximaCita) return fail("Para comunicar este cambio hace falta agendar la proxima cita.");
+
+  const dispatch = await getReportDispatch(reportId);
+  if (!dispatch) return fail("Reporte no encontrado.");
+
+  const ip = await getClientIp();
+  try {
+    await confirmTrajectoryCommunication({
+      reportId,
+      proximaCita,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+  } catch (e) {
+    if (e instanceof ReportStateError) return fail(e.message);
+    throw e;
+  }
+
+  revalidatePath("/evaluaciones");
+  revalidatePath("/evaluaciones/[id]", "page");
+  return {
+    error: null,
+    success: "Comunicacion confirmada y proxima cita agendada.",
+    warning: null,
+  };
 }
 
 // Envia el reporte al paciente (render -> Storage -> correo -> marcar enviado). Rate

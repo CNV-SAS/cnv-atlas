@@ -7,7 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { approveReportAction, type ReportActionState, sendReportAction } from "../actions";
+import { BAND_TEXT } from "@/modules/followups/services/eb-trajectory";
+
+import {
+  approveReportAction,
+  confirmTrajectoryCommunicationAction,
+  type ReportActionState,
+  sendReportAction,
+} from "../actions";
+import type { TrajectoryConfirmation } from "../data/reports-repository";
 
 export type ReportCardView = {
   reportId: string;
@@ -17,6 +25,10 @@ export type ReportCardView = {
   documentLabel: string;
   patientName: string;
   createdAt: string;
+  // P0 Parte 2: banda de EB-BIS sellada (para la superficie de confirmacion de "empeoro"). La puebla el
+  // detalle de la evaluacion (getReportCardForEvaluation); las LISTAS la dejan undefined (no muestran la
+  // confirmacion: la comunicacion del cambio se decide en el detalle, con el reporte completo a la vista).
+  trajectory?: TrajectoryConfirmation | null;
 };
 
 const initialState: ReportActionState = { error: null, success: null, warning: null };
@@ -30,8 +42,18 @@ const STATUS_LABEL: Record<ReportCardView["status"], string> = {
 export function ReportCard({ report }: { report: ReportCardView }) {
   const [approveState, approve, approving] = useActionState(approveReportAction, initialState);
   const [sendState, send, sending] = useActionState(sendReportAction, initialState);
+  const [confirmState, confirm, confirming] = useActionState(confirmTrajectoryCommunicationAction, initialState);
   useFormToast(approveState);
   useFormToast(sendState);
+  useFormToast(confirmState);
+
+  // Superficie de confirmacion de "empeoro" (P0 Parte 2): solo cuando el reporte esta en draft, la
+  // banda sellada es 'empeoro' y aun no se confirmo. Es un acto APARTE de aprobar: comunicar un
+  // empeoramiento al paciente es una DECISION, no un automatismo. Orden de lectura deliberado: primero
+  // el TEXTO que recibira el paciente (lo que autoriza), luego la cifra (respaldo tecnico), luego la
+  // cita (obligatoria), luego el boton.
+  const t = report.trajectory;
+  const showConfirm = report.status === "draft" && t?.band === "empeoro" && !t.communicated;
 
   return (
     <Card>
@@ -75,6 +97,47 @@ export function ReportCard({ report }: { report: ReportCardView }) {
             {report.status === "sent" ? "Ver PDF enviado" : "Ver preview"}
           </a>
         </div>
+
+        {showConfirm && t ? (
+          <form action={confirm} className="flex w-full flex-col gap-3 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg p-3">
+            <input type="hidden" name="reportId" value={report.reportId} />
+            <span className="text-sm font-semibold text-clinical-warning">
+              Comunicar un cambio desfavorable al paciente
+            </span>
+            {/* 1. El texto EXACTO que recibira el paciente: es lo que se autoriza. */}
+            <p className="rounded border border-clinical-warning/30 bg-background/60 p-2 text-sm text-foreground">
+              {BAND_TEXT.empeoro}
+            </p>
+            {/* 2. Respaldo tecnico de la decision: la cifra (para el profesional, con marca provisional). */}
+            <span className="text-xs text-muted-foreground">
+              Respaldo (no va al paciente): la edad bioeléctrica subió {t.ebDelta.toFixed(1)} años respecto
+              de la medición anterior{t.provisional ? " · calibración provisional, no comunicable" : ""}.
+            </span>
+            {/* 3. La proxima cita (obligatoria): sin agenda propia, la fecha se registra en el tratamiento. */}
+            <label htmlFor={`cita-${report.reportId}`} className="text-xs text-muted-foreground">
+              Próxima cita (obligatoria para comunicar este cambio). Queda registrada en el tratamiento.
+            </label>
+            <input
+              id={`cita-${report.reportId}`}
+              type="date"
+              name="proximaCita"
+              defaultValue={t.proximaCita ?? ""}
+              required
+              className="w-fit rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            />
+            {/* 4. El boton: nombra el acto doble (confirmar + agendar). */}
+            <Button type="submit" size="sm" disabled={confirming} className="self-start">
+              {confirming ? "Confirmando…" : "Confirmar y agendar"}
+            </Button>
+          </form>
+        ) : null}
+
+        {report.status === "draft" && t?.band === "empeoro" && t.communicated ? (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Comunicación del cambio confirmada y próxima cita agendada. El paciente recibirá esta sección
+            en su reporte al aprobar.
+          </p>
+        ) : null}
 
         {report.status === "draft" ? (
           <form action={approve} className="flex w-full flex-col gap-2">

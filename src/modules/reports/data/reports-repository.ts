@@ -100,17 +100,30 @@ export async function listReports(): Promise<ReportListItem[]> {
   });
 }
 
-// Reporte del paciente de UNA evaluacion, con los campos que consume la ReportCard (mismo shape
-// que ReportListItem). El mas reciente (order created_at desc): si una correccion supero a un
-// reporte enviado, se muestra el vigente. Lo consume la etapa de Tratamiento como cierre (ST7).
+// Datos de la banda de EB-BIS (P0 Parte 2) que la ReportCard necesita para la superficie de
+// confirmacion de "empeoro". null si el reporte no tiene banda sellada (inicial o sin previa
+// comparable). proximaCita se trae solo cuando band = 'empeoro' (es el gate); prefill del input.
+export type TrajectoryConfirmation = {
+  band: "mejoro" | "sin_cambio" | "empeoro";
+  ebDelta: number;
+  provisional: boolean;
+  communicated: boolean; // ya confirmada (trajectory_communicated_at no null)
+  proximaCita: string | null; // fecha ya agendada en el tratamiento, para prefill del input
+};
+
+export type ReportCardData = ReportListItem & { trajectory: TrajectoryConfirmation | null };
+
+// Reporte del paciente de UNA evaluacion, con los campos que consume la ReportCard. El mas reciente
+// (order created_at desc): si una correccion supero a un reporte enviado, se muestra el vigente. Lo
+// consume la etapa de Tratamiento como cierre (ST7).
 export async function getReportCardForEvaluation(
   evaluationId: string,
-): Promise<ReportListItem | null> {
+): Promise<ReportCardData | null> {
   const supabase = await createSupabaseServerClient();
   const { data: row, error } = await supabase
     .from("reports")
     .select(
-      "id, status, evaluation_id, created_at, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
+      "id, status, evaluation_id, created_at, trajectory, trajectory_communicated_at, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
     )
     .eq("type", "paciente")
     .eq("evaluation_id", evaluationId)
@@ -124,6 +137,32 @@ export async function getReportCardForEvaluation(
   );
   const patient = one<ListPatientEmbed>(evaluation?.patients ?? null);
   const profile = one(patient?.patient_profiles ?? null);
+
+  const sealed = row.trajectory as { band?: string; ebDelta?: number; provisional?: boolean } | null;
+  let trajectory: TrajectoryConfirmation | null = null;
+  if (sealed?.band) {
+    // proxima_cita solo se necesita cuando hay que confirmar (empeoro): una lectura chica adicional
+    // por el camino evaluation -> diagnosis -> treatment, bajo RLS.
+    let proximaCita: string | null = null;
+    if (sealed.band === "empeoro") {
+      const { data: t } = await supabase
+        .from("treatments")
+        .select("proxima_cita, diagnoses!inner(evaluation_id)")
+        .eq("diagnoses.evaluation_id", evaluationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      proximaCita = (t?.proxima_cita as string | null) ?? null;
+    }
+    trajectory = {
+      band: sealed.band as TrajectoryConfirmation["band"],
+      ebDelta: sealed.ebDelta ?? 0,
+      provisional: sealed.provisional ?? true,
+      communicated: row.trajectory_communicated_at != null,
+      proximaCita,
+    };
+  }
+
   return {
     reportId: row.id,
     evaluationId: row.evaluation_id,
@@ -132,6 +171,7 @@ export async function getReportCardForEvaluation(
     createdAt: row.created_at,
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
+    trajectory,
   };
 }
 
