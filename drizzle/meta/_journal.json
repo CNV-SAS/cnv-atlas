@@ -239,6 +239,13 @@
       "when": 1785945818254,
       "tag": "0033_report_trajectory",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1785952279578,
+      "tag": "0034_trajectory_confirmation",
+      "breakpoints": true
     }
   ]
 }
