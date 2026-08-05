@@ -8,9 +8,11 @@
      · helpers _dfi*, computeDFI, computeDFIFromData (árbol de 5 dominios + rutas).
    NO EDITAR A MANO. Depende del núcleo congelado (engine.core.js).
 
-   ESTADO DE SINCRONÍA (2026-08-01): este archivo SÍ está al día con el vigente en su
-   pieza divergente (calcLE8). Contrasta con engine.core.js, que está DESACTUALIZADO a
-   propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27).
+   ESTADO DE SINCRONÍA (2026-08-05): al día con el vigente (v8) en sus dos piezas divergentes:
+   calcLE8 (2026-08-01) y _ffmiLow (2026-08-05, re-sync: ahora delega en cFFMI como el vigente, ver
+   abajo). ANTES la sincronía era PARCIAL: el swap de calcLE8 no había tocado _ffmiLow, que seguía con
+   el literal viejo 17.92/15.64 (desfase que movía la ruta R4/Dominio 2). Contrasta con engine.core.js,
+   que está DESACTUALIZADO a propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27).
 
    ⚠️ EL INTERRUPTOR LE8_MAPEO_CORREGIDO NO SE TOCA A MANO. Parece un flag de config
    (por el nombre), pero es ciencia: activarlo (false→true) es C1, va por el MECANISMO
@@ -219,7 +221,12 @@ const computeDFIFromData = (enc, bis) => {
   const edad = Number(d.edad) || null;
   const _asmi = num("ASMI"), _smmw = num("SMM_W", "smmW");
   const _fmiElev = esMasc ? FMI > 6.0 : FMI > 9.0;
-  const _ffmiLow = esMasc ? (FFMI > 0 && FFMI < 17.92) : (FFMI > 0 && FFMI < 15.64);
+  // RE-SYNC 2026-08-05 (desfase corregido): delega en el clasificador cFFMI (verbatim del vigente v8,
+  // L10882/L13306) en vez del literal viejo 17.92/15.64. Beneficio: si Gildardo mueve el corte de cFFMI,
+  // _ffmiLow se mueve con el AUTOMATICAMENTE (unificado con la frontera de desnutricion). Nuestro cFFMI
+  // ya usa H<17 / M<15. Alimenta _obSarc -> structL -> Dominio 2 del DFI (no toca structural sellado,
+  // MCCB ni R4, que ya usan el corte correcto). Anclado por DIFF contra el v8 (frozen-dfi-ffmilow-diff).
+  const _ffmiLow = FFMI > 0 && cFFMI(FFMI, esMasc ? 'M' : 'F').k === 1;
   const _asmiLow = _asmi > 0 && _asmi < (esMasc ? 7.0 : 5.5);
   const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 24);
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
