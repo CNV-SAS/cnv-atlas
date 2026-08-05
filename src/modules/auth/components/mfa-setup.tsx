@@ -37,6 +37,12 @@ export function MfaSetup() {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Explica QUE es y POR QUE, para que un profesional que no conoce TOTP no se quede trabado. */}
+      <p className="text-sm text-muted-foreground">
+        Para proteger las historias clinicas de tus pacientes, Atlas pide un segundo factor al iniciar
+        sesion. Instala una app de autenticacion (Google Authenticator, Authy o similar) en tu telefono
+        y escanea el codigo. Cada vez que entres, la app te dara un codigo de 6 digitos.
+      </p>
       <p>Escanea este codigo con tu app de autenticacion (por ejemplo Google Authenticator):</p>
       {/* eslint-disable-next-line @next/next/no-img-element -- QR es un data URL; next/image no aplica */}
       <img src={enroll.qrCode} alt="Codigo QR para configurar MFA" width={200} height={200} />
@@ -65,6 +71,11 @@ export function MfaSetup() {
           {pending ? "Verificando..." : "Activar MFA"}
         </button>
       </form>
+      {/* (c) recuperacion: si pierde el telefono, el admin lo desbloquea (resetUserMfa). */}
+      <p className="text-xs text-muted-foreground">
+        Si pierdes acceso a tu app de autenticacion (cambio de telefono, app borrada), contacta al
+        administrador para que reinicie tu segundo factor.
+      </p>
     </div>
   );
 }

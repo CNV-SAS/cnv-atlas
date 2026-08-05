@@ -32,6 +32,11 @@ export function MfaChallengeForm() {
       <button type="submit" disabled={pending} className="border p-2">
         {pending ? "Verificando..." : "Verificar"}
       </button>
+      {/* (c) recuperacion: sin acceso a la app, el admin reinicia el segundo factor (resetUserMfa). */}
+      <p className="text-xs text-muted-foreground">
+        Si perdiste acceso a tu app de autenticacion, contacta al administrador para que reinicie tu
+        segundo factor.
+      </p>
     </form>
   );
 }

@@ -14,6 +14,7 @@ import {
   createUserSchema,
   deactivateUserSchema,
   forcePasswordResetSchema,
+  resetUserMfaSchema,
   type AdminFormState,
   type CreateUserInput,
   type Profession,
@@ -136,6 +137,43 @@ export async function forcePasswordReset(input: {
       entityType: "auth.user",
       entityId: email,
       payload: { email },
+      ip,
+      userAgent,
+    });
+  });
+
+  return ok(null);
+}
+
+// Desbloqueo de MFA (recuperacion del segundo factor). Con MFA obligatoria para profesionales, un
+// integrante que pierde el telefono queda fuera; el admin reinicia sus factores TOTP y en el proximo
+// login vuelve al enroll. Es el equivalente de "olvide mi clave" para el 2FA. Audit inline.
+export async function resetUserMfa(input: { userId: string }): Promise<Result<null, AppError>> {
+  const { user, error: authzError } = await requireAdmin();
+  if (authzError) return err(authzError);
+
+  const parsed = resetUserMfaSchema.safeParse(input);
+  if (!parsed.success) return err(appError("validation", "Usuario invalido."));
+  const { userId } = parsed.data;
+
+  const admin = createSupabaseAdminClient();
+  const { data: list, error: listErr } = await admin.auth.admin.mfa.listFactors({ userId });
+  if (listErr) return err(appError("internal", "No se pudieron leer los factores MFA del usuario."));
+  const factors = list?.factors ?? [];
+  for (const f of factors) {
+    const { error: delErr } = await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId });
+    if (delErr) return err(appError("internal", "No se pudo reiniciar el factor MFA."));
+  }
+
+  const { ip, userAgent } = await auditContext();
+  await db.transaction(async (tx) => {
+    await recordAudit(tx, {
+      event: "admin.mfa_reset",
+      actorId: user.id,
+      actorEmail: user.email,
+      entityType: "auth.user",
+      entityId: userId,
+      payload: { factors_removed: factors.length },
       ip,
       userAgent,
     });

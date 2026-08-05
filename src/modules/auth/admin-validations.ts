@@ -47,5 +47,9 @@ export const deactivateUserSchema = z.object({
   userId: z.string().uuid(),
 });
 
+export const resetUserMfaSchema = z.object({
+  userId: z.string().uuid(),
+});
+
 // Estado para los formularios de admin (useActionState).
 export type AdminFormState = { error: string | null; success: string | null };

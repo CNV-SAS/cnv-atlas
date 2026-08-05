@@ -32,9 +32,14 @@ describe("policies de administracion", () => {
 });
 
 describe("enforcement de MFA (mfaRequirement)", () => {
-  it("professional nunca se fuerza, aun sin MFA", () => {
-    expect(mfaRequirement(userWith(["professional"]), false, "aal1")).toBe("ok");
-    expect(mfaRequirement(userWith(["professional"]), false, null)).toBe("ok");
+  it("professional SÍ se fuerza (gate Hito 2): sin factor -> enroll; con factor sin elevar -> challenge", () => {
+    expect(mfaRequirement(userWith(["professional"]), false, "aal1")).toBe("enroll");
+    expect(mfaRequirement(userWith(["professional"]), true, "aal1")).toBe("challenge");
+    expect(mfaRequirement(userWith(["professional"]), true, "aal2")).toBe("ok");
+  });
+
+  it("un usuario SIN rol requerido (p. ej. sin rol / hipotético paciente) NO se fuerza", () => {
+    expect(mfaRequirement(userWith([]), false, null)).toBe("ok");
   });
 
   it("interno sin factor verificado -> enroll", () => {
