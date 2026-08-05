@@ -9,6 +9,7 @@ Una línea por documento: qué es y cuándo se consulta. Ordenado por rol: prime
 - **`DIVERGENCIAS.md`** — Qué hace Atlas distinto del prototipo de Gildardo, y por qué (DIV-N → D-NNN). Responde "¿por qué esto es distinto de su archivo?".
 - **`LANZAMIENTO.md`** — El alcance del Hito 1 y los gates de lanzamiento (qué tiene que estar para lanzar).
 - **`PLAN_ETAPAS.md`** — La SECUENCIA del trabajo en tres etapas (E1 clínico / E2 operativo / E3 pulido). Responde "¿en qué orden y qué falta de cada etapa?". Complementa `LANZAMIENTO.md` (gates) y enlaza a `BACKLOG.md` (detalle).
+- **`PLAN_GRANTS.md`** — El plan de cerrar el acceso amplio del admin al contenido clínico (grants sobre las 22 tablas PHI). Espera la respuesta del abogado de Santiago a 3 decisiones antes de arrancar. Gate del Hito 2/3.
 - **`MVP.md`** — El plan de construcción por bloques (B0-B15 y los que siguen).
 - **`README.md`** — Índice y contexto general del proyecto (punto de entrada).
 - **`BOUNDARIES.md`** — Los límites con CNV Learning (qué NO se cruza).
