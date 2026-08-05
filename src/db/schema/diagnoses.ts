@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
-import { aiSuggestionStatus } from "./enums";
+import { aiSuggestionStatus, professionalProfession } from "./enums";
 import { evaluations } from "./evaluations";
 import { frSectors, modelVersions, phenotypes } from "./model-registry";
 import { profiles } from "./organizations";
@@ -53,6 +53,12 @@ export const diagnoses = pgTable(
     emissionVersions: jsonb("emission_versions"),
     confirmedBy: uuid("confirmed_by").references(() => profiles.id), // profesional que confirma
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    // Profesion CON QUE se confirmo, sellada EN el acto (no solo confirmed_by = quien): un acto clinico
+    // registra las condiciones bajo las que se ejecuto (como approvedProfession del protocolo). Hoy la
+    // confirmacion la autoriza la ASIGNACION (no una profesion), pero Q17 sigue abierta y confirmed_* es
+    // write-once: si no se sella ahora, no se puede agregar despues. null cuando confirma un no-profesional
+    // (p. ej. admin via approveReport). Se congela con confirmed_by (trigger 0027, extendido en 0037).
+    confirmedProfession: professionalProfession("confirmed_profession"),
     createdAt: createdAt(),
   },
   (t) => [index("diagnoses_eval_idx").on(t.evaluationId)],

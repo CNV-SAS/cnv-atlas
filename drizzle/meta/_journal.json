@@ -260,6 +260,13 @@
       "when": 1785961147716,
       "tag": "0036_profession_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1785964286914,
+      "tag": "0037_diagnosis_confirmed_profession",
+      "breakpoints": true
     }
   ]
 }

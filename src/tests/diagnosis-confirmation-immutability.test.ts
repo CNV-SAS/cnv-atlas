@@ -59,6 +59,12 @@ describe("diagnoses_confirmation_immutability (mig 0027)", () => {
     ).rejects.toThrow();
   });
 
+  it("cambiar confirmed_profession ya sellada FALLA (parte de la firma clinica, mig 0037)", async () => {
+    await expect(
+      sql`UPDATE diagnoses SET confirmed_profession='medico' WHERE id=${CONFIRMED}`,
+    ).rejects.toThrow();
+  });
+
   it("borrar un diagnostico confirmado FALLA", async () => {
     await expect(sql`DELETE FROM diagnoses WHERE id=${CONFIRMED}`).rejects.toThrow();
   });

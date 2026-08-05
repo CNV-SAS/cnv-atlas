@@ -4,7 +4,9 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { diagnoses, reports, treatments } from "@/db/schema";
+import type { Profession } from "@/modules/auth/admin-validations";
 import { recordAudit } from "@/modules/audit/log";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 
 // Escritura de la aprobacion y el envio del reporte (Drizzle owner, para el audit
 // INLINE, regla 8). Las actualizaciones tocan solo columnas de estado, NUNCA snapshot,
@@ -56,9 +58,12 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       .where(eq(diagnoses.evaluationId, report.evaluationId))
       .limit(1);
     if (!diagnosis) throw new ReportStateError("La evaluacion no tiene diagnostico que confirmar.");
+    // Profesion con que se confirma via aprobar reporte (misma firma clinica que el acto propio). null si
+    // quien aprueba no es profesional (p. ej. admin, permitido por la policy del reporte).
+    const { profession } = await getActorProfession(input.actorId);
     const confirmed = await tx
       .update(diagnoses)
-      .set({ confirmedBy: input.actorId, confirmedAt: sql`now()` })
+      .set({ confirmedBy: input.actorId, confirmedAt: sql`now()`, confirmedProfession: profession as Profession | null })
       .where(and(eq(diagnoses.id, diagnosis.id), isNull(diagnoses.confirmedBy)))
       .returning({ id: diagnoses.id });
     if (confirmed.length > 0) {

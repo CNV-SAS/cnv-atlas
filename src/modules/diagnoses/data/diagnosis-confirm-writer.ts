@@ -5,6 +5,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { diagnoses } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
+import type { Profession } from "@/modules/auth/admin-validations";
 
 // Confirmacion del diagnostico (mini-bloque) con audit INLINE (regla 8). Owner db (BYPASSRLS): el
 // ownership + la asignacion se verifican ANTES en el service; aqui el diagnosisId ya llega
@@ -28,10 +30,17 @@ export type ConfirmDiagnosisWrite = {
 };
 
 export async function confirmDiagnosis(input: ConfirmDiagnosisWrite): Promise<void> {
+  // Profesion CON QUE se confirma, para sellarla en el acto (firma clinica). El service ya verifico que
+  // el actor es el profesional ASIGNADO, asi que tiene profesion (NOT NULL). null solo si no es profesional.
+  const { profession } = await getActorProfession(input.actorId);
   await db.transaction(async (tx) => {
     const confirmed = await tx
       .update(diagnoses)
-      .set({ confirmedBy: input.actorId, confirmedAt: sql`now()` })
+      .set({
+        confirmedBy: input.actorId,
+        confirmedAt: sql`now()`,
+        confirmedProfession: profession as Profession | null,
+      })
       .where(and(eq(diagnoses.id, input.diagnosisId), isNull(diagnoses.confirmedBy)))
       .returning({ id: diagnoses.id });
     if (confirmed.length === 0) {
