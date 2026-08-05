@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { loginAction } from "@/modules/auth/actions";
@@ -41,6 +42,9 @@ export function LoginForm() {
       <button type="submit" disabled={pending} className="border p-2">
         {pending ? "Entrando..." : "Entrar"}
       </button>
+      <Link href="/forgot-password" className="text-sm underline underline-offset-4">
+        ¿Olvidaste tu clave?
+      </Link>
     </form>
   );
 }

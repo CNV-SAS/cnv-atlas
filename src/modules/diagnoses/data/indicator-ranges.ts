@@ -109,7 +109,8 @@ export function indicatorRange(
       if (!(ind.AF > 0)) return null;
       // CA-2: promedio del rango (M 6.5–7.0 → 6.75; F 6.0–6.5 → 6.25). ANTES el HTML restaba el borde inferior.
       const ref = sexM ? (6.5 + 7.0) / 2 : (6.0 + 6.5) / 2;
-      return { reference: sexM ? "6.5–7.0°" : "6.0–6.5°", delta: f(ind.AF - ref, 2) };
+      // D-016: el AF (y su delta) siempre con 1 decimal.
+      return { reference: sexM ? "6.5–7.0°" : "6.0–6.5°", delta: f(ind.AF - ref, 1) };
     }
     case "IR": {
       if (!(ind.IR > 0)) return null;

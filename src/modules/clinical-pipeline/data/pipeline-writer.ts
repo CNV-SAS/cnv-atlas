@@ -149,6 +149,7 @@ export async function writePipeline(
         engineVersion: output.versions.engine,
         modelVersionId: input.modelVersionId,
         rulesVersion: output.versions.rules,
+        surveyVersionId: input.surveyVersionId, // cierra la constelacion (regla 7) en la propia fila
         // Versiones de emision emergentes (Q20/C2b), set COMPLETO sellado write-once.
         emissionVersions: buildEmissionVersions(),
       })

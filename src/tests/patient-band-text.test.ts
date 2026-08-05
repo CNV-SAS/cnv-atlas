@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// computePatientBandText es puro, pero vive en reports-repository (server-only). Se mockea el guard
+// para importarlo sin contexto de Server Component.
+vi.mock("server-only", () => ({}));
 
 import { computePatientBandText } from "@/modules/reports/data/reports-repository";
 import { BAND_TEXT } from "@/modules/followups/services/eb-trajectory";

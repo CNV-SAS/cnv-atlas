@@ -49,7 +49,10 @@ export const PHYSIOLOGICAL_RANGES: Record<string, { min: number; max: number }> 
   "Peso kg": { min: 1, max: 500 },
   "Altura cm": { min: 30, max: 260 },
   Edad: { min: 0, max: 120 },
-  "Ángulo de fase a 50 kHz °": { min: 0, max: 30 },
+  // min 1 (no 0): un angulo de fase de 0 es fisicamente imposible; un export incompleto que rellene
+  // ese campo con 0 lo metia como valido (falso negativo, familia del ratio-cero). Un AF real ronda
+  // 3-8 grados incluso en enfermedad seria, asi que un piso de 1 atrapa el 0 sin rechazar a nadie.
+  "Ángulo de fase a 50 kHz °": { min: 1, max: 30 },
   "Resistencia a 50khz Ohm": { min: 50, max: 2000 },
   "Reactancia à 50khz Ohm": { min: 0, max: 500 },
   "Body Mass Index (BMI) valor kg/m²": { min: 5, max: 80 },

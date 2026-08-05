@@ -246,6 +246,13 @@
       "when": 1785952279578,
       "tag": "0034_trajectory_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1785955533654,
+      "tag": "0035_diagnoses_survey_version",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import { aiSuggestionStatus } from "./enums";
 import { evaluations } from "./evaluations";
 import { frSectors, modelVersions, phenotypes } from "./model-registry";
 import { profiles } from "./organizations";
+import { surveyVersions } from "./survey";
 import { treatments } from "./treatments";
 
 // Grupo 8: diagnostico. El estado EFR lo resuelve el motor de forma determinista
@@ -41,6 +42,10 @@ export const diagnoses = pgTable(
       .notNull()
       .references(() => modelVersions.id),
     rulesVersion: text("rules_version").notNull(),
+    // survey_version_id: cierra la constelacion de la regla 7 en la PROPIA fila (antes solo era
+    // reconstruible via indicator_values / el snapshot). Nullable: diagnosticos previos a esta columna
+    // no lo tienen (solo demo). Lo puebla el writer, que ya recibe surveyVersionId en su input.
+    surveyVersionId: uuid("survey_version_id").references(() => surveyVersions.id),
     // Versiones de emision emergentes (Q20 clasificacion, C2b calibracion), selladas write-once por
     // el trigger 0028. Complementa la constelacion tipada de arriba (regla 7); las claves salen de
     // constantes (clinical-pipeline/emission-versions.ts). NULL en diagnosticos previos a esta

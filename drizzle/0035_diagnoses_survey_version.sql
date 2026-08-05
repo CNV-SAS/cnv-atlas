@@ -1,0 +1,2 @@
+ALTER TABLE "diagnoses" ADD COLUMN "survey_version_id" uuid;--> statement-breakpoint
+ALTER TABLE "diagnoses" ADD CONSTRAINT "diagnoses_survey_version_id_survey_versions_id_fk" FOREIGN KEY ("survey_version_id") REFERENCES "public"."survey_versions"("id") ON DELETE no action ON UPDATE no action;

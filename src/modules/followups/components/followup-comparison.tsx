@@ -8,15 +8,17 @@ import type { FollowupComparison as Comparison } from "../data/comparison-reader
 // funcional. El delta se muestra sin juzgar direccion clinica (subir o bajar depende del
 // indicador); solo informa el cambio numerico y el cambio de estado EFR y de riesgo.
 
-function fmt(v: number | null): string {
+function fmt(v: number | null, code?: string): string {
   if (v == null) return "N/D";
+  // D-016: el angulo de fase siempre con 1 decimal (los demas indicadores conservan su formato).
+  if (code === "AF") return v.toFixed(1);
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 
-function fmtDelta(v: number | null): string {
+function fmtDelta(v: number | null, code?: string): string {
   if (v == null) return "N/D";
   if (v === 0) return "0";
-  return v > 0 ? `+${fmt(v)}` : fmt(v);
+  return v > 0 ? `+${fmt(v, code)}` : fmt(v, code);
 }
 
 function fecha(iso: string): string {
@@ -72,9 +74,9 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
               {c.indicators.map((it) => (
                 <tr key={it.code} className="border-b border-border/60">
                   <td className="py-2 pr-4 font-medium text-foreground">{it.code}</td>
-                  <td className="py-2 pr-4 tabular-nums text-muted-foreground">{fmt(it.previous)}</td>
-                  <td className="py-2 pr-4 tabular-nums text-foreground">{fmt(it.current)}</td>
-                  <td className="py-2 tabular-nums text-muted-foreground">{fmtDelta(it.delta)}</td>
+                  <td className="py-2 pr-4 tabular-nums text-muted-foreground">{fmt(it.previous, it.code)}</td>
+                  <td className="py-2 pr-4 tabular-nums text-foreground">{fmt(it.current, it.code)}</td>
+                  <td className="py-2 tabular-nums text-muted-foreground">{fmtDelta(it.delta, it.code)}</td>
                 </tr>
               ))}
             </tbody>

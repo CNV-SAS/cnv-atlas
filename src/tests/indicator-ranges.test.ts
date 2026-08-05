@@ -38,7 +38,7 @@ const ind = {
 
 describe("indicatorRange (referencia verbatim + Δ unificada CA-2)", () => {
   it("AF (M) 5,8: rango '6.5–7.0°', Δ contra el PROMEDIO (6.75) = -0.95 (CA-2)", () => {
-    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6.5–7.0°", delta: "-0.95" });
+    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6.5–7.0°", delta: "-1.0" });
   });
 
   it("IR (M) 0,798: un solo limite '<0.78', Δ contra el corte = 0.018 (sin cambio)", () => {
@@ -96,8 +96,8 @@ describe("la Δ se resuelve por indicador, no por referencia (guard de ICA-BIS)"
 // (valor − referencia de normalidad). Se deja el ANTES en el nombre del caso y se assertan los valores
 // NUEVOS. Cambian AF, ISCM y FFMI; el resto no (su referencia de normalidad ya coincidia).
 describe("CA-2 · regresion Δ sobre el donante golden (antes HTML → despues CA-2)", () => {
-  it("AF: -0.70 (borde inferior 6.5) → -0.95 (promedio 6.75)", () => {
-    expect(indicatorRange("AF", ind, true)?.delta).toBe("-0.95");
+  it("AF: -0.70 (borde inferior 6.5) → -1.0 (promedio 6.75, 1 decimal)", () => {
+    expect(indicatorRange("AF", ind, true)?.delta).toBe("-1.0");
   });
 
   it("ISCM: -2.07 (valor crudo, ref implicita 0) → -1.07 (corte -1)", () => {

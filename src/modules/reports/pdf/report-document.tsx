@@ -82,8 +82,11 @@ const styles = StyleSheet.create({
   },
 });
 
-function fmt(v: number | null): string {
-  return v == null ? "Pendiente" : String(v);
+function fmt(v: number | null, code?: string): string {
+  if (v == null) return "Pendiente";
+  // D-016: el angulo de fase siempre con 1 decimal (los demas indicadores, tal cual).
+  if (code === "AF") return v.toFixed(1);
+  return String(v);
 }
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
@@ -163,7 +166,7 @@ export function ReportDocument({
               {INDICATOR_LABELS.map(({ key, label }) => (
                 <View key={key} style={styles.tableRow}>
                   <Text style={styles.cellLabel}>{label}</Text>
-                  <Text style={styles.cellValue}>{fmt(indicators[key])}</Text>
+                  <Text style={styles.cellValue}>{fmt(indicators[key], key)}</Text>
                 </View>
               ))}
             </View>

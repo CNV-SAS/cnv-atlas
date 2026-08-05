@@ -63,8 +63,11 @@ const DOMAIN_ICON: Record<string, LucideIcon> = {
   d5: Dna, // Epigenetico-Contextual
 };
 
-function fmtNum(v: number | null): string {
+function fmtNum(v: number | null, code?: string): string {
   if (v == null) return "N/D";
+  // D-016: el angulo de fase SIEMPRE con 1 decimal (2 sugieren una exactitud que el equipo no tiene).
+  // Solo el AF; el resto de indicadores conserva su formato (2 decimales / entero).
+  if (code === "AF") return v.toFixed(1);
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 
@@ -433,7 +436,7 @@ export function EvaluationResults({
                       ) : null}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-foreground">
-                      {fmtNum(indicators[key])}
+                      {fmtNum(indicators[key], code)}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
                       {indicatorRange(code, indicators, sexM)?.reference ?? "-"}

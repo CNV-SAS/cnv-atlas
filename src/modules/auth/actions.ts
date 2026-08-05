@@ -8,10 +8,12 @@ import { limitLoginByIp } from "@/core/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
+  type AuthFormState,
+  forgotPasswordSchema,
+  type ForgotPasswordState,
   loginSchema,
   mfaCodeSchema,
   setPasswordSchema,
-  type AuthFormState,
 } from "./validations";
 
 // Login con correo y contrasena. Si el usuario tiene MFA verificada, el AAL pide
@@ -53,6 +55,31 @@ export async function loginAction(
   }
 
   redirect("/dashboard");
+}
+
+// "Olvide mi clave" (self-service). Envia el correo de recuperacion de Supabase, cuyo enlace SOLO
+// permite fijar una clave nueva (mismo mecanismo que la invitacion: aterriza en /auth/confirm ->
+// set-password; no da acceso ni sesion). Anti-enumeracion: SIEMPRE el mismo mensaje, exista el correo
+// o no, para no revelar quien es integrante. Rate limit por IP (misma superficie que login).
+export async function requestPasswordResetAction(
+  _prev: ForgotPasswordState,
+  formData: FormData,
+): Promise<ForgotPasswordState> {
+  const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  // Formato invalido: se puede decir (no revela existencia de cuenta).
+  if (!parsed.success) return { error: "Correo invalido.", sent: false };
+
+  const ip = await getClientIp();
+  const limit = await limitLoginByIp(ip);
+  if (!limit.success) {
+    return { error: "Demasiados intentos. Intenta de nuevo en unos minutos.", sent: false };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  // El resultado (exista o no el correo) NO se distingue en la respuesta: se ignora el error a
+  // proposito para no filtrar existencia. Supabase no envia correo si la cuenta no existe.
+  await supabase.auth.resetPasswordForEmail(parsed.data.email);
+  return { error: null, sent: true };
 }
 
 // Verifica el codigo TOTP del segundo factor y eleva la sesion a aal2.
