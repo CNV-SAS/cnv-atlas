@@ -111,7 +111,8 @@ describe("B2: creacion de usuario (efectos en BD)", () => {
         const role = await tx`select id from public.roles where name = 'professional' limit 1`;
         expect(role.length).toBe(1); // verifica que el rol exista ANTES de asignar
         await tx`insert into public.user_roles (user_id, role_id) values (${uid}, ${role[0].id})`;
-        await tx`insert into public.professional_profiles (profile_id) values (${uid})`;
+        // profession es NOT NULL (mig 0036, gate Hito 2): se captura al invitar, como en createUser.
+        await tx`insert into public.professional_profiles (profile_id, profession) values (${uid}, 'nutricionista')`;
         await tx`insert into public.clinical_audit_log (event, actor_id, entity_type, entity_id)
                  values ('user.created', ${uid}, 'profile', ${uid})`;
         const ur = await tx`select 1 from public.user_roles where user_id = ${uid}`;

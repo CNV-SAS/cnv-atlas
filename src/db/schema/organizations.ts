@@ -85,8 +85,10 @@ export const professionalProfiles = pgTable("professional_profiles", {
     .references(() => profiles.id, { onDelete: "cascade" }),
   license: text("license"), // registro profesional
   // Antes texto libre 'specialty'. Ahora lista cerrada (T2 A1): gobierna la subpestana por
-  // profesion en Tratamiento y el abordaje por profesion del diagnostico (efrProf).
-  profession: professionalProfession("profession"),
+  // profesion en Tratamiento y el abordaje por profesion del diagnostico (efrProf). NOT NULL (mig 0036,
+  // gate Hito 2): todo profesional tiene profesion; se captura al invitar. profession=null bloqueaba
+  // todas las escrituras de tratamiento del integrante.
+  profession: professionalProfession("profession").notNull(),
   certificationStatus: text("certification_status"), // gate de habilitacion ANI-BIS-E
   commissionRate: numeric("commission_rate").notNull().default("0.20"), // editable por admin
   createdAt: createdAt(),

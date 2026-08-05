@@ -78,10 +78,10 @@ export async function createUser(
 
       await tx.insert(userRoles).values({ userId: newUserId, roleId: roleRow.id });
       if (role === "professional") {
-        // profession: la validacion (superRefine) garantiza que viene para el rol professional, asi
+        // profession!: la validacion (superRefine) garantiza que viene para el rol professional, asi
         // que un integrante nuevo nunca nace con profession null (bloquearia sus escrituras de
-        // tratamiento). La columna sera NOT NULL (migracion 0036).
-        await tx.insert(professionalProfiles).values({ profileId: newUserId, profession });
+        // tratamiento). La columna es NOT NULL (migracion 0036); la asercion la respalda el refine.
+        await tx.insert(professionalProfiles).values({ profileId: newUserId, profession: profession! });
       }
 
       await recordAudit(tx, {

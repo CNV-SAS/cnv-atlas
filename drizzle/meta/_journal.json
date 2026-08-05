@@ -253,6 +253,13 @@
       "when": 1785955533654,
       "tag": "0035_diagnoses_survey_version",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1785961147716,
+      "tag": "0036_profession_not_null",
+      "breakpoints": true
     }
   ]
 }
