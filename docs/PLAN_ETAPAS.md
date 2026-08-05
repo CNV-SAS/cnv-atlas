@@ -53,7 +53,7 @@
 
 ### 1 · ENTRAR (onboarding / auth) — mayormente hecho
 - ✅ Invitación por correo (Supabase Auth), login, MFA (internos), recuperación forzada por admin, creación de cuenta/clave.
-- ⬜ **[OBLIGATORIO H2] Profesión al invitar** — hoy `profession=null` bloquea TODAS las escrituras de tratamiento, así que un integrante nuevo no podría trabajar. + `profession` NOT NULL + backfill. Gate Hito 2. **Nuestro.**
+- ✅ **[HECHO 2026-08-05] Profesión al invitar** — `createUserSchema` la exige para el rol profesional (superRefine), `createUser` la inserta, el form la pide con un selector condicional al rol, y la columna es **NOT NULL** (migración 0036). Un integrante nuevo ya no nace con `profession=null`. **Falta aparte (E2 admin de usuarios): EDITAR la profesión** — hoy no hay superficie; y al construirla, decidir el caso serio de actos ya aprobados bajo una profesión que luego cambia (ver `BACKLOG.md`).
 - ⬜ **[OBLIGATORIO H2, barato] "Olvidé mi clave" self-service** — hoy solo lo fuerza un admin; si un profesional queda fuera un sábado no hay quien lo atienda. Verificado barato: la plantilla `recovery.html` existe, `resetPasswordForEmail` ya se usa (admin path), `set-password` ya aterriza la recuperación; falta un link en login + una página chica. **Nuestro.**
 - ⬜ MFA para profesionales (hoy solo internos) — puede esperar.
 
