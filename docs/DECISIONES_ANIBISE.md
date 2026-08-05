@@ -65,6 +65,11 @@ Decisión (regla general, aplica más allá de un indicador): cuando la ciencia 
 - Fecha: 2026-07-30 (Q20), reforzada al firmar C11 el 2026-08-03. · Origen: Q20 / C11.
 - Estado: **IMPLEMENTADO** (aplicada a los rangos IFC/IRC/FMI y al candado de C11). · Afecta: frozen + pantallas. Es la regla de fondo que D-003 (C11) aplica a un caso concreto.
 
+**D-016 · El ángulo de fase (AF) se informa SIEMPRE con UN decimal, en cualquier sitio.**
+Decisión de la Dirección Científica (entrega v8, §2.2): "el AF se informa siempre con un decimal, en cualquier sitio donde aparezca. Dos decimales sugieren una exactitud que el equipo no tiene." El valor almacenado NO cambia (el cálculo interno sigue con precisión completa); solo la presentación.
+- Fecha: 2026-08-04. · Origen: CAMBIOS_ATLAS_v8 §2.2.
+- Estado: **DECIDIDO / SIN IMPLEMENTAR.** Verificado: Atlas muestra el AF con DOS decimales hoy. Sitios a corregir (mismo alcance que él enumera): la tabla de indicadores (`evaluation-results.tsx:68`, el `toFixed(2)` general) y su Δ (`indicator-ranges.ts:112`, `f(..., 2)`), la sección de composición, la tabla del PDF del paciente (`report-document.tsx`), la comparación de seguimiento (`comparison-reader`), el chip de AF bajo (`celular-badges.ts`), y el prompt de IA. Es carril rápido pero es decisión clínica suya (por eso va como decisión). CUIDADO: el `toFixed(2)` de `evaluation-results.tsx:68` es GENERAL de la tabla; el AF necesita 1 decimal SIN cambiar los demás indicadores a 1 (habría que formatear el AF aparte). · Afecta: display (varias pantallas + PDF + prompt).
+
 ## Tratamiento
 
 **D-008 · Los cuatro bloques de tratamiento por profesión se portan tal como están.**
@@ -136,6 +141,8 @@ Al portar el motor psicológico verificamos que SCOFF se computa desde la encues
 (Trasladada de Q24.) Indicadores que miden el mismo fenómeno y alertan a la vez; material para revisión de Gildardo, sin urgencia.
 
 **P-09 · Dependencia de la suspensión por encuesta incompleta (D-007 Fase B). NO bloquea (Fase A ya informa).** (2026-08-04.) D-007 decidió que, con la encuesta incompleta, lo que depende de ella no se emite (edad bioeléctrica, ICEC, rutas derivadas), mientras el bioeléctrico de la medición se emite igual. Para construir la suspensión (Fase B) hace falta la dependencia exacta: ¿CUALQUIER dominio faltante suspende el trío entero (EB-BIS + ICEC + rutas dependientes), o cada salida depende de dominios específicos (p. ej. la EB-BIS depende de d2/d3/d5 vía LE8, pero no de d8)? Con la respuesta se decide si la suspensión es todo-o-nada o granular por salida. Fase A (el aviso que dice qué falta y qué se suspendería) ya está construida e informa; la suspensión real espera esto.
+
+**P-10 · Validación de las 7 constantes de REF_POB (entrega v8 §6.2). NO bloquea (Atlas ya hace lo conservador).** (2026-08-04.) En el v8, cuando el Excel no trae referencias, un bloque `REF_POB` las calcula desde peso/talla/sexo. Gildardo marcó EXPLÍCITAMENTE que **siete de sus constantes las introdujo su asistente y NINGUNA estaba aprobada**: hidratación de la MLG 73,2%, reparto del agua 42/58, proteína total 19,4% MLG, proteína activa 70% de la total, mineral óseo 5,6% MLG, mineral no óseo 1,2% MLG, masa celular activa 50% MLG. Pide que la Dirección Científica las valide antes de usarlas con pacientes. **Su alternativa conservadora: dejar la columna Referencia VACÍA cuando el Excel no la trae, en vez de mostrar una referencia poblacional.** **Verificado (2026-08-04): Atlas YA hace lo conservador** — no tiene `REF_POB`, y la columna Referencia sale de los clasificadores `cXXX` (rango de normalidad del modelo, ciencia aprobada) o "-" cuando no aplica; no calcula referencias poblacionales. Así que la decisión es: **NO portar `REF_POB` hasta que Gildardo valide esas 7 constantes.** (Las otras dos de REF_POB, grasa 17,5/25 y ASMI 7,0/5,5, SÍ estaban aprobadas.)
 
 ### Pendiente de Gildardo (su lado)
 > **PRIORIDAD (2026-08-04): C6 es lo que MÁS pesa.** Es lo único que bloquea trabajo grande (la cadena calórica y todo lo que depende de ella); las demás consultas no detienen nada construible hoy. Cuando Santiago le escriba a Gildardo, C6 va primero.
