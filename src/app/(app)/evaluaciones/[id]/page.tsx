@@ -38,7 +38,9 @@ import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-eval
 import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
+import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
+import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -173,6 +175,7 @@ export default async function ResultadosEvaluacionPage({
     entrySurvey,
     entryReadonly,
     actorProfession,
+    trajectoryNotice,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -190,6 +193,8 @@ export default async function ResultadosEvaluacionPage({
     getBisConditionsReadonly(id),
     // Perfil profesional del actor (B1): decide que seccion de tratamiento por profesion ve.
     getActorProfession(user.id),
+    // P0 Parte 2 (P5): por que el paciente no ve un cambio (recomputado en vivo). null si hay banda o inicial.
+    getTrajectoryNotice(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -285,6 +290,10 @@ export default async function ResultadosEvaluacionPage({
           {reportCard ? (
             <section className="flex flex-col gap-3">
               <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
+              {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
+                  corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
+                  hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
+              <TrajectoryNotice notice={trajectoryNotice} />
               <ReportCard report={reportCard} />
             </section>
           ) : null}

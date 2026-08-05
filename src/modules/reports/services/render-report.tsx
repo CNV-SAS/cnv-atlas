@@ -7,6 +7,7 @@ import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-do
 export type RenderReportOptions = {
   mode?: SendMode; // que incluye el PDF (default 'atlas')
   professionalNotes?: string | null;
+  bandText?: string | null; // P0 Parte 2 (P5): texto de la banda de cambio para el paciente, o null
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -23,6 +24,7 @@ export function renderReportPdf(
       meta={meta}
       mode={options.mode}
       professionalNotes={options.professionalNotes}
+      bandText={options.bandText}
     />,
   );
 }

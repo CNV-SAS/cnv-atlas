@@ -2,6 +2,7 @@ import "server-only";
 
 import type { EngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
 // Lecturas de reportes para la UI autenticada (regla dura 1). Cliente anon + RLS:
 // reports_select deja al profesional del paciente (y admin) ver sus reportes. Sirve
@@ -10,6 +11,19 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function one<T>(embed: T | T[] | null | undefined): T | undefined {
   return Array.isArray(embed) ? embed[0] : (embed ?? undefined);
+}
+
+// P0 Parte 2 (P5): decide QUÉ texto de banda ve el paciente en el PDF (o null = sin sección). Regla,
+// en un solo lugar: hay banda sellada Y (banda != 'empeoró', O 'empeoró' confirmado). Un 'empeoró' sin
+// confirmar NO se comunica (Gildardo); y la confirmación garantizó la cita, así que confirmado => cita.
+export function computePatientBandText(
+  trajectory: { band?: string } | null | undefined,
+  confirmed: boolean,
+): string | null {
+  const band = trajectory?.band;
+  if (!band) return null;
+  if (band === "empeoro" && !confirmed) return null;
+  return BAND_TEXT[band as EbBand];
 }
 
 export type ReportStatus = "draft" | "approved" | "sent";
@@ -188,6 +202,10 @@ export type ReportDispatch = {
   documentLabel: string;
   email: string | null;
   evaluationDate: string;
+  // P0 Parte 2 (P5): el TEXTO de la banda que el PACIENTE debe ver en el PDF, o null si no va sección.
+  // Regla: hay banda sellada Y (banda != empeoró, O empeoró confirmado). La confirmación garantizó la
+  // cita, así que confirmado implica cita. Computado aquí (una sola fuente de la regla); el PDF lo pinta.
+  patientBandText: string | null;
 };
 
 type PatientEmbed = {
@@ -207,7 +225,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
+      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
     )
     .eq("id", reportId)
     .maybeSingle();
@@ -229,5 +247,9 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     email: contact?.email ?? null,
     evaluationDate: data.created_at,
+    patientBandText: computePatientBandText(
+      data.trajectory as { band?: string } | null,
+      data.trajectory_communicated_at != null,
+    ),
   };
 }

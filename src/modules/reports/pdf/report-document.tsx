@@ -96,17 +96,23 @@ export function ReportDocument({
   meta,
   mode = "atlas",
   professionalNotes = null,
+  bandText = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
   mode?: SendMode;
   professionalNotes?: string | null;
+  // P0 Parte 2 (P5): el texto del cambio respecto a la medición anterior (3 bandas). null = sin sección.
+  // La regla de si va o no la decide el reader (computePatientBandText); aquí solo se pinta si hay texto.
+  bandText?: string | null;
 }) {
   const { indicators, efrPhenotype, structural, frSector, dfi, nutraceuticos, versions } =
     snapshot;
   const notes = (professionalNotes ?? "").trim();
   const showAtlas = mode === "atlas" || mode === "ambos";
   const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;
+  // El cambio solo se muestra con el contenido de Atlas (no en modo 'solo notas'): es lectura del modelo.
+  const showBand = showAtlas && Boolean(bandText);
   return (
     <Document
       title={`Reporte clinico ${meta.documentLabel}`}
@@ -134,6 +140,13 @@ export function ReportDocument({
         <Text style={styles.disclaimer}>
           Patrones asociados a valorar clínicamente, no constituye diagnóstico.
         </Text>
+
+        {showBand ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Cambio respecto a tu medición anterior</Text>
+            <Text>{bandText}</Text>
+          </View>
+        ) : null}
 
         {showAtlas && !dfi.complete ? (
           <Text style={styles.notice}>
