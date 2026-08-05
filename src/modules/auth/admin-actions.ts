@@ -50,7 +50,7 @@ export async function createUser(
 
   const parsed = createUserSchema.safeParse(input);
   if (!parsed.success) return err(appError("validation", "Datos invalidos."));
-  const { email, fullName, role } = parsed.data;
+  const { email, fullName, role, profession } = parsed.data;
 
   const admin = createSupabaseAdminClient();
   // El trigger handle_new_user materializa el profile desde el user_metadata.
@@ -77,7 +77,10 @@ export async function createUser(
 
       await tx.insert(userRoles).values({ userId: newUserId, roleId: roleRow.id });
       if (role === "professional") {
-        await tx.insert(professionalProfiles).values({ profileId: newUserId });
+        // profession: la validacion (superRefine) garantiza que viene para el rol professional, asi
+        // que un integrante nuevo nunca nace con profession null (bloquearia sus escrituras de
+        // tratamiento). La columna sera NOT NULL (migracion 0036).
+        await tx.insert(professionalProfiles).values({ profileId: newUserId, profession });
       }
 
       await recordAudit(tx, {
@@ -86,7 +89,7 @@ export async function createUser(
         actorEmail: user.email,
         entityType: "profile",
         entityId: newUserId,
-        payload: { email, role },
+        payload: { email, role, ...(role === "professional" ? { profession } : {}) },
         ip,
         userAgent,
       });
