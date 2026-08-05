@@ -22,6 +22,10 @@ export const reports = pgTable(
     type: text("type").notNull(), // paciente, profesional, modelo
     status: reportStatus("status").notNull().default("draft"),
     snapshot: jsonb("snapshot").notNull(), // contenido exacto, inmutable, del reporte
+    // P0 Parte 2 (seguimiento): la trayectoria de EB-BIS en tres bandas (mejoró/sin cambio/empeoró)
+    // SELLADA al crear el reporte, con el corte provisional con que se calculó. Solo en seguimientos con
+    // previa comparable (>=12 semanas, C2-a); null en el resto. Inmutable por trigger, como el snapshot.
+    trajectory: jsonb("trajectory"),
     // Notas de interpretacion del profesional (B10.1). Nullable; editable SOLO en draft
     // y se congela al aprobar (trigger + guard del writer). Viven aparte del snapshot,
     // que nunca se toca.

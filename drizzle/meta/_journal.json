@@ -232,6 +232,13 @@
       "when": 1785844955708,
       "tag": "0032_completar_trigger_type",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785945818254,
+      "tag": "0033_report_trajectory",
+      "breakpoints": true
     }
   ]
 }

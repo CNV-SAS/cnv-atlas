@@ -24,6 +24,7 @@ import { recordAudit } from "@/modules/audit/log";
 import { buildEmissionVersions } from "../emission-versions";
 
 import type { EfrContent } from "./pipeline-reader";
+import { computeTrajectoryToSeal } from "./pipeline-trajectory";
 
 // Persistencia de la propagacion en UNA db.transaction (Drizzle owner): indicator_values
 // -> diagnoses -> treatments (+ guias) -> reports (snapshot draft), con la constelacion
@@ -207,6 +208,18 @@ export async function writePipeline(
       });
     }
 
+    // Trayectoria de EB-BIS a SELLAR (P0 Parte 2): solo en SEGUIMIENTO y solo si hay previa comparable
+    // (>=12 semanas por measurement_date, C2-a). null en inicial o sin previa comparable. Se computa
+    // ANTES del insert para sellarla EN el reporte (no por UPDATE: la columna es inmutable por trigger).
+    const trajectory =
+      input.evaluationType === "seguimiento"
+        ? await computeTrajectoryToSeal(tx, {
+            patientId: input.patientId,
+            evaluationId: input.evaluationId,
+            currentEb: output.indicators.eb ?? null,
+          })
+        : null;
+
     // 4. report draft con el snapshot inmutable (evidencia, principio 4). Ademas del
     //    EngineOutput se congela efrContent (contenido clinico del estado EFR del registry),
     //    para que la vista de resultados sea autosuficiente y no re-derive evidencia del
@@ -228,6 +241,7 @@ export async function writePipeline(
           // dfi.complete sellado no depende de que lista se le pase despues.
           surveyVersionId: input.surveyVersionId,
         },
+        trajectory, // null salvo seguimiento con previa comparable
       })
       .returning({ id: reports.id });
 
