@@ -459,12 +459,30 @@
 
 ---
 
-## Q29 · Las carnes rojas (grupo 15) no entran en el promedio de la tarjeta "Moderados" del patrón alimentario
+## Q29 · Las carnes rojas (grupo 15) tienen DOS rarezas en la pantalla del patrón alimentario
 
-- **Fecha:** 2026-08-06. **Estado:** ABIERTA. Es display de tu prototipo; lo portamos tal cual y preguntamos.
-- **Evidencia:** en la pantalla del patrón alimentario del v8, la tarjeta de resumen de "Moderados" promedia los grupos [8, 9, 10] (cereales integrales, tubérculos, carnes blancas), pero la grilla de los quince grupos muestra los quince, incluido el 15 (carnes rojas), cuya categoría ES neutro/moderado. calcPatron también incluye el 15 en el grupo neutro ([8, 9, 10, 15]). O sea: las carnes rojas cuentan en la matemática y en la grilla, pero NO en la tarjeta de resumen. Un paciente que come carne roja todos los días lo ve en la grilla, y la tarjeta de "Moderados" no lo refleja. Lo portamos verbatim (regla: tu código especifica, la discrepancia se registra, no se resuelve en silencio).
+- **Fecha:** 2026-08-06. **Estado:** ABIERTA. Es display de tu prototipo; lo portamos tal cual y preguntamos. Detectadas en el smoke con un paciente demo que come carne roja 5-6 días/semana.
+- **Rareza 1 (promedio):** la tarjeta de resumen de "Moderados" promedia los grupos [8, 9, 10] (cereales integrales, tubérculos, carnes blancas), pero NO el 15 (carnes rojas), aunque su categoría ES neutro/moderado y calcPatron sí lo incluye en el grupo neutro ([8, 9, 10, 15]). O sea: las carnes rojas cuentan en la matemática y en la grilla, pero NO en la tarjeta de resumen.
+- **Rareza 2 (color):** en la grilla, la píldora de un grupo NEUTRO se pinta con la MISMA lógica que un protector (v8 L13850: `ok = isR ? val<=1 : val>=3`): alta frecuencia = verde. Por eso "Carnes rojas · 5-6 días/semana" sale EN VERDE, sugiriendo que está bien, cuando clínicamente comer carne roja casi a diario no lo es. Los grupos neutros/moderados no tienen su propia rama de color; caen en la del protector.
+- Las dos las portamos verbatim (regla: tu código especifica, la discrepancia se registra, no se resuelve en silencio).
 
-**Para Gildardo (breve):** Al portar la pantalla del patrón alimentario vimos que las carnes rojas (el grupo 15 que agregaste) aparecen en la grilla de los quince grupos, pero no entran en el promedio de la tarjeta de "Moderados", que sigue calculándose sobre los tres grupos anteriores. Lo portamos tal como está en tu archivo. ¿Es deliberado, o el grupo 15 debería entrar también en esa tarjeta?
+**Para Gildardo (breve):** Al portar la pantalla del patrón alimentario, con un paciente demo que come carne roja cinco o seis días por semana, vimos dos cosas raras con el grupo 15 (carnes rojas, que agregaste): (1) aparece en la grilla de los quince grupos pero no entra en el promedio de la tarjeta de "Moderados", que sigue sobre los tres grupos anteriores; (2) su píldora se pinta VERDE con alta frecuencia, porque los grupos moderados usan la misma lógica de color que los protectores (más = mejor), y comer carne roja casi a diario se muestra como si estuviera bien. Lo portamos tal como está en tu archivo. ¿Es deliberado, o el grupo 15 debería (a) entrar en el promedio de "Moderados" y (b) tener su propia lógica de color para que la alta frecuencia no salga en verde?
+
+---
+
+## Q30 · Las etiquetas de las categorías del patrón alimentario son ambiguas ("Moderados: Moderado")
+
+- **Fecha:** 2026-08-06. **Estado:** ABIERTA. Display de tu prototipo.
+- **Evidencia:** las tarjetas de categoría usan las etiquetas cortas de tu render (L13829-13831): "Protectores", "Moderados", "De riesgo". Con el estado debajo, sale "Moderados: Moderado" (la categoría de alimentos y el nivel de consumo son la MISMA palabra) y "Protectores" no dice de qué. PERO tu propio archivo define en `catLabel` unas etiquetas MÁS claras que el render no usa: protector = "Alimentación Real protectora", neutro = "Alimentación Real energética (moderar)", riesgo = "Procesados y ultraprocesados (PCBU)". Portamos las cortas (fidelidad al render), pero tienes una versión clara ya escrita.
+
+**Para Gildardo (breve):** En las tarjetas del patrón, "Moderados: Moderado" confunde (la categoría y el nivel son la misma palabra). Tu archivo ya tiene etiquetas más claras en otro lado ("Alimentación Real energética (moderar)"). ¿Quieres que usemos esas en la pantalla, o las cortas están bien?
+
+## Q31 · Tu motor emite el nombre de tres nutracéuticos con DOS grafías distintas (rompe el emparejamiento con el catálogo)
+
+- **Fecha:** 2026-08-06. **Estado:** ABIERTA. Bloquea el emparejamiento de la recomendación con el catálogo (T3).
+- **Evidencia:** al cotejar los nombres que emite `getDX`/`efrCompose` contra el catálogo VITACELLEBIS (la tienda), tres productos aparecen con dos grafías según la rama del árbol de decisión: **MULTI-CELL BASE** (96 veces) vs **MULTICELL BASE** (2); **HEPA-DETOX** (23) vs **HEPA DETOX** (2); **GUT-IMMUNE PRO** (39) vs **GUTIMMUNE PRO** (2). La tienda usa la grafía dominante (con guion). Un emparejamiento por texto exacto fallaría en silencio para las evaluaciones que caen en las 2-6 ramas con la grafía minoritaria. Lo resolveremos con un mapa de normalización de nuestro lado (no tocamos tu motor congelado), pero conviene que lo sepas.
+
+**Para Gildardo (breve):** Tu motor emite el nombre de tres nutracéuticos de dos formas distintas según el fenotipo: "MULTI-CELL BASE" y "MULTICELL BASE", "HEPA-DETOX" y "HEPA DETOX", "GUT-IMMUNE PRO" y "GUTIMMUNE PRO". El catálogo usa la primera de cada par. Lo emparejamos de nuestro lado con un mapa, pero si en algún momento actualizas el archivo, unificar el nombre evitaría el problema de raíz.
 
 ---
 
