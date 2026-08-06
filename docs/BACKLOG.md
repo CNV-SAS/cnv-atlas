@@ -358,10 +358,14 @@ textos de opción (el acoplamiento char-by-char real, el mismo criterio que ya u
 vía `expectedFieldKeys`), no el id de versión. Si esos keys y textos no cambian entre versiones,
 recalcular es demostrablemente seguro.
 
-Dos ocurrencias hasta hoy: (1) C9 / patrón alimentario (este bloque), (2) cualquier ampliación futura
-del instrumento que no toque el diagnóstico. No urgente con datos demo (no hay evaluaciones reales que
-corregir), pero DECIDIR antes de que haya pacientes: cada cambio de encuesta que no toque el diagnóstico
-va a dejar historia no corregible. Ligado a la regla de versionado de abajo.
+Tres ocurrencias hasta hoy: (1) C9 / patrón alimentario (este bloque), (2) cualquier ampliación futura
+del instrumento que no toque el diagnóstico, (3) LA MIGRACIÓN DE VERSIÓN DE ENCUESTA A PROD (pendiente,
+ver la entrada de la semilla D1): cuando se construya esa migración forward-only (crear v2 coexistiendo
+con v1), el gate bloqueará las evaluaciones de v1. Hay que resolver los DOS JUNTOS: la migración de
+versión y el criterio del gate; si se acuña v2 sin arreglar el gate, toda evaluación de v1 queda no
+corregible. No urgente con datos demo (no hay evaluaciones reales que corregir), pero DECIDIR antes de
+que haya pacientes: cada cambio de encuesta que no toque el diagnóstico va a dejar historia no
+corregible. Ligado a la regla de versionado de abajo.
 
 ## Regla: qué se puede cambiar sobre una versión de encuesta ya publicada — 2026-08-06
 
@@ -406,6 +410,21 @@ calcPatron ni el diagnóstico (es registro clínico), así que queda FUERA del a
 de 15 grupos); se alinea cuando se coteje D6. Aparte: `d7_agua` SÍ está en la semilla (contador), contra
 el supuesto de "d7_agua sin capturar" del encabezado de engine.dfi.js; falta ver si lleva field_key (es
 pieza de C1, no de C9).
+
+## Decisiones legales del dictamen de acceso a datos (2026-08-06) — a PLAN_GRANTS y Política de Seguridad
+
+Ratificadas por Santiago tras el dictamen (`docs/entregas/RESPUESTA_CONSULTA_ACCESO_DATOS.md`):
+- **Conservación del `clinical_audit_log`: QUINCE AÑOS**, alineado con la historia clínica. La norma no
+  fija plazo (queda en cabeza de CNV). Razón: si en diez años hay controversia sobre una atención, la
+  historia existe pero sin el registro de accesos no se puede demostrar quién la vio ni por qué. Barato:
+  es escribir la política y no borrar. A la Política de Seguridad.
+- **Soporte: número de documento MÁS registro de la consulta** (opción 2 del dictamen). El identificador
+  interno opaco (preferencia del jurídico, protege más) queda como MEJORA PENDIENTE, a retomar cuando la
+  red crezca: exige que soporte busque por documento sin verlo, que es rediseño. Con pocos integrantes,
+  el documento registrado es defendible.
+Ambas se incorporan en el pase de PLAN_GRANTS (junto con Q1 nivel-b-se-conserva + 3 correcciones, Q2
+admin pierde acceso, Q3 soporte, la observación c del alcance del grant Nivel b, y el reajuste de las 5
+fases: la redacción campo por campo VUELVE porque el Nivel b se conserva).
 
 ## Higiene del BACKLOG
 - **[HECHO 2026-08-04] Barrido de entradas stale + fechas.** Se recorrió el BACKLOG entero cotejando cada entrada abierta contra el código (git log + grep). **Encontradas 7 entradas escritas como pendientes que YA estaban hechas** (3 motores de tratamiento, telómeros/CA-1, mecanismo de modificaciones autorizadas, rótulo EB-BIS, 3 cortes MCCB, field_keys d3_29/d5_40, trigger_type completar, rango antropométrico) + 3 parciales (hook de secretos = solo el escáner; P0 Parte 2 = núcleo `eb-trajectory.ts` construido, falta cablear; texto otras profesiones = moot). Todas cerradas con su commit arriba; las pendientes reales quedaron con "desde cuándo". La precondición de PHQ-9/GAD-7 se corrigió (no aplica: Atlas no captura esos instrumentos). **Lección registrada: se basó un replanteo entero en entradas desactualizadas; el BACKLOG hay que cotejarlo contra el código, no leerlo como verdad.**
