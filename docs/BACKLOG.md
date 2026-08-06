@@ -345,6 +345,60 @@ corregir (Gildardo dixit), pero es clínicamente distinto (una completitud rutin
 VALUE`, forward-only). NO se agrega en el checkpoint 1 de S2 (que solo cablea corregir → usa
 `correccion_profesional`); se agrega al cablear completar. Gancho dejado.
 
+## El gate de corrección compara el ID de versión, no lo que el motor consume — 2026-08-06
+
+`correctEvaluation` (src/modules/corrections/services/correct-evaluation.ts, L115-125) rechaza corregir
+una evaluación cuando `active.surveyVersionId !== inputs.surveyVersionId`: mira el ID de versión, no si
+cambió algo que el motor de diagnóstico consume. Consecuencia: acuñar una versión de encuesta que solo
+agrega field_keys con `used_in_diagnosis=false` (campos que el diagnóstico ni lee) dejaría TODAS las
+evaluaciones de la versión anterior sin poder corregirse, sin que el motor haya cambiado un decimal.
+
+Criterio preciso (el arreglo): comparar el conjunto de field_key con `used_in_diagnosis=true` y sus
+textos de opción (el acoplamiento char-by-char real, el mismo criterio que ya usamos para `dfi.complete`
+vía `expectedFieldKeys`), no el id de versión. Si esos keys y textos no cambian entre versiones,
+recalcular es demostrablemente seguro.
+
+Dos ocurrencias hasta hoy: (1) C9 / patrón alimentario (este bloque), (2) cualquier ampliación futura
+del instrumento que no toque el diagnóstico. No urgente con datos demo (no hay evaluaciones reales que
+corregir), pero DECIDIR antes de que haya pacientes: cada cambio de encuesta que no toque el diagnóstico
+va a dejar historia no corregible. Ligado a la regla de versionado de abajo.
+
+## Regla: qué se puede cambiar sobre una versión de encuesta ya publicada — 2026-08-06
+
+Una `survey_version` publicada tiene evaluaciones respondidas contra ella. REGLA: sobre una versión
+publicada solo se puede cambiar lo que NO altera (a) lo que el paciente respondió, ni (b) lo que el
+motor consume. Cualquier otra cosa exige una versión NUEVA.
+  - PERMITIDO sobre la versión publicada (no altera respuestas ni motor): asignar `field_key` a una
+    pregunta existente con `used_in_diagnosis=false` (es un atributo interno; el paciente ya respondió
+    esa misma pregunta y el diagnóstico no la lee).
+  - EXIGE versión nueva: agregar o quitar una pregunta, cambiar el texto de una pregunta o de una
+    opción, reordenar opciones, o marcar `used_in_diagnosis=true` (entra al motor). Todo eso cambia lo
+    que el paciente respondió o lo que el motor consume, y "dos pacientes en la misma versión con
+    contenidos distintos" rompe la idea de versión.
+Vale para C9 y para cualquier evolución del instrumento. Ligado al gate de arriba: mientras el gate mire
+el id de versión, incluso un cambio PERMITIDO por esta regla obliga a acuñar versión si se hace como
+versión nueva; por eso ampliar la versión activa (cuando la regla lo permite) es preferible.
+
+## La semilla de D1 tiene 14 grupos; el v8 vigente tiene 15 (bloquea el cableado de calcPatron) — 2026-08-06
+
+Al preparar la sub-tarea 2 del plan alimentario (cablear calcPatron) se cotejó la semilla contra el
+instrumento vigente (QMAP_ENC en ATLAS_v8.html L11746-11766). Divergencias:
+  - La semilla (supabase/seed.ts) tiene 14 preguntas de grupo (d1_1_i..d1_14_i). El v8 tiene 15
+    (d1_1_i..d1_15_i).
+  - d1_12_i: semilla = "Carnes rojas y procesadas" (FUSIONADA); v8 = "Carnes procesadas y embutidos"
+    (num 12, riesgo) MÁS d1_15_i "Carnes rojas" (num 15, neutro/energético) como pregunta SEPARADA.
+  - d1_10_i: semilla = "Carnes magras"; v8 = "Carnes blancas" (mismo slot, distinta etiqueta).
+  - Las OPCIONES (FREQ_OPC, 5 valores en el mismo orden y texto, en-dash incluido) SÍ coinciden.
+calcPatron lee neutro=[8,9,10,15] y riesgo=[11,12,13,14]: necesita d1_15_i (que no existe) y espera que
+d1_12_i sea solo procesados. Sobre la semilla actual, calcPatron leería d1_15_i ausente (-1) y contaría
+la carne roja como riesgo. O sea la sub-tarea 2 NO es "asignar field_key a 15 preguntas": la semilla es
+el instrumento viejo de 14 grupos y hay que ALINEARLA al v8 (partir "rojas y procesadas" en dos, agregar
+d1_15_i, alinear la etiqueta de d1_10). Eso cambia el contenido de la encuesta (lo que el paciente
+responde), así que por la regla de versionado de arriba EXIGE versión nueva y decisión de Santiago
+(posible visto bueno de Gildardo, aunque el v8 ES su instrumento vigente). Corrige el supuesto del
+handoff ("las 15 preguntas ya existen en el seed"): existen 14 y una es fusión. Entra también al Barrido
+de DIVERGENCIAS.
+
 ## Higiene del BACKLOG
 - **[HECHO 2026-08-04] Barrido de entradas stale + fechas.** Se recorrió el BACKLOG entero cotejando cada entrada abierta contra el código (git log + grep). **Encontradas 7 entradas escritas como pendientes que YA estaban hechas** (3 motores de tratamiento, telómeros/CA-1, mecanismo de modificaciones autorizadas, rótulo EB-BIS, 3 cortes MCCB, field_keys d3_29/d5_40, trigger_type completar, rango antropométrico) + 3 parciales (hook de secretos = solo el escáner; P0 Parte 2 = núcleo `eb-trajectory.ts` construido, falta cablear; texto otras profesiones = moot). Todas cerradas con su commit arriba; las pendientes reales quedaron con "desde cuándo". La precondición de PHQ-9/GAD-7 se corrigió (no aplica: Atlas no captura esos instrumentos). **Lección registrada: se basó un replanteo entero en entradas desactualizadas; el BACKLOG hay que cotejarlo contra el código, no leerlo como verdad.**
 
