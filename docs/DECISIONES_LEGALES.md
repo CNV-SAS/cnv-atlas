@@ -32,6 +32,8 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 **C. Lo que el jurídico debería mirar y hoy solo está del lado clínico:**
 9. **Qué se le comunica al paciente sobre su salud y cómo** (categoría Comunicación al paciente). Está decidido como asunto clínico; el jurídico tiene algo que decir sobre comunicar, o retener, información de salud a su titular.
 
+**Naturaleza y momento de lo pendiente (importa para el orden de construcción).** Las cinco confirmaciones abiertas de (A) son de CUMPLIMIENTO REGULATORIO (registro de bases de datos, notificación de incidentes, estándar de anonimización, acuerdos con proveedores, estatus del equipo ante el INVIMA), no de diseño del sistema. **Ninguna bloquea construir.** Bloquean OPERAR CON PACIENTES REALES, que es el Hito 3; el momento de resolverlas es antes del Hito 3, no del Hito 2. **Excepción a vigilar:** la del INVIMA y el comodato puede tocar antes. El comodato (préstamo del equipo de medición) es parte de cómo se vinculan los integrantes, y está EN PAUSA junto con "los contratos con profesionales" hasta resolver el estatus de importación del equipo; eso cae en el Hito 2. Si un integrante necesita el equipo para operar, esa pausa condiciona su vinculación. Ver `DATA_GOVERNANCE.md` registro #11 y pendiente #5.
+
 ---
 
 ## 1. Roles de tratamiento (quién es responsable de qué)
