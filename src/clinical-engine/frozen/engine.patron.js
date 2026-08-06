@@ -1,21 +1,99 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    ATLAS · PATRON ALIMENTARIO (C9) — FROZEN DISPLAY
-   Funcion de PANTALLA extraida VERBATIM del prototipo VIGENTE de Gildardo
-   (gildardo-2026-08-04/ATLAS_v8.html, L2930-3002, bloque "PANTALLA MOTOR").
+   Datos y funcion de PANTALLA extraidos VERBATIM del prototipo VIGENTE de Gildardo
+   (gildardo-2026-08-04/ATLAS_v8.html), en DOS bloques no contiguos:
+     · datos (FREQ_GROUPS, FREQ_OPC, catColor, catLabel, FREQ_SUP): L1221-1296
+     · calcPatron (bloque "PANTALLA MOTOR"):                        L2930-3002
    NO EDITAR A MANO. Excepcion nombrada a la regla 12 (ARCHITECTURE.md), como el resto
-   del frozen. ANCLADO por DIFF-patron (frozen-patron-diff.test.ts) byte a byte contra esa
-   region; su comportamiento lo fija el golden (patron.golden.test.ts).
+   del frozen. ANCLADO por DIFF-patron (frozen-patron-diff.test.ts) byte a byte contra
+   ambas regiones; su comportamiento lo fija el golden (patron.golden.test.ts).
 
-   ALCANCE: calcPatron alimenta el DISPLAY del patron alimentario (score 0-100 + nivel +
-   conteos por grupo). NO alimenta el diagnostico: mientras LE8_MAPEO_CORREGIDO siga en
-   false (engine.dfi.js), el dominio Alimentacion del LE8 NO consume este score. Cablear
-   Alimentacion a calcPatron es C1 (el flip del interruptor), no este bloque.
+   ALCANCE: alimenta el DISPLAY del patron alimentario (calcPatron + su render). NO alimenta
+   el diagnostico: mientras LE8_MAPEO_CORREGIDO siga en false (engine.dfi.js), el dominio
+   Alimentacion del LE8 NO consume este score. Cablearlo es C1, no este bloque.
 
-   ENTRADA: enc keyed por los indices numericos de frecuencia d1_1_i..d1_15_i (0=Nunca .. 4=
-   Todos los dias) y los de horario d1f_sal_i / d1f_des_i / d1f_noche_i. Un campo ausente se
-   trata como -1 (no respondido): con la encuesta actual (esos field_key en NULL) calcPatron
-   devuelve respondidos=0 y nivel "Deficiente". Es correcto: aun no llegan al motor.
+   FREQ_OPC es el mapa ORDINAL canonico de los 15 grupos (0=Nunca .. 4=Todos los dias); los
+   3 horarios (d1f_*) tienen su propio set en FREQ_SUP. El reader (patron.ts) resuelve el
+   ordinal de cada respuesta contra ESTOS textos (acoplamiento por texto + posicion), y el
+   candado (patron-coupling.test.ts) verifica que la semilla los tenga byte a byte.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+const FREQ_GROUPS = [
+// ── ALIMENTACIÓN REAL PROTECTORA ──
+{ n: 1,  cat: "protector", label: "Verduras y hortalizas",
+  sub: "espinaca, acelga, brócoli, tomate, zanahoria, ahuyama, remolacha, pepino (frescas, de hoja verde y fuente de vitamina A)",
+  anc: "📏 Un puño cerrado" },
+{ n: 2,  cat: "protector", label: "Frutas enteras",
+  sub: "banano, mango, papaya, guayaba, naranja, lulo, tomate de árbol (enteras, no en jugo)",
+  anc: "📏 1 fruta mediana o un pocillo" },
+{ n: 3,  cat: "protector", label: "Leguminosas",
+  sub: "fríjol, lenteja, garbanzo, arveja, habas",
+  anc: "📏 Un pocillo arriero cocido" },
+{ n: 4,  cat: "protector", label: "Pescado y mariscos",
+  sub: "atún, sardina, bocachico, tilapia, salmón, camarón (frescos, refrigerados o congelados)",
+  anc: "📏 Tamaño de su celular" },
+{ n: 5,  cat: "protector", label: "Grasas saludables (aguacate, aceite de oliva y frutos secos)",
+  sub: "aguacate, aceite de oliva (preferiblemente extra virgen), maní, nueces, almendras, semillas, coco",
+  anc: "📏 ¼ aguacate, 1 cucharadita de aceite o un puñado de frutos secos" },
+{ n: 6,  cat: "protector", label: "Lácteos y fermentados",
+  sub: "leche, yogur natural, kumis, kéfir, queso fresco",
+  anc: "📏 1 vaso o 2 cucharadas de queso" },
+{ n: 7,  cat: "protector", label: "Huevos",
+  sub: "huevo entero",
+  anc: "📏 1 unidad" },
+// ── ALIMENTACIÓN REAL ENERGÉTICA (moderar cantidad) ──
+{ n: 8,  cat: "neutro",    label: "Cereales integrales y otros",
+  sub: "avena, quinua, maíz, arroz integral, cebada, cuchuco, pan integral",
+  anc: "📏 ½ pocillo cocido o 1 tajada" },
+{ n: 9,  cat: "neutro",    label: "Raíces, tubérculos y plátanos",
+  sub: "papa, yuca, plátano, arracacha, ñame, batata",
+  anc: "📏 1 papa mediana o ½ plátano" },
+{ n: 10, cat: "neutro",    label: "Carnes blancas",
+  sub: "pollo, pavo, aves sin piel",
+  anc: "📏 Tamaño de su celular (~90 g)" },
+{ n: 15, cat: "neutro",    label: "Carnes rojas",
+  sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro)",
+  anc: "📏 Tamaño de su celular (~90 g)" },
+// ── PROCESADOS Y ULTRAPROCESADOS (PCBU): reducir ──
+{ n: 11, cat: "riesgo",    label: "Cereales refinados y harinas blancas",
+  sub: "pan blanco, arroz blanco, pasta blanca, galletas, arepa de harina refinada",
+  anc: "📏 ½ pocillo o 1 unidad" },
+{ n: 12, cat: "riesgo",    label: "Carnes procesadas y embutidos",
+  sub: "salchicha, chorizo, jamón, tocineta, mortadela, enlatados",
+  anc: "📏 Tamaño de su celular (~90 g)" },
+{ n: 13, cat: "riesgo",    label: "Azúcares añadidos y bebidas azucaradas",
+  sub: "gaseosas, jugos de caja, dulces, chocolatinas, postres, exceso de panela o azúcar",
+  anc: "📏 1 vaso o 1 unidad" },
+{ n: 14, cat: "riesgo",    label: "Ultraprocesados (PCBU)",
+  sub: "productos de paquete, papas fritas, comidas rápidas, hamburguesa, pizza, perro, sopas de sobre, caldos concentrados y sazonadores industriales",
+  anc: "📏 1 paquete o 1 porción" }];
+const FREQ_OPC = ["Nunca", "1–2 días", "3–4 días", "5–6 días", "Todos los días"];
+const catColor = {
+  protector: "#2d6a4f",
+  neutro: "#1d4ed8",
+  riesgo: "#dc2626"
+};
+const catLabel = {
+  protector: "✅ Alimentación Real protectora",
+  neutro: "⚖️ Alimentación Real energética (moderar)",
+  riesgo: "⚠️ Procesados y ultraprocesados (PCBU)"
+};
+const FREQ_SUP = [{
+  key: "d1f_sal_i",
+  label: "¿Con qué frecuencia añade sal extra a la comida ya servida?",
+  opts: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"],
+  alertIdx: 2
+}, {
+  key: "d1f_des_i",
+  label: "¿Desayuna regularmente (antes de las 10 am)?",
+  opts: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"],
+  alertIdx: 2
+}, {
+  key: "d1f_noche_i",
+  label: "¿A qué hora suele cenar?",
+  opts: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"],
+  alertIdx: 3
+}];
 
 const calcPatron = enc => {
   // Frecuencia: 0=Nunca 1=1-2d 2=3-4d 3=5-6d 4=Todos los días
@@ -91,4 +169,4 @@ const calcPatron = enc => {
   };
 };
 
-module.exports = { calcPatron };
+module.exports = { FREQ_GROUPS, FREQ_OPC, catColor, catLabel, FREQ_SUP, calcPatron };

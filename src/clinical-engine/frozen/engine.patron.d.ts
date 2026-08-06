@@ -27,3 +27,22 @@ export type PatronResult = {
 };
 
 export function calcPatron(enc: PatronEnc): PatronResult;
+
+// --- Datos de pantalla (verbatim del v8) que consumen el reader (patron.ts) y el render ---
+
+export type PatronCat = "protector" | "neutro" | "riesgo";
+
+// Un grupo de frecuencia: n (indice del prototipo), categoria, etiqueta, sub-lista y ancla de porcion.
+export type PatronGroup = { n: number; cat: PatronCat; label: string; sub: string; anc: string };
+export const FREQ_GROUPS: PatronGroup[];
+
+// Las 5 opciones de frecuencia de los 15 grupos, EN ORDEN: indice 0=Nunca .. 4=Todos los dias.
+// Es el mapa ordinal canonico contra el que el reader resuelve cada respuesta (acoplamiento por texto).
+export const FREQ_OPC: string[];
+
+export const catColor: Record<PatronCat, string>;
+export const catLabel: Record<PatronCat, string>;
+
+// Los 3 horarios (d1f_sal_i, d1f_des_i, d1f_noche_i), cada uno con su PROPIO set de opciones.
+export type PatronSup = { key: string; label: string; opts: string[]; alertIdx: number };
+export const FREQ_SUP: PatronSup[];
