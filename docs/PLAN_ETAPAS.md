@@ -48,6 +48,7 @@
 
 **Alcance del Hito 1 (decidido por Santiago 2026-08-04):**
 - **OBLIGATORIO antes de que un integrante entre (gate Hito 2):** profesión al invitar · deploy a la nube (staging) · limpieza de PII y datos de prueba · grants sobre contenido clínico · "olvidé mi clave" self-service.
+- **PRECONDICIÓN LEGAL del Hito 2 (no es construcción; es de Santiago + su abogado):** el **comodato** (préstamo del equipo a los integrantes) está EN PAUSA junto con los contratos con profesionales, hasta resolver el estatus de importación / INVIMA del Biody. Sin comodato firmado no se entregan equipos, y sin equipo no hay mediciones: condiciona la vinculación. Es el ÚNICO de los cinco pendientes regulatorios que toca antes del Hito 2 (los otros cuatro son gate del Hito 3). Ver `DECISIONES_LEGALES.md` y `DATA_GOVERNANCE.md` registro #11.
 - **PUEDE ESPERAR (Hito 3 o después):** agenda · avisos/notificaciones · dashboards · `/comercial`.
 - ⚠️ **RIESGO DEL HITO 2, no pendiente del Hito 3:** si el Hito 2 dura **semanas**, la ausencia de **avisos** empieza a doler (un integrante que no recibe nada cuando un paciente paga tiene que estar revisando a mano). No se construye para el Hito 2, pero queda escrito como riesgo a vigilar: si la revisión se alarga, sube de prioridad.
 
