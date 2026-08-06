@@ -299,6 +299,8 @@ Los documentos de gobernanza y consentimiento de CNV tienen una **fuente de verd
 
 ## Registro de decisiones
 
+> La vista en lenguaje de personas para el asesor jurídico vive en `DECISIONES_LEGALES.md` (índice legal). Esta tabla es la fuente técnica con las leyes citadas; el índice apunta aquí y no la duplica. Al agregar una decisión legal, registrarla aquí (con su razón normativa) y enlazarla desde el índice, no copiar el texto en los dos.
+
 | # | Fecha | Decisión | Razón |
 |---|---|---|---|
 | 1 | 2026-06 | **Mapa de roles:** Responsable (profesional) / Encargado (CNV) en capa asistencial; CNV Responsable autónomo en capa secundaria. | Protege a CNV de ser configurada como prestador de salud o corresponsable clínico. |
