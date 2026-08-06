@@ -10,7 +10,7 @@ import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets"
 
 import { correctEvaluationAction } from "../actions";
 
-// Formulario de CORRECCIÓN de la encuesta (S2, checkpoint 1). Muestra las 62 preguntas agrupadas por
+// Formulario de CORRECCIÓN de la encuesta (S2, checkpoint 1). Muestra todas las preguntas agrupadas por
 // dominio (colapsadas), prefilled con la respuesta actual; el profesional cambia la(s) equivocada(s),
 // escribe el motivo, y confirma viendo la LISTA DE CAMBIOS (para detectar un clic accidental antes de
 // un acto irreversible). Sin cambios reales, no se puede corregir (bloqueo, no error). El mismo
@@ -248,7 +248,7 @@ export function CorrectEvaluationForm({
         </details>
       ))}
 
-      {/* El motivo vive cerca del botón de enviar (no al final tras 62 preguntas): es obligatorio. */}
+      {/* El motivo vive cerca del botón de enviar (no al final tras todas las preguntas): es obligatorio. */}
       <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-4">
         <Label htmlFor="reason" className="text-sm font-medium text-foreground">
           Motivo de la corrección (obligatorio)

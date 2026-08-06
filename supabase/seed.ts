@@ -115,9 +115,10 @@ const DIRECCION_NAME = "Direccion Demo";
 // Gildardo, no em-dash prohibido), o el LE8/DFI fallan en silencio (GILDARDO_QUERIES.md
 // Q3). El resto es el instrumento clinico completo (field_key null). Los guiones largos
 // de las etiquetas D1 se normalizaron a parentesis (CLAUDE.md prohibe em-dash en copy);
-// ninguna OPCION lleva em-dash. Nota (Q3): la encuesta no recolecta d1_9/d1_10/d1_16,
-// asi que los dominios Alimentacion e Hidratacion del LE8 corren degradados, igual que
-// en el prototipo. No se inventa mapeo alguno.
+// ninguna OPCION lleva em-dash. Nota (Q3): la encuesta no recolecta d1_9/d1_10/d1_16 (los
+// campos del LE8, SIN sufijo _i), asi que los dominios Alimentacion e Hidratacion del LE8 corren
+// degradados, igual que en el prototipo. No se inventa mapeo alguno. OJO: son distintos de los
+// d1_N_i del patron (con _i), que SI se recolectan (patternEngine) para el display calcPatron (C9).
 type SurveyQ = {
   key: string; // clave del prototipo (d5_39, d1_1_i, d7_agua...)
   // opcion/opcion_multiple = pills; contador = +/- (cantidades); escala = slider 1-10.
@@ -131,6 +132,10 @@ type SurveyQ = {
   // expectedFieldKeys ni gatea dfi.complete (que mide la completitud del DIAGNOSTICO). Ver BACKLOG y
   // docs/PLAN_FIELDKEYS_TRATAMIENTO.md. Verificado: estos campos no los lee el frozen de diagnostico.
   treatmentEngine?: boolean;
+  // El DISPLAY del patron alimentario lo lee (calcPatron/C9) -> field_key = key, used_in_diagnosis =
+  // FALSE (igual que treatmentEngine): llega al reader del patron pero NO al diagnostico. Son los 15
+  // grupos d1_N_i + los 3 horarios d1f_*_i. calcPatron lee ORDINALES, no el texto de la opcion.
+  patternEngine?: boolean;
 };
 
 // Dominio (D1-D8) por prefijo del d-field, para agrupar visualmente el intake (B7.1).
@@ -157,24 +162,29 @@ const FREQ_OPC = ["Nunca", "1–2 días", "3–4 días", "5–6 días", "Todos l
 const GI_OPC = ["Nunca", "A veces", "Frecuente", "Siempre"];
 
 const SURVEY_QUESTIONS: SurveyQ[] = [
-  // D1 · Patron alimentario (frecuencia de consumo)
-  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_6_i", type: "opcion", text: "Lácteos bajos en grasa / fermentados (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_8_i", type: "opcion", text: "Cereales integrales (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_9_i", type: "opcion", text: "Tubérculos y raíces (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_10_i", type: "opcion", text: "Carnes magras (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_12_i", type: "opcion", text: "Carnes rojas y procesadas (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_13_i", type: "opcion", text: "Azúcares y dulces (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1_14_i", type: "opcion", text: "Comida ultraprocesada (frecuencia de consumo)", options: FREQ_OPC },
-  { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"] },
-  { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"] },
-  { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"] },
+  // D1 · Patron alimentario. 15 grupos de frecuencia (d1_N_i) + 3 horarios (d1f_*_i), alineado al
+  // instrumento vigente v8 (implementa C9, firmado por Gildardo 2026-08-03): carnes rojas (d1_15_i,
+  // neutro) SEPARADA de procesadas (d1_12_i, riesgo); d1_10 = "Carnes blancas". Todos con
+  // patternEngine: field_key = key, used_in_diagnosis=false, para alimentar el DISPLAY calcPatron
+  // (no el diagnostico). calcPatron lee el ORDINAL de la opcion (FREQ_OPC), no el texto.
+  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_6_i", type: "opcion", text: "Lácteos y fermentados (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_8_i", type: "opcion", text: "Cereales integrales (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_9_i", type: "opcion", text: "Tubérculos y raíces (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_13_i", type: "opcion", text: "Azúcares y dulces (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"], patternEngine: true },
+  { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"], patternEngine: true },
+  { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"], patternEngine: true },
   // D2 · Percepcion corporal
   { key: "d2_19", type: "opcion", text: "¿Cómo percibe su cuerpo actualmente?", options: ["Muy delgado/a", "Delgado/a", "Normal", "Sobrepeso", "Obesidad"], engine: true },
   { key: "d2_20", type: "opcion", text: "¿Qué tan satisfecho/a está con su peso?", options: ["Muy insatisfecho/a", "Insatisfecho/a", "Neutral", "Satisfecho/a"], engine: true },
@@ -435,7 +445,9 @@ async function main() {
   );
   check(
     "survey_versions",
-    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 1 }, { onConflict: "id" })).error,
+    // version_number 2: la encuesta avanzo al instrumento de 15 grupos (C9). Contenido nuevo que
+    // cambia lo que responde el paciente -> version nueva (regla de versionado, BACKLOG 2026-08-06).
+    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 2 }, { onConflict: "id" })).error,
   );
   // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
   // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
@@ -460,10 +472,11 @@ async function main() {
     survey_version_id: SURVEY_VERSION_ID,
     question_text: q.text,
     question_type: q.type,
-    // field_key si lo lee CUALQUIER motor (diagnostico o tratamiento); used_in_diagnosis solo si lo
-    // lee el DIAGNOSTICO. Los de tratamiento (treatmentEngine) reciben field_key pero NO cuentan para
-    // dfi.complete (que mide completitud del diagnostico, no de la encuesta). Ver PLAN_FIELDKEYS_TRATAMIENTO.
-    field_key: q.engine || q.treatmentEngine ? q.key : null,
+    // field_key si lo lee CUALQUIER motor o el display del patron (diagnostico, tratamiento o
+    // calcPatron); used_in_diagnosis SOLO si lo lee el DIAGNOSTICO. Los de tratamiento (treatmentEngine)
+    // y los del patron (patternEngine) reciben field_key pero NO cuentan para dfi.complete (que mide
+    // completitud del diagnostico, no de la encuesta). Ver PLAN_FIELDKEYS_TRATAMIENTO.
+    field_key: q.engine || q.treatmentEngine || q.patternEngine ? q.key : null,
     section: sectionFor(q.key),
     order_index: i + 1,
     data_class: "clinical" as const, // toda respuesta de salud es dato clinico
@@ -606,7 +619,7 @@ async function main() {
   console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
   console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v1 (${SURVEY_QUESTIONS.length} preguntas reales D1-D8, ${SURVEY_QUESTIONS.filter((q) => q.engine).length} con field_key), 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v2 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 2 nutraceuticos`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
   console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }

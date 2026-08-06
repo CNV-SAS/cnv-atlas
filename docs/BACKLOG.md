@@ -411,6 +411,16 @@ de 15 grupos); se alinea cuando se coteje D6. Aparte: `d7_agua` SÍ está en la 
 el supuesto de "d7_agua sin capturar" del encabezado de engine.dfi.js; falta ver si lleva field_key (es
 pieza de C1, no de C9).
 
+**Implementado y verificado (2026-08-06, sub-tarea 2 del plan alimentario):** `seed.ts` alineado al v8
+(d1_12 partido en procesados, d1_15_i "Carnes rojas" agregado, y 4 etiquetas alineadas: d1_6 "Lácteos y
+fermentados", d1_10 "Carnes blancas", d1_12, d1_14 "Ultraprocesados (PCBU)"), field_keys de los 15
+grupos + 3 horarios con `used_in_diagnosis=false` (flag `patternEngine`), versión subida a 2. **NOTA:
+d1_6 y d1_14 NO estaban en la instrucción explícita de C9; se incluyen como ALINEACIÓN del instrumento
+al vigente (misma entrega v8), no como decisión propia de contenido.** Verificado contra la BD (apply
+dirigido no destructivo): 18 field_keys `used_in_diagnosis=false`, 13 de diagnóstico intactos, d1_15_i
+con 5 opciones, las 15 preguntas con el mismo FREQ_OPC; candado de acoplamiento verde. PENDIENTE: reader
+del ordinal (sub-tarea 3) + render (sub-tarea 4).
+
 ## Decisiones legales del dictamen de acceso a datos (2026-08-06) — a PLAN_GRANTS y Política de Seguridad
 
 Ratificadas por Santiago tras el dictamen (`docs/entregas/RESPUESTA_CONSULTA_ACCESO_DATOS.md`):
