@@ -459,6 +459,15 @@
 
 ---
 
+## Q29 · Las carnes rojas (grupo 15) no entran en el promedio de la tarjeta "Moderados" del patrón alimentario
+
+- **Fecha:** 2026-08-06. **Estado:** ABIERTA. Es display de tu prototipo; lo portamos tal cual y preguntamos.
+- **Evidencia:** en la pantalla del patrón alimentario del v8, la tarjeta de resumen de "Moderados" promedia los grupos [8, 9, 10] (cereales integrales, tubérculos, carnes blancas), pero la grilla de los quince grupos muestra los quince, incluido el 15 (carnes rojas), cuya categoría ES neutro/moderado. calcPatron también incluye el 15 en el grupo neutro ([8, 9, 10, 15]). O sea: las carnes rojas cuentan en la matemática y en la grilla, pero NO en la tarjeta de resumen. Un paciente que come carne roja todos los días lo ve en la grilla, y la tarjeta de "Moderados" no lo refleja. Lo portamos verbatim (regla: tu código especifica, la discrepancia se registra, no se resuelve en silencio).
+
+**Para Gildardo (breve):** Al portar la pantalla del patrón alimentario vimos que las carnes rojas (el grupo 15 que agregaste) aparecen en la grilla de los quince grupos, pero no entran en el promedio de la tarjeta de "Moderados", que sigue calculándose sobre los tres grupos anteriores. Lo portamos tal como está en tu archivo. ¿Es deliberado, o el grupo 15 debería entrar también en esa tarjeta?
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.

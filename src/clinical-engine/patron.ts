@@ -1,4 +1,4 @@
-import { calcPatron, FREQ_OPC, FREQ_SUP, type PatronResult } from "./frozen/engine.patron.js";
+import { calcPatron, FREQ_GROUPS, FREQ_OPC, FREQ_SUP, type PatronCat, type PatronResult } from "./frozen/engine.patron.js";
 
 // READER DEL PATRON ALIMENTARIO (C9) — compute-at-view-time, NO se sella.
 //
@@ -30,7 +30,15 @@ for (const k of GROUP_KEYS) CANON[k] = FREQ_OPC;
 for (const s of FREQ_SUP) CANON[s.key] = s.opts;
 const PATRON_KEYS = Object.keys(CANON); // 15 grupos + 3 horarios
 
+// Los field_key que el patron consume (15 grupos + 3 horarios); el llamador filtra las respuestas por
+// esta lista y detecta "anterior a C9" (ninguno declarado en la version).
+export const PATRON_FIELD_KEYS: string[] = PATRON_KEYS;
+
 export type PatronAnswer = { fieldKey: string; answerValue: string | null };
+
+// Un grupo para la grilla del render (los 15, en el orden de FREQ_GROUPS): su ordinal (0-4) o null si
+// no se respondio o no se pudo leer. El render mapea el ordinal a la etiqueta abreviada.
+export type PatronGrupoView = { n: number; cat: PatronCat; label: string; ordinal: number | null };
 
 export type PatronResolution =
   // La version de la encuesta no captura el patron (evaluacion ANTERIOR a C9).
@@ -40,11 +48,11 @@ export type PatronResolution =
   | { status: "sin_respuestas" }
   // Al menos una respuesta contestada no coincide con ninguna opcion canonica: DEFECTO del sistema. NO
   // se calcula el score (seria un numero sobre menos de 15 grupos, sin forma de saber que esta
-  // incompleto). offenders = las que no se pudieron leer; leidos = los grupos que si (el render puede
-  // mostrarlos, pero sin puntaje).
-  | { status: "ilegible"; offenders: { fieldKey: string; value: string }[]; leidos: { fieldKey: string; ordinal: number }[] }
+  // incompleto). offenders = las que no se pudieron leer; grupos = los 15 con su ordinal (null = no
+  // leido) para que el render muestre lo que si se leyo, sin puntaje.
+  | { status: "ilegible"; offenders: { fieldKey: string; value: string }[]; grupos: PatronGrupoView[] }
   // Respondio al menos un grupo: el patron calculado (grupos sin responder -> -1, diseno de Gildardo).
-  | { status: "ok"; patron: PatronResult; respondidos: number };
+  | { status: "ok"; patron: PatronResult; respondidos: number; grupos: PatronGrupoView[] };
 
 // declaredPatronKeys: los field_key de patron que DECLARA la version de la encuesta de esta evaluacion
 // (para distinguir "anterior a C9" de "no respondio"). answers: respuestas con field_key de patron.
@@ -58,7 +66,6 @@ export function resolvePatron(
   const byKey = new Map(answers.map((a) => [a.fieldKey, a.answerValue]));
   const enc: Record<string, number> = {};
   const offenders: { fieldKey: string; value: string }[] = [];
-  const leidos: { fieldKey: string; ordinal: number }[] = [];
   let respondidos = 0;
 
   for (const k of PATRON_KEYS) {
@@ -70,13 +77,18 @@ export function resolvePatron(
       continue;
     }
     enc[k] = ordinal;
-    if (GROUP_SET.has(k)) {
-      respondidos++; // solo los 15 grupos cuentan como "respondidos"; los horarios no
-      leidos.push({ fieldKey: k, ordinal });
-    }
+    if (GROUP_SET.has(k)) respondidos++; // solo los 15 grupos cuentan; los horarios no
   }
 
-  if (offenders.length > 0) return { status: "ilegible", offenders, leidos };
+  // Los 15 grupos, en el orden de FREQ_GROUPS, con su ordinal o null: la grilla que muestra el render.
+  const grupos: PatronGrupoView[] = FREQ_GROUPS.map((g) => ({
+    n: g.n,
+    cat: g.cat,
+    label: g.label,
+    ordinal: enc[`d1_${g.n}_i`] ?? null,
+  }));
+
+  if (offenders.length > 0) return { status: "ilegible", offenders, grupos };
   if (respondidos === 0) return { status: "sin_respuestas" };
-  return { status: "ok", patron: calcPatron(enc), respondidos };
+  return { status: "ok", patron: calcPatron(enc), respondidos, grupos };
 }

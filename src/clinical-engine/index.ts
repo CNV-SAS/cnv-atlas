@@ -25,7 +25,7 @@ export { abordajeProfesional } from "./abordaje";
 // Patron alimentario (C9): reader que resuelve las respuestas de encuesta al enc de calcPatron y
 // devuelve un estado (no_capturado/sin_respuestas/ilegible/ok). DISPLAY compute-at-view-time, no se
 // sella; no alimenta el diagnostico mientras C1 siga apagado. Ver patron.ts.
-export { resolvePatron, type PatronResolution, type PatronAnswer } from "./patron";
+export { resolvePatron, PATRON_FIELD_KEYS, type PatronResolution, type PatronAnswer, type PatronGrupoView } from "./patron";
 export type { PatronResult, PatronCat, PatronGroup } from "./frozen/engine.patron.js";
 export { FREQ_GROUPS, catLabel, catColor } from "./frozen/engine.patron.js";
 // Normalizador canonico de sexo (M/F, fail-loud): el MISMO borde que usa el motor. La UI lo reusa

@@ -26,6 +26,7 @@ import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-di
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
+import { resolvePatronView } from "@/modules/diagnoses/data/patron-view";
 import {
   type EfrStateRef,
   getEfrStatesForModel,
@@ -199,6 +200,10 @@ export default async function ResultadosEvaluacionPage({
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
 
+  // Patron alimentario (C9, D1): estado computado en vista desde la encuesta ya leida (no se sella; no
+  // alimenta el diagnostico mientras C1 siga apagado). Sin encuesta -> no_capturado.
+  const patron = resolvePatronView(entrySurvey ?? []);
+
   // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se computa en tiempo de vista
   // (clinical-engine/abordaje.ts), no se sella. Depende de la profesion del que mira. Solo se computa
   // el texto cuando el snapshot es compatible (si no, EvaluationResults ya retorna el aviso de
@@ -333,7 +338,7 @@ export default async function ResultadosEvaluacionPage({
           />
           {/* Diagnostico de encuesta (D1-D8): contenido de otra naturaleza, detras de un clic,
               para que no compita con el nucleo. Placeholder hasta que Gildardo lo entregue. */}
-          <SurveyDiagnosisSection />
+          <SurveyDiagnosisSection patron={patron} />
           {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />

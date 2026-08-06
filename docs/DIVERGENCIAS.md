@@ -23,6 +23,14 @@
 - El prototipo deja al admin verlas en solo-lectura; Atlas no le amplía esa visibilidad sobre contenido clínico.
 - Por qué: la fidelidad al prototipo aplica a la FORMA, no a los permisos (separación operativo/clínico). Ver ARCHITECTURE "Regla frente al HTML de Gildardo".
 
+**DIV-4 · El diagnóstico de encuesta (D1-D8) usa COLAPSABLES, no las sub-pestañas del prototipo (C9).**
+- El v8 navega los dominios D1-D8 con una sub-barra de pestañas (`encSub`); Atlas los presenta como secciones colapsables (D1 abierta, D2-D8 cerradas).
+- Por qué: decisión de UI previa (`survey-diagnosis-section.tsx`), no se rehace la navegación al portar el patrón alimentario. Es una divergencia de CONTENEDOR; la organización INTERNA del patrón (tarjetas de categoría + grilla, colores y etiquetas) sí es fiel al v8. Deliberada, no un descuido.
+
+**DIV-5 · El patrón alimentario NO muestra el puntaje ni el nivel (C9).**
+- calcPatron produce un score 0-100 y un nivel (Óptimo/Adecuado/Mejorable/Deficiente), pero ni el v8 ni Atlas los muestran: la pantalla D1 es cualitativa (categorías + grilla de frecuencias).
+- Por qué: (a) el v8 no los muestra (fidelidad); (b) hoy el score alimenta el índice contextual (ICEC), que está APAGADO (C1, ver DIV-2), así que mostrar un número que no entra a ningún cálculo sería exponer un dato sin uso. No es que decidamos ocultarlo: el v8 no lo muestra y hoy no significa nada operativo. **Disparador de revisión:** cuando C1 se active y el score empiece a mover la edad bioeléctrica, se revisa con Gildardo si debe verse.
+
 ---
 
 *Cuando aparezca una divergencia nueva, entra aquí con su `DIV-N`, apuntando a la decisión que la autoriza. Si una deja de ser divergencia (Gildardo absorbe el cambio en su archivo), se retira con nota.*

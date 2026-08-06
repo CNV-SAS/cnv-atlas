@@ -42,6 +42,8 @@ describe("resolvePatron: los cuatro estados", () => {
       expect(r.respondidos).toBe(15);
       expect(r.patron.score).toBe(82);
       expect(r.patron.nivel.l).toBe("Óptimo");
+      expect(r.grupos).toHaveLength(15); // los 15 para la grilla
+      expect(r.grupos.every((g) => g.ordinal !== null)).toBe(true);
     }
   });
 
@@ -54,7 +56,9 @@ describe("resolvePatron: los cuatro estados", () => {
     expect(r.status).toBe("ilegible");
     if (r.status === "ilegible") {
       expect(r.offenders).toContainEqual({ fieldKey: "d1_3_i", value: "1-2 días" });
-      expect(r.leidos.length).toBe(14); // los otros 14 grupos SI se leyeron (para el render)
+      // los otros 14 grupos SI se leyeron (grupos con ordinal != null); d1_3_i quedo en null
+      expect(r.grupos.filter((g) => g.ordinal !== null).length).toBe(14);
+      expect(r.grupos.find((g) => g.n === 3)?.ordinal).toBe(null);
       expect(r).not.toHaveProperty("patron"); // no se calcula el score sobre datos incompletos
     }
   });

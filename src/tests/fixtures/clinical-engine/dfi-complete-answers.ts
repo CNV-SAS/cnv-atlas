@@ -26,6 +26,30 @@ export const DFI_COMPLETE_ANSWERS: Record<string, Pick> = {
   d5_39: { multi: true, text: "Ninguna" }, // diagnosticos personales: Ninguna
   d8_61: { multi: false, idx: 0 }, // acceso a alimentos frescos: Si, siempre
   d8_62: { multi: false, idx: 0 }, // suficiente comida en el hogar: No, nunca
+
+  // Patron alimentario (C9): los 15 grupos (idx sobre FREQ_OPC: 0=Nunca .. 4=Todos los dias) + 3
+  // horarios. Alimentan el DISPLAY del patron (used_in_diagnosis=false); NO mueven dfi.complete ni el
+  // golden del DFI (calcLE8 no lee d1_N_i). Perfil COHERENTE con el paciente demo (hombre 54a, IMC 27.5
+  // sobrepeso leve, sedentario, con acceso a alimentos, insatisfecho con su peso): dieta moderada en
+  // todo, con carne roja y dulces frecuentes, para que la pantalla muestre un patron realista a mejorar.
+  d1_1_i: { multi: false, idx: 2 }, // Verduras: 3-4 d/sem
+  d1_2_i: { multi: false, idx: 2 }, // Frutas: 3-4 d/sem
+  d1_3_i: { multi: false, idx: 2 }, // Leguminosas: 3-4 d/sem
+  d1_4_i: { multi: false, idx: 1 }, // Pescado: 1-2 d/sem
+  d1_5_i: { multi: false, idx: 2 }, // Grasas saludables: 3-4 d/sem
+  d1_6_i: { multi: false, idx: 2 }, // Lacteos y fermentados: 3-4 d/sem
+  d1_7_i: { multi: false, idx: 3 }, // Huevos: 5-6 d/sem
+  d1_8_i: { multi: false, idx: 2 }, // Cereales integrales: 3-4 d/sem
+  d1_9_i: { multi: false, idx: 3 }, // Tuberculos: 5-6 d/sem
+  d1_10_i: { multi: false, idx: 2 }, // Carnes blancas: 3-4 d/sem
+  d1_15_i: { multi: false, idx: 3 }, // Carnes rojas: 5-6 d/sem (aparece en la grilla; ver inconsistencia Moderados)
+  d1_11_i: { multi: false, idx: 2 }, // Cereales refinados: 3-4 d/sem
+  d1_12_i: { multi: false, idx: 2 }, // Carnes procesadas: 3-4 d/sem
+  d1_13_i: { multi: false, idx: 3 }, // Azucares y dulces: 5-6 d/sem
+  d1_14_i: { multi: false, idx: 2 }, // Ultraprocesados: 3-4 d/sem
+  d1f_sal_i: { multi: false, idx: 1 }, // Sal extra: Rara vez
+  d1f_des_i: { multi: false, idx: 0 }, // Desayuna: Si, todos los dias
+  d1f_noche_i: { multi: false, idx: 2 }, // Cena: entre 8 y 9 pm
 };
 
 // Resuelve el value a guardar (option_text, o JSON de [option_text] si es multi) dado el catalogo de
