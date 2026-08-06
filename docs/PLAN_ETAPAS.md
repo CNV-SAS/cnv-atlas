@@ -86,6 +86,8 @@
 - ⬜ **Cuatro bloques de cotejo visual** contra el HTML vigente: encuesta, evaluación, diagnóstico, tratamiento (fidelidad al modelo clínico). Ver `BACKLOG.md` "Pulido de fidelidad".
 - ⬜ **Rediseño gráfico transversal** de toda la app, de una sola vez (después de cablear toda la funcionalidad). Ver `BACKLOG.md` "Rediseño gráfico coherente".
 
+**Orden acordado del carril construible sin Gildardo (2026-08-05):** Plan alimentario (destraba C1) → T3 nutracéuticos → los 4 cotejos visuales. **Siguiente candidato TRAS los cotejos:** D-009 (remisión como acción registrable, tabla + audit + redacción del frozen). Se pospuso a propósito: arreglar algo que se ve mal (T3, cotejos) rinde más que agregar una capacidad nueva; queda anotado para que no se pierda.
+
 ---
 
 ## Resumen para decidir orden y alcance
