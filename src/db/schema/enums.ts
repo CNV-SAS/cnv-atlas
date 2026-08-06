@@ -131,7 +131,8 @@ export const consentType = pgEnum("consent_type_enum", [
 // para acceder a las notas narrativas. grant_type distingue el nivel de acceso;
 // status es el ciclo de vida (la expiracion NO es un estado: se evalua por
 // expires_at). reason_category separa la finalidad, ambas cubiertas por el
-// numeral 4 del Anexo 3 v1.6.
+// numeral 4 del Consentimiento de ATLAS v1.6 (autorizacion del titular) y las
+// Clausulas 3 y 17 del Anexo 3 v1.0 (instruccion del Responsable y auditoria).
 export const accessGrantType = pgEnum("access_grant_type", [
   "notes_pseudonymous", // Nivel (b): narrativa seudonimizada, sin identidad
   "notes_identified", // Nivel (c): identificado, por paciente puntual
