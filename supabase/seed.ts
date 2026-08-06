@@ -86,8 +86,20 @@ function surveyUuid(...parts: string[]): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 const DEVICE_IDS = ["66666666-6666-6666-6666-666666666601", "66666666-6666-6666-6666-666666666602"];
-const NUTRA_IDS = ["77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702"];
-const INVENTORY_IDS = ["88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802"];
+// 10 nutraceuticos VITACELLEBIS. Los 2 primeros ids REUSAN los placeholders viejos (Demo A/B) para no
+// romper referencias del demo (treatment_nutraceuticals / transaction_items) sin migrar datos.
+const NUTRA_IDS = [
+  "77777777-7777-7777-7777-777777777701", "77777777-7777-7777-7777-777777777702",
+  "77777777-7777-7777-7777-777777777703", "77777777-7777-7777-7777-777777777704",
+  "77777777-7777-7777-7777-777777777705", "77777777-7777-7777-7777-777777777706",
+  "77777777-7777-7777-7777-777777777707", "77777777-7777-7777-7777-777777777708",
+  "77777777-7777-7777-7777-777777777709", "77777777-7777-7777-7777-777777777710",
+];
+// Inventario demo solo para los 4 en_consultorio (los solo_tienda no tienen stock del nutricionista).
+const INVENTORY_IDS = [
+  "88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802",
+  "88888888-8888-8888-8888-888888888803", "88888888-8888-8888-8888-888888888804",
+];
 const PATIENT_ID = "99999999-9999-9999-9999-999999999901";
 const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
 // Link de encuesta inicial (reusable) del profesional demo, para smoke del intake.
@@ -511,27 +523,53 @@ async function main() {
     ).error,
   );
 
-  // 8. 2 nutraceuticos con inventario.
+  // 8. Catalogo VITACELLEBIS: 10 productos. GRAFIA del nombre = registro sanitario (INVIMA), no la
+  // tienda: donde difieran, manda el registro ("MULTICELL BASE" sin guion, no "MULTI-CELL BASE" de la
+  // tienda). Precio, porcion y registro salen de la tienda (confirmados por Santiago). Disponibilidad
+  // comercial (dato del producto, distinto del stock): 4 en_consultorio, 6 solo_tienda.
+  const LIQ = { presentation: "liquida", serving_size: "30 mL", unit: "mL", unit_price: "107100", sanitary_registration: "RSA-3987-2026" };
+  const POL = { presentation: "polvo", unit: "g", unit_price: "166600", sanitary_registration: "NSA-3618-2026" };
+  const VITACELLEBIS = [
+    { id: NUTRA_IDS[0], name: "OMEGA COMPLEX", indication: "Antiinflamatorio y cardioprotector", composition: "Omega 3, arándano, té verde, betaglucanos de avena", availability: "en_consultorio", ...LIQ },
+    { id: NUTRA_IDS[1], name: "MULTICELL BASE", indication: "Micronutrición basal", composition: "Calostro bovino fortificado", availability: "en_consultorio", ...LIQ },
+    { id: NUTRA_IDS[2], name: "CURCUMIN BIOACTIV", indication: "Modulación inflamatoria", composition: "Cúrcuma, jengibre, pimienta negra, selenio, zinc", availability: "en_consultorio", ...LIQ },
+    { id: NUTRA_IDS[3], name: "D3-K2 OSTEO", indication: "Metabolismo óseo", composition: "Calcio, magnesio, vitamina D, K2", availability: "en_consultorio", ...POL, serving_size: "10 g" },
+    { id: NUTRA_IDS[4], name: "BERBERINA METABO", indication: "Metabolismo glucosa-insulina", composition: "Arándano, inulina, canela, té verde, cromo", availability: "solo_tienda", ...LIQ },
+    { id: NUTRA_IDS[5], name: "MITO-Q10 PLUS", indication: "Función mitocondrial", composition: "Remolacha, espinaca, jengibre, ajo negro, complejo B", availability: "solo_tienda", ...LIQ },
+    { id: NUTRA_IDS[6], name: "HEPA-DETOX", indication: "Hepatoprotección", composition: "Alcachofa, ajo negro, cisteína, colina", availability: "solo_tienda", ...LIQ },
+    { id: NUTRA_IDS[7], name: "ADAPTO-STRESS", indication: "Eje HPA (estrés)", composition: "L-teanina, inositol, colina, omega-3", availability: "solo_tienda", ...LIQ },
+    { id: NUTRA_IDS[8], name: "SARCO-PROTECT", indication: "Masa muscular", composition: "BCAA, magnesio, zinc, complejo B", availability: "solo_tienda", ...POL, serving_size: "25 g" },
+    { id: NUTRA_IDS[9], name: "GUT-IMMUNE PRO", indication: "Barrera intestinal", composition: "Inulina, aloe vera, probióticos, vitamina A", availability: "solo_tienda", ...POL, serving_size: "20 g" },
+  ];
   check(
     "nutraceuticals",
     (
       await supabase.from("nutraceuticals").upsert(
-        [
-          { id: NUTRA_IDS[0], organization_id: ORG_ID, name: "Nutraceutico Demo A", description: "Placeholder", unit: "capsula", unit_price: "50000" },
-          { id: NUTRA_IDS[1], organization_id: ORG_ID, name: "Nutraceutico Demo B", description: "Placeholder", unit: "sobre", unit_price: "75000" },
-        ],
+        VITACELLEBIS.map((p) => ({
+          id: p.id,
+          organization_id: ORG_ID,
+          name: p.name,
+          description: p.indication, // el catalogo actual muestra description; se llena con la indicacion
+          indication: p.indication,
+          composition: p.composition,
+          presentation: p.presentation,
+          serving_size: p.serving_size,
+          unit: p.unit,
+          unit_price: p.unit_price,
+          sanitary_registration: p.sanitary_registration,
+          commercial_availability: p.availability,
+        })),
         { onConflict: "id" },
       )
     ).error,
   );
+  // Inventario demo solo para los 4 en_consultorio (los solo_tienda no llevan stock del nutricionista).
+  const enConsultorio = VITACELLEBIS.filter((p) => p.availability === "en_consultorio");
   check(
     "nutraceutical_inventory",
     (
       await supabase.from("nutraceutical_inventory").upsert(
-        [
-          { id: INVENTORY_IDS[0], nutraceutical_id: NUTRA_IDS[0], stock_quantity: 100 },
-          { id: INVENTORY_IDS[1], nutraceutical_id: NUTRA_IDS[1], stock_quantity: 60 },
-        ],
+        enConsultorio.map((p, i) => ({ id: INVENTORY_IDS[i], nutraceutical_id: p.id, stock_quantity: [100, 80, 60, 40][i] ?? 50 })),
         { onConflict: "id" },
       )
     ).error,
@@ -619,7 +657,7 @@ async function main() {
   console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
   console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);
   console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
-  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v2 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 2 nutraceuticos`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v2 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
   console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
   console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
 }

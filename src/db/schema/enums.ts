@@ -138,6 +138,14 @@ export const accessGrantType = pgEnum("access_grant_type", [
   "notes_identified", // Nivel (c): identificado, por paciente puntual
 ]);
 
+// Disponibilidad COMERCIAL del nutraceutico (dato del PRODUCTO, no del stock). Distinto de
+// nutraceutical_inventory.stock_quantity (cantidad): un producto puede ser en_consultorio con stock 0.
+export const nutraceuticalAvailability = pgEnum("nutraceutical_availability", [
+  "en_consultorio", // el nutricionista lo tiene fisico para entregar
+  "solo_tienda", // solo se compra en la tienda de CNV (el paciente lo adquiere online)
+  "no_disponible", // aun no disponible (para el futuro)
+]);
+
 export const accessGrantStatus = pgEnum("access_grant_status", [
   "pending",
   "approved",
