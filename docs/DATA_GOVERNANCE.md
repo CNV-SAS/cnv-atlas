@@ -293,7 +293,7 @@ Los documentos de gobernanza y consentimiento de CNV tienen una **fuente de verd
 4. Ratificación de los periodos de retención por categoría.
 5. Ratificación del estándar de anonimización (k ≥ 5).
 6. Aplicabilidad o no del RNBD (umbral de activos: 100.000 UVT ≈ COP 5.200M para 2026).
-7. Estatus INVIMA del equipo Biody BIS y sus implicaciones para el comodato (en pausa por revisión jurídica en curso).
+7. Estatus INVIMA del equipo Biody BIS. La implicación sobre el comodato se RESOLVIÓ (comodato y contratos firmados, 2026-08, ver registro #11); queda, si aplica, la confirmación del estatus regulatorio del equipo en sí.
 
 ---
 
@@ -313,7 +313,7 @@ Los documentos de gobernanza y consentimiento de CNV tienen una **fuente de verd
 | 8 | 2026-06 | **Lenguaje estandarizado:** Atlas "calcula, clasifica, estima"; el profesional "diagnostica"; Biody BIS es equipo de "composición corporal / bienestar funcional"; sin claims de enfermedad. | Protección regulatoria (INVIMA, ATLAS como no-dispositivo médico); autonomía profesional. |
 | 9 | 2026-06 | **Biody Manager / Connect aloja en Francia (Aminogram, HDS).** Transmisión válida por DPA con encargado; Francia (UE) en lista de nivel adecuado. | Hallazgo al cruzar con API_INTEGRATIONS. Ajustado en Anexo 3 v1.1 y consentimiento v1.1. |
 | 10 | 2026-06 | **Consentimiento por capas:** autorizaciones necesarias separadas de opcionales. Datos sensibles: facultativos (art. 6 Ley 1581). | Validez del consentimiento libre; exigencia legal expresa. |
-| 11 | 2026-06 | **Comodato y contratos con profesionales: en pausa** hasta resolución jurídica del estatus de importación del Biody BIS. | Equipos sin declaración de importación; revisión con asesor jurídico en curso. |
+| 11 | 2026-06 · **resuelto 2026-08** | **Comodato y contratos con profesionales: FIRMADOS.** La pausa de junio (por el estatus de importación del Biody) se resolvió; el comodato y los documentos legales están y varios integrantes ya firmaron. NO condiciona el Hito 2 (confirmado por Santiago 2026-08-06). | Se resolvió con el asesor jurídico; la pausa de junio ya no aplica. |
 | 12 | 2026-06 | **Speech CNV:** operar bajo finalidad no médica alineada con el fabricante (composición corporal / bienestar funcional), asumiendo riesgo residual del discurso de analítica/ciencia. Ajuste de web pendiente. | Decisión de junta/equipo CNV. |
 | 13 | 2026-07 | **Investigación restringida a datos seudonimizados** (nunca identificables) y acotada a datos clínicos/funcionales estructurados, excluyendo notas en texto libre del profesional salvo autorización adicional. | Minimización (Ley 1581); coherencia con Anexo 3 v1.5 y Consentimiento v1.4. |
 | 14 | 2026-07 | **Custodia de HC:** obligación legal es del Integrante; CNV solo aloja como Encargado mientras dura el contrato, con portabilidad garantizada a la terminación. | Evita que CNV fuerce al Integrante a incumplir su deber de custodia (Res. 1995/839). |

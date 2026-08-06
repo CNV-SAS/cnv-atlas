@@ -22,7 +22,7 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 2. **Plazo para notificar un incidente de seguridad a la autoridad** (referencia usada: 15 días hábiles a la SIC). Sin ratificar.
 3. **Estándar de anonimización** para lo que sale a investigación (referencia usada: que ningún dato pueda aislar a menos de 5 personas). El dictamen concedió que quitar el nombre no basta, pero no ratificó este umbral concreto.
 4. **Si CNV debe inscribirse en el Registro Nacional de Bases de Datos** (depende de un umbral de tamaño de la empresa). Sin evaluar por el jurídico.
-5. **Estatus de importación del equipo Biody y sus efectos sobre los contratos de comodato** (en pausa por revisión jurídica en curso).
+5. **Estatus del equipo Biody ante el INVIMA.** La pausa sobre el comodato se RESOLVIÓ (comodato y contratos firmados, 2026-08; los integrantes ya firman); queda, si aplica, la confirmación del estatus regulatorio del equipo en sí.
 
 **B. Lo que el dictamen de acceso deja para el asesor externo (2026-08-06):**
 6. **La conclusión de la Pregunta 1:** conservar el nivel de acceso seudonimizado (ver dato clínico sin identidad) en lugar de eliminarlo, porque el consentimiento del paciente le da un alcance propio. Es el punto donde el dictamen se apartó de la propuesta del equipo.
@@ -32,7 +32,7 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 **C. Lo que el jurídico debería mirar y hoy solo está del lado clínico:**
 9. **Qué se le comunica al paciente sobre su salud y cómo** (categoría Comunicación al paciente). Está decidido como asunto clínico; el jurídico tiene algo que decir sobre comunicar, o retener, información de salud a su titular.
 
-**Naturaleza y momento de lo pendiente (importa para el orden de construcción).** Las cinco confirmaciones abiertas de (A) son de CUMPLIMIENTO REGULATORIO (registro de bases de datos, notificación de incidentes, estándar de anonimización, acuerdos con proveedores, estatus del equipo ante el INVIMA), no de diseño del sistema. **Ninguna bloquea construir.** Bloquean OPERAR CON PACIENTES REALES, que es el Hito 3; el momento de resolverlas es antes del Hito 3, no del Hito 2. **Excepción a vigilar:** la del INVIMA y el comodato puede tocar antes. El comodato (préstamo del equipo de medición) es parte de cómo se vinculan los integrantes, y está EN PAUSA junto con "los contratos con profesionales" hasta resolver el estatus de importación del equipo; eso cae en el Hito 2. Si un integrante necesita el equipo para operar, esa pausa condiciona su vinculación. Ver `DATA_GOVERNANCE.md` registro #11 y pendiente #5.
+**Naturaleza y momento de lo pendiente (importa para el orden de construcción).** Las cinco confirmaciones abiertas de (A) son de CUMPLIMIENTO REGULATORIO (registro de bases de datos, notificación de incidentes, estándar de anonimización, acuerdos con proveedores, estatus del equipo ante el INVIMA), no de diseño del sistema. **Ninguna bloquea construir, y ninguna bloquea el Hito 2:** bloquean OPERAR CON PACIENTES REALES, que es el Hito 3. Se revisó si alguna tocaba antes: la del comodato parecía condicionar el Hito 2 (el comodato es cómo se vinculan los integrantes), pero está RESUELTA (comodato y contratos firmados, 2026-08; ver `DATA_GOVERNANCE.md` registro #11). Así que las cinco son gate del Hito 3.
 
 ---
 
