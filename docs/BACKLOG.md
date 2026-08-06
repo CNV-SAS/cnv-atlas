@@ -399,6 +399,14 @@ responde), así que por la regla de versionado de arriba EXIGE versión nueva y 
 handoff ("las 15 preguntas ya existen en el seed"): existen 14 y una es fusión. Entra también al Barrido
 de DIVERGENCIAS.
 
+**Barrido completo semilla vs QMAP_ENC del v8 (2026-08-06, los 8 dominios):** el v8 tiene DOS claves que
+la semilla no: `d1_15_i` (carne roja, arriba) y `d6_qx` "Antecedentes quirúrgicos (digestivos /
+metabólicos)" (D6, num 63). La semilla no tiene ninguna clave que el v8 no tenga. `d6_qx` NO lo lee
+calcPatron ni el diagnóstico (es registro clínico), así que queda FUERA del alcance de C9 (solo el patrón
+de 15 grupos); se alinea cuando se coteje D6. Aparte: `d7_agua` SÍ está en la semilla (contador), contra
+el supuesto de "d7_agua sin capturar" del encabezado de engine.dfi.js; falta ver si lleva field_key (es
+pieza de C1, no de C9).
+
 ## Higiene del BACKLOG
 - **[HECHO 2026-08-04] Barrido de entradas stale + fechas.** Se recorrió el BACKLOG entero cotejando cada entrada abierta contra el código (git log + grep). **Encontradas 7 entradas escritas como pendientes que YA estaban hechas** (3 motores de tratamiento, telómeros/CA-1, mecanismo de modificaciones autorizadas, rótulo EB-BIS, 3 cortes MCCB, field_keys d3_29/d5_40, trigger_type completar, rango antropométrico) + 3 parciales (hook de secretos = solo el escáner; P0 Parte 2 = núcleo `eb-trajectory.ts` construido, falta cablear; texto otras profesiones = moot). Todas cerradas con su commit arriba; las pendientes reales quedaron con "desde cuándo". La precondición de PHQ-9/GAD-7 se corrigió (no aplica: Atlas no captura esos instrumentos). **Lección registrada: se basó un replanteo entero en entradas desactualizadas; el BACKLOG hay que cotejarlo contra el código, no leerlo como verdad.**
 
