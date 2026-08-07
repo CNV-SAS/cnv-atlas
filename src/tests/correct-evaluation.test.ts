@@ -371,7 +371,12 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
 
   it("rollback: si el pipeline falla a mitad, revierte entero (vieja intacta, sin huerfana)", async () => {
     const oldId = await makeEvaluationWithDiagnosis("ROLLBACK");
-    const evalsBefore = (await db.select({ id: schema.evaluations.id }).from(schema.evaluations)).length;
+    // Se cuentan SOLO las evaluaciones del paciente de este test (makeEvaluationWithDiagnosis crea uno
+    // nuevo por llamada), no las globales: los archivos de test corren en paralelo contra la misma BD real
+    // y otro puede crear una evaluacion de OTRO paciente dentro de esta ventana; un conteo global se hacia
+    // flaky por eso (41 vs 40). Acotado al paciente, la asercion mide justo lo que prueba (no quedo huerfana).
+    const patientId = (await db.select({ p: schema.evaluations.patientId }).from(schema.evaluations).where(eq(schema.evaluations.id, oldId)))[0].p;
+    const evalsBefore = (await db.select({ id: schema.evaluations.id }).from(schema.evaluations).where(eq(schema.evaluations.patientId, patientId))).length;
     failWrite = true;
     const res = await correctEvaluation(baseInput(oldId), actor());
     failWrite = false;
@@ -383,8 +388,8 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     // no quedo correccion
     const corr = await db.select().from(schema.clinicalCorrections).where(eq(schema.clinicalCorrections.oldEvaluationId, oldId));
     expect(corr).toHaveLength(0);
-    // no quedo evaluacion nueva (mismo conteo que antes)
-    const evalsAfter = (await db.select({ id: schema.evaluations.id }).from(schema.evaluations)).length;
+    // no quedo evaluacion nueva para este paciente (mismo conteo que antes)
+    const evalsAfter = (await db.select({ id: schema.evaluations.id }).from(schema.evaluations).where(eq(schema.evaluations.patientId, patientId))).length;
     expect(evalsAfter).toBe(evalsBefore);
   });
 });
