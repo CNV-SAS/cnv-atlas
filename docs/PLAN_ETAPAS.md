@@ -65,7 +65,7 @@
 - ✅ Wompi (checkout, comisión, webhook HMAC+idempotencia) + Alegra (factura best-effort), todo en **sandbox**.
 - ⬜ Wompi/Alegra **producción** (nunca ejercitado contra proveedor real; necesita el deploy; mapeo de catálogo Alegra). Puede esperar; se ejercita con staging.
 - ⬜ `/comercial` (vista de pagos/comisiones) — placeholder. Puede esperar.
-- ⬜ **[HUECO DE MODELO] El circuito comercial de nutracéuticos está incompleto.** El checkout cubre solo integrante→paciente (con comisión); FALTA el eslabón CNV→integrante (pedido/despacho/registro), el inventario por profesional (hoy global), y la tienda (solo_tienda) queda fuera del expediente. Inventario completo de huecos en `BACKLOG.md` "Circuito comercial de nutracéuticos". Material de decisión de Santiago; con pocos integrantes se lleva por fuera, con veinte no.
+- ⬜ **[HUECO DE MODELO] El circuito comercial de nutracéuticos (CONSIGNACIÓN, no venta) está incompleto.** CNV PRESTA los productos al integrante (siguen siendo de CNV, en custodia). El checkout cubre la venta integrante→paciente (con comisión); FALTA la remesa CNV→integrante en consignación (registro de lo entregado en custodia), el inventario por profesional (hoy global), la conciliación periódica del stock en custodia, y la tienda (solo_tienda) queda fuera del expediente. Inventario completo en `BACKLOG.md` "Circuito comercial de nutracéuticos". La superficie del lado CNV (remesa) es de E2; el inventario por profesional + carga como custodia + conciliación se construyen en el bloque T3b (T3b-1/T3b-3).
 
 ### 4 · RECIBIR AVISOS (notificaciones) — mayormente ausente
 - ✅ Un solo correo transaccional: reporte al paciente (Resend).
