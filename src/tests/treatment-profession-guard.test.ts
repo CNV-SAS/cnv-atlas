@@ -79,6 +79,8 @@ const SAVE_INPUT = {
   restricciones: [],
   nutraceuticals: [],
   guidelines: [],
+  // El guard de profesion rechaza antes del candado de concurrencia; el valor no importa, pero el tipo lo pide.
+  baseSignatures: { objetivos: "", restricciones: "", nutraceuticals: "", guidelines: "" },
 };
 const ADJ_INPUT = {
   evaluationId: "E1",

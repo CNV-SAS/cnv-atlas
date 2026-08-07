@@ -44,6 +44,16 @@ const guidelineSchema = z
   .min(1)
   .max(1000, "La guia dietaria es demasiado larga.");
 
+// Firma base por seccion (candado de concurrencia): la del protocolo que el cliente cargó. Las 4 claves
+// espejan SectionKey de protocol-signature.ts. El servidor compara contra la firma actual bajo lock; si
+// difiere, rechaza la escritura (no pisa un cambio hecho en otra sesion).
+const sectionSignaturesSchema = z.object({
+  objetivos: z.string(),
+  restricciones: z.string(),
+  nutraceuticals: z.string(),
+  guidelines: z.string(),
+});
+
 // Guardado completo del protocolo: objetivos + set de nutraceuticos + set de guias.
 // Los sets se reemplazan por completo (el formulario envia el estado final deseado).
 export const saveProtocolSchema = z.object({
@@ -55,6 +65,7 @@ export const saveProtocolSchema = z.object({
     .array(nutraceuticalLineSchema)
     .max(30, "Demasiados nutraceuticos en el protocolo."),
   guidelines: z.array(guidelineSchema).max(30, "Demasiadas guias dietarias."),
+  baseSignatures: sectionSignaturesSchema,
 });
 
 export type SaveProtocolInput = z.infer<typeof saveProtocolSchema>;

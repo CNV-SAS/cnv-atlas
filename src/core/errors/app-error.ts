@@ -9,6 +9,7 @@ export type AppErrorCode =
   | "validation"
   | "not_found"
   | "conflict"
+  | "stale_write" // escritura sobre un estado que cambio desde que se leyo (optimistic concurrency)
   | "rate_limited"
   | "internal";
 

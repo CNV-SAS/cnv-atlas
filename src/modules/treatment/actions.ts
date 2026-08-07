@@ -49,6 +49,17 @@ function parseJsonArray(raw: FormDataEntryValue | null): unknown {
   }
 }
 
+// Objeto JSON (firma base del candado de concurrencia): vacio/invalido -> undefined, para que la
+// validacion aguas abajo falle (baseSignatures es requerido).
+function parseJsonObject(raw: FormDataEntryValue | null): unknown {
+  if (typeof raw !== "string" || raw.trim() === "") return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
 function intOrNull(raw: FormDataEntryValue | null): number | null {
   const s = typeof raw === "string" ? raw.trim() : "";
   return s === "" ? null : Number(s);
@@ -79,6 +90,7 @@ export async function saveProtocolAction(
     restricciones: parseJsonArray(form.get("restricciones")),
     nutraceuticals: parseJsonArray(form.get("nutraceuticals")),
     guidelines: parseJsonArray(form.get("guidelines")),
+    baseSignatures: parseJsonObject(form.get("baseSignatures")),
   });
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Datos del protocolo invalidos.");
@@ -89,7 +101,14 @@ export async function saveProtocolAction(
     actorEmail: user.email,
     ...(await actor()),
   });
-  if (!result.ok) return fail(result.error.message);
+  if (!result.ok) {
+    // Rechazo por concurrencia: aviso (amber), no error. NO se revalida (el dato no cambio) y el estado del
+    // formulario se preserva, asi que el profesional no pierde lo que escribio.
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
 
   revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
   return { error: null, success: "Protocolo guardado.", warning: null };

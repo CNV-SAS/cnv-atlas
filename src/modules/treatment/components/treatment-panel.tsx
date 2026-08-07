@@ -18,7 +18,7 @@ import {
   type TreatmentActionState,
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
-import { protocolSignature } from "../data/protocol-signature";
+import { protocolSectionSignatures, protocolSignature } from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-reader";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
 
@@ -267,9 +267,15 @@ function ProtocolForm({
     })),
   );
 
+  // Firma base para el candado de concurrencia: se computa del PROTOCOLO CARGADO (el prop), no del estado
+  // editado. Como el form se remonta cuando el servidor cambia (por el `key`), esta firma siempre refleja el
+  // estado que el cliente tiene enfrente. El servidor la compara con la actual bajo lock y rechaza si difiere.
+  const baseSignatures = JSON.stringify(protocolSectionSignatures(protocol));
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="evaluationId" value={evaluationId} />
+      <input type="hidden" name="baseSignatures" value={baseSignatures} />
       <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
       <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
       <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />

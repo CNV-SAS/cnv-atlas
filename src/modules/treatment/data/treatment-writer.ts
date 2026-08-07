@@ -12,6 +12,13 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
+import {
+  changedSections,
+  protocolSectionSignatures,
+  type SectionKey,
+  type SectionSignatures,
+} from "./protocol-signature";
+
 // Escritura del protocolo de tratamiento (Drizzle owner, para el audit INLINE, regla 8).
 // La autorizacion (ownership) se verifica ANTES en el action leyendo el tratamiento bajo
 // RLS (treatment-reader); aqui el treatmentId ya llega autorizado. El gate clinico
@@ -24,6 +31,16 @@ export class TreatmentStateError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "TreatmentStateError";
+  }
+}
+
+// El protocolo cambio (en otra sesion/pestana/dispositivo) desde que el cliente lo cargó. Lleva las
+// secciones que difieren para que el mensaje diga QUE cambió. Revierte la transaccion: NO se pisa el
+// cambio ajeno (saveProtocol reemplaza en bloque; una escritura ciega borraria la prescripcion entera).
+export class StaleProtocolError extends Error {
+  constructor(public readonly sections: SectionKey[]) {
+    super("El protocolo cambio desde que se cargo.");
+    this.name = "StaleProtocolError";
   }
 }
 
@@ -40,16 +57,61 @@ export type SaveProtocolWrite = {
   restricciones: string[];
   nutraceuticals: NutraceuticalLine[];
   guidelines: string[];
+  // Firma por seccion del protocolo que el cliente CARGÓ (candado de concurrencia).
+  baseSignatures: SectionSignatures;
   actorId: string;
   actorEmail: string;
   ip: string | null;
 };
 
-// Guarda el protocolo completo en una transaccion: objetivos + reemplazo del set de
-// nutraceuticos + reemplazo del set de guias. Un solo audit treatment.protocol_updated.
+// NATURALEZA DE treatment_nutraceuticals / treatment_diet_guidelines segun el estado del tratamiento
+// (no es evidente leyendo solo el esquema): ANTES de aprobar (status='draft') estas tablas hijas SON la
+// prescripcion autoritativa; un guardado que las reemplaza con estado viejo la PIERDE de verdad, sin
+// rastro. DESPUES de aprobar, lo autoritativo es el jsonb sellado (treatments.protocol_approved, inmutable
+// por el trigger 0026); estas tablas quedan como COPIA DE TRABAJO (editable por diseno para el generador de
+// menu). Por eso el candado de abajo importa sobre todo en borrador.
+//
+// Guarda el protocolo completo en una transaccion: objetivos + reemplazo del set de nutraceuticos +
+// reemplazo del set de guias. Un solo audit treatment.protocol_updated.
 export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
   await db.transaction(async (tx) => {
     await assertConfirmedDiagnosis(tx, input.treatmentId);
+
+    // 0. Candado de concurrencia. Lock de la fila (FOR UPDATE) para SERIALIZAR dos guardados del mismo
+    // tratamiento: sin el, dos sesiones leen la misma firma vieja y ambas escriben (la ultima pisa). Con el
+    // lock, la segunda espera, re-lee la firma ya cambiada, y se rechaza. Se compara la firma actual (bajo
+    // lock) contra la base que trajo el cliente; si alguna seccion difiere, alguien mas la cambió: se aborta
+    // sin pisar, diciendo QUE cambió. saveProtocol REEMPLAZA en bloque, asi que una escritura ciega no
+    // corrompe un campo: borra el protocolo entero.
+    const [locked] = await tx
+      .select({ kcal: treatments.kcalObjetivo, prot: treatments.proteinaGramos, restr: treatments.restricciones })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const curNutras = await tx
+      .select({
+        nutraceuticalId: treatmentNutraceuticals.nutraceuticalId,
+        dosage: treatmentNutraceuticals.dosage,
+        durationDays: treatmentNutraceuticals.durationDays,
+      })
+      .from(treatmentNutraceuticals)
+      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
+    const curGuides = await tx
+      .select({ text: treatmentDietGuidelines.guidelineText })
+      .from(treatmentDietGuidelines)
+      .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
+    const current = protocolSectionSignatures({
+      treatmentId: input.treatmentId,
+      kcalObjetivo: locked.kcal,
+      proteinaGramos: locked.prot,
+      restricciones: locked.restr ?? [],
+      nutraceuticals: curNutras,
+      guidelines: curGuides,
+    });
+    const changed = changedSections(input.baseSignatures, current);
+    if (changed.length) throw new StaleProtocolError(changed);
 
     // 1. Objetivos del protocolo.
     await tx
@@ -89,6 +151,11 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
       );
     }
 
+    // DETECTOR de perdida de prescripcion: nutraceuticals_count/guidelines_count por guardado NO son
+    // redundantes. Como saveProtocol REEMPLAZA en bloque, un guardado que baja el conteo de positivo a 0 es
+    // la huella de un borrado (p. ej. un panel pegado-vacio que guardo encima). Sirvio para verificar que el
+    // sintoma del smoke 2026-08-07 fue solo display, no perdida de dato (ningun tratamiento paso de >0 a 0).
+    // No quitar por parecer redundantes.
     await recordAudit(tx, {
       event: "treatment.protocol_updated",
       actorId: input.actorId,

@@ -5,6 +5,7 @@ import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
+import { describeChangedSections } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import { requireNutricionista } from "./require-profession";
 import {
@@ -12,6 +13,7 @@ import {
   addTreatmentNote,
   saveAdjustments as writeAdjustments,
   saveProtocol as writeProtocol,
+  StaleProtocolError,
   TreatmentStateError,
   writeApproveProtocol,
 } from "../data/treatment-writer";
@@ -58,9 +60,22 @@ export async function saveProtocol(
       restricciones: input.restricciones,
       nutraceuticals: input.nutraceuticals,
       guidelines: input.guidelines,
+      baseSignatures: input.baseSignatures,
       ...actor,
     });
   } catch (e) {
+    // Rechazo por concurrencia: NO se pisó el cambio ajeno. Va como stale_write (el action lo muestra como
+    // aviso, no error) y nombra que seccion cambió para que el profesional decida con criterio.
+    if (e instanceof StaleProtocolError) {
+      return err(
+        appError(
+          "stale_write",
+          `El protocolo cambio en otra sesion (otra pestana o dispositivo): ${describeChangedSections(e.sections)}. ` +
+            "Para no borrar ese cambio no se guardo lo que hiciste. Tu trabajo sigue en pantalla: recarga para " +
+            "ver la version actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }

@@ -92,6 +92,10 @@ export const treatments = pgTable("treatments", {
   createdAt: createdAt(),
 });
 
+// NATURALEZA SEGUN EL ESTADO (no asumir que siempre es lo mismo): en borrador (status='draft') estas
+// filas SON la prescripcion autoritativa; al aprobar, lo autoritativo pasa a ser el jsonb sellado
+// treatments.protocol_approved (inmutable, trigger 0026) y estas quedan como copia de trabajo (editable
+// por diseno para el generador de menu). Detalle y el candado de escritura: data/treatment-writer.ts.
 export const treatmentNutraceuticals = pgTable("treatment_nutraceuticals", {
   id: pk(),
   treatmentId: uuid("treatment_id")
