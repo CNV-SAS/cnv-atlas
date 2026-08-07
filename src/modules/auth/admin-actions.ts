@@ -250,3 +250,31 @@ export async function createUserFormAction(
   if (!result.ok) return { error: result.error.message, success: null };
   return { error: null, success: "Usuario creado. Se envio la invitación por correo." };
 }
+
+// Adaptador de formulario: forzar el correo de recuperacion a un usuario (UI de admin). Recuerda
+// verificar la identidad por una via distinta ANTES (la confirmacion de la UI lo advierte, SECURITY.md).
+export async function forcePasswordResetFormAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const result = await forcePasswordReset({ email: String(formData.get("email") ?? "") });
+  if (!result.ok) return { error: result.error.message, success: null };
+  return { error: null, success: "Se envió el correo para que el usuario fije una nueva contraseña." };
+}
+
+// Adaptador de formulario: reiniciar el segundo factor de un usuario (UI de admin). El motivo es
+// obligatorio (queda en el audit). Igual que arriba: verificar identidad por otra via antes.
+export async function resetUserMfaFormAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const result = await resetUserMfa({
+    userId: String(formData.get("userId") ?? ""),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  if (!result.ok) return { error: result.error.message, success: null };
+  return {
+    error: null,
+    success: "Segundo factor reiniciado. En su próximo ingreso configurará uno nuevo.",
+  };
+}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CreateUserForm } from "@/modules/auth/components/create-user-form";
+import { UserRowActions } from "@/modules/auth/components/user-row-actions";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 
@@ -25,10 +26,18 @@ export default async function AdminPage() {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Usuarios</h1>
-      <ul className="flex flex-col gap-1 text-sm">
+      <ul className="flex flex-col gap-3 text-sm">
         {(users ?? []).map((u) => (
-          <li key={u.id}>
-            {u.email}, {u.full_name} ({u.status})
+          <li key={u.id} className="flex flex-col gap-2 border-b pb-3">
+            <span>
+              {u.email}, {u.full_name} ({u.status})
+            </span>
+            {/* Las acciones no se ofrecen sobre la propia cuenta del admin (evita reiniciar su propio acceso por error). */}
+            {u.id === user.id ? (
+              <span className="text-xs text-muted-foreground">Tu cuenta</span>
+            ) : (
+              <UserRowActions userId={u.id} email={u.email} />
+            )}
           </li>
         ))}
       </ul>
