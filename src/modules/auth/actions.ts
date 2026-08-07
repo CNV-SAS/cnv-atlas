@@ -82,34 +82,58 @@ export async function requestPasswordResetAction(
   return { error: null, sent: true };
 }
 
-// Verifica el codigo TOTP del segundo factor y eleva la sesion a aal2.
+// Reta el factor TOTP y eleva la sesion a aal2. Lo comparten el login (verifyMfaAction) y la recuperacion
+// de clave (verifyMfaForPasswordResetAction): en los dos hay que completar el segundo factor.
+async function challengeAndVerifyTotp(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  code: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+  if (factorsError) return { ok: false, error: "No se pudieron leer los factores MFA." };
+  const totp = factors?.totp?.[0];
+  if (!totp) return { ok: false, error: "No hay un factor MFA configurado." };
+  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+  if (challengeError || !challenge) return { ok: false, error: "No se pudo iniciar el desafio MFA." };
+  const { error: verifyError } = await supabase.auth.mfa.verify({
+    factorId: totp.id,
+    challengeId: challenge.id,
+    code,
+  });
+  if (verifyError) return { ok: false, error: "Código incorrecto. Intenta de nuevo." };
+  return { ok: true };
+}
+
+// Verifica el codigo TOTP del segundo factor y eleva la sesion a aal2 (login).
 export async function verifyMfaAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
   const parsed = mfaCodeSchema.safeParse({ code: formData.get("code") });
   if (!parsed.success) return { error: "El código debe tener 6 dígitos." };
-
   const supabase = await createSupabaseServerClient();
-  const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
-  if (factorsError) return { error: "No se pudieron leer los factores MFA." };
-
-  const totp = factors?.totp?.[0];
-  if (!totp) return { error: "No hay un factor MFA configurado." };
-
-  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
-    factorId: totp.id,
-  });
-  if (challengeError || !challenge) return { error: "No se pudo iniciar el desafio MFA." };
-
-  const { error: verifyError } = await supabase.auth.mfa.verify({
-    factorId: totp.id,
-    challengeId: challenge.id,
-    code: parsed.data.code,
-  });
-  if (verifyError) return { error: "Código incorrecto. Intenta de nuevo." };
-
+  const res = await challengeAndVerifyTotp(supabase, parsed.data.code);
+  if (!res.ok) return { error: res.error ?? "No se pudo verificar el segundo factor." };
   redirect("/dashboard");
+}
+
+// Reto de MFA DENTRO de la recuperacion/set-password. Supabase exige AAL2 para cambiar la clave de una
+// cuenta con MFA (insufficient_aal): NO se cambia la contrasena sin el segundo factor (si bastara el correo,
+// quien tenga el buzon toma la cuenta y el MFA no protege nada). Eleva a AAL2 y vuelve a /set-password, donde
+// ya se muestra el formulario de clave. Exige la cookie atlas-pwd-reset (solo se llega desde un enlace valido).
+export async function verifyMfaForPasswordResetAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = mfaCodeSchema.safeParse({ code: formData.get("code") });
+  if (!parsed.success) return { error: "El código debe tener 6 dígitos." };
+  const cookieStore = await cookies();
+  if (cookieStore.get("atlas-pwd-reset")?.value !== "1") {
+    return { error: "Enlace no válido o expirado. Solicita uno nuevo." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const res = await challengeAndVerifyTotp(supabase, parsed.data.code);
+  if (!res.ok) return { error: res.error ?? "No se pudo verificar el segundo factor." };
+  redirect("/set-password");
 }
 
 // Fija la contrasena tras invitacion/recuperacion. Exige la cookie atlas-pwd-reset
@@ -141,7 +165,16 @@ export async function setPasswordAction(
   }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { error: "No se pudo fijar la contraseña." };
+  if (error) {
+    // No se puede diagnosticar lo que no se registra: el error real de Supabase va al log del servidor.
+    console.error("setPassword updateUser fallo:", error.status, error.code, error.message);
+    // Cuenta con MFA sin AAL2: la pagina debe pedir el segundo factor antes de llegar aqui; si aun asi pasa,
+    // se dice claro en vez del generico.
+    if (error.code === "insufficient_aal") {
+      return { error: "Confirma tu segundo factor antes de cambiar la contraseña." };
+    }
+    return { error: "No se pudo fijar la contraseña." };
+  }
 
   cookieStore.delete("atlas-pwd-reset"); // un solo uso
   redirect("/dashboard");
