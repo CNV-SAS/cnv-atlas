@@ -28,7 +28,8 @@
 ### Tratamiento (cuatro workspaces por profesión)
 - ✅ Motores médico, ejercicio, psicólogo (display) + nutricionista, portados y cableados.
 - ⬜ **Barra de subpestañas** por profesión (se pospuso hasta tener >1 contenido; ahora ya lo hay).
-- ⬜ **Plan alimentario D1-D8** (`calcPatron`/C9) — **nuestro**, construible ya (tenemos `atlas-encuesta-patron.js`), pendiente desde 2026-07-24. Habilita "Diagnóstico de encuesta".
+- ✅ **Plan alimentario D1-D8** (`calcPatron`/C9) — HECHO: motor portado + golden, encuesta a 15 grupos, reader del ordinal con candado triple, render de la D1 (tarjetas de categoría + grilla). Destrabó una de las 3 fichas de C1.
+- 🔨 **T3 nutracéuticos (en curso, 2026-08-06):** ✅ catálogo (10 productos VITACELLEBIS, grafía INVIMA, disponibilidad comercial); ✅ T3a recomendación accionable (mapa de alias explícito, emparejamiento al catálogo, agregar a la prescripción sin prellenar dosis); ✅ T3b-1 consignación (tabla de movimientos + saldo por profesional con triggers de coherencia/inmutabilidad, "Mi inventario"). ⬜ **T3b-2 despacho** (siguiente, con la base lista): movimiento `despacho` (−N) ligado a tratamiento/paciente, negativo permitido + discrepancia visible, separar el vínculo con el paciente (clínico) del saldo (comercial). ⬜ **T3b-3 conciliación + caso de faltante** (crecido, ver `BACKLOG.md`) y **Liquidación del integrante** (bloque nuevo y grande, E2). Ver también `BACKLOG.md` "Circuito comercial" y "T3b-3".
 - ⬜ **Remisión como acción registrable** (D-009) — bloque propio (tabla + audit + redacción del frozen).
 - ⛔ **Cadena calórica** — bloqueada por **C6** (Gildardo: proteína + sobrecosto en cifras), desde ~2026-07. Es el bloqueo de mayor peso del proyecto. Incluye la salvaguarda de TCA como requisito duro.
 
