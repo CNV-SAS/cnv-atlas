@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { requireUser } from "@/modules/auth/session";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
 import { MiInventarioForm } from "@/modules/nutraceuticals/components/mi-inventario-form";
+import { MisFaltantesSection } from "@/modules/nutraceuticals/components/mis-faltantes-section";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
 import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
 
@@ -46,6 +47,8 @@ export default async function MiInventarioPage() {
           saldo. Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo.
         </p>
       </header>
+
+      <MisFaltantesSection userId={user.id} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold tracking-tight">Registrar recepción</h2>

@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 
+import { addBusinessDays } from "@/core/dates/colombia-business-days";
 import { db } from "@/db";
 import {
   nutraceuticalCountLines,
@@ -27,18 +28,6 @@ export type CountResult = {
   sobrantes: { nutraceuticalId: string; extra: number }[];
   cuadraron: number;
 };
-
-// Plazo de justificacion: 5 dias habiles (solo fines de semana; los festivos de Colombia no se modelan aun).
-function addBusinessDays(from: Date, days: number): Date {
-  const d = new Date(from);
-  let added = 0;
-  while (added < days) {
-    d.setDate(d.getDate() + 1);
-    const dow = d.getDay(); // 0 = domingo, 6 = sabado
-    if (dow !== 0 && dow !== 6) added++;
-  }
-  return d;
-}
 
 export async function recordCount(input: {
   professionalId: string;

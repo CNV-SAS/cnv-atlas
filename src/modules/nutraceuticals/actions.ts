@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
+import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
 import {
@@ -16,6 +17,7 @@ import {
   receptionSchema,
   recordCountSchema,
   registerUsageSchema,
+  submitJustificationSchema,
   updateNutraceuticalSchema,
   type CreateNutraceuticalInput,
   type NutraceuticalFormState,
@@ -257,4 +259,34 @@ export async function recordCountFormAction(
   }
   const sob = res.sobrantes.length > 0 ? ` ${res.sobrantes.length} sobrante(s) por revisar.` : "";
   return { error: null, success: `Conteo registrado: todo cuadró.${sob}`, warning: null };
+}
+
+// Enviar la JUSTIFICACION de un faltante (T3b-3 ST3). Solo el profesional; el service verifica ademas que
+// el caso sea suyo, que este en reportado y dentro del plazo. La referencia es obligatoria (schema).
+export async function submitJustificationFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional justifica sus faltantes.", success: null, warning: null };
+  }
+  const parsed = submitJustificationSchema.safeParse({
+    caseId: String(formData.get("caseId") ?? ""),
+    category: String(formData.get("category") ?? ""),
+    reference: String(formData.get("reference") ?? ""),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos de la justificación invalidos.", success: null, warning: null };
+  }
+  const res = await faltanteService.submitJustification({
+    userId: user.id,
+    caseId: parsed.data.caseId,
+    category: parsed.data.category,
+    reference: parsed.data.reference,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo enviar la justificación.", success: null, warning: null };
+  revalidatePath("/mi-inventario");
+  return { error: null, success: "Justificación enviada. CNV la revisará.", warning: null };
 }

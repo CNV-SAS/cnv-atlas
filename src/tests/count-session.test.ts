@@ -1,4 +1,4 @@
-import { and, eq, sql as dsql } from "drizzle-orm";
+import { and, eq, ne, sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // Sesion de conteo (T3b-3 ST2). Verifica contra la BD real, ejecutando el writer:
@@ -37,11 +37,21 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
     profId = prof.id;
     actorId = prof.pid;
-    // un producto con saldo del profesional demo (>5 para poder contar de menos)
+    // Un producto con saldo del profesional demo (>5 para poder contar de menos). Se EXCLUYE CURCUMIN
+    // (77777777-...703): nutra-inventory.test muta su saldo, y los archivos de test corren en paralelo
+    // contra la misma BD real; contar sobre un saldo que otro test esta moviendo daria un diff no
+    // determinista. Con un producto que nadie mas toca, el saldo es estable durante el test.
+    const CURCUMIN = "77777777-7777-7777-7777-777777777703";
     const [inv] = await db
       .select({ nid: schema.nutraceuticalInventory.nutraceuticalId, stock: schema.nutraceuticalInventory.stockQuantity })
       .from(schema.nutraceuticalInventory)
-      .where(and(eq(schema.nutraceuticalInventory.professionalId, profId), dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`))
+      .where(
+        and(
+          eq(schema.nutraceuticalInventory.professionalId, profId),
+          ne(schema.nutraceuticalInventory.nutraceuticalId, CURCUMIN),
+          dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`,
+        ),
+      )
       .limit(1);
     nutraId = inv.nid;
     stock = Number(inv.stock);

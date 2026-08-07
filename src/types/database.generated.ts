@@ -1320,6 +1320,245 @@ export type Database = {
         }
         Relationships: []
       }
+      nutraceutical_count_lines: {
+        Row: {
+          created_at: string
+          id: string
+          lote: string | null
+          nutraceutical_id: string
+          physical_qty: number
+          session_id: string
+          system_qty: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lote?: string | null
+          nutraceutical_id: string
+          physical_qty: number
+          session_id: string
+          system_qty: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lote?: string | null
+          nutraceutical_id?: string
+          physical_qty?: number
+          session_id?: string
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_count_lines_nutraceutical_id_nutraceuticals_id_fk"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_count_lines_session_id_nutraceutical_count_sessio"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceutical_count_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutraceutical_count_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          professional_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          professional_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_count_sessions_created_by_profiles_id_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_count_sessions_professional_id_professional_profi"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutraceutical_faltante_cases: {
+        Row: {
+          charge_status: Database["public"]["Enums"]["nutraceutical_faltante_charge"]
+          count_session_id: string | null
+          created_at: string
+          created_by: string | null
+          deadline_at: string
+          id: string
+          justification_category:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference: string | null
+          lote: string | null
+          nutraceutical_id: string
+          professional_id: string
+          quantity: number
+          reported_at: string
+          sealed_total: number
+          sealed_unit_price: number
+          status: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Insert: {
+          charge_status?: Database["public"]["Enums"]["nutraceutical_faltante_charge"]
+          count_session_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_at: string
+          id?: string
+          justification_category?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference?: string | null
+          lote?: string | null
+          nutraceutical_id: string
+          professional_id: string
+          quantity: number
+          reported_at: string
+          sealed_total: number
+          sealed_unit_price: number
+          status?: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Update: {
+          charge_status?: Database["public"]["Enums"]["nutraceutical_faltante_charge"]
+          count_session_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deadline_at?: string
+          id?: string
+          justification_category?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference?: string | null
+          lote?: string | null
+          nutraceutical_id?: string
+          professional_id?: string
+          quantity?: number
+          reported_at?: string
+          sealed_total?: number
+          sealed_unit_price?: number
+          status?: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_faltante_cases_count_session_id_nutraceutical_cou"
+            columns: ["count_session_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceutical_count_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_faltante_cases_created_by_profiles_id_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_faltante_cases_nutraceutical_id_nutraceuticals_id"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_faltante_cases_professional_id_professional_profi"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutraceutical_faltante_transitions: {
+        Row: {
+          actor_id: string | null
+          case_id: string
+          created_at: string
+          from_status:
+            | Database["public"]["Enums"]["nutraceutical_faltante_status"]
+            | null
+          id: string
+          justification_category:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference: string | null
+          reason: string | null
+          to_status: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          case_id: string
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_status"]
+            | null
+          id?: string
+          justification_category?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference?: string | null
+          reason?: string | null
+          to_status: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          case_id?: string
+          created_at?: string
+          from_status?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_status"]
+            | null
+          id?: string
+          justification_category?:
+            | Database["public"]["Enums"]["nutraceutical_faltante_justification"]
+            | null
+          justification_reference?: string | null
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["nutraceutical_faltante_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_faltante_transitions_actor_id_profiles_id_fk"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_faltante_transitions_case_id_nutraceutical_faltan"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceutical_faltante_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutraceutical_inventory: {
         Row: {
           id: string
@@ -2837,6 +3076,22 @@ export type Database = {
         | "en_consultorio"
         | "solo_tienda"
         | "no_disponible"
+      nutraceutical_faltante_charge:
+        | "sin_cargo"
+        | "pendiente_liquidacion"
+        | "liquidado"
+      nutraceutical_faltante_justification:
+        | "hurto_denuncia"
+        | "transporte_documentado"
+        | "venta_no_registrada"
+        | "devolucion_guia"
+      nutraceutical_faltante_status:
+        | "reportado"
+        | "en_revision"
+        | "justificado"
+        | "venta_no_registrada"
+        | "injustificado_pendiente"
+        | "injustificado"
       nutraceutical_movement_type:
         | "remesa"
         | "recepcion"
@@ -3036,6 +3291,25 @@ export const Constants = {
         "en_consultorio",
         "solo_tienda",
         "no_disponible",
+      ],
+      nutraceutical_faltante_charge: [
+        "sin_cargo",
+        "pendiente_liquidacion",
+        "liquidado",
+      ],
+      nutraceutical_faltante_justification: [
+        "hurto_denuncia",
+        "transporte_documentado",
+        "venta_no_registrada",
+        "devolucion_guia",
+      ],
+      nutraceutical_faltante_status: [
+        "reportado",
+        "en_revision",
+        "justificado",
+        "venta_no_registrada",
+        "injustificado_pendiente",
+        "injustificado",
       ],
       nutraceutical_movement_type: [
         "remesa",

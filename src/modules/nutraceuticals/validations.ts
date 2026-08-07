@@ -50,6 +50,22 @@ export const recordCountSchema = z.object({
 });
 export type RecordCountInput = z.infer<typeof recordCountSchema>;
 
+// Justificacion de un faltante (T3b-3 ST3): categoria + referencia OBLIGATORIA. La referencia especifica
+// depende de la categoria (numero de denuncia, guia, o id de movimiento); el schema exige que no este vacia,
+// la superficie pide la que corresponde. Las 4 categorias espejan el enum nutraceuticalFaltanteJustification.
+export const faltanteJustificationCategory = z.enum([
+  "hurto_denuncia",
+  "transporte_documentado",
+  "venta_no_registrada",
+  "devolucion_guia",
+]);
+export const submitJustificationSchema = z.object({
+  caseId: z.guid("Caso invalido."),
+  category: faltanteJustificationCategory,
+  reference: z.string().trim().min(1, "La referencia es obligatoria.").max(200),
+});
+export type SubmitJustificationInput = z.infer<typeof submitJustificationSchema>;
+
 // Registro de uso vinculado a un tratamiento (sin UI en B5; la pantalla va en B12).
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,
