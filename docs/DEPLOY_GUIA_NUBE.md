@@ -37,17 +37,33 @@
 - **De dónde salen:** todas del dashboard de este proyecto. Guárdalas en Bitwarden; las cargas a Vercel en el Paso 2.
 - **Cuidado:** la `service_role` key y la `DATABASE_URL` son secretas (dan acceso total). NUNCA en el código ni con prefijo `NEXT_PUBLIC_`.
 
-1.3 **Aplicar las migraciones.** En tu máquina, con la `DATABASE_URL` de la nube en una variable temporal (no la dejes en `.env.local`, que apunta a local):
-- Corre el `migrate` de Drizzle contra esa URL (mismo comando que en local, apuntando a la nube). Aplica las 48 migraciones, incluidas las de RLS y triggers.
+1.3 **Aplicar las migraciones.** IMPORTANTE, léelo antes: **tu `.env.local` NO cambia, se queda apuntando a local.** Las credenciales de la nube van en Vercel (Paso 2), NO en tu máquina. La única excepción son estos dos comandos (migrate y seed), que corren con la URL/credenciales remotas puestas SOLO para ese comando (variable de shell), sin editar ningún archivo. Verificado que Node NO pisa esa variable con `.env.local`, así que funciona.
+- Comando (PowerShell), reemplazando la URI por la `DATABASE_URL` del Paso 1.2:
+  ```powershell
+  $env:DATABASE_URL = "postgresql://...tu-uri-de-la-nube..."
+  pnpm db:migrate
+  Remove-Item Env:\DATABASE_URL   # limpia la variable al terminar
+  ```
+- Aplica las 48 migraciones, incluidas las de RLS y triggers.
 - **Qué verás:** "migrations applied successfully".
 - **Verificar:** Supabase → Table editor: aparecen las tablas (`patients`, `evaluations`, `nutraceutical_faltante_cases`, etc.). Database → Roles/Policies: las políticas RLS existen.
-- **Qué puede salir mal:** timeout o permiso. Si una migración de trigger falla, NO sigas: el orden importa. Copia el error y páralo.
+- **Qué puede salir mal:** timeout o permiso. Si una migración de trigger falla, NO sigas: el orden importa. Copia el error y páralo. Si `DATABASE_URL` quedó vacía, el comando falla al conectar: revisa que la pusiste en la MISMA ventana de PowerShell.
 
 1.4 **Storage (buckets).** Supabase → Storage: crea el bucket privado que usan los PDF de reporte (mismo nombre que en local; revisa `report-storage.ts` para el nombre exacto). Privado, no público.
 - **Verificar:** el bucket aparece y es privado (candado).
 
-1.5 **Sembrar el mínimo.** Corre el seed con `SEED_DEMO=false` (Paso 0) apuntando a la `DATABASE_URL` de la nube, con `SEED_ADMIN_PASSWORD` = una contraseña real y fuerte para el admin de arranque.
+1.5 **Sembrar el mínimo.** Igual que 1.3: variables de shell SOLO para este comando, sin tocar `.env.local`. El seed usa la URL y la **service_role key** de la nube (Paso 1.2), el correo del admin de arranque (`sau.idk001@gmail.com` u otro que definas en `supabase/seed.ts`), una contraseña fuerte, y `SEED_DEMO=false`.
+  ```powershell
+  $env:NEXT_PUBLIC_SUPABASE_URL = "https://...tu-proyecto.supabase.co"
+  $env:SUPABASE_SERVICE_ROLE_KEY = "...tu-service-role-key..."
+  $env:SEED_ADMIN_PASSWORD = "...una-clave-fuerte-para-el-admin..."
+  $env:SEED_DEMO = "false"
+  pnpm db:seed
+  Remove-Item Env:\NEXT_PUBLIC_SUPABASE_URL, Env:\SUPABASE_SERVICE_ROLE_KEY, Env:\SEED_ADMIN_PASSWORD, Env:\SEED_DEMO
+  ```
+- **Qué verás:** "Seed completo (MINIMO, sin datos demo)".
 - **Verificar (crítico):** `patients` vacía; `nutraceuticals` = 10; `roles` = 5; `survey_versions` con la encuesta. Un usuario admin con el correo de arranque.
+- **Qué puede salir mal:** si NO pusiste `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` de la nube, el seed apunta a LOCAL (el default del script) y no toca la nube. El check de "patients vacía en la nube" lo delata: si en la nube no aparecieron ni los 10 nutracéuticos, sembraste local por error.
 
 ---
 
