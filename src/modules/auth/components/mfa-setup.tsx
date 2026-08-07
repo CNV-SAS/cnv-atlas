@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useActionState } from "react";
 
 import { startMfaEnroll, verifyMfaEnrollAction } from "@/modules/auth/mfa-actions";
 import type { AuthFormState } from "@/modules/auth/validations";
@@ -12,25 +12,55 @@ const initialState: AuthFormState = { error: null };
 export function MfaSetup() {
   const [enroll, setEnroll] = useState<Enroll | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [state, action, pending] = useActionState(verifyMfaEnrollAction, initialState);
 
-  useEffect(() => {
-    let active = true;
-    void startMfaEnroll().then((r) => {
-      if (!active) return;
-      if (r.ok) setEnroll(r.value);
-      else setLoadError(r.error.message);
-    });
-    return () => {
-      active = false;
-    };
+  // Genera el factor. Si falla (o la accion rechaza), muestra el error y ofrece reintentar: nunca se
+  // queda colgado en "Generando codigo...". El reintento vuelve a llamar a startMfaEnroll, que limpia
+  // el factor a medias del intento anterior antes de crear otro. Solo toca estado en los callbacks
+  // async (no sincronamente dentro del effect).
+  const runEnroll = useCallback((signal?: { active: boolean }) => {
+    startMfaEnroll()
+      .then((r) => {
+        if (signal && !signal.active) return;
+        if (r.ok) setEnroll(r.value);
+        else setLoadError(r.error.message);
+      })
+      .catch(() => {
+        if (signal && !signal.active) return;
+        setLoadError("No se pudo generar el código. Reintenta.");
+      })
+      .finally(() => {
+        if (signal && !signal.active) return;
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    const signal = { active: true };
+    runEnroll(signal);
+    return () => {
+      signal.active = false;
+    };
+  }, [runEnroll]);
+
+  // Reintento manual (event handler, no effect): aqui si se resetea el estado antes de relanzar.
+  function retry() {
+    setLoading(true);
+    setLoadError(null);
+    runEnroll();
+  }
 
   if (loadError) {
     return (
-      <p role="alert" className="text-red-600">
-        {loadError}
-      </p>
+      <div className="flex flex-col gap-3">
+        <p role="alert" className="text-red-600">
+          {loadError}
+        </p>
+        <button type="button" onClick={retry} disabled={loading} className="border p-2">
+          {loading ? "Generando..." : "Reintentar"}
+        </button>
+      </div>
     );
   }
   if (!enroll) return <p>Generando código...</p>;
