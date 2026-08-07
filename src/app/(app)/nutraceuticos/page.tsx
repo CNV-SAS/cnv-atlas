@@ -5,49 +5,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requireUser } from "@/modules/auth/session";
 import { CreateNutraceuticalForm } from "@/modules/nutraceuticals/components/create-nutraceutical-form";
 import { EditNutraceuticalForm } from "@/modules/nutraceuticals/components/edit-nutraceutical-form";
-import { SetStockForm } from "@/modules/nutraceuticals/components/set-stock-form";
 import { canManageCatalog } from "@/modules/nutraceuticals/policies/can-manage-catalog";
-import { canManageInventory } from "@/modules/nutraceuticals/policies/can-manage-inventory";
 import { canViewNutraceuticals } from "@/modules/nutraceuticals/policies/can-view-nutraceuticals";
 import * as service from "@/modules/nutraceuticals/services/nutraceuticals-service";
 
 export const metadata = { title: "Nutraceuticos - Atlas" };
 
-// Stock como badge: sin inventario (neutro), 0 (warning), con stock (optimal).
-function StockBadge({ stock }: { stock: number | null }) {
-  if (stock == null) {
-    return (
-      <Badge variant="outline" className="bg-muted text-muted-foreground">
-        Sin inventario
-      </Badge>
-    );
-  }
-  const tint =
-    stock === 0
-      ? "bg-clinical-warning-bg text-clinical-warning"
-      : "bg-clinical-optimal-bg text-clinical-optimal";
-  return (
-    <Badge variant="outline" className={tint}>
-      Stock: {stock}
-    </Badge>
-  );
-}
+// El STOCK ya no vive aqui: es un saldo por profesional en consignacion (ver Mi inventario). Esta vista
+// es el CATALOGO comercial (admin/soporte): productos + su disponibilidad. La disponibilidad es dato del
+// producto (en_consultorio / solo_tienda / no_disponible), distinto del stock (cantidad).
+const AVAILABILITY_LABEL: Record<string, string> = {
+  en_consultorio: "En consultorio",
+  solo_tienda: "Solo en tienda",
+  no_disponible: "No disponible",
+};
 
-// Catalogo e inventario de nutraceuticos. Lectura admin/soporte/direccion;
-// catalogo lo gestiona admin; el stock admin/soporte.
 export default async function NutraceuticosPage() {
   const user = await requireUser();
   if (!canViewNutraceuticals(user)) redirect("/no-autorizado");
   const isCatalogManager = canManageCatalog(user);
-  const isInventoryManager = canManageInventory(user);
 
-  const items = await service.listCatalogWithStock();
+  const items = await service.listCatalog();
 
   return (
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Nutraceuticos</h1>
-        <p className="text-muted-foreground">Catalogo e inventario de nutraceuticos.</p>
+        <p className="text-muted-foreground">Catalogo comercial. El stock es por profesional (consignacion), en Mi inventario.</p>
       </header>
 
       <section className="flex flex-col gap-3">
@@ -63,41 +47,29 @@ export default async function NutraceuticosPage() {
                     <div className="flex flex-col gap-0.5">
                       <CardTitle className="text-lg">{n.name}</CardTitle>
                       <CardDescription>
-                        {n.unit ? `Unidad: ${n.unit}` : "Sin unidad"}
+                        {n.serving_size ? `Porcion: ${n.serving_size}` : n.unit ? `Unidad: ${n.unit}` : "Sin unidad"}
                         {n.unit_price != null
                           ? ` · ${Number(n.unit_price).toLocaleString("es-CO")} COP`
                           : ""}
+                        {n.sanitary_registration ? ` · ${n.sanitary_registration}` : ""}
                       </CardDescription>
-                      {n.description ? (
-                        <p className="text-sm text-muted-foreground">{n.description}</p>
+                      {n.indication ? (
+                        <p className="text-sm text-muted-foreground">{n.indication}</p>
                       ) : null}
                     </div>
-                    <StockBadge stock={n.stock} />
+                    <Badge variant="outline">
+                      {AVAILABILITY_LABEL[n.commercial_availability] ?? n.commercial_availability}
+                    </Badge>
                   </div>
                 </CardHeader>
-                {isInventoryManager || isCatalogManager ? (
-                  <CardContent className="flex flex-col gap-4">
-                    {isInventoryManager ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Inventario
-                        </span>
-                        {/* key: remonta el form al revalidar para que tome el stock nuevo */}
-                        <SetStockForm
-                          key={`${n.id}-${n.stock ?? "x"}`}
-                          nutraceuticalId={n.id}
-                          currentStock={n.stock}
-                        />
-                      </div>
-                    ) : null}
-                    {isCatalogManager ? (
-                      <details>
-                        <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Editar nutraceutico
-                        </summary>
-                        <EditNutraceuticalForm nutraceutical={n} />
-                      </details>
-                    ) : null}
+                {isCatalogManager ? (
+                  <CardContent>
+                    <details>
+                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Editar nutraceutico
+                      </summary>
+                      <EditNutraceuticalForm nutraceutical={n} />
+                    </details>
                   </CardContent>
                 ) : null}
               </Card>
@@ -110,9 +82,7 @@ export default async function NutraceuticosPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Crear nutraceutico</CardTitle>
-            <CardDescription>
-              Agrega un nutraceutico al catalogo (su inventario arranca en 0).
-            </CardDescription>
+            <CardDescription>Agrega un nutraceutico al catalogo.</CardDescription>
           </CardHeader>
           <CardContent>
             <CreateNutraceuticalForm />

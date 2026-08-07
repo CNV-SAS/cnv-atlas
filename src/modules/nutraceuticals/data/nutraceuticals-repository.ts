@@ -1,11 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import type {
-  Nutraceutical,
-  NutraceuticalInsert,
-  NutraceuticalInventory,
-  NutraceuticalUsage,
-} from "../types";
+import type { Nutraceutical, NutraceuticalInsert, NutraceuticalUsage } from "../types";
 
 // Repositorio de nutraceuticos (ARCHITECTURE regla 1). Cliente Supabase anon +
 // RLS: catalogo lo escribe admin; inventario admin/soporte; uso solo el
@@ -69,55 +64,10 @@ export async function updateNutraceutical(
 }
 
 // ----- Inventario -----
-
-export async function listInventory(): Promise<NutraceuticalInventory[]> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("nutraceutical_inventory").select("*");
-  if (error) fail("listInventory", error.message);
-  return data ?? [];
-}
-
-export async function getInventory(
-  nutraceuticalId: string,
-): Promise<NutraceuticalInventory | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("nutraceutical_inventory")
-    .select("*")
-    .eq("nutraceutical_id", nutraceuticalId)
-    .maybeSingle();
-  if (error) fail("getInventory", error.message);
-  return data;
-}
-
-export async function createInventory(
-  nutraceuticalId: string,
-  stockQuantity = 0,
-): Promise<NutraceuticalInventory> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("nutraceutical_inventory")
-    .insert({ nutraceutical_id: nutraceuticalId, stock_quantity: stockQuantity })
-    .select("*")
-    .single();
-  if (error) fail("createInventory", error.message);
-  return data!;
-}
-
-export async function setStock(
-  nutraceuticalId: string,
-  stockQuantity: number,
-): Promise<NutraceuticalInventory> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("nutraceutical_inventory")
-    .update({ stock_quantity: stockQuantity, last_updated: new Date().toISOString() })
-    .eq("nutraceutical_id", nutraceuticalId)
-    .select("*")
-    .single();
-  if (error) fail("setStock", error.message);
-  return data!;
-}
+// El inventario global (una fila por producto, setStock absoluto) se RETIRO al migrar a consignacion
+// por profesional (T3b-1, migraciones 0039/0040): el stock ahora es un saldo por (profesional, producto)
+// que solo mueve el trigger del movimiento. La carga la hace el profesional (recepcion), no un admin con
+// un valor absoluto. Ver modules/nutraceuticals inventory (Mi inventario) y BACKLOG "Circuito comercial".
 
 // ----- Uso (vinculado a un tratamiento) -----
 

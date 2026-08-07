@@ -55,7 +55,7 @@ export default async function PagosPage() {
   if (canCreate) {
     const [pts, catalog] = await Promise.all([
       listSelectablePatients(),
-      nutraService.listCatalogWithStock(),
+      nutraService.listCatalog(),
     ]);
     patients = pts;
     nutraceuticals = catalog

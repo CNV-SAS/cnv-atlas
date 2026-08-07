@@ -76,13 +76,12 @@ beforeAll(async () => {
     values (${diagnosis.id}, ${createdBy}) returning id`;
   treatmentId = treatment.id as string;
 
-  // Nutraceutico de fixture + su inventario en 0.
+  // Nutraceutico de fixture. El inventario ya NO es global (setStock admin): es un saldo por profesional
+  // en consignacion, movido por movimientos (ver nutra-inventory.test.ts). Aqui solo se prueba el USO.
   const [nutra] = await sql`
     insert into public.nutraceuticals (organization_id, name, unit)
     values (${ORG}, ${NUTRA_NAME}, 'capsula') returning id`;
   nutraId = nutra.id as string;
-  await sql`insert into public.nutraceutical_inventory (nutraceutical_id, stock_quantity)
-            values (${nutraId}, 0)`;
 }, 30000);
 
 afterAll(async () => {
@@ -90,30 +89,7 @@ afterAll(async () => {
   await sql.end();
 });
 
-describe("B5: inventario y uso (integracion)", () => {
-  it("admin ajusta el stock; el profesional NO puede (RLS)", async () => {
-    // Admin sube el stock a 25.
-    const upd = await adminClient
-      .from("nutraceutical_inventory")
-      .update({ stock_quantity: 25, last_updated: new Date().toISOString() })
-      .eq("nutraceutical_id", nutraId)
-      .select("stock_quantity");
-    expect(upd.error).toBeNull();
-    expect(upd.data?.[0]?.stock_quantity).toBe(25);
-
-    // Profesional intenta ponerlo en 999: la RLS no le da UPDATE, matchea 0 filas.
-    const proUpd = await proClient
-      .from("nutraceutical_inventory")
-      .update({ stock_quantity: 999 })
-      .eq("nutraceutical_id", nutraId)
-      .select("stock_quantity");
-    expect(proUpd.data ?? []).toHaveLength(0);
-
-    // El stock siguio en 25 (no lo cambio el profesional).
-    const check = await sql`select stock_quantity from public.nutraceutical_inventory where nutraceutical_id = ${nutraId}`;
-    expect(Number(check[0].stock_quantity)).toBe(25);
-  }, 30000);
-
+describe("B5: uso de nutraceuticos (integracion)", () => {
   it("el profesional del paciente registra uso contra el tratamiento", async () => {
     const ins = await proClient
       .from("nutraceutical_usage")

@@ -95,11 +95,6 @@ const NUTRA_IDS = [
   "77777777-7777-7777-7777-777777777707", "77777777-7777-7777-7777-777777777708",
   "77777777-7777-7777-7777-777777777709", "77777777-7777-7777-7777-777777777710",
 ];
-// Inventario demo solo para los 4 en_consultorio (los solo_tienda no tienen stock del nutricionista).
-const INVENTORY_IDS = [
-  "88888888-8888-8888-8888-888888888801", "88888888-8888-8888-8888-888888888802",
-  "88888888-8888-8888-8888-888888888803", "88888888-8888-8888-8888-888888888804",
-];
 const PATIENT_ID = "99999999-9999-9999-9999-999999999901";
 const PATIENT_PROF_REL_ID = "99999999-9999-9999-9999-999999999902";
 // Link de encuesta inicial (reusable) del profesional demo, para smoke del intake.
@@ -563,17 +558,35 @@ async function main() {
       )
     ).error,
   );
-  // Inventario demo solo para los 4 en_consultorio (los solo_tienda no llevan stock del nutricionista).
+  // Inventario demo POR PROFESIONAL (consignacion): recepciones del profesional demo para los 4
+  // en_consultorio. El trigger construye el saldo cacheado; NO se escribe el inventario directo (el
+  // trigger de coherencia lo rechazaria). Movimientos = append-only, asi que no se puede upsert: se
+  // saltan si el profesional demo ya tiene movimientos de ese producto (idempotencia del seed).
   const enConsultorio = VITACELLEBIS.filter((p) => p.availability === "en_consultorio");
-  check(
-    "nutraceutical_inventory",
-    (
-      await supabase.from("nutraceutical_inventory").upsert(
-        enConsultorio.map((p, i) => ({ id: INVENTORY_IDS[i], nutraceutical_id: p.id, stock_quantity: [100, 80, 60, 40][i] ?? 50 })),
-        { onConflict: "id" },
-      )
-    ).error,
-  );
+  const recepStock = [100, 80, 60, 40];
+  for (let i = 0; i < enConsultorio.length; i++) {
+    const p = enConsultorio[i];
+    const existing = await supabase
+      .from("nutraceutical_stock_movements")
+      .select("id")
+      .eq("professional_id", PROFESSIONAL_PROFILE_ID)
+      .eq("nutraceutical_id", p.id)
+      .limit(1);
+    check("nutra_movements fetch", existing.error);
+    if (existing.data && existing.data.length) continue;
+    check(
+      "nutra_movement recepcion",
+      (
+        await supabase.from("nutraceutical_stock_movements").insert({
+          professional_id: PROFESSIONAL_PROFILE_ID,
+          nutraceutical_id: p.id,
+          delta: recepStock[i] ?? 50,
+          type: "recepcion",
+          reason: "Stock inicial demo (consignacion)",
+        })
+      ).error,
+    );
+  }
 
   // 9. Paciente demo + relacion con el profesional de prueba. Habilita el smoke de
   // pagos (B6: el admin crea el checkout y la comision se sella al profesional

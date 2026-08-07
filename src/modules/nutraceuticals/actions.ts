@@ -6,18 +6,15 @@ import { appError, err, ok, type AppError, type Result } from "@/core/errors";
 import { getCurrentUser } from "@/modules/auth/session";
 
 import { canManageCatalog } from "./policies/can-manage-catalog";
-import { canManageInventory } from "./policies/can-manage-inventory";
 import { canRegisterUsage } from "./policies/can-register-usage";
 import * as service from "./services/nutraceuticals-service";
 import {
   createNutraceuticalSchema,
   registerUsageSchema,
-  setStockSchema,
   updateNutraceuticalSchema,
   type CreateNutraceuticalInput,
   type NutraceuticalFormState,
   type RegisterUsageInput,
-  type SetStockInput,
   type UpdateNutraceuticalInput,
 } from "./validations";
 
@@ -28,15 +25,6 @@ async function requireCatalogManager() {
   if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
   if (!canManageCatalog(user)) {
     return { user: null, error: appError("forbidden", "No tienes permiso sobre el catalogo.") };
-  }
-  return { user, error: null as null };
-}
-
-async function requireInventoryManager() {
-  const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
-  if (!canManageInventory(user)) {
-    return { user: null, error: appError("forbidden", "No tienes permiso sobre el inventario.") };
   }
   return { user, error: null as null };
 }
@@ -83,22 +71,6 @@ export async function updateNutraceuticalAction(
     return ok(null);
   } catch {
     return err(appError("internal", "No se pudo actualizar el nutraceutico."));
-  }
-}
-
-export async function setStockAction(input: SetStockInput): Promise<Result<null, AppError>> {
-  const { error: authzError } = await requireInventoryManager();
-  if (authzError) return err(authzError);
-
-  const parsed = setStockSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Cantidad de stock invalida."));
-
-  try {
-    await service.setStock(parsed.data);
-    revalidatePath("/nutraceuticos");
-    return ok(null);
-  } catch {
-    return err(appError("internal", "No se pudo ajustar el stock."));
   }
 }
 
@@ -162,14 +134,3 @@ export async function updateNutraceuticalFormAction(
   return { error: null, success: "Nutraceutico actualizado.", warning: null };
 }
 
-export async function setStockFormAction(
-  _prev: NutraceuticalFormState,
-  formData: FormData,
-): Promise<NutraceuticalFormState> {
-  const result = await setStockAction({
-    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
-    stockQuantity: Number(String(formData.get("stockQuantity") ?? "")),
-  });
-  if (!result.ok) return { error: result.error.message, success: null, warning: null };
-  return { error: null, success: "Stock actualizado.", warning: null };
-}

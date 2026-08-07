@@ -146,6 +146,18 @@ export const nutraceuticalAvailability = pgEnum("nutraceutical_availability", [
   "no_disponible", // aun no disponible (para el futuro)
 ]);
 
+// Tipo de movimiento de inventario en CONSIGNACION (el producto es de CNV, en custodia del integrante).
+// El saldo es la suma de los deltas; cada movimiento es inmutable (trigger). remesa queda RESERVADA
+// para cuando exista el eslabon CNV->integrante (hoy no existe): entonces una recepcion sin remesa que
+// la respalde sera una discrepancia (misma logica que superseded_at sin su fila de correccion).
+export const nutraceuticalMovementType = pgEnum("nutraceutical_movement_type", [
+  "remesa", // CNV envia al integrante (RESERVADO, sin eslabon aun; no mueve el saldo del integrante)
+  "recepcion", // el integrante reconoce que recibio en custodia (+)
+  "despacho", // el integrante entrega a un paciente, ligado al tratamiento (-)
+  "conciliacion", // ajuste tras conteo fisico (+/-)
+  "devolucion", // el integrante devuelve a CNV (-)
+]);
+
 export const accessGrantStatus = pgEnum("access_grant_status", [
   "pending",
   "approved",

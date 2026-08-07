@@ -1325,18 +1325,21 @@ export type Database = {
           id: string
           last_updated: string
           nutraceutical_id: string
+          professional_id: string
           stock_quantity: number
         }
         Insert: {
           id?: string
           last_updated?: string
           nutraceutical_id: string
+          professional_id: string
           stock_quantity?: number
         }
         Update: {
           id?: string
           last_updated?: string
           nutraceutical_id?: string
+          professional_id?: string
           stock_quantity?: number
         }
         Relationships: [
@@ -1345,6 +1348,78 @@ export type Database = {
             columns: ["nutraceutical_id"]
             isOneToOne: false
             referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_inventory_professional_id_professional_profiles_i"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutraceutical_stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delta: number
+          id: string
+          nutraceutical_id: string
+          professional_id: string
+          reason: string | null
+          treatment_id: string | null
+          type: Database["public"]["Enums"]["nutraceutical_movement_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delta: number
+          id?: string
+          nutraceutical_id: string
+          professional_id: string
+          reason?: string | null
+          treatment_id?: string | null
+          type: Database["public"]["Enums"]["nutraceutical_movement_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delta?: number
+          id?: string
+          nutraceutical_id?: string
+          professional_id?: string
+          reason?: string | null
+          treatment_id?: string | null
+          type?: Database["public"]["Enums"]["nutraceutical_movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_stock_movements_created_by_profiles_id_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_nutraceutical_id_nutraceuticals_i"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_professional_id_professional_prof"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_treatment_id_treatments_id_fk"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]
@@ -2698,6 +2773,10 @@ export type Database = {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      is_own_professional_profile: {
+        Args: { p_professional_id: string }
+        Returns: boolean
+      }
       is_patient_professional: {
         Args: { p_patient_id: string }
         Returns: boolean
@@ -2755,6 +2834,12 @@ export type Database = {
         | "en_consultorio"
         | "solo_tienda"
         | "no_disponible"
+      nutraceutical_movement_type:
+        | "remesa"
+        | "recepcion"
+        | "despacho"
+        | "conciliacion"
+        | "devolucion"
       patient_status: "active" | "inactive"
       professional_document_type: "anexo3"
       professional_profession:
@@ -2948,6 +3033,13 @@ export const Constants = {
         "en_consultorio",
         "solo_tienda",
         "no_disponible",
+      ],
+      nutraceutical_movement_type: [
+        "remesa",
+        "recepcion",
+        "despacho",
+        "conciliacion",
+        "devolucion",
       ],
       patient_status: ["active", "inactive"],
       professional_document_type: ["anexo3"],
