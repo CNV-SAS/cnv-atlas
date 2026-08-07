@@ -14,6 +14,7 @@ import {
   createNutraceuticalSchema,
   despachoSchema,
   receptionSchema,
+  recordCountSchema,
   registerUsageSchema,
   updateNutraceuticalSchema,
   type CreateNutraceuticalInput,
@@ -211,3 +212,49 @@ export async function recordDespachoFormAction(
   return { error: null, success: `Entrega registrada. Te quedan ${stock} unidades.`, warning: null };
 }
 
+
+// Registrar un CONTEO fisico (T3b-3 ST2, Mi inventario). Solo el profesional (canLoadOwnStock). El conteo
+// se registra SIEMPRE (evidencia); si hay faltantes, abre casos. El aviso resume que paso.
+export async function recordCountFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional registra el conteo de su inventario.", success: null, warning: null };
+  }
+  let parsedLines: unknown;
+  try {
+    parsedLines = JSON.parse(String(formData.get("lines") ?? "[]"));
+  } catch {
+    parsedLines = undefined;
+  }
+  const parsed = recordCountSchema.safeParse({
+    note: optStr(formData, "note"),
+    lines: parsedLines,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos del conteo invalidos.", success: null, warning: null };
+  }
+
+  const res = await inventoryService.recordOwnCount(
+    user.id,
+    parsed.data.lines.map((l) => ({ nutraceuticalId: l.nutraceuticalId, lote: l.lote ?? null, physicalQty: l.physicalQty })),
+    parsed.data.note ?? null,
+  );
+  if (!res) return { error: "No tienes un perfil profesional.", success: null, warning: null };
+
+  revalidatePath("/mi-inventario");
+  // Si abrio casos, es un aviso (hay faltantes que atender); si no, confirmacion simple.
+  if (res.opened.length > 0) {
+    const sob = res.sobrantes.length > 0 ? ` Y ${res.sobrantes.length} sobrante(s) por revisar.` : "";
+    return {
+      error: null,
+      success: null,
+      warning: `Conteo registrado. Se abrieron ${res.opened.length} caso(s) de faltante (esperan justificación).${sob}`,
+    };
+  }
+  const sob = res.sobrantes.length > 0 ? ` ${res.sobrantes.length} sobrante(s) por revisar.` : "";
+  return { error: null, success: `Conteo registrado: todo cuadró.${sob}`, warning: null };
+}

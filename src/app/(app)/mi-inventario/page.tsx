@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
+import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
 import { MiInventarioForm } from "@/modules/nutraceuticals/components/mi-inventario-form";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
 import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
@@ -61,6 +62,26 @@ export default async function MiInventarioPage() {
               <MiInventarioForm products={recibibles.map((l) => ({ id: l.nutraceuticalId, name: l.name }))} />
             ) : (
               <p className="text-sm text-muted-foreground">No hay productos disponibles en consultorio para recibir.</p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold tracking-tight">Conteo físico</h2>
+        <Card>
+          <CardHeader>
+            <CardDescription>
+              Cuenta lo que tienes en la vitrina y registralo. El conteo queda como evidencia (aunque todo
+              cuadre); si cuentas menos de lo que el sistema tiene, se abre un caso de faltante que puedes
+              justificar. No se muestra el saldo del sistema a proposito: cuenta lo que hay.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {lines.length ? (
+              <MiConteoForm products={lines.map((l) => ({ id: l.nutraceuticalId, name: l.name }))} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia para contar.</p>
             )}
           </CardContent>
         </Card>

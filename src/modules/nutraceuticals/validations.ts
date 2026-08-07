@@ -37,6 +37,19 @@ export const despachoSchema = z.object({
 });
 export type DespachoInput = z.infer<typeof despachoSchema>;
 
+// Conteo fisico (T3b-3 ST2): lineas de lo contado por producto. Cantidad entera >= 0 (contar cero es un
+// dato valido: el producto ya no esta). Puede ser PARCIAL, pero al menos una linea. Lote opcional.
+export const countLineSchema = z.object({
+  nutraceuticalId: z.guid("Producto invalido."),
+  lote: z.string().trim().max(120).optional(),
+  physicalQty: z.coerce.number().int().min(0).max(1_000_000),
+});
+export const recordCountSchema = z.object({
+  note: z.string().trim().max(500).optional(),
+  lines: z.array(countLineSchema).min(1, "Cuenta al menos un producto.").max(200),
+});
+export type RecordCountInput = z.infer<typeof recordCountSchema>;
+
 // Registro de uso vinculado a un tratamiento (sin UI en B5; la pantalla va en B12).
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,

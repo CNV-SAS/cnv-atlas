@@ -2,6 +2,8 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { recordCount, type CountLineInput, type CountResult } from "../data/count-writer";
+
 // Servicio del inventario en CONSIGNACION del profesional (T3b-1, "Mi inventario"). Lecturas del saldo
 // y el historial del propio profesional, y el registro de una RECEPCION (un movimiento). El saldo lo
 // mueve el trigger; aqui solo se inserta el movimiento (la RLS acota a que sea del profesional).
@@ -217,4 +219,18 @@ export async function recordDespacho(input: {
     .eq("nutraceutical_id", input.nutraceuticalId)
     .maybeSingle();
   return { ok: true, resultingStock: inv?.stock_quantity ?? -input.quantity };
+}
+
+// Registra el CONTEO fisico del profesional (T3b-3 ST2): resuelve su perfil, delega en el writer
+// transaccional (sesion + lineas + apertura de casos). Devuelve el resumen (casos abiertos, sobrantes,
+// cuadraron) para el aviso. null si el usuario no es profesional.
+export async function recordOwnCount(
+  userId: string,
+  lines: CountLineInput[],
+  note: string | null,
+): Promise<CountResult | null> {
+  const supabase = await createSupabaseServerClient();
+  const profId = await ownProfessionalId(supabase, userId);
+  if (!profId) return null;
+  return recordCount({ professionalId: profId, actorId: userId, note, lines, now: new Date() });
 }

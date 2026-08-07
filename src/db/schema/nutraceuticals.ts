@@ -130,6 +130,9 @@ export const nutraceuticalFaltanteCases = pgTable(
     // CACHE proyectado desde la ultima transicion (trigger 0042). NO se escribe directo (coherencia).
     status: nutraceuticalFaltanteStatus("status").notNull().default("reportado"),
     chargeStatus: nutraceuticalFaltanteCharge("charge_status").notNull().default("sin_cargo"),
+    // Conteo del que salio el caso (T3b-3 ST2): reconstruye de donde vino cada faltante. Un mismo conteo
+    // puede abrir VARIOS casos (uno por producto), independientes (cada uno con su plazo y clasificacion).
+    countSessionId: uuid("count_session_id").references(() => nutraceuticalCountSessions.id),
     createdBy: uuid("created_by").references(() => profiles.id),
     createdAt: createdAt(),
   },
@@ -159,4 +162,43 @@ export const nutraceuticalFaltanteTransitions = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("nutra_faltante_trans_case_idx").on(t.caseId)],
+);
+
+// SESION DE CONTEO fisico (T3b-3 ST2): el conteo SEMANAL de la consignacion. Se registra SIEMPRE, cuadre o
+// no: es la evidencia de que el integrante cumplio su obligacion (su ausencia tambien dice algo; sin esto no
+// se sabe quien cuenta y quien no). Puede ser PARCIAL: las lineas registran QUE se conto, asi un conteo de
+// pocos productos no se lee como completo. Inmutable (append-only): un reconteo es una sesion nueva.
+export const nutraceuticalCountSessions = pgTable(
+  "nutraceutical_count_sessions",
+  {
+    id: pk(),
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => profiles.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("nutra_count_prof_idx").on(t.professionalId)],
+);
+
+// Linea del conteo: lo contado por producto. Guarda el fisico y el SALDO DEL SISTEMA en ese momento
+// (snapshot), para que el diff quede anclado a lo que el sistema decia al contar. diff = physical - system:
+// negativo = faltante (abre caso), positivo = sobrante (se registra, no ajusta en silencio), cero = cuadra.
+export const nutraceuticalCountLines = pgTable(
+  "nutraceutical_count_lines",
+  {
+    id: pk(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => nutraceuticalCountSessions.id),
+    nutraceuticalId: uuid("nutraceutical_id")
+      .notNull()
+      .references(() => nutraceuticals.id),
+    lote: text("lote"),
+    physicalQty: integer("physical_qty").notNull(), // lo contado
+    systemQty: integer("system_qty").notNull(), // saldo del sistema al momento del conteo (snapshot)
+    createdAt: createdAt(),
+  },
+  (t) => [index("nutra_count_lines_session_idx").on(t.sessionId)],
 );
