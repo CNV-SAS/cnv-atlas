@@ -177,7 +177,11 @@ export async function setPasswordAction(
   }
 
   cookieStore.delete("atlas-pwd-reset"); // un solo uso
-  redirect("/dashboard");
+  // A la pantalla de acceso, NO al panel: la sesion cambio bajo la pagina abierta y navegar al panel con
+  // el bundle viejo daba pantalla en blanco y "Failed to find Server Action". Entrar con la clave nueva
+  // arranca sesion y pagina limpias, y de paso confirma que la clave quedo bien. Sirve invitacion y
+  // recuperacion (misma accion): por eso el mensaje es neutro.
+  redirect("/login?mensaje=clave_lista");
 }
 
 export async function logoutAction(): Promise<void> {
