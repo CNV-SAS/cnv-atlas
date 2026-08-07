@@ -27,7 +27,6 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
   let profId: string;
   let actorId: string;
   let nutraId: string;
-  let stock: number;
   const sessions: string[] = [];
 
   beforeAll(async () => {
@@ -43,7 +42,7 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     // determinista. Con un producto que nadie mas toca, el saldo es estable durante el test.
     const CURCUMIN = "77777777-7777-7777-7777-777777777703";
     const [inv] = await db
-      .select({ nid: schema.nutraceuticalInventory.nutraceuticalId, stock: schema.nutraceuticalInventory.stockQuantity })
+      .select({ nid: schema.nutraceuticalInventory.nutraceuticalId })
       .from(schema.nutraceuticalInventory)
       .where(
         and(
@@ -52,9 +51,11 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
           dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`,
         ),
       )
+      // orden + offset 0: este test toma el PRIMER producto; faltante-settle-sobrante toma el segundo
+      // (offset 1). Corren en paralelo contra la misma BD; con productos distintos no se mutan el saldo.
+      .orderBy(schema.nutraceuticalInventory.nutraceuticalId)
       .limit(1);
     nutraId = inv.nid;
-    stock = Number(inv.stock);
   });
 
   afterAll(async () => {
@@ -72,8 +73,16 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     await db.execute(dsql`set session_replication_role = default`);
   });
 
+  // Saldo FRESCO del producto justo antes de cada conteo: las aserciones se computan contra el saldo real
+  // del momento, no contra el snapshot de beforeAll, para no depender de que nada mas lo haya movido.
+  async function currentSaldo(): Promise<number> {
+    const [inv] = await db.select({ s: schema.nutraceuticalInventory.stockQuantity }).from(schema.nutraceuticalInventory).where(and(eq(schema.nutraceuticalInventory.professionalId, profId), eq(schema.nutraceuticalInventory.nutraceuticalId, nutraId)));
+    return inv ? Number(inv.s) : 0;
+  }
+
   it("faltante: abre un caso ligado a la sesion, en reportado, con precio sellado; el saldo no se toca", async () => {
-    const res = await recordCount({ professionalId: profId, actorId, note: null, now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: "L1", physicalQty: stock - 2 }] });
+    const cur = await currentSaldo();
+    const res = await recordCount({ professionalId: profId, actorId, note: null, now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: "L1", physicalQty: cur - 2 }] });
     sessions.push(res.sessionId);
     expect(res.opened).toHaveLength(1);
     expect(res.opened[0].quantity).toBe(2);
@@ -89,12 +98,12 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     expect(Number(c.price)).toBeGreaterThan(0); // sellado del catalogo
 
     // el saldo del sistema NO cambio (baja al cerrar el caso, no al detectar)
-    const [inv] = await db.select({ stock: schema.nutraceuticalInventory.stockQuantity }).from(schema.nutraceuticalInventory).where(and(eq(schema.nutraceuticalInventory.professionalId, profId), eq(schema.nutraceuticalInventory.nutraceuticalId, nutraId)));
-    expect(Number(inv.stock)).toBe(stock);
+    expect(await currentSaldo()).toBe(cur);
   });
 
   it("cuadra: registra la sesion y la linea, sin abrir caso", async () => {
-    const res = await recordCount({ professionalId: profId, actorId, note: "todo cuadra", now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: null, physicalQty: stock }] });
+    const cur = await currentSaldo();
+    const res = await recordCount({ professionalId: profId, actorId, note: "todo cuadra", now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: null, physicalQty: cur }] });
     sessions.push(res.sessionId);
     expect(res.opened).toHaveLength(0);
     expect(res.cuadraron).toBe(1);
@@ -105,7 +114,8 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
   });
 
   it("sobrante: se reporta, sin caso", async () => {
-    const res = await recordCount({ professionalId: profId, actorId, note: null, now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: null, physicalQty: stock + 3 }] });
+    const cur = await currentSaldo();
+    const res = await recordCount({ professionalId: profId, actorId, note: null, now: new Date(), lines: [{ nutraceuticalId: nutraId, lote: null, physicalQty: cur + 3 }] });
     sessions.push(res.sessionId);
     expect(res.opened).toHaveLength(0);
     expect(res.sobrantes).toHaveLength(1);

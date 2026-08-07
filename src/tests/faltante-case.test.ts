@@ -54,10 +54,12 @@ describe.skipIf(!HAS_DB)("caso de faltante: estado, transiciones e inmutabilidad
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
     const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
-    const [nut] = await db.select({ id: schema.nutraceuticals.id }).from(schema.nutraceuticals).limit(1);
     profId = prof.id;
     actorId = prof.pid;
-    nutraId = nut.id;
+    // MULTICELL (702): producto DEDICADO. Al cerrar el caso, el settle muta su saldo; ningun otro test lee
+    // el saldo de MULTICELL (count-session usa OMEGA, faltante-settle D3-K2, nutra-inventory CURCUMIN), asi
+    // que la mutacion no interfiere con nadie aunque corran en paralelo.
+    nutraId = "77777777-7777-7777-7777-777777777702";
     caseId = (
       await db
         .insert(schema.nutraceuticalFaltanteCases)
@@ -80,6 +82,11 @@ describe.skipIf(!HAS_DB)("caso de faltante: estado, transiciones e inmutabilidad
     await db.execute(dsql`set session_replication_role = replica`); // saltar el append-only para limpiar
     await db.delete(schema.nutraceuticalFaltanteTransitions).where(eq(schema.nutraceuticalFaltanteTransitions.caseId, caseId));
     await db.delete(schema.nutraceuticalFaltanteCases).where(eq(schema.nutraceuticalFaltanteCases.id, caseId));
+    // Al cerrar el caso (estado terminal) el trigger de settle inserto una conciliacion -N (mig 0048); hay
+    // que borrarla y RECOMPUTAR el saldo, o el saldo de este producto queda driftado y otro test en paralelo
+    // (count-session) que lo comparta veria el cambio.
+    await db.execute(dsql`delete from nutraceutical_stock_movements where professional_id = ${profId} and nutraceutical_id = ${nutraId} and reason like 'Conciliacion por faltante%'`);
+    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}`);
     await db.execute(dsql`set session_replication_role = default`);
   });
 

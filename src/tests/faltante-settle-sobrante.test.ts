@@ -45,11 +45,15 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
     actorId = prof.pid;
     // producto con saldo, EXCLUYENDO CURCUMIN (77777777-...703) que nutra-inventory.test muta en paralelo.
     const CURCUMIN = "77777777-7777-7777-7777-777777777703";
+    // offset 1: toma el SEGUNDO producto no-CURCUMIN (count-session.test toma el primero, offset 0). Asi los
+    // dos tests, que corren en paralelo, mutan productos distintos y no se pisan el saldo.
     const [inv] = await db
       .select({ nid: schema.nutraceuticalInventory.nutraceuticalId })
       .from(schema.nutraceuticalInventory)
       .where(and(eq(schema.nutraceuticalInventory.professionalId, profId), ne(schema.nutraceuticalInventory.nutraceuticalId, CURCUMIN), dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`))
-      .limit(1);
+      .orderBy(schema.nutraceuticalInventory.nutraceuticalId)
+      .limit(1)
+      .offset(1);
     nutraId = inv.nid;
   });
 

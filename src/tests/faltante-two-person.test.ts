@@ -47,10 +47,11 @@ describe.skipIf(!HAS_DB)("faltante: gate de dos personas (BD real)", () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
     const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
-    const [nut] = await db.select({ id: schema.nutraceuticals.id }).from(schema.nutraceuticals).limit(1);
     profId = prof.id;
     actorId = prof.pid;
-    nutraId = nut.id;
+    // MULTICELL (702): producto DEDICADO (ver faltante-case.test). El settle al cerrar muta su saldo, pero
+    // ningun test lee el saldo de MULTICELL, asi que no interfiere aunque corran en paralelo.
+    nutraId = "77777777-7777-7777-7777-777777777702";
   });
 
   afterEach(async () => {
@@ -60,6 +61,10 @@ describe.skipIf(!HAS_DB)("faltante: gate de dos personas (BD real)", () => {
       await db.delete(schema.nutraceuticalFaltanteTransitions).where(eq(schema.nutraceuticalFaltanteTransitions.caseId, c));
       await db.delete(schema.nutraceuticalFaltanteCases).where(eq(schema.nutraceuticalFaltanteCases.id, c));
     }
+    // Los cierres a terminal dispararon el settle (conciliacion -N, mig 0048); se borran y se recomputa el
+    // saldo, o el producto queda driftado para otro test en paralelo que lo comparta.
+    await db.execute(dsql`delete from nutraceutical_stock_movements where professional_id = ${profId} and nutraceutical_id = ${nutraId} and reason like 'Conciliacion por faltante%'`);
+    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}`);
     cases.length = 0;
     await db.execute(dsql`set session_replication_role = default`);
   });
