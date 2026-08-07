@@ -88,9 +88,19 @@
 - **Verificar:** abre la URL `*.vercel.app` que da Vercel; la app carga (pantalla de login).
 - **Qué puede salir mal:** build falla por una variable faltante (lee el log, dice cuál) o por los tests. Si un test de BD real corre en CI y no hay `DATABASE_URL` de test, se auto-salta (está diseñado así).
 
-3.2 **Dominio.** Cloudflare (zona `cnvsystem.com`): CNAME `atlas` → `cname.vercel-dns.com`, proxy activado, SSL Full (strict). Vercel → Settings → Domains: agrega `atlas.cnvsystem.com`.
-- **Verificar:** `https://atlas.cnvsystem.com` responde (puede tardar por DNS). Vercel muestra el dominio "Valid".
-- **Qué puede salir mal:** DNS tarda; si Vercel dice "Invalid Configuration", revisa el CNAME. SSL Full (strict) evita el bucle de redirección.
+3.2 **Dominio.** El dominio se configura **DESPUÉS del primer deploy** (Paso 3.1), nunca antes: apuntar un dominio a un proyecto sin desplegar solo da error y confunde.
+- **En Vercel primero:** Settings → Domains → agrega `atlas.cnvsystem.com`. Vercel te va a **mostrar el registro DNS exacto** que debes crear (el valor del CNAME). **Usa ese valor, no uno inventado:** puede variar por proyecto (suele ser `cname.vercel-dns.com`, pero confirma el que te muestre Vercel).
+- **En Cloudflare** (zona `cnvsystem.com`): crea el CNAME `atlas` → el valor que te dio Vercel, con el **proxy DESACTIVADO (nube GRIS, "DNS only")**. Este es el error más común: si dejas el proxy activado (nube naranja), Vercel no puede emitir su certificado y salen fallos de SSL que parecen otra cosa. Gris = Vercel maneja el certificado directo.
+- **Verificar:** `https://atlas.cnvsystem.com` responde (puede tardar por DNS); Vercel muestra el dominio **"Valid"** y emite el certificado. Si dice "Invalid Configuration", casi siempre es el proxy naranja: cámbialo a gris.
+
+3.3 **Apuntar TODO al dominio propio (crítico; lo que más se olvida).** Ahora que existe `https://atlas.cnvsystem.com`, hay cosas que quedaron apuntando a la URL de Vercel o a local y hay que moverlas:
+- **Supabase → Authentication → URL Configuration: `Site URL` = `https://atlas.cnvsystem.com`, y agrega esa URL (y `.../auth/confirm`) a `Redirect URLs`.** ESTE ES EL QUE MÁS SE OLVIDA Y ROMPE JUSTO LA RECUPERACIÓN/INVITACIÓN: Supabase arma los enlaces de los correos (recuperación, invitación) con la `Site URL`. Si apunta a otro lado, el enlace del correo lleva al lugar equivocado y el flujo que acabamos de arreglar falla en producción.
+- **Supabase → Authentication → Email Templates: replica las plantillas de "Reset Password" e "Invite User".** La nube (Supabase hosted) NO lee `supabase/config.toml` ni `supabase/templates/*.html` (eso es solo para el entorno local); en la nube las plantillas se editan en el dashboard. Sin esto, la nube usa la plantilla por defecto (`{{ .ConfirmationURL }}`), que NO pasa por `/auth/confirm` con `token_hash` y rompe el flujo. Pega, en cada una, el enlace que ya usamos en local (`supabase/templates/recovery.html` e `invite.html`):
+  - Reset Password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/set-password`
+  - Invite User: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password`
+- **Webhook de Wompi:** apunta a `https://atlas.cnvsystem.com/api/webhooks/wompi` (se hace en el Paso 4).
+- **Enlaces de la encuesta del paciente / correos:** salen de la app (usan la URL pública) y de Supabase (Site URL). Con la `Site URL` correcta y el dominio activo, quedan bien.
+- **Verificar:** dispara un correo de recuperación en producción (con una cuenta de prueba) y confirma que el enlace del correo empieza por `https://atlas.cnvsystem.com/auth/confirm`, no por la URL de Vercel ni localhost.
 
 ---
 
