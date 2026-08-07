@@ -28,6 +28,15 @@ export const receptionSchema = z.object({
 });
 export type ReceptionInput = z.infer<typeof receptionSchema>;
 
+// Despacho (T3b-2): entrega de N unidades al paciente, ligada a su tratamiento. Cantidad entera positiva
+// (el negativo lo pone el service como delta; aqui es "cuantas entregaste").
+export const despachoSchema = z.object({
+  treatmentId: dbUuid,
+  nutraceuticalId: dbUuid,
+  quantity: z.coerce.number().int().min(1).max(1_000_000),
+});
+export type DespachoInput = z.infer<typeof despachoSchema>;
+
 // Registro de uso vinculado a un tratamiento (sin UI en B5; la pantalla va en B12).
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,

@@ -61,6 +61,22 @@ describe.skipIf(!HAS_DB)("inventario en consignacion: saldo cacheado y movimient
     await expect(db.execute(dsql`delete from nutraceutical_stock_movements where id = ${id}`)).rejects.toThrow();
   });
 
+  it("un despacho puede dejar el saldo NEGATIVO sin bloquearse (discrepancia visible, no silenciosa)", async () => {
+    const { db } = await import("@/db");
+    // Despacha MAS de lo que hay (saldo actual + 3): el saldo cae a -3 sin error. El modelo T3b-2 permite
+    // entregar sin stock; la diferencia queda VISIBLE (saldo negativo), no se calla. Se calcula el despacho
+    // desde el saldo real (el demo trae stock del seed) para forzar el negativo sea cual sea.
+    const before = await db.execute<{ stock_quantity: number }>(dsql`select coalesce(stock_quantity,0) as stock_quantity from nutraceutical_inventory where professional_id = ${PROF} and nutraceutical_id = ${NUT}`);
+    const prev = before.length ? Number(before[0].stock_quantity) : 0;
+    const salida = prev + 3; // garantiza saldo resultante = -3
+    await expect(
+      db.execute(dsql`insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, delta, type, reason) values (${PROF}, ${NUT}, ${-salida}, 'despacho', 'test-nutra-inventory')`),
+    ).resolves.toBeDefined();
+    const after = await db.execute<{ stock_quantity: number }>(dsql`select stock_quantity from nutraceutical_inventory where professional_id = ${PROF} and nutraceutical_id = ${NUT}`);
+    expect(Number(after[0].stock_quantity)).toBe(prev - salida);
+    expect(Number(after[0].stock_quantity)).toBeLessThan(0);
+  });
+
   it("el saldo no se puede escribir directo con un valor que no sea la suma (coherencia)", async () => {
     const { db } = await import("@/db");
     // asegura que exista la fila (una recepcion la crea)

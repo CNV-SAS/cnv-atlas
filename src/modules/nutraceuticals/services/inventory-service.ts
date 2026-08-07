@@ -122,3 +122,99 @@ export async function recordReception(input: {
   if (error) return { ok: false, message: "No se pudo registrar la recepcion." };
   return { ok: true };
 }
+
+// Saldo del profesional para un conjunto de productos (para mostrar y avisar de negativo en el despacho).
+export async function getOwnStockByIds(
+  userId: string,
+  nutraceuticalIds: string[],
+): Promise<Record<string, number>> {
+  if (nutraceuticalIds.length === 0) return {};
+  const supabase = await createSupabaseServerClient();
+  const profId = await ownProfessionalId(supabase, userId);
+  if (!profId) return {};
+  const { data } = await supabase
+    .from("nutraceutical_inventory")
+    .select("nutraceutical_id, stock_quantity")
+    .eq("professional_id", profId)
+    .in("nutraceutical_id", nutraceuticalIds);
+  const out: Record<string, number> = {};
+  for (const id of nutraceuticalIds) out[id] = 0;
+  for (const r of data ?? []) out[r.nutraceutical_id] = r.stock_quantity;
+  return out;
+}
+
+// Historial de DESPACHOS de un tratamiento (entregas a ese paciente). Es dato clinico (liga al
+// tratamiento/paciente): lo ve el profesional del paciente; la RLS de movimientos ya lo acota a que sea
+// suyo. Mas reciente primero.
+export async function getDespachosForTreatment(treatmentId: string): Promise<MovementRow[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("nutraceutical_stock_movements")
+    .select("id, created_at, type, delta, reason, lote, nutraceuticals(name)")
+    .eq("treatment_id", treatmentId)
+    .eq("type", "despacho")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`inventory-service: despachos: ${error.message}`);
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    createdAt: m.created_at,
+    type: m.type,
+    delta: m.delta,
+    reason: m.reason,
+    lote: m.lote,
+    nutraceuticalName: nutraName(m.nutraceuticals),
+  }));
+}
+
+// Registra un DESPACHO (entrega al paciente): un movimiento -N ligado al tratamiento. Condiciones:
+//  (1) solo productos en_consultorio (los solo_tienda los compra el paciente en la tienda);
+//  (2) descuenta el stock (via el trigger);
+//  (3) NO impide sin stock: permite el negativo, y devuelve el saldo resultante para AVISAR y que la
+//      discrepancia quede visible (un inventario que miente en silencio es peor que uno negativo).
+// Guard: el tratamiento debe ser del profesional del paciente (ademas la RLS acota el movimiento a su
+// propio inventario).
+export async function recordDespacho(input: {
+  userId: string;
+  treatmentId: string;
+  nutraceuticalId: string;
+  quantity: number;
+}): Promise<{ ok: boolean; message?: string; resultingStock?: number }> {
+  const supabase = await createSupabaseServerClient();
+  const profId = await ownProfessionalId(supabase, input.userId);
+  if (!profId) return { ok: false, message: "No tienes un perfil profesional." };
+
+  // Guard: el tratamiento es de este profesional (treatment -> diagnosis -> evaluation.professional_id).
+  const { data: t } = await supabase.from("treatments").select("diagnosis_id").eq("id", input.treatmentId).maybeSingle();
+  if (!t) return { ok: false, message: "Tratamiento no encontrado." };
+  const { data: d } = await supabase.from("diagnoses").select("evaluation_id").eq("id", t.diagnosis_id).maybeSingle();
+  const { data: e } = d ? await supabase.from("evaluations").select("professional_id").eq("id", d.evaluation_id).maybeSingle() : { data: null };
+  if (!e || e.professional_id !== profId) return { ok: false, message: "No estas asignado a este paciente." };
+
+  // Condicion 1: solo en_consultorio.
+  const { data: prod } = await supabase.from("nutraceuticals").select("commercial_availability, name").eq("id", input.nutraceuticalId).maybeSingle();
+  if (!prod) return { ok: false, message: "Producto no encontrado." };
+  if (prod.commercial_availability !== "en_consultorio") {
+    return { ok: false, message: `"${prod.name}" no se entrega en consultorio (el paciente lo compra en la tienda).` };
+  }
+
+  // Movimiento despacho: -N, ligado al tratamiento. El trigger descuenta el saldo (permite negativo).
+  const { error } = await supabase.from("nutraceutical_stock_movements").insert({
+    professional_id: profId,
+    nutraceutical_id: input.nutraceuticalId,
+    delta: -input.quantity,
+    type: "despacho",
+    reason: "Entrega al paciente",
+    treatment_id: input.treatmentId,
+    created_by: input.userId,
+  });
+  if (error) return { ok: false, message: "No se pudo registrar la entrega." };
+
+  // Saldo resultante (para el aviso de negativo / discrepancia visible).
+  const { data: inv } = await supabase
+    .from("nutraceutical_inventory")
+    .select("stock_quantity")
+    .eq("professional_id", profId)
+    .eq("nutraceutical_id", input.nutraceuticalId)
+    .maybeSingle();
+  return { ok: true, resultingStock: inv?.stock_quantity ?? -input.quantity };
+}
