@@ -56,6 +56,17 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 - **Verificar:** cuéntalas contra la lista de `DEPLOY.md`; que ninguna sensible tenga `NEXT_PUBLIC_`.
 - **Qué puede salir mal:** una variable en el scope equivocado (p. ej. solo Production) hace que los Preview fallen. Cárgalas en los tres.
 
+**Las cuatro de Supabase, sin ambigüedad** (este es el error más caro y más silencioso: poner una clave secreta con `NEXT_PUBLIC_` la deja expuesta en el navegador, sin dar ningún error). Todas salen del dashboard del proyecto (Paso 1.2):
+
+| Variable | Dónde en el dashboard | Prefijo | Por qué |
+|----------|-----------------------|---------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Settings → API → Project URL | **NEXT_PUBLIC_** (pública) | El navegador la usa para hablar con Supabase; no es secreta. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Settings → API → `anon public` | **NEXT_PUBLIC_** (pública) | Clave anónima, protegida por RLS; diseñada para ir al navegador. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Settings → API → `service_role` | **NUNCA** `NEXT_PUBLIC_` | Salta toda la RLS (acceso total). Si llega al navegador, cualquiera lee y borra todo. |
+| `DATABASE_URL` | Settings → Database → Connection string → URI (reemplaza `[YOUR-PASSWORD]`) | **NUNCA** `NEXT_PUBLIC_` | Conexión directa con credenciales completas; la usan los repositorios EN RUNTIME (no solo las migraciones). |
+
+Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de abajo no pueden verse nunca. Las cuatro son necesarias para que la app arranque y opere; cárgalas de una vez (si falta una, el arranque falla y descubrirías la siguiente en el próximo intento).
+
 2.3 **Redesplegar y confirmar que la app conecta a la base (aún sin tablas).** Con las variables cargadas, dispara un deploy: Vercel → Deployments → Redeploy (o un push a `main`; si el repo ya está conectado, cada push despliega). Cuando quede "Ready", abre `https://atlas.cnvsystem.com` (o la URL `*.vercel.app`).
 - **Verificar:** ya NO sale el error "Faltan `NEXT_PUBLIC_SUPABASE_URL` o `NEXT_PUBLIC_SUPABASE_ANON_KEY`"; carga la pantalla de login. Las consultas a datos aún fallarían (no hay tablas todavía): eso es esperado y se resuelve en el Paso 3. Lo que confirmas aquí es solo que la app ya sabe dónde está la base.
 - **El registro de errores en producción (Sentry) ya está funcionando:** capturó limpio el error de variables faltantes con el mensaje exacto. Una pieza menos que verificar; no hay que configurar nada más de Sentry.
