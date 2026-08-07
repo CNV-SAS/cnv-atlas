@@ -17,17 +17,19 @@
 
 **Por qué.** El seed actual (`supabase/seed.ts`) mezcla lo mínimo (organización, roles, model-registry, encuesta, dispositivos, catálogo de nutracéuticos) con **datos demo**: usuarios de prueba (profesional/soporte/dirección demo) y un **paciente ficticio con PII**. La nube NO debe nacer con eso: contra la decisión de "real desde el día uno", y contra la limpieza de PII.
 
-**Qué se hizo (HECHO 2026-08-07):** un interruptor `SEED_DEMO` en `supabase/seed.ts`. Con `SEED_DEMO=false` el seed crea solo el mínimo + la cuenta admin de arranque (para poder entrar e invitar gente), y NO crea usuarios demo, paciente demo, PII, ni inventario demo. Verificado en local: `pnpm db:seed` (default) sigue con todo el demo; `SEED_DEMO=false pnpm db:seed` imprime "Seed completo (MINIMO, sin datos demo)". La nube se siembra con `SEED_DEMO=false` (Paso 1.5).
+**Qué se hizo (HECHO 2026-08-07):** un interruptor `SEED_DEMO` en `supabase/seed.ts`. Con `SEED_DEMO=false` el seed crea solo el mínimo + la cuenta admin de arranque (para poder entrar e invitar gente), y NO crea usuarios demo, paciente demo, PII, ni inventario demo. Verificado en local: `pnpm db:seed` (default) sigue con todo el demo; `SEED_DEMO=false pnpm db:seed` imprime "Seed completo (MINIMO, sin datos demo)". La nube se siembra con `SEED_DEMO=false` (Paso 3.2).
 
-**Cómo verificar (después de sembrar la nube, Paso 1.5):** en Supabase → Table editor → `patients` está **vacía**; `nutraceuticals` tiene los 10 productos; `roles` tiene los 5; `survey_versions` tiene la encuesta. Cero pacientes, cero PII.
+**Cómo verificar (después de sembrar la nube, Paso 3.2):** en Supabase → Table editor → `patients` está **vacía**; `nutraceuticals` tiene los 10 productos; `roles` tiene los 5; `survey_versions` tiene la encuesta. Cero pacientes, cero PII.
 
 **Qué puede salir mal:** olvidar el `SEED_DEMO=false` al sembrar la nube (entraría el paciente demo con PII). El check de arriba (patients vacía) lo atrapa: si aparece el paciente demo, se sembró mal.
 
 ---
 
-## Paso 1 — Supabase en la nube
+## Paso 1 — Supabase en la nube: crear el proyecto
 
 **Consola:** app.supabase.com
+
+Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DESPUÉS (Paso 3), a propósito: primero confirmamos que la app desplegada conecta a la base (Paso 2) y solo entonces le cargamos el esquema. Así, si algo falla, sabes cuál de los dos fue (la conexión por variables, o el esquema por migraciones), sin mezclarlos.
 
 1.1 **Crear el proyecto** (si no existe). New project → nombre `cnv-atlas`, región **US East (us-east-1)** (por la decisión de infraestructura), contraseña de base de datos fuerte (guárdala en Bitwarden; es la del rol `postgres`).
 - **Qué verás:** el proyecto tarda ~2 min en aprovisionar; luego el dashboard del proyecto.
@@ -37,7 +39,35 @@
 - **De dónde salen:** todas del dashboard de este proyecto. Guárdalas en Bitwarden; las cargas a Vercel en el Paso 2.
 - **Cuidado:** la `service_role` key y la `DATABASE_URL` son secretas (dan acceso total). NUNCA en el código ni con prefijo `NEXT_PUBLIC_`.
 
-1.3 **Aplicar las migraciones.** IMPORTANTE, léelo antes: **tu `.env.local` NO cambia, se queda apuntando a local.** Las credenciales de la nube van en Vercel (Paso 2), NO en tu máquina. La única excepción son estos dos comandos (migrate y seed), que corren con la URL/credenciales remotas puestas SOLO para ese comando (variable de shell), sin editar ningún archivo. Verificado que Node NO pisa esa variable con `.env.local`, así que funciona.
+1.3 **Storage (buckets).** Supabase → Storage: crea el bucket privado que usan los PDF de reporte (mismo nombre que en local; revisa `report-storage.ts` para el nombre exacto). Privado, no público.
+- **Verificar:** el bucket aparece y es privado (candado).
+
+---
+
+## Paso 2 — Variables de entorno en Vercel
+
+**Consola:** vercel.com → tu proyecto → Settings → Environment Variables
+
+2.1 **Conectar el repo a Vercel** (si no está): New Project → importa el repo de GitHub. Framework: Next.js (lo detecta). NO despliegues todavía (faltan las variables).
+
+2.2 **Cargar TODAS las variables**, en los tres scopes (Production, Preview, Development). La lista completa con su alcance vive en `DEPLOY.md` sección "Variables de entorno". Las de la nube van con los valores del Paso 1; las de terceros, del Paso 5. Regla dura: las sensibles (`SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `WOMPI_PRIVATE_KEY`, `WOMPI_EVENTS_SECRET`, `WOMPI_INTEGRITY_SECRET`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `RESEND_API_KEY`, `ALEGRA_API_KEY`, tokens de Upstash, `SENTRY_AUTH_TOKEN`) **NUNCA** con prefijo `NEXT_PUBLIC_`.
+- Agrega también `ENABLE_EXPERIMENTAL_COREPACK=1` (para que Vercel use pnpm 11 y respete las protecciones de supply chain).
+- **De dónde sale cada una:** Supabase (Paso 1), Wompi/Alegra/Resend (Paso 5), Groq/Gemini/Upstash/Sentry (sus consolas). Si un valor sale de otro paso, ese paso lo dice.
+- **Verificar:** cuéntalas contra la lista de `DEPLOY.md`; que ninguna sensible tenga `NEXT_PUBLIC_`.
+- **Qué puede salir mal:** una variable en el scope equivocado (p. ej. solo Production) hace que los Preview fallen. Cárgalas en los tres.
+
+2.3 **Redesplegar y confirmar que la app conecta a la base (aún sin tablas).** Con las variables cargadas, dispara un deploy: Vercel → Deployments → Redeploy (o un push a `main`; si el repo ya está conectado, cada push despliega). Cuando quede "Ready", abre `https://atlas.cnvsystem.com` (o la URL `*.vercel.app`).
+- **Verificar:** ya NO sale el error "Faltan `NEXT_PUBLIC_SUPABASE_URL` o `NEXT_PUBLIC_SUPABASE_ANON_KEY`"; carga la pantalla de login. Las consultas a datos aún fallarían (no hay tablas todavía): eso es esperado y se resuelve en el Paso 3. Lo que confirmas aquí es solo que la app ya sabe dónde está la base.
+- **El registro de errores en producción (Sentry) ya está funcionando:** capturó limpio el error de variables faltantes con el mensaje exacto. Una pieza menos que verificar; no hay que configurar nada más de Sentry.
+- **Qué puede salir mal:** el build falla por una variable faltante (el log dice cuál) o por los tests. Si un test de BD real corre en CI y no hay `DATABASE_URL` de test, se auto-salta (está diseñado así).
+
+---
+
+## Paso 3 — Migraciones y seed
+
+Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo de datos. IMPORTANTE, léelo antes: **tu `.env.local` NO cambia, se queda apuntando a local.** Las credenciales de la nube van en Vercel (Paso 2), NO en tu máquina. La única excepción son estos dos comandos (migrate y seed), que corren con la URL/credenciales remotas puestas SOLO para ese comando (variable de shell), sin editar ningún archivo. Verificado que Node NO pisa esa variable con `.env.local`, así que funciona.
+
+3.1 **Aplicar las migraciones.**
 - Comando (PowerShell), reemplazando la URI por la `DATABASE_URL` del Paso 1.2:
   ```powershell
   $env:DATABASE_URL = "postgresql://...tu-uri-de-la-nube..."
@@ -46,13 +76,10 @@
   ```
 - Aplica las 48 migraciones, incluidas las de RLS y triggers.
 - **Qué verás:** "migrations applied successfully".
-- **Verificar:** Supabase → Table editor: aparecen las tablas (`patients`, `evaluations`, `nutraceutical_faltante_cases`, etc.). Database → Roles/Policies: las políticas RLS existen.
+- **Verificar:** Supabase → Table editor: aparecen las tablas (`patients`, `evaluations`, `nutraceutical_faltante_cases`, etc.). Database → Roles/Policies: las políticas RLS existen. En la app, la pantalla de login ya no falla al consultar datos.
 - **Qué puede salir mal:** timeout o permiso. Si una migración de trigger falla, NO sigas: el orden importa. Copia el error y páralo. Si `DATABASE_URL` quedó vacía, el comando falla al conectar: revisa que la pusiste en la MISMA ventana de PowerShell.
 
-1.4 **Storage (buckets).** Supabase → Storage: crea el bucket privado que usan los PDF de reporte (mismo nombre que en local; revisa `report-storage.ts` para el nombre exacto). Privado, no público.
-- **Verificar:** el bucket aparece y es privado (candado).
-
-1.5 **Sembrar el mínimo.** Igual que 1.3: variables de shell SOLO para este comando, sin tocar `.env.local`. El seed usa la URL y la **service_role key** de la nube (Paso 1.2), el correo del admin de arranque (`sau.idk001@gmail.com` u otro que definas en `supabase/seed.ts`), una contraseña fuerte, y `SEED_DEMO=false`.
+3.2 **Sembrar el mínimo.** Igual que 3.1: variables de shell SOLO para este comando, sin tocar `.env.local`. El seed usa la URL y la **service_role key** de la nube (Paso 1.2), el correo del admin de arranque (`sau.idk001@gmail.com` u otro que definas en `supabase/seed.ts`), una contraseña fuerte, y `SEED_DEMO=false`.
   ```powershell
   $env:NEXT_PUBLIC_SUPABASE_URL = "https://...tu-proyecto.supabase.co"
   $env:SUPABASE_SERVICE_ROLE_KEY = "...tu-service-role-key..."
@@ -67,66 +94,47 @@
 
 ---
 
-## Paso 2 — Variables de entorno en Vercel
+## Paso 4 — Dominio
 
-**Consola:** vercel.com → tu proyecto → Settings → Environment Variables
-
-2.1 **Conectar el repo a Vercel** (si no está): New Project → importa el repo de GitHub. Framework: Next.js (lo detecta). NO despliegues todavía (faltan las variables).
-
-2.2 **Cargar TODAS las variables**, en los tres scopes (Production, Preview, Development). La lista completa con su alcance vive en `DEPLOY.md` sección "Variables de entorno". Las de la nube van con los valores del Paso 1; las de terceros, del Paso 4. Regla dura: las sensibles (`SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `WOMPI_PRIVATE_KEY`, `WOMPI_EVENTS_SECRET`, `WOMPI_INTEGRITY_SECRET`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `RESEND_API_KEY`, `ALEGRA_API_KEY`, tokens de Upstash, `SENTRY_AUTH_TOKEN`) **NUNCA** con prefijo `NEXT_PUBLIC_`.
-- Agrega también `ENABLE_EXPERIMENTAL_COREPACK=1` (para que Vercel use pnpm 11 y respete las protecciones de supply chain).
-- **De dónde sale cada una:** Supabase (Paso 1), Wompi/Alegra/Resend (Paso 4), Groq/Gemini/Upstash/Sentry (sus consolas). Si un valor sale de otro paso, ese paso lo dice.
-- **Verificar:** cuéntalas contra la lista de `DEPLOY.md`; que ninguna sensible tenga `NEXT_PUBLIC_`.
-- **Qué puede salir mal:** una variable en el scope equivocado (p. ej. solo Production) hace que los Preview fallen. Cárgalas en los tres.
-
----
-
-## Paso 3 — Deploy y dominio
-
-3.1 **Primer deploy.** Vercel → Deployments → Redeploy (o push a `main`).
-- **Qué verás:** el build corre (tsc, lint, tests); si pasa, "Ready".
-- **Verificar:** abre la URL `*.vercel.app` que da Vercel; la app carga (pantalla de login).
-- **Qué puede salir mal:** build falla por una variable faltante (lee el log, dice cuál) o por los tests. Si un test de BD real corre en CI y no hay `DATABASE_URL` de test, se auto-salta (está diseñado así).
-
-3.2 **Dominio.** El dominio se configura **DESPUÉS del primer deploy** (Paso 3.1), nunca antes: apuntar un dominio a un proyecto sin desplegar solo da error y confunde.
+4.1 **Dominio.** El dominio se configura **DESPUÉS del primer deploy** (Paso 2.3), nunca antes: apuntar un dominio a un proyecto sin desplegar solo da error y confunde.
 - **En Vercel primero:** Settings → Domains → agrega `atlas.cnvsystem.com`. Vercel te va a **mostrar el registro DNS exacto** que debes crear (el valor del CNAME). **Usa ese valor, no uno inventado:** puede variar por proyecto (suele ser `cname.vercel-dns.com`, pero confirma el que te muestre Vercel).
 - **En Cloudflare** (zona `cnvsystem.com`): crea el CNAME `atlas` → el valor que te dio Vercel, con el **proxy DESACTIVADO (nube GRIS, "DNS only")**. Este es el error más común: si dejas el proxy activado (nube naranja), Vercel no puede emitir su certificado y salen fallos de SSL que parecen otra cosa. Gris = Vercel maneja el certificado directo.
 - **Verificar:** `https://atlas.cnvsystem.com` responde (puede tardar por DNS); Vercel muestra el dominio **"Valid"** y emite el certificado. Si dice "Invalid Configuration", casi siempre es el proxy naranja: cámbialo a gris.
 
-3.3 **Apuntar TODO al dominio propio (crítico; lo que más se olvida).** Ahora que existe `https://atlas.cnvsystem.com`, hay cosas que quedaron apuntando a la URL de Vercel o a local y hay que moverlas:
+4.2 **Apuntar TODO al dominio propio (crítico; lo que más se olvida).** Ahora que existe `https://atlas.cnvsystem.com`, hay cosas que quedaron apuntando a la URL de Vercel o a local y hay que moverlas:
 - **Supabase → Authentication → URL Configuration: `Site URL` = `https://atlas.cnvsystem.com`, y agrega esa URL (y `.../auth/confirm`) a `Redirect URLs`.** ESTE ES EL QUE MÁS SE OLVIDA Y ROMPE JUSTO LA RECUPERACIÓN/INVITACIÓN: Supabase arma los enlaces de los correos (recuperación, invitación) con la `Site URL`. Si apunta a otro lado, el enlace del correo lleva al lugar equivocado y el flujo que acabamos de arreglar falla en producción.
 - **Supabase → Authentication → Email Templates: replica las plantillas de "Reset Password" e "Invite User".** La nube (Supabase hosted) NO lee `supabase/config.toml` ni `supabase/templates/*.html` (eso es solo para el entorno local); en la nube las plantillas se editan en el dashboard. Sin esto, la nube usa la plantilla por defecto (`{{ .ConfirmationURL }}`), que NO pasa por `/auth/confirm` con `token_hash` y rompe el flujo. Pega, en cada una, el enlace que ya usamos en local (`supabase/templates/recovery.html` e `invite.html`):
   - Reset Password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/set-password`
   - Invite User: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password`
-- **Webhook de Wompi:** apunta a `https://atlas.cnvsystem.com/api/webhooks/wompi` (se hace en el Paso 4).
+- **Webhook de Wompi:** apunta a `https://atlas.cnvsystem.com/api/webhooks/wompi` (se hace en el Paso 5).
 - **Enlaces de la encuesta del paciente / correos:** salen de la app (usan la URL pública) y de Supabase (Site URL). Con la `Site URL` correcta y el dominio activo, quedan bien.
 - **Verificar:** dispara un correo de recuperación en producción (con una cuenta de prueba) y confirma que el enlace del correo empieza por `https://atlas.cnvsystem.com/auth/confirm`, no por la URL de Vercel ni localhost.
 
 ---
 
-## Paso 4 — Los terceros apuntando a la URL pública
+## Paso 5 — Los terceros apuntando a la URL pública
 
 Ahora que existe `https://atlas.cnvsystem.com`, los servicios que necesitan llamarte "de vuelta" ya tienen a dónde.
 
-4.1 **Wompi (sandbox).** Consola de Wompi (ambiente sandbox): obtén las llaves de sandbox (`public`, `private`, `integrity`, `events`). Registra el webhook/URL de eventos apuntando a `https://atlas.cnvsystem.com/api/webhooks/wompi`. Carga las 4 llaves a Vercel (Paso 2; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública).
-- **Verificar:** Wompi acepta la URL del webhook sin error. (El pago real se prueba en el Paso 5.)
+5.1 **Wompi (sandbox).** Consola de Wompi (ambiente sandbox): obtén las llaves de sandbox (`public`, `private`, `integrity`, `events`). Registra el webhook/URL de eventos apuntando a `https://atlas.cnvsystem.com/api/webhooks/wompi`. Carga las 4 llaves a Vercel (Paso 2; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública).
+- **Verificar:** Wompi acepta la URL del webhook sin error. (El pago real se prueba en el Paso 6.)
 - **Qué puede salir mal:** que confundas llaves de sandbox con producción (empiezan distinto). Usa las de sandbox.
 
-4.2 **Alegra (sandbox).** Consola de Alegra: credenciales de sandbox; carga a Vercel. (La factura se prueba en el Paso 5, tras el pago.)
+5.2 **Alegra (sandbox).** Consola de Alegra: credenciales de sandbox; carga a Vercel. (La factura se prueba en el Paso 6, tras el pago.)
 
-4.3 **Resend.** Verifica el dominio de envío en Resend (o usa el remitente ya disponible en `cnvsystem.com`, ver `DEPLOY.md`: el subdominio propio requiere plan Pro). Carga `RESEND_API_KEY` y el `EMAIL_FROM`.
+5.3 **Resend.** Verifica el dominio de envío en Resend (o usa el remitente ya disponible en `cnvsystem.com`, ver `DEPLOY.md`: el subdominio propio requiere plan Pro). Carga `RESEND_API_KEY` y el `EMAIL_FROM`.
 - **Verificar:** Resend marca el dominio/remitente como verificado.
 
 ---
 
-## Paso 5 — El smoke de cobro end-to-end (lo que todo esto desbloquea)
+## Paso 6 — El smoke de cobro end-to-end (lo que todo esto desbloquea)
 
 **Por qué este es el punto.** El cobro es lo único que nunca se probó de verdad: el webhook de Wompi necesita una URL pública, y en local corría solo en simulación. Ahora se prueba real (contra el sandbox).
 
-5.1 Entra a `https://atlas.cnvsystem.com`, login como admin (Paso 1.5).
-5.2 Crea un profesional (invítalo) y un paciente mínimo, o usa el flujo que corresponda para llegar a un checkout de nutracéutico.
-5.3 Genera el checkout de un nutracéutico y paga con una tarjeta de PRUEBA del sandbox de Wompi (las da su documentación).
-5.4 **Verificar la cadena, paso por paso** (esto es lo que evita "no sé dónde falló"):
+6.1 Entra a `https://atlas.cnvsystem.com`, login como admin (Paso 3.2).
+6.2 Crea un profesional (invítalo) y un paciente mínimo, o usa el flujo que corresponda para llegar a un checkout de nutracéutico.
+6.3 Genera el checkout de un nutracéutico y paga con una tarjeta de PRUEBA del sandbox de Wompi (las da su documentación).
+6.4 **Verificar la cadena, paso por paso** (esto es lo que evita "no sé dónde falló"):
 - Wompi muestra el pago aprobado (sandbox).
 - Supabase → `payment_webhook_events`: llegó un evento (idempotente por `provider`+`external_id`). **Si no llegó, el problema es el webhook** (URL, firma `WOMPI_EVENTS_SECRET`).
 - `transactions`: la transacción quedó en `paid`.
