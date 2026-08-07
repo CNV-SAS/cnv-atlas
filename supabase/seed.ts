@@ -258,6 +258,12 @@ async function main() {
   const soportePassword = process.env.SEED_SOPORTE_PASSWORD || professionalPassword;
   const direccionPassword = process.env.SEED_DIRECCION_PASSWORD || professionalPassword;
 
+  // SEED_DEMO=false => solo lo MINIMO (organizacion, roles, admin de arranque, model-registry, encuesta,
+  // dispositivos, catalogo, prompt IA), SIN datos de prueba: sin usuarios demo, sin paciente ficticio ni PII,
+  // sin inventario ni link demo. Es lo que se siembra en la NUBE (un entorno tratado como real desde el dia
+  // uno no nace con pacientes de prueba). Default true: el entorno LOCAL sigue con todo el demo.
+  const SEED_DEMO = process.env.SEED_DEMO !== "false";
+
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -318,48 +324,56 @@ async function main() {
     (await supabase.from("user_roles").upsert({ user_id: adminId, role_id: ROLE_IDS.admin }, { onConflict: "user_id,role_id" })).error,
   );
 
-  // 4. Profesional de prueba: auth user + professional_profile + rol professional.
-  const professionalId = await ensureUser(PROFESSIONAL_EMAIL, professionalPassword, PROFESSIONAL_NAME);
-  check(
-    "professional_profiles",
-    (
-      await supabase.from("professional_profiles").upsert(
-        { id: PROFESSIONAL_PROFILE_ID, profile_id: professionalId, license: "DEMO-0001", profession: "nutricionista", certification_status: "habilitado", commission_rate: "0.20" },
-        { onConflict: "id" },
-      )
-    ).error,
-  );
-  check(
-    "user_roles professional",
-    (await supabase.from("user_roles").upsert({ user_id: professionalId, role_id: ROLE_IDS.professional }, { onConflict: "user_id,role_id" })).error,
-  );
-  // Anexo 3 firmado por el profesional demo (onboardeado). Es la precondicion del Nivel (b):
-  // sin esta firma vigente, la auditoria seudonimizada no cubre a sus pacientes.
-  check(
-    "professional_document_signatures",
-    (
-      await supabase.from("professional_document_signatures").upsert(
-        { professional_id: PROFESSIONAL_PROFILE_ID, document_type: "anexo3", signed_version: "1.0", signed_at: new Date().toISOString() },
-        { onConflict: "professional_id,document_type" },
-      )
-    ).error,
-  );
+  // 4/4b/4c. Usuarios de PRUEBA (profesional/soporte/direccion) + firma de anexo 3. Solo con SEED_DEMO:
+  // en la nube estos son personas reales, invitadas por el admin. Los ids se declaran a nivel de funcion
+  // para el resumen del final.
+  let professionalId: string | null = null;
+  let soporteId: string | null = null;
+  let direccionId: string | null = null;
+  if (SEED_DEMO) {
+    // 4. Profesional de prueba: auth user + professional_profile + rol professional.
+    professionalId = await ensureUser(PROFESSIONAL_EMAIL, professionalPassword, PROFESSIONAL_NAME);
+    check(
+      "professional_profiles",
+      (
+        await supabase.from("professional_profiles").upsert(
+          { id: PROFESSIONAL_PROFILE_ID, profile_id: professionalId, license: "DEMO-0001", profession: "nutricionista", certification_status: "habilitado", commission_rate: "0.20" },
+          { onConflict: "id" },
+        )
+      ).error,
+    );
+    check(
+      "user_roles professional",
+      (await supabase.from("user_roles").upsert({ user_id: professionalId, role_id: ROLE_IDS.professional }, { onConflict: "user_id,role_id" })).error,
+    );
+    // Anexo 3 firmado por el profesional demo (onboardeado). Es la precondicion del Nivel (b):
+    // sin esta firma vigente, la auditoria seudonimizada no cubre a sus pacientes.
+    check(
+      "professional_document_signatures",
+      (
+        await supabase.from("professional_document_signatures").upsert(
+          { professional_id: PROFESSIONAL_PROFILE_ID, document_type: "anexo3", signed_version: "1.0", signed_at: new Date().toISOString() },
+          { onConflict: "professional_id,document_type" },
+        )
+      ).error,
+    );
 
-  // 4b. Soporte de prueba: auth user (el trigger crea el profile) + rol soporte. Solicita
-  // grants de acceso a las notas; lo aprueba admin.
-  const soporteId = await ensureUser(SOPORTE_EMAIL, soportePassword, SOPORTE_NAME);
-  check(
-    "user_roles soporte",
-    (await supabase.from("user_roles").upsert({ user_id: soporteId, role_id: ROLE_IDS.soporte }, { onConflict: "user_id,role_id" })).error,
-  );
+    // 4b. Soporte de prueba: auth user (el trigger crea el profile) + rol soporte. Solicita
+    // grants de acceso a las notas; lo aprueba admin.
+    soporteId = await ensureUser(SOPORTE_EMAIL, soportePassword, SOPORTE_NAME);
+    check(
+      "user_roles soporte",
+      (await supabase.from("user_roles").upsert({ user_id: soporteId, role_id: ROLE_IDS.soporte }, { onConflict: "user_id,role_id" })).error,
+    );
 
-  // 4c. Direccion de prueba: auth user + rol direccion. Aprueba las solicitudes de admin;
-  // no solicita ni ve contenido clinico (su tablero es agregado).
-  const direccionId = await ensureUser(DIRECCION_EMAIL, direccionPassword, DIRECCION_NAME);
-  check(
-    "user_roles direccion",
-    (await supabase.from("user_roles").upsert({ user_id: direccionId, role_id: ROLE_IDS.direccion }, { onConflict: "user_id,role_id" })).error,
-  );
+    // 4c. Direccion de prueba: auth user + rol direccion. Aprueba las solicitudes de admin;
+    // no solicita ni ve contenido clinico (su tablero es agregado).
+    direccionId = await ensureUser(DIRECCION_EMAIL, direccionPassword, DIRECCION_NAME);
+    check(
+      "user_roles direccion",
+      (await supabase.from("user_roles").upsert({ user_id: direccionId, role_id: ROLE_IDS.direccion }, { onConflict: "user_id,role_id" })).error,
+    );
+  }
 
   // 5. model_version REAL en estado active (B11: motor de Gildardo portado).
   check(
@@ -558,6 +572,9 @@ async function main() {
       )
     ).error,
   );
+  // --- DATOS DEMO (inventario + paciente ficticio + link de encuesta): solo con SEED_DEMO. En la nube no
+  // entra ninguno (sin inventario de prueba, sin PII, sin link demo). ---
+  if (SEED_DEMO) {
   // Inventario demo POR PROFESIONAL (consignacion): recepciones del profesional demo para los 4
   // en_consultorio. El trigger construye el saldo cacheado; NO se escribe el inventario directo (el
   // trigger de coherencia lo rechazaria). Movimientos = append-only, asi que no se puede upsert: se
@@ -645,6 +662,7 @@ async function main() {
       )
     ).error,
   );
+  } // fin DATOS DEMO (SEED_DEMO)
 
   // 11. Prompt de IA versionado: menu.generate v1 (active) = texto canonico en codigo. Se
   // usa ignoreDuplicates para NO sobrescribir ediciones del admin (v2+) al recorrer el seed.
@@ -664,15 +682,17 @@ async function main() {
     ).error,
   );
 
-  console.log("Seed completo:");
+  console.log(`Seed completo (${SEED_DEMO ? "con datos demo" : "MINIMO, sin datos demo"}):`);
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
-  console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
-  console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);
-  console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
   console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v2 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
-  console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
-  console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
+  if (SEED_DEMO) {
+    console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
+    console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);
+    console.log(`  profesional:  ${PROFESSIONAL_EMAIL} (${professionalId})`);
+    console.log(`  paciente demo: CC DEMO-0001 (${PATIENT_ID}) vinculado al profesional`);
+    console.log(`  link de encuesta inicial: /encuesta/${SURVEY_LINK_TOKEN}`);
+  }
 }
 
 main().catch((err) => {

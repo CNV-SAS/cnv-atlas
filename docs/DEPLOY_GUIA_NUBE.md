@@ -17,11 +17,11 @@
 
 **Por qué.** El seed actual (`supabase/seed.ts`) mezcla lo mínimo (organización, roles, model-registry, encuesta, dispositivos, catálogo de nutracéuticos) con **datos demo**: usuarios de prueba (profesional/soporte/dirección demo) y un **paciente ficticio con PII**. La nube NO debe nacer con eso: contra la decisión de "real desde el día uno", y contra la limpieza de PII.
 
-**Qué se hace (Claude, con plan+diff):** un interruptor `SEED_DEMO`. Con `SEED_DEMO=false` el seed crea solo el mínimo + la cuenta admin de arranque (para poder entrar e invitar gente), y NO crea usuarios demo, paciente demo, PII, ni inventario demo.
+**Qué se hizo (HECHO 2026-08-07):** un interruptor `SEED_DEMO` en `supabase/seed.ts`. Con `SEED_DEMO=false` el seed crea solo el mínimo + la cuenta admin de arranque (para poder entrar e invitar gente), y NO crea usuarios demo, paciente demo, PII, ni inventario demo. Verificado en local: `pnpm db:seed` (default) sigue con todo el demo; `SEED_DEMO=false pnpm db:seed` imprime "Seed completo (MINIMO, sin datos demo)". La nube se siembra con `SEED_DEMO=false` (Paso 1.5).
 
 **Cómo verificar (después de sembrar la nube, Paso 1.5):** en Supabase → Table editor → `patients` está **vacía**; `nutraceuticals` tiene los 10 productos; `roles` tiene los 5; `survey_versions` tiene la encuesta. Cero pacientes, cero PII.
 
-**Qué puede salir mal:** que el seed mínimo falle por una dependencia (algo demo que otra parte esperaba). Por eso se prueba primero contra una BD limpia local antes de correrlo en la nube.
+**Qué puede salir mal:** olvidar el `SEED_DEMO=false` al sembrar la nube (entraría el paciente demo con PII). El check de arriba (patients vacía) lo atrapa: si aparece el paciente demo, se sembró mal.
 
 ---
 
