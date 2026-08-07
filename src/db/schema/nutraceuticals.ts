@@ -69,6 +69,10 @@ export const nutraceuticalStockMovements = pgTable(
     delta: integer("delta").notNull(), // con signo
     type: nutraceuticalMovementType("type").notNull(),
     reason: text("reason"),
+    // Lote del producto (opcional). Lo pide el reporte de faltante ("referencia, lote y cantidad") y lo
+    // captura la recepcion. NO cambia el saldo (sigue por producto): el inventario POR LOTE completo
+    // (saldo/vencimiento por lote) es un modelo mayor, diferido (ver BACKLOG T3b-3).
+    lote: text("lote"),
     // Despacho (T3b-2): liga la entrega al tratamiento (y por el, al paciente). Nullable: los demas
     // tipos (recepcion, conciliacion, devolucion) son comerciales, sin paciente.
     treatmentId: uuid("treatment_id").references(() => treatments.id, { onDelete: "set null" }),

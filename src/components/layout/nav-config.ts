@@ -88,6 +88,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "soporte", "direccion"],
   },
   {
+    // Inventario en consignacion del profesional (su stock de producto de CNV en custodia). Solo el
+    // profesional: es su stock, distinto del catalogo comercial (admin/soporte).
+    label: "Mi inventario",
+    href: "/mi-inventario",
+    icon: "nutraceuticos",
+    roles: ["professional"],
+  },
+  {
     label: "Pagos",
     href: "/pagos",
     icon: "pagos",

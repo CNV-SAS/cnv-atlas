@@ -1,0 +1,131 @@
+import { redirect } from "next/navigation";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { requireUser } from "@/modules/auth/session";
+import { MiInventarioForm } from "@/modules/nutraceuticals/components/mi-inventario-form";
+import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
+import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
+
+export const metadata = { title: "Mi inventario - Atlas" };
+
+const AVAILABILITY_LABEL: Record<string, string> = {
+  en_consultorio: "En consultorio",
+  solo_tienda: "Solo en tienda",
+  no_disponible: "No disponible",
+};
+const MOVEMENT_LABEL: Record<string, string> = {
+  remesa: "Remesa de CNV",
+  recepcion: "Recepcion",
+  despacho: "Entrega a paciente",
+  conciliacion: "Ajuste por conteo",
+  devolucion: "Devolucion a CNV",
+};
+
+function fmtDate(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+// Mi inventario (consignacion): el producto es de CNV, en tu custodia. Aqui ves tu saldo, registras lo que
+// recibes, y consultas el historial de movimientos (que es tambien tu evidencia ante un faltante).
+export default async function MiInventarioPage() {
+  const user = await requireUser();
+  if (!canLoadOwnStock(user)) redirect("/no-autorizado");
+
+  const [inventory, movements] = await Promise.all([getOwnInventory(user.id), getOwnMovements(user.id)]);
+  const lines = inventory ?? [];
+  const recibibles = lines.filter((l) => l.commercialAvailability === "en_consultorio");
+
+  return (
+    <div className="flex flex-col gap-10">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Mi inventario</h1>
+        <p className="max-w-prose text-muted-foreground">
+          Los productos son de CNV, en tu custodia (consignacion). Aqui registras lo que recibes y ves tu
+          saldo. Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo.
+        </p>
+      </header>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold tracking-tight">Registrar recepcion</h2>
+        <Card>
+          <CardHeader>
+            <CardDescription>
+              Registra las unidades que recibiste de CNV. Escribe la cantidad; el lote es opcional. Cada
+              recepcion es un movimiento; para corregir un error, se registra otro en sentido contrario (no
+              se edita).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recibibles.length ? (
+              <MiInventarioForm products={recibibles.map((l) => ({ id: l.nutraceuticalId, name: l.name }))} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No hay productos disponibles en consultorio para recibir.</p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold tracking-tight">Saldo actual</h2>
+        {lines.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {lines.map((l) => (
+              <div
+                key={l.nutraceuticalId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium text-foreground">{l.name}</span>
+                  {l.indication ? <span className="text-xs text-muted-foreground">{l.indication}</span> : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-normal">
+                    {AVAILABILITY_LABEL[l.commercialAvailability] ?? l.commercialAvailability}
+                  </Badge>
+                  <span className="text-lg font-black text-foreground">{l.stock}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold tracking-tight">Historial de movimientos</h2>
+        {!movements || movements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin movimientos todavia.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-widest text-muted-foreground">
+                  <th className="py-2 pr-4 font-semibold">Fecha</th>
+                  <th className="py-2 pr-4 font-semibold">Producto</th>
+                  <th className="py-2 pr-4 font-semibold">Movimiento</th>
+                  <th className="py-2 pr-4 font-semibold">Lote</th>
+                  <th className="py-2 pr-4 text-right font-semibold">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m) => (
+                  <tr key={m.id} className="border-b border-border/60">
+                    <td className="py-2 pr-4 text-muted-foreground">{fmtDate(m.createdAt)}</td>
+                    <td className="py-2 pr-4 text-foreground">{m.nutraceuticalName}</td>
+                    <td className="py-2 pr-4 text-foreground">{MOVEMENT_LABEL[m.type] ?? m.type}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{m.lote ?? "-"}</td>
+                    <td className={`py-2 pr-4 text-right font-bold ${m.delta < 0 ? "text-clinical-warning" : "text-clinical-optimal"}`}>
+                      {m.delta > 0 ? `+${m.delta}` : m.delta}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

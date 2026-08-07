@@ -1365,6 +1365,7 @@ export type Database = {
           created_by: string | null
           delta: number
           id: string
+          lote: string | null
           nutraceutical_id: string
           professional_id: string
           reason: string | null
@@ -1376,6 +1377,7 @@ export type Database = {
           created_by?: string | null
           delta: number
           id?: string
+          lote?: string | null
           nutraceutical_id: string
           professional_id: string
           reason?: string | null
@@ -1387,6 +1389,7 @@ export type Database = {
           created_by?: string | null
           delta?: number
           id?: string
+          lote?: string | null
           nutraceutical_id?: string
           professional_id?: string
           reason?: string | null

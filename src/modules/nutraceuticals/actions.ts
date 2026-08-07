@@ -5,11 +5,14 @@ import { revalidatePath } from "next/cache";
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
 import { getCurrentUser } from "@/modules/auth/session";
 
+import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
+import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
 import {
   createNutraceuticalSchema,
+  receptionSchema,
   registerUsageSchema,
   updateNutraceuticalSchema,
   type CreateNutraceuticalInput,
@@ -132,5 +135,34 @@ export async function updateNutraceuticalFormAction(
   });
   if (!result.ok) return { error: result.error.message, success: null, warning: null };
   return { error: null, success: "Nutraceutico actualizado.", warning: null };
+}
+
+// Registrar una RECEPCION en el inventario del profesional (Mi inventario, consignacion). Solo el
+// profesional (canLoadOwnStock); la RLS acota a que sea su propio inventario.
+export async function recordReceptionFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesion.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional registra recepciones en su inventario.", success: null, warning: null };
+  }
+  const parsed = receptionSchema.safeParse({
+    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
+    quantity: String(formData.get("quantity") ?? ""),
+    lote: optStr(formData, "lote"),
+  });
+  if (!parsed.success) return { error: "Datos de recepcion invalidos.", success: null, warning: null };
+
+  const res = await inventoryService.recordReception({
+    userId: user.id,
+    nutraceuticalId: parsed.data.nutraceuticalId,
+    quantity: parsed.data.quantity,
+    lote: parsed.data.lote ?? null,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo registrar la recepcion.", success: null, warning: null };
+  revalidatePath("/mi-inventario");
+  return { error: null, success: "Recepcion registrada.", warning: null };
 }
 
