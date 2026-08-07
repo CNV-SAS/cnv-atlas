@@ -76,6 +76,16 @@ export async function saveProtocol(
         ),
       );
     }
+    // lock_timeout (55P03): otra sesión tiene el protocolo bloqueado y no se liberó a tiempo. No es un
+    // cuelgue: se avisa y el profesional reintenta (su trabajo sigue en pantalla, igual que en stale_write).
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "El protocolo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }

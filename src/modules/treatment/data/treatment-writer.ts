@@ -77,6 +77,12 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
   await db.transaction(async (tx) => {
     await assertConfirmedDiagnosis(tx, input.treatmentId);
 
+    // Techo de espera del lock: el rol tiene lock_timeout=0 (espera infinita). Sin esto, un FOR UPDATE que
+    // no consigue el lock (otra transaccion colgada sobre el mismo tratamiento) dejaria el guardado en un
+    // spinner eterno. SET LOCAL solo aplica a esta transaccion. Al vencer, el FOR UPDATE lanza 55P03
+    // (lock_not_available), que el service traduce a un aviso "intenta de nuevo", no a un cuelgue.
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+
     // 0. Candado de concurrencia. Lock de la fila (FOR UPDATE) para SERIALIZAR dos guardados del mismo
     // tratamiento: sin el, dos sesiones leen la misma firma vieja y ambas escriben (la ultima pisa). Con el
     // lock, la segunda espera, re-lee la firma ya cambiada, y se rechaza. Se compara la firma actual (bajo
