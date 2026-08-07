@@ -158,6 +158,38 @@ export const nutraceuticalMovementType = pgEnum("nutraceutical_movement_type", [
   "devolucion", // el integrante devuelve a CNV (-)
 ]);
 
+// Estado del CASO de faltante (T3b-3). El faltante NO es un ajuste: es un caso con estados y consecuencia
+// economica. El estado es un CACHE proyectado desde la ultima transicion (append-only, como los
+// movimientos); no se escribe directo. Flujo: reportado -> en_revision (integrante justifica) ->
+// justificado / venta_no_registrada (cierres sin cargo) o injustificado_pendiente (admin propone) ->
+// injustificado (SOLO tras confirmar direccion; ahi se materializa el cargo). "Atlas no cobra automatico"
+// se extiende a "ni un solo administrativo cobra solo": el cargo exige dos personas.
+export const nutraceuticalFaltanteStatus = pgEnum("nutraceutical_faltante_status", [
+  "reportado", // detectado en el conteo; corre la ventana de justificacion (5 dias habiles)
+  "en_revision", // el integrante envio categoria + referencia; espera clasificacion de CNV
+  "justificado", // CNV acepto la justificacion; SIN cargo
+  "venta_no_registrada", // cierre por "salio por una venta"; SIN cargo, rotulo de DOS HECHOS (falta registrar la venta)
+  "injustificado_pendiente", // admin propone injustificado; espera CONFIRMACION de direccion
+  "injustificado", // direccion confirmo; se materializa el cargo (pendiente de liquidacion)
+]);
+
+// Categoria de justificacion que ENVIA el integrante. Cada una exige referencia (no basta afirmar la
+// perdida): numero de denuncia, guia de transporte, o el id del movimiento de correccion en Atlas.
+export const nutraceuticalFaltanteJustification = pgEnum("nutraceutical_faltante_justification", [
+  "hurto_denuncia", // hurto/robo con denuncia ante autoridad
+  "transporte_documentado", // dano/perdida en transporte documentado
+  "venta_no_registrada", // una venta hecha y no registrada (se corrige en Atlas)
+  "devolucion_guia", // devolucion a CNV con guia de transporte
+]);
+
+// Estado del cargo economico del caso. Se materializa (pendiente_liquidacion) SOLO al confirmar
+// injustificado. liquidado queda para el bloque de Liquidacion (futuro).
+export const nutraceuticalFaltanteCharge = pgEnum("nutraceutical_faltante_charge", [
+  "sin_cargo",
+  "pendiente_liquidacion",
+  "liquidado", // RESERVADO: lo cierra el bloque de Liquidacion
+]);
+
 export const accessGrantStatus = pgEnum("access_grant_status", [
   "pending",
   "approved",

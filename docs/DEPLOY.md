@@ -259,6 +259,7 @@ Confirmar que hay DPA firmado y **archivado** por cada sub-encargado. La tabla d
 - [ ] **Sentry:** DSN de producción activo; monitorear 24h sin errores recurrentes tras el lanzamiento (criterio de aceptación de B15).
 - [ ] **Secretos** en Bitwarden y en las env de Vercel; ninguno en el repo. `SUPABASE_SERVICE_ROLE_KEY` solo server.
 - [ ] **Smoke E2E manual** (sección anterior) ejecutado en el entorno de lanzamiento.
+- [ ] **`idle_in_transaction_session_timeout` a nivel de rol/DB en Supabase (hallazgo 2026-08-07).** El rol de la conexión (`DATABASE_URL`) tiene los tres timeouts en 0: `lock_timeout`, `statement_timeout` e `idle_in_transaction_session_timeout`. Con `FOR UPDATE` en el candado de concurrencia de `saveProtocol`, una transacción que quede ABIERTA e idle (proceso suspendido, conexión colgada) sujetaría su lock indefinidamente y colgaría a otra sesión. El código ya acota la ESPERA con `SET LOCAL lock_timeout = '3s'` (lado del que espera), pero el vector de una transacción idle-abierta se cierra fijando `idle_in_transaction_session_timeout` (p. ej. 60s) en el rol o la base. Es config de Supabase, no de código: `ALTER ROLE ... SET idle_in_transaction_session_timeout = '60s'` (o vía el dashboard). Verificar que no rompa migraciones/seeds largos (los corre otro rol o se ajusta puntual).
 
 ## Próximos hitos operativos (post-MVP)
 Supabase Pro + PITR; jobs en background (Inngest) para PDFs/sync/exports; E2E con Playwright en CI; observabilidad ampliada.
