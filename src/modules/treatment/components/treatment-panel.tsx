@@ -18,6 +18,7 @@ import {
   type TreatmentActionState,
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
+import { protocolSignature } from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-reader";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
 
@@ -106,7 +107,15 @@ export function TreatmentPanel({
             habilita editar y aprobar el tratamiento.
           </p>
         ) : null}
-        <ProtocolForm evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        {/* key = firma de los campos guardados que edita el form. Un cambio real del servidor (guardado,
+            correccion) remonta y re-deriva el estado desde el protocolo; una revalidacion que no tocó esos
+            campos (entrega, menu, nota) NO remonta, preservando una edicion en curso. Ver protocol-signature. */}
+        <ProtocolForm
+          key={protocolSignature(protocol)}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         <CelularSection celular={celular} />
         <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
         <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
