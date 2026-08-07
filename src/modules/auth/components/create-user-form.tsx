@@ -32,7 +32,7 @@ export function CreateUserForm() {
       >
         <option value="admin">admin</option>
         <option value="direccion">direccion</option>
-        <option value="soporte">soporte</option>
+        <option value="soporte">Operaciones</option>
         <option value="obbia">obbia</option>
         <option value="professional">professional</option>
       </select>

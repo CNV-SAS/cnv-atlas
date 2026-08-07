@@ -1,12 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isPublicPath } from "@/core/http/public-paths";
+
 // proxy.ts (Next 16, antes "middleware"). NO es capa de seguridad (SECURITY.md):
 // solo refresca la sesion de Supabase en cada request y redirige por presencia de
 // sesion. La autorizacion real vive en RLS y en las policies del codigo.
-
-const PUBLIC_PREFIXES = ["/encuesta", "/checkout", "/privacy", "/terms"];
-const AUTH_PREFIXES = ["/login", "/set-password", "/mfa", "/auth"];
+// La lista de rutas publicas vive en core/http/public-paths (pura, testeable).
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -43,12 +43,8 @@ export async function proxy(request: NextRequest) {
   // arriba ya corrio, asi que las cookies quedan frescas para esas rutas.
   if (path.startsWith("/api")) return response;
 
-  const isPublic =
-    PUBLIC_PREFIXES.some((p) => path.startsWith(p)) ||
-    AUTH_PREFIXES.some((p) => path.startsWith(p));
-
   // Sin sesion en ruta protegida -> login.
-  if (!user && !isPublic) {
+  if (!user && !isPublicPath(path)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);

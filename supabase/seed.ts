@@ -308,7 +308,7 @@ async function main() {
         [
           { id: ROLE_IDS.admin, name: "admin", description: "Administrador CNV" },
           { id: ROLE_IDS.direccion, name: "direccion", description: "Direccion CNV" },
-          { id: ROLE_IDS.soporte, name: "soporte", description: "Soporte operativo" },
+          { id: ROLE_IDS.soporte, name: "soporte", description: "Operaciones" }, // etiqueta "Operaciones"; el valor interno del enum se queda "soporte" (renombrar el valor tocaria 9 migraciones de RLS)
           { id: ROLE_IDS.obbia, name: "obbia", description: "Observatorio / investigacion" },
           { id: ROLE_IDS.professional, name: "professional", description: "Profesional de salud" },
         ],
