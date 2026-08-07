@@ -28,7 +28,13 @@ export type PrescribedNutraceutical = {
 
 export type DietGuideline = { id: string; text: string };
 export type TreatmentNote = { id: string; note: string; createdAt: string };
-export type CatalogItem = { id: string; name: string; unit: string | null };
+export type CatalogItem = {
+  id: string;
+  name: string;
+  unit: string | null;
+  indication: string | null;
+  commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
+};
 
 export type MenuSuggestion = {
   id: string;
@@ -103,7 +109,10 @@ export async function getTreatmentProtocol(
       .select("id, note, created_at")
       .eq("treatment_id", treatmentId)
       .order("created_at", { ascending: false }),
-    supabase.from("nutraceuticals").select("id, name, unit").order("name", { ascending: true }),
+    supabase
+      .from("nutraceuticals")
+      .select("id, name, unit, indication, commercial_availability")
+      .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
       .select("id, provider, model, prompt_version, generated_text, status, latency_ms, generated_at")
@@ -168,7 +177,13 @@ export async function getTreatmentProtocol(
       note: n.note,
       createdAt: n.created_at,
     })),
-    catalog: (catalog.data ?? []).map((c) => ({ id: c.id, name: c.name, unit: c.unit })),
+    catalog: (catalog.data ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      unit: c.unit,
+      indication: c.indication ?? null,
+      commercialAvailability: c.commercial_availability ?? "no_disponible",
+    })),
     menuSuggestions: (menus.data ?? []).map((m) => ({
       id: m.id,
       provider: m.provider,

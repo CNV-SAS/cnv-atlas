@@ -19,6 +19,14 @@ import {
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-reader";
+import { resolveRecommendation } from "../nutraceuticals-recommendation";
+
+// Etiqueta de disponibilidad comercial (dato del producto): que significa para el paciente.
+const AVAILABILITY_LABEL: Record<string, string> = {
+  en_consultorio: "En consultorio",
+  solo_tienda: "Solo en tienda",
+  no_disponible: "No disponible",
+};
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -218,14 +226,23 @@ function ProtocolForm({
     if (v && !restricciones.includes(v)) setRestricciones([...restricciones, v]);
     setRestrInput("");
   };
-  const addNutra = () => {
-    if (!pickId) return;
-    if (nutras.some((n) => n.nutraceuticalId === pickId)) return;
-    const item = protocol.catalog.find((c) => c.id === pickId);
+  // Agrega un producto a la prescripcion del profesional (sin prellenar la dosis: un valor por defecto
+  // se acepta sin pensar, y no hay posologia autorizada por Gildardo). Lo usan el selector y los botones
+  // "agregar" de la recomendacion. Al agregarlo, el item aparece en la lista del profesional (abajo),
+  // visiblemente separado de la recomendacion del modelo.
+  const addProduct = (id: string) => {
+    if (!id) return;
+    if (nutras.some((n) => n.nutraceuticalId === id)) return;
+    const item = protocol.catalog.find((c) => c.id === id);
     if (!item) return;
-    setNutras([...nutras, { nutraceuticalId: pickId, name: item.name, dosage: "", durationDays: "" }]);
+    setNutras((prev) => [...prev, { nutraceuticalId: id, name: item.name, dosage: "", durationDays: "" }]);
+  };
+  const addNutra = () => {
+    addProduct(pickId);
     setPickId("");
   };
+  const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
+  const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   const addGuideline = () => {
     const v = guideInput.trim();
     if (v) setGuidelines([...guidelines, v]);
@@ -336,10 +353,52 @@ function ProtocolForm({
           "registrar despacho" son T3, no van aqui. */}
       <fieldset disabled={locked} className="flex flex-col gap-3">
         <legend className="text-sm font-semibold text-foreground">Nutraceuticos</legend>
-        {protocol.recommendedNutraceuticals ? (
-          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-            <span className="font-medium text-foreground">El modelo recomienda: </span>
-            <span className="text-muted-foreground">{protocol.recommendedNutraceuticals}</span>
+        {recommended.length ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-foreground">El modelo recomienda</p>
+            <ul className="flex flex-col gap-2">
+              {recommended.map((r, i) =>
+                r.status === "en_catalogo" ? (
+                  <li
+                    key={i}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3"
+                  >
+                    <div className="min-w-[10rem] flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-foreground">{r.product.name}</span>
+                        <Badge variant="outline" className="text-[10px] font-normal">
+                          {AVAILABILITY_LABEL[r.product.commercialAvailability] ?? r.product.commercialAvailability}
+                        </Badge>
+                      </div>
+                      {r.product.indication ? (
+                        <p className="text-xs text-muted-foreground">{r.product.indication}</p>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isAdded(r.product.id)}
+                      onClick={() => addProduct(r.product.id)}
+                    >
+                      {isAdded(r.product.id) ? "Agregado" : "Agregar"}
+                    </Button>
+                  </li>
+                ) : (
+                  <li
+                    key={i}
+                    className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
+                  >
+                    El modelo recomienda{" "}
+                    <span className="font-medium text-foreground">{r.motorName}</span>, que todavía no
+                    está en el catálogo.
+                  </li>
+                ),
+              )}
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              &ldquo;En consultorio&rdquo;: se lo puedes entregar en la consulta. &ldquo;Solo en
+              tienda&rdquo;: el paciente lo compra en la tienda de CNV.
+            </p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">El modelo no recomendó nutracéuticos para este fenotipo.</p>

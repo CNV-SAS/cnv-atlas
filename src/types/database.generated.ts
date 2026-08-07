@@ -687,6 +687,9 @@ export type Database = {
         Row: {
           confirmed_at: string | null
           confirmed_by: string | null
+          confirmed_profession:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           created_at: string
           diagnosis_name: string
           efr_state_number: number
@@ -698,10 +701,14 @@ export type Database = {
           model_version_id: string
           phenotype_id: string | null
           rules_version: string
+          survey_version_id: string | null
         }
         Insert: {
           confirmed_at?: string | null
           confirmed_by?: string | null
+          confirmed_profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           created_at?: string
           diagnosis_name: string
           efr_state_number: number
@@ -713,10 +720,14 @@ export type Database = {
           model_version_id: string
           phenotype_id?: string | null
           rules_version: string
+          survey_version_id?: string | null
         }
         Update: {
           confirmed_at?: string | null
           confirmed_by?: string | null
+          confirmed_profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           created_at?: string
           diagnosis_name?: string
           efr_state_number?: number
@@ -728,6 +739,7 @@ export type Database = {
           model_version_id?: string
           phenotype_id?: string | null
           rules_version?: string
+          survey_version_id?: string | null
         }
         Relationships: [
           {
@@ -763,6 +775,13 @@ export type Database = {
             columns: ["phenotype_id"]
             isOneToOne: false
             referencedRelation: "phenotypes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnoses_survey_version_id_survey_versions_id_fk"
+            columns: ["survey_version_id"]
+            isOneToOne: false
+            referencedRelation: "survey_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -1368,31 +1387,49 @@ export type Database = {
       }
       nutraceuticals: {
         Row: {
+          commercial_availability: Database["public"]["Enums"]["nutraceutical_availability"]
+          composition: string | null
           created_at: string
           description: string | null
           id: string
+          indication: string | null
           name: string
           organization_id: string
+          presentation: string | null
+          sanitary_registration: string | null
+          serving_size: string | null
           unit: string | null
           unit_price: number | null
           updated_at: string
         }
         Insert: {
+          commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
+          composition?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indication?: string | null
           name: string
           organization_id: string
+          presentation?: string | null
+          sanitary_registration?: string | null
+          serving_size?: string | null
           unit?: string | null
           unit_price?: number | null
           updated_at?: string
         }
         Update: {
+          commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
+          composition?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indication?: string | null
           name?: string
           organization_id?: string
+          presentation?: string | null
+          sanitary_registration?: string | null
+          serving_size?: string | null
           unit?: string | null
           unit_price?: number | null
           updated_at?: string
@@ -1779,9 +1816,7 @@ export type Database = {
           created_at: string
           id: string
           license: string | null
-          profession:
-            | Database["public"]["Enums"]["professional_profession"]
-            | null
+          profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
           updated_at: string
         }
@@ -1791,9 +1826,7 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
-          profession?:
-            | Database["public"]["Enums"]["professional_profession"]
-            | null
+          profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
           updated_at?: string
         }
@@ -1803,9 +1836,7 @@ export type Database = {
           created_at?: string
           id?: string
           license?: string | null
-          profession?:
-            | Database["public"]["Enums"]["professional_profession"]
-            | null
+          profession?: Database["public"]["Enums"]["professional_profession"]
           profile_id?: string
           updated_at?: string
         }
@@ -2720,6 +2751,10 @@ export type Database = {
       field_data_class: "identifier" | "quasi_identifier" | "clinical"
       indicator_classification: "normal" | "riesgo" | "critico"
       model_status: "draft" | "active" | "retired"
+      nutraceutical_availability:
+        | "en_consultorio"
+        | "solo_tienda"
+        | "no_disponible"
       patient_status: "active" | "inactive"
       professional_document_type: "anexo3"
       professional_profession:
@@ -2909,6 +2944,11 @@ export const Constants = {
       field_data_class: ["identifier", "quasi_identifier", "clinical"],
       indicator_classification: ["normal", "riesgo", "critico"],
       model_status: ["draft", "active", "retired"],
+      nutraceutical_availability: [
+        "en_consultorio",
+        "solo_tienda",
+        "no_disponible",
+      ],
       patient_status: ["active", "inactive"],
       professional_document_type: ["anexo3"],
       professional_profession: [
