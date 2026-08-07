@@ -18,7 +18,7 @@ export async function startMfaEnroll(): Promise<
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return err(appError("unauthorized", "Inicia sesion."));
+  if (!user) return err(appError("unauthorized", "Inicia sesión."));
 
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const stale = (factors?.all ?? []).filter(
@@ -44,7 +44,7 @@ export async function verifyMfaEnrollAction(
 ): Promise<AuthFormState> {
   const factorId = String(formData.get("factorId") ?? "");
   const parsed = mfaCodeSchema.safeParse({ code: formData.get("code") });
-  if (!factorId || !parsed.success) return { error: "Codigo invalido." };
+  if (!factorId || !parsed.success) return { error: "Código inválido." };
 
   const supabase = await createSupabaseServerClient();
   const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
@@ -57,7 +57,7 @@ export async function verifyMfaEnrollAction(
     challengeId: challenge.id,
     code: parsed.data.code,
   });
-  if (verifyError) return { error: "Codigo incorrecto. Intenta de nuevo." };
+  if (verifyError) return { error: "Código incorrecto. Intenta de nuevo." };
 
   redirect("/dashboard");
 }

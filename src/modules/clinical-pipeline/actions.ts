@@ -35,12 +35,12 @@ export async function runPipelineAction(
   if (!canRunPipeline(user)) return fail("No autorizado.");
 
   const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
-  if (!evaluationId) return fail("Evaluacion invalida.");
+  if (!evaluationId) return fail("Evaluación inválida.");
 
   const ownership = await getEvaluationOwnership(evaluationId);
-  if (!ownership) return fail("Evaluacion no encontrada.");
+  if (!ownership) return fail("Evaluación no encontrada.");
   if (ownership.status !== "in_progress") {
-    return fail("La evaluacion no esta lista para generar diagnostico.");
+    return fail("La evaluación no esta lista para generar diagnóstico.");
   }
 
   const ip = await getClientIp();

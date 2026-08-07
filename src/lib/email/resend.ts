@@ -53,7 +53,7 @@ export async function sendReportEmail(input: ReportEmailInput): Promise<Result<{
   }
   const from = process.env.EMAIL_FROM;
   if (!from) {
-    return err(appError("internal", "Falta la direccion de envio (EMAIL_FROM)."));
+    return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
   }
 
   try {

@@ -22,10 +22,10 @@ export function CreateNutraceuticalForm() {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor="name">Nombre</Label>
-          <Input id="name" name="name" required placeholder="Nutraceutico A" />
+          <Input id="name" name="name" required placeholder="Nutracéutico A" />
         </div>
         <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="description">Descripcion</Label>
+          <Label htmlFor="description">Descripción</Label>
           <Input id="description" name="description" placeholder="Opcional" />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -36,7 +36,7 @@ export function CreateNutraceuticalForm() {
       </div>
       <div>
         <Button type="submit" disabled={pending}>
-          {pending ? "Creando..." : "Crear nutraceutico"}
+          {pending ? "Creando..." : "Crear nutracéutico"}
         </Button>
       </div>
     </form>

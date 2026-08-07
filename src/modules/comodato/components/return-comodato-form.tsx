@@ -38,7 +38,7 @@ export function ReturnComodatoForm({ assignmentId }: { assignmentId: string }) {
         <option value="breach">Incumplimiento</option>
       </select>
       <Button type="submit" size="sm" disabled={pending}>
-        {pending ? "..." : "Registrar devolucion"}
+        {pending ? "..." : "Registrar devolución"}
       </Button>
     </form>
   );

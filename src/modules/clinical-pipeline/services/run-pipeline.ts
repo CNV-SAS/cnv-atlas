@@ -33,12 +33,12 @@ export async function runClinicalPipeline(
   input: RunPipelineInput,
 ): Promise<Result<RunPipelineOutput>> {
   const inputs = await readPipelineInputs(input.evaluationId);
-  if (!inputs) return err(appError("not_found", "Evaluacion no encontrada."));
+  if (!inputs) return err(appError("not_found", "Evaluación no encontrada."));
   if (!inputs.hasBis) {
-    return err(appError("validation", "La evaluacion no tiene una medicion BIS importada."));
+    return err(appError("validation", "La evaluación no tiene una medición BIS importada."));
   }
   if (!inputs.surveyVersionId) {
-    return err(appError("validation", "La evaluacion no tiene respuestas de encuesta."));
+    return err(appError("validation", "La evaluación no tiene respuestas de encuesta."));
   }
   // Fail-loud (dfi.complete, regla 7): sin la lista declarada por la version no se puede medir
   // completitud, y NO se sella un complete que no se pudo evaluar. Es error de integridad (una
@@ -47,13 +47,13 @@ export async function runClinicalPipeline(
     return err(
       appError(
         "internal",
-        "La version de la encuesta no declara field_key; no se puede medir la completitud del diagnostico.",
+        "La versión de la encuesta no declara field_key; no se puede medir la completitud del diagnóstico.",
       ),
     );
   }
 
   const model = await readActiveModel();
-  if (!model) return err(appError("internal", "No hay una version del modelo activa."));
+  if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 
   const engineInput = buildEngineInput(
     {
@@ -83,7 +83,7 @@ export async function runClinicalPipeline(
   try {
     protocolSuggested = computeProtocolo(engineInput, output);
     if (!protocolSuggested) {
-      protocolFailMotive = "computeProtocolo devolvio null (sin composicion minima: peso/talla)";
+      protocolFailMotive = "computeProtocolo devolvio null (sin composición mínima: peso/talla)";
     }
   } catch (e) {
     protocolFailMotive = e instanceof Error ? e.message : String(e);
@@ -135,7 +135,7 @@ export async function runClinicalPipeline(
     return ok(written);
   } catch (e) {
     if (e instanceof PipelineAlreadyRunError) {
-      return err(appError("conflict", "Esta evaluacion ya tiene un diagnostico generado."));
+      return err(appError("conflict", "Esta evaluación ya tiene un diagnóstico generado."));
     }
     throw e; // inesperado: que suba (lo captura el action / Sentry)
   }

@@ -33,7 +33,7 @@ export function MfaSetup() {
       </p>
     );
   }
-  if (!enroll) return <p>Generando codigo...</p>;
+  if (!enroll) return <p>Generando código...</p>;
 
   return (
     <div className="flex flex-col gap-3">
@@ -43,16 +43,16 @@ export function MfaSetup() {
         sesion. Instala una app de autenticacion (Google Authenticator, Authy o similar) en tu telefono
         y escanea el codigo. Cada vez que entres, la app te dara un codigo de 6 digitos.
       </p>
-      <p>Escanea este codigo con tu app de autenticacion (por ejemplo Google Authenticator):</p>
+      <p>Escanea este código con tu app de autenticación (por ejemplo Google Authenticator):</p>
       {/* eslint-disable-next-line @next/next/no-img-element -- QR es un data URL; next/image no aplica */}
-      <img src={enroll.qrCode} alt="Codigo QR para configurar MFA" width={200} height={200} />
+      <img src={enroll.qrCode} alt="Código QR para configurar MFA" width={200} height={200} />
       <p className="text-sm">
         O ingresa la clave manualmente: <code>{enroll.secret}</code>
       </p>
       <form action={action} className="flex flex-col gap-3">
         <input type="hidden" name="factorId" value={enroll.factorId} />
         <label className="flex flex-col gap-1">
-          <span>Codigo de 6 digitos</span>
+          <span>Código de 6 dígitos</span>
           <input
             name="code"
             inputMode="numeric"

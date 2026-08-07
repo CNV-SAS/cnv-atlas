@@ -59,7 +59,7 @@ export async function createCheckout(
   let amount = 0;
   for (const it of input.items) {
     const n = byId.get(it.nutraceuticalId);
-    if (!n) throw new CheckoutError("Uno de los nutraceuticos no existe.");
+    if (!n) throw new CheckoutError("Uno de los nutracéuticos no existe.");
     if (n.unit_price == null) {
       throw new CheckoutError(`El nutraceutico "${n.name}" no tiene precio configurado.`);
     }

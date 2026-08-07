@@ -15,7 +15,7 @@ export const intakeIdentitySchema = z.object({
   // Fecha de nacimiento opcional en el esquema, pero el flujo exige +18 aparte.
   birthDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha invalida")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
     .nullish()
     .transform((v) => v ?? null),
   sex: z.string().trim().max(40).nullish().transform((v) => v ?? null),

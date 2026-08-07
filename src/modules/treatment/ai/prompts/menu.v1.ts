@@ -45,7 +45,7 @@ export function buildMenuPrompt(
     `Sector funcional: ${input.sectorFuncional}.`,
     `Rutas de atencion priorizadas: ${rutas}.`,
     "",
-    "Genera un menu de un dia (desayuno, media manana, almuerzo, media tarde y cena) que " +
+    "Genera un menu de un día (desayuno, media mañana, almuerzo, media tarde y cena) que " +
       "cumpla el objetivo calorico y de proteina, respete las restricciones y sea coherente " +
       "con el fenotipo. Indica porciones caseras aproximadas. Responde solo con el menu.",
   ].join("\n");

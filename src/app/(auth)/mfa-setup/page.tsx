@@ -13,7 +13,7 @@ export default async function MfaSetupPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Configura la verificacion en dos pasos</h1>
+      <h1 className="text-xl font-semibold">Configura la verificación en dos pasos</h1>
       <MfaSetup />
     </>
   );

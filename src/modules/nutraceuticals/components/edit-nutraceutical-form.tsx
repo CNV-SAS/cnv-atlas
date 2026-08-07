@@ -27,7 +27,7 @@ export function EditNutraceuticalForm({ nutraceutical: n }: { nutraceutical: Nut
           <Input id={`name-${n.id}`} name="name" required defaultValue={n.name} />
         </div>
         <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor={`desc-${n.id}`}>Descripcion</Label>
+          <Label htmlFor={`desc-${n.id}`}>Descripción</Label>
           <Input id={`desc-${n.id}`} name="description" defaultValue={n.description ?? ""} />
         </div>
         <div className="flex flex-col gap-1.5">

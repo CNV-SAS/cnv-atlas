@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Pagina no encontrada - Atlas" };
+export const metadata = { title: "Página no encontrada - Atlas" };
 
 // 404 con marca. Server Component: no necesita interactividad. Tono sobrio
 // (BRAND.md): factual, sin dramatismo.

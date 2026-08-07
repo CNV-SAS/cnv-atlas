@@ -57,7 +57,7 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
       .from(diagnoses)
       .where(eq(diagnoses.evaluationId, report.evaluationId))
       .limit(1);
-    if (!diagnosis) throw new ReportStateError("La evaluacion no tiene diagnostico que confirmar.");
+    if (!diagnosis) throw new ReportStateError("La evaluación no tiene diagnóstico que confirmar.");
     // Profesion con que se confirma via aprobar reporte (misma firma clinica que el acto propio). null si
     // quien aprueba no es profesional (p. ej. admin, permitido por la policy del reporte).
     const { profession } = await getActorProfession(input.actorId);
@@ -137,15 +137,15 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       .limit(1);
     if (!report) throw new ReportStateError("Reporte no encontrado.");
     if (report.status !== "draft") {
-      throw new ReportStateError("El reporte ya fue aprobado o enviado; la comunicacion ya no se confirma aqui.");
+      throw new ReportStateError("El reporte ya fue aprobado o enviado; la comunicación ya no se confirma aquí.");
     }
     const band = (report.trajectory as { band?: string } | null)?.band;
     if (band !== "empeoro") {
-      throw new ReportStateError("Solo se confirma la comunicacion cuando el cambio empeoro.");
+      throw new ReportStateError("Solo se confirma la comunicación cuando el cambio empeoro.");
     }
-    if (report.communicatedAt) throw new ReportStateError("La comunicacion ya fue confirmada.");
+    if (report.communicatedAt) throw new ReportStateError("La comunicación ya fue confirmada.");
     if (!input.proximaCita) {
-      throw new ReportStateError("Para comunicar este cambio hace falta agendar la proxima cita.");
+      throw new ReportStateError("Para comunicar este cambio hace falta agendar la próxima cita.");
     }
 
     // Agendar la cita en el tratamiento (evaluation -> diagnosis -> treatment). La condicion (cita) se
@@ -157,14 +157,14 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       .from(diagnoses)
       .where(eq(diagnoses.evaluationId, report.evaluationId))
       .limit(1);
-    if (!diag) throw new ReportStateError("La evaluacion no tiene diagnostico.");
+    if (!diag) throw new ReportStateError("La evaluación no tiene diagnóstico.");
     const updatedT = await tx
       .update(treatments)
       .set({ proximaCita: input.proximaCita })
       .where(eq(treatments.diagnosisId, diag.id))
       .returning({ id: treatments.id });
     if (updatedT.length === 0) {
-      throw new ReportStateError("La evaluacion no tiene tratamiento donde agendar la cita.");
+      throw new ReportStateError("La evaluación no tiene tratamiento donde agendar la cita.");
     }
 
     // Sellar la confirmacion en el reporte (draft; se congela al aprobar).
@@ -173,7 +173,7 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       .set({ trajectoryCommunicatedAt: sql`now()`, trajectoryCommunicatedBy: input.actorId })
       .where(and(eq(reports.id, report.id), eq(reports.status, "draft")))
       .returning({ id: reports.id });
-    if (confirmed.length === 0) throw new ReportStateError("No se pudo confirmar la comunicacion.");
+    if (confirmed.length === 0) throw new ReportStateError("No se pudo confirmar la comunicación.");
 
     await recordAudit(tx, {
       event: "report.trajectory_communication_confirmed",

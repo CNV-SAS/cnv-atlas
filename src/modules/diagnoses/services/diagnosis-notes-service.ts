@@ -15,7 +15,7 @@ export async function addDiagnosisNote(
   actor: Actor,
 ): Promise<Result<void>> {
   const criterion = await getDiagnosisCriterion(input.evaluationId);
-  if (!criterion) return err(appError("not_found", "Diagnostico no encontrado."));
+  if (!criterion) return err(appError("not_found", "Diagnóstico no encontrado."));
   await writeDiagnosisNote({ diagnosisId: criterion.diagnosisId, note: input.note, ...actor });
   return ok(undefined);
 }

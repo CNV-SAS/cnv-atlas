@@ -46,7 +46,7 @@ export function resolveExpiryHours(
   const limits = GRANT_LIMITS[grantType];
   if (requestedHours == null) return ok(limits.defaultHours);
   if (!Number.isInteger(requestedHours) || requestedHours < 1) {
-    return err("La duracion debe ser un numero entero de horas positivo.");
+    return err("La duración debe ser un número entero de horas positivo.");
   }
   if (requestedHours > limits.maxHours) {
     return err(`La duracion excede el tope de ${limits.maxHours} horas para este nivel.`);

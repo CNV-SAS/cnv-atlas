@@ -113,7 +113,7 @@ export function BisImportForm({
             ) : null}
 
             <Button type="submit" disabled={pending || blocked} className="w-fit">
-              {pending ? "Importando..." : "Importar medicion BIS"}
+              {pending ? "Importando..." : "Importar medición BIS"}
             </Button>
           </form>
         )}

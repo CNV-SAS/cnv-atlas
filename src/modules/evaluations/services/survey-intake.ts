@@ -46,11 +46,11 @@ export async function submitSurveyIntake(
   }
   const identity = intakeIdentitySchema.safeParse(input.identity);
   if (!identity.success) {
-    return err(appError("validation", "Revisa los datos de identificacion."));
+    return err(appError("validation", "Revisa los datos de identificación."));
   }
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) {
-    return err(appError("validation", "Hay respuestas invalidas en la encuesta."));
+    return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   }
 
   // 2. Resolver identidad por documento (Atlas no decide solo inicial vs seguimiento).
@@ -126,7 +126,7 @@ export async function submitSurveyIntake(
   } catch (e) {
     if (e instanceof ConsentGateError) {
       return err(
-        appError("forbidden", "No es posible crear la evaluacion sin las autorizaciones necesarias vigentes."),
+        appError("forbidden", "No es posible crear la evaluación sin las autorizaciones necesarias vigentes."),
       );
     }
     throw e;

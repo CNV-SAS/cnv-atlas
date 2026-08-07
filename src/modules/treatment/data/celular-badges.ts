@@ -57,14 +57,14 @@ export function computeCelularBadges(raw: Record<string, number>, sexoM: boolean
     badges.push({
       id: "mca",
       label: "MCA reducida",
-      guidance: "Aumentar proteina de alta calidad y micronutrientes anabolicos.",
+      guidance: "Aumentar proteína de alta calidad y micronutrientes anabolicos.",
       tone: "warn",
     });
   }
   if (hidSG != null && hidSGref != null && hidSGref > 0 && hidSG < hidSGref) {
     badges.push({
       id: "hid",
-      label: "Hidratacion celular deficiente",
+      label: "Hidratación celular deficiente",
       guidance: "Aumentar agua, electrolitos, reducir sodio.",
       tone: "info",
     });

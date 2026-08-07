@@ -26,7 +26,7 @@ import {
 // admin/soporte; uso = professional (la RLS acota al profesional del paciente).
 async function requireCatalogManager() {
   const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
+  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canManageCatalog(user)) {
     return { user: null, error: appError("forbidden", "No tienes permiso sobre el catalogo.") };
   }
@@ -35,7 +35,7 @@ async function requireCatalogManager() {
 
 async function requireUsageRegistrar() {
   const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
+  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canRegisterUsage(user)) {
     return { user: null, error: appError("forbidden", "No tienes permiso para registrar uso.") };
   }
@@ -49,14 +49,14 @@ export async function createNutraceuticalAction(
   if (authzError) return err(authzError);
 
   const parsed = createNutraceuticalSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos del nutraceutico invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos del nutracéutico inválidos."));
 
   try {
     const created = await service.createNutraceutical(parsed.data, user.organizationId);
     revalidatePath("/nutraceuticos");
     return ok({ id: created.id });
   } catch {
-    return err(appError("internal", "No se pudo crear el nutraceutico."));
+    return err(appError("internal", "No se pudo crear el nutracéutico."));
   }
 }
 
@@ -67,14 +67,14 @@ export async function updateNutraceuticalAction(
   if (authzError) return err(authzError);
 
   const parsed = updateNutraceuticalSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos del nutraceutico invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos del nutracéutico inválidos."));
 
   try {
     await service.updateNutraceutical(parsed.data);
     revalidatePath("/nutraceuticos");
     return ok(null);
   } catch {
-    return err(appError("internal", "No se pudo actualizar el nutraceutico."));
+    return err(appError("internal", "No se pudo actualizar el nutracéutico."));
   }
 }
 
@@ -86,7 +86,7 @@ export async function registerUsageAction(
   if (authzError) return err(authzError);
 
   const parsed = registerUsageSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos de uso invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos de uso inválidos."));
 
   try {
     const usage = await service.registerUsage(parsed.data);
@@ -120,7 +120,7 @@ export async function createNutraceuticalFormAction(
     unitPrice: optNum(formData, "unitPrice"),
   });
   if (!result.ok) return { error: result.error.message, success: null, warning: null };
-  return { error: null, success: "Nutraceutico creado.", warning: null };
+  return { error: null, success: "Nutracéutico creado.", warning: null };
 }
 
 export async function updateNutraceuticalFormAction(
@@ -135,7 +135,7 @@ export async function updateNutraceuticalFormAction(
     unitPrice: optNum(formData, "unitPrice"),
   });
   if (!result.ok) return { error: result.error.message, success: null, warning: null };
-  return { error: null, success: "Nutraceutico actualizado.", warning: null };
+  return { error: null, success: "Nutracéutico actualizado.", warning: null };
 }
 
 // Registrar una RECEPCION en el inventario del profesional (Mi inventario, consignacion). Solo el
@@ -145,7 +145,7 @@ export async function recordReceptionFormAction(
   formData: FormData,
 ): Promise<NutraceuticalFormState> {
   const user = await getCurrentUser();
-  if (!user) return { error: "Inicia sesion.", success: null, warning: null };
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
   if (!canLoadOwnStock(user)) {
     return { error: "Solo el profesional registra recepciones en su inventario.", success: null, warning: null };
   }
@@ -154,7 +154,7 @@ export async function recordReceptionFormAction(
     quantity: String(formData.get("quantity") ?? ""),
     lote: optStr(formData, "lote"),
   });
-  if (!parsed.success) return { error: "Datos de recepcion invalidos.", success: null, warning: null };
+  if (!parsed.success) return { error: "Datos de recepción inválidos.", success: null, warning: null };
 
   const res = await inventoryService.recordReception({
     userId: user.id,
@@ -162,9 +162,9 @@ export async function recordReceptionFormAction(
     quantity: parsed.data.quantity,
     lote: parsed.data.lote ?? null,
   });
-  if (!res.ok) return { error: res.message ?? "No se pudo registrar la recepcion.", success: null, warning: null };
+  if (!res.ok) return { error: res.message ?? "No se pudo registrar la recepción.", success: null, warning: null };
   revalidatePath("/mi-inventario");
-  return { error: null, success: "Recepcion registrada.", warning: null };
+  return { error: null, success: "Recepción registrada.", warning: null };
 }
 
 // Registrar un DESPACHO (entrega al paciente) desde el panel de tratamiento. Solo el profesional
@@ -176,16 +176,16 @@ export async function recordDespachoFormAction(
   formData: FormData,
 ): Promise<NutraceuticalFormState> {
   const user = await getCurrentUser();
-  if (!user) return { error: "Inicia sesion.", success: null, warning: null };
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
   if (!canLoadOwnStock(user)) {
-    return { error: "Solo el profesional entrega nutraceuticos al paciente.", success: null, warning: null };
+    return { error: "Solo el profesional entrega nutracéuticos al paciente.", success: null, warning: null };
   }
   const parsed = despachoSchema.safeParse({
     treatmentId: String(formData.get("treatmentId") ?? ""),
     nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
     quantity: String(formData.get("quantity") ?? ""),
   });
-  if (!parsed.success) return { error: "Datos de la entrega invalidos.", success: null, warning: null };
+  if (!parsed.success) return { error: "Datos de la entrega inválidos.", success: null, warning: null };
 
   const res = await inventoryService.recordDespacho({
     userId: user.id,

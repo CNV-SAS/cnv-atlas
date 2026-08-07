@@ -48,14 +48,14 @@ export async function requestAccessAction(
     documentNumber: (form.get("documentNumber") as string | null)?.trim() || undefined,
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Solicitud invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Solicitud inválida.");
   }
 
   const result = await requestAccess(user, parsed.data, await actorIp());
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath("/auditoria/solicitar");
-  return { error: null, success: "Solicitud enviada. Queda pendiente de aprobacion.", warning: null };
+  return { error: null, success: "Solicitud enviada. Queda pendiente de aprobación.", warning: null };
 }
 
 export async function decideAccessAction(
@@ -71,7 +71,7 @@ export async function decideAccessAction(
     durationHours: (form.get("durationHours") as string | null) || undefined,
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Decision invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Decisión inválida.");
   }
 
   const result = await decideAccess(user, parsed.data, await actorIp());
@@ -96,7 +96,7 @@ export async function revokeAccessAction(
     grantId: (form.get("grantId") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Solicitud invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Solicitud inválida.");
   }
 
   const result = await revokeAccess(user, parsed.data.grantId, await actorIp());

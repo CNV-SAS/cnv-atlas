@@ -44,7 +44,7 @@ export async function confirmDiagnosis(input: ConfirmDiagnosisWrite): Promise<vo
       .where(and(eq(diagnoses.id, input.diagnosisId), isNull(diagnoses.confirmedBy)))
       .returning({ id: diagnoses.id });
     if (confirmed.length === 0) {
-      throw new DiagnosisStateError("El diagnostico ya estaba confirmado.");
+      throw new DiagnosisStateError("El diagnóstico ya estaba confirmado.");
     }
     await recordAudit(tx, {
       event: "diagnosis.confirmed",

@@ -316,7 +316,7 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     const oldId = await makeEvaluationWithDiagnosis("GATES");
     const noConfirm = await correctEvaluation({ ...baseInput(oldId), confirmed: false }, actor());
     expect(noConfirm.ok).toBe(false);
-    expect(noConfirm.error.message).toContain("confirmacion");
+    expect(noConfirm.error.message).toContain("confirmación");
 
     const noReason = await correctEvaluation({ ...baseInput(oldId), reason: "  " }, actor());
     expect(noReason.ok).toBe(false);
@@ -363,7 +363,7 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     createdSurveyVersions.push(newSv);
     const res = await correctEvaluation(baseInput(oldId), actor());
     expect(res.ok).toBe(false);
-    expect(res.error.message).toContain("version anterior del cuestionario");
+    expect(res.error.message).toContain("versión anterior del cuestionario");
     // limpiar la version extra ya (para no afectar otros tests del archivo que leen getActiveSurvey)
     await db.delete(schema.surveyVersions).where(eq(schema.surveyVersions.id, newSv));
     createdSurveyVersions.pop();

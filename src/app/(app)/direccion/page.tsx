@@ -4,7 +4,7 @@ import { getDireccionDashboard } from "@/modules/direccion/data/dashboard-reader
 import { canViewDireccion } from "@/modules/direccion/policies/can-view-direccion";
 import { requireUser } from "@/modules/auth/session";
 
-export const metadata = { title: "Direccion - Atlas" };
+export const metadata = { title: "Dirección - Atlas" };
 
 const cop = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -36,7 +36,7 @@ export default async function DireccionPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Direccion</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Dirección</h1>
         <p className="text-muted-foreground">
           Vista consolidada de finanzas e inventario. Agregados sin datos personales.
         </p>

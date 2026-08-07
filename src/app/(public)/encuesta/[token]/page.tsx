@@ -78,7 +78,7 @@ export default async function EncuestaPage({
     <Shell>
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {link.type === "seguimiento" ? "Encuesta de seguimiento" : "Evaluacion inicial"}
+          {link.type === "seguimiento" ? "Encuesta de seguimiento" : "Evaluación inicial"}
         </h1>
         <p className="text-sm text-muted-foreground">
           Tus respuestas son confidenciales. Completa el formulario para tu profesional

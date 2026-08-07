@@ -16,7 +16,7 @@ import {
 // Autorizacion comun (regla 3): crear checkout = professional o admin.
 async function requireCheckoutCreator() {
   const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
+  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canCreateCheckout(user)) {
     return { user: null, error: appError("forbidden", "No tienes permiso para crear checkouts.") };
   }
@@ -30,7 +30,7 @@ export async function createCheckoutAction(
   if (authzError) return err(authzError);
 
   const parsed = createCheckoutSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos del checkout invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos del checkout inválidos."));
 
   try {
     const created = await createCheckout(parsed.data, user);

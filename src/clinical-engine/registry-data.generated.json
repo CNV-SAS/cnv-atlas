@@ -2,57 +2,57 @@
   "indicators": [
     {
       "code": "IFC",
-      "name": "Indice de Funcionalidad Celular",
+      "name": "Índice de Funcionalidad Celular",
       "unit": null
     },
     {
       "code": "IRC",
-      "name": "Indice de Riesgo Celular",
+      "name": "Índice de Riesgo Celular",
       "unit": null
     },
     {
       "code": "PABU",
-      "name": "Proporcion Aurea Bioelectrica Universal",
+      "name": "Proporción Áurea Bioeléctrica Universal",
       "unit": null
     },
     {
       "code": "ICA-BIS",
-      "name": "Indice de Coherencia Aurea (BIS)",
+      "name": "Índice de Coherencia Áurea (BIS)",
       "unit": null
     },
     {
       "code": "ISCM",
-      "name": "Indice de Susceptibilidad Cardiometabolica (BIS)",
+      "name": "Índice de Susceptibilidad Cardiometabólica (BIS)",
       "unit": null
     },
     {
       "code": "IEHH",
-      "name": "Indice del Espectro de Hidratacion Humana",
+      "name": "Índice del Espectro de Hidratación Humana",
       "unit": null
     },
     {
       "code": "IAE",
-      "name": "Indice de Aceleracion del Envejecimiento",
-      "unit": "anos"
+      "name": "Índice de Aceleración del Envejecimiento",
+      "unit": "años"
     },
     {
       "code": "EB",
       "name": "Edad Bioeléctrica (EB-BIS)",
-      "unit": "anos"
+      "unit": "años"
     },
     {
       "code": "FMI",
-      "name": "Indice de Masa Grasa",
+      "name": "Índice de Masa Grasa",
       "unit": "kg/m2"
     },
     {
       "code": "FFMI",
-      "name": "Indice de Masa Libre de Grasa",
+      "name": "Índice de Masa Libre de Grasa",
       "unit": "kg/m2"
     },
     {
       "code": "AF",
-      "name": "Angulo de Fase a 50 kHz",
+      "name": "Ángulo de Fase a 50 kHz",
       "unit": "grados"
     },
     {

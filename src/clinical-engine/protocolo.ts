@@ -28,9 +28,9 @@ import type { EngineInput, EngineOutput } from "./types";
 import { PROTOCOL_ENGINE_VERSION } from "./version";
 
 const NOTA_DEFAULTS =
-  "Los valores en calorico.defaults son suposiciones del sistema, no decisiones clinicas ni salida " +
+  "Los valores en calórico.defaults son suposiciones del sistema, no decisiones clinicas ni salida " +
   "del modelo. Todo valor derivado aguas abajo de un default es igualmente provisional: la cadena " +
-  "calorica completa del set SUGERIDO lo es hasta la aprobacion, donde el profesional fija los " +
+  "calórica completa del set SUGERIDO lo es hasta la aprobación, donde el profesional fija los " +
   "valores efectivos que se sellan en protocol_approved.";
 
 export type ProtocoloSnapshot = {

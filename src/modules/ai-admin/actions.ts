@@ -41,7 +41,7 @@ export async function saveAiConfigAction(
     activeProvider: (form.get("activeProvider") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Configuracion de IA invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Configuración de IA inválida.");
   }
 
   const result = await saveAiConfig(parsed.data, {
@@ -57,7 +57,7 @@ export async function saveAiConfigAction(
   // pantalla sale de este `saved` (el cliente es la fuente de verdad tras guardar).
   return {
     error: null,
-    success: "Configuracion de IA guardada.",
+    success: "Configuración de IA guardada.",
     warning: null,
     saved: { provider: result.value.provider, model: result.value.model },
   };
@@ -75,7 +75,7 @@ export async function savePromptAction(
     content: (form.get("content") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Prompt invalido.");
+    return fail(parsed.error.issues[0]?.message ?? "Prompt inválido.");
   }
 
   const result = await createPromptVersion(parsed.data, {

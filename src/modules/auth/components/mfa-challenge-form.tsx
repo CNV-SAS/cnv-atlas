@@ -13,7 +13,7 @@ export function MfaChallengeForm() {
   return (
     <form action={action} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1">
-        <span>Codigo</span>
+        <span>Código</span>
         <input
           name="code"
           inputMode="numeric"

@@ -21,14 +21,14 @@ export async function confirmDiagnosis(
   actor: Actor,
 ): Promise<Result<void>> {
   const d = await getDiagnosisForConfirmation(input.evaluationId);
-  if (!d) return err(appError("not_found", "Diagnostico no encontrado."));
+  if (!d) return err(appError("not_found", "Diagnóstico no encontrado."));
 
   const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
   if (!professionalId || professionalId !== d.evaluationProfessionalId) {
     return err(appError("forbidden", "No estas asignado a este paciente."));
   }
   if (d.alreadyConfirmed) {
-    return err(appError("conflict", "El diagnostico ya fue confirmado."));
+    return err(appError("conflict", "El diagnóstico ya fue confirmado."));
   }
 
   try {

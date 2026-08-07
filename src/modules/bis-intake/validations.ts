@@ -67,13 +67,13 @@ export function validateBisConditionsCapture(
     c.inputType === "boolean" && (c.scope === "general" || patientIsFemale);
 
   for (const key of Object.keys(input.answers)) {
-    if (!byKey.has(key)) fields[key] = "Condicion desconocida.";
+    if (!byKey.has(key)) fields[key] = "Condición desconocida.";
   }
 
   for (const c of catalog.conditions) {
     const raw = input.answers[c.key];
     if (raw == null) {
-      if (isRequired(c)) fields[c.key] = "Responde esta condicion.";
+      if (isRequired(c)) fields[c.key] = "Responde esta condición.";
       continue;
     }
 
@@ -89,7 +89,7 @@ export function validateBisConditionsCapture(
         !Number.isInteger(raw.value) ||
         (r && (raw.value < r.min || raw.value > r.max))
       ) {
-        fields[c.key] = r ? `Debe ser un numero entre ${r.min} y ${r.max}.` : "Ingresa un numero valido.";
+        fields[c.key] = r ? `Debe ser un numero entre ${r.min} y ${r.max}.` : "Ingresa un número válido.";
         continue;
       }
     } else {

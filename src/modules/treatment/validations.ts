@@ -8,33 +8,33 @@ import { z } from "zod";
 // Objetivo calorico diario: rango amplio pero acotado (evita ceros o miles absurdos).
 const kcalSchema = z.coerce
   .number()
-  .int("El objetivo calorico debe ser un numero entero.")
-  .min(500, "El objetivo calorico es demasiado bajo.")
-  .max(6000, "El objetivo calorico es demasiado alto.")
+  .int("El objetivo calórico debe ser un número entero.")
+  .min(500, "El objetivo calórico es demasiado bajo.")
+  .max(6000, "El objetivo calórico es demasiado alto.")
   .nullable();
 
 // Proteina objetivo en gramos por dia.
 const proteinSchema = z.coerce
   .number()
-  .int("La proteina debe ser un numero entero de gramos.")
-  .min(0, "La proteina no puede ser negativa.")
-  .max(400, "El objetivo de proteina es demasiado alto.")
+  .int("La proteína debe ser un número entero de gramos.")
+  .min(0, "La proteína no puede ser negativa.")
+  .max(400, "El objetivo de proteína es demasiado alto.")
   .nullable();
 
 const restriccionSchema = z
   .string()
   .trim()
   .min(1)
-  .max(60, "Cada restriccion es demasiado larga.");
+  .max(60, "Cada restricción es demasiado larga.");
 
 const nutraceuticalLineSchema = z.object({
-  nutraceuticalId: z.guid("Nutraceutico invalido."),
+  nutraceuticalId: z.guid("Nutracéutico inválido."),
   dosage: z.string().trim().max(120, "La dosis es demasiado larga.").nullable(),
   durationDays: z.coerce
     .number()
-    .int("La duracion debe ser un numero entero de dias.")
-    .min(1, "La duracion minima es un dia.")
-    .max(365, "La duracion maxima es un ano.")
+    .int("La duración debe ser un número entero de días.")
+    .min(1, "La duración mínima es un día.")
+    .max(365, "La duración máxima es un año.")
     .nullable(),
 });
 
@@ -42,7 +42,7 @@ const guidelineSchema = z
   .string()
   .trim()
   .min(1)
-  .max(1000, "La guia dietaria es demasiado larga.");
+  .max(1000, "La guía dietaria es demasiado larga.");
 
 // Firma base por seccion (candado de concurrencia): la del protocolo que el cliente cargó. Las 4 claves
 // espejan SectionKey de protocol-signature.ts. El servidor compara contra la firma actual bajo lock; si
@@ -57,14 +57,14 @@ const sectionSignaturesSchema = z.object({
 // Guardado completo del protocolo: objetivos + set de nutraceuticos + set de guias.
 // Los sets se reemplazan por completo (el formulario envia el estado final deseado).
 export const saveProtocolSchema = z.object({
-  evaluationId: z.guid("Evaluacion invalida."),
+  evaluationId: z.guid("Evaluación inválida."),
   kcalObjetivo: kcalSchema,
   proteinaGramos: proteinSchema,
   restricciones: z.array(restriccionSchema).max(20, "Demasiadas restricciones."),
   nutraceuticals: z
     .array(nutraceuticalLineSchema)
-    .max(30, "Demasiados nutraceuticos en el protocolo."),
-  guidelines: z.array(guidelineSchema).max(30, "Demasiadas guias dietarias."),
+    .max(30, "Demasiados nutracéuticos en el protocolo."),
+  guidelines: z.array(guidelineSchema).max(30, "Demasiadas guías dietarias."),
   baseSignatures: sectionSignaturesSchema,
 });
 
@@ -80,20 +80,20 @@ const optNum = (min: number, max: number, msg: string) =>
   z.coerce.number().min(min, msg).max(max, msg).nullable();
 
 export const saveAdjustmentsSchema = z.object({
-  evaluationId: z.guid("Evaluacion invalida."),
-  adjGeb: optInt(500, 4000, "El gasto basal ajustado esta fuera de rango."),
-  adjPal: optNum(1, 2.5, "El factor de actividad esta fuera de rango."),
-  adjKcalObj: optInt(500, 6000, "El objetivo calorico ajustado esta fuera de rango."),
-  adjProtGkg: optNum(0, 4, "La proteina g/kg ajustada esta fuera de rango."),
-  adjFatPct: optInt(0, 100, "El porcentaje de grasa ajustado esta fuera de rango."),
-  adjPesoMeta: optNum(20, 400, "El peso meta esta fuera de rango."),
+  evaluationId: z.guid("Evaluación inválida."),
+  adjGeb: optInt(500, 4000, "El gasto basal ajustado está fuera de rango."),
+  adjPal: optNum(1, 2.5, "El factor de actividad está fuera de rango."),
+  adjKcalObj: optInt(500, 6000, "El objetivo calórico ajustado está fuera de rango."),
+  adjProtGkg: optNum(0, 4, "La proteína g/kg ajustada está fuera de rango."),
+  adjFatPct: optInt(0, 100, "El porcentaje de grasa ajustado está fuera de rango."),
+  adjPesoMeta: optNum(20, 400, "El peso meta está fuera de rango."),
 });
 
 export type SaveAdjustmentsInput = z.infer<typeof saveAdjustmentsSchema>;
 
 // Reconocimiento de las restricciones del modelo (gate del generador de menu, Opcion B).
 export const acknowledgeRestrictionsSchema = z.object({
-  evaluationId: z.guid("Evaluacion invalida."),
+  evaluationId: z.guid("Evaluación inválida."),
 });
 
 export type AcknowledgeRestrictionsInput = z.infer<typeof acknowledgeRestrictionsSchema>;
@@ -102,15 +102,15 @@ export type AcknowledgeRestrictionsInput = z.infer<typeof acknowledgeRestriction
 // sella. No lleva mas payload que la evaluacion: los adj_* ya estan guardados (saveAdjustments) y el
 // set efectivo se recomputa en el service; el profesional nunca escribe el efectivo directo.
 export const approveProtocolSchema = z.object({
-  evaluationId: z.guid("Evaluacion invalida."),
+  evaluationId: z.guid("Evaluación inválida."),
 });
 
 export type ApproveProtocolInput = z.infer<typeof approveProtocolSchema>;
 
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
-  evaluationId: z.guid("Evaluacion invalida."),
-  note: z.string().trim().min(1, "La nota no puede estar vacia.").max(2000, "La nota es demasiado larga."),
+  evaluationId: z.guid("Evaluación inválida."),
+  note: z.string().trim().min(1, "La nota no puede estar vacía.").max(2000, "La nota es demasiado larga."),
 });
 
 export type AddNoteInput = z.infer<typeof addNoteSchema>;

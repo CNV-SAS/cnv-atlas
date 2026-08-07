@@ -47,7 +47,7 @@ export async function saveProtocol(
     return err(
       appError(
         "conflict",
-        "El diagnostico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
+        "El diagnóstico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
       ),
     );
   }
@@ -70,9 +70,9 @@ export async function saveProtocol(
       return err(
         appError(
           "stale_write",
-          `El protocolo cambio en otra sesion (otra pestana o dispositivo): ${describeChangedSections(e.sections)}. ` +
-            "Para no borrar ese cambio no se guardo lo que hiciste. Tu trabajo sigue en pantalla: recarga para " +
-            "ver la version actual y vuelve a aplicarlo.",
+          `El protocolo cambió en otra sesión (otra pestaña o dispositivo): ${describeChangedSections(e.sections)}. ` +
+            "Para no borrar ese cambio no se guardó lo que hiciste. Tu trabajo sigue en pantalla: recarga para " +
+            "ver la versión actual y vuelve a aplicarlo.",
         ),
       );
     }
@@ -94,7 +94,7 @@ export async function saveAdjustments(
   if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(
-      appError("conflict", "El diagnostico debe estar confirmado antes de ajustar el protocolo."),
+      appError("conflict", "El diagnóstico debe estar confirmado antes de ajustar el protocolo."),
     );
   }
   try {
@@ -125,7 +125,7 @@ export async function acknowledgeRestrictions(
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnostico debe estar confirmado."));
+    return err(appError("conflict", "El diagnóstico debe estar confirmado."));
   }
   try {
     await writeAcknowledge({ treatmentId: protocol.treatmentId, ...actor });
@@ -229,7 +229,7 @@ export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnostico debe estar confirmado antes de agregar notas."));
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de agregar notas."));
   }
   try {
     await addTreatmentNote({ treatmentId: protocol.treatmentId, note: input.note, ...actor });

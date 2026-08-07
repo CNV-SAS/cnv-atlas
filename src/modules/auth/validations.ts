@@ -20,10 +20,10 @@ export const mfaCodeSchema = z.object({
 
 export const setPasswordSchema = z
   .object({
-    password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres."),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
     confirm: z.string(),
   })
   .refine((d) => d.password === d.confirm, {
-    message: "Las contrasenas no coinciden.",
+    message: "Las contraseñas no coinciden.",
     path: ["confirm"],
   });

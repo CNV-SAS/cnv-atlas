@@ -27,7 +27,7 @@ export async function loginAction(
     email: formData.get("email"),
     password: formData.get("password"),
   });
-  if (!parsed.success) return { error: "Correo o contrasena invalidos." };
+  if (!parsed.success) return { error: "Correo o contraseña inválidos." };
 
   // Rate limit: 5/15 min por IP (SECURITY.md).
   const ip = await getClientIp();
@@ -38,7 +38,7 @@ export async function loginAction(
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: "Correo o contrasena incorrectos." };
+  if (error) return { error: "Correo o contraseña incorrectos." };
 
   // Step-up de MFA: si hay un factor TOTP verificado, la sesion queda en aal1 y
   // se exige subir a aal2. getClaims valida el JWT server-side (como getUser) y
@@ -67,7 +67,7 @@ export async function requestPasswordResetAction(
 ): Promise<ForgotPasswordState> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
   // Formato invalido: se puede decir (no revela existencia de cuenta).
-  if (!parsed.success) return { error: "Correo invalido.", sent: false };
+  if (!parsed.success) return { error: "Correo inválido.", sent: false };
 
   const ip = await getClientIp();
   const limit = await limitLoginByIp(ip);
@@ -88,7 +88,7 @@ export async function verifyMfaAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   const parsed = mfaCodeSchema.safeParse({ code: formData.get("code") });
-  if (!parsed.success) return { error: "El codigo debe tener 6 digitos." };
+  if (!parsed.success) return { error: "El código debe tener 6 dígitos." };
 
   const supabase = await createSupabaseServerClient();
   const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
@@ -107,7 +107,7 @@ export async function verifyMfaAction(
     challengeId: challenge.id,
     code: parsed.data.code,
   });
-  if (verifyError) return { error: "Codigo incorrecto. Intenta de nuevo." };
+  if (verifyError) return { error: "Código incorrecto. Intenta de nuevo." };
 
   redirect("/dashboard");
 }
@@ -124,12 +124,12 @@ export async function setPasswordAction(
     confirm: formData.get("confirm"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos invalidos." };
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
 
   const cookieStore = await cookies();
   if (cookieStore.get("atlas-pwd-reset")?.value !== "1") {
-    return { error: "Enlace no valido o expirado. Solicita uno nuevo." };
+    return { error: "Enlace no válido o expirado. Solicita uno nuevo." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -137,11 +137,11 @@ export async function setPasswordAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "Sesion no valida. Abre de nuevo el enlace del correo." };
+    return { error: "Sesión no valida. Abre de nuevo el enlace del correo." };
   }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { error: "No se pudo fijar la contrasena." };
+  if (error) return { error: "No se pudo fijar la contraseña." };
 
   cookieStore.delete("atlas-pwd-reset"); // un solo uso
   redirect("/dashboard");

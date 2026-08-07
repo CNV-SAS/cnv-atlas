@@ -49,7 +49,7 @@ function hasSurveyData(survey: Record<string, unknown>): boolean {
 }
 
 const NO_SURVEY_REASON =
-  "Sin datos de encuesta: el diagnostico funcional integral (dominios de encuesta, EB/IAE y LE8) esta incompleto hasta integrar la encuesta.";
+  "Sin datos de encuesta: el diagnóstico funcional integral (dominios de encuesta, EB/IAE y LE8) esta incompleto hasta integrar la encuesta.";
 
 export function runEngine(input: EngineInput): EngineOutput {
   const { sexo, edad, bisRow, survey, expectedFieldKeys, model } = input;
@@ -61,7 +61,7 @@ export function runEngine(input: EngineInput): EngineOutput {
   // una violacion de contrato y se falla fuerte aqui, NUNCA se cae a "completo" por defecto.
   if (expectedFieldKeys.length === 0) {
     throw new Error(
-      "runEngine: expectedFieldKeys vacio; no se puede medir dfi.complete sin la lista declarada por la version de la encuesta (regla 7).",
+      "runEngine: expectedFieldKeys vacío; no se puede medir dfi.complete sin la lista declarada por la versión de la encuesta (regla 7).",
     );
   }
   const missingFieldKeys = expectedFieldKeys.filter((k) => !answered(survey[k]));
@@ -190,7 +190,7 @@ export function runEngine(input: EngineInput): EngineOutput {
 
   const rutasTxt = dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas";
   const resumenClinico =
-    `Fenotipo EFR ${efrKey}: ${a.fenotipoEFR.dx ?? "sin diagnostico"}. ` +
+    `Fenotipo EFR ${efrKey}: ${a.fenotipoEFR.dx ?? "sin diagnóstico"}. ` +
     `Nutraceuticos sugeridos: ${a.fenotipoEFR.nutraceuticos}. ` +
     `Rutas de atencion (DFI${surveyComplete ? "" : ", encuesta incompleta"}): ${rutasTxt}.`;
 

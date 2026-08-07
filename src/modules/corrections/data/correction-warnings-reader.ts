@@ -71,7 +71,7 @@ export async function getCorrectionWarnings(evaluationId: string): Promise<strin
 
     // 2. Aprobación invalidada.
     if (t.status === "approved") {
-      warnings.push("La aprobación del protocolo se invalida; habrá que aprobar el nuevo.");
+      warnings.push("La aprobación del protocolo se inválida; habrá que aprobar el nuevo.");
     }
   }
 

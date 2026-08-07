@@ -23,7 +23,7 @@ export function evaluateBisImportGate(intake: BisIntakeRecord | null): ImportGat
       allowed: false,
       reason: "contraindicated",
       message:
-        "No se puede importar: hay una contraindicacion (marcapasos). La bioimpedancia no se realiza.",
+        "No se puede importar: hay una contraindicación (marcapasos). La bioimpedancia no se realiza.",
     };
   }
   return { allowed: true };

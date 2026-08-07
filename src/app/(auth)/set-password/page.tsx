@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SetPasswordForm } from "@/modules/auth/components/set-password-form";
 
-export const metadata = { title: "Fijar contrasena - Atlas" };
+export const metadata = { title: "Fijar contraseña - Atlas" };
 
 // Requisito de seguridad: una sesion normal NO basta para fijar contrasena aqui.
 // Solo el callback /auth/confirm, tras verificar un token de invitacion o
@@ -17,7 +17,7 @@ export default async function SetPasswordPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Fijar tu contrasena</h1>
+      <h1 className="text-xl font-semibold">Fijar tu contraseña</h1>
       <SetPasswordForm />
     </>
   );

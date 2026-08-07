@@ -20,8 +20,8 @@ function fmt(iso: string): string {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-  evaluation: "Evaluacion",
-  diagnosis: "Diagnostico",
+  evaluation: "Evaluación",
+  diagnosis: "Diagnóstico",
   treatment: "Tratamiento",
 };
 

@@ -29,9 +29,9 @@ class NotFoundError extends Error {}
 // Autorizacion comun: sesion + policy. Nunca por role=== suelto (regla 3).
 async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
+  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canManageUsers(user)) {
-    return { user: null, error: appError("forbidden", "No tienes permiso para esta accion.") };
+    return { user: null, error: appError("forbidden", "No tienes permiso para esta acción.") };
   }
   return { user, error: null as null };
 }
@@ -51,7 +51,7 @@ export async function createUser(
   if (authzError) return err(authzError);
 
   const parsed = createUserSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos inválidos."));
   const { email, fullName, role, profession } = parsed.data;
 
   const admin = createSupabaseAdminClient();
@@ -102,7 +102,7 @@ export async function createUser(
     if (e instanceof RoleNotFoundError) {
       return err(appError("validation", "El rol indicado no existe."));
     }
-    return err(appError("internal", "No se pudo completar la creacion del usuario."));
+    return err(appError("internal", "No se pudo completar la creación del usuario."));
   }
 
   return ok({ userId: newUserId });
@@ -118,13 +118,13 @@ export async function forcePasswordReset(input: {
   if (authzError) return err(authzError);
 
   const parsed = forcePasswordResetSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Correo invalido."));
+  if (!parsed.success) return err(appError("validation", "Correo inválido."));
   const { email } = parsed.data;
 
   const admin = createSupabaseAdminClient();
   const { error: resetError } = await admin.auth.resetPasswordForEmail(email);
   if (resetError) {
-    return err(appError("internal", "No se pudo enviar el correo de recuperacion."));
+    return err(appError("internal", "No se pudo enviar el correo de recuperación."));
   }
 
   // Envio exitoso: recien aqui se audita.
@@ -158,7 +158,7 @@ export async function resetUserMfa(input: {
   const parsed = resetUserMfaSchema.safeParse(input);
   if (!parsed.success) {
     // El motivo vacio es el error esperable mas comun; se distingue del usuario invalido.
-    const msg = parsed.error.issues[0]?.message ?? "Datos invalidos.";
+    const msg = parsed.error.issues[0]?.message ?? "Datos inválidos.";
     return err(appError("validation", msg));
   }
   const { userId, reason } = parsed.data;
@@ -198,7 +198,7 @@ export async function deactivateUser(input: {
   if (authzError) return err(authzError);
 
   const parsed = deactivateUserSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Usuario invalido."));
+  if (!parsed.success) return err(appError("validation", "Usuario inválido."));
   const { userId } = parsed.data;
   if (userId === user.id) {
     return err(appError("validation", "No puedes desactivar tu propia cuenta."));
@@ -248,5 +248,5 @@ export async function createUserFormAction(
     profession: professionRaw ? (String(professionRaw) as Profession) : undefined,
   });
   if (!result.ok) return { error: result.error.message, success: null };
-  return { error: null, success: "Usuario creado. Se envio la invitacion por correo." };
+  return { error: null, success: "Usuario creado. Se envio la invitación por correo." };
 }

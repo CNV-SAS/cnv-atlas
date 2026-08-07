@@ -13,7 +13,7 @@ export function SetPasswordForm() {
   return (
     <form action={action} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1">
-        <span>Nueva contrasena</span>
+        <span>Nueva contraseña</span>
         <input
           name="password"
           type="password"
@@ -24,7 +24,7 @@ export function SetPasswordForm() {
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span>Confirmar contrasena</span>
+        <span>Confirmar contraseña</span>
         <input
           name="confirm"
           type="password"
@@ -40,7 +40,7 @@ export function SetPasswordForm() {
         </p>
       ) : null}
       <button type="submit" disabled={pending} className="border p-2">
-        {pending ? "Guardando..." : "Guardar contrasena"}
+        {pending ? "Guardando..." : "Guardar contraseña"}
       </button>
     </form>
   );

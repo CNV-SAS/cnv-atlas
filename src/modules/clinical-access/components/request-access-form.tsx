@@ -40,14 +40,14 @@ export function RequestAccessForm() {
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium text-foreground">Categoria del motivo</span>
+        <span className="font-medium text-foreground">Categoría del motivo</span>
         <select
           name="reasonCategory"
           defaultValue="auditoria_calidad"
           className="rounded-lg border border-input bg-background p-2"
         >
           <option value="auditoria_calidad">Auditoria de calidad</option>
-          <option value="soporte_tecnico">Soporte tecnico</option>
+          <option value="soporte_tecnico">Soporte técnico</option>
         </select>
       </label>
 
@@ -72,7 +72,7 @@ export function RequestAccessForm() {
             <input
               name="documentNumber"
               className="rounded-lg border border-input bg-background p-2"
-              placeholder="Numero de documento"
+              placeholder="Número de documento"
             />
           </label>
         </div>
@@ -84,7 +84,7 @@ export function RequestAccessForm() {
           name="reason"
           rows={3}
           className="rounded-lg border border-input bg-background p-2"
-          placeholder="Explica la causa del acceso (queja, verificacion de una posible desviacion, etc.)."
+          placeholder="Explica la causa del acceso (queja, verificación de una posible desviación, etc.)."
         />
       </label>
 

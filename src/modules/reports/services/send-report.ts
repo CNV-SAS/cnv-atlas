@@ -71,7 +71,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   const filename = `reporte-${dispatch.documentLabel.replace(/\s+/g, "-") || "clinico"}.pdf`;
   const sent = await sendReportEmail({
     to: dispatch.email,
-    subject: "Tu reporte clinico ANI-BIS-E",
+    subject: "Tu reporte clínico ANI-BIS-E",
     text: `Hola ${dispatch.patientName || ""}. Adjuntamos tu reporte clinico. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
     pdf: { filename, content: pdf },
   });

@@ -273,7 +273,7 @@ export function EvaluationResults({
             // importa (que se suspenderia cuando la funcion este activa). Hoy solo informa, no suprime.
             <div className="flex flex-col gap-1 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
               <span className="font-medium">
-                {dfi.degradedReason ?? "El diagnostico se emitio con la encuesta incompleta."}
+                {dfi.degradedReason ?? "El diagnóstico se emitio con la encuesta incompleta."}
               </span>
               {missingDomains.length ? (
                 <span>Faltan estos dominios de la encuesta: {missingDomains.join(", ")}.</span>
@@ -392,7 +392,7 @@ export function EvaluationResults({
             />
             <ContentCard label="Biomarcadores clave" value={efrState?.biomarkers ?? null} />
             <ContentCard label="Riesgos clínicos" value={efrState?.risks ?? null} />
-            {/* Excepcion de negocio: "Nutraceuticos sugeridos", no "Vitacellebis" del HTML; a
+            {/* Excepcion de negocio: "Nutracéuticos sugeridos", no "Vitacellebis" del HTML; a
                 futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
             <ContentCard
               label="Nutracéuticos sugeridos"

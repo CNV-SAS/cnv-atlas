@@ -124,7 +124,7 @@ export function ReportDocument({
       author="Connected Nutrition Ventures"
     >
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Reporte clinico ANI-BIS-E</Text>
+        <Text style={styles.title}>Reporte clínico ANI-BIS-E</Text>
         <Text style={styles.subtitle}>Connected Nutrition Ventures</Text>
 
         <View style={styles.meta}>
@@ -174,7 +174,7 @@ export function ReportDocument({
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Diagnostico funcional (EFR)</Text>
+              <Text style={styles.sectionTitle}>Diagnóstico funcional (EFR)</Text>
               <Text style={styles.para}>
                 <Text style={styles.bold}>
                   Estado EFR {efrPhenotype.stateNumber} ({efrPhenotype.key}):{" "}
@@ -205,7 +205,7 @@ export function ReportDocument({
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recomendacion de nutraceuticos</Text>
+              <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>
               <Text style={styles.para}>{nutraceuticos}</Text>
             </View>
           </>

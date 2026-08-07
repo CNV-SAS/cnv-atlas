@@ -115,11 +115,11 @@ export async function recordReception(input: {
     nutraceutical_id: input.nutraceuticalId,
     delta: input.quantity, // recepcion: positivo
     type: "recepcion",
-    reason: "Recepcion de producto en consignacion",
+    reason: "Recepción de producto en consignación",
     lote: input.lote,
     created_by: input.userId,
   });
-  if (error) return { ok: false, message: "No se pudo registrar la recepcion." };
+  if (error) return { ok: false, message: "No se pudo registrar la recepción." };
   return { ok: true };
 }
 

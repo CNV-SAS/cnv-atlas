@@ -78,7 +78,7 @@ export async function importBisMeasurement(
   } catch (e) {
     if (e instanceof BisAlreadyImportedError) {
       return err(
-        appError("conflict", "Esta evaluacion ya tiene una medicion BIS importada."),
+        appError("conflict", "Esta evaluación ya tiene una medición BIS importada."),
       );
     }
     throw e; // error inesperado: que suba (lo captura el action / Sentry)

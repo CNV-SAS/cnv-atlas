@@ -57,7 +57,7 @@ export async function importBisAction(
   if (!canImportBis(user)) return fail("No autorizado.");
 
   const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
-  if (!evaluationId) return fail("Evaluacion invalida.");
+  if (!evaluationId) return fail("Evaluación inválida.");
 
   // Rate limit por usuario (acotado por hora) antes de leer el archivo.
   const rl = await limitImportByUser(user.id);
@@ -65,10 +65,10 @@ export async function importBisAction(
 
   // Ownership bajo RLS: la sesion debe poder leer la evaluacion (su paciente o admin).
   const ownership = await getEvaluationOwnership(evaluationId);
-  if (!ownership) return fail("Evaluacion no encontrada.");
+  if (!ownership) return fail("Evaluación no encontrada.");
   // El BIS se importa despues de confirmar la identidad (draft -> in_progress).
   if (ownership.status !== "in_progress") {
-    return fail("La evaluacion no esta lista para importar BIS. Confirma la identidad primero.");
+    return fail("La evaluación no esta lista para importar BIS. Confirma la identidad primero.");
   }
 
   // Gate de orden + seguridad (ST-B3): las condiciones de la toma BIS deben estar respondidas
@@ -83,7 +83,7 @@ export async function importBisAction(
     return fail("Adjunta el archivo XLSX exportado de Biody Manager.");
   }
   if (file.size > MAX_BYTES) {
-    return fail("El archivo supera el tamano maximo permitido (5 MB).");
+    return fail("El archivo supera el tamaño máximo permitido (5 MB).");
   }
   if (!isAllowedXlsx(file)) {
     return fail("El archivo debe ser un XLSX exportado de Biody Manager.");

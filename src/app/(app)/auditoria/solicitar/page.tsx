@@ -53,7 +53,7 @@ export default async function RequestAccessPage() {
                 <th className="px-3 py-2 font-semibold">Motivo</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
                 <th className="px-3 py-2 font-semibold">Vence</th>
-                <th className="px-3 py-2 font-semibold">Accion</th>
+                <th className="px-3 py-2 font-semibold">Acción</th>
               </tr>
             </thead>
             <tbody>

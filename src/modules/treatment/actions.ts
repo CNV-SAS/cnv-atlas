@@ -93,7 +93,7 @@ export async function saveProtocolAction(
     baseSignatures: parseJsonObject(form.get("baseSignatures")),
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Datos del protocolo invalidos.");
+    return fail(parsed.error.issues[0]?.message ?? "Datos del protocolo inválidos.");
   }
 
   const result = await saveProtocol(parsed.data, {
@@ -126,7 +126,7 @@ export async function addNoteAction(
     note: (form.get("note") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Nota invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Nota inválida.");
   }
 
   const result = await addNote(parsed.data, {
@@ -159,7 +159,7 @@ export async function saveAdjustmentsAction(
     adjPesoMeta: strOrNull(form.get("adjPesoMeta")),
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Ajustes invalidos.");
+    return fail(parsed.error.issues[0]?.message ?? "Ajustes inválidos.");
   }
 
   const result = await saveAdjustments(parsed.data, {
@@ -185,7 +185,7 @@ export async function acknowledgeRestrictionsAction(
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Evaluacion invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
   }
 
   const result = await acknowledgeRestrictions(parsed.data, {
@@ -212,7 +212,7 @@ export async function approveProtocolAction(
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Evaluacion invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
   }
 
   const result = await approveProtocol(parsed.data, {
@@ -236,7 +236,7 @@ export async function generateMenuAction(
   if (!canManageTreatment(user)) return fail("No autorizado.");
 
   const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
-  if (!evaluationId) return fail("Evaluacion invalida.");
+  if (!evaluationId) return fail("Evaluación inválida.");
 
   const rl = await limitAiMenuByUser(user.id);
   if (!rl.success) return fail("Has generado demasiados menus. Espera unos minutos.");

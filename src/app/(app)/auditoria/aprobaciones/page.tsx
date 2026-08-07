@@ -46,7 +46,7 @@ export default async function ApprovalsPage() {
               <th className="px-3 py-2 font-semibold">Solicitante</th>
               <th className="px-3 py-2 font-semibold">Nivel</th>
               <th className="px-3 py-2 font-semibold">Motivo</th>
-              <th className="px-3 py-2 font-semibold">Decision</th>
+              <th className="px-3 py-2 font-semibold">Decisión</th>
             </tr>
           </thead>
           <tbody>

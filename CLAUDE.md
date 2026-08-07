@@ -134,6 +134,7 @@ Para. No instales paquetes random. Pide ayuda con: comando ejecutado, error comp
 - Español neutro en código (variables, funciones, copy de UI), commits y comentarios.
 - Excepción: nombres técnicos estándar en inglés (`userId`, `createdAt`, `submitEvaluation`).
 - Tuteo en interfaz de usuario. Sin emojis en UI. Sin signos de exclamación múltiples.
+- **Ortografía por superficie.** ASCII (sin tildes ni enes) está bien para lo INTERNO: mensajes de commit, comentarios de código, documentos internos, nombres de variables. Español CORRECTO, con tildes y enes, para TODO lo que ve un usuario: textos de pantalla, mensajes de error, avisos, correos, PDF, y cualquier cadena que llegue a un profesional o a un paciente. Media corrección deja el sistema mezclado ("pestana" junto a "prescripción"), que se lee como sistema mal hecho.
 
 ### Em-dash
 

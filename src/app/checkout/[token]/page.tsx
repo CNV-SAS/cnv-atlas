@@ -54,7 +54,7 @@ export default async function CheckoutPage({
   return (
     <CheckoutShell>
       <div className="flex flex-col items-center gap-1">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Pago de nutraceuticos</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Pago de nutracéuticos</h1>
         <p className="text-sm text-muted-foreground">Total a pagar</p>
         <p className="text-3xl font-extrabold tracking-tight text-foreground">{amountLabel}</p>
       </div>

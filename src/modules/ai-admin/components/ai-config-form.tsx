@@ -87,7 +87,7 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
         disabled={pending}
         className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
       >
-        {pending ? "Guardando..." : "Guardar configuracion"}
+        {pending ? "Guardando..." : "Guardar configuración"}
       </button>
 
       {saved ? (

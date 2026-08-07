@@ -297,7 +297,7 @@ export function SurveyIntakeForm({
                     setRep((s) => ({ ...s, relationship: e.target.value }))
                   }
                 >
-                  <option value="">Selecciona una opcion</option>
+                  <option value="">Selecciona una opción</option>
                   {RELATIONSHIPS.map((r) => (
                     <option key={r.value} value={r.value}>
                       {r.label}
@@ -468,7 +468,7 @@ export function SurveyIntakeForm({
               ))}
             </select>
           </Field>
-          <Field label="Numero de documento">
+          <Field label="Número de documento">
             <Input
               name="documentNumber"
               className="h-9"

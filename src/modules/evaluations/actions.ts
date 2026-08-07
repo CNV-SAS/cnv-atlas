@@ -61,7 +61,7 @@ export async function submitSurveyAction(
   });
 
   const token = str(form, "token");
-  if (!token) return fail("Link invalido.");
+  if (!token) return fail("Link inválido.");
 
   // Rate limit agresivo por IP y por token antes de cualquier trabajo.
   const ip = await getClientIp();
@@ -163,12 +163,12 @@ export async function confirmIdentityAction(
   if (!canConfirmIdentity(user)) return { error: "No autorizado.", confirmed: false };
 
   const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
-  if (!evaluationId) return { error: "Evaluacion invalida.", confirmed: false };
+  if (!evaluationId) return { error: "Evaluación inválida.", confirmed: false };
 
   const ownership = await getEvaluationOwnership(evaluationId);
-  if (!ownership) return { error: "Evaluacion no encontrada.", confirmed: false };
+  if (!ownership) return { error: "Evaluación no encontrada.", confirmed: false };
   if (ownership.status !== "draft") {
-    return { error: "Esta evaluacion ya fue confirmada.", confirmed: true };
+    return { error: "Esta evaluación ya fue confirmada.", confirmed: true };
   }
 
   const ip = await getClientIp();
@@ -203,7 +203,7 @@ export async function emitFollowupLinkAction(
   if (!canEmitFollowupLink(user)) return { error: "No autorizado.", linkPath: null };
 
   const patientId = (form.get("patientId") as string | null)?.trim() ?? "";
-  if (!patientId) return { error: "Paciente invalido.", linkPath: null };
+  if (!patientId) return { error: "Paciente inválido.", linkPath: null };
 
   // El profesional emite con su propio perfil; un admin lo emite a nombre del
   // profesional asignado al paciente (mismo patron que el checkout de B6). El link

@@ -15,7 +15,7 @@ export const requestAccessSchema = z
     reason: z
       .string()
       .trim()
-      .min(10, "Explica el motivo del acceso (minimo 10 caracteres).")
+      .min(10, "Explica el motivo del acceso (mínimo 10 caracteres).")
       .max(1000, "El motivo es demasiado largo."),
     documentType: z.enum(PATIENT_DOCUMENT_TYPES).optional(),
     documentNumber: z.string().trim().min(3).max(50).optional(),

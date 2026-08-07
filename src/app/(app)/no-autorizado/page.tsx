@@ -6,7 +6,7 @@ export default function NoAutorizadoPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-3 p-6">
       <h1 className="text-xl font-semibold">No autorizado</h1>
-      <p>No tienes permiso para ver esta seccion.</p>
+      <p>No tienes permiso para ver esta sección.</p>
     </main>
   );
 }

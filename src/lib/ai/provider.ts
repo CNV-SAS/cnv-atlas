@@ -44,7 +44,7 @@ async function callGroq(messages: AiMessage[], model: string): Promise<string> {
     timeoutMs: AI_TIMEOUT_MS,
   });
   const text = res.choices?.[0]?.message?.content;
-  if (!text) throw new AiError("Groq: respuesta vacia");
+  if (!text) throw new AiError("Groq: respuesta vacía");
   return text;
 }
 
@@ -76,7 +76,7 @@ async function callGemini(messages: AiMessage[], model: string): Promise<string>
     },
   );
   const text = res.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new AiError("Gemini: respuesta vacia");
+  if (!text) throw new AiError("Gemini: respuesta vacía");
   return text;
 }
 

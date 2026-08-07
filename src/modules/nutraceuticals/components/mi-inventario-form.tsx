@@ -45,7 +45,7 @@ export function MiInventarioForm({ products }: { products: { id: string; name: s
         <Input id="lote" name="lote" placeholder="Lote" className="w-40" />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Registrando..." : "Registrar recepcion"}
+        {pending ? "Registrando..." : "Registrar recepción"}
       </Button>
     </form>
   );

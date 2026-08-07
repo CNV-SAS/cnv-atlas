@@ -48,7 +48,7 @@ export async function parseBisXlsx(input: Buffer | ArrayBuffer): Promise<Result<
     // el Buffer empacado de exceljs no coincide con el generico de @types/node.
     await workbook.xlsx.load(input as Parameters<typeof workbook.xlsx.load>[0]);
   } catch {
-    return err(appError("validation", "El archivo no se pudo leer como un XLSX valido."));
+    return err(appError("validation", "El archivo no se pudo leer como un XLSX válido."));
   }
 
   const worksheet = workbook.getWorksheet(BIS_SHEET_NAME);

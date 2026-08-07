@@ -26,7 +26,7 @@ describe("scrubPhiFromEvent", () => {
         documento: "CC123",
         indicador_bis: 42,
         note: "el paciente refiere dolor",
-        motivo: "verificacion de queja de Juan",
+        motivo: "verificación de queja de Juan",
         representante_documento: "CC456",
         foo: "ok",
       },

@@ -5,7 +5,7 @@ import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 
-export const metadata = { title: "Administracion - Atlas" };
+export const metadata = { title: "Administración - Atlas" };
 
 // UI minima (B2). El shell con marca es B3. La autorizacion de ruta va por policy
 // (regla 3): sin permiso, a /no-autorizado.

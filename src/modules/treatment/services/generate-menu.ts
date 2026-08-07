@@ -42,14 +42,14 @@ export async function generateMenu(
   if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
     return err(
-      appError("conflict", "El diagnostico debe estar confirmado antes de generar el menu."),
+      appError("conflict", "El diagnóstico debe estar confirmado antes de generar el menu."),
     );
   }
   if (protocol.kcalObjetivo == null || protocol.proteinaGramos == null) {
     return err(
       appError(
         "validation",
-        "Define y guarda el objetivo calorico y de proteina antes de generar el menu.",
+        "Define y guarda el objetivo calórico y de proteína antes de generar el menu.",
       ),
     );
   }
@@ -59,7 +59,7 @@ export async function generateMenu(
     return err(
       appError(
         "conflict",
-        "El diagnostico de esta evaluacion tiene un formato anterior. Realiza una nueva evaluacion para generar el menu.",
+        "El diagnóstico de esta evaluación tiene un formato anterior. Realiza una nueva evaluación para generar el menu.",
       ),
     );
   }

@@ -41,13 +41,13 @@ export async function saveBisConditionsAction(
 
   const parsed = saveBisConditionsSchema.safeParse(rawInput);
   if (!parsed.success) {
-    return err(appError("validation", "Datos invalidos.", zodFields(parsed.error)));
+    return err(appError("validation", "Datos inválidos.", zodFields(parsed.error)));
   }
   const input = parsed.data;
 
   // Ownership bajo RLS: la sesion debe poder leer la evaluacion (su paciente o admin).
   const ownership = await getEvaluationOwnership(input.evaluationId);
-  if (!ownership) return err(appError("not_found", "Evaluacion no encontrada."));
+  if (!ownership) return err(appError("not_found", "Evaluación no encontrada."));
   // Las condiciones se llenan en consulta, con la identidad ya confirmada (draft -> in_progress).
   if (ownership.status !== "in_progress") {
     return err(appError("conflict", "Confirma la identidad del paciente antes de capturar las condiciones."));

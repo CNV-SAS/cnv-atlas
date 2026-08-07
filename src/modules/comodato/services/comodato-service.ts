@@ -73,7 +73,7 @@ export async function changeDeviceStatus(
   const device = await repo.updateDeviceStatus(deviceId, status);
   const warning =
     active && NON_USE_STATES.includes(status)
-      ? "El equipo tiene un comodato activo; revisa si debe registrarse la devolucion."
+      ? "El equipo tiene un comodato activo; revisa si debe registrarse la devolución."
       : null;
   return { device, warning };
 }

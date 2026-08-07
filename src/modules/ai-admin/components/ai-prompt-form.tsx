@@ -41,7 +41,7 @@ export function AiPromptForm({ view }: { view: PromptView }) {
           disabled={pending}
           className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {pending ? "Guardando..." : "Guardar version nueva"}
+          {pending ? "Guardando..." : "Guardar versión nueva"}
         </button>
       </form>
 

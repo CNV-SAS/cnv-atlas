@@ -30,17 +30,17 @@ export type EfrStateDef = {
 // Nombres de los 12 indicadores (documentales; los codigos y la ciencia son la fuente de
 // verdad). Orden = INDICATOR_CODES del contrato.
 const INDICATOR_NAMES: Record<string, { name: string; unit: string | null }> = {
-  IFC: { name: "Indice de Funcionalidad Celular", unit: null },
-  IRC: { name: "Indice de Riesgo Celular", unit: null },
-  PABU: { name: "Proporcion Aurea Bioelectrica Universal", unit: null },
-  "ICA-BIS": { name: "Indice de Coherencia Aurea (BIS)", unit: null },
-  ISCM: { name: "Indice de Susceptibilidad Cardiometabolica (BIS)", unit: null },
-  IEHH: { name: "Indice del Espectro de Hidratacion Humana", unit: null },
-  IAE: { name: "Indice de Aceleracion del Envejecimiento", unit: "anos" },
-  EB: { name: "Edad Bioeléctrica (EB-BIS)", unit: "anos" },
-  FMI: { name: "Indice de Masa Grasa", unit: "kg/m2" },
-  FFMI: { name: "Indice de Masa Libre de Grasa", unit: "kg/m2" },
-  AF: { name: "Angulo de Fase a 50 kHz", unit: "grados" },
+  IFC: { name: "Índice de Funcionalidad Celular", unit: null },
+  IRC: { name: "Índice de Riesgo Celular", unit: null },
+  PABU: { name: "Proporción Áurea Bioeléctrica Universal", unit: null },
+  "ICA-BIS": { name: "Índice de Coherencia Áurea (BIS)", unit: null },
+  ISCM: { name: "Índice de Susceptibilidad Cardiometabólica (BIS)", unit: null },
+  IEHH: { name: "Índice del Espectro de Hidratación Humana", unit: null },
+  IAE: { name: "Índice de Aceleración del Envejecimiento", unit: "años" },
+  EB: { name: "Edad Bioeléctrica (EB-BIS)", unit: "años" },
+  FMI: { name: "Índice de Masa Grasa", unit: "kg/m2" },
+  FFMI: { name: "Índice de Masa Libre de Grasa", unit: "kg/m2" },
+  AF: { name: "Ángulo de Fase a 50 kHz", unit: "grados" },
   IR: { name: "Impedance Ratio", unit: null },
 };
 

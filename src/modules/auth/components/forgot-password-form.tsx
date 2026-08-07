@@ -33,7 +33,7 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
       <button type="submit" disabled={pending} className="border p-2">
-        {pending ? "Enviando..." : "Enviar enlace de recuperacion"}
+        {pending ? "Enviando..." : "Enviar enlace de recuperación"}
       </button>
     </form>
   );

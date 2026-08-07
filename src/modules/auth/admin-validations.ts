@@ -33,7 +33,7 @@ export const createUserSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["profession"],
-        message: "La profesion es obligatoria para un profesional.",
+        message: "La profesión es obligatoria para un profesional.",
       });
     }
   });

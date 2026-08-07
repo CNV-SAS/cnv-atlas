@@ -36,7 +36,7 @@ function TxStatusBadge({ status }: { status: TransactionStatus }) {
 function itemsLabel(tx: TransactionWithItems): string {
   if (tx.transaction_items.length === 0) return "Sin items";
   return tx.transaction_items
-    .map((it) => `${it.nutraceuticals?.name ?? "Nutraceutico"} x${it.quantity}`)
+    .map((it) => `${it.nutraceuticals?.name ?? "Nutracéutico"} x${it.quantity}`)
     .join(", ");
 }
 

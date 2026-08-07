@@ -9,7 +9,7 @@ import { canManageCatalog } from "@/modules/nutraceuticals/policies/can-manage-c
 import { canViewNutraceuticals } from "@/modules/nutraceuticals/policies/can-view-nutraceuticals";
 import * as service from "@/modules/nutraceuticals/services/nutraceuticals-service";
 
-export const metadata = { title: "Nutraceuticos - Atlas" };
+export const metadata = { title: "Nutracéuticos - Atlas" };
 
 // El STOCK ya no vive aqui: es un saldo por profesional en consignacion (ver Mi inventario). Esta vista
 // es el CATALOGO comercial (admin/soporte): productos + su disponibilidad. La disponibilidad es dato del
@@ -30,14 +30,14 @@ export default async function NutraceuticosPage() {
   return (
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Nutraceuticos</h1>
-        <p className="text-muted-foreground">Catalogo comercial. El stock es por profesional (consignacion), en Mi inventario.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Nutracéuticos</h1>
+        <p className="text-muted-foreground">Catalogo comercial. El stock es por profesional (consignación), en Mi inventario.</p>
       </header>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold tracking-tight">Catalogo</h2>
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aun no hay nutraceuticos.</p>
+          <p className="text-sm text-muted-foreground">Aun no hay nutracéuticos.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {items.map((n) => (
@@ -81,8 +81,8 @@ export default async function NutraceuticosPage() {
       {isCatalogManager ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Crear nutraceutico</CardTitle>
-            <CardDescription>Agrega un nutraceutico al catalogo.</CardDescription>
+            <CardTitle className="text-lg">Crear nutracéutico</CardTitle>
+            <CardDescription>Agrega un nutracéutico al catalogo.</CardDescription>
           </CardHeader>
           <CardContent>
             <CreateNutraceuticalForm />

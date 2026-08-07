@@ -129,7 +129,7 @@ const MENU_STATUS: Record<string, { label: string; cls: string }> = {
   success: { label: "Generado", cls: "bg-clinical-optimal-bg text-clinical-optimal" },
   timeout: { label: "Timeout", cls: "bg-clinical-warning-bg text-clinical-warning" },
   provider_error: { label: "Error del proveedor", cls: "bg-clinical-critical-bg text-clinical-critical" },
-  parse_failed: { label: "Respuesta invalida", cls: "bg-clinical-critical-bg text-clinical-critical" },
+  parse_failed: { label: "Respuesta inválida", cls: "bg-clinical-critical-bg text-clinical-critical" },
 };
 
 function MenuSection({
@@ -285,7 +285,7 @@ function ProtocolForm({
         <legend className="text-sm font-semibold text-foreground">Objetivos nutricionales</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="kcalObjetivo">Objetivo calorico (kcal/dia)</Label>
+            <Label htmlFor="kcalObjetivo">Objetivo calórico (kcal/día)</Label>
             <Input
               id="kcalObjetivo"
               name="kcalObjetivo"
@@ -310,7 +310,7 @@ function ProtocolForm({
             ) : null}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="proteinaGramos">Proteina objetivo (g/dia)</Label>
+            <Label htmlFor="proteinaGramos">Proteína objetivo (g/día)</Label>
             <Input
               id="proteinaGramos"
               name="proteinaGramos"
@@ -367,7 +367,7 @@ function ProtocolForm({
           misma separacion recomienda-vs-agrega de las restricciones. El P1/P2/dosis estructurado y el
           "registrar despacho" son T3, no van aqui. */}
       <fieldset disabled={locked} className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">Nutraceuticos</legend>
+        <legend className="text-sm font-semibold text-foreground">Nutracéuticos</legend>
         {recommended.length ? (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-foreground">El modelo recomienda</p>
@@ -427,7 +427,7 @@ function ProtocolForm({
             onChange={(e) => setPickId(e.target.value)}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
           >
-            <option value="">Selecciona un nutraceutico</option>
+            <option value="">Selecciona un nutracéutico</option>
             {protocol.catalog.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -451,7 +451,7 @@ function ProtocolForm({
                   onChange={(e) =>
                     setNutras(nutras.map((x, j) => (j === i ? { ...x, dosage: e.target.value } : x)))
                   }
-                  placeholder="Dosis (ej. 1 capsula/dia)"
+                  placeholder="Dosis (ej. 1 capsula/día)"
                   className="w-48"
                 />
                 <Input
@@ -463,7 +463,7 @@ function ProtocolForm({
                   }
                   type="number"
                   inputMode="numeric"
-                  placeholder="Dias"
+                  placeholder="Días"
                   className="w-24"
                 />
                 <Button
@@ -477,18 +477,18 @@ function ProtocolForm({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Sin nutraceuticos en el protocolo.</p>
+          <p className="text-sm text-muted-foreground">Sin nutracéuticos en el protocolo.</p>
         )}
       </fieldset>
 
       {/* Guias dietarias */}
       <fieldset disabled={locked} className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">Guias dietarias</legend>
+        <legend className="text-sm font-semibold text-foreground">Guías dietarias</legend>
         <div className="flex gap-2">
           <Textarea
             value={guideInput}
             onChange={(e) => setGuideInput(e.target.value)}
-            placeholder="Escribe una guia dietaria y agregala"
+            placeholder="Escribe una guía dietaria y agregala"
             rows={2}
           />
           <Button type="button" variant="outline" onClick={addGuideline} className="self-start">
@@ -507,7 +507,7 @@ function ProtocolForm({
                   type="button"
                   className="shrink-0 text-muted-foreground hover:text-foreground"
                   onClick={() => setGuidelines(guidelines.filter((_, j) => j !== i))}
-                  aria-label="Quitar guia"
+                  aria-label="Quitar guía"
                 >
                   Quitar
                 </button>
@@ -515,7 +515,7 @@ function ProtocolForm({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Sin guias dietarias.</p>
+          <p className="text-sm text-muted-foreground">Sin guías dietarias.</p>
         )}
       </fieldset>
 

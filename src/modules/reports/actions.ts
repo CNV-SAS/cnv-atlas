@@ -34,7 +34,7 @@ export async function approveReportAction(
   const user = await requireUser();
   if (!canManageReports(user)) return fail("No autorizado.");
   const reportId = reportIdOf(form);
-  if (!reportId) return fail("Reporte invalido.");
+  if (!reportId) return fail("Reporte inválido.");
 
   const dispatch = await getReportDispatch(reportId);
   if (!dispatch) return fail("Reporte no encontrado.");
@@ -73,10 +73,10 @@ export async function confirmTrajectoryCommunicationAction(
   const user = await requireUser();
   if (!canManageReports(user)) return fail("No autorizado.");
   const reportId = reportIdOf(form);
-  if (!reportId) return fail("Reporte invalido.");
+  if (!reportId) return fail("Reporte inválido.");
 
   const proximaCita = (form.get("proximaCita") as string | null)?.trim() ?? "";
-  if (!proximaCita) return fail("Para comunicar este cambio hace falta agendar la proxima cita.");
+  if (!proximaCita) return fail("Para comunicar este cambio hace falta agendar la próxima cita.");
 
   const dispatch = await getReportDispatch(reportId);
   if (!dispatch) return fail("Reporte no encontrado.");
@@ -99,7 +99,7 @@ export async function confirmTrajectoryCommunicationAction(
   revalidatePath("/evaluaciones/[id]", "page");
   return {
     error: null,
-    success: "Comunicacion confirmada y proxima cita agendada.",
+    success: "Comunicación confirmada y próxima cita agendada.",
     warning: null,
   };
 }
@@ -113,7 +113,7 @@ export async function sendReportAction(
   const user = await requireUser();
   if (!canManageReports(user)) return fail("No autorizado.");
   const reportId = reportIdOf(form);
-  if (!reportId) return fail("Reporte invalido.");
+  if (!reportId) return fail("Reporte inválido.");
 
   // Modo de envio elegido por el profesional (mutuamente excluyente).
   const rawMode = (form.get("sendMode") as string | null)?.trim() ?? "";

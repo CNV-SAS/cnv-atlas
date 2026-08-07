@@ -203,10 +203,10 @@ export async function getTreatmentProtocol(
 function nutraceuticalName(rel: unknown): string {
   if (Array.isArray(rel)) {
     const first = rel[0] as { name?: string } | undefined;
-    return first?.name ?? "Nutraceutico";
+    return first?.name ?? "Nutracéutico";
   }
   const obj = rel as { name?: string } | null;
-  return obj?.name ?? "Nutraceutico";
+  return obj?.name ?? "Nutracéutico";
 }
 
 // --- T2 A3: lectura para aprobar el protocolo ---

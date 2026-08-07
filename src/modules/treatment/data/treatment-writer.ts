@@ -327,7 +327,7 @@ export async function writeApproveProtocol(input: ApproveProtocolWrite): Promise
     if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
     if (row.status !== "draft") {
       throw new TreatmentStateError(
-        "El protocolo ya fue aprobado; para cambiarlo se genera una correccion (version nueva).",
+        "El protocolo ya fue aprobado; para cambiarlo se genera una corrección (versión nueva).",
       );
     }
     if (row.suggested == null) {
@@ -377,7 +377,7 @@ async function assertDraft(
   if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
   if (row.status !== "draft") {
     throw new TreatmentStateError(
-      "El protocolo ya fue aprobado; para cambiarlo se genera una correccion (version nueva).",
+      "El protocolo ya fue aprobado; para cambiarlo se genera una corrección (versión nueva).",
     );
   }
 }
@@ -397,7 +397,7 @@ async function assertConfirmedDiagnosis(
   if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
   if (!row.confirmedAt) {
     throw new TreatmentStateError(
-      "El diagnostico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
+      "El diagnóstico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
     );
   }
 }

@@ -16,10 +16,10 @@ const AVAILABILITY_LABEL: Record<string, string> = {
 };
 const MOVEMENT_LABEL: Record<string, string> = {
   remesa: "Remesa de CNV",
-  recepcion: "Recepcion",
+  recepcion: "Recepción",
   despacho: "Entrega a paciente",
   conciliacion: "Ajuste por conteo",
-  devolucion: "Devolucion a CNV",
+  devolucion: "Devolución a CNV",
 };
 
 function fmtDate(iso: string): string {
@@ -47,7 +47,7 @@ export default async function MiInventarioPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Registrar recepcion</h2>
+        <h2 className="text-xl font-bold tracking-tight">Registrar recepción</h2>
         <Card>
           <CardHeader>
             <CardDescription>

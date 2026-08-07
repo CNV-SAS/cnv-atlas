@@ -23,7 +23,7 @@ export default async function ObbiaPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Investigacion</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Investigación</h1>
         <p className="text-muted-foreground">
           Datasets de investigacion gobernados. Solo data agregada o anonimizada; nunca datos
           personales del paciente.
@@ -41,7 +41,7 @@ export default async function ObbiaPage() {
             <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-semibold">Alcance</th>
-                <th className="px-3 py-2 font-semibold">Anonimizacion</th>
+                <th className="px-3 py-2 font-semibold">Anonimización</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
                 <th className="px-3 py-2 font-semibold">Creado</th>
               </tr>

@@ -62,10 +62,10 @@ export async function correctEvaluation(
 ): Promise<Result<CorrectEvaluationResult>> {
   // --- Gates que no tocan BD de escritura (fallan barato, antes de computar) ---
   if (!input.confirmed) {
-    return err(appError("validation", "La correccion requiere confirmacion explicita."));
+    return err(appError("validation", "La corrección requiere confirmación explicita."));
   }
   if (!input.reason.trim()) {
-    return err(appError("validation", "Escribe el motivo de la correccion para continuar."));
+    return err(appError("validation", "Escribe el motivo de la corrección para continuar."));
   }
 
   const [ev] = await db
@@ -80,13 +80,13 @@ export async function correctEvaluation(
     .from(evaluations)
     .where(eq(evaluations.id, input.evaluationId))
     .limit(1);
-  if (!ev) return err(appError("not_found", "Evaluacion no encontrada."));
+  if (!ev) return err(appError("not_found", "Evaluación no encontrada."));
 
   // Gate vigente: solo se corrige la cabeza de la cadena (el trigger tambien lo bloquea, esto da
   // un mensaje claro en vez del texto del trigger).
   if (ev.supersededAt) {
     return err(
-      appError("conflict", "Esta evaluacion ya fue corregida; corrige la version vigente."),
+      appError("conflict", "Esta evaluación ya fue corregida; corrige la versión vigente."),
     );
   }
 
@@ -104,12 +104,12 @@ export async function correctEvaluation(
   }
 
   const inputs = await readPipelineInputs(input.evaluationId);
-  if (!inputs) return err(appError("not_found", "Evaluacion no encontrada."));
+  if (!inputs) return err(appError("not_found", "Evaluación no encontrada."));
   if (!inputs.hasBis) {
-    return err(appError("validation", "La evaluacion no tiene una medicion BIS."));
+    return err(appError("validation", "La evaluación no tiene una medición BIS."));
   }
   if (!inputs.surveyVersionId || inputs.expectedFieldKeys.length === 0) {
-    return err(appError("validation", "La evaluacion no tiene una encuesta valida."));
+    return err(appError("validation", "La evaluación no tiene una encuesta valida."));
   }
 
   // Gate version de encuesta (#2): el frozen esta acoplado char-by-char a la encuesta VIGENTE. Una
@@ -119,7 +119,7 @@ export async function correctEvaluation(
     return err(
       appError(
         "validation",
-        "Esta evaluacion se hizo con una version anterior del cuestionario y no puede recalcularse con el modelo actual.",
+        "Esta evaluación se hizo con una versión anterior del cuestionario y no puede recalcularse con el modelo actual.",
       ),
     );
   }
@@ -132,7 +132,7 @@ export async function correctEvaluation(
     .where(eq(surveyResponses.evaluationId, input.evaluationId))
     .orderBy(desc(surveyResponses.createdAt))
     .limit(1);
-  if (!response) return err(appError("validation", "La evaluacion no tiene respuestas de encuesta."));
+  if (!response) return err(appError("validation", "La evaluación no tiene respuestas de encuesta."));
 
   const answers = await db
     .select({
@@ -163,7 +163,7 @@ export async function correctEvaluation(
   for (const qid of corrections.keys()) {
     if (!catalogByQuestion.has(qid)) {
       return err(
-        appError("validation", "Esa pregunta no pertenece a este cuestionario; recarga la evaluacion e intenta de nuevo."),
+        appError("validation", "Esa pregunta no pertenece a este cuestionario; recarga la evaluación e intenta de nuevo."),
       );
     }
   }
@@ -210,7 +210,7 @@ export async function correctEvaluation(
   // --- Compute (PURO + lecturas, fuera de la tx). El modelo NO se fija: es el frozen en disco, se
   // sella la version REAL (PLAN (b)). ---
   const model = await readActiveModel();
-  if (!model) return err(appError("internal", "No hay una version del modelo activa."));
+  if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 
   const engineInput = buildEngineInput(
     {
@@ -265,7 +265,7 @@ export async function correctEvaluation(
     .where(eq(bisMeasurements.evaluationId, input.evaluationId))
     .orderBy(desc(bisMeasurements.measurementDate))
     .limit(1);
-  if (!oldMeas) return err(appError("validation", "La evaluacion no tiene una medicion BIS."));
+  if (!oldMeas) return err(appError("validation", "La evaluación no tiene una medición BIS."));
   const oldRaw = await db
     .select({ variableName: bisRawValues.variableName, value: bisRawValues.value })
     .from(bisRawValues)
@@ -328,7 +328,7 @@ export async function correctEvaluation(
         newMeasRead.deviceCalibrationDate === oldMeas.deviceCalibrationDate;
       if (!sameMeas || rawFingerprint(newRaw) !== oldFingerprint) {
         // Falla en voz alta: la copia difiere del origen (familia del bug de cintura). Rollback.
-        throw new Error("Correccion abortada: la copia de la medicion BIS no es identica al origen.");
+        throw new Error("Corrección abortada: la copia de la medición BIS no es identica al origen.");
       }
 
       // (iii) copiar la respuesta de encuesta CORREGIDA

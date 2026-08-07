@@ -96,7 +96,7 @@ export const consentSchema = z
     // aplica el asentimiento (14-17). Se reutiliza como prefill en identificacion.
     minorBirthDate: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha invalida")
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
       .optional(),
     asentimiento_menor: z.boolean().default(false),
   })
@@ -157,7 +157,7 @@ export const consentSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["minorBirthDate"],
-        message: "La fecha indica mayoria de edad. Usa la opcion de mayor de edad.",
+        message: "La fecha indica mayoria de edad. Usa la opción de mayor de edad.",
       });
     }
     // Asentimiento obligatorio entre 14 y 17 años.

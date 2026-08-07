@@ -40,14 +40,14 @@ export function CreateDeviceForm() {
   return (
     <form action={action} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field name="assetCode" label="Codigo de activo" required placeholder="CNV-BIS-0001" />
+        <Field name="assetCode" label="Código de activo" required placeholder="CNV-BIS-0001" />
         <Field name="manufacturerSerial" label="Serial de fabrica" required />
         <Field name="systemEmail" label="Correo de sistema" type="email" required />
         <Field name="model" label="Modelo" required placeholder="Biody B.I.S ZM" />
         <Field name="brand" label="Marca" />
         <Field name="supplier" label="Proveedor" />
         <Field name="purchaseDate" label="Fecha de compra" type="date" />
-        <Field name="lastCalibrationDate" label="Ultima calibracion" type="date" />
+        <Field name="lastCalibrationDate" label="Última calibración" type="date" />
       </div>
       <div>
         <Button type="submit" disabled={pending}>

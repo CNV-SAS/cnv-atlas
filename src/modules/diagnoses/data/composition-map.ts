@@ -59,7 +59,7 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
       ["IMC", "imc", null, "kg/m²"],
       ["Cintura", "cintura", null, "cm"],
       ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
-      ["Gasto energetico total (GET)", "GET", null, "kcal"],
+      ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
   },
   {
@@ -90,9 +90,9 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
     title: "Nivel II · Molecular",
     rows: [
       ["Agua corporal total", "TBW", "TBW_ref", "L"],
-      ["Hidratacion sin grasa", "hidSG", "hidSG_ref", "%"],
-      ["Proteina total", "protTotal", "protTotal_ref", "kg"],
-      ["Proteina metabolica activa", "protActiva", "protActiva_ref", "kg"],
+      ["Hidratación sin grasa", "hidSG", "hidSG_ref", "%"],
+      ["Proteína total", "protTotal", "protTotal_ref", "kg"],
+      ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
       ["Contenido mineral oseo", "CMO", "CMO_ref", "kg"],
       ["Mineral no oseo", "minNoOseo", "minNoOseo_ref", "kg"],
     ],

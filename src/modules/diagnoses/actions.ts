@@ -33,7 +33,7 @@ export async function addDiagnosisNoteAction(
     note: (form.get("note") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Criterio invalido.");
+    return fail(parsed.error.issues[0]?.message ?? "Criterio inválido.");
   }
 
   const ip = await getClientIp();
@@ -61,7 +61,7 @@ export async function confirmDiagnosisAction(
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Evaluacion invalida.");
+    return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
   }
 
   const ip = await getClientIp();
@@ -73,5 +73,5 @@ export async function confirmDiagnosisAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
-  return { error: null, success: "Diagnostico confirmado.", warning: null };
+  return { error: null, success: "Diagnóstico confirmado.", warning: null };
 }

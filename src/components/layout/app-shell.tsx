@@ -158,13 +158,13 @@ export function AppShell({
                   variant="ghost"
                   size="icon"
                   className="lg:hidden"
-                  aria-label="Abrir navegacion"
+                  aria-label="Abrir navegación"
                 >
                   <Menu className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72 p-0">
-                <SheetTitle className="sr-only">Navegacion</SheetTitle>
+                <SheetTitle className="sr-only">Navegación</SheetTitle>
                 <div className="flex h-16 items-center px-6">
                   <AtlasLogo />
                 </div>

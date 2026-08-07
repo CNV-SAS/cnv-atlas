@@ -22,7 +22,7 @@ import {
 // Autorizacion comun: sesion + policy (regla 3). La gestion de comodato es admin.
 async function requireManager() {
   const user = await getCurrentUser();
-  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesion.") };
+  if (!user) return { user: null, error: appError("unauthorized", "Inicia sesión.") };
   if (!canManageComodato(user)) {
     return { user: null, error: appError("forbidden", "No tienes permiso para gestionar comodato.") };
   }
@@ -42,7 +42,7 @@ export async function createDeviceAction(
   if (authzError) return err(authzError);
 
   const parsed = createDeviceSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos del equipo invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos del equipo inválidos."));
 
   try {
     const device = await service.createDevice(parsed.data, user.organizationId);
@@ -51,7 +51,7 @@ export async function createDeviceAction(
   } catch (e) {
     if (isUniqueViolation(e)) {
       return err(
-        appError("conflict", "Ya existe un equipo con ese codigo, serial o correo de sistema."),
+        appError("conflict", "Ya existe un equipo con ese código, serial o correo de sistema."),
       );
     }
     return err(appError("internal", "No se pudo crear el equipo."));
@@ -65,7 +65,7 @@ export async function updateDeviceStatusAction(
   if (authzError) return err(authzError);
 
   const parsed = updateDeviceStatusSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Estado invalido."));
+  if (!parsed.success) return err(appError("validation", "Estado inválido."));
 
   try {
     const { warning } = await service.changeDeviceStatus(parsed.data.deviceId, parsed.data.status);
@@ -76,7 +76,7 @@ export async function updateDeviceStatusAction(
       return err(
         appError(
           "conflict",
-          "No puedes marcar el equipo como disponible: tiene un comodato activo. Registra primero la devolucion.",
+          "No puedes marcar el equipo como disponible: tiene un comodato activo. Registra primero la devolución.",
         ),
       );
     }
@@ -92,7 +92,7 @@ export async function assignComodatoAction(
 
   const parsed = assignComodatoSchema.safeParse(input);
   if (!parsed.success) {
-    return err(appError("validation", parsed.error.issues[0]?.message ?? "Datos invalidos."));
+    return err(appError("validation", parsed.error.issues[0]?.message ?? "Datos inválidos."));
   }
 
   try {
@@ -117,14 +117,14 @@ export async function returnComodatoAction(
   if (authzError) return err(authzError);
 
   const parsed = returnComodatoSchema.safeParse(input);
-  if (!parsed.success) return err(appError("validation", "Datos de devolucion invalidos."));
+  if (!parsed.success) return err(appError("validation", "Datos de devolución inválidos."));
 
   try {
     await service.returnComodato(parsed.data);
     revalidatePath("/comodato");
     return ok(null);
   } catch {
-    return err(appError("internal", "No se pudo registrar la devolucion."));
+    return err(appError("internal", "No se pudo registrar la devolución."));
   }
 }
 
@@ -194,5 +194,5 @@ export async function returnComodatoFormAction(
       | "breach",
   });
   if (!result.ok) return { error: result.error.message, success: null, warning: null };
-  return { error: null, success: "Devolucion registrada.", warning: null };
+  return { error: null, success: "Devolución registrada.", warning: null };
 }

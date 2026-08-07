@@ -6,7 +6,7 @@ export default function ComercialPage() {
   return (
     <SectionPlaceholder
       title="Comercial"
-      description="Aqui veras pagos, facturacion y comisiones."
+      description="Aquí veras pagos, facturación y comisiones."
     />
   );
 }

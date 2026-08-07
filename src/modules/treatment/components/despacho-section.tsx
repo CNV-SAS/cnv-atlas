@@ -50,7 +50,7 @@ export async function DespachoSection({
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-foreground">Entrega de nutraceuticos</h3>
+        <h3 className="text-base font-semibold text-foreground">Entrega de nutracéuticos</h3>
         <p className="max-w-prose text-sm text-muted-foreground">
           Registra lo que le entregas al paciente de los productos prescritos que tienes en consultorio. Cada
           entrega descuenta tu inventario en consignacion. Los productos de solo tienda no aparecen aqui: el

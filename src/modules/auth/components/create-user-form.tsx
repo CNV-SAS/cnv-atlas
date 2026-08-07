@@ -38,12 +38,12 @@ export function CreateUserForm() {
       </select>
       {role === "professional" ? (
         <label className="flex flex-col gap-1">
-          <span className="text-sm">Profesion (obligatoria para un profesional)</span>
+          <span className="text-sm">Profesión (obligatoria para un profesional)</span>
           <select name="profession" defaultValue="" required className="border p-2">
             <option value="" disabled>
               Elige una profesion
             </option>
-            <option value="medico">Medico</option>
+            <option value="medico">Médico</option>
             <option value="psicologo">Psicologo</option>
             <option value="deportologo">Deportologo</option>
             <option value="nutricionista">Nutricionista</option>

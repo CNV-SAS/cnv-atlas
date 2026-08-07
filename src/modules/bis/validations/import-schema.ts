@@ -191,20 +191,20 @@ export function validateBisMeasurement(sheet: ParsedSheet): Result<ExtractedMeas
     const missingFields: Record<string, string> = {};
     for (const m of missing) {
       missingFields[m.label] = m.business
-        ? "Circunferencia medida obligatoria (decision de negocio, no requisito del motor)."
-        : "Requerido por el motor para un diagnostico valido.";
+        ? "Circunferencia medida obligatoria (decisión de negocio, no requisito del motor)."
+        : "Requerido por el motor para un diagnóstico válido.";
     }
     return err(
       appError(
         "validation",
-        "Faltan datos obligatorios de la medicion. Vuelve a tomar la medida en Biody Manager incluyendo estos datos y re-exporta el XLSX.",
+        "Faltan datos obligatorios de la medición. Vuelve a tomar la medida en Biody Manager incluyendo estos datos y re-exporta el XLSX.",
         missingFields,
       ),
     );
   }
 
   if (Object.keys(fields).length > 0) {
-    return err(appError("validation", "Una o mas variables estan fuera de rango.", fields));
+    return err(appError("validation", "Una o mas variables están fuera de rango.", fields));
   }
   if (values.length === 0) {
     return err(appError("validation", "El archivo no contiene ningun valor numerico de variable."));

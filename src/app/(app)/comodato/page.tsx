@@ -83,7 +83,7 @@ export default async function ComodatoPage() {
 
       {/* Por vencer en 30 dias */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Vencen en 30 dias</h2>
+        <h2 className="text-xl font-bold tracking-tight">Vencen en 30 días</h2>
         {expiring.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay comodatos por vencer en los proximos 30 dias.

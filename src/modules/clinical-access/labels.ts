@@ -14,5 +14,5 @@ export const GRANT_STATUS_LABEL: Record<string, string> = {
 
 export const REASON_CATEGORY_LABEL: Record<string, string> = {
   auditoria_calidad: "Auditoria de calidad",
-  soporte_tecnico: "Soporte tecnico",
+  soporte_tecnico: "Soporte técnico",
 };

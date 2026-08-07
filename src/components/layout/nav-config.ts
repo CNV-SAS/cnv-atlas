@@ -36,13 +36,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "direccion", "soporte", "obbia", "professional"],
   },
   {
-    label: "Direccion",
+    label: "Dirección",
     href: "/direccion",
     icon: "direccion",
     roles: ["admin", "direccion"],
   },
   {
-    label: "Investigacion",
+    label: "Investigación",
     href: "/obbia",
     icon: "obbia",
     roles: ["admin", "obbia"],
@@ -82,7 +82,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["admin", "soporte"],
   },
   {
-    label: "Nutraceuticos",
+    label: "Nutracéuticos",
     href: "/nutraceuticos",
     icon: "nutraceuticos",
     roles: ["admin", "soporte", "direccion"],

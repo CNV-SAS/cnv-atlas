@@ -32,7 +32,7 @@ export function DecisionControls({ grantId, defaultHours }: { grantId: string; d
         type="number"
         min={1}
         placeholder={`${defaultHours} h`}
-        title="Duracion en horas (vacio = default del nivel)"
+        title="Duración en horas (vacío = default del nivel)"
         className="w-24 rounded-lg border border-input bg-background p-1.5 text-sm"
       />
       <button

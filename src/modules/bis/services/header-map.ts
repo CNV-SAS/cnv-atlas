@@ -49,7 +49,7 @@ const METADATA_HEADERS = new Set<string>([
   "Creado el",
   "Estatus",
   "Nombre de la aplicación",
-  "Version de la aplicación",
+  "Versión de la aplicación",
 ]);
 
 // Fecha de la medicion: alimenta bis_measurements.measurement_date.

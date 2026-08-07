@@ -149,12 +149,12 @@ export function BisConditionsCapture({
       }
       setSaved(true);
       if (res.value.contraindicated) {
-        toast.warning("Contraindicacion registrada: la medicion BIS no se importa.");
+        toast.warning("Contraindicación registrada: la medición BIS no se importa.");
       } else {
         toast.success("Condiciones de la toma BIS guardadas.");
       }
       if (res.value.existingBisWarning) {
-        toast.warning("Ya habia una medicion BIS importada; no se borro (registro clinico).");
+        toast.warning("Ya habia una medición BIS importada; no se borro (registro clínico).");
       }
       // Trae el estado del servidor (gate del import) sin recargar a mano.
       router.refresh();

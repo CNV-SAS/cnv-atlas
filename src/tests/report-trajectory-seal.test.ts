@@ -187,7 +187,7 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
     // Sin cita: rechaza (el gate).
     await expect(
       confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "", actorId, actorEmail: "traj@cnv", ip: null }),
-    ).rejects.toThrow(/proxima cita/i);
+    ).rejects.toThrow(/próxima cita/i);
 
     // Con cita: agenda en el tratamiento Y sella la confirmacion, en una tx.
     await confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-11-01", actorId, actorEmail: "traj@cnv", ip: null });

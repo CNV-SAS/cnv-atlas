@@ -30,7 +30,7 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Comparacion con la evaluacion previa</CardTitle>
+        <CardTitle>Comparación con la evaluación previa</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <p className="text-sm text-muted-foreground">
