@@ -96,6 +96,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["professional"],
   },
   {
+    label: "Faltantes",
+    href: "/faltantes",
+    icon: "nutraceuticos",
+    roles: ["admin", "direccion"],
+  },
+  {
     label: "Pagos",
     href: "/pagos",
     icon: "pagos",

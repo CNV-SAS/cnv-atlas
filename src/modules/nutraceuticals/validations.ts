@@ -66,6 +66,18 @@ export const submitJustificationSchema = z.object({
 });
 export type SubmitJustificationInput = z.infer<typeof submitJustificationSchema>;
 
+// Clasificacion de CNV (T3b-3 ST4). admin propone; direccion confirma. reason opcional (motivo).
+export const classifyFaltanteSchema = z.object({
+  caseId: z.guid("Caso invalido."),
+  decision: z.enum(["justificado", "venta_no_registrada", "injustificado"]),
+  reason: z.string().trim().max(500).optional(),
+});
+export const confirmFaltanteSchema = z.object({
+  caseId: z.guid("Caso invalido."),
+  decision: z.enum(["confirmar", "rechazar"]),
+  reason: z.string().trim().max(500).optional(),
+});
+
 // Registro de uso vinculado a un tratamiento (sin UI en B5; la pantalla va en B12).
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,

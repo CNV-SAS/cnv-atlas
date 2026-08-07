@@ -8,10 +8,13 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
+import { canClassifyFaltante, canConfirmFaltante } from "./policies/can-review-faltante";
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
 import {
+  classifyFaltanteSchema,
+  confirmFaltanteSchema,
   createNutraceuticalSchema,
   despachoSchema,
   receptionSchema,
@@ -289,4 +292,69 @@ export async function submitJustificationFormAction(
   if (!res.ok) return { error: res.message ?? "No se pudo enviar la justificación.", success: null, warning: null };
   revalidatePath("/mi-inventario");
   return { error: null, success: "Justificación enviada. CNV la revisará.", warning: null };
+}
+
+// CNV clasifica un faltante (T3b-3 ST4). Solo admin (canClassifyFaltante). "injustificado" PROPONE, no cobra.
+export async function classifyFaltanteFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canClassifyFaltante(user)) {
+    return { error: "Solo un administrador clasifica los faltantes.", success: null, warning: null };
+  }
+  const parsed = classifyFaltanteSchema.safeParse({
+    caseId: String(formData.get("caseId") ?? ""),
+    decision: String(formData.get("decision") ?? ""),
+    reason: optStr(formData, "reason"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const res = await faltanteService.classifyFaltante({
+    userId: user.id,
+    caseId: parsed.data.caseId,
+    decision: parsed.data.decision,
+    reason: parsed.data.reason ?? null,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo clasificar.", success: null, warning: null };
+  revalidatePath("/faltantes");
+  const msg =
+    parsed.data.decision === "injustificado"
+      ? "Propuesto como injustificado. Espera la confirmación de dirección para que el cargo aplique."
+      : "Caso cerrado sin cargo.";
+  return { error: null, success: msg, warning: null };
+}
+
+// Direccion confirma o rechaza la propuesta de injustificado (T3b-3 ST4). Solo direccion. Confirmar
+// materializa el cargo; rechazar lo cierra sin cargo.
+export async function confirmFaltanteFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canConfirmFaltante(user)) {
+    return { error: "Solo dirección confirma un cargo por faltante.", success: null, warning: null };
+  }
+  const parsed = confirmFaltanteSchema.safeParse({
+    caseId: String(formData.get("caseId") ?? ""),
+    decision: String(formData.get("decision") ?? ""),
+    reason: optStr(formData, "reason"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const res = await faltanteService.confirmFaltante({
+    userId: user.id,
+    caseId: parsed.data.caseId,
+    decision: parsed.data.decision,
+    reason: parsed.data.reason ?? null,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo confirmar.", success: null, warning: null };
+  revalidatePath("/faltantes");
+  return {
+    error: null,
+    success: parsed.data.decision === "confirmar" ? "Cargo confirmado: entra en la liquidación del período." : "Propuesta rechazada: el caso queda sin cargo.",
+    warning: null,
+  };
 }

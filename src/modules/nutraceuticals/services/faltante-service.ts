@@ -95,3 +95,153 @@ export async function submitJustification(input: {
   if (error) return { ok: false, message: "No se pudo enviar la justificación." };
   return { ok: true };
 }
+
+// ----- Lado CNV (T3b-3 ST4): cola de clasificacion. admin PROPONE injustificado; direccion CONFIRMA. -----
+
+type FaltanteStatus =
+  | "reportado"
+  | "en_revision"
+  | "justificado"
+  | "venta_no_registrada"
+  | "injustificado_pendiente"
+  | "injustificado";
+
+function relName(rel: unknown): string {
+  // professional_profiles(profiles(full_name)) llega anidado; se resuelve defensivo (objeto o arreglo).
+  const pp = Array.isArray(rel) ? rel[0] : rel;
+  const prof = (pp as { profiles?: unknown } | null)?.profiles;
+  const p = Array.isArray(prof) ? prof[0] : prof;
+  return (p as { full_name?: string } | null)?.full_name ?? "";
+}
+
+export type FaltanteQueueRow = {
+  id: string;
+  nutraceuticalName: string;
+  integranteName: string;
+  quantity: number;
+  sealedTotal: string;
+  lote: string | null;
+  status: string;
+  reportedAt: string;
+  deadlineAt: string;
+  expired: boolean; // reportado con el plazo vencido: ya se puede clasificar sin esperar
+  reincidencia: number; // injustificados de ese integrante en los ultimos 6 meses (contexto para clasificar)
+  justificationCategory: string | null;
+  justificationReference: string | null;
+};
+
+// La cola segun el rol: admin ve lo que espera CLASIFICACION (en_revision + reportado vencido); direccion ve
+// lo que espera su CONFIRMACION (injustificado_pendiente). La RLS ya deja a CNV ver todos los casos.
+export async function getFaltanteQueue(roles: { admin: boolean; direccion: boolean }): Promise<FaltanteQueueRow[]> {
+  const statuses: FaltanteStatus[] = [];
+  if (roles.admin) statuses.push("en_revision", "reportado");
+  if (roles.direccion) statuses.push("injustificado_pendiente");
+  if (statuses.length === 0) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("nutraceutical_faltante_cases")
+    .select("id, professional_id, quantity, sealed_total, lote, status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name), professional_profiles(profiles(full_name))")
+    .in("status", statuses)
+    .order("reported_at", { ascending: true });
+  if (error) throw new Error(`faltante-service: queue: ${error.message}`);
+
+  // Reincidencia: injustificados por integrante en los ultimos 6 meses (una consulta, mapa por profesional).
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const { data: rein } = await supabase
+    .from("nutraceutical_faltante_cases")
+    .select("professional_id")
+    .eq("status", "injustificado")
+    .gte("reported_at", sixMonthsAgo.toISOString());
+  const reinMap = new Map<string, number>();
+  for (const r of rein ?? []) reinMap.set(r.professional_id, (reinMap.get(r.professional_id) ?? 0) + 1);
+
+  const now = new Date();
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    nutraceuticalName: nutraName(c.nutraceuticals),
+    integranteName: relName(c.professional_profiles),
+    quantity: c.quantity,
+    sealedTotal: String(c.sealed_total),
+    lote: c.lote,
+    status: c.status,
+    reportedAt: c.reported_at,
+    deadlineAt: c.deadline_at,
+    expired: c.status === "reportado" && now > new Date(c.deadline_at),
+    reincidencia: reinMap.get(c.professional_id) ?? 0,
+    justificationCategory: c.justification_category,
+    justificationReference: c.justification_reference,
+  }));
+}
+
+async function insertTransition(
+  caseId: string,
+  from: FaltanteStatus,
+  to: FaltanteStatus,
+  actorId: string,
+  reason: string | null,
+): Promise<{ ok: boolean; message?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("nutraceutical_faltante_transitions").insert({
+    case_id: caseId,
+    from_status: from,
+    to_status: to,
+    reason,
+    actor_id: actorId,
+  });
+  if (error) return { ok: false, message: "No se pudo registrar la decisión." };
+  return { ok: true };
+}
+
+// admin CLASIFICA un caso en revision (o reportado vencido). "injustificado" NO cobra: propone
+// (injustificado_pendiente); el cobro lo materializa direccion al confirmar.
+export async function classifyFaltante(input: {
+  userId: string;
+  caseId: string;
+  decision: "justificado" | "venta_no_registrada" | "injustificado";
+  reason: string | null;
+}): Promise<{ ok: boolean; message?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: c } = await supabase
+    .from("nutraceutical_faltante_cases")
+    .select("status, deadline_at")
+    .eq("id", input.caseId)
+    .maybeSingle();
+  if (!c) return { ok: false, message: "Caso no encontrado." };
+
+  const expiredReportado = c.status === "reportado" && new Date() > new Date(c.deadline_at);
+  if (input.decision === "injustificado") {
+    if (c.status !== "en_revision" && !expiredReportado) {
+      return { ok: false, message: "Solo se propone injustificado sobre un caso justificado a revisión o con el plazo vencido." };
+    }
+    return insertTransition(input.caseId, c.status, "injustificado_pendiente", input.userId, input.reason);
+  }
+  // justificado / venta_no_registrada: requieren una justificacion enviada (en_revision).
+  if (c.status !== "en_revision") {
+    return { ok: false, message: "Este caso no está esperando clasificación." };
+  }
+  return insertTransition(input.caseId, "en_revision", input.decision, input.userId, input.reason);
+}
+
+// direccion CONFIRMA o RECHAZA la propuesta de injustificado. Confirmar materializa el cargo; rechazar lo
+// cierra sin cargo (dirección puede vetar el cobro). Nada se materializa hasta este paso: dos personas.
+export async function confirmFaltante(input: {
+  userId: string;
+  caseId: string;
+  decision: "confirmar" | "rechazar";
+  reason: string | null;
+}): Promise<{ ok: boolean; message?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: c } = await supabase
+    .from("nutraceutical_faltante_cases")
+    .select("status")
+    .eq("id", input.caseId)
+    .maybeSingle();
+  if (!c) return { ok: false, message: "Caso no encontrado." };
+  if (c.status !== "injustificado_pendiente") {
+    return { ok: false, message: "Este caso no está esperando confirmación de dirección." };
+  }
+  const to = input.decision === "confirmar" ? "injustificado" : "justificado";
+  return insertTransition(input.caseId, "injustificado_pendiente", to, input.userId, input.reason);
+}
