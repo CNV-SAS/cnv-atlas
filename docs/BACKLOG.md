@@ -437,6 +437,22 @@ Ambas se incorporan en el pase de PLAN_GRANTS (junto con Q1 nivel-b-se-conserva 
 admin pierde acceso, Q3 soporte, la observación c del alcance del grant Nivel b, y el reajuste de las 5
 fases: la redacción campo por campo VUELVE porque el Nivel b se conserva).
 
+## [E2] Circuito comercial de nutracéuticos: inventario de huecos del modelo operativo (2026-08-06)
+
+Al arrancar el despacho (T3b) se cotejó el circuito comercial completo contra el código, para que Santiago lo vea de una vez y no por partes. NO se resuelve aquí; es material de decisión.
+
+**Existe:** venta **integrante→paciente** por checkout en Atlas (Wompi), precios sellados del catálogo, **comisión del profesional** (`professional_revenue`) + ingreso de CNV (`cnv_revenue`), factura Alegra (sandbox). El profesional SÍ gana comisión, modelada y sellada al pagar.
+
+**Huecos:**
+- **CNV→integrante (el eslabón central del negocio): NO existe.** No hay pedido del profesional a CNV, ni despacho de CNV al profesional, ni registro de lo enviado. El pipeline de cobro cubre solo integrante→paciente. Consecuencia: CNV no puede saber qué mandó ni qué se vendió por integrante.
+- **Inventario por profesional:** hoy es GLOBAL (una fila por producto, sin `professional_id`). Incorrecto de raíz: cada integrante tiene su propio stock. Lo arregla T3b-1.
+- **Carga de stock:** hoy admin/soporte + global. Cuando el profesional cargue lo suyo (T3b-1), será **autodeclarado, sin contraparte**: nada contrasta lo que el integrante dice tener contra lo que CNV le mandó. **Sin conciliación posible** (si dice 10 y CNV mandó 6, nada lo detecta). Con pocos integrantes se lleva por fuera; con veinte, no.
+- **Tienda (solo_tienda):** storefront público externo (cnvsystem.com/tienda); Atlas no se entera. Lo que el paciente compra ahí queda FUERA del expediente.
+- **El checkout no respeta la disponibilidad:** vende cualquier producto del catálogo a un paciente, incluidos los solo_tienda (que el profesional no stockea). El mismo producto podría cobrarse por Atlas y comprarse en la tienda.
+- **Devoluciones / vencimientos:** no modelados. La transacción tiene paid/failed/pending, sin "devuelto"; el inventario no tiene fecha de vencimiento.
+
+**Decisión del guard del despacho (T3b-2), registrada con su argumento:** el despacho lo hace el **profesional asignado**, no un auxiliar. Razón que va más allá del inventario: **entregar un nutracéutico a un paciente es parte del ACTO CLÍNICO** (el profesional decidió prescribirlo; entregarlo cierra esa decisión), no solo un movimiento de stock. Si mañana se pide abrirlo a un auxiliar, se está SEPARANDO la entrega de la prescripción, y eso debe decidirse a sabiendas, no heredarse.
+
 ## Higiene del BACKLOG
 - **[HECHO 2026-08-04] Barrido de entradas stale + fechas.** Se recorrió el BACKLOG entero cotejando cada entrada abierta contra el código (git log + grep). **Encontradas 7 entradas escritas como pendientes que YA estaban hechas** (3 motores de tratamiento, telómeros/CA-1, mecanismo de modificaciones autorizadas, rótulo EB-BIS, 3 cortes MCCB, field_keys d3_29/d5_40, trigger_type completar, rango antropométrico) + 3 parciales (hook de secretos = solo el escáner; P0 Parte 2 = núcleo `eb-trajectory.ts` construido, falta cablear; texto otras profesiones = moot). Todas cerradas con su commit arriba; las pendientes reales quedaron con "desde cuándo". La precondición de PHQ-9/GAD-7 se corrigió (no aplica: Atlas no captura esos instrumentos). **Lección registrada: se basó un replanteo entero en entradas desactualizadas; el BACKLOG hay que cotejarlo contra el código, no leerlo como verdad.**
 
