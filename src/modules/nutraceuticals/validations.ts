@@ -78,6 +78,12 @@ export const confirmFaltanteSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 });
 
+// Resolver un sobrante (T3b-3 ST5): motivo OBLIGATORIO (por que sobra). No hay cargo ni plazo.
+export const resolveSobranteSchema = z.object({
+  countLineId: z.guid("Línea invalida."),
+  reason: z.string().trim().min(1, "El motivo es obligatorio.").max(500),
+});
+
 // Registro de uso vinculado a un tratamiento (sin UI en B5; la pantalla va en B12).
 export const registerUsageSchema = z.object({
   treatmentId: dbUuid,

@@ -1600,6 +1600,7 @@ export type Database = {
       }
       nutraceutical_stock_movements: {
         Row: {
+          count_line_id: string | null
           created_at: string
           created_by: string | null
           delta: number
@@ -1612,6 +1613,7 @@ export type Database = {
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
         Insert: {
+          count_line_id?: string | null
           created_at?: string
           created_by?: string | null
           delta: number
@@ -1624,6 +1626,7 @@ export type Database = {
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
         Update: {
+          count_line_id?: string | null
           created_at?: string
           created_by?: string | null
           delta?: number
@@ -1636,6 +1639,13 @@ export type Database = {
           type?: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "nutraceutical_stock_movements_count_line_id_nutraceutical_count"
+            columns: ["count_line_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceutical_count_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "nutraceutical_stock_movements_created_by_profiles_id_fk"
             columns: ["created_by"]

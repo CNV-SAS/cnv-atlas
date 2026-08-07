@@ -82,6 +82,10 @@ export const nutraceuticalStockMovements = pgTable(
     // Despacho (T3b-2): liga la entrega al tratamiento (y por el, al paciente). Nullable: los demas
     // tipos (recepcion, conciliacion, devolucion) son comerciales, sin paciente.
     treatmentId: uuid("treatment_id").references(() => treatments.id, { onDelete: "set null" }),
+    // Conciliacion de SOBRANTE (T3b-3 ST5): liga el ajuste +N a la linea de conteo que lo origino. Asi se
+    // sabe que sobrantes ya se resolvieron (una linea con sobrante SIN movimiento que la referencie sigue
+    // pendiente). Nullable: los demas movimientos no salen de un conteo.
+    countLineId: uuid("count_line_id").references(() => nutraceuticalCountLines.id),
     createdBy: uuid("created_by").references(() => profiles.id),
     createdAt: createdAt(),
   },

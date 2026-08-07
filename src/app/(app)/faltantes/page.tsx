@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { hasRole, requireUser } from "@/modules/auth/session";
 import { ClasificarFaltanteForm } from "@/modules/nutraceuticals/components/clasificar-faltante-form";
 import { ConfirmarFaltanteForm } from "@/modules/nutraceuticals/components/confirmar-faltante-form";
-import { canSeeFaltanteQueue } from "@/modules/nutraceuticals/policies/can-review-faltante";
-import { getFaltanteQueue, type FaltanteQueueRow } from "@/modules/nutraceuticals/services/faltante-service";
+import { ResolverSobranteForm } from "@/modules/nutraceuticals/components/resolver-sobrante-form";
+import { canResolveSobrante, canSeeFaltanteQueue } from "@/modules/nutraceuticals/policies/can-review-faltante";
+import { getFaltanteQueue, getPendingSobrantes, type FaltanteQueueRow } from "@/modules/nutraceuticals/services/faltante-service";
 
 export const metadata = { title: "Faltantes - Atlas" };
 
@@ -28,23 +29,31 @@ function fmtDate(iso: string): string {
 // ese integrante en 6 meses), que importa para clasificar, no solo para reportar.
 function CaseHead({ c }: { c: FaltanteQueueRow }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-2">
-      <div className="flex flex-col gap-0.5">
-        <span className="font-medium text-foreground">
-          {c.nutraceuticalName} · faltan {c.quantity}
-          {c.lote ? ` · lote ${c.lote}` : ""}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {c.integranteName || "Integrante"} · valor {money(c.sealedTotal)} · reportado {fmtDate(c.reportedAt)}
-        </span>
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-foreground">
+            {c.nutraceuticalName} · faltan {c.quantity}
+            {c.lote ? ` · lote ${c.lote}` : ""}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {c.integranteName || "Integrante"} · valor {money(c.sealedTotal)} · reportado {fmtDate(c.reportedAt)}
+          </span>
+        </div>
+        {c.reincidencia > 0 ? (
+          <Badge variant="outline" className={c.reincidencia >= 3 ? "border-clinical-critical text-clinical-critical" : "font-normal"}>
+            {c.reincidencia} injustificado(s) en 6 meses{c.reincidencia >= 3 ? " · reincidencia" : ""}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="font-normal">Primer faltante (6 meses)</Badge>
+        )}
       </div>
-      {c.reincidencia > 0 ? (
-        <Badge variant="outline" className={c.reincidencia >= 3 ? "border-clinical-critical text-clinical-critical" : "font-normal"}>
-          {c.reincidencia} injustificado(s) en 6 meses{c.reincidencia >= 3 ? " · reincidencia" : ""}
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="font-normal">Primer faltante (6 meses)</Badge>
-      )}
+      {c.reincidencia >= 3 ? (
+        <p className="text-xs text-clinical-critical">
+          Tres o más injustificados en seis meses: además de clasificar este caso, CNV debería revisar las
+          condiciones de consignación de este integrante (decisión de negocio, fuera del sistema).
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -60,6 +69,7 @@ export default async function FaltantesPage() {
   const vencidos = queue.filter((c) => c.status === "reportado" && c.expired);
   const esperandoIntegrante = queue.filter((c) => c.status === "reportado" && !c.expired);
   const porConfirmar = queue.filter((c) => c.status === "injustificado_pendiente");
+  const sobrantes = canResolveSobrante(user) ? await getPendingSobrantes() : [];
 
   return (
     <div className="flex flex-col gap-10">
@@ -122,6 +132,27 @@ export default async function FaltantesPage() {
               ))}
             </section>
           ) : null}
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xl font-bold tracking-tight">Sobrantes por revisar</h2>
+            <p className="max-w-prose text-sm text-muted-foreground">
+              Un conteo arrojó MÁS de lo que el sistema tenía. No es una deuda ni tiene plazo: es información,
+              significa que algo no se registró (una recepción, o un despacho que no ocurrió). Ajusta el saldo
+              con el motivo; no lo cierres sin la razón.
+            </p>
+            {sobrantes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay sobrantes por revisar.</p>
+            ) : (
+              sobrantes.map((s) => (
+                <div key={s.countLineId} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+                  <span className="text-sm text-foreground">
+                    {s.nutraceuticalName} · sobran {s.extra} · {s.integranteName || "Integrante"} · contado {fmtDate(s.countedAt)}
+                  </span>
+                  <ResolverSobranteForm countLineId={s.countLineId} />
+                </div>
+              ))
+            )}
+          </section>
         </>
       ) : null}
 

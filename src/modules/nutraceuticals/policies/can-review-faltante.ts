@@ -11,3 +11,7 @@ export function canConfirmFaltante(user: CurrentUser): boolean {
 export function canSeeFaltanteQueue(user: CurrentUser): boolean {
   return hasRole(user, "admin") || hasRole(user, "direccion");
 }
+// El sobrante es reconciliacion operativa de inventario (informacion, no deuda): admin lo resuelve.
+export function canResolveSobrante(user: CurrentUser): boolean {
+  return hasRole(user, "admin");
+}

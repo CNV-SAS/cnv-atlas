@@ -3,6 +3,12 @@ import "server-only";
 import { businessDaysUntil } from "@/core/dates/colombia-business-days";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import {
+  getPendingSobrantes,
+  resolveSobrante as writeResolveSobrante,
+  type PendingSobrante,
+} from "../data/count-writer";
+
 // Servicio de los casos de faltante del propio integrante (T3b-3 ST3). Lectura de sus casos (con el tiempo
 // habil que le queda para justificar) y envio de la justificacion (categoria + referencia). Todo por RLS: el
 // integrante solo ve/justifica lo suyo. La justificacion es una TRANSICION reportado -> en_revision; el
@@ -244,4 +250,16 @@ export async function confirmFaltante(input: {
   }
   const to = input.decision === "confirmar" ? "injustificado" : "justificado";
   return insertTransition(input.caseId, "injustificado_pendiente", to, input.userId, input.reason);
+}
+
+// ----- Sobrante (T3b-3 ST5): pasarela al writer de conteo (Drizzle owner). Lo autoriza la action (admin). -----
+export { getPendingSobrantes };
+export type { PendingSobrante };
+
+export async function resolveSobrante(input: {
+  userId: string;
+  countLineId: string;
+  reason: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  return writeResolveSobrante({ countLineId: input.countLineId, actorId: input.userId, reason: input.reason });
 }

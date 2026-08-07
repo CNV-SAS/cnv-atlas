@@ -8,13 +8,14 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
-import { canClassifyFaltante, canConfirmFaltante } from "./policies/can-review-faltante";
+import { canClassifyFaltante, canConfirmFaltante, canResolveSobrante } from "./policies/can-review-faltante";
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
 import {
   classifyFaltanteSchema,
   confirmFaltanteSchema,
+  resolveSobranteSchema,
   createNutraceuticalSchema,
   despachoSchema,
   receptionSchema,
@@ -357,4 +358,26 @@ export async function confirmFaltanteFormAction(
     success: parsed.data.decision === "confirmar" ? "Cargo confirmado: entra en la liquidación del período." : "Propuesta rechazada: el caso queda sin cargo.",
     warning: null,
   };
+}
+
+// Resolver un SOBRANTE (T3b-3 ST5). Solo admin. Motivo obligatorio; sube el saldo con una conciliacion.
+export async function resolveSobranteFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canResolveSobrante(user)) {
+    return { error: "Solo un administrador resuelve los sobrantes.", success: null, warning: null };
+  }
+  const parsed = resolveSobranteSchema.safeParse({
+    countLineId: String(formData.get("countLineId") ?? ""),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos invalidos.", success: null, warning: null };
+
+  const res = await faltanteService.resolveSobrante({ userId: user.id, countLineId: parsed.data.countLineId, reason: parsed.data.reason });
+  if (!res.ok) return { error: res.message ?? "No se pudo resolver el sobrante.", success: null, warning: null };
+  revalidatePath("/faltantes");
+  return { error: null, success: "Sobrante resuelto: el saldo se ajustó con el motivo registrado.", warning: null };
 }

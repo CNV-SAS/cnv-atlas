@@ -1,0 +1,2 @@
+ALTER TABLE "nutraceutical_stock_movements" ADD COLUMN "count_line_id" uuid;--> statement-breakpoint
+ALTER TABLE "nutraceutical_stock_movements" ADD CONSTRAINT "nutraceutical_stock_movements_count_line_id_nutraceutical_count_lines_id_fk" FOREIGN KEY ("count_line_id") REFERENCES "public"."nutraceutical_count_lines"("id") ON DELETE no action ON UPDATE no action;
