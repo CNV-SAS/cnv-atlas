@@ -454,6 +454,33 @@ Al arrancar el despacho (T3b) se cotejó el circuito comercial completo. **MODEL
 
 **Guard del despacho (T3b-2), con su argumento:** lo hace el **profesional asignado**, no un auxiliar. Razón más allá del inventario: **entregar un nutracéutico es parte del ACTO CLÍNICO** (cierra la prescripción), no solo un movimiento de stock. Abrirlo a un auxiliar sería SEPARAR la entrega de la prescripción; decisión a sabiendas, no herencia.
 
+## [E2] T3b-3 (conciliación + caso de faltante) + Liquidación del integrante — modelo y resize (2026-08-06)
+
+Llegó el modelo comercial/legal del faltante; T3b-3 crece y aparece un bloque NUEVO (la Liquidación). NO se construye aquí. Es commercial/contractual (CNV-integrante), no dato de paciente, por eso va aquí y no a `DECISIONES_LEGALES.md`.
+
+**El faltante NO es un ajuste de inventario: es un CASO CON ESTADOS** (reportado → en justificación → justificado / injustificado). REGLA DURA para el sistema, textual: **ATLAS no debe cobrar automáticamente al detectar la diferencia.** Abre el caso; solo al cerrarse como injustificado genera el cargo a la liquidación.
+- **Detección:** el conteo físico (SEMANAL) arroja una diferencia; el integrante la reporta con **referencia, lote y cantidad**.
+- **Ventana de justificación: 5 días hábiles** desde el reporte. Justificados: hurto/robo CON DENUNCIA ante autoridad, daño/pérdida en transporte DOCUMENTADO, error de registro DEMOSTRABLE (una venta hecha y no registrada, que se corrige en Atlas con un movimiento), devolución a CNV CON GUÍA de transporte. No basta afirmar la pérdida.
+- **Si se justifica:** ajuste sin cargo (un movimiento `conciliacion`). **Si no, o vence el plazo:** injustificado → **cargo al integrante al PRECIO DE VENTA vigente al momento del faltante** (Cláusula 5.4 del Anexo 2); entra en la liquidación del período y se cruza contra la comisión (Cláusula 5.5).
+- **El faltante NO genera comisión** (no es una venta).
+- **Reincidencia:** 3+ injustificados en 6 meses → CNV revisa las condiciones de consignación.
+
+**Dos cosas de diseño no inferibles:**
+- **Un integrante puede cerrar el mes DEBIÉNDOLE dinero a CNV.** El faltante se valora al precio de VENTA, no al costo, así que un frasco perdido puede superar la comisión de quien vende poco. El **saldo neto negativo a su cargo debe estar previsto por diseño**, no ser un caso de error.
+- **El cargo por faltante debe quedar IDENTIFICADO como tal en el reporte de liquidación**, separado del efectivo recaudado, para que el integrante entienda de dónde sale.
+
+**Tres cadencias distintas (corrección de una contradicción entre el Reglamento Operativo y el Anexo 2):**
+- **Transferencia de efectivo: QUINCENAL** (días 15 y último de cada mes). El integrante NO retiene el efectivo de CNV hasta fin de mes.
+- **Conciliación formal + liquidación + pago de comisiones: MENSUAL** (primeros 5 días hábiles del mes siguiente).
+- **Conteo físico: SEMANAL.**
+Consecuencia (registrada por ellos): al llegar la liquidación mensual normalmente ya no hay efectivo pendiente del integrante, así que la compensación opera sobre lo que quede (faltantes, vencidos, y el efectivo recaudado después del último corte quincenal) contra la comisión causada.
+
+**Lo que existe hoy (media pieza):** `professional_revenue` sella la comisión POR TRANSACCIÓN + `direccion/dashboard-reader` la SUMA. NO existe la LIQUIDACIÓN (agregación por período, compensación, cargos por faltante, saldo neto). Es **bloque propio, de E2, no de T3**.
+
+**LOTE: no está modelado** (ni catálogo, ni inventario, ni movimientos). Aparece en el reporte de faltante. Decisión propuesta: agregar un campo `lote` OPCIONAL al MOVIMIENTO (captura recepción + faltante barato, sin cambiar el saldo, que sigue por producto). El inventario POR LOTE completo (saldo y vencimiento por lote, FIFO) es un modelo más grande (los vencimientos son por lote) y se DIFIERE; entra cuando se modelen vencimientos.
+
+**Resize de T3b-3:** conteo semanal + caso de faltante con estados/plazos/justificaciones + el cargo. **Bloque nuevo: Liquidación del integrante** (E2, propio): agrega comisiones del período, cruza efectivo/faltantes/vencidos, produce el saldo neto (que puede ser negativo a cargo del integrante), y separa el cargo por faltante del efectivo en el reporte. La comisión por transacción ya existe; la agregación por período no.
+
 ## Higiene del BACKLOG
 - **[HECHO 2026-08-04] Barrido de entradas stale + fechas.** Se recorrió el BACKLOG entero cotejando cada entrada abierta contra el código (git log + grep). **Encontradas 7 entradas escritas como pendientes que YA estaban hechas** (3 motores de tratamiento, telómeros/CA-1, mecanismo de modificaciones autorizadas, rótulo EB-BIS, 3 cortes MCCB, field_keys d3_29/d5_40, trigger_type completar, rango antropométrico) + 3 parciales (hook de secretos = solo el escáner; P0 Parte 2 = núcleo `eb-trajectory.ts` construido, falta cablear; texto otras profesiones = moot). Todas cerradas con su commit arriba; las pendientes reales quedaron con "desde cuándo". La precondición de PHQ-9/GAD-7 se corrigió (no aplica: Atlas no captura esos instrumentos). **Lección registrada: se basó un replanteo entero en entradas desactualizadas; el BACKLOG hay que cotejarlo contra el código, no leerlo como verdad.**
 
