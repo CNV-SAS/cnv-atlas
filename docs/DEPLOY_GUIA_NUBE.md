@@ -82,6 +82,24 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 
 Regla práctica: **si una variable solo actúa al desplegar o en producción, va solo en Vercel.** Si dudas de una nueva, pregúntate "¿la app la usa cuando corro `pnpm dev` en mi máquina?"; si no, no va en `.env.local`.
 
+**Qué función necesita qué variable (para verificar de una vez, no descubrirlo de a una durante el uso).** Si una función falla en producción por "Falta X", esta tabla dice dónde va X. **La columna de ambientes es el error que ya costó una vez:** en Vercel cada variable se marca por ambiente, y si queda solo en Development, producción no la ve y el deploy NO da error (falla al usar la función).
+
+| Función / ruta | Variables que necesita | Ambientes en Vercel | Si falta |
+|----------------|------------------------|---------------------|----------|
+| Toda la app (cualquier página) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Los 3 | no carga nada |
+| Escrituras (crear usuario, checkout…) | `DATABASE_URL` (cadena del pooler) | Los 3 | los reads funcionan, las ESCRITURAS fallan |
+| Invitación / admin / webhooks | `SUPABASE_SERVICE_ROLE_KEY` | Los 3 | falla la acción de admin |
+| `/checkout/[token]` (página de pago) | `NEXT_PUBLIC_WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET` | Los 3 | el checkout no renderiza |
+| Webhook de Wompi | `WOMPI_EVENTS_SECRET` | Los 3 | rechaza la firma del evento |
+| Factura (tras el pago) | `ALEGRA_EMAIL`, `ALEGRA_API_KEY`, `ALEGRA_BASE_URL` (+ `ALEGRA_DEFAULT_CLIENT_ID` / `ALEGRA_DEFAULT_ITEM_ID` / `ALEGRA_IVA_TAX_ID`) | Los 3 | no se crea la factura |
+| Menú por IA | `GROQ_API_KEY` + `GROQ_MODEL` (o `GEMINI_API_KEY` + `GEMINI_MODEL`) | Los 3 | el menú no se genera |
+| Reporte al paciente | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Los 3 | el correo no sale |
+| Rate limiting | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Los 3 | degrada a memoria (no falla) |
+| Errores legibles | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | Los 3 | Sentry no reporta (no falla) |
+| App | `NEXT_PUBLIC_APP_URL` (= dominio), `NEXT_PUBLIC_APP_NAME` | Los 3 | enlaces de encuesta rotos |
+
+Regla: **todas van en los TRES ambientes.** La única que NO se pone a mano es `NODE_ENV` (Vercel la fija en `production` sola).
+
 2.3 **Redesplegar y confirmar que la app conecta a la base (aún sin tablas).** Con las variables cargadas, dispara un deploy: Vercel → Deployments → Redeploy (o un push a `main`; si el repo ya está conectado, cada push despliega). Cuando quede "Ready", abre `https://atlas.cnvsystem.com` (o la URL `*.vercel.app`).
 - **Verificar:** ya NO sale el error "Faltan `NEXT_PUBLIC_SUPABASE_URL` o `NEXT_PUBLIC_SUPABASE_ANON_KEY`"; carga la pantalla de login. Las consultas a datos aún fallarían (no hay tablas todavía): eso es esperado y se resuelve en el Paso 3. Lo que confirmas aquí es solo que la app ya sabe dónde está la base.
 - **El registro de errores en producción (Sentry) ya está funcionando:** capturó limpio el error de variables faltantes con el mensaje exacto. Una pieza menos que verificar; no hay que configurar nada más de Sentry.

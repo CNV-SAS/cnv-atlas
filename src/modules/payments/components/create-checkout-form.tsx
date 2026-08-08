@@ -10,7 +10,12 @@ import { Label } from "@/components/ui/label";
 import { createCheckoutFormAction } from "../actions";
 import type { PaymentFormState } from "../validations";
 
-const initial: PaymentFormState = { error: null, success: null, checkoutUrl: null };
+const initial: PaymentFormState = {
+  error: null,
+  success: null,
+  checkoutUrl: null,
+  duplicateWarning: null,
+};
 
 // Mismo estilo que los <select> nativos del resto de formularios (alineado al Input).
 const selectClass =
@@ -34,6 +39,7 @@ export function CreateCheckoutForm({
     if (state === last.current) return;
     last.current = state;
     if (state.error) toast.error(state.error);
+    else if (state.duplicateWarning) toast.warning(state.duplicateWarning);
     else if (state.success) toast.success(state.success);
   }, [state]);
 
@@ -101,6 +107,22 @@ export function CreateCheckoutForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Creando..." : "Crear checkout"}
         </Button>
+
+        {state.duplicateWarning ? (
+          <div className="flex w-full flex-col gap-2 rounded-lg bg-clinical-warning-bg p-3 text-sm">
+            <p className="text-clinical-warning">{state.duplicateWarning}</p>
+            <Button
+              type="submit"
+              name="confirmDuplicate"
+              value="true"
+              variant="outline"
+              disabled={pending}
+              className="self-start"
+            >
+              Generar de todos modos
+            </Button>
+          </div>
+        ) : null}
       </form>
 
       {state.checkoutUrl ? (

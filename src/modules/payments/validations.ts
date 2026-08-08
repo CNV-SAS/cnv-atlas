@@ -49,4 +49,6 @@ export type PaymentFormState = {
   error: string | null;
   success: string | null;
   checkoutUrl: string | null;
+  // Aviso de checkout duplicado vivo: NO se creó, el profesional confirma con "Generar de todos modos".
+  duplicateWarning: string | null;
 };

@@ -6,6 +6,7 @@ import { appError, err, ok, type AppError, type Result } from "@/core/errors";
 import { reportServerError } from "@/lib/observability/report-error";
 import { getCurrentUser } from "@/modules/auth/session";
 
+import { findLivePendingDuplicate } from "./data/payments-repository";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { CheckoutError, createCheckout } from "./services/payments-service";
 import {
@@ -53,19 +54,37 @@ export async function createCheckoutFormAction(
   _prev: PaymentFormState,
   formData: FormData,
 ): Promise<PaymentFormState> {
+  const patientId = String(formData.get("patientId") ?? "");
+  const nutraceuticalId = String(formData.get("nutraceuticalId") ?? "");
+  const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
+
+  // Avisa antes de crear un cobro DUPLICADO vivo (mismo paciente + mismo producto, pending y < 24h): no
+  // es solo la pantalla vieja, tambien el olvido con la pantalla al dia. No bloquea: el profesional puede
+  // confirmar con "Generar de todos modos". Un pago de mas no tiene reembolso en el MVP (ver BACKLOG).
+  if (!confirmDuplicate && patientId && nutraceuticalId) {
+    const dup = await findLivePendingDuplicate(patientId, [nutraceuticalId]);
+    if (dup) {
+      const cuando = dup.hoursAgo <= 0 ? "hace menos de una hora" : `hace ${dup.hoursAgo} h`;
+      return {
+        error: null,
+        success: null,
+        checkoutUrl: null,
+        duplicateWarning: `Este paciente ya tiene un cobro pendiente de ${dup.product}, generado ${cuando} y aún sin pagar. Si es a propósito, genera otro; si no, comparte el que ya existe.`,
+      };
+    }
+  }
+
   const result = await createCheckoutAction({
-    patientId: String(formData.get("patientId") ?? ""),
-    items: [
-      {
-        nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
-        quantity: Number(String(formData.get("quantity") ?? "")),
-      },
-    ],
+    patientId,
+    items: [{ nutraceuticalId, quantity: Number(String(formData.get("quantity") ?? "")) }],
   });
-  if (!result.ok) return { error: result.error.message, success: null, checkoutUrl: null };
+  if (!result.ok) {
+    return { error: result.error.message, success: null, checkoutUrl: null, duplicateWarning: null };
+  }
   return {
     error: null,
     success: "Checkout creado. Comparte el link con el paciente.",
     checkoutUrl: result.value.checkoutUrl,
+    duplicateWarning: null,
   };
 }

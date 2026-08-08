@@ -1,8 +1,9 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-// TTL del link de checkout: 24h (SECURITY.md, superficies publicas).
-const CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
+// TTL del link de checkout: 24h (SECURITY.md, superficies publicas). Fuente unica: tambien lo usa la
+// deteccion de checkouts duplicados (un pending > 24h tiene el link muerto, no cuenta como duplicado).
+export const CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type CheckoutView = {

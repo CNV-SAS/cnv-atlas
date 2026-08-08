@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { CHECKOUT_TTL_MS } from "./checkout-reader";
 import type { TransactionWithItems } from "../types";
 
 // Lecturas de pagos para la UI autenticada (ARCHITECTURE regla 1). Cliente Supabase
@@ -67,4 +68,34 @@ export async function listSelectablePatients(): Promise<SelectablePatient[]> {
     id: p.id,
     label: `${p.document_type} ${p.document_number}`,
   }));
+}
+
+// Busca un checkout DUPLICADO VIVO para avisar antes de crear otro: mismo paciente + el mismo producto,
+// con la transaccion aun 'pending' y dentro de las 24h (un pending mas viejo tiene el link muerto, ver
+// checkout-reader, asi que no cuenta). Bajo RLS: el profesional ve sus propios pendientes de ese paciente
+// (cubre el caso reportado: el olvido o la pestana vieja del mismo profesional). Devuelve el primero.
+export async function findLivePendingDuplicate(
+  patientId: string,
+  nutraceuticalIds: string[],
+): Promise<{ product: string; hoursAgo: number } | null> {
+  if (nutraceuticalIds.length === 0) return null;
+  const supabase = await createSupabaseServerClient();
+  const since = new Date(Date.now() - CHECKOUT_TTL_MS).toISOString();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("created_at, transaction_items!inner(nutraceutical_id, nutraceuticals(name))")
+    .eq("patient_id", patientId)
+    .eq("status", "pending")
+    .gte("created_at", since)
+    .in("transaction_items.nutraceutical_id", nutraceuticalIds)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) fail("findLivePendingDuplicate", error.message);
+  const row = data?.[0];
+  if (!row) return null;
+  const item = Array.isArray(row.transaction_items) ? row.transaction_items[0] : row.transaction_items;
+  const nutra = item?.nutraceuticals;
+  const product = (Array.isArray(nutra) ? nutra[0]?.name : nutra?.name) ?? "un producto";
+  const hoursAgo = Math.floor((Date.now() - new Date(row.created_at).getTime()) / (60 * 60 * 1000));
+  return { product, hoursAgo };
 }
