@@ -168,19 +168,28 @@ export async function setPasswordAction(
   if (error) {
     // No se puede diagnosticar lo que no se registra: el error real de Supabase va al log del servidor.
     console.error("setPassword updateUser fallo:", error.status, error.code, error.message);
-    // Cuenta con MFA sin AAL2: la pagina debe pedir el segundo factor antes de llegar aqui; si aun asi pasa,
-    // se dice claro en vez del generico.
+    // Causas conocidas con mensaje CLARO: un generico hace que el usuario reintente lo mismo (p. ej.
+    // volver a poner la misma clave). Cada codigo de Supabase se traduce a algo accionable.
     if (error.code === "insufficient_aal") {
+      // Cuenta con MFA sin AAL2: la pagina pide el segundo factor antes de llegar aqui; si aun asi pasa.
       return { error: "Confirma tu segundo factor antes de cambiar la contraseña." };
+    }
+    if (error.code === "same_password") {
+      return { error: "La contraseña nueva tiene que ser distinta de la anterior." };
+    }
+    if (error.code === "weak_password") {
+      return { error: "La contraseña es muy débil. Usa al menos 8 caracteres, combinando letras y números." };
     }
     return { error: "No se pudo fijar la contraseña." };
   }
 
   cookieStore.delete("atlas-pwd-reset"); // un solo uso
-  // A la pantalla de acceso, NO al panel: la sesion cambio bajo la pagina abierta y navegar al panel con
-  // el bundle viejo daba pantalla en blanco y "Failed to find Server Action". Entrar con la clave nueva
-  // arranca sesion y pagina limpias, y de paso confirma que la clave quedo bien. Sirve invitacion y
-  // recuperacion (misma accion): por eso el mensaje es neutro.
+  // Cierra la sesion (TODAS las del usuario) ANTES de mandar a /login. Dos motivos: (1) sin esto el proxy
+  // ve una sesion activa al llegar a /login y rebota al panel, que era el bug (redirigia a /dashboard);
+  // (2) seguridad: si alguien recupero la cuenta por sospecha de acceso ajeno, la sesion del intruso
+  // tambien debe morir (scope global invalida todas las sesiones, no solo esta). Entrar con la clave
+  // nueva arranca sesion y pagina limpias, y confirma que la clave quedo bien.
+  await supabase.auth.signOut({ scope: "global" });
   redirect("/login?mensaje=clave_lista");
 }
 
