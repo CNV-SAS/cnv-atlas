@@ -97,8 +97,17 @@ export async function createUser(
       });
     });
   } catch (e) {
-    // Compensa: borra el auth user para no dejar un profile huerfano sin rol/audit.
-    await admin.auth.admin.deleteUser(newUserId);
+    // La causa REAL (no visible al usuario) va al log del servidor: sin esto, un fallo en produccion
+    // no deja rastro en Sentry/Vercel y quedamos ciegos con los integrantes adentro (mismo patron que
+    // setPassword/mfa). Un fallo de conexion de `db` (p. ej. DATABASE_URL directa en vez del pooler en
+    // serverless) aparece aqui.
+    console.error("createUser transaccion fallo:", e);
+    // Compensa: borra el auth user para no dejar un profile huerfano sin rol/audit. Si la compensacion
+    // TAMBIEN falla, se registra: dejaria un usuario a medias (auth creado, sin rol ni audit).
+    const { error: delError } = await admin.auth.admin.deleteUser(newUserId);
+    if (delError) {
+      console.error("createUser compensacion (deleteUser) fallo, usuario a medias:", newUserId, delError.message);
+    }
     if (e instanceof RoleNotFoundError) {
       return err(appError("validation", "El rol indicado no existe."));
     }

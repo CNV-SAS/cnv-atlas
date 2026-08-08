@@ -71,6 +71,8 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 | `SUPABASE_SERVICE_ROLE_KEY` | Settings → API → `service_role` | **NUNCA** `NEXT_PUBLIC_` | Salta toda la RLS (acceso total). Si llega al navegador, cualquiera lee y borra todo. |
 | `DATABASE_URL` | Settings → Database → Connection string → URI (reemplaza `[YOUR-PASSWORD]`) | **NUNCA** `NEXT_PUBLIC_` | Conexión directa con credenciales completas; la usan los repositorios EN RUNTIME (no solo las migraciones). |
 
+> **`DATABASE_URL` en Vercel: usa la cadena del TRANSACTION POOLER, NO la directa (importante).** La app usa esa conexión EN RUNTIME desde funciones serverless de Vercel, y la **conexión directa** (`db.<ref>.supabase.co:5432`) suele fallar desde serverless (IPv6/red) aunque funcione para el `migrate` de una vez desde tu máquina. Toma la cadena de **Transaction pooler** (Supabase → Settings → Database → Connection string → **Transaction**, puerto **6543**) para la variable en Vercel. La app ya está preparada (`prepare: false`). **Síntoma si te equivocas (por qué importa): la app carga y navega bien** (los reads van por el cliente Supabase/REST), **pero cualquier ESCRITURA falla** (crear un usuario, generar un checkout), porque las escrituras van por `DATABASE_URL`. Es exactamente el fallo de "creo el usuario pero el enlace de invitación no sirve".
+
 Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de abajo no pueden verse nunca. Las cuatro son necesarias para que la app arranque y opere; cárgalas de una vez (si falta una, el arranque falla y descubrirías la siguiente en el próximo intento).
 
 **Dónde vive cada variable (para que la duda no vuelva con cada una).** Hay tres grupos:
