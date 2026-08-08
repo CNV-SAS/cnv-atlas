@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
+import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import {
   CreateCheckoutForm,
   type CheckoutNutraceutical,
@@ -49,6 +50,15 @@ export default async function PagosPage() {
   if (!canCreate && !canView) redirect("/no-autorizado");
 
   const transactions = await listTransactions();
+  // Para recuperar el enlace de un checkout pendiente sin generar otro: el link es derivable del id
+  // (misma forma que buildCheckoutUrl). Horas restantes del TTL de 24h contra el created_at.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  // Date.now es "impuro" para la regla de pureza, pero esta es una pagina DINAMICA (requireUser, sin
+  // cache): el tiempo de request es exactamente lo que se quiere mostrar. Se acota a esta linea.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const hoursLeftOf = (createdAt: string) =>
+    Math.floor((new Date(createdAt).getTime() + 24 * 60 * 60 * 1000 - nowMs) / (60 * 60 * 1000));
 
   let patients: CheckoutPatient[] = [];
   let nutraceuticals: CheckoutNutraceutical[] = [];
@@ -105,6 +115,12 @@ export default async function PagosPage() {
                         {new Date(tx.created_at).toLocaleDateString("es-CO")}
                         {tx.alegra_invoice_id ? ` · Factura Alegra ${tx.alegra_invoice_id}` : ""}
                       </span>
+                      {tx.status === "pending" ? (
+                        <CheckoutLink
+                          url={`${appUrl}/checkout/${tx.id}`}
+                          hoursLeft={hoursLeftOf(tx.created_at)}
+                        />
+                      ) : null}
                     </div>
                     <TxStatusBadge status={tx.status} />
                   </div>
