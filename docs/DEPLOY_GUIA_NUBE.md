@@ -225,10 +225,13 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 
 **Dónde se hace:** en el navegador, sobre la app ya publicada (`https://atlas.cnvsystem.com`), y verificando en el dashboard de Supabase. Los pasos 6.1 a 6.4 van EN ORDEN (cada uno depende del anterior). No es en la terminal.
 
-6.1 **Trabajo previo (la base está vacía salvo el admin): necesitas un profesional y un paciente en la nube.** Para llegar a un checkout de nutracéutico:
-- Login como admin (Paso 3.2) → **invita un profesional** (se crea con la invitación; le llega el correo, que ya funciona).
+6.1 **Trabajo previo (la base está vacía salvo el admin). ARRANCA POR AQUÍ.** El checkout solo necesita un **paciente** y un **nutracéutico con precio** (los 10 del seed ya tienen precio). **NO hace falta evaluación, diagnóstico, BIS ni tratamiento aprobado** (verificado en el código: `createCheckout` solo pide `patientId` + items, y `listSelectablePatients` devuelve cualquier paciente). Camino mínimo real:
+- Login como admin (Paso 3.2) → **invita un profesional** (le llega el correo, que ya funciona).
 - El profesional **acepta la invitación, fija su clave, configura su MFA y entra**.
-- Como profesional, lleva un **paciente** por el flujo (intake/evaluación/tratamiento) hasta donde se genera un checkout de nutracéutico. **Esto es setup real, no un clic:** cuéntalo como parte del smoke, no como paso instantáneo.
+- **Crea un paciente por la encuesta:** desde Evaluaciones, el profesional genera/comparte un link de encuesta y tú lo llenas como paciente de prueba (consentimiento + respuestas). El intake crea el paciente. **No necesita BIS ni diagnóstico** para existir.
+- Como profesional (o admin), en **Pagos** seleccionas ese paciente + un nutracéutico y generas el checkout.
+- **Esto NO es un clic: es RECORRER ATLAS COMPLETO POR PRIMERA VEZ EN LA NUBE.** Y ese es su lado bueno: **es también el primer smoke real del sistema en producción.** Si algo del flujo clínico (una ruta, un permiso, una escritura) se comporta distinto fuera de tu máquina, aparece aquí. **Reporta CUALQUIER cosa rara del camino, aunque no tenga que ver con el cobro.**
+- **Deja rastro (esperado):** el smoke crea un profesional y un paciente de prueba, y los registros clínicos (paciente, evaluación) son **inmutables**, no se borran; quedan en el entorno. Es una de las razones por las que producción (Hito 3) se crea limpio y aparte. Si este entorno debía quedar sin datos de prueba, confírmalo con Santiago antes.
 
 6.2 **Gate anti-dinero-real: confirma SANDBOX antes de pagar.** En el checkout, ANTES de meter la tarjeta, verifica que la llave pública de Wompi en la página empiece por `pub_test_` (código fuente / Network, ver Paso 5.1). Si es `pub_prod_`, PARA y cámbiala: con producción, el pago sería real.
 
@@ -241,7 +244,7 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 - `cnv_revenue` y `professional_revenue`: se generaron (la comisión con la tasa sellada).
 - Alegra (sandbox): se creó la factura borrador. Si la transacción paga pero no hay factura, es Alegra.
 
-6.5 **Si falla a mitad, se puede limpiar.** Un pago fallido deja filas de prueba en `transactions` (y quizá en `payment_webhook_events`). Esas tablas NO tienen trigger de inmutabilidad, así que se borran por SQL (Supabase → SQL Editor). Como es la base de producción ("real desde el día uno"), conviene dejarla limpia; borra SOLO las filas de prueba, identificándolas primero:
+6.5 **Si falla a mitad, la transacción se puede limpiar (el paciente NO).** Un pago fallido deja filas de prueba en `transactions` (y quizá en `payment_webhook_events`). Esas tablas NO tienen trigger de inmutabilidad, así que se borran por SQL (Supabase → SQL Editor). **Pero el paciente y su evaluación de prueba SÍ son inmutables: esos quedan** (ver 6.1). Para las transacciones, borra SOLO las filas de prueba, identificándolas primero:
   ```sql
   -- 1. Mira las filas recientes y anota el id de la de prueba:
   select id, status, created_at from transactions order by created_at desc limit 5;
