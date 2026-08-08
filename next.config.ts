@@ -87,11 +87,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  // Solo dev: si se expone el dev server por un tunel publico (Cloudflare/ngrok)
-  // para probar webhooks, su origen se pasa por DEV_TUNNEL_ORIGIN y se permite el
-  // HMR. No se hardcodea (los tuneles son efimeros) ni aplica en produccion.
-  ...(isDev && process.env.DEV_TUNNEL_ORIGIN
-    ? { allowedDevOrigins: [process.env.DEV_TUNNEL_ORIGIN] }
+  // Solo dev: localhost y 127.0.0.1 son ORIGENES DISTINTOS para el navegador; los enlaces de correo
+  // (Mailpit) abren 127.0.0.1:3000 mientras el dev server suele visitarse por localhost, y Next bloquea
+  // el HMR cruzado entre ambos ("Blocked cross-origin request ... /_next/webpack-hmr"). Permitir los dos
+  // elimina ese ruido. Si ademas se expone por un tunel publico (Cloudflare/ngrok) para probar webhooks,
+  // se agrega su origen por DEV_TUNNEL_ORIGIN (no se hardcodea: los tuneles son efimeros). Nada aplica en produccion.
+  ...(isDev
+    ? {
+        allowedDevOrigins: [
+          "localhost",
+          "127.0.0.1",
+          ...(process.env.DEV_TUNNEL_ORIGIN ? [process.env.DEV_TUNNEL_ORIGIN] : []),
+        ],
+      }
     : {}),
 };
 
