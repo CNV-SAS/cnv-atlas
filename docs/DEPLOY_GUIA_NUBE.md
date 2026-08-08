@@ -72,6 +72,13 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 
 Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de abajo no pueden verse nunca. Las cuatro son necesarias para que la app arranque y opere; cárgalas de una vez (si falta una, el arranque falla y descubrirías la siguiente en el próximo intento).
 
+**Dónde vive cada variable (para que la duda no vuelva con cada una).** Hay tres grupos:
+- **Solo en Vercel:** las de producción y las de CONSTRUCCIÓN. Ejemplo: `SENTRY_AUTH_TOKEN` solo se usa al compilar para producción, y eso pasa en Vercel; **NO va en tu `.env.local`**. Igual las llaves de terceros de producción.
+- **Solo en local (`.env.local`):** las de tu entorno de desarrollo (apuntan a tu Supabase local, etc.). Nunca a la nube.
+- **En los dos, con valores DISTINTOS:** las que la app necesita en ambos lados (Supabase, `NEXT_PUBLIC_APP_URL`, ...). En local apuntan a tu entorno local; en Vercel, a la nube.
+
+Regla práctica: **si una variable solo actúa al desplegar o en producción, va solo en Vercel.** Si dudas de una nueva, pregúntate "¿la app la usa cuando corro `pnpm dev` en mi máquina?"; si no, no va en `.env.local`.
+
 2.3 **Redesplegar y confirmar que la app conecta a la base (aún sin tablas).** Con las variables cargadas, dispara un deploy: Vercel → Deployments → Redeploy (o un push a `main`; si el repo ya está conectado, cada push despliega). Cuando quede "Ready", abre `https://atlas.cnvsystem.com` (o la URL `*.vercel.app`).
 - **Verificar:** ya NO sale el error "Faltan `NEXT_PUBLIC_SUPABASE_URL` o `NEXT_PUBLIC_SUPABASE_ANON_KEY`"; carga la pantalla de login. Las consultas a datos aún fallarían (no hay tablas todavía): eso es esperado y se resuelve en el Paso 3. Lo que confirmas aquí es solo que la app ya sabe dónde está la base.
 - **El registro de errores en producción (Sentry) ya está funcionando:** capturó limpio el error de variables faltantes con el mensaje exacto. Una pieza menos que verificar; no hay que configurar nada más de Sentry.
@@ -82,6 +89,10 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 ## Paso 3 — Migraciones y seed
 
 **Qué vas a lograr:** crear las tablas en la base de la nube y cargar los datos mínimos (roles, catálogo de nutracéuticos, encuesta, tu cuenta de admin). Tu computador normalmente apunta a la base LOCAL, así que antes de cada comando le dices que use la de la nube (una variable en la misma ventana de PowerShell) y al terminar lo deshaces. **Tu `.env.local` NO se toca:** se queda apuntando a local; nada de esto edita ese archivo (verificado que Node no pisa esa variable con `.env.local`).
+
+**Dónde correr esto:** la **terminal integrada de VS Code** (la misma donde corres `pnpm dev`), SIN permisos de administrador, y en la carpeta del proyecto (en VS Code ya estás en ella). A diferencia de los pasos siguientes, este SÍ es en la terminal.
+
+**En bloques, uno por uno, NO todo pegado:** corre el bloque 3.1 completo, espera a que termine, y SOLO si salió bien, corre el 3.2. La razón: si las migraciones fallan y sigues igual, el seed correría sobre una base a medias. Espera el resultado de cada uno antes del siguiente.
 
 3.1 **Crear las tablas (migraciones).**
 - **Antes del comando:** la conexión directa a la base puede fallar desde tu máquina (IPv4/firewall). Ten lista la alternativa AHORA: Supabase → Settings → Database → Connection string → **Session pooler** (o Transaction), copia esa cadena. Si el comando falla con timeout o "no route", NO es la contraseña: repites usando la cadena del pooler como `DATABASE_URL`. La app ya funciona con el pooler (`prepare: false`).
@@ -124,6 +135,8 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 
 **Qué vas a lograr:** que la app viva en tu dominio (`atlas.cnvsystem.com`) en vez de la URL de Vercel, y que TODO lo que manda enlaces (correos de recuperación/invitación, encuesta del paciente) apunte ahí. Dos partes: conectar el dominio (4.1) y mover a él lo que aún apunta a otro lado (4.2). En tu caso el dominio ya está validado, así que lo que falta es 4.2, en especial la Site URL y las plantillas de correo de Supabase.
 
+**Dónde se hace:** en consolas web (Vercel, Cloudflare, Supabase), NO en la terminal. Orden: 4.1 antes que 4.2 (no puedes mover cosas al dominio hasta que el dominio exista).
+
 4.1 **Dominio.** El dominio se configura **DESPUÉS del primer deploy** (Paso 2.3), nunca antes: apuntar un dominio a un proyecto sin desplegar solo da error y confunde.
 - **En Vercel primero:** Settings → Domains → agrega `atlas.cnvsystem.com`. Vercel te va a **mostrar el registro DNS exacto** que debes crear (el valor del CNAME). **Usa ese valor, no uno inventado:** puede variar por proyecto (suele ser `cname.vercel-dns.com`, pero confirma el que te muestre Vercel).
 - **En Cloudflare** (zona `cnvsystem.com`): crea el CNAME `atlas` → el valor que te dio Vercel, con el **proxy DESACTIVADO (nube GRIS, "DNS only")**. Este es el error más común: si dejas el proxy activado (nube naranja), Vercel no puede emitir su certificado y salen fallos de SSL que parecen otra cosa. Gris = Vercel maneja el certificado directo.
@@ -144,6 +157,8 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 
 **Qué vas a lograr:** darles a Wompi, Alegra y Resend sus llaves y tu URL pública, para que puedan llamar a la app de vuelta (el webhook de pago) y enviar correos. Todo en modo **sandbox/prueba**: no mueve dinero real. Ahora que existe `https://atlas.cnvsystem.com`, los servicios que necesitan llamarte "de vuelta" ya tienen a dónde.
 
+**Dónde se hace:** cada uno en su consola web (Wompi, Alegra, Resend) y luego cargas sus llaves en Vercel. NO es en la terminal. Los tres son independientes: el orden entre ellos no importa.
+
 5.1 **Wompi (sandbox).** Consola de Wompi (ambiente sandbox): obtén las llaves de sandbox (`public`, `private`, `integrity`, `events`). Registra el webhook/URL de eventos apuntando a `https://atlas.cnvsystem.com/api/webhooks/wompi`. Carga las 4 llaves a Vercel (Paso 2; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública).
 - **Verificar:** Wompi acepta la URL del webhook sin error. (El pago real se prueba en el Paso 6.)
 - **Qué puede salir mal:** que confundas llaves de sandbox con producción (empiezan distinto). Usa las de sandbox.
@@ -158,6 +173,8 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 ## Paso 6 — El smoke de cobro end-to-end (lo que todo esto desbloquea)
 
 **Qué vas a lograr:** probar un cobro completo de punta a punta contra el sandbox de Wompi (pago, webhook, transacción, comisión, factura) sin mover dinero real. **Por qué este es el punto:** el cobro es lo único que nunca se probó de verdad, porque el webhook de Wompi necesita una URL pública y en local corría solo en simulación. Ahora se prueba real (contra el sandbox).
+
+**Dónde se hace:** en el navegador, sobre la app ya publicada (`https://atlas.cnvsystem.com`), y verificando en el dashboard de Supabase. Los pasos 6.1 a 6.4 van EN ORDEN (cada uno depende del anterior). No es en la terminal.
 
 6.1 Entra a `https://atlas.cnvsystem.com`, login como admin (Paso 3.2).
 6.2 Crea un profesional (invítalo) y un paciente mínimo, o usa el flujo que corresponda para llegar a un checkout de nutracéutico.
