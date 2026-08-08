@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useActionState } from "react";
+import { useEffect, useRef, useState, useActionState } from "react";
 
 import { startMfaEnroll, verifyMfaEnrollAction } from "@/modules/auth/mfa-actions";
 import type { AuthFormState } from "@/modules/auth/validations";
 
 type Enroll = { factorId: string; qrCode: string; secret: string };
+type EnrollPromise = ReturnType<typeof startMfaEnroll>;
 
 const initialState: AuthFormState = { error: null };
 
@@ -15,40 +16,48 @@ export function MfaSetup() {
   const [loading, setLoading] = useState(true);
   const [state, action, pending] = useActionState(verifyMfaEnrollAction, initialState);
 
-  // Genera el factor. Si falla (o la accion rechaza), muestra el error y ofrece reintentar: nunca se
-  // queda colgado en "Generando codigo...". El reintento vuelve a llamar a startMfaEnroll, que limpia
-  // el factor a medias del intento anterior antes de crear otro. Solo toca estado en los callbacks
-  // async (no sincronamente dentro del effect).
-  const runEnroll = useCallback((signal?: { active: boolean }) => {
-    startMfaEnroll()
-      .then((r) => {
-        if (signal && !signal.active) return;
-        if (r.ok) setEnroll(r.value);
-        else setLoadError(r.error.message);
-      })
-      .catch(() => {
-        if (signal && !signal.active) return;
-        setLoadError("No se pudo generar el código. Reintenta.");
-      })
-      .finally(() => {
-        if (signal && !signal.active) return;
-        setLoading(false);
-      });
-  }, []);
+  // El enroll se pide UNA sola vez y se cachea en un ref. En modo estricto de React (dev) el effect
+  // corre dos veces; sin el cache se hacian DOS llamadas al servidor que competian y dejaban la
+  // pantalla colgada en "Generando codigo..." (la respuesta llegaba, pero al effect ya desmontado).
+  // Con el ref, la segunda montada reusa la MISMA promesa y el effect que sigue activo aplica la
+  // respuesta. El estado de carga se apaga en TODOS los caminos (exito, error de la accion, rechazo):
+  // nunca se queda cargando con la respuesta en la mano.
+  const enrollPromiseRef = useRef<EnrollPromise | null>(null);
+
+  function applyResult(r: Awaited<EnrollPromise>) {
+    if (r.ok) setEnroll(r.value);
+    else setLoadError(r.error.message);
+  }
 
   useEffect(() => {
-    const signal = { active: true };
-    runEnroll(signal);
+    let active = true;
+    if (!enrollPromiseRef.current) enrollPromiseRef.current = startMfaEnroll();
+    enrollPromiseRef.current
+      .then((r) => {
+        if (active) applyResult(r);
+      })
+      .catch(() => {
+        if (active) setLoadError("No se pudo generar el código. Reintenta.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
     return () => {
-      signal.active = false;
+      active = false;
     };
-  }, [runEnroll]);
+  }, []);
 
-  // Reintento manual (event handler, no effect): aqui si se resetea el estado antes de relanzar.
+  // Reintento manual (event handler): descarta la promesa cacheada y pide un enroll nuevo. startMfaEnroll
+  // limpia el factor a medias del intento anterior antes de crear otro.
   function retry() {
     setLoading(true);
     setLoadError(null);
-    runEnroll();
+    setEnroll(null);
+    const p = startMfaEnroll();
+    enrollPromiseRef.current = p;
+    p.then(applyResult)
+      .catch(() => setLoadError("No se pudo generar el código. Reintenta."))
+      .finally(() => setLoading(false));
   }
 
   if (loadError) {
