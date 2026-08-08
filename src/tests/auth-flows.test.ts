@@ -170,46 +170,51 @@ describe("B2: invitacion y set-password", () => {
   }, 30000);
 });
 
-describe("B2: MFA del admin end-to-end", () => {
+describe("B2: MFA enroll end-to-end", () => {
   it("enroll deja el factor unverified; tras verificar el TOTP queda verified y la sesion en aal2", async () => {
-    const sb = createClient(URL, ANON, { auth: { persistSession: false } });
-    const { error: loginError } = await sb.auth.signInWithPassword({
-      email: "sau.idk001@gmail.com",
-      password: process.env.SEED_ADMIN_PASSWORD!,
+    // Cuenta PROPIA del test, no la del seed. Un test que depende de la clave del admin seed falla en
+    // cuanto un humano la cambia probando en el navegador, y entrena a ignorar los rojos (justo lo que
+    // se corrigio con el flaky de inventario). Mismo criterio que los tests de saldo: cada uno con su dato.
+    const email = `mfa-enroll-${Date.now()}@example.com`;
+    const password = "Mfa-Enroll-Test-123";
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      // handle_new_user materializa el profile desde este meta (organization_id y full_name son NOT NULL).
+      user_metadata: { organization_id: ORG, full_name: "MFA Enroll Test" },
     });
-    expect(loginError).toBeNull();
+    expect(createError).toBeNull();
+    const userId = created!.user!.id;
 
-    // Estado MFA limpio: se borran los factores via SQL (autoritativo e
-    // independiente del AAL). unenroll() desde aal1 no puede quitar un factor
-    // verificado, asi que un factor remanente (p. ej. de una prueba manual)
-    // rompia el enroll siguiente por conflicto de nombre.
-    const {
-      data: { user: adminUser },
-    } = await sb.auth.getUser();
-    await sql`delete from auth.mfa_factors where user_id = ${adminUser!.id}`;
+    try {
+      const sb = createClient(URL, ANON, { auth: { persistSession: false } });
+      const { error: loginError } = await sb.auth.signInWithPassword({ email, password });
+      expect(loginError).toBeNull();
 
-    const { data: enrolled, error: enrollError } = await sb.auth.mfa.enroll({ factorType: "totp" });
-    expect(enrollError).toBeNull();
-    const factorId = enrolled!.id;
+      const { data: enrolled, error: enrollError } = await sb.auth.mfa.enroll({ factorType: "totp" });
+      expect(enrollError).toBeNull();
+      const factorId = enrolled!.id;
 
-    const f1 = await sb.auth.mfa.listFactors();
-    expect(f1.data?.all.find((f) => f.id === factorId)?.status).toBe("unverified");
+      const f1 = await sb.auth.mfa.listFactors();
+      expect(f1.data?.all.find((f) => f.id === factorId)?.status).toBe("unverified");
 
-    const code = totp(enrolled!.totp.secret, Date.now());
-    const { data: challenge } = await sb.auth.mfa.challenge({ factorId });
-    const { error: verifyError } = await sb.auth.mfa.verify({
-      factorId,
-      challengeId: challenge!.id,
-      code,
-    });
-    expect(verifyError).toBeNull();
+      const code = totp(enrolled!.totp.secret, Date.now());
+      const { data: challenge } = await sb.auth.mfa.challenge({ factorId });
+      const { error: verifyError } = await sb.auth.mfa.verify({
+        factorId,
+        challengeId: challenge!.id,
+        code,
+      });
+      expect(verifyError).toBeNull();
 
-    const f2 = await sb.auth.mfa.listFactors();
-    expect(f2.data?.all.find((f) => f.id === factorId)?.status).toBe("verified");
-    const aal = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-    expect(aal.data?.currentLevel).toBe("aal2");
-
-    // Limpieza: deja al admin sin MFA.
-    await sb.auth.mfa.unenroll({ factorId });
+      const f2 = await sb.auth.mfa.listFactors();
+      expect(f2.data?.all.find((f) => f.id === factorId)?.status).toBe("verified");
+      const aal = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      expect(aal.data?.currentLevel).toBe("aal2");
+    } finally {
+      // Limpieza: borra la cuenta del test (con ella se van sus factores). No toca datos del seed.
+      await admin.auth.admin.deleteUser(userId);
+    }
   }, 30000);
 });
