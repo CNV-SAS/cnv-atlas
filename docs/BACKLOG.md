@@ -3,6 +3,24 @@
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
+## BLOQUEANTE DEL HITO 1 — Atlas rechaza el export del Biody BIS (el equipo que CNV SÍ tiene)
+
+**Esto NO es un hallazgo de cotejo: es un bloqueante.** Sin resolverlo, un integrante con su equipo real no puede usar Atlas. Salió del cotejo de la pantalla de Evaluación (EA1 en `COTEJOS_VISUALES.md`), pero la consecuencia lo saca de esa categoría.
+
+**El problema.** Atlas se calibró/validó contra el export del BiodyXpert III / ZM3 (COMPLETO, con espectroscopía Cole-Cole; fixture `biody-*-zm3-anon.json`, comentario de `biody-columns.ts`). El equipo que los integrantes usan es el **Biody BIS**, cuyo export es más corto y NO trae la espectroscopía. `biody-import.ts` exige `Re/Ri/Rinf/C` (`ENGINE_REQUIRED`, `required: true`) y, si faltan, lanza `ClinicalInputError` y **no calcula**. Contexto que lo confirma: **Gildardo ya está construyendo un import para el Biody BIS** precisamente porque su export es distinto y le faltan datos (registro previo; no habíamos conectado la consecuencia).
+
+**Verificación (2026-08-08), respuestas a las tres preguntas:**
+
+- **(a) ¿Qué columnas faltan exactamente?** Las **cuatro de la espectroscopía Cole-Cole**, que son **justo las que el motor exige**. El propio v8 detecta el export incompleto por presencia de estas cuatro (`ESPECTRO_COLS`, v8 L61-62): `'Extracellular resistance '` (Re), `'Intracellular resistance Ω'` (Ri), `'Infinite resistance '` (Rinf), `'Membrane capacitance nF'` (C). No es coincidencia: la detección de Gildardo está construida sobre exactamente los 4 insumos que a Atlas le faltan. (La pantalla manual captura 7: R∞, Re, Ri, C, Fo, Rc, Xc; los otros 3 alimentan el AF por Cole.)
+- **(b) ¿El fallback del HTML es portable? Tamaño de cada pieza por separado:**
+  - **Entrada manual de los 7 parámetros: CHICA y portable.** Es lógica de dominio pura (sin React/localStorage): 7 inputs + `espectroCoherente` (Rc ≈ (Re+R∞)/2, ±1.0 Ω, v8 L86-91) + `espectroAvisosRango` (6 chequeos, L94-105) + opcionalmente `afDesdeCole` (función pura ~40 líneas, ya validada por Gildardo sobre 4.863 registros, L112-151) para el AF si el export corto tampoco lo trae. El grueso no es el formulario, es el plumbing del pipeline: dejar que el motor reciba Re/Ri/Rinf/C de entrada manual cuando el XLSX no los trae, más persistir y auditar. Medio-chico. **Candidato a construir para desbloquear el Hito 1.**
+  - **OCR de la foto de la pantalla del equipo: GRANDE, NO Hito 1.** Lector local de imagen (v8 L304-498), heurística de posición del decimal ("691,8 se lee como 69180"), bucket de Supabase para la imagen ('espectroscopia'), UX "leídos n de 7, verifíquelos". Feature aparte con reliability + almacenamiento + PII (foto de pantalla) propios. Post-Hito 1.
+- **(c) ¿Hay otra vía? ¿Se derivan los 4 de lo que sí viene en el export corto?** **No, según el propio v8.** `afDesdeCole` va en la dirección Cole→AF (un escalar derivado de 5 parámetros; no se invierte de vuelta a los 4). Y `derivarFaltantes` (v8 L158-193) deriva MUCHAS cosas del export corto (FFW, ECW_sg, ICW_sg, protActiva, MCA, `IR = Z200/Z5`), pero **NO deriva Re/Ri/Rinf/C**: los captura a mano/OCR. Si fueran derivables de las columnas que sí vienen, Gildardo (que escribió ambas cosas) lo habría hecho en vez de construir la captura. La palabra definitiva es de él (está construyendo ese import), pero su propio código ya elige capturar, no derivar.
+
+**Decisión pendiente de Santiago:** confirmar qué export produce el equipo real. El registro dice que es distinto, así que probablemente la respuesta es la mala (el corto). Si es el corto: construir la **entrada manual de los 7 parámetros** (pieza chica) es el camino mínimo para desbloquear; el OCR queda para después.
+
+**Relación con otras entradas:** conecta con "El import del Biody es frágil por igualdad exacta de headers" (`_rescatar` de Gildardo v8 §3.2-3.6, más abajo en este doc): esa robustez y esta captura manual son el mismo bloque de "hacer tratable el import del Biody BIS". Coordinar con Gildardo, que ya trabaja en ello.
+
 ## Prioritario / entrante — Exposición de funciones de Gildardo (entrega recibida 2026-07-24)
 
 Distinto del resto del BACKLOG (que es diferido post-MVP): esto es **trabajo prioritario**. Las 4 entradas de `FROZEN_EXPORTS_REQUEST.md` fueron **respondidas por Gildardo (2026-07-21)**. Q6/Q7/Q8 resueltas (ver `GILDARDO_QUERIES.md`).

@@ -146,3 +146,61 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 - **Candidatos → Gildardo (nomenclatura clínica, NO tocar sin su palabra):** A3 IFC, A5 PABU, A6 ICA-BIS, A7 ISCM, A8 IEHH (nombres largos que difieren en significado), B5 (severidad Leve/Alto vs Vigilancia/Crítico), A4/A11 (escala IRC ×10). El HTML se contradice a sí mismo en varios; por eso van a él, no los adivino.
 - **Coinciden (verificado):** los 5 dominios DFI, los niveles de riesgo, 5 de las 6 tarjetas EFR, los ejes y la numeración de la Diana, el aviso de exploración, los decimales de AF, FMI/FFMI/IAE.
 - **Deliberadas (ignorar):** EB (no "edad biológica"), Nutracéuticos (no Vitacellebis), sin emoji, página única vs pestañas.
+
+---
+
+## EVALUACIÓN (entrada de datos) — tabla de registro (pre-llena, 2026-08-08)
+
+**Cómo leer esto.** Esta es la pantalla DONDE ENTRAN LOS DATOS, así que una divergencia puede no ser cosmética: si el HTML CAPTURA un campo y Atlas no, es un dato que falta, no una diferencia de forma. Separo abajo **CAPTURA** (lo grave) de **PRESENTACIÓN**. En el HTML v8 la entrada está repartida en tres superficies (Datos personales/encuesta, módulo Antropometría & BIS, y verificación de condiciones BIA); en Atlas está en la pestaña Evaluación (consentimiento + encuesta en solo lectura + condiciones BIS + import). Fuente HTML: `ModAntropometria` ~L6095/L7400, `BIAQualityCheck` ~L11859, import ~L7237.
+
+### A. CAPTURA crítica: ¿el v8 captura algo que Atlas no? (verificado contra código)
+
+| # | Elemento | HTML v8 captura | Atlas captura | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| EA1 | **Espectroscopía cuando el export es INCOMPLETO** (Biody BIS, sin Cole-Cole) | Sí: entrada manual de los 7 parámetros (R∞, Re, Ri, C, Fo, Rc, Xc) **y** lectura por OCR de una foto del equipo | **NO.** `ENGINE_REQUIRED` exige Re/Ri/Rinf/C en el XLSX; si faltan, `biody-import.ts` lanza `ClinicalInputError` y no calcula. Sin fallback manual ni foto | **NO es cotejo: es BLOQUEANTE del Hito 1** | Registrado y verificado (a/b/c) en `BACKLOG.md` → "BLOQUEANTE DEL HITO 1". Deja esta pantalla; se trata allá |
+| EA2 | **Corrección manual de peso/talla/cintura/cadera** (si el archivo falta o llegó mal) | Sí: editables a mano aunque vengan del Excel (`DPEdit`) | **NO.** Vienen solo del import; peso/talla `required`. Sin edición a mano | candidato → decisión | ¿Deliberado (procedencia: la medida es del equipo, no se teclea) o hueco? Preguntar |
+| EA3 | **Demografía extendida**: etnia/grupo poblacional, nivel educativo, ocupación, estado civil, estrato | Sí (pantalla de datos personales) | **NO.** `patient_profiles` tiene nombre, documento, nacimiento, sexo, país, ciudad, email, teléfono; no los otros 5 | candidato (intake-scope) | Ninguno los consume el motor ANI-BIS-E. Va al cotejo de Encuesta; decidir si se registran |
+
+### B. Condiciones de la toma BIA (captura, verbatim)
+
+| # | Elemento | HTML v8 | Atlas | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| EB1 | Las 11 preguntas compartidas (placas, prótesis, marcapasos, café/alimentos, baño, ejercicio, diurético+cuál, accesorios, embarazo, menstruación, ciclo) | idénticas (verbatim) | idénticas | **coincide** | ninguna |
+| EB2 | **Efecto de marcapasos y embarazo** | informativo (ámbar/verde); **NO bloquea** la medición | marcapasos **bloquea el import** (contraindicación absoluta); embarazo exige reconocimiento consciente + comité de ética | **deliberada** (Atlas es más estricto por seguridad; la fidelidad al HTML es a la forma, no a quitar un candado) | ninguna; NO copiar el no-bloqueo del HTML |
+| EB3 | Condiciones de validez: amputación, edema/anasarca, febril/deshidratación | no existen | Atlas las AÑADE (reserva de validez) | **deliberada** (Atlas captura más) | ninguna |
+| EB4 | Semana del ciclo (cuando no menstrúa) | select de 4 fases nombradas ("Fase menstrual (días 1-7)"...) | input numérico 1-6 sin nombres de fase | hallazgo (menor, captura) | ¿adoptar las fases nombradas? decidir; bajo |
+
+### C. PRESENTACIÓN (no captura)
+
+| # | Elemento | HTML v8 | Atlas | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| EC1 | Peso meta: feedback | muestra "Meta lograda ✓" / "Falta −X kg" / clasificación IMC (Bajo peso/Normal/Sobrepeso/Obesidad) | captura el número (opcional); el veredicto vive en Composición/Diagnóstico | hallazgo (menor, presentación) | ¿mostrar el delta meta-vs-actual en la entrada? decidir; bajo |
+| EC2 | Cortes de referencia junto a fuerza prensil / ASMI / AF ("Bajo <27/<16 Kgf") | sí, en la tabla | no en la entrada (van en Diagnóstico) | deliberada (separación entrada/diagnóstico) | ninguna |
+| EC3 | Unidad de fuerza prensil | "Kgf" | "kg" | hallazgo (trivial) | alinear rótulo; muy bajo |
+| EC4 | Estructura | 3 superficies (personales, antropometría, BIA quality) con su orden | pestaña única: consentimiento → encuesta (solo lectura) → condiciones → import | deliberada (arquitectura) | ninguna; cotejar elemento a elemento |
+
+### D. Decisiones deliberadas ya tomadas (que NO reaparezcan como hallazgo)
+
+| Decisión | Por qué | Ref |
+|---|---|---|
+| **Cintura se lee de "Waist Size cm" (medida), NO del umbral que mapea Gildardo** (col REFERENCEESTIMEEEXPORT = 102 fijo) | Su mapeo apunta al umbral OMS, no a la medida; se corrigió el falso positivo CV | `biody-columns.ts` (comentario), consulta a Gildardo pendiente (¿su mapeo es deliberado?) |
+| **Marcapasos bloquea, embarazo exige reconocimiento** (el HTML no bloquea) | Candado de seguridad clínica; fidelidad a la forma, no a quitar un control | EB2 |
+| **Import solo XLSX, medidas no editables a mano** | Procedencia: la medida es del equipo (a confirmar si es decisión o hueco, ver EA2) | EA2 |
+| **Peso meta y fuerza prensil opcionales** | Decididas en el sub-bloque B de Evaluación | memoria del bloque |
+
+### Pregunta operativa antes de Hito 1 (sale de EA1)
+
+**¿Qué export produce el equipo real de CNV (Biody BIS ZM)?** El código de Atlas se validó contra un export COMPLETO (BiodyConnect android v1.2.2, 94/94 columnas, con espectroscopía). Pero el HTML anticipa un export INCOMPLETO (Biody BIS 91 col, sin Cole-Cole) y por eso trae la entrada manual + OCR. Si el equipo real produce el incompleto, **Atlas hoy no puede procesar esas mediciones** (falla en voz alta, sin fallback) y habría que construir la captura manual de los 7 parámetros. Es la divergencia más seria de esta pantalla y conviene resolverla antes de cerrar el Hito 1.
+
+### Para Santiago (requiere OJOS)
+
+- **[OJOS]** Que la tabla de condiciones BIA se lea igual (colores Sí/No, prominencia del bloqueo de marcapasos vs el ámbar del HTML).
+- **[OJOS]** Layout de la entrada (Atlas pestaña única vs 3 superficies del HTML): que el flujo se sienta natural.
+- **[OJOS]** El feedback de peso meta (EC1) y si su ausencia en la entrada se echa de menos.
+
+### Resumen de la pasada (para el BACKLOG)
+
+- **Hallazgo serio (pre-Hito 1):** EA1, el fallback de espectroscopía para exports incompletos. Depende de qué export da el equipo real; preguntar YA.
+- **Candidatos → decisión:** EA2 (edición manual de medidas), EA3 (demografía extendida, intake-scope), EB4 (fases del ciclo), EC1 (feedback peso meta), EC3 (unidad Kgf).
+- **Coinciden:** las 11 condiciones BIA verbatim, meta de peso y fuerza prensil capturadas, import XLSX, consentimiento como puerta.
+- **Deliberadas (ignorar):** marcapasos/embarazo bloquean (más estricto), 3 condiciones de validez añadidas, cintura de la medida no del umbral, entrada/diagnóstico separados, pestaña única.
