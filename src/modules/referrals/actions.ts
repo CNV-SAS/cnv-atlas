@@ -10,7 +10,7 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { getReferralOwnership, getTreatmentPatient } from "./data/referrals-reader";
 import { writeCreateReferral, writeMarkReturn } from "./data/referrals-writer";
 import { canRegisterReferral } from "./policies/can-register-referral";
-import { createReferralSchema, markReturnSchema, type ReferralFormState } from "./validations";
+import { createReferralSchema, isFutureDate, markReturnSchema, type ReferralFormState } from "./validations";
 
 function optStr(formData: FormData, k: string): string | undefined {
   const v = String(formData.get(k) ?? "").trim();
@@ -41,6 +41,9 @@ export async function createReferralFormAction(
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos de la remisión inválidos.", success: null };
+  }
+  if (isFutureDate(parsed.data.referredAt)) {
+    return { error: "La fecha de la remisión no puede ser futura. Registra un acto ya ocurrido.", success: null };
   }
 
   // Pertenencia: el reader RLS resuelve el paciente del tratamiento; null = no es su paciente (o no existe).
@@ -91,6 +94,9 @@ export async function markReturnFormAction(
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos del retorno inválidos.", success: null };
+  }
+  if (isFutureDate(parsed.data.returnedAt)) {
+    return { error: "La fecha del retorno no puede ser futura. Registra un acto ya ocurrido.", success: null };
   }
 
   const own = await getReferralOwnership(parsed.data.referralId);

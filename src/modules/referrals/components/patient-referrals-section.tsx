@@ -14,13 +14,28 @@ function targetLabel(r: PatientReferral): string {
   return r.referredTo === "otro" ? (r.referredToOther ?? "Otro") : TARGET_LABEL[r.referredTo];
 }
 
-// Cuánto lleva PENDIENTE (referredAt -> ahora). Una remisión de hace meses sin retorno dice algo.
+// Cuánto lleva PENDIENTE (referredAt -> ahora). Una remisión de hace meses sin retorno dice algo. El
+// max(0, ...) evita que una fecha por accidente igual o adelantada muestre un valor raro (las futuras ya
+// se rechazan al registrar; esto es defensa por si un dato viejo la trae): nunca menos de "hoy".
 function pendingLabel(referredAt: string, nowMs: number): string {
-  const days = Math.floor((nowMs - new Date(referredAt).getTime()) / 86_400_000);
+  const days = Math.max(0, Math.floor((nowMs - new Date(referredAt).getTime()) / 86_400_000));
   if (days < 1) return "hoy";
   if (days < 30) return `pendiente hace ${days} día${days === 1 ? "" : "s"}`;
   const months = Math.floor(days / 30);
   return `pendiente hace ${months} mes${months === 1 ? "" : "es"}`;
+}
+
+// De qué consulta salió la remisión (item de smoke): con varias consultas y remisiones, sin esto la lista
+// no se lee. null si el embed no resolvió (dato viejo): se omite la línea en vez de mostrar vacío.
+function sourceLabel(r: PatientReferral): string | null {
+  if (!r.sourceEvaluationType || !r.sourceEvaluationDate) return null;
+  const tipo = r.sourceEvaluationType === "inicial" ? "evaluación inicial" : "consulta de seguimiento";
+  const fecha = new Date(r.sourceEvaluationDate).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `De la ${tipo} del ${fecha}`;
 }
 
 // Remisiones del paciente (D-009). Distingue PENDIENTES (sin retorno, siguen abiertas) de CERRADAS (con
@@ -63,6 +78,9 @@ export async function PatientReferralsSection({
                     <span className="text-sm font-medium text-foreground">{targetLabel(r)}</span>
                     <span className="text-xs text-clinical-warning">{pendingLabel(r.referredAt, nowMs)}</span>
                   </div>
+                  {sourceLabel(r) ? (
+                    <span className="text-xs text-muted-foreground">{sourceLabel(r)}</span>
+                  ) : null}
                   <p className="text-sm text-muted-foreground">{r.reason}</p>
                   {canMarkReturn ? (
                     <div className="pt-1">
@@ -85,6 +103,9 @@ export async function PatientReferralsSection({
                     <span className="text-sm font-medium text-foreground">{targetLabel(r)}</span>
                     <span className="text-xs text-muted-foreground">Volvió el {r.returnedAt}</span>
                   </div>
+                  {sourceLabel(r) ? (
+                    <span className="text-xs text-muted-foreground">{sourceLabel(r)}</span>
+                  ) : null}
                   <p className="text-sm text-muted-foreground">{r.reason}</p>
                   {r.returnNotes ? (
                     <p className="text-xs text-muted-foreground">Nota: {r.returnNotes}</p>

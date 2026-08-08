@@ -42,3 +42,13 @@ export const markReturnSchema = z.object({
 export type MarkReturnInput = z.infer<typeof markReturnSchema>;
 
 export type ReferralFormState = { error: string | null; success: string | null };
+
+// El acto que se registra es HABER remitido (o que el paciente HAYA vuelto): un acto no ocurre en el futuro.
+// La fecha puede ser hoy o anterior (registrar despues algo que se hizo antes), nunca posterior a hoy. Se
+// valida en el server (fuente de verdad); el input tiene `max` como primer filtro de UX. Comparacion lexica
+// de "yyyy-mm-dd", que ordena como fecha. Sin arg, `todayIso` es hoy en base UTC (la misma que usa el default
+// del formulario); se acepta el parametro para poder testear determinista.
+export function isFutureDate(dateStr: string, todayIso?: string): boolean {
+  const today = todayIso ?? new Date().toISOString().slice(0, 10);
+  return dateStr > today;
+}

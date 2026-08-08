@@ -54,6 +54,7 @@ export function MarkReturnForm({
           name="returnedAt"
           type="date"
           defaultValue={today}
+          max={today}
           required
           className="h-9 w-40"
         />

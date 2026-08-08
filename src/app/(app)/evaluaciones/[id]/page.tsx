@@ -22,6 +22,7 @@ import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
+import { getPendingReferralHints } from "@/modules/referrals/data/referrals-reader";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
@@ -205,11 +206,21 @@ export default async function ResultadosEvaluacionPage({
   const patron = resolvePatronView(entrySurvey ?? []);
 
   // D-009: el registro de remisión se ofrece al profesional que atiende, anclado al treatmentId sellado.
-  // `today` para el default de fecha (página dinámica; el tiempo de request es el correcto).
+  // `today` para el default de fecha (página dinámica; el tiempo de request es el correcto). Las remisiones
+  // pendientes de retorno alimentan el aviso suave de repetida (solo si hay treatmentId al que anclar).
   const referralToday = new Date().toISOString().slice(0, 10);
+  const referralPendingHints =
+    actorProfession.isProfessional && protocol?.treatmentId
+      ? await getPendingReferralHints(protocol.treatmentId)
+      : [];
   const referralRegister =
     actorProfession.isProfessional && protocol?.treatmentId
-      ? { treatmentId: protocol.treatmentId, today: referralToday, actorProfession: actorProfession.profession }
+      ? {
+          treatmentId: protocol.treatmentId,
+          today: referralToday,
+          actorProfession: actorProfession.profession,
+          pendingHints: referralPendingHints,
+        }
       : undefined;
 
   // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se computa en tiempo de vista

@@ -53,26 +53,73 @@ export type PatientReferral = {
   referredAt: string;
   returnedAt: string | null;
   returnNotes: string | null;
+  // De QUE consulta salio la remision (via treatment -> diagnosis -> evaluation): con varias consultas y
+  // varias remisiones, sin esto la lista no se lee. null solo si el embed no resolvio (dato viejo).
+  sourceEvaluationType: "inicial" | "seguimiento" | null;
+  sourceEvaluationDate: string | null;
 };
 
 // Remisiones de un paciente (para la lista donde se marca el retorno). Por patient_id: SOBREVIVEN a las
 // correcciones (el treatment vigente cambia; el acto queda). Mas recientes primero. RLS filtra a las del
-// profesional del paciente (y admin).
+// profesional del paciente (y admin). Trae el tipo y fecha de la evaluacion de origen (treatment_id no cambia
+// aunque el treatment vigente si; el ancla es fiel al acto).
 export async function listPatientReferrals(patientId: string): Promise<PatientReferral[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("referrals")
-    .select("id, referred_to, referred_to_other, reason, referred_at, returned_at, return_notes")
+    .select(
+      "id, referred_to, referred_to_other, reason, referred_at, returned_at, return_notes, treatments!inner(diagnoses!inner(evaluations!inner(type, created_at)))",
+    )
     .eq("patient_id", patientId)
     .order("referred_at", { ascending: false });
   if (error) throw new Error(`referrals-reader: listPatientReferrals: ${error.message}`);
+  return (data ?? []).map((r) => {
+    const treatment = one(r.treatments as { diagnoses: unknown } | { diagnoses: unknown }[] | null);
+    const diag = one(treatment?.diagnoses as { evaluations: unknown } | { evaluations: unknown }[] | null);
+    const evalRow = one(
+      diag?.evaluations as
+        | { type: string; created_at: string }
+        | { type: string; created_at: string }[]
+        | null,
+    );
+    return {
+      id: r.id,
+      referredTo: r.referred_to as ReferralTargetValue,
+      referredToOther: r.referred_to_other,
+      reason: r.reason,
+      referredAt: r.referred_at,
+      returnedAt: r.returned_at,
+      returnNotes: r.return_notes,
+      sourceEvaluationType:
+        evalRow?.type === "inicial" || evalRow?.type === "seguimiento" ? evalRow.type : null,
+      sourceEvaluationDate: evalRow?.created_at ?? null,
+    };
+  });
+}
+
+export type PendingReferralHint = {
+  referredTo: ReferralTargetValue;
+  referredToOther: string | null;
+  referredAt: string;
+};
+
+// Remisiones PENDIENTES de retorno del paciente de un tratamiento, para avisar al registrar una repetida
+// (aviso suave: aqui el riesgo es desorden en el registro, no un doble cobro como en nutraceuticos; no
+// bloquea, solo advierte). Resuelve el paciente via la RLS del treatment (misma pertenencia que el registro).
+export async function getPendingReferralHints(treatmentId: string): Promise<PendingReferralHint[]> {
+  const ctx = await getTreatmentPatient(treatmentId);
+  if (!ctx) return [];
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("referrals")
+    .select("referred_to, referred_to_other, referred_at")
+    .eq("patient_id", ctx.patientId)
+    .is("returned_at", null)
+    .order("referred_at", { ascending: false });
+  if (error) throw new Error(`referrals-reader: getPendingReferralHints: ${error.message}`);
   return (data ?? []).map((r) => ({
-    id: r.id,
     referredTo: r.referred_to as ReferralTargetValue,
     referredToOther: r.referred_to_other,
-    reason: r.reason,
     referredAt: r.referred_at,
-    returnedAt: r.returned_at,
-    returnNotes: r.return_notes,
   }));
 }

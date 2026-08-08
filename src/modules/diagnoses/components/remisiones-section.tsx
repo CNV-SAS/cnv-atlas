@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildRemisiones, type RutaContent } from "@/clinical-engine/rutas-content";
 import { RegisterReferralForm } from "@/modules/referrals/components/register-referral-form";
+import type { PendingReferralHint } from "@/modules/referrals/data/referrals-reader";
 
 // Sección 3 del Tratamiento: las remisiones AGREGADAS de las rutas activas (médico / entrenador-
 // fisioterapeuta / psicólogo con remisión). Presentación pura desde el contenido congelado en el
@@ -24,7 +25,13 @@ export function RemisionesSection({
   register,
 }: {
   rutas: RutaContent[];
-  register?: { treatmentId: string; today: string; actorProfession: string | null };
+  register?: {
+    treatmentId: string;
+    today: string;
+    actorProfession: string | null;
+    // Remisiones del paciente pendientes de retorno: para el aviso suave de repetida (D-009 smoke).
+    pendingHints?: PendingReferralHint[];
+  };
 }) {
   const remisiones = buildRemisiones(rutas);
 
@@ -43,6 +50,11 @@ export function RemisionesSection({
             // Auto-remisión: la ruta remite a la MISMA profesión del que atiende = conducta propia, no
             // remisión (D-009). No se ofrece registrar; la redacción "conducta propia" espera a Gildardo (Q32).
             const esConductaPropia = register != null && rem.referralTarget === register.actorProfession;
+            // Indicaciones de OTRAS rutas al MISMO destino (item de smoke): para anexarlas y no remitir dos
+            // veces al mismo médico. No fusiona las rutas; solo ahorra el copiar y pegar.
+            const siblingReasons = remisiones
+              .filter((o, oi) => oi !== i && o.referralTarget === rem.referralTarget && o.indicaciones.length)
+              .map((o) => o.indicaciones.join("; "));
             return (
               <div key={`${rem.rutaId}-${rem.profesional}-${i}`} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -68,6 +80,8 @@ export function RemisionesSection({
                     today={register.today}
                     prefillTarget={rem.referralTarget}
                     prefillReason={rem.indicaciones.join("; ")}
+                    siblingReasons={siblingReasons}
+                    pendingHints={register.pendingHints}
                     fromRoute
                   />
                 ) : null}
@@ -86,7 +100,11 @@ export function RemisionesSection({
             <span className="text-xs text-muted-foreground">
               ¿Remites por criterio propio, aunque el modelo no lo indique? Regístralo:
             </span>
-            <RegisterReferralForm treatmentId={register.treatmentId} today={register.today} />
+            <RegisterReferralForm
+              treatmentId={register.treatmentId}
+              today={register.today}
+              pendingHints={register.pendingHints}
+            />
           </div>
         ) : null}
       </CardContent>
