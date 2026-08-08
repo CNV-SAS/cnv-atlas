@@ -486,6 +486,26 @@
 
 ---
 
+## Q32 · D-009 Parte B: la redacción de "conducta propia" (seguimiento concreto de Q23)
+
+- **Fecha:** 2026-08-08. **Estado:** ABIERTA. Es el seguimiento de tu decisión de Q23 (RONDA 2026-08-03 §5.71): *"Cuando la ruta remite a la misma profesión del que está atendiendo, no es una remisión. Es conducta propia... Corrijan la redacción en ese sentido para todas las rutas."* Diste la dirección + un ejemplo; falta el texto exacto (es tu autoría de comunicación, y es una modificación autorizada del frozen, necesita tu OK antes de producción).
+- **La lista concreta (del frozen, componentes con `remision===true`):** un profesional se auto-remite en:
+
+  | Ruta | Remite a | Auto-remisión cuando atiende un... |
+  |---|---|---|
+  | R1 | médico | médico |
+  | R2 | médico, psicológico, ejercicio | médico / psicólogo / deportólogo |
+  | R3 | médico, psicológico, ejercicio | médico / psicólogo / deportólogo |
+  | R4 | médico, psicológico, ejercicio | médico / psicólogo / deportólogo |
+  | R5 | médico | médico |
+  | R6 | (ninguna) | — |
+
+  O sea: un **médico** en R1-R5; un **psicólogo** en R2-R4; un **deportólogo** en R2-R4 (componente "ejercicio"); un **nutricionista** nunca (el nutricional no remite).
+- **Pregunta 1 (redacción):** hoy el texto dice, p. ej., "Remisión médica si hipertensión o diabetes activa". Para el que atiende su propia profesión, ¿cómo debe presentarse la conducta propia? ¿Un texto genérico ("En esta consulta te corresponde: [indicaciones]") o uno por ruta? Redactamos nosotros en tu dirección y tú apruebas.
+- **Pregunta 2 (salvedad):** el componente del frozen rotula el destino como **"Entrenador/Fisioterapeuta"**, pero nuestra profesión del modelo se llama **deportólogo**. ¿Son la misma figura (el deportólogo cubre "ejercicio", y entonces se auto-remite en R2-R4), o el modelo contempla una CUARTA figura (entrenador/fisioterapeuta) distinta del deportólogo? De esto depende quién se auto-remite en el componente ejercicio.
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
