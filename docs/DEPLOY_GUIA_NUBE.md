@@ -198,9 +198,19 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 
 **Dónde se hace:** cada uno en su consola web (Wompi, Alegra, Resend) y luego cargas sus llaves en Vercel. NO es en la terminal. Los tres son independientes: el orden entre ellos no importa.
 
-5.1 **Wompi (sandbox).** Consola de Wompi (ambiente sandbox): obtén las llaves de sandbox (`public`, `private`, `integrity`, `events`). Registra el webhook/URL de eventos apuntando a `https://atlas.cnvsystem.com/api/webhooks/wompi`. Carga las 4 llaves a Vercel (Paso 2; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública).
+5.1 **Wompi (sandbox).** Consola de Wompi, ambiente **sandbox**.
+- **Registra el webhook / URL de eventos** apuntando exactamente a `https://atlas.cnvsystem.com/api/webhooks/wompi` (ruta verificada en la app). Esto es lo nuevo: en local corría en simulación; aquí Wompi te llama de verdad.
+- **Las 4 llaves de sandbox, mapeo exacto** (si ya las cargaste antes en Vercel, confírmalas; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública):
+
+| Llave en Wompi (sandbox) | Empieza por | Variable en Vercel |
+|---|---|---|
+| Public | `pub_test_` | `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` |
+| Private | `prv_test_` | `WOMPI_PRIVATE_KEY` |
+| Integrity | (secreto de integridad) | `WOMPI_INTEGRITY_SECRET` |
+| Events | (secreto de eventos) | `WOMPI_EVENTS_SECRET` |
+
+- **Confirmar que apunta a SANDBOX sin depender de mirar bien Vercel:** la llave pública es `NEXT_PUBLIC_`, así que viaja al navegador. Wompi decide el ambiente **por el prefijo de la llave** (no hay una URL de API aparte), así que ese prefijo ES la confirmación. Al llegar al checkout (Paso 6.3), antes de pagar, mira el código fuente / la pestaña Network: la llave pública **debe empezar por `pub_test_`**, no `pub_prod_`. Si dice `pub_prod_`, el Paso 6 movería dinero real: cámbiala antes de pagar.
 - **Verificar:** Wompi acepta la URL del webhook sin error. (El pago real se prueba en el Paso 6.)
-- **Qué puede salir mal:** que confundas llaves de sandbox con producción (empiezan distinto). Usa las de sandbox.
 
 5.2 **Alegra (sandbox).** Consola de Alegra: credenciales de sandbox; carga a Vercel. (La factura se prueba en el Paso 6, tras el pago.)
 
@@ -215,16 +225,31 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 
 **Dónde se hace:** en el navegador, sobre la app ya publicada (`https://atlas.cnvsystem.com`), y verificando en el dashboard de Supabase. Los pasos 6.1 a 6.4 van EN ORDEN (cada uno depende del anterior). No es en la terminal.
 
-6.1 Entra a `https://atlas.cnvsystem.com`, login como admin (Paso 3.2).
-6.2 Crea un profesional (invítalo) y un paciente mínimo, o usa el flujo que corresponda para llegar a un checkout de nutracéutico.
-6.3 Genera el checkout de un nutracéutico y paga con una tarjeta de PRUEBA del sandbox de Wompi (las da su documentación).
-6.4 **Verificar la cadena, paso por paso** (esto es lo que evita "no sé dónde falló"):
+6.1 **Trabajo previo (la base está vacía salvo el admin): necesitas un profesional y un paciente en la nube.** Para llegar a un checkout de nutracéutico:
+- Login como admin (Paso 3.2) → **invita un profesional** (se crea con la invitación; le llega el correo, que ya funciona).
+- El profesional **acepta la invitación, fija su clave, configura su MFA y entra**.
+- Como profesional, lleva un **paciente** por el flujo (intake/evaluación/tratamiento) hasta donde se genera un checkout de nutracéutico. **Esto es setup real, no un clic:** cuéntalo como parte del smoke, no como paso instantáneo.
+
+6.2 **Gate anti-dinero-real: confirma SANDBOX antes de pagar.** En el checkout, ANTES de meter la tarjeta, verifica que la llave pública de Wompi en la página empiece por `pub_test_` (código fuente / Network, ver Paso 5.1). Si es `pub_prod_`, PARA y cámbiala: con producción, el pago sería real.
+
+6.3 **Paga con los datos de PRUEBA de Wompi (sandbox).** Fuente: [doc oficial de datos de prueba de Wompi](https://docs.wompi.co/docs/colombia/datos-de-prueba-en-sandbox/) (cambia con el tiempo, úsala como referencia viva). Al escribir esto: tarjeta general de prueba `4242 4242 4242 4242`, y el sandbox permite **forzar el resultado** (aprobado / rechazado / error); **cualquier otra tarjeta da error**. Para el smoke necesitas un resultado **aprobado**.
+
+6.4 **Verifica la cadena, eslabón por eslabón** (para saber DÓNDE falló, no solo QUE falló):
 - Wompi muestra el pago aprobado (sandbox).
-- Supabase → `payment_webhook_events`: llegó un evento (idempotente por `provider`+`external_id`). **Si no llegó, el problema es el webhook** (URL, firma `WOMPI_EVENTS_SECRET`).
-- `transactions`: la transacción quedó en `paid`.
+- Supabase → `payment_webhook_events`: llegó un evento (idempotente por `provider`+`external_id`). **Si no llegó, es el webhook** (URL mal registrada, o firma `WOMPI_EVENTS_SECRET` que no valida).
+- `transactions`: la transacción quedó en `paid`. Si hay evento pero no pasa a `paid`, es el mapeo de estado.
 - `cnv_revenue` y `professional_revenue`: se generaron (la comisión con la tasa sellada).
-- Alegra (sandbox): se creó la factura borrador.
-- **Qué puede salir mal y dónde mirar:** si el pago aprueba pero no hay evento en `payment_webhook_events`, es el webhook (URL mal registrada, o firma que no valida). Si hay evento pero la transacción no pasa a `paid`, es el mapeo de estado. Si la transacción paga pero no hay factura, es Alegra. Cada eslabón se verifica solo, así el fallo se aísla.
+- Alegra (sandbox): se creó la factura borrador. Si la transacción paga pero no hay factura, es Alegra.
+
+6.5 **Si falla a mitad, se puede limpiar.** Un pago fallido deja filas de prueba en `transactions` (y quizá en `payment_webhook_events`). Esas tablas NO tienen trigger de inmutabilidad, así que se borran por SQL (Supabase → SQL Editor). Como es la base de producción ("real desde el día uno"), conviene dejarla limpia; borra SOLO las filas de prueba, identificándolas primero:
+  ```sql
+  -- 1. Mira las filas recientes y anota el id de la de prueba:
+  select id, status, created_at from transactions order by created_at desc limit 5;
+  -- 2. Borra primero el evento del webhook asociado (revisa el nombre de la columna FK en esa tabla), luego la transaccion:
+  delete from payment_webhook_events where transaction_id = '<id-de-prueba>';
+  delete from transactions where id = '<id-de-prueba>';
+  ```
+  Si el pago SÍ pasó de punta a punta, **NO borres nada**: es tu primer cobro verificado.
 
 **Cuando esto pasa de punta a punta, el cobro está verificado por primera vez.** Pasar Wompi/Alegra a producción después es cambiar las credenciales de sandbox por las de producción en Vercel (Paso 2) y re-registrar el webhook con las llaves de producción; el código no cambia.
 
