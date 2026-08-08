@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
   if (error) {
-    redirect("/login?error=enlace_expirado");
+    // Se pasa el tipo para que /login muestre el mensaje correcto: una invitacion vencida la resuelve
+    // el admin (re-invitar); una recuperacion vencida la resuelve el usuario (/forgot-password).
+    redirect(`/login?error=enlace_expirado&tipo=${type}`);
   }
 
   const cookieStore = await cookies();
