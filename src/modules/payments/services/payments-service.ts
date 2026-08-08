@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 
 import { baseFromTotal } from "@/core/iva";
+import { missingEnvMessage } from "@/lib/env/missing-env";
 import { createAlegraInvoice } from "@/lib/alegra/client";
 import { computeIntegritySignature } from "@/lib/wompi/signatures";
 import type { CurrentUser } from "@/modules/auth/roles";
@@ -104,9 +105,12 @@ export type WompiCheckoutParams = {
 export function buildWompiCheckoutParams(view: CheckoutView): WompiCheckoutParams {
   const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
   const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
-  if (!integritySecret || !publicKey) {
-    throw new Error("Faltan NEXT_PUBLIC_WOMPI_PUBLIC_KEY o WOMPI_INTEGRITY_SECRET");
-  }
+  const missing = missingEnvMessage({
+    NEXT_PUBLIC_WOMPI_PUBLIC_KEY: publicKey,
+    WOMPI_INTEGRITY_SECRET: integritySecret,
+  });
+  if (missing) throw new Error(missing);
+  // missingEnvMessage ya lanzo si faltaba alguna; el `!` es solo para el narrowing de TS.
   const amountInCents = Math.round(Number(view.amount) * 100);
   const reference = view.id;
   const currency = view.currency;
@@ -114,11 +118,11 @@ export function buildWompiCheckoutParams(view: CheckoutView): WompiCheckoutParam
     reference,
     amountInCents,
     currency,
-    integritySecret,
+    integritySecret: integritySecret!,
   });
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
   return {
-    publicKey,
+    publicKey: publicKey!,
     currency,
     amountInCents,
     reference,

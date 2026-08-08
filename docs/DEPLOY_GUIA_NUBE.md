@@ -60,7 +60,7 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 - Agrega también `ENABLE_EXPERIMENTAL_COREPACK=1` (para que Vercel use pnpm 11 y respete las protecciones de supply chain).
 - **De dónde sale cada una:** Supabase (Paso 1), Wompi/Alegra/Resend (Paso 5), Groq/Gemini/Upstash/Sentry (sus consolas). Si un valor sale de otro paso, ese paso lo dice.
 - **Verificar:** cuéntalas contra la lista de `DEPLOY.md`; que ninguna sensible tenga `NEXT_PUBLIC_`.
-- **Qué puede salir mal:** una variable en el scope equivocado (p. ej. solo Production) hace que los Preview fallen. Cárgalas en los tres.
+- **Qué puede salir mal (fallo SILENCIOSO, le pasó a Santiago):** en Vercel cada variable se marca **por ambiente** (Production / Preview / Development). Si una queda **solo en Development**, producción **no la ve, y el deploy NO da error**: la app despliega bien y la variable falta recién cuando alguien usa la función que la necesita (a Santiago el checkout de Wompi falló porque sus llaves estaban solo en Development). Es el mismo tipo de fallo silencioso que el prefijo `NEXT_PUBLIC_`. **Marca cada variable en los TRES ambientes**, y si una función falla en producción por "falta X", lo primero es revisar que X esté marcada para Production y **redesplegar** (las variables no se aplican a lo ya desplegado).
 
 **Las cuatro de Supabase, sin ambigüedad** (este es el error más caro y más silencioso: poner una clave secreta con `NEXT_PUBLIC_` la deja expuesta en el navegador, sin dar ningún error). Todas salen del dashboard del proyecto (Paso 1.2):
 

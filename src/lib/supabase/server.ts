@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { missingEnvMessage } from "@/lib/env/missing-env";
 import type { Database } from "@/types/database.generated";
 
 // Cliente de Supabase para Server Components, server actions y route handlers.
@@ -10,13 +11,13 @@ export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error(
-      "Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    );
-  }
-
-  return createServerClient<Database>(url, anonKey, {
+  const missing = missingEnvMessage({
+    NEXT_PUBLIC_SUPABASE_URL: url,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
+  });
+  if (missing) throw new Error(missing);
+  // missingEnvMessage ya lanzo si faltaba alguna; el `!` es para el narrowing (TS no lo infiere del helper).
+  return createServerClient<Database>(url!, anonKey!, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

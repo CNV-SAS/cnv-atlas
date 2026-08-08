@@ -1,6 +1,7 @@
 import "server-only";
 
 import { fetchJson } from "@/core/http/fetch-json";
+import { missingEnvMessage } from "@/lib/env/missing-env";
 
 // Cliente de Alegra (facturacion). Auth: Basic base64(email:api_key). Formato del
 // body verificado contra la doc oficial vigente. La idempotencia (no facturar dos
@@ -38,7 +39,8 @@ export type AlegraInvoiceResult = { id: string };
 function authHeader(): string {
   const email = process.env.ALEGRA_EMAIL;
   const apiKey = process.env.ALEGRA_API_KEY;
-  if (!email || !apiKey) throw new Error("Faltan ALEGRA_EMAIL o ALEGRA_API_KEY");
+  const missing = missingEnvMessage({ ALEGRA_EMAIL: email, ALEGRA_API_KEY: apiKey });
+  if (missing) throw new Error(missing);
   const token = Buffer.from(`${email}:${apiKey}`).toString("base64");
   return `Basic ${token}`;
 }
