@@ -35,7 +35,7 @@
 
 ### Seguimiento
 - ✅ Comparación longitudinal contra la evaluación previa (anclada a `measurement_date`, C2-a).
-- 🔨 **P0 Parte 2** (comunicación del cambio al paciente en 3 bandas): núcleo `eb-trajectory.ts` hecho; **P2-P5 en curso** (reader de previas, sellado de la banda, gates de "empeoró", render). En pase enfocado. Ver `BACKLOG.md` "Comunicación del cambio al paciente".
+- ✅ **P0 Parte 2** (comunicación del cambio al paciente en 3 bandas): **HECHO COMPLETO** (P2-P5, 2026-08-05; re-verificado 2026-08-08, el encabezado del BACKLOG estaba stale). Núcleo + readers (superseded/measurement_date) + sellado (`reports.trajectory`) + gate de "empeoró" (confirmación aparte + cita obligatoria) + render en el PDF; textos verbatim de Gildardo (v8 no los cambió). 28 tests verdes. **Único pendiente: smoke de Santiago en navegador.**
 
 ### Reporte (salida de las fases)
 - ✅ PDF desde el snapshot, aprobar (confirma diagnóstico), enviar por correo, notas del profesional.
