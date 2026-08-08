@@ -255,7 +255,12 @@ Antes de declarar un bloque terminado:
 3. Corre `pnpm lint`.
 4. Corre los tests relevantes (`pnpm vitest run`), incluidos los **golden tests** si el bloque tocó el motor.
 5. Confirma que el deploy local funciona (`pnpm dev`).
-6. Reporta: "Bloque N completo. Criterios de aceptación: [✓ A, ✓ B, ✓ C]. Listo para push."
+6. **Actualiza la entrada de estado del bloque (BACKLOG.md / PLAN_ETAPAS.md / handoff) a HECHO EN EL MISMO COMMIT que lo cierra.** Los documentos de estado se escriben al planear; si no se actualizan al terminar, quedan stale y se replantea o reconstruye algo ya hecho (ha pasado 4+ veces: las 7 entradas del barrido, el mecanismo de modificaciones autorizadas, P0 Parte 2). Cerrar en el mismo commit ataca la raíz.
+7. Reporta: "Bloque N completo. Criterios de aceptación: [✓ A, ✓ B, ✓ C]. Listo para push."
+
+**Corolario, contra el mismo patrón:**
+- **"Pendiente" se trata como "verificar primero", no como verdad.** Antes de construir un ítem que un doc marca abierto, cotéjalo contra el código y los tests; puede estar hecho (verificar salvó un re-build de P0 Parte 2, 2026-08-08).
+- **Estado PREFERIDO cuando el bloque tiene test de aceptación: "corre estos tests", no una afirmación a mano.** Una aserción "HECHO" envejece; un puntero a un test que pasa, no. Donde exista un test de aceptación, el estado del bloque lo CITA en vez de afirmarlo. No cubre todo bloque, pero donde aplique es lo único que no queda stale.
 
 ---
 
