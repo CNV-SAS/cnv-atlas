@@ -81,27 +81,22 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 
 ## Paso 3 — Migraciones y seed
 
-Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo de datos. IMPORTANTE, léelo antes: **tu `.env.local` NO cambia, se queda apuntando a local.** Las credenciales de la nube van en Vercel (Paso 2), NO en tu máquina. La única excepción son estos dos comandos (migrate y seed), que corren con la URL/credenciales remotas puestas SOLO para ese comando (variable de shell), sin editar ningún archivo. Verificado que Node NO pisa esa variable con `.env.local`, así que funciona.
+**Qué vas a lograr:** crear las tablas en la base de la nube y cargar los datos mínimos (roles, catálogo de nutracéuticos, encuesta, tu cuenta de admin). Tu computador normalmente apunta a la base LOCAL, así que antes de cada comando le dices que use la de la nube (una variable en la misma ventana de PowerShell) y al terminar lo deshaces. **Tu `.env.local` NO se toca:** se queda apuntando a local; nada de esto edita ese archivo (verificado que Node no pisa esa variable con `.env.local`).
 
-> **ANTES DE EMPEZAR, tres cosas que arruinan este paso si se descubren tarde. Léelas ahora, no después:**
->
-> 1. **Las variables de la nube TIENEN que llegar al comando, o sembrarás tu base LOCAL creyendo que sembraste la nube.** El seed, sin las variables remotas, apunta a local por defecto (silenciosamente). Por eso cada comando de abajo pone las variables en la MISMA ventana de PowerShell, justo antes. La verificación final (`patients` vacía en la nube) es la que delata este error: si en la nube no aparece nada, sembraste local.
-> 2. **La conexión directa puede fallar** (común desde tu máquina si hay IPv4/firewall). Si `pnpm db:migrate` da timeout o "no route", NO es la contraseña: es la conexión directa. La alternativa está lista: Supabase → **Settings → Database → Connection string → Session pooler** (o Transaction). Copia ESA cadena AHORA, para tenerla a mano; si la directa falla, la usas como `DATABASE_URL` sin ir a buscarla. La app ya funciona con el pooler (`prepare: false`).
-> 3. **El seed DEBE correr con `SEED_DEMO=false`.** Si se te olvida, la nube nace con usuarios demo y un **paciente ficticio con PII**, contra la decisión de "real desde el día uno". Si pasa, hay que limpiar la base antes de seguir (no se deja pasar). El comando de abajo ya lo incluye.
-
-3.1 **Aplicar las migraciones.**
-- Comando (PowerShell), reemplazando la URI por la `DATABASE_URL` del Paso 1.2:
+3.1 **Crear las tablas (migraciones).**
+- **Antes del comando:** la conexión directa a la base puede fallar desde tu máquina (IPv4/firewall). Ten lista la alternativa AHORA: Supabase → Settings → Database → Connection string → **Session pooler** (o Transaction), copia esa cadena. Si el comando falla con timeout o "no route", NO es la contraseña: repites usando la cadena del pooler como `DATABASE_URL`. La app ya funciona con el pooler (`prepare: false`).
   ```powershell
   $env:DATABASE_URL = "postgresql://...tu-uri-de-la-nube..."
   pnpm db:migrate
   Remove-Item Env:\DATABASE_URL   # limpia la variable al terminar
   ```
-- Aplica las 49 migraciones (0000 a 0048), incluidas las de RLS y triggers.
-- **Qué verás:** "migrations applied successfully".
-- **Verificar (dos cosas, no solo una):** (1) Supabase → **Table editor**: aparecen las tablas, unas **67** (`patients`, `evaluations`, `treatments`, `nutraceutical_faltante_cases`, etc.). (2) Supabase → **Database → Policies**: hay políticas RLS (la lista NO está vacía); en particular las tablas clínicas (`patients`, `evaluations`, `treatments`) tienen RLS activo. Las policies y triggers viven en migraciones escritas a mano, que son las que más fácil se saltan si una migración falla a mitad, por eso se verifican aparte de las tablas. En la app, la pantalla de login ya no falla al consultar datos.
-- **Qué puede salir mal:** timeout o permiso. Si una migración de trigger falla, NO sigas: el orden importa. Copia el error y páralo. Si `DATABASE_URL` quedó vacía, el comando falla al conectar: revisa que la pusiste en la MISMA ventana de PowerShell.
+- **Qué verás:** "migrations applied successfully". Aplica las 49 migraciones (0000 a 0048), incluidas las de RLS y triggers.
+- **Qué puede salir mal:** si una migración de trigger falla a mitad, NO sigas (el orden importa): copia el error y páralo. Si `DATABASE_URL` quedó vacía, falla al conectar: revisa que la pusiste en la MISMA ventana.
 
-3.2 **Sembrar el mínimo.** Igual que 3.1: variables de shell SOLO para este comando, sin tocar `.env.local`. El seed usa la URL y la **service_role key** de la nube (Paso 1.2), el correo del admin de arranque (`sau.idk001@gmail.com` u otro que definas en `supabase/seed.ts`), una contraseña fuerte, y `SEED_DEMO=false`.
+3.2 **Cargar los datos mínimos (seed).**
+- **Antes del comando, dos cosas que arruinan este paso:**
+  - **Las variables de la nube TIENEN que estar en ESTA misma ventana, o sembrarás tu base LOCAL creyendo que sembraste la nube** (sin ellas, el seed apunta a local en silencio). La verificación de abajo (`pacientes = 0` en la nube) delata este error.
+  - **`SEED_DEMO=false` es obligatorio.** Sin él, la nube nace con usuarios demo y un **paciente ficticio con PII** (contra "real desde el día uno"); habría que limpiar la base antes de seguir. El comando ya lo incluye.
   ```powershell
   $env:NEXT_PUBLIC_SUPABASE_URL = "https://...tu-proyecto.supabase.co"
   $env:SUPABASE_SERVICE_ROLE_KEY = "...tu-service-role-key..."
@@ -110,13 +105,24 @@ Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo 
   pnpm db:seed
   Remove-Item Env:\NEXT_PUBLIC_SUPABASE_URL, Env:\SUPABASE_SERVICE_ROLE_KEY, Env:\SEED_ADMIN_PASSWORD, Env:\SEED_DEMO
   ```
-- **Qué verás:** "Seed completo (MINIMO, sin datos demo)".
-- **Verificar (crítico):** `patients` vacía; `nutraceuticals` = 10; `roles` = 5; `survey_versions` con la encuesta. Un usuario admin con el correo de arranque.
-- **Qué puede salir mal:** si NO pusiste `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` de la nube, el seed apunta a LOCAL (el default del script) y no toca la nube. El check de "patients vacía en la nube" lo delata: si en la nube no aparecieron ni los 10 nutracéuticos, sembraste local por error.
+- **Qué verás:** "Seed completo (MINIMO, sin datos demo)". Guarda la `SEED_ADMIN_PASSWORD` en Bitwarden: es con la que entrarás como admin.
+
+3.3 **Verificar (una sola consulta, en Supabase → SQL Editor).** Contar a ojo en el Table editor no sirve; esta consulta da cuatro números exactos:
+  ```sql
+  select
+    (select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE') as tablas,
+    (select count(*) from pg_tables where schemaname='public' and rowsecurity=true) as con_rls,
+    (select count(*) from pg_policies where schemaname='public') as policies,
+    (select count(*) from patients) as pacientes;
+  ```
+- **Debe dar EXACTAMENTE:** `tablas = 67`, `con_rls = 67` (las 67 con RLS activo), `policies = 147`, `pacientes = 0`.
+- **Cómo leer cada número:** `tablas` distinto de 67 → faltaron migraciones (páralo, revisa el log de 3.1). `con_rls` menor que `tablas` → alguna tabla quedó sin RLS (una migración de policy se saltó). `policies` distinto de 147 → lo mismo, faltan policies. **`pacientes` distinto de 0 → el seed corrió con demo o sembró tu base local: se limpia la nube antes de seguir, no se deja pasar.** (Si quieres, de paso: `select count(*) from nutraceuticals;` = 10 y `select count(*) from roles;` = 5.)
 
 ---
 
 ## Paso 4 — Dominio
+
+**Qué vas a lograr:** que la app viva en tu dominio (`atlas.cnvsystem.com`) en vez de la URL de Vercel, y que TODO lo que manda enlaces (correos de recuperación/invitación, encuesta del paciente) apunte ahí. Dos partes: conectar el dominio (4.1) y mover a él lo que aún apunta a otro lado (4.2). En tu caso el dominio ya está validado, así que lo que falta es 4.2, en especial la Site URL y las plantillas de correo de Supabase.
 
 4.1 **Dominio.** El dominio se configura **DESPUÉS del primer deploy** (Paso 2.3), nunca antes: apuntar un dominio a un proyecto sin desplegar solo da error y confunde.
 - **En Vercel primero:** Settings → Domains → agrega `atlas.cnvsystem.com`. Vercel te va a **mostrar el registro DNS exacto** que debes crear (el valor del CNAME). **Usa ese valor, no uno inventado:** puede variar por proyecto (suele ser `cname.vercel-dns.com`, pero confirma el que te muestre Vercel).
@@ -136,7 +142,7 @@ Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo 
 
 ## Paso 5 — Los terceros apuntando a la URL pública
 
-Ahora que existe `https://atlas.cnvsystem.com`, los servicios que necesitan llamarte "de vuelta" ya tienen a dónde.
+**Qué vas a lograr:** darles a Wompi, Alegra y Resend sus llaves y tu URL pública, para que puedan llamar a la app de vuelta (el webhook de pago) y enviar correos. Todo en modo **sandbox/prueba**: no mueve dinero real. Ahora que existe `https://atlas.cnvsystem.com`, los servicios que necesitan llamarte "de vuelta" ya tienen a dónde.
 
 5.1 **Wompi (sandbox).** Consola de Wompi (ambiente sandbox): obtén las llaves de sandbox (`public`, `private`, `integrity`, `events`). Registra el webhook/URL de eventos apuntando a `https://atlas.cnvsystem.com/api/webhooks/wompi`. Carga las 4 llaves a Vercel (Paso 2; `NEXT_PUBLIC_WOMPI_PUBLIC_KEY` es la única pública).
 - **Verificar:** Wompi acepta la URL del webhook sin error. (El pago real se prueba en el Paso 6.)
@@ -151,7 +157,7 @@ Ahora que existe `https://atlas.cnvsystem.com`, los servicios que necesitan llam
 
 ## Paso 6 — El smoke de cobro end-to-end (lo que todo esto desbloquea)
 
-**Por qué este es el punto.** El cobro es lo único que nunca se probó de verdad: el webhook de Wompi necesita una URL pública, y en local corría solo en simulación. Ahora se prueba real (contra el sandbox).
+**Qué vas a lograr:** probar un cobro completo de punta a punta contra el sandbox de Wompi (pago, webhook, transacción, comisión, factura) sin mover dinero real. **Por qué este es el punto:** el cobro es lo único que nunca se probó de verdad, porque el webhook de Wompi necesita una URL pública y en local corría solo en simulación. Ahora se prueba real (contra el sandbox).
 
 6.1 Entra a `https://atlas.cnvsystem.com`, login como admin (Paso 3.2).
 6.2 Crea un profesional (invítalo) y un paciente mínimo, o usa el flujo que corresponda para llegar a un checkout de nutracéutico.
