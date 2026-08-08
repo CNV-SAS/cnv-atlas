@@ -189,6 +189,11 @@ export async function setPasswordAction(
   // (2) seguridad: si alguien recupero la cuenta por sospecha de acceso ajeno, la sesion del intruso
   // tambien debe morir (scope global invalida todas las sesiones, no solo esta). Entrar con la clave
   // nueva arranca sesion y pagina limpias, y confirma que la clave quedo bien.
+  //
+  // ORDEN DE ONBOARDING (deseable, NO optimizar a /dashboard): para un invitado nuevo esto produce el
+  // orden correcto -> fija clave -> entra por /login (confirma que la clave sirve) -> el gate de MFA del
+  // layout lo manda a /mfa-setup (segundo factor). Primero la clave, despues el factor. No redirigir
+  // directo al panel: rompe ese orden y reintroduce el rebote de sesion.
   await supabase.auth.signOut({ scope: "global" });
   redirect("/login?mensaje=clave_lista");
 }
