@@ -267,3 +267,63 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 - **Candidatos → decisión nuestra:** ECB3-8 (etnia, educación, ocupación, estado civil, estrato, motivo). Ninguno lo usa el motor.
 - **Coinciden (verificado):** las opciones engine-acopladas (d5_39/d5_38/d2_21), identidad, país/ciudad, tipos de widget.
 - **Deliberadas (ignorar):** etiquetas de-jergadas, consentimiento propio, encuesta separada del lado profesional.
+
+---
+
+## TRATAMIENTO — tabla de registro (pre-llena, 2026-08-08)
+
+**AVISO de la regla de oro.** A diferencia de las otras tres pantallas, Tratamiento **tiene construcción pendiente**: la cadena calórica (re-port del 3er modelo, Q14) y el plan alimentario detallado (grupos de intercambio, menú, secciones E/F del HTML) están en pausa/en curso (ver `handoff-2026-08-05-plan-alimentario`). **Esas piezas NO se cotejan todavía** (cotejar lo que vamos a cambiar es cotejar dos veces). Se cotejan las partes CERRADAS: estructura, rutas, remisiones, paneles médico/psico/ejercicio, despacho de nutracéuticos, y los gates. Fuente HTML: `ModTratamiento` L16002-17754, motores L15402-15575. Santiago tiene capturas del v8 de esta pantalla.
+
+### A. Estructura y permisos (deliberadas ya decididas)
+
+| # | Elemento | HTML v8 | Atlas | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| ET1 | Sub-pestañas por profesión | 5 tabs (Rutas del DFI, Nutricionista, Médico, Psicólogo, Entrenador) | sin barra; cada profesional ve SOLO su sección vía switch | **deliberada** (barra pospuesta; un solo destino por profesional se vería roto) | ninguna |
+| ET2 | Admin ve las 4 secciones en solo-lectura ("👁", "Modo Administrador") | sí | **NO** | **deliberada** (fidelidad a la forma, no a los permisos; copiarlo ampliaría el acceso del admin) | ninguna |
+| ET3 | Gate para prescribir | solo exige `hasEnc` + `IFC>0`; **NO exige diagnóstico confirmado** | Atlas EXIGE diagnóstico confirmado (D1, `treatment-writer.ts:391`) | **deliberada** (Atlas más estricto; prescribir sigue a confirmar) | ninguna; NO copiar el no-gate del HTML |
+| ET4 | Título de pantalla | "Rutas de Atención" | "Tratamiento" | menor | ¿alinear rótulo? bajo |
+
+### B. Rutas y remisiones (cerradas)
+
+| # | Elemento | HTML v8 | Atlas | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| ET5 | Sección 1: rutas activadas del DFI (tarjetas, activación, componentes nutri/ejercicio/psico/seguimiento) | sí, verbatim del motor de rutas | portadas (T1, snapshot congelado) | **coincide** (mismo motor) | **[OJOS]** que se vean igual |
+| ET6 | Sección 3: remisiones (destino, urgencia obligatoria/recomendada, indicaciones) | contenido puro (sin registro en el prototipo) | **Atlas va MÁS ALLÁ**: remisión registrable (D-009), con retorno | **deliberada** (Atlas añade el acto que el prototipo no tenía) | ninguna |
+
+### C. Paneles médico / psico / ejercicio (portados T2)
+
+| # | Elemento | HTML v8 | Atlas | Nota |
+|---|---|---|---|---|
+| ET7 | Médico: metas, monitoreo, remisión, interacciones fármaco-nutriente, exámenes, alertas por sector | motor `motorTratMedico` | portado (T2) | verificar textos con **[OJOS]** |
+| ET8 | Ejercicio: FITT-VP, faRec que alimenta el FA nutricional, metas de composición | `motorTratEjercicio` | portado (T2) | `faRec` acopla al nutricional (invariante a respetar) |
+| ET9 | Psico: SCOFF/PHQ-9/GAD-7, salvaguarda TCA que PAUSA el déficit, técnicas | `motorTratPsico` | portado (T2) | la salvaguarda TCA es requisito duro de la cadena calórica |
+| ET10 | Estos motores son FROZEN (ciencia de Gildardo) | verbatim | port verbatim | el cotejo de VALORES es golden, no visual; los textos/labels sí a ojo |
+
+### D. Despacho de nutracéuticos y envío (cerrado, con divergencias deliberadas)
+
+| # | Elemento | HTML v8 | Atlas | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| ET11 | VITACELLEBIS recomendado + dosis + prioridad + registrar despacho | sí (a inventario local) | portado (T3), a BD real con audit | **coincide** en fondo | **[OJOS]** dosis/prioridad |
+| ET12 | Grafía de nombres de nutracéuticos | "MULTI-CELL BASE", "MULTICELL BASE" (inconsistente en el HTML) | Atlas usa la grafía del registro INVIMA (Q31) | **deliberada** (manda el registro sanitario) | ninguna |
+| ET13 | Envío al paciente | `mailto:` (abre cliente de correo) + `window.print()`; persistencia en `localStorage` | Atlas: reporte por Resend con adjunto + BD inmutable + audit | **deliberada** (Atlas es superior; el prototipo no tiene backend) | ninguna |
+| ET14 | "Aprobar protocolo" | función existe pero sin botón cableado en el prototipo | Atlas: aprobar sella el protocolo (write-once) | **deliberada** (Atlas lo cierra) | ninguna |
+
+### E. PENDIENTE de construir (NO se coteja aún)
+
+- **Cadena calórica completa** (GEB Mifflin/Cunningham → FA → GET → objetivo con déficit y pisos; proteína g/kg por protocolo; macros): en pausa (re-port 3er modelo, Q14). Cuando se porte, se cotejan las fórmulas contra el HTML (L15402-15494) como golden, no a ojo.
+- **Plan por grupos de alimentos** (secciones D/E/F del HTML): fórmula sintética, lista de intercambio ICBF 2025 (12 grupos), DRI de micros, validación ICN, distribución por tiempos, menú semanal por IA. En curso (Plan alimentario Alcance B).
+- Cuando esas piezas cierren, se añade su fila aquí. Hasta entonces, cotejarlas sería cotejar dos veces.
+
+### Para Santiago (requiere OJOS)
+
+- **[OJOS]** Rutas (Sección 1) y remisiones: que se vean como el v8.
+- **[OJOS]** Los tres paneles de profesión (médico/psico/ejercicio): textos de metas, alertas por sector, interacciones, FITT-VP, SCOFF.
+- **[OJOS]** El despacho de nutracéuticos: dosis y prioridad.
+- Con las capturas que ya tienes del v8.
+
+### Resumen de la pasada
+
+- **Deliberadas (ignorar):** sin barra de subpestañas, admin sin las 4 secciones, gate de diagnóstico confirmado (Atlas más estricto), grafía INVIMA de nutracéuticos, envío por Resend/BD vs mailto/localStorage, aprobar sella.
+- **Coincide / Atlas va más allá:** rutas (mismo motor), remisiones (Atlas añade el acto D-009), paneles de profesión (port T2), despacho (T3 a BD real).
+- **PENDIENTE de construir (no cotejado):** cadena calórica (Q14) y plan alimentario detallado (Alcance B).
+- **Menor:** ET4 (título "Tratamiento" vs "Rutas de Atención").

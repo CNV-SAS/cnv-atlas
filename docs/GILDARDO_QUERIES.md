@@ -512,6 +512,13 @@
 - **Contexto:** pusiste como condición que un "empeoró" solo se comunique al paciente con la **próxima cita AGENDADA**. Lo implementamos: el profesional no puede confirmar la comunicación sin poner la fecha. **Pero esa fecha queda registrada en el TRATAMIENTO y NO aparece en el reporte del paciente:** hoy el profesional agenda una fecha que el paciente **nunca ve**. El texto que el paciente recibe dice *"Tu profesional revisará contigo el plan en la próxima consulta"*, sin decir **cuándo**.
 - **Pregunta:** el requisito se cumple formalmente, pero quizá no su propósito (que nadie reciba un empeoramiento sin saber cuándo lo vuelven a ver). **¿La fecha de la próxima cita debería aparecer en el reporte del paciente, o basta con que el profesional la tenga registrada?** Es tu condición y tu propósito; no lo decidimos de nuestro lado.
 
+## Q34 · La pregunta de CIRUGÍAS digestivas/metabólicas no está portada: ¿alimenta el motor nutricional o es solo registro?
+
+- **Fecha:** 2026-08-08. **Estado:** ABIERTA. Salió del cotejo de la encuesta contra el v8. NO bloquea el cotejo, pero puede tocar el motor.
+- **Contexto:** tu v8 tiene en D6 una pregunta (`d6_qx`, ítem 63) que nuestra encuesta (v2) NO tiene: *"¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?"* con opciones Colecistectomía (vesícula), Cirugía bariátrica (bypass/manga), Resección intestinal, Gastrectomía, Apendicectomía, Otra. Es la pregunta que hace que tu instrumento tenga 64 ítems y el nuestro 63. La vamos a portar.
+- **Por qué importa (no es menor):** una cirugía **bariátrica cambia cómo se absorbe la comida**. Si el motor nutricional no lo sabe, prescribe sobre un supuesto falso.
+- **Pregunta:** ¿`d6_qx` **alimenta el motor nutricional** (y entonces necesita `field_key` + entra al contrato del motor de tratamiento, como los `treatmentEngine`), o es **solo registro clínico** (sin `field_key`)? Si alimenta el motor, dinos qué opción cambia qué (p. ej. bariátrica → ¿ajuste de proteína/kcal/absorción?), para portarlo fiel. Si es solo registro, lo sembramos sin `field_key`.
+
 ---
 
 ## Nota de proceso (2026-07-26)
