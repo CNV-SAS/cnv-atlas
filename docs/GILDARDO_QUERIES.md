@@ -506,6 +506,14 @@
 
 ---
 
+## Q33 · La próxima cita del "empeoró" no aparece en el reporte del paciente (P-14, tras el smoke)
+
+- **Fecha:** 2026-08-08. **Estado:** ABIERTA. NO bloquea (el requisito está implementado formalmente). Registrada como P-14 en `DECISIONES_ANIBISE.md`; se sube al consolidado para que la respondas.
+- **Contexto:** pusiste como condición que un "empeoró" solo se comunique al paciente con la **próxima cita AGENDADA**. Lo implementamos: el profesional no puede confirmar la comunicación sin poner la fecha. **Pero esa fecha queda registrada en el TRATAMIENTO y NO aparece en el reporte del paciente:** hoy el profesional agenda una fecha que el paciente **nunca ve**. El texto que el paciente recibe dice *"Tu profesional revisará contigo el plan en la próxima consulta"*, sin decir **cuándo**.
+- **Pregunta:** el requisito se cumple formalmente, pero quizá no su propósito (que nadie reciba un empeoramiento sin saber cuándo lo vuelven a ver). **¿La fecha de la próxima cita debería aparecer en el reporte del paciente, o basta con que el profesional la tenga registrada?** Es tu condición y tu propósito; no lo decidimos de nuestro lado.
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
