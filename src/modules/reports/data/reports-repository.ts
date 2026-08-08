@@ -19,7 +19,12 @@ function one<T>(embed: T | T[] | null | undefined): T | undefined {
 export function computePatientBandText(
   trajectory: { band?: string } | null | undefined,
   confirmed: boolean,
+  dfiComplete: boolean,
 ): string | null {
+  // Encuesta INCOMPLETA: la banda es cambio de EB-BIS, que se distorsiona con la encuesta a medias -> NO se
+  // comunica al paciente (aplicación de D-007). Es la primera compuerta y se recomputa en cada render, así
+  // que cubre también los reportes YA SELLADOS con banda sobre datos incompletos (no se reescriben, no la muestran).
+  if (!dfiComplete) return null;
   const band = trajectory?.band;
   if (!band) return null;
   if (band === "empeoro" && !confirmed) return null;
@@ -250,6 +255,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     patientBandText: computePatientBandText(
       data.trajectory as { band?: string } | null,
       data.trajectory_communicated_at != null,
+      (data.snapshot as { dfi?: { complete?: boolean } }).dfi?.complete === true,
     ),
   };
 }

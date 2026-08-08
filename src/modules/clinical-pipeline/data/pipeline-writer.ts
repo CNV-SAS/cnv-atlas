@@ -212,8 +212,11 @@ export async function writePipeline(
     // Trayectoria de EB-BIS a SELLAR (P0 Parte 2): solo en SEGUIMIENTO y solo si hay previa comparable
     // (>=12 semanas por measurement_date, C2-a). null en inicial o sin previa comparable. Se computa
     // ANTES del insert para sellarla EN el reporte (no por UPDATE: la columna es inmutable por trigger).
+    // Y NO se sella si el diagnóstico está INCOMPLETO (`dfi.complete=false`): la banda es cambio de EB-BIS,
+    // salida que depende de la encuesta; con la encuesta a medias la EB se infla. Es la aplicación de D-007
+    // (no emitir lo dependiente de la encuesta si está incompleta) a la banda. El profesional ve el motivo.
     const trajectory =
-      input.evaluationType === "seguimiento"
+      input.evaluationType === "seguimiento" && output.dfi.complete
         ? await computeTrajectoryToSeal(tx, {
             patientId: input.patientId,
             evaluationId: input.evaluationId,

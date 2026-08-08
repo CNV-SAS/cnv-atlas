@@ -29,7 +29,18 @@ function ebOf(reports: { snapshot: unknown }[] | { snapshot: unknown } | null | 
   return eb == null ? null : Number(eb);
 }
 
-export type TrajectoryNotice = { kind: "no_prior" } | { kind: "interval_too_short"; nearestWeeks: number };
+// `dfi.complete` sellado en el snapshot del reporte. undefined si no hay reporte (sin sellar aun).
+function dfiCompleteOf(
+  reports: { snapshot: unknown }[] | { snapshot: unknown } | null | undefined,
+): boolean | undefined {
+  const r = Array.isArray(reports) ? reports[0] : reports;
+  return (r?.snapshot as { dfi?: { complete?: boolean } } | undefined)?.dfi?.complete;
+}
+
+export type TrajectoryNotice =
+  | { kind: "no_prior" }
+  | { kind: "interval_too_short"; nearestWeeks: number }
+  | { kind: "incompleto" }; // la encuesta incompleta suprime la banda (D-007): el paciente no ve el cambio
 
 export async function getTrajectoryNotice(evaluationId: string): Promise<TrajectoryNotice | null> {
   const supabase = await createSupabaseServerClient();
@@ -42,6 +53,11 @@ export async function getTrajectoryNotice(evaluationId: string): Promise<Traject
     .maybeSingle();
   if (cErr) throw new Error(`trajectory-notice-reader: current: ${cErr.message}`);
   if (!current || current.type !== "seguimiento") return null;
+
+  // Diagnóstico incompleto: la banda se suprime (D-007), y ESA es la razón que el profesional debe ver
+  // (no un intervalo o una falta de previa). Tiene precedencia: aunque hubiera previa comparable, con la
+  // encuesta a medias no se comunica el cambio. Es accionable (completar la encuesta en la próxima consulta).
+  if (dfiCompleteOf(current.reports) === false) return { kind: "incompleto" };
 
   const currentDate = latestMeasDate(current.bis_measurements);
   const currentEb = ebOf(current.reports);

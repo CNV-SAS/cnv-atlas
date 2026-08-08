@@ -117,7 +117,12 @@ export function ReportDocument({
   const showAtlas = mode === "atlas" || mode === "ambos";
   const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;
   // El cambio solo se muestra con el contenido de Atlas (no en modo 'solo notas'): es lectura del modelo.
-  const showBand = showAtlas && Boolean(bandText);
+  // Y NO se muestra si el diagnóstico está incompleto: la banda es cambio de EB-BIS, salida que DEPENDE de
+  // la encuesta, y con la encuesta a medias la EB se infla. Es la aplicación de D-007 (decisión de Gildardo:
+  // no emitir lo que depende de la encuesta si está incompleta) a la banda. El gate va aquí, en el render,
+  // para que valga también en reportes YA SELLADOS con encuesta incompleta (no se reescriben, pero dejan de
+  // mostrar la banda). El sellado (computeTrajectoryToSeal) ya no sella banda para incompletos de aquí en más.
+  const showBand = showAtlas && Boolean(bandText) && dfi.complete;
   return (
     <Document
       title={`Reporte clinico ${meta.documentLabel}`}
@@ -153,13 +158,11 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {showAtlas && !dfi.complete ? (
-          <Text style={styles.notice}>
-            Diagnostico funcional integral INCOMPLETO: {dfi.degradedReason} Los indicadores
-            de composicion y el fenotipo EFR son definitivos; los dominios de estilo de
-            vida y las rutas dependen de la encuesta.
-          </Text>
-        ) : null}
+        {/* El aviso de incompletitud del diagnóstico NO va al reporte del paciente (decisión 2026-08-08): es
+            jerga técnica (DFI, "faltan 10 de 13 respuestas") y, peor, le informa al paciente sobre la calidad
+            del trabajo de su profesional, que no le corresponde. La completitud es para el PROFESIONAL, que ya
+            la ve en su pantalla. Si el paciente debe saber algo, será otra cosa y en su lenguaje, y lo redacta
+            Gildardo. `dfi.degradedReason` sigue disponible en el snapshot para la vista del profesional. */}
 
         {showAtlas ? (
           <>
