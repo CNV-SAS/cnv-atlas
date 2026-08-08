@@ -34,6 +34,7 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 > **Si el proyecto de Supabase ya existe** (creado antes), no lo crees de nuevo: salta 1.1 y ve directo a 1.2 (copiar credenciales, en especial la `DATABASE_URL`) y 1.3 (el bucket). Es común que 1.2 y 1.3 queden pendientes aunque el proyecto lleve tiempo creado: la `DATABASE_URL` sale del connection string (no del panel de API, por eso se olvida) y el bucket hay que crearlo a mano.
 
 1.1 **Crear el proyecto** (si no existe). New project → nombre `cnv-atlas`, región **US East (us-east-1)** (por la decisión de infraestructura), contraseña de base de datos fuerte (guárdala en Bitwarden; es la del rol `postgres`).
+- **La contraseña: larga, pero SOLO letras y números, sin símbolos.** Esto no es opcional: la `DATABASE_URL` mete la contraseña dentro de la cadena de conexión, y un `@` la parte en dos (es el separador entre credenciales y servidor), mientras que otros símbolos (`!`, `$`, `#`, `%`, `&`) los interpreta PowerShell al ponerla en la variable. El resultado es un fallo de conexión que NO parece de contraseña (ver Paso 3.1). Es media hora perdida que se evita con una contraseña alfanumérica.
 - **Qué verás:** el proyecto tarda ~2 min en aprovisionar; luego el dashboard del proyecto.
 - **Verificar:** el proyecto aparece "Active/Healthy" (verde) en la lista.
 
@@ -95,14 +96,22 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 **En bloques, uno por uno, NO todo pegado:** corre el bloque 3.1 completo, espera a que termine, y SOLO si salió bien, corre el 3.2. La razón: si las migraciones fallan y sigues igual, el seed correría sobre una base a medias. Espera el resultado de cada uno antes del siguiente.
 
 3.1 **Crear las tablas (migraciones).**
-- **Antes del comando:** la conexión directa a la base puede fallar desde tu máquina (IPv4/firewall). Ten lista la alternativa AHORA: Supabase → Settings → Database → Connection string → **Session pooler** (o Transaction), copia esa cadena. Si el comando falla con timeout o "no route", NO es la contraseña: repites usando la cadena del pooler como `DATABASE_URL`. La app ya funciona con el pooler (`prepare: false`).
   ```powershell
   $env:DATABASE_URL = "postgresql://...tu-uri-de-la-nube..."
   pnpm db:migrate
   Remove-Item Env:\DATABASE_URL   # limpia la variable al terminar
   ```
 - **Qué verás:** "migrations applied successfully". Aplica las 49 migraciones (0000 a 0048), incluidas las de RLS y triggers.
-- **Qué puede salir mal:** si una migración de trigger falla a mitad, NO sigas (el orden importa): copia el error y páralo. Si `DATABASE_URL` quedó vacía, falla al conectar: revisa que la pusiste en la MISMA ventana.
+- **Aviso NORMAL, no te detengas:** verás `trigger "nutra_faltante_settle_trg" ... does not exist, skipping`. Es esperado: esa migración hace `DROP TRIGGER IF EXISTS` antes de crear el trigger, y en una base nueva no existía. No es un error.
+- **Si FALLA, el orden de sospecha.** Ojo: el error de `drizzle-kit` es MUDO (solo dice `[ELIFECYCLE] Command failed with exit code 1`, sin la causa ni a dónde; no tiene flag de verbosidad). Por eso:
+  1. **La contraseña con símbolos es la causa #1** (le pasó a Santiago: perdió media hora aquí). Si la contraseña del `DATABASE_URL` tiene `@`, `!`, `$`, `#`, etc., la cadena se rompe (ver Paso 1.1) y **el pooler NO lo resuelve** (falla igual). La solución es cambiar la contraseña: Supabase → Settings → Database → **Reset database password** por una **alfanumérica**, y rehacer la `DATABASE_URL`.
+  2. **Para VER el error real** que drizzle-kit se traga, prueba la conexión sola (con la misma `DATABASE_URL` en la ventana):
+     ```powershell
+     node -e "const p=require('postgres');const s=p(process.env.DATABASE_URL);s.unsafe('select 1').then(()=>{console.log('Conexion OK');process.exit(0)}).catch(e=>{console.error('Conexion FALLO:',e.message);process.exit(1)})"
+     ```
+     Imprime el motivo real (`password authentication failed`, `no route to host`, etc.) en vez del error mudo.
+  3. **Solo si la conexión de verdad no llega** (timeout / `no route`, común por IPv4/firewall) y la contraseña ya es alfanumérica: usa la cadena del **Session pooler** (o Transaction) del mismo panel de Connection string como `DATABASE_URL`. La app ya funciona con el pooler (`prepare: false`).
+- Si una migración de trigger falla a mitad, NO sigas (el orden importa): copia el error y páralo. Si `DATABASE_URL` quedó vacía, falla al conectar: revisa que la pusiste en la MISMA ventana.
 
 3.2 **Cargar los datos mínimos (seed).**
 - **Antes del comando, dos cosas que arruinan este paso:**
