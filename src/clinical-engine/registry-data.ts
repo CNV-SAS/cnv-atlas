@@ -41,7 +41,7 @@ const INDICATOR_NAMES: Record<string, { name: string; unit: string | null }> = {
   FMI: { name: "Índice de Masa Grasa", unit: "kg/m2" },
   FFMI: { name: "Índice de Masa Libre de Grasa", unit: "kg/m2" },
   AF: { name: "Ángulo de Fase a 50 kHz", unit: "grados" },
-  IR: { name: "Impedance Ratio", unit: null },
+  IR: { name: "Radio de impedancia", unit: null },
 };
 
 export function buildIndicatorDefs(): IndicatorDef[] {
