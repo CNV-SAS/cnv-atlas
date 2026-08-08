@@ -2257,6 +2257,80 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          patient_id: string
+          reason: string
+          referred_at: string
+          referred_to: Database["public"]["Enums"]["referral_target"]
+          referred_to_other: string | null
+          return_notes: string | null
+          returned_at: string | null
+          treatment_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          organization_id: string
+          patient_id: string
+          reason: string
+          referred_at: string
+          referred_to: Database["public"]["Enums"]["referral_target"]
+          referred_to_other?: string | null
+          return_notes?: string | null
+          returned_at?: string | null
+          treatment_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          patient_id?: string
+          reason?: string
+          referred_at?: string
+          referred_to?: Database["public"]["Enums"]["referral_target"]
+          referred_to_other?: string | null
+          return_notes?: string | null
+          returned_at?: string | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_created_by_profiles_id_fk"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_organization_id_organizations_id_fk"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_patient_id_patients_id_fk"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_treatment_id_treatments_id_fk"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           approved_at: string | null
@@ -3116,6 +3190,12 @@ export type Database = {
         | "deportologo"
         | "nutricionista"
       profile_status: "active" | "inactive"
+      referral_target:
+        | "medico"
+        | "psicologo"
+        | "deportologo"
+        | "nutricionista"
+        | "otro"
       report_status: "draft" | "approved" | "sent"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
       treatment_status: "draft" | "approved"
@@ -3337,6 +3417,13 @@ export const Constants = {
         "nutricionista",
       ],
       profile_status: ["active", "inactive"],
+      referral_target: [
+        "medico",
+        "psicologo",
+        "deportologo",
+        "nutricionista",
+        "otro",
+      ],
       report_status: ["draft", "approved", "sent"],
       transaction_status: ["pending", "paid", "failed", "refunded"],
       treatment_status: ["draft", "approved"],

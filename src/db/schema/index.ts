@@ -14,6 +14,7 @@ export * from "./bis"; // grupo 6
 export * from "./indicators"; // grupo 7
 export * from "./diagnoses"; // grupo 8
 export * from "./treatments"; // grupo 9
+export * from "./referrals"; // grupo 9bis: remisiones (D-009)
 export * from "./followups"; // grupo 10
 export * from "./reports"; // grupo 11
 export * from "./comodato"; // grupo 12

@@ -235,3 +235,14 @@ export const bisConditionFieldType = pgEnum("bis_condition_field_type", [
   "number",
   "text",
 ]);
+
+// Destinatario de una remision (D-009). Estructurado con las CUATRO profesiones del modelo + "otro"
+// con texto libre, para poder CONTAR a quien se remite (texto libre puro no se cuenta) sin perder las
+// especialidades fuera de las cuatro (endocrino, psiquiatria, fisioterapia) que van en "otro".
+export const referralTarget = pgEnum("referral_target", [
+  "medico",
+  "psicologo",
+  "deportologo",
+  "nutricionista",
+  "otro",
+]);
