@@ -47,7 +47,7 @@ export function MarkReturnForm({
       <input type="hidden" name="patientId" value={patientId} />
       <div className="flex flex-col gap-1">
         <Label htmlFor={`ret-${referralId}`} className="text-xs">
-          Fecha del retorno
+          Fecha en que volvió
         </Label>
         <Input
           id={`ret-${referralId}`}

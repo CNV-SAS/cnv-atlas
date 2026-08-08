@@ -141,7 +141,7 @@ export function RegisterReferralForm({
 
         <div className="flex flex-col gap-1">
           <Label htmlFor={`at-${treatmentId}`} className="text-xs">
-            Fecha
+            Fecha en que remitiste
           </Label>
           <Input
             id={`at-${treatmentId}`}
