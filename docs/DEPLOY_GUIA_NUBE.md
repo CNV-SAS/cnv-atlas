@@ -31,6 +31,8 @@
 
 Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DESPUÉS (Paso 3), a propósito: primero confirmamos que la app desplegada conecta a la base (Paso 2) y solo entonces le cargamos el esquema. Así, si algo falla, sabes cuál de los dos fue (la conexión por variables, o el esquema por migraciones), sin mezclarlos.
 
+> **Si el proyecto de Supabase ya existe** (creado antes), no lo crees de nuevo: salta 1.1 y ve directo a 1.2 (copiar credenciales, en especial la `DATABASE_URL`) y 1.3 (el bucket). Es común que 1.2 y 1.3 queden pendientes aunque el proyecto lleve tiempo creado: la `DATABASE_URL` sale del connection string (no del panel de API, por eso se olvida) y el bucket hay que crearlo a mano.
+
 1.1 **Crear el proyecto** (si no existe). New project → nombre `cnv-atlas`, región **US East (us-east-1)** (por la decisión de infraestructura), contraseña de base de datos fuerte (guárdala en Bitwarden; es la del rol `postgres`).
 - **Qué verás:** el proyecto tarda ~2 min en aprovisionar; luego el dashboard del proyecto.
 - **Verificar:** el proyecto aparece "Active/Healthy" (verde) en la lista.
@@ -48,6 +50,8 @@ Este paso solo CREA la base y sus credenciales. Las migraciones y el seed van DE
 ## Paso 2 — Variables de entorno en Vercel
 
 **Consola:** vercel.com → tu proyecto → Settings → Environment Variables
+
+> **Si el repo ya está conectado y desplegando con cada push** (caso común si se montó Vercel antes), 2.1 ya está hecho. El trabajo que queda es que estén TODAS las variables: la que más se olvida es `DATABASE_URL` (sale del connection string, no del panel de API). Cárgala, contrasta el resto contra `DEPLOY.md`, y luego un redeploy (2.3) para que Vercel tome lo nuevo (las variables NO se aplican a lo ya desplegado).
 
 2.1 **Conectar el repo a Vercel** (si no está): New Project → importa el repo de GitHub. Framework: Next.js (lo detecta). NO despliegues todavía (faltan las variables).
 
