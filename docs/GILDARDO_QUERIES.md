@@ -519,6 +519,15 @@
 - **Por qué importa (no es menor):** una cirugía **bariátrica cambia cómo se absorbe la comida**. Si el motor nutricional no lo sabe, prescribe sobre un supuesto falso.
 - **Pregunta:** ¿`d6_qx` **alimenta el motor nutricional** (y entonces necesita `field_key` + entra al contrato del motor de tratamiento, como los `treatmentEngine`), o es **solo registro clínico** (sin `field_key`)? Si alimenta el motor, dinos qué opción cambia qué (p. ej. bariátrica → ¿ajuste de proteína/kcal/absorción?), para portarlo fiel. Si es solo registro, lo sembramos sin `field_key`.
 
+## Q35 · Import del Biody BIS: faltan `MCA_ref` y `hidSG_ref`, ¿tabla de referencia o gateamos a null?
+
+- **Fecha:** 2026-08-08. **Estado:** ABIERTA. Sale de verificar el export REAL del Biody BIS contra Atlas.
+- **Contexto:** tu `derivarFaltantes` (v8) resuelve casi toda la composición que el export corto del Biody BIS no trae (FFW, ECW_sg, ICW_sg, MPM, MCA, `smmW`, `ECM_BCM`, `hidSG`). Con eso, IEHH queda completo y ISCM casi. **Lo único que queda sin cubrir son dos VALORES DE REFERENCIA que ninguna identidad produce:**
+  - `MCA_ref` (referencia de masa celular activa): tu ISCM lo usa como `MCA_dif` = MCA − MCA_ref (`engine.indices.js`). Sin él, ese término de ISCM cae a 0 en silencio (y la badge "MCA reducida" nunca dispara).
+  - `hidSG_ref` (referencia de hidratación sin grasa): la badge de hidratación compara `hidSG < hidSG_ref`. Sin la referencia, no dispara.
+- **Detalle del equipo:** el Biody BIS SÍ trae la espectroscopía Cole-Cole (tu OCR no hace falta para este firmware); lo que no trae son casi todos los `REFERENCEESTIMEE`. La mayoría solo son contexto (columna Referencia de la tabla), pero estos dos gatean señales clínicas.
+- **Pregunta:** ¿nos das la **tabla de referencia de `MCA_ref` y `hidSG_ref`** (por sexo/edad, como las que trae el equipo largo), o prefieres que **gateemos a null** el término MCA de ISCM y esas dos badges cuando la referencia no venga (para no degradar en silencio)? Es tu ciencia; no lo decidimos de nuestro lado.
+
 ---
 
 ## Nota de proceso (2026-07-26)

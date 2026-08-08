@@ -3,32 +3,34 @@
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
-## BLOQUEANTE DEL HITO 1 — Atlas rechaza el export del Biody BIS (el equipo que CNV SÍ tiene)
+## HITO 1 — El export del Biody BIS: IMPORTA HOY, pero degrada ISCM/IEHH/badges (se resuelve DERIVANDO, no con OCR)
 
-**No es hallazgo nuevo: Gildardo YA lo resolvió del lado de la ciencia en el v8.** Santiago lo sabía (el Biody BIS produce un export distinto). Lo que faltaba era conectar la consecuencia: si el equipo que se usa da el export corto, Atlas HOY lanza `ClinicalInputError` y no calcula ninguna medición real. Salió del cotejo (EA1), pero la consecuencia lo saca de "cotejo".
+**REESCRITO 2026-08-08 con el export REAL enfrente** (`docs/entregas/gildardo-2026-08-04/Biody BIS - male export.xlsx`, 104 columnas, BiodyConnect android v1.2.2). El diagnóstico anterior ("Atlas rechaza el export, hace falta OCR") **era incorrecto**. La realidad, verificada campo por campo:
 
-**El problema.** Atlas se calibró/validó contra el export del BiodyXpert III / ZM3 (COMPLETO, con espectroscopía Cole-Cole; fixture `biody-*-zm3-anon.json`). El equipo que CNV **tiene** es el **Biody BIS**, cuyo export es más corto y NO trae la espectroscopía. `biody-import.ts` exige `Re/Ri/Rinf/C` (`ENGINE_REQUIRED`, `required: true`) y, si faltan, no calcula.
+- **(a) El BIS export CUBRE TODO `ENGINE_REQUIRED` y TODOS los `required:true`.** Los 8 (Re, Ri, Rinf, C, FM, talla, FFMI, peso) están, con headers que calzan exacto; `required:true` que faltan = **NINGUNO**. **Atlas puede importar este archivo HOY sin cambios**, y el diagnóstico núcleo (IFC/IRC/PABU/fenotipo/AF) sale bien. **La espectroscopía Cole-Cole SÍ viene** (Re 627.3, Ri 1306.4, Rinf 423.801, C 2.96, Fo 27.842, Rcc 525.5, Xcc -52.7): el proveedor lo corrigió o es firmware más nuevo. Por eso el OCR de Gildardo no se disparó en su smoke (su flujo pide la foto SOLO si faltan las 4 Cole; aquí no faltan). **El OCR probablemente NO hace falta para este equipo.**
+- **Lo que SÍ falta: 36 campos mapeados de composición** (BIS 104 col vs ZM3 181), casi todos `_ref`/`_dif` + `MCA`, `protActiva` (MPM), `ECW_sg`, `ICW_sg`, `FFW`, `hidSG`, `ECM_BCM`, `icc`, `ict`, `smmW`.
+- **(b) Qué consume Atlas de lo que falta:**
+  - **`SECONDARY_REQUIRED` (FFW, MCA_dif, ECW_sg, ICW_sg) alimenta ISCM-BIS e IEHH** (`engine.indices.js:13-27`). Faltan los 4 → sin derivar, **ISCM e IEHH salen basura/degradados** (sus términos caen a 0 en silencio, NO a null: peor que vacío).
+  - **Badges celulares** (`celular-badges.ts`): AF (presente ✓, badge funciona), MCA_dif, hidSG+hidSG_ref, ECM_BCM. Sin esos tres, esas 3 badges **nunca disparan en silencio** (un paciente con MCA reducida o ECM/BCM alto no recibe la señal).
+  - **Tabla de Wang: columna Referencia/Δ** → vacía para los `_ref` que faltan (cosmético).
+  - **icc/ict** → vacíos, pero **derivables trivialmente** de cintura/cadera/talla (que SÍ vienen: cintura 84, cadera 106, talla 177).
+- **(c) Las identidades de Gildardo cubren CASI todo. `derivarFaltantes` (v8 L158-216) es MÁS grande que las 5 registradas:** deriva FFW, ECW_sg, ICW_sg, MPM, MCA **y además** `smmW`, `ECM_BCM = (FFM−MCA)/MCA` (L203) y `hidSG = FFW/(FFM−0.15·FM)·100` (L212). Cruzado contra lo que importa:
+  - **IEHH** (Re/Rinf/C/FFW): FFW se deriva → **CUBIERTO**.
+  - **ISCM** (FFW/ECW_sg/ICW_sg/MCA): valores derivados → **cubierto SALVO el término MCA_dif**, que necesita `MCA_dif` o `(MCA & MCA_ref)`. Se deriva MCA (valor) pero **NO `MCA_ref`** → ese término sigue cayendo a 0.
+  - **Badge ECM/BCM**: `ECM_BCM` se deriva → **CUBIERTA**.
+  - **Badge MCA**: necesita `MCA_dif` → falta `MCA_ref` → **NO cubierta**.
+  - **Badge hidratación**: compara `hidSG < hidSG_ref`; `hidSG` se deriva pero **`hidSG_ref` NO** → **NO cubierta**.
+  - **LO ÚNICO SIN CUBRIR: dos valores de REFERENCIA, `MCA_ref` y `hidSG_ref`** (no son valores medibles, son normas poblacionales; ninguna identidad los produce).
+- **(d) Qué hace el v8 exactamente, y por qué su gate falla con este equipo:** detecta por presencia de las 4 Cole (`espectroCompleto`, solo espectroscopía) y corre `derivarFaltantes` **solo si `!completo`** (L6710). Este export tiene la espectroscopía PRESENTE pero la composición AUSENTE: el v8 lo marcaría `completo` y **NO correría la derivación** → el v8 mismo dejaría los huecos. Es un caso que su gate solo-espectroscopía no anticipó (firmware nuevo). **`derivarFaltantes` solo rellena lo ausente (nunca pisa), así que es seguro correrla SIEMPRE.** El fix correcto: correr la derivación cuando falte la COMPOSICIÓN, desacoplada del gate de espectroscopía.
+- **(e) Los valores de REFERENCIA:** faltan casi todos los `REFERENCEESTIMEE`. La mayoría solo llenan la columna Referencia de la tabla de Wang → **vacío aceptable** (contexto, no cálculo). PERO **`MCA_ref` y `hidSG_ref` NO son cosméticos**: gatean ISCM (término MCA) y dos badges. Para esos dos: o los da Gildardo (tabla de referencia por sexo/edad), o se **gatea a null** el término/badge afectado en vez de degradar en silencio (que hoy cae a 0).
 
-**El flujo COMPLETO que diseñó Gildardo (v8), verificado 2026-08-08.** No es "manual opcional": el OCR es parte del flujo.
-1. **Detecta** el tipo de export por presencia de las 4 columnas Cole-Cole (`espectroCompleto`, v8 L64; llamado en L6708). ZM3 → `completo`, Biody BIS → `incompleto`.
-2. Si `incompleto`: **deriva lo que puede** (`derivarFaltantes`, L158; FFW/MCA/`IR=Z200/Z5`/etc.) + control de calidad (`controlCalidadImport`, L6712). Los 4 Cole NO se derivan.
-3. **Pide al profesional una CAPTURA de pantalla** de "DATOS DE ESPECTROSCOPIA" del Biody Manager (imagen → bucket Supabase `espectroscopia`, URL firmada 7 días, L238-250).
-4. **OCR local lee los 7 parámetros** de la imagen (L304-498), con heurística de posición del decimal ("691,8 se lee como 69180"); si no lee con confianza, el profesional los escribe.
-5. **El profesional APRUEBA** (`espectroConfirmado`): lo leído no toca el cálculo hasta la aprobación (`espectroPropuesto`, L6209-6211). Cada valor lleva origen: `excel`/`derivado`/`imagen_manual`/`imagen_asistida`/`calculado`.
-6. Recalcula IFC/IRC/PABU con los 4 aprobados (L6717-6721).
+**Columnas vacías (Chest/Biceps/Thighs Size, Deportista profesional, Circular regression coefficient, De BiodyLife, Physical Activity ID): NINGUNA es `required`.** Un export BIS legítimo NO se rechaza por un campo que ese equipo nunca llena. Verificado.
 
-**Respuestas a las tres preguntas:**
-- **(a) ¿Qué columnas faltan?** Las **4 Cole-Cole**, que son **justo las que el motor exige** (`ESPECTRO_COLS`, v8 L61): `Extracellular resistance` (Re), `Intracellular resistance` (Ri), `Infinite resistance` (Rinf), `Membrane capacitance` (C). La detección de Gildardo está construida sobre exactamente los 4 que a Atlas le faltan.
-- **(b) ¿Portable? CORRECCIÓN al análisis previo: la entrada manual SOLA no cubre lo que Gildardo resolvió.** Su flujo usa captura + OCR + aprobación porque teclear 7 valores de una pantalla es propenso a error (por eso las coherencias y el origen por valor). Tamaño real: **parte PORT** (la ciencia está hecha: `espectroCompleto`, `derivarFaltantes`, `controlCalidadImport`, `afDesdeCole`, `espectroCoherente`, el lector OCR + heurística del decimal) + **parte CONSTRUCCIÓN** (rama en `biody-import` para no tronar y derivar; bucket de Storage + RLS para la imagen; integrar el OCR; UX de propuesta/aprobación con badges de origen; persistir + auditar). El OCR es la pieza más pesada de construir.
-- **(c) ¿Se derivan los 4 del export corto?** **No.** `derivarFaltantes` deriva mucho pero NO los 4 Cole; `afDesdeCole` va Cole→AF (no se invierte). Gildardo, que escribió ambas, eligió capturar, no derivar.
+**Tamaño REAL de EA1 (muy distinto del OCR):** (1) portar `derivarFaltantes` completa (~60 líneas de identidades, ciencia de Gildardo) a la capa de import; (2) correrla cuando falte composición (no gatear por espectroscopía); (3) derivar icc/ict de cintura/cadera/talla; (4) **decidir `MCA_ref`/`hidSG_ref`**: tabla de referencia de Gildardo, o gatear ISCM-MCA/badges a null. **Medio-chico, casi todo PORT. El OCR NO va** (este equipo trae la espectroscopía). Es más chico de lo que estimamos.
 
-**Urgencia: un escalón abajo, no eliminada.** El Hito 2 son integrantes PROBANDO, y pueden probar con el ZM3. El export corto se vuelve crítico cuando **atiendan pacientes reales** (ahí el equipo es el Biody BIS).
+**Urgencia:** el import ya no bloquea (funciona hoy); lo urgente es que ISCM/IEHH/badges NO degraden en silencio con datos reales. Antes de Hito 2 con pacientes reales.
 
-**EA1 NO espera a Gildardo (ya entregó): espera MATERIAL de Santiago.** Antes de planear el bloque, Santiago debe conseguir: (1) un **export real de un Biody BIS** (sin él construiríamos contra una suposición), y (2) una **captura del Biody Manager** como la que el flujo pediría, para saber qué datos hay que leer de ahí. Con eso se dimensiona el bloque y se decide port vs construcción pieza por pieza.
-
-**Orden:** primero termina el cotejo (queda Tratamiento), después EA1 como bloque propio con plan, cuando llegue el material.
-
-**Relación:** conecta con "El import del Biody es frágil por igualdad exacta de headers" (`_rescatar` v8 §3.2-3.6, más abajo): robustez de headers + esta captura = el mismo bloque de "hacer tratable el import del Biody BIS".
+**Orden:** cotejo cerrado; EA1 como bloque propio con plan (ya tenemos el material: el export real). Falta pedir a Gildardo la tabla de `MCA_ref`/`hidSG_ref` (o confirmar el gate a null). **Relación:** con "El import del Biody es frágil por igualdad exacta de headers" (`_rescatar` v8 §3.2-3.6, más abajo).
 
 ## Capturar los 6 campos sociodemográficos (DECIDIDO 2026-08-08; gate legal en etnia)
 
