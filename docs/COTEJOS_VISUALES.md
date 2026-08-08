@@ -204,3 +204,66 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 - **Candidatos → decisión:** EA2 (edición manual de medidas), EA3 (demografía extendida, intake-scope), EB4 (fases del ciclo), EC1 (feedback peso meta), EC3 (unidad Kgf).
 - **Coinciden:** las 11 condiciones BIA verbatim, meta de peso y fuerza prensil capturadas, import XLSX, consentimiento como puerta.
 - **Deliberadas (ignorar):** marcapasos/embarazo bloquean (más estricto), 3 condiciones de validez añadidas, cintura de la medida no del umbral, entrada/diagnóstico separados, pestaña única.
+
+---
+
+## ENCUESTA (instrumento del paciente) — tabla de registro (pre-llena, 2026-08-08)
+
+**Cómo leer esto.** La encuesta es contenido CONGELADO de Gildardo: una diferencia de TEXTO de pregunta/opción es hallazgo para él (o para el bloque "re-auditar cobertura de la encuesta" ya en `BACKLOG.md`), no un ajuste nuestro. Lo que SÍ es nuestro: las etiquetas de dominio (de-jergadas a propósito), el consentimiento (artefacto legal propio) y qué demografía se captura. Crucé el HTML v8 (`ModEncuesta`, preguntas L1299-2226, consentimiento L3130-3410) contra las 63 preguntas del seed (`supabase/seed.ts`) y el esquema `patient_profiles`.
+
+**Conteo:** HTML v8 = **64 ítems** obligatorios/opcionales; Atlas = **63**. La diferencia es una pregunta que falta (ver EC-A1).
+
+### A. Contenido (frozen → Gildardo / bloque de re-auditoría, NO auto-editar)
+
+| # | Elemento | HTML v8 | Atlas | Acción |
+|---|---|---|---|---|
+| ECA1 | **Pregunta de CIRUGÍAS digestivas/metabólicas** (`d6_qx`, ítem 63): "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?" (Colecistectomía, bariátrica, resección intestinal, gastrectomía, apendicectomía, Otra) | existe (D6) | **NO existe** | **Portarla** (con Gildardo: ¿field_key? la cirugía bariátrica podría importar al motor nutricional). Es la pieza que falta para llegar a 64 |
+| ECA2 | **D1: ejemplos y ancla de porción** por grupo (sub "espinaca, acelga..." + "📏 Un puño cerrado") | los 15 grupos los traen | Atlas solo tiene "{grupo} (frecuencia de consumo)", sin ejemplos ni porción | ¿portar los aids? ayudan al paciente. A Gildardo/re-auditoría |
+| ECA3 | **Nombres de grupos D1** | "Raíces, tubérculos y plátanos", "Azúcares añadidos y bebidas azucaradas", "Cereales integrales y otros", "Grasas saludables (aguacate...)" | "Tubérculos y raíces", "Azúcares y dulces", "Cereales integrales", "Grasas saludables" | alinear textos (verbatim de Gildardo). NO tocan el motor (calcPatron lee el ORDINAL, no el texto) |
+| ECA4 | **Opción "Otros/Otras" + texto libre** en d4_35 (suplementos), d6_43 (alergias) | existen (+ input libre) | faltan esas opciones; Atlas no tiene tipo de widget "texto libre de seguimiento" | a Gildardo/re-auditoría; ¿se capturan las especificaciones "otro"? |
+| ECA5 | Opciones ENGINE-acopladas (d5_39 diagnósticos, d5_38 familiares, d2_21 métodos) | listas completas | **coinciden verbatim** | ninguna (candado `survey-engine-coupling.test.ts` intacto) |
+
+### B. Demografía / datos personales (captura — aquí cae EA3)
+
+| # | Elemento | HTML v8 captura | Atlas captura | ¿Hallazgo o deliberada? | Acción |
+|---|---|---|---|---|---|
+| ECB1 | Identidad: nombre, tipo/N° doc, sexo, fecha nac, teléfono, email | sí | sí (`patient_profiles`) | **coincide** | ninguna |
+| ECB2 | País y ciudad | sí | sí | **coincide** | ninguna |
+| ECB3 | **Etnia / grupo poblacional** | sí (7 opciones) | **NO** | candidato → decisión | ¿se registra? no lo usa el motor |
+| ECB4 | **Nivel educativo** | sí (8 opciones) | **NO** | candidato → decisión | idem |
+| ECB5 | **Ocupación** | sí (15 + Otra) | **NO** | candidato → decisión | idem |
+| ECB6 | **Estado civil** | sí (5 opciones) | **NO** | candidato → decisión | idem |
+| ECB7 | **Estrato socioeconómico** | sí (1-6 / No aplica) | **NO** | candidato → decisión | idem |
+| ECB8 | **Motivo de consulta** | sí (8 opciones, múltiple) | **NO** (no hay columna) | candidato → decisión | ¿registro clínico útil? |
+
+**EA3 confirmado y ampliado:** el HTML captura 6 campos sociodemográficos + motivo que Atlas no guarda. Ninguno alimenta el motor ANI-BIS-E. Decisión: ¿los queremos (observatorio/obbia, investigación)? Si sí, es esquema nuevo (`patient_profiles` + intake).
+
+### C. Deliberadas (nuestras; que no reaparezcan)
+
+| Decisión | HTML v8 | Atlas | Por qué |
+|---|---|---|---|
+| **Etiquetas de dominio de-jergadas** | "D1 Patrón Usual de Consumo", "D5 Epigenético / LE8", "D6 Alergias y Salud Digestiva" | "Alimentación", "Antecedentes y estilo de vida", "Alergias y digestión" | lenguaje al paciente, sin jerga (comentario del seed: "nada de LE8") |
+| **Consentimiento** | "Encuesta CNV v3.0", 5 casillas (datos/salud/terceros/derechos/bioética) + firma por nombre | artefacto legal propio vendorizado (v1.6), 3 autorizaciones (servicio/datos_sensibles/internacional_ia, regla 15) + soporte de menores | Atlas tiene su consentimiento legal propio, no el del prototipo (C1, hash anclado) |
+| **Encuesta del paciente separada del lado profesional** | tab "Motor ⚡" salta al lado profesional desde la encuesta | superficies separadas (público `/encuesta/[token]` vs interno) | seguridad/separación de superficies |
+
+### D. Widgets (coinciden en tipo; confirmar con OJOS)
+
+| # | Elemento | HTML v8 | Atlas | Nota |
+|---|---|---|---|---|
+| ECD1 | Pills única/múltiple | dominante | `opcion` / `opcion_multiple` | coincide |
+| ECD2 | Contador +/- (bebidas D7) | Counter, rango **0-30** | `contador` | **[OJOS]** verificar el tope 30 |
+| ECD3 | Slider (estrés d3_29) | range **1-10** | `escala` | coincide (único slider) |
+| ECD4 | Opciones con alerta roja (D2 TCA: Laxantes/Vómito/Ejercicio excesivo) | pinta en rojo + aviso | ¿lo rendea Atlas? | **[OJOS]** verificar el resaltado de riesgo |
+
+### Para Santiago (requiere OJOS)
+
+- **[OJOS]** El stepper por dominio y la barra de progreso (que se vea equivalente).
+- **[OJOS]** El resaltado de riesgo en D2 (opciones TCA en rojo) y en D1 (frecuencia ≥2 en procesados).
+- **[OJOS]** Las 3 categorías de color de D1 (protectora/moderar/PCBU): ¿Atlas las agrupa?
+
+### Resumen (para el BACKLOG / bloque de re-auditoría de la encuesta)
+
+- **Content, va a Gildardo/re-auditoría (ya hay bloque):** ECA1 (falta la pregunta de cirugías `d6_qx`, la más concreta), ECA2 (D1 sin ejemplos/porción), ECA3 (nombres de grupos D1), ECA4 (opciones "Otros" + texto libre).
+- **Candidatos → decisión nuestra:** ECB3-8 (etnia, educación, ocupación, estado civil, estrato, motivo). Ninguno lo usa el motor.
+- **Coinciden (verificado):** las opciones engine-acopladas (d5_39/d5_38/d2_21), identidad, país/ciudad, tipos de widget.
+- **Deliberadas (ignorar):** etiquetas de-jergadas, consentimiento propio, encuesta separada del lado profesional.
