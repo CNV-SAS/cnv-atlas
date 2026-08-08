@@ -153,12 +153,37 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 
 4.2 **Apuntar TODO al dominio propio (crítico; lo que más se olvida).** Ahora que existe `https://atlas.cnvsystem.com`, hay cosas que quedaron apuntando a la URL de Vercel o a local y hay que moverlas:
 - **Supabase → Authentication → URL Configuration: `Site URL` = `https://atlas.cnvsystem.com`, y agrega esa URL (y `.../auth/confirm`) a `Redirect URLs`.** ESTE ES EL QUE MÁS SE OLVIDA Y ROMPE JUSTO LA RECUPERACIÓN/INVITACIÓN: Supabase arma los enlaces de los correos (recuperación, invitación) con la `Site URL`. Si apunta a otro lado, el enlace del correo lleva al lugar equivocado y el flujo que acabamos de arreglar falla en producción.
-- **Supabase → Authentication → Email Templates: replica las plantillas de "Reset Password" e "Invite User".** La nube (Supabase hosted) NO lee `supabase/config.toml` ni `supabase/templates/*.html` (eso es solo para el entorno local); en la nube las plantillas se editan en el dashboard. Sin esto, la nube usa la plantilla por defecto (`{{ .ConfirmationURL }}`), que NO pasa por `/auth/confirm` con `token_hash` y rompe el flujo. Pega, en cada una, el enlace que ya usamos en local (`supabase/templates/recovery.html` e `invite.html`):
-  - Reset Password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/set-password`
-  - Invite User: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password`
+- **Supabase → Authentication → Email Templates: replica las plantillas de "Reset Password" e "Invite User".** La nube (Supabase hosted) NO lee `supabase/config.toml` ni `supabase/templates/*.html` (eso es solo para el entorno local); en la nube las plantillas se editan en el dashboard. Sin esto, la nube usa la plantilla por defecto (`{{ .ConfirmationURL }}`), que NO pasa por `/auth/confirm` con `token_hash` y rompe el flujo. **Reemplaza el body COMPLETO de cada plantilla con estas (NO solo el enlace: el href suelto dejaría un correo con una dirección sin texto).** Son las mismas de `supabase/templates/`, en español:
+
+  Reset Password:
+  ```html
+  <h2>Restablecer contraseña de Atlas</h2>
+  <p>Se solicitó restablecer tu contraseña. Haz clic en el enlace para fijar una nueva:</p>
+  <p>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/set-password">
+      Restablecer contraseña
+    </a>
+  </p>
+  <p>Si no solicitaste esto, ignora este correo; tu contraseña no cambiará.</p>
+  ```
+
+  Invite User:
+  ```html
+  <h2>Invitación a Atlas</h2>
+  <p>Te invitaron a Atlas. Haz clic en el enlace para fijar tu contraseña e ingresar:</p>
+  <p>
+    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/set-password">
+      Aceptar invitación y fijar contraseña
+    </a>
+  </p>
+  <p>Si no esperabas esta invitación, ignora este correo.</p>
+  ```
+
+  **Solo estas dos:** Atlas no dispara confirmación de registro, magic link ni cambio de correo (el registro está desactivado, `enable_signup=false`, y las confirmaciones también), así que no hay que tocar ni traducir las demás plantillas.
   - **Si el body de las plantillas NO se deja editar (plan gratuito):** desde el **3 de junio de 2026** Supabase bloqueó editar plantillas en proyectos gratuitos NUEVOS que usan su SMTP por defecto ([changelog](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier)). **NO hace falta comprar Pro.** La excepción oficial: los proyectos gratuitos **que configuran su propio SMTP recuperan la edición**. Configura SMTP con **Resend** (que ya tenemos), lo que además es necesario para producción de todos modos (el SMTP por defecto de Supabase está limitado a pocos correos por hora, inservible para invitar/recuperar de verdad). En **Supabase → Authentication → SMTP Settings → Enable Custom SMTP**:
     - Host: `smtp.resend.com` · Port: `465` · Username: `resend` · Password: tu `RESEND_API_KEY`
     - Sender: un correo de un **dominio verificado en Resend** (ver Paso 5.3; si `atlas.cnvsystem.com` aún no está verificado, usa el remitente disponible en `cnvsystem.com`). Verificar el dominio en Resend es prerrequisito, así que este sub-paso se adelanta con el 5.3.
+    - **Que el correo funcione en LOCAL no prueba que el dominio esté verificado en Resend:** en local todo va a Mailpit sin pasar por Resend, así que puede que nunca se haya enviado un correo real por Resend. Confirma en `resend.com/domains` que el dominio del remitente está en estado **Verified** ANTES de probar en la nube; si no, los correos no salen y parece otro fallo.
     - Con el SMTP propio activo, vuelve a Email Templates: ya se dejan editar. Pega los dos enlaces de arriba.
 - **Webhook de Wompi:** apunta a `https://atlas.cnvsystem.com/api/webhooks/wompi` (se hace en el Paso 5).
 - **Enlaces de la encuesta del paciente / correos:** salen de la app (usan la URL pública) y de Supabase (Site URL). Con la `Site URL` correcta y el dominio activo, quedan bien.
