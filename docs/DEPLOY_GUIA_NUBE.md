@@ -188,6 +188,7 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 - **Webhook de Wompi:** apunta a `https://atlas.cnvsystem.com/api/webhooks/wompi` (se hace en el Paso 5).
 - **Enlaces de la encuesta del paciente / correos:** salen de la app (usan la URL pública) y de Supabase (Site URL). Con la `Site URL` correcta y el dominio activo, quedan bien.
 - **Verificar:** dispara un correo de recuperación en producción (con una cuenta de prueba) y confirma que el enlace del correo empieza por `https://atlas.cnvsystem.com/auth/confirm`, no por la URL de Vercel ni localhost.
+- **HECHO y verificado end-to-end en producción (smoke de Santiago):** no solo el enlace. El correo real salió desde `atlas-notificaciones@cnvsystem.com` con la plantilla nueva, el enlace llevó a `/auth/confirm`, se cambió la clave, se configuró el segundo factor y se entró. **El flujo de autenticación completo funciona en producción** (recuperación + set-password + MFA + ingreso), no solo la pieza del enlace.
 
 ---
 
