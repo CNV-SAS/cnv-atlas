@@ -6,6 +6,7 @@ import { isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { getActivePrompt } from "@/lib/ai/prompts";
 import { AiError, generateText } from "@/lib/ai/provider";
+import { reportServerError } from "@/lib/observability/report-error";
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 
 import { getTreatmentProtocol } from "../data/treatment-reader";
@@ -87,7 +88,10 @@ export async function generateMenu(
   let config;
   try {
     config = await resolveAiConfig();
-  } catch {
+  } catch (e) {
+    // Con la IA bien configurada (B14), un fallo aqui es inesperado (p. ej. leer la config de la BD):
+    // que deje rastro en vez de leerse como "no configurada" a secas.
+    reportServerError("generateMenu.resolveConfig", e);
     return err(appError("internal", "La IA no esta configurada. Contacta al administrador."));
   }
 

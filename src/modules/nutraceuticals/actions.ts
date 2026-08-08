@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
+import { reportServerError } from "@/lib/observability/report-error";
 import { getCurrentUser } from "@/modules/auth/session";
 
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
@@ -62,7 +63,8 @@ export async function createNutraceuticalAction(
     const created = await service.createNutraceutical(parsed.data, user.organizationId);
     revalidatePath("/nutraceuticos");
     return ok({ id: created.id });
-  } catch {
+  } catch (e) {
+    reportServerError("nutraceuticals.createNutraceutical", e);
     return err(appError("internal", "No se pudo crear el nutracéutico."));
   }
 }
@@ -80,7 +82,8 @@ export async function updateNutraceuticalAction(
     await service.updateNutraceutical(parsed.data);
     revalidatePath("/nutraceuticos");
     return ok(null);
-  } catch {
+  } catch (e) {
+    reportServerError("nutraceuticals.updateNutraceutical", e);
     return err(appError("internal", "No se pudo actualizar el nutracéutico."));
   }
 }
@@ -98,8 +101,10 @@ export async function registerUsageAction(
   try {
     const usage = await service.registerUsage(parsed.data);
     return ok({ usageId: usage.id });
-  } catch {
-    // La RLS rechaza si el actor no es el profesional del paciente del tratamiento.
+  } catch (e) {
+    // La RLS rechaza si el actor no es el profesional del paciente del tratamiento. Se reporta igual:
+    // si el fallo NO es de RLS sino un error real, tiene que dejar rastro (el area lo hace filtrable).
+    reportServerError("nutraceuticals.registerUsage", e);
     return err(appError("forbidden", "No se pudo registrar el uso para este tratamiento."));
   }
 }

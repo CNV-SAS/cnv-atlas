@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
+import { reportServerError } from "@/lib/observability/report-error";
 import { getCurrentUser } from "@/modules/auth/session";
 
 import { canManageComodato } from "./policies/can-manage-comodato";
@@ -54,6 +55,7 @@ export async function createDeviceAction(
         appError("conflict", "Ya existe un equipo con ese código, serial o correo de sistema."),
       );
     }
+    reportServerError("comodato.createDevice", e);
     return err(appError("internal", "No se pudo crear el equipo."));
   }
 }
@@ -80,6 +82,7 @@ export async function updateDeviceStatusAction(
         ),
       );
     }
+    reportServerError("comodato.updateDeviceStatus", e);
     return err(appError("internal", "No se pudo actualizar el estado del equipo."));
   }
 }
@@ -106,6 +109,7 @@ export async function assignComodatoAction(
     if (e instanceof service.DeviceAlreadyAssignedError) {
       return err(appError("conflict", "El equipo ya tiene un comodato activo."));
     }
+    reportServerError("comodato.assignComodato", e);
     return err(appError("internal", "No se pudo asignar el comodato."));
   }
 }
@@ -123,7 +127,8 @@ export async function returnComodatoAction(
     await service.returnComodato(parsed.data);
     revalidatePath("/comodato");
     return ok(null);
-  } catch {
+  } catch (e) {
+    reportServerError("comodato.returnComodato", e);
     return err(appError("internal", "No se pudo registrar la devolución."));
   }
 }

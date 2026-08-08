@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { appError, err, ok, type AppError, type Result } from "@/core/errors";
+import { reportServerError } from "@/lib/observability/report-error";
 import { getCurrentUser } from "@/modules/auth/session";
 
 import { canCreateCheckout } from "./policies/can-create-checkout";
@@ -38,6 +39,7 @@ export async function createCheckoutAction(
     return ok(created);
   } catch (e) {
     if (e instanceof CheckoutError) return err(appError("validation", e.message));
+    reportServerError("checkout.create", e);
     return err(appError("internal", "No se pudo crear el checkout."));
   }
 }
