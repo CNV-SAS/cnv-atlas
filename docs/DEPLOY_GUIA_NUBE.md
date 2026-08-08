@@ -83,6 +83,12 @@ Regla mental: `NEXT_PUBLIC_` significa "puede verse en el navegador". Las dos de
 
 Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo de datos. IMPORTANTE, léelo antes: **tu `.env.local` NO cambia, se queda apuntando a local.** Las credenciales de la nube van en Vercel (Paso 2), NO en tu máquina. La única excepción son estos dos comandos (migrate y seed), que corren con la URL/credenciales remotas puestas SOLO para ese comando (variable de shell), sin editar ningún archivo. Verificado que Node NO pisa esa variable con `.env.local`, así que funciona.
 
+> **ANTES DE EMPEZAR, tres cosas que arruinan este paso si se descubren tarde. Léelas ahora, no después:**
+>
+> 1. **Las variables de la nube TIENEN que llegar al comando, o sembrarás tu base LOCAL creyendo que sembraste la nube.** El seed, sin las variables remotas, apunta a local por defecto (silenciosamente). Por eso cada comando de abajo pone las variables en la MISMA ventana de PowerShell, justo antes. La verificación final (`patients` vacía en la nube) es la que delata este error: si en la nube no aparece nada, sembraste local.
+> 2. **La conexión directa puede fallar** (común desde tu máquina si hay IPv4/firewall). Si `pnpm db:migrate` da timeout o "no route", NO es la contraseña: es la conexión directa. La alternativa está lista: Supabase → **Settings → Database → Connection string → Session pooler** (o Transaction). Copia ESA cadena AHORA, para tenerla a mano; si la directa falla, la usas como `DATABASE_URL` sin ir a buscarla. La app ya funciona con el pooler (`prepare: false`).
+> 3. **El seed DEBE correr con `SEED_DEMO=false`.** Si se te olvida, la nube nace con usuarios demo y un **paciente ficticio con PII**, contra la decisión de "real desde el día uno". Si pasa, hay que limpiar la base antes de seguir (no se deja pasar). El comando de abajo ya lo incluye.
+
 3.1 **Aplicar las migraciones.**
 - Comando (PowerShell), reemplazando la URI por la `DATABASE_URL` del Paso 1.2:
   ```powershell
@@ -90,9 +96,9 @@ Ahora que la app conecta a la base (Paso 2.3), cárgale el esquema y el mínimo 
   pnpm db:migrate
   Remove-Item Env:\DATABASE_URL   # limpia la variable al terminar
   ```
-- Aplica las 48 migraciones, incluidas las de RLS y triggers.
+- Aplica las 49 migraciones (0000 a 0048), incluidas las de RLS y triggers.
 - **Qué verás:** "migrations applied successfully".
-- **Verificar:** Supabase → Table editor: aparecen las tablas (`patients`, `evaluations`, `nutraceutical_faltante_cases`, etc.). Database → Roles/Policies: las políticas RLS existen. En la app, la pantalla de login ya no falla al consultar datos.
+- **Verificar (dos cosas, no solo una):** (1) Supabase → **Table editor**: aparecen las tablas, unas **67** (`patients`, `evaluations`, `treatments`, `nutraceutical_faltante_cases`, etc.). (2) Supabase → **Database → Policies**: hay políticas RLS (la lista NO está vacía); en particular las tablas clínicas (`patients`, `evaluations`, `treatments`) tienen RLS activo. Las policies y triggers viven en migraciones escritas a mano, que son las que más fácil se saltan si una migración falla a mitad, por eso se verifican aparte de las tablas. En la app, la pantalla de login ya no falla al consultar datos.
 - **Qué puede salir mal:** timeout o permiso. Si una migración de trigger falla, NO sigas: el orden importa. Copia el error y páralo. Si `DATABASE_URL` quedó vacía, el comando falla al conectar: revisa que la pusiste en la MISMA ventana de PowerShell.
 
 3.2 **Sembrar el mínimo.** Igual que 3.1: variables de shell SOLO para este comando, sin tocar `.env.local`. El seed usa la URL y la **service_role key** de la nube (Paso 1.2), el correo del admin de arranque (`sau.idk001@gmail.com` u otro que definas en `supabase/seed.ts`), una contraseña fuerte, y `SEED_DEMO=false`.
