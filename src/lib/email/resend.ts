@@ -55,11 +55,15 @@ export async function sendReportEmail(input: ReportEmailInput): Promise<Result<{
   if (!from) {
     return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
   }
+  // Reply-To a un buzon que SI se lee (soporte): el From es una direccion de solo-envio. Si un paciente
+  // responde el reporte, la respuesta debe llegar a alguien. Solo se agrega si esta configurada.
+  const replyTo = process.env.EMAIL_REPLY_TO;
 
   try {
     const res = await withTimeout(
       resend.emails.send({
         from,
+        ...(replyTo ? { replyTo } : {}),
         to: input.to,
         subject: input.subject,
         text: input.text,
