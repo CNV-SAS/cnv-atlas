@@ -1,10 +1,10 @@
-# Guía de despliegue a la nube (staging = producción) — para Santiago
+# Guía de despliegue a la nube (staging, gate del Hito 2) — para Santiago
 
 **Qué es esto.** Los pasos, en orden estricto, para montar Atlas en la nube por primera vez. Está escrito para hacerse en consolas (Supabase, Vercel, Cloudflare, Wompi, Alegra, Resend), no en el editor de código. Cada paso dice: en qué consola estás, qué hacer, qué vas a ver cuando funcione, qué dato te pide y de dónde sale, **cómo verificar que quedó bien antes de seguir**, y qué puede salir mal.
 
 **Dos cosas decididas (para que no las decidas a mitad):**
 
-- **Un solo entorno, tratado como real desde el día uno.** Lo que montes ahora es lo que van a usar los integrantes; los datos que entren son reales. No montamos un "ensayo" aparte: duplicaría el trabajo y el segundo siempre se hace con prisa. La consecuencia: **nada de datos de prueba entra a la nube** (ver Paso 0).
+- **Este entorno es STAGING (Hito 2), NO producción.** Es donde los integrantes van a PROBAR Atlas (crear pacientes y evaluaciones de prueba), no donde atenderán pacientes reales. Consecuencias: (1) los datos de prueba de los integrantes y de los smokes **son esperados aquí**; (2) aun así el seed NO trae PII demo (Paso 0): no queremos nombres reales inventados de arranque; (3) **los registros clínicos son inmutables, no se borran**, así que todo lo que entre a staging queda. **Antes del Hito 3** (pacientes reales) hay que decidir si se limpia este entorno (borrar la base y resembrar) o se crea uno nuevo limpio: es un **gate del Hito 3** (ver `BACKLOG.md`). Producción NO es este entorno.
 - **Wompi en SANDBOX primero.** El cobro se prueba contra el sandbox de Wompi con una URL pública real: verifica el flujo completo (pago, webhook, transacción, factura) sin mover dinero. Pasar a producción después es cambiar credenciales, no rehacer el código. **Confirmá contra la documentación vigente de Wompi** que su sandbox acepta un webhook a una URL pública (es lo normal, pero cambia con el tiempo).
 
 **El entorno local NO desaparece.** Es donde corren los tests y donde haces smokes sin tocar datos reales. Se queda. Esto monta el entorno de la nube, que hoy no existe.
@@ -235,7 +235,7 @@ Regla práctica: **si una variable solo actúa al desplegar o en producción, va
 
 6.2 **Gate anti-dinero-real: confirma SANDBOX antes de pagar.** En el checkout, ANTES de meter la tarjeta, verifica que la llave pública de Wompi en la página empiece por `pub_test_` (código fuente / Network, ver Paso 5.1). Si es `pub_prod_`, PARA y cámbiala: con producción, el pago sería real.
 
-6.3 **Paga con los datos de PRUEBA de Wompi (sandbox).** Fuente: [doc oficial de datos de prueba de Wompi](https://docs.wompi.co/docs/colombia/datos-de-prueba-en-sandbox/) (cambia con el tiempo, úsala como referencia viva). Al escribir esto: tarjeta general de prueba `4242 4242 4242 4242`, y el sandbox permite **forzar el resultado** (aprobado / rechazado / error); **cualquier otra tarjeta da error**. Para el smoke necesitas un resultado **aprobado**.
+6.3 **Paga con los datos de PRUEBA de Wompi (sandbox).** Fuente: [doc oficial de datos de prueba de Wompi](https://docs.wompi.co/docs/colombia/datos-de-prueba-en-sandbox/) (cambia con el tiempo, úsala como referencia viva). Al escribir esto: tarjeta general de prueba `4242 4242 4242 4242`, con **fecha de vencimiento futura y cualquier CVV**; el sandbox permite **forzar el resultado** (aprobado / rechazado / error) y **cualquier otra tarjeta da error**. Para el smoke necesitas un resultado **aprobado**.
 
 6.4 **Verifica la cadena, eslabón por eslabón** (para saber DÓNDE falló, no solo QUE falló):
 - Wompi muestra el pago aprobado (sandbox).
