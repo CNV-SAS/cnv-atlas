@@ -10,6 +10,8 @@ import {
   sexoLabel,
 } from "@/modules/patients/labels";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
+import { PatientReferralsSection } from "@/modules/referrals/components/patient-referrals-section";
+import { canRegisterReferral } from "@/modules/referrals/policies/can-register-referral";
 
 export const metadata = { title: "Historia del paciente - Atlas" };
 
@@ -120,6 +122,8 @@ export default async function HistoriaPacientePage({
           </div>
         )}
       </section>
+
+      <PatientReferralsSection patientId={patientId} canMarkReturn={canRegisterReferral(user)} />
     </div>
   );
 }

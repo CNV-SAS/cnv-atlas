@@ -54,8 +54,11 @@ export function resolveRutasContent(rutas: string[]): RutaContent[] {
 }
 
 // Una remisión: destinatario + urgencia (string verbatim de Gildardo) + ruta de origen + indicaciones.
+// `referralTarget` es la profesión destino como CLAVE del modelo (D-009): para prellenar el registro de
+// remisión y para saber cuándo es una AUTO-remisión (destino == profesión del que atiende = conducta propia).
 export type Remision = {
   profesional: string;
+  referralTarget: "medico" | "psicologo" | "deportologo";
   urgencia: string;
   rutaId: string;
   rutaLabel: string;
@@ -67,6 +70,14 @@ const REMISION_PROF: Record<string, string> = {
   medico: "Médico",
   psicologico: "Psicólogo/a",
   ejercicio: "Entrenador/Fisioterapeuta",
+};
+
+// Componente de ruta -> profesión del modelo (D-009). "ejercicio" (Entrenador/Fisioterapeuta) mapea a
+// deportólogo; a confirmar con Gildardo si son la misma figura (Q32).
+const REMISION_TARGET: Record<string, "medico" | "psicologo" | "deportologo"> = {
+  medico: "medico",
+  psicologico: "psicologo",
+  ejercicio: "deportologo",
 };
 
 // Remisiones AGREGADAS de las rutas activas: los componentes medico/psicologico/ejercicio con
@@ -81,6 +92,7 @@ export function buildRemisiones(rutas: RutaContent[]): Remision[] {
       if (c.remision) {
         out.push({
           profesional: REMISION_PROF[prof],
+          referralTarget: REMISION_TARGET[prof],
           urgencia: c.urgencia ?? "",
           rutaId: r.id,
           rutaLabel: r.label,

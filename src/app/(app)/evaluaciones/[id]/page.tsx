@@ -204,6 +204,14 @@ export default async function ResultadosEvaluacionPage({
   // alimenta el diagnostico mientras C1 siga apagado). Sin encuesta -> no_capturado.
   const patron = resolvePatronView(entrySurvey ?? []);
 
+  // D-009: el registro de remisión se ofrece al profesional que atiende, anclado al treatmentId sellado.
+  // `today` para el default de fecha (página dinámica; el tiempo de request es el correcto).
+  const referralToday = new Date().toISOString().slice(0, 10);
+  const referralRegister =
+    actorProfession.isProfessional && protocol?.treatmentId
+      ? { treatmentId: protocol.treatmentId, today: referralToday, actorProfession: actorProfession.profession }
+      : undefined;
+
   // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se computa en tiempo de vista
   // (clinical-engine/abordaje.ts), no se sella. Depende de la profesion del que mira. Solo se computa
   // el texto cuando el snapshot es compatible (si no, EvaluationResults ya retorna el aviso de
@@ -282,7 +290,7 @@ export default async function ResultadosEvaluacionPage({
             <PatientStateHeader sector={patientState.sector} fenotipo={patientState.fenotipo} />
           ) : null}
           <RutasSection rutas={rutas} />
-          <RemisionesSection rutas={rutas} />
+          <RemisionesSection rutas={rutas} register={referralRegister} />
           <ProfessionTreatmentSection
             evaluationId={id}
             actor={actorProfession}
