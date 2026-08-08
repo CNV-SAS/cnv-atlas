@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,12 @@ export function CreateCheckoutForm({
   nutraceuticals: CheckoutNutraceutical[];
 }) {
   const [state, action, pending] = useActionState(createCheckoutFormAction, initial);
+  // Inputs CONTROLADOS a proposito: React 19 resetea el form tras cada submit (lo del prop `action`), y
+  // el flujo de confirmacion del duplicado es de dos pasos (avisar -> "Generar de todos modos"). Sin
+  // control, el segundo submit mandaria los valores por defecto, no los que el profesional eligio.
+  const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  const [nutraceuticalId, setNutraceuticalId] = useState(nutraceuticals[0]?.id ?? "");
+  const [quantity, setQuantity] = useState("1");
   const last = useRef(state);
   useEffect(() => {
     if (state === last.current) return;
@@ -66,7 +72,14 @@ export function CreateCheckoutForm({
           <Label htmlFor="patientId" className="text-xs">
             Paciente
           </Label>
-          <select id="patientId" name="patientId" required className={selectClass}>
+          <select
+            id="patientId"
+            name="patientId"
+            required
+            value={patientId}
+            onChange={(e) => setPatientId(e.target.value)}
+            className={selectClass}
+          >
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.label}
@@ -79,7 +92,14 @@ export function CreateCheckoutForm({
           <Label htmlFor="nutraceuticalId" className="text-xs">
             Nutraceutico
           </Label>
-          <select id="nutraceuticalId" name="nutraceuticalId" required className={selectClass}>
+          <select
+            id="nutraceuticalId"
+            name="nutraceuticalId"
+            required
+            value={nutraceuticalId}
+            onChange={(e) => setNutraceuticalId(e.target.value)}
+            className={selectClass}
+          >
             {nutraceuticals.map((n) => (
               <option key={n.id} value={n.id}>
                 {n.name} ({n.unitPrice.toLocaleString("es-CO")} COP)
@@ -98,7 +118,8 @@ export function CreateCheckoutForm({
             type="number"
             min={1}
             step={1}
-            defaultValue={1}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
             required
             className="h-9 w-24"
           />
