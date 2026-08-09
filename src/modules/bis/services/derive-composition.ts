@@ -65,12 +65,17 @@ export function deriveMissingComposition(measured: Record<string, number>): Deri
     comp.ict = round4(cintura / talla);
   }
 
-  // 4. Emite solo los campos AUSENTES en lo medido, que tengan header de contrato y quedaron numericos.
+  // 4. Emite solo los campos AUSENTES en lo medido, que tengan header de contrato y quedaron numericos
+  //    y FISICAMENTE PLAUSIBLES. Guarda de cordura (glue, no frozen): la composicion es no-negativa; una
+  //    identidad de resta (FFW = ACT - 0,15FM, ECW_sg, MPM = MSSG - SES - MNO, ECM = FFM - MCA) puede dar
+  //    un negativo con datos corruptos. Mejor mostrar VACIO que persistir basura que alimente un
+  //    diagnostico. El frozen solo guarda isFinite; no se agregan topes superiores por campo (necesitarian
+  //    los rangos de Gildardo, y estos valores son secundarios/display, no insumos del motor nucleo).
   const out: DerivedValue[] = [];
   for (const [field, col] of Object.entries(BIODY_COLUMNS)) {
     if (measuredFields.has(field)) continue; // el equipo lo trajo: intocable
     const v = comp[field];
-    if (isNum(v)) out.push({ variableName: normalizeHeader(col.header), value: round4(v) });
+    if (isNum(v) && v > 0) out.push({ variableName: normalizeHeader(col.header), value: round4(v) });
   }
   return out;
 }

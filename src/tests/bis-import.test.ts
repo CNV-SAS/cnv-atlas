@@ -26,8 +26,15 @@ vi.mock("@/modules/bis/data/bis-writer", () => {
 
 const writer = await import("@/modules/bis/data/bis-writer");
 const { importBisMeasurement } = await import("@/modules/bis/services/bis-import");
+const { BIODY_COLUMNS } = await import("@/clinical-engine");
+const { normalizeHeader } = await import("@/modules/bis/services/header-map");
 
-const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "biody_synthetic.xlsx");
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+const FIXTURE = join(FIXTURES, "biody_synthetic.xlsx");
+// Export CORTO del Biody BIS (espectroscopia presente, composicion derivable ausente): el caso EA1.
+const SHORT_FIXTURE = join(FIXTURES, "biody-bis-male-synthetic.xlsx");
+
+const derivedHeader = (field: string) => normalizeHeader(BIODY_COLUMNS[field].header);
 
 async function tooFewColumnsBuffer(): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -55,6 +62,7 @@ describe("importBisMeasurement (orquestacion)", () => {
     vi.mocked(writer.writeBisMeasurement).mockResolvedValue({
       measurementId: "meas-1",
       valueCount: 120,
+      derivedCount: 0,
     });
     const buffer = await readFile(FIXTURE);
     const res = await importBisMeasurement({ ...baseInput, buffer });
@@ -62,10 +70,33 @@ describe("importBisMeasurement (orquestacion)", () => {
     if (!res.ok) return;
     expect(res.value.measurementId).toBe("meas-1");
     expect(writer.logBisImportFailure).not.toHaveBeenCalled();
-    // el writer recibe la fecha parseada y una lista de valores
+    // el writer recibe la fecha parseada, la lista de medidos y la de derivados
     const arg = vi.mocked(writer.writeBisMeasurement).mock.calls[0][0];
     expect(arg.measurementDate).toBeInstanceOf(Date);
     expect(arg.values.length).toBeGreaterThan(10);
+    expect(Array.isArray(arg.derivedValues)).toBe(true);
+  });
+
+  it("export corto (BIS): deriva la composicion faltante y la pasa al writer", async () => {
+    vi.mocked(writer.writeBisMeasurement).mockResolvedValue({
+      measurementId: "meas-2",
+      valueCount: 90,
+      derivedCount: 10,
+    });
+    const buffer = await readFile(SHORT_FIXTURE);
+    const res = await importBisMeasurement({ ...baseInput, buffer });
+    expect(res.ok).toBe(true);
+    const arg = vi.mocked(writer.writeBisMeasurement).mock.calls[0][0];
+    const derivedNames = new Set(arg.derivedValues.map((d) => d.variableName));
+    // Reconstruye los huecos de composicion del export corto.
+    for (const f of ["FFW", "ECW_sg", "ICW_sg", "MCA", "protActiva", "hidSG", "icc", "ict"]) {
+      expect(derivedNames.has(derivedHeader(f)), `${f} derivado`).toBe(true);
+    }
+    // No reemite lo que el equipo SI trajo (IR y ACT_MLG vienen medidos en este fixture).
+    expect(derivedNames.has(derivedHeader("IR"))).toBe(false);
+    expect(derivedNames.has(derivedHeader("ACT_MLG"))).toBe(false);
+    // Y la version de la formula se pasa para sellarla por fila derivada.
+    expect(typeof arg.derivedFormulaVersion).toBe("string");
   });
 
   it("archivo no XLSX: parse_failed y no persiste", async () => {

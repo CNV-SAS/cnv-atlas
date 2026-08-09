@@ -8,6 +8,11 @@ import {
   writeBisMeasurement,
 } from "../data/bis-writer";
 import { validateBisMeasurement } from "../validations/import-schema";
+import {
+  DERIVED_FORMULA_VERSION,
+  deriveMissingComposition,
+  type DerivedValue,
+} from "./derive-composition";
 import { parseBisXlsx } from "./xlsx-parser";
 
 // Orquesta el import BIS: parsear -> validar -> persistir, registrando cada fallo en
@@ -24,7 +29,26 @@ export type ImportBisInput = {
   ip: string | null;
 };
 
-export type ImportBisOutput = { measurementId: string; valueCount: number };
+export type ImportBisOutput = {
+  measurementId: string;
+  valueCount: number;
+  derivedCount: number;
+};
+
+// Deriva la composicion faltante a partir de lo MEDIDO. La derivacion es un EXTRA: la medicion ya es
+// valida sin ella. Si algo revienta (nunca deberia; el helper tolera huecos), se importa lo que hay con
+// composicion vacia en vez de tumbar el import. No hay PII que registrar; el audit derived_count queda en 0.
+function safeDerive(values: { variableName: string; value: number }[]): DerivedValue[] {
+  const measured: Record<string, number> = {};
+  for (const v of values) measured[v.variableName] = v.value;
+  try {
+    // Defensa extra: nunca una fila derivada que colisione con una medida (el helper ya las excluye).
+    return deriveMissingComposition(measured).filter((d) => measured[d.variableName] == null);
+  } catch (e) {
+    console.warn("[bis-import] derivacion de composicion fallo; se importa sin derivar:", e);
+    return [];
+  }
+}
 
 // Detalle para bis_import_logs: mensaje + errores por campo. Nunca lleva PII (los
 // mensajes referencian estructura o nombres de variable y valores, no a la persona).
@@ -63,6 +87,11 @@ export async function importBisMeasurement(
 
   // 3. Persistencia transaccional + audit. El reimport es un conflicto, no un fallo de
   //    archivo: se mapea a Result sin fila de log.
+  // Derivacion de composicion (EA1): corre por composicion faltante sobre lo medido. El orden lo
+  // resuelve derivarFaltantes internamente (re-lee los campos que el mismo deriva: MPM antes de MCA,
+  // MCA antes de ECM/BCM), igual que el v8, que lo llama una sola vez.
+  const derivedValues = safeDerive(validated.value.values);
+
   try {
     const written = await writeBisMeasurement({
       evaluationId: input.evaluationId,
@@ -70,6 +99,8 @@ export async function importBisMeasurement(
       deviceCalibrationDate: null, // enlace de equipo/calibracion diferido (B8 minimo)
       measurementDate: validated.value.measurementDate,
       values: validated.value.values,
+      derivedValues,
+      derivedFormulaVersion: DERIVED_FORMULA_VERSION,
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       ip: input.ip,

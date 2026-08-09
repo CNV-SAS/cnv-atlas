@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { bisImportLogs, bisMeasurements, bisRawValues } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
+import type { DerivedValue } from "../services/derive-composition";
 import type { BisRawValue } from "../types";
 
 // Escritura del import BIS en UNA transaccion de BD. Drizzle conecta como owner para
@@ -29,13 +30,21 @@ export type BisWriteInput = {
   deviceId: string | null;
   deviceCalibrationDate: string | null; // 'YYYY-MM-DD' (snapshot al escanear)
   measurementDate: Date;
-  values: BisRawValue[];
+  values: BisRawValue[]; // MEDIDOS por el equipo (origin 'medido')
+  // DERIVADOS de la composicion que el export corto no trae (EA1). Se insertan en la MISMA
+  // transaccion que los medidos: si algo falla, no queda una medicion a medias.
+  derivedValues: DerivedValue[];
+  derivedFormulaVersion: string; // ESPECTRO_FORMULAS_V con la que se derivo (se sella por fila derivada)
   actorId: string;
   actorEmail: string;
   ip: string | null;
 };
 
-export type BisWriteResult = { measurementId: string; valueCount: number };
+export type BisWriteResult = {
+  measurementId: string;
+  valueCount: number;
+  derivedCount: number;
+};
 
 export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWriteResult> {
   return db.transaction(async (tx) => {
@@ -58,16 +67,28 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
       })
       .returning({ id: bisMeasurements.id });
 
-    // Crudos como pares nombre+valor. numeric se inserta como string para no perder
-    // precision (convencion del proyecto, ver payments-writer).
-    if (input.values.length > 0) {
-      await tx.insert(bisRawValues).values(
-        input.values.map((v) => ({
-          measurementId: measurement.id,
-          variableName: v.variableName,
-          value: String(v.value),
-        })),
-      );
+    // Crudos como pares nombre+valor. numeric se inserta como string para no perder precision
+    // (convencion del proyecto, ver payments-writer). Medidos y derivados van en el MISMO insert
+    // (misma transaccion, condicion 2): 'medido' es lo que trajo el equipo; 'derivado' lo que
+    // reconstruyo la derivacion de composicion, con la version de la formula sellada por fila.
+    const rows = [
+      ...input.values.map((v) => ({
+        measurementId: measurement.id,
+        variableName: v.variableName,
+        value: String(v.value),
+        origin: "medido" as const,
+        derivedFormulaVersion: null,
+      })),
+      ...input.derivedValues.map((v) => ({
+        measurementId: measurement.id,
+        variableName: v.variableName,
+        value: String(v.value),
+        origin: "derivado" as const,
+        derivedFormulaVersion: input.derivedFormulaVersion,
+      })),
+    ];
+    if (rows.length > 0) {
+      await tx.insert(bisRawValues).values(rows);
     }
 
     // Log 'ok' INLINE: el registro del import exitoso es atomico con la medicion.
@@ -77,18 +98,27 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
       errorDetail: null,
     });
 
-    // Audit inline (regla dura 8). Sin PII: solo ids y conteo de variables.
+    // Audit inline (regla dura 8). Sin PII: solo ids y conteos. derived_count > 0 senala que ese archivo
+    // venia CORTO (composicion reconstruida): sirve para saber despues que equipos exportan incompleto.
     await recordAudit(tx, {
       event: "bis.imported",
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       entityType: "bis_measurement",
       entityId: measurement.id,
-      payload: { evaluation_id: input.evaluationId, variable_count: input.values.length },
+      payload: {
+        evaluation_id: input.evaluationId,
+        variable_count: input.values.length,
+        derived_count: input.derivedValues.length,
+      },
       ip: input.ip,
     });
 
-    return { measurementId: measurement.id, valueCount: input.values.length };
+    return {
+      measurementId: measurement.id,
+      valueCount: input.values.length,
+      derivedCount: input.derivedValues.length,
+    };
   });
 }
 

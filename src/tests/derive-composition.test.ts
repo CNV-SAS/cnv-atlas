@@ -91,4 +91,14 @@ describe("deriveMissingComposition", () => {
       expect(headers.has("ECM")).toBe(false);
     });
   });
+
+  it("no persiste un derivado no-fisico (negativo): mejor vacio que basura", () => {
+    // FFW = ACT - 0,15*FM. Con FM enorme y ACT minima, la identidad da negativo: no debe emitirse.
+    const measured: Record<string, number> = {
+      [normalizeHeader(BIODY_COLUMNS.TBW.header)]: 1, // ACT
+      [normalizeHeader(BIODY_COLUMNS.FM.header)]: 100, // FM -> FFW = 1 - 15 = -14
+    };
+    const derived = deriveMissingComposition(measured);
+    expect(emitted(derived, "FFW")).toBeUndefined();
+  });
 });
