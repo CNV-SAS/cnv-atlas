@@ -5,7 +5,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // PROFESIONAL-FACING: nada llega al paciente. DISPLAY-ONLY: se computa al vuelo, NO se sella tcaFlag
 // ni entra al pipeline (la cadena calorica que lo consumiria no existe; si llega, esto sube a carril
 // lento). Ver acuerdo de dos carriles en ARCHITECTURE.
-import { motorTratPsico } from "@/clinical-engine/frozen/atlas-tratamiento.js";
+// El que CORRE es el .authorized (original + modificaciones autorizadas; CA-2 corrige el mensaje de la
+// salvaguarda de TCA). El original queda intacto como referencia byte-identica a Gildardo.
+import { motorTratPsico } from "@/clinical-engine/frozen/atlas-tratamiento.authorized.js";
 
 export type PsicoTreatment = {
   tamizaje: { inst: string; res: string }[];
