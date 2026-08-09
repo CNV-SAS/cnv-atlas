@@ -225,14 +225,13 @@ Dos pasos, en orden, contra la BD local (`DATABASE_URL` en `.env.local`):
 
 Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.**
 
-### ¿Automatizarlo en el build de Vercel? (evaluado 2026-08-08, decisión pendiente de Santiago)
+### El migrate NO se automatiza en el build de Vercel (DECIDIDO 2026-08-08, no reabrir)
 
-Se PUEDE correr `pnpm db:migrate` en el build command de Vercel (antes de `next build`), y eliminaría el hueco. Ventaja real: si una migración falla, el **build falla y Vercel NO promueve el deploy** (el código viejo sigue vivo), que es MÁS seguro que el estado actual (código nuevo + tabla ausente = pantalla rota). Pero hay tres cuidados que son condición para hacerlo:
-- **Aislar los previews:** cada push (incluidos branches de preview) dispara un build. Hay que gatear el migrate a `VERCEL_ENV === 'production'` y asegurar que los previews NO usen la BD de producción, o un preview migraría prod.
-- **Conexión directa, no pooler:** el migrate necesita la conexión directa (5432), no el pooler (6543); el DDL en transacción falla por el pooler. Sería una variable aparte (p. ej. `MIGRATE_DATABASE_URL`).
-- **Migraciones aditivas:** el orden migrate-luego-promover es correcto para migraciones ADITIVAS (nuestro caso: tablas nuevas). Una migración DESTRUCTIVA (que quite algo que el código viejo aún usa) abriría una ventana de rotura entre el migrate y el promover; esas exigen cuidado aparte (deploy en dos pasos).
+Se evaluó correr `pnpm db:migrate` en el build de Vercel y **se decidió NO hacerlo.** Argumento (para que no se reabra): hoy las migraciones son aditivas y seguras, pero **el día que una toque datos existentes, un despliegue automático la aplicaría sin que nadie la revise. En una base con historias clínicas, una migración destructiva aplicada sin revisión NO se deshace.** El beneficio de automatizar (ahorrar un comando) es chico; el costo de ese caso es irreversible. No compensa.
 
-**Recomendación:** viable y elimina el hueco, PERO mientras no esté puesto (con esos tres cuidados), el paso manual de arriba + `pnpm db:check` es la red. `db:check` conviene igual, esté o no automatizado el migrate: convierte el fallo mudo en aviso claro.
+El control sin riesgo es el **paso manual + `pnpm db:check`**: el comando ya convierte el fallo mudo en aviso claro, que era el problema real. `db:check` entra a la RUTINA: **correrlo (contra la nube) antes de dar por bueno cualquier despliegue.**
+
+(Registro de lo evaluado, por si el contexto cambia: automatizar sería viable solo con tres cuidados, gatear a `VERCEL_ENV=production` para no migrar prod desde previews, conexión directa no pooler, y un manejo aparte para migraciones destructivas. Pero la decisión es no automatizar por el argumento de arriba.)
 
 ## Backups y disaster recovery
 - MVP (Free): backups nativos de Supabase. Antes del lanzamiento, **prueba de restauración** a un proyecto de staging (un backup no existe hasta que se restaura con éxito).
