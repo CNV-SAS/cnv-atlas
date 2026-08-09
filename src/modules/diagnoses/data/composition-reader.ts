@@ -27,15 +27,20 @@ export async function getCompositionForEvaluation(
 
   const { data: rows, error: rErr } = await supabase
     .from("bis_raw_values")
-    .select("variable_name, value")
+    .select("variable_name, value, origin")
     .eq("measurement_id", meas.id);
   if (rErr) throw new Error(`composition-reader: bis_raw_values: ${rErr.message}`);
 
+  // Medidos y derivados se muestran igual en la tabla (ambos son valores de composicion); hasDerived
+  // solo enciende la nota al pie de procedencia. La distincion fina (que valor es derivado) vive en la
+  // columna origin por si en el futuro se marca por fila; hoy la nota basta (EA1 2.4).
   const raw: Record<string, number> = {};
+  let hasDerived = false;
   for (const r of rows ?? []) {
     const v = Number(r.value);
     if (Number.isFinite(v)) raw[r.variable_name] = v;
+    if (r.origin === "derivado") hasDerived = true;
   }
 
-  return buildComposition(raw, meas.measurement_date);
+  return buildComposition(raw, meas.measurement_date, hasDerived);
 }

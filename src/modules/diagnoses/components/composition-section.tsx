@@ -203,6 +203,13 @@ export function CompositionSection({
               </tbody>
             </table>
           </div>
+        {composition.hasDerivedValues ? (
+          <p className="text-xs text-muted-foreground">
+            Algunos valores de composición se reconstruyen a partir de la medición cuando el equipo no
+            los exporta, siguiendo el modelo ANI-BIS-E. Por eso puedes ver variables que no aparecían
+            en la pantalla del equipo.
+          </p>
+        ) : null}
         {showDiagnosis ? (
           <p className="text-xs text-muted-foreground">
             Varias variables de composición aún no tienen clasificación del motor (se muestran con un

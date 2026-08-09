@@ -19,11 +19,19 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 export type CelularBadge = { id: string; label: string; guidance: string; tone: "warn" | "info" | "alert" };
 
+// Una badge que NO se pudo evaluar por falta de su REFERENCIA poblacional (no por falta de datos del
+// paciente). Distinto de "sin alteracion": el parametro no se comparo. Hoy aplica a MCA (necesita
+// MCA_ref -> MCA_dif) e hidratacion (necesita hidSG_ref), ambas pendientes de Gildardo (Q35). Se declara
+// explicito para que "sin alteraciones" no se lea como si estas dos se hubieran evaluado y salido bien.
+export type CelularNotEvaluable = { id: string; label: string; reason: string };
+
 export type CelularBadges = {
   // false = los crudos necesarios NO llegaron (BIS viejo sin esas columnas o import parcial): es
   // "no se pudo evaluar", DISTINTO de "sin alteraciones" (datos presentes y ninguna badge dispara).
   dataAvailable: boolean;
   badges: CelularBadge[];
+  // Badges cuyo insumo del paciente SI esta pero falta la referencia poblacional para compararlo.
+  notEvaluable: CelularNotEvaluable[];
 };
 
 const num = (v: unknown): number | null =>
@@ -77,5 +85,28 @@ export function computeCelularBadges(raw: Record<string, number>, sexoM: boolean
       tone: "alert",
     });
   }
-  return { dataAvailable, badges };
+
+  // No evaluables por falta de REFERENCIA (no de dato del paciente). Solo si hay composicion que
+  // evaluar (dataAvailable): con un BIS viejo sin ninguna columna, todo es "sin datos", no "sin
+  // referencia". MCA compara la desviacion MCA_dif (= MCA - MCA_ref); la hidratacion compara hidSG
+  // contra hidSG_ref. En el export corto la MCA y la hidSG se derivan, pero sus referencias las debe
+  // Gildardo (Q35): sin ellas estas dos badges no se pueden emitir, y la ausencia se DECLARA.
+  const notEvaluable: CelularNotEvaluable[] = [];
+  if (dataAvailable) {
+    if (mcaDif == null) {
+      notEvaluable.push({
+        id: "mca",
+        label: "Masa celular activa (MCA)",
+        reason: "No evaluable sin la referencia poblacional de MCA (pendiente de Gildardo).",
+      });
+    }
+    if (hidSG != null && hidSGref == null) {
+      notEvaluable.push({
+        id: "hid",
+        label: "Hidratación celular",
+        reason: "No evaluable sin la referencia de hidratación (pendiente de Gildardo).",
+      });
+    }
+  }
+  return { dataAvailable, badges, notEvaluable };
 }

@@ -48,6 +48,26 @@ describe("computeCelularBadges: los TRES estados se distinguen", () => {
     const r = computeCelularBadges(mk({}), true);
     expect(r.dataAvailable).toBe(false);
     expect(r.badges).toEqual([]);
+    expect(r.notEvaluable).toEqual([]); // sin datos = "sin datos", no "sin referencia"
+  });
+});
+
+describe("computeCelularBadges: no evaluable por falta de REFERENCIA (export corto, EA1)", () => {
+  it("MCA e hidratacion quedan NO evaluables sin sus referencias; ECM/BCM si se evalua", () => {
+    // Caso del export corto: hidSG y ECM/BCM derivados (presentes), pero sin MCA_dif ni hidSG_ref
+    // (referencias pendientes de Gildardo). AF viene medido.
+    const r = computeCelularBadges(mk({ AF: 7, hidSG: 68, ECM_BCM: 1.0 }), true);
+    expect(r.dataAvailable).toBe(true);
+    const notEval = r.notEvaluable.map((n) => n.id);
+    expect(notEval).toContain("mca");
+    expect(notEval).toContain("hid");
+    // ECM/BCM SI es evaluable (aqui no dispara por estar en 1.0, pero se evaluo, no queda "no evaluable").
+    expect(notEval).not.toContain("ecm");
+  });
+
+  it("con las referencias presentes, nada queda 'no evaluable'", () => {
+    const r = computeCelularBadges(mk({ AF: 7, MCA_dif: 0, hidSG: 75, hidSG_ref: 73, ECM_BCM: 1.0 }), true);
+    expect(r.notEvaluable).toEqual([]);
   });
 });
 

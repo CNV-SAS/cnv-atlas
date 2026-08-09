@@ -30,6 +30,9 @@ export type Composition = {
   aecMca: number | null; // AEC/MCA = ECW/MCA (C12, ver clasificarAecMca)
   // Fecha de la medicion BIS (del Biody), para confirmar QUE se importo. null si no se conoce.
   measurementDate: string | null;
+  // true si la medicion trae algun valor DERIVADO (el export corto no lo trajo y se reconstruyo por
+  // las identidades de Gildardo). Enciende la nota al pie de procedencia (EA1). Solo display.
+  hasDerivedValues: boolean;
 };
 
 // Clasificacion de AEC/MCA (radio agua extracelular / masa celular activa). Cortes y etiquetas
@@ -117,6 +120,7 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
 export function buildComposition(
   raw: Record<string, number>,
   measurementDate: string | null,
+  hasDerivedValues = false,
 ): Composition {
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -163,5 +167,6 @@ export function buildComposition(
     icc: get("icc"),
     aecMca,
     measurementDate,
+    hasDerivedValues,
   };
 }

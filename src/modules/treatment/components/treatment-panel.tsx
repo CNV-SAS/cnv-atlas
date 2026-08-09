@@ -62,22 +62,36 @@ function CelularSection({ celular }: { celular?: CelularBadges | null }) {
           Esta medicion BIS no incluye los parametros necesarios para evaluar la salud celular
           (angulo de fase, MCA, hidratacion, ECM/BCM).
         </p>
-      ) : celular.badges.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Sin alteraciones celulares que requieran priorizacion.
-        </p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {celular.badges.map((b) => (
-            <li
-              key={b.id}
-              className={`flex flex-col gap-0.5 rounded-md border px-3 py-2 text-sm ${CEL_TONE_CLS[b.tone]}`}
-            >
-              <span className="font-semibold">{b.label}</span>
-              <span className="text-foreground/80">{b.guidance}</span>
-            </li>
-          ))}
-        </ul>
+        <>
+          {celular.badges.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {celular.notEvaluable.length > 0
+                ? "Sin alteraciones en los parámetros evaluados."
+                : "Sin alteraciones celulares que requieran priorizacion."}
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {celular.badges.map((b) => (
+                <li
+                  key={b.id}
+                  className={`flex flex-col gap-0.5 rounded-md border px-3 py-2 text-sm ${CEL_TONE_CLS[b.tone]}`}
+                >
+                  <span className="font-semibold">{b.label}</span>
+                  <span className="text-foreground/80">{b.guidance}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* No evaluables por falta de referencia (no de dato): que "sin alteraciones" no se lea como
+              si estos parametros se hubieran evaluado. La referencia la debe Gildardo (Q35). */}
+          {celular.notEvaluable.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No evaluables aun (esperan las referencias poblacionales del modelo):{" "}
+              {celular.notEvaluable.map((n) => n.label).join(", ")}.
+            </p>
+          ) : null}
+        </>
       )}
     </section>
   );

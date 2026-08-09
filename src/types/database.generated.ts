@@ -317,20 +317,26 @@ export type Database = {
       }
       bis_raw_values: {
         Row: {
+          derived_formula_version: string | null
           id: string
           measurement_id: string
+          origin: Database["public"]["Enums"]["bis_value_origin"]
           value: number
           variable_name: string
         }
         Insert: {
+          derived_formula_version?: string | null
           id?: string
           measurement_id: string
+          origin?: Database["public"]["Enums"]["bis_value_origin"]
           value: number
           variable_name: string
         }
         Update: {
+          derived_formula_version?: string | null
           id?: string
           measurement_id?: string
+          origin?: Database["public"]["Enums"]["bis_value_origin"]
           value?: number
           variable_name?: string
         }
@@ -3143,6 +3149,7 @@ export type Database = {
         | "advertencia"
         | "validez"
       bis_condition_scope: "general" | "mujeres"
+      bis_value_origin: "medido" | "derivado"
       consent_type_enum:
         | "servicio"
         | "datos_sensibles"
@@ -3361,6 +3368,7 @@ export const Constants = {
         "validez",
       ],
       bis_condition_scope: ["general", "mujeres"],
+      bis_value_origin: ["medido", "derivado"],
       consent_type_enum: [
         "servicio",
         "datos_sensibles",
