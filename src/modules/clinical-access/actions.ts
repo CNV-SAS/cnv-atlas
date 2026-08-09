@@ -77,7 +77,8 @@ export async function decideAccessAction(
   const result = await decideAccess(user, parsed.data, await actorIp());
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath("/auditoria/aprobaciones");
+  // Sin revalidate: la solicitud deja la cola de aprobaciones y el control se desmonta; el cliente
+  // (useFormToastAndRefresh) muestra el aviso y LUEGO refresca, para que el aviso se vea.
   return {
     error: null,
     success: result.value.decision === "approve" ? "Solicitud aprobada." : "Solicitud negada.",
@@ -102,6 +103,6 @@ export async function revokeAccessAction(
   const result = await revokeAccess(user, parsed.data.grantId, await actorIp());
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath("/auditoria/solicitar");
+  // Sin revalidate: el acceso deja la lista de vigentes y el control se desmonta; el cliente avisa y refresca.
   return { error: null, success: "Acceso revocado.", warning: null };
 }

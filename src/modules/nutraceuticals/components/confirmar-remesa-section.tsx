@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ function fmtDate(iso: string): string {
 // llegó nada, confirma 0 (queda como faltante total). El aviso del action dice qué pasó con las cantidades.
 function ConfirmRemesaForm({ remesa }: { remesa: PendingRemesa }) {
   const [state, action, pending] = useActionState(confirmRemesaFormAction, initial);
-  useFormToast(state);
+  useFormToastAndRefresh(state);
 
   return (
     <form action={action} className="flex flex-wrap items-end gap-3 border-t border-border pt-3">

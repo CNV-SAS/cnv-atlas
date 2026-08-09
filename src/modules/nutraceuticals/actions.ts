@@ -289,7 +289,9 @@ export async function confirmRemesaFormAction(
     lote: parsed.data.lote ?? null,
   });
   if (!res.ok) return { error: res.message ?? "No se pudo confirmar la remesa.", success: null, warning: null };
-  revalidatePath("/mi-inventario");
+  // NO se revalida aquí: el formulario de esta remesa desaparece de la lista de pendientes tras confirmar,
+  // y un revalidate lo desmontaría antes de que se vea el aviso. El cliente (useFormToastAndRefresh) muestra
+  // el aviso y LUEGO refresca. Aplica a los cuatro casos (igual/faltó/sobró/cero), incluido el de éxito exacto.
 
   const { declared = 0, reported = 0, balanceApplied = 0, difference = 0 } = res;
   if (difference === 0) {
@@ -391,7 +393,7 @@ export async function submitJustificationFormAction(
     reference: parsed.data.reference,
   });
   if (!res.ok) return { error: res.message ?? "No se pudo enviar la justificación.", success: null, warning: null };
-  revalidatePath("/mi-inventario");
+  // Sin revalidate: el caso deja "por justificar" y el formulario se desmonta; el cliente avisa y refresca.
   return { error: null, success: "Justificación enviada. CNV la revisará.", warning: null };
 }
 
@@ -419,7 +421,7 @@ export async function classifyFaltanteFormAction(
     reason: parsed.data.reason ?? null,
   });
   if (!res.ok) return { error: res.message ?? "No se pudo clasificar.", success: null, warning: null };
-  revalidatePath("/faltantes");
+  // Sin revalidate: el caso deja "por revisar" y el formulario se desmonta; el cliente muestra el aviso y refresca.
   const msg =
     parsed.data.decision === "injustificado"
       ? "Propuesto como injustificado. Espera la confirmación de dirección para que el cargo aplique."
@@ -452,7 +454,7 @@ export async function confirmFaltanteFormAction(
     reason: parsed.data.reason ?? null,
   });
   if (!res.ok) return { error: res.message ?? "No se pudo confirmar.", success: null, warning: null };
-  revalidatePath("/faltantes");
+  // Sin revalidate: el caso deja "esperando confirmación" y el formulario se desmonta; el cliente avisa y refresca.
   return {
     error: null,
     success: parsed.data.decision === "confirmar" ? "Cargo confirmado: entra en la liquidación del período." : "Propuesta rechazada: el caso queda sin cargo.",
@@ -478,6 +480,6 @@ export async function resolveSobranteFormAction(
 
   const res = await faltanteService.resolveSobrante({ userId: user.id, countLineId: parsed.data.countLineId, reason: parsed.data.reason });
   if (!res.ok) return { error: res.message ?? "No se pudo resolver el sobrante.", success: null, warning: null };
-  revalidatePath("/faltantes");
+  // Sin revalidate: el sobrante deja la lista y el formulario se desmonta; el cliente avisa y refresca.
   return { error: null, success: "Sobrante resuelto: el saldo se ajustó con el motivo registrado.", warning: null };
 }

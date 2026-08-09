@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ const CATEGORIES: { value: string; label: string; refLabel: string; refPlacehold
 
 export function JustificarFaltanteForm({ caseId }: { caseId: string }) {
   const [state, action, pending] = useActionState(submitJustificationFormAction, initial);
-  useFormToast(state);
+  useFormToastAndRefresh(state);
   const [category, setCategory] = useState("");
   const [reference, setReference] = useState("");
   const cat = CATEGORIES.find((c) => c.value === category);

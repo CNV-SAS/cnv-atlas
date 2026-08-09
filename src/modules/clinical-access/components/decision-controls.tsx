@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState } from "react";
 
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 
 import { decideAccessAction, type AccessActionState } from "../actions";
 
@@ -14,7 +14,7 @@ const initial: AccessActionState = { error: null, success: null, warning: null }
 // onSubmit + startTransition (patron React 19).
 export function DecisionControls({ grantId, defaultHours }: { grantId: string; defaultHours: number }) {
   const [state, action, pending] = useActionState(decideAccessAction, initial);
-  useFormToast(state);
+  useFormToastAndRefresh(state);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

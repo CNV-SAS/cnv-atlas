@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ const initial: NutraceuticalFormState = { error: null, success: null, warning: n
 // direccion confirma. Rechazar cierra el caso sin cargo (direccion puede vetar el cobro).
 export function ConfirmarFaltanteForm({ caseId }: { caseId: string }) {
   const [state, action, pending] = useActionState(confirmFaltanteFormAction, initial);
-  useFormToast(state);
+  useFormToastAndRefresh(state);
 
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
