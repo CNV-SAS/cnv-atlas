@@ -17,6 +17,9 @@ export {
 // Contrato de columnas del Biody (headers exactos) para que el pipeline reconstruya la
 // fila cruda desde el almacenamiento normalizado de B8 (build-engine-input).
 export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";
+// Peso meta y su default (Lorentz), hecho VISIBLE (nota 3 de Gildardo): un peso meta no fijado cambia
+// la prescripcion en silencio. Ver peso-meta.ts.
+export { pesoIdealLorentz, pesoMetaDefault, type PesoMetaDefault } from "./peso-meta";
 // Severidad de riesgo por indicador (recomputada del snapshot) para la capa de color de BRAND.
 export { indicatorSeverities } from "./severity";
 // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se COMPUTA en tiempo de vista
