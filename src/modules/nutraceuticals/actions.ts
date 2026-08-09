@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/modules/auth/session";
 import { canLoadOwnStock } from "./policies/can-load-own-stock";
 import { canManageCatalog } from "./policies/can-manage-catalog";
 import { canRegisterUsage } from "./policies/can-register-usage";
+import { canDeclararRemesa } from "./policies/can-declarar-remesa";
 import { canClassifyFaltante, canConfirmFaltante, canResolveSobrante } from "./policies/can-review-faltante";
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
@@ -18,6 +19,7 @@ import {
   classifyFaltanteSchema,
   confirmFaltanteSchema,
   confirmRemesaSchema,
+  declareRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
   despachoSchema,
@@ -225,6 +227,38 @@ export async function recordDespachoFormAction(
   return { error: null, success: `Entrega registrada. Te quedan ${stock} unidades.`, warning: null };
 }
 
+
+// Declarar una REMESA (E2): CNV declara un envío en consignación a un integrante. Solo admin/soporte
+// (Operaciones); el integrante no declara. No mueve el saldo (eso pasa al confirmar la recepción).
+export async function declareRemesaFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canDeclararRemesa(user)) {
+    return { error: "Solo CNV (admin u operaciones) declara remesas.", success: null, warning: null };
+  }
+  const parsed = declareRemesaSchema.safeParse({
+    professionalId: String(formData.get("professionalId") ?? ""),
+    nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
+    quantity: String(formData.get("quantity") ?? ""),
+    lote: optStr(formData, "lote"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos de la remesa inválidos.", success: null, warning: null };
+  }
+  const res = await remesaService.declareRemesa({
+    actorId: user.id,
+    professionalId: parsed.data.professionalId,
+    nutraceuticalId: parsed.data.nutraceuticalId,
+    quantity: parsed.data.quantity,
+    lote: parsed.data.lote ?? null,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo declarar la remesa.", success: null, warning: null };
+  revalidatePath("/faltantes");
+  return { error: null, success: "Remesa declarada. El integrante la verá en Mi inventario para confirmarla.", warning: null };
+}
 
 // Confirmar una REMESA (E2): el integrante reconoce cuánto llegó. Solo el profesional (canLoadOwnStock; la
 // RLS y el service acotan a que la remesa sea suya). El aviso DICE qué pasó con las cantidades (requisito a/b

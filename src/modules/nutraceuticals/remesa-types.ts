@@ -36,3 +36,7 @@ export type UnbackedReception = {
   lote: string | null;
   receivedAt: string;
 };
+
+// Para el formulario de declaración: a quién (solo los que pueden sostener consignación) y qué producto.
+export type EligibleProfessional = { professionalId: string; name: string };
+export type RemesableProduct = { id: string; name: string };

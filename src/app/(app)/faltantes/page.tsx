@@ -5,10 +5,18 @@ import { hasRole, requireUser } from "@/modules/auth/session";
 import { ClasificarFaltanteForm } from "@/modules/nutraceuticals/components/clasificar-faltante-form";
 import { ConfirmarFaltanteForm } from "@/modules/nutraceuticals/components/confirmar-faltante-form";
 import { ResolverSobranteForm } from "@/modules/nutraceuticals/components/resolver-sobrante-form";
+import { RemesasCnvSection } from "@/modules/nutraceuticals/components/remesas-cnv-section";
+import { canSeeRemesasCnv } from "@/modules/nutraceuticals/policies/can-declarar-remesa";
 import { canResolveSobrante, canSeeFaltanteQueue } from "@/modules/nutraceuticals/policies/can-review-faltante";
 import { getFaltanteQueue, getPendingSobrantes, type FaltanteQueueRow } from "@/modules/nutraceuticals/services/faltante-service";
+import {
+  getEligibleProfessionalsForRemesa,
+  getRemesableProducts,
+  getRemesasForCnv,
+  getUnbackedReceptionsForCnv,
+} from "@/modules/nutraceuticals/services/remesa-service";
 
-export const metadata = { title: "Faltantes - Atlas" };
+export const metadata = { title: "Revisión de inventario - Atlas" };
 
 const CATEGORY_LABEL: Record<string, string> = {
   hurto_denuncia: "Hurto o robo (con denuncia)",
@@ -60,26 +68,54 @@ function CaseHead({ c }: { c: FaltanteQueueRow }) {
 
 export default async function FaltantesPage() {
   const user = await requireUser();
-  if (!canSeeFaltanteQueue(user)) redirect("/no-autorizado");
+  const seeFaltantes = canSeeFaltanteQueue(user);
+  const seeRemesas = canSeeRemesasCnv(user);
+  // La pantalla reúne dos familias de "inventario que CNV revisa": faltantes (admin/dirección) y remesas
+  // (admin/soporte). Se entra si se puede ver alguna; cada sección se gatea por su propia policy.
+  if (!seeFaltantes && !seeRemesas) redirect("/no-autorizado");
   const isAdmin = hasRole(user, "admin");
   const isDireccion = hasRole(user, "direccion");
 
-  const queue = await getFaltanteQueue({ admin: isAdmin, direccion: isDireccion });
+  const queue = seeFaltantes ? await getFaltanteQueue({ admin: isAdmin, direccion: isDireccion }) : [];
   const porRevisar = queue.filter((c) => c.status === "en_revision");
   const vencidos = queue.filter((c) => c.status === "reportado" && c.expired);
   const esperandoIntegrante = queue.filter((c) => c.status === "reportado" && !c.expired);
   const porConfirmar = queue.filter((c) => c.status === "injustificado_pendiente");
   const sobrantes = canResolveSobrante(user) ? await getPendingSobrantes() : [];
 
+  // Lado remesa (admin/soporte). Se carga solo si el rol lo ve.
+  const [remesas, unbacked, remesaProfs, remesaProducts] = seeRemesas
+    ? await Promise.all([
+        getRemesasForCnv(),
+        getUnbackedReceptionsForCnv(),
+        getEligibleProfessionalsForRemesa(),
+        getRemesableProducts(),
+      ])
+    : [[], [], [], []];
+  // Tiempo de request (página dinámica) para la antigüedad de las remesas sin confirmar.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+
   return (
     <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Faltantes</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Revisión de inventario</h1>
         <p className="max-w-prose text-muted-foreground">
-          Casos de faltante de producto en consignación. El cargo por un faltante injustificado exige dos:
-          un administrador lo propone y dirección lo confirma. Nada se cobra hasta que ambos estén de acuerdo.
+          Inventario en consignación que CNV revisa: remesas (envíos a los integrantes) y faltantes. El cargo
+          por un faltante injustificado exige dos: un administrador lo propone y dirección lo confirma. Nada se
+          cobra hasta que ambos estén de acuerdo.
         </p>
       </header>
+
+      {seeRemesas ? (
+        <RemesasCnvSection
+          remesas={remesas}
+          unbacked={unbacked}
+          professionals={remesaProfs}
+          products={remesaProducts}
+          nowMs={nowMs}
+        />
+      ) : null}
 
       {isAdmin ? (
         <>

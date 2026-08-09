@@ -28,6 +28,15 @@ export const receptionSchema = z.object({
 });
 export type ReceptionInput = z.infer<typeof receptionSchema>;
 
+// Declarar una remesa (E2): CNV envía N unidades de un producto a un integrante. Cantidad entera positiva.
+export const declareRemesaSchema = z.object({
+  professionalId: dbUuid,
+  nutraceuticalId: dbUuid,
+  quantity: z.coerce.number().int().min(1).max(1_000_000),
+  lote: z.string().trim().max(120).optional(),
+});
+export type DeclareRemesaInput = z.infer<typeof declareRemesaSchema>;
+
 // Confirmar una remesa (E2): el integrante reconoce cuánto llegó. min 0 a propósito (confirmar CERO = no
 // llegó nada = faltante total; es la vía para "rechazar" una remesa que nunca llegó).
 export const confirmRemesaSchema = z.object({

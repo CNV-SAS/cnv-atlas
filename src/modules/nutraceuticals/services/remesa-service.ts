@@ -2,10 +2,24 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import type { CnvRemesa, PendingRemesa, RemesaStatus, UnbackedReception } from "../remesa-types";
+import type {
+  CnvRemesa,
+  EligibleProfessional,
+  PendingRemesa,
+  RemesableProduct,
+  RemesaStatus,
+  UnbackedReception,
+} from "../remesa-types";
 // Re-export para el código de servidor que ya importa estos tipos desde el service. La definición vive en
 // remesa-types (neutro) para no dejar este módulo `server-only` al alcance del cliente.
-export type { CnvRemesa, PendingRemesa, RemesaStatus, UnbackedReception } from "../remesa-types";
+export type {
+  CnvRemesa,
+  EligibleProfessional,
+  PendingRemesa,
+  RemesableProduct,
+  RemesaStatus,
+  UnbackedReception,
+} from "../remesa-types";
 
 // Remesa / consignación CNV → integrante (E2). La remesa es un movimiento type=remesa que DECLARA un envío
 // (no mueve el saldo del integrante; el trigger lo excluye). La recepción es el integrante confirmando que
@@ -74,6 +88,43 @@ export async function declareRemesa(input: {
   });
   if (error) return { ok: false, message: "No se pudo declarar la remesa." };
   return { ok: true };
+}
+
+// A quién se le puede declarar una remesa: los que pueden SOSTENER consignación. Por el invariante del
+// modelo, el nutricionista es quien tiene el producto físico y lo entrega; se incluye además a cualquiera
+// que YA tenga movimientos de inventario (por si un no-nutricionista sostiene stock). NO tiene sentido
+// declararle a un psicólogo que no vende. RLS: admin/soporte leen professional_profiles.
+export async function getEligibleProfessionalsForRemesa(): Promise<EligibleProfessional[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data: profs, error } = await supabase
+    .from("professional_profiles")
+    .select("id, license, profession, profiles(full_name)");
+  if (error) throw new Error(`remesa-service: profesionales elegibles: ${error.message}`);
+  const { data: mov } = await supabase.from("nutraceutical_stock_movements").select("professional_id");
+  const withStock = new Set((mov ?? []).map((m) => m.professional_id));
+  return (profs ?? [])
+    .filter((p) => p.profession === "nutricionista" || withStock.has(p.id))
+    .map((p) => ({
+      professionalId: p.id,
+      name:
+        one(p.profiles as { full_name?: string } | { full_name?: string }[] | null)?.full_name ||
+        p.license ||
+        "Integrante",
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Productos que se pueden enviar en consignación: los en_consultorio (los solo_tienda los compra el
+// paciente en la tienda; no van en la vitrina del integrante).
+export async function getRemesableProducts(): Promise<RemesableProduct[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("nutraceuticals")
+    .select("id, name")
+    .eq("commercial_availability", "en_consultorio")
+    .order("name");
+  if (error) throw new Error(`remesa-service: productos: ${error.message}`);
+  return (data ?? []).map((p) => ({ id: p.id, name: p.name }));
 }
 
 // Confirmar una remesa (el integrante). Inserta una recepción (+ cantidad REAL) ligada a la remesa. La
