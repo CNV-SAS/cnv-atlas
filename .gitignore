@@ -52,3 +52,6 @@ next-env.d.ts
 # Bundle de git de Gildardo (repo divergente CNV-SAS/atlas-gil): binario que pertenece a otro
 # repo; su contenido ya esta documentado como especificacion en INVENTARIO.md. No se versiona.
 /docs/entregas/gildardo-2026-07/atlas-gil/
+
+# Export real del Biody BIS con PII de paciente (fixture sintetico anonimizado en src/tests/fixtures/)
+docs/entregas/gildardo-2026-08-04/Biody BIS - male export.xlsx
