@@ -33,14 +33,32 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
     ({ recordCount } = await import("@/modules/nutraceuticals/data/count-writer"));
-    const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
+    // Se EXCLUYE CURCUMIN (77777777-...703): nutra-inventory.test muta su saldo, y los archivos de test
+    // corren en paralelo contra la misma BD real; contar sobre un saldo que otro test mueve daria un diff
+    // no determinista. Con un producto que nadie mas toca, el saldo es estable durante el test.
+    const CURCUMIN = "77777777-7777-7777-7777-777777777703";
+    // Elige el profesional que TIENE inventario apto (via join), NO un profesional cualquiera: la BD puede
+    // tener profesionales SIN inventario (p.ej. los creados por el smoke de auth) que salgan primero con
+    // `limit 1`, dejando la consulta de inventario vacia y reventando el beforeAll. Orden por id para que
+    // este test y faltante-settle caigan en el MISMO profesional (y coordinen offset 0/1).
+    const [prof] = await db
+      .select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId })
+      .from(schema.professionalProfiles)
+      .innerJoin(
+        schema.nutraceuticalInventory,
+        eq(schema.nutraceuticalInventory.professionalId, schema.professionalProfiles.id),
+      )
+      .where(
+        and(
+          ne(schema.nutraceuticalInventory.nutraceuticalId, CURCUMIN),
+          dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`,
+        ),
+      )
+      .orderBy(schema.professionalProfiles.id)
+      .limit(1);
+    if (!prof) throw new Error("count-session: sin profesional con inventario apto; corre pnpm db:seed");
     profId = prof.id;
     actorId = prof.pid;
-    // Un producto con saldo del profesional demo (>5 para poder contar de menos). Se EXCLUYE CURCUMIN
-    // (77777777-...703): nutra-inventory.test muta su saldo, y los archivos de test corren en paralelo
-    // contra la misma BD real; contar sobre un saldo que otro test esta moviendo daria un diff no
-    // determinista. Con un producto que nadie mas toca, el saldo es estable durante el test.
-    const CURCUMIN = "77777777-7777-7777-7777-777777777703";
     const [inv] = await db
       .select({ nid: schema.nutraceuticalInventory.nutraceuticalId })
       .from(schema.nutraceuticalInventory)
@@ -55,6 +73,7 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
       // (offset 1). Corren en paralelo contra la misma BD; con productos distintos no se mutan el saldo.
       .orderBy(schema.nutraceuticalInventory.nutraceuticalId)
       .limit(1);
+    if (!inv) throw new Error("count-session: el profesional no tiene un producto apto; corre pnpm db:seed");
     nutraId = inv.nid;
   });
 

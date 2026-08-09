@@ -40,11 +40,25 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
     ({ recordCount, getPendingSobrantes, resolveSobrante } = await import("@/modules/nutraceuticals/data/count-writer"));
-    const [prof] = await db.select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
-    profId = prof.id;
-    actorId = prof.pid;
     // producto con saldo, EXCLUYENDO CURCUMIN (77777777-...703) que nutra-inventory.test muta en paralelo.
     const CURCUMIN = "77777777-7777-7777-7777-777777777703";
+    // Elige el profesional que TIENE inventario apto (via join), NO un profesional cualquiera: la BD puede
+    // tener profesionales SIN inventario (p.ej. los del smoke de auth) que salgan primero con `limit 1`,
+    // dejando la consulta de inventario vacia y reventando el beforeAll. Orden por id para caer en el MISMO
+    // profesional que count-session (y coordinar offset 0/1).
+    const [prof] = await db
+      .select({ id: schema.professionalProfiles.id, pid: schema.professionalProfiles.profileId })
+      .from(schema.professionalProfiles)
+      .innerJoin(
+        schema.nutraceuticalInventory,
+        eq(schema.nutraceuticalInventory.professionalId, schema.professionalProfiles.id),
+      )
+      .where(and(ne(schema.nutraceuticalInventory.nutraceuticalId, CURCUMIN), dsql`${schema.nutraceuticalInventory.stockQuantity} > 5`))
+      .orderBy(schema.professionalProfiles.id)
+      .limit(1);
+    if (!prof) throw new Error("faltante-settle: sin profesional con inventario apto; corre pnpm db:seed");
+    profId = prof.id;
+    actorId = prof.pid;
     // offset 1: toma el SEGUNDO producto no-CURCUMIN (count-session.test toma el primero, offset 0). Asi los
     // dos tests, que corren en paralelo, mutan productos distintos y no se pisan el saldo.
     const [inv] = await db
@@ -54,6 +68,7 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
       .orderBy(schema.nutraceuticalInventory.nutraceuticalId)
       .limit(1)
       .offset(1);
+    if (!inv) throw new Error("faltante-settle: el profesional no tiene un 2do producto apto; corre pnpm db:seed");
     nutraId = inv.nid;
   });
 
@@ -69,7 +84,9 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
       await db.delete(schema.nutraceuticalCountLines).where(eq(schema.nutraceuticalCountLines.sessionId, s));
       await db.delete(schema.nutraceuticalCountSessions).where(eq(schema.nutraceuticalCountSessions.id, s));
     }
-    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}`);
+    // Recompute EXCLUYENDO type='remesa' (E2): el trigger del saldo no cuenta la remesa CNV->integrante;
+    // sumarla aqui corromperia el cache respecto del trigger (mismo fix que nutra-inventory.test).
+    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id and m.type <> 'remesa'), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}`);
     await db.execute(dsql`set session_replication_role = default`);
   });
 

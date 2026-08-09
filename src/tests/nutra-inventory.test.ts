@@ -25,19 +25,25 @@ describe.skipIf(!HAS_DB)("inventario en consignacion: saldo cacheado y movimient
     // Limpia los movimientos de prueba de ESTE test (via replica, para saltar el append-only), sin tocar
     // los del seed (reason distinto). Borrar por replica NO dispara el trigger del saldo, asi que ademas
     // se RECOMPUTA el saldo = suma de los movimientos restantes (si no, quedaria driftado y el DETECTOR
-    // de otra corrida fallaria).
+    // de otra corrida fallaria). La suma EXCLUYE type='remesa' (E2): la remesa CNV->integrante no mueve el
+    // saldo del integrante (el trigger nutra_movement_apply la excluye); si el recompute la incluyera,
+    // corromperia el cache respecto del trigger.
     await db.execute(dsql`set session_replication_role = replica`);
     await db.execute(dsql`delete from nutraceutical_stock_movements where professional_id = ${PROF} and nutraceutical_id = ${NUT} and reason = 'test-nutra-inventory'`);
-    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id), 0) where i.professional_id = ${PROF} and i.nutraceutical_id = ${NUT}`);
+    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id and m.type <> 'remesa'), 0) where i.professional_id = ${PROF} and i.nutraceutical_id = ${NUT}`);
     await db.execute(dsql`set session_replication_role = default`);
   });
 
   it("DETECTOR: todo saldo cacheado == la suma de sus movimientos", async () => {
     const { db } = await import("@/db");
+    // La suma EXCLUYE type='remesa' (E2): el trigger del saldo (nutra_movement_apply) no cuenta la remesa
+    // CNV->integrante, asi que el DETECTOR debe medir contra la MISMA suma que el trigger, o daria un falso
+    // rojo en cuanto haya una remesa en la BD (es lo que paso al cerrar E2).
     const rows = await db.execute<{ stock_quantity: number; suma: number }>(dsql`
       select i.stock_quantity,
              coalesce((select sum(m.delta) from nutraceutical_stock_movements m
-               where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id), 0) as suma
+               where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id
+                 and m.type <> 'remesa'), 0) as suma
       from nutraceutical_inventory i`);
     for (const r of rows) {
       expect(Number(r.stock_quantity), "el saldo cacheado difiere de la suma de movimientos").toBe(Number(r.suma));
