@@ -358,6 +358,20 @@
       "when": 1786214930107,
       "tag": "0050_referrals_immutable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786244113883,
+      "tag": "0051_chilly_screwball",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786244113884,
+      "tag": "0052_remesa_balance_rls",
+      "breakpoints": true
     }
   ]
 }

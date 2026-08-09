@@ -1,3 +1,4 @@
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
@@ -86,6 +87,11 @@ export const nutraceuticalStockMovements = pgTable(
     // sabe que sobrantes ya se resolvieron (una linea con sobrante SIN movimiento que la referencie sigue
     // pendiente). Nullable: los demas movimientos no salen de un conteo.
     countLineId: uuid("count_line_id").references(() => nutraceuticalCountLines.id),
+    // Remesa (E2): vincula una RECEPCION a la REMESA de CNV que la respalda (auto-FK a la fila type=remesa).
+    // NULL en una recepcion = NO respaldada = discrepancia visible (mismo patron que superseded_at sin su
+    // fila de correccion). Solo aplica a type=recepcion (CHECK en la migracion). La remesa misma NO mueve
+    // el saldo del integrante (el trigger del saldo excluye type=remesa; el saldo sube al recibir).
+    remesaId: uuid("remesa_id").references((): AnyPgColumn => nutraceuticalStockMovements.id),
     createdBy: uuid("created_by").references(() => profiles.id),
     createdAt: createdAt(),
   },

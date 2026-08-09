@@ -1609,6 +1609,7 @@ export type Database = {
           nutraceutical_id: string
           professional_id: string
           reason: string | null
+          remesa_id: string | null
           treatment_id: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -1622,6 +1623,7 @@ export type Database = {
           nutraceutical_id: string
           professional_id: string
           reason?: string | null
+          remesa_id?: string | null
           treatment_id?: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -1635,6 +1637,7 @@ export type Database = {
           nutraceutical_id?: string
           professional_id?: string
           reason?: string | null
+          remesa_id?: string | null
           treatment_id?: string | null
           type?: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -1665,6 +1668,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_remesa_id_nutraceutical_stock_mov"
+            columns: ["remesa_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceutical_stock_movements"
             referencedColumns: ["id"]
           },
           {
