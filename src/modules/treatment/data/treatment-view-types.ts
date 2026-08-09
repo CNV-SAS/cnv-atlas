@@ -39,6 +39,13 @@ export type TreatmentProtocol = {
   diagnosisConfirmed: boolean;
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
+  // Peso meta (cadena calórica, pieza 1 — HECHO VISIBLE, nota 3 de Gildardo). pesoCalculo es el peso
+  // sobre el que se calcula la prescripción (del snapshot sugerido); pesoCalculoLabel dice QUÉ fórmula lo
+  // produjo ("Peso ajustado (obesidad)" / "Peso actual..."). adjPesoMeta es el peso meta FIJADO por el
+  // profesional (override); null = se usa el calculado. Todos null si el tratamiento no selló snapshot.
+  pesoCalculo: number | null;
+  pesoCalculoLabel: string | null;
+  adjPesoMeta: number | null;
   restricciones: string[];
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional

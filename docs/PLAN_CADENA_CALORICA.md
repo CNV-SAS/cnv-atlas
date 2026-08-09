@@ -29,6 +29,8 @@ Fuente: `docs/entregas/gildardo-2026-08-04/ATLAS_v8.html` (el vigente, con la co
 - Reemplaza la estrategia por fenotipo (`motorProtocolo` déficit F1..F11) por **déficit = peso actual - peso meta**.
 - TCA: de "déficit a cero + bloqueo" a **ALERTA** (el cálculo sigue con el peso meta acordado).
 - Golden: anclar contra valores del v8 (paridad 1e-3), como el resto.
+- **Retirar `pesoAjust` de `pesoCalculo`** (`PI+0.25*(peso−PI)` para IMC≥25, atlas-protocolo.js:57): hoy gobierna la prescripción de todo paciente con sobrepeso (ver Q36). Reemplazarlo por el default que Gildardo decida (**Q36 abierta**: Lorentz `round(PI)` / peso actual / seguir ajustado). `peso-meta.ts` (`1e0eb09`) ya tiene el default de Lorentz portado.
+- **CHECKLIST DE SEGURIDAD (Santiago, no se pierde):** (1) **bump de versión de emisión** — `pesoCalculo` cambia de valor → nueva versión (criterio cMMEM: cambia un valor sellado). (2) **test de que un protocolo APROBADO antes NO cambia** (los sellados son inmutables; se leen, no se recomputan). (3) **la respuesta de Gildardo a Q36** sobre el fallback, si llega a tiempo, decide qué reemplaza a pesoAjust.
 
 ### 3. Cablear las cifras C6 (D-002, verbatim de Gildardo)
 - **Proteína (g/kg sobre PESO META):** sin condición 1.0 · cáncer/desnutrición 1.25 · obesidad 1.3 · obesidad+sarcopenia 1.4 · sarcopenia sola 1.4 · ERC 0.7 (0.6-0.8). **La ERC MANDA** sobre la proteína alta (ERC+sarcopenia -> 0.7).

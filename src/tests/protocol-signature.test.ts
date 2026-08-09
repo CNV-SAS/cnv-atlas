@@ -21,6 +21,9 @@ const BASE: TreatmentProtocol = {
   diagnosisConfirmed: true,
   kcalObjetivo: 2000,
   proteinaGramos: 110,
+  pesoCalculo: 70,
+  pesoCalculoLabel: "Peso actual (IMC normal)",
+  adjPesoMeta: null,
   restricciones: ["sin gluten", "sin lactosa"],
   kcalSugerido: 2100,
   nutraceuticals: [

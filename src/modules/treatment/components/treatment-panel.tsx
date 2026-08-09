@@ -14,6 +14,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 import {
   addNoteAction,
   generateMenuAction,
+  saveAdjustmentsAction,
   saveProtocolAction,
   type TreatmentActionState,
 } from "../actions";
@@ -52,6 +53,78 @@ const CEL_TONE_CLS: Record<CelularBadges["badges"][number]["tone"], string> = {
 // proposito (misma disciplina que el menu deshabilitado): (1) badges de alteracion; (2) datos
 // presentes y ninguna alteracion -> se DICE ("sin alteraciones"); (3) sin las columnas necesarias
 // -> "no se pudo evaluar", que NO es lo mismo que "sin alteraciones".
+// Peso meta (cadena calórica, pieza 1: HECHO VISIBLE — nota 3 de Gildardo). Hoy el peso sobre el que se
+// calcula la prescripción sale del snapshot (pesoCalculo) y, si nadie lo fija, se usa sin decirlo. Aquí se
+// MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, vía saveAdjustmentsAction). No
+// cambia el modelo del cálculo (eso es pieza 2, el re-port): solo lo hace visible y editable, honesto sobre
+// lo que hay. La key en el call-site (incluye adjPesoMeta) remonta al guardar, para que "fijado" se vea.
+function PesoMetaSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
+  useFormToast(state);
+  const [pesoMeta, setPesoMeta] = useState(protocol.adjPesoMeta?.toString() ?? "");
+  // Sin snapshot sellado no hay peso de cálculo que mostrar (tratamiento viejo, pre-snapshot): se omite.
+  if (protocol.pesoCalculo == null) return null;
+  const fijado = protocol.adjPesoMeta != null;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-foreground">Peso meta</h3>
+      {fijado ? (
+        <p className="text-sm text-clinical-optimal">
+          Fijado por ti: <strong>{protocol.adjPesoMeta} kg</strong>. La prescripción se calcula sobre
+          este peso.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Sin registrar: la prescripción se calcula sobre <strong>{protocol.pesoCalculo} kg</strong>
+          {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO, no
+          uno que hayas decidido.
+        </p>
+      )}
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <fieldset disabled={locked} className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="adjPesoMeta">Peso meta (kg)</Label>
+            <Input
+              id="adjPesoMeta"
+              name="adjPesoMeta"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              value={pesoMeta}
+              onChange={(e) => setPesoMeta(e.target.value)}
+              placeholder={`calculado: ${protocol.pesoCalculo}`}
+              className="w-40"
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={pending}>
+            Guardar peso meta
+          </Button>
+          {!fijado ? (
+            <button
+              type="button"
+              className="pb-2 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              onClick={() => setPesoMeta(String(protocol.pesoCalculo))}
+              disabled={locked}
+            >
+              Usar el calculado ({protocol.pesoCalculo})
+            </button>
+          ) : null}
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
 function CelularSection({ celular }: { celular?: CelularBadges | null }) {
   if (!celular) return null; // sin medicion BIS: no hay seccion (tampoco habria protocolo).
   return (
@@ -126,6 +199,13 @@ export function TreatmentPanel({
             campos (entrega, menu, nota) NO remonta, preservando una edicion en curso. Ver protocol-signature. */}
         <ProtocolForm
           key={protocolSignature(protocol)}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
+        {/* key con adjPesoMeta: al guardar se remonta y re-deriva, para que "Fijado por ti" se vea. */}
+        <PesoMetaSection
+          key={`peso§${protocol.adjPesoMeta ?? ""}`}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}

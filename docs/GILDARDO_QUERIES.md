@@ -532,6 +532,16 @@
 
 ---
 
+## Q36 · `pesoAjust` NO es código muerto en Atlas: gobierna la prescripción de todo paciente con IMC ≥ 25
+
+- **Fecha:** 2026-08-09. **Estado:** ABIERTA. **PRIORIDAD: resolver ANTES de la Pieza 2 de la cadena calórica** (decide sobre qué peso se calcula cuando nadie fijó la meta).
+- **El dato concreto (verificado en Atlas):** marcaste `pesoAjust` como código muerto ("o se usa o se retira; hoy es código muerto que confunde"), creyendo que no entra en ningún cálculo. En tu prototipo (`motorTratNutri`) quizá no. **En Atlas SÍ:** el motor CONGELADO `motorProtocolo` (portado de tu `atlas-protocolo.js`) computa `pesoCalculo = (IRC||Cáncer) ? peso : imc<25 ? peso : PI+0.25*(peso−PI)`. Ese `PI+0.25*(peso−PI)` para IMC ≥ 25 **es exactamente `pesoAjust`**, y `pesoCalculo` es el peso sobre el que se calcula la prescripción (Mifflin del GEB, y la proteína cuando entre el peso meta) de **todo paciente con sobrepeso u obesidad**. No es código muerto: gobierna prescripciones.
+- **Eso cambia tu instrucción:** no es "retirar código muerto", es **decidir qué REEMPLAZA a una fórmula que hoy gobierna prescripciones.**
+- **Pregunta:** al reemplazar `pesoAjust` por el peso meta, **¿qué pasa con los pacientes sin peso meta fijado?** ¿El peso de cálculo cae al **peso ideal de Lorentz** (`round(PI)`, como el default de `pesoMeta` en tu `motorTratNutri` para IMC fuera de 18.5-25), al **peso actual**, o **sigue el ajustado** (`PI+0.25*(peso−PI)`)? Los tres dan cifras distintas para el mismo paciente con sobrepeso, y hoy Atlas usa el tercero en silencio.
+- **Contexto:** Pieza 1 (en curso) solo hace VISIBLE el peso actual de cálculo (`pesoCalculo` con su rótulo) y deja fijarlo; NO cambia el modelo. El cambio de modelo (retirar pesoAjust, adoptar el default que decidas) es la Pieza 2 (re-port del frozen, con versión de emisión nueva y test de que un protocolo aprobado antes no cambia).
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
