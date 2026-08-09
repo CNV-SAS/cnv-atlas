@@ -192,7 +192,10 @@ Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Man
 - **Commits:** con el porqué (ver `CLAUDE.md`).
 
 ## Datos de desarrollo local (seed)
-Dos pasos, en orden, contra la BD local (`DATABASE_URL` en `.env.local`):
+Contra la BD local (`DATABASE_URL` en `.env.local`). **Hay TRES scripts de seed, y el principal NO llama a los otros dos** (ver el detalle abajo). Para un entorno funcional se necesitan el 1 y el **1bis** (obligatorio: sin él no se puede importar una medición); el 2 es demo.
+
+**1bis. `pnpm db:seed:bis` (OBLIGATORIO, seed APARTE):** siembra el catálogo de las 14 condiciones de la toma BIS (`supabase/seed-bis-conditions.ts`). Vive aparte a propósito (no acoplar al seed destructivo de la encuesta) y **el seed principal no lo corre**. Sin él, la pantalla de condiciones de la evaluación no aparece y **el import queda deshabilitado** (se habilita solo tras guardar las condiciones). Idempotente y no destructivo. Para la nube, ver `DEPLOY_GUIA_NUBE.md` Paso 3.2b.
+
 1. `pnpm db:seed` (node): siembra lo base (organización, usuarios de prueba, catálogos del
    model-registry incluidos los 81 estados EFR, encuesta v1, devices, nutracéuticos, y una
    cadena demo). Es idempotente y **reseed-safe**: `efr_states` se reescribe con delete+insert
