@@ -542,6 +542,19 @@
 
 ---
 
+## Acumulando para la próxima ronda (mensaje corto, NO otro paquete)
+
+Gildardo acaba de responder 17; lo que sigue es SEGUIMIENTO. Cuando haya 3-4, Santiago le manda un mensaje corto. Acumulado hasta ahora:
+
+- **Q36** (arriba): al reemplazar `pesoAjust`, ¿sobre qué peso se calcula cuando nadie fijó la meta (Lorentz / peso actual / ajustado)? BLOQUEA el re-port del frozen (Pieza 2 de la cadena calórica).
+- **Encuesta — cambios a SU instrumento (del bloque de encuesta, `PLAN_ENCUESTA.md` B5), todos motor-seguros pero son SU contenido/marco:**
+  1. **Quitar la separación por categorías de riesgo en D1** (✅ protectora / ⚖️ energética "moderar" / ⚠️ PCBU): los símbolos y "moderar" sesgan la respuesta del paciente. ¿Se pueden mostrar los alimentos seguidos, sin la agrupación de riesgo? (calcPatron lee el ordinal, no cambia el motor.)
+  2. **Quitar la advertencia visible "⚠ TCA" + color en Q21** (percepción corporal): marca la respuesta como "para evaluación clínica" a la vista del paciente, lo que sesga. El motor sigue detectando por d2_21; solo se quita el display. ¿De acuerdo?
+  3. **Mover la descripción de Q39** ("Usados para calcular el Factor de Estrés Metabólico") de la vista del PACIENTE a la del PROFESIONAL (al paciente no le sirve y confunde). ¿De acuerdo?
+  4. **Opciones "otro" faltantes:** barrido para proponer en qué preguntas conviene agregar "otro/s" con texto libre (agregar opciones es tu contenido; nosotros proponemos, tú apruebas).
+
+---
+
 ## Nota de proceso (2026-07-26)
 
 El propósito de este documento, en su primera línea, dice que los hallazgos que dependen de Gildardo se anotan aquí **con fecha, en vez de quedar solo en el chat**. Se incumplió dos veces con los dos ítems clínicos más delicados abiertos: esta Q11 y el protocolo de riesgo del PHQ-9/SCOFF/GAD-7 (que vivía solo en el handoff y ahora está en `BACKLOG.md`). Los dos se perdieron durante un traspaso de chat y se recuperaron por memoria de Santiago, no por documento.
