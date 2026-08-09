@@ -296,11 +296,12 @@ export async function confirmRemesaFormAction(
     return { error: null, success: `Recepción confirmada: ${reported} unidades, como CNV declaró.`, warning: null };
   }
   if (difference > 0) {
-    // Sobró: el saldo sube solo lo declarado; el excedente queda para CNV (no se infla el inventario).
+    // Sobró: el saldo sube solo lo declarado; el excedente queda para CNV (no se infla el inventario). El
+    // aviso dice el POR QUÉ, no solo el hecho: sin la razón, subir menos de lo reportado suena arbitrario.
     return {
       error: null,
       success: null,
-      warning: `Registramos que recibiste ${reported}. Tu inventario sube ${balanceApplied}, que es lo que CNV declaró. Las ${difference} de más quedan para que CNV las revise.`,
+      warning: `Registramos que recibiste ${reported}. Tu inventario sube ${balanceApplied} porque es lo que CNV declaró haber enviado; si de verdad llegaron ${reported}, CNV lo confirma y ajusta. Las ${difference} de más quedan registradas para que CNV las revise.`,
     };
   }
   // Faltó (incluye confirmar 0 = no llegó nada). Sin acusar: aún no se sabe si se perdieron en transporte.
