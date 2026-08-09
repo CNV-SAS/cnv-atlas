@@ -214,6 +214,26 @@ Dos pasos, en orden, contra la BD local (`DATABASE_URL` en `.env.local`):
 - Una migración aplicada nunca se edita; se crea otra encima.
 - Tipos: Drizzle los genera desde el schema; no se editan a mano; van en git.
 
+### CRÍTICO — las migraciones NO se despliegan solas (hueco del proceso, hallazgo 2026-08-08)
+
+**Vercel despliega el CÓDIGO en cada push a `main`, pero NO corre las migraciones.** Si el código desplegado espera una tabla que la nube no tiene, la pantalla revienta con `Could not find the table 'public.XXX' in the schema cache` y la causa queda solo en Sentry. Pasó con `referrals` (y con las tablas de faltantes/conteo): el código llegó a la nube, las tablas no. **Migrar es un paso APARTE que se corre a mano tras cada push con migraciones nuevas.** El criterio de aceptación de más abajo ("migraciones iniciales aplicadas") NO basta: hay que repetirlo cada vez.
+
+**Paso obligatorio tras CADA push que incluya archivos nuevos en `drizzle/`:**
+1. **Verificar qué falta:** `pnpm db:check` con `DATABASE_URL` apuntando a la nube (lista las pendientes; solo LEE, seguro). Sin pendientes: nada que hacer.
+2. **Aplicarlas:** `pnpm db:migrate` con `DATABASE_URL` de la nube (la conexión DIRECTA de Supabase, puerto 5432, no el pooler 6543: el DDL en transacción no va bien por el pooler).
+3. **Confirmar:** `pnpm db:check` de nuevo → "al día".
+
+Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.**
+
+### ¿Automatizarlo en el build de Vercel? (evaluado 2026-08-08, decisión pendiente de Santiago)
+
+Se PUEDE correr `pnpm db:migrate` en el build command de Vercel (antes de `next build`), y eliminaría el hueco. Ventaja real: si una migración falla, el **build falla y Vercel NO promueve el deploy** (el código viejo sigue vivo), que es MÁS seguro que el estado actual (código nuevo + tabla ausente = pantalla rota). Pero hay tres cuidados que son condición para hacerlo:
+- **Aislar los previews:** cada push (incluidos branches de preview) dispara un build. Hay que gatear el migrate a `VERCEL_ENV === 'production'` y asegurar que los previews NO usen la BD de producción, o un preview migraría prod.
+- **Conexión directa, no pooler:** el migrate necesita la conexión directa (5432), no el pooler (6543); el DDL en transacción falla por el pooler. Sería una variable aparte (p. ej. `MIGRATE_DATABASE_URL`).
+- **Migraciones aditivas:** el orden migrate-luego-promover es correcto para migraciones ADITIVAS (nuestro caso: tablas nuevas). Una migración DESTRUCTIVA (que quite algo que el código viejo aún usa) abriría una ventana de rotura entre el migrate y el promover; esas exigen cuidado aparte (deploy en dos pasos).
+
+**Recomendación:** viable y elimina el hueco, PERO mientras no esté puesto (con esos tres cuidados), el paso manual de arriba + `pnpm db:check` es la red. `db:check` conviene igual, esté o no automatizado el migrate: convierte el fallo mudo en aviso claro.
+
 ## Backups y disaster recovery
 - MVP (Free): backups nativos de Supabase. Antes del lanzamiento, **prueba de restauración** a un proyecto de staging (un backup no existe hasta que se restaura con éxito).
 - Antes de datos clínicos reales: subir a **Supabase Pro** para PITR (point-in-time recovery). El dato clínico lo amerita.
