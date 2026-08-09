@@ -28,11 +28,13 @@ Decisión: sin peso de referencia registrado no se emite prescripción calórica
 - Fecha: 2026-08-02 (P1), reafirmada 2026-08-03. · Origen: P1 / confirmaciones A y B (2026-08-03).
 - Estado: **PARCIAL / SIN IMPLEMENTAR en lo esencial.** Falta: (1) la cadena calórica que lo consume (D-002); (2) quitar el respaldo por fórmula; (3) **el campo `weight_goal_kg` hoy es OPCIONAL (`z.number().positive().max(500).nullable().optional()`); tiene que volverse OBLIGATORIO**, o el gate de "sin peso de referencia no se prescribe" se dispararía en casi todos los pacientes. · Afecta: cadena calórica (pipeline + pantalla de Evaluación).
 
-**D-002 · Cadena calórica: Mifflin sobre peso de referencia + asimetría de estrategias.**
-Decisión: el gasto se calcula con Mifflin sobre el peso de referencia; Cunningham sobre el peso medido queda como dato informativo, no entra a la prescripción. Las estrategias que RESTAN no llevan ajuste (la meta ya lo produce); las que SUMAN llevan ajuste explícito sobre el gasto calculado en peso de referencia. Cáncer activo = gasto + sobrecosto (la regla kcal/kg se descarta). El factor de actividad es valor fijo por defecto, ligero, elegido por el profesional.
-- Fecha: 2026-08-03. · Origen: ronda 2026-08-03 §6.1-6.4 (sobre P1 2026-08-02).
-- Estado: **DECIDIDO / SIN IMPLEMENTAR.** Regla cerrada; pendiente C6 (sobrecosto por condición y proteína en cifras) y la construcción. · Afecta: cadena calórica (pipeline + pantalla).
-- **Requisito duro — SALVAGUARDA DE TCA (conducta, no solo el nombre):** cuando hay riesgo de conducta alimentaria Y el plan tiene déficit calórico, el sistema pone el DÉFICIT EN CERO, vuelve la dieta NORMOCALÓRICA y marca REMITIR a valoración especializada (prescribir pérdida de peso con riesgo de TCA es dañino). La detección es DOBLE: el motor nutricional detecta por la encuesta directa (métodos de riesgo reportados), y el motor de psicología amplía con un caso más (su `tcaFlag`: conducta de riesgo, o pérdida de control con insatisfacción). **La cadena NO se da por construida sin esta salvaguarda**, e idealmente con el motor de psicología para la detección amplia (por eso los tres motores van antes, ver D-008).
+**D-002 · Cadena calórica: Mifflin sobre PESO ACTUAL, el déficit sale del peso meta + cifras C6.**
+Decisión (ENMENDADA 2026-08-09 por Gildardo, ver `entregas/gildardo-2026-08-09/`): el gasto (Mifflin) se calcula sobre el **PESO ACTUAL**, no sobre el de referencia; "el gasto basal es una medición del cuerpo que existe HOY; lo que sale del peso meta es el DÉFICIT, no el gasto". Cunningham sobre el peso medido queda informativo. **El DÉFICIT sale del peso meta** = (peso actual − peso meta), NO un valor fijo por fenotipo (el motor hoy aplica −500 en obesidad; se reemplaza). El fenotipo puede sugerir un inicial, pero el peso meta lo reemplaza en cuanto está fijado. El factor de actividad usa el `faRec` del motor de ejercicio como default editable (ver P-02, resuelto).
+- **Cifras C6 (verbatim de Gildardo 2026-08-09, no reconstruir de memoria; detalle en el registro de la respuesta):** PROTEÍNA g/kg SOBRE EL PESO META: sin condición 1.0 · cáncer/desnutrición 1.25 · obesidad 1.3 · obesidad+sarcopenia 1.4 · sarcopenia 1.4 · **ERC 0.7 (0.6-0.8), y la ERC MANDA sobre la proteína alta** (ERC+sarcopenia → 0.7). ENERGÍA: cáncer/desnutrición 27.5 kcal/kg de PESO ACTUAL; resto GET−déficit; piso SOLO con déficit 1500 H/1200 M; el arranque 10-15 kcal/kg (realimentación) es NOTA CLÍNICA, no cálculo. GRASA 25% dislipidemia (saturada <7%) / 30% resto. SODIO: gana la más restrictiva (HTA 1500+DASH / ERC 2000 / hídrica 2000 si no hay otra). DM2: sin cambio de cifras, agrega CHO controlados bajo IG. Las CONDICIONES se derivan de la COMPOSICIÓN (obesidad IMC≥30 o FMI>6H/9M; sarcopenia FFMI 17/15 o ASMI<7.0/5.5; desnutrición IMC<18.5): un paciente sin diagnóstico puede activar el protocolo igual.
+- **DEFECTO CRÍTICO (nota 3 de Gildardo, defecto en su propio código):** el peso meta tiene un DEFAULT (Lorentz) y si el profesional no lo fija, se usa SIN QUE NADIE LO NOTE; como la proteína se calcula sobre él, **la prescripción cambia en silencio.** El default hay que **hacerlo VISIBLE en pantalla**. Además: `pesoAjust` se calcula y no se usa (código muerto: usar o retirar); el default de Lorentz solo aplica con IMC fuera de 18.5-25 (si no, usa el peso actual). Es la misma familia de defectos silenciosos que venimos cazando.
+- Fecha: 2026-08-03, ENMENDADA 2026-08-09. · Origen: ronda 2026-08-03 §6 + respuesta 2026-08-09 (C6).
+- Estado: **DECIDIDO / SIN IMPLEMENTAR, ahora COMPLETO (C6 desbloqueado).** · Afecta: cadena calórica (pipeline + pantalla).
+- **SALVAGUARDA DE TCA — ES ALERTA, NO BLOQUEA (CORREGIDO 2026-08-09).** Lo teníamos MAL como requisito duro ("déficit a cero, normocalórica, la cadena no se da por construida sin ella"). Gildardo: la salvaguarda genera **ALERTA**, y el **peso meta acordado sigue gobernando el cálculo**; el `pausadoTCA` que anula el déficit es un BUG que él ya corrigió en el v8. Menos mal que no lo construimos. La detección (SCOFF + tcaFlag) sí se conserva, pero su efecto es alertar/remitir, no anular el cálculo. (TCA = Trastorno de la Conducta Alimentaria, SIN relación con ICA-BIS = carga alostática; verificado que no los mezclamos.)
 
 ## Clasificación y diagnóstico
 
@@ -167,9 +169,31 @@ Al portar el motor psicológico verificamos que SCOFF se computa desde la encues
 
 **P-20 · Los seis campos sociodemográficos (del cotejo de Encuesta). NO bloquea, pero puede evitar trabajo legal.** Decidimos capturar etnia, nivel educativo, ocupación, estado civil, estrato y motivo de consulta (el observatorio los necesita; después no se reconstruyen). Su archivo también los captura. **Preguntas:** (a) ¿alguno alimenta el modelo, o son solo caracterización? (b) La etnia es dato sensible (Ley 1581 art. 5) y el consentimiento actual no la cubre; antes de pedírsela a un paciente, ¿la considera necesaria para el observatorio? Si no, nos ahorramos ampliar el consentimiento. Ver el bloque de construcción en `BACKLOG.md` (gate legal en etnia).
 
-### Pendiente de Gildardo (su lado)
-> **PRIORIDAD (2026-08-04): C6 es lo que MÁS pesa.** Es lo único que bloquea trabajo grande (la cadena calórica y todo lo que depende de ella); las demás consultas no detienen nada construible hoy. Cuando Santiago le escriba a Gildardo, C6 va primero.
-- **C6:** proteína y sobrecosto por condición, en cifras (destraba D-001/D-002). **← el bloqueo de mayor peso.**
-- **P2:** destraba los nutracéuticos por ruta. **P3.**
-- Respuesta a las tres consultas del 2026-08-03 (factor de actividad, salvaguarda TCA, cita).
-- Sub-consulta ligada a D-006: sobre qué ICEC se calibró μ/σ de la EB-BIS (para activar el mapeo sin doble corrección).
+### Pendiente de Gildardo (su lado) — RESPONDIDO 2026-08-09
+> **TODO RESPONDIDO (2026-08-09):** C6 con cifras (en D-002), P2 cerrado (§2), las tres consultas (FA/TCA/cita), y las 17. Ver la sección de resoluciones abajo y `entregas/gildardo-2026-08-09/`.
+
+---
+
+## RONDA 2026-08-09 (respuesta de Gildardo a las 17) — resoluciones
+
+Gildardo respondió el paquete completo. Detalle en `entregas/gildardo-2026-08-09/RESPUESTA_GILDARDO_2026-08-09.md`. Resumen de lo que cambia:
+
+- **C6 CERRADO → cifras en D-002** (proteína/energía/grasa/sodio/DM2 + condiciones derivadas de la composición + el déficit desde el peso meta). Desbloquea la cadena calórica.
+- **DOS ENMIENDAS FIRMADAS (en D-002):** el gasto va sobre el PESO ACTUAL (no el de referencia); la salvaguarda de TCA es ALERTA, no bloqueo (el `pausadoTCA` era un bug, ya corregido en el v8).
+- **DEFECTO nuevo (en D-002):** el peso meta usa un default de Lorentz en silencio y cambia la prescripción; hacerlo VISIBLE. `pesoAjust` es código muerto. → nuevo trabajo.
+- **P-02 (factor de actividad):** usar el `faRec` del motor de ejercicio como default editable (seguir el archivo). Resuelto.
+- **P-03 (TCA):** ver enmienda en D-002 (alerta, no bloqueo).
+- **P-04/P-14 (cita):** la fecha de la cita **SÍ va al reporte del paciente** ("si se le comunica un empeoramiento, tiene que ver cuándo será revisado"). Actualiza D-010.
+- **P-09 (D-007 Fase B, suspensión):** CUALQUIER dominio faltante suspende las TRES salidas (EB-BIS + ICEC + rutas). Todo-o-nada, sin mapa por dominio. El bioeléctrico sí se emite. Actualiza D-007.
+- **P-15 (Q32 conducta propia):** el motor de remisión vigente ES la referencia; no hay manual aparte (ver §2/P2).
+- **P-16 (Q34 cirugías):** solo REGISTRO clínico, NO modifican el cálculo. → portar `d6_qx` sin field_key.
+- **P-17 (Q35 referencias):** entrega la tabla `MCA_ref`/`hidSG_ref` por sexo/edad; mientras tanto salidas VACÍAS (no degradadas). Son 2 de las 7 constantes no aprobadas.
+- **P-18 (nombres, §10):** IFC = Índice de **FUNCIÓN** Celular (no "Funcionalidad"). PABU = Proporción Áurea Bioeléctrica **DE URIBE** (teníamos "Universal"). IEHH = Índice del **ESTADO** de Hidratación Humana (no "Espectro"). ISCM e IRC quedan como están. → corregir el registry.
+- **P-19 (display, §11):** severidad Leve/Moderado/Alto, manda el clasificador. IRC lo tenemos bien.
+- **P-20 (§12 sociodemográficos):** etnia SÍ es necesaria para el observatorio pero NO se captura hasta ampliar el consentimiento; los otros cinco son solo caracterización. → construir los 5, gatear etnia a lo legal (como ya estaba en BACKLOG).
+- **P-01 (§13 ICEC/EB-BIS):** confirma nuestra lectura: μ/σ se recalculan junto con el mapeo, la bandera queda en false hasta las constantes nuevas.
+- **P-06/P-07 (§14 alcohol/contaminantes):** solo caracterización.
+- **§9 (remisiones en el reporte):** se **consolidan por DESTINATARIO** (una línea por profesión con el resumen), no ruta por ruta. → rehace parte del display de D-009.
+- **§15 (renombramiento):** estructura → **E1-E9**; mapa FyR unificado → **A1-A9**; rutas siguen **R1-R6**. **Los datos sellados NO se reescriben: se traducen AL MOSTRAR.** → nuevo trabajo, toca datos sellados (con cuidado).
+- **§16:** mantiene su HTML al día.
+- **Biody BIS:** el proveedor corrigió el export (espectroscopía sí viene), pero MANTENER el mecanismo de la foto como segunda opción por si algún equipo no la trae. → afecta el plan de EA1 (la foto no se descarta, queda de fallback).
