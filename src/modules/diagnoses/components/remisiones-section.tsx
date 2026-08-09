@@ -2,7 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildRemisiones, type RutaContent } from "@/clinical-engine/rutas-content";
 import { RegisterReferralForm } from "@/modules/referrals/components/register-referral-form";
-import type { PendingReferralHint } from "@/modules/referrals/data/referrals-reader";
+// Tipo desde validations (neutro), no desde el reader `server-only`: esta seccion renderiza un
+// componente cliente y no debe arrastrar el reader al boundary de cliente.
+import type { PendingReferralHint } from "@/modules/referrals/validations";
 
 // Sección 3 del Tratamiento: las remisiones AGREGADAS de las rutas activas (médico / entrenador-
 // fisioterapeuta / psicólogo con remisión). Presentación pura desde el contenido congelado en el

@@ -43,6 +43,31 @@ export type MarkReturnInput = z.infer<typeof markReturnSchema>;
 
 export type ReferralFormState = { error: string | null; success: string | null };
 
+// Tipos de datos de remisiones. Viven AQUI (modulo neutro, sin `server-only`) y NO en el reader,
+// porque componentes CLIENTE los importan (register-referral-form usa PendingReferralHint). Un tipo
+// que cruza la frontera cliente/servidor no puede vivir en un modulo `server-only`: aunque `import type`
+// se borra en compilacion, la arista deja el reader al alcance del boundary de cliente y el bundler de
+// produccion puede convertirlo en referencia-cliente, dejando sus funciones (getPendingReferralHints,
+// listPatientReferrals) undefined en el server. El reader los RE-EXPORTA para el codigo de servidor.
+export type PatientReferral = {
+  id: string;
+  referredTo: ReferralTargetValue;
+  referredToOther: string | null;
+  reason: string;
+  referredAt: string;
+  returnedAt: string | null;
+  returnNotes: string | null;
+  // De QUE consulta salio la remision (via treatment -> diagnosis -> evaluation).
+  sourceEvaluationType: "inicial" | "seguimiento" | null;
+  sourceEvaluationDate: string | null;
+};
+
+export type PendingReferralHint = {
+  referredTo: ReferralTargetValue;
+  referredToOther: string | null;
+  referredAt: string;
+};
+
 // El acto que se registra es HABER remitido (o que el paciente HAYA vuelto): un acto no ocurre en el futuro.
 // La fecha puede ser hoy o anterior (registrar despues algo que se hizo antes), nunca posterior a hoy. Se
 // valida en el server (fuente de verdad); el input tiene `max` como primer filtro de UX. Comparacion lexica

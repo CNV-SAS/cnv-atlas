@@ -5,7 +5,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-reader";
+// Tipo desde el modulo neutro de tipos, NO desde el reader `server-only` (este es un componente cliente).
+import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets";
 
 import { correctEvaluationAction } from "../actions";

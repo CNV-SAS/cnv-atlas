@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { createReferralFormAction } from "../actions";
-import type { PendingReferralHint } from "../data/referrals-reader";
-import type { ReferralFormState, ReferralTargetValue } from "../validations";
+// Tipos desde validations (modulo neutro), NO desde el reader `server-only`: este es un componente
+// cliente, y esa arista puede convertir el reader en referencia-cliente en produccion.
+import type { PendingReferralHint, ReferralFormState, ReferralTargetValue } from "../validations";
 
 const initial: ReferralFormState = { error: null, success: null };
 

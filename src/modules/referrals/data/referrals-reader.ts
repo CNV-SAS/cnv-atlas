@@ -2,7 +2,11 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import type { ReferralTargetValue } from "../validations";
+import type { PatientReferral, PendingReferralHint, ReferralTargetValue } from "../validations";
+
+// Re-export para el codigo de SERVIDOR que ya importa estos tipos desde el reader. La definicion vive
+// en validations (modulo neutro) para no dejar este modulo `server-only` al alcance del cliente.
+export type { PatientReferral, PendingReferralHint } from "../validations";
 
 // Lecturas de remisiones (regla 1). Cliente anon + RLS: las policies de `referrals` y `treatments`
 // (`is_patient_professional`) filtran, asi que si una lectura devuelve fila, el actor ES el profesional
@@ -45,20 +49,6 @@ export async function getReferralOwnership(
   return { alreadyReturned: data.returned_at != null };
 }
 
-export type PatientReferral = {
-  id: string;
-  referredTo: ReferralTargetValue;
-  referredToOther: string | null;
-  reason: string;
-  referredAt: string;
-  returnedAt: string | null;
-  returnNotes: string | null;
-  // De QUE consulta salio la remision (via treatment -> diagnosis -> evaluation): con varias consultas y
-  // varias remisiones, sin esto la lista no se lee. null solo si el embed no resolvio (dato viejo).
-  sourceEvaluationType: "inicial" | "seguimiento" | null;
-  sourceEvaluationDate: string | null;
-};
-
 // Remisiones de un paciente (para la lista donde se marca el retorno). Por patient_id: SOBREVIVEN a las
 // correcciones (el treatment vigente cambia; el acto queda). Mas recientes primero. RLS filtra a las del
 // profesional del paciente (y admin). Trae el tipo y fecha de la evaluacion de origen (treatment_id no cambia
@@ -96,12 +86,6 @@ export async function listPatientReferrals(patientId: string): Promise<PatientRe
     };
   });
 }
-
-export type PendingReferralHint = {
-  referredTo: ReferralTargetValue;
-  referredToOther: string | null;
-  referredAt: string;
-};
 
 // Remisiones PENDIENTES de retorno del paciente de un tratamiento, para avisar al registrar una repetida
 // (aviso suave: aqui el riesgo es desorden en el registro, no un doble cobro como en nutraceuticos; no

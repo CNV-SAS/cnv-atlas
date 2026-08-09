@@ -9,17 +9,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // (survey_responses_select / survey_answers_select) solo deja al profesional del paciente (o
 // admin) leerlas. Solo display; no toca el motor ni el snapshot.
 
-export type SurveyAnswerView = {
-  questionId: string;
-  questionText: string;
-  questionType: string; // texto | numero | opcion | opcion_multiple | contador | escala
-  fieldKey: string | null; // marca si alimenta el motor (no se edita aqui: eso es recomputo)
-  usedInDiagnosis: boolean; // si alimenta el DIAGNOSTICO (gatea dfi.complete): a priorizar al completar
-  answerValue: string | null; // opcion: option_text; opcion_multiple: JSON array; numeros: string
-  options: string[]; // opciones (option_text) ordenadas; vacio para numero/texto/contador/escala
-};
-
-export type SurveyDomain = { section: string; questions: SurveyAnswerView[] };
+// Los tipos viven en survey-answers-types (modulo neutro) para no dejar este reader `server-only` al
+// alcance del cliente. Se re-exportan para el codigo de servidor que ya los importa desde aqui.
+export type { SurveyAnswerView, SurveyDomain } from "./survey-answers-types";
+import type { SurveyDomain } from "./survey-answers-types";
 
 type QuestionRow = {
   id: string;
