@@ -155,6 +155,16 @@ NUNCA uses em-dash en ningún lugar: ni en código, ni en copy, ni en docs, ni e
 - Server Components por defecto. `"use client"` solo con estado, efectos, event handlers o APIs del navegador.
 - Node.js runtime para todo. Única excepción acotada: `proxy.ts` en Edge para refresco de sesión y redirects de auth.
 - TypeScript `strict: true` obligatorio.
+- **Ningún componente `"use client"` importa de un módulo `server-only`, ni siquiera un `import type`.** tsc borra el `import type` y NO reporta nada (build local verde), pero la arista deja el reader al alcance del boundary de cliente y el bundler de PRODUCCIÓN puede convertirlo en referencia-cliente, dejando sus funciones de valor (las que llama el server) `undefined` en runtime. Reventó `/pacientes` y `/evaluaciones` en la nube y NO en local (2026-08-08). Un tipo que importan cliente y servidor vive en un módulo NEUTRO (validations, `*-types.ts`); el reader lo re-exporta para el servidor. **Paso OBLIGATORIO tras cada feature con readers + componentes cliente: correr el barrido de detección** (cero aristas cliente→server-only):
+  ```
+  for f in $(grep -rln '"use client"' src/); do
+    for imp in $(grep -oE 'from "[^"]+"' "$f" | sed 's/from "//;s/"//'); do
+      # resolver imp a ruta (@/ -> src/, ./ y ../ relativos) y probar:
+      #   grep -qE '^import ["'"'"']server-only["'"'"']' "$target"   (el import REAL, no la palabra en un comentario)
+    done
+  done
+  ```
+  tsc verde NO descarta un fallo de frontera RSC; solo este barrido (o el build de producción real) lo atrapa.
 
 ### Supabase y Drizzle
 
