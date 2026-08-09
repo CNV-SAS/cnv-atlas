@@ -31,6 +31,13 @@ export const professionalProfession = pgEnum("professional_profession", [
   "nutricionista",
 ]);
 
+// Procedencia de un valor crudo BIS (EA1). El export corto del Biody no trae toda la composicion;
+// las identidades congeladas de Gildardo (clinical-engine/frozen/derivar-composicion.js) la
+// reconstruyen a partir de lo que si viene. 'derivado' marca lo reconstruido para que el profesional
+// lo distinga de lo MEDIDO por el equipo: un valor derivado NUNCA se muestra como si fuera medido, y
+// un valor medido JAMAS se sobrescribe (la derivacion solo rellena huecos).
+export const bisValueOrigin = pgEnum("bis_value_origin", ["medido", "derivado"]);
+
 export const patientStatus = pgEnum("patient_status", ["active", "inactive"]);
 
 export const profileStatus = pgEnum("profile_status", ["active", "inactive"]);

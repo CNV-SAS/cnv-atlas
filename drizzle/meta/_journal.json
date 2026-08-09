@@ -386,6 +386,13 @@
       "when": 1786274080102,
       "tag": "0054_small_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1786297099354,
+      "tag": "0055_natural_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

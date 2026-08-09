@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
-import { deviceStatus } from "./enums";
+import { bisValueOrigin, deviceStatus } from "./enums";
 import { evaluations } from "./evaluations";
 import { organizations } from "./organizations";
 
@@ -65,6 +65,13 @@ export const bisRawValues = pgTable(
       .references(() => bisMeasurements.id, { onDelete: "cascade" }),
     variableName: text("variable_name").notNull(),
     value: numeric("value").notNull(),
+    // Procedencia del valor (EA1). 'medido' = lo trajo el equipo; 'derivado' = lo reconstruyo la
+    // derivacion de composicion (derivar-composicion.js) por ser un hueco del export corto. Default
+    // 'medido' para que las filas historicas (antes de EA1) queden correctamente marcadas como medidas.
+    origin: bisValueOrigin("origin").notNull().default("medido"),
+    // Version de la formula de derivacion (ESPECTRO_FORMULAS_V) con la que se produjo un valor
+    // 'derivado'; null en los medidos. Deja reconstruir la procedencia si la ciencia se versiona.
+    derivedFormulaVersion: text("derived_formula_version"),
   },
   (t) => [index("bis_raw_values_measurement_idx").on(t.measurementId)],
 );
