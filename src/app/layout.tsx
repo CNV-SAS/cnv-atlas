@@ -22,7 +22,9 @@ export default function RootLayout({
     <html lang="es" className={cn("h-full antialiased font-sans", inter.variable)}>
       <body className="flex min-h-full flex-col">
         {children}
-        <Toaster closeButton richColors position="top-right" />
+        {/* duration 10s: los avisos explican que paso (falto/sobro, por que sube menos, etc.) y hay que
+            alcanzar a leerlos; el boton de cerrar (closeButton) deja despacharlos rapido a quien no los necesita. */}
+        <Toaster closeButton richColors position="top-right" duration={10000} />
       </body>
     </html>
   );
