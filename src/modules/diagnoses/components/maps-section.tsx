@@ -6,7 +6,7 @@ import type { DfiDomain } from "@/clinical-engine";
 
 import { Diana } from "./diana";
 import { DfiRadar } from "./dfi-radar";
-import type { EfrStateRef } from "../data/efr-states-reader";
+import type { EfrStateRef } from "../data/efr-states-types";
 
 // Seccion de mapas (Diana + radar) con la exploracion de estados (V2). El estado del paciente es
 // SIEMPRE el del snapshot inmutable; la exploracion es una capa de solo lectura, rotulada como

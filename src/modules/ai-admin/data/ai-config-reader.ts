@@ -3,24 +3,16 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { modelsForProvider } from "../models";
-import { AI_PROVIDERS } from "../validations";
+
+import type { AiConfigView, AiProviderStatus } from "./ai-config-types";
 
 // Estado de la config de IA para el panel admin. La fila de ai_config se lee por RLS
 // (admin-only, regla dura 3). El estado de cada proveedor se deriva del entorno: las keys
 // nunca se exponen, solo se informa si estan presentes, para que el admin sepa que puede
 // activar sin dejar la IA rota.
 
-export type AiProviderStatus = {
-  id: (typeof AI_PROVIDERS)[number];
-  hasKey: boolean; // la API key existe en el entorno
-  envModel: string | null; // modelo por defecto configurado en el entorno
-  models: string[]; // modelos validos para este proveedor (catalogo + entorno)
-};
-
-export type AiConfigView = {
-  current: { activeProvider: string; activeModel: string; updatedAt: string } | null;
-  providers: AiProviderStatus[];
-};
+// Los tipos viven en ai-config-types (modulo neutro) para que el form cliente los importe sin el reader.
+export type { AiProviderStatus, AiConfigView } from "./ai-config-types";
 
 export async function getAiConfigView(): Promise<AiConfigView> {
   const supabase = await createSupabaseServerClient();

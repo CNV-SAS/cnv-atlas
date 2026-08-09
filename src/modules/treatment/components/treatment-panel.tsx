@@ -19,7 +19,7 @@ import {
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
 import { protocolSectionSignatures, protocolSignature } from "../data/protocol-signature";
-import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-reader";
+import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
 
 // Etiqueta de disponibilidad comercial (dato del producto): que significa para el paciente.

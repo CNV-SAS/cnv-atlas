@@ -5,7 +5,7 @@ import { startTransition, useActionState, useState } from "react";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
 import { saveAiConfigAction, type AiAdminActionState } from "../actions";
-import type { AiConfigView } from "../data/ai-config-reader";
+import type { AiConfigView } from "../data/ai-config-types";
 
 const initial: AiAdminActionState = { error: null, success: null, warning: null };
 

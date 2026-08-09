@@ -2,6 +2,8 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import type { EfrStateRef } from "./efr-states-types";
+
 // Contenido de REFERENCIA de los 81 estados EFR para explorar la Diana. Es autoritativo (validado
 // con Gildardo al poblar el registry en B11), pero NO es el diagnostico del paciente: ese vive en
 // el snapshot inmutable (efrContent) y jamas se lee del registry, ni durante la exploracion. Se lee
@@ -9,14 +11,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // paciente y los estados que explora pertenecen al mismo modelo). RLS efr_states_select gatea la
 // lectura. Solo display.
 
-export type EfrStateRef = {
-  stateNumber: number;
-  diagnosisName: string;
-  mechanism: string | null;
-  biomarkers: string | null;
-  risks: string | null;
-  suggestedNutraceuticals: string | null;
-};
+// EfrStateRef vive en efr-states-types (modulo neutro) para que el cliente lo importe sin el reader.
+export type { EfrStateRef } from "./efr-states-types";
 
 export async function getEfrStatesForModel(
   modelVersionId: string,

@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
 import { savePromptAction, type AiAdminActionState } from "../actions";
-import type { PromptView } from "../data/ai-prompt-reader";
+import type { PromptView } from "../data/ai-prompt-types";
 
 const initial: AiAdminActionState = { error: null, success: null, warning: null };
 

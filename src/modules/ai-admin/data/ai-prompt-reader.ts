@@ -2,22 +2,14 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import type { PromptView } from "./ai-prompt-types";
+
 // Estado de un prompt versionado para el panel admin. Lectura por RLS (ai_prompts es
 // admin-only, regla dura 3): la version activa (contenido editable) y el historial de
 // versiones. El contenido es SOLO el bloque de instrucciones de sistema.
 
-export type PromptVersionRow = {
-  version: number;
-  status: string; // active, retired
-  createdAt: string;
-};
-
-export type PromptView = {
-  promptKey: string;
-  activeContent: string | null;
-  activeVersion: number | null;
-  versions: PromptVersionRow[];
-};
+// Los tipos viven en ai-prompt-types (modulo neutro) para que el form cliente los importe sin el reader.
+export type { PromptVersionRow, PromptView } from "./ai-prompt-types";
 
 export async function getPromptView(promptKey: string): Promise<PromptView> {
   const supabase = await createSupabaseServerClient();

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
 import { addDiagnosisNoteAction, type DiagnosisActionState } from "../actions";
-import type { DiagnosisNote } from "../data/diagnosis-notes-reader";
+import type { DiagnosisNote } from "../data/diagnosis-notes-types";
 
 const EMPTY: DiagnosisActionState = { error: null, success: null, warning: null };
 

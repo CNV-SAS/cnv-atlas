@@ -15,7 +15,7 @@ import {
   type ReportActionState,
   sendReportAction,
 } from "../actions";
-import type { TrajectoryConfirmation } from "../data/reports-repository";
+import type { TrajectoryConfirmation } from "../data/reports-view-types";
 
 export type ReportCardView = {
   reportId: string;

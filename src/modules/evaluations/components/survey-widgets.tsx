@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-reader";
+import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-view-types";
 
 // Widgets de la encuesta por tipo de pregunta. Fuente unica, TRES superficies que los consumen:
 //   1. el formulario PUBLICO del paciente (survey-intake-form, interactivos, sin valor previo);

@@ -2,22 +2,15 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+import type { ActiveSurvey } from "./survey-view-types";
+
 // Lectura de la encuesta activa para la pagina publica (sin sesion). Via service
 // role: el contenido de la encuesta no es sensible, pero el paciente no tiene
 // sesion. Estructura placeholder hasta Gildardo; aqui solo se lee lo que haya.
 
-export type SurveyOptionView = { id: string; text: string };
-export type SurveyQuestionView = {
-  id: string;
-  text: string;
-  type: string; // texto, numero, opcion, opcion_multiple
-  section: string | null; // dominio para agrupar en el intake (B7.1)
-  options: SurveyOptionView[];
-};
-export type ActiveSurvey = {
-  surveyVersionId: string;
-  questions: SurveyQuestionView[];
-};
+// Los tipos de la vista viven en survey-view-types (modulo neutro) para que el form y los widgets cliente
+// los importen sin el reader server-only. El reader los reexporta para el resto del server.
+export type { SurveyOptionView, SurveyQuestionView, ActiveSurvey } from "./survey-view-types";
 
 // Devuelve la version mas reciente publicada de la encuesta con sus preguntas y
 // opciones ordenadas. En el MVP hay una sola plantilla/version (la del seed).

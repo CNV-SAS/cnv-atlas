@@ -4,6 +4,9 @@ import type { ProtocoloAjustes, ProtocoloSnapshot } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
+// TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
+import type { TreatmentProtocol } from "./treatment-view-types";
+
 // Lectura del protocolo de tratamiento de una evaluacion para la vista interna del
 // profesional (B13). Todo por RLS (regla dura 3): el cliente anon con sesion solo ve los
 // tratamientos de los pacientes del profesional; si la evaluacion no es suya, no hay filas
@@ -18,53 +21,16 @@ const GET_VARIABLE = normalizeHeader(
   "Gasto energético measurementDetails.VALEURCALCULEEEXPORT kcal",
 );
 
-export type PrescribedNutraceutical = {
-  id: string;
-  nutraceuticalId: string;
-  name: string;
-  dosage: string | null;
-  durationDays: number | null;
-};
-
-export type DietGuideline = { id: string; text: string };
-export type TreatmentNote = { id: string; note: string; createdAt: string };
-export type CatalogItem = {
-  id: string;
-  name: string;
-  unit: string | null;
-  indication: string | null;
-  commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
-};
-
-export type MenuSuggestion = {
-  id: string;
-  provider: string;
-  model: string;
-  promptVersion: string;
-  generatedText: string | null;
-  status: string; // success, timeout, parse_failed, provider_error
-  latencyMs: number | null;
-  generatedAt: string;
-};
-
-export type TreatmentProtocol = {
-  treatmentId: string;
-  diagnosisConfirmed: boolean;
-  kcalObjetivo: number | null;
-  proteinaGramos: number | null;
-  restricciones: string[];
-  kcalSugerido: number | null; // GET medido por el Biody, si existe
-  nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
-  recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)
-  guidelines: DietGuideline[];
-  notes: TreatmentNote[];
-  catalog: CatalogItem[];
-  menuSuggestions: MenuSuggestion[]; // sugerencias de IA (B13), la mas reciente primero
-  // Snapshot del protocolo sugerido (write-once, sellado al crear el tratamiento). Solo lectura; lo
-  // usa el panel de consulta medica para mostrar examenes y suplementacion sugeridos. null si el
-  // tratamiento se creo antes de sellar protocol_suggested.
-  protocolSuggested: ProtocoloSnapshot | null;
-};
+// Los tipos de la vista viven en treatment-view-types (modulo neutro) para que el panel cliente los
+// importe sin el reader server-only. El reader los reexporta para el resto del server.
+export type {
+  PrescribedNutraceutical,
+  DietGuideline,
+  TreatmentNote,
+  CatalogItem,
+  MenuSuggestion,
+  TreatmentProtocol,
+} from "./treatment-view-types";
 
 export async function getTreatmentProtocol(
   evaluationId: string,

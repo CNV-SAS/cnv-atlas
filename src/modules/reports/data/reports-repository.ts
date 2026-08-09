@@ -4,6 +4,9 @@ import type { EngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
+// TrajectoryConfirmation (usado en anotaciones del reader) vive en el modulo neutro; ver reexport abajo.
+import type { TrajectoryConfirmation } from "./reports-view-types";
+
 // Lecturas de reportes para la UI autenticada (regla dura 1). Cliente anon + RLS:
 // reports_select deja al profesional del paciente (y admin) ver sus reportes. Sirve
 // ademas de gate de ownership antes de la escritura por owner: si la sesion no puede
@@ -119,16 +122,9 @@ export async function listReports(): Promise<ReportListItem[]> {
   });
 }
 
-// Datos de la banda de EB-BIS (P0 Parte 2) que la ReportCard necesita para la superficie de
-// confirmacion de "empeoro". null si el reporte no tiene banda sellada (inicial o sin previa
-// comparable). proximaCita se trae solo cuando band = 'empeoro' (es el gate); prefill del input.
-export type TrajectoryConfirmation = {
-  band: "mejoro" | "sin_cambio" | "empeoro";
-  ebDelta: number;
-  provisional: boolean;
-  communicated: boolean; // ya confirmada (trajectory_communicated_at no null)
-  proximaCita: string | null; // fecha ya agendada en el tratamiento, para prefill del input
-};
+// TrajectoryConfirmation vive en reports-view-types (modulo neutro) para que la card cliente lo importe
+// sin el reader server-only. El reader lo reexporta para el server.
+export type { TrajectoryConfirmation } from "./reports-view-types";
 
 export type ReportCardData = ReportListItem & { trajectory: TrajectoryConfirmation | null };
 

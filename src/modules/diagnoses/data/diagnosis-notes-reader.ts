@@ -7,8 +7,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // profesional; si la evaluacion no es suya, no hay filas -> null. Resuelve tambien el
 // diagnosisId, que el service usa para escribir (el ownership queda verificado aqui, por RLS).
 
-export type DiagnosisNote = { id: string; note: string; createdAt: string };
-export type DiagnosisCriterion = { diagnosisId: string; notes: DiagnosisNote[] };
+import type { DiagnosisCriterion } from "./diagnosis-notes-types";
+
+// Los tipos viven en diagnosis-notes-types (modulo neutro) para que el cliente los importe sin el reader.
+export type { DiagnosisNote, DiagnosisCriterion } from "./diagnosis-notes-types";
 
 export async function getDiagnosisCriterion(
   evaluationId: string,

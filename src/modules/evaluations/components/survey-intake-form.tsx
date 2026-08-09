@@ -10,7 +10,7 @@ import { ConsentDocument } from "@/modules/consent/components/consent-document";
 
 import { submitSurveyAction } from "../actions";
 import type { SurveyFormState } from "../validations";
-import type { SurveyQuestionView } from "../data/survey-reader";
+import type { SurveyQuestionView } from "../data/survey-view-types";
 import { SurveyQuestion } from "./survey-widgets";
 
 const initial: SurveyFormState = { error: null, fields: null, done: false };
