@@ -379,6 +379,13 @@
       "when": 1786244113885,
       "tag": "0053_remesa_one_recepcion",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786274080102,
+      "tag": "0054_small_boomer",
+      "breakpoints": true
     }
   ]
 }

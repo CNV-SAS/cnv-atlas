@@ -99,10 +99,16 @@ export async function confirmRemesa(input: {
     return { ok: false, message: "Remesa no encontrada o no es tuya." };
   }
 
+  // Asimetría (decisión del plan): el saldo sube por lo CONFIRMADO cuando es MENOR (el integrante tiene lo
+  // que tiene, se acepta a su palabra), y solo por lo DECLARADO cuando es MAYOR (el excedente NO infla el
+  // saldo sin que CNV lo reconozca; si es real, lo reconcilia el conteo/sobrante que ya existe). `delta` es el
+  // efecto en el saldo (el min); `reported_quantity` guarda lo que dijo que llegó, para ver la dirección.
+  const balanceDelta = Math.min(input.actualQuantity, remesa.delta);
   const { error } = await supabase.from("nutraceutical_stock_movements").insert({
     professional_id: profId,
     nutraceutical_id: remesa.nutraceutical_id,
-    delta: input.actualQuantity, // recepción: lo que REALMENTE llegó (puede diferir de lo declarado)
+    delta: balanceDelta,
+    reported_quantity: input.actualQuantity,
     type: "recepcion",
     reason: "Recepción de remesa (consignación)",
     lote: input.lote,
@@ -111,6 +117,7 @@ export async function confirmRemesa(input: {
   });
   // El índice único (una recepción por remesa) o el trigger de coherencia devuelven error si algo no cuadra.
   if (error) return { ok: false, message: "No se pudo confirmar la remesa (¿ya estaba confirmada?)." };
+  // difference = reportado − declarado (con signo): <0 faltó, >0 sobró (el excedente no entró al saldo).
   return { ok: true, difference: input.actualQuantity - remesa.delta };
 }
 
@@ -162,14 +169,16 @@ export async function getPendingRemesasForOwn(userId: string): Promise<PendingRe
     }));
 }
 
-export type RemesaStatus = "enviada" | "confirmada" | "confirmada_con_diferencia";
+// Estado con DIRECCIÓN: no solo "con diferencia", sino si FALTÓ (llegó menos) o SOBRÓ (llegó más).
+export type RemesaStatus = "enviada" | "confirmada" | "confirmada_faltante" | "confirmada_sobrante";
 export type CnvRemesa = {
   remesaId: string;
   professionalId: string;
   professionalName: string;
   nutraceuticalName: string;
   declaredQuantity: number;
-  receivedQuantity: number | null; // null si aún no confirmada
+  receivedQuantity: number | null; // lo REPORTADO por el integrante; null si aún no confirmada
+  difference: number | null; // reportado − declarado (con signo); null si no confirmada
   status: RemesaStatus;
   declaredAt: string;
 };
@@ -186,26 +195,36 @@ export async function getRemesasForCnv(): Promise<CnvRemesa[]> {
   if (error) throw new Error(`remesa-service: cnv remesas: ${error.message}`);
   if (!remesas || remesas.length === 0) return [];
 
-  // Recepciones que respaldan cada remesa (una por remesa por el índice único).
+  // Recepciones que respaldan cada remesa (una por remesa por el índice único). Se usa lo REPORTADO
+  // (reported_quantity, lo que dijo el integrante que llegó), no el delta del saldo, para ver la dirección.
   const { data: recs } = await supabase
     .from("nutraceutical_stock_movements")
-    .select("remesa_id, delta")
+    .select("remesa_id, delta, reported_quantity")
     .eq("type", "recepcion")
     .not("remesa_id", "is", null);
-  const receivedByRemesa = new Map((recs ?? []).map((r) => [r.remesa_id as string, r.delta]));
+  const reportedByRemesa = new Map(
+    (recs ?? []).map((r) => [r.remesa_id as string, r.reported_quantity ?? r.delta]),
+  );
   const names = await professionalNames(supabase, [...new Set(remesas.map((r) => r.professional_id))]);
 
   return remesas.map((r) => {
-    const received = receivedByRemesa.has(r.id) ? (receivedByRemesa.get(r.id) as number) : null;
+    const reported = reportedByRemesa.has(r.id) ? (reportedByRemesa.get(r.id) as number) : null;
     const status: RemesaStatus =
-      received == null ? "enviada" : received === r.delta ? "confirmada" : "confirmada_con_diferencia";
+      reported == null
+        ? "enviada"
+        : reported === r.delta
+          ? "confirmada"
+          : reported < r.delta
+            ? "confirmada_faltante"
+            : "confirmada_sobrante";
     return {
       remesaId: r.id,
       professionalId: r.professional_id,
       professionalName: names.get(r.professional_id) ?? "Integrante",
       nutraceuticalName: one(r.nutraceuticals as { name?: string } | { name?: string }[] | null)?.name ?? "",
       declaredQuantity: r.delta,
-      receivedQuantity: received,
+      receivedQuantity: reported,
+      difference: reported == null ? null : reported - r.delta,
       status,
       declaredAt: r.created_at,
     };

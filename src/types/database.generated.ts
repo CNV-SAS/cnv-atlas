@@ -1610,6 +1610,7 @@ export type Database = {
           professional_id: string
           reason: string | null
           remesa_id: string | null
+          reported_quantity: number | null
           treatment_id: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -1624,6 +1625,7 @@ export type Database = {
           professional_id: string
           reason?: string | null
           remesa_id?: string | null
+          reported_quantity?: number | null
           treatment_id?: string | null
           type: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }
@@ -1638,6 +1640,7 @@ export type Database = {
           professional_id?: string
           reason?: string | null
           remesa_id?: string | null
+          reported_quantity?: number | null
           treatment_id?: string | null
           type?: Database["public"]["Enums"]["nutraceutical_movement_type"]
         }

@@ -92,6 +92,12 @@ export const nutraceuticalStockMovements = pgTable(
     // fila de correccion). Solo aplica a type=recepcion (CHECK en la migracion). La remesa misma NO mueve
     // el saldo del integrante (el trigger del saldo excluye type=remesa; el saldo sube al recibir).
     remesaId: uuid("remesa_id").references((): AnyPgColumn => nutraceuticalStockMovements.id),
+    // Cantidad REPORTADA por el integrante al confirmar una remesa (lo que dice que llego), que puede diferir
+    // de `delta` (el efecto en el saldo). Asimetria deliberada: recibir de MENOS mueve el saldo por lo
+    // confirmado (delta=reportada); recibir de MAS lo mueve solo por lo DECLARADO (delta=declarada, capado),
+    // y el excedente NO infla el saldo sin que CNV lo reconozca (lo reconcilia el conteo/sobrante). Se guarda
+    // lo reportado para que CNV vea la DIRECCION (falto/sobro). null en movimientos que no confirman remesa.
+    reportedQuantity: integer("reported_quantity"),
     createdBy: uuid("created_by").references(() => profiles.id),
     createdAt: createdAt(),
   },

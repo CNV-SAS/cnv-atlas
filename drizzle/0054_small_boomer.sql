@@ -1,0 +1,1 @@
+ALTER TABLE "nutraceutical_stock_movements" ADD COLUMN "reported_quantity" integer;
