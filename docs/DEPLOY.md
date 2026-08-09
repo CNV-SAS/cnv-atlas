@@ -218,18 +218,26 @@ Dos pasos, en orden, contra la BD local (`DATABASE_URL` en `.env.local`):
 
 **Vercel despliega el CÓDIGO en cada push a `main`, pero NO corre las migraciones.** Si el código desplegado espera una tabla que la nube no tiene, la pantalla revienta con `Could not find the table 'public.XXX' in the schema cache` y la causa queda solo en Sentry. Pasó con `referrals` (y con las tablas de faltantes/conteo): el código llegó a la nube, las tablas no. **Migrar es un paso APARTE que se corre a mano tras cada push con migraciones nuevas.** El criterio de aceptación de más abajo ("migraciones iniciales aplicadas") NO basta: hay que repetirlo cada vez.
 
-**Paso obligatorio tras CADA push que incluya archivos nuevos en `drizzle/`:**
-1. **Verificar qué falta:** `pnpm db:check` con `DATABASE_URL` apuntando a la nube (lista las pendientes; solo LEE, seguro). Sin pendientes: nada que hacer.
-2. **Aplicarlas:** `pnpm db:migrate` con `DATABASE_URL` de la nube (la conexión DIRECTA de Supabase, puerto 5432, no el pooler 6543: el DDL en transacción no va bien por el pooler).
-3. **Confirmar:** `pnpm db:check` de nuevo → "al día".
+**CUIDADO con `db:check` (hallazgo 2026-08-09):** `pnpm db:check` corre con `--env-file=.env.local`, así que chequea la BD **LOCAL**. Si lo corres tras migrar la nube, diría "al día" mirando local y creerías que verificaste la nube (peor que no chequear). **Para la NUBE hay un comando aparte, `db:check:cloud` (sin `--env-file`), que exige `DATABASE_URL` en el shell y falla claro si falta** (nunca miente "al día"):
 
-Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.**
+```
+DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
+```
+
+(Node: una variable de shell GANA sobre `--env-file`; el comando `:cloud` no usa `--env-file` para que no haya ambigüedad. Sin `DATABASE_URL` seteada, aborta con un mensaje, no chequea local por error.)
+
+**Paso obligatorio tras CADA push que incluya archivos nuevos en `drizzle/`:**
+1. **Verificar qué falta:** `DATABASE_URL="<url-nube>" pnpm db:check:cloud` (lista las pendientes; solo LEE, seguro, va por el pooler). Sin pendientes: nada que hacer.
+2. **Aplicarlas:** `pnpm db:migrate` con `DATABASE_URL` de la nube = la conexión DIRECTA de Supabase (puerto 5432, no el pooler 6543: el DDL en transacción no va bien por el pooler).
+3. **Confirmar:** `DATABASE_URL="<url-nube>" pnpm db:check:cloud` de nuevo → "al día".
+
+Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.** Y `db:check:cloud` entra a la rutina: correrlo (contra la NUBE) antes de dar por bueno un despliegue.
 
 ### El migrate NO se automatiza en el build de Vercel (DECIDIDO 2026-08-08, no reabrir)
 
 Se evaluó correr `pnpm db:migrate` en el build de Vercel y **se decidió NO hacerlo.** Argumento (para que no se reabra): hoy las migraciones son aditivas y seguras, pero **el día que una toque datos existentes, un despliegue automático la aplicaría sin que nadie la revise. En una base con historias clínicas, una migración destructiva aplicada sin revisión NO se deshace.** El beneficio de automatizar (ahorrar un comando) es chico; el costo de ese caso es irreversible. No compensa.
 
-El control sin riesgo es el **paso manual + `pnpm db:check`**: el comando ya convierte el fallo mudo en aviso claro, que era el problema real. `db:check` entra a la RUTINA: **correrlo (contra la nube) antes de dar por bueno cualquier despliegue.**
+El control sin riesgo es el **paso manual + `db:check:cloud`**: el comando ya convierte el fallo mudo en aviso claro, que era el problema real. Entra a la RUTINA: **correrlo (contra la NUBE, con `DATABASE_URL` de la nube; ver arriba) antes de dar por bueno cualquier despliegue.**
 
 (Registro de lo evaluado, por si el contexto cambia: automatizar sería viable solo con tres cuidados, gatear a `VERCEL_ENV=production` para no migrar prod desde previews, conexión directa no pooler, y un manejo aparte para migraciones destructivas. Pero la decisión es no automatizar por el argumento de arriba.)
 
