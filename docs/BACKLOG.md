@@ -32,6 +32,14 @@
 
 **Orden:** cotejo cerrado; EA1 como bloque propio con plan (ya tenemos el material: el export real). Falta pedir a Gildardo la tabla de `MCA_ref`/`hidSG_ref` (o confirmar el gate a null). **Relación:** con "El import del Biody es frágil por igualdad exacta de headers" (`_rescatar` v8 §3.2-3.6, más abajo).
 
+## Los consentimientos OPCIONALES no se consultan en ningún lado (hallazgo 2026-08-08)
+
+**Verificado (NO construir aún, solo registrado):** los consentimientos opcionales (`investigacion`, `comunicaciones_comerciales`, `comunicaciones_continuidad`) se **capturan y guardan** en el intake (el enum y la tabla los tienen), pero **ninguna superficie los muestra**. La pestaña Evaluación muestra solo los 3 necesarios (`servicio`, `datos_sensibles`, `internacional_ia`), y está BIEN así: al profesional le importan los que habilitan atender. ObBIA muestra `research_datasets` agregados, NO quién autorizó investigación. No hay superficie en dirección/comercial. **Consecuencia:** el paciente firma la autorización de investigación, y quien la necesita (ObBIA, para saber qué pacientes autorizaron) no tiene cómo verla; el dato existe y no sirve. Falta una superficie para los OPCIONALES (probablemente en ObBIA: qué pacientes autorizaron investigación; y comercial para su consentimiento), separada de la de Evaluación. Gap, no urgente; se prioriza con Santiago.
+
+## Correcciones a la encuesta — BLOQUE POSTERIOR, junto con los cambios de Gildardo (registrado 2026-08-08)
+
+Santiago tiene un **listado completo de correcciones** para aplicarle a la encuesta, y además **Gildardo la tocó en el v8**. Va como bloque POSTERIOR, no ahora, y con una razón: **conviene mirar las correcciones de Santiago JUNTO con los cambios de Gildardo, no por separado, o se toca la encuesta dos veces** (contenido congelado: cada cambio es versión nueva + re-verificar el candado de acoplamiento). Se liga al **cotejo de Encuesta ya hecho** (de ahí salieron ECA1 la pregunta de cirugías que falta portar, ECA2 los ejemplos/ancla de porción de D1, ECA3 los nombres de grupos D1; ver `COTEJOS_VISUALES.md` sección Encuesta). Cuando entre: juntar (a) las correcciones de Santiago, (b) los deltas del v8 (Q34 cirugías y lo que responda Gildardo), (c) los hallazgos del cotejo, en UNA pasada. Precondición: el paquete de Gildardo respondido (Q34).
+
 ## Capturar los 6 campos sociodemográficos (DECIDIDO 2026-08-08; gate legal en etnia)
 
 **Decisión de Santiago: SÍ se registran** etnia, nivel educativo, ocupación, estado civil, estrato y motivo de consulta (EA3/ECB del cotejo). Razón: son las variables que el observatorio necesita para estratificar, y **capturarlos después es imposible** (el paciente ya pasó; un dato demográfico no se reconstruye). Como no alimentan el motor: **opcionales, sin `field_key`, `used_in_diagnosis=false`, y si el paciente no responde queda VACÍO, no un valor por defecto** (misma disciplina que ya tenemos).
