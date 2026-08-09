@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
+import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
 import { MiInventarioForm } from "@/modules/nutraceuticals/components/mi-inventario-form";
 import { MisFaltantesSection } from "@/modules/nutraceuticals/components/mis-faltantes-section";
 import { canLoadOwnStock } from "@/modules/nutraceuticals/policies/can-load-own-stock";
 import { getOwnInventory, getOwnMovements } from "@/modules/nutraceuticals/services/inventory-service";
+import { getPendingRemesasForOwn } from "@/modules/nutraceuticals/services/remesa-service";
 
 export const metadata = { title: "Mi inventario - Atlas" };
 
@@ -34,7 +36,11 @@ export default async function MiInventarioPage() {
   const user = await requireUser();
   if (!canLoadOwnStock(user)) redirect("/no-autorizado");
 
-  const [inventory, movements] = await Promise.all([getOwnInventory(user.id), getOwnMovements(user.id)]);
+  const [inventory, movements, pendingRemesas] = await Promise.all([
+    getOwnInventory(user.id),
+    getOwnMovements(user.id),
+    getPendingRemesasForOwn(user.id),
+  ]);
   const lines = inventory ?? [];
   const recibibles = lines.filter((l) => l.commercialAvailability === "en_consultorio");
 
@@ -47,6 +53,8 @@ export default async function MiInventarioPage() {
           saldo. Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo.
         </p>
       </header>
+
+      <ConfirmarRemesaSection pending={pendingRemesas ?? []} />
 
       <MisFaltantesSection userId={user.id} />
 

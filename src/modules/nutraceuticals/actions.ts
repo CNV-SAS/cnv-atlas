@@ -13,9 +13,11 @@ import { canClassifyFaltante, canConfirmFaltante, canResolveSobrante } from "./p
 import * as faltanteService from "./services/faltante-service";
 import * as inventoryService from "./services/inventory-service";
 import * as service from "./services/nutraceuticals-service";
+import * as remesaService from "./services/remesa-service";
 import {
   classifyFaltanteSchema,
   confirmFaltanteSchema,
+  confirmRemesaSchema,
   resolveSobranteSchema,
   createNutraceuticalSchema,
   despachoSchema,
@@ -223,6 +225,64 @@ export async function recordDespachoFormAction(
   return { error: null, success: `Entrega registrada. Te quedan ${stock} unidades.`, warning: null };
 }
 
+
+// Confirmar una REMESA (E2): el integrante reconoce cuánto llegó. Solo el profesional (canLoadOwnStock; la
+// RLS y el service acotan a que la remesa sea suya). El aviso DICE qué pasó con las cantidades (requisito a/b
+// del checkpoint 3): cuando difieren, el integrante tiene que entender por qué su saldo no coincide con lo que
+// cuenta en la vitrina, y sin acusarlo de nada (aún no se sabe si fue transporte).
+export async function confirmRemesaFormAction(
+  _prev: NutraceuticalFormState,
+  formData: FormData,
+): Promise<NutraceuticalFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Inicia sesión.", success: null, warning: null };
+  if (!canLoadOwnStock(user)) {
+    return { error: "Solo el profesional confirma las remesas de su inventario.", success: null, warning: null };
+  }
+  const parsed = confirmRemesaSchema.safeParse({
+    remesaId: String(formData.get("remesaId") ?? ""),
+    actualQuantity: String(formData.get("actualQuantity") ?? ""),
+    lote: optStr(formData, "lote"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos de la confirmación inválidos.", success: null, warning: null };
+  }
+
+  const res = await remesaService.confirmRemesa({
+    userId: user.id,
+    remesaId: parsed.data.remesaId,
+    actualQuantity: parsed.data.actualQuantity,
+    lote: parsed.data.lote ?? null,
+  });
+  if (!res.ok) return { error: res.message ?? "No se pudo confirmar la remesa.", success: null, warning: null };
+  revalidatePath("/mi-inventario");
+
+  const { declared = 0, reported = 0, balanceApplied = 0, difference = 0 } = res;
+  if (difference === 0) {
+    return { error: null, success: `Recepción confirmada: ${reported} unidades, como CNV declaró.`, warning: null };
+  }
+  if (difference > 0) {
+    // Sobró: el saldo sube solo lo declarado; el excedente queda para CNV (no se infla el inventario).
+    return {
+      error: null,
+      success: null,
+      warning: `Registramos que recibiste ${reported}. Tu inventario sube ${balanceApplied}, que es lo que CNV declaró. Las ${difference} de más quedan para que CNV las revise.`,
+    };
+  }
+  // Faltó (incluye confirmar 0 = no llegó nada). Sin acusar: aún no se sabe si se perdieron en transporte.
+  if (reported === 0) {
+    return {
+      error: null,
+      success: null,
+      warning: `Registramos que no llegó nada de las ${declared} que CNV declaró. La remesa queda como faltante total, reportada.`,
+    };
+  }
+  return {
+    error: null,
+    success: null,
+    warning: `Registramos que llegaron ${reported} de las ${declared} que CNV declaró. Tu inventario sube ${balanceApplied}. La diferencia queda reportada.`,
+  };
+}
 
 // Registrar un CONTEO fisico (T3b-3 ST2, Mi inventario). Solo el profesional (canLoadOwnStock). El conteo
 // se registra SIEMPRE (evidencia); si hay faltantes, abre casos. El aviso resume que paso.

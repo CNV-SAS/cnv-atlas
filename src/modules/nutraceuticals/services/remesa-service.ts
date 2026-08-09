@@ -2,6 +2,11 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import type { CnvRemesa, PendingRemesa, RemesaStatus, UnbackedReception } from "../remesa-types";
+// Re-export para el código de servidor que ya importa estos tipos desde el service. La definición vive en
+// remesa-types (neutro) para no dejar este módulo `server-only` al alcance del cliente.
+export type { CnvRemesa, PendingRemesa, RemesaStatus, UnbackedReception } from "../remesa-types";
+
 // Remesa / consignación CNV → integrante (E2). La remesa es un movimiento type=remesa que DECLARA un envío
 // (no mueve el saldo del integrante; el trigger lo excluye). La recepción es el integrante confirmando que
 // recibió (+N, con remesa_id que la respalda). Una recepción con remesa_id NULL = NO respaldada = discrepancia
@@ -80,7 +85,14 @@ export async function confirmRemesa(input: {
   remesaId: string;
   actualQuantity: number;
   lote: string | null;
-}): Promise<{ ok: boolean; message?: string; difference?: number }> {
+}): Promise<{
+  ok: boolean;
+  message?: string;
+  declared?: number; // lo que CNV declaró
+  reported?: number; // lo que el integrante dijo que llegó
+  balanceApplied?: number; // lo que subió el saldo (min de los dos)
+  difference?: number; // reportado − declarado (con signo)
+}> {
   if (!Number.isInteger(input.actualQuantity) || input.actualQuantity < 0) {
     return { ok: false, message: "La cantidad recibida debe ser un entero (cero o más)." };
   }
@@ -118,19 +130,16 @@ export async function confirmRemesa(input: {
   // El índice único (una recepción por remesa) o el trigger de coherencia devuelven error si algo no cuadra.
   if (error) return { ok: false, message: "No se pudo confirmar la remesa (¿ya estaba confirmada?)." };
   // difference = reportado − declarado (con signo): <0 faltó, >0 sobró (el excedente no entró al saldo).
-  return { ok: true, difference: input.actualQuantity - remesa.delta };
+  return {
+    ok: true,
+    declared: remesa.delta,
+    reported: input.actualQuantity,
+    balanceApplied: balanceDelta,
+    difference: input.actualQuantity - remesa.delta,
+  };
 }
 
 // === READERS ===
-
-export type PendingRemesa = {
-  remesaId: string;
-  nutraceuticalId: string;
-  nutraceuticalName: string;
-  declaredQuantity: number;
-  lote: string | null;
-  declaredAt: string;
-};
 
 // (a) Remesas dirigidas al integrante, PENDIENTES de confirmar (sin recepción que las respalde). Para
 // mostrarlas arriba en "Mi inventario": sin avisos, es como se entera de que le mandaron algo.
@@ -168,20 +177,6 @@ export async function getPendingRemesasForOwn(userId: string): Promise<PendingRe
       declaredAt: r.created_at,
     }));
 }
-
-// Estado con DIRECCIÓN: no solo "con diferencia", sino si FALTÓ (llegó menos) o SOBRÓ (llegó más).
-export type RemesaStatus = "enviada" | "confirmada" | "confirmada_faltante" | "confirmada_sobrante";
-export type CnvRemesa = {
-  remesaId: string;
-  professionalId: string;
-  professionalName: string;
-  nutraceuticalName: string;
-  declaredQuantity: number;
-  receivedQuantity: number | null; // lo REPORTADO por el integrante; null si aún no confirmada
-  difference: number | null; // reportado − declarado (con signo); null si no confirmada
-  status: RemesaStatus;
-  declaredAt: string;
-};
 
 // (c) El lado CNV: todas las remesas declaradas con su estado (enviada / confirmada / confirmada con
 // diferencia). Sin esto, CNV declara y no sabe qué pasó. RLS: admin/soporte ven todos los movimientos.
@@ -230,16 +225,6 @@ export async function getRemesasForCnv(): Promise<CnvRemesa[]> {
     };
   });
 }
-
-export type UnbackedReception = {
-  movementId: string;
-  professionalId: string;
-  professionalName: string;
-  nutraceuticalName: string;
-  quantity: number;
-  lote: string | null;
-  receivedAt: string;
-};
 
 // (d) El hueco que este bloque cierra: recepciones NO respaldadas (remesa_id NULL) creadas DESPUÉS del
 // lanzamiento (las previas son históricas, grandfathered). Visibles para CNV: una recepción sin remesa puede

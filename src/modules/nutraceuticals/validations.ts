@@ -28,6 +28,15 @@ export const receptionSchema = z.object({
 });
 export type ReceptionInput = z.infer<typeof receptionSchema>;
 
+// Confirmar una remesa (E2): el integrante reconoce cuánto llegó. min 0 a propósito (confirmar CERO = no
+// llegó nada = faltante total; es la vía para "rechazar" una remesa que nunca llegó).
+export const confirmRemesaSchema = z.object({
+  remesaId: dbUuid,
+  actualQuantity: z.coerce.number().int().min(0).max(1_000_000),
+  lote: z.string().trim().max(120).optional(),
+});
+export type ConfirmRemesaInput = z.infer<typeof confirmRemesaSchema>;
+
 // Despacho (T3b-2): entrega de N unidades al paciente, ligada a su tratamiento. Cantidad entera positiva
 // (el negativo lo pone el service como delta; aqui es "cuantas entregaste").
 export const despachoSchema = z.object({
