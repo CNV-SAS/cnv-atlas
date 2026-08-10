@@ -39,7 +39,7 @@ export class ConsentGateError extends Error {
 // (DELTA2 B4) el servicio agrega los tipos derivados representante_legal (con los datos
 // del representante) y asentimiento_menor.
 export type IntakeConsent = {
-  type: ConsentType | "representante_legal" | "asentimiento_menor";
+  type: ConsentType | "representante_legal" | "asentimiento_menor" | "aceptacion_medio_electronico";
   consentVersion: string;
   documentHash: string;
   // Solo para representante_legal: se materializa en las columnas del registro.

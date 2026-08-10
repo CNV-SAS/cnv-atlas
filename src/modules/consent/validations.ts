@@ -78,6 +78,13 @@ export const consentSchema = z
     internacional_ia: requiredTrue(
       "el tratamiento internacional y el uso de sistemas automatizados",
     ),
+    // Firma electronica (B7, v1.7 numeral 12): aceptacion EXPRESA de firmar por medios electronicos y
+    // recibir el codigo de verificacion. Es una casilla NECESARIA para firmar (no se puede continuar
+    // sin ella), distinta de las 3 finalidades de datos del gate clinico (regla 15): esta NO entra en
+    // NECESSARY_CONSENT_TYPES (el gate sigue en las 3); se persiste aparte, como representante_legal.
+    aceptacion_medio_electronico: requiredTrue(
+      "la firma de este consentimiento por medios electronicos",
+    ),
     // Opcionales (libres; default false porque no vienen pre-marcadas).
     investigacion: z.boolean().default(false),
     comunicaciones_continuidad: z.boolean().default(false),

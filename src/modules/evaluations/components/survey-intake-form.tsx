@@ -108,6 +108,7 @@ export function SurveyIntakeForm({
     servicio: false,
     datos_sensibles: false,
     internacional_ia: false,
+    aceptacion_medio_electronico: false,
   });
   const [rep, setRep] = useState({
     name: "",
@@ -132,7 +133,10 @@ export function SurveyIntakeForm({
   const minorName = `${firstName} ${lastName}`.trim();
 
   const necessaryOk =
-    necessary.servicio && necessary.datos_sensibles && necessary.internacional_ia;
+    necessary.servicio &&
+    necessary.datos_sensibles &&
+    necessary.internacional_ia &&
+    necessary.aceptacion_medio_electronico;
   const branchOk =
     ageBranch === "mayor"
       ? true
@@ -504,6 +508,24 @@ export function SurveyIntakeForm({
             <span>
               He sido informado del tratamiento internacional y del uso de sistemas
               automatizados, y conozco los derechos aplicables.
+            </span>
+          </label>
+          {/* Firma electronica (B7, v1.7 numeral 12): aceptacion del medio electronico. Necesaria para
+              firmar; el codigo llega al medio de contacto que se registre (propio o de un tercero de confianza). */}
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="aceptacion_medio_electronico"
+              className={checkboxClass}
+              checked={necessary.aceptacion_medio_electronico}
+              onChange={(e) =>
+                setNecessary((s) => ({ ...s, aceptacion_medio_electronico: e.target.checked }))
+              }
+            />
+            <span>
+              Acepto firmar este consentimiento por medios electrónicos, con plena validez
+              (Ley 527 de 1999), y recibir un código de verificación en el medio de contacto que
+              registro (propio o de una persona de confianza que yo designe).
             </span>
           </label>
         </fieldset>

@@ -49,6 +49,7 @@ const validConsent = {
   servicio: true,
   datos_sensibles: true,
   internacional_ia: true,
+  aceptacion_medio_electronico: true,
   mayoria_de_edad: true,
 };
 
@@ -95,13 +96,15 @@ describe("submitSurveyIntake", () => {
     const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
     expect(call.mode).toBe("inicial");
     expect(call.patientId).toBeNull();
+    // Las 3 necesarias del gate + la aceptacion del medio electronico (firma electronica, v1.7).
     expect(call.consents.map((c) => c.type)).toEqual([
       "servicio",
       "datos_sensibles",
       "internacional_ia",
+      "aceptacion_medio_electronico",
     ]);
     // sella version y hash canonicos vigentes
-    expect(call.consents[0].consentVersion).toBe("1.5");
+    expect(call.consents[0].consentVersion).toBe("1.7");
     expect(call.consents[0].documentHash).toHaveLength(64);
   });
 
@@ -128,6 +131,7 @@ describe("submitSurveyIntake", () => {
     servicio: true,
     datos_sensibles: true,
     internacional_ia: true,
+    aceptacion_medio_electronico: true,
     ageBranch: "menor",
     legalRepresentativeName: "Maria Perez",
     legalRepresentativeDocument: "CC 123456",

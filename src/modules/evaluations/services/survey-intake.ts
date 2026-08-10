@@ -110,6 +110,15 @@ export async function submitSurveyIntake(
     documentHash: CONSENT_DOCUMENT_HASH,
   }));
 
+  // Firma electronica (B7, v1.7): la aceptacion del medio electronico se persiste como un registro
+  // propio (la validacion la garantizo true; no es una de las 3 finalidades del gate). Es la evidencia
+  // de que el titular acepto firmar por medios electronicos, no solo que se le informo la validez.
+  consents.push({
+    type: "aceptacion_medio_electronico",
+    consentVersion: CONSENT_VERSION,
+    documentHash: CONSENT_DOCUMENT_HASH,
+  });
+
   // Rama menor (DELTA2 B4): se agrega el registro del representante legal (con sus
   // datos, que la validacion garantizo presentes) y, si el menor tiene 14-17, el
   // asentimiento. Mismos version y hash vigentes.

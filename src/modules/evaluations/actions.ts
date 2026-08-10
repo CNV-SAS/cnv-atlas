@@ -23,7 +23,7 @@ import {
   type ConsentCopyRecipient,
 } from "@/modules/consent/consent-copy-service";
 import type { ConsentType } from "@/modules/consent/validations";
-import { CONSENT_TEXT_V1_5, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.5";
+import { CONSENT_TEXT_V1_7, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.7";
 import {
   getProfessionalIdForPatient,
   getProfessionalProfileIdByUser,
@@ -119,6 +119,7 @@ export async function submitSurveyAction(
     servicio: checkbox(form, "servicio"),
     datos_sensibles: checkbox(form, "datos_sensibles"),
     internacional_ia: checkbox(form, "internacional_ia"),
+    aceptacion_medio_electronico: checkbox(form, "aceptacion_medio_electronico"),
     investigacion: checkbox(form, "investigacion"),
     comunicaciones_continuidad: checkbox(form, "comunicaciones_continuidad"),
     comunicaciones_comerciales: checkbox(form, "comunicaciones_comerciales"),
@@ -203,7 +204,7 @@ export async function submitSurveyAction(
       acceptedAt,
       granted: grantedForCopy,
       consentVersion: CONSENT_VERSION,
-      consentText: CONSENT_TEXT_V1_5,
+      consentText: CONSENT_TEXT_V1_7,
       recipients,
     });
   });

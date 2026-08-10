@@ -1,17 +1,30 @@
-# CONSENT_ATLAS.md — Consentimiento Informado y Autorización de Tratamiento de Datos
+// Texto canonico del consentimiento informado de ATLAS, version 1.7.
+//
+// Que es: copia verbatim del TEXTO DE CARA AL PACIENTE de CONSENT_ATLAS.md, secciones 1 a 13
+// (regla C1 de DELTA.md). Es el artefacto sobre el que se calcula patient_consents.document_hash.
+// CONSENT_ATLAS.md es la fuente de verdad humana; este archivo es su materializacion verificable
+// para el hash. Generado desde el doc con un script de extraccion (uso unico), no transcrito a mano.
+//
+// v1.7 (B7, dictamen firma electronica 2026-08-09) consolida v1.6 (que se documento pero NUNCA se
+// vendorizo: el codigo efectivo quedo en v1.5) y agrega la firma electronica:
+//   - Numeral 4: las dos finalidades necesarias de v1.6 (auditoria seudonimizada + acceso excepcional
+//     identificado), ahora si en el texto efectivo.
+//   - Numeral 12: nueva casilla necesaria de aceptacion del medio electronico.
+//   - Numeral 13: reescrito para el flujo real (casillas + codigo + datos de identificacion) + copia.
+//   - Numeral 11: el codigo de menores va al contacto del representante.
+//
+// Regla de construccion (C1, DELTA.md): secciones 1 a 13 contiguas y verbatim (encabezados "## N." y
+// separadores "---" incluidos), placeholders intactos, bloques internos excluidos, normalizacion
+// UTF-8 + LF + sin espacios al final de linea. El texto de abajo ya esta normalizado.
+//
+// Nota sobre el em-dash: este texto reproduce literalmente el documento legal y puede contener guiones
+// largos. Es la unica excepcion a la regla de estilo del proyecto: alterar la puntuacion cambiaria el
+// hash y romperia la trazabilidad legal. NO editar a mano; si cambia el texto legal, se sube la version
+// y se regenera este archivo desde CONSENT_ATLAS.md.
 
-**Documento:** Consentimiento informado de pacientes — ATLAS  
-**Versión:** 1.7  
-**Estado:** Para revisión jurídica antes de publicación en producción  
-**Aplicación:** ATLAS — se presenta antes de la encuesta, en consulta inicial y de seguimiento  
-**Marco aplicable:** Ley 1581 de 2012 (arts. 6 y 26); Decreto 1074 de 2015; Resoluciones 1995/1999 y 839/2017; Ley 527 de 1999  
+export const CONSENT_VERSION = "1.7";
 
-> **Aviso interno — no se muestra al paciente.**  
-> Este archivo es la fuente de verdad del texto del consentimiento. El hash que se almacena en `patient_consents.document_hash` se calcula según la regla precisa del bloque "Registro técnico" al final (texto de cara al paciente, secciones 1 a 13, con los placeholders intactos, excluyendo los bloques internos; normalización UTF-8 y LF). Antes de cualquier cambio sustantivo, crear una nueva versión (bump de versión + nueva entrada en el historial de cambios al final). El MVP **soporta pacientes menores de edad** mediante el bloque de representante legal del numeral 11, con la validación de fecha de nacimiento ya implementada en el flujo de encuesta. Desde v1.7, la aceptación se otorga por **medios electrónicos con verificación por código** (firma electrónica, Ley 527): Atlas envía un código al medio de contacto registrado, lo valida de forma atómica antes de crear nada, y envía una copia del consentimiento tras aceptar (ver `PLAN_B7_FIRMA.md`).
-
----
-
-## 1. ¿Por qué este formulario?
+export const CONSENT_TEXT_V1_7 = `## 1. ¿Por qué este formulario?
 
 Antes de iniciar su evaluación, necesitamos informarle cómo se tratarán sus datos personales y de salud, y obtener su autorización libre, voluntaria e informada. Lea con atención y marque las casillas correspondientes al final.
 
@@ -23,7 +36,7 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 
 **2.1. El profesional de salud que le atiende** es el Responsable del tratamiento de sus datos para su atención clínica y es el custodio de su historia clínica.
 
-> **Profesional:** `{{professional_full_name}}` — `{{professional_profession}}` — Registro profesional No. `{{professional_license}}`  
+> **Profesional:** \`{{professional_full_name}}\` — \`{{professional_profession}}\` — Registro profesional No. \`{{professional_license}}\`
 > *(Este bloque se rellena automáticamente por ATLAS con los datos del profesional asignado.)*
 
 > **Nota.** Cuando el paciente sea menor de edad, las referencias a "usted" en este documento se entienden hechas a su representante legal, quien otorga la autorización en su nombre, sin perjuicio del asentimiento del menor cuando aplique (numeral 11).
@@ -44,7 +57,7 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 - **Datos sensibles de salud:** hábitos, composición corporal, mediciones de bioimpedancia espectroscópica, antecedentes, conductas y síntomas, entre otros.
 - **Determinantes y factores de estilo de vida (enfoque epigenético):** respuestas de la encuesta. No se realizan análisis genéticos de laboratorio ni se toman muestras biológicas.
 
-> **Sus datos sensibles son facultativos.**  
+> **Sus datos sensibles son facultativos.**
 > Conforme al artículo 6 de la Ley 1581 de 2012, usted no está obligado a responder las preguntas sobre datos sensibles de salud. Responderlas es voluntario y nos permite personalizar su evaluación.
 
 ---
@@ -112,16 +125,16 @@ Puede revocar esta autorización en cualquier momento ante el profesional de sal
 
 **Datos del representante legal** *(solo si el paciente es menor de edad; se completa antes de continuar)*:
 
-- Nombre completo: `________________________________`
-- Tipo y número de documento: `____________________________`
-- Parentesco o calidad: `____________________________`
-- Correo electrónico: `____________________________`
+- Nombre completo: \`________________________________\`
+- Tipo y número de documento: \`____________________________\`
+- Parentesco o calidad: \`____________________________\`
+- Correo electrónico: \`____________________________\`
 
 > **Nota.** Cuando el paciente es menor de edad, el código de verificación con el que se firma este consentimiento (numeral 13) se envía al medio de contacto del representante legal, no al del menor. La copia del consentimiento se envía al representante y, si el menor registra un correo propio, también al menor.
 
 **Asentimiento del menor** *(obligatorio cuando el paciente tiene entre 14 y 17 años)*:
 
-> "Yo, `________________________________`, he sido informado/a de forma adecuada a mi edad sobre esta evaluación y estoy de acuerdo en participar."
+> "Yo, \`________________________________\`, he sido informado/a de forma adecuada a mi edad sobre esta evaluación y estoy de acuerdo en participar."
 
 - [ ] El menor (14 a 17 años) otorga su asentimiento en los términos anteriores.
 
@@ -154,41 +167,12 @@ Al marcar las casillas anteriores e ingresar el código de verificación que Atl
 
 **Si el paciente es mayor de edad**, firma el propio paciente, con el nombre y documento registrados en el paso de identificación:
 
-- Nombre completo: `________________________________`
-- Número de documento: `____________________________`
+- Nombre completo: \`________________________________\`
+- Número de documento: \`____________________________\`
 
 **Si el paciente es menor de edad**, firma su representante legal (datos ya registrados en el numeral 11) y el código de verificación se envía al contacto del representante:
 
-- Nombre completo del representante: `________________________________`
-- Número de documento del representante: `____________________________`
+- Nombre completo del representante: \`________________________________\`
+- Número de documento del representante: \`____________________________\`
 
-**Fecha:** `_________________` *(generada automáticamente por ATLAS)*
-
----
-
-> **Registro técnico (ATLAS).**  
-> Cada autorización otorgada se almacena como un registro independiente en `patient_consents`, con los siguientes campos:  
-> - `consent_type`: tipo de autorización (`servicio` | `datos_sensibles` | `internacional_ia` | `investigacion` | `comunicaciones_continuidad` | `comunicaciones_comerciales` | `representante_legal` | `asentimiento_menor` | `aceptacion_medio_electronico`)  
-> - `consent_version`: versión de este documento (`1.7`)  
-> - `document_hash`: SHA-256 sobre el **texto de cara al paciente (secciones 1 a 13)** con los placeholders intactos (`{{...}}` literales, sin rellenar), **excluyendo** los bloques internos ("Aviso interno", "Registro técnico", "Historial de versiones"). Normalización antes de hashear: UTF-8, saltos de línea LF, sin espacios en blanco al final de línea. El cálculo y su verificación reproducible se implementan en B7  
-> - `signed_at`: marca de tiempo inmutable del momento de aceptación  
-> - `revoked_at`: marca de tiempo de revocación (null si vigente) — **campo requerido en el esquema**  
-> - Cuando `consent_type = representante_legal`: se almacenan además `legal_representative_name`, `legal_representative_document`, `legal_representative_relationship` (parentesco/calidad). Campos requeridos en el esquema — **pendiente de agregar a `patient_consents` o tabla relacionada**.  
-> - ATLAS valida la fecha de nacimiento del paciente en el flujo de encuesta: si indica minoría de edad, activa el bloque de representante legal (numeral 11) en lugar de la declaración de mayoría de edad, y activa adicionalmente el bloque de asentimiento si la edad está entre 14 y 17 años. **Brecha técnica pendiente de implementación.**
->
-> Solo se crean registros para las autorizaciones que el titular marcó activamente. Las autorizaciones necesarias (1–3) deben estar vigentes (revoked_at IS NULL) para que el flujo clínico proceda.
-
----
-
-## Historial de versiones
-
-| Versión | Fecha | Cambios |
-|---|---|---|
-| 1.0 | 2026-06 | Versión inicial. Estructura por capas, seis tipos de autorización, IA a nivel de principio, Francia en tratamiento internacional. |
-| 1.1 | 2026-06 | Correcciones: Sentry/Cloudflare/Upstash añadidos a sub-encargados en Anexo 3; IA amplíada a resumen de indicadores + menú; nota técnica alineada con esquema real de patient_consents. |
-| 1.2 | 2026-06 | Añadido: identificación del profesional (campos dinámicos); comercialización de derivados anonimizados integrada en las finalidades necesarias; sección 13 adaptada a firma digital con referencia a Ley 527/1999; seis consent_type documentados explícitamente en la nota técnica. |
-| 1.3 | 2026-07 | La autorización de investigación (numeral 5) se limita a datos seudonimizados; se elimina la opción de datos identificables. Se acota el alcance a datos clínicos y funcionales estructurados, excluyendo el contenido narrativo u observaciones en texto libre del profesional. |
-| 1.4 | 2026-07 | Incorporado el bloque condicional de representante legal para pacientes menores de 18 años (numeral 11), con asentimiento del menor entre 14 y 17 años. Ajustada la sección 2 y la sección 13 (firma) para reflejar la firma del representante cuando aplica. Nuevos consent_type: representante_legal y asentimiento_menor. El MVP soporta pacientes menores de edad. |
-| 1.5 | 2026-07 | Ampliada la autorización de investigación (numeral 5 y numeral 12) para cubrir colaboraciones de investigación de terceros bajo la dirección científica de ObBIA-Latam, sin necesidad de modificar el consentimiento cada vez que se sume un nuevo colaborador. Aclarado que estudios con fines de identificación/publicación requieren un consentimiento de investigación adicional y separado (ver Consentimiento Informado de Investigación — Plantilla). |
-| 1.6 | 2026-07 | **DOCUMENTADA, NUNCA EFECTIVA (detectado 2026-08-09).** Incorporó dos finalidades necesarias adicionales en el numeral 4 (auditoría del cumplimiento del modelo sobre datos seudonimizados, y acceso excepcional a historia clínica identificada, minimizado y registrado), base legal de los grants de acceso, PERO nunca se portó al texto vendorizado del código (`consent-v1.5.ts` quedó como versión efectiva). El consentimiento que los pacientes habrían firmado no contenía esas finalidades. Se consolida en v1.7. Ver `DECISIONES_LEGALES.md` item 13. |
-| 1.7 | 2026-08 | **Firma electrónica (B7, dictamen 2026-08-09) + consolidación de v1.6.** (a) Consolida las dos finalidades necesarias de v1.6 en el numeral 4 (ahora sí en el texto efectivo). (b) Numeral 12: nueva casilla necesaria de aceptación del medio electrónico (`aceptacion_medio_electronico`): el paciente ACEPTA firmar por medios electrónicos y recibir un código de verificación al medio de contacto que registre (propio o de un tercero de confianza), no solo se le informa la validez. (c) Numeral 13 reescrito para describir el flujo real (casillas + código + datos de identificación = firma electrónica) y anunciar la copia automática. (d) Numeral 11: el código de menores se envía al contacto del representante. Hash nuevo (regla C1). |
+**Fecha:** \`_________________\` *(generada automáticamente por ATLAS)*`;

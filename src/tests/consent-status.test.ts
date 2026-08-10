@@ -8,7 +8,7 @@ vi.mock("server-only", () => ({}));
 // menor. La lectura por RLS no se testea aqui (la gatea patient_consents_select, verificada).
 
 const base = {
-  consent_version: "1.6",
+  consent_version: "1.7",
   signed_at: "2026-07-01T00:00:00Z",
   revoked_at: null,
   legal_representative_name: null,
@@ -24,7 +24,7 @@ describe("buildConsentStatus", () => {
     ]);
     expect(s.allNecessaryActive).toBe(true);
     expect(s.necessary).toHaveLength(3);
-    expect(s.necessary.every((n) => n.active && n.version === "1.6")).toBe(true);
+    expect(s.necessary.every((n) => n.active && n.version === "1.7")).toBe(true);
     expect(s.representative).toBeNull();
   });
 

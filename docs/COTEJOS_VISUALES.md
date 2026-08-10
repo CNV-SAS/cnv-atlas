@@ -243,7 +243,7 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 | Decisión | HTML v8 | Atlas | Por qué |
 |---|---|---|---|
 | **Etiquetas de dominio de-jergadas** | "D1 Patrón Usual de Consumo", "D5 Epigenético / LE8", "D6 Alergias y Salud Digestiva" | "Alimentación", "Antecedentes y estilo de vida", "Alergias y digestión" | lenguaje al paciente, sin jerga (comentario del seed: "nada de LE8") |
-| **Consentimiento** | "Encuesta CNV v3.0", 5 casillas (datos/salud/terceros/derechos/bioética) + firma por nombre | artefacto legal propio vendorizado (v1.6), 3 autorizaciones (servicio/datos_sensibles/internacional_ia, regla 15) + soporte de menores | Atlas tiene su consentimiento legal propio, no el del prototipo (C1, hash anclado) |
+| **Consentimiento** | "Encuesta CNV v3.0", 5 casillas (datos/salud/terceros/derechos/bioética) + firma por nombre | artefacto legal propio vendorizado (v1.7), 3 autorizaciones del gate (servicio/datos_sensibles/internacional_ia, regla 15) + casilla de firma electronica + soporte de menores | Atlas tiene su consentimiento legal propio, no el del prototipo (C1, hash anclado) |
 | **Encuesta del paciente separada del lado profesional** | tab "Motor ⚡" salta al lado profesional desde la encuesta | superficies separadas (público `/encuesta/[token]` vs interno) | seguridad/separación de superficies |
 
 ### D. Widgets (coinciden en tipo; confirmar con OJOS)

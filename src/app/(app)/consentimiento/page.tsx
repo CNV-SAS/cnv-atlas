@@ -1,6 +1,6 @@
 import { requireUser } from "@/modules/auth/session";
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
-import { CONSENT_TEXT_V1_5, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.5";
+import { CONSENT_TEXT_V1_7, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.7";
 
 export const metadata = { title: "Consentimiento vigente - Atlas" };
 
@@ -22,7 +22,7 @@ export default async function ConsentimientoPage() {
         </p>
       </header>
 
-      <ConsentDocument text={CONSENT_TEXT_V1_5} />
+      <ConsentDocument text={CONSENT_TEXT_V1_7} />
     </div>
   );
 }

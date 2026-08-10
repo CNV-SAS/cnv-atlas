@@ -134,8 +134,9 @@ export const consentType = pgEnum("consent_type_enum", [
   "asentimiento_menor",
   // Firma electronica (B7, dictamen 2026-08-09): aceptacion EXPRESA del titular de que su
   // consentimiento se otorga por medios electronicos (numeral 12 casilla necesaria de v1.7). Se anexa
-  // al final (ALTER TYPE ADD VALUE). Es una autorizacion NECESARIA nueva, distinta de informar la
-  // validez: la valida el paciente, no CNV. Su base es el texto v1.7 (aun no efectivo; ver PLAN_B7_FIRMA).
+  // al final (ALTER TYPE ADD VALUE). Es una autorizacion NECESARIA para firmar, distinta de informar la
+  // validez: la valida el paciente, no CNV. Su base es el texto v1.7 (vigente; ver PLAN_B7_FIRMA). No
+  // entra en el gate clinico (regla 15); se exige por consentSchema y se persiste como registro propio.
   "aceptacion_medio_electronico",
 ]);
 
@@ -143,7 +144,7 @@ export const consentType = pgEnum("consent_type_enum", [
 // para acceder a las notas narrativas. grant_type distingue el nivel de acceso;
 // status es el ciclo de vida (la expiracion NO es un estado: se evalua por
 // expires_at). reason_category separa la finalidad, ambas cubiertas por el
-// numeral 4 del Consentimiento de ATLAS v1.6 (autorizacion del titular) y las
+// numeral 4 del Consentimiento de ATLAS v1.7 (autorizacion del titular) y las
 // Clausulas 3 y 17 del Anexo 3 v1.0 (instruccion del Responsable y auditoria).
 export const accessGrantType = pgEnum("access_grant_type", [
   "notes_pseudonymous", // Nivel (b): narrativa seudonimizada, sin identidad
