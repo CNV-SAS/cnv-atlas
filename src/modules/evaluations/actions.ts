@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
@@ -17,6 +18,12 @@ import {
   storeOtp,
 } from "@/modules/consent/otp/otp-service";
 import { sendConsentOtpEmail } from "@/lib/email/resend";
+import {
+  sendConsentCopy,
+  type ConsentCopyRecipient,
+} from "@/modules/consent/consent-copy-service";
+import type { ConsentType } from "@/modules/consent/validations";
+import { CONSENT_TEXT_V1_5, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.5";
 import {
   getProfessionalIdForPatient,
   getProfessionalProfileIdByUser,
@@ -168,6 +175,38 @@ export async function submitSurveyAction(
   });
 
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
+
+  // Copia automatica del consentimiento (B7, dictamen): transparencia, NO requisito de validez. Se
+  // envia DESPUES del commit y FUERA del camino de respuesta (after), para no bloquear la pantalla de
+  // gracias ni revertir la creacion si el correo falla. El servicio registra el intento (exito/fallo)
+  // en la traza y no lanza. Destino: adulto -> paciente; menor -> representante (y el menor si dio correo).
+  const acceptedAt = Date.now();
+  const grantedForCopy: ConsentType[] = ["servicio", "datos_sensibles", "internacional_ia"];
+  if (consent.investigacion) grantedForCopy.push("investigacion");
+  if (consent.comunicaciones_continuidad) grantedForCopy.push("comunicaciones_continuidad");
+  if (consent.comunicaciones_comerciales) grantedForCopy.push("comunicaciones_comerciales");
+
+  const recipients: ConsentCopyRecipient[] = [];
+  if (consent.ageBranch === "menor") {
+    if (consent.legalRepresentativeEmail) {
+      recipients.push({ email: consent.legalRepresentativeEmail, role: "representante" });
+    }
+    if (identity.email) recipients.push({ email: identity.email, role: "menor" });
+  } else if (identity.email) {
+    recipients.push({ email: identity.email, role: "titular" });
+  }
+
+  const patientId = result.value.patientId;
+  after(async () => {
+    await sendConsentCopy({
+      patientId,
+      acceptedAt,
+      granted: grantedForCopy,
+      consentVersion: CONSENT_VERSION,
+      consentText: CONSENT_TEXT_V1_5,
+      recipients,
+    });
+  });
 
   // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya
   // quedo consumido).

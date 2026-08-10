@@ -110,3 +110,34 @@ export async function sendConsentOtpEmail(to: string, code: string): Promise<Res
     return err(appError("internal", e instanceof Error ? e.message : "Error enviando el código."));
   }
 }
+
+// Copia del consentimiento (B7). Mismo remitente verificado, ASUNTO DISTINTO al del codigo (llega
+// minutos despues y no debe confundirse) y sin adjunto: el texto integro va en el cuerpo. Es
+// transparencia, no requisito de validez: el llamador NO revierte nada si esto falla, solo lo registra.
+export async function sendConsentCopyEmail(
+  to: string,
+  subject: string,
+  text: string,
+): Promise<Result<{ id: string }>> {
+  const resend = getClient();
+  if (!resend) return err(appError("internal", "El servicio de correo no esta configurado."));
+  const from = process.env.EMAIL_FROM;
+  if (!from) return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
+  const replyTo = process.env.EMAIL_REPLY_TO;
+  try {
+    const res = await withTimeout(
+      resend.emails.send({
+        from,
+        ...(replyTo ? { replyTo } : {}),
+        to,
+        subject,
+        text,
+      }),
+      SEND_TIMEOUT_MS,
+    );
+    if (res.error) return err(appError("internal", `No se pudo enviar la copia: ${res.error.message}`));
+    return ok({ id: res.data?.id ?? "" });
+  } catch (e) {
+    return err(appError("internal", e instanceof Error ? e.message : "Error enviando la copia."));
+  }
+}
