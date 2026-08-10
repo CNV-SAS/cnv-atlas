@@ -32,6 +32,10 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 **C. Lo que el jurídico debería mirar y hoy solo está del lado clínico:**
 9. **Qué se le comunica al paciente sobre su salud y cómo** (categoría Comunicación al paciente). Está decidido como asunto clínico; el jurídico tiene algo que decir sobre comunicar, o retener, información de salud a su titular.
 
+**D. Lo que abre el bloque de Encuesta (2026-08-09):**
+10. **Validez de firma electrónica del consentimiento.** El paciente (o su representante legal) acepta el consentimiento en el intake; Atlas ya registra la aceptación con versión, hash del documento, timestamp e IP (tabla `patient_consents`). ¿Eso YA constituye una firma electrónica válida bajo la ley colombiana (Ley 527 de 1999) e internacional, o hace falta un mecanismo/campo adicional (p. ej. captura de firma, OTP, verificación de identidad)? **Bloquea SOLO la parte de "campos de firma / validez" de B7; la parte VISIBLE (ver más, render con datos reales, quitar campos redundantes, asentimiento de menor) avanza sin esto.**
+11. **Ampliación del consentimiento para capturar ETNIA** (dato sensible; Gildardo §12): el observatorio la necesita, pero no se captura hasta ampliar el consentimiento informado. Requiere redacción/aprobación jurídica del texto ampliado antes de pedirla a ningún paciente. (Los otros cinco sociodemográficos son solo caracterización y no lo requieren.)
+
 **Naturaleza y momento de lo pendiente (importa para el orden de construcción).** Las cinco confirmaciones abiertas de (A) son de CUMPLIMIENTO REGULATORIO (registro de bases de datos, notificación de incidentes, estándar de anonimización, acuerdos con proveedores, estatus del equipo ante el INVIMA), no de diseño del sistema. **Ninguna bloquea construir, y ninguna bloquea el Hito 2:** bloquean OPERAR CON PACIENTES REALES, que es el Hito 3. Se revisó si alguna tocaba antes: la del comodato parecía condicionar el Hito 2 (el comodato es cómo se vinculan los integrantes), pero está RESUELTA (comodato y contratos firmados, 2026-08; ver `DATA_GOVERNANCE.md` registro #11). Así que las cinco son gate del Hito 3.
 
 ---

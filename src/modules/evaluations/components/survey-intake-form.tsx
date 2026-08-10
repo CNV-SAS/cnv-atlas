@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ConsentDocument } from "@/modules/consent/components/consent-document";
+import { ConsentDocumentCollapsible } from "@/modules/consent/components/consent-document-collapsible";
 
 import { submitSurveyAction } from "../actions";
 import type { SurveyFormState } from "../validations";
@@ -495,7 +495,7 @@ export function SurveyIntakeForm({
           </button>
           {showFullText ? (
             <div className="mt-2 max-h-80 overflow-auto rounded-md border border-border bg-muted/30 p-4">
-              <ConsentDocument text={consentText} />
+              <ConsentDocumentCollapsible text={consentText} />
             </div>
           ) : null}
         </div>

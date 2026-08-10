@@ -59,9 +59,11 @@ Revisión hecha (Santiago pidió "saber lo malo primero"). Los cuatro puntos, pr
 - El bound `answers` máx 500 es generoso (la encuesta tiene ~64); apretarlo es cosmético (Next ya limita el body).
 **Conclusión: B6 = verificado suficiente. No requiere construcción ahora.**
 
-### B7 — CONSENTIMIENTO (corrección nuestra, DELICADO legal, C1 con hash anclado) — MEDIO-GRANDE
-- 1b/1b.2: "ver más" del texto largo; campos llenables (firma electrónica con validez legal CO/internacional); asentimiento de menor 14-17 (parte existe, DELTA2); renderizar el consentimiento con los datos REALES ya puestos (no las rayas vacías antes de llenar); quitar campos innecesarios (cédula, ya va en la pantalla 2).
-**Toca el consentimiento vendorizado (C1, hash). Puede requerir versión de consentimiento + revisión legal. CUIDADO, sub-bloque propio.**
+### B7 — CONSENTIMIENTO — REVISADO 2026-08-09: solo "ver más" es UX pura; el resto lo bloquea el legal
+- **(a) "ver más" del texto largo: HECHO** (`ConsentDocumentCollapsible`, preview colapsado + botón "Ver el consentimiento completo"; el texto completo NO se esconde, se despliega con un click). Display puro, sin tocar el texto ni el registro.
+- **(d) Asentimiento de menor 14-17: YA EXISTE y funciona** (verificado en código: `assentRequired = 14..17` renderiza el bloque con su texto + checkbox, y gatea `consentOk`). Falta el smoke visual de Santiago.
+- **(b) render con datos reales + (c) quitar cédula redundante: BLOQUEADOS POR EL LEGAL.** Hallazgo (verificado): las "rayas" (`________`) NO son campos del form, son **PLACEHOLDERS en el texto canónico hash-anclado (C1) y son los CAMPOS DE FIRMA** (numeral 13: "confirmar con el nombre... firma digital con validez jurídica Ley 527"; numeral 11 representante). Cambiarlos (llenarlos con datos reales, quitar la cédula) = **nueva versión de consentimiento + toca "lo que hace válida la firma / lo que se registra"** → es justo lo que espera la respuesta legal (DECISIONES_LEGALES D-10). Además (b) exigiría **invertir el orden del flujo** (hoy consentimiento antes de identidad; para renderizar con datos hay que tener la identidad primero, y el age-branch del consentimiento condiciona la pantalla de identidad → no es una simple inversión).
+**Conclusión: la parte VISIBLE construible sin abogado era solo (a), ya hecha. (b)/(c) esperan el legal; (b) además es un re-orden de flujo (medio-grande) que se planea aparte cuando el legal desbloquee.**
 
 ### B8 — Desplegables sociodemográficos (corrección nuestra) — CHICO + una decisión
 - 1c: sexo desplegable (motor M/F, el valor no cambia), ciudad/país desplegables (sin motor; §12 caracterización).
