@@ -35,6 +35,9 @@ Cruce del listado de Santiago (`entregas/gildardo-2026-08-09/Mejoras encuesta.md
 - Barrido de preguntas que NO tienen "otro" → PROPONER a Gildardo (agregar opciones es su contenido). = ECA4.
 **Nueva survey_version. El texto de "otro" normalmente no lo lee el motor; verificar.**
 
+### PRECISIÓN de Santiago (2026-08-09) que unifica y re-dimensiona B3/B5: parametrizar por AUDIENCIA
+El sesgo es del que RESPONDE (paciente), no del que INTERPRETA (profesional). Así que la agrupación por riesgo D1, la marca "⚠ TCA" de Q21 y la descripción "Factor de Estrés Metabólico" de Q39 **NO se eliminan: DESAPARECEN de la encuesta del PACIENTE pero SIGUEN VISIBLES cuando el PROFESIONAL revisa/edita** (necesita ver qué grupos son protectores/de riesgo para leer el patrón). **Verificado:** el widget `SurveyQuestion` (survey-widgets) es COMPARTIDO por el intake (paciente) y el form de corrección (profesional). → **un solo prop `audience` ('patient' | 'professional')** en el widget gobierna los tres ítems a la vez. **Impacto de tamaño:** B3 CRECE un poco (el widget gana el parámetro `audience`), B5 ENCOGE (a Gildardo ya no hay que convencerlo del sesgo -lo admitió-; solo confirmarle que el marco clínico se conserva para el profesional). Las categorías aún NO existen en Atlas (llegan con el port de D1, B2): la parametrización se aplica al portarlas.
+
 ### B5 — DECISIONES de contenido a PROPONER a Gildardo (cambian su instrumento) — acumular para la próxima ronda
 - Quitar la separación por categorías de riesgo en D1 (✅ protectora / ⚖️ energética "moderar" / ⚠️ PCBU): sesga la respuesta (símbolos + "moderar").
 - Quitar la advertencia visible "⚠ TCA" + color en Q21: sesga. (El motor sigue detectando por d2_21; solo se quita el display.)

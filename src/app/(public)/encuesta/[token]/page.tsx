@@ -13,18 +13,22 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-svh justify-center bg-muted/30 px-4 py-10">
       <div className="flex w-full max-w-2xl flex-col gap-8 rounded-2xl border border-border bg-background p-6 shadow-sm sm:p-8">
-        <Image
-          src="/brand/logo-horizontal.svg"
-          alt="Atlas"
-          width={140}
-          height={28}
-          priority
-          unoptimized
-          // self-start evita que el flex column (align-items: stretch) estire el logo al
-          // ancho del contenedor; con w-auto conserva la proporcion 140x28 y no dispara el
-          // warning de next/image ("width or height modified, but not the other").
-          className="h-7 w-auto self-start"
-        />
+        {/* "Atlas Pacientes": logo + rotulo, en espanol (toda la encuesta es de cara al paciente). */}
+        <div className="flex items-center gap-2 self-start">
+          <Image
+            src="/brand/logo-horizontal.svg"
+            alt="Atlas"
+            width={140}
+            height={28}
+            priority
+            unoptimized
+            // w-auto conserva la proporcion 140x28 y no dispara el warning de next/image.
+            className="h-7 w-auto"
+          />
+          <span className="text-lg font-semibold tracking-tight text-muted-foreground">
+            Pacientes
+          </span>
+        </div>
         {children}
       </div>
     </main>

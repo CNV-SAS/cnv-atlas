@@ -211,7 +211,17 @@ export function SurveyIntakeForm({
           <p className="text-xs font-medium text-muted-foreground">
             Paso {step + 1} de {total}
           </p>
-          <p className="text-sm font-semibold text-foreground">{current.title}</p>
+          <p className="text-sm font-semibold text-foreground">
+            {current.title}
+            {/* Numero de items de la seccion (cuantas hay que responder). Es INFORMATIVO (progreso), no
+                el gate de completitud (ese cuenta solo los campos del diagnostico): no dice "completa". */}
+            {current.kind === "survey" ? (
+              <span className="ml-2 font-normal text-muted-foreground">
+                · {current.questions.length}{" "}
+                {current.questions.length === 1 ? "pregunta" : "preguntas"}
+              </span>
+            ) : null}
+          </p>
         </div>
         <Progress value={Math.round(((step + 1) / total) * 100)} />
       </div>
