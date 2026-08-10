@@ -56,6 +56,17 @@ Los movimientos de inventario son INMUTABLES (append-only, trigger 0040), así q
 
 Santiago tiene un **listado completo de correcciones** para aplicarle a la encuesta, y además **Gildardo la tocó en el v8**. Va como bloque POSTERIOR, no ahora, y con una razón: **conviene mirar las correcciones de Santiago JUNTO con los cambios de Gildardo, no por separado, o se toca la encuesta dos veces** (contenido congelado: cada cambio es versión nueva + re-verificar el candado de acoplamiento). Se liga al **cotejo de Encuesta ya hecho** (de ahí salieron ECA1 la pregunta de cirugías que falta portar, ECA2 los ejemplos/ancla de porción de D1, ECA3 los nombres de grupos D1; ver `COTEJOS_VISUALES.md` sección Encuesta). Cuando entre: juntar (a) las correcciones de Santiago, (b) los deltas del v8 (Q34 cirugías y lo que responda Gildardo), (c) los hallazgos del cotejo, en UNA pasada. Precondición: el paquete de Gildardo respondido (Q34).
 
+## Borrador de encuesta (persistir respuestas ligadas al token, sin crear nada clínico) — GATE LEGAL primero, antes del Hito 3 (registrado 2026-08-09)
+
+Con 63 preguntas y ahora una espera de código por correo en el medio (firma electrónica B7), un paciente que llega al final y tiene que rellenar todo por un tropiezo **no vuelve**. Guardar las respuestas ligadas al token del enlace, sin crear paciente/evaluación/consentimiento, es lo que decide terminar vs abandonar. **Diagnóstico (2026-08-09): el nudo NO es técnico, es de gobierno.**
+
+- **Barato (cliente):** los widgets ya aceptan `defaultValue` (se usa hoy para la edición del profesional). Prefillar las 63 respuestas desde un borrador es casi gratis.
+- **Medio (código):** tabla `survey_drafts` (o columna JSONB en `survey_links`) + migración (carril lento); acción pública de guardado (rate-limited, escribe respuestas crudas bajo el token); prefill al volver con el mismo enlace; borrado al enviar con éxito.
+- **El nudo (gobierno, gate del bloque):** el borrador guarda **respuestas de salud de alguien que todavía no autorizó nada**. Un borrador abandonado = datos de salud de quien **nunca completó ni autorizó**, sin titular con quien hablar ni consentimiento que invocar. Por eso la **regla de expiración no es higiene: es lo único que hace legítimo el borrador.** **Primer paso obligatorio: la consulta de retención al abogado** (`DECISIONES_LEGALES.md` AL FRENTE, item 14): ¿se pueden conservar temporalmente respuestas de una encuesta no completada antes de firmar? ¿por cuánto, y qué hacer al vencer? Con esa respuesta, el resto es construcción.
+- **`localStorage` descartado:** viola la prohibición #5 (nada sensible en local/sessionStorage). Solo servidor.
+
+**Orden:** bloque propio, DESPUÉS de cerrar B7 (casilla + copia + flip v1.7) y ANTES del Hito 3. Arranca por el gate legal (item 14), no por el código.
+
 ## Capturar los 6 campos sociodemográficos (DECIDIDO 2026-08-08; gate legal en etnia)
 
 **Decisión de Santiago: SÍ se registran** etnia, nivel educativo, ocupación, estado civil, estrato y motivo de consulta (EA3/ECB del cotejo). Razón: son las variables que el observatorio necesita para estratificar, y **capturarlos después es imposible** (el paciente ya pasó; un dato demográfico no se reconstruye). Como no alimentan el motor: **opcionales, sin `field_key`, `used_in_diagnosis=false`, y si el paciente no responde queda VACÍO, no un valor por defecto** (misma disciplina que ya tenemos).
