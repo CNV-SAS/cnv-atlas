@@ -542,9 +542,9 @@
 
 ---
 
-## Acumulando para la próxima ronda (mensaje corto, NO otro paquete)
+## COLA VIVA para el próximo CONSOLIDADO (Gildardo pidió lotes, NO preguntas sueltas)
 
-Gildardo acaba de responder 17; lo que sigue es SEGUIMIENTO. Cuando haya 3-4, Santiago le manda un mensaje corto. Acumulado hasta ahora:
+Corrección (2026-08-09): Gildardo prefiere responder por LOTES; NADA de mensajes cortos ni preguntas sueltas. Estos ítems se ACUMULAN aquí hasta que el volumen justifique un documento robusto; Santiago avisa cuándo se manda. Acumulado hasta ahora:
 
 - **Q36** (arriba): al reemplazar `pesoAjust`, ¿sobre qué peso se calcula cuando nadie fijó la meta (Lorentz / peso actual / ajustado)? BLOQUEA el re-port del frozen (Pieza 2 de la cadena calórica).
 - **Encuesta — cambios a SU instrumento (del bloque de encuesta, `PLAN_ENCUESTA.md` B5), todos motor-seguros pero son SU contenido/marco. MARCO PARA GILDARDO: esto NO es estética, es VALIDEZ DEL INSTRUMENTO. Un paciente que ve la etiqueta "buena" responde distinto (sesgo de deseabilidad); contamina el dato DE ORIGEN, y ningún cálculo posterior lo corrige:**
