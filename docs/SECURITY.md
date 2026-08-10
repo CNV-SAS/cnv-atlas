@@ -73,7 +73,8 @@ Soporte de esa verificación en el código: `resetUserMfa` exige un `reason` (mo
 
 ## Manejo de PHI y el LLM
 - **Nunca se envía PII al LLM** (Groq/Gemini). Solo variables clínicas seudonimizadas.
-- La clasificación de campos en 3 niveles (identificador directo, cuasi-identificador, clínico), guardada como metadato en `survey_questions`, decide automáticamente qué sale al LLM, qué se generaliza en investigación y qué se cifra.
+- **La barrera PHI→LLM es ESTRUCTURAL, no por clasificación** (corregido 2026-08-09 tras auditoría doc-vs-código): el contrato de entrada del prompt no tiene campos de PII, así que es imposible POR CONSTRUCCIÓN enviar PII al LLM (ver `src/modules/treatment/ai/prompts/menu.v1.ts`). Es más fuerte que un filtro por metadato, y es lo que de verdad protege.
+- **La columna `survey_questions.data_class` (3 niveles) es HOY metadato INERTE: ningún código de aplicación la lee.** Se conserva como marca para controles FUTUROS (anonimización del export de investigación, cifrado de columna), que están **PENDIENTES, no implementados**. NO confiar en `data_class` para proteger un dato: hoy no hace nada; un control por clasificación habría que construirlo. (Pendiente de decidir si se implementa o se retira el campo; ver BACKLOG.)
 - El provider de IA va con timeout; se loguea modelo y versión de prompt. La sugerencia nunca se auto-aplica: el profesional decide.
 
 ## Superficies públicas (sin sesión)
@@ -122,12 +123,14 @@ Desde MVP, con Upstash Ratelimit. Un bot puede agotar créditos de IA, saturar R
 |---|---|
 | `POST /login` | 5 intentos / 15 min por IP, bloqueo temporal + backoff |
 | Encuesta pública (submit) | por IP y por token, agresivo |
-| Checkout (crear sesión) | acotado por hora |
 | IA (sugerencia de diagnóstico) | 20 / 1 h por usuario |
 | Subir archivo / import CSV | acotado por hora por usuario |
 | Envío de reporte por correo | 10 / 1 h por usuario |
 | Solicitud de acceso a las notas (grants) | 20 / 1 h por usuario |
-| Cualquier otra mutación | 100 / 1 min por usuario |
+| Checkout (crear sesión) | **PENDIENTE** (no implementado; ver BACKLOG) |
+| Cualquier otra mutación (límite general) | **PENDIENTE** (no implementado; ver BACKLOG) |
+
+> Corregido 2026-08-09 (auditoría doc-vs-código): los dos últimos NO estaban implementados en `src/core/rate-limit/`; se marcan PENDIENTE en vez de afirmarlos. Prometer una defensa que no existe es peor que no tenerla (nadie la echa de menos). El resto de la tabla sí existe.
 
 Identificación: IP para endpoints sin sesión; `userId` para los autenticados. Webhooks no se rate-limitan por volumen, se protegen con HMAC + idempotencia. Defensa en capas: Cloudflare (Bot Fight si hace falta), Vercel Edge, y los límites nativos de Supabase Auth.
 

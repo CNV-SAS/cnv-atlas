@@ -60,7 +60,7 @@ Esta arquitectura fue definida deliberadamente para que CNV no quede configurada
 
 ## Clasificación del dato (3 niveles)
 
-Cada campo se clasifica en `survey_questions.data_class`. La clasificación maneja automáticamente qué sale al LLM, qué se anonimiza y qué se cifra.
+Cada campo lleva una clasificación en `survey_questions.data_class` (3 niveles). **ADVERTENCIA (corregido 2026-08-09 tras auditoría doc-vs-código): hoy es metadato INERTE, ningún código lo lee.** La barrera PHI→LLM real es ESTRUCTURAL (el contrato del prompt no tiene campos de PII, ver SECURITY.md). La anonimización del export de investigación y el cifrado de columna están **PENDIENTES, no implementados**. La tabla de abajo describe la POLÍTICA prevista, no un control activo; no confiar en `data_class` para proteger un dato.
 
 | Nivel | Ejemplos | LLM | Export investigación | Cifrado |
 |---|---|---|---|---|
