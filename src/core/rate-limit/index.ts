@@ -132,6 +132,44 @@ export function limitSurveyByToken(token: string): Promise<LimitResult> {
   return limitSurvey("token", token, SURVEY_TOKEN_LIMIT, SURVEY_TOKEN_WINDOW, memorySurveyToken);
 }
 
+// ---- Envio del codigo de verificacion (OTP) del consentimiento (B7) -------
+// Acotado por token (un link = un paciente): frena el email-bombing hacia el correo del
+// paciente/representante y los reenvios abusivos. Tope bajo (cubre 1-2 reenvios legitimos
+// dentro de la ventana del codigo). Falla CERRADO como la encuesta: superficie publica, sin
+// sesion; ante incertidumbre no se envia (el paciente reintenta). Prefijo propio para no
+// consumir la cuota del submit.
+const OTP_SEND_LIMIT = 5;
+const OTP_SEND_WINDOW = "15 m" as const;
+const OTP_SEND_WINDOW_MS = 15 * 60 * 1000;
+
+const memoryOtpSend = new MemoryFixedWindow(OTP_SEND_LIMIT, OTP_SEND_WINDOW_MS);
+
+let upstashOtpSend: Ratelimit | null = null;
+function getUpstashOtpSend(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashOtpSend ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(OTP_SEND_LIMIT, OTP_SEND_WINDOW),
+    prefix: "atlas:consent-otp",
+  });
+  return upstashOtpSend;
+}
+
+export async function limitConsentOtpByToken(token: string): Promise<LimitResult> {
+  const upstash = getUpstashOtpSend();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(token);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: false, remaining: 0 };
+    }
+  }
+  return memoryOtpSend.check(token);
+}
+
 // ---- Import XLSX de Biody (B8) --------------------------------------------
 // Subida de archivo acotada por hora por usuario (SECURITY.md). El parseo del XLSX
 // cuesta CPU y persiste datos; el limite frena bucles o subidas masivas. Holgado

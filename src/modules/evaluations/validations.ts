@@ -38,6 +38,26 @@ export const intakeAnswersSchema = z
   .max(500);
 export type IntakeAnswersInput = z.infer<typeof intakeAnswersSchema>;
 
+// Envio del codigo de verificacion (OTP) del consentimiento (B7, firma electronica). El sessionId es
+// un nonce opaco que genera el cliente para ESTE intento de firma (crypto.randomUUID); ancla el codigo
+// a este navegador/sesion y se vuelve a presentar al validar. El correo destino lo resuelve la accion
+// segun la rama (mayor -> correo del paciente; menor -> correo del representante), no el cliente.
+export const otpSendSchema = z.object({
+  sessionId: z.guid(),
+  email: z.email().max(160),
+});
+export type OtpSendInput = z.infer<typeof otpSendSchema>;
+
+// Estado del envio del OTP (useActionState). maskedDestination es el correo ENMASCARADO (nunca el
+// completo) para decirle al paciente a donde llego sin exponerlo; remaining son los reenvios que quedan
+// en la ventana. sent marca que ya se envio (la UI pasa a pedir el codigo).
+export type OtpSendState = {
+  error: string | null;
+  sent: boolean;
+  maskedDestination: string | null;
+  remaining: number | null;
+};
+
 // Estado del formulario de la encuesta publica (useActionState).
 export type SurveyFormState = {
   error: string | null;

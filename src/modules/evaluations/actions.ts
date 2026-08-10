@@ -5,8 +5,18 @@ import { revalidatePath } from "next/cache";
 import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
-import { limitSurveyByIp, limitSurveyByToken } from "@/core/rate-limit";
+import {
+  limitConsentOtpByToken,
+  limitSurveyByIp,
+  limitSurveyByToken,
+} from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
+import {
+  generateOtpCode,
+  maskEmail,
+  storeOtp,
+} from "@/modules/consent/otp/otp-service";
+import { sendConsentOtpEmail } from "@/lib/email/resend";
 import {
   getProfessionalIdForPatient,
   getProfessionalProfileIdByUser,
@@ -30,11 +40,13 @@ import {
 } from "./policies/can-manage-evaluations";
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
 import { submitSurveyIntake } from "./services/survey-intake";
+import { otpSendSchema } from "./validations";
 import type {
   BaseSurveyLinkState,
   BaseSurveyQrState,
   ConfirmIdentityState,
   FollowupLinkState,
+  OtpSendState,
   SurveyFormState,
 } from "./validations";
 
@@ -150,6 +162,76 @@ export async function submitSurveyAction(
   // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya
   // quedo consumido).
   redirect("/encuesta/gracias");
+}
+
+// Envia el codigo de verificacion (OTP) del consentimiento por correo (B7, firma electronica).
+// Resuelve la condicion 1 del art. 4 del Decreto 2364: el control del correo prueba que la firma
+// corresponde a quien la ejerce. El destino lo decide el SERVIDOR segun la rama de edad (mayor ->
+// correo del paciente; menor -> correo del representante), nunca un campo suelto del cliente. Orden:
+// validar link -> validar entrada -> rate limit por token (anti email-bombing) -> generar + guardar
+// (solo el hash, TTL corto) -> enviar. Nunca revela el correo completo; devuelve solo el enmascarado.
+export async function sendConsentOtpAction(
+  _prev: OtpSendState,
+  form: FormData,
+): Promise<OtpSendState> {
+  const fail = (error: string): OtpSendState => ({
+    error,
+    sent: false,
+    maskedDestination: null,
+    remaining: null,
+  });
+
+  const token = str(form, "token");
+  if (!token) return fail("Link inválido.");
+
+  const link = await resolveSurveyLinkByToken(token);
+  if (!link) return fail("Este link no esta disponible, ya fue usado o vencio.");
+
+  // El correo destino sale de la rama: menor -> representante; mayor -> paciente.
+  const ageBranch = str(form, "ageBranch") === "menor" ? "menor" : "mayor";
+  const destination =
+    ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email");
+
+  const parsed = otpSendSchema.safeParse({
+    sessionId: str(form, "sessionId"),
+    email: destination,
+  });
+  if (!parsed.success) {
+    return fail(
+      ageBranch === "menor"
+        ? "Necesitamos el correo del representante para enviar el código de verificación."
+        : "Necesitamos tu correo para enviarte el código de verificación.",
+    );
+  }
+
+  // Rate limit por token: frena el email-bombing hacia el correo del paciente/representante.
+  const limit = await limitConsentOtpByToken(token);
+  if (!limit.success) {
+    return fail("Enviaste demasiados códigos. Espera unos minutos e intenta de nuevo.");
+  }
+
+  const code = generateOtpCode();
+  const masked = maskEmail(parsed.data.email);
+  const stored = await storeOtp(parsed.data.sessionId, code, {
+    channel: "email",
+    maskedDestination: masked,
+    // Hora del SERVIDOR (epoch-ms), no del cliente: es prueba del envio y no puede falsearse.
+    sentAt: Date.now(),
+  });
+  if (!stored) {
+    // Sin almacen (Upstash) no hay OTP: no se debe dejar pasar la firma en silencio.
+    return fail("El servicio de verificación no esta disponible. Intenta más tarde.");
+  }
+
+  const sent = await sendConsentOtpEmail(parsed.data.email, code);
+  if (!sent.ok) return fail("No pudimos enviar el código. Revisa el correo e intenta de nuevo.");
+
+  return {
+    error: null,
+    sent: true,
+    maskedDestination: masked,
+    remaining: limit.remaining,
+  };
 }
 
 // Confirma la identidad de una evaluacion (draft -> in_progress) tras la revision del
