@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ConsentDocumentCollapsible } from "@/modules/consent/components/consent-document-collapsible";
 
-import { submitSurveyAction } from "../actions";
-import type { SurveyFormState } from "../validations";
+import { sendConsentOtpAction, submitSurveyAction } from "../actions";
+import type { OtpSendState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
 import { SurveyQuestion } from "./survey-widgets";
 
 const initial: SurveyFormState = { error: null, fields: null, done: false };
+const initialOtp: OtpSendState = { error: null, sent: false, maskedDestination: null, remaining: null };
+
+// Validez de correo para habilitar el envio en cliente (el servidor revalida con Zod). Basta un patron
+// simple: no decide nada legal, solo si el boton "Enviar codigo" esta disponible.
+function emailLooksValid(value: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
+}
 
 const DOCUMENT_TYPES: { value: string; label: string }[] = [
   { value: "CC", label: "Cedula de ciudadania" },
@@ -82,6 +89,15 @@ export function SurveyIntakeForm({
 }: SurveyIntakeFormProps) {
   const [state, action, pending] = useActionState(submitSurveyAction, initial);
   const topRef = useRef<HTMLDivElement>(null);
+
+  // Firma electronica (B7). sessionId: nonce opaco de ESTE intento de firma, generado una sola vez
+  // en cliente; ancla el codigo a este navegador y viaja al enviar y al validar. Estado del envio del
+  // codigo por su propia accion (useActionState), invocada IMPERATIVAMENTE (no como action del form)
+  // para no disparar el auto-reset de React 19 sobre el resto de campos.
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [otpState, sendOtp, otpPending] = useActionState(sendConsentOtpAction, initialOtp);
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
   // Capa de consentimiento. La rama de edad (mayor/menor) es una eleccion explicita
   // y obligatoria (DELTA2 B2). En menor se abre el bloque del representante legal y,
@@ -163,14 +179,22 @@ export function SurveyIntakeForm({
   const current = steps[Math.min(step, total - 1)];
   const isLast = step === total - 1;
 
+  // Firma electronica: el correo destino sale de la rama (menor -> representante; mayor -> paciente).
+  // Es el mismo correo al que llega el codigo de verificacion y la copia del consentimiento.
+  const destinationEmail = isMinor ? rep.email : email;
+  const destinationEmailOk = emailLooksValid(destinationEmail);
+
   // Validacion liviana del paso de identidad (los required nativos se quitaron: en un
   // panel oculto no serian enfocables al enviar). Deriva del estado controlado; el Zod
-  // del servidor sigue siendo la fuente de verdad.
+  // del servidor sigue siendo la fuente de verdad. El correo del paciente es OBLIGATORIO en la rama
+  // mayor (es donde llega el codigo); en la rama menor el correo obligatorio es el del representante,
+  // que se valida en el bloque de consentimiento (branchOk), no aqui.
   const identityOk = Boolean(
     documentNumber.trim() &&
       firstName.trim() &&
       lastName.trim() &&
-      (isMinor ? minorBirthDate : birthDate),
+      (isMinor ? minorBirthDate : birthDate) &&
+      (isMinor ? true : emailLooksValid(email)),
   );
 
   // Se puede avanzar si el paso actual esta completo. Consentimiento e identidad son
@@ -202,9 +226,33 @@ export function SurveyIntakeForm({
     scrollTop();
   };
 
+  // Envio del codigo (B7): se invoca la accion IMPERATIVAMENTE con los datos actuales (no como action
+  // del form) para no resetear el resto. El servidor decide el destino por la rama; aqui solo se arma
+  // el payload minimo. Reenviar es el mismo envio (el limitador cuenta; otpState.remaining lo refleja).
+  const sendCode = () => {
+    const fd = new FormData();
+    fd.set("token", token);
+    fd.set("sessionId", sessionId);
+    fd.set("ageBranch", ageBranch);
+    if (isMinor) fd.set("legalRepresentativeEmail", rep.email);
+    else fd.set("email", email);
+    startTransition(() => sendOtp(fd));
+  };
+
+  // Envio del formulario SIN el auto-reset de React 19: se invoca la action en una transicion en vez
+  // de pasarla como prop `action`. Asi, si el codigo sale mal, la pantalla NO pierde lo que el paciente
+  // lleno (las 63 respuestas ya viven en estado; esto ademas preserva correo, sexo y opcionales). El
+  // guard de keys de los botones sigue evitando el auto-submit al entrar a la ultima seccion (D8).
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(() => action(new FormData(e.currentTarget)));
+  };
+
+  const otpCodeOk = /^\d{6}$/.test(otpCode.trim());
+
   return (
     <form
-      action={action}
+      onSubmit={handleSubmit}
       className="flex w-full flex-col gap-6"
       // Evita el envio implicito con Enter fuera del ultimo paso (no hay boton submit
       // montado antes, pero Enter en un input podria dispararlo).
@@ -215,6 +263,8 @@ export function SurveyIntakeForm({
       }}
     >
       <input type="hidden" name="token" value={token} />
+      {/* Firma electronica: el nonce de este intento viaja con el envio para casar con el codigo. */}
+      <input type="hidden" name="otpSessionId" value={sessionId} />
       <div ref={topRef} />
 
       {/* Progreso */}
@@ -361,6 +411,10 @@ export function SurveyIntakeForm({
                   value={rep.email}
                   onChange={(e) => setRep((s) => ({ ...s, email: e.target.value }))}
                 />
+                <p className="text-xs text-muted-foreground">
+                  El código de verificación y la copia del consentimiento llegan a este correo del
+                  representante, no al del menor.
+                </p>
               </Field>
               <Field label="Fecha de nacimiento del menor">
                 <Input
@@ -568,8 +622,22 @@ export function SurveyIntakeForm({
           <Field label="Celular">
             <Input name="phone" className="h-9" defaultValue={prefill?.phone ?? ""} />
           </Field>
-          <Field label="Correo">
-            <Input name="email" type="email" className="h-9" />
+          {/* Correo del paciente: OBLIGATORIO en la rama mayor (es donde llega el codigo y la copia).
+              En la rama menor el correo que cuenta es el del representante (bloque de consentimiento). */}
+          <Field label={isMinor ? "Correo del menor (opcional)" : "Correo"}>
+            <Input
+              name="email"
+              type="email"
+              className="h-9"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {!isMinor ? (
+              <p className="text-xs text-muted-foreground">
+                Necesitamos tu correo para enviarte el código de verificación y una copia de tu
+                consentimiento.
+              </p>
+            ) : null}
           </Field>
         </div>
       </section>
@@ -602,9 +670,95 @@ export function SurveyIntakeForm({
         ) : null}
         {current.kind === "identity" && !identityOk ? (
           <p className="text-xs text-muted-foreground">
-            Completa documento, nombres, apellidos y fecha de nacimiento para continuar.
+            Completa documento, nombres, apellidos, fecha de nacimiento
+            {!isMinor ? " y un correo válido" : ""} para continuar.
           </p>
         ) : null}
+
+        {/* Verificacion de firma (B7): SOLO en el ultimo paso (a), cuando ya esta todo listo. Antes no,
+            porque el codigo vence en 10 minutos y el paciente aun estaria llenando. */}
+        {isLast ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Verificación para firmar</h3>
+              <p className="text-xs text-muted-foreground">
+                Para firmar el consentimiento te enviamos un código al correo{" "}
+                {isMinor ? "del representante" : "que registraste"}. Ingrésalo aquí para completar el
+                envío.
+              </p>
+            </div>
+
+            {!otpState.sent ? (
+              <>
+                <Button
+                  key="otp-send"
+                  type="button"
+                  onClick={sendCode}
+                  disabled={!consentOk || !identityOk || !destinationEmailOk || otpPending}
+                  className="self-start"
+                >
+                  {otpPending ? "Enviando código..." : "Enviar código de verificación"}
+                </Button>
+                {!destinationEmailOk ? (
+                  <p className="text-xs text-muted-foreground">
+                    {isMinor
+                      ? "Ingresa un correo válido del representante en el paso de consentimiento."
+                      : "Ingresa un correo válido en tus datos para recibir el código."}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {/* (c) La espera: puede tardar y suele caer en no deseado. */}
+                <p className="text-xs text-muted-foreground">
+                  Enviamos un código a{" "}
+                  <span className="font-medium text-foreground">{otpState.maskedDestination}</span>.
+                  Puede tardar un momento; si no lo ves, revisa la carpeta de correo no deseado.
+                </p>
+                <Field label="Código de verificación (6 dígitos)">
+                  <Input
+                    name="otpCode"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    className="h-9 w-40 tracking-[0.3em]"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
+                </Field>
+                {/* (d) Reenvio con conteo visible: 5 por 15 min; se dice cuantos quedan. */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    key="otp-resend"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={sendCode}
+                    disabled={otpPending}
+                  >
+                    {otpPending ? "Reenviando..." : "Reenviar código"}
+                  </Button>
+                  {typeof otpState.remaining === "number" ? (
+                    <span className="text-xs text-muted-foreground">
+                      Te{" "}
+                      {otpState.remaining === 1
+                        ? "queda 1 reenvío"
+                        : `quedan ${otpState.remaining} reenvíos`}{" "}
+                      en esta ventana.
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            )}
+
+            {otpState.error ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {otpState.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between gap-3">
           <Button
             key="nav-back"
@@ -627,7 +781,11 @@ export function SurveyIntakeForm({
               NINGUN test automatico atrapa esto (jsdom no reproduce el default action nativo,
               solo se ve en navegador); si tocas estos botones, pruebalo en un navegador real. */}
           {isLast ? (
-            <Button key="nav-submit" type="submit" disabled={!consentOk || pending}>
+            <Button
+              key="nav-submit"
+              type="submit"
+              disabled={!consentOk || !identityOk || !otpState.sent || !otpCodeOk || pending}
+            >
               {pending ? "Enviando..." : isFollowup ? "Enviar seguimiento" : "Enviar"}
             </Button>
           ) : (
