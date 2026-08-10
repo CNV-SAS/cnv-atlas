@@ -51,7 +51,7 @@ export async function getTreatmentProtocol(
   // El tratamiento que el pipeline creo para ese diagnostico.
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
-    .select("id, kcal_objetivo, proteina_g, restricciones, protocol_suggested, adj_peso_meta")
+    .select("id, status, kcal_objetivo, proteina_g, restricciones, protocol_suggested, adj_peso_meta")
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -125,6 +125,7 @@ export async function getTreatmentProtocol(
   return {
     treatmentId,
     diagnosisConfirmed: Boolean(diag.confirmed_at),
+    approved: treatment.status === "approved",
     kcalObjetivo: treatment.kcal_objetivo,
     proteinaGramos: treatment.proteina_g,
     // Peso meta VISIBLE (pieza 1): pesoCalculo/label salen del snapshot sugerido sellado; adjPesoMeta es

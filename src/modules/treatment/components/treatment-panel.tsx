@@ -73,18 +73,23 @@ function PesoMetaSection({
   // Sin snapshot sellado no hay peso de cálculo que mostrar (tratamiento viejo, pre-snapshot): se omite.
   if (protocol.pesoCalculo == null) return null;
   const fijado = protocol.adjPesoMeta != null;
+  // Redondeo SOLO de PRESENTACIÓN a un decimal: el valor que usa el cálculo (pesoCalculo del snapshot,
+  // o adj_peso_meta al guardar) sigue completo. El profesional copia un número legible (65,4), no 65,40625;
+  // mostrar el crudo lo llevaría a teclear una versión redondeada y cambiar levemente la prescripción.
+  const disp1 = (n: number): string => String(Number(n.toFixed(1)));
+  const pesoCalcDisp = disp1(protocol.pesoCalculo);
 
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold text-foreground">Peso meta</h3>
       {fijado ? (
         <p className="text-sm text-clinical-optimal">
-          Fijado por ti: <strong>{protocol.adjPesoMeta} kg</strong>. La prescripción se calcula sobre
-          este peso.
+          Fijado por ti: <strong>{disp1(protocol.adjPesoMeta as number)} kg</strong>. La prescripción se
+          calcula sobre este peso.
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Sin registrar: la prescripción se calcula sobre <strong>{protocol.pesoCalculo} kg</strong>
+          Sin registrar: la prescripción se calcula sobre <strong>{pesoCalcDisp} kg</strong>
           {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO, no
           uno que hayas decidido.
         </p>
@@ -102,23 +107,25 @@ function PesoMetaSection({
               step="0.1"
               value={pesoMeta}
               onChange={(e) => setPesoMeta(e.target.value)}
-              placeholder={`calculado: ${protocol.pesoCalculo}`}
+              placeholder={`calculado: ${pesoCalcDisp}`}
               className="w-40"
             />
           </div>
           <Button type="submit" variant="outline" disabled={pending}>
             Guardar peso meta
           </Button>
-          {!fijado ? (
-            <button
-              type="button"
-              className="pb-2 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-              onClick={() => setPesoMeta(String(protocol.pesoCalculo))}
-              disabled={locked}
-            >
-              Usar el calculado ({protocol.pesoCalculo})
-            </button>
-          ) : null}
+          {/* Siempre visible (tambien fijado): deja VOLVER al calculado sin recordar el numero. Vacia el
+              campo; al guardar con el campo vacio, adj_peso_meta queda null y el calculo usa el pesoCalculo
+              COMPLETO (no el mostrado redondeado). */}
+          <button
+            type="button"
+            className="pb-2 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+            onClick={() => setPesoMeta("")}
+            disabled={locked}
+            title="Vacía el campo; guarda para volver al peso calculado"
+          >
+            Usar el calculado ({pesoCalcDisp} kg)
+          </button>
         </fieldset>
       </form>
     </section>
@@ -179,7 +186,11 @@ export function TreatmentPanel({
   protocol: TreatmentProtocol;
   celular?: CelularBadges | null;
 }) {
-  const locked = !protocol.diagnosisConfirmed;
+  // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
+  // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
+  // editable y el guardado chocaria contra el trigger). Se distinguen para dar el mensaje correcto.
+  const diagnosisPending = !protocol.diagnosisConfirmed;
+  const locked = diagnosisPending || protocol.approved;
 
   return (
     <Card>
@@ -187,11 +198,16 @@ export function TreatmentPanel({
         <CardTitle>Protocolo de tratamiento</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {locked ? (
+        {diagnosisPending ? (
           <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
             El protocolo esta bloqueado porque el diagnostico aun no esta confirmado. Confirmalo en la
             pestana Diagnostico (el boton de confirmar esta al final de esa pagina); al confirmarlo se
             habilita editar y aprobar el tratamiento.
+          </p>
+        ) : protocol.approved ? (
+          <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+            Este protocolo ya fue aprobado: la prescripción es inmutable. Para cambiarla se corrige la
+            evaluación (versión nueva de toda la cadena), no se edita aquí.
           </p>
         ) : null}
         {/* key = firma de los campos guardados que edita el form. Un cambio real del servidor (guardado,

@@ -19,6 +19,7 @@ import type { TreatmentProtocol } from "@/modules/treatment/data/treatment-reade
 const BASE: TreatmentProtocol = {
   treatmentId: "t-1",
   diagnosisConfirmed: true,
+  approved: false,
   kcalObjetivo: 2000,
   proteinaGramos: 110,
   pesoCalculo: 70,

@@ -37,6 +37,10 @@ export type MenuSuggestion = {
 export type TreatmentProtocol = {
   treatmentId: string;
   diagnosisConfirmed: boolean;
+  // true si el protocolo ya se aprobó (status='approved'): la prescripción es INMUTABLE (el trigger
+  // de BD la congela). La UI lo usa para bloquear la edición y no dejar que un guardado choque contra
+  // el trigger (se veria editable pero fallaria). Se corrige por versión nueva, no editando.
+  approved: boolean;
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
   // Peso meta (cadena calórica, pieza 1 — HECHO VISIBLE, nota 3 de Gildardo). pesoCalculo es el peso
