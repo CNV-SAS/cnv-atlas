@@ -22,6 +22,7 @@ import {
   sendConsentCopy,
   type ConsentCopyRecipient,
 } from "@/modules/consent/consent-copy-service";
+import type { ConsentInstanceData } from "@/modules/consent/consent-instance";
 import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_TEXT_V1_7, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.7";
 import {
@@ -39,7 +40,10 @@ import {
 } from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
 import { getActiveSurvey } from "./data/survey-reader";
-import { resolveSurveyLinkByToken } from "./data/survey-links-reader";
+import {
+  getProfessionalForConsent,
+  resolveSurveyLinkByToken,
+} from "./data/survey-links-reader";
 import {
   canConfirmIdentity,
   canEmitFollowupLink,
@@ -199,12 +203,44 @@ export async function submitSurveyAction(
 
   const patientId = result.value.patientId;
   after(async () => {
+    // El bloque del profesional sale del profesional del link (divulgacion INTENCIONAL al paciente: el
+    // consentimiento debe identificar al responsable clinico). Si no se pudiera leer, se pasan vacios y
+    // la instancia omite los segmentos (nunca placeholders crudos).
+    const professional = (await getProfessionalForConsent(link.professionalId)) ?? {
+      fullName: "",
+      profession: "",
+      license: null,
+    };
+    const fullName = `${identity.firstName} ${identity.lastName}`.trim();
+    const instance: ConsentInstanceData = {
+      branch: consent.ageBranch === "menor" ? "menor" : "mayor",
+      patient: { name: fullName, document: identity.documentNumber },
+      professional,
+      representative:
+        consent.ageBranch === "menor"
+          ? {
+              name: consent.legalRepresentativeName ?? "",
+              document: consent.legalRepresentativeDocument ?? "",
+              relationship: consent.legalRepresentativeRelationship ?? "",
+              email: consent.legalRepresentativeEmail ?? "",
+            }
+          : null,
+      assent:
+        consent.ageBranch === "menor"
+          ? { applies: consent.asentimiento_menor, minorName: fullName }
+          : null,
+      // El numeral 12 de la copia SI refleja lo marcado (incluida la casilla del medio electronico, que
+      // es necesaria y siempre va marcada); a diferencia de la pantalla, aqui no hay controles reales.
+      granted: [...grantedForCopy, "aceptacion_medio_electronico"],
+      acceptedAt,
+    };
     await sendConsentCopy({
       patientId,
       acceptedAt,
       granted: grantedForCopy,
       consentVersion: CONSENT_VERSION,
-      consentText: CONSENT_TEXT_V1_7,
+      consentTemplate: CONSENT_TEXT_V1_7,
+      instance,
       recipients,
     });
   });

@@ -1,3 +1,4 @@
+import { markdownToEmailHtml, markdownToPlainText } from "./consent-email-format";
 import type { ConsentType } from "./validations";
 
 // Armado de la COPIA del consentimiento que se envia al paciente tras aceptar (B7, dictamen de firma
@@ -5,6 +6,12 @@ import type { ConsentType } from "./validations";
 // MARCADAS y las NO MARCADAS (las no marcadas prueban que las opcionales se ofrecieron y se declinaron),
 // fecha y hora, y el canal de derechos. Modulo puro (sin server-only): solo transforma texto; el envio
 // y la traza viven en el servicio.
+//
+// El cuerpo es un RESUMEN (encabezado que pidio Santiago: fecha, version, autorizaciones marcadas y no
+// marcadas, canal de derechos) seguido de la INSTANCIA personalizada (ya construida por el servicio: la
+// plantilla con la rama que aplica, la firma con los datos del titular y el bloque del profesional). Se
+// devuelven las DOS versiones: HTML con estilos en linea (formato) y texto plano LIMPIO (alternativa si
+// el cliente no muestra HTML): asi los simbolos de markdown nunca llegan crudos al paciente.
 
 // Canal de derechos (habeas data), tal cual el numeral 9 del consentimiento.
 const RIGHTS_CHANNEL = "protecciondatos@cnvsystem.com";
@@ -22,9 +29,9 @@ const AUTH_LABELS: { type: ConsentType; label: string; necessary: boolean }[] = 
 
 export type ConsentCopyInput = {
   acceptedAt: number; // epoch-ms del servidor (hora de la aceptacion)
-  granted: ConsentType[]; // autorizaciones efectivamente marcadas
+  granted: ConsentType[]; // autorizaciones efectivamente marcadas (para el resumen)
   consentVersion: string;
-  consentText: string; // texto integro de la version aceptada (el mismo que vio en pantalla)
+  instanceMarkdown: string; // INSTANCIA ya personalizada (no la plantilla): rama, firma y profesional
 };
 
 // Fecha y hora legible en Colombia (America/Bogota). Se usa el huso fijo del pais, no el del proceso.
@@ -36,25 +43,43 @@ function formatAcceptedAt(epochMs: number): string {
   }).format(new Date(epochMs));
 }
 
-// Construye el asunto (DISTINTO al del codigo, que llega minutos antes) y el cuerpo en texto plano.
-export function buildConsentCopyEmail(input: ConsentCopyInput): { subject: string; text: string } {
+// Construye el asunto (DISTINTO al del codigo, que llega minutos antes) y el cuerpo en HTML + texto plano.
+export function buildConsentCopyEmail(input: ConsentCopyInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
   const grantedSet = new Set(input.granted);
-  const lines = AUTH_LABELS.map((a) => {
+  // Casillas en formato markdown "- [x]/- [ ]" para que el conversor las pinte igual que en el documento.
+  const authLines = AUTH_LABELS.map((a) => {
     const mark = grantedSet.has(a.type) ? "[x]" : "[ ]";
     const tag = a.necessary ? "necesaria" : "opcional";
-    return `${mark} ${a.label} (${tag})`;
+    return `- ${mark} ${a.label} (${tag})`;
   });
 
-  const text =
-    `Esta es tu copia del consentimiento informado que aceptaste en Atlas. Consérvala.\n\n` +
-    `Fecha y hora de aceptación: ${formatAcceptedAt(input.acceptedAt)}\n` +
-    `Versión del documento: ${input.consentVersion}\n\n` +
-    `Autorizaciones (se listan las marcadas y las no marcadas):\n` +
-    `${lines.join("\n")}\n\n` +
-    `Para conocer, actualizar, rectificar o suprimir tus datos, revocar esta autorización o ` +
-    `presentar una queja, escribe a ${RIGHTS_CHANNEL}.\n\n` +
-    `A continuación, el texto íntegro del consentimiento que aceptaste:\n\n` +
-    `${input.consentText}\n`;
+  // Encabezado (resumen) en markdown, para convertirlo con el mismo formato que el documento.
+  const summary = [
+    "Esta es tu copia del consentimiento informado que aceptaste en Atlas. Consérvala.",
+    "",
+    `**Fecha y hora de aceptación:** ${formatAcceptedAt(input.acceptedAt)}`,
+    "",
+    `**Versión del documento:** ${input.consentVersion}`,
+    "",
+    "**Autorizaciones (se listan las marcadas y las no marcadas):**",
+    "",
+    ...authLines,
+    "",
+    `Para conocer, actualizar, rectificar o suprimir tus datos, revocar esta autorización o presentar una queja, escribe a ${RIGHTS_CHANNEL}.`,
+    "",
+    "---",
+    "",
+  ].join("\n");
 
-  return { subject: "Tu copia del consentimiento informado de Atlas", text };
+  const combined = summary + input.instanceMarkdown;
+
+  return {
+    subject: "Tu copia del consentimiento informado de Atlas",
+    html: markdownToEmailHtml(combined),
+    text: markdownToPlainText(combined),
+  };
 }

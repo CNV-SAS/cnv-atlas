@@ -5,6 +5,7 @@ import { sendConsentCopyEmail } from "@/lib/email/resend";
 import { recordAudit } from "@/modules/audit/log";
 
 import { buildConsentCopyEmail } from "./consent-copy";
+import { buildConsentInstance, type ConsentInstanceData } from "./consent-instance";
 import { maskEmail } from "./otp/otp-service";
 import type { ConsentType } from "./validations";
 
@@ -19,25 +20,29 @@ export type ConsentCopyRecipient = { email: string; role: "titular" | "represent
 export type SendConsentCopyInput = {
   patientId: string;
   acceptedAt: number; // hora del servidor de la aceptacion
-  granted: ConsentType[]; // autorizaciones marcadas
+  granted: ConsentType[]; // autorizaciones marcadas (para el resumen del encabezado)
   consentVersion: string;
-  consentText: string;
+  consentTemplate: string; // plantilla congelada (se personaliza a instancia aqui)
+  instance: ConsentInstanceData; // datos para construir la instancia (rama, firma, profesional, etc.)
   recipients: ConsentCopyRecipient[];
 };
 
 export async function sendConsentCopy(input: SendConsentCopyInput): Promise<void> {
   if (input.recipients.length === 0) return; // sin destino no hay copia (no deberia pasar: correo obligatorio)
 
-  const { subject, text } = buildConsentCopyEmail({
+  // La copia lleva la INSTANCIA personalizada (no la plantilla): rama que aplica, firma con los datos del
+  // titular y bloque del profesional. La plantilla y el hash no se tocan.
+  const instanceMarkdown = buildConsentInstance(input.consentTemplate, input.instance);
+  const { subject, html, text } = buildConsentCopyEmail({
     acceptedAt: input.acceptedAt,
     granted: input.granted,
     consentVersion: input.consentVersion,
-    consentText: input.consentText,
+    instanceMarkdown,
   });
 
   const results: { masked_destination: string; role: string; ok: boolean }[] = [];
   for (const r of input.recipients) {
-    const sent = await sendConsentCopyEmail(r.email, subject, text);
+    const sent = await sendConsentCopyEmail(r.email, subject, html, text);
     results.push({ masked_destination: maskEmail(r.email), role: r.role, ok: sent.ok });
   }
 

@@ -8,7 +8,7 @@ describe("buildConsentCopyEmail", () => {
   const base = {
     acceptedAt: 1_700_000_000_000,
     consentVersion: "1.5",
-    consentText: "## 1. Texto integro del consentimiento ...",
+    instanceMarkdown: "## 1. Texto integro del consentimiento ...",
   };
 
   it("lista las necesarias marcadas y las opcionales NO marcadas cuando se declinaron", () => {
@@ -43,5 +43,20 @@ describe("buildConsentCopyEmail", () => {
     // Asunto DISTINTO al del codigo (no debe confundirse con el OTP)
     expect(subject).toBe("Tu copia del consentimiento informado de Atlas");
     expect(subject).not.toContain("código");
+  });
+
+  it("entrega HTML con estilos en linea y texto plano limpio (sin markdown crudo)", () => {
+    const { html, text } = buildConsentCopyEmail({
+      ...base,
+      granted: ["servicio", "datos_sensibles", "internacional_ia"],
+    });
+    // HTML: estilos en linea, casillas renderizadas, sin simbolos crudos.
+    expect(html).toContain("style=");
+    expect(html).toContain("&#9745;"); // alguna casilla marcada (necesaria)
+    expect(html).toContain("&#9744;"); // alguna casilla sin marcar (opcional declinada)
+    expect(html).not.toContain("**");
+    // Texto plano: limpio, sin markdown.
+    expect(text).not.toContain("**");
+    expect(text).not.toContain("##");
   });
 });

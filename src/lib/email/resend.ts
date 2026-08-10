@@ -117,6 +117,7 @@ export async function sendConsentOtpEmail(to: string, code: string): Promise<Res
 export async function sendConsentCopyEmail(
   to: string,
   subject: string,
+  html: string,
   text: string,
 ): Promise<Result<{ id: string }>> {
   const resend = getClient();
@@ -125,12 +126,14 @@ export async function sendConsentCopyEmail(
   if (!from) return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
   const replyTo = process.env.EMAIL_REPLY_TO;
   try {
+    // Se envian AMBAS versiones: el cliente elige. Si no muestra HTML, cae al texto plano (limpio).
     const res = await withTimeout(
       resend.emails.send({
         from,
         ...(replyTo ? { replyTo } : {}),
         to,
         subject,
+        html,
         text,
       }),
       SEND_TIMEOUT_MS,
