@@ -93,6 +93,15 @@ export async function submitSurveyAction(
   const survey = await getActiveSurvey();
   if (!survey) return fail("La encuesta no esta disponible en este momento.");
 
+  // Firma electronica (B7): el codigo se verifica en el servicio, atomico con la creacion. Aqui solo
+  // se exige que venga (sin codigo no hay firma). Mensaje propio para no confundir "no lo pediste/no lo
+  // ingresaste" con "codigo incorrecto" (ese lo da el servicio tras verificar).
+  const sessionId = str(form, "otpSessionId");
+  const otpCode = str(form, "otpCode");
+  if (!sessionId || !otpCode) {
+    return fail("Ingresa el código de verificación que enviamos al correo para firmar.");
+  }
+
   // Consentimiento por capas: rama de edad (mayor/menor) + 3 necesarias + 3 opcionales.
   // mayoria_de_edad se deriva de una seleccion EXPLICITA de "mayor" (no de un default):
   // sin seleccion, la rama mayor se rechaza por falta de la declaracion. Los campos del
@@ -154,6 +163,7 @@ export async function submitSurveyAction(
     consent,
     identity,
     answers,
+    otp: { sessionId, code: otpCode },
     ipAddress: ip === "unknown" ? null : ip,
   });
 

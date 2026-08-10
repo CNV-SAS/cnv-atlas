@@ -1,5 +1,6 @@
 import { appError, err, ok, type Result } from "@/core/errors";
 import { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } from "@/modules/consent/consent-hash";
+import { verifyOtp, type OtpVerifyStatus } from "@/modules/consent/otp/otp-service";
 import {
   assentApplies,
   computeAgeYears,
@@ -31,8 +32,25 @@ export type SubmitSurveyIntakeInput = {
   consent: unknown; // casillas crudas del consentimiento
   identity: unknown; // identidad cruda declarada por el paciente
   answers: unknown; // respuestas crudas
+  otp: { sessionId: string; code: string }; // firma electronica (B7): codigo a verificar antes de crear
   ipAddress: string | null;
 };
+
+// Mensaje al paciente por estado del codigo (1b): la accion a tomar difiere. 'invalid' -> mirar bien
+// el correo; 'expired'/'too_many_attempts' -> pedir uno nuevo; 'unavailable' -> el servicio esta caido.
+// Texto de cara al paciente, con tildes.
+function otpMessage(status: Exclude<OtpVerifyStatus, "ok">): string {
+  switch (status) {
+    case "invalid":
+      return "El código no es correcto. Revisa el correo e ingrésalo de nuevo.";
+    case "expired":
+      return "El código venció o ya no está disponible. Pide uno nuevo para continuar.";
+    case "too_many_attempts":
+      return "Demasiados intentos con ese código. Pide uno nuevo para continuar.";
+    case "unavailable":
+      return "La verificación por correo no está disponible en este momento. Intenta más tarde.";
+  }
+}
 
 export async function submitSurveyIntake(
   input: SubmitSurveyIntakeInput,
@@ -52,6 +70,25 @@ export async function submitSurveyIntake(
   if (!answers.success) {
     return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   }
+
+  // 1bis. FIRMA ELECTRONICA (B7, dictamen art. 4 Decreto 2364): verificar el codigo ANTES de crear
+  // nada. Va despues de las validaciones de forma (para no quemar un codigo por un campo mal) y antes
+  // de resolver identidad o escribir. El codigo es de un solo uso: se CONSUME aqui. Si no es valido no
+  // se crea paciente, ni consentimiento, ni evaluacion (verificar+crear o nada).
+  const otp = await verifyOtp(input.otp.sessionId, input.otp.code);
+  if (otp.status !== "ok") {
+    // 'unavailable' es fallo de infraestructura (Upstash caido), no del paciente: se mapea a internal.
+    const code = otp.status === "unavailable" ? "internal" : "validation";
+    return err(appError(code, otpMessage(otp.status)));
+  }
+  // Metadata de la firma para la traza (nunca el codigo). validatedAt es hora del servidor: es el
+  // instante probatorio del acto de firma.
+  const signature = {
+    channel: otp.meta?.channel ?? "email",
+    maskedDestination: otp.meta?.maskedDestination ?? "",
+    sentAt: otp.meta?.sentAt ?? 0,
+    validatedAt: Date.now(),
+  };
 
   // 2. Resolver identidad por documento (Atlas no decide solo inicial vs seguimiento).
   const resolution = await resolveIdentity(
@@ -116,6 +153,7 @@ export async function submitSurveyIntake(
       answers: answers.data,
       linkId,
       ipAddress: input.ipAddress,
+      signature,
     });
     return ok({
       evaluationId: written.evaluationId,

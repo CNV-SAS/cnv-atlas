@@ -62,6 +62,14 @@ export type IntakeWriteInput = {
   answers: { questionId: string; answerValue: string }[];
   linkId: string | null; // si vino de un link de seguimiento, para consumirlo
   ipAddress: string | null;
+  // Firma electronica (B7): metadata del acto de firma (nunca el codigo). Se registra en el audit
+  // consent.signed, que es inmutable e inline en la transaccion (regla 8): es la prueba del acto.
+  signature?: {
+    channel: string;
+    maskedDestination: string;
+    sentAt: number;
+    validatedAt: number;
+  } | null;
 };
 
 export type IntakeWriteResult = { evaluationId: string; patientId: string };
@@ -156,7 +164,20 @@ export async function writeIntakeEvaluation(
         actorEmail: null,
         entityType: "patient",
         entityId: patientId,
-        payload: { types: grantedTypes, version: input.consents[0].consentVersion },
+        payload: {
+          types: grantedTypes,
+          version: input.consents[0].consentVersion,
+          // Firma electronica: canal, destino ENMASCARADO y marcas de envio/validacion (hora servidor).
+          // Nunca el codigo ni el correo completo. Es la evidencia del acto de firma exigida por el dictamen.
+          signature: input.signature
+            ? {
+                channel: input.signature.channel,
+                masked_destination: input.signature.maskedDestination,
+                sent_at: input.signature.sentAt,
+                validated_at: input.signature.validatedAt,
+              }
+            : undefined,
+        },
         ip: input.ipAddress,
       });
     }

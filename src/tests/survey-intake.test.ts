@@ -22,10 +22,19 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
   return { writeIntakeEvaluation: vi.fn(), ConsentGateError };
 });
 
+// Firma electronica (B7): el servicio verifica el codigo antes de crear nada. Se mockea el servicio
+// OTP (server-only + Redis) para probar la orquestacion sin Upstash; por defecto devuelve 'ok'.
+vi.mock("@/modules/consent/otp/otp-service", () => ({
+  verifyOtp: vi.fn(),
+}));
+
 import * as intakeReads from "@/modules/patients/data/patients-intake";
 import * as writer from "@/modules/evaluations/data/intake-writer";
+import * as otp from "@/modules/consent/otp/otp-service";
 import { submitSurveyIntake } from "@/modules/evaluations/services/survey-intake";
 import type { SurveyLinkView } from "@/modules/evaluations/types";
+
+const okOtp = { status: "ok" as const, meta: { channel: "email" as const, maskedDestination: "m***@example.com", sentAt: 1_700_000_000_000 } };
 
 const initialLink: SurveyLinkView = {
   id: "link-1",
@@ -58,6 +67,7 @@ function input(over: Partial<Parameters<typeof submitSurveyIntake>[0]> = {}) {
     consent: validConsent,
     identity: validIdentity,
     answers: [],
+    otp: { sessionId: "11111111-2222-3333-4444-555555555555", code: "123456" },
     ipAddress: "1.2.3.4",
     ...over,
   };
@@ -67,6 +77,8 @@ beforeEach(() => {
   vi.mocked(intakeReads.findPatientByDocument).mockReset();
   vi.mocked(intakeReads.findDuplicateCandidates).mockReset();
   vi.mocked(writer.writeIntakeEvaluation).mockReset();
+  vi.mocked(otp.verifyOtp).mockReset();
+  vi.mocked(otp.verifyOtp).mockResolvedValue(okOtp);
   vi.mocked(intakeReads.findDuplicateCandidates).mockResolvedValue([]);
   vi.mocked(writer.writeIntakeEvaluation).mockResolvedValue({
     evaluationId: "ev-1",
@@ -206,6 +218,50 @@ describe("submitSurveyIntake", () => {
       expect(res.value.duplicateCandidates).toHaveLength(1);
       expect(res.value.duplicateCandidates[0].patientId).toBe("dup-1");
     }
+  });
+
+  it("firma electronica: pasa la metadata (canal, destino enmascarado, marcas) al escritor", async () => {
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
+    await submitSurveyIntake(input());
+    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    expect(call.signature?.channel).toBe("email");
+    expect(call.signature?.maskedDestination).toBe("m***@example.com");
+    expect(call.signature?.sentAt).toBe(1_700_000_000_000);
+    expect(typeof call.signature?.validatedAt).toBe("number"); // hora del servidor al validar
+  });
+
+  it("codigo incorrecto -> validation con mensaje propio; NO escribe (verificar+crear o nada)", async () => {
+    vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "invalid" });
+    const res = await submitSurveyIntake(input());
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe("validation");
+      expect(res.error.message).toContain("no es correcto");
+    }
+    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(intakeReads.findPatientByDocument).not.toHaveBeenCalled(); // ni siquiera resuelve identidad
+  });
+
+  it("codigo vencido -> mensaje DISTINTO al incorrecto (pedir uno nuevo)", async () => {
+    vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "expired" });
+    const res = await submitSurveyIntake(input());
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.message).toContain("venció");
+    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("verificacion no disponible (Upstash) -> internal, no valida la firma en silencio", async () => {
+    vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "unavailable" });
+    const res = await submitSurveyIntake(input());
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.code).toBe("internal");
+    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("no verifica la firma antes de validar la forma (no quema el codigo por un campo malo)", async () => {
+    const res = await submitSurveyIntake(input({ consent: { ...validConsent, internacional_ia: false } }));
+    expect(res.ok).toBe(false);
+    expect(otp.verifyOtp).not.toHaveBeenCalled(); // validacion de forma primero
   });
 
   it("consume el link de seguimiento (un solo uso); no el inicial", async () => {
