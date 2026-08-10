@@ -102,13 +102,15 @@ function dropBlock(text: string, startAnchor: string, endLineContains: string): 
 }
 
 // Bloque del profesional (numeral 2): reconstruye la linea con los segmentos que existen y quita la nota
-// interna de auto-relleno. Dato vacio => se omite su segmento (nombre, profesion o registro).
+// interna de auto-relleno. Dato vacio => se omite su segmento (nombre, profesion o registro). Sin guion
+// largo (se lee mal en pantallas angostas): nombre y profesion con coma, el registro como frase aparte.
 function fillProfessionalBlock(text: string, prof: ConsentInstanceData["professional"]): string {
-  const segs: string[] = [];
-  if (clean(prof.fullName)) segs.push("`" + clean(prof.fullName) + "`");
-  if (clean(prof.profession)) segs.push("`" + clean(prof.profession) + "`");
-  if (clean(prof.license)) segs.push("Registro profesional No. `" + clean(prof.license) + "`");
-  const line = "> **Profesional:** " + segs.join(" — ");
+  const name = clean(prof.fullName);
+  const profession = clean(prof.profession);
+  const license = clean(prof.license);
+  const nameProf = [name, profession].filter(Boolean).join(", ");
+  let line = "> **Profesional:** " + nameProf;
+  if (license) line += `${nameProf ? ". " : ""}Registro profesional No. ${license}`;
   // Reemplaza la linea del profesional Y la nota interna que la sigue (dos lineas) por la linea armada.
   const re = /> \*\*Profesional:\*\*[^\n]*\n> \*\(Este bloque se rellena[^\n]*\n/;
   if (!re.test(text)) return text;

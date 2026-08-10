@@ -10,7 +10,7 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 
 **2.1. El profesional de salud que le atiende** es el Responsable del tratamiento de sus datos para su atención clínica y es el custodio de su historia clínica.
 
-> **Profesional:** `Ana Gómez Ruiz` — `Nutricionista` — Registro profesional No. `NUT-12345`
+> **Profesional:** Ana Gómez Ruiz, Nutricionista. Registro profesional No. NUT-12345
 
 > **Nota.** Cuando el paciente sea menor de edad, las referencias a "usted" en este documento se entienden hechas a su representante legal, quien otorga la autorización en su nombre, sin perjuicio del asentimiento del menor cuando aplique (numeral 11).
 

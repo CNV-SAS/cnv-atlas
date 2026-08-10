@@ -101,7 +101,7 @@ describe("consent-instance: invariantes de rama (belt-and-suspenders sobre el go
 describe("consent-instance: reglas de relleno", () => {
   it("dato faltante omite el segmento, no deja placeholder ni raya (licencia null)", () => {
     const out = buildConsentInstance(CONSENT_TEXT_V1_7, { ...mayor, professional: { ...PROF, license: null } });
-    expect(out).toContain("> **Profesional:** `Ana Gómez Ruiz` — `Nutricionista`");
+    expect(out).toContain("> **Profesional:** Ana Gómez Ruiz, Nutricionista");
     expect(out).not.toContain("Registro profesional No.");
     expect(out).not.toContain("{{professional_license}}");
   });
@@ -120,6 +120,13 @@ describe("consent-instance: reglas de relleno", () => {
     expect(out).not.toContain("{{professional_full_name}}");
     expect(out).not.toContain("{{professional_profession}}");
     expect(out).not.toContain("se rellena automáticamente");
+  });
+
+  it("el bloque del profesional NO usa guion largo (se lee mal en pantallas angostas)", () => {
+    const out = buildConsentInstance(CONSENT_TEXT_V1_7, mayor);
+    const profLine = out.split("\n").find((l) => l.startsWith("> **Profesional:**"))!;
+    expect(profLine).not.toContain("—");
+    expect(profLine).toContain("Ana Gómez Ruiz, Nutricionista. Registro profesional No. NUT-12345");
   });
 
   it("con fecha real, la línea de fecha lleva una fecha (no la pendiente ni una raya)", () => {
