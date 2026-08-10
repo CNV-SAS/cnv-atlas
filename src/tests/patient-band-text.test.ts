@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 // para importarlo sin contexto de Server Component.
 vi.mock("server-only", () => ({}));
 
-import { computePatientBandText } from "@/modules/reports/data/reports-repository";
+import {
+  computePatientBandText,
+  formatAppointmentDate,
+} from "@/modules/reports/data/reports-repository";
 import { BAND_TEXT } from "@/modules/followups/services/eb-trajectory";
 
 // P0 Parte 2 (P5): la regla de QUÉ ve el paciente en el PDF por caso. Pura, sin BD.
@@ -39,5 +42,24 @@ describe("computePatientBandText (qué ve el paciente en el PDF)", () => {
     expect(computePatientBandText({ band: "mejoro" }, false, false)).toBeNull();
     expect(computePatientBandText({ band: "sin_cambio" }, false, false)).toBeNull();
     expect(computePatientBandText({ band: "empeoro" }, true, false)).toBeNull();
+  });
+});
+
+// §6 (Gildardo Q33): la fecha de la próxima cita en el reporte del paciente. Se formatea de cara al
+// paciente parseando POR PARTES, para no correr un día por el huso (new Date("2026-08-10") es medianoche
+// UTC, que en Colombia es el día anterior).
+describe("formatAppointmentDate", () => {
+  it("formatea la fecha en español, sin correr el día por el huso", () => {
+    expect(formatAppointmentDate("2026-08-10")).toBe("10 de agosto de 2026");
+    expect(formatAppointmentDate("2026-01-01")).toBe("1 de enero de 2026");
+    expect(formatAppointmentDate("2026-12-31")).toBe("31 de diciembre de 2026");
+    // con hora incluida se sigue tomando la fecha local, no la UTC
+    expect(formatAppointmentDate("2026-08-10T00:00:00Z")).toBe("10 de agosto de 2026");
+  });
+
+  it("null ante una fecha inválida o vacía (no revienta ni inventa)", () => {
+    expect(formatAppointmentDate("")).toBeNull();
+    expect(formatAppointmentDate("no es fecha")).toBeNull();
+    expect(formatAppointmentDate("2026-13-01")).toBeNull(); // mes fuera de rango
   });
 });

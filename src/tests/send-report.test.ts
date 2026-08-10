@@ -43,6 +43,7 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
     email: "ana@example.com",
     evaluationDate: "2026-04-12T00:00:00Z",
     patientBandText: null,
+    patientBandAppointmentDate: null,
     ...over,
   };
 }

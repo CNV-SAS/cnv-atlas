@@ -102,6 +102,7 @@ export function ReportDocument({
   mode = "atlas",
   professionalNotes = null,
   bandText = null,
+  bandAppointmentDate = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -110,6 +111,9 @@ export function ReportDocument({
   // P0 Parte 2 (P5): el texto del cambio respecto a la medición anterior (3 bandas). null = sin sección.
   // La regla de si va o no la decide el reader (computePatientBandText); aquí solo se pinta si hay texto.
   bandText?: string | null;
+  // §6 (Gildardo Q33): la fecha de la próxima cita, solo para el "empeoró" confirmado. Va como frase
+  // APARTE, después del texto verbatim de Gildardo (no se edita su redacción). null = no se pinta.
+  bandAppointmentDate?: string | null;
 }) {
   const { indicators, efrPhenotype, structural, frSector, dfi, nutraceuticos, versions } =
     snapshot;
@@ -155,6 +159,12 @@ export function ReportDocument({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cambio respecto a tu medición anterior</Text>
             <Text>{bandText}</Text>
+            {/* §6: la fecha va como frase aparte, sin tocar el verbatim de Gildardo de arriba. */}
+            {bandAppointmentDate ? (
+              <Text style={{ marginTop: 4 }}>
+                Tu próxima cita está agendada para el {bandAppointmentDate}.
+              </Text>
+            ) : null}
           </View>
         ) : null}
 

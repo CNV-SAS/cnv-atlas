@@ -60,7 +60,12 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       evaluationDate: formatDate(dispatch.evaluationDate),
       reportId: dispatch.reportId,
     },
-    { mode: input.mode, professionalNotes: dispatch.professionalNotes, bandText: dispatch.patientBandText },
+    {
+      mode: input.mode,
+      professionalNotes: dispatch.professionalNotes,
+      bandText: dispatch.patientBandText,
+      bandAppointmentDate: dispatch.patientBandAppointmentDate,
+    },
   );
 
   // 2. Subida a Storage (service role). Si falla, no se envia.

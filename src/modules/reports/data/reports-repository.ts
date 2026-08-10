@@ -207,7 +207,25 @@ export type ReportDispatch = {
   // Regla: hay banda sellada Y (banda != empeoró, O empeoró confirmado). La confirmación garantizó la
   // cita, así que confirmado implica cita. Computado aquí (una sola fuente de la regla); el PDF lo pinta.
   patientBandText: string | null;
+  // §6 (Gildardo Q33): cuando el paciente ve un "empeoró", debe ver CUÁNDO lo vuelven a ver. La fecha de
+  // la próxima cita vive en el tratamiento (proxima_cita), se lee EN VIVO (no se sella: es la cita
+  // vigente) y ya formateada. null salvo que la sección del "empeoró" confirmado se vaya a mostrar.
+  patientBandAppointmentDate: string | null;
 };
+
+// Formatea una fecha ISO (YYYY-MM-DD) a "10 de agosto de 2026", de cara al paciente. Se parsea POR
+// PARTES (no new Date(iso), que a medianoche UTC corre un día). null si no es una fecha válida.
+const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+export function formatAppointmentDate(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const mes = MESES[Number(m[2]) - 1];
+  if (!mes) return null;
+  return `${Number(m[3])} de ${mes} de ${m[1]}`;
+}
 
 type PatientEmbed = {
   document_type: string;
@@ -235,6 +253,28 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   const patient = one<PatientEmbed>(data.patients as PatientEmbed | PatientEmbed[] | null);
   const profile = one(patient?.patient_profiles ?? null);
   const contact = one(patient?.patient_contacts ?? null);
+
+  const patientBandText = computePatientBandText(
+    data.trajectory as { band?: string } | null,
+    data.trajectory_communicated_at != null,
+    (data.snapshot as { dfi?: { complete?: boolean } }).dfi?.complete === true,
+  );
+  // §6 (Gildardo Q33): la fecha de la próxima cita se muestra SOLO cuando la sección del "empeoró"
+  // confirmado se va a pintar (patientBandText no null y banda 'empeoro'). Lectura chica adicional por
+  // evaluation -> diagnosis -> treatment, bajo RLS. Es la cita vigente (en vivo, no sellada).
+  const band = (data.trajectory as { band?: string } | null)?.band;
+  let patientBandAppointmentDate: string | null = null;
+  if (patientBandText && band === "empeoro") {
+    const { data: t } = await supabase
+      .from("treatments")
+      .select("proxima_cita, diagnoses!inner(evaluation_id)")
+      .eq("diagnoses.evaluation_id", data.evaluation_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    patientBandAppointmentDate = formatAppointmentDate((t?.proxima_cita as string | null) ?? "");
+  }
+
   return {
     reportId: data.id,
     evaluationId: data.evaluation_id,
@@ -248,10 +288,7 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     email: contact?.email ?? null,
     evaluationDate: data.created_at,
-    patientBandText: computePatientBandText(
-      data.trajectory as { band?: string } | null,
-      data.trajectory_communicated_at != null,
-      (data.snapshot as { dfi?: { complete?: boolean } }).dfi?.complete === true,
-    ),
+    patientBandText,
+    patientBandAppointmentDate,
   };
 }

@@ -44,7 +44,12 @@ export async function GET(
       evaluationDate: new Date(dispatch.evaluationDate).toLocaleDateString("es-CO"),
       reportId: dispatch.reportId,
     },
-    { mode: "ambos", professionalNotes: dispatch.professionalNotes, bandText: dispatch.patientBandText },
+    {
+      mode: "ambos",
+      professionalNotes: dispatch.professionalNotes,
+      bandText: dispatch.patientBandText,
+      bandAppointmentDate: dispatch.patientBandAppointmentDate,
+    },
   );
   return new NextResponse(new Uint8Array(pdf), {
     headers: {

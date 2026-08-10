@@ -8,6 +8,7 @@ export type RenderReportOptions = {
   mode?: SendMode; // que incluye el PDF (default 'atlas')
   professionalNotes?: string | null;
   bandText?: string | null; // P0 Parte 2 (P5): texto de la banda de cambio para el paciente, o null
+  bandAppointmentDate?: string | null; // §6: fecha de la próxima cita (solo para el "empeoró" confirmado)
 };
 
 // Renderiza el reporte a un Buffer PDF en el servidor (Node). Puro respecto a BD y
@@ -25,6 +26,7 @@ export function renderReportPdf(
       mode={options.mode}
       professionalNotes={options.professionalNotes}
       bandText={options.bandText}
+      bandAppointmentDate={options.bandAppointmentDate}
     />,
   );
 }
