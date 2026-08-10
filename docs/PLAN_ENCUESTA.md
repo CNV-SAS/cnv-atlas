@@ -43,9 +43,18 @@ Cruce del listado de Santiago (`entregas/gildardo-2026-08-09/Mejoras encuesta.md
 - Alineación de nombres D1/D5/D6 (si se va con los de Gildardo).
 **Son SU contenido/marco → su aprobación. Motor-seguro (ordinal/detección intactos). Acumular con Q36 para el mensaje corto.**
 
-### B6 — SEGURIDAD del intake público (corrección nuestra, ALTA, superficie delicada) — MEDIO
-- 1d: validación (email), sanitización de input, headers, CORS, revisión anti-inyección. El rate limit por IP/token YA existe; falta la pasada de validación/sanitización. Superficie pública sin sesión (SECURITY.md).
-**Buildable sin Gildardo. Carril lento (seguridad). Sin survey_version (es la superficie, no el instrumento).**
+### B6 — SEGURIDAD del intake público — REVISADO 2026-08-09: YA ESTÁ BIEN ENDURECIDO
+Revisión hecha (Santiago pidió "saber lo malo primero"). Los cuatro puntos, presentes:
+- **Validación:** server-side Zod completo (`validations.ts`: email `z.email()`, longitudes máx en todo, enum doc, birthDate regex; answers array máx 500, valor máx 5000, `z.guid()`). Cliente: `type="email"`. El email SÍ se valida en ambas capas.
+- **XSS:** cero `dangerouslySetInnerHTML` en `src` (regla 9); respuestas renderizadas como texto React (escapado). Sin XSS almacenado.
+- **Cabeceras:** CSP + HSTS + X-Frame DENY en `/:path*` (cubre `/encuesta/*`); `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`.
+- **Rate limit:** IP + token antes de todo. **SQL:** parametrizado (Drizzle/Supabase). **CSRF:** server actions de Next.
+
+**Nada críticamente expuesto.** Items menores/conocidos (NO bloquean, van a BACKLOG):
+- CSP `script-src 'unsafe-inline'`: baseline MVP conocido (endurecer a nonces estaba tagueado B15; el comentario quedó stale). Sin `dangerouslySetInnerHTML`, no hay vector de script inyectado; es endurecimiento, no un hueco.
+- Sanitización defense-in-depth del texto libre: hoy el render ya es seguro (React escapa) + longitudes acotadas; una normalización explícita del texto libre valdría cuando crezcan los "otro" (B4). Marginal.
+- El bound `answers` máx 500 es generoso (la encuesta tiene ~64); apretarlo es cosmético (Next ya limita el body).
+**Conclusión: B6 = verificado suficiente. No requiere construcción ahora.**
 
 ### B7 — CONSENTIMIENTO (corrección nuestra, DELICADO legal, C1 con hash anclado) — MEDIO-GRANDE
 - 1b/1b.2: "ver más" del texto largo; campos llenables (firma electrónica con validez legal CO/internacional); asentimiento de menor 14-17 (parte existe, DELTA2); renderizar el consentimiento con los datos REALES ya puestos (no las rayas vacías antes de llenar); quitar campos innecesarios (cédula, ya va en la pantalla 2).
