@@ -29,6 +29,10 @@ export type ConsentInstanceData = {
   // applies=true SOLO para 14-17 (el asentimiento). Un menor de 14 tiene representante pero NO
   // asentimiento: applies=false y el bloque entero se quita (no queda un asentimiento vacio).
   assent?: { applies: boolean; minorName: string } | null;
+  // Solo PANTALLA: en la rama menor, antes de que se escriban los datos del representante, en vez de
+  // omitir los campos vacios (dejando un encabezado "Datos del representante legal:" huerfano) se muestra
+  // esta linea (markdown, p. ej. cursiva). En la COPIA no se pasa: alli los datos siempre existen.
+  representativePending?: string;
   // Ids de las autorizaciones del numeral 12 efectivamente marcadas (incluye
   // aceptacion_medio_electronico). Las marcadas van [x] y las NO marcadas quedan [ ]: la distincion
   // "no marco" vs "no se sabe" importa (las no marcadas prueban que las opcionales se ofrecieron).
@@ -177,17 +181,33 @@ function transform(template: string, data: ConsentInstanceData): string {
     text = fillOrDropField(text, "Número de documento", data.patient.document);
   } else {
     const rep = data.representative ?? { name: "", document: "", relationship: "", email: "" };
-    const rel = RELATIONSHIP[clean(rep.relationship)];
-    // Numeral 11: datos del representante. El parentesco se muestra con su etiqueta y ademas se marca su
-    // casilla en la declaracion (que el dato salga abajo pero la casilla quede en blanco es incoherente).
-    text = fillOrDropField(text, "Nombre completo", rep.name);
-    text = fillOrDropField(text, "Tipo y número de documento", rep.document);
-    text = fillOrDropField(text, "Parentesco o calidad", rel?.label ?? clean(rep.relationship));
-    text = fillOrDropField(text, "Correo electrónico", rep.email);
-    if (rel) text = text.replace(`☐ ${rel.box}`, `☑ ${rel.box}`);
-    // Numeral 13: firma del representante.
-    text = fillOrDropField(text, "Nombre completo del representante", rep.name);
-    text = fillOrDropField(text, "Número de documento del representante", rep.document);
+    const repEmpty =
+      !clean(rep.name) && !clean(rep.document) && !clean(rep.relationship) && !clean(rep.email);
+    if (repEmpty && data.representativePending) {
+      // Pantalla, antes de escribir los datos: una sola linea pendiente (no per-campo, para no repetir
+      // el mensaje) en vez de un encabezado huerfano. Colapsa los 4 campos del numeral 11 y los 2 de la
+      // firma del numeral 13. Se resuelve reactivo en cuanto se escribe algo (repEmpty pasa a false).
+      text = text.replace(
+        /- Nombre completo: `_+`\n- Tipo y número de documento: `_+`\n- Parentesco o calidad: `_+`\n- Correo electrónico: `_+`\n/,
+        `${data.representativePending}\n`,
+      );
+      text = text.replace(
+        /- Nombre completo del representante: `_+`\n- Número de documento del representante: `_+`\n/,
+        `${data.representativePending}\n`,
+      );
+    } else {
+      const rel = RELATIONSHIP[clean(rep.relationship)];
+      // Numeral 11: datos del representante. El parentesco se muestra con su etiqueta y ademas se marca
+      // su casilla en la declaracion (que el dato salga abajo pero la casilla quede en blanco es incoherente).
+      text = fillOrDropField(text, "Nombre completo", rep.name);
+      text = fillOrDropField(text, "Tipo y número de documento", rep.document);
+      text = fillOrDropField(text, "Parentesco o calidad", rel?.label ?? clean(rep.relationship));
+      text = fillOrDropField(text, "Correo electrónico", rep.email);
+      if (rel) text = text.replace(`☐ ${rel.box}`, `☑ ${rel.box}`);
+      // Numeral 13: firma del representante.
+      text = fillOrDropField(text, "Nombre completo del representante", rep.name);
+      text = fillOrDropField(text, "Número de documento del representante", rep.document);
+    }
     // Asentimiento (14-17): rellena el nombre del menor en la cita y marca la casilla.
     if (data.assent?.applies) {
       const minor = clean(data.assent.minorName) || "el/la menor evaluado/a";

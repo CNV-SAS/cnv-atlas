@@ -175,6 +175,9 @@ export function SurveyIntakeForm({
       patient: { name: patientName, document: patientDocument },
       professional,
       representative: isMinor ? rep : null,
+      // Antes de que escriban los datos del representante, una linea pendiente (no un encabezado
+      // huerfano); se resuelve reactivo al escribir. Solo pantalla (en la copia los datos ya existen).
+      representativePending: "*(Se completarán con los datos del representante.)*",
       assent: isMinor ? { applies: assentRequired, minorName: patientName } : null,
       granted: [], // en pantalla sin marcar; la copia las marca
       acceptedAt: null, // pendiente (aun sin firmar)

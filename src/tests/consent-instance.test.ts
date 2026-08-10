@@ -164,6 +164,31 @@ describe("consent-instance: casilla de parentesco en la declaración (numeral 11
   });
 });
 
+describe("consent-instance: representante pendiente en pantalla (sin encabezado huérfano)", () => {
+  const pending = "*(Se completarán con los datos del representante.)*";
+  const out = buildConsentInstance(CONSENT_TEXT_V1_7, {
+    branch: "menor",
+    patient: { name: "(se completará con tus datos)", document: "(se completará con tus datos)" },
+    professional: PROF,
+    representative: { name: "", document: "", relationship: "", email: "" }, // aun sin escribir
+    assent: { applies: true, minorName: "(se completará con tus datos)" },
+    granted: [],
+    acceptedAt: null,
+    representativePending: pending,
+  });
+
+  it("muestra una línea pendiente, no rayas crudas ni bullets vacíos", () => {
+    expect(out).toContain(pending);
+    expect(out).not.toContain("- Nombre completo: `"); // ninguna raya de campo del representante
+    expect(out).not.toContain("- Correo electrónico: `");
+    expect(out).not.toContain("del representante: `");
+  });
+
+  it("el encabezado del bloque NO queda huérfano (la línea pendiente va justo después)", () => {
+    expect(out).toContain(`**Datos del representante legal**:\n\n${pending}`);
+  });
+});
+
 describe("consent-instance: robustez y pureza", () => {
   it("ante una plantilla sin las anclas, devuelve el texto intacto (no revienta, no deja en blanco)", () => {
     const garbage = "# Documento distinto\n\nSin anclas conocidas.\n";
