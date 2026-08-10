@@ -79,3 +79,34 @@ export async function sendReportEmail(input: ReportEmailInput): Promise<Result<{
     return err(appError("internal", e instanceof Error ? e.message : "Error enviando el correo."));
   }
 }
+
+// Codigo de verificacion (OTP) del consentimiento (B7). Mismo remitente verificado que el reporte,
+// pero ASUNTO DISTINTO y sin adjunto: llega antes que la copia del consentimiento y no debe confundirse
+// con ella. El correo NO revela para que sesion es (solo el codigo), y el codigo no se registra en la
+// traza (solo el hecho de haberse validado). Texto plano, corto.
+export async function sendConsentOtpEmail(to: string, code: string): Promise<Result<{ id: string }>> {
+  const resend = getClient();
+  if (!resend) return err(appError("internal", "El servicio de correo no esta configurado."));
+  const from = process.env.EMAIL_FROM;
+  if (!from) return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
+  const replyTo = process.env.EMAIL_REPLY_TO;
+  try {
+    const res = await withTimeout(
+      resend.emails.send({
+        from,
+        ...(replyTo ? { replyTo } : {}),
+        to,
+        subject: `Tu código de verificación de Atlas: ${code}`,
+        text:
+          `Tu código de verificación para firmar el consentimiento en Atlas es: ${code}\n\n` +
+          `Ingrésalo en la pantalla para continuar. El código vence en 10 minutos.\n` +
+          `Si no solicitaste este código, ignora este correo.`,
+      }),
+      SEND_TIMEOUT_MS,
+    );
+    if (res.error) return err(appError("internal", `No se pudo enviar el código: ${res.error.message}`));
+    return ok({ id: res.data?.id ?? "" });
+  } catch (e) {
+    return err(appError("internal", e instanceof Error ? e.message : "Error enviando el código."));
+  }
+}
