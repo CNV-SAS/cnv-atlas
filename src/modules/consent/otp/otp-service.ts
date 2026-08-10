@@ -34,6 +34,11 @@ function getRedis(): OtpStore | null {
 
 const keyFor = (sessionId: string) => `consent-otp:${sessionId}`;
 
+// Metadata de la traza que exige el dictamen (canal, destino ENMASCARADO, marca de envío). Se guarda
+// con el OTP y se devuelve al VALIDAR, para registrarla en el acto de firma (nunca el código; nunca el
+// destino completo). sentAt es epoch-ms del servidor (no del cliente: es prueba, no puede falsearse).
+export type OtpMeta = { channel: "email"; maskedDestination: string; sentAt: number };
+
 // Sal por sesión: el hash no es reversible por tabla precomputada y no se puede reusar entre sesiones.
 function hashCode(sessionId: string, code: string): string {
   return createHash("sha256").update(`${sessionId}:${code}`, "utf8").digest("hex");
@@ -43,39 +48,68 @@ export function generateOtpCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-// Guarda el HASH del código + un contador de intentos en 0, con TTL nativo. Devuelve false si Upstash no
+// Enmascara un correo para la traza: primera letra + *** + dominio (j***@gmail.com). Nunca el completo.
+export function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!domain) return "***";
+  const head = user.slice(0, 1);
+  return `${head}***@${domain}`;
+}
+
+// Guarda el HASH del código + intentos en 0 + la metadata, con TTL nativo. Devuelve false si Upstash no
 // está configurado (el llamador decide; sin almacén no hay OTP y no se debe dejar pasar la firma).
 export async function storeOtp(
   sessionId: string,
   code: string,
+  meta: OtpMeta,
   store: OtpStore | null = getRedis(),
 ): Promise<boolean> {
   if (!store) return false;
   const key = keyFor(sessionId);
-  await store.hset(key, { hash: hashCode(sessionId, code), attempts: 0 });
+  await store.hset(key, {
+    hash: hashCode(sessionId, code),
+    attempts: 0,
+    channel: meta.channel,
+    masked: meta.maskedDestination,
+    sentAt: meta.sentAt,
+  });
   await store.expire(key, TTL_SECONDS);
   return true;
 }
 
 export type OtpVerifyStatus = "ok" | "expired" | "invalid" | "too_many_attempts" | "unavailable";
+export type OtpVerifyResult = { status: OtpVerifyStatus; meta?: OtpMeta };
 
 // Verifica el código: 'expired' si no existe o venció (TTL); 'too_many_attempts' al superar el tope
 // (invalida la sesión); 'invalid' si no coincide; 'ok' si coincide (y CONSUME el código, un solo uso).
+// En 'ok' devuelve la metadata de la traza (canal, destino enmascarado, sentAt) para registrar la firma.
 export async function verifyOtp(
   sessionId: string,
   code: string,
   store: OtpStore | null = getRedis(),
-): Promise<OtpVerifyStatus> {
-  if (!store) return "unavailable";
+): Promise<OtpVerifyResult> {
+  if (!store) return { status: "unavailable" };
   const key = keyFor(sessionId);
-  const data = await store.hgetall<{ hash?: string }>(key);
-  if (!data || !data.hash) return "expired"; // no existe o venció por TTL
+  const data = await store.hgetall<{
+    hash?: string;
+    channel?: string;
+    masked?: string;
+    sentAt?: number;
+  }>(key);
+  if (!data || !data.hash) return { status: "expired" }; // no existe o venció por TTL
   const attempts = await store.hincrby(key, "attempts", 1);
   if (attempts > MAX_ATTEMPTS) {
     await store.del(key);
-    return "too_many_attempts";
+    return { status: "too_many_attempts" };
   }
-  if (data.hash !== hashCode(sessionId, code)) return "invalid";
+  if (data.hash !== hashCode(sessionId, code)) return { status: "invalid" };
   await store.del(key); // un solo uso
-  return "ok";
+  return {
+    status: "ok",
+    meta: {
+      channel: "email",
+      maskedDestination: String(data.masked ?? ""),
+      sentAt: Number(data.sentAt ?? 0),
+    },
+  };
 }
