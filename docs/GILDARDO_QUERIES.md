@@ -547,9 +547,9 @@
 Gildardo acaba de responder 17; lo que sigue es SEGUIMIENTO. Cuando haya 3-4, Santiago le manda un mensaje corto. Acumulado hasta ahora:
 
 - **Q36** (arriba): al reemplazar `pesoAjust`, ¿sobre qué peso se calcula cuando nadie fijó la meta (Lorentz / peso actual / ajustado)? BLOQUEA el re-port del frozen (Pieza 2 de la cadena calórica).
-- **Encuesta — cambios a SU instrumento (del bloque de encuesta, `PLAN_ENCUESTA.md` B5), todos motor-seguros pero son SU contenido/marco:**
-  1. **Quitar la separación por categorías de riesgo en D1** (✅ protectora / ⚖️ energética "moderar" / ⚠️ PCBU): los símbolos y "moderar" sesgan la respuesta del paciente. ¿Se pueden mostrar los alimentos seguidos, sin la agrupación de riesgo? (calcPatron lee el ordinal, no cambia el motor.)
-  2. **Quitar la advertencia visible "⚠ TCA" + color en Q21** (percepción corporal): marca la respuesta como "para evaluación clínica" a la vista del paciente, lo que sesga. El motor sigue detectando por d2_21; solo se quita el display. ¿De acuerdo?
+- **Encuesta — cambios a SU instrumento (del bloque de encuesta, `PLAN_ENCUESTA.md` B5), todos motor-seguros pero son SU contenido/marco. MARCO PARA GILDARDO: esto NO es estética, es VALIDEZ DEL INSTRUMENTO. Un paciente que ve la etiqueta "buena" responde distinto (sesgo de deseabilidad); contamina el dato DE ORIGEN, y ningún cálculo posterior lo corrige:**
+  1. **Quitar la separación por categorías de riesgo en D1** (✅ protectora / ⚖️ energética "moderar" / ⚠️ PCBU): los símbolos y "moderar" le DICEN al paciente cuál es la respuesta deseable, sesgando su frecuencia reportada. ¿Se pueden mostrar los alimentos seguidos, sin la agrupación de riesgo? (calcPatron lee el ordinal, no cambia el motor; es puro sesgo de captura.)
+  2. **Quitar la advertencia visible "⚠ TCA" + color en Q21** (percepción corporal): marcar en pantalla que esa respuesta "será evaluada clínicamente" empuja al paciente a NO reportar la conducta, justo la que más importa detectar. El motor sigue detectando por d2_21; solo se quita el display sesgante. ¿De acuerdo?
   3. **Mover la descripción de Q39** ("Usados para calcular el Factor de Estrés Metabólico") de la vista del PACIENTE a la del PROFESIONAL (al paciente no le sirve y confunde). ¿De acuerdo?
   4. **Opciones "otro" faltantes:** barrido para proponer en qué preguntas conviene agregar "otro/s" con texto libre (agregar opciones es tu contenido; nosotros proponemos, tú apruebas).
 

@@ -10,9 +10,9 @@ Cruce del listado de Santiago (`entregas/gildardo-2026-08-09/Mejoras encuesta.md
 ## Buckets (con tamaño, versión y riesgo de motor)
 
 ### B1 — Chrome de display (corrección nuestra, SIN versión, SIN motor) — CHICO
-- 1a "Atlas Patients" (logo + "Patients", toda la encuesta es de cara al paciente).
+- 1a **REPARO: "Atlas Patients" tiene una palabra en inglés en una interfaz que lee un paciente colombiano** (rompe la regla de español que aplicamos en todo lo demás). → **"Atlas Pacientes"** o solo el logo sin palabra. NO "Patients".
 - 1g salto directo por click en el stepper (el wizard por dominio YA existe; falta navegación directa).
-- 1h numerar cada pregunta (arregla también el salto 44→63).
+- 1h **REPARO: los números NO se escriben en el texto de la pregunta, se DERIVAN del orden** (order_index). Si el número es fijo y Gildardo agrega una en medio, todos los siguientes se corren (ya se ve en su archivo: la 44 salta a la 63). Derivándolo del orden, agregar una renumera sola. **Verificar antes: que nada referencie preguntas por número** (si algún acoplamiento lo hace, hay que conocerlo). Esto además arregla el salto 44→63.
 - 1i click sobre respuesta marcada la desmarca.
 - 1j conteo de ítems por sección.
 - D7 dejar "-" (Santiago lo prefiere; NO cambiar) + guía de color de orina (estético, opcional).
