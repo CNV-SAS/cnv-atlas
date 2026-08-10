@@ -2,7 +2,10 @@ import Image from "next/image";
 
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
-import { resolveSurveyLinkByToken } from "@/modules/evaluations/data/survey-links-reader";
+import {
+  getProfessionalForConsent,
+  resolveSurveyLinkByToken,
+} from "@/modules/evaluations/data/survey-links-reader";
 import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
 
 export const metadata = { title: "Encuesta - Atlas" };
@@ -62,6 +65,14 @@ export default async function EncuestaPage({
     );
   }
 
+  // Datos del profesional para el bloque del profesional del consentimiento (numeral 2). Si no se
+  // pudiera leer, se pasan vacios: la instancia omite los segmentos (nunca deja placeholders crudos).
+  const professional = (await getProfessionalForConsent(link.professionalId)) ?? {
+    fullName: "",
+    profession: "",
+    license: null,
+  };
+
   const survey = await getActiveSurvey();
   if (!survey) {
     return (
@@ -95,6 +106,7 @@ export default async function EncuestaPage({
         prefill={link.prefill}
         questions={survey.questions}
         consentText={CONSENT_TEXT_V1_7}
+        professional={professional}
       />
     </Shell>
   );

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 
 import { isLinkUsable } from "../services/survey-link-service";
 import type { SurveyLinkView } from "../types";
@@ -36,6 +37,33 @@ export async function resolveSurveyLinkByToken(
     type: data.type,
     patientId: data.patient_id,
     prefill: (data.prefill as SurveyLinkView["prefill"]) ?? null,
+  };
+}
+
+// Datos del profesional asignado que se muestran en el bloque del profesional del consentimiento
+// (numeral 2): nombre, profesion (etiqueta) y registro. Es divulgacion INTENCIONAL al paciente (el
+// consentimiento debe identificar al responsable clinico). Via service role (superficie publica, sin
+// sesion, como el resolver del link). registro puede venir null: el bloque omite esa linea.
+export type ConsentProfessional = { fullName: string; profession: string; license: string | null };
+
+export async function getProfessionalForConsent(
+  professionalId: string,
+): Promise<ConsentProfessional | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .select("license, profession, profiles!inner(full_name)")
+    .eq("id", professionalId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`survey-links-reader: getProfessionalForConsent: ${error.message}`);
+  }
+  if (!data) return null;
+  const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+  return {
+    fullName: (profile?.full_name as string) ?? "",
+    profession: PROFESSION_LABELS[data.profession as keyof typeof PROFESSION_LABELS] ?? data.profession,
+    license: (data.license as string | null) ?? null,
   };
 }
 

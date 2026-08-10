@@ -1,12 +1,16 @@
 "use client";
 
-import { startTransition, useActionState, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useDeferredValue, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ConsentDocumentCollapsible } from "@/modules/consent/components/consent-document-collapsible";
+import {
+  buildConsentInstance,
+  type ConsentInstanceData,
+} from "@/modules/consent/consent-instance";
 
 import { sendConsentOtpAction, submitSurveyAction } from "../actions";
 import type { OtpSendState, SurveyFormState } from "../validations";
@@ -63,6 +67,8 @@ export type SurveyIntakeFormProps = {
   prefill: { city?: string | null; phone?: string | null } | null;
   questions: SurveyQuestionView[];
   consentText: string;
+  // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
+  professional: { fullName: string; profession: string; license: string | null };
 };
 
 function Field({
@@ -86,6 +92,7 @@ export function SurveyIntakeForm({
   prefill,
   questions,
   consentText,
+  professional,
 }: SurveyIntakeFormProps) {
   const [state, action, pending] = useActionState(submitSurveyAction, initial);
   const topRef = useRef<HTMLDivElement>(null);
@@ -153,6 +160,31 @@ export function SurveyIntakeForm({
           )
         : false;
   const consentOk = necessaryOk && branchOk;
+
+  // INSTANCIA del consentimiento para MOSTRAR en pantalla (B7): la plantilla congelada con el bloque del
+  // profesional relleno, SOLO la rama que aplica, y (si el paciente vuelve a este paso tras
+  // identificarse) su nombre y documento; antes de escribirlos van como "pendiente". En pantalla las
+  // casillas del numeral 12 van SIN marcar (el paciente las marca en los controles interactivos de
+  // abajo; la COPIA es la que las refleja) y la fecha queda pendiente. La plantilla y el hash no se tocan.
+  const pendiente = "(se completará con tus datos)";
+  const patientName = minorName || pendiente;
+  const patientDocument = documentNumber.trim() || pendiente;
+  const consentInstance = useMemo(() => {
+    const data: ConsentInstanceData = {
+      branch: ageBranch === "menor" ? "menor" : "mayor", // "" (sin elegir aun) se previsualiza como mayor
+      patient: { name: patientName, document: patientDocument },
+      professional,
+      representative: isMinor ? rep : null,
+      assent: isMinor ? { applies: assentRequired, minorName: patientName } : null,
+      granted: [], // en pantalla sin marcar; la copia las marca
+      acceptedAt: null, // pendiente (aun sin firmar)
+    };
+    return buildConsentInstance(consentText, data);
+  }, [consentText, ageBranch, isMinor, patientName, patientDocument, professional, rep, assentRequired]);
+  // Diferido (b): escribir el nombre no reconstruye el markdown en cada tecla; el re-parseo, que es lo
+  // costoso, se difiere y el tecleo queda fluido. No se cambia el key del colapsable, asi el "ver mas"
+  // y la posicion de lectura no se pierden al reconstruir el texto.
+  const deferredConsentInstance = useDeferredValue(consentInstance);
 
   // Agrupa las preguntas por dominio (section), preservando el orden del reader.
   const sections = useMemo(() => {
@@ -571,7 +603,10 @@ export function SurveyIntakeForm({
           </button>
           {showFullText ? (
             <div className="mt-2 max-h-80 overflow-auto rounded-md border border-border bg-muted/30 p-4">
-              <ConsentDocumentCollapsible text={consentText} />
+              {/* La INSTANCIA (no la plantilla): profesional relleno, solo la rama que aplica, firma con
+                  sus datos cuando existan. Reconstruir el texto NO remonta el colapsable, asi el "ver
+                  mas" y la posicion de lectura se conservan. */}
+              <ConsentDocumentCollapsible text={deferredConsentInstance} />
             </div>
           ) : null}
         </div>

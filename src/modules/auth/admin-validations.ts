@@ -18,6 +18,15 @@ export const professionEnum = z.enum([
 ]);
 export type Profession = z.infer<typeof professionEnum>;
 
+// Etiqueta de cara al usuario de cada profesion (con tildes). Fuente unica: la usan la lista de
+// usuarios del admin y el bloque del profesional del consentimiento (numeral 2).
+export const PROFESSION_LABELS: Record<Profession, string> = {
+  medico: "Médico",
+  psicologo: "Psicólogo",
+  deportologo: "Deportólogo",
+  nutricionista: "Nutricionista",
+};
+
 export const createUserSchema = z
   .object({
     email: z.string().email(),

@@ -1,20 +1,13 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 import { CreateUserForm } from "@/modules/auth/components/create-user-form";
 import { UserRowActions } from "@/modules/auth/components/user-row-actions";
 import { canAccessAdmin } from "@/modules/auth/policies/can-access-admin";
 import { requireUser } from "@/modules/auth/session";
 
 export const metadata = { title: "Administración - Atlas" };
-
-// Etiqueta de cara al staff de cada profesion (con tildes).
-const PROFESSION_LABEL: Record<string, string> = {
-  medico: "Médico",
-  psicologo: "Psicólogo",
-  deportologo: "Deportólogo",
-  nutricionista: "Nutricionista",
-};
 
 // UI minima (B2). El shell con marca es B3. La autorizacion de ruta va por policy
 // (regla 3): sin permiso, a /no-autorizado.
@@ -45,7 +38,9 @@ export default async function AdminPage() {
       <ul className="flex flex-col gap-3 text-sm">
         {(users ?? []).map((u) => {
           const prof = byProfile.get(u.id) ?? null;
-          const professionLabel = prof ? PROFESSION_LABEL[prof.profession] ?? prof.profession : null;
+          const professionLabel = prof
+            ? (PROFESSION_LABELS[prof.profession as keyof typeof PROFESSION_LABELS] ?? prof.profession)
+            : null;
           return (
             <li key={u.id} className="flex flex-col gap-2 border-b pb-3">
               <span>
