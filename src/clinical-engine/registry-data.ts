@@ -30,12 +30,16 @@ export type EfrStateDef = {
 // Nombres de los 12 indicadores (documentales; los codigos y la ciencia son la fuente de
 // verdad). Orden = INDICATOR_CODES del contrato.
 const INDICATOR_NAMES: Record<string, { name: string; unit: string | null }> = {
-  IFC: { name: "Índice de Funcionalidad Celular", unit: null },
+  // Nombres FIJADOS por Gildardo (§10, RESPUESTA_GILDARDO_2026-08-09): uno solo por indicador, en todas
+  // las vistas. Se descartan las variantes viejas (Funcionalidad, Universal, Espectro, y el sufijo "(BIS)"
+  // de ISCM). IRC y ICA-BIS no cambian. Al cambiar aqui hay que RESEMBRAR indicator_definitions en los
+  // dos entornos (local y nube): el nombre se muestra desde la BD, no desde este archivo.
+  IFC: { name: "Índice de Función Celular", unit: null },
   IRC: { name: "Índice de Riesgo Celular", unit: null },
-  PABU: { name: "Proporción Áurea Bioeléctrica Universal", unit: null },
+  PABU: { name: "Proporción Áurea Bioeléctrica de Uribe", unit: null },
   "ICA-BIS": { name: "Índice de Coherencia Áurea (BIS)", unit: null },
-  ISCM: { name: "Índice de Susceptibilidad Cardiometabólica (BIS)", unit: null },
-  IEHH: { name: "Índice del Espectro de Hidratación Humana", unit: null },
+  ISCM: { name: "Índice de Susceptibilidad Cardiometabólica", unit: null },
+  IEHH: { name: "Índice del Estado de Hidratación Humana", unit: null },
   IAE: { name: "Índice de Aceleración del Envejecimiento", unit: "años" },
   EB: { name: "Edad Bioeléctrica (EB-BIS)", unit: "años" },
   FMI: { name: "Índice de Masa Grasa", unit: "kg/m2" },

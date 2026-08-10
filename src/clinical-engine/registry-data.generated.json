@@ -2,7 +2,7 @@
   "indicators": [
     {
       "code": "IFC",
-      "name": "Índice de Funcionalidad Celular",
+      "name": "Índice de Función Celular",
       "unit": null
     },
     {
@@ -12,7 +12,7 @@
     },
     {
       "code": "PABU",
-      "name": "Proporción Áurea Bioeléctrica Universal",
+      "name": "Proporción Áurea Bioeléctrica de Uribe",
       "unit": null
     },
     {
@@ -22,12 +22,12 @@
     },
     {
       "code": "ISCM",
-      "name": "Índice de Susceptibilidad Cardiometabólica (BIS)",
+      "name": "Índice de Susceptibilidad Cardiometabólica",
       "unit": null
     },
     {
       "code": "IEHH",
-      "name": "Índice del Espectro de Hidratación Humana",
+      "name": "Índice del Estado de Hidratación Humana",
       "unit": null
     },
     {

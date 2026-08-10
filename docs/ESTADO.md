@@ -2,7 +2,7 @@
 
 Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.**
 
-Última actualización: al cerrar §6 (la fecha de la cita en el reporte).
+Última actualización: al cerrar §10 (los nombres de los indicadores).
 
 ---
 
@@ -21,14 +21,13 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Qué falta (por bloque, del más chico al más grande)
 
-1. **Nombres de los indicadores (§10).** Corregir cuatro nombres a los que fijó Gildardo. **En curso.**
-2. **Renombre de la Diana (§15) + un detalle.** Cambiar un código de eje en el gráfico, y evitar que el profesional vea un código interno crudo en una pantalla. Chico.
-3. **Remisiones del reporte (§9).** Que las remisiones salgan resumidas por destinatario (una línea por profesión) en vez de repetidas ruta por ruta. Mediano.
-4. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
-5. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
-6. **Los seis datos sociodemográficos.** Cinco datos + el motivo de consulta (uno de ellos, la etnia, espera al abogado). Mediano.
-7. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Espera primero al abogado. Mediano.
-8. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
+1. **Renombre de la Diana (§15) + un detalle.** Cambiar un código de eje en el gráfico, y evitar que el profesional vea un código interno crudo en una pantalla. Chico.
+2. **Remisiones del reporte (§9).** Que las remisiones salgan resumidas por destinatario (una línea por profesión) en vez de repetidas ruta por ruta. Mediano.
+3. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
+4. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
+5. **Los seis datos sociodemográficos.** Cinco datos + el motivo de consulta (uno de ellos, la etnia, espera al abogado). Mediano.
+6. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Espera primero al abogado. Mediano.
+7. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
 
 ## Sobre la encuesta (lo que preguntaste)
 
@@ -49,4 +48,4 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Siguiente paso
 
-Terminar las cuatro cosas que Gildardo ya respondió: §6 (hecho), §10 (en curso), luego §15 y §9. Después, los desplegables de la encuesta.
+Terminar las cuatro cosas que Gildardo ya respondió: §6 y §10 (hechos), luego §15 y §9. Después, los desplegables de la encuesta.
