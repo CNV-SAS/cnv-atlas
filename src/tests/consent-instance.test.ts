@@ -15,10 +15,14 @@ import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
 const PROF = { fullName: "Ana Gómez Ruiz", profession: "Nutricionista", license: "NUT-12345" };
 const ACCEPTED_AT = 1_754_000_000_000;
 
+// Las 3 necesarias + la casilla del medio electronico (siempre marcadas para poder firmar).
+const NECESSARY = ["servicio", "datos_sensibles", "internacional_ia", "aceptacion_medio_electronico"];
+
 const mayor: ConsentInstanceData = {
   branch: "mayor",
   patient: { name: "Juan Pérez López", document: "CC 1234567890" },
   professional: PROF,
+  granted: [...NECESSARY, "investigacion"], // una opcional marcada, las otras dos no
   acceptedAt: null,
 };
 
@@ -33,13 +37,21 @@ const menor1417: ConsentInstanceData = {
     email: "maria@example.com",
   },
   assent: { applies: true, minorName: "Sofía Ramírez" },
+  granted: [...NECESSARY, "comunicaciones_continuidad"],
   acceptedAt: null,
 };
 
 const menor12: ConsentInstanceData = {
   ...menor1417,
   patient: { name: "Diego Ramírez", document: "TI 5544332211" },
+  representative: {
+    name: "Carlos Ramírez",
+    document: "CC 1010101010",
+    relationship: "tutor", // ejercita el mapeo a "tutor legal"
+    email: "carlos@example.com",
+  },
   assent: { applies: false, minorName: "Diego Ramírez" },
+  granted: [...NECESSARY], // solo necesarias
 };
 
 // Lee un fixture normalizando saltos de linea (git puede checkout con CRLF; la funcion produce LF).
@@ -115,6 +127,40 @@ describe("consent-instance: reglas de relleno", () => {
     expect(out).toMatch(/\*\*Fecha:\*\* `.*20\d\d.*`/); // contiene un año
     expect(out).not.toContain("(se generará al confirmar)");
     expect(out).not.toContain("(generada automáticamente por ATLAS)");
+  });
+});
+
+describe("consent-instance: casillas del numeral 12 (lo que autorizó)", () => {
+  it("marca las otorgadas y deja SIN marcar las no otorgadas (no marcó != no se sabe)", () => {
+    const out = buildConsentInstance(CONSENT_TEXT_V1_7, mayor); // necesarias + investigacion
+    expect(out).toContain("- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias");
+    expect(out).toContain("- [x] Acepto que este consentimiento se otorga por medios electrónicos");
+    expect(out).toContain("- [x] Autorizo el uso de mis datos seudonimizados para investigación");
+    // las dos opcionales NO otorgadas quedan en blanco (prueban que se ofrecieron y se declinaron)
+    expect(out).toContain("- [ ] Autorizo recibir comunicaciones de continuidad");
+    expect(out).toContain("- [ ] Autorizo recibir comunicaciones comerciales");
+  });
+
+  it("sin opcionales, las tres opcionales quedan en blanco y las necesarias marcadas", () => {
+    const out = buildConsentInstance(CONSENT_TEXT_V1_7, menor12); // solo necesarias
+    expect(out).toContain("- [x] Autorizo el tratamiento de mis datos sensibles de salud");
+    expect(out).toContain("- [ ] Autorizo el uso de mis datos seudonimizados para investigación");
+    expect(out).toContain("- [ ] Autorizo recibir comunicaciones de continuidad");
+  });
+});
+
+describe("consent-instance: casilla de parentesco en la declaración (numeral 11)", () => {
+  it("marca la casilla elegida y muestra su etiqueta en el campo (madre)", () => {
+    const out = buildConsentInstance(CONSENT_TEXT_V1_7, menor1417);
+    expect(out).toContain("☑ madre");
+    expect(out).toContain("☐ padre"); // las otras quedan sin marcar
+    expect(out).toContain("- Parentesco o calidad: `Madre`");
+  });
+
+  it("mapea el valor a la casilla correcta (tutor -> tutor legal)", () => {
+    const out = buildConsentInstance(CONSENT_TEXT_V1_7, menor12);
+    expect(out).toContain("☑ tutor legal");
+    expect(out).toContain("- Parentesco o calidad: `Tutor legal`");
   });
 });
 

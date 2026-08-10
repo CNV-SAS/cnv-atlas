@@ -101,15 +101,15 @@ ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada,
 ### Autorizaciones necesarias para el servicio
 *Debe marcar las cuatro para continuar.*
 
-- [ ] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4.
-- [ ] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
-- [ ] He sido informado/a del tratamiento internacional (numeral 7) y del uso de sistemas automatizados (numeral 6), y conozco mis derechos (numeral 9).
-- [ ] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
+- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4.
+- [x] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
+- [x] He sido informado/a del tratamiento internacional (numeral 7) y del uso de sistemas automatizados (numeral 6), y conozco mis derechos (numeral 9).
+- [x] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
 
 ### Autorizaciones opcionales
 *No afectan su atención. Marque solo las que desee.*
 
-- [ ] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam (numeral 5).
+- [x] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam (numeral 5).
 - [ ] Autorizo recibir comunicaciones de continuidad de mi atención dentro de la red CNV (numeral 5).
 - [ ] Autorizo recibir comunicaciones comerciales sobre novedades y otros servicios del ecosistema CNV (numeral 5).
 

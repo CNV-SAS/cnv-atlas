@@ -29,7 +29,31 @@ export type ConsentInstanceData = {
   // applies=true SOLO para 14-17 (el asentimiento). Un menor de 14 tiene representante pero NO
   // asentimiento: applies=false y el bloque entero se quita (no queda un asentimiento vacio).
   assent?: { applies: boolean; minorName: string } | null;
+  // Ids de las autorizaciones del numeral 12 efectivamente marcadas (incluye
+  // aceptacion_medio_electronico). Las marcadas van [x] y las NO marcadas quedan [ ]: la distincion
+  // "no marco" vs "no se sabe" importa (las no marcadas prueban que las opcionales se ofrecieron).
+  granted: readonly string[];
   acceptedAt: number | null; // epoch-ms; null => fecha pendiente (pantalla, aun sin firmar)
+};
+
+// Casillas del numeral 12: id de autorizacion -> ancla unica de su linea.
+const AUTH_CHECKBOXES: { id: string; anchor: string }[] = [
+  { id: "servicio", anchor: "Autorizo el tratamiento de mis datos personales para las finalidades necesarias" },
+  { id: "datos_sensibles", anchor: "Autorizo el tratamiento de mis datos sensibles de salud" },
+  { id: "internacional_ia", anchor: "He sido informado/a del tratamiento internacional" },
+  { id: "aceptacion_medio_electronico", anchor: "Acepto que este consentimiento se otorga por medios electrónicos" },
+  { id: "investigacion", anchor: "Autorizo el uso de mis datos seudonimizados para investigación" },
+  { id: "comunicaciones_continuidad", anchor: "Autorizo recibir comunicaciones de continuidad" },
+  { id: "comunicaciones_comerciales", anchor: "Autorizo recibir comunicaciones comerciales" },
+];
+
+// Parentesco: valor del formulario -> etiqueta del campo + casilla a marcar en la declaracion del
+// representante (numeral 11). Refleja la lista de RELATIONSHIPS del formulario de intake.
+const RELATIONSHIP: Record<string, { label: string; box: string }> = {
+  padre: { label: "Padre", box: "padre" },
+  madre: { label: "Madre", box: "madre" },
+  tutor: { label: "Tutor legal", box: "tutor legal" },
+  curador: { label: "Curador", box: "curador" },
 };
 
 const clean = (v: string | null | undefined): string => (v ?? "").trim();
@@ -139,17 +163,28 @@ function transform(template: string, data: ConsentInstanceData): string {
     .replace(" *(solo si el paciente es menor de edad; se completa antes de continuar)*", "")
     .replace(" *(obligatorio cuando el paciente tiene entre 14 y 17 años)*", "");
 
+  // 4b. Numeral 12: marca [x] las autorizaciones otorgadas; las no otorgadas quedan [ ] (la copia dice
+  // "el texto integro que aceptaste"; con todo en blanco no probaria lo que autorizo, y las no marcadas
+  // prueban que las opcionales se ofrecieron y se declinaron).
+  const grantedSet = new Set(data.granted);
+  for (const c of AUTH_CHECKBOXES) {
+    if (grantedSet.has(c.id)) text = text.replace(`- [ ] ${c.anchor}`, `- [x] ${c.anchor}`);
+  }
+
   // 5. Rellena las rayas de firma con los datos reales (o las omite si el dato falta).
   if (data.branch === "mayor") {
     text = fillOrDropField(text, "Nombre completo", data.patient.name);
     text = fillOrDropField(text, "Número de documento", data.patient.document);
   } else {
     const rep = data.representative ?? { name: "", document: "", relationship: "", email: "" };
-    // Numeral 11: datos del representante.
+    const rel = RELATIONSHIP[clean(rep.relationship)];
+    // Numeral 11: datos del representante. El parentesco se muestra con su etiqueta y ademas se marca su
+    // casilla en la declaracion (que el dato salga abajo pero la casilla quede en blanco es incoherente).
     text = fillOrDropField(text, "Nombre completo", rep.name);
     text = fillOrDropField(text, "Tipo y número de documento", rep.document);
-    text = fillOrDropField(text, "Parentesco o calidad", rep.relationship);
+    text = fillOrDropField(text, "Parentesco o calidad", rel?.label ?? clean(rep.relationship));
     text = fillOrDropField(text, "Correo electrónico", rep.email);
+    if (rel) text = text.replace(`☐ ${rel.box}`, `☑ ${rel.box}`);
     // Numeral 13: firma del representante.
     text = fillOrDropField(text, "Nombre completo del representante", rep.name);
     text = fillOrDropField(text, "Número de documento del representante", rep.document);

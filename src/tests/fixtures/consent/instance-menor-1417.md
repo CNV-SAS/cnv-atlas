@@ -92,13 +92,13 @@ Puede revocar esta autorización en cualquier momento ante el profesional de sal
 
 **Si el paciente es menor de 18 años**, este consentimiento debe ser otorgado por su representante legal, quien declara:
 
-> "Declaro que actúo como representante legal de la persona menor de edad evaluada, en calidad de (marque una): ☐ padre  ☐ madre  ☐ tutor legal  ☐ curador. Manifiesto que cuento con la facultad legal para autorizar este tratamiento de datos en su nombre, en el mejor interés del menor."
+> "Declaro que actúo como representante legal de la persona menor de edad evaluada, en calidad de (marque una): ☐ padre  ☑ madre  ☐ tutor legal  ☐ curador. Manifiesto que cuento con la facultad legal para autorizar este tratamiento de datos en su nombre, en el mejor interés del menor."
 
 **Datos del representante legal**:
 
 - Nombre completo: `María Ramírez`
 - Tipo y número de documento: `CC 9988776655`
-- Parentesco o calidad: `madre`
+- Parentesco o calidad: `Madre`
 - Correo electrónico: `maria@example.com`
 
 > **Nota.** Cuando el paciente es menor de edad, el código de verificación con el que se firma este consentimiento (numeral 13) se envía al medio de contacto del representante legal, no al del menor. La copia del consentimiento se envía al representante y, si el menor registra un correo propio, también al menor.
@@ -118,16 +118,16 @@ ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada,
 ### Autorizaciones necesarias para el servicio
 *Debe marcar las cuatro para continuar.*
 
-- [ ] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4.
-- [ ] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
-- [ ] He sido informado/a del tratamiento internacional (numeral 7) y del uso de sistemas automatizados (numeral 6), y conozco mis derechos (numeral 9).
-- [ ] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
+- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4.
+- [x] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
+- [x] He sido informado/a del tratamiento internacional (numeral 7) y del uso de sistemas automatizados (numeral 6), y conozco mis derechos (numeral 9).
+- [x] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
 
 ### Autorizaciones opcionales
 *No afectan su atención. Marque solo las que desee.*
 
 - [ ] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam (numeral 5).
-- [ ] Autorizo recibir comunicaciones de continuidad de mi atención dentro de la red CNV (numeral 5).
+- [x] Autorizo recibir comunicaciones de continuidad de mi atención dentro de la red CNV (numeral 5).
 - [ ] Autorizo recibir comunicaciones comerciales sobre novedades y otros servicios del ecosistema CNV (numeral 5).
 
 ---
