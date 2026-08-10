@@ -158,6 +158,17 @@ export async function writeIntakeEvaluation(
           legalRepresentativeEmail: c.legalRepresentative?.email ?? null,
         })),
       );
+
+      // Rama menor (B7): el consentimiento del REPRESENTANTE y el ASENTIMIENTO del menor son actos
+      // distintos, por personas distintas, y se auditan por SEPARADO. La firma electronica (OTP) fue
+      // al correo del representante, asi que la metadata de firma pertenece al acto de autorizacion,
+      // NO al asentimiento (el menor no verifico ningun codigo).
+      const isMinor = grantedTypes.includes("representante_legal");
+      const assentGranted = grantedTypes.includes("asentimiento_menor");
+      const consentVersion = input.consents[0].consentVersion;
+
+      // Evento 1: la AUTORIZACION (titular adulto, o representante en la rama menor). Lleva la firma.
+      // El asentimiento se excluye de aqui: tiene su propio evento.
       await recordAudit(tx, {
         event: "consent.signed",
         actorId: null,
@@ -165,8 +176,10 @@ export async function writeIntakeEvaluation(
         entityType: "patient",
         entityId: patientId,
         payload: {
-          types: grantedTypes,
-          version: input.consents[0].consentVersion,
+          types: grantedTypes.filter((t) => t !== "asentimiento_menor"),
+          version: consentVersion,
+          signer: isMinor ? "representante_legal" : "titular",
+          age_branch: isMinor ? "menor" : "mayor",
           // Firma electronica: canal, destino ENMASCARADO y marcas de envio/validacion (hora servidor).
           // Nunca el codigo ni el correo completo. Es la evidencia del acto de firma exigida por el dictamen.
           signature: input.signature
@@ -180,6 +193,20 @@ export async function writeIntakeEvaluation(
         },
         ip: input.ipAddress,
       });
+
+      // Evento 2 (solo menor 14-17): el ASENTIMIENTO del menor, fila y timestamp propios, SIN firma
+      // electronica (el codigo fue al representante). Es un acto propio del menor, evidenciado aparte.
+      if (assentGranted) {
+        await recordAudit(tx, {
+          event: "consent.minor_assent",
+          actorId: null,
+          actorEmail: null,
+          entityType: "patient",
+          entityId: patientId,
+          payload: { version: consentVersion },
+          ip: input.ipAddress,
+        });
+      }
     }
 
     // 3. GATE (regla dura 15) ANTES de crear la evaluacion. Se lee el estado real de
