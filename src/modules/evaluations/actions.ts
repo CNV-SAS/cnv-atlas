@@ -269,8 +269,12 @@ export async function sendConsentOtpAction(
     sentAt: Date.now(),
   });
   if (!stored) {
-    // Sin almacen (Upstash) no hay OTP: no se debe dejar pasar la firma en silencio.
-    return fail("El servicio de verificación no esta disponible. Intenta más tarde.");
+    // Sin almacen (Upstash ausente o caido) no hay OTP: no se debe dejar pasar la firma en silencio.
+    // Mensaje que aclara que NO es culpa del paciente y que avise al profesional (el servicio de
+    // verificacion es una dependencia externa; si cae, bloquea el registro entero).
+    return fail(
+      "La verificación no está disponible en este momento. No es un problema de tus datos: intenta de nuevo en unos minutos y, si continúa, avisa a tu profesional.",
+    );
   }
 
   const sent = await sendConsentOtpEmail(parsed.data.email, code);

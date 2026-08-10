@@ -48,7 +48,7 @@ function otpMessage(status: Exclude<OtpVerifyStatus, "ok">): string {
     case "too_many_attempts":
       return "Demasiados intentos con ese código. Pide uno nuevo para continuar.";
     case "unavailable":
-      return "La verificación por correo no está disponible en este momento. Intenta más tarde.";
+      return "La verificación no está disponible en este momento. No es un problema de tus datos: intenta de nuevo en unos minutos y, si continúa, avisa a tu profesional.";
   }
 }
 

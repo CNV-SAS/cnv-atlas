@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomInt } from "node:crypto";
 
 import { Redis } from "@upstash/redis";
+import * as Sentry from "@sentry/nextjs";
 
 // Código de verificación (OTP) del consentimiento (B7, dictamen de firma electrónica). Resuelve la
 // condición 1 del art. 4 del Decreto 2364: el código es un dato que, en el contexto de uso, corresponde
@@ -66,15 +67,23 @@ export async function storeOtp(
 ): Promise<boolean> {
   if (!store) return false;
   const key = keyFor(sessionId);
-  await store.hset(key, {
-    hash: hashCode(sessionId, code),
-    attempts: 0,
-    channel: meta.channel,
-    masked: meta.maskedDestination,
-    sentAt: meta.sentAt,
-  });
-  await store.expire(key, TTL_SECONDS);
-  return true;
+  try {
+    await store.hset(key, {
+      hash: hashCode(sessionId, code),
+      attempts: 0,
+      channel: meta.channel,
+      masked: meta.maskedDestination,
+      sentAt: meta.sentAt,
+    });
+    await store.expire(key, TTL_SECONDS);
+    return true;
+  } catch (e) {
+    // Upstash configurado pero caido: NO es distinto de no tenerlo para efectos de la firma (no hay
+    // codigo). Falla cerrado (devuelve false, el llamador muestra "no disponible") y AVISA a Sentry:
+    // esta dependencia bloquea la operacion entera, alguien tiene que enterarse.
+    Sentry.captureException(e, { tags: { area: "consent-otp", op: "store" } });
+    return false;
+  }
 }
 
 export type OtpVerifyStatus = "ok" | "expired" | "invalid" | "too_many_attempts" | "unavailable";
@@ -90,26 +99,33 @@ export async function verifyOtp(
 ): Promise<OtpVerifyResult> {
   if (!store) return { status: "unavailable" };
   const key = keyFor(sessionId);
-  const data = await store.hgetall<{
-    hash?: string;
-    channel?: string;
-    masked?: string;
-    sentAt?: number;
-  }>(key);
-  if (!data || !data.hash) return { status: "expired" }; // no existe o venció por TTL
-  const attempts = await store.hincrby(key, "attempts", 1);
-  if (attempts > MAX_ATTEMPTS) {
-    await store.del(key);
-    return { status: "too_many_attempts" };
+  try {
+    const data = await store.hgetall<{
+      hash?: string;
+      channel?: string;
+      masked?: string;
+      sentAt?: number;
+    }>(key);
+    if (!data || !data.hash) return { status: "expired" }; // no existe o venció por TTL
+    const attempts = await store.hincrby(key, "attempts", 1);
+    if (attempts > MAX_ATTEMPTS) {
+      await store.del(key);
+      return { status: "too_many_attempts" };
+    }
+    if (data.hash !== hashCode(sessionId, code)) return { status: "invalid" };
+    await store.del(key); // un solo uso
+    return {
+      status: "ok",
+      meta: {
+        channel: "email",
+        maskedDestination: String(data.masked ?? ""),
+        sentAt: Number(data.sentAt ?? 0),
+      },
+    };
+  } catch (e) {
+    // Upstash caido en plena validacion: falla cerrado ('unavailable', no se deja pasar la firma) y
+    // avisa a Sentry. Nunca se trata un fallo de infraestructura como codigo invalido o vencido.
+    Sentry.captureException(e, { tags: { area: "consent-otp", op: "verify" } });
+    return { status: "unavailable" };
   }
-  if (data.hash !== hashCode(sessionId, code)) return { status: "invalid" };
-  await store.del(key); // un solo uso
-  return {
-    status: "ok",
-    meta: {
-      channel: "email",
-      maskedDestination: String(data.masked ?? ""),
-      sentAt: Number(data.sentAt ?? 0),
-    },
-  };
 }

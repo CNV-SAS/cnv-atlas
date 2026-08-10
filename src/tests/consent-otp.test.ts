@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// El servicio avisa a Sentry cuando Upstash cae; se mockea para no cargar el SDK real en test.
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 
 const {
   generateOtpCode,
@@ -90,5 +92,24 @@ describe("consent OTP service", () => {
   it("sin almacén configurado -> unavailable (no se deja pasar la firma)", async () => {
     expect((await verifyOtp("s1", "123456", null)).status).toBe("unavailable");
     expect(await storeOtp("s1", "123456", META, null)).toBe(false);
+  });
+
+  it("Upstash CONFIGURADO pero CAIDO (lanza) -> falla cerrado, no error tecnico", async () => {
+    // Store que existe pero cuyas operaciones lanzan (fallo de red de Upstash): distinto de null.
+    const boom: OtpStore = {
+      hset: async () => {
+        throw new Error("ECONNRESET");
+      },
+      hgetall: async () => {
+        throw new Error("ECONNRESET");
+      },
+      hincrby: async () => 0,
+      expire: async () => 1,
+      del: async () => 1,
+    };
+    // storeOtp no lanza: devuelve false (el llamador muestra "no disponible", no un stack tecnico).
+    expect(await storeOtp("s1", "123456", META, boom)).toBe(false);
+    // verifyOtp no lanza: devuelve unavailable (falla cerrado, nunca "invalid" ni "expired").
+    expect((await verifyOtp("s1", "123456", boom)).status).toBe("unavailable");
   });
 });
