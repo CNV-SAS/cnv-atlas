@@ -27,6 +27,9 @@ export const createUserSchema = z
     // ignora para roles internos (un integrante nuevo NO puede nacer con profesión null: bloquearía
     // todas sus escrituras de tratamiento, gate del Hito 2).
     profession: professionEnum.optional(),
+    // Registro profesional (licencia). Opcional al crear: muchas licencias llegan despues, el admin las
+    // agrega con setProfessionalLicense. Vacio => sin registro (en el consentimiento esa linea se omite).
+    license: z.string().trim().max(100).optional(),
   })
   .superRefine((val, ctx) => {
     if (val.role === "professional" && !val.profession) {
@@ -38,6 +41,14 @@ export const createUserSchema = z
     }
   });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+// Registrar/editar el registro profesional de un profesional existente (las licencias llegan tarde; el
+// admin las agrega despues). Vacio es valido: significa "sin registro" y guarda null (no una raya).
+export const setProfessionalLicenseSchema = z.object({
+  userId: z.string().uuid(),
+  license: z.string().trim().max(100),
+});
+export type SetProfessionalLicenseInput = z.infer<typeof setProfessionalLicenseSchema>;
 
 export const forcePasswordResetSchema = z.object({
   email: z.string().email(),

@@ -16,6 +16,7 @@ import {
   deactivateUserSchema,
   forcePasswordResetSchema,
   resetUserMfaSchema,
+  setProfessionalLicenseSchema,
   type AdminFormState,
   type CreateUserInput,
   type Profession,
@@ -53,7 +54,9 @@ export async function createUser(
 
   const parsed = createUserSchema.safeParse(input);
   if (!parsed.success) return err(appError("validation", "Datos inválidos."));
-  const { email, fullName, role, profession } = parsed.data;
+  const { email, fullName, role, profession, license } = parsed.data;
+  // Vacio o ausente => sin registro (null). No se guarda una cadena vacia (seria una "raya" en blanco).
+  const licenseValue = license && license.length > 0 ? license : null;
 
   const admin = createSupabaseAdminClient();
   // El trigger handle_new_user materializa el profile desde el user_metadata.
@@ -83,7 +86,10 @@ export async function createUser(
         // profession!: la validacion (superRefine) garantiza que viene para el rol professional, asi
         // que un integrante nuevo nunca nace con profession null (bloquearia sus escrituras de
         // tratamiento). La columna es NOT NULL (migracion 0036); la asercion la respalda el refine.
-        await tx.insert(professionalProfiles).values({ profileId: newUserId, profession: profession! });
+        // license: opcional al crear (puede llegar despues via setProfessionalLicense).
+        await tx
+          .insert(professionalProfiles)
+          .values({ profileId: newUserId, profession: profession!, license: licenseValue });
       }
 
       await recordAudit(tx, {
@@ -92,7 +98,11 @@ export async function createUser(
         actorEmail: user.email,
         entityType: "profile",
         entityId: newUserId,
-        payload: { email, role, ...(role === "professional" ? { profession } : {}) },
+        payload: {
+          email,
+          role,
+          ...(role === "professional" ? { profession, license: licenseValue } : {}),
+        },
         ip,
         userAgent,
       });
@@ -243,6 +253,54 @@ export async function deactivateUser(input: {
   return ok(null);
 }
 
+// Registra o edita el registro profesional (licencia) de un profesional. Existe aparte de la invitacion
+// porque las licencias suelen llegar despues. Vacio => null (sin registro; el consentimiento omite esa
+// linea). Escritura de dominio + audit en UNA transaccion. Solo profesionales (professional_profiles).
+export async function setProfessionalLicense(input: {
+  userId: string;
+  license: string;
+}): Promise<Result<null, AppError>> {
+  const { user, error: authzError } = await requireAdmin();
+  if (authzError) return err(authzError);
+
+  const parsed = setProfessionalLicenseSchema.safeParse(input);
+  if (!parsed.success) return err(appError("validation", "Datos inválidos."));
+  const { userId, license } = parsed.data;
+  const licenseValue = license.length > 0 ? license : null; // vacio => sin registro (no una raya)
+
+  const { ip, userAgent } = await auditContext();
+  try {
+    await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(professionalProfiles)
+        .set({ license: licenseValue })
+        .where(eq(professionalProfiles.profileId, userId))
+        .returning({ id: professionalProfiles.id });
+      // Sin fila => el usuario no es profesional (o no existe): no se crea perfil profesional aqui.
+      if (updated.length === 0) throw new NotFoundError();
+
+      await recordAudit(tx, {
+        event: "admin.professional_license_set",
+        actorId: user.id,
+        actorEmail: user.email,
+        entityType: "professional_profile",
+        entityId: userId,
+        payload: { license: licenseValue },
+        ip,
+        userAgent,
+      });
+    });
+  } catch (e) {
+    if (e instanceof NotFoundError) {
+      return err(appError("not_found", "Ese usuario no es un profesional."));
+    }
+    reportServerError("setProfessionalLicense", e);
+    return err(appError("internal", "No se pudo registrar el registro profesional."));
+  }
+
+  return ok(null);
+}
+
 // Adaptador de formulario para la UI de admin (useActionState).
 export async function createUserFormAction(
   _prev: AdminFormState,
@@ -250,6 +308,7 @@ export async function createUserFormAction(
 ): Promise<AdminFormState> {
   const role = String(formData.get("role") ?? "") as AppRole;
   const professionRaw = formData.get("profession");
+  const licenseRaw = formData.get("license");
   const result = await createUser({
     email: String(formData.get("email") ?? ""),
     fullName: String(formData.get("fullName") ?? ""),
@@ -257,6 +316,8 @@ export async function createUserFormAction(
     // Solo para el rol professional; el schema la exige/ignora segun el rol. Si el select no se
     // renderizo (rol interno), no viene en el FormData y queda undefined (no cuelga un valor viejo).
     profession: professionRaw ? (String(professionRaw) as Profession) : undefined,
+    // Registro profesional opcional (mismo bloque que la profesion, solo para professional).
+    license: licenseRaw ? String(licenseRaw) : undefined,
   });
   if (!result.ok) return { error: result.error.message, success: null };
   return { error: null, success: "Usuario creado. Se envio la invitación por correo." };
@@ -288,4 +349,17 @@ export async function resetUserMfaFormAction(
     error: null,
     success: "Segundo factor reiniciado. En su próximo ingreso configurará uno nuevo.",
   };
+}
+
+// Adaptador de formulario: registrar/editar el registro profesional de un profesional (UI de admin).
+export async function setProfessionalLicenseFormAction(
+  _prev: AdminFormState,
+  formData: FormData,
+): Promise<AdminFormState> {
+  const result = await setProfessionalLicense({
+    userId: String(formData.get("userId") ?? ""),
+    license: String(formData.get("license") ?? ""),
+  });
+  if (!result.ok) return { error: result.error.message, success: null };
+  return { error: null, success: "Registro profesional guardado." };
 }

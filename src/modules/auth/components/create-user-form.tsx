@@ -37,18 +37,30 @@ export function CreateUserForm() {
         <option value="professional">professional</option>
       </select>
       {role === "professional" ? (
-        <label className="flex flex-col gap-1">
-          <span className="text-sm">Profesión (obligatoria para un profesional)</span>
-          <select name="profession" defaultValue="" required className="border p-2">
-            <option value="" disabled>
-              Elige una profesion
-            </option>
-            <option value="medico">Médico</option>
-            <option value="psicologo">Psicologo</option>
-            <option value="deportologo">Deportologo</option>
-            <option value="nutricionista">Nutricionista</option>
-          </select>
-        </label>
+        <>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm">Profesión (obligatoria para un profesional)</span>
+            <select name="profession" defaultValue="" required className="border p-2">
+              <option value="" disabled>
+                Elige una profesion
+              </option>
+              <option value="medico">Médico</option>
+              <option value="psicologo">Psicologo</option>
+              <option value="deportologo">Deportologo</option>
+              <option value="nutricionista">Nutricionista</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm">Registro profesional (opcional, se puede agregar después)</span>
+            <input
+              name="license"
+              type="text"
+              maxLength={100}
+              placeholder="Número de registro profesional"
+              className="border p-2"
+            />
+          </label>
+        </>
       ) : null}
       {state.error ? (
         <p role="alert" className="text-red-600">

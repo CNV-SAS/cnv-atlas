@@ -8,6 +8,14 @@ import { requireUser } from "@/modules/auth/session";
 
 export const metadata = { title: "Administración - Atlas" };
 
+// Etiqueta de cara al staff de cada profesion (con tildes).
+const PROFESSION_LABEL: Record<string, string> = {
+  medico: "Médico",
+  psicologo: "Psicólogo",
+  deportologo: "Deportólogo",
+  nutricionista: "Nutricionista",
+};
+
 // UI minima (B2). El shell con marca es B3. La autorizacion de ruta va por policy
 // (regla 3): sin permiso, a /no-autorizado.
 export default async function AdminPage() {
@@ -23,23 +31,51 @@ export default async function AdminPage() {
     .select("id, email, full_name, status")
     .order("created_at", { ascending: true });
 
+  // Perfil profesional (profesion + registro) por profile_id. Consulta plana aparte (no embed) para
+  // no acoplar el tipo del select. Es la vista donde el registro profesional tiene sentido: un
+  // profesional sin registro no puede ejercer, y aqui se ve "sin registro" a simple vista.
+  const { data: profRows } = await supabase
+    .from("professional_profiles")
+    .select("profile_id, profession, license");
+  const byProfile = new Map((profRows ?? []).map((p) => [p.profile_id, p]));
+
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Usuarios</h1>
       <ul className="flex flex-col gap-3 text-sm">
-        {(users ?? []).map((u) => (
-          <li key={u.id} className="flex flex-col gap-2 border-b pb-3">
-            <span>
-              {u.email}, {u.full_name} ({u.status})
-            </span>
-            {/* Las acciones no se ofrecen sobre la propia cuenta del admin (evita reiniciar su propio acceso por error). */}
-            {u.id === user.id ? (
-              <span className="text-xs text-muted-foreground">Tu cuenta</span>
-            ) : (
-              <UserRowActions userId={u.id} email={u.email} />
-            )}
-          </li>
-        ))}
+        {(users ?? []).map((u) => {
+          const prof = byProfile.get(u.id) ?? null;
+          const professionLabel = prof ? PROFESSION_LABEL[prof.profession] ?? prof.profession : null;
+          return (
+            <li key={u.id} className="flex flex-col gap-2 border-b pb-3">
+              <span>
+                {u.email}, {u.full_name} ({u.status})
+                {prof ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {professionLabel} ·{" "}
+                    {prof.license ? (
+                      `Reg. ${prof.license}`
+                    ) : (
+                      <span className="text-amber-700">sin registro</span>
+                    )}
+                  </span>
+                ) : null}
+              </span>
+              {/* Las acciones no se ofrecen sobre la propia cuenta del admin (evita reiniciar su propio acceso por error). */}
+              {u.id === user.id ? (
+                <span className="text-xs text-muted-foreground">Tu cuenta</span>
+              ) : (
+                <UserRowActions
+                  userId={u.id}
+                  email={u.email}
+                  isProfessional={Boolean(prof)}
+                  license={prof?.license ?? null}
+                />
+              )}
+            </li>
+          );
+        })}
       </ul>
       <section className="flex flex-col gap-2">
         <h2 className="font-bold">Crear usuario</h2>
