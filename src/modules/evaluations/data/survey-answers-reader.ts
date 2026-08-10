@@ -44,7 +44,9 @@ export function groupSurveyAnswers(
   const sorted = [...questions].sort((a, b) => a.order_index - b.order_index);
   const domains: SurveyDomain[] = [];
   const bySection = new Map<string, SurveyDomain>();
-  for (const q of sorted) {
+  // number: numeracion CONTINUA 1..N por la posicion en el orden (mismo criterio que survey-reader), para
+  // que "pregunta 38" coincida entre la encuesta del paciente y esta vista del profesional.
+  sorted.forEach((q, i) => {
     const section = q.section ?? "Otras";
     let domain = bySection.get(section);
     if (!domain) {
@@ -56,6 +58,7 @@ export function groupSurveyAnswers(
       .sort((a, b) => a.order - b.order)
       .map((o) => o.text);
     domain.questions.push({
+      number: i + 1,
       questionId: q.id,
       questionText: q.question_text,
       questionType: q.question_type,
@@ -64,7 +67,7 @@ export function groupSurveyAnswers(
       answerValue: answerByQ.get(q.id) ?? null,
       options: opts,
     });
-  }
+  });
   return domains;
 }
 

@@ -179,7 +179,19 @@ export function SurveyIntakeForm({
   const canAdvance =
     current.kind === "consent" ? consentOk : current.kind === "identity" ? identityOk : true;
 
+  // Paso maximo alcanzable: consentimiento (0) siempre; identidad (1) exige consentimiento; las
+  // secciones de encuesta (2+) exigen consentimiento + identidad. Como la encuesta es OPCIONAL, una vez
+  // pasadas las dos compuertas TODAS las secciones son alcanzables (se puede saltar adelante y atras).
+  const maxReachable = !consentOk ? 0 : !identityOk ? 1 : total - 1;
+
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Salto directo por click (1g): a cualquier paso hasta el maximo alcanzable, adelante o atras. Saltar
+  // secciones de encuesta es valido (son opcionales); las compuertas (consent/identidad) no se saltan.
+  const goTo = (i: number) => {
+    if (i < 0 || i > maxReachable) return;
+    setStep(i);
+    scrollTop();
+  };
   const goNext = () => {
     if (!canAdvance || isLast) return;
     setStep((s) => Math.min(s + 1, total - 1));
@@ -224,6 +236,32 @@ export function SurveyIntakeForm({
           </p>
         </div>
         <Progress value={Math.round(((step + 1) / total) * 100)} />
+        {/* Navegacion por subpestanas (1g): salto directo a cualquier paso alcanzable, adelante o atras.
+            Los no alcanzables (por las compuertas de consentimiento/identidad) quedan deshabilitados. */}
+        <nav aria-label="Secciones de la encuesta" className="flex flex-wrap gap-1.5">
+          {steps.map((s, i) => {
+            const reachable = i <= maxReachable;
+            const activo = i === step;
+            return (
+              <button
+                key={`${s.kind}-${i}`}
+                type="button"
+                onClick={() => goTo(i)}
+                disabled={!reachable}
+                aria-current={activo ? "step" : undefined}
+                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                  activo
+                    ? "bg-primary text-primary-foreground"
+                    : reachable
+                      ? "bg-muted text-foreground hover:bg-muted/70"
+                      : "cursor-not-allowed text-muted-foreground/50"
+                }`}
+              >
+                {s.title}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {state.error ? (

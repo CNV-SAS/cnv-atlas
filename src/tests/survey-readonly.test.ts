@@ -20,9 +20,9 @@ describe("SurveyReadonly", () => {
       {
         section: "D1",
         questions: [
-          { questionId: "q1", questionText: "Pregunta A", questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: "Sí", options: ["Sí", "No"] },
-          { questionId: "q2", questionText: "Pregunta B", questionType: "contador", fieldKey: null, usedInDiagnosis: false, answerValue: "5", options: [] },
-          { questionId: "q3", questionText: "Pregunta C", questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: null, options: ["A", "B"] },
+          { questionId: "q1", number: 1, questionText: "Pregunta A", questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: "Sí", options: ["Sí", "No"] },
+          { questionId: "q2", number: 2, questionText: "Pregunta B", questionType: "contador", fieldKey: null, usedInDiagnosis: false, answerValue: "5", options: [] },
+          { questionId: "q3", number: 3, questionText: "Pregunta C", questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: null, options: ["A", "B"] },
         ],
       },
     ];

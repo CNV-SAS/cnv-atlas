@@ -35,8 +35,13 @@ export async function getActiveSurvey(): Promise<ActiveSurvey | null> {
 
   return {
     surveyVersionId: version.id,
-    questions: (questions ?? []).map((q) => ({
+    // number: numeracion CONTINUA 1..N derivada del ORDEN (order_index de la query), no escrita en el
+    // texto. Asi agregar una pregunta renumera sola (los huecos de order_index no se propagan). El mismo
+    // criterio (posicion en el orden) lo usa survey-answers-reader, para que "pregunta 38" coincida en la
+    // encuesta del paciente y en la vista del profesional.
+    questions: (questions ?? []).map((q, i) => ({
       id: q.id,
+      number: i + 1,
       text: q.question_text,
       type: q.question_type,
       section: q.section,

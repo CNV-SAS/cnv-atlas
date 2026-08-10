@@ -7,6 +7,7 @@
 
 export type SurveyAnswerView = {
   questionId: string;
+  number: number; // numeracion continua 1..N por el orden (coincide con la del intake); ver survey-answers-reader
   questionText: string;
   questionType: string; // texto | numero | opcion | opcion_multiple | contador | escala
   fieldKey: string | null; // marca si alimenta el motor (no se edita aqui: eso es recomputo)

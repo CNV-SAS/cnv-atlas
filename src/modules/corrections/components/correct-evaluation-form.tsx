@@ -241,7 +241,7 @@ export function CorrectEvaluationForm({
             {dom.questions.map((q) => (
               <SurveyQuestion
                 key={q.questionId}
-                q={{ id: q.questionId, text: q.questionText, type: q.questionType, section: dom.section, options: q.options.map((o, i) => ({ id: `${q.questionId}-${i}`, text: o })) }}
+                q={{ id: q.questionId, number: q.number, text: q.questionText, type: q.questionType, section: dom.section, options: q.options.map((o, i) => ({ id: `${q.questionId}-${i}`, text: o })) }}
                 answer={q.answerValue}
               />
             ))}

@@ -160,7 +160,9 @@ export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: 
   const a = answer ?? undefined;
   return (
     <div className="flex flex-col gap-2">
-      <Label className="text-sm font-medium text-foreground">{q.text}</Label>
+      <Label className="text-sm font-medium text-foreground">
+        <span className="text-muted-foreground">{q.number}.</span> {q.text}
+      </Label>
       {q.type === "opcion" && q.options.length > 0 ? (
         <PillsSingle id={q.id} options={q.options} defaultValue={a ?? ""} />
       ) : q.type === "opcion_multiple" && q.options.length > 0 ? (

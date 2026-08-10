@@ -21,7 +21,9 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
           <div className="flex flex-col gap-4">
             {d.questions.map((q) => (
               <div key={q.questionId} className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-foreground">{q.questionText}</p>
+                <p className="text-sm font-medium text-foreground">
+                  <span className="text-muted-foreground">{q.number}.</span> {q.questionText}
+                </p>
                 <SurveyAnswerReadonly
                   questionType={q.questionType}
                   answerValue={q.answerValue}
