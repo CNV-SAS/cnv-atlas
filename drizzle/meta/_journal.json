@@ -393,6 +393,13 @@
       "when": 1786297099354,
       "tag": "0055_natural_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1786328099983,
+      "tag": "0056_smooth_karnak",
+      "breakpoints": true
     }
   ]
 }

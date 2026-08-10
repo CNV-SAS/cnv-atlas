@@ -132,6 +132,11 @@ export const consentType = pgEnum("consent_type_enum", [
   // ALTER TYPE ADD VALUE y no recree el tipo (destructivo por las FK/columnas).
   "representante_legal",
   "asentimiento_menor",
+  // Firma electronica (B7, dictamen 2026-08-09): aceptacion EXPRESA del titular de que su
+  // consentimiento se otorga por medios electronicos (numeral 12 casilla necesaria de v1.7). Se anexa
+  // al final (ALTER TYPE ADD VALUE). Es una autorizacion NECESARIA nueva, distinta de informar la
+  // validez: la valida el paciente, no CNV. Su base es el texto v1.7 (aun no efectivo; ver PLAN_B7_FIRMA).
+  "aceptacion_medio_electronico",
 ]);
 
 // Auditoria/control de calidad: mecanismo unico de permisos temporales (grants)

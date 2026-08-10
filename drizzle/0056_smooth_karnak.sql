@@ -1,0 +1,1 @@
+ALTER TYPE "public"."consent_type_enum" ADD VALUE 'aceptacion_medio_electronico';
