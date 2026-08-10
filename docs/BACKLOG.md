@@ -86,6 +86,12 @@ Con 63 preguntas y ahora una espera de código por correo en el medio (firma ele
 
 **Orden:** bloque propio, DESPUÉS de cerrar B7 (casilla + copia + flip v1.7) y ANTES del Hito 3. Arranca por el gate legal (item 14), no por el código.
 
+## Adulto con representante legal (discapacidad cognitiva / interdicción / capacidad limitada) — toca el texto legal + abogado (registrado 2026-08-10)
+
+Observación del smoke de B7 (Santiago): hoy el sistema asume **representante = menor**. Si eligen "menor de 18" con una fecha de adulto, bloquea. Pero existen **adultos que necesitan representante legal**: personas con discapacidad cognitiva, bajo interdicción, o con capacidad limitada declarada judicialmente. **Hoy no pueden ser atendidas.**
+
+**No es solo interfaz.** El consentimiento asume representante = menor: la declaración del numeral 11 dice literalmente "representante legal **de la persona menor de edad** evaluada". Arreglarlo **toca el texto legal** (bump de versión) y **necesita al abogado**: qué declaración corresponde para un adulto representado, y **qué prueba la representación** de un adulto (sentencia de interdicción / medida de apoyo, distinta del vínculo padre/madre del menor). Alcance: una **rama nueva** (adulto-con-representante) distinta de la del menor, con su propia declaración, sus campos de prueba y su gate de identidad. NO urge, pero va a aparecer. Sumado a la cola del abogado (`DECISIONES_LEGALES.md`).
+
 ## Capturar los 6 campos sociodemográficos (DECIDIDO 2026-08-08; gate legal en etnia)
 
 **Decisión de Santiago: SÍ se registran** etnia, nivel educativo, ocupación, estado civil, estrato y motivo de consulta (EA3/ECB del cotejo). Razón: son las variables que el observatorio necesita para estratificar, y **capturarlos después es imposible** (el paciente ya pasó; un dato demográfico no se reconstruye). Como no alimentan el motor: **opcionales, sin `field_key`, `used_in_diagnosis=false`, y si el paciente no responde queda VACÍO, no un valor por defecto** (misma disciplina que ya tenemos).
