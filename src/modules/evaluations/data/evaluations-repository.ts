@@ -61,6 +61,47 @@ export async function listPendingIdentityChecks(): Promise<PendingIdentityEvalua
   });
 }
 
+export type AwaitingSurveyEvaluation = {
+  evaluationId: string;
+  patientId: string;
+  createdAt: string;
+  documentType: string;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+};
+
+// Shells firmados sin responder (status 'awaiting_survey'): el paciente firmo pero no completo la
+// encuesta. NO es cola de accion clinica (no llega al pipeline); es seguimiento operativo, para que el
+// profesional sepa que existen y decida cerrarlos. La RLS los acota a sus pacientes. Orden ASCENDENTE por
+// fecha: el mas antiguo primero (el que lleva mas tiempo trabado es el candidato a cerrar).
+export async function listAwaitingSurveyEvaluations(): Promise<AwaitingSurveyEvaluation[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select(
+      "id, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+    )
+    .eq("status", "awaiting_survey")
+    .order("created_at", { ascending: true });
+  if (error) {
+    throw new Error(`evaluations-repository: listAwaitingSurveyEvaluations: ${error.message}`);
+  }
+  return (data ?? []).map((row) => {
+    const patient = one<PatientEmbed>(row.patients as PatientEmbed | PatientEmbed[] | null);
+    const profile = one(patient?.patient_profiles ?? null);
+    return {
+      evaluationId: row.id,
+      patientId: row.patient_id,
+      createdAt: row.created_at,
+      documentType: patient?.document_type ?? "",
+      documentNumber: patient?.document_number ?? "",
+      firstName: profile?.first_name ?? "",
+      lastName: profile?.last_name ?? "",
+    };
+  });
+}
+
 // Comprueba acceso a una evaluacion bajo RLS y devuelve su paciente y estado. Si la
 // sesion no puede leerla (no es su paciente), devuelve null: sirve de gate de
 // ownership antes de la escritura por owner.

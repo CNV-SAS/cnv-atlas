@@ -3171,7 +3171,7 @@ export type Database = {
         | "lost"
         | "retired"
       document_type: "CC" | "CE" | "TI" | "PA" | "NIT"
-      evaluation_status: "draft" | "in_progress" | "completed"
+      evaluation_status: "awaiting_survey" | "draft" | "in_progress" | "completed" | "abandoned"
       evaluation_type: "inicial" | "seguimiento"
       field_data_class: "identifier" | "quasi_identifier" | "clinical"
       indicator_classification: "normal" | "riesgo" | "critico"
@@ -3393,7 +3393,7 @@ export const Constants = {
         "retired",
       ],
       document_type: ["CC", "CE", "TI", "PA", "NIT"],
-      evaluation_status: ["draft", "in_progress", "completed"],
+      evaluation_status: ["awaiting_survey", "draft", "in_progress", "completed", "abandoned"],
       evaluation_type: ["inicial", "seguimiento"],
       field_data_class: ["identifier", "quasi_identifier", "clinical"],
       indicator_classification: ["normal", "riesgo", "critico"],

@@ -7,12 +7,16 @@ import { PipelineRunner } from "@/modules/clinical-pipeline/components/pipeline-
 import { listEvaluationsForDiagnosis } from "@/modules/clinical-pipeline/data/pipeline-evaluations-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { listReports } from "@/modules/reports/data/reports-repository";
+import { AwaitingSurveyList } from "@/modules/evaluations/components/awaiting-survey-list";
 import { ConsultorioLink } from "@/modules/evaluations/components/consultorio-link";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
 } from "@/modules/evaluations/components/identity-confirmation";
-import { listPendingIdentityChecks } from "@/modules/evaluations/data/evaluations-repository";
+import {
+  listAwaitingSurveyEvaluations,
+  listPendingIdentityChecks,
+} from "@/modules/evaluations/data/evaluations-repository";
 import {
   canConfirmIdentity,
   canEmitFollowupLink,
@@ -34,12 +38,16 @@ export default async function EvaluacionesPage() {
     redirect("/no-autorizado");
   }
 
-  const [pending, bisPending, diagnosisPending, reports] = await Promise.all([
+  const [pending, bisPending, diagnosisPending, reports, awaitingSurvey] = await Promise.all([
     listPendingIdentityChecks(),
     listEvaluationsForBisImport(),
     listEvaluationsForDiagnosis(),
     listReports(),
+    listAwaitingSurveyEvaluations(),
   ]);
+  // Tiempo de request (pagina dinamica) para la antiguedad de los shells sin responder.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   // En el panel solo los reportes con accion pendiente (borrador o aprobado); los
   // enviados se consultan en /reportes.
@@ -170,6 +178,10 @@ export default async function EvaluacionesPage() {
           </div>
         )}
       </section>
+
+      {/* Seguimiento operativo (NO accion clinica): shells firmados sin responder. Al fondo y discreto
+          para no competir con las cuatro colas de arriba. Se oculta solo si esta vacia. */}
+      <AwaitingSurveyList items={awaitingSurvey} nowMs={nowMs} />
     </div>
   );
 }
