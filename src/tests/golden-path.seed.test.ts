@@ -391,7 +391,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .onConflictDoNothing();
     await db
       .insert(schema.patientProfiles)
-      .values({ patientId: FEMALE_PATIENT_ID, firstName: "Demo", lastName: "Mujer (bloque femenino)", sex: "Female", birthDate: FEMALE_BIRTH, city: "Medellin" })
+      .values({ patientId: FEMALE_PATIENT_ID, firstName: "Demo", lastName: "Mujer (bloque femenino)", sex: "F", birthDate: FEMALE_BIRTH, city: "Medellin" })
       .onConflictDoNothing();
     await db
       .insert(schema.patientProfessionalRelationships)
@@ -470,7 +470,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .onConflictDoNothing();
     await db
       .insert(schema.patientProfiles)
-      .values({ patientId: FEMALE2_PATIENT_ID, firstName: "Demo", lastName: "Mujer 2 (smoke A/B/C)", sex: "Female", birthDate: FEMALE2_BIRTH, city: "Medellin" })
+      .values({ patientId: FEMALE2_PATIENT_ID, firstName: "Demo", lastName: "Mujer 2 (smoke A/B/C)", sex: "F", birthDate: FEMALE2_BIRTH, city: "Medellin" })
       .onConflictDoNothing();
     await db
       .insert(schema.patientProfessionalRelationships)

@@ -67,7 +67,7 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
       patientId,
       firstName: "Prop",
       lastName: docSuffix,
-      sex: "Male",
+      sex: "M",
       birthDate: "1971-11-05",
     });
     await db

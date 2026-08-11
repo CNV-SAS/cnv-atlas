@@ -66,10 +66,17 @@ export function computeAge(birthDate: string | null, now: Date): number {
   return age < 0 ? 0 : age;
 }
 
-// Sexo a 'M' | 'F'. El motor revalida y canoniza en su borde (normalizeSexo, fail-loud);
-// aqui solo se da forma. Cualquier variante que empiece por f/F -> 'F'; el resto -> 'M'.
+// Sexo a 'M' | 'F', ESTRICTO (decision A, 2026-08-10). El intake guarda exactamente "F"/"M" (select con
+// esos valores). Antes esta funcion adivinaba ("empieza por f -> F, el resto -> M"), y "mujer" caia en M
+// en silencio: como todos los clasificadores del motor son sexo-especificos (FFMI, ASMI, umbrales), un
+// sexo mal asignado corrompe el diagnostico ENTERO. Ahora NO adivina: acepta F/M (indiferente a
+// mayusculas) y ante cualquier otra cosa FALLA EN VOZ ALTA, diciendo QUE valor llego (para no perder una
+// hora buscandolo). El frozen (normalizeSexo) valida despues; esta es la barrera que impide que algo que
+// no sea F/M exacto llegue al motor.
 export function normalizeSex(sex: string | null): Sex {
-  return (sex ?? "").trim().toLowerCase().startsWith("f") ? "F" : "M";
+  const v = (sex ?? "").trim().toUpperCase();
+  if (v === "F" || v === "M") return v;
+  throw new Error(`normalizeSex: sexo invalido, esperado "F" o "M", llego: ${JSON.stringify(sex)}`);
 }
 
 // Reconstruye la fila cruda con headers EXACTOS del Biody desde los crudos normalizados

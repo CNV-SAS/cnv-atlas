@@ -55,7 +55,7 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
           .returning({ id: schema.patients.id })
       )[0].id;
       createdPatients.push(pid);
-      await db.insert(schema.patientProfiles).values({ patientId: pid, firstName: "Traj", lastName: suffix, sex: "Male", birthDate: "1971-11-05" });
+      await db.insert(schema.patientProfiles).values({ patientId: pid, firstName: "Traj", lastName: suffix, sex: "M", birthDate: "1971-11-05" });
       await db.insert(schema.patientProfessionalRelationships).values({ patientId: pid, professionalId: proId }).onConflictDoNothing();
     }
     const evaluationId = (

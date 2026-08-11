@@ -69,7 +69,7 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
       patientId,
       firstName: "Corr",
       lastName: suffix,
-      sex: "Male",
+      sex: "M",
       birthDate: "1971-11-05",
     });
     await db
@@ -117,7 +117,7 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
         .returning({ id: schema.patients.id })
     )[0].id;
     createdPatients.push(patientId);
-    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Comp", lastName: suffix, sex: "Male", birthDate: "1971-11-05" });
+    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Comp", lastName: suffix, sex: "M", birthDate: "1971-11-05" });
     await db.insert(schema.patientProfessionalRelationships).values({ patientId, professionalId: proId }).onConflictDoNothing();
     const evaluationId = (
       await db

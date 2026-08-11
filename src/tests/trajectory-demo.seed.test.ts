@@ -67,7 +67,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
 
   async function ensurePatient(patientId: string, apellido: string) {
     await db.insert(schema.patients).values({ id: patientId, organizationId: orgId, documentType: "CC", documentNumber: `TRAJ-DEMO-${patientId.slice(-2)}` }).onConflictDoNothing();
-    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Demo Trayectoria", lastName: apellido, sex: "Male", birthDate: "1971-11-05", city: "Medellin" }).onConflictDoNothing();
+    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Demo Trayectoria", lastName: apellido, sex: "M", birthDate: "1971-11-05", city: "Medellin" }).onConflictDoNothing();
     await db.insert(schema.patientProfessionalRelationships).values({ patientId, professionalId: proId }).onConflictDoNothing();
     // Correo del buzon de pruebas de Santiago: para que el envio del reporte sea ejercitable end-to-end.
     await db.insert(schema.patientContacts).values({ patientId, email: "sau.idk001@gmail.com" }).onConflictDoNothing();

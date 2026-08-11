@@ -68,7 +68,7 @@ function bisRawFromFixture(): Record<string, number> {
 describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
   it("con las cadenas exactas, el DFI corre completo y el LE8 refleja cada dominio", () => {
     const input = buildEngineInput(
-      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: ENGINE_ANSWERS, expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
+      { sex: "M", birthDate: "1971-11-05", surveyAnswers: ENGINE_ANSWERS, expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
       MODEL,
       NOW,
     );
@@ -112,7 +112,7 @@ describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
 
   it("sin encuesta, el DFI queda degradado y marcado (no null silencioso)", () => {
     const input = buildEngineInput(
-      { sex: "Male", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
+      { sex: "M", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: EXPECTED_FIELD_KEYS, bisRaw: bisRawFromFixture() },
       MODEL,
       NOW,
     );

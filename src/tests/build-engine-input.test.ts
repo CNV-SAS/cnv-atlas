@@ -25,12 +25,19 @@ describe("computeAge", () => {
   });
 });
 
-describe("normalizeSex", () => {
-  it("mapea variantes femeninas a F", () => {
-    for (const s of ["F", "f", "Female", "femenino", "FEM"]) expect(normalizeSex(s)).toBe("F");
+describe("normalizeSex (ESTRICTA, decision A)", () => {
+  it("acepta exactamente F/M, indiferente a mayusculas y espacios", () => {
+    for (const s of ["F", "f", " F "]) expect(normalizeSex(s)).toBe("F");
+    for (const s of ["M", "m", " m "]) expect(normalizeSex(s)).toBe("M");
   });
-  it("el resto y null caen a M", () => {
-    for (const s of ["M", "Male", "masculino", "otro", null]) expect(normalizeSex(s)).toBe("M");
+
+  it("FALLA EN VOZ ALTA ante cualquier cosa que no sea F/M (no adivina), y dice el valor", () => {
+    // Antes "mujer" caia en M en silencio (corrompiendo el diagnostico); ahora truena.
+    for (const s of ["Male", "Female", "masculino", "femenino", "mujer", "otro", "", null]) {
+      expect(() => normalizeSex(s)).toThrow();
+    }
+    // El mensaje incluye el valor que llego, para no perder tiempo buscandolo.
+    expect(() => normalizeSex("mujer")).toThrow(/mujer/);
   });
 });
 
@@ -40,7 +47,7 @@ describe("buildEngineInput", () => {
   it("arma el input y reconstruye la fila con headers EXACTOS del Biody", () => {
     // bisRaw se indexa por el header NORMALIZADO (como lo guarda B8).
     const raw = {
-      sex: "Female",
+      sex: "F",
       birthDate: "2000-06-22",
       surveyAnswers: [
         { fieldKey: "d2_19", type: "opcion", value: "Normal" },
@@ -67,7 +74,7 @@ describe("buildEngineInput", () => {
 
   it("ignora valores no finitos (no entran a bisRow)", () => {
     const raw = {
-      sex: null,
+      sex: "M", // sexo valido: este test verifica bisRow, no el sexo (que ahora es estricto)
       birthDate: null,
       surveyAnswers: [],
       expectedFieldKeys: ["d2_19"],
