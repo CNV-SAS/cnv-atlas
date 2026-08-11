@@ -73,18 +73,23 @@ Son **el mismo bump**, y por eso se hacen juntos. Ambos son decisión del Hito 3
 
 - **Quitar el guion largo (—) del TEXTO de la plantilla.** El barrido de em-dash de cara al paciente (2026-08-10) ya limpio lo que era nuestro: el bloque del profesional lo arma `consent-instance.ts` (se cambio a "Nombre, profesion. Registro profesional No. X", sin bump). Pero la plantilla congelada aun tiene em-dash que SI llega al paciente (p. ej. la linea del responsable en el numeral 2: "Connected Nutrition Ventures S.A.S. — NIT ... — Medellin"). Tocar el texto legal es bump de version, asi que se acumula aqui: al renumerar, sustituir esos "—" por comas.
 
-**Orden:** en el bump de v1.0 del lanzamiento (Hito 3), los tres a la vez (renumerar + marcadores + quitar em-dash del texto). Actualizar `consent-instance.ts` para reemplazo por marcadores, y el golden queda como red de seguridad conveniente.
+- **Agregar la autorización OPCIONAL de ETNIA al texto.** Dictamen 2026-08-10 (Parte 2): autorización separada en el bloque de OPCIONALES (nunca en las necesarias), con su finalidad (diferencias de composición corporal entre poblaciones) y categorías del autorreconocimiento DANE + "Prefiero no responder" explícito. Redacciones para numerales 5 y 12 en el dictamen. Es texto legal nuevo = bump; se acumula aquí. La gobernanza del uso agregado va aparte (con el mecanismo de acceso, `DATA_GOVERNANCE.md`).
 
-## Borrador de encuesta (persistir respuestas ligadas al token, sin crear nada clínico) — GATE LEGAL primero, antes del Hito 3 (registrado 2026-08-09)
+**Orden:** en el bump de v1.0 del lanzamiento (Hito 3), todo junto (renumerar + marcadores + quitar em-dash + autorización de etnia). Actualizar `consent-instance.ts` para reemplazo por marcadores, y el golden queda como red de seguridad conveniente.
 
-Con 63 preguntas y ahora una espera de código por correo en el medio (firma electrónica B7), un paciente que llega al final y tiene que rellenar todo por un tropiezo **no vuelve**. Guardar las respuestas ligadas al token del enlace, sin crear paciente/evaluación/consentimiento, es lo que decide terminar vs abandonar. **Diagnóstico (2026-08-09): el nudo NO es técnico, es de gobierno.**
+## Reorganización del flujo del intake: FIRMAR antes de la encuesta (dictamen 2026-08-10 — reemplaza el bloque de borrador)
 
-- **Barato (cliente):** los widgets ya aceptan `defaultValue` (se usa hoy para la edición del profesional). Prefillar las 63 respuestas desde un borrador es casi gratis.
-- **Medio (código):** tabla `survey_drafts` (o columna JSONB en `survey_links`) + migración (carril lento); acción pública de guardado (rate-limited, escribe respuestas crudas bajo el token); prefill al volver con el mismo enlace; borrado al enviar con éxito.
-- **El nudo (gobierno, gate del bloque):** el borrador guarda **respuestas de salud de alguien que todavía no autorizó nada**. Un borrador abandonado = datos de salud de quien **nunca completó ni autorizó**, sin titular con quien hablar ni consentimiento que invocar. Por eso la **regla de expiración no es higiene: es lo único que hace legítimo el borrador.** **Primer paso obligatorio: la consulta de retención al abogado** (`DECISIONES_LEGALES.md` AL FRENTE, item 14): ¿se pueden conservar temporalmente respuestas de una encuesta no completada antes de firmar? ¿por cuánto, y qué hacer al vencer? Con esa respuesta, el resto es construcción.
-- **`localStorage` descartado:** viola la prohibición #5 (nada sensible en local/sessionStorage). Solo servidor.
+El dictamen legal (`entregas/gildardo-2026-08-10/RESPUESTA_BORRADOR_Y_ETNIA.md`, Parte 1) **descartó el borrador** como se planteaba: guardar respuestas de salud sin autorización previa no es viable en Colombia (la Ley 1581 no admite interés legítimo; el almacenamiento es tratamiento art. 3, la autorización debe ser previa art. 9). Su solución es de **diseño del flujo, no de persistencia:** completar la firma del consentimiento ANTES de recolectar la encuesta. Además: "un consentimiento que se firma después de entregar los datos no es realmente previo".
 
-**Orden:** bloque propio, DESPUÉS de cerrar B7 (casilla + copia + flip v1.7) y ANTES del Hito 3. Arranca por el gate legal (item 14), no por el código.
+**En Atlas el consentimiento YA está al inicio (paso 1); lo que está al final es la VERIFICACIÓN POR CÓDIGO** (que agregamos nosotros). Así que la reorganización es: mover la firma completa (consentimiento + identidad + código) antes de la encuesta.
+
+- **Orden nuevo:** consentimiento + identidad + código → **FIRMADO** → encuesta. (Esto además resuelve la sub-pregunta del nombre al firmar, item 10: quedaría junto al código.)
+- **Es un cambio GRANDE (reportar tamaño antes de decidir):** hoy es UN form con UNA escritura atómica al final (`submitSurveyIntake` = OTP + identidad + crear paciente+consentimiento+evaluación+respuestas). Reorganizar exige PARTIRLO en dos fases: (1) firma → crea paciente + consentimiento + evaluación (shell, sin respuestas); (2) encuesta → escribe las respuestas a esa evaluación. Toca: el form (2 fases), 2 acciones (split), el servicio de intake (split), el intake-writer (crear-con-consentimiento vs escribir-respuestas), el ciclo de vida de la evaluación (existe antes de las respuestas), el momento de la resolución de identidad y del consumo del link, y suma reanudación.
+- **El borrador se vuelve TRIVIAL:** una vez firmado, todo lo posterior está autorizado; las respuestas se pueden guardar a medida (tratamiento autorizado) y reanudar. Sin consulta legal adicional.
+- **Alternativa (si se dejara el código al final):** autorización mínima del borrador antes de la 1ª pregunta (casilla, 72h, eliminación completa al vencer con registro del hecho, aviso art. 12). El dictamen la da, pero recomienda la reorganización.
+- **Sinergia:** el asesor sugirió además revisar si las 63 preguntas son necesarias en la 1ª consulta (34 alimentan motor, 29 son caracterización; solo 13 el diagnóstico). Esa es pregunta a Gildardo (en la ronda). Acortar la encuesta ataca el abandono de raíz.
+
+**Orden:** conviene hacer esta reorganización ANTES de seguir tocando la encuesta. Reemplaza el bloque de borrador (que ya no aplica como se planteó).
 
 ## Adulto con representante legal (discapacidad cognitiva / interdicción / capacidad limitada) — toca el texto legal + abogado (registrado 2026-08-10)
 

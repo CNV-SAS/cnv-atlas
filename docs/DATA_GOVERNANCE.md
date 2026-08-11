@@ -256,6 +256,20 @@ PENDIENTE JURÍDICO: ratificación del umbral k ≥ 5 y del método.
 
 ---
 
+## Etnia y datos étnicos (gobernanza del uso agregado)
+
+Dictamen 2026-08-10 (`entregas/gildardo-2026-08-10/RESPUESTA_BORRADOR_Y_ETNIA.md`, Parte 2). La etnia es dato sensible del art. 5 y tiene **peso constitucional** (art. 7 CP, Convenio 169 OIT / Ley 21 de 1991). Se captura por **autorreconocimiento** (lo declara la persona; NUNCA lo asigna el profesional ni lo infiere el sistema: asignarlo sin declaración sería tratar un dato sensible sin autorización). Categorías DANE + "Prefiero no responder" explícito. La **autorización** es opcional y separada (ver `DECISIONES_LEGALES.md` item 11 y el bump de v1.0 en `BACKLOG.md`).
+
+**El riesgo real es la reidentificación por categoría minoritaria**, no el nombre: en Colombia hay <3.000 personas Rrom, así que un paciente Rrom en una cohorte queda identificado por la categoría sola (igual, en menor grado, raizal o palenquero). En grupos minoritarios la etnia es casi un identificador directo. Reglas de gobernanza del uso agregado (mismo carril que el mecanismo de acceso):
+
+1. **Doble autorización.** Solo se usan para investigación los datos de pacientes que otorgaron AMBAS: la de etnia Y la de investigación. Una sin la otra no habilita.
+2. **Nunca a nivel de fila.** Uso exclusivamente agregado, por cohortes. Ningún análisis, reporte o export puede ver la etnia asociada a un registro individual, ni siquiera seudonimizado.
+3. **Supresión de celdas bajo umbral.** Si una categoría étnica tiene menos observaciones que el umbral de anonimización (k), esa celda se suprime, no se muestra ni se publica. Es el control crítico.
+4. **Prohibición de cruce fino.** Cruzar etnia con otras variables (edad exacta, ciudad, profesional tratante) se evalúa contra el mismo umbral, no solo la variable étnica aislada.
+5. **Publicación diferenciada por etnia = terreno de comité de ética**, antes de publicar (no solo antes de recolectar): publicar conclusiones sobre características biológicas de grupos étnicos es sensible y con historia de mal uso.
+
+---
+
 ## Menores de edad
 
 El MVP **soporta pacientes menores de 18 años**. El consentimiento de ATLAS incluye el bloque de representante legal (identificación, parentesco o calidad) y, para pacientes entre 14 y 17 años, el asentimiento del propio menor (ver Consentimiento de ATLAS, sección 11). **Pendiente técnico:** Atlas debe validar la fecha de nacimiento en el flujo de la encuesta para activar automáticamente este bloque en lugar de la declaración de mayoría de edad, y registrar los campos adicionales (`legal_representative_name`, `legal_representative_document`, `legal_representative_relationship`) en `patient_consents` o tabla relacionada.
