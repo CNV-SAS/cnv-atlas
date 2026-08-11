@@ -35,6 +35,10 @@ function TxStatusBadge({ status }: { status: TransactionStatus }) {
   );
 }
 
+// Medio de pago: distingue una venta en efectivo de una de la pasarela (se ven iguales en la lista, y
+// con la liquidacion viniendo, distinguirlas importa).
+const METODO_LABEL: Record<string, string> = { wompi: "Pasarela", efectivo: "Efectivo" };
+
 function itemsLabel(tx: TransactionWithItems): string {
   if (tx.transaction_items.length === 0) return "Sin items";
   return tx.transaction_items
@@ -129,6 +133,8 @@ export default async function PagosPage() {
                       <CardDescription>{itemsLabel(tx)}</CardDescription>
                       <span className="text-xs text-muted-foreground">
                         {new Date(tx.created_at).toLocaleDateString("es-CO")}
+                        {" · "}
+                        {METODO_LABEL[tx.payment_method] ?? tx.payment_method}
                         {tx.alegra_invoice_id ? ` · Factura Alegra ${tx.alegra_invoice_id}` : ""}
                       </span>
                       {tx.status === "pending" ? (
