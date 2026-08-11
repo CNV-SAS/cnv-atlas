@@ -45,9 +45,18 @@ export const profileStatus = pgEnum("profile_status", ["active", "inactive"]);
 export const evaluationType = pgEnum("evaluation_type", ["inicial", "seguimiento"]);
 
 export const evaluationStatus = pgEnum("evaluation_status", [
+  // Reorganizacion del intake (2026-08-10): el shell FIRMADO sin respuestas nace 'awaiting_survey'
+  // (consentimiento + identidad firmados, encuesta pendiente). Pasa a 'draft' cuando el paciente
+  // completa la encuesta (fase 2). 'awaiting_survey' NO aparece en los paneles de accion (filtran
+  // draft/in_progress), asi que no se puede confirmar ni diagnosticar sin respuestas.
+  "awaiting_survey",
   "draft",
   "in_progress",
   "completed",
+  // Shell que nunca completo la encuesta. El proceso que lo aplica (ventana temporal) es un SEGUIMIENTO
+  // (la ventana se decide con datos de uso, no adivinando); por ahora el estado solo EXISTE. No se borra:
+  // el consentimiento firmado es un acto real, se conserva para auditoria.
+  "abandoned",
 ]);
 
 export const fieldDataClass = pgEnum("field_data_class", [

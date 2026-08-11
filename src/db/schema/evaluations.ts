@@ -24,6 +24,11 @@ export const evaluations = pgTable(
       .references(() => organizations.id),
     type: evaluationType("type").notNull(),
     status: evaluationStatus("status").notNull().default("draft"),
+    // Reorganizacion del intake: CREDENCIAL opaca que autentica la escritura de respuestas de la fase 2
+    // (el paciente no tiene sesion) y la reanudacion. Se genera al FIRMAR (fase 1) y solo vale mientras
+    // status = 'awaiting_survey' (al completar la encuesta pasa a 'draft' y el token deja de habilitar).
+    // Se trata como el token del enlace: largo, imposible de adivinar, nunca en logs. null salvo el shell.
+    resumeToken: text("resume_token").unique(),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion
