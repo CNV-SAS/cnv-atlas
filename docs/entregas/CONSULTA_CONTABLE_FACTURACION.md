@@ -48,3 +48,14 @@ Hasta ahora el único medio de cobro es la **pasarela (Wompi)**. Estamos agregan
 - Para cada pregunta, la regla concreta (quién factura, a quién, con qué numeración, y cómo entra el IVA), en lenguaje que podamos traducir a la implementación.
 - En particular, el **sí/no de crear contacto por paciente en Alegra** (punto 2): eso decide si el paciente queda identificado en el sistema contable o si facturamos a consumidor final.
 - Con eso construimos la facturación de la venta en efectivo. Hasta que llegue tu respuesta, la venta en efectivo **se registra y sella internamente** (comisión + ingreso de CNV) pero **no emite factura**; la factura se conecta después, con tu regla.
+
+---
+
+## Pregunta de seguimiento (2026-08-11) — el contacto en Alegra
+
+Al planear la implementación surgió una duda técnica que puede cambiar cómo modelamos el contacto:
+
+- **¿Se puede facturar sin crear el contacto primero, o Alegra exige que el contacto exista antes de emitir la factura?**
+- Si hay que crearlo: un paciente que compra **una sola vez y nunca vuelve** dejaría un contacto que no se reutiliza. **¿Se acumulan contactos "muertos" en Alegra, y eso importa** (costo, orden, obligación de mantenerlos), o hay una figura (contacto genérico reutilizable, o crear-al-vuelo por factura) que lo evite?
+
+De esto depende si modelamos un **contacto persistente por paciente** (con su mapeo en Atlas) o algo más liviano.

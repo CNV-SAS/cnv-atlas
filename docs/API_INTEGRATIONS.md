@@ -24,10 +24,10 @@
 - **PENDIENTE:** confirmar contra la documentación vigente de Wompi el formato exacto de la firma de integridad y de eventos, los endpoints y los campos. Requiere **credenciales de sandbox**.
 
 ## 3. Alegra — contabilidad
-- **Flujo:** al confirmarse el pago (`paid`), Atlas crea la factura en Alegra y guarda `alegra_invoice_id` en `transactions`.
+- **ESTADO REAL (verificado 2026-08-11): lo que hay es un STUB de SANDBOX, no una integración de facturación.** No sobre-afirmar "Alegra integrado". Lo que existe (`tryCreateAlegraInvoice`): usa un **cliente FIJO** (`ALEGRA_DEFAULT_CLIENT_ID`) y un **item FIJO** (`ALEGRA_DEFAULT_ITEM_ID`) del sandbox, factura **una sola línea con cantidad 1** (ignora los productos reales), y crea un **BORRADOR** que **NO emite a la DIAN** (sin CUFE, número ni estado DIAN). Sin esas envs de sandbox, **se omite**: hoy **ninguno de los dos medios de pago (Wompi ni efectivo) factura**. El `alegra_invoice_id` que guarda es el id del borrador de sandbox, no un consecutivo DIAN.
 - **Auth:** Alegra usa `ALEGRA_EMAIL` + `ALEGRA_API_KEY` (server).
-- **Idempotencia:** no crear factura dos veces para la misma transacción (chequear `alegra_invoice_id` antes de crear).
-- **PENDIENTE:** confirmar endpoints, formato de la factura (ítems, impuestos COP) y manejo de errores contra la documentación vigente de Alegra. Requiere **credenciales de sandbox**.
+- **Idempotencia (parcial):** no crea dos facturas para la misma transacción (chequea `alegra_invoice_id` null), pero sin cola/reintento explícito.
+- **PENDIENTE (bloque de facturación real, `BACKLOG.md` "[E2] Factura de la venta"):** contacto por paciente (solo identificación, nunca datos clínicos), mapeo producto→item de Alegra (el `name` del catálogo, nunca `indication`), EMISIÓN a la DIAN con captura de CUFE/número/estado, cola + reintento no bloqueante, unificado para Wompi y efectivo. Requiere **Alegra en Producción** (catálogo + impuesto 19% + resolución de facturación electrónica), trabajo de Santiago.
 
 ## 4. Groq / Gemini — IA (generación del menú)
 - **Rol:** la IA **solo genera el menú/dieta** dados los objetivos del protocolo (calorías, proteína, restricciones). El diagnóstico NO es IA (es determinista, ver `CLINICAL_ENGINE.md`).

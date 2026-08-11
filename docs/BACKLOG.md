@@ -659,7 +659,7 @@ Consecuencia (registrada por ellos): al llegar la liquidación mensual normalmen
 
 ## [E2] Factura de la venta (Alegra) — reglas del dictamen contable (2026-08-11)
 
-El dictamen contable (`entregas/gildardo-2026-08-10/RESPUESTAS_CONTABLES_FACTURACION.md`) cerró la facturación. La venta en efectivo hoy **se sella internamente sin emitir factura**; esta es la parte de factura, ya desbloqueada, a construir tras la venta en efectivo. Reglas a respetar:
+El dictamen contable (`entregas/gildardo-2026-08-10/RESPUESTAS_CONTABLES_FACTURACION.md`) cerró la facturación. **OJO — el trabajo NO es "agregar la factura de efectivo": es CONSTRUIR la facturación real, unificada.** Lo que hay de Alegra (verificado 2026-08-11) es un **STUB de sandbox** (`tryCreateAlegraInvoice`): cliente fijo + item fijo del sandbox, una sola línea cantidad 1, borrador que NO emite a la DIAN; sin las envs de sandbox se omite, así que **hoy ni Wompi ni efectivo facturan** (ver `API_INTEGRATIONS.md` seccion 3). El bloque reemplaza el stub, no lo deja al lado. La venta en efectivo hoy **se sella internamente sin factura**. Reglas a respetar:
 - **CNV factura al paciente** (el integrante solo recauda), con **contacto identificado** en Alegra pero **SOLO datos de identificación y contacto** (nombre, tipo/número de documento, correo). **NUNCA datos clínicos** cruzan a Alegra.
 - **El nombre del producto en la factura NO puede revelar condición de salud.** A Alegra va el nombre del catálogo y nada más ("MULTI-CELL BASE" sí; "suplemento para resistencia a la insulina" no). Verificar el mapeo antes de enviar.
 - **Consecutivo SIEMPRE de Alegra.** Atlas nunca genera números de factura (evita choques con las manuales).
