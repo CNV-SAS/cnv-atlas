@@ -1,6 +1,6 @@
 # PLAN_GRANTS.md — Cerrar el acceso amplio del admin al contenido clínico
 
-**Estado: PLAN. El dictamen legal LLEGÓ (2026-08-06, `docs/entregas/RESPUESTA_CONSULTA_ACCESO_DATOS.md`); las tres decisiones están TOMADAS y las fases quedan desbloqueadas.** La ratificación del asesor externo sobre la Decisión 1 la gestiona Santiago; no bloquea el diseño ni la construcción. Es acceso a datos de salud; una decisión mal tomada aquí es cara de deshacer. Gate del Hito 2/3 (ver `LANZAMIENTO.md`, `BACKLOG.md` "Extender el mecanismo de grants", `DATA_GOVERNANCE.md:237`).
+**Estado: PLAN. El dictamen legal LLEGÓ (2026-08-06, `docs/entregas/RESPUESTA_CONSULTA_ACCESO_DATOS.md`); las tres decisiones están TOMADAS y las fases quedan desbloqueadas.** La ratificación del asesor externo sobre la Decisión 1 la gestiona Santiago; no bloquea el diseño ni la construcción. Es acceso a datos de salud; una decisión mal tomada aquí es cara de deshacer. **Gate del Hito 3** (fuente: `LANZAMIENTO.md` gate 16; sin pacientes reales el god-view del admin solo alcanza datos de prueba). Detalle en `BACKLOG.md` "Extender el mecanismo de grants", `DATA_GOVERNANCE.md:237`.
 
 **Qué es.** Hoy el rol `admin` tiene `has_role('admin')` en el SELECT de casi toda la PHI: un "god-view" latente. El bloque de auditoría ya cerró 3 tablas (las notas narrativas) y las enrutó por el mecanismo de grants (Niveles a/b/c). El chat legal confirmó que el mismo control debe cubrir el RESTO del contenido clínico identificado. Este documento lo dimensiona.
 

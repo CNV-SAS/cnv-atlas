@@ -1,6 +1,8 @@
 # LANZAMIENTO — Hitos y gates
 
-**Qué es.** La lista que decide **cuándo se puede atender al primer paciente real** estaba dispersa en `BACKLOG.md` entre más de cien líneas. Este documento la consolida: **nombra cada gate y apunta al detalle**; el detalle sigue en `BACKLOG.md` (u otros docs). Fuente única de la definición de gates (supera a `MVP.md` para esto).
+**Qué es.** La lista que decide **cuándo se puede atender al primer paciente real** estaba dispersa en `BACKLOG.md` entre más de cien líneas. Este documento la consolida: **nombra cada gate y apunta al detalle**; el detalle sigue en `BACKLOG.md` (u otros docs).
+
+**FUENTE ÚNICA DE VERDAD sobre gates.** Este documento es el único que declara, para cada gate: (a) **su estado** (abierto / cerrado), (b) **a qué hito pertenece**, y (c) **el conteo** de gates abiertos por hito. Ningún otro doc afirma esas tres cosas por su cuenta: los demás describen el TRABAJO de un gate (qué hace, cómo se construye) y, si necesitan referirse a su estado o su hito para leerse solos, **citan explícitamente a este documento** ("ver `LANZAMIENTO.md` gate N"). Motivo: el mismo hecho vivía duplicado en cinco docs y actualizar uno dejaba cuatro mintiendo (se repitió 7 veces). Supera a `MVP.md` y a cualquier tabla de estado de `PLAN_ETAPAS.md`/`BACKLOG.md`/`MAPA.md` para esto.
 
 **Dos ejes (no una lista):** **qué rol** (profesional → admin → soporte → dirección → ObBIA) y **qué hito**. Los hitos son compuertas; cada rol tiene un mínimo distinto en cada una (la matriz rol × hito se completa aquí conforme se decida por rol; hoy el eje que aprieta es el del profesional).
 

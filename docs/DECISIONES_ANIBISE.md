@@ -100,7 +100,7 @@ Decisión: tres textos (mejoró / sin cambio / empeoró), sin cifra y sin nombra
 **D-011 · Presentación de la EB-BIS (paciente vs profesional).**
 Decisión: la cifra de EB-BIS nunca va al paciente; al profesional con marca "calibración provisional, no comunicable". Primera medición del paciente: sin cifra ni la expresión "edad biológica", solo lectura funcional. Desde la segunda: el cambio en tres bandas (ver D-010).
 - Fecha: 2026-08-01. · Origen: P0.
-- Estado: **PARCIAL.** La cifra al profesional (terminología "Edad Bioeléctrica") está; la MARCA visible "calibración provisional / no comunicable" es gate del Hito 3 y está pendiente de verificar/implementar; las bandas al paciente son D-010, sin implementar. · Afecta: reporte.
+- Estado: **PARCIAL.** La cifra al profesional (terminología "Edad Bioeléctrica") está; la MARCA visible "calibración provisional / no comunicable" está pendiente de verificar/implementar (su hito y estado como gate: `LANZAMIENTO.md`); las bandas al paciente son D-010, sin implementar. · Afecta: reporte.
 - Dependencia de implementación (2026-08-03): el "cambio en tres bandas desde la segunda medición" depende del anclaje correcto de la comparación (ver la nota en D-010): debe ser contra la versión vigente anterior, no una reemplazada.
 
 **D-012 · Retirar el examen de telómeros/estrés oxidativo; ningún ítem cita el propio modelo.**

@@ -4,6 +4,8 @@
 - `LANZAMIENTO.md` tiene los **gates** (qué debe cumplirse), no la secuencia.
 - `BACKLOG.md` tiene el **detalle** de cada ítem. Este documento **enlaza** a BACKLOG en vez de duplicarlo (una copia se desactualiza y contradice al original).
 
+> **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento ordena el TRABAJO. Las etiquetas de HITO inline ("gate Hito 2", "OBLIGATORIO H2", "gate del Hito 3") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si discrepan, gana `LANZAMIENTO.md`.
+
 **Cómo leer el estado de cada ítem:**
 - ✅ **hecho** — construido y verificado.
 - 🔨 **a medio construir** — empezado, con estado intermedio. **Más urgente que lo sin empezar:** un estado a medias puede ser peor que ninguno (pasó con P0 Parte 2 y el flujo de corrección).

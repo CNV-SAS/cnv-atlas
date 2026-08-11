@@ -2,26 +2,20 @@
 
 Mapa de una pantalla para orientarse en diez segundos. No es plan ni backlog: si algo tiene detalle, vive en `LANZAMIENTO.md` (gates), `BACKLOG.md` (diferido) o `docs/MVP.md` (histórico); aquí solo se nombra. Se actualiza al cerrar cada subtarea.
 
-> ## 📍 AHORA: Hito 1, Tratamiento T2 — **T2a CERRADO** + mini-bloque de confirmación del diagnóstico CERRADO. Sigue **T2b**, empezando por **B-0**.
-> Mini-bloque (2026-07-29): la confirmación del diagnóstico es ahora un acto propio (`confirmDiagnosis`, profesional asignado, admin NO) con trigger de inmutabilidad (0027, la confirmación es firma clínica, no se cambia ni borra; vía de escape `session_replication_role=replica` solo en demo). Con esto el gate `diagnosisConfirmed` de las 5 ops deja de ser un callejón (se satisface sin generar un reporte), y `approveReport` quedó tolerante (no re-confirma; audita `diagnosis.confirmed_via_report` si confirma por su cuenta). **T2b empieza por B-0: la superficie de confirmación (el botón más peligroso de la app: clic IRREVERSIBLE), sin la cual ninguna operación de protocolo se puede ejecutar.** Ver B-0 y sus requisitos en BACKLOG.
-> A1, A2 y A3 cerrados. A3 completo: `motorProtocolo` frozen (A3.1), cadena calórica TS con GOLDEN 1 (A3.2), fenotipo F1-F12 (A3.4), candado de versión, el orquestador puro con golden, el sellado en el pipeline (E2E), y **`approveProtocol`**: sella el conjunto EFECTIVO (`protocol_approved`) con chequeo explícito de asignación (profesional dueño), profesional-solo, gates (draft + sugerido no nulo, SIN diagnóstico-confirmado, ver precondición de T2b en BACKLOG), y LAS DOS versiones + LAS DOS fechas (aprobación y medición BIS). **Sigue T2b (superficie)**, con su precondición registrada en BACKLOG (el gate `diagnosisConfirmed` de todo el módulo fuerza "reporte antes de prescribir"; resolver antes de construir T2b) y el requisito del aviso de mismatch de versión.
+> **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Las menciones de "Hito N" o "gate" en este documento describen el TRABAJO; su ESTADO (abierto/cerrado), su HITO y el CONTEO son los que declara `LANZAMIENTO.md`. Si discrepan, gana `LANZAMIENTO.md`.
+
+> ## 📍 AHORA: para la posición vigente en lenguaje llano, ver `ESTADO.md`; para el estado de cada gate por hito, `LANZAMIENTO.md`.
+> (Las secciones de detalle de este mapa quedaron rezagadas respecto de esos dos docs; se conservan como orientación de estructura, no de estado.)
 
 ---
 
 ## Los tres hitos
 
-Dos ejes, no una lista: **qué rol** (profesional → admin → soporte → dirección → ObBIA) y **qué hito** (construir → revisión de integrantes → pacientes reales). Los hitos son compuertas; cada rol tiene un mínimo distinto en cada una. Tabla completa en `LANZAMIENTO.md`.
+Dos ejes, no una lista: **qué rol** (profesional → admin → soporte → dirección → ObBIA) y **qué hito** (construir → revisión de integrantes → pacientes reales). Los hitos son compuertas; cada rol tiene un mínimo distinto en cada una. **La tabla, el estado y el conteo por hito viven en `LANZAMIENTO.md` (fuente única); aquí solo se nombran los tres:** Hito 1 (producto para el integrante, sin pacientes reales), Hito 2 (revisión de integrantes en la nube), Hito 3 (pacientes reales).
 
-| Hito | Qué es | Estado |
-|---|---|---|
-| **Hito 1** | Producto completo y pulido para el Integrante (sandbox de pagos, sin pacientes reales) | **EN CURSO** |
-| **Hito 2** | Revisión de Integrantes (prueban en la nube, dan visto bueno) | pendiente |
-| **Hito 3** | Operación con pacientes reales | pendiente |
-
-## Qué falta dentro del Hito 1
+## Qué falta dentro del Hito 1 (orientativo; el estado autoritativo por gate está en `LANZAMIENTO.md`)
 
 - Superficies del profesional: **T2, T3, Plan alimentario, T4** y los cuatro motores de tratamiento.
-- Despliegue a la nube (es gate del Hito 2, pero se construye aquí). Ver `BACKLOG.md`.
 - ~~Bug de auto-envío de la encuesta (D8)~~ **CERRADO (2026-08-02).** Flujo de corrección post-diagnóstico (sigue pendiente).
 - **Seguimiento: NO es una fase sin construir; es una fase CONSTRUIDA esperando TRES frases (Q25).** El mecanismo ya existe (`followups/services/eb-trajectory.ts`): comparación entre evaluaciones, gate de 12 semanas, las tres bandas (mejoró/sin cambio/empeoró), corte provisional ±2. Está DESCONECTADO a propósito y lo único que espera es la redacción de los tres textos al paciente (Q25, autoría de Gildardo) y las dos decisiones clínicas que la acompañan. No confundir "espera a Gildardo" (tres frases) con "sin construir".
 - Gate del generador de menú vs restricciones del modelo.
@@ -69,7 +63,7 @@ El tratamiento organizado por la jerarquía de composición corporal, en niveles
 - **DOC-1** ✅ extracto de pendientes para Gildardo (enviado 2026-07-27).
 - **DOC-2** regla de anonimización en `BACKLOG.md`. pendiente.
 - **DOC-3** línea de Aminogram en reportes + retirar el handoff a `BACKLOG`/`CLAUDE.md`. pendiente.
-- **DOC-4** `LANZAMIENTO.md` con los tres hitos de dos ejes + nota en `MVP.md`. **HECHO (2026-07-30):** creado con los ~18 gates consolidados por hito (H1=4, H2=6, H3=8) y punteros a `BACKLOG.md`; la matriz rol × hito se completa por rol conforme se decida.
+- **DOC-4** `LANZAMIENTO.md` con los tres hitos de dos ejes + nota en `MVP.md`. **HECHO (2026-07-30):** creado con los gates consolidados por hito y punteros a `BACKLOG.md`; la matriz rol × hito se completa por rol conforme se decida. (El conteo vigente de gates abiertos por hito vive en `LANZAMIENTO.md`, no aquí.)
 
 ## Depende de Gildardo (no bloquea T2)
 

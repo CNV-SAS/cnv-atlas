@@ -3,6 +3,8 @@
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
+> **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
+
 ## HITO 1 — El export del Biody BIS: IMPORTA HOY, pero degrada ISCM/IEHH/badges (se resuelve DERIVANDO, no con OCR)
 
 **REESCRITO 2026-08-08 con el export REAL enfrente** (104 columnas, BiodyConnect android v1.2.2). El export real traía PII de un paciente: está fuera de git (gitignored); el **material reutilizable es el fixture sintético anonimizado `src/tests/fixtures/biody-bis-male-synthetic.xlsx`** (nombre/documento sintéticos, sin fecha de nacimiento, valores clínicos intactos), que sirve para construir y probar EA1. El diagnóstico anterior ("Atlas rechaza el export, hace falta OCR") **era incorrecto**. La realidad, verificada campo por campo:
