@@ -49,8 +49,8 @@ export async function TaxStatusBanner() {
       <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted/40 p-4">
         <h2 className="text-sm font-semibold text-foreground">Recibimos tus datos; los estamos verificando</h2>
         <p className="text-sm text-muted-foreground">
-          Tienes {monto} COP en comisiones. En cuanto verifiquemos tu RUT, tu comisión entra en la próxima
-          liquidación. No necesitas hacer nada más por ahora.
+          Tienes {monto} COP en comisiones. En cuanto verifiquemos tu RUT, tu comisión queda lista para
+          pagarte. No necesitas hacer nada más por ahora.
         </p>
       </div>
     );

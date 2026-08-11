@@ -55,7 +55,7 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
     if (state === last.current) return;
     last.current = state;
     if (state.error) toast.error(state.error);
-    else if (state.success) toast.success("Verificado. El integrante entra en la próxima liquidación.");
+    else if (state.success) toast.success("Verificado. Su comisión queda lista para pagarle.");
   }, [state]);
 
   const lastRej = useRef(rejState);

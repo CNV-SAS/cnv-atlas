@@ -25,12 +25,13 @@
 
 ## Gates del Hito 2 (revisión de Integrantes en la nube)
 
-5. **Despliegue a la nube** (se construye en el Hito 1; es gate del Hito 2). `BACKLOG.md` / `DEPLOY.md`.
-6. **Captura de la profesión al invitar + `profession` NOT NULL + backfill** (B1 lo volvió urgente: sin profesión no se trabaja el tratamiento). `BACKLOG.md`.
+5. **Despliegue a la nube — CERRADO (2026-08-07/08, Santiago).** `atlas.cnvsystem.com` en producción: Supabase nube, dominio propio, Resend, y el pago probado end-to-end con Wompi sandbox. La nube nació limpia (sembrada con `SEED_DEMO=false`, `patients` vacía verificada). `DEPLOY_GUIA_NUBE.md`.
+6. **Captura de la profesión al invitar + `profession` NOT NULL — CERRADO (2026-08-05).** `createUserSchema` la exige (superRefine), columna NOT NULL (migración 0036). Falta aparte (no gate): EDITAR la profesión. `BACKLOG.md`.
 7. **Q19/Q20 — clasificación y fenotipo consistentes** (F1-F12 en Diagnóstico; y cuál clasificador manda, `cXXX` vs `dXXX`). Gildardo dijo "antes de abrirle Atlas a los integrantes". `GILDARDO_QUERIES.md`.
 8. **Rótulo de la EB-BIS** ("no leer como edad fisiológica", indicación de Gildardo). `BACKLOG.md`.
 9. **Aviso a los Integrantes del paso de confirmación del diagnóstico** (Atlas lo añade, el prototipo no lo tiene). `BACKLOG.md`.
-10. **Seed no destructivo** en staging (no `pnpm db:seed`, que borra). `BACKLOG.md` / `INVENTARIO.md`.
+10. **Seed no destructivo — CERRADO (2026-08-07).** Interruptor `SEED_DEMO` en `supabase/seed.ts`; la nube se siembra sin datos demo. Pendiente menor (no gate): que el seed sea UPSERT idempotente para re-siembras. `DEPLOY_GUIA_NUBE.md`.
+10bis. **"Olvidé mi clave" self-service — CERRADO (bloque de auth).** Enlace en la pantalla de acceso (`forgot-password`) + correo de recuperación + cambio de clave con segundo factor (`set-password-mfa-form`), probado en la nube. No era un gate numerado; se registra aquí para que no reaparezca como pendiente. `src/modules/auth`.
 11. **Gate de aprobación de Gildardo para los cambios de opción B** (él aprueba ANTES de producción = antes de que un Integrante lo vea en la nube del Hito 2). **Movido de Hito 3 a Hito 2 (2026-08-01):** los cambios de opción B que se COMPUTAN al mostrar (la Δ, CA-2) llegan a pantalla sin sellarse, así que un Integrante los vería en su revisión del Hito 2; si Gildardo no aprobó antes, se pierde el sentido de su condición. `docs/entregas/CAMBIOS_AUTORIZADOS.md`.
 
 ## Gates del Hito 3 (pacientes reales)
@@ -49,7 +50,11 @@
 - **B15** — pulido/seguridad final del MVP de código (rate limit de grants, scrub PHI, checklist de seguridad + DPA, headers). `b15-status`.
 - **Gate 2 · Bug D8** (2026-08-02) — autoenvío arreglado con `key` distintas, smoke de Santiago pasado. Follow-on abierto: e2e del wizard (no gate).
 - **Gate 2bis-a · `dfi.complete` mide completitud real** (2026-08-02) — Opción A implementada, `missingFieldKeys` sellado, fail-loud, regresión verde. La mitad que ACTÚA (2bis-b) sigue abierta, espera Q28.
+- **Gate 5 · Despliegue a la nube** (2026-08-07/08) — `atlas.cnvsystem.com` en producción, pago end-to-end en Wompi sandbox, nube limpia.
+- **Gate 6 · Profesión al invitar + NOT NULL** (2026-08-05) — migración 0036.
+- **Gate 10 · Seed no destructivo** (2026-08-07) — `SEED_DEMO=false`, nube sin datos demo.
+- **Gate 10bis · "Olvidé mi clave" self-service** — enlace + correo + cambio con MFA, probado en la nube.
 
 ---
 
-**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 7 · Hito 3 = 8** (el 2026-08-02 se cerraron el gate 2, bug D8, y 2bis-a, `dfi.complete` mide completitud; queda abierto 2bis-b, la mitad que ACTÚA sobre `complete=false`, esperando Q28; Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG). **Total ~19.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.
+**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 4 · Hito 3 = 8** (el 2026-08-02 se cerraron el gate 2, bug D8, y 2bis-a, `dfi.complete` mide completitud; queda abierto 2bis-b, la mitad que ACTÚA sobre `complete=false`, esperando Q28; Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG). **Total ~19.** Se agregan/mueven conforme aparezcan; cada uno con su puntero al detalle. La matriz rol × hito (mínimo por rol en cada compuerta) se completa aquí cuando se decida por rol.

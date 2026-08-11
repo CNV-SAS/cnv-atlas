@@ -166,7 +166,7 @@ export async function sendTaxStatusEmail(
       : "Tu RUT en Atlas necesita una corrección";
   const text =
     kind === "verified"
-      ? "Verificamos tus datos tributarios. Tu comisión entra en la próxima liquidación.\n\n" +
+      ? "Verificamos tus datos tributarios. Tu comisión queda lista para pagarte.\n\n" +
         "No necesitas hacer nada más. Gracias."
       : "Revisamos el RUT que subiste y necesita una corrección:\n\n" +
         `${reason ?? ""}\n\n` +
