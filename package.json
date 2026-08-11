@@ -11,6 +11,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:sync": "drizzle-kit migrate && pnpm db:types",
     "db:check": "node --env-file=.env.local scripts/check-migrations.mjs",
     "db:check:cloud": "node scripts/check-migrations.mjs",
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed.ts",
