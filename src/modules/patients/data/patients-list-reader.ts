@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import { NON_COUNTING_EVALUATION_STATUSES } from "../labels";
 import type { DocumentType, PatientListItem } from "../types";
 
 // Roster de pacientes para la UI autenticada (regla 1). Cliente anon + RLS:
@@ -27,7 +28,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // superseded_at por evaluacion (no `evaluations(count)`): el conteo debe excluir las
       // reemplazadas por correccion (contarlas infla el numero de consultas del paciente). Se cuentan
       // las vigentes del lado del cliente; el volumen por paciente es chico y va gateado por RLS.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at)",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at, status)",
     )
     .is("deleted_at", null);
   if (error) {
@@ -38,8 +39,13 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     const profile = one<ProfileEmbed>(
       row.patient_profiles as ProfileEmbed | ProfileEmbed[] | null,
     );
-    const evals = (row.evaluations as { superseded_at: string | null }[] | null) ?? [];
-    const evaluationCount = evals.filter((e) => e.superseded_at == null).length;
+    // Cuenta solo evaluaciones REALES: vigentes (no supersedidas) y que no sean un shell firmado sin
+    // responder ni una abandonada (esas existen pero no son una evaluacion hecha).
+    const evals =
+      (row.evaluations as { superseded_at: string | null; status: string }[] | null) ?? [];
+    const evaluationCount = evals.filter(
+      (e) => e.superseded_at == null && !NON_COUNTING_EVALUATION_STATUSES.has(e.status),
+    ).length;
     return {
       patientId: row.id,
       documentType: row.document_type as DocumentType,
