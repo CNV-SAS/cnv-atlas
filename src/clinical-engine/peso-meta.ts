@@ -6,8 +6,11 @@
 // (protG = protKg × pesoMeta), la prescripción cambia en silencio. Por eso Atlas lo hace VISIBLE
 // (superficie de tratamiento) y lo computa aquí, no oculto en el cálculo.
 //
-// pesoAjust (L17 del motor: `imc>=25 ? PI+0.25*(pesoAct-PI) : pesoAct`) es CÓDIGO MUERTO en el motor de
-// Gildardo: se calcula y NO se usa (protG usa pesoMeta). No se porta.
+// pesoAjust (L17 del motor: `imc>=25 ? PI+0.25*(pesoAct-PI) : pesoAct`) es código muerto en el
+// motorTratNutri de Gildardo (protG usa pesoMeta), así que NO se porta AQUÍ. OJO (C2, 2026-08-11): en el
+// motorProtocolo congelado de Atlas SÍ está vivo, es el `pesoCalculo` sobre el que hoy se prescribe a todo
+// IMC≥25. La sub-tarea 2 del re-port lo retira y cablea este default de Lorentz en su lugar (gated por la
+// confirmación C2 de Gildardo). No confundir: acá se porta el DEFAULT del peso meta, no el pesoAjust.
 
 // Peso ideal de Lorentz (kg), por sexo. talla en cm. Verbatim del motor (L16).
 export function pesoIdealLorentz(tallaCm: number, sexoM: boolean): number {
