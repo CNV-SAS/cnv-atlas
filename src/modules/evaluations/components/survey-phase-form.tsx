@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { saveProgressAction, submitSurveyAnswersAction } from "../actions";
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
+import { ResumeLinkBox } from "./resume-link-box";
 import { SurveyQuestion } from "./survey-widgets";
 
 // FASE 2 del intake: la ENCUESTA. Se llega aqui ya firmado (fase 1) con un resume_token que autentica la
@@ -123,6 +124,10 @@ export function SurveyPhaseForm({
     >
       <input type="hidden" name="resumeToken" value={resumeToken} />
       <div ref={topRef} />
+
+      {/* Enlace de reanudacion + aviso de que puede pausar. Al inicio de la fase 2 (no en una pantalla
+          aparte): el paciente lo ve y lo puede copiar ANTES de empezar, no solo tras guardar. */}
+      <ResumeLinkBox resumeToken={resumeToken} />
 
       {/* Progreso */}
       <div className="flex flex-col gap-2">
