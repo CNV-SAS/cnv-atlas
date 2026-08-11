@@ -31,16 +31,13 @@ export async function uploadReportPdf(
   return { path };
 }
 
-// URL firmada de corta vida para ver el PDF internamente (el route handler valida
-// ownership antes de pedirla). El PDF se sirve como adjunto/visor, nunca como HTML.
-export async function createSignedReportUrl(
-  path: string,
-  expiresInSeconds = 300,
-): Promise<string | null> {
+// Descarga los BYTES del PDF (service role). El route handler los TRANSMITE por nuestra ruta (que valida
+// ownership), en vez de redirigir a una URL firmada de Storage: una URL firmada es un token al portador
+// (funciona sin sesion durante su TTL) y, si se comparte, expone el reporte. Transmitiendo, el cliente solo
+// ve /reportes/[id]/pdf, siempre protegido; la URL de Storage nunca sale del servidor.
+export async function downloadReportPdf(path: string): Promise<Buffer | null> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, expiresInSeconds);
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
   if (error || !data) return null;
-  return data.signedUrl;
+  return Buffer.from(await data.arrayBuffer());
 }

@@ -29,7 +29,18 @@ describe("isPublicPath: rutas accesibles sin sesion", () => {
   });
 
   it("las de la app NO son publicas (requieren sesion)", () => {
-    for (const p of ["/dashboard", "/pacientes", "/faltantes", "/mi-inventario", "/evaluaciones/x"]) {
+    for (const p of [
+      "/dashboard",
+      "/pacientes",
+      "/faltantes",
+      "/mi-inventario",
+      "/evaluaciones/x",
+      // El RUT (documento de identidad tributaria) y el PDF del reporte se sirven por rutas protegidas: el
+      // acceso sin sesion tiene que fallar (rebote a login). Nunca por URL firmada compartible.
+      "/rut/abc",
+      "/verificaciones",
+      "/reportes/x/pdf",
+    ]) {
       expect(isPublicPath(p), `${p} NO debe ser publica`).toBe(false);
     }
   });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/modules/auth/session";
 import { getReportDispatch } from "@/modules/reports/data/reports-repository";
-import { createSignedReportUrl } from "@/modules/reports/data/report-storage";
+import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -26,11 +26,18 @@ export async function GET(
   const dispatch = await getReportDispatch(id);
   if (!dispatch) return new NextResponse("Reporte no encontrado", { status: 404 });
 
-  // Enviado: el PDF vive en Storage; se sirve por URL firmada.
+  // Enviado: el PDF vive en Storage; se TRANSMITE por esta ruta (nunca la URL firmada, que seria un token
+  // al portador si se comparte). El acceso ya se valido arriba (ownership via RLS).
   if (dispatch.storagePath) {
-    const signed = await createSignedReportUrl(dispatch.storagePath);
-    if (!signed) return new NextResponse("PDF no disponible", { status: 500 });
-    return NextResponse.redirect(signed);
+    const pdf = await downloadReportPdf(dispatch.storagePath);
+    if (!pdf) return new NextResponse("PDF no disponible", { status: 500 });
+    return new NextResponse(new Uint8Array(pdf), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="reporte-${dispatch.reportId}.pdf"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
   }
 
   // Preview: render del snapshot inmutable, en linea (visor del navegador). Se muestra

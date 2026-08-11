@@ -38,15 +38,15 @@ export async function uploadRutPdf(
   return { path };
 }
 
-// URL firmada de corta vida para ver el RUT (el route handler valida el acceso ANTES de pedirla).
-export async function createSignedRutUrl(
-  path: string,
-  expiresInSeconds = 300,
-): Promise<string | null> {
+// Descarga los BYTES del RUT (service role). El route handler los TRANSMITE por nuestra propia ruta (que
+// exige sesion), en vez de redirigir a una URL firmada de Storage: una URL firmada es un token al portador
+// (funciona sin sesion durante su TTL), y si se comparte queda expuesta. Transmitiendo, el cliente solo ve
+// /rut/[id], que siempre pasa por el proxy + requireUser; la URL de Storage nunca sale del servidor.
+export async function downloadRutPdf(path: string): Promise<Buffer | null> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresInSeconds);
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
   if (error || !data) return null;
-  return data.signedUrl;
+  return Buffer.from(await data.arrayBuffer());
 }
 
 // Ruta vigente del RUT de un profesional (para el route handler). Service role: el acceso ya se valido
