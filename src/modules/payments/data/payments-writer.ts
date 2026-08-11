@@ -17,6 +17,40 @@ import {
 // tienen policy de SELECT. El sellado del pago, la comision y el ingreso van en UNA
 // transaccion de BD (db.transaction) para que nunca queden a medias.
 
+// Tipo de la transaccion de BD (evita `any`, se mantiene con la version de Drizzle).
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Contabilidad COMPARTIDA del sellado: comision del profesional (tasa snapshot) + ingreso de CNV, dentro
+// de la transaccion de BD dada. La usan el sellado del webhook de Wompi y la venta en EFECTIVO: UN solo
+// camino contable, no dos. amount es PVP con IVA; la comision y el ingreso van sobre la BASE sin IVA (el
+// IVA es recaudo, no ingreso; decision de B6, ver core/iva).
+async function sealAccounting(
+  tx: Tx,
+  t: { id: string; amount: string; professionalId: string | null },
+): Promise<void> {
+  const base = baseFromTotal(Number(t.amount));
+  let commission = 0;
+  if (t.professionalId) {
+    const [prof] = await tx
+      .select({ rate: professionalProfiles.commissionRate })
+      .from(professionalProfiles)
+      .where(eq(professionalProfiles.id, t.professionalId));
+    const rate = Number(prof?.rate ?? 0);
+    commission = Math.round(base * rate * 100) / 100;
+    await tx.insert(professionalRevenue).values({
+      transactionId: t.id,
+      professionalId: t.professionalId,
+      commissionRate: String(rate), // snapshot de la tasa del momento
+      commissionAmount: String(commission),
+    });
+  }
+  // El resto de la base (sin IVA) es ingreso de CNV.
+  await tx.insert(cnvRevenue).values({
+    transactionId: t.id,
+    amount: String(Math.round((base - commission) * 100) / 100),
+  });
+}
+
 export type NewOrderLine = {
   nutraceuticalId: string;
   quantity: number;
@@ -139,32 +173,57 @@ export async function sealPaidTransaction(
       });
     if (updated.length === 0) return null; // ya sellada u otro estado: idempotente
     const t = updated[0];
-    // amount es PVP con IVA incluido. La comision y el ingreso se calculan sobre la
-    // BASE sin IVA: el IVA es recaudo (va a la factura y a la DIAN), no es ingreso
-    // (decision de B6). Ver core/iva.
-    const base = baseFromTotal(Number(t.amount));
-
-    let commission = 0;
-    if (t.professionalId) {
-      const [prof] = await tx
-        .select({ rate: professionalProfiles.commissionRate })
-        .from(professionalProfiles)
-        .where(eq(professionalProfiles.id, t.professionalId));
-      const rate = Number(prof?.rate ?? 0);
-      commission = Math.round(base * rate * 100) / 100;
-      await tx.insert(professionalRevenue).values({
-        transactionId: t.id,
-        professionalId: t.professionalId,
-        commissionRate: String(rate), // snapshot de la tasa del momento
-        commissionAmount: String(commission),
-      });
-    }
-    // El resto de la base (sin IVA) es ingreso de CNV.
-    await tx.insert(cnvRevenue).values({
-      transactionId: t.id,
-      amount: String(Math.round((base - commission) * 100) / 100),
-    });
+    await sealAccounting(tx, t);
     return t;
+  });
+}
+
+// Venta en EFECTIVO: crea la transaccion YA pagada (el efectivo se paga en el momento) con su medio,
+// items y contabilidad, todo en UNA transaccion de BD (vendido-y-pagado no queda a medias). Reusa la
+// MISMA contabilidad que el webhook de Wompi (sealAccounting). Idempotente por idempotency_key: un doble
+// envio no crea ni sella dos veces (onConflictDoNothing + re-lectura). El efectivo es dinero de CNV que
+// el integrante custodia; eso lo refleja payment_method='efectivo' (la liquidacion suma lo custodiado).
+export async function createPaidCashTransaction(input: NewTransaction): Promise<{ id: string }> {
+  return db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(transactions)
+      .values({
+        organizationId: input.organizationId,
+        patientId: input.patientId,
+        professionalId: input.professionalId,
+        status: "paid",
+        paymentMethod: "efectivo",
+        amount: String(input.amount),
+        currency: input.currency,
+        idempotencyKey: input.idempotencyKey,
+      })
+      .onConflictDoNothing({ target: transactions.idempotencyKey })
+      .returning({
+        id: transactions.id,
+        amount: transactions.amount,
+        professionalId: transactions.professionalId,
+      });
+    if (inserted.length === 0) {
+      // Doble envio (misma idempotency_key): ya se creo y sello. Se re-lee y no se vuelve a sellar.
+      const [existing] = await tx
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(eq(transactions.idempotencyKey, input.idempotencyKey));
+      return { id: existing.id };
+    }
+    const t = inserted[0];
+    if (input.items.length > 0) {
+      await tx.insert(transactionItems).values(
+        input.items.map((it) => ({
+          transactionId: t.id,
+          nutraceuticalId: it.nutraceuticalId,
+          quantity: it.quantity,
+          unitPrice: String(it.unitPrice),
+        })),
+      );
+    }
+    await sealAccounting(tx, t);
+    return { id: t.id };
   });
 }
 

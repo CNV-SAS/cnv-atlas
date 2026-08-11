@@ -123,6 +123,13 @@ export const transactionStatus = pgEnum("transaction_status", [
   "refunded",
 ]);
 
+// Medio de pago de una transaccion. 'wompi' = pasarela (el flujo existente); 'efectivo' = el integrante
+// recauda en efectivo dinero de CNV (lo custodia hasta transferirlo). Un pago MIXTO (parte digital, parte
+// efectivo) se modela como DOS transacciones, una por medio (no una con dos pagos): reusa el sellado
+// actual y la liquidacion las suma igual. La comision de cada una va sobre SU monto, asi que la del total
+// es la suma; el efectivo solo define cuanto custodia el integrante.
+export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo"]);
+
 export const aiSuggestionStatus = pgEnum("ai_suggestion_status", [
   "success",
   "timeout",

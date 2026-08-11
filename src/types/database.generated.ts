@@ -2822,6 +2822,7 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           patient_id: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"]
           professional_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           updated_at: string
@@ -2836,6 +2837,7 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           patient_id?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
           professional_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           updated_at?: string
@@ -2850,6 +2852,7 @@ export type Database = {
           idempotency_key?: string
           organization_id?: string
           patient_id?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"]
           professional_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           updated_at?: string
@@ -3215,6 +3218,7 @@ export type Database = {
         | "conciliacion"
         | "devolucion"
       patient_status: "active" | "inactive"
+      payment_method: "wompi" | "efectivo"
       professional_document_type: "anexo3"
       professional_profession:
         | "medico"
@@ -3442,6 +3446,7 @@ export const Constants = {
         "devolucion",
       ],
       patient_status: ["active", "inactive"],
+      payment_method: ["wompi", "efectivo"],
       professional_document_type: ["anexo3"],
       professional_profession: [
         "medico",

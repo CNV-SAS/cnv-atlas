@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
-import { transactionStatus } from "./enums";
+import { paymentMethod, transactionStatus } from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
 import { organizations, professionalProfiles } from "./organizations";
 import { patients } from "./patients";
@@ -32,6 +32,9 @@ export const transactions = pgTable(
       onDelete: "set null",
     }),
     status: transactionStatus("status").notNull().default("pending"),
+    // Medio de pago. Default 'wompi': las filas existentes son de la pasarela. El efectivo lo pone la
+    // venta en efectivo. Un pago mixto = dos transacciones, una por medio (ver enum).
+    paymentMethod: paymentMethod("payment_method").notNull().default("wompi"),
     amount: numeric("amount").notNull(),
     currency: text("currency").notNull().default("COP"),
     wompiTransactionId: text("wompi_transaction_id"),
