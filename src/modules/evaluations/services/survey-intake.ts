@@ -16,6 +16,7 @@ import { resolveIdentity } from "@/modules/patients/services/identity-resolution
 import {
   completeSurvey,
   ConsentGateError,
+  getResumeTokenStatus,
   getSurveyProgress,
   ResumeTokenError,
   saveSurveyProgress,
@@ -249,4 +250,10 @@ export async function readSurveyProgress(
   resumeToken: string,
 ): Promise<{ evaluationId: string; mode: "inicial" | "seguimiento"; answers: SurveyAnswer[] } | null> {
   return getSurveyProgress(resumeToken);
+}
+
+// Estado actual del token cuando ya NO abre la encuesta, para el mensaje de reanudacion (cerrada /
+// completada / invalido). null si el token no existe.
+export async function readResumeTokenStatus(resumeToken: string): Promise<string | null> {
+  return getResumeTokenStatus(resumeToken);
 }

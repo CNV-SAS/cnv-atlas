@@ -36,6 +36,7 @@ import {
   getPatientPrefill,
 } from "./data/evaluations-repository";
 import {
+  abandonAwaitingEvaluation,
   confirmEvaluationIdentity,
   ConsentBranchMismatchError,
 } from "./data/evaluations-writer";
@@ -52,6 +53,7 @@ import {
   resolveSurveyLinkByToken,
 } from "./data/survey-links-reader";
 import {
+  canAbandonEvaluation,
   canConfirmIdentity,
   canEmitFollowupLink,
   canManageBaseSurveyLink,
@@ -59,6 +61,7 @@ import {
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
 import { otpSendSchema } from "./validations";
 import type {
+  AbandonEvaluationState,
   BaseSurveyLinkState,
   BaseSurveyQrState,
   ConfirmIdentityState,
@@ -424,6 +427,45 @@ export async function confirmIdentityAction(
 
   revalidatePath("/evaluaciones");
   return { error: null, confirmed: true };
+}
+
+// Cierra (archiva) un shell firmado sin responder ('awaiting_survey' -> 'abandoned'). Lo hace el
+// profesional dueno del paciente (policy + RLS via getEvaluationOwnership). No borra nada: el
+// consentimiento y su registro se conservan. El guard de estado evita cerrar una que ya tiene respuestas.
+export async function abandonEvaluationAction(
+  _prev: AbandonEvaluationState,
+  form: FormData,
+): Promise<AbandonEvaluationState> {
+  const user = await requireUser();
+  if (!canAbandonEvaluation(user)) return { error: "No autorizado.", closed: false };
+
+  const evaluationId = str(form, "evaluationId");
+  if (!evaluationId) return { error: "Evaluación inválida.", closed: false };
+
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", closed: false };
+  if (ownership.status !== "awaiting_survey") {
+    // Solo se cierran shells firmados sin responder; si ya tiene respuestas (o ya se cerro), no procede.
+    return {
+      error: "Solo se puede cerrar una evaluación firmada que aún no se completó.",
+      closed: false,
+    };
+  }
+
+  const ip = await getClientIp();
+  const { closed } = await abandonAwaitingEvaluation({
+    evaluationId,
+    patientId: ownership.patientId,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!closed) return { error: "No se pudo cerrar la evaluación.", closed: false };
+
+  // Refresca la ficha (la fila pasa a "Abandonada") y el panel (sale de la cola de firmados-sin-responder).
+  revalidatePath(`/pacientes/${ownership.patientId}`);
+  revalidatePath("/evaluaciones");
+  return { error: null, closed: true };
 }
 
 // Emite un link de seguimiento (un solo uso, colchon 30 dias) para un paciente del

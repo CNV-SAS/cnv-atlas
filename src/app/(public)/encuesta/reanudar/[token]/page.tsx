@@ -2,7 +2,10 @@ import Image from "next/image";
 
 import { SurveyPhaseForm } from "@/modules/evaluations/components/survey-phase-form";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
-import { readSurveyProgress } from "@/modules/evaluations/services/survey-intake";
+import {
+  readResumeTokenStatus,
+  readSurveyProgress,
+} from "@/modules/evaluations/services/survey-intake";
 
 export const metadata = { title: "Retomar encuesta - Atlas" };
 
@@ -41,16 +44,31 @@ export default async function ReanudarEncuestaPage({
   const { token } = await params;
   const progress = await readSurveyProgress(token);
 
-  // null: token invalido o la encuesta ya se completo (paso a 'draft', el token dejo de abrir).
+  // El token ya no abre la encuesta: son TRES situaciones distintas y tres acciones del paciente
+  // distintas (cerrada -> hablar con su profesional; completada -> no hacer nada; invalido -> revisar el
+  // enlace). Se distingue por el estado actual de la evaluacion (el token se conserva tras cerrar/completar).
   if (!progress) {
+    const status = await readResumeTokenStatus(token);
+    const msg =
+      status === "abandoned"
+        ? {
+            title: "Evaluación cerrada",
+            body: "Tu profesional cerró esta evaluación sin completar. Si quieres retomarla, habla con tu profesional para empezar una nueva.",
+          }
+        : status !== null
+          ? {
+              title: "Encuesta completada",
+              body: "Ya completaste esta encuesta. No necesitas hacer nada más; tu profesional continúa con tu evaluación.",
+            }
+          : {
+              title: "Enlace no válido",
+              body: "Este enlace no es válido. Revisa que lo hayas copiado completo, o pídele uno nuevo a tu profesional.",
+            };
     return (
       <Shell>
         <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Enlace no disponible</h1>
-          <p className="text-sm text-muted-foreground">
-            Este enlace ya no está disponible. Puede que ya hayas terminado la encuesta o que el enlace
-            haya vencido. Si crees que es un error, avisa a tu profesional.
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{msg.title}</h1>
+          <p className="text-sm text-muted-foreground">{msg.body}</p>
         </div>
       </Shell>
     );

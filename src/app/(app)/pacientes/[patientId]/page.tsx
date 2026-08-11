@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
+import { canAbandonEvaluation } from "@/modules/evaluations/policies/can-manage-evaluations";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { edadEnAnios, fechaCorta } from "@/modules/patients/format";
 import {
@@ -34,6 +36,9 @@ export default async function HistoriaPacientePage({
 
   const paciente = await getPatientDetail(patientId);
   if (!paciente) notFound();
+
+  // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
+  const puedeCerrar = canAbandonEvaluation(user);
 
   const anos = edadEnAnios(paciente.birthDate);
   const nombre = `${paciente.firstName} ${paciente.lastName}`.trim() || "Sin nombre";
@@ -108,12 +113,24 @@ export default async function HistoriaPacientePage({
                       {estadoEvaluacionLabel(e.status)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Link
-                        href={`/evaluaciones/${e.evaluationId}`}
-                        className="font-semibold text-primary underline-offset-4 hover:underline"
-                      >
-                        Ver resultados
-                      </Link>
+                      {/* Segun estado: firmada sin responder -> cerrar (si es su profesional); cerrada ->
+                          rotulo sin accion; el resto -> ver resultados. Un shell no tiene resultados que ver. */}
+                      {e.status === "awaiting_survey" ? (
+                        puedeCerrar ? (
+                          <AbandonEvaluation evaluationId={e.evaluationId} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Esperando la encuesta</span>
+                        )
+                      ) : e.status === "abandoned" ? (
+                        <span className="text-xs text-muted-foreground">Cerrada</span>
+                      ) : (
+                        <Link
+                          href={`/evaluaciones/${e.evaluationId}`}
+                          className="font-semibold text-primary underline-offset-4 hover:underline"
+                        >
+                          Ver resultados
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}

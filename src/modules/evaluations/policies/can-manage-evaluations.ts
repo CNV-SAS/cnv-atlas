@@ -22,3 +22,11 @@ export function canEmitFollowupLink(user: CurrentUser): boolean {
 export function canManageBaseSurveyLink(user: CurrentUser): boolean {
   return hasAnyRole(user, ["professional", "admin"]);
 }
+
+// Cerrar (archivar) un shell firmado sin responder: SOLO el profesional dueno del paciente. No admin: es
+// su paciente y el sabe si va a volver; ampliarlo a admin es un cambio de RLS que no urge (la RLS de
+// update de evaluations hoy solo cubre al profesional dueno). El alcance fino (que sea su paciente) lo
+// impone la RLS al leer la evaluacion en el action.
+export function canAbandonEvaluation(user: CurrentUser): boolean {
+  return hasAnyRole(user, ["professional"]);
+}

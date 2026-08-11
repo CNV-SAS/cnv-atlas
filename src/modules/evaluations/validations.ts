@@ -89,6 +89,13 @@ export type ConfirmIdentityState = {
   confirmed: boolean;
 };
 
+// Estado del cierre (archivado) de un shell firmado sin responder: pasa 'awaiting_survey' -> 'abandoned'.
+// closed marca el exito para que la UI muestre la confirmacion.
+export type AbandonEvaluationState = {
+  error: string | null;
+  closed: boolean;
+};
+
 // Estado de la emision de un link de seguimiento. linkPath lleva la ruta relativa
 // (/encuesta/<token>); la UI la combina con el origen para mostrar el link completo.
 export type FollowupLinkState = {

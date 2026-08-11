@@ -406,3 +406,16 @@ export async function getSurveyProgress(
   };
 }
 
+// Estado de la evaluacion asociada a un resume_token, sea cual sea (para el mensaje de la pagina de
+// reanudacion cuando el token ya NO abre la encuesta: distinguir cerrada / ya completada / enlace
+// invalido; son tres situaciones y tres acciones del paciente distintas). null si el token no existe. El
+// token se conserva tras completar o cerrar, asi que sigue resolviendo al estado actual de la evaluacion.
+export async function getResumeTokenStatus(resumeToken: string): Promise<string | null> {
+  const [ev] = await db
+    .select({ status: evaluations.status })
+    .from(evaluations)
+    .where(eq(evaluations.resumeToken, resumeToken))
+    .limit(1);
+  return ev?.status ?? null;
+}
+

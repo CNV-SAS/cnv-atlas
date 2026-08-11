@@ -85,3 +85,43 @@ export async function confirmEvaluationIdentity(
     return { confirmed: true };
   });
 }
+
+export type AbandonEvaluationInput = {
+  evaluationId: string;
+  patientId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Cierra un shell firmado sin responder: 'awaiting_survey' -> 'abandoned' + audita evaluation.abandoned.
+// El guard status='awaiting_survey' en el WHERE lo hace idempotente y SEGURO: nunca toca una evaluacion
+// que ya tiene respuestas (draft/in_progress/completed) ni una ya cerrada. NO se borra nada: el
+// consentimiento firmado, sus grants y el audit se conservan; solo cambia el estado de la evaluacion. No
+// es reversible a proposito (reabrir reviviria el resume_token que queremos muerto); si el paciente
+// vuelve, empieza una evaluacion nueva (re-firmar es barato, el consentimiento ya existe).
+export async function abandonAwaitingEvaluation(
+  input: AbandonEvaluationInput,
+): Promise<{ closed: boolean }> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(evaluations)
+      .set({ status: "abandoned" })
+      .where(
+        and(eq(evaluations.id, input.evaluationId), eq(evaluations.status, "awaiting_survey")),
+      )
+      .returning({ id: evaluations.id });
+    if (updated.length === 0) return { closed: false };
+
+    await recordAudit(tx, {
+      event: "evaluation.abandoned",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      payload: { patient_id: input.patientId },
+      ip: input.ip,
+    });
+    return { closed: true };
+  });
+}
