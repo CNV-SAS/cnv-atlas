@@ -1,5 +1,7 @@
 # Plan — EA1: derivar la composición que el export corto del Biody BIS no trae
 
+> **ESTADO: HECHO (2026-08-11), cableado y verde.** Los cuatro checkpoints del orden de abajo están construidos: `deriveMissingComposition` (frozen `derivar-composicion.js` + golden), cableada en el import real (`bis-import.ts`) por composición faltante, icc/ict derivados, gate de ISCM a null + badges "no evaluables". Prueba de aceptación end-to-end: `src/tests/ea1-acceptance.test.ts` (verde). Única dependencia abierta: `MCA_ref`/`hidSG_ref` (Q35, Gildardo), manejada como null/no-evaluable, sin degradar en silencio. Este plan se conserva como registro de diseño.
+
 **Lo que ya sabemos (no se replantea).** El export del Biody BIS SÍ trae la espectroscopía, así que el import FUNCIONA hoy y el diagnóstico núcleo (IFC/IRC/PABU/fenotipo/AF) sale bien. Faltan 36 campos de COMPOSICIÓN; las identidades de Gildardo (`derivarFaltantes`, v8 L158-216, verificadas sobre 5.073 registros) los derivan, incluidos ECM_BCM y hidSG. El gate del v8 corre la derivación solo si falta la espectroscopía; con este export (espectroscopía presente, composición ausente) NO correría, así que hay que correrla por COMPOSICIÓN faltante. `MCA_ref`/`hidSG_ref` esperan a Gildardo (Q35): quedan en null, sin degradar en silencio. Material listo: `src/tests/fixtures/biody-bis-male-synthetic.xlsx`.
 
 ## Qué deriva `derivarFaltantes` (del v8, verbatim)
