@@ -104,6 +104,49 @@ export function buildRemisiones(rutas: RutaContent[]): Remision[] {
   return out;
 }
 
+// Remisión CONSOLIDADA por destinatario (§9, Gildardo): en vez de repetir ruta por ruta, UNA línea por
+// profesión con el resumen de todo lo que las rutas le envían. El registro D-009 ya es por destinatario
+// (guarda referred_to + reason, no la ruta), así que consolidar el display SE CORRESPONDE con el registro.
+export type ConsolidatedRemision = {
+  profesional: string;
+  referralTarget: "medico" | "psicologo" | "deportologo";
+  urgencia: string; // la más alta entre las rutas (obligatoria > recomendada > otras); string verbatim
+  indicaciones: string[]; // unión sin duplicados de todas las rutas que remiten a este destino
+  rutaIds: string[]; // rutas que la originan (solo referencia; NO se guarda en el registro)
+};
+
+// Rango de urgencia para elegir la más alta al consolidar. No altera el string (se conserva verbatim);
+// solo ordena para saber cuál mostrar cuando dos rutas remiten al mismo destino con urgencias distintas.
+function urgenciaRank(u: string): number {
+  const s = u.toLowerCase();
+  if (s.includes("obligatoria")) return 2;
+  if (s.includes("recomendada")) return 1;
+  return 0;
+}
+
+export function consolidateRemisiones(remisiones: Remision[]): ConsolidatedRemision[] {
+  const byTarget = new Map<string, ConsolidatedRemision>();
+  const order: string[] = []; // preserva el orden de primera aparición (médico → psicólogo → deportólogo)
+  for (const rem of remisiones) {
+    let acc = byTarget.get(rem.referralTarget);
+    if (!acc) {
+      acc = {
+        profesional: rem.profesional,
+        referralTarget: rem.referralTarget,
+        urgencia: rem.urgencia,
+        indicaciones: [],
+        rutaIds: [],
+      };
+      byTarget.set(rem.referralTarget, acc);
+      order.push(rem.referralTarget);
+    }
+    if (urgenciaRank(rem.urgencia) > urgenciaRank(acc.urgencia)) acc.urgencia = rem.urgencia;
+    for (const ind of rem.indicaciones) if (!acc.indicaciones.includes(ind)) acc.indicaciones.push(ind);
+    if (rem.rutaId && !acc.rutaIds.includes(rem.rutaId)) acc.rutaIds.push(rem.rutaId);
+  }
+  return order.map((t) => byTarget.get(t)!);
+}
+
 export const RUTAS_CONTENT: Record<string, RutaContent> = {
   R1: {
     id: "R1",

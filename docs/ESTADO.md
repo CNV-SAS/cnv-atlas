@@ -2,7 +2,7 @@
 
 Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.**
 
-Última actualización: al cerrar §15 (el renombre del gráfico y el detalle del header).
+Última actualización: al cerrar §9 (remisiones resumidas por destinatario). Con esto, las cuatro cosas que Gildardo ya respondió (§6, §10, §15, §9) están hechas.
 
 ---
 
@@ -21,12 +21,13 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Qué falta (por bloque, del más chico al más grande)
 
-1. **Remisiones del reporte (§9).** Que las remisiones salgan resumidas por destinatario (una línea por profesión) en vez de repetidas ruta por ruta. Mediano.
-2. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
-3. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
-4. **Los seis datos sociodemográficos.** Cinco datos + el motivo de consulta (uno de ellos, la etnia, espera al abogado). Mediano.
-5. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Espera primero al abogado. Mediano.
-6. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
+1. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
+2. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
+3. **Los cinco datos sociodemográficos + el motivo.** La etnia (el sexto) va aparte, tras una consulta legal. Mediano.
+4. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Va tras una consulta legal. Mediano.
+5. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
+
+Nota: de §9 queda una sola confirmación de texto pendiente de Gildardo (cómo llamar a la "conducta propia" cuando la remisión es a la propia profesión del que atiende). Va en la ronda que se le prepara. El resumen por destinatario ya funciona.
 
 ## Sobre la encuesta (lo que preguntaste)
 
@@ -37,19 +38,17 @@ De punta a punta, el camino de un paciente ya está construido:
 - **El pase de instrumento de la encuesta** (para poder terminarla).
 - Un lote de preguntas acumuladas (cirugías digestivas, alcohol, dos referencias del equipo Biody). No urgen; se le mandan juntas.
 
-## Qué espera al abogado
+## Qué falta consultar en lo legal
 
-**Lo importante primero: nada de esto bloquea CONSTRUIR. Pero todo junto bloquea ATENDER PACIENTES REALES** (es el gate del lanzamiento, no del desarrollo). De la lista, **tres condicionan trabajo concreto**:
+**Importante: nada de esto bloquea construir, y nada "espera al abogado" de brazos cruzados. Espera una consulta que todavía no hicimos.** El método que funcionó con la firma electrónica es el que aplica: se consulta (se le pregunta al asesor legal), se decide, se construye, y el abogado revisa al final y corrige si no está de acuerdo. Todo junto sí es gate de ATENDER PACIENTES REALES (el lanzamiento), no del desarrollo.
 
-- **Firma electrónica: YA RESUELTA.** La construimos siguiendo el dictamen del abogado; queda solo su visto bueno formal, pero no frena nada.
-- **Etnia: bloquea capturar ese campo.** No se puede pedir la etnia hasta ampliar el consentimiento.
-- **Borrador de encuesta: bloquea guardar respuestas antes de firmar.** No se puede guardar lo que un paciente lleva a medias hasta que el abogado diga si se puede y por cuánto tiempo.
+Dos consultas condicionan trabajo concreto, y ya están preparadas para cuando decidas mandarlas:
 
-Lo demás bloquea atender pacientes reales, pero no una tarea puntual de hoy:
+- **Etnia:** ampliar el consentimiento para capturar un dato sensible que el observatorio necesita. Hasta consultarlo, ese campo no se pide.
+- **Borrador de encuesta:** conservar temporalmente respuestas de salud de una encuesta no completada, antes de firmar. Hasta consultarlo, no se guardan respuestas a medias.
 
-- El **adulto que necesita representante legal** (hoy el sistema asume que representante = menor).
-- Varias de cumplimiento regulatorio (plazos de notificación de incidentes, estándar de anonimización, registro de bases de datos, acuerdos con proveedores).
+La **firma electrónica** ya pasó por este método (consultada, decidida, construida); falta solo su visto bueno final. Y quedan el **adulto con representante legal** (hoy el sistema asume representante = menor) y varias de **cumplimiento regulatorio** (notificación de incidentes, anonimización, registro de bases de datos, acuerdos con proveedores): son gate de atender pacientes reales, no de una tarea de hoy.
 
 ## Siguiente paso
 
-Terminar las cuatro cosas que Gildardo ya respondió: §6, §10 y §15 (hechos), falta §9 (las remisiones resumidas). Después, los desplegables de la encuesta.
+Las cuatro cosas que Gildardo ya respondió están hechas (§6, §10, §15, §9). Sigue: los desplegables de la encuesta. En paralelo, se le prepara a Gildardo una ronda de preguntas (encabezada por la que bloquea la mitad de Tratamiento) y dos consultas legales (etnia y borrador), para que las mandes cuando decidas.

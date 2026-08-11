@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildRemisiones,
+  consolidateRemisiones,
   RUTAS_CONTENT,
   resolveRutasContent,
+  type Remision,
   type RutaContent,
 } from "@/clinical-engine/rutas-content";
 
@@ -82,6 +84,43 @@ describe("resolveRutasContent (rutas activas -> contenido, para congelar en el s
       "R1",
     ]);
     expect(resolveRutasContent([])).toEqual([]);
+  });
+});
+
+describe("consolidateRemisiones (§9: por destinatario, no ruta por ruta)", () => {
+  const mk = (over: Partial<Remision>): Remision => ({
+    profesional: "Médico",
+    referralTarget: "medico",
+    urgencia: "",
+    rutaId: "R1",
+    rutaLabel: "R1",
+    indicaciones: [],
+    ...over,
+  });
+
+  it("agrupa por destinatario, une indicaciones sin duplicar y toma la urgencia más alta", () => {
+    const c = consolidateRemisiones([
+      mk({ rutaId: "R2", urgencia: "recomendada si IAE > 10 años", indicaciones: ["A", "B"] }),
+      mk({ rutaId: "R4", urgencia: "obligatoria si HTA o DM2 activa", indicaciones: ["B", "C"] }),
+    ]);
+    expect(c).toHaveLength(1); // una sola línea para el médico
+    expect(c[0].referralTarget).toBe("medico");
+    expect(c[0].indicaciones).toEqual(["A", "B", "C"]); // unión sin duplicar (B no se repite)
+    expect(c[0].urgencia).toBe("obligatoria si HTA o DM2 activa"); // la más alta
+    expect(c[0].rutaIds).toEqual(["R2", "R4"]); // las rutas de origen, como referencia
+  });
+
+  it("preserva el orden de primera aparición de los destinatarios", () => {
+    const c = consolidateRemisiones([
+      mk({ referralTarget: "medico", profesional: "Médico" }),
+      mk({ referralTarget: "psicologo", profesional: "Psicólogo/a" }),
+      mk({ referralTarget: "medico", profesional: "Médico" }),
+    ]);
+    expect(c.map((x) => x.referralTarget)).toEqual(["medico", "psicologo"]);
+  });
+
+  it("lista vacía -> sin remisiones", () => {
+    expect(consolidateRemisiones([])).toEqual([]);
   });
 });
 
