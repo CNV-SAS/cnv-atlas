@@ -125,3 +125,64 @@ export async function abandonAwaitingEvaluation(
     return { closed: true };
   });
 }
+
+export type ResolveIdentityConflictInput = {
+  evaluationId: string;
+  patientId: string;
+  decision: "same" | "different";
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Resuelve un conflicto de identidad (documento coincide, nombre difiere). El guard identity_conflict=true
+// en el WHERE lo hace idempotente y evita resolver una que no esta en conflicto; funciona tanto en
+// 'awaiting_survey' como en 'draft' (el conflicto puede resolverse antes o despues de completar).
+//   - 'same' (es la misma persona): limpia el flag; la evaluacion sigue el flujo normal (confirmar -> in_progress).
+//   - 'different' (no es la misma): pasa a 'abandoned'; el dato no se sella en el paciente equivocado.
+// La decision queda en el audit CON los nombres declarado y registrado: alguien decidio que dos nombres
+// distintos son (o no) la misma persona, y esa decision merece rastro (regla 8, inline).
+export async function resolveIdentityConflict(
+  input: ResolveIdentityConflictInput,
+): Promise<{ resolved: boolean }> {
+  return db.transaction(async (tx) => {
+    const set =
+      input.decision === "same"
+        ? { identityConflict: false }
+        : { identityConflict: false, status: "abandoned" as const };
+    const [row] = await tx
+      .update(evaluations)
+      .set(set)
+      .where(and(eq(evaluations.id, input.evaluationId), eq(evaluations.identityConflict, true)))
+      .returning({
+        declaredFirstName: evaluations.declaredFirstName,
+        declaredLastName: evaluations.declaredLastName,
+      });
+    if (!row) return { resolved: false };
+
+    // Nombre registrado (para el rastro completo declarado-vs-registrado).
+    const [profile] = await tx
+      .select({ firstName: patientProfiles.firstName, lastName: patientProfiles.lastName })
+      .from(patientProfiles)
+      .where(eq(patientProfiles.patientId, input.patientId));
+
+    await recordAudit(tx, {
+      event:
+        input.decision === "same"
+          ? "evaluation.identity_conflict_confirmed"
+          : "evaluation.identity_conflict_rejected",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      payload: {
+        patient_id: input.patientId,
+        declared_name: `${row.declaredFirstName ?? ""} ${row.declaredLastName ?? ""}`.trim(),
+        registered_name: `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim(),
+        decision: input.decision,
+      },
+      ip: input.ip,
+    });
+    return { resolved: true };
+  });
+}

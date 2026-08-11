@@ -15,6 +15,11 @@ export type PendingIdentityEvaluation = {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  // Conflicto de identidad (documento coincide, nombre difiere): si true, el panel muestra la resolucion
+  // (declarado vs registrado) en vez del confirmar normal. El nombre declarado es el que se compara.
+  identityConflict: boolean;
+  declaredFirstName: string | null;
+  declaredLastName: string | null;
 };
 
 type PatientEmbed = {
@@ -37,7 +42,7 @@ export async function listPendingIdentityChecks(): Promise<PendingIdentityEvalua
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      "id, type, created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, birth_date))",
+      "id, type, created_at, patient_id, identity_conflict, declared_first_name, declared_last_name, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, birth_date))",
     )
     .eq("status", "draft")
     .order("created_at", { ascending: false });
@@ -57,6 +62,9 @@ export async function listPendingIdentityChecks(): Promise<PendingIdentityEvalua
       firstName: profile?.first_name ?? "",
       lastName: profile?.last_name ?? "",
       birthDate: profile?.birth_date ?? null,
+      identityConflict: row.identity_conflict,
+      declaredFirstName: row.declared_first_name,
+      declaredLastName: row.declared_last_name,
     };
   });
 }

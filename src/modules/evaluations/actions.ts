@@ -39,6 +39,7 @@ import {
   abandonAwaitingEvaluation,
   confirmEvaluationIdentity,
   ConsentBranchMismatchError,
+  resolveIdentityConflict,
 } from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
 import {
@@ -67,6 +68,7 @@ import type {
   ConfirmIdentityState,
   FollowupLinkState,
   OtpSendState,
+  ResolveConflictState,
   SaveProgressState,
   SignSurveyState,
   SurveyFormState,
@@ -475,6 +477,45 @@ export async function abandonEvaluationAction(
   revalidatePath(`/pacientes/${ownership.patientId}`);
   revalidatePath("/evaluaciones");
   return { error: null, closed: true };
+}
+
+// Resuelve un conflicto de identidad (documento coincide, nombre difiere). El profesional del paciente
+// (policy + RLS) decide: "same" (misma persona) limpia el flag y la evaluacion sigue el flujo normal;
+// "different" (no es la misma) la cierra. La decision queda auditada con ambos nombres.
+export async function resolveIdentityConflictAction(
+  _prev: ResolveConflictState,
+  form: FormData,
+): Promise<ResolveConflictState> {
+  const user = await requireUser();
+  if (!canConfirmIdentity(user)) return { error: "No autorizado.", resolved: false };
+
+  const evaluationId = str(form, "evaluationId");
+  const decisionRaw = str(form, "decision");
+  if (!evaluationId) return { error: "Evaluación inválida.", resolved: false };
+  if (decisionRaw !== "same" && decisionRaw !== "different") {
+    return { error: "Decisión inválida.", resolved: false };
+  }
+
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", resolved: false };
+  if (!ownership.identityConflict) {
+    return { error: "Esta evaluación no tiene un conflicto de identidad pendiente.", resolved: false };
+  }
+
+  const ip = await getClientIp();
+  const { resolved } = await resolveIdentityConflict({
+    evaluationId,
+    patientId: ownership.patientId,
+    decision: decisionRaw,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!resolved) return { error: "No se pudo resolver.", resolved: false };
+
+  revalidatePath("/evaluaciones");
+  revalidatePath(`/pacientes/${ownership.patientId}`);
+  return { error: null, resolved: true };
 }
 
 // Emite un link de seguimiento (un solo uso, colchon 30 dias) para un paciente del

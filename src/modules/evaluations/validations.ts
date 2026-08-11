@@ -96,6 +96,13 @@ export type AbandonEvaluationState = {
   closed: boolean;
 };
 
+// Estado de la resolucion de un conflicto de identidad (misma persona -> limpia el flag; no lo es ->
+// cierra la evaluacion). resolved marca el exito.
+export type ResolveConflictState = {
+  error: string | null;
+  resolved: boolean;
+};
+
 // Estado de la emision de un link de seguimiento. linkPath lleva la ruta relativa
 // (/encuesta/<token>); la UI la combina con el origen para mostrar el link completo.
 export type FollowupLinkState = {

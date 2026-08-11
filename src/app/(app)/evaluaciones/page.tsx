@@ -13,6 +13,7 @@ import {
   IdentityConfirmation,
   type DuplicateCandidateView,
 } from "@/modules/evaluations/components/identity-confirmation";
+import { IdentityConflictResolution } from "@/modules/evaluations/components/identity-conflict-resolution";
 import {
   listAwaitingSurveyEvaluations,
   listPendingIdentityChecks,
@@ -87,13 +88,25 @@ export default async function EvaluacionesPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {pending.map((e) => (
-              <IdentityConfirmation
-                key={e.evaluationId}
-                evaluation={e}
-                duplicateCandidates={candidatesByPatient.get(e.patientId) ?? []}
-              />
-            ))}
+            {pending.map((e) =>
+              // Conflicto de identidad (documento coincide, nombre difiere): en vez del confirmar normal,
+              // la resolucion declarado-vs-registrado. El gate de confirmIdentityAction ya impide avanzar
+              // hasta resolverlo; aqui esta como se resuelve.
+              e.identityConflict ? (
+                <IdentityConflictResolution
+                  key={e.evaluationId}
+                  evaluationId={e.evaluationId}
+                  registeredName={`${e.firstName} ${e.lastName}`.trim()}
+                  declaredName={`${e.declaredFirstName ?? ""} ${e.declaredLastName ?? ""}`.trim()}
+                />
+              ) : (
+                <IdentityConfirmation
+                  key={e.evaluationId}
+                  evaluation={e}
+                  duplicateCandidates={candidatesByPatient.get(e.patientId) ?? []}
+                />
+              ),
+            )}
           </div>
         )}
       </section>
