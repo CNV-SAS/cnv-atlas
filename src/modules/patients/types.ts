@@ -35,10 +35,14 @@ export type DuplicateCandidate = {
 // Resultado de la resolucion de identidad. mode es DERIVADO por documento exacto;
 // Atlas no le pregunta al paciente inicial vs seguimiento. duplicateCandidates solo
 // se llena en el caso inicial (sin match exacto pero con parecidos a revisar).
+// identityConflict: el documento coincidio (seguimiento) PERO el nombre declarado difiere del registrado
+// (nameSimilarity < umbral). Se atribuye igual (el documento es la llave) pero se marca para que el
+// profesional resuelva antes de usarla. Solo puede ser true en modo 'seguimiento'.
 export type IdentityResolution = {
   mode: EvaluationType; // 'inicial' (sin match) | 'seguimiento' (match exacto)
   matchedPatientId: string | null;
   duplicateCandidates: DuplicateCandidate[];
+  identityConflict: boolean;
 };
 
 // Fila del roster de pacientes del profesional (/pacientes). El alcance (solo los

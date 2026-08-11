@@ -967,10 +967,14 @@ export type Database = {
       evaluations: {
         Row: {
           created_at: string
+          declared_first_name: string | null
+          declared_last_name: string | null
           id: string
+          identity_conflict: boolean
           organization_id: string
           patient_id: string
           professional_id: string
+          resume_token: string | null
           status: Database["public"]["Enums"]["evaluation_status"]
           superseded_at: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
@@ -978,10 +982,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          declared_first_name?: string | null
+          declared_last_name?: string | null
           id?: string
+          identity_conflict?: boolean
           organization_id: string
           patient_id: string
           professional_id: string
+          resume_token?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
@@ -989,10 +997,14 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          declared_first_name?: string | null
+          declared_last_name?: string | null
           id?: string
+          identity_conflict?: boolean
           organization_id?: string
           patient_id?: string
           professional_id?: string
+          resume_token?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
           type?: Database["public"]["Enums"]["evaluation_type"]

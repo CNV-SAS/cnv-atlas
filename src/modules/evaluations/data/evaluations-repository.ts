@@ -107,15 +107,17 @@ export async function listAwaitingSurveyEvaluations(): Promise<AwaitingSurveyEva
 // ownership antes de la escritura por owner.
 export async function getEvaluationOwnership(
   evaluationId: string,
-): Promise<{ patientId: string; status: string } | null> {
+): Promise<{ patientId: string; status: string; identityConflict: boolean } | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("evaluations")
-    .select("patient_id, status")
+    .select("patient_id, status, identity_conflict")
     .eq("id", evaluationId)
     .maybeSingle();
   if (error) throw new Error(`evaluations-repository: getEvaluationOwnership: ${error.message}`);
-  return data ? { patientId: data.patient_id, status: data.status } : null;
+  return data
+    ? { patientId: data.patient_id, status: data.status, identityConflict: data.identity_conflict }
+    : null;
 }
 
 // Cuasi-identificadores estables del paciente para pre-llenar un link de seguimiento.

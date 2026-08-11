@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
 import { evaluationStatus, evaluationType } from "./enums";
@@ -29,6 +29,14 @@ export const evaluations = pgTable(
     // status = 'awaiting_survey' (al completar la encuesta pasa a 'draft' y el token deja de habilitar).
     // Se trata como el token del enlace: largo, imposible de adivinar, nunca en logs. null salvo el shell.
     resumeToken: text("resume_token").unique(),
+    // Conflicto de identidad: el documento coincidio con un paciente registrado PERO el nombre declarado
+    // difiere (nameSimilarity < umbral). Se atribuye al paciente existente (el documento es la llave) pero
+    // se marca para que el profesional resuelva ANTES de usarla. GATE: confirmIdentityAction rechaza
+    // mientras esto sea true, y como BIS/diagnostico exigen in_progress, nada contaminado se sella. El
+    // nombre DECLARADO se guarda aparte (el de seguimiento se descarta) para mostrar declarado-vs-registrado.
+    identityConflict: boolean("identity_conflict").notNull().default(false),
+    declaredFirstName: text("declared_first_name"),
+    declaredLastName: text("declared_last_name"),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion

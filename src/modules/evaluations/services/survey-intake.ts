@@ -180,6 +180,7 @@ export async function signSurveyIntake(
       linkId,
       ipAddress: input.ipAddress,
       signature,
+      identityConflict: resolution.identityConflict,
     });
     return ok({
       evaluationId: signed.evaluationId,

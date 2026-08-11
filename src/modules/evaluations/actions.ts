@@ -403,6 +403,15 @@ export async function confirmIdentityAction(
 
   const ownership = await getEvaluationOwnership(evaluationId);
   if (!ownership) return { error: "Evaluación no encontrada.", confirmed: false };
+  // GATE del conflicto de identidad: no se puede confirmar (draft -> in_progress) mientras el nombre
+  // declarado difiera del registrado. Como BIS y diagnostico exigen in_progress, esto cierra todo lo
+  // aguas abajo: nada contaminado se sella hasta que el profesional resuelva el conflicto.
+  if (ownership.identityConflict) {
+    return {
+      error: "Hay un conflicto de identidad sin resolver: el nombre declarado no coincide con el registrado. Resuélvelo antes de confirmar.",
+      confirmed: false,
+    };
+  }
   if (ownership.status !== "draft") {
     return { error: "Esta evaluación ya fue confirmada.", confirmed: true };
   }

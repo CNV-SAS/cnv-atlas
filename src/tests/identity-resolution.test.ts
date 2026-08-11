@@ -22,7 +22,7 @@ const baseInput: IdentityInput = {
 
 // deps que devuelven valores fijos, para resolver sin tocar la BD.
 function deps(
-  exact: { id: string } | null,
+  exact: { id: string; firstName: string; lastName: string } | null,
   candidates: CandidateRow[],
 ): IdentityResolutionDeps {
   return {
@@ -57,11 +57,15 @@ describe("name-matching", () => {
 });
 
 describe("resolveIdentity", () => {
-  it("match exacto por documento -> seguimiento, sin candidatos", async () => {
-    const res = await resolveIdentity(deps({ id: "pat-7" }, []), baseInput);
+  it("match exacto por documento (mismo nombre) -> seguimiento, sin candidatos ni conflicto", async () => {
+    const res = await resolveIdentity(
+      deps({ id: "pat-7", firstName: "Maria", lastName: "Gomez" }, []),
+      baseInput,
+    );
     expect(res.mode).toBe("seguimiento");
     expect(res.matchedPatientId).toBe("pat-7");
     expect(res.duplicateCandidates).toHaveLength(0);
+    expect(res.identityConflict).toBe(false);
   });
 
   it("sin match -> inicial; nombre casi identico es candidato (aunque falte fecha)", async () => {
@@ -105,6 +109,55 @@ describe("resolveIdentity", () => {
     expect(res.duplicateCandidates[0].score).toBeGreaterThanOrEqual(
       res.duplicateCandidates[1].score,
     );
+  });
+});
+
+// Conflicto de identidad (documento coincide, nombre difiere). El umbral (NAME_CONFLICT_THRESHOLD = 0.5)
+// se ancla con casos, no como numero suelto: tolera lo comun (tilde, segundo apellido faltante, nombre
+// abreviado, typo) y marca a la persona claramente distinta. Si fuera muy estricto, todo seguimiento
+// legitimo marcaria conflicto y el profesional aprenderia a ignorarlo.
+describe("resolveIdentity: conflicto de identidad", () => {
+  const input = (firstName: string, lastName: string): IdentityInput => ({ ...baseInput, firstName, lastName });
+  const existing = (firstName: string, lastName: string) => ({ id: "pat-x", firstName, lastName });
+
+  it("mismo nombre -> sin conflicto", async () => {
+    const res = await resolveIdentity(deps(existing("Maria", "Gomez"), []), input("Maria", "Gomez"));
+    expect(res.identityConflict).toBe(false);
+  });
+
+  it("solo tildes de diferencia -> sin conflicto (nameSimilarity normaliza)", async () => {
+    const res = await resolveIdentity(deps(existing("Jose", "Garcia"), []), input("José", "García"));
+    expect(res.identityConflict).toBe(false);
+  });
+
+  it("segundo apellido faltante -> sin conflicto", async () => {
+    const res = await resolveIdentity(deps(existing("Maria", "Gomez Perez"), []), input("Maria", "Gomez"));
+    expect(res.identityConflict).toBe(false);
+  });
+
+  it("nombre abreviado -> sin conflicto", async () => {
+    const res = await resolveIdentity(deps(existing("Maria Fernanda", "Gomez"), []), input("Maria F", "Gomez"));
+    expect(res.identityConflict).toBe(false);
+  });
+
+  it("typo en el apellido -> sin conflicto", async () => {
+    const res = await resolveIdentity(deps(existing("Carlos", "Rodriguez"), []), input("Carlos", "Rodrigues"));
+    expect(res.identityConflict).toBe(false);
+  });
+
+  it("persona claramente distinta -> CONFLICTO (pero sigue siendo seguimiento: el documento es la llave)", async () => {
+    const res = await resolveIdentity(deps(existing("Maria", "Gomez"), []), input("Juan", "Perez"));
+    expect(res.mode).toBe("seguimiento");
+    expect(res.matchedPatientId).toBe("pat-x");
+    expect(res.identityConflict).toBe(true);
+  });
+
+  it("otra persona distinta (con segundos apellidos) -> CONFLICTO", async () => {
+    const res = await resolveIdentity(
+      deps(existing("Ana", "Torres Lopez"), []),
+      input("Pedro", "Ramirez Diaz"),
+    );
+    expect(res.identityConflict).toBe(true);
   });
 });
 

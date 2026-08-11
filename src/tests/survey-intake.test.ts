@@ -117,7 +117,8 @@ describe("signSurveyIntake", () => {
   });
 
   it("match exacto por documento -> seguimiento con el paciente existente", async () => {
-    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-existente" });
+    // Mismo nombre que validIdentity -> seguimiento sin conflicto de identidad.
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-existente", firstName: "Maria", lastName: "Gomez" });
     const res = await signSurveyIntake(input());
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.value.mode).toBe("seguimiento");
@@ -277,7 +278,7 @@ describe("signSurveyIntake", () => {
   });
 
   it("consume el link de seguimiento (un solo uso); no el inicial", async () => {
-    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-x" });
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-x", firstName: "Maria", lastName: "Gomez" });
     // inicial: linkId null
     await signSurveyIntake(input());
     expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0].linkId).toBeNull();

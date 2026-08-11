@@ -19,15 +19,17 @@ const CANDIDATE_LIMIT = 50;
 
 // Match exacto por (organizacion, tipo, numero) de documento. Ignora pacientes
 // dados de baja (deleted_at). Es la llave de resolucion inicial vs seguimiento.
+// Devuelve tambien el nombre registrado: resolveIdentity lo compara con el declarado para detectar el
+// conflicto (mismo documento, nombre distinto). Sin el nombre no se puede comparar.
 export async function findPatientByDocument(
   organizationId: string,
   documentType: DocumentType,
   documentNumber: string,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; firstName: string; lastName: string } | null> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id")
+    .select("id, patient_profiles!inner(first_name, last_name)")
     .eq("organization_id", organizationId)
     .eq("document_type", documentType)
     .eq("document_number", documentNumber)
@@ -36,7 +38,11 @@ export async function findPatientByDocument(
   if (error) {
     throw new Error(`patients-intake: findPatientByDocument: ${error.message}`);
   }
-  return data ? { id: data.id } : null;
+  if (!data) return null;
+  const profile = (
+    Array.isArray(data.patient_profiles) ? data.patient_profiles[0] : data.patient_profiles
+  ) as { first_name: string; last_name: string } | undefined;
+  return { id: data.id, firstName: profile?.first_name ?? "", lastName: profile?.last_name ?? "" };
 }
 
 type ProfileEmbed = {

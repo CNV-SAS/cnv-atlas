@@ -17,6 +17,13 @@ import { nameSimilarity } from "./name-matching";
 export const NAME_MATCH_STRONG = 0.9;
 export const NAME_MATCH_WITH_BIRTHDATE = 0.8;
 
+// Umbral del CONFLICTO de identidad: en un match EXACTO de documento (seguimiento), si el nombre declarado
+// y el registrado tienen similitud < esto, se marca conflicto. Es el inverso de los de duplicado: aqui se
+// marca cuando el parecido es BAJO. 0.5 cae en el hueco ancho entre variaciones legitimas (segundo
+// apellido faltante, nombre abreviado, tilde: todas >0.6 porque nameSimilarity ya normaliza) y personas
+// distintas (<0.3). Anclado con casos en identity-conflict.test.ts, no como numero suelto.
+export const NAME_CONFLICT_THRESHOLD = 0.5;
+
 // Fila minima de un paciente existente para comparar (la entrega el reader).
 export type CandidateRow = {
   patientId: string;
@@ -34,7 +41,7 @@ export type IdentityResolutionDeps = {
     organizationId: string,
     documentType: DocumentType,
     documentNumber: string,
-  ) => Promise<{ id: string } | null>;
+  ) => Promise<{ id: string; firstName: string; lastName: string } | null>;
   findDuplicateCandidates: (
     organizationId: string,
     criteria: { birthDate: string | null; lastName: string },
@@ -52,7 +59,19 @@ export async function resolveIdentity(
     input.documentNumber,
   );
   if (exact) {
-    return { mode: "seguimiento", matchedPatientId: exact.id, duplicateCandidates: [] };
+    // El documento coincide -> seguimiento. Pero se compara el nombre: si difiere del registrado, alguien
+    // pudo escribir el documento de otra persona. NO se rechaza (el documento es la llave) ni se fusiona
+    // solo: se marca conflicto para que el profesional resuelva antes de usar la evaluacion.
+    const similarity = nameSimilarity(
+      `${input.firstName} ${input.lastName}`,
+      `${exact.firstName} ${exact.lastName}`,
+    );
+    return {
+      mode: "seguimiento",
+      matchedPatientId: exact.id,
+      duplicateCandidates: [],
+      identityConflict: similarity < NAME_CONFLICT_THRESHOLD,
+    };
   }
 
   // 2. Sin match exacto -> inicial. Buscar posibles duplicados (otra persona ya
@@ -67,7 +86,7 @@ export async function resolveIdentity(
     rows,
   );
 
-  return { mode: "inicial", matchedPatientId: null, duplicateCandidates };
+  return { mode: "inicial", matchedPatientId: null, duplicateCandidates, identityConflict: false };
 }
 
 // Puntua y filtra candidatos a duplicado contra un nombre/fecha de referencia.

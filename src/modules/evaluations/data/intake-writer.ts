@@ -243,6 +243,9 @@ export type SignIntakeInput = {
   linkId: string | null;
   ipAddress: string | null;
   signature?: IntakeSignature;
+  // Conflicto de identidad (documento coincide, nombre difiere): se marca en el shell y se guarda el
+  // nombre DECLARADO para que el profesional resuelva declarado-vs-registrado antes de usar la evaluacion.
+  identityConflict?: boolean;
 };
 
 export type SignIntakeResult = { evaluationId: string; patientId: string; resumeToken: string };
@@ -252,6 +255,7 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
     const patientId = await writePatientConsentsAndGate(tx, input);
 
     const resumeToken = generateResumeToken();
+    const conflict = input.identityConflict === true;
     const [evaluation] = await tx
       .insert(evaluations)
       .values({
@@ -261,6 +265,11 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         type: input.mode,
         status: "awaiting_survey",
         resumeToken,
+        // El nombre declarado se guarda SIEMPRE que hay conflicto (es lo que lo hace resoluble: sin el, el
+        // profesional veria "hay conflicto" sin saber con que). Sin conflicto, no se guarda.
+        identityConflict: conflict,
+        declaredFirstName: conflict ? input.identity.firstName : null,
+        declaredLastName: conflict ? input.identity.lastName : null,
       })
       .returning({ id: evaluations.id });
     await recordAudit(tx, {
@@ -269,7 +278,12 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
       actorEmail: null,
       entityType: "evaluation",
       entityId: evaluation.id,
-      payload: { mode: input.mode, patient_id: patientId, status: "awaiting_survey" },
+      payload: {
+        mode: input.mode,
+        patient_id: patientId,
+        status: "awaiting_survey",
+        identity_conflict: conflict,
+      },
       ip: input.ipAddress,
     });
 
