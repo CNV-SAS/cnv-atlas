@@ -18,7 +18,10 @@ export const intakeIdentitySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
     .nullish()
     .transform((v) => v ?? null),
-  sex: z.string().trim().max(40).nullish().transform((v) => v ?? null),
+  // Sexo OBLIGATORIO y exactamente F/M (decision A): el motor lo exige estricto (normalizeSex falla en
+  // voz alta). Se valida aqui, en el intake, para no dejar pasar un vacio que reventaria despues en el
+  // pipeline. El select del formulario produce F/M.
+  sex: z.enum(["F", "M"]),
   country: z.string().trim().max(80).nullish().transform((v) => v ?? null),
   city: z.string().trim().max(80).nullish().transform((v) => v ?? null),
   email: z.email().max(160).nullish().transform((v) => v ?? null),

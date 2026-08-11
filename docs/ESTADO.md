@@ -2,7 +2,7 @@
 
 Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.**
 
-Última actualización: al cerrar §9 (remisiones resumidas por destinatario). Con esto, las cuatro cosas que Gildardo ya respondió (§6, §10, §15, §9) están hechas.
+Última actualización: al cerrar los desplegables de la encuesta (país, ciudad, sexo) y el arreglo del sexo.
 
 ---
 
@@ -21,13 +21,15 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Qué falta (por bloque, del más chico al más grande)
 
-1. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
-2. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
-3. **Los cinco datos sociodemográficos + el motivo.** La etnia (el sexto) va aparte, tras una consulta legal. Mediano.
-4. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Va tras una consulta legal. Mediano.
+1. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
+2. **Los cinco datos sociodemográficos + el motivo.** La etnia (el sexto) va aparte, tras una consulta legal. Mediano.
+3. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Va tras una consulta legal. Mediano.
+4. **El re-port del motor de peso/prescripción de Tratamiento** (Gildardo ya respondió cómo: peso por defecto Lorentz/peso actual, retirar el peso ajustado). Es la mitad de Tratamiento que estaba trabada; ya se puede. Grande.
 5. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
 
-Nota: de §9 queda una sola confirmación de texto pendiente de Gildardo (cómo llamar a la "conducta propia" cuando la remisión es a la propia profesión del que atiende). Va en la ronda que se le prepara. El resumen por destinatario ya funciona.
+Notas:
+- La **encuesta** ya tiene los desplegables (país, ciudad, sexo). Sigue faltando **el pase de instrumento** (espera a Gildardo) para darla por terminada.
+- De §9 queda una sola confirmación de texto pendiente de Gildardo (cómo llamar a la "conducta propia" cuando la remisión es a la propia profesión del que atiende). Va en la ronda. El resumen por destinatario ya funciona.
 
 ## Sobre la encuesta (lo que preguntaste)
 
@@ -51,4 +53,4 @@ La **firma electrónica** ya pasó por este método (consultada, decidida, const
 
 ## Siguiente paso
 
-Las cuatro cosas que Gildardo ya respondió están hechas (§6, §10, §15, §9). Sigue: los desplegables de la encuesta. En paralelo, se le prepara a Gildardo una ronda de preguntas (encabezada por la que bloquea la mitad de Tratamiento) y dos consultas legales (etnia y borrador), para que las mandes cuando decidas.
+Las cuatro cosas de Gildardo (§6, §10, §15, §9) y los desplegables están hechos. La ronda para Gildardo y las dos consultas legales (etnia, borrador) están listas para que las mandes. Lo grande que sigue: el re-port del motor de peso de Tratamiento (Gildardo ya dijo cómo), que destraba la mitad de Tratamiento.

@@ -59,6 +59,7 @@ const validIdentity = {
   firstName: "Maria",
   lastName: "Gomez",
   birthDate: "1990-05-10",
+  sex: "F", // obligatorio y exacto F/M (el motor lo exige)
 };
 
 function input(over: Partial<Parameters<typeof submitSurveyIntake>[0]> = {}) {

@@ -11,6 +11,7 @@ import {
   buildConsentInstance,
   type ConsentInstanceData,
 } from "@/modules/consent/consent-instance";
+import { COLOMBIA_CITIES, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
 
 import { sendConsentOtpAction, submitSurveyAction } from "../actions";
 import type { OtpSendState, SurveyFormState } from "../validations";
@@ -132,6 +133,10 @@ export function SurveyIntakeForm({
   // Identidad requerida controlada, para validar el paso en vivo (habilitar "Siguiente").
   const [documentNumber, setDocumentNumber] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  // Sexo OBLIGATORIO (el motor lo exige F/M estricto). Pais con default Colombia (donde estan los
+  // integrantes); gobierna si la ciudad ofrece el datalist de ciudades colombianas o va libre.
+  const [sex, setSex] = useState("");
+  const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [showFullText, setShowFullText] = useState(false);
 
   const isMinor = ageBranch === "menor";
@@ -232,6 +237,7 @@ export function SurveyIntakeForm({
     documentNumber.trim() &&
       firstName.trim() &&
       lastName.trim() &&
+      (sex === "F" || sex === "M") && // obligatorio y exacto (el motor lo exige)
       (isMinor ? minorBirthDate : birthDate) &&
       (isMinor ? true : emailLooksValid(email)),
   );
@@ -674,10 +680,50 @@ export function SurveyIntakeForm({
             )}
           </Field>
           <Field label="Sexo">
-            <Input name="sex" className="h-9" />
+            <select
+              name="sex"
+              value={sex}
+              onChange={(e) => setSex(e.target.value)}
+              className={selectClass}
+            >
+              <option value="" disabled>
+                Selecciona
+              </option>
+              <option value="F">Femenino</option>
+              <option value="M">Masculino</option>
+            </select>
+          </Field>
+          <Field label="País">
+            <select
+              name="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className={selectClass}
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Ciudad">
-            <Input name="city" className="h-9" defaultValue={prefill?.city ?? ""} />
+            {/* Datalist: sugiere ciudades de Colombia PERO acepta cualquier texto (un municipio o
+                corregimiento fuera de la lista se escribe y se guarda igual, en el mismo campo). Para
+                otros paises no hay datalist: texto libre. */}
+            <Input
+              name="city"
+              className="h-9"
+              defaultValue={prefill?.city ?? ""}
+              list={country === DEFAULT_COUNTRY ? "co-cities" : undefined}
+            />
+            {country === DEFAULT_COUNTRY ? (
+              <datalist id="co-cities">
+                {COLOMBIA_CITIES.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            ) : null}
           </Field>
           <Field label="Celular">
             <Input name="phone" className="h-9" defaultValue={prefill?.phone ?? ""} />
