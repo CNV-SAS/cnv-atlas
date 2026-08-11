@@ -48,7 +48,7 @@ Igual que hicimos con Wompi: **primero SANDBOX** (configurar + probar el flujo c
 
 **En PRODUCCIÓN (después, con el flujo verificado):**
 6. Credenciales de producción (nuevas `ALEGRA_*`), impuesto, ítems y **resolución de facturación electrónica DIAN** (numeración + certificado) para emitir de verdad.
-7. **Documento soporte electrónico** (para comisiones a integrantes sin RUT; de la liquidación, se habilita aquí).
+7. **Documento soporte electrónico — DEPENDENCIA (revisión contable 2026-08-12), no tarea paralela.** Sin él, un integrante SIN RUT no puede facturarle a CNV y **no puede cobrar** aunque haya completado todo lo demás; el bloqueo sería de CNV, no suyo. **Habilitarlo en Alegra ANTES de la primera liquidación de comisiones.**
 8. **Contacto:** pendiente de la consulta de seguimiento al contable.
 
 ### PREGUNTA ABIERTA que decide cómo se prueba el bloque

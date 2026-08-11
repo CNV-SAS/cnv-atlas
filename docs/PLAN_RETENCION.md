@@ -1,6 +1,11 @@
 # PLAN_RETENCION.md — Rediseño del estado tributario del integrante (sobre el RUT)
 
-**Estado:** PLAN. Pendiente de **luz verde del contable** en la decisión abierta (quién deriva los campos del RUT). NO construir hasta eso.
+**Estado:** APROBADO Y EN CONSTRUCCIÓN (revisión contable 2026-08-12, `entregas/gildardo-2026-08-10/REVISION_PLAN_RETENCION.md`). Decisiones cerradas:
+- **A2** (no A): una persona designada de CNV verifica el RUT y llena los campos certificados **al subirlo**, no al liquidar (liquidar es contra reloj; abrir N PDFs ahí es un cuello de botella mensual).
+- **Trazabilidad + vigencia:** `rut_verificado_por`, `rut_verificado_en`, `rut_fecha_documento`; si el RUT tiene más de un año, solicitar uno actualizado.
+- **Cuenta bancaria:** validar el DOCUMENTO del titular (no solo el nombre); si el integrante es jurídica, la cuenta va a nombre de la jurídica (NIT), no del representante. Principio: quien recibe el dinero emite el soporte.
+- **RUT en natural:** no obligatorio, pero con texto que empuje ("probablemente ya tienes RUT, descárgalo del portal de la DIAN").
+- **Construir ya:** solo la TARIFA de retención es de la contadora, y llega DESPUÉS (al calcular, posterior al formulario).
 
 ## El problema (revisión contable 2026-08-12)
 
