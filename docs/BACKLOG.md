@@ -64,6 +64,18 @@ Santiago tiene un **listado completo de correcciones** para aplicarle a la encue
 
 La copia automática del consentimiento se envía tras aceptar, fuera del camino de respuesta (`after`), y **un fallo de envío se registra en la traza** (`consent.copy_failed` con destinatarios enmascarados) sin invalidar ni revertir nada (la copia es transparencia, no requisito de validez). Lo que **falta** es la vía para **reenviar después** a quien no recibió: una acción del profesional (botón "Reenviar copia del consentimiento" en la vista del paciente/evaluación) que relea la versión + tipos otorgados + correos y llame a `sendConsentCopy` (ya reutilizable). Es recuperación para un artefacto que NO condiciona validez, así que no bloquea; se prioriza corto. Piezas reusables ya listas: `buildConsentCopyEmail`, `sendConsentCopyEmail`, `sendConsentCopy`.
 
+## Corrección de datos del paciente después de firmar (nombre, documento, correo) — DIFERIDO (registrado 2026-08-11)
+
+Salió del smoke del intake de dos fases. Hoy la identidad (nombre, documento, correo) se escribe UNA vez, al firmar, y NO hay edición posterior (la ficha es de solo lectura; la RLS de update de `patients`/`patient_profiles`/`patient_contacts` existe pero ningún writer la usa).
+
+**El caso que parecía urgente NO es alcanzable.** Se temía "el paciente firmó con un correo malo y no puede volver a la encuesta". No pasa: el código OTP y el enlace de reanudación van al MISMO correo, y firmar EXIGE ingresar el código. Si firmó, el código llegó → el correo funciona → el enlace también llega. El fallo real es "atascado en la firma" (el código no llega), y eso ya es auto-corregible en la fase 1 (editar el correo y reenviar en la misma pantalla); se agregó una línea de copy que lo dice. Así que esto es MANTENIMIENTO, no rescate.
+
+**Cuando entre, va como CORRECCIÓN AUDITADA** (quién, cuándo, de qué a qué; el correo está ligado a un consentimiento firmado, no cambia sin rastro), no una edición silenciosa. Piezas: writer de update con audit inline + UI en la ficha. Quién puede: el profesional dueño (por RLS `is_patient_professional`); ampliar a soporte es una decisión de policy aparte (cambiar a dónde va la información clínica del paciente).
+
+**Detalle CRÍTICO que quien lo construya tiene que saber (asimetría adulto/menor):** el correo del REPRESENTANTE LEGAL aparece en el TEXTO del consentimiento sellado (numeral 11 de la instancia, `consent-instance.ts:207`); el del ADULTO titular NO (solo nombre y documento). Por eso corregir el correo de un ADULTO es limpio (no toca el documento), pero corregir el de un REPRESENTANTE crea una discrepancia entre el documento firmado y el registro → **sub-pregunta legal abierta** (`DECISIONES_LEGALES.md` AL FRENTE ítem 10, 2026-08-11): si el correo del representante cambia tras firmar, ¿el documento sigue válido o hay que re-emitir? Resolver eso ANTES de construir la corrección del correo del menor.
+
+Ligado a la **corrección de nombre/documento** (más delicada: el documento es la llave de resolución de identidad y también queda sellado): misma naturaleza de corrección auditada, tratar aparte. Y al **reenvío de la copia + enlace** (entrada propia arriba): eso es conveniencia (paciente que perdió el correo bueno), no rescate. No urge.
+
 ## Renumerar el consentimiento a v1.0 en el lanzamiento + migrarlo a marcadores explícitos — decisión del Hito 3 (registrado 2026-08-10)
 
 Son **el mismo bump**, y por eso se hacen juntos. Ambos son decisión del Hito 3 (cuando se decida si el entorno de staging se limpia); no se tocan antes.

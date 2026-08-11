@@ -667,6 +667,15 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                   <span className="font-medium text-foreground">{otpState.maskedDestination}</span>. Puede
                   tardar un momento; si no lo ves, revisa la carpeta de correo no deseado.
                 </p>
+                {/* Auto-correccion del correo antes de firmar: el codigo y el enlace de reanudacion van al
+                    MISMO correo, asi que un correo malo se descubre AQUI (el codigo no llega) y se corrige
+                    sin ayuda. El campo sigue editable en este punto. En rama menor el correo esta en el paso
+                    de consentimiento (el del representante), no en esta pantalla. */}
+                <p className="text-xs text-muted-foreground">
+                  {isMinor
+                    ? "¿No llega? Revisa que el correo del representante esté bien escrito en el paso de consentimiento; corrígelo y pide el código de nuevo."
+                    : "¿No llega? Revisa que tu correo esté bien escrito arriba; puedes corregirlo y pedir el código de nuevo."}
+                </p>
                 <Field label="Código de verificación (6 dígitos)">
                   <Input
                     name="otpCode"
