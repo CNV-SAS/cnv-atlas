@@ -15,30 +15,28 @@ import { resolveIdentity } from "@/modules/patients/services/identity-resolution
 
 import {
   ConsentGateError,
-  type IntakeConsent,
+  ResumeTokenError,
+  signIntakeEvaluation,
   writeIntakeEvaluation,
+  writeSurveyAnswers,
+  type IntakeConsent,
 } from "../data/intake-writer";
 import { intakeAnswersSchema, intakeIdentitySchema } from "../validations";
+import type { IntakeIdentityInput } from "../validations";
 import type { SurveyIntakeResult, SurveyLinkView } from "../types";
 
-// Orquesta el envio de la encuesta publica (recoleccion pura + identidad + gate).
-// No toca BD directamente: valida la entrada, resuelve identidad (lecturas service
-// role) y delega la escritura atomica al intake-writer. Retorna Result; no hace
-// throw para errores esperables (ARCHITECTURE).
+// Orquesta el envio de la encuesta publica (recoleccion pura + identidad + gate). No toca BD
+// directamente: valida la entrada, resuelve identidad (lecturas service role) y delega la escritura al
+// intake-writer. Retorna Result; no hace throw para errores esperables (ARCHITECTURE).
+//
+// Reorganizacion del intake (2026-08-10): el flujo se parte en dos fases. `signSurveyIntake` (FIRMAR:
+// consentimiento + identidad + codigo) va PRIMERO y crea el shell firmado + resume_token;
+// `submitSurveyAnswers` (RESPUESTAS) va despues, autenticada por el token. `submitSurveyIntake` (el
+// flujo atomico viejo, todo junto) se conserva hasta que el formulario migre a las dos fases
+// (checkpoint 4), y ya reusa la preparacion comun (resolveSignedIntake) para no duplicar.
 
-export type SubmitSurveyIntakeInput = {
-  link: SurveyLinkView; // link ya resuelto por la pagina publica
-  surveyVersionId: string; // version activa de la encuesta
-  consent: unknown; // casillas crudas del consentimiento
-  identity: unknown; // identidad cruda declarada por el paciente
-  answers: unknown; // respuestas crudas
-  otp: { sessionId: string; code: string }; // firma electronica (B7): codigo a verificar antes de crear
-  ipAddress: string | null;
-};
-
-// Mensaje al paciente por estado del codigo (1b): la accion a tomar difiere. 'invalid' -> mirar bien
-// el correo; 'expired'/'too_many_attempts' -> pedir uno nuevo; 'unavailable' -> el servicio esta caido.
-// Texto de cara al paciente, con tildes.
+// Mensaje al paciente por estado del codigo: la accion difiere. 'invalid' -> mirar bien el correo;
+// 'expired'/'too_many_attempts' -> pedir uno nuevo; 'unavailable' -> el servicio esta caido.
 function otpMessage(status: Exclude<OtpVerifyStatus, "ok">): string {
   switch (status) {
     case "invalid":
@@ -52,10 +50,24 @@ function otpMessage(status: Exclude<OtpVerifyStatus, "ok">): string {
   }
 }
 
-export async function submitSurveyIntake(
-  input: SubmitSurveyIntakeInput,
-): Promise<Result<SurveyIntakeResult>> {
-  // 1. Validar consentimiento (3 necesarias + mayoria de edad) e identidad/respuestas.
+// Preparacion COMUN de la firma: valida consentimiento e identidad, VERIFICA el codigo (firma; se
+// consume aqui, un solo uso) y resuelve identidad; arma los consentimientos a persistir (con la rama
+// menor). Es todo lo que pasa ANTES de escribir, compartido por firmar (nuevo) y el flujo viejo. La
+// verificacion del codigo va DESPUES de las validaciones de forma (para no quemar un codigo por un
+// campo mal) y antes de cualquier escritura.
+type SignedIntakePrep = {
+  consents: IntakeConsent[];
+  signature: { channel: string; maskedDestination: string; sentAt: number; validatedAt: number };
+  resolution: Awaited<ReturnType<typeof resolveIdentity>>;
+  identity: IntakeIdentityInput;
+};
+
+async function resolveSignedIntake(input: {
+  link: SurveyLinkView;
+  consent: unknown;
+  identity: unknown;
+  otp: { sessionId: string; code: string };
+}): Promise<Result<SignedIntakePrep>> {
   const consent = consentSchema.safeParse(input.consent);
   if (!consent.success) {
     return err(
@@ -66,31 +78,21 @@ export async function submitSurveyIntake(
   if (!identity.success) {
     return err(appError("validation", "Revisa los datos de identificación."));
   }
-  const answers = intakeAnswersSchema.safeParse(input.answers);
-  if (!answers.success) {
-    return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
-  }
 
-  // 1bis. FIRMA ELECTRONICA (B7, dictamen art. 4 Decreto 2364): verificar el codigo ANTES de crear
-  // nada. Va despues de las validaciones de forma (para no quemar un codigo por un campo mal) y antes
-  // de resolver identidad o escribir. El codigo es de un solo uso: se CONSUME aqui. Si no es valido no
-  // se crea paciente, ni consentimiento, ni evaluacion (verificar+crear o nada).
+  // FIRMA ELECTRONICA (dictamen art. 4 Decreto 2364): verificar el codigo. Se CONSUME aqui (un solo uso).
   const otp = await verifyOtp(input.otp.sessionId, input.otp.code);
   if (otp.status !== "ok") {
     // 'unavailable' es fallo de infraestructura (Upstash caido), no del paciente: se mapea a internal.
     const code = otp.status === "unavailable" ? "internal" : "validation";
     return err(appError(code, otpMessage(otp.status)));
   }
-  // Metadata de la firma para la traza (nunca el codigo). validatedAt es hora del servidor: es el
-  // instante probatorio del acto de firma.
   const signature = {
     channel: otp.meta?.channel ?? "email",
     maskedDestination: otp.meta?.maskedDestination ?? "",
     sentAt: otp.meta?.sentAt ?? 0,
-    validatedAt: Date.now(),
+    validatedAt: Date.now(), // hora del servidor: el instante probatorio del acto de firma
   };
 
-  // 2. Resolver identidad por documento (Atlas no decide solo inicial vs seguimiento).
   const resolution = await resolveIdentity(
     { findPatientByDocument, findDuplicateCandidates },
     {
@@ -103,25 +105,21 @@ export async function submitSurveyIntake(
     },
   );
 
-  // 3. Consentimientos otorgados, sellados con la version y el hash canonicos vigentes.
+  // Consentimientos otorgados, sellados con la version y el hash canonicos vigentes.
   const consents: IntakeConsent[] = grantedConsentTypes(consent.data).map((type) => ({
     type,
     consentVersion: CONSENT_VERSION,
     documentHash: CONSENT_DOCUMENT_HASH,
   }));
-
-  // Firma electronica (B7, v1.7): la aceptacion del medio electronico se persiste como un registro
-  // propio (la validacion la garantizo true; no es una de las 3 finalidades del gate). Es la evidencia
-  // de que el titular acepto firmar por medios electronicos, no solo que se le informo la validez.
+  // Firma electronica (v1.7): la aceptacion del medio electronico se persiste como registro propio (no
+  // es una de las 3 finalidades del gate). Es la evidencia de que el titular acepto firmar por medios
+  // electronicos.
   consents.push({
     type: "aceptacion_medio_electronico",
     consentVersion: CONSENT_VERSION,
     documentHash: CONSENT_DOCUMENT_HASH,
   });
-
-  // Rama menor (DELTA2 B4): se agrega el registro del representante legal (con sus
-  // datos, que la validacion garantizo presentes) y, si el menor tiene 14-17, el
-  // asentimiento. Mismos version y hash vigentes.
+  // Rama menor (DELTA2 B4): registro del representante legal y, si el menor tiene 14-17, el asentimiento.
   if (consent.data.ageBranch === "menor") {
     consents.push({
       type: "representante_legal",
@@ -146,17 +144,118 @@ export async function submitSurveyIntake(
     }
   }
 
-  // El link de seguimiento es de un solo uso: se consume. El inicial es reusable.
-  const linkId = input.link.type === "seguimiento" ? input.link.id : null;
+  return ok({ consents, signature, resolution, identity: identity.data });
+}
 
-  // 4. Escritura atomica (incluye el gate de la regla 15 antes de la evaluacion).
+// ── FASE 1: FIRMAR ────────────────────────────────────────────────────────────────────────────────
+export type SignSurveyIntakeInput = {
+  link: SurveyLinkView;
+  consent: unknown;
+  identity: unknown;
+  otp: { sessionId: string; code: string };
+  ipAddress: string | null;
+};
+
+export type SignSurveyResult = SurveyIntakeResult & { resumeToken: string };
+
+export async function signSurveyIntake(
+  input: SignSurveyIntakeInput,
+): Promise<Result<SignSurveyResult>> {
+  const prep = await resolveSignedIntake(input);
+  if (!prep.ok) return prep;
+  const { consents, signature, resolution, identity } = prep.value;
+
+  const linkId = input.link.type === "seguimiento" ? input.link.id : null;
+  try {
+    const signed = await signIntakeEvaluation({
+      organizationId: input.link.organizationId,
+      professionalId: input.link.professionalId,
+      mode: resolution.mode,
+      patientId: resolution.matchedPatientId,
+      identity,
+      consents,
+      linkId,
+      ipAddress: input.ipAddress,
+      signature,
+    });
+    return ok({
+      evaluationId: signed.evaluationId,
+      patientId: signed.patientId,
+      resumeToken: signed.resumeToken,
+      mode: resolution.mode,
+      duplicateCandidates: resolution.duplicateCandidates,
+    });
+  } catch (e) {
+    if (e instanceof ConsentGateError) {
+      return err(
+        appError("forbidden", "No es posible crear la evaluación sin las autorizaciones necesarias vigentes."),
+      );
+    }
+    throw e;
+  }
+}
+
+// ── FASE 2: RESPUESTAS ────────────────────────────────────────────────────────────────────────────
+export type SubmitSurveyAnswersInput = {
+  resumeToken: string;
+  surveyVersionId: string;
+  answers: unknown;
+  ipAddress: string | null;
+};
+
+export async function submitSurveyAnswers(
+  input: SubmitSurveyAnswersInput,
+): Promise<Result<{ evaluationId: string }>> {
+  const answers = intakeAnswersSchema.safeParse(input.answers);
+  if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
+  try {
+    const res = await writeSurveyAnswers({
+      resumeToken: input.resumeToken,
+      surveyVersionId: input.surveyVersionId,
+      answers: answers.data,
+      ipAddress: input.ipAddress,
+    });
+    return ok({ evaluationId: res.evaluationId });
+  } catch (e) {
+    if (e instanceof ResumeTokenError) {
+      return err(appError("validation", "El enlace de la encuesta no es válido o la encuesta ya se completó."));
+    }
+    throw e;
+  }
+}
+
+// ── FLUJO ATOMICO VIEJO (todo junto) ──────────────────────────────────────────────────────────────
+// Se conserva hasta que el formulario migre a las dos fases (checkpoint 4). Reusa la preparacion comun.
+export type SubmitSurveyIntakeInput = {
+  link: SurveyLinkView;
+  surveyVersionId: string;
+  consent: unknown;
+  identity: unknown;
+  answers: unknown;
+  otp: { sessionId: string; code: string };
+  ipAddress: string | null;
+};
+
+export async function submitSurveyIntake(
+  input: SubmitSurveyIntakeInput,
+): Promise<Result<SurveyIntakeResult>> {
+  // Las respuestas se validan ANTES de verificar el codigo (dentro de resolveSignedIntake), para no
+  // quemar un codigo por una respuesta mal.
+  const answers = intakeAnswersSchema.safeParse(input.answers);
+  if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
+
+  const prep = await resolveSignedIntake(input);
+  if (!prep.ok) return prep;
+  const { consents, signature, resolution, identity } = prep.value;
+
+  const linkId = input.link.type === "seguimiento" ? input.link.id : null;
   try {
     const written = await writeIntakeEvaluation({
       organizationId: input.link.organizationId,
       professionalId: input.link.professionalId,
       mode: resolution.mode,
       patientId: resolution.matchedPatientId,
-      identity: identity.data,
+      identity,
       consents,
       surveyVersionId: input.surveyVersionId,
       answers: answers.data,
