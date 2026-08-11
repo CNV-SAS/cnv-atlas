@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // resuelve vitest.config.
 vi.mock("../modules/payments/data/payments-writer", () => ({
   createTransactionWithItems: vi.fn(),
+  createPaidCashTransaction: vi.fn(),
   recordWebhookEvent: vi.fn(),
   markWebhookProcessed: vi.fn(),
   sealPaidTransaction: vi.fn(),
@@ -31,6 +32,7 @@ import {
   CheckoutError,
   createCheckout,
   processWompiWebhook,
+  registerCashSale,
 } from "../modules/payments/services/payments-service";
 
 const TX_REF = "11111111-1111-1111-1111-111111111111";
@@ -116,6 +118,53 @@ describe("createCheckout: sella el precio en el servidor", () => {
     expect(writer.createTransactionWithItems).toHaveBeenCalledWith(
       expect.objectContaining({ professionalId: "prof-asignado" }),
     );
+  });
+});
+
+describe("registerCashSale: misma resolucion de venta, transaccion ya pagada", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("sella el precio del catalogo y crea la transaccion en efectivo con la clave del cliente", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "A", unit_price: "50000" },
+    ] as never);
+    vi.mocked(writer.createPaidCashTransaction).mockResolvedValue({ id: "cash-1" });
+
+    const res = await registerCashSale(
+      { patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 2 }] },
+      user(["professional"]),
+      "idem-123",
+    );
+
+    // Reusa la resolucion de venta: precio del catalogo (no del cliente), profesional para la comision,
+    // y la clave de idempotencia que TRAE el cliente (anti doble-cobro).
+    expect(writer.createPaidCashTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        patientId: "p1",
+        professionalId: "prof-1",
+        amount: 100000, // 2 * 50000, del catalogo
+        currency: "COP",
+        idempotencyKey: "idem-123",
+        items: [{ nutraceuticalId: "n1", quantity: 2, unitPrice: 50000 }],
+      }),
+    );
+    expect(res).toEqual({ transactionId: "cash-1", amount: 100000 });
+    // El checkout de Wompi NO se toca: es otro camino.
+    expect(writer.createTransactionWithItems).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si un nutraceutico no tiene precio; no crea nada", async () => {
+    vi.mocked(repo.getProfessionalProfileIdByUser).mockResolvedValue("prof-1");
+    vi.mocked(nutraRepo.listNutraceuticals).mockResolvedValue([
+      { id: "n1", name: "A", unit_price: null },
+    ] as never);
+
+    await expect(
+      registerCashSale({ patientId: "p1", items: [{ nutraceuticalId: "n1", quantity: 1 }] }, user(["professional"]), "idem-1"),
+    ).rejects.toBeInstanceOf(CheckoutError);
+    expect(writer.createPaidCashTransaction).not.toHaveBeenCalled();
   });
 });
 

@@ -22,6 +22,13 @@ export const createCheckoutSchema = z.object({
 });
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 
+// Venta en efectivo: como el checkout, mas un idempotencyKey que genera el CLIENTE (uno por intento de
+// venta) para que un doble-clic no cobre dos veces. El writer deduplica por esa clave.
+export const registerCashSaleSchema = createCheckoutSchema.extend({
+  idempotencyKey: dbUuid,
+});
+export type RegisterCashSaleInput = z.infer<typeof registerCashSaleSchema>;
+
 // Envelope del evento de Wompi. Es entrada externa, asi que pasa por Zod (CLAUDE.md);
 // solo se modela lo que usamos. La autenticidad la da la firma HMAC, no este schema.
 export const wompiEventSchema = z.object({
@@ -51,4 +58,10 @@ export type PaymentFormState = {
   checkoutUrl: string | null;
   // Aviso de checkout duplicado vivo: NO se creó, el profesional confirma con "Generar de todos modos".
   duplicateWarning: string | null;
+};
+
+// Estado del formulario de venta en efectivo (useActionState). Al exito confirma con el monto sellado.
+export type CashSaleFormState = {
+  error: string | null;
+  success: string | null;
 };

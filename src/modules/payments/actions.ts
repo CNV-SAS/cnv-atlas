@@ -8,9 +8,11 @@ import { getCurrentUser } from "@/modules/auth/session";
 
 import { findLivePendingDuplicate } from "./data/payments-repository";
 import { canCreateCheckout } from "./policies/can-create-checkout";
-import { CheckoutError, createCheckout } from "./services/payments-service";
+import { CheckoutError, createCheckout, registerCashSale } from "./services/payments-service";
 import {
   createCheckoutSchema,
+  registerCashSaleSchema,
+  type CashSaleFormState,
   type CreateCheckoutInput,
   type PaymentFormState,
 } from "./validations";
@@ -87,4 +89,43 @@ export async function createCheckoutFormAction(
     checkoutUrl: result.value.checkoutUrl,
     duplicateWarning: null,
   };
+}
+
+// ----- Venta en efectivo (useActionState) -----
+
+// El integrante registra un cobro en efectivo (paciente + producto), que nace YA pagado. Reusa el guard
+// del checkout (professional/admin) y el sellado contable (comision + ingreso de CNV sobre la base sin
+// IVA). El idempotencyKey lo genera el cliente por intento: un doble-clic no cobra dos veces.
+export async function registerCashSaleFormAction(
+  _prev: CashSaleFormState,
+  formData: FormData,
+): Promise<CashSaleFormState> {
+  const { user, error: authzError } = await requireCheckoutCreator();
+  if (authzError) return { error: authzError.message, success: null };
+
+  const parsed = registerCashSaleSchema.safeParse({
+    patientId: String(formData.get("patientId") ?? ""),
+    idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
+    items: [
+      {
+        nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
+        quantity: Number(String(formData.get("quantity") ?? "")),
+      },
+    ],
+  });
+  if (!parsed.success) return { error: "Datos de la venta inválidos.", success: null };
+
+  try {
+    const { idempotencyKey, ...sale } = parsed.data;
+    const { amount } = await registerCashSale(sale, user, idempotencyKey);
+    revalidatePath("/pagos");
+    return {
+      error: null,
+      success: `Venta en efectivo registrada por ${amount.toLocaleString("es-CO")} COP.`,
+    };
+  } catch (e) {
+    if (e instanceof CheckoutError) return { error: e.message, success: null };
+    reportServerError("cash-sale.register", e);
+    return { error: "No se pudo registrar la venta en efectivo.", success: null };
+  }
 }

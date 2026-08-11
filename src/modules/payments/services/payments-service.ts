@@ -12,6 +12,7 @@ import { listNutraceuticals } from "@/modules/nutraceuticals/data/nutraceuticals
 import type { CheckoutView } from "../data/checkout-reader";
 import * as repo from "../data/payments-repository";
 import {
+  createPaidCashTransaction,
   createTransactionWithItems,
   markTransactionFailed,
   markWebhookProcessed,
@@ -40,15 +41,13 @@ export class CheckoutError extends Error {
 
 export type CheckoutCreated = { transactionId: string; checkoutUrl: string };
 
-// Crea el checkout: resuelve el profesional para la comision, sella los precios
-// desde el catalogo (nunca los toma del cliente), crea la transaccion pending con
-// sus items y devuelve el link 24h que el profesional comparte con el paciente.
-export async function createCheckout(
+// Resuelve una venta ANTES de cobrarla, comun al checkout (Wompi) y a la venta en efectivo: el profesional
+// para la comision (el que la crea; si es admin, el asignado al paciente; null => todo va a CNV) y las
+// lineas con el precio SELLADO desde el catalogo (nunca del cliente). CNV vende: el precio lo pone CNV.
+async function resolveSale(
   input: CreateCheckoutInput,
   user: CurrentUser,
-): Promise<CheckoutCreated> {
-  // El profesional que crea la venta cobra la comision; si lo crea un admin, se
-  // usa el profesional asignado al paciente. Puede quedar null (todo va a CNV).
+): Promise<{ professionalId: string | null; lines: NewOrderLine[]; amount: number }> {
   let professionalId = await repo.getProfessionalProfileIdByUser(user.id);
   if (!professionalId) {
     professionalId = await repo.getProfessionalIdForPatient(input.patientId);
@@ -69,8 +68,17 @@ export async function createCheckout(
     amount += unitPrice * it.quantity;
   }
   amount = Math.round(amount * 100) / 100;
-  if (amount <= 0) throw new CheckoutError("El monto del checkout debe ser mayor a cero.");
+  if (amount <= 0) throw new CheckoutError("El monto de la venta debe ser mayor a cero.");
+  return { professionalId, lines, amount };
+}
 
+// Crea el checkout: sella los precios desde el catalogo, crea la transaccion pending con sus items y
+// devuelve el link 24h que el profesional comparte con el paciente. El pago lo sella el webhook.
+export async function createCheckout(
+  input: CreateCheckoutInput,
+  user: CurrentUser,
+): Promise<CheckoutCreated> {
+  const { professionalId, lines, amount } = await resolveSale(input, user);
   const { id } = await createTransactionWithItems({
     organizationId: user.organizationId,
     patientId: input.patientId,
@@ -82,6 +90,31 @@ export async function createCheckout(
   });
 
   return { transactionId: id, checkoutUrl: buildCheckoutUrl(id) };
+}
+
+export type CashSaleCreated = { transactionId: string; amount: number };
+
+// Venta en EFECTIVO: el integrante recauda dinero de CNV en el momento. Misma resolucion de venta y mismo
+// sellado contable que el checkout (CNV vende, integrante recauda; comision + ingreso sobre la base sin
+// IVA), pero la transaccion nace YA pagada (createPaidCashTransaction). idempotencyKey lo trae el cliente
+// (uno por intento) para que un doble-clic no cobre dos veces. La factura de Alegra NO se emite aqui:
+// espera el cableado con la regla contable (CNV factura al paciente); hoy la venta se sella internamente.
+export async function registerCashSale(
+  input: CreateCheckoutInput,
+  user: CurrentUser,
+  idempotencyKey: string,
+): Promise<CashSaleCreated> {
+  const { professionalId, lines, amount } = await resolveSale(input, user);
+  const { id } = await createPaidCashTransaction({
+    organizationId: user.organizationId,
+    patientId: input.patientId,
+    professionalId,
+    amount,
+    currency: "COP",
+    idempotencyKey,
+    items: lines,
+  });
+  return { transactionId: id, amount };
 }
 
 function buildCheckoutUrl(transactionId: string): string {

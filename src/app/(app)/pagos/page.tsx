@@ -10,6 +10,7 @@ import {
   type CheckoutNutraceutical,
   type CheckoutPatient,
 } from "@/modules/payments/components/create-checkout-form";
+import { RegisterCashSaleForm } from "@/modules/payments/components/register-cash-sale-form";
 import { listSelectablePatients, listTransactions } from "@/modules/payments/data/payments-repository";
 import { canCreateCheckout } from "@/modules/payments/policies/can-create-checkout";
 import { canViewRevenue } from "@/modules/payments/policies/can-view-revenue";
@@ -92,6 +93,21 @@ export default async function PagosPage() {
           </CardHeader>
           <CardContent>
             <CreateCheckoutForm patients={patients} nutraceuticals={nutraceuticals} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canCreate ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Registrar venta en efectivo</CardTitle>
+            <CardDescription>
+              Cobro en efectivo, ya pagado. El precio y el producto son de CNV; el dinero que recaudas es de
+              CNV y lo custodias hasta consignar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RegisterCashSaleForm patients={patients} nutraceuticals={nutraceuticals} />
           </CardContent>
         </Card>
       ) : null}
