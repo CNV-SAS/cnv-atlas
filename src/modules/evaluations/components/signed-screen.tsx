@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { buildResumeUrl } from "../resume-url";
+
 // Pantalla intermedia entre firmar (fase 1) y responder (fase 2). Confirma que quedo firmado, entrega el
 // enlace para retomar la encuesta mas tarde (por si cierra el navegador) y ofrece empezar ya. El enlace
 // tambien llega por correo con la copia del consentimiento; aqui se muestra para copiarlo en el momento.
@@ -19,13 +21,14 @@ export type SignedScreenProps = {
 };
 
 export function SignedScreen({ resumeToken, onStart }: SignedScreenProps) {
-  // Origin del navegador para armar el enlace absoluto. Init perezoso (no en un efecto): este componente
-  // solo se monta tras firmar (interaccion en cliente), nunca en SSR, asi que window esta disponible.
-  const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
+  // Enlace absoluto de reanudacion. Init perezoso (no en un efecto): este componente solo se monta tras
+  // firmar (interaccion en cliente), nunca en SSR. Mismo helper que el correo (buildResumeUrl): prefiere
+  // NEXT_PUBLIC_APP_URL, con el origen del navegador como fallback. Asi pantalla y correo coinciden.
+  const [resumeUrl] = useState(() =>
+    buildResumeUrl(resumeToken, typeof window !== "undefined" ? window.location.origin : null),
+  );
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const resumeUrl = origin ? `${origin}/encuesta/reanudar/${resumeToken}` : "";
 
   const copy = async () => {
     if (!resumeUrl) return;

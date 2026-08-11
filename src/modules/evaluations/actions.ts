@@ -46,6 +46,7 @@ import {
   submitSurveyAnswers,
 } from "./services/survey-intake";
 import { getActiveSurvey } from "./data/survey-reader";
+import { buildResumeUrl } from "./resume-url";
 import {
   getProfessionalForConsent,
   resolveSurveyLinkByToken,
@@ -134,15 +135,19 @@ function readAnswersFromForm(
     .filter((a) => a.answerValue.length > 0);
 }
 
-// URL absoluta de reanudacion desde el origen de la request (para el correo; el paciente no tiene sesion).
+// URL absoluta de reanudacion para el correo (el paciente no tiene sesion). Sale del dominio canonico
+// (NEXT_PUBLIC_APP_URL) via buildResumeUrl, MISMO helper que usa la pantalla "firmado": asi el enlace del
+// correo y el de pantalla son identicos. El origen de la request es solo fallback de desarrollo.
 async function resumeUrlFrom(resumeToken: string): Promise<string | null> {
   const h = await headers();
   const host = h.get("host");
-  if (!host) return null;
-  const proto =
-    h.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
-  return `${proto}://${host}/encuesta/reanudar/${resumeToken}`;
+  const fallback = host
+    ? `${
+        h.get("x-forwarded-proto") ??
+        (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https")
+      }://${host}`
+    : null;
+  return buildResumeUrl(resumeToken, fallback) || null;
 }
 
 // Despacho de la copia del consentimiento (+ enlace de reanudacion si aplica). Fuera del camino de

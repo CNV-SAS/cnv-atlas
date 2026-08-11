@@ -15,7 +15,15 @@ describe("isPublicPath: rutas accesibles sin sesion", () => {
   });
 
   it("las publicas de paciente/comercio/legales son publicas", () => {
-    for (const p of ["/encuesta/tok123", "/encuesta/gracias", "/checkout/tok123", "/privacy", "/terms"]) {
+    for (const p of [
+      "/encuesta/tok123",
+      "/encuesta/gracias",
+      // Reanudacion del intake (fase 2 sin sesion): el enlace del correo tiene que abrir sin rebote.
+      "/encuesta/reanudar/tok123",
+      "/checkout/tok123",
+      "/privacy",
+      "/terms",
+    ]) {
       expect(isPublicPath(p), `${p} debe ser publica`).toBe(true);
     }
   });
