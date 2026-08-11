@@ -19,7 +19,8 @@ export type NavIconKey =
   | "auditoria"
   | "direccion"
   | "obbia"
-  | "perfil";
+  | "perfil"
+  | "verificacion";
 
 export type NavItem = {
   label: string;
@@ -123,6 +124,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/perfil",
     icon: "perfil",
     roles: ["professional"],
+  },
+  {
+    // Verificacion tributaria del RUT de los integrantes (A2). Rol verificador: admin por ahora (trabajo
+    // operativo recurrente, no gobernanza; pendiente decidir si soporte tambien).
+    label: "Verificación tributaria",
+    href: "/verificaciones",
+    icon: "verificacion",
+    roles: ["admin"],
   },
   {
     label: "Usuarios",

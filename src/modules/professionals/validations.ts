@@ -40,3 +40,28 @@ export type TaxStatusFormState = {
   error: string | null;
   success: boolean;
 };
+
+// Una verificacion pendiente (RUT subido, sin verificar), para la superficie de CNV. Vive AQUI (neutro),
+// no en el reader (server-only): el componente cliente lo importa (hazard latente si viniera del reader).
+export type PendingTaxVerification = {
+  professionalId: string;
+  fullName: string;
+  personType: "natural" | "juridica" | null;
+  idType: string | null;
+  idNumber: string | null;
+  idDv: string | null;
+  submittedAt: string; // tax_status_completed_at
+};
+
+// Verificacion del RUT por CNV (A2): los campos certificados leidos del documento + su fecha.
+export const taxVerifySchema = z.object({
+  professionalId: z.guid(),
+  isIncomeDeclarant: z.boolean(),
+  isVatResponsible: z.boolean(),
+  mustInvoice: z.boolean(),
+  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
+});
+export type TaxVerificationFormState = {
+  error: string | null;
+  success: boolean;
+};

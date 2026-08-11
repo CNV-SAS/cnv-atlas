@@ -7,8 +7,15 @@ import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments
 
 import { getRutPath, isPdfBuffer, uploadRutPdf } from "./data/rut-storage";
 import { saveTaxStatus } from "./data/tax-status-writer";
-import { bankHolderMatchesIntegrante, validateTaxIdentity } from "./tax-rules";
-import { taxStatusSchema, type TaxStatusFormState } from "./validations";
+import { verifyTaxStatus } from "./data/tax-verification-writer";
+import { canVerifyTaxStatus } from "./policies/can-verify-tax-status";
+import { bankHolderMatchesIntegrante, rutNeedsRenewal, validateTaxIdentity } from "./tax-rules";
+import {
+  taxStatusSchema,
+  taxVerifySchema,
+  type TaxStatusFormState,
+  type TaxVerificationFormState,
+} from "./validations";
 
 const MAX_RUT_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -91,5 +98,50 @@ export async function saveTaxStatusAction(
   await saveTaxStatus(professionalId, data, newRutPath);
   revalidatePath("/perfil");
   revalidatePath("/dashboard");
+  return { error: null, success: true };
+}
+
+// CNV verifica el RUT de un integrante (A2): lee el PDF y registra los campos certificados + la fecha del
+// documento. Rol verificador via canVerifyTaxStatus.
+export async function verifyTaxStatusAction(
+  _prev: TaxVerificationFormState,
+  formData: FormData,
+): Promise<TaxVerificationFormState> {
+  const user = await requireUser();
+  if (!canVerifyTaxStatus(user)) return { error: "No autorizado.", success: false };
+
+  const parsed = taxVerifySchema.safeParse({
+    professionalId: str(formData, "professionalId"),
+    isIncomeDeclarant: ynBool(formData, "isIncomeDeclarant"),
+    isVatResponsible: ynBool(formData, "isVatResponsible"),
+    mustInvoice: ynBool(formData, "mustInvoice"),
+    documentDate: str(formData, "documentDate"),
+  });
+  if (!parsed.success) return { error: "Revisa la verificación: falta un campo o la fecha del RUT.", success: false };
+  const d = parsed.data;
+
+  // Vigencia: un RUT de mas de un año NO se verifica (protege a CNV: la clasificacion vieja retiene mal).
+  // Se bloquea y se pide uno actualizado, en vez de marcarlo igual.
+  if (rutNeedsRenewal(d.documentDate, new Date())) {
+    return {
+      error: "Este RUT tiene más de un año (según su fecha). Pídele al integrante uno actualizado antes de verificar.",
+      success: false,
+    };
+  }
+
+  const { verified } = await verifyTaxStatus(
+    d.professionalId,
+    { id: user.id, email: user.email },
+    {
+      isIncomeDeclarant: d.isIncomeDeclarant,
+      isVatResponsible: d.isVatResponsible,
+      mustInvoice: d.mustInvoice,
+      documentDate: d.documentDate,
+    },
+  );
+  if (!verified) return { error: "No se pudo verificar (ya estaba verificado o no tiene RUT).", success: false };
+
+  revalidatePath("/verificaciones");
+  revalidatePath("/perfil");
   return { error: null, success: true };
 }

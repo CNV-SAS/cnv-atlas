@@ -20,6 +20,7 @@ import {
   Receipt,
   ScrollText,
   ShieldCheck,
+  BadgeCheck,
   Sparkles,
   Stethoscope,
   UserRound,
@@ -58,6 +59,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   direccion: BarChart3,
   obbia: FlaskConical,
   perfil: UserRound,
+  verificacion: BadgeCheck,
 };
 
 type ShellUser = { fullName: string; email: string };
