@@ -32,6 +32,9 @@ export type ConsentCopyInput = {
   granted: ConsentType[]; // autorizaciones efectivamente marcadas (para el resumen)
   consentVersion: string;
   instanceMarkdown: string; // INSTANCIA ya personalizada (no la plantilla): rama, firma y profesional
+  // Reorganizacion del intake: enlace para CONTINUAR/RETOMAR la encuesta (el paciente firmo, ahora
+  // responde). Es funcional, asi que va arriba y prominente. null si no aplica (p. ej. un reenvio).
+  resumeUrl?: string | null;
 };
 
 // Fecha y hora legible en Colombia (America/Bogota). Se usa el huso fijo del pais, no el del proceso.
@@ -57,8 +60,19 @@ export function buildConsentCopyEmail(input: ConsentCopyInput): {
     return `- ${mark} ${a.label} (${tag})`;
   });
 
-  // Encabezado (resumen) en markdown, para convertirlo con el mismo formato que el documento.
+  // Encabezado (resumen) en markdown, para convertirlo con el mismo formato que el documento. El enlace
+  // de reanudacion va PRIMERO (es funcional: el paciente firmo, ahora responde la encuesta).
   const summary = [
+    ...(input.resumeUrl
+      ? [
+          "**Continúa tu encuesta**",
+          "",
+          `Firmaste tu consentimiento. Ahora responde la encuesta: puedes hacerlo ya o retomarla cuando quieras desde este enlace: ${input.resumeUrl}`,
+          "",
+          "---",
+          "",
+        ]
+      : []),
     "Esta es tu copia del consentimiento informado que aceptaste en Atlas. Consérvala.",
     "",
     `**Fecha y hora de aceptación:** ${formatAcceptedAt(input.acceptedAt)}`,

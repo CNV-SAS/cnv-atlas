@@ -25,6 +25,7 @@ export type SendConsentCopyInput = {
   consentTemplate: string; // plantilla congelada (se personaliza a instancia aqui)
   instance: ConsentInstanceData; // datos para construir la instancia (rama, firma, profesional, etc.)
   recipients: ConsentCopyRecipient[];
+  resumeUrl?: string | null; // enlace para continuar/retomar la encuesta (reorganizacion del intake)
 };
 
 export async function sendConsentCopy(input: SendConsentCopyInput): Promise<void> {
@@ -38,6 +39,7 @@ export async function sendConsentCopy(input: SendConsentCopyInput): Promise<void
     granted: input.granted,
     consentVersion: input.consentVersion,
     instanceMarkdown,
+    resumeUrl: input.resumeUrl ?? null,
   });
 
   const results: { masked_destination: string; role: string; ok: boolean }[] = [];

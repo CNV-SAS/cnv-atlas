@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { after } from "next/server";
 import QRCode from "qrcode";
 
@@ -39,6 +40,12 @@ import {
   ConsentBranchMismatchError,
 } from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
+import {
+  saveProgress,
+  signSurveyIntake,
+  submitSurveyAnswers,
+  submitSurveyIntake,
+} from "./services/survey-intake";
 import { getActiveSurvey } from "./data/survey-reader";
 import {
   getProfessionalForConsent,
@@ -50,7 +57,6 @@ import {
   canManageBaseSurveyLink,
 } from "./policies/can-manage-evaluations";
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
-import { submitSurveyIntake } from "./services/survey-intake";
 import { otpSendSchema } from "./validations";
 import type {
   BaseSurveyLinkState,
@@ -58,6 +64,8 @@ import type {
   ConfirmIdentityState,
   FollowupLinkState,
   OtpSendState,
+  SaveProgressState,
+  SignSurveyState,
   SurveyFormState,
 } from "./validations";
 
@@ -113,61 +121,9 @@ export async function submitSurveyAction(
     return fail("Ingresa el código de verificación que enviamos al correo para firmar.");
   }
 
-  // Consentimiento por capas: rama de edad (mayor/menor) + 3 necesarias + 3 opcionales.
-  // mayoria_de_edad se deriva de una seleccion EXPLICITA de "mayor" (no de un default):
-  // sin seleccion, la rama mayor se rechaza por falta de la declaracion. Los campos del
-  // representante van undefined cuando estan vacios para no fallar la validacion de la
-  // rama mayor (un correo "" no es un email valido; undefined si es opcional ausente).
-  const ageBranchRaw = str(form, "ageBranch");
-  const consent = {
-    servicio: checkbox(form, "servicio"),
-    datos_sensibles: checkbox(form, "datos_sensibles"),
-    internacional_ia: checkbox(form, "internacional_ia"),
-    aceptacion_medio_electronico: checkbox(form, "aceptacion_medio_electronico"),
-    investigacion: checkbox(form, "investigacion"),
-    comunicaciones_continuidad: checkbox(form, "comunicaciones_continuidad"),
-    comunicaciones_comerciales: checkbox(form, "comunicaciones_comerciales"),
-    ageBranch: ageBranchRaw === "menor" ? "menor" : "mayor",
-    mayoria_de_edad: ageBranchRaw === "mayor",
-    legalRepresentativeName: str(form, "legalRepresentativeName") || undefined,
-    legalRepresentativeDocument: str(form, "legalRepresentativeDocument") || undefined,
-    legalRepresentativeRelationship:
-      str(form, "legalRepresentativeRelationship") || undefined,
-    legalRepresentativeEmail: str(form, "legalRepresentativeEmail") || undefined,
-    minorBirthDate: str(form, "minorBirthDate") || undefined,
-    asentimiento_menor: checkbox(form, "asentimiento_menor"),
-  };
-
-  const identity = {
-    documentType: str(form, "documentType"),
-    documentNumber: str(form, "documentNumber"),
-    firstName: str(form, "firstName"),
-    lastName: str(form, "lastName"),
-    birthDate: str(form, "birthDate") || null,
-    sex: str(form, "sex") || null,
-    country: str(form, "country") || null,
-    city: str(form, "city") || null,
-    email: str(form, "email") || null,
-    phone: str(form, "phone") || null,
-  };
-
-  // Respuestas: se toman de las preguntas reales de la version activa (server-side),
-  // no de lo que el cliente diga existir. Campos del form: answer_<questionId>. Se guarda
-  // el TEXTO de la opcion (option_text), no su id: es lo que compara el motor congelado.
-  // Los multi-select llegan como varios valores con el mismo name -> se codifican como
-  // JSON (["HTA","Prediabetes"]); build-engine-input los decodifica a array.
-  const answers = survey.questions
-    .map((q) => {
-      if (q.type === "opcion_multiple") {
-        const selected = form
-          .getAll(`answer_${q.id}`)
-          .map((v) => String(v).trim())
-          .filter((v) => v.length > 0);
-        return { questionId: q.id, answerValue: selected.length ? JSON.stringify(selected) : "" };
-      }
-      return { questionId: q.id, answerValue: str(form, `answer_${q.id}`) };
-    })
-    .filter((a) => a.answerValue.length > 0);
+  const consent = readConsentFromForm(form);
+  const identity = readIdentityFromForm(form);
+  const answers = readAnswersFromForm(form, survey.questions);
 
   const result = await submitSurveyIntake({
     link,
@@ -181,11 +137,104 @@ export async function submitSurveyAction(
 
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
 
-  // Copia automatica del consentimiento (B7, dictamen): transparencia, NO requisito de validez. Se
-  // envia DESPUES del commit y FUERA del camino de respuesta (after), para no bloquear la pantalla de
-  // gracias ni revertir la creacion si el correo falla. El servicio registra el intento (exito/fallo)
-  // en la traza y no lanza. Destino: adulto -> paciente; menor -> representante (y el menor si dio correo).
-  const acceptedAt = Date.now();
+  // Copia automatica del consentimiento (transparencia, no requisito de validez): fuera del camino de
+  // respuesta (after), no bloquea ni revierte si el correo falla. En el flujo viejo (una sola fase) no
+  // hay reanudacion, asi que resumeUrl es null.
+  after(() =>
+    dispatchConsentCopy({
+      link,
+      consent,
+      identity,
+      patientId: result.value.patientId,
+      acceptedAt: Date.now(),
+      resumeUrl: null,
+    }),
+  );
+
+  // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya quedo consumido).
+  redirect("/encuesta/gracias");
+}
+
+// ── Helpers compartidos por firmar (fase 1) y el flujo atomico viejo ────────────────────────────────
+function readConsentFromForm(form: FormData) {
+  const ageBranchRaw = str(form, "ageBranch");
+  return {
+    servicio: checkbox(form, "servicio"),
+    datos_sensibles: checkbox(form, "datos_sensibles"),
+    internacional_ia: checkbox(form, "internacional_ia"),
+    aceptacion_medio_electronico: checkbox(form, "aceptacion_medio_electronico"),
+    investigacion: checkbox(form, "investigacion"),
+    comunicaciones_continuidad: checkbox(form, "comunicaciones_continuidad"),
+    comunicaciones_comerciales: checkbox(form, "comunicaciones_comerciales"),
+    ageBranch: ageBranchRaw === "menor" ? "menor" : "mayor",
+    mayoria_de_edad: ageBranchRaw === "mayor",
+    legalRepresentativeName: str(form, "legalRepresentativeName") || undefined,
+    legalRepresentativeDocument: str(form, "legalRepresentativeDocument") || undefined,
+    legalRepresentativeRelationship: str(form, "legalRepresentativeRelationship") || undefined,
+    legalRepresentativeEmail: str(form, "legalRepresentativeEmail") || undefined,
+    minorBirthDate: str(form, "minorBirthDate") || undefined,
+    asentimiento_menor: checkbox(form, "asentimiento_menor"),
+  };
+}
+
+function readIdentityFromForm(form: FormData) {
+  return {
+    documentType: str(form, "documentType"),
+    documentNumber: str(form, "documentNumber"),
+    firstName: str(form, "firstName"),
+    lastName: str(form, "lastName"),
+    birthDate: str(form, "birthDate") || null,
+    sex: str(form, "sex") || null,
+    country: str(form, "country") || null,
+    city: str(form, "city") || null,
+    email: str(form, "email") || null,
+    phone: str(form, "phone") || null,
+  };
+}
+
+// Respuestas desde el formulario, contra las preguntas REALES de la version activa (server-side, no lo
+// que el cliente diga existir). Multi-select -> JSON. El motor compara option_text, no ids.
+function readAnswersFromForm(
+  form: FormData,
+  questions: { id: string; type: string }[],
+): { questionId: string; answerValue: string }[] {
+  return questions
+    .map((q) => {
+      if (q.type === "opcion_multiple") {
+        const selected = form
+          .getAll(`answer_${q.id}`)
+          .map((v) => String(v).trim())
+          .filter((v) => v.length > 0);
+        return { questionId: q.id, answerValue: selected.length ? JSON.stringify(selected) : "" };
+      }
+      return { questionId: q.id, answerValue: str(form, `answer_${q.id}`) };
+    })
+    .filter((a) => a.answerValue.length > 0);
+}
+
+// URL absoluta de reanudacion desde el origen de la request (para el correo; el paciente no tiene sesion).
+async function resumeUrlFrom(resumeToken: string): Promise<string | null> {
+  const h = await headers();
+  const host = h.get("host");
+  if (!host) return null;
+  const proto =
+    h.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+  return `${proto}://${host}/encuesta/reanudar/${resumeToken}`;
+}
+
+// Despacho de la copia del consentimiento (+ enlace de reanudacion si aplica). Fuera del camino de
+// respuesta (el caller usa after): transparencia, no requisito de validez; un fallo no revierte nada. El
+// destino: adulto -> paciente; menor -> representante (y el menor si dio correo).
+async function dispatchConsentCopy(args: {
+  link: { professionalId: string };
+  consent: ReturnType<typeof readConsentFromForm>;
+  identity: ReturnType<typeof readIdentityFromForm>;
+  patientId: string;
+  acceptedAt: number;
+  resumeUrl: string | null;
+}): Promise<void> {
+  const { consent, identity } = args;
   const grantedForCopy: ConsentType[] = ["servicio", "datos_sensibles", "internacional_ia"];
   if (consent.investigacion) grantedForCopy.push("investigacion");
   if (consent.comunicaciones_continuidad) grantedForCopy.push("comunicaciones_continuidad");
@@ -200,53 +249,138 @@ export async function submitSurveyAction(
   } else if (identity.email) {
     recipients.push({ email: identity.email, role: "titular" });
   }
+  if (recipients.length === 0) return;
 
-  const patientId = result.value.patientId;
-  after(async () => {
-    // El bloque del profesional sale del profesional del link (divulgacion INTENCIONAL al paciente: el
-    // consentimiento debe identificar al responsable clinico). Si no se pudiera leer, se pasan vacios y
-    // la instancia omite los segmentos (nunca placeholders crudos).
-    const professional = (await getProfessionalForConsent(link.professionalId)) ?? {
-      fullName: "",
-      profession: "",
-      license: null,
-    };
-    const fullName = `${identity.firstName} ${identity.lastName}`.trim();
-    const instance: ConsentInstanceData = {
-      branch: consent.ageBranch === "menor" ? "menor" : "mayor",
-      patient: { name: fullName, document: identity.documentNumber },
-      professional,
-      representative:
-        consent.ageBranch === "menor"
-          ? {
-              name: consent.legalRepresentativeName ?? "",
-              document: consent.legalRepresentativeDocument ?? "",
-              relationship: consent.legalRepresentativeRelationship ?? "",
-              email: consent.legalRepresentativeEmail ?? "",
-            }
-          : null,
-      assent:
-        consent.ageBranch === "menor"
-          ? { applies: consent.asentimiento_menor, minorName: fullName }
-          : null,
-      // El numeral 12 de la copia SI refleja lo marcado (incluida la casilla del medio electronico, que
-      // es necesaria y siempre va marcada); a diferencia de la pantalla, aqui no hay controles reales.
-      granted: [...grantedForCopy, "aceptacion_medio_electronico"],
-      acceptedAt,
-    };
-    await sendConsentCopy({
-      patientId,
-      acceptedAt,
-      granted: grantedForCopy,
-      consentVersion: CONSENT_VERSION,
-      consentTemplate: CONSENT_TEXT_V1_7,
-      instance,
-      recipients,
-    });
+  const professional = (await getProfessionalForConsent(args.link.professionalId)) ?? {
+    fullName: "",
+    profession: "",
+    license: null,
+  };
+  const fullName = `${identity.firstName} ${identity.lastName}`.trim();
+  const instance: ConsentInstanceData = {
+    branch: consent.ageBranch === "menor" ? "menor" : "mayor",
+    patient: { name: fullName, document: identity.documentNumber },
+    professional,
+    representative:
+      consent.ageBranch === "menor"
+        ? {
+            name: consent.legalRepresentativeName ?? "",
+            document: consent.legalRepresentativeDocument ?? "",
+            relationship: consent.legalRepresentativeRelationship ?? "",
+            email: consent.legalRepresentativeEmail ?? "",
+          }
+        : null,
+    assent:
+      consent.ageBranch === "menor"
+        ? { applies: consent.asentimiento_menor, minorName: fullName }
+        : null,
+    granted: [...grantedForCopy, "aceptacion_medio_electronico"],
+    acceptedAt: args.acceptedAt,
+  };
+  await sendConsentCopy({
+    patientId: args.patientId,
+    acceptedAt: args.acceptedAt,
+    granted: grantedForCopy,
+    consentVersion: CONSENT_VERSION,
+    consentTemplate: CONSENT_TEXT_V1_7,
+    instance,
+    recipients,
+    resumeUrl: args.resumeUrl,
+  });
+}
+
+// ── FASE 1: FIRMAR (reorganizacion del intake) ──────────────────────────────────────────────────────
+// Consentimiento + identidad + codigo. Crea el shell firmado y devuelve el resume_token (con el que el
+// formulario pasa a la encuesta y se reanuda). Envia la copia CON el enlace de reanudacion.
+export async function signSurveyAction(
+  _prev: SignSurveyState,
+  form: FormData,
+): Promise<SignSurveyState> {
+  const fail = (error: string, fields: Record<string, string> | null = null): SignSurveyState => ({
+    error,
+    fields,
+    resumeToken: null,
   });
 
-  // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya
-  // quedo consumido).
+  const token = str(form, "token");
+  if (!token) return fail("Link inválido.");
+  const ip = await getClientIp();
+  const [byIp, byToken] = await Promise.all([limitSurveyByIp(ip), limitSurveyByToken(token)]);
+  if (!byIp.success || !byToken.success) {
+    return fail("Demasiados intentos. Espera unos minutos e intenta de nuevo.");
+  }
+  const link = await resolveSurveyLinkByToken(token);
+  if (!link) return fail("Este link no esta disponible, ya fue usado o vencio.");
+
+  const sessionId = str(form, "otpSessionId");
+  const otpCode = str(form, "otpCode");
+  if (!sessionId || !otpCode) {
+    return fail("Ingresa el código de verificación que enviamos al correo para firmar.");
+  }
+
+  const consent = readConsentFromForm(form);
+  const identity = readIdentityFromForm(form);
+
+  const result = await signSurveyIntake({
+    link,
+    consent,
+    identity,
+    otp: { sessionId, code: otpCode },
+    ipAddress: ip === "unknown" ? null : ip,
+  });
+  if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
+
+  const acceptedAt = Date.now();
+  const { patientId, resumeToken } = result.value;
+  const resumeUrl = await resumeUrlFrom(resumeToken);
+  after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
+
+  // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
+  return { error: null, fields: null, resumeToken };
+}
+
+// ── FASE 2: guardar a medida (as-you-go) ────────────────────────────────────────────────────────────
+// El cliente envia el SNAPSHOT COMPLETO de respuestas (contrato del writer). No completa: sigue en la
+// encuesta. Un fallo NO bloquea (el cliente muestra "no se pudo guardar" y reintenta).
+export async function saveProgressAction(
+  _prev: SaveProgressState,
+  form: FormData,
+): Promise<SaveProgressState> {
+  const resumeToken = str(form, "resumeToken");
+  if (!resumeToken) return { saved: false, error: "Falta el enlace de la encuesta." };
+  const survey = await getActiveSurvey();
+  if (!survey) return { saved: false, error: "La encuesta no esta disponible en este momento." };
+  const ip = await getClientIp();
+  const answers = readAnswersFromForm(form, survey.questions);
+  const res = await saveProgress({
+    resumeToken,
+    surveyVersionId: survey.surveyVersionId,
+    answers,
+    ipAddress: ip === "unknown" ? null : ip,
+  });
+  if (!res.ok) return { saved: false, error: res.error.message };
+  return { saved: true, error: null };
+}
+
+// ── FASE 2: COMPLETAR ───────────────────────────────────────────────────────────────────────────────
+export async function submitSurveyAnswersAction(
+  _prev: SurveyFormState,
+  form: FormData,
+): Promise<SurveyFormState> {
+  const fail = (error: string): SurveyFormState => ({ error, fields: null, done: false });
+  const resumeToken = str(form, "resumeToken");
+  if (!resumeToken) return fail("Falta el enlace de la encuesta.");
+  const survey = await getActiveSurvey();
+  if (!survey) return fail("La encuesta no esta disponible en este momento.");
+  const ip = await getClientIp();
+  const answers = readAnswersFromForm(form, survey.questions);
+  const res = await submitSurveyAnswers({
+    resumeToken,
+    surveyVersionId: survey.surveyVersionId,
+    answers,
+    ipAddress: ip === "unknown" ? null : ip,
+  });
+  if (!res.ok) return fail(res.error.message);
   redirect("/encuesta/gracias");
 }
 

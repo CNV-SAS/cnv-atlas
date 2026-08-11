@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 
 // Reorganizacion del intake, checkpoint 1: el writer se partio en FIRMAR (crea el shell 'awaiting_survey'
 // SIN survey_responses, con resume_token) y ESCRIBIR RESPUESTAS (crea survey_responses + answers, pasa a

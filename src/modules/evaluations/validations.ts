@@ -68,6 +68,21 @@ export type SurveyFormState = {
   done: boolean;
 };
 
+// Reorganizacion del intake: estado de la FASE 1 (firmar). Al exito trae el resume_token, con el que el
+// formulario pasa a la fase 2 (la encuesta) y con el que se reanuda. null mientras no se ha firmado.
+export type SignSurveyState = {
+  error: string | null;
+  fields: Record<string, string> | null;
+  resumeToken: string | null;
+};
+
+// Estado del guardado a medida (as-you-go) de la fase 2. saved marca el ultimo guardado exitoso; error
+// se muestra discreto sin bloquear la encuesta (el paciente puede seguir; se reintenta).
+export type SaveProgressState = {
+  saved: boolean;
+  error: string | null;
+};
+
 // Estado de la confirmacion de identidad (panel del profesional).
 export type ConfirmIdentityState = {
   error: string | null;
