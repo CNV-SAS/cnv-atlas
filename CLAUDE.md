@@ -177,6 +177,7 @@ NUNCA uses em-dash en ningún lugar: ni en código, ni en copy, ni en docs, ni e
 - Service role (`admin.ts`) SOLO en server actions y route handlers, con comentario justificando por qué se bypassa RLS.
 - Nunca expongas `SUPABASE_SERVICE_ROLE_KEY` al cliente.
 - Migraciones con Drizzle: forward-only. NUNCA modifiques una migración aplicada; crea una nueva.
+- **Una SEGUNDA relación (FK) hacia una tabla ya referenciada vuelve AMBIGUOS los embeds existentes de PostgREST.** Al agregar un FK nuevo a una tabla que otras consultas ya embeben (`.select("... otra_tabla(campo)")`), PostgREST deja de saber por cuál relación resolver el embed y falla en runtime ("Could not embed because more than one relationship was found... hint the column with `otra!<columna>`"). Rompe consultas que NO tienen nada que ver con el FK nuevo. Es de la familia que **tsc no ve**: en un embed ANIDADO (`a(b(campo))`) el tipo no marca la ambigüedad y compila verde; solo un **test contra BD real** (o el runtime) lo atrapa. Caso real: agregar `rut_verified_by → profiles` rompió tres embeds `profiles ← professional_profiles` en comodato, faltantes y remesa (2026-08-12). **PRESERVAR:** al agregar un FK a una tabla ya referenciada, buscar todos los embeds de esa tabla (`grep "<tabla>("`) y desambiguarlos con el hint `tabla!columna(...)`; y correr la suite de BD real, no solo tsc.
 
 ### Validación
 
