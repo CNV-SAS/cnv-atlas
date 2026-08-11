@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  UserRound,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -56,6 +57,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   auditoria: History,
   direccion: BarChart3,
   obbia: FlaskConical,
+  perfil: UserRound,
 };
 
 type ShellUser = { fullName: string; email: string };

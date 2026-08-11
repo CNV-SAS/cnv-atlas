@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   numeric,
@@ -17,6 +18,7 @@ import {
   profileStatus,
   professionalDocumentType,
   professionalProfession,
+  taxPersonType,
 } from "./enums";
 
 // Grupo 1: organizacion, usuarios, roles.
@@ -91,6 +93,18 @@ export const professionalProfiles = pgTable("professional_profiles", {
   profession: professionalProfession("profession").notNull(),
   certificationStatus: text("certification_status"), // gate de habilitacion ANI-BIS-E
   commissionRate: numeric("commission_rate").notNull().default("0.20"), // editable por admin
+  // Estado tributario del integrante (dictamen contable 2026-08-11). CNV es agente de retencion sobre la
+  // comision; sin estos datos no se puede calcular la retencion ni documentar el pago. Se captura en el
+  // perfil. NULL = sin capturar. tax_status_completed_at marca que el integrante completo el formulario
+  // (la fuente de verdad de "completo", robusta a que algun booleano sea false legitimamente). Las TARIFAS
+  // de retencion NO se guardan aqui (esperan a la contadora); esto solo son los datos de entrada.
+  taxPersonType: taxPersonType("tax_person_type"), // natural | juridica
+  taxHasRut: boolean("tax_has_rut"),
+  taxIsIncomeDeclarant: boolean("tax_is_income_declarant"),
+  taxIsVatResponsible: boolean("tax_is_vat_responsible"),
+  taxIdNumber: text("tax_id_number"), // NIT o cedula para facturacion
+  taxMustInvoice: boolean("tax_must_invoice"), // esta obligado a facturar
+  taxStatusCompletedAt: timestamp("tax_status_completed_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

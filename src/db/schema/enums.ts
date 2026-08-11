@@ -130,6 +130,11 @@ export const transactionStatus = pgEnum("transaction_status", [
 // es la suma; el efectivo solo define cuanto custodia el integrante.
 export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo"]);
 
+// Tipo de persona del integrante para su estado tributario (retencion en la fuente). Natural o juridica;
+// la tarifa de retencion depende de esto y de si es declarante (lo fija la contadora). Ver el bloque de
+// retencion en BACKLOG.
+export const taxPersonType = pgEnum("tax_person_type", ["natural", "juridica"]);
+
 export const aiSuggestionStatus = pgEnum("ai_suggestion_status", [
   "success",
   "timeout",

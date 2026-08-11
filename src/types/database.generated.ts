@@ -2176,6 +2176,13 @@ export type Database = {
           license: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
+          tax_has_rut: boolean | null
+          tax_id_number: string | null
+          tax_is_income_declarant: boolean | null
+          tax_is_vat_responsible: boolean | null
+          tax_must_invoice: boolean | null
+          tax_person_type: Database["public"]["Enums"]["tax_person_type"] | null
+          tax_status_completed_at: string | null
           updated_at: string
         }
         Insert: {
@@ -2186,6 +2193,13 @@ export type Database = {
           license?: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
+          tax_has_rut?: boolean | null
+          tax_id_number?: string | null
+          tax_is_income_declarant?: boolean | null
+          tax_is_vat_responsible?: boolean | null
+          tax_must_invoice?: boolean | null
+          tax_person_type?: Database["public"]["Enums"]["tax_person_type"] | null
+          tax_status_completed_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -2196,6 +2210,13 @@ export type Database = {
           license?: string | null
           profession?: Database["public"]["Enums"]["professional_profession"]
           profile_id?: string
+          tax_has_rut?: boolean | null
+          tax_id_number?: string | null
+          tax_is_income_declarant?: boolean | null
+          tax_is_vat_responsible?: boolean | null
+          tax_must_invoice?: boolean | null
+          tax_person_type?: Database["public"]["Enums"]["tax_person_type"] | null
+          tax_status_completed_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3233,6 +3254,7 @@ export type Database = {
         | "nutricionista"
         | "otro"
       report_status: "draft" | "approved" | "sent"
+      tax_person_type: "natural" | "juridica"
       transaction_status: "pending" | "paid" | "failed" | "refunded"
       treatment_status: "draft" | "approved"
     }
@@ -3463,6 +3485,7 @@ export const Constants = {
         "otro",
       ],
       report_status: ["draft", "approved", "sent"],
+      tax_person_type: ["natural", "juridica"],
       transaction_status: ["pending", "paid", "failed", "refunded"],
       treatment_status: ["draft", "approved"],
     },

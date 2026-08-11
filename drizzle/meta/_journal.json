@@ -421,6 +421,13 @@
       "when": 1786461630189,
       "tag": "0059_lonely_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1786470383484,
+      "tag": "0060_new_pestilence",
+      "breakpoints": true
     }
   ]
 }

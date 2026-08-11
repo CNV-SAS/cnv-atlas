@@ -18,7 +18,8 @@ export type NavIconKey =
   | "ia"
   | "auditoria"
   | "direccion"
-  | "obbia";
+  | "obbia"
+  | "perfil";
 
 export type NavItem = {
   label: string;
@@ -114,6 +115,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/consentimiento",
     icon: "consentimiento",
     roles: ["admin", "direccion", "soporte", "obbia", "professional"],
+  },
+  {
+    // Perfil del integrante (hoy, su estado tributario para poder cobrar la comision). Solo el
+    // profesional: es su propio perfil. La pagina redirige a los no-integrantes.
+    label: "Mi perfil",
+    href: "/perfil",
+    icon: "perfil",
+    roles: ["professional"],
   },
   {
     label: "Usuarios",
