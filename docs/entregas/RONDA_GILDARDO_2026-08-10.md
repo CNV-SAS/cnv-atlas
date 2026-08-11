@@ -32,9 +32,15 @@ Con un paciente demo que come carne roja 5-6 días/semana, al portar tu pantalla
 
 El asesor legal, al revisar el flujo del consentimiento, observó que 63 preguntas es mucho para un intake y que conviene ver si todas son necesarias en la primera consulta o si algunas van al seguimiento. Es tu terreno (contenido del instrumento), no el nuestro, pero te damos el dato para que sea respondible:
 
-De las 63, **34 alimentan algún motor** y **29 son caracterización pura** (registro clínico, sin efecto en ningún cálculo). Y de esas 34, **solo 13 alimentan el DIAGNÓSTICO**; las otras 21 son del patrón alimentario y del tratamiento (etapa posterior a la evaluación). Es decir: para el diagnóstico de la primera consulta bastan 13; las otras 50 son patrón/tratamiento (que ocurre después) o caracterización.
+De las 63, **34 alimentan algún motor** y **29 son caracterización pura** (registro clínico, sin efecto en ningún cálculo). Y de esas 34, **solo 13 alimentan el DIAGNÓSTICO**; las otras 21 son del patrón alimentario y del tratamiento (etapa posterior a la evaluación).
 
-**Pregunta:** ¿cuáles de esas 50 (las 21 de patrón/tratamiento y las 29 de caracterización) podrían recogerse en el **seguimiento** en vez de en el intake inicial, para acortar la primera encuesta? Es tu decisión de instrumento; nosotros solo movemos el momento de la captura.
+**Una advertencia para no podar de más:** algunas de esas 29 de caracterización, aunque no alimenten ningún cálculo, quizá las **necesita el observatorio (ObBIA)** para estratificar. Podarlas de la primera consulta tiene un costo que hay que conocer antes de decidir.
+
+**Pregunta (dos partes):**
+- De las **21 de patrón/tratamiento**: como el tratamiento ocurre DESPUÉS de la evaluación, ¿podrían recogerse en el seguimiento en vez de en el intake inicial?
+- De las **29 de caracterización pura**: ¿cuáles necesita el **observatorio en la primera consulta**, y cuáles pueden esperar al seguimiento?
+
+Es tu decisión de instrumento (y la del observatorio); nosotros solo movemos el momento de la captura.
 
 ---
 
