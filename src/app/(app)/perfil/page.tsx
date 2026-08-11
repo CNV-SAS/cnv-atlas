@@ -25,12 +25,17 @@ export default async function PerfilPage() {
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">Datos tributarios</h2>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Datos tributarios y cuenta</h2>
           <p className="text-sm text-muted-foreground">
             CNV te paga tu comisión y, como agente de retención, retiene el impuesto en la fuente y te
-            entrega el certificado. Necesitamos estos datos para calcular la retención y documentar el pago.
-            {view.complete ? (
-              <span className="ml-1 font-medium text-primary">Tus datos están completos; puedes actualizarlos.</span>
+            entrega el certificado. Con tu RUT tomamos tu clasificación del documento, no de lo que
+            recuerdes.
+            {view.verified ? (
+              <span className="ml-1 font-medium text-primary">Tus datos están verificados.</span>
+            ) : view.submitted ? (
+              <span className="ml-1 font-medium text-foreground">
+                Recibimos tus datos; los estamos verificando. Puedes actualizarlos si algo cambió.
+              </span>
             ) : (
               <span className="ml-1 font-medium text-foreground">
                 Mientras no los completes, tu comisión queda a la espera (ya es tuya; solo falta esto).
@@ -38,7 +43,7 @@ export default async function PerfilPage() {
             )}
           </p>
         </div>
-        <TaxStatusForm current={view.fields} />
+        <TaxStatusForm professionalId={professionalId} current={view.fields} />
       </section>
     </div>
   );

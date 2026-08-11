@@ -1,0 +1,1 @@
+ALTER TABLE "professional_profiles" ADD COLUMN "tax_id_type" "document_type";

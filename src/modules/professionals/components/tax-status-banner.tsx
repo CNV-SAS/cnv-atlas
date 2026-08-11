@@ -19,9 +19,25 @@ export async function TaxStatusBanner() {
   if (!professionalId) return null; // no es integrante
 
   const view = await getTaxStatusView(professionalId);
-  if (view.complete || view.pendingCommission <= 0) return null;
+  // Nada que mostrar si no hay comision aun (el aviso va desde la primera venta) o si ya se verifico.
+  if (view.pendingCommission <= 0 || view.verified) return null;
 
   const monto = view.pendingCommission.toLocaleString("es-CO");
+
+  // "Completo" = el integrante dio su parte, NO que este verificado. Dos estados distintos, para que no
+  // crea que ya puede cobrar apenas envia: (1) falta completar; (2) enviado, en verificacion.
+  if (view.submitted) {
+    return (
+      <div className="flex flex-col gap-1 rounded-xl border border-border bg-muted/40 p-4">
+        <h2 className="text-sm font-semibold text-foreground">Recibimos tus datos; los estamos verificando</h2>
+        <p className="text-sm text-muted-foreground">
+          Tienes {monto} COP en comisiones. En cuanto verifiquemos tu RUT, tu comisión entra en la próxima
+          liquidación. No necesitas hacer nada más por ahora.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
       <div className="flex flex-col gap-1">
@@ -30,8 +46,10 @@ export async function TaxStatusBanner() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Esa comisión ya es tuya (se causó con tus ventas). Para poder pagártela necesitamos tus datos
-          tributarios: CNV retiene el impuesto en la fuente y te entrega el certificado para tu declaración.
-          No es un descuento nuestro; es un anticipo de tu propio impuesto de renta.
+          tributarios y tu cuenta: CNV, como agente de retención, debe retener un porcentaje de tu comisión
+          y girarlo a la DIAN a tu nombre, con certificado. Es una obligación legal, no un descuento nuestro.
+          Ejemplo: si tu comisión es 100.000 y aplica retención del 11%, recibes 89.000 y CNV gira 11.000 a
+          la DIAN a tu nombre.
         </p>
       </div>
       <Link

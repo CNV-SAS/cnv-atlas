@@ -1,26 +1,37 @@
 import { z } from "zod";
 
-// Valores actuales del estado tributario (para prefill del formulario). Vive AQUI, en el modulo neutro,
-// no en el reader (server-only): un componente cliente que importe este tipo desde un modulo server-only
-// es un hazard latente (CLAUDE.md). El reader lo re-exporta para el servidor.
+// Valores actuales del estado tributario, para prefill del formulario. Vive AQUI (modulo neutro), no en
+// el reader (server-only): un componente cliente que importe este tipo de un modulo server-only es un
+// hazard latente (CLAUDE.md). El reader lo re-exporta para el servidor.
+//
+// A2 (revision contable): el integrante YA NO responde los campos certificados (declarante, responsable de
+// IVA, obligado a facturar); esos los llena CNV al verificar el RUT. Su formulario es solo lo que sabe.
 export type TaxStatusFields = {
   personType: "natural" | "juridica" | null;
   hasRut: boolean | null;
-  isIncomeDeclarant: boolean | null;
-  isVatResponsible: boolean | null;
+  idType: "CC" | "CE" | "TI" | "PA" | "NIT" | null; // natural: CC/CE; juridica: NIT
   idNumber: string | null;
-  mustInvoice: boolean | null;
+  idDv: string | null; // digito de verificacion (cuando es NIT)
+  rutUploaded: boolean; // ya subio un RUT (rut_path presente): no lo obliga a re-subir al editar
+  bankName: string | null;
+  bankAccountType: "ahorros" | "corriente" | null;
+  bankAccountNumber: string | null;
+  bankAccountHolderName: string | null;
+  bankAccountHolderDocument: string | null;
 };
 
-// Estado tributario del integrante (dictamen contable 2026-08-11). Solo son los datos de ENTRADA; las
-// tarifas de retencion NO se calculan aqui (esperan a la contadora).
+// Lo que el integrante envia (sin el archivo del RUT, que va aparte en el FormData; sin los certificados).
 export const taxStatusSchema = z.object({
   personType: z.enum(["natural", "juridica"]),
   hasRut: z.boolean(),
-  isIncomeDeclarant: z.boolean(),
-  isVatResponsible: z.boolean(),
+  idType: z.enum(["CC", "CE", "TI", "PA", "NIT"]),
   idNumber: z.string().trim().min(3).max(30),
-  mustInvoice: z.boolean(),
+  idDv: z.string().trim().max(2).nullish().transform((v) => v ?? null),
+  bankName: z.string().trim().min(2).max(80),
+  bankAccountType: z.enum(["ahorros", "corriente"]),
+  bankAccountNumber: z.string().trim().min(4).max(40),
+  bankAccountHolderName: z.string().trim().min(2).max(120),
+  bankAccountHolderDocument: z.string().trim().min(3).max(30),
 });
 export type TaxStatusInput = z.infer<typeof taxStatusSchema>;
 

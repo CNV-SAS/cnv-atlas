@@ -28,24 +28,34 @@ describe("computeNitDv (algoritmo DIAN)", () => {
 
 describe("validateTaxIdentity (validacion cruzada)", () => {
   it("rechaza el combo imposible juridica + sin RUT (el bug del smoke)", () => {
-    const err = validateTaxIdentity({ personType: "juridica", hasRut: false, idNumber: "890903938", idDv: "8" });
+    const err = validateTaxIdentity({ personType: "juridica", hasRut: false, idType: "NIT", idNumber: "890903938", idDv: "8" });
     expect(err).toMatch(/jur[ií]dica siempre tiene RUT/i);
   });
 
-  it("juridica con DV correcto pasa", () => {
+  it("juridica con NIT + DV correcto pasa", () => {
     expect(
-      validateTaxIdentity({ personType: "juridica", hasRut: true, idNumber: "890903938", idDv: "8" }),
+      validateTaxIdentity({ personType: "juridica", hasRut: true, idType: "NIT", idNumber: "890903938", idDv: "8" }),
     ).toBeNull();
   });
 
   it("juridica con DV incorrecto es rechazada, con el DV correcto en el mensaje", () => {
-    const err = validateTaxIdentity({ personType: "juridica", hasRut: true, idNumber: "890903938", idDv: "3" });
+    const err = validateTaxIdentity({ personType: "juridica", hasRut: true, idType: "NIT", idNumber: "890903938", idDv: "3" });
     expect(err).toMatch(/deber[ií]a ser 8/);
   });
 
-  it("natural no exige DV (tenga o no RUT)", () => {
-    expect(validateTaxIdentity({ personType: "natural", hasRut: true, idNumber: "1015420000", idDv: null })).toBeNull();
-    expect(validateTaxIdentity({ personType: "natural", hasRut: false, idNumber: "1015420000", idDv: null })).toBeNull();
+  it("juridica con cedula (no NIT) es rechazada", () => {
+    const err = validateTaxIdentity({ personType: "juridica", hasRut: true, idType: "CC", idNumber: "1015420000", idDv: null });
+    expect(err).toMatch(/NIT/);
+  });
+
+  it("natural con cedula no exige DV (tenga o no RUT)", () => {
+    expect(validateTaxIdentity({ personType: "natural", hasRut: true, idType: "CC", idNumber: "1015420000", idDv: null })).toBeNull();
+    expect(validateTaxIdentity({ personType: "natural", hasRut: false, idType: "CE", idNumber: "1015420000", idDv: null })).toBeNull();
+  });
+
+  it("natural con NIT es rechazada (una persona no se identifica con NIT)", () => {
+    const err = validateTaxIdentity({ personType: "natural", hasRut: true, idType: "NIT", idNumber: "1015420000", idDv: null });
+    expect(err).toMatch(/natural se identifica/i);
   });
 });
 

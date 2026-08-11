@@ -17,6 +17,7 @@ import { createdAt, pk, updatedAt } from "./_columns";
 import {
   appRole,
   bankAccountType,
+  documentType,
   profileStatus,
   professionalDocumentType,
   professionalProfession,
@@ -102,6 +103,7 @@ export const professionalProfiles = pgTable("professional_profiles", {
   // de retencion NO se guardan aqui (esperan a la contadora); esto solo son los datos de entrada.
   taxPersonType: taxPersonType("tax_person_type"), // natural | juridica (lo declara el integrante)
   taxHasRut: boolean("tax_has_rut"), // lo declara el integrante (sabe si tiene el documento)
+  taxIdType: documentType("tax_id_type"), // natural: CC/CE; juridica: NIT (documento adaptado)
   taxIdNumber: text("tax_id_number"), // NIT o cedula
   taxIdDv: text("tax_id_dv"), // digito de verificacion (cuando es NIT)
   taxStatusCompletedAt: timestamp("tax_status_completed_at", { withTimezone: true }), // el integrante subio su parte

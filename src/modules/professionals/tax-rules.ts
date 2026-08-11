@@ -21,21 +21,27 @@ export function computeNitDv(nit: string): number | null {
 export type TaxIdentityInput = {
   personType: "natural" | "juridica";
   hasRut: boolean;
+  idType: string; // CC, CE, TI, PA, NIT
   idNumber: string;
   idDv: string | null;
 };
 
 export function validateTaxIdentity(i: TaxIdentityInput): string | null {
   if (i.personType === "juridica") {
-    // Toda persona juridica en Colombia tiene NIT y RUT: el combo "juridica sin RUT" es imposible.
+    // Toda persona juridica en Colombia tiene NIT y RUT: el combo "juridica sin RUT" es imposible, y su
+    // documento es un NIT (con digito de verificacion).
     if (!i.hasRut) {
       return "Una persona jurídica siempre tiene RUT y NIT. Revisa el tipo de persona o la respuesta del RUT.";
     }
+    if (i.idType !== "NIT") return "Una persona jurídica se identifica con NIT.";
     const dv = computeNitDv(i.idNumber);
     if (dv === null) return "El NIT no es válido.";
     if (String(dv) !== String(i.idDv ?? "").trim()) {
       return `El dígito de verificación del NIT no coincide (debería ser ${dv}).`;
     }
+  } else if (i.idType === "NIT") {
+    // Natural no se identifica con NIT (es cedula o cedula de extranjeria).
+    return "Una persona natural se identifica con cédula o cédula de extranjería, no con NIT.";
   }
   return null; // natural: sin DV; que tenga o no RUT lo declara el integrante (lo sabe)
 }

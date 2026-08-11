@@ -2188,6 +2188,7 @@ export type Database = {
           tax_has_rut: boolean | null
           tax_id_dv: string | null
           tax_id_number: string | null
+          tax_id_type: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant: boolean | null
           tax_is_vat_responsible: boolean | null
           tax_must_invoice: boolean | null
@@ -2215,6 +2216,7 @@ export type Database = {
           tax_has_rut?: boolean | null
           tax_id_dv?: string | null
           tax_id_number?: string | null
+          tax_id_type?: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
           tax_must_invoice?: boolean | null
@@ -2242,6 +2244,7 @@ export type Database = {
           tax_has_rut?: boolean | null
           tax_id_dv?: string | null
           tax_id_number?: string | null
+          tax_id_type?: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
           tax_must_invoice?: boolean | null
