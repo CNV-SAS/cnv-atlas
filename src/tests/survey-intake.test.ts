@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mocks de las dependencias del servicio: las lecturas service-role del intake y el
-// escritor transaccional (server-only, tocan BD). Asi se prueba la orquestacion
-// (validacion, resolucion de identidad, sellado de consentimiento, mapeo del gate)
-// sin base de datos. El alias "@" lo resuelve vitest.config.
+// escritor transaccional (server-only, tocan BD). Asi se prueba la orquestacion de la
+// FIRMA (validacion, resolucion de identidad, sellado de consentimiento, verificacion
+// del codigo, mapeo del gate) sin base de datos. El alias "@" lo resuelve vitest.config.
+//
+// Reorganizacion del intake (2026-08-10): el flujo atomico viejo (submitSurveyIntake ->
+// writeIntakeEvaluation) se retiro. La preparacion comun (resolveSignedIntake) que este
+// test ejercita vive ahora bajo signSurveyIntake, que crea el shell firmado via
+// signIntakeEvaluation; las respuestas son otra fase (fase 2, cubierta por el test de BD real).
 vi.mock("@/modules/patients/data/patients-intake", () => ({
   findPatientByDocument: vi.fn(),
   findDuplicateCandidates: vi.fn(),
@@ -19,7 +24,7 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
       this.name = "ConsentGateError";
     }
   }
-  return { writeIntakeEvaluation: vi.fn(), ConsentGateError };
+  return { signIntakeEvaluation: vi.fn(), ConsentGateError };
 });
 
 // Firma electronica (B7): el servicio verifica el codigo antes de crear nada. Se mockea el servicio
@@ -31,7 +36,7 @@ vi.mock("@/modules/consent/otp/otp-service", () => ({
 import * as intakeReads from "@/modules/patients/data/patients-intake";
 import * as writer from "@/modules/evaluations/data/intake-writer";
 import * as otp from "@/modules/consent/otp/otp-service";
-import { submitSurveyIntake } from "@/modules/evaluations/services/survey-intake";
+import { signSurveyIntake } from "@/modules/evaluations/services/survey-intake";
 import type { SurveyLinkView } from "@/modules/evaluations/types";
 
 const okOtp = { status: "ok" as const, meta: { channel: "email" as const, maskedDestination: "m***@example.com", sentAt: 1_700_000_000_000 } };
@@ -62,13 +67,11 @@ const validIdentity = {
   sex: "F", // obligatorio y exacto F/M (el motor lo exige)
 };
 
-function input(over: Partial<Parameters<typeof submitSurveyIntake>[0]> = {}) {
+function input(over: Partial<Parameters<typeof signSurveyIntake>[0]> = {}) {
   return {
     link: initialLink,
-    surveyVersionId: "55555555-5555-5555-5555-555555555552",
     consent: validConsent,
     identity: validIdentity,
-    answers: [],
     otp: { sessionId: "11111111-2222-3333-4444-555555555555", code: "123456" },
     ipAddress: "1.2.3.4",
     ...over,
@@ -78,23 +81,27 @@ function input(over: Partial<Parameters<typeof submitSurveyIntake>[0]> = {}) {
 beforeEach(() => {
   vi.mocked(intakeReads.findPatientByDocument).mockReset();
   vi.mocked(intakeReads.findDuplicateCandidates).mockReset();
-  vi.mocked(writer.writeIntakeEvaluation).mockReset();
+  vi.mocked(writer.signIntakeEvaluation).mockReset();
   vi.mocked(otp.verifyOtp).mockReset();
   vi.mocked(otp.verifyOtp).mockResolvedValue(okOtp);
   vi.mocked(intakeReads.findDuplicateCandidates).mockResolvedValue([]);
-  vi.mocked(writer.writeIntakeEvaluation).mockResolvedValue({
+  vi.mocked(writer.signIntakeEvaluation).mockResolvedValue({
     evaluationId: "ev-1",
     patientId: "pat-1",
+    resumeToken: "resume-abc",
   });
 });
 
-describe("submitSurveyIntake", () => {
+describe("signSurveyIntake", () => {
   it("sin match exacto -> inicial; sella las 3 autorizaciones necesarias", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(true);
-    if (res.ok) expect(res.value.mode).toBe("inicial");
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    if (res.ok) {
+      expect(res.value.mode).toBe("inicial");
+      expect(res.value.resumeToken).toBe("resume-abc"); // el token con el que sigue la fase 2
+    }
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     expect(call.mode).toBe("inicial");
     expect(call.patientId).toBeNull();
     // Las 3 necesarias del gate + la aceptacion del medio electronico (firma electronica, v1.7).
@@ -111,20 +118,20 @@ describe("submitSurveyIntake", () => {
 
   it("match exacto por documento -> seguimiento con el paciente existente", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-existente" });
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.value.mode).toBe("seguimiento");
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     expect(call.mode).toBe("seguimiento");
     expect(call.patientId).toBe("pat-existente");
   });
 
   it("registra las autorizaciones opcionales marcadas", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    await submitSurveyIntake(
+    await signSurveyIntake(
       input({ consent: { ...validConsent, investigacion: true } }),
     );
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     expect(call.consents.map((c) => c.type)).toContain("investigacion");
   });
 
@@ -144,10 +151,10 @@ describe("submitSurveyIntake", () => {
 
   it("rama menor 14-17 -> agrega representante_legal (con datos) y asentimiento_menor", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    await submitSurveyIntake(
+    await signSurveyIntake(
       input({ consent: minorConsent, identity: { ...validIdentity, birthDate: "2010-01-01" } }),
     );
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     const types = call.consents.map((c) => c.type);
     expect(types).toContain("representante_legal");
     expect(types).toContain("asentimiento_menor");
@@ -166,41 +173,41 @@ describe("submitSurveyIntake", () => {
 
   it("rama menor bajo 14 -> representante_legal sin asentimiento_menor", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    await submitSurveyIntake(
+    await signSurveyIntake(
       input({
         consent: { ...minorConsent, minorBirthDate: "2020-01-01" },
         identity: { ...validIdentity, birthDate: "2020-01-01" },
       }),
     );
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     const types = call.consents.map((c) => c.type);
     expect(types).toContain("representante_legal");
     expect(types).not.toContain("asentimiento_menor");
   });
 
   it("rechaza (validation) si falta una autorizacion necesaria; no escribe", async () => {
-    const res = await submitSurveyIntake(
+    const res = await signSurveyIntake(
       input({ consent: { ...validConsent, internacional_ia: false } }),
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe("validation");
-    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
   });
 
   it("rechaza (validation) si no declara mayoria de edad; no escribe", async () => {
-    const res = await submitSurveyIntake(
+    const res = await signSurveyIntake(
       input({ consent: { ...validConsent, mayoria_de_edad: false } }),
     );
     expect(res.ok).toBe(false);
-    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
   });
 
   it("mapea ConsentGateError del escritor a un error de autorizacion", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    vi.mocked(writer.writeIntakeEvaluation).mockRejectedValue(
+    vi.mocked(writer.signIntakeEvaluation).mockRejectedValue(
       new writer.ConsentGateError(["internacional_ia"]),
     );
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe("forbidden");
   });
@@ -217,7 +224,7 @@ describe("submitSurveyIntake", () => {
         documentNumber: "999",
       },
     ]);
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(true);
     if (res.ok) {
       expect(res.value.duplicateCandidates).toHaveLength(1);
@@ -227,8 +234,8 @@ describe("submitSurveyIntake", () => {
 
   it("firma electronica: pasa la metadata (canal, destino enmascarado, marcas) al escritor", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
-    await submitSurveyIntake(input());
-    const call = vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0];
+    await signSurveyIntake(input());
+    const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     expect(call.signature?.channel).toBe("email");
     expect(call.signature?.maskedDestination).toBe("m***@example.com");
     expect(call.signature?.sentAt).toBe(1_700_000_000_000);
@@ -237,34 +244,34 @@ describe("submitSurveyIntake", () => {
 
   it("codigo incorrecto -> validation con mensaje propio; NO escribe (verificar+crear o nada)", async () => {
     vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "invalid" });
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.error.code).toBe("validation");
       expect(res.error.message).toContain("no es correcto");
     }
-    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
     expect(intakeReads.findPatientByDocument).not.toHaveBeenCalled(); // ni siquiera resuelve identidad
   });
 
   it("codigo vencido -> mensaje DISTINTO al incorrecto (pedir uno nuevo)", async () => {
     vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "expired" });
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.message).toContain("venció");
-    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
   });
 
   it("verificacion no disponible (Upstash) -> internal, no valida la firma en silencio", async () => {
     vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "unavailable" });
-    const res = await submitSurveyIntake(input());
+    const res = await signSurveyIntake(input());
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe("internal");
-    expect(writer.writeIntakeEvaluation).not.toHaveBeenCalled();
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
   });
 
   it("no verifica la firma antes de validar la forma (no quema el codigo por un campo malo)", async () => {
-    const res = await submitSurveyIntake(input({ consent: { ...validConsent, internacional_ia: false } }));
+    const res = await signSurveyIntake(input({ consent: { ...validConsent, internacional_ia: false } }));
     expect(res.ok).toBe(false);
     expect(otp.verifyOtp).not.toHaveBeenCalled(); // validacion de forma primero
   });
@@ -272,11 +279,11 @@ describe("submitSurveyIntake", () => {
   it("consume el link de seguimiento (un solo uso); no el inicial", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-x" });
     // inicial: linkId null
-    await submitSurveyIntake(input());
-    expect(vi.mocked(writer.writeIntakeEvaluation).mock.calls[0][0].linkId).toBeNull();
+    await signSurveyIntake(input());
+    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0].linkId).toBeNull();
     // seguimiento: linkId = id del link
     const followLink: SurveyLinkView = { ...initialLink, type: "seguimiento", patientId: "pat-x" };
-    await submitSurveyIntake(input({ link: followLink }));
-    expect(vi.mocked(writer.writeIntakeEvaluation).mock.calls[1][0].linkId).toBe("link-1");
+    await signSurveyIntake(input({ link: followLink }));
+    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].linkId).toBe("link-1");
   });
 });

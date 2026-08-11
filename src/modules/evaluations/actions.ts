@@ -44,7 +44,6 @@ import {
   saveProgress,
   signSurveyIntake,
   submitSurveyAnswers,
-  submitSurveyIntake,
 } from "./services/survey-intake";
 import { getActiveSurvey } from "./data/survey-reader";
 import {
@@ -78,84 +77,7 @@ function str(form: FormData, name: string): string {
   return (form.get(name) as string | null)?.trim() ?? "";
 }
 
-// Server action del envio de la encuesta publica (sin sesion). Orden: rate limit
-// (IP y token, agresivo, SECURITY.md) -> resolver el link en servidor (no se confia
-// en el cliente) -> orquestar el intake. Al exito redirige a la pantalla de gracias.
-export async function submitSurveyAction(
-  _prev: SurveyFormState,
-  form: FormData,
-): Promise<SurveyFormState> {
-  const fail = (error: string, fields: Record<string, string> | null = null): SurveyFormState => ({
-    error,
-    fields,
-    done: false,
-  });
-
-  const token = str(form, "token");
-  if (!token) return fail("Link inválido.");
-
-  // Rate limit agresivo por IP y por token antes de cualquier trabajo.
-  const ip = await getClientIp();
-  const [byIp, byToken] = await Promise.all([
-    limitSurveyByIp(ip),
-    limitSurveyByToken(token),
-  ]);
-  if (!byIp.success || !byToken.success) {
-    return fail("Demasiados intentos. Espera unos minutos e intenta de nuevo.");
-  }
-
-  // Resolver el link en servidor: el token de la URL es la fuente de verdad, no
-  // los campos ocultos del formulario.
-  const link = await resolveSurveyLinkByToken(token);
-  if (!link) return fail("Este link no esta disponible, ya fue usado o vencio.");
-
-  const survey = await getActiveSurvey();
-  if (!survey) return fail("La encuesta no esta disponible en este momento.");
-
-  // Firma electronica (B7): el codigo se verifica en el servicio, atomico con la creacion. Aqui solo
-  // se exige que venga (sin codigo no hay firma). Mensaje propio para no confundir "no lo pediste/no lo
-  // ingresaste" con "codigo incorrecto" (ese lo da el servicio tras verificar).
-  const sessionId = str(form, "otpSessionId");
-  const otpCode = str(form, "otpCode");
-  if (!sessionId || !otpCode) {
-    return fail("Ingresa el código de verificación que enviamos al correo para firmar.");
-  }
-
-  const consent = readConsentFromForm(form);
-  const identity = readIdentityFromForm(form);
-  const answers = readAnswersFromForm(form, survey.questions);
-
-  const result = await submitSurveyIntake({
-    link,
-    surveyVersionId: survey.surveyVersionId,
-    consent,
-    identity,
-    answers,
-    otp: { sessionId, code: otpCode },
-    ipAddress: ip === "unknown" ? null : ip,
-  });
-
-  if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
-
-  // Copia automatica del consentimiento (transparencia, no requisito de validez): fuera del camino de
-  // respuesta (after), no bloquea ni revierte si el correo falla. En el flujo viejo (una sola fase) no
-  // hay reanudacion, asi que resumeUrl es null.
-  after(() =>
-    dispatchConsentCopy({
-      link,
-      consent,
-      identity,
-      patientId: result.value.patientId,
-      acceptedAt: Date.now(),
-      resumeUrl: null,
-    }),
-  );
-
-  // Exito: a la pantalla de gracias (evita reenvio y el link de seguimiento ya quedo consumido).
-  redirect("/encuesta/gracias");
-}
-
-// ── Helpers compartidos por firmar (fase 1) y el flujo atomico viejo ────────────────────────────────
+// ── Helpers compartidos por firmar (fase 1) y guardar/enviar respuestas (fase 2) ────────────────────
 function readConsentFromForm(form: FormData) {
   const ageBranchRaw = str(form, "ageBranch");
   return {

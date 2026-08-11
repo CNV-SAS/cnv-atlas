@@ -27,9 +27,9 @@ import type { EvaluationType, IntakeIdentity } from "../types";
 //
 // Reorganizacion del intake (2026-08-10): el flujo se parte en dos fases persistidas. La FIRMA
 // (`signIntakeEvaluation`: paciente + consentimientos + gate + evaluacion shell 'awaiting_survey' +
-// resume_token) va PRIMERO; las RESPUESTAS (`writeSurveyAnswers`) van despues. Asi todo lo recolectado
-// esta autorizado (base legal: la Ley 1581 exige autorizacion previa). `writeIntakeEvaluation` (el flujo
-// atomico viejo, todo junto) se conserva hasta que el servicio migre a las dos fases (checkpoint 2).
+// resume_token) va PRIMERO; las RESPUESTAS (`saveSurveyProgress` a medida y `completeSurvey` al final)
+// van despues, autenticadas por el resume_token. Asi todo lo recolectado esta autorizado (base legal: la
+// Ley 1581 exige autorizacion previa a la recoleccion).
 
 // Falla del gate (regla dura 15): faltan autorizaciones necesarias vigentes. El servicio la mapea a un
 // error de autorizacion; nunca se crea la evaluacion.
@@ -73,9 +73,9 @@ export type IntakeSignature = {
 // Tipo de la transaccion derivado de db.transaction (evita `any` y se mantiene con la version de Drizzle).
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-// Base compartida por firmar (nuevo) y el flujo atomico viejo: crea/resuelve el paciente, persiste los
-// consentimientos con su auditoria, y aplica el GATE de la regla 15. Devuelve el patientId. NO crea la
-// evaluacion ni consume el link (eso lo decide cada caller).
+// Base de la firma: crea/resuelve el paciente, persiste los consentimientos con su auditoria, y aplica el
+// GATE de la regla 15. Devuelve el patientId. NO crea la evaluacion ni consume el link (eso lo decide el
+// caller, hoy signIntakeEvaluation).
 async function writePatientConsentsAndGate(
   tx: Tx,
   input: {
@@ -378,11 +378,13 @@ export async function completeSurvey(input: SurveyPhase2Input): Promise<{ evalua
 
 // LEER PROGRESO: las respuestas guardadas de una evaluacion 'awaiting_survey', para reanudar (prefill).
 // null si el token no abre ninguna (ya completada o invalido) -> el caller decide (p. ej. "link vencido").
+// Devuelve tambien el modo (inicial/seguimiento): la pagina de reanudacion lo usa para el rotulo del
+// envio, sin exponer nada mas de la evaluacion.
 export async function getSurveyProgress(
   resumeToken: string,
-): Promise<{ evaluationId: string; answers: SurveyAnswer[] } | null> {
+): Promise<{ evaluationId: string; mode: EvaluationType; answers: SurveyAnswer[] } | null> {
   const [ev] = await db
-    .select({ id: evaluations.id })
+    .select({ id: evaluations.id, mode: evaluations.type })
     .from(evaluations)
     .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
     .limit(1);
@@ -392,83 +394,15 @@ export async function getSurveyProgress(
     .from(surveyResponses)
     .where(eq(surveyResponses.evaluationId, ev.id))
     .limit(1);
-  if (!response) return { evaluationId: ev.id, answers: [] };
+  if (!response) return { evaluationId: ev.id, mode: ev.mode, answers: [] };
   const rows = await db
     .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
     .from(surveyAnswers)
     .where(eq(surveyAnswers.responseId, response.id));
   return {
     evaluationId: ev.id,
+    mode: ev.mode,
     answers: rows.map((r) => ({ questionId: r.questionId, answerValue: r.answerValue ?? "" })),
   };
 }
 
-// ── FLUJO ATOMICO VIEJO (todo junto) ──────────────────────────────────────────────────────────────
-// Se conserva hasta que el servicio migre a las dos fases (checkpoint 2). Ahora reusa el helper para no
-// duplicar la logica de paciente/consentimientos/gate.
-
-export type IntakeWriteInput = {
-  organizationId: string;
-  professionalId: string;
-  mode: EvaluationType;
-  patientId: string | null;
-  identity: IntakeIdentity;
-  consents: IntakeConsent[];
-  surveyVersionId: string;
-  answers: { questionId: string; answerValue: string }[];
-  linkId: string | null;
-  ipAddress: string | null;
-  signature?: IntakeSignature;
-};
-
-export type IntakeWriteResult = { evaluationId: string; patientId: string };
-
-export async function writeIntakeEvaluation(
-  input: IntakeWriteInput,
-): Promise<IntakeWriteResult> {
-  return db.transaction(async (tx) => {
-    const patientId = await writePatientConsentsAndGate(tx, input);
-
-    const [evaluation] = await tx
-      .insert(evaluations)
-      .values({
-        patientId,
-        professionalId: input.professionalId,
-        organizationId: input.organizationId,
-        type: input.mode,
-        status: "draft",
-      })
-      .returning({ id: evaluations.id });
-    await recordAudit(tx, {
-      event: "evaluation.created",
-      actorId: null,
-      actorEmail: null,
-      entityType: "evaluation",
-      entityId: evaluation.id,
-      payload: { mode: input.mode, patient_id: patientId },
-      ip: input.ipAddress,
-    });
-
-    const [response] = await tx
-      .insert(surveyResponses)
-      .values({
-        evaluationId: evaluation.id,
-        surveyVersionId: input.surveyVersionId,
-        ipAddress: input.ipAddress,
-      })
-      .returning({ id: surveyResponses.id });
-    if (input.answers.length > 0) {
-      await tx.insert(surveyAnswers).values(
-        input.answers.map((a) => ({
-          responseId: response.id,
-          questionId: a.questionId,
-          answerValue: a.answerValue,
-        })),
-      );
-    }
-
-    await consumeLink(tx, input.linkId);
-
-    return { evaluationId: evaluation.id, patientId };
-  });
-}

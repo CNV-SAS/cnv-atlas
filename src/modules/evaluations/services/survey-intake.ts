@@ -20,7 +20,6 @@ import {
   ResumeTokenError,
   saveSurveyProgress,
   signIntakeEvaluation,
-  writeIntakeEvaluation,
   type IntakeConsent,
   type SurveyAnswer,
 } from "../data/intake-writer";
@@ -33,10 +32,10 @@ import type { SurveyIntakeResult, SurveyLinkView } from "../types";
 // intake-writer. Retorna Result; no hace throw para errores esperables (ARCHITECTURE).
 //
 // Reorganizacion del intake (2026-08-10): el flujo se parte en dos fases. `signSurveyIntake` (FIRMAR:
-// consentimiento + identidad + codigo) va PRIMERO y crea el shell firmado + resume_token;
-// `submitSurveyAnswers` (RESPUESTAS) va despues, autenticada por el token. `submitSurveyIntake` (el
-// flujo atomico viejo, todo junto) se conserva hasta que el formulario migre a las dos fases
-// (checkpoint 4), y ya reusa la preparacion comun (resolveSignedIntake) para no duplicar.
+// consentimiento + identidad + codigo) va PRIMERO y crea el shell firmado + resume_token; la fase 2
+// (`saveProgress` a medida y `submitSurveyAnswers` al final) va despues, autenticada por el token. La
+// preparacion comun de la firma (validar + verificar codigo + resolver identidad) vive en
+// resolveSignedIntake.
 
 // Mensaje al paciente por estado del codigo: la accion difiere. 'invalid' -> mirar bien el correo;
 // 'expired'/'too_many_attempts' -> pedir uno nuevo; 'unavailable' -> el servicio esta caido.
@@ -244,64 +243,10 @@ export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Res
   }
 }
 
-// LEER PROGRESO: para reanudar (prefill). null si el token ya no abre nada.
+// LEER PROGRESO: para reanudar (prefill). null si el token ya no abre nada. Incluye el modo
+// (inicial/seguimiento) para el rotulo del envio en la pagina de reanudacion.
 export async function readSurveyProgress(
   resumeToken: string,
-): Promise<{ evaluationId: string; answers: SurveyAnswer[] } | null> {
+): Promise<{ evaluationId: string; mode: "inicial" | "seguimiento"; answers: SurveyAnswer[] } | null> {
   return getSurveyProgress(resumeToken);
-}
-
-// ── FLUJO ATOMICO VIEJO (todo junto) ──────────────────────────────────────────────────────────────
-// Se conserva hasta que el formulario migre a las dos fases (checkpoint 4). Reusa la preparacion comun.
-export type SubmitSurveyIntakeInput = {
-  link: SurveyLinkView;
-  surveyVersionId: string;
-  consent: unknown;
-  identity: unknown;
-  answers: unknown;
-  otp: { sessionId: string; code: string };
-  ipAddress: string | null;
-};
-
-export async function submitSurveyIntake(
-  input: SubmitSurveyIntakeInput,
-): Promise<Result<SurveyIntakeResult>> {
-  // Las respuestas se validan ANTES de verificar el codigo (dentro de resolveSignedIntake), para no
-  // quemar un codigo por una respuesta mal.
-  const answers = intakeAnswersSchema.safeParse(input.answers);
-  if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
-
-  const prep = await resolveSignedIntake(input);
-  if (!prep.ok) return prep;
-  const { consents, signature, resolution, identity } = prep.value;
-
-  const linkId = input.link.type === "seguimiento" ? input.link.id : null;
-  try {
-    const written = await writeIntakeEvaluation({
-      organizationId: input.link.organizationId,
-      professionalId: input.link.professionalId,
-      mode: resolution.mode,
-      patientId: resolution.matchedPatientId,
-      identity,
-      consents,
-      surveyVersionId: input.surveyVersionId,
-      answers: answers.data,
-      linkId,
-      ipAddress: input.ipAddress,
-      signature,
-    });
-    return ok({
-      evaluationId: written.evaluationId,
-      patientId: written.patientId,
-      mode: resolution.mode,
-      duplicateCandidates: resolution.duplicateCandidates,
-    });
-  } catch (e) {
-    if (e instanceof ConsentGateError) {
-      return err(
-        appError("forbidden", "No es posible crear la evaluación sin las autorizaciones necesarias vigentes."),
-      );
-    }
-    throw e;
-  }
 }
