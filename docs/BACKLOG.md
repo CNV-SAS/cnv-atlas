@@ -64,6 +64,12 @@ Santiago tiene un **listado completo de correcciones** para aplicarle a la encue
 
 La copia automática del consentimiento se envía tras aceptar, fuera del camino de respuesta (`after`), y **un fallo de envío se registra en la traza** (`consent.copy_failed` con destinatarios enmascarados) sin invalidar ni revertir nada (la copia es transparencia, no requisito de validez). Lo que **falta** es la vía para **reenviar después** a quien no recibió: una acción del profesional (botón "Reenviar copia del consentimiento" en la vista del paciente/evaluación) que relea la versión + tipos otorgados + correos y llame a `sendConsentCopy` (ya reutilizable). Es recuperación para un artefacto que NO condiciona validez, así que no bloquea; se prioriza corto. Piezas reusables ya listas: `buildConsentCopyEmail`, `sendConsentCopyEmail`, `sendConsentCopy`.
 
+## Dato de prueba mal atribuido en staging (registrado 2026-08-11, limpiar en Hito 3)
+
+Durante el smoke del cierre de shells, Santiago puso sin querer el MISMO documento de un paciente existente con OTRO nombre. Antes del fix del conflicto de identidad, el sistema lo resolvió como seguimiento de ese paciente y le atribuyó una evaluación (que él completó, así que está en `draft`). Queda una **evaluación de seguimiento mal atribuida** en la BD de staging, colgada del paciente equivocado.
+
+**Por qué se deja:** es un registro de prueba, y correrle un SQL manual a una evaluación clínica (aunque sea demo) sienta un precedente que no conviene: la única vía de cambiar el estado de una evaluación debe ser la aplicación. Predata el fix, así que no tiene el flag `identity_conflict` y no aparece en la resolución del panel. **Desaparece con la limpieza de staging del Hito 3** (decidir limpiar vs base nueva). Quien limpie: es esperado, no un bug de datos vivo. El fix (migración 0058 + resolveIdentity compara el nombre) evita que se creen nuevas.
+
 ## Corrección de datos del paciente después de firmar (nombre, documento, correo) — DIFERIDO (registrado 2026-08-11)
 
 Salió del smoke del intake de dos fases. Hoy la identidad (nombre, documento, correo) se escribe UNA vez, al firmar, y NO hay edición posterior (la ficha es de solo lectura; la RLS de update de `patients`/`patient_profiles`/`patient_contacts` existe pero ningún writer la usa).
