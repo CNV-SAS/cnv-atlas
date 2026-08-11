@@ -165,6 +165,11 @@ NUNCA uses em-dash en ningún lugar: ni en código, ni en copy, ni en docs, ni e
   done
   ```
   tsc verde NO descarta un fallo de frontera RSC; solo este barrido (o el build de producción real) lo atrapa.
+- **Hazards de formularios que SOLO aparecen en un navegador real (ni tsc, ni lint, ni jsdom los atrapan).** Son de la misma familia que el de cliente→server-only: verdes en local, rotos en producción o en el navegador. Los conocidos:
+  1. **`key` compartida entre "Siguiente" (type=button) y "Enviar" (type=submit) en un wizard multi-paso.** React reutiliza el mismo nodo DOM en la última transición; el re-render síncrono dentro del `onClick` cambia el `type` a submit y el navegador ejecuta la acción por defecto del clic sobre un botón que ya envía → **el formulario se auto-envía solo al entrar al último paso y ese paso se pierde en TODOS los pacientes** (así quedó degradado el demo semanas). PRESERVAR: `key` DISTINTAS en los dos botones (el nodo de "Siguiente" se desmonta y "Enviar" se monta nuevo). En un flujo con VARIOS puntos de envío (p. ej. el intake de dos fases: firmar y enviar), cada botón de envío arrastra el mismo hazard.
+  2. **Auto-reset de React 19 con `<form action={fn}>`.** La prop `action` resetea los inputs no controlados tras la acción; un error (código malo) borra lo que el paciente llenó. PRESERVAR: invocar la acción con `onSubmit` + `startTransition(() => action(new FormData(e.currentTarget)))`, NO como prop `action`.
+  3. **Momento del código OTP.** El código vence en 10 min; si el bloque de verificación aparece antes del último paso, vence mientras el paciente aún llena. PRESERVAR: pedir/verificar el código al FINAL de su fase.
+  **Lo que las tres tienen en común: son defectos que solo se ven en un navegador real.** Por eso, en superficies de formulario sensibles (el intake del paciente sobre todo), **el smoke humano en navegador NO es opcional**: es la única verificación que atrapa esta clase de bug. Si tocas uno de estos componentes, pruébalo en un navegador real antes de darlo por hecho.
 
 ### Supabase y Drizzle
 
