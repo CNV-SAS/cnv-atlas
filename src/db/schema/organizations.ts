@@ -118,6 +118,11 @@ export const professionalProfiles = pgTable("professional_profiles", {
   rutDocumentDate: date("rut_document_date"),
   rutVerifiedBy: uuid("rut_verified_by").references(() => profiles.id),
   rutVerifiedAt: timestamp("rut_verified_at", { withTimezone: true }),
+  // Rechazo del RUT (vencido, ilegible, no es un RUT): con MOTIVO, que ve el integrante para saber que
+  // corregir. Subir uno nuevo limpia el rechazo. Se conserva el rastro (quien/cuando/por que) en el audit.
+  rutRejectedReason: text("rut_rejected_reason"),
+  rutRejectedBy: uuid("rut_rejected_by").references(() => profiles.id),
+  rutRejectedAt: timestamp("rut_rejected_at", { withTimezone: true }),
   // Cuenta bancaria (a donde se gira la comision). El titular DEBE ser el integrante: se valida por
   // DOCUMENTO, no solo por nombre; si el integrante es juridica, la cuenta va a nombre de la juridica (NIT),
   // no del representante (quien recibe el dinero emite el soporte, revision contable: 2 incidentes reales).

@@ -107,6 +107,14 @@ Software de terceros (nube + escritorio) que aloja data cruda y PII del paciente
 ## Headers de seguridad
 En `next.config.ts` con `headers()`. Mínimo del MVP, no se difiere: HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restringido, y CSP con `default-src 'self'`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. El `connect-src` lista solo lo que la app llama desde el navegador: Supabase (datos + realtime), Sentry, y nada de PII hacia el LLM desde el cliente (la IA se llama server-side). YouTube y demás del LMS se eliminan. La CSP se valida en el bloque de layout y se afina en pulido.
 
+### Por qué NO se embeben los PDF servidos por la app (RUT, reportes)
+Decisión registrada (2026-08-11) para que no se reabra sin conocer el costo. Los documentos que la app sirve por ruta propia (el RUT del integrante en `/rut/[id]`, los reportes en `/reportes/[id]/pdf`) se abren en **pestaña nueva por enlace**, no embebidos al lado con `<object>`/`<embed>`/`<iframe>`. No es una limitación por resolver: las tres cabeceras que lo impiden son endurecimiento deliberado y **global**:
+
+- `object-src 'none'` bloquea `<object>` y `<embed>`.
+- `X-Frame-Options: DENY` y `frame-ancestors 'none'` bloquean un `<iframe>` del propio PDF, **aun del mismo origen**.
+
+Embeber exigiría relajar esas cabeceras **para toda la aplicación** (o abrir un `frame-src blob:` y servir el PDF como blob), a cambio de ahorrar un clic al ver un documento. Para un documento de identidad tributaria (dato sensible), no compensa: el enlace gateado por sesión resuelve lo mismo. Si alguien vuelve a proponer el lado-a-lado, este es el costo que está proponiendo pagar.
+
 ## CORS
 Atlas es app cerrada: front y back en `atlas.cnvsystem.com`, así que CORS no aplica a nuestras rutas. Las superficies públicas (encuesta, checkout) son páginas server-rendered, no APIs abiertas. Los webhooks validan HMAC, no CORS. Regla: ningún endpoint con `Access-Control-Allow-Origin: *`; cualquier excepción pasa por revisión documentada.
 

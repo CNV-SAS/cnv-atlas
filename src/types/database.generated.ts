@@ -2183,6 +2183,9 @@ export type Database = {
           profile_id: string
           rut_document_date: string | null
           rut_path: string | null
+          rut_rejected_at: string | null
+          rut_rejected_by: string | null
+          rut_rejected_reason: string | null
           rut_verified_at: string | null
           rut_verified_by: string | null
           tax_has_rut: boolean | null
@@ -2211,6 +2214,9 @@ export type Database = {
           profile_id: string
           rut_document_date?: string | null
           rut_path?: string | null
+          rut_rejected_at?: string | null
+          rut_rejected_by?: string | null
+          rut_rejected_reason?: string | null
           rut_verified_at?: string | null
           rut_verified_by?: string | null
           tax_has_rut?: boolean | null
@@ -2239,6 +2245,9 @@ export type Database = {
           profile_id?: string
           rut_document_date?: string | null
           rut_path?: string | null
+          rut_rejected_at?: string | null
+          rut_rejected_by?: string | null
+          rut_rejected_reason?: string | null
           rut_verified_at?: string | null
           rut_verified_by?: string | null
           tax_has_rut?: boolean | null
@@ -2257,6 +2266,13 @@ export type Database = {
             foreignKeyName: "professional_profiles_profile_id_profiles_id_fk"
             columns: ["profile_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_profiles_rut_rejected_by_profiles_id_fk"
+            columns: ["rut_rejected_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },

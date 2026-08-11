@@ -24,6 +24,24 @@ export async function TaxStatusBanner() {
 
   const monto = view.pendingCommission.toLocaleString("es-CO");
 
+  // RECHAZADO: precede. El integrante ve el MOTIVO para saber que corregir, y sube uno nuevo.
+  if (view.rejected) {
+    return (
+      <div className="flex flex-col gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold text-foreground">Tu RUT necesita una corrección</h2>
+          <p className="text-sm text-muted-foreground">
+            Revisamos tu RUT y no pudimos verificarlo: <span className="font-medium text-foreground">{view.rejectedReason}</span>.
+            Sube un RUT actualizado para poder pagarte tu comisión ({monto} COP en espera).
+          </p>
+        </div>
+        <Link href="/perfil" className="w-fit rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+          Subir un RUT nuevo
+        </Link>
+      </div>
+    );
+  }
+
   // "Completo" = el integrante dio su parte, NO que este verificado. Dos estados distintos, para que no
   // crea que ya puede cobrar apenas envia: (1) falta completar; (2) enviado, en verificacion.
   if (view.submitted) {

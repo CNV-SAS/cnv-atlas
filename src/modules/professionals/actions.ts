@@ -1,21 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
+import { sendTaxStatusEmail } from "@/lib/email/resend";
 import { requireUser } from "@/modules/auth/session";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
 import { getRutPath, isPdfBuffer, uploadRutPdf } from "./data/rut-storage";
 import { saveTaxStatus } from "./data/tax-status-writer";
-import { verifyTaxStatus } from "./data/tax-verification-writer";
+import { getProfessionalEmail } from "./data/tax-verification-reader";
+import { rejectTaxRut, verifyTaxStatus } from "./data/tax-verification-writer";
 import { canVerifyTaxStatus } from "./policies/can-verify-tax-status";
 import { bankHolderMatchesIntegrante, rutNeedsRenewal, validateTaxIdentity } from "./tax-rules";
 import {
+  taxRejectSchema,
   taxStatusSchema,
   taxVerifySchema,
   type TaxStatusFormState,
   type TaxVerificationFormState,
 } from "./validations";
+
+// Avisa al integrante por correo del resultado de la verificacion. Fuera del camino de respuesta (after):
+// operacion, no requisito; un fallo del correo no revierte la verificacion/rechazo.
+async function notifyTaxStatus(
+  professionalId: string,
+  kind: "verified" | "rejected",
+  reason?: string,
+): Promise<void> {
+  const email = await getProfessionalEmail(professionalId);
+  if (email) await sendTaxStatusEmail(email, kind, reason);
+}
 
 const MAX_RUT_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -141,6 +156,32 @@ export async function verifyTaxStatusAction(
   );
   if (!verified) return { error: "No se pudo verificar (ya estaba verificado o no tiene RUT).", success: false };
 
+  after(() => notifyTaxStatus(d.professionalId, "verified"));
+  revalidatePath("/verificaciones");
+  revalidatePath("/perfil");
+  return { error: null, success: true };
+}
+
+// CNV RECHAZA el RUT (vencido, ilegible, no es un RUT), con motivo obligatorio que el integrante ve en su
+// banner y por correo, para que suba uno nuevo.
+export async function rejectTaxRutAction(
+  _prev: TaxVerificationFormState,
+  formData: FormData,
+): Promise<TaxVerificationFormState> {
+  const user = await requireUser();
+  if (!canVerifyTaxStatus(user)) return { error: "No autorizado.", success: false };
+
+  const parsed = taxRejectSchema.safeParse({
+    professionalId: str(formData, "professionalId"),
+    reason: str(formData, "reason"),
+  });
+  if (!parsed.success) return { error: "Escribe el motivo del rechazo (al menos unas palabras).", success: false };
+  const d = parsed.data;
+
+  const { rejected } = await rejectTaxRut(d.professionalId, { id: user.id, email: user.email }, d.reason);
+  if (!rejected) return { error: "No se pudo rechazar (ya estaba verificado o no tiene RUT).", success: false };
+
+  after(() => notifyTaxStatus(d.professionalId, "rejected", d.reason));
   revalidatePath("/verificaciones");
   revalidatePath("/perfil");
   return { error: null, success: true };

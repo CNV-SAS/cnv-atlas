@@ -20,6 +20,9 @@ export async function listPendingTaxVerifications(): Promise<PendingTaxVerificat
     )
     .not("rut_path", "is", null)
     .is("rut_verified_at", null)
+    // Un RUT rechazado sale de la cola hasta que el integrante suba uno nuevo (saveTaxStatus limpia el
+    // rechazo y lo devuelve aqui): CNV no puede hacer nada mientras tanto, solo esperar.
+    .is("rut_rejected_at", null)
     .not("tax_status_completed_at", "is", null)
     .order("tax_status_completed_at", { ascending: true });
   if (error) throw new Error(`tax-verification-reader: listPendingTaxVerifications: ${error.message}`);
@@ -36,4 +39,17 @@ export async function listPendingTaxVerifications(): Promise<PendingTaxVerificat
       submittedAt: row.tax_status_completed_at as string,
     };
   });
+}
+
+// Correo del integrante (via profiles) para avisarle del resultado de la verificacion. null si no tiene.
+export async function getProfessionalEmail(professionalId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("professional_profiles")
+    .select("profiles!profile_id(email)")
+    .eq("id", professionalId)
+    .maybeSingle();
+  if (error) throw new Error(`tax-verification-reader: getProfessionalEmail: ${error.message}`);
+  const prof = Array.isArray(data?.profiles) ? data?.profiles[0] : data?.profiles;
+  return prof?.email ?? null;
 }

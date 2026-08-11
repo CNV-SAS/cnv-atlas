@@ -47,6 +47,10 @@ export async function saveTaxStatus(
           rutDocumentDate: null,
           rutVerifiedBy: null,
           rutVerifiedAt: null,
+          // Un RUT nuevo supera un rechazo anterior: se limpia para que vuelva a la cola de verificacion.
+          rutRejectedReason: null,
+          rutRejectedBy: null,
+          rutRejectedAt: null,
         }
       : base;
 

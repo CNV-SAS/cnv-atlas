@@ -61,3 +61,42 @@ export async function verifyTaxStatus(
     return { verified: true };
   });
 }
+
+// CNV RECHAZA el RUT (vencido, ilegible, no es un RUT), con motivo obligatorio. El integrante ve el motivo
+// en su banner y sube uno nuevo (lo cual limpia el rechazo). Guard: hay RUT y no esta verificado. Audita.
+export async function rejectTaxRut(
+  professionalId: string,
+  verifier: { id: string; email: string },
+  reason: string,
+): Promise<{ rejected: boolean }> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(professionalProfiles)
+      .set({
+        rutRejectedReason: reason,
+        rutRejectedBy: verifier.id,
+        rutRejectedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(professionalProfiles.id, professionalId),
+          isNotNull(professionalProfiles.rutPath),
+          isNull(professionalProfiles.rutVerifiedAt),
+        ),
+      )
+      .returning({ id: professionalProfiles.id });
+    if (updated.length === 0) return { rejected: false };
+
+    await recordAudit(tx, {
+      event: "professional.tax_rut_rejected",
+      actorId: verifier.id,
+      actorEmail: verifier.email,
+      entityType: "professional_profile",
+      entityId: professionalId,
+      payload: { reason },
+      ip: null,
+    });
+    return { rejected: true };
+  });
+}

@@ -1,13 +1,16 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import { ExternalLink, FileText } from "lucide-react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
-import { verifyTaxStatusAction } from "../actions";
+import { rejectTaxRutAction, verifyTaxStatusAction } from "../actions";
+import { rutNeedsRenewal } from "../tax-rules";
 import type { PendingTaxVerification, TaxVerificationFormState } from "../validations";
 
 const initial: TaxVerificationFormState = { error: null, success: false };
@@ -36,10 +39,17 @@ function YesNo({ name, label }: { name: string; label: string }) {
   );
 }
 
-// Una fila de verificacion: el PDF del RUT al LADO del formulario (para no perder contexto abriendo otra
-// pestana). El verificador lee el documento y llena los campos certificados + la fecha DEL RUT.
+// Una fila de verificacion: el verificador lee el RUT y llena los campos certificados + la fecha DEL RUT,
+// o lo RECHAZA con motivo. El RUT NO se embebe: la CSP endurecida lo impide a proposito (object-src 'none'
+// bloquea <object>/<embed>, y X-Frame-Options DENY + frame-ancestors 'none' bloquean un <iframe> del propio
+// PDF, aun del mismo origen). Embeber exigiria relajar esas cabeceras para toda la app; para un documento
+// de identidad tributaria (PHI-adyacente) no compensa. Se abre en pestana nueva, gateado por sesion.
 export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerification; nowMs: number }) {
   const [state, action, pending] = useActionState(verifyTaxStatusAction, initial);
+  const [rejState, rejAction, rejPending] = useActionState(rejectTaxRutAction, initial);
+  const [documentDate, setDocumentDate] = useState("");
+  const [reason, setReason] = useState("");
+
   const last = useRef(state);
   useEffect(() => {
     if (state === last.current) return;
@@ -48,9 +58,31 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
     else if (state.success) toast.success("Verificado. El integrante entra en la próxima liquidación.");
   }, [state]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const lastRej = useRef(rejState);
+  useEffect(() => {
+    if (rejState === lastRej.current) return;
+    lastRej.current = rejState;
+    if (rejState.error) toast.error(rejState.error);
+    else if (rejState.success) toast.success("Rechazado. Le avisamos al integrante para que suba uno nuevo.");
+  }, [rejState]);
+
+  // El verificador escribe la fecha del RUT; si tiene mas de un año, NO se verifica (protege a CNV). En vez
+  // de dejarlo chocar contra el bloqueo del server, se lo advertimos aqui y le prellenamos el motivo del
+  // rechazo, para que lo devuelva pidiendo uno actualizado.
+  const stale = documentDate !== "" && rutNeedsRenewal(documentDate, new Date(nowMs));
+
+  const handleVerify = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     startTransition(() => action(new FormData(e.currentTarget)));
+  };
+
+  const handleReject = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startTransition(() => rejAction(new FormData(e.currentTarget)));
+  };
+
+  const suggestStaleReason = () => {
+    setReason(`El RUT tiene fecha ${documentDate}, con más de un año de expedido. Descarga uno actualizado del portal de la DIAN y súbelo.`);
   };
 
   return (
@@ -67,38 +99,82 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
         <span className="text-xs font-medium text-amber-600">{ageLabel(item.submittedAt, nowMs)}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* El RUT, al lado. El route handler valida acceso y sirve el PDF firmado. */}
-        <object
-          data={`/rut/${item.professionalId}`}
-          type="application/pdf"
-          className="h-80 w-full rounded-md border border-border bg-muted/30"
-          aria-label={`RUT de ${item.fullName}`}
-        >
-          <a href={`/rut/${item.professionalId}`} target="_blank" rel="noreferrer" className="text-primary underline">
-            Abrir el RUT
-          </a>
-        </object>
+      {/* El RUT se abre en pestana nueva (la CSP no permite embeberlo; ver el comentario de arriba). */}
+      <a
+        href={`/rut/${item.professionalId}`}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm hover:bg-muted/60"
+      >
+        <span className="flex items-center gap-2 text-foreground">
+          <FileText className="size-4 text-muted-foreground" aria-hidden />
+          Abrir el RUT de {item.fullName} (PDF)
+        </span>
+        <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
+      </a>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <form onSubmit={handleVerify} className="flex flex-col gap-3">
           <input type="hidden" name="professionalId" value={item.professionalId} />
           <div className="flex flex-col gap-1">
             <Label htmlFor={`doc-${item.professionalId}`} className="text-xs">
               Fecha del RUT (la que trae el documento, no la de hoy)
             </Label>
-            <Input id={`doc-${item.professionalId}`} name="documentDate" type="date" required className="h-9 w-48" />
+            <Input
+              id={`doc-${item.professionalId}`}
+              name="documentDate"
+              type="date"
+              required
+              value={documentDate}
+              onChange={(e) => setDocumentDate(e.target.value)}
+              className="h-9 w-48"
+            />
             <span className="text-xs text-muted-foreground">
-              Si tiene más de un año, pide uno actualizado (no lo verifiques).
+              Si tiene más de un año, no lo verifiques: recházalo pidiendo uno actualizado.
             </span>
           </div>
-          <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-            <p className="text-xs font-medium text-muted-foreground">Léelo del RUT:</p>
-            <YesNo name="isIncomeDeclarant" label="¿Declarante de renta?" />
-            <YesNo name="isVatResponsible" label="¿Responsable de IVA?" />
-            <YesNo name="mustInvoice" label="¿Obligado a facturar?" />
-          </div>
-          <Button type="submit" disabled={pending} className="self-start">
-            {pending ? "Verificando..." : "Marcar verificado"}
+
+          {stale ? (
+            <div className="flex flex-col gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+              <p className="text-xs text-foreground">
+                Este RUT tiene más de un año. No debes verificarlo: la clasificación pudo cambiar. Recházalo
+                para pedirle uno actualizado.
+              </p>
+              <Button type="button" variant="outline" size="sm" className="self-start" onClick={suggestStaleReason}>
+                Preparar rechazo por RUT vencido
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <p className="text-xs font-medium text-muted-foreground">Léelo del RUT:</p>
+              <YesNo name="isIncomeDeclarant" label="¿Declarante de renta?" />
+              <YesNo name="isVatResponsible" label="¿Responsable de IVA?" />
+              <YesNo name="mustInvoice" label="¿Obligado a facturar?" />
+              <Button type="submit" disabled={pending} className="mt-1 self-start">
+                {pending ? "Verificando..." : "Marcar verificado"}
+              </Button>
+            </div>
+          )}
+        </form>
+
+        {/* Rechazo: motivo OBLIGATORIO. El integrante lo ve en su banner y por correo, y sube uno nuevo. */}
+        <form onSubmit={handleReject} className="flex flex-col gap-2 rounded-md border border-destructive/30 p-3">
+          <input type="hidden" name="professionalId" value={item.professionalId} />
+          <Label htmlFor={`rej-${item.professionalId}`} className="text-xs">
+            Rechazar el RUT (dile qué corregir)
+          </Label>
+          <Textarea
+            id={`rej-${item.professionalId}`}
+            name="reason"
+            required
+            minLength={5}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ej: el PDF está ilegible, o no es el RUT, o la fecha no se ve."
+            className="min-h-20 text-sm"
+          />
+          <Button type="submit" variant="destructive" disabled={rejPending} className="self-start">
+            {rejPending ? "Rechazando..." : "Rechazar y pedir otro"}
           </Button>
         </form>
       </div>

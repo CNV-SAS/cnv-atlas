@@ -65,3 +65,9 @@ export type TaxVerificationFormState = {
   error: string | null;
   success: boolean;
 };
+
+// Rechazo del RUT por CNV: motivo OBLIGATORIO (el integrante lo ve para saber que corregir).
+export const taxRejectSchema = z.object({
+  professionalId: z.guid(),
+  reason: z.string().trim().min(5).max(500),
+});

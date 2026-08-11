@@ -126,12 +126,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["professional"],
   },
   {
-    // Verificacion tributaria del RUT de los integrantes (A2). Rol verificador: admin por ahora (trabajo
-    // operativo recurrente, no gobernanza; pendiente decidir si soporte tambien).
+    // Verificacion tributaria del RUT de los integrantes (A2). Rol verificador: admin y soporte (trabajo
+    // operativo recurrente, no gobernanza).
     label: "Verificación tributaria",
     href: "/verificaciones",
     icon: "verificacion",
-    roles: ["admin"],
+    roles: ["admin", "soporte"],
   },
   {
     label: "Usuarios",

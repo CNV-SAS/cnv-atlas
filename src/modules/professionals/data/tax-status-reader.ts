@@ -14,6 +14,9 @@ export type TaxStatusView = {
   submitted: boolean;
   // CNV verifico el RUT y lleno los campos certificados (A2). rut_verified_at != null.
   verified: boolean;
+  // CNV RECHAZO el RUT (con motivo): el integrante debe subir uno nuevo. Toma precedencia en el banner.
+  rejected: boolean;
+  rejectedReason: string | null;
   fields: TaxStatusFields;
   // Comision acumulada sin liquidar (hoy: toda su comision). Es lo que "espera sus datos".
   pendingCommission: number;
@@ -24,7 +27,7 @@ export async function getTaxStatusView(professionalId: string): Promise<TaxStatu
   const { data: p, error } = await supabase
     .from("professional_profiles")
     .select(
-      "tax_person_type, tax_has_rut, tax_id_type, tax_id_number, tax_id_dv, rut_path, rut_verified_at, bank_name, bank_account_type, bank_account_number, bank_account_holder_name, bank_account_holder_document",
+      "tax_person_type, tax_has_rut, tax_id_type, tax_id_number, tax_id_dv, rut_path, rut_verified_at, rut_rejected_at, rut_rejected_reason, bank_name, bank_account_type, bank_account_number, bank_account_holder_name, bank_account_holder_document",
     )
     .eq("id", professionalId)
     .maybeSingle();
@@ -63,6 +66,8 @@ export async function getTaxStatusView(professionalId: string): Promise<TaxStatu
   return {
     submitted,
     verified: p?.rut_verified_at != null,
+    rejected: p?.rut_rejected_at != null,
+    rejectedReason: p?.rut_rejected_reason ?? null,
     fields,
     pendingCommission,
   };

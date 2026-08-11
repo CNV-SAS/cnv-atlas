@@ -144,3 +144,42 @@ export async function sendConsentCopyEmail(
     return err(appError("internal", e instanceof Error ? e.message : "Error enviando la copia."));
   }
 }
+
+// Aviso al integrante sobre el estado de su RUT: VERIFICADO (su comision entra en la proxima liquidacion)
+// o RECHAZADO (con el motivo, para que corrija y suba uno nuevo). El integrante no vive en Atlas; sin
+// correo se enteraria solo entrando. Transparencia/operacion, no requisito de validez: el llamador no
+// revierte nada si falla, solo lo registra (se dispara con `after`).
+export async function sendTaxStatusEmail(
+  to: string,
+  kind: "verified" | "rejected",
+  reason?: string,
+): Promise<Result<{ id: string }>> {
+  const resend = getClient();
+  if (!resend) return err(appError("internal", "El servicio de correo no esta configurado."));
+  const from = process.env.EMAIL_FROM;
+  if (!from) return err(appError("internal", "Falta la dirección de envio (EMAIL_FROM)."));
+  const replyTo = process.env.EMAIL_REPLY_TO;
+
+  const subject =
+    kind === "verified"
+      ? "Tus datos tributarios en Atlas quedaron verificados"
+      : "Tu RUT en Atlas necesita una corrección";
+  const text =
+    kind === "verified"
+      ? "Verificamos tus datos tributarios. Tu comisión entra en la próxima liquidación.\n\n" +
+        "No necesitas hacer nada más. Gracias."
+      : "Revisamos el RUT que subiste y necesita una corrección:\n\n" +
+        `${reason ?? ""}\n\n` +
+        "Entra a tu perfil en Atlas y sube un RUT actualizado para que podamos pagarte tu comisión.";
+
+  try {
+    const res = await withTimeout(
+      resend.emails.send({ from, ...(replyTo ? { replyTo } : {}), to, subject, text }),
+      SEND_TIMEOUT_MS,
+    );
+    if (res.error) return err(appError("internal", `No se pudo enviar el aviso: ${res.error.message}`));
+    return ok({ id: res.data?.id ?? "" });
+  } catch (e) {
+    return err(appError("internal", e instanceof Error ? e.message : "Error enviando el aviso."));
+  }
+}
