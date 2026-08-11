@@ -236,6 +236,14 @@ DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
 
 Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.** Y `db:check:cloud` entra a la rutina: correrlo (contra la NUBE) antes de dar por bueno un despliegue.
 
+### Regenerar los tipos de Supabase tras una migración que toque enums o columnas (registrado 2026-08-11)
+
+`src/types/database.generated.ts` son los tipos que usa el CLIENTE de Supabase (`createSupabaseServerClient`), y se generan con **`pnpm db:types`** (`supabase gen types typescript --local`, contra el stack LOCAL). **NO es automático: no lo corre `db:migrate`.** Si una migración agrega valores a un enum o columnas y no se regenera, el cliente queda con tipos VIEJOS y un `.eq("columna", "valor_nuevo")` tipado no compila (o peor, compila con el tipo viejo).
+
+- **Paso:** tras crear/aplicar en local una migración que cambie un enum o el esquema de una tabla, correr `pnpm db:types` y commitear el diff de `database.generated.ts` JUNTO con la migración.
+- **Por qué importa (no es cosmético):** el Drizzle schema (fuente de verdad del writer) y estos tipos (del reader por cliente Supabase) son DOS representaciones; si divergen, una superficie compila con un enum que la BD ya no tiene o le falta uno que sí tiene. Es primo de "las migraciones no se despliegan solas".
+- **Deuda conocida:** la migración `0057` (enum `evaluation_status` + `awaiting_survey`/`abandoned`) NO regeneró los tipos; se alinearon A MANO (commit de la cola de firmados-sin-responder). La edición replica el orden por `enumsortorder` que produce el regen (`awaiting_survey` antes de `draft`, `abandoned` al final), pero **confirmar en el próximo `pnpm db:types` real** que no aparezca un diff inesperado.
+
 ### El migrate NO se automatiza en el build de Vercel (DECIDIDO 2026-08-08, no reabrir)
 
 Se evaluó correr `pnpm db:migrate` en el build de Vercel y **se decidió NO hacerlo.** Argumento (para que no se reabra): hoy las migraciones son aditivas y seguras, pero **el día que una toque datos existentes, un despliegue automático la aplicaría sin que nadie la revise. En una base con historias clínicas, una migración destructiva aplicada sin revisión NO se deshace.** El beneficio de automatizar (ahorrar un comando) es chico; el costo de ese caso es irreversible. No compensa.
