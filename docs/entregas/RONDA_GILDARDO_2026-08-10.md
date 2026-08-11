@@ -5,11 +5,40 @@
 
 Construimos **desde tu última respuesta** (`RESPUESTA_GILDARDO_2026-08-09.md`). Las cuatro que respondiste ahí ya están hechas: §6 (la fecha de la cita en el reporte), §10 (los nombres de los indicadores), §15 (el renombre del eje de la Diana) y §9 (las remisiones resumidas por destinatario).
 
-Releímos tu respuesta completa antes de armar esto: **varios puntos que teníamos en cola ya los contestaste ahí** (las cirugías, el peso por defecto), y no los repetimos. Lo que queda son dos preguntas de verdad y tres confirmaciones de cosas que ya aplicamos.
+Releímos tu respuesta completa antes de armar esto: **varios puntos que teníamos en cola ya los contestaste ahí** (las cirugías, el peso por defecto), y no los repetimos. Lo que queda: **lo que más bloquea (el motor de peso)** arriba, luego tres preguntas y dos confirmaciones de cosas que ya aplicamos.
 
 ---
 
-## PARTE 1 — Preguntas (necesitamos tu decisión)
+## LO QUE MÁS BLOQUEA — el motor de peso (déficit y pesoAjust)
+
+Estas dos son del mismo tema y las ponemos **primero**: sin la 1 **no podemos portar el motor de peso**, que es la mitad de Tratamiento.
+
+### 1. La fórmula exacta del déficit desde el peso meta
+
+En tu respuesta del 2026-08-09 (enmiendas a D-002) corregiste que el déficit calórico debe **derivarse de la diferencia entre peso actual y peso meta**, y dejar de ser un valor fijo por fenotipo (−500 en obesidad). Estamos de acuerdo y queremos portarlo. **El problema:** tu respuesta da la dirección, pero no la fórmula de la conversión, y tu archivo no la trae todavía.
+
+Revisamos tu `motorTratNutri` en la entrega de julio (`atlas-motores-tratamiento.js`) y en el **v8** (`ATLAS_v8.html`): en los dos, el déficit sigue siendo **fijo** (`deficit = 500` en obesidad, `kcalObjetivo = get − deficit`) y el peso meta **solo alimenta la proteína** (`protG = protKg × pesoMeta`); no entra al déficit. O sea: la corrección que describes **no está en código todavía**. No es reproche, es el dato, para que no asumas que ya la entregaste y respondas "está en mi archivo".
+
+Para portarla sin inventar (una conversión de kilos a calorías mal hecha prescribe mal a un paciente real), necesitamos tu **fórmula exacta**:
+
+- **(a) ¿Cómo se convierte la diferencia en kg (peso actual − peso meta) a un déficit diario en kcal?** Tres candidatas, para que confirmes o corrijas:
+  - (i) un **ritmo objetivo** (p. ej. 0,5 kg/semana → 7700 × 0,5 / 7 ≈ 550 kcal/día);
+  - (ii) `kcalObjetivo = gasto de mantenimiento al peso meta` (GEB(pesoMeta) × FA), y el déficit es GET(actual) − ese objetivo. **Ojo:** esto usaría el peso meta para el gasto, y en tu punto 1 dijiste que el gasto va sobre el **peso actual**;
+  - (iii) una **tabla por magnitud** de la diferencia.
+- **(b)** ¿El fenotipo sigue dando un valor inicial hasta que se fija el peso meta, y con qué números?
+- **(c)** Confirmar el **piso** (1.500 H / 1.200 M, solo cuando hay déficit) y el caso de **superávit** (cuando el peso meta es mayor que el peso actual).
+
+### 2. `pesoAjust`: en tu archivo SÍ se usa, y retirarlo cambia la prescripción de IMC≥25
+
+Es del mismo tema que la 1. Tu punto 3 ya nos dio el peso por defecto sin meta (Lorentz fuera de 18,5-25, peso actual dentro), y tu punto 2 pide retirar `pesoAjust`. **Vamos a aplicar eso.** Una salvedad, porque en Atlas tiene una consecuencia que tu punto 2 no anticipa:
+
+En tu propio `atlas-protocolo.js`, `pesoAjust` **no es código muerto: se usa**. Es el `pesoCalculo` sobre el que se prescribe a **todo paciente con IMC ≥ 25** (`pesoCalculo = imc<25 ? peso : PI+0,25×(peso−PI)`). Ejemplo concreto: un paciente de **88 kg con IMC 27** hoy se prescribe sobre **76,6 kg** (el ajustado), no sobre su peso ni sobre su peso ideal. Al retirar `pesoAjust` y adoptar tu default, ese paciente pasa a calcularse sobre su **peso ideal de Lorentz**.
+
+**Confirma:** ¿retiramos `pesoAjust` y usamos tu default (Lorentz / peso actual), sabiendo que cambia la prescripción de los pacientes con IMC ≥ 25 que hoy la calculan sobre el ajustado?
+
+---
+
+## PARTE 1 — Otras preguntas (necesitamos tu decisión)
 
 ### 1. La redacción de "conducta propia", y una figura del modelo
 
@@ -52,15 +81,7 @@ Renombramos el eje estructural (FFMI × FMI) de R1-R9 a **E1-E9**, con la R rese
 
 **Confirma:** ¿te sirve el enfoque sin traducción, y apruebas el rótulo **"Sectores E1-E9"**?
 
-### C2. `pesoAjust`: en tu archivo SÍ se usa, y retirarlo cambia la prescripción de IMC≥25
-
-Tu punto 3 ya nos dio el peso por defecto sin meta (Lorentz fuera de 18,5-25, peso actual dentro), y tu punto 2 pide retirar `pesoAjust`. **Vamos a aplicar eso.** Una salvedad, porque en Atlas tiene una consecuencia que tu punto 2 no anticipa:
-
-En tu propio `atlas-protocolo.js`, `pesoAjust` **no es código muerto: se usa**. Es el `pesoCalculo` sobre el que se prescribe a **todo paciente con IMC ≥ 25** (`pesoCalculo = imc<25 ? peso : PI+0,25×(peso−PI)`). Ejemplo concreto: un paciente de **88 kg con IMC 27** hoy se prescribe sobre **76,6 kg** (el ajustado), no sobre su peso ni sobre su peso ideal. Al retirar `pesoAjust` y adoptar tu default, ese paciente pasa a calcularse sobre su **peso ideal de Lorentz**.
-
-**Confirma:** ¿retiramos `pesoAjust` y usamos tu default (Lorentz / peso actual), sabiendo que cambia la prescripción de los pacientes con IMC ≥ 25 que hoy la calculan sobre el ajustado?
-
-### C3. Las etiquetas del patrón alimentario: usaremos las tuyas más claras
+### C2. Las etiquetas del patrón alimentario: usaremos las tuyas más claras
 
 En las tarjetas del patrón, las etiquetas cortas del render dan "Moderados: Moderado" (la categoría y el nivel son la misma palabra). Tu archivo ya tiene unas más claras en `catLabel`, y vamos a **usar esas**: **"Alimentación Real protectora"**, **"Alimentación Real energética (moderar)"**, **"Procesados y ultraprocesados (PCBU)"**.
 
