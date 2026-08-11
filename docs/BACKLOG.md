@@ -70,6 +70,12 @@ Durante el smoke del cierre de shells, Santiago puso sin querer el MISMO documen
 
 **Por qué se deja:** es un registro de prueba, y correrle un SQL manual a una evaluación clínica (aunque sea demo) sienta un precedente que no conviene: la única vía de cambiar el estado de una evaluación debe ser la aplicación. Predata el fix, así que no tiene el flag `identity_conflict` y no aparece en la resolución del panel. **Desaparece con la limpieza de staging del Hito 3** (decidir limpiar vs base nueva). Quien limpie: es esperado, no un bug de datos vivo. El fix (migración 0058 + resolveIdentity compara el nombre) evita que se creen nuevas.
 
+## Evaluación cerrada por conflicto de identidad aparece en la historia del paciente correcto — DIFERIDO (registrado 2026-08-11)
+
+Cuando el profesional cierra una evaluación por "no es la misma persona" (conflicto de identidad), esa evaluación estaba atribuida al paciente cuyo documento se usó por error. Al cerrarse (`abandoned`), **el paciente correcto ve en su historia una evaluación cerrada que nunca fue suya** (fue un error de captura de otra persona con su documento).
+
+**Lectura (por qué no se construye hoy):** con la detección nueva (el nombre se compara al firmar) el caso es **mucho menos probable**, y el daño es **cosmético**: una fila archivada, SIN datos clínicos sellados (el gate de confirmación impide que un conflicto llegue a `in_progress`, así que nunca hay medición ni diagnóstico colgando). Si algún día molesta, la salida sería **no mostrar en la historia las evaluaciones cerradas por conflicto de identidad** (filtrar `abandoned` con el marcador de conflicto en el reader de la ficha). No vale construirlo hoy.
+
 ## Corrección de datos del paciente después de firmar (nombre, documento, correo) — DIFERIDO (registrado 2026-08-11)
 
 Salió del smoke del intake de dos fases. Hoy la identidad (nombre, documento, correo) se escribe UNA vez, al firmar, y NO hay edición posterior (la ficha es de solo lectura; la RLS de update de `patients`/`patient_profiles`/`patient_contacts` existe pero ningún writer la usa).
