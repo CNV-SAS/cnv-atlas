@@ -135,6 +135,9 @@ export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo"]);
 // retencion en BACKLOG.
 export const taxPersonType = pgEnum("tax_person_type", ["natural", "juridica"]);
 
+// Tipo de cuenta bancaria del integrante (a donde se gira la comision).
+export const bankAccountType = pgEnum("bank_account_type", ["ahorros", "corriente"]);
+
 export const aiSuggestionStatus = pgEnum("ai_suggestion_status", [
   "success",
   "timeout",

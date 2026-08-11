@@ -71,7 +71,9 @@ export async function listAssignableProfessionals(): Promise<AssignableProfessio
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("professional_profiles")
-    .select("id, profiles ( full_name, email )");
+    // Hint del FK: profesional_profiles ahora tiene DOS relaciones a profiles (profile_id y el nuevo
+    // rut_verified_by). Se desambigua por la columna profile_id, que es la identidad del profesional.
+    .select("id, profiles!profile_id ( full_name, email )");
   if (error) fail("listAssignableProfessionals", error.message);
   return (data ?? []).map((row) => ({
     id: row.id,

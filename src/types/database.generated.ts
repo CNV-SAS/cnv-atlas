@@ -2169,6 +2169,11 @@ export type Database = {
       }
       professional_profiles: {
         Row: {
+          bank_account_holder_document: string | null
+          bank_account_holder_name: string | null
+          bank_account_number: string | null
+          bank_account_type: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name: string | null
           certification_status: string | null
           commission_rate: number
           created_at: string
@@ -2176,7 +2181,12 @@ export type Database = {
           license: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
+          rut_document_date: string | null
+          rut_path: string | null
+          rut_verified_at: string | null
+          rut_verified_by: string | null
           tax_has_rut: boolean | null
+          tax_id_dv: string | null
           tax_id_number: string | null
           tax_is_income_declarant: boolean | null
           tax_is_vat_responsible: boolean | null
@@ -2186,6 +2196,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_account_holder_document?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name?: string | null
           certification_status?: string | null
           commission_rate?: number
           created_at?: string
@@ -2193,7 +2208,12 @@ export type Database = {
           license?: string | null
           profession: Database["public"]["Enums"]["professional_profession"]
           profile_id: string
+          rut_document_date?: string | null
+          rut_path?: string | null
+          rut_verified_at?: string | null
+          rut_verified_by?: string | null
           tax_has_rut?: boolean | null
+          tax_id_dv?: string | null
           tax_id_number?: string | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
@@ -2203,6 +2223,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_account_holder_document?: string | null
+          bank_account_holder_name?: string | null
+          bank_account_number?: string | null
+          bank_account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name?: string | null
           certification_status?: string | null
           commission_rate?: number
           created_at?: string
@@ -2210,7 +2235,12 @@ export type Database = {
           license?: string | null
           profession?: Database["public"]["Enums"]["professional_profession"]
           profile_id?: string
+          rut_document_date?: string | null
+          rut_path?: string | null
+          rut_verified_at?: string | null
+          rut_verified_by?: string | null
           tax_has_rut?: boolean | null
+          tax_id_dv?: string | null
           tax_id_number?: string | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
@@ -2224,6 +2254,13 @@ export type Database = {
             foreignKeyName: "professional_profiles_profile_id_profiles_id_fk"
             columns: ["profile_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_profiles_rut_verified_by_profiles_id_fk"
+            columns: ["rut_verified_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3178,6 +3215,7 @@ export type Database = {
         | "provider_error"
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
+      bank_account_type: "ahorros" | "corriente"
       bis_condition_field_type: "boolean" | "number" | "text"
       bis_condition_kind:
         | "calidad"
@@ -3398,6 +3436,7 @@ export const Constants = {
       ],
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],
+      bank_account_type: ["ahorros", "corriente"],
       bis_condition_field_type: ["boolean", "number", "text"],
       bis_condition_kind: [
         "calidad",

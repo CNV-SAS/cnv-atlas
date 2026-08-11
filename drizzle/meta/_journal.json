@@ -428,6 +428,13 @@
       "when": 1786470383484,
       "tag": "0060_new_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1786474637615,
+      "tag": "0061_lyrical_dark_beast",
+      "breakpoints": true
     }
   ]
 }

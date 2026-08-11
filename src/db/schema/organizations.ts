@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   index,
   integer,
   numeric,
@@ -15,6 +16,7 @@ import { authUsers } from "./_auth";
 import { createdAt, pk, updatedAt } from "./_columns";
 import {
   appRole,
+  bankAccountType,
   profileStatus,
   professionalDocumentType,
   professionalProfession,
@@ -98,13 +100,30 @@ export const professionalProfiles = pgTable("professional_profiles", {
   // perfil. NULL = sin capturar. tax_status_completed_at marca que el integrante completo el formulario
   // (la fuente de verdad de "completo", robusta a que algun booleano sea false legitimamente). Las TARIFAS
   // de retencion NO se guardan aqui (esperan a la contadora); esto solo son los datos de entrada.
-  taxPersonType: taxPersonType("tax_person_type"), // natural | juridica
-  taxHasRut: boolean("tax_has_rut"),
+  taxPersonType: taxPersonType("tax_person_type"), // natural | juridica (lo declara el integrante)
+  taxHasRut: boolean("tax_has_rut"), // lo declara el integrante (sabe si tiene el documento)
+  taxIdNumber: text("tax_id_number"), // NIT o cedula
+  taxIdDv: text("tax_id_dv"), // digito de verificacion (cuando es NIT)
+  taxStatusCompletedAt: timestamp("tax_status_completed_at", { withTimezone: true }), // el integrante subio su parte
+  // Campos CERTIFICADOS del RUT: NO los responde el integrante (no los sabe fiablemente); los llena una
+  // persona designada de CNV al VERIFICAR el RUT que el integrante subio (A2, revision contable 2026-08-12).
   taxIsIncomeDeclarant: boolean("tax_is_income_declarant"),
   taxIsVatResponsible: boolean("tax_is_vat_responsible"),
-  taxIdNumber: text("tax_id_number"), // NIT o cedula para facturacion
   taxMustInvoice: boolean("tax_must_invoice"), // esta obligado a facturar
-  taxStatusCompletedAt: timestamp("tax_status_completed_at", { withTimezone: true }),
+  // RUT (fuente de verdad) + trazabilidad de la verificacion. rut_document_date es la fecha que trae el
+  // propio RUT: si tiene mas de un año, se pide uno actualizado (el RUT cambia; la clasificacion envejece).
+  rutPath: text("rut_path"), // ruta en el bucket privado professional-documents
+  rutDocumentDate: date("rut_document_date"),
+  rutVerifiedBy: uuid("rut_verified_by").references(() => profiles.id),
+  rutVerifiedAt: timestamp("rut_verified_at", { withTimezone: true }),
+  // Cuenta bancaria (a donde se gira la comision). El titular DEBE ser el integrante: se valida por
+  // DOCUMENTO, no solo por nombre; si el integrante es juridica, la cuenta va a nombre de la juridica (NIT),
+  // no del representante (quien recibe el dinero emite el soporte, revision contable: 2 incidentes reales).
+  bankName: text("bank_name"),
+  bankAccountType: bankAccountType("bank_account_type"),
+  bankAccountNumber: text("bank_account_number"),
+  bankAccountHolderName: text("bank_account_holder_name"),
+  bankAccountHolderDocument: text("bank_account_holder_document"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

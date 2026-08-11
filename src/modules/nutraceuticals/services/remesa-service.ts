@@ -53,7 +53,7 @@ async function professionalNames(supabase: Supa, ids: string[]): Promise<Map<str
   if (ids.length === 0) return out;
   const { data } = await supabase
     .from("professional_profiles")
-    .select("id, license, profiles(full_name)")
+    .select("id, license, profiles!profile_id(full_name)")
     .in("id", ids);
   for (const p of data ?? []) {
     const name = one(p.profiles as { full_name?: string } | { full_name?: string }[] | null)?.full_name;
@@ -98,7 +98,7 @@ export async function getEligibleProfessionalsForRemesa(): Promise<EligibleProfe
   const supabase = await createSupabaseServerClient();
   const { data: profs, error } = await supabase
     .from("professional_profiles")
-    .select("id, license, profession, profiles(full_name)");
+    .select("id, license, profession, profiles!profile_id(full_name)");
   if (error) throw new Error(`remesa-service: profesionales elegibles: ${error.message}`);
   const { data: mov } = await supabase.from("nutraceutical_stock_movements").select("professional_id");
   const withStock = new Set((mov ?? []).map((m) => m.professional_id));

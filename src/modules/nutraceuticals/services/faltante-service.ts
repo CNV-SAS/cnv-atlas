@@ -147,7 +147,7 @@ export async function getFaltanteQueue(roles: { admin: boolean; direccion: boole
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("nutraceutical_faltante_cases")
-    .select("id, professional_id, quantity, sealed_total, lote, status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name), professional_profiles(profiles(full_name))")
+    .select("id, professional_id, quantity, sealed_total, lote, status, reported_at, deadline_at, justification_category, justification_reference, nutraceuticals(name), professional_profiles(profiles!profile_id(full_name))")
     .in("status", statuses)
     .order("reported_at", { ascending: true });
   if (error) throw new Error(`faltante-service: queue: ${error.message}`);
