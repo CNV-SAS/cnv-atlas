@@ -14,12 +14,15 @@ import {
 import { resolveIdentity } from "@/modules/patients/services/identity-resolution";
 
 import {
+  completeSurvey,
   ConsentGateError,
+  getSurveyProgress,
   ResumeTokenError,
+  saveSurveyProgress,
   signIntakeEvaluation,
   writeIntakeEvaluation,
-  writeSurveyAnswers,
   type IntakeConsent,
+  type SurveyAnswer,
 } from "../data/intake-writer";
 import { intakeAnswersSchema, intakeIdentitySchema } from "../validations";
 import type { IntakeIdentityInput } from "../validations";
@@ -195,21 +198,22 @@ export async function signSurveyIntake(
   }
 }
 
-// ── FASE 2: RESPUESTAS ────────────────────────────────────────────────────────────────────────────
-export type SubmitSurveyAnswersInput = {
+// ── FASE 2: RESPUESTAS (as-you-go) ──────────────────────────────────────────────────────────────────
+export type SurveyPhase2Input = {
   resumeToken: string;
   surveyVersionId: string;
   answers: unknown;
   ipAddress: string | null;
 };
 
-export async function submitSurveyAnswers(
-  input: SubmitSurveyAnswersInput,
-): Promise<Result<{ evaluationId: string }>> {
+const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya se completó.";
+
+// GUARDAR PROGRESO (a medida). El snapshot completo de respuestas; queda en 'awaiting_survey'.
+export async function saveProgress(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   try {
-    const res = await writeSurveyAnswers({
+    const res = await saveSurveyProgress({
       resumeToken: input.resumeToken,
       surveyVersionId: input.surveyVersionId,
       answers: answers.data,
@@ -217,11 +221,34 @@ export async function submitSurveyAnswers(
     });
     return ok({ evaluationId: res.evaluationId });
   } catch (e) {
-    if (e instanceof ResumeTokenError) {
-      return err(appError("validation", "El enlace de la encuesta no es válido o la encuesta ya se completó."));
-    }
+    if (e instanceof ResumeTokenError) return err(appError("validation", RESUME_INVALID));
     throw e;
   }
+}
+
+// COMPLETAR: guardado final + pasa a 'draft'.
+export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
+  const answers = intakeAnswersSchema.safeParse(input.answers);
+  if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
+  try {
+    const res = await completeSurvey({
+      resumeToken: input.resumeToken,
+      surveyVersionId: input.surveyVersionId,
+      answers: answers.data,
+      ipAddress: input.ipAddress,
+    });
+    return ok({ evaluationId: res.evaluationId });
+  } catch (e) {
+    if (e instanceof ResumeTokenError) return err(appError("validation", RESUME_INVALID));
+    throw e;
+  }
+}
+
+// LEER PROGRESO: para reanudar (prefill). null si el token ya no abre nada.
+export async function readSurveyProgress(
+  resumeToken: string,
+): Promise<{ evaluationId: string; answers: SurveyAnswer[] } | null> {
+  return getSurveyProgress(resumeToken);
 }
 
 // ── FLUJO ATOMICO VIEJO (todo junto) ──────────────────────────────────────────────────────────────

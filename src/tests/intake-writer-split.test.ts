@@ -105,7 +105,7 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
       .where(eq(schema.surveyQuestions.surveyVersionId, svId))
       .limit(1);
 
-    const res = await writer.writeSurveyAnswers({
+    const res = await writer.completeSurvey({
       resumeToken: signed.resumeToken,
       surveyVersionId: svId,
       answers: [{ questionId: q.id, answerValue: "Normal" }],
@@ -136,21 +136,55 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
     createdEvals.push(signed.evaluationId);
     createdPatients.push(signed.patientId);
 
-    await writer.writeSurveyAnswers({ resumeToken: signed.resumeToken, surveyVersionId: svId, answers: [], ipAddress: null });
+    await writer.completeSurvey({ resumeToken: signed.resumeToken, surveyVersionId: svId, answers: [], ipAddress: null });
     // Segundo intento: la evaluacion ya paso a 'draft', el token deja de habilitar.
     await expect(
-      writer.writeSurveyAnswers({ resumeToken: signed.resumeToken, surveyVersionId: svId, answers: [], ipAddress: null }),
+      writer.completeSurvey({ resumeToken: signed.resumeToken, surveyVersionId: svId, answers: [], ipAddress: null }),
     ).rejects.toThrow(writer.ResumeTokenError);
   });
 
+  it("GUARDAR PROGRESO queda en 'awaiting_survey' y el reemplazo con snapshot completo NO pierde nada", async () => {
+    const signed = await writer.signIntakeEvaluation(signInput("e"));
+    createdEvals.push(signed.evaluationId);
+    createdPatients.push(signed.patientId);
+
+    const qs = await db
+      .select({ id: schema.surveyQuestions.id })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId))
+      .limit(2);
+    const token = signed.resumeToken;
+
+    // Guarda el dominio 1 (una respuesta).
+    await writer.saveSurveyProgress({ resumeToken: token, surveyVersionId: svId, answers: [{ questionId: qs[0].id, answerValue: "A" }], ipAddress: null });
+    let [ev] = await db.select({ status: schema.evaluations.status }).from(schema.evaluations).where(eq(schema.evaluations.id, signed.evaluationId));
+    expect(ev.status).toBe("awaiting_survey"); // guardar NO completa
+
+    // Guarda el SNAPSHOT COMPLETO (dominio 1 + 2): reemplazar no pierde el dominio 1.
+    await writer.saveSurveyProgress({ resumeToken: token, surveyVersionId: svId, answers: [{ questionId: qs[0].id, answerValue: "A" }, { questionId: qs[1].id, answerValue: "B" }], ipAddress: null });
+    const progress = await writer.getSurveyProgress(token);
+    expect(progress.answers).toHaveLength(2); // ambos dominios, ninguno perdido
+    [ev] = await db.select({ status: schema.evaluations.status }).from(schema.evaluations).where(eq(schema.evaluations.id, signed.evaluationId));
+    expect(ev.status).toBe("awaiting_survey"); // sigue esperando
+
+    // Completar pasa a draft.
+    await writer.completeSurvey({ resumeToken: token, surveyVersionId: svId, answers: [{ questionId: qs[0].id, answerValue: "A" }, { questionId: qs[1].id, answerValue: "B" }], ipAddress: null });
+    [ev] = await db.select({ status: schema.evaluations.status }).from(schema.evaluations).where(eq(schema.evaluations.id, signed.evaluationId));
+    expect(ev.status).toBe("draft");
+  });
+
   it("el GATE (regla 15) sigue en la firma: sin las autorizaciones necesarias, no crea nada", async () => {
-    const before = (await db.select({ n: sql<number>`count(*)::int` }).from(schema.evaluations))[0].n;
+    const doc = `SPLIT-GATE-${Date.now()}`;
+    const input = { ...signInput("d", [consents[0]]), identity: { ...identity("d"), documentNumber: doc } };
     // Solo una de las tres necesarias -> el gate rechaza.
-    await expect(
-      writer.signIntakeEvaluation(signInput("d", [consents[0]])),
-    ).rejects.toThrow(writer.ConsentGateError);
-    const after = (await db.select({ n: sql<number>`count(*)::int` }).from(schema.evaluations))[0].n;
-    expect(after).toBe(before); // ninguna evaluacion nueva
+    await expect(writer.signIntakeEvaluation(input)).rejects.toThrow(writer.ConsentGateError);
+    // La transaccion revierte: el paciente que se inserto ANTES del gate no queda (chequeo especifico por
+    // el documento, no un conteo global, que seria flaky bajo ejecucion paralela de otros tests).
+    const rows = await db
+      .select({ id: schema.patients.id })
+      .from(schema.patients)
+      .where(eq(schema.patients.documentNumber, doc));
+    expect(rows).toHaveLength(0);
   });
 
   afterAll(async () => {

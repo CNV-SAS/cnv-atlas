@@ -279,10 +279,18 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
   });
 }
 
-// ── FASE 2: RESPUESTAS ────────────────────────────────────────────────────────────────────────────
-// Autenticada por el resume_token: solo escribe si existe una evaluacion en 'awaiting_survey' con ese
-// token (una evaluacion firmada, esperando su encuesta). Crea la fila survey_responses + las answers y
-// pasa el estado a 'draft' (ya es una evaluacion normal, confirmable y diagnosticable).
+// ── FASE 2: RESPUESTAS (as-you-go) ─────────────────────────────────────────────────────────────────
+// Autenticadas por el resume_token: solo escriben si existe una evaluacion en 'awaiting_survey' con ese
+// token. Tres primitivas: GUARDAR PROGRESO (a medida, sin salir de 'awaiting_survey'), COMPLETAR (pasa a
+// 'draft'), y LEER PROGRESO (para reanudar). Asi un paciente que abandona a mitad no pierde lo que llevaba
+// (el dictamen: el borrador se vuelve una funcion normal, porque todo lo posterior a la firma esta
+// autorizado). Mientras 'awaiting_survey', la fila survey_responses puede tener respuestas PARCIALES; es
+// seguro porque 'awaiting_survey' no aparece en los paneles de accion (no llega al pipeline).
+//
+// CONTRATO (trampa del reemplazo): el cliente envia el SNAPSHOT COMPLETO de respuestas (todas las
+// contestadas hasta ese momento), NO un delta. Por eso el guardado REEMPLAZA todas las answers de la
+// evaluacion: si mandara solo el paso actual, reemplazar borraria los dominios anteriores. El formulario
+// tiene las 63 en estado, asi que enviar el set completo es natural.
 
 export class ResumeTokenError extends Error {
   constructor() {
@@ -291,67 +299,108 @@ export class ResumeTokenError extends Error {
   }
 }
 
-export type WriteSurveyAnswersInput = {
+export type SurveyAnswer = { questionId: string; answerValue: string };
+export type SurveyPhase2Input = {
   resumeToken: string;
   surveyVersionId: string;
-  answers: { questionId: string; answerValue: string }[];
+  answers: SurveyAnswer[]; // SNAPSHOT COMPLETO, no delta (ver contrato arriba)
   ipAddress: string | null;
 };
 
-export type WriteSurveyAnswersResult = { evaluationId: string };
+// La evaluacion en 'awaiting_survey' con ese token (o ResumeTokenError). El token se acota solo: al
+// completar la encuesta pasa a 'draft' y esta consulta deja de encontrarla.
+async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: string }> {
+  const [ev] = await tx
+    .select({ id: evaluations.id })
+    .from(evaluations)
+    .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
+    .limit(1);
+  if (!ev) throw new ResumeTokenError();
+  return ev;
+}
 
-export async function writeSurveyAnswers(
-  input: WriteSurveyAnswersInput,
-): Promise<WriteSurveyAnswersResult> {
-  return db.transaction(async (tx) => {
-    // El token vale SOLO mientras la evaluacion espera su encuesta. Al completarla pasa a 'draft' y el
-    // token deja de habilitar (no abre una evaluacion firmada "para siempre").
-    const [evaluation] = await tx
-      .select({ id: evaluations.id })
-      .from(evaluations)
-      .where(
-        and(
-          eq(evaluations.resumeToken, input.resumeToken),
-          eq(evaluations.status, "awaiting_survey"),
-        ),
-      )
-      .limit(1);
-    if (!evaluation) throw new ResumeTokenError();
-
-    const [response] = await tx
+// Upsert de la fila survey_responses (una por evaluacion) y REEMPLAZO de sus answers por el snapshot.
+async function upsertResponseAndAnswers(
+  tx: Tx,
+  evaluationId: string,
+  surveyVersionId: string,
+  answers: SurveyAnswer[],
+  ipAddress: string | null,
+): Promise<void> {
+  let [response] = await tx
+    .select({ id: surveyResponses.id })
+    .from(surveyResponses)
+    .where(eq(surveyResponses.evaluationId, evaluationId))
+    .limit(1);
+  if (!response) {
+    [response] = await tx
       .insert(surveyResponses)
-      .values({
-        evaluationId: evaluation.id,
-        surveyVersionId: input.surveyVersionId,
-        ipAddress: input.ipAddress,
-      })
+      .values({ evaluationId, surveyVersionId, ipAddress })
       .returning({ id: surveyResponses.id });
-    if (input.answers.length > 0) {
-      await tx.insert(surveyAnswers).values(
-        input.answers.map((a) => ({
-          responseId: response.id,
-          questionId: a.questionId,
-          answerValue: a.answerValue,
-        })),
-      );
-    }
+  }
+  // Reemplaza el snapshot completo (borra e inserta): el cliente manda todo lo contestado.
+  await tx.delete(surveyAnswers).where(eq(surveyAnswers.responseId, response.id));
+  if (answers.length > 0) {
+    await tx.insert(surveyAnswers).values(
+      answers.map((a) => ({ responseId: response.id, questionId: a.questionId, answerValue: a.answerValue })),
+    );
+  }
+}
 
-    await tx
-      .update(evaluations)
-      .set({ status: "draft" })
-      .where(eq(evaluations.id, evaluation.id));
+// GUARDAR PROGRESO: a medida, sin cambiar de estado (sigue 'awaiting_survey'). Idempotente.
+export async function saveSurveyProgress(input: SurveyPhase2Input): Promise<{ evaluationId: string }> {
+  return db.transaction(async (tx) => {
+    const ev = await findAwaitingByToken(tx, input.resumeToken);
+    await upsertResponseAndAnswers(tx, ev.id, input.surveyVersionId, input.answers, input.ipAddress);
+    return { evaluationId: ev.id };
+  });
+}
+
+// COMPLETAR: guardado final + pasa a 'draft' (ya es una evaluacion normal, confirmable y diagnosticable).
+// El token deja de habilitar (la evaluacion ya no esta 'awaiting_survey').
+export async function completeSurvey(input: SurveyPhase2Input): Promise<{ evaluationId: string }> {
+  return db.transaction(async (tx) => {
+    const ev = await findAwaitingByToken(tx, input.resumeToken);
+    await upsertResponseAndAnswers(tx, ev.id, input.surveyVersionId, input.answers, input.ipAddress);
+    await tx.update(evaluations).set({ status: "draft" }).where(eq(evaluations.id, ev.id));
     await recordAudit(tx, {
       event: "evaluation.survey_submitted",
       actorId: null,
       actorEmail: null,
       entityType: "evaluation",
-      entityId: evaluation.id,
+      entityId: ev.id,
       payload: { answers: input.answers.length },
       ip: input.ipAddress,
     });
-
-    return { evaluationId: evaluation.id };
+    return { evaluationId: ev.id };
   });
+}
+
+// LEER PROGRESO: las respuestas guardadas de una evaluacion 'awaiting_survey', para reanudar (prefill).
+// null si el token no abre ninguna (ya completada o invalido) -> el caller decide (p. ej. "link vencido").
+export async function getSurveyProgress(
+  resumeToken: string,
+): Promise<{ evaluationId: string; answers: SurveyAnswer[] } | null> {
+  const [ev] = await db
+    .select({ id: evaluations.id })
+    .from(evaluations)
+    .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
+    .limit(1);
+  if (!ev) return null;
+  const [response] = await db
+    .select({ id: surveyResponses.id })
+    .from(surveyResponses)
+    .where(eq(surveyResponses.evaluationId, ev.id))
+    .limit(1);
+  if (!response) return { evaluationId: ev.id, answers: [] };
+  const rows = await db
+    .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
+    .from(surveyAnswers)
+    .where(eq(surveyAnswers.responseId, response.id));
+  return {
+    evaluationId: ev.id,
+    answers: rows.map((r) => ({ questionId: r.questionId, answerValue: r.answerValue ?? "" })),
+  };
 }
 
 // ── FLUJO ATOMICO VIEJO (todo junto) ──────────────────────────────────────────────────────────────
