@@ -35,22 +35,27 @@ Se derivan del dictamen contable (`entregas/gildardo-2026-08-10/RESPUESTAS_CONTA
 - `emitInvoiceForTransaction(transaction)`, llamada por el **webhook de Wompi** (al pagar) y por la **venta en efectivo** (al registrar). Reemplaza `tryCreateAlegraInvoice`.
 - Mixto (dos transacciones internas) = **una factura** por el total (el dictamen).
 
-## Lo que prepara Santiago en Alegra (antes de construir)
+## Lo que prepara Santiago en Alegra (antes de construir) — SANDBOX primero
 
-Instrucciones literales, en orden. Esto es lo que hace que ST1-ST5 sean construibles; el terreno tiene que estar listo primero.
+Igual que hicimos con Wompi: **primero SANDBOX** (configurar + probar el flujo completo ahí), **producción después**, cuando el flujo esté verificado. Instrucciones literales, en orden.
 
-1. **Cuenta y credenciales de PRODUCCIÓN.** Confirmar/crear la cuenta de Alegra de producción y obtener:
-   - `ALEGRA_EMAIL` (el correo de la cuenta).
-   - `ALEGRA_API_KEY` (el token de API de producción; sensible, NUNCA `NEXT_PUBLIC_`).
-   - `ALEGRA_BASE_URL` (el host de producción de la API).
-   - Cargarlas en Vercel (Production/Preview/Development), como el resto (ver `DEPLOY.md`).
-2. **Impuesto IVA 19%.** Configurar (o confirmar) el impuesto de venta al 19% en Alegra y anotar su **id** → `ALEGRA_IVA_TAX_ID`.
-3. **Ítems del catálogo.** Crear en Alegra un ítem por cada nutracéutico, con el **nombre del catálogo** (sin la indicación), y anotar el **id de cada ítem** (para el mapeo de ST2). Que el ítem lleve el IVA 19% referenciado.
-4. **Facturación electrónica (resolución DIAN).** Activar la facturación electrónica en Alegra: la **resolución de numeración** de la DIAN y el certificado, para que se pueda EMITIR (no solo borrador). Sin esto, ST3 no puede emitir.
-5. **Documento soporte electrónico.** Activarlo también (para pagar comisiones a integrantes sin RUT; es de la liquidación, pero se habilita aquí de una vez).
-6. **Contacto (pendiente de la consulta de seguimiento).** No requiere acción hasta que el contable responda si hay que crear contacto por paciente o no.
+**En SANDBOX (lo que hay hoy):**
+1. **Credenciales de sandbox** (ya existen): `ALEGRA_EMAIL`, `ALEGRA_API_KEY`, `ALEGRA_BASE_URL` apuntando al sandbox. Sensibles, NUNCA `NEXT_PUBLIC_`.
+2. **Impuesto IVA 19%.** Configurar (o confirmar) el impuesto de venta al 19% y anotar su **id** → `ALEGRA_IVA_TAX_ID`.
+3. **Ítems del catálogo.** Crear un ítem por cada nutracéutico, con el **nombre del catálogo** (sin la indicación), y anotar el **id de cada ítem** (para ST2). Que lleve el IVA 19% referenciado.
+4. **Facturación electrónica en sandbox, SI el sandbox lo permite** (ver la pregunta abierta abajo). Si emite (simulado), se prueba ST3-ST4 completo ahí; si solo borradores, se prueba todo lo demás y la emisión real queda para producción.
+5. Probar el flujo COMPLETO en sandbox (contacto + item real + emisión/borrador + captura).
 
-Cuando 1-5 estén listos, avisar: ahí se construye ST1-ST5.
+**En PRODUCCIÓN (después, con el flujo verificado):**
+6. Credenciales de producción (nuevas `ALEGRA_*`), impuesto, ítems y **resolución de facturación electrónica DIAN** (numeración + certificado) para emitir de verdad.
+7. **Documento soporte electrónico** (para comisiones a integrantes sin RUT; de la liquidación, se habilita aquí).
+8. **Contacto:** pendiente de la consulta de seguimiento al contable.
+
+### PREGUNTA ABIERTA que decide cómo se prueba el bloque
+
+**¿El sandbox de Alegra permite EMITIR a la DIAN (validación simulada) o solo crea borradores?** A confirmar con Alegra / la cuenta de Santiago. Decide la estrategia:
+- **Si emite (simulado):** ST3-ST4 (emisión + captura de CUFE/número/estado DIAN + cola/reintento) se verifican en sandbox antes de producción. Ideal.
+- **Si solo borradores:** en sandbox se prueban contacto, mapeo de ítems, y la cola; **la emisión real solo se ejercita en producción.** Eso obliga a llegar a producción con MUCHO cuidado (la primera emisión real es la primera prueba de esa parte). Habría que mitigar: un modo de "primera factura de prueba" acotado, o revisar manualmente las primeras.
 
 ## Dependencias y decisiones abiertas
 - **Consulta de seguimiento al contable** (contacto): puede cambiar ST1.
