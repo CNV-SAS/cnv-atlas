@@ -163,9 +163,11 @@ export function Diana({
             onClick={interactive && onSelectCell ? () => onSelectCell(cell.num) : undefined}
           />
         ))}
-        {/* Etiquetas de lectura, fieles a la definicion: radios R1-R9 en el borde (angular,
-            FFMI x FMI), anillos A1-A9 sobre el radio superior (radial, IFC x IRC), y el centro.
-            Son rotulos fijos de eje. */}
+        {/* Etiquetas de lectura, fieles a la definicion: sectores E1-E9 en el borde (angular, FFMI x FMI,
+            estructura; §15 renombre R->E, la R queda reservada para las rutas de atencion), anillos
+            A1-A9 sobre el radio superior (radial, IFC x IRC, funcion y riesgo). Son rotulos fijos de eje.
+            El prefijo se DERIVA del rango al pintar (efrRiskRank), nunca se sella: por eso el renombre no
+            necesita migracion ni traduccion, y viejas y nuevas evaluaciones se leen igual. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
           const [lx, ly] = polar(R + 9, sc * SECTOR_DEG + SECTOR_DEG / 2);
           return (
@@ -178,7 +180,7 @@ export function Diana({
               fontSize={8}
               className="fill-muted-foreground"
             >
-              R{sc + 1}
+              E{sc + 1}
             </text>
           );
         })}
@@ -248,11 +250,11 @@ export function Diana({
       </div>
       <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         <span>
-          Estado {stateNumber} de 81 · anillo A{ringIndex + 1} {frSectorName} · radio R
+          Estado {stateNumber} de 81 · anillo A{ringIndex + 1} {frSectorName} · sector E
           {sectorIndex + 1} {structuralName}
         </span>
         <span>
-          Anillos A1-A9: IFC x IRC (función y riesgo celular, primario). Radios R1-R9: FFMI x FMI
+          Anillos A1-A9: IFC x IRC (función y riesgo celular, primario). Sectores E1-E9: FFMI x FMI
           (estructura corporal, secundario). Centro #1 óptimo, periferia #81 riesgo máximo.
         </span>
       </figcaption>

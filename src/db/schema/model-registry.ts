@@ -68,7 +68,9 @@ export const indicatorRanges = pgTable("indicator_ranges", {
   classification: indicatorClassification("classification").notNull(),
 });
 
-// Catalogo de fenotipos MCCB (F1-F12, FMI x FFMI x MCA). Validado contra el v7.
+// Catalogo de fenotipos estructurales (FFMI x FMI, 9). El code sembrado es la clave de banda "A_B"
+// (no F1-F12: esa es la MCCB, otra clasificacion). En la Diana el eje se rotula E1-E9 (§15), derivado
+// del rango al pintar.
 export const phenotypes = pgTable(
   "phenotypes",
   {
@@ -76,14 +78,15 @@ export const phenotypes = pgTable(
     modelVersionId: uuid("model_version_id")
       .notNull()
       .references(() => modelVersions.id, { onDelete: "cascade" }),
-    code: text("code").notNull(), // F1..F12
+    code: text("code").notNull(), // clave de banda "A_B" (letras A/N/B)
     name: text("name").notNull(),
     risk: text("risk"),
   },
   (t) => [unique("phenotypes_model_code_unique").on(t.modelVersionId, t.code)],
 );
 
-// Catalogo de sectores funcionales FR (S1-S9, IFC x IRC). Validado contra el v7.
+// Catalogo de sectores funcionales FyR (IFC x IRC, 9). El code sembrado es la clave de banda "3_1"
+// (no S1-S9: ese prefijo nunca se uso en Atlas). En la Diana el eje se rotula A1-A9, derivado del rango.
 export const frSectors = pgTable(
   "fr_sectors",
   {
@@ -91,7 +94,7 @@ export const frSectors = pgTable(
     modelVersionId: uuid("model_version_id")
       .notNull()
       .references(() => modelVersions.id, { onDelete: "cascade" }),
-    code: text("code").notNull(), // S1..S9
+    code: text("code").notNull(), // clave de banda "3_1" (bandas numericas IFC/IRC)
     name: text("name").notNull(),
   },
   (t) => [unique("fr_sectors_model_code_unique").on(t.modelVersionId, t.code)],

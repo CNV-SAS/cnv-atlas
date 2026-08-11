@@ -2,7 +2,7 @@
 
 Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicismos. **Se actualiza al CERRAR cada bloque, no al planearlo.**
 
-Última actualización: al cerrar §10 (los nombres de los indicadores).
+Última actualización: al cerrar §15 (el renombre del gráfico y el detalle del header).
 
 ---
 
@@ -21,13 +21,12 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Qué falta (por bloque, del más chico al más grande)
 
-1. **Renombre de la Diana (§15) + un detalle.** Cambiar un código de eje en el gráfico, y evitar que el profesional vea un código interno crudo en una pantalla. Chico.
-2. **Remisiones del reporte (§9).** Que las remisiones salgan resumidas por destinatario (una línea por profesión) en vez de repetidas ruta por ruta. Mediano.
-3. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
-4. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
-5. **Los seis datos sociodemográficos.** Cinco datos + el motivo de consulta (uno de ellos, la etnia, espera al abogado). Mediano.
-6. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Espera primero al abogado. Mediano.
-7. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
+1. **Remisiones del reporte (§9).** Que las remisiones salgan resumidas por destinatario (una línea por profesión) en vez de repetidas ruta por ruta. Mediano.
+2. **Los desplegables de la encuesta.** Faltan varias listas de opciones de la encuesta. Mediano.
+3. **Reenviar la copia del consentimiento.** Un botón para que el profesional reenvíe la copia a quien no la recibió. Chico.
+4. **Los seis datos sociodemográficos.** Cinco datos + el motivo de consulta (uno de ellos, la etnia, espera al abogado). Mediano.
+5. **Guardar el borrador de la encuesta.** Que un paciente que se detiene a mitad no pierda lo que llevaba. Espera primero al abogado. Mediano.
+6. **Renumerar el consentimiento a la versión 1.0 y limpiar.** Es tarea del lanzamiento, no de ahora.
 
 ## Sobre la encuesta (lo que preguntaste)
 
@@ -40,12 +39,17 @@ De punta a punta, el camino de un paciente ya está construido:
 
 ## Qué espera al abogado
 
-- Ampliar el consentimiento para poder capturar la **etnia**.
-- Si se puede **guardar un borrador** de encuesta de alguien que aún no firmó.
-- El caso del **adulto que necesita representante legal** (hoy el sistema asume que representante = menor).
-- La ratificación de la **firma electrónica** (ya está implementada; falta el visto bueno formal).
-- Varias de cumplimiento (plazos de notificación de incidentes, estándar de anonimización, registro de bases de datos, acuerdos con proveedores).
+**Lo importante primero: nada de esto bloquea CONSTRUIR. Pero todo junto bloquea ATENDER PACIENTES REALES** (es el gate del lanzamiento, no del desarrollo). De la lista, **tres condicionan trabajo concreto**:
+
+- **Firma electrónica: YA RESUELTA.** La construimos siguiendo el dictamen del abogado; queda solo su visto bueno formal, pero no frena nada.
+- **Etnia: bloquea capturar ese campo.** No se puede pedir la etnia hasta ampliar el consentimiento.
+- **Borrador de encuesta: bloquea guardar respuestas antes de firmar.** No se puede guardar lo que un paciente lleva a medias hasta que el abogado diga si se puede y por cuánto tiempo.
+
+Lo demás bloquea atender pacientes reales, pero no una tarea puntual de hoy:
+
+- El **adulto que necesita representante legal** (hoy el sistema asume que representante = menor).
+- Varias de cumplimiento regulatorio (plazos de notificación de incidentes, estándar de anonimización, registro de bases de datos, acuerdos con proveedores).
 
 ## Siguiente paso
 
-Terminar las cuatro cosas que Gildardo ya respondió: §6 y §10 (hechos), luego §15 y §9. Después, los desplegables de la encuesta.
+Terminar las cuatro cosas que Gildardo ya respondió: §6, §10 y §15 (hechos), falta §9 (las remisiones resumidas). Después, los desplegables de la encuesta.
