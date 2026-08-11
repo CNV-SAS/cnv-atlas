@@ -61,7 +61,10 @@ export type PaymentFormState = {
 };
 
 // Estado del formulario de venta en efectivo (useActionState). Al exito confirma con el monto sellado.
+// duplicateWarning: hay una venta en efectivo IDENTICA reciente; NO se registro, el profesional confirma
+// con "Registrar de todos modos" (mismo patron que el checkout duplicado).
 export type CashSaleFormState = {
   error: string | null;
   success: string | null;
+  duplicateWarning: string | null;
 };

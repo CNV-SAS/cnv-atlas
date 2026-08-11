@@ -99,3 +99,39 @@ export async function findLivePendingDuplicate(
   const hoursAgo = Math.floor((Date.now() - new Date(row.created_at).getTime()) / (60 * 60 * 1000));
   return { product, hoursAgo };
 }
+
+// Ventana para avisar de una venta en EFECTIVO duplicada RECIENTE. Corta a proposito: dos ventas
+// identicas al mismo paciente en minutos son casi seguro un doble-registro; dos el mismo dia (mañana y
+// tarde) pueden ser legitimas y no deben molestar. El aviso NO bloquea (el profesional confirma).
+const CASH_DUP_WINDOW_MS = 10 * 60 * 1000;
+
+// Busca una venta en efectivo IDENTICA reciente (mismo paciente + mismo producto, pagada, en la ventana)
+// para avisar antes de registrar otra. A diferencia del checkout (pending, 24h), aqui la venta ya esta
+// PAGADA: por eso el aviso importa mas (un cobro duplicado en efectivo se revierte con nota credito, no
+// con un clic). Bajo RLS: el profesional ve sus propias ventas de ese paciente.
+export async function findRecentCashSaleDuplicate(
+  patientId: string,
+  nutraceuticalIds: string[],
+): Promise<{ product: string; minutesAgo: number } | null> {
+  if (nutraceuticalIds.length === 0) return null;
+  const supabase = await createSupabaseServerClient();
+  const since = new Date(Date.now() - CASH_DUP_WINDOW_MS).toISOString();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("created_at, transaction_items!inner(nutraceutical_id, nutraceuticals(name))")
+    .eq("patient_id", patientId)
+    .eq("status", "paid")
+    .eq("payment_method", "efectivo")
+    .gte("created_at", since)
+    .in("transaction_items.nutraceutical_id", nutraceuticalIds)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) fail("findRecentCashSaleDuplicate", error.message);
+  const row = data?.[0];
+  if (!row) return null;
+  const item = Array.isArray(row.transaction_items) ? row.transaction_items[0] : row.transaction_items;
+  const nutra = item?.nutraceuticals;
+  const product = (Array.isArray(nutra) ? nutra[0]?.name : nutra?.name) ?? "un producto";
+  const minutesAgo = Math.floor((Date.now() - new Date(row.created_at).getTime()) / (60 * 1000));
+  return { product, minutesAgo };
+}

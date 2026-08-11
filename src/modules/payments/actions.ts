@@ -6,7 +6,10 @@ import { appError, err, ok, type AppError, type Result } from "@/core/errors";
 import { reportServerError } from "@/lib/observability/report-error";
 import { getCurrentUser } from "@/modules/auth/session";
 
-import { findLivePendingDuplicate } from "./data/payments-repository";
+import {
+  findLivePendingDuplicate,
+  findRecentCashSaleDuplicate,
+} from "./data/payments-repository";
 import { canCreateCheckout } from "./policies/can-create-checkout";
 import { CheckoutError, createCheckout, registerCashSale } from "./services/payments-service";
 import {
@@ -101,19 +104,34 @@ export async function registerCashSaleFormAction(
   formData: FormData,
 ): Promise<CashSaleFormState> {
   const { user, error: authzError } = await requireCheckoutCreator();
-  if (authzError) return { error: authzError.message, success: null };
+  if (authzError) return { error: authzError.message, success: null, duplicateWarning: null };
+
+  const patientId = String(formData.get("patientId") ?? "");
+  const nutraceuticalId = String(formData.get("nutraceuticalId") ?? "");
+  const confirmDuplicate = String(formData.get("confirmDuplicate") ?? "") === "true";
+
+  // Aviso de venta en efectivo DUPLICADA reciente (mismo paciente + producto, pagada, en la ventana): NO
+  // registra, el profesional confirma con "Registrar de todos modos". Reusa el patron del checkout. Esto
+  // es lo que atrapa el re-registro secuencial (la clave de idempotencia solo cubre el doble-clic
+  // simultaneo). En efectivo importa mas: un cobro duplicado se revierte con nota credito, no con un clic.
+  if (!confirmDuplicate && patientId && nutraceuticalId) {
+    const dup = await findRecentCashSaleDuplicate(patientId, [nutraceuticalId]);
+    if (dup) {
+      const cuando = dup.minutesAgo <= 0 ? "hace menos de un minuto" : `hace ${dup.minutesAgo} min`;
+      return {
+        error: null,
+        success: null,
+        duplicateWarning: `Ya registraste una venta en efectivo de ${dup.product} a este paciente ${cuando}. Si es otra venta, confirma; si fue un doble registro, no la repitas (un cobro en efectivo duplicado se revierte con nota credito).`,
+      };
+    }
+  }
 
   const parsed = registerCashSaleSchema.safeParse({
-    patientId: String(formData.get("patientId") ?? ""),
+    patientId,
     idempotencyKey: String(formData.get("idempotencyKey") ?? ""),
-    items: [
-      {
-        nutraceuticalId: String(formData.get("nutraceuticalId") ?? ""),
-        quantity: Number(String(formData.get("quantity") ?? "")),
-      },
-    ],
+    items: [{ nutraceuticalId, quantity: Number(String(formData.get("quantity") ?? "")) }],
   });
-  if (!parsed.success) return { error: "Datos de la venta inválidos.", success: null };
+  if (!parsed.success) return { error: "Datos de la venta inválidos.", success: null, duplicateWarning: null };
 
   try {
     const { idempotencyKey, ...sale } = parsed.data;
@@ -122,10 +140,11 @@ export async function registerCashSaleFormAction(
     return {
       error: null,
       success: `Venta en efectivo registrada por ${amount.toLocaleString("es-CO")} COP.`,
+      duplicateWarning: null,
     };
   } catch (e) {
-    if (e instanceof CheckoutError) return { error: e.message, success: null };
+    if (e instanceof CheckoutError) return { error: e.message, success: null, duplicateWarning: null };
     reportServerError("cash-sale.register", e);
-    return { error: "No se pudo registrar la venta en efectivo.", success: null };
+    return { error: "No se pudo registrar la venta en efectivo.", success: null, duplicateWarning: null };
   }
 }
