@@ -86,12 +86,19 @@ describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
     // ("Diabetes tipo 2"), Presion 30 ("Si"). Alimentacion 30 e Hidratacion 20 degradados
     // (Q3: sin d1_9/d1_10/d1_16). round((100+30+100+100+20+100+30+20)/8) = 63. Si una
     // cadena no coincide, el dominio cae a su default y el total cambia -> el test truena.
-    expect(out.dfi.le8Total).toBe(63);
+    // La coupling se verifica en el DESGLOSE de dominios (dom5, NO suspendido): con encuesta
+    // incompleta el top-level le8Total se SUSPENDE (Q28), pero el frozen sigue calculando el
+    // ICEC y lo expone en dom5 (info provisional del profesional bajo el aviso).
+    const dom5 = out.dfi.domains.find((d) => d.id === "d5");
+    expect(dom5?.items?.[0]).toContain("63");
+    // SUSPENSION por incompleta (Q28): ICEC (le8Total) NO se emite, y R3 (ruta de encuesta) se suspende.
+    expect(out.dfi.le8Total).toBeNull();
+    expect(out.dfi.rutas.some((r) => r.startsWith("R3"))).toBe(false);
 
-    // DFI conductual: "Vomito" dispara la conducta de riesgo (posible TCA) -> veto y la
-    // ruta R3 prioritaria; el dominio d4 queda en severidad maxima.
+    // DFI conductual (coupling, en el desglose, no suspendido): "Vomito" dispara la conducta de riesgo
+    // (posible TCA) -> veto y el dominio d4 en severidad maxima. Es lo que ACTIVARIA R3 con encuesta
+    // completa; aqui R3 queda suspendida pero la coupling que la produce se verifica igual.
     expect(out.dfi.veto).toBe(true);
-    expect(out.dfi.rutas).toContain("R3 · Conductual (prioritaria)");
     expect(out.dfi.domains.find((d) => d.id === "d4")?.sev).toBe(3);
   });
 

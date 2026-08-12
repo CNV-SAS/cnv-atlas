@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { type ReactNode } from "react";
 import { Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
 
@@ -278,11 +279,24 @@ export function EvaluationResults({
               {missingDomains.length ? (
                 <span>Faltan estos dominios de la encuesta: {missingDomains.join(", ")}.</span>
               ) : null}
+              {/* Q28: presente, no futuro. Las tres salidas de encuesta NO se emitieron (no salieron en
+                  cero): se leen como no emitidas, disciplina de las badges no evaluables. Y el aviso dice
+                  QUE HACER, con la via que ahora existe (completar la encuesta en consulta). */}
               <span>
-                Cuando la suspension por completitud este activa, el diagnostico saldra sin edad
-                bioelectrica ni las rutas que dependen de la encuesta. El diagnostico bioelectrico (de la
-                medicion) se emite igual.
+                No se emitieron la edad bioeléctrica, el índice contextual ni las rutas que dependen de la
+                encuesta: no se calculan sobre respuestas que faltan. El diagnóstico bioeléctrico (de la
+                medición) se emite igual. El desglose de dominios de abajo es provisional (sobre lo
+                respondido), no la lectura definitiva.
               </span>
+              {/* Ya hay diagnostico (este componente solo renderiza con resultados): completar la encuesta
+                  aqui es el flujo de CORRECCION (version nueva), no la edicion pre-diagnostico. Al
+                  completarla, la version nueva emite EB/ICEC/rutas (Q28, Gildardo). */}
+              <Link
+                href={`/evaluaciones/${results.evaluationId}/corregir`}
+                className="w-fit font-medium underline underline-offset-4"
+              >
+                Completar la encuesta con el paciente (genera una versión nueva)
+              </Link>
             </div>
           ) : null}
 

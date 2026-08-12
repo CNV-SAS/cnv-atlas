@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import type { EngineIndicators, EngineOutput } from "@/clinical-engine";
+import { type EngineIndicators, type EngineOutput, suspendSurveyRoutes } from "@/clinical-engine";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -198,24 +198,43 @@ export function ReportDocument({
               <Text style={styles.para}>Sector funcional (FyR): {frSector.nombre}</Text>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Diagnostico funcional integral (DFI){dfi.complete ? "" : " (incompleto)"}
-              </Text>
-              <Text style={styles.para}>
-                <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
-                (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
-              </Text>
-              {dfi.domains.map((d) => (
-                <Text key={d.id} style={styles.para}>
-                  {d.nombre} (sev {String(d.sev)}): {d.lectura}
+            {/* Gate de render (Q28): con la encuesta incompleta, el bloque DFI se COLAPSA a una nota +
+                las rutas de la medicion (BIS). Suprime el riesgo, las lecturas de dominios y las rutas
+                que dependen de la encuesta, que salen inflados sobre defaults. Reaplica suspendSurveyRoutes
+                (idempotente) para proteger tambien snapshots viejos ya sellados incompletos, sin
+                reescribirlos (misma disciplina que la banda de trayectoria). Con encuesta completa, sin
+                cambio. */}
+            {dfi.complete ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Diagnostico funcional integral (DFI)</Text>
+                <Text style={styles.para}>
+                  <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
+                  (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
                 </Text>
-              ))}
-              <Text style={styles.para}>
-                Rutas de atencion:{" "}
-                {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
-              </Text>
-            </View>
+                {dfi.domains.map((d) => (
+                  <Text key={d.id} style={styles.para}>
+                    {d.nombre} (sev {String(d.sev)}): {d.lectura}
+                  </Text>
+                ))}
+                <Text style={styles.para}>
+                  Rutas de atencion:{" "}
+                  {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Diagnostico funcional integral (DFI) (incompleto)</Text>
+                <Text style={styles.para}>
+                  El diagnostico funcional integral se completara al terminar la encuesta. La edad
+                  bioelectrica, el indice contextual y las rutas que dependen de la encuesta no se emiten
+                  todavia (no se calculan sobre respuestas que faltan).
+                </Text>
+                <Text style={styles.para}>
+                  Rutas por la medicion:{" "}
+                  {suspendSurveyRoutes(dfi.rutas).join("; ") || "pendientes de completar la encuesta"}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>

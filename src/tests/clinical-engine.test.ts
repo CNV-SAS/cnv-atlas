@@ -80,7 +80,27 @@ describe("clinical-engine runEngine (motor real)", () => {
     expect(out.dfi.missingFieldKeys).toHaveLength(CANON.length - 2);
     expect(out.dfi.missingFieldKeys).toContain("d8_61");
     expect(out.dfi.degradedReason).toContain("faltan");
-    // el DFI SIGUE computando sobre lo presente (LE8 no es null): parcial != vacio.
+  });
+
+  // SUSPENSION por encuesta incompleta (Q28, Gildardo, implementado 2026-08-11 en la glue). Con la
+  // encuesta INCOMPLETA (parcial o vacia) las tres salidas de encuesta NO se emiten: EB/IAE null, ICEC
+  // (le8Total) null, y las rutas quedan solo las BIS (R1/R2; se suspenden R3/R4/R5/R6). Antes de este
+  // cambio, una parcial emitia EB/ICEC/rutas sobre defaults (edad inflada +14 años medida).
+  it("suspende EB/IAE/ICEC y las rutas de encuesta cuando la encuesta esta INCOMPLETA", () => {
+    const parcial = runEngine(input({ d3_23: "5", d3_24: "Más de 60 min" }));
+    expect(parcial.dfi.complete).toBe(false);
+    expect(parcial.indicators.eb).toBeNull();
+    expect(parcial.indicators.iae).toBeNull();
+    expect(parcial.dfi.le8Total).toBeNull();
+    // Ninguna ruta de encuesta (R3/R4/R5/R6); solo pueden quedar BIS (R1/R2).
+    expect(parcial.dfi.rutas.some((r) => /^R[3-6]\b/.test(r) || /^R[3-6]·/.test(r))).toBe(false);
+    expect(parcial.dfi.rutas.every((r) => /^R[12]/.test(r))).toBe(true);
+  });
+
+  it("con encuesta COMPLETA NO se suspende: EB/ICEC se emiten (los golden de paridad no cambian)", () => {
+    const out = runEngine(input(FULL_SURVEY));
+    expect(out.dfi.complete).toBe(true);
+    expect(out.indicators.eb).not.toBeNull();
     expect(out.dfi.le8Total).not.toBeNull();
   });
 

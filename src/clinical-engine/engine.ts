@@ -7,6 +7,7 @@
 // silencioso). Cuando se porte la encuesta real, el DFI se enciende sin tocar el motor.
 
 import { analizarDesdeBiody, analizarDFI, calcLE8 } from "./analysis";
+import { suspendSurveyRoutes } from "./dfi-routes";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 // Derivado: engine.core.js + 6 exports aditivos (efrProf, clasificadores). Mecanismo de archivo
 // derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
@@ -110,8 +111,12 @@ export function runEngine(input: EngineInput): EngineOutput {
     icaBis: r4(Math.abs(a.indices.PABU - 1.618)),
     iscm: a.indices.ISCM,
     iehh: a.indices.IEHH,
-    iae: a.indices.IAE,
-    eb: a.indices.EB_BIS,
+    // SUSPENSION por encuesta incompleta (Q28, Gildardo): EB-BIS e IAE dependen del ICEC (LE8, encuesta),
+    // asi que con la encuesta incompleta NO se emiten (null), no se emite una edad inflada sobre defaults.
+    // El eje envejecimiento (EB + IAE) es una sola salida; se suspenden juntos. ISCM/IEHH son BIS: se
+    // conservan. Con encuesta completa, sin cambio (los golden de paridad no se tocan).
+    iae: surveyComplete ? a.indices.IAE : null,
+    eb: surveyComplete ? a.indices.EB_BIS : null,
     FMI: a.indices.FMI,
     FFMI: a.indices.FFMI,
     AF: typeof rawAF === "number" ? rawAF : 0,
@@ -184,8 +189,12 @@ export function runEngine(input: EngineInput): EngineOutput {
       descripcion: dfiRaw.riesgo.d,
     },
     veto: dfiRaw.veto,
-    rutas: dfiRaw.rutas,
-    le8Total: surveyPresent ? dfiRaw.le8.total : null,
+    // SUSPENSION (Q28): con encuesta incompleta se conservan las rutas BIS (R1/R2, de la medicion) y se
+    // suspenden las de encuesta (R3/R4/R5/R6). Ver dfi-routes.ts (mapeo verificado contra el frozen).
+    rutas: surveyComplete ? dfiRaw.rutas : suspendSurveyRoutes(dfiRaw.rutas),
+    // ICEC/LE8 depende de la encuesta: con incompleta NO se emite (antes se anulaba solo si NO habia
+    // ningun dato; ahora tambien si esta incompleta, para no sellar un ICEC calculado con defaults).
+    le8Total: surveyComplete ? dfiRaw.le8.total : null,
   };
 
   const rutasTxt = dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas";
