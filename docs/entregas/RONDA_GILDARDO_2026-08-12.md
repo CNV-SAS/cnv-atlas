@@ -4,7 +4,7 @@
 **Para:** Gildardo Uribe, Dirección Científica CNV
 **Fecha:** 12 de agosto de 2026
 
-Gracias por la respuesta de hoy: cierra la ronda del 10 y desbloquea EA1 (cableamos las dos referencias del §9). Nos quedan tres preguntas, y una de ellas sale justo de haber aplicado tu respuesta de hoy. Van consolidadas, de la que más bloquea a la que menos. Al final, dos confirmaciones que no necesitan que decidas nada, solo que sepas.
+Gracias por la respuesta de hoy: cierra la ronda del 10 y desbloquea EA1 (cableamos las dos referencias del §9). Nos quedan unas preguntas, dos de ellas salen justo de haber aplicado tus respuestas de hoy (el déficit y la encuesta parcial). Van consolidadas, de la que más bloquea a la que menos. Al final, las confirmaciones que no necesitan que decidas nada, solo que sepas. Esta ronda sigue ABIERTA: acumulamos lo clínico que falta antes de enviarla, no la mandamos por partes.
 
 Verificamos cada punto contra tus respuestas anteriores para no repetir algo ya cerrado.
 
@@ -45,7 +45,29 @@ Con encuesta **parcial** (no ausente):
 
 ---
 
-## 2. La opción "Otro" en la encuesta, y el texto libre de antecedentes
+## 2. El déficit calórico por fenotipo (§1): ¿se retira en todos, o solo en obesidad sarcopénica?
+
+Tu §1 es claro en el principio: el sistema no debe derivar el déficit de nada, lo decide el nutricionista. Al ir a aplicarlo encontramos dos cosas de nuestro código que cambian cómo conviene responderlo.
+
+**a) En Atlas el profesional NO escribe un "déficit", escribe el objetivo calórico.** Tu cita `if (edit.deficit !== undefined) deficit = Number(edit.deficit)` es de tu `motorTratNutri`; en Atlas ese campo no existe. El campo que ya manda sobre todo es el **objetivo calórico (kcalObj)**, que el profesional fija directo y sobreescribe el sugerido. El déficit por fenotipo solo fija el kcalObj **sugerido** (= gasto − déficit).
+
+**b) No es un solo valor: la tabla tiene cinco.** Citas el 500, pero el fenotipo impone cinco déficits distintos:
+
+| Fenotipo | déficit sugerido | etiqueta actual |
+|---|---|---|
+| F7/F10 o cáncer | −300 (hipercalórico) | Hipercalórico +300 kcal/día |
+| F1 u obesidad sarcopénica | 500 | Hipocalórico moderado −500 kcal/día |
+| F2/F3 | 600 | Hipocalórico −600 kcal/día |
+| F4/F5 | 300 | Hipocalórico leve −300 kcal/día |
+| F11 o resto | 0 | Mantenimiento |
+
+**Pregunta 1:** ¿se retira el déficit sugerido en TODOS los fenotipos (el sugerido pasa a mantenimiento y el profesional escribe el objetivo), o solo en obesidad sarcopénica (el 500)? Tu principio ("ni de una tabla por magnitud") apunta a todos; el ejemplo que citas es solo el 500. Las dos prescriben distinto a un paciente con obesidad, por eso no lo decidimos nosotros.
+
+**Pregunta 2 (sale de la anterior):** hoy la etiqueta dice "Hipocalórico moderado −500 kcal/día". Si el déficit sugerido pasa a 0, ese texto deja de ser cierto. ¿Qué debe mostrar la etiqueta cuando ya no hay déficit sugerido? ("Mantenimiento; ajusta según tu criterio", o un texto orientativo del fenotipo sin el número.)
+
+---
+
+## 3. La opción "Otro" en la encuesta, y el texto libre de antecedentes
 
 Dos preguntas de instrumento que quedaron listas para preguntarte y no te habían llegado. Ninguna la has respondido antes (la verificamos).
 
@@ -71,7 +93,7 @@ Estado actual: ya construimos la captura del texto libre, pero por defecto **no 
 
 ---
 
-## 3. Carnes rojas (§5): ¿el archivo que tenemos ya trae tu corrección?
+## 4. Carnes rojas (§5): ¿el archivo que tenemos ya trae tu corrección?
 
 Tu §5 de hoy dice que las dos rarezas ya están corregidas en el prototipo. Revisamos el `ATLAS_v8.html` que nos entregaste el **4 de agosto de 2026** para ver si trae la corrección o si nos vas a mandar un archivo nuevo. Lo que encontramos:
 
@@ -82,7 +104,7 @@ Tu §5 de hoy dice que las dos rarezas ya están corregidas en el prototipo. Rev
 
 ---
 
-## 4. ¿Nos mandas el archivo al día?
+## 5. ¿Nos mandas el archivo al día?
 
 Al aplicar tus respuestas encontramos dos correcciones tuyas que no están en
 el ATLAS_v8.html que tenemos (el del 4 de agosto):
@@ -103,9 +125,11 @@ pantallas.
 ## Confirmaciones (no requieren que decidas nada)
 
 - **§9 aplicado.** Cableamos `hidSG_ref = 73,2 %` y `MCA_ref = 52,4 % de la MLG`, sin estratificar por sexo ni edad, con la procedencia anotada en el código. Levantamos la marca de "pendiente de entrega". Cierra EA1.
-- **§1, §2, §3, §4 en curso.** Retiramos el déficit por fenotipo (manda el campo del profesional); el peso ajustado queda como valor inicial; suprimimos la línea de conducta propia; el rótulo del ejercicio pasa a "Educador físico, entrenador, deportólogo".
+- **§2 pesoAjust: confirmado, ya está como lo pediste.** En Atlas el peso efectivo es "peso del profesional, y si no hay, el ajustado": el peso de referencia que coloca el profesional manda, y el ajustado automático solo actúa cuando no hay ninguno escrito. Ningún paciente con peso de referencia registrado ve cambiar su prescripción. No hay nada que hacer de tu lado; te lo confirmamos para cerrar el punto.
+- **§3 y §4 aplicados.** Suprimimos la línea de remisión cuando el destinatario coincide con quien atiende (conducta propia), y el rótulo del ejercicio pasa a "Educador físico, entrenador, deportólogo".
 - **§7 entendido.** Sin poda: las 63 variables se toman, también en el seguimiento.
 - **§8 (C1, C2) aplicado.** "Sectores E1-E9", "Anillos A1-A9", y las etiquetas de `catLabel`.
+- **§1 déficit: es la pregunta 2 de arriba** (no lo tocamos aún; hoy Atlas sugiere el déficit por fenotipo y el profesional ya puede sobreescribirlo).
 
 ---
 
