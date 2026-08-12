@@ -52,7 +52,10 @@ export async function getProfessionalForConsent(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("professional_profiles")
-    .select("license, profession, profiles!inner(full_name)")
+    // Hint OBLIGATORIO del FK: professional_profiles tiene TRES relaciones a profiles (profile_id,
+    // rut_verified_by, rut_rejected_by), asi que un embed sin hint es AMBIGUO y revienta en runtime (no en
+    // tsc). El nombre del profesional sale por profile_id. Ver CLAUDE.md (segunda relacion FK ambigua).
+    .select("license, profession, profiles!profile_id!inner(full_name)")
     .eq("id", professionalId)
     .maybeSingle();
   if (error) {
