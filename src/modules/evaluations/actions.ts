@@ -13,6 +13,7 @@ import {
   limitSurveyByToken,
 } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
+import { saveSurveyEdit } from "./data/survey-edit-writer";
 import {
   generateOtpCode,
   maskEmail,
@@ -608,4 +609,37 @@ export async function generateBaseSurveyQrAction(): Promise<BaseSurveyQrState> {
     margin: 1,
   });
   return { error: null, qrDataUrl };
+}
+
+// (a) El profesional edita/completa la encuesta del paciente ANTES del diagnostico. Recibe las respuestas
+// ya estructuradas (el form cliente las arma del FormData). La autorizacion (asignado), el guard
+// pre-diagnostico y el audit los hace el writer; aqui solo se resuelve el actor y se traducen los motivos.
+export type SurveyEditState = { error: string | null; success: boolean };
+
+const SURVEY_EDIT_ERROR: Record<string, string> = {
+  not_assigned: "No estás asignado a este paciente.",
+  already_diagnosed:
+    "Esta evaluación ya tiene un diagnóstico. Para cambiar una respuesta ahora, usa Corregir la evaluación.",
+  not_editable: "Esta evaluación no se puede editar (revisa su estado).",
+};
+
+export async function saveSurveyEditAction(input: {
+  evaluationId: string;
+  answers: { questionId: string; answerValue: string }[];
+}): Promise<SurveyEditState> {
+  const user = await requireUser();
+  const ip = await getClientIp();
+
+  const result = await saveSurveyEdit({
+    evaluationId: input.evaluationId,
+    actorId: user.id,
+    actorEmail: user.email,
+    answers: input.answers,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!result.ok) return { error: SURVEY_EDIT_ERROR[result.reason] ?? "No se pudo guardar.", success: false };
+
+  revalidatePath(`/evaluaciones/${input.evaluationId}`);
+  revalidatePath(`/evaluaciones/${input.evaluationId}/encuesta`);
+  return { error: null, success: true };
 }

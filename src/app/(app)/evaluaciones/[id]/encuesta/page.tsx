@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
-import { getEvaluationHeaderForSession } from "@/modules/diagnoses/data/results-reader";
+import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { SurveyReadonly } from "@/modules/evaluations/components/survey-readonly";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -22,11 +22,16 @@ export default async function EncuestaEvaluacionPage({
   const user = await requireUser();
   if (!canManageReports(user)) redirect("/no-autorizado");
 
-  const [header, domains] = await Promise.all([
+  const [header, domains, results] = await Promise.all([
     getEvaluationHeaderForSession(id),
     getSurveyAnswersForEvaluation(id),
+    getEvaluationResults(id),
   ]);
   if (!header) notFound();
+
+  // Pre-diagnostico: se puede COMPLETAR/EDITAR directo (nada sellado). Con diagnostico, cambiar una
+  // respuesta es el flujo de correccion (versionado), que vive en la propia evaluacion, no aqui.
+  const preDiagnosis = results == null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,10 +49,25 @@ export default async function EncuestaEvaluacionPage({
           {header.patientName} · {header.documentLabel} ·{" "}
           {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
         </p>
-        <p className="text-sm text-muted-foreground">
-          Solo lectura. Editar una respuesta que alimenta el modelo dispara un recálculo del
-          diagnóstico (flujo de corrección, disponible próximamente).
-        </p>
+        {preDiagnosis ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              Vista de las respuestas del paciente. Antes de diagnosticar puedes completarlas o corregirlas
+              (si el paciente dejó algo sin responder, complétalo en consulta).
+            </p>
+            <Link
+              href={`/evaluaciones/${id}/encuesta/editar`}
+              className="inline-flex w-fit items-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+            >
+              Completar respuestas
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Solo lectura. La evaluación ya tiene diagnóstico; para cambiar una respuesta usa Corregir la
+            evaluación (genera una versión nueva), desde la evaluación.
+          </p>
+        )}
       </header>
 
       <SurveyReadonly domains={domains ?? []} />
