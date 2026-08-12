@@ -191,8 +191,15 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     svId = (
       await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1)
     )[0].id;
+    // Pregunta sin field_key DE LA VERSION ACTIVA (svId): con mas de una version publicada (v2+v3), un
+    // limit(1) sin filtrar por version podia agarrar una pregunta de OTRA version y romper la validacion
+    // de la correccion (que valida contra la version activa). Se escopa a svId.
     nonFieldQId = (
-      await db.select({ id: schema.surveyQuestions.id }).from(schema.surveyQuestions).where(isNull(schema.surveyQuestions.fieldKey)).limit(1)
+      await db
+        .select({ id: schema.surveyQuestions.id })
+        .from(schema.surveyQuestions)
+        .where(and(isNull(schema.surveyQuestions.fieldKey), eq(schema.surveyQuestions.surveyVersionId, svId)))
+        .limit(1)
     )[0].id;
   });
 

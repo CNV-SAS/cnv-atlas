@@ -9,6 +9,7 @@ export type SurveyAnswerView = {
   questionId: string;
   number: number; // numeracion continua 1..N por el orden (coincide con la del intake); ver survey-answers-reader
   questionText: string;
+  questionHint: string | null; // ayuda bajo el enunciado (ejemplos/porciones D1, aclaraciones); display
   questionType: string; // texto | numero | opcion | opcion_multiple | contador | escala
   fieldKey: string | null; // marca si alimenta el motor (no se edita aqui: eso es recomputo)
   usedInDiagnosis: boolean; // si alimenta el DIAGNOSTICO (gatea dfi.complete): a priorizar al completar

@@ -104,6 +104,7 @@ export function SurveyEditForm({
                   id: q.questionId,
                   number: q.number,
                   text: q.questionText,
+                  hint: q.questionHint,
                   type: q.questionType,
                   section: dom.section,
                   options: q.options.map((o, idx) => ({ id: `${q.questionId}-${idx}`, text: o })),

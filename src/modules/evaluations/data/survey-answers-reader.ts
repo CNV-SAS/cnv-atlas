@@ -17,6 +17,7 @@ import type { SurveyDomain } from "./survey-answers-types";
 type QuestionRow = {
   id: string;
   question_text: string;
+  hint?: string | null; // opcional: los tests construyen filas sin este campo
   question_type: string;
   field_key: string | null;
   used_in_diagnosis?: boolean | null; // opcional: los tests construyen filas sin este campo
@@ -61,6 +62,7 @@ export function groupSurveyAnswers(
       number: i + 1,
       questionId: q.id,
       questionText: q.question_text,
+      questionHint: q.hint ?? null,
       questionType: q.question_type,
       fieldKey: q.field_key,
       usedInDiagnosis: q.used_in_diagnosis ?? false,
@@ -89,7 +91,7 @@ export async function getSurveyAnswersForEvaluation(
   const [questionsRes, answersRes] = await Promise.all([
     supabase
       .from("survey_questions")
-      .select("id, question_text, question_type, field_key, used_in_diagnosis, section, order_index")
+      .select("id, question_text, hint, question_type, field_key, used_in_diagnosis, section, order_index")
       .eq("survey_version_id", resp.survey_version_id)
       .order("order_index"),
     supabase.from("survey_answers").select("question_id, answer_value").eq("response_id", resp.id),

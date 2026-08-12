@@ -28,7 +28,7 @@ export async function getActiveSurvey(): Promise<ActiveSurvey | null> {
 
   const { data: questions, error: qErr } = await supabase
     .from("survey_questions")
-    .select("id, question_text, question_type, section, order_index, survey_options(id, option_text, order_index)")
+    .select("id, question_text, hint, question_type, section, order_index, survey_options(id, option_text, order_index)")
     .eq("survey_version_id", version.id)
     .order("order_index", { ascending: true });
   if (qErr) throw new Error(`survey-reader: questions: ${qErr.message}`);
@@ -43,6 +43,7 @@ export async function getActiveSurvey(): Promise<ActiveSurvey | null> {
       id: q.id,
       number: i + 1,
       text: q.question_text,
+      hint: q.hint,
       type: q.question_type,
       section: q.section,
       options: [...(q.survey_options ?? [])]

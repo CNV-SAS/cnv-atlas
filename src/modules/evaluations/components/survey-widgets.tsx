@@ -158,11 +158,19 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
 // valor actual para la EDICION del profesional; el intake publico no lo pasa (arranca vacio).
 export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: string | null }) {
   const a = answer ?? undefined;
+  // Rotulo "puedes elegir varias" derivado del tipo (ECA-label): lo lleva el widget, no el seed, asi vale
+  // para toda pregunta de seleccion multiple sin duplicar contenido.
+  const isMulti = q.type === "opcion_multiple";
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-sm font-medium text-foreground">
         <span className="text-muted-foreground">{q.number}.</span> {q.text}
       </Label>
+      {/* Ayuda bajo el enunciado: ejemplos + ancla de porcion en D1, o aclaracion de item (ECA2/ECA3). */}
+      {q.hint ? <p className="text-xs text-muted-foreground">{q.hint}</p> : null}
+      {isMulti ? (
+        <p className="text-xs font-medium text-muted-foreground">Puedes elegir varias.</p>
+      ) : null}
       {q.type === "opcion" && q.options.length > 0 ? (
         <PillsSingle id={q.id} options={q.options} defaultValue={a ?? ""} />
       ) : q.type === "opcion_multiple" && q.options.length > 0 ? (

@@ -77,7 +77,11 @@ const ROLE_IDS = {
 const PROFESSIONAL_PROFILE_ID = "33333333-3333-3333-3333-333333333333";
 const MODEL_VERSION_ID = "44444444-4444-4444-4444-444444444444";
 const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
-const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555552";
+// v3 (2026-08-12): pase de instrumento (porte de contenido de Gildardo, ATLAS_v8.html). Bump de UUID a
+// proposito (no in-place): las evaluaciones existentes quedan en la v2 (55...552), completas y no
+// corregibles (gate de version, CP3). Ver el changelog en la creacion de la survey_version abajo.
+const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555553";
+// La v2 (55...552) se preserva intacta (los ids llevan la version): no se toca al sembrar la v3.
 // UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
 // asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
 // para la columna uuid (el motor no usa estos ids; resuelve por field_key/option_text).
@@ -132,6 +136,9 @@ type SurveyQ = {
   // El intake (B7.1) renderiza el widget segun este tipo; el motor no lo usa.
   type: "opcion" | "opcion_multiple" | "contador" | "escala";
   text: string;
+  // Ayuda opcional bajo el enunciado (el `sub` del instrumento de Gildardo): ejemplos + ancla de porcion en
+  // D1, o aclaracion de item. Display puro, el motor no lo lee. Sin emoji (CLAUDE.md: sin emojis en UI).
+  sub?: string;
   options?: string[];
   engine?: boolean; // el motor de DIAGNOSTICO lo lee -> field_key = key + used_in_diagnosis = true
   // El motor de TRATAMIENTO lo lee (no el diagnostico) -> field_key = key, pero used_in_diagnosis = FALSE.
@@ -174,21 +181,21 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // neutro) SEPARADA de procesadas (d1_12_i, riesgo); d1_10 = "Carnes blancas". Todos con
   // patternEngine: field_key = key, used_in_diagnosis=false, para alimentar el DISPLAY calcPatron
   // (no el diagnostico). calcPatron lee el ORDINAL de la opcion (FREQ_OPC), no el texto.
-  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_6_i", type: "opcion", text: "Lácteos y fermentados (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_8_i", type: "opcion", text: "Cereales integrales (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_9_i", type: "opcion", text: "Tubérculos y raíces (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_13_i", type: "opcion", text: "Azúcares y dulces (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", sub: "espinaca, acelga, brócoli, tomate, zanahoria, ahuyama, remolacha, pepino (frescas, de hoja verde y fuente de vitamina A) · Un puño cerrado", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", sub: "banano, mango, papaya, guayaba, naranja, lulo, tomate de árbol (enteras, no en jugo) · 1 fruta mediana o un pocillo", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", sub: "fríjol, lenteja, garbanzo, arveja, habas · Un pocillo arriero cocido", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", sub: "atún, sardina, bocachico, tilapia, salmón, camarón (frescos, refrigerados o congelados) · Tamaño de su celular", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", sub: "aguacate, aceite de oliva (preferiblemente extra virgen), maní, nueces, almendras, semillas, coco · ¼ aguacate, 1 cucharadita de aceite o un puñado de frutos secos", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_6_i", type: "opcion", text: "Lácteos y fermentados (frecuencia de consumo)", sub: "leche, yogur natural, kumis, kéfir, queso fresco · 1 vaso o 2 cucharadas de queso", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", sub: "huevo entero · 1 unidad", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_8_i", type: "opcion", text: "Cereales integrales y otros (frecuencia de consumo)", sub: "avena, quinua, maíz, arroz integral, cebada, cuchuco, pan integral · ½ pocillo cocido o 1 tajada", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_9_i", type: "opcion", text: "Raíces, tubérculos y plátanos (frecuencia de consumo)", sub: "papa, yuca, plátano, arracacha, ñame, batata · 1 papa mediana o ½ plátano", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", sub: "pollo, pavo, aves sin piel · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas blancas (frecuencia de consumo)", sub: "pan blanco, arroz blanco, pasta blanca, galletas, arepa de harina refinada · ½ pocillo o 1 unidad", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", sub: "salchicha, chorizo, jamón, tocineta, mortadela, enlatados · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_13_i", type: "opcion", text: "Azúcares añadidos y bebidas azucaradas (frecuencia de consumo)", sub: "gaseosas, jugos de caja, dulces, chocolatinas, postres, exceso de panela o azúcar · 1 vaso o 1 unidad", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", sub: "productos de paquete, papas fritas, comidas rápidas, hamburguesa, pizza, perro, sopas de sobre, caldos concentrados y sazonadores industriales · 1 paquete o 1 porción", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro) · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
   { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"], patternEngine: true },
   { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"], patternEngine: true },
   { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"], patternEngine: true },
@@ -218,7 +225,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // D5 · Epigenetico / LE8
   { key: "d5_36", type: "opcion", text: "¿Le han diagnosticado hipertensión arterial?", options: ["Sí", "No", "No sé"], engine: true },
   { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
-  { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna"], engine: true },
+  { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", sub: "Padres, hermanos, abuelos", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna"], engine: true },
   { key: "d5_39", type: "opcion_multiple", text: "¿Tiene alguno de estos diagnósticos personales?", options: ["Diabetes tipo 1", "Diabetes tipo 2", "Prediabetes", "HTA", "Dislipidemia (colesterol alto)", "Hipertrigliceridemia", "Hipotiroidismo", "Hipertiroidismo", "Obesidad", "Síndrome Metabólico", "Cáncer (activo)", "Cáncer (en remisión)", "Enfermedad cardiovascular", "Insuficiencia renal", "Enfermedad hepática", "Artritis/Artrosis", "Osteoporosis", "Depresión", "Ansiedad", "Trastornos de la conducta alimentaria", "Ninguna", "Otra"], engine: true },
   { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"], treatmentEngine: true },
   { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
@@ -226,13 +233,17 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // D6 · Alergias y salud digestiva
   { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos"] },
   { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa"] },
-  { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", options: GI_OPC },
+  { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", sub: "Síntomas digestivos (ítems 45 a 51): con qué frecuencia los presenta", options: GI_OPC },
   { key: "d6_46", type: "opcion", text: "Gases / flatulencia", options: GI_OPC },
   { key: "d6_47", type: "opcion", text: "Dolor abdominal", options: GI_OPC },
   { key: "d6_48", type: "opcion", text: "Diarrea", options: GI_OPC },
   { key: "d6_49", type: "opcion", text: "Estreñimiento", options: GI_OPC },
   { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC },
   { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC },
+  // ECA1: cirugias digestivas/metabolicas (v8 num 63, isNew). Solo REGISTRO clinico (P-16, Gildardo
+  // 2026-08-09: NO modifica el calculo) -> sin engine/field_key. Va en D6 para agrupar con "Alergias y
+  // digestion" (el order_index se recalcula solo por posicion; D7/D8 se corren una posicion).
+  { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"] },
   // D7 · Hidratacion (bebidas: conteo por dia)
   { key: "d7_52", type: "contador", text: "Café (tazas por día)" },
   { key: "d7_53", type: "contador", text: "Té (tazas por día)" },
@@ -459,16 +470,30 @@ async function main() {
     ).error,
   );
 
-  // 6. survey_template + survey_version + contenido REAL (62 preguntas, D1-D8).
+  // 6. survey_template + survey_version + contenido REAL (D1-D8, v3: 64 preguntas tras ECA1 cirugias).
   check(
     "survey_templates",
     (await supabase.from("survey_templates").upsert({ id: SURVEY_TEMPLATE_ID, name: "Encuesta ANI-BIS-E", description: "Instrumento clinico completo (D1-D8) portado del prototipo final de Gildardo. field_key marca las preguntas que alimentan el motor congelado." }, { onConflict: "id" })).error,
   );
   check(
     "survey_versions",
-    // version_number 2: la encuesta avanzo al instrumento de 15 grupos (C9). Contenido nuevo que
-    // cambia lo que responde el paciente -> version nueva (regla de versionado, BACKLOG 2026-08-06).
-    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 2 }, { onConflict: "id" })).error,
+    // version_number 3 (2026-08-12): PASE DE INSTRUMENTO. Contenido nuevo que cambia lo que ve/responde el
+    // paciente -> version nueva (regla de versionado). Incluye, todos VERBATIM de ATLAS_v8.html:
+    //   1) Ejemplos de alimentos y anclas de porcion en D1 (columna hint; ECA2): "espinaca, acelga...;
+    //      un puno cerrado". Ayuda al paciente a estimar cantidades -> mejor dato de origen.
+    //   2) Nombres de grupos D1 alineados a v8 (ECA3): "Raices, tuberculos y platanos", "Cereales
+    //      integrales y otros", "Cereales refinados y harinas blancas", "Azucares aniadidos y bebidas
+    //      azucaradas".
+    //   3) Pregunta NUEVA de cirugias digestivas/metabolicas d6_qx (ECA1, v8 num 63). Solo registro
+    //      (P-16, sin field_key); no altera el diagnostico.
+    //   4) Descripciones de item (hint): d5_38 "Padres, hermanos, abuelos"; separador de sintomas
+    //      digestivos en d6_45.
+    //   5) Rotulo "puede seleccionar varios": lo deriva el widget del tipo opcion_multiple (no en el seed);
+    //      y texto libre al elegir "Otra"/"Otros" (ECA4a), tambien en el widget.
+    // NO toca ninguna opcion de los 13 field_key del diagnostico (candado de acoplamiento verde). La v2
+    // (SURVEY_VERSION_PREV_ID) se PRESERVA intacta (ids con version): las evaluaciones viejas siguen
+    // completas y quedan no corregibles (gate de version).
+    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 3 }, { onConflict: "id" })).error,
   );
   // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
   // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
@@ -489,7 +514,12 @@ async function main() {
   check("survey_questions delete", (await supabase.from("survey_questions").delete().eq("survey_version_id", SURVEY_VERSION_ID)).error);
 
   const surveyQuestionRows = SURVEY_QUESTIONS.map((q, i) => ({
-    id: surveyUuid("q", q.key),
+    // Id de pregunta CON la version: al bumpear SURVEY_VERSION_ID, la version nueva recibe ids NUEVOS y
+    // las filas de la version anterior quedan intactas (no las pisa el upsert por id). Asi una evaluacion
+    // vieja sigue resolviendo su expectedFieldKeys contra SU version (garantia (a)), y el gate de correccion
+    // la ve como version anterior (garantia (b)). Antes el id no llevaba la version y un bump movia las
+    // preguntas a la version nueva, dejando la vieja sin preguntas.
+    id: surveyUuid("q", SURVEY_VERSION_ID, q.key),
     survey_version_id: SURVEY_VERSION_ID,
     question_text: q.text,
     question_type: q.type,
@@ -498,6 +528,7 @@ async function main() {
     // y los del patron (patternEngine) reciben field_key pero NO cuentan para dfi.complete (que mide
     // completitud del diagnostico, no de la encuesta). Ver PLAN_FIELDKEYS_TRATAMIENTO.
     field_key: q.engine || q.treatmentEngine || q.patternEngine ? q.key : null,
+    hint: q.sub ?? null,
     section: sectionFor(q.key),
     order_index: i + 1,
     data_class: "clinical" as const, // toda respuesta de salud es dato clinico
@@ -509,8 +540,8 @@ async function main() {
   // inventa scoring; los cortes viven en el motor). order_index preserva el orden del HTML.
   const surveyOptionRows = SURVEY_QUESTIONS.flatMap((q) =>
     (q.options ?? []).map((opt, j) => ({
-      id: surveyUuid("o", q.key, String(j)),
-      question_id: surveyUuid("q", q.key),
+      id: surveyUuid("o", SURVEY_VERSION_ID, q.key, String(j)),
+      question_id: surveyUuid("q", SURVEY_VERSION_ID, q.key),
       option_text: opt,
       value: null,
       order_index: j + 1,
@@ -685,7 +716,7 @@ async function main() {
   console.log(`Seed completo (${SEED_DEMO ? "con datos demo" : "MINIMO, sin datos demo"}):`);
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
-  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v2 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v3 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
   if (SEED_DEMO) {
     console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
     console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);

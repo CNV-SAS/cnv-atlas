@@ -6,6 +6,7 @@ export type SurveyQuestionView = {
   id: string;
   number: number; // numeracion continua 1..N derivada del orden (no del texto); ver survey-reader
   text: string;
+  hint: string | null; // ayuda bajo el enunciado (ejemplos + ancla de porcion en D1, o aclaracion de item)
   type: string; // texto, numero, opcion, opcion_multiple
   section: string | null; // dominio para agrupar en el intake (B7.1)
   options: SurveyOptionView[];
