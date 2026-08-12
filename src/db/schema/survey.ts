@@ -60,6 +60,10 @@ export const surveyQuestions = pgTable(
     // encuesta (instrumento clinico completo) queda en null. Las cadenas de opcion
     // deben coincidir CARACTER por caracter con lo que espera el motor congelado.
     fieldKey: text("field_key"),
+    // Texto de AYUDA opcional bajo el enunciado (el `sub` del instrumento de Gildardo): ejemplos de
+    // alimentos y ancla de porcion en D1 ("espinaca, acelga...; un puno cerrado"), o una aclaracion de item
+    // ("Padres, hermanos, abuelos"). Display puro: el motor NUNCA lo lee (solo lee option_text). Nullable.
+    hint: text("hint"),
     // Dominio de la encuesta (D1-D8) al que pertenece, para agrupar visualmente en el
     // intake (B7.1). Etiqueta orientada al paciente, sin jerga. Nullable por si una
     // pregunta no cae en un dominio; el intake la agrupa en "Otras" en ese caso.
