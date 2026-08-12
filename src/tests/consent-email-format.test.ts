@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { markdownToEmailHtml, markdownToPlainText } from "@/modules/consent/consent-email-format";
 import { buildConsentInstance } from "@/modules/consent/consent-instance";
-import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
+import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
 
 const SAMPLE = [
   "## 2. Título",
@@ -81,7 +81,7 @@ describe("consent-email-format: texto plano alternativo", () => {
 });
 
 describe("consent-email-format: sobre una instancia real completa", () => {
-  const instance = buildConsentInstance(CONSENT_TEXT_V1_7, {
+  const instance = buildConsentInstance(CONSENT_TEXT_V1_0, {
     branch: "menor",
     patient: { name: "Sofía Ramírez", document: "TI 1122334455" },
     professional: { fullName: "Ana Gómez", profession: "Nutricionista", license: "N-1" },

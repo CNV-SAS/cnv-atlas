@@ -128,6 +128,15 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 
 Los exports de investigación se gobiernan vía `research_datasets` y nunca incluyen identificadores directos.
 
+### Pertenencia étnica (dato sensible, uso restringido a investigación)
+
+La pertenencia étnica es dato sensible (Ley 1581 art. 5). Atlas la captura solo por **autorreconocimiento** del paciente (categorías del DANE + "Prefiero no responder" como valor distinto de vacío), NUNCA asignada por el profesional ni inferida por el sistema. Reglas de gobernanza (consent v1.0, revisión legal 2026-08-11):
+
+1. **Capturar NO habilita usar.** Que el dato esté en `patient_profiles.ethnicity` no autoriza su uso analítico por sí solo.
+2. **El uso requiere la autorización de investigación** (`investigacion`), que en v1.0 **es la única** autorización relevante: la etnia se fundió en esa casilla (comparten finalidad). No hay una autorización de etnia separada. Sin `investigacion` vigente, la etnia no entra a ningún análisis.
+3. **Solo uso AGREGADO por cohortes,** nunca fila a fila re-identificable.
+4. **Supresión de celdas bajo el umbral (obligatoria, no opcional).** Una categoría con pocos individuos identifica a la persona por la categoría sola. **Ejemplo concreto del dictamen:** hay menos de **tres mil personas Rrom** en toda Colombia; un paciente Rrom en una cohorte queda identificado por la categoría, aunque se hayan quitado los identificadores directos. Por eso las celdas por debajo del umbral (k-anonimato, ver arriba) se suprimen o generalizan antes de cualquier reporte o export.
+
 ---
 
 ## Custodia de la historia clínica
@@ -147,7 +156,7 @@ Reglas confirmadas por la revisión jurídica (2026-07). Cambian el diseño futu
 **(b) Sin continuidad o sin aceptación: exportar al saliente + anonimizar en CNV.** Si el paciente no dio continuidad, o no acepta al profesional entrante, se aplica la ruta ya existente: **exportar la historia clínica al profesional saliente** (custodio legal por 15 años) y **anonimizar el dato en CNV**, conforme a la Cláusula 12 del Anexo 3 (ya vigente, no es nueva). Es el mismo mecanismo que el offboarding de un Integrante.
 
 **(c) Consentimiento dinámico: revocación por finalidad, hacia adelante.** El consentimiento se revoca **por finalidad** (por autorización concreta), no con un interruptor general. La revocación opera **hacia adelante, no retroactiva**; una **nueva** autorización aplica **desde que se otorga**. Casos:
-- Revocar una autorización **necesaria** (`servicio`, `datos_sensibles`, `internacional_ia`) **bloquea evaluaciones nuevas**, pero **no borra la historia ya capturada** (la obligación legal de conservar 15 años manda sobre la revocación; ver Custodia de la historia clínica).
+- Revocar una autorización **necesaria** (`servicio`, `datos_sensibles`) **bloquea evaluaciones nuevas**, pero **no borra la historia ya capturada** (la obligación legal de conservar 15 años manda sobre la revocación; ver Custodia de la historia clínica). (Consent v1.0: `internacional_ia` dejó de ser necesaria, se absorbió en `servicio`; queda en el enum por retención de los que firmaron v1.7.)
 - Una revocación **a media sesión** detiene la captura **desde ese instante**, pero **no descarta lo ya capturado** en la sesión.
 
 **(d) Sellar cada dato con el consentimiento vigente al capturarlo.** Cada dato clínico (o cada sesión/lote) se **sella con el estado de consentimiento vigente en el momento de la captura**. Es la extensión del principio de **constelación de versiones** (`ARCHITECTURE.md` regla 7: `engine_version`, `survey_version_id`, `model_version_id`, `rules_version`) **al consentimiento**: un registro clínico sabe bajo qué autorizaciones se capturó, para que una revocación posterior (hacia adelante) no reescriba la base legal de lo ya capturado.
