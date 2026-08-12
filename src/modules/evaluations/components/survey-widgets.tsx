@@ -261,19 +261,33 @@ export function SurveyAnswerReadonly({
 
   if (questionType === "opcion" || questionType === "opcion_multiple") {
     const selected = questionType === "opcion_multiple" ? parseMulti(answerValue) : [answerValue];
-    // Si hay catalogo de opciones, muestra todas resaltando las elegidas; si no, solo las elegidas.
-    const chips = options.length ? options : selected;
+    // Descompone cada valor guardado igual que el form de edicion: "Otra: penicilina" -> base "Otra" +
+    // texto "penicilina". El catalogo trae "Otra" (no "Otra: penicilina"), asi que sin descomponer la
+    // opcion sale apagada y el texto libre del paciente (alergia, antecedente) se PIERDE en la lectura
+    // del profesional. Es informacion clinica: no puede desaparecer en pantalla.
+    const parts = selected.map((v) => {
+      const s = splitOther(v);
+      return s ? { base: s.base, text: s.text } : { base: v, text: "" };
+    });
+    // Catalogo si existe; si no, las bases elegidas. Anexa cualquier base elegida que NO este en el
+    // catalogo (p. ej. respuesta de una version de encuesta distinta) para no descartarla en silencio.
+    const baseChips = options.length ? options : parts.map((p) => p.base);
+    const extraChips = parts.map((p) => p.base).filter((b) => !baseChips.includes(b));
+    const chips = [...baseChips, ...extraChips];
     return (
       <div className="flex flex-wrap gap-2">
         {chips.map((o, i) => {
-          const active = selected.includes(o);
+          const match = parts.find((p) => p.base === o);
+          const active = Boolean(match);
+          // La opcion elegida con texto libre ("Otra") lo muestra pegado al chip: "Otra: penicilina".
+          const label = match && match.text ? `${o}: ${match.text}` : o;
           return (
             <span
               key={`${o}-${i}`}
               aria-pressed={active}
               className={`${pillClass(active)} cursor-default ${active ? "" : "opacity-50"}`}
             >
-              {o}
+              {label}
             </span>
           );
         })}
