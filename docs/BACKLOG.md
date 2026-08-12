@@ -116,6 +116,8 @@ Ligado a la **corrección de nombre/documento** (más delicada: el documento es 
 
 ## Renumerar el consentimiento a v1.0 en el lanzamiento + migrarlo a marcadores explícitos — decisión del Hito 3 (registrado 2026-08-10)
 
+> **HECHO (2026-08-12), y AMPLIADO por revisión legal.** Consent v1.0 sellado (commits `ac1b336`/`b7a972c`/`6b577f1`): renumerado a v1.0, migrado a MARCADORES explícitos + delimitadores de rama (con verificación de que no quede ninguno visible), sin em-dash. Y la revisión legal (`CORRECCIONES_CONSENTIMIENTO_ATLAS.md`) redujo de 8 casillas a 6 (3 necesarias: servicio absorbe internacional_ia; datos_sensibles; medios electrónicos. 3 opcionales: investigación con etnia fundida; continuidad asistencial y publicidad diferenciadas). Regla 15 a 2 necesarias. Etnia capturada, gateada a investigación (doble capa: UI + writer). DATA_GOVERNANCE con la gobernanza (ejemplo Rrom). Hash `dfdcaccb...`. Pendiente operativo: `pnpm db:migrate`+`db:seed`+`db:types` en la nube; y el smoke de navegador del consentimiento (superficie legal). Lo de abajo es el registro del análisis previo.
+
 Son **el mismo bump**, y por eso se hacen juntos. Ambos son decisión del Hito 3 (cuando se decida si el entorno de staging se limpia); no se tocan antes.
 
 - **Renumerar 1.7 → 1.0.** La v1.7 viene de iteraciones internas que **ningún paciente vio**. Salir a producción con pacientes reales en "1.7" sugiere seis versiones previas firmadas por nadie. Al renumerar: se **recalcula el hash** (mismo texto, distinta cadena de versión → hash nuevo), el **changelog conserva la historia interna** como nota, y los **consentimientos demo se descartan** con la base de staging. Ligado a la decisión de limpiar staging: son la misma decisión.
