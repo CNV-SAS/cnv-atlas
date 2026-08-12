@@ -215,13 +215,16 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 
 ### A. Contenido (frozen → Gildardo / bloque de re-auditoría, NO auto-editar)
 
+> **PASE DE INSTRUMENTO HECHO (2026-08-12): ECA1, ECA2, ECA3 y los rótulos PORTADOS como encuesta v3** (bump de UUID, v2 preservada). Verbatim de `ATLAS_v8.html`. Candado de acoplamiento VERDE (no toca los 13 field_key). Commits `54e61ae` (columna hint) + `40ab9ec` (v3). ECA4a SEPARADO (ver abajo). Al pushear: `pnpm db:migrate` + `pnpm db:seed` + `pnpm db:types` contra la nube; el reseed vuelve NO corregibles las evaluaciones de v2 (gate de version, correcto).
+
 | # | Elemento | HTML v8 | Atlas | Acción |
 |---|---|---|---|---|
-| ECA1 | **Pregunta de CIRUGÍAS digestivas/metabólicas** (`d6_qx`, ítem 63): "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?" (Colecistectomía, bariátrica, resección intestinal, gastrectomía, apendicectomía, Otra) | existe (D6) | **NO existe** | **Portarla** (con Gildardo: ¿field_key? la cirugía bariátrica podría importar al motor nutricional). Es la pieza que falta para llegar a 64 |
-| ECA2 | **D1: ejemplos y ancla de porción** por grupo (sub "espinaca, acelga..." + "📏 Un puño cerrado") | los 15 grupos los traen | Atlas solo tiene "{grupo} (frecuencia de consumo)", sin ejemplos ni porción | ¿portar los aids? ayudan al paciente. A Gildardo/re-auditoría |
-| ECA3 | **Nombres de grupos D1** | "Raíces, tubérculos y plátanos", "Azúcares añadidos y bebidas azucaradas", "Cereales integrales y otros", "Grasas saludables (aguacate...)" | "Tubérculos y raíces", "Azúcares y dulces", "Cereales integrales", "Grasas saludables" | alinear textos (verbatim de Gildardo). NO tocan el motor (calcPatron lee el ORDINAL, no el texto) |
-| ECA4 | **Opción "Otros/Otras" + texto libre** en d4_35 (suplementos), d6_43 (alergias) | existen (+ input libre) | faltan esas opciones; Atlas no tiene tipo de widget "texto libre de seguimiento" | a Gildardo/re-auditoría; ¿se capturan las especificaciones "otro"? |
-| ECA5 | Opciones ENGINE-acopladas (d5_39 diagnósticos, d5_38 familiares, d2_21 métodos) | listas completas | **coinciden verbatim** | ninguna (candado `survey-engine-coupling.test.ts` intacto) |
+| ECA1 | **Pregunta de CIRUGÍAS digestivas/metabólicas** (`d6_qx`, ítem 63) | existe (D6) | **HECHO (v3)** | Portada. Solo registro (P-16: sin field_key, no altera el cálculo). |
+| ECA2 | **D1: ejemplos y ancla de porción** por grupo | los 15 grupos los traen | **HECHO (v3)** | Portados a la columna `hint` (sin emoji). Ayudan al paciente a estimar cantidades. |
+| ECA3 | **Nombres de grupos D1** | v8 | **HECHO (v3)** | Alineados verbatim a v8. NO tocan el motor (calcPatron lee el ORDINAL). |
+| ECA4a | **Texto libre en "Otra"** (hoy solo existe en d5_39 ROJO y d5_40) | existe (+ input libre) | **SEPARADO del pase** | Alimentar texto libre en d5_39 (lista roja) cambia las entradas por-substring del motor (escribir "diabetes" dispararía el protocolo DM): es decisión de comportamiento, no porte. Pendiente aparte. |
+| ECA4b | **A qué preguntas agregar la opción "Otro"** | — | **para Gildardo** | Borrador listo (`docs/entregas/ECA4b_OPCION_OTRO_PARA_GILDARDO.md`); se manda cuando responda la ronda. |
+| ECA5 | Opciones ENGINE-acopladas (d5_39, d5_38, d2_21) | listas completas | **coinciden verbatim** | ninguna (candado intacto) |
 
 ### B. Demografía / datos personales (captura — aquí cae EA3)
 
