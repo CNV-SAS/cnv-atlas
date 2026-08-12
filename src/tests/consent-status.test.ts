@@ -16,14 +16,14 @@ const base = {
 };
 
 describe("buildConsentStatus", () => {
-  it("las 3 necesarias vigentes => allNecessaryActive", () => {
+  it("las 2 necesarias vigentes (v1.0) => allNecessaryActive", () => {
+    // v1.0 (revision legal): las necesarias del gate son DOS (internacional_ia dejo de ser autorizacion).
     const s = buildConsentStatus([
       { ...base, consent_type: "servicio" },
       { ...base, consent_type: "datos_sensibles" },
-      { ...base, consent_type: "internacional_ia" },
     ]);
     expect(s.allNecessaryActive).toBe(true);
-    expect(s.necessary).toHaveLength(3);
+    expect(s.necessary).toHaveLength(2);
     expect(s.necessary.every((n) => n.active && n.version === "1.7")).toBe(true);
     expect(s.representative).toBeNull();
   });

@@ -2,6 +2,8 @@
 
 Antes de iniciar su evaluación, necesitamos informarle cómo se tratarán sus datos personales y de salud, y obtener su autorización libre, voluntaria e informada. Lea con atención y marque las casillas correspondientes al final.
 
+Su participación es voluntaria y puede retirarse en cualquier momento sin consecuencias sobre su atención. La información se trata conforme a los principios de beneficencia, no maleficencia, autonomía y justicia que rigen la práctica en salud.
+
 ---
 
 ## 2. ¿Quién trata sus datos?
@@ -18,7 +20,7 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 
 | | |
 |---|---|
-| **Responsable (CNV)** | Connected Nutrition Ventures S.A.S. — NIT 902045562-3 — Medellín, Colombia |
+| **Responsable (CNV)** | Connected Nutrition Ventures S.A.S., NIT 902045562-3, Medellín, Colombia |
 | **Canal de derechos** | protecciondatos@cnvsystem.com |
 
 ---
@@ -27,7 +29,8 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 
 - **Datos de identificación:** nombre, documento, fecha de nacimiento, teléfono, correo.
 - **Datos sociodemográficos:** según la encuesta.
-- **Datos sensibles de salud:** hábitos, composición corporal, mediciones de bioimpedancia espectroscópica, antecedentes, conductas y síntomas, entre otros.
+- **Pertenencia étnica (opcional):** dato sensible que usted puede informar voluntariamente, o no.
+- **Datos sensibles de salud:** antecedentes personales y familiares, diagnósticos y medicamentos, hábitos de alimentación, actividad física y sueño, composición corporal, mediciones de bioimpedancia espectroscópica, síntomas, y señales relacionadas con la conducta alimentaria, entre otros.
 - **Determinantes y factores de estilo de vida (enfoque epigenético):** respuestas de la encuesta. No se realizan análisis genéticos de laboratorio ni se toman muestras biológicas.
 
 > **Sus datos sensibles son facultativos.**
@@ -52,9 +55,9 @@ Los siguientes usos son necesarios para prestarle el servicio que solicitó; sin
 
 Los siguientes usos son opcionales. Usted puede recibir su atención aunque no los autorice:
 
-- Participar, con sus datos **seudonimizados** (nunca con sus datos de identificación), en investigación científica del modelo ANI-BIS-E y de la medicina bioeléctrica, realizada directamente por el Observatorio Latinoamericano de Bioimpedancia (ObBIA-Latam) o en colaboración con instituciones académicas y profesionales de investigación que trabajen bajo la dirección científica de ObBIA-Latam. Esta investigación utiliza únicamente sus datos clínicos y funcionales estructurados (mediciones, indicadores, respuestas de la encuesta, tratamiento y seguimiento), sin incluir observaciones o notas en texto libre de su profesional. Cuando un estudio específico requiera identificar el resultado de un paciente en una publicación con fines académicos, se le solicitará un consentimiento de investigación adicional y separado, propio de ese estudio.
-- Recibir comunicaciones de continuidad de su atención dentro de la red de profesionales de CNV.
-- Recibir información sobre novedades, productos y otros servicios del ecosistema CNV (comunicaciones comerciales).
+- Participar, con sus datos seudonimizados (nunca con sus datos de identificación), en investigación científica del modelo ANI-BIS-E y de la medicina bioeléctrica, realizada directamente por el Observatorio Latinoamericano de Bioimpedancia (ObBIA-Latam) o en colaboración con instituciones académicas y profesionales de investigación que trabajen bajo la dirección científica de ObBIA-Latam. Esta investigación utiliza únicamente sus datos clínicos y funcionales estructurados (mediciones, indicadores, respuestas de la encuesta, tratamiento y seguimiento), sin incluir observaciones o notas en texto libre de su profesional. **Si usted decide informar su pertenencia étnica, este dato se utiliza dentro de esta misma finalidad, para que los análisis puedan considerar las diferencias de composición corporal entre poblaciones; informarlo es completamente voluntario y no responder no tiene ninguna consecuencia sobre su evaluación ni su tratamiento.** Cuando un estudio específico requiera identificar el resultado de un paciente en una publicación con fines académicos, se le solicitará un consentimiento de investigación adicional y separado, propio de ese estudio.
+- **Continuidad de su atención.** Que CNV pueda contactarle para asegurar la continuidad de su proceso en salud dentro de la red de profesionales. Esta autorización es relevante si el profesional que le atiende deja de operar el modelo ANI-BIS-E: en ese caso, CNV podrá informarle sobre las opciones disponibles para continuar su tratamiento con otro profesional de la red, sin que ello implique el traslado automático de su historia clínica, que siempre requiere su autorización específica.
+- **Comunicaciones comerciales.** Recibir información promocional sobre novedades, productos, descuentos y otros servicios del ecosistema CNV. Esta autorización tiene una finalidad exclusivamente comercial y es completamente independiente de su atención en salud.
 
 ---
 
@@ -99,19 +102,18 @@ ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada,
 ## 12. Autorizaciones
 
 ### Autorizaciones necesarias para el servicio
-*Debe marcar las cuatro para continuar.*
+*Debe marcar las tres para continuar.*
 
-- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4.
+- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4, y declaro conocer el tratamiento internacional (numeral 7), el uso de sistemas automatizados (numeral 6) y mis derechos como titular (numeral 9).
 - [x] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
-- [x] He sido informado/a del tratamiento internacional (numeral 7) y del uso de sistemas automatizados (numeral 6), y conozco mis derechos (numeral 9).
 - [x] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
 
 ### Autorizaciones opcionales
 *No afectan su atención. Marque solo las que desee.*
 
-- [x] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam (numeral 5).
-- [ ] Autorizo recibir comunicaciones de continuidad de mi atención dentro de la red CNV (numeral 5).
-- [ ] Autorizo recibir comunicaciones comerciales sobre novedades y otros servicios del ecosistema CNV (numeral 5).
+- [x] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam, y el uso de mi pertenencia étnica para el análisis de diferencias entre poblaciones, cuando decida informarla (numeral 5).
+- [ ] **Continuidad asistencial.** Autorizo que CNV me contacte para asegurar la continuidad de mi proceso en salud dentro de la red, especialmente si el profesional que me atiende deja de operar el modelo (numeral 5).
+- [ ] **Publicidad.** Autorizo recibir comunicaciones comerciales y promocionales del ecosistema CNV (numeral 5).
 
 ---
 
@@ -121,7 +123,7 @@ Al marcar las casillas anteriores e ingresar el código de verificación que Atl
 
 **Si el paciente es mayor de edad**, firma el propio paciente, con el nombre y documento registrados en el paso de identificación:
 
-- Nombre completo: `Juan Pérez López`
-- Número de documento: `CC 1234567890`
+- Nombre completo: Juan Pérez López
+- Número de documento: CC 1234567890
 
-**Fecha:** `(se generará al confirmar)`
+**Fecha:** (se generará al confirmar)

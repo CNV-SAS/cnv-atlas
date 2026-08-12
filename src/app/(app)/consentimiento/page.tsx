@@ -1,6 +1,7 @@
 import { requireUser } from "@/modules/auth/session";
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
-import { CONSENT_TEXT_V1_7, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.7";
+import { buildConsentFullPreview } from "@/modules/consent/consent-instance";
+import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.0";
 
 export const metadata = { title: "Consentimiento vigente - Atlas" };
 
@@ -22,7 +23,14 @@ export default async function ConsentimientoPage() {
         </p>
       </header>
 
-      <ConsentDocument text={CONSENT_TEXT_V1_7} />
+      {/* Vista COMPLETA de la plantilla vigente: AMBAS ramas (mayor y menor) con los campos como rotulos.
+          NO una instancia de un paciente (esa filtra la rama menor). Asi se lee el texto entero, incluido
+          el bloque de menores, sin marcadores crudos. */}
+      <ConsentDocument text={buildConsentFullPreview(CONSENT_TEXT_V1_0)} />
+      <p className="text-xs text-muted-foreground">
+        Este es el texto completo de la plantilla vigente. Segun la edad del paciente, en el documento que
+        firma se muestra solo la rama que aplica (mayor de edad o representante legal del menor).
+      </p>
     </div>
   );
 }

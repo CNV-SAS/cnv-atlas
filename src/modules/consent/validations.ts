@@ -7,26 +7,27 @@ import { z } from "zod";
 // explicita ('mayor' | 'menor') abre el bloque del representante legal y, entre 14 y
 // 17 años, el asentimiento del menor.
 
-// Los 6 tipos de autorizacion que el titular marca como casillas (consent_type_enum).
-// Los tipos derivados de la rama menor (representante_legal, asentimiento_menor) NO
-// son casillas: se generan en el escritor a partir de la rama y sus datos (DELTA2 B4).
+// Tipos de autorizacion que el titular marca como casillas (consent_type_enum). Los tipos derivados de la
+// rama menor (representante_legal, asentimiento_menor) NO son casillas: los genera el escritor.
+// v1.0 (revision legal 2026-08-11): internacional_ia DESAPARECE (era un acuse de recibo, no autorizacion;
+// se absorbio en 'servicio'). La etnia NO es tipo propio (se fundio en 'investigacion'). El enum conserva
+// 'internacional_ia' por RETENCION (pacientes v1.7 lo otorgaron), pero v1.0 ya no lo pide.
 export const CONSENT_TYPES = [
   "servicio",
   "datos_sensibles",
-  "internacional_ia",
   "investigacion",
   "comunicaciones_continuidad",
   "comunicaciones_comerciales",
 ] as const;
 export type ConsentType = (typeof CONSENT_TYPES)[number];
 
-// Las 3 necesarias para el servicio: sin las 3, no se puede continuar (regla dura
-// 15). Se modelan como literal(true) para que el flujo no avance si falta alguna.
-// Aplican igual en la rama menor, firmadas por el representante legal.
+// Las necesarias del GATE clinico (regla dura 15): sin ellas no se puede evaluar. v1.0 son DOS
+// (internacional_ia dejo de ser autorizacion). Se modelan como literal(true) para que el flujo no avance
+// si falta alguna. Aplican igual en la rama menor, firmadas por el representante legal. (El acuse del medio
+// electronico es necesario para FIRMAR, pero no es del gate clinico; se valida aparte, ver consentSchema.)
 export const NECESSARY_CONSENT_TYPES = [
   "servicio",
   "datos_sensibles",
-  "internacional_ia",
 ] as const satisfies readonly ConsentType[];
 
 // Las 3 opcionales: no afectan la atencion, se registran de forma independiente.
@@ -72,13 +73,11 @@ const requiredTrue = (label: string) =>
 
 export const consentSchema = z
   .object({
-    // Necesarias (deben ser true, en ambas ramas de edad).
+    // Necesarias (deben ser true, en ambas ramas de edad). v1.0: DOS (servicio absorbe el acuse del
+    // tratamiento internacional/IA/derechos; ya no hay casilla 'internacional_ia' separada).
     servicio: requiredTrue("el tratamiento de tus datos personales"),
     datos_sensibles: requiredTrue("el tratamiento de tus datos de salud"),
-    internacional_ia: requiredTrue(
-      "el tratamiento internacional y el uso de sistemas automatizados",
-    ),
-    // Firma electronica (B7, v1.7 numeral 12): aceptacion EXPRESA de firmar por medios electronicos y
+    // Firma electronica (v1.0 numeral 12): aceptacion EXPRESA de firmar por medios electronicos y
     // recibir el codigo de verificacion. Es una casilla NECESARIA para firmar (no se puede continuar
     // sin ella), distinta de las 3 finalidades de datos del gate clinico (regla 15): esta NO entra en
     // NECESSARY_CONSENT_TYPES (el gate sigue en las 3); se persiste aparte, como representante_legal.

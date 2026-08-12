@@ -90,7 +90,6 @@ function readConsentFromForm(form: FormData) {
   return {
     servicio: checkbox(form, "servicio"),
     datos_sensibles: checkbox(form, "datos_sensibles"),
-    internacional_ia: checkbox(form, "internacional_ia"),
     aceptacion_medio_electronico: checkbox(form, "aceptacion_medio_electronico"),
     investigacion: checkbox(form, "investigacion"),
     comunicaciones_continuidad: checkbox(form, "comunicaciones_continuidad"),
@@ -198,7 +197,7 @@ async function dispatchConsentCopy(args: {
   resumeUrl: string | null;
 }): Promise<void> {
   const { consent, identity } = args;
-  const grantedForCopy: ConsentType[] = ["servicio", "datos_sensibles", "internacional_ia"];
+  const grantedForCopy: ConsentType[] = ["servicio", "datos_sensibles"];
   if (consent.investigacion) grantedForCopy.push("investigacion");
   if (consent.comunicaciones_continuidad) grantedForCopy.push("comunicaciones_continuidad");
   if (consent.comunicaciones_comerciales) grantedForCopy.push("comunicaciones_comerciales");

@@ -91,10 +91,11 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
 
   // Rama de edad (mayor/menor): eleccion explicita y obligatoria (DELTA2 B2).
   const [ageBranch, setAgeBranch] = useState<"" | "mayor" | "menor">("");
+  // v1.0 (revision legal): TRES necesarias (servicio absorbe el acuse del tratamiento internacional/IA/
+  // derechos; ya no hay casilla 'internacional_ia' separada).
   const [necessary, setNecessary] = useState({
     servicio: false,
     datos_sensibles: false,
-    internacional_ia: false,
     aceptacion_medio_electronico: false,
   });
   const [rep, setRep] = useState({ name: "", document: "", relationship: "", email: "" });
@@ -115,10 +116,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   const minorName = `${firstName} ${lastName}`.trim();
 
   const necessaryOk =
-    necessary.servicio &&
-    necessary.datos_sensibles &&
-    necessary.internacional_ia &&
-    necessary.aceptacion_medio_electronico;
+    necessary.servicio && necessary.datos_sensibles && necessary.aceptacion_medio_electronico;
   const branchOk =
     ageBranch === "mayor"
       ? true
@@ -447,7 +445,11 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               checked={necessary.servicio}
               onChange={(e) => setNecessary((s) => ({ ...s, servicio: e.target.checked }))}
             />
-            <span>Autorizo el tratamiento de los datos personales para las finalidades del servicio.</span>
+            <span>
+              Autorizo el tratamiento de los datos personales para las finalidades necesarias del
+              servicio, y declaro conocer el tratamiento internacional, el uso de sistemas automatizados y
+              mis derechos como titular.
+            </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -462,20 +464,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               evaluacion.
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="internacional_ia"
-              className={checkboxClass}
-              checked={necessary.internacional_ia}
-              onChange={(e) => setNecessary((s) => ({ ...s, internacional_ia: e.target.checked }))}
-            />
-            <span>
-              He sido informado del tratamiento internacional y del uso de sistemas automatizados, y
-              conozco los derechos aplicables.
-            </span>
-          </label>
-          {/* Firma electronica (v1.7 numeral 12): aceptacion del medio electronico. */}
+          {/* Firma electronica (v1.0 numeral 12): aceptacion del medio electronico. */}
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -502,16 +491,27 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="investigacion" className={checkboxClass} />
             <span>
-              Autorizo el uso de los datos seudonimizados para investigacion cientifica del modelo.
+              Autorizo el uso de los datos seudonimizados para investigacion cientifica del modelo,
+              incluida mi pertenencia etnica para el analisis de diferencias entre poblaciones, cuando
+              decida informarla.
+            </span>
+          </label>
+          {/* Continuidad y publicidad DIFERENCIADAS (rotulo en negrita), NUNCA fusionadas: fusionarlas
+              condicionaria la continuidad de la atencion a aceptar publicidad (revision legal). */}
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="comunicaciones_continuidad" className={checkboxClass} />
+            <span>
+              <strong>Continuidad asistencial.</strong> Autorizo que CNV me contacte para asegurar la
+              continuidad de mi proceso en salud dentro de la red, especialmente si mi profesional deja de
+              operar el modelo.
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="comunicaciones_continuidad" className={checkboxClass} />
-            <span>Autorizo recibir comunicaciones de continuidad de la atención.</span>
-          </label>
-          <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="comunicaciones_comerciales" className={checkboxClass} />
-            <span>Autorizo recibir comunicaciones comerciales del ecosistema CNV.</span>
+            <span>
+              <strong>Publicidad.</strong> Autorizo recibir comunicaciones comerciales y promocionales del
+              ecosistema CNV.
+            </span>
           </label>
         </fieldset>
 

@@ -14,19 +14,19 @@ describe("buildConsentCopyEmail", () => {
   it("lista las necesarias marcadas y las opcionales NO marcadas cuando se declinaron", () => {
     const { text } = buildConsentCopyEmail({
       ...base,
-      granted: ["servicio", "datos_sensibles", "internacional_ia"],
+      granted: ["servicio", "datos_sensibles"],
     });
     // Necesarias marcadas
     expect(text).toContain("[x] Tratamiento de datos personales para las finalidades del servicio");
     // Opcionales presentes pero NO marcadas (la prueba de que se ofrecieron y se declinaron)
     expect(text).toContain("[ ] Uso de datos seudonimizados para investigación científica del modelo");
-    expect(text).toContain("[ ] Comunicaciones comerciales del ecosistema CNV");
+    expect(text).toContain("[ ] Publicidad (comunicaciones comerciales del ecosistema CNV)");
   });
 
   it("marca una opcional cuando se otorgo", () => {
     const { text } = buildConsentCopyEmail({
       ...base,
-      granted: ["servicio", "datos_sensibles", "internacional_ia", "investigacion"],
+      granted: ["servicio", "datos_sensibles", "investigacion"],
     });
     expect(text).toContain("[x] Uso de datos seudonimizados para investigación científica del modelo");
   });
@@ -34,7 +34,7 @@ describe("buildConsentCopyEmail", () => {
   it("incluye fecha/hora, canal de derechos, version y el texto integro", () => {
     const { subject, text } = buildConsentCopyEmail({
       ...base,
-      granted: ["servicio", "datos_sensibles", "internacional_ia"],
+      granted: ["servicio", "datos_sensibles"],
     });
     expect(text).toContain("Fecha y hora de aceptación:");
     expect(text).toContain("protecciondatos@cnvsystem.com"); // canal de derechos
@@ -48,7 +48,7 @@ describe("buildConsentCopyEmail", () => {
   it("entrega HTML con estilos en linea y texto plano limpio (sin markdown crudo)", () => {
     const { html, text } = buildConsentCopyEmail({
       ...base,
-      granted: ["servicio", "datos_sensibles", "internacional_ia"],
+      granted: ["servicio", "datos_sensibles"],
     });
     // HTML: estilos en linea, casillas renderizadas, sin simbolos crudos.
     expect(html).toContain("style=");

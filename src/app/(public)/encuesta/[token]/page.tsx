@@ -6,7 +6,7 @@ import {
   getProfessionalForConsent,
   resolveSurveyLinkByToken,
 } from "@/modules/evaluations/data/survey-links-reader";
-import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
+import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
 
 export const metadata = { title: "Encuesta - Atlas" };
 
@@ -105,7 +105,7 @@ export default async function EncuestaPage({
         isFollowup={link.type === "seguimiento"}
         prefill={link.prefill}
         questions={survey.questions}
-        consentText={CONSENT_TEXT_V1_7}
+        consentText={CONSENT_TEXT_V1_0}
         professional={professional}
       />
     </Shell>

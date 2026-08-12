@@ -16,15 +16,16 @@ import type { ConsentType } from "./validations";
 // Canal de derechos (habeas data), tal cual el numeral 9 del consentimiento.
 const RIGHTS_CHANNEL = "protecciondatos@cnvsystem.com";
 
-// Etiquetas de cara al paciente de las 6 autorizaciones (con tildes). El orden es el del documento:
-// primero las 3 necesarias, luego las 3 opcionales.
+// Etiquetas de cara al paciente de las autorizaciones (con tildes). v1.0 (revision legal): 2 necesarias de
+// datos (servicio absorbe el tratamiento internacional/IA/derechos; internacional_ia ya no es casilla) + 3
+// opcionales (investigacion incluye la etnia; continuidad y publicidad diferenciadas). El acuse del medio
+// electronico es necesario para firmar pero no se lista aqui (va implicito en la firma electronica).
 const AUTH_LABELS: { type: ConsentType; label: string; necessary: boolean }[] = [
-  { type: "servicio", label: "Tratamiento de datos personales para las finalidades del servicio", necessary: true },
+  { type: "servicio", label: "Tratamiento de datos personales para las finalidades del servicio (incluye tratamiento internacional, sistemas automatizados y sus derechos)", necessary: true },
   { type: "datos_sensibles", label: "Tratamiento de datos sensibles de salud para la evaluación", necessary: true },
-  { type: "internacional_ia", label: "Tratamiento internacional y uso de sistemas automatizados", necessary: true },
-  { type: "investigacion", label: "Uso de datos seudonimizados para investigación científica del modelo", necessary: false },
-  { type: "comunicaciones_continuidad", label: "Comunicaciones de continuidad de la atención", necessary: false },
-  { type: "comunicaciones_comerciales", label: "Comunicaciones comerciales del ecosistema CNV", necessary: false },
+  { type: "investigacion", label: "Uso de datos seudonimizados para investigación científica del modelo (incluye la pertenencia étnica, si la informa)", necessary: false },
+  { type: "comunicaciones_continuidad", label: "Continuidad asistencial dentro de la red de profesionales CNV", necessary: false },
+  { type: "comunicaciones_comerciales", label: "Publicidad (comunicaciones comerciales del ecosistema CNV)", necessary: false },
 ];
 
 export type ConsentCopyInput = {

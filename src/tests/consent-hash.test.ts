@@ -6,6 +6,7 @@ import {
   CONSENT_VERSION,
   normalizeConsentText,
 } from "@/modules/consent/consent-hash";
+import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
 import { CONSENT_TEXT_V1_2 } from "@/modules/consent/text/consent-v1.2";
 import { CONSENT_TEXT_V1_5 } from "@/modules/consent/text/consent-v1.5";
 import { CONSENT_TEXT_V1_7 } from "@/modules/consent/text/consent-v1.7";
@@ -19,43 +20,57 @@ import {
 // Hashes de referencia capturados al vendorizar cada texto desde CONSENT_ATLAS.md.
 // Si un valor cambia, el texto legal cambio: hay que subir la version, no editar el
 // texto a mano (protege la trazabilidad del consentimiento).
-// Hash vigente (v1.7). Anclado para que cualquier cambio del texto legal rompa la prueba.
+// Hash VIGENTE (v1.0, bump de lanzamiento). Anclado para que cualquier cambio del texto legal rompa la prueba.
+const EXPECTED_HASH_V1_0 =
+  "dfdcaccb699313edce6ce60e693c14ae02a00debb96b75e27c1945ec0937f3ae";
+// v1.7, v1.5 y v1.2 se conservan por retencion (DATA_GOVERNANCE): pacientes que firmaron esas versiones
+// mantienen su texto. Sus hashes quedan anclados para que los archivos retenidos tampoco se editen
+// en silencio. (v1.7 dejo de ser el vigente al renumerar a v1.0 para produccion.)
 const EXPECTED_HASH_V1_7 =
   "23d7094f586e0af55943ee1f0a2d60471f0c111fc288f3f631a50f0abd4b43ad";
-// v1.5 y v1.2 se conservan por retencion (DATA_GOVERNANCE): pacientes que firmaron esas versiones
-// mantienen su texto. Sus hashes quedan anclados para que los archivos retenidos tampoco se editen
-// en silencio.
 const EXPECTED_HASH_V1_5 =
   "d5189c7f2a9d1822833f3fe6ba2931308a5ffc488f326a6f59dc6c00c6b96286";
 const EXPECTED_HASH_V1_2 =
   "790c89d388ef532c0b84e778e4713bc2cbb7a1b7084c307198af781129704ff0";
 
 describe("consent document_hash (regla C1)", () => {
-  it("ancla el hash del texto canonico vigente v1.7", () => {
-    expect(CONSENT_VERSION).toBe("1.7");
-    expect(CONSENT_DOCUMENT_HASH).toBe(EXPECTED_HASH_V1_7);
-    expect(computeConsentHash(CONSENT_TEXT_V1_7)).toBe(EXPECTED_HASH_V1_7);
+  it("ancla el hash del texto canonico vigente v1.0", () => {
+    expect(CONSENT_VERSION).toBe("1.0");
+    expect(CONSENT_DOCUMENT_HASH).toBe(EXPECTED_HASH_V1_0);
+    expect(computeConsentHash(CONSENT_TEXT_V1_0)).toBe(EXPECTED_HASH_V1_0);
   });
 
-  it("conserva anclados los hashes de los textos retenidos v1.5 y v1.2 (distintos al vigente)", () => {
+  it("conserva anclados los hashes de los textos retenidos v1.7, v1.5 y v1.2 (distintos al vigente)", () => {
+    expect(computeConsentHash(CONSENT_TEXT_V1_7)).toBe(EXPECTED_HASH_V1_7);
     expect(computeConsentHash(CONSENT_TEXT_V1_5)).toBe(EXPECTED_HASH_V1_5);
     expect(computeConsentHash(CONSENT_TEXT_V1_2)).toBe(EXPECTED_HASH_V1_2);
-    expect(EXPECTED_HASH_V1_7).not.toBe(EXPECTED_HASH_V1_5);
-    expect(EXPECTED_HASH_V1_7).not.toBe(EXPECTED_HASH_V1_2);
+    for (const h of [EXPECTED_HASH_V1_7, EXPECTED_HASH_V1_5, EXPECTED_HASH_V1_2]) {
+      expect(EXPECTED_HASH_V1_0).not.toBe(h);
+    }
   });
 
-  it("el texto vigente incluye las 13 secciones y los placeholders intactos", () => {
+  it("el texto vigente v1.0 incluye las 13 secciones, los marcadores y la etnia; sin em-dash", () => {
     for (let n = 1; n <= 13; n++) {
-      expect(CONSENT_TEXT_V1_7).toContain(`## ${n}.`);
+      expect(CONSENT_TEXT_V1_0).toContain(`## ${n}.`);
     }
-    expect(CONSENT_TEXT_V1_7).toContain("{{professional_full_name}}");
-    expect(CONSENT_TEXT_V1_7).toContain("{{professional_profession}}");
-    expect(CONSENT_TEXT_V1_7).toContain("{{professional_license}}");
-    // El bloque del representante legal (numeral 11) es parte del texto vigente.
-    expect(CONSENT_TEXT_V1_7).toContain("representante legal");
-    // Los bloques internos quedan fuera del texto de cara al paciente.
-    expect(CONSENT_TEXT_V1_7).not.toContain("Registro técnico");
-    expect(CONSENT_TEXT_V1_7).not.toContain("Historial de versiones");
+    // Marcadores explicitos de v1.0 (reemplazan el anclaje por substring).
+    expect(CONSENT_TEXT_V1_0).toContain("{{bloque_profesional}}");
+    expect(CONSENT_TEXT_V1_0).toContain("{{firma_nombre}}");
+    expect(CONSENT_TEXT_V1_0).toContain("{{fecha}}");
+    expect(CONSENT_TEXT_V1_0).toContain("<!--RAMA_MAYOR-->");
+    expect(CONSENT_TEXT_V1_0).toContain("<!--RAMA_MENOR-->");
+    // La etnia se declara en el numeral 3 y se FUNDE en la casilla de investigacion (no es casilla propia).
+    expect(CONSENT_TEXT_V1_0).toContain("Pertenencia étnica");
+    expect(CONSENT_TEXT_V1_0).not.toContain("{{casilla_etnia}}");
+    expect(CONSENT_TEXT_V1_0).toContain("uso de mi pertenencia étnica");
+    // v1.0: 3 casillas necesarias (internacional_ia absorbido en servicio), continuidad/publicidad rotuladas.
+    expect(CONSENT_TEXT_V1_0).not.toContain("{{casilla_internacional_ia}}");
+    expect(CONSENT_TEXT_V1_0).toContain("**Continuidad asistencial.**");
+    expect(CONSENT_TEXT_V1_0).toContain("**Publicidad.**");
+    // El bloque del representante legal (numeral 11) sigue.
+    expect(CONSENT_TEXT_V1_0).toContain("representante legal");
+    // Regla de estilo: NINGUN em-dash en el texto de cara al paciente.
+    expect(CONSENT_TEXT_V1_0).not.toMatch(/[—–]/);
   });
 
   it("v1.7 consolida v1.6 (numeral 4) y agrega la casilla del medio electronico (numeral 12)", () => {
@@ -72,31 +87,28 @@ describe("consent document_hash (regla C1)", () => {
     const messy = "a  \r\nb\t\r  \nc   ";
     expect(normalizeConsentText(messy)).toBe("a\nb\n\nc");
     // El texto vendorizado ya esta normalizado: normalizar de nuevo no lo cambia.
-    expect(normalizeConsentText(CONSENT_TEXT_V1_7)).toBe(CONSENT_TEXT_V1_7);
+    expect(normalizeConsentText(CONSENT_TEXT_V1_0)).toBe(CONSENT_TEXT_V1_0);
   });
 
   it("CRLF y LF producen el mismo hash (la normalizacion lo garantiza)", () => {
-    const asCrlf = CONSENT_TEXT_V1_7.replace(/\n/g, "\r\n");
-    expect(computeConsentHash(asCrlf)).toBe(EXPECTED_HASH_V1_7);
+    const asCrlf = CONSENT_TEXT_V1_0.replace(/\n/g, "\r\n");
+    expect(computeConsentHash(asCrlf)).toBe(EXPECTED_HASH_V1_0);
   });
 });
 
-describe("consentSchema rama mayor (6 casillas + mayoria de edad)", () => {
+describe("consentSchema rama mayor (v1.0: 3 casillas necesarias + mayoria de edad)", () => {
   const necessary = {
     servicio: true,
     datos_sensibles: true,
-    internacional_ia: true,
     aceptacion_medio_electronico: true,
     mayoria_de_edad: true,
   };
 
-  it("acepta las 3 necesarias + mayoria de edad, opcionales en false por default", () => {
+  it("acepta las necesarias + mayoria de edad; grantedConsentTypes son servicio + datos_sensibles", () => {
     const parsed = consentSchema.parse(necessary);
-    expect(grantedConsentTypes(parsed)).toEqual([
-      "servicio",
-      "datos_sensibles",
-      "internacional_ia",
-    ]);
+    // v1.0: internacional_ia dejo de ser casilla (absorbido en servicio). aceptacion_medio_electronico se
+    // sella aparte (no esta en CONSENT_TYPES). Asi grantedConsentTypes son solo las dos casillas de datos.
+    expect(grantedConsentTypes(parsed)).toEqual(["servicio", "datos_sensibles"]);
   });
 
   it("registra las opcionales marcadas de forma independiente", () => {
@@ -120,13 +132,12 @@ describe("consentSchema rama mayor (6 casillas + mayoria de edad)", () => {
     expect(r.success).toBe(false);
   });
 
-  it("las necesarias y opcionales cubren los 6 tipos sin solaparse", () => {
+  it("las necesarias (2) y opcionales (3) cubren los 5 tipos-casilla sin solaparse (v1.0)", () => {
     expect([...NECESSARY_CONSENT_TYPES, ...OPTIONAL_CONSENT_TYPES].sort()).toEqual(
       [
         "comunicaciones_comerciales",
         "comunicaciones_continuidad",
         "datos_sensibles",
-        "internacional_ia",
         "investigacion",
         "servicio",
       ],
@@ -139,7 +150,6 @@ describe("consentSchema rama menor (representante legal + asentimiento)", () => 
   const minorTeen = {
     servicio: true,
     datos_sensibles: true,
-    internacional_ia: true,
     aceptacion_medio_electronico: true,
     ageBranch: "menor",
     legalRepresentativeName: "Maria Perez",
@@ -152,13 +162,9 @@ describe("consentSchema rama menor (representante legal + asentimiento)", () => 
 
   it("acepta menor 14-17 con datos del representante y asentimiento", () => {
     const parsed = consentSchema.parse(minorTeen);
-    // Las casillas otorgadas siguen siendo las 3 necesarias; los tipos derivados
+    // Las casillas otorgadas son servicio + datos_sensibles; los tipos derivados
     // (representante_legal, asentimiento_menor) los arma el escritor (B4).
-    expect(grantedConsentTypes(parsed)).toEqual([
-      "servicio",
-      "datos_sensibles",
-      "internacional_ia",
-    ]);
+    expect(grantedConsentTypes(parsed)).toEqual(["servicio", "datos_sensibles"]);
   });
 
   it("rechaza menor 14-17 sin asentimiento", () => {

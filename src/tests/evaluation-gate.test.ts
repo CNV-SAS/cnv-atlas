@@ -8,31 +8,28 @@ import {
 } from "@/modules/evaluations/services/survey-link-service";
 
 describe("canCreateEvaluation (gate regla 15)", () => {
-  it("permite con las 3 autorizaciones necesarias vigentes", () => {
-    const r = canCreateEvaluation(["servicio", "datos_sensibles", "internacional_ia"]);
+  // v1.0 (revision legal): DOS necesarias del gate clinico (internacional_ia dejo de ser autorizacion, se
+  // absorbio en servicio). El acuse del medio electronico es necesario para FIRMAR, no del gate clinico.
+  it("permite con las 2 autorizaciones necesarias vigentes", () => {
+    const r = canCreateEvaluation(["servicio", "datos_sensibles"]);
     expect(r.ok).toBe(true);
   });
 
   it("permite aunque haya tambien opcionales", () => {
-    const r = canCreateEvaluation([
-      "servicio",
-      "datos_sensibles",
-      "internacional_ia",
-      "investigacion",
-    ]);
+    const r = canCreateEvaluation(["servicio", "datos_sensibles", "investigacion"]);
     expect(r.ok).toBe(true);
   });
 
   it("bloquea si falta una necesaria y reporta cual", () => {
-    const r = canCreateEvaluation(["servicio", "datos_sensibles"]);
+    const r = canCreateEvaluation(["servicio"]);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.missing).toEqual(["internacional_ia"]);
+    if (!r.ok) expect(r.missing).toEqual(["datos_sensibles"]);
   });
 
   it("bloquea sin ninguna autorizacion", () => {
     const r = canCreateEvaluation([]);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.missing).toHaveLength(3);
+    if (!r.ok) expect(r.missing).toHaveLength(2);
   });
 });
 

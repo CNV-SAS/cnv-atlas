@@ -1,4 +1,30 @@
-## 1. ¿Por qué este formulario?
+// Texto canonico del consentimiento informado de ATLAS, version 1.0 (renumeracion de LANZAMIENTO).
+//
+// Que es: el TEXTO DE CARA AL PACIENTE, artefacto sobre el que se calcula patient_consents.document_hash.
+//
+// v1.0 (bump de lanzamiento, 2026-08-12) CONSOLIDA la historia interna (v1.2 -> v1.7 fueron iteraciones
+// que NINGUN paciente firmo; se renumera a v1.0 para arrancar produccion) e incorpora la revision legal
+// (docs/entregas/gildardo-2026-08-10/CORRECCIONES_CONSENTIMIENTO_ATLAS.md):
+//   1) De OCHO casillas a SEIS: TRES necesarias (servicio, que absorbe el acuse de "he sido informado" del
+//      tratamiento internacional/IA/derechos; datos_sensibles; medios electronicos) y TRES opcionales
+//      (investigacion, que INCLUYE el uso de la pertenencia etnica; continuidad asistencial; publicidad).
+//      internacional_ia DESAPARECE (absorbido en servicio); la etnia NO es casilla propia (se funde en
+//      investigacion, misma finalidad); continuidad y publicidad se DIFERENCIAN con rotulo en negrita y NO
+//      se fusionan (fusionarlas condicionaria la continuidad a aceptar publicidad).
+//   2) MARCADORES EXPLICITOS de relleno ({{firma_nombre}}, {{bloque_profesional}}, {{casilla_*}}) y
+//      DELIMITADORES de rama en comentarios HTML (<!--RAMA_MAYOR-->...), que la instancia reemplaza/corta
+//      mecanicamente. Eliminan la fragilidad del anclaje por substring.
+//   3) SIN EM-DASH en el texto de cara al paciente.
+//   4) Numeral 1: parrafo de voluntariedad y principios bioeticos. Numeral 3: datos sensibles concretos,
+//      incluidas las senales de conducta alimentaria. El bloque de MENORES (numerales 11 y 13) se conserva
+//      integro (representante + declaracion + asentimiento + firma del representante).
+//
+// Los marcadores NUNCA se muestran: la instancia (consent-instance.ts) los reemplaza todos y VERIFICA que
+// no quede ninguno. El raw de esta plantilla no se muestra a nadie: solo el hash se calcula sobre el.
+
+export const CONSENT_VERSION = "1.0";
+
+export const CONSENT_TEXT_V1_0 = `## 1. ¿Por qué este formulario?
 
 Antes de iniciar su evaluación, necesitamos informarle cómo se tratarán sus datos personales y de salud, y obtener su autorización libre, voluntaria e informada. Lea con atención y marque las casillas correspondientes al final.
 
@@ -12,7 +38,7 @@ En esta evaluación intervienen dos responsables, con finalidades distintas:
 
 **2.1. El profesional de salud que le atiende** es el Responsable del tratamiento de sus datos para su atención clínica y es el custodio de su historia clínica.
 
-> **Profesional:** Ana Gómez Ruiz, Nutricionista. Registro profesional No. NUT-12345
+> {{bloque_profesional}}
 
 > **Nota.** Cuando el paciente sea menor de edad, las referencias a "usted" en este documento se entienden hechas a su representante legal, quien otorga la autorización en su nombre, sin perjuicio del asentimiento del menor cuando aplique (numeral 11).
 
@@ -93,24 +119,26 @@ Puede revocar esta autorización en cualquier momento ante el profesional de sal
 
 ## 11. Mayoría de edad y representante legal
 
-**Si el paciente es menor de 18 años**, este consentimiento debe ser otorgado por su representante legal, quien declara:
+<!--RAMA_MAYOR-->**Si el paciente es mayor de 18 años**, declara: "Declaro que soy mayor de 18 años y actúo en nombre propio."<!--/RAMA_MAYOR-->
 
-> "Declaro que actúo como representante legal de la persona menor de edad evaluada, en calidad de (marque una): ☐ padre  ☑ madre  ☐ tutor legal  ☐ curador. Manifiesto que cuento con la facultad legal para autorizar este tratamiento de datos en su nombre, en el mejor interés del menor."
+<!--RAMA_MENOR-->**Si el paciente es menor de 18 años**, este consentimiento debe ser otorgado por su representante legal, quien declara:
+
+> "Declaro que actúo como representante legal de la persona menor de edad evaluada, en calidad de (marque una): {{box_padre}} padre  {{box_madre}} madre  {{box_tutor}} tutor legal  {{box_curador}} curador. Manifiesto que cuento con la facultad legal para autorizar este tratamiento de datos en su nombre, en el mejor interés del menor."
 
 **Datos del representante legal** (solo si el paciente es menor de edad; se completa antes de continuar):
 
-- Nombre completo: María Ramírez
-- Tipo y número de documento: CC 9988776655
-- Parentesco o calidad: Madre
-- Correo electrónico: maria@example.com
+- Nombre completo: {{rep_nombre}}
+- Tipo y número de documento: {{rep_documento}}
+- Parentesco o calidad: {{rep_parentesco}}
+- Correo electrónico: {{rep_correo}}
 
 > **Nota.** Cuando el paciente es menor de edad, el código de verificación con el que se firma este consentimiento (numeral 13) se envía al medio de contacto del representante legal, no al del menor. La copia del consentimiento se envía al representante y, si el menor registra un correo propio, también al menor.
 
-**Asentimiento del menor** (obligatorio cuando el paciente tiene entre 14 y 17 años):
+<!--ASENTIMIENTO-->**Asentimiento del menor** (obligatorio cuando el paciente tiene entre 14 y 17 años):
 
-> "Yo, Sofía Ramírez, he sido informado/a de forma adecuada a mi edad sobre esta evaluación y estoy de acuerdo en participar."
+> "Yo, {{asentimiento_menor_nombre}}, he sido informado/a de forma adecuada a mi edad sobre esta evaluación y estoy de acuerdo en participar."
 
-- [x] El menor (14 a 17 años) otorga su asentimiento en los términos anteriores.
+- {{casilla_asentimiento}} El menor (14 a 17 años) otorga su asentimiento en los términos anteriores.<!--/ASENTIMIENTO--><!--/RAMA_MENOR-->
 
 ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada, si aplica la declaración de mayoría de edad o el bloque de representante legal, y activa el bloque de asentimiento cuando corresponda.
 
@@ -121,16 +149,16 @@ ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada,
 ### Autorizaciones necesarias para el servicio
 *Debe marcar las tres para continuar.*
 
-- [x] Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4, y declaro conocer el tratamiento internacional (numeral 7), el uso de sistemas automatizados (numeral 6) y mis derechos como titular (numeral 9).
-- [x] Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
-- [x] Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
+- {{casilla_servicio}} Autorizo el tratamiento de mis datos personales para las finalidades necesarias descritas en el numeral 4, y declaro conocer el tratamiento internacional (numeral 7), el uso de sistemas automatizados (numeral 6) y mis derechos como titular (numeral 9).
+- {{casilla_datos_sensibles}} Autorizo el tratamiento de mis datos sensibles de salud, de forma voluntaria, para mi evaluación y plan personalizados.
+- {{casilla_medio_electronico}} Acepto que este consentimiento se otorga por medios electrónicos, con plena validez conforme a la Ley 527 de 1999, y que para confirmarlo Atlas enviará un código de verificación al medio de contacto que registro (propio o de una persona de confianza que yo designe).
 
 ### Autorizaciones opcionales
 *No afectan su atención. Marque solo las que desee.*
 
-- [ ] Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam, y el uso de mi pertenencia étnica para el análisis de diferencias entre poblaciones, cuando decida informarla (numeral 5).
-- [x] **Continuidad asistencial.** Autorizo que CNV me contacte para asegurar la continuidad de mi proceso en salud dentro de la red, especialmente si el profesional que me atiende deja de operar el modelo (numeral 5).
-- [ ] **Publicidad.** Autorizo recibir comunicaciones comerciales y promocionales del ecosistema CNV (numeral 5).
+- {{casilla_investigacion}} Autorizo el uso de mis datos seudonimizados para investigación científica del modelo, incluida la realizada en colaboración con terceros bajo la dirección científica de ObBIA-Latam, y el uso de mi pertenencia étnica para el análisis de diferencias entre poblaciones, cuando decida informarla (numeral 5).
+- {{casilla_continuidad}} **Continuidad asistencial.** Autorizo que CNV me contacte para asegurar la continuidad de mi proceso en salud dentro de la red, especialmente si el profesional que me atiende deja de operar el modelo (numeral 5).
+- {{casilla_comerciales}} **Publicidad.** Autorizo recibir comunicaciones comerciales y promocionales del ecosistema CNV (numeral 5).
 
 ---
 
@@ -138,9 +166,14 @@ ATLAS determina automáticamente, a partir de la fecha de nacimiento registrada,
 
 Al marcar las casillas anteriores e ingresar el código de verificación que Atlas envía a su medio de contacto registrado, usted otorga este consentimiento por **medios electrónicos**, con plena validez jurídica conforme a la Ley 527 de 1999. Su nombre y número de documento, registrados en el paso de identificación, junto con la validación del código, constituyen su firma electrónica. Al finalizar, Atlas enviará una copia de este consentimiento a su medio de contacto.
 
-**Si el paciente es menor de edad**, firma su representante legal (datos ya registrados en el numeral 11) y el código de verificación se envía al contacto del representante:
+<!--RAMA_MAYOR-->**Si el paciente es mayor de edad**, firma el propio paciente, con el nombre y documento registrados en el paso de identificación:
 
-- Nombre completo del representante: María Ramírez
-- Número de documento del representante: CC 9988776655
+- Nombre completo: {{firma_nombre}}
+- Número de documento: {{firma_documento}}<!--/RAMA_MAYOR-->
 
-**Fecha:** (se generará al confirmar)
+<!--RAMA_MENOR-->**Si el paciente es menor de edad**, firma su representante legal (datos ya registrados en el numeral 11) y el código de verificación se envía al contacto del representante:
+
+- Nombre completo del representante: {{firma_rep_nombre}}
+- Número de documento del representante: {{firma_rep_documento}}<!--/RAMA_MENOR-->
+
+**Fecha:** {{fecha}}`;

@@ -53,7 +53,6 @@ const initialLink: SurveyLinkView = {
 const validConsent = {
   servicio: true,
   datos_sensibles: true,
-  internacional_ia: true,
   aceptacion_medio_electronico: true,
   mayoria_de_edad: true,
 };
@@ -108,11 +107,10 @@ describe("signSurveyIntake", () => {
     expect(call.consents.map((c) => c.type)).toEqual([
       "servicio",
       "datos_sensibles",
-      "internacional_ia",
       "aceptacion_medio_electronico",
     ]);
     // sella version y hash canonicos vigentes
-    expect(call.consents[0].consentVersion).toBe("1.7");
+    expect(call.consents[0].consentVersion).toBe("1.0");
     expect(call.consents[0].documentHash).toHaveLength(64);
   });
 
@@ -139,7 +137,6 @@ describe("signSurveyIntake", () => {
   const minorConsent = {
     servicio: true,
     datos_sensibles: true,
-    internacional_ia: true,
     aceptacion_medio_electronico: true,
     ageBranch: "menor",
     legalRepresentativeName: "Maria Perez",
@@ -168,7 +165,7 @@ describe("signSurveyIntake", () => {
     });
     // Las 3 necesarias siguen presentes, firmadas por el representante (gate sin cambios).
     expect(types).toEqual(
-      expect.arrayContaining(["servicio", "datos_sensibles", "internacional_ia"]),
+      expect.arrayContaining(["servicio", "datos_sensibles"]),
     );
   });
 
@@ -188,7 +185,7 @@ describe("signSurveyIntake", () => {
 
   it("rechaza (validation) si falta una autorizacion necesaria; no escribe", async () => {
     const res = await signSurveyIntake(
-      input({ consent: { ...validConsent, internacional_ia: false } }),
+      input({ consent: { ...validConsent, datos_sensibles: false } }),
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe("validation");
@@ -206,7 +203,7 @@ describe("signSurveyIntake", () => {
   it("mapea ConsentGateError del escritor a un error de autorizacion", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
     vi.mocked(writer.signIntakeEvaluation).mockRejectedValue(
-      new writer.ConsentGateError(["internacional_ia"]),
+      new writer.ConsentGateError(["datos_sensibles"]),
     );
     const res = await signSurveyIntake(input());
     expect(res.ok).toBe(false);
@@ -272,7 +269,7 @@ describe("signSurveyIntake", () => {
   });
 
   it("no verifica la firma antes de validar la forma (no quema el codigo por un campo malo)", async () => {
-    const res = await signSurveyIntake(input({ consent: { ...validConsent, internacional_ia: false } }));
+    const res = await signSurveyIntake(input({ consent: { ...validConsent, datos_sensibles: false } }));
     expect(res.ok).toBe(false);
     expect(otp.verifyOtp).not.toHaveBeenCalled(); // validacion de forma primero
   });
