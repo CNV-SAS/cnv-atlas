@@ -70,3 +70,9 @@ El inventario enumeraba cuatro casos (encuesta, antropometría, condiciones BIS,
 
 ## Construcción (checkpoints)
 S2 = el flujo (edición de encuesta + la confirmación de arriba + resultado) + la vista de la cadena + el mensaje de "otros datos, todavía no". Checkpoints con diff: (1) el flujo + la confirmación, (2) la vista de la cadena, (3) el gate como estado + el mensaje de alcance.
+
+**Estado (2026-08-11): CP1, CP2 y CP3 HECHOS, pendiente smoke de Santiago.**
+- **CP1** (el flujo + la confirmación): módulo `corrections/` (servicio, form de 8 dominios, entry en las 3 pestañas, warnings). Test: `correct-evaluation.test.ts` (7 casos).
+- **CP2** (la vista de la cadena hacia atrás con motivo/quién/cuándo): `correction-chain.ts` (puro) + `correction-history-reader.ts` + `correction-history.tsx`, montado arriba de las pestañas (se ve desde la vigente y desde las viejas). Test: `correction-chain.test.ts` (6 casos).
+- **CP3** (gate de versión como estado + mensaje de alcance): `correction-availability-reader.ts` deshabilita "Corregir" con la razón cuando la evaluación es de una versión anterior de la encuesta (no-op en el MVP de una sola versión); mensaje de alcance honesto en el entry y el form.
+- **Alcance = SOLO ENCUESTA (decisión 2026-08-11).** La medición BIS y la identidad no se corrigen aquí. El caso "Biody del paciente equivocado" NO se resuelve corrigiendo la medición: se resuelve CERRANDO la evaluación y rehaciéndola, y ese cierre (de una evaluación CON diagnóstico) NO existe hoy (ver `BACKLOG.md` "Cerrar una evaluación CON diagnóstico"). El mensaje de alcance dice que va por soporte mientras no exista.

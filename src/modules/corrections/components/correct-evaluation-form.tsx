@@ -212,6 +212,17 @@ export function CorrectEvaluationForm({
         Corrige la(s) respuesta(s) equivocada(s). Al continuar verás la lista de cambios antes de confirmar.
       </p>
 
+      {/* Alcance honesto (CP3): aquí solo se corrige la encuesta. La medición del equipo y la identidad
+          no se corrigen aquí; el Biody equivocado se resuelve cerrando la evaluación (vía aún no
+          construida, va por soporte). Sin este aviso el profesional busca, no encuentra y cree que no
+          se permite. */}
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Aquí corriges las respuestas de la encuesta. La medición del equipo (Biody) y la identidad del
+        paciente no se corrigen aquí. Si importaste la medición del paciente equivocado, esa evaluación
+        debe cerrarse y hacerse de nuevo con el archivo correcto; esa opción todavía no está disponible,
+        escríbele a soporte.
+      </div>
+
       {totalMissing > 0 ? (
         <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
           {totalMissing === 1 ? "Falta 1 respuesta" : `Faltan ${totalMissing} respuestas`} de {totalQuestions}.

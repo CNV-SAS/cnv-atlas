@@ -12,6 +12,7 @@ import {
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
 import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
+import { getCorrectionAvailability } from "@/modules/corrections/data/correction-availability-reader";
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { abordajeProfesional } from "@/clinical-engine";
@@ -180,6 +181,7 @@ export default async function ResultadosEvaluacionPage({
     entryReadonly,
     actorProfession,
     trajectoryNotice,
+    correctionAvailability,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -199,6 +201,8 @@ export default async function ResultadosEvaluacionPage({
     getActorProfession(user.id),
     // P0 Parte 2 (P5): por que el paciente no ve un cambio (recomputado en vivo). null si hay banda o inicial.
     getTrajectoryNotice(id),
+    // CP3: si la evaluacion es de una version anterior de la encuesta, el boton "Corregir" se deshabilita.
+    getCorrectionAvailability(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -292,7 +296,7 @@ export default async function ResultadosEvaluacionPage({
           />
           {/* Corregir vive aqui porque la Entrada es donde el profesional revisa la encuesta y
               notaria un dato mal digitado. Distinto de los actos de sellado (ver CorrectionEntry). */}
-          <CorrectionEntry evaluationId={id} />
+          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
         </div>
       }
       tratamiento={
@@ -324,7 +328,7 @@ export default async function ResultadosEvaluacionPage({
               <ReportCard report={reportCard} />
             </section>
           ) : null}
-          <CorrectionEntry evaluationId={id} />
+          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
         </div>
       }
       seguimiento={
@@ -365,7 +369,7 @@ export default async function ResultadosEvaluacionPage({
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />
           ) : null}
-          <CorrectionEntry evaluationId={id} />
+          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
         </div>
       }
       />
