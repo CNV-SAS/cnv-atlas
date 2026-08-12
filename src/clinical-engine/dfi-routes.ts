@@ -24,3 +24,16 @@ export function isBisDerivedRoute(ruta: string): boolean {
 export function suspendSurveyRoutes(rutas: string[]): string[] {
   return rutas.filter(isBisDerivedRoute);
 }
+
+// Espejo del mapeo anterior a nivel de DOMINIO del DFI (dfi.domains[].id). d1/d2 salen de la MEDICION
+// (BIS) y son validos con la encuesta incompleta; d3 (envejecimiento, severidad derivada de EB-BIS/IAE),
+// d4 (conductual, de la percepcion) y d5 (contextual, de ICEC) dependen de la encuesta y su severidad se
+// infla sobre defaults. Sirve para que la vista del profesional marque esos tres como NO EVALUABLES en vez
+// de mostrar un badge de severidad calculado sobre las mismas salidas que Q28 declara no emitidas (seria
+// incoherente: suprimir el numero pero pintar la severidad que sale de el). El veto de d4 (senal dura de
+// conducta de riesgo) se muestra aparte: solo se enciende con respuestas reales, nunca sobre defaults.
+export const BIS_DERIVED_DOMAIN_IDS = ["d1", "d2"] as const;
+
+export function isBisDerivedDomain(id: string): boolean {
+  return (BIS_DERIVED_DOMAIN_IDS as readonly string[]).includes(id);
+}

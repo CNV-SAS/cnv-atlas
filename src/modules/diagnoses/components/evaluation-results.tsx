@@ -4,7 +4,7 @@ import { Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type EngineIndicators, indicatorSeverities } from "@/clinical-engine";
+import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
 
 import { DetailsSection } from "./details-section";
 import { MapsSection } from "./maps-section";
@@ -303,17 +303,34 @@ export function EvaluationResults({
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
-              <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
-                {dfi.riesgo.nivel} · {dfi.riesgo.score}
-              </Badge>
+              {dfi.complete ? (
+                <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
+                  {dfi.riesgo.nivel} · {dfi.riesgo.score}
+                </Badge>
+              ) : (
+                // Q28: el riesgo integrado es un promedio ponderado de los cinco dominios, DOS de ellos
+                // (envejecimiento y contextual) inflados sobre defaults con la encuesta incompleta. No se
+                // muestra el nivel concreto (seria el ALTO inflado); se marca provisional hasta completar la
+                // encuesta. Si Gildardo decide que se conserve como orientacion, se relaja (P-21).
+                <Badge className={SEV_CLS[1]}>Provisional</Badge>
+              )}
               {dfi.veto ? <Badge className={SEV_CLS[3]}>Veto activo</Badge> : null}
             </div>
-            <p className="text-sm text-muted-foreground">{dfi.riesgo.descripcion}</p>
+            <p className="text-sm text-muted-foreground">
+              {dfi.complete
+                ? dfi.riesgo.descripcion
+                : "El riesgo integrado se recalcula al completar la encuesta: depende de dominios que hoy salen sobre respuestas que faltan."}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {dfi.domains.map((d) => {
               const Icon = DOMAIN_ICON[d.id];
+              // Q28: con la encuesta incompleta, los dominios que dependen de ella (d3 envejecimiento, d4
+              // conductual, d5 contextual) se marcan NO EVALUABLES en vez de pintar una severidad calculada
+              // sobre defaults (d3/d5 salen de EB-BIS/ICEC, las mismas salidas suspendidas; mostrar su badge
+              // contradiria el "no se emitieron"). d1/d2 salen de la medicion (BIS) y se muestran igual.
+              const noEvaluable = !dfi.complete && !isBisDerivedDomain(d.id);
               return (
               <div key={d.id} className="flex flex-col gap-1 rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -321,19 +338,31 @@ export function EvaluationResults({
                     {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
                     {d.nombre}
                   </span>
-                  <Badge className={SEV_CLS[Math.min(3, Math.max(0, d.sev))]}>
-                    {SEV_LABEL[Math.min(3, Math.max(0, d.sev))]}
-                  </Badge>
+                  {noEvaluable ? (
+                    <Badge className={SEV_CLS[0]}>No evaluable</Badge>
+                  ) : (
+                    <Badge className={SEV_CLS[Math.min(3, Math.max(0, d.sev))]}>
+                      {SEV_LABEL[Math.min(3, Math.max(0, d.sev))]}
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">{d.clasif}</p>
-                <p className="text-sm text-foreground">{d.lectura}</p>
-                {d.items.length ? (
-                  <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                    {d.items.map((it, i) => (
-                      <li key={i}>{it}</li>
-                    ))}
-                  </ul>
-                ) : null}
+                {noEvaluable ? (
+                  <p className="text-sm text-muted-foreground">
+                    Pendiente de completar la encuesta: este dominio depende de respuestas que faltan.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">{d.clasif}</p>
+                    <p className="text-sm text-foreground">{d.lectura}</p>
+                    {d.items.length ? (
+                      <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+                        {d.items.map((it, i) => (
+                          <li key={i}>{it}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                )}
               </div>
               );
             })}
@@ -357,6 +386,7 @@ export function EvaluationResults({
             statesContent={efrStates}
             radarDomains={dfi.domains}
             radarRiskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1}
+            dfiComplete={dfi.complete}
           />
         </CardContent>
       </Card>

@@ -40,6 +40,7 @@ export function MapsSection({
   statesContent,
   radarDomains,
   radarRiskSev,
+  dfiComplete,
 }: {
   bands: { ifc: number; irc: number; ffmi: number; fmi: number };
   stateNumber: number;
@@ -49,6 +50,10 @@ export function MapsSection({
   statesContent: Record<number, EfrStateRef>;
   radarDomains: DfiDomain[];
   radarRiskSev: number;
+  // Q28: con la encuesta incompleta el radar NO se dibuja (tres de sus cinco ejes salen sobre defaults; un
+  // radar parcial engana: colapsar un eje al centro se lee como "optimo", no como "sin dato"). La Diana si
+  // se muestra: se posiciona por bandas IFC/IRC/FFMI/FMI, todas de la MEDICION (BIS), no de la encuesta.
+  dfiComplete: boolean;
 }) {
   const canExplore = Object.keys(statesContent).length > 0;
   const [exploring, setExploring] = useState(false);
@@ -102,7 +107,14 @@ export function MapsSection({
         </div>
         <div className="flex flex-col items-center gap-3">
           <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
-          <DfiRadar domains={radarDomains} riskSev={radarRiskSev} />
+          {dfiComplete ? (
+            <DfiRadar domains={radarDomains} riskSev={radarRiskSev} />
+          ) : (
+            <p className="max-w-xs rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              El radar funcional se muestra al completar la encuesta. Tres de sus cinco dominios
+              (envejecimiento, conductual y contextual) dependen de respuestas que faltan.
+            </p>
+          )}
         </div>
       </div>
 

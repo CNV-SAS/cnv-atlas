@@ -7,7 +7,7 @@ export { ENGINE_VERSION, PROTOCOL_ENGINE_VERSION } from "./version";
 export { runEngine } from "./engine";
 // Suspension de rutas por encuesta incompleta (Q28): la glue la aplica al sellar; el render la reaplica
 // (idempotente) sobre snapshots viejos ya sellados incompletos.
-export { suspendSurveyRoutes, isBisDerivedRoute } from "./dfi-routes";
+export { suspendSurveyRoutes, isBisDerivedRoute, isBisDerivedDomain } from "./dfi-routes";
 // Orquestador del protocolo (T2 A3): encadena los tres motores y arma el protocol_suggested; y el
 // computo del set EFECTIVO al aprobar (aplica los adj_* sobre los inputs sellados del sugerido).
 export {
