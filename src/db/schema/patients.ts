@@ -51,6 +51,14 @@ export const patientProfiles = pgTable("patient_profiles", {
   sex: text("sex"),
   country: text("country"),
   city: text("city"),
+  // Caracterizacion sociodemografica OPCIONAL (observatorio/ObBIA). Nullable a proposito: si el paciente no
+  // responde queda VACIO, nunca un valor por defecto (un dato inventado es peor que uno vacio). No alimentan
+  // ningun motor (sin field_key). Se capturan al inicio de la fase 2 del intake, ya autorizado. Etnia NO
+  // esta aqui: es dato sensible (Ley 1581 art. 5) y espera el bump de consentimiento a v1.0 (BACKLOG.md).
+  educationLevel: text("education_level"),
+  occupation: text("occupation"),
+  maritalStatus: text("marital_status"),
+  socioeconomicStratum: text("socioeconomic_stratum"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

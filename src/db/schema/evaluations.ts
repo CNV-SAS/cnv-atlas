@@ -37,6 +37,10 @@ export const evaluations = pgTable(
     identityConflict: boolean("identity_conflict").notNull().default(false),
     declaredFirstName: text("declared_first_name"),
     declaredLastName: text("declared_last_name"),
+    // Motivo de consulta (caracterizacion del ENCUENTRO, no del paciente: cambia entre visitas, por eso va
+    // aqui y no en patient_profiles). MULTI-select en el archivo de Gildardo: se guarda como arreglo JSON de
+    // strings (mismo patron que las respuestas opcion_multiple). Opcional (nullable); sin efecto en el motor.
+    reasonForVisit: text("reason_for_visit"),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion

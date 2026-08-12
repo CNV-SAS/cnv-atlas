@@ -974,6 +974,7 @@ export type Database = {
           organization_id: string
           patient_id: string
           professional_id: string
+          reason_for_visit: string | null
           resume_token: string | null
           status: Database["public"]["Enums"]["evaluation_status"]
           superseded_at: string | null
@@ -989,6 +990,7 @@ export type Database = {
           organization_id: string
           patient_id: string
           professional_id: string
+          reason_for_visit?: string | null
           resume_token?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
@@ -1004,6 +1006,7 @@ export type Database = {
           organization_id?: string
           patient_id?: string
           professional_id?: string
+          reason_for_visit?: string | null
           resume_token?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
@@ -1959,10 +1962,14 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          education_level: string | null
           first_name: string
           last_name: string
+          marital_status: string | null
+          occupation: string | null
           patient_id: string
           sex: string | null
+          socioeconomic_stratum: string | null
           updated_at: string
         }
         Insert: {
@@ -1970,10 +1977,14 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          education_level?: string | null
           first_name: string
           last_name: string
+          marital_status?: string | null
+          occupation?: string | null
           patient_id: string
           sex?: string | null
+          socioeconomic_stratum?: string | null
           updated_at?: string
         }
         Update: {
@@ -1981,10 +1992,14 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          education_level?: string | null
           first_name?: string
           last_name?: string
+          marital_status?: string | null
+          occupation?: string | null
           patient_id?: string
           sex?: string | null
+          socioeconomic_stratum?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2172,7 +2187,9 @@ export type Database = {
           bank_account_holder_document: string | null
           bank_account_holder_name: string | null
           bank_account_number: string | null
-          bank_account_type: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_account_type:
+            | Database["public"]["Enums"]["bank_account_type"]
+            | null
           bank_name: string | null
           certification_status: string | null
           commission_rate: number
@@ -2203,7 +2220,9 @@ export type Database = {
           bank_account_holder_document?: string | null
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
-          bank_account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_account_type?:
+            | Database["public"]["Enums"]["bank_account_type"]
+            | null
           bank_name?: string | null
           certification_status?: string | null
           commission_rate?: number
@@ -2226,7 +2245,9 @@ export type Database = {
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
           tax_must_invoice?: boolean | null
-          tax_person_type?: Database["public"]["Enums"]["tax_person_type"] | null
+          tax_person_type?:
+            | Database["public"]["Enums"]["tax_person_type"]
+            | null
           tax_status_completed_at?: string | null
           updated_at?: string
         }
@@ -2234,7 +2255,9 @@ export type Database = {
           bank_account_holder_document?: string | null
           bank_account_holder_name?: string | null
           bank_account_number?: string | null
-          bank_account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_account_type?:
+            | Database["public"]["Enums"]["bank_account_type"]
+            | null
           bank_name?: string | null
           certification_status?: string | null
           commission_rate?: number
@@ -2257,7 +2280,9 @@ export type Database = {
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
           tax_must_invoice?: boolean | null
-          tax_person_type?: Database["public"]["Enums"]["tax_person_type"] | null
+          tax_person_type?:
+            | Database["public"]["Enums"]["tax_person_type"]
+            | null
           tax_status_completed_at?: string | null
           updated_at?: string
         }
@@ -3252,6 +3277,7 @@ export type Database = {
         | "comunicaciones_comerciales"
         | "representante_legal"
         | "asentimiento_menor"
+        | "aceptacion_medio_electronico"
       correction_trigger_type:
         | "correccion_profesional"
         | "recalibracion_ciencia"
@@ -3264,7 +3290,12 @@ export type Database = {
         | "lost"
         | "retired"
       document_type: "CC" | "CE" | "TI" | "PA" | "NIT"
-      evaluation_status: "awaiting_survey" | "draft" | "in_progress" | "completed" | "abandoned"
+      evaluation_status:
+        | "awaiting_survey"
+        | "draft"
+        | "in_progress"
+        | "completed"
+        | "abandoned"
       evaluation_type: "inicial" | "seguimiento"
       field_data_class: "identifier" | "quasi_identifier" | "clinical"
       indicator_classification: "normal" | "riesgo" | "critico"
@@ -3474,6 +3505,7 @@ export const Constants = {
         "comunicaciones_comerciales",
         "representante_legal",
         "asentimiento_menor",
+        "aceptacion_medio_electronico",
       ],
       correction_trigger_type: [
         "correccion_profesional",
@@ -3489,7 +3521,13 @@ export const Constants = {
         "retired",
       ],
       document_type: ["CC", "CE", "TI", "PA", "NIT"],
-      evaluation_status: ["awaiting_survey", "draft", "in_progress", "completed", "abandoned"],
+      evaluation_status: [
+        "awaiting_survey",
+        "draft",
+        "in_progress",
+        "completed",
+        "abandoned",
+      ],
       evaluation_type: ["inicial", "seguimiento"],
       field_data_class: ["identifier", "quasi_identifier", "clinical"],
       indicator_classification: ["normal", "riesgo", "critico"],
