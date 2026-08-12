@@ -83,14 +83,14 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 |---|---|---|---|---|---|
 | A1 | Encabezado col. valor | `Valor` | `Valor obtenido` | hallazgo (menor) | decidir rótulo; bajo |
 | A2 | Encabezado col. clasificación | `Clasificación` | `Diagnóstico` | hallazgo (menor) | decidir rótulo; bajo |
-| A3 | Nombre IFC | Índice de Funcionalidad Celular | Índice de función celular (tabla) / Función Celular (paciente) / Fuerza Celular (otro) | candidato → Gildardo | el HTML se contradice a sí mismo; pedir nombre canónico |
-| A4 | Nombre IRC | Índice de Riesgo Celular | Índice de riesgo celular (×10) | candidato → decisión | ver A11 (escala ×10) |
-| A5 | Nombre PABU | Proporción Áurea Bioeléctrica Universal | Distancia a la proporción áurea φ | candidato → Gildardo | difiere el SIGNIFICADO (proporción vs distancia a ella) |
-| A6 | Nombre ICA-BIS | Índice de Coherencia Áurea (BIS) | ICA-BIS (PABU − φ) | candidato → Gildardo | nombre vs fórmula; pedir canónico |
-| A7 | Nombre ISCM | Índice de Susceptibilidad Cardiometabólica (BIS) | Score de susceptibilidad multicomponente | candidato → Gildardo | "cardiometabólica" vs "multicomponente": difiere el significado |
-| A8 | Nombre IEHH | Índice del Espectro de Hidratación Humana | Índice de equilibrio hídrico | candidato → Gildardo | difiere el significado |
+| A3 | Nombre IFC | Índice de **Función** Celular | Función Celular | **RESUELTO** (§10/P-18, 2026-08-09; `registry-data.ts:37`) | coincide; ninguna |
+| A4 | Nombre IRC | Índice de Riesgo Celular | Índice de riesgo celular (×10) | **RESUELTO** (§10: IRC queda como está; escala cruda, ver A11) | ninguna |
+| A5 | Nombre PABU | Proporción Áurea Bioeléctrica **de Uribe** | Proporción Áurea Bioeléctrica de Uribe | **RESUELTO** (§10: "de Uribe", no "Universal"; `registry-data.ts:39`) | ninguna |
+| A6 | Nombre ICA-BIS | Índice de Coherencia Áurea (BIS) | ICA-BIS (PABU − φ) | candidato (no lo nombró §10) | menor; no urge |
+| A7 | Nombre ISCM | Índice de Susceptibilidad Cardiometabólica (BIS) | Score de susceptibilidad multicomponente | **RESUELTO** (§10: ISCM queda como está) | ninguna |
+| A8 | Nombre IEHH | Índice del **Estado** de Hidratación Humana | Índice del Estado de Hidratación Humana | **RESUELTO** (§10: "Estado", no "Espectro"; `registry-data.ts:42`) | ninguna (ojo: el comentario del frozen `engine.indices.js:23` aún dice "Espectro"; solo comentario) |
 | A9 | Nombre EB | Edad Bioeléctrica (EB-BIS) | Edad biológica (a) | **deliberada** (D-010/D-011) | ninguna; NO es "edad biológica" |
-| A10 | Nombre IR | **Impedance Ratio** (inglés) | Radio de impedancia | **hallazgo (real)** | traducir a español; viola regla de idioma de CLAUDE.md |
+| A10 | Nombre IR | Radio de impedancia | Radio de impedancia | **RESUELTO** (traducido; `registry-data.ts:48`) | ninguna (el inglés sobrevive solo como header del Excel de import, correcto) |
 | A11 | Escala IRC en pantalla | valor crudo, 2 dec, referencia cruda (`< 1.68`) | valor ×10, 3 dec | candidato → decisión | Atlas es coherente consigo mismo; el número no coincidirá con el HTML |
 | A12 | Decimales AF | 1 decimal | 1 decimal | **coincide** | ninguna (la fila "deliberada AF 2 dec" no aplica en esta tabla) |
 | A13 | Nombres FMI / FFMI / IAE | Índice de Masa Grasa / Libre de Grasa / Aceleración del Envejecimiento | idénticos en esencia | **coincide** | ninguna |
@@ -232,14 +232,14 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 |---|---|---|---|---|---|
 | ECB1 | Identidad: nombre, tipo/N° doc, sexo, fecha nac, teléfono, email | sí | sí (`patient_profiles`) | **coincide** | ninguna |
 | ECB2 | País y ciudad | sí | sí | **coincide** | ninguna |
-| ECB3 | **Etnia / grupo poblacional** | sí (7 opciones) | **NO** | candidato → decisión | ¿se registra? no lo usa el motor |
-| ECB4 | **Nivel educativo** | sí (8 opciones) | **NO** | candidato → decisión | idem |
-| ECB5 | **Ocupación** | sí (15 + Otra) | **NO** | candidato → decisión | idem |
-| ECB6 | **Estado civil** | sí (5 opciones) | **NO** | candidato → decisión | idem |
-| ECB7 | **Estrato socioeconómico** | sí (1-6 / No aplica) | **NO** | candidato → decisión | idem |
-| ECB8 | **Motivo de consulta** | sí (8 opciones, múltiple) | **NO** (no hay columna) | candidato → decisión | ¿registro clínico útil? |
+| ECB3 | **Etnia / grupo poblacional** | sí (7 opciones) | **NO (diferida)** | **DELIBERADA / diferida** | dato sensible (Ley 1581 art. 5); espera el bump de consent v1.0 (`sociodemographic-options.ts:3-4`) |
+| ECB4 | **Nivel educativo** | sí (8 opciones) | **HECHO** ("Sobre ti", fase 2) | resuelta | ninguna |
+| ECB5 | **Ocupación** | sí (15 + Otra) | **HECHO** (con "Otra" texto libre) | resuelta | ninguna |
+| ECB6 | **Estado civil** | sí (5 opciones) | **HECHO** | resuelta | ninguna |
+| ECB7 | **Estrato socioeconómico** | sí (1-6 / No aplica) | **HECHO** | resuelta | ninguna |
+| ECB8 | **Motivo de consulta** | sí (8 opciones, múltiple) | **HECHO** (`evaluations.reason_for_visit`) | resuelta | ninguna |
 
-**EA3 confirmado y ampliado:** el HTML captura 6 campos sociodemográficos + motivo que Atlas no guarda. Ninguno alimenta el motor ANI-BIS-E. Decisión: ¿los queremos (observatorio/obbia, investigación)? Si sí, es esquema nuevo (`patient_profiles` + intake).
+**EA3 CERRADO (2026-08-12):** los 5 no sensibles + motivo se capturan en "Sobre ti" (inicio de la fase 2), portados verbatim del v8 (`sociodemographic-options.ts`); 4 al perfil, motivo a la evaluación. Solo **etnia (ECB3)** queda sin capturar, a propósito: dato sensible que espera el bump de consentimiento v1.0.
 
 ### C. Deliberadas (nuestras; que no reaparezcan)
 
@@ -248,21 +248,34 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 | **Etiquetas de dominio de-jergadas** | "D1 Patrón Usual de Consumo", "D5 Epigenético / LE8", "D6 Alergias y Salud Digestiva" | "Alimentación", "Antecedentes y estilo de vida", "Alergias y digestión" | lenguaje al paciente, sin jerga (comentario del seed: "nada de LE8") |
 | **Consentimiento** | "Encuesta CNV v3.0", 5 casillas (datos/salud/terceros/derechos/bioética) + firma por nombre | artefacto legal propio vendorizado (v1.7), 3 autorizaciones del gate (servicio/datos_sensibles/internacional_ia, regla 15) + casilla de firma electronica + soporte de menores | Atlas tiene su consentimiento legal propio, no el del prototipo (C1, hash anclado) |
 | **Encuesta del paciente separada del lado profesional** | tab "Motor ⚡" salta al lado profesional desde la encuesta | superficies separadas (público `/encuesta/[token]` vs interno) | seguridad/separación de superficies |
+| **Señales de riesgo ocultas al paciente (parámetro `audience`)** | 3 categorías de D1 con cabecera de color (protectora/energética/PCBU), pills de riesgo en rojo, marca ⚠ TCA en D2, descripción "Factor de Estrés" en Q39 | ninguna de esas señales al paciente | el sesgo es del que RESPONDE, no del que interpreta (`PLAN_ENCUESTA.md`): desaparecen para el paciente, SE CONSERVAN para el profesional. El prop `audience` **aún no se construye** (llega con el port de las categorías); hasta entonces están ausentes en ambas superficies |
+| **Sin emoji en toda la UI** | emojis en tabs, anclas 📏, cabeceras de categoría, alertas | sin emoji | regla de UI (CLAUDE.md) |
+| **Sociodemográficos al inicio de la fase 2** | D0 "Datos de la consulta" (contexto profesional) | "Sobre ti" (5 campos + motivo) tras firmar | post-autorización; no en la identidad |
+| **ECA4a texto libre en "Otra" diferido** | input libre al elegir "Otra"/"Otros" | opción existe, sin campo de texto | cambia entradas por-substring del motor en d5_39 (lista roja); pregunta a Gildardo (ECA4b) |
 
 ### D. Widgets (coinciden en tipo; confirmar con OJOS)
 
 | # | Elemento | HTML v8 | Atlas | Nota |
 |---|---|---|---|---|
-| ECD1 | Pills única/múltiple | dominante | `opcion` / `opcion_multiple` | coincide |
-| ECD2 | Contador +/- (bebidas D7) | Counter, rango **0-30** | `contador` | **[OJOS]** verificar el tope 30 |
-| ECD3 | Slider (estrés d3_29) | range **1-10** | `escala` | coincide (único slider) |
-| ECD4 | Opciones con alerta roja (D2 TCA: Laxantes/Vómito/Ejercicio excesivo) | pinta en rojo + aviso | ¿lo rendea Atlas? | **[OJOS]** verificar el resaltado de riesgo |
+| ECD1 | Pills única/múltiple | dominante | `opcion` / `opcion_multiple` (rótulo "Puedes elegir varias") | coincide |
+| ECD2 | Contador +/- (bebidas D7) | Counter, rango 0-30 | `contador` 0-30 | **coincide** (tope 30 confirmado en el cotejo) |
+| ECD3 | Slider (estrés d3_29) | range 1-10 | `escala` | coincide (único slider) |
+| ECD4 | Alerta roja D2 TCA / resaltado de riesgo D1 | pinta en rojo + aviso | ausente | **DELIBERADA (audiencia)**, no [OJOS]: oculta al paciente, se conserva para el profesional (sección C). Se rendea del lado profesional cuando se construya `audience` |
 
-### Para Santiago (requiere OJOS)
+### D-vis. Presentación visual (EXIGE OJOS de Santiago; material de la Fase 3)
 
-- **[OJOS]** El stepper por dominio y la barra de progreso (que se vea equivalente).
-- **[OJOS]** El resaltado de riesgo en D2 (opciones TCA en rojo) y en D1 (frecuencia ≥2 en procesados).
-- **[OJOS]** Las 3 categorías de color de D1 (protectora/moderar/PCBU): ¿Atlas las agrupa?
+| # | Elemento | HTML v8 | Atlas v3 | Nota |
+|---|---|---|---|---|
+| ECV1 | **Ancla de porción D1** | pill ámbar aparte con 📏 ("Un puño cerrado") | texto gris pegado al hint tras " · ", sin emoji | **[OJOS]** que se lea y no se pierda entre los ejemplos |
+| ECV2 | **Bebidas D7** | grid 2 columnas, unidad por bebida ("tazas", "vasos 200ml", "latas"), icono | lista vertical, contador sin etiqueta de unidad | **[OJOS]** layout + falta la unidad |
+| ECV3 | **Sub-bloque horarios D1** | caja gris "Hábitos de horario y condimentación" agrupa d1f_sal/des/noche | 3 preguntas planas al final de Alimentación | **[OJOS]** agrupación visual |
+| ECV4 | **Barra de progreso / stepper** | barra fina gradiente verde (% = respuestas/64) + tabs coloreadas por dominio + "N/9" | `Progress` token primary (% = paso/total secciones) + subpestañas de texto + "Paso X de N" | **[OJOS]** que se sienta equivalente (semántica del % distinta) |
+
+### E. Hallazgo nuevo (ni hecho ni decidido)
+
+| # | Elemento | v8 | Atlas v3 | Decisión pendiente |
+|---|---|---|---|---|
+| ECE1 | **Orden de los 15 alimentos de D1** | por categoría: 1-7, 8-9-10-**15**, 11-12-13-14 (carnes rojas entre blancas y refinados) | secuencial 1..14,**15** (carnes rojas AL FINAL, tras ultraprocesados) | cuando llegue el prop `audience`: ¿el orden del paciente sigue el flujo protector→neutro→riesgo (sin las etiquetas de color) o queda numérico plano? Hoy es plano. Menor, ligado al port de las categorías |
 
 ### Resumen (para el BACKLOG / bloque de re-auditoría de la encuesta)
 
