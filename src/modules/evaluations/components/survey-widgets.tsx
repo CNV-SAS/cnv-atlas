@@ -59,6 +59,18 @@ export function PillsSingle({
   );
 }
 
+// "Ninguna/Ninguno" (opcion excluyente): marcarla limpia el resto y viceversa. "Otra/Otros": abre texto
+// libre. El motor filtra "ninguna" en las preguntas que lee (engine.dfi.js:127,245,253), asi que la
+// exclusividad no cambia el diagnostico; y el texto libre se guarda como "Otra: <texto>" y la GLUE lo
+// stripea antes del motor (build-engine-input), asi no alimenta d5_39 (provisional hasta ECA4b).
+const isNoneOption = (t: string) => /^ningun[oa]$/i.test(t.trim());
+const isOtherOption = (t: string) => /^otr(a|os)$/i.test(t.trim());
+// Separa un valor guardado "Otra: xxx" en {base:"Otra", text:"xxx"}. null si no es texto libre de "Otra".
+function splitOther(stored: string): { base: string; text: string } | null {
+  const m = /^(otr(?:a|os))\s*:\s*(.+)$/i.exec(stored.trim());
+  return m ? { base: m[1], text: m[2] } : null;
+}
+
 // Pills de seleccion MULTIPLE. Un hidden input por valor elegido; el server action agrupa
 // los repetidos con getAll y los serializa a JSON.
 export function PillsMulti({
@@ -70,27 +82,61 @@ export function PillsMulti({
   options: SurveyOptionView[];
   defaultValue?: string[];
 }) {
-  const [selected, setSelected] = useState<string[]>(defaultValue);
+  // Prefill (edicion): un elemento "Otra: xxx" se descompone en el token base + su texto.
+  const [selected, setSelected] = useState<string[]>(() =>
+    defaultValue.map((v) => splitOther(v)?.base ?? v),
+  );
+  const [otherText, setOtherText] = useState<string>(
+    () => defaultValue.map((v) => splitOther(v)?.text).find(Boolean) ?? "",
+  );
+
+  const otherOption = options.find((o) => isOtherOption(o.text))?.text ?? null;
+
   const toggle = (t: string) =>
-    setSelected((s) => (s.includes(t) ? s.filter((x) => x !== t) : [...s, t]));
+    setSelected((s) => {
+      if (isNoneOption(t)) {
+        // "Ninguna": marcarla deja SOLO ella; desmarcarla la quita.
+        return s.includes(t) ? s.filter((x) => x !== t) : [t];
+      }
+      // Cualquier otra opcion quita "Ninguna".
+      const withoutNone = s.filter((x) => !isNoneOption(x));
+      return withoutNone.includes(t) ? withoutNone.filter((x) => x !== t) : [...withoutNone, t];
+    });
+
+  const showOtherInput = otherOption != null && selected.includes(otherOption);
+  // Valor emitido por opcion: "Otra" con texto -> "Otra: <texto>"; el resto tal cual.
+  const emit = (t: string) =>
+    otherOption && t === otherOption && otherText.trim() ? `${t}: ${otherText.trim()}` : t;
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((o) => {
-        const active = selected.includes(o.text);
-        return (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => toggle(o.text)}
-            className={pillClass(active)}
-          >
-            {o.text}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => {
+          const active = selected.includes(o.text);
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => toggle(o.text)}
+              className={pillClass(active)}
+            >
+              {o.text}
+            </button>
+          );
+        })}
+      </div>
+      {showOtherInput ? (
+        <Input
+          value={otherText}
+          onChange={(e) => setOtherText(e.target.value)}
+          placeholder="¿Cuál? Especifica"
+          maxLength={200}
+          className="h-9"
+        />
+      ) : null}
       {selected.map((v) => (
-        <input key={v} type="hidden" name={`answer_${id}`} value={v} />
+        <input key={v} type="hidden" name={`answer_${id}`} value={emit(v)} />
       ))}
     </div>
   );

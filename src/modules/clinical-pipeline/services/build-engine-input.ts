@@ -46,10 +46,18 @@ function decodeMulti(value: string): string[] {
 // Nota (GILDARDO_QUERIES.md Q3): la encuesta no aporta d1_9/d1_10/d1_16, asi que los
 // dominios Alimentacion e Hidratacion del LE8 quedan en su valor por defecto. No se
 // inventa mapeo: los campos simplemente no estan en el objeto.
+// Texto libre de la opcion "Otra"/"Otros" (ECA4a): el intake lo guarda como un elemento "Otra: <texto>".
+// SE CAPTURA en survey_answers (registro), pero NO alimenta el motor: se stripea aqui, en la GLUE, antes
+// de que el frozen lea el campo. Es CRITICO en d5_39, que el motor lee por substring (renal/cancer/diabet):
+// un "Otra: cancer de piel" escrito a mano dispararia el protocolo. PROVISIONAL hasta que Gildardo responda
+// ECA4b (si decide que alimente, se deja de stripear en d5_39). No toca las cadenas sembradas ni el candado.
+const isFreeTextOther = (el: string): boolean => /^otr(?:a|os)\s*:/i.test(el.trim());
+
 function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   const survey: Record<string, unknown> = {};
   for (const a of answers) {
-    survey[a.fieldKey] = a.type === "opcion_multiple" ? decodeMulti(a.value) : a.value;
+    survey[a.fieldKey] =
+      a.type === "opcion_multiple" ? decodeMulti(a.value).filter((el) => !isFreeTextOther(el)) : a.value;
   }
   return survey;
 }

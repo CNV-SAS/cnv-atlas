@@ -84,3 +84,24 @@ describe("buildEngineInput", () => {
     expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBeUndefined();
   });
 });
+
+describe("buildSurvey: el texto libre de 'Otra' NO alimenta el motor (ECA4a, provisional d5_39)", () => {
+  const model = { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" };
+  it("stripea 'Otra: <texto>' de los multi (el frozen no lo ve), conserva opciones reales y 'Otra' pelada", () => {
+    const raw = {
+      sex: "M",
+      birthDate: "1990-01-01",
+      surveyAnswers: [
+        // d5_39 lo lee el motor por substring: "Otra: cancer de piel" NO debe llegar (dispararia protocolo).
+        { fieldKey: "d5_39", type: "opcion_multiple", value: JSON.stringify(["Diabetes tipo 2", "Otra: cancer de piel"]) },
+        // "Otra" pelada (sin texto) es inerte: NO se stripea; las opciones reales quedan.
+        { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["Otra", "HTA (presión alta)"]) },
+      ],
+      expectedFieldKeys: ["d5_39"],
+      bisRaw: {},
+    };
+    const input = buildEngineInput(raw, model, NOW);
+    expect(input.survey.d5_39).toEqual(["Diabetes tipo 2"]);
+    expect(input.survey.d5_38).toEqual(["Otra", "HTA (presión alta)"]);
+  });
+});
