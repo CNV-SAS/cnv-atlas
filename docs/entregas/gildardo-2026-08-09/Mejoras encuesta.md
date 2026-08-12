@@ -65,6 +65,8 @@ sesgos al responder, por ejemplo en esta primera sección de alimentación o com
 
 Literalmente pone simbolos de riesgos y palabras como moderar, entonces uno entiende que entre mas poquitas ponga mejor o entre mas ponga mejor, segun la sección. Entonces mejor las renombramos o directamente eliminamos esa separación y que todos los alimentos queden seguidos.
 
+> **RESUELTO (2026-08-12) -> NO se eliminan, se PARAMETRIZAN POR AUDIENCIA.** Ver `PLAN_ENCUESTA.md` (PRECISION de Santiago, 2026-08-09). El sesgo es del que RESPONDE (paciente), no del que INTERPRETA (profesional): las 3 categorias de D1 (y la marca TCA de Q21 y la descripcion "Factor de Estres Metabolico" de Q39) DESAPARECEN de la encuesta del PACIENTE pero SE CONSERVAN cuando el PROFESIONAL revisa/edita (necesita ver que grupos son protectores/de riesgo para leer el patron). Un solo prop `audience` ('patient' | 'professional') en el widget compartido gobierna los tres a la vez. NO es contradiccion con lo que se le confirma a Gildardo en la ronda C2 (esas son las etiquetas del lado PROFESIONAL). Se aplica al portar D1.
+
 Aunque al final de esta tanda 1 (aliemntación), aparece este bloque: 🕐 Hábitos de horario y condimentación con las 3 preguntas finales  (sal extra, desayuna regularmente, a que horas suele cenar), entonces no se si tambien eliminamos esa separación.
 
 
