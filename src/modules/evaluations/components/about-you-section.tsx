@@ -104,6 +104,11 @@ export function AboutYouSection({
       </Field>
 
       {includeProfile ? (
+        // Todos los selects arrancan con un PROMPT neutro (value=""), no con una opcion pre-elegida:
+        // dejar en blanco = no respondio (se guarda null), no una decision que el paciente no tomo. Estos
+        // cuatro no son datos sensibles, asi que no llevan un "Prefiero no responder" explicito (basta el
+        // blanco); etnia SI lo lleva, porque el dictamen exige distinguir "no respondio" de "eligio no
+        // informar" en un dato sensible. Misma disciplina ausencia-vs-vacio, calibrada por sensibilidad.
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Nivel educativo">
             <select
@@ -112,7 +117,7 @@ export function AboutYouSection({
               value={educationLevel}
               onChange={(e) => setEducationLevel(e.target.value)}
             >
-              <option value="">Prefiero no responder</option>
+              <option value="">Selecciona una opción</option>
               {EDUCACION_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -127,7 +132,7 @@ export function AboutYouSection({
               value={occupationChoice}
               onChange={(e) => setOccupationChoice(e.target.value)}
             >
-              <option value="">Prefiero no responder</option>
+              <option value="">Selecciona una opción</option>
               {OCUPACION_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -153,7 +158,7 @@ export function AboutYouSection({
               value={maritalStatus}
               onChange={(e) => setMaritalStatus(e.target.value)}
             >
-              <option value="">Prefiero no responder</option>
+              <option value="">Selecciona una opción</option>
               {ESTADO_CIVIL_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -169,7 +174,7 @@ export function AboutYouSection({
               value={stratum}
               onChange={(e) => setStratum(e.target.value)}
             >
-              <option value="">Prefiero no responder</option>
+              <option value="">Selecciona una opción</option>
               {ESTRATO_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
