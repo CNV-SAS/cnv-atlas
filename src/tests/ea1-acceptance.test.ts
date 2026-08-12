@@ -19,6 +19,8 @@ const { buildComposition } = await import("@/modules/diagnoses/data/composition-
 const { buildBisRow } = await import("@/modules/clinical-pipeline/services/build-engine-input");
 const { analizarDesdeBiody } = await import("@/clinical-engine/analysis");
 const { computeCelularBadges } = await import("@/modules/treatment/data/celular-badges");
+const { BIODY_COLUMNS } = await import("@/clinical-engine");
+const { normalizeHeader } = await import("@/modules/bis/services/header-map");
 
 const SHORT_FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -48,6 +50,7 @@ describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + 
       actorId: "22222222-2222-2222-2222-222222222222",
       actorEmail: "pro@cnv",
       ip: null,
+      patientSex: "M", // fixture masculino: habilita las referencias poblacionales (§9)
     });
     expect(res.ok).toBe(true);
     const arg = vi.mocked(writer.writeBisMeasurement).mock.calls[0][0];
@@ -73,19 +76,28 @@ describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + 
     expect(comp.aecMca).toBeTypeOf("number");
   });
 
-  it("(2) IEHH se emite y (3) ISCM queda en null (falta MCA_ref)", () => {
+  it("(2) IEHH e ISCM se emiten (MCA_ref/MCA_dif cableados por §9)", () => {
     const row = buildBisRow(persisted);
     const a = analizarDesdeBiody(row, "M", { icec: 60, edad: 40 });
     expect(a.indices.IEHH, "IEHH emitido").toBeTypeOf("number");
-    expect(a.indices.ISCM, "ISCM en null por MCA_ref pendiente").toBeNull();
+    // Antes null por MCA_ref pendiente; con la referencia poblacional (§9) ya computa.
+    expect(a.indices.ISCM, "ISCM emitido con la referencia poblacional").toBeTypeOf("number");
   });
 
-  it("(4) badges: MCA e hidratacion no evaluables (referencia pendiente), ECM/BCM si se evalua", () => {
+  it("(3) las referencias poblacionales se persisten como DERIVADAS (§9), no como medidas", () => {
+    // MCA_ref = 52,4% de la MLG de referencia (peso x %grasa-ref), en el conjunto derivado.
+    const mcaRefHeader = normalizeHeader(BIODY_COLUMNS.MCA_ref.header);
+    const hidRefHeader = normalizeHeader(BIODY_COLUMNS.hidSG_ref.header);
+    expect(persisted[mcaRefHeader], "MCA_ref derivado").toBeTypeOf("number");
+    expect(persisted[hidRefHeader], "hidSG_ref derivado").toBe(73.2);
+  });
+
+  it("(4) badges: MCA e hidratacion YA evaluables (referencia cableada), ECM/BCM tambien", () => {
     const badges = computeCelularBadges(persisted, true);
     expect(badges.dataAvailable).toBe(true);
     const notEval = badges.notEvaluable.map((n) => n.id);
-    expect(notEval).toContain("mca");
-    expect(notEval).toContain("hid");
-    expect(notEval).not.toContain("ecm"); // ECM/BCM se deriva -> es evaluable
+    expect(notEval).not.toContain("mca"); // ya hay MCA_dif (via MCA_ref)
+    expect(notEval).not.toContain("hid"); // ya hay hidSG_ref
+    expect(notEval).not.toContain("ecm");
   });
 });

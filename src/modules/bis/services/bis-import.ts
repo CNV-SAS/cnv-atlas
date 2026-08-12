@@ -27,6 +27,9 @@ export type ImportBisInput = {
   actorId: string;
   actorEmail: string;
   ip: string | null;
+  // Sexo del paciente (opcional): habilita las referencias poblacionales de composicion (MCA_ref/
+  // hidSG_ref/MCA_dif, §9). Sin el, esas referencias no se derivan (ISCM null, badges no evaluables).
+  patientSex?: "M" | "F" | null;
 };
 
 export type ImportBisOutput = {
@@ -38,12 +41,15 @@ export type ImportBisOutput = {
 // Deriva la composicion faltante a partir de lo MEDIDO. La derivacion es un EXTRA: la medicion ya es
 // valida sin ella. Si algo revienta (nunca deberia; el helper tolera huecos), se importa lo que hay con
 // composicion vacia en vez de tumbar el import. No hay PII que registrar; el audit derived_count queda en 0.
-function safeDerive(values: { variableName: string; value: number }[]): DerivedValue[] {
+function safeDerive(
+  values: { variableName: string; value: number }[],
+  sexo: "M" | "F" | null,
+): DerivedValue[] {
   const measured: Record<string, number> = {};
   for (const v of values) measured[v.variableName] = v.value;
   try {
     // Defensa extra: nunca una fila derivada que colisione con una medida (el helper ya las excluye).
-    return deriveMissingComposition(measured).filter((d) => measured[d.variableName] == null);
+    return deriveMissingComposition(measured, sexo).filter((d) => measured[d.variableName] == null);
   } catch (e) {
     console.warn("[bis-import] derivacion de composicion fallo; se importa sin derivar:", e);
     return [];
@@ -90,7 +96,7 @@ export async function importBisMeasurement(
   // Derivacion de composicion (EA1): corre por composicion faltante sobre lo medido. El orden lo
   // resuelve derivarFaltantes internamente (re-lee los campos que el mismo deriva: MPM antes de MCA,
   // MCA antes de ECM/BCM), igual que el v8, que lo llama una sola vez.
-  const derivedValues = safeDerive(validated.value.values);
+  const derivedValues = safeDerive(validated.value.values, input.patientSex ?? null);
 
   try {
     const written = await writeBisMeasurement({

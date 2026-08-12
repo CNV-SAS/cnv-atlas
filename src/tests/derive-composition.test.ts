@@ -92,6 +92,60 @@ describe("deriveMissingComposition", () => {
     });
   });
 
+  describe("referencias poblacionales (§9): MCA_ref, hidSG_ref, MCA_dif", () => {
+    it("export COMPLETO (ZM3) con sexo: no deriva referencias (el equipo ya las trajo)", () => {
+      // care (a): un export completo trae MCA_ref/hidSG_ref/MCA_dif como medidos, no se derivan.
+      expect(deriveMissingComposition(measuredFromZm3(), "M")).toEqual([]);
+    });
+
+    it("sin sexo no deriva referencias (quedan ausentes, ISCM null honesto)", () => {
+      const full = measuredFromZm3();
+      const short: Record<string, number> = { ...full };
+      for (const f of ["MCA_ref", "hidSG_ref", "MCA_dif", "MCA"]) {
+        delete short[normalizeHeader(BIODY_COLUMNS[f].header)];
+      }
+      const derived = deriveMissingComposition(short); // sin sexo
+      expect(emitted(derived, "MCA_ref")).toBeUndefined();
+      expect(emitted(derived, "hidSG_ref")).toBeUndefined();
+    });
+
+    it("con sexo y referencias ausentes: MCA_ref = 52,4% de la MLG de REFERENCIA (peso x %grasa-ref)", () => {
+      const full = measuredFromZm3();
+      const short: Record<string, number> = { ...full };
+      for (const f of ["MCA_ref", "hidSG_ref", "MCA_dif"]) {
+        delete short[normalizeHeader(BIODY_COLUMNS[f].header)];
+      }
+      const peso = short[normalizeHeader(BIODY_COLUMNS.peso.header)];
+      const derived = deriveMissingComposition(short, "M");
+      const ffmRef = (peso * (100 - 17.5)) / 100; // hombre: 17,5% grasa de referencia
+      const mcaRefEsperado = parseFloat((ffmRef * 52.4 / 100).toFixed(2));
+      expect(emitted(derived, "MCA_ref")).toBeCloseTo(mcaRefEsperado, 2);
+      expect(emitted(derived, "hidSG_ref")).toBe(73.2);
+    });
+
+    it("coherencia de Gildardo: MLG de referencia 58,5 kg -> MCA_ref 30,65 kg (52,4%)", () => {
+      // 58,5 = peso x (100-17,5)/100  ->  peso = 58,5 / 0,825 = 70,909...
+      const peso = 58.5 / 0.825;
+      const short: Record<string, number> = {
+        [normalizeHeader(BIODY_COLUMNS.peso.header)]: peso,
+      };
+      const derived = deriveMissingComposition(short, "M");
+      expect(emitted(derived, "MCA_ref")).toBeCloseTo(30.65, 2);
+    });
+
+    it("MCA_dif puede ser NEGATIVO (deficit celular real): no se descarta como no-fisico", () => {
+      // Peso alto (MLG_ref alta -> MCA_ref alta) con MCA medida baja: MCA - MCA_ref < 0. Debe emitirse.
+      const short: Record<string, number> = {
+        [normalizeHeader(BIODY_COLUMNS.peso.header)]: 90,
+        [normalizeHeader(BIODY_COLUMNS.MCA.header)]: 20, // MCA baja frente a su referencia
+      };
+      const derived = deriveMissingComposition(short, "M");
+      const mcaDif = emitted(derived, "MCA_dif");
+      expect(mcaDif).toBeTypeOf("number");
+      expect(mcaDif as number).toBeLessThan(0);
+    });
+  });
+
   it("no persiste un derivado no-fisico (negativo): mejor vacio que basura", () => {
     // FFW = ACT - 0,15*FM. Con FM enorme y ACT minima, la identidad da negativo: no debe emitirse.
     const measured: Record<string, number> = {

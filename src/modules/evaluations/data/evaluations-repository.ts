@@ -128,6 +128,20 @@ export async function getEvaluationOwnership(
     : null;
 }
 
+// Sexo del paciente (M/F) para habilitar las referencias poblacionales de composicion al importar el
+// BIS (MCA_ref/hidSG_ref/MCA_dif, §9): son sexo-especificas. RLS acota que sea del profesional; si no
+// hay acceso o el sexo no es M/F, devuelve null y las referencias no se derivan (ISCM null honesto).
+export async function getPatientSex(patientId: string): Promise<"M" | "F" | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patient_profiles")
+    .select("sex")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (error) throw new Error(`evaluations-repository: getPatientSex: ${error.message}`);
+  return data?.sex === "M" || data?.sex === "F" ? data.sex : null;
+}
+
 // Cuasi-identificadores estables del paciente para pre-llenar un link de seguimiento.
 // RLS: devuelve null si el paciente no es del profesional (no lo puede leer).
 export async function getPatientPrefill(

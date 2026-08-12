@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitImportByUser } from "@/core/rate-limit";
-import { getEvaluationOwnership } from "@/modules/evaluations/data/evaluations-repository";
+import { getEvaluationOwnership, getPatientSex } from "@/modules/evaluations/data/evaluations-repository";
 import { getBisIntakeForEvaluation } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import { requireUser } from "@/modules/auth/session";
@@ -91,6 +91,9 @@ export async function importBisAction(
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const ip = await getClientIp();
+  // Sexo del paciente: habilita las referencias poblacionales de composicion (§9). Best-effort; si no
+  // esta, el import sigue y esas referencias quedan sin derivar (ISCM null honesto), no se cae.
+  const patientSex = await getPatientSex(ownership.patientId);
   const result = await importBisMeasurement({
     buffer,
     evaluationId,
@@ -98,6 +101,7 @@ export async function importBisAction(
     actorId: user.id,
     actorEmail: user.email,
     ip: ip === "unknown" ? null : ip,
+    patientSex,
   });
 
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
