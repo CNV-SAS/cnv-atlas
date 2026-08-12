@@ -10,6 +10,7 @@ import {
   getEvaluationPatientSex,
 } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { CorrectionEntry } from "@/modules/corrections/components/correction-entry";
+import { CorrectionHistory } from "@/modules/corrections/components/correction-history";
 import { SupersededBanner } from "@/modules/corrections/components/superseded-banner";
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
@@ -113,6 +114,7 @@ export default async function ResultadosEvaluacionPage({
         {supersession.superseded ? (
           <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
         ) : null}
+        <CorrectionHistory evaluationId={id} />
         <EvaluationTabs
         evaluacion={
           <EntradaEvaluacion
@@ -271,6 +273,7 @@ export default async function ResultadosEvaluacionPage({
       {supersession.superseded ? (
         <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
       ) : null}
+      <CorrectionHistory evaluationId={id} />
       <EvaluationTabs
       evaluacion={
         // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
