@@ -21,3 +21,11 @@
 **Probablemente NO la necesitan** (escalas, sí/no, o frecuencias cerradas y exhaustivas): d3_27 (calidad de sueño), d3_28 (ronca), d3_31 (frecuencia de alcohol), d4_32 (número de comidas), d4_33 (desayuna), d5_37 (toma medicamentos para la presión), d5_41 (fue amamantado), d7_57 (sed), d7_58 (color de orina), d8_60 (frecuencia de comer fuera).
 
 **Nota interna (no para Gildardo):** de las candidatas, **d2_21, d5_38** están acopladas al motor (lista roja). Agregarles "Otro" es un `option_text` NUEVO que no altera las cadenas ancladas (el motor no matchea "Otro"), pero al tocar esas preguntas hay que re-correr `survey-engine-coupling.test.ts` con BD real. Las demás candidatas están fuera de la lista roja.
+
+---
+
+## Segunda pregunta (misma familia): el texto libre de "Otra" en antecedentes, ¿alimenta el motor?
+
+**Para Gildardo (breve):** en la pregunta de diagnósticos personales (d5_39), el paciente puede marcar "Otra". Si esa opción abre un campo de texto libre, hay una decisión: **ese texto, ¿debe alimentar el motor o quedarse como registro clínico?** El detalle importa porque el motor reconoce condiciones **por coincidencia de texto**: si el texto libre alimenta el motor, un paciente que escribe "diabetes" o "insuficiencia renal" en "Otra" **dispararía el protocolo correspondiente** (restricción de carbohidratos, proteína renal, etc.). Puede ser lo que quieres (es una condición real) o no (texto no estructurado que no debería gatear un protocolo automático). Es tu decisión clínica, no nuestra: por eso no lo activamos.
+
+**Para su CC (detalle):** hoy `motorProtocolo` lee `d5_39` por substring en minúscula (`renal`, `cáncer`, `diabet`, ...) sobre los `option_text` seleccionados. Si el texto libre de "Otra" entra al arreglo de respuesta, queda sujeto a ese mismo substring. Portamos el texto libre de "Otra" (ECA4a) **en pausa** hasta esta respuesta: (a) si el texto es solo registro, lo guardamos en la respuesta SIN que el motor lo escanee como condición; (b) si debe alimentar, lo dejamos en el arreglo que el motor lee, con golden actualizado. Mientras tanto, la opción "Otra" existe pero sin campo de texto libre.

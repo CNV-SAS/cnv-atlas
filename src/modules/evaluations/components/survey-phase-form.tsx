@@ -36,6 +36,14 @@ export type SurveyPhaseFormProps = {
   characterizationPrefill?: AboutYouPrefill | null;
 };
 
+// Introduccion por seccion (ECA2): encuadra la pregunta ANTES de responder. La de Alimentacion es la que
+// mas cambia el dato de origen ("piensa en como comes habitualmente, no en lo que comiste ayer" evita que
+// el paciente responda por el ultimo dia). Verbatim de ATLAS_v8.html. Keyed por la etiqueta de seccion.
+const SECTION_INTRO: Record<string, string> = {
+  Alimentación:
+    "Piensa en cómo comes habitualmente, no en lo que comiste ayer. Para cada alimento, elige con qué frecuencia lo consumes en una semana típica. La referencia debajo de cada grupo te ayuda a imaginar la cantidad usual.",
+};
+
 export function SurveyPhaseForm({
   resumeToken,
   isFollowup,
@@ -199,8 +207,13 @@ export function SurveyPhaseForm({
         const active = step === i + 1;
         return (
           <section key={s.title} className={`flex flex-col gap-4 ${active ? "" : "hidden"}`}>
-            <div>
+            <div className="flex flex-col gap-1">
               <h2 className="text-lg font-semibold text-foreground">{s.title}</h2>
+              {SECTION_INTRO[s.title] ? (
+                <p className="rounded-md bg-muted/40 px-3 py-2 text-sm text-foreground">
+                  {SECTION_INTRO[s.title]}
+                </p>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 Responde lo que aplique a tu caso. Puedes dejar en blanco lo que no sepas.
               </p>
