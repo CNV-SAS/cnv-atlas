@@ -130,9 +130,9 @@ describe("buildRemisiones (agrega las remisiones de las rutas activas)", () => {
     const rem = buildRemisiones([RUTAS_CONTENT.R2, RUTAS_CONTENT.R4]);
     expect(rem.map((r) => `${r.rutaId}:${r.profesional}`)).toEqual([
       "R2:Médico",
-      "R2:Entrenador/Fisioterapeuta",
+      "R2:Educador físico, entrenador, deportólogo",
       "R4:Médico",
-      "R4:Entrenador/Fisioterapeuta",
+      "R4:Educador físico, entrenador, deportólogo",
     ]);
     // Urgencia VERBATIM.
     expect(rem[0].urgencia).toBe("obligatoria si HTA o DM2 activa");

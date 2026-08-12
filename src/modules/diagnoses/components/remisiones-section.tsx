@@ -42,7 +42,13 @@ export function RemisionesSection({
 }) {
   // §9: una entrada por DESTINATARIO (no por ruta). Las indicaciones de todas las rutas que remiten a
   // esa profesión se unen sin duplicar; se conserva la urgencia más alta.
-  const remisiones = consolidateRemisiones(buildRemisiones(rutas));
+  // §3 (Gildardo, 2026-08-12): la línea del destinatario que COINCIDE con quien atiende NO se muestra.
+  // No tiene sentido remitir al paciente a quien lo está atendiendo; su conducta va en su propio protocolo,
+  // no como remisión. Se suprime la línea entera (no un placeholder). Solo aplica con `register` (la vista
+  // de tratamiento sabe quién atiende); en Diagnóstico (solo lectura, sin actor) se muestran todas.
+  const remisiones = consolidateRemisiones(buildRemisiones(rutas)).filter(
+    (rem) => !(register != null && rem.referralTarget === register.actorProfession),
+  );
 
   return (
     <Card>
@@ -56,9 +62,6 @@ export function RemisionesSection({
           </p>
         ) : (
           remisiones.map((rem) => {
-            // Auto-remisión: la profesión destino es la MISMA del que atiende = conducta propia, no
-            // remisión (D-009). No se ofrece registrar; la redacción "conducta propia" espera a Gildardo (Q32).
-            const esConductaPropia = register != null && rem.referralTarget === register.actorProfession;
             return (
               <div key={rem.referralTarget} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -78,7 +81,7 @@ export function RemisionesSection({
                 ) : null}
                 {/* Las rutas que la originan, como referencia (no se repite el detalle ruta por ruta). */}
                 <p className="text-xs text-muted-foreground">Rutas: {rem.rutaIds.join(", ")}</p>
-                {register != null && !esConductaPropia ? (
+                {register != null ? (
                   <RegisterReferralForm
                     treatmentId={register.treatmentId}
                     today={register.today}
@@ -87,11 +90,6 @@ export function RemisionesSection({
                     pendingHints={register.pendingHints}
                     fromRoute
                   />
-                ) : null}
-                {esConductaPropia ? (
-                  <p className="text-xs text-muted-foreground">
-                    Es tu propia profesión: esto es conducta tuya en la consulta, no una remisión (no se registra).
-                  </p>
                 ) : null}
               </div>
             );

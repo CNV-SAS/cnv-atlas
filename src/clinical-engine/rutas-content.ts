@@ -65,15 +65,16 @@ export type Remision = {
   indicaciones: string[];
 };
 
-// Destinatario por profesión (rótulo verbatim del prototipo).
+// Destinatario por profesión. El rótulo del ejercicio lo fijó Gildardo (§4, 2026-08-12): recoge a
+// TODAS las figuras que trabajan con el ejercicio (antes "Entrenador/Fisioterapeuta").
 const REMISION_PROF: Record<string, string> = {
   medico: "Médico",
   psicologico: "Psicólogo/a",
-  ejercicio: "Entrenador/Fisioterapeuta",
+  ejercicio: "Educador físico, entrenador, deportólogo",
 };
 
-// Componente de ruta -> profesión del modelo (D-009). "ejercicio" (Entrenador/Fisioterapeuta) mapea a
-// deportólogo; a confirmar con Gildardo si son la misma figura (Q32).
+// Componente de ruta -> profesión del modelo (D-009). "ejercicio" (Educador físico, entrenador,
+// deportólogo) mapea a deportólogo: Gildardo confirmó que son la misma figura (§4, 2026-08-12).
 const REMISION_TARGET: Record<string, "medico" | "psicologo" | "deportologo"> = {
   medico: "medico",
   psicologico: "psicologo",
