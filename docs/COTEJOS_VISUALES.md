@@ -36,6 +36,13 @@ El orden sigue el flujo clínico. Para CADA pantalla, la tabla de la sección (c
 
 **Nota Diana (ya ejecutado, verificado 2026-08-08):** el port visual de la Diana está HECHO en sus tres piezas: color por celda (`riskColor`, paradas verbatim del `rc()` del prototipo, `diana.tsx`), orden posicional por riesgo (`efrRiskRank`, menor riesgo al centro, `types.ts`), y la renumeración de `stateNumber` (ya IGUAL al `efrNum` de Gildardo; la vieja base-3 donde "nuestro 42 era su 33" se renumeró, `efrStateNumber` en `types.ts:242-255`, anclado en `efr-state-numbering.test.ts`). No queda port por ejecutar; el cotejo de la Diana es de forma (que se vea igual), no de lógica.
 
+> **TRAMOS APLAZADOS (2026-08-12): NO cotejar contra el v8 del 4-ago.** Nuestro `ATLAS_v8.html` (4-ago) es anterior a dos correcciones que Gildardo ya hizo (ver [[v8-desactualizado-riesgo-cotejo]], pedido su archivo al día en `RONDA_GILDARDO_2026-08-12.md`). Cotejar estos tres tramos contra el v8 viejo produce hallazgos falsos GARANTIZADOS (divergen a propósito):
+> 1. **Patrón alimentario, colores de "Moderados"** (§5: el v8 no invierte el color, Atlas tras el port sí). Y el grupo 15 en el promedio.
+> 2. **Referencia de MCA / composición** (§9: el v8 usa 50%, Atlas 52,4%).
+> 3. **Etiquetas de déficit calórico** (§1: en pausa, esperando la decisión de Gildardo).
+>
+> El resto (Diana, radar, dominios DFI, indicadores, fenotipo, estructura del reporte) NO está afectado: se coteja YA contra el v8. Estos tres se cierran cuando llegue el v8 al día.
+
 ---
 
 ## b) Qué material hay y qué falta
