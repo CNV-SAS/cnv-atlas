@@ -7,6 +7,7 @@ import {
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
   ETNIA_OPTIONS,
+  ETNIA_DESCRIPTIONS,
   MOTIVO_OPTIONS,
   OCUPACION_OPTIONS,
 } from "../data/sociodemographic-options";
@@ -192,13 +193,25 @@ export function AboutYouSection({
                   value={ethnicity}
                   onChange={(e) => setEthnicity(e.target.value)}
                 >
-                  <option value="">Sin especificar</option>
+                  {/* Prompt neutro, NO una opcion de "no respondio": dejar en blanco ya cubre eso.
+                      "Prefiero no responder" (en la lista) es la eleccion EXPLICITA de no informar. */}
+                  <option value="">Selecciona una opción</option>
                   {ETNIA_OPTIONS.map((o) => (
                     <option key={o} value={o}>
                       {o}
                     </option>
                   ))}
                 </select>
+                {/* Descripciones DANE: precisas y poco conocidas. Sin entenderlas no hay
+                    autorreconocimiento (principio del dictamen). Pendiente de confirmacion legal. */}
+                <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {ETNIA_OPTIONS.map((o) => (
+                    <div key={o}>
+                      <dt className="inline font-medium text-foreground">{o}:</dt>{" "}
+                      <dd className="inline">{ETNIA_DESCRIPTIONS[o]}</dd>
+                    </div>
+                  ))}
+                </dl>
               </Field>
             </div>
           ) : null}

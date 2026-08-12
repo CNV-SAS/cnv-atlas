@@ -61,6 +61,20 @@ export const ETNIA_OPTIONS = [
 ] as const;
 export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
 
+// Descripcion breve de autorreconocimiento por categoria. El dictamen legal exige que el paciente PUEDA
+// reconocerse: las categorias DANE (Raizal, Palenquero, Rrom) son precisas y poco conocidas, y sin
+// entenderlas no hay autorreconocimiento real. Redactadas simples, en segunda persona.
+// PENDIENTE: confirmacion del asesor legal (se le pasan para validar; no bloquea el uso interino).
+export const ETNIA_DESCRIPTIONS: Record<EtniaOption, string> = {
+  "Indígena": "Perteneces a un pueblo o comunidad indígena.",
+  "Gitano o Rrom": "Perteneces al pueblo gitano (Rrom).",
+  "Raizal": "Eres nativo del archipiélago de San Andrés, Providencia y Santa Catalina, de raíces afroanglocaribeñas.",
+  "Palenquero": "Desciendes de San Basilio de Palenque (Bolívar).",
+  "Negro, mulato, afrodescendiente o afrocolombiano": "Tienes ascendencia africana.",
+  "Ninguno de los anteriores": "No te reconoces en ninguna de las categorías anteriores.",
+  "Prefiero no responder": "Eliges no informar tu pertenencia étnica.",
+};
+
 // Motivo de consulta: MULTI-select en su archivo ("Puede seleccionar varios"). Se guarda como arreglo JSON
 // de strings en evaluations.reason_for_visit (mismo patron que las respuestas opcion_multiple del intake).
 export const MOTIVO_OPTIONS = [
