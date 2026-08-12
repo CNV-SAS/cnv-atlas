@@ -84,6 +84,9 @@ export function SurveyPhaseForm({
     ? Math.min(Math.max(initialStep, 0), sections.length - 1) + 1
     : 0;
   const [step, setStep] = useState(initialWizardStep);
+  // Advertencia de envio con preguntas sin responder (no bloquea): al pulsar "Enviar", si faltan, se
+  // muestra el conteo y se deja enviar igual. null = sin advertencia pendiente.
+  const [confirmMissing, setConfirmMissing] = useState<number | null>(null);
   const isAbout = step === 0;
   const current = isAbout ? null : sections[step - 1];
   const isLast = step === totalSteps - 1;
@@ -100,30 +103,64 @@ export function SurveyPhaseForm({
     startTransition(() => save(new FormData(form)));
   };
 
-  // Toda navegacion guarda primero (el snapshot captura la seccion que se deja).
+  // Toda navegacion guarda primero (el snapshot captura la seccion que se deja). Navegar tambien
+  // descarta la advertencia pendiente: el paciente esta revisando, ya no esta en el punto de envio.
   const goTo = (i: number) => {
     if (i < 0 || i > totalSteps - 1) return;
     persist();
+    setConfirmMissing(null);
     setStep(i);
     scrollTop();
   };
   const goNext = () => {
     if (isLast) return;
     persist();
+    setConfirmMissing(null);
     setStep((s) => Math.min(s + 1, totalSteps - 1));
     scrollTop();
   };
   const goBack = () => {
     if (step === 0) return;
     persist();
+    setConfirmMissing(null);
     setStep((s) => Math.max(s - 1, 0));
     scrollTop();
   };
 
-  // Envio final SIN auto-reset (onSubmit + transicion): si falla, no borra las respuestas.
+  // Preguntas de encuesta sin responder: cada widget emite `answer_<id>` SOLO cuando tiene valor, asi
+  // que ausencia = sin responder. "Sobre ti" (perfil/motivo/etnia) es opcional y NO cuenta aqui.
+  const countUnanswered = (form: HTMLFormElement): number => {
+    const fd = new FormData(form);
+    let missing = 0;
+    for (const q of questions) {
+      const has = fd.getAll(`answer_${q.id}`).some((v) => typeof v === "string" && v.trim() !== "");
+      if (!has) missing += 1;
+    }
+    return missing;
+  };
+
+  // Envio real, SIN auto-reset (transicion sobre el form del ref, no la prop `action`): si falla, no
+  // borra las respuestas del paciente (hazard React 19, ver CLAUDE.md).
+  const doSubmit = () => {
+    const form = formRef.current;
+    if (!form) return;
+    setConfirmMissing(null);
+    startTransition(() => submit(new FormData(form)));
+  };
+
+  // "Enviar": si faltan preguntas y aun no se advirtio, muestra el aviso y NO envia todavia (una sola
+  // vez; el propio boton de "Enviar" ya no vuelve a frenar porque el aviso trae su propio "Enviar asi").
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    startTransition(() => submit(new FormData(e.currentTarget)));
+    const form = formRef.current;
+    if (!form) return;
+    const missing = countUnanswered(form);
+    if (missing > 0) {
+      // El aviso aparece pegado al boton (abajo): no se hace scroll, se veria fuera de pantalla.
+      setConfirmMissing(missing);
+      return;
+    }
+    doSubmit();
   };
 
   // Indicador de guardado (no puede mentir): "Guardado" SOLO tras confirmacion del servidor. Un fallo se
@@ -249,6 +286,35 @@ export function SurveyPhaseForm({
             </span>
           ) : null}
         </div>
+
+        {/* Advertencia de envio con preguntas sin responder: informa, no culpa, no bloquea. Solo en el
+            ultimo paso (donde vive "Enviar"). "Enviar asi" es type=button (no otro submit) para no
+            reintroducir el hazard de keys compartidas entre botones de envio (ver CLAUDE.md). */}
+        {isLast && confirmMissing !== null ? (
+          <div className="flex flex-col gap-2 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+            <p>
+              Te {confirmMissing === 1 ? "falta" : "faltan"}{" "}
+              <span className="font-semibold">
+                {confirmMissing} {confirmMissing === 1 ? "pregunta" : "preguntas"}
+              </span>{" "}
+              por responder. Puedes enviarla así y completarlas con tu profesional, o volver a revisarlas.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button key="confirm-send" type="button" onClick={doSubmit} disabled={submitting}>
+                {submitting ? "Enviando..." : "Enviar así"}
+              </Button>
+              <Button
+                key="confirm-review"
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmMissing(null)}
+                disabled={submitting}
+              >
+                Volver a revisar
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex items-center justify-between gap-3">
           <Button key="nav-back" type="button" variant="outline" onClick={goBack} disabled={step === 0 || submitting}>
