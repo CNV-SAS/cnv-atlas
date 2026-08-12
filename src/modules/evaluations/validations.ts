@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+import {
+  EDUCACION_OPTIONS,
+  ESTADO_CIVIL_OPTIONS,
+  ESTRATO_OPTIONS,
+  MOTIVO_OPTIONS,
+} from "./data/sociodemographic-options";
+
 // Validaciones del envio de la encuesta publica. Entrada externa sin sesion: pasa
 // por Zod con limites de tamano (CLAUDE.md). No incluye el consentimiento, que se
 // valida con consentSchema del modulo consent.
@@ -40,6 +47,39 @@ export const intakeAnswersSchema = z
   )
   .max(500);
 export type IntakeAnswersInput = z.infer<typeof intakeAnswersSchema>;
+
+// Caracterizacion sociodemografica OPCIONAL (E1). Tolerante A PROPOSITO: nunca debe bloquear el envio de
+// la encuesta (es opcional). Normaliza cada campo contra su lista (valor fuera de lista => null) y filtra el
+// motivo a las opciones conocidas. La ocupacion admite texto libre (opcion "Otra"), asi que no se lista.
+const inList = (value: string | null, options: readonly string[]): string | null =>
+  value && options.includes(value) ? value : null;
+
+export const characterizationSchema = z
+  .object({
+    // profile PRESENTE solo cuando la seccion muestra los 4 campos (intake inicial). Ausente en seguimiento.
+    profile: z
+      .object({
+        educationLevel: z.string().max(120).nullish().transform((v) => v ?? null),
+        occupation: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
+        maritalStatus: z.string().max(120).nullish().transform((v) => v ?? null),
+        socioeconomicStratum: z.string().max(120).nullish().transform((v) => v ?? null),
+      })
+      .transform((p) => ({
+        educationLevel: inList(p.educationLevel, EDUCACION_OPTIONS),
+        occupation: p.occupation, // texto libre permitido ("Otra")
+        maritalStatus: inList(p.maritalStatus, ESTADO_CIVIL_OPTIONS),
+        socioeconomicStratum: inList(p.socioeconomicStratum, ESTRATO_OPTIONS),
+      }))
+      .optional(),
+    reasonForVisit: z
+      .array(z.string().max(120))
+      .max(50)
+      .transform((arr) => arr.filter((x) => (MOTIVO_OPTIONS as readonly string[]).includes(x)))
+      .optional(),
+  })
+  .nullish()
+  .transform((v) => v ?? null);
+export type CharacterizationInput = z.infer<typeof characterizationSchema>;
 
 // Envio del codigo de verificacion (OTP) del consentimiento (B7, firma electronica). El sessionId es
 // un nonce opaco que genera el cliente para ESTE intento de firma (crypto.randomUUID); ancla el codigo

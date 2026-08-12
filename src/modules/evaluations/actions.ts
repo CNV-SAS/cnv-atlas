@@ -141,6 +141,36 @@ function readAnswersFromForm(
     .filter((a) => a.answerValue.length > 0);
 }
 
+// Caracterizacion sociodemografica (E1) desde el formulario de la fase 2. El motivo (multi) va siempre; el
+// bloque de perfil solo cuando la seccion lo renderiza (marcador hasProfileFields=1, presente en el intake
+// inicial, ausente en seguimiento donde el perfil ya existe). Vacio se manda como null (VACIO, no default);
+// la normalizacion final contra las listas la hace characterizationSchema en el servicio.
+function readCharacterizationFromForm(form: FormData): {
+  profile?: {
+    educationLevel: string | null;
+    occupation: string | null;
+    maritalStatus: string | null;
+    socioeconomicStratum: string | null;
+  };
+  reasonForVisit: string[];
+} {
+  const nullable = (name: string) => str(form, name) || null;
+  const reasonForVisit = form
+    .getAll("motivo")
+    .map((v) => String(v).trim())
+    .filter((v) => v.length > 0);
+  const characterization: ReturnType<typeof readCharacterizationFromForm> = { reasonForVisit };
+  if (form.get("hasProfileFields") === "1") {
+    characterization.profile = {
+      educationLevel: nullable("educationLevel"),
+      occupation: nullable("occupation"),
+      maritalStatus: nullable("maritalStatus"),
+      socioeconomicStratum: nullable("socioeconomicStratum"),
+    };
+  }
+  return characterization;
+}
+
 // URL absoluta de reanudacion para el correo (el paciente no tiene sesion). Sale del dominio canonico
 // (NEXT_PUBLIC_APP_URL) via buildResumeUrl, MISMO helper que usa la pantalla "firmado": asi el enlace del
 // correo y el de pantalla son identicos. El origen de la request es solo fallback de desarrollo.
@@ -290,6 +320,7 @@ export async function saveProgressAction(
     surveyVersionId: survey.surveyVersionId,
     answers,
     ipAddress: ip === "unknown" ? null : ip,
+    characterization: readCharacterizationFromForm(form),
   });
   if (!res.ok) return { saved: false, error: res.error.message };
   return { saved: true, error: null };
@@ -312,6 +343,7 @@ export async function submitSurveyAnswersAction(
     surveyVersionId: survey.surveyVersionId,
     answers,
     ipAddress: ip === "unknown" ? null : ip,
+    characterization: readCharacterizationFromForm(form),
   });
   if (!res.ok) return fail(res.error.message);
   redirect("/encuesta/gracias");

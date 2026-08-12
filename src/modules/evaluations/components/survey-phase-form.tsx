@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { saveProgressAction, submitSurveyAnswersAction } from "../actions";
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
+import { AboutYouSection, type AboutYouPrefill } from "./about-you-section";
 import { ResumeLinkBox } from "./resume-link-box";
 import { SurveyQuestion } from "./survey-widgets";
 
@@ -29,8 +30,10 @@ export type SurveyPhaseFormProps = {
   // Respuestas ya guardadas (reanudacion): questionId -> valor. En el flujo normal (recien firmado) es
   // null y todo arranca en blanco.
   prefill?: Record<string, string> | null;
-  // Paso inicial (reanudacion): la ultima seccion con alguna respuesta. En el flujo normal, 0.
+  // Paso inicial (reanudacion): la ultima seccion DE ENCUESTA con alguna respuesta. En el flujo normal, 0.
   initialStep?: number;
+  // Caracterizacion ya guardada (reanudacion), para no perderla al reanudar.
+  characterizationPrefill?: AboutYouPrefill | null;
 };
 
 export function SurveyPhaseForm({
@@ -39,11 +42,16 @@ export function SurveyPhaseForm({
   questions,
   prefill = null,
   initialStep = 0,
+  characterizationPrefill = null,
 }: SurveyPhaseFormProps) {
   const [state, submit, submitting] = useActionState(submitSurveyAnswersAction, initialSubmit);
   const [saveState, save, saving] = useActionState(saveProgressAction, initialSave);
   const formRef = useRef<HTMLFormElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
+
+  // En seguimiento el perfil ya se capturo (dato estable): "Sobre ti" solo muestra el motivo. En inicial
+  // muestra los 4 campos de perfil + motivo.
+  const includeProfile = !isFollowup;
 
   // Agrupa las preguntas por dominio (section), preservando el orden del reader.
   const sections = useMemo(() => {
@@ -57,11 +65,18 @@ export function SurveyPhaseForm({
     return groups;
   }, [questions]);
 
-  const total = sections.length;
-  const clampedInitial = Math.min(Math.max(initialStep, 0), Math.max(total - 1, 0));
-  const [step, setStep] = useState(clampedInitial);
-  const current = sections[Math.min(step, total - 1)];
-  const isLast = step === total - 1;
+  // El wizard tiene "Sobre ti" como paso 0 y luego las secciones de encuesta (pasos 1..N). Se arranca en
+  // "Sobre ti" salvo al reanudar CON respuestas: ahi se aterriza en la seccion donde iba (initialStep+1).
+  const totalSteps = sections.length + 1;
+  const resuming = Boolean(prefill && Object.keys(prefill).length > 0);
+  const initialWizardStep = resuming
+    ? Math.min(Math.max(initialStep, 0), sections.length - 1) + 1
+    : 0;
+  const [step, setStep] = useState(initialWizardStep);
+  const isAbout = step === 0;
+  const current = isAbout ? null : sections[step - 1];
+  const isLast = step === totalSteps - 1;
+  const currentTitle = isAbout ? "Sobre ti" : (current?.title ?? "");
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -76,7 +91,7 @@ export function SurveyPhaseForm({
 
   // Toda navegacion guarda primero (el snapshot captura la seccion que se deja).
   const goTo = (i: number) => {
-    if (i < 0 || i > total - 1) return;
+    if (i < 0 || i > totalSteps - 1) return;
     persist();
     setStep(i);
     scrollTop();
@@ -84,7 +99,7 @@ export function SurveyPhaseForm({
   const goNext = () => {
     if (isLast) return;
     persist();
-    setStep((s) => Math.min(s + 1, total - 1));
+    setStep((s) => Math.min(s + 1, totalSteps - 1));
     scrollTop();
   };
   const goBack = () => {
@@ -133,10 +148,10 @@ export function SurveyPhaseForm({
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
           <p className="text-xs font-medium text-muted-foreground">
-            Sección {step + 1} de {total}
+            Paso {step + 1} de {totalSteps}
           </p>
           <p className="text-sm font-semibold text-foreground">
-            {current?.title}
+            {currentTitle}
             {current ? (
               <span className="ml-2 font-normal text-muted-foreground">
                 · {current.questions.length} {current.questions.length === 1 ? "pregunta" : "preguntas"}
@@ -144,14 +159,14 @@ export function SurveyPhaseForm({
             ) : null}
           </p>
         </div>
-        <Progress value={total > 0 ? Math.round(((step + 1) / total) * 100) : 0} />
-        {/* Subpestanas: en la encuesta todas las secciones son alcanzables (la recoleccion es opcional). */}
+        <Progress value={Math.round(((step + 1) / totalSteps) * 100)} />
+        {/* Subpestanas: "Sobre ti" (paso 0) + las secciones de encuesta. Todas alcanzables (opcional). */}
         <nav aria-label="Secciones de la encuesta" className="flex flex-wrap gap-1.5">
-          {sections.map((s, i) => {
+          {["Sobre ti", ...sections.map((s) => s.title)].map((title, i) => {
             const activo = i === step;
             return (
               <button
-                key={`${s.title}-${i}`}
+                key={`${title}-${i}`}
                 type="button"
                 onClick={() => goTo(i)}
                 aria-current={activo ? "step" : undefined}
@@ -161,7 +176,7 @@ export function SurveyPhaseForm({
                     : "bg-muted text-foreground hover:bg-muted/70"
                 }`}
               >
-                {s.title}
+                {title}
               </button>
             );
           })}
@@ -174,9 +189,14 @@ export function SurveyPhaseForm({
         </p>
       ) : null}
 
-      {/* Secciones (todas montadas; solo se muestra la actual) */}
+      {/* Paso 0: "Sobre ti" (caracterizacion opcional). Montado siempre; solo visible en el paso 0. */}
+      <div className={isAbout ? "" : "hidden"}>
+        <AboutYouSection includeProfile={includeProfile} prefill={characterizationPrefill} />
+      </div>
+
+      {/* Secciones de encuesta (todas montadas; solo se muestra la actual). Paso i+1 en el wizard. */}
       {sections.map((s, i) => {
-        const active = step === i;
+        const active = step === i + 1;
         return (
           <section key={s.title} className={`flex flex-col gap-4 ${active ? "" : "hidden"}`}>
             <div>

@@ -314,23 +314,69 @@ export class ResumeTokenError extends Error {
 }
 
 export type SurveyAnswer = { questionId: string; answerValue: string };
+
+// Caracterizacion sociodemografica OPCIONAL (bloque E1). NO son survey_responses: los 4 de perfil van a
+// patient_profiles (dato de identidad estable) y el motivo a evaluations (dato del encuentro). Se envian en
+// el mismo snapshot de la fase 2, asi que se autoguardan y no se pierden si el paciente pausa.
+//   - profile PRESENTE => se escriben los 4 campos del perfil (vacio => null; nunca un default). Ausente =>
+//     no se toca el perfil (en seguimiento la seccion solo muestra el motivo; el perfil ya se capturo).
+//   - reasonForVisit: arreglo del motivo (multi); [] => se limpia a null.
+export type SurveyCharacterization = {
+  profile?: {
+    educationLevel: string | null;
+    occupation: string | null;
+    maritalStatus: string | null;
+    socioeconomicStratum: string | null;
+  };
+  reasonForVisit?: string[];
+};
+
 export type SurveyPhase2Input = {
   resumeToken: string;
   surveyVersionId: string;
   answers: SurveyAnswer[]; // SNAPSHOT COMPLETO, no delta (ver contrato arriba)
   ipAddress: string | null;
+  characterization?: SurveyCharacterization | null;
 };
 
 // La evaluacion en 'awaiting_survey' con ese token (o ResumeTokenError). El token se acota solo: al
 // completar la encuesta pasa a 'draft' y esta consulta deja de encontrarla.
-async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: string }> {
+async function findAwaitingByToken(tx: Tx, resumeToken: string): Promise<{ id: string; patientId: string }> {
   const [ev] = await tx
-    .select({ id: evaluations.id })
+    .select({ id: evaluations.id, patientId: evaluations.patientId })
     .from(evaluations)
     .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
     .limit(1);
   if (!ev) throw new ResumeTokenError();
   return ev;
+}
+
+// Escritura de la caracterizacion sociodemografica (E1). El perfil, si viene, se actualiza para el paciente
+// de la evaluacion (por token, no se confia en un patientId del cliente); el motivo va a la evaluacion. Todo
+// vacio se guarda como null (VACIO, no un default). Idempotente: se llama en cada guardado y en el envio.
+async function writeCharacterization(
+  tx: Tx,
+  target: { evaluationId: string; patientId: string },
+  characterization: SurveyCharacterization | null | undefined,
+): Promise<void> {
+  if (!characterization) return;
+  const { profile, reasonForVisit } = characterization;
+  if (profile) {
+    await tx
+      .update(patientProfiles)
+      .set({
+        educationLevel: profile.educationLevel,
+        occupation: profile.occupation,
+        maritalStatus: profile.maritalStatus,
+        socioeconomicStratum: profile.socioeconomicStratum,
+      })
+      .where(eq(patientProfiles.patientId, target.patientId));
+  }
+  if (reasonForVisit !== undefined) {
+    // Multi-select: se serializa como arreglo JSON; vacio => null (limpia, no guarda "[]").
+    const value = reasonForVisit.length > 0 ? JSON.stringify(reasonForVisit) : null;
+    await tx.update(evaluations).set({ reasonForVisit: value }).where(eq(evaluations.id, target.evaluationId));
+  }
 }
 
 // Upsert de la fila survey_responses (una por evaluacion) y REEMPLAZO de sus answers por el snapshot.
@@ -366,6 +412,7 @@ export async function saveSurveyProgress(input: SurveyPhase2Input): Promise<{ ev
   return db.transaction(async (tx) => {
     const ev = await findAwaitingByToken(tx, input.resumeToken);
     await upsertResponseAndAnswers(tx, ev.id, input.surveyVersionId, input.answers, input.ipAddress);
+    await writeCharacterization(tx, { evaluationId: ev.id, patientId: ev.patientId }, input.characterization);
     return { evaluationId: ev.id };
   });
 }
@@ -376,6 +423,7 @@ export async function completeSurvey(input: SurveyPhase2Input): Promise<{ evalua
   return db.transaction(async (tx) => {
     const ev = await findAwaitingByToken(tx, input.resumeToken);
     await upsertResponseAndAnswers(tx, ev.id, input.surveyVersionId, input.answers, input.ipAddress);
+    await writeCharacterization(tx, { evaluationId: ev.id, patientId: ev.patientId }, input.characterization);
     await tx.update(evaluations).set({ status: "draft" }).where(eq(evaluations.id, ev.id));
     await recordAudit(tx, {
       event: "evaluation.survey_submitted",
@@ -394,21 +442,49 @@ export async function completeSurvey(input: SurveyPhase2Input): Promise<{ evalua
 // null si el token no abre ninguna (ya completada o invalido) -> el caller decide (p. ej. "link vencido").
 // Devuelve tambien el modo (inicial/seguimiento): la pagina de reanudacion lo usa para el rotulo del
 // envio, sin exponer nada mas de la evaluacion.
-export async function getSurveyProgress(
-  resumeToken: string,
-): Promise<{ evaluationId: string; mode: EvaluationType; answers: SurveyAnswer[] } | null> {
+export type SurveyProgressCharacterization = {
+  educationLevel: string | null;
+  occupation: string | null;
+  maritalStatus: string | null;
+  socioeconomicStratum: string | null;
+  reasonForVisit: string[]; // parseado del arreglo JSON; [] si null o ilegible
+};
+
+export async function getSurveyProgress(resumeToken: string): Promise<{
+  evaluationId: string;
+  mode: EvaluationType;
+  answers: SurveyAnswer[];
+  characterization: SurveyProgressCharacterization;
+} | null> {
   const [ev] = await db
-    .select({ id: evaluations.id, mode: evaluations.type })
+    .select({ id: evaluations.id, mode: evaluations.type, patientId: evaluations.patientId, reasonForVisit: evaluations.reasonForVisit })
     .from(evaluations)
     .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
     .limit(1);
   if (!ev) return null;
+  const [profile] = await db
+    .select({
+      educationLevel: patientProfiles.educationLevel,
+      occupation: patientProfiles.occupation,
+      maritalStatus: patientProfiles.maritalStatus,
+      socioeconomicStratum: patientProfiles.socioeconomicStratum,
+    })
+    .from(patientProfiles)
+    .where(eq(patientProfiles.patientId, ev.patientId))
+    .limit(1);
+  const characterization: SurveyProgressCharacterization = {
+    educationLevel: profile?.educationLevel ?? null,
+    occupation: profile?.occupation ?? null,
+    maritalStatus: profile?.maritalStatus ?? null,
+    socioeconomicStratum: profile?.socioeconomicStratum ?? null,
+    reasonForVisit: parseReasonForVisit(ev.reasonForVisit),
+  };
   const [response] = await db
     .select({ id: surveyResponses.id })
     .from(surveyResponses)
     .where(eq(surveyResponses.evaluationId, ev.id))
     .limit(1);
-  if (!response) return { evaluationId: ev.id, mode: ev.mode, answers: [] };
+  if (!response) return { evaluationId: ev.id, mode: ev.mode, answers: [], characterization };
   const rows = await db
     .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
     .from(surveyAnswers)
@@ -417,7 +493,20 @@ export async function getSurveyProgress(
     evaluationId: ev.id,
     mode: ev.mode,
     answers: rows.map((r) => ({ questionId: r.questionId, answerValue: r.answerValue ?? "" })),
+    characterization,
   };
+}
+
+// Parsea el motivo (arreglo JSON de strings) de forma tolerante: null/ilegible => []. No confia en el
+// contenido de la BD para no romper el prefill si un dato viejo quedo mal formado.
+export function parseReasonForVisit(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 // Estado de la evaluacion asociada a un resume_token, sea cual sea (para el mensaje de la pagina de

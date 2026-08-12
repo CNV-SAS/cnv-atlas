@@ -16,6 +16,10 @@ type ProfileEmbed = {
   sex: string | null;
   city: string | null;
   country: string | null;
+  education_level: string | null;
+  occupation: string | null;
+  marital_status: string | null;
+  socioeconomic_stratum: string | null;
 };
 type ContactEmbed = { email: string | null; phone: string | null };
 type EvaluationEmbed = {
@@ -24,8 +28,20 @@ type EvaluationEmbed = {
   status: string;
   created_at: string;
   superseded_at: string | null;
+  reason_for_visit: string | null;
   bis_measurements: { measurement_date: string | null }[] | null;
 };
+
+// Motivo (arreglo JSON de strings) tolerante: null/ilegible => []. No confia en el contenido de la BD.
+function parseReasonForVisit(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function one<T>(embed: T | T[] | null): T | undefined {
   return Array.isArray(embed) ? embed[0] : (embed ?? undefined);
@@ -44,7 +60,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -68,6 +84,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
       createdAt: e.created_at,
       measurementDate: latestMeasDate(e.bis_measurements),
       superseded: e.superseded_at != null,
+      reasonForVisit: parseReasonForVisit(e.reason_for_visit),
     }))
     // Mas reciente primero, por fecha de MEDICION (cronologia clinica), no por created_at: una
     // corregida tiene created_at de hoy pero se ubica por su medicion original. Fallback a created_at
@@ -89,6 +106,10 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
     sex: profile?.sex ?? null,
     city: profile?.city ?? null,
     country: profile?.country ?? null,
+    educationLevel: profile?.education_level ?? null,
+    occupation: profile?.occupation ?? null,
+    maritalStatus: profile?.marital_status ?? null,
+    socioeconomicStratum: profile?.socioeconomic_stratum ?? null,
     email: contact?.email ?? null,
     phone: contact?.phone ?? null,
     evaluations,

@@ -53,6 +53,11 @@ export default async function HistoriaPacientePage({
     { label: "Correo", value: paciente.email ?? "-" },
     { label: "Teléfono", value: paciente.phone ?? "-" },
     { label: "Estado", value: estadoPacienteLabel(paciente.status) },
+    // Caracterizacion sociodemografica (E1): opcional, "-" cuando el paciente no la dio.
+    { label: "Nivel educativo", value: paciente.educationLevel ?? "-" },
+    { label: "Ocupación", value: paciente.occupation ?? "-" },
+    { label: "Estado civil", value: paciente.maritalStatus ?? "-" },
+    { label: "Estrato", value: paciente.socioeconomicStratum ?? "-" },
   ];
 
   return (
@@ -90,6 +95,7 @@ export default async function HistoriaPacientePage({
                 <tr>
                   <th className="px-3 py-2 font-semibold">Tipo</th>
                   <th className="px-3 py-2 font-semibold">Fecha</th>
+                  <th className="px-3 py-2 font-semibold">Motivo</th>
                   <th className="px-3 py-2 font-semibold">Estado</th>
                   <th className="px-3 py-2 text-right font-semibold">Resultados</th>
                 </tr>
@@ -108,6 +114,10 @@ export default async function HistoriaPacientePage({
                     {/* Fecha de MEDICION (cronologia clinica), no la de creacion del registro. */}
                     <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
                       {fechaCorta(e.measurementDate ?? e.createdAt)}
+                    </td>
+                    {/* Motivo de consulta (caracterizacion del encuentro, multi); "-" si no se dio. */}
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {e.reasonForVisit.length ? e.reasonForVisit.join(", ") : "-"}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {estadoEvaluacionLabel(e.status)}

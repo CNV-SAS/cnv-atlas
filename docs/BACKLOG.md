@@ -143,6 +143,17 @@ Observación del smoke de B7 (Santiago): hoy el sistema asume **representante = 
 
 ## Capturar los 6 campos sociodemográficos (DECIDIDO 2026-08-08; gate legal en etnia)
 
+**ESTADO (2026-08-12): los 4 de perfil + motivo HECHOS. Etnia sigue gateada al bump de consent v1.0.** Se
+construyeron nivel educativo, ocupación, estado civil y estrato (a `patient_profiles`) + motivo de consulta
+multi (a `evaluations.reason_for_visit`, arreglo JSON), como sección opcional "Sobre ti" al inicio de la
+FASE 2 del intake (post-autorización; no alarga la compuerta de firma). Opciones portadas verbatim del
+archivo de Gildardo. Visiblemente opcional (nada obligatorio). En seguimiento solo se muestra el motivo (el
+perfil ya se capturó). Se muestran en la ficha del paciente (`/pacientes/[id]`) y el motivo por evaluación.
+Migración `0065`, tipos regenerados. Estado verificable: `src/tests/sociodemographic-writer.test.ts`.
+**Etnia NO se capturó** (dato sensible Ley 1581 art. 5): entra con el bump de consent v1.0 del Hito 3 (ver
+"Renumerar el consentimiento a v1.0" arriba, donde está registrada su casilla). Al pushear: `pnpm db:migrate`
++ `pnpm db:types` contra la nube (la migración no se despliega sola).
+
 **Decisión de Santiago: SÍ se registran** etnia, nivel educativo, ocupación, estado civil, estrato y motivo de consulta (EA3/ECB del cotejo). Razón: son las variables que el observatorio necesita para estratificar, y **capturarlos después es imposible** (el paciente ya pasó; un dato demográfico no se reconstruye). Como no alimentan el motor: **opcionales, sin `field_key`, `used_in_diagnosis=false`, y si el paciente no responde queda VACÍO, no un valor por defecto** (misma disciplina que ya tenemos).
 
 **Verificación previa a construir (2026-08-08):**
@@ -151,7 +162,7 @@ Observación del smoke de B7 (Santiago): hoy el sistema asume **representante = 
 - **(b) ¿Dato sensible? SÍ, etnia. Y el consentimiento actual NO la cubre → REVISIÓN LEGAL antes de construir etnia.** Verificado: la autorización `datos_sensibles` está acotada explícitamente a datos sensibles **de SALUD** (`consent-v1.5.ts:62,148`: "datos sensibles de salud"). Etnia (origen racial/étnico) es dato sensible **distinto** bajo Ley 1581 art. 5, NO cubierto por ese consentimiento. Implica: (i) para capturar etnia hay que **ampliar el alcance del consentimiento o crear una autorización nueva** (preguntar al abogado); (ii) art. 6: debe ser opcional y no condicionar el servicio (ya lo es en el plan); (iii) el observatorio que estratifica POR etnia lee un dato sensible re-identificante: su uso agregado necesita gobernanza (consent `investigacion` + agregado, no fila a fila). **Los otros 5** (educación, ocupación, estado civil, estrato, motivo) NO son categorías sensibles del art. 5; los cubre el consentimiento general de servicio (ya recolectamos salud, que es más sensible).
 - **RECOMENDACIÓN:** construir los **5 no sensibles + motivo** (esquema perfil + campo en evaluación) sin esperar; **GATEAR etnia** a la respuesta del abogado (ampliar consentimiento vs autorización nueva). No construir etnia hasta eso.
 
-**Slow-lane** (toca esquema): plan + diff, checkpoints. No arrancado; espera OK de Santiago sobre la propuesta (a) y la consulta al abogado (b).
+**Slow-lane** (toca esquema): plan + diff, checkpoints. Los 5 no sensibles HECHOS (2026-08-12, ver ESTADO arriba); etnia gateada al bump v1.0.
 
 ## Prioritario / entrante — Exposición de funciones de Gildardo (entrega recibida 2026-07-24)
 

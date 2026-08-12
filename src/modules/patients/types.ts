@@ -67,6 +67,7 @@ export type PatientEvaluationItem = {
   createdAt: string;
   measurementDate: string | null; // fecha de MEDICION (cronologia clinica); null si aun no se midio
   superseded: boolean; // reemplazada por una correccion: se marca, no se oculta (la historia la conserva)
+  reasonForVisit: string[]; // motivo de consulta (caracterizacion del encuentro, multi); [] si no se dio
 };
 
 // Detalle del paciente para su historia (/pacientes/[id]): identidad, contacto y la
@@ -82,6 +83,11 @@ export type PatientDetail = {
   sex: string | null;
   city: string | null;
   country: string | null;
+  // Caracterizacion sociodemografica OPCIONAL (E1). null si el paciente no la dio.
+  educationLevel: string | null;
+  occupation: string | null;
+  maritalStatus: string | null;
+  socioeconomicStratum: string | null;
   email: string | null;
   phone: string | null;
   evaluations: PatientEvaluationItem[];

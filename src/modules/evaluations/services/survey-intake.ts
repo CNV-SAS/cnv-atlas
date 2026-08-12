@@ -23,8 +23,9 @@ import {
   signIntakeEvaluation,
   type IntakeConsent,
   type SurveyAnswer,
+  type SurveyProgressCharacterization,
 } from "../data/intake-writer";
-import { intakeAnswersSchema, intakeIdentitySchema } from "../validations";
+import { characterizationSchema, intakeAnswersSchema, intakeIdentitySchema } from "../validations";
 import type { IntakeIdentityInput } from "../validations";
 import type { SurveyIntakeResult, SurveyLinkView } from "../types";
 
@@ -205,6 +206,9 @@ export type SurveyPhase2Input = {
   surveyVersionId: string;
   answers: unknown;
   ipAddress: string | null;
+  // Caracterizacion sociodemografica opcional (E1). Se valida con characterizationSchema (tolerante:
+  // normaliza contra las listas, vacio => null). Nunca bloquea el envio de la encuesta.
+  characterization?: unknown;
 };
 
 const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya se completó.";
@@ -213,12 +217,14 @@ const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya 
 export async function saveProgress(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
+  const characterization = characterizationSchema.safeParse(input.characterization);
   try {
     const res = await saveSurveyProgress({
       resumeToken: input.resumeToken,
       surveyVersionId: input.surveyVersionId,
       answers: answers.data,
       ipAddress: input.ipAddress,
+      characterization: characterization.success ? characterization.data : null,
     });
     return ok({ evaluationId: res.evaluationId });
   } catch (e) {
@@ -231,12 +237,14 @@ export async function saveProgress(input: SurveyPhase2Input): Promise<Result<{ e
 export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
+  const characterization = characterizationSchema.safeParse(input.characterization);
   try {
     const res = await completeSurvey({
       resumeToken: input.resumeToken,
       surveyVersionId: input.surveyVersionId,
       answers: answers.data,
       ipAddress: input.ipAddress,
+      characterization: characterization.success ? characterization.data : null,
     });
     return ok({ evaluationId: res.evaluationId });
   } catch (e) {
@@ -249,7 +257,12 @@ export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Res
 // (inicial/seguimiento) para el rotulo del envio en la pagina de reanudacion.
 export async function readSurveyProgress(
   resumeToken: string,
-): Promise<{ evaluationId: string; mode: "inicial" | "seguimiento"; answers: SurveyAnswer[] } | null> {
+): Promise<{
+  evaluationId: string;
+  mode: "inicial" | "seguimiento";
+  answers: SurveyAnswer[];
+  characterization: SurveyProgressCharacterization;
+} | null> {
   return getSurveyProgress(resumeToken);
 }
 
