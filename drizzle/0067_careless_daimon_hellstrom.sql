@@ -1,0 +1,1 @@
+ALTER TABLE "patient_profiles" ADD COLUMN "ethnicity" text;

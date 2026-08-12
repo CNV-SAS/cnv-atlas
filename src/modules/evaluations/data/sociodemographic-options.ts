@@ -47,6 +47,20 @@ export const ESTADO_CIVIL_OPTIONS = [
 
 export const ESTRATO_OPTIONS = ["1", "2", "3", "4", "5", "6", "No aplica"] as const;
 
+// Pertenencia etnica: categorias del autorreconocimiento DANE + "Prefiero no responder" (valor EXPLICITO,
+// distinto de dejar en blanco: el dictamen lo exige, dejar vacio puede ser un olvido, elegir no responder es
+// una decision registrable). Dato sensible: solo se muestra/captura si el paciente autorizo investigacion.
+export const ETNIA_OPTIONS = [
+  "Indígena",
+  "Gitano o Rrom",
+  "Raizal",
+  "Palenquero",
+  "Negro, mulato, afrodescendiente o afrocolombiano",
+  "Ninguno de los anteriores",
+  "Prefiero no responder",
+] as const;
+export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
+
 // Motivo de consulta: MULTI-select en su archivo ("Puede seleccionar varios"). Se guarda como arreglo JSON
 // de strings en evaluations.reason_for_visit (mismo patron que las respuestas opcion_multiple del intake).
 export const MOTIVO_OPTIONS = [

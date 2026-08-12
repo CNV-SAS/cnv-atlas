@@ -1963,6 +1963,7 @@ export type Database = {
           country: string | null
           created_at: string
           education_level: string | null
+          ethnicity: string | null
           first_name: string
           last_name: string
           marital_status: string | null
@@ -1978,6 +1979,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           education_level?: string | null
+          ethnicity?: string | null
           first_name: string
           last_name: string
           marital_status?: string | null
@@ -1993,6 +1995,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           education_level?: string | null
+          ethnicity?: string | null
           first_name?: string
           last_name?: string
           marital_status?: string | null

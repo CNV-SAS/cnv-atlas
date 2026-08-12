@@ -4,6 +4,7 @@ import {
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
+  ETNIA_OPTIONS,
   MOTIVO_OPTIONS,
 } from "./data/sociodemographic-options";
 
@@ -64,11 +65,15 @@ export const characterizationSchema = z
         maritalStatus: z.string().max(120).nullish().transform((v) => v ?? null),
         socioeconomicStratum: z.string().max(120).nullish().transform((v) => v ?? null),
       })
+      .extend({ ethnicity: z.string().max(120).nullish().transform((v) => v ?? null) })
       .transform((p) => ({
         educationLevel: inList(p.educationLevel, EDUCACION_OPTIONS),
         occupation: p.occupation, // texto libre permitido ("Otra")
         maritalStatus: inList(p.maritalStatus, ESTADO_CIVIL_OPTIONS),
         socioeconomicStratum: inList(p.socioeconomicStratum, ESTRATO_OPTIONS),
+        // Etnia normalizada contra las categorias DANE. El SERVIDOR ademas la gatea a investigacion en el
+        // writer (no basta la validacion aqui): un valor fuera de lista => null.
+        ethnicity: inList(p.ethnicity, ETNIA_OPTIONS),
       }))
       .optional(),
     reasonForVisit: z
@@ -114,6 +119,8 @@ export type SignSurveyState = {
   error: string | null;
   fields: Record<string, string> | null;
   resumeToken: string | null;
+  // Otorgo la autorizacion de investigacion (consent v1.0): la fase 2 muestra el campo de etnia.
+  ethnicityAuthorized: boolean;
 };
 
 // Estado del guardado a medida (as-you-go) de la fase 2. saved marca el ultimo guardado exitoso; error

@@ -470,6 +470,13 @@
       "when": 1786539516510,
       "tag": "0066_material_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1786558871563,
+      "tag": "0067_careless_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

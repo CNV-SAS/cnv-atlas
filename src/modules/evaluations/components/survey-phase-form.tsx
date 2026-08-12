@@ -34,6 +34,8 @@ export type SurveyPhaseFormProps = {
   initialStep?: number;
   // Caracterizacion ya guardada (reanudacion), para no perderla al reanudar.
   characterizationPrefill?: AboutYouPrefill | null;
+  // Etnia: el campo solo aparece si el paciente otorgo la autorizacion de investigacion (consent v1.0).
+  ethnicityAuthorized?: boolean;
 };
 
 // Introduccion por seccion (ECA2): encuadra la pregunta ANTES de responder. La de Alimentacion es la que
@@ -51,6 +53,7 @@ export function SurveyPhaseForm({
   prefill = null,
   initialStep = 0,
   characterizationPrefill = null,
+  ethnicityAuthorized = false,
 }: SurveyPhaseFormProps) {
   const [state, submit, submitting] = useActionState(submitSurveyAnswersAction, initialSubmit);
   const [saveState, save, saving] = useActionState(saveProgressAction, initialSave);
@@ -199,7 +202,11 @@ export function SurveyPhaseForm({
 
       {/* Paso 0: "Sobre ti" (caracterizacion opcional). Montado siempre; solo visible en el paso 0. */}
       <div className={isAbout ? "" : "hidden"}>
-        <AboutYouSection includeProfile={includeProfile} prefill={characterizationPrefill} />
+        <AboutYouSection
+          includeProfile={includeProfile}
+          prefill={characterizationPrefill}
+          ethnicityAuthorized={ethnicityAuthorized}
+        />
       </div>
 
       {/* Secciones de encuesta (todas montadas; solo se muestra la actual). Paso i+1 en el wizard. */}

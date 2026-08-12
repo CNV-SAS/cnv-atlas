@@ -26,7 +26,7 @@ import {
 } from "@/modules/consent/consent-copy-service";
 import type { ConsentInstanceData } from "@/modules/consent/consent-instance";
 import type { ConsentType } from "@/modules/consent/validations";
-import { CONSENT_TEXT_V1_7, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.7";
+import { CONSENT_TEXT_V1_0, CONSENT_VERSION } from "@/modules/consent/text/consent-v1.0";
 import {
   getProfessionalIdForPatient,
   getProfessionalProfileIdByUser,
@@ -150,6 +150,7 @@ function readCharacterizationFromForm(form: FormData): {
     occupation: string | null;
     maritalStatus: string | null;
     socioeconomicStratum: string | null;
+    ethnicity: string | null;
   };
   reasonForVisit: string[];
 } {
@@ -165,6 +166,8 @@ function readCharacterizationFromForm(form: FormData): {
       occupation: nullable("occupation"),
       maritalStatus: nullable("maritalStatus"),
       socioeconomicStratum: nullable("socioeconomicStratum"),
+      // Etnia: solo llega si el campo se mostro (autorizacion de investigacion). El writer lo re-gatea.
+      ethnicity: nullable("ethnicity"),
     };
   }
   return characterization;
@@ -244,7 +247,7 @@ async function dispatchConsentCopy(args: {
     acceptedAt: args.acceptedAt,
     granted: grantedForCopy,
     consentVersion: CONSENT_VERSION,
-    consentTemplate: CONSENT_TEXT_V1_7,
+    consentTemplate: CONSENT_TEXT_V1_0,
     instance,
     recipients,
     resumeUrl: args.resumeUrl,
@@ -262,6 +265,7 @@ export async function signSurveyAction(
     error,
     fields,
     resumeToken: null,
+    ethnicityAuthorized: false,
   });
 
   const token = str(form, "token");
@@ -298,7 +302,8 @@ export async function signSurveyAction(
   after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
 
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
-  return { error: null, fields: null, resumeToken };
+  // ethnicityAuthorized: si otorgo investigacion, la fase 2 muestra el campo de etnia (consent v1.0).
+  return { error: null, fields: null, resumeToken, ethnicityAuthorized: consent.investigacion === true };
 }
 
 // ── FASE 2: guardar a medida (as-you-go) ────────────────────────────────────────────────────────────

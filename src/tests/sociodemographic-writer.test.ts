@@ -27,6 +27,7 @@ describe("characterizationSchema (validacion, sin BD)", () => {
         occupation: "Astronauta", // texto libre permitido (opcion "Otra")
         maritalStatus: "Inventado", // fuera de lista => null
         socioeconomicStratum: "3",
+        ethnicity: "Indígena",
       },
       reasonForVisit: ["Rendimiento deportivo", "No existe", "Otro"],
     });
@@ -35,6 +36,7 @@ describe("characterizationSchema (validacion, sin BD)", () => {
       occupation: "Astronauta",
       maritalStatus: null,
       socioeconomicStratum: "3",
+      ethnicity: "Indígena", // normalizada contra las categorias DANE (el gate de investigacion va en el writer)
     });
     // El motivo se filtra a las opciones conocidas (descarta "No existe").
     expect(parsed?.reasonForVisit).toEqual(["Rendimiento deportivo", "Otro"]);

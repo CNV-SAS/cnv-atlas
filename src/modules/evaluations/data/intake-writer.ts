@@ -327,6 +327,9 @@ export type SurveyCharacterization = {
     occupation: string | null;
     maritalStatus: string | null;
     socioeconomicStratum: string | null;
+    // Pertenencia etnica (dato sensible): solo se persiste si el paciente otorgo la autorizacion de
+    // INVESTIGACION (consent v1.0). El writer lo gatea contra patient_consents; sin autorizacion, se ignora.
+    ethnicity: string | null;
   };
   reasonForVisit?: string[];
 };
@@ -362,6 +365,24 @@ async function writeCharacterization(
   if (!characterization) return;
   const { profile, reasonForVisit } = characterization;
   if (profile) {
+    // GATE de etnia (dato sensible): solo se persiste si el paciente tiene la autorizacion de INVESTIGACION
+    // vigente (consent v1.0: la etnia se fundio en esa casilla). El servidor NO confia en que la UI la
+    // oculte: verifica el consentimiento real y descarta la etnia si no fue autorizada.
+    let ethnicity = profile.ethnicity;
+    if (ethnicity) {
+      const [inv] = await tx
+        .select({ id: patientConsents.id })
+        .from(patientConsents)
+        .where(
+          and(
+            eq(patientConsents.patientId, target.patientId),
+            eq(patientConsents.consentType, "investigacion"),
+            isNull(patientConsents.revokedAt),
+          ),
+        )
+        .limit(1);
+      if (!inv) ethnicity = null; // sin autorizacion de investigacion, no se guarda la etnia
+    }
     await tx
       .update(patientProfiles)
       .set({
@@ -369,6 +390,7 @@ async function writeCharacterization(
         occupation: profile.occupation,
         maritalStatus: profile.maritalStatus,
         socioeconomicStratum: profile.socioeconomicStratum,
+        ethnicity,
       })
       .where(eq(patientProfiles.patientId, target.patientId));
   }
@@ -447,6 +469,7 @@ export type SurveyProgressCharacterization = {
   occupation: string | null;
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
+  ethnicity: string | null;
   reasonForVisit: string[]; // parseado del arreglo JSON; [] si null o ilegible
 };
 
@@ -455,6 +478,7 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
   mode: EvaluationType;
   answers: SurveyAnswer[];
   characterization: SurveyProgressCharacterization;
+  ethnicityAuthorized: boolean;
 } | null> {
   const [ev] = await db
     .select({ id: evaluations.id, mode: evaluations.type, patientId: evaluations.patientId, reasonForVisit: evaluations.reasonForVisit })
@@ -468,6 +492,7 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
       occupation: patientProfiles.occupation,
       maritalStatus: patientProfiles.maritalStatus,
       socioeconomicStratum: patientProfiles.socioeconomicStratum,
+      ethnicity: patientProfiles.ethnicity,
     })
     .from(patientProfiles)
     .where(eq(patientProfiles.patientId, ev.patientId))
@@ -477,14 +502,29 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
     occupation: profile?.occupation ?? null,
     maritalStatus: profile?.maritalStatus ?? null,
     socioeconomicStratum: profile?.socioeconomicStratum ?? null,
+    ethnicity: profile?.ethnicity ?? null,
     reasonForVisit: parseReasonForVisit(ev.reasonForVisit),
   };
+  // Etnia (consent v1.0): el campo se muestra al reanudar solo si otorgo investigacion vigente.
+  const [inv] = await db
+    .select({ id: patientConsents.id })
+    .from(patientConsents)
+    .where(
+      and(
+        eq(patientConsents.patientId, ev.patientId),
+        eq(patientConsents.consentType, "investigacion"),
+        isNull(patientConsents.revokedAt),
+      ),
+    )
+    .limit(1);
+  const ethnicityAuthorized = Boolean(inv);
   const [response] = await db
     .select({ id: surveyResponses.id })
     .from(surveyResponses)
     .where(eq(surveyResponses.evaluationId, ev.id))
     .limit(1);
-  if (!response) return { evaluationId: ev.id, mode: ev.mode, answers: [], characterization };
+  if (!response)
+    return { evaluationId: ev.id, mode: ev.mode, answers: [], characterization, ethnicityAuthorized };
   const rows = await db
     .select({ questionId: surveyAnswers.questionId, answerValue: surveyAnswers.answerValue })
     .from(surveyAnswers)
@@ -494,6 +534,7 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
     mode: ev.mode,
     answers: rows.map((r) => ({ questionId: r.questionId, answerValue: r.answerValue ?? "" })),
     characterization,
+    ethnicityAuthorized,
   };
 }
 

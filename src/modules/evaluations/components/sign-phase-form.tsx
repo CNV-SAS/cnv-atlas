@@ -25,7 +25,7 @@ import { Field, checkboxClass, selectClass } from "./survey-form-shared";
 // para no reusar el nodo y auto-enviar; (2) accion por onSubmit + startTransition, NUNCA prop `action`
 // (auto-reset de React 19); (3) el codigo OTP se pide al FINAL de esta fase (vence en 10 min).
 
-const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null };
+const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null, ethnicityAuthorized: false };
 const initialOtp: OtpSendState = { error: null, sent: false, maskedDestination: null, remaining: null };
 
 // Validez de correo para habilitar el envio del codigo en cliente (el servidor revalida con Zod).
@@ -67,8 +67,9 @@ export type SignPhaseFormProps = {
   consentText: string;
   // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
   professional: { fullName: string; profession: string; license: string | null };
-  // Se invoca al firmar con exito, con el resume_token. El orquestador pasa a la pantalla "firmado".
-  onSigned: (resumeToken: string) => void;
+  // Se invoca al firmar con exito, con el resume_token y si otorgo investigacion (para el campo de etnia
+   // de la fase 2). El orquestador pasa a la encuesta.
+  onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
 };
 
 export function SignPhaseForm({ token, prefill, consentText, professional, onSigned }: SignPhaseFormProps) {
@@ -78,8 +79,8 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   // Al firmar con exito el servidor devuelve el resume_token: se lo pasamos al orquestador (que pasa a la
   // pantalla "firmado"). Este componente se desmonta ahi; el efecto no se dispara dos veces.
   useEffect(() => {
-    if (state.resumeToken) onSigned(state.resumeToken);
-  }, [state.resumeToken, onSigned]);
+    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized);
+  }, [state.resumeToken, state.ethnicityAuthorized, onSigned]);
 
   // Firma electronica (B7). sessionId: nonce opaco de ESTE intento, generado una sola vez; ancla el
   // codigo a este navegador y viaja al enviar y al validar. El envio del codigo se invoca IMPERATIVAMENTE

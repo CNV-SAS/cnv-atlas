@@ -262,6 +262,7 @@ export async function readSurveyProgress(
   mode: "inicial" | "seguimiento";
   answers: SurveyAnswer[];
   characterization: SurveyProgressCharacterization;
+  ethnicityAuthorized: boolean;
 } | null> {
   return getSurveyProgress(resumeToken);
 }

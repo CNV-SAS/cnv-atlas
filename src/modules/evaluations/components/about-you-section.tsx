@@ -6,6 +6,7 @@ import {
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
+  ETNIA_OPTIONS,
   MOTIVO_OPTIONS,
   OCUPACION_OPTIONS,
 } from "../data/sociodemographic-options";
@@ -25,6 +26,7 @@ export type AboutYouPrefill = {
   occupation: string | null;
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
+  ethnicity: string | null;
   reasonForVisit: string[];
 };
 
@@ -38,14 +40,19 @@ function splitOccupation(value: string | null): { choice: string; other: string 
 export function AboutYouSection({
   includeProfile,
   prefill = null,
+  // Etnia (dato sensible): el campo solo aparece si el paciente OTORGO la autorizacion de investigacion
+  // (consent v1.0). No basta que la version sea la nueva; tiene que haberla marcado. El servidor lo re-gatea.
+  ethnicityAuthorized = false,
 }: {
   includeProfile: boolean;
   prefill?: AboutYouPrefill | null;
+  ethnicityAuthorized?: boolean;
 }) {
   const initialOcc = splitOccupation(prefill?.occupation ?? null);
   const [educationLevel, setEducationLevel] = useState(prefill?.educationLevel ?? "");
   const [maritalStatus, setMaritalStatus] = useState(prefill?.maritalStatus ?? "");
   const [stratum, setStratum] = useState(prefill?.socioeconomicStratum ?? "");
+  const [ethnicity, setEthnicity] = useState(prefill?.ethnicity ?? "");
   const [occupationChoice, setOccupationChoice] = useState(initialOcc.choice);
   const [occupationOther, setOccupationOther] = useState(initialOcc.other);
   const [motivo, setMotivo] = useState<string[]>(prefill?.reasonForVisit ?? []);
@@ -169,6 +176,32 @@ export function AboutYouSection({
               ))}
             </select>
           </Field>
+
+          {/* Etnia (dato sensible): SOLO si el paciente otorgo la autorizacion de investigacion. Una linea
+              la conecta con lo que acepto; el select se llama "ethnicity"; el servidor la re-gatea. */}
+          {ethnicityAuthorized ? (
+            <div className="sm:col-span-2">
+              <Field label="Pertenencia étnica">
+                <p className="mb-1 text-xs text-muted-foreground">
+                  Autorizaste informar tu pertenencia étnica para investigación; es voluntario y puedes
+                  omitirlo. Es por autorreconocimiento (nadie la asigna por ti).
+                </p>
+                <select
+                  name="ethnicity"
+                  className={selectClass}
+                  value={ethnicity}
+                  onChange={(e) => setEthnicity(e.target.value)}
+                >
+                  <option value="">Sin especificar</option>
+                  {ETNIA_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">

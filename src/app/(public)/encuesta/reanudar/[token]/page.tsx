@@ -128,6 +128,7 @@ export default async function ReanudarEncuestaPage({
         prefill={prefill}
         initialStep={initialStep}
         characterizationPrefill={progress.characterization}
+        ethnicityAuthorized={progress.ethnicityAuthorized}
       />
     </Shell>
   );

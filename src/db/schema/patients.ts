@@ -59,6 +59,11 @@ export const patientProfiles = pgTable("patient_profiles", {
   occupation: text("occupation"),
   maritalStatus: text("marital_status"),
   socioeconomicStratum: text("socioeconomic_stratum"),
+  // Pertenencia etnica (dato sensible, Ley 1581 art. 5). Solo se captura si el paciente otorgo la
+  // autorizacion de INVESTIGACION (consent v1.0: la etnia se fundio en esa casilla). Autorreconocimiento
+  // DANE + "Prefiero no responder" (valor distinto de null/vacio). Uso restringido a investigacion agregada
+  // (DATA_GOVERNANCE: capturar no habilita usar; supresion de celdas bajo umbral, ejemplo Rrom).
+  ethnicity: text("ethnicity"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

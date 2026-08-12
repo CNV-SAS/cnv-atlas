@@ -33,9 +33,12 @@ export function SurveyIntakeForm({
 }: SurveyIntakeFormProps) {
   // resume_token null = aun en la fase de firma; con valor = ya firmo, esta en la encuesta.
   const [resumeToken, setResumeToken] = useState<string | null>(null);
+  // Si otorgo investigacion, la fase 2 muestra el campo de etnia (consent v1.0).
+  const [ethnicityAuthorized, setEthnicityAuthorized] = useState(false);
 
-  const handleSigned = useCallback((tokenValue: string) => {
+  const handleSigned = useCallback((tokenValue: string, ethAuth: boolean) => {
     setResumeToken(tokenValue);
+    setEthnicityAuthorized(ethAuth);
   }, []);
 
   if (!resumeToken) {
@@ -50,5 +53,12 @@ export function SurveyIntakeForm({
     );
   }
 
-  return <SurveyPhaseForm resumeToken={resumeToken} isFollowup={isFollowup} questions={questions} />;
+  return (
+    <SurveyPhaseForm
+      resumeToken={resumeToken}
+      isFollowup={isFollowup}
+      questions={questions}
+      ethnicityAuthorized={ethnicityAuthorized}
+    />
+  );
 }

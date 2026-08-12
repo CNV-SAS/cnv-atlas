@@ -58,6 +58,8 @@ export default async function HistoriaPacientePage({
     { label: "Ocupación", value: paciente.occupation ?? "-" },
     { label: "Estado civil", value: paciente.maritalStatus ?? "-" },
     { label: "Estrato", value: paciente.socioeconomicStratum ?? "-" },
+    // Etnia: solo si el paciente la informo (requirio autorizacion de investigacion). "-" si no.
+    { label: "Pertenencia étnica", value: paciente.ethnicity ?? "-" },
   ];
 
   return (
