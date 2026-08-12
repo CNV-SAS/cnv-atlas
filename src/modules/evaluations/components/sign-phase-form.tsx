@@ -184,6 +184,29 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
       (isMinor ? true : emailLooksValid(email)),
   );
 
+  // Que falta EXACTAMENTE en el paso de identidad, para que el boton deshabilitado no obligue a revisar
+  // campo por campo (reporte de Santiago). Orden de aparicion en el formulario. En rama menor la fecha y el
+  // correo viven en el paso de consentimiento (no se listan aqui).
+  const missingIdentity: string[] = [];
+  if (!documentNumber.trim()) missingIdentity.push("número de documento");
+  if (!firstName.trim()) missingIdentity.push("nombres");
+  if (!lastName.trim()) missingIdentity.push("apellidos");
+  if (!(sex === "F" || sex === "M")) missingIdentity.push("sexo");
+  if (isMinor) {
+    // En menor la fecha y el correo del representante viven en el paso de consentimiento.
+    if (!minorBirthDate) missingIdentity.push("la fecha de nacimiento del menor (paso anterior)");
+  } else {
+    if (!birthDate) missingIdentity.push("fecha de nacimiento");
+    if (!emailLooksValid(email)) missingIdentity.push("un correo válido");
+  }
+  // Mensaje: pocos -> se enumeran; muchos -> el conteo (una lista larga desalienta mas que orienta).
+  const missingText =
+    missingIdentity.length === 0
+      ? null
+      : missingIdentity.length <= 3
+        ? `Falta${missingIdentity.length > 1 ? "n" : ""}: ${missingIdentity.join(", ")}.`
+        : `Faltan ${missingIdentity.length} datos por completar (revisa los campos de arriba).`;
+
   const canAdvance = current.kind === "consent" ? consentOk : identityOk;
   const maxReachable = !consentOk ? 0 : 1;
 
@@ -622,11 +645,8 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             necesarias para continuar.
           </p>
         ) : null}
-        {current.kind === "identity" && !identityOk ? (
-          <p className="text-xs text-muted-foreground">
-            Completa documento, nombres, apellidos, fecha de nacimiento
-            {!isMinor ? " y un correo válido" : ""} para continuar.
-          </p>
+        {current.kind === "identity" && missingText ? (
+          <p className="text-xs font-medium text-clinical-warning">{missingText}</p>
         ) : null}
 
         {/* Verificacion de firma (B7): SOLO al final de esta fase (el codigo vence en 10 minutos). */}
