@@ -71,6 +71,14 @@ De las 63, **34 alimentan algún motor** y **29 son caracterización pura** (reg
 
 Es tu decisión de instrumento (y la del observatorio); nosotros solo movemos el momento de la captura.
 
+### 4. El riesgo integrado del DFI cuando la encuesta está incompleta
+
+Al implementar la suspensión por encuesta incompleta (Q28) medimos el efecto sobre el mismo paciente: la edad bioeléctrica se inflaba 14 años y el **riesgo integrado subía un nivel (de MEDIO a ALTO)**. Suspendimos las tres salidas que nombraste (edad bioeléctrica, índice contextual y rutas). El **riesgo integrado no lo nombraste**, así que en principio se seguía mostrando al profesional. El problema es que el riesgo integrado es un promedio ponderado de los cinco dominios, y dos de ellos (envejecimiento y contextual) se calculan sobre las mismas salidas que suspendimos, así que hereda esa inflación.
+
+**Pregunta:** ¿debería suspenderse también, o se conserva como orientación con su rótulo?
+
+**Lo que hicimos mientras respondes (conservador, reversible):** con la encuesta incompleta, la vista del profesional ya **no muestra el nivel concreto** (aparece "Provisional · se recalcula al completar la encuesta"), y los dos dominios inflados (envejecimiento y contextual) se marcan **"No evaluable"** en vez de una severidad calculada sobre supuestos. Si nos dices que se conserva como orientación, relajamos el display; si dices que se suspende, ya estamos ahí.
+
 ---
 
 ## PARTE 2 — Confirmaciones (ya lo aplicamos o vamos a aplicar tu instrucción; solo tu visto bueno)
