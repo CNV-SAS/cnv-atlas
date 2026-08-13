@@ -4,6 +4,8 @@ import { eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+// Juego que deja dfi.complete=true: el gate de generacion (Gildardo 2026-08-13 §1) no sella incompletas.
+import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 
 // Propagacion (B11 ST7): input REAL (fila anonimizada del Biody, guardada como la guarda
 // B8: header normalizado -> valor) -> motor real -> persistencia -> relectura. Aserta
@@ -87,6 +89,24 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
         .returning({ id: schema.surveyResponses.id })
     )[0].id;
     await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: qId, answerValue: "x" });
+    // Juego COMPLETO de field_key: sin esto el gate bloquea el sellado (encuesta incompleta). El diagnostico
+    // por la ruta BIS (fenotipo, indicadores, protocolo) es el mismo; ademas ahora dfi.complete=true.
+    {
+      const questions = await db
+        .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+        .from(schema.surveyQuestions)
+        .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+      for (const q of questions as { id: string; fieldKey: string | null }[]) {
+        if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
+        const opts = await db
+          .select({ text: schema.surveyOptions.optionText })
+          .from(schema.surveyOptions)
+          .where(eq(schema.surveyOptions.questionId, q.id))
+          .orderBy(schema.surveyOptions.orderIndex);
+        const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
+        await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+      }
+    }
     const measId = (
       await db
         .insert(schema.bisMeasurements)
@@ -127,8 +147,8 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
     actorId = (await db.select({ id: schema.profiles.id }).from(schema.profiles).limit(1))[0].id;
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).limit(1))[0].id;
-    // Pregunta SIN field_key: su respuesta no llega al motor, asi el DFI corre degradado
-    // (dfi.complete=false), que es lo que valida este test (propagacion por la ruta BIS).
+    // Pregunta SIN field_key (para el caso de correccion de un dato que no mueve el motor).
+    // Se responde ademas (makeEvaluation siembra el juego completo de field_key); esta pregunta sin
     qId = (
       await db
         .select({ id: schema.surveyQuestions.id })
@@ -195,8 +215,8 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // los FK del registry se resolvieron por clave (fenotipo estructural + sector FyR).
     expect(diag.phenotypeId).not.toBeNull();
     expect(diag.frSectorId).not.toBeNull();
-    // sin encuesta real, el DFI quedo marcado incompleto (no null silencioso).
-    expect(snapshot.dfi.complete).toBe(false);
+    // con la encuesta completa (el gate exige completitud para sellar, Gildardo §1), el DFI queda completo.
+    expect(snapshot.dfi.complete).toBe(true);
 
     // identidad sin perdida: 12 indicadores; los no-null persistidos == los del snapshot.
     expect(indicators).toHaveLength(12);
@@ -208,7 +228,7 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
       .map(Number)
       .sort((a: number, b: number) => a - b);
     expect(persistedNonNull).toEqual(snapNonNull);
-    // el conteo de null tambien coincide (EB/IAE null sin encuesta).
+    // el conteo de null tambien coincide (persistido == snapshot, sea cual sea la encuesta).
     expect(indicators.filter((r: { value: string | null }) => r.value == null)).toHaveLength(
       snapVals.filter((v) => v == null).length,
     );

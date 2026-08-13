@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { type ReactNode } from "react";
 import { Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
 
@@ -270,8 +269,13 @@ export function EvaluationResults({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!dfi.complete ? (
-            // D-007 Fase A: extiende (no duplica) el aviso de DFI incompleto. Dice QUE falta y POR QUE
-            // importa (que se suspenderia cuando la funcion este activa). Hoy solo informa, no suprime.
+            // RED / SUSPENSION Q28 (NO se quita). Desde el bloqueo de generacion (Gildardo 2026-08-13 §1),
+            // un diagnostico NUEVO nunca se sella incompleto: se completa la encuesta ANTES de generar. Este
+            // aviso SOLO se alcanza para diagnosticos ya sellados incompletos ANTES del bloqueo. Gildardo la
+            // pidio explicita como red: "si el bloqueo falla o alguien llega por otra ruta, el sistema no
+            // emitira una edad bioelectrica inventada". Por eso se conserva aunque parezca inalcanzable.
+            // (Se retiro el enlace "completar por correccion": ese flujo YA NO EXISTE; el completar es
+            // pre-diagnostico. Un incompleto ya sellado se recupera por el flujo general de correccion.)
             <div className="flex flex-col gap-1 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
               <span className="font-medium">
                 {dfi.degradedReason ?? "El diagnóstico se emitio con la encuesta incompleta."}
@@ -279,24 +283,12 @@ export function EvaluationResults({
               {missingDomains.length ? (
                 <span>Faltan estos dominios de la encuesta: {missingDomains.join(", ")}.</span>
               ) : null}
-              {/* Q28: presente, no futuro. Las tres salidas de encuesta NO se emitieron (no salieron en
-                  cero): se leen como no emitidas, disciplina de las badges no evaluables. Y el aviso dice
-                  QUE HACER, con la via que ahora existe (completar la encuesta en consulta). */}
               <span>
                 No se emitieron la edad bioeléctrica, el índice contextual ni las rutas que dependen de la
                 encuesta: no se calculan sobre respuestas que faltan. El diagnóstico bioeléctrico (de la
                 medición) se emite igual. El desglose de dominios de abajo es provisional (sobre lo
                 respondido), no la lectura definitiva.
               </span>
-              {/* Ya hay diagnostico (este componente solo renderiza con resultados): completar la encuesta
-                  aqui es el flujo de CORRECCION (version nueva), no la edicion pre-diagnostico. Al
-                  completarla, la version nueva emite EB/ICEC/rutas (Q28, Gildardo). */}
-              <Link
-                href={`/evaluaciones/${results.evaluationId}/corregir`}
-                className="w-fit font-medium underline underline-offset-4"
-              >
-                Completar la encuesta con el paciente (genera una versión nueva)
-              </Link>
             </div>
           ) : null}
 

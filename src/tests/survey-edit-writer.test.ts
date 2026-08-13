@@ -4,6 +4,8 @@ import { desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
+// Juego que deja dfi.complete=true: el gate de generacion (Gildardo 2026-08-13 §1) no sella incompletas.
+import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 
 // (a) Edicion de la encuesta por el profesional ANTES del diagnostico. Verificacion contra la BD real
 // (como correct-evaluation): el camino feliz + los guards que importan (asignacion, y sobre todo el de
@@ -66,6 +68,25 @@ describe.skipIf(!HAS_DB)("saveSurveyEdit (BD real)", () => {
 
   async function makeDiagnosed(suffix: string) {
     const evaluationId = await makeDraftWithSurvey(suffix, "in_progress");
+    // Juego COMPLETO de field_key: sin esto el gate bloquea el sellado (Gildardo §1) y no habria
+    // diagnostico que probar (el guard already_diagnosed no dispararia). Se agrega a la respuesta ya creada.
+    const respId = (
+      await db.select({ id: schema.surveyResponses.id }).from(schema.surveyResponses).where(eq(schema.surveyResponses.evaluationId, evaluationId)).limit(1)
+    )[0].id;
+    const questions = await db
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+      .from(schema.surveyQuestions)
+      .where(eq(schema.surveyQuestions.surveyVersionId, svId));
+    for (const q of questions as { id: string; fieldKey: string | null }[]) {
+      if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
+      const opts = await db
+        .select({ text: schema.surveyOptions.optionText })
+        .from(schema.surveyOptions)
+        .where(eq(schema.surveyOptions.questionId, q.id))
+        .orderBy(schema.surveyOptions.orderIndex);
+      const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
+      await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
+    }
     const measId = (
       await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") }).returning({ id: schema.bisMeasurements.id })
     )[0].id;

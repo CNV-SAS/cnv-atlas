@@ -15,6 +15,10 @@ export type RunPipelineState = {
   success: string | null;
   warning: string | null;
   done: boolean;
+  // Enlace a la via de completar la encuesta, presente SOLO cuando el gate de encuesta incompleta
+  // bloqueo la generacion. La UI lo muestra para que el profesional sepa que falta y vaya a llenarlo,
+  // no quede bloqueado sin saber por que (Gildardo 2026-08-13 §1).
+  completeHref: string | null;
 };
 
 // Server action: genera el diagnostico (propagacion contra el stub). Orden: auth ->
@@ -24,11 +28,12 @@ export async function runPipelineAction(
   _prev: RunPipelineState,
   form: FormData,
 ): Promise<RunPipelineState> {
-  const fail = (error: string): RunPipelineState => ({
+  const fail = (error: string, completeHref: string | null = null): RunPipelineState => ({
     error,
     success: null,
     warning: null,
     done: false,
+    completeHref,
   });
 
   const user = await requireUser();
@@ -50,7 +55,13 @@ export async function runPipelineAction(
     actorEmail: user.email,
     ip: ip === "unknown" ? null : ip,
   });
-  if (!result.ok) return fail(result.error.message);
+  if (!result.ok) {
+    // Encuesta incompleta: se ofrece la via de completar (la pagina de editar resalta las que faltan).
+    const completeHref = result.error.fields?.incompleteSurvey
+      ? `/evaluaciones/${evaluationId}/encuesta/editar`
+      : null;
+    return fail(result.error.message, completeHref);
+  }
 
   revalidatePath("/evaluaciones");
   return {
@@ -58,5 +69,6 @@ export async function runPipelineAction(
     success: `Diagnostico generado (${result.value.indicatorCount} indicadores).`,
     warning: null,
     done: true,
+    completeHref: null,
   };
 }

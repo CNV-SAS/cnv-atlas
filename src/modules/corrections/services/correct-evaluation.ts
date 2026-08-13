@@ -225,6 +225,19 @@ export async function correctEvaluation(
   );
   const output = runEngine(engineInput);
 
+  // GATE de encuesta completa TAMBIEN al REGENERAR (Gildardo 2026-08-13 §1): si el profesional corrige y
+  // deja la encuesta incompleta, no puede regenerar el diagnostico (el mismo predicado dfi.complete que
+  // al generar). Se completa en la correccion misma; el mensaje dice cuanto falta.
+  if (!output.dfi.complete) {
+    return err(
+      appError(
+        "validation",
+        output.dfi.degradedReason ??
+          "La encuesta quedó incompleta. Complétala antes de regenerar el diagnóstico.",
+      ),
+    );
+  }
+
   let protocolSuggested: ProtocoloSnapshot | null = null;
   let protocolFailMotive: string | null = null;
   try {

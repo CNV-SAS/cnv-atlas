@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
@@ -25,6 +26,7 @@ const initialState: RunPipelineState = {
   success: null,
   warning: null,
   done: false,
+  completeHref: null,
 };
 
 export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateView }) {
@@ -58,6 +60,16 @@ export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateV
           <form action={action} className="flex flex-col gap-2">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+            {/* Encuesta incompleta: no queda bloqueado a ciegas. Enlace a completarla con el paciente
+                (la pagina de editar resalta las preguntas que faltan). Gildardo 2026-08-13 §1. */}
+            {state.completeHref ? (
+              <Link
+                href={state.completeHref}
+                className="w-fit text-sm font-medium text-primary underline underline-offset-4"
+              >
+                Completar la encuesta con el paciente
+              </Link>
+            ) : null}
             <Button type="submit" disabled={pending} className="w-fit">
               {pending ? "Generando..." : "Generar diagnóstico"}
             </Button>

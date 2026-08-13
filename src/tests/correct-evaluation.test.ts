@@ -89,9 +89,11 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
         .values({ evaluationId, surveyVersionId: svId })
         .returning({ id: schema.surveyResponses.id })
     )[0].id;
-    // Se responde una pregunta SIN field_key (no llega al motor): el pipeline corre degradado y la
-    // correccion de esa respuesta no cambia la salida (caso identico, seguro para S1).
+    // Se responde una pregunta SIN field_key (no llega al motor): corregir ESA respuesta no cambia la
+    // salida del motor (caso identico, seguro para S1), pero SI dispara la correccion (cambio real).
     await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: nonFieldQId, answerValue: "original" });
+    // Y el juego COMPLETO de field_key: el diagnostico sale con dfi.complete=true y el gate deja sellar.
+    await seedFieldKeyAnswers(respId);
     const measId = (
       await db
         .insert(schema.bisMeasurements)
@@ -106,38 +108,15 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     return evaluationId;
   }
 
-  // Como makeEvaluationWithDiagnosis, pero siembra la encuesta COMPLETA (juego DFI-complete) MENOS un
-  // field_key usado en diagnostico: el diagnostico sale con dfi.complete=false. Devuelve la pregunta
-  // omitida y su valor, para completarla luego por el flujo de correccion y ver moverse dfi.complete.
-  async function makeFullSurveyMinusOne(suffix: string) {
-    const patientId = (
-      await db
-        .insert(schema.patients)
-        .values({ organizationId: orgId, documentType: "CC", documentNumber: `COMP-${suffix}-${Date.now()}` })
-        .returning({ id: schema.patients.id })
-    )[0].id;
-    createdPatients.push(patientId);
-    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Comp", lastName: suffix, sex: "M", birthDate: "1971-11-05" });
-    await db.insert(schema.patientProfessionalRelationships).values({ patientId, professionalId: proId }).onConflictDoNothing();
-    const evaluationId = (
-      await db
-        .insert(schema.evaluations)
-        .values({ patientId, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" })
-        .returning({ id: schema.evaluations.id })
-    )[0].id;
-    createdEvals.push(evaluationId);
-    const respId = (
-      await db.insert(schema.surveyResponses).values({ evaluationId, surveyVersionId: svId }).returning({ id: schema.surveyResponses.id })
-    )[0].id;
-
+  // Siembra el juego DFI-complete (todos los field_key del diagnostico) en una respuesta. Con esto la
+  // encuesta queda COMPLETA (dfi.complete=true) y el gate de generacion (Gildardo §1) deja sellar. Antes
+  // del gate, los tests sembraban encuestas incompletas y el pipeline las sellaba degradadas; ya no se
+  // puede (ver el test del gate). Toda evaluacion que se corrige parte ahora de un diagnostico COMPLETO.
+  async function seedFieldKeyAnswers(respId: string) {
     const questions = await db
-      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey, used: schema.surveyQuestions.usedInDiagnosis })
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
       .from(schema.surveyQuestions)
       .where(eq(schema.surveyQuestions.surveyVersionId, svId));
-    // Omitir un field_key que SI cuenta para dfi.complete (used_in_diagnosis=true) y esta en el juego.
-    const omit = questions.find((q: any) => q.fieldKey && q.used && q.fieldKey in ANSWERS);
-    if (!omit) throw new Error("no hay field_key used_in_diagnosis en el juego DFI-complete");
-    let omittedValue = "";
     for (const q of questions as { id: string; fieldKey: string | null }[]) {
       if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
       const opts = await db
@@ -146,20 +125,8 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
         .where(eq(schema.surveyOptions.questionId, q.id))
         .orderBy(schema.surveyOptions.orderIndex);
       const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
-      if (q.id === omit.id) {
-        omittedValue = value; // se guarda para completar despues; NO se siembra ahora
-        continue;
-      }
       await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
     }
-
-    const measId = (
-      await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") }).returning({ id: schema.bisMeasurements.id })
-    )[0].id;
-    await db.insert(schema.bisRawValues).values(bisRawRows(biody).map((r) => ({ measurementId: measId, variableName: r.name, value: r.value })));
-    const res = await runClinicalPipeline({ evaluationId, actorId, actorEmail: "corr@cnv", ip: null });
-    expect(res.ok).toBe(true);
-    return { evaluationId, omittedQuestionId: omit.id, omittedValue };
   }
 
   const baseInput = (evaluationId: string) => ({
@@ -271,52 +238,52 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     const cntOld = await db.select({ n: sql<number>`count(*)::int` }).from(schema.bisRawValues).where(eq(schema.bisRawValues.measurementId, oldMeas.id));
     expect(cnt[0].n).toBe(cntOld[0].n);
 
-    // la respuesta corregida se copio con el nuevo valor
-    const newResp = (await db.select({ id: schema.surveyResponses.id }).from(schema.surveyResponses).where(eq(schema.surveyResponses.evaluationId, newId)))[0];
-    const newAns = (await db.select().from(schema.surveyAnswers).where(eq(schema.surveyAnswers.responseId, newResp.id)))[0];
-    expect(newAns.answerValue).toBe("CORREGIDO");
-  });
-
-  it("completar: agregar una respuesta con field_key que faltaba mueve dfi.complete false->true", async () => {
-    const { evaluationId: oldId, omittedQuestionId, omittedValue } = await makeFullSurveyMinusOne("DFI");
-
-    // El diagnostico viejo salio INCOMPLETO (falta un field_key esperado).
-    const oldSnap = (await db.select({ s: schema.reports.snapshot }).from(schema.reports).where(eq(schema.reports.evaluationId, oldId)))[0].s as any;
-    expect(oldSnap.dfi.complete).toBe(false);
-
-    // Completar esa pregunta (sin respuesta previa) por el flujo de correccion.
-    const res = await correctEvaluation(
-      {
-        evaluationId: oldId,
-        correctedAnswers: [{ questionId: omittedQuestionId, answerValue: omittedValue }],
-        reason: "se completo la encuesta en consulta",
-        triggerType: "correccion_profesional" as const,
-        confirmed: true,
-      },
-      actor(),
-    );
-    expect(res.ok).toBe(true);
-    const newId = res.value.newEvaluationId;
-    createdEvals.push(newId);
-
-    // El diagnostico nuevo ya es COMPLETO: el salto que mas puede sorprender, verificado ejecutando.
-    const newSnap = (await db.select({ s: schema.reports.snapshot }).from(schema.reports).where(eq(schema.reports.evaluationId, newId)))[0].s as any;
-    expect(newSnap.dfi.complete).toBe(true);
-
-    // Se DERIVO completar (no correccion): todos los cambios son a preguntas sin respuesta previa.
-    const corr = (await db.select().from(schema.clinicalCorrections).where(eq(schema.clinicalCorrections.oldEvaluationId, oldId)))[0];
-    expect(corr.triggerType).toBe("completar_profesional");
-
-    // La respuesta completada existe como fila NUEVA en la nueva evaluacion (no existia en la vieja).
+    // la respuesta corregida se copio con el nuevo valor (buscada por su pregunta: la encuesta ahora es
+    // completa, hay muchas respuestas, asi que se ubica la corregida por questionId, no la primera).
     const newResp = (await db.select({ id: schema.surveyResponses.id }).from(schema.surveyResponses).where(eq(schema.surveyResponses.evaluationId, newId)))[0];
     const newAns = (
       await db
         .select()
         .from(schema.surveyAnswers)
-        .where(and(eq(schema.surveyAnswers.responseId, newResp.id), eq(schema.surveyAnswers.questionId, omittedQuestionId)))
+        .where(and(eq(schema.surveyAnswers.responseId, newResp.id), eq(schema.surveyAnswers.questionId, nonFieldQId)))
     )[0];
-    expect(newAns).toBeTruthy();
-    expect(newAns.answerValue).toBe(omittedValue);
+    expect(newAns.answerValue).toBe("CORREGIDO");
+  });
+
+  // GATE de encuesta completa (Gildardo 2026-08-13 §1): reemplaza al viejo test "completar por
+  // correccion". Ese flujo (generar incompleto y completar despues) YA NO EXISTE: el gate impide sellar
+  // un diagnostico con encuesta incompleta, asi que nunca hay un diagnostico incompleto que completar.
+  // La cobertura que importa ahora es que el pipeline BLOQUEE lo incompleto y no selle nada.
+  it("gate: el pipeline con encuesta INCOMPLETA bloquea y no sella (Gildardo 2026-08-13 §1)", async () => {
+    const patientId = (
+      await db.insert(schema.patients).values({ organizationId: orgId, documentType: "CC", documentNumber: `GATE-${Date.now()}` }).returning({ id: schema.patients.id })
+    )[0].id;
+    createdPatients.push(patientId);
+    await db.insert(schema.patientProfiles).values({ patientId, firstName: "Gate", lastName: "Incompleta", sex: "M", birthDate: "1971-11-05" });
+    await db.insert(schema.patientProfessionalRelationships).values({ patientId, professionalId: proId }).onConflictDoNothing();
+    const evaluationId = (
+      await db.insert(schema.evaluations).values({ patientId, professionalId: proId, organizationId: orgId, type: "inicial", status: "in_progress" }).returning({ id: schema.evaluations.id })
+    )[0].id;
+    createdEvals.push(evaluationId);
+    const respId = (
+      await db.insert(schema.surveyResponses).values({ evaluationId, surveyVersionId: svId }).returning({ id: schema.surveyResponses.id })
+    )[0].id;
+    // Encuesta INCOMPLETA: solo una pregunta sin field_key; ningun field_key del diagnostico respondido.
+    await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: nonFieldQId, answerValue: "algo" });
+    const measId = (
+      await db.insert(schema.bisMeasurements).values({ evaluationId, measurementDate: new Date("2026-06-22T15:09:00Z") }).returning({ id: schema.bisMeasurements.id })
+    )[0].id;
+    await db.insert(schema.bisRawValues).values(bisRawRows(biody).map((r) => ({ measurementId: measId, variableName: r.name, value: r.value })));
+
+    const res = await runClinicalPipeline({ evaluationId, actorId, actorEmail: "corr@cnv", ip: null });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.code).toBe("validation");
+      expect(res.error.fields?.incompleteSurvey).toBeTruthy(); // marca para que la UI ofrezca completar
+    }
+    // Y NADA sellado: sin diagnostico, sin reporte.
+    const diag = await db.select().from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, evaluationId));
+    expect(diag).toHaveLength(0);
   });
 
   it("gate: sin confirmacion, sin motivo, no asignado", async () => {
