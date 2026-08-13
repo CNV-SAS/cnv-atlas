@@ -41,6 +41,17 @@
 
 ---
 
+### Decisiones sobre la categoría 2 (APROBADAS 2026-08-12, no reabrir)
+
+Estas cuatro son la estructura final de Diagnóstico. Se decidieron con las capturas enfrente; se registran con su argumento para que no se reabran. **NO se construyen aún:** primero se cierran los inventarios de Tratamiento y Seguimiento, por si algo mueve dónde conviene poner la ruta prioritaria o los cortes. Se construye todo junto cuando estén los cuatro inventarios.
+
+1. **Índices ANI-BIS-E: tabla APARTE (conservar lo nuestro).** Fundir los 12 indicadores en una tabla de Wang de ~40 filas sería ilegible, y los índices son la lectura clínica principal. Se porta de él una **nota de anclaje** ("estos índices se derivan de la composición de arriba").
+2. **Cortes: HÍBRIDO (portar lo suyo).** El corte del indicador representativo de cada dominio va INLINE en la tarjeta; la tabla completa se conserva aparte. **Cuál es el representativo NO lo elegimos nosotros:** el HTML lo designa en el subencabezado de cada tarjeta, y Atlas ya usa el mismo (Celular→IFC/IRC, Metabólico→ISCM, Envejecimiento→IAE, Epigenético→ICEC, Conductual→cualitativo). El HTML muestra el corte completo inline sobre todo para IFC/IRC; se porta esa disposición. No va a la ronda (está designado en los dos).
+3. **Ruta prioritaria: PUNTERO en el riesgo integrado (portar lo suyo, acotado).** Se muestra la ruta de mayor urgencia junto al riesgo, redactada CLARAMENTE como puntero, no como prescripción: p. ej. "Ruta 4 prioritaria: ver en Tratamiento". El detalle de rutas sigue en Tratamiento; esto solo informa.
+4. **Diagnóstico Integrado (IA): se queda en el REPORTE (conservar lo nuestro).** Ahí tiene la gobernanza que lo hace seguro (se revisa y aprueba antes de enviar al paciente). Un texto generado por IA en Diagnóstico, sin ese gate, invita a leerse como definitivo. En Diagnóstico basta un **enlace al reporte**.
+
+---
+
 ## 3 · ESTÁ EN EL HTML Y NOS FALTA (contenido de Gildardo)
 
 | Bloque | Detalle | Recomendación |

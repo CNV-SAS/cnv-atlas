@@ -126,7 +126,13 @@ pantallas.
 
 Tu respuesta del 9 de agosto (11a) resolvió la severidad POR DOMINIO: "Leve / Moderado / Alto, descarten Vigilancia / Crítico". Atlas ya usa Óptimo / Leve / Moderado / Alto en las tarjetas de dominio (Óptimo es el nivel sin alteración). Bien.
 
-Lo que esa respuesta no nombró es el **radar funcional**: en tu HTML tiene 5 niveles distintos ("Excepcional / Muy bien / En la norma / A vigilar / A tratar"). Atlas lo unificó a la MISMA escala de dominio (4 niveles), para que radar y tarjetas no puedan divergir. **Pregunta corta:** ¿confirmas que el radar use la escala de dominio (Óptimo / Leve / Moderado / Alto), o querías conservar las 5 gradaciones del radar? Es solo forma; no cambia ningún cálculo.
+Lo que esa respuesta no nombró es el **radar funcional**: en tu HTML tiene 5 niveles distintos ("Excepcional / Muy bien / En la norma / A vigilar / A tratar"), diferentes de la severidad por dominio. Atlas lo unificó a la MISMA escala de dominio (4 niveles), para que radar y tarjetas no puedan divergir.
+
+**La pregunta de fondo no es cuántas gradaciones, sino qué MIDE el radar:**
+- Si el radar mide **lo mismo** que la severidad por dominio, entonces la escala debe ser la misma (Óptimo / Leve / Moderado / Alto), como hace hoy Atlas.
+- Si el radar mide **otra cosa** (por ejemplo, la posición relativa a la población, no la severidad clínica), entonces 5 niveles tiene sentido y son dos escalas distintas a propósito.
+
+¿Cuál de las dos? Con eso sabemos si unificar (como está) o separar. Es solo forma; no cambia ningún cálculo.
 
 ---
 
