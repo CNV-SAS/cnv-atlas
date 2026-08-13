@@ -85,23 +85,40 @@ describe("buildEngineInput", () => {
   });
 });
 
-describe("buildSurvey: el texto libre de 'Otra' NO alimenta el motor (ECA4a, provisional d5_39)", () => {
+describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
   const model = { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" };
-  it("stripea 'Otra: <texto>' de los multi (el frozen no lo ve), conserva opciones reales y 'Otra' pelada", () => {
+
+  it("d5_39: el texto libre SI alimenta el motor (§4), sin el prefijo 'Otra:'", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
       surveyAnswers: [
-        // d5_39 lo lee el motor por substring: "Otra: cancer de piel" NO debe llegar (dispararia protocolo).
+        // d5_39 lo lee el motor por substring: "Otra: cancer de piel" ahora SI llega, pero pelado el
+        // centinela, para que el match (renal/cancer/diabet) opere sobre la condicion, no sobre "Otra:".
         { fieldKey: "d5_39", type: "opcion_multiple", value: JSON.stringify(["Diabetes tipo 2", "Otra: cancer de piel"]) },
-        // "Otra" pelada (sin texto) es inerte: NO se stripea; las opciones reales quedan.
-        { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["Otra", "HTA (presión alta)"]) },
       ],
       expectedFieldKeys: ["d5_39"],
       bisRaw: {},
     };
     const input = buildEngineInput(raw, model, NOW);
-    expect(input.survey.d5_39).toEqual(["Diabetes tipo 2"]);
+    expect(input.survey.d5_39).toEqual(["Diabetes tipo 2", "cancer de piel"]);
+  });
+
+  it("las otras preguntas con 'Otra' (§3): su texto libre es REGISTRO, NO alimenta el motor", () => {
+    const raw = {
+      sex: "M",
+      birthDate: "1990-01-01",
+      surveyAnswers: [
+        // d6_43 (alergias, una de las 9): "Otra: mango" NO debe llegar al motor (registro).
+        { fieldKey: "d6_43", type: "opcion_multiple", value: JSON.stringify(["Maní", "Otra: mango"]) },
+        // "Otra" pelada (sin texto) es inerte: NO se stripea; las opciones reales quedan.
+        { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["Otra", "HTA (presión alta)"]) },
+      ],
+      expectedFieldKeys: ["d6_43"],
+      bisRaw: {},
+    };
+    const input = buildEngineInput(raw, model, NOW);
+    expect(input.survey.d6_43).toEqual(["Maní"]);
     expect(input.survey.d5_38).toEqual(["Otra", "HTA (presión alta)"]);
   });
 });

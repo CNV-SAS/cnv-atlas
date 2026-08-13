@@ -46,18 +46,32 @@ function decodeMulti(value: string): string[] {
 // Nota (GILDARDO_QUERIES.md Q3): la encuesta no aporta d1_9/d1_10/d1_16, asi que los
 // dominios Alimentacion e Hidratacion del LE8 quedan en su valor por defecto. No se
 // inventa mapeo: los campos simplemente no estan en el objeto.
-// Texto libre de la opcion "Otra"/"Otros" (ECA4a): el intake lo guarda como un elemento "Otra: <texto>".
-// SE CAPTURA en survey_answers (registro), pero NO alimenta el motor: se stripea aqui, en la GLUE, antes
-// de que el frozen lea el campo. Es CRITICO en d5_39, que el motor lee por substring (renal/cancer/diabet):
-// un "Otra: cancer de piel" escrito a mano dispararia el protocolo. PROVISIONAL hasta que Gildardo responda
-// ECA4b (si decide que alimente, se deja de stripear en d5_39). No toca las cadenas sembradas ni el candado.
+// Texto libre de la opcion "Otra"/"Otros": el intake lo guarda como un elemento "Otra: <texto>".
+// DOS conductas, decididas por Gildardo (2026-08-13):
+//   - d5_39 (diagnosticos personales), §4: el texto libre SI alimenta el motor (es una condicion real del
+//     paciente). Se conserva el texto, SIN el prefijo "Otra:" (centinela de UI, no parte de la condicion),
+//     para que el match por substring del motor (renal/cancer/diabet) lo lea. El filo conocido (un "sin
+//     enfermedad renal" activa la restriccion renal por substring) es responsabilidad del profesional:
+//     TODO lo que el motor produzca es editable por el (motor propone, profesional dispone).
+//   - Las otras preguntas con "Otra" (§3, las 9 aprobadas): su texto libre es REGISTRO, NO alimenta el
+//     motor. Se stripea aqui, en la GLUE, antes de que el frozen lea el campo.
+// No toca las cadenas sembradas ni el candado de acoplamiento.
 const isFreeTextOther = (el: string): boolean => /^otr(?:a|os)\s*:/i.test(el.trim());
+const stripOtherPrefix = (el: string): string => el.replace(/^otr(?:a|os)\s*:\s*/i, "");
+// Campos cuyo texto libre de "Otra" SI alimenta el motor (§4). Hoy solo d5_39.
+const FREE_TEXT_TO_ENGINE = new Set(["d5_39"]);
 
 function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   const survey: Record<string, unknown> = {};
   for (const a of answers) {
-    survey[a.fieldKey] =
-      a.type === "opcion_multiple" ? decodeMulti(a.value).filter((el) => !isFreeTextOther(el)) : a.value;
+    if (a.type !== "opcion_multiple") {
+      survey[a.fieldKey] = a.value;
+      continue;
+    }
+    const els = decodeMulti(a.value);
+    survey[a.fieldKey] = FREE_TEXT_TO_ENGINE.has(a.fieldKey)
+      ? els.map(stripOtherPrefix) // d5_39: conserva el texto libre (sin el centinela "Otra:")
+      : els.filter((el) => !isFreeTextOther(el)); // resto: registro, no alimenta el motor
   }
   return survey;
 }
