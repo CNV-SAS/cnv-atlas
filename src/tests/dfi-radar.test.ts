@@ -44,15 +44,15 @@ describe("DfiRadar", () => {
       d5: "Epigenét.",
     };
     for (const d of DOMAINS) expect(markup).toContain(SHORT[d.id]);
-    // Severidad por eje como texto (vocabulario del MOTOR, ver V0-b), no solo color: sev 0 ->
-    // "Óptimo", sev 3 -> "Alto".
-    expect(markup).toContain("Óptimo");
+    // Severidad por eje como texto (vocabulario VIGENTE de Gildardo, _DFI_SEVL), no solo color: sev 0 ->
+    // "Bajo", sev 3 -> "Alto".
+    expect(markup).toContain("Bajo");
     expect(markup).toContain("Alto");
   });
 
   it("incluye la leyenda de severidad del motor y la frase del poligono", () => {
     const markup = render(1);
-    for (const z of ["Óptimo", "Leve", "Moderado", "Alto"]) {
+    for (const z of ["Bajo", "Leve", "Moderado", "Alto"]) {
       expect(markup).toContain(z);
     }
     expect(markup).toContain("A menor polígono, mejor estado.");
