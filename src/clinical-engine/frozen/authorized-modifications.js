@@ -67,6 +67,36 @@ const AUTHORIZED_MODIFICATIONS = [
     newSlice:
       '  var salvaguarda=tcaFlag?"Alerta de conducta alimentaria de riesgo: se marca remisión a psicología clínica o psiquiatría. El plan no se bloquea; el peso meta acordado sigue gobernando el cálculo (no se fuerza dieta normocalórica).":null;',
   },
+  {
+    caId: "CA-3",
+    decision: "D-007",
+    date: "2026-08-13",
+    targetFile: "engine.dfi.js",
+    // Instruccion verbatim de Gildardo (2026-08-13 §1): "Hagan ademas que calcLE8 deje de rellenar con
+    // ceros en silencio: que distinga 'el paciente respondio 0' de 'el paciente no respondio'. Si algun
+    // dia el bloqueo falla o alguien llega por otra ruta, el sistema no emitira una edad bioelectrica
+    // inventada." Guarda: sin los insumos del LE8, total = null. Un 0 respondido (0 dias, "Nunca"=0) SI
+    // cuenta; d5_39=[] ("sin diagnosticos") es respuesta valida y cuenta; solo la AUSENCIA frena.
+    // ALCANCE: con LE8_MAPEO_CORREGIDO=false (estado vigente, P-04 cerrada), calcLE8 lee para alimentacion
+    // d1_9/d1_10 y para hidratacion d1_16, campos que la encuesta NO captura (Q3): esos dos dominios corren
+    // en default SIEMPRE (no es ausencia del paciente, es un hueco del modelo de datos). Los insumos que
+    // calcLE8 lee Y la encuesta captura son SEIS: d3_23/d3_24 (actividad), d3_30 (tabaco), d3_26 (sueno),
+    // d5_39 (glucosa/colesterol/presion), d5_36 (presion). La guarda exige esos. Si algun dia se activa el
+    // mapeo (flag true), calcLE8 pasa a leer d1_N_i (calcPatron) y d7_agua: esta lista debe revisarse ahi.
+    instruction:
+      "Guarda en calcLE8: sin los 6 insumos capturados del LE8 (d3_23/d3_24/d3_30/d3_26/d5_39/d5_36) no se emite total (null); un 0 respondido cuenta, la ausencia no. Alimentacion/hidratacion corren en default por hueco de datos (Q3), no son ausencia (§1, 2026-08-13).",
+    oldSlice: "const calcLE8 = enc => {\n  const scores = [];",
+    newSlice: `const calcLE8 = enc => {
+  // Guarda (Gildardo 2026-08-13 §1): no se calcula el LE8 sobre AUSENCIAS. Un 0 respondido (0 dias,
+  // "Nunca"=0) SI cuenta; el campo NO respondido no. d5_39 es arreglo ([] = "sin diagnosticos" = respuesta
+  // valida). Los insumos que calcLE8 LEE y la encuesta CAPTURA son 6 (con LE8_MAPEO_CORREGIDO=false, P-04):
+  // alimentacion (d1_9/d1_10) e hidratacion (d1_16) NO se capturan (Q3), corren en default SIEMPRE, no son
+  // ausencia del paciente. Sin los 6 capturados, total = null (EB/ICEC no salen sobre respuestas inventadas).
+  var _le8Req = ["d3_23","d3_24","d3_30","d3_26","d5_39","d5_36"];
+  var _le8Pres = function (k) { return k === "d5_39" ? Array.isArray(enc.d5_39) : (enc[k] != null && String(enc[k]) !== ""); };
+  if (!_le8Req.every(_le8Pres)) return { scores: [], total: null };
+  const scores = [];`,
+  },
 ];
 
 // Aplica las modificaciones sobre el texto original. Todas se ubican en el ORIGINAL (no en el texto

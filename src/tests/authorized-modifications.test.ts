@@ -24,6 +24,15 @@ describe("mecanismo de modificaciones autorizadas: el generado == original + man
     expect(generated).toBe(buildAuthorizedFile(original, mods, GENERATED_HEADER));
   });
 
+  it("engine.dfi.authorized.js coincide byte a byte con buildAuthorizedFile(original, manifiesto)", () => {
+    // CA-3: la guarda de calcLE8. El original queda byte-identico (su DIFF-vs-fuente lo ancla en
+    // frozen-dfi-calcle8-diff); aqui se prueba que el que CORRE es exactamente original + manifiesto.
+    const original = readFileSync(`${FROZEN}/engine.dfi.js`, "utf8");
+    const generated = readFileSync(`${FROZEN}/engine.dfi.authorized.js`, "utf8");
+    const mods = AUTHORIZED_MODIFICATIONS.filter((m) => m.targetFile === "engine.dfi.js");
+    expect(generated).toBe(buildAuthorizedFile(original, mods, GENERATED_HEADER));
+  });
+
   it("apply falla en voz alta si un oldSlice no aparece", () => {
     expect(() =>
       applyAuthorized("texto cualquiera", [{ caId: "CA-X", targetFile: "x", oldSlice: "NO_EXISTE", newSlice: "" }]),

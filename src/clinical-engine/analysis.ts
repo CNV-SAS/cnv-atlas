@@ -17,7 +17,9 @@ import type { Clase } from "./frozen/engine.core";
 // derivado, no edita el frozen (ver engine.core.derived.js y DIFF C).
 import * as core from "./frozen/engine.core.derived.js";
 import type { DFIResult } from "./frozen/engine.dfi";
-import * as dfi from "./frozen/engine.dfi.js";
+// El que CORRE es el GENERADO (original + guarda de calcLE8, CA-3): frena el LE8 sobre ausencias. El
+// original queda byte-identico (anclado por su DIFF). Ver authorized-modifications.js.
+import * as dfi from "./frozen/engine.dfi.authorized.js";
 import * as ix from "./frozen/engine.indices.js";
 import { type BiodyImport, parseBiodyRow } from "./edge/biody-import";
 import { normalizeSexo, type SexoCanonico } from "./edge/normalize";
@@ -175,7 +177,7 @@ export function analizarDFI(
   return { ...out, le8 };
 }
 
-export { calcLE8 } from "./frozen/engine.dfi.js";
+export { calcLE8 } from "./frozen/engine.dfi.authorized.js";
 export { parseBiodyRow, assertEngineInputs } from "./edge/biody-import";
 export {
   normalizeSexo,

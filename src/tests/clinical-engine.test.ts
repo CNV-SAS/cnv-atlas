@@ -18,7 +18,10 @@ const CANON = [
 ];
 // Encuesta que responde los 13 (valores minimos: el motor no crashea con strings arbitrarios,
 // solo importa que esten respondidos para la completitud).
-const FULL_SURVEY = Object.fromEntries(CANON.map((k) => [k, "1"]));
+// d5_39 (diagnosticos) es opcion_multiple: en el pipeline real SIEMPRE llega como ARREGLO. Para que la
+// encuesta cuente COMPLETA (glue: answered([]) es false, un array vacio no esta respondido) y pase la guarda
+// de calcLE8 (exige arreglo), va como arreglo NO vacio: "Ninguna" = respondio, sin diagnosticos.
+const FULL_SURVEY = { ...Object.fromEntries(CANON.map((k) => [k, "1"])), d5_39: ["Ninguna"] as string[] };
 
 function input(survey: Record<string, unknown> = {}, expected: string[] = CANON): EngineInput {
   return {
