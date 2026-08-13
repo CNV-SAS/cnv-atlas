@@ -122,6 +122,14 @@ corregiste, o pasar por alto otras.
 esta ronda, pero sí antes de que hagamos la comparación completa de las
 pantallas.
 
+## 6. El radar de severidad: ¿4 niveles o 5?
+
+Tu respuesta del 9 de agosto (11a) resolvió la severidad POR DOMINIO: "Leve / Moderado / Alto, descarten Vigilancia / Crítico". Atlas ya usa Óptimo / Leve / Moderado / Alto en las tarjetas de dominio (Óptimo es el nivel sin alteración). Bien.
+
+Lo que esa respuesta no nombró es el **radar funcional**: en tu HTML tiene 5 niveles distintos ("Excepcional / Muy bien / En la norma / A vigilar / A tratar"). Atlas lo unificó a la MISMA escala de dominio (4 niveles), para que radar y tarjetas no puedan divergir. **Pregunta corta:** ¿confirmas que el radar use la escala de dominio (Óptimo / Leve / Moderado / Alto), o querías conservar las 5 gradaciones del radar? Es solo forma; no cambia ningún cálculo.
+
+---
+
 ## Confirmaciones (no requieren que decidas nada)
 
 - **§9 aplicado.** Cableamos `hidSG_ref = 73,2 %` y `MCA_ref = 52,4 % de la MLG`, sin estratificar por sexo ni edad, con la procedencia anotada en el código. Levantamos la marca de "pendiente de entrega". Cierra EA1.

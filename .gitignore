@@ -55,3 +55,8 @@ next-env.d.ts
 
 # Export real del Biody BIS con PII de paciente (fixture sintetico anonimizado en src/tests/fixtures/)
 docs/entregas/gildardo-2026-08-04/Biody BIS - male export.xlsx
+
+# Cotejo visual: capturas locales, no aportan al codigo (INVENTARIO_*.md si se versiona)
+docs/entregas/cotejo-visual/**/*.png
+docs/entregas/cotejo-visual/**/*.jpg
+docs/entregas/cotejo-visual/**/*.jpeg

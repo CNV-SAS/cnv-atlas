@@ -60,6 +60,12 @@ Los movimientos de inventario son INMUTABLES (append-only, trigger 0040), así q
 
 Santiago tiene un **listado completo de correcciones** para aplicarle a la encuesta, y además **Gildardo la tocó en el v8**. Va como bloque POSTERIOR, no ahora, y con una razón: **conviene mirar las correcciones de Santiago JUNTO con los cambios de Gildardo, no por separado, o se toca la encuesta dos veces** (contenido congelado: cada cambio es versión nueva + re-verificar el candado de acoplamiento). Se liga al **cotejo de Encuesta ya hecho** (de ahí salieron ECA1 la pregunta de cirugías que falta portar, ECA2 los ejemplos/ancla de porción de D1, ECA3 los nombres de grupos D1; ver `COTEJOS_VISUALES.md` sección Encuesta). Cuando entre: juntar (a) las correcciones de Santiago, (b) los deltas del v8 (Q34 cirugías y lo que responda Gildardo), (c) los hallazgos del cotejo, en UNA pasada. Precondición: el paquete de Gildardo respondido (Q34).
 
+## Depuracion de archivos del repo: que sigue haciendo falta y que es historico que pesa (registrado 2026-08-12)
+
+**Que:** una revision de `docs/` y `docs/entregas/` para separar lo VIGENTE (specs, planes activos, entregas de Gildardo que se consultan) de lo HISTORICO que ya no se usa y solo pesa (rondas cerradas, borradores superados, versiones viejas de archivos que Gildardo reemplazo). Decidir por cada uno: se queda, se archiva (mueve a un `historico/` o se gitignora), o se borra. Ojo con los `ATLAS_v*.html` viejos (v7, v8): son grandes y solo el vigente se coteja; ver `[[v8-desactualizado-riesgo-cotejo]]`.
+
+**Por que:** el repo acumula entregas y borradores de cada ronda con Gildardo; sin una limpieza peridica, cuesta encontrar la fuente vigente y se coteja contra archivos viejos (ya paso: MCA 50 vs 52,4, carnes rojas, severidad Vigilancia/Critico, tres divergencias por archivo desactualizado). Las capturas del cotejo visual ya se excluyeron del repo (`.gitignore`, quedan locales). Prioridad: baja, no bloquea; hacer antes del Hito 2 para no arrastrar peso.
+
 ## Smoke de readers contra BD real: la red que falta para los embeds ambiguos (registrado 2026-08-12)
 
 **Qué:** un test contra BD real que invoque UNA vez la consulta principal de cada reader que hace embeds PostgREST (`getProfessionalForConsent`, `getActiveSurvey`, `getPatientDetail`, los readers de reports, evaluaciones, comodato, faltantes, remesa, tax-verification, etc.) y afirme que **no lanza** (en particular PGRST201). Corre solo con `DATABASE_URL` presente, como los otros bloques de BD; en CI sin BD se auto-salta.

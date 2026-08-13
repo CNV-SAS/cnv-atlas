@@ -2,7 +2,7 @@
 
 **Método:** no es cotejo pantalla-contra-pantalla (el mapeo no es uno a uno). Es un INVENTARIO por bloque, en cuatro categorías. Fuente: capturas de ambos lados en `docs/entregas/cotejo-visual/`.
 
-**Advertencia:** las capturas son de PACIENTES DISTINTOS (HTML: "Santi arroyave 22a"; Atlas: "Smoke uno Completo"). Por eso se coteja **estructura, disposición, rótulos y orden**, NO los valores.
+**Advertencia (registrada):** las capturas son de PACIENTES DISTINTOS (HTML: "Santi arroyave 22a"; Atlas: "Smoke uno Completo"). Por eso este cotejo es de **estructura, texto y disposición**, NO de ciencia: **ninguna diferencia de VALOR se clasifica como hallazgo.** El cotejo de valores con el MISMO paciente (misma encuesta, mismo BIS) lo hace Santiago en el Hito 2.
 
 **Estructura de cada lado:**
 - **HTML:** Diagnóstico tiene 4 subpestañas: (1) Encuesta D1-D8, (2) Composición Corporal, (3) Diagnóstico Funcional (DFI + Diana + Radar + detalle EFR), (4) Resumen del Diagnóstico (IA + enviar al paciente).
@@ -18,11 +18,12 @@
 | **Diana EFR (81 estados)** | En los dos, tras el DFI. Coincide: 9 anillos × 9 sectores, gradiente, posición del estado (#4 de 81). | **Conservar lo nuestro** en el rename: HTML usa "R1-R9" para los sectores; Atlas "Sectores E1-E9" (rename aprobado por Gildardo, C1). El resto coincide. |
 | **Radar funcional (5 dominios)** | En los dos, junto a la Diana. | Coteja, pero hay divergencia de forma (abajo). |
 | **Detalle del estado EFR (6 tarjetas)** | En los dos, tras la Diana. **Coincide EXACTO:** enfermedades, mecanismos, biomarcadores, riesgos, VITACELLEBIS nutracéuticos, abordaje por profesión. Mismo orden. | **Portar/conservar: ya coincide.** Nada que decidir. |
-| **Composición corporal (niveles de Wang)** | En los dos. HTML: subpestaña completa. Atlas: sección colapsada. | **Falta captura:** Atlas Composición EXPANDIDA para cotejar filas. Pídesela a Santiago. La referencia de MCA va aplazada (§9). |
+| **Composición corporal (niveles de Wang)** | En los dos, **coteja OK** (captura expandida ya disponible). Misma estructura de niveles (V cuerpo entero, IV tejidos, III celular, II molecular). Atlas añade un bloque **Bioeléctrico (Cole-Cole)** con Re/Ri/R∞/C/AF crudos que el HTML no muestra (transparencia, deliberado). | Estructura coincide. La única divergencia de fondo es la ubicación de los índices ANI-BIS-E (ver categoría 2). Reasignaciones menores de variables entre niveles (ICC/ICT, GEB/GET). Referencia de MCA aplazada (§9). |
 
-**Divergencias dentro del DFI y el radar (decidir):**
-- **Rótulos de severidad.** HTML tarjetas: **Óptimo / Vigilancia / Crítico**. HTML radar: **Excepcional / Muy bien / En la norma / A vigilar / A tratar** (5 niveles). Atlas: **Óptimo / Leve / Moderado / Alto** (4 niveles). → **Decidir el vocabulario** (portar el suyo, conservar el nuestro, o unificar). Es la divergencia más de fondo: aparece en tarjetas y radar.
-- **Radar, forma.** HTML: zonas concéntricas de color (5 anillos). Atlas: polígono lleno. → decidir.
+**Divergencias dentro del DFI y el radar:**
+- **Rótulos de severidad por dominio: RESUELTO, lo nuestro es lo correcto.** Gildardo lo respondió el 9 de agosto (11a, verbatim): *"Severidad por dominio: Leve / Moderado / Alto. Manda el clasificador, coherente con D-015. Descarten 'Vigilancia / Crítico'."* Atlas ya usa Óptimo / Leve / Moderado / Alto (fuente única `severity-labels.ts`, sev0 = Óptimo). Su HTML ("Vigilancia / Crítico") está desactualizado ahí. **Es la TERCERA divergencia por archivo viejo** (con el 52,4 de MCA y las carnes rojas). Conservar lo nuestro.
+- **Radar, escala: Atlas lo unificó al de dominio; la granularidad va a la ronda.** Atlas usa la MISMA escala (4 niveles) en radar y tarjetas, por diseño (fuente única, "no pueden divergir", decisión V0-b). El HTML tiene un radar de 5 niveles (Excepcional / Muy bien / En la norma / A vigilar / A tratar) que su 11a NO nombró (habla de severidad por dominio). **Añadido a la ronda abierta** (§6): confirmar si el radar usa la escala de dominio (4) o las 5 gradaciones. Es solo forma.
+- **Radar, forma.** HTML: zonas concéntricas de color (5 anillos). Atlas: polígono lleno. → ligado a la pregunta de granularidad de arriba.
 - **Subtítulo del DFI.** HTML: "5 dominios · síntesis ANI BIS-E". Atlas: sin subtítulo. → menor; probablemente portar.
 - **Título.** HTML: "Diagnóstico Funcional Integr**ado**". Atlas: "Integr**al** (DFI)". → menor; decidir.
 
@@ -51,7 +52,9 @@
 
 ---
 
-## 4 · ESTÁ EN ATLAS Y ÉL NO LO TIENE (verificar deliberado)
+## 4 · ESTÁ EN ATLAS Y ÉL NO LO TIENE: TODAS DELIBERADAS (registrado, no reabrir)
+
+Las cinco de abajo son decisiones nuestras deliberadas, no cosas agregadas sin registrar. Quedan CONSERVADAS; este registro es para que no se reabran en un cotejo futuro.
 
 | Bloque | ¿Deliberado? | Recomendación |
 |---|---|---|
@@ -64,8 +67,10 @@
 ---
 
 ## Lo que falta para cerrar el inventario
-1. **Captura de Atlas: Composición corporal EXPANDIDA** (en la captura vino colapsada) para cotejar las filas de Wang y confirmar que no falta ninguna.
-2. **La subpestaña Encuesta D1-D8** se coteja en la ronda de Encuesta (al final), pero ya sabemos que Atlas espera el análisis D2-D8 de Gildardo.
+1. **Composición expandida: LISTA** (capturas ya disponibles, estructura coincide).
+2. **La subpestaña Encuesta D1-D8** se coteja en la ronda de Encuesta (al final); Atlas espera el análisis D2-D8 de Gildardo (ya registrado como pendiente).
 
-## La decisión de fondo que sale del mapa
-El vocabulario de severidad (Óptimo/Vigilancia/Crítico + el radar de 5 niveles vs nuestro Óptimo/Leve/Moderado/Alto) es la única divergencia que atraviesa varios bloques. Conviene decidirla PRIMERO, porque define tarjetas de dominio + radar a la vez.
+Con eso, el inventario de Diagnóstico queda cerrado salvo la Encuesta (al final). **El trabajo real que queda es decidir las cuatro de la categoría 2.**
+
+## La decisión de fondo del vocabulario: RESUELTA
+El vocabulario de severidad ya estaba respondido por Gildardo (11a, 9-ago): Leve/Moderado/Alto, descartar Vigilancia/Crítico. Atlas ya es correcto; su HTML está desactualizado (tercera divergencia por archivo viejo). La única cola es la granularidad del radar (4 vs 5), que fue a la ronda.
