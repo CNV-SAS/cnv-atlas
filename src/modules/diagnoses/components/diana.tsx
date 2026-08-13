@@ -249,6 +249,10 @@ export function Diana({
         </div>
       </div>
       <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+        {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
+        <span className="font-medium text-foreground">
+          Mapa Estructura-Función-Riesgo Celular · 81 estados
+        </span>
         <span>
           Estado {stateNumber} de 81 · anillo A{ringIndex + 1} {frSectorName} · sector E
           {sectorIndex + 1} {structuralName}
@@ -257,6 +261,9 @@ export function Diana({
           Anillos A1-A9: IFC x IRC (función y riesgo celular, primario). Sectores E1-E9: FFMI x FMI
           (estructura corporal, secundario). Centro #1 óptimo, periferia #81 riesgo máximo.
         </span>
+        {/* Aviso del HTML: explorar la Diana no cambia el diagnostico sellado (evita que se lea como que
+            moverse por las celdas re-diagnostica). */}
+        <span className="italic">Explorar otras celdas no cambia este diagnóstico.</span>
       </figcaption>
     </figure>
   );

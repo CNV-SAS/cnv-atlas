@@ -394,7 +394,7 @@ export function EvaluationResults({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Line
               label="Estado EFR"
-              value={`${efrPhenotype.stateNumber} de 81 · clave ${efrPhenotype.key}`}
+              value={`${efrPhenotype.stateNumber} de 81`}
             />
             {/* Fenotipo estructural = MCCB (F1-F12), rotulo de Gildardo (Q19). Los diagnosticos
                 viejos no traen el MCCB en el snapshot: caen a la de nueve estados (el dato que si
