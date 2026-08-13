@@ -362,9 +362,9 @@ export default async function ResultadosEvaluacionPage({
               ) : null
             }
           />
-          {/* Diagnostico de encuesta (D1-D8): contenido de otra naturaleza, detras de un clic,
-              para que no compita con el nucleo. Placeholder hasta que Gildardo lo entregue. */}
-          <SurveyDiagnosisSection patron={patron} />
+          {/* Diagnostico de encuesta (D1-D8): contenido de otra naturaleza, detras de un clic, para que
+              no compita con el nucleo. D1 = patron; D2-D8 = read-out de las respuestas por dominio. */}
+          <SurveyDiagnosisSection patron={patron} surveyDomains={entrySurvey} />
           {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
           {criterion ? (
             <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />

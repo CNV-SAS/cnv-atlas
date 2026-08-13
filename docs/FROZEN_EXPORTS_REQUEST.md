@@ -1,3 +1,5 @@
+> **RETIRADO 2026-08-13.** Los archivos llegaron (el `ATLAS_v8.html` al dia, `gildardo-2026-08-13/`, trae toda su ciencia). Y una aclaracion que corrige un malentendido de este doc: **D2-D8 NO era un "export frozen" ni un analisis pendiente de Gildardo; era un READ-OUT** (pregunta -> respuesta por dominio), trabajo nuestro sin hacer. Ya esta construido (`survey-diagnosis-section`, reusando `SurveyAnswerReadonly`). Este doc se conserva como registro; no hay nada pendiente de su lado aqui. (Cuarta vez que un "pendiente de Gildardo" resulto ser trabajo nuestro; ver la leccion registrada.)
+
 # FROZEN_EXPORTS_REQUEST.md - solicitud consolidada a Gildardo
 
 **Estado:** RESPONDIDA POR GILDARDO (2026-07-21). Las **4 entradas fueron aprobadas en texto** por

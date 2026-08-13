@@ -1,10 +1,15 @@
 import type { PatronGrupoView, PatronResolution } from "@/clinical-engine";
+import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
+import { SurveyAnswerReadonly } from "@/modules/evaluations/components/survey-widgets";
 
 import { DetailsSection } from "./details-section";
 
 // Diagnostico de encuesta (D1-D8). D1 (Patron alimentario, C9) porta la pantalla del v8: tarjetas de
-// categoria + grilla de los 15 grupos. D2-D8 siguen placeholder hasta que Gildardo entregue su analisis
-// (logica de render NO autoritativa aun; ver docs/FROZEN_EXPORTS_REQUEST.md).
+// categoria + grilla de los 15 grupos. D2-D8 son un READ-OUT por dominio (pregunta -> respuesta), fiel al
+// v8 (su subpestana "Diagnostico Encuesta" muestra `enc[k]` por pregunta, NO un analisis computado): se
+// portan reusando `SurveyAnswerReadonly` (el mismo componente que la pestana Evaluacion) para que el dato
+// se vea IGUAL en las dos pantallas y no diverjan. (Antes decia "hasta que Gildardo entregue su analisis":
+// era un pendiente mal registrado; no habia nada que esperar, era trabajo nuestro sin hacer.)
 //
 // DIVERGENCIA DE CONTENEDOR (deliberada, ver DIVERGENCIAS.md): el v8 navega D1-D8 con sub-pestanas; aca
 // se mantienen COLAPSABLES (decision de UI previa, no se rehace la navegacion). La organizacion INTERNA
@@ -133,14 +138,53 @@ function PatronD1({ patron }: { patron: PatronResolution }) {
   );
 }
 
-export function SurveyDiagnosisSection({ patron }: { patron: PatronResolution }) {
+// Read-out de un dominio (D2-D8): pregunta -> respuesta, con el MISMO markup que SurveyReadonly (la
+// pestana Evaluacion) para que el dato se vea identico. Reusa SurveyAnswerReadonly, asi el texto libre de
+// "Otra" ya viene incluido. Sin respuestas (dominio ausente o todo sin responder, solo alcanzable en un
+// diagnostico viejo pre-gate): dice "sin respuestas", no queda en blanco.
+function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
+  const answered = domain?.questions.some((q) => q.answerValue != null && q.answerValue !== "");
+  if (!domain || !answered) {
+    return (
+      <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+        El paciente no respondió este dominio en esta evaluación.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      {domain.questions.map((q) => (
+        <div key={q.questionId} className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-foreground">
+            <span className="text-muted-foreground">{q.number}.</span> {q.questionText}
+          </p>
+          <SurveyAnswerReadonly
+            questionType={q.questionType}
+            answerValue={q.answerValue}
+            options={q.options}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SurveyDiagnosisSection({
+  patron,
+  surveyDomains,
+}: {
+  patron: PatronResolution;
+  // Respuestas por dominio (D1-D8) para el read-out de D2-D8. Llegan del reader ya agrupadas y en orden
+  // (d1..d8), asi que el indice i corresponde a la seccion i. null en snapshots sin encuesta.
+  surveyDomains?: SurveyDomain[] | null;
+}) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-foreground">Diagnóstico de encuesta</h2>
         <p className="text-sm text-muted-foreground">
-          Análisis por dominio de la encuesta (D1-D8). El patrón alimentario (D1) ya está; el resto se
-          habilita cuando Gildardo entregue su análisis.
+          Lectura por dominio de la encuesta (D1-D8). El patrón alimentario (D1) con sus tarjetas de
+          categoría; el resto, las respuestas del paciente por dominio.
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -149,9 +193,7 @@ export function SurveyDiagnosisSection({ patron }: { patron: PatronResolution })
             {i === 0 ? (
               <PatronD1 patron={patron} />
             ) : (
-              <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
-                Disponible próximamente.
-              </p>
+              <DomainReadout domain={surveyDomains?.[i]} />
             )}
           </DetailsSection>
         ))}

@@ -91,20 +91,23 @@ export function computeCelularBadges(raw: Record<string, number>, sexoM: boolean
   // referencia". MCA compara la desviacion MCA_dif (= MCA - MCA_ref); la hidratacion compara hidSG
   // contra hidSG_ref. En el export corto la MCA y la hidSG se derivan, pero sus referencias las debe
   // Gildardo (Q35): sin ellas estas dos badges no se pueden emitir, y la ausencia se DECLARA.
+  // La referencia poblacional de MCA/hidratacion YA se cablea (Gildardo §9, 2026-08-12: MCA_ref = 52,4%
+  // de la MLG, hidSG_ref = 73,2%, derivadas en el import). Asi que hoy solo quedan no-evaluables las
+  // mediciones IMPORTADAS ANTES de §9 (sin las referencias derivadas), no por una entrega pendiente.
   const notEvaluable: CelularNotEvaluable[] = [];
   if (dataAvailable) {
     if (mcaDif == null) {
       notEvaluable.push({
         id: "mca",
         label: "Masa celular activa (MCA)",
-        reason: "No evaluable sin la referencia poblacional de MCA (pendiente de Gildardo).",
+        reason: "No evaluable: esta medición no trae la referencia de MCA (import anterior a su cableado).",
       });
     }
     if (hidSG != null && hidSGref == null) {
       notEvaluable.push({
         id: "hid",
         label: "Hidratación celular",
-        reason: "No evaluable sin la referencia de hidratación (pendiente de Gildardo).",
+        reason: "No evaluable: esta medición no trae la referencia de hidratación (import anterior a su cableado).",
       });
     }
   }
