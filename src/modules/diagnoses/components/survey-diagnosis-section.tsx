@@ -38,22 +38,32 @@ const SECTIONS = [
 // Etiquetas ABREVIADAS de frecuencia para la pildora (verbatim del v8 L13728; NO el texto de encuesta).
 const FREQ_LABELS = ["Nunca", "1–2d/sem", "3–4d/sem", "5–6d/sem", "Todos"];
 
-// Tarjetas de categoria PORTADAS VERBATIM del v8 (L13829-13831), INCLUIDA la inconsistencia: "Moderados"
-// promedia [8,9,10] y NO incluye el grupo 15 (carnes rojas), que SI aparece en la grilla. Se porta tal
-// cual (su codigo especifica; la discrepancia se registra, no se resuelve en silencio). Pregunta abierta
-// a Gildardo en GILDARDO_QUERIES.md.
+// Tarjetas de categoria PORTADAS VERBATIM del HTML al dia (gildardo-2026-08-13, L13886-13899). Incluye la
+// correccion del 12-ago que antes no habiamos portado: (1) el grupo 15 (carnes rojas) va en "Moderados"
+// ([8,9,10,15]); (2) los Moderados tienen su PROPIA logica de color, NO la de protectores: en ellos mas
+// frecuencia NO es mejor (se moderan), asi que el optimo esta en el medio y la frecuencia alta deja de
+// pintarse en verde. (Antes tratabamos Moderados como protectores: por eso pintaba rojo donde el HTML
+// verde, y "Moderados: Bajo" donde el HTML "Adecuado".)
 const CAT_CARDS = [
   { cat: "protector", label: "✅ Protectores", color: "#059669", grupos: [1, 2, 3, 4, 5, 6, 7] },
-  { cat: "neutro", label: "⚖️ Moderados", color: "#1d4ed8", grupos: [8, 9, 10] },
+  { cat: "neutro", label: "⚖️ Moderados", color: "#1d4ed8", grupos: [8, 9, 10, 15] },
   { cat: "riesgo", label: "⚠️ De riesgo", color: "#dc2626", grupos: [11, 12, 13, 14] },
 ] as const;
 
-// Estado de una tarjeta de categoria a partir del promedio de sus grupos (v8 L13836-13837, verbatim).
-function catEstado(avg: number | null, isRiesgo: boolean): { label: string; color: string } {
+// Estado de una tarjeta de categoria a partir del promedio de sus grupos (13-ago L13895-13899, verbatim).
+// Tres logicas: riesgo (menos es mejor), moderados/neutro (el medio es lo optimo), protectores (mas es mejor).
+function catEstado(
+  avg: number | null,
+  cat: "protector" | "neutro" | "riesgo",
+): { label: string; color: string } {
   if (avg === null) return { label: "Sin datos", color: "#94a3b8" };
-  const label = isRiesgo
+  const isR = cat === "riesgo";
+  const isMod = cat === "neutro";
+  const label = isR
     ? avg <= 1 ? "Adecuado" : avg <= 2 ? "Moderado" : "Elevado"
-    : avg >= 3 ? "Adecuado" : avg >= 2 ? "Moderado" : "Bajo";
+    : isMod
+      ? avg <= 2 ? "Adecuado" : avg <= 3 ? "Moderado" : "Elevado"
+      : avg >= 3 ? "Adecuado" : avg >= 2 ? "Moderado" : "Bajo";
   const color = label === "Adecuado" ? "#059669" : label === "Moderado" ? "#d97706" : "#dc2626";
   return { label, color };
 }
@@ -65,7 +75,7 @@ function CategoryCards({ grupos }: { grupos: PatronGrupoView[] }) {
       {CAT_CARDS.map((c) => {
         const vals = c.grupos.map((n) => byN.get(n) ?? null).filter((v): v is number => v !== null);
         const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-        const est = catEstado(avg, c.cat === "riesgo");
+        const est = catEstado(avg, c.cat);
         return (
           <div key={c.cat} className="rounded-xl border p-3" style={{ borderColor: c.color + "33" }}>
             <div className="text-[11px] font-extrabold" style={{ color: c.color }}>{c.label}</div>
@@ -86,9 +96,12 @@ function GrupoGrid({ grupos }: { grupos: PatronGrupoView[] }) {
     <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
       {grupos.map((g) => {
         const isR = g.cat === "riesgo";
+        const isMod = g.cat === "neutro";
         const v = g.ordinal;
-        const ok = v !== null && (isR ? v <= 1 : v >= 3);
-        const al = v !== null && (isR ? v >= 3 : v <= 1);
+        // Tres logicas de color (13-ago L13907-13909): riesgo (poco=verde), moderados (medio=verde,
+        // mucho=rojo), protectores (mucho=verde). Antes moderados usaba la de protectores (pintaba mal).
+        const ok = v !== null && (isR ? v <= 1 : isMod ? v <= 2 : v >= 3);
+        const al = v !== null && (isR ? v >= 3 : isMod ? v >= 4 : v <= 1);
         const col = v === null ? "#94a3b8" : ok ? "#059669" : al ? "#dc2626" : "#d97706";
         return (
           <div key={g.n} className="flex items-center justify-between rounded-lg border px-2 py-1" style={{ borderColor: col + "22", background: col + "0d" }}>
