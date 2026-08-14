@@ -31,6 +31,11 @@
 - calcPatron produce un score 0-100 y un nivel (Óptimo/Adecuado/Mejorable/Deficiente), pero ni el v8 ni Atlas los muestran: la pantalla D1 es cualitativa (categorías + grilla de frecuencias).
 - Por qué: (a) el v8 no los muestra (fidelidad); (b) hoy el score alimenta el índice contextual (ICEC), que está APAGADO (C1, ver DIV-2), así que mostrar un número que no entra a ningún cálculo sería exponer un dato sin uso. No es que decidamos ocultarlo: el v8 no lo muestra y hoy no significa nada operativo. **Disparador de revisión:** cuando C1 se active y el score empiece a mover la edad bioeléctrica, se revisa con Gildardo si debe verse.
 
+**DIV-6 · El radar funcional usa una escala de 4 colores con ancla azul, no la paleta del HTML al día.**
+- El HTML al día (gildardo-2026-08-13) usa una paleta donde la banda mejor ya es verde y de ahí solo se empeora (verde/amarillo/naranja/rojo): sin una zona que comunique "estás bien", todo se lee como advertencia. Atlas usa una escala de 4 colores DISTINTOS con ancla azul: Bajo (azul clínico, "estás bien") / Leve (verde) / Moderado (ámbar) / Alto (rojo).
+- Por qué: los COLORES son nuestros (regla "el HTML manda en QUÉ se muestra, no en CÓMO"; `COTEJOS_VISUALES.md` sección d). Gildardo decidió las 4 bandas y sus NOMBRES (Bajo/Leve/Moderado/Alto), no la paleta. Verificado en el cotejo de números (2026-08-14): su radar al día es el de "todo advertencia" que Santiago encontró peor; nuestra ancla azul mejora sobre su propio radar. El vocabulario y las 4 bandas SÍ son fieles.
+- Cómo: token de marca dedicado `--clinical-excellent` (sky `#0EA5E9`, distinto del `#205DFD` de acción). Commit `9e80663`. Documentado en `BRAND.md` (la 4a banda clínica). **Que NO reaparezca como hallazgo en el próximo cotejo del radar.**
+
 ---
 
 *Cuando aparezca una divergencia nueva, entra aquí con su `DIV-N`, apuntando a la decisión que la autoriza. Si una deja de ser divergencia (Gildardo absorbe el cambio en su archivo), se retira con nota.*

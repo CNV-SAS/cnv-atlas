@@ -10,6 +10,11 @@
 
 **Un HALLAZGO (a corregir)** es una divergencia de **forma** (layout, orden, color, rótulo, redacción, un dato que falta o sobra en pantalla) que NO responde a una decisión ya tomada. La fidelidad aplica a la **forma, no a los permisos ni a la ciencia**: si el HTML muestra algo que ampliaría la visibilidad del admin o cambiaría un cálculo, eso NO se copia (ver decisiones abajo).
 
+**REGLA QUE GOBIERNA EL COTEJO (Santiago, 2026-08-14): el HTML manda en QUÉ se muestra; nosotros en CÓMO.**
+- **QUÉ (accionable, siempre):** si un INDICADOR se muestra en el HTML y NO en Atlas, hay que **portarlo**. Es su ciencia y los profesionales se entrenan en ese modelo; lo que no mostramos, el profesional no lo tiene. Un indicador ausente en Atlas es SIEMPRE un hallazgo accionable, no una decisión.
+- **CÓMO (nuestro, es decisión):** la disposición, el color, el orden y la jerarquía son nuestros (igual que ya se decidió con el radar, las subpestañas y las cuatro de categoría 2). Una diferencia de PRESENTACIÓN es una decisión, no un hallazgo.
+- Corolario para clasificar: "indicador que él muestra y nosotros no" → portar (defecto/porte/comentario viejo). "mismo indicador, distinta forma" → decisión (o divergencia deliberada si ya se justificó).
+
 **NO es un hallazgo** una divergencia que ya decidimos a propósito. Lista viva de las decisiones deliberadas (si aparecen en el cotejo, se ignoran; no se anotan):
 
 | Divergencia deliberada | Por qué | Ref |
