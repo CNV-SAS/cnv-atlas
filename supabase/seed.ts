@@ -81,6 +81,10 @@ const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 // proposito (no in-place): las evaluaciones existentes quedan en la v2 (55...552), completas y no
 // corregibles (gate de version, CP3). Ver el changelog en la creacion de la survey_version abajo.
 const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555554";
+// Numero de version legible. Fuente unica: lo usa el upsert de survey_versions Y el resumen final del seed,
+// para que el log NUNCA mienta sobre lo que se sembro (antes decia "v3" hardcodeado; el bump a v4 no se
+// notaba en la salida). Al hacer un bump, cambiar SURVEY_VERSION_ID arriba y este numero juntos.
+const SURVEY_VERSION_NUMBER = 4;
 // La v2 (55...552) se preserva intacta (los ids llevan la version): no se toca al sembrar la v3.
 // UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
 // asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
@@ -502,7 +506,7 @@ async function main() {
     // NO toca ninguna opcion de los 13 field_key del diagnostico (candado de acoplamiento verde). La v2
     // (SURVEY_VERSION_PREV_ID) se PRESERVA intacta (ids con version): las evaluaciones viejas siguen
     // completas y quedan no corregibles (gate de version).
-    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 4 }, { onConflict: "id" })).error,
+    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: SURVEY_VERSION_NUMBER }, { onConflict: "id" })).error,
   );
   // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
   // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
@@ -723,9 +727,10 @@ async function main() {
   );
 
   console.log(`Seed completo (${SEED_DEMO ? "con datos demo" : "MINIMO, sin datos demo"}):`);
+  console.log(`  ENCUESTA SEMBRADA: version ${SURVEY_VERSION_NUMBER} (id ${SURVEY_VERSION_ID})  <-- confirma que es la que esperas`);
   console.log(`  organizacion: ${ORG_ID}`);
   console.log(`  admin:        ${ADMIN_EMAIL} (${adminId})`);
-  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v3 (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
+  console.log(`  model_version ANI-BIS-E 1.0 active (12 indicadores, 9 fenotipos, 9 sectores FyR, 81 estados EFR reales), survey v${SURVEY_VERSION_NUMBER} (${SURVEY_QUESTIONS.length} preguntas D1-D8: ${SURVEY_QUESTIONS.filter((q) => q.engine).length} de diagnostico + ${SURVEY_QUESTIONS.filter((q) => q.treatmentEngine || q.patternEngine).length} de tratamiento/patron con field_key), 2 devices, 10 nutraceuticos VITACELLEBIS`);
   if (SEED_DEMO) {
     console.log(`  soporte:      ${SOPORTE_EMAIL} (${soporteId})`);
     console.log(`  direccion:    ${DIRECCION_EMAIL} (${direccionId})`);

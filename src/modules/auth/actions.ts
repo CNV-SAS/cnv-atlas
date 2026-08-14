@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getClientIp } from "@/core/http/client-ip";
 import { limitLoginByIp } from "@/core/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { mfaRelaxedForTesting } from "@/modules/auth/mfa-relaxation";
 
 import {
   type AuthFormState,
@@ -50,7 +51,11 @@ export async function loginAction(
   ]);
   const hasVerifiedTotp = (factors?.totp?.length ?? 0) > 0;
   const currentLevel = claimsData?.claims.aal ?? null;
-  if (hasVerifiedTotp && currentLevel !== "aal2") {
+  // El layout salta el enforcement de MFA en pruebas, pero el step-up del login es un camino aparte: una
+  // cuenta YA enrolada (como la de quien probo antes) caeria igual al challenge. Con la relajacion activa se
+  // salta tambien aqui, para que en pruebas nadie tope el segundo factor. Inerte en produccion (ver
+  // mfa-relaxation): produccion apunta a otra base y no coincide.
+  if (!mfaRelaxedForTesting() && hasVerifiedTotp && currentLevel !== "aal2") {
     redirect("/mfa-challenge");
   }
 
