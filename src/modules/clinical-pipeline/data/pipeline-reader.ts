@@ -19,6 +19,7 @@ import {
 } from "@/db/schema";
 
 import type { SurveyFieldAnswer } from "../services/build-engine-input";
+import { computeSurveyGaps, type SurveyGap } from "../services/survey-completeness";
 
 // Lecturas de los insumos del pipeline por Drizzle owner (computo clinico server-side,
 // como los escritores). La autorizacion (que la evaluacion sea del profesional) se
@@ -34,6 +35,9 @@ export type PipelineInputs = {
   // Todos los field_key que DECLARA la version (respondidos o no): la lista contra la cual el
   // motor mide dfi.complete (regla 7). Vacia si no hay respuesta/version (el orquestador falla).
   expectedFieldKeys: string[];
+  // Huecos de la encuesta COMPLETA (las 64, no solo las 13 del diagnostico), por dominio y en orden.
+  // Vacio = completa. El gate al generar exige que este vacio (Gildardo §1). Ver survey-completeness.
+  surveyGaps: SurveyGap[];
   bisRaw: Record<string, number>;
   hasBis: boolean;
 };
@@ -65,6 +69,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
   const answers: SurveyFieldAnswer[] = [];
   let surveyVersionId: string | null = null;
   let expectedFieldKeys: string[] = [];
+  let surveyGaps: SurveyGap[] = [];
   if (response) {
     surveyVersionId = response.surveyVersionId;
     const rows = await db
@@ -92,6 +97,26 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     expectedFieldKeys = declared
       .map((r) => r.fieldKey)
       .filter((k): k is string => k != null);
+
+    // Completitud de la ENCUESTA ENTERA (las 64 de la version), no solo las del diagnostico: toda
+    // pregunta con su respuesta (o sin ella). El gate al generar exige que este completa (Gildardo §1).
+    // LEFT JOIN para incluir las preguntas SIN fila de respuesta (ausentes = sin responder).
+    const allQuestions = await db
+      .select({
+        section: surveyQuestions.section,
+        orderIndex: surveyQuestions.orderIndex,
+        answerValue: surveyAnswers.answerValue,
+      })
+      .from(surveyQuestions)
+      .leftJoin(
+        surveyAnswers,
+        and(
+          eq(surveyAnswers.questionId, surveyQuestions.id),
+          eq(surveyAnswers.responseId, response.id),
+        ),
+      )
+      .where(eq(surveyQuestions.surveyVersionId, surveyVersionId));
+    surveyGaps = computeSurveyGaps(allQuestions);
   }
 
   // Crudos BIS de la medicion de la evaluacion (B8): nombre normalizado -> valor.
@@ -119,6 +144,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     surveyVersionId,
     surveyAnswers: answers,
     expectedFieldKeys,
+    surveyGaps,
     bisRaw,
     hasBis,
   };

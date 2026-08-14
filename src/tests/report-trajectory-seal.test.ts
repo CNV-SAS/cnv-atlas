@@ -4,7 +4,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
-import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
 
 // P0 Parte 2 (P3): verifica EJECUTANDO que la banda de EB-BIS se SELLA en el reporte de un seguimiento,
 // por measurement_date (C2-a) y con el gate de 12 semanas, contra la BD local. Se AUTO-SALTA sin
@@ -69,17 +69,21 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
       await db.insert(schema.surveyResponses).values({ evaluationId, surveyVersionId: svId }).returning({ id: schema.surveyResponses.id })
     )[0].id;
     const questions = await db
-      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey, type: schema.surveyQuestions.questionType })
       .from(schema.surveyQuestions)
       .where(eq(schema.surveyQuestions.surveyVersionId, svId));
-    for (const q of questions as { id: string; fieldKey: string | null }[]) {
-      if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
+    // TODAS las preguntas (gate de 64, Gildardo §1): field_key con su valor del fixture, el resto por defecto.
+    for (const q of questions as { id: string; fieldKey: string | null; type: string }[]) {
       const opts = await db
         .select({ text: schema.surveyOptions.optionText })
         .from(schema.surveyOptions)
         .where(eq(schema.surveyOptions.questionId, q.id))
         .orderBy(schema.surveyOptions.orderIndex);
-      const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
+      const texts = opts.map((o: { text: string }) => o.text);
+      const value =
+        q.fieldKey && q.fieldKey in ANSWERS
+          ? resolveAnswerValue(texts, ANSWERS[q.fieldKey])
+          : defaultAnswerFor(q.type, texts);
       await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
     }
     const measId = (

@@ -10,6 +10,7 @@ import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditio
 import { readActiveModel, readEfrContent, readPipelineInputs } from "../data/pipeline-reader";
 import { PipelineAlreadyRunError, writePipeline } from "../data/pipeline-writer";
 import { buildEngineInput } from "./build-engine-input";
+import { formatIncompleteSurveyMessage } from "./survey-completeness";
 
 // Orquesta la propagacion: leer insumos -> armar EngineInput -> runEngine (stub) ->
 // persistir, todo mapeado a Result (el action no hace throw). La re-propagacion se
@@ -52,6 +53,21 @@ export async function runClinicalPipeline(
     );
   }
 
+  // GATE de encuesta COMPLETA (Gildardo §1, 2026-08-13): NO se sella un diagnostico con encuesta
+  // incompleta. Predicado = las 64 preguntas de la version respondidas (no solo las 13 del diagnostico;
+  // §7 del 12, "no hay poda"). Es un precondicion: si la encuesta no esta completa, no se corre el motor
+  // ni se sella. El aviso dice CUANTAS faltan y POR DOMINIO; `incompleteSurvey` marca el error para que el
+  // action ofrezca el enlace a completarla. El guardado por partes del intake es otro flujo y NO se toca.
+  // (La suspension Q28 queda como red, inalcanzable por esta via: el gate hace imposible sellar uno nuevo
+  // incompleto.)
+  if (inputs.surveyGaps.length > 0) {
+    return err(
+      appError("validation", formatIncompleteSurveyMessage(inputs.surveyGaps), {
+        incompleteSurvey: "1",
+      }),
+    );
+  }
+
   const model = await readActiveModel();
   if (!model) return err(appError("internal", "No hay una versión del modelo activa."));
 
@@ -68,24 +84,6 @@ export async function runClinicalPipeline(
   );
 
   const output = runEngine(engineInput);
-
-  // GATE de encuesta completa (Gildardo 2026-08-13 §1): NO se sella un diagnostico con encuesta
-  // incompleta. El modelo de atencion exige que el profesional complete la encuesta con el paciente
-  // ANTES de generar. Predicado: dfi.complete (los field_key del diagnostico que ya mide el motor),
-  // el mismo que cubre la guarda de calcLE8 (sus 6 insumos del LE8 son subconjunto de los del diagnostico,
-  // asi que si pasa este gate, el LE8 no se anula). El guardado por partes del paciente (intake) es otro
-  // flujo y NO se toca; el gate es solo al GENERAR. La suspension Q28 queda como red (inalcanzable por
-  // esta via). `incompleteSurvey` marca el error para que el action ofrezca la via de completar.
-  if (!output.dfi.complete) {
-    return err(
-      appError(
-        "validation",
-        output.dfi.degradedReason ??
-          "La encuesta está incompleta. Complétala con el paciente antes de generar el diagnóstico.",
-        { incompleteSurvey: "1" },
-      ),
-    );
-  }
 
   // Protocolo sugerido (T2 A3): PURO, se computa aqui (fuera de la transaccion) y se SELLA en
   // writePipeline. Un fallo del protocolo NO degrada el diagnostico: se sella protocol_suggested =

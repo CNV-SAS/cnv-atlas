@@ -5,7 +5,7 @@ import { eq, inArray, isNull, sql } from "drizzle-orm";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // Juego que deja dfi.complete=true: el gate de generacion (Gildardo 2026-08-13 §1) no sella incompletas.
-import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
 
 // Propagacion (B11 ST7): input REAL (fila anonimizada del Biody, guardada como la guarda
 // B8: header normalizado -> valor) -> motor real -> persistencia -> relectura. Aserta
@@ -93,17 +93,21 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // por la ruta BIS (fenotipo, indicadores, protocolo) es el mismo; ademas ahora dfi.complete=true.
     {
       const questions = await db
-        .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
+        .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey, type: schema.surveyQuestions.questionType })
         .from(schema.surveyQuestions)
         .where(eq(schema.surveyQuestions.surveyVersionId, svId));
-      for (const q of questions as { id: string; fieldKey: string | null }[]) {
-        if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
+      // TODAS las preguntas (gate de 64): field_key con su valor del fixture, el resto por defecto.
+      for (const q of questions as { id: string; fieldKey: string | null; type: string }[]) {
         const opts = await db
           .select({ text: schema.surveyOptions.optionText })
           .from(schema.surveyOptions)
           .where(eq(schema.surveyOptions.questionId, q.id))
           .orderBy(schema.surveyOptions.orderIndex);
-        const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
+        const texts = opts.map((o: { text: string }) => o.text);
+        const value =
+          q.fieldKey && q.fieldKey in ANSWERS
+            ? resolveAnswerValue(texts, ANSWERS[q.fieldKey])
+            : defaultAnswerFor(q.type, texts);
         await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
       }
     }

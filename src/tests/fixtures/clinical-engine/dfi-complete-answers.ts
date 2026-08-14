@@ -61,3 +61,17 @@ export function resolveAnswerValue(texts: string[], pick: Pick): string {
   }
   return pick.multi ? JSON.stringify([chosen]) : chosen;
 }
+
+// Respuesta valida POR DEFECTO para una pregunta que no tiene pick especifico. El gate ahora exige las 64
+// respondidas (Gildardo §1), asi que un fixture "completo" debe cubrir TODAS, no solo las del diagnostico.
+// Para las que no importan al motor, cualquier respuesta valida sirve; esto simula un intake completo.
+export function defaultAnswerFor(type: string, texts: string[]): string {
+  if (type === "contador") return "0"; // 0 explicito (como el boton "Ninguno" del intake)
+  if (type === "escala") return "5";
+  if (type === "opcion_multiple") {
+    const ninguna = texts.find((t) => /^ningun[ao]$/i.test(t));
+    return JSON.stringify([ninguna ?? texts[0] ?? "Ninguna"]);
+  }
+  if (type === "opcion") return texts[0] ?? "";
+  return "n/a"; // texto
+}

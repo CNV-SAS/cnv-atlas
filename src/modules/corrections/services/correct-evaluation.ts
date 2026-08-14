@@ -27,6 +27,10 @@ import {
 } from "@/modules/clinical-pipeline/data/pipeline-reader";
 import { writePipeline } from "@/modules/clinical-pipeline/data/pipeline-writer";
 import { buildEngineInput, type SurveyFieldAnswer } from "@/modules/clinical-pipeline/services/build-engine-input";
+import {
+  computeSurveyGaps,
+  formatIncompleteSurveyMessage,
+} from "@/modules/clinical-pipeline/services/survey-completeness";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 
 // Flujo de correccion post-diagnostico, S1 (el motor, sin UI). Ver docs/PLAN_FLUJO_CORRECCION.md.
@@ -149,7 +153,13 @@ export async function correctEvaluation(
   // dos cosas: validar que una correccion apunta a una pregunta real, y COMPLETAR (agregar la
   // respuesta que faltaba), que necesita el type/field_key de una pregunta sin fila de respuesta.
   const catalog = await db
-    .select({ id: surveyQuestions.id, type: surveyQuestions.questionType, fieldKey: surveyQuestions.fieldKey })
+    .select({
+      id: surveyQuestions.id,
+      type: surveyQuestions.questionType,
+      fieldKey: surveyQuestions.fieldKey,
+      section: surveyQuestions.section,
+      orderIndex: surveyQuestions.orderIndex,
+    })
     .from(surveyQuestions)
     .where(eq(surveyQuestions.surveyVersionId, inputs.surveyVersionId));
   const catalogByQuestion = new Map(catalog.map((q) => [q.id, q]));
@@ -225,17 +235,20 @@ export async function correctEvaluation(
   );
   const output = runEngine(engineInput);
 
-  // GATE de encuesta completa TAMBIEN al REGENERAR (Gildardo 2026-08-13 §1): si el profesional corrige y
-  // deja la encuesta incompleta, no puede regenerar el diagnostico (el mismo predicado dfi.complete que
-  // al generar). Se completa en la correccion misma; el mensaje dice cuanto falta.
-  if (!output.dfi.complete) {
-    return err(
-      appError(
-        "validation",
-        output.dfi.degradedReason ??
-          "La encuesta quedó incompleta. Complétala antes de regenerar el diagnóstico.",
-      ),
-    );
+  // GATE de encuesta COMPLETA TAMBIEN al REGENERAR (Gildardo §1): si el profesional corrige y deja la
+  // encuesta incompleta, no puede regenerar. Mismo predicado que al generar (las 64 de la version), pero
+  // sobre el estado CORREGIDO (correctedRows), no el guardado: una pregunta completada en esta correccion
+  // ya cuenta. El mensaje dice cuanto falta y por dominio.
+  const correctedByQuestion = new Map(correctedRows.map((r) => [r.questionId, r.answerValue ?? null]));
+  const surveyGaps = computeSurveyGaps(
+    catalog.map((q) => ({
+      section: q.section,
+      orderIndex: q.orderIndex,
+      answerValue: correctedByQuestion.get(q.id) ?? null,
+    })),
+  );
+  if (surveyGaps.length > 0) {
+    return err(appError("validation", formatIncompleteSurveyMessage(surveyGaps, "regenerar")));
   }
 
   let protocolSuggested: ProtocoloSnapshot | null = null;

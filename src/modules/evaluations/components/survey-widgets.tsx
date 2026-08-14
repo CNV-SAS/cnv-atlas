@@ -148,6 +148,10 @@ export function PillsMulti({
 // El 0 deliberado si es alcanzable: el primer "-" desde vacio da 0, distinguible de no haberlo tocado.
 // El hidden input solo se emite cuando hay valor (igual que Scale); vacio no envia nada.
 export function Counter({ id, defaultValue = null }: { id: string; defaultValue?: number | null }) {
+  // Arranca SIN valor (null = "-"), NUNCA en 0: un contador sin tocar es AUSENCIA, no "consume 0" (seria
+  // ausencia disfrazada de dato, y el agua entra al LE8). Para responder "cero" el paciente pulsa "Ninguno"
+  // (0 EXPLICITO, tocado). El input oculto solo se emite cuando hay valor, asi el gate distingue sin
+  // responder de cero. Comparte familia con la guarda de calcLE8.
   const [count, setCount] = useState<number | null>(defaultValue);
   return (
     <div className="flex items-center gap-3">
@@ -170,6 +174,15 @@ export function Counter({ id, defaultValue = null }: { id: string; defaultValue?
       >
         <span aria-hidden>+</span>
       </Button>
+      <Button
+        type="button"
+        variant={count === 0 ? "default" : "outline"}
+        size="sm"
+        aria-pressed={count === 0}
+        onClick={() => setCount(0)}
+      >
+        Ninguno
+      </Button>
       {count !== null ? <input type="hidden" name={`answer_${id}`} value={String(count)} /> : null}
     </div>
   );
@@ -182,6 +195,9 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground">1</span>
+      {/* Sin responder hasta que el paciente lo toque: el pulgar arranca en el centro pero ATENUADO (no
+          es un valor preseleccionado), y el numero muestra "-". Cualquier interaccion (arrastrar o clic en
+          la pista) fija el valor. El input oculto solo se emite con valor, asi el gate lo distingue. */}
       <input
         type="range"
         min={1}
@@ -190,7 +206,10 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
         value={value ?? 5}
         onChange={(e) => setValue(Number(e.target.value))}
         aria-label="Nivel en escala de 1 a 10"
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+        aria-valuetext={value == null ? "Sin responder" : String(value)}
+        className={`h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary ${
+          value == null ? "opacity-40" : ""
+        }`}
       />
       <span className="text-xs text-muted-foreground">10</span>
       <span className="w-6 text-center text-sm font-semibold tabular-nums">{value ?? "-"}</span>
