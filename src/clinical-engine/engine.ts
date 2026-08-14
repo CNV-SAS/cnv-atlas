@@ -50,7 +50,7 @@ function hasSurveyData(survey: Record<string, unknown>): boolean {
 }
 
 const NO_SURVEY_REASON =
-  "Sin datos de encuesta: el diagnóstico funcional integral (dominios de encuesta, EB/IAE y LE8) esta incompleto hasta integrar la encuesta.";
+  "Sin datos de encuesta: el diagnóstico funcional integral (dominios de encuesta, EB/IAE y LE8) está incompleto hasta integrar la encuesta.";
 
 export function runEngine(input: EngineInput): EngineOutput {
   const { sexo, edad, bisRow, survey, expectedFieldKeys, model } = input;
@@ -74,7 +74,7 @@ export function runEngine(input: EngineInput): EngineOutput {
     ? NO_SURVEY_REASON
     : surveyComplete
       ? null
-      : `Encuesta incompleta: faltan ${missingFieldKeys.length} de ${expectedFieldKeys.length} respuestas que usa el diagnostico. El profesional puede completarla en consulta.`;
+      : `Encuesta incompleta: faltan ${missingFieldKeys.length} de ${expectedFieldKeys.length} respuestas que usa el diagnóstico. El profesional puede completarla en consulta.`;
 
   // LE8/ICEC desde la encuesta (solo si hay): habilita EB/IAE.
   const le8 = surveyPresent ? calcLE8(survey) : null;
