@@ -36,6 +36,11 @@
 - Por qué: los COLORES son nuestros (regla "el HTML manda en QUÉ se muestra, no en CÓMO"; `COTEJOS_VISUALES.md` sección d). Gildardo decidió las 4 bandas y sus NOMBRES (Bajo/Leve/Moderado/Alto), no la paleta. Verificado en el cotejo de números (2026-08-14): su radar al día es el de "todo advertencia" que Santiago encontró peor; nuestra ancla azul mejora sobre su propio radar. El vocabulario y las 4 bandas SÍ son fieles.
 - Cómo: token de marca dedicado `--clinical-excellent` (sky `#0EA5E9`, distinto del `#205DFD` de acción). Commit `9e80663`. Documentado en `BRAND.md` (la 4a banda clínica). **Que NO reaparezca como hallazgo en el próximo cotejo del radar.**
 
+**DIV-7 · El Diagnóstico abre en la subpestaña FUNCIONAL, no en Encuesta, y lleva una franja de veredicto persistente.**
+- El HTML al día navega el Diagnóstico con subpestañas y abre por defecto en "Diagnóstico Encuesta (D1-D8)" (la más a la izquierda); Atlas abre en "Diagnóstico Funcional" y muestra una franja (estado EFR + riesgo integrado + ruta prioritaria) SIEMPRE visible por encima de las subpestañas.
+- Por qué: el COMO es nuestro (regla del cotejo, `COTEJOS_VISUALES.md` sección d). Lo primero que se ve hoy y lo que más mira el profesional es el DFI (verificado en el orden actual "conclusión → detalle"); abrir en Encuesta lo escondería, lo contrario de lo que busca la reorganización. La franja resuelve el problema de fondo de meter subpestañas: que lo más mirado no quede detrás de una pestaña. El QUÉ (las capas de Gildardo) sí es fiel; el orden/default y la franja son nuestros. Además los índices bioeléctricos (IFC/IRC/PABU/ISCM/IEHH/EB) van en Funcional (él los pone en su capa funcional, no en Composición); un solo lugar por dato, no se repiten.
+- Cómo: `diagnosis-subtabs.tsx` (subpestaña activa en la URL `?sub=`, default funcional) + `verdict-strip.tsx` (la franja). Reorganización 2026-08-14.
+
 ---
 
 *Cuando aparezca una divergencia nueva, entra aquí con su `DIV-N`, apuntando a la decisión que la autoriza. Si una deja de ser divergencia (Gildardo absorbe el cambio en su archivo), se retira con nota.*

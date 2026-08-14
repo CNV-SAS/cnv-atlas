@@ -14,6 +14,7 @@ import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-v
 
 import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
+import { DOT_CLS, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { formatDate } from "@/lib/format/date";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -35,25 +36,8 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
   { code: "IR", key: "IR" },
 ];
 
-// Severidad de dominio DFI (0-3): la etiqueta (SEV_LABEL) viene de la fuente unica compartida con
-// el radar (severity-labels); aqui se define solo el color de la capa clinica.
-// Capa clinica de color (tokens de BRAND, theme-aware): sev 0-1 optimo, 2 alerta, 3 critico.
-const SEV_CLS = [
-  "bg-clinical-optimal-bg text-clinical-optimal",
-  "bg-clinical-optimal-bg text-clinical-optimal",
-  "bg-clinical-warning-bg text-clinical-warning",
-  "bg-clinical-critical-bg text-clinical-critical",
-];
-// Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta).
-const RISK_SEV: Record<string, number> = { BAJO: 0, MEDIO: 1, ALTO: 2, "CRÍTICO": 3 };
-// Punto de color por severidad (0-3), paleta clinica de BRAND. Color SOLO en el veredicto de
-// riesgo, nunca decorativo; el label sigue siendo el señalizador principal (no depende del color).
-const DOT_CLS = [
-  "bg-clinical-optimal",
-  "bg-clinical-optimal",
-  "bg-clinical-warning",
-  "bg-clinical-critical",
-];
+// Severidad de dominio DFI (0-3): la etiqueta (SEV_LABEL) viene de severity-labels; el color, de
+// risk-severity (fuente unica compartida con la franja de veredicto, para que no diverjan).
 // Icono lucide por dominio del DFI (ayuda de lectura, NO emoji). Color neutro: el icono
 // identifica el dominio, no señala riesgo (eso lo hace el badge de severidad).
 const DOMAIN_ICON: Record<string, LucideIcon> = {
