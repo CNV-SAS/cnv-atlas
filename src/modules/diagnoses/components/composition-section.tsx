@@ -8,18 +8,14 @@ import {
 } from "../anthropometry";
 import { clasificarAecMca } from "../data/composition-map";
 import type { Composition } from "../data/composition-reader";
+import { SEV_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
 // es REFERENCIA MEDICA ESTANDAR (OMS), NO output del motor ANI-BIS-E: se rotula como tal.
 
-// Capa de color clinica de BRAND por severidad (color SOLO para riesgo, nunca decorativo).
-const SEV_CLS = [
-  "bg-clinical-optimal-bg text-clinical-optimal",
-  "bg-clinical-optimal-bg text-clinical-optimal",
-  "bg-clinical-warning-bg text-clinical-warning",
-  "bg-clinical-critical-bg text-clinical-critical",
-];
+// Color por severidad: la MISMA escala de 4 (ancla azul) que el radar y los badges de dominio, desde la
+// fuente unica (risk-severity), para que un "Bajo" no sea de un color aqui y de otro al lado.
 
 function fmt(v: number | null, dec = 1): string {
   if (v == null) return "-";
