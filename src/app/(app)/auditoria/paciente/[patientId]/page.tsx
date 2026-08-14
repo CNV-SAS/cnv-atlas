@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getClientIp } from "@/core/http/client-ip";
+import { formatDateTime } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
 import { accessIdentifiedNotes } from "@/modules/clinical-access/services/access-identified-notes";
 import { canAuditNotes } from "@/modules/clinical-access/policies/can-audit-notes";
@@ -14,7 +15,7 @@ export const metadata = { title: "Acceso identificado - Atlas" };
 // (admin/soporte); el permiso real es el grant.
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleString("es-CO");
+  return formatDateTime(iso);
 }
 
 const SOURCE_LABEL: Record<string, string> = {

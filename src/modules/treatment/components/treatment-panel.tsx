@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format/date";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -298,7 +299,7 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
           {m.provider} · {m.model}
         </span>
         {m.latencyMs != null ? <span>· {m.latencyMs} ms</span> : null}
-        <span>· {new Date(m.generatedAt).toLocaleString("es-CO")}</span>
+        <span>· {formatDateTime(m.generatedAt)}</span>
         <span>· prompt {m.promptVersion}</span>
       </div>
       {m.generatedText ? (
@@ -675,7 +676,7 @@ function NotesSection({
             <li key={n.id} className="rounded-lg border border-border p-3 text-sm text-foreground">
               <p>{n.note}</p>
               <p className="pt-1 text-xs text-muted-foreground">
-                {new Date(n.createdAt).toLocaleString("es-CO")}
+                {formatDateTime(n.createdAt)}
               </p>
             </li>
           ))}

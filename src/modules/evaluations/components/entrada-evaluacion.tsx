@@ -1,6 +1,7 @@
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
+import { formatDateLong } from "@/lib/format/date";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
 import { BisConditionsCapture } from "@/modules/bis-intake/components/bis-conditions-capture";
@@ -124,11 +125,7 @@ export function EntradaEvaluacion({
               <span className="text-sm font-medium text-clinical-optimal">
                 Medición BIS importada
                 {composition.measurementDate
-                  ? ` · tomada el ${new Date(composition.measurementDate).toLocaleDateString("es-CO", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })}`
+                  ? ` · tomada el ${formatDateLong(composition.measurementDate)}`
                   : ""}
                 .
               </span>

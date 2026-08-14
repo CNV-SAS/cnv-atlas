@@ -21,6 +21,7 @@ import {
   EvaluationResults,
 } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
+import { formatDate } from "@/lib/format/date";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
@@ -140,7 +141,7 @@ export default async function ResultadosEvaluacionPage({
               </h1>
               <p className="text-muted-foreground">
                 {header.patientName} · {header.documentLabel} ·{" "}
-                {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+                {formatDate(header.evaluationDate)}
               </p>
             </header>
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">

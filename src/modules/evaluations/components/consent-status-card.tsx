@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { formatDate } from "@/lib/format/date";
+
 import type { ConsentStatus } from "../data/consent-status-reader";
 
 // Estado del consentimiento del paciente (pestana Evaluacion): "firmado + fecha + version". Es la
@@ -15,7 +17,7 @@ const LABEL: Record<string, string> = {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "sin fecha";
-  return new Date(iso).toLocaleDateString("es-CO");
+  return formatDate(iso);
 }
 
 export function ConsentStatusCard({ status }: { status: ConsentStatus }) {

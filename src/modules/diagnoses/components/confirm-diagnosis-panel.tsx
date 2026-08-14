@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
+import { formatDateTime } from "@/lib/format/date";
+
 import { confirmDiagnosisAction, type DiagnosisActionState } from "../actions";
 
 const EMPTY: DiagnosisActionState = { error: null, success: null, warning: null };
@@ -49,7 +51,7 @@ export function ConfirmDiagnosisPanel({
         </div>
         <p className="text-sm text-foreground/90">
           Confirmado{confirmedByName ? ` por ${confirmedByName}` : ""}
-          {confirmedAt ? ` el ${new Date(confirmedAt).toLocaleString("es-CO")}` : ""}. La confirmación
+          {confirmedAt ? ` el ${formatDateTime(confirmedAt)}` : ""}. La confirmación
           es definitiva y no se puede deshacer. Hoy no existe una vía para corregir un diagnóstico ya
           confirmado: si detectas un error, la única opción es crear una evaluación nueva del paciente.
           La medición del equipo se puede volver a importar, así que corregir no exige volver a medir al

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
+import { formatDate } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
 import { CheckoutLink } from "@/modules/payments/components/checkout-link";
 import {
@@ -132,7 +133,7 @@ export default async function PagosPage() {
                       </CardTitle>
                       <CardDescription>{itemsLabel(tx)}</CardDescription>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(tx.created_at).toLocaleDateString("es-CO")}
+                        {formatDate(tx.created_at)}
                         {" · "}
                         {METODO_LABEL[tx.payment_method] ?? tx.payment_method}
                         {tx.alegra_invoice_id ? ` · Factura Alegra ${tx.alegra_invoice_id}` : ""}

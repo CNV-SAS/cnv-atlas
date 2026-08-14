@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getClientIp } from "@/core/http/client-ip";
+import { formatDateTime } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
 import { recordAccessUsed } from "@/modules/clinical-access/data/access-log-writer";
 import { getActiveGrant } from "@/modules/clinical-access/data/grants-reader";
@@ -16,7 +17,7 @@ export const metadata = { title: "Auditoria de notas - Atlas" };
 // activo se registra access.used, el tercer evento del ciclo.
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleString("es-CO");
+  return formatDateTime(iso);
 }
 
 const SOURCE_LABEL: Record<string, string> = {

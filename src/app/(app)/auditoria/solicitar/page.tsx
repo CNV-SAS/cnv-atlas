@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { formatDateTime } from "@/lib/format/date";
+
 import { requireUser } from "@/modules/auth/session";
 import { RequestAccessForm } from "@/modules/clinical-access/components/request-access-form";
 import { RevokeControl } from "@/modules/clinical-access/components/revoke-control";
@@ -19,7 +21,7 @@ export const metadata = { title: "Solicitar acceso - Atlas" };
 // corresponde (soporte -> admin, admin -> direccion).
 
 function fmt(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString("es-CO") : "";
+  return formatDateTime(iso);
 }
 
 export default async function RequestAccessPage() {

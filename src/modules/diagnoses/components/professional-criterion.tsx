@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useFormToast } from "@/components/shared/use-form-toast";
 
+import { formatDateTime } from "@/lib/format/date";
+
 import { addDiagnosisNoteAction, type DiagnosisActionState } from "../actions";
 import type { DiagnosisNote } from "../data/diagnosis-notes-types";
 
@@ -59,7 +61,7 @@ export function ProfessionalCriterion({
             <li key={n.id} className="rounded-lg border border-border bg-background p-3 text-sm text-foreground">
               <p className="whitespace-pre-wrap">{n.note}</p>
               <p className="pt-1 text-xs text-muted-foreground">
-                {new Date(n.createdAt).toLocaleString("es-CO")}
+                {formatDateTime(n.createdAt)}
               </p>
             </li>
           ))}

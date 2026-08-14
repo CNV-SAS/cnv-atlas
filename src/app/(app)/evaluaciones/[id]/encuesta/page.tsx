@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
+import { formatDate } from "@/lib/format/date";
 import { SurveyReadonly } from "@/modules/evaluations/components/survey-readonly";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -47,7 +48,7 @@ export default async function EncuestaEvaluacionPage({
         </h1>
         <p className="text-muted-foreground">
           {header.patientName} · {header.documentLabel} ·{" "}
-          {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+          {formatDate(header.evaluationDate)}
         </p>
         {preDiagnosis ? (
           <div className="flex flex-col gap-2">

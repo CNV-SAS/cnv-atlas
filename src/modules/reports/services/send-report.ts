@@ -3,6 +3,8 @@ import "server-only";
 import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail } from "@/lib/email/resend";
 
+import { formatDate } from "@/lib/format/date";
+
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
 import { markReportSent, ReportStateError } from "../data/reports-writer";
@@ -21,11 +23,6 @@ export type SendReportInput = {
   actorEmail: string;
   ip: string | null;
 };
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("es-CO");
-}
 
 export async function sendReport(input: SendReportInput): Promise<Result<{ emailId: string }>> {
   const dispatch = await getReportDispatch(input.reportId);

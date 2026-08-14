@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { formatDateTime } from "@/lib/format/date";
+
 import { requireUser } from "@/modules/auth/session";
 import { DecisionControls } from "@/modules/clinical-access/components/decision-controls";
 import { listApprovalQueue } from "@/modules/clinical-access/data/grants-list-reader";
@@ -15,7 +17,7 @@ export const metadata = { title: "Aprobaciones de acceso - Atlas" };
 // no se muestra la identidad del paciente aqui (solo que es un acceso puntual).
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleString("es-CO");
+  return formatDateTime(iso);
 }
 
 export default async function ApprovalsPage() {

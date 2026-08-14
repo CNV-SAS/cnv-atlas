@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
+import { formatDate } from "@/lib/format/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export function BisImportForm({
         </div>
         <span className="text-xs text-muted-foreground">
           {evaluation.documentType} {evaluation.documentNumber} · identidad confirmada el{" "}
-          {new Date(evaluation.createdAt).toLocaleDateString("es-CO")}
+          {formatDate(evaluation.createdAt)}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

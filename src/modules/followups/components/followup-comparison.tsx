@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { formatDate } from "@/lib/format/date";
+
 import type { FollowupComparison as Comparison } from "../data/comparison-reader";
 
 // Comparacion de seguimiento (B13): evaluacion actual frente a la previa. Presentacion pura
@@ -22,7 +24,7 @@ function fmtDelta(v: number | null, code?: string): string {
 }
 
 function fecha(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CO");
+  return formatDate(iso);
 }
 
 export function FollowupComparison({ comparison }: { comparison: Comparison }) {

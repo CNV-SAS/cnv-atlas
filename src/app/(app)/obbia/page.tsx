@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { formatDate } from "@/lib/format/date";
+
 import { getResearchDatasets } from "@/modules/obbia/data/research-reader";
 import { canViewObbia } from "@/modules/obbia/policies/can-view-obbia";
 import { requireUser } from "@/modules/auth/session";
@@ -7,7 +9,7 @@ import { requireUser } from "@/modules/auth/session";
 export const metadata = { title: "ObBIA - Atlas" };
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CO");
+  return formatDate(iso);
 }
 
 // Panel de obbia (B14): datasets de investigacion gobernados, data agregada sin PII. La

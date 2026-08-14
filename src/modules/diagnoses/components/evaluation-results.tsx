@@ -14,6 +14,7 @@ import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-v
 
 import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
+import { formatDate } from "@/lib/format/date";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
 // pura desde el snapshot inmutable + contenido EFR. Sin PII al exterior; el profesional
@@ -176,7 +177,7 @@ export function EvaluationResults({
           </h1>
           <p className="text-muted-foreground">
             {results.patientName} · {results.documentLabel} ·{" "}
-            {new Date(results.evaluationDate).toLocaleDateString("es-CO")}
+            {formatDate(results.evaluationDate)}
           </p>
         </header>
         <Card>
@@ -237,7 +238,7 @@ export function EvaluationResults({
         </div>
         <p className="text-muted-foreground">
           {results.patientName} · {results.documentLabel} ·{" "}
-          {new Date(results.evaluationDate).toLocaleDateString("es-CO")}
+          {formatDate(results.evaluationDate)}
         </p>
       </header>
 

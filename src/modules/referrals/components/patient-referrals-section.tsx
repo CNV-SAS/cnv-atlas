@@ -1,3 +1,5 @@
+import { formatDateShort } from "@/lib/format/date";
+
 import { listPatientReferrals, type PatientReferral } from "../data/referrals-reader";
 import type { ReferralTargetValue } from "../validations";
 import { MarkReturnForm } from "./mark-return-form";
@@ -30,11 +32,7 @@ function pendingLabel(referredAt: string, nowMs: number): string {
 function sourceLabel(r: PatientReferral): string | null {
   if (!r.sourceEvaluationType || !r.sourceEvaluationDate) return null;
   const tipo = r.sourceEvaluationType === "inicial" ? "evaluación inicial" : "consulta de seguimiento";
-  const fecha = new Date(r.sourceEvaluationDate).toLocaleDateString("es-CO", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const fecha = formatDateShort(r.sourceEvaluationDate);
   return `De la ${tipo} del ${fecha}`;
 }
 

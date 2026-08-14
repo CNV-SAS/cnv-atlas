@@ -6,6 +6,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 
 import { savePromptAction, type AiAdminActionState } from "../actions";
 import type { PromptView } from "../data/ai-prompt-types";
+import { formatDate } from "@/lib/format/date";
 
 const initial: AiAdminActionState = { error: null, success: null, warning: null };
 
@@ -52,7 +53,7 @@ export function AiPromptForm({ view }: { view: PromptView }) {
             {view.versions.map((v) => (
               <li key={v.version}>
                 v{v.version} · {v.status === "active" ? "activa" : "retirada"} ·{" "}
-                {new Date(v.createdAt).toLocaleDateString("es-CO")}
+                {formatDate(v.createdAt)}
               </li>
             ))}
           </ul>

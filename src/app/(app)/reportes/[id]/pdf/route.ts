@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/modules/auth/session";
 import { getReportDispatch } from "@/modules/reports/data/reports-repository";
+import { formatDate } from "@/lib/format/date";
 import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
@@ -48,7 +49,7 @@ export async function GET(
     {
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
-      evaluationDate: new Date(dispatch.evaluationDate).toLocaleDateString("es-CO"),
+      evaluationDate: formatDate(dispatch.evaluationDate),
       reportId: dispatch.reportId,
     },
     {

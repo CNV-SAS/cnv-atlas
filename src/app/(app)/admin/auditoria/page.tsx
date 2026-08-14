@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { formatDateTime } from "@/lib/format/date";
+
 import { canViewAudit } from "@/modules/audit/policies/can-view-audit";
 import { getAuditLog } from "@/modules/audit/data/audit-reader";
 import { requireUser } from "@/modules/auth/session";
@@ -12,7 +14,7 @@ export const metadata = { title: "Auditoria - Atlas" };
 // append-only, aqui nunca se escribe ni se borra.
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleString("es-CO");
+  return formatDateTime(iso);
 }
 
 function summarizePayload(payload: unknown): string {

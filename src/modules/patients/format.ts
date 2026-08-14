@@ -13,11 +13,5 @@ export function edadEnAnios(birthDate: string | null): number | null {
   return anos < 0 ? null : anos;
 }
 
-// Fecha corta legible en es-CO (ej. "22 jun 2026").
-export function fechaCorta(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CO", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+// Fecha corta legible en es-CO (ej. "22 jun 2026"). Delega en el helper unico (zona fija Bogota).
+export { formatDateShort as fechaCorta } from "@/lib/format/date";

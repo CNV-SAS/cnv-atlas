@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { formatDate } from "@/lib/format/date";
 import { CorrectEvaluationForm } from "@/modules/corrections/components/correct-evaluation-form";
 import { getCorrectionWarnings } from "@/modules/corrections/data/correction-warnings-reader";
 import { getEvaluationHeaderForSession } from "@/modules/diagnoses/data/results-reader";
@@ -46,7 +47,7 @@ export default async function CorregirEvaluacionPage({
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Corregir la evaluación</h1>
         <p className="text-sm text-muted-foreground">
           {header.patientName} · {header.documentLabel} ·{" "}
-          {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+          {formatDate(header.evaluationDate)}
         </p>
       </header>
 

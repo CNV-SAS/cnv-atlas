@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDate } from "@/lib/format/date";
 
 import { confirmIdentityAction, emitFollowupLinkAction } from "../actions";
 import type { ConfirmIdentityState, FollowupLinkState } from "../validations";
@@ -112,7 +113,7 @@ export function IdentityConfirmation({
         <span className="text-xs text-muted-foreground">
           {evaluation.documentType} {evaluation.documentNumber}
           {evaluation.birthDate ? ` · ${evaluation.birthDate}` : ""} · recibida el{" "}
-          {new Date(evaluation.createdAt).toLocaleDateString("es-CO")}
+          {formatDate(evaluation.createdAt)}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

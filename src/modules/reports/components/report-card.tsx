@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
+import { formatDate } from "@/lib/format/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,7 +78,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
           </div>
         </div>
         <span className="text-xs text-muted-foreground">
-          {report.documentLabel} · {new Date(report.createdAt).toLocaleDateString("es-CO")}
+          {report.documentLabel} · {formatDate(report.createdAt)}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3">

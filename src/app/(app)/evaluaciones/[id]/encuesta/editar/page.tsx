@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
+import { formatDate } from "@/lib/format/date";
 import { SurveyEditForm } from "@/modules/evaluations/components/survey-edit-form";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -41,7 +42,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Completar la encuesta</h1>
         <p className="text-muted-foreground">
           {header.patientName} · {header.documentLabel} ·{" "}
-          {new Date(header.evaluationDate).toLocaleDateString("es-CO")}
+          {formatDate(header.evaluationDate)}
         </p>
       </header>
 

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { formatDateLong } from "@/lib/format/date";
+
 import { getCorrectionChain } from "../data/correction-history-reader";
 
 // Historial de correcciones (CP2): la cadena de versiones con el MOTIVO de cada salto, quien y cuando.
@@ -14,7 +16,7 @@ const TRIGGER_LABEL: Record<string, string> = {
 };
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+  return formatDateLong(iso);
 }
 
 export async function CorrectionHistory({ evaluationId }: { evaluationId: string }) {
