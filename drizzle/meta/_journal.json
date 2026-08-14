@@ -484,6 +484,13 @@
       "when": 1786733207304,
       "tag": "0068_wide_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1786744280846,
+      "tag": "0069_gifted_hellfire_club",
+      "breakpoints": true
     }
   ]
 }

@@ -52,6 +52,15 @@ const menuSystemPrompt: string = JSON.parse(
   ),
 ).system;
 
+// Texto canonico del prompt del borrador de criterio (mismo JSON que consume el builder en la app). Se
+// siembra como ai_prompts criterio.generate v1, para que el admin lo edite en /admin/ia como el del menu.
+const criterionSystemPrompt: string = JSON.parse(
+  readFileSync(
+    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v1.json", import.meta.url),
+    "utf8",
+  ),
+).system;
+
 // ---- Variables de entorno requeridas -------------------------------------
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -714,13 +723,22 @@ async function main() {
     "ai_prompts",
     (
       await supabase.from("ai_prompts").upsert(
-        {
-          prompt_key: "menu.generate",
-          version: 1,
-          content: menuSystemPrompt,
-          status: "active",
-          created_by: adminId,
-        },
+        [
+          {
+            prompt_key: "menu.generate",
+            version: 1,
+            content: menuSystemPrompt,
+            status: "active",
+            created_by: adminId,
+          },
+          {
+            prompt_key: "criterio.generate",
+            version: 1,
+            content: criterionSystemPrompt,
+            status: "active",
+            created_by: adminId,
+          },
+        ],
         { onConflict: "prompt_key,version", ignoreDuplicates: true },
       )
     ).error,

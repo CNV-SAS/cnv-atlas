@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -70,6 +71,11 @@ export const diagnosisNotes = pgTable("diagnosis_notes", {
     .notNull()
     .references(() => diagnoses.id, { onDelete: "cascade" }),
   note: text("note").notNull(),
+  // Marca de PROCEDENCIA: "hubo asistencia de IA" al componer este criterio (el profesional genero un
+  // borrador con IA, aunque lo haya reescrito entero). false si lo escribio a mano sin generar. NO dice
+  // "esto lo escribio la IA": el criterio es suyo, lo asumio al guardar. Solo para la traza/auditoria (si
+  // algun dia se cuestiona un criterio, importa saber si venia generado); NO se muestra en pantalla.
+  aiAssisted: boolean("ai_assisted").notNull().default(false),
   createdAt: createdAt(),
 });
 
@@ -97,4 +103,33 @@ export const aiMenuSuggestions = pgTable(
       .defaultNow(),
   },
   (t) => [index("ai_menu_suggestions_treatment_idx").on(t.treatmentId)],
+);
+
+// IA de apoyo: genera un BORRADOR del criterio del profesional dados los indicadores, el estado EFR y los
+// dominios (todo del snapshot, PII-free), NO el diagnostico (determinista). Inmutable (sin UPDATE/DELETE
+// por RLS): cada generacion, exitosa o fallida, deja su fila con procedencia (proveedor/modelo/version de
+// prompt/estado). Hermana de ai_menu_suggestions; misma disciplina de "todo lo que la IA produce deja
+// rastro". El borrador nunca se aplica solo: cae en el campo editable y el profesional decide.
+export const aiCriterionSuggestions = pgTable(
+  "ai_criterion_suggestions",
+  {
+    id: pk(),
+    diagnosisId: uuid("diagnosis_id")
+      .notNull()
+      .references(() => diagnoses.id, { onDelete: "cascade" }),
+    generatedBy: uuid("generated_by")
+      .notNull()
+      .references(() => profiles.id),
+    provider: text("provider").notNull(), // groq, gemini
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    generatedText: text("generated_text"), // el borrador de criterio generado
+    rawResponse: jsonb("raw_response"),
+    status: aiSuggestionStatus("status").notNull(),
+    latencyMs: integer("latency_ms"),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("ai_criterion_suggestions_diagnosis_idx").on(t.diagnosisId)],
 );

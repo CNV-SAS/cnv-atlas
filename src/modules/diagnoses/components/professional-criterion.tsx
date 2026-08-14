@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { NotebookPen } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { NotebookPen, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,11 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 
 import { formatDateTime } from "@/lib/format/date";
 
-import { addDiagnosisNoteAction, type DiagnosisActionState } from "../actions";
+import {
+  addDiagnosisNoteAction,
+  type DiagnosisActionState,
+  generateCriterionAction,
+} from "../actions";
 import type { DiagnosisNote } from "../data/diagnosis-notes-types";
 
 const EMPTY: DiagnosisActionState = { error: null, success: null, warning: null };
@@ -29,6 +33,13 @@ export function ProfessionalCriterion({
   const [state, formAction, pending] = useActionState(addDiagnosisNoteAction, EMPTY);
   useFormToast(state);
   const [note, setNote] = useState("");
+  // "Hubo asistencia de IA" en esta composicion: se marca true al generar un borrador (aunque el
+  // profesional lo reescriba entero). Viaja como campo oculto y se guarda en la nota (solo traza). Si
+  // guarda sin generar, queda false. Se reinicia al guardar (empieza una composicion nueva).
+  const [aiAssisted, setAiAssisted] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [generating, startGenerating] = useTransition();
+
   // Append-only: al guardar con exito hay que limpiar el campo. Si no, el texto recien enviado
   // queda visible como si fuera una nota nueva por agregar, y el profesional podria darle a
   // "Agregar" otra vez y crear un duplicado permanente (la nota no se puede editar ni borrar).
@@ -37,7 +48,28 @@ export function ProfessionalCriterion({
   const [seenState, setSeenState] = useState(state);
   if (seenState !== state) {
     setSeenState(state);
-    if (state.success && note !== "") setNote("");
+    if (state.success && note !== "") {
+      setNote("");
+      setAiAssisted(false);
+      setGenError(null);
+    }
+  }
+
+  // Genera el borrador por IA. Si el campo ya tiene texto, NO lo pisa: lo agrega debajo (nunca se
+  // pierde lo escrito a mano). Si falla, lo dice sin bloquear: el profesional escribe a mano.
+  function handleGenerate() {
+    setGenError(null);
+    const fd = new FormData();
+    fd.set("evaluationId", evaluationId);
+    startGenerating(async () => {
+      const res = await generateCriterionAction({ error: null, text: null }, fd);
+      if (res.text) {
+        setNote((prev) => (prev.trim() === "" ? res.text! : `${prev.trimEnd()}\n\n${res.text}`));
+        setAiAssisted(true);
+      } else {
+        setGenError(res.error ?? "No se pudo generar el borrador. Escribe tu criterio a mano.");
+      }
+    });
   }
 
   return (
@@ -74,15 +106,43 @@ export function ProfessionalCriterion({
 
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="aiAssisted" value={aiAssisted ? "true" : "false"} />
+
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGenerate}
+            disabled={generating || pending}
+          >
+            <Sparkles className="size-4" aria-hidden />
+            {generating ? "Generando borrador..." : "Generar borrador con IA"}
+          </Button>
+          {note.trim() !== "" ? (
+            <span className="text-xs text-muted-foreground">
+              El borrador se agrega debajo de lo que ya escribiste.
+            </span>
+          ) : null}
+        </div>
+
+        {aiAssisted ? (
+          <p className="text-xs text-muted-foreground">
+            Borrador generado por el sistema. Revísalo y edítalo; al guardarlo lo asumes como tu
+            criterio.
+          </p>
+        ) : null}
+        {genError ? <p className="text-sm text-destructive">{genError}</p> : null}
+
         <Textarea
           name="note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Escribe tu interpretación clínica de estos resultados"
-          rows={3}
+          placeholder="Escribe tu interpretación clínica de estos resultados, o genera un borrador con IA para partir de ahí"
+          rows={8}
         />
         <div>
-          <Button type="submit" disabled={pending || note.trim() === ""}>
+          <Button type="submit" disabled={pending || generating || note.trim() === ""}>
             {pending ? "Agregando..." : "Agregar criterio"}
           </Button>
         </div>

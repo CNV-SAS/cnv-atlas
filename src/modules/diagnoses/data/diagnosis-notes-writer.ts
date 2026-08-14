@@ -13,6 +13,7 @@ import { recordAudit } from "@/modules/audit/log";
 export type AddDiagnosisNoteWrite = {
   diagnosisId: string;
   note: string;
+  aiAssisted: boolean; // "hubo asistencia de IA" al componer; solo traza, no se muestra
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -22,7 +23,7 @@ export async function addDiagnosisNote(input: AddDiagnosisNoteWrite): Promise<vo
   await db.transaction(async (tx) => {
     const [note] = await tx
       .insert(diagnosisNotes)
-      .values({ diagnosisId: input.diagnosisId, note: input.note })
+      .values({ diagnosisId: input.diagnosisId, note: input.note, aiAssisted: input.aiAssisted })
       .returning({ id: diagnosisNotes.id });
     await recordAudit(tx, {
       event: "diagnosis.note_added",
@@ -30,7 +31,7 @@ export async function addDiagnosisNote(input: AddDiagnosisNoteWrite): Promise<vo
       actorEmail: input.actorEmail,
       entityType: "diagnosis",
       entityId: input.diagnosisId,
-      payload: { note_id: note.id },
+      payload: { note_id: note.id, ai_assisted: input.aiAssisted },
       ip: input.ip,
     });
   });
