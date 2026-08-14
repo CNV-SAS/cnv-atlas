@@ -18,6 +18,12 @@ describe("survey-completeness", () => {
     expect(isAnswered("0")).toBe(true); // contador tocado en cero: SI es respuesta
     expect(isAnswered("No")).toBe(true);
     expect(isAnswered('["Ninguna"]')).toBe(true);
+    // "otra" elegida SIN texto -> incompleta (hueco del gate); con texto -> completa.
+    expect(isAnswered('["Otra"]')).toBe(false);
+    expect(isAnswered('["Otros"]')).toBe(false);
+    expect(isAnswered('["Cáncer","Otra"]')).toBe(false); // una eleccion valida + "otra" pelada -> hueco
+    expect(isAnswered('["Otra: penicilina"]')).toBe(true);
+    expect(isAnswered('["Cáncer"]')).toBe(true);
   });
 
   it("una pregunta NO de diagnostico sin responder bloquea (un contador de D7)", () => {

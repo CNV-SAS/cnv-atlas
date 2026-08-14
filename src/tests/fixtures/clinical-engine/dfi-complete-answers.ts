@@ -69,8 +69,11 @@ export function defaultAnswerFor(type: string, texts: string[]): string {
   if (type === "contador") return "0"; // 0 explicito (como el boton "Ninguno" del intake)
   if (type === "escala") return "5";
   if (type === "opcion_multiple") {
+    // Evita la "otra" pelada: el gate la trata como incompleta (texto libre vacio). Prefiere "Ninguna",
+    // si no la primera opcion que no sea texto libre.
     const ninguna = texts.find((t) => /^ningun[ao]$/i.test(t));
-    return JSON.stringify([ninguna ?? texts[0] ?? "Ninguna"]);
+    const noOtra = texts.find((t) => !/^otr(a|os)$/i.test(t.trim()));
+    return JSON.stringify([ninguna ?? noOtra ?? "Ninguna"]);
   }
   if (type === "opcion") return texts[0] ?? "";
   return "n/a"; // texto

@@ -7,13 +7,34 @@
 // "Ninguna", 0). Este modulo es PURO (sin BD): lo alimentan el reader (generar) y correct-evaluation
 // (regenerar) con la misma nocion de "respondida".
 
-// Una respuesta cuenta como presente si tiene valor no vacio. Distingue AUSENTE de VACIO: null/""/"[]"
-// (multi sin marcar) es SIN RESPONDER; "0" (contador tocado en cero) SI es respuesta. Mismo criterio que
-// el `answered` del motor sobre el valor ya guardado (texto).
+// Token de texto libre "otra"/"otros" PELADO (sin ": texto"). Coherente con el intake
+// (survey-widgets `isOtherOption`); si cambia el set (p. ej. entra "otro" con el bump de encuesta),
+// se actualizan los dos. Un elemento asi = eligio "otra" pero no escribio el texto.
+const isBareFreeTextOther = (el: string): boolean => /^otr(a|os)$/i.test(el.trim());
+
+// Una respuesta cuenta como COMPLETA para el gate si tiene valor real. Distingue AUSENTE de VACIO:
+// null/""/"[]" (multi sin marcar) es SIN RESPONDER; "0" (contador tocado en cero) SI es respuesta.
+// Ademas: una multi que eligio "otra" SIN escribir el texto ("Otra" pelado, no "Otra: <texto>") NO
+// cuenta como completa (misma familia "ausencia disfrazada de dato" que el contador en 0; si eligio
+// "otra" es porque tiene algo que decir). El INTAKE lo permite (patient-facing); el gate lo exige.
 export function isAnswered(value: string | null | undefined): boolean {
   if (value == null) return false;
   const s = value.trim();
-  return s !== "" && s !== "[]";
+  if (s === "" || s === "[]") return false;
+  if (s.startsWith("[")) {
+    let arr: unknown;
+    try {
+      arr = JSON.parse(s);
+    } catch {
+      return true; // no parseable: conservador, no inventa un hueco
+    }
+    if (Array.isArray(arr)) {
+      if (arr.length === 0) return false;
+      // "otra" elegida sin texto -> incompleta, aunque el arreglo no este vacio.
+      if (arr.some((el) => typeof el === "string" && isBareFreeTextOther(el))) return false;
+    }
+  }
+  return true;
 }
 
 export type SurveyGap = { section: string; missing: number };
