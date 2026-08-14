@@ -29,8 +29,10 @@ export default async function AdminAiPage() {
           Inteligencia artificial
         </h1>
         <p className="text-muted-foreground">
-          Proveedor y modelo con los que se genera el menu de apoyo. Las claves de API viven
-          solo en el entorno; aqui eliges cual esta activo. El diagnostico nunca usa IA.
+          Proveedor y modelo que usa toda la aplicación para generar texto con IA (hoy el menú de
+          apoyo; las funciones que vengan usarán el mismo). No es una configuración por función. Lo
+          que sí es por función son los prompts, cada uno con su versión. Las claves de API viven
+          solo en el entorno; aquí eliges cuál está activo. El diagnóstico nunca usa IA.
         </p>
       </div>
 

@@ -37,10 +37,23 @@ type GeminiResponse = { candidates?: { content?: { parts?: { text?: string }[] }
 async function callGroq(messages: AiMessage[], model: string): Promise<string> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new AiError("GROQ_API_KEY ausente");
+  // Los modelos de razonamiento de Groq (familia gpt-oss) gastan el presupuesto de salida en
+  // tokens de razonamiento ANTES del texto visible; con el tope por defecto (~2048) el
+  // razonamiento se lo puede comer entero y `content` vuelve VACIO (finish_reason "length"),
+  // lo que aqui se leeria como "respuesta vacía" y tumbaria el menu. Se acota el razonamiento a
+  // "low" y se da un tope de salida holgado para que quepan razonamiento + menu. `reasoning_effort`
+  // NO se envia a modelos sin razonamiento (llama): Groq lo rechaza con 400 (verificado 2026-08-13).
+  const isReasoningModel = model.includes("gpt-oss");
   const res = await fetchJson<GroqResponse>("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { authorization: `Bearer ${key}` },
-    body: { model, messages, temperature: 0.4 },
+    body: {
+      model,
+      messages,
+      temperature: 0.4,
+      max_completion_tokens: 4096,
+      ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
+    },
     timeoutMs: AI_TIMEOUT_MS,
   });
   const text = res.choices?.[0]?.message?.content;
