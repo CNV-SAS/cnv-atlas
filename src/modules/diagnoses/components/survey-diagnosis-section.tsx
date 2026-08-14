@@ -1,5 +1,5 @@
 import type { PatronGrupoView, PatronResolution } from "@/clinical-engine";
-import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
+import type { EvaluationCharacterization, SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyAnswerReadonly } from "@/modules/evaluations/components/survey-widgets";
 
 import { DetailsSection } from "./details-section";
@@ -193,14 +193,58 @@ function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
   );
 }
 
+// Caracterizacion sociodemografica del ENCUENTRO (versionada por evaluacion, ver DB), que el v8 muestra al
+// final de D8. Se lee de las columnas de la evaluacion, no de las respuestas de encuesta.
+const CHAR_FIELDS: { key: keyof EvaluationCharacterization; label: string }[] = [
+  { key: "ethnicity", label: "Etnia" },
+  { key: "educationLevel", label: "Educación" },
+  { key: "socioeconomicStratum", label: "Estrato socioeconómico" },
+  { key: "maritalStatus", label: "Estado civil" },
+  { key: "occupation", label: "Ocupación" },
+];
+
+function CharacterizationBlock({
+  characterization,
+}: {
+  characterization?: EvaluationCharacterization | null;
+}) {
+  const rows = characterization ? CHAR_FIELDS.filter((f) => characterization[f.key]) : [];
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-foreground">Contexto sociodemográfico</p>
+      {rows.length ? (
+        <div className="flex flex-col divide-y divide-border">
+          {rows.map((f) => (
+            <div key={f.key} className="flex items-baseline justify-between gap-4 py-2">
+              <p className="text-sm text-muted-foreground">{f.label}</p>
+              <span className="shrink-0 text-right text-sm font-semibold text-foreground">
+                {characterization![f.key]}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Evaluaciones anteriores a la captura por evaluacion (o sin caracterizacion): NO se copia el
+        // valor actual del perfil (seria un historico falso); se dice claro que no se capturo.
+        <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+          El contexto sociodemográfico no se capturó en esta evaluación.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function SurveyDiagnosisSection({
   patron,
   surveyDomains,
+  characterization,
 }: {
   patron: PatronResolution;
   // Respuestas por dominio (D1-D8) para el read-out de D2-D8. Llegan del reader ya agrupadas y en orden
   // (d1..d8), asi que el indice i corresponde a la seccion i. null en snapshots sin encuesta.
   surveyDomains?: SurveyDomain[] | null;
+  // Caracterizacion sociodemografica DE ESTA evaluacion (columnas de la evaluacion), para el bloque de D8.
+  characterization?: EvaluationCharacterization | null;
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -216,6 +260,12 @@ export function SurveyDiagnosisSection({
           <DetailsSection key={title} title={title} defaultOpen={i === 0}>
             {i === 0 ? (
               <PatronD1 patron={patron} />
+            ) : i === 7 ? (
+              // D8 lleva ademas el contexto sociodemografico del encuentro (verbatim del v8: al final de D8).
+              <div className="flex flex-col gap-4">
+                <DomainReadout domain={surveyDomains?.[i]} />
+                <CharacterizationBlock characterization={characterization} />
+              </div>
             ) : (
               <DomainReadout domain={surveyDomains?.[i]} />
             )}

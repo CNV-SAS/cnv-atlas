@@ -18,3 +18,14 @@ export type SurveyAnswerView = {
 };
 
 export type SurveyDomain = { section: string; questions: SurveyAnswerView[] };
+
+// Caracterizacion sociodemografica DEL ENCUENTRO, versionada por evaluacion (columnas de `evaluations`).
+// Modulo neutro: la comparten el reader (server) y el display de D8. La etnia solo trae valor si hubo
+// autorizacion de investigacion (gate en el writer); si no, null y no aparece esa fila.
+export type EvaluationCharacterization = {
+  educationLevel: string | null;
+  occupation: string | null;
+  maritalStatus: string | null;
+  socioeconomicStratum: string | null;
+  ethnicity: string | null;
+};

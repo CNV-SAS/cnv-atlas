@@ -43,6 +43,7 @@ import {
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
 import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+import { getEvaluationCharacterization } from "@/modules/evaluations/data/characterization-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
@@ -184,6 +185,7 @@ export default async function ResultadosEvaluacionPage({
     actorProfession,
     trajectoryNotice,
     correctionAvailability,
+    characterization,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -205,6 +207,8 @@ export default async function ResultadosEvaluacionPage({
     getTrajectoryNotice(id),
     // CP3: si la evaluacion es de una version anterior de la encuesta, el boton "Corregir" se deshabilita.
     getCorrectionAvailability(id),
+    // (m) Caracterizacion sociodemografica versionada de ESTA evaluacion, para el bloque de D8.
+    getEvaluationCharacterization(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -365,7 +369,13 @@ export default async function ResultadosEvaluacionPage({
             ) : null
           }
           // Encuesta (D1-D8): D1 = patron; D2-D8 = read-out por dominio.
-          surveyDiagnosis={<SurveyDiagnosisSection patron={patron} surveyDomains={entrySurvey} />}
+          surveyDiagnosis={
+            <SurveyDiagnosisSection
+              patron={patron}
+              surveyDomains={entrySurvey}
+              characterization={characterization}
+            />
+          }
           // Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot).
           criterio={
             criterion ? <ProfessionalCriterion evaluationId={id} notes={criterion.notes} /> : null
