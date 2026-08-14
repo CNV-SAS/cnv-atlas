@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode } from "react";
 
 // Subpestañas del Diagnostico (dentro del tab externo "Diagnostico"). Tres, no una pantalla de corrido:
@@ -34,7 +34,6 @@ export function DiagnosisSubtabs({
   encuesta: ReactNode;
 }) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const active = parseSub(searchParams.get("sub"));
   const content: Record<SubId, ReactNode> = { funcional, composicion, encuesta };
@@ -42,9 +41,11 @@ export function DiagnosisSubtabs({
   function select(id: SubId) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sub", id);
-    // replace (no push) para no llenar el historial con cada cambio de subpestaña; scroll:false para no
-    // saltar arriba al cambiar.
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // history.replaceState, NO router.replace: actualiza la URL SIN re-pedir el RSC al servidor (Next 16
+    // sincroniza useSearchParams con la History API). El contenido de las tres subpestañas ya llego del
+    // servidor, asi que conmutar es INSTANTANEO; router.replace hacia un refetch (~2s de lag). La URL
+    // igual persiste (recargar/compartir abre la correcta) y se conserva al volver de Tratamiento.
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
   }
 
   return (
