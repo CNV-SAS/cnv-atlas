@@ -15,6 +15,7 @@ import { SupersededBanner } from "@/modules/corrections/components/superseded-ba
 import { getCorrectionAvailability } from "@/modules/corrections/data/correction-availability-reader";
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
+import { ConfirmDiagnosisPanel } from "@/modules/diagnoses/components/confirm-diagnosis-panel";
 import { abordajeProfesional } from "@/clinical-engine";
 import {
   type AbordajeCardData,
@@ -340,38 +341,49 @@ export default async function ResultadosEvaluacionPage({
         )
       }
       diagnostico={
-        <div className="flex flex-col gap-8">
-          {/* Evidencia del modelo, orden conclusion -> detalle (cabecera, mapas, DFI, tablas
-              colapsables, versiones al pie). La composicion va como colapsable dentro. */}
-          <EvaluationResults
-            results={results}
-            efrStates={efrStates}
-            abordaje={abordaje}
-            // D-007 Fase A: dominios de encuesta incompletos (derivados de lo sellado), para el aviso.
-            missingDomains={
-              results.compatible && !results.snapshot.dfi.complete
-                ? missingDomainsFrom(results.snapshot.dfi.missingFieldKeys, entrySurvey)
-                : []
-            }
-            composition={
-              composition ? (
-                <CompositionSection
-                  composition={composition}
-                  sexoM={sexoM}
-                  classifications={results.snapshot.classifications}
-                />
-              ) : null
-            }
-          />
-          {/* Diagnostico de encuesta (D1-D8): contenido de otra naturaleza, detras de un clic, para que
-              no compita con el nucleo. D1 = patron; D2-D8 = read-out de las respuestas por dominio. */}
-          <SurveyDiagnosisSection patron={patron} surveyDomains={entrySurvey} />
-          {/* Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot). */}
-          {criterion ? (
-            <ProfessionalCriterion evaluationId={id} notes={criterion.notes} />
-          ) : null}
-          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
-        </div>
+        // EvaluationResults ES el orquestador del Diagnostico: cabecera + franja persistentes + 3
+        // subpestañas. La pagina le pasa como slots lo que ella arma (composicion, read-out D1-D8,
+        // criterio, confirmar/corregir) y la vista los coloca en su pestaña. Un solo contenedor: sin
+        // pila suelta que compita con las subpestañas.
+        <EvaluationResults
+          results={results}
+          efrStates={efrStates}
+          abordaje={abordaje}
+          // D-007 Fase A: dominios de encuesta incompletos (derivados de lo sellado), para el aviso.
+          missingDomains={
+            results.compatible && !results.snapshot.dfi.complete
+              ? missingDomainsFrom(results.snapshot.dfi.missingFieldKeys, entrySurvey)
+              : []
+          }
+          composition={
+            composition ? (
+              <CompositionSection
+                composition={composition}
+                sexoM={sexoM}
+                classifications={results.snapshot.classifications}
+              />
+            ) : null
+          }
+          // Encuesta (D1-D8): D1 = patron; D2-D8 = read-out por dominio.
+          surveyDiagnosis={<SurveyDiagnosisSection patron={patron} surveyDomains={entrySurvey} />}
+          // Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot).
+          criterio={
+            criterion ? <ProfessionalCriterion evaluationId={id} notes={criterion.notes} /> : null
+          }
+          // Confirmar (gate de estado) y corregir (versiona) JUNTAS pero paneles DISTINTOS: consecuencias
+          // muy diferentes (una cierra, otra crea una version nueva), separadas visualmente (care d).
+          confirmCorrect={
+            <div className="flex flex-col gap-6">
+              <ConfirmDiagnosisPanel
+                evaluationId={results.evaluationId}
+                confirmed={results.confirmed}
+                confirmedAt={results.confirmedAt}
+                confirmedByName={results.confirmedByName}
+              />
+              <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
+            </div>
+          }
+        />
       }
       />
     </div>

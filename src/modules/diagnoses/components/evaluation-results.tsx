@@ -8,13 +8,14 @@ import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "
 import { DetailsSection } from "./details-section";
 import { MapsSection } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
-import { ConfirmDiagnosisPanel } from "./confirm-diagnosis-panel";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
 import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { DOT_CLS, RISK_SEV, SEV_CLS } from "./risk-severity";
+import { VerdictStrip } from "./verdict-strip";
+import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { formatDate } from "@/lib/format/date";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -138,9 +139,18 @@ export function EvaluationResults({
   efrStates,
   abordaje,
   missingDomains = [],
+  criterio = null,
+  confirmCorrect = null,
+  surveyDiagnosis = null,
 }: {
   results: Results;
   composition?: ReactNode;
+  // Nodos que la pagina arma y esta vista COLOCA en su subpestaña: el criterio del profesional y el par
+  // confirmar/corregir van en Funcional; el read-out D1-D8 en Encuesta. Slots (no logica) para no
+  // arrastrar sus tipos ni sus componentes cliente aqui.
+  criterio?: ReactNode;
+  confirmCorrect?: ReactNode;
+  surveyDiagnosis?: ReactNode;
   // Contenido de referencia de los 81 estados para explorar la Diana (V2). Vacio si no hay
   // diagnostico/registry: la exploracion queda deshabilitada.
   efrStates: Record<number, EfrStateRef>;
@@ -205,7 +215,7 @@ export function EvaluationResults({
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {/* Encabezado */}
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
@@ -245,10 +255,26 @@ export function EvaluationResults({
         </div>
       ) : null}
 
-      {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba del
-          todo, luego los mapas, y pegado a la Diana el detalle de las 6 cards del estado. Las rutas
-          (salida del DFI) viven en la etapa de Tratamiento. */}
-      <Card>
+      {/* Franja de veredicto PERSISTENTE: la conclusion (estado EFR + riesgo + ruta) siempre visible por
+          encima de las subpestañas, para que ninguna no la esconda (care a). Ruta prioritaria = la primera
+          de las autoritativas del DFI, como PUNTERO a Tratamiento (no se duplica su contenido). */}
+      <VerdictStrip
+        stateNumber={efrPhenotype.stateNumber}
+        efrName={patientContent.diagnosisName}
+        riskLevel={dfi.riesgo.nivel}
+        riskScore={dfi.riesgo.score}
+        dfiComplete={dfi.complete}
+        rutaPrioritaria={dfi.rutas[0] ?? null}
+      />
+
+      {/* Tres subpestañas (QUE de Gildardo, COMO nuestro). Default Funcional (DIV-7). */}
+      <DiagnosisSubtabs
+        funcional={
+          <div className="flex flex-col gap-8">
+            {/* Orden conclusion -> detalle (V3): el DFI (riesgo integrado + 5 dominios) va arriba,
+                luego los mapas (Diana + radar), pegado el detalle de las 6 cards del estado, y la tabla
+                completa de indices. Las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
+            <Card>
         <CardHeader>
           <CardTitle>Diagnóstico Funcional Integral (DFI)</CardTitle>
         </CardHeader>
@@ -506,25 +532,30 @@ export function EvaluationResults({
         </div>
       </DetailsSection>
 
-      {composition ? (
-        <DetailsSection title="Composición corporal y clasificación antropométrica">
-          {composition}
-        </DetailsSection>
-      ) : null}
+            {/* Criterio del profesional (+ IA) y el par confirmar/corregir: la lectura y el cierre, en
+                Funcional, sin ir y volver a otra pestaña. */}
+            {criterio}
+            {confirmCorrect}
+          </div>
+        }
+        composicion={
+          composition ?? (
+            <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+              Esta evaluación no tiene composición corporal registrada.
+            </p>
+          )
+        }
+        encuesta={surveyDiagnosis}
+      />
 
-      {/* Constelacion de versiones (regla 7): trazabilidad del calculo, discreta al pie. */}
+      {/* Composicion ya NO va colapsable: ahora es una pestaña (colapsar dentro de un contenedor que ya
+          es pestaña seria esconder dos veces). Su contenido se rinde directo arriba (composicion={...}). */}
+
+      {/* Constelacion de versiones (regla 7): trazabilidad del calculo, discreta al pie. Texto muted, no
+          una barra: la franja de arriba es el marco; esto es solo la traza, para no enmarcar de mas. */}
       <p className="text-xs text-muted-foreground">
         Motor {versions.engine} · modelo {versions.model} · reglas {versions.rules}
       </p>
-
-      {/* B-0: confirmacion del diagnostico. Al FINAL, despues de todo el contenido (decision 1):
-          confirmar obliga a haber pasado por lo que se confirma. */}
-      <ConfirmDiagnosisPanel
-        evaluationId={results.evaluationId}
-        confirmed={results.confirmed}
-        confirmedAt={results.confirmedAt}
-        confirmedByName={results.confirmedByName}
-      />
     </div>
   );
 }
