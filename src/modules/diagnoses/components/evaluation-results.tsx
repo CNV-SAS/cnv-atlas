@@ -13,7 +13,7 @@ import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-v
 
 import { indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
-import { DOT_CLS, RISK_SEV, SEV_CLS } from "./risk-severity";
+import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { formatDate } from "@/lib/format/date";
@@ -495,7 +495,7 @@ export function EvaluationResults({
                       <span className="inline-flex items-center gap-2">
                         {sevByCode[code] != null ? (
                           <span
-                            className={`size-2 shrink-0 rounded-full ${DOT_CLS[sevByCode[code] as number]}`}
+                            className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sevByCode[code] as number]}`}
                             aria-hidden
                           />
                         ) : null}

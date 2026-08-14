@@ -26,3 +26,21 @@ export const DOT_CLS = [
   "bg-clinical-warning",
   "bg-clinical-critical",
 ];
+
+// Escala de 3 niveles (optimo / alerta / critico) de los CLASIFICADORES POR INDICADOR (colorSev: verde 0,
+// ambar 2, rojo 3) y de la antropometria (composicion). El azul (excellent) es EXCLUSIVO del mejor nivel
+// del DFI (Bajo), que es una escala de 4; aqui no hay "Bajo", el mejor es OPTIMO = VERDE. Sin esto, cada
+// indicador "optimo/verde" quedaria azul (azul repartido): el azul se reserva a lo mas optimo, no a todo
+// lo bueno. Indices 0 y 1 comparten el verde (colorSev nunca da 1; la composicion "buena" cae en verde).
+export const OPTIMO_CLS = [
+  "bg-clinical-optimal-bg text-clinical-optimal",
+  "bg-clinical-optimal-bg text-clinical-optimal",
+  "bg-clinical-warning-bg text-clinical-warning",
+  "bg-clinical-critical-bg text-clinical-critical",
+];
+export const OPTIMO_DOT = [
+  "bg-clinical-optimal",
+  "bg-clinical-optimal",
+  "bg-clinical-warning",
+  "bg-clinical-critical",
+];

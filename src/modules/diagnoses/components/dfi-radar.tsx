@@ -97,10 +97,18 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
         aria-label={label}
         className="max-w-full"
       >
-        {/* Zonas de fondo por severidad: pentagonos concentricos del exterior (peor) al centro
-            (mejor), pintados en ese orden para que cada zona interior cubra a la de afuera. */}
+        {/* Zonas de fondo por severidad: pentagonos concentricos del exterior (peor) al centro (mejor),
+            pintados en ese orden para que cada zona interior cubra a la de afuera. Cada banda lleva un
+            borde del color del fondo (stroke-background) para SEPARAR las zonas: sin el, los fills claros
+            se difuminan entre si y no se ve donde termina una y empieza otra (decision "solido" de
+            Santiago, sobre el sombreado transparente que confundia las bandas). */}
         {[3, 2, 1, 0].map((k) => (
-          <polygon key={`band${k}`} points={ringPoly(n, ((k + 1) / BANDS) * RMAX)} className={BAND_FILL[k]} />
+          <polygon
+            key={`band${k}`}
+            points={ringPoly(n, ((k + 1) / BANDS) * RMAX)}
+            className={`${BAND_FILL[k]} stroke-background`}
+            strokeWidth={1.5}
+          />
         ))}
         {/* Contorno exterior + radios */}
         <polygon points={ringPoly(n, RMAX)} fill="none" className="stroke-border" strokeWidth={1} />
@@ -108,11 +116,12 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
           const [x, y] = axisPoint(i, n, RMAX);
           return <line key={`spoke${i}`} x1={CX} y1={CY} x2={x} y2={y} className="stroke-border" strokeWidth={1} />;
         })}
-        {/* Poligono de datos (color = severidad integrada) */}
+        {/* Poligono de datos SOLIDO (color = severidad integrada): opacidad alta para que la forma del
+            paciente se lea con claridad sobre las bandas, no un sombreado tenue. */}
         <polygon
           points={dataPoly}
           className={`${dataFill} ${RISK_STROKE[rs]}`}
-          fillOpacity={0.25}
+          fillOpacity={0.6}
           strokeWidth={2}
         />
         {/* Vertices */}

@@ -8,14 +8,15 @@ import {
 } from "../anthropometry";
 import { clasificarAecMca } from "../data/composition-map";
 import type { Composition } from "../data/composition-reader";
-import { SEV_CLS } from "./risk-severity";
+import { OPTIMO_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
 // es REFERENCIA MEDICA ESTANDAR (OMS), NO output del motor ANI-BIS-E: se rotula como tal.
 
-// Color por severidad: la MISMA escala de 4 (ancla azul) que el radar y los badges de dominio, desde la
-// fuente unica (risk-severity), para que un "Bajo" no sea de un color aqui y de otro al lado.
+// Color por severidad de la clasificacion antropometrica: escala de 3 (optimo verde / alerta ambar /
+// critico rojo) desde la fuente unica (OPTIMO_CLS). NO usa el azul del DFI: el azul (excellent) es
+// exclusivo del mejor nivel del DFI (Bajo); aqui el mejor es optimo = verde. Ver risk-severity.
 
 function fmt(v: number | null, dec = 1): string {
   if (v == null) return "-";
@@ -28,7 +29,7 @@ function AnthroChip({ label, cls }: { label: string; cls: AnthroClass | null }) 
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       {cls ? (
         <span
-          className={`w-fit rounded-md px-2 py-0.5 text-sm font-semibold ${SEV_CLS[Math.min(3, Math.max(0, cls.sev))]}`}
+          className={`w-fit rounded-md px-2 py-0.5 text-sm font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, cls.sev))]}`}
         >
           {cls.label}
         </span>
@@ -61,7 +62,7 @@ function DiagnosisCell({
   if (oms) {
     return (
       <span
-        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, oms.sev))]}`}
+        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, oms.sev))]}`}
         title="Referencia médica estándar (OMS), no output del motor ANI-BIS-E."
       >
         {oms.label}
@@ -75,7 +76,7 @@ function DiagnosisCell({
     if (aec) {
       return (
         <span
-          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, aec.sev))]}`}
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, aec.sev))]}`}
           title="Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20."
         >
           {aec.label}
