@@ -19,16 +19,20 @@ import { DetailsSection } from "./details-section";
 // contextual, que esta APAGADO (C1). Cuando C1 se active y el score empiece a mover la edad bioelectrica,
 // se revisa con Gildardo si debe verse. Ver DIVERGENCIAS.md.
 
-// Titulos VERBATIM del HTML (separador "·", no em-dash).
+// Titulos VERBATIM del read-out D1-D8 del HTML al dia (gildardo-2026-08-13/ATLAS_v8.html, separador
+// "·", no em-dash). Portados TODOS (no solo D2) para que el rotulo de dominio sea el suyo: D4 y D6
+// cambian de sentido, no solo de forma (D4 "Conductas Alimentarias" -> "Patrón Horario Alimentario";
+// D6 pierde "Alergias" del rotulo aunque el dominio aun trae esas preguntas, congeladas: reconcilia
+// cuando entre su encuesta final). Es contenido suyo (instruccion de Santiago 2026-08-13).
 const SECTIONS = [
-  "D1 · Patrón Usual de Consumo",
-  "D2 · Percepción Corporal",
-  "D3 · Hábitos",
-  "D4 · Conductas Alimentarias",
-  "D5 · Epigenético / LE8",
-  "D6 · Alergias y Salud Digestiva",
+  "D1 · Patrón Usual de Consumo Alimentario",
+  "D2 · Imagen Corporal y Conducta Alimentaria",
+  "D3 · Hábitos de Vida",
+  "D4 · Patrón Horario Alimentario",
+  "D5 · Determinantes y Epigenética",
+  "D6 · Salud Digestiva",
   "D7 · Hidratación",
-  "D8 · Contexto Social",
+  "D8 · Contexto Social y Alimentario",
 ];
 
 // Etiquetas ABREVIADAS de frecuencia para la pildora (verbatim del v8 L13728; NO el texto de encuesta).
@@ -138,13 +142,17 @@ function PatronD1({ patron }: { patron: PatronResolution }) {
   );
 }
 
-// Read-out de un dominio (D2-D8): pregunta -> respuesta, con el MISMO markup que SurveyReadonly (la
-// pestana Evaluacion) para que el dato se vea identico. Reusa SurveyAnswerReadonly, asi el texto libre de
-// "Otra" ya viene incluido. Sin respuestas (dominio ausente o todo sin responder, solo alcanzable en un
-// diagnostico viejo pre-gate): dice "sin respuestas", no queda en blanco.
+// Read-out de un dominio (D2-D8): pregunta -> respuesta. Reusa SurveyAnswerReadonly en variante "plain"
+// (solo lo elegido, en texto), como el read-out del v8: fila con la pregunta a la izquierda y la
+// respuesta a la derecha, limpio. La INTERPRETACION del dato (opcion elegida + texto libre de "Otra")
+// es la MISMA que la pestana Evaluacion; solo cambia la forma (ahi chips con todas las opciones, aca
+// texto). A diferencia de Evaluacion (donde el profesional REVISA y ver las no marcadas ayuda), aqui
+// solo LEE lo que el paciente dijo: se muestran SOLO las preguntas respondidas. Sin ninguna (dominio
+// ausente o todo sin responder, solo alcanzable en un diagnostico viejo pre-gate): dice "sin
+// respuestas", no queda en blanco.
 function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
-  const answered = domain?.questions.some((q) => q.answerValue != null && q.answerValue !== "");
-  if (!domain || !answered) {
+  const answered = domain?.questions.filter((q) => q.answerValue != null && q.answerValue !== "") ?? [];
+  if (!answered.length) {
     return (
       <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
         El paciente no respondió este dominio en esta evaluación.
@@ -152,17 +160,20 @@ function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      {domain.questions.map((q) => (
-        <div key={q.questionId} className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-foreground">
-            <span className="text-muted-foreground">{q.number}.</span> {q.questionText}
+    <div className="flex flex-col divide-y divide-border">
+      {answered.map((q) => (
+        <div key={q.questionId} className="flex items-baseline justify-between gap-4 py-2">
+          <p className="text-sm text-muted-foreground">
+            <span className="tabular-nums">{q.number}.</span> {q.questionText}
           </p>
-          <SurveyAnswerReadonly
-            questionType={q.questionType}
-            answerValue={q.answerValue}
-            options={q.options}
-          />
+          <div className="shrink-0 text-right">
+            <SurveyAnswerReadonly
+              questionType={q.questionType}
+              answerValue={q.answerValue}
+              options={q.options}
+              variant="plain"
+            />
+          </div>
         </div>
       ))}
     </div>

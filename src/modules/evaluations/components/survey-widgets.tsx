@@ -243,17 +243,24 @@ function parseMulti(value: string): string[] {
   }
 }
 
-// Render de SOLO LECTURA de la respuesta a una pregunta (vista del profesional). Reusa pillClass
-// para verse igual que el formulario: en opcion(es) muestra las pastillas resaltando la(s)
-// elegida(s); en numeros muestra el valor. No lleva estado ni inputs. Presentacion pura.
+// Render de SOLO LECTURA de la respuesta a una pregunta (vista del profesional). Dos variantes de
+// PRESENTACION sobre la MISMA interpretacion del dato (parseMulti/splitOther, incluido el texto libre
+// de "Otra"), asi las dos superficies no divergen en lo que importa (que se eligio), solo en la forma:
+//  - "chips" (default, pestaña Evaluacion): reusa pillClass y pinta TODAS las opciones resaltando la(s)
+//    elegida(s). Ahi el profesional REVISA la encuesta y ver las no marcadas ayuda.
+//  - "plain" (Diagnostico D2-D8): solo el/los valor(es) elegido(s), en texto, como el read-out del v8.
+//    Ahi el profesional solo LEE lo que el paciente dijo; las opciones no marcadas serian ruido.
+// No lleva estado ni inputs. Presentacion pura.
 export function SurveyAnswerReadonly({
   questionType,
   answerValue,
   options,
+  variant = "chips",
 }: {
   questionType: string;
   answerValue: string | null;
   options: string[];
+  variant?: "chips" | "plain";
 }) {
   if (answerValue == null || answerValue === "") {
     return <span className="text-sm italic text-muted-foreground">Sin responder</span>;
@@ -261,6 +268,17 @@ export function SurveyAnswerReadonly({
 
   if (questionType === "opcion" || questionType === "opcion_multiple") {
     const selected = questionType === "opcion_multiple" ? parseMulti(answerValue) : [answerValue];
+    // Texto plano: solo lo elegido, con el texto libre de "Otra" pegado, unido por comas. Misma
+    // descomposicion (splitOther) que los chips, para que el dato se lea identico en las dos formas.
+    if (variant === "plain") {
+      const labels = selected.map((v) => {
+        const s = splitOther(v);
+        return s && s.text ? `${s.base}: ${s.text}` : s ? s.base : v;
+      });
+      return (
+        <span className="text-sm font-semibold text-foreground">{labels.join(", ")}</span>
+      );
+    }
     // Descompone cada valor guardado igual que el form de edicion: "Otra: penicilina" -> base "Otra" +
     // texto "penicilina". El catalogo trae "Otra" (no "Otra: penicilina"), asi que sin descomponer la
     // opcion sale apagada y el texto libre del paciente (alergia, antecedente) se PIERDE en la lectura

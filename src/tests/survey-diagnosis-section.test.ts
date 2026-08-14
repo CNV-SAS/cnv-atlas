@@ -36,6 +36,18 @@ describe("SurveyDiagnosisSection · D2-D8 read-out", () => {
     expect(markup).toContain("Percepción corporal"); // la pregunta
     expect(markup).toContain("Normal"); // la respuesta
     expect(markup).toContain("Otra: penicilina"); // el texto libre no se pierde (care b)
+    // Variante "plain": SOLO lo elegido. Las opciones no marcadas ("Muy delgado/a", "Obesidad",
+    // "Ninguna") NO aparecen, a diferencia de la pestana Evaluacion (chips con todas).
+    expect(markup).not.toContain("Muy delgado/a");
+    expect(markup).not.toContain("Ninguna");
+  });
+
+  it("porta los rotulos de dominio del HTML al dia (D4 y D6 cambian de sentido)", () => {
+    // Los titulos son los del read-out vigente de Gildardo, no los viejos de Atlas.
+    const markup = render([domain("x", []), domain("y", [])]);
+    expect(markup).toContain("D4 · Patrón Horario Alimentario"); // antes "Conductas Alimentarias"
+    expect(markup).toContain("D6 · Salud Digestiva"); // antes "Alergias y Salud Digestiva"
+    expect(markup).not.toContain("Conductas Alimentarias");
   });
 
   it("(c) un dominio sin respuestas dice 'no respondió', no queda en blanco", () => {
