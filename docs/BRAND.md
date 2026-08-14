@@ -42,16 +42,17 @@ Dos anclas, todo lo demás derivado (como el esmeralda del LMS). Valores aproxim
 Estos colores codifican riesgo y estado. Son inequívocos y accesibles, y **nunca se reemplazan por el azul de marca**. Los valores definitivos salen de los mapas del modelo (los clasificadores ya devuelven un `color` por banda); estos son defaults a armonizar:
 | Estado | Color | Fondo | Uso |
 |---|---|---|---|
+| Excelente / bajo (DFI) | `#0EA5E9` | `#F0F9FF` | Banda MEJOR de la escala de 4 del DFI (sev 0 "Bajo", radar). Azul clínico propio (sky), NO el de marca |
 | Óptimo / normal | `#10B981` | `#ECFDF5` | Banda buena, confirmaciones |
 | Alerta / riesgo | `#F59E0B` | `#FFFBEB` | Advertencias, riesgo moderado |
 | Crítico | `#DC2626` | `#FEF2F2` | Riesgo alto, alertas clínicas críticas |
 
-Como el azul es la acción primaria, "info/secundario" no se pinta de azul (chocaría); se resuelve con neutros o con el estado correspondiente.
+Como el azul es la acción primaria, "info/secundario" no se pinta de azul (chocaría); se resuelve con neutros o con el estado correspondiente. El azul **clínico** (`#0EA5E9`, sky) es la única excepción y no choca con esa regla: es un token de ESCALA (la banda mejor del DFI, con su etiqueta y su posición), distinto del azul de acción (`#205DFD`) a propósito, y solo aparece en la escala de severidad. El resto de superficies clínicas siguen con la escala de 3 (óptimo/alerta/crítico); la de 4 es del DFI (radar y tarjetas), que tiene 4 bandas de severidad (Bajo/Leve/Moderado/Alto).
 
 **Matiz de reserva del color de riesgo (2026-07).** El color que *codifica riesgo* (verde óptimo, ámbar alerta, rojo crítico) se reserva para los elementos **clínicos**: clasificaciones, severidades y veredictos (badges de banda, puntos de riesgo, zonas de la Diana y del radar). En todo lo demás (marca, estructura de la interfaz, encabezados de sección o de nivel de tabla, navegación) hay libertad de paleta y se usan neutros o el azul de marca. La consecuencia práctica: los headers estructurales (por ejemplo, las filas de nivel de la tabla de composición) van con **fondo neutro**, no con color de riesgo, para no insinuar una severidad donde solo hay estructura. El principio es que el color de riesgo signifique siempre riesgo y nunca decore.
 
 ### Implementación técnica (shadcn v4 + CSS vars)
-Los tokens semánticos son **CSS variables** en `src/app/globals.css` (no clases Tailwind crudas). Se overridean los vars de shadcn con `--primary` = azul de marca, `--foreground` = ink, neutros derivados del ink, y `--ring` = azul. La capa clínica vive como tokens propios (`--clinical-optimal`, `--clinical-warning`, `--clinical-critical`) o clases explícitas, separada del sistema de marca. Preferir tokens semánticos (`bg-background`, `text-foreground`, `border-border`) sobre crudos.
+Los tokens semánticos son **CSS variables** en `src/app/globals.css` (no clases Tailwind crudas). Se overridean los vars de shadcn con `--primary` = azul de marca, `--foreground` = ink, neutros derivados del ink, y `--ring` = azul. La capa clínica vive como tokens propios (`--clinical-excellent`, `--clinical-optimal`, `--clinical-warning`, `--clinical-critical`) o clases explícitas, separada del sistema de marca. Preferir tokens semánticos (`bg-background`, `text-foreground`, `border-border`) sobre crudos.
 
 ## Tipografía
 **Inter para todo** (titulares y cuerpo). El carácter técnico/arquitectónico del wordmark se logra con peso y tracking, no con otra fuente. Fallback `system-ui, sans-serif`.

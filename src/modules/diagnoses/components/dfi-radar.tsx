@@ -29,24 +29,28 @@ const RADAR_LABEL: Record<string, string> = {
 };
 // Vocabulario de severidad del MOTOR: fuente unica compartida (severity-labels), la misma que usan
 // las tarjetas del DFI, para que no puedan divergir.
-// Zonas de fondo por severidad (fill claro de la paleta clinica). sev 0 y 1 comparten el verde,
-// igual que el modelo de riesgo (2 alerta, 3 critico). Se pintan del exterior al centro.
+// Zonas de fondo por severidad (fill claro de la paleta clinica). Cuatro colores DISTINTOS, uno por
+// banda (sev 0..3 = Bajo/Leve/Moderado/Alto): azul clinico (excellent) para Bajo -> el ancla "estas
+// bien" que faltaba, verde para Leve, ambar para Moderado, rojo para Alto. Se pintan del exterior al
+// centro. (Antes sev0 y sev1 compartian el verde, espejando el modelo de riesgo de 3 colores; se
+// separan aqui a proposito: sin una banda "optima" visible todo se leia como advertencia. El
+// poligono de datos SI sigue coloreado por el riesgo INTEGRADO, que es otro eje.)
 const BAND_FILL = [
-  "fill-clinical-optimal-bg",
+  "fill-clinical-excellent-bg",
   "fill-clinical-optimal-bg",
   "fill-clinical-warning-bg",
   "fill-clinical-critical-bg",
 ];
 // Cuadro de color solido para la leyenda (color = severidad, nunca decorativo).
 const SWATCH = [
-  "bg-clinical-optimal",
+  "bg-clinical-excellent",
   "bg-clinical-optimal",
   "bg-clinical-warning",
   "bg-clinical-critical",
 ];
 // Color del poligono de datos por severidad integrada (stroke solido). Tokens BRAND.
 const RISK_STROKE = [
-  "stroke-clinical-optimal",
+  "stroke-clinical-excellent",
   "stroke-clinical-optimal",
   "stroke-clinical-warning",
   "stroke-clinical-critical",

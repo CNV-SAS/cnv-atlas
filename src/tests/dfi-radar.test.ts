@@ -60,7 +60,10 @@ describe("DfiRadar", () => {
 
   it("el color del poligono de datos sigue la severidad integrada", () => {
     // stroke-clinical-* solo lo lleva el poligono de datos; las zonas de fondo usan fill-*-bg.
-    expect(render(0)).toContain("stroke-clinical-optimal");
+    // Escala de 4 colores DISTINTOS: sev 0 -> azul clinico (excellent, el ancla "estas bien"),
+    // 1 -> verde (optimal), 2 -> ambar (warning), 3 -> rojo (critical).
+    expect(render(0)).toContain("stroke-clinical-excellent");
+    expect(render(1)).toContain("stroke-clinical-optimal");
     expect(render(2)).toContain("stroke-clinical-warning");
     expect(render(3)).toContain("stroke-clinical-critical");
     expect(render(0)).not.toContain("stroke-clinical-warning");

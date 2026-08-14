@@ -11,6 +11,8 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-sans);
   /* Capa clinica (BRAND.md): codifica riesgo, separada de la marca. */
+  --color-clinical-excellent: var(--clinical-excellent);
+  --color-clinical-excellent-bg: var(--clinical-excellent-bg);
   --color-clinical-optimal: var(--clinical-optimal);
   --color-clinical-optimal-bg: var(--clinical-optimal-bg);
   --color-clinical-warning: var(--clinical-warning);
@@ -115,7 +117,14 @@
    * reemplaza por el azul de marca, y el riesgo nunca se comunica solo por
    * color (tambien etiqueta y posicion). Son defaults a armonizar con los
    * mapas del modelo.
+   * `excellent` es la banda MEJOR de la escala de 4 del DFI (sev 0 "Bajo"):
+   * un azul CLINICO propio (sky, no el #205dfd de accion) que da el ancla
+   * visual "estas bien" que el radar habia perdido al arrancar la escala en
+   * verde. Distinto del azul de marca a proposito (que el azul sea escala, no
+   * accion). El resto de superficies clinicas siguen con la escala de 3.
    */
+  --clinical-excellent: #0ea5e9;
+  --clinical-excellent-bg: #f0f9ff;
   --clinical-optimal: #10b981;
   --clinical-optimal-bg: #ecfdf5;
   --clinical-warning: #f59e0b;
