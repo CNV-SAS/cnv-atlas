@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { MfaRelaxedBanner } from "@/components/layout/mfa-relaxed-banner";
 import { navItemsForRoles } from "@/components/layout/nav-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MFA_REQUIRED_ROLES, mfaRequirement } from "@/modules/auth/mfa-policy";
+import { mfaRelaxedForTesting } from "@/modules/auth/mfa-relaxation";
 import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
 
@@ -14,7 +16,13 @@ import { requireUser } from "@/modules/auth/session";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
 
-  if (hasAnyRole(user, MFA_REQUIRED_ROLES)) {
+  // Relajacion del segundo factor SOLO en pruebas (inerte en produccion por construccion, ver
+  // mfa-relaxation). Cuando esta activa, se SALTA el redirect de enroll/challenge (no se marca a nadie
+  // como exento: mfaRequirement sigue pidiendo "enroll", asi que al quitarla todos caen al enroll). Se
+  // avisa con un banner permanente para todos, incluido el admin.
+  const mfaRelaxed = mfaRelaxedForTesting();
+
+  if (hasAnyRole(user, MFA_REQUIRED_ROLES) && !mfaRelaxed) {
     const supabase = await createSupabaseServerClient();
     // getClaims valida el JWT server-side (como getUser; en local cae a getUser)
     // y expone el claim aal sin tocar el user de getSession, asi que no dispara la
@@ -31,11 +39,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <AppShell
-      user={{ fullName: user.fullName, email: user.email }}
-      navItems={navItemsForRoles(user.roles)}
-    >
-      {children}
-    </AppShell>
+    <>
+      {mfaRelaxed ? <MfaRelaxedBanner /> : null}
+      <AppShell
+        user={{ fullName: user.fullName, email: user.email }}
+        navItems={navItemsForRoles(user.roles)}
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }
