@@ -80,7 +80,7 @@ const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 // v3 (2026-08-12): pase de instrumento (porte de contenido de Gildardo, ATLAS_v8.html). Bump de UUID a
 // proposito (no in-place): las evaluaciones existentes quedan en la v2 (55...552), completas y no
 // corregibles (gate de version, CP3). Ver el changelog en la creacion de la survey_version abajo.
-const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555553";
+const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555554";
 // La v2 (55...552) se preserva intacta (los ids llevan la version): no se toca al sembrar la v3.
 // UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
 // asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
@@ -221,7 +221,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"] },
   { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"] },
   { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal"] },
-  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos"] },
+  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos", "Otros"] },
   // D5 · Epigenetico / LE8
   { key: "d5_36", type: "opcion", text: "¿Le han diagnosticado hipertensión arterial?", options: ["Sí", "No", "No sé"], engine: true },
   { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
@@ -231,8 +231,11 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
   { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna"] },
   // D6 · Alergias y salud digestiva
-  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos"] },
+  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otras"] },
   { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa"] },
+  // d6_qx (cirugias) va AQUI, tras Intolerancias (orden del v8 al dia); antes quedaba tras los sintomas
+  // digestivos (Nauseas), donde no tenia sentido (Santiago, cotejo punto l).
+  { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"] },
   { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", sub: "Síntomas digestivos (ítems 45 a 51): con qué frecuencia los presenta", options: GI_OPC },
   { key: "d6_46", type: "opcion", text: "Gases / flatulencia", options: GI_OPC },
   { key: "d6_47", type: "opcion", text: "Dolor abdominal", options: GI_OPC },
@@ -240,10 +243,6 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d6_49", type: "opcion", text: "Estreñimiento", options: GI_OPC },
   { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC },
   { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC },
-  // ECA1: cirugias digestivas/metabolicas (v8 num 63, isNew). Solo REGISTRO clinico (P-16, Gildardo
-  // 2026-08-09: NO modifica el calculo) -> sin engine/field_key. Va en D6 para agrupar con "Alergias y
-  // digestion" (el order_index se recalcula solo por posicion; D7/D8 se corren una posicion).
-  { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"] },
   // D7 · Hidratacion (bebidas: conteo por dia)
   { key: "d7_52", type: "contador", text: "Café (tazas por día)" },
   { key: "d7_53", type: "contador", text: "Té (tazas por día)" },
@@ -477,6 +476,16 @@ async function main() {
   );
   check(
     "survey_versions",
+    // version_number 4 (2026-08-14): bump PARCIAL, solo lo que Gildardo YA implemento en su archivo al dia
+    // (gildardo-2026-08-13/ATLAS_v8.html), NO propuesta nuestra:
+    //   a) d4_35 (suplementos) gana la opcion "Otros" y d6_43 (alergias) "Otras" (texto libre), VERBATIM de
+    //      su archivo (el token es suyo: `.includes("Otros")` / `.includes("Otras")`). Las otras 7 de la lista
+    //      ECA4b siguen SIN aprobar (es una pregunta a Gildardo, no una decision suya; ver LANZAMIENTO): NO
+    //      entran hasta que responda. El motor no matchea "Otro/Otra/s" (candado verde; ver ECA4b).
+    //   b) d6_qx (cirugias) se reordena tras d6_44 (Intolerancias), como en su archivo; antes quedaba tras
+    //      los sintomas digestivos (Nauseas), sin sentido (cotejo punto l). El order_index sigue la posicion.
+    // La v3 (id ...553) se PRESERVA intacta (ids con version); las evaluaciones v3 siguen completas y quedan
+    // NO corregibles (gate de version). Historico de v3 (comentario anterior) abajo.
     // version_number 3 (2026-08-12): PASE DE INSTRUMENTO. Contenido nuevo que cambia lo que ve/responde el
     // paciente -> version nueva (regla de versionado). Incluye, todos VERBATIM de ATLAS_v8.html:
     //   1) Ejemplos de alimentos y anclas de porcion en D1 (columna hint; ECA2): "espinaca, acelga...;
@@ -493,7 +502,7 @@ async function main() {
     // NO toca ninguna opcion de los 13 field_key del diagnostico (candado de acoplamiento verde). La v2
     // (SURVEY_VERSION_PREV_ID) se PRESERVA intacta (ids con version): las evaluaciones viejas siguen
     // completas y quedan no corregibles (gate de version).
-    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 3 }, { onConflict: "id" })).error,
+    (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: 4 }, { onConflict: "id" })).error,
   );
   // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
   // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
