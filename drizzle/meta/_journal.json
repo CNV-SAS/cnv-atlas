@@ -477,6 +477,13 @@
       "when": 1786558871563,
       "tag": "0067_careless_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1786733207304,
+      "tag": "0068_wide_molten_man",
+      "breakpoints": true
     }
   ]
 }

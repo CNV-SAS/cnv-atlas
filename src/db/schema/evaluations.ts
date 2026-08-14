@@ -41,6 +41,19 @@ export const evaluations = pgTable(
     // aqui y no en patient_profiles). MULTI-select en el archivo de Gildardo: se guarda como arreglo JSON de
     // strings (mismo patron que las respuestas opcion_multiple). Opcional (nullable); sin efecto en el motor.
     reasonForVisit: text("reason_for_visit"),
+    // Caracterizacion sociodemografica DEL ENCUENTRO (versionada por evaluacion, no solo en el perfil):
+    // etnia, educacion, ocupacion, estado civil y estrato pueden cambiar entre consultas, y guardarlas
+    // solo en patient_profiles (que se sobrescribe) perdia el historico. Columnas (no JSONB): el
+    // observatorio estratifica por estos campos, sobre todo la etnia, y filtrar en JSONB es mas lento y
+    // fragil. Opcionales (nullable); las evaluaciones anteriores a esta captura quedan en null (no se
+    // copia el valor actual del perfil: seria fabricar un historico falso). La etnia (dato sensible, Ley
+    // 1581) se persiste aqui SOLO con la autorizacion de investigacion vigente, igual que en el perfil
+    // (mismo gate en el writer). El perfil sigue siendo la fuente del PREFILL en seguimiento.
+    educationLevel: text("education_level"),
+    occupation: text("occupation"),
+    maritalStatus: text("marital_status"),
+    socioeconomicStratum: text("socioeconomic_stratum"),
+    ethnicity: text("ethnicity"),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion

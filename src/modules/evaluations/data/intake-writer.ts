@@ -383,6 +383,7 @@ async function writeCharacterization(
         .limit(1);
       if (!inv) ethnicity = null; // sin autorizacion de investigacion, no se guarda la etnia
     }
+    // (1) PERFIL: el "ultimo valor conocido" del paciente (fuente del prefill en seguimiento).
     await tx
       .update(patientProfiles)
       .set({
@@ -393,6 +394,19 @@ async function writeCharacterization(
         ethnicity,
       })
       .where(eq(patientProfiles.patientId, target.patientId));
+    // (2) EVALUACION: el valor DE ESTE ENCUENTRO (versionado, para el historico). Misma `ethnicity` YA
+    // gateada por la autorizacion de investigacion (care a: el gate cubre las DOS escrituras; sin
+    // autorizacion, `ethnicity` es null en ambas). El observatorio estratifica por estas columnas.
+    await tx
+      .update(evaluations)
+      .set({
+        educationLevel: profile.educationLevel,
+        occupation: profile.occupation,
+        maritalStatus: profile.maritalStatus,
+        socioeconomicStratum: profile.socioeconomicStratum,
+        ethnicity,
+      })
+      .where(eq(evaluations.id, target.evaluationId));
   }
   if (reasonForVisit !== undefined) {
     // Multi-select: se serializa como arreglo JSON; vacio => null (limpia, no guarda "[]").
