@@ -236,6 +236,8 @@ DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
 
 Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.** Y `db:check:cloud` entra a la rutina: correrlo (contra la NUBE) antes de dar por bueno un despliegue.
 
+**REGLA DE SECUENCIA (hallazgo 2026-08-15): cuando una migración va a la NUBE, correr TAMBIÉN `pnpm db:sync` en LOCAL.** Son DOS bases distintas: aplicar la migración solo a la nube deja la base local atrás, y los tests DB-real empiezan a fallar por algo ajeno al código (p. ej. `column ... does not exist`, como paso con la 0068 del bloque m: 29 tests en rojo por una columna que existia en la nube pero no en local). `db:sync` (local) aplica la migración local + regenera los tipos en un comando, asi ni la base ni los tipos quedan atras. Es el mismo patron ya ligado para los tipos, extendido a la base.
+
 ### Regenerar los tipos de Supabase tras una migración que toque enums o columnas (registrado 2026-08-11)
 
 `src/types/database.generated.ts` son los tipos que usa el CLIENTE de Supabase (`createSupabaseServerClient`), y se generan con **`pnpm db:types`** (`supabase gen types typescript --local`, contra el stack LOCAL). **NO es automático: no lo corre `db:migrate`.** Si una migración agrega valores a un enum o columnas y no se regenera, el cliente queda con tipos VIEJOS y un `.eq("columna", "valor_nuevo")` tipado no compila (o peor, compila con el tipo viejo).

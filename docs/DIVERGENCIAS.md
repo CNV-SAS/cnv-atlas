@@ -49,3 +49,8 @@
 ---
 
 *Cuando aparezca una divergencia nueva, entra aquí con su `DIV-N`, apuntando a la decisión que la autoriza. Si una deja de ser divergencia (Gildardo absorbe el cambio en su archivo), se retira con nota.*
+
+**DIV-9 · La tabla de composición conserva GEB (metabolismo basal) y GET (gasto total), que el HTML no lista.**
+- El HTML de Gildardo no muestra el metabolismo basal ni el gasto energético total en su tabla de Wang; Atlas los conserva en el Nivel V (Cuerpo entero), con la referencia del equipo Biody para el GEB.
+- Por qué: Santiago los quiere (información útil para el profesional) y no contradicen nada del modelo (son medidas del equipo, no un cálculo del motor ANI-BIS-E). El QUÉ del HTML manda en lo clínico; agregar dos medidas del equipo que orientan al profesional es del CÓMO nuestro. Decisión Santiago 2026-08-15.
+- Cómo: `composition-map.ts` Nivel V (filas GEB/GET). Cotejo de Wang, 2026-08-15.
