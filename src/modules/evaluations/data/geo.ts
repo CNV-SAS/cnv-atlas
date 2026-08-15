@@ -2,10 +2,19 @@
 // proyecto: es una superficie publica (la encuesta), no puede depender de un servicio externo.
 //
 // - COUNTRIES: lista amplia, para un <select>. Colombia es el default (es donde estan los integrantes).
-// - COLOMBIA_CITIES: lista CURADA (capitales de departamento + ciudades principales) para un <datalist>.
-//   NO es exhaustiva a proposito: el campo de ciudad acepta texto libre, asi que un municipio o
-//   corregimiento que no este en la lista se escribe igual y se guarda en el mismo campo (no hay "Otra"
-//   que llene otro lado). Para paises distintos de Colombia, la ciudad va como texto libre (sin datalist).
+// - COLOMBIA_CITIES_GEO: lista CURADA de ciudades de Colombia, cada una con su departamento, region
+//   natural y ALTITUD (msnm). La altitud y la region se DERIVAN de la ciudad al leer (`cityGeo`), NO se le
+//   preguntan al paciente ni se persisten por evaluacion: son un dato de la ciudad, no del paciente. Si se
+//   corrige una altitud, todas las lecturas se corrigen solas (RESPUESTA_GILDARDO 2026-08-15 §3: la altitud
+//   entra al observatorio como caracterizacion; el efecto fisiologico es de la altura de residencia).
+//   El selector de ciudad es un dropdown fijo por esta lista + "Otra" -> texto libre (la ciudad libre y los
+//   paises distintos de Colombia NO tienen altitud derivada: cityGeo devuelve null, no se inventa).
+//
+// FUENTE de las altitudes: altitud de la CABECERA MUNICIPAL segun IGAC / DANE (dominio publico),
+// consolidadas en las fichas municipales de Wikipedia (que citan la fuente oficial). Valores redondeados a
+// msnm. Verificadas contra fuente las capitales departamentales; las cabeceras no capitales usan el mismo
+// dato oficial de cabecera. Si el observatorio va a segmentar por altitud, la deriva de aqui (una sola
+// fuente), no de una columna por paciente.
 
 export const DEFAULT_COUNTRY = "Colombia";
 
@@ -37,14 +46,111 @@ export const COUNTRIES: readonly string[] = [
   "Venezuela", "Vietnam", "Yemen", "Yibuti", "Zambia", "Zimbabue",
 ];
 
-export const COLOMBIA_CITIES: readonly string[] = [
-  "Arauca", "Armenia", "Barrancabermeja", "Barranquilla", "Bello", "Bogotá", "Bucaramanga",
-  "Buenaventura", "Buga", "Cali", "Cartagena", "Cartago", "Cúcuta", "Chía", "Ciénaga", "Dosquebradas",
-  "Duitama", "Envigado", "Facatativá", "Florencia", "Floridablanca", "Fusagasugá", "Girardot", "Girón",
-  "Ibagué", "Inírida", "Ipiales", "Itagüí", "Jamundí", "La Dorada", "Leticia", "Lorica", "Magangué",
-  "Maicao", "Malambo", "Manizales", "Medellín", "Mitú", "Mocoa", "Montería", "Neiva", "Ocaña", "Palmira",
-  "Pasto", "Pereira", "Piedecuesta", "Pitalito", "Popayán", "Puerto Carreño", "Quibdó", "Riohacha",
-  "Rionegro", "Sabanalarga", "Sahagún", "San Andrés", "San José del Guaviare", "Santa Marta", "Sincelejo",
-  "Soacha", "Sogamoso", "Soledad", "Tuluá", "Tumaco", "Tunja", "Turbo", "Valledupar", "Villavicencio",
-  "Yopal", "Yumbo", "Zipaquirá",
+// Las 5 regiones naturales de Colombia + Insular (San Andrés). Correlaciona con altitud (Andina alta,
+// Caribe/Pacifica bajas); ambas van al observatorio como caracterizacion, NUNCA como coeficiente de
+// correccion de ningun indice (DATA_GOVERNANCE, decision 2026-08-15).
+export type NaturalRegion = "Andina" | "Caribe" | "Pacífica" | "Orinoquía" | "Amazonía" | "Insular";
+
+export type ColombiaCity = {
+  ciudad: string;
+  departamento: string;
+  region: NaturalRegion;
+  altitudMsnm: number; // altitud de la cabecera municipal (IGAC/DANE)
+};
+
+// Ciudades de Colombia con departamento, region natural y altitud (msnm). Ordenadas alfabeticamente.
+export const COLOMBIA_CITIES_GEO: readonly ColombiaCity[] = [
+  { ciudad: "Arauca", departamento: "Arauca", region: "Orinoquía", altitudMsnm: 125 },
+  { ciudad: "Armenia", departamento: "Quindío", region: "Andina", altitudMsnm: 1483 },
+  { ciudad: "Barrancabermeja", departamento: "Santander", region: "Andina", altitudMsnm: 76 },
+  { ciudad: "Barranquilla", departamento: "Atlántico", region: "Caribe", altitudMsnm: 18 },
+  { ciudad: "Bello", departamento: "Antioquia", region: "Andina", altitudMsnm: 1450 },
+  { ciudad: "Bogotá", departamento: "Bogotá D.C.", region: "Andina", altitudMsnm: 2640 },
+  { ciudad: "Bucaramanga", departamento: "Santander", region: "Andina", altitudMsnm: 959 },
+  { ciudad: "Buenaventura", departamento: "Valle del Cauca", region: "Pacífica", altitudMsnm: 7 },
+  { ciudad: "Buga", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 969 },
+  { ciudad: "Cali", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 1018 },
+  { ciudad: "Cartagena", departamento: "Bolívar", region: "Caribe", altitudMsnm: 2 },
+  { ciudad: "Cartago", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 917 },
+  { ciudad: "Cúcuta", departamento: "Norte de Santander", region: "Andina", altitudMsnm: 320 },
+  { ciudad: "Chía", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2564 },
+  { ciudad: "Ciénaga", departamento: "Magdalena", region: "Caribe", altitudMsnm: 3 },
+  { ciudad: "Dosquebradas", departamento: "Risaralda", region: "Andina", altitudMsnm: 1400 },
+  { ciudad: "Duitama", departamento: "Boyacá", region: "Andina", altitudMsnm: 2530 },
+  { ciudad: "Envigado", departamento: "Antioquia", region: "Andina", altitudMsnm: 1575 },
+  { ciudad: "Facatativá", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2586 },
+  { ciudad: "Florencia", departamento: "Caquetá", region: "Amazonía", altitudMsnm: 242 },
+  { ciudad: "Floridablanca", departamento: "Santander", region: "Andina", altitudMsnm: 925 },
+  { ciudad: "Fusagasugá", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 1728 },
+  { ciudad: "Girardot", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 289 },
+  { ciudad: "Girón", departamento: "Santander", region: "Andina", altitudMsnm: 777 },
+  { ciudad: "Ibagué", departamento: "Tolima", region: "Andina", altitudMsnm: 1285 },
+  { ciudad: "Inírida", departamento: "Guainía", region: "Amazonía", altitudMsnm: 100 },
+  { ciudad: "Ipiales", departamento: "Nariño", region: "Andina", altitudMsnm: 2897 },
+  { ciudad: "Itagüí", departamento: "Antioquia", region: "Andina", altitudMsnm: 1550 },
+  { ciudad: "Jamundí", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 975 },
+  { ciudad: "La Dorada", departamento: "Caldas", region: "Andina", altitudMsnm: 178 },
+  { ciudad: "Leticia", departamento: "Amazonas", region: "Amazonía", altitudMsnm: 96 },
+  { ciudad: "Lorica", departamento: "Córdoba", region: "Caribe", altitudMsnm: 8 },
+  { ciudad: "Magangué", departamento: "Bolívar", region: "Caribe", altitudMsnm: 20 },
+  { ciudad: "Maicao", departamento: "La Guajira", region: "Caribe", altitudMsnm: 50 },
+  { ciudad: "Malambo", departamento: "Atlántico", region: "Caribe", altitudMsnm: 10 },
+  { ciudad: "Manizales", departamento: "Caldas", region: "Andina", altitudMsnm: 2160 },
+  { ciudad: "Medellín", departamento: "Antioquia", region: "Andina", altitudMsnm: 1495 },
+  { ciudad: "Mitú", departamento: "Vaupés", region: "Amazonía", altitudMsnm: 200 },
+  { ciudad: "Mocoa", departamento: "Putumayo", region: "Amazonía", altitudMsnm: 594 },
+  { ciudad: "Montería", departamento: "Córdoba", region: "Caribe", altitudMsnm: 18 },
+  { ciudad: "Neiva", departamento: "Huila", region: "Andina", altitudMsnm: 442 },
+  { ciudad: "Ocaña", departamento: "Norte de Santander", region: "Andina", altitudMsnm: 1202 },
+  { ciudad: "Palmira", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 1001 },
+  { ciudad: "Pasto", departamento: "Nariño", region: "Andina", altitudMsnm: 2527 },
+  { ciudad: "Pereira", departamento: "Risaralda", region: "Andina", altitudMsnm: 1411 },
+  { ciudad: "Piedecuesta", departamento: "Santander", region: "Andina", altitudMsnm: 1005 },
+  { ciudad: "Pitalito", departamento: "Huila", region: "Andina", altitudMsnm: 1318 },
+  { ciudad: "Popayán", departamento: "Cauca", region: "Andina", altitudMsnm: 1738 },
+  { ciudad: "Puerto Carreño", departamento: "Vichada", region: "Orinoquía", altitudMsnm: 51 },
+  { ciudad: "Quibdó", departamento: "Chocó", region: "Pacífica", altitudMsnm: 43 },
+  { ciudad: "Riohacha", departamento: "La Guajira", region: "Caribe", altitudMsnm: 3 },
+  { ciudad: "Rionegro", departamento: "Antioquia", region: "Andina", altitudMsnm: 2125 },
+  { ciudad: "Sabanalarga", departamento: "Atlántico", region: "Caribe", altitudMsnm: 100 },
+  { ciudad: "Sahagún", departamento: "Córdoba", region: "Caribe", altitudMsnm: 60 },
+  { ciudad: "San Andrés", departamento: "San Andrés y Providencia", region: "Insular", altitudMsnm: 1 },
+  { ciudad: "San José del Guaviare", departamento: "Guaviare", region: "Amazonía", altitudMsnm: 175 },
+  { ciudad: "Santa Marta", departamento: "Magdalena", region: "Caribe", altitudMsnm: 6 },
+  { ciudad: "Sincelejo", departamento: "Sucre", region: "Caribe", altitudMsnm: 213 },
+  { ciudad: "Soacha", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2565 },
+  { ciudad: "Sogamoso", departamento: "Boyacá", region: "Andina", altitudMsnm: 2569 },
+  { ciudad: "Soledad", departamento: "Atlántico", region: "Caribe", altitudMsnm: 10 },
+  { ciudad: "Tuluá", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 973 },
+  { ciudad: "Tumaco", departamento: "Nariño", region: "Pacífica", altitudMsnm: 2 },
+  { ciudad: "Tunja", departamento: "Boyacá", region: "Andina", altitudMsnm: 2820 },
+  { ciudad: "Turbo", departamento: "Antioquia", region: "Caribe", altitudMsnm: 2 },
+  { ciudad: "Valledupar", departamento: "Cesar", region: "Caribe", altitudMsnm: 168 },
+  { ciudad: "Villavicencio", departamento: "Meta", region: "Orinoquía", altitudMsnm: 467 },
+  { ciudad: "Yopal", departamento: "Casanare", region: "Orinoquía", altitudMsnm: 350 },
+  { ciudad: "Yumbo", departamento: "Valle del Cauca", region: "Andina", altitudMsnm: 1021 },
+  { ciudad: "Zipaquirá", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2650 },
 ];
+
+// Nombres para el dropdown de ciudad (Colombia). Derivado de la lista geo: una sola fuente.
+export const COLOMBIA_CITIES: readonly string[] = COLOMBIA_CITIES_GEO.map((c) => c.ciudad);
+
+// Indice para la derivacion al leer (normalizado sin acentos ni mayusculas, para tolerar como se guardo).
+const CITY_INDEX: Map<string, ColombiaCity> = new Map(
+  COLOMBIA_CITIES_GEO.map((c) => [normalizeCity(c.ciudad), c]),
+);
+function normalizeCity(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, ""); // quita diacriticos combinantes
+}
+
+// Deriva departamento, region y altitud desde la ciudad guardada. null si la ciudad no esta en la lista
+// (texto libre "Otra", o pais distinto de Colombia): NO se inventa altitud. Es la unica via de altitud/region;
+// no hay columna por paciente (derivar al leer, decision 2026-08-15 §3).
+export function cityGeo(ciudad: string | null | undefined): ColombiaCity | null {
+  if (!ciudad) return null;
+  return CITY_INDEX.get(normalizeCity(ciudad)) ?? null;
+}
