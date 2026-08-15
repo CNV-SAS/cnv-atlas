@@ -86,15 +86,7 @@ Los dos valores clasifican igual aquí (ISCM-1, Bajo riesgo), así que el profes
 
 ---
 
-# B. Pendiente de tu lado (no son preguntas nuestras, esperan tu entrega)
-
-- **La tabla de referencia MCA_ref / hidSG_ref por sexo/edad** (P-17). Nos dijiste que la entregas; mientras tanto dejamos esas dos salidas vacías (no degradadas). Gatea el término MCA del ISCM (ligado al punto 5) y dos badges.
-- **La redacción de "conducta propia" por ruta** (P-15): cuando una ruta remite a la misma profesión que atiende, no es remisión sino conducta propia. Necesitamos la lista de auto-remisiones por ruta y el texto con que corregir cada una.
-- **El archivo HTML al día.** El que tenemos es el del 13; en tu mensaje mencionabas un adjunto que no nos llegó. Usamos tu archivo para verificar que Atlas se comporta igual que tu modelo, así que uno desactualizado nos hace corregir cosas que ya corregiste.
-
----
-
-# C. Confirmaciones (no requieren que decidas nada)
+# B. Confirmaciones (no requieren que decidas nada)
 
 - **El radar de severidad** (pregunta de la ronda anterior): verificamos en tu archivo del 13 que el radar ya usa cuatro niveles (Bajo / Leve / Moderado / Alto), la misma escala que la severidad por dominio. Damos por resuelto que el radar mide lo mismo que la severidad por dominio, salvo que nos corrijas.
 
