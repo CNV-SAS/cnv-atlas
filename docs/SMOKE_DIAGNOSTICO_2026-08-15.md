@@ -1,50 +1,39 @@
-# Smoke de contenido: Diagnóstico completo (antes del rediseño)
+# Smoke de Diagnóstico (dirigido): verifica estos puntos, no todo
 
 **Para:** Santiago. **Fecha:** 2026-08-15.
-**Objetivo:** verificar el CONTENIDO de Diagnóstico contra las capturas del HTML de Gildardo, ANTES de que el diseño gráfico cambie la forma. Si algo está mal y se descubre después del rediseño, no se podrá saber si fue el contenido o la forma.
-
-**Qué mirar:** si FALTA algo o SOBRA algo respecto al HTML. NO la forma (colores, espaciado, tamaños): eso cambia a propósito en el diseño. Ten las capturas del HTML al lado.
-
-**Requisito:** una evaluación con diagnóstico emitido (medición BIS + encuesta completa). Usa una de las demo o haz un intake completo.
+**Cambio de método:** ya no es "compara todo contra el HTML" (eso dependía de que recordaras el listado). Es "verifica estos N puntos concretos" (lo que se construyó o cambió). Los que YA sabemos que faltan están listados abajo aparte: **no los reportes como bugs nuevos.**
 
 ---
 
-## 1. Subpestaña "Diagnóstico Funcional" (la que abre por defecto)
+## A. Verifica que esté BIEN (lo construido)
 
-- [ ] La **franja de veredicto** arriba: estado EFR, riesgo integrado, ruta prioritaria. ¿Coinciden con el HTML?
-- [ ] **Los 5 dominios del DFI** (Celular-Eléctrico, Metabólico-Estructural, Envejecimiento, Conductual-Perceptual, Epigenético-Contextual): cada uno con su severidad (Bajo/Leve/Moderado/Alto), su lectura y sus items. ¿Están los cinco, en ese orden, con los mismos datos que el HTML?
-- [ ] **Riesgo integrado** (BAJO/MEDIO/ALTO/CRÍTICO + descripción + score 0-100).
-- [ ] **Radar** de 5 dominios (4 niveles). El color y el sombreado/sólido cambian en el diseño; aquí solo mira que los cinco ejes y sus niveles sean los del HTML.
-- [ ] **Diana de 81 estados** + botón "Explorar otros estados": el estado del paciente y, al explorar, el detalle del estado seleccionado (mecanismo, biomarcadores, riesgos, nutracéuticos). ¿Faltan campos respecto al HTML?
-- [ ] **Read-out D2-D8** (las respuestas de la encuesta por dominio, en texto).
-- [ ] **Criterio del profesional** con el botón "Generar borrador con IA" y el campo grande.
-- [ ] **Confirmar diagnóstico** (y corregir, si aplica).
+1. **Tabla de Wang (Composición), filas nuevas.** Aparecen: **Cadera** (Nivel V), **MG hidratación constante** (Nivel IV), **FFW** (Nivel II). Y los dos desplegables:
+   - "Ver desglose de agua (con/sin grasa, L y %)" → abre 6 filas de agua.
+   - "Ver parámetros bioeléctricos crudos" → abre Re, Ri, R∞, C, Fo + impedancias (R50, reactancia, Z5, Z50, Z200).
+2. **El colapso sobrevive:** abre un desplegable, ve a "Diagnóstico Funcional" y vuelve a "Composición". Debe seguir abierto (vive en la URL).
+3. **Decimales:** los valores muestran dos decimales; un entero NO muestra ".00".
+4. **Botón de IA en el criterio del profesional:** "Generar borrador con IA" produce un texto que cae en el campo grande; puedes editarlo y guardarlo como criterio.
+5. **Mensaje de D8 (contexto sociodemográfico), el defecto que encontraste:**
+   - En una evaluación **vieja/demo** cuyo paciente SÍ tiene los datos en el perfil, D8 ahora dice *"Esta evaluación es anterior al registro del contexto por evaluación. Los datos del paciente están en su perfil..."*, NO "no se capturó".
+   - En una **evaluación NUEVA** (intake completo hecho hoy, con los sociodemográficos llenos), D8 debe **mostrar los valores** (educación, ocupación, etc.). Esto verifica que las columnas nuevas sí se guardan (una eval seedeada/demo no las trae; usa un intake real).
+6. **Veto conductual** (si lo activas): un intake donde en conducta alimentaria se marque un método de control de peso de riesgo (vómito, laxantes, ayuno). Debe salir el banner del DFI y el mensaje en la tarjeta del dominio Conductual. Si no lo activas, no pasa nada (no es bug).
 
-## 2. Subpestaña "Composición Corporal"
+## B. Sanidad rápida (que carguen)
 
-- [ ] **Clasificación antropométrica** (IMC, cintura, índice cintura-talla) con su clasificación OMS.
-- [ ] **Tabla de Wang** con TODAS las filas nuevas. Revisa nivel por nivel contra el HTML:
-  - Nivel V: Peso, Estatura, IMC, Cintura, **Cadera** (nueva), GEB, GET.
-  - Nivel IV: Masa grasa (kg y %), **MG hidratación constante** (nueva), MLG, MME-SMM, MMEM, FFMI.
-  - Nivel III: MCA, sólidos EC, masa seca, AEC/MCA, AEC/AIC con grasa (L). Y el desplegable **"Ver desglose de agua (con/sin grasa, L y %)"**: ábrelo y verifica las seis variantes.
-  - Nivel II: ACT, **FFW** (nueva), hidratación sin grasa, proteínas, minerales.
-  - Bioeléctrico: ángulo de fase, y el desplegable **"Ver parámetros bioeléctricos crudos"**: ábrelo y verifica Re, Ri, R∞, C, Fo + impedancias (R50, reactancia, Z5, Z50, Z200).
-- [ ] Los **desplegables** abren y cierran, y **siguen abiertos si vas a Funcional y vuelves** (viven en la URL).
-- [ ] **Dos decimales** en los valores; los enteros NO muestran ".00".
-- [ ] Columna **Δ** y columna **Diagnóstico** (badges).
+7. Las tres subpestañas (Funcional por defecto, Composición, Encuesta) abren con su contenido.
 
-## 3. Subpestaña "Diagnóstico Encuesta"
+---
 
-- [ ] Read-out D1-D8 completo (todas las respuestas de la encuesta).
+## Lo que YA SABEMOS que falta (NO lo reportes, está en cola)
 
-## 4. El veto conductual (si hay un caso que lo active)
-
-El veto se activa cuando el paciente reporta un **método de control de peso de riesgo** (purgas, laxantes, diuréticos, ayuno prolongado) en la sección de conducta alimentaria (D2). No pude confirmar que las demo actuales lo disparen; **si ninguna lo muestra, no es un bug.** Para verlo, haz un intake donde en esa pregunta se marque un método de riesgo. Entonces debe aparecer:
-- [ ] En el header del DFI, el banner: *"Alerta conductual activa: la prioridad es el abordaje psicológico. Queda excluida toda intervención nutricional restrictiva."*
-- [ ] En la tarjeta del dominio Conductual-Perceptual, el mensaje: *"Veto conductual: no iniciar intervención nutricional restrictiva."*
+Estos son de contenido, registrados en BACKLOG, pendientes de construir. No son bugs nuevos:
+- **(b)** Los ítems del DFI (tarjetas de dominio) sin los cortes por sexo ni la línea PABU. Hay que re-portarlos del frozen del 13 (modificación autorizada).
+- **(f)** El subtítulo de la Diana ("9 anillos IFCxIRC × 9 sectores FFMIxFMI = 81 estados") y algún campo del estado seleccionado.
+- **(g2)** EB e ICA-BIS muestran "N/D" (no tienen clasificador en el frozen); pendiente decisión.
+- **Layout Diana/radar** (la Diana ocupa mucho, el radar arrinconado) y comparar estados al lado: eso es la fase de diseño, después.
 
 ---
 
 ## Cómo reportar
 
-Por cada pantalla, una de tres: "coincide", "FALTA X" (algo del HTML que no está), "SOBRA X" (algo que está y no debería). No reportes la forma. Con eso ajustamos el contenido antes de entrar al diseño.
+Por cada punto de A: "bien" o "mal: [qué]". Con eso confirmamos el contenido antes de entrar al diseño.
