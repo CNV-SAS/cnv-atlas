@@ -488,7 +488,32 @@ export function EvaluationResults({
                 </tr>
               </thead>
               <tbody>
-                {INDICATORS.map(({ code, key }) => (
+                {INDICATORS.map(({ code, key }) => {
+                  // EB-BIS no tiene clasificador propio en el frozen (a proposito). Su veredicto de
+                  // envejecimiento ES el del IAE (IAE = EB - edad cronologica), y el HTML lo muestra asi:
+                  // referencia = edad cronologica (= EB - IAE), Δ = IAE, clasificacion = la del IAE. No toca
+                  // la matematica del frozen; es la capa de display resolviendo la fila (g2, 2026-08-15).
+                  const isEb = code === "EB";
+                  const edadCronologica =
+                    isEb && indicators.eb != null && indicators.iae != null
+                      ? indicators.eb - indicators.iae
+                      : null;
+                  const range = indicatorRange(code, indicators, sexM);
+                  const refText = isEb
+                    ? edadCronologica != null
+                      ? edadCronologica.toFixed(1)
+                      : "-"
+                    : (range?.reference ?? "-");
+                  const deltaText = isEb
+                    ? indicators.iae != null
+                      ? `${indicators.iae >= 0 ? "+" : ""}${indicators.iae.toFixed(1)}`
+                      : "-"
+                    : (range?.delta ?? "-");
+                  // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
+                  const classCode = isEb ? "IAE" : code;
+                  const sev = sevByCode[classCode];
+                  const classLabel = classifications[classCode]?.label ?? "N/D";
+                  return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
                       <span className="font-medium text-foreground">{code}</span>
@@ -508,24 +533,25 @@ export function EvaluationResults({
                       {fmtNum(indicators[key], code)}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
-                      {indicatorRange(code, indicators, sexM)?.reference ?? "-"}
+                      {refText}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
-                      {indicatorRange(code, indicators, sexM)?.delta ?? "-"}
+                      {deltaText}
                     </td>
                     <td className="py-2 text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
-                        {sevByCode[code] != null ? (
+                        {sev != null ? (
                           <span
-                            className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sevByCode[code] as number]}`}
+                            className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sev as number]}`}
                             aria-hidden
                           />
                         ) : null}
-                        <span>{classifications[code]?.label ?? "N/D"}</span>
+                        <span>{classLabel}</span>
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
