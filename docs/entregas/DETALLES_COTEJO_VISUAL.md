@@ -325,7 +325,7 @@ Mientras que Atlas no lo pone (lo pone es en el perfil del paciente), pero esto 
 
 **(h) Boton IA + textarea mas grande.** Estado: **ABIERTO, en cola con el boton IA** (aprobado, PLAN_DIAGNOSTICO d). Poner el boton (estetico hasta que funcione) + agrandar el textarea por defecto (la IA lo llena mas).
 
-**(i) Confirmar + corregir juntos.** Estado: **PARCIAL + decision.** Ya los junte en Funcional (checkpoint 2, paneles distintos, care d). Su nueva idea: mover/duplicar "corregir" a la subpestaña ENCUESTA (donde el profesional se entera de que hay que corregir), o dejarlo en ambos (boton corto en Funcional + explicacion larga en Encuesta). Buena. **Decision (Santiago):** Funcional, Encuesta, o ambos.
+**(i) Confirmar + corregir juntos.** Estado: **CERRADA (Santiago, 2026-08-15).** El bloque de corregir vive en FUNCIONAL (con el de confirmar); y en ENCUESTA un ENLACE CORTO por si descubre el error leyendo las respuestas. A construir en la fase de diseno grafico (el contenido ya esta; es donde se coloca).
 
 **(j) Tabla de composicion (Wang) difiere.** Estado: **ABIERTO, cotejo campo por campo.** Diferencias de FORMA (el HTML lista mas filas Nivel III/II con "Sin dato"; Atlas muestra otras filas/valores). Cadera: la MEDIDA no se muestra como fila (icc/ict si se derivan; ver #1 del cotejo de numeros). Los indices antropometricos sobre la tabla (IMC/cintura/ICT): prefieres que se repitan a que falten; de acuerdo, y la regla es que el HTML manda en QUE. Va con el cotejo de la tabla de composicion.
 
