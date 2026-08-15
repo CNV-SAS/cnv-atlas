@@ -277,6 +277,17 @@ Dictamen 2026-08-10 (`entregas/gildardo-2026-08-10/RESPUESTA_BORRADOR_Y_ETNIA.md
 4. **Prohibición de cruce fino.** Cruzar etnia con otras variables (edad exacta, ciudad, profesional tratante) se evalúa contra el mismo umbral, no solo la variable étnica aislada.
 5. **Publicación diferenciada por etnia = terreno de comité de ética**, antes de publicar (no solo antes de recolectar): publicar conclusiones sobre características biológicas de grupos étnicos es sensible y con historia de mal uso.
 
+### Decisión 2026-08-15 (RESPUESTA_GILDARDO §3): dos preguntas separadas + región y altitud
+
+Gildardo aprueba separar en **dos preguntas independientes, ambas opcionales**, porque una sola casilla estaba respondiendo dos preguntas distintas (por eso "mestizo" no cabía en el DANE):
+
+1. **Pertenencia étnica (DANE):** Indígena · Gitano o Rrom · Raizal · Palenquero · Negro, mulato, afrodescendiente o afrocolombiano · Ninguno de los anteriores · Prefiero no responder.
+2. **Ascendencia:** Predominantemente indígena · Predominantemente europea · Predominantemente africana · Mezcla de dos o más de las anteriores · No sé · Prefiero no responder (precedida de "Independientemente de lo anterior").
+
+Y aprueba **añadir dos variables que capturan mejor lo fisiológico sin arrastrar el problema de la raza**: región de origen o de residencia prolongada, y **altitud** (en Colombia la variación es enorme y tiene efecto documentado sobre el hematocrito y el agua corporal, que es justo nuestro terreno).
+
+**Límite de uso, palabras de Gildardo (no negociable):** *"La ascendencia autodeclarada entra al observatorio como variable de caracterización y de exploración, nunca como coeficiente de corrección."* Ningún índice del sistema (ni IFC, ni IRC, ni ISCM, ni la edad bioeléctrica) se ajusta por ascendencia. Es exactamente la práctica que la nefrología retiró en 2021 (coeficiente racial de la filtración glomerular) y que la espirometría está retirando. No se reintroduce por la puerta de atrás. Lo que sí permite es **describir** la cohorte y **explorar** si hay señal, con la heterogeneidad interna declarada como limitación; una eventual publicación tendría que responderse con ancestría medida, no autodeclarada.
+
 ---
 
 ## Menores de edad

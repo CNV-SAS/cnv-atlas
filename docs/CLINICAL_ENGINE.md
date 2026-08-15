@@ -28,6 +28,8 @@ icaBis                  = PABU - 1.618        (desviación del punto áureo φ)
 ```
 ISCM, IEHH, IAE y EB se consumen de la fuente (`bis`/`enc`), no se calculan con una fórmula simple en esta capa. **Pregunta para Gildardo:** ¿dónde se calculan (otra función, el Excel, ingreso manual)?
 
+**Trazabilidad del ISCM cuando la MCA se deriva (RESPUESTA_GILDARDO 2026-08-15 §5).** Confirmado: la MCA debe derivarse cuando el equipo no la trae (`MCA = 1,0162 × AIC + MPM`, `derivarFaltantes`) y entrar al ISCM; `computeISCM` ya trae el respaldo `MCA_dif = MCA − MCA_ref` cuando el export corto no trae la columna del desvío. **Consecuencia a documentar por indicación de Gildardo:** al derivar `MCA_dif`, ese término pasa a depender de **nuestra** referencia poblacional (52,4 % de la masa libre de grasa, fijada el 2026-08-12), NO del valor teórico que calcula el equipo. Son dos referencias distintas y pueden no coincidir: **el ISCM de un paciente con export completo y el de uno con export corto no usan la misma referencia de masa celular.** En la mayoría de casos los dos valores clasifican igual, pero en un paciente con déficit celular el término sí podría mover la clase. Queda anotado en la traza del índice.
+
 ### Clasificadores puros
 `cIFC`, `cIRC`, `cPABU`, `cAF`, `cIR`, `cISCM`, `cIEHH`, `cIAE`, `cFMI`, `cFFMI`, `cSMM`. Cada uno: valor (y a veces `sexo`) devuelve `{ label, color, risk, k }` (k = banda 1/2/3). Los cortes son, según los comentarios del v7, **EXACTOS de los Excel `MAPA_RyF_BIS` y `Mapa E_BIS`** de Gildardo. Por eso los cortes son datos versionados, no constantes de código.
 
