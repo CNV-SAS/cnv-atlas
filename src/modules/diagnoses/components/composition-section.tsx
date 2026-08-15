@@ -13,6 +13,19 @@ import {
 // El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
 import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
+import {
+  computeRefPob,
+  dACTMLG,
+  dAECpct,
+  dAICpct,
+  dEI,
+  dFMpct,
+  dMasaSeca,
+  dSolEC,
+  dVsRef,
+  type DisplayDx,
+  type RefPobEntry,
+} from "../data/composition-display";
 import { SEV_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
@@ -61,12 +74,18 @@ function DiagnosisCell({
   sexoM,
   classifications,
   sevByCode,
+  delta,
+  reference,
 }: {
   rowKey: string;
   value: number | null;
   sexoM: boolean;
   classifications: Classifications;
   sevByCode: Record<string, number | null>;
+  // Δ y referencia EFECTIVOS (con REF_POB si el equipo no traia la referencia): para los clasificadores de
+  // display que comparan valor contra referencia (solEC/masaSeca sobre Δ; volumenes de agua sobre la ref).
+  delta: number | null;
+  reference: number | null;
 }) {
   // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: usar
   // SEV_CLS y no OPTIMO_CLS aca: los clasificadores antropometricos SI emiten sev 1 (Sobrepeso, Riesgo CV
@@ -111,7 +130,20 @@ function DiagnosisCell({
       return sev != null ? badge(label, sev) : <span className="text-xs text-foreground">{label}</span>;
     }
   }
-  // (c) sin clasificacion: guion neutro (ausencia, no "normal"). Se aclara una vez bajo la tabla.
+  // (c) clasificadores de la CAPA DE DISPLAY de Gildardo (NO motor; ver composition-display). Los de Δ
+  // (solEC/masaSeca) usan el Δ efectivo; los de volumen usan la referencia efectiva (con REF_POB).
+  let disp: DisplayDx = null;
+  if (rowKey === "solEC") disp = dSolEC(delta);
+  else if (rowKey === "masaSeca") disp = dMasaSeca(delta);
+  else if (rowKey === "ECW_pct" || rowKey === "ECW_sg_pct") disp = dAECpct(value);
+  else if (rowKey === "ICW_pct" || rowKey === "ICW_sg_pct") disp = dAICpct(value);
+  else if (rowKey === "FM_pct") disp = dFMpct(value, sexoM);
+  else if (rowKey === "act_mlg") disp = dACTMLG(value);
+  else if (rowKey === "ei" || rowKey === "ei_sg") disp = dEI(value);
+  else if (["ECW", "ECW_sg", "ICW", "ICW_sg", "TBW", "FFW", "MCA"].includes(rowKey))
+    disp = dVsRef(value, reference);
+  if (disp) return badge(disp.label, disp.sev);
+  // (d) sin clasificacion: guion neutro (ausencia, no "normal"). Se aclara una vez bajo la tabla.
   return <span className="text-muted-foreground">-</span>;
 }
 
@@ -169,16 +201,32 @@ export function CompositionSection({
     icc: { label: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 },
   };
 
+  // REF_POB (referencias poblacionales de ultimo recurso, capa de display de Gildardo): rellena los `*_ref`
+  // que el equipo NO trajo, para que la columna Referencia (y con ella el Δ y el diagnostico) no queden
+  // vacios. Las derivadas de constantes NO validadas van marcadas "en validacion" (Gildardo dijo "validar",
+  // no "no mostrar"; su HTML las usa). Solo en Diagnostico (en Evaluacion se muestra lo que entro del equipo).
+  const refMap: Record<string, number | null> = {};
+  for (const l of composition.levels)
+    for (const row of l.rows) if (row.refKey) refMap[row.refKey] = row.reference;
+  const refPob: Record<string, RefPobEntry> = showDiagnosis
+    ? computeRefPob(composition.peso, composition.talla, sexoM, (k) => refMap[k] ?? null)
+    : {};
+  const hayEnValidacion = Object.values(refPob).some((e) => e.enValidacion);
+
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
     const motorRef = references[r.key]; // FFMI/FMI/AF/IR: rango completo del motor + Δ ya formateado
     const a = anthroRef[r.key];
+    // Referencia EFECTIVA para las filas de display: la del equipo, o REF_POB si el equipo no la trajo.
+    const refPobEntry = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
+    const effectiveRef = r.reference ?? refPobEntry?.value ?? null;
+    const enValidacion = !!refPobEntry?.enValidacion;
     const refText = motorRef
       ? motorRef.reference
       : a
         ? a.label
-        : (r.referenceLabel ?? fmt(r.reference, dec));
-    const refNum = a ? a.cut : r.reference;
+        : (r.referenceLabel ?? fmt(effectiveRef, dec));
+    const refNum = a ? a.cut : effectiveRef;
     const deltaMotor = motorRef ? (motorRef.delta ?? "-") : null;
     const delta = r.value != null && refNum != null ? r.value - refNum : null;
     return (
@@ -188,7 +236,17 @@ export function CompositionSection({
           {r.unit ? <span className="text-muted-foreground"> ({r.unit})</span> : null}
         </td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{fmt(r.value, dec)}</td>
-        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">{refText}</td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
+          {refText}
+          {enValidacion ? (
+            <sup
+              className="ml-0.5 text-clinical-warning"
+              title="Referencia en validación por la Dirección Científica (no significa que el dato esté mal)."
+            >
+              *
+            </sup>
+          ) : null}
+        </td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
           {deltaMotor != null
             ? deltaMotor
@@ -204,6 +262,8 @@ export function CompositionSection({
               sexoM={sexoM}
               classifications={classifications}
               sevByCode={sevByCode}
+              delta={delta}
+              reference={effectiveRef}
             />
           </td>
         ) : null}
@@ -292,6 +352,13 @@ export function CompositionSection({
         ) : null}
         {showDiagnosis ? (
           <>
+            {hayEnValidacion ? (
+              <p className="text-xs text-clinical-warning">
+                <span className="font-semibold">*</span> Referencia poblacional en validación por la
+                Dirección Científica (se deriva de peso, talla y sexo cuando el equipo no la trae). No
+                significa que el dato esté mal: espera confirmación.
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">
               IMC, cintura, índice cintura-cadera (ICC) e índice cintura-talla (ICT) usan umbrales de
               referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.

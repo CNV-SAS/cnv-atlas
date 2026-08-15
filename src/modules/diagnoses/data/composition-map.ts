@@ -17,6 +17,7 @@ export type CompositionRow = {
   unit: string;
   decimals?: number; // decimales de display (default 2); AEC/MCA usa 3 (ratio)
   referenceLabel?: string; // etiqueta de referencia si NO es el valor numerico (p. ej. "<0.45")
+  refKey?: string | null; // clave del *_ref del equipo (para que la seccion aplique REF_POB donde falte)
   // Grupo de DETALLE colapsable dentro de su nivel: "agua" (desglose extra/intracelular con/sin grasa,
   // L y %) y "bioelectrico" (Cole-Cole crudo + impedancias). Las filas sin `detail` son las principales,
   // siempre visibles; las de detalle van bajo un desplegable (el dato completo esta, quien no lo necesita
@@ -33,6 +34,8 @@ export type Composition = {
   ict: number | null;
   icc: number | null;
   fmi: number | null; // FMI = FM / talla^2 (derivado); rango/clasificacion sexo-dependientes en la seccion
+  peso: number | null; // para computar REF_POB en la seccion (necesita peso/talla/sexo)
+  talla: number | null; // cm
   aecMca: number | null; // AEC/MCA = ECW/MCA (C12, ver clasificarAecMca)
   // Fecha de la medicion BIS (del Biody), para confirmar QUE se importo. null si no se conoce.
   measurementDate: string | null;
@@ -225,7 +228,7 @@ export function buildComposition(
                   ? fmi
                   : get(valueKey);
       const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
-      return { key: valueKey, label, value, reference, unit, ...(detail ? { detail } : {}) };
+      return { key: valueKey, label, value, reference, unit, refKey, ...(detail ? { detail } : {}) };
     }),
   }));
 
@@ -237,6 +240,8 @@ export function buildComposition(
     ict,
     icc,
     fmi,
+    peso: get("peso"),
+    talla: get("talla"),
     aecMca,
     measurementDate,
     hasDerivedValues,
