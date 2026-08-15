@@ -14,6 +14,9 @@ import {
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
 import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
 import {
+  clasifNHLBI,
+  clasificarASMI,
+  clasificarSMMW,
   computeRefPob,
   dACTMLG,
   dAECpct,
@@ -24,6 +27,7 @@ import {
   dSolEC,
   dVsRef,
   type DisplayDx,
+  pscAFxIR,
   type RefPobEntry,
 } from "../data/composition-display";
 import { SEV_CLS } from "./risk-severity";
@@ -76,6 +80,7 @@ function DiagnosisCell({
   sevByCode,
   delta,
   reference,
+  ctx,
 }: {
   rowKey: string;
   value: number | null;
@@ -86,6 +91,8 @@ function DiagnosisCell({
   // display que comparan valor contra referencia (solEC/masaSeca sobre Δ; volumenes de agua sobre la ref).
   delta: number | null;
   reference: number | null;
+  // Contexto cruzado para NHLBI (imc+cintura) y Mapa AFxIR (af+ir), que no salen del valor de su propia fila.
+  ctx: { imc: number | null; cintura: number | null; af: number | null; ir: number | null };
 }) {
   // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: usar
   // SEV_CLS y no OPTIMO_CLS aca: los clasificadores antropometricos SI emiten sev 1 (Sobrepeso, Riesgo CV
@@ -140,6 +147,10 @@ function DiagnosisCell({
   else if (rowKey === "FM_pct") disp = dFMpct(value, sexoM);
   else if (rowKey === "act_mlg") disp = dACTMLG(value);
   else if (rowKey === "ei" || rowKey === "ei_sg") disp = dEI(value);
+  else if (rowKey === "asmi") disp = clasificarASMI(value, sexoM);
+  else if (rowKey === "smmW") disp = clasificarSMMW(value, sexoM);
+  else if (rowKey === "nhlbi") disp = clasifNHLBI(ctx.imc, ctx.cintura, sexoM);
+  else if (rowKey === "psc") disp = pscAFxIR(ctx.af, ctx.ir, sexoM).dx;
   else if (["ECW", "ECW_sg", "ICW", "ICW_sg", "TBW", "FFW", "MCA"].includes(rowKey))
     disp = dVsRef(value, reference);
   if (disp) return badge(disp.label, disp.sev);
@@ -194,11 +205,27 @@ export function CompositionSection({
   // para ellas, asi que se llena con el UMBRAL/RANGO (OMS sexo-dependiente el ICC; motor el FMI) y la Δ va
   // contra ese corte (el FMI contra el punto medio del rango, como la tabla de indicadores). Las demas
   // filas conservan la referencia del equipo (poblacional, patient-specific): no se pierde informacion.
-  // icc/ict: umbral OMS sexo-dependiente (su Δ va contra el corte). FMI/FFMI/AF/IR usan `references` (rango
-  // del motor, pasado desde la pagina).
-  const anthroRef: Record<string, { label: string; cut: number }> = {
+  // Referencia (etiqueta) + corte (para el Δ) de las filas que NO usan la referencia del equipo ni el
+  // rango del motor (`references`): antropometricas OMS (icc/ict), indices de masa (asmi/smmW) y las de
+  // display con referencia fija (E/I, ACT/MLG, NHLBI). cut ausente => sin Δ (p. ej. NHLBI, clasificacion).
+  const displayRef: Record<string, { label: string; cut?: number }> = {
     ict: { label: "<0.50", cut: 0.5 },
     icc: { label: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 },
+    asmi: { label: sexoM ? "≥7.0" : "≥5.5", cut: sexoM ? 7.0 : 5.5 },
+    smmW: { label: sexoM ? "≥27%" : "≥22%", cut: sexoM ? 27 : 22 },
+    ei: { label: "0.35–0.40", cut: 0.375 },
+    ei_sg: { label: "0.35–0.40", cut: 0.375 },
+    act_mlg: { label: "71–74%", cut: 72.5 },
+    nhlbi: { label: sexoM ? "IMC 18.5–24.9 · CC ≤102 cm" : "IMC 18.5–24.9 · CC ≤88 cm" },
+  };
+  // Valores por clave (para el contexto cruzado de NHLBI/Mapa AFxIR: af/ir salen de otras filas).
+  const valueMap: Record<string, number | null> = {};
+  for (const l of composition.levels) for (const row of l.rows) valueMap[row.key] = row.value;
+  const diagCtx = {
+    imc: composition.imc,
+    cintura: composition.cintura,
+    af: valueMap["AF"] ?? null,
+    ir: valueMap["IR"] ?? null,
   };
 
   // REF_POB (referencias poblacionales de ultimo recurso, capa de display de Gildardo): rellena los `*_ref`
@@ -216,7 +243,7 @@ export function CompositionSection({
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
     const motorRef = references[r.key]; // FFMI/FMI/AF/IR: rango completo del motor + Δ ya formateado
-    const a = anthroRef[r.key];
+    const a = displayRef[r.key];
     // Referencia EFECTIVA para las filas de display: la del equipo, o REF_POB si el equipo no la trajo.
     const refPobEntry = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
     const effectiveRef = r.reference ?? refPobEntry?.value ?? null;
@@ -226,7 +253,7 @@ export function CompositionSection({
       : a
         ? a.label
         : (r.referenceLabel ?? fmt(effectiveRef, dec));
-    const refNum = a ? a.cut : effectiveRef;
+    const refNum = a ? (a.cut ?? null) : effectiveRef;
     const deltaMotor = motorRef ? (motorRef.delta ?? "-") : null;
     const delta = r.value != null && refNum != null ? r.value - refNum : null;
     return (
@@ -264,6 +291,7 @@ export function CompositionSection({
               sevByCode={sevByCode}
               delta={delta}
               reference={effectiveRef}
+              ctx={diagCtx}
             />
           </td>
         ) : null}

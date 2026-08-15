@@ -79,6 +79,9 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       // el mapa se mantiene PURO (sin sexo, testeable sin sesion). refKey null: no hay _ref del equipo.
       ["Índice cintura-cadera (ICC)", "icc", null, ""],
       ["Índice cintura-talla (ICT)", "ict", null, ""],
+      // NHLBI: clasificacion combinada IMC + cintura (capa de display, clasifNHLBI). Sin valor numerico
+      // propio (la clasificacion va en la columna Diagnostico); referencia sexo-dependiente en la seccion.
+      ["Clasificación IMC + cintura (NHLBI)", "nhlbi", null, ""],
       ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
       ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
@@ -96,6 +99,10 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       // FMI: DERIVADO (FM / talla^2), no una columna del equipo. Valor computado en buildComposition; la
       // referencia (rango del MOTOR 3-6/5-9, sexo) y la clasificacion las resuelve composition-section.
       ["Indice de masa grasa (FMI)", "FMI", null, "kg/m²"],
+      // ASMI y SMM/W: indices de masa muscular (clasificadores del motor cASMI/cSMM, EWGSOP2/AWGS; portados
+      // a composition-display por su corte). ASMI = MMEM/talla^2 (computado); SMM/W = columna del equipo.
+      ["ASMI - Masa muscular apendicular", "asmi", null, "kg/m²"],
+      ["SMM/W - Radio músculo/peso", "smmW", null, "%"],
     ],
   },
   {
@@ -122,6 +129,11 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       // composition-section (rango del motor via indicator-ranges). El valor es la columna cruda del equipo.
       ["Ángulo de fase (AF)", "AF", null, "°"],
       ["IR - Radio de impedancia", "IR", null, ""],
+      // E/I (radio agua extra/intracelular) y Mapa AFxIR (Perfil de Salud Celular): clasificadores de
+      // display (dEI / pscAFxIR). E/I referencia fija "0.35-0.40"; el mapa no tiene valor numerico.
+      ["E/I con grasa (AEC/AIC)", "ei", null, ""],
+      ["E/I sin grasa (AEC_sg/AIC_sg)", "ei_sg", null, ""],
+      ["Mapa AFxIR (PSC)", "psc", null, ""],
     ],
   },
   {
@@ -132,6 +144,8 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       // (verbatim ATLAS_v8.html Nivel II). Se resuelve en buildComposition.
       ["FFW - Agua libre de grasa", "FFW", null, "L"],
       ["Hidratación sin grasa", "hidSG", "hidSG_ref", "%"],
+      // ACT/MLG (hidratacion de la masa sin grasa, %): clasificador de display dACTMLG, referencia "71-74%".
+      ["ACT/MLG - Hidratación masa sin grasa", "act_mlg", null, "%"],
       ["Proteína total", "protTotal", "protTotal_ref", "kg"],
       ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
       ["Contenido mineral oseo", "CMO", "CMO_ref", "kg"],
@@ -201,10 +215,15 @@ export function buildComposition(
   // resuelve composition-section. talla en cm -> m.
   const _fm = get("FM");
   const _tallaM = get("talla") != null ? (get("talla") as number) / 100 : null;
-  const fmi =
-    _fm != null && _tallaM != null && _tallaM > 0
-      ? parseFloat((_fm / (_tallaM * _tallaM)).toFixed(2))
-      : null;
+  const div = (a: number | null, b: number | null, dec: number, mult = 1): number | null =>
+    a != null && b != null && b !== 0 ? parseFloat(((a / b) * mult).toFixed(dec)) : null;
+  const fmi = _fm != null && _tallaM != null && _tallaM > 0 ? div(_fm, _tallaM * _tallaM, 2) : null;
+  // Filas de indices de Nivel III/IV (valores computados; su clasificacion la resuelve composition-section):
+  const asmi = _tallaM != null && _tallaM > 0 ? div(get("MMEM"), _tallaM * _tallaM, 2) : null;
+  const smmW = get("smmW");
+  const ei = div(get("ECW"), get("ICW"), 3); // radio E/I con grasa
+  const eiSg = div(get("ECW_sg"), get("ICW_sg"), 3); // radio E/I sin grasa
+  const actMlg = div(get("TBW"), get("FFM"), 1, 100); // ACT/MLG % (hidratacion masa sin grasa)
 
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
@@ -213,20 +232,20 @@ export function buildComposition(
       if (valueKey === "aec_mca") {
         return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
       }
-      // Cintura/cadera usan la MEDIDA; icc/ict/FMI su valor computado; FFW su referencia computada; el
-      // resto por su header de contrato. La referencia sexo-dependiente de icc/FMI la pone la seccion.
-      const value =
-        valueKey === "cintura"
-          ? cintura
-          : valueKey === "cadera"
-            ? cadera
-            : valueKey === "icc"
-              ? icc
-              : valueKey === "ict"
-                ? ict
-                : valueKey === "FMI"
-                  ? fmi
-                  : get(valueKey);
+      // Valores COMPUTADOS (no columnas del equipo): circunferencias medidas, ratios y derivados. Su
+      // clasificacion sexo-dependiente la resuelve composition-section. El resto sale por su header.
+      const computed: Record<string, number | null> = {
+        cintura,
+        cadera,
+        icc,
+        ict,
+        FMI: fmi,
+        asmi,
+        ei,
+        ei_sg: eiSg,
+        act_mlg: actMlg,
+      };
+      const value = valueKey in computed ? computed[valueKey] : get(valueKey);
       const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
       return { key: valueKey, label, value, reference, unit, refKey, ...(detail ? { detail } : {}) };
     }),

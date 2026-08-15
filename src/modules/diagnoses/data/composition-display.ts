@@ -144,6 +144,21 @@ export function pscAFxIR(
   return { valueText, dx: interp ? dx(interp, "#0f766e") : null };
 }
 
+// ── ASMI y SMM/W — cortes del clasificador del MOTOR (frozen engine.core.derived.js:212 cASMI, :178
+// cSMM; estándar EWGSOP2/AWGS2019). Se portan aca por su corte para la tabla de display (no estan
+// expuestos en `classifications`, que solo trae los 12 indicadores). Son cortes del MOTOR, no display puro.
+export function clasificarASMI(v: number | null, sexoM: boolean): DisplayDx {
+  if (v == null || v <= 0) return null;
+  return v < (sexoM ? 7.0 : 5.5) ? dx("Riesgo de Sarcopenia", "#ef4444") : dx("Normal", "#10b981");
+}
+export function clasificarSMMW(v: number | null, sexoM: boolean): DisplayDx {
+  if (v == null || v <= 0) return null;
+  const [lo, hi] = sexoM ? [27, 33] : [22, 28];
+  if (v < lo) return dx("Sarcopenia", "#ef4444");
+  if (v <= hi) return dx("Normal", "#10b981");
+  return dx("Óptimo", "#3b82f6");
+}
+
 // ── Genérico valor vs referencia teórica — :14140 (dVsRef). Tolerancia 5% por defecto. ──
 export function dVsRef(val: number | null, ref: number | null, tolFrac = 0.05): DisplayDx {
   if (val == null || ref == null || !isFinite(val) || !isFinite(ref) || ref === 0) return null;

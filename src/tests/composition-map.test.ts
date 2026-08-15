@@ -126,4 +126,13 @@ describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => 
     expect(byKey("Fo")?.detail).toBe("bioelectrico");
     expect(byKey("AF")?.detail).toBeUndefined(); // el angulo de fase es el marcador clinico, visible
   });
+
+  it("filas nuevas del restructure 2b presentes (ASMI/SMM-W/E-I/ACT-MLG/NHLBI/Mapa AFxIR/AF/IR)", () => {
+    for (const k of ["asmi", "smmW", "ei", "ei_sg", "act_mlg", "nhlbi", "psc", "AF", "IR"]) {
+      expect(byKey(k), `falta la fila ${k}`).toBeDefined();
+    }
+    // ASMI y E/I son valores COMPUTADOS (MMEM/talla^2, ECW/ICW): no salen "-" si el crudo esta.
+    expect(typeof byKey("asmi")?.value).toBe("number");
+    expect(typeof byKey("ei")?.value).toBe("number");
+  });
 });
