@@ -1,4 +1,8 @@
+"use client";
+
 import { Fragment } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import {
   type AnthroClass,
@@ -6,8 +10,9 @@ import {
   clasificarICT,
   clasificarIMC,
 } from "../anthropometry";
-import { clasificarAecMca } from "../data/composition-map";
-import type { Composition } from "../data/composition-reader";
+// El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
+// (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
+import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
 import { OPTIMO_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
@@ -18,10 +23,31 @@ import { OPTIMO_CLS } from "./risk-severity";
 // critico rojo) desde la fuente unica (OPTIMO_CLS). NO usa el azul del DFI: el azul (excellent) es
 // exclusivo del mejor nivel del DFI (Bajo); aqui el mejor es optimo = verde. Ver risk-severity.
 
-function fmt(v: number | null, dec = 1): string {
+// Dos decimales por defecto (Gildardo usa dos; en composicion la segunda cifra importa). El guard de
+// entero evita "80.00" donde no aporta; la referenceLabel (cadenas como "<0.45") no pasa por aqui.
+function fmt(v: number | null, dec = 2): string {
   if (v == null) return "-";
   return Number.isInteger(v) ? String(v) : v.toFixed(dec);
 }
+
+// Grupos de detalle colapsables: cada uno mapea a un parametro de URL (persiste al cambiar de subpestaña
+// y volver, igual que ?sub; un useState se reiniciaria porque el subpanel se desmonta). Rotulos que DICEN
+// que contienen, no "ver mas".
+const DETAIL_GROUPS: Record<
+  "agua" | "bioelectrico",
+  { param: string; open: string; closed: string }
+> = {
+  agua: {
+    param: "agua",
+    open: "Ocultar desglose de agua",
+    closed: "Ver desglose de agua (con/sin grasa, L y %)",
+  },
+  bioelectrico: {
+    param: "bio",
+    open: "Ocultar parámetros bioeléctricos crudos",
+    closed: "Ver parámetros bioeléctricos crudos",
+  },
+};
 
 function AnthroChip({ label, cls }: { label: string; cls: AnthroClass | null }) {
   return (
@@ -110,6 +136,46 @@ export function CompositionSection({
   classifications?: Classifications;
   showDiagnosis?: boolean;
 }) {
+  // Estado de colapso EN LA URL (?agua=1&bio=1): persiste al cambiar de subpestaña y volver (el subpanel
+  // desmonta este arbol, un useState se reiniciaria). Mismo mecanismo que ?sub: history.replaceState NO
+  // re-pide el RSC (Next 16 sincroniza useSearchParams), conmutar es instantaneo.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const colCount = showDiagnosis ? 5 : 4;
+
+  function toggleGroup(param: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get(param) === "1") params.delete(param);
+    else params.set(param, "1");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function renderRow(r: CompositionRow) {
+    const dec = r.decimals ?? 2;
+    const delta = r.value != null && r.reference != null ? r.value - r.reference : null;
+    return (
+      <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
+        <td className="py-1.5 pr-4 text-foreground">
+          {r.label}
+          {r.unit ? <span className="text-muted-foreground"> ({r.unit})</span> : null}
+        </td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{fmt(r.value, dec)}</td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
+          {r.referenceLabel ?? fmt(r.reference, dec)}
+        </td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
+          {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
+        </td>
+        {showDiagnosis ? (
+          <td className="py-1.5">
+            <DiagnosisCell rowKey={r.key} value={r.value} sexoM={sexoM} classifications={classifications} />
+          </td>
+        ) : null}
+      </tr>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {showDiagnosis ? (
@@ -149,54 +215,54 @@ export function CompositionSection({
                 </tr>
               </thead>
               <tbody>
-                {composition.levels.map((lvl) => (
-                  <Fragment key={lvl.title}>
-                    {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver
-                        BRAND.md, matiz de reserva del color de riesgo). */}
-                    <tr className="border-y border-border bg-muted">
-                      <td
-                        colSpan={showDiagnosis ? 5 : 4}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
-                      >
-                        {lvl.title}
-                      </td>
-                    </tr>
-                    {lvl.rows.map((r) => {
-                      const dec = r.decimals ?? 1;
-                      const delta =
-                        r.value != null && r.reference != null ? r.value - r.reference : null;
-                      return (
-                        <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
-                          <td className="py-1.5 pr-4 text-foreground">
-                            {r.label}
-                            {r.unit ? (
-                              <span className="text-muted-foreground"> ({r.unit})</span>
-                            ) : null}
-                          </td>
-                          <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">
-                            {fmt(r.value, dec)}
-                          </td>
-                          <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-                            {r.referenceLabel ?? fmt(r.reference, dec)}
-                          </td>
-                          <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-                            {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
-                          </td>
-                          {showDiagnosis ? (
-                            <td className="py-1.5">
-                              <DiagnosisCell
-                                rowKey={r.key}
-                                value={r.value}
-                                sexoM={sexoM}
-                                classifications={classifications}
-                              />
-                            </td>
-                          ) : null}
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
+                {composition.levels.map((lvl) => {
+                  const primary = lvl.rows.filter((r) => !r.detail);
+                  // Grupos de detalle presentes en el nivel, en orden de aparicion (hoy uno por nivel).
+                  const groups = [
+                    ...new Set(lvl.rows.filter((r) => r.detail).map((r) => r.detail!)),
+                  ];
+                  return (
+                    <Fragment key={lvl.title}>
+                      {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver
+                          BRAND.md, matiz de reserva del color de riesgo). */}
+                      <tr className="border-y border-border bg-muted">
+                        <td
+                          colSpan={colCount}
+                          className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
+                        >
+                          {lvl.title}
+                        </td>
+                      </tr>
+                      {primary.map(renderRow)}
+                      {groups.map((g) => {
+                        const meta = DETAIL_GROUPS[g];
+                        const open = searchParams.get(meta.param) === "1";
+                        return (
+                          <Fragment key={g}>
+                            <tr className="border-b border-border/40">
+                              <td colSpan={colCount} className="py-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleGroup(meta.param)}
+                                  aria-expanded={open}
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                >
+                                  {open ? (
+                                    <ChevronDown className="size-3.5" aria-hidden />
+                                  ) : (
+                                    <ChevronRight className="size-3.5" aria-hidden />
+                                  )}
+                                  {open ? meta.open : meta.closed}
+                                </button>
+                              </td>
+                            </tr>
+                            {open ? lvl.rows.filter((r) => r.detail === g).map(renderRow) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -41,6 +41,11 @@
 - Por qué: el COMO es nuestro (regla del cotejo, `COTEJOS_VISUALES.md` sección d). Lo primero que se ve hoy y lo que más mira el profesional es el DFI (verificado en el orden actual "conclusión → detalle"); abrir en Encuesta lo escondería, lo contrario de lo que busca la reorganización. La franja resuelve el problema de fondo de meter subpestañas: que lo más mirado no quede detrás de una pestaña. El QUÉ (las capas de Gildardo) sí es fiel; el orden/default y la franja son nuestros. Además los índices bioeléctricos (IFC/IRC/PABU/ISCM/IEHH/EB) van en Funcional (él los pone en su capa funcional, no en Composición); un solo lugar por dato, no se repiten.
 - Cómo: `diagnosis-subtabs.tsx` (subpestaña activa en la URL `?sub=`, default funcional) + `verdict-strip.tsx` (la franja). Reorganización 2026-08-14.
 
+**DIV-8 · La tabla de composición consolida lo bioeléctrico crudo en un bloque propio, en vez de repartirlo entre Nivel III y Nivel II.**
+- El HTML al día reparte los parámetros bioeléctricos crudos: las impedancias (R50, Z5, Z50, Z200, reactancia) dentro de "Nivel III · Celular" y el Cole-Cole (Re, Ri, R∞, C, Fo) dentro de "Nivel II · Molecular". Atlas los CONSOLIDA todos en un bloque "Bioeléctrico (Cole-Cole)" propio, con el ángulo de fase como fila principal y el resto bajo un desplegable.
+- Por qué: el QUÉ es fiel (están TODAS las filas del HTML, cotejo j "van todas"); el CÓMO (el agrupamiento) es nuestro. Reunir lo crudo en un bloque es más coherente que dispersarlo por dos niveles, y es consistente con el nivel "Bioeléctrico" que Atlas ya tenía. El profesional entrenado en su modelo los encuentra juntos, no en Celular/Molecular.
+- Cómo: `composition-map.ts` (nivel "Bioeléctrico (Cole-Cole)" con las filas de detalle marcadas `detail: "bioelectrico"`) + `composition-section.tsx` (desplegable). Con el desglose de agua del Nivel III (marcado `detail: "agua"`), la tabla queda en ~28 filas visibles y el detalle fino (16 filas) a un clic, persistido en la URL (`?agua`/`?bio`). Cotejo j, 2026-08-15.
+
 ---
 
 *Cuando aparezca una divergencia nueva, entra aquí con su `DIV-N`, apuntando a la decisión que la autoriza. Si una deja de ser divergencia (Gildardo absorbe el cambio en su archivo), se retira con nota.*

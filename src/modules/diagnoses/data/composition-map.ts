@@ -15,8 +15,13 @@ export type CompositionRow = {
   value: number | null;
   reference: number | null;
   unit: string;
-  decimals?: number; // decimales de display (default 1); AEC/MCA usa 3 (ratio)
+  decimals?: number; // decimales de display (default 2); AEC/MCA usa 3 (ratio)
   referenceLabel?: string; // etiqueta de referencia si NO es el valor numerico (p. ej. "<0.45")
+  // Grupo de DETALLE colapsable dentro de su nivel: "agua" (desglose extra/intracelular con/sin grasa,
+  // L y %) y "bioelectrico" (Cole-Cole crudo + impedancias). Las filas sin `detail` son las principales,
+  // siempre visibles; las de detalle van bajo un desplegable (el dato completo esta, quien no lo necesita
+  // no tropieza). Ver composition-section.
+  detail?: "agua" | "bioelectrico";
 };
 export type CompositionLevel = { title: string; rows: CompositionRow[] };
 export type Composition = {
@@ -51,9 +56,12 @@ export function clasificarAecMca(v: number | null): { label: string; sev: number
   return { label: "Riesgo", sev: 3 };
 }
 
-// Filas de la tabla por nivel de Wang: [etiqueta, clave de valor, clave de referencia|null, unidad].
-// Las claves son de BIODY_COLUMNS; se omiten las que el contrato no cubre.
-const LEVELS: { title: string; rows: [string, string, string | null, string][] }[] = [
+// Filas de la tabla por nivel de Wang: [etiqueta, clave de valor, clave de referencia|null, unidad, grupo
+// de detalle?]. Las claves son de BIODY_COLUMNS; se muestran TODAS las que el contrato cubre (el HTML de
+// Gildardo manda en QUE se muestra; el COMO -que sea colapsable- es nuestro). El 5o elemento marca las
+// filas de DETALLE que van bajo un desplegable ("agua" / "bioelectrico"); sin el, la fila es principal.
+type LevelRow = [string, string, string | null, string, ("agua" | "bioelectrico")?];
+const LEVELS: { title: string; rows: LevelRow[] }[] = [
   {
     title: "Nivel V · Cuerpo entero",
     rows: [
@@ -61,6 +69,7 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
       ["Estatura", "talla", null, "cm"],
       ["IMC", "imc", null, "kg/m²"],
       ["Cintura", "cintura", null, "cm"],
+      ["Cadera", "cadera", null, "cm"],
       ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
       ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
@@ -70,6 +79,7 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
     rows: [
       ["Masa grasa", "FM", "FM_ref", "kg"],
       ["Masa grasa", "FM_pct", "FM_pct_ref", "%"],
+      ["Masa grasa (hidratación constante)", "FM_hid", "FM_hid_ref", "%"],
       ["Masa libre de grasa", "FFM", "FFM_ref", "kg"],
       ["Masa muscular esqueletica", "SMM", "SMM_ref", "kg"],
       ["Masa muscular de miembros", "MMEM", "MMEM_ref", "kg"],
@@ -85,14 +95,25 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
       // AEC/MCA (C12): ratio derivado ECW/MCA, no una columna cruda. Referencia = corte 0.45 (verbatim
       // ATLAS_v7.html:12734). Valor y Δ especiales, se resuelven en buildComposition.
       ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
-      ["Agua extracelular", "ECW", "ECW_ref", "L"],
-      ["Agua intracelular", "ICW", "ICW_ref", "L"],
+      // Principales: agua extra/intracelular con grasa, en litros.
+      ["AEC con grasa", "ECW", "ECW_ref", "L"],
+      ["AIC con grasa", "ICW", "ICW_ref", "L"],
+      // Desglose (colapsable): las otras seis variantes (con/sin grasa, L y %).
+      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "%", "agua"],
+      ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L", "agua"],
+      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "%", "agua"],
+      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "%", "agua"],
+      ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L", "agua"],
+      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "%", "agua"],
     ],
   },
   {
     title: "Nivel II · Molecular",
     rows: [
       ["Agua corporal total", "TBW", "TBW_ref", "L"],
+      // FFW (agua libre de grasa): la referencia no es una columna _ref, se computa como FFW - FFW_dif
+      // (verbatim ATLAS_v8.html Nivel II). Se resuelve en buildComposition.
+      ["FFW - Agua libre de grasa", "FFW", null, "L"],
       ["Hidratación sin grasa", "hidSG", "hidSG_ref", "%"],
       ["Proteína total", "protTotal", "protTotal_ref", "kg"],
       ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
@@ -101,13 +122,24 @@ const LEVELS: { title: string; rows: [string, string, string | null, string][] }
     ],
   },
   {
-    title: "Bioelectrico (Cole-Cole)",
+    // DIVERGENCIA DELIBERADA (DIV-8): el frozen reparte lo bioelectrico crudo entre Nivel III (impedancias
+    // R50/Z...) y Nivel II (Cole-Cole Re/Ri/R∞/C/Fo). Aca se CONSOLIDA en un bloque propio, mas coherente
+    // (todo lo crudo junto) y consistente con nuestro nivel Bioelectrico ya existente. El "que" (todos los
+    // campos) es fiel; el "como" (el agrupamiento) es nuestro. El angulo de fase queda como principal (es el
+    // marcador clinico); el resto va al desplegable.
+    title: "Bioeléctrico (Cole-Cole)",
     rows: [
-      ["Resistencia extracelular (Re)", "Re", null, "Ω"],
-      ["Resistencia intracelular (Ri)", "Ri", null, "Ω"],
-      ["Resistencia infinita (R∞)", "Rinf", null, "Ω"],
-      ["Capacitancia de membrana (C)", "C", null, "nF"],
       ["Angulo de fase 50 kHz", "AF", null, "°"],
+      ["Resistencia extracelular (Re)", "Re", null, "Ω", "bioelectrico"],
+      ["Resistencia intracelular (Ri)", "Ri", null, "Ω", "bioelectrico"],
+      ["Resistencia infinita (R∞)", "Rinf", null, "Ω", "bioelectrico"],
+      ["Capacitancia de membrana (C)", "C", null, "nF", "bioelectrico"],
+      ["Frecuencia caracteristica (Fo)", "Fo", null, "kHz", "bioelectrico"],
+      ["Resistencia 50 kHz (R50)", "R50", null, "Ω", "bioelectrico"],
+      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω", "bioelectrico"],
+      ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω", "bioelectrico"],
+      ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω", "bioelectrico"],
+      ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω", "bioelectrico"],
     ],
   },
 ];
@@ -131,7 +163,9 @@ export function buildComposition(
   };
   // Valor por header MEDIDO directo (para las circunferencias planas del export).
   const measured = (header: string): number | null => num(raw[normalizeHeader(header)]);
+  // Cintura y cadera usan la circunferencia MEDIDA (Waist/Hips Size cm), NO el umbral de BIODY_COLUMNS.
   const cintura = measured(MEASURED_WAIST_HEADER);
+  const cadera = measured(MEASURED_HIPS_HEADER);
   // AEC/MCA = ECW / MCA (C12; ATLAS_v7.html:5696, `datos.aec_mca = ECW/MCA`). ECW ("Extracellular
   // water") y MCA ("Masa celular activa") son los valores MEDIDOS (VALEURCALCULEE en BIODY_COLUMNS),
   // no los umbrales de referencia: evita la familia del bug de cintura. Mismo redondeo que el HTML.
@@ -139,22 +173,23 @@ export function buildComposition(
   const _mca = get("MCA");
   const aecMca =
     _ecw != null && _mca != null && _mca > 0 ? parseFloat((_ecw / _mca).toFixed(3)) : null;
+  // FFW (agua libre de grasa): su referencia se computa FFW - FFW_dif (no hay columna FFW_ref).
+  const _ffw = get("FFW");
+  const _ffwDif = get("FFW_dif");
+  const ffwRef = _ffw != null && _ffwDif != null ? _ffw - _ffwDif : null;
 
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
-    rows: lvl.rows.map(([label, valueKey, refKey, unit]) => {
+    rows: lvl.rows.map(([label, valueKey, refKey, unit, detail]) => {
       // AEC/MCA (C12): valor derivado + referencia = corte 0.45 (verbatim 12734), 3 decimales.
       if (valueKey === "aec_mca") {
         return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
       }
-      return {
-        key: valueKey,
-        label,
-        // La fila "Cintura" tambien usa la MEDIDA, no el umbral (BIODY_COLUMNS.cintura).
-        value: valueKey === "cintura" ? cintura : get(valueKey),
-        reference: refKey ? get(refKey) : null,
-        unit,
-      };
+      // Cintura/cadera usan la MEDIDA; FFW su referencia computada; el resto por su header de contrato.
+      const value =
+        valueKey === "cintura" ? cintura : valueKey === "cadera" ? cadera : get(valueKey);
+      const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
+      return { key: valueKey, label, value, reference, unit, ...(detail ? { detail } : {}) };
     }),
   }));
 
@@ -162,7 +197,7 @@ export function buildComposition(
     levels,
     imc: get("imc"),
     cintura,
-    cadera: measured(MEASURED_HIPS_HEADER),
+    cadera,
     ict: get("ict"),
     icc: get("icc"),
     aecMca,

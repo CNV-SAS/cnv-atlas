@@ -88,3 +88,41 @@ describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo 
     expect(clasificarAecMca(null)).toBeNull();
   });
 });
+
+// Candado de las filas nuevas de la tabla de Wang (cotejo j: "van todas las filas"). Ancla que estan
+// presentes, que cadera/FFW tienen su tratamiento especial, y que el desglose de agua e impedancias van
+// marcados como DETALLE (colapsable). Si un bump del mapeo las quita o cambia su grupo, este test cae.
+describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => {
+  const comp = buildComposition(raw, null);
+  const allRows = comp.levels.flatMap((l) => l.rows);
+  const byKey = (k: string) => allRows.find((r) => r.key === k);
+
+  it("Cadera es una fila del Nivel V con la circunferencia MEDIDA", () => {
+    const nivelV = comp.levels.find((l) => l.title.includes("Cuerpo entero"));
+    const cadera = nivelV?.rows.find((r) => r.key === "cadera");
+    expect(cadera).toBeDefined();
+    expect(cadera?.value).toBe(comp.cadera);
+  });
+
+  it("FFW: la referencia se computa FFW - FFW_dif (no hay columna _ref)", () => {
+    const ffw = byKey("FFW");
+    expect(ffw).toBeDefined();
+    const ffwVal = raw[normalizeHeader(BIODY_COLUMNS.FFW.header)];
+    const ffwDif = raw[normalizeHeader(BIODY_COLUMNS.FFW_dif.header)];
+    if (ffwVal != null && ffwDif != null) {
+      expect(ffw?.reference).toBeCloseTo(ffwVal - ffwDif, 5);
+    }
+  });
+
+  it("el desglose de agua va marcado como detalle 'agua'; las principales no", () => {
+    expect(byKey("ECW_sg_pct")?.detail).toBe("agua");
+    expect(byKey("ICW_sg")?.detail).toBe("agua");
+    expect(byKey("ECW")?.detail).toBeUndefined(); // AEC con grasa (L) es principal
+  });
+
+  it("las impedancias/Cole-Cole crudos van como detalle 'bioelectrico'; el AF es principal", () => {
+    expect(byKey("Z50")?.detail).toBe("bioelectrico");
+    expect(byKey("Fo")?.detail).toBe("bioelectrico");
+    expect(byKey("AF")?.detail).toBeUndefined(); // el angulo de fase es el marcador clinico, visible
+  });
+});
