@@ -21,6 +21,7 @@ export async function getEvaluationCharacterization(
       maritalStatus: evaluations.maritalStatus,
       socioeconomicStratum: evaluations.socioeconomicStratum,
       ethnicity: evaluations.ethnicity,
+      ancestry: evaluations.ancestry,
     })
     .from(evaluations)
     .where(eq(evaluations.id, evaluationId))
@@ -41,6 +42,7 @@ export async function getPatientProfileHasCharacterization(evaluationId: string)
       maritalStatus: patientProfiles.maritalStatus,
       socioeconomicStratum: patientProfiles.socioeconomicStratum,
       ethnicity: patientProfiles.ethnicity,
+      ancestry: patientProfiles.ancestry,
     })
     .from(evaluations)
     .innerJoin(patients, eq(patients.id, evaluations.patientId))

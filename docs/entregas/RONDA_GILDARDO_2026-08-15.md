@@ -15,6 +15,11 @@ para no repetírtelo.
 - **IEHH (0,81 vs 0,885):** arrastraba la FFW mal derivada (`computeIEHH` usa `FFW`); nuestro 0,81 es
   el bueno. Cerrado, no lo incluimos como pregunta.
 - **Veto = aviso (§1); riesgo integrado (§2); MCA al ISCM (§5):** recibidos, sin pregunta pendiente.
+- **Etnia y ascendencia (§3): YA CONSTRUIDAS.** Las dos preguntas quedaron en el intake, gateadas a la
+  autorización de investigación (interfaz y servidor), con "Independientemente de lo anterior" pegado a la
+  de ascendencia. La región y la altitud se **derivan de la ciudad** (tabla ciudad → altitud, fuente
+  IGAC/DANE), sin preguntarle nada extra al paciente; "Otra"/ciudad libre → sin altitud (no se inventa).
+  Solo queda pendiente el punto 7 (residencia actual vs prolongada).
 
 ---
 

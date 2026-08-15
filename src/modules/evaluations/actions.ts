@@ -151,6 +151,7 @@ function readCharacterizationFromForm(form: FormData): {
     maritalStatus: string | null;
     socioeconomicStratum: string | null;
     ethnicity: string | null;
+    ancestry: string | null;
   };
   reasonForVisit: string[];
 } {
@@ -166,8 +167,10 @@ function readCharacterizationFromForm(form: FormData): {
       occupation: nullable("occupation"),
       maritalStatus: nullable("maritalStatus"),
       socioeconomicStratum: nullable("socioeconomicStratum"),
-      // Etnia: solo llega si el campo se mostro (autorizacion de investigacion). El writer lo re-gatea.
+      // Etnia y ascendencia: solo llegan si el campo se mostro (autorizacion de investigacion). El writer
+      // las re-gatea contra el consentimiento real.
       ethnicity: nullable("ethnicity"),
+      ancestry: nullable("ancestry"),
     };
   }
   return characterization;

@@ -28,4 +28,5 @@ export type EvaluationCharacterization = {
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
   ethnicity: string | null;
+  ancestry: string | null;
 };

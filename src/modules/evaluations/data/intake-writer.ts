@@ -327,9 +327,11 @@ export type SurveyCharacterization = {
     occupation: string | null;
     maritalStatus: string | null;
     socioeconomicStratum: string | null;
-    // Pertenencia etnica (dato sensible): solo se persiste si el paciente otorgo la autorizacion de
-    // INVESTIGACION (consent v1.0). El writer lo gatea contra patient_consents; sin autorizacion, se ignora.
+    // Pertenencia etnica y ascendencia (datos sensibles): solo se persisten si el paciente otorgo la
+    // autorizacion de INVESTIGACION (consent v1.0). El writer las gatea contra patient_consents; sin
+    // autorizacion, se ignoran las dos.
     ethnicity: string | null;
+    ancestry: string | null;
   };
   reasonForVisit?: string[];
 };
@@ -368,8 +370,11 @@ async function writeCharacterization(
     // GATE de etnia (dato sensible): solo se persiste si el paciente tiene la autorizacion de INVESTIGACION
     // vigente (consent v1.0: la etnia se fundio en esa casilla). El servidor NO confia en que la UI la
     // oculte: verifica el consentimiento real y descarta la etnia si no fue autorizada.
+    // Etnia Y ascendencia comparten el MISMO gate de investigacion (RESPUESTA_GILDARDO §3). Una sola
+    // consulta de consentimiento si CUALQUIERA viene con valor; sin autorizacion, se descartan las DOS.
     let ethnicity = profile.ethnicity;
-    if (ethnicity) {
+    let ancestry = profile.ancestry;
+    if (ethnicity || ancestry) {
       const [inv] = await tx
         .select({ id: patientConsents.id })
         .from(patientConsents)
@@ -381,7 +386,10 @@ async function writeCharacterization(
           ),
         )
         .limit(1);
-      if (!inv) ethnicity = null; // sin autorizacion de investigacion, no se guarda la etnia
+      if (!inv) {
+        ethnicity = null; // sin autorizacion de investigacion, no se guardan etnia ni ascendencia
+        ancestry = null;
+      }
     }
     // (1) PERFIL: el "ultimo valor conocido" del paciente (fuente del prefill en seguimiento).
     await tx
@@ -392,11 +400,12 @@ async function writeCharacterization(
         maritalStatus: profile.maritalStatus,
         socioeconomicStratum: profile.socioeconomicStratum,
         ethnicity,
+        ancestry,
       })
       .where(eq(patientProfiles.patientId, target.patientId));
-    // (2) EVALUACION: el valor DE ESTE ENCUENTRO (versionado, para el historico). Misma `ethnicity` YA
-    // gateada por la autorizacion de investigacion (care a: el gate cubre las DOS escrituras; sin
-    // autorizacion, `ethnicity` es null en ambas). El observatorio estratifica por estas columnas.
+    // (2) EVALUACION: el valor DE ESTE ENCUENTRO (versionado, para el historico). `ethnicity`/`ancestry` YA
+    // gateadas por la autorizacion de investigacion (care a: el gate cubre las DOS escrituras; sin
+    // autorizacion, son null en ambas). El observatorio estratifica por estas columnas.
     await tx
       .update(evaluations)
       .set({
@@ -405,6 +414,7 @@ async function writeCharacterization(
         maritalStatus: profile.maritalStatus,
         socioeconomicStratum: profile.socioeconomicStratum,
         ethnicity,
+        ancestry,
       })
       .where(eq(evaluations.id, target.evaluationId));
   }
@@ -484,6 +494,7 @@ export type SurveyProgressCharacterization = {
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
   ethnicity: string | null;
+  ancestry: string | null;
   reasonForVisit: string[]; // parseado del arreglo JSON; [] si null o ilegible
 };
 
@@ -507,6 +518,7 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
       maritalStatus: patientProfiles.maritalStatus,
       socioeconomicStratum: patientProfiles.socioeconomicStratum,
       ethnicity: patientProfiles.ethnicity,
+      ancestry: patientProfiles.ancestry,
     })
     .from(patientProfiles)
     .where(eq(patientProfiles.patientId, ev.patientId))
@@ -517,6 +529,7 @@ export async function getSurveyProgress(resumeToken: string): Promise<{
     maritalStatus: profile?.maritalStatus ?? null,
     socioeconomicStratum: profile?.socioeconomicStratum ?? null,
     ethnicity: profile?.ethnicity ?? null,
+    ancestry: profile?.ancestry ?? null,
     reasonForVisit: parseReasonForVisit(ev.reasonForVisit),
   };
   // Etnia (consent v1.0): el campo se muestra al reanudar solo si otorgo investigacion vigente.

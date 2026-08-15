@@ -21,6 +21,7 @@ type ProfileEmbed = {
   marital_status: string | null;
   socioeconomic_stratum: string | null;
   ethnicity: string | null;
+  ancestry: string | null;
 };
 type ContactEmbed = { email: string | null; phone: string | null };
 type EvaluationEmbed = {
@@ -61,7 +62,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date, sex, city, country, education_level, occupation, marital_status, socioeconomic_stratum, ethnicity, ancestry), patient_contacts(email, phone), evaluations(id, type, status, created_at, superseded_at, reason_for_visit, bis_measurements(measurement_date))",
     )
     .eq("id", patientId)
     .is("deleted_at", null)
@@ -112,6 +113,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
     maritalStatus: profile?.marital_status ?? null,
     socioeconomicStratum: profile?.socioeconomic_stratum ?? null,
     ethnicity: profile?.ethnicity ?? null,
+    ancestry: profile?.ancestry ?? null,
     email: contact?.email ?? null,
     phone: contact?.phone ?? null,
     evaluations,

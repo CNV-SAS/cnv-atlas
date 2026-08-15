@@ -197,6 +197,7 @@ function DomainReadout({ domain }: { domain: SurveyDomain | undefined }) {
 // final de D8. Se lee de las columnas de la evaluacion, no de las respuestas de encuesta.
 const CHAR_FIELDS: { key: keyof EvaluationCharacterization; label: string }[] = [
   { key: "ethnicity", label: "Etnia" },
+  { key: "ancestry", label: "Ascendencia" },
   { key: "educationLevel", label: "Educación" },
   { key: "socioeconomicStratum", label: "Estrato socioeconómico" },
   { key: "maritalStatus", label: "Estado civil" },

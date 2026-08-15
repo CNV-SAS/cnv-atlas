@@ -53,8 +53,9 @@ export const patientProfiles = pgTable("patient_profiles", {
   city: text("city"),
   // Caracterizacion sociodemografica OPCIONAL (observatorio/ObBIA). Nullable a proposito: si el paciente no
   // responde queda VACIO, nunca un valor por defecto (un dato inventado es peor que uno vacio). No alimentan
-  // ningun motor (sin field_key). Se capturan al inicio de la fase 2 del intake, ya autorizado. Etnia NO
-  // esta aqui: es dato sensible (Ley 1581 art. 5) y espera el bump de consentimiento a v1.0 (BACKLOG.md).
+  // ningun motor (sin field_key). Se capturan al inicio de la fase 2 del intake, ya autorizado. Etnia y
+  // ascendencia SI viven aqui (consent v1.0 en produccion): datos sensibles (Ley 1581 art. 5), gateados a
+  // la autorizacion de investigacion en el writer.
   educationLevel: text("education_level"),
   occupation: text("occupation"),
   maritalStatus: text("marital_status"),
@@ -64,6 +65,9 @@ export const patientProfiles = pgTable("patient_profiles", {
   // DANE + "Prefiero no responder" (valor distinto de null/vacio). Uso restringido a investigacion agregada
   // (DATA_GOVERNANCE: capturar no habilita usar; supresion de celdas bajo umbral, ejemplo Rrom).
   ethnicity: text("ethnicity"),
+  // Ascendencia autodeclarada (RESPUESTA_GILDARDO 2026-08-15 §3): 2a pregunta, separada de la pertenencia
+  // DANE. Mismo gate de investigacion. NUNCA como coeficiente de correccion, solo caracterizacion.
+  ancestry: text("ancestry"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

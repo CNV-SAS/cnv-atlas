@@ -89,6 +89,7 @@ export type PatientDetail = {
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
   ethnicity: string | null;
+  ancestry: string | null;
   email: string | null;
   phone: string | null;
   evaluations: PatientEvaluationItem[];

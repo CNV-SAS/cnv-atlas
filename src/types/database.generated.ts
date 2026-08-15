@@ -66,6 +66,63 @@ export type Database = {
           },
         ]
       }
+      ai_criterion_suggestions: {
+        Row: {
+          diagnosis_id: string
+          generated_at: string
+          generated_by: string
+          generated_text: string | null
+          id: string
+          latency_ms: number | null
+          model: string
+          prompt_version: string
+          provider: string
+          raw_response: Json | null
+          status: Database["public"]["Enums"]["ai_suggestion_status"]
+        }
+        Insert: {
+          diagnosis_id: string
+          generated_at?: string
+          generated_by: string
+          generated_text?: string | null
+          id?: string
+          latency_ms?: number | null
+          model: string
+          prompt_version: string
+          provider: string
+          raw_response?: Json | null
+          status: Database["public"]["Enums"]["ai_suggestion_status"]
+        }
+        Update: {
+          diagnosis_id?: string
+          generated_at?: string
+          generated_by?: string
+          generated_text?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string
+          prompt_version?: string
+          provider?: string
+          raw_response?: Json | null
+          status?: Database["public"]["Enums"]["ai_suggestion_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_criterion_suggestions_diagnosis_id_diagnoses_id_fk"
+            columns: ["diagnosis_id"]
+            isOneToOne: false
+            referencedRelation: "diagnoses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_criterion_suggestions_generated_by_profiles_id_fk"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_menu_suggestions: {
         Row: {
           generated_at: string
@@ -794,18 +851,21 @@ export type Database = {
       }
       diagnosis_notes: {
         Row: {
+          ai_assisted: boolean
           created_at: string
           diagnosis_id: string
           id: string
           note: string
         }
         Insert: {
+          ai_assisted?: boolean
           created_at?: string
           diagnosis_id: string
           id?: string
           note: string
         }
         Update: {
+          ai_assisted?: boolean
           created_at?: string
           diagnosis_id?: string
           id?: string
@@ -966,48 +1026,66 @@ export type Database = {
       }
       evaluations: {
         Row: {
+          ancestry: string | null
           created_at: string
           declared_first_name: string | null
           declared_last_name: string | null
+          education_level: string | null
+          ethnicity: string | null
           id: string
           identity_conflict: boolean
+          marital_status: string | null
+          occupation: string | null
           organization_id: string
           patient_id: string
           professional_id: string
           reason_for_visit: string | null
           resume_token: string | null
+          socioeconomic_stratum: string | null
           status: Database["public"]["Enums"]["evaluation_status"]
           superseded_at: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at: string
         }
         Insert: {
+          ancestry?: string | null
           created_at?: string
           declared_first_name?: string | null
           declared_last_name?: string | null
+          education_level?: string | null
+          ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          marital_status?: string | null
+          occupation?: string | null
           organization_id: string
           patient_id: string
           professional_id: string
           reason_for_visit?: string | null
           resume_token?: string | null
+          socioeconomic_stratum?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at?: string
         }
         Update: {
+          ancestry?: string | null
           created_at?: string
           declared_first_name?: string | null
           declared_last_name?: string | null
+          education_level?: string | null
+          ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          marital_status?: string | null
+          occupation?: string | null
           organization_id?: string
           patient_id?: string
           professional_id?: string
           reason_for_visit?: string | null
           resume_token?: string | null
+          socioeconomic_stratum?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           superseded_at?: string | null
           type?: Database["public"]["Enums"]["evaluation_type"]
@@ -1958,6 +2036,7 @@ export type Database = {
       }
       patient_profiles: {
         Row: {
+          ancestry: string | null
           birth_date: string | null
           city: string | null
           country: string | null
@@ -1974,6 +2053,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ancestry?: string | null
           birth_date?: string | null
           city?: string | null
           country?: string | null
@@ -1990,6 +2070,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ancestry?: string | null
           birth_date?: string | null
           city?: string | null
           country?: string | null

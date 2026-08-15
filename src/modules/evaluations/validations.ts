@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  ASCENDENCIA_OPTIONS,
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
@@ -65,15 +66,19 @@ export const characterizationSchema = z
         maritalStatus: z.string().max(120).nullish().transform((v) => v ?? null),
         socioeconomicStratum: z.string().max(120).nullish().transform((v) => v ?? null),
       })
-      .extend({ ethnicity: z.string().max(120).nullish().transform((v) => v ?? null) })
+      .extend({
+        ethnicity: z.string().max(120).nullish().transform((v) => v ?? null),
+        ancestry: z.string().max(120).nullish().transform((v) => v ?? null),
+      })
       .transform((p) => ({
         educationLevel: inList(p.educationLevel, EDUCACION_OPTIONS),
         occupation: p.occupation, // texto libre permitido ("Otra")
         maritalStatus: inList(p.maritalStatus, ESTADO_CIVIL_OPTIONS),
         socioeconomicStratum: inList(p.socioeconomicStratum, ESTRATO_OPTIONS),
-        // Etnia normalizada contra las categorias DANE. El SERVIDOR ademas la gatea a investigacion en el
-        // writer (no basta la validacion aqui): un valor fuera de lista => null.
+        // Etnia/ascendencia normalizadas contra sus listas. El SERVIDOR ademas las gatea a investigacion en
+        // el writer (no basta la validacion aqui): un valor fuera de lista => null.
         ethnicity: inList(p.ethnicity, ETNIA_OPTIONS),
+        ancestry: inList(p.ancestry, ASCENDENCIA_OPTIONS),
       }))
       .optional(),
     reasonForVisit: z

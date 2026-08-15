@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import {
+  ASCENDENCIA_OPTIONS,
+  ASCENDENCIA_PROMPT,
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
@@ -28,6 +30,7 @@ export type AboutYouPrefill = {
   maritalStatus: string | null;
   socioeconomicStratum: string | null;
   ethnicity: string | null;
+  ancestry: string | null;
   reasonForVisit: string[];
 };
 
@@ -54,6 +57,7 @@ export function AboutYouSection({
   const [maritalStatus, setMaritalStatus] = useState(prefill?.maritalStatus ?? "");
   const [stratum, setStratum] = useState(prefill?.socioeconomicStratum ?? "");
   const [ethnicity, setEthnicity] = useState(prefill?.ethnicity ?? "");
+  const [ancestry, setAncestry] = useState(prefill?.ancestry ?? "");
   const [occupationChoice, setOccupationChoice] = useState(initialOcc.choice);
   const [occupationOther, setOccupationOther] = useState(initialOcc.other);
   const [motivo, setMotivo] = useState<string[]>(prefill?.reasonForVisit ?? []);
@@ -217,6 +221,33 @@ export function AboutYouSection({
                     </div>
                   ))}
                 </dl>
+              </Field>
+            </div>
+          ) : null}
+
+          {/* Ascendencia (2a pregunta de etnia): JUNTO a la pertenencia (misma autorizacion). El prefijo
+              "Independientemente de lo anterior" va PEGADO a la pregunta (no en un pie): es lo que evita que
+              el paciente crea que se le pregunta lo mismo dos veces. */}
+          {ethnicityAuthorized ? (
+            <div className="sm:col-span-2">
+              <Field label={`${ASCENDENCIA_PROMPT}, ¿cuál es tu ascendencia?`}>
+                <p className="mb-1 text-xs text-muted-foreground">
+                  Es distinta de la pertenencia étnica de arriba y también es voluntaria. Por
+                  autorreconocimiento, para caracterización; nunca ajusta ningún resultado.
+                </p>
+                <select
+                  name="ancestry"
+                  className={selectClass}
+                  value={ancestry}
+                  onChange={(e) => setAncestry(e.target.value)}
+                >
+                  <option value="">Selecciona una opción</option>
+                  {ASCENDENCIA_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
           ) : null}

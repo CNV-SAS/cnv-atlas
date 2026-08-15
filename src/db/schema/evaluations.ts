@@ -54,6 +54,9 @@ export const evaluations = pgTable(
     maritalStatus: text("marital_status"),
     socioeconomicStratum: text("socioeconomic_stratum"),
     ethnicity: text("ethnicity"),
+    // Ascendencia (RESPUESTA_GILDARDO 2026-08-15 §3): 2a pregunta de etnia, mismo dato sensible y MISMO gate
+    // de investigacion que `ethnicity` (el writer nulifica ambas sin autorizacion). Versionada por evaluacion.
+    ancestry: text("ancestry"),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion
