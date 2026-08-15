@@ -30,6 +30,7 @@ import { getPendingReferralHints } from "@/modules/referrals/data/referrals-read
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
+import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
 import { resolvePatronView } from "@/modules/diagnoses/data/patron-view";
 import {
@@ -218,6 +219,15 @@ export default async function ResultadosEvaluacionPage({
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
+  // Referencia + Δ (rango COMPLETO del motor) de los indicadores que viven en la tabla de Wang (FFMI/FMI/
+  // AF/IR): del clasificador del motor (indicator-ranges), computadas aca porque tienen los indicadores.
+  const wangRefs: Record<string, { reference: string; delta: string | null }> = {};
+  if (isEngineOutput(results.snapshot)) {
+    for (const code of ["FFMI", "FMI", "AF", "IR"]) {
+      const r = indicatorRange(code, results.snapshot.indicators, sexoM);
+      if (r) wangRefs[code] = r;
+    }
+  }
 
   // Patron alimentario (C9, D1): estado computado en vista desde la encuesta ya leida (no se sella; no
   // alimenta el diagnostico mientras C1 siga apagado). Sin encuesta -> no_capturado.
@@ -374,6 +384,7 @@ export default async function ResultadosEvaluacionPage({
                 sevByCode={
                   isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}
                 }
+                references={wangRefs}
               />
             ) : null
           }

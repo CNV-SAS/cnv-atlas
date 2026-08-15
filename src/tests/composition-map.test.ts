@@ -114,10 +114,11 @@ describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => 
     }
   });
 
-  it("el desglose de agua va marcado como detalle 'agua'; las principales no", () => {
-    expect(byKey("ECW_sg_pct")?.detail).toBe("agua");
-    expect(byKey("ICW_sg")?.detail).toBe("agua");
-    expect(byKey("ECW")?.detail).toBeUndefined(); // AEC con grasa (L) es principal
+  it("el agua ya NO es colapsable (descolapsada 2026-08-15): ninguna fila de agua lleva detail", () => {
+    // El HTML no colapsa el agua, y ahora que las filas llevan diagnostico deja de ser ruido.
+    for (const k of ["ECW", "ECW_pct", "ECW_sg", "ECW_sg_pct", "ICW", "ICW_pct", "ICW_sg", "ICW_sg_pct"]) {
+      expect(byKey(k)?.detail).toBeUndefined();
+    }
   });
 
   it("las impedancias/Cole-Cole crudos van como detalle 'bioelectrico'; el AF es principal", () => {

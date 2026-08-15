@@ -13,7 +13,6 @@ import {
 // El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
 import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
-import { fmiReferenceLabel } from "../data/indicator-ranges";
 import { SEV_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
@@ -103,9 +102,9 @@ function DiagnosisCell({
         "Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20.",
       );
   }
-  // (b) clasificacion del motor (FFMI, AF, FMI), coloreada con su severidad (semaforo). Antes iban en texto
-  // plano; el HTML las colorea, y colorearlas es lo que hace la tabla legible de un vistazo (Santiago).
-  if (rowKey === "FFMI" || rowKey === "AF" || rowKey === "FMI") {
+  // (b) clasificacion del motor (FFMI, AF, FMI, IR), coloreada con su severidad (semaforo). Antes iban en
+  // texto plano; el HTML las colorea, y colorearlas es lo que hace la tabla legible de un vistazo (Santiago).
+  if (rowKey === "FFMI" || rowKey === "AF" || rowKey === "FMI" || rowKey === "IR") {
     const label = classifications[rowKey]?.label;
     if (label) {
       const sev = sevByCode[rowKey];
@@ -125,13 +124,17 @@ export function CompositionSection({
   sexoM = true,
   classifications = {},
   sevByCode = {},
+  references = {},
   showDiagnosis = true,
 }: {
   composition: Composition;
   sexoM?: boolean;
   classifications?: Classifications;
-  // Severidad por codigo (del motor) para colorear el semaforo de FFMI/AF/FMI en la columna Diagnostico.
+  // Severidad por codigo (del motor) para colorear el semaforo de FFMI/AF/FMI/IR en la columna Diagnostico.
   sevByCode?: Record<string, number | null>;
+  // Referencia + Δ de los indicadores del motor que viven en Wang (FFMI/FMI/AF/IR): del clasificador del
+  // motor (indicator-ranges), computadas en la pagina (tiene indicators). Rango COMPLETO (FFMI "17-25").
+  references?: Record<string, { reference: string; delta: string | null }>;
   showDiagnosis?: boolean;
 }) {
   // Estado de colapso EN LA URL (?agua=1&bio=1): persiste al cambiar de subpestaña y volver (el subpanel
@@ -159,17 +162,24 @@ export function CompositionSection({
   // para ellas, asi que se llena con el UMBRAL/RANGO (OMS sexo-dependiente el ICC; motor el FMI) y la Δ va
   // contra ese corte (el FMI contra el punto medio del rango, como la tabla de indicadores). Las demas
   // filas conservan la referencia del equipo (poblacional, patient-specific): no se pierde informacion.
+  // icc/ict: umbral OMS sexo-dependiente (su Δ va contra el corte). FMI/FFMI/AF/IR usan `references` (rango
+  // del motor, pasado desde la pagina).
   const anthroRef: Record<string, { label: string; cut: number }> = {
     ict: { label: "<0.50", cut: 0.5 },
     icc: { label: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 },
-    FMI: { label: fmiReferenceLabel(sexoM), cut: sexoM ? 4.5 : 7 },
   };
 
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
+    const motorRef = references[r.key]; // FFMI/FMI/AF/IR: rango completo del motor + Δ ya formateado
     const a = anthroRef[r.key];
-    const refText = a ? a.label : (r.referenceLabel ?? fmt(r.reference, dec));
+    const refText = motorRef
+      ? motorRef.reference
+      : a
+        ? a.label
+        : (r.referenceLabel ?? fmt(r.reference, dec));
     const refNum = a ? a.cut : r.reference;
+    const deltaMotor = motorRef ? (motorRef.delta ?? "-") : null;
     const delta = r.value != null && refNum != null ? r.value - refNum : null;
     return (
       <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
@@ -180,7 +190,11 @@ export function CompositionSection({
         <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{fmt(r.value, dec)}</td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">{refText}</td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-          {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
+          {deltaMotor != null
+            ? deltaMotor
+            : delta == null
+              ? "-"
+              : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
         </td>
         {showDiagnosis ? (
           <td className="py-1.5">

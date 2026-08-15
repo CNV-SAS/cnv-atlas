@@ -104,16 +104,21 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       // AEC/MCA (C12): ratio derivado ECW/MCA, no una columna cruda. Referencia = corte 0.45 (verbatim
       // ATLAS_v7.html:12734). Valor y Δ especiales, se resuelven en buildComposition.
       ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
-      // Principales: agua extra/intracelular con grasa, en litros.
+      // Agua extra/intracelular, con/sin grasa, L y %. YA NO colapsable (Santiago 2026-08-15): el HTML no
+      // lo colapsa, y ahora que las filas llevan diagnostico el desglose deja de ser ruido.
       ["AEC con grasa", "ECW", "ECW_ref", "L"],
+      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "%"],
+      ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L"],
+      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "%"],
       ["AIC con grasa", "ICW", "ICW_ref", "L"],
-      // Desglose (colapsable): las otras seis variantes (con/sin grasa, L y %).
-      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "%", "agua"],
-      ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L", "agua"],
-      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "%", "agua"],
-      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "%", "agua"],
-      ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L", "agua"],
-      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "%", "agua"],
+      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "%"],
+      ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L"],
+      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "%"],
+      // AF e IR van en Nivel III (celular), donde Gildardo los tiene, NO en la tabla de indices. Su
+      // clasificacion es la del MOTOR (classifications["AF"]/["IR"], cAF/cIR); referencia y Δ los resuelve
+      // composition-section (rango del motor via indicator-ranges). El valor es la columna cruda del equipo.
+      ["Ángulo de fase (AF)", "AF", null, "°"],
+      ["IR - Radio de impedancia", "IR", null, ""],
     ],
   },
   {
@@ -138,7 +143,8 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
     // marcador clinico); el resto va al desplegable.
     title: "Bioeléctrico (Cole-Cole)",
     rows: [
-      ["Angulo de fase 50 kHz", "AF", null, "°"],
+      // El angulo de fase se movio a Nivel III (con su clasificacion). Aca queda solo lo crudo sin
+      // diagnostico (resistencias, reactancia, Fo, impedancias), que ademas solo se muestra en Evaluacion.
       ["Resistencia extracelular (Re)", "Re", null, "Ω", "bioelectrico"],
       ["Resistencia intracelular (Ri)", "Ri", null, "Ω", "bioelectrico"],
       ["Resistencia infinita (R∞)", "Rinf", null, "Ω", "bioelectrico"],
