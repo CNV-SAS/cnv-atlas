@@ -323,11 +323,11 @@ Mientras que Atlas no lo pone (lo pone es en el perfil del paciente), pero esto 
 
 **(g) Tabla de indicadores.** Estado: **CERRADO en lo estructural; ISCM/IEHH en P-22.** Las referencias (>6.68, <1.68), los deltas (0.30, -0.06) y la clasif IRC salen del CLASIFICADOR DEL MOTOR por instruccion explicita de Gildardo (2026-08-02): "corrijan la tabla contra el motor para IFC/IRC/FMI, no al reves". Su tabla del 13-ago quedo STALE (con la vieja "3.5-6.0", el x10 y "Alto riesgo celular"), como el _SEVTXT. El nuestro manda. La clasif IRC del motor ("Bajo riesgo") ademas alimenta el fenotipo -> ningun cambio en los 81 estados. **No hay defecto nuevo.**
 
-**(h) Boton IA + textarea mas grande.** Estado: **ABIERTO, en cola con el boton IA** (aprobado, PLAN_DIAGNOSTICO d). Poner el boton (estetico hasta que funcione) + agrandar el textarea por defecto (la IA lo llena mas).
+**(h) Boton IA + textarea mas grande.** Estado: **HECHO (2026-08-15).** Boton "Generar borrador con IA" en el criterio del profesional (reusa el pipeline del menu, prompt versionado propio, barrera PII), textarea agrandado (rows 8), procedencia en ai_criterion_suggestions + flag ai_assisted. Verificable.
 
 **(i) Confirmar + corregir juntos.** Estado: **CERRADA (Santiago, 2026-08-15).** El bloque de corregir vive en FUNCIONAL (con el de confirmar); y en ENCUESTA un ENLACE CORTO por si descubre el error leyendo las respuestas. A construir en la fase de diseno grafico (el contenido ya esta; es donde se coloca).
 
-**(j) Tabla de composicion (Wang) difiere.** Estado: **ABIERTO, cotejo campo por campo.** Diferencias de FORMA (el HTML lista mas filas Nivel III/II con "Sin dato"; Atlas muestra otras filas/valores). Cadera: la MEDIDA no se muestra como fila (icc/ict si se derivan; ver #1 del cotejo de numeros). Los indices antropometricos sobre la tabla (IMC/cintura/ICT): prefieres que se repitan a que falten; de acuerdo, y la regla es que el HTML manda en QUE. Va con el cotejo de la tabla de composicion.
+**(j) Tabla de composicion (Wang) difiere.** Estado: **HECHO (2026-08-15).** Cotejo campo por campo: se agregaron TODAS las filas que faltaban (Cadera, MG hidratacion constante, desglose de agua con/sin grasa L y %, FFW, Fo, impedancias). Para la legibilidad (44 filas) el detalle fino va en dos desplegables (agua / bioelectrico crudo, colapso en la URL). 2 decimales. Impedancias consolidadas en el bloque bioelectrico (DIV-8). Candado del mapeo extendido. Verificable.
 
 **(k) D1 colores.** Estado: **CERRADO.** Era porte pendiente: la correccion de carnes rojas (grupo 15 a Moderados) + la logica de color propia de Moderados (medio=verde, mucho=rojo), del 12-ago. Portado verbatim del 13-ago. Commit hecho.
 
