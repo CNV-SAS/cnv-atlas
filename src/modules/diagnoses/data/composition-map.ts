@@ -95,10 +95,10 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["Masa libre de grasa", "FFM", "FFM_ref", "kg"],
       ["Masa muscular esqueletica", "SMM", "SMM_ref", "kg"],
       ["Masa muscular de miembros", "MMEM", "MMEM_ref", "kg"],
-      ["Indice de masa libre de grasa (FFMI)", "FFMI", "FFMI_ref", "kg/m²"],
+      ["FFMI - Índice de masa libre de grasa", "FFMI", "FFMI_ref", "kg/m²"],
       // FMI: DERIVADO (FM / talla^2), no una columna del equipo. Valor computado en buildComposition; la
       // referencia (rango del MOTOR 3-6/5-9, sexo) y la clasificacion las resuelve composition-section.
-      ["Indice de masa grasa (FMI)", "FMI", null, "kg/m²"],
+      ["FMI - Índice de masa grasa", "FMI", null, "kg/m²"],
       // ASMI y SMM/W: indices de masa muscular (clasificadores del motor cASMI/cSMM, EWGSOP2/AWGS; portados
       // a composition-display por su corte). ASMI = MMEM/talla^2 (computado); SMM/W = columna del equipo.
       ["ASMI - Masa muscular apendicular", "asmi", null, "kg/m²"],
@@ -109,48 +109,50 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
     title: "Nivel III · Celular",
     rows: [
       ["Masa celular activa", "MCA", "MCA_ref", "kg"],
-      ["Solidos extracelulares", "solEC", "solEC_ref", "kg"],
-      ["Masa seca sin grasa", "masaSeca", "masaSeca_ref", "kg"],
+      ["Sólidos extracelulares - matriz colágena", "solEC", "solEC_ref", "kg"],
+      ["Masa seca sin grasa - ganancia real magra", "masaSeca", "masaSeca_ref", "kg"],
       // AEC/MCA (C12): ratio derivado ECW/MCA, no una columna cruda. Referencia = corte 0.45 (verbatim
       // ATLAS_v7.html:12734). Valor y Δ especiales, se resuelven en buildComposition.
       ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
       // Agua extra/intracelular, con/sin grasa, L y %. YA NO colapsable (Santiago 2026-08-15): el HTML no
-      // lo colapsa, y ahora que las filas llevan diagnostico el desglose deja de ser ruido.
+      // lo colapsa, y ahora que las filas llevan diagnostico el desglose deja de ser ruido. El "% de ACT"
+      // (con grasa) vs "% de MLG" (sin grasa) va en la UNIDAD, para reproducir el rotulo del HTML.
       ["AEC con grasa", "ECW", "ECW_ref", "L"],
-      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "%"],
+      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "% de ACT"],
       ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L"],
-      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "%"],
+      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "% de MLG"],
       ["AIC con grasa", "ICW", "ICW_ref", "L"],
-      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "%"],
+      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "% de ACT"],
       ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L"],
-      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "%"],
-      // AF e IR van en Nivel III (celular), donde Gildardo los tiene, NO en la tabla de indices. Su
-      // clasificacion es la del MOTOR (classifications["AF"]/["IR"], cAF/cIR); referencia y Δ los resuelve
-      // composition-section (rango del motor via indicator-ranges). El valor es la columna cruda del equipo.
-      ["Ángulo de fase (AF)", "AF", null, "°"],
-      ["IR - Radio de impedancia", "IR", null, ""],
-      // E/I (radio agua extra/intracelular) y Mapa AFxIR (Perfil de Salud Celular): clasificadores de
-      // display (dEI / pscAFxIR). E/I referencia fija "0.35-0.40"; el mapa no tiene valor numerico.
+      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "% de MLG"],
+      // E/I (radio agua extra/intracelular): clasificador de display (dEI), referencia fija "0.35-0.40".
       ["E/I con grasa (AEC/AIC)", "ei", null, ""],
       ["E/I sin grasa (AEC_sg/AIC_sg)", "ei_sg", null, ""],
+      // AF e IR van en Nivel III (celular), donde Gildardo los tiene, NO en la tabla de indices. ORDEN
+      // (Santiago 2026-08-15, smoke l): DESPUES de los dos E/I. Clasificacion del MOTOR (cAF/cIR via el
+      // display dAF/dIR); referencia y Δ los resuelve composition-section. El valor es la columna del equipo.
+      ["AF - Ángulo de fase", "AF", null, "°"],
+      ["IR - Radio de impedancia", "IR", null, ""],
+      // Mapa AFxIR (Perfil de Salud Celular, pscAFxIR): no tiene valor numerico; su lectura sale de AF e IR,
+      // por eso va al final (despues de ambos).
       ["Mapa AFxIR (PSC)", "psc", null, ""],
     ],
   },
   {
     title: "Nivel II · Molecular",
     rows: [
-      ["Agua corporal total", "TBW", "TBW_ref", "L"],
+      ["ACT - Agua corporal total", "TBW", "TBW_ref", "L"],
       // FFW (agua libre de grasa): la referencia PRIMARIA se computa FFW - FFW_dif (verbatim ATLAS_v8.html
       // Nivel II), en buildComposition. refKey "FFW_ref" para que, si el export NO trae FFW_dif (ffwRef
       // null), la seccion caiga al respaldo REF_POB (FFW_ref = TBW_ref), y la fila no quede sin referencia.
       ["FFW - Agua libre de grasa", "FFW", "FFW_ref", "L"],
-      ["Hidratación sin grasa", "hidSG", "hidSG_ref", "%"],
+      ["Hidratación sin grasa - deshidratación", "hidSG", "hidSG_ref", "%"],
       // ACT/MLG (hidratacion de la masa sin grasa, %): clasificador de display dACTMLG, referencia "71-74%".
       ["ACT/MLG - Hidratación masa sin grasa", "act_mlg", null, "%"],
       ["Proteína total", "protTotal", "protTotal_ref", "kg"],
       ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
-      ["Contenido mineral oseo", "CMO", "CMO_ref", "kg"],
-      ["Mineral no oseo", "minNoOseo", "minNoOseo_ref", "kg"],
+      ["Contenido mineral óseo", "CMO", "CMO_ref", "kg"],
+      ["Mineral no óseo", "minNoOseo", "minNoOseo_ref", "kg"],
     ],
   },
   {
@@ -225,6 +227,13 @@ export function buildComposition(
   const ei = div(get("ECW"), get("ICW"), 3); // radio E/I con grasa
   const eiSg = div(get("ECW_sg"), get("ICW_sg"), 3); // radio E/I sin grasa
   const actMlg = div(get("TBW"), get("FFM"), 1, 100); // ACT/MLG % (hidratacion masa sin grasa)
+  // AEC/AIC SIN GRASA en % (smoke Santiago h/k, causa D): el equipo no siempre trae la columna. Se DERIVA
+  // sobre la FFW (agua libre de grasa), NO sobre ACT: es el denominador que fija la identidad confirmada por
+  // Gildardo (RESPUESTA 2026-08-15 §0) AEC_sg + AIC_sg = FFW, con la que los dos % suman 100. Coincide con la
+  // columna del equipo donde existe (verificado: ECW_sg/FFW = ECW_sg_pct del export). El equipo manda si la trae.
+  const _ffwVal = get("FFW");
+  const ecwSgPct = get("ECW_sg_pct") ?? div(get("ECW_sg"), _ffwVal, 2, 100);
+  const icwSgPct = get("ICW_sg_pct") ?? div(get("ICW_sg"), _ffwVal, 2, 100);
 
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
@@ -245,6 +254,8 @@ export function buildComposition(
         ei,
         ei_sg: eiSg,
         act_mlg: actMlg,
+        ECW_sg_pct: ecwSgPct,
+        ICW_sg_pct: icwSgPct,
       };
       const value = valueKey in computed ? computed[valueKey] : get(valueKey);
       const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;

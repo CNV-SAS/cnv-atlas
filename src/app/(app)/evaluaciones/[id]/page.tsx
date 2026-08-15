@@ -385,6 +385,7 @@ export default async function ResultadosEvaluacionPage({
                   isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}
                 }
                 references={wangRefs}
+                fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
               />
             ) : null
           }

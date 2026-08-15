@@ -395,7 +395,7 @@ export function wangRowDx(
       const p = pscAFxIR(ctx.af, ctx.ir, sexoM);
       return { dx: p.dx, referenceLabel: "—", cut: null, valueText: p.valueText };
     }
-    case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73%", cut: 73 };
+    case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73% (normohidrat.)", cut: 73 };
     case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 72.5 }; // medio
     case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 16 : 25 }; // medio
     case "CMO": return refBased(dCMO(dl));

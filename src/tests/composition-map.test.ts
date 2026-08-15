@@ -135,4 +135,46 @@ describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => 
     expect(typeof byKey("asmi")?.value).toBe("number");
     expect(typeof byKey("ei")?.value).toBe("number");
   });
+
+  it("AF e IR van DESPUES de los dos E/I en Nivel III (orden del smoke l)", () => {
+    const nivelIII = comp.levels.find((l) => l.title.includes("Celular"));
+    const order = (nivelIII?.rows ?? []).map((r) => r.key);
+    expect(order.indexOf("AF")).toBeGreaterThan(order.indexOf("ei_sg"));
+    expect(order.indexOf("IR")).toBeGreaterThan(order.indexOf("ei_sg"));
+    expect(order.indexOf("psc")).toBeGreaterThan(order.indexOf("IR")); // el mapa AFxIR, al final
+  });
+});
+
+// Candado de la construccion de los % sin grasa (smoke Santiago h/k, causa D). El equipo NO siempre trae
+// ECW_sg_pct/ICW_sg_pct; se DERIVAN sobre la FFW (no sobre ACT), el denominador que fija la identidad
+// confirmada por Gildardo (RESPUESTA 2026-08-15 §0) AEC_sg + AIC_sg = FFW, con la que los dos suman 100.
+describe("buildComposition: % sin grasa derivados sobre FFW cuando el equipo no los trae (causa D)", () => {
+  const h = (k: keyof typeof BIODY_COLUMNS) => normalizeHeader(BIODY_COLUMNS[k].header);
+  // Copia del crudo SIN las columnas de % sin grasa: fuerza la derivacion.
+  const rawSinPct: Record<string, number> = { ...raw };
+  delete rawSinPct[h("ECW_sg_pct")];
+  delete rawSinPct[h("ICW_sg_pct")];
+  const comp = buildComposition(rawSinPct, null);
+  const byKey = (k: string) => comp.levels.flatMap((l) => l.rows).find((r) => r.key === k);
+
+  it("ECW_sg_pct = ECW_sg / FFW * 100 (no queda en '-')", () => {
+    const ecwSg = raw[h("ECW_sg")];
+    const ffw = raw[h("FFW")];
+    expect(ecwSg).toBeGreaterThan(0);
+    expect(ffw).toBeGreaterThan(0);
+    expect(byKey("ECW_sg_pct")?.value).toBeCloseTo((ecwSg / ffw) * 100, 1);
+  });
+
+  it("los dos % sin grasa derivados suman ~100 (identidad AEC_sg + AIC_sg = FFW)", () => {
+    const ecwSgPct = byKey("ECW_sg_pct")?.value ?? 0;
+    const icwSgPct = byKey("ICW_sg_pct")?.value ?? 0;
+    expect(ecwSgPct + icwSgPct).toBeCloseTo(100, 0);
+  });
+
+  it("si el equipo SI trae el %, ese manda (no se deriva encima)", () => {
+    const conPct = buildComposition(raw, null);
+    const dev = raw[h("ECW_sg_pct")];
+    const fila = conPct.levels.flatMap((l) => l.rows).find((r) => r.key === "ECW_sg_pct");
+    expect(fila?.value).toBe(dev);
+  });
 });

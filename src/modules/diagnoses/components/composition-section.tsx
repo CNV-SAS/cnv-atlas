@@ -76,6 +76,7 @@ export function CompositionSection({
   classifications = {},
   sevByCode = {},
   references = {},
+  fenotipoMccb = null,
   showDiagnosis = true,
 }: {
   composition: Composition;
@@ -86,6 +87,9 @@ export function CompositionSection({
   // Referencia + Δ de los indicadores del motor que viven en Wang (FFMI/FMI/AF/IR): del clasificador del
   // motor (indicator-ranges), computadas en la pagina (tiene indicators). Rango COMPLETO (FFMI "17-25").
   references?: Record<string, { reference: string; delta: string | null }>;
+  // Fenotipo MCCB (FFMI x FMI), del snapshot sellado: se muestra como ULTIMA fila del Nivel IV, como en el
+  // HTML de Gildardo (smoke Santiago d). No sale del mapa PURO (es salida del diagnostico); lo pasa la pagina.
+  fenotipoMccb?: { id: string; nombre: string } | null;
   showDiagnosis?: boolean;
 }) {
   // Estado de colapso EN LA URL (?agua=1&bio=1): persiste al cambiar de subpestaña y volver (el subpanel
@@ -129,7 +133,22 @@ export function CompositionSection({
   const refPob: Record<string, RefPobEntry> = showDiagnosis
     ? computeRefPob(composition.peso, composition.talla, sexoM, (k) => refMap[k] ?? null)
     : {};
-  const hayEnValidacion = Object.values(refPob).some((e) => e.enValidacion);
+  // Filas que REALMENTE muestran el "*" de REF_POB en validacion: solo las de referencia NUMERICA
+  // poblacional (valor-vs-referencia o crudas), NO las de banda (que muestran el rango normativo). Se
+  // derivan una vez y se reusan para el pie: la nota no se afirma si ninguna fila la muestra (leccion de
+  // texto que afirma un estado sin derivarlo; una banda con "*" no tiene REF_POB detras).
+  const starKeys = new Set<string>();
+  if (showDiagnosis)
+    for (const l of composition.levels)
+      for (const r of l.rows) {
+        const rpe = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
+        if (!rpe?.enValidacion || r.key === "FMI") continue;
+        const effRef = r.reference ?? rpe.value ?? null;
+        const w = wangRowDx(r.key, r.value, sexoM, diagCtx, effRef, (v) => fmt(v));
+        // refIsNumeric: banda -> cut fijo != effRef; valor-vs-ref -> cut === effRef; cruda (w null) -> numerica.
+        if (w ? w.cut === effRef : true) starKeys.add(r.key);
+      }
+  const hayEnValidacion = starKeys.size > 0;
 
   // FUENTE UNICA por fila: Referencia + Δ + Diagnostico salen de wangRowDx (capa de display), NO se escriben
   // a mano al lado del clasificador (ese desajuste dejaba celdas vacias, ver leccion). UNICA excepcion: FMI,
@@ -140,7 +159,6 @@ export function CompositionSection({
     // Referencia EFECTIVA (equipo, o REF_POB si el equipo no la trajo) para las filas valor-vs-referencia.
     const refPobEntry = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
     const effectiveRef = r.reference ?? refPobEntry?.value ?? null;
-    const enValidacion = !!refPobEntry?.enValidacion;
     const w = showDiagnosis && !isFmi
       ? wangRowDx(r.key, r.value, sexoM, diagCtx, effectiveRef, (v) => fmt(v, dec))
       : null;
@@ -152,6 +170,8 @@ export function CompositionSection({
       : w
         ? w.referenceLabel
         : (r.referenceLabel ?? fmt(effectiveRef, dec));
+    // El "*" de REF_POB "en validacion" se derivo una vez en starKeys (solo referencias numericas, no bandas).
+    const showStar = starKeys.has(r.key);
 
     // Columna Valor: casi siempre el numero; NHLBI muestra la clase, Mapa AFxIR el perfil "IR .. · AF ..".
     const valueText = w?.valueText ?? fmt(r.value, dec);
@@ -189,7 +209,7 @@ export function CompositionSection({
         <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{valueText}</td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
           {refText}
-          {enValidacion ? (
+          {showStar ? (
             <sup
               className="ml-0.5 text-clinical-warning"
               title="Referencia en validación por la Dirección Científica (no significa que el dato esté mal)."
@@ -244,6 +264,18 @@ export function CompositionSection({
                         </td>
                       </tr>
                       {primary.map(renderRow)}
+                      {/* Fenotipo MCCB (FFMI x FMI) como ultima fila del Nivel IV (smoke Santiago d): valor y
+                          diagnostico = el nombre del fenotipo; sin referencia ni Δ (es una clasificacion, no un
+                          numero), igual que el HTML. Solo en Diagnostico y si el snapshot lo trae. */}
+                      {showDiagnosis && fenotipoMccb && lvl.title.includes("Tejidos") ? (
+                        <tr className="border-b border-border/40">
+                          <td className="py-1.5 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
+                          <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
+                          <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                          <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                          <td className="py-1.5 text-foreground">{fenotipoMccb.nombre}</td>
+                        </tr>
+                      ) : null}
                       {groups.map((g) => {
                         const meta = DETAIL_GROUPS[g];
                         const open = searchParams.get(meta.param) === "1";
