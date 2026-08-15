@@ -5,14 +5,15 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import {
-  type AnthroClass,
   clasificarCintura,
+  clasificarICC,
   clasificarICT,
   clasificarIMC,
 } from "../anthropometry";
 // El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
 import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
+import { fmiReferenceLabel } from "../data/indicator-ranges";
 import { OPTIMO_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
@@ -49,23 +50,6 @@ const DETAIL_GROUPS: Record<
   },
 };
 
-function AnthroChip({ label, cls }: { label: string; cls: AnthroClass | null }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-      {cls ? (
-        <span
-          className={`w-fit rounded-md px-2 py-0.5 text-sm font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, cls.sev))]}`}
-        >
-          {cls.label}
-        </span>
-      ) : (
-        <span className="text-sm text-muted-foreground">Sin dato</span>
-      )}
-    </div>
-  );
-}
-
 type Classifications = Record<string, { label?: string } | null>;
 
 // Diagnostico por fila de la tabla de Wang. Disponible HOY: (a) antropometricas por umbral OMS
@@ -77,47 +61,54 @@ function DiagnosisCell({
   value,
   sexoM,
   classifications,
+  sevByCode,
 }: {
   rowKey: string;
   value: number | null;
   sexoM: boolean;
   classifications: Classifications;
+  sevByCode: Record<string, number | null>;
 }) {
-  // (a) antropometricas OMS (referencia de display, rotulada como tal via tooltip).
-  const oms = rowKey === "imc" ? clasificarIMC(value) : rowKey === "cintura" ? clasificarCintura(value, sexoM) : null;
-  if (oms) {
-    return (
-      <span
-        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, oms.sev))]}`}
-        title="Referencia médica estándar (OMS), no output del motor ANI-BIS-E."
-      >
-        {oms.label}
-      </span>
-    );
-  }
-  // (a2) AEC/MCA (C12): clasificador de DISPLAY de Gildardo (dAECMCA, ATLAS_v7:12734), no OMS ni
-  // motor sellado. Rotulado como tal; Q20 (familia c vs d) sigue abierta.
+  const badge = (label: string, sev: number, title?: string) => (
+    <span
+      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, sev))]}`}
+      title={title}
+    >
+      {label}
+    </span>
+  );
+  // (a) antropometricas OMS (imc, cintura, ICT, ICC): referencia de display externa, rotulada via tooltip.
+  const oms =
+    rowKey === "imc"
+      ? clasificarIMC(value)
+      : rowKey === "cintura"
+        ? clasificarCintura(value, sexoM)
+        : rowKey === "ict"
+          ? clasificarICT(value)
+          : rowKey === "icc"
+            ? clasificarICC(value, sexoM)
+            : null;
+  if (oms) return badge(oms.label, oms.sev, "Referencia médica estándar (OMS), no output del motor ANI-BIS-E.");
+  // (a2) AEC/MCA (C12): clasificador de DISPLAY de Gildardo (dAECMCA, ATLAS_v7:12734).
   if (rowKey === "aec_mca") {
     const aec = clasificarAecMca(value);
-    if (aec) {
-      return (
-        <span
-          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, aec.sev))]}`}
-          title="Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20."
-        >
-          {aec.label}
-        </span>
+    if (aec)
+      return badge(
+        aec.label,
+        aec.sev,
+        "Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20.",
       );
+  }
+  // (b) clasificacion del motor (FFMI, AF, FMI), coloreada con su severidad (semaforo). Antes iban en texto
+  // plano; el HTML las colorea, y colorearlas es lo que hace la tabla legible de un vistazo (Santiago).
+  if (rowKey === "FFMI" || rowKey === "AF" || rowKey === "FMI") {
+    const label = classifications[rowKey]?.label;
+    if (label) {
+      const sev = sevByCode[rowKey];
+      return sev != null ? badge(label, sev) : <span className="text-xs text-foreground">{label}</span>;
     }
   }
-  // (b) clasificacion del motor congelada en el snapshot (FFMI, AF).
-  const snap =
-    rowKey === "FFMI" ? classifications.FFMI : rowKey === "AF" ? classifications.AF : null;
-  if (snap?.label) {
-    return <span className="text-xs text-foreground">{snap.label}</span>;
-  }
-  // (c) sin clasificacion del motor: guion neutro. La ausencia se comunica UNA vez a nivel de
-  // seccion (nota bajo la tabla), no se repite por fila.
+  // (c) sin clasificacion: guion neutro (ausencia, no "normal"). Se aclara una vez bajo la tabla.
   return <span className="text-muted-foreground">-</span>;
 }
 
@@ -129,11 +120,14 @@ export function CompositionSection({
   composition,
   sexoM = true,
   classifications = {},
+  sevByCode = {},
   showDiagnosis = true,
 }: {
   composition: Composition;
   sexoM?: boolean;
   classifications?: Classifications;
+  // Severidad por codigo (del motor) para colorear el semaforo de FFMI/AF/FMI en la columna Diagnostico.
+  sevByCode?: Record<string, number | null>;
   showDiagnosis?: boolean;
 }) {
   // Estado de colapso EN LA URL (?agua=1&bio=1): persiste al cambiar de subpestaña y volver (el subpanel
@@ -157,9 +151,22 @@ export function CompositionSection({
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   }
 
+  // Referencia y Δ de las filas antropometricas/derivadas (icc/ict/FMI): la referencia del EQUIPO es null
+  // para ellas, asi que se llena con el UMBRAL/RANGO (OMS sexo-dependiente el ICC; motor el FMI) y la Δ va
+  // contra ese corte (el FMI contra el punto medio del rango, como la tabla de indicadores). Las demas
+  // filas conservan la referencia del equipo (poblacional, patient-specific): no se pierde informacion.
+  const anthroRef: Record<string, { label: string; cut: number }> = {
+    ict: { label: "<0.50", cut: 0.5 },
+    icc: { label: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 },
+    FMI: { label: fmiReferenceLabel(sexoM), cut: sexoM ? 4.5 : 7 },
+  };
+
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
-    const delta = r.value != null && r.reference != null ? r.value - r.reference : null;
+    const a = anthroRef[r.key];
+    const refText = a ? a.label : (r.referenceLabel ?? fmt(r.reference, dec));
+    const refNum = a ? a.cut : r.reference;
+    const delta = r.value != null && refNum != null ? r.value - refNum : null;
     return (
       <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
         <td className="py-1.5 pr-4 text-foreground">
@@ -167,15 +174,19 @@ export function CompositionSection({
           {r.unit ? <span className="text-muted-foreground"> ({r.unit})</span> : null}
         </td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{fmt(r.value, dec)}</td>
-        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-          {r.referenceLabel ?? fmt(r.reference, dec)}
-        </td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">{refText}</td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
           {delta == null ? "-" : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
         </td>
         {showDiagnosis ? (
           <td className="py-1.5">
-            <DiagnosisCell rowKey={r.key} value={r.value} sexoM={sexoM} classifications={classifications} />
+            <DiagnosisCell
+              rowKey={r.key}
+              value={r.value}
+              sexoM={sexoM}
+              classifications={classifications}
+              sevByCode={sevByCode}
+            />
           </td>
         ) : null}
       </tr>
@@ -184,27 +195,9 @@ export function CompositionSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {showDiagnosis ? (
-        <section className="flex flex-col gap-3">
-          <h3 className="text-base font-semibold text-foreground">Clasificación antropométrica</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <AnthroChip label={`IMC ${fmt(composition.imc)}`} cls={clasificarIMC(composition.imc)} />
-            <AnthroChip
-              label={`Cintura ${fmt(composition.cintura, 0)} cm`}
-              cls={clasificarCintura(composition.cintura, sexoM)}
-            />
-            <AnthroChip
-              label={`Índice cintura-talla ${fmt(composition.ict, 2)}`}
-              cls={clasificarICT(composition.ict)}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Umbrales de referencia médica estándar (OMS): IMC, circunferencia de cintura e índice
-            cintura-talla. Son referencia clínica general, no un resultado del motor ANI-BIS-E.
-          </p>
-        </section>
-      ) : null}
-
+      {/* Los 3 chips (IMC/cintura/ICT) se retiraron: sus valores viven ahora en la tabla (Nivel V), con
+          referencia y clasificacion, que es mas completo que un chip. La nota OMS que los acompañaba se
+          movio al pie de la tabla (abajo), para no perder la aclaracion de que son referencia externa. */}
       <section className="flex flex-col gap-3">
         <h3 className="text-base font-semibold text-foreground">
           Composición corporal - Niveles de Wang
@@ -280,10 +273,16 @@ export function CompositionSection({
           </p>
         ) : null}
         {showDiagnosis ? (
-          <p className="text-xs text-muted-foreground">
-            Varias variables de composición aún no tienen clasificación del motor (se muestran con un
-            guion en Diagnóstico); disponibles próximamente.
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground">
+              IMC, cintura, índice cintura-cadera (ICC) e índice cintura-talla (ICT) usan umbrales de
+              referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Varias variables de composición aún no tienen clasificación del motor (se muestran con un
+              guion en Diagnóstico); disponibles próximamente.
+            </p>
+          </>
         ) : null}
       </section>
     </div>

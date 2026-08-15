@@ -16,7 +16,7 @@ import { getCorrectionAvailability } from "@/modules/corrections/data/correction
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { ConfirmDiagnosisPanel } from "@/modules/diagnoses/components/confirm-diagnosis-panel";
-import { abordajeProfesional } from "@/clinical-engine";
+import { abordajeProfesional, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
 import {
   type AbordajeCardData,
   EvaluationResults,
@@ -371,6 +371,9 @@ export default async function ResultadosEvaluacionPage({
                 composition={composition}
                 sexoM={sexoM}
                 classifications={results.snapshot.classifications}
+                sevByCode={
+                  isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}
+                }
               />
             ) : null
           }

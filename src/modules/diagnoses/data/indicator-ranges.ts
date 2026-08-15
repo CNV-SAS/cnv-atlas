@@ -33,6 +33,29 @@ export type IndicatorRange = { reference: string; delta: string | null };
 // Formato como el HTML (fN / toFixed): N decimales, conservando ceros a la derecha y el signo.
 const f = (n: number, d: number) => n.toFixed(d);
 
+// Clasificacion de la DESVIACION del ICA-BIS (PABU − φ), PORTADA VERBATIM de la rama de desviacion del
+// clasificador del PABU en el frozen (engine.core.derived.js:73-77, `d = Math.abs(raw)`): la misma que su
+// tabla llama "Desviación leve", no una escala nuestra. El motor sella la clasificacion del PABU con la
+// rama "Reserva superior" cuando IFC>6, asi que ICA-BIS quedaba sin clasificacion (N/D); esta reusa la rama
+// de desviacion para la fila ICA-BIS. sev via el color del frozen (verde 0 / ambar 2 / rojo 3), como colorSev.
+export function clasificarIcaBis(icaBis: number | null): { label: string; sev: number } | null {
+  if (icaBis == null) return null;
+  const d = Math.abs(icaBis);
+  if (d <= 0.15) return { label: "Zona φ — Homeostasis óptima", sev: 0 };
+  if (d <= 0.5) return { label: "Desviación leve", sev: 0 };
+  if (d <= 1.5) return { label: "Desviación moderada", sev: 2 };
+  if (d <= 3.0) return { label: "Desviación severa", sev: 3 };
+  return { label: "Zona crítica", sev: 3 };
+}
+
+// Rango de referencia del FMI, del CLASIFICADOR DEL MOTOR (cFMI, banda media sana): H 3-6, M 5-9. Se
+// exporta para que la tabla de Wang (composition-section) muestre el MISMO rango sin duplicar el corte.
+// NO es el "6-9/9-13" de la tabla de display del HTML (stale; manda el motor, instruccion Gildardo 2-ago).
+export function fmiReferenceLabel(sexM: boolean): string {
+  const [lo, hi] = sexM ? [3, 6] : [5, 9];
+  return `${lo}–${hi}`;
+}
+
 // Referencia + delta para un indicador (por codigo de la tabla), verbatim del HTML. sexM: masculino.
 // Devuelve null si el indicador no tiene valor (queda "-").
 export function indicatorRange(
@@ -70,7 +93,7 @@ export function indicatorRange(
       // cFMI: sano = Normal, banda MEDIA (M 3-6, F 5-9). Como FFMI: referencia = rango, Δ = promedio.
       if (ind.FMI == null) return null;
       const [lo, hi] = sexM ? [3, 6] : [5, 9];
-      return { reference: `${lo}–${hi}`, delta: f(ind.FMI - (lo + hi) / 2, 2) };
+      return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - (lo + hi) / 2, 2) };
     }
     case "PABU":
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618 (sin cambio respecto al HTML).

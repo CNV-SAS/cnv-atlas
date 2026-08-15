@@ -35,3 +35,11 @@ export function clasificarICT(ict: number | null): AnthroClass | null {
   if (ict < 0.6) return { label: "Exceso, riesgo moderado", sev: 1 };
   return { label: "Riesgo alto", sev: 2 };
 }
+
+// ICC (radio cintura/cadera): cortes 0.90 (H) / 0.85 (M). Son los ESTANDAR OMS de riesgo
+// cardiometabolico, y estan en el propio HTML de Gildardo (ATLAS_v8.html:10726, su logica de obesidad
+// sarcopenica). Como IMC y cintura: referencia externa OMS, no output del motor. sexoM: true si masculino.
+export function clasificarICC(icc: number | null, sexoM: boolean): AnthroClass | null {
+  if (icc == null) return null;
+  return icc < (sexoM ? 0.9 : 0.85) ? { label: "Normal", sev: 0 } : { label: "Riesgo elevado", sev: 2 };
+}

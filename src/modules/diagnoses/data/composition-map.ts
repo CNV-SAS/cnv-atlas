@@ -32,6 +32,7 @@ export type Composition = {
   cadera: number | null; // circunferencia MEDIDA (Hips Size cm)
   ict: number | null;
   icc: number | null;
+  fmi: number | null; // FMI = FM / talla^2 (derivado); rango/clasificacion sexo-dependientes en la seccion
   aecMca: number | null; // AEC/MCA = ECW/MCA (C12, ver clasificarAecMca)
   // Fecha de la medicion BIS (del Biody), para confirmar QUE se importo. null si no se conoce.
   measurementDate: string | null;
@@ -70,6 +71,11 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["IMC", "imc", null, "kg/m²"],
       ["Cintura", "cintura", null, "cm"],
       ["Cadera", "cadera", null, "cm"],
+      // ICC/ICT: ratios antropometricos (valor computado en buildComposition). Su REFERENCIA (umbral OMS,
+      // sexo-dependiente el ICC) y su clasificacion las resuelve composition-section, que tiene el sexo:
+      // el mapa se mantiene PURO (sin sexo, testeable sin sesion). refKey null: no hay _ref del equipo.
+      ["Índice cintura-cadera (ICC)", "icc", null, ""],
+      ["Índice cintura-talla (ICT)", "ict", null, ""],
       ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
       ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
@@ -84,6 +90,9 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["Masa muscular esqueletica", "SMM", "SMM_ref", "kg"],
       ["Masa muscular de miembros", "MMEM", "MMEM_ref", "kg"],
       ["Indice de masa libre de grasa (FFMI)", "FFMI", "FFMI_ref", "kg/m²"],
+      // FMI: DERIVADO (FM / talla^2), no una columna del equipo. Valor computado en buildComposition; la
+      // referencia (rango del MOTOR 3-6/5-9, sexo) y la clasificacion las resuelve composition-section.
+      ["Indice de masa grasa (FMI)", "FMI", null, "kg/m²"],
     ],
   },
   {
@@ -177,6 +186,16 @@ export function buildComposition(
   const _ffw = get("FFW");
   const _ffwDif = get("FFW_dif");
   const ffwRef = _ffw != null && _ffwDif != null ? _ffw - _ffwDif : null;
+  const icc = get("icc");
+  const ict = get("ict");
+  // FMI = FM / talla^2 (DERIVADO, ATLAS_v7 L5650). Valor PURO (sin sexo); su rango/clasificacion las
+  // resuelve composition-section. talla en cm -> m.
+  const _fm = get("FM");
+  const _tallaM = get("talla") != null ? (get("talla") as number) / 100 : null;
+  const fmi =
+    _fm != null && _tallaM != null && _tallaM > 0
+      ? parseFloat((_fm / (_tallaM * _tallaM)).toFixed(2))
+      : null;
 
   const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
     title: lvl.title,
@@ -185,9 +204,20 @@ export function buildComposition(
       if (valueKey === "aec_mca") {
         return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
       }
-      // Cintura/cadera usan la MEDIDA; FFW su referencia computada; el resto por su header de contrato.
+      // Cintura/cadera usan la MEDIDA; icc/ict/FMI su valor computado; FFW su referencia computada; el
+      // resto por su header de contrato. La referencia sexo-dependiente de icc/FMI la pone la seccion.
       const value =
-        valueKey === "cintura" ? cintura : valueKey === "cadera" ? cadera : get(valueKey);
+        valueKey === "cintura"
+          ? cintura
+          : valueKey === "cadera"
+            ? cadera
+            : valueKey === "icc"
+              ? icc
+              : valueKey === "ict"
+                ? ict
+                : valueKey === "FMI"
+                  ? fmi
+                  : get(valueKey);
       const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
       return { key: valueKey, label, value, reference, unit, ...(detail ? { detail } : {}) };
     }),
@@ -198,8 +228,9 @@ export function buildComposition(
     imc: get("imc"),
     cintura,
     cadera,
-    ict: get("ict"),
-    icc: get("icc"),
+    ict,
+    icc,
+    fmi,
     aecMca,
     measurementDate,
     hasDerivedValues,

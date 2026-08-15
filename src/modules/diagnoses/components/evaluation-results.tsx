@@ -11,7 +11,7 @@ import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
-import { indicatorRange } from "../data/indicator-ranges";
+import { clasificarIcaBis, indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -22,6 +22,9 @@ import { formatDate } from "@/lib/format/date";
 // pura desde el snapshot inmutable + contenido EFR. Sin PII al exterior; el profesional
 // autorizado (RLS) ve el nombre del paciente. Lenguaje funcional (BRAND / DATA_GOVERNANCE).
 
+// FMI y FFMI NO van aca: son composicion, viven en la tabla de Wang (Nivel IV), como en el HTML de
+// Gildardo. El reporte al paciente y el seguimiento tienen sus propias listas (no se afectan). Restructure
+// Santiago 2026-08-15.
 const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
   { code: "IFC", key: "ifc" },
   { code: "IRC", key: "irc" },
@@ -31,8 +34,6 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
   { code: "IEHH", key: "iehh" },
   { code: "IAE", key: "iae" },
   { code: "EB", key: "eb" },
-  { code: "FMI", key: "FMI" },
-  { code: "FFMI", key: "FFMI" },
   { code: "AF", key: "AF" },
   { code: "IR", key: "IR" },
 ];
@@ -254,9 +255,16 @@ export function EvaluationResults({
                     : "-"
                   : (range?.delta ?? "-");
                 // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
+                // ICA-BIS: su clasificacion es la DESVIACION (rama del clasificador del PABU, verbatim del
+                // frozen), que el motor no sella para ICA-BIS (queda N/D) porque cPABU corta a "Reserva
+                // superior" con IFC>6. clasificarIcaBis reusa esa rama de desviacion ("Desviación leve").
+                const isIca = code === "ICA-BIS";
+                const icaCls = isIca ? clasificarIcaBis(indicators.icaBis) : null;
                 const classCode = isEb ? "IAE" : code;
-                const sev = sevByCode[classCode];
-                const classLabel = classifications[classCode]?.label ?? "N/D";
+                const sev = isIca ? (icaCls?.sev ?? null) : sevByCode[classCode];
+                const classLabel = isIca
+                  ? (icaCls?.label ?? "N/D")
+                  : (classifications[classCode]?.label ?? "N/D");
                 return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
