@@ -140,9 +140,10 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
     title: "Nivel II · Molecular",
     rows: [
       ["Agua corporal total", "TBW", "TBW_ref", "L"],
-      // FFW (agua libre de grasa): la referencia no es una columna _ref, se computa como FFW - FFW_dif
-      // (verbatim ATLAS_v8.html Nivel II). Se resuelve en buildComposition.
-      ["FFW - Agua libre de grasa", "FFW", null, "L"],
+      // FFW (agua libre de grasa): la referencia PRIMARIA se computa FFW - FFW_dif (verbatim ATLAS_v8.html
+      // Nivel II), en buildComposition. refKey "FFW_ref" para que, si el export NO trae FFW_dif (ffwRef
+      // null), la seccion caiga al respaldo REF_POB (FFW_ref = TBW_ref), y la fila no quede sin referencia.
+      ["FFW - Agua libre de grasa", "FFW", "FFW_ref", "L"],
       ["Hidratación sin grasa", "hidSG", "hidSG_ref", "%"],
       // ACT/MLG (hidratacion de la masa sin grasa, %): clasificador de display dACTMLG, referencia "71-74%".
       ["ACT/MLG - Hidratación masa sin grasa", "act_mlg", null, "%"],
@@ -220,7 +221,7 @@ export function buildComposition(
   const fmi = _fm != null && _tallaM != null && _tallaM > 0 ? div(_fm, _tallaM * _tallaM, 2) : null;
   // Filas de indices de Nivel III/IV (valores computados; su clasificacion la resuelve composition-section):
   const asmi = _tallaM != null && _tallaM > 0 ? div(get("MMEM"), _tallaM * _tallaM, 2) : null;
-  const smmW = get("smmW");
+  // smmW no se pre-computa: la fila "smmW" sale directo de get("smmW") (columna del equipo, ver `computed`).
   const ei = div(get("ECW"), get("ICW"), 3); // radio E/I con grasa
   const eiSg = div(get("ECW_sg"), get("ICW_sg"), 3); // radio E/I sin grasa
   const actMlg = div(get("TBW"), get("FFM"), 1, 100); // ACT/MLG % (hidratacion masa sin grasa)

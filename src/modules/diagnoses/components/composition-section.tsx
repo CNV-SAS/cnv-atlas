@@ -4,31 +4,14 @@ import { Fragment } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
-import {
-  clasificarCintura,
-  clasificarICC,
-  clasificarICT,
-  clasificarIMC,
-} from "../anthropometry";
 // El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
-import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
+import { type Composition, type CompositionRow } from "../data/composition-map";
 import {
-  clasifNHLBI,
-  clasificarASMI,
-  clasificarSMMW,
   computeRefPob,
-  dACTMLG,
-  dAECpct,
-  dAICpct,
-  dEI,
-  dFMpct,
-  dMasaSeca,
-  dSolEC,
-  dVsRef,
   type DisplayDx,
-  pscAFxIR,
   type RefPobEntry,
+  wangRowDx,
 } from "../data/composition-display";
 import { SEV_CLS } from "./risk-severity";
 
@@ -68,94 +51,19 @@ const DETAIL_GROUPS: Record<
 
 type Classifications = Record<string, { label?: string } | null>;
 
-// Diagnostico por fila de la tabla de Wang. Disponible HOY: (a) antropometricas por umbral OMS
-// (imc/cintura) y (b) las clasificaciones del motor ya congeladas en el snapshot (FFMI/AF). El
-// resto queda como PENDIENTE EXPLICITO: nunca un guion silencioso, que un profesional podria leer
-// como "el modelo evaluo esto y salio normal" (falso). Ver docs/RESULTADOS_GAP.md Parte 4 y Q10.
-function DiagnosisCell({
-  rowKey,
-  value,
-  sexoM,
-  classifications,
-  sevByCode,
-  delta,
-  reference,
-  ctx,
-}: {
-  rowKey: string;
-  value: number | null;
-  sexoM: boolean;
-  classifications: Classifications;
-  sevByCode: Record<string, number | null>;
-  // Δ y referencia EFECTIVOS (con REF_POB si el equipo no traia la referencia): para los clasificadores de
-  // display que comparan valor contra referencia (solEC/masaSeca sobre Δ; volumenes de agua sobre la ref).
-  delta: number | null;
-  reference: number | null;
-  // Contexto cruzado para NHLBI (imc+cintura) y Mapa AFxIR (af+ir), que no salen del valor de su propia fila.
-  ctx: { imc: number | null; cintura: number | null; af: number | null; ir: number | null };
-}) {
-  // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: usar
-  // SEV_CLS y no OPTIMO_CLS aca: los clasificadores antropometricos SI emiten sev 1 (Sobrepeso, Riesgo CV
-  // aumentado), y OPTIMO_CLS colapsaba 0 y 1 en verde -> "Sobrepeso" salia VERDE (defecto). SEV_CLS[1] es
-  // ambar, como el HTML.
-  const badge = (label: string, sev: number, title?: string) => (
+// Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: SEV_CLS y no
+// OPTIMO_CLS: los clasificadores de display SI emiten sev 1 (Sobrepeso, Riesgo CV aumentado), y OPTIMO_CLS
+// colapsaba 0 y 1 en verde -> "Sobrepeso" salia VERDE (defecto). SEV_CLS[1] es ambar, como el HTML.
+function DxBadge({ dx, title }: { dx: DisplayDx; title?: string }) {
+  if (!dx) return <span className="text-muted-foreground">-</span>;
+  return (
     <span
-      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, sev))]}`}
+      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, dx.sev))]}`}
       title={title}
     >
-      {label}
+      {dx.label}
     </span>
   );
-  // (a) antropometricas OMS (imc, cintura, ICT, ICC): referencia de display externa, rotulada via tooltip.
-  const oms =
-    rowKey === "imc"
-      ? clasificarIMC(value)
-      : rowKey === "cintura"
-        ? clasificarCintura(value, sexoM)
-        : rowKey === "ict"
-          ? clasificarICT(value)
-          : rowKey === "icc"
-            ? clasificarICC(value, sexoM)
-            : null;
-  if (oms) return badge(oms.label, oms.sev, "Referencia médica estándar (OMS), no output del motor ANI-BIS-E.");
-  // (a2) AEC/MCA (C12): clasificador de DISPLAY de Gildardo (dAECMCA, ATLAS_v7:12734).
-  if (rowKey === "aec_mca") {
-    const aec = clasificarAecMca(value);
-    if (aec)
-      return badge(
-        aec.label,
-        aec.sev,
-        "Clasificación de display del prototipo de Gildardo (ANI-BIS-E), no umbral OMS ni output sellado del motor. Ver Q20.",
-      );
-  }
-  // (b) clasificacion del motor (FFMI, AF, FMI, IR), coloreada con su severidad (semaforo). Antes iban en
-  // texto plano; el HTML las colorea, y colorearlas es lo que hace la tabla legible de un vistazo (Santiago).
-  if (rowKey === "FFMI" || rowKey === "AF" || rowKey === "FMI" || rowKey === "IR") {
-    const label = classifications[rowKey]?.label;
-    if (label) {
-      const sev = sevByCode[rowKey];
-      return sev != null ? badge(label, sev) : <span className="text-xs text-foreground">{label}</span>;
-    }
-  }
-  // (c) clasificadores de la CAPA DE DISPLAY de Gildardo (NO motor; ver composition-display). Los de Δ
-  // (solEC/masaSeca) usan el Δ efectivo; los de volumen usan la referencia efectiva (con REF_POB).
-  let disp: DisplayDx = null;
-  if (rowKey === "solEC") disp = dSolEC(delta);
-  else if (rowKey === "masaSeca") disp = dMasaSeca(delta);
-  else if (rowKey === "ECW_pct" || rowKey === "ECW_sg_pct") disp = dAECpct(value);
-  else if (rowKey === "ICW_pct" || rowKey === "ICW_sg_pct") disp = dAICpct(value);
-  else if (rowKey === "FM_pct") disp = dFMpct(value, sexoM);
-  else if (rowKey === "act_mlg") disp = dACTMLG(value);
-  else if (rowKey === "ei" || rowKey === "ei_sg") disp = dEI(value);
-  else if (rowKey === "asmi") disp = clasificarASMI(value, sexoM);
-  else if (rowKey === "smmW") disp = clasificarSMMW(value, sexoM);
-  else if (rowKey === "nhlbi") disp = clasifNHLBI(ctx.imc, ctx.cintura, sexoM);
-  else if (rowKey === "psc") disp = pscAFxIR(ctx.af, ctx.ir, sexoM).dx;
-  else if (["ECW", "ECW_sg", "ICW", "ICW_sg", "TBW", "FFW", "MCA"].includes(rowKey))
-    disp = dVsRef(value, reference);
-  if (disp) return badge(disp.label, disp.sev);
-  // (d) sin clasificacion: guion neutro (ausencia, no "normal"). Se aclara una vez bajo la tabla.
-  return <span className="text-muted-foreground">-</span>;
 }
 
 // showDiagnosis gobierna si se muestra el VEREDICTO (clasificacion antropometrica OMS + columna
@@ -201,23 +109,6 @@ export function CompositionSection({
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   }
 
-  // Referencia y Δ de las filas antropometricas/derivadas (icc/ict/FMI): la referencia del EQUIPO es null
-  // para ellas, asi que se llena con el UMBRAL/RANGO (OMS sexo-dependiente el ICC; motor el FMI) y la Δ va
-  // contra ese corte (el FMI contra el punto medio del rango, como la tabla de indicadores). Las demas
-  // filas conservan la referencia del equipo (poblacional, patient-specific): no se pierde informacion.
-  // Referencia (etiqueta) + corte (para el Δ) de las filas que NO usan la referencia del equipo ni el
-  // rango del motor (`references`): antropometricas OMS (icc/ict), indices de masa (asmi/smmW) y las de
-  // display con referencia fija (E/I, ACT/MLG, NHLBI). cut ausente => sin Δ (p. ej. NHLBI, clasificacion).
-  const displayRef: Record<string, { label: string; cut?: number }> = {
-    ict: { label: "<0.50", cut: 0.5 },
-    icc: { label: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 },
-    asmi: { label: sexoM ? "≥7.0" : "≥5.5", cut: sexoM ? 7.0 : 5.5 },
-    smmW: { label: sexoM ? "≥27%" : "≥22%", cut: sexoM ? 27 : 22 },
-    ei: { label: "0.35–0.40", cut: 0.375 },
-    ei_sg: { label: "0.35–0.40", cut: 0.375 },
-    act_mlg: { label: "71–74%", cut: 72.5 },
-    nhlbi: { label: sexoM ? "IMC 18.5–24.9 · CC ≤102 cm" : "IMC 18.5–24.9 · CC ≤88 cm" },
-  };
   // Valores por clave (para el contexto cruzado de NHLBI/Mapa AFxIR: af/ir salen de otras filas).
   const valueMap: Record<string, number | null> = {};
   for (const l of composition.levels) for (const row of l.rows) valueMap[row.key] = row.value;
@@ -240,29 +131,62 @@ export function CompositionSection({
     : {};
   const hayEnValidacion = Object.values(refPob).some((e) => e.enValidacion);
 
+  // FUENTE UNICA por fila: Referencia + Δ + Diagnostico salen de wangRowDx (capa de display), NO se escriben
+  // a mano al lado del clasificador (ese desajuste dejaba celdas vacias, ver leccion). UNICA excepcion: FMI,
+  // que manda el MOTOR (rango 3-6, no el 6-9 del display): su ref/Δ/clase vienen de `references`/`classifications`.
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
-    const motorRef = references[r.key]; // FFMI/FMI/AF/IR: rango completo del motor + Δ ya formateado
-    const a = displayRef[r.key];
-    // Referencia EFECTIVA para las filas de display: la del equipo, o REF_POB si el equipo no la trajo.
+    const isFmi = r.key === "FMI";
+    // Referencia EFECTIVA (equipo, o REF_POB si el equipo no la trajo) para las filas valor-vs-referencia.
     const refPobEntry = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
     const effectiveRef = r.reference ?? refPobEntry?.value ?? null;
     const enValidacion = !!refPobEntry?.enValidacion;
-    const refText = motorRef
+    const w = showDiagnosis && !isFmi
+      ? wangRowDx(r.key, r.value, sexoM, diagCtx, effectiveRef, (v) => fmt(v, dec))
+      : null;
+
+    // Columna Referencia
+    const motorRef = references[r.key]; // FMI (y FFMI/AF/IR si no hay display): rango del motor + Δ formateado
+    const refText = isFmi && motorRef
       ? motorRef.reference
-      : a
-        ? a.label
+      : w
+        ? w.referenceLabel
         : (r.referenceLabel ?? fmt(effectiveRef, dec));
-    const refNum = a ? (a.cut ?? null) : effectiveRef;
-    const deltaMotor = motorRef ? (motorRef.delta ?? "-") : null;
-    const delta = r.value != null && refNum != null ? r.value - refNum : null;
+
+    // Columna Valor: casi siempre el numero; NHLBI muestra la clase, Mapa AFxIR el perfil "IR .. · AF ..".
+    const valueText = w?.valueText ?? fmt(r.value, dec);
+
+    // Columna Δ: FMI del motor; NHLBI su texto de cintura. El resto: en Diagnostico contra el corte normativo
+    // (wangRowDx.cut); en Evaluacion (o filas crudas sin clasificador) contra la referencia del equipo.
+    let deltaText: string;
+    if (isFmi && motorRef) deltaText = motorRef.delta ?? "-";
+    else if (w?.deltaText != null) deltaText = w.deltaText;
+    else {
+      const cut = w ? w.cut : effectiveRef;
+      const d = r.value != null && cut != null ? r.value - cut : null;
+      deltaText = d == null ? "-" : `${d >= 0 ? "+" : ""}${fmt(d, dec)}`;
+    }
+
+    // Columna Diagnostico
+    const dxNode = !showDiagnosis ? null : isFmi ? (
+      <DxBadge
+        dx={
+          classifications["FMI"]?.label
+            ? { label: classifications["FMI"]!.label!, sev: sevByCode["FMI"] ?? 0 }
+            : null
+        }
+      />
+    ) : (
+      <DxBadge dx={w?.dx ?? null} />
+    );
+
     return (
       <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
         <td className="py-1.5 pr-4 text-foreground">
           {r.label}
           {r.unit ? <span className="text-muted-foreground"> ({r.unit})</span> : null}
         </td>
-        <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{fmt(r.value, dec)}</td>
+        <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{valueText}</td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
           {refText}
           {enValidacion ? (
@@ -274,27 +198,8 @@ export function CompositionSection({
             </sup>
           ) : null}
         </td>
-        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
-          {deltaMotor != null
-            ? deltaMotor
-            : delta == null
-              ? "-"
-              : `${delta >= 0 ? "+" : ""}${fmt(delta, dec)}`}
-        </td>
-        {showDiagnosis ? (
-          <td className="py-1.5">
-            <DiagnosisCell
-              rowKey={r.key}
-              value={r.value}
-              sexoM={sexoM}
-              classifications={classifications}
-              sevByCode={sevByCode}
-              delta={delta}
-              reference={effectiveRef}
-              ctx={diagCtx}
-            />
-          </td>
-        ) : null}
+        <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">{deltaText}</td>
+        {showDiagnosis ? <td className="py-1.5">{dxNode}</td> : null}
       </tr>
     );
   }
@@ -392,8 +297,8 @@ export function CompositionSection({
               referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
             </p>
             <p className="text-xs text-muted-foreground">
-              Varias variables de composición aún no tienen clasificación del motor (se muestran con un
-              guion en Diagnóstico); disponibles próximamente.
+              Las masas crudas (kg) muestran un guion en Diagnóstico: se contrastan contra la referencia
+              del equipo, sin una clasificación normativa propia (igual que en la tabla de referencia).
             </p>
           </>
         ) : null}

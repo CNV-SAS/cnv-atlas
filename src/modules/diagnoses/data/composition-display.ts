@@ -12,7 +12,13 @@
 // classifications (cIFC, cFMI, cAF, cIR, cASMI...); ESTOS son de su capa de tabla. No mezclar.
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 
+// El clasificador AEC/MCA vive en composition-map (modulo NEUTRO, puro); se reusa aca para que la fila
+// aec_mca salga por la misma fuente unica (wangRowDx). composition-map NO importa este archivo: sin ciclo.
+import { clasificarAecMca } from "./composition-map";
+
 export type DisplayDx = { label: string; sev: number } | null;
+// NHLBI devuelve ademas la clase (para la columna Valor) y el texto de cintura (para la columna Δ).
+export type NhlbiDx = { label: string; sev: number; clase: string; ccAltaText: string } | null;
 
 // Color del frozen -> severidad 0-3 para el semaforo (SEV_CLS). Verde/azul/teal = optimo/informativo (0);
 // ambar = leve (1); naranja = moderado (2); rojo (todas las variantes) = alto (3).
@@ -94,7 +100,7 @@ export function dACTMLG(v: number | null): DisplayDx {
 
 // ── Clasificación IMC + cintura (NHLBI) — :14168 (clasifIMCcintura). Combina IMC y cintura por sexo. ──
 // Cortes de cintura NIH/NHLBI 1998: H >102 cm · M >88 cm.
-export function clasifNHLBI(imc: number | null, cintura: number | null, sexoM: boolean): DisplayDx {
+export function clasifNHLBI(imc: number | null, cintura: number | null, sexoM: boolean): NhlbiDx {
   const b = imc || 0;
   const c = cintura || 0;
   if (!(b > 0)) return null;
@@ -116,7 +122,21 @@ export function clasifNHLBI(imc: number | null, cintura: number | null, sexoM: b
   };
   const label = clase + (riesgo ? " · riesgo " + riesgo.toLowerCase() : "");
   const color = riesgo ? COL[riesgo] : b >= 18.5 && b < 25 ? "#16a34a" : "#64748b";
-  return dx(label, color);
+  const base = dx(label, color);
+  const ccAltaText = ccAlta === null ? "—" : ccAlta ? "CC elevada" : "CC normal";
+  return base ? { ...base, clase, ccAltaText } : null;
+}
+
+// dAF / dIR de la tabla de display (ATLAS_v8:14082-14083). Coinciden con el motor cAF/cIR (cortes y
+// etiquetas), pero se portan aca para que TODA la tabla salga de una fuente (el display).
+export function dAF(v: number | null, sexoM: boolean): DisplayDx {
+  if (!v) return null;
+  if (sexoM) return v < 6.5 ? dx("Bajo", "#ef4444") : v <= 7.0 ? dx("Normal", "#16a34a") : dx("Alto", "#3b82f6");
+  return v < 6.0 ? dx("Bajo", "#ef4444") : v <= 6.5 ? dx("Normal", "#16a34a") : dx("Alto", "#3b82f6");
+}
+export function dIR(v: number | null, sexoM: boolean): DisplayDx {
+  if (!v) return null;
+  return v < (sexoM ? 0.78 : 0.82) ? dx("Óptimo", "#16a34a") : dx("Inflamación de bajo grado", "#ef4444");
 }
 
 // ── Mapa AFxIR (Perfil de Salud Celular) — :13448-13470 (afPSC/irPSC/PSC_INTERP). ──
@@ -142,6 +162,78 @@ export function pscAFxIR(
   const valueText = afK !== "N/D" && irK !== "N/D" ? `IR ${irK} · AF ${afK}` : "—";
   const interp = PSC_INTERP[`${irK}_${afK}`];
   return { valueText, dx: interp ? dx(interp, "#0f766e") : null };
+}
+
+// ── Clasificadores de la tabla que en el HTML son DISTINTOS de los del motor (verbatim, ATLAS_v8:14072+).
+// El HTML muestra ESTOS (no los cIMC/cCintura/cFFMI del motor): para igualar el HTML se usan estos. La
+// UNICA excepcion es FMI, donde Gildardo dijo que manda el motor (3-6, no el 6-9 de dFMI): FMI no pasa por
+// aca, lo resuelve la seccion con el motor.
+export function dIMC(v: number | null): DisplayDx {
+  if (!v) return null;
+  if (v < 18.5) return dx("Bajo peso", "#3b82f6");
+  if (v < 25) return dx("Normal", "#16a34a");
+  if (v < 30) return dx("Sobrepeso", "#f59e0b");
+  if (v < 35) return dx("Obesidad I", "#ef4444");
+  if (v < 40) return dx("Obesidad II", "#b91c1c");
+  return dx("Obesidad III", "#7f1d1d");
+}
+export function dCC(v: number | null, sexoM: boolean): DisplayDx {
+  if (!v) return null;
+  const [lo, hi] = sexoM ? [94, 102] : [80, 88];
+  if (v < lo) return dx("Normal", "#16a34a");
+  if (v <= hi) return dx("Riesgo", "#f59e0b");
+  return dx("Riesgo alto", "#ef4444");
+}
+export function dICC(v: number | null, sexoM: boolean): DisplayDx {
+  if (!v) return null;
+  return v < (sexoM ? 0.9 : 0.85) ? dx("Normal", "#16a34a") : dx("Riesgo cardiovascular", "#ef4444");
+}
+export function dICT(v: number | null): DisplayDx {
+  if (!v) return null;
+  if (v < 0.5) return dx("Normal", "#16a34a");
+  if (v <= 0.6) return dx("Riesgo", "#f59e0b");
+  return dx("Riesgo alto", "#ef4444");
+}
+export function dFFMI(v: number | null, sexoM: boolean): DisplayDx {
+  if (!v) return null;
+  if (sexoM) {
+    if (v < 17) return dx("Desnutrición", "#3b82f6");
+    if (v <= 25) return dx("Normal", "#16a34a");
+    if (v <= 28) return dx("Sospecha anabolizantes", "#f59e0b");
+    return dx("Uso esteroides", "#ef4444");
+  }
+  if (v < 15) return dx("Desnutrición", "#3b82f6");
+  if (v <= 23) return dx("Normal", "#16a34a");
+  if (v <= 25) return dx("Sospecha anabolizantes", "#f59e0b");
+  return dx("Uso esteroides", "#ef4444");
+}
+// dMCA/dCMO/dProt operan sobre el Δ (valor − referencia).
+export function dMCA(delta: number | null): DisplayDx {
+  if (delta == null) return null;
+  if (delta >= 0) return dx("Adecuado", "#16a34a");
+  if (delta >= -1) return dx("Leve déficit", "#f59e0b");
+  return dx("Déficit MCA", "#ef4444");
+}
+export function dCMO(delta: number | null): DisplayDx {
+  if (delta == null) return null;
+  if (delta >= 0) return dx("Normal", "#16a34a");
+  if (delta >= -1) return dx("Riesgo de osteopenia", "#f59e0b");
+  return dx("Riesgo de osteoporosis", "#ef4444");
+}
+export function dProt(delta: number | null): DisplayDx {
+  if (delta == null) return null;
+  if (delta >= 0) return dx("Reserva proteica adecuada", "#16a34a");
+  if (delta >= -1) return dx("Déficit proteico leve", "#f59e0b");
+  return dx("Déficit proteico", "#ef4444");
+}
+// Hidratacion sin grasa (dHidDef): sobre el valor %.
+export function dHidDef(v: number | null): DisplayDx {
+  if (v == null) return null;
+  if (v >= 73) return v > 78 ? dx("Sobrehidratación", "#3b82f6") : dx("Normohidratación (≥73%)", "#16a34a");
+  const def = 73 - v;
+  if (def < 5) return dx("Deshidratación leve", "#f59e0b");
+  if (def <= 10) return dx("Deshidratación moderada", "#f97316");
+  return dx("Deshidratación severa", "#ef4444");
 }
 
 // ── ASMI y SMM/W — cortes del clasificador del MOTOR (frozen engine.core.derived.js:212 cASMI, :178
@@ -236,4 +328,78 @@ export function computeRefPob(
   if (tallaM > 0) put("MMEM_ref", rd((sexoM ? 7.0 : 5.5) * tallaM * tallaM), false);
   void actMlgR;
   return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// FUENTE ÚNICA por fila de la tabla de Wang (fix sistemático 2026-08-15): diagnóstico + referencia +
+// corte del Δ, TODO de un solo lugar. Antes la referencia se escribía a mano por fila y quedaban celdas
+// vacías con el clasificador ya sabiendo su rango (ver leccion dato-a-mano-junto-al-que-lo-contiene).
+// Espeja el HTML (usa sus clasificadores d* y sus referencias), EXCEPTO FMI (manda el motor, 3-6, no el
+// 6-9 de dFMI): FMI NO pasa por aca, lo resuelve la seccion con el motor. Las filas crudas de masa
+// (FM/FFM/SMM/MMEM/peso/GEB/GET...) devuelven null: referencia del equipo, sin diagnostico (como el HTML).
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+export type WangRowDx = {
+  dx: DisplayDx;
+  referenceLabel: string;
+  cut: number | null; // para el Δ (valor − cut); null => sin Δ derivable de un corte
+  valueText?: string; // texto en la columna Valor (NHLBI = clase, Mapa AFxIR = "IR .. · AF ..")
+  deltaText?: string; // texto en la columna Δ (NHLBI = "CC normal")
+};
+
+// Regla del `cut` (para que el Δ salga de UNA fuente y sea consistente en toda la tabla):
+//  - Banda de dos lados ("18.5–24.9", "17–25", "35–40%"): cut = PUNTO MEDIO. Es nuestra regla (P-23c,
+//    pendiente de Gildardo); su HTML resta contra el borde inferior. Ejemplo del round: FFMI 19.90 en 17–25
+//    da −1.10 contra el medio 21 (nosotros) vs +2.90 contra 17 (su HTML).
+//  - Umbral de un lado ("<0.45", "≥7.0", "<94 cm", "≥73%"): cut = el umbral. Δ = valor − umbral.
+//  - Fila valor-vs-referencia (MCA, ECW, TBW, FFW...): cut = la referencia efectiva (equipo/REF_POB).
+
+export function wangRowDx(
+  rowKey: string,
+  value: number | null,
+  sexoM: boolean,
+  ctx: { imc: number | null; cintura: number | null; af: number | null; ir: number | null },
+  effRef: number | null,
+  fmtRef: (v: number | null) => string,
+): WangRowDx | null {
+  const dl = value != null && effRef != null ? value - effRef : null; // Δ contra la ref (equipo/REF_POB)
+  const refBased = (d: DisplayDx): WangRowDx => ({ dx: d, referenceLabel: fmtRef(effRef), cut: effRef });
+  switch (rowKey) {
+    case "imc": return { dx: dIMC(value), referenceLabel: "18.5–24.9", cut: 21.7 }; // medio de 18.5–24.9
+    case "cintura": return { dx: dCC(value, sexoM), referenceLabel: sexoM ? "<94 cm" : "<80 cm", cut: sexoM ? 94 : 80 };
+    case "icc": return { dx: dICC(value, sexoM), referenceLabel: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 };
+    case "ict": return { dx: dICT(value), referenceLabel: "<0.50", cut: 0.5 };
+    case "nhlbi": {
+      const n = clasifNHLBI(ctx.imc, ctx.cintura, sexoM);
+      return {
+        dx: n,
+        referenceLabel: sexoM ? "IMC 18.5–24.9 · CC ≤102 cm" : "IMC 18.5–24.9 · CC ≤88 cm",
+        cut: null,
+        valueText: n?.clase ?? "—",
+        deltaText: n?.ccAltaText ?? "—",
+      };
+    }
+    case "FFMI": return { dx: dFFMI(value, sexoM), referenceLabel: sexoM ? "17–25" : "15–23", cut: sexoM ? 21 : 19 }; // medio del rango
+    case "asmi": return { dx: clasificarASMI(value, sexoM), referenceLabel: sexoM ? "≥7.0" : "≥5.5", cut: sexoM ? 7.0 : 5.5 };
+    case "smmW": return { dx: clasificarSMMW(value, sexoM), referenceLabel: sexoM ? "≥27%" : "≥22%", cut: sexoM ? 27 : 22 };
+    case "MCA": return refBased(dMCA(dl));
+    case "solEC": return refBased(dSolEC(dl));
+    case "masaSeca": return refBased(dMasaSeca(dl));
+    case "aec_mca": return { dx: clasificarAecMca(value), referenceLabel: "<0.45", cut: 0.45 };
+    case "ECW": case "ICW": case "ECW_sg": case "ICW_sg": case "TBW": case "FFW": return refBased(dVsRef(value, effRef));
+    case "ECW_pct": case "ECW_sg_pct": return { dx: dAECpct(value), referenceLabel: "35–40%", cut: 37.5 }; // medio
+    case "ICW_pct": case "ICW_sg_pct": return { dx: dAICpct(value), referenceLabel: "60–65%", cut: 62.5 }; // medio
+    case "ei": case "ei_sg": return { dx: dEI(value), referenceLabel: "0.35–0.40", cut: 0.375 }; // medio
+    case "AF": return { dx: dAF(value, sexoM), referenceLabel: sexoM ? "6.5–7.0°" : "6.0–6.5°", cut: sexoM ? 6.75 : 6.25 }; // medio
+    case "IR": return { dx: dIR(value, sexoM), referenceLabel: sexoM ? "<0.78" : "<0.82", cut: sexoM ? 0.78 : 0.82 };
+    case "psc": {
+      const p = pscAFxIR(ctx.af, ctx.ir, sexoM);
+      return { dx: p.dx, referenceLabel: "—", cut: null, valueText: p.valueText };
+    }
+    case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73%", cut: 73 };
+    case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 72.5 }; // medio
+    case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 16 : 25 }; // medio
+    case "CMO": return refBased(dCMO(dl));
+    case "protTotal": case "protActiva": return refBased(dProt(dl));
+    default: return null; // filas crudas de masa: sin clasificador (referencia del equipo, sin diagnostico)
+  }
 }
