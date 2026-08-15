@@ -11,7 +11,7 @@ import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
-import { clasificarIcaBis, indicatorRange } from "../data/indicator-ranges";
+import { clasificarIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -56,6 +56,14 @@ function fmtNum(v: number | null, code?: string): string {
   // Solo el AF; el resto de indicadores conserva su formato (2 decimales / entero).
   if (code === "AF") return v.toFixed(1);
   return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+
+// Cortes inline de un item de dominio del DFI (hibrido aprobado): detecta el codigo del indicador al inicio
+// del texto ("IFC 6.98 (...)", "ISCM-BIS ...", "ICEC/LE8 ...") y devuelve sus bandas del motor. null si el
+// item no arranca con un indicador con bandas (texto libre como "Antecedentes familiares: N").
+function itemBands(item: string, sexM: boolean): string | null {
+  const head = item.trim().split(/[\s/]/)[0].replace(/-BIS$/i, "").toUpperCase();
+  return indicatorBands(head, sexM);
 }
 
 function Line({ label, value }: { label: string; value: string | null }) {
@@ -387,7 +395,8 @@ export function EvaluationResults({
                 completa de indices. Las rutas (salida del DFI) viven en la etapa de Tratamiento. */}
             <Card>
         <CardHeader>
-          <CardTitle>Diagnóstico Funcional Integral (DFI)</CardTitle>
+          <CardTitle>Diagnóstico Funcional Integrado (DFI)</CardTitle>
+          <p className="text-sm text-muted-foreground">5 dominios · síntesis ANI BIS-E</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!dfi.complete ? (
@@ -418,9 +427,12 @@ export function EvaluationResults({
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium text-muted-foreground">Riesgo integrado:</span>
               {dfi.complete ? (
-                <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
-                  {dfi.riesgo.nivel} · {dfi.riesgo.score}
-                </Badge>
+                <>
+                  <Badge className={SEV_CLS[RISK_SEV[dfi.riesgo.nivel] ?? 1]}>
+                    {dfi.riesgo.nivel} · {dfi.riesgo.score}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">índice 0-100</span>
+                </>
               ) : (
                 // Q28: el riesgo integrado es un promedio ponderado de los cinco dominios, DOS de ellos
                 // (envejecimiento y contextual) inflados sobre defaults con la encuesta incompleta. No se
@@ -485,9 +497,21 @@ export function EvaluationResults({
                     <p className="text-sm text-foreground">{d.lectura}</p>
                     {d.items.length ? (
                       <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                        {d.items.map((it, i) => (
-                          <li key={i}>{it}</li>
-                        ))}
+                        {d.items.map((it, i) => {
+                          const bands = itemBands(it, sexM);
+                          return (
+                            <li key={i}>
+                              {it}
+                              {bands ? (
+                                // Cortes del motor, en linea pequeña bajo el valor (forma compacta que
+                                // conserva la info; el profesional ve contra que se compara sin ir a la tabla).
+                                <span className="ml-5 block text-[10px] leading-tight text-muted-foreground/80">
+                                  corte: {bands}
+                                </span>
+                              ) : null}
+                            </li>
+                          );
+                        })}
                       </ul>
                     ) : null}
                     {/* Mensaje por dominio del veto conductual: cadena EXACTA del frozen (_DFICard). */}
@@ -547,6 +571,37 @@ export function EvaluationResults({
               value={fenotipoMCCB ? `${fenotipoMCCB.id} · ${fenotipoMCCB.nombre}` : structural.nombre}
             />
             <Line label="Estado funcional bioeléctrico (IFC × IRC)" value={frSector.nombre} />
+          </div>
+          {/* Los 4 indicadores que DEFINEN el estado, con su clasificacion y semaforo (MISMA fuente unica que
+              la tabla de indices: sevByCode + OPTIMO_DOT). Orden: primero lo FUNCIONAL (IFC, IRC), despues lo
+              ESTRUCTURAL (FFMI, FMI), la logica de la Diana. Deja ver POR QUE el paciente cae en este estado,
+              en vez de solo describirlo en prosa (port de la card de Gildardo). */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {([["IFC", "ifc"], ["IRC", "irc"], ["FFMI", "FFMI"], ["FMI", "FMI"]] as const).map(
+              ([code, key]) => {
+                const sev = sevByCode[code];
+                const label = classifications[code]?.label;
+                return (
+                  <div key={code} className="rounded-lg border border-border p-2">
+                    <div className="flex items-center gap-1.5">
+                      {sev != null ? (
+                        <span
+                          className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sev as number]}`}
+                          aria-hidden
+                        />
+                      ) : null}
+                      <span className="text-xs font-semibold text-foreground">{code}</span>
+                      <span className="ml-auto text-xs tabular-nums text-foreground">
+                        {fmtNum(indicators[key as keyof EngineIndicators], code)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                      {label ?? "N/D"}
+                    </p>
+                  </div>
+                );
+              },
+            )}
           </div>
           {/* La clasificacion de nueve estados (FFMI x FMI) NO es un cuarto fenotipo: es el componente
               estructural con que se compone el estado EFR (su mitad FFMI x FMI; la otra es el sector

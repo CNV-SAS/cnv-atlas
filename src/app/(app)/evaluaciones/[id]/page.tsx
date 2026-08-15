@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
 import { getBisImportEvaluationForId } from "@/modules/bis/data/bis-evaluations-reader";
 import {
@@ -402,18 +403,29 @@ export default async function ResultadosEvaluacionPage({
           criterio={
             criterion ? <ProfessionalCriterion evaluationId={id} notes={criterion.notes} /> : null
           }
-          // Confirmar (gate de estado) y corregir (versiona) JUNTAS pero paneles DISTINTOS: consecuencias
-          // muy diferentes (una cierra, otra crea una version nueva), separadas visualmente (care d).
+          // Cierre del diagnostico: confirmar (gate de estado) y corregir (versiona) UNIFICADOS bajo una
+          // sola tarjeta (Santiago 2026-08-15: son los dos caminos para cerrar, van juntos), conservando la
+          // distincion visual INTERNA (consecuencias muy diferentes: una cierra, otra crea version nueva). El
+          // criterio del profesional queda APARTE (su propio slot): es la lectura clinica, no el cierre.
           confirmCorrect={
-            <div className="flex flex-col gap-6">
-              <ConfirmDiagnosisPanel
-                evaluationId={results.evaluationId}
-                confirmed={results.confirmed}
-                confirmedAt={results.confirmedAt}
-                confirmedByName={results.confirmedByName}
-              />
-              <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Cierre del diagnóstico</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Dos caminos: confirmar el diagnóstico (lo cierra y habilita prescribir) o corregirlo
+                  (crea una versión nueva).
+                </p>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6">
+                <ConfirmDiagnosisPanel
+                  evaluationId={results.evaluationId}
+                  confirmed={results.confirmed}
+                  confirmedAt={results.confirmedAt}
+                  confirmedByName={results.confirmedByName}
+                />
+                <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
+              </CardContent>
+            </Card>
           }
         />
       }

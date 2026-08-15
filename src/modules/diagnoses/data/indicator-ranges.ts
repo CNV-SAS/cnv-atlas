@@ -56,6 +56,39 @@ export function fmiReferenceLabel(sexM: boolean): string {
   return `${lo}–${hi}`;
 }
 
+// Bandas de corte COMPLETAS por indicador (para el hibrido inline de las tarjetas del DFI, aprobado
+// Santiago: que el profesional vea contra que se compara sin ir a la tabla). Re-encodean los cortes de los
+// clasificadores del MOTOR (engine.core.js cIFC/cIRC/cIEHH/cISCM/cIAE; engine.core.derived cFMI/cFFMI;
+// engine.dfi el ICEC 50/80). NO es una segunda fuente suelta: el candado indicator-ranges.test.ts prueba
+// cada frontera contra el clasificador frozen y truena si divergen. Formato compacto (una linea pequeña).
+// Devuelve null si el indicador no tiene bandas de display (p. ej. PABU/ICA-BIS/EB, que son punto o sin banda).
+export function indicatorBands(code: string, sexM: boolean): string | null {
+  switch (code) {
+    case "IFC": // cIFC: >hi optima · lo–hi alerta · <lo disfuncion (mas alto es mejor)
+      return sexM
+        ? "óptima >6.68 · alerta 4.12–6.68 · disfunción <4.12"
+        : "óptima >3.28 · alerta 2.08–3.28 · disfunción <2.08";
+    case "IRC": // cIRC: <lo bajo · lo–hi moderado · >hi alto (mas bajo es mejor)
+      return sexM
+        ? "bajo <1.68 · moderado 1.68–2.11 · alto >2.11"
+        : "bajo <2.27 · moderado 2.27–2.85 · alto >2.85";
+    case "IEHH": // cIEHH (sin sexo): ≤0 óptimo · ≤1 leve · ≤2 moderado · >2 severo
+      return "óptimo ≤0 · leve ≤1 · moderado ≤2 · severo >2";
+    case "ISCM": // cISCM (sin sexo): ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5
+      return "ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5";
+    case "IAE": // cIAE (sin sexo, años): <−5 desacelerado · −5..5 concordante · >5 acelerado
+      return "desacelerado <−5 · concordante −5 a 5 · acelerado >5";
+    case "FMI": // cFMI: banda media Normal (H 3–6, F 5–9)
+      return sexM ? "bajo <3 · normal 3–6 · alto >6" : "bajo <5 · normal 5–9 · alto >9";
+    case "FFMI": // cFFMI: banda media Normal (H 17–25, F 15–23)
+      return sexM ? "bajo <17 · normal 17–25 · alto >25" : "bajo <15 · normal 15–23 · alto >23";
+    case "ICEC": // icec.cl (engine.dfi): <50 bajo · 50–80 intermedio · ≥80 ideal (LE8, 0-100)
+      return "bajo <50 · intermedio 50–80 · ideal ≥80";
+    default:
+      return null;
+  }
+}
+
 // Referencia + delta para un indicador (por codigo de la tabla), verbatim del HTML. sexM: masculino.
 // Devuelve null si el indicador no tiene valor (queda "-").
 export function indicatorRange(

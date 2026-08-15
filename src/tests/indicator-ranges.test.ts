@@ -14,7 +14,7 @@ import {
   cPABU,
   type Sexo,
 } from "@/clinical-engine/frozen/engine.core.derived.js";
-import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
+import { indicatorBands, indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
 
 // Rangos de referencia (verbatim del HTML) + DELTA unificada de Gildardo (CA-2, opcion B): Δ = valor −
 // referencia de normalidad (promedio del rango si dos bordes; el corte si uno). Ancla los casos
@@ -168,5 +168,62 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
   });
   it("PABU: el punto φ = 1.618 cae en la zona de homeostasis óptima del clasificador", () => {
     expect(cPABU(1.618, 5).l).toContain("Homeostasis");
+  });
+});
+
+// Candado de indicatorBands (cortes inline del hibrido DFI): los numeros que muestran las tarjetas se
+// re-encodean aca, asi que se ANCLAN contra las fronteras del clasificador frozen. Si Gildardo mueve un
+// corte, el frozen cambia y este test truena, forzando actualizar la cadena de bandas junto con el motor.
+describe("indicatorBands: cortes anclados contra el clasificador frozen (no drift silencioso)", () => {
+  const M: Sexo = "M";
+  it("IFC (M): transiciones en 4.12 (disfuncion/alerta) y 6.68 (alerta/optima)", () => {
+    expect(cIFC(4.11, M).risk).toBe("alto");
+    expect(cIFC(4.12, M).risk).toBe("moderado");
+    expect(cIFC(6.68, M).risk).toBe("moderado");
+    expect(cIFC(6.69, M).risk).toBe("bajo");
+    expect(indicatorBands("IFC", true)).toContain("4.12");
+    expect(indicatorBands("IFC", true)).toContain("6.68");
+  });
+  it("IRC (M): transiciones en 1.68 y 2.11", () => {
+    expect(cIRC(1.67, M).risk).toBe("bajo");
+    expect(cIRC(1.68, M).risk).toBe("moderado");
+    expect(cIRC(2.11, M).risk).toBe("moderado");
+    expect(cIRC(2.12, M).risk).toBe("alto");
+    expect(indicatorBands("IRC", true)).toContain("1.68");
+    expect(indicatorBands("IRC", true)).toContain("2.11");
+  });
+  it("IEHH: transiciones en 0/1/2 (Optimo/Leve/Moderado/Severo)", () => {
+    expect(cIEHH(0).l).toBe("Óptimo");
+    expect(cIEHH(1).l).toBe("Leve");
+    expect(cIEHH(2).l).toBe("Moderado");
+    expect(cIEHH(2.1).l).toBe("Severo");
+    expect(indicatorBands("IEHH", true)).toContain("≤0");
+  });
+  it("ISCM: transiciones en -1/1/2.5 (ISCM-1..4)", () => {
+    expect(cISCM(-1).l).toContain("ISCM-1");
+    expect(cISCM(1).l).toContain("ISCM-2");
+    expect(cISCM(2.5).l).toContain("ISCM-3");
+    expect(cISCM(2.6).l).toContain("ISCM-4");
+    expect(indicatorBands("ISCM", true)).toContain("≤−1");
+    expect(indicatorBands("ISCM", true)).toContain("2.5");
+  });
+  it("IAE: transiciones en -5/5 (desacelerado/concordante/acelerado)", () => {
+    expect(cIAE(-6).l).toBe("Desacelerado");
+    expect(cIAE(-5).l).toBe("Concordante");
+    expect(cIAE(5).l).toBe("Concordante");
+    expect(cIAE(6).l).toBe("Acelerado");
+    expect(indicatorBands("IAE", true)).toContain("−5");
+  });
+  it("FMI/FFMI (M): banda Normal 3-6 / 17-25", () => {
+    expect(cFMI(3, M).l).toBe("Normal");
+    expect(cFMI(6, M).l).toBe("Normal");
+    expect(cFFMI(17, M).l).toBe("Normal");
+    expect(cFFMI(25, M).l).toBe("Normal");
+    expect(indicatorBands("FMI", true)).toContain("3–6");
+    expect(indicatorBands("FFMI", true)).toContain("17–25");
+  });
+  it("los indicadores sin bandas de display devuelven null (PABU/EB)", () => {
+    expect(indicatorBands("PABU", true)).toBeNull();
+    expect(indicatorBands("EB", true)).toBeNull();
   });
 });
