@@ -348,3 +348,21 @@ Mientras que Atlas no lo pone (lo pone es en el perfil del paciente), pero esto 
 **(a)/(d) Colores + radar.** CERRADO. Confirmado: conservar el AZUL (reservado a lo mas optimo, no repartido; ya corregido en g1/g3). Radar SOLIDO (no toggle): las bandas se separan con borde y el poligono de datos sube a opacidad 0.6, porque el sombreado transparente las difuminaba. Commit hecho.
 
 **(i) Donde va corregir.** DECIDIDO (Santiago): corregir en FUNCIONAL (con el resto de acciones del profesional que evalua), + un enlace corto desde ENCUESTA (si descubre el error leyendo la encuesta, no tiene que volver). Confirmar+corregir ya estan juntos en Funcional (checkpoint 2); falta agregar el enlace desde la subpestaña Encuesta. Va con el pulido de Diagnostico.
+
+---
+
+## REVISION DE SANTIAGO 2026-08-15 (punto por punto tras el smoke dirigido)
+
+**(a) Badges: REVERTIR al SEMAFORO (nos equivocamos, Santiago tenia razon).** Una cosa es el RADAR (escala visual, donde el azul ancla) y otra CLASIFICAR un indicador. En un badge que dice si algo esta bien o mal, verde-amarillo-rojo se lee sin pensar; el azul obliga a recordar que significa. **Decision:** badges y clasificaciones = semaforo como el HTML (verde/ambar/naranja/rojo, `_DFI_SEVC`); el AZUL queda SOLO en el radar. Esto REVIERTE la alineacion previa (DIV-6 unificaba badge+radar al azul): ahora divergen a proposito, porque el badge se lee distinto que el radar. **Pendiente: construir** (propuesta de color abajo, con (d)).
+
+**(d) Radar = replicar `radar-antiguo.png`.** Pedido 3 veces, sigue distinto. La imagen: 5 anillos concentricos SOLIDOS (sin sombreado ni transparencia), centro->afuera blanco/azul/verde/amarillo/rojo (Excepcional/Muy bien/En la norma/A vigilar/A tratar), poligono del paciente encima con linea oscura + puntos, leyenda + "A menor poligono, mejor estado". Tenemos 4 niveles, no 5. **Propuesta de mapeo (pendiente OK antes de construir):** 4 anillos solidos, centro->afuera AZUL (Bajo) / VERDE (Leve) / AMARILLO (Moderado) / ROJO (Alto); el azul se conserva (aqui es escala, no clasificacion, como pidio Santiago). Style: anillos solidos con separacion clara, poligono oscuro + puntos.
+
+**(g.1) FMI/FFMI en la tabla de indicadores: sacarlos (son composicion).** VERIFICADO: el HTML los pone en Wang (Nivel IV / Tabla diagnostica), NO en el bloque de indices ANI-BIS-E. Alinear = sacarlos de la tabla de indicadores. OJO: FFMI ya esta en Wang; FMI NO esta en nuestra Wang -> sacarlo de indicadores exige agregarlo a Wang, y eso es parte de la decision (j). Se resuelve junto con (j), no suelto.
+
+**(g.2) EB-BIS con referencia/delta/clasificacion: HECHO (2026-08-15).** Referencia = edad cronologica (EB-IAE), delta = IAE, clasificacion = la del IAE. Capa de display, no toca el frozen. Commit hecho.
+
+**(h) Boton de enviar informe al paciente: YA EXISTE, no duplicar.** Esta en la pestaña de REPORTE (`reports/services/send-report.ts`: render -> Storage -> correo -> marca enviado; aprobacion por RLS + policy `can-manage-reports`; UI en `report-card.tsx`). No va en Diagnostico.
+
+**(j) Tabla de Wang: NO copiar a ciegas, ya esta al dia. Comparacion hecha (no se toco la tabla).** Ver el reporte fila por fila en la respuesta CC del 2026-08-15. Resumen: tras el build de (j), tenemos TODAS las filas de datos del HTML; las diferencias son de PLACEMENT (DIV-8: bioelectrico consolidado) y filas que subimos de su tabla diagnostica a composicion (IMC/FFMI/AEC-MCA, registradas). Las referencias (MCA_ref 52,4% / hidSG_ref 73,2%) son su decision del 12 (§9), no numeros stale. NO copiamos su tabla de display (que podria estar stale): construimos del frozen + sus decisiones. Dudoso para la ronda: si mostrar rangos de referencia por fila (estilo su Tabla 2) y si agregar ASMI/SMM-W/E-I ratios (derivados que su tabla diagnostica lista y composicion no).
+
+**(k)/(m)/(l): CERRADOS (Santiago confirma).** (m) lo verificara con un paciente nuevo (las evals viejas no traen las columnas; el mensaje ya distingue "anterior al registro" de "no respondio").
