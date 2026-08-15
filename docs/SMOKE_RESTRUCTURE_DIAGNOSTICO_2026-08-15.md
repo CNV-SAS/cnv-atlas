@@ -5,6 +5,31 @@ El bloque grande está hecho: ahora casi todas las filas tienen **diagnóstico**
 
 ---
 
+## Esta pasada es CONFIRMACION, no exploración (fix de raíz aplicado)
+
+Se reescribió la tabla para que Referencia, Δ y Diagnóstico salgan de UNA fuente por fila
+(`wangRowDx`), en vez de escribirse a mano al lado del clasificador. Se agregó un candado
+(`composition-cells.test.ts`, 34 tests) que verifica que **ninguna fila con clasificador y dato
+disponible quede sin las tres celdas**. Por eso:
+
+- **Si vuelves a ver una celda vacía con el dato disponible, el candado falló: repórtalo para
+  revisarlo** (no es "otra fila más que llenar a mano", es un defecto de la fuente única).
+
+### a) Filas que estaban vacías y AHORA salen completas
+- **IMC**: referencia "18.5–24.9" (antes vacía).
+- **Cintura**: referencia + clasificación.
+- **NHLBI** (clasificación IMC + cintura): antes sin valor; ahora Valor = la clase, Δ = estado de
+  cintura, Diagnóstico = "Sobrepeso · riesgo aumentado".
+- **FFW (agua libre de grasa)**: valor + referencia (antes ambos en guion).
+- **Agua extra/intracelular SIN GRASA (ECW_sg / ICW_sg)**: valor + referencia + diagnóstico.
+
+### b) Filas que quedan en guion A PROPÓSITO (no es hueco)
+Las **masas crudas en kg** sin clasificador normativo: peso, estatura, cadera, masa grasa (kg),
+MLG, SMM, MMEM, GEB/GET, minerales no óseos. Se contrastan contra la referencia del equipo pero no
+tienen un diagnóstico propio, **igual que en tu HTML**. El % de grasa sí clasifica (dFMpct); la kg no.
+
+---
+
 ## Lo transversal (el patrón que encontraste)
 - **Casi todas las filas llevan diagnóstico coloreado** (semáforo), como el HTML. Antes solo número.
 - **Las referencias vacías se llenan** con REF_POB (se derivan de peso/talla/sexo cuando el equipo no las trae). Las que dependen de las 5 constantes que Gildardo no validó llevan un **asterisco "*"** discreto + nota al pie ("en validación, no significa que el dato esté mal"). Las 2 que él sí validó (hidratación 73,2%, MCA 52,4%) van **sin** asterisco.
