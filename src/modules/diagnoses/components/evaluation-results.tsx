@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
+import { Ban, Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -326,6 +326,21 @@ export function EvaluationResults({
             </p>
           </div>
 
+          {/* Banner del veto conductual: cadena EXACTA del frozen (ATLAS_v8.html _DFIView). Sin el aviso, el
+              badge "Veto activo" no orienta: el profesional no ve la instruccion (prioridad psicologica,
+              excluir intervencion nutricional restrictiva). Si el veto debe ser CANDADO (bloquear la
+              prescripcion) y no solo aviso, es decision de Gildardo (va a la ronda): hoy no se consume en
+              tratamiento, solo aparece la ruta conductual como prioritaria. */}
+          {dfi.veto ? (
+            <div className="flex items-start gap-2 rounded-md border border-clinical-critical/40 bg-clinical-critical-bg px-3 py-2 text-sm text-clinical-critical">
+              <Ban className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="font-medium">
+                Alerta conductual activa: la prioridad es el abordaje psicológico. Queda excluida toda
+                intervención nutricional restrictiva.
+              </span>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {dfi.domains.map((d) => {
               const Icon = DOMAIN_ICON[d.id];
@@ -363,6 +378,13 @@ export function EvaluationResults({
                           <li key={i}>{it}</li>
                         ))}
                       </ul>
+                    ) : null}
+                    {/* Mensaje por dominio del veto conductual: cadena EXACTA del frozen (_DFICard). */}
+                    {d.veto ? (
+                      <p className="mt-1 flex items-start gap-1.5 text-xs font-medium text-clinical-critical">
+                        <Ban className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                        Veto conductual: no iniciar intervención nutricional restrictiva.
+                      </p>
                     ) : null}
                   </>
                 )}
