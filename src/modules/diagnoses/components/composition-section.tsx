@@ -14,7 +14,7 @@ import {
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
 import { clasificarAecMca, type Composition, type CompositionRow } from "../data/composition-map";
 import { fmiReferenceLabel } from "../data/indicator-ranges";
-import { OPTIMO_CLS } from "./risk-severity";
+import { SEV_CLS } from "./risk-severity";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
@@ -69,9 +69,13 @@ function DiagnosisCell({
   classifications: Classifications;
   sevByCode: Record<string, number | null>;
 }) {
+  // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: usar
+  // SEV_CLS y no OPTIMO_CLS aca: los clasificadores antropometricos SI emiten sev 1 (Sobrepeso, Riesgo CV
+  // aumentado), y OPTIMO_CLS colapsaba 0 y 1 en verde -> "Sobrepeso" salia VERDE (defecto). SEV_CLS[1] es
+  // ambar, como el HTML.
   const badge = (label: string, sev: number, title?: string) => (
     <span
-      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${OPTIMO_CLS[Math.min(3, Math.max(0, sev))]}`}
+      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${SEV_CLS[Math.min(3, Math.max(0, sev))]}`}
       title={title}
     >
       {label}
