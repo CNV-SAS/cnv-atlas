@@ -357,7 +357,7 @@ export function EvaluationResults({
                     {d.nombre}
                   </span>
                   {noEvaluable ? (
-                    <Badge className={SEV_CLS[0]}>No evaluable</Badge>
+                    <Badge className="bg-muted text-muted-foreground">No evaluable</Badge>
                   ) : (
                     <Badge className={SEV_CLS[Math.min(3, Math.max(0, d.sev))]}>
                       {SEV_LABEL[Math.min(3, Math.max(0, d.sev))]}
@@ -410,7 +410,6 @@ export function EvaluationResults({
             patientContent={patientContent}
             statesContent={efrStates}
             radarDomains={dfi.domains}
-            radarRiskSev={RISK_SEV[dfi.riesgo.nivel] ?? 1}
             dfiComplete={dfi.complete}
           />
         </CardContent>

@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 import type { DfiDomain } from "@/clinical-engine";
 import { DfiRadar } from "@/modules/diagnoses/components/dfi-radar";
 
-// Smoke de render del radar DFI: rinde los 5 dominios del snapshot, con un vertice por dominio y
-// el color del poligono siguiendo la severidad integrada (paleta clinica BRAND). Los datos son
-// del snapshot inmutable (computeDFI congelado); aqui solo probamos la presentacion.
+// Smoke de render del radar DFI (replica radar-antiguo.png, 2026-08-15): anillos SOLIDOS de la escala
+// (azul/verde/amarillo/rojo, el azul se conserva porque aqui es ESCALA, no clasificacion) + poligono del
+// paciente en linea OSCURA con puntos (no coloreado por el riesgo integrado). Datos del snapshot congelado.
 
 const DOMAINS: DfiDomain[] = [
   { id: "d1", nombre: "Celular-Electrico", sev: 0, clasif: "c1", lectura: "l1", items: [] },
@@ -17,25 +17,22 @@ const DOMAINS: DfiDomain[] = [
   { id: "d5", nombre: "Epigenetico-Contextual", sev: 1, clasif: "c5", lectura: "l5", items: [] },
 ];
 
-function render(riskSev: number): string {
-  return renderToStaticMarkup(createElement(DfiRadar, { domains: DOMAINS, riskSev }));
+function render(): string {
+  return renderToStaticMarkup(createElement(DfiRadar, { domains: DOMAINS }));
 }
 
 describe("DfiRadar", () => {
-  it("rinde un poligono de datos con un vertice por dominio (5)", () => {
-    const markup = render(2);
-    // El poligono de datos tiene la clase de color de riesgo; los anillos guia son fill none.
-    const dataPoly = markup.match(/<polygon points="([^"]+)"[^>]*fill-clinical/);
+  it("rinde el poligono del paciente con un vertice por dominio (5)", () => {
+    const markup = render();
+    // El poligono del paciente es el de linea OSCURA (fill-foreground); los anillos usan fill-clinical-*.
+    const dataPoly = markup.match(/<polygon points="([^"]+)"[^>]*fill-foreground/);
     expect(dataPoly).not.toBeNull();
     const pts = (dataPoly?.[1] ?? "").trim().split(/\s+/);
     expect(pts.length).toBe(5);
   });
 
   it("rotula los 5 ejes con los nombres cortos fieles del HTML (por id, no por d.nombre)", () => {
-    const markup = render(1);
-    // Nombres cortos EXACTOS del HTML de referencia (_RAD_SHORT), resueltos por id. El fixture
-    // trae los nombres largos del snapshot ("Metabolico-Estructural"); si el radar los usara, el
-    // texto no coincidiria: esto prueba que rotula por id.
+    const markup = render();
     const SHORT: Record<string, string> = {
       d1: "Celular",
       d2: "Metabólico",
@@ -44,28 +41,32 @@ describe("DfiRadar", () => {
       d5: "Epigenét.",
     };
     for (const d of DOMAINS) expect(markup).toContain(SHORT[d.id]);
-    // Severidad por eje como texto (vocabulario VIGENTE de Gildardo, _DFI_SEVL), no solo color: sev 0 ->
-    // "Bajo", sev 3 -> "Alto".
     expect(markup).toContain("Bajo");
     expect(markup).toContain("Alto");
   });
 
   it("incluye la leyenda de severidad del motor y la frase del poligono", () => {
-    const markup = render(1);
+    const markup = render();
     for (const z of ["Bajo", "Leve", "Moderado", "Alto"]) {
       expect(markup).toContain(z);
     }
     expect(markup).toContain("A menor polígono, mejor estado.");
   });
 
-  it("el color del poligono de datos sigue la severidad integrada", () => {
-    // stroke-clinical-* solo lo lleva el poligono de datos; las zonas de fondo usan fill-*-bg.
-    // Escala de 4 colores DISTINTOS: sev 0 -> azul clinico (excellent, el ancla "estas bien"),
-    // 1 -> verde (optimal), 2 -> ambar (warning), 3 -> rojo (critical).
-    expect(render(0)).toContain("stroke-clinical-excellent");
-    expect(render(1)).toContain("stroke-clinical-optimal");
-    expect(render(2)).toContain("stroke-clinical-warning");
-    expect(render(3)).toContain("stroke-clinical-critical");
-    expect(render(0)).not.toContain("stroke-clinical-warning");
+  it("anillos SOLIDOS de la escala (azul se conserva) + poligono oscuro, no coloreado por riesgo", () => {
+    const markup = render();
+    // Anillos: la escala del radar, solidos (fill-clinical-*, NO el fill claro -bg de antes).
+    for (const c of [
+      "fill-clinical-excellent",
+      "fill-clinical-optimal",
+      "fill-clinical-warning",
+      "fill-clinical-critical",
+    ]) {
+      expect(markup).toContain(c);
+    }
+    expect(markup).not.toContain("fill-clinical-excellent-bg"); // ya no son fondos claros
+    // El poligono del paciente es oscuro (foreground) y NO lleva stroke de color de riesgo.
+    expect(markup).toContain("stroke-foreground");
+    expect(markup).not.toContain("stroke-clinical");
   });
 });

@@ -3,27 +3,28 @@
 // veredicto (verdict-strip) y los resultados (evaluation-results), para que no diverjan. La ETIQUETA
 // (SEV_LABEL) vive en severity-labels; aqui solo el color.
 
-// Clase de color por severidad 0-3, ALINEADA con la escala de 4 colores del radar (ancla azul): 0 Bajo
-// azul (excellent, "estas bien"), 1 Leve verde (optimal), 2 Moderado ambar (warning), 3 Alto rojo
-// (critical). Antes 0-1 compartian el verde; se separo para que el MISMO "Bajo" no sea azul en el radar y
-// verde en el badge de al lado (el profesional los ve juntos). Fuente unica: la comparten los badges de
-// dominio, el detalle del estado, el riesgo integrado y la franja de veredicto.
+// Clase de color por severidad 0-3, SEMAFORO como el HTML de Gildardo (_DFI_SEVC): 0 Bajo verde, 1 Leve
+// ambar, 2 Moderado naranja, 3 Alto rojo. Sin azul: en un BADGE que dice si algo esta bien o mal, el
+// verde-ambar-naranja-rojo se lee sin pensar; el azul obliga a recordar que significa (decision Santiago
+// 2026-08-15, revierte la alineacion previa al azul). El azul queda EXCLUSIVO del radar (ahi es escala, no
+// clasificacion). Fuente unica: badges de dominio, detalle del estado, riesgo integrado y franja de veredicto.
 export const SEV_CLS = [
-  "bg-clinical-excellent-bg text-clinical-excellent",
   "bg-clinical-optimal-bg text-clinical-optimal",
   "bg-clinical-warning-bg text-clinical-warning",
+  "bg-clinical-moderate-bg text-clinical-moderate",
   "bg-clinical-critical-bg text-clinical-critical",
 ];
 
-// Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta).
+// Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta). Coincide con los NIV
+// del HTML: BAJO verde, MEDIO ambar, ALTO naranja, CRITICO rojo.
 export const RISK_SEV: Record<string, number> = { BAJO: 0, MEDIO: 1, ALTO: 2, "CRÍTICO": 3 };
 
-// Punto de color por severidad (0-3), misma escala de 4. Color SOLO en el veredicto de riesgo, nunca
+// Punto de color por severidad (0-3), mismo semaforo. Color SOLO en el veredicto de riesgo, nunca
 // decorativo; la etiqueta sigue siendo el señalizador principal (no depende del color).
 export const DOT_CLS = [
-  "bg-clinical-excellent",
   "bg-clinical-optimal",
   "bg-clinical-warning",
+  "bg-clinical-moderate",
   "bg-clinical-critical",
 ];
 

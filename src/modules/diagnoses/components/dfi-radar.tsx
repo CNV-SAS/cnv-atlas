@@ -29,17 +29,15 @@ const RADAR_LABEL: Record<string, string> = {
 };
 // Vocabulario de severidad del MOTOR: fuente unica compartida (severity-labels), la misma que usan
 // las tarjetas del DFI, para que no puedan divergir.
-// Zonas de fondo por severidad (fill claro de la paleta clinica). Cuatro colores DISTINTOS, uno por
-// banda (sev 0..3 = Bajo/Leve/Moderado/Alto): azul clinico (excellent) para Bajo -> el ancla "estas
-// bien" que faltaba, verde para Leve, ambar para Moderado, rojo para Alto. Se pintan del exterior al
-// centro. (Antes sev0 y sev1 compartian el verde, espejando el modelo de riesgo de 3 colores; se
-// separan aqui a proposito: sin una banda "optima" visible todo se leia como advertencia. El
-// poligono de datos SI sigue coloreado por el riesgo INTEGRADO, que es otro eje.)
+// Anillos de fondo por severidad, SOLIDOS (no el fill claro -bg), replicando radar-antiguo.png: centro
+// blanco (excepcional, que no clasificamos: queda como nucleo decorativo) y luego azul/verde/amarillo/rojo
+// del centro al borde (Bajo/Leve/Moderado/Alto). El AZUL se conserva SOLO aqui (en el radar es ESCALA, no
+// clasificacion; los badges usan semaforo, decision Santiago 2026-08-15). "A menor poligono, mejor estado".
 const BAND_FILL = [
-  "fill-clinical-excellent-bg",
-  "fill-clinical-optimal-bg",
-  "fill-clinical-warning-bg",
-  "fill-clinical-critical-bg",
+  "fill-clinical-excellent", // Bajo (anillo interno, azul)
+  "fill-clinical-optimal", // Leve (verde)
+  "fill-clinical-warning", // Moderado (amarillo/ambar)
+  "fill-clinical-critical", // Alto (anillo externo, rojo)
 ];
 // Cuadro de color solido para la leyenda (color = severidad, nunca decorativo).
 const SWATCH = [
@@ -47,13 +45,6 @@ const SWATCH = [
   "bg-clinical-optimal",
   "bg-clinical-warning",
   "bg-clinical-critical",
-];
-// Color del poligono de datos por severidad integrada (stroke solido). Tokens BRAND.
-const RISK_STROKE = [
-  "stroke-clinical-excellent",
-  "stroke-clinical-optimal",
-  "stroke-clinical-warning",
-  "stroke-clinical-critical",
 ];
 
 function clampSev(s: number): number {
@@ -73,10 +64,8 @@ function ringPoly(n: number, r: number): string {
     .join(" ");
 }
 
-export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: number }) {
+export function DfiRadar({ domains }: { domains: DfiDomain[] }) {
   const n = domains.length;
-  const rs = clampSev(riskSev);
-  const dataFill = RISK_STROKE[rs].replace("stroke-", "fill-");
 
   // Poligono de datos: cada vertice al centro de su zona de severidad ((sev+0.5)/BANDS), como en el
   // radar del HTML, para que el punto caiga dentro de la banda y no sobre su borde.
@@ -110,23 +99,26 @@ export function DfiRadar({ domains, riskSev }: { domains: DfiDomain[]; riskSev: 
             strokeWidth={1.5}
           />
         ))}
+        {/* Nucleo blanco central (excepcional): el centro de radar-antiguo.png es blanco, no azul. No lo
+            clasificamos (nuestra escala arranca en Bajo), asi que queda como nucleo decorativo. */}
+        <polygon points={ringPoly(n, RMAX * 0.14)} className="fill-background stroke-background" strokeWidth={1.5} />
         {/* Contorno exterior + radios */}
         <polygon points={ringPoly(n, RMAX)} fill="none" className="stroke-border" strokeWidth={1} />
         {domains.map((_, i) => {
           const [x, y] = axisPoint(i, n, RMAX);
           return <line key={`spoke${i}`} x1={CX} y1={CY} x2={x} y2={y} className="stroke-border" strokeWidth={1} />;
         })}
-        {/* Poligono de datos SOLIDO (color = severidad integrada): opacidad alta para que la forma del
-            paciente se lea con claridad sobre las bandas, no un sombreado tenue. */}
+        {/* Poligono del paciente: linea OSCURA + puntos, encima de los anillos solidos (como la imagen). No
+            se colorea por el riesgo integrado (eso lo dice el badge de riesgo aparte): aqui es la FORMA. */}
         <polygon
           points={dataPoly}
-          className={`${dataFill} ${RISK_STROKE[rs]}`}
-          fillOpacity={0.6}
+          className="fill-foreground stroke-foreground"
+          fillOpacity={0.12}
           strokeWidth={2}
         />
-        {/* Vertices */}
+        {/* Vertices: punto oscuro con borde claro, para que resalten sobre cualquier banda. */}
         {dataPts.map(([x, y], i) => (
-          <circle key={`v${i}`} cx={x} cy={y} r={3} className={dataFill} />
+          <circle key={`v${i}`} cx={x} cy={y} r={3.5} className="fill-foreground stroke-background" strokeWidth={1.5} />
         ))}
         {/* Etiquetas de eje: nombre corto fiel del HTML + severidad (vocabulario del motor). */}
         {domains.map((d, i) => {

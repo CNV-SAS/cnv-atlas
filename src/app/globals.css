@@ -17,6 +17,8 @@
   --color-clinical-optimal-bg: var(--clinical-optimal-bg);
   --color-clinical-warning: var(--clinical-warning);
   --color-clinical-warning-bg: var(--clinical-warning-bg);
+  --color-clinical-moderate: var(--clinical-moderate);
+  --color-clinical-moderate-bg: var(--clinical-moderate-bg);
   --color-clinical-critical: var(--clinical-critical);
   --color-clinical-critical-bg: var(--clinical-critical-bg);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -129,6 +131,10 @@
   --clinical-optimal-bg: #ecfdf5;
   --clinical-warning: #f59e0b;
   --clinical-warning-bg: #fffbeb;
+  /* Moderado (naranja): el 3er escalon del semaforo de 4 (verde/ambar/naranja/rojo), hex exacto del
+   * HTML de Gildardo (_DFI_SEVC). Sin el, Leve y Moderado colapsan en el mismo color en los badges. */
+  --clinical-moderate: #ea580c;
+  --clinical-moderate-bg: #fff7ed;
   --clinical-critical: #dc2626;
   --clinical-critical-bg: #fef2f2;
 }
