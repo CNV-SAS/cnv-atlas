@@ -142,6 +142,12 @@ export function CompositionSection({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const colCount = showDiagnosis ? 5 : 4;
+  // El nivel Bioelectrico (Cole-Cole) son valores CRUDOS del equipo (resistencias, reactancia, Fo,
+  // impedancias), sin diagnostico. En DIAGNOSTICO no van (el HTML no los tiene ahi): viven en EVALUACION,
+  // donde esta lo medido. showDiagnosis=false (Evaluacion) los muestra; true (Diagnostico) los oculta.
+  const visibleLevels = showDiagnosis
+    ? composition.levels.filter((l) => !l.title.startsWith("Bioeléctrico"))
+    : composition.levels;
 
   function toggleGroup(param: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -215,7 +221,7 @@ export function CompositionSection({
                 </tr>
               </thead>
               <tbody>
-                {composition.levels.map((lvl) => {
+                {visibleLevels.map((lvl) => {
                   const primary = lvl.rows.filter((r) => !r.detail);
                   // Grupos de detalle presentes en el nivel, en orden de aparicion (hoy uno por nivel).
                   const groups = [

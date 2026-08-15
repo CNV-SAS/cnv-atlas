@@ -214,6 +214,109 @@ export function EvaluationResults({
     suggestedNutraceuticals: efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null,
   };
 
+  // Tabla de indices ANI-BIS-E. SE MUEVE a la subpestaña COMPOSICION (Gildardo la tiene ahi, con la tabla
+  // de Wang, no en su capa funcional; en Funcional quedan los indices representativos INLINE por dominio,
+  // en las tarjetas del DFI). Se define como const y se referencia en el slot composicion.
+  const indicatorsSection = (
+    <DetailsSection title="Indicadores ANI-BIS-E" defaultOpen>
+      <div className="flex flex-col gap-3">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[32rem] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Indicador</th>
+                <th className="py-2 pr-4 text-right font-medium">Valor</th>
+                <th className="py-2 pr-4 text-right font-medium">Referencia</th>
+                <th className="py-2 pr-4 text-right font-medium">Δ</th>
+                <th className="py-2 font-medium">Clasificación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {INDICATORS.map(({ code, key }) => {
+                // EB-BIS no tiene clasificador propio en el frozen (a proposito). Su veredicto de
+                // envejecimiento ES el del IAE (IAE = EB - edad cronologica), y el HTML lo muestra asi:
+                // referencia = edad cronologica (= EB - IAE), Δ = IAE, clasificacion = la del IAE. No toca
+                // la matematica del frozen; es la capa de display resolviendo la fila (g2, 2026-08-15).
+                const isEb = code === "EB";
+                const edadCronologica =
+                  isEb && indicators.eb != null && indicators.iae != null
+                    ? indicators.eb - indicators.iae
+                    : null;
+                const range = indicatorRange(code, indicators, sexM);
+                const refText = isEb
+                  ? edadCronologica != null
+                    ? edadCronologica.toFixed(1)
+                    : "-"
+                  : (range?.reference ?? "-");
+                const deltaText = isEb
+                  ? indicators.iae != null
+                    ? `${indicators.iae >= 0 ? "+" : ""}${indicators.iae.toFixed(1)}`
+                    : "-"
+                  : (range?.delta ?? "-");
+                // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
+                const classCode = isEb ? "IAE" : code;
+                const sev = sevByCode[classCode];
+                const classLabel = classifications[classCode]?.label ?? "N/D";
+                return (
+                  <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
+                    <td className="py-2 pr-4">
+                      <span className="font-medium text-foreground">{code}</span>
+                      {results.indicatorNames[code] ? (
+                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
+                      ) : null}
+                      {ebIaeProvisional && (code === "EB" || code === "IAE") ? (
+                        <span
+                          className="ml-2 rounded bg-clinical-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-clinical-warning"
+                          title="Calibración provisional; no comunicable al paciente."
+                        >
+                          provisional
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-foreground">
+                      {fmtNum(indicators[key], code)}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
+                      {refText}
+                    </td>
+                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
+                      {deltaText}
+                    </td>
+                    <td className="py-2 text-muted-foreground">
+                      <span className="inline-flex items-center gap-2">
+                        {sev != null ? (
+                          <span
+                            className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sev as number]}`}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <span>{classLabel}</span>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="max-w-prose text-xs text-muted-foreground">
+          Referencia = rango de normalidad clínico ANI-BIS-E, ajustado por sexo, tomado del
+          clasificador del modelo: es el rango de normalidad cuando el indicador tiene dos límites,
+          o el umbral que lo separa de la alerta cuando tiene uno solo. Δ = valor menos esa
+          referencia. El FFMI y el FMI aparecen arriba, en la tabla de Wang (Nivel IV), con la
+          referencia del equipo Biody; por eso su referencia puede diferir, no es una contradicción.
+        </p>
+        {ebIaeProvisional ? (
+          <p className="max-w-prose text-xs text-clinical-warning">
+            EB e IAE se calculan con una <span className="font-semibold">calibración provisional</span>{" "}
+            (aún sin población de referencia). Son para tu lectura clínica; no son comunicables al
+            paciente y no aparecen en su reporte.
+          </p>
+        ) : null}
+      </div>
+    </DetailsSection>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {/* Encabezado */}
@@ -471,113 +574,6 @@ export function EvaluationResults({
         </CardContent>
       </Card>
 
-      {/* Detalle granular en colapsables: indicadores ABIERTOS (valor diferencial de CNV, deben
-          verse), composicion CERRADA (30 filas de detalle). */}
-      <DetailsSection title="Indicadores ANI-BIS-E" defaultOpen>
-        <div className="flex flex-col gap-3">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Indicador</th>
-                  <th className="py-2 pr-4 text-right font-medium">Valor</th>
-                  <th className="py-2 pr-4 text-right font-medium">Referencia</th>
-                  <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                  <th className="py-2 font-medium">Clasificación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INDICATORS.map(({ code, key }) => {
-                  // EB-BIS no tiene clasificador propio en el frozen (a proposito). Su veredicto de
-                  // envejecimiento ES el del IAE (IAE = EB - edad cronologica), y el HTML lo muestra asi:
-                  // referencia = edad cronologica (= EB - IAE), Δ = IAE, clasificacion = la del IAE. No toca
-                  // la matematica del frozen; es la capa de display resolviendo la fila (g2, 2026-08-15).
-                  const isEb = code === "EB";
-                  const edadCronologica =
-                    isEb && indicators.eb != null && indicators.iae != null
-                      ? indicators.eb - indicators.iae
-                      : null;
-                  const range = indicatorRange(code, indicators, sexM);
-                  const refText = isEb
-                    ? edadCronologica != null
-                      ? edadCronologica.toFixed(1)
-                      : "-"
-                    : (range?.reference ?? "-");
-                  const deltaText = isEb
-                    ? indicators.iae != null
-                      ? `${indicators.iae >= 0 ? "+" : ""}${indicators.iae.toFixed(1)}`
-                      : "-"
-                    : (range?.delta ?? "-");
-                  // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
-                  const classCode = isEb ? "IAE" : code;
-                  const sev = sevByCode[classCode];
-                  const classLabel = classifications[classCode]?.label ?? "N/D";
-                  return (
-                  <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
-                    <td className="py-2 pr-4">
-                      <span className="font-medium text-foreground">{code}</span>
-                      {results.indicatorNames[code] ? (
-                        <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
-                      ) : null}
-                      {ebIaeProvisional && (code === "EB" || code === "IAE") ? (
-                        <span
-                          className="ml-2 rounded bg-clinical-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-clinical-warning"
-                          title="Calibración provisional; no comunicable al paciente."
-                        >
-                          provisional
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-foreground">
-                      {fmtNum(indicators[key], code)}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
-                      {refText}
-                    </td>
-                    <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
-                      {deltaText}
-                    </td>
-                    <td className="py-2 text-muted-foreground">
-                      <span className="inline-flex items-center gap-2">
-                        {sev != null ? (
-                          <span
-                            className={`size-2 shrink-0 rounded-full ${OPTIMO_DOT[sev as number]}`}
-                            aria-hidden
-                          />
-                        ) : null}
-                        <span>{classLabel}</span>
-                      </span>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="max-w-prose text-xs text-muted-foreground">
-            Referencia = rango de normalidad clínico ANI-BIS-E, ajustado por sexo, tomado del
-            clasificador del modelo: es el rango de normalidad cuando el indicador tiene dos límites,
-            o el umbral que lo separa de la alerta cuando tiene uno solo. Δ = valor menos esa
-            referencia. El FFMI también aparece en Composición corporal con la referencia del equipo
-            Biody (otra fuente); por eso su referencia puede diferir entre las dos tablas, no es una
-            contradicción.
-          </p>
-          {ebIaeProvisional ? (
-            <p className="max-w-prose text-xs text-clinical-warning">
-              EB e IAE se calculan con una <span className="font-semibold">calibración provisional</span>{" "}
-              (aún sin población de referencia). Son para tu lectura clínica; no son comunicables al
-              paciente y no aparecen en su reporte.
-            </p>
-          ) : null}
-          {/* Δ = valor − referencia de normalidad (CA-2 de Gildardo: promedio del rango si tiene dos
-              bordes, el corte si es de un solo limite; SUSTITUYE la regla del HTML "distancia al borde",
-              pendiente de su aprobacion). Referencia = rango clinico ANI-BIS-E sexo-ajustado
-              (indicator-ranges.ts). Los de un solo limite (ISCM, IEHH, IR) muestran su umbral; IFC/IRC/
-              FMI van "-" hasta Q20. FFMI aparece tambien en la tabla de Composicion con la referencia del
-              EQUIPO Biody (columna del export): otra fuente, otro numero; la nota visible de arriba lo
-              aclara (hallazgo de smoke 2026-08-01). */}
-        </div>
-      </DetailsSection>
 
             {/* Criterio del profesional (+ IA) y el par confirmar/corregir: la lectura y el cierre, en
                 Funcional, sin ir y volver a otra pestaña. */}
@@ -586,11 +582,16 @@ export function EvaluationResults({
           </div>
         }
         composicion={
-          composition ?? (
-            <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
-              Esta evaluación no tiene composición corporal registrada.
-            </p>
-          )
+          <div className="flex flex-col gap-8">
+            {composition ?? (
+              <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+                Esta evaluación no tiene composición corporal registrada.
+              </p>
+            )}
+            {/* La tabla de indices ANI-BIS-E vive aca (Gildardo la tiene en composicion, con Wang); en
+                Funcional quedan los indices representativos inline por dominio (tarjetas del DFI). */}
+            {indicatorsSection}
+          </div>
         }
         encuesta={surveyDiagnosis}
       />
