@@ -1,7 +1,9 @@
 // Opciones sociodemograficas portadas VERBATIM del archivo de Gildardo (`reference/ATLAS-Patients_v7.html`,
 // constantes EDUCACION/ESTADO_CIVIL/OCUPACIONES/MOTIVOS y el estrato inline). Caracterizacion opcional: no
-// alimentan ningun motor (sin field_key, used_in_diagnosis=false). Etnia NO va aqui: es dato sensible (Ley
-// 1581 art. 5) y espera el bump de consentimiento a v1.0 (ver BACKLOG.md).
+// alimentan ningun motor (sin field_key, used_in_diagnosis=false). Etnia y ascendencia SI viven aqui (con
+// consent v1.0 ya en produccion): son datos sensibles (Ley 1581 art. 5) y por eso solo se muestran/capturan
+// si el paciente otorgo la autorizacion de investigacion; el servidor lo re-gatea. NUNCA como coeficiente de
+// correccion de ningun indice, solo caracterizacion y exploracion (DATA_GOVERNANCE, RESPUESTA_GILDARDO §3).
 //
 // Modulo NEUTRO (sin "server-only"): lo importan el componente cliente del intake y la validacion del
 // servidor; un tipo/constante compartido no puede vivir en un reader server-only (hazard de frontera RSC).
@@ -60,6 +62,22 @@ export const ETNIA_OPTIONS = [
   "Prefiero no responder",
 ] as const;
 export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
+
+// Ascendencia (RESPUESTA_GILDARDO 2026-08-15 §3): SEGUNDA pregunta de etnia, separada de la pertenencia
+// (DANE) porque una sola casilla respondia dos preguntas distintas (por eso "mestizo" no cabia en el DANE).
+// Va JUNTO a la pertenencia y gateada a la misma autorizacion de investigacion. El texto ANTECEDE la pregunta
+// (deliberado): "Independientemente de lo anterior". Caracterizacion/exploracion, NUNCA coeficiente de
+// correccion (misma regla que la nefrologia retiro en 2021; ver DATA_GOVERNANCE).
+export const ASCENDENCIA_PROMPT = "Independientemente de lo anterior";
+export const ASCENDENCIA_OPTIONS = [
+  "Predominantemente indígena",
+  "Predominantemente europea",
+  "Predominantemente africana",
+  "Mezcla de dos o más de las anteriores",
+  "No sé",
+  "Prefiero no responder",
+] as const;
+export type AscendenciaOption = (typeof ASCENDENCIA_OPTIONS)[number];
 
 // Descripcion breve de autorreconocimiento por categoria. El dictamen legal exige que el paciente PUEDA
 // reconocerse: las categorias DANE (Raizal, Palenquero, Rrom) son precisas y poco conocidas, y sin
