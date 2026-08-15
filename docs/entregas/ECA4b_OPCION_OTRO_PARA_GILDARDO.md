@@ -1,6 +1,6 @@
 # ECA4b: ¿a qué preguntas de la encuesta les agregamos la opción "Otro"? (para Gildardo)
 
-**Estado:** LISTO PARA ENVIAR con la ronda abierta (junto a P-22 y el hilo del FFW). **Dato nuevo (2026-08-14):** de las nueve que propusimos, Gildardo YA implemento DOS en su archivo al dia (d4_35 suplementos = "Otros", d6_43 alergias = "Otras"), que ya portamos (encuesta v4). Eso simplifica la pregunta: "vimos que en tu archivo agregaste Otro en suplementos y alergias; las otras siete de nuestra lista tambien, o solo esas dos?". Responde en una linea.
+**Estado:** PLEGADO en `RONDA_GILDARDO_2026-08-14.md` (punto A.4). Este archivo es la fuente/detalle INTERNO; Santiago manda SOLO el documento de la ronda, no este suelto (lecicon cola-viva-vs-documento-enviado). **Dato:** de las nueve que propusimos, Gildardo YA implemento DOS en su archivo al dia (d4_35 suplementos = "Otros", d6_43 alergias = "Otras"), portadas (encuesta v4). La pregunta a Gildardo en la ronda: "ya agregaste Otro en suplementos y alergias; las otras siete tambien, o solo esas dos?" (ojo d5_38 y d6_44 alimentan el motor).
 
 ---
 
