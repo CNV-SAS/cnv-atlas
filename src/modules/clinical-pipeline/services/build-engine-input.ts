@@ -58,8 +58,12 @@ function decodeMulti(value: string): string[] {
 // No toca las cadenas sembradas ni el candado de acoplamiento.
 const isFreeTextOther = (el: string): boolean => /^otr(?:a|os)\s*:/i.test(el.trim());
 const stripOtherPrefix = (el: string): string => el.replace(/^otr(?:a|os)\s*:\s*/i, "");
-// Campos cuyo texto libre de "Otra" SI alimenta el motor (§4). Hoy solo d5_39.
-const FREE_TEXT_TO_ENGINE = new Set(["d5_39"]);
+// Campos cuyo texto libre de "Otra" SI alimenta el motor. d5_39 (diagnosticos personales) desde el inicio;
+// d5_38 y d6_44 se suman por RESPUESTA_GILDARDO 2026-08-15 §4 ("el mismo criterio que d5_39: el texto libre
+// alimenta el motor, y todo lo que resulte lo puede cambiar el profesional"). Una sola regla para las tres;
+// el resto de las "Otra" (§3, registro) se stripea. Inerte hasta que esas preguntas tengan la opcion "Otra"
+// (bump de encuesta v5): sin texto "Otra:" que procesar, no cambia nada para las respuestas existentes.
+const FREE_TEXT_TO_ENGINE = new Set(["d5_39", "d5_38", "d6_44"]);
 
 function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   const survey: Record<string, unknown> = {};

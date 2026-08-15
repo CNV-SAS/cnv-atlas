@@ -104,21 +104,35 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     expect(input.survey.d5_39).toEqual(["Diabetes tipo 2", "cancer de piel"]);
   });
 
-  it("las otras preguntas con 'Otra' (§3): su texto libre es REGISTRO, NO alimenta el motor", () => {
+  it("d5_38 y d6_44: el texto libre TAMBIEN alimenta el motor (§4, 2026-08-15), sin el prefijo 'Otra:'", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
       surveyAnswers: [
-        // d6_43 (alergias, una de las 9): "Otra: mango" NO debe llegar al motor (registro).
+        { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["HTA (presión alta)", "Otra: enfermedad renal"]) },
+        { fieldKey: "d6_44", type: "opcion_multiple", value: JSON.stringify(["Otra: intolerancia a la lactosa"]) },
+      ],
+      expectedFieldKeys: ["d5_38", "d6_44"],
+      bisRaw: {},
+    };
+    const input = buildEngineInput(raw, model, NOW);
+    // Misma regla que d5_39: el texto llega pelado del centinela "Otra:" para que el motor lo lea por substring.
+    expect(input.survey.d5_38).toEqual(["HTA (presión alta)", "enfermedad renal"]);
+    expect(input.survey.d6_44).toEqual(["intolerancia a la lactosa"]);
+  });
+
+  it("las DEMAS preguntas con 'Otra' (§3): su texto libre es REGISTRO, NO alimenta el motor", () => {
+    const raw = {
+      sex: "M",
+      birthDate: "1990-01-01",
+      surveyAnswers: [
+        // d6_43 (alergias, una de las 9 pero NO de las que alimentan el motor): "Otra: mango" NO llega (registro).
         { fieldKey: "d6_43", type: "opcion_multiple", value: JSON.stringify(["Maní", "Otra: mango"]) },
-        // "Otra" pelada (sin texto) es inerte: NO se stripea; las opciones reales quedan.
-        { fieldKey: "d5_38", type: "opcion_multiple", value: JSON.stringify(["Otra", "HTA (presión alta)"]) },
       ],
       expectedFieldKeys: ["d6_43"],
       bisRaw: {},
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.survey.d6_43).toEqual(["Maní"]);
-    expect(input.survey.d5_38).toEqual(["Otra", "HTA (presión alta)"]);
   });
 });

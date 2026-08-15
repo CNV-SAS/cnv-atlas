@@ -109,6 +109,20 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   // Sexo OBLIGATORIO (el motor lo exige F/M estricto). Pais con default Colombia.
   const [sex, setSex] = useState("");
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  // Ciudad: selector fijo (Colombia) + "Otra" -> texto libre (estructura del HTML de Gildardo, mejor para
+  // derivar altitud/region de una ciudad conocida). El valor final viaja por un input OCULTO (patron de
+  // ocupacion), sea de la lista o el texto de "Otra". RESUME-SAFE: una ciudad guardada que NO este en la
+  // lista nueva (texto viejo libre, o ciudad de otro pais) cae a "Otra" con su texto, NO se pierde.
+  const cityInCoList = (c: string) => (COLOMBIA_CITIES as readonly string[]).includes(c);
+  const [city, setCity] = useState(prefill?.city ?? "");
+  const [cityOtra, setCityOtra] = useState(
+    () => country === DEFAULT_COUNTRY && !!(prefill?.city ?? "") && !cityInCoList(prefill?.city ?? ""),
+  );
+  // Al cambiar de pais: si vuelve a Colombia, recomputa si la ciudad actual cae en "Otra" (fuera de la lista).
+  const onCountryChange = (next: string) => {
+    setCountry(next);
+    setCityOtra(next === DEFAULT_COUNTRY && !!city && !cityInCoList(city));
+  };
   const [showFullText, setShowFullText] = useState(false);
 
   const isMinor = ageBranch === "menor";
@@ -591,7 +605,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             </select>
           </Field>
           <Field label="País">
-            <select name="country" value={country} onChange={(e) => setCountry(e.target.value)} className={selectClass}>
+            <select name="country" value={country} onChange={(e) => onCountryChange(e.target.value)} className={selectClass}>
               {COUNTRIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -600,20 +614,42 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             </select>
           </Field>
           <Field label="Ciudad">
-            {/* Datalist: sugiere ciudades de Colombia PERO acepta cualquier texto. Otros paises: texto libre. */}
-            <Input
-              name="city"
-              className="h-9"
-              defaultValue={prefill?.city ?? ""}
-              list={country === DEFAULT_COUNTRY ? "co-cities" : undefined}
-            />
             {country === DEFAULT_COUNTRY ? (
-              <datalist id="co-cities">
+              <select
+                className={selectClass}
+                value={cityOtra ? "Otra" : city}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "Otra") {
+                    setCityOtra(true);
+                    setCity(""); // se llena con el texto libre; vacio hasta que escriba
+                  } else {
+                    setCityOtra(false);
+                    setCity(v);
+                  }
+                }}
+              >
+                <option value="">Selecciona tu ciudad</option>
                 {COLOMBIA_CITIES.map((c) => (
-                  <option key={c} value={c} />
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
-              </datalist>
+                <option value="Otra">Otra (escríbela)</option>
+              </select>
             ) : null}
+            {/* Texto libre: si eligio "Otra" en Colombia, o si el pais no es Colombia (sin lista). */}
+            {(country === DEFAULT_COUNTRY && cityOtra) || country !== DEFAULT_COUNTRY ? (
+              <Input
+                className={`h-9 ${country === DEFAULT_COUNTRY ? "mt-2" : ""}`}
+                placeholder="Escribe tu ciudad"
+                maxLength={80}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            ) : null}
+            {/* El valor final (ciudad de la lista o texto de "Otra") viaja por el input oculto. */}
+            <input type="hidden" name="city" value={city} />
           </Field>
           <Field label="Celular">
             <Input name="phone" className="h-9" defaultValue={prefill?.phone ?? ""} />
