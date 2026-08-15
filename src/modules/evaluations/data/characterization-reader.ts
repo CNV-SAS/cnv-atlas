@@ -3,7 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { evaluations } from "@/db/schema";
+import { evaluations, patientProfiles, patients } from "@/db/schema";
 
 import type { EvaluationCharacterization } from "./survey-answers-types";
 
@@ -26,4 +26,26 @@ export async function getEvaluationCharacterization(
     .where(eq(evaluations.id, evaluationId))
     .limit(1);
   return row ?? null;
+}
+
+// ¿El PERFIL del paciente tiene algun sociodemografico? Distingue, cuando las columnas de la evaluacion
+// estan vacias, "el paciente no lo respondio" (perfil tambien vacio) de "esta evaluacion es anterior al
+// registro por evaluacion" (perfil con datos, escrito por un intake previo a esas columnas). El D8 lo usa
+// para NO decir "no se capturo" cuando el dato existe en el perfil. Mismo owner/justificacion de auth que
+// getEvaluationCharacterization (la pagina ya verifico ownership por RLS antes de llegar aca).
+export async function getPatientProfileHasCharacterization(evaluationId: string): Promise<boolean> {
+  const [row] = await db
+    .select({
+      educationLevel: patientProfiles.educationLevel,
+      occupation: patientProfiles.occupation,
+      maritalStatus: patientProfiles.maritalStatus,
+      socioeconomicStratum: patientProfiles.socioeconomicStratum,
+      ethnicity: patientProfiles.ethnicity,
+    })
+    .from(evaluations)
+    .innerJoin(patients, eq(patients.id, evaluations.patientId))
+    .innerJoin(patientProfiles, eq(patientProfiles.patientId, patients.id))
+    .where(eq(evaluations.id, evaluationId))
+    .limit(1);
+  return row ? Object.values(row).some((v) => v != null) : false;
 }

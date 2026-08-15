@@ -43,7 +43,10 @@ import {
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
 import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
-import { getEvaluationCharacterization } from "@/modules/evaluations/data/characterization-reader";
+import {
+  getEvaluationCharacterization,
+  getPatientProfileHasCharacterization,
+} from "@/modules/evaluations/data/characterization-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
@@ -186,6 +189,7 @@ export default async function ResultadosEvaluacionPage({
     trajectoryNotice,
     correctionAvailability,
     characterization,
+    profileHasCharacterization,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -209,6 +213,8 @@ export default async function ResultadosEvaluacionPage({
     getCorrectionAvailability(id),
     // (m) Caracterizacion sociodemografica versionada de ESTA evaluacion, para el bloque de D8.
     getEvaluationCharacterization(id),
+    // ¿El perfil tiene sociodemograficos? Para distinguir en D8 "no respondio" de "eval anterior al registro".
+    getPatientProfileHasCharacterization(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -374,6 +380,7 @@ export default async function ResultadosEvaluacionPage({
               patron={patron}
               surveyDomains={entrySurvey}
               characterization={characterization}
+              profileHasCharacterization={profileHasCharacterization}
             />
           }
           // Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot).

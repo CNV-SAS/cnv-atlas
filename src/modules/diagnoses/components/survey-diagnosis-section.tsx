@@ -205,8 +205,13 @@ const CHAR_FIELDS: { key: keyof EvaluationCharacterization; label: string }[] = 
 
 function CharacterizationBlock({
   characterization,
+  profileHasData = false,
 }: {
   characterization?: EvaluationCharacterization | null;
+  // ¿El perfil del paciente tiene sociodemograficos? Distingue "no respondio" de "eval anterior al registro
+  // por evaluacion" cuando las columnas de la evaluacion estan vacias. NO se copian los valores del perfil
+  // (serian un historico falso: pudieron cambiar); solo se dice que estan alli.
+  profileHasData?: boolean;
 }) {
   const rows = characterization ? CHAR_FIELDS.filter((f) => characterization[f.key]) : [];
   return (
@@ -224,10 +229,13 @@ function CharacterizationBlock({
           ))}
         </div>
       ) : (
-        // Evaluaciones anteriores a la captura por evaluacion (o sin caracterizacion): NO se copia el
-        // valor actual del perfil (seria un historico falso); se dice claro que no se capturo.
         <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
-          El contexto sociodemográfico no se capturó en esta evaluación.
+          {profileHasData
+            ? // El dato existe en el perfil: esta evaluacion es anterior al registro por evaluacion (o no lo
+              // guardo por separado). NO afirmar "no se capturo" (se leeria como que el paciente no respondio).
+              "Esta evaluación es anterior al registro del contexto por evaluación. Los datos del paciente están en su perfil; no se muestran aquí porque pueden haber cambiado desde esta evaluación."
+            : // Perfil tambien vacio: el paciente no lo registro.
+              "El paciente no registró su contexto sociodemográfico en esta evaluación."}
         </p>
       )}
     </div>
@@ -238,6 +246,7 @@ export function SurveyDiagnosisSection({
   patron,
   surveyDomains,
   characterization,
+  profileHasCharacterization = false,
 }: {
   patron: PatronResolution;
   // Respuestas por dominio (D1-D8) para el read-out de D2-D8. Llegan del reader ya agrupadas y en orden
@@ -245,6 +254,8 @@ export function SurveyDiagnosisSection({
   surveyDomains?: SurveyDomain[] | null;
   // Caracterizacion sociodemografica DE ESTA evaluacion (columnas de la evaluacion), para el bloque de D8.
   characterization?: EvaluationCharacterization | null;
+  // ¿El perfil del paciente tiene sociodemograficos? Para el mensaje honesto cuando la evaluacion no los trae.
+  profileHasCharacterization?: boolean;
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -264,7 +275,10 @@ export function SurveyDiagnosisSection({
               // D8 lleva ademas el contexto sociodemografico del encuentro (verbatim del v8: al final de D8).
               <div className="flex flex-col gap-4">
                 <DomainReadout domain={surveyDomains?.[i]} />
-                <CharacterizationBlock characterization={characterization} />
+                <CharacterizationBlock
+                  characterization={characterization}
+                  profileHasData={profileHasCharacterization}
+                />
               </div>
             ) : (
               <DomainReadout domain={surveyDomains?.[i]} />
