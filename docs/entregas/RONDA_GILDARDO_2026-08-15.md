@@ -19,11 +19,28 @@ para no repetírtelo.
   autorización de investigación (interfaz y servidor), con "Independientemente de lo anterior" pegado a la
   de ascendencia. La región y la altitud se **derivan de la ciudad** (tabla ciudad → altitud, fuente
   IGAC/DANE), sin preguntarle nada extra al paciente; "Otra"/ciudad libre → sin altitud (no se inventa).
-  Solo queda pendiente el punto 7 (residencia actual vs prolongada).
+  Solo queda pendiente el punto 1 (residencia actual vs prolongada), que es lo que decide si el bump cierra.
 
 ---
 
-## 1. Criterio del Δ en la tabla de composición (lo que más bloquea)
+## 1. Región/altitud: ¿residencia actual o residencia prolongada? (bloquea el bump de encuesta)
+
+Va primero porque es lo que **bloquea el bump de encuesta**, lo más grande que espera. Pediste "región
+**de origen o de residencia prolongada**", y altitud. Hoy la encuesta captura la ciudad de **residencia
+actual**, de la que derivamos departamento, región y altitud sin preguntarle nada más al paciente (tabla
+ciudad → altitud, ya construida).
+
+**El problema:** la residencia actual no es lo mismo que la prolongada, y el efecto fisiológico que buscas
+(adaptación a la altura: hematocrito, agua corporal) viene de **vivir años en altura**, no de dónde está
+hoy. Alguien nacido en Bogotá que se mudó a Cartagena hace un año conserva la adaptación; alguien que llegó
+a Bogotá el mes pasado, no. Derivar de la residencia actual capturaría **otra cosa**, y podría ser peor que
+no capturarla: un dato que parece medir adaptación a la altura y no la mide.
+
+**Pregunta:** ¿derivamos de la residencia **actual** (cero preguntas extra, con la limitación anotada), o
+agregamos **una pregunta** de dónde vivió la mayor parte de su vida (y de ahí derivamos altitud y región)?
+La infraestructura sirve para las dos respuestas; lo único que esperamos es si se agrega la pregunta de origen.
+
+## 2. Criterio del Δ en la tabla de composición
 
 Es **un solo tema** que explica casi todas las diferencias que vio Santiago fila por fila. Tu tabla
 mide el Δ contra el **borde** del rango; nosotros contra el **punto medio**. Los dos tienen sentido:
@@ -43,7 +60,7 @@ Nuestra lectura es que la tuya es más útil clínicamente ("pasa 0,8 del límit
 del centro"), pero es tu decisión y la aplicamos en un solo lugar. (CA-2, pendiente de tu aprobación
 desde el inicio.)
 
-## 2. SMM/W, y el principio general de "manda el motor"
+## 3. SMM/W, y el principio general de "manda el motor"
 
 En SMM/W tu tabla de display dice **"Normal"**; el clasificador de tu motor (`cSMM`, hombre >33 →
 "Óptimo") emite **"Óptimo"**. Es el mismo tipo de divergencia display-vs-motor que ya resolviste para
@@ -54,7 +71,7 @@ principio de **"manda el motor"** ¿aplica a **todos** los clasificadores de la 
 tres que nombraste (IFC, IRC, FMI)? Si es general, SMM/W (y cualquier otro) sigue el motor y no
 volvemos a preguntar.
 
-## 3. Re-sincronización del motor a tu entrega del 13-ago (PABU en el Dominio 1)
+## 4. Re-sincronización del motor a tu entrega del 13-ago (PABU en el Dominio 1)
 
 Tu HTML del 13 **añadió la PABU al Dominio 1** del DFI ("La PABU faltaba en el dominio pese a estar
 declarada"). Nuestro motor DFI está sincronizado a una versión **anterior** (05-ago), así que el
@@ -65,7 +82,7 @@ de modificaciones autorizadas.
 re-sincronizar **una sola vez** (no pieza por pieza): ¿además de la PABU en el Dominio 1, qué más
 cambió en el 13 que debamos traer (p. ej. `cPABU`/`cMMEM`, que teníamos retenidos a propósito por Q27)?
 
-## 4. Las 5 constantes poblacionales de la MLG (P-10)
+## 5. Las 5 constantes poblacionales de la MLG (P-10)
 
 Para llenar las referencias que el equipo no trae, tu bloque REF_POB usa constantes de reparto de la
 masa libre de grasa. **Dos ya validadas** (hidratación 73,2 %, MCA 52,4 %) van sin marca. **Cinco sin
@@ -77,7 +94,7 @@ Tu propio archivo las usa; solo pedimos el visto bueno para presentarlas sin la 
 
 ---
 
-## 8. Fuerza prensil (dinamometría) para el diagnóstico de sarcopenia
+## 6. Fuerza prensil (dinamometría) para el diagnóstico de sarcopenia
 
 Portamos tu card de "Diagnóstico de sarcopenia" (fuerza prensil + ASMI + AF, EWGSOP2). La ASMI y el AF
 salen de la medición; la **fuerza prensil hoy no la capturamos** (no hay campo), así que la card la
@@ -93,29 +110,10 @@ que el profesional registra en consulta).
 
 ## Menores (baja prioridad, confirmación)
 
-- **(5) Δ del Agua total:** tu archivo pre-fix mostraba −1,05 con valor 44,66 y ref 48,55; nosotros
+- **Δ del Agua total:** tu archivo pre-fix mostraba −1,05 con valor 44,66 y ref 48,55; nosotros
   −3,89 (= valor − ref, exacto). Creemos que tu fix del §0 ya lo alinea (tu FFW y ACT ya no comparten
   valor). Solo confírmanos que el Δ del ACT es valor − ref.
-- **(6) Cola del Nivel II:** en las últimas filas tu tabla y la nuestra difieren: "Grasa corporal
+- **Cola del Nivel II:** en las últimas filas tu tabla y la nuestra difieren: "Grasa corporal
   total (% - Lípidos Wang)" es la misma Masa grasa % que ya mostramos arriba (no la duplicamos); el
   IEHH lo tenemos en la tabla de índices, no en Wang; y donde tu HTML dice "sin dato" (Masa proteica
   metabólica) nosotros la derivamos. ¿Dejamos las nuestras (más completas) o las ajustamos a tu orden?
-
----
-
-## 7. Región/altitud: ¿residencia actual o residencia prolongada? (del bump de encuesta §3)
-
-Pediste "región **de origen o de residencia prolongada**", y altitud. Hoy la encuesta captura la
-ciudad de **residencia actual**, de la que podemos derivar departamento, región y altitud sin
-preguntarle nada más al paciente (una tabla ciudad → altitud; ya la estamos construyendo).
-
-**El problema:** la residencia actual no es lo mismo que la prolongada, y el efecto fisiológico que
-buscas (adaptación a la altura: hematocrito, agua corporal) viene de **vivir años en altura**, no de
-dónde está hoy. Alguien nacido en Bogotá que se mudó a Cartagena hace un año conserva la adaptación;
-alguien que llegó a Bogotá el mes pasado, no. Derivar de la residencia actual capturaría **otra cosa**,
-y podría ser peor que no capturarla: un dato que parece medir adaptación a la altura y no la mide.
-
-**Pregunta:** ¿derivamos de la residencia **actual** (cero preguntas extra, con la limitación anotada),
-o agregamos **una pregunta** de dónde vivió la mayor parte de su vida (y de ahí derivamos altitud y
-región)? La infraestructura (tabla de ciudades con altitud + selector nuevo) sirve para las dos
-respuestas; lo único que esperamos es si se agrega la pregunta de origen.
