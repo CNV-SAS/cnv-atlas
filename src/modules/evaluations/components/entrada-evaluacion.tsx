@@ -11,6 +11,7 @@ import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
+import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 
 import { ConsentStatusCard } from "./consent-status-card";
@@ -68,6 +69,13 @@ export function EntradaEvaluacion({
   // esta confirmada pero las condiciones de la toma aun no se guardaron, la segunda subpestaña lo dice y
   // remite a la primera (sin las condiciones, el import no se habilita). "contraindicated" ya se captura.
   const conditionsPending = identityConfirmed && !gate.allowed && gate.reason !== "contraindicated";
+
+  // ASMI y AF para el diagnostico de sarcopenia (EWGSOP2): se leen de las filas de la composicion (ASMI =
+  // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil NO se captura hoy -> null (la card
+  // lo dice, ver SarcopeniaCard). sexoM = paciente no femenino.
+  const compRows = composition?.levels.flatMap((l) => l.rows) ?? [];
+  const sarcopeniaAsmi = compRows.find((r) => r.key === "asmi")?.value ?? null;
+  const sarcopeniaAf = compRows.find((r) => r.key === "AF")?.value ?? null;
 
   // SUBPESTAÑA 1 · ENCUESTA: consentimiento + encuesta del paciente + condiciones de la toma BIS. Es lo
   // PRIMERO de la secuencia; la subpestaña 2 depende de que esto este hecho.
@@ -173,6 +181,12 @@ export function EntradaEvaluacion({
           />
         )}
       </section>
+
+      {/* Diagnostico de sarcopenia (EWGSOP2): fuerza + ASMI + AF. Solo con medicion (necesita ASMI/AF de la
+          composicion). La fuerza prensil no se captura hoy: la card lo dice ("sin dato"), no lo inventa. */}
+      {composition ? (
+        <SarcopeniaCard asmi={sarcopeniaAsmi} af={sarcopeniaAf} sexoM={!patientIsFemale} />
+      ) : null}
     </div>
   );
 
