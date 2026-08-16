@@ -14,6 +14,7 @@ import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 
 import { ConsentStatusCard } from "./consent-status-card";
+import { EvaluationSubtabs } from "./evaluation-subtabs";
 import type { ConsentStatus } from "../data/consent-status-reader";
 import type { SurveyDomain } from "../data/survey-answers-reader";
 
@@ -63,17 +64,15 @@ export function EntradaEvaluacion({
     0,
   );
 
-  return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Entrada de la evaluación
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Lo que entró y se verificó antes del diagnóstico: consentimiento, encuesta y medición.
-        </p>
-      </header>
+  // Aviso de SECUENCIA (care Santiago 2026-08-15): Antropometria DEPENDE de Encuesta. Si la identidad
+  // esta confirmada pero las condiciones de la toma aun no se guardaron, la segunda subpestaña lo dice y
+  // remite a la primera (sin las condiciones, el import no se habilita). "contraindicated" ya se captura.
+  const conditionsPending = identityConfirmed && !gate.allowed && gate.reason !== "contraindicated";
 
+  // SUBPESTAÑA 1 · ENCUESTA: consentimiento + encuesta del paciente + condiciones de la toma BIS. Es lo
+  // PRIMERO de la secuencia; la subpestaña 2 depende de que esto este hecho.
+  const encuestaPanel = (
+    <div className="flex flex-col gap-8">
       {consentStatus ? <ConsentStatusCard status={consentStatus} /> : null}
 
       {/* Resumen de la encuesta: estado (respondidas/total), sin desplegar las preguntas. El detalle
@@ -99,9 +98,9 @@ export function EntradaEvaluacion({
         )}
       </section>
 
-      {/* Condiciones de la toma BIS (Parte 2): se responden ANTES del import. El sistema impone el
-          orden; sin este checklist guardado, el import no se habilita. Se muestra tambien cuando ya
-          hay medicion (caso borde: registrar condiciones despues de un BIS previo). */}
+      {/* Condiciones de la toma BIS: se responden ANTES del import. El sistema impone el orden; sin este
+          checklist guardado, el import (en Antropometría) no se habilita. Se muestra tambien cuando ya hay
+          medicion (caso borde: registrar condiciones despues de un BIS previo). */}
       {identityConfirmed && bisCatalog ? (
         <BisConditionsCapture
           evaluationId={evaluationId}
@@ -111,6 +110,25 @@ export function EntradaEvaluacion({
         />
       ) : bisReadonly ? (
         <BisConditionsReadonly data={bisReadonly} />
+      ) : null}
+    </div>
+  );
+
+  // SUBPESTAÑA 2 · ANTROPOMETRIA Y BIS: import del archivo + composicion corporal. (La sarcopenia y las
+  // referencias entran en el siguiente paso.) Depende de la subpestaña Encuesta: el aviso lo hace explicito.
+  const antropometriaPanel = (
+    <div className="flex flex-col gap-8">
+      {conditionsPending ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-1 rounded-lg border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning"
+        >
+          <span className="font-medium">Primero, las condiciones de la toma</span>
+          <span>
+            Responde y guarda las condiciones de la toma BIS en la subpestaña{" "}
+            <span className="font-semibold">Encuesta</span>: sin ellas no se habilita el import.
+          </span>
+        </div>
       ) : null}
 
       {/* Seccion Medicion BIS SIEMPRE presente (no aparece/desaparece: eso confunde). Con medicion,
@@ -142,7 +160,7 @@ export function EntradaEvaluacion({
         ) : !gate.allowed && gate.reason === "contraindicated" ? (
           <p className="text-sm font-semibold text-clinical-critical">
             Import bloqueado: hay una contraindicación (marcapasos). No se realiza la bioimpedancia.
-            Ver el detalle en las condiciones de la toma, arriba.
+            Ver el detalle en las condiciones de la toma (subpestaña Encuesta).
           </p>
         ) : (
           <BisImportForm
@@ -150,11 +168,26 @@ export function EntradaEvaluacion({
             disabledReason={
               gate.allowed
                 ? null
-                : "Responde y guarda las condiciones de la toma para habilitar el import."
+                : "Responde y guarda las condiciones de la toma (subpestaña Encuesta) para habilitar el import."
             }
           />
         )}
       </section>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          Entrada de la evaluación
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Lo que entró y se verificó antes del diagnóstico: consentimiento, encuesta y medición.
+        </p>
+      </header>
+
+      <EvaluationSubtabs encuesta={encuestaPanel} antropometria={antropometriaPanel} />
     </div>
   );
 }
