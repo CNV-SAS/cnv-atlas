@@ -88,11 +88,13 @@ export function EntradaEvaluacion({
       <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-foreground">Encuesta del paciente</h3>
+          {/* "Ver o editar" (no solo "ver"): la pantalla deja editar (pre-diagnostico) o corregir versionado
+              (con diagnostico). El boton decia "ver" cuando tambien edita (Santiago 2026-08-15, b). */}
           <Link
             href={`/evaluaciones/${evaluationId}/encuesta`}
             className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
           >
-            Ver encuesta
+            Ver o editar encuesta
           </Link>
         </div>
         {total > 0 ? (

@@ -305,22 +305,20 @@ export default async function ResultadosEvaluacionPage({
       evaluacion={
         // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
         // composicion y el import BIS no aplica (bisImportEval null).
-        <div className="flex flex-col gap-8">
-          <EntradaEvaluacion
-            evaluationId={id}
-            consentStatus={entryConsent}
-            surveyDomains={entrySurvey}
-            composition={composition}
-            bisImportEval={null}
-            bisCatalog={null}
-            bisIntake={null}
-            patientIsFemale={false}
-            bisReadonly={entryReadonly}
-          />
-          {/* Corregir vive aqui porque la Entrada es donde el profesional revisa la encuesta y
-              notaria un dato mal digitado. Distinto de los actos de sellado (ver CorrectionEntry). */}
-          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
-        </div>
+        // La correccion YA NO vive en Evaluacion (Santiago 2026-08-15, b): en Evaluacion el profesional
+        // REVISA la encuesta, no decide sobre un diagnostico. La via de correccion versionada se movio a la
+        // pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. Aqui solo la Entrada.
+        <EntradaEvaluacion
+          evaluationId={id}
+          consentStatus={entryConsent}
+          surveyDomains={entrySurvey}
+          composition={composition}
+          bisImportEval={null}
+          bisCatalog={null}
+          bisIntake={null}
+          patientIsFemale={false}
+          bisReadonly={entryReadonly}
+        />
       }
       tratamiento={
         <div className="flex flex-col gap-8">
