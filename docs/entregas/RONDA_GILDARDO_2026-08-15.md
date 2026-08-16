@@ -77,6 +77,20 @@ Tu propio archivo las usa; solo pedimos el visto bueno para presentarlas sin la 
 
 ---
 
+## 8. Fuerza prensil (dinamometría) para el diagnóstico de sarcopenia
+
+Portamos tu card de "Diagnóstico de sarcopenia" (fuerza prensil + ASMI + AF, EWGSOP2). La ASMI y el AF
+salen de la medición; la **fuerza prensil hoy no la capturamos** (no hay campo), así que la card la
+muestra "sin dato" y avisa que falta el criterio primario. Es medición de **consulta**, no del paciente
+(hace falta un dinamómetro y el profesional), así que iría en los datos que registra el profesional, no
+en la encuesta.
+
+**Pregunta (corta):** ¿cómo prevés capturar la fuerza prensil? Unidad (Kgf), quién la mide y en qué
+momento del flujo. Con eso decidimos dónde ponerla (probablemente en los Datos Personales de Antropometría,
+que el profesional registra en consulta).
+
+---
+
 ## Menores (baja prioridad, confirmación)
 
 - **(5) Δ del Agua total:** tu archivo pre-fix mostraba −1,05 con valor 44,66 y ref 48,55; nosotros
