@@ -1,5 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { type ReactNode } from "react";
 
 import { formatDateLong } from "@/lib/format/date";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
@@ -35,11 +36,16 @@ export function EntradaEvaluacion({
   bisIntake,
   patientIsFemale,
   bisReadonly,
+  identityConfirmationSlot = null,
 }: {
   evaluationId: string;
   consentStatus: ConsentStatus | null;
   surveyDomains: SurveyDomain[] | null;
   composition: Composition | null;
+  // Confirmar identidad, DENTRO de la evaluacion (Santiago 2026-08-15, c): la accion se movio de la lista
+  // aca, al INICIO de Encuesta, cuando la evaluacion esta en draft. null si ya esta confirmada (in_progress).
+  // Lo arma la pagina (tiene los datos del pendiente + duplicados); este componente solo lo coloca.
+  identityConfirmationSlot?: ReactNode;
   // Vista para importar BIS desde aqui (reusa el modulo bis del panel). null si la evaluacion no
   // esta in_progress (identidad sin confirmar) o ya no aplica.
   bisImportEval: BisImportEvaluation | null;
@@ -81,6 +87,9 @@ export function EntradaEvaluacion({
   // PRIMERO de la secuencia; la subpestaña 2 depende de que esto este hecho.
   const encuestaPanel = (
     <div className="flex flex-col gap-8">
+      {/* Confirmar identidad (draft): PRIMERO en la secuencia. Habilita las condiciones de la toma y el
+          import. Cuando ya esta confirmada, el slot es null y se ve el flujo normal. */}
+      {identityConfirmationSlot}
       {consentStatus ? <ConsentStatusCard status={consentStatus} /> : null}
 
       {/* Resumen de la encuesta: estado (respondidas/total), sin desplegar las preguntas. El detalle

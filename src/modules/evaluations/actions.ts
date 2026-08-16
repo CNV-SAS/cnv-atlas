@@ -476,7 +476,11 @@ export async function confirmIdentityAction(
     throw e;
   }
 
+  // Revalida la LISTA (sale de la cola) Y la EVALUACION (c: el confirmar vive dentro de la evaluacion; tras
+  // confirmar, la pagina se re-renderiza con la identidad ya confirmada -> aparecen condiciones e import,
+  // sin volver a la lista).
   revalidatePath("/evaluaciones");
+  revalidatePath(`/evaluaciones/${evaluationId}`);
   return { error: null, confirmed: true };
 }
 
@@ -554,6 +558,7 @@ export async function resolveIdentityConflictAction(
   if (!resolved) return { error: "No se pudo resolver.", resolved: false };
 
   revalidatePath("/evaluaciones");
+  revalidatePath(`/evaluaciones/${evaluationId}`); // c: la resolucion tambien vive en la evaluacion
   revalidatePath(`/pacientes/${ownership.patientId}`);
   return { error: null, resolved: true };
 }

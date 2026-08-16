@@ -43,6 +43,17 @@ import {
   getEvaluationResults,
 } from "@/modules/diagnoses/data/results-reader";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
+import {
+  IdentityConfirmation,
+  type DuplicateCandidateView,
+} from "@/modules/evaluations/components/identity-confirmation";
+import { IdentityConflictResolution } from "@/modules/evaluations/components/identity-conflict-resolution";
+import { getPendingIdentityCheck } from "@/modules/evaluations/data/evaluations-repository";
+import {
+  findDuplicateCandidates,
+  getPatientIdentityById,
+} from "@/modules/patients/data/patients-intake";
+import { findDuplicatesForPatient } from "@/modules/patients/services/identity-resolution";
 import { getConsentStatusForEvaluation } from "@/modules/evaluations/data/consent-status-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import {
@@ -118,6 +129,27 @@ export default async function ResultadosEvaluacionPage({
       getBisIntakeForEvaluation(id),
       getEvaluationPatientSex(id),
     ]);
+    // Confirmar identidad DENTRO de la evaluacion (Santiago 2026-08-15, c): si esta en draft, se arma el
+    // widget de confirmacion (o la resolucion de conflicto declarado-vs-registrado) y se coloca al inicio de
+    // Encuesta. Fuera de draft (ya confirmada) -> null y se ve el flujo normal. Los duplicados solo aplican a
+    // iniciales (en seguimiento el paciente ya quedo resuelto por documento).
+    const pendingIdentity = await getPendingIdentityCheck(id);
+    const identityDups: DuplicateCandidateView[] =
+      pendingIdentity && !pendingIdentity.identityConflict && pendingIdentity.type === "inicial"
+        ? await findDuplicatesForPatient(
+            { getPatientIdentityById, findDuplicateCandidates },
+            pendingIdentity.patientId,
+          )
+        : [];
+    const identityNode = !pendingIdentity ? null : pendingIdentity.identityConflict ? (
+      <IdentityConflictResolution
+        evaluationId={pendingIdentity.evaluationId}
+        registeredName={`${pendingIdentity.firstName} ${pendingIdentity.lastName}`.trim()}
+        declaredName={`${pendingIdentity.declaredFirstName ?? ""} ${pendingIdentity.declaredLastName ?? ""}`.trim()}
+      />
+    ) : (
+      <IdentityConfirmation evaluation={pendingIdentity} duplicateCandidates={identityDups} />
+    );
     return (
       <div className="flex flex-col gap-4">
         {supersession.superseded ? (
@@ -136,6 +168,7 @@ export default async function ResultadosEvaluacionPage({
             bisIntake={entryIntake}
             patientIsFemale={entrySex === "F"}
             bisReadonly={null}
+            identityConfirmationSlot={identityNode}
           />
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}

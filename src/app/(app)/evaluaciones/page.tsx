@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
@@ -10,11 +11,6 @@ import { listReports } from "@/modules/reports/data/reports-repository";
 import { AwaitingSurveyList } from "@/modules/evaluations/components/awaiting-survey-list";
 import { ConsultorioLink } from "@/modules/evaluations/components/consultorio-link";
 import {
-  IdentityConfirmation,
-  type DuplicateCandidateView,
-} from "@/modules/evaluations/components/identity-confirmation";
-import { IdentityConflictResolution } from "@/modules/evaluations/components/identity-conflict-resolution";
-import {
   listAwaitingSurveyEvaluations,
   listPendingIdentityChecks,
 } from "@/modules/evaluations/data/evaluations-repository";
@@ -22,11 +18,6 @@ import {
   canConfirmIdentity,
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
-import {
-  findDuplicateCandidates,
-  getPatientIdentityById,
-} from "@/modules/patients/data/patients-intake";
-import { findDuplicatesForPatient } from "@/modules/patients/services/identity-resolution";
 
 export const metadata = { title: "Evaluaciones - Atlas" };
 
@@ -53,19 +44,9 @@ export default async function EvaluacionesPage() {
   // En el panel solo los reportes con accion pendiente (borrador o aprobado); los
   // enviados se consultan en /reportes.
   const pendingReports = reports.filter((r) => r.status !== "sent");
-
-  // Duplicados solo para iniciales (en seguimiento el paciente ya quedo resuelto por
-  // documento). Se computan en paralelo, via service role (cruzan toda la org).
-  const dupDeps = { getPatientIdentityById, findDuplicateCandidates };
-  const candidatesByPatient = new Map<string, DuplicateCandidateView[]>();
-  await Promise.all(
-    pending
-      .filter((e) => e.type === "inicial")
-      .map(async (e) => {
-        const dups = await findDuplicatesForPatient(dupDeps, e.patientId);
-        if (dups.length > 0) candidatesByPatient.set(e.patientId, dups);
-      }),
-  );
+  // Los duplicados YA NO se computan aqui: la confirmacion (con su alerta de duplicados) se movio DENTRO de
+  // la evaluacion (Santiago 2026-08-15, c). La lista sigue siendo la COLA, pero cada pendiente lleva a la
+  // evaluacion, donde se revisa y confirma. Asi el profesional no pierde el "tienes N por confirmar".
 
   return (
     <div className="flex flex-col gap-10">
@@ -87,26 +68,34 @@ export default async function EvaluacionesPage() {
             No hay evaluaciones pendientes de confirmar.
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-            {pending.map((e) =>
-              // Conflicto de identidad (documento coincide, nombre difiere): en vez del confirmar normal,
-              // la resolucion declarado-vs-registrado. El gate de confirmIdentityAction ya impide avanzar
-              // hasta resolverlo; aqui esta como se resuelve.
-              e.identityConflict ? (
-                <IdentityConflictResolution
-                  key={e.evaluationId}
-                  evaluationId={e.evaluationId}
-                  registeredName={`${e.firstName} ${e.lastName}`.trim()}
-                  declaredName={`${e.declaredFirstName ?? ""} ${e.declaredLastName ?? ""}`.trim()}
-                />
-              ) : (
-                <IdentityConfirmation
-                  key={e.evaluationId}
-                  evaluation={e}
-                  duplicateCandidates={candidatesByPatient.get(e.patientId) ?? []}
-                />
-              ),
-            )}
+          <div className="flex flex-col gap-3">
+            {pending.map((e) => (
+              // Fila compacta que LLEVA a la evaluacion, donde se revisa y confirma (c). El conflicto de
+              // identidad se marca aqui, pero se resuelve alla (con los dos nombres a la vista).
+              <Link
+                key={e.evaluationId}
+                href={`/evaluaciones/${e.evaluationId}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground">
+                    {e.firstName} {e.lastName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {e.documentType} {e.documentNumber} ·{" "}
+                    {e.type === "inicial" ? "Evaluación inicial" : "Seguimiento"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {e.identityConflict ? (
+                    <span className="rounded-md bg-clinical-warning-bg px-2 py-0.5 text-xs font-semibold text-clinical-warning">
+                      Conflicto de identidad
+                    </span>
+                  ) : null}
+                  <span className="text-sm font-medium text-primary">Revisar y confirmar</span>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </section>

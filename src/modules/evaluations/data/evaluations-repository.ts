@@ -69,6 +69,44 @@ export async function listPendingIdentityChecks(): Promise<PendingIdentityEvalua
   });
 }
 
+// Una sola evaluacion en draft (pendiente de confirmar identidad), para renderizar el confirmar DENTRO de
+// la evaluacion (Santiago 2026-08-15, c: la accion se movio de la lista a la evaluacion). Mismo shape que la
+// lista; null si la evaluacion no esta en draft (ya confirmada, u otra rama). La RLS del cliente impone que
+// sea del profesional. Usa maybeSingle: id es unico.
+export async function getPendingIdentityCheck(
+  evaluationId: string,
+): Promise<PendingIdentityEvaluation | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select(
+      "id, type, created_at, patient_id, identity_conflict, declared_first_name, declared_last_name, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name, birth_date))",
+    )
+    .eq("id", evaluationId)
+    .eq("status", "draft")
+    .maybeSingle();
+  if (error) {
+    throw new Error(`evaluations-repository: getPendingIdentityCheck: ${error.message}`);
+  }
+  if (!data) return null;
+  const patient = one<PatientEmbed>(data.patients as PatientEmbed | PatientEmbed[] | null);
+  const profile = one(patient?.patient_profiles ?? null);
+  return {
+    evaluationId: data.id,
+    patientId: data.patient_id,
+    type: data.type,
+    createdAt: data.created_at,
+    documentType: patient?.document_type ?? "",
+    documentNumber: patient?.document_number ?? "",
+    firstName: profile?.first_name ?? "",
+    lastName: profile?.last_name ?? "",
+    birthDate: profile?.birth_date ?? null,
+    identityConflict: data.identity_conflict,
+    declaredFirstName: data.declared_first_name,
+    declaredLastName: data.declared_last_name,
+  };
+}
+
 export type AwaitingSurveyEvaluation = {
   evaluationId: string;
   patientId: string;
