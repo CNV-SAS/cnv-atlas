@@ -159,22 +159,21 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
     // DIVERGENCIA DELIBERADA (DIV-8): el frozen reparte lo bioelectrico crudo entre Nivel III (impedancias
     // R50/Z...) y Nivel II (Cole-Cole Re/Ri/R∞/C/Fo). Aca se CONSOLIDA en un bloque propio, mas coherente
     // (todo lo crudo junto) y consistente con nuestro nivel Bioelectrico ya existente. El "que" (todos los
-    // campos) es fiel; el "como" (el agrupamiento) es nuestro. El angulo de fase queda como principal (es el
-    // marcador clinico); el resto va al desplegable.
+    // campos) es fiel; el "como" (el agrupamiento) es nuestro. El angulo de fase se movio a Nivel III (con
+    // su clasificacion). YA NO colapsable (Santiago 2026-08-15): el HTML muestra los crudos inline; con la
+    // tabla completa visible deja de ser ruido. Solo aparecen en Evaluacion (Diagnostico filtra este nivel).
     title: "Bioeléctrico (Cole-Cole)",
     rows: [
-      // El angulo de fase se movio a Nivel III (con su clasificacion). Aca queda solo lo crudo sin
-      // diagnostico (resistencias, reactancia, Fo, impedancias), que ademas solo se muestra en Evaluacion.
-      ["Resistencia extracelular (Re)", "Re", null, "Ω", "bioelectrico"],
-      ["Resistencia intracelular (Ri)", "Ri", null, "Ω", "bioelectrico"],
-      ["Resistencia infinita (R∞)", "Rinf", null, "Ω", "bioelectrico"],
-      ["Capacitancia de membrana (C)", "C", null, "nF", "bioelectrico"],
-      ["Frecuencia caracteristica (Fo)", "Fo", null, "kHz", "bioelectrico"],
-      ["Resistencia 50 kHz (R50)", "R50", null, "Ω", "bioelectrico"],
-      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω", "bioelectrico"],
-      ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω", "bioelectrico"],
-      ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω", "bioelectrico"],
-      ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω", "bioelectrico"],
+      ["Resistencia extracelular (Re)", "Re", null, "Ω"],
+      ["Resistencia intracelular (Ri)", "Ri", null, "Ω"],
+      ["Resistencia infinita (R∞)", "Rinf", null, "Ω"],
+      ["Capacitancia de membrana (C)", "C", null, "nF"],
+      ["Frecuencia caracteristica (Fo)", "Fo", null, "kHz"],
+      ["Resistencia 50 kHz (R50)", "R50", null, "Ω"],
+      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω"],
+      ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω"],
+      ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω"],
+      ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω"],
     ],
   },
 ];

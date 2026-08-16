@@ -126,28 +126,33 @@ export function CompositionSection({
   // REF_POB (referencias poblacionales de ultimo recurso, capa de display de Gildardo): rellena los `*_ref`
   // que el equipo NO trajo, para que la columna Referencia (y con ella el Δ y el diagnostico) no queden
   // vacios. Las derivadas de constantes NO validadas van marcadas "en validacion" (Gildardo dijo "validar",
-  // no "no mostrar"; su HTML las usa). Solo en Diagnostico (en Evaluacion se muestra lo que entro del equipo).
+  // no "no mostrar"; su HTML las usa). Las referencias/Δ salen de wangRowDx (FUENTE UNICA) en Evaluacion Y
+  // Diagnostico (Santiago 2026-08-15: la tabla de Evaluacion sin referencias eran solo numeros crudos,
+  // justo lo que criticabamos; reusar la misma fuente evita dos tablas divergiendo). `showDiagnosis` gatea
+  // SOLO la columna Diagnostico, no las referencias.
   const refMap: Record<string, number | null> = {};
   for (const l of composition.levels)
     for (const row of l.rows) if (row.refKey) refMap[row.refKey] = row.reference;
-  const refPob: Record<string, RefPobEntry> = showDiagnosis
-    ? computeRefPob(composition.peso, composition.talla, sexoM, (k) => refMap[k] ?? null)
-    : {};
+  const refPob: Record<string, RefPobEntry> = computeRefPob(
+    composition.peso,
+    composition.talla,
+    sexoM,
+    (k) => refMap[k] ?? null,
+  );
   // Filas que REALMENTE muestran el "*" de REF_POB en validacion: solo las de referencia NUMERICA
   // poblacional (valor-vs-referencia o crudas), NO las de banda (que muestran el rango normativo). Se
   // derivan una vez y se reusan para el pie: la nota no se afirma si ninguna fila la muestra (leccion de
   // texto que afirma un estado sin derivarlo; una banda con "*" no tiene REF_POB detras).
   const starKeys = new Set<string>();
-  if (showDiagnosis)
-    for (const l of composition.levels)
-      for (const r of l.rows) {
-        const rpe = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
-        if (!rpe?.enValidacion || r.key === "FMI") continue;
-        const effRef = r.reference ?? rpe.value ?? null;
-        const w = wangRowDx(r.key, r.value, sexoM, diagCtx, effRef, (v) => fmt(v));
-        // refIsNumeric: banda -> cut fijo != effRef; valor-vs-ref -> cut === effRef; cruda (w null) -> numerica.
-        if (w ? w.cut === effRef : true) starKeys.add(r.key);
-      }
+  for (const l of composition.levels)
+    for (const r of l.rows) {
+      const rpe = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
+      if (!rpe?.enValidacion || r.key === "FMI") continue;
+      const effRef = r.reference ?? rpe.value ?? null;
+      const w = wangRowDx(r.key, r.value, sexoM, diagCtx, effRef, (v) => fmt(v));
+      // refIsNumeric: banda -> cut fijo != effRef; valor-vs-ref -> cut === effRef; cruda (w null) -> numerica.
+      if (w ? w.cut === effRef : true) starKeys.add(r.key);
+    }
   const hayEnValidacion = starKeys.size > 0;
 
   // FUENTE UNICA por fila: Referencia + Δ + Diagnostico salen de wangRowDx (capa de display), NO se escriben
@@ -159,7 +164,7 @@ export function CompositionSection({
     // Referencia EFECTIVA (equipo, o REF_POB si el equipo no la trajo) para las filas valor-vs-referencia.
     const refPobEntry = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
     const effectiveRef = r.reference ?? refPobEntry?.value ?? null;
-    const w = showDiagnosis && !isFmi
+    const w = !isFmi
       ? wangRowDx(r.key, r.value, sexoM, diagCtx, effectiveRef, (v) => fmt(v, dec))
       : null;
 

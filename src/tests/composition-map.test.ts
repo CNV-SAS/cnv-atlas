@@ -121,9 +121,12 @@ describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => 
     }
   });
 
-  it("las impedancias/Cole-Cole crudos van como detalle 'bioelectrico'; el AF es principal", () => {
-    expect(byKey("Z50")?.detail).toBe("bioelectrico");
-    expect(byKey("Fo")?.detail).toBe("bioelectrico");
+  it("las impedancias/Cole-Cole crudos YA NO son colapsables (descolapsadas 2026-08-15): sin detail", () => {
+    // El HTML las muestra inline; con la tabla completa visible deja de ser ruido. Antes iban bajo el
+    // desplegable "bioelectrico"; ahora son filas principales (aunque solo aparecen en Evaluacion).
+    for (const k of ["Re", "Ri", "Rinf", "C", "Fo", "R50", "Xc", "Z5", "Z50", "Z200"]) {
+      expect(byKey(k)?.detail, `${k} no debe ser colapsable`).toBeUndefined();
+    }
     expect(byKey("AF")?.detail).toBeUndefined(); // el angulo de fase es el marcador clinico, visible
   });
 
