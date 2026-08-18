@@ -70,6 +70,10 @@ Santiago tiene un **listado completo de correcciones** para aplicarle a la encue
 
 Cada diagnostico SELLA su `engine_version` (`diagnoses.engine_version` NOT NULL + `emission_versions`), y se MUESTRA en la vista ("Motor {version} ..."). Pero el SEGUIMIENTO no avisa si dos mediciones se diagnosticaron con versiones de motor DISTINTAS: una comparacion de trayectoria que cruza versiones no es manzanas-con-manzanas (parte del cambio puede ser del modelo, no del paciente). El dato ya esta sellado; falta compararlo y avisar en la trayectoria. Prioridad: media (clinico, cuando haya seguimientos que crucen una subida de motor).
 
+## Seguimiento: reusar la comparacion visual lado a lado (Diana/radar) — extender el reader (registrado 2026-08-18)
+
+El primitivo `ComparisonLayout` (`src/components/ui/comparison-layout.tsx`), creado para la exploracion de la Diana en Diagnostico (estado del paciente | estado explorado, lado a lado), esta diseñado para reusarse en SEGUIMIENTO (evaluacion previa | evaluacion actual). Falta el DATO: `comparison-reader.ts` hoy devuelve solo el numero de estado y el riesgo previos, NO las bandas (`efrPhenotype.bands`) ni los dominios del radar (`dfi.domains`) de la evaluacion previa, que son lo que la Diana y el `DfiRadar` necesitan para dibujarse. Cuando se adopte la comparacion visual en Seguimiento: extender `comparison-reader` para exponer `bands` y `dfi.domains` de la previa, y montar dos `StatePanel` (Diana + radar) dentro de `ComparisonLayout`. Prioridad: media (mejora de Seguimiento, sin dependencia externa).
+
 ## Cotejo de Diagnostico/Evaluacion: tres hallazgos de Santiago al preparar la comparacion (registrado 2026-08-13)
 
 - **(a) Talla: divergencia A FAVOR nuestro (conservar).** El HTML la pide a mano; Atlas la LEE del export (`biody-columns.talla`, required) y el intake no la pide. Conservar lo nuestro (no pedir lo que el archivo trae). Registrar en el cotejo como "conservar".

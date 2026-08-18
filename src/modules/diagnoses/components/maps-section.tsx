@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { DfiDomain } from "@/clinical-engine";
+import { ComparisonLayout } from "@/components/ui/comparison-layout";
 
 import { Diana } from "./diana";
 import { DfiRadar } from "./dfi-radar";
@@ -28,6 +29,53 @@ function Field({ label, value }: { label: string; value: string | null }) {
       <span className="font-medium text-muted-foreground">{label}: </span>
       {value}
     </p>
+  );
+}
+
+type StateDetail = {
+  stateNumber: number;
+  diagnosisName: string | null;
+  mechanism: string | null;
+  biomarkers: string | null;
+  risks: string | null;
+  suggestedNutraceuticals: string | null;
+};
+
+// Panel de detalle de UN estado. `kind` distingue a golpe de vista (care Santiago 2026-08-18 b) cual es el
+// del PACIENTE y cual es la REFERENCIA explorada: no basta el aviso de texto, confundirlos seria grave. El
+// del paciente va SOLIDO y anclado (borde y badge oscuros, "Diagnostico"); la referencia va PUNTEADA con
+// acento (borde punteado primary, badge tenue, "No es el diagnostico del paciente").
+function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "paciente" | "referencia" }) {
+  const isPatient = kind === "paciente";
+  return (
+    <div
+      className={`flex h-full flex-col gap-2 rounded-xl border p-4 ${
+        isPatient ? "border-foreground/30 bg-card" : "border-dashed border-primary/50 bg-primary/5"
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+            isPatient ? "bg-foreground text-background" : "bg-primary/15 text-primary"
+          }`}
+        >
+          {isPatient ? "Estado del paciente" : "Referencia"}
+        </span>
+        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+          Estado {detail.stateNumber} de 81
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {isPatient ? "Diagnóstico" : "No es el diagnóstico del paciente"}
+        </span>
+      </div>
+      <p className="text-sm font-medium text-foreground">
+        {detail.diagnosisName ?? "Sin dato para este estado."}
+      </p>
+      <Field label="Mecanismos bioquímicos / Disfunción celular" value={detail.mechanism} />
+      <Field label="Biomarcadores clave" value={detail.biomarkers} />
+      <Field label="Riesgos clínicos" value={detail.risks} />
+      <Field label="Nutracéuticos sugeridos" value={detail.suggestedNutraceuticals} />
+    </div>
   );
 }
 
@@ -57,15 +105,10 @@ export function MapsSection({
   const [exploring, setExploring] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
 
+  // Referencia explorada: una celda seleccionada que NO es la del paciente y existe en el registry. La
+  // celda del paciente SIEMPRE sale del snapshot (patientContent), nunca del registry.
   const isPatientCell = selected === stateNumber;
-  // La celda del paciente SIEMPRE del snapshot (patientContent), nunca del registry; las demas,
-  // del registry (referencia).
-  const detail =
-    selected == null
-      ? null
-      : isPatientCell
-        ? { ...patientContent, stateNumber }
-        : (statesContent[selected] ?? null);
+  const exploredRef = selected != null && !isPatientCell ? (statesContent[selected] ?? null) : null;
 
   function toggle() {
     if (exploring) {
@@ -121,37 +164,25 @@ export function MapsSection({
         </div>
       </div>
 
+      {/* Exploracion como COMPARACION lado a lado (Santiago 2026-08-18 b): el estado del paciente queda en
+          el panel PRINCIPAL, y el estado explorado abre en un panel AL LADO (debajo en movil), en vez de
+          reemplazar al del paciente. Al cerrar la exploracion, la fila de mapas de arriba (Diana + radar del
+          paciente) queda intacta en su lugar. El primitivo ComparisonLayout se reusa en Seguimiento. */}
       {exploring ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+        <div className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Explorando la Diana. Ver otras celdas no cambia el diagnóstico del paciente: es solo
-            referencia del modelo. Vuelve al estado del paciente para salir de la exploración.
+            {exploredRef
+              ? "Comparando el estado del paciente con el estado de referencia que elegiste en la Diana. La referencia no cambia el diagnóstico."
+              : "Haz clic en una celda de la Diana para comparar ese estado de referencia con el del paciente. Explorar no cambia el diagnóstico."}
           </p>
-          {detail ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  Estado {detail.stateNumber} de 81
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isPatientCell
-                    ? "Estado del paciente (diagnóstico)"
-                    : "Referencia, no es el diagnóstico del paciente"}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-foreground">
-                {detail.diagnosisName ?? "Sin dato para este estado."}
-              </p>
-              <Field label="Mecanismos bioquímicos / Disfunción celular" value={detail.mechanism} />
-              <Field label="Biomarcadores clave" value={detail.biomarkers} />
-              <Field label="Riesgos clínicos" value={detail.risks} />
-              <Field label="Nutracéuticos sugeridos" value={detail.suggestedNutraceuticals} />
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Haz clic en una celda de la Diana para ver su estado de referencia.
-            </p>
-          )}
+          <ComparisonLayout
+            primary={
+              <StateDetailPanel detail={{ ...patientContent, stateNumber }} kind="paciente" />
+            }
+            secondary={
+              exploredRef ? <StateDetailPanel detail={exploredRef} kind="referencia" /> : null
+            }
+          />
         </div>
       ) : null}
     </div>
