@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { BIODY_COLUMNS } from "@/clinical-engine";
-import { buildComposition, clasificarAecMca } from "@/modules/diagnoses/data/composition-map";
+import {
+  allCompositionRows,
+  buildComposition,
+  clasificarAecMca,
+} from "@/modules/diagnoses/data/composition-map";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 // Candado del mapeo de circunferencias. Un bug real (2026-07-24) hacia que `cintura` leyera la
@@ -40,7 +44,9 @@ describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo 
   });
 
   it("la fila Cintura de la tabla tambien usa la MEDIDA, no el umbral", () => {
-    const nivelV = comp.levels.find((l) => l.title.includes("Cuerpo entero"));
+    // Cintura CRUDA (cm) vive en la disposicion de Evaluacion (medido). En Diagnostico es "Circunferencia
+    // de cintura" con clasificacion, misma clave/valor.
+    const nivelV = comp.eval.find((l) => l.title.includes("Cuerpo entero"));
     const filaCintura = nivelV?.rows.find((r) => r.key === "cintura");
     expect(filaCintura?.value).toBe(98);
     expect(filaCintura?.value).not.toBe(102);
@@ -73,7 +79,8 @@ describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo 
     expect(ecw).toBeGreaterThan(0);
     expect(mca).toBeGreaterThan(0);
     expect(comp.aecMca).toBeCloseTo(ecw / mca, 3);
-    const nivelIII = comp.levels.find((l) => l.title.includes("Celular"));
+    // AEC/MCA es una fila CLASIFICADA (radio con corte 0.45): vive en la disposicion de Diagnostico.
+    const nivelIII = comp.diag.find((l) => l.title.includes("Celular"));
     const fila = nivelIII?.rows.find((r) => r.key === "aec_mca");
     expect(fila?.value).toBe(comp.aecMca);
     expect(fila?.reference).toBe(0.45); // corte, no referencia del dispositivo
@@ -89,16 +96,18 @@ describe("buildComposition: mapeo de cintura/cadera (candado del falso positivo 
   });
 });
 
-// Candado de las filas nuevas de la tabla de Wang (cotejo j: "van todas las filas"). Ancla que estan
-// presentes, que cadera/FFW tienen su tratamiento especial, y que el desglose de agua e impedancias van
-// marcados como DETALLE (colapsable). Si un bump del mapeo las quita o cambia su grupo, este test cae.
-describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => {
+// Candado de las dos disposiciones (reorg 2026-08-17). Ancla que las filas estan presentes, que cadera/FFW
+// tienen su tratamiento especial, y que el bioelectrico crudo se REPARTE en su nivel (con icono) SOLO en
+// Evaluacion, no en Diagnostico. Si un bump quita una fila o cruza las tablas, este test cae.
+describe("buildComposition: disposiciones eval/diag y reparto del bioelectrico (reorg 2026-08-17)", () => {
   const comp = buildComposition(raw, null);
-  const allRows = comp.levels.flatMap((l) => l.rows);
+  const allRows = allCompositionRows(comp);
   const byKey = (k: string) => allRows.find((r) => r.key === k);
+  const evalKeys = new Set(comp.eval.flatMap((l) => l.rows).map((r) => r.key));
+  const diagKeys = new Set(comp.diag.flatMap((l) => l.rows).map((r) => r.key));
 
-  it("Cadera es una fila del Nivel V con la circunferencia MEDIDA", () => {
-    const nivelV = comp.levels.find((l) => l.title.includes("Cuerpo entero"));
+  it("Cadera es una fila del Nivel V (Evaluacion) con la circunferencia MEDIDA", () => {
+    const nivelV = comp.eval.find((l) => l.title.includes("Cuerpo entero"));
     const cadera = nivelV?.rows.find((r) => r.key === "cadera");
     expect(cadera).toBeDefined();
     expect(cadera?.value).toBe(comp.cadera);
@@ -114,37 +123,94 @@ describe("buildComposition: filas nuevas y grupos de detalle (cotejo j)", () => 
     }
   });
 
-  it("el agua ya NO es colapsable (descolapsada 2026-08-15): ninguna fila de agua lleva detail", () => {
-    // El HTML no colapsa el agua, y ahora que las filas llevan diagnostico deja de ser ruido.
-    for (const k of ["ECW", "ECW_pct", "ECW_sg", "ECW_sg_pct", "ICW", "ICW_pct", "ICW_sg", "ICW_sg_pct"]) {
-      expect(byKey(k)?.detail).toBeUndefined();
+  it("el bioelectrico crudo se reparte en su nivel (impedancias en III, Cole-Cole en II) con icono, SOLO en Evaluacion", () => {
+    const nivelIII = comp.eval.find((l) => l.title.includes("Celular"));
+    const nivelII = comp.eval.find((l) => l.title.includes("Molecular"));
+    const iiiKeys = (nivelIII?.rows ?? []).map((r) => r.key);
+    const iiKeys = (nivelII?.rows ?? []).map((r) => r.key);
+    // Impedancias -> Nivel III; Cole-Cole -> Nivel II (como los reparte Gildardo en el frozen).
+    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200"]) expect(iiiKeys).toContain(k);
+    for (const k of ["Re", "Ri", "Rinf", "C", "Fo"]) expect(iiKeys).toContain(k);
+    // Todos marcados como bioelectricos (llevan el icono de rayo).
+    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
+      expect(byKey(k)?.bioelectric, `${k} debe llevar el icono bioelectrico`).toBe(true);
+    }
+    // NO existe un nivel "Bioeléctrico" aparte; y NINGUN crudo bioelectrico aparece en Diagnostico.
+    expect(comp.eval.some((l) => l.title.startsWith("Bioeléctrico"))).toBe(false);
+    for (const k of ["R50", "Xc", "Z5", "Z50", "Z200", "Re", "Ri", "Rinf", "C", "Fo"]) {
+      expect(diagKeys.has(k), `${k} no debe estar en Diagnostico`).toBe(false);
     }
   });
 
-  it("las impedancias/Cole-Cole crudos YA NO son colapsables (descolapsadas 2026-08-15): sin detail", () => {
-    // El HTML las muestra inline; con la tabla completa visible deja de ser ruido. Antes iban bajo el
-    // desplegable "bioelectrico"; ahora son filas principales (aunque solo aparecen en Evaluacion).
-    for (const k of ["Re", "Ri", "Rinf", "C", "Fo", "R50", "Xc", "Z5", "Z50", "Z200"]) {
-      expect(byKey(k)?.detail, `${k} no debe ser colapsable`).toBeUndefined();
+  it("los indicadores CLASIFICADOS viven en Diagnostico, no en Evaluacion; los crudos al reves", () => {
+    // Clasificados (indices): solo Diagnostico.
+    for (const k of ["imc", "nhlbi", "icc", "ict", "FFMI", "FMI", "asmi", "smmW", "aec_mca", "ei", "ei_sg", "AF", "IR", "psc", "act_mlg"]) {
+      expect(diagKeys.has(k), `${k} debe estar en Diagnostico`).toBe(true);
+      expect(evalKeys.has(k), `${k} NO debe estar en Evaluacion`).toBe(false);
     }
-    expect(byKey("AF")?.detail).toBeUndefined(); // el angulo de fase es el marcador clinico, visible
-  });
-
-  it("filas nuevas del restructure 2b presentes (ASMI/SMM-W/E-I/ACT-MLG/NHLBI/Mapa AFxIR/AF/IR)", () => {
-    for (const k of ["asmi", "smmW", "ei", "ei_sg", "act_mlg", "nhlbi", "psc", "AF", "IR"]) {
-      expect(byKey(k), `falta la fila ${k}`).toBeDefined();
+    // Masas crudas del equipo y GEB/GET: solo Evaluacion.
+    for (const k of ["peso", "talla", "GEB", "GET", "FM", "FFM", "SMM", "MMEM", "minNoOseo"]) {
+      expect(evalKeys.has(k), `${k} debe estar en Evaluacion`).toBe(true);
+      expect(diagKeys.has(k), `${k} NO debe estar en Diagnostico`).toBe(false);
     }
     // ASMI y E/I son valores COMPUTADOS (MMEM/talla^2, ECW/ICW): no salen "-" si el crudo esta.
     expect(typeof byKey("asmi")?.value).toBe("number");
     expect(typeof byKey("ei")?.value).toBe("number");
   });
 
-  it("AF e IR van DESPUES de los dos E/I en Nivel III (orden del smoke l)", () => {
-    const nivelIII = comp.levels.find((l) => l.title.includes("Celular"));
+  it("Grasa corporal total % (FM_pct) queda en Nivel IV de Diagnostico (Gildardo: no se duplica a Nivel II)", () => {
+    const nivelIV = comp.diag.find((l) => l.title.includes("Tejidos"));
+    expect((nivelIV?.rows ?? []).some((r) => r.key === "FM_pct")).toBe(true);
+    const nivelII = comp.diag.find((l) => l.title.includes("Molecular"));
+    expect((nivelII?.rows ?? []).some((r) => r.key === "FM_pct")).toBe(false);
+  });
+
+  it("AF e IR van DESPUES de los dos E/I en Nivel III de Diagnostico (orden del smoke l)", () => {
+    const nivelIII = comp.diag.find((l) => l.title.includes("Celular"));
     const order = (nivelIII?.rows ?? []).map((r) => r.key);
     expect(order.indexOf("AF")).toBeGreaterThan(order.indexOf("ei_sg"));
     expect(order.indexOf("IR")).toBeGreaterThan(order.indexOf("ei_sg"));
     expect(order.indexOf("psc")).toBeGreaterThan(order.indexOf("IR")); // el mapa AFxIR, al final
+  });
+
+  it("nombres unificados: proteinas, CMO y MCA identicos en las dos tablas", () => {
+    // Gildardo: mismo nombre para la misma fila en las dos tablas (no una version por tabla).
+    for (const k of ["protTotal", "protActiva", "CMO", "MCA"]) {
+      const inEval = comp.eval.flatMap((l) => l.rows).find((r) => r.key === k);
+      const inDiag = comp.diag.flatMap((l) => l.rows).find((r) => r.key === k);
+      expect(inEval?.label, `${k} presente en Evaluacion`).toBeDefined();
+      expect(inEval?.label).toBe(inDiag?.label);
+    }
+    expect(byKey("CMO")?.label).toBe("CMO - Contenido mineral óseo");
+    expect(byKey("protTotal")?.label).toBe("Proteína total");
+    expect(byKey("protActiva")?.label).toBe("Proteína metabólica activa");
+  });
+
+  it("candado de unificacion: distingue nombre base divergente (mal) de sufijo explicativo (bien)", () => {
+    // Gildardo: la misma fila lleva el mismo nombre BASE en las dos tablas. Diagnostico PUEDE añadir un
+    // sufijo de lectura clinica ("- matriz colagena"); eso NO es divergencia. Lo prohibido es un nombre
+    // base distinto. Regla: el rotulo mas corto es prefijo del mas largo (identico, o + " - <sufijo>").
+    // Excepcion DELIBERADA (dos marcos, crudo vs clasificado, autorizada Gildardo): cintura y grasa % (FM_pct).
+    const DOS_MARCOS = new Set(["cintura", "FM_pct"]);
+    const evalByKey = new Map(comp.eval.flatMap((l) => l.rows).map((r) => [r.key, r.label] as const));
+    const diagByKey = new Map(comp.diag.flatMap((l) => l.rows).map((r) => [r.key, r.label] as const));
+    const bad: string[] = [];
+    for (const [k, a] of evalByKey) {
+      const b = diagByKey.get(k);
+      if (b == null || DOS_MARCOS.has(k)) continue;
+      const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+      if (long !== short && !long.startsWith(short + " - ")) bad.push(`${k}: "${a}" vs "${b}"`);
+    }
+    expect(bad, `nombres base divergentes entre tablas: ${bad.join(" · ")}`).toEqual([]);
+  });
+
+  it("Diagnostico conserva el sufijo de lectura clinica que Evaluacion recorta (solEC/masaSeca)", () => {
+    const evalLabel = (k: string) => comp.eval.flatMap((l) => l.rows).find((r) => r.key === k)?.label;
+    const diagLabel = (k: string) => comp.diag.flatMap((l) => l.rows).find((r) => r.key === k)?.label;
+    expect(evalLabel("solEC")).toBe("Sólidos extracelulares");
+    expect(diagLabel("solEC")).toBe("Sólidos extracelulares - matriz colágena");
+    expect(evalLabel("masaSeca")).toBe("Masa seca sin grasa");
+    expect(diagLabel("masaSeca")).toBe("Masa seca sin grasa - ganancia real magra");
   });
 });
 
@@ -158,7 +224,7 @@ describe("buildComposition: % sin grasa derivados sobre FFW cuando el equipo no 
   delete rawSinPct[h("ECW_sg_pct")];
   delete rawSinPct[h("ICW_sg_pct")];
   const comp = buildComposition(rawSinPct, null);
-  const byKey = (k: string) => comp.levels.flatMap((l) => l.rows).find((r) => r.key === k);
+  const byKey = (k: string) => allCompositionRows(comp).find((r) => r.key === k);
 
   it("ECW_sg_pct = ECW_sg / FFW * 100 (no queda en '-')", () => {
     const ecwSg = raw[h("ECW_sg")];
@@ -177,7 +243,7 @@ describe("buildComposition: % sin grasa derivados sobre FFW cuando el equipo no 
   it("si el equipo SI trae el %, ese manda (no se deriva encima)", () => {
     const conPct = buildComposition(raw, null);
     const dev = raw[h("ECW_sg_pct")];
-    const fila = conPct.levels.flatMap((l) => l.rows).find((r) => r.key === "ECW_sg_pct");
+    const fila = allCompositionRows(conPct).find((r) => r.key === "ECW_sg_pct");
     expect(fila?.value).toBe(dev);
   });
 });

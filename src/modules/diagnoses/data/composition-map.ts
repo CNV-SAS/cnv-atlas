@@ -8,6 +8,17 @@ import {
 // Mapeo PURO de los crudos BIS a la composicion corporal (tabla "Niveles de Wang"). Separado del
 // reader server-only para que sea testeable (candado del mapeo). Solo display: no toca snapshot ni
 // registry.
+//
+// DOS DISPOSICIONES, DOS PROPOSITOS (Santiago + Gildardo, 2026-08-17): la tabla ya no es una sola con
+// una columna que se apaga. Son dos tablas con proposito distinto y FILAS/ORDEN distintos:
+//  - `eval`  (subpestaña "Antropometria y BIS"): lo MEDIDO y lo CRUDO. Masas del equipo, aguas, y los
+//            parametros bioelectricos crudos REPARTIDOS en su nivel (impedancias en III, Cole-Cole en II),
+//            cada uno con su icono. SIN los indicadores clasificados (IMC, FFMI, E/I, AF...).
+//  - `diag`  (subpestaña "Composicion Corporal"): lo CLASIFICADO. Indices con su diagnostico. SIN los
+//            crudos bioelectricos ni las masas del equipo sin clasificar.
+// Los valores se computan UNA vez; cada disposicion es una lista ordenada de filas que los reusa. Asi una
+// tabla no arrastra filas de la otra (care Santiago a). Las referencias/Δ/diagnostico siguen saliendo de
+// wangRowDx (FUENTE UNICA, composition-display); esta capa solo define QUE fila va en QUE tabla y su rotulo.
 
 export type CompositionRow = {
   key: string; // clave estable del dato crudo (BIODY_COLUMNS), unica por fila
@@ -18,15 +29,15 @@ export type CompositionRow = {
   decimals?: number; // decimales de display (default 2); AEC/MCA usa 3 (ratio)
   referenceLabel?: string; // etiqueta de referencia si NO es el valor numerico (p. ej. "<0.45")
   refKey?: string | null; // clave del *_ref del equipo (para que la seccion aplique REF_POB donde falte)
-  // Grupo de DETALLE colapsable dentro de su nivel: "agua" (desglose extra/intracelular con/sin grasa,
-  // L y %) y "bioelectrico" (Cole-Cole crudo + impedancias). Las filas sin `detail` son las principales,
-  // siempre visibles; las de detalle van bajo un desplegable (el dato completo esta, quien no lo necesita
-  // no tropieza). Ver composition-section.
-  detail?: "agua" | "bioelectrico";
+  // Parametro bioelectrico CRUDO (resistencia, reactancia, Fo, impedancia): lleva un icono (rayo) para
+  // distinguirse cuando queda entre filas de composicion en su nivel (care Santiago b). Solo en `eval`.
+  bioelectric?: boolean;
 };
 export type CompositionLevel = { title: string; rows: CompositionRow[] };
 export type Composition = {
-  levels: CompositionLevel[];
+  // Disposicion de EVALUACION (medido + crudo) y de DIAGNOSTICO (clasificado). Ver nota de arriba.
+  eval: CompositionLevel[];
+  diag: CompositionLevel[];
   // Derivados para la clasificacion antropometrica (referencia OMS de display).
   imc: number | null;
   cintura: number | null; // circunferencia MEDIDA (Waist Size cm), NO el umbral de referencia
@@ -44,6 +55,16 @@ export type Composition = {
   hasDerivedValues: boolean;
 };
 
+// Todas las filas (deduplicadas por clave) de AMBAS disposiciones. Para consumidores que necesitan el
+// UNION de claves sin que importe en cual tabla vive cada una (p. ej. leer ASMI/AF para la sarcopenia, o
+// los candados de mapeo). El render usa `eval`/`diag` directamente; esto NO es para render.
+export function allCompositionRows(comp: Composition): CompositionRow[] {
+  const seen = new Map<string, CompositionRow>();
+  for (const layout of [comp.eval, comp.diag])
+    for (const l of layout) for (const r of l.rows) if (!seen.has(r.key)) seen.set(r.key, r);
+  return [...seen.values()];
+}
+
 // Clasificacion de AEC/MCA (radio agua extracelular / masa celular activa). Cortes y etiquetas
 // PORTADOS VERBATIM del HTML vigente de Gildardo (ATLAS_v7.html:12734, `dAECMCA`): v<0.45 Óptimo,
 // v<=0.55 Alerta, else Riesgo. sev 0/2/3 para la capa de color de BRAND.
@@ -60,28 +81,24 @@ export function clasificarAecMca(v: number | null): { label: string; sev: number
   return { label: "Riesgo", sev: 3 };
 }
 
-// Filas de la tabla por nivel de Wang: [etiqueta, clave de valor, clave de referencia|null, unidad, grupo
-// de detalle?]. Las claves son de BIODY_COLUMNS; se muestran TODAS las que el contrato cubre (el HTML de
-// Gildardo manda en QUE se muestra; el COMO -que sea colapsable- es nuestro). El 5o elemento marca las
-// filas de DETALLE que van bajo un desplegable ("agua" / "bioelectrico"); sin el, la fila es principal.
-type LevelRow = [string, string, string | null, string, ("agua" | "bioelectrico")?];
-const LEVELS: { title: string; rows: LevelRow[] }[] = [
+// Fila de una disposicion: [etiqueta, clave de valor, clave de referencia|null, unidad, opciones?]. Las
+// claves son de BIODY_COLUMNS (o computadas). El QUE se muestra y en QUE tabla es de Gildardo (su HTML) +
+// el listado de Santiago; el rotulo puede diferir entre tablas (misma clave, dos marcos: p. ej. la
+// circunferencia de cintura es "Cintura" cruda en Evaluacion y "Circunferencia de cintura" clasificada en
+// Diagnostico). `bioelectric` marca los crudos que llevan icono (solo en Evaluacion).
+type RowOpts = { bioelectric?: boolean };
+type LevelRow = [string, string, string | null, string, RowOpts?];
+const bio: RowOpts = { bioelectric: true };
+
+// ── EVALUACION: lo MEDIDO y lo CRUDO. Sin indicadores clasificados. Bioelectrico repartido en su nivel. ──
+const EVAL_LEVELS: { title: string; rows: LevelRow[] }[] = [
   {
     title: "Nivel V · Cuerpo entero",
     rows: [
       ["Peso", "peso", null, "kg"],
       ["Estatura", "talla", null, "cm"],
-      ["IMC", "imc", null, "kg/m²"],
       ["Cintura", "cintura", null, "cm"],
       ["Cadera", "cadera", null, "cm"],
-      // ICC/ICT: ratios antropometricos (valor computado en buildComposition). Su REFERENCIA (umbral OMS,
-      // sexo-dependiente el ICC) y su clasificacion las resuelve composition-section, que tiene el sexo:
-      // el mapa se mantiene PURO (sin sexo, testeable sin sesion). refKey null: no hay _ref del equipo.
-      ["Índice cintura-cadera (ICC)", "icc", null, ""],
-      ["Índice cintura-talla (ICT)", "ict", null, ""],
-      // NHLBI: clasificacion combinada IMC + cintura (capa de display, clasifNHLBI). Sin valor numerico
-      // propio (la clasificacion va en la columna Diagnostico); referencia sexo-dependiente en la seccion.
-      ["Clasificación IMC + cintura (NHLBI)", "nhlbi", null, ""],
       ["Metabolismo basal (GEB)", "GEB", "GEB_ref", "kcal"],
       ["Gasto energético total (GET)", "GET", null, "kcal"],
     ],
@@ -89,34 +106,22 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
   {
     title: "Nivel IV · Tejidos y sistemas",
     rows: [
-      ["Masa grasa", "FM", "FM_ref", "kg"],
-      ["Masa grasa", "FM_pct", "FM_pct_ref", "%"],
+      // Nombres del equipo (HTML de Gildardo): "Masa grasa bruta" para las columnas crudas de grasa.
+      ["Masa grasa bruta", "FM", "FM_ref", "kg"],
+      ["Masa grasa bruta", "FM_pct", "FM_pct_ref", "%"],
       ["Masa grasa (hidratación constante)", "FM_hid", "FM_hid_ref", "%"],
       ["Masa libre de grasa", "FFM", "FFM_ref", "kg"],
-      ["Masa muscular esqueletica", "SMM", "SMM_ref", "kg"],
+      // SMM = Skeletal Muscle Mass (masa muscular esqueletica); MMEM = la de miembros/apendicular (Gildardo).
+      ["Masa muscular esquelética", "SMM", "SMM_ref", "kg"],
       ["Masa muscular de miembros", "MMEM", "MMEM_ref", "kg"],
-      ["FFMI - Índice de masa libre de grasa", "FFMI", "FFMI_ref", "kg/m²"],
-      // FMI: DERIVADO (FM / talla^2), no una columna del equipo. Valor computado en buildComposition; la
-      // referencia (rango del MOTOR 3-6/5-9, sexo) y la clasificacion las resuelve composition-section.
-      ["FMI - Índice de masa grasa", "FMI", null, "kg/m²"],
-      // ASMI y SMM/W: indices de masa muscular (clasificadores del motor cASMI/cSMM, EWGSOP2/AWGS; portados
-      // a composition-display por su corte). ASMI = MMEM/talla^2 (computado); SMM/W = columna del equipo.
-      ["ASMI - Masa muscular apendicular", "asmi", null, "kg/m²"],
-      ["SMM/W - Radio músculo/peso", "smmW", null, "%"],
     ],
   },
   {
     title: "Nivel III · Celular",
     rows: [
-      ["Masa celular activa", "MCA", "MCA_ref", "kg"],
-      ["Sólidos extracelulares - matriz colágena", "solEC", "solEC_ref", "kg"],
-      ["Masa seca sin grasa - ganancia real magra", "masaSeca", "masaSeca_ref", "kg"],
-      // AEC/MCA (C12): ratio derivado ECW/MCA, no una columna cruda. Referencia = corte 0.45 (verbatim
-      // ATLAS_v7.html:12734). Valor y Δ especiales, se resuelven en buildComposition.
-      ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
-      // Agua extra/intracelular, con/sin grasa, L y %. YA NO colapsable (Santiago 2026-08-15): el HTML no
-      // lo colapsa, y ahora que las filas llevan diagnostico el desglose deja de ser ruido. El "% de ACT"
-      // (con grasa) vs "% de MLG" (sin grasa) va en la UNIDAD, para reproducir el rotulo del HTML.
+      ["MCA - Masa celular activa", "MCA", "MCA_ref", "kg"],
+      ["Sólidos extracelulares", "solEC", "solEC_ref", "kg"],
+      ["Masa seca sin grasa", "masaSeca", "masaSeca_ref", "kg"],
       ["AEC con grasa", "ECW", "ECW_ref", "L"],
       ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "% de ACT"],
       ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L"],
@@ -125,16 +130,89 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "% de ACT"],
       ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L"],
       ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "% de MLG"],
-      // E/I (radio agua extra/intracelular): clasificador de display (dEI), referencia fija "0.35-0.40".
+      // Bioelectrico crudo del nivel celular: impedancias (Gildardo las reparte a Nivel III). Icono de rayo.
+      ["Resistencia 50 kHz (R50)", "R50", null, "Ω", bio],
+      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω", bio],
+      ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω", bio],
+      ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω", bio],
+      ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω", bio],
+    ],
+  },
+  {
+    title: "Nivel II · Molecular",
+    rows: [
+      ["ACT - Agua corporal total", "TBW", "TBW_ref", "L"],
+      ["FFW - Agua libre de grasa", "FFW", "FFW_ref", "L"],
+      ["Hidratación sin grasa - deshidratación", "hidSG", "hidSG_ref", "%"],
+      ["Proteína total", "protTotal", "protTotal_ref", "kg"],
+      ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
+      ["CMO - Contenido mineral óseo", "CMO", "CMO_ref", "kg"],
+      ["Mineral no óseo", "minNoOseo", "minNoOseo_ref", "kg"],
+      // Bioelectrico crudo del nivel molecular: Cole-Cole (Gildardo lo reparte a Nivel II). Icono de rayo.
+      ["Resistencia extracelular (Re)", "Re", null, "Ω", bio],
+      ["Resistencia intracelular (Ri)", "Ri", null, "Ω", bio],
+      ["Resistencia infinita (R∞)", "Rinf", null, "Ω", bio],
+      ["Capacitancia de membrana (C)", "C", null, "nF", bio],
+      ["Frecuencia característica (Fo)", "Fo", null, "kHz", bio],
+    ],
+  },
+];
+
+// ── DIAGNOSTICO: lo CLASIFICADO. Indices con su diagnostico. Sin crudos bioelectricos ni masas sin clasificar. ──
+const DIAG_LEVELS: { title: string; rows: LevelRow[] }[] = [
+  {
+    title: "Nivel V · Cuerpo entero",
+    rows: [
+      ["IMC", "imc", null, "kg/m²"],
+      ["Circunferencia de cintura", "cintura", null, "cm"],
+      // NHLBI: clasificacion combinada IMC + cintura (capa de display, clasifNHLBI). Sin valor numerico
+      // propio (la clasificacion va en la columna Diagnostico); referencia sexo-dependiente en la seccion.
+      ["Clasificación IMC + cintura (NHLBI)", "nhlbi", null, ""],
+      // ICC/ICT: ratios antropometricos (valor computado en buildComposition). Su REFERENCIA (umbral OMS,
+      // sexo-dependiente el ICC) y su clasificacion las resuelve composition-section, que tiene el sexo.
+      ["Índice cintura-cadera (ICC)", "icc", null, ""],
+      ["Índice cintura-talla (ICT)", "ict", null, ""],
+    ],
+  },
+  {
+    title: "Nivel IV · Tejidos y sistemas",
+    rows: [
+      ["FFMI - Índice de masa libre de grasa", "FFMI", "FFMI_ref", "kg/m²"],
+      // FMI: DERIVADO (FM / talla^2). Rango del MOTOR (3-6/5-9) y clasificacion las resuelve la seccion.
+      ["FMI - Índice de masa grasa", "FMI", null, "kg/m²"],
+      // Grasa corporal total % (Lipidos Wang): Gildardo autorizo dejarla en Nivel IV (NO se duplica a Nivel
+      // II). Es la misma columna que Evaluacion muestra como "Masa grasa bruta %"; aqui va con su clasificacion.
+      ["Grasa corporal total - Lípidos Wang", "FM_pct", "FM_pct_ref", "%"],
+      // ASMI = MMEM/talla^2 (computado); SMM/W = columna del equipo. Clasificadores del motor cASMI/cSMM.
+      ["ASMI - Masa muscular apendicular", "asmi", null, "kg/m²"],
+      ["SMM/W - Radio músculo/peso", "smmW", null, "%"],
+      // Fenotipo MCCB (FFMI x FMI) lo appende la seccion al final de este nivel (sale del snapshot sellado).
+    ],
+  },
+  {
+    title: "Nivel III · Celular",
+    rows: [
+      ["MCA - Masa celular activa", "MCA", "MCA_ref", "kg"],
+      // En Diagnostico el sufijo es LECTURA CLINICA (explica que significa el numero): se conserva. En
+      // Evaluacion (dato medido) va corto. Mismo nombre BASE, marco de cada tabla (Santiago 2026-08-17).
+      ["Sólidos extracelulares - matriz colágena", "solEC", "solEC_ref", "kg"],
+      ["Masa seca sin grasa - ganancia real magra", "masaSeca", "masaSeca_ref", "kg"],
+      // AEC/MCA (C12): ratio derivado ECW/MCA. Referencia = corte 0.45 (verbatim ATLAS_v7.html:12734).
+      ["AEC/MCA - Radio extracelular/celular", "aec_mca", null, ""],
+      ["AEC con grasa", "ECW", "ECW_ref", "L"],
+      ["AEC con grasa", "ECW_pct", "ECW_pct_ref", "% de ACT"],
+      ["AEC sin grasa", "ECW_sg", "ECW_sg_ref", "L"],
+      ["AEC sin grasa", "ECW_sg_pct", "ECW_sg_pct_ref", "% de MLG"],
+      ["AIC con grasa", "ICW", "ICW_ref", "L"],
+      ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "% de ACT"],
+      ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L"],
+      ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "% de MLG"],
       ["E/I con grasa (AEC/AIC)", "ei", null, ""],
       ["E/I sin grasa (AEC_sg/AIC_sg)", "ei_sg", null, ""],
-      // AF e IR van en Nivel III (celular), donde Gildardo los tiene, NO en la tabla de indices. ORDEN
-      // (Santiago 2026-08-15, smoke l): DESPUES de los dos E/I. Clasificacion del MOTOR (cAF/cIR via el
-      // display dAF/dIR); referencia y Δ los resuelve composition-section. El valor es la columna del equipo.
+      // AF e IR en Nivel III (celular), donde Gildardo los tiene. DESPUES de los dos E/I (smoke l).
       ["AF - Ángulo de fase", "AF", null, "°"],
       ["IR - Radio de impedancia", "IR", null, ""],
-      // Mapa AFxIR (Perfil de Salud Celular, pscAFxIR): no tiene valor numerico; su lectura sale de AF e IR,
-      // por eso va al final (despues de ambos).
+      // Mapa AFxIR (PSC): no tiene valor numerico; su lectura sale de AF e IR, por eso va al final.
       ["Mapa AFxIR (PSC)", "psc", null, ""],
     ],
   },
@@ -142,38 +220,12 @@ const LEVELS: { title: string; rows: LevelRow[] }[] = [
     title: "Nivel II · Molecular",
     rows: [
       ["ACT - Agua corporal total", "TBW", "TBW_ref", "L"],
-      // FFW (agua libre de grasa): la referencia PRIMARIA se computa FFW - FFW_dif (verbatim ATLAS_v8.html
-      // Nivel II), en buildComposition. refKey "FFW_ref" para que, si el export NO trae FFW_dif (ffwRef
-      // null), la seccion caiga al respaldo REF_POB (FFW_ref = TBW_ref), y la fila no quede sin referencia.
       ["FFW - Agua libre de grasa", "FFW", "FFW_ref", "L"],
       ["Hidratación sin grasa - deshidratación", "hidSG", "hidSG_ref", "%"],
-      // ACT/MLG (hidratacion de la masa sin grasa, %): clasificador de display dACTMLG, referencia "71-74%".
       ["ACT/MLG - Hidratación masa sin grasa", "act_mlg", null, "%"],
+      ["CMO - Contenido mineral óseo", "CMO", "CMO_ref", "kg"],
       ["Proteína total", "protTotal", "protTotal_ref", "kg"],
       ["Proteína metabólica activa", "protActiva", "protActiva_ref", "kg"],
-      ["Contenido mineral óseo", "CMO", "CMO_ref", "kg"],
-      ["Mineral no óseo", "minNoOseo", "minNoOseo_ref", "kg"],
-    ],
-  },
-  {
-    // DIVERGENCIA DELIBERADA (DIV-8): el frozen reparte lo bioelectrico crudo entre Nivel III (impedancias
-    // R50/Z...) y Nivel II (Cole-Cole Re/Ri/R∞/C/Fo). Aca se CONSOLIDA en un bloque propio, mas coherente
-    // (todo lo crudo junto) y consistente con nuestro nivel Bioelectrico ya existente. El "que" (todos los
-    // campos) es fiel; el "como" (el agrupamiento) es nuestro. El angulo de fase se movio a Nivel III (con
-    // su clasificacion). YA NO colapsable (Santiago 2026-08-15): el HTML muestra los crudos inline; con la
-    // tabla completa visible deja de ser ruido. Solo aparecen en Evaluacion (Diagnostico filtra este nivel).
-    title: "Bioeléctrico (Cole-Cole)",
-    rows: [
-      ["Resistencia extracelular (Re)", "Re", null, "Ω"],
-      ["Resistencia intracelular (Ri)", "Ri", null, "Ω"],
-      ["Resistencia infinita (R∞)", "Rinf", null, "Ω"],
-      ["Capacitancia de membrana (C)", "C", null, "nF"],
-      ["Frecuencia caracteristica (Fo)", "Fo", null, "kHz"],
-      ["Resistencia 50 kHz (R50)", "R50", null, "Ω"],
-      ["Reactancia 50 kHz (Xc)", "Xc", null, "Ω"],
-      ["Impedancia 5 kHz (Z5)", "Z5", null, "Ω"],
-      ["Impedancia 50 kHz (Z50)", "Z50", null, "Ω"],
-      ["Impedancia 200 kHz (Z200)", "Z200", null, "Ω"],
     ],
   },
 ];
@@ -234,36 +286,47 @@ export function buildComposition(
   const ecwSgPct = get("ECW_sg_pct") ?? div(get("ECW_sg"), _ffwVal, 2, 100);
   const icwSgPct = get("ICW_sg_pct") ?? div(get("ICW_sg"), _ffwVal, 2, 100);
 
-  const levels: CompositionLevel[] = LEVELS.map((lvl) => ({
-    title: lvl.title,
-    rows: lvl.rows.map(([label, valueKey, refKey, unit, detail]) => {
-      // AEC/MCA (C12): valor derivado + referencia = corte 0.45 (verbatim 12734), 3 decimales.
-      if (valueKey === "aec_mca") {
-        return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
-      }
-      // Valores COMPUTADOS (no columnas del equipo): circunferencias medidas, ratios y derivados. Su
-      // clasificacion sexo-dependiente la resuelve composition-section. El resto sale por su header.
-      const computed: Record<string, number | null> = {
-        cintura,
-        cadera,
-        icc,
-        ict,
-        FMI: fmi,
-        asmi,
-        ei,
-        ei_sg: eiSg,
-        act_mlg: actMlg,
-        ECW_sg_pct: ecwSgPct,
-        ICW_sg_pct: icwSgPct,
-      };
-      const value = valueKey in computed ? computed[valueKey] : get(valueKey);
-      const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
-      return { key: valueKey, label, value, reference, unit, refKey, ...(detail ? { detail } : {}) };
-    }),
-  }));
+  // Valores COMPUTADOS (no columnas del equipo): circunferencias medidas, ratios y derivados. El resto
+  // sale por su header. La clasificacion sexo-dependiente la resuelve composition-section.
+  const computed: Record<string, number | null> = {
+    cintura,
+    cadera,
+    icc,
+    ict,
+    FMI: fmi,
+    asmi,
+    ei,
+    ei_sg: eiSg,
+    act_mlg: actMlg,
+    ECW_sg_pct: ecwSgPct,
+    ICW_sg_pct: icwSgPct,
+  };
+
+  // Resuelve una fila de disposicion a una CompositionRow (valor + referencia). MISMA logica para las dos
+  // tablas: el valor no depende de la tabla, solo el rotulo y el orden. aec_mca y FFW tienen tratamiento
+  // especial (referencia = corte 0.45 / FFW - FFW_dif).
+  const resolveRow = ([label, valueKey, refKey, unit, opts]: LevelRow): CompositionRow => {
+    if (valueKey === "aec_mca") {
+      return { key: valueKey, label, value: aecMca, reference: 0.45, referenceLabel: "<0.45", decimals: 3, unit };
+    }
+    const value = valueKey in computed ? computed[valueKey] : get(valueKey);
+    const reference = valueKey === "FFW" ? ffwRef : refKey ? get(refKey) : null;
+    return {
+      key: valueKey,
+      label,
+      value,
+      reference,
+      unit,
+      refKey,
+      ...(opts?.bioelectric ? { bioelectric: true } : {}),
+    };
+  };
+  const buildLevels = (defs: { title: string; rows: LevelRow[] }[]): CompositionLevel[] =>
+    defs.map((lvl) => ({ title: lvl.title, rows: lvl.rows.map(resolveRow) }));
 
   return {
-    levels,
+    eval: buildLevels(EVAL_LEVELS),
+    diag: buildLevels(DIAG_LEVELS),
     imc: get("imc"),
     cintura,
     cadera,

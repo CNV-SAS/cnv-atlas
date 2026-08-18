@@ -102,7 +102,9 @@ describe("B. pipeline real: ninguna fila con clasificador y datos queda sin las 
   }
   const sexoM = true;
   const comp = buildComposition(raw, null);
-  const rows = comp.levels.flatMap((l) => l.rows);
+  // La cobertura de wangRowDx (Referencia + Δ + Diagnostico) es de la tabla de DIAGNOSTICO (la clasificada):
+  // es la disposicion donde toda fila con clasificador debe cubrir las 3 celdas. Evaluacion no lleva veredicto.
+  const rows = comp.diag.flatMap((l) => l.rows);
 
   // Misma resolucion de referencia efectiva que composition-section (equipo, o REF_POB si el equipo no la trajo).
   const refMap: Record<string, number | null> = {};

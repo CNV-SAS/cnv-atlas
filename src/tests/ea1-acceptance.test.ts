@@ -15,7 +15,7 @@ vi.mock("@/modules/bis/data/bis-writer", () => {
 
 const writer = await import("@/modules/bis/data/bis-writer");
 const { importBisMeasurement } = await import("@/modules/bis/services/bis-import");
-const { buildComposition } = await import("@/modules/diagnoses/data/composition-map");
+const { buildComposition, allCompositionRows } = await import("@/modules/diagnoses/data/composition-map");
 const { buildBisRow } = await import("@/modules/clinical-pipeline/services/build-engine-input");
 const { analizarDesdeBiody } = await import("@/clinical-engine/analysis");
 const { computeCelularBadges } = await import("@/modules/treatment/data/celular-badges");
@@ -65,7 +65,7 @@ describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + 
   it("(1) la tabla de Wang se llena con la composicion derivada", () => {
     const comp = buildComposition(persisted, "2026-06-15", true);
     const rowByKey = new Map<string, number | null>();
-    for (const lvl of comp.levels) for (const r of lvl.rows) rowByKey.set(r.key, r.value);
+    for (const r of allCompositionRows(comp)) rowByKey.set(r.key, r.value);
     // Estas filas de Wang NO venian en el export corto; ahora tienen valor (derivado). FFW no es una
     // fila de la tabla (es insumo de IEHH/hidSG): su presencia la prueba el IEHH en el test siguiente.
     for (const key of ["MCA", "protActiva", "hidSG"]) {

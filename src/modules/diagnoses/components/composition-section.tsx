@@ -1,8 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Zap } from "lucide-react";
 
 // El tipo Composition vive en composition-map (modulo NEUTRO, puro), NO en composition-reader
 // (server-only): este componente es cliente y no debe arrastrar el reader al boundary de cliente.
@@ -18,6 +17,11 @@ import { SEV_CLS } from "./risk-severity";
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
 // es REFERENCIA MEDICA ESTANDAR (OMS), NO output del motor ANI-BIS-E: se rotula como tal.
+//
+// DOS DISPOSICIONES (Santiago + Gildardo 2026-08-17): la MISMA seccion sirve las dos tablas, pero cada una
+// tiene sus PROPIAS filas y orden (composition.eval vs composition.diag), no una sola con una columna que se
+// apaga. `showDiagnosis` elige la disposicion Y muestra la columna Diagnostico. Asi una tabla no arrastra
+// filas de la otra (care Santiago a).
 
 // Color por severidad de la clasificacion antropometrica: escala de 3 (optimo verde / alerta ambar /
 // critico rojo) desde la fuente unica (OPTIMO_CLS). NO usa el azul del DFI: el azul (excellent) es
@@ -29,25 +33,6 @@ function fmt(v: number | null, dec = 2): string {
   if (v == null) return "-";
   return Number.isInteger(v) ? String(v) : v.toFixed(dec);
 }
-
-// Grupos de detalle colapsables: cada uno mapea a un parametro de URL (persiste al cambiar de subpestaña
-// y volver, igual que ?sub; un useState se reiniciaria porque el subpanel se desmonta). Rotulos que DICEN
-// que contienen, no "ver mas".
-const DETAIL_GROUPS: Record<
-  "agua" | "bioelectrico",
-  { param: string; open: string; closed: string }
-> = {
-  agua: {
-    param: "agua",
-    open: "Ocultar desglose de agua",
-    closed: "Ver desglose de agua (con/sin grasa, L y %)",
-  },
-  bioelectrico: {
-    param: "bio",
-    open: "Ocultar parámetros bioeléctricos crudos",
-    closed: "Ver parámetros bioeléctricos crudos",
-  },
-};
 
 type Classifications = Record<string, { label?: string } | null>;
 
@@ -66,10 +51,10 @@ function DxBadge({ dx, title }: { dx: DisplayDx; title?: string }) {
   );
 }
 
-// showDiagnosis gobierna si se muestra el VEREDICTO (clasificacion antropometrica OMS + columna
-// Diagnostico). En Diagnostico es true (el veredicto es su materia). En Evaluacion es false: la
-// etapa de entrada muestra "que entro" (Variable, Valor, Referencia, Δ), no el veredicto (ese es de
-// Diagnostico). Un solo componente, sin duplicar. Cuando es false, sexoM/classifications no se usan.
+// showDiagnosis gobierna DOS cosas: (1) que disposicion se muestra (diag = clasificada; eval = medida/cruda)
+// y (2) si se muestra el VEREDICTO (clasificacion antropometrica OMS + columna Diagnostico). En Diagnostico
+// es true (el veredicto es su materia). En Evaluacion es false: la etapa de entrada muestra "que entro"
+// (Variable, Valor, Referencia, Δ), no el veredicto. Un solo componente, sin duplicar.
 export function CompositionSection({
   composition,
   sexoM = true,
@@ -92,30 +77,22 @@ export function CompositionSection({
   fenotipoMccb?: { id: string; nombre: string } | null;
   showDiagnosis?: boolean;
 }) {
-  // Estado de colapso EN LA URL (?agua=1&bio=1): persiste al cambiar de subpestaña y volver (el subpanel
-  // desmonta este arbol, un useState se reiniciaria). Mismo mecanismo que ?sub: history.replaceState NO
-  // re-pide el RSC (Next 16 sincroniza useSearchParams), conmutar es instantaneo.
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const colCount = showDiagnosis ? 5 : 4;
-  // El nivel Bioelectrico (Cole-Cole) son valores CRUDOS del equipo (resistencias, reactancia, Fo,
-  // impedancias), sin diagnostico. En DIAGNOSTICO no van (el HTML no los tiene ahi): viven en EVALUACION,
-  // donde esta lo medido. showDiagnosis=false (Evaluacion) los muestra; true (Diagnostico) los oculta.
-  const visibleLevels = showDiagnosis
-    ? composition.levels.filter((l) => !l.title.startsWith("Bioeléctrico"))
-    : composition.levels;
+  // Disposicion segun el proposito de la tabla: Diagnostico muestra lo clasificado; Evaluacion lo medido y
+  // crudo (con el bioelectrico repartido en su nivel). Las dos vienen listas del mapa, sin filtrar aqui.
+  const activeLevels = showDiagnosis ? composition.diag : composition.eval;
 
-  function toggleGroup(param: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (params.get(param) === "1") params.delete(param);
-    else params.set(param, "1");
-    const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
-  }
-
-  // Valores por clave (para el contexto cruzado de NHLBI/Mapa AFxIR: af/ir salen de otras filas).
+  // Valores/referencias por clave del UNION de ambas disposiciones: NHLBI/Mapa AFxIR necesitan af/ir (de
+  // otras filas) y la resolucion de REF_POB necesita las referencias del equipo aunque la fila que las trae
+  // viva en la otra tabla. Se leen de las dos disposiciones; render usa solo la activa.
   const valueMap: Record<string, number | null> = {};
-  for (const l of composition.levels) for (const row of l.rows) valueMap[row.key] = row.value;
+  const refMap: Record<string, number | null> = {};
+  for (const layout of [composition.eval, composition.diag])
+    for (const l of layout)
+      for (const row of l.rows) {
+        valueMap[row.key] = row.value;
+        if (row.refKey) refMap[row.refKey] = row.reference;
+      }
   const diagCtx = {
     imc: composition.imc,
     cintura: composition.cintura,
@@ -125,14 +102,8 @@ export function CompositionSection({
 
   // REF_POB (referencias poblacionales de ultimo recurso, capa de display de Gildardo): rellena los `*_ref`
   // que el equipo NO trajo, para que la columna Referencia (y con ella el Δ y el diagnostico) no queden
-  // vacios. Las derivadas de constantes NO validadas van marcadas "en validacion" (Gildardo dijo "validar",
-  // no "no mostrar"; su HTML las usa). Las referencias/Δ salen de wangRowDx (FUENTE UNICA) en Evaluacion Y
-  // Diagnostico (Santiago 2026-08-15: la tabla de Evaluacion sin referencias eran solo numeros crudos,
-  // justo lo que criticabamos; reusar la misma fuente evita dos tablas divergiendo). `showDiagnosis` gatea
-  // SOLO la columna Diagnostico, no las referencias.
-  const refMap: Record<string, number | null> = {};
-  for (const l of composition.levels)
-    for (const row of l.rows) if (row.refKey) refMap[row.refKey] = row.reference;
+  // vacios. Las derivadas de constantes NO validadas van marcadas "en validacion". Las referencias/Δ salen
+  // de wangRowDx (FUENTE UNICA) en Evaluacion Y Diagnostico. `showDiagnosis` gatea SOLO la columna Diagnostico.
   const refPob: Record<string, RefPobEntry> = computeRefPob(
     composition.peso,
     composition.talla,
@@ -141,10 +112,9 @@ export function CompositionSection({
   );
   // Filas que REALMENTE muestran el "*" de REF_POB en validacion: solo las de referencia NUMERICA
   // poblacional (valor-vs-referencia o crudas), NO las de banda (que muestran el rango normativo). Se
-  // derivan una vez y se reusan para el pie: la nota no se afirma si ninguna fila la muestra (leccion de
-  // texto que afirma un estado sin derivarlo; una banda con "*" no tiene REF_POB detras).
+  // derivan una vez, SOLO sobre la disposicion activa (una fila que no se muestra no enciende el pie).
   const starKeys = new Set<string>();
-  for (const l of composition.levels)
+  for (const l of activeLevels)
     for (const r of l.rows) {
       const rpe = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
       if (!rpe?.enValidacion || r.key === "FMI") continue;
@@ -208,6 +178,14 @@ export function CompositionSection({
     return (
       <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
         <td className="py-1.5 pr-4 text-foreground">
+          {/* El icono de rayo distingue el parametro bioelectrico crudo cuando queda entre filas de
+              composicion en su nivel (care Santiago b): viaja con la fila, no depende de la posicion. */}
+          {r.bioelectric ? (
+            <Zap
+              className="mr-1.5 inline-block size-3.5 shrink-0 -translate-y-px text-primary"
+              aria-label="Parámetro bioeléctrico"
+            />
+          ) : null}
           {r.label}
           {r.unit ? <span className="text-muted-foreground"> ({r.unit})</span> : null}
         </td>
@@ -231,88 +209,52 @@ export function CompositionSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Los 3 chips (IMC/cintura/ICT) se retiraron: sus valores viven ahora en la tabla (Nivel V), con
-          referencia y clasificacion, que es mas completo que un chip. La nota OMS que los acompañaba se
-          movio al pie de la tabla (abajo), para no perder la aclaracion de que son referencia externa. */}
       <section className="flex flex-col gap-3">
         <h3 className="text-base font-semibold text-foreground">
           Composición corporal - Niveles de Wang
         </h3>
         <div className="overflow-x-auto">
-            <table className="w-full min-w-[38rem] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Variable</th>
-                  <th className="py-2 pr-4 text-right font-medium">Valor</th>
-                  <th className="py-2 pr-4 text-right font-medium">Referencia</th>
-                  <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                  {showDiagnosis ? <th className="py-2 font-medium">Diagnóstico</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {visibleLevels.map((lvl) => {
-                  const primary = lvl.rows.filter((r) => !r.detail);
-                  // Grupos de detalle presentes en el nivel, en orden de aparicion (hoy uno por nivel).
-                  const groups = [
-                    ...new Set(lvl.rows.filter((r) => r.detail).map((r) => r.detail!)),
-                  ];
-                  return (
-                    <Fragment key={lvl.title}>
-                      {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver
-                          BRAND.md, matiz de reserva del color de riesgo). */}
-                      <tr className="border-y border-border bg-muted">
-                        <td
-                          colSpan={colCount}
-                          className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
-                        >
-                          {lvl.title}
-                        </td>
-                      </tr>
-                      {primary.map(renderRow)}
-                      {/* Fenotipo MCCB (FFMI x FMI) como ultima fila del Nivel IV (smoke Santiago d): valor y
-                          diagnostico = el nombre del fenotipo; sin referencia ni Δ (es una clasificacion, no un
-                          numero), igual que el HTML. Solo en Diagnostico y si el snapshot lo trae. */}
-                      {showDiagnosis && fenotipoMccb && lvl.title.includes("Tejidos") ? (
-                        <tr className="border-b border-border/40">
-                          <td className="py-1.5 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
-                          <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
-                          <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
-                          <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
-                          <td className="py-1.5 text-foreground">{fenotipoMccb.nombre}</td>
-                        </tr>
-                      ) : null}
-                      {groups.map((g) => {
-                        const meta = DETAIL_GROUPS[g];
-                        const open = searchParams.get(meta.param) === "1";
-                        return (
-                          <Fragment key={g}>
-                            <tr className="border-b border-border/40">
-                              <td colSpan={colCount} className="py-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleGroup(meta.param)}
-                                  aria-expanded={open}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                                >
-                                  {open ? (
-                                    <ChevronDown className="size-3.5" aria-hidden />
-                                  ) : (
-                                    <ChevronRight className="size-3.5" aria-hidden />
-                                  )}
-                                  {open ? meta.open : meta.closed}
-                                </button>
-                              </td>
-                            </tr>
-                            {open ? lvl.rows.filter((r) => r.detail === g).map(renderRow) : null}
-                          </Fragment>
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full min-w-[38rem] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Variable</th>
+                <th className="py-2 pr-4 text-right font-medium">Valor</th>
+                <th className="py-2 pr-4 text-right font-medium">Referencia</th>
+                <th className="py-2 pr-4 text-right font-medium">Δ</th>
+                {showDiagnosis ? <th className="py-2 font-medium">Diagnóstico</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {activeLevels.map((lvl) => (
+                <Fragment key={lvl.title}>
+                  {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver BRAND.md, matiz
+                      de reserva del color de riesgo). */}
+                  <tr className="border-y border-border bg-muted">
+                    <td
+                      colSpan={colCount}
+                      className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
+                    >
+                      {lvl.title}
+                    </td>
+                  </tr>
+                  {lvl.rows.map(renderRow)}
+                  {/* Fenotipo MCCB (FFMI x FMI) como ultima fila del Nivel IV (smoke Santiago d): valor y
+                      diagnostico = el nombre del fenotipo; sin referencia ni Δ (es una clasificacion, no un
+                      numero), igual que el HTML. Solo en Diagnostico y si el snapshot lo trae. */}
+                  {showDiagnosis && fenotipoMccb && lvl.title.includes("Tejidos") ? (
+                    <tr className="border-b border-border/40">
+                      <td className="py-1.5 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
+                      <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                      <td className="py-1.5 text-foreground">{fenotipoMccb.nombre}</td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {composition.hasDerivedValues ? (
           <p className="text-xs text-muted-foreground">
             Algunos valores de composición se reconstruyen a partir de la medición cuando el equipo no
@@ -320,24 +262,20 @@ export function CompositionSection({
             en la pantalla del equipo.
           </p>
         ) : null}
+        {/* El pie del "*" se muestra en AMBAS tablas: las referencias (y su marca de validacion) ahora
+            viven tambien en Evaluacion. Solo se afirma si alguna fila mostrada lleva el "*". */}
+        {hayEnValidacion ? (
+          <p className="text-xs text-clinical-warning">
+            <span className="font-semibold">*</span> Referencia poblacional en validación por la
+            Dirección Científica (se deriva de peso, talla y sexo cuando el equipo no la trae). No
+            significa que el dato esté mal: espera confirmación.
+          </p>
+        ) : null}
         {showDiagnosis ? (
-          <>
-            {hayEnValidacion ? (
-              <p className="text-xs text-clinical-warning">
-                <span className="font-semibold">*</span> Referencia poblacional en validación por la
-                Dirección Científica (se deriva de peso, talla y sexo cuando el equipo no la trae). No
-                significa que el dato esté mal: espera confirmación.
-              </p>
-            ) : null}
-            <p className="text-xs text-muted-foreground">
-              IMC, cintura, índice cintura-cadera (ICC) e índice cintura-talla (ICT) usan umbrales de
-              referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Las masas crudas (kg) muestran un guion en Diagnóstico: se contrastan contra la referencia
-              del equipo, sin una clasificación normativa propia (igual que en la tabla de referencia).
-            </p>
-          </>
+          <p className="text-xs text-muted-foreground">
+            IMC, cintura, índice cintura-cadera (ICC) e índice cintura-talla (ICT) usan umbrales de
+            referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
+          </p>
         ) : null}
       </section>
     </div>

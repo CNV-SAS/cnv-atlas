@@ -14,6 +14,7 @@ import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
+import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 
 import { ConsentStatusCard } from "./consent-status-card";
@@ -83,7 +84,7 @@ export function EntradaEvaluacion({
   // ASMI y AF para el diagnostico de sarcopenia (EWGSOP2): se leen de las filas de la composicion (ASMI =
   // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil NO se captura hoy -> null (la card
   // lo dice, ver SarcopeniaCard). sexoM = paciente no femenino.
-  const compRows = composition?.levels.flatMap((l) => l.rows) ?? [];
+  const compRows = composition ? allCompositionRows(composition) : [];
   const sarcopeniaAsmi = compRows.find((r) => r.key === "asmi")?.value ?? null;
   const sarcopeniaAf = compRows.find((r) => r.key === "AF")?.value ?? null;
 
