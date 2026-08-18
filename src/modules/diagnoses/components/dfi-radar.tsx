@@ -80,11 +80,11 @@ export function DfiRadar({ domains }: { domains: DfiDomain[] }) {
     <figure className="flex flex-col items-center gap-2">
       <svg
         viewBox={`0 0 ${SIZE_W} ${SIZE_H}`}
-        width={SIZE_W}
-        height={SIZE_H}
         role="img"
         aria-label={label}
-        className="max-w-full"
+        // Escala a su columna (el viewBox conserva la geometria); sin width/height fijos en px. max-w algo
+        // mayor que la Diana por su aspecto mas ancho (360x300). Asi el radar reclama su mitad del grid.
+        className="h-auto w-full max-w-[24rem]"
       >
         {/* Zonas de fondo por severidad: pentagonos concentricos del exterior (peor) al centro (mejor),
             pintados en ese orden para que cada zona interior cubra a la de afuera. Cada banda lleva un

@@ -143,11 +143,13 @@ export function Diana({
     <figure className="flex flex-col items-center gap-3">
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        width={SIZE}
-        height={SIZE}
         role="img"
         aria-label={label}
-        className="max-w-full"
+        // Escala a su columna SIN tocar la geometria: el viewBox conserva el sistema de coordenadas
+        // (0..320), asi que la celda del paciente cae en la MISMA posicion relativa; solo cambia el tamaño
+        // de render. Antes tenia width/height fijos en px (320x320, con max-w-full que solo encogia), que
+        // no dejaban al radar reclamar su mitad. Candado de la posicion en diana-geometry.test.
+        className="h-auto w-full max-w-[22rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -248,7 +250,7 @@ export function Diana({
           <span>Riesgo máximo</span>
         </div>
       </div>
-      <figcaption className="flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[22rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados

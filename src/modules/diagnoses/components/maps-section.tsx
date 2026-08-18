@@ -78,8 +78,13 @@ export function MapsSection({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-8 xl:flex-row xl:items-start xl:justify-around">
-        <div className="flex flex-col items-center gap-3">
+      {/* Grid BALANCEADO (reorg 2026-08-18): dos columnas de igual ancho en desktop, para que el radar
+          reclame su mitad y deje de verse arrinconado. Antes era un flex sin reparto (xl:justify-around)
+          con SVGs de tamaño fijo en px: la Diana, con su leyenda y pie mas anchos, se comia el espacio.
+          `min-w-0` deja que las columnas encojan bien; los SVG escalan a su columna (viewBox). Debajo de
+          xl se apilan (grid-cols-1), la Diana arriba. */}
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:items-start">
+        <div className="flex min-w-0 flex-col items-center gap-3">
           <div className="flex w-full items-center justify-between gap-3">
             {/* Encabezado fiel al HTML ("Diana EFR BIS — 81 Estados"); "·" en vez de em-dash. */}
             <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
@@ -103,7 +108,7 @@ export function MapsSection({
             onSelectCell={setSelected}
           />
         </div>
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex min-w-0 flex-col items-center gap-3">
           <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
           {dfiComplete ? (
             <DfiRadar domains={radarDomains} />
