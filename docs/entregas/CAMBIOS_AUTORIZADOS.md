@@ -41,6 +41,13 @@ Hasta ahora la garantía era **mecánica**: byte-identidad del frozen + golden c
 
 ### CA-2 · Columna Δ: definición única (valor − referencia de normalidad)
 
+> **SUPERADA por RESPUESTA_GILDARDO 2026-08-17 §2 (regla del BORDE).** Gildardo revirtio la opcion B (punto
+> medio del rango): el Δ va ahora contra EL BORDE QUE DECIDE la clasificacion, no el promedio. Razon: "el
+> punto medio es defendible en estadistica y engañoso en clinica" (FFMI 19,90 normal daba −1,10 contra el
+> medio 21, leido como deficit; contra el borde 17 da +2,90). Lo de abajo queda como HISTORIA (forward-only).
+> Regla vigente y tabla de limites por fila: `composition-display.ts` (wangRowDx) e `indicator-ranges.ts`;
+> decision registrada en `DECISIONES_ANIBISE.md` P-23c. Excepciones pendientes (a la ronda): FM_pct e IAE.
+
 - **Instrucción de Gildardo (VERBATIM, `GILDARDO_RESPUESTA_..._TERCERA_RONDA (1).md` punto 4):** «Decisión: una sola definición, para todas las fórmulas y todos los indicadores. **Δ = valor obtenido − referencia de normalidad.** Cuando la referencia es un rango con dos bordes, la referencia es el **promedio del rango**. Cuando la referencia es un corte único, sin segundo borde, la referencia es **el corte**. […] esta regla sustituye el comportamiento del archivo HTML. Es una divergencia deliberada y debe quedar documentada como tal, no corregida hacia el archivo. […] un paciente dentro de rango pero por debajo del promedio pasa a mostrar Δ negativo donde antes mostraba cero. Conviene una prueba de regresión sobre el caso de referencia antes de publicar.»
 - **Qué implementamos (2026-08-01, código HECHO):** `indicator-ranges.ts` recalcula la Δ = valor − referencia de normalidad (promedio del rango si tiene dos bordes; el corte si es de un solo límite), reemplazando la regla del HTML (borde clínicamente relevante por indicador). Efecto sobre el donante golden: **cambian AF** (−0.70 → −0.95, promedio 6.75 en vez del borde 6.5), **ISCM** (−2.07 → −1.07, corte −1 en vez del valor crudo) y **FFMI** (4.10 → 0.10, promedio 21 en vez del borde 17); el resto no cambia (su referencia de normalidad ya coincidía). Los tres bloqueados por Q20 (IFC/IRC/FMI) siguen en "-". **Regresión documentada** en `src/tests/indicator-ranges.test.ts` (bloque "regresion Δ sobre el donante golden", antes→después). Commit de código en el árbol (sin pushear).
 - **Descripción devuelta a Gildardo:** «Unificamos la Δ a valor − referencia (promedio del rango, o el corte cuando hay un solo límite), reemplazando la regla del archivo. En el caso de referencia cambian AF, ISCM y FFMI; documentamos la divergencia y corrimos la regresión.»

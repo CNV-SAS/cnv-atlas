@@ -36,9 +36,9 @@ const ind = {
   IR: 0.798,
 } as unknown as EngineIndicators;
 
-describe("indicatorRange (referencia verbatim + Δ unificada CA-2)", () => {
-  it("AF (M) 5,8: rango '6.5–7.0°', Δ contra el PROMEDIO (6.75) = -0.95 (CA-2)", () => {
-    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6.5–7.0°", delta: "-1.0" });
+describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2)", () => {
+  it("AF (M) 5,8: rango '6.5–7.0°', Δ contra el BORDE inferior (6.5) = -0.7 (Gildardo §2)", () => {
+    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6.5–7.0°", delta: "-0.7" });
   });
 
   it("IR (M) 0,798: un solo limite '<0.78', Δ contra el corte = 0.018 (sin cambio)", () => {
@@ -50,15 +50,15 @@ describe("indicatorRange (referencia verbatim + Δ unificada CA-2)", () => {
     expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6.68", delta: "-1.31" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
     expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1.68", delta: "0.14" });
-    // FMI 6.369: banda media Normal 3–6 (como FFMI). Rango, Δ contra promedio 4.5 = 1.87.
-    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "1.87" });
+    // FMI 6.369: Normal 3–6. Gildardo §2: Δ contra el BORDE superior 6 = 0.37 (antes promedio 4.5 = 1.87).
+    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "0.37" });
   });
 
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
-    // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9 (promedio 7).
+    // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9. FMI Δ contra el BORDE superior 9 = -2.63 (Gildardo §2).
     expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3.28", delta: "2.09" });
     expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2.27", delta: "-0.45" });
-    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-0.63" });
+    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2.63" });
   });
 
   it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
@@ -91,24 +91,24 @@ describe("la Δ se resuelve por indicador, no por referencia (guard de ICA-BIS)"
   });
 });
 
-// REGRESION CA-2 (Gildardo la pide antes de publicar): sobre el donante golden, qué Δ cambian al pasar
-// del comportamiento del HTML (borde clinicamente relevante por indicador) a la regla unificada
-// (valor − referencia de normalidad). Se deja el ANTES en el nombre del caso y se assertan los valores
-// NUEVOS. Cambian AF, ISCM y FFMI; el resto no (su referencia de normalidad ya coincidia).
-describe("CA-2 · regresion Δ sobre el donante golden (antes HTML → despues CA-2)", () => {
-  it("AF: -0.70 (borde inferior 6.5) → -1.0 (promedio 6.75, 1 decimal)", () => {
-    expect(indicatorRange("AF", ind, true)?.delta).toBe("-1.0");
+// REGRESION del Δ sobre el donante golden. Gildardo §2 (2026-08-17) revirtio CA-2 opcion B (punto medio) a
+// Δ CONTRA EL BORDE que decide. Se deja el ANTES (punto medio) en el nombre del caso y se assertan los
+// valores NUEVOS (borde). Cambian AF y FFMI (vuelven a medir contra el borde, como el HTML); ISCM ya era
+// corte unico; IAE se queda en punto medio (excepcion pendiente, a la ronda).
+describe("regresion Δ sobre el donante golden (antes punto medio → despues borde, Gildardo §2)", () => {
+  it("AF: -1.0 (promedio 6.75) → -0.7 (borde inferior 6.5, 1 decimal)", () => {
+    expect(indicatorRange("AF", ind, true)?.delta).toBe("-0.7");
   });
 
   it("ISCM: -2.07 (valor crudo, ref implicita 0) → -1.07 (corte -1)", () => {
     expect(indicatorRange("ISCM", ind, true)).toEqual({ reference: "≤−1", delta: "-1.07" });
   });
 
-  it("FFMI: 4.10 (borde inferior 17) → 0.10 (promedio 21)", () => {
-    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "0.10" });
+  it("FFMI: 0.10 (promedio 21) → 4.10 (borde inferior 17)", () => {
+    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4.10" });
   });
 
-  it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500, IAE -17.6", () => {
+  it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500, IAE -17.6 (punto medio, pendiente)", () => {
     expect(indicatorRange("IR", ind, true)?.delta).toBe("0.018");
     expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0.3745");
     expect(indicatorRange("PABU", ind, true)?.delta).toBe("0.3745");

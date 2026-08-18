@@ -346,12 +346,18 @@ export type WangRowDx = {
   deltaText?: string; // texto en la columna Δ (NHLBI = "CC normal")
 };
 
-// Regla del `cut` (para que el Δ salga de UNA fuente y sea consistente en toda la tabla):
-//  - Banda de dos lados ("18.5–24.9", "17–25", "35–40%"): cut = PUNTO MEDIO. Es nuestra regla (P-23c,
-//    pendiente de Gildardo); su HTML resta contra el borde inferior. Ejemplo del round: FFMI 19.90 en 17–25
-//    da −1.10 contra el medio 21 (nosotros) vs +2.90 contra 17 (su HTML).
+// Regla del `cut` (para que el Δ salga de UNA fuente y sea consistente en toda la tabla). Gildardo
+// 2026-08-17 (§2) FIJO el criterio: el Δ va contra EL BORDE QUE DECIDE la clasificacion, no el punto
+// medio ni el borde mas cercano (revierte CA-2 opcion B / P-23c, que era punto medio). "El punto medio es
+// defendible en estadistica y engañoso en clinica": FFMI 19.90 en 17–25 es normal, y contra el medio 21
+// sale −1.10, que en una columna Δ roja se lee como deficit inexistente; contra el borde 17 sale +2.90,
+// que dice cuanto falta para cruzar el limite.
+//  - Banda de dos lados: cut = el LIMITE QUE GOBIERNA (tabla de Gildardo §2). IMC 24.9 (sup), FFMI 17/15
+//    (inf), AEC% 40 (sup), AIC% 65 (inf), E/I 0.40 (sup), ACT/MLG 74 (sup), AF 6.5/6.0 (inf).
 //  - Umbral de un lado ("<0.45", "≥7.0", "<94 cm", "≥73%"): cut = el umbral. Δ = valor − umbral.
-//  - Fila valor-vs-referencia (MCA, ECW, TBW, FFW...): cut = la referencia efectiva (equipo/REF_POB).
+//  - Fila valor-vs-referencia (MCA, ECW, TBW, FFW...): cut = la referencia efectiva (equipo/REF_POB). Es
+//    la tabla de Antropometria (valor − referencia), que Gildardo mantiene APARTE: no se mezclan criterios.
+//  - EXCEPCION pendiente: FM_pct (grasa %) sigue en punto medio hasta que Gildardo confirme su borde (ronda).
 
 export function wangRowDx(
   rowKey: string,
@@ -364,7 +370,7 @@ export function wangRowDx(
   const dl = value != null && effRef != null ? value - effRef : null; // Δ contra la ref (equipo/REF_POB)
   const refBased = (d: DisplayDx): WangRowDx => ({ dx: d, referenceLabel: fmtRef(effRef), cut: effRef });
   switch (rowKey) {
-    case "imc": return { dx: dIMC(value), referenceLabel: "18.5–24.9", cut: 21.7 }; // medio de 18.5–24.9
+    case "imc": return { dx: dIMC(value), referenceLabel: "18.5–24.9", cut: 24.9 }; // borde superior (Gildardo §2)
     case "cintura": return { dx: dCC(value, sexoM), referenceLabel: sexoM ? "<94 cm" : "<80 cm", cut: sexoM ? 94 : 80 };
     case "icc": return { dx: dICC(value, sexoM), referenceLabel: sexoM ? "<0.90" : "<0.85", cut: sexoM ? 0.9 : 0.85 };
     case "ict": return { dx: dICT(value), referenceLabel: "<0.50", cut: 0.5 };
@@ -378,7 +384,7 @@ export function wangRowDx(
         deltaText: n?.ccAltaText ?? "—",
       };
     }
-    case "FFMI": return { dx: dFFMI(value, sexoM), referenceLabel: sexoM ? "17–25" : "15–23", cut: sexoM ? 21 : 19 }; // medio del rango
+    case "FFMI": return { dx: dFFMI(value, sexoM), referenceLabel: sexoM ? "17–25" : "15–23", cut: sexoM ? 17 : 15 }; // borde inferior (Gildardo §2)
     case "asmi": return { dx: clasificarASMI(value, sexoM), referenceLabel: sexoM ? "≥7.0" : "≥5.5", cut: sexoM ? 7.0 : 5.5 };
     case "smmW": return { dx: clasificarSMMW(value, sexoM), referenceLabel: sexoM ? "≥27%" : "≥22%", cut: sexoM ? 27 : 22 };
     case "MCA": return refBased(dMCA(dl));
@@ -386,18 +392,20 @@ export function wangRowDx(
     case "masaSeca": return refBased(dMasaSeca(dl));
     case "aec_mca": return { dx: clasificarAecMca(value), referenceLabel: "<0.45", cut: 0.45 };
     case "ECW": case "ICW": case "ECW_sg": case "ICW_sg": case "TBW": case "FFW": return refBased(dVsRef(value, effRef));
-    case "ECW_pct": case "ECW_sg_pct": return { dx: dAECpct(value), referenceLabel: "35–40%", cut: 37.5 }; // medio
-    case "ICW_pct": case "ICW_sg_pct": return { dx: dAICpct(value), referenceLabel: "60–65%", cut: 62.5 }; // medio
-    case "ei": case "ei_sg": return { dx: dEI(value), referenceLabel: "0.35–0.40", cut: 0.375 }; // medio
-    case "AF": return { dx: dAF(value, sexoM), referenceLabel: sexoM ? "6.5–7.0°" : "6.0–6.5°", cut: sexoM ? 6.75 : 6.25 }; // medio
+    case "ECW_pct": case "ECW_sg_pct": return { dx: dAECpct(value), referenceLabel: "35–40%", cut: 40 }; // borde superior (Gildardo §2)
+    case "ICW_pct": case "ICW_sg_pct": return { dx: dAICpct(value), referenceLabel: "60–65%", cut: 65 }; // borde inferior (Gildardo §2)
+    case "ei": case "ei_sg": return { dx: dEI(value), referenceLabel: "0.35–0.40", cut: 0.4 }; // borde superior (Gildardo §2)
+    case "AF": return { dx: dAF(value, sexoM), referenceLabel: sexoM ? "6.5–7.0°" : "6.0–6.5°", cut: sexoM ? 6.5 : 6.0 }; // borde inferior (Gildardo §2)
     case "IR": return { dx: dIR(value, sexoM), referenceLabel: sexoM ? "<0.78" : "<0.82", cut: sexoM ? 0.78 : 0.82 };
     case "psc": {
       const p = pscAFxIR(ctx.af, ctx.ir, sexoM);
       return { dx: p.dx, referenceLabel: "—", cut: null, valueText: p.valueText };
     }
     case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73% (normohidrat.)", cut: 73 };
-    case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 72.5 }; // medio
-    case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 16 : 25 }; // medio
+    case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 74 }; // borde superior (Gildardo §2)
+    // FM_pct (grasa %): EXCEPCION pendiente (decision Santiago 2026-08-17). Se queda en PUNTO MEDIO hasta que
+    // Gildardo confirme cual es el borde que decide la clasificacion de la grasa en %; no lo elegimos nosotros.
+    case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 16 : 25 }; // punto medio (a la ronda)
     case "CMO": return refBased(dCMO(dl));
     case "protTotal": case "protActiva": return refBased(dProt(dl));
     default: return null; // filas crudas de masa: sin clasificador (referencia del equipo, sin diagnostico)

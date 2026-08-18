@@ -5,25 +5,23 @@ import type { EngineIndicators } from "@/clinical-engine";
 // Niveles II/IV/V y del bloque "ÍNDICES BIOELÉCTRICOS INTEGRADOS", ~12828-12878). NO se inventa ningun
 // valor ni el extremo faltante de un rango de un solo limite.
 //
-// El DELTA sigue la definicion UNIFICADA de Gildardo (CA-2, opcion B; docs/entregas/CAMBIOS_AUTORIZADOS.md):
-//   Δ = valor obtenido − referencia de normalidad.
-//   - Rango de dos bordes: la referencia es el PROMEDIO del rango.
-//   - Corte unico (un solo limite): la referencia es EL CORTE.
-// Esta regla SUSTITUYE el comportamiento del HTML (que elegia un borde clinicamente relevante por
-// indicador). Es una divergencia DELIBERADA y documentada, no un error a corregir hacia el archivo
-// (CA-2, verbatim: "esta regla sustituye el comportamiento del archivo HTML"). El delta se COMPUTA al
-// mostrar, NO se sella: cambia la Δ mostrada en diagnosticos viejos y nuevos por igual (un paciente
-// dentro de rango pero por debajo del promedio pasa a mostrar Δ negativo donde antes mostraba cero).
-// Prueba de regresion sobre el donante golden en indicator-ranges.test.ts (Gildardo la pide antes de
-// publicar). Aprobacion de Gildardo: PENDIENTE (regla de reversion de opcion B).
+// El DELTA sigue la regla que Gildardo FIJO el 2026-08-17 (§2), que REVIERTE CA-2 opcion B (punto medio):
+//   Δ = valor obtenido − EL BORDE QUE DECIDE la clasificacion (no el punto medio ni el borde mas cercano).
+//   - Rango de dos bordes: la referencia es el LIMITE QUE GOBIERNA el riesgo (FFMI inferior 17/15; FMI
+//     superior 6/9; AF inferior 6.5/6.0).
+//   - Corte unico (un solo limite): la referencia es EL CORTE (IFC, IRC, ISCM, IEHH, IR: sin cambio).
+// "El punto medio es defendible en estadistica y engañoso en clinica" (Gildardo): FFMI 19.90 normal daba
+// −1.10 contra el medio 21, que en una columna Δ roja se lee como deficit inexistente; contra el borde 17
+// da +2.90, cuanto falta para cruzar el limite. El delta se COMPUTA al mostrar, NO se sella: cambia en
+// diagnosticos viejos y nuevos por igual. Prueba de regresion en indicator-ranges.test.ts. Historia de
+// CA-2 (opcion B, punto medio, ya revertida): docs/entregas/CAMBIOS_AUTORIZADOS.md.
 //
-// Efecto por indicador respecto al HTML: ISCM (referencia = corte −1, antes crudo), FFMI y AF
-// (promedio del rango, antes el borde inferior) CAMBIAN; PABU, ICA-BIS, IEHH, IAE, EB, IR quedan
-// igual (su referencia de normalidad ya coincidia con el promedio/corte). IFC/IRC/FMI: antes en "-";
-// desde 2026-08-02 salen del CLASIFICADOR DEL MOTOR sexo-especifico (Q20/C11), NO de la tabla de
-// display; IFC/IRC como umbral (sano vs alerta), FMI como rango (banda media, sano = Normal).
-// FUENTE de los rangos: el clasificador del motor, con un test-candado que lo verifica (ya no la
-// tabla de display, que coincidia por coincidencia y podia divergir en silencio).
+// EXCEPCION pendiente: IAE sigue en punto medio (0) hasta que Gildardo confirme su borde (a la ronda).
+//
+// Efecto por indicador (Gildardo §2, borde): FFMI (borde inferior 17/15), AF (borde inferior 6.5/6.0), FMI
+// (borde superior 6/9) miden contra el limite que decide. ISCM/IEHH/IR/IFC/IRC son corte unico (sin cambio);
+// PABU/ICA-BIS son punto (φ / 0); EB usa la edad cronologica. IFC/IRC/FMI salen del CLASIFICADOR DEL MOTOR
+// sexo-especifico (Q20/C11, 2026-08-02), con test-candado que lo verifica (no la tabla de display).
 //
 // Rangos de UN SOLO LIMITE: ISCM (≤−1), IEHH (≤0), IR (<0.78/<0.82). PABU e ICA-BIS son referencia de
 // PUNTO (φ = 1.618 / coherencia 0). EB usa la edad cronologica como referencia.
@@ -123,10 +121,11 @@ export function indicatorRange(
       return { reference: `< ${lo}`, delta: f(ind.irc - lo, 2) };
     }
     case "FMI": {
-      // cFMI: sano = Normal, banda MEDIA (M 3-6, F 5-9). Como FFMI: referencia = rango, Δ = promedio.
+      // cFMI: sano = Normal (M 3-6, F 5-9). Gildardo §2 (2026-08-17): Δ contra el BORDE SUPERIOR (M 6 / F 9),
+      // el limite que decide (exceder grasa es el riesgo), no el punto medio.
       if (ind.FMI == null) return null;
-      const [lo, hi] = sexM ? [3, 6] : [5, 9];
-      return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - (lo + hi) / 2, 2) };
+      const ref = sexM ? 6 : 9;
+      return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - ref, 2) };
     }
     case "PABU":
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618 (sin cambio respecto al HTML).
@@ -145,7 +144,8 @@ export function indicatorRange(
       // CA-2: corte unico 0 (de "≤0"). Δ = valor − 0 = valor (sin cambio).
       return ind.iehh != null ? { reference: "≤0", delta: f(ind.iehh - 0, 3) } : null;
     case "IAE":
-      // CA-2: rango −5 a +5 → promedio 0. Δ = valor − 0 = valor (sin cambio).
+      // IAE: rango −5 a +5. EXCEPCION pendiente (decision Santiago 2026-08-17): se queda en el PUNTO MEDIO
+      // (0) hasta que Gildardo confirme el borde que decide "acelerado" (probablemente +5); no lo asumimos.
       return ind.iae != null ? { reference: "−5 a +5 años", delta: f(ind.iae - 0, 1) } : null;
     case "EB":
       // La referencia de EB es la edad cronologica, que NO se sella en el EngineOutput (vive en
@@ -157,14 +157,14 @@ export function indicatorRange(
       return ind.eb != null ? { reference: "—", delta: null } : null;
     case "FFMI": {
       if (ind.FFMI == null) return null;
-      // CA-2: promedio del rango (M 17–25 → 21; F 15–23 → 19). ANTES el HTML restaba el borde inferior.
-      const ref = sexM ? (17 + 25) / 2 : (15 + 23) / 2;
+      // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 17 / F 15), no el punto medio del rango.
+      const ref = sexM ? 17 : 15;
       return { reference: sexM ? "17–25" : "15–23", delta: f(ind.FFMI - ref, 2) };
     }
     case "AF": {
       if (!(ind.AF > 0)) return null;
-      // CA-2: promedio del rango (M 6.5–7.0 → 6.75; F 6.0–6.5 → 6.25). ANTES el HTML restaba el borde inferior.
-      const ref = sexM ? (6.5 + 7.0) / 2 : (6.0 + 6.5) / 2;
+      // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 6.5 / F 6.0), no el punto medio del rango.
+      const ref = sexM ? 6.5 : 6.0;
       // D-016: el AF (y su delta) siempre con 1 decimal.
       return { reference: sexM ? "6.5–7.0°" : "6.0–6.5°", delta: f(ind.AF - ref, 1) };
     }
