@@ -262,9 +262,11 @@ export function dVsRef(val: number | null, ref: number | null, tolFrac = 0.05): 
 
 // ── REF_POB — referencias poblacionales de último recurso (ATLAS_v8.html:6621-6725). ──
 // Se aplican SOLO a los `*_ref` que sigan vacíos (el equipo manda siempre). Devuelve para cada clave el
-// valor derivado y si esta "en validacion" (constante no aprobada por Gildardo). Las 2 validadas en §9
-// (hidratFFM 73,2% y mcaPctFFM 52,4%) van SIN marca; las 5 introducidas sin aprobar (aguaEC 42, y la
-// composicion proteico-mineral de la MLG) van MARCADAS.
+// valor derivado y si esta "en validacion" (constante aun no validada por Gildardo). SIN marca (validadas):
+// hidratacion 73,2% y MCA 52,4% (§9), y el REPARTO DE WANG confirmado el 2026-08-17 §5 (proteina total 19,4%,
+// CMO 5,6%, mineral no oseo 1,2%; cierran en 99,4% con la hidratacion). MARCADAS (siguen sin validar): agua EC
+// 42% (la distribucion real sobre los 5.073 registros va a la ronda) y proteina ACTIVA 70% (de la que hereda
+// la marca la masa proteica metabolica y solEC). El texto del asterisco dice "en validacion", no "dato malo".
 export type RefPobEntry = { value: number; enValidacion: boolean };
 export function computeRefPob(
   peso: number | null,
@@ -306,16 +308,19 @@ export function computeRefPob(
     put("ICW_sg_pct_ref", 58, true);
     put("FFW_ref", tbwR, false); // = TBW_ref (de hidratFFM validada) -> sin marca
   }
-  // composicion de la MLG: proteinas/minerales (NO validadas, marca) + MCA (52,4 validada, sin marca)
+  // composicion de la MLG. Gildardo CONFIRMO (RESPUESTA 2026-08-17 §5) tres como REPARTO DE WANG, sin marca:
+  // proteina total 19,4%, CMO 5,6%, mineral no oseo 1,2% (cierran con la hidratacion 73,2%: 73,2+19,4+5,6+1,2
+  // = 99,4%; el 0,6% es glucogeno y menores). SIGUE MARCADA la proteina ACTIVA 70% (reparto activa/estructural
+  // sin constante estable). MCA 52,4% ya estaba validada (§9).
   if (ffmR != null) {
-    const protTotalR = put("protTotal_ref", rd((ffmR * 19.4) / 100), true);
-    if (protTotalR != null) put("protActiva_ref", rd((protTotalR * 70.0) / 100), true);
-    put("CMO_ref", rd((ffmR * 5.6) / 100), true);
-    put("minNoOseo_ref", rd((ffmR * 1.2) / 100), true);
+    const protTotalR = put("protTotal_ref", rd((ffmR * 19.4) / 100), false);
+    if (protTotalR != null) put("protActiva_ref", rd((protTotalR * 70.0) / 100), true); // 70% sin validar -> marca
+    put("CMO_ref", rd((ffmR * 5.6) / 100), false);
+    put("minNoOseo_ref", rd((ffmR * 1.2) / 100), false);
     put("MCA_ref", rd((ffmR * 52.4) / 100), false);
     // masa seca sin grasa = MLG − agua (identidad, sin marca)
     if (tbwR != null) put("masaSeca_ref", rd(ffmR - tbwR), false);
-    // solEC = masaSeca − protActiva − minNoOseo (depende de las no validadas -> marca)
+    // solEC = masaSeca − protActiva − minNoOseo: depende de la proteina activa (70%, sin validar) -> hereda marca
     const ms = out["masaSeca_ref"]?.value ?? existing("masaSeca_ref");
     const pa = out["protActiva_ref"]?.value ?? existing("protActiva_ref");
     const mn = out["minNoOseo_ref"]?.value ?? existing("minNoOseo_ref");
