@@ -111,6 +111,9 @@ export async function getActiveBisConditionCatalog(): Promise<BisConditionCatalo
 export type BisConditionsReadonly = {
   conditions: BisCondition[];
   answers: BisConditionAnswers;
+  // Fuerza prensil sellada (dinamometria): para la card de sarcopenia en la vista de solo lectura tras el
+  // diagnostico. Se lee del mismo intake (Gildardo 2026-08-17 §6).
+  gripStrengthKg: number | null;
 };
 export async function getBisConditionsReadonly(
   evaluationId: string,
@@ -124,7 +127,11 @@ export async function getBisConditionsReadonly(
     .eq("bis_condition_version_id", intake.versionId)
     .order("order_index", { ascending: true });
   if (error) throw new Error(`bis-conditions-reader: readonly: ${error.message}`);
-  return { conditions: (rows ?? []).map(mapConditionRow), answers: intake.answers };
+  return {
+    conditions: (rows ?? []).map(mapConditionRow),
+    answers: intake.answers,
+    gripStrengthKg: intake.gripStrengthKg,
+  };
 }
 
 // Captura ya persistida de una evaluacion (para la UI y el gate del import). null si aun no se

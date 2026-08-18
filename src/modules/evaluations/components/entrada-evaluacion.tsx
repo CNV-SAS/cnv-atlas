@@ -82,11 +82,13 @@ export function EntradaEvaluacion({
   const conditionsPending = identityConfirmed && !gate.allowed && gate.reason !== "contraindicated";
 
   // ASMI y AF para el diagnostico de sarcopenia (EWGSOP2): se leen de las filas de la composicion (ASMI =
-  // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil NO se captura hoy -> null (la card
-  // lo dice, ver SarcopeniaCard). sexoM = paciente no femenino.
+  // MMEM/talla^2 computado; AF = columna del equipo). La fuerza prensil (dinamometria, criterio PRIMARIO) SI
+  // se captura: es el campo `gripStrengthKg` de las condiciones de la toma BIS (editable o ya sellado). Se
+  // cablea a la card (Gildardo 2026-08-17 §6). sexoM = paciente no femenino.
   const compRows = composition ? allCompositionRows(composition) : [];
   const sarcopeniaAsmi = compRows.find((r) => r.key === "asmi")?.value ?? null;
   const sarcopeniaAf = compRows.find((r) => r.key === "AF")?.value ?? null;
+  const sarcopeniaFuerza = bisIntake?.gripStrengthKg ?? bisReadonly?.gripStrengthKg ?? null;
 
   // SUBPESTAÑA 1 · ENCUESTA: consentimiento + encuesta del paciente + condiciones de la toma BIS. Es lo
   // PRIMERO de la secuencia; la subpestaña 2 depende de que esto este hecho.
@@ -205,9 +207,15 @@ export function EntradaEvaluacion({
       </section>
 
       {/* Diagnostico de sarcopenia (EWGSOP2): fuerza + ASMI + AF. Solo con medicion (necesita ASMI/AF de la
-          composicion). La fuerza prensil no se captura hoy: la card lo dice ("sin dato"), no lo inventa. */}
+          composicion). La fuerza prensil viene de las condiciones de la toma (gripStrengthKg); si el profesional
+          no la registro, la card lo dice ("sin dato"), no lo inventa. */}
       {composition ? (
-        <SarcopeniaCard asmi={sarcopeniaAsmi} af={sarcopeniaAf} sexoM={!patientIsFemale} />
+        <SarcopeniaCard
+          asmi={sarcopeniaAsmi}
+          af={sarcopeniaAf}
+          sexoM={!patientIsFemale}
+          fuerzaPrensil={sarcopeniaFuerza}
+        />
       ) : null}
     </div>
   );

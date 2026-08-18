@@ -322,7 +322,7 @@ export function BisConditionsCapture({
         <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor="weight-goal" className="text-sm">
-              Meta de peso (kg) <span className="text-muted-foreground">— opcional</span>
+              Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
             </Label>
             <Input
               id="weight-goal"
@@ -336,17 +336,25 @@ export function BisConditionsCapture({
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="grip-strength" className="text-sm">
-              Fuerza prensil (kg) <span className="text-muted-foreground">— opcional</span>
+              Fuerza prensil (Kgf) <span className="text-muted-foreground">(opcional)</span>
             </Label>
             <Input
               id="grip-strength"
               type="number"
               inputMode="decimal"
+              step="0.1"
               value={gripStrength}
               onChange={(e) => setGripStrength(e.target.value)}
               disabled={pending}
-              placeholder="Ej. 35"
+              placeholder="Ej. 35.4"
             />
+            {/* Protocolo EWGSOP2 como texto de ayuda junto al campo (Gildardo 2026-08-17 §6): un numero de
+                dinamometro sin protocolo no es comparable entre consultas. */}
+            <p className="text-xs text-muted-foreground">
+              La mide el profesional en consulta, después de cintura y cadera y antes del BIS: mano
+              dominante, sentado, codo a 90°, mejor de tres intentos con descanso. Se registra el mejor,
+              no el promedio, en Kgf con un decimal.
+            </p>
           </div>
         </div>
 

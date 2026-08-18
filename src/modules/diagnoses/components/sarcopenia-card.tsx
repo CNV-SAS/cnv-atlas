@@ -7,9 +7,9 @@ import { SEV_CLS } from "./risk-severity";
 // pilares son FUERZA (primario), MASA (ASMI) y CALIDAD celular (AF). Los cortes son del motor (cASMI/cAF,
 // sexo-dependientes; fuerza EWGSOP2 M<27 / F<16 Kgf). Presentacion: LEE del motor, no lo toca.
 //
-// IMPORTANTE (care Santiago 2026-08-15): la FUERZA PRENSIL no se captura hoy en Atlas (no hay campo de
-// intake para la dinamometria). Cuando falta, la card dice "Sin dato" y explica que se mide con dinamometro,
-// NO queda vacia ni se inventa. Es el criterio PRIMARIO del EWGSOP2, asi que su ausencia se hace visible.
+// FUERZA PRENSIL (dinamometria, criterio PRIMARIO del EWGSOP2): se captura en las condiciones de la toma BIS
+// (campo gripStrengthKg, subpestaña Encuesta), la mide el profesional en consulta. Si no la registro, la card
+// dice "Sin dato" y remite a capturarla, NO queda vacia ni se inventa. Su ausencia se hace visible.
 
 function Metric({
   label,
@@ -96,8 +96,8 @@ export function SarcopeniaCard({
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             <span className="font-medium">Falta la dinamometría</span> (fuerza prensil), el criterio
-            primario del EWGSOP2. Se mide con dinamómetro; Atlas aún no la captura, por eso aparece sin
-            dato.
+            primario del EWGSOP2. Regístrala en las condiciones de la toma BIS (subpestaña Encuesta): la
+            mide el profesional con dinamómetro, mano dominante, mejor de tres intentos.
           </span>
         </div>
       ) : null}
