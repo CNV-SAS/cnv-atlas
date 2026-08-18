@@ -2,6 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode } from "react";
 
+import { Progress } from "@/components/ui/progress";
 import { formatDateLong } from "@/lib/format/date";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import type { BisImportEvaluation } from "@/modules/bis/data/bis-evaluations-reader";
@@ -70,6 +71,9 @@ export function EntradaEvaluacion({
     (acc, d) => acc + d.questions.filter((q) => q.answerValue != null && q.answerValue !== "").length,
     0,
   );
+  // Porcentaje de completitud de la encuesta (Gildardo 2026-08-17, b): junto al boton de ver/editar, con
+  // barra. Antes solo estaba el conteo en texto; no se perdio al dividir en subpestañas, nunca hubo barra.
+  const surveyPct = total > 0 ? Math.round((answered / total) * 100) : 0;
 
   // Aviso de SECUENCIA (care Santiago 2026-08-15): Antropometria DEPENDE de Encuesta. Si la identidad
   // esta confirmada pero las condiciones de la toma aun no se guardaron, la segunda subpestaña lo dice y
@@ -107,9 +111,15 @@ export function EntradaEvaluacion({
           </Link>
         </div>
         {total > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {answered} de {total} preguntas respondidas.
-          </p>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">
+                {answered} de {total} preguntas respondidas
+              </span>
+              <span className="font-semibold tabular-nums text-foreground">{surveyPct}%</span>
+            </div>
+            <Progress value={surveyPct} aria-label={`Encuesta ${surveyPct}% completada`} />
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             Esta evaluación aún no tiene respuestas de encuesta.

@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -368,6 +370,23 @@ export function BisConditionsCapture({
           >
             {pending ? "Guardando..." : saved ? "Actualizar condiciones" : "Guardar condiciones"}
           </Button>
+          {/* Guardadas y sin contraindicacion: el import ya quedo habilitado, pero vive en la OTRA
+              subpestaña. Sin este puente el profesional guarda y no sabe adonde ir (Gildardo 2026-08-17, a). */}
+          {saved && !liveContraindicated ? (
+            <div className="flex items-start gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2 text-sm text-clinical-optimal">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                Condiciones guardadas. Ya puedes{" "}
+                <Link
+                  href={`/evaluaciones/${evaluationId}?ev=antropometria`}
+                  className="font-semibold underline underline-offset-2 hover:no-underline"
+                >
+                  importar la medición en Antropometría y BIS
+                </Link>
+                .
+              </span>
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>
