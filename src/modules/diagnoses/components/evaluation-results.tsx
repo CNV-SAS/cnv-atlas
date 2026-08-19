@@ -451,9 +451,9 @@ export function EvaluationResults({
 
           {/* Banner del veto conductual: cadena EXACTA del frozen (ATLAS_v8.html _DFIView). Sin el aviso, el
               badge "Veto activo" no orienta: el profesional no ve la instruccion (prioridad psicologica,
-              excluir intervencion nutricional restrictiva). Si el veto debe ser CANDADO (bloquear la
-              prescripcion) y no solo aviso, es decision de Gildardo (va a la ronda): hoy no se consume en
-              tratamiento, solo aparece la ruta conductual como prioritaria. */}
+              excluir intervencion nutricional restrictiva). RESUELTO (Gildardo 2026-08-15 §1): el veto es
+              AVISO, NO barrera dura ("el sistema no bloquea; no construyan la barrera dura"). Hoy no se
+              consume en tratamiento, solo aparece la ruta conductual como prioritaria, que es lo correcto. */}
           {dfi.veto ? (
             <div className="flex items-start gap-2 rounded-md border border-clinical-critical/40 bg-clinical-critical-bg px-3 py-2 text-sm text-clinical-critical">
               <Ban className="mt-0.5 size-4 shrink-0" aria-hidden />

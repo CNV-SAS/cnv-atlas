@@ -16,7 +16,8 @@ import type { EngineIndicators } from "@/clinical-engine";
 // diagnosticos viejos y nuevos por igual. Prueba de regresion en indicator-ranges.test.ts. Historia de
 // CA-2 (opcion B, punto medio, ya revertida): docs/entregas/CAMBIOS_AUTORIZADOS.md.
 //
-// EXCEPCION pendiente: IAE sigue en punto medio (0) hasta que Gildardo confirme su borde (a la ronda).
+// IAE: RESUELTO (Gildardo §2, 2026-08-18). Es el unico clasificador de DOS COLAS; su Δ se deja en "—"
+// (decision Santiago 2026-08-19), conservando la referencia y el valor con su signo. Ver el case "IAE".
 //
 // Efecto por indicador (Gildardo §2, borde): FFMI (borde inferior 17/15), AF (borde inferior 6.5/6.0), FMI
 // (borde superior 6/9) miden contra el limite que decide. ISCM/IEHH/IR/IFC/IRC son corte unico (sin cambio);
