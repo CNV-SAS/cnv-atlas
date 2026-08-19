@@ -95,6 +95,27 @@ describe("A. cada clasificador de la tabla de Wang expone Referencia + Diagnosti
     expect(wangRowDx("FM_pct", 30, true, ctx, null, fmt)?.cut).toBe(22); // hombre
     expect(wangRowDx("FM_pct", 30, false, ctx, null, fmt)?.cut).toBe(32); // mujer
   });
+
+  // CANDADO de VALOR de cada borde de la tabla de Wang (Gildardo §2). Antes composition-cells solo probaba
+  // que el cut EXISTIA (deltaDerivable), no su valor: por eso el FM_pct pudo divergir a punto medio sin que
+  // nada truene. Este fija el numero exacto de cada corte para que una respuesta de Gildardo no vuelva a
+  // quedar sin aplicar en silencio (barrido "aplicadas sin candado", 2026-08-19). FFMI/AF/IR/aec_mca/FM_pct
+  // ya tienen su candado en indicator-ranges/composition-map/arriba; aqui van los que NO lo tenian.
+  const BORDES: Array<[string, number, boolean, number]> = [
+    ["imc", 26, true, 24.9], ["imc", 26, false, 24.9],
+    ["cintura", 90, true, 94], ["cintura", 85, false, 80],
+    ["icc", 0.95, true, 0.9], ["icc", 0.9, false, 0.85],
+    ["ict", 0.55, true, 0.5],
+    ["asmi", 6, true, 7.0], ["asmi", 5, false, 5.5],
+    ["smmW", 26, true, 27], ["smmW", 23, false, 22], // mujer 22 (Gildardo §3 2026-08-18; NO 24)
+    ["ECW_pct", 42, true, 40], ["ICW_pct", 60, true, 65],
+    ["ei", 0.42, true, 0.4], ["act_mlg", 76, true, 74], ["hidSG", 70, true, 73],
+  ];
+  for (const [key, value, sexoM, cut] of BORDES) {
+    it(`borde ${key} (${sexoM ? "H" : "M"}): cut = ${cut} (Gildardo §2/§3)`, () => {
+      expect(wangRowDx(key, value, sexoM, ctx, null, fmt)?.cut).toBe(cut);
+    });
+  }
 });
 
 describe("B. pipeline real: ninguna fila con clasificador y datos queda sin las 3 celdas", () => {

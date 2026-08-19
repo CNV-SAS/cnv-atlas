@@ -409,8 +409,8 @@ export function wangRowDx(
     }
     case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73% (normohidrat.)", cut: 73 };
     case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 74 }; // borde superior (Gildardo §2)
-    // FM_pct (grasa %): EXCEPCION pendiente (decision Santiago 2026-08-17). Se queda en PUNTO MEDIO hasta que
-    // Gildardo confirme cual es el borde que decide la clasificacion de la grasa en %; no lo elegimos nosotros.
+    // FM_pct (grasa %): borde SUPERIOR H22/M32 (Gildardo §1, 2026-08-18: el lado del riesgo, el limite que
+    // decide el paso a "Sobrepeso adiposo"). Δ contra ese borde, como el resto de la tabla.
     case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 22 : 32 }; // borde superior H22/M32 (Gildardo §1, 2026-08-18)
     case "CMO": return refBased(dCMO(dl));
     case "protTotal": case "protActiva": return refBased(dProt(dl));
