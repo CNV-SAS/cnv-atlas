@@ -48,6 +48,10 @@ Lo verificamos sobre los fixtures y lo garantiza la estructura: el swap **no mov
 
 Tu archivo del 18 **todavía trae el texto que bloquea** ("Salvaguarda activa: el módulo nutricional PAUSA la restricción calórica automática"). Nosotros corremos la versión que **avisa y no bloquea**, según tu instrucción del 9 de agosto (D-002): el plan no se pausa, se marca remisión y el peso meta acordado sigue gobernando el cálculo. No nos adelantamos: es que esa corrección no ha llegado a tu archivo. La mantenemos por tu instrucción escrita.
 
+## Una pregunta que surgió al portar (SMM/W)
+
+Al portar encontramos dos umbrales distintos para el SMM/W en mujeres, en tu v7 y en el 18: el clasificador `cSMM` usa mujer < 22 (sarcopenia), pero el gate de sarcopenia del fenotipo (obesidad sarcopénica, `motorDiagnostico`) usa mujer < 24. Una mujer con SMM/W entre 22 y 24 sale "Normal" por `cSMM` y "sarcopénica" por el fenotipo. No lo tocamos, porque seríamos infieles a tu archivo (ambos usan lo que usan). ¿El gate del fenotipo debe ser 22 como `cSMM`, o el 24 es deliberado? Tu §3 del 18 dijo que el 24 "no salía de ningún clasificador", pero este gate lo usa. No bloquea nada; lo dejamos como está hasta que nos digas.
+
 ## Reproducción independiente del §0 (agua extracelular)
 
 Ya te confirmamos que reproducimos tus tres pruebas sobre la cohorte de 5.885 registros (Node, sin dependencias):

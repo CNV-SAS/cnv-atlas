@@ -863,3 +863,9 @@ Decisiones de estructura (Santiago + asesor); el restructure es grande e interco
 
 ## [TEST DB] La BD de test local NO tiene la migracion 0068 (bloque m) — 29 tests DB-real en rojo
 Los tests DB-real fallan con `column education_level does not exist`: la migracion 0068 (sociodemograficos por evaluacion, bloque m) esta en la NUBE (Santiago migro) pero NO en la BD de test/local. Ajeno al codigo (mi cambio de color no toca schema). Santiago: `pnpm db:migrate` (o reset) contra la BD local de test. Es la leccion "migraciones no se despliegan solas" aplicada al entorno local.
+
+## Candados de valor pendientes (barrido "aplicadas sin candado", 2026-08-19). Baratos, misma clase que dejo pasar el FM_pct.
+
+Dos valores clinicos que hoy NO tienen candado de su NUMERO (solo de existencia o de una marca), exactamente la clase de cosa que dejo divergir el FM_pct. No urgentes, pero no dejarlos en "anotado" para siempre:
+- **Constantes REF_POB sin candado de VALOR:** proteina total 19,4%, CMO 5,6%, mineral no oseo 1,2% (`composition-display.ts:316-319`). Hoy `composition-display.test.ts:58-60` solo assertea su marca `enValidacion=false`, NO el numero. `computeRefPob` podria derivar mal el valor con la marca en verde. Agregar el assert del numero (como ya hace `derive-composition.test` para 52,4 y 73,2).
+- **Fuerza prensil femenina 16 Kgf sin ejercitar:** los golden de fenotipo (`protocolo-fenotipo.golden.test.ts`) solo ejercitan el corte masculino (27); el femenino (16, EWGSOP2) no tiene caso. Agregar un caso mujer que cruce el 16.
