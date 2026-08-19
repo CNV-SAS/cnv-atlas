@@ -37,6 +37,9 @@ describe("characterizationSchema (validacion, sin BD)", () => {
       maritalStatus: null,
       socioeconomicStratum: "3",
       ethnicity: "Indígena", // normalizada contra las categorias DANE (el gate de investigacion va en el writer)
+      // ancestry: 2o campo de etnia (ascendencia), agregado en d0226b3 (2026-08-15). El input no lo trae,
+      // asi que el schema lo default a null. El toEqual no se actualizo entonces y el test quedo rojo.
+      ancestry: null,
     });
     // El motivo se filtra a las opciones conocidas (descarta "No existe").
     expect(parsed?.reasonForVisit).toEqual(["Rendimiento deportivo", "Otro"]);
