@@ -91,7 +91,7 @@ export function analizarDesdeBiody(
 
   const cIFC = core.cIFC(IFC, sexo);
   const cIRC = core.cIRC(IRC, sexo);
-  const cPABU = core.cPABU(PABU, IFC);
+  const cPABU = core.cPABU(PABU); // cPABU direccional (swap del 18): ya no usa IFC (Q27 resuelto)
   const cFMI = core.cFMI(imp.FMI, sexo);
   const cFFMI = core.cFFMI(imp.FFMI, sexo);
 

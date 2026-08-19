@@ -34,7 +34,7 @@ export function indicatorSeverities(output: EngineOutput): Record<string, number
   const sev: Record<string, number | null> = {};
   sev.IFC = colorSev(core.cIFC(i.ifc, sexo).c);
   sev.IRC = colorSev(core.cIRC(i.irc, sexo).c);
-  sev.PABU = colorSev(core.cPABU(i.pabu, i.ifc).c);
+  sev.PABU = colorSev(core.cPABU(i.pabu).c); // cPABU direccional (swap del 18): sin IFC
   sev.FMI = colorSev(core.cFMI(i.FMI, sexo).c);
   sev.FFMI = colorSev(core.cFFMI(i.FFMI, sexo).c);
   if (i.iscm != null) sev.ISCM = colorSev(core.cISCM(i.iscm).c);

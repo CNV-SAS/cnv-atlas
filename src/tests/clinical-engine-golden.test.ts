@@ -56,7 +56,8 @@ describe("ANI-BIS-E · Golden Juan Esteban (export real, anonimizado)", () => {
   it("clasificaciones clinicas correctas", () => {
     expect(r.clases.IFC.l).toBe("Alerta funcional");
     expect(r.clases.IRC.l).toBe("Riesgo moderado");
-    expect(r.clases.PABU.l).toBe("Desviación leve");
+    // cPABU direccional (swap del 18): PABU 1.9925 > φ → "Desviación por déficit" (antes graduado "Desviación leve")
+    expect(r.clases.PABU.l).toBe("Desviación por déficit");
     expect(r.clases.FMI.l).toBe("Alto SS");
     expect(r.clases.FFMI.l).toBe("Normal");
   });

@@ -10,7 +10,7 @@ export function calcPABU(Re: number, Ri: number, Rinf: number, C: number, sexo: 
 
 export function cIFC(v: number, sexo: Sexo): Clase & { k: number };
 export function cIRC(v: number, sexo: Sexo): Clase & { k: number };
-export function cPABU(v: number, ifc: number): Clase;
+export function cPABU(v: number): Clase; // direccional (swap del 18): ya no recibe ifc (Q27)
 export function cFMI(v: number, s: Sexo): Clase & { k: number };
 export function cFFMI(v: number, s: Sexo): Clase & { k: number };
 export function cISCM(v: number): Clase;

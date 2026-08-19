@@ -166,8 +166,9 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
     b1(cIAE, -5);
     b1(cIAE, 5);
   });
-  it("PABU: el punto φ = 1.618 cae en la zona de homeostasis óptima del clasificador", () => {
-    expect(cPABU(1.618, 5).l).toContain("Homeostasis");
+  it("PABU: el punto φ = 1.618 cae en la zona de homeostasis del clasificador direccional", () => {
+    // cPABU direccional (swap del 18): un solo argumento; |1.618-φ|=0 ≤ 0.15 → zona φ
+    expect(cPABU(1.618).l).toContain("Homeostasis");
   });
 });
 

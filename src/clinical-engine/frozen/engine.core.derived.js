@@ -13,23 +13,25 @@
  * si engine.core.js cambia (swap de Gildardo), el candado truena y hay que regenerar.
  */
 /* ═══════════════════════════════════════════════════════════════════════════
-   ATLAS · MOTOR CLÍNICO ANI-BIS-E — NÚCLEO CONGELADO (FROZEN CORE)
-   Extraído VERBATIM de ATLAS_v7.html (prototipo final de Gildardo), líneas 3210–4137.
-   NO EDITAR A MANO. Toda la ciencia (fórmulas, cortes, fenotipos) vive aquí.
+   ATLAS · MOTOR CLINICO ANI-BIS-E · NUCLEO CONGELADO (FROZEN CORE)
+   Extraido VERBATIM de docs/entregas/Gildardo responses/ATLAS_v8.html (el "del 18",
+   2026-08-18), region calcIFC..getDX. SWAP de Gildardo del 2026-08-19 (re-port del
+   motor). NO EDITAR A MANO. Toda la ciencia (formulas, cortes, fenotipos) vive aqui.
    Cualquier cambio debe venir de Gildardo y romper el golden test si desalinea.
 
-   ⚠️ DESACTUALIZADO A PROPÓSITO respecto de la entrega VIGENTE (gildardo-2026-07-30).
-   Dos clasificadores difieren y están RETENIDOS esperando decisión de la dirección
-   científica:
-     · cPABU: el vigente distingue 3 situaciones donde este distingue 8, y pierde el
-       color ROJO de severidad. Retenido para no quitarle al profesional una señal de
-       alarma sin autorización (GILDARDO_QUERIES.md Q27).
-     · cMMEM: corte masculino 5.7 aquí, 7.0 en el vigente. Dormido (sin cablear),
-       retenido junto con cPABU para hacer el swap ENTERO de este archivo de una vez y
-       no dejarlo híbrido.
-   Por eso este archivo NO tiene DIFF contra el vigente (sería rojo). Cuando se
-   resuelva Q27, se hace el swap entero y entra su DIFF. (engine.dfi.js SÍ está
-   sincronizado, ver su encabezado.)
+   Sincronizado con la entrega del 18. Cuatro cambios respecto de la base v7 anterior
+   (todos con procedencia; ver PLAN_REPORT_MOTOR_2026-08-18 y DECISIONES_ANIBISE):
+     · cPABU: de 8 situaciones (con ROJO) a 3 direccional (sin rojo). Q27 RESUELTO:
+       "portenlo tal cual, y no lo graduen" (Gildardo 2026-08-17). Marcador DIRECCIONAL
+       (hacia donde se desvia de phi=1,618), no de magnitud; el "cuanto" lo da el ICA-BIS.
+     · cMMEM: unificado en EWGSOP2 (H<7,0 · M<5,5; antes M<5,7 y las ramas
+       intercambiadas). DORMANT: nada lo consume; el clasificador de sarcopenia vivo es
+       cASMI. NO cablear (duplicaria la señal de sarcopenia con otro corte).
+     · cFMI: banda "Alto SS" femenina (9-12) del 2026-07-28. Porte FUERA de los diez
+       puntos (anterior a la base del 05-ago); solo rotulo, k=3 sin cambio.
+     · cISCM/cIEHH/cIAE: comentarios "sin distincion por sexo" (2026-07-28), sin cambio
+       de codigo.
+   (engine.dfi.js y los demas chunks tienen su propio encabezado y estado de sync.)
    ═══════════════════════════════════════════════════════════════════════════ */
 const calcIFC = (C, Rinf) => Rinf === 0 ? 0 : C / Rinf * 1000;
 const calcIRC = (Re, Ri, C) => Ri * C === 0 ? 0 : (Re / (Ri * C)) * 10;
@@ -61,20 +63,23 @@ const cIRC = (v, sexo) => {
     : v <= hi    ? { l: 'Riesgo moderado',     c: '#e6a817', risk: 'moderado', k: 2 }
     : { l: 'Alto riesgo celular', c: '#c0392b', risk: 'alto',     k: 3 };
 };
-const cPABU = (v, ifc) => {
+// PABU · marcador DIRECCIONAL de desviación de φ=1,618 (cohorte 6.063).
+// La PABU dice HACIA DÓNDE se desvía la célula, no cuánto:
+//   · Por ENCIMA de φ → déficit estructural.
+//   · Por DEBAJO de φ → exceso de adiposidad.
+//   · Dentro de la zona φ → homeostasis (la mediana de quien no tiene deterioro es 1,61).
+// La MAGNITUD del deterioro no se gradúa aquí: la establecen los indicadores
+// estructurales (FMI, FFMI, ASMI, MCA), que es donde está definida. Duplicar esa
+// graduación en la PABU añadiría bandas sin aportar información nueva.
+const cPABU = (v) => {
   if (!v) return { l: 'Sin dato', c: '#94a3b8' };
   const raw = v - 1.618;
-  if (raw < 0) {
-    if (ifc > 6)   return { l: 'Reserva bioeléctrica superior', c: '#0d5c36' };
-    if (ifc >= 3.5) return { l: 'Zona ambigua — evaluar EFRC',  c: '#e6a817' };
-    return                 { l: 'Colapso por defecto',           c: '#c0392b' };
-  }
-  const d = Math.abs(raw);
-  if (d <= 0.15) return { l: 'Zona φ — Homeostasis óptima', c: '#1a7a4a' };
-  if (d <= 0.50) return { l: 'Desviación leve',              c: '#4caf50' };
-  if (d <= 1.50) return { l: 'Desviación moderada',          c: '#e6a817' };
-  if (d <= 3.00) return { l: 'Desviación severa',            c: '#e74c3c' };
-  return                { l: 'Zona crítica',                  c: '#7b0000' };
+  // La zona φ se evalúa primero y sin mirar el signo: la persona sana está en 1,61,
+  // milésimas por DEBAJO de φ, y ramificar antes por el signo la sacaría de la zona.
+  if (Math.abs(raw) <= 0.15) return { l: 'Zona φ — Homeostasis', c: '#1a7a4a' };
+  return raw > 0
+    ? { l: 'Desviación por déficit', c: '#e6a817' }
+    : { l: 'Desviación por exceso',  c: '#e6a817' };
 };
 const cAF = (v, sexo) => {
   const m = sexo === 'M' || sexo === 'Masculino';
@@ -97,6 +102,9 @@ const cIR = (v, sexo) => {
     ? { l: 'Óptimo',                c: '#16a34a' }
     : { l: 'Inflamación bajo grado', c: '#dc2626' };
 };
+// SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
+// el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
+// FFMI: este indicador usa el mismo rango en hombres y mujeres.
 const cISCM = v => v <= -1 ? {
   l: "ISCM-1 Bajo riesgo",
   c: "#10b981"
@@ -110,6 +118,9 @@ const cISCM = v => v <= -1 ? {
   l: "ISCM-4 Alta susceptibilidad",
   c: "#ef4444"
 };
+// SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
+// el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
+// FFMI: este indicador usa el mismo rango en hombres y mujeres.
 const cIEHH = v => v <= 0 ? {
   l: "Óptimo",
   c: "#10b981"
@@ -125,6 +136,9 @@ const cIEHH = v => v <= 0 ? {
 };
 // IAE crudo (EB-BIS − edad cronológica), en años. Cortes ±5 años, coherentes con la referencia
 // "−5 a +5 años" usada en los informes. <−5 desacelerado · −5..+5 concordante · >+5 acelerado.
+// SIN DISTINCION POR SEXO — DELIBERADO. Confirmado por la direccion cientifica
+// el 2026-07-28. No anadir umbrales por sexo por analogia con IFC, IRC, FMI o
+// FFMI: este indicador usa el mismo rango en hombres y mujeres.
 const cIAE = v => v < -5 ? {
   l: "Desacelerado",
   c: "#10b981"
@@ -162,6 +176,14 @@ const cFMI = (v, s) => s === "M" ? v < 3 ? {
   l: "Normal",
   c: "#10b981",
   k: 2
+} : v <= 12 ? {
+  // Banda «Alto SS» añadida el 2026-07-28 por indicación de la dirección
+  // científica: faltaba en mujeres, que pasaban de Normal directo a Alto CS.
+  // Fronteras 9–12, espejo de la masculina (6–9) desplazada por sexo, y
+  // coherentes con _fmiElev, que marca elevado a partir de 9 en mujeres.
+  l: "Alto SS",
+  c: "#f59e0b",
+  k: 3
 } : {
   l: "Alto CS",
   c: "#ef4444",
@@ -194,14 +216,23 @@ const cSMM = (v, s) => s === "M" ? v < 27 ? {
   l: "Óptimo",
   c: "#3b82f6"
 };
-// MMEM/Peso — índice apendicularesco (AWGS2019: H<7.0, M<5.7 kg/m²) aquí como ratio
-const cMMEM = (v, s) => s === "M" ? v < 5.7 ? {
+// MMEM/Peso — índice apendicular. Umbrales: masculino < 7,0 · femenino < 5,5 kg/m².
+// UNIFICADO EN EWGSOP2 el 2026-08-18 por la dirección científica. Antes el
+// umbral femenino era 5,7 (AWGS2019) mientras `cASMI`, la fila ASMI de la
+// tabla, `REF_POB.asmi` y el diagnóstico de sarcopenia por fuerza prensil
+// (27/16 Kgf) usaban EWGSOP2. Es el MISMO índice: una misma mujer con ASMI
+// 5,6 quedaba «Normal» en una fila y «Bajo» en la otra.
+// OJO con la notación: aquí `s === "M"` significa MASCULINO, no mujer. El comentario
+// anterior usaba "H/M" para hombre/mujer y las dos ramas quedaron intercambiadas: el
+// hombre se evaluaba contra 5,7 y la mujer contra 7,0, de modo que ambos sexos se
+// clasificaban mal. Corregido el 2026-07-28 por indicación de la dirección científica.
+const cMMEM = (v, s) => s === "M" ? v < 7.0 ? {
   l: "Bajo",
   c: "#ef4444"
 } : {
   l: "Normal",
   c: "#10b981"
-} : v < 7.0 ? {
+} : v < 5.5 ? {
   l: "Bajo",
   c: "#ef4444"
 } : {
