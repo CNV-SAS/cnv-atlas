@@ -8,11 +8,15 @@
      · helpers _dfi*, computeDFI, computeDFIFromData (árbol de 5 dominios + rutas).
    NO EDITAR A MANO. Depende del núcleo congelado (engine.core.js).
 
-   ESTADO DE SINCRONÍA (2026-08-05): al día con el vigente (v8) en sus dos piezas divergentes:
-   calcLE8 (2026-08-01) y _ffmiLow (2026-08-05, re-sync: ahora delega en cFFMI como el vigente, ver
-   abajo). ANTES la sincronía era PARCIAL: el swap de calcLE8 no había tocado _ffmiLow, que seguía con
-   el literal viejo 17.92/15.64 (desfase que movía la ruta R4/Dominio 2). Contrasta con engine.core.js,
-   que está DESACTUALIZADO a propósito (cPABU/cMMEM retenidos, ver su encabezado y Q27).
+   ESTADO DE SINCRONÍA: calcLE8 (2026-08-01) y _ffmiLow (2026-08-05) al día con el vigente. Re-port
+   2026-08-19: PABU al DOMINIO 1 (punto 1 del delta del 18) portado QUIRURGICAMENTE contra el archivo
+   del 18 (Santiago, opcion B): computeDFI gana la línea de PABU en los items del Dominio 1 y las
+   anotaciones de "corte" por sexo (sexoRef) en IFC/IRC; computeDFIFromData provee pabu/pabuCl/sexoRef
+   (deps ya en scope: pabu, esMasc; cPABU importado del core). El resto de computeDFI en el 18 (parrafo
+   redactado + metas por profesion, spec ATLAS_DFI_y_Metas v1.0) NO se porto: es feature de Tratamiento,
+   se trae cuando se construya esa etapa (ver INVENTARIO_TRATAMIENTO). calcLE8 diffeado contra el 18:
+   IDENTICO (ICEC apagado y habitos moderados ya alineados, dos de los diez puntos verificados).
+   engine.core.js quedo re-sincronizado con el 18 el 2026-08-19 (cPABU direccional, Q27 resuelto).
 
    ⚠️ EL INTERRUPTOR LE8_MAPEO_CORREGIDO NO SE TOCA A MANO. Parece un flag de config
    (por el nombre), pero es ciencia: activarlo (false→true) es C1, va por el MECANISMO
@@ -28,7 +32,7 @@
    No truena mientras 'bis' traiga PABU precalculado (flujo normal). Se preserva
    verbatim; corregir en el fuente si se desea.
    ═══════════════════════════════════════════════════════════════════════════ */
-const { calcIFC, calcIRC, calcPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
+const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
 
 // ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
 // Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
@@ -134,7 +138,14 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   const dom1 = { id:"d1", nombre:"Celular-Eléctrico", icon:"🔬", sev:s1,
     clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,
     lectura: s1>=3?"Función celular comprometida con microambiente hostil.":s1===2?"Estado celular en presión: vigilar función y riesgo.":s1===1?"Función conservada con señal de riesgo a observar.":"Homeostasis celular: membranas íntegras y microambiente equilibrado.",
-    items:[`IFC ${_dfiFmt(idx.ifc)} (${ifcL})`,`IRC ${_dfiFmt(idx.irc)} (${ircL})`,`IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`] };
+    items:[
+      `IFC ${_dfiFmt(idx.ifc)} (${ifcL}${idx.sexoRef?.ifc ? " — corte " + idx.sexoRef.ifc : ""})`,
+      `IRC ${_dfiFmt(idx.irc)} (${ircL}${idx.sexoRef?.irc ? " — corte " + idx.sexoRef.irc : ""})`,
+      // La PABU faltaba en el dominio pese a estar declarada en la estructura del
+      // diagnóstico. Se cita con su dirección respecto de φ y la k del sexo.
+      `PABU ${_dfiFmt(idx.pabu)} ${idx.sexoRef?.pabu ? idx.sexoRef.pabu + " " : ""}→ ${idx.pabuCl?.l || "-"}${idx.icaBis != null ? " · desviación de φ " + (idx.icaBis >= 0 ? "+" : "") + _dfiFmt(idx.icaBis) : ""}`,
+      `IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`
+    ] };
   // ---- Dominio 2 · Metabólico-Estructural (ISCM-BIS × fenotipo) ----
   const iscmMap = { Bajo:0, Leve:1, Moderado:2, Alto:3 };
   let s2 = iscmMap[idx.iscmCl?.l] ?? 1;
@@ -231,7 +242,15 @@ const computeDFIFromData = (enc, bis) => {
   const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 24);
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
   const _idx = {
-    ifc, irc, iehh, iscm, iae, ebBis, icaBis,
+    ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,
+    // Referencias del sexo del paciente, para que el DFI las pueda citar en vez de
+    // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
+    sexoRef: {
+      ifc:  esMasc ? "H: <4,12 bajo · 4,12–6,68 normal · >6,68 alto" : "M: <2,08 bajo · 2,08–3,28 normal · >3,28 alto",
+      irc:  esMasc ? "H: <1,68 bajo · 1,68–2,11 normal · >2,11 alto" : "M: <2,27 bajo · 2,27–2,85 normal · >2,85 alto",
+      pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
+    },
+    pabuCl: { l: cPABU(pabu).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
     iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },

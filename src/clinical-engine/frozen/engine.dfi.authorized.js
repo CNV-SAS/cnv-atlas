@@ -4,7 +4,7 @@
  * authorized-modifications.js. Para cambiarlo se edita el MANIFIESTO, no este archivo.
  * El original (atlas-protocolo.js) queda intacto como referencia byte-identica a Gildardo.
  */
-const { calcIFC, calcIRC, calcPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
+const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
 
 // ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
 // Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
@@ -118,7 +118,14 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   const dom1 = { id:"d1", nombre:"Celular-Eléctrico", icon:"🔬", sev:s1,
     clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,
     lectura: s1>=3?"Función celular comprometida con microambiente hostil.":s1===2?"Estado celular en presión: vigilar función y riesgo.":s1===1?"Función conservada con señal de riesgo a observar.":"Homeostasis celular: membranas íntegras y microambiente equilibrado.",
-    items:[`IFC ${_dfiFmt(idx.ifc)} (${ifcL})`,`IRC ${_dfiFmt(idx.irc)} (${ircL})`,`IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`] };
+    items:[
+      `IFC ${_dfiFmt(idx.ifc)} (${ifcL}${idx.sexoRef?.ifc ? " — corte " + idx.sexoRef.ifc : ""})`,
+      `IRC ${_dfiFmt(idx.irc)} (${ircL}${idx.sexoRef?.irc ? " — corte " + idx.sexoRef.irc : ""})`,
+      // La PABU faltaba en el dominio pese a estar declarada en la estructura del
+      // diagnóstico. Se cita con su dirección respecto de φ y la k del sexo.
+      `PABU ${_dfiFmt(idx.pabu)} ${idx.sexoRef?.pabu ? idx.sexoRef.pabu + " " : ""}→ ${idx.pabuCl?.l || "-"}${idx.icaBis != null ? " · desviación de φ " + (idx.icaBis >= 0 ? "+" : "") + _dfiFmt(idx.icaBis) : ""}`,
+      `IEHH ${_dfiFmt(idx.iehh)} (${idx.iehhCl?.l||"-"})`
+    ] };
   // ---- Dominio 2 · Metabólico-Estructural (ISCM-BIS × fenotipo) ----
   const iscmMap = { Bajo:0, Leve:1, Moderado:2, Alto:3 };
   let s2 = iscmMap[idx.iscmCl?.l] ?? 1;
@@ -215,7 +222,15 @@ const computeDFIFromData = (enc, bis) => {
   const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 24);
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
   const _idx = {
-    ifc, irc, iehh, iscm, iae, ebBis, icaBis,
+    ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,
+    // Referencias del sexo del paciente, para que el DFI las pueda citar en vez de
+    // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
+    sexoRef: {
+      ifc:  esMasc ? "H: <4,12 bajo · 4,12–6,68 normal · >6,68 alto" : "M: <2,08 bajo · 2,08–3,28 normal · >3,28 alto",
+      irc:  esMasc ? "H: <1,68 bajo · 1,68–2,11 normal · >2,11 alto" : "M: <2,27 bajo · 2,27–2,85 normal · >2,85 alto",
+      pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
+    },
+    pabuCl: { l: cPABU(pabu).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
     iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
