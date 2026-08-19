@@ -279,7 +279,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       await db.select().from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, EVAL_ID))
     )[0];
     expect(diag).toBeTruthy();
-    expect(diag.engineVersion).toBe("anibise-1.0.0");
+    expect(diag.engineVersion).toBe("anibise-1.1.0");
 
     const report = (
       await db.select().from(schema.reports).where(eq(schema.reports.evaluationId, EVAL_ID))
@@ -293,7 +293,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     };
     // Snapshot GENUINO del motor real (no fabricado a mano): forma actual + version real.
     expect(snap.efrPhenotype).toBeTruthy();
-    expect(snap.versions?.engine).toBe("anibise-1.0.0");
+    expect(snap.versions?.engine).toBe("anibise-1.1.0");
     // AUTOSUFICIENTE (ii): el contenido clinico del estado EFR quedo congelado en el snapshot,
     // asi la vista de resultados no re-deriva evidencia del registry vivo.
     expect(snap.efrContent?.mechanism).toBeTruthy();

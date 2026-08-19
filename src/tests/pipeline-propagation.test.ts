@@ -206,7 +206,7 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // este fixture male 89/180): F5, Cunningham gebAuto 2004, pesoCalculo 76.625.
     const proto = treatment.protocolSuggested;
     expect(proto).not.toBeNull();
-    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-2026-08-03");
+    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-2026-08-19");
     expect(proto.fenotipo.id).toBe("F5");
     expect(proto.calorico.formula).toBe("Cunningham");
     expect(proto.calorico.gebAuto).toBe(2004);
@@ -242,11 +242,11 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     expect(typeof snapshot.asmi).toBe("number");
 
     // constelacion del motor real sellada en cada indicador.
-    expect(snapshot.versions.engine).toBe("anibise-1.0.0");
+    expect(snapshot.versions.engine).toBe("anibise-1.1.0");
     expect(
       indicators.every(
         (r: { engineVersion: string; surveyVersionId: string; modelVersionId: string; rulesVersion: string }) =>
-          r.engineVersion === "anibise-1.0.0" && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
+          r.engineVersion === "anibise-1.1.0" && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
       ),
     ).toBe(true);
   });

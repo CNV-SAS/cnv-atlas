@@ -2,7 +2,14 @@
 // congelada verbatim + adaptador), reemplazando el stub, con golden tests que prueban
 // paridad con ATLAS_v7.html (regla 6). Ya no lleva el prefijo "stub-": las salidas son
 // clinicas. Todo registro clinico persiste este valor en engine_version (regla 7).
-export const ENGINE_VERSION = "anibise-1.0.0";
+//
+// HISTORIA DE VERSION (el numero es un contador; su significado vive aqui, asociado al codigo):
+//  · 1.0.0: port inicial del motor real (B11), paridad con ATLAS_v7.html.
+//  · 1.1.0 (2026-08-19): RE-PORT contra ATLAS_v8.html del 18 (swap de Gildardo). Cambia salidas del
+//    motor: cPABU direccional (Q27, era 8 situaciones con rojo), cMMEM unificado EWGSOP2 (dormant),
+//    banda cFMI "Alto SS" femenina, y PABU al Dominio 1 del DFI. Los diagnosticos sellados con 1.0.0
+//    quedan con esa version (inmutabilidad, regla 7); un seguimiento que cruza 1.0.0 -> 1.1.0 lo avisa.
+export const ENGINE_VERSION = "anibise-1.1.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
@@ -15,7 +22,10 @@ export const ENGINE_VERSION = "anibise-1.0.0";
 // retirar el examen de telomeros del listado sugerido). El listado de examenes se sella en
 // protocol_suggested, asi que el contenido sellado cambia para los protocolos con IAE>5; por eso sube
 // la version. El que corre pasa a ser atlas-protocolo.authorized.js (generado = original + manifiesto).
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-03";
+// Bump 2026-08-19 (2026-08-03 -> 2026-08-19): RE-PORT contra el archivo del 18, punto 6 (objetivo
+// calorico a 0). motorProtocolo retira los cinco deficits por fenotipo (deficit 0 + orientacion en
+// texto); el contenido sellado en protocol_suggested cambia (deficit/label/perfil), por eso sube.
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-19";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -35,7 +45,8 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   // CODIGO que corre (la prosa del manifiesto puede cambiar sin afectar la ciencia; el generado no).
   // El original (atlas-protocolo.js) queda como referencia byte-identica a Gildardo, guardada por su
   // DIFF-vs-fuente (frozen-protocolo-diff), no por este candado.
-  "frozen/atlas-protocolo.authorized.js": "6bfdaa2957676f04dc2c31e09b9b68f32b57f72a235bf6a8689ee64e14e4e4f4",
+  // SHA actualizado (2026-08-19) CON subida de version: re-port del punto 6 (objetivo calorico a 0).
+  "frozen/atlas-protocolo.authorized.js": "670d58f864cd27a9a3481e7473ad0988681ca4a0d20efbe5152c8bf9389e0dde",
   // SHA de la primera modificacion autorizada (CA-1/D-012, retirar telomeros). Antes se hasheaba el
   // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
   "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
