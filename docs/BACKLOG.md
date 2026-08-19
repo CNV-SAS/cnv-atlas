@@ -77,7 +77,7 @@ El primitivo `ComparisonLayout` (`src/components/ui/comparison-layout.tsx`), cre
 ## Cotejo de Diagnostico/Evaluacion: tres hallazgos de Santiago al preparar la comparacion (registrado 2026-08-13)
 
 - **(a) Talla: divergencia A FAVOR nuestro (conservar).** El HTML la pide a mano; Atlas la LEE del export (`biody-columns.talla`, required) y el intake no la pide. Conservar lo nuestro (no pedir lo que el archivo trae). Registrar en el cotejo como "conservar".
-- **(b) Cadera: la tenemos y no la mostramos (hallazgo de cotejo, etapa Evaluacion).** El export trae cadera (`Hips Size cm`, `header-map.MEASURED_HIPS_HEADER`) y la USAMOS (icc = cintura/cadera), pero la tabla de composicion muestra solo cintura, no cadera. El HTML si la muestra. Mostrar cadera en la composicion. Va con el cotejo de la etapa EVALUACION (la composicion es de esa etapa).
+- **(b) Cadera: HECHO (verificado 2026-08-19).** Ya se muestra en la tabla de composicion (`composition-map.ts:101`, fila "Cadera" cm, valor MEDIDO de `Hips Size cm`). El pendiente estaba stale: se agrego en la reorg de la tabla de Wang. Santiago la ve ("Cadera (cm) 106 - -"). Cerrado.
 - **(c) "Otro" en las 9 preguntas aprobadas (§3): PENDIENTE DE CONSTRUIR, no es defecto de porte.** Verificado: NINGUNA de las 9 (d2_21, d3_25, d4_34, d4_35, d5_38, d5_42, d6_43, d6_44, d8_59) tiene "Otra" en el seed. La aprobacion es del 13-ago (§3); no se ha implementado. Agregar "Otra" (texto libre de REGISTRO, no alimenta el motor salvo d5_39) es cambio de contenido -> BUMP de version de encuesta + seed. Va con el bloque de cambios de encuesta de Gildardo.
 
 ## Depuracion de archivos del repo: que sigue haciendo falta y que es historico que pesa (registrado 2026-08-12)
