@@ -9,6 +9,10 @@
 //    motor: cPABU direccional (Q27, era 8 situaciones con rojo), cMMEM unificado EWGSOP2 (dormant),
 //    banda cFMI "Alto SS" femenina, y PABU al Dominio 1 del DFI. Los diagnosticos sellados con 1.0.0
 //    quedan con esa version (inmutabilidad, regla 7); un seguimiento que cruza 1.0.0 -> 1.1.0 lo avisa.
+//    INCLUYE (mismo dia, aprobado por Gildardo el 19, RESPUESTA §1) el residuo del gate de sarcopenia:
+//    el _smmwLow del DFI (engine.dfi, alimenta obSarc -> Dominio 2) baja mujer 24 -> 22, junto con el
+//    gate del fenotipo (protocolo-fenotipo, que sube PROTOCOL a 2026-08-19b). Se folda en 1.1.0 porque
+//    aun no hay despliegue: 1.1.0 = el re-port completo a la ciencia del 19 (18 + los tres residuos).
 export const ENGINE_VERSION = "anibise-1.1.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
@@ -25,7 +29,10 @@ export const ENGINE_VERSION = "anibise-1.1.0";
 // Bump 2026-08-19 (2026-08-03 -> 2026-08-19): RE-PORT contra el archivo del 18, punto 6 (objetivo
 // calorico a 0). motorProtocolo retira los cinco deficits por fenotipo (deficit 0 + orientacion en
 // texto); el contenido sellado en protocol_suggested cambia (deficit/label/perfil), por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-19";
+// Bump 2026-08-19b (mismo dia, 2a): residuo del 19 (RESPUESTA_GILDARDO §1). El gate de sarcopenia del
+// fenotipo (protocolo-fenotipo.ts) baja mujer 24 -> 22 (barrido del umbral); el contenido sellado en
+// protocol_suggested puede moverse para mujeres con SMM/W 22-24, por eso sube.
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-19b";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -51,6 +58,7 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
   "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
-  "protocolo-fenotipo.ts": "3df943df89e2edc22a4a6b1d644c07b7461264765a326d99dd0feb59fd7488ad",
+  // SHA actualizado (2026-08-19b): gate de sarcopenia del fenotipo, mujer 24 -> 22 (Gildardo §1 del 19).
+  "protocolo-fenotipo.ts": "17423e036600acf9154421d12109663acc04c11c60eaf4fb4d2b37ebe606069e",
   "fenotipos-mccb.ts": "78b30afed8b0554c611b5e329ca0a46b3bb8fb300b860c49eaf0c812944f217a",
 };

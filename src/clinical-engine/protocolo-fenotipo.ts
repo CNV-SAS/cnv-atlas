@@ -120,7 +120,10 @@ export function classifyFenotipo(i: FenotipoInput): FenotipoResult {
   const smmW = i.smmW; // :10908
   const _fzP = i.fuerzaPrensil ?? 0; // :10910 (brecha: siempre 0 en Atlas)
   const sarcoDx = dxSarcopenia(_fzP, i.ASMI, i.AF, i.sexoM); // :10911-10913
-  const sarcopenia = (i.sexoM ? smmW < 27 : smmW < 24) || sarcoDx.k >= 2; // :10914
+  // Gate SMM/W: mujer 24 -> 22 (RESPUESTA_GILDARDO 2026-08-19 §1). El 24 era un resto: el umbral masculino
+  // del mismo gate es 27 = cSMM clavado; un criterio externo diferiria en ambos sexos, no solo en mujeres.
+  // Una mujer con SMM/W 23 salia "Normal" por cSMM y "sarcopenica" por este gate. Ahora coinciden.
+  const sarcopenia = (i.sexoM ? smmW < 27 : smmW < 22) || sarcoDx.k >= 2; // :10914
   const asmiLow = i.ASMI > 0 && i.ASMI < (i.sexoM ? 7.0 : 5.5); // :10915
   const obesidadSarcopenica =
     fenotipo.id === "F1" || fenotipo.id === "F4" ||

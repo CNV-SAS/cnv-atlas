@@ -219,7 +219,7 @@ const computeDFIFromData = (enc, bis) => {
   // MCCB ni R4, que ya usan el corte correcto). Anclado por DIFF contra el v8 (frozen-dfi-ffmilow-diff).
   const _ffmiLow = FFMI > 0 && cFFMI(FFMI, esMasc ? 'M' : 'F').k === 1;
   const _asmiLow = _asmi > 0 && _asmi < (esMasc ? 7.0 : 5.5);
-  const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 24);
+  const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 22); // mujer 24 -> 22 (Gildardo §1 2026-08-19: barrido del umbral; 2o sitio, ver DECISIONES P-24)
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
   const _idx = {
     ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,

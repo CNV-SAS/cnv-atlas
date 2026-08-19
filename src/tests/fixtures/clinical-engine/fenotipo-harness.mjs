@@ -80,7 +80,7 @@ const dxSarcopenia = (fuerza, asmi, af, sexoM) => {
   const sarcoDx = (typeof dxSarcopenia !== 'undefined')
     ? dxSarcopenia(_fzP, Number(bis?.ASMI)||0, Number(bis?.AF || enc?.AF)||0, sexoM)
     : { l:'—', c:'#94a3b8', k:0, detalle:'' };
-  const sarcopenia = (sexoM ? smmW < 27 : smmW < 24) || sarcoDx.k >= 2;
+  const sarcopenia = (sexoM ? smmW < 27 : smmW < 22) || sarcoDx.k >= 2; // mujer 24 -> 22 (Gildardo §1 2026-08-19)
   const asmiLow = Number(bis?.ASMI||0) > 0 && Number(bis?.ASMI||0) < (sexoM ? 7.0 : 5.5);
   const obesidadSarcopenica = (fenotipo.id==='F1'||fenotipo.id==='F4') || ((sarcopenia||asmiLow) && (nivelFMI==='alto_clinico'||nivelFMI==='alto_preclinico'));
   // <<< FIN SLICE <<<
