@@ -41,7 +41,8 @@ export type ProtocoloSnapshot = {
   pesoCalculo: number;
   pesoCalculoLabel: string;
   PI: number;
-  estrategia: { tipo: string; deficit: number; label: string; color: string; ref: string };
+  // `perfil`: orientacion del fenotipo en texto sin cifra (punto 6, 18 2026-08-19); deficit queda en 0.
+  estrategia: { tipo: string; deficit: number; label: string; color: string; ref: string; perfil: string };
   protMin: number;
   protMax: number;
   protRef: string;

@@ -37,9 +37,11 @@ function proto(o: {
 const N = (arr: { nombre: string }[]) => arr.map((x) => x.nombre);
 
 describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
-  it("1 F1 obesidad+obSarco: +500, protMin 1.2/1.5, peso ajustado, AGS+Ultra, VitD3+Leucina, Prealbumina", () => {
+  it("1 F1 obesidad+obSarco: deficit 0 + perfil sarcopénica (punto 6), protMin 1.2/1.5, peso ajustado, AGS+Ultra, VitD3+Leucina, Prealbumina", () => {
     const o = proto({ fenotipo: "F1", obSarco: true, peso: 82, talla: 160, imc: 32.03 });
-    expect(o.estrategia.deficit).toBe(500);
+    // Punto 6 (archivo del 18, 2026-08-19): el objetivo calorico ya no lo deriva el sistema; deficit 0, orientacion en perfil.
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("sarcopénica");
     expect([o.protMin, o.protMax]).toEqual([1.2, 1.5]);
     expect(o.pesoCalculoLabel).toContain("obesidad");
     expect(o.pesoCalculo).toBeCloseTo(62.5, 5);
@@ -48,9 +50,10 @@ describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
     expect(N(o.examenes)).toContain("Prealbúmina");
   });
 
-  it("2 F2 obesidad: +600, protMin 0.8/1.2, peso ajustado, AGS+Ultra, VitD3", () => {
+  it("2 F2 obesidad: deficit 0 + perfil obesidad clínica (punto 6), protMin 0.8/1.2, peso ajustado, AGS+Ultra, VitD3", () => {
     const o = proto({ fenotipo: "F2", peso: 79, talla: 160, imc: 30.86 });
-    expect(o.estrategia.deficit).toBe(600);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("obesidad clínica");
     expect([o.protMin, o.protMax]).toEqual([0.8, 1.2]);
     expect(o.pesoCalculoLabel).toContain("obesidad");
     expect(N(o.restricciones)).toEqual(expect.arrayContaining(["AGS", "Ultraprocesados"]));
@@ -59,7 +62,8 @@ describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
 
   it("3 F5 (F4/F5 -> 300; F4 real es inalcanzable, ver caveat): +300, protMin 0.8", () => {
     const o = proto({ fenotipo: "F5", obSarco: false, peso: 69, talla: 160, imc: 27 });
-    expect(o.estrategia.deficit).toBe(300);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("preclínica");
     expect(o.protMin).toBe(0.8);
     expect(o.pesoCalculoLabel).toContain("obesidad");
     expect(N(o.restricciones)).toEqual(expect.arrayContaining(["AGS", "Ultraprocesados"]));
@@ -67,7 +71,8 @@ describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
 
   it("4 F7 consistente (imc 22): -300, protMin 1.5/2.0, peso actual, examen de realimentacion", () => {
     const o = proto({ fenotipo: "F7", peso: 57, talla: 160, imc: 22 });
-    expect(o.estrategia.deficit).toBe(-300);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("cáncer o desnutrición");
     expect([o.protMin, o.protMax]).toEqual([1.5, 2.0]);
     expect(o.pesoCalculoLabel).toContain("IMC normal");
     expect(N(o.examenes)).toContain("Fósforo, potasio, magnesio, tiamina");
@@ -90,14 +95,16 @@ describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
   it("7 cancer (override): -300, protMin 1.5, pesoCalculo = peso (rama cancer)", () => {
     const o = proto({ fenotipo: "F8", dx: ["Cáncer de mama"], peso: 72, talla: 160, imc: 28 });
     expect(o.tieneCancer).toBe(true);
-    expect(o.estrategia.deficit).toBe(-300);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("cáncer o desnutrición");
     expect(o.protMin).toBe(1.5);
     expect(o.pesoCalculoLabel).toContain("IRC/Cáncer");
   });
 
   it("8 obSarco (F6): +500, protMin 1.2, Prealbumina + Leucina", () => {
     const o = proto({ fenotipo: "F6", obSarco: true, peso: 84, talla: 160, imc: 33 });
-    expect(o.estrategia.deficit).toBe(500);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("sarcopénica");
     expect(o.protMin).toBe(1.2);
     expect(N(o.examenes)).toContain("Prealbúmina");
     expect(N(o.suplementacion)).toContain("Leucina/BCAA");

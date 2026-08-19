@@ -75,25 +75,29 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(o.obesidadSarcopenica).toBe(false);
   });
 
-  it("motorProtocolo: +300 (F5), protMin 0.8, pesoCalculo ajustado (obesidad) = 76.625", () => {
-    expect(o.estrategia.deficit).toBe(300);
+  it("motorProtocolo: deficit 0 + perfil preclínica (punto 6), protMin 0.8, pesoCalculo ajustado (obesidad) = 76.625", () => {
+    // Punto 6 (archivo del 18, 2026-08-19): el sistema ya no deriva el objetivo; deficit 0, orientacion en perfil.
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("preclínica");
     expect([o.protMin, o.protMax]).toEqual([0.8, 1.2]);
     // PI(M,180)=180-100-(30/4)=72.5; pesoCalculo=72.5+0.25*(89-72.5)=76.625 (imc 27.469>25).
     expect(o.pesoCalculo).toBeCloseTo(76.625, 3);
     expect(o.pesoCalculoLabel).toContain("obesidad");
   });
 
-  it("cadena calorica Cunningham (FFM 68.365>0): gebAuto 2004 -> GET 2756 -> kcalObj 2456", () => {
+  it("cadena calorica Cunningham (FFM 68.365>0): gebAuto 2004 -> GET 2756 -> kcalObj 2756 (deficit 0, punto 6)", () => {
+    // Punto 6: con deficit 0, el objetivo SUGERIDO queda en mantenimiento (kcalObj = GET). El profesional
+    // fija el deficit real via computeProtocoloEfectivo (pesoMeta/pal). Los macros recalculan sobre GET.
     expect(o.calorico.formula).toBe("Cunningham");
     expect(o.calorico.gebAuto).toBe(2004); // round(500+22*68.365)=round(2004.03)
     expect(o.calorico.geb).toBe(2004);
     expect(o.calorico.pal).toBe(1.375);
     expect(o.calorico.get).toBe(2756); // round(2004*1.375)=round(2755.5)
-    expect(o.calorico.kcalObj).toBe(2456); // max(1000, round(2756-300))
+    expect(o.calorico.kcalObj).toBe(2756); // max(1000, round(2756-0))
     expect(o.calorico.protG).toBe(61); // round(0.8*76.625)=round(61.3)
-    expect(o.calorico.fatG).toBe(82); // round(round(2456*0.3)/9)=round(737/9)
-    expect(o.calorico.choG).toBe(369); // round((2456-244-737)/4)=round(1475/4)
-    expect(o.calorico.choPct).toBe(60); // round(1475/2456*100)
+    expect(o.calorico.fatG).toBe(92); // round(round(2756*0.3)/9)=round(827/9)
+    expect(o.calorico.choG).toBe(421); // round((2756-244-828)/4)=round(1684/4)
+    expect(o.calorico.choPct).toBe(61); // round(1684/2756*100)
   });
 
   it("sella la version del protocolo y marca los defaults con la afirmacion de propagacion", () => {
@@ -126,16 +130,18 @@ describe("GOLDEN orquestador: flags clinicos desde el TEXTO exacto de encuesta (
     expect(o.protMin).toBe(0.8);
   });
 
-  it("cancer ON con 'Cáncer (activo)': tieneCancer, estrategia -300, protMin 1.5", () => {
+  it("cancer ON con 'Cáncer (activo)': tieneCancer, deficit 0 + perfil cáncer/desnutrición (punto 6), protMin 1.5", () => {
     const o = run(d5_39([TXT_CANCER]));
     expect(o.flags.tieneCancer).toBe(true);
-    expect(o.estrategia.deficit).toBe(-300);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("cáncer o desnutrición");
     expect(o.protMin).toBe(1.5);
   });
-  it("cancer EN REMISION dispara el MISMO +300 que activo (consecuencia del substring, a consulta)", () => {
+  it("cancer EN REMISION dispara el MISMO perfil que activo (consecuencia del substring, a consulta)", () => {
     const o = run(d5_39([TXT_CANCER_REM]));
     expect(o.flags.tieneCancer).toBe(true);
-    expect(o.estrategia.deficit).toBe(-300);
+    expect(o.estrategia.deficit).toBe(0);
+    expect(o.estrategia.perfil).toContain("cáncer o desnutrición");
   });
   it("cancer OFF con 'Insuficiencia renal': tieneCancer=false", () => {
     expect(run(d5_39([TXT_IRC])).flags.tieneCancer).toBe(false);
@@ -171,7 +177,7 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
     expect(ef.pesoEfectivo).toBeCloseTo(76.625, 3);
     expect(ef.calorico.gebAuto).toBe(2004);
     expect(ef.calorico.get).toBe(2756);
-    expect(ef.calorico.kcalObj).toBe(2456);
+    expect(ef.calorico.kcalObj).toBe(2756); // deficit 0 (punto 6): el sugerido = mantenimiento (GET)
     expect(ef.calorico.protG).toBe(61);
   });
 
@@ -180,7 +186,7 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
     expect(ef.pesoEfectivo).toBe(80);
     expect(ef.calorico.gebAuto).toBe(2004); // Cunningham no usa peso
     expect(ef.calorico.get).toBe(3106); // round(2004*1.55)=round(3106.2)
-    expect(ef.calorico.kcalObj).toBe(2806); // round(3106-300)
+    expect(ef.calorico.kcalObj).toBe(3106); // deficit 0 (punto 6): kcalObj = GET (round(3106-0))
     expect(ef.calorico.protG).toBe(64); // round(0.8*80), protMin sin cambiar
   });
 });

@@ -27,13 +27,19 @@ const motorProtocolo = (bis, enc, motor) => {
   const PI = sexoM ? talla-100-((talla-150)/4) : talla-100-((talla-150)/2.5);
   const pesoCalculo = tieneIRC||tieneCancer ? peso : imc<25 ? peso : PI+0.25*(peso-PI);
   const pesoCalculoLabel = tieneIRC||tieneCancer ? 'Peso actual (IRC/Cáncer — sin restricción)' : imc<25 ? 'Peso actual (IMC normal)' : 'Peso ajustado (obesidad)';
+  // El objetivo calórico NO lo deriva el sistema: lo decide el nutricionista
+  // (Dirección Científica, 13-ago-2026). Antes cada fenotipo imponía un déficit
+  // sugerido -300, 500, 600, 300 o mantenimiento, y con él una etiqueta con
+  // cifra. Se retiran los cinco: el déficit queda en 0 y la orientación del
+  // fenotipo se conserva como texto, sin número, en el campo perfil.
   const estrategia = (() => {
-    if (tieneCancer || ['F7','F10'].includes(fenotipo)) return { tipo:'Hipercalórico', deficit:-300, label:'Hipercalórico +300 kcal/día', color:'#16a34a', ref:'ESPEN 2023 — cáncer/desnutrición' };
-    if (fenotipo==='F1'||tieneObesidadSarcopenica) return { tipo:'Hipocalórico moderado', deficit:500, label:'Hipocalórico moderado −500 kcal/día', color:'#f59e0b', ref:'ESPEN 2023 — obesidad sarcopénica: no restricción agresiva' };
-    if (['F2','F3'].includes(fenotipo)) return { tipo:'Hipocalórico', deficit:600, label:'Hipocalórico −600 kcal/día', color:'#ea580c', ref:'ESPEN 2023 — obesidad clínica' };
-    if (['F4','F5'].includes(fenotipo)) return { tipo:'Hipocalórico leve', deficit:300, label:'Hipocalórico leve −300 kcal/día', color:'#f59e0b', ref:'ESPEN 2023 — obesidad preclínica' };
-    if (fenotipo==='F11') return { tipo:'Mantenimiento', deficit:0, label:'Mantenimiento calórico', color:'#16a34a', ref:'Sin restricción — composición adecuada' };
-    return { tipo:'Mantenimiento', deficit:0, label:'Mantenimiento calórico', color:'#16a34a', ref:'Sin restricción' };
+    const _base = { tipo:'Mantenimiento', deficit:0, label:'Mantenimiento · el objetivo calórico lo define el profesional', color:'#0f766e' };
+    if (tieneCancer || ['F7','F10'].includes(fenotipo)) return { ..._base, perfil:'Perfil de cáncer o desnutrición: priorizar densidad energética y proteica', ref:'ESPEN 2023 — cáncer/desnutrición' };
+    if (fenotipo==='F1'||tieneObesidadSarcopenica) return { ..._base, perfil:'Perfil de obesidad sarcopénica: preservar masa magra, evitar restricción agresiva', ref:'ESPEN 2023 — obesidad sarcopénica: no restricción agresiva' };
+    if (['F2','F3'].includes(fenotipo)) return { ..._base, perfil:'Perfil de obesidad clínica', ref:'ESPEN 2023 — obesidad clínica' };
+    if (['F4','F5'].includes(fenotipo)) return { ..._base, perfil:'Perfil de obesidad preclínica', ref:'ESPEN 2023 — obesidad preclínica' };
+    if (fenotipo==='F11') return { ..._base, perfil:'Composición corporal adecuada', ref:'Sin restricción — composición adecuada' };
+    return { ..._base, perfil:'', ref:'Sin restricción' };
   })();
   const protMin = (() => { if (tieneIRC) return 0.6; if (tieneCancer) return 1.5; if (fenotipo==='F1'||tieneObesidadSarcopenica) return 1.2; if (['F7','F10'].includes(fenotipo)) return 1.5; return 0.8; })();
   const protMax = (() => { if (tieneIRC) return 0.8; if (tieneCancer) return 2.0; if (fenotipo==='F1'||tieneObesidadSarcopenica) return 1.5; if (['F7','F10'].includes(fenotipo)) return 2.0; return 1.2; })();
