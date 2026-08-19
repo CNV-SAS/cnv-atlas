@@ -100,3 +100,48 @@ type EngineOutput = {
 - Confirmar que los cortes y mapas del v7 son idénticos a los de los Excel finales.
 - ¿Diferencias del núcleo clínico entre v7 y el HTML final corregido? (esperamos mínimas; el inventario asume estructura estable).
 - Firmar una muestra de valores oro como clínicamente correctos (los golden tests prueban paridad con el HTML, no corrección clínica).
+
+## Limitaciones conocidas
+
+**LC-01: el reparto AEC/ACT lo decide la edad, no la impedancia (Gildardo §0, 2026-08-18).**
+
+Origen: ronda 2026-08-18 §0. Gildardo corrio el calculo sobre la BD_UNICA de CIENCIA BIS (5.885 registros,
+`cohorte_AEC_ACT_2026-08-18.csv`) y RETIRO su peticion del 17 de calibrar la constante del agua extracelular
+(42%). Los volumenes AEC y ACT en litros estan bien medidos (derivados de la impedancia; R2 de reconstruccion
+0,97-0,997). El problema esta en el REPARTO: el cociente AEC/ACT, el numero que fijaria la constante, lo decide
+un termino de EDAD, no la impedancia, y corre AL REVES de la fisiologia (el compartimento extracelular deberia
+expandirse al envejecer, y el modelo lo baja).
+
+Reproduccion independiente nuestra (Node, sin dependencias, sobre las 8 columnas del export). CONFIRMA sus tres
+pruebas:
+- (a) Distribucion IDENTICA: mediana AEC/ACT mujeres 42,10% (IQR 41,37-42,76), hombres 38,88% (IQR 38,37-39,33),
+  total 41,00%.
+- (b) El cociente casi no tiene contenido bioelectrico: R2 de Re/Rinf 0,032 (M) / 0,006 (H); de (Rinf/Re)^2/3
+  0,028 / 0,005 (identicos a los suyos). La edad univariada explica R2 0,33 (M) / 0,32 (H), ~10x mas que toda la
+  impedancia, con pendiente NEGATIVA -0,049 (M) / -0,032 (H) pts/año.
+- (c) La decisiva: mujeres con la misma Re/Rinf (±0,005), <35 años mediana 42,65% vs >55 años 40,55%, diferencia
+  2,10 puntos (Gildardo 2,1, con los 97 casos <35 exactos). Robustez: en 9 de 9 bandas centrales las jovenes dan
+  mas que las mayores (diferencias 1,4-2,2). La direccion no depende del centro exacto.
+
+Lo que NO se pudo reproducir, y por que no invalida el hallazgo: la escalera de R2 multivariable de Gildardo
+(+peso+talla, +angulo de fase+Xc, +edad, hasta 0,96/0,77) necesita columnas que el export de 8 NO trae (peso,
+talla, angulo de fase, Xc). Su R2 incremental de edad (+0,44/+0,46) sale de ese modelo, no reproducible aqui.
+Pero el titular SI se sostiene: la edad univariada ya domina a la impedancia por ~10x y corre negativa; y la
+prueba (c), sin modelos de por medio, reproduce exacta. La pendiente univariada (-0,049) es menor que su
+multivariable (-0,065) porque controlar por tamaño corporal la refuerza, tal como el describio ("la relacion
+estaba, enmascarada").
+
+Consecuencias registradas:
+- a) La constante del agua EC (42%) en REF_POB SIGUE marcada "en validacion". No se calibra: las medianas son la
+  distribucion de edades de la cohorte pasada por el modelo de edad del equipo Biody, no una referencia
+  poblacional limpia.
+- b) El umbral AEC/ACT > 44% (marcador de hidratacion alterada; `_aecPct > 44` en el HTML) LEE AL REVES en el
+  eje de la edad: con un reparto que baja con la edad, el paciente mayor, justo al que deberia señalar, es el que
+  menos lo cruza. NO se toca; comentario junto al codigo del umbral en el re-port.
+- c) E/I, AEC%, AEC sin grasa y AEC/MCA HEREDAN el sesgo (todos salen del reparto). Los volumenes en litros y lo
+  que dependa de la ACT total estan bien.
+- d) Si algun dia se usa el cociente como marcador de envejecimiento o sarcopenia, se movera en direccion
+  equivocada. Queda escrito.
+
+Camino correcto (trabajo de modelo, NO ahora): rehacer el reparto desde Re y Rinf con Cole-Hanai, sin termino de
+edad. Los volumenes ya vienen de ahi; es la particion la que hay que reconstruir.
