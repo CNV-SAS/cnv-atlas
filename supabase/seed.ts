@@ -97,11 +97,11 @@ const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 // v3 (2026-08-12): pase de instrumento (porte de contenido de Gildardo, ATLAS_v8.html). Bump de UUID a
 // proposito (no in-place): las evaluaciones existentes quedan en la v2 (55...552), completas y no
 // corregibles (gate de version, CP3). Ver el changelog en la creacion de la survey_version abajo.
-const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555554";
+const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555555";
 // Numero de version legible. Fuente unica: lo usa el upsert de survey_versions Y el resumen final del seed,
 // para que el log NUNCA mienta sobre lo que se sembro (antes decia "v3" hardcodeado; el bump a v4 no se
 // notaba en la salida). Al hacer un bump, cambiar SURVEY_VERSION_ID arriba y este numero juntos.
-const SURVEY_VERSION_NUMBER = 4;
+const SURVEY_VERSION_NUMBER = 5;
 // La v2 (55...552) se preserva intacta (los ids llevan la version): no se toca al sembrar la v3.
 // UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
 // asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
@@ -223,12 +223,12 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // D2 · Percepcion corporal
   { key: "d2_19", type: "opcion", text: "¿Cómo percibe su cuerpo actualmente?", options: ["Muy delgado/a", "Delgado/a", "Normal", "Sobrepeso", "Obesidad"], engine: true },
   { key: "d2_20", type: "opcion", text: "¿Qué tan satisfecho/a está con su peso?", options: ["Muy insatisfecho/a", "Insatisfecho/a", "Neutral", "Satisfecho/a"], engine: true },
-  { key: "d2_21", type: "opcion_multiple", text: "¿Qué métodos ha usado para cambiar su peso?", options: ["Dieta propia", "Profesional de salud", "Ayunos", "Saltar comidas", "Laxantes", "Vómito", "Ejercicio excesivo", "Ninguno"], engine: true },
+  { key: "d2_21", type: "opcion_multiple", text: "¿Qué métodos ha usado para cambiar su peso?", options: ["Dieta propia", "Profesional de salud", "Ayunos", "Saltar comidas", "Laxantes", "Vómito", "Ejercicio excesivo", "Ninguno", "Otra"], engine: true },
   { key: "d2_22", type: "opcion", text: "¿Con qué frecuencia pierde el control al comer?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], engine: true },
   // D3 · Habitos
   { key: "d3_23", type: "opcion", text: "¿Cuántos días/semana hace actividad física (≥30 min)?", options: ["0", "1", "2", "3", "4", "5", "6", "7"], engine: true },
   { key: "d3_24", type: "opcion", text: "¿Cuánto dura cada sesión?", options: ["Menos de 15", "15–30 min", "30–45 min", "45–60 min", "Más de 60 min"], engine: true },
-  { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna"] },
+  { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna", "Otra"] },
   { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
   { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"] },
   { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
@@ -241,19 +241,19 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // D4 · Conductas alimentarias
   { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"] },
   { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"] },
-  { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal"] },
-  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos", "Otros"] },
+  { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal", "Otra"] },
+  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos", "Otra"] },
   // D5 · Epigenetico / LE8
   { key: "d5_36", type: "opcion", text: "¿Le han diagnosticado hipertensión arterial?", options: ["Sí", "No", "No sé"], engine: true },
   { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
-  { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", sub: "Padres, hermanos, abuelos", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna"], engine: true },
+  { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", sub: "Padres, hermanos, abuelos", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna", "Otra"], engine: true },
   { key: "d5_39", type: "opcion_multiple", text: "¿Tiene alguno de estos diagnósticos personales?", options: ["Diabetes tipo 1", "Diabetes tipo 2", "Prediabetes", "HTA", "Dislipidemia (colesterol alto)", "Hipertrigliceridemia", "Hipotiroidismo", "Hipertiroidismo", "Obesidad", "Síndrome Metabólico", "Cáncer (activo)", "Cáncer (en remisión)", "Enfermedad cardiovascular", "Insuficiencia renal", "Enfermedad hepática", "Artritis/Artrosis", "Osteoporosis", "Depresión", "Ansiedad", "Trastornos de la conducta alimentaria", "Ninguna", "Otra"], engine: true },
   { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"], treatmentEngine: true },
   { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
-  { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna"] },
+  { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna", "Otra"] },
   // D6 · Alergias y salud digestiva
-  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otras"] },
-  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa"] },
+  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otra"] },
+  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa", "Otra"] },
   // d6_qx (cirugias) va AQUI, tras Intolerancias (orden del v8 al dia); antes quedaba tras los sintomas
   // digestivos (Nauseas), donde no tenia sentido (Santiago, cotejo punto l).
   { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"] },
@@ -274,7 +274,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], treatmentEngine: true },
   { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
   // D8 · Contexto social
-  { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor"] },
+  { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor", "Otra"] },
   { key: "d8_60", type: "opcion", text: "¿Con qué frecuencia come fuera de casa?", options: ["Nunca", "1–2 veces/semana", "3–4 veces/semana", "Todos los días"] },
   { key: "d8_61", type: "opcion", text: "¿Tiene acceso fácil a alimentos frescos y saludables?", options: ["Sí, siempre", "A veces es difícil", "Generalmente es difícil"], engine: true },
   { key: "d8_62", type: "opcion", text: "¿Hay momentos en que no tiene suficiente comida en el hogar?", options: ["No, nunca", "A veces", "Frecuentemente"], engine: true },
@@ -497,6 +497,16 @@ async function main() {
   );
   check(
     "survey_versions",
+    // version_number 5 (2026-08-19): las NUEVE "Otra" aprobadas. RESPUESTA_GILDARDO 2026-08-15 §4 confirmo
+    // que "la aprobacion del 13 cubria las nueve" (d2_21, d3_25, d4_34, d4_35, d5_38, d5_42, d6_43, d6_44,
+    // d8_59); d4_35 y d6_43 ya estaban (las unicas que Gildardo alcanzo a poner), NO un subconjunto
+    // deliberado, y el comentario v4 de abajo ("las otras 7 sin aprobar") quedo STALE (es anterior al 15).
+    // Aqui: se agrega "Otra" (texto libre) a las 7 que faltaban, y se UNIFICA el token a "Otra" en las nueve.
+    // d4_35 tenia "Otros" (la UI SI lo reconoce) y d6_43 "Otras" (la UI NO lo reconoce: `isOtherOption` =
+    // /^otr(a|os)$/i, un no-match LATENTE del port verbatim de su token). Ahora las nueve disparan el texto
+    // libre. En d5_38 y d6_44 ese texto ALIMENTA el motor (§4: mismo criterio que d5_39), ya cableado y con
+    // candado (build-engine-input.test). En las otras 7 es solo REGISTRO. La v4 (id ...554) se PRESERVA intacta.
+    // ---- historico ----
     // version_number 4 (2026-08-14): bump PARCIAL, solo lo que Gildardo YA implemento en su archivo al dia
     // (gildardo-2026-08-13/ATLAS_v8.html), NO propuesta nuestra:
     //   a) d4_35 (suplementos) gana la opcion "Otros" y d6_43 (alergias) "Otras" (texto libre), VERBATIM de
