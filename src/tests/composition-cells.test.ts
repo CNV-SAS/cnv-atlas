@@ -87,6 +87,14 @@ describe("A. cada clasificador de la tabla de Wang expone Referencia + Diagnosti
       expect(deltaDerivable(w), `${c.key} sin Δ derivable`).toBe(true);
     });
   }
+
+  it("FM_pct: el cut es el BORDE superior H22/M32 (Gildardo §1 2026-08-18), NO el punto medio 16/25", () => {
+    // Regresion: la respuesta de Gildardo (borde H22/M32) tardo en llegar al codigo (seguia en 16/25 hasta
+    // el 2026-08-19, lo cazo el barrido de queries). Este candado fija el borde para que no vuelva a quedar
+    // sin aplicar. El Δ se mide contra el borde que decide el paso a "Sobrepeso adiposo" (el lado del riesgo).
+    expect(wangRowDx("FM_pct", 30, true, ctx, null, fmt)?.cut).toBe(22); // hombre
+    expect(wangRowDx("FM_pct", 30, false, ctx, null, fmt)?.cut).toBe(32); // mujer
+  });
 });
 
 describe("B. pipeline real: ninguna fila con clasificador y datos queda sin las 3 celdas", () => {

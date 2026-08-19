@@ -362,7 +362,8 @@ export type WangRowDx = {
 //  - Umbral de un lado ("<0.45", "≥7.0", "<94 cm", "≥73%"): cut = el umbral. Δ = valor − umbral.
 //  - Fila valor-vs-referencia (MCA, ECW, TBW, FFW...): cut = la referencia efectiva (equipo/REF_POB). Es
 //    la tabla de Antropometria (valor − referencia), que Gildardo mantiene APARTE: no se mezclan criterios.
-//  - EXCEPCION pendiente: FM_pct (grasa %) sigue en punto medio hasta que Gildardo confirme su borde (ronda).
+//  - FM_pct (grasa %): CONFIRMADO borde SUPERIOR H 22 / M 32 (Gildardo §1, 2026-08-18: es el lado del riesgo,
+//    el limite que decide el paso a "Sobrepeso adiposo"). Δ contra ese borde, como el resto de la tabla.
 
 export function wangRowDx(
   rowKey: string,
@@ -410,7 +411,7 @@ export function wangRowDx(
     case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 74 }; // borde superior (Gildardo §2)
     // FM_pct (grasa %): EXCEPCION pendiente (decision Santiago 2026-08-17). Se queda en PUNTO MEDIO hasta que
     // Gildardo confirme cual es el borde que decide la clasificacion de la grasa en %; no lo elegimos nosotros.
-    case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 16 : 25 }; // punto medio (a la ronda)
+    case "FM_pct": return { dx: dFMpct(value, sexoM), referenceLabel: sexoM ? "10–22%" : "18–32%", cut: sexoM ? 22 : 32 }; // borde superior H22/M32 (Gildardo §1, 2026-08-18)
     case "CMO": return refBased(dCMO(dl));
     case "protTotal": case "protActiva": return refBased(dProt(dl));
     default: return null; // filas crudas de masa: sin clasificador (referencia del equipo, sin diagnostico)
