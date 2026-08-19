@@ -29,11 +29,12 @@ const SHORT_FIXTURE = join(
 );
 
 // PRUEBA DE ACEPTACION DE EA1 (Santiago): importar el export CORTO del Biody BIS de punta a punta y
-// confirmar los cuatro: (1) la tabla de Wang se llena, (2) el IEHH se emite, (3) el ISCM queda en null
-// (por MCA_ref, pendiente de Gildardo), (4) las badges celulares: MCA e hidratacion NO evaluables
-// (esperan las referencias), ECM/BCM SI se evalua. Corre sin BD: el writer se mockea para reconstruir
-// lo que se habria persistido (medido + derivado), que es lo que leen la composicion, el motor y las badges.
-describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + ISCM null + badges", () => {
+// confirmar los cuatro: (1) la tabla de Wang se llena, (2) el IEHH se emite, (3) el ISCM SE EMITE (antes
+// quedaba null por MCA_ref pendiente; con la referencia poblacional del §9, MCA 52,4% de la MLG, ya computa,
+// confirmado por Gildardo 2026-08-15 §5), (4) las badges celulares MCA/hidratacion/ECM/BCM se evaluan con esa
+// referencia. Corre sin BD: el writer se mockea para reconstruir lo que se habria persistido (medido +
+// derivado), que es lo que leen la composicion, el motor y las badges.
+describe("EA1 aceptacion: import corto -> composicion derivada -> Wang + IEHH + ISCM emitido + badges", () => {
   let persisted: Record<string, number> = {};
 
   it("importa y deriva la composicion faltante (persistiria medidos + derivados)", async () => {
