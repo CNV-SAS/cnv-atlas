@@ -9,10 +9,15 @@ import { Diana } from "./diana";
 import { DfiRadar } from "./dfi-radar";
 import type { EfrStateRef } from "../data/efr-states-types";
 
-// Seccion de mapas (Diana + radar) con la exploracion de estados (V2). El estado del paciente es
-// SIEMPRE el del snapshot inmutable; la exploracion es una capa de solo lectura, rotulada como
-// referencia, que lee el contenido de OTRAS celdas del registry (efr_states). Explorar nunca cambia
-// el diagnostico del paciente. Client por la interactividad (toggle + celda seleccionada).
+// Mapas del estado (radar + Diana) con la exploracion de estados (V2). Reorg 2026-08-19 (Gildardo, replica
+// del HTML): se quito el contenedor unico "Mapas del estado". El RADAR va primero, en su propio contenedor
+// (RadarPanel). La DIANA va junto con el detalle del estado EFR, en otro contenedor debajo (DianaExplorer,
+// que el padre monta encabezando la card de detalle). Razon del orden: en movil, con la Diana ABAJO, ella y
+// sus paneles de exploracion quedan juntos; explorar no obliga a pasar por el radar (que queda arriba).
+//
+// El estado del paciente es SIEMPRE el del snapshot inmutable; la exploracion es una capa de solo lectura,
+// rotulada como referencia, que lee el contenido de OTRAS celdas del registry (efr_states). Explorar nunca
+// cambia el diagnostico del paciente. Client por la interactividad (toggle + celda seleccionada).
 
 type PatientContent = {
   diagnosisName: string | null;
@@ -79,15 +84,42 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
   );
 }
 
-export function MapsSection({
+// RADAR funcional, en su propio contenedor (va PRIMERO, lo monta el padre en su card). Con la encuesta
+// incompleta (Q28) el radar NO se dibuja: tres de sus cinco ejes saldrian sobre defaults y un radar parcial
+// engana (colapsar un eje al centro se lee como "optimo", no como "sin dato"). La Diana si se muestra: se
+// posiciona por bandas IFC/IRC/FFMI/FMI, todas de la MEDICION (BIS), no de la encuesta.
+export function RadarPanel({
+  radarDomains,
+  dfiComplete,
+}: {
+  radarDomains: DfiDomain[];
+  dfiComplete: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      {dfiComplete ? (
+        <DfiRadar domains={radarDomains} />
+      ) : (
+        <p className="max-w-xs rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+          El radar funcional se muestra al completar la encuesta. Tres de sus cinco dominios
+          (envejecimiento, conductual y contextual) dependen de respuestas que faltan.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// DIANA + exploracion de estados. La monta el padre ENCABEZANDO la card de "Detalle del estado EFR", para
+// que la Diana y el detalle queden en un mismo contenedor (replica del HTML). Al explorar otro estado, el
+// estado del paciente queda en el panel PRINCIPAL y el explorado abre AL LADO (debajo en movil), sin
+// reemplazar al del paciente; el primitivo ComparisonLayout se reusa en Seguimiento.
+export function DianaExplorer({
   bands,
   stateNumber,
   frSectorName,
   structuralName,
   patientContent,
   statesContent,
-  radarDomains,
-  dfiComplete,
 }: {
   bands: { ifc: number; irc: number; ffmi: number; fmi: number };
   stateNumber: number;
@@ -95,11 +127,6 @@ export function MapsSection({
   structuralName: string;
   patientContent: PatientContent;
   statesContent: Record<number, EfrStateRef>;
-  radarDomains: DfiDomain[];
-  // Q28: con la encuesta incompleta el radar NO se dibuja (tres de sus cinco ejes salen sobre defaults; un
-  // radar parcial engana: colapsar un eje al centro se lee como "optimo", no como "sin dato"). La Diana si
-  // se muestra: se posiciona por bandas IFC/IRC/FFMI/FMI, todas de la MEDICION (BIS), no de la encuesta.
-  dfiComplete: boolean;
 }) {
   const canExplore = Object.keys(statesContent).length > 0;
   const [exploring, setExploring] = useState(false);
@@ -120,54 +147,35 @@ export function MapsSection({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Grid BALANCEADO (reorg 2026-08-18): dos columnas de igual ancho en desktop, para que el radar
-          reclame su mitad y deje de verse arrinconado. Antes era un flex sin reparto (xl:justify-around)
-          con SVGs de tamaño fijo en px: la Diana, con su leyenda y pie mas anchos, se comia el espacio.
-          `min-w-0` deja que las columnas encojan bien; los SVG escalan a su columna (viewBox). Debajo de
-          xl se apilan (grid-cols-1), la Diana arriba. */}
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:items-start">
-        <div className="flex min-w-0 flex-col items-center gap-3">
-          <div className="flex w-full items-center justify-between gap-3">
-            {/* Encabezado fiel al HTML ("Diana EFR BIS — 81 Estados"); "·" en vez de em-dash. */}
-            <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
-            {canExplore ? (
-              <button
-                type="button"
-                onClick={toggle}
-                className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
-              >
-                {exploring ? "Volver al estado del paciente" : "Explorar otros estados"}
-              </button>
-            ) : null}
-          </div>
-          <Diana
-            bands={bands}
-            stateNumber={stateNumber}
-            frSectorName={frSectorName}
-            structuralName={structuralName}
-            interactive={exploring}
-            selectedStateNumber={exploring ? selected : null}
-            onSelectCell={setSelected}
-          />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex w-full items-center justify-between gap-3">
+          {/* Encabezado fiel al HTML ("Diana EFR BIS — 81 Estados"); "·" en vez de em-dash. */}
+          <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
+          {canExplore ? (
+            <button
+              type="button"
+              onClick={toggle}
+              className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
+            >
+              {exploring ? "Volver al estado del paciente" : "Explorar otros estados"}
+            </button>
+          ) : null}
         </div>
-        <div className="flex min-w-0 flex-col items-center gap-3">
-          <h3 className="text-sm font-semibold text-foreground">Radar funcional · 5 dominios</h3>
-          {dfiComplete ? (
-            <DfiRadar domains={radarDomains} />
-          ) : (
-            <p className="max-w-xs rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-              El radar funcional se muestra al completar la encuesta. Tres de sus cinco dominios
-              (envejecimiento, conductual y contextual) dependen de respuestas que faltan.
-            </p>
-          )}
-        </div>
+        <Diana
+          bands={bands}
+          stateNumber={stateNumber}
+          frSectorName={frSectorName}
+          structuralName={structuralName}
+          interactive={exploring}
+          selectedStateNumber={exploring ? selected : null}
+          onSelectCell={setSelected}
+        />
       </div>
 
       {/* Exploracion como COMPARACION lado a lado (Santiago 2026-08-18 b): el estado del paciente queda en
-          el panel PRINCIPAL, y el estado explorado abre en un panel AL LADO (debajo en movil), en vez de
-          reemplazar al del paciente. Al cerrar la exploracion, la fila de mapas de arriba (Diana + radar del
-          paciente) queda intacta en su lugar. El primitivo ComparisonLayout se reusa en Seguimiento. */}
+          el panel PRINCIPAL y el explorado abre AL LADO (debajo en movil), en vez de reemplazarlo. Al
+          cerrar, la Diana de arriba queda intacta en su lugar. */}
       {exploring ? (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
@@ -176,12 +184,8 @@ export function MapsSection({
               : "Haz clic en una celda de la Diana para comparar ese estado de referencia con el del paciente. Explorar no cambia el diagnóstico."}
           </p>
           <ComparisonLayout
-            primary={
-              <StateDetailPanel detail={{ ...patientContent, stateNumber }} kind="paciente" />
-            }
-            secondary={
-              exploredRef ? <StateDetailPanel detail={exploredRef} kind="referencia" /> : null
-            }
+            primary={<StateDetailPanel detail={{ ...patientContent, stateNumber }} kind="paciente" />}
+            secondary={exploredRef ? <StateDetailPanel detail={exploredRef} kind="referencia" /> : null}
           />
         </div>
       ) : null}

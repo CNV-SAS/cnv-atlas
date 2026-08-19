@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
 
 import { DetailsSection } from "./details-section";
-import { MapsSection } from "./maps-section";
+import { RadarPanel, DianaExplorer } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
@@ -530,34 +530,34 @@ export function EvaluationResults({
         </CardContent>
       </Card>
 
-      {/* Mapas del estado: la Diana (posicion entre los 81 estados) y el radar (severidad por
-          dominio), juntos como lectura de un vistazo. */}
+      {/* Reorg 2026-08-19 (Gildardo, replica del HTML): el RADAR primero, en su propio contenedor. Se
+          quito la card unica "Mapas del estado"; la Diana baja y se une al detalle del estado EFR. */}
       <Card>
         <CardHeader>
-          <CardTitle>Mapas del estado</CardTitle>
+          <CardTitle>Radar funcional · 5 dominios</CardTitle>
         </CardHeader>
         <CardContent>
-          <MapsSection
+          <RadarPanel radarDomains={dfi.domains} dfiComplete={dfi.complete} />
+        </CardContent>
+      </Card>
+
+      {/* Diana EFR BIS + detalle del estado, en UN mismo contenedor (replica del HTML): la Diana encabeza,
+          y debajo la identidad del estado + las 6 tarjetas de contenido, ancladas al estado del paciente (5
+          del snapshot inmutable + abordaje pendiente de Q9). En movil, la Diana y sus paneles de exploracion
+          quedan juntos porque el radar ya quedo arriba. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Diana EFR BIS y detalle del estado</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <DianaExplorer
             bands={efrPhenotype.bands}
             stateNumber={efrPhenotype.stateNumber}
             frSectorName={frSector.nombre}
             structuralName={structural.nombre}
             patientContent={patientContent}
             statesContent={efrStates}
-            radarDomains={dfi.domains}
-            dfiComplete={dfi.complete}
           />
-        </CardContent>
-      </Card>
-
-      {/* Detalle del estado EFR: identidad del estado + las 6 tarjetas de contenido, pegadas a la
-          Diana y ancladas al estado del paciente (5 del snapshot inmutable + abordaje pendiente de
-          Q9). Titulo distinto del DFI para no confundir la lectura del profesional. */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalle del estado EFR</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Line
               label="Estado EFR"
