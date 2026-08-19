@@ -108,12 +108,16 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4.10" });
   });
 
-  it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500, IAE -17.6 (punto medio, pendiente)", () => {
+  it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500", () => {
     expect(indicatorRange("IR", ind, true)?.delta).toBe("0.018");
     expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0.3745");
     expect(indicatorRange("PABU", ind, true)?.delta).toBe("0.3745");
     expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0.500");
-    expect(indicatorRange("IAE", ind, true)?.delta).toBe("-17.6");
+  });
+
+  it("IAE (dos colas): Δ en guion (null), referencia conservada (Santiago 2026-08-19)", () => {
+    // Gildardo §2: el IAE ya es una diferencia; su Δ confunde. Se deja en "—" y manda el valor con su signo.
+    expect(indicatorRange("IAE", ind, true)).toEqual({ reference: "−5 a +5 años", delta: null });
   });
 });
 

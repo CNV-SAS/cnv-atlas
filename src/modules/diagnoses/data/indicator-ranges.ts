@@ -144,9 +144,15 @@ export function indicatorRange(
       // CA-2: corte unico 0 (de "≤0"). Δ = valor − 0 = valor (sin cambio).
       return ind.iehh != null ? { reference: "≤0", delta: f(ind.iehh - 0, 3) } : null;
     case "IAE":
-      // IAE: rango −5 a +5. EXCEPCION pendiente (decision Santiago 2026-08-17): se queda en el PUNTO MEDIO
-      // (0) hasta que Gildardo confirme el borde que decide "acelerado" (probablemente +5); no lo asumimos.
-      return ind.iae != null ? { reference: "−5 a +5 años", delta: f(ind.iae - 0, 1) } : null;
+      // IAE: unico clasificador de DOS COLAS del sistema (<−5 desacelerado · −5..+5 concordante · >+5
+      // acelerado; Gildardo §2, 2026-08-18). El Delta se deja en "—" (delta: null) por decision de Santiago
+      // (2026-08-19): Gildardo lo prefiere ("el dato que manda es el valor, no el Δ"). El IAE ya es una
+      // diferencia (EB-BIS − edad), asi que su Δ seria la distancia de una distancia; en esta fila el valor
+      // con su signo ya lo dice todo. Se conserva la referencia "−5 a +5 años".
+      // REGLA GENERAL DE DOS COLAS (registrada aunque el IAE no muestre su Δ): cuando aparezca otro
+      // clasificador de dos colas, el Δ va contra el borde DEL LADO DEL SIGNO (>=0 contra +borde; <0 contra
+      // −borde), asi el numero responde "cuanto falta para cruzar". Sin volver a preguntar (Gildardo §2).
+      return ind.iae != null ? { reference: "−5 a +5 años", delta: null } : null;
     case "EB":
       // La referencia de EB es la edad cronologica, que NO se sella en el EngineOutput (vive en
       // EngineInput). Sin edad sellada la referencia queda "—", y el delta TAMBIEN se oculta: una
