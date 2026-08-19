@@ -1034,6 +1034,7 @@ export type Database = {
           ethnicity: string | null
           id: string
           identity_conflict: boolean
+          longest_residence_city: string | null
           marital_status: string | null
           occupation: string | null
           organization_id: string
@@ -1056,6 +1057,7 @@ export type Database = {
           ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          longest_residence_city?: string | null
           marital_status?: string | null
           occupation?: string | null
           organization_id: string
@@ -1078,6 +1080,7 @@ export type Database = {
           ethnicity?: string | null
           id?: string
           identity_conflict?: boolean
+          longest_residence_city?: string | null
           marital_status?: string | null
           occupation?: string | null
           organization_id?: string
@@ -2045,6 +2048,7 @@ export type Database = {
           ethnicity: string | null
           first_name: string
           last_name: string
+          longest_residence_city: string | null
           marital_status: string | null
           occupation: string | null
           patient_id: string
@@ -2062,6 +2066,7 @@ export type Database = {
           ethnicity?: string | null
           first_name: string
           last_name: string
+          longest_residence_city?: string | null
           marital_status?: string | null
           occupation?: string | null
           patient_id: string
@@ -2079,6 +2084,7 @@ export type Database = {
           ethnicity?: string | null
           first_name?: string
           last_name?: string
+          longest_residence_city?: string | null
           marital_status?: string | null
           occupation?: string | null
           patient_id?: string

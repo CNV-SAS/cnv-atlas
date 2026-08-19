@@ -63,7 +63,7 @@ function ageFromISO(iso: string): number | null {
 
 export type SignPhaseFormProps = {
   token: string;
-  prefill: { city?: string | null; phone?: string | null } | null;
+  prefill: { city?: string | null; longestResidenceCity?: string | null; phone?: string | null } | null;
   consentText: string;
   // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
   professional: { fullName: string; profession: string; license: string | null };
@@ -123,6 +123,12 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
     setCountry(next);
     setCityOtra(next === DEFAULT_COUNTRY && !!city && !cityInCoList(city));
   };
+  // Residencia PROLONGADA (donde vivio la mayor parte de su vida). Independiente del pais actual: siempre la
+  // lista de Colombia + "Otra" -> texto libre (si vivio fuera, cae en "Otra" sin altitud derivada, correcto).
+  const [residence, setResidence] = useState(prefill?.longestResidenceCity ?? "");
+  const [residenceOtra, setResidenceOtra] = useState(
+    () => !!(prefill?.longestResidenceCity ?? "") && !cityInCoList(prefill?.longestResidenceCity ?? ""),
+  );
   const [showFullText, setShowFullText] = useState(false);
 
   const isMinor = ageBranch === "menor";
@@ -650,6 +656,47 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             ) : null}
             {/* El valor final (ciudad de la lista o texto de "Otra") viaja por el input oculto. */}
             <input type="hidden" name="city" value={city} />
+          </Field>
+          {/* Residencia PROLONGADA (Gildardo §1, 2026-08-17). Junto a la ciudad actual porque comparten
+              mecanica y tipo de dato. OPCIONAL, caracterizacion. Mismo selector, SIEMPRE la lista de Colombia
+              + "Otra" (una residencia en el exterior cae en "Otra", sin altitud derivada, que es correcto).
+              De ESTA sale la altitud FISIOLOGICA (adaptacion a la altura = vivir años en altura, no donde vive
+              hoy); hoy no alimenta el motor, va al observatorio. */}
+          <Field label="¿En qué ciudad o municipio vivió la mayor parte de su vida?">
+            <p className="mb-1 text-xs text-muted-foreground">Puede ser la misma que la actual (opcional).</p>
+            <select
+              className={selectClass}
+              value={residenceOtra ? "Otra" : residence}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "Otra") {
+                  setResidenceOtra(true);
+                  setResidence(""); // se llena con el texto libre
+                } else {
+                  setResidenceOtra(false);
+                  setResidence(v);
+                }
+              }}
+            >
+              <option value="">Selecciona la ciudad</option>
+              {COLOMBIA_CITIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              <option value="Otra">Otra (escríbela)</option>
+            </select>
+            {residenceOtra ? (
+              <Input
+                className="mt-2 h-9"
+                placeholder="Escribe la ciudad o municipio"
+                maxLength={80}
+                value={residence}
+                onChange={(e) => setResidence(e.target.value)}
+              />
+            ) : null}
+            {/* El valor final (ciudad de la lista o texto de "Otra") viaja por el input oculto. */}
+            <input type="hidden" name="longestResidenceCity" value={residence} />
           </Field>
           <Field label="Celular">
             <Input name="phone" className="h-9" defaultValue={prefill?.phone ?? ""} />

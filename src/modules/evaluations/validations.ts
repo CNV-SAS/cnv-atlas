@@ -33,6 +33,9 @@ export const intakeIdentitySchema = z.object({
   sex: z.enum(["F", "M"]),
   country: z.string().trim().max(80).nullish().transform((v) => v ?? null),
   city: z.string().trim().max(80).nullish().transform((v) => v ?? null),
+  // Residencia prolongada (Gildardo §1). Opcional (nullish), max 80 como la ciudad. Sin gate: es
+  // caracterizacion, no dato sensible como la etnia.
+  longestResidenceCity: z.string().trim().max(80).nullish().transform((v) => v ?? null),
   email: z.email().max(160).nullish().transform((v) => v ?? null),
   phone: z.string().trim().max(40).nullish().transform((v) => v ?? null),
 });

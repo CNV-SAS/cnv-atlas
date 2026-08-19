@@ -14,6 +14,7 @@ export type DocumentType = Enums["document_type"];
 // editables (ciudad, celular). Nunca identificadores directos del paciente.
 export type SurveyLinkPrefill = {
   city?: string | null;
+  longestResidenceCity?: string | null; // residencia prolongada (ultimo valor conocido, para prefill)
   phone?: string | null;
 };
 
@@ -37,6 +38,7 @@ export type IntakeIdentity = {
   sex: string | null;
   country: string | null;
   city: string | null;
+  longestResidenceCity: string | null; // residencia prolongada (Gildardo §1); opcional, caracterizacion
   email: string | null;
   phone: string | null;
 };
