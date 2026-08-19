@@ -45,6 +45,10 @@ export type FollowupComparison = {
   currentRisk: { nivel: string; score: number };
   previousRisk: { nivel: string; score: number };
   indicators: IndicatorDelta[];
+  // Cruce de version del MOTOR entre las dos evaluaciones. null cuando coinciden (no se avisa). Cuando
+  // difieren, parte de las diferencias mostradas puede venir de una actualizacion del modelo, no del
+  // paciente; el aviso lo dice sin alarmar (la mayoria de los seguimientos actuales cruzan 1.0.0 -> 1.1.0).
+  engineVersionCross: { previous: string; current: string } | null;
 };
 
 // La fecha de medicion de una evaluacion = la mas reciente de sus mediciones (normalmente una).
@@ -135,6 +139,10 @@ export async function getFollowupComparison(
     currentRisk: { nivel: cur.dfi.riesgo.nivel, score: cur.dfi.riesgo.score },
     previousRisk: { nivel: pre.dfi.riesgo.nivel, score: pre.dfi.riesgo.score },
     indicators,
+    engineVersionCross:
+      cur.versions.engine !== pre.versions.engine
+        ? { previous: pre.versions.engine, current: cur.versions.engine }
+        : null,
   };
 }
 

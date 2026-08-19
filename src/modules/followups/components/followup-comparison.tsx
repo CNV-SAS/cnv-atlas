@@ -39,6 +39,18 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
           Evaluacion previa del {fecha(c.previousDate)}, evaluacion actual del {fecha(c.currentDate)}.
         </p>
 
+        {/* Aviso de cruce de version del motor (BACKLOG L69). Calmado a proposito: la mayoria de los
+            seguimientos que se hagan ahora cruzan versiones (la previa quedo sellada con la anterior), asi
+            que un aviso estridente seria ruido. Dice lo justo: parte del cambio puede venir del modelo. */}
+        {c.engineVersionCross ? (
+          <p className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            Estas dos evaluaciones se calcularon con versiones distintas del motor (
+            {c.engineVersionCross.previous} y {c.engineVersionCross.current}). Parte de las diferencias
+            que ves puede venir de una actualización del modelo, no de un cambio en el paciente. El estado
+            EFR y los indicadores siguen siendo comparables; toma el detalle fino con esa salvedad.
+          </p>
+        ) : null}
+
         {/* Cambios de estado y riesgo */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
