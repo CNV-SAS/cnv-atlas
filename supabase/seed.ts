@@ -1,5 +1,13 @@
 // Seed deterministico de Atlas. DATABASE.md, seccion "Seed deterministico".
 //
+// ⚠️ DESTRUCTIVO PARA LA VERSION DE ENCUESTA ACTUAL. Este seed BORRA y re-inserta las preguntas,
+//    opciones, respuestas y responses del SURVEY_VERSION_ID vigente (ver bloque "6. survey_template").
+//    Es SEGURO para DESARROLLO (idempotente) y para un BUMP (un SURVEY_VERSION_ID nuevo borra solo la
+//    version nueva, vacia; la vieja y sus evaluaciones quedan intactas, ids llevan la version). PERO
+//    correrlo contra STAGING/PRODUCCION SIN cambiar SURVEY_VERSION_ID BORRA las respuestas reales de la
+//    version vigente. Para un cambio de encuesta en la nube: MIGRACION ADITIVA forward-only (nueva fila de
+//    version + preguntas nuevas), NO este seed. No correr `pnpm db:seed` contra la nube salvo primer arranque.
+//
 // Como se corre:  pnpm db:seed   (node --env-file=.env.local supabase/seed.ts)
 // Node 24 ejecuta TypeScript de forma nativa; --env-file carga .env.local.
 //
