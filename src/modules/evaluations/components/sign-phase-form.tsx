@@ -11,7 +11,7 @@ import {
   type ConsentInstanceData,
 } from "@/modules/consent/consent-instance";
 
-import { COLOMBIA_CITIES, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
+import { citiesForCountry, COLOMBIA_CITIES, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
 import { sendConsentOtpAction, signSurveyAction } from "../actions";
 import type { OtpSendState, SignSurveyState } from "../validations";
 import { Field, checkboxClass, selectClass } from "./survey-form-shared";
@@ -67,20 +67,15 @@ export type SignPhaseFormProps = {
   consentText: string;
   // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
   professional: { fullName: string; profession: string; license: string | null };
-  // Se invoca al firmar con exito, con el resume_token y si otorgo investigacion (para el campo de etnia
-   // de la fase 2). El orquestador pasa a la encuesta.
-  onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
+  // Se invoca al firmar con exito, con el resume_token, si otorgo investigacion (para el campo de etnia de
+  // la fase 2) y el PAIS elegido (para condicionar la pertenencia etnica por pais, §4 del 2026-08-20). El
+  // orquestador pasa a la encuesta.
+  onSigned: (resumeToken: string, ethnicityAuthorized: boolean, country: string) => void;
 };
 
 export function SignPhaseForm({ token, prefill, consentText, professional, onSigned }: SignPhaseFormProps) {
   const [state, action, pending] = useActionState(signSurveyAction, initialSign);
   const topRef = useRef<HTMLDivElement>(null);
-
-  // Al firmar con exito el servidor devuelve el resume_token: se lo pasamos al orquestador (que pasa a la
-  // pantalla "firmado"). Este componente se desmonta ahi; el efecto no se dispara dos veces.
-  useEffect(() => {
-    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized);
-  }, [state.resumeToken, state.ethnicityAuthorized, onSigned]);
 
   // Firma electronica (B7). sessionId: nonce opaco de ESTE intento, generado una sola vez; ancla el
   // codigo a este navegador y viaja al enviar y al validar. El envio del codigo se invoca IMPERATIVAMENTE
@@ -113,23 +108,41 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   // derivar altitud/region de una ciudad conocida). El valor final viaja por un input OCULTO (patron de
   // ocupacion), sea de la lista o el texto de "Otra". RESUME-SAFE: una ciudad guardada que NO este en la
   // lista nueva (texto viejo libre, o ciudad de otro pais) cae a "Otra" con su texto, NO se pierde.
-  const cityInCoList = (c: string) => (COLOMBIA_CITIES as readonly string[]).includes(c);
+  // Ciudad ACTUAL: lista curada del pais (CXPAIS) + "Otra" -> texto libre. Si el pais no tiene lista (Brasil,
+  // Guatemala o cualquiera fuera de los trece), es texto libre directo. El valor final viaja por un input
+  // OCULTO (patron de ocupacion), sea de la lista o el texto de "Otra".
+  const cityList = citiesForCountry(country); // null = pais sin lista curada
   const [city, setCity] = useState(prefill?.city ?? "");
-  const [cityOtra, setCityOtra] = useState(
-    () => country === DEFAULT_COUNTRY && !!(prefill?.city ?? "") && !cityInCoList(prefill?.city ?? ""),
-  );
-  // Al cambiar de pais: si vuelve a Colombia, recomputa si la ciudad actual cae en "Otra" (fuera de la lista).
+  // "Otra" inicial: hay ciudad guardada y NO esta en la lista del pais (o el pais no tiene lista). RESUME-SAFE:
+  // una ciudad guardada fuera de la lista nueva cae a texto libre, no se pierde.
+  const [cityOtra, setCityOtra] = useState(() => {
+    const c = prefill?.city ?? "";
+    if (!c) return false;
+    const list = citiesForCountry(country);
+    return list ? !list.includes(c) : true;
+  });
+  // Al cambiar de pais la ciudad se re-elige (una ciudad de otro pais no aplica): se limpia y sale de "Otra".
   const onCountryChange = (next: string) => {
     setCountry(next);
-    setCityOtra(next === DEFAULT_COUNTRY && !!city && !cityInCoList(city));
+    setCity("");
+    setCityOtra(false);
   };
   // Residencia PROLONGADA (donde vivio la mayor parte de su vida). Independiente del pais actual: siempre la
   // lista de Colombia + "Otra" -> texto libre (si vivio fuera, cae en "Otra" sin altitud derivada, correcto).
   const [residence, setResidence] = useState(prefill?.longestResidenceCity ?? "");
   const [residenceOtra, setResidenceOtra] = useState(
-    () => !!(prefill?.longestResidenceCity ?? "") && !cityInCoList(prefill?.longestResidenceCity ?? ""),
+    () =>
+      !!(prefill?.longestResidenceCity ?? "") &&
+      !(COLOMBIA_CITIES as readonly string[]).includes(prefill?.longestResidenceCity ?? ""),
   );
   const [showFullText, setShowFullText] = useState(false);
+
+  // Al firmar con exito el servidor devuelve el resume_token: se lo pasamos al orquestador (que pasa a la
+  // encuesta), con el pais elegido (condiciona la pertenencia etnica). El componente se desmonta ahi; el
+  // efecto no se dispara dos veces. Va DESPUES de declarar `country` (lo lee del cierre en cada render).
+  useEffect(() => {
+    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized, country);
+  }, [state.resumeToken, state.ethnicityAuthorized, country, onSigned]);
 
   const isMinor = ageBranch === "menor";
   const minorAge = isMinor ? ageFromISO(minorBirthDate) : null;
@@ -624,7 +637,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             </select>
           </Field>
           <Field label="Ciudad">
-            {country === DEFAULT_COUNTRY ? (
+            {cityList ? (
               <select
                 className={selectClass}
                 value={cityOtra ? "Otra" : city}
@@ -640,7 +653,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                 }}
               >
                 <option value="">Selecciona tu ciudad</option>
-                {COLOMBIA_CITIES.map((c) => (
+                {cityList.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -648,10 +661,10 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                 <option value="Otra">Otra (escríbela)</option>
               </select>
             ) : null}
-            {/* Texto libre: si eligio "Otra" en Colombia, o si el pais no es Colombia (sin lista). */}
-            {(country === DEFAULT_COUNTRY && cityOtra) || country !== DEFAULT_COUNTRY ? (
+            {/* Texto libre: si eligio "Otra" en un pais con lista, o si el pais no tiene lista curada. */}
+            {(cityList && cityOtra) || !cityList ? (
               <Input
-                className={`h-9 ${country === DEFAULT_COUNTRY ? "mt-2" : ""}`}
+                className={`h-9 ${cityList ? "mt-2" : ""}`}
                 placeholder="Escribe tu ciudad"
                 maxLength={80}
                 value={city}

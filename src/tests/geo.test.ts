@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  citiesForCountry,
   COLOMBIA_CITIES,
   COLOMBIA_CITIES_GEO,
   cityGeo,
+  CXPAIS,
 } from "@/modules/evaluations/data/geo";
+import {
+  ETNIA_OPTIONS,
+  etniaOptionsForCountry,
+} from "@/modules/evaluations/data/sociodemographic-options";
 
 // Candado de la tabla geografica (bump de encuesta 2026-08-15 §3): la altitud alimenta analisis del
 // observatorio, asi que se ancla contra fuente (IGAC/DANE, cabecera municipal) y se prueba la derivacion
@@ -51,5 +57,41 @@ describe("geo: tabla de ciudades con altitud/departamento/region", () => {
     expect(cityGeo("Villa del Rosario")).toBeNull(); // no esta en la lista curada
     expect(cityGeo(null)).toBeNull();
     expect(cityGeo("")).toBeNull();
+  });
+});
+
+// CXPAIS (RESPUESTA_GILDARDO 2026-08-20 §1): mapa pais -> ciudades. Colombia es la unica con altitud hoy.
+describe("geo: mapa CXPAIS pais -> ciudad", () => {
+  it("las 11 ciudades de Colombia en CXPAIS SI resuelven altitud (un typo dejaria altitud null en silencio)", () => {
+    for (const c of CXPAIS.Colombia) {
+      expect(cityGeo(c), `CXPAIS.Colombia: '${c}' no resuelve en la tabla geo (typo?)`).not.toBeNull();
+    }
+  });
+
+  it("citiesForCountry: hay lista para los trece paises; null para Brasil/Guatemala y desconocidos", () => {
+    expect(citiesForCountry("Colombia")).toContain("Bogotá");
+    expect(citiesForCountry("México")).toContain("Guadalajara");
+    expect(citiesForCountry("España")).toContain("Madrid");
+    // Brasil y Guatemala estan en COUNTRIES pero NO en CXPAIS (pendiente de proponer): caen a texto libre.
+    expect(citiesForCountry("Brasil")).toBeNull();
+    expect(citiesForCountry("Guatemala")).toBeNull();
+    expect(citiesForCountry("Narnia")).toBeNull();
+    expect(citiesForCountry(null)).toBeNull();
+  });
+});
+
+// Pertenencia etnica condicionada por pais (RESPUESTA_GILDARDO 2026-08-20 §4): Colombia -> DANE; los demas
+// ocultan (null) hasta portar su clasificacion oficial. Sin pais -> Colombia (el caso comun del lanzamiento).
+describe("etnia: pertenencia condicionable por pais", () => {
+  it("Colombia devuelve la lista DANE; sin pais tambien (default Colombia)", () => {
+    expect(etniaOptionsForCountry("Colombia")).toEqual(ETNIA_OPTIONS);
+    expect(etniaOptionsForCountry(null)).toEqual(ETNIA_OPTIONS);
+    expect(etniaOptionsForCountry(undefined)).toEqual(ETNIA_OPTIONS);
+  });
+
+  it("otros paises devuelven null (la pregunta se oculta hasta tener su clasificacion)", () => {
+    expect(etniaOptionsForCountry("México")).toBeNull();
+    expect(etniaOptionsForCountry("Brasil")).toBeNull();
+    expect(etniaOptionsForCountry("Perú")).toBeNull();
   });
 });

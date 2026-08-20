@@ -132,8 +132,41 @@ export const COLOMBIA_CITIES_GEO: readonly ColombiaCity[] = [
   { ciudad: "Zipaquirá", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2650 },
 ];
 
-// Nombres para el dropdown de ciudad (Colombia). Derivado de la lista geo: una sola fuente.
+// Nombres para el dropdown de ciudad (Colombia). Derivado de la lista geo: una sola fuente. Lo usa el
+// selector de RESIDENCIA prolongada (que es Colombia-hondo a proposito: de ahi sale la altitud fisiologica,
+// y tener las 72 da mejor cobertura de altitud que las 11 de CXPAIS.Colombia).
 export const COLOMBIA_CITIES: readonly string[] = COLOMBIA_CITIES_GEO.map((c) => c.ciudad);
+
+// CXPAIS: mapa PAIS -> ciudades curadas para el selector de ciudad ACTUAL (RESPUESTA_GILDARDO 2026-08-20 §1,
+// restituye el diseño del archivo). Es LATINOAMERICANO por decision de producto: una lista de solo-Colombia
+// estrecha el alcance a un pais; la lista cerrada por pais es la que sostiene la comparabilidad de la cohorte
+// ("Pereira" es siempre el mismo estrato) y la regla de altitud ("Otra"/fuera de lista -> sin altitud, no se
+// inventa) solo tiene sentido con un conjunto cerrado. Cada pais cierra con "Otra" -> texto libre en la UI.
+// ALTITUDES: hoy solo las 11 ciudades de Colombia resuelven altitud (via COLOMBIA_CITIES_GEO/cityGeo); las de
+// los otros doce paises caen sin altitud (= "Otra" para altitud) hasta que se porten sus altitudes. Brasil y
+// Guatemala estan en COUNTRIES pero NO aca (a proposito): sus listas las propone el equipo y Gildardo aprueba.
+export const CXPAIS: Record<string, readonly string[]> = {
+  Colombia: ["Bogotá", "Medellín", "Barranquilla", "Cali", "Pereira", "Bucaramanga", "Manizales", "Cúcuta", "Ibagué", "Riohacha", "Santa Marta"],
+  México: ["Ciudad de México", "Guadalajara", "Monterrey", "Puebla", "Tijuana", "León", "Juárez", "Mérida"],
+  Argentina: ["Buenos Aires", "Córdoba", "Rosario", "Mendoza", "Tucumán", "Mar del Plata"],
+  Chile: ["Santiago", "Valparaíso", "Concepción", "Antofagasta", "Viña del Mar"],
+  Perú: ["Lima", "Arequipa", "Trujillo", "Chiclayo", "Piura"],
+  Ecuador: ["Quito", "Guayaquil", "Cuenca", "Ambato"],
+  Venezuela: ["Caracas", "Maracaibo", "Valencia", "Barquisimeto"],
+  Bolivia: ["La Paz", "Santa Cruz", "Cochabamba"],
+  Paraguay: ["Asunción", "Ciudad del Este"],
+  Uruguay: ["Montevideo", "Salto"],
+  "Costa Rica": ["San José"],
+  Panamá: ["Ciudad de Panamá"],
+  España: ["Madrid", "Barcelona", "Valencia", "Sevilla"],
+};
+
+// Ciudades curadas del pais elegido, o null si el pais no tiene lista (cae a texto libre): Brasil, Guatemala,
+// o cualquier pais fuera de los trece. La UI muestra el desplegable cuando hay lista, texto libre cuando no.
+export function citiesForCountry(country: string | null | undefined): readonly string[] | null {
+  if (!country) return null;
+  return CXPAIS[country] ?? null;
+}
 
 // Indice para la derivacion al leer (normalizado sin acentos ni mayusculas, para tolerar como se guardo).
 const CITY_INDEX: Map<string, ColombiaCity> = new Map(

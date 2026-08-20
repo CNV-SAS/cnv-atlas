@@ -63,6 +63,24 @@ export const ETNIA_OPTIONS = [
 ] as const;
 export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
 
+// PERTENENCIA etnica CONDICIONADA POR PAIS (RESPUESTA_GILDARDO 2026-08-20 §4): la lista DANE es COLOMBIANA
+// (Raizal, Palenquero, Gitano o Rrom son categorias del ordenamiento colombiano; a un paciente en Lima o Sao
+// Paulo no le ofrecen casilla donde reconocerse). En otros paises hay que traer su clasificacion oficial
+// (INEGI en Mexico, IBGE en Brasil con sus cinco categorias, ...) o dejar la pregunta OCULTA ("oculta antes
+// que mal preguntada"). ESTRUCTURA condicionable DESDE YA aunque hoy solo Colombia tenga contenido: agregar
+// un pais = agregar una entrada al mapa, sin rehacer la UI (Gildardo: "si se cablea como lista fija, despues
+// habra que rehacerla"). La ASCENDENCIA NO se condiciona: sus cuatro opciones no dependen de ningun censo, se
+// queda global e igual en los trece paises.
+export const ETNIA_BY_COUNTRY: Record<string, readonly EtniaOption[]> = {
+  Colombia: ETNIA_OPTIONS,
+};
+
+// Lista de pertenencia etnica del pais, o null si no hay (la pregunta se OCULTA). Sin pais conocido -> Colombia
+// (el caso comun en el lanzamiento; hoy es el unico pais con contenido).
+export function etniaOptionsForCountry(country: string | null | undefined): readonly EtniaOption[] | null {
+  return ETNIA_BY_COUNTRY[country ?? "Colombia"] ?? null;
+}
+
 // Ascendencia (RESPUESTA_GILDARDO 2026-08-15 §3): SEGUNDA pregunta de etnia, separada de la pertenencia
 // (DANE) porque una sola casilla respondia dos preguntas distintas (por eso "mestizo" no cabia en el DANE).
 // Va JUNTO a la pertenencia y gateada a la misma autorizacion de investigacion. El texto ANTECEDE la pregunta

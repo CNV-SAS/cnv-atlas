@@ -8,7 +8,7 @@ import {
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
-  ETNIA_OPTIONS,
+  etniaOptionsForCountry,
   ETNIA_DESCRIPTIONS,
   MOTIVO_OPTIONS,
   OCUPACION_OPTIONS,
@@ -64,11 +64,17 @@ export function AboutYouSection({
   // Etnia (dato sensible): el campo solo aparece si el paciente OTORGO la autorizacion de investigacion
   // (consent v1.0). No basta que la version sea la nueva; tiene que haberla marcado. El servidor lo re-gatea.
   ethnicityAuthorized = false,
+  // Pais del paciente: condiciona la lista de PERTENENCIA etnica (§4 del 2026-08-20). Colombia -> DANE; los
+  // demas -> la pregunta se oculta. Sin pais -> Colombia (el helper lo resuelve). La ascendencia NO depende.
+  country = null,
 }: {
   includeProfile: boolean;
   prefill?: AboutYouPrefill | null;
   ethnicityAuthorized?: boolean;
+  country?: string | null;
 }) {
+  // Lista de pertenencia del pais (null = se oculta la pregunta). La ascendencia se muestra igual, es global.
+  const etniaList = etniaOptionsForCountry(country);
   const initialOcc = splitOccupation(prefill?.occupation ?? null);
   const [educationLevel, setEducationLevel] = useState(prefill?.educationLevel ?? "");
   const [maritalStatus, setMaritalStatus] = useState(prefill?.maritalStatus ?? "");
@@ -222,9 +228,11 @@ export function AboutYouSection({
             </select>
           </Field>
 
-          {/* Etnia (dato sensible): SOLO si el paciente otorgo la autorizacion de investigacion. Una linea
-              la conecta con lo que acepto; el select se llama "ethnicity"; el servidor la re-gatea. */}
-          {ethnicityAuthorized ? (
+          {/* Pertenencia etnica (dato sensible): SOLO si el paciente otorgo la autorizacion de investigacion
+              Y su pais tiene lista (§4 del 2026-08-20: Colombia -> DANE; los demas ocultan hasta portar su
+              clasificacion oficial, "oculta antes que mal preguntada"). El select se llama "ethnicity"; el
+              servidor la re-gatea. */}
+          {ethnicityAuthorized && etniaList ? (
             <div className="sm:col-span-2">
               <Field label="Pertenencia étnica">
                 <p className="mb-1 text-xs text-muted-foreground">
@@ -240,7 +248,7 @@ export function AboutYouSection({
                   {/* Prompt neutro, NO una opcion de "no respondio": dejar en blanco ya cubre eso.
                       "Prefiero no responder" (en la lista) es la eleccion EXPLICITA de no informar. */}
                   <option value="">Selecciona una opción</option>
-                  {ETNIA_OPTIONS.map((o) => (
+                  {etniaList.map((o) => (
                     <option key={o} value={o}>
                       {o}
                     </option>
@@ -249,7 +257,7 @@ export function AboutYouSection({
                 {/* Descripciones DANE: precisas y poco conocidas. Sin entenderlas no hay
                     autorreconocimiento (principio del dictamen). Pendiente de confirmacion legal. */}
                 <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  {ETNIA_OPTIONS.map((o) => (
+                  {etniaList.map((o) => (
                     <div key={o}>
                       <dt className="inline font-medium text-foreground">{o}:</dt>{" "}
                       <dd className="inline">{ETNIA_DESCRIPTIONS[o]}</dd>
