@@ -103,7 +103,12 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   const [birthDate, setBirthDate] = useState("");
   // Sexo OBLIGATORIO (el motor lo exige F/M estricto). Pais con default Colombia.
   const [sex, setSex] = useState("");
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  // Pais: desplegable de los 15 principales de Latinoamerica + "Otro" -> texto libre (Santiago 2026-08-20).
+  // El pais EFECTIVO (el texto libre si eligio "Otro", si no la opcion) alimenta CXPAIS, el gate de etnia (§4)
+  // y se envia por el input oculto name="country".
+  const [countryChoice, setCountryChoice] = useState<string>(DEFAULT_COUNTRY);
+  const [countryOther, setCountryOther] = useState("");
+  const country = countryChoice === "Otro" ? countryOther.trim() : countryChoice;
   // Ciudad: selector fijo (Colombia) + "Otra" -> texto libre (estructura del HTML de Gildardo, mejor para
   // derivar altitud/region de una ciudad conocida). El valor final viaja por un input OCULTO (patron de
   // ocupacion), sea de la lista o el texto de "Otra". RESUME-SAFE: una ciudad guardada que NO este en la
@@ -124,7 +129,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
   // Al cambiar de pais, la ciudad Y la residencia se re-eligen (una ciudad de otro pais no aplica a ninguna):
   // se limpian y salen de "Otra". Las dos usan la MISMA lista del pais (CXPAIS).
   const onCountryChange = (next: string) => {
-    setCountry(next);
+    setCountryChoice(next);
     setCity("");
     setCityOtra(false);
     setResidence("");
@@ -634,13 +639,29 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             </select>
           </Field>
           <Field label="País">
-            <select name="country" value={country} onChange={(e) => onCountryChange(e.target.value)} className={selectClass}>
+            <select
+              className={selectClass}
+              value={countryChoice}
+              onChange={(e) => onCountryChange(e.target.value)}
+            >
               {COUNTRIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
+              <option value="Otro">Otro (escríbelo)</option>
             </select>
+            {countryChoice === "Otro" ? (
+              <Input
+                className="mt-2 h-9"
+                placeholder="Escribe tu país"
+                maxLength={60}
+                value={countryOther}
+                onChange={(e) => setCountryOther(e.target.value)}
+              />
+            ) : null}
+            {/* El pais EFECTIVO (opcion o texto libre de "Otro") viaja por el input oculto. */}
+            <input type="hidden" name="country" value={country} />
           </Field>
           <Field label="Ciudad">
             {cityList ? (
