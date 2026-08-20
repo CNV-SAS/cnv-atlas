@@ -35,6 +35,15 @@ describe("survey-completeness", () => {
     expect(isAnswered("Otros")).toBe(false);
     expect(isAnswered("Otra: bypass gástrico")).toBe(true); // opcion unica "Otra" CON texto -> respondida
     expect(isAnswered("Sí")).toBe(true); // una opcion unica normal sigue contando
+    // EL CASO DE SANTIAGO (2026-08-20, 3er intento): "Otra" con el campo vacio o con SOLO UN ESPACIO. El
+    // widget trima y emite el token pelado, pero se blinda tambien el valor con ":" y espacios: es "eligio
+    // otra sin especificar", sigue siendo hueco. En multi y en unica.
+    expect(isAnswered("Otra:")).toBe(false);
+    expect(isAnswered("Otra: ")).toBe(false); // colon + espacio
+    expect(isAnswered("Otra :")).toBe(false);
+    expect(isAnswered('["Otra: "]')).toBe(false); // multi, colon + espacio
+    expect(isAnswered('["Cáncer","Otra: "]')).toBe(false); // valida + "otra" con espacio -> hueco
+    expect(isAnswered("Otra: x")).toBe(true); // con texto real (aunque corto) -> respondida
   });
 
   it("una pregunta NO de diagnostico sin responder bloquea (un contador de D7)", () => {

@@ -16,6 +16,7 @@ import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
+import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import { ConsentStatusCard } from "./consent-status-card";
 import { EvaluationSubtabs } from "./evaluation-subtabs";
@@ -65,11 +66,14 @@ export function EntradaEvaluacion({
   const identityConfirmed = bisImportEval != null;
   const gate = evaluateBisImportGate(bisIntake);
   // Contador respondidas/total con el total REAL de preguntas del instrumento (no hardcodeado): el
-  // reader devuelve todas las preguntas con answerValue null si no se respondio.
+  // reader devuelve todas las preguntas con answerValue null si no se respondio. Usa EL MISMO predicado
+  // (isAnswered) que el gate, el aviso del paciente, el modo edicion y la previsualizacion: era el CUARTO
+  // sitio que contaba distinto (contaba "Otra" pelada como respondida, y el porcentaje subia; Santiago §1
+  // del 2026-08-20). El predicado unico es el unico blindaje contra que recaiga por quinta vez.
   const domains = surveyDomains ?? [];
   const total = domains.reduce((acc, d) => acc + d.questions.length, 0);
   const answered = domains.reduce(
-    (acc, d) => acc + d.questions.filter((q) => q.answerValue != null && q.answerValue !== "").length,
+    (acc, d) => acc + d.questions.filter((q) => isAnswered(q.answerValue)).length,
     0,
   );
   // Porcentaje de completitud de la encuesta (Gildardo 2026-08-17, b): junto al boton de ver/editar, con
