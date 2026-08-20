@@ -56,8 +56,9 @@ function decodeMulti(value: string): string[] {
 //   - Las otras preguntas con "Otra" (§3, las 9 aprobadas): su texto libre es REGISTRO, NO alimenta el
 //     motor. Se stripea aqui, en la GLUE, antes de que el frozen lea el campo.
 // No toca las cadenas sembradas ni el candado de acoplamiento.
-const isFreeTextOther = (el: string): boolean => /^otr(?:a|os)\s*:/i.test(el.trim());
-const stripOtherPrefix = (el: string): string => el.replace(/^otr(?:a|os)\s*:\s*/i, "");
+// Cubre las cuatro flexiones (otra/otro/otras/otros), en sync con survey-widgets y survey-completeness.
+const isFreeTextOther = (el: string): boolean => /^otr[oa]s?\s*:/i.test(el.trim());
+const stripOtherPrefix = (el: string): string => el.replace(/^otr[oa]s?\s*:\s*/i, "");
 // Campos cuyo texto libre de "Otra" SI alimenta el motor. d5_39 (diagnosticos personales) desde el inicio;
 // d5_38 y d6_44 se suman por RESPUESTA_GILDARDO 2026-08-15 §4 ("el mismo criterio que d5_39: el texto libre
 // alimenta el motor, y todo lo que resulte lo puede cambiar el profesional"). Una sola regla para las tres;

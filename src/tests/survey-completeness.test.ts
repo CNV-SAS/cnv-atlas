@@ -21,8 +21,12 @@ describe("survey-completeness", () => {
     // "otra" elegida SIN texto -> incompleta (hueco del gate); con texto -> completa.
     expect(isAnswered('["Otra"]')).toBe(false);
     expect(isAnswered('["Otros"]')).toBe(false);
+    // Las cuatro flexiones peladas cuentan como hueco (el detector cubre otra/otro/otras/otros, no solo dos).
+    expect(isAnswered('["Otro"]')).toBe(false);
+    expect(isAnswered('["Otras"]')).toBe(false);
     expect(isAnswered('["Cáncer","Otra"]')).toBe(false); // una eleccion valida + "otra" pelada -> hueco
     expect(isAnswered('["Otra: penicilina"]')).toBe(true);
+    expect(isAnswered('["Otro: bypass"]')).toBe(true); // "otro" con texto -> completa
     expect(isAnswered('["Cáncer"]')).toBe(true);
   });
 

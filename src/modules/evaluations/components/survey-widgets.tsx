@@ -64,10 +64,12 @@ export function PillsSingle({
 // exclusividad no cambia el diagnostico; y el texto libre se guarda como "Otra: <texto>" y la GLUE lo
 // stripea antes del motor (build-engine-input), asi no alimenta d5_39 (provisional hasta ECA4b).
 const isNoneOption = (t: string) => /^ningun[oa]$/i.test(t.trim());
-const isOtherOption = (t: string) => /^otr(a|os)$/i.test(t.trim());
+// Cubre las CUATRO flexiones (otra/otro/otras/otros), no solo otra/otros: un "Otras"/"Otro" verbatim de
+// Gildardo fallaba en silencio (d6_43 "Otras" era un no-match latente). En sync con survey-completeness.
+const isOtherOption = (t: string) => /^otr[oa]s?$/i.test(t.trim());
 // Separa un valor guardado "Otra: xxx" en {base:"Otra", text:"xxx"}. null si no es texto libre de "Otra".
 function splitOther(stored: string): { base: string; text: string } | null {
-  const m = /^(otr(?:a|os))\s*:\s*(.+)$/i.exec(stored.trim());
+  const m = /^(otr[oa]s?)\s*:\s*(.+)$/i.exec(stored.trim());
   return m ? { base: m[1], text: m[2] } : null;
 }
 

@@ -7,10 +7,11 @@
 // "Ninguna", 0). Este modulo es PURO (sin BD): lo alimentan el reader (generar) y correct-evaluation
 // (regenerar) con la misma nocion de "respondida".
 
-// Token de texto libre "otra"/"otros" PELADO (sin ": texto"). Coherente con el intake
-// (survey-widgets `isOtherOption`); si cambia el set (p. ej. entra "otro" con el bump de encuesta),
-// se actualizan los dos. Un elemento asi = eligio "otra" pero no escribio el texto.
-const isBareFreeTextOther = (el: string): boolean => /^otr(a|os)$/i.test(el.trim());
+// Token de texto libre "otra/otro/otras/otros" PELADO (sin ": texto"). Cubre LAS CUATRO flexiones (no
+// solo otra/otros): un "Otras" verbatim de Gildardo ya se colo una vez como no-match latente (d6_43), y
+// "Otro" masculino (motivo) es de la misma familia. Coherente con el intake (survey-widgets `isOtherOption`
+// y `splitOther`); los tres se mantienen en sync. Un elemento asi = eligio "otra" pero no escribio el texto.
+const isBareFreeTextOther = (el: string): boolean => /^otr[oa]s?$/i.test(el.trim());
 
 // Una respuesta cuenta como COMPLETA para el gate si tiene valor real. Distingue AUSENTE de VACIO:
 // null/""/"[]" (multi sin marcar) es SIN RESPONDER; "0" (contador tocado en cero) SI es respuesta.
