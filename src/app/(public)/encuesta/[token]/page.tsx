@@ -3,6 +3,7 @@ import Image from "next/image";
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
+  getFollowupIdentityPrefill,
   getHeldConsentVersion,
   getProfessionalForConsent,
   resolveSurveyLinkByToken,
@@ -81,10 +82,18 @@ export default async function EncuestaPage({
   // tiene 'servicio' vigente (anomalo), queda "nosign" y el gate del action lo detiene con el aviso de revocacion.
   let followupMode: "nosign" | "sign" = "sign";
   let substantiveBump = false;
+  // Prefill de identidad SOLO en seguimiento (para el camino con firma: excepcion/bump). Se lee FRESCO (no del
+  // link) por privacidad. En inicial es null (arranca en blanco). Se lee siempre en seguimiento porque el
+  // camino con firma se puede elegir por el enlace de excepcion; en el camino sin firma no se muestra.
+  let signPrefill = null as Awaited<ReturnType<typeof getFollowupIdentityPrefill>>;
   if (link.type === "seguimiento" && link.patientId) {
-    const heldVersion = await getHeldConsentVersion(link.patientId);
+    const [heldVersion, prefill] = await Promise.all([
+      getHeldConsentVersion(link.patientId),
+      getFollowupIdentityPrefill(link.patientId),
+    ]);
     substantiveBump = heldVersion ? requiresReconsent(heldVersion, CONSENT_VERSION) : false;
     followupMode = substantiveBump ? "sign" : "nosign";
+    signPrefill = prefill;
   }
 
   const survey = await getActiveSurvey();
@@ -117,7 +126,7 @@ export default async function EncuestaPage({
       <SurveyIntakeForm
         token={token}
         isFollowup={link.type === "seguimiento"}
-        prefill={link.prefill}
+        prefill={signPrefill}
         questions={survey.questions}
         consentText={CONSENT_TEXT_V1_0}
         professional={professional}

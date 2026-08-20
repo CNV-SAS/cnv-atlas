@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PROFESSION_LABELS } from "@/modules/auth/admin-validations";
 
 import { isLinkUsable } from "../services/survey-link-service";
-import type { SurveyLinkView } from "../types";
+import type { SignIdentityPrefill, SurveyLinkView } from "../types";
 
 // Resuelve el token opaco de la URL de la encuesta para la pagina publica (sin
 // sesion). Via service role (BYPASSA RLS): es una superficie publica legitima
@@ -58,6 +58,39 @@ export async function getHeldConsentVersion(patientId: string): Promise<string |
     throw new Error(`survey-links-reader: getHeldConsentVersion: ${error.message}`);
   }
   return data?.consent_version ?? null;
+}
+
+// Prefill COMPLETO de identidad para el camino CON firma de un SEGUIMIENTO (excepcion o bump sustantivo): el
+// paciente ya existe, asi que se le prellenan todos los campos para que solo confirme (Santiago §5b). Se lee
+// FRESCO via service role (autorizado por el token del link, patient-specific y de un solo uso); NO se guarda
+// en el link (el prefill del link es a proposito solo cuasi-identificadores, sin nombre ni documento, por
+// privacidad: ver SurveyLinkPrefill). Asi el prefill completo no queda persistido en el link. null si no existe.
+export async function getFollowupIdentityPrefill(
+  patientId: string,
+): Promise<SignIdentityPrefill | null> {
+  const supabase = createSupabaseAdminClient();
+  const [{ data: patient }, { data: profile }, { data: contact }] = await Promise.all([
+    supabase.from("patients").select("document_type, document_number").eq("id", patientId).maybeSingle(),
+    supabase
+      .from("patient_profiles")
+      .select("first_name, last_name, birth_date, sex, country, city")
+      .eq("patient_id", patientId)
+      .maybeSingle(),
+    supabase.from("patient_contacts").select("email, phone").eq("patient_id", patientId).maybeSingle(),
+  ]);
+  if (!patient || !profile) return null;
+  return {
+    documentType: patient.document_type ?? null,
+    documentNumber: patient.document_number ?? null,
+    firstName: profile.first_name ?? null,
+    lastName: profile.last_name ?? null,
+    birthDate: profile.birth_date ?? null,
+    sex: profile.sex ?? null,
+    country: profile.country ?? null,
+    city: profile.city ?? null,
+    email: contact?.email ?? null,
+    phone: contact?.phone ?? null,
+  };
 }
 
 // Datos del profesional asignado que se muestran en el bloque del profesional del consentimiento

@@ -13,6 +13,7 @@ import {
 
 import { citiesForCountry, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
 import { sendConsentOtpAction, signSurveyAction } from "../actions";
+import type { SignIdentityPrefill } from "../types";
 import type { OtpSendState, SignSurveyState } from "../validations";
 import { Field, checkboxClass, selectClass } from "./survey-form-shared";
 
@@ -63,7 +64,9 @@ function ageFromISO(iso: string): number | null {
 
 export type SignPhaseFormProps = {
   token: string;
-  prefill: { city?: string | null; longestResidenceCity?: string | null; phone?: string | null } | null;
+  // Prefill COMPLETO en seguimiento con firma (excepcion/bump): el paciente ya existe y solo confirma. En
+  // inicial es null (arranca en blanco). Se lee fresco, no se guarda en el link (privacidad).
+  prefill: SignIdentityPrefill | null;
   consentText: string;
   // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
   professional: { fullName: string; profession: string; license: string | null };
@@ -90,7 +93,7 @@ export function SignPhaseForm({
   // (no como action del form) para no disparar el auto-reset de React 19 sobre el resto de campos.
   const [sessionId] = useState(() => crypto.randomUUID());
   const [otpState, sendOtp, otpPending] = useActionState(sendConsentOtpAction, initialOtp);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefill?.email ?? "");
   const [otpCode, setOtpCode] = useState("");
 
   // Rama de edad (mayor/menor): eleccion explicita y obligatoria (DELTA2 B2).
@@ -105,17 +108,25 @@ export function SignPhaseForm({
   const [rep, setRep] = useState({ name: "", document: "", relationship: "", email: "" });
   const [minorBirthDate, setMinorBirthDate] = useState("");
   const [assent, setAssent] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [documentNumber, setDocumentNumber] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  // Identidad: en SEGUIMIENTO con firma el prefill la trae (el paciente solo confirma); en inicial arranca en
+  // blanco. La fecha de nacimiento del PROPIO paciente (no la del menor) solo se prellena en la rama mayor.
+  const [firstName, setFirstName] = useState(prefill?.firstName ?? "");
+  const [lastName, setLastName] = useState(prefill?.lastName ?? "");
+  const [documentNumber, setDocumentNumber] = useState(prefill?.documentNumber ?? "");
+  const [birthDate, setBirthDate] = useState(prefill?.birthDate ?? "");
   // Sexo OBLIGATORIO (el motor lo exige F/M estricto). Pais con default Colombia.
-  const [sex, setSex] = useState("");
+  const [sex, setSex] = useState(prefill?.sex === "F" || prefill?.sex === "M" ? prefill.sex : "");
   // Pais: desplegable de los 15 principales de Latinoamerica + "Otro" -> texto libre (Santiago 2026-08-20).
   // El pais EFECTIVO (el texto libre si eligio "Otro", si no la opcion) alimenta CXPAIS, el gate de etnia (§4)
-  // y se envia por el input oculto name="country".
-  const [countryChoice, setCountryChoice] = useState<string>(DEFAULT_COUNTRY);
-  const [countryOther, setCountryOther] = useState("");
+  // y se envia por el input oculto name="country". Prefill: si el pais guardado esta en la lista lo elige; si
+  // no (un pais fuera de las 14), cae a "Otro" con su texto.
+  const prefillCountryInList = !!prefill?.country && (COUNTRIES as readonly string[]).includes(prefill.country);
+  const [countryChoice, setCountryChoice] = useState<string>(
+    prefill?.country ? (prefillCountryInList ? prefill.country : "Otro") : DEFAULT_COUNTRY,
+  );
+  const [countryOther, setCountryOther] = useState(
+    prefill?.country && !prefillCountryInList ? prefill.country : "",
+  );
   const country = countryChoice === "Otro" ? countryOther.trim() : countryChoice;
   // Ciudad: selector fijo (Colombia) + "Otra" -> texto libre (estructura del HTML de Gildardo, mejor para
   // derivar altitud/region de una ciudad conocida). El valor final viaja por un input OCULTO (patron de
@@ -594,7 +605,7 @@ export function SignPhaseForm({
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de documento">
-            <select name="documentType" className={selectClass} defaultValue="CC">
+            <select name="documentType" className={selectClass} defaultValue={prefill?.documentType ?? "CC"}>
               {DOCUMENT_TYPES.map((d) => (
                 <option key={d.value} value={d.value}>
                   {d.label}

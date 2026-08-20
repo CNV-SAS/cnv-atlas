@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import type { SurveyLinkPrefill } from "../types";
+import type { SignIdentityPrefill } from "../types";
 import type { SurveyQuestionView } from "../data/survey-view-types";
 import { FollowupStartScreen } from "./followup-start-screen";
 import { SignPhaseForm } from "./sign-phase-form";
@@ -18,7 +18,7 @@ import { SurveyPhaseForm } from "./survey-phase-form";
 export type SurveyIntakeFormProps = {
   token: string;
   isFollowup: boolean;
-  prefill: SurveyLinkPrefill | null;
+  prefill: SignIdentityPrefill | null;
   questions: SurveyQuestionView[];
   consentText: string;
   professional: { fullName: string; profession: string; license: string | null };
