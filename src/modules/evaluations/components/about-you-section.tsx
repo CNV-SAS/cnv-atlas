@@ -41,6 +41,23 @@ function splitOccupation(value: string | null): { choice: string; other: string 
   return preset ? { choice: value, other: "" } : { choice: "Otra", other: value };
 }
 
+// Motivo "Otro" (token verbatim de Gildardo, MASCULINO: no lo reconoce el detector /^otr(a|os)$/i de la
+// encuesta, por eso se cablea aparte). Habilita texto libre; se guarda como "Otro: <texto>". Al reanudar,
+// un valor "Otro: xxx" se descompone en el token base (para marcar la casilla) + su texto.
+const MOTIVO_OTHER = "Otro";
+function splitMotivo(values: string[]): { selected: string[]; otherText: string } {
+  let otherText = "";
+  const selected = values.map((v) => {
+    const m = /^otro\s*:\s*(.+)$/i.exec(v.trim());
+    if (m) {
+      otherText = m[1];
+      return MOTIVO_OTHER;
+    }
+    return v;
+  });
+  return { selected, otherText };
+}
+
 export function AboutYouSection({
   includeProfile,
   prefill = null,
@@ -60,7 +77,9 @@ export function AboutYouSection({
   const [ancestry, setAncestry] = useState(prefill?.ancestry ?? "");
   const [occupationChoice, setOccupationChoice] = useState(initialOcc.choice);
   const [occupationOther, setOccupationOther] = useState(initialOcc.other);
-  const [motivo, setMotivo] = useState<string[]>(prefill?.reasonForVisit ?? []);
+  const initialMotivo = splitMotivo(prefill?.reasonForVisit ?? []);
+  const [motivo, setMotivo] = useState<string[]>(initialMotivo.selected);
+  const [motivoOther, setMotivoOther] = useState(initialMotivo.otherText);
 
   const toggleMotivo = (opt: string) =>
     setMotivo((prev) => (prev.includes(opt) ? prev.filter((m) => m !== opt) : [...prev, opt]));
@@ -68,6 +87,10 @@ export function AboutYouSection({
   // Valor canonico de ocupacion: el texto libre si eligio "Otra"; si no, la opcion. Vacio => no se envia.
   const occupationValue =
     occupationChoice === "Otra" ? occupationOther.trim() : occupationChoice;
+
+  // "Otro" con texto -> "Otro: <texto>"; el resto tal cual. El texto vacio deja el token pelado (registro).
+  const emitMotivo = (m: string) =>
+    m === MOTIVO_OTHER && motivoOther.trim() ? `${MOTIVO_OTHER}: ${motivoOther.trim()}` : m;
 
   return (
     <section className="flex flex-col gap-4">
@@ -79,9 +102,10 @@ export function AboutYouSection({
         </p>
       </div>
 
-      {/* El motivo (multi) siempre viaja por name="motivo"; se controla por estado. */}
+      {/* El motivo (multi) siempre viaja por name="motivo"; se controla por estado. "Otro" viaja con su
+          texto libre pegado ("Otro: <texto>") cuando lo escribio. */}
       {motivo.map((m) => (
-        <input key={m} type="hidden" name="motivo" value={m} />
+        <input key={m} type="hidden" name="motivo" value={emitMotivo(m)} />
       ))}
       {/* La ocupacion viaja resuelta por name="occupation" (texto libre si eligio "Otra"). */}
       {includeProfile && occupationValue ? (
@@ -104,6 +128,17 @@ export function AboutYouSection({
               <span>{opt}</span>
             </label>
           ))}
+          {/* "Otro" abre texto libre (antes la casilla se marcaba pero no aparecia nada donde escribir). */}
+          {motivo.includes(MOTIVO_OTHER) ? (
+            <input
+              type="text"
+              className={`${selectClass} mt-1`}
+              placeholder="¿Cuál es el motivo?"
+              maxLength={120}
+              value={motivoOther}
+              onChange={(e) => setMotivoOther(e.target.value)}
+            />
+          ) : null}
         </div>
       </Field>
 
