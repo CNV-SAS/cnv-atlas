@@ -8,6 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 // Tipo desde el modulo neutro de tipos, NO desde el reader `server-only` (este es un componente cliente).
 import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets";
+// EL MISMO predicado del gate y de los otros cinco sitios de conteo (isAnswered), incluida la regla de "Otra"
+// pelada (multi y unica). Antes este form tenia su propio isUnanswered (solo ""/"[]"): el SEXTO sitio, que el
+// profesional podia disparar dejando una "Otra" vacia al corregir. Un solo predicado (2026-08-20).
+import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import { correctEvaluationAction } from "../actions";
 
@@ -36,13 +40,6 @@ type Change = {
   removed: string[];
   isMulti: boolean;
 };
-
-// Una respuesta cuenta como SIN RESPONDER si esta vacia (null, cadena vacia, o multi vacio "[]").
-// Solo informa cuanto falta; NO bloquea (el profesional completa de a poco, ver D-007).
-function isUnanswered(answerValue: string | null): boolean {
-  const v = (answerValue ?? "").trim();
-  return v === "" || v === "[]";
-}
 
 // Lee el FormData y compara con las respuestas originales -> los cambios REALES (con su antes/después).
 function computeChanges(fd: FormData, domains: SurveyDomain[]): Change[] {
@@ -110,11 +107,11 @@ export function CorrectEvaluationForm({
   // Conteo de lo que falta (solo informa; no cambia el comportamiento). Por dominio, total, y cuantas
   // de las que faltan alimentan el diagnostico (used_in_diagnosis): esas son las que mantienen el
   // diagnostico incompleto, a priorizar al completar en consulta.
-  const missingByDomain = domains.map((d) => d.questions.filter((q) => isUnanswered(q.answerValue)).length);
+  const missingByDomain = domains.map((d) => d.questions.filter((q) => !isAnswered(q.answerValue)).length);
   const totalQuestions = domains.reduce((n, d) => n + d.questions.length, 0);
   const totalMissing = missingByDomain.reduce((n, m) => n + m, 0);
   const missingDiagnosis = domains.reduce(
-    (n, d) => n + d.questions.filter((q) => isUnanswered(q.answerValue) && q.usedInDiagnosis).length,
+    (n, d) => n + d.questions.filter((q) => !isAnswered(q.answerValue) && q.usedInDiagnosis).length,
     0,
   );
 
