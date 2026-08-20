@@ -26,8 +26,10 @@ export function pillClass(active: boolean): string {
   }`;
 }
 
-// Pills de seleccion UNICA. Un hidden input lleva el TEXTO elegido (option_text) al
-// FormData con el mismo name que ya lee el server action. Toca de nuevo para deseleccionar.
+// Pills de seleccion UNICA. Un hidden input lleva el TEXTO elegido (option_text) al FormData con el mismo name
+// que ya lee el server action. Toca de nuevo para deseleccionar. "Otra": abre texto libre y emite "Otra: <texto>"
+// (igual que PillsMulti). SIN esto, una pregunta de opcion unica con "Otra" marcaba pero no abria donde escribir
+// (bug de P61, la unica de las nueve que es opcion unica; RESPUESTA_GILDARDO 2026-08-20 §5).
 export function PillsSingle({
   id,
   options,
@@ -37,24 +39,45 @@ export function PillsSingle({
   options: SurveyOptionView[];
   defaultValue?: string;
 }) {
-  const [value, setValue] = useState(defaultValue);
+  // Prefill (edicion/reanudacion): un "Otra: xxx" se descompone en el token base + su texto.
+  const split = splitOther(defaultValue);
+  const [value, setValue] = useState(split?.base ?? defaultValue);
+  const [otherText, setOtherText] = useState(split?.text ?? "");
+
+  const otherOption = options.find((o) => isOtherOption(o.text))?.text ?? null;
+  const showOtherInput = otherOption != null && value === otherOption;
+  // Valor emitido: "Otra" con texto -> "Otra: <texto>"; el resto tal cual.
+  const emitted =
+    otherOption && value === otherOption && otherText.trim() ? `${value}: ${otherText.trim()}` : value;
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((o) => {
-        const active = value === o.text;
-        return (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => setValue(active ? "" : o.text)}
-            className={pillClass(active)}
-          >
-            {o.text}
-          </button>
-        );
-      })}
-      {value ? <input type="hidden" name={`answer_${id}`} value={value} /> : null}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => {
+          const active = value === o.text;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setValue(active ? "" : o.text)}
+              className={pillClass(active)}
+            >
+              {o.text}
+            </button>
+          );
+        })}
+      </div>
+      {showOtherInput ? (
+        <Input
+          value={otherText}
+          onChange={(e) => setOtherText(e.target.value)}
+          placeholder="¿Cuál? Especifica"
+          maxLength={200}
+          className="h-9"
+        />
+      ) : null}
+      {value ? <input type="hidden" name={`answer_${id}`} value={emitted} /> : null}
     </div>
   );
 }
