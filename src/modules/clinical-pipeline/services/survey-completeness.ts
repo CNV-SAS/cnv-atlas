@@ -22,6 +22,10 @@ export function isAnswered(value: string | null | undefined): boolean {
   if (value == null) return false;
   const s = value.trim();
   if (s === "" || s === "[]") return false;
+  // Opcion UNICA con "Otra" pelada: se guarda como el TOKEN PLANO ("Otra"), NO como arreglo. Sin este
+  // chequeo a nivel superior pasaba como respondida (bug de P61, la unica opcion unica de las nueve; el
+  // caso multi ya lo cazaba el chequeo dentro del arreglo). Cubre las cuatro flexiones (isBareFreeTextOther).
+  if (isBareFreeTextOther(s)) return false;
   if (s.startsWith("[")) {
     let arr: unknown;
     try {

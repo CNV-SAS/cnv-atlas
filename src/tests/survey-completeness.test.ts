@@ -28,6 +28,13 @@ describe("survey-completeness", () => {
     expect(isAnswered('["Otra: penicilina"]')).toBe(true);
     expect(isAnswered('["Otro: bypass"]')).toBe(true); // "otro" con texto -> completa
     expect(isAnswered('["Cáncer"]')).toBe(true);
+    // OPCION UNICA con "Otra" pelada: se guarda como token PLANO (no arreglo). Tambien es hueco (bug P61).
+    expect(isAnswered("Otra")).toBe(false);
+    expect(isAnswered("Otro")).toBe(false);
+    expect(isAnswered("Otras")).toBe(false);
+    expect(isAnswered("Otros")).toBe(false);
+    expect(isAnswered("Otra: bypass gástrico")).toBe(true); // opcion unica "Otra" CON texto -> respondida
+    expect(isAnswered("Sí")).toBe(true); // una opcion unica normal sigue contando
   });
 
   it("una pregunta NO de diagnostico sin responder bloquea (un contador de D7)", () => {

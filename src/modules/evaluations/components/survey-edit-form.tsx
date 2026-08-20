@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 // Tipo desde el modulo NEUTRO de tipos, NO desde el reader server-only (este es componente cliente).
 import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets";
+// El MISMO predicado del gate (y del aviso del paciente): una respuesta cuenta como respondida solo si tiene
+// valor real, incluida la regla de "Otra" pelada (multi y unica). Antes este form tenia su propio isUnanswered
+// que solo miraba ""/"[]" y por eso NO detectaba "Otra" sin texto en ninguna pregunta (tercer sitio divergente).
+import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import { saveSurveyEditAction } from "../actions";
 
@@ -16,11 +20,6 @@ import { saveSurveyEditAction } from "../actions";
 // nada sellado, asi que NO versiona ni pide motivo (distinto del flujo de correccion): guarda directo.
 // El paso a este modo es DELIBERADO (se entra por un boton desde la vista de solo lectura), para que
 // "ver" siga siendo lo por defecto.
-
-function isUnanswered(v: string | null): boolean {
-  const s = (v ?? "").trim();
-  return s === "" || s === "[]";
-}
 
 // Arma las respuestas del FormData. Multi -> JSON de los textos elegidos; resto -> el valor. Lo vacio no
 // se envia (ausencia = sin responder), igual que el intake.
@@ -54,7 +53,7 @@ export function SurveyEditForm({
   const [pending, startTransition] = useTransition();
 
   const totalQuestions = domains.reduce((acc, d) => acc + d.questions.length, 0);
-  const missingByDomain = domains.map((d) => d.questions.filter((q) => isUnanswered(q.answerValue)).length);
+  const missingByDomain = domains.map((d) => d.questions.filter((q) => !isAnswered(q.answerValue)).length);
   const totalMissing = missingByDomain.reduce((a, b) => a + b, 0);
 
   // El envio va por onSubmit + startTransition (no la prop `action`): la prop resetea los inputs no
