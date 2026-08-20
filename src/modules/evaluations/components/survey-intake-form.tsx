@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 
-import { DEFAULT_COUNTRY } from "../data/geo";
 import type { SurveyQuestionView } from "../data/survey-view-types";
 import { SignPhaseForm } from "./sign-phase-form";
 import { SurveyPhaseForm } from "./survey-phase-form";
@@ -36,13 +35,10 @@ export function SurveyIntakeForm({
   const [resumeToken, setResumeToken] = useState<string | null>(null);
   // Si otorgo investigacion, la fase 2 muestra el campo de etnia (consent v1.0).
   const [ethnicityAuthorized, setEthnicityAuthorized] = useState(false);
-  // Pais elegido al firmar: condiciona la lista de pertenencia etnica en la fase 2 (§4 del 2026-08-20).
-  const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
 
-  const handleSigned = useCallback((tokenValue: string, ethAuth: boolean, countryValue: string) => {
+  const handleSigned = useCallback((tokenValue: string, ethAuth: boolean) => {
     setResumeToken(tokenValue);
     setEthnicityAuthorized(ethAuth);
-    setCountry(countryValue);
   }, []);
 
   if (!resumeToken) {
@@ -63,7 +59,6 @@ export function SurveyIntakeForm({
       isFollowup={isFollowup}
       questions={questions}
       ethnicityAuthorized={ethnicityAuthorized}
-      country={country}
     />
   );
 }

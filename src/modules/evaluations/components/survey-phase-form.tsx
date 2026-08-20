@@ -38,9 +38,6 @@ export type SurveyPhaseFormProps = {
   characterizationPrefill?: AboutYouPrefill | null;
   // Etnia: el campo solo aparece si el paciente otorgo la autorizacion de investigacion (consent v1.0).
   ethnicityAuthorized?: boolean;
-  // Pais del paciente: condiciona la lista de PERTENENCIA etnica (§4 del 2026-08-20). Colombia -> DANE; los
-  // demas -> oculta (hasta portar su clasificacion oficial). La ascendencia es global, no depende del pais.
-  country?: string;
 };
 
 // Introduccion por seccion (ECA2): encuadra la pregunta ANTES de responder. La de Alimentacion es la que
@@ -59,7 +56,6 @@ export function SurveyPhaseForm({
   initialStep = 0,
   characterizationPrefill = null,
   ethnicityAuthorized = false,
-  country,
 }: SurveyPhaseFormProps) {
   const [state, submit, submitting] = useActionState(submitSurveyAnswersAction, initialSubmit);
   const [saveState, save, saving] = useActionState(saveProgressAction, initialSave);
@@ -257,7 +253,6 @@ export function SurveyPhaseForm({
           includeProfile={includeProfile}
           prefill={characterizationPrefill}
           ethnicityAuthorized={ethnicityAuthorized}
-          country={country}
         />
       </div>
 

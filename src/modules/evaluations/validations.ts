@@ -59,6 +59,18 @@ export type IntakeAnswersInput = z.infer<typeof intakeAnswersSchema>;
 const inList = (value: string | null, options: readonly string[]): string | null =>
   value && options.includes(value) ? value : null;
 
+// Etnia: una de las 7 opciones, o "Otro: <texto>" (el campo "cual", texto libre). El texto se recorta a 50
+// caracteres (precaucion del dictamen legal 2026-08-20: forzar respuesta categorica, evitar relato/fuga). Nada
+// mas se acepta. El texto libre es sensible: NUNCA estratifica directo ni sale en exportaciones sin normalizar
+// a categorias, revisado por una persona (DATA_GOVERNANCE). El writer ademas re-gatea a la autorizacion.
+const normalizeEtnia = (value: string | null): string | null => {
+  if (!value) return null;
+  const s = value.trim();
+  if ((ETNIA_OPTIONS as readonly string[]).includes(s)) return s;
+  const m = /^Otro:\s*(.+)$/i.exec(s);
+  return m ? `Otro: ${m[1].trim().slice(0, 50)}` : null;
+};
+
 export const characterizationSchema = z
   .object({
     // profile PRESENTE solo cuando la seccion muestra los 4 campos (intake inicial). Ausente en seguimiento.
@@ -78,9 +90,10 @@ export const characterizationSchema = z
         occupation: p.occupation, // texto libre permitido ("Otra")
         maritalStatus: inList(p.maritalStatus, ESTADO_CIVIL_OPTIONS),
         socioeconomicStratum: inList(p.socioeconomicStratum, ESTRATO_OPTIONS),
-        // Etnia/ascendencia normalizadas contra sus listas. El SERVIDOR ademas las gatea a investigacion en
-        // el writer (no basta la validacion aqui): un valor fuera de lista => null.
-        ethnicity: inList(p.ethnicity, ETNIA_OPTIONS),
+        // Etnia: la opcion de la lista o "Otro: <texto>". El SERVIDOR ademas la gatea a investigacion en el
+        // writer (no basta la validacion aqui). Ascendencia RETIRADA del intake (el form no la envia): siempre
+        // resuelve a null; la validacion se conserva por si llegara un valor viejo (que tambien cae a null).
+        ethnicity: normalizeEtnia(p.ethnicity),
         ancestry: inList(p.ancestry, ASCENDENCIA_OPTIONS),
       }))
       .optional(),

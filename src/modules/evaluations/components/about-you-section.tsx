@@ -3,13 +3,12 @@
 import { useState } from "react";
 
 import {
-  ASCENDENCIA_OPTIONS,
-  ASCENDENCIA_PROMPT,
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
-  etniaOptionsForCountry,
-  ETNIA_DESCRIPTIONS,
+  ETNIA_LABEL,
+  ETNIA_OPTIONS,
+  ETNIA_OTHER,
   MOTIVO_OPTIONS,
   OCUPACION_OPTIONS,
 } from "../data/sociodemographic-options";
@@ -58,29 +57,31 @@ function splitMotivo(values: string[]): { selected: string[]; otherText: string 
   return { selected, otherText };
 }
 
+// Etnia "Otro" con el campo "cual": se guarda como "Otro: <texto>". Al reanudar se descompone en base + texto.
+function splitEtnia(value: string | null): { choice: string; other: string } {
+  if (!value) return { choice: "", other: "" };
+  const m = /^otro\s*:\s*(.+)$/i.exec(value.trim());
+  return m ? { choice: ETNIA_OTHER, other: m[1] } : { choice: value, other: "" };
+}
+
 export function AboutYouSection({
   includeProfile,
   prefill = null,
   // Etnia (dato sensible): el campo solo aparece si el paciente OTORGO la autorizacion de investigacion
   // (consent v1.0). No basta que la version sea la nueva; tiene que haberla marcado. El servidor lo re-gatea.
   ethnicityAuthorized = false,
-  // Pais del paciente: condiciona la lista de PERTENENCIA etnica (§4 del 2026-08-20). Colombia -> DANE; los
-  // demas -> la pregunta se oculta. Sin pais -> Colombia (el helper lo resuelve). La ascendencia NO depende.
-  country = null,
 }: {
   includeProfile: boolean;
   prefill?: AboutYouPrefill | null;
   ethnicityAuthorized?: boolean;
-  country?: string | null;
 }) {
-  // Lista de pertenencia del pais (null = se oculta la pregunta). La ascendencia se muestra igual, es global.
-  const etniaList = etniaOptionsForCountry(country);
   const initialOcc = splitOccupation(prefill?.occupation ?? null);
+  const initialEtnia = splitEtnia(prefill?.ethnicity ?? null);
   const [educationLevel, setEducationLevel] = useState(prefill?.educationLevel ?? "");
   const [maritalStatus, setMaritalStatus] = useState(prefill?.maritalStatus ?? "");
   const [stratum, setStratum] = useState(prefill?.socioeconomicStratum ?? "");
-  const [ethnicity, setEthnicity] = useState(prefill?.ethnicity ?? "");
-  const [ancestry, setAncestry] = useState(prefill?.ancestry ?? "");
+  const [ethnicityChoice, setEthnicityChoice] = useState(initialEtnia.choice);
+  const [ethnicityOther, setEthnicityOther] = useState(initialEtnia.other);
   const [occupationChoice, setOccupationChoice] = useState(initialOcc.choice);
   const [occupationOther, setOccupationOther] = useState(initialOcc.other);
   const initialMotivo = splitMotivo(prefill?.reasonForVisit ?? []);
@@ -97,6 +98,12 @@ export function AboutYouSection({
   // "Otro" con texto -> "Otro: <texto>"; el resto tal cual. El texto vacio deja el token pelado (registro).
   const emitMotivo = (m: string) =>
     m === MOTIVO_OTHER && motivoOther.trim() ? `${MOTIVO_OTHER}: ${motivoOther.trim()}` : m;
+
+  // Valor canonico de etnia: "Otro" con el "cual" -> "Otro: <texto>"; el resto la opcion. Vacio => no se envia.
+  const ethnicityValue =
+    ethnicityChoice === ETNIA_OTHER && ethnicityOther.trim()
+      ? `${ETNIA_OTHER}: ${ethnicityOther.trim()}`
+      : ethnicityChoice;
 
   return (
     <section className="flex flex-col gap-4">
@@ -228,69 +235,48 @@ export function AboutYouSection({
             </select>
           </Field>
 
-          {/* Pertenencia etnica (dato sensible): SOLO si el paciente otorgo la autorizacion de investigacion
-              Y su pais tiene lista (§4 del 2026-08-20: Colombia -> DANE; los demas ocultan hasta portar su
-              clasificacion oficial, "oculta antes que mal preguntada"). El select se llama "ethnicity"; el
-              servidor la re-gatea. */}
-          {ethnicityAuthorized && etniaList ? (
+          {/* Etnia / grupo poblacional (dato sensible): SOLO si el paciente otorgo la autorizacion de
+              investigacion. UNA sola pregunta, lista unificada para los quince paises (§3 del 2026-08-20 v2;
+              reemplaza el desdoble pertenencia+ascendencia). El valor viaja por un input OCULTO name="ethnicity"
+              (compone "Otro: <texto>" si eligio "Otro"). El servidor la re-gatea contra la autorizacion. */}
+          {ethnicityAuthorized ? (
             <div className="sm:col-span-2">
-              <Field label="Pertenencia étnica">
+              <Field label={ETNIA_LABEL}>
                 <p className="mb-1 text-xs text-muted-foreground">
-                  Autorizaste informar tu pertenencia étnica para investigación; es voluntario y puedes
+                  Autorizaste informar tu etnia o grupo poblacional para investigación; es voluntario y puedes
                   omitirlo. Es por autorreconocimiento (nadie la asigna por ti).
                 </p>
                 <select
-                  name="ethnicity"
                   className={selectClass}
-                  value={ethnicity}
-                  onChange={(e) => setEthnicity(e.target.value)}
+                  value={ethnicityChoice}
+                  onChange={(e) => setEthnicityChoice(e.target.value)}
                 >
-                  {/* Prompt neutro, NO una opcion de "no respondio": dejar en blanco ya cubre eso.
-                      "Prefiero no responder" (en la lista) es la eleccion EXPLICITA de no informar. */}
                   <option value="">Selecciona una opción</option>
-                  {etniaList.map((o) => (
+                  {ETNIA_OPTIONS.map((o) => (
                     <option key={o} value={o}>
                       {o}
                     </option>
                   ))}
                 </select>
-                {/* Descripciones DANE: precisas y poco conocidas. Sin entenderlas no hay
-                    autorreconocimiento (principio del dictamen). Pendiente de confirmacion legal. */}
-                <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  {etniaList.map((o) => (
-                    <div key={o}>
-                      <dt className="inline font-medium text-foreground">{o}:</dt>{" "}
-                      <dd className="inline">{ETNIA_DESCRIPTIONS[o]}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </Field>
-            </div>
-          ) : null}
-
-          {/* Ascendencia (2a pregunta de etnia): JUNTO a la pertenencia (misma autorizacion). El prefijo
-              "Independientemente de lo anterior" va PEGADO a la pregunta (no en un pie): es lo que evita que
-              el paciente crea que se le pregunta lo mismo dos veces. */}
-          {ethnicityAuthorized ? (
-            <div className="sm:col-span-2">
-              <Field label={`${ASCENDENCIA_PROMPT}, ¿cuál es tu ascendencia?`}>
-                <p className="mb-1 text-xs text-muted-foreground">
-                  Es distinta de la pertenencia étnica de arriba y también es voluntaria. Por
-                  autorreconocimiento, para caracterización; nunca ajusta ningún resultado.
-                </p>
-                <select
-                  name="ancestry"
-                  className={selectClass}
-                  value={ancestry}
-                  onChange={(e) => setAncestry(e.target.value)}
-                >
-                  <option value="">Selecciona una opción</option>
-                  {ASCENDENCIA_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+                {ethnicityChoice === ETNIA_OTHER ? (
+                  <div className="mt-2 flex flex-col gap-1">
+                    <input
+                      type="text"
+                      className={selectClass}
+                      placeholder="¿Cuál?"
+                      maxLength={50}
+                      value={ethnicityOther}
+                      onChange={(e) => setEthnicityOther(e.target.value)}
+                    />
+                    {/* Precaucion legal (dictamen 2026-08-20): el texto libre sobre un dato sensible es la via
+                        mas comun de fuga. Aviso visible para que no se registre nada identificable. */}
+                    <p className="text-xs text-muted-foreground">
+                      No incluyas datos que te identifiquen, ni información de salud, ni datos de otras personas.
+                    </p>
+                  </div>
+                ) : null}
+                {/* El valor final (la opcion, o "Otro: <texto>") viaja por el input oculto. */}
+                {ethnicityValue ? <input type="hidden" name="ethnicity" value={ethnicityValue} /> : null}
               </Field>
             </div>
           ) : null}

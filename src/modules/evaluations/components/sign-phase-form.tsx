@@ -67,10 +67,9 @@ export type SignPhaseFormProps = {
   consentText: string;
   // Datos del profesional asignado para el bloque del profesional del consentimiento (numeral 2).
   professional: { fullName: string; profession: string; license: string | null };
-  // Se invoca al firmar con exito, con el resume_token, si otorgo investigacion (para el campo de etnia de
-  // la fase 2) y el PAIS elegido (para condicionar la pertenencia etnica por pais, §4 del 2026-08-20). El
-  // orquestador pasa a la encuesta.
-  onSigned: (resumeToken: string, ethnicityAuthorized: boolean, country: string) => void;
+  // Se invoca al firmar con exito, con el resume_token y si otorgo investigacion (para el campo de etnia de
+  // la fase 2). El orquestador pasa a la encuesta.
+  onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
 };
 
 export function SignPhaseForm({ token, prefill, consentText, professional, onSigned }: SignPhaseFormProps) {
@@ -126,34 +125,23 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
     const list = citiesForCountry(country);
     return list ? !list.includes(c) : true;
   });
-  // Al cambiar de pais, la ciudad Y la residencia se re-eligen (una ciudad de otro pais no aplica a ninguna):
-  // se limpian y salen de "Otra". Las dos usan la MISMA lista del pais (CXPAIS).
+  // Al cambiar de pais la ciudad se re-elige (una ciudad de otro pais no aplica): se limpia y sale de "Otra".
   const onCountryChange = (next: string) => {
     setCountryChoice(next);
     setCity("");
     setCityOtra(false);
-    setResidence("");
-    setResidenceOtra(false);
   };
-  // Residencia PROLONGADA (donde vivio la mayor parte de su vida). Usa la MISMA lista del pais elegido que la
-  // ciudad actual (§2 del 2026-08-20: con la lista solo-colombiana, un paciente chileno no podia decir donde
-  // vivio). "Otra" -> texto libre cubre el caso de haber vivido en otro pais. De ESTA sale la altitud
-  // FISIOLOGICA (vivir años en altura, no donde vive hoy); hoy no alimenta el motor, va al observatorio.
-  const [residence, setResidence] = useState(prefill?.longestResidenceCity ?? "");
-  const [residenceOtra, setResidenceOtra] = useState(() => {
-    const r = prefill?.longestResidenceCity ?? "";
-    if (!r) return false;
-    const list = citiesForCountry(country);
-    return list ? !list.includes(r) : true;
-  });
+  // RESIDENCIA PROLONGADA: RETIRADA (RESPUESTA_GILDARDO 2026-08-20 v2 §3). No esta parametrizada en el HTML de
+  // Gildardo, asi que producia un dato sin destino. La columna evaluations/patient_profiles.longest_residence_city
+  // se conserva (datos de prueba), sin uso. La altitud fisiologica que salia de aqui queda SIN FUENTE (va en la
+  // ronda: Gildardo la pidio el 17, su carta del 20 no la menciona). Ver DATA_GOVERNANCE.
   const [showFullText, setShowFullText] = useState(false);
 
   // Al firmar con exito el servidor devuelve el resume_token: se lo pasamos al orquestador (que pasa a la
-  // encuesta), con el pais elegido (condiciona la pertenencia etnica). El componente se desmonta ahi; el
-  // efecto no se dispara dos veces. Va DESPUES de declarar `country` (lo lee del cierre en cada render).
+  // encuesta). El componente se desmonta ahi; el efecto no se dispara dos veces.
   useEffect(() => {
-    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized, country);
-  }, [state.resumeToken, state.ethnicityAuthorized, country, onSigned]);
+    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized);
+  }, [state.resumeToken, state.ethnicityAuthorized, onSigned]);
 
   const isMinor = ageBranch === "menor";
   const minorAge = isMinor ? ageFromISO(minorBirthDate) : null;
@@ -701,66 +689,8 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
             {/* El valor final (ciudad de la lista o texto de "Otra") viaja por el input oculto. */}
             <input type="hidden" name="city" value={city} />
           </Field>
-          {/* Celular ANTES de la residencia (§1 del 2026-08-20): asi en el grid de 2 columnas la residencia
-              cae DEBAJO de la ciudad actual (misma columna), no debajo del pais. Las dos preguntas de ciudad
-              quedan juntas. */}
           <Field label="Celular">
             <Input name="phone" className="h-9" defaultValue={prefill?.phone ?? ""} />
-          </Field>
-          {/* Residencia PROLONGADA (Gildardo §1, 2026-08-17). Junto a la ciudad actual porque comparten
-              mecanica y tipo de dato. OPCIONAL, caracterizacion. Usa la MISMA lista del pais elegido (CXPAIS)
-              + "Otra" -> texto libre. */}
-          <Field label="¿En qué ciudad o municipio vivió la mayor parte de su vida?">
-            <p className="mb-1 text-xs text-muted-foreground">
-              <button
-                type="button"
-                className="font-medium text-primary underline"
-                onClick={() => {
-                  // Copia la ciudad ACTUAL a la residencia. Como ambas usan la misma lista del pais, el estado
-                  // de "Otra" se copia tal cual: de la lista -> de la lista; texto libre -> texto libre.
-                  setResidence(city);
-                  setResidenceOtra(cityOtra);
-                }}
-              >
-                Usar la misma ciudad que la actual
-              </button>
-            </p>
-            {cityList ? (
-              <select
-                className={selectClass}
-                value={residenceOtra ? "Otra" : residence}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "Otra") {
-                    setResidenceOtra(true);
-                    setResidence(""); // se llena con el texto libre
-                  } else {
-                    setResidenceOtra(false);
-                    setResidence(v);
-                  }
-                }}
-              >
-                <option value="">Selecciona la ciudad</option>
-                {cityList.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-                <option value="Otra">Otra (escríbela)</option>
-              </select>
-            ) : null}
-            {/* Texto libre: si eligio "Otra" en un pais con lista, o si el pais no tiene lista curada. */}
-            {(cityList && residenceOtra) || !cityList ? (
-              <Input
-                className={`h-9 ${cityList ? "mt-2" : ""}`}
-                placeholder="Escribe la ciudad o municipio"
-                maxLength={80}
-                value={residence}
-                onChange={(e) => setResidence(e.target.value)}
-              />
-            ) : null}
-            {/* El valor final (ciudad de la lista o texto de "Otra") viaja por el input oculto. */}
-            <input type="hidden" name="longestResidenceCity" value={residence} />
           </Field>
           {/* Correo del paciente: OBLIGATORIO en la rama mayor (llega el codigo y la copia). En menor el
               que cuenta es el del representante (bloque de consentimiento). */}

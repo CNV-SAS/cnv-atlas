@@ -18,13 +18,14 @@
 
 export const DEFAULT_COUNTRY = "Colombia";
 
-// Paises del selector de identidad: los principales de Latinoamerica (Santiago 2026-08-20). Son los 13 de
-// CXPAIS con lista de ciudades + Brasil y Guatemala (los dos que Gildardo va a aprobar) = 15. Espana entra por
-// CXPAIS (hispanohablante). El desplegable agrega "Otro" -> texto libre de pais (y ciudad libre). Un pais sin
-// lista de ciudades (Brasil/Guatemala hasta que se porten, o "Otro") cae a ciudad de texto libre.
+// Paises del selector de identidad: los 14 del archivo de Gildardo (RESPUESTA_GILDARDO 2026-08-20 v2 §1),
+// en su orden. El desplegable agrega "Otro" -> 15 opciones, con texto libre de pais (y ciudad libre). ESPANA
+// NO esta aca a proposito: Gildardo la deja en CXPAIS (mapa de ciudades) pero FUERA de esta lista, asi que sus
+// ciudades quedan inalcanzables por ahora; el decide si Espana entra o sale (su nota del 20). Brasil y Guatemala
+// SI estan (sin lista de ciudades: ciudad a mano). Un pais sin lista en CXPAIS cae a ciudad de texto libre.
 export const COUNTRIES: readonly string[] = [
-  "Colombia", "México", "Argentina", "Brasil", "Chile", "Perú", "Ecuador", "Venezuela",
-  "Bolivia", "Paraguay", "Uruguay", "Costa Rica", "Panamá", "Guatemala", "España",
+  "Colombia", "México", "Argentina", "Chile", "Perú", "Ecuador", "Venezuela",
+  "Bolivia", "Uruguay", "Paraguay", "Brasil", "Costa Rica", "Panamá", "Guatemala",
 ];
 
 // Las 5 regiones naturales de Colombia + Insular (San Andrés). Correlaciona con altitud (Andina alta,

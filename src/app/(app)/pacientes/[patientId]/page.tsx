@@ -65,10 +65,9 @@ export default async function HistoriaPacientePage({
     { label: "Ocupación", value: paciente.occupation ?? "-" },
     { label: "Estado civil", value: paciente.maritalStatus ?? "-" },
     { label: "Estrato", value: paciente.socioeconomicStratum ?? "-" },
-    // Etnia y ascendencia: solo si el paciente las informo (requirio autorizacion de investigacion). "-" si no.
-    // Son DOS preguntas distintas (§3 del 2026-08-15); antes solo se mostraba la pertenencia (Santiago §4b).
-    { label: "Pertenencia étnica", value: paciente.ethnicity ?? "-" },
-    { label: "Ascendencia", value: paciente.ancestry ?? "-" },
+    // Etnia / grupo poblacional (una sola pregunta, §3 del 2026-08-20 v2): solo si el paciente la informo
+    // (requirio autorizacion de investigacion). "-" si no. La ascendencia se retiro (ya no se captura).
+    { label: "Etnia / grupo poblacional", value: paciente.ethnicity ?? "-" },
   ];
 
   return (

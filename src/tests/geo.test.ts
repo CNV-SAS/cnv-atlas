@@ -7,10 +7,7 @@ import {
   cityGeo,
   CXPAIS,
 } from "@/modules/evaluations/data/geo";
-import {
-  ETNIA_OPTIONS,
-  etniaOptionsForCountry,
-} from "@/modules/evaluations/data/sociodemographic-options";
+import { ETNIA_OPTIONS } from "@/modules/evaluations/data/sociodemographic-options";
 
 // Candado de la tabla geografica (bump de encuesta 2026-08-15 §3): la altitud alimenta analisis del
 // observatorio, asi que se ancla contra fuente (IGAC/DANE, cabecera municipal) y se prueba la derivacion
@@ -80,18 +77,18 @@ describe("geo: mapa CXPAIS pais -> ciudad", () => {
   });
 });
 
-// Pertenencia etnica condicionada por pais (RESPUESTA_GILDARDO 2026-08-20 §4): Colombia -> DANE; los demas
-// ocultan (null) hasta portar su clasificacion oficial. Sin pais -> Colombia (el caso comun del lanzamiento).
-describe("etnia: pertenencia condicionable por pais", () => {
-  it("Colombia devuelve la lista DANE; sin pais tambien (default Colombia)", () => {
-    expect(etniaOptionsForCountry("Colombia")).toEqual(ETNIA_OPTIONS);
-    expect(etniaOptionsForCountry(null)).toEqual(ETNIA_OPTIONS);
-    expect(etniaOptionsForCountry(undefined)).toEqual(ETNIA_OPTIONS);
-  });
-
-  it("otros paises devuelven null (la pregunta se oculta hasta tener su clasificacion)", () => {
-    expect(etniaOptionsForCountry("México")).toBeNull();
-    expect(etniaOptionsForCountry("Brasil")).toBeNull();
-    expect(etniaOptionsForCountry("Perú")).toBeNull();
+// Etnia UNIFICADA (RESPUESTA_GILDARDO 2026-08-20 v2 §3): una sola pregunta de 7 opciones, igual para los 15
+// paises (ya NO condicionada por pais; la lista DANE se retiro por inaplicable en operacion regional).
+describe("etnia: lista unificada de 7 opciones", () => {
+  it("son exactamente las 7 del archivo, con 'Otro' (que abre el campo cual) y 'Prefiero no indicar'", () => {
+    expect(ETNIA_OPTIONS).toEqual([
+      "Mestizo/a",
+      "Blanco/a",
+      "Afrodescendiente",
+      "Indígena",
+      "Mulato/a",
+      "Otro",
+      "Prefiero no indicar",
+    ]);
   });
 });

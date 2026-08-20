@@ -49,44 +49,32 @@ export const ESTADO_CIVIL_OPTIONS = [
 
 export const ESTRATO_OPTIONS = ["1", "2", "3", "4", "5", "6", "No aplica"] as const;
 
-// Pertenencia etnica: categorias del autorreconocimiento DANE + "Prefiero no responder" (valor EXPLICITO,
-// distinto de dejar en blanco: el dictamen lo exige, dejar vacio puede ser un olvido, elegir no responder es
-// una decision registrable). Dato sensible: solo se muestra/captura si el paciente autorizo investigacion.
+// Etnia / grupo poblacional: UNA sola pregunta (RESPUESTA_GILDARDO 2026-08-20 v2 §3), lista UNIFICADA para los
+// quince paises. Reemplaza el desdoble anterior (pertenencia DANE + ascendencia): la lista DANE es colombiana e
+// inaplicable en operacion regional (cada pais tiene su marco oficial y no son compatibles; dictamen legal del
+// 20). Dato sensible: solo se muestra/captura si el paciente autorizo investigacion; el servidor lo re-gatea.
+// "Otro" abre un campo "cual" (texto libre, 50 chars, con precauciones; ver about-you-section y DATA_GOVERNANCE).
+// NOTA (ronda pendiente): el asesor legal objeta "Mulato/a" (etimologia, carga variable por pais, incoherencia y
+// redundancia con Afrodescendiente); se conserva por instruccion de la direccion cientifica, la objecion va en
+// la ronda. Riesgo reputacional/calidad del dato, NO de legalidad.
+export const ETNIA_LABEL = "Etnia / grupo poblacional";
+export const ETNIA_OTHER = "Otro"; // dispara el campo "cual" (texto libre)
 export const ETNIA_OPTIONS = [
+  "Mestizo/a",
+  "Blanco/a",
+  "Afrodescendiente",
   "Indígena",
-  "Gitano o Rrom",
-  "Raizal",
-  "Palenquero",
-  "Negro, mulato, afrodescendiente o afrocolombiano",
-  "Ninguno de los anteriores",
-  "Prefiero no responder",
+  "Mulato/a",
+  "Otro",
+  "Prefiero no indicar",
 ] as const;
 export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
 
-// PERTENENCIA etnica CONDICIONADA POR PAIS (RESPUESTA_GILDARDO 2026-08-20 §4): la lista DANE es COLOMBIANA
-// (Raizal, Palenquero, Gitano o Rrom son categorias del ordenamiento colombiano; a un paciente en Lima o Sao
-// Paulo no le ofrecen casilla donde reconocerse). En otros paises hay que traer su clasificacion oficial
-// (INEGI en Mexico, IBGE en Brasil con sus cinco categorias, ...) o dejar la pregunta OCULTA ("oculta antes
-// que mal preguntada"). ESTRUCTURA condicionable DESDE YA aunque hoy solo Colombia tenga contenido: agregar
-// un pais = agregar una entrada al mapa, sin rehacer la UI (Gildardo: "si se cablea como lista fija, despues
-// habra que rehacerla"). La ASCENDENCIA NO se condiciona: sus cuatro opciones no dependen de ningun censo, se
-// queda global e igual en los trece paises.
-export const ETNIA_BY_COUNTRY: Record<string, readonly EtniaOption[]> = {
-  Colombia: ETNIA_OPTIONS,
-};
-
-// Lista de pertenencia etnica del pais, o null si no hay (la pregunta se OCULTA). Sin pais conocido -> Colombia
-// (el caso comun en el lanzamiento; hoy es el unico pais con contenido).
-export function etniaOptionsForCountry(country: string | null | undefined): readonly EtniaOption[] | null {
-  return ETNIA_BY_COUNTRY[country ?? "Colombia"] ?? null;
-}
-
-// Ascendencia (RESPUESTA_GILDARDO 2026-08-15 §3): SEGUNDA pregunta de etnia, separada de la pertenencia
-// (DANE) porque una sola casilla respondia dos preguntas distintas (por eso "mestizo" no cabia en el DANE).
-// Va JUNTO a la pertenencia y gateada a la misma autorizacion de investigacion. El texto ANTECEDE la pregunta
-// (deliberado): "Independientemente de lo anterior". Caracterizacion/exploracion, NUNCA coeficiente de
-// correccion (misma regla que la nefrologia retiro en 2021; ver DATA_GOVERNANCE).
-export const ASCENDENCIA_PROMPT = "Independientemente de lo anterior";
+// ASCENDENCIA: RETIRADA del intake (RESPUESTA_GILDARDO 2026-08-20 v2 §3). No esta parametrizada en el HTML de
+// Gildardo (no hay campo que la reciba), asi que producia un dato sin destino. Se DEJA DE CAPTURAR (el form ya
+// no la envia); la columna patient_profiles.ancestry se conserva (tiene datos de prueba), sin uso. La constante
+// queda referenciada solo por la validacion, que ahora siempre resuelve a null porque el form no la manda. Su
+// retiro/parametrizacion definitiva va en la ronda (Gildardo la pidio el 17, su carta del 20 no la menciona).
 export const ASCENDENCIA_OPTIONS = [
   "Predominantemente indígena",
   "Predominantemente europea",
@@ -96,20 +84,6 @@ export const ASCENDENCIA_OPTIONS = [
   "Prefiero no responder",
 ] as const;
 export type AscendenciaOption = (typeof ASCENDENCIA_OPTIONS)[number];
-
-// Descripcion breve de autorreconocimiento por categoria. El dictamen legal exige que el paciente PUEDA
-// reconocerse: las categorias DANE (Raizal, Palenquero, Rrom) son precisas y poco conocidas, y sin
-// entenderlas no hay autorreconocimiento real. Redactadas simples, en segunda persona.
-// PENDIENTE: confirmacion del asesor legal (se le pasan para validar; no bloquea el uso interino).
-export const ETNIA_DESCRIPTIONS: Record<EtniaOption, string> = {
-  "Indígena": "Perteneces a un pueblo o comunidad indígena.",
-  "Gitano o Rrom": "Perteneces al pueblo gitano (Rrom).",
-  "Raizal": "Eres nativo del archipiélago de San Andrés, Providencia y Santa Catalina, de raíces afroanglocaribeñas.",
-  "Palenquero": "Desciendes de San Basilio de Palenque (Bolívar).",
-  "Negro, mulato, afrodescendiente o afrocolombiano": "Tienes ascendencia africana.",
-  "Ninguno de los anteriores": "No te reconoces en ninguna de las categorías anteriores.",
-  "Prefiero no responder": "Eliges no informar tu pertenencia étnica.",
-};
 
 // Motivo de consulta: MULTI-select en su archivo ("Puede seleccionar varios"). Se guarda como arreglo JSON
 // de strings en evaluations.reason_for_visit (mismo patron que las respuestas opcion_multiple del intake).

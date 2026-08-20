@@ -46,6 +46,16 @@ describe("characterizationSchema (validacion, sin BD)", () => {
     expect(parsed?.reasonForVisit).toEqual(["Rendimiento deportivo", "Otro: segunda opinión"]);
   });
 
+  it("etnia: conserva la opcion de la lista y el 'Otro: <texto>' (recortado a 50); descarta lo demas", () => {
+    const et = (v: string) =>
+      characterizationSchema.parse({ profile: { ethnicity: v }, reasonForVisit: [] })?.profile?.ethnicity;
+    expect(et("Mulato/a")).toBe("Mulato/a"); // opcion de la lista (se conserva; la objecion va en la ronda)
+    expect(et("Afrodescendiente")).toBe("Afrodescendiente");
+    expect(et("Otro: afrolatino")).toBe("Otro: afrolatino"); // el campo "cual" se conserva
+    expect(et("Otro: " + "x".repeat(80))).toBe("Otro: " + "x".repeat(50)); // recorte a 50 (precaucion legal)
+    expect(et("Palenquero")).toBeNull(); // categoria DANE vieja, fuera de la lista nueva -> null
+  });
+
   it("sin profile (seguimiento) deja profile undefined y solo trae el motivo", () => {
     const parsed = characterizationSchema.parse({ reasonForVisit: ["Evaluación nutricional de rutina"] });
     expect(parsed?.profile).toBeUndefined();
