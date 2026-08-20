@@ -40,6 +40,26 @@ export async function resolveSurveyLinkByToken(
   };
 }
 
+// Version del consentimiento VIGENTE del paciente (la del `servicio` activo, revoked_at IS NULL). La usa la
+// pagina publica del SEGUIMIENTO para decidir si un cambio SUSTANTIVO de version obliga a re-firmar
+// (requiresReconsent). Via service role (superficie publica: el token del link, patient-specific y de un solo
+// uso, ya probo al paciente). null si no tiene 'servicio' vigente (caso anomalo; la pagina lo trata como que
+// necesita firma, conservador). NO gatea aqui: el gate real (regla 15) corre en el writer, antes de crear.
+export async function getHeldConsentVersion(patientId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("patient_consents")
+    .select("consent_version")
+    .eq("patient_id", patientId)
+    .eq("consent_type", "servicio")
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`survey-links-reader: getHeldConsentVersion: ${error.message}`);
+  }
+  return data?.consent_version ?? null;
+}
+
 // Datos del profesional asignado que se muestran en el bloque del profesional del consentimiento
 // (numeral 2): nombre, profesion (etiqueta) y registro. Es divulgacion INTENCIONAL al paciente (el
 // consentimiento debe identificar al responsable clinico). Via service role (superficie publica, sin

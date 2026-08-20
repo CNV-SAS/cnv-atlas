@@ -70,9 +70,18 @@ export type SignPhaseFormProps = {
   // Se invoca al firmar con exito, con el resume_token y si otorgo investigacion (para el campo de etnia de
   // la fase 2). El orquestador pasa a la encuesta.
   onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
+  // Seguimiento con cambio SUSTANTIVO de version: se avisa por que se pide firmar de nuevo (dictamen §3).
+  substantiveBump?: boolean;
 };
 
-export function SignPhaseForm({ token, prefill, consentText, professional, onSigned }: SignPhaseFormProps) {
+export function SignPhaseForm({
+  token,
+  prefill,
+  consentText,
+  professional,
+  onSigned,
+  substantiveBump = false,
+}: SignPhaseFormProps) {
   const [state, action, pending] = useActionState(signSurveyAction, initialSign);
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -330,6 +339,15 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
       {state.error ? (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
+        </p>
+      ) : null}
+
+      {/* Aviso de bump SUSTANTIVO (dictamen §3): explica por que se pide firmar de nuevo, para que no extrane
+          que esta vez si le pidan (la anterior no). Solo en seguimiento con cambio sustantivo de version. */}
+      {substantiveBump ? (
+        <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
+          Actualizamos el documento de consentimiento desde tu última visita. Por eso te pedimos revisarlo y
+          firmarlo de nuevo antes de continuar.
         </p>
       ) : null}
 

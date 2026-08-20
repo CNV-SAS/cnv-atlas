@@ -36,6 +36,7 @@ import {
   getEvaluationOwnership,
   getPatientPrefill,
 } from "./data/evaluations-repository";
+import { ConsentGateError, startFollowupWithoutSignature } from "./data/intake-writer";
 import {
   abandonAwaitingEvaluation,
   confirmEvaluationIdentity,
@@ -72,6 +73,7 @@ import type {
   ResolveConflictState,
   SaveProgressState,
   SignSurveyState,
+  StartFollowupState,
   SurveyFormState,
 } from "./validations";
 
@@ -308,6 +310,47 @@ export async function signSurveyAction(
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
   // ethnicityAuthorized: si otorgo investigacion, la fase 2 muestra el campo de etnia (consent v1.0).
   return { error: null, fields: null, resumeToken, ethnicityAuthorized: consent.investigacion === true };
+}
+
+// ── SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3) ────────────────────────────────────────────
+// El seguimiento normal se salta la firma y el codigo: crea el shell verificando la vigencia (regla 15) y
+// pasa a la encuesta. Si una autorizacion necesaria fue REVOCADA, no se crea nada y se avisa (revoked). Las
+// excepciones (cambiar autorizaciones/contacto) y el bump sustantivo NO pasan por aqui: van al camino con firma.
+export async function startFollowupAction(
+  _prev: StartFollowupState,
+  form: FormData,
+): Promise<StartFollowupState> {
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+
+  const token = str(form, "token");
+  if (!token) return fail("Link inválido.");
+  const ip = await getClientIp();
+  const [byIp, byToken] = await Promise.all([limitSurveyByIp(ip), limitSurveyByToken(token)]);
+  if (!byIp.success || !byToken.success) {
+    return fail("Demasiados intentos. Espera unos minutos e intenta de nuevo.");
+  }
+  const link = await resolveSurveyLinkByToken(token);
+  if (!link || link.type !== "seguimiento" || !link.patientId) {
+    return fail("Este link no esta disponible, ya fue usado o vencio.");
+  }
+
+  try {
+    const result = await startFollowupWithoutSignature({
+      organizationId: link.organizationId,
+      professionalId: link.professionalId,
+      patientId: link.patientId,
+      linkId: link.id,
+      ipAddress: ip === "unknown" ? null : ip,
+    });
+    return { error: null, resumeToken: result.resumeToken, revoked: false };
+  } catch (e) {
+    // Autorizacion necesaria revocada: el gate (regla 15) corrio ANTES de crear nada. No es un error tecnico;
+    // se muestra el aviso de acudir al profesional (redaccion aprobada 2026-08-20).
+    if (e instanceof ConsentGateError) {
+      return { error: null, resumeToken: null, revoked: true };
+    }
+    throw e;
+  }
 }
 
 // ── FASE 2: guardar a medida (as-you-go) ────────────────────────────────────────────────────────────

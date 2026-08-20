@@ -17,6 +17,7 @@ import {
   surveyResponses,
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
+import { consentUnchanged } from "@/modules/consent/consent-change";
 import type { ConsentType } from "@/modules/consent/validations";
 import { CONSENT_VERSION } from "@/modules/consent/versions";
 
@@ -89,7 +90,7 @@ async function writePatientConsentsAndGate(
     signature?: IntakeSignature;
     ipAddress: string | null;
   },
-): Promise<string> {
+): Promise<{ patientId: string; consentVersion: string }> {
   // 1. Paciente. Orden de insercion (restriccion de B1): primero patients, luego la relacion (la RLS
   //    is_patient_professional la consulta), y solo despues profiles/contacts/consents.
   let patientId = input.patientId;
@@ -139,9 +140,50 @@ async function writePatientConsentsAndGate(
   }
   if (!patientId) throw new Error("intake-writer: patientId no resuelto");
 
-  // 2. Consentimientos. Re-consentir revoca primero la autorizacion activa del mismo tipo y luego
-  //    inserta la nueva, todo en esta transaccion.
-  if (input.consents.length > 0) {
+  // 2. Consentimientos. GUARD de "sin cambios" (dictamen legal 2026-08-20 §3): si el paciente entra por la
+  //    excepcion (cambiar autorizaciones o contacto) y confirma SIN cambiar autorizaciones, version NI
+  //    contacto, NO se crea un consentimiento nuevo (pedir la misma autorizacion repetidamente la degrada). Se
+  //    compara lo VIGENTE vs lo enviado ANTES de tocar nada; una diferencia en cualquiera de las tres dispara
+  //    el re-consentimiento. Para el intake INICIAL (paciente nuevo, sin activos) nunca aplica: siempre inserta.
+  const activeBefore = await tx
+    .select({ type: patientConsents.consentType, version: patientConsents.consentVersion })
+    .from(patientConsents)
+    .where(and(eq(patientConsents.patientId, patientId), isNull(patientConsents.revokedAt)));
+  const [contactBefore] = await tx
+    .select({ email: patientContacts.email, phone: patientContacts.phone })
+    .from(patientContacts)
+    .where(eq(patientContacts.patientId, patientId));
+  const noConsentChange =
+    activeBefore.length > 0 &&
+    input.consents.length > 0 &&
+    consentUnchanged(
+      {
+        types: activeBefore.map((r) => r.type),
+        version: activeBefore.find((r) => r.type === "servicio")?.version ?? activeBefore[0].version,
+        email: contactBefore?.email ?? null,
+        phone: contactBefore?.phone ?? null,
+      },
+      {
+        types: input.consents.map((c) => c.type),
+        version: input.consents[0].consentVersion,
+        email: input.identity.email,
+        phone: input.identity.phone,
+      },
+    );
+
+  if (noConsentChange) {
+    // Entro por la excepcion y no cambio nada: se registra el paso, pero NO se crea consentimiento nuevo.
+    await recordAudit(tx, {
+      event: "consent.reconfirmed_no_change",
+      actorId: null,
+      actorEmail: null,
+      entityType: "patient",
+      entityId: patientId,
+      payload: { types: activeBefore.map((r) => r.type) },
+      ip: input.ipAddress,
+    });
+  } else if (input.consents.length > 0) {
+    // Re-consentir revoca primero la autorizacion activa del mismo tipo y luego inserta la nueva, todo aqui.
     const grantedTypes = input.consents.map((c) => c.type);
     await tx
       .update(patientConsents)
@@ -218,7 +260,13 @@ async function writePatientConsentsAndGate(
   const gate = canCreateEvaluation(active.map((r) => r.type as ConsentType));
   if (!gate.ok) throw new ConsentGateError(gate.missing);
 
-  return patientId;
+  // Version EFECTIVA para la constancia de la evaluacion: si no hubo cambio (excepcion sin cambios), la que
+  // el paciente ya TENIA; si re-consintio (o es inicial), la que acaba de firmar. Asi el sello no miente.
+  const effectiveVersion = noConsentChange
+    ? activeBefore.find((r) => r.type === "servicio")?.version ?? activeBefore[0]?.version ?? CONSENT_VERSION
+    : input.consents[0]?.consentVersion ?? CONSENT_VERSION;
+
+  return { patientId, consentVersion: effectiveVersion };
 }
 
 // Consume el link de seguimiento (un solo uso). Los links iniciales no se consumen (linkId null).
@@ -254,7 +302,7 @@ export type SignIntakeResult = { evaluationId: string; patientId: string; resume
 
 export async function signIntakeEvaluation(input: SignIntakeInput): Promise<SignIntakeResult> {
   return db.transaction(async (tx) => {
-    const patientId = await writePatientConsentsAndGate(tx, input);
+    const { patientId, consentVersion } = await writePatientConsentsAndGate(tx, input);
 
     const resumeToken = generateResumeToken();
     const conflict = input.identityConflict === true;
@@ -266,9 +314,10 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         organizationId: input.organizationId,
         type: input.mode,
         status: "awaiting_survey",
-        // Constancia de consentimiento (dictamen legal 2026-08-20 §4): la version vigente bajo la que se firmo.
-        // El gate de regla 15 (writePatientConsentsAndGate, arriba) ya verifico la vigencia ANTES de este insert.
-        consentVersion: CONSENT_VERSION,
+        // Constancia de consentimiento (dictamen legal 2026-08-20 §4): la version EFECTIVA (la que el paciente
+        // tiene tras la firma: la actual si re-consintio, la que ya tenia si entro por excepcion sin cambiar
+        // nada). El gate de regla 15 (writePatientConsentsAndGate) ya verifico la vigencia ANTES de este insert.
+        consentVersion,
         resumeToken,
         // Residencia prolongada VERSIONADA por evaluacion (Gildardo §1): el valor de ESTE encuentro, por si
         // el paciente se mudo entre consultas. El perfil (patient_profiles) guarda el ultimo conocido (prefill).
@@ -298,6 +347,76 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
     await consumeLink(tx, input.linkId);
 
     return { evaluationId: evaluation.id, patientId, resumeToken };
+  });
+}
+
+// ── SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3) ────────────────────────────────────────────
+// El seguimiento NORMAL no requiere consentimiento nuevo (el numeral 4 del consentimiento ya cubre "dar
+// continuidad y seguimiento a su atencion") ni codigo (no hay acto que firmar; el paciente esta frente al
+// profesional que lo conoce). Se salta la fase de firma: VERIFICA la vigencia (regla 15) ANTES de crear nada
+// (si una necesaria fue revocada, se lanza y la transaccion se revierte -> shell NO creado), sella la version
+// que el paciente TIENE (la del `servicio` vigente, NO la constante actual: si difirieran y sellara la actual,
+// el registro mentiria) y crea el shell. NO toca consentimientos ni contacto (paciente existente) NI envia
+// copia de consentimiento (no hay firma nueva). El re-consentimiento por cambio de version sustantivo o por
+// las dos excepciones (cambiar autorizaciones/contacto) va por el camino CON firma, no por aqui.
+export type StartFollowupInput = {
+  organizationId: string;
+  professionalId: string;
+  patientId: string;
+  linkId: string | null;
+  ipAddress: string | null;
+};
+
+export async function startFollowupWithoutSignature(
+  input: StartFollowupInput,
+): Promise<SignIntakeResult> {
+  return db.transaction(async (tx) => {
+    // Estado real de autorizaciones vigentes. GATE (regla 15) ANTES de crear el shell.
+    const active = await tx
+      .select({ type: patientConsents.consentType, version: patientConsents.consentVersion })
+      .from(patientConsents)
+      .where(and(eq(patientConsents.patientId, input.patientId), isNull(patientConsents.revokedAt)));
+    const gate = canCreateEvaluation(active.map((r) => r.type as ConsentType));
+    if (!gate.ok) throw new ConsentGateError(gate.missing);
+
+    // La version que el paciente TIENE (la del `servicio` vigente): es la que se sella (cuidado a).
+    const heldVersion =
+      active.find((r) => r.type === "servicio")?.version ?? active[0]?.version ?? CONSENT_VERSION;
+
+    const resumeToken = generateResumeToken();
+    const [evaluation] = await tx
+      .insert(evaluations)
+      .values({
+        patientId: input.patientId,
+        professionalId: input.professionalId,
+        organizationId: input.organizationId,
+        type: "seguimiento",
+        status: "awaiting_survey",
+        // Constancia: la version vigente del paciente, no CONSENT_VERSION.
+        consentVersion: heldVersion,
+        resumeToken,
+      })
+      .returning({ id: evaluations.id });
+
+    await recordAudit(tx, {
+      event: "evaluation.followup_started",
+      actorId: null,
+      actorEmail: null,
+      entityType: "evaluation",
+      entityId: evaluation.id,
+      payload: {
+        mode: "seguimiento",
+        patient_id: input.patientId,
+        status: "awaiting_survey",
+        consent_version: heldVersion,
+        without_signature: true,
+      },
+      ip: input.ipAddress,
+    });
+
+    await consumeLink(tx, input.linkId);
+
+    return { evaluationId: evaluation.id, patientId: input.patientId, resumeToken };
   });
 }
 

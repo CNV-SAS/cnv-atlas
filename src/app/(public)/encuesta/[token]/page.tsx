@@ -3,10 +3,12 @@ import Image from "next/image";
 import { SurveyIntakeForm } from "@/modules/evaluations/components/survey-intake-form";
 import { getActiveSurvey } from "@/modules/evaluations/data/survey-reader";
 import {
+  getHeldConsentVersion,
   getProfessionalForConsent,
   resolveSurveyLinkByToken,
 } from "@/modules/evaluations/data/survey-links-reader";
 import { CONSENT_TEXT_V1_0 } from "@/modules/consent/text/consent-v1.0";
+import { CONSENT_VERSION, requiresReconsent } from "@/modules/consent/versions";
 
 export const metadata = { title: "Encuesta - Atlas" };
 
@@ -73,6 +75,18 @@ export default async function EncuestaPage({
     license: null,
   };
 
+  // SEGUIMIENTO (dictamen legal 2026-08-20 §3): el camino normal NO re-firma (el consentimiento vigente lo
+  // cubre). Solo va al camino con firma si hubo un cambio SUSTANTIVO de version desde que el paciente firmo.
+  // Se decide leyendo la version que TIENE el paciente (service role, autorizado por el token del link). Si no
+  // tiene 'servicio' vigente (anomalo), queda "nosign" y el gate del action lo detiene con el aviso de revocacion.
+  let followupMode: "nosign" | "sign" = "sign";
+  let substantiveBump = false;
+  if (link.type === "seguimiento" && link.patientId) {
+    const heldVersion = await getHeldConsentVersion(link.patientId);
+    substantiveBump = heldVersion ? requiresReconsent(heldVersion, CONSENT_VERSION) : false;
+    followupMode = substantiveBump ? "sign" : "nosign";
+  }
+
   const survey = await getActiveSurvey();
   if (!survey) {
     return (
@@ -107,6 +121,8 @@ export default async function EncuestaPage({
         questions={survey.questions}
         consentText={CONSENT_TEXT_V1_0}
         professional={professional}
+        followupMode={followupMode}
+        substantiveBump={substantiveBump}
       />
     </Shell>
   );

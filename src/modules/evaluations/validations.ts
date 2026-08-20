@@ -151,6 +151,15 @@ export type SignSurveyState = {
   ethnicityAuthorized: boolean;
 };
 
+// Estado del inicio del SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3). resumeToken: el shell se creo,
+// pasa a la encuesta. revoked: una autorizacion necesaria no esta vigente -> no se creo nada, se muestra el
+// aviso de acudir al profesional. error: fallo tecnico.
+export type StartFollowupState = {
+  error: string | null;
+  resumeToken: string | null;
+  revoked: boolean;
+};
+
 // Estado del guardado a medida (as-you-go) de la fase 2. saved marca el ultimo guardado exitoso; error
 // se muestra discreto sin bloquear la encuesta (el paciente puede seguir; se reintenta).
 export type SaveProgressState = {
