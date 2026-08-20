@@ -64,6 +64,9 @@ export async function runPipelineAction(
   }
 
   revalidatePath("/evaluaciones");
+  // Tambien la evaluacion: si se genero desde su pestana Diagnostico, la pagina re-renderiza a la rama de
+  // resultados (el diagnostico ya existe), en vez de quedarse en el panel de generar.
+  revalidatePath(`/evaluaciones/${evaluationId}`);
   return {
     error: null,
     success: `Diagnostico generado (${result.value.indicatorCount} indicadores).`,

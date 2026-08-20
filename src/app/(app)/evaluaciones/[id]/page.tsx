@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +29,7 @@ import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { getPendingReferralHints } from "@/modules/referrals/data/referrals-reader";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
+import { GenerateDiagnosisPanel } from "@/modules/clinical-pipeline/components/generate-diagnosis-panel";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
 import { getDiagnosisCriterion } from "@/modules/diagnoses/data/diagnosis-notes-reader";
@@ -184,21 +184,11 @@ export default async function ResultadosEvaluacionPage({
                 {formatDate(header.evaluationDate)}
               </p>
             </header>
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
-              <p className="text-sm text-foreground">
-                Esta evaluación aún no tiene un diagnóstico generado.
-              </p>
-              <p className="max-w-prose text-sm text-muted-foreground">
-                Confirma la identidad, importa la medición BIS y genera el diagnóstico desde el
-                panel de Evaluaciones. Los resultados aparecerán aquí cuando el motor haya corrido.
-              </p>
-              <Link
-                href="/evaluaciones"
-                className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
-              >
-                Ir a Evaluaciones
-              </Link>
-            </div>
+            <GenerateDiagnosisPanel
+              evaluationId={id}
+              identityConfirmed={!pendingIdentity}
+              bisImported={entryBisImport?.alreadyImported === true}
+            />
           </div>
         }
         />
