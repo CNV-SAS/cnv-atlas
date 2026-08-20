@@ -4,8 +4,8 @@ import { type EngineIndicators, type EngineOutput, suspendSurveyRoutes } from "@
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
-// renderiza render-report.tsx a Buffer en el servidor. El contenido es el del motor;
-// mientras sea stub, el reporte lo declara con una nota visible.
+// renderiza render-report.tsx a Buffer en el servidor. El contenido es el del motor clinico REAL
+// (portado en B11, paridad con el HTML de Gildardo); ya no es un stub, y el reporte no lo declara como tal.
 
 export type ReportMeta = {
   patientName: string;

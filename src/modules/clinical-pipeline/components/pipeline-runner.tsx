@@ -74,9 +74,9 @@ export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateV
               {pending ? "Generando..." : "Generar diagnóstico"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Genera indicadores, diagnostico, tratamiento y reporte con el motor stub.
-              El diagnostico queda sin confirmar (la confirmacion y el reporte final son
-              un paso posterior).
+              Genera los indicadores, el diagnóstico, el tratamiento y el reporte con el motor clínico.
+              El diagnóstico queda sin confirmar (la confirmación y el reporte final son un paso
+              posterior).
             </p>
           </form>
         )}
