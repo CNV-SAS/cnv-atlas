@@ -6,6 +6,7 @@ import {
   EDUCACION_OPTIONS,
   ESTADO_CIVIL_OPTIONS,
   ESTRATO_OPTIONS,
+  ETNIA_DESCRIPTIONS,
   ETNIA_LABEL,
   ETNIA_OPTIONS,
   ETNIA_OTHER,
@@ -258,6 +259,15 @@ export function AboutYouSection({
                     </option>
                   ))}
                 </select>
+                {/* Descripcion por categoria: sin entenderla no hay autorreconocimiento (Santiago 2026-08-20). */}
+                <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {ETNIA_OPTIONS.map((o) => (
+                    <div key={o}>
+                      <dt className="inline font-medium text-foreground">{o}:</dt>{" "}
+                      <dd className="inline">{ETNIA_DESCRIPTIONS[o]}</dd>
+                    </div>
+                  ))}
+                </dl>
                 {ethnicityChoice === ETNIA_OTHER ? (
                   <div className="mt-2 flex flex-col gap-1">
                     <input

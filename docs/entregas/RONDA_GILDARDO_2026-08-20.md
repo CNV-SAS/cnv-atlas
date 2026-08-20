@@ -14,7 +14,9 @@ Lo conservamos en la lista, tal como lo pediste. Pero el asesor recomienda **no 
 - **Incoherencia interna de la lista.** Incluye dos categorías de mezcla (mestizo: indígena + europea; mulato: africana + europea) pero omite la tercera del mismo sistema (indígena + africana). Si se adopta la lógica de castas, queda incompleta; si no, «mulato» sobra.
 - **Redundancia.** Quien se autorreconoce mulato casi siempre también se reconoce afrodescendiente. Separarlos divide una población que interesa analizar junta.
 
-**Su alternativa concreta** (conserva la estructura y el número de opciones, solo cambia la etiqueta):
+**Y un quinto argumento, nuestro, que salió de intentar construir las descripciones** (para que el paciente pueda autorreconocerse, que es el principio del diseño). Al escribirlas apareció algo que ninguno había visto: **«Mestizo/a: mezcla de ascendencia indígena y europea»** y **«Mulato/a: mezcla de ascendencia africana y europea»** se leen juntas como **dos categorías del mismo sistema**, y falta la tercera (indígena y africana). Y **«mezcla africana y europea» cae dentro de «ascendencia africana»**, así que el paciente ve **dos casillas que se pisan**. No encontramos forma de describir «Mulato/a» sin que pase una de las dos cosas: o expone la lógica de castas, o se solapa con Afrodescendiente. La conservamos, con la descripción «mezcla de ascendencia africana y europea», asumiendo que el paciente verá ese solapamiento.
+
+**Su alternativa concreta** (conserva la estructura y el número de opciones, solo cambia la etiqueta; junta «Mulato/a» dentro de «Afrodescendiente», que es su superconjunto, y deja «Mestizo/a» aparte):
 
 > Mestizo/a · Blanco/a · **Afrodescendiente (incluye negro/a, mulato/a, afrolatino/a)** · Indígena · Otro · Prefiero no indicar
 

@@ -70,6 +70,21 @@ export const ETNIA_OPTIONS = [
 ] as const;
 export type EtniaOption = (typeof ETNIA_OPTIONS)[number];
 
+// Descripcion breve por categoria: sin entender la categoria no hay autorreconocimiento (principio del
+// diseno; Santiago 2026-08-20). Segunda persona, neutras. NOTA para la ronda: describir "Mulato/a"
+// honestamente expone la logica de castas (junto a "Mestizo/a" son dos mezclas del mismo sistema, falta la
+// tercera) y se solapa con "Afrodescendiente" (la mezcla africana+europea cae dentro de ascendencia africana);
+// es el dato concreto que va a la objecion. Se conserva por instruccion de la direccion cientifica.
+export const ETNIA_DESCRIPTIONS: Record<EtniaOption, string> = {
+  "Mestizo/a": "Te reconoces con una mezcla de ascendencia indígena y europea.",
+  "Blanco/a": "Te reconoces con ascendencia predominantemente europea.",
+  "Afrodescendiente": "Te reconoces con ascendencia africana.",
+  "Indígena": "Te reconoces como parte de un pueblo o comunidad indígena.",
+  "Mulato/a": "Te reconoces con una mezcla de ascendencia africana y europea.",
+  "Otro": "Ninguna de las anteriores te representa; escribe cuál.",
+  "Prefiero no indicar": "Prefieres no informar tu etnia o grupo poblacional.",
+};
+
 // ASCENDENCIA: RETIRADA del intake (RESPUESTA_GILDARDO 2026-08-20 v2 §3). No esta parametrizada en el HTML de
 // Gildardo (no hay campo que la reciba), asi que producia un dato sin destino. Se DEJA DE CAPTURAR (el form ya
 // no la envia); la columna patient_profiles.ancestry se conserva (tiene datos de prueba), sin uso. La constante
