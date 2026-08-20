@@ -132,9 +132,9 @@ export const COLOMBIA_CITIES_GEO: readonly ColombiaCity[] = [
   { ciudad: "Zipaquirá", departamento: "Cundinamarca", region: "Andina", altitudMsnm: 2650 },
 ];
 
-// Nombres para el dropdown de ciudad (Colombia). Derivado de la lista geo: una sola fuente. Lo usa el
-// selector de RESIDENCIA prolongada (que es Colombia-hondo a proposito: de ahi sale la altitud fisiologica,
-// y tener las 72 da mejor cobertura de altitud que las 11 de CXPAIS.Colombia).
+// Nombres de las ciudades de la tabla geo (Colombia). Derivado de la lista geo: una sola fuente. Es la lista
+// COMPLETA de altitudes conocidas (72). Los desplegables de la UI (ciudad actual y residencia) usan CXPAIS por
+// pais, NO esta lista; queda como fuente de altitud/derivacion (cityGeo) y para el candado del test.
 export const COLOMBIA_CITIES: readonly string[] = COLOMBIA_CITIES_GEO.map((c) => c.ciudad);
 
 // CXPAIS: mapa PAIS -> ciudades curadas para el selector de ciudad ACTUAL (RESPUESTA_GILDARDO 2026-08-20 §1,
