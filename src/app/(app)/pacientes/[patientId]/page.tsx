@@ -3,7 +3,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
-import { canAbandonEvaluation } from "@/modules/evaluations/policies/can-manage-evaluations";
+import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
+import {
+  canAbandonEvaluation,
+  canEmitFollowupLink,
+} from "@/modules/evaluations/policies/can-manage-evaluations";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { edadEnAnios, fechaCorta } from "@/modules/patients/format";
 import {
@@ -39,6 +43,9 @@ export default async function HistoriaPacientePage({
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
   const puedeCerrar = canAbandonEvaluation(user);
+  // Emitir link de seguimiento: sitio FIJO en el perfil (antes vivia en la tarjeta de confirmar identidad,
+  // que desaparece al confirmar; Santiago 2026-08-20 §5a). El action re-resuelve el profesional asignado.
+  const puedeEmitirSeguimiento = canEmitFollowupLink(user);
 
   const anos = edadEnAnios(paciente.birthDate);
   const nombre = `${paciente.firstName} ${paciente.lastName}`.trim() || "Sin nombre";
@@ -85,6 +92,17 @@ export default async function HistoriaPacientePage({
           </div>
         ))}
       </section>
+
+      {puedeEmitirSeguimiento ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Seguimiento</h2>
+          <p className="text-sm text-muted-foreground">
+            Emite un enlace para que el paciente responda una encuesta de seguimiento. Su identidad ya está
+            registrada.
+          </p>
+          <FollowupLinkEmitter patientId={patientId} />
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-4">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Evaluaciones</h2>

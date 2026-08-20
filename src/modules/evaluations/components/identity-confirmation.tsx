@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/format/date";
 
-import { confirmIdentityAction, emitFollowupLinkAction } from "../actions";
-import type { ConfirmIdentityState, FollowupLinkState } from "../validations";
+import { confirmIdentityAction } from "../actions";
+import type { ConfirmIdentityState } from "../validations";
 
 export type DuplicateCandidateView = {
   patientId: string;
@@ -34,7 +34,6 @@ export type PendingEvaluationView = {
 };
 
 const confirmInitial: ConfirmIdentityState = { error: null, confirmed: false };
-const followupInitial: FollowupLinkState = { error: null, linkPath: null };
 
 function DuplicateAlert({ candidates }: { candidates: DuplicateCandidateView[] }) {
   return (
@@ -89,13 +88,6 @@ export function IdentityConfirmation({
     confirmIdentityAction,
     confirmInitial,
   );
-  const [followupState, followupAction, emitting] = useActionState(
-    emitFollowupLinkAction,
-    followupInitial,
-  );
-  const [origin] = useState(() =>
-    typeof window !== "undefined" ? window.location.origin : "",
-  );
 
   const done = confirmState.confirmed;
 
@@ -138,34 +130,7 @@ export function IdentityConfirmation({
               </Button>
             </form>
           )}
-
-          <form action={followupAction} className="flex items-center gap-2">
-            <input type="hidden" name="patientId" value={evaluation.patientId} />
-            <Button type="submit" variant="outline" disabled={emitting}>
-              {emitting ? "Generando..." : "Emitir link de seguimiento"}
-            </Button>
-          </form>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          El link de seguimiento es de un solo uso y vence 30 dias despues de
-          emitirlo (colchon por defecto).
-        </p>
-
-        {followupState.error ? (
-          <p className="text-sm text-destructive">{followupState.error}</p>
-        ) : null}
-        {followupState.linkPath ? (
-          <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-3 text-sm">
-            <span className="font-medium text-foreground">
-              Link de seguimiento (un solo uso, vence en 30 dias)
-            </span>
-            <span className="break-all text-primary">
-              {origin}
-              {followupState.linkPath}
-            </span>
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );
