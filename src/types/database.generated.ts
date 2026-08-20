@@ -1027,6 +1027,7 @@ export type Database = {
       evaluations: {
         Row: {
           ancestry: string | null
+          consent_version: string | null
           created_at: string
           declared_first_name: string | null
           declared_last_name: string | null
@@ -1050,6 +1051,7 @@ export type Database = {
         }
         Insert: {
           ancestry?: string | null
+          consent_version?: string | null
           created_at?: string
           declared_first_name?: string | null
           declared_last_name?: string | null
@@ -1073,6 +1075,7 @@ export type Database = {
         }
         Update: {
           ancestry?: string | null
+          consent_version?: string | null
           created_at?: string
           declared_first_name?: string | null
           declared_last_name?: string | null

@@ -71,6 +71,13 @@ export const evaluations = pgTable(
     // ponerse sin una fila de correccion que nombre esta evaluacion como old_evaluation_id.
     // diagnoses/treatments/reports NO tienen equivalente: heredan vigencia por el FK a la evaluacion.
     supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    // CONSTANCIA de consentimiento (dictamen legal 2026-08-20 §4): "un puntero, no una copia". La VERSION del
+    // consentimiento vigente bajo la que se realizo esta evaluacion. Con esto + created_at (marca de tiempo) +
+    // patient_id se reconstruye bajo que autorizaciones se capturo el dato (las de patient_consents vigentes en
+    // esa fecha): imprescindible para responder ante una revocacion o un reclamo. La VERIFICACION de vigencia
+    // (regla 15) corre ANTES de crear la evaluacion (si alguna necesaria fue revocada, el flujo se detiene sin
+    // crear nada). Nullable: las evaluaciones anteriores a esta columna quedan en null (no se fabrica el dato).
+    consentVersion: text("consent_version"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

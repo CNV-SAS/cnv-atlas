@@ -18,6 +18,7 @@ import {
   surveyResponses,
 } from "@/db/schema";
 import { appError, err, ok, type Result } from "@/core/errors";
+import { CONSENT_VERSION } from "@/modules/consent/versions";
 import { recordAudit } from "@/modules/audit/log";
 import { getSealedValidityCaveats } from "@/modules/bis-intake/data/bis-conditions-reader";
 import {
@@ -315,6 +316,10 @@ export async function correctEvaluation(
           organizationId: ev.organizationId,
           type: ev.type,
           status: "in_progress",
+          // Constancia: la correccion recomputa datos capturados bajo el consentimiento vigente; sella la
+          // version actual (hoy todos en v1.0; cuando las versiones diverjan, revisar si debe copiar la del
+          // original). El dato original se capturo bajo la misma o una version compatible.
+          consentVersion: CONSENT_VERSION,
         })
         .returning({ id: evaluations.id });
 

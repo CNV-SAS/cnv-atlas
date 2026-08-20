@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 import type { ConsentType } from "@/modules/consent/validations";
+import { CONSENT_VERSION } from "@/modules/consent/versions";
 
 import { canCreateEvaluation } from "../policies/can-create-evaluation";
 import type { EvaluationType, IntakeIdentity } from "../types";
@@ -265,6 +266,9 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         organizationId: input.organizationId,
         type: input.mode,
         status: "awaiting_survey",
+        // Constancia de consentimiento (dictamen legal 2026-08-20 §4): la version vigente bajo la que se firmo.
+        // El gate de regla 15 (writePatientConsentsAndGate, arriba) ya verifico la vigencia ANTES de este insert.
+        consentVersion: CONSENT_VERSION,
         resumeToken,
         // Residencia prolongada VERSIONADA por evaluacion (Gildardo §1): el valor de ESTE encuentro, por si
         // el paciente se mudo entre consultas. El perfil (patient_profiles) guarda el ultimo conocido (prefill).
