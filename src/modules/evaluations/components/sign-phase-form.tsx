@@ -371,7 +371,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               autorizaciones.
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Nombre completo del representante">
+              <Field label="Nombre completo del representante" required>
                 <Input
                   name="legalRepresentativeName"
                   className="h-9"
@@ -379,7 +379,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                   onChange={(e) => setRep((s) => ({ ...s, name: e.target.value }))}
                 />
               </Field>
-              <Field label="Tipo y número de documento">
+              <Field label="Tipo y número de documento" required>
                 <Input
                   name="legalRepresentativeDocument"
                   className="h-9"
@@ -387,7 +387,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                   onChange={(e) => setRep((s) => ({ ...s, document: e.target.value }))}
                 />
               </Field>
-              <Field label="Parentesco o calidad">
+              <Field label="Parentesco o calidad" required>
                 <select
                   name="legalRepresentativeRelationship"
                   className={selectClass}
@@ -402,7 +402,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                   ))}
                 </select>
               </Field>
-              <Field label="Correo del representante">
+              <Field label="Correo del representante" required>
                 <Input
                   name="legalRepresentativeEmail"
                   type="email"
@@ -415,7 +415,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
                   representante, no al del menor.
                 </p>
               </Field>
-              <Field label="Fecha de nacimiento del menor">
+              <Field label="Fecha de nacimiento del menor" required>
                 <Input
                   name="minorBirthDate"
                   type="date"
@@ -558,6 +558,10 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
         <h2 className="text-lg font-semibold text-foreground">
           {isMinor ? "Datos del menor evaluado" : "Tus datos"}
         </h2>
+        <p className="text-xs text-muted-foreground">
+          Los campos con <span className="text-destructive">*</span> son obligatorios para firmar. El resto es
+          opcional.
+        </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de documento">
             <select name="documentType" className={selectClass} defaultValue="CC">
@@ -568,7 +572,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               ))}
             </select>
           </Field>
-          <Field label="Número de documento">
+          <Field label="Número de documento" required>
             <Input
               name="documentNumber"
               className="h-9"
@@ -576,13 +580,13 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               onChange={(e) => setDocumentNumber(e.target.value)}
             />
           </Field>
-          <Field label="Nombres">
+          <Field label="Nombres" required>
             <Input name="firstName" className="h-9" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </Field>
-          <Field label="Apellidos">
+          <Field label="Apellidos" required>
             <Input name="lastName" className="h-9" value={lastName} onChange={(e) => setLastName(e.target.value)} />
           </Field>
-          <Field label="Fecha de nacimiento">
+          <Field label="Fecha de nacimiento" required>
             {isMinor ? (
               // Ya se pidio en el consentimiento; se reutiliza y no se vuelve a pedir.
               <>
@@ -601,7 +605,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               />
             )}
           </Field>
-          <Field label="Sexo">
+          <Field label="Sexo" required>
             <select name="sex" value={sex} onChange={(e) => setSex(e.target.value)} className={selectClass}>
               <option value="" disabled>
                 Selecciona
@@ -663,7 +667,21 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
               De ESTA sale la altitud FISIOLOGICA (adaptacion a la altura = vivir años en altura, no donde vive
               hoy); hoy no alimenta el motor, va al observatorio. */}
           <Field label="¿En qué ciudad o municipio vivió la mayor parte de su vida?">
-            <p className="mb-1 text-xs text-muted-foreground">Puede ser la misma que la actual (opcional).</p>
+            <p className="mb-1 text-xs text-muted-foreground">
+              <button
+                type="button"
+                className="font-medium text-primary underline"
+                onClick={() => {
+                  // Copia la ciudad ACTUAL a la residencia. Si la actual salio de "Otra" (texto libre) o de un
+                  // pais sin lista, la residencia tambien va como texto libre; si es una ciudad de la lista de
+                  // Colombia, cae en la lista. Sin ciudad actual no hay nada que copiar (no marca "Otra").
+                  setResidence(city);
+                  setResidenceOtra(country !== DEFAULT_COUNTRY ? Boolean(city) : cityOtra);
+                }}
+              >
+                Usar la misma ciudad que la actual
+              </button>
+            </p>
             <select
               className={selectClass}
               value={residenceOtra ? "Otra" : residence}
@@ -703,7 +721,7 @@ export function SignPhaseForm({ token, prefill, consentText, professional, onSig
           </Field>
           {/* Correo del paciente: OBLIGATORIO en la rama mayor (llega el codigo y la copia). En menor el
               que cuenta es el del representante (bloque de consentimiento). */}
-          <Field label={isMinor ? "Correo del menor (opcional)" : "Correo"}>
+          <Field label={isMinor ? "Correo del menor (opcional)" : "Correo"} required={!isMinor}>
             <Input
               name="email"
               type="email"

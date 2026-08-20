@@ -10,17 +10,27 @@ export const selectClass =
 
 export const checkboxClass = "mt-1 size-4 shrink-0 accent-primary";
 
-// Campo etiquetado (label arriba, control abajo).
+// Campo etiquetado (label arriba, control abajo). `required` pinta un asterisco: distingue de un vistazo
+// los campos sin los que no se puede firmar (identidad + correo) de los opcionales (ciudad, celular, etc.).
 export function Field({
   label,
+  required = false,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs">
+        {label}
+        {required ? (
+          <span className="ml-0.5 text-destructive" aria-hidden>
+            *
+          </span>
+        ) : null}
+      </Label>
       {children}
     </div>
   );
