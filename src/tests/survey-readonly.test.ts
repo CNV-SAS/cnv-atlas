@@ -32,6 +32,22 @@ describe("SurveyReadonly", () => {
     expect(markup).toContain("Sí"); // opcion elegida como pastilla
     expect(markup).toContain(">5<"); // valor del contador
     expect(markup).toContain("Sin responder"); // q3 sin respuesta
+    expect(markup).toContain("Falta 1 pregunta"); // aviso de faltantes (q3), mismo predicado que el gate
+  });
+
+  it("el aviso de faltantes cuenta la 'Otra' pelada como hueco (mismo predicado que el gate)", () => {
+    const domains: SurveyDomain[] = [
+      {
+        section: "D5",
+        questions: [
+          // multi con "Otra" sin texto -> hueco; unica con "Otra" pelada -> hueco; una respondida de verdad.
+          { questionId: "q1", number: 1, questionText: "A", questionHint: null, questionType: "opcion_multiple", fieldKey: null, usedInDiagnosis: false, answerValue: JSON.stringify(["Otra"]), options: ["Ninguna", "Otra"] },
+          { questionId: "q2", number: 2, questionText: "B", questionHint: null, questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: "Otra", options: ["Sí", "Otra"] },
+          { questionId: "q3", number: 3, questionText: "C", questionHint: null, questionType: "opcion", fieldKey: null, usedInDiagnosis: false, answerValue: "Sí", options: ["Sí", "No"] },
+        ],
+      },
+    ];
+    expect(render(domains)).toContain("Faltan 2 preguntas"); // las dos "Otra" peladas, no la respondida
   });
 
   it("muestra el texto libre de 'Otra' (multiple): no se pierde en la lectura del profesional", () => {
@@ -76,6 +92,6 @@ describe("SurveyReadonly", () => {
   });
 
   it("estado vacio cuando no hay respuestas", () => {
-    expect(render([])).toContain("aun no tiene respuestas");
+    expect(render([])).toContain("aún no tiene respuestas");
   });
 });
