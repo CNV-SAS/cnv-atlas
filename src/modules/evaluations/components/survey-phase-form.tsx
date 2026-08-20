@@ -5,6 +5,8 @@ import { startTransition, useActionState, useMemo, useRef, useState } from "reac
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
+import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
+
 import { saveProgressAction, submitSurveyAnswersAction } from "../actions";
 import type { SaveProgressState, SurveyFormState } from "../validations";
 import type { SurveyQuestionView } from "../data/survey-view-types";
@@ -127,14 +129,22 @@ export function SurveyPhaseForm({
     scrollTop();
   };
 
-  // Preguntas de encuesta sin responder: cada widget emite `answer_<id>` SOLO cuando tiene valor, asi
-  // que ausencia = sin responder. "Sobre ti" (perfil/motivo/etnia) es opcional y NO cuenta aqui.
+  // Preguntas de encuesta sin responder, con EL MISMO predicado que el gate del profesional (isAnswered).
+  // Antes contaba "cualquier valor no vacio", asi que una multi con "Otra" SIN texto (emitida como el token
+  // pelado) se contaba como respondida aqui pero el gate la veia como hueco: dos varas para lo mismo, y el
+  // paciente veia la que miente. Ahora se reconstruye el valor TAL COMO lo guarda el servidor (multi -> JSON,
+  // resto -> el valor) y se evalua con el mismo isAnswered. "Sobre ti" es opcional y NO cuenta aqui.
   const countUnanswered = (form: HTMLFormElement): number => {
     const fd = new FormData(form);
     let missing = 0;
     for (const q of questions) {
-      const has = fd.getAll(`answer_${q.id}`).some((v) => typeof v === "string" && v.trim() !== "");
-      if (!has) missing += 1;
+      const raw = fd
+        .getAll(`answer_${q.id}`)
+        .map((v) => String(v).trim())
+        .filter((v) => v !== "");
+      const stored =
+        q.type === "opcion_multiple" ? (raw.length ? JSON.stringify(raw) : "") : (raw[0] ?? "");
+      if (!isAnswered(stored)) missing += 1;
     }
     return missing;
   };
