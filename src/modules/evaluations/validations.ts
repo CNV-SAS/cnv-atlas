@@ -87,7 +87,14 @@ export const characterizationSchema = z
     reasonForVisit: z
       .array(z.string().max(120))
       .max(50)
-      .transform((arr) => arr.filter((x) => (MOTIVO_OPTIONS as readonly string[]).includes(x)))
+      // Se conservan los motivos de la lista Y el texto libre de "Otro" ("Otro: <texto>"). Antes solo dejaba
+      // pasar los de la lista, asi que el texto libre del motivo se descartaba en el servidor y no aparecia en
+      // el perfil (Santiago 2026-08-20 §4a). El resto (valores fuera de lista sin el centinela) se filtra.
+      .transform((arr) =>
+        arr.filter(
+          (x) => (MOTIVO_OPTIONS as readonly string[]).includes(x) || /^otro\s*:\s*.+$/i.test(x.trim()),
+        ),
+      )
       .optional(),
   })
   .nullish()

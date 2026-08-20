@@ -29,7 +29,7 @@ describe("characterizationSchema (validacion, sin BD)", () => {
         socioeconomicStratum: "3",
         ethnicity: "Indígena",
       },
-      reasonForVisit: ["Rendimiento deportivo", "No existe", "Otro"],
+      reasonForVisit: ["Rendimiento deportivo", "No existe", "Otro: segunda opinión"],
     });
     expect(parsed?.profile).toEqual({
       educationLevel: "Posgrado",
@@ -41,8 +41,9 @@ describe("characterizationSchema (validacion, sin BD)", () => {
       // asi que el schema lo default a null. El toEqual no se actualizo entonces y el test quedo rojo.
       ancestry: null,
     });
-    // El motivo se filtra a las opciones conocidas (descarta "No existe").
-    expect(parsed?.reasonForVisit).toEqual(["Rendimiento deportivo", "Otro"]);
+    // El motivo se filtra a las opciones conocidas Y conserva el texto libre "Otro: <texto>" (descarta solo
+    // "No existe", que no es de la lista ni lleva el centinela). Antes se descartaba el texto libre (§4a).
+    expect(parsed?.reasonForVisit).toEqual(["Rendimiento deportivo", "Otro: segunda opinión"]);
   });
 
   it("sin profile (seguimiento) deja profile undefined y solo trae el motivo", () => {
