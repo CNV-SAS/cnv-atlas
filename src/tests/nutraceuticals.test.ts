@@ -8,7 +8,10 @@ import postgres from "postgres";
 // clinica (paciente -> evaluacion -> diagnostico -> tratamiento) se arma via sql
 // (superusuario), porque su UI aun no existe (B9/B12).
 
-if (!process.env.DATABASE_URL) process.loadEnvFile?.(".env.local");
+// Carga SIEMPRE (no condicionada a DATABASE_URL): loadEnvFile no pisa vars ya seteadas, solo rellena las
+// faltantes. El guard condicional dejaba NEXT_PUBLIC_SUPABASE_URL/ANON sin cargar cuando DATABASE_URL venia
+// seteada sola (CI, o una corrida manual) y createClient(undefined) reventaba: rojo intermitente falso.
+process.loadEnvFile?.(".env.local");
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

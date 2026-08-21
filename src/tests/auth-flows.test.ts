@@ -9,7 +9,10 @@ import postgres from "postgres";
 // correo de invitacion y MFA end-to-end. Los redirects del proxy/layout se
 // verifican aparte con un smoke de la app (necesitan el server de Next corriendo).
 
-if (!process.env.DATABASE_URL) process.loadEnvFile?.(".env.local");
+// Carga SIEMPRE (no condicionada a DATABASE_URL): loadEnvFile no pisa vars ya seteadas, solo rellena las
+// faltantes. El guard condicional dejaba NEXT_PUBLIC_SUPABASE_URL/ANON sin cargar cuando DATABASE_URL venia
+// seteada sola (CI, o una corrida manual) y createClient(undefined) reventaba: rojo intermitente falso.
+process.loadEnvFile?.(".env.local");
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
