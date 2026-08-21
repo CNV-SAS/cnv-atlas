@@ -319,6 +319,43 @@ Si el sistema va a operar en quince países, **ese documento no sirve fuera de C
 
 ---
 
+## Constancia de consentimiento por evaluación: cómo responder "¿bajo qué consentimiento se hizo esto?" (runbook)
+
+**Para el día que la SIC (u otra autoridad) o un paciente pregunten bajo qué autorizaciones se capturó una evaluación.** La constancia (dictamen legal 2026-08-20 §4) vive en DOS lugares complementarios; hay que mirar los dos:
+
+1. **La columna `evaluations.consent_version`** (el puntero): la VERSIÓN del consentimiento vigente bajo la que corrió esa evaluación. Se sella en TODOS los caminos (firma inicial, seguimiento sin firma, excepción, corrección).
+2. **El log `clinical_audit_log`** (los actos): cada evaluación deja un evento con `entity_type='evaluation'`, `entity_id=<evaluation_id>`. Hay TRES formas según el camino:
+   - `evaluation.signed` (firma inicial o excepción con firma) + `consent.signed` o `consent.reconfirmed_no_change` **por paciente** (`entity_type='patient'`).
+   - `evaluation.followup_started` (seguimiento SIN firma; NO hay acto de consentimiento nuevo, el numeral 4 del consentimiento vigente lo cubre). Aquí la constancia es SOLO la columna `consent_version` + este evento.
+
+**Cómo reconstruir "bajo qué consentimiento se hizo la evaluación X" (dos consultas):**
+
+```sql
+-- 1. El puntero: qué versión + cuándo (marca de tiempo del encuentro).
+select id, type, consent_version, created_at
+from evaluations
+where id = '<evaluation_id>';
+
+-- 2. Los actos de esa evaluación (firma / seguimiento sin firma / respuestas).
+select event, entity_type, payload, created_at
+from clinical_audit_log
+where entity_id = '<evaluation_id>'
+order by created_at desc;
+
+-- 3. Qué autorizaciones estaban VIGENTES para ese paciente en la fecha del encuentro (el patient_id sale del
+--    payload de evaluation.signed/followup_started, o de la evaluación). La revocación opera hacia adelante:
+--    una autorización cuenta como vigente si granted_at <= la fecha del encuentro y (revoked_at es null o es
+--    posterior a esa fecha).
+select consent_type, consent_version, signed_at, revoked_at
+from patient_consents
+where patient_id = '<patient_id>'
+order by signed_at desc;
+```
+
+**El evento por paciente `consent.reconfirmed_no_change`** (excepción sin cambios) NO es la constancia del encuentro: es el registro de que el paciente entró por la excepción y NO se creó consentimiento nuevo. La constancia del encuentro es siempre la columna + el evento por evaluación de arriba.
+
+---
+
 ## Menores de edad
 
 El MVP **soporta pacientes menores de 18 años**. El consentimiento de ATLAS incluye el bloque de representante legal (identificación, parentesco o calidad) y, para pacientes entre 14 y 17 años, el asentimiento del propio menor (ver Consentimiento de ATLAS, sección 11). **Pendiente técnico:** Atlas debe validar la fecha de nacimiento en el flujo de la encuesta para activar automáticamente este bloque en lugar de la declaración de mayoría de edad, y registrar los campos adicionales (`legal_representative_name`, `legal_representative_document`, `legal_representative_relationship`) en `patient_consents` o tabla relacionada.
