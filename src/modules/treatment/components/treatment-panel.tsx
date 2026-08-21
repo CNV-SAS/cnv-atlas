@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/shared/markdown";
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToast, useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
 
 import {
   addNoteAction,
@@ -159,7 +159,10 @@ function CadenaCaloricaSection({
   locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
-  useFormToast(state);
+  // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
+  // con useFormToast + revalidate en la accion, el remonte corria contra el efecto y el aviso de exito se
+  // perdia. Aqui el toast se dispara y LUEGO el refresh. En warning (stale) NO refresca: preserva la edicion.
+  useFormToastRefreshOnSuccess(state);
   // useState-once desde la prop; el remonte (key del padre) re-deriva cuando el servidor cambia algo.
   const [pesoMeta, setPesoMeta] = useState(numToInput(protocol.adjPesoMeta));
   const [geb, setGeb] = useState(numToInput(protocol.adjGeb));
@@ -209,6 +212,10 @@ function CadenaCaloricaSection({
   const macrosKcal = cal.protKcal + cal.fatKcal + cal.choKcal;
   const proteinaGrasaExcedenObjetivo = cal.protKcal + cal.fatKcal > cal.kcalObj;
   const protPct = cal.kcalObj > 0 ? Math.round((cal.protKcal / cal.kcalObj) * 100) : 0;
+  // El objetivo coincide con el GET cuando NO hay override y el deficit del modelo es 0 (decision de Gildardo:
+  // el sistema no deriva el objetivo, deja mantenimiento). Se explica junto al numero para que la coincidencia
+  // GET == objetivo no se lea como un error (fix 1: Santiago dudo, un nutricionista tambien).
+  const objetivoEsMantenimiento = adj.kcalObj == null && cal.kcalObj === cal.get;
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
@@ -311,10 +318,22 @@ function CadenaCaloricaSection({
           Cadena efectiva (vista previa)
         </p>
         <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
-        <PrevRow label="GEB" value={`${d0(cal.geb)} kcal`} detail={`(${cal.formula})`} />
-        <PrevRow label="PAL" value={String(cal.pal)} />
-        <PrevRow label="GET" value={`${d0(cal.get)} kcal`} />
-        <PrevRow label="Objetivo calórico" value={`${d0(cal.kcalObj)} kcal`} />
+        <PrevRow
+          label="Gasto energético basal (GEB)"
+          value={`${d0(cal.geb)} kcal`}
+          detail={`(${cal.formula})`}
+        />
+        <PrevRow label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
+        <PrevRow label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
+        <PrevRow
+          label="Objetivo calórico"
+          value={`${d0(cal.kcalObj)} kcal`}
+          detail={
+            objetivoEsMantenimiento
+              ? "(= GET, mantenimiento: el modelo no aplica déficit; el objetivo lo defines tú)"
+              : undefined
+          }
+        />
 
         {/* Reparto de macronutrientes (sub-tarea 3). El profesional FIJA proteina y grasa; los carbohidratos
             salen del residuo (calculado). El tag lo hace explicito para que no crea que ajusta los tres. */}
@@ -323,13 +342,13 @@ function CadenaCaloricaSection({
         </p>
         <PrevRow
           label="Proteína"
-          tag="la fijas tú"
+          tag="la fijas tú (g/kg de peso)"
           value={`${d0(cal.protG)} g`}
           detail={`(${cal.protGKg} g/kg · ${protPct}% · ${d0(cal.protKcal)} kcal)`}
         />
         <PrevRow
           label="Grasa"
-          tag="la fijas tú"
+          tag="la fijas tú (% de las calorías)"
           value={`${d0(cal.fatG)} g`}
           detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
         />
@@ -558,7 +577,9 @@ function ProtocolForm({
   locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveProtocolAction, EMPTY);
-  useFormToast(state);
+  // RefreshOnSuccess: mismo motivo que CadenaCaloricaSection. Este form se remonta por protocolSignature al
+  // guardar; el aviso de exito se perdia en la carrera con el remonte. Toast primero, refresh despues.
+  useFormToastRefreshOnSuccess(state);
 
   const [kcal, setKcal] = useState(protocol.kcalObjetivo?.toString() ?? "");
   const [protein, setProtein] = useState(protocol.proteinaGramos?.toString() ?? "");

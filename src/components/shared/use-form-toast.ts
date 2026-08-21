@@ -47,3 +47,33 @@ export function useFormToastAndRefresh(state: FormToastState) {
     router.refresh(); // refresca la lista DESPUÉS de disparar el toast (que ya está en el portal)
   }, [state, router]);
 }
+
+// Como useFormToastAndRefresh, pero refresca SOLO en success (warning y error preservan el formulario). Para
+// formularios que se REMONTAN por un `key` derivado del dato GUARDADO (p. ej. el panel de tratamiento, keyed
+// por la firma de lo guardado). Dos razones por las que la variante importa:
+//  - En success hay que refrescar para que el key cambie y el form re-derive del servidor. Si la acción
+//    revalidara ella misma, el remonte correría contra el efecto del toast y el toast se perdería (misma
+//    carrera que arriba); por eso la acción NO revalida y el refresh se hace aquí, DESPUÉS del toast.
+//  - En un WARNING de concurrencia (stale_write) NO se debe refrescar: traería el cambio del otro profesional,
+//    movería el key y remontaría el form, DESCARTANDO lo que este escribió, que es justo lo que el stale_write
+//    preserva para que lo reaplique. El mensaje le pide recargar a mano cuando decida.
+export function useFormToastRefreshOnSuccess(state: FormToastState) {
+  const router = useRouter();
+  const last = useRef(state);
+  useEffect(() => {
+    if (state === last.current) return;
+    last.current = state;
+    if (state.error) {
+      toast.error(state.error);
+      return;
+    }
+    if (state.warning) {
+      toast.warning(state.warning);
+      return; // sin refresh: preserva la edición en curso
+    }
+    if (state.success) {
+      toast.success(state.success);
+      router.refresh(); // refresca DESPUÉS del toast (que ya está en el portal), para re-derivar del servidor
+    }
+  }, [state, router]);
+}

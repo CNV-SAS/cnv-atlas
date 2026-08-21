@@ -110,7 +110,8 @@ export async function saveProtocolAction(
     return fail(result.error.message);
   }
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO se revalida aqui: el form se remonta por su `key` (protocolSignature) y el refresh lo dispara el hook
+  // useFormToastRefreshOnSuccess DESPUES del toast, para que el aviso de exito no se pierda en la carrera.
   return { error: null, success: "Protocolo guardado.", warning: null };
 }
 
@@ -168,9 +169,17 @@ export async function saveAdjustmentsAction(
     actorEmail: user.email,
     ...(await actor()),
   });
-  if (!result.ok) return fail(result.error.message);
+  if (!result.ok) {
+    // Rechazo por concurrencia: aviso (amber), no error. Igual que saveProtocolAction. NO se revalida (el
+    // dato no cambio) y el estado del formulario se preserva, asi que el profesional no pierde lo que escribio.
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO se revalida aqui: el form se remonta por su `key` (adjustmentSignature) y el refresh lo dispara el
+  // hook useFormToastRefreshOnSuccess DESPUES del toast, para que el aviso de exito no se pierda en la carrera.
   return { error: null, success: "Ajustes guardados.", warning: null };
 }
 
