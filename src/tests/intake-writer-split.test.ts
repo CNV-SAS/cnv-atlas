@@ -216,6 +216,58 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
       .from(schema.patientConsents)
       .where(eq(schema.patientConsents.patientId, first.patientId));
     expect(activeAfter.length).toBe(activeCountBefore);
+
+    // CONSTANCIA (dictamen §4): el paso deja rastro. Sin cambios -> consent.reconfirmed_no_change en
+    // clinical_audit_log, entity_type='patient', entity_id=patientId. (Un re-consentimiento sin rastro es
+    // peor que el boton roto, Santiago 2026-08-20.)
+    const auditRows = await db
+      .select({ event: schema.clinicalAuditLog.event })
+      .from(schema.clinicalAuditLog)
+      .where(eq(schema.clinicalAuditLog.entityId, first.patientId));
+    const events = auditRows.map((r: { event: string }) => r.event);
+    expect(events).toContain("consent.reconfirmed_no_change");
+  });
+
+  it("SEGUIMIENTO SIN FIRMA: sella consent_version en el eval + deja constancia (evaluation.followup_started)", async () => {
+    // 1. Inicial: crea el paciente con consentimientos vigentes (version 1.7 en este fixture).
+    const doc = `SPLIT-NOSIGN-${Date.now()}`;
+    const first = await writer.signIntakeEvaluation({
+      ...signInput("nosign", consents),
+      identity: { ...identity("nosign"), documentNumber: doc },
+    });
+    createdEvals.push(first.evaluationId);
+    createdPatients.push(first.patientId);
+
+    // 2. Seguimiento SIN firma: verifica la vigencia (gate) y crea el shell sin re-consentir.
+    const started = await writer.startFollowupWithoutSignature({
+      organizationId: orgId,
+      professionalId: proId,
+      patientId: first.patientId,
+      linkId: null,
+      ipAddress: null,
+    });
+    createdEvals.push(started.evaluationId);
+    expect(started.resumeToken).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+
+    // CONSTANCIA (dictamen §4) EN LA EVALUACION: consent_version sellada (la que el paciente TIENE) + marca de
+    // tiempo (created_at) + el evento evaluation.followup_started (entity_type='evaluation'). No en el paciente.
+    const [ev] = await db
+      .select({
+        status: schema.evaluations.status,
+        type: schema.evaluations.type,
+        consentVersion: schema.evaluations.consentVersion,
+      })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.id, started.evaluationId));
+    expect(ev.status).toBe("awaiting_survey");
+    expect(ev.type).toBe("seguimiento");
+    expect(ev.consentVersion).toBe("1.7"); // la version vigente del paciente, no la constante actual
+
+    const audit = await db
+      .select({ event: schema.clinicalAuditLog.event })
+      .from(schema.clinicalAuditLog)
+      .where(eq(schema.clinicalAuditLog.entityId, started.evaluationId));
+    expect(audit.map((r: { event: string }) => r.event)).toContain("evaluation.followup_started");
   });
 
   it("el GATE (regla 15) sigue en la firma: sin las autorizaciones necesarias, no crea nada", async () => {

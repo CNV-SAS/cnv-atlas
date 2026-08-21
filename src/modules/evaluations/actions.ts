@@ -309,13 +309,20 @@ export async function signSurveyAction(
   // el resume_token (era el sintoma: sin error, sin Sentry, de vuelta al boton). Se registra y se avanza igual.
   const { patientId, resumeToken } = result.value;
   const ethnicityAuthorized = consent.investigacion === true;
+  const acceptedAt = Date.now();
+  // La URL de reanudacion (para el correo) puede fallar (armado de URL); si falla NO debe tumbar la firma NI
+  // impedir la copia. Se captura y se sigue con resumeUrl null: la copia se envia igual (el enlace es un
+  // extra del correo, no un requisito). Antes, si esto lanzaba, `after(...)` no se llamaba y la copia NO se
+  // enviaba (los pacientes no la recibian) ademas de tumbar la accion.
+  let resumeUrl: string | null = null;
   try {
-    const acceptedAt = Date.now();
-    const resumeUrl = await resumeUrlFrom(resumeToken);
-    after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
+    resumeUrl = await resumeUrlFrom(resumeToken);
   } catch (e) {
-    Sentry.captureException(e, { tags: { area: "sign-survey-action", op: "post-sign-copy" } });
+    Sentry.captureException(e, { tags: { area: "sign-survey-action", op: "resume-url" } });
   }
+  // La copia del consentimiento va SIEMPRE (transparencia). En `after`: un fallo aqui (correo, lectura del
+  // profesional) queda fuera del camino de respuesta y no afecta la validez ni el avance del paciente.
+  after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
 
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
   return { error: null, fields: null, resumeToken, ethnicityAuthorized };
