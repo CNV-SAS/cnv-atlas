@@ -173,6 +173,51 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
     expect(ev.status).toBe("draft");
   });
 
+  it("SEGUIMIENTO re-firmado SIN cambios: AVANZA (crea el shell) y NO crea consentimiento nuevo (guard §3)", async () => {
+    // 1. Inicial: crea el paciente + los consentimientos vigentes.
+    const doc = `SPLIT-FUP-${Date.now()}`;
+    const first = await writer.signIntakeEvaluation({
+      ...signInput("fup", consents),
+      identity: { ...identity("fup"), documentNumber: doc },
+    });
+    createdEvals.push(first.evaluationId);
+    createdPatients.push(first.patientId);
+
+    const activeBefore = await db
+      .select({ id: schema.patientConsents.id })
+      .from(schema.patientConsents)
+      .where(eq(schema.patientConsents.patientId, first.patientId));
+    const activeCountBefore = activeBefore.length;
+
+    // 2. Seguimiento re-firmado con los MISMOS consentimientos + mismo contacto: el guard NO debe crear
+    //    consentimiento nuevo, pero SI debe crear el shell y devolver el resume_token (Santiago 2026-08-20:
+    //    "que no cree nada no significa que no siga").
+    const second = await writer.signIntakeEvaluation({
+      ...signInput("fup", consents),
+      mode: "seguimiento" as const,
+      patientId: first.patientId,
+      linkId: null,
+      identity: { ...identity("fup"), documentNumber: doc },
+    });
+    createdEvals.push(second.evaluationId);
+
+    // AVANZA: hay resume_token y el shell quedo en awaiting_survey.
+    expect(second.resumeToken).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+    const [ev] = await db
+      .select({ status: schema.evaluations.status, type: schema.evaluations.type })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.id, second.evaluationId));
+    expect(ev.status).toBe("awaiting_survey");
+    expect(ev.type).toBe("seguimiento");
+
+    // NO se creo consentimiento nuevo: el conteo de filas de consent del paciente no aumento.
+    const activeAfter = await db
+      .select({ id: schema.patientConsents.id })
+      .from(schema.patientConsents)
+      .where(eq(schema.patientConsents.patientId, first.patientId));
+    expect(activeAfter.length).toBe(activeCountBefore);
+  });
+
   it("el GATE (regla 15) sigue en la firma: sin las autorizaciones necesarias, no crea nada", async () => {
     const doc = `SPLIT-GATE-${Date.now()}`;
     const input = { ...signInput("d", [consents[0]]), identity: { ...identity("d"), documentNumber: doc } };

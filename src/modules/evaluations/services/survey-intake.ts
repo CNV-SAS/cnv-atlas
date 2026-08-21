@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 import { appError, err, ok, type Result } from "@/core/errors";
 import { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } from "@/modules/consent/consent-hash";
 import { verifyOtp, type OtpVerifyStatus } from "@/modules/consent/otp/otp-service";
@@ -169,13 +171,21 @@ export async function signSurveyIntake(
   if (!prep.ok) return prep;
   const { consents, signature, resolution, identity } = prep.value;
 
+  // Un LINK DE SEGUIMIENTO ya identifica al paciente (es patient-specific y de un solo uso): se usa
+  // link.patientId + mode "seguimiento" DIRECTAMENTE, NO la resolucion por documento. Si se confiara en la
+  // resolucion y el documento prellenado no calzara (p. ej. una diferencia sutil), devolveria mode "inicial"
+  // e intentaria crear un paciente con documento duplicado -> viola el indice unico -> throw. Con el link, no.
+  // La resolucion se conserva SOLO para el conflicto de identidad (nombre declarado vs registrado). (2026-08-20)
+  const isFollowupLink = input.link.type === "seguimiento" && !!input.link.patientId;
+  const mode = isFollowupLink ? ("seguimiento" as const) : resolution.mode;
+  const patientId = isFollowupLink ? input.link.patientId : resolution.matchedPatientId;
   const linkId = input.link.type === "seguimiento" ? input.link.id : null;
   try {
     const signed = await signIntakeEvaluation({
       organizationId: input.link.organizationId,
       professionalId: input.link.professionalId,
-      mode: resolution.mode,
-      patientId: resolution.matchedPatientId,
+      mode,
+      patientId,
       identity,
       consents,
       linkId,
@@ -187,7 +197,7 @@ export async function signSurveyIntake(
       evaluationId: signed.evaluationId,
       patientId: signed.patientId,
       resumeToken: signed.resumeToken,
-      mode: resolution.mode,
+      mode,
       duplicateCandidates: resolution.duplicateCandidates,
     });
   } catch (e) {
@@ -196,7 +206,12 @@ export async function signSurveyIntake(
         appError("forbidden", "No es posible crear la evaluación sin las autorizaciones necesarias vigentes."),
       );
     }
-    throw e;
+    // Cualquier otro fallo: NO se propaga en silencio (dejaba al paciente pulsando "Firmar" sin mensaje). Se
+    // registra en Sentry y se devuelve un error visible para que la UI lo muestre en vez de volver al boton.
+    Sentry.captureException(e, { tags: { area: "survey-intake", op: "signIntakeEvaluation" } });
+    return err(
+      appError("internal", "No pudimos completar la firma en este momento. Intenta de nuevo o avisa a tu profesional."),
+    );
   }
 }
 
