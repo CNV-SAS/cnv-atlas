@@ -69,6 +69,7 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
+import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 
@@ -302,6 +303,13 @@ export default async function ResultadosEvaluacionPage({
       : { kind: "no-profession" }; // clave malformada (defensivo; no ocurre en snapshots compatibles)
   }
 
+  // Nombre de la segunda subpestaña de Tratamiento: la profesion del que mira (nunca hardcodeado). Admin o
+  // actor sin profesion (que ve la vista de consulta) cae a un generico.
+  const profesionLabel =
+    actorProfession.isProfessional && actorProfession.profession
+      ? (PROFESSION_LABEL[actorProfession.profession] ?? actorProfession.profession)
+      : "Profesional";
+
   // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
   // protocolo. Seguimiento recibe la comparacion contra la evaluacion previa. El pulido de
@@ -351,17 +359,33 @@ export default async function ResultadosEvaluacionPage({
           {patientState ? (
             <PatientStateHeader sector={patientState.sector} fenotipo={patientState.fenotipo} />
           ) : null}
-          <RutasSection rutas={rutas} />
-          <RemisionesSection rutas={rutas} register={referralRegister} />
-          <ProfessionTreatmentSection
-            evaluationId={id}
-            actor={actorProfession}
-            protocol={protocol}
-            abordaje={abordajeText}
-            rutas={rutas}
+          {/* Fase 0, checkpoint 1: la etapa se divide en DOS subpestañas (como el HTML), envolviendo el
+              contenido que YA existe sin desarmar nada (el desarme del bloque viejo es checkpoint 2). El
+              "Estado del paciente" queda arriba, comun a ambas. Rutas de atencion = comun (rutas + remisiones);
+              [Profesion] = el workspace del profesional. */}
+          <TreatmentSubtabs
+            profesionLabel={profesionLabel}
+            rutas={
+              <div className="flex flex-col gap-8">
+                <RutasSection rutas={rutas} />
+                <RemisionesSection rutas={rutas} register={referralRegister} />
+              </div>
+            }
+            profesion={
+              <ProfessionTreatmentSection
+                evaluationId={id}
+                actor={actorProfession}
+                protocol={protocol}
+                abordaje={abordajeText}
+                rutas={rutas}
+              />
+            }
           />
-          {/* Reporte: cierre de la etapa de Tratamiento (es su salida). La aprobacion/envio la
-              gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
+          {/* Reporte: cierre natural de la etapa de Tratamiento (es su salida: el profesional termina el
+              plan y genera el reporte). DECIDIDO 2026-08-21 (Santiago): se QUEDA aqui, NO se mueve. Atlas no
+              tiene pestaña Reporte, y crear una quinta para mover algo que ya esta en su sitio no gana nada;
+              el HTML lo tiene aparte porque su estructura es otra, no porque la nuestra este mal. No reabrir.
+              La aprobacion/envio la gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
           {reportCard ? (
             <section className="flex flex-col gap-3">
               <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
