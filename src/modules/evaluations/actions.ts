@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
@@ -302,14 +303,22 @@ export async function signSurveyAction(
   });
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
 
-  const acceptedAt = Date.now();
+  // El shell YA se creo (signSurveyIntake tuvo exito): a partir de aqui el resume_token es valido y el
+  // paciente DEBE avanzar. Armar la URL de reanudacion y agendar la copia del consentimiento son TRANSPARENCIA,
+  // no requisito de validez: si algo de eso falla, NO puede dejar al paciente en el boton sin mensaje ni perder
+  // el resume_token (era el sintoma: sin error, sin Sentry, de vuelta al boton). Se registra y se avanza igual.
   const { patientId, resumeToken } = result.value;
-  const resumeUrl = await resumeUrlFrom(resumeToken);
-  after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
+  const ethnicityAuthorized = consent.investigacion === true;
+  try {
+    const acceptedAt = Date.now();
+    const resumeUrl = await resumeUrlFrom(resumeToken);
+    after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: "sign-survey-action", op: "post-sign-copy" } });
+  }
 
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
-  // ethnicityAuthorized: si otorgo investigacion, la fase 2 muestra el campo de etnia (consent v1.0).
-  return { error: null, fields: null, resumeToken, ethnicityAuthorized: consent.investigacion === true };
+  return { error: null, fields: null, resumeToken, ethnicityAuthorized };
 }
 
 // ── SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3) ────────────────────────────────────────────

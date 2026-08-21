@@ -167,20 +167,23 @@ export type SignSurveyResult = SurveyIntakeResult & { resumeToken: string };
 export async function signSurveyIntake(
   input: SignSurveyIntakeInput,
 ): Promise<Result<SignSurveyResult>> {
-  const prep = await resolveSignedIntake(input);
-  if (!prep.ok) return prep;
-  const { consents, signature, resolution, identity } = prep.value;
-
-  // Un LINK DE SEGUIMIENTO ya identifica al paciente (es patient-specific y de un solo uso): se usa
-  // link.patientId + mode "seguimiento" DIRECTAMENTE, NO la resolucion por documento. Si se confiara en la
-  // resolucion y el documento prellenado no calzara (p. ej. una diferencia sutil), devolveria mode "inicial"
-  // e intentaria crear un paciente con documento duplicado -> viola el indice unico -> throw. Con el link, no.
-  // La resolucion se conserva SOLO para el conflicto de identidad (nombre declarado vs registrado). (2026-08-20)
-  const isFollowupLink = input.link.type === "seguimiento" && !!input.link.patientId;
-  const mode = isFollowupLink ? ("seguimiento" as const) : resolution.mode;
-  const patientId = isFollowupLink ? input.link.patientId : resolution.matchedPatientId;
-  const linkId = input.link.type === "seguimiento" ? input.link.id : null;
+  // TODO el cuerpo va en try/catch: si CUALQUIER paso lanza (la preparacion/resolucion incluida, no solo el
+  // writer), NO se propaga en silencio (dejaba al paciente pulsando "Firmar" sin error, sin mensaje y sin
+  // avanzar). Se registra en Sentry y se devuelve un error visible.
   try {
+    const prep = await resolveSignedIntake(input);
+    if (!prep.ok) return prep;
+    const { consents, signature, resolution, identity } = prep.value;
+
+    // Un LINK DE SEGUIMIENTO ya identifica al paciente (es patient-specific y de un solo uso): se usa
+    // link.patientId + mode "seguimiento" DIRECTAMENTE, NO la resolucion por documento. Si se confiara en la
+    // resolucion y el documento prellenado no calzara (p. ej. una diferencia sutil), devolveria mode "inicial"
+    // e intentaria crear un paciente con documento duplicado -> viola el indice unico -> throw. Con el link, no.
+    // La resolucion se conserva SOLO para el conflicto de identidad (nombre declarado vs registrado). (2026-08-20)
+    const isFollowupLink = input.link.type === "seguimiento" && !!input.link.patientId;
+    const mode = isFollowupLink ? ("seguimiento" as const) : resolution.mode;
+    const patientId = isFollowupLink ? input.link.patientId : resolution.matchedPatientId;
+    const linkId = input.link.type === "seguimiento" ? input.link.id : null;
     const signed = await signIntakeEvaluation({
       organizationId: input.link.organizationId,
       professionalId: input.link.professionalId,
