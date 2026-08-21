@@ -142,6 +142,28 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(conObj.calorico.kcalObj).toBe(1800);
   });
 
+  // Tratamiento sub-tarea 3, cuidado (a): el reparto de macros en kcal CUADRA con el objetivo, exacto, por
+  // construccion (choKcal = kcalObj - protKcal - fatKcal). La pantalla afirma "= objetivo"; este test lo
+  // blinda para que esa afirmacion no mienta. Y el borde: si proteina+grasa exceden el objetivo, choKcal se
+  // clampea a 0 (sin margen para carbohidratos) y la suma pasa el objetivo (la pantalla lo avisa en rojo).
+  it("macros: protKcal + fatKcal + choKcal == objetivo (exacto); y el borde de excedente deja choKcal en 0", () => {
+    // Caso normal (macros del modelo): la suma es exacta.
+    expect(o.calorico.protKcal + o.calorico.fatKcal + o.calorico.choKcal).toBe(o.calorico.kcalObj);
+
+    // Borde: proteina 4 g/kg + grasa 90% exceden el objetivo -> carbohidratos sin margen (0), suma > objetivo.
+    const excede = computeProtocoloEfectivo(o, {
+      geb: null,
+      pal: null,
+      kcalObj: null,
+      protGkg: 4,
+      fatPct: 90,
+      pesoMeta: null,
+    }).calorico;
+    expect(excede.choKcal).toBe(0);
+    expect(excede.choG).toBe(0);
+    expect(excede.protKcal + excede.fatKcal).toBeGreaterThan(excede.kcalObj);
+  });
+
   it("sella la version del protocolo y marca los defaults con la afirmacion de propagacion", () => {
     expect(o.protocolEngineVersion).toBe("anibise-protocolo-2026-08-19b");
     expect(o.calorico.defaults).toEqual(["pal", "fatPct"]);

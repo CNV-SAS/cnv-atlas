@@ -112,11 +112,29 @@ function AdjInput({
   );
 }
 
-// Una fila de la vista previa (etiqueta + valor efectivo, con la derivacion entre parentesis).
-function PrevRow({ label, value, detail }: { label: string; value: string; detail?: string }) {
+// Una fila de la vista previa (etiqueta + valor efectivo, con la derivacion entre parentesis). El `tag`
+// distingue lo que el profesional FIJA de lo que sale CALCULADO (sub-tarea 3, cuidado b).
+function PrevRow({
+  label,
+  value,
+  detail,
+  tag,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  tag?: string;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border/50 py-1 last:border-0">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="flex items-baseline gap-1.5 text-muted-foreground">
+        {label}
+        {tag ? (
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {tag}
+          </span>
+        ) : null}
+      </span>
       <span className="text-foreground">
         <strong>{value}</strong>
         {detail ? <span className="text-muted-foreground"> {detail}</span> : null}
@@ -182,6 +200,15 @@ function CadenaCaloricaSection({
   });
 
   const pesoCalcDisp = d1(protocol.pesoCalculo);
+
+  // Reparto en kcal (sub-tarea 3). Cuadra EXACTO por construccion: choKcal = kcalObj - protKcal - fatKcal
+  // (residuo, sin redondeo), asi que protKcal + fatKcal + choKcal == kcalObj SIEMPRE. Unico borde: si la
+  // proteina + grasa que fija el profesional ya exceden el objetivo, choKcal se clampea a 0 y la suma pasa
+  // el objetivo (senal clinica: no hay margen para carbohidratos). Los gramos van redondeados para la receta;
+  // el cuadre se afirma sobre las kcal, no sobre gramos*factor (que pueden diferir por redondeo).
+  const macrosKcal = cal.protKcal + cal.fatKcal + cal.choKcal;
+  const proteinaGrasaExcedenObjetivo = cal.protKcal + cal.fatKcal > cal.kcalObj;
+  const protPct = cal.kcalObj > 0 ? Math.round((cal.protKcal / cal.kcalObj) * 100) : 0;
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
@@ -288,21 +315,45 @@ function CadenaCaloricaSection({
         <PrevRow label="PAL" value={String(cal.pal)} />
         <PrevRow label="GET" value={`${d0(cal.get)} kcal`} />
         <PrevRow label="Objetivo calórico" value={`${d0(cal.kcalObj)} kcal`} />
+
+        {/* Reparto de macronutrientes (sub-tarea 3). El profesional FIJA proteina y grasa; los carbohidratos
+            salen del residuo (calculado). El tag lo hace explicito para que no crea que ajusta los tres. */}
+        <p className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Reparto de macronutrientes
+        </p>
         <PrevRow
           label="Proteína"
+          tag="la fijas tú"
           value={`${d0(cal.protG)} g`}
-          detail={`(${cal.protGKg} g/kg · ${d0(cal.protKcal)} kcal)`}
+          detail={`(${cal.protGKg} g/kg · ${protPct}% · ${d0(cal.protKcal)} kcal)`}
         />
         <PrevRow
           label="Grasa"
+          tag="la fijas tú"
           value={`${d0(cal.fatG)} g`}
           detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
         />
         <PrevRow
           label="Carbohidratos"
+          tag="calculado (residuo)"
           value={`${d0(cal.choG)} g`}
           detail={`(${cal.choPct}% · ${d0(cal.choKcal)} kcal)`}
         />
+        {/* Cuadre: la suma en kcal es exacta por construccion (== objetivo), salvo el borde de excedente. */}
+        {proteinaGrasaExcedenObjetivo ? (
+          <p className="mt-2 rounded-md border border-clinical-critical/40 bg-clinical-critical-bg px-2 py-1.5 text-xs text-clinical-critical">
+            La proteína y la grasa que fijaste suman <strong>{d0(macrosKcal)} kcal</strong>, más que el
+            objetivo ({d0(cal.kcalObj)} kcal). No queda margen para carbohidratos (0 g). Baja la proteína o la
+            grasa, o sube el objetivo calórico.
+          </p>
+        ) : (
+          <p className="mt-1 flex items-baseline justify-between gap-4 text-xs text-clinical-optimal">
+            <span>Suma de los tres</span>
+            <span>
+              <strong>{d0(macrosKcal)} kcal</strong> = objetivo
+            </span>
+          </p>
+        )}
       </div>
     </section>
   );
