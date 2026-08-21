@@ -391,6 +391,47 @@ function ProtocolForm({
       <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
       <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
 
+      {/* CADENA CALORICA del modelo (solo lectura), Tratamiento sub-tarea 1: el motor YA la computa y la sella,
+          pero antes no se mostraba y el nutricionista veia un campo en blanco (parecia que el sistema no
+          calculo). Se muestra la orientacion de mantenimiento + GEB/PAL/GET, dejando claro que el objetivo
+          definitivo lo fija EL profesional abajo (con el deficit retirado, el sugerido es mantenimiento = GET). */}
+      {protocol.protocolSuggested?.estrategia && protocol.protocolSuggested.calorico ? (
+        <section className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
+          <h3 className="text-sm font-semibold text-foreground">Cadena calórica del modelo</h3>
+          <p className="text-sm text-foreground">{protocol.protocolSuggested.estrategia.label}</p>
+          {protocol.protocolSuggested.estrategia.perfil ? (
+            <p className="text-xs text-muted-foreground">{protocol.protocolSuggested.estrategia.perfil}</p>
+          ) : null}
+          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+            <div className="flex flex-col">
+              <dt className="text-xs text-muted-foreground">Fórmula</dt>
+              <dd className="text-sm font-medium text-foreground">{protocol.protocolSuggested.calorico.formula}</dd>
+            </div>
+            <div className="flex flex-col">
+              <dt className="text-xs text-muted-foreground">GEB</dt>
+              <dd className="text-sm font-medium tabular-nums text-foreground">
+                {protocol.protocolSuggested.calorico.geb} kcal
+              </dd>
+            </div>
+            <div className="flex flex-col">
+              <dt className="text-xs text-muted-foreground">PAL</dt>
+              <dd className="text-sm font-medium tabular-nums text-foreground">
+                {protocol.protocolSuggested.calorico.pal}
+              </dd>
+            </div>
+            <div className="flex flex-col">
+              <dt className="text-xs text-muted-foreground">GET</dt>
+              <dd className="text-sm font-medium tabular-nums text-foreground">
+                {protocol.protocolSuggested.calorico.get} kcal
+              </dd>
+            </div>
+          </dl>
+          <p className="text-xs text-muted-foreground">
+            El sugerido es mantenimiento (el GET). El objetivo calórico definitivo lo fijas tú, abajo.
+          </p>
+        </section>
+      ) : null}
+
       {/* Objetivos */}
       <fieldset disabled={locked} className="flex flex-col gap-4">
         <legend className="text-sm font-semibold text-foreground">Objetivos nutricionales</legend>
