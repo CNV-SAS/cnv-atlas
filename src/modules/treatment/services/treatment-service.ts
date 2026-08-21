@@ -13,6 +13,7 @@ import {
   addTreatmentNote,
   saveAdjustments as writeAdjustments,
   saveProtocol as writeProtocol,
+  StaleAdjustmentsError,
   StaleProtocolError,
   TreatmentStateError,
   writeApproveProtocol,
@@ -116,9 +117,31 @@ export async function saveAdjustments(
       adjProtGkg: input.adjProtGkg,
       adjFatPct: input.adjFatPct,
       adjPesoMeta: input.adjPesoMeta,
+      baseSignature: input.baseSignature,
       ...actor,
     });
   } catch (e) {
+    // Rechazo por concurrencia: otro profesional cambió la cadena calórica. Va como stale_write (aviso, no
+    // error): no se pisó su cambio y el trabajo del profesional sigue en pantalla para reaplicar.
+    if (e instanceof StaleAdjustmentsError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió los ajustes de la cadena calórica en otra sesión (otra pestaña o " +
+            "dispositivo). Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión " +
+            "actual y vuelve a aplicar tus ajustes.",
+        ),
+      );
+    }
+    // lock_timeout (55P03): otra sesión tiene la fila bloqueada. No se guardó; reintentar en unos segundos.
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "Los ajustes están bloqueados por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }

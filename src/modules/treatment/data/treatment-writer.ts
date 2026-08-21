@@ -13,6 +13,7 @@ import {
 import { recordAudit } from "@/modules/audit/log";
 
 import {
+  adjustmentSignature,
   changedSections,
   protocolSectionSignatures,
   type SectionKey,
@@ -41,6 +42,15 @@ export class StaleProtocolError extends Error {
   constructor(public readonly sections: SectionKey[]) {
     super("El protocolo cambio desde que se cargo.");
     this.name = "StaleProtocolError";
+  }
+}
+
+// Rechazo por concurrencia en saveAdjustments (misma familia que StaleProtocolError, sin secciones: los
+// seis ajustes son una unidad). El servicio lo traduce a un aviso "otro profesional cambió la cadena".
+export class StaleAdjustmentsError extends Error {
+  constructor() {
+    super("Los ajustes cambiaron desde que se cargaron.");
+    this.name = "StaleAdjustmentsError";
   }
 }
 
@@ -218,6 +228,8 @@ export type SaveAdjustmentsWrite = {
   adjProtGkg: number | null;
   adjFatPct: number | null;
   adjPesoMeta: number | null;
+  // Firma de los seis ajustes que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -229,6 +241,39 @@ export type SaveAdjustmentsWrite = {
 export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void> {
   await db.transaction(async (tx) => {
     await assertDraft(tx, input.treatmentId);
+
+    // Candado de concurrencia (misma razon que en saveProtocol): saveAdjustments ESCRIBE LAS SEIS
+    // columnas adj_* de golpe, asi que dos guardados del mismo tratamiento se pisan (el ultimo gana) y el
+    // ajuste que otro profesional acaba de fijar se pierde sin rastro. Se lockea la fila (FOR UPDATE), se
+    // recomputa la firma actual bajo el lock y, si difiere de la que trajo el cliente, se rechaza sin pisar.
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({
+        geb: treatments.adjGeb,
+        pal: treatments.adjPal,
+        kcalObj: treatments.adjKcalObj,
+        protGkg: treatments.adjProtGkg,
+        fatPct: treatments.adjFatPct,
+        pesoMeta: treatments.adjPesoMeta,
+      })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    // Number() en TODO (los numeric vuelven string, los integer numero): misma normalizacion que el reader,
+    // sin la cual la firma divergiria por scale y rechazaria guardados legitimos.
+    const current = adjustmentSignature({
+      treatmentId: input.treatmentId,
+      adjGeb: locked.geb != null ? Number(locked.geb) : null,
+      adjPal: locked.pal != null ? Number(locked.pal) : null,
+      adjKcalObj: locked.kcalObj != null ? Number(locked.kcalObj) : null,
+      adjProtGkg: locked.protGkg != null ? Number(locked.protGkg) : null,
+      adjFatPct: locked.fatPct != null ? Number(locked.fatPct) : null,
+      adjPesoMeta: locked.pesoMeta != null ? Number(locked.pesoMeta) : null,
+    });
+    if (current !== input.baseSignature) throw new StaleAdjustmentsError();
+
     await tx
       .update(treatments)
       .set({

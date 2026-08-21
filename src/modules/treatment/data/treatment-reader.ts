@@ -51,7 +51,9 @@ export async function getTreatmentProtocol(
   // El tratamiento que el pipeline creo para ese diagnostico.
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
-    .select("id, status, kcal_objetivo, proteina_g, restricciones, protocol_suggested, adj_peso_meta")
+    .select(
+      "id, status, kcal_objetivo, proteina_g, restricciones, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+    )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -133,6 +135,14 @@ export async function getTreatmentProtocol(
     pesoCalculo: suggestedSnapshot?.pesoCalculo ?? null,
     pesoCalculoLabel: suggestedSnapshot?.pesoCalculoLabel ?? null,
     adjPesoMeta: treatment.adj_peso_meta != null ? Number(treatment.adj_peso_meta) : null,
+    // Ajustes de la cadena (pieza 2). Numeros: los numeric (pal/prot_gkg) vuelven como string de PostgREST,
+    // los integer (geb/kcal_obj/fat_pct) como numero; se normalizan TODOS con Number para que la firma de
+    // ajustes coincida byte a byte con la que recomputa el writer bajo lock (misma normalizacion alla).
+    adjGeb: treatment.adj_geb != null ? Number(treatment.adj_geb) : null,
+    adjPal: treatment.adj_pal != null ? Number(treatment.adj_pal) : null,
+    adjKcalObj: treatment.adj_kcal_obj != null ? Number(treatment.adj_kcal_obj) : null,
+    adjProtGkg: treatment.adj_prot_gkg != null ? Number(treatment.adj_prot_gkg) : null,
+    adjFatPct: treatment.adj_fat_pct != null ? Number(treatment.adj_fat_pct) : null,
     restricciones: treatment.restricciones ?? [],
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({

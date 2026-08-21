@@ -2,6 +2,7 @@ import { eq, sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
+  adjustmentSignature,
   protocolSectionSignatures,
   type SectionSignatures,
 } from "@/modules/treatment/data/protocol-signature";
@@ -29,6 +30,8 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   let schema: any;
   let saveProtocol: any;
   let StaleProtocolError: any;
+  let saveAdjustments: any;
+  let StaleAdjustmentsError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -62,7 +65,9 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    ({ saveProtocol, StaleProtocolError } = await import("@/modules/treatment/data/treatment-writer"));
+    ({ saveProtocol, StaleProtocolError, saveAdjustments, StaleAdjustmentsError } = await import(
+      "@/modules/treatment/data/treatment-writer"
+    ));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
     const [prof] = await db.select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
@@ -163,5 +168,78 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
       expect(e).toBeInstanceOf(StaleProtocolError);
       expect(e.sections).toEqual(["nutraceuticals"]);
     }
+  });
+
+  // Tratamiento sub-tarea 2: candado de saveAdjustments (BD real). saveAdjustments ESCRIBE LAS SEIS columnas
+  // adj_* de golpe; sin candado, dos guardados se pisan (el peso meta que otro profesional fijo se pierde).
+  // Firma de los seis ajustes GUARDADOS = lo que el cliente cargo; el servidor la recomputa bajo lock.
+  async function currentAdjSignature(): Promise<string> {
+    const [t] = await db
+      .select({
+        geb: schema.treatments.adjGeb,
+        pal: schema.treatments.adjPal,
+        kcalObj: schema.treatments.adjKcalObj,
+        protGkg: schema.treatments.adjProtGkg,
+        fatPct: schema.treatments.adjFatPct,
+        pesoMeta: schema.treatments.adjPesoMeta,
+      })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    return adjustmentSignature({
+      treatmentId,
+      adjGeb: t.geb != null ? Number(t.geb) : null,
+      adjPal: t.pal != null ? Number(t.pal) : null,
+      adjKcalObj: t.kcalObj != null ? Number(t.kcalObj) : null,
+      adjProtGkg: t.protGkg != null ? Number(t.protGkg) : null,
+      adjFatPct: t.fatPct != null ? Number(t.fatPct) : null,
+      adjPesoMeta: t.pesoMeta != null ? Number(t.pesoMeta) : null,
+    });
+  }
+
+  it("adjustments camino feliz: firma base == actual -> escribe los seis", async () => {
+    const base = await currentAdjSignature();
+    await saveAdjustments({
+      treatmentId,
+      adjGeb: 1950,
+      adjPal: null,
+      adjKcalObj: null,
+      adjProtGkg: null,
+      adjFatPct: null,
+      adjPesoMeta: 72.5,
+      baseSignature: base,
+      ...actor,
+    });
+    const [t] = await db
+      .select({ geb: schema.treatments.adjGeb, pesoMeta: schema.treatments.adjPesoMeta })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    expect(Number(t.geb)).toBe(1950);
+    expect(Number(t.pesoMeta)).toBe(72.5);
+  });
+
+  it("adjustments carrera: firma base != actual -> rechaza sin pisar (StaleAdjustmentsError)", async () => {
+    // Simula que otro profesional cambio la cadena desde que el cliente la cargo: la firma que trae ya no
+    // coincide con la de BD. Sin candado, este guardado pisaria el adjGeb=1950 y borraria el peso meta.
+    await expect(
+      saveAdjustments({
+        treatmentId,
+        adjGeb: 3000, // lo que se ESCRIBIRIA si pisara
+        adjPal: null,
+        adjKcalObj: null,
+        adjProtGkg: null,
+        adjFatPct: null,
+        adjPesoMeta: null, // un guardado ciego aqui BORRARIA el peso meta fijado
+        baseSignature: "STALE-DE-OTRA-SESION",
+        ...actor,
+      }),
+    ).rejects.toBeInstanceOf(StaleAdjustmentsError);
+
+    // El dato quedo INTACTO: ni el GEB se piso ni el peso meta se borro.
+    const [t] = await db
+      .select({ geb: schema.treatments.adjGeb, pesoMeta: schema.treatments.adjPesoMeta })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    expect(Number(t.geb)).toBe(1950); // el del camino feliz, no 3000
+    expect(Number(t.pesoMeta)).toBe(72.5); // no se borro
   });
 });

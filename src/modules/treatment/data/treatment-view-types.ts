@@ -50,6 +50,15 @@ export type TreatmentProtocol = {
   pesoCalculo: number | null;
   pesoCalculoLabel: string | null;
   adjPesoMeta: number | null;
+  // Ajustes del profesional sobre la cadena calorica (pieza 2, columnas adj_*). null = usar el sugerido
+  // sellado (protocolSuggested.calorico). Los cinco cascadean al recomputar con computeProtocoloEfectivo:
+  // geb/pal cambian el GET; kcalObj lo fija a mano; protGkg/fatPct reparten macros. Entran a la firma de
+  // ajustes junto con adjPesoMeta (candado de concurrencia + remonte). Todos null si no selló snapshot.
+  adjGeb: number | null;
+  adjPal: number | null;
+  adjKcalObj: number | null;
+  adjProtGkg: number | null;
+  adjFatPct: number | null;
   restricciones: string[];
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional

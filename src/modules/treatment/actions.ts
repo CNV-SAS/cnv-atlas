@@ -157,6 +157,7 @@ export async function saveAdjustmentsAction(
     adjProtGkg: strOrNull(form.get("adjProtGkg")),
     adjFatPct: strOrNull(form.get("adjFatPct")),
     adjPesoMeta: strOrNull(form.get("adjPesoMeta")),
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
   });
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Ajustes inválidos.");

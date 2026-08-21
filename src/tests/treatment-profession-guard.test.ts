@@ -90,6 +90,7 @@ const ADJ_INPUT = {
   adjProtGkg: null,
   adjFatPct: null,
   adjPesoMeta: null,
+  baseSignature: "",
 };
 
 describe("guard de profesion: escrituras de tratamiento", () => {

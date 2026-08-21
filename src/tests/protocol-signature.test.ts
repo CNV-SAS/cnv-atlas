@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  adjustmentSignature,
   changedSections,
   describeChangedSections,
   protocolSectionSignatures,
@@ -25,6 +26,11 @@ const BASE: TreatmentProtocol = {
   pesoCalculo: 70,
   pesoCalculoLabel: "Peso actual (IMC normal)",
   adjPesoMeta: null,
+  adjGeb: null,
+  adjPal: null,
+  adjKcalObj: null,
+  adjProtGkg: null,
+  adjFatPct: null,
   restricciones: ["sin gluten", "sin lactosa"],
   kcalSugerido: 2100,
   nutraceuticals: [
@@ -151,5 +157,53 @@ describe("protocolSignature: key del ProtocolForm + base del candado", () => {
         "los objetivos (calorías/proteína), la prescripción de nutracéuticos",
       );
     });
+  });
+});
+
+// Tratamiento sub-tarea 2, cuidado (d): la firma de AJUSTES (adjustmentSignature) es el key de remonte de la
+// seccion de la cadena Y la base del candado de concurrencia de saveAdjustments. Debe cubrir LOS SEIS
+// ajustes: si uno quedara fuera, un cambio del servidor a ese campo NO remontaria la seccion (estado pegado,
+// el bug que hoy tiene latente el peso meta) y el candado NO lo protegeria (dos guardados se pisarian). Este
+// test verifica, ejecutando, que cada uno de los seis mueve la firma y que igual estado -> igual firma.
+describe("adjustmentSignature: key de remonte + base del candado de la cadena calorica", () => {
+  // TreatmentProtocol es superset de SignableAdjustments (tiene treatmentId + los seis adj_*); BASE los trae
+  // todos en null, asi que sirve de fixture sin construir uno aparte.
+  const sig = () => adjustmentSignature(BASE);
+
+  it("igual estado -> igual firma (no remonta, no rechaza una escritura legitima)", () => {
+    expect(adjustmentSignature(clone(BASE))).toBe(sig());
+  });
+
+  // Cada uno de los seis, al cambiar, mueve la firma. tabla para no repetir seis its casi identicos.
+  const CAMPOS: { nombre: string; set: (p: TreatmentProtocol) => void }[] = [
+    { nombre: "adjGeb", set: (p) => (p.adjGeb = 1900) },
+    { nombre: "adjPal", set: (p) => (p.adjPal = 1.6) },
+    { nombre: "adjKcalObj", set: (p) => (p.adjKcalObj = 1800) },
+    { nombre: "adjProtGkg", set: (p) => (p.adjProtGkg = 1.2) },
+    { nombre: "adjFatPct", set: (p) => (p.adjFatPct = 25) },
+    { nombre: "adjPesoMeta", set: (p) => (p.adjPesoMeta = 72.5) },
+  ];
+  for (const c of CAMPOS) {
+    it(`un cambio del servidor en ${c.nombre} mueve la firma`, () => {
+      const p = clone(BASE);
+      c.set(p);
+      expect(adjustmentSignature(p)).not.toBe(sig());
+    });
+  }
+
+  it("otro tratamiento (correccion) mueve la firma", () => {
+    const p = clone(BASE);
+    p.treatmentId = "t-2";
+    expect(adjustmentSignature(p)).not.toBe(sig());
+  });
+
+  it("normaliza numeric por Number: 1.5 y 1.500 dan la misma firma (no rechaza por scale)", () => {
+    // El reader (cliente) y el writer (servidor bajo lock) normalizan ambos con Number; sin eso, "1.5" del
+    // input y "1.500" que devuelve la columna numeric divergirian y el candado rechazaria un guardado valido.
+    const a = clone(BASE);
+    a.adjPal = Number("1.5");
+    const b = clone(BASE);
+    b.adjPal = Number("1.500");
+    expect(adjustmentSignature(a)).toBe(adjustmentSignature(b));
   });
 });

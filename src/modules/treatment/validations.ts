@@ -87,6 +87,9 @@ export const saveAdjustmentsSchema = z.object({
   adjProtGkg: optNum(0, 4, "La proteína g/kg ajustada está fuera de rango."),
   adjFatPct: optInt(0, 100, "El porcentaje de grasa ajustado está fuera de rango."),
   adjPesoMeta: optNum(20, 400, "El peso meta está fuera de rango."),
+  // Firma de los seis ajustes que el cliente cargó (candado de concurrencia; ver adjustmentSignature).
+  // String opaco: se compara por igualdad, no se interpreta. Default "" para llamadas viejas sin firma.
+  baseSignature: z.string().max(200).default(""),
 });
 
 export type SaveAdjustmentsInput = z.infer<typeof saveAdjustmentsSchema>;

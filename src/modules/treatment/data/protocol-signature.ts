@@ -69,3 +69,38 @@ export function changedSections(base: SectionSignatures, current: SectionSignatu
 export function describeChangedSections(keys: SectionKey[]): string {
   return keys.map((k) => SECTION_LABEL[k]).join(", ");
 }
+
+// --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---
+// Misma familia y misma razon que la firma del protocolo, sobre un camino de guardado DISTINTO
+// (saveAdjustments, que ESCRIBE LAS SEIS COLUMNAS DE GOLPE). Dos usos, identicos a los de arriba:
+//  - `key={adjustmentSignature(p)}` en la seccion de la cadena: un cambio del servidor a cualquiera de los
+//    seis ajustes remonta la seccion y re-deriva el estado del prop, para que no quede pegada (el bug del
+//    estado pegado que hoy tiene latente PesoMetaSection: useState-once sin firma de remonte).
+//  - candado de concurrencia en saveAdjustments: el cliente manda la firma que cargó; el servidor la
+//    recomputa bajo lock y, si difiere, rechaza en vez de pisar. Sin esto, como el .set toca las seis
+//    columnas, un guardado con estado viejo borraria el ajuste que otro profesional acaba de fijar.
+// Firma UNICA (no por seccion): los seis ajustes son una sola unidad clinica (la cadena), no secciones
+// independientes; basta con detectar que "algo de la cadena cambió".
+export type SignableAdjustments = {
+  treatmentId: string;
+  adjGeb: number | null;
+  adjPal: number | null;
+  adjKcalObj: number | null;
+  adjProtGkg: number | null;
+  adjFatPct: number | null;
+  adjPesoMeta: number | null;
+};
+
+// Los numeros se serializan via `${}` (String): cliente y servidor DEBEN normalizar antes con Number (el
+// reader y el writer lo hacen), asi "1.5" y "1.500" colapsan al mismo "1.5" y la firma no diverge por scale.
+export function adjustmentSignature(a: SignableAdjustments): string {
+  return [
+    a.treatmentId,
+    a.adjGeb ?? "",
+    a.adjPal ?? "",
+    a.adjKcalObj ?? "",
+    a.adjProtGkg ?? "",
+    a.adjFatPct ?? "",
+    a.adjPesoMeta ?? "",
+  ].join("§");
+}

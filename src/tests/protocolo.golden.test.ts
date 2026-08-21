@@ -100,6 +100,48 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(o.calorico.choPct).toBe(61); // round(1684/2756*100)
   });
 
+  // Tratamiento sub-tarea 2, cuidado (b): la vista previa EN VIVO del panel llama computeProtocoloEfectivo,
+  // la MISMA funcion que el servidor sella al aprobar. Este test blinda que NO haya deriva: con cero ajustes
+  // del profesional, la cadena efectiva reproduce EXACTO la cadena sellada por el modelo (si alguien
+  // reimplementara el recompute en el cliente, o cambiara una, este test se cae). defaults es metadato del
+  // snapshot (no lo produce computeProtocoloCalorico), se excluye de la comparacion.
+  it("preview sin overrides == cadena sellada del modelo (misma funcion, sin deriva); y los ajustes cascadean", () => {
+    const sinAjustes = computeProtocoloEfectivo(o, {
+      geb: null,
+      pal: null,
+      kcalObj: null,
+      protGkg: null,
+      fatPct: null,
+      pesoMeta: null,
+    });
+    // defaults es metadato del snapshot (no lo produce computeProtocoloCalorico); se excluye para comparar
+    // solo la cadena numerica.
+    const cadenaSellada: Record<string, unknown> = { ...o.calorico };
+    delete cadenaSellada.defaults;
+    expect(sinAjustes.calorico).toEqual(cadenaSellada);
+
+    // Un ajuste real cascadea: subir el PAL sube el GET (y con el, el objetivo en mantenimiento).
+    const conPal = computeProtocoloEfectivo(o, {
+      geb: null,
+      pal: 1.6,
+      kcalObj: null,
+      protGkg: null,
+      fatPct: null,
+      pesoMeta: null,
+    });
+    expect(conPal.calorico.get).toBeGreaterThan(o.calorico.get);
+    // Fijar el objetivo a mano lo respeta (no lo re-deriva del GET).
+    const conObj = computeProtocoloEfectivo(o, {
+      geb: null,
+      pal: null,
+      kcalObj: 1800,
+      protGkg: null,
+      fatPct: null,
+      pesoMeta: null,
+    });
+    expect(conObj.calorico.kcalObj).toBe(1800);
+  });
+
   it("sella la version del protocolo y marca los defaults con la afirmacion de propagacion", () => {
     expect(o.protocolEngineVersion).toBe("anibise-protocolo-2026-08-19b");
     expect(o.calorico.defaults).toEqual(["pal", "fatPct"]);

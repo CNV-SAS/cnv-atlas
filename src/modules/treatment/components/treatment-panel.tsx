@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,11 @@ import {
   type TreatmentActionState,
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
-import { protocolSectionSignatures, protocolSignature } from "../data/protocol-signature";
+import {
+  adjustmentSignature,
+  protocolSectionSignatures,
+  protocolSignature,
+} from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
 
@@ -59,7 +64,74 @@ const CEL_TONE_CLS: Record<CelularBadges["badges"][number]["tone"], string> = {
 // MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, vía saveAdjustmentsAction). No
 // cambia el modelo del cálculo (eso es pieza 2, el re-port): solo lo hace visible y editable, honesto sobre
 // lo que hay. La key en el call-site (incluye adjPesoMeta) remonta al guardar, para que "fijado" se vea.
-function PesoMetaSection({
+// Entrada <-> numero para los ajustes. "" = sin ajuste (usar el valor del modelo). Basura tecleada (NaN)
+// tambien cuenta como sin ajuste, para que la vista previa no muestre NaN mientras el profesional escribe.
+const numToInput = (n: number | null): string => (n != null ? String(n) : "");
+const inputToNum = (s: string): number | null => {
+  const t = s.trim();
+  if (t === "") return null;
+  const v = Number(t);
+  return Number.isFinite(v) ? v : null;
+};
+// Presentacion: un decimal para pesos/factores, entero para kcal/gramos. El calculo usa el valor completo.
+const d1 = (n: number): string => String(Number(n.toFixed(1)));
+const d0 = (n: number): string => String(Math.round(n));
+
+// Un campo numerico de ajuste. Controlado (no lo resetea la prop `action` de React 19), con el valor del
+// modelo como placeholder para que el profesional sepa sobre que esta ajustando.
+function AdjInput({
+  name,
+  label,
+  value,
+  onChange,
+  placeholder,
+  step,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  step: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={name}>{label}</Label>
+      <Input
+        id={name}
+        name={name}
+        type="number"
+        inputMode="decimal"
+        step={step}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-36"
+      />
+    </div>
+  );
+}
+
+// Una fila de la vista previa (etiqueta + valor efectivo, con la derivacion entre parentesis).
+function PrevRow({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-border/50 py-1 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">
+        <strong>{value}</strong>
+        {detail ? <span className="text-muted-foreground"> {detail}</span> : null}
+      </span>
+    </div>
+  );
+}
+
+// Pieza 2 de la cadena calorica: los seis ajustes del profesional sobre el sugerido (peso meta + GEB, PAL,
+// objetivo kcal, proteina g/kg, grasa %) en UN solo form. Unificado a proposito: saveAdjustments escribe las
+// seis columnas de golpe, asi que dos forms sobre la misma accion se borrarian mutuamente (perdida de dato,
+// no fragilidad futura). La vista previa recalcula EN VIVO con computeProtocoloEfectivo, la MISMA funcion que
+// el servidor sella al aprobar: lo que ve el profesional == lo que se guarda. La seccion se REMONTA cuando el
+// servidor cambia un ajuste (key = adjustmentSignature en el padre), evitando el estado pegado.
+function CadenaCaloricaSection({
   evaluationId,
   protocol,
   locked,
@@ -70,65 +142,168 @@ function PesoMetaSection({
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
   useFormToast(state);
-  const [pesoMeta, setPesoMeta] = useState(protocol.adjPesoMeta?.toString() ?? "");
-  // Sin snapshot sellado no hay peso de cálculo que mostrar (tratamiento viejo, pre-snapshot): se omite.
-  if (protocol.pesoCalculo == null) return null;
-  const fijado = protocol.adjPesoMeta != null;
-  // Redondeo SOLO de PRESENTACIÓN a un decimal: el valor que usa el cálculo (pesoCalculo del snapshot,
-  // o adj_peso_meta al guardar) sigue completo. El profesional copia un número legible (65,4), no 65,40625;
-  // mostrar el crudo lo llevaría a teclear una versión redondeada y cambiar levemente la prescripción.
-  const disp1 = (n: number): string => String(Number(n.toFixed(1)));
-  const pesoCalcDisp = disp1(protocol.pesoCalculo);
+  // useState-once desde la prop; el remonte (key del padre) re-deriva cuando el servidor cambia algo.
+  const [pesoMeta, setPesoMeta] = useState(numToInput(protocol.adjPesoMeta));
+  const [geb, setGeb] = useState(numToInput(protocol.adjGeb));
+  const [pal, setPal] = useState(numToInput(protocol.adjPal));
+  const [kcalObj, setKcalObj] = useState(numToInput(protocol.adjKcalObj));
+  const [protGkg, setProtGkg] = useState(numToInput(protocol.adjProtGkg));
+  const [fatPct, setFatPct] = useState(numToInput(protocol.adjFatPct));
+
+  const snap = protocol.protocolSuggested;
+  // Sin snapshot sellado (o sin cadena, o sin peso de calculo) no hay que ajustar: tratamiento pre-snapshot.
+  if (!snap || protocol.pesoCalculo == null) return null;
+
+  // Ajustes vivos (lo que hay en pantalla ahora) = exactamente lo que se guardara.
+  const adj: ProtocoloAjustes = {
+    geb: inputToNum(geb),
+    pal: inputToNum(pal),
+    kcalObj: inputToNum(kcalObj),
+    protGkg: inputToNum(protGkg),
+    fatPct: inputToNum(fatPct),
+    pesoMeta: inputToNum(pesoMeta),
+  };
+  // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
+  const cal = computeProtocoloEfectivo(snap, adj).calorico;
+  const base = snap.calorico; // cadena del MODELO (sellada), placeholder de cada campo.
+  const pesoEfectivo = adj.pesoMeta ?? protocol.pesoCalculo;
+  const pesoFijado = protocol.adjPesoMeta != null;
+
+  // Firma de los ajustes GUARDADOS (de la prop, invariante mientras se edita): es lo que el cliente cargó y
+  // contra lo que el servidor compara bajo lock. NO la de lo que se esta editando.
+  const baseSignature = adjustmentSignature({
+    treatmentId: protocol.treatmentId,
+    adjGeb: protocol.adjGeb,
+    adjPal: protocol.adjPal,
+    adjKcalObj: protocol.adjKcalObj,
+    adjProtGkg: protocol.adjProtGkg,
+    adjFatPct: protocol.adjFatPct,
+    adjPesoMeta: protocol.adjPesoMeta,
+  });
+
+  const pesoCalcDisp = d1(protocol.pesoCalculo);
 
   return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-foreground">Peso meta</h3>
-      {fijado ? (
-        <p className="text-sm text-clinical-optimal">
-          Fijado por ti: <strong>{disp1(protocol.adjPesoMeta as number)} kg</strong>. La prescripción se
-          calcula sobre este peso.
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Sin registrar: la prescripción se calcula sobre <strong>{pesoCalcDisp} kg</strong>
-          {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO, no
-          uno que hayas decidido.
-        </p>
-      )}
-      <form action={formAction} className="flex flex-col gap-2">
+    <section className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Cadena calórica</h3>
+      <p className="text-sm text-muted-foreground">
+        {snap.estrategia.label}
+        {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. El modelo sugiere la cadena a partir
+        del BIS; puedes ajustar cualquier eslabón. La vista previa se recalcula en vivo con la misma fórmula
+        que se sella al aprobar. Deja un campo vacío para usar el valor del modelo.
+      </p>
+      <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
-        <fieldset disabled={locked} className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="adjPesoMeta">Peso meta (kg)</Label>
-            <Input
-              id="adjPesoMeta"
+        {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
+            lo detecta bajo lock y rechaza sin pisar. */}
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <fieldset disabled={locked} className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            <AdjInput
               name="adjPesoMeta"
-              type="number"
-              inputMode="decimal"
-              step="0.1"
+              label="Peso meta (kg)"
               value={pesoMeta}
-              onChange={(e) => setPesoMeta(e.target.value)}
+              onChange={setPesoMeta}
               placeholder={`calculado: ${pesoCalcDisp}`}
-              className="w-40"
+              step="0.1"
+            />
+            <AdjInput
+              name="adjGeb"
+              label="GEB (kcal)"
+              value={geb}
+              onChange={setGeb}
+              placeholder={`modelo: ${d0(base.geb)}`}
+              step="1"
+            />
+            <AdjInput
+              name="adjPal"
+              label="PAL (factor)"
+              value={pal}
+              onChange={setPal}
+              placeholder={`modelo: ${base.pal}`}
+              step="0.025"
+            />
+            <AdjInput
+              name="adjKcalObj"
+              label="Objetivo (kcal)"
+              value={kcalObj}
+              onChange={setKcalObj}
+              placeholder={`modelo: ${d0(base.kcalObj)}`}
+              step="1"
+            />
+            <AdjInput
+              name="adjProtGkg"
+              label="Proteína (g/kg)"
+              value={protGkg}
+              onChange={setProtGkg}
+              placeholder={`modelo: ${base.protGKg}`}
+              step="0.1"
+            />
+            <AdjInput
+              name="adjFatPct"
+              label="Grasa (%)"
+              value={fatPct}
+              onChange={setFatPct}
+              placeholder={`modelo: ${base.fatPct}`}
+              step="1"
             />
           </div>
-          <Button type="submit" variant="outline" disabled={pending}>
-            Guardar peso meta
-          </Button>
-          {/* Siempre visible (tambien fijado): deja VOLVER al calculado sin recordar el numero. Vacia el
-              campo; al guardar con el campo vacio, adj_peso_meta queda null y el calculo usa el pesoCalculo
-              COMPLETO (no el mostrado redondeado). */}
-          <button
-            type="button"
-            className="pb-2 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-            onClick={() => setPesoMeta("")}
-            disabled={locked}
-            title="Vacía el campo; guarda para volver al peso calculado"
-          >
-            Usar el calculado ({pesoCalcDisp} kg)
-          </button>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {pesoFijado ? (
+              <span className="text-clinical-optimal">
+                Peso meta fijado por ti: <strong>{d1(protocol.adjPesoMeta as number)} kg</strong>.
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Peso meta sin registrar: se usa el calculado <strong>{pesoCalcDisp} kg</strong>
+                {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO.
+              </span>
+            )}
+            {/* Vacia el campo; al guardar con el campo vacio, adj_peso_meta queda null y el calculo usa el
+                pesoCalculo COMPLETO (no el mostrado redondeado). */}
+            <button
+              type="button"
+              className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              onClick={() => setPesoMeta("")}
+              disabled={locked}
+              title="Vacía el campo; guarda para volver al peso calculado"
+            >
+              Usar el calculado ({pesoCalcDisp} kg)
+            </button>
+          </div>
+          <div>
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar ajustes"}
+            </Button>
+          </div>
         </fieldset>
       </form>
+      {/* Vista previa EN VIVO: la cadena efectiva con lo que hay en pantalla, antes de guardar. */}
+      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+        <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Cadena efectiva (vista previa)
+        </p>
+        <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
+        <PrevRow label="GEB" value={`${d0(cal.geb)} kcal`} detail={`(${cal.formula})`} />
+        <PrevRow label="PAL" value={String(cal.pal)} />
+        <PrevRow label="GET" value={`${d0(cal.get)} kcal`} />
+        <PrevRow label="Objetivo calórico" value={`${d0(cal.kcalObj)} kcal`} />
+        <PrevRow
+          label="Proteína"
+          value={`${d0(cal.protG)} g`}
+          detail={`(${cal.protGKg} g/kg · ${d0(cal.protKcal)} kcal)`}
+        />
+        <PrevRow
+          label="Grasa"
+          value={`${d0(cal.fatG)} g`}
+          detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
+        />
+        <PrevRow
+          label="Carbohidratos"
+          value={`${d0(cal.choG)} g`}
+          detail={`(${cal.choPct}% · ${d0(cal.choKcal)} kcal)`}
+        />
+      </div>
     </section>
   );
 }
@@ -220,9 +395,18 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        {/* key con adjPesoMeta: al guardar se remonta y re-deriva, para que "Fijado por ti" se vea. */}
-        <PesoMetaSection
-          key={`peso§${protocol.adjPesoMeta ?? ""}`}
+        {/* key = firma de los seis ajustes: un cambio del servidor (otro profesional, o el propio guardado)
+            remonta la seccion y re-deriva el estado, para que no quede pegada mostrando valores viejos. */}
+        <CadenaCaloricaSection
+          key={adjustmentSignature({
+            treatmentId: protocol.treatmentId,
+            adjGeb: protocol.adjGeb,
+            adjPal: protocol.adjPal,
+            adjKcalObj: protocol.adjKcalObj,
+            adjProtGkg: protocol.adjProtGkg,
+            adjFatPct: protocol.adjFatPct,
+            adjPesoMeta: protocol.adjPesoMeta,
+          })}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
@@ -390,47 +574,6 @@ function ProtocolForm({
       <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
       <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
       <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
-
-      {/* CADENA CALORICA del modelo (solo lectura), Tratamiento sub-tarea 1: el motor YA la computa y la sella,
-          pero antes no se mostraba y el nutricionista veia un campo en blanco (parecia que el sistema no
-          calculo). Se muestra la orientacion de mantenimiento + GEB/PAL/GET, dejando claro que el objetivo
-          definitivo lo fija EL profesional abajo (con el deficit retirado, el sugerido es mantenimiento = GET). */}
-      {protocol.protocolSuggested?.estrategia && protocol.protocolSuggested.calorico ? (
-        <section className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
-          <h3 className="text-sm font-semibold text-foreground">Cadena calórica del modelo</h3>
-          <p className="text-sm text-foreground">{protocol.protocolSuggested.estrategia.label}</p>
-          {protocol.protocolSuggested.estrategia.perfil ? (
-            <p className="text-xs text-muted-foreground">{protocol.protocolSuggested.estrategia.perfil}</p>
-          ) : null}
-          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-            <div className="flex flex-col">
-              <dt className="text-xs text-muted-foreground">Fórmula</dt>
-              <dd className="text-sm font-medium text-foreground">{protocol.protocolSuggested.calorico.formula}</dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="text-xs text-muted-foreground">GEB</dt>
-              <dd className="text-sm font-medium tabular-nums text-foreground">
-                {protocol.protocolSuggested.calorico.geb} kcal
-              </dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="text-xs text-muted-foreground">PAL</dt>
-              <dd className="text-sm font-medium tabular-nums text-foreground">
-                {protocol.protocolSuggested.calorico.pal}
-              </dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="text-xs text-muted-foreground">GET</dt>
-              <dd className="text-sm font-medium tabular-nums text-foreground">
-                {protocol.protocolSuggested.calorico.get} kcal
-              </dd>
-            </div>
-          </dl>
-          <p className="text-xs text-muted-foreground">
-            El sugerido es mantenimiento (el GET). El objetivo calórico definitivo lo fijas tú, abajo.
-          </p>
-        </section>
-      ) : null}
 
       {/* Objetivos */}
       <fieldset disabled={locked} className="flex flex-col gap-4">
