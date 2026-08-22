@@ -454,23 +454,10 @@ export function TreatmentPanel({
             evaluación (versión nueva de toda la cadena), no se edita aquí.
           </p>
         ) : null}
-        {/* El bloque "Protocolo de tratamiento" se DESARMO (checkpoint 2.4/2.5): el objetivo vive en la
-            cadena, la prescripcion y el despacho en Rutas, y restricciones/guias son secciones propias abajo.
-            key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
-        <CadenaCaloricaSection
-          key={adjustmentSignature({
-            treatmentId: protocol.treatmentId,
-            adjGeb: protocol.adjGeb,
-            adjPal: protocol.adjPal,
-            adjKcalObj: protocol.adjKcalObj,
-            adjProtGkg: protocol.adjProtGkg,
-            adjFatPct: protocol.adjFatPct,
-            adjPesoMeta: protocol.adjPesoMeta,
-          })}
-          evaluationId={evaluationId}
-          protocol={protocol}
-          locked={locked}
-        />
+        {/* Orden 1a.3: OBJETIVO del tratamiento (lo escribe el nutricionista) + sus GUIAS, y DESPUES la CADENA
+            calorica (que antes iba primera; bajo a proposito para que el objetivo y las guias, que enmarcan el
+            plan, se lean antes que los numeros). El bloque "Protocolo de tratamiento" se desarmo en el
+            checkpoint 2.4/2.5: prescripcion y despacho viven en Rutas, restricciones/menu abajo. */}
         <ObjetivoSection
           key={objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto })}
           evaluationId={evaluationId}
@@ -481,6 +468,21 @@ export function TreatmentPanel({
           key={guidelinesSignature({
             treatmentId: protocol.treatmentId,
             guidelines: protocol.guidelines.map((g) => g.text),
+          })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
+        {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
+        <CadenaCaloricaSection
+          key={adjustmentSignature({
+            treatmentId: protocol.treatmentId,
+            adjGeb: protocol.adjGeb,
+            adjPal: protocol.adjPal,
+            adjKcalObj: protocol.adjKcalObj,
+            adjProtGkg: protocol.adjProtGkg,
+            adjFatPct: protocol.adjFatPct,
+            adjPesoMeta: protocol.adjPesoMeta,
           })}
           evaluationId={evaluationId}
           protocol={protocol}

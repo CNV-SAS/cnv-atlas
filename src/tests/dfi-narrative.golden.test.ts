@@ -29,7 +29,6 @@ import { buildEngineInput } from "@/modules/clinical-pipeline/services/build-eng
 
 vi.mock("server-only", () => ({}));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import { computeDFI as refComputeDFI } from "./fixtures/reference/dfi-vigente.js";
 
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";

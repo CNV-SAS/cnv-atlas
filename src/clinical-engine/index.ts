@@ -8,6 +8,9 @@ export { runEngine } from "./engine";
 // Suspension de rutas por encuesta incompleta (Q28): la glue la aplica al sellar; el render la reaplica
 // (idempotente) sobre snapshots viejos ya sellados incompletos.
 export { suspendSurveyRoutes, isBisDerivedRoute, isBisDerivedDomain } from "./dfi-routes";
+// Resumen funcional (parrafo) + meta terapeutica (metas) del DFI. Modulo DERIVADO: reconstruye lo que el
+// frozen engine.dfi dejo sin portar, sin tocar la ciencia congelada. Ver dfi-narrative.ts.
+export { dfiNarrative, dfiNarrativeFromOutput, dfiCategoriesFromOutput, type DfiNarrative } from "./dfi-narrative";
 // Orquestador del protocolo (T2 A3): encadena los tres motores y arma el protocol_suggested; y el
 // computo del set EFECTIVO al aprobar (aplica los adj_* sobre los inputs sellados del sugerido).
 export {

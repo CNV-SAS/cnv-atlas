@@ -16,7 +16,7 @@ import { getCorrectionAvailability } from "@/modules/corrections/data/correction
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { ConfirmDiagnosisPanel } from "@/modules/diagnoses/components/confirm-diagnosis-panel";
-import { abordajeProfesional, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
+import { abordajeProfesional, dfiNarrativeFromOutput, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
 import {
   type AbordajeCardData,
   EvaluationResults,
@@ -71,7 +71,10 @@ import { PatientStateHeader } from "@/modules/treatment/components/patient-state
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature } from "@/modules/treatment/data/protocol-signature";
-import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
+import {
+  ProfessionTreatmentSection,
+  type TreatmentNarrative,
+} from "@/modules/treatment/components/profession-treatment-section";
 import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -306,6 +309,29 @@ export default async function ResultadosEvaluacionPage({
       : { kind: "no-profession" }; // clave malformada (defensivo; no ocurre en snapshots compatibles)
   }
 
+  // Resumen funcional + meta terapeutica del DFI (pieza 1a.3, subpestaña del Nutricionista). Se DERIVAN del
+  // snapshot (no se almacenan), asi que se recomputan solos y nunca quedan stale. Solo se emiten con snapshot
+  // COMPATIBLE y DFI COMPLETO: el parrafo integra dominios de encuesta (envejecimiento/conductual/contextual)
+  // y la meta sale de las rutas, ambos suspendidos con encuesta incompleta (Q28). Si no, se pasa el MOTIVO
+  // para que el hueco lo explique (no un vacio mudo).
+  let treatmentNarrative: TreatmentNarrative;
+  if (!results.compatible) {
+    treatmentNarrative = {
+      kind: "unavailable",
+      reason:
+        "Este diagnóstico se emitió antes de portar el resumen funcional y la meta terapéutica al motor, por eso no aparecen aquí.",
+    };
+  } else if (!results.snapshot.dfi.complete) {
+    treatmentNarrative = {
+      kind: "unavailable",
+      reason:
+        "La encuesta está incompleta. El resumen funcional y la meta terapéutica se emiten cuando el diagnóstico está completo.",
+    };
+  } else {
+    const n = dfiNarrativeFromOutput(results.snapshot);
+    treatmentNarrative = { kind: "text", parrafo: n.parrafo, metaNutricion: n.metas.nutricion };
+  }
+
   // Nombre de la segunda subpestaña de Tratamiento: la profesion del que mira (nunca hardcodeado). Admin o
   // actor sin profesion (que ve la vista de consulta) cae a un generico.
   const profesionLabel =
@@ -403,6 +429,7 @@ export default async function ResultadosEvaluacionPage({
                 protocol={protocol}
                 abordaje={abordajeText}
                 rutas={rutas}
+                narrative={treatmentNarrative}
               />
             }
           />

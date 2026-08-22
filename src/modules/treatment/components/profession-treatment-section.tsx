@@ -23,6 +23,58 @@ import { TreatmentPanel } from "./treatment-panel";
 // honesto (su contenido llega despues). Cada panel de consulta dice su alcance en tamano de cuerpo:
 // que SI puede hacer hoy (registrar criterio en Diagnostico) y que NO (prescribir aqui).
 
+// Resumen funcional + meta terapeutica del DFI (pieza 1a.3), computados en la pagina desde el snapshot.
+// `text` cuando el diagnostico esta completo; `unavailable` con el MOTIVO cuando no (snapshot viejo o
+// encuesta incompleta), para que el hueco lo explique en vez de quedar vacio.
+export type TreatmentNarrative =
+  | { kind: "text"; parrafo: string; metaNutricion: string }
+  | { kind: "unavailable"; reason: string };
+
+// Bloque de LECTURA DEL DIAGNOSTICO (resumen funcional + meta). Read-only, generado del snapshot: NO es algo
+// que el profesional escribio. Se distingue de un vistazo del objetivo editable (que es un textarea): fondo
+// tenue, borde de acento a la izquierda, eyebrow "Lectura del diagnostico" y caption "Generado ... no editable".
+// La meta va aparte del resumen a proposito: el resumen dice DONDE esta el paciente, la meta HACIA DONDE va.
+function DiagnosisReadingBlock({ narrative }: { narrative: TreatmentNarrative }) {
+  if (narrative.kind === "unavailable") {
+    return (
+      <section className="rounded-xl border border-dashed border-border bg-muted/30 p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Lectura del diagnóstico
+        </h3>
+        <p className="mt-2 max-w-prose text-sm text-muted-foreground">{narrative.reason}</p>
+      </section>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <ReadingCard eyebrow="Resumen funcional" caption="Generado del diagnóstico. No editable.">
+        {narrative.parrafo}
+      </ReadingCard>
+      <ReadingCard eyebrow="Meta terapéutica" caption="Generada de las rutas activas. No editable.">
+        {narrative.metaNutricion}
+      </ReadingCard>
+    </div>
+  );
+}
+
+function ReadingCard({
+  eyebrow,
+  caption,
+  children,
+}: {
+  eyebrow: string;
+  caption: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2 rounded-xl border border-border border-l-4 border-l-primary/50 bg-muted/40 p-6">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</h3>
+      <p className="max-w-prose text-sm leading-relaxed text-foreground">{children}</p>
+      <p className="text-xs text-muted-foreground">{caption}</p>
+    </section>
+  );
+}
+
 // Lista simple con titulo, a nivel de modulo (no dentro de un componente): render de enfoque/temas/
 // remision del tamizaje psicologico. null si no hay items.
 function PsicoList({ title, items }: { title: string; items: string[] }) {
@@ -62,9 +114,11 @@ function Notice({ title, children }: { title: string; children: ReactNode }) {
 async function Panel({
   evaluationId,
   protocol,
+  narrative,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
+  narrative: TreatmentNarrative;
 }) {
   if (!protocol) {
     return (
@@ -79,8 +133,12 @@ async function Panel({
   // Badges de salud celular (Nivel III): se leen server-side de los crudos BIS (misma fuente que la
   // composicion de Diagnostico) y se pasan al panel client. null si no hay medicion BIS.
   const celular = await getCelularBadgesForEvaluation(evaluationId);
+  // Orden de la subpestaña (1a.3): LECTURA DEL DIAGNOSTICO (resumen + meta, arriba y read-only) y luego el
+  // workspace editable (objetivo + guias + cadena + resto). El resumen/meta son server-derivados aqui; el
+  // panel editable es client. La cadena calorica BAJO en el orden interno del panel (antes iba primera).
   return (
     <div className="flex flex-col gap-6">
+      <DiagnosisReadingBlock narrative={narrative} />
       <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
@@ -278,6 +336,7 @@ export function ProfessionTreatmentSection({
   protocol,
   abordaje,
   rutas,
+  narrative,
 }: {
   evaluationId: string;
   actor: ActorProfession;
@@ -285,6 +344,8 @@ export function ProfessionTreatmentSection({
   // Abordaje del rol del actor (efrProf), computado en la pagina; null si el snapshot es incompatible.
   abordaje: string | null;
   rutas: RutaContent[];
+  // Resumen funcional + meta del DFI, computados en la pagina. Solo lo consume el panel del Nutricionista.
+  narrative: TreatmentNarrative;
 }) {
   // Medico: panel de consulta con abordaje + indicaciones medicas de las rutas + examenes/suplementacion
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
@@ -322,5 +383,5 @@ export function ProfessionTreatmentSection({
   // acceso de admin al tratamiento es gobernanza aparte (BACKLOG); aqui se conserva como estaba. La
   // entrega de nutraceuticos es solo del nutricionista (actor.isProfessional aqui = nutricionista: las
   // otras profesiones y el profesional sin profesion ya se ramificaron arriba).
-  return <Panel evaluationId={evaluationId} protocol={protocol} />;
+  return <Panel evaluationId={evaluationId} protocol={protocol} narrative={narrative} />;
 }
