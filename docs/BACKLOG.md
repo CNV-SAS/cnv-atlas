@@ -15,6 +15,10 @@
 1. **Mostrar `consent_version` en la ficha de la evaluación** (ya registrado el 2026-08-20): un dato discreto tipo "Consentimiento: v1.0". Familia del gap "los consentimientos opcionales no se ven".
 2. **Una vista mínima de constancia por evaluación:** versión + fecha del encuentro + los eventos de consentimiento asociados (de `clinical_audit_log`), para el profesional o auditoría. Es lo que hace innecesario reconstruir el runbook a mano el día que pregunte la SIC. Se prioriza con Santiago; no bloquea nada.
 
+## El PLAN de tratamiento no tiene forma de llegar al paciente (hallazgo 2026-08-22, pieza propia)
+
+**Hueco que no estaba en el inventario.** Hoy el paciente recibe el REPORTE del diagnóstico (`sendReport`, con `send_mode`/`storage_path`). Pero el **plan de tratamiento** (objetivo, guías, menú semanal, distribución por tiempos, lista de intercambio) **no tiene envío**: se arma en el workspace del nutricionista y se queda ahí. El HTML de Gildardo SÍ lo contempla: la sección del menú semanal tiene un botón **"Enviar al paciente"** (+ "Guardar plan completo", "Imprimir plan"). Salió al verificar el cuidado (b) de la pieza 1 (el objetivo del tratamiento es contenido del plan, y "llegará al paciente por el envío del plan", que no existe). **Es una pieza propia, probablemente DESPUÉS del menú** (el plan completo se envía cuando el menú existe): decidir formato (PDF del plan como el reporte, o superficie propia), qué incluye, y el gate (protocolo aprobado). No se construye ahora; entra al plan de Tratamiento.
+
 ## CI: correr `pnpm verify` en cada push/PR (registrado 2026-08-22, decide Santiago)
 
 **Contexto:** hoy no hay CI en el repo (no existe `.github/workflows/`). El 500 de `/evaluaciones` (2026-08-21) fue una arista RSC servidor->cliente que tsc/lint/tests/build no vieron; se cerro con `pnpm check:rsc` (barrido de las DOS direcciones, ~0,4s) y se junto todo en `pnpm verify` (typecheck + lint + check:rsc + test). Pero un barrido que hay que acordarse de correr un dia no se corre. **Falta un CI que corra `pnpm verify` en cada push/PR.** El barrido RSC entra como un paso de ~1s dentro de verify, sin costo.
