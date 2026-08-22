@@ -15,6 +15,12 @@
 1. **Mostrar `consent_version` en la ficha de la evaluación** (ya registrado el 2026-08-20): un dato discreto tipo "Consentimiento: v1.0". Familia del gap "los consentimientos opcionales no se ven".
 2. **Una vista mínima de constancia por evaluación:** versión + fecha del encuentro + los eventos de consentimiento asociados (de `clinical_audit_log`), para el profesional o auditoría. Es lo que hace innecesario reconstruir el runbook a mano el día que pregunte la SIC. Se prioriza con Santiago; no bloquea nada.
 
+## CI: correr `pnpm verify` en cada push/PR (registrado 2026-08-22, decide Santiago)
+
+**Contexto:** hoy no hay CI en el repo (no existe `.github/workflows/`). El 500 de `/evaluaciones` (2026-08-21) fue una arista RSC servidor->cliente que tsc/lint/tests/build no vieron; se cerro con `pnpm check:rsc` (barrido de las DOS direcciones, ~0,4s) y se junto todo en `pnpm verify` (typecheck + lint + check:rsc + test). Pero un barrido que hay que acordarse de correr un dia no se corre. **Falta un CI que corra `pnpm verify` en cada push/PR.** El barrido RSC entra como un paso de ~1s dentro de verify, sin costo.
+
+**La decision que NO es mia (por eso queda registrada, no montada):** que hacer con los TESTS DE BD en CI. Necesitan `DATABASE_URL`; o se saltan en CI (pierde esa cobertura) o se provisiona una base de prueba con su secreto. Toca secretos y despliegue. Un pre-push hook (husky) forzaria el barrido localmente pero AGREGA una dependencia (va aprobada en DEPLOY.md primero, reglas de supply-chain). Santiago decide el alcance del CI y el manejo de la BD de prueba.
+
 ## Nota interna universal en las cuatro etapas (decidido 2026-08-21, HACER AL CERRAR TRATAMIENTO)
 
 **Decisión de Santiago (2026-08-21):** hacer la nota interna accesible desde las cuatro etapas (Evaluación, Diagnóstico, Tratamiento, Seguimiento), porque el profesional no piensa por etapas: si nota algo revisando la composición, quiere anotarlo ahí, no ir a Tratamiento. **Se hace DESPUÉS de Tratamiento** (es transversal, toca las cuatro etapas; meterlo ahora mezclaría dos trabajos grandes).

@@ -77,7 +77,7 @@ T3 completo: el catálogo estructurado de nutracéuticos (P1/P2/dosis/vía) + "R
 
 Al diffear `computeDFI` (engine.dfi) contra el archivo del 18, aparecio un bloque FUERA de los diez puntos del re-port. Se dejo DELIBERADAMENTE para cuando se construya Tratamiento (decision Santiago 2026-08-19, opcion B: el codigo sin cablear se olvida; traerlo ahora lo dejaria computado sin que nadie lo mire). Queda aqui como pieza a construir, con procedencia:
 
-- **(a) Spec nombrada:** "ATLAS_DFI_y_Metas_Terapeuticas_por_Profesional v1.0". NO la tenemos en el repo. Santiago se la pide a Gildardo.
+- **(a) Spec nombrada:** "ATLAS_DFI_y_Metas_Terapeuticas_por_Profesional v1.0". NO la tenemos en el repo. Santiago se la pide a Gildardo. **NO bloquea el porte (aclaracion 2026-08-22):** la spec es DOCUMENTACION; la FORMULA la computa `computeDFI` (`atlas-dfi.js`, en el repo) -> ver (c). Se porta sin esperarla, con golden.
 - **(b) Que trae:** el DFI redactado como PARRAFO narrativo (transcripcion de los 5 dominios, no redaccion libre) y las METAS por profesion (nutricion/medicina/ejercicio/psicologia) derivadas de las rutas R1-R6, con horizonte de 24 semanas y una rama especial cuando hay veto conductual (sin restriccion ni control de peso). El return de computeDFI en el 18 gana dos campos: `parrafo` y `metas`.
 - **(c) De donde sale:** de `computeDFI`, la MISMA funcion que porta PABU al Dominio 1. Asi que cuando se construya, se porta el resto de computeDFI (swap wholesale de esa funcion) y entra cableado con su display. En el re-port de 2026-08-19 solo se porto PABU->Dominio 1 (quirurgico); parrafo y metas quedaron fuera.
 
