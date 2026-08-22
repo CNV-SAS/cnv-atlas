@@ -509,15 +509,17 @@ function MenuSection({
   const [state, formAction, pending] = useActionState(generateMenuAction, EMPTY);
   useFormToast(state);
 
-  // La generacion usa los objetivos GUARDADOS (no el estado vivo del formulario).
-  const objetivosListos = protocol.kcalObjetivo != null && protocol.proteinaGramos != null;
-  const disabled = locked || pending || !objetivosListos;
+  // El menu se genera contra el objetivo de la CADENA CALORICA (fuente unica; el input manual de objetivo
+  // se retiro en el checkpoint 2). Basta con que el protocolo este calculado (snapshot sellado); sin el no
+  // hay cadena que computar.
+  const cadenaLista = protocol.protocolSuggested != null;
+  const disabled = locked || pending || !cadenaLista;
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
       <h3 className="text-sm font-semibold text-foreground">Menu sugerido (IA)</h3>
       <p className="text-sm text-muted-foreground">
-        La IA propone un menu diario a partir de los objetivos guardados. Es un borrador para
+        La IA propone un menu diario a partir del objetivo de la cadena calórica. Es un borrador para
         que lo revises; no se aplica al protocolo automaticamente. El diagnostico no usa IA.
       </p>
       <form action={formAction}>
@@ -525,9 +527,9 @@ function MenuSection({
         <Button type="submit" variant="outline" disabled={disabled}>
           {pending ? "Generando..." : "Generar menu"}
         </Button>
-        {!objetivosListos && !locked ? (
+        {!cadenaLista && !locked ? (
           <p className="pt-2 text-xs text-muted-foreground">
-            Guarda el objetivo calorico y de proteina antes de generar el menu.
+            El protocolo aún no está calculado; no se puede generar el menú.
           </p>
         ) : null}
       </form>
@@ -581,8 +583,6 @@ function ProtocolForm({
   // guardar; el aviso de exito se perdia en la carrera con el remonte. Toast primero, refresh despues.
   useFormToastRefreshOnSuccess(state);
 
-  const [kcal, setKcal] = useState(protocol.kcalObjetivo?.toString() ?? "");
-  const [protein, setProtein] = useState(protocol.proteinaGramos?.toString() ?? "");
   const [restricciones, setRestricciones] = useState<string[]>(protocol.restricciones);
   const [restrInput, setRestrInput] = useState("");
   const [nutras, setNutras] = useState<NutraLine[]>(
@@ -647,49 +647,11 @@ function ProtocolForm({
       <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
       <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
 
-      {/* Objetivos */}
+      {/* Objetivo calorico y proteina: RETIRADOS en el checkpoint 2 (colapso de los dos objetivos). El
+          objetivo es unico y sale de la cadena calorica (abajo); el menu lo lee de ahi y la aprobacion lo
+          sella de ahi. El "Gasto medido por el Biody" se reubica en la cadena, aclarado como otra fuente
+          (checkpoint 2.4). Este fieldset queda para las restricciones (que se mueven al menu en 2.4). */}
       <fieldset disabled={locked} className="flex flex-col gap-4">
-        <legend className="text-sm font-semibold text-foreground">Objetivos nutricionales</legend>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="kcalObjetivo">Objetivo calórico (kcal/día)</Label>
-            <Input
-              id="kcalObjetivo"
-              name="kcalObjetivo"
-              type="number"
-              inputMode="numeric"
-              value={kcal}
-              onChange={(e) => setKcal(e.target.value)}
-              placeholder="ej. 2000"
-            />
-            {protocol.kcalSugerido != null ? (
-              <p className="text-xs text-muted-foreground">
-                Gasto medido por el Biody: {protocol.kcalSugerido} kcal.{" "}
-                <button
-                  type="button"
-                  className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-                  onClick={() => setKcal(String(protocol.kcalSugerido))}
-                  disabled={locked}
-                >
-                  Usar
-                </button>
-              </p>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="proteinaGramos">Proteína objetivo (g/día)</Label>
-            <Input
-              id="proteinaGramos"
-              name="proteinaGramos"
-              type="number"
-              inputMode="numeric"
-              value={protein}
-              onChange={(e) => setProtein(e.target.value)}
-              placeholder="ej. 110"
-            />
-          </div>
-        </div>
-
         {/* Restricciones */}
         <div className="flex flex-col gap-1.5">
           <Label>Restricciones alimentarias</Label>

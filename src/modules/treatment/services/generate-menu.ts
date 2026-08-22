@@ -2,7 +2,7 @@ import "server-only";
 
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
-import { isEngineOutput } from "@/clinical-engine";
+import { computeProtocoloEfectivo, isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { getActivePrompt } from "@/lib/ai/prompts";
 import { AiError, generateText } from "@/lib/ai/provider";
@@ -46,14 +46,25 @@ export async function generateMenu(
       appError("conflict", "El diagnóstico debe estar confirmado antes de generar el menu."),
     );
   }
-  if (protocol.kcalObjetivo == null || protocol.proteinaGramos == null) {
+  // El objetivo YA NO es un input manual (checkpoint 2, colapso de los dos objetivos): sale de la CADENA
+  // CALORICA, fuente unica. Se recomputa el efectivo con los ajustes del profesional sobre el snapshot
+  // sellado, la MISMA funcion que sella la aprobacion. La cadena SIEMPRE produce un objetivo (kcalObj =
+  // override ?? GET de mantenimiento), asi que el viejo bloqueo "objetivo nulo" ya no aplica; lo que si
+  // puede faltar es el snapshot (tratamiento pre-snapshot): sin el no hay cadena que computar. Guarda
+  // defensiva contra el null-deref, no un gate de "guarda el objetivo".
+  if (!protocol.protocolSuggested) {
     return err(
-      appError(
-        "validation",
-        "Define y guarda el objetivo calórico y de proteína antes de generar el menu.",
-      ),
+      appError("conflict", "El protocolo aún no se ha calculado; no se puede generar el menú."),
     );
   }
+  const efectivo = computeProtocoloEfectivo(protocol.protocolSuggested, {
+    geb: protocol.adjGeb,
+    pal: protocol.adjPal,
+    kcalObj: protocol.adjKcalObj,
+    protGkg: protocol.adjProtGkg,
+    fatPct: protocol.adjFatPct,
+    pesoMeta: protocol.adjPesoMeta,
+  });
   // El menu se arma desde el snapshot; si es de una era anterior del motor no tiene la forma
   // esperada (fenotipo/sector/rutas). Se bloquea con un mensaje claro en vez de tronar.
   if (!isEngineOutput(results.snapshot)) {
@@ -75,8 +86,8 @@ export async function generateMenu(
   // sistema es lo unico parametrizable; el mensaje de usuario se arma dentro de buildMenuPrompt.
   const messages = buildMenuPrompt(
     {
-      kcalObjetivo: protocol.kcalObjetivo,
-      proteinaGramos: protocol.proteinaGramos,
+      kcalObjetivo: efectivo.calorico.kcalObj,
+      proteinaGramos: efectivo.calorico.protG,
       restricciones: protocol.restricciones,
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
