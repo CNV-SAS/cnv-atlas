@@ -45,6 +45,18 @@ import type {
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
+// Guard de servidor contra editar un protocolo YA APROBADO (2026-08-22). Antes solo lo bloqueaba la UI
+// (fieldset disabled), pero las actions son invocables directo: con DOS PESTAÑAS (una sin aprobar, otra que
+// aprueba) el guardado de la vieja pisaba un plan aprobado sin querer, y el candado de firma NO lo atrapaba
+// (aprobar no cambia los datos de la seccion). Se aplica a las SEIS escrituras de seccion; NO a
+// acknowledgeRestrictions (el reconocimiento de restricciones ES un paso legitimo post-aprobacion, gate del
+// menu) ni a addNote (documentacion). La pregunta CLINICA -si el plan debe congelarse o seguir editable- sigue
+// para Gildardo (BACKLOG); si dice editable, se relaja aqui Y en la UI. Hoy la UI ya lo bloquea; el servidor
+// lo respalda.
+const PROTOCOL_APPROVED_MSG =
+  "El protocolo ya fue aprobado, por eso no se puede editar. Su prescripción es inmutable: para cambiarla se " +
+  "corrige la evaluación (una versión nueva de toda la cadena), no se edita aquí.";
+
 // Checkpoint 2.4: restricciones alimentarias, su propio camino de guardado. Solo nutricionista; ownership
 // por lectura RLS del treatmentId via evaluationId. La lista alimenta el menu (una restriccion perdida por
 // sobreescritura produce un plan que ignora una alergia): por eso el candado, como en nutraceuticos.
@@ -59,6 +71,7 @@ export async function saveRestricciones(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar las restricciones."));
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeRestricciones({
       treatmentId: protocol.treatmentId,
@@ -102,6 +115,7 @@ export async function saveObjetivo(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el objetivo del tratamiento."));
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeObjetivo({
       treatmentId: protocol.treatmentId,
@@ -145,6 +159,7 @@ export async function saveIntercambio(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la lista de intercambio."));
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeIntercambio({
       treatmentId: protocol.treatmentId,
@@ -188,6 +203,7 @@ export async function saveGuidelines(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar las guías dietarias."));
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeGuidelines({
       treatmentId: protocol.treatmentId,
@@ -237,6 +253,7 @@ export async function saveNutraceuticals(
       ),
     );
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeNutraceuticals({
       treatmentId: protocol.treatmentId,
@@ -286,6 +303,7 @@ export async function saveAdjustments(
       appError("conflict", "El diagnóstico debe estar confirmado antes de ajustar el protocolo."),
     );
   }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeAdjustments({
       treatmentId: protocol.treatmentId,

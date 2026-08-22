@@ -218,6 +218,36 @@ describe("guard de profesion: escrituras de tratamiento", () => {
   });
 });
 
+// Guard de SERVIDOR contra editar un protocolo APROBADO (2026-08-22). Antes solo la UI lo bloqueaba; con dos
+// pestañas era alcanzable por accidente. Las SEIS escrituras de seccion deben rechazar con conflict cuando el
+// protocolo ya fue aprobado, sin tocar el writer. (acknowledgeRestrictions y addNote NO se bloquean: son
+// legitimos post-aprobacion; se cubren en sus propios casos.)
+describe("guard de aprobado: las seis escrituras de seccion rechazan si el protocolo ya fue aprobado", () => {
+  const APPROVED = { treatmentId: "T1", diagnosisConfirmed: true, approved: true } as unknown as TreatmentProtocol;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    readProtocol.mockResolvedValue(APPROVED);
+    profOf.mockResolvedValue(PRO("nutricionista")); // pasa el guard de profesion; lo frena el de aprobado
+  });
+
+  const casos: [string, () => Promise<{ ok: boolean; error?: { code: string } }>, unknown][] = [
+    ["saveRestricciones", () => saveRestricciones(RESTR_INPUT, actor), writeRestricciones],
+    ["saveGuidelines", () => saveGuidelines(GUIDE_INPUT, actor), writeGuidelines],
+    ["saveObjetivo", () => saveObjetivo(OBJ_INPUT, actor), writeObjetivo],
+    ["saveIntercambio", () => saveIntercambio(INTER_INPUT, actor), writeIntercambio],
+    ["saveNutraceuticals", () => saveNutraceuticals(NUTRA_INPUT, actor), writeNutraceuticals],
+    ["saveAdjustments", () => saveAdjustments(ADJ_INPUT, actor), writeAdjustments],
+  ];
+  for (const [name, call, writer] of casos) {
+    it(`${name}: protocolo aprobado -> conflict y NO escribe`, async () => {
+      const r = await call();
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error?.code).toBe("conflict");
+      expect(writer).not.toHaveBeenCalled();
+    });
+  }
+});
+
 describe("guard de profesion: generateMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
