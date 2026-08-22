@@ -457,10 +457,10 @@ export function TreatmentPanel({
             evaluación (versión nueva de toda la cadena), no se edita aquí.
           </p>
         ) : null}
-        {/* Orden 1a.3: OBJETIVO del tratamiento (lo escribe el nutricionista) + sus GUIAS, y DESPUES la CADENA
-            calorica (que antes iba primera; bajo a proposito para que el objetivo y las guias, que enmarcan el
-            plan, se lean antes que los numeros). El bloque "Protocolo de tratamiento" se desarmo en el
-            checkpoint 2.4/2.5: prescripcion y despacho viven en Rutas, restricciones/menu abajo. */}
+        {/* AGRUPACION (2026-08-22): dos bloques SEGUIDOS, sin nivel de navegacion nuevo (el orden natural es
+            leer el caso y bajar a construir; no son dos modos alternativos, son dos momentos). Arriba LECTURA
+            del diagnostico (resumen + meta, que rendriza el Panel server, + objetivo + guias + salud celular);
+            una marca de bloque abajo abre el PLAN ALIMENTARIO. La marca es visual, NO un control. */}
         <ObjetivoSection
           key={objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto })}
           evaluationId={evaluationId}
@@ -476,6 +476,19 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        <CelularSection celular={celular} />
+
+        {/* Marca de bloque: aqui empieza el PLAN ALIMENTARIO. Borde superior mas fuerte + titulo, distinto de
+            los separadores de seccion (border-t simple), para que se vea donde termina la lectura y empieza el
+            plan. No es navegacion: se sigue en un solo scroll. */}
+        <div className="mt-4 border-t-2 border-foreground/20 pt-6">
+          <h3 className="text-base font-bold text-foreground">Plan alimentario</h3>
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            La cadena calórica y su desarrollo: intercambio, restricciones y menú. Arriba está la lectura del
+            diagnóstico.
+          </p>
+        </div>
+
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection
           key={adjustmentSignature({
@@ -499,7 +512,6 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        <CelularSection celular={celular} />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection

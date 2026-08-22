@@ -143,11 +143,18 @@ async function Panel({
   // Badges de salud celular (Nivel III): se leen server-side de los crudos BIS (misma fuente que la
   // composicion de Diagnostico) y se pasan al panel client. null si no hay medicion BIS.
   const celular = await getCelularBadgesForEvaluation(evaluationId);
-  // Orden de la subpestaña (1a.3): LECTURA DEL DIAGNOSTICO (resumen + meta, arriba y read-only) y luego el
-  // workspace editable (objetivo + guias + cadena + resto). El resumen/meta son server-derivados aqui; el
-  // panel editable es client. La cadena calorica BAJO en el orden interno del panel (antes iba primera).
+  // AGRUPACION (2026-08-22): dos bloques SEGUIDOS en un solo scroll, sin nivel de navegacion nuevo. Arriba
+  // LECTURA DEL DIAGNOSTICO (resumen + meta aqui, server; objetivo + guias + celular en el panel client); una
+  // marca de bloque dentro del panel abre el PLAN ALIMENTARIO. El titulo de aqui nombra el bloque superior,
+  // simetrico con la marca del plan; son marcas visuales, no controles.
   return (
     <div className="flex flex-col gap-6">
+      <div>
+        <h3 className="text-base font-bold text-foreground">Lectura del diagnóstico</h3>
+        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+          El estado del paciente y hacia dónde va. Debajo se construye el plan.
+        </p>
+      </div>
       <DiagnosisReadingBlock narrative={narrative} />
       <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
