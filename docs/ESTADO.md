@@ -4,6 +4,8 @@ Documento para consultar cuando se pierda el hilo. Lenguaje llano, sin tecnicism
 
 Última actualización: 2026-08-11, al cerrar el bloque de **retención en la fuente** (estado tributario del integrante + verificación del RUT + rechazo con motivo + aviso por correo).
 
+> **ATRASADO (nota 2026-08-22): este doc no refleja el CHECKPOINT 2 de Tratamiento (2026-08-21).** Desde el 08-11 se construyó: las dos subpestañas (Rutas / [Profesión]), la CADENA CALÓRICA completa, los NUTRACÉUTICOS + despacho en Rutas, restricciones y guías con guardado propio; y se está construyendo la pieza 1 (resumen, meta, objetivo del tratamiento). La verdad viva del avance está en los commits y en la cola (DECISIONES_ANIBISE). Pendiente una actualización propia de este estado.
+
 ---
 
 ## Qué funciona hoy
