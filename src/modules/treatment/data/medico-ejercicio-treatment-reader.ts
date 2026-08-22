@@ -26,8 +26,10 @@ export type MedicoEjercicioTreatment = {
   // ASMI (masa apendicular) sellada en el snapshot? Si no (diagnostico viejo, emitido antes de sellarla),
   // los motores corren pero el criterio de sarcopenia por masa apendicular NO se evaluo: se avisa.
   asmiAvailable: boolean;
-  // La medicacion (d5_40) se capturo? Hoy false siempre: d5_40 no tiene field_key (port pendiente, ver
-  // BACKLOG). Sin ella, el motor medico no evalua interacciones farmaco-nutriente: se dice, no se calla.
+  // La medicacion (d5_40) se capturo? d5_40 SI tiene field_key (treatmentEngine), asi que es true cuando el
+  // paciente la respondio. Si NO llega (encuesta vieja o sin responder), el motor medico no evalua
+  // interacciones farmaco-nutriente: se dice, no se calla. (El comentario anterior decia "no tiene field_key,
+  // false siempre"; quedo stale, d5_40 lo tiene.)
   medsCaptured: boolean;
 };
 

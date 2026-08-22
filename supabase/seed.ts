@@ -268,14 +268,21 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d7_52", type: "contador", text: "Café (tazas por día)" },
   { key: "d7_53", type: "contador", text: "Té (tazas por día)" },
   { key: "d7_54", type: "contador", text: "Jugos naturales (vasos por día)" },
-  { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)" },
-  { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)" },
-  { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)" },
+  // d7_55/d7_agua/d7_56: field_key para que el parrafo de dieta del Resumen Clinico (1b) los reciba.
+  // treatmentEngine (used_in_diagnosis=false): NO gatean dfi.complete. d7_agua lo LEE el frozen, pero solo si
+  // LE8_MAPEO_CORREGIDO=true (hoy false, P-04): con el switch OFF entra sin efecto en el diagnostico (probado
+  // en diet-fields-engine-inert.test). OJO: cuando Gildardo active Q26 y flipee el switch, d7_agua empezara a
+  // alimentar el motor -> cambio de diagnostico. Ver la nota del switch en engine.dfi.
+  { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)", treatmentEngine: true },
+  { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)", treatmentEngine: true },
+  { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)", treatmentEngine: true },
   { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], treatmentEngine: true },
   { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
   // D8 · Contexto social
-  { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor", "Otra"] },
-  { key: "d8_60", type: "opcion", text: "¿Con qué frecuencia come fuera de casa?", options: ["Nunca", "1–2 veces/semana", "3–4 veces/semana", "Todos los días"] },
+  // d8_59/d8_60: field_key para el parrafo de dieta (1b). treatmentEngine: el frozen NO los lee (inocuos al
+  // diagnostico); solo alimentan el Resumen Clinico de Tratamiento.
+  { key: "d8_59", type: "opcion", text: "¿Quién prepara sus alimentos habitualmente?", options: ["Yo mismo/a", "Un familiar", "Restaurante o fonda", "Cafetería / comedor", "Otra"], treatmentEngine: true },
+  { key: "d8_60", type: "opcion", text: "¿Con qué frecuencia come fuera de casa?", options: ["Nunca", "1–2 veces/semana", "3–4 veces/semana", "Todos los días"], treatmentEngine: true },
   { key: "d8_61", type: "opcion", text: "¿Tiene acceso fácil a alimentos frescos y saludables?", options: ["Sí, siempre", "A veces es difícil", "Generalmente es difícil"], engine: true },
   { key: "d8_62", type: "opcion", text: "¿Hay momentos en que no tiene suficiente comida en el hogar?", options: ["No, nunca", "A veces", "Frecuentemente"], engine: true },
 ];

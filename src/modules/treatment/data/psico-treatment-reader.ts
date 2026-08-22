@@ -17,8 +17,9 @@ export type PsicoTreatment = {
   remision: string[];
   salvaguarda: string | null;
   estres: number;
-  // El nivel de estres (d3_29) se CAPTURO en la encuesta? Hoy false siempre: d3_29 no tiene field_key
-  // (port pendiente, ver BACKLOG). Distingue "no capturado" de un negativo, para no leer "-/10" como dato.
+  // El nivel de estres (d3_29) se CAPTURO en la encuesta? d3_29 SI tiene field_key (treatmentEngine): es true
+  // cuando el paciente lo respondio. Distingue "no capturado" de un negativo, para no leer "-/10" como dato.
+  // (El comentario anterior decia "no tiene field_key, false siempre"; quedo stale, d3_29 lo tiene.)
   estresCaptured: boolean;
 };
 
