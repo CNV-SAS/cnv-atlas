@@ -23,11 +23,19 @@
 | 7 | **Meta terapéutica** (objetivo a 24 semanas) | **NO** | **NO ASIGNADO** (mismo módulo aparte) | sin asignar |
 | 8 | **Sección 2 · VITACELLEBIS**: nutracéuticos con prioridad (P1 Multi-Cell Base, P2 Omega Complex), dosis, vía, descripción, botón "Registrar despacho" | **PARCIAL / DESCONECTADO** (el motor los calcula, `output.nutraceuticos` = string "MULTI-CELL BASE, OMEGA COMPLEX", sale en el texto de la guía; pero la UI muestra un selector de CATÁLOGO vacío "sin nutracéuticos", sin P1/P2, sin dosis, sin despacho) | **T3** | T3 sin construir + una DESCONEXIÓN (tenemos el dato y no lo mostramos) |
 | 9 | **Apartado D · Fórmula sintética**: GEB, PAL, GET, objetivo calórico, peso de cálculo, proteína, grasas, CHO | **NO** (el `ProtocolForm` tiene inputs de AJUSTE, no la fórmula portada) | **cadena calórica** | EN PAUSA (Gildardo) |
-| 10 | **Validación del plan**: tabla de 17 nutrientes con % de cubrimiento e ICN | **NO** | Plan alimentario / cadena | EN PAUSA / sin construir |
-| 11 | **Lista de intercambio**: 12 grupos con porciones editables | **NO** | **Plan alimentario (E+F)** | sin construir |
-| 12 | **Distribución por tiempos de comida** | **NO** | Plan alimentario (E+F) | sin construir |
+| 10 | **Validación del plan**: tabla de 17 nutrientes con % de cubrimiento e ICN | **NO** | Plan alimentario / cadena | sin construir (parte 3 de la GRILLA, ver corrección abajo) |
+| 11 | **Lista de intercambio**: 12 grupos con porciones editables | **NO** | **Plan alimentario (E+F)** | sin construir (parte 1 de la GRILLA) |
+| 12 | **Distribución por tiempos de comida** | **NO** | Plan alimentario (E+F) | sin construir (parte 2 de la GRILLA) |
 | 13 | **Menú semanal**: tabla 7 días × 5 tiempos, editable, con generación por IA | **PARCIAL** (`MenuSection` genera menú por IA, pero NO la tabla 7×5 editable) | T2b (menú IA) + Plan alimentario | parcial |
 | 14 | **Imprimir / Guardar plan / Enviar** | **PARCIAL** (el reporte PDF + envío es T4/B10; no "guardar/imprimir el plan alimentario") | T4 | parcial |
+
+## CORRECCIÓN 2026-08-22: los ítems 10-12 son UNA grilla, no tres piezas sueltas
+
+Al trazar la función real del v8 (no la lectura de esta lista), Intercambio + Distribución por tiempos + Validación son **un solo pipeline entrelazado**, no tres piezas independientes. Y "Distribución por tiempos, chica y determinista" NO describe lo que hay: en el v8 no existe un reparto simple de kcal por tiempo; la distribución ES la grilla de la fórmula desarrollada (tiempos × grupos de alimentos). El pipeline real:
+
+`objetivo calórico (cadena, portado) → repartoGr (% por grupo, 12 grupos) → kcal por grupo → porciones (÷ kcal/porción de INTER_TABLA_A) = INTERCAMBIO → repartir esas porciones por tiempos de comida (PASO 4, mayor resto) = TIEMPOS → sumar interTot y comparar vs interNeed (17 targets DRI) = VALIDACIÓN.`
+
+**Orden de construcción (por el acoplamiento, no por la lista):** porciones PRIMERO (Intercambio), tiempos DERIVAN de ellas, validación suma. Insumos: solo el objetivo/macros está portado; `INTER_TABLA_A` (~20 alimentos × 27 nutrientes), `INTER_GRUPOS` (12), `repartoGr`, `interNeed`/`_driCa`/`_driFe` (17 targets), `getVR` y la lógica PASO 3-4 están **solo en el v8, por transcribir** (no hay hueco de captura ni de frozen). Ver la lección [[orden-de-piezas-del-inventario-no-del-archivo]].
 
 ## La lectura preliminar de Santiago: CONFIRMADA en todo
 
