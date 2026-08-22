@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, esGrupoNuclear } from "@/clinical-engine/intercambio";
+import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
   saveAdjustmentsAction,
   saveGuidelinesAction,
   saveIntercambioAction,
+  saveTiemposAction,
   saveObjetivoAction,
   saveRestriccionesAction,
   type TreatmentActionState,
@@ -31,8 +33,9 @@ import {
   intercambioSignature,
   objetivoSignature,
   restriccionesSignature,
+  tiemposSignature,
 } from "../data/protocol-signature";
-import type { IntercambioSaved, MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
+import type { IntercambioSaved, MenuSuggestion, TiemposSaved, TreatmentProtocol } from "../data/treatment-view-types";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -512,6 +515,13 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        {/* Tiempos (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
+        <TiemposSection
+          key={tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection
@@ -867,6 +877,206 @@ function IntercambioSection({
               onClick={() => setPorciones(Object.fromEntries(defaults.map((g) => [g.id, g.porciones])))}
             >
               Recalcular desde el objetivo (borra tus ajustes)
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
+// Distribucion por tiempos (CP2.2b): reparte las porciones del intercambio (CP1) por tiempo de comida. Filas =
+// grupos con porciones > 0; columnas = tiempos ACTIVOS. Celdas editables (override sobre el auto). Toggles de
+// tiempos activos con recompute en vivo. Aviso de desfase DOBLE (por porciones y por activos) sin borrar los
+// overrides (DIV-11); los overrides de comidas apagadas se conservan ocultos (apagar suele ser exploratorio).
+const TIEMPOS_ACTIVOS_DEFAULT: Record<string, boolean> = {
+  desayuno: true,
+  mediasOnces: true,
+  almuerzo: true,
+  algo: true,
+  cena: true,
+  merienda: false,
+};
+// Serializacion estable de un mapa de porciones/booleanos por clave ordenada, para comparar el contexto base.
+const serMap = (m: Record<string, number | boolean>) =>
+  Object.keys(m)
+    .sort()
+    .map((k) => `${k}:${typeof m[k] === "boolean" ? (m[k] ? 1 : 0) : m[k]}`)
+    .join(",");
+
+function TiemposSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveTiemposAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+
+  const snap = protocol.protocolSuggested;
+  const adjGuardados: ProtocoloAjustes = {
+    geb: protocol.adjGeb,
+    pal: protocol.adjPal,
+    kcalObj: protocol.adjKcalObj,
+    protGkg: protocol.adjProtGkg,
+    fatPct: protocol.adjFatPct,
+    pesoMeta: protocol.adjPesoMeta,
+  };
+  const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
+  const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
+  const savedInter = protocol.intercambioPorciones;
+  const savedTiempos = protocol.tiempos;
+
+  // Porciones actuales por grupo (del intercambio guardado o el default) + kcal por porcion (del sub por
+  // defecto; el desplegable es read-only en CP1, asi que la kcal/porcion es la del default).
+  const porcionesActuales: Record<string, number> = {};
+  const kcalPorPorcion: Record<string, number> = {};
+  for (const g of defaults) {
+    porcionesActuales[g.id] = savedInter?.grupos[g.id]?.porciones ?? g.porciones;
+    kcalPorPorcion[g.id] = g.kcal;
+  }
+
+  const [activos, setActivos] = useState<Record<string, boolean>>(
+    () => savedTiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT,
+  );
+  const [celdas, setCeldas] = useState<Record<string, Record<string, number>>>(() => savedTiempos?.celdas ?? {});
+
+  if (!snap || objetivoEfectivo == null) return null;
+
+  const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
+  const gruposConPorciones = defaults.filter((g) => porcionesActuales[g.id] > 0);
+  const gruposOcultos = defaults.length - gruposConPorciones.length;
+  const auto = computeTiempos(porcionesActuales, activos); // grupo -> tiempo (solo activos)
+  const celda = (gid: string, mid: string) => celdas[gid]?.[mid] ?? auto[gid]?.[mid] ?? 0;
+
+  // Total por tiempo: porciones y kcal (lo que el nutricionista mira). kcal = porciones * kcal/porcion del grupo.
+  const totalPorc: Record<string, number> = {};
+  const totalKcal: Record<string, number> = {};
+  for (const t of vivos) {
+    totalPorc[t.id] = gruposConPorciones.reduce((s, g) => s + celda(g.id, t.id), 0);
+    totalKcal[t.id] = gruposConPorciones.reduce((s, g) => s + celda(g.id, t.id) * kcalPorPorcion[g.id], 0);
+  }
+
+  // Desfase DOBLE (DIV-11): overrides hechos con otras porciones o con otros tiempos activos. Se compara el
+  // contexto SELLADO (savedTiempos.base) contra la realidad actual (porciones del intercambio + activos
+  // guardados), no contra la edicion en vivo, para no titilar mientras se ajusta.
+  const desfase =
+    savedTiempos != null &&
+    Object.keys(savedTiempos.celdas).length > 0 &&
+    (serMap(porcionesActuales) !== serMap(savedTiempos.base.porciones) ||
+      serMap(savedTiempos.activos) !== serMap(savedTiempos.base.activos));
+
+  const setCelda = (gid: string, mid: string, v: number) =>
+    setCeldas((c) => ({ ...c, [gid]: { ...(c[gid] ?? {}), [mid]: Math.max(0, v) } }));
+  const toggle = (mid: string) =>
+    setActivos((a) => {
+      const activosCount = TIEMPOS_DEF.filter((t) => a[t.id]).length;
+      if (a[mid] && activosCount <= 1) return a; // DIV-13: no apagar el ultimo
+      return { ...a, [mid]: !a[mid] };
+    });
+
+  const payload: TiemposSaved = {
+    activos,
+    celdas, // se conservan TODOS, incluidos los de comidas apagadas (no se muestran, no se borran)
+    base: { porciones: porcionesActuales, activos },
+  };
+  const baseSignature = tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: savedTiempos });
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Distribución por tiempos</h3>
+      <p className="text-sm text-muted-foreground">
+        Reparte las porciones de cada grupo entre los tiempos de comida activos. Ajusta las celdas si hace
+        falta; el total por tiempo (porciones y kcal) se recalcula abajo.
+      </p>
+
+      {desfase ? (
+        <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          Estos ajustes de tiempos se hicieron con otras porciones o comidas activas; ya no corresponden. Puedes
+          seguir con ellos o recalcular desde el intercambio actual (borra tus ajustes manuales).
+        </div>
+      ) : null}
+
+      <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
+        <fieldset disabled={locked} className="flex flex-col gap-3">
+          {/* Toggles de tiempos activos */}
+          <div className="flex flex-wrap gap-3">
+            {TIEMPOS_DEF.map((t) => (
+              <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
+                <input type="checkbox" checked={Boolean(activos[t.id])} onChange={() => toggle(t.id)} />
+                {t.n}
+              </label>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="py-1 pr-3 text-left font-medium">Grupo</th>
+                  {vivos.map((t) => (
+                    <th key={t.id} className="px-2 py-1 text-right font-medium">
+                      {t.n}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gruposConPorciones.map((g) => (
+                  <tr key={g.id} className="border-b border-border/50">
+                    <td className="py-1.5 pr-3 text-foreground">{g.nom}</td>
+                    {vivos.map((t) => (
+                      <td key={t.id} className="px-2 py-1.5 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          value={celda(g.id, t.id)}
+                          onChange={(e) => setCelda(g.id, t.id, Math.round(Number(e.target.value) || 0))}
+                          className="w-14 rounded border border-border bg-background px-1.5 py-1 text-right text-sm"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                <tr className="font-semibold text-foreground">
+                  <td className="py-2 pr-3">Total porciones</td>
+                  {vivos.map((t) => (
+                    <td key={t.id} className="px-2 py-2 text-right tabular-nums">
+                      {totalPorc[t.id]}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="text-muted-foreground">
+                  <td className="py-1 pr-3">Total kcal</td>
+                  {vivos.map((t) => (
+                    <td key={t.id} className="px-2 py-1 text-right tabular-nums">
+                      {Math.round(totalKcal[t.id])}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {gruposOcultos > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {gruposOcultos === 1 ? "Un grupo no aparece" : `${gruposOcultos} grupos no aparecen`} porque tienen
+              0 porciones. Si les subes porciones en la lista de intercambio, aparecen aquí.
+            </p>
+          ) : null}
+
+          <div className="flex gap-2">
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar distribución"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
+              Recalcular desde el intercambio (borra tus ajustes)
             </Button>
           </div>
         </fieldset>
