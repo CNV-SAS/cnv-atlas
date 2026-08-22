@@ -219,7 +219,11 @@ Contra la BD local (`DATABASE_URL` en `.env.local`). **Hay TRES scripts de seed,
 
 ### CRÍTICO — las migraciones NO se despliegan solas (hueco del proceso, hallazgo 2026-08-08)
 
-**Vercel despliega el CÓDIGO en cada push a `main`, pero NO corre las migraciones.** Si el código desplegado espera una tabla que la nube no tiene, la pantalla revienta con `Could not find the table 'public.XXX' in the schema cache` y la causa queda solo en Sentry. Pasó con `referrals` (y con las tablas de faltantes/conteo): el código llegó a la nube, las tablas no. **Migrar es un paso APARTE que se corre a mano tras cada push con migraciones nuevas.** El criterio de aceptación de más abajo ("migraciones iniciales aplicadas") NO basta: hay que repetirlo cada vez.
+**Vercel despliega el CÓDIGO en cada push a `main`, pero NO corre las migraciones.** Si el código desplegado espera una tabla o COLUMNA que la nube no tiene, la pantalla revienta (`Could not find the table 'public.XXX'` / `column X does not exist`) y la causa queda solo en Sentry. Pasó con `referrals`, con faltantes/conteo, y con `treatments.intercambio_porciones` (2026-08-22): el código llegó a la nube, la columna no.
+
+**EL ORDEN CORRECTO ES MIGRAR *ANTES* DE PUSHEAR, NO DESPUÉS (regla dura, 2026-08-22).** El archivo `NNNN_*.sql` ya está en el commit LOCAL, así que `db:migrate` contra la nube corre ANTES del push (que dispara el deploy). Secuencia: **(1) commit → (2) `db:migrate` contra la nube → (3) push.** Así la columna existe antes de que el código nuevo despliegue, y NO hay ventana de caída. Migrar DESPUÉS del push (lo que decía este runbook antes) abre una ventana en la que el sistema está caído entre el deploy y la migración.
+
+**Y el radio del daño es MAYOR de lo que parece:** una columna aditiva la lee un reader COMPARTIDO (p. ej. `treatment-reader` corre en TODA la página de evaluación, no solo en la sección nueva). Un `select` explícito que la lista revienta la consulta ENTERA, así que la columna faltante NO tumba "la pantalla nueva": tumba **toda la página de evaluación para todos**. Por eso "migrar antes de que un usuario toque la pantalla nueva" no basta: hay que migrar antes de que el CÓDIGO NUEVO exista en la nube. El criterio de aceptación de más abajo ("migraciones iniciales aplicadas") NO basta: hay que repetir el paso 2 en CADA push con migraciones.
 
 **CUIDADO con `db:check` (hallazgo 2026-08-09):** `pnpm db:check` corre con `--env-file=.env.local`, así que chequea la BD **LOCAL**. Si lo corres tras migrar la nube, diría "al día" mirando local y creerías que verificaste la nube (peor que no chequear). **Para la NUBE hay un comando aparte, `db:check:cloud` (sin `--env-file`), que exige `DATABASE_URL` en el shell y falla claro si falta** (nunca miente "al día"):
 
@@ -229,12 +233,15 @@ DATABASE_URL="<url-directa-de-la-nube-5432>" pnpm db:check:cloud
 
 (Node: una variable de shell GANA sobre `--env-file`; el comando `:cloud` no usa `--env-file` para que no haya ambigüedad. Sin `DATABASE_URL` seteada, aborta con un mensaje, no chequea local por error.)
 
-**Paso obligatorio tras CADA push que incluya archivos nuevos en `drizzle/`:**
+**Paso obligatorio ANTES de CADA push que incluya archivos nuevos en `drizzle/` (commit hecho, push todavía NO):**
 1. **Verificar qué falta:** `DATABASE_URL="<url-nube>" pnpm db:check:cloud` (lista las pendientes; solo LEE, seguro, va por el pooler). Sin pendientes: nada que hacer.
 2. **Aplicarlas:** `pnpm db:migrate` con `DATABASE_URL` de la nube = la conexión DIRECTA de Supabase (puerto 5432, no el pooler 6543: el DDL en transacción no va bien por el pooler).
 3. **Confirmar:** `DATABASE_URL="<url-nube>" pnpm db:check:cloud` de nuevo → "al día".
+4. **AHORA sí, pushear.** El deploy encuentra la columna/tabla ya en la nube.
 
-Regla mental simple: **¿hay archivos `NNNN_*.sql` nuevos desde el último deploy? → migrar antes de que un usuario toque las pantallas nuevas.** Y `db:check:cloud` entra a la rutina: correrlo (contra la NUBE) antes de dar por bueno un despliegue.
+Excepción: si por lo que sea ya pusheaste sin migrar (la nube está caída), migra INMEDIATAMENTE (mismos pasos 1-3); cada minuto es caída real con usuarios. Pero el default es migrar primero.
+
+Regla mental simple: **¿el commit trae archivos `NNNN_*.sql` nuevos? → migrar la nube ANTES de pushear.** (Para migraciones ADITIVAS -columna/tabla nueva-, que son todas hoy, migrar primero es siempre seguro: el código viejo aún desplegado ignora lo nuevo. El día que una migración toque o borre algo que el código viejo usa, hace falta expand-contract; ver la decisión de no automatizar el migrate.) Y `db:check:cloud` entra a la rutina: correrlo (contra la NUBE) como parte del paso.
 
 **MIGRACIONES DE DATOS DE LA ENCUESTA (`supabase/data-migrations/*.sql`, desde 2026-08-19).** Un cambio de CONTENIDO de encuesta (bump de versión) NO va por drizzle (drizzle migra el SCHEMA, no los datos) NI por `pnpm db:seed` (que es DESTRUCTIVO: borra las preguntas/respuestas de la versión vigente). Va por un archivo SQL ADITIVO en `supabase/data-migrations/`, idempotente (`ON CONFLICT (id) DO NOTHING`), que inserta la versión nueva SIN tocar la anterior (los ids llevan la versión). Se corre a mano contra la nube: **Supabase → SQL Editor → pegar el contenido del archivo → Run** (o `psql "<url-nube>" -f <archivo>`). NUNCA `pnpm db:seed` contra la nube. Las evaluaciones de la versión anterior quedan intactas y NO corregibles (gate de versión, correcto). El archivo se GENERA del local ya sembrado (dump de las filas de la nueva versión); ver el generador usado en el commit del bump v5.
 
