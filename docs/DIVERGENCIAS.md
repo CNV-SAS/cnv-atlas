@@ -54,3 +54,8 @@
 - El HTML de Gildardo no muestra el metabolismo basal ni el gasto energético total en su tabla de Wang; Atlas los conserva en el Nivel V (Cuerpo entero), con la referencia del equipo Biody para el GEB.
 - Por qué: Santiago los quiere (información útil para el profesional) y no contradicen nada del modelo (son medidas del equipo, no un cálculo del motor ANI-BIS-E). El QUÉ del HTML manda en lo clínico; agregar dos medidas del equipo que orientan al profesional es del CÓMO nuestro. Decisión Santiago 2026-08-15.
 - Cómo: `composition-map.ts` Nivel V (filas GEB/GET). Cotejo de Wang, 2026-08-15.
+
+**DIV-10 · La lista de intercambio SEÑALA cuando un grupo NUCLEAR queda en 0 porciones; el HTML lo muestra en 0 sin avisar.**
+- En el v8, un grupo que redondea a 0 porciones se muestra "0" plano en la tabla de intercambio y se FILTRA de la grilla de tiempos (`if(tot>0)`), sin ninguna señal. Atlas marca (`avisoSinPorcion`) cuando un grupo **nuclear** (harinas, frutas, lácteos, carnes, leguminosas) cae a 0, que solo pasa con un objetivo calórico implausiblemente bajo.
+- Por qué: es la lección del reparto de macros (mejor avisar que mostrar un 0 mudo que se lee como dato). Solo los nucleares: un discrecional en 0 (mecato, azúcares, bebidas) es un default sano y frecuente (mecato queda en 0 aun a 2200 kcal), marcarlo sería ruido. El QUÉ (las porciones) es fiel a PASO 3 byte a byte; la marca es del CÓMO nuestro. La distinción nuclear/discrecional es nuestra.
+- Cómo: `clinical-engine/intercambio.ts` (`GRUPOS_NUCLEARES` + `avisoSinPorcion`, la porción NO cambia). CP1.1, 2026-08-22.
