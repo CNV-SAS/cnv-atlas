@@ -55,6 +55,11 @@
 - Por qué: Santiago los quiere (información útil para el profesional) y no contradicen nada del modelo (son medidas del equipo, no un cálculo del motor ANI-BIS-E). El QUÉ del HTML manda en lo clínico; agregar dos medidas del equipo que orientan al profesional es del CÓMO nuestro. Decisión Santiago 2026-08-15.
 - Cómo: `composition-map.ts` Nivel V (filas GEB/GET). Cotejo de Wang, 2026-08-15.
 
+**DIV-13 · La distribución por tiempos EXIGE al menos un tiempo de comida activo; el HTML no lo impide.**
+- En el v8, si el profesional apaga todos los tiempos, `tiemposVivos` queda vacío, `interSplit` devuelve `[]` y las porciones de cada grupo desaparecen del reparto en silencio (un plan sin ninguna comida). Atlas lo IMPIDE: la validación rechaza `activos` sin ninguno en true, y la UI no deja apagar el último.
+- Por qué: un paciente siempre come al menos una vez; un plan con cero tiempos no tiene sentido y perdería las porciones sin avisar. Es un guard, misma familia que DIV-10. El QUÉ (el reparto por mayor resto) es fiel; el guard es nuestro.
+- Cómo: `saveTiemposSchema` (superRefine: al menos un activo) + la UI (CP2.2b). 2026-08-22.
+
 **DIV-12 · La cadena calórica va POR DELANTE del HTML: cuadre de macros, distinción calculado/ajustado, aviso de borde y candado de concurrencia.**
 - El HTML reparte kcal/proteína/grasa pero no CUADRA los macros contra el objetivo, no distingue lo CALCULADO por el modelo de lo AJUSTADO por el profesional, no avisa el borde (cuando proteína+grasa exceden el objetivo y no queda margen para carbohidratos), y guarda en localStorage sin candado. Atlas agrega las cuatro cosas.
 - Por qué: son mejoras nuestras (el CÓMO), no cambian la ciencia del reparto (el QUÉ es fiel a `computeProtocoloEfectivo`, la misma función que sella el servidor). El cuadre es exacto por construcción (choKcal = objetivo − prot − grasa, residuo sin redondeo). La distinción calculado/ajustado y el aviso de borde salieron de que Santiago dudó al ver "medido 2590" vs la cadena; el candado, de persistir en BD lo que el HTML deja en el navegador.
