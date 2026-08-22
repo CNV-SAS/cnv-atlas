@@ -396,7 +396,9 @@ export default async function ResultadosEvaluacionPage({
               <ReportCard report={reportCard} />
             </section>
           ) : null}
-          <CorrectionEntry evaluationId={id} availability={correctionAvailability} />
+          {/* La correccion de la encuesta NO se duplica aqui: es el MISMO componente (misma ruta /corregir)
+              que ya vive en el "Cierre del diagnostico" (junto a ConfirmDiagnosisPanel, en Diagnostico). Se
+              quito la copia de Tratamiento (checkpoint 2, 2026-08-21): una sola via, en Diagnostico. */}
         </div>
       }
       seguimiento={
