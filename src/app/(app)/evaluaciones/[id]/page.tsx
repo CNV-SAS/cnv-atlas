@@ -71,6 +71,7 @@ import { PatientStateHeader } from "@/modules/treatment/components/patient-state
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature } from "@/modules/treatment/data/protocol-signature";
+import { getDietaResumenForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
 import {
   ProfessionTreatmentSection,
   type TreatmentNarrative,
@@ -329,7 +330,15 @@ export default async function ResultadosEvaluacionPage({
     };
   } else {
     const n = dfiNarrativeFromOutput(results.snapshot);
-    treatmentNarrative = { kind: "text", parrafo: n.parrafo, metaNutricion: n.metas.nutricion };
+    // Parrafo de dieta (1b): de la encuesta, no del snapshot. Va PRIMERO en el Resumen Clinico; null si la
+    // encuesta no tiene datos legibles (se omite ese parrafo y queda solo el funcional).
+    const parrafoDieta = await getDietaResumenForEvaluation(id, results.snapshot.sexo);
+    treatmentNarrative = {
+      kind: "text",
+      parrafoDieta,
+      parrafo: n.parrafo,
+      metaNutricion: n.metas.nutricion,
+    };
   }
 
   // Nombre de la segunda subpestaña de Tratamiento: la profesion del que mira (nunca hardcodeado). Admin o

@@ -27,19 +27,24 @@ import { TreatmentPanel } from "./treatment-panel";
 // `text` cuando el diagnostico esta completo; `unavailable` con el MOTIVO cuando no (snapshot viejo o
 // encuesta incompleta), para que el hueco lo explique en vez de quedar vacio.
 export type TreatmentNarrative =
-  | { kind: "text"; parrafo: string; metaNutricion: string }
+  | { kind: "text"; parrafoDieta: string | null; parrafo: string; metaNutricion: string }
   | { kind: "unavailable"; reason: string };
 
-// Bloque de LECTURA DEL DIAGNOSTICO (resumen funcional + meta). Read-only, generado del snapshot: NO es algo
-// que el profesional escribio. Se distingue de un vistazo del objetivo editable (que es un textarea): fondo
-// tenue, borde de acento a la izquierda, eyebrow "Lectura del diagnostico" y caption "Generado ... no editable".
-// La meta va aparte del resumen a proposito: el resumen dice DONDE esta el paciente, la meta HACIA DONDE va.
+// Bloque de LECTURA DEL DIAGNOSTICO (Resumen Clinico + Meta terapeutica). Read-only, generado del snapshot:
+// NO es algo que el profesional escribio. Se distingue de un vistazo del objetivo editable (que es un
+// textarea): fondo tenue, borde de acento a la izquierda, eyebrow, caption "Generado ... no editable".
+//
+// El "Resumen Clinico" (asi lo titula Gildardo) une DOS parrafos apilados, sin subrotulos (Gildardo los
+// escribe como una lectura continua): primero el de DIETA (patron alimentario, de la encuesta; 1b), y despues
+// el FUNCIONAL (del DFI; 1a.1). El de dieta puede faltar (encuesta sin datos legibles): entonces se omite y
+// queda solo el funcional. La Meta va aparte a proposito: el resumen dice DONDE esta el paciente, la meta
+// HACIA DONDE va.
 function DiagnosisReadingBlock({ narrative }: { narrative: TreatmentNarrative }) {
   if (narrative.kind === "unavailable") {
     return (
       <section className="rounded-xl border border-dashed border-border bg-muted/30 p-6">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Lectura del diagnóstico
+          Resumen clínico
         </h3>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">{narrative.reason}</p>
       </section>
@@ -47,9 +52,14 @@ function DiagnosisReadingBlock({ narrative }: { narrative: TreatmentNarrative })
   }
   return (
     <div className="flex flex-col gap-4">
-      <ReadingCard eyebrow="Resumen funcional" caption="Generado del diagnóstico. No editable.">
-        {narrative.parrafo}
-      </ReadingCard>
+      <section className="flex flex-col gap-2 rounded-xl border border-border border-l-4 border-l-primary/50 bg-muted/40 p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen clínico</h3>
+        {narrative.parrafoDieta ? (
+          <p className="max-w-prose text-sm leading-relaxed text-foreground">{narrative.parrafoDieta}</p>
+        ) : null}
+        <p className="max-w-prose text-sm leading-relaxed text-foreground">{narrative.parrafo}</p>
+        <p className="text-xs text-muted-foreground">Generado del diagnóstico. No editable.</p>
+      </section>
       <ReadingCard eyebrow="Meta terapéutica" caption="Generada de las rutas activas. No editable.">
         {narrative.metaNutricion}
       </ReadingCard>
