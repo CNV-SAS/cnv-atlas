@@ -10,6 +10,8 @@
 // nutraceuticos, restricciones, guias) tiene su PROPIA accion y su PROPIA firma; la maquinaria de "firma por
 // secciones del protocolo" (protocolSectionSignatures/saveProtocol) se retiro, era de un solo proposito.
 
+import type { TreatmentProtocol } from "./treatment-view-types";
+
 // Firma de una lista de texto (treatmentId + el set ORDENADO): base del candado + key de remonte. Ordenado
 // para no depender del orden de filas (un SELECT sin ORDER BY no lo garantiza).
 function stringListSignature(treatmentId: string, items: string[]): string {
@@ -77,4 +79,19 @@ export function nutraceuticalsSignature(p: SignableNutraceuticals): string {
     .sort()
     .join("|");
   return `${p.treatmentId}§${set}`;
+}
+
+// Firma de la prescripcion GUARDADA de un protocolo: base del candado + `key` de remonte. VIVE AQUI (modulo
+// NEUTRO), no en el componente client, porque la LLAMAN LOS DOS LADOS: page.tsx (servidor) como `key` de la
+// seccion, y NutraceuticalsSection (cliente) como baseSignature. Una funcion en un modulo "use client"
+// llamada desde el servidor tumba la pagina (RSC boundary): el fix del 500 del 2026-08-21.
+export function prescriptionSignature(protocol: TreatmentProtocol): string {
+  return nutraceuticalsSignature({
+    treatmentId: protocol.treatmentId,
+    nutraceuticals: protocol.nutraceuticals.map((n) => ({
+      nutraceuticalId: n.nutraceuticalId,
+      dosage: n.dosage,
+      durationDays: n.durationDays,
+    })),
+  });
 }

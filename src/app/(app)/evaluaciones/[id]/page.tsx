@@ -69,10 +69,8 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
-import {
-  NutraceuticalsSection,
-  prescriptionSignature,
-} from "@/modules/treatment/components/nutraceuticals-section";
+import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
+import { prescriptionSignature } from "@/modules/treatment/data/protocol-signature";
 import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
 import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";

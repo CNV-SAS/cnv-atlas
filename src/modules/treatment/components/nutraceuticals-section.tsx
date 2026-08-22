@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
 
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
-import { nutraceuticalsSignature } from "../data/protocol-signature";
+// prescriptionSignature vive en el modulo NEUTRO (no aqui): la llama tambien page.tsx (servidor), y una
+// funcion exportada por un "use client" no puede invocarse desde el servidor (tumba la pagina, RSC boundary).
+import { prescriptionSignature } from "../data/protocol-signature";
 import type { TreatmentProtocol } from "../data/treatment-view-types";
 import { resolveRecommendation } from "../nutraceuticals-recommendation";
 
@@ -22,19 +24,6 @@ const AVAILABILITY_LABEL: Record<string, string> = {
 };
 
 type NutraLine = { nutraceuticalId: string; name: string; dosage: string; durationDays: string };
-
-// Firma de la prescripcion GUARDADA (del prop): base del candado + `key` de remonte. Se computa igual en
-// cliente (aqui) y servidor (bajo lock, en saveNutraceuticals).
-export function prescriptionSignature(protocol: TreatmentProtocol): string {
-  return nutraceuticalsSignature({
-    treatmentId: protocol.treatmentId,
-    nutraceuticals: protocol.nutraceuticals.map((n) => ({
-      nutraceuticalId: n.nutraceuticalId,
-      dosage: n.dosage,
-      durationDays: n.durationDays,
-    })),
-  });
-}
 
 // Nutraceuticos, en la subpestaña Rutas (checkpoint 2.3). VISIBLE para toda profesion (Opcion A): si el
 // medico va a decidir sobre el paciente necesita saber que se le esta dando (interacciones farmaco-nutriente:
