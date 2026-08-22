@@ -272,7 +272,8 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // treatmentEngine (used_in_diagnosis=false): NO gatean dfi.complete. d7_agua lo LEE el frozen, pero solo si
   // LE8_MAPEO_CORREGIDO=true (hoy false, P-04): con el switch OFF entra sin efecto en el diagnostico (probado
   // en diet-fields-engine-inert.test). OJO: cuando Gildardo active Q26 y flipee el switch, d7_agua empezara a
-  // alimentar el motor -> cambio de diagnostico. Ver la nota del switch en engine.dfi.
+  // alimentar el motor -> CAMBIO DE DIAGNOSTICO (baja la EB-BIS 1-8 años, su propio comentario L6520-6528). El
+  // field_key ya existe: el dato fluira al voltear el switch, sin tocar el seed. Ver DECISIONES_ANIBISE P-01.
   { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)", treatmentEngine: true },
   { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)", treatmentEngine: true },
   { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)", treatmentEngine: true },

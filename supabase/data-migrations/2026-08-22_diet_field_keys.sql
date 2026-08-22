@@ -10,7 +10,9 @@
 -- (P-04), asi que d7_agua entra al input del motor SIN efecto en el diagnostico (probado en
 -- diet-fields-engine-inert.test: dfi/indicadores/le8Total identicos). Los otros cuatro el frozen no los lee.
 -- OJO: cuando Gildardo active Q26 y flipee el switch a true, d7_agua empezara a alimentar el motor y eso
--- SERA un cambio de diagnostico. Ver la nota del switch en src/clinical-engine/frozen/engine.dfi.js.
+-- SERA un cambio de diagnostico: baja la EB-BIS (edad bioelectrica) 1-8 años (su propio comentario, vigente
+-- L6520-6528). El field_key ya existe, asi que el dato fluira solo al voltear el switch. Ver la nota en
+-- src/clinical-engine/frozen/engine.dfi.js y DECISIONES_ANIBISE P-01.
 --
 -- used_in_diagnosis queda en false (default): estos campos NO gatean dfi.complete.
 
