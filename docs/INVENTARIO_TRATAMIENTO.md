@@ -1,5 +1,11 @@
 # Inventario de la pantalla de Tratamiento: vigente vs Atlas (2026-08-02)
 
+> **ESTE DOC ES UN SNAPSHOT DEL 2026-08-02 y quedó desactualizado por el CHECKPOINT 2 (2026-08-21).** Ya se
+> construyó: las DOS subpestañas (Rutas + [Profesión]), la CADENA CALÓRICA completa (fórmula, ajustes,
+> reparto), los NUTRACÉUTICOS P1/P2 + despacho (movidos a Rutas), restricciones y guías con guardado propio.
+> Muchas filas que dicen "NO"/"sin construir"/"EN PAUSA" ya están hechas. La verdad viva del avance está en
+> los commits y en la cola (DECISIONES_ANIBISE). Este inventario sirve como mapa del HTML, no como estado.
+
 **Por qué existe.** Se reportó el estado de T2b sin haber hecho el inventario completo de la pantalla de Tratamiento del HTML vigente. Santiago comparó Atlas contra sus capturas y falta mucho más de lo que los reportes decían. Esto recorre la pantalla del `ATLAS_v7.html` de arriba a abajo (fuente autoritativa) y mapea cada elemento contra Atlas, su bloque, y qué lo bloquea. Lo construido NO está mal; el problema era no saber contra qué medirlo.
 
 **Bloques posibles:** T2b (lo actual), T3 (nutracéuticos), Plan alimentario E+F, T4 (reportes), la cadena calórica (EN PAUSA esperando las 4 respuestas de Gildardo), o **NO ASIGNADO** (lo que había que descubrir).
@@ -72,6 +78,8 @@ T3 completo: el catálogo estructurado de nutracéuticos (P1/P2/dosis/vía) + "R
 
 ### Corrección al grupo (a): el resumen NO es construible hoy (depende de la encuesta que va a cambiar)
 **VERIFICADO (2026-08-02):** `atlas-resumen-clinico.js` lee campos de encuesta: `d2_19-22`, `d3_23-31`, `d5_36-40`, `d6_43-44`, `d7_55-56` + **`d7_agua`**, `d8_59-62`, y **`FREQ_GROUPS`** (los grupos de frecuencia dietaria, vía `_resDietaCoarse`, que arma el párrafo de dieta). Dos de esos son justo los que cambian con Gildardo: **`FREQ_GROUPS` + `d1_*_i` cambian con C9** (la encuesta pasa a 15 grupos, sin implementar), y **`d7_agua` depende de Q26/C1** (el interruptor del índice contextual + la captura de agua, sin implementar). Lee los campos POR NOMBRE, así que no se rompe, pero **el párrafo de dieta y el de hidratación se portarían contra una encuesta que va a cambiar**: quedarían contra los grupos viejos (pre-C9) y con la hidratación en vacío (d7_agua no capturado). **Consecuencia: el resumen se mueve al grupo (b)** (la parte narrativa de dieta/hidratación depende de C9/Q26; solo la parte de índices/condiciones es estable). Con eso, el grupo (a) construible hoy queda **prácticamente solo en la desconexión de nutracéuticos (ya hecha)**, y el trabajo útil de hoy está FUERA de Tratamiento (Seguimiento / pulido / flujo de corrección).
+
+> **CORRECCIÓN 2026-08-22: este párrafo es STALE. C9 y Q26 están CERRADAS.** La encuesta v5 (`2026-08-19_survey_v5_otra.sql`) ya captura los 15 grupos de frecuencia (`d1_3_i`..`d1_15_i`), los horarios (`d1f_*_i`) y `d7_agua`; `FREQ_GROUPS` (15) y `calcPatron` están portados. El párrafo de dieta/hidratación ya NO se porta contra una encuesta que va a cambiar. El resumen narrativo completo se puede portar. (Ver corrección en DECISIONES_ANIBISE, sección pieza 1 de Tratamiento.)
 
 ## PIEZA IDENTIFICADA (re-port 2026-08-19): DFI redactado + metas terapeuticas por profesion
 
