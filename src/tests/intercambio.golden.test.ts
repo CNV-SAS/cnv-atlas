@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { computeIntercambio, INTER_TABLA_A, INTER_GRUPOS } from "@/clinical-engine/intercambio";
+import {
+  computeIntercambio,
+  grupoSinPorcion,
+  porcionesDefaultPorSub,
+  GRUPOS_NUCLEARES,
+  INTER_TABLA_A,
+  INTER_GRUPOS,
+} from "@/clinical-engine/intercambio";
 
 // GOLDEN de la lista de intercambio (CP1). Dos candados, como en 1a.1/1b + el candado de Wang:
 //   (1) TRANSCRIPCION: la tabla de alimentos (INTER_TABLA_A) y los grupos son byte-identicos a los del v8
@@ -31,12 +38,13 @@ describe("intercambio: candado de transcripcion (tabla verbatim del v8)", () => 
 });
 
 describe("intercambio: golden diferencial del reparto de porciones (PASO 3) contra el v8", () => {
-  // Compara las porciones de computeIntercambio (por grupo->sub) con nx del reference (keyed por sub).
+  // Compara las porciones POR ALIMENTO de computeIntercambio con nx del reference (keyed por sub). Ahora cubre
+  // los 21 alimentos (no solo los 12 representativos): un no-representativo debe quedar en 0 igual que el v8.
   const assertParidad = (kcalObj: number) => {
     const mine = computeIntercambio(kcalObj);
     const refNx = ref(kcalObj);
-    for (const g of mine) {
-      expect(g.porciones).toBe(refNx[g.sub] ?? 0);
+    for (const a of mine) {
+      expect(a.porciones).toBe(refNx[a.sub] ?? 0);
     }
   };
 
@@ -51,35 +59,34 @@ describe("intercambio: golden diferencial del reparto de porciones (PASO 3) cont
     expect(computeIntercambio(2000)).toEqual(computeIntercambio(2000));
   });
 
-  it("Verduras (G2) es SIEMPRE 2 porciones, no computadas (excepcion del v8)", () => {
+  it("Verduras (G2) es SIEMPRE 2 porciones en total, no computadas (excepcion del v8)", () => {
     for (const kcal of [1000, 2000, 3500]) {
-      const g2 = computeIntercambio(kcal).find((g) => g.id === "G2");
-      expect(g2?.porciones).toBe(2);
+      const totalG2 = computeIntercambio(kcal)
+        .filter((a) => a.gr === "G2")
+        .reduce((s, a) => s + a.porciones, 0);
+      expect(totalG2).toBe(2);
     }
   });
 });
 
 describe("intercambio: extremos (cuidado d) — un grupo NUCLEAR en 0 se MARCA; un discrecional en 0 NO (seria ruido)", () => {
-  it("objetivo muy bajo (400 kcal): grupos nucleares caen a 0 y llevan avisoSinPorcion; el resto no", () => {
-    const r = computeIntercambio(400);
-    const nucleoEnCero = r.filter((g) => g.avisoSinPorcion);
+  it("objetivo muy bajo (400 kcal): grupos nucleares caen a 0 y grupoSinPorcion los marca; el resto no", () => {
+    const porc = porcionesDefaultPorSub(400);
+    const nucleoEnCero = [...GRUPOS_NUCLEARES].filter((gr) => grupoSinPorcion(gr, porc));
     expect(nucleoEnCero.length).toBeGreaterThan(0); // el objetivo implausiblemente bajo SI marca nucleares
-    // el aviso implica: porciones 0 Y grupo nuclear (nunca G2, que es fijo en 2).
-    for (const g of r) {
-      if (g.avisoSinPorcion) {
-        expect(g.porciones).toBe(0);
-        expect(g.id).not.toBe("G2");
-      }
+    // grupoSinPorcion nunca marca un no-nuclear (G2 incluido, fijo en 2).
+    for (const g of INTER_GRUPOS) {
+      if (grupoSinPorcion(g.id, porc)) expect(GRUPOS_NUCLEARES.has(g.id)).toBe(true);
     }
   });
 
   it("objetivo normal (2200 kcal): ningun grupo NUCLEAR en 0, aunque un discrecional (mecato) SI puede ser 0 sin marca", () => {
-    const r = computeIntercambio(2200);
-    // ningun aviso (todos los nucleares tienen porciones)
-    expect(r.some((g) => g.avisoSinPorcion)).toBe(false);
+    const porc = porcionesDefaultPorSub(2200);
+    // ningun grupo nuclear marcado (todos tienen porciones)
+    for (const gr of GRUPOS_NUCLEARES) expect(grupoSinPorcion(gr, porc)).toBe(false);
     // pero mecato (G11, discrecional) es 0 a 2200 y NO se marca: es un default sano, no una anomalia.
-    const mecato = r.find((g) => g.id === "G11");
-    expect(mecato?.porciones).toBe(0);
-    expect(mecato?.avisoSinPorcion).toBe(false);
+    const totalMecato = INTER_TABLA_A.filter((r) => r.gr === "G11").reduce((s, r) => s + (porc[r.sub] || 0), 0);
+    expect(totalMecato).toBe(0);
+    expect(grupoSinPorcion("G11", porc)).toBe(false);
   });
 });

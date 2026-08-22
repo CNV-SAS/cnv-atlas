@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
-import { computeIntercambio, esGrupoNuclear } from "@/clinical-engine/intercambio";
+import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
 import { Badge } from "@/components/ui/badge";
@@ -783,23 +783,25 @@ function IntercambioSection({
   const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
   const saved = protocol.intercambioPorciones;
 
-  // useState-once: porciones guardadas si existen, si no las calculadas. El remonte (key del padre) re-deriva.
+  // useState-once (POR ALIMENTO): porciones guardadas por sub si existen, si no las calculadas. El remonte (key
+  // del padre) re-deriva. Se inicializan los 21 alimentos (el que no tiene default arranca en 0).
   const [porciones, setPorciones] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
-    for (const g of defaults) init[g.id] = saved?.grupos[g.id]?.porciones ?? g.porciones;
+    for (const a of defaults) init[a.sub] = saved?.porciones[a.sub] ?? a.porciones;
     return init;
   });
 
   if (!snap || protocol.pesoCalculo == null || objetivoEfectivo == null) return null;
 
   const desfase = saved != null && saved.objetivoBase !== objetivoEfectivo;
-  const totalKcal = defaults.reduce((s, g) => s + (porciones[g.id] ?? 0) * g.kcal, 0);
-  const setP = (id: string, v: number) => setPorciones((p) => ({ ...p, [id]: Math.max(0, v) }));
+  const totalKcal = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.kcal, 0);
+  const setP = (sub: string, v: number) => setPorciones((p) => ({ ...p, [sub]: Math.max(0, v) }));
 
-  // Lo que se guarda: las porciones EN PANTALLA + el objetivo con el que se calcularon (objetivoBase, DIV-11).
+  // Lo que se guarda: las porciones POR ALIMENTO en pantalla + el objetivo con el que se calcularon
+  // (objetivoBase, DIV-11). Se serializan los 21 alimentos (contexto completo del desfase).
   const payload: IntercambioSaved = {
     objetivoBase: objetivoEfectivo,
-    grupos: Object.fromEntries(defaults.map((g) => [g.id, { porciones: porciones[g.id] ?? 0, sub: g.sub }])),
+    porciones: Object.fromEntries(defaults.map((a) => [a.sub, porciones[a.sub] ?? 0])),
   };
   const baseSignature = intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: saved });
 
@@ -807,8 +809,9 @@ function IntercambioSection({
     <section className="flex flex-col gap-3 border-t border-border pt-6">
       <h3 className="text-sm font-semibold text-foreground">Lista de intercambio</h3>
       <p className="text-sm text-muted-foreground">
-        Porciones por grupo para cubrir el objetivo calórico ({objetivoEfectivo} kcal). Ajústalas según el
-        paciente; el total se recalcula abajo. El alimento de cada grupo se muestra como referencia.
+        Porciones por alimento para cubrir el objetivo calórico ({objetivoEfectivo} kcal). El auto-llenado
+        sugiere un alimento representativo por grupo; puedes repartir dentro de un grupo (por ejemplo dos de
+        leche entera y una descremada). El total se recalcula abajo.
       </p>
 
       {desfase ? (
@@ -828,40 +831,53 @@ function IntercambioSection({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-1 pr-3 font-medium">Grupo</th>
-                  <th className="py-1 pr-3 font-medium">Alimento (ref.)</th>
+                  <th className="py-1 pr-3 font-medium">Alimento</th>
                   <th className="py-1 pr-3 text-right font-medium">Porciones</th>
                   <th className="py-1 text-right font-medium">kcal</th>
                 </tr>
               </thead>
               <tbody>
-                {defaults.map((g) => {
-                  const n = porciones[g.id] ?? 0;
-                  const enCeroNuclear = n === 0 && esGrupoNuclear(g.id);
-                  return (
-                    <tr key={g.id} className="border-b border-border/50">
-                      <td className="py-1.5 pr-3 text-foreground">{g.nom}</td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{g.sub}</td>
+                {/* 21 alimentos agrupados por los 12 grupos: una fila de encabezado por grupo (cuando cambia
+                    el grupo del alimento anterior) y luego sus alimentos. El aviso de grupo nuclear sin
+                    porciones (DIV-10) va en el encabezado, sobre la SUMA del grupo. */}
+                {defaults.flatMap((a, i) => {
+                  const nuevoGrupo = i === 0 || defaults[i - 1].gr !== a.gr;
+                  const n = porciones[a.sub] ?? 0;
+                  const filas = [] as React.ReactNode[];
+                  if (nuevoGrupo) {
+                    const sinPorcion = grupoSinPorcion(a.gr, porciones);
+                    filas.push(
+                      <tr key={`g-${a.gr}`} className="bg-muted/40">
+                        <td colSpan={3} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {a.grNom}
+                          {sinPorcion ? (
+                            <span className="ml-2 font-normal normal-case text-clinical-warning" title="Grupo base sin porciones: el objetivo puede ser muy bajo">
+                              sin porciones
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>,
+                    );
+                  }
+                  filas.push(
+                    <tr key={a.sub} className="border-b border-border/50">
+                      <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
                       <td className="py-1.5 pr-3 text-right">
                         <input
                           type="number"
                           min={0}
                           value={n}
-                          onChange={(e) => setP(g.id, Math.round(Number(e.target.value) || 0))}
+                          onChange={(e) => setP(a.sub, Math.round(Number(e.target.value) || 0))}
                           className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
                         />
-                        {enCeroNuclear ? (
-                          <span className="ml-2 text-xs text-clinical-warning" title="Grupo base en cero: el objetivo puede ser muy bajo">
-                            en cero
-                          </span>
-                        ) : null}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{Math.round(n * g.kcal)}</td>
-                    </tr>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{Math.round(n * a.kcal)}</td>
+                    </tr>,
                   );
+                  return filas;
                 })}
                 <tr className="font-semibold text-foreground">
-                  <td className="py-2" colSpan={3}>
+                  <td className="py-2" colSpan={2}>
                     Total
                   </td>
                   {/* El total dice contra QUE se compara (objetivo): las porciones enteras lo aproximan, no lo
@@ -888,7 +904,7 @@ function IntercambioSection({
               type="button"
               variant="ghost"
               disabled={pending}
-              onClick={() => setPorciones(Object.fromEntries(defaults.map((g) => [g.id, g.porciones])))}
+              onClick={() => setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])))}
             >
               Recalcular desde el objetivo (borra tus ajustes)
             </Button>
@@ -944,13 +960,12 @@ function TiemposSection({
   const savedInter = protocol.intercambioPorciones;
   const savedTiempos = protocol.tiempos;
 
-  // Porciones actuales por grupo (del intercambio guardado o el default) + kcal por porcion (del sub por
-  // defecto; el desplegable es read-only en CP1, asi que la kcal/porcion es la del default).
+  // Porciones actuales POR ALIMENTO (del intercambio guardado o el default) + kcal por porcion de cada alimento.
   const porcionesActuales: Record<string, number> = {};
   const kcalPorPorcion: Record<string, number> = {};
-  for (const g of defaults) {
-    porcionesActuales[g.id] = savedInter?.grupos[g.id]?.porciones ?? g.porciones;
-    kcalPorPorcion[g.id] = g.kcal;
+  for (const a of defaults) {
+    porcionesActuales[a.sub] = savedInter?.porciones[a.sub] ?? a.porciones;
+    kcalPorPorcion[a.sub] = a.kcal;
   }
 
   const [activos, setActivos] = useState<Record<string, boolean>>(
@@ -961,17 +976,17 @@ function TiemposSection({
   if (!snap || objetivoEfectivo == null) return null;
 
   const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
-  const gruposConPorciones = defaults.filter((g) => porcionesActuales[g.id] > 0);
-  const gruposOcultos = defaults.length - gruposConPorciones.length;
-  const auto = computeTiempos(porcionesActuales, activos); // grupo -> tiempo (solo activos)
-  const celda = (gid: string, mid: string) => celdas[gid]?.[mid] ?? auto[gid]?.[mid] ?? 0;
+  const alimentosConPorciones = defaults.filter((a) => porcionesActuales[a.sub] > 0);
+  const alimentosOcultos = defaults.length - alimentosConPorciones.length;
+  const auto = computeTiempos(porcionesActuales, activos); // alimento (sub) -> tiempo (solo activos)
+  const celda = (sub: string, mid: string) => celdas[sub]?.[mid] ?? auto[sub]?.[mid] ?? 0;
 
-  // Total por tiempo: porciones y kcal (lo que el nutricionista mira). kcal = porciones * kcal/porcion del grupo.
+  // Total por tiempo: porciones y kcal (lo que el nutricionista mira). kcal = porciones * kcal/porcion del alimento.
   const totalPorc: Record<string, number> = {};
   const totalKcal: Record<string, number> = {};
   for (const t of vivos) {
-    totalPorc[t.id] = gruposConPorciones.reduce((s, g) => s + celda(g.id, t.id), 0);
-    totalKcal[t.id] = gruposConPorciones.reduce((s, g) => s + celda(g.id, t.id) * kcalPorPorcion[g.id], 0);
+    totalPorc[t.id] = alimentosConPorciones.reduce((s, a) => s + celda(a.sub, t.id), 0);
+    totalKcal[t.id] = alimentosConPorciones.reduce((s, a) => s + celda(a.sub, t.id) * kcalPorPorcion[a.sub], 0);
   }
 
   // Desfase DOBLE (DIV-11): overrides hechos con otras porciones o con otros tiempos activos. Se compara el
@@ -1003,7 +1018,7 @@ function TiemposSection({
     <section className="flex flex-col gap-3 border-t border-border pt-6">
       <h3 className="text-sm font-semibold text-foreground">Distribución por tiempos</h3>
       <p className="text-sm text-muted-foreground">
-        Reparte las porciones de cada grupo entre los tiempos de comida activos. Ajusta las celdas si hace
+        Reparte las porciones de cada alimento entre los tiempos de comida activos. Ajusta las celdas si hace
         falta; el total por tiempo (porciones y kcal) se recalcula abajo.
       </p>
 
@@ -1033,7 +1048,7 @@ function TiemposSection({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="py-1 pr-3 text-left font-medium">Grupo</th>
+                  <th className="py-1 pr-3 text-left font-medium">Alimento</th>
                   {vivos.map((t) => (
                     <th key={t.id} className="px-2 py-1 text-right font-medium">
                       {t.n}
@@ -1042,22 +1057,38 @@ function TiemposSection({
                 </tr>
               </thead>
               <tbody>
-                {gruposConPorciones.map((g) => (
-                  <tr key={g.id} className="border-b border-border/50">
-                    <td className="py-1.5 pr-3 text-foreground">{g.nom}</td>
-                    {vivos.map((t) => (
-                      <td key={t.id} className="px-2 py-1.5 text-right">
-                        <input
-                          type="number"
-                          min={0}
-                          value={celda(g.id, t.id)}
-                          onChange={(e) => setCelda(g.id, t.id, Math.round(Number(e.target.value) || 0))}
-                          className="w-14 rounded border border-border bg-background px-1.5 py-1 text-right text-sm"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {/* Filas por ALIMENTO (solo los con porciones > 0), agrupadas por grupo con un encabezado de
+                    seccion cuando cambia el grupo del alimento anterior. */}
+                {alimentosConPorciones.flatMap((a, i) => {
+                  const nuevoGrupo = i === 0 || alimentosConPorciones[i - 1].gr !== a.gr;
+                  const filas = [] as React.ReactNode[];
+                  if (nuevoGrupo) {
+                    filas.push(
+                      <tr key={`g-${a.gr}`} className="bg-muted/40">
+                        <td colSpan={vivos.length + 1} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {a.grNom}
+                        </td>
+                      </tr>,
+                    );
+                  }
+                  filas.push(
+                    <tr key={a.sub} className="border-b border-border/50">
+                      <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
+                      {vivos.map((t) => (
+                        <td key={t.id} className="px-2 py-1.5 text-right">
+                          <input
+                            type="number"
+                            min={0}
+                            value={celda(a.sub, t.id)}
+                            onChange={(e) => setCelda(a.sub, t.id, Math.round(Number(e.target.value) || 0))}
+                            className="w-14 rounded border border-border bg-background px-1.5 py-1 text-right text-sm"
+                          />
+                        </td>
+                      ))}
+                    </tr>,
+                  );
+                  return filas;
+                })}
                 <tr className="font-semibold text-foreground">
                   <td className="py-2 pr-3">Total porciones</td>
                   {vivos.map((t) => (
@@ -1078,15 +1109,12 @@ function TiemposSection({
             </table>
           </div>
 
-          {gruposOcultos > 0 ? (
+          {alimentosOcultos > 0 ? (
             <p className="text-xs text-muted-foreground">
-              No {gruposOcultos === 1 ? "aparece" : "aparecen"}{" "}
-              {defaults
-                .filter((g) => porcionesActuales[g.id] === 0)
-                .map((g) => g.nom)
-                .join(", ")}{" "}
-              porque {gruposOcultos === 1 ? "tiene" : "tienen"} 0 porciones. Si les subes porciones en la lista
-              de intercambio, {gruposOcultos === 1 ? "aparece" : "aparecen"} aquí.
+              Solo se muestran los alimentos con porciones. {alimentosOcultos}{" "}
+              {alimentosOcultos === 1 ? "alimento tiene" : "alimentos tienen"} 0 porciones y no{" "}
+              {alimentosOcultos === 1 ? "aparece" : "aparecen"} aquí; si les subes porciones en la lista de
+              intercambio, {alimentosOcultos === 1 ? "aparece" : "aparecen"} en la distribución.
             </p>
           ) : null}
 
@@ -1126,9 +1154,9 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
 
   const porcionesPorSub: Record<string, number> = {};
   let algunaPorcion = false;
-  for (const g of defaults) {
-    const p = savedInter?.grupos[g.id]?.porciones ?? g.porciones;
-    porcionesPorSub[g.sub] = p;
+  for (const a of defaults) {
+    const p = savedInter?.porciones[a.sub] ?? a.porciones;
+    porcionesPorSub[a.sub] = p;
     if (p > 0) algunaPorcion = true;
   }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { INTER_TABLA_A } from "@/clinical-engine/intercambio";
 import { computeTiempos, interSplit, TIEMPOS_DEF, tiemposVivos } from "@/clinical-engine/tiempos";
 
 // GOLDEN de la distribucion por tiempos (CP2). Diferencial contra la propia funcion del v8:
@@ -48,23 +49,28 @@ describe("tiempos: interSplit (mayor resto) — diferencial contra el v8", () =>
   });
 });
 
-describe("tiempos: computeTiempos — cuadre por grupo y tiempos activos", () => {
+describe("tiempos: computeTiempos — cuadre POR ALIMENTO y tiempos activos", () => {
   const TODOS = { desayuno: true, mediasOnces: true, almuerzo: true, algo: true, cena: true, merienda: true };
-  const porciones = { G1: 8, G2: 2, G3: 4, G6: 2 }; // algunos grupos con porciones (como los daria CP1)
+  // Porciones keyed por ALIMENTO (sub), como las daria CP1. Se toman subs reales de INTER_TABLA_A.
+  const SUB_A = INTER_TABLA_A[0].sub; // primer alimento (G1)
+  const SUB_B = INTER_TABLA_A[3].sub;
+  const SUB_C = INTER_TABLA_A[6].sub;
+  const porciones: Record<string, number> = { [SUB_A]: 8, [SUB_B]: 4, [SUB_C]: 2 };
 
-  it("cada grupo con porciones se reparte y CUADRA (suma por tiempo == porciones del grupo)", () => {
+  it("cada alimento con porciones se reparte y CUADRA (suma por tiempo == porciones del alimento)", () => {
     const dist = computeTiempos(porciones, TODOS);
-    for (const [gid, n] of Object.entries(porciones)) {
-      const row = dist[gid];
+    for (const [sub, n] of Object.entries(porciones)) {
+      const row = dist[sub];
       expect(row).toBeDefined();
       const suma = Object.values(row).reduce((a, b) => a + b, 0);
       expect(suma).toBe(n); // ninguna porcion se pierde ni se inventa
     }
   });
 
-  it("un grupo en 0 porciones NO aparece en la distribucion", () => {
-    const dist = computeTiempos({ ...porciones, G5: 0 }, TODOS);
-    expect(dist.G5).toBeUndefined();
+  it("un alimento en 0 porciones NO aparece en la distribucion", () => {
+    const SUB_CERO = INTER_TABLA_A[10].sub;
+    const dist = computeTiempos({ ...porciones, [SUB_CERO]: 0 }, TODOS);
+    expect(dist[SUB_CERO]).toBeUndefined();
   });
 
   it("solo los tiempos ACTIVOS reciben porciones (los apagados no aparecen)", () => {
@@ -76,6 +82,6 @@ describe("tiempos: computeTiempos — cuadre por grupo y tiempos activos", () =>
       expect(Object.keys(row).sort()).toEqual([...vivos].sort()); // solo esos tres tiempos
     }
     // y sigue cuadrando con menos tiempos.
-    expect(Object.values(dist.G1).reduce((a, b) => a + b, 0)).toBe(8);
+    expect(Object.values(dist[SUB_A]).reduce((a, b) => a + b, 0)).toBe(8);
   });
 });

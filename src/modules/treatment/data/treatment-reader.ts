@@ -7,6 +7,22 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
 import type { IntercambioSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
+// El intercambio y los tiempos cambiaron de forma (por-grupo -> por-alimento, ronda P-29). Un jsonb guardado con la
+// forma VIEJA (`grupos` en vez de `porciones`) no se puede leer como el nuevo shape: se trata como AUSENTE
+// (null) para caer a los defaults frescos, no como una fila corrupta que rompe el panel. Defensivo: no hay dato
+// viejo en produccion (feature nueva, 0 guardados), pero un cast crudo dejaria pasar una forma incompatible.
+function normalizeIntercambio(raw: unknown): IntercambioSaved | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as Record<string, unknown>;
+  return v.porciones && typeof v.porciones === "object" ? (v as IntercambioSaved) : null;
+}
+function normalizeTiempos(raw: unknown): TiemposSaved | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as Record<string, unknown>;
+  const base = v.base as Record<string, unknown> | undefined;
+  return base && base.porciones && typeof base.porciones === "object" ? (v as TiemposSaved) : null;
+}
+
 // Lectura del protocolo de tratamiento de una evaluacion para la vista interna del
 // profesional (B13). Todo por RLS (regla dura 3): el cliente anon con sesion solo ve los
 // tratamientos de los pacientes del profesional; si la evaluacion no es suya, no hay filas
@@ -145,8 +161,8 @@ export async function getTreatmentProtocol(
     adjFatPct: treatment.adj_fat_pct != null ? Number(treatment.adj_fat_pct) : null,
     restricciones: treatment.restricciones ?? [],
     objetivoTexto: treatment.objetivo_texto ?? null,
-    intercambioPorciones: (treatment.intercambio_porciones as IntercambioSaved | null) ?? null,
-    tiempos: (treatment.tiempos as TiemposSaved | null) ?? null,
+    intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
+    tiempos: normalizeTiempos(treatment.tiempos),
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({
       id: n.id,

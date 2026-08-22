@@ -321,7 +321,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       .where(eq(schema.treatments.id, treatmentId));
     return intercambioSignature({ treatmentId, intercambio: (t.inter as IntercambioSaved | null) ?? null });
   }
-  const INTER: IntercambioSaved = { objetivoBase: 2000, grupos: { G1: { porciones: 3, sub: "Cereales" } } };
+  const INTER: IntercambioSaved = { objetivoBase: 2000, porciones: { Cereales: 3 } };
 
   it("intercambio camino feliz: firma base == actual -> escribe el jsonb", async () => {
     const base = await currentIntercambioSignature();

@@ -6,7 +6,7 @@
 // logica de interDistAuto (PASO 4). No toca el frozen. Su paridad se prueba con golden diferencial contra la
 // propia funcion del v8 (fixtures/reference/tiempos-vigente.js).
 
-import { INTER_GRUPOS } from "./intercambio";
+import { INTER_TABLA_A } from "./intercambio";
 
 // Los 6 tiempos de comida con su fraccion por defecto del objetivo (suma 1). Verbatim del v8 (L16624).
 export const TIEMPOS_DEF: { id: string; n: string; p: number }[] = [
@@ -34,7 +34,8 @@ export function interSplit(total: number, props: number[]): number[] {
 }
 
 export type TiemposActivos = Record<string, boolean>;
-// Distribucion: por grupo -> por tiempo -> porciones. Solo grupos con porciones > 0 (los demas no aparecen).
+// Distribucion: por ALIMENTO (sub) -> por tiempo -> porciones. Solo alimentos con porciones > 0 (fiel al v8,
+// interDistSubs = INTER_TABLA_A.filter(porciones>0)). Los demas no aparecen.
 export type TiemposDist = Record<string, Record<string, number>>;
 
 // Los tiempos ACTIVOS (en el orden de TIEMPOS_DEF), y sus fracciones para el reparto.
@@ -42,22 +43,23 @@ export function tiemposVivos(activos: TiemposActivos): { id: string; n: string; 
   return TIEMPOS_DEF.filter((t) => activos[t.id]);
 }
 
-// Reparte las porciones por grupo (de CP1) entre los tiempos activos (PASO 4). Determinista; NO lee macros ni
-// encuesta. Con cero tiempos activos, no reparte nada (la UI exige al menos uno). El reparto por grupo cuadra:
-// la suma de porciones por tiempo == las porciones del grupo (propiedad de interSplit).
-export function computeTiempos(porcionesPorGrupo: Record<string, number>, activos: TiemposActivos): TiemposDist {
+// Reparte las porciones por ALIMENTO (de CP1) entre los tiempos activos (PASO 4, interDistAuto del v8).
+// Determinista; NO lee macros ni encuesta. Con cero tiempos activos, no reparte nada (la UI exige al menos
+// uno). El reparto por alimento cuadra: la suma de porciones por tiempo == las porciones del alimento
+// (propiedad de interSplit). Fiel al v8: itera INTER_TABLA_A por sub, solo los alimentos con porciones > 0.
+export function computeTiempos(porcionesPorSub: Record<string, number>, activos: TiemposActivos): TiemposDist {
   const vivos = tiemposVivos(activos);
   const props = vivos.map((t) => t.p);
   const dist: TiemposDist = {};
-  for (const g of INTER_GRUPOS) {
-    const tot = porcionesPorGrupo[g.id] ?? 0;
+  for (const r of INTER_TABLA_A) {
+    const tot = porcionesPorSub[r.sub] ?? 0;
     if (tot > 0) {
       const parts = interSplit(tot, props);
       const row: Record<string, number> = {};
       vivos.forEach((t, ix) => {
         row[t.id] = parts[ix] ?? 0;
       });
-      dist[g.id] = row;
+      dist[r.sub] = row;
     }
   }
   return dist;

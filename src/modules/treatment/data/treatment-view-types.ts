@@ -15,19 +15,20 @@ export type PrescribedNutraceutical = {
 
 export type DietGuideline = { id: string; text: string };
 
-// Lista de intercambio guardada (CP1.2, columna treatments.intercambio_porciones, jsonb). `objetivoBase` es el
-// objetivo calorico efectivo con el que se calcularon las porciones: se guarda para COMPARAR contra el objetivo
-// actual y avisar de desfase sin recalcular (opcion 3, DIV-11). `grupos` va keyed por id de grupo (G1..G12),
-// cada uno con las porciones editadas y el alimento (`sub`) elegido del desplegable.
-export type IntercambioGrupoSaved = { porciones: number; sub: string };
-export type IntercambioSaved = { objetivoBase: number; grupos: Record<string, IntercambioGrupoSaved> };
+// Lista de intercambio guardada (CP1.2, columna treatments.intercambio_porciones, jsonb). POR ALIMENTO
+// (fidelidad al v8, opcion A, ronda P-29): `porciones` va keyed por alimento (`sub` de INTER_TABLA_A, los 21),
+// no por grupo, para que el profesional distribuya dentro de un grupo (2 leche entera + 1 descremada).
+// `objetivoBase` es el objetivo calorico efectivo con el que se calcularon las porciones: se guarda para
+// COMPARAR contra el objetivo actual y avisar de desfase sin recalcular (opcion 3, DIV-11).
+export type IntercambioSaved = { objetivoBase: number; porciones: Record<string, number> };
 
 // Distribucion por tiempos guardada (CP2.2, columna treatments.tiempos, jsonb). Los TRES campos cambian
 // juntos (apagar una comida cambia el reparto y desfasa los overrides), por eso un solo jsonb con un candado:
 // `activos` (que comidas hace el paciente, 6 toggles, parte del plan), `celdas` (overrides manuales por
-// grupo->tiempo sobre el reparto auto; puede estar vacio), y `base` (las porciones de CP1 Y los activos con
-// los que se hicieron los overrides, para avisar de desfase DOBLE sin borrar: DIV-11). El auto no se guarda:
-// se recomputa en vivo con computeTiempos(porciones de CP1, activos); solo los overrides se persisten.
+// ALIMENTO->tiempo sobre el reparto auto; puede estar vacio), y `base` (las porciones por ALIMENTO de CP1 Y
+// los activos con los que se hicieron los overrides, para avisar de desfase DOBLE sin borrar: DIV-11). El auto
+// no se guarda: se recomputa en vivo con computeTiempos(porciones por alimento de CP1, activos); solo los
+// overrides se persisten. Todo keyed por `sub` (por-alimento), coherente con el intercambio.
 export type TiemposSaved = {
   activos: Record<string, boolean>;
   celdas: Record<string, Record<string, number>>;

@@ -74,7 +74,7 @@ const SUB_TIPO: Record<string, string> = { G1:"Cereales", G2:"Verduras y hortali
 // DIVERGENCIA DELIBERADA (DIV-10): el v8 NO señala el 0 (lo muestra plano en intercambio y lo filtra de la
 // grilla de tiempos). La marca es mejora NUESTRA (leccion del reparto de macros); la distincion nuclear/
 // discrecional tambien. La PORCION es fiel a PASO 3 byte a byte; el aviso NO la cambia. Ver docs/DIVERGENCIAS.md.
-const GRUPOS_NUCLEARES = new Set(["G1", "G3", "G4", "G6", "G7"]);
+export const GRUPOS_NUCLEARES = new Set(["G1", "G3", "G4", "G6", "G7"]);
 
 // Para la UI (CP1.2b): marcar un grupo nuclear en 0 tambien cuando el profesional lo EDITA a 0 (la marca del
 // computeIntercambio es sobre el default; al editar en vivo se recalcula con esto). Verduras (G2) nunca.
@@ -82,28 +82,51 @@ export function esGrupoNuclear(id: string): boolean {
   return GRUPOS_NUCLEARES.has(id);
 }
 
-// Porcion sugerida de un grupo. `avisoSinPorcion` es NUESTRO (no del v8): marca cuando un grupo NUCLEAR queda en
-// 0 (el objetivo no alcanza para el), para no mostrar un 0 mudo (leccion del reparto de macros). NO cambia la
-// porcion (la porcion es fiel a PASO 3). Un discrecional en 0 NO se marca: es un default sano.
-export type IntercambioGrupo = {
-  id: string; nom: string; sub: string; kcal: number; porciones: number; avisoSinPorcion: boolean;
+// Una fila POR ALIMENTO (fidelidad al v8, opcion A): los 21 alimentos, agrupados por grupo. `porciones` es el
+// DEFAULT (auto-llenado, PASO 3): el alimento REPRESENTATIVO de cada grupo recibe la porcion computada del
+// grupo, los demas 0; el profesional los mueve. `grNom` = nombre del grupo (para el encabezado de seccion).
+export type IntercambioAlimento = {
+  gr: string; grNom: string; sub: string; kcal: number; porciones: number; esRepresentativo: boolean;
 };
 
-// Reparto de porciones por grupo desde el objetivo calorico. Transcripcion de PASO 3.
-export function computeIntercambio(kcalObj: number): IntercambioGrupo[] {
-  return INTER_GRUPOS.map((g) => {
-    const sub = SUB_TIPO[g.id];
-    const row = INTER_TABLA_A.find((r) => r.sub === sub);
-    // Verduras (G2): excepcion del v8, 2 porciones fijas (nx["Verduras y hortalizas"]=2), no computadas.
-    const porciones =
-      g.id === "G2" ? 2 : row ? Math.max(0, Math.round(((kcalObj || 0) * (REPARTO_GR[g.id] || 0)) / row.kcal)) : 0;
+const GRUPO_NOMBRE: Record<string, string> = Object.fromEntries(INTER_GRUPOS.map((g) => [g.id, g.nom]));
+
+// Porciones por defecto POR GRUPO (PASO 3): round(objetivo * repartoGr / kcal del representativo). Verduras
+// (G2) = 2 fija. El auto-llenado las pone en el alimento representativo del grupo.
+function porcionesGrupoDefault(gr: string, kcalObj: number): number {
+  const sub = SUB_TIPO[gr];
+  const row = INTER_TABLA_A.find((r) => r.sub === sub);
+  if (!row) return 0;
+  return gr === "G2" ? 2 : Math.max(0, Math.round(((kcalObj || 0) * (REPARTO_GR[gr] || 0)) / row.kcal));
+}
+
+// Los 21 alimentos con su porcion por defecto (auto-llenado en el representativo). Transcripcion de PASO 3
+// llevada a la granularidad por-alimento del v8 (interCounts por sub).
+export function computeIntercambio(kcalObj: number): IntercambioAlimento[] {
+  return INTER_TABLA_A.map((r) => {
+    const esRepresentativo = SUB_TIPO[r.gr] === r.sub;
     return {
-      id: g.id,
-      nom: g.nom,
-      sub,
-      kcal: row?.kcal ?? 0,
-      porciones,
-      avisoSinPorcion: porciones === 0 && GRUPOS_NUCLEARES.has(g.id),
+      gr: r.gr,
+      grNom: GRUPO_NOMBRE[r.gr] ?? r.gr,
+      sub: r.sub,
+      kcal: r.kcal,
+      porciones: esRepresentativo ? porcionesGrupoDefault(r.gr, kcalObj) : 0,
+      esRepresentativo,
     };
   });
+}
+
+// Aviso de grupo NUCLEAR sin porciones (DIV-10): true si el grupo es nuclear y la SUMA de porciones de sus
+// alimentos es 0. Se computa sobre las porciones ACTUALES (default o editadas). Un discrecional en 0 no se marca.
+export function grupoSinPorcion(gr: string, porcionesPorSub: Record<string, number>): boolean {
+  if (!GRUPOS_NUCLEARES.has(gr)) return false;
+  const total = INTER_TABLA_A.filter((r) => r.gr === gr).reduce((s, r) => s + (porcionesPorSub[r.sub] || 0), 0);
+  return total === 0;
+}
+
+// Porciones por defecto POR ALIMENTO (Record<sub, number>): lo que guarda el auto-llenado si nadie edita.
+export function porcionesDefaultPorSub(kcalObj: number): Record<string, number> {
+  const m: Record<string, number> = {};
+  for (const a of computeIntercambio(kcalObj)) m[a.sub] = a.porciones;
+  return m;
 }

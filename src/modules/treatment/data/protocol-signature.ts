@@ -33,15 +33,16 @@ export function objetivoSignature(p: { treatmentId: string; objetivo: string | n
   return `${p.treatmentId}§${p.objetivo ?? ""}`;
 }
 
-// Lista de intercambio (columna treatments.intercambio_porciones, jsonb). ORDEN-INDEPENDIENTE: serializa las
-// entradas por CLAVE ORDENADA (Object.keys().sort()), no por el orden del objeto (que jsonb no garantiza al
-// volver de la BD). Incluye objetivoBase: un cambio del objetivo con el que se guardo tambien mueve la firma.
+// Lista de intercambio (columna treatments.intercambio_porciones, jsonb). POR ALIMENTO. ORDEN-INDEPENDIENTE:
+// serializa las porciones por CLAVE (alimento) ORDENADA (Object.keys().sort()), no por el orden del objeto (que
+// jsonb no garantiza al volver de la BD). Incluye objetivoBase: un cambio del objetivo con el que se guardo
+// tambien mueve la firma.
 export function intercambioSignature(p: { treatmentId: string; intercambio: IntercambioSaved | null }): string {
   if (!p.intercambio) return `${p.treatmentId}§none`;
-  const { grupos, objetivoBase } = p.intercambio;
-  const entries = Object.keys(grupos)
+  const { porciones, objetivoBase } = p.intercambio;
+  const entries = Object.keys(porciones)
     .sort()
-    .map((id) => `${id}:${grupos[id].porciones}:${grupos[id].sub}`)
+    .map((sub) => `${sub}:${porciones[sub]}`)
     .join("|");
   return `${p.treatmentId}§${objetivoBase}§${entries}`;
 }

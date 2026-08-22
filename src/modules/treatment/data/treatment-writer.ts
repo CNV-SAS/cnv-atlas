@@ -280,7 +280,10 @@ export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: input.treatmentId,
-      payload: { objetivo_base: input.intercambio.objetivoBase, grupos: Object.keys(input.intercambio.grupos).length },
+      payload: {
+        objetivo_base: input.intercambio.objetivoBase,
+        alimentos_con_porcion: Object.values(input.intercambio.porciones).filter((n) => n > 0).length,
+      },
       ip: input.ip,
     });
   });

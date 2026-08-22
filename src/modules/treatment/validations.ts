@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import { INTER_TABLA_A } from "@/clinical-engine/intercambio";
 import { TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 
 // Validaciones del protocolo de tratamiento (B13). Toda entrada externa pasa por Zod
@@ -69,56 +69,45 @@ export const saveObjetivoSchema = z.object({
 
 export type SaveObjetivoInput = z.infer<typeof saveObjetivoSchema>;
 
-// Lista de intercambio (CP1.2, primer campo ESTRUCTURADO que guardamos). La validacion DERIVA los grupos y los
-// alimentos validos de INTER_GRUPOS / INTER_TABLA_A (cuidado b: si la tabla cambia de grupos manana, esto se
-// mueve solo, no hay lista escrita aparte). Rechaza forma incorrecta: si llega con !=12 grupos, un id de grupo
-// que no existe, o un `sub` que no pertenece a ese grupo, NO se guarda.
-const GRUPO_IDS: string[] = INTER_GRUPOS.map((g) => g.id);
-const SUBS_POR_GRUPO: Record<string, Set<string>> = Object.fromEntries(
-  INTER_GRUPOS.map((g) => [g.id, new Set(INTER_TABLA_A.filter((r) => r.gr === g.id).map((r) => r.sub))]),
-);
+// Lista de intercambio (CP1.2, POR ALIMENTO / opcion A). La validacion DERIVA los alimentos validos de
+// INTER_TABLA_A (cuidado b: si la tabla cambia manana, esto se mueve solo, no hay lista escrita aparte).
+// `porciones` va keyed por alimento (`sub`): rechaza forma incorrecta si trae una clave que no es un alimento
+// conocido, o si no trae EXACTAMENTE los 21 alimentos (el contexto del desfase debe estar completo, como antes
+// los 12 grupos). Cada valor es un entero de porciones en rango.
+const ALL_SUBS: string[] = INTER_TABLA_A.map((r) => r.sub);
+const ALL_SUBS_SET: Set<string> = new Set(ALL_SUBS);
+const porcionesInt = z.number().int("Las porciones deben ser un entero.").min(0).max(50, "Porciones fuera de rango.");
 
-const intercambioGrupoSchema = z.object({
-  porciones: z.number().int("Las porciones deben ser un entero.").min(0).max(50, "Porciones fuera de rango."),
-  sub: z.string().min(1),
-});
+function refinePorcionesPorAlimento(porciones: Record<string, number>, ctx: z.RefinementCtx, campo: string): void {
+  const keys = Object.keys(porciones);
+  for (const k of keys) {
+    if (!ALL_SUBS_SET.has(k)) ctx.addIssue({ code: "custom", message: `Alimento desconocido en ${campo}: ${k}.` });
+  }
+  if (keys.length !== ALL_SUBS.length || ALL_SUBS.some((s) => !(s in porciones))) {
+    ctx.addIssue({ code: "custom", message: `${campo} debe traer exactamente los ${ALL_SUBS.length} alimentos.` });
+  }
+}
 
 export const saveIntercambioSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
   intercambio: z
     .object({
       objetivoBase: z.number().finite().min(0),
-      grupos: z.record(z.string(), intercambioGrupoSchema),
+      porciones: z.record(z.string(), porcionesInt),
     })
-    .superRefine((val, ctx) => {
-      const ids = Object.keys(val.grupos);
-      // exactamente los grupos del modelo (ni mas ni menos): 12 hoy, lo que diga INTER_GRUPOS manana.
-      if (ids.length !== GRUPO_IDS.length || !GRUPO_IDS.every((id) => id in val.grupos)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `La lista de intercambio debe traer exactamente los ${GRUPO_IDS.length} grupos del modelo.`,
-        });
-        return;
-      }
-      // cada alimento elegido debe pertenecer a su grupo (existir en INTER_TABLA_A con ese gr).
-      for (const id of ids) {
-        if (!SUBS_POR_GRUPO[id]?.has(val.grupos[id].sub)) {
-          ctx.addIssue({ code: "custom", message: `Alimento inválido para el grupo ${id}.` });
-        }
-      }
-    }),
+    .superRefine((val, ctx) => refinePorcionesPorAlimento(val.porciones, ctx, "La lista de intercambio")),
   baseSignature: z.string().max(4200).default(""),
 });
 
 export type SaveIntercambioInput = z.infer<typeof saveIntercambioSchema>;
 
 // Distribucion por tiempos (CP2.2). Validacion mas estricta que el intercambio: TRES partes. activos y las
-// celdas se cotejan contra TIEMPOS_DEF (tiempos conocidos) e INTER_GRUPOS (grupos existentes), derivados de
+// celdas se cotejan contra TIEMPOS_DEF (tiempos conocidos) e INTER_TABLA_A (alimentos existentes), derivados de
 // las constantes (cuidado a). Reglas duras: al menos un tiempo activo (cuidado b: sin ninguno el reparto no
-// tiene donde ir), base.porciones trae los 12 grupos.
+// tiene donde ir), base.porciones trae los 21 alimentos. Todo POR ALIMENTO (celdas keyed por sub), coherente
+// con el intercambio por-alimento.
 const MEAL_IDS: Set<string> = new Set(TIEMPOS_DEF.map((t) => t.id));
 const boolMapSchema = z.record(z.string(), z.boolean());
-const porcionesInt = z.number().int().min(0).max(50);
 
 export const saveTiemposSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
@@ -137,19 +126,17 @@ export const saveTiemposSchema = z.object({
       if (!Object.values(val.activos).some(Boolean)) {
         ctx.addIssue({ code: "custom", message: "Debe haber al menos un tiempo de comida activo." });
       }
-      // celdas: grupos existentes y tiempos conocidos.
-      for (const g of Object.keys(val.celdas)) {
-        if (!(g in val.base.porciones) || !GRUPO_IDS.includes(g)) {
-          ctx.addIssue({ code: "custom", message: `Grupo inválido en las celdas: ${g}.` });
+      // celdas: alimentos existentes y tiempos conocidos.
+      for (const s of Object.keys(val.celdas)) {
+        if (!ALL_SUBS_SET.has(s)) {
+          ctx.addIssue({ code: "custom", message: `Alimento inválido en las celdas: ${s}.` });
         }
-        for (const m of Object.keys(val.celdas[g])) {
+        for (const m of Object.keys(val.celdas[s])) {
           if (badMeal(m)) ctx.addIssue({ code: "custom", message: `Tiempo inválido en las celdas: ${m}.` });
         }
       }
-      // base.porciones: los 12 grupos (el contexto del desfase debe estar completo).
-      if (GRUPO_IDS.some((id) => !(id in val.base.porciones))) {
-        ctx.addIssue({ code: "custom", message: `base.porciones debe traer los ${GRUPO_IDS.length} grupos.` });
-      }
+      // base.porciones: los 21 alimentos (el contexto del desfase debe estar completo).
+      refinePorcionesPorAlimento(val.base.porciones, ctx, "base.porciones");
       for (const k of Object.keys(val.base.activos)) {
         if (badMeal(k)) ctx.addIssue({ code: "custom", message: `Tiempo desconocido en base: ${k}.` });
       }

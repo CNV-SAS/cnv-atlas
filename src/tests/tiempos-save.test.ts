@@ -1,23 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { INTER_GRUPOS } from "@/clinical-engine/intercambio";
+import { INTER_TABLA_A } from "@/clinical-engine/intercambio";
 import { tiemposSignature } from "@/modules/treatment/data/protocol-signature";
 import type { TiemposSaved } from "@/modules/treatment/data/treatment-view-types";
 import { saveTiemposSchema } from "@/modules/treatment/validations";
 
-// Piezas puras de CP2.2a: firma orden-independiente (tres partes) y validacion estricta del jsonb de tiempos.
+// Piezas puras de CP2.2a, POR ALIMENTO (opcion A, ronda P-29): firma orden-independiente (tres partes) y validacion
+// estricta del jsonb de tiempos. Todo keyed por alimento (sub), coherente con el intercambio.
 
-function porciones12(): Record<string, number> {
+const SUB_0 = INTER_TABLA_A[0].sub;
+
+function porciones21(): Record<string, number> {
   const p: Record<string, number> = {};
-  for (const g of INTER_GRUPOS) p[g.id] = 2;
+  for (const r of INTER_TABLA_A) p[r.sub] = 2;
   return p;
 }
 function tiemposValido(): TiemposSaved {
   const activos = { desayuno: true, mediasOnces: false, almuerzo: true, algo: false, cena: true, merienda: false };
   return {
     activos: { ...activos },
-    celdas: { G1: { desayuno: 3, almuerzo: 5 } },
-    base: { porciones: porciones12(), activos: { ...activos } },
+    celdas: { [SUB_0]: { desayuno: 3, almuerzo: 5 } },
+    base: { porciones: porciones21(), activos: { ...activos } },
   };
 }
 
@@ -28,7 +31,7 @@ describe("tiemposSignature: orden-independiente en las tres partes", () => {
   it("reordenar las claves (activos/celdas/base) NO mueve la firma", () => {
     const r: TiemposSaved = {
       activos: Object.fromEntries(Object.entries(base.activos).reverse()),
-      celdas: { G1: Object.fromEntries(Object.entries(base.celdas.G1).reverse()) },
+      celdas: { [SUB_0]: Object.fromEntries(Object.entries(base.celdas[SUB_0]).reverse()) },
       base: { porciones: Object.fromEntries(Object.entries(base.base.porciones).reverse()), activos: base.base.activos },
     };
     expect(sig(r)).toBe(sig(base));
@@ -39,10 +42,10 @@ describe("tiemposSignature: orden-independiente en las tres partes", () => {
     t1.activos.cena = false;
     expect(sig(t1)).not.toBe(sig(base));
     const t2 = tiemposValido();
-    t2.celdas.G1.desayuno = 9;
+    t2.celdas[SUB_0].desayuno = 9;
     expect(sig(t2)).not.toBe(sig(base));
     const t3 = tiemposValido();
-    t3.base.porciones.G1 = 99;
+    t3.base.porciones[SUB_0] = 99;
     expect(sig(t3)).not.toBe(sig(base));
     const t4 = tiemposValido();
     t4.base.activos.cena = false; // el contexto de activos con el que se hicieron los overrides
@@ -75,21 +78,21 @@ describe("saveTiemposSchema: validacion estricta (tres partes, >=1 activo)", () 
     expect(parse(t).success).toBe(false);
   });
 
-  it("una celda que referencia un grupo inexistente se RECHAZA", () => {
+  it("una celda que referencia un alimento inexistente se RECHAZA", () => {
     const t = tiemposValido();
-    t.celdas.G99 = { desayuno: 1 };
+    t.celdas["Alimento inventado"] = { desayuno: 1 };
     expect(parse(t).success).toBe(false);
   });
 
   it("una celda con un tiempo desconocido se RECHAZA", () => {
     const t = tiemposValido();
-    t.celdas.G1.medianoche = 1;
+    t.celdas[SUB_0].medianoche = 1;
     expect(parse(t).success).toBe(false);
   });
 
-  it("base.porciones incompleto (falta un grupo) se RECHAZA", () => {
+  it("base.porciones incompleto (falta un alimento) se RECHAZA", () => {
     const t = tiemposValido();
-    delete t.base.porciones.G12;
+    delete t.base.porciones[INTER_TABLA_A[INTER_TABLA_A.length - 1].sub];
     expect(parse(t).success).toBe(false);
   });
 });
