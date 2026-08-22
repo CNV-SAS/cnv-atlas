@@ -15,6 +15,19 @@
 1. **Mostrar `consent_version` en la ficha de la evaluación** (ya registrado el 2026-08-20): un dato discreto tipo "Consentimiento: v1.0". Familia del gap "los consentimientos opcionales no se ven".
 2. **Una vista mínima de constancia por evaluación:** versión + fecha del encuentro + los eventos de consentimiento asociados (de `clinical_audit_log`), para el profesional o auditoría. Es lo que hace innecesario reconstruir el runbook a mano el día que pregunte la SIC. Se prioriza con Santiago; no bloquea nada.
 
+## Nota interna universal en las cuatro etapas (decidido 2026-08-21, HACER AL CERRAR TRATAMIENTO)
+
+**Decisión de Santiago (2026-08-21):** hacer la nota interna accesible desde las cuatro etapas (Evaluación, Diagnóstico, Tratamiento, Seguimiento), porque el profesional no piensa por etapas: si nota algo revisando la composición, quiere anotarlo ahí, no ir a Tratamiento. **Se hace DESPUÉS de Tratamiento** (es transversal, toca las cuatro etapas; meterlo ahora mezclaría dos trabajos grandes).
+
+**Análisis (cotejo de los sistemas de notas existentes, 2026-08-21). Son TRES cosas con propósitos distintos, no lo mismo con tres nombres. Fusionarlas todas sería un error.**
+1. **Notas de tratamiento** (`treatment_notes`): internas, append-only, bitácora del protocolo. No llegan al paciente. Hoy solo en Tratamiento.
+2. **Criterio del profesional** (Diagnóstico, `addDiagnosisNoteAction` + `ai_criterion_suggestions` para la procedencia si hubo asistencia de IA): el juicio clínico del profesional, append-only, artefacto clínico que sustenta el razonamiento del diagnóstico. NO es un apunte casual.
+3. **Notas del reporte** (`reports.professional_notes`): la ÚNICA superficie que llega al paciente; se escribe en borrador y se congela al aprobar.
+
+**Qué las distingue:** audiencia (1 y 2 internas, 3 al paciente) y naturaleza (bitácora casual vs criterio clínico con procedencia vs mensaje al paciente).
+
+**Qué se universaliza y qué NO:** solo la #1 (la bitácora casual interna) se vuelve UNIVERSAL, accesible desde las cuatro etapas. El **criterio clínico (#2) queda aparte** (es un artefacto con procedencia, no un apunte) y la **nota del paciente (#3) queda aparte** (va al paciente, se congela). Resultado: **nota universal + criterio clínico aparte + nota del paciente aparte.** No fusionar las tres.
+
 ## HITO 1 — El export del Biody BIS: IMPORTA HOY, pero degrada ISCM/IEHH/badges (se resuelve DERIVANDO, no con OCR)
 
 > **[CERRADO DEL TODO 2026-08-12: EA1 COMPLETO, incluida la última dependencia.]** La derivación (`deriveMissingComposition`) corre en el import real (`bis-import.ts`) por composición faltante; la tabla de Wang se llena e IEHH se emite. Y con la respuesta de Gildardo del 12 (§9) se cablearon las dos referencias que faltaban (`MCA_ref` = 52,4% de la MLG de referencia, `hidSG_ref` = 73,2%, poblacionales, sexo-específicas, persistidas como DERIVADAS): **ISCM ya se emite** (antes null por `MCA_dif`) y **las badges MCA/hidratación ya son evaluables**. El sexo del paciente entra al import vía `getPatientSex` (best-effort; sin él, degrada honesto a null). Prueba de aceptación end-to-end: `src/tests/ea1-acceptance.test.ts` (verde, 4 asserts). **EA1 cerrado: el soporte del equipo real (export corto EB-BIS) queda completo.** Constantes de `RESPUESTA_GILDARDO_2026-08-12.md §9`, NO del v8 (que tiene 50%, desactualizado). Lo de abajo es el registro del análisis; el estado vivo es este. Sueltos no-bloqueantes en la sección "EA1 ... ítems operativos" más abajo.
