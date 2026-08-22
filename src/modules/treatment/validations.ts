@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import { TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 
 // Validaciones del protocolo de tratamiento (B13). Toda entrada externa pasa por Zod
 // (ARCHITECTURE). Los ids se validan con z.guid(): z.uuid() de Zod 4 rechaza los UUIDs
@@ -110,6 +111,53 @@ export const saveIntercambioSchema = z.object({
 });
 
 export type SaveIntercambioInput = z.infer<typeof saveIntercambioSchema>;
+
+// Distribucion por tiempos (CP2.2). Validacion mas estricta que el intercambio: TRES partes. activos y las
+// celdas se cotejan contra TIEMPOS_DEF (tiempos conocidos) e INTER_GRUPOS (grupos existentes), derivados de
+// las constantes (cuidado a). Reglas duras: al menos un tiempo activo (cuidado b: sin ninguno el reparto no
+// tiene donde ir), base.porciones trae los 12 grupos.
+const MEAL_IDS: Set<string> = new Set(TIEMPOS_DEF.map((t) => t.id));
+const boolMapSchema = z.record(z.string(), z.boolean());
+const porcionesInt = z.number().int().min(0).max(50);
+
+export const saveTiemposSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  tiempos: z
+    .object({
+      activos: boolMapSchema,
+      celdas: z.record(z.string(), z.record(z.string(), porcionesInt)),
+      base: z.object({ porciones: z.record(z.string(), porcionesInt), activos: boolMapSchema }),
+    })
+    .superRefine((val, ctx) => {
+      const badMeal = (m: string) => !MEAL_IDS.has(m);
+      // activos: tiempos conocidos + AL MENOS UNO activo.
+      for (const k of Object.keys(val.activos)) {
+        if (badMeal(k)) ctx.addIssue({ code: "custom", message: `Tiempo de comida desconocido: ${k}.` });
+      }
+      if (!Object.values(val.activos).some(Boolean)) {
+        ctx.addIssue({ code: "custom", message: "Debe haber al menos un tiempo de comida activo." });
+      }
+      // celdas: grupos existentes y tiempos conocidos.
+      for (const g of Object.keys(val.celdas)) {
+        if (!(g in val.base.porciones) || !GRUPO_IDS.includes(g)) {
+          ctx.addIssue({ code: "custom", message: `Grupo inválido en las celdas: ${g}.` });
+        }
+        for (const m of Object.keys(val.celdas[g])) {
+          if (badMeal(m)) ctx.addIssue({ code: "custom", message: `Tiempo inválido en las celdas: ${m}.` });
+        }
+      }
+      // base.porciones: los 12 grupos (el contexto del desfase debe estar completo).
+      if (GRUPO_IDS.some((id) => !(id in val.base.porciones))) {
+        ctx.addIssue({ code: "custom", message: `base.porciones debe traer los ${GRUPO_IDS.length} grupos.` });
+      }
+      for (const k of Object.keys(val.base.activos)) {
+        if (badMeal(k)) ctx.addIssue({ code: "custom", message: `Tiempo desconocido en base: ${k}.` });
+      }
+    }),
+  baseSignature: z.string().max(6000).default(""),
+});
+
+export type SaveTiemposInput = z.infer<typeof saveTiemposSchema>;
 
 // Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
 // reemplaza por completo (el formulario envia el estado final deseado).

@@ -19,8 +19,9 @@ import {
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
+  tiemposSignature,
 } from "./protocol-signature";
-import type { IntercambioSaved } from "./treatment-view-types";
+import type { IntercambioSaved, TiemposSaved } from "./treatment-view-types";
 
 // Escritura del protocolo de tratamiento (Drizzle owner, para el audit INLINE, regla 8).
 // La autorizacion (ownership) se verifica ANTES en el action leyendo el tratamiento bajo
@@ -64,6 +65,13 @@ export class StaleIntercambioError extends Error {
   constructor() {
     super("La lista de intercambio cambió desde que se cargó.");
     this.name = "StaleIntercambioError";
+  }
+}
+
+export class StaleTiemposError extends Error {
+  constructor() {
+    super("La distribución por tiempos cambió desde que se cargó.");
+    this.name = "StaleTiemposError";
   }
 }
 
@@ -273,6 +281,49 @@ export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void
       entityType: "treatment",
       entityId: input.treatmentId,
       payload: { objetivo_base: input.intercambio.objetivoBase, grupos: Object.keys(input.intercambio.grupos).length },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveTiemposWrite = {
+  treatmentId: string;
+  tiempos: TiemposSaved;
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda la distribucion por tiempos (CP2.2): jsonb en treatments.tiempos. Mismo patron con candado que las
+// demas; REEMPLAZA EN BLOQUE. baseSignature "" corresponde a null (nunca guardado).
+export async function saveTiempos(input: SaveTiemposWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ t: treatments.tiempos })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = tiemposSignature({
+      treatmentId: input.treatmentId,
+      tiempos: (locked.t as TiemposSaved | null) ?? null,
+    });
+    if (current !== input.baseSignature) throw new StaleTiemposError();
+    await tx.update(treatments).set({ tiempos: input.tiempos }).where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.tiempos_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: {
+        activos: Object.entries(input.tiempos.activos).filter(([, v]) => v).length,
+        overrides: Object.keys(input.tiempos.celdas).length,
+      },
       ip: input.ip,
     });
   });

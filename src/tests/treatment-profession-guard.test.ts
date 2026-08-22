@@ -29,6 +29,7 @@ vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   saveGuidelines: vi.fn(),
   saveObjetivo: vi.fn(),
   saveIntercambio: vi.fn(),
+  saveTiempos: vi.fn(),
   saveAdjustments: vi.fn(),
   saveNutraceuticals: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
@@ -56,6 +57,7 @@ import {
   saveAdjustments as writeAdjustments,
   saveGuidelines as writeGuidelines,
   saveIntercambio as writeIntercambio,
+  saveTiempos as writeTiempos,
   saveNutraceuticals as writeNutraceuticals,
   saveObjetivo as writeObjetivo,
   saveRestricciones as writeRestricciones,
@@ -67,6 +69,7 @@ import {
   saveAdjustments,
   saveGuidelines,
   saveIntercambio,
+  saveTiempos,
   saveNutraceuticals,
   saveObjetivo,
   saveRestricciones,
@@ -88,6 +91,7 @@ const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" }
 const GUIDE_INPUT = { evaluationId: "E1", guidelines: [], baseSignature: "" };
 const OBJ_INPUT = { evaluationId: "E1", objetivo: "x", baseSignature: "" };
 const INTER_INPUT = { evaluationId: "E1", intercambio: { objetivoBase: 2000, grupos: {} }, baseSignature: "" };
+const TIEMPOS_INPUT = { evaluationId: "E1", tiempos: { activos: { desayuno: true }, celdas: {}, base: { porciones: {}, activos: {} } }, baseSignature: "" };
 const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
 const ADJ_INPUT = {
   evaluationId: "E1",
@@ -167,6 +171,19 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     expect(writeAdjustments).toHaveBeenCalledTimes(1);
   });
 
+  it("saveTiempos: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
+    let r = await saveTiempos(TIEMPOS_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeTiempos).not.toHaveBeenCalled();
+
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
+    r = await saveTiempos(TIEMPOS_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeTiempos).toHaveBeenCalledTimes(1);
+  });
+
   it("saveNutraceuticals: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
     profOf.mockResolvedValueOnce(PRO("medico")); // solo el nutricionista prescribe nutraceuticos
     let r = await saveNutraceuticals(NUTRA_INPUT, actor);
@@ -235,6 +252,7 @@ describe("guard de aprobado: las seis escrituras de seccion rechazan si el proto
     ["saveGuidelines", () => saveGuidelines(GUIDE_INPUT, actor), writeGuidelines],
     ["saveObjetivo", () => saveObjetivo(OBJ_INPUT, actor), writeObjetivo],
     ["saveIntercambio", () => saveIntercambio(INTER_INPUT, actor), writeIntercambio],
+    ["saveTiempos", () => saveTiempos(TIEMPOS_INPUT, actor), writeTiempos],
     ["saveNutraceuticals", () => saveNutraceuticals(NUTRA_INPUT, actor), writeNutraceuticals],
     ["saveAdjustments", () => saveAdjustments(ADJ_INPUT, actor), writeAdjustments],
   ];

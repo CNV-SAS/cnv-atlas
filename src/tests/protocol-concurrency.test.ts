@@ -5,11 +5,12 @@ import {
   adjustmentSignature,
   guidelinesSignature,
   intercambioSignature,
+  tiemposSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
-import type { IntercambioSaved } from "@/modules/treatment/data/treatment-view-types";
+import type { IntercambioSaved, TiemposSaved } from "@/modules/treatment/data/treatment-view-types";
 
 // Candado de concurrencia de las secciones editables del tratamiento (BD real): restricciones, guias,
 // nutraceuticos, ajustes de la cadena. Cada una tiene su propia accion que REEMPLAZA su set EN BLOQUE, con
@@ -43,6 +44,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let StaleObjetivoError: any;
   let saveIntercambio: any;
   let StaleIntercambioError: any;
+  let saveTiempos: any;
+  let StaleTiemposError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -98,6 +101,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       StaleObjetivoError,
       saveIntercambio,
       StaleIntercambioError,
+      saveTiempos,
+      StaleTiemposError,
     } = await import("@/modules/treatment/data/treatment-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
@@ -331,5 +336,34 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     ).rejects.toBeInstanceOf(StaleIntercambioError);
     const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
     expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000); // el del camino feliz, no 9999
+  });
+
+  // CP2.2: candado de saveTiempos (columna jsonb tiempos). Arranca NULL.
+  async function currentTiemposSignature(): Promise<string> {
+    const [t] = await db
+      .select({ t: schema.treatments.tiempos })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    return tiemposSignature({ treatmentId, tiempos: (t.t as TiemposSaved | null) ?? null });
+  }
+  const TIEMPOS: TiemposSaved = {
+    activos: { desayuno: true, almuerzo: true, cena: true },
+    celdas: { G1: { desayuno: 3 } },
+    base: { porciones: { G1: 8 }, activos: { desayuno: true, almuerzo: true, cena: true } },
+  };
+
+  it("tiempos camino feliz: firma base == actual -> escribe el jsonb", async () => {
+    const base = await currentTiemposSignature();
+    await saveTiempos({ treatmentId, tiempos: TIEMPOS, baseSignature: base, ...actor });
+    const [t] = await db.select({ t: schema.treatments.tiempos }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(Object.keys((t.t as TiemposSaved).celdas)).toEqual(["G1"]);
+  });
+
+  it("tiempos carrera: firma base != actual -> rechaza sin pisar (StaleTiemposError)", async () => {
+    await expect(
+      saveTiempos({ treatmentId, tiempos: { ...TIEMPOS, celdas: {} }, baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
+    ).rejects.toBeInstanceOf(StaleTiemposError);
+    const [t] = await db.select({ t: schema.treatments.tiempos }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(Object.keys((t.t as TiemposSaved).celdas)).toEqual(["G1"]); // el del camino feliz, no vacio
   });
 });

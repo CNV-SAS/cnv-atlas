@@ -10,7 +10,7 @@
 // nutraceuticos, restricciones, guias) tiene su PROPIA accion y su PROPIA firma; la maquinaria de "firma por
 // secciones del protocolo" (protocolSectionSignatures/saveProtocol) se retiro, era de un solo proposito.
 
-import type { IntercambioSaved, TreatmentProtocol } from "./treatment-view-types";
+import type { IntercambioSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
 // Firma de una lista de texto (treatmentId + el set ORDENADO): base del candado + key de remonte. Ordenado
 // para no depender del orden de filas (un SELECT sin ORDER BY no lo garantiza).
@@ -44,6 +44,35 @@ export function intercambioSignature(p: { treatmentId: string; intercambio: Inte
     .map((id) => `${id}:${grupos[id].porciones}:${grupos[id].sub}`)
     .join("|");
   return `${p.treatmentId}§${objetivoBase}§${entries}`;
+}
+
+// Distribucion por tiempos (columna treatments.tiempos, jsonb). ORDEN-INDEPENDIENTE en las tres partes
+// (activos, celdas, base): serializa por clave ordenada. Un cambio en cualquiera (toggle, override, o el
+// contexto base) mueve la firma.
+function sortBoolMap(m: Record<string, boolean>): string {
+  return Object.keys(m)
+    .sort()
+    .map((k) => `${k}:${m[k] ? 1 : 0}`)
+    .join(",");
+}
+export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved | null }): string {
+  if (!p.tiempos) return `${p.treatmentId}§none`;
+  const { activos, celdas, base } = p.tiempos;
+  const serCeldas = Object.keys(celdas)
+    .sort()
+    .map(
+      (g) =>
+        `${g}={${Object.keys(celdas[g])
+          .sort()
+          .map((m) => `${m}:${celdas[g][m]}`)
+          .join(",")}}`,
+    )
+    .join("|");
+  const serPorc = Object.keys(base.porciones)
+    .sort()
+    .map((k) => `${k}:${base.porciones[k]}`)
+    .join(",");
+  return `${p.treatmentId}§${sortBoolMap(activos)}§${serCeldas}§${serPorc}§${sortBoolMap(base.activos)}`;
 }
 
 // --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---

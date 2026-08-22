@@ -21,6 +21,18 @@ export type DietGuideline = { id: string; text: string };
 // cada uno con las porciones editadas y el alimento (`sub`) elegido del desplegable.
 export type IntercambioGrupoSaved = { porciones: number; sub: string };
 export type IntercambioSaved = { objetivoBase: number; grupos: Record<string, IntercambioGrupoSaved> };
+
+// Distribucion por tiempos guardada (CP2.2, columna treatments.tiempos, jsonb). Los TRES campos cambian
+// juntos (apagar una comida cambia el reparto y desfasa los overrides), por eso un solo jsonb con un candado:
+// `activos` (que comidas hace el paciente, 6 toggles, parte del plan), `celdas` (overrides manuales por
+// grupo->tiempo sobre el reparto auto; puede estar vacio), y `base` (las porciones de CP1 Y los activos con
+// los que se hicieron los overrides, para avisar de desfase DOBLE sin borrar: DIV-11). El auto no se guarda:
+// se recomputa en vivo con computeTiempos(porciones de CP1, activos); solo los overrides se persisten.
+export type TiemposSaved = {
+  activos: Record<string, boolean>;
+  celdas: Record<string, Record<string, number>>;
+  base: { porciones: Record<string, number>; activos: Record<string, boolean> };
+};
 export type TreatmentNote = { id: string; note: string; createdAt: string };
 export type CatalogItem = {
   id: string;
@@ -72,6 +84,9 @@ export type TreatmentProtocol = {
   // Lista de intercambio guardada (CP1.2). null = nunca guardada -> el panel usa los defaults de
   // computeIntercambio(objetivo actual), siempre frescos.
   intercambioPorciones: IntercambioSaved | null;
+  // Distribucion por tiempos guardada (CP2.2). null = nunca guardada -> el panel usa el reparto auto de
+  // computeTiempos con los tiempos activos por defecto.
+  tiempos: TiemposSaved | null;
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
   recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)

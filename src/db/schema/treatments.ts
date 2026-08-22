@@ -100,6 +100,11 @@ export const treatments = pgTable("treatments", {
   // se congela, el plan que se arma alrededor se sigue refinando). Si algun dia el plan debe congelarse al
   // aprobar, se agrega esta columna al trigger treatments_immutability (0026) de forma explicita.
   intercambioPorciones: jsonb("intercambio_porciones"),
+  // Distribucion por tiempos (CP2.2): { activos, celdas (overrides manuales), base:{porciones,activos} }. El
+  // auto NO se guarda (se recomputa de las porciones de CP1 + activos); solo los overrides + el contexto base
+  // para el aviso de desfase DOBLE (porciones y activos). Editable tras aprobar como el resto del plan (ver la
+  // nota de objetivo_texto). null = nunca guardada.
+  tiempos: jsonb("tiempos"),
   // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
   // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
   // esta implicita en created_by. Si algun dia hay agenda, se migra.

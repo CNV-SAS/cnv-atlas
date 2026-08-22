@@ -1,0 +1,1 @@
+ALTER TABLE "treatments" ADD COLUMN "tiempos" jsonb;

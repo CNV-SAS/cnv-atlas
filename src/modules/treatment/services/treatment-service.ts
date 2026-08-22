@@ -15,12 +15,14 @@ import {
   saveNutraceuticals as writeNutraceuticals,
   saveObjetivo as writeObjetivo,
   saveIntercambio as writeIntercambio,
+  saveTiempos as writeTiempos,
   saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
   StaleGuidelinesError,
   StaleNutraceuticalsError,
   StaleObjetivoError,
   StaleIntercambioError,
+  StaleTiemposError,
   StaleRestriccionesError,
   TreatmentStateError,
   writeApproveProtocol,
@@ -34,6 +36,7 @@ import type {
   SaveNutraceuticalsInput,
   SaveObjetivoInput,
   SaveIntercambioInput,
+  SaveTiemposInput,
   SaveRestriccionesInput,
 } from "../validations";
 
@@ -182,6 +185,47 @@ export async function saveIntercambio(
         appError(
           "stale_write",
           "La lista de intercambio está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// CP2.2: distribucion por tiempos, su propio camino de guardado. Solo el nutricionista.
+export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la distribución por tiempos."));
+  }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
+  try {
+    await writeTiempos({
+      treatmentId: protocol.treatmentId,
+      tiempos: input.tiempos,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleTiemposError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió la distribución por tiempos en otra sesión (otra pestaña o dispositivo). " +
+            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "La distribución por tiempos está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }
