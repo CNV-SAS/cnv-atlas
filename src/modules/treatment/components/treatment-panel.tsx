@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
+import { computeIntercambio, esGrupoNuclear } from "@/clinical-engine/intercambio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import {
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
+  saveIntercambioAction,
   saveObjetivoAction,
   saveRestriccionesAction,
   type TreatmentActionState,
@@ -26,10 +28,11 @@ import type { CelularBadges } from "../data/celular-badges";
 import {
   adjustmentSignature,
   guidelinesSignature,
+  intercambioSignature,
   objetivoSignature,
   restriccionesSignature,
 } from "../data/protocol-signature";
-import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
+import type { IntercambioSaved, MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -488,6 +491,14 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
+            guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}
+        <IntercambioSection
+          key={intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: protocol.intercambioPorciones })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         <CelularSection celular={celular} />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
@@ -710,6 +721,140 @@ function ObjetivoSection({
           <div>
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar objetivo"}
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
+// Lista de intercambio (CP1.2b): tabla de 12 grupos con porciones editables, recompute en vivo del total, y
+// (DIV-11) aviso de desfase cuando el objetivo cambio desde que se guardaron. El desplegable de alimento es
+// de solo lectura por ahora (muestra el alimento por defecto del grupo; cambiarlo se cabla despues).
+function IntercambioSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveIntercambioAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+
+  const snap = protocol.protocolSuggested;
+  const adjGuardados: ProtocoloAjustes = {
+    geb: protocol.adjGeb,
+    pal: protocol.adjPal,
+    kcalObj: protocol.adjKcalObj,
+    protGkg: protocol.adjProtGkg,
+    fatPct: protocol.adjFatPct,
+    pesoMeta: protocol.adjPesoMeta,
+  };
+  // Objetivo efectivo desde los ajustes GUARDADOS (misma fuente que la cadena): base estable del intercambio.
+  const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
+  const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
+  const saved = protocol.intercambioPorciones;
+
+  // useState-once: porciones guardadas si existen, si no las calculadas. El remonte (key del padre) re-deriva.
+  const [porciones, setPorciones] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    for (const g of defaults) init[g.id] = saved?.grupos[g.id]?.porciones ?? g.porciones;
+    return init;
+  });
+
+  if (!snap || protocol.pesoCalculo == null || objetivoEfectivo == null) return null;
+
+  const desfase = saved != null && saved.objetivoBase !== objetivoEfectivo;
+  const totalKcal = defaults.reduce((s, g) => s + (porciones[g.id] ?? 0) * g.kcal, 0);
+  const setP = (id: string, v: number) => setPorciones((p) => ({ ...p, [id]: Math.max(0, v) }));
+
+  // Lo que se guarda: las porciones EN PANTALLA + el objetivo con el que se calcularon (objetivoBase, DIV-11).
+  const payload: IntercambioSaved = {
+    objetivoBase: objetivoEfectivo,
+    grupos: Object.fromEntries(defaults.map((g) => [g.id, { porciones: porciones[g.id] ?? 0, sub: g.sub }])),
+  };
+  const baseSignature = intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: saved });
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Lista de intercambio</h3>
+      <p className="text-sm text-muted-foreground">
+        Porciones por grupo para cubrir el objetivo calórico ({objetivoEfectivo} kcal). Ajústalas según el
+        paciente; el total se recalcula abajo. El alimento de cada grupo se muestra como referencia.
+      </p>
+
+      {desfase ? (
+        <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          Estas porciones se calcularon para {saved!.objetivoBase} kcal, pero el objetivo ahora es{" "}
+          {objetivoEfectivo} kcal. Puedes seguir con tus ajustes o recalcular desde el objetivo actual (perderás
+          los ajustes manuales).
+        </div>
+      ) : null}
+
+      <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
+        <fieldset disabled={locked} className="flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-1 pr-3 font-medium">Grupo</th>
+                  <th className="py-1 pr-3 font-medium">Alimento (ref.)</th>
+                  <th className="py-1 pr-3 text-right font-medium">Porciones</th>
+                  <th className="py-1 text-right font-medium">kcal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {defaults.map((g) => {
+                  const n = porciones[g.id] ?? 0;
+                  const enCeroNuclear = n === 0 && esGrupoNuclear(g.id);
+                  return (
+                    <tr key={g.id} className="border-b border-border/50">
+                      <td className="py-1.5 pr-3 text-foreground">{g.nom}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground">{g.sub}</td>
+                      <td className="py-1.5 pr-3 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          value={n}
+                          onChange={(e) => setP(g.id, Math.round(Number(e.target.value) || 0))}
+                          className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                        />
+                        {enCeroNuclear ? (
+                          <span className="ml-2 text-xs text-clinical-warning" title="Grupo base en cero: el objetivo puede ser muy bajo">
+                            en cero
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{Math.round(n * g.kcal)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="font-semibold text-foreground">
+                  <td className="py-2" colSpan={3}>
+                    Total
+                  </td>
+                  <td className="py-2 text-right tabular-nums">{Math.round(totalKcal)} kcal</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar intercambio"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => setPorciones(Object.fromEntries(defaults.map((g) => [g.id, g.porciones])))}
+            >
+              Recalcular desde el objetivo (borra tus ajustes)
             </Button>
           </div>
         </fieldset>

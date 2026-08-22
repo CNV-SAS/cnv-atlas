@@ -76,6 +76,12 @@ const SUB_TIPO: Record<string, string> = { G1:"Cereales", G2:"Verduras y hortali
 // discrecional tambien. La PORCION es fiel a PASO 3 byte a byte; el aviso NO la cambia. Ver docs/DIVERGENCIAS.md.
 const GRUPOS_NUCLEARES = new Set(["G1", "G3", "G4", "G6", "G7"]);
 
+// Para la UI (CP1.2b): marcar un grupo nuclear en 0 tambien cuando el profesional lo EDITA a 0 (la marca del
+// computeIntercambio es sobre el default; al editar en vivo se recalcula con esto). Verduras (G2) nunca.
+export function esGrupoNuclear(id: string): boolean {
+  return GRUPOS_NUCLEARES.has(id);
+}
+
 // Porcion sugerida de un grupo. `avisoSinPorcion` es NUESTRO (no del v8): marca cuando un grupo NUCLEAR queda en
 // 0 (el objetivo no alcanza para el), para no mostrar un 0 mudo (leccion del reparto de macros). NO cambia la
 // porcion (la porcion es fiel a PASO 3). Un discrecional en 0 NO se marca: es un default sano.
