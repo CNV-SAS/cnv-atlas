@@ -13,10 +13,12 @@ import {
   saveAdjustments as writeAdjustments,
   saveGuidelines as writeGuidelines,
   saveNutraceuticals as writeNutraceuticals,
+  saveObjetivo as writeObjetivo,
   saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
   StaleGuidelinesError,
   StaleNutraceuticalsError,
+  StaleObjetivoError,
   StaleRestriccionesError,
   TreatmentStateError,
   writeApproveProtocol,
@@ -28,6 +30,7 @@ import type {
   SaveAdjustmentsInput,
   SaveGuidelinesInput,
   SaveNutraceuticalsInput,
+  SaveObjetivoInput,
   SaveRestriccionesInput,
 } from "../validations";
 
@@ -75,6 +78,49 @@ export async function saveRestricciones(
         appError(
           "stale_write",
           "Las restricciones están bloqueadas por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// Checkpoint 2.4 (pieza 1): objetivo del tratamiento nutricional, su propio camino de guardado.
+export async function saveObjetivo(
+  input: SaveObjetivoInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el objetivo del tratamiento."));
+  }
+  try {
+    await writeObjetivo({
+      treatmentId: protocol.treatmentId,
+      objetivo: input.objetivo,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleObjetivoError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió el objetivo del tratamiento en otra sesión (otra pestaña o dispositivo). " +
+            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "El objetivo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }

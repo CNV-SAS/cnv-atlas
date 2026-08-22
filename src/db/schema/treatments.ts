@@ -85,6 +85,11 @@ export const treatments = pgTable("treatments", {
   }),
   // Nivel III: requerimientos especificos de micronutrientes, texto libre del profesional.
   micronutrientesTexto: text("micronutrientes_texto"),
+  // "Objetivo del tratamiento nutricional" (pieza 1, checkpoint 2.4): el objetivo/tipo de dieta que ESCRIBE
+  // el profesional (distinto de las guias, que son una lista). Texto libre acotado. Es contenido del PLAN
+  // (patient-facing via el futuro envio del plan, no el reporte del diagnostico); inmutable al aprobar el
+  // protocolo (trigger), como restricciones/guias.
+  objetivoTexto: text("objetivo_texto"),
   // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
   // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
   // esta implicita en created_by. Si algun dia hay agenda, se migra.

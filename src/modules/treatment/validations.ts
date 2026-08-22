@@ -50,6 +50,22 @@ export const saveGuidelinesSchema = z.object({
 
 export type SaveGuidelinesInput = z.infer<typeof saveGuidelinesSchema>;
 
+// Objetivo del tratamiento nutricional (checkpoint 2.4, pieza 1): texto libre del profesional. Limite HOLGADO
+// (un par de parrafos clinicos) pero ACOTADO: un campo sin limite es un campo que alguien llena con un
+// documento entero. Vacio -> null (el textarea vacio no cuenta como objetivo).
+export const saveObjetivoSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  objetivo: z
+    .string()
+    .trim()
+    .max(4000, "El objetivo del tratamiento es demasiado largo (máximo 4000 caracteres).")
+    .nullable()
+    .default(null),
+  baseSignature: z.string().max(4200).default(""),
+});
+
+export type SaveObjetivoInput = z.infer<typeof saveObjetivoSchema>;
+
 // Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
 // reemplaza por completo (el formulario envia el estado final deseado).
 export const saveNutraceuticalsSchema = z.object({

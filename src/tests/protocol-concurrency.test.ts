@@ -5,6 +5,7 @@ import {
   adjustmentSignature,
   guidelinesSignature,
   nutraceuticalsSignature,
+  objetivoSignature,
   restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
 
@@ -36,6 +37,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let StaleRestriccionesError: any;
   let saveGuidelines: any;
   let StaleGuidelinesError: any;
+  let saveObjetivo: any;
+  let StaleObjetivoError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -87,6 +90,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       StaleRestriccionesError,
       saveGuidelines,
       StaleGuidelinesError,
+      saveObjetivo,
+      StaleObjetivoError,
     } = await import("@/modules/treatment/data/treatment-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
@@ -270,5 +275,30 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       }),
     ).rejects.toBeInstanceOf(StaleNutraceuticalsError);
     expect(await nutraCount()).toBe(antes); // no se borro la prescripcion
+  });
+
+  // Pieza 1 (checkpoint 2.4): candado de saveObjetivo (columna treatments.objetivo_texto). El seed arranca
+  // con objetivo_texto NULL.
+  async function currentObjetivoSignature(): Promise<string> {
+    const [t] = await db
+      .select({ obj: schema.treatments.objetivoTexto })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    return objetivoSignature({ treatmentId, objetivo: t.obj });
+  }
+
+  it("objetivo camino feliz: firma base == actual -> escribe", async () => {
+    const base = await currentObjetivoSignature();
+    await saveObjetivo({ treatmentId, objetivo: "Dieta antiinflamatoria", baseSignature: base, ...actor });
+    const [t] = await db.select({ obj: schema.treatments.objetivoTexto }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(t.obj).toBe("Dieta antiinflamatoria");
+  });
+
+  it("objetivo carrera: firma base != actual -> rechaza sin pisar (StaleObjetivoError)", async () => {
+    await expect(
+      saveObjetivo({ treatmentId, objetivo: "PISADO", baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
+    ).rejects.toBeInstanceOf(StaleObjetivoError);
+    const [t] = await db.select({ obj: schema.treatments.objetivoTexto }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(t.obj).toBe("Dieta antiinflamatoria"); // el del camino feliz, no PISADO
   });
 });

@@ -52,7 +52,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -144,6 +144,7 @@ export async function getTreatmentProtocol(
     adjProtGkg: treatment.adj_prot_gkg != null ? Number(treatment.adj_prot_gkg) : null,
     adjFatPct: treatment.adj_fat_pct != null ? Number(treatment.adj_fat_pct) : null,
     restricciones: treatment.restricciones ?? [],
+    objetivoTexto: treatment.objetivo_texto ?? null,
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({
       id: n.id,

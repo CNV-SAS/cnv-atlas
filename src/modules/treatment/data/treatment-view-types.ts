@@ -60,6 +60,8 @@ export type TreatmentProtocol = {
   adjProtGkg: number | null;
   adjFatPct: number | null;
   restricciones: string[];
+  // Objetivo del tratamiento nutricional (pieza 1): texto libre del profesional; null si no lo ha escrito.
+  objetivoTexto: string | null;
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
   recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)

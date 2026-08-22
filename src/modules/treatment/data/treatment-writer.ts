@@ -16,6 +16,7 @@ import {
   adjustmentSignature,
   guidelinesSignature,
   nutraceuticalsSignature,
+  objetivoSignature,
   restriccionesSignature,
 } from "./protocol-signature";
 
@@ -47,6 +48,13 @@ export class StaleGuidelinesError extends Error {
   constructor() {
     super("Las guías dietarias cambiaron desde que se cargaron.");
     this.name = "StaleGuidelinesError";
+  }
+}
+
+export class StaleObjetivoError extends Error {
+  constructor() {
+    super("El objetivo del tratamiento cambió desde que se cargó.");
+    this.name = "StaleObjetivoError";
   }
 }
 
@@ -170,6 +178,47 @@ export async function saveGuidelines(input: SaveGuidelinesWrite): Promise<void> 
       entityType: "treatment",
       entityId: input.treatmentId,
       payload: { guidelines_count: input.guidelines.length },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveObjetivoWrite = {
+  treatmentId: string;
+  objetivo: string | null;
+  // Firma del objetivo que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Objetivo del tratamiento nutricional (checkpoint 2.4, pieza 1): texto libre en treatments.objetivo_texto.
+// Camino propio con candado, como las demas secciones editables.
+export async function saveObjetivo(input: SaveObjetivoWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ obj: treatments.objetivoTexto })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = objetivoSignature({ treatmentId: input.treatmentId, objetivo: locked.obj });
+    if (current !== input.baseSignature) throw new StaleObjetivoError();
+    await tx
+      .update(treatments)
+      .set({ objetivoTexto: input.objetivo })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.objetivo_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: { objetivo_len: (input.objetivo ?? "").length },
       ip: input.ip,
     });
   });

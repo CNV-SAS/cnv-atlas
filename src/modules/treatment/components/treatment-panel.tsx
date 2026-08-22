@@ -18,6 +18,7 @@ import {
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
+  saveObjetivoAction,
   saveRestriccionesAction,
   type TreatmentActionState,
 } from "../actions";
@@ -25,6 +26,7 @@ import type { CelularBadges } from "../data/celular-badges";
 import {
   adjustmentSignature,
   guidelinesSignature,
+  objetivoSignature,
   restriccionesSignature,
 } from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
@@ -469,6 +471,12 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        <ObjetivoSection
+          key={objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         <GuidelinesSection
           key={guidelinesSignature({
             treatmentId: protocol.treatmentId,
@@ -650,6 +658,56 @@ function RestriccionesSection({
           <div>
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar restricciones"}
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
+// Objetivo del tratamiento nutricional (pieza 1): lo que el profesional ESCRIBE sobre el plan (el objetivo /
+// tipo de dieta), distinto de las guias (que son una lista). Un textarea con su guardado propio. En 1a.3 se
+// le antepone el encabezado generado "Dieta ... de X kcal/dia" (de la cadena) y va arriba, antes de la formula.
+function ObjetivoSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveObjetivoAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+  const [objetivo, setObjetivo] = useState(protocol.objetivoTexto ?? "");
+  const baseSignature = objetivoSignature({
+    treatmentId: protocol.treatmentId,
+    objetivo: protocol.objetivoTexto,
+  });
+
+  return (
+    <section className="flex flex-col gap-2 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Objetivo del tratamiento nutricional</h3>
+      <p className="text-sm text-muted-foreground">
+        El objetivo o tipo de dieta que defines para este paciente, en tus palabras. Es distinto de las guías
+        (que son una lista de indicaciones puntuales).
+      </p>
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <fieldset disabled={locked} className="flex flex-col gap-2">
+          <Textarea
+            name="objetivo"
+            value={objetivo}
+            onChange={(e) => setObjetivo(e.target.value)}
+            placeholder="ej. Dieta antiinflamatoria con proteína alta por sexo, para desacelerar el envejecimiento biológico."
+            rows={3}
+            maxLength={4000}
+          />
+          <div>
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar objetivo"}
             </Button>
           </div>
         </fieldset>

@@ -28,6 +28,11 @@ export function guidelinesSignature(p: { treatmentId: string; guidelines: string
   return stringListSignature(p.treatmentId, p.guidelines);
 }
 
+// Objetivo del tratamiento nutricional (columna treatments.objetivo_texto, texto libre). Un solo string.
+export function objetivoSignature(p: { treatmentId: string; objetivo: string | null }): string {
+  return `${p.treatmentId}§${p.objetivo ?? ""}`;
+}
+
 // --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---
 // Misma familia y misma razon que la firma del protocolo, sobre un camino de guardado DISTINTO
 // (saveAdjustments, que ESCRIBE LAS SEIS COLUMNAS DE GOLPE). Dos usos, identicos a los de arriba:

@@ -4,6 +4,7 @@ import {
   adjustmentSignature,
   guidelinesSignature,
   nutraceuticalsSignature,
+  objetivoSignature,
   restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
 import type { TreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -29,6 +30,7 @@ const BASE: TreatmentProtocol = {
   adjProtGkg: null,
   adjFatPct: null,
   restricciones: ["sin gluten", "sin lactosa"],
+  objetivoTexto: "Dieta antiinflamatoria, proteína alta.",
   kcalSugerido: 2100,
   nutraceuticals: [
     { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTICELL BASE", dosage: "1/dia", durationDays: 30 },
@@ -191,5 +193,22 @@ describe("guidelinesSignature: key de remonte + base del candado de guias", () =
     const p = clone(BASE);
     p.treatmentId = "t-2";
     expect(guidelinesSignature(asList(p))).not.toBe(sig());
+  });
+});
+
+// Pieza 1 (checkpoint 2.4): firma del objetivo del tratamiento (key de remonte + base del candado).
+describe("objetivoSignature: key de remonte + base del candado del objetivo del tratamiento", () => {
+  const sig = () => objetivoSignature({ treatmentId: BASE.treatmentId, objetivo: BASE.objetivoTexto });
+  it("igual texto -> igual firma", () => {
+    expect(objetivoSignature({ treatmentId: BASE.treatmentId, objetivo: BASE.objetivoTexto })).toBe(sig());
+  });
+  it("cambiar el texto mueve la firma", () => {
+    expect(objetivoSignature({ treatmentId: BASE.treatmentId, objetivo: "otro objetivo" })).not.toBe(sig());
+  });
+  it("de texto a null (vaciar) mueve la firma", () => {
+    expect(objetivoSignature({ treatmentId: BASE.treatmentId, objetivo: null })).not.toBe(sig());
+  });
+  it("otro tratamiento mueve la firma", () => {
+    expect(objetivoSignature({ treatmentId: "t-2", objetivo: BASE.objetivoTexto })).not.toBe(sig());
   });
 });

@@ -3190,6 +3190,7 @@ export type Database = {
           id: string
           kcal_objetivo: number | null
           micronutrientes_texto: string | null
+          objetivo_texto: string | null
           proteina_g: number | null
           protocol_approved: Json | null
           protocol_suggested: Json | null
@@ -3214,6 +3215,7 @@ export type Database = {
           id?: string
           kcal_objetivo?: number | null
           micronutrientes_texto?: string | null
+          objetivo_texto?: string | null
           proteina_g?: number | null
           protocol_approved?: Json | null
           protocol_suggested?: Json | null
@@ -3238,6 +3240,7 @@ export type Database = {
           id?: string
           kcal_objetivo?: number | null
           micronutrientes_texto?: string | null
+          objetivo_texto?: string | null
           proteina_g?: number | null
           protocol_approved?: Json | null
           protocol_suggested?: Json | null

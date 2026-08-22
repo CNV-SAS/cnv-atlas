@@ -27,6 +27,7 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   saveRestricciones: vi.fn(),
   saveGuidelines: vi.fn(),
+  saveObjetivo: vi.fn(),
   saveAdjustments: vi.fn(),
   saveNutraceuticals: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
@@ -54,6 +55,7 @@ import {
   saveAdjustments as writeAdjustments,
   saveGuidelines as writeGuidelines,
   saveNutraceuticals as writeNutraceuticals,
+  saveObjetivo as writeObjetivo,
   saveRestricciones as writeRestricciones,
 } from "@/modules/treatment/data/treatment-writer";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
@@ -63,6 +65,7 @@ import {
   saveAdjustments,
   saveGuidelines,
   saveNutraceuticals,
+  saveObjetivo,
   saveRestricciones,
 } from "@/modules/treatment/services/treatment-service";
 
@@ -80,6 +83,7 @@ const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as 
 
 const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" };
 const GUIDE_INPUT = { evaluationId: "E1", guidelines: [], baseSignature: "" };
+const OBJ_INPUT = { evaluationId: "E1", objetivo: "x", baseSignature: "" };
 const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
 const ADJ_INPUT = {
   evaluationId: "E1",
@@ -131,6 +135,19 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     r = await saveGuidelines(GUIDE_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeGuidelines).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveObjetivo: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
+    let r = await saveObjetivo(OBJ_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeObjetivo).not.toHaveBeenCalled();
+
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
+    r = await saveObjetivo(OBJ_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeObjetivo).toHaveBeenCalledTimes(1);
   });
 
   it("saveAdjustments: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {

@@ -20,6 +20,7 @@ import {
   saveAdjustments,
   saveGuidelines,
   saveNutraceuticals,
+  saveObjetivo,
   saveRestricciones,
 } from "./services/treatment-service";
 import {
@@ -29,6 +30,7 @@ import {
   saveAdjustmentsSchema,
   saveGuidelinesSchema,
   saveNutraceuticalsSchema,
+  saveObjetivoSchema,
   saveRestriccionesSchema,
 } from "./validations";
 
@@ -96,6 +98,37 @@ export async function saveRestriccionesAction(
   // NO se revalida: la seccion se remonta por su `key` (restriccionesSignature); el refresh lo dispara el
   // hook useFormToastRefreshOnSuccess DESPUES del toast (mismo motivo que en la cadena/nutraceuticos).
   return { error: null, success: "Restricciones guardadas.", warning: null };
+}
+
+// Checkpoint 2.4 (pieza 1): objetivo del tratamiento nutricional, su propia accion.
+export async function saveObjetivoAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = saveObjetivoSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    objetivo: strOrNull(form.get("objetivo")),
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Objetivo inválido.");
+  }
+
+  const result = await saveObjetivo(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Objetivo del tratamiento guardado.", warning: null };
 }
 
 // Checkpoint 2.4: guias dietarias, su propia accion.
