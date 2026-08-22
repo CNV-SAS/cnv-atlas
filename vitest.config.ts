@@ -15,6 +15,7 @@ const DB_TESTS = [
   "src/tests/comodato.test.ts",
   "src/tests/correct-evaluation.test.ts",
   "src/tests/count-session.test.ts",
+  "src/tests/diet-field-keys-in-used-versions.test.ts",
   "src/tests/diagnosis-confirmation-immutability.test.ts",
   "src/tests/faltante-case.test.ts",
   "src/tests/faltante-settle-sobrante.test.ts",
