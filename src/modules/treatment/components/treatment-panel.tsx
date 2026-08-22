@@ -27,23 +27,8 @@ import {
   protocolSignature,
 } from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
-import { resolveRecommendation } from "../nutraceuticals-recommendation";
-
-// Etiqueta de disponibilidad comercial (dato del producto): que significa para el paciente.
-const AVAILABILITY_LABEL: Record<string, string> = {
-  en_consultorio: "En consultorio",
-  solo_tienda: "Solo en tienda",
-  no_disponible: "No disponible",
-};
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
-
-type NutraLine = {
-  nutraceuticalId: string;
-  name: string;
-  dosage: string;
-  durationDays: string;
-};
 
 // Panel del protocolo de tratamiento (B13), vista interna del profesional. Edita objetivos,
 // nutraceuticos y guias, y agrega notas. Si el diagnostico no esta confirmado, la edicion
@@ -585,54 +570,19 @@ function ProtocolForm({
 
   const [restricciones, setRestricciones] = useState<string[]>(protocol.restricciones);
   const [restrInput, setRestrInput] = useState("");
-  const [nutras, setNutras] = useState<NutraLine[]>(
-    protocol.nutraceuticals.map((n) => ({
-      nutraceuticalId: n.nutraceuticalId,
-      name: n.name,
-      dosage: n.dosage ?? "",
-      durationDays: n.durationDays?.toString() ?? "",
-    })),
-  );
   const [guidelines, setGuidelines] = useState<string[]>(protocol.guidelines.map((g) => g.text));
   const [guideInput, setGuideInput] = useState("");
-  const [pickId, setPickId] = useState("");
 
   const addRestriccion = () => {
     const v = restrInput.trim();
     if (v && !restricciones.includes(v)) setRestricciones([...restricciones, v]);
     setRestrInput("");
   };
-  // Agrega un producto a la prescripcion del profesional (sin prellenar la dosis: un valor por defecto
-  // se acepta sin pensar, y no hay posologia autorizada por Gildardo). Lo usan el selector y los botones
-  // "agregar" de la recomendacion. Al agregarlo, el item aparece en la lista del profesional (abajo),
-  // visiblemente separado de la recomendacion del modelo.
-  const addProduct = (id: string) => {
-    if (!id) return;
-    if (nutras.some((n) => n.nutraceuticalId === id)) return;
-    const item = protocol.catalog.find((c) => c.id === id);
-    if (!item) return;
-    setNutras((prev) => [...prev, { nutraceuticalId: id, name: item.name, dosage: "", durationDays: "" }]);
-  };
-  const addNutra = () => {
-    addProduct(pickId);
-    setPickId("");
-  };
-  const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
-  const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
   const addGuideline = () => {
     const v = guideInput.trim();
     if (v) setGuidelines([...guidelines, v]);
     setGuideInput("");
   };
-
-  // Payload serializado que viaja en el formulario (las actions parsean el JSON).
-  const nutrasPayload = JSON.stringify(
-    nutras.map((n) => ({
-      nutraceuticalId: n.nutraceuticalId,
-      dosage: n.dosage.trim() === "" ? null : n.dosage.trim(),
-      durationDays: n.durationDays.trim() === "" ? null : Number(n.durationDays),
-    })),
-  );
 
   // Firma base para el candado de concurrencia: se computa del PROTOCOLO CARGADO (el prop), no del estado
   // editado. Como el form se remonta cuando el servidor cambia (por el `key`), esta firma siempre refleja el
@@ -644,7 +594,6 @@ function ProtocolForm({
       <input type="hidden" name="evaluationId" value={evaluationId} />
       <input type="hidden" name="baseSignatures" value={baseSignatures} />
       <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
-      <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
       <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
 
       {/* Objetivo calorico y proteina: RETIRADOS en el checkpoint 2 (colapso de los dos objetivos). El
@@ -689,125 +638,6 @@ function ProtocolForm({
             </div>
           ) : null}
         </div>
-      </fieldset>
-
-      {/* Nutraceuticos: DOS conceptos separados. (1) lo que el MODELO recomienda (string sellado del
-          snapshot, solo lectura); (2) lo que el PROFESIONAL agrega (selector + prescripcion). Es la
-          misma separacion recomienda-vs-agrega de las restricciones. El P1/P2/dosis estructurado y el
-          "registrar despacho" son T3, no van aqui. */}
-      <fieldset disabled={locked} className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">Nutracéuticos</legend>
-        {recommended.length ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-foreground">El modelo recomienda</p>
-            <ul className="flex flex-col gap-2">
-              {recommended.map((r, i) =>
-                r.status === "en_catalogo" ? (
-                  <li
-                    key={i}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3"
-                  >
-                    <div className="min-w-[10rem] flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-foreground">{r.product.name}</span>
-                        <Badge variant="outline" className="text-[10px] font-normal">
-                          {AVAILABILITY_LABEL[r.product.commercialAvailability] ?? r.product.commercialAvailability}
-                        </Badge>
-                      </div>
-                      {r.product.indication ? (
-                        <p className="text-xs text-muted-foreground">{r.product.indication}</p>
-                      ) : null}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isAdded(r.product.id)}
-                      onClick={() => addProduct(r.product.id)}
-                    >
-                      {isAdded(r.product.id) ? "Agregado" : "Agregar"}
-                    </Button>
-                  </li>
-                ) : (
-                  <li
-                    key={i}
-                    className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
-                  >
-                    El modelo recomienda{" "}
-                    <span className="font-medium text-foreground">{r.motorName}</span>, que todavía no
-                    está en el catálogo.
-                  </li>
-                ),
-              )}
-            </ul>
-            <p className="text-xs text-muted-foreground">
-              &ldquo;En consultorio&rdquo;: se lo puedes entregar en la consulta. &ldquo;Solo en
-              tienda&rdquo;: el paciente lo compra en la tienda de CNV.
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">El modelo no recomendó nutracéuticos para este fenotipo.</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Abajo agregas los que prescribes; son tu decisión, distinta de la recomendación del modelo.
-        </p>
-        <div className="flex gap-2">
-          <select
-            value={pickId}
-            onChange={(e) => setPickId(e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-          >
-            <option value="">Selecciona un nutracéutico</option>
-            {protocol.catalog.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <Button type="button" variant="outline" onClick={addNutra}>
-            Agregar
-          </Button>
-        </div>
-        {nutras.length ? (
-          <ul className="flex flex-col gap-2">
-            {nutras.map((n, i) => (
-              <li
-                key={n.nutraceuticalId}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3"
-              >
-                <span className="min-w-[8rem] flex-1 font-medium text-foreground">{n.name}</span>
-                <Input
-                  value={n.dosage}
-                  onChange={(e) =>
-                    setNutras(nutras.map((x, j) => (j === i ? { ...x, dosage: e.target.value } : x)))
-                  }
-                  placeholder="Dosis (ej. 1 capsula/día)"
-                  className="w-48"
-                />
-                <Input
-                  value={n.durationDays}
-                  onChange={(e) =>
-                    setNutras(
-                      nutras.map((x, j) => (j === i ? { ...x, durationDays: e.target.value } : x)),
-                    )
-                  }
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Días"
-                  className="w-24"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setNutras(nutras.filter((_, j) => j !== i))}
-                >
-                  Quitar
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Sin nutracéuticos en el protocolo.</p>
-        )}
       </fieldset>
 
       {/* Guias dietarias */}

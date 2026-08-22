@@ -44,31 +44,41 @@ const guidelineSchema = z
   .min(1)
   .max(1000, "La guía dietaria es demasiado larga.");
 
-// Firma base por seccion (candado de concurrencia): la del protocolo que el cliente cargó. Las 4 claves
+// Firma base por seccion (candado de concurrencia): la del protocolo que el cliente cargó. Las claves
 // espejan SectionKey de protocol-signature.ts. El servidor compara contra la firma actual bajo lock; si
-// difiere, rechaza la escritura (no pisa un cambio hecho en otra sesion).
+// difiere, rechaza la escritura (no pisa un cambio hecho en otra sesion). La prescripcion de nutraceuticos
+// se partio a su propia accion (checkpoint 2.3), asi que ya no es seccion aqui.
 const sectionSignaturesSchema = z.object({
   objetivos: z.string(),
   restricciones: z.string(),
-  nutraceuticals: z.string(),
   guidelines: z.string(),
 });
 
-// Guardado completo del protocolo: objetivos + set de nutraceuticos + set de guias.
-// Los sets se reemplazan por completo (el formulario envia el estado final deseado).
+// Guardado del protocolo: objetivos + set de guias (los sets se reemplazan por completo). La prescripcion
+// de nutraceuticos vive en saveNutraceuticalsSchema (camino propio, checkpoint 2.3).
 export const saveProtocolSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
   kcalObjetivo: kcalSchema,
   proteinaGramos: proteinSchema,
   restricciones: z.array(restriccionSchema).max(20, "Demasiadas restricciones."),
-  nutraceuticals: z
-    .array(nutraceuticalLineSchema)
-    .max(30, "Demasiados nutracéuticos en el protocolo."),
   guidelines: z.array(guidelineSchema).max(30, "Demasiadas guías dietarias."),
   baseSignatures: sectionSignaturesSchema,
 });
 
 export type SaveProtocolInput = z.infer<typeof saveProtocolSchema>;
+
+// Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
+// reemplaza por completo (el formulario envia el estado final deseado).
+export const saveNutraceuticalsSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  nutraceuticals: z
+    .array(nutraceuticalLineSchema)
+    .max(30, "Demasiados nutracéuticos en la prescripción."),
+  // Firma de la prescripcion que el cliente cargó (candado de concurrencia; ver nutraceuticalsSignature).
+  baseSignature: z.string().max(4000).default(""),
+});
+
+export type SaveNutraceuticalsInput = z.infer<typeof saveNutraceuticalsSchema>;
 
 // Ajustes del profesional sobre el protocolo sugerido (T2 A2), apartados B/D + peso meta de
 // Nivel V. Todos opcionales (ajusta algunos, ninguno o todos); acotados a rangos clinicos

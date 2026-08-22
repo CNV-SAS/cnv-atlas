@@ -4,6 +4,7 @@ import {
   adjustmentSignature,
   changedSections,
   describeChangedSections,
+  nutraceuticalsSignature,
   protocolSectionSignatures,
   protocolSignature,
 } from "@/modules/treatment/data/protocol-signature";
@@ -83,16 +84,6 @@ describe("protocolSignature: key del ProtocolForm + base del candado", () => {
       p.restricciones.push("sin azucar");
       expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
     });
-    it("prescripcion: agregar un nutraceutico", () => {
-      const p = clone(BASE);
-      p.nutraceuticals.push({ id: "tn-3", nutraceuticalId: "n-curcumin", name: "CURCUMIN", dosage: null, durationDays: null });
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-    it("prescripcion: cambiar la dosis de uno existente", () => {
-      const p = clone(BASE);
-      p.nutraceuticals[0].dosage = "2/dia";
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
     it("guias dietarias: cambiar el texto de una", () => {
       const p = clone(BASE);
       p.guidelines[0].text = "3 comidas al dia";
@@ -118,11 +109,11 @@ describe("protocolSignature: key del ProtocolForm + base del candado", () => {
       ];
       expect(protocolSignature(p)).toBe(protocolSignature(BASE));
     });
-    it("INDEPENDIENTE DEL ORDEN: reordenar prescripcion/restricciones/guias -> misma firma", () => {
+    it("INDEPENDIENTE DEL ORDEN: reordenar restricciones/guias -> misma firma", () => {
       // Clave para el candado: cliente y servidor deben coincidir aunque la BD devuelva las filas en otro
-      // orden (SELECT sin ORDER BY). Reordenar los tres conjuntos no debe mover la firma.
+      // orden (SELECT sin ORDER BY). Reordenar los conjuntos no debe mover la firma. (La prescripcion de
+      // nutraceuticos ya no vive en esta firma; su orden-independencia se prueba en nutraceuticalsSignature.)
       const p = clone(BASE);
-      p.nutraceuticals.reverse();
       p.restricciones.reverse();
       p.guidelines.reverse();
       expect(protocolSignature(p)).toBe(protocolSignature(BASE));
@@ -136,12 +127,6 @@ describe("protocolSignature: key del ProtocolForm + base del candado", () => {
       const changed = changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(p));
       expect(changed).toEqual(["objetivos"]);
     });
-    it("un cambio de prescripcion marca solo la seccion nutraceuticals", () => {
-      const p = clone(BASE);
-      p.nutraceuticals[0].dosage = "2/dia";
-      const changed = changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(p));
-      expect(changed).toEqual(["nutraceuticals"]);
-    });
     it("dos cambios marcan ambas secciones", () => {
       const p = clone(BASE);
       p.proteinaGramos = 130;
@@ -153,8 +138,8 @@ describe("protocolSignature: key del ProtocolForm + base del candado", () => {
       expect(changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(clone(BASE)))).toEqual([]);
     });
     it("describe traduce a lenguaje de producto", () => {
-      expect(describeChangedSections(["objetivos", "nutraceuticals"])).toBe(
-        "los objetivos (calorías/proteína), la prescripción de nutracéuticos",
+      expect(describeChangedSections(["objetivos", "restricciones"])).toBe(
+        "los objetivos (calorías/proteína), las restricciones",
       );
     });
   });
@@ -205,5 +190,48 @@ describe("adjustmentSignature: key de remonte + base del candado de la cadena ca
     const b = clone(BASE);
     b.adjPal = Number("1.500");
     expect(adjustmentSignature(a)).toBe(adjustmentSignature(b));
+  });
+});
+
+// Checkpoint 2.3: la firma de la PRESCRIPCION de nutraceuticos (nutraceuticalsSignature) es el key de remonte
+// de la NutraceuticalsSection Y la base del candado de saveNutraceuticals. Debe moverse con cualquier cambio
+// del set (producto, dosis, duracion) y NO depender del orden de las filas (SELECT sin ORDER BY).
+describe("nutraceuticalsSignature: key de remonte + base del candado de la prescripcion", () => {
+  const sig = () => nutraceuticalsSignature(BASE);
+
+  it("igual set -> igual firma (aun reordenado: orden-independiente)", () => {
+    const p = clone(BASE);
+    p.nutraceuticals.reverse();
+    expect(nutraceuticalsSignature(p)).toBe(sig());
+  });
+
+  it("agregar un nutraceutico mueve la firma", () => {
+    const p = clone(BASE);
+    p.nutraceuticals.push({
+      id: "tn-3",
+      nutraceuticalId: "n-curcumin",
+      name: "CURCUMIN",
+      dosage: null,
+      durationDays: null,
+    });
+    expect(nutraceuticalsSignature(p)).not.toBe(sig());
+  });
+
+  it("cambiar la dosis mueve la firma", () => {
+    const p = clone(BASE);
+    p.nutraceuticals[0].dosage = "2/dia";
+    expect(nutraceuticalsSignature(p)).not.toBe(sig());
+  });
+
+  it("cambiar la duracion mueve la firma", () => {
+    const p = clone(BASE);
+    p.nutraceuticals[0].durationDays = 60;
+    expect(nutraceuticalsSignature(p)).not.toBe(sig());
+  });
+
+  it("otro tratamiento (correccion) mueve la firma", () => {
+    const p = clone(BASE);
+    p.treatmentId = "t-2";
+    expect(nutraceuticalsSignature(p)).not.toBe(sig());
   });
 });

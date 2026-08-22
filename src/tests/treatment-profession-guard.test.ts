@@ -27,6 +27,7 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   saveProtocol: vi.fn(),
   saveAdjustments: vi.fn(),
+  saveNutraceuticals: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
   addTreatmentNote: vi.fn(),
   writeApproveProtocol: vi.fn(),
@@ -50,6 +51,7 @@ import {
   addTreatmentNote,
   acknowledgeRestrictions as writeAcknowledge,
   saveAdjustments as writeAdjustments,
+  saveNutraceuticals as writeNutraceuticals,
   saveProtocol as writeProtocol,
 } from "@/modules/treatment/data/treatment-writer";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
@@ -57,6 +59,7 @@ import {
   acknowledgeRestrictions,
   addNote,
   saveAdjustments,
+  saveNutraceuticals,
   saveProtocol,
 } from "@/modules/treatment/services/treatment-service";
 
@@ -77,11 +80,11 @@ const SAVE_INPUT = {
   kcalObjetivo: null,
   proteinaGramos: null,
   restricciones: [],
-  nutraceuticals: [],
   guidelines: [],
   // El guard de profesion rechaza antes del candado de concurrencia; el valor no importa, pero el tipo lo pide.
-  baseSignatures: { objetivos: "", restricciones: "", nutraceuticals: "", guidelines: "" },
+  baseSignatures: { objetivos: "", restricciones: "", guidelines: "" },
 };
+const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
 const ADJ_INPUT = {
   evaluationId: "E1",
   adjGeb: null,
@@ -132,6 +135,19 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     r = await saveAdjustments(ADJ_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeAdjustments).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveNutraceuticals: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO("medico")); // solo el nutricionista prescribe nutraceuticos
+    let r = await saveNutraceuticals(NUTRA_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeNutraceuticals).not.toHaveBeenCalled();
+
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
+    r = await saveNutraceuticals(NUTRA_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeNutraceuticals).toHaveBeenCalledTimes(1);
   });
 
   it("acknowledgeRestrictions: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {

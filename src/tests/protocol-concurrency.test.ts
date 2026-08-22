@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   adjustmentSignature,
+  nutraceuticalsSignature,
   protocolSectionSignatures,
   type SectionSignatures,
 } from "@/modules/treatment/data/protocol-signature";
@@ -32,6 +33,8 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   let StaleProtocolError: any;
   let saveAdjustments: any;
   let StaleAdjustmentsError: any;
+  let saveNutraceuticals: any;
+  let StaleNutraceuticalsError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -41,20 +44,26 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   const actor = { actorId: "", actorEmail: "concurrency@test", ip: null };
 
   // Lee el estado actual del protocolo y devuelve su firma por seccion (lo que el cliente mandaria como base).
+  // La prescripcion de nutraceuticos ya NO es seccion del protocolo (checkpoint 2.3, su propia firma abajo).
   async function currentSignatures(): Promise<SectionSignatures> {
     const [t] = await db
       .select({ kcal: schema.treatments.kcalObjetivo, prot: schema.treatments.proteinaGramos, restr: schema.treatments.restricciones })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
-    const nutras = await db
-      .select({ nutraceuticalId: schema.treatmentNutraceuticals.nutraceuticalId, dosage: schema.treatmentNutraceuticals.dosage, durationDays: schema.treatmentNutraceuticals.durationDays })
-      .from(schema.treatmentNutraceuticals)
-      .where(eq(schema.treatmentNutraceuticals.treatmentId, treatmentId));
     const guides = await db
       .select({ text: schema.treatmentDietGuidelines.guidelineText })
       .from(schema.treatmentDietGuidelines)
       .where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
-    return protocolSectionSignatures({ treatmentId, kcalObjetivo: t.kcal, proteinaGramos: t.prot, restricciones: t.restr ?? [], nutraceuticals: nutras, guidelines: guides });
+    return protocolSectionSignatures({ treatmentId, kcalObjetivo: t.kcal, proteinaGramos: t.prot, restricciones: t.restr ?? [], guidelines: guides });
+  }
+
+  // Firma actual de la PRESCRIPCION de nutraceuticos (base del candado de saveNutraceuticals).
+  async function currentNutraSignature(): Promise<string> {
+    const nutras = await db
+      .select({ nutraceuticalId: schema.treatmentNutraceuticals.nutraceuticalId, dosage: schema.treatmentNutraceuticals.dosage, durationDays: schema.treatmentNutraceuticals.durationDays })
+      .from(schema.treatmentNutraceuticals)
+      .where(eq(schema.treatmentNutraceuticals.treatmentId, treatmentId));
+    return nutraceuticalsSignature({ treatmentId, nutraceuticals: nutras });
   }
 
   async function nutraCount(): Promise<number> {
@@ -65,9 +74,14 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    ({ saveProtocol, StaleProtocolError, saveAdjustments, StaleAdjustmentsError } = await import(
-      "@/modules/treatment/data/treatment-writer"
-    ));
+    ({
+      saveProtocol,
+      StaleProtocolError,
+      saveAdjustments,
+      StaleAdjustmentsError,
+      saveNutraceuticals,
+      StaleNutraceuticalsError,
+    } = await import("@/modules/treatment/data/treatment-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
     const [prof] = await db.select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
@@ -117,7 +131,6 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
       kcalObjetivo: 1900, // cambio real
       proteinaGramos: 110,
       restricciones: ["sin gluten"],
-      nutraceuticals: [{ nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 }],
       guidelines: ["5 comidas al dia"],
       baseSignatures: base,
       ...actor,
@@ -126,39 +139,35 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
     expect(t.kcal).toBe(1900);
   });
 
-  it("carrera: la firma base NO coincide (otro cambio la prescripcion) -> rechaza sin pisar", async () => {
+  it("carrera: la firma base NO coincide (otro cambio las restricciones) -> rechaza sin pisar", async () => {
     // Base con una seccion tampereada = simula que el protocolo cambio desde que el cliente lo cargo.
-    const stale: SectionSignatures = { ...(await currentSignatures()), nutraceuticals: "STALE-DE-OTRA-SESION" };
-    const nutraAntes = await nutraCount();
+    const stale: SectionSignatures = { ...(await currentSignatures()), restricciones: "STALE-DE-OTRA-SESION" };
 
     await expect(
       saveProtocol({
         treatmentId,
         kcalObjetivo: 999, // lo que se PERDERIA si pisara
         proteinaGramos: 110,
-        restricciones: ["sin gluten"],
-        nutraceuticals: [], // un guardado ciego aqui BORRARIA la prescripcion entera
+        restricciones: ["sin lactosa"],
         guidelines: ["5 comidas al dia"],
         baseSignatures: stale,
         ...actor,
       }),
     ).rejects.toBeInstanceOf(StaleProtocolError);
 
-    // El dato quedo INTACTO: ni el kcal se piso ni la prescripcion se borro.
+    // El dato quedo INTACTO: el kcal no se piso.
     const [t] = await db.select({ kcal: schema.treatments.kcalObjetivo }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
     expect(t.kcal).toBe(1900); // el del camino feliz, no 999
-    expect(await nutraCount()).toBe(nutraAntes); // no se borro la prescripcion
   });
 
   it("la seccion reportada en el rechazo es la que cambio", async () => {
-    const stale: SectionSignatures = { ...(await currentSignatures()), nutraceuticals: "STALE" };
+    const stale: SectionSignatures = { ...(await currentSignatures()), restricciones: "STALE" };
     try {
       await saveProtocol({
         treatmentId,
         kcalObjetivo: 1900,
         proteinaGramos: 110,
         restricciones: ["sin gluten"],
-        nutraceuticals: [{ nutraceuticalId: nutraB, dosage: null, durationDays: null }],
         guidelines: ["5 comidas al dia"],
         baseSignatures: stale,
         ...actor,
@@ -166,7 +175,7 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
       throw new Error("deberia haber lanzado StaleProtocolError");
     } catch (e: any) {
       expect(e).toBeInstanceOf(StaleProtocolError);
-      expect(e.sections).toEqual(["nutraceuticals"]);
+      expect(e.sections).toEqual(["restricciones"]);
     }
   });
 
@@ -241,5 +250,35 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
       .where(eq(schema.treatments.id, treatmentId));
     expect(Number(t.geb)).toBe(1950); // el del camino feliz, no 3000
     expect(Number(t.pesoMeta)).toBe(72.5); // no se borro
+  });
+
+  // Checkpoint 2.3: candado de saveNutraceuticals (BD real). Mismo patron que saveAdjustments: la prescripcion
+  // se reemplaza EN BLOQUE, asi que sin candado un guardado con estado viejo borraria lo que otro profesional
+  // acaba de prescribir. Al arrancar hay 1 nutraceutico (nutraA, del beforeAll).
+  it("nutraceuticals camino feliz: firma base == actual -> escribe (reemplaza el set)", async () => {
+    const base = await currentNutraSignature();
+    await saveNutraceuticals({
+      treatmentId,
+      nutraceuticals: [
+        { nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 },
+        { nutraceuticalId: nutraB, dosage: "2/dia", durationDays: 60 },
+      ],
+      baseSignature: base,
+      ...actor,
+    });
+    expect(await nutraCount()).toBe(2);
+  });
+
+  it("nutraceuticals carrera: firma base != actual -> rechaza sin pisar (StaleNutraceuticalsError)", async () => {
+    const antes = await nutraCount();
+    await expect(
+      saveNutraceuticals({
+        treatmentId,
+        nutraceuticals: [], // un guardado ciego aqui BORRARIA la prescripcion entera
+        baseSignature: "STALE-DE-OTRA-SESION",
+        ...actor,
+      }),
+    ).rejects.toBeInstanceOf(StaleNutraceuticalsError);
+    expect(await nutraCount()).toBe(antes); // no se borro la prescripcion
   });
 });

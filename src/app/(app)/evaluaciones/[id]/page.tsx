@@ -68,6 +68,11 @@ import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
+import { DespachoSection } from "@/modules/treatment/components/despacho-section";
+import {
+  NutraceuticalsSection,
+  prescriptionSignature,
+} from "@/modules/treatment/components/nutraceuticals-section";
 import { ProfessionTreatmentSection } from "@/modules/treatment/components/profession-treatment-section";
 import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
@@ -309,6 +314,13 @@ export default async function ResultadosEvaluacionPage({
     actorProfession.isProfessional && actorProfession.profession
       ? (PROFESSION_LABEL[actorProfession.profession] ?? actorProfession.profession)
       : "Profesional";
+  // Nutraceuticos (checkpoint 2.3): visibles en Rutas para toda profesion (Opcion A: el medico necesita
+  // saber que se le da al paciente por interacciones farmaco-nutriente), pero SOLO el nutricionista edita
+  // la prescripcion; el resto la ve en consulta. El despacho es acto de cualquier profesional sobre su
+  // inventario. locked = diagnostico sin confirmar o protocolo aprobado (inmutable).
+  const canPrescribeNutraceuticals =
+    actorProfession.isProfessional && actorProfession.profession === "nutricionista";
+  const nutraLocked = !protocol?.diagnosisConfirmed || Boolean(protocol?.approved);
 
   // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
@@ -368,6 +380,21 @@ export default async function ResultadosEvaluacionPage({
             rutas={
               <div className="flex flex-col gap-8">
                 <RutasSection rutas={rutas} />
+                {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, el despacho DESPUES, para que se
+                    lea la secuencia (primero se prescribe, luego se entrega) y nadie despache sin mirar lo
+                    prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}
+                {protocol ? (
+                  <NutraceuticalsSection
+                    key={prescriptionSignature(protocol)}
+                    evaluationId={id}
+                    protocol={protocol}
+                    canPrescribe={canPrescribeNutraceuticals}
+                    locked={nutraLocked}
+                  />
+                ) : null}
+                {protocol && actorProfession.isProfessional ? (
+                  <DespachoSection evaluationId={id} protocol={protocol} />
+                ) : null}
                 <RemisionesSection rutas={rutas} register={referralRegister} />
               </div>
             }

@@ -18,6 +18,7 @@ import {
   addNote,
   approveProtocol,
   saveAdjustments,
+  saveNutraceuticals,
   saveProtocol,
 } from "./services/treatment-service";
 import {
@@ -25,6 +26,7 @@ import {
   addNoteSchema,
   approveProtocolSchema,
   saveAdjustmentsSchema,
+  saveNutraceuticalsSchema,
   saveProtocolSchema,
 } from "./validations";
 
@@ -88,7 +90,6 @@ export async function saveProtocolAction(
     kcalObjetivo: intOrNull(form.get("kcalObjetivo")),
     proteinaGramos: intOrNull(form.get("proteinaGramos")),
     restricciones: parseJsonArray(form.get("restricciones")),
-    nutraceuticals: parseJsonArray(form.get("nutraceuticals")),
     guidelines: parseJsonArray(form.get("guidelines")),
     baseSignatures: parseJsonObject(form.get("baseSignatures")),
   });
@@ -113,6 +114,41 @@ export async function saveProtocolAction(
   // NO se revalida aqui: el form se remonta por su `key` (protocolSignature) y el refresh lo dispara el hook
   // useFormToastRefreshOnSuccess DESPUES del toast, para que el aviso de exito no se pierda en la carrera.
   return { error: null, success: "Protocolo guardado.", warning: null };
+}
+
+// Checkpoint 2.3: prescripcion de nutraceuticos, su propia accion (partida de saveProtocolAction). Mismo
+// patron que saveAdjustmentsAction: candado, firma de remonte, y stale_write como aviso que preserva la edicion.
+export async function saveNutraceuticalsAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = saveNutraceuticalsSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    nutraceuticals: parseJsonArray(form.get("nutraceuticals")),
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Prescripción inválida.");
+  }
+
+  const result = await saveNutraceuticals(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+
+  // NO se revalida aqui: la seccion se remonta por su `key` (nutraceuticalsSignature) y el refresh lo dispara
+  // el hook useFormToastRefreshOnSuccess DESPUES del toast (mismo motivo que en la cadena/el protocolo).
+  return { error: null, success: "Prescripción guardada.", warning: null };
 }
 
 export async function addNoteAction(

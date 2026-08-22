@@ -9,7 +9,6 @@ import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
 import { ConsultationSection } from "./consultation-section";
-import { DespachoSection } from "./despacho-section";
 import { TreatmentPanel } from "./treatment-panel";
 
 // B1 (T2b): area de tratamiento POR PROFESION. La parte comun (estado del paciente + rutas de atencion
@@ -63,13 +62,9 @@ function Notice({ title, children }: { title: string; children: ReactNode }) {
 async function Panel({
   evaluationId,
   protocol,
-  showDespacho,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
-  // La entrega (despacho) es acto del nutricionista sobre SU inventario en consignacion; el admin llega a
-  // este panel por gobernanza (BACKLOG) pero no entrega, asi que no ve la seccion.
-  showDespacho: boolean;
 }) {
   if (!protocol) {
     return (
@@ -87,7 +82,7 @@ async function Panel({
   return (
     <div className="flex flex-col gap-6">
       <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />
-      {showDespacho ? <DespachoSection evaluationId={evaluationId} protocol={protocol} /> : null}
+      {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
   );
 }
@@ -327,5 +322,5 @@ export function ProfessionTreatmentSection({
   // acceso de admin al tratamiento es gobernanza aparte (BACKLOG); aqui se conserva como estaba. La
   // entrega de nutraceuticos es solo del nutricionista (actor.isProfessional aqui = nutricionista: las
   // otras profesiones y el profesional sin profesion ya se ramificaron arriba).
-  return <Panel evaluationId={evaluationId} protocol={protocol} showDespacho={actor.isProfessional} />;
+  return <Panel evaluationId={evaluationId} protocol={protocol} />;
 }

@@ -15,6 +15,7 @@ import { recordAudit } from "@/modules/audit/log";
 import {
   adjustmentSignature,
   changedSections,
+  nutraceuticalsSignature,
   protocolSectionSignatures,
   type SectionKey,
   type SectionSignatures,
@@ -54,6 +55,15 @@ export class StaleAdjustmentsError extends Error {
   }
 }
 
+// Rechazo por concurrencia en saveNutraceuticals (misma familia). El servicio lo traduce a un aviso
+// "otro profesional cambió la prescripción de nutracéuticos".
+export class StaleNutraceuticalsError extends Error {
+  constructor() {
+    super("La prescripción de nutracéuticos cambió desde que se cargó.");
+    this.name = "StaleNutraceuticalsError";
+  }
+}
+
 type NutraceuticalLine = {
   nutraceuticalId: string;
   dosage: string | null;
@@ -65,7 +75,6 @@ export type SaveProtocolWrite = {
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
   restricciones: string[];
-  nutraceuticals: NutraceuticalLine[];
   guidelines: string[];
   // Firma por seccion del protocolo que el cliente CARGÓ (candado de concurrencia).
   baseSignatures: SectionSignatures;
@@ -106,14 +115,6 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
       .for("update")
       .limit(1);
     if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const curNutras = await tx
-      .select({
-        nutraceuticalId: treatmentNutraceuticals.nutraceuticalId,
-        dosage: treatmentNutraceuticals.dosage,
-        durationDays: treatmentNutraceuticals.durationDays,
-      })
-      .from(treatmentNutraceuticals)
-      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
     const curGuides = await tx
       .select({ text: treatmentDietGuidelines.guidelineText })
       .from(treatmentDietGuidelines)
@@ -123,7 +124,6 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
       kcalObjetivo: locked.kcal,
       proteinaGramos: locked.prot,
       restricciones: locked.restr ?? [],
-      nutraceuticals: curNutras,
       guidelines: curGuides,
     });
     const changed = changedSections(input.baseSignatures, current);
@@ -139,22 +139,8 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
       })
       .where(eq(treatments.id, input.treatmentId));
 
-    // 2. Set de nutraceuticos: reemplazo total (el formulario envia el estado deseado).
-    await tx
-      .delete(treatmentNutraceuticals)
-      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
-    if (input.nutraceuticals.length) {
-      await tx.insert(treatmentNutraceuticals).values(
-        input.nutraceuticals.map((n) => ({
-          treatmentId: input.treatmentId,
-          nutraceuticalId: n.nutraceuticalId,
-          dosage: n.dosage,
-          durationDays: n.durationDays,
-        })),
-      );
-    }
-
-    // 3. Set de guias dietarias: reemplazo total.
+    // 2. Set de guias dietarias: reemplazo total. (La prescripcion de nutraceuticos se partio a
+    //    saveNutraceuticals en el checkpoint 2.3; ya no se toca aqui.)
     await tx
       .delete(treatmentDietGuidelines)
       .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
@@ -182,9 +168,73 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
         kcal_objetivo: input.kcalObjetivo,
         proteina_g: input.proteinaGramos,
         restricciones_count: input.restricciones.length,
-        nutraceuticals_count: input.nutraceuticals.length,
         guidelines_count: input.guidelines.length,
       },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveNutraceuticalsWrite = {
+  treatmentId: string;
+  nutraceuticals: NutraceuticalLine[];
+  // Firma de la prescripcion que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda la PRESCRIPCION de nutraceuticos (checkpoint 2.3): reemplaza el set de treatment_nutraceuticals.
+// Camino propio, separado de saveProtocol, con su candado: como REEMPLAZA EN BLOQUE, un guardado con estado
+// viejo borraria lo que otro profesional acaba de prescribir. Mismo patron que saveAdjustments (lock de la
+// fila + recompute de la firma bajo el lock + rechazo si difiere).
+export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ id: treatments.id })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const curNutras = await tx
+      .select({
+        nutraceuticalId: treatmentNutraceuticals.nutraceuticalId,
+        dosage: treatmentNutraceuticals.dosage,
+        durationDays: treatmentNutraceuticals.durationDays,
+      })
+      .from(treatmentNutraceuticals)
+      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
+    const current = nutraceuticalsSignature({
+      treatmentId: input.treatmentId,
+      nutraceuticals: curNutras,
+    });
+    if (current !== input.baseSignature) throw new StaleNutraceuticalsError();
+
+    // Reemplazo total del set (el formulario envia el estado deseado).
+    await tx
+      .delete(treatmentNutraceuticals)
+      .where(eq(treatmentNutraceuticals.treatmentId, input.treatmentId));
+    if (input.nutraceuticals.length) {
+      await tx.insert(treatmentNutraceuticals).values(
+        input.nutraceuticals.map((n) => ({
+          treatmentId: input.treatmentId,
+          nutraceuticalId: n.nutraceuticalId,
+          dosage: n.dosage,
+          durationDays: n.durationDays,
+        })),
+      );
+    }
+    await recordAudit(tx, {
+      event: "treatment.nutraceuticals_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: { nutraceuticals_count: input.nutraceuticals.length },
       ip: input.ip,
     });
   });

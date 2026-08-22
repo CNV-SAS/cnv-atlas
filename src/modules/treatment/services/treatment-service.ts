@@ -12,8 +12,10 @@ import {
   acknowledgeRestrictions as writeAcknowledge,
   addTreatmentNote,
   saveAdjustments as writeAdjustments,
+  saveNutraceuticals as writeNutraceuticals,
   saveProtocol as writeProtocol,
   StaleAdjustmentsError,
+  StaleNutraceuticalsError,
   StaleProtocolError,
   TreatmentStateError,
   writeApproveProtocol,
@@ -23,6 +25,7 @@ import type {
   AddNoteInput,
   ApproveProtocolInput,
   SaveAdjustmentsInput,
+  SaveNutraceuticalsInput,
   SaveProtocolInput,
 } from "../validations";
 
@@ -59,7 +62,6 @@ export async function saveProtocol(
       kcalObjetivo: input.kcalObjetivo,
       proteinaGramos: input.proteinaGramos,
       restricciones: input.restricciones,
-      nutraceuticals: input.nutraceuticals,
       guidelines: input.guidelines,
       baseSignatures: input.baseSignatures,
       ...actor,
@@ -84,6 +86,58 @@ export async function saveProtocol(
         appError(
           "stale_write",
           "El protocolo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// Checkpoint 2.3: prescripcion de nutraceuticos, su propio camino de guardado (partido de saveProtocol).
+// Solo nutricionista (require-profession); ownership por lectura RLS del treatmentId via evaluationId.
+export async function saveNutraceuticals(
+  input: SaveNutraceuticalsInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(
+      appError(
+        "conflict",
+        "El diagnóstico debe estar confirmado (aprueba el reporte) antes de prescribir nutracéuticos.",
+      ),
+    );
+  }
+  try {
+    await writeNutraceuticals({
+      treatmentId: protocol.treatmentId,
+      nutraceuticals: input.nutraceuticals,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    // Rechazo por concurrencia: otro profesional cambió la prescripción. Aviso (no error): no se pisó su
+    // cambio y el trabajo del profesional sigue en pantalla para reaplicar.
+    if (e instanceof StaleNutraceuticalsError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió la prescripción de nutracéuticos en otra sesión (otra pestaña o " +
+            "dispositivo). Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión " +
+            "actual y vuelve a aplicar tu prescripción.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "La prescripción está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }
