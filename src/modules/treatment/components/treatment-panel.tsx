@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, esGrupoNuclear } from "@/clinical-engine/intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
+import { computeValidacion } from "@/clinical-engine/validacion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -522,6 +523,8 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        {/* Validacion (CP3.2): DERIVADA en vivo, solo lectura, no persiste (no puede desfasarse). */}
+        <ValidacionSection protocol={protocol} />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection
@@ -861,11 +864,22 @@ function IntercambioSection({
                   <td className="py-2" colSpan={3}>
                     Total
                   </td>
-                  <td className="py-2 text-right tabular-nums">{Math.round(totalKcal)} kcal</td>
+                  {/* El total dice contra QUE se compara (objetivo): las porciones enteras lo aproximan, no lo
+                      igualan, asi que los dos numeros conviven sin confundir. */}
+                  <td className="py-2 text-right tabular-nums">
+                    {Math.round(totalKcal)} kcal{" "}
+                    <span className="font-normal text-muted-foreground">(objetivo: {objetivoEfectivo})</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          {/* Linea de causa (no opcional): un total por debajo del objetivo sin explicacion hace dudar del
+              calculo (le paso a Santiago). La brecha puede ser ~7% en objetivos altos, por la regla de verduras. */}
+          <p className="text-xs text-muted-foreground">
+            Las porciones enteras aproximan el objetivo, no lo igualan; las verduras se fijan en 2 porciones. La
+            adecuación real por nutriente se ve en la validación, más abajo.
+          </p>
           <div className="flex gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar intercambio"}
@@ -1081,6 +1095,103 @@ function TiemposSection({
           </div>
         </fieldset>
       </form>
+    </section>
+  );
+}
+
+// Validacion nutricional (CP3.2): tabla de 16 nutrientes (obtenido/requerido/% cubrimiento/ICN) DERIVADA en
+// vivo del intercambio (CP1) + los macros de la cadena + sexo/edad. Solo lectura: NO se guarda, NO se edita,
+// asi que no puede desfasarse (se recalcula sola). El sodio se LIMITA (menos es mejor), el resto se cubre.
+function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
+  const snap = protocol.protocolSuggested;
+  if (!snap || protocol.pesoCalculo == null) return null;
+
+  const adjGuardados: ProtocoloAjustes = {
+    geb: protocol.adjGeb,
+    pal: protocol.adjPal,
+    kcalObj: protocol.adjKcalObj,
+    protGkg: protocol.adjProtGkg,
+    fatPct: protocol.adjFatPct,
+    pesoMeta: protocol.adjPesoMeta,
+  };
+  const ef = computeProtocoloEfectivo(snap, adjGuardados);
+  const objetivoEfectivo = Math.round(ef.calorico.kcalObj);
+  const defaults = computeIntercambio(objetivoEfectivo);
+  const savedInter = protocol.intercambioPorciones;
+
+  const porcionesPorSub: Record<string, number> = {};
+  let algunaPorcion = false;
+  for (const g of defaults) {
+    const p = savedInter?.grupos[g.id]?.porciones ?? g.porciones;
+    porcionesPorSub[g.sub] = p;
+    if (p > 0) algunaPorcion = true;
+  }
+
+  const nutrientes = computeValidacion({
+    porcionesPorSub,
+    kcalObj: objetivoEfectivo,
+    protG: ef.calorico.protG,
+    choG: ef.calorico.choG,
+    fatG: ef.calorico.fatG,
+    // sexo/edad para los targets DRI salen del snapshot sellado (caloricoInputs), no del efectivo.
+    sexoM: snap.caloricoInputs.sexoM,
+    edad: snap.caloricoInputs.edad,
+  });
+
+  // Color del % de cubrimiento. Para los nutrientes a CUBRIR: bajo = alerta, adecuado = bien, exceso = neutro.
+  // Para el SODIO (a limitar, cuidado a): la lectura se INVIERTE, bajo = bien, alto = alerta.
+  const cobColor = (n: (typeof nutrientes)[number]): string => {
+    if (n.lim) return n.cob > 100 ? "text-clinical-warning" : "text-clinical-excellent";
+    if (n.cob < 90) return "text-clinical-warning";
+    if (n.cob > 140) return "text-muted-foreground";
+    return "text-clinical-excellent";
+  };
+  const fmt = (v: number, d: number) => v.toFixed(d);
+
+  return (
+    <section className="flex flex-col gap-2 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Validación nutricional</h3>
+      <p className="text-sm text-muted-foreground">
+        Calculada del plan, no editable: cubrimiento de nutrientes contra los requerimientos por sexo y edad. El
+        sodio se limita (menos es mejor); el resto se cubre.
+      </p>
+      {!algunaPorcion ? (
+        <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          La validación aparece cuando hay porciones en la lista de intercambio.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="py-1 pr-3 text-left font-medium">Nutriente</th>
+                <th className="px-2 py-1 text-right font-medium">Obtenido</th>
+                <th className="px-2 py-1 text-right font-medium">Requerido</th>
+                <th className="px-2 py-1 text-right font-medium">Cubrimiento</th>
+                <th className="px-2 py-1 text-right font-medium">ICN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nutrientes.map((n) => (
+                <tr key={n.k} className="border-b border-border/50">
+                  <td className="py-1.5 pr-3 text-foreground">
+                    {n.l} <span className="text-xs text-muted-foreground">({n.u})</span>
+                    {n.lim ? <span className="ml-1 text-xs text-muted-foreground">· a limitar</span> : null}
+                  </td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(n.obtenido, n.d)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(n.requerido, n.d)}</td>
+                  <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + cobColor(n)}>
+                    {Math.round(n.cob)}%
+                  </td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {n.icn == null ? "—" : n.icn.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
