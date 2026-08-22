@@ -2,21 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   adjustmentSignature,
-  changedSections,
-  describeChangedSections,
+  guidelinesSignature,
   nutraceuticalsSignature,
-  protocolSectionSignatures,
-  protocolSignature,
+  restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
 import type { TreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 
-// La firma sirve a dos cosas: el `key` del ProtocolForm y el candado de concurrencia de saveProtocol. Este
-// test verifica, ejecutando:
-//  (a) un cambio REAL de un campo editable cambia la firma (remonta / rechaza la escritura vieja);
-//  (b/c) una revalidacion que NO tocó esos campos (entrega, menu, nota) deja la firma IGUAL (no remonta,
-//        no rechaza), y ademas la firma es INDEPENDIENTE DEL ORDEN de los conjuntos (cliente y servidor
-//        coinciden aunque la BD devuelva las filas en otro orden);
-//  y que changedSections/describe dicen QUE seccion cambió para el mensaje de rechazo.
+// Cada seccion editable del panel tiene su PROPIA firma (checkpoint 2.4/2.5: el "Protocolo de tratamiento"
+// se desarmo; la firma por secciones de saveProtocol se retiro). La firma sirve a dos cosas: el `key` de
+// remonte de su seccion y la base de su candado de concurrencia. Este test verifica, ejecutando, que cada
+// firma (ajustes, nutraceuticos, restricciones, guias): (a) se mueve con cualquier cambio real del set, y
+// (b) es INDEPENDIENTE DEL ORDEN (cliente y servidor coinciden aunque la BD devuelva las filas en otro orden).
 
 const BASE: TreatmentProtocol = {
   treatmentId: "t-1",
@@ -62,88 +58,6 @@ function clone(p: TreatmentProtocol): TreatmentProtocol {
     menuSuggestions: [...p.menuSuggestions],
   };
 }
-
-describe("protocolSignature: key del ProtocolForm + base del candado", () => {
-  it("es estable: el mismo protocolo re-leido da la misma firma", () => {
-    expect(protocolSignature(clone(BASE))).toBe(protocolSignature(BASE));
-  });
-
-  describe("(a) un cambio REAL del servidor cambia la firma", () => {
-    it("kcal objetivo", () => {
-      const p = clone(BASE);
-      p.kcalObjetivo = 1800;
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-    it("proteina", () => {
-      const p = clone(BASE);
-      p.proteinaGramos = 120;
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-    it("restricciones: agregar una", () => {
-      const p = clone(BASE);
-      p.restricciones.push("sin azucar");
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-    it("guias dietarias: cambiar el texto de una", () => {
-      const p = clone(BASE);
-      p.guidelines[0].text = "3 comidas al dia";
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-    it("otro tratamiento (correccion) remonta", () => {
-      const p = clone(BASE);
-      p.treatmentId = "t-2";
-      expect(protocolSignature(p)).not.toBe(protocolSignature(BASE));
-    });
-  });
-
-  describe("(b/c) revalidacion sin cambios en los campos editables: firma IGUAL", () => {
-    it("agregar una nota -> misma firma", () => {
-      const p = clone(BASE);
-      p.notes.push({ id: "note-2", note: "Nota nueva", createdAt: "2026-08-06T00:00:00Z" });
-      expect(protocolSignature(p)).toBe(protocolSignature(BASE));
-    });
-    it("generar un menu por IA -> misma firma", () => {
-      const p = clone(BASE);
-      p.menuSuggestions = [
-        { id: "m-1", provider: "groq", model: "x", promptVersion: "v1", generatedText: "menu", status: "success", latencyMs: 100, generatedAt: "2026-08-06T00:00:00Z" },
-      ];
-      expect(protocolSignature(p)).toBe(protocolSignature(BASE));
-    });
-    it("INDEPENDIENTE DEL ORDEN: reordenar restricciones/guias -> misma firma", () => {
-      // Clave para el candado: cliente y servidor deben coincidir aunque la BD devuelva las filas en otro
-      // orden (SELECT sin ORDER BY). Reordenar los conjuntos no debe mover la firma. (La prescripcion de
-      // nutraceuticos ya no vive en esta firma; su orden-independencia se prueba en nutraceuticalsSignature.)
-      const p = clone(BASE);
-      p.restricciones.reverse();
-      p.guidelines.reverse();
-      expect(protocolSignature(p)).toBe(protocolSignature(BASE));
-    });
-  });
-
-  describe("secciones: changedSections dice QUE cambió (para el mensaje de rechazo)", () => {
-    it("un cambio de objetivos marca solo la seccion objetivos", () => {
-      const p = clone(BASE);
-      p.kcalObjetivo = 1750;
-      const changed = changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(p));
-      expect(changed).toEqual(["objetivos"]);
-    });
-    it("dos cambios marcan ambas secciones", () => {
-      const p = clone(BASE);
-      p.proteinaGramos = 130;
-      p.guidelines.push({ id: "g-3", text: "Mas verduras" });
-      const changed = changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(p));
-      expect(changed.sort()).toEqual(["guidelines", "objetivos"]);
-    });
-    it("sin cambios -> ninguna seccion", () => {
-      expect(changedSections(protocolSectionSignatures(BASE), protocolSectionSignatures(clone(BASE)))).toEqual([]);
-    });
-    it("describe traduce a lenguaje de producto", () => {
-      expect(describeChangedSections(["objetivos", "restricciones"])).toBe(
-        "los objetivos (calorías/proteína), las restricciones",
-      );
-    });
-  });
-});
 
 // Tratamiento sub-tarea 2, cuidado (d): la firma de AJUSTES (adjustmentSignature) es el key de remonte de la
 // seccion de la cadena Y la base del candado de concurrencia de saveAdjustments. Debe cubrir LOS SEIS
@@ -233,5 +147,49 @@ describe("nutraceuticalsSignature: key de remonte + base del candado de la presc
     const p = clone(BASE);
     p.treatmentId = "t-2";
     expect(nutraceuticalsSignature(p)).not.toBe(sig());
+  });
+});
+
+// Checkpoint 2.4: firmas de restricciones y guias (key de remonte + base del candado de cada seccion).
+// Orden-independiente y sensible a cualquier cambio del set.
+describe("restriccionesSignature: key de remonte + base del candado de restricciones", () => {
+  const sig = () => restriccionesSignature(BASE);
+  it("igual set (aun reordenado) -> igual firma", () => {
+    const p = clone(BASE);
+    p.restricciones.reverse();
+    expect(restriccionesSignature(p)).toBe(sig());
+  });
+  it("agregar una restriccion mueve la firma", () => {
+    const p = clone(BASE);
+    p.restricciones.push("sin azucar");
+    expect(restriccionesSignature(p)).not.toBe(sig());
+  });
+  it("otro tratamiento mueve la firma", () => {
+    const p = clone(BASE);
+    p.treatmentId = "t-2";
+    expect(restriccionesSignature(p)).not.toBe(sig());
+  });
+});
+
+describe("guidelinesSignature: key de remonte + base del candado de guias", () => {
+  const asList = (p: TreatmentProtocol) => ({
+    treatmentId: p.treatmentId,
+    guidelines: p.guidelines.map((g) => g.text),
+  });
+  const sig = () => guidelinesSignature(asList(BASE));
+  it("igual set (aun reordenado) -> igual firma", () => {
+    const p = clone(BASE);
+    p.guidelines.reverse();
+    expect(guidelinesSignature(asList(p))).toBe(sig());
+  });
+  it("cambiar el texto de una guia mueve la firma", () => {
+    const p = clone(BASE);
+    p.guidelines[0].text = "3 comidas al dia";
+    expect(guidelinesSignature(asList(p))).not.toBe(sig());
+  });
+  it("otro tratamiento mueve la firma", () => {
+    const p = clone(BASE);
+    p.treatmentId = "t-2";
+    expect(guidelinesSignature(asList(p))).not.toBe(sig());
   });
 });

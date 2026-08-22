@@ -18,16 +18,18 @@ import {
   addNote,
   approveProtocol,
   saveAdjustments,
+  saveGuidelines,
   saveNutraceuticals,
-  saveProtocol,
+  saveRestricciones,
 } from "./services/treatment-service";
 import {
   acknowledgeRestrictionsSchema,
   addNoteSchema,
   approveProtocolSchema,
   saveAdjustmentsSchema,
+  saveGuidelinesSchema,
   saveNutraceuticalsSchema,
-  saveProtocolSchema,
+  saveRestriccionesSchema,
 } from "./validations";
 
 // Actions del protocolo de tratamiento (B13). Thin (regla 2): autorizan por policy,
@@ -51,22 +53,6 @@ function parseJsonArray(raw: FormDataEntryValue | null): unknown {
   }
 }
 
-// Objeto JSON (firma base del candado de concurrencia): vacio/invalido -> undefined, para que la
-// validacion aguas abajo falle (baseSignatures es requerido).
-function parseJsonObject(raw: FormDataEntryValue | null): unknown {
-  if (typeof raw !== "string" || raw.trim() === "") return undefined;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
-}
-
-function intOrNull(raw: FormDataEntryValue | null): number | null {
-  const s = typeof raw === "string" ? raw.trim() : "";
-  return s === "" ? null : Number(s);
-}
-
 // Vacio -> null (para que Zod no coaccione "" a 0); string -> lo coacciona Zod a numero.
 function strOrNull(raw: FormDataEntryValue | null): string | null {
   const s = typeof raw === "string" ? raw.trim() : "";
@@ -78,42 +64,69 @@ async function actor() {
   return { ip: ip === "unknown" ? null : ip };
 }
 
-export async function saveProtocolAction(
+// Checkpoint 2.4: restricciones alimentarias, su propia accion (partida de saveProtocolAction, que se
+// retiro). Mismo patron que los ajustes/nutraceuticos: candado, firma de remonte, stale_write como aviso.
+export async function saveRestriccionesAction(
   _prev: TreatmentActionState,
   form: FormData,
 ): Promise<TreatmentActionState> {
   const user = await requireUser();
   if (!canManageTreatment(user)) return fail("No autorizado.");
 
-  const parsed = saveProtocolSchema.safeParse({
+  const parsed = saveRestriccionesSchema.safeParse({
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    kcalObjetivo: intOrNull(form.get("kcalObjetivo")),
-    proteinaGramos: intOrNull(form.get("proteinaGramos")),
     restricciones: parseJsonArray(form.get("restricciones")),
-    guidelines: parseJsonArray(form.get("guidelines")),
-    baseSignatures: parseJsonObject(form.get("baseSignatures")),
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
   });
   if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Datos del protocolo inválidos.");
+    return fail(parsed.error.issues[0]?.message ?? "Restricciones inválidas.");
   }
 
-  const result = await saveProtocol(parsed.data, {
+  const result = await saveRestricciones(parsed.data, {
     actorId: user.id,
     actorEmail: user.email,
     ...(await actor()),
   });
   if (!result.ok) {
-    // Rechazo por concurrencia: aviso (amber), no error. NO se revalida (el dato no cambio) y el estado del
-    // formulario se preserva, asi que el profesional no pierde lo que escribio.
     if (result.error.code === "stale_write") {
       return { error: null, success: null, warning: result.error.message };
     }
     return fail(result.error.message);
   }
+  // NO se revalida: la seccion se remonta por su `key` (restriccionesSignature); el refresh lo dispara el
+  // hook useFormToastRefreshOnSuccess DESPUES del toast (mismo motivo que en la cadena/nutraceuticos).
+  return { error: null, success: "Restricciones guardadas.", warning: null };
+}
 
-  // NO se revalida aqui: el form se remonta por su `key` (protocolSignature) y el refresh lo dispara el hook
-  // useFormToastRefreshOnSuccess DESPUES del toast, para que el aviso de exito no se pierda en la carrera.
-  return { error: null, success: "Protocolo guardado.", warning: null };
+// Checkpoint 2.4: guias dietarias, su propia accion.
+export async function saveGuidelinesAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = saveGuidelinesSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    guidelines: parseJsonArray(form.get("guidelines")),
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Guías inválidas.");
+  }
+
+  const result = await saveGuidelines(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Guías guardadas.", warning: null };
 }
 
 // Checkpoint 2.3: prescripcion de nutraceuticos, su propia accion (partida de saveProtocolAction). Mismo

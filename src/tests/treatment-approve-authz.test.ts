@@ -21,7 +21,6 @@ vi.mock("@/modules/treatment/data/actor-profession-reader", () => ({
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   writeApproveProtocol: vi.fn(),
   saveAdjustments: vi.fn(),
-  saveProtocol: vi.fn(),
   addTreatmentNote: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
   TreatmentStateError: class TreatmentStateError extends Error {},

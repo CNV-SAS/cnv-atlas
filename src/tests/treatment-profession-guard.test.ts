@@ -25,7 +25,8 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
   getTreatmentForApproval: vi.fn(),
 }));
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
-  saveProtocol: vi.fn(),
+  saveRestricciones: vi.fn(),
+  saveGuidelines: vi.fn(),
   saveAdjustments: vi.fn(),
   saveNutraceuticals: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
@@ -51,16 +52,18 @@ import {
   addTreatmentNote,
   acknowledgeRestrictions as writeAcknowledge,
   saveAdjustments as writeAdjustments,
+  saveGuidelines as writeGuidelines,
   saveNutraceuticals as writeNutraceuticals,
-  saveProtocol as writeProtocol,
+  saveRestricciones as writeRestricciones,
 } from "@/modules/treatment/data/treatment-writer";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
 import {
   acknowledgeRestrictions,
   addNote,
   saveAdjustments,
+  saveGuidelines,
   saveNutraceuticals,
-  saveProtocol,
+  saveRestricciones,
 } from "@/modules/treatment/services/treatment-service";
 
 const profOf = vi.mocked(getActorProfession);
@@ -75,15 +78,8 @@ const actor = { actorId: "user-x", actorEmail: "x@cnv", ip: null };
 // El servicio solo lee treatmentId + diagnosisConfirmed en estas ops; el resto no se toca.
 const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as TreatmentProtocol;
 
-const SAVE_INPUT = {
-  evaluationId: "E1",
-  kcalObjetivo: null,
-  proteinaGramos: null,
-  restricciones: [],
-  guidelines: [],
-  // El guard de profesion rechaza antes del candado de concurrencia; el valor no importa, pero el tipo lo pide.
-  baseSignatures: { objetivos: "", restricciones: "", guidelines: "" },
-};
+const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" };
+const GUIDE_INPUT = { evaluationId: "E1", guidelines: [], baseSignature: "" };
 const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
 const ADJ_INPUT = {
   evaluationId: "E1",
@@ -102,26 +98,39 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     readProtocol.mockResolvedValue(CONFIRMED);
   });
 
-  it("saveProtocol: profesional sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+  it("saveRestricciones: profesional sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
     profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await saveProtocol(SAVE_INPUT, actor);
+    let r = await saveRestricciones(RESTR_INPUT, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeProtocol).not.toHaveBeenCalled();
+    expect(writeRestricciones).not.toHaveBeenCalled();
 
     profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveProtocol(SAVE_INPUT, actor);
+    r = await saveRestricciones(RESTR_INPUT, actor);
     expect(r.ok).toBe(true);
-    expect(writeProtocol).toHaveBeenCalledTimes(1);
+    expect(writeRestricciones).toHaveBeenCalledTimes(1);
   });
 
-  it("saveProtocol: un NO-profesional (admin, sin perfil) NO cae en el guard y escribe", async () => {
+  it("saveRestricciones: un NO-profesional (admin, sin perfil) NO cae en el guard y escribe", async () => {
     // El guard es de ambito de practica del profesional; admin queda gobernado por su policy, no
     // por este guard (no le cambia lo que ya podia hacer via canManageTreatment).
     profOf.mockResolvedValueOnce(NOT_PRO);
-    const r = await saveProtocol(SAVE_INPUT, actor);
+    const r = await saveRestricciones(RESTR_INPUT, actor);
     expect(r.ok).toBe(true);
-    expect(writeProtocol).toHaveBeenCalledTimes(1);
+    expect(writeRestricciones).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveGuidelines: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO_NULL);
+    let r = await saveGuidelines(GUIDE_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeGuidelines).not.toHaveBeenCalled();
+
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
+    r = await saveGuidelines(GUIDE_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeGuidelines).toHaveBeenCalledTimes(1);
   });
 
   it("saveAdjustments: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {

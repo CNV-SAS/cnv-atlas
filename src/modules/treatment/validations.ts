@@ -2,24 +2,8 @@ import { z } from "zod";
 
 // Validaciones del protocolo de tratamiento (B13). Toda entrada externa pasa por Zod
 // (ARCHITECTURE). Los ids se validan con z.guid(): z.uuid() de Zod 4 rechaza los UUIDs
-// deterministas del seed. Los objetivos son opcionales (el tratamiento puede existir sin
-// ellos); cuando vienen, se acotan a rangos clinicos razonables para atajar errores obvios.
-
-// Objetivo calorico diario: rango amplio pero acotado (evita ceros o miles absurdos).
-const kcalSchema = z.coerce
-  .number()
-  .int("El objetivo calórico debe ser un número entero.")
-  .min(500, "El objetivo calórico es demasiado bajo.")
-  .max(6000, "El objetivo calórico es demasiado alto.")
-  .nullable();
-
-// Proteina objetivo en gramos por dia.
-const proteinSchema = z.coerce
-  .number()
-  .int("La proteína debe ser un número entero de gramos.")
-  .min(0, "La proteína no puede ser negativa.")
-  .max(400, "El objetivo de proteína es demasiado alto.")
-  .nullable();
+// deterministas del seed. Nota (checkpoint 2): el objetivo calorico y la proteina ya NO se
+// validan aqui como input del protocolo; el objetivo sale de la cadena (adj_*), no de un input manual.
 
 const restriccionSchema = z
   .string()
@@ -44,28 +28,27 @@ const guidelineSchema = z
   .min(1)
   .max(1000, "La guía dietaria es demasiado larga.");
 
-// Firma base por seccion (candado de concurrencia): la del protocolo que el cliente cargó. Las claves
-// espejan SectionKey de protocol-signature.ts. El servidor compara contra la firma actual bajo lock; si
-// difiere, rechaza la escritura (no pisa un cambio hecho en otra sesion). La prescripcion de nutraceuticos
-// se partio a su propia accion (checkpoint 2.3), asi que ya no es seccion aqui.
-const sectionSignaturesSchema = z.object({
-  objetivos: z.string(),
-  restricciones: z.string(),
-  guidelines: z.string(),
-});
+// Checkpoint 2.4/2.5: el "Protocolo de tratamiento" se desarmo. Cada seccion editable tiene su propia
+// accion/firma/candado (objetivo -> cadena; nutraceuticos, restricciones, guias por separado); saveProtocol
+// y su firma por secciones se retiraron. baseSignature es un string opaco: se compara por igualdad.
 
-// Guardado del protocolo: objetivos + set de guias (los sets se reemplazan por completo). La prescripcion
-// de nutraceuticos vive en saveNutraceuticalsSchema (camino propio, checkpoint 2.3).
-export const saveProtocolSchema = z.object({
+// Restricciones alimentarias (checkpoint 2.4): set completo + firma base del candado.
+export const saveRestriccionesSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
-  kcalObjetivo: kcalSchema,
-  proteinaGramos: proteinSchema,
   restricciones: z.array(restriccionSchema).max(20, "Demasiadas restricciones."),
-  guidelines: z.array(guidelineSchema).max(30, "Demasiadas guías dietarias."),
-  baseSignatures: sectionSignaturesSchema,
+  baseSignature: z.string().max(4000).default(""),
 });
 
-export type SaveProtocolInput = z.infer<typeof saveProtocolSchema>;
+export type SaveRestriccionesInput = z.infer<typeof saveRestriccionesSchema>;
+
+// Guias dietarias (checkpoint 2.4): set completo + firma base del candado.
+export const saveGuidelinesSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  guidelines: z.array(guidelineSchema).max(30, "Demasiadas guías dietarias."),
+  baseSignature: z.string().max(8000).default(""),
+});
+
+export type SaveGuidelinesInput = z.infer<typeof saveGuidelinesSchema>;
 
 // Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
 // reemplaza por completo (el formulario envia el estado final deseado).

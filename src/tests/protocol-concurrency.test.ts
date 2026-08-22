@@ -3,17 +3,16 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   adjustmentSignature,
+  guidelinesSignature,
   nutraceuticalsSignature,
-  protocolSectionSignatures,
-  type SectionSignatures,
+  restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
 
-// Candado de concurrencia de saveProtocol (BD real). Verifica ejecutando lo que pidio la revision:
-//  - camino feliz: firma base == actual -> escribe;
-//  - carrera: firma base != actual (alguien cambio el protocolo desde que se cargo) -> RECHAZA sin pisar,
-//    con StaleProtocolError, y el dato queda INTACTO (saveProtocol reemplaza en bloque: sin candado, una
-//    escritura ciega borraria la prescripcion entera).
-// Se auto-salta sin DATABASE_URL.
+// Candado de concurrencia de las secciones editables del tratamiento (BD real): restricciones, guias,
+// nutraceuticos, ajustes de la cadena. Cada una tiene su propia accion que REEMPLAZA su set EN BLOQUE, con
+// su candado (checkpoint 2.4/2.5: el "Protocolo de tratamiento" y su firma por secciones se desarmaron).
+// Verifica, por cada seccion: camino feliz (firma base == actual -> escribe) y carrera (firma base != actual
+// -> RECHAZA sin pisar, con su Stale*Error; el dato queda INTACTO). Se auto-salta sin DATABASE_URL.
 
 vi.mock("server-only", () => ({}));
 
@@ -25,16 +24,18 @@ try {
 }
 HAS_DB = Boolean(process.env.DATABASE_URL);
 
-describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () => {
+describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamiento (BD real)", () => {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let db: any;
   let schema: any;
-  let saveProtocol: any;
-  let StaleProtocolError: any;
   let saveAdjustments: any;
   let StaleAdjustmentsError: any;
   let saveNutraceuticals: any;
   let StaleNutraceuticalsError: any;
+  let saveRestricciones: any;
+  let StaleRestriccionesError: any;
+  let saveGuidelines: any;
+  let StaleGuidelinesError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -43,18 +44,21 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
   let nutraB: string;
   const actor = { actorId: "", actorEmail: "concurrency@test", ip: null };
 
-  // Lee el estado actual del protocolo y devuelve su firma por seccion (lo que el cliente mandaria como base).
-  // La prescripcion de nutraceuticos ya NO es seccion del protocolo (checkpoint 2.3, su propia firma abajo).
-  async function currentSignatures(): Promise<SectionSignatures> {
+  // Firmas actuales de cada seccion editable (base de su candado). El "Protocolo de tratamiento" se desarmo
+  // (checkpoint 2.4/2.5): cada una tiene su propia accion/candado/firma, no una firma por secciones.
+  async function currentRestriccionesSignature(): Promise<string> {
     const [t] = await db
-      .select({ kcal: schema.treatments.kcalObjetivo, prot: schema.treatments.proteinaGramos, restr: schema.treatments.restricciones })
+      .select({ restr: schema.treatments.restricciones })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
+    return restriccionesSignature({ treatmentId, restricciones: t.restr ?? [] });
+  }
+  async function currentGuidelinesSignature(): Promise<string> {
     const guides = await db
       .select({ text: schema.treatmentDietGuidelines.guidelineText })
       .from(schema.treatmentDietGuidelines)
       .where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
-    return protocolSectionSignatures({ treatmentId, kcalObjetivo: t.kcal, proteinaGramos: t.prot, restricciones: t.restr ?? [], guidelines: guides });
+    return guidelinesSignature({ treatmentId, guidelines: guides.map((g: { text: string }) => g.text) });
   }
 
   // Firma actual de la PRESCRIPCION de nutraceuticos (base del candado de saveNutraceuticals).
@@ -75,12 +79,14 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
     ({
-      saveProtocol,
-      StaleProtocolError,
       saveAdjustments,
       StaleAdjustmentsError,
       saveNutraceuticals,
       StaleNutraceuticalsError,
+      saveRestricciones,
+      StaleRestriccionesError,
+      saveGuidelines,
+      StaleGuidelinesError,
     } = await import("@/modules/treatment/data/treatment-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
@@ -124,59 +130,43 @@ describe.skipIf(!HAS_DB)("saveProtocol: candado de concurrencia (BD real)", () =
     await db.execute(dsql`set session_replication_role = default`);
   });
 
-  it("camino feliz: la firma base coincide con la actual -> escribe", async () => {
-    const base = await currentSignatures();
-    await saveProtocol({
-      treatmentId,
-      kcalObjetivo: 1900, // cambio real
-      proteinaGramos: 110,
-      restricciones: ["sin gluten"],
-      guidelines: ["5 comidas al dia"],
-      baseSignatures: base,
-      ...actor,
-    });
-    const [t] = await db.select({ kcal: schema.treatments.kcalObjetivo }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.kcal).toBe(1900);
+  // Checkpoint 2.4: candado de saveRestricciones (reemplaza el arreglo treatments.restricciones EN BLOQUE).
+  // El seed arranca con ["sin gluten"].
+  it("restricciones camino feliz: firma base == actual -> escribe", async () => {
+    const base = await currentRestriccionesSignature();
+    await saveRestricciones({ treatmentId, restricciones: ["sin gluten", "sin lactosa"], baseSignature: base, ...actor });
+    const [t] = await db.select({ restr: schema.treatments.restricciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(t.restr).toEqual(["sin gluten", "sin lactosa"]);
   });
 
-  it("carrera: la firma base NO coincide (otro cambio las restricciones) -> rechaza sin pisar", async () => {
-    // Base con una seccion tampereada = simula que el protocolo cambio desde que el cliente lo cargo.
-    const stale: SectionSignatures = { ...(await currentSignatures()), restricciones: "STALE-DE-OTRA-SESION" };
-
+  it("restricciones carrera: firma base != actual -> rechaza sin pisar (StaleRestriccionesError)", async () => {
+    // Sin candado, este guardado ciego borraria una restriccion que otro acaba de fijar -> un plan que
+    // ignora una alergia. La firma vieja no coincide -> rechaza.
     await expect(
-      saveProtocol({
-        treatmentId,
-        kcalObjetivo: 999, // lo que se PERDERIA si pisara
-        proteinaGramos: 110,
-        restricciones: ["sin lactosa"],
-        guidelines: ["5 comidas al dia"],
-        baseSignatures: stale,
-        ...actor,
-      }),
-    ).rejects.toBeInstanceOf(StaleProtocolError);
-
-    // El dato quedo INTACTO: el kcal no se piso.
-    const [t] = await db.select({ kcal: schema.treatments.kcalObjetivo }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.kcal).toBe(1900); // el del camino feliz, no 999
+      saveRestricciones({ treatmentId, restricciones: [], baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
+    ).rejects.toBeInstanceOf(StaleRestriccionesError);
+    const [t] = await db.select({ restr: schema.treatments.restricciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect(t.restr).toEqual(["sin gluten", "sin lactosa"]); // no se borro
   });
 
-  it("la seccion reportada en el rechazo es la que cambio", async () => {
-    const stale: SectionSignatures = { ...(await currentSignatures()), restricciones: "STALE" };
-    try {
-      await saveProtocol({
-        treatmentId,
-        kcalObjetivo: 1900,
-        proteinaGramos: 110,
-        restricciones: ["sin gluten"],
-        guidelines: ["5 comidas al dia"],
-        baseSignatures: stale,
-        ...actor,
-      });
-      throw new Error("deberia haber lanzado StaleProtocolError");
-    } catch (e: any) {
-      expect(e).toBeInstanceOf(StaleProtocolError);
-      expect(e.sections).toEqual(["restricciones"]);
-    }
+  // Checkpoint 2.4: candado de saveGuidelines (reemplaza el set de treatment_diet_guidelines EN BLOQUE).
+  async function guideCount(): Promise<number> {
+    const rows = await db.select({ id: schema.treatmentDietGuidelines.id }).from(schema.treatmentDietGuidelines).where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
+    return rows.length;
+  }
+
+  it("guias camino feliz: firma base == actual -> escribe (reemplaza el set)", async () => {
+    const base = await currentGuidelinesSignature();
+    await saveGuidelines({ treatmentId, guidelines: ["5 comidas al dia", "mas verduras"], baseSignature: base, ...actor });
+    expect(await guideCount()).toBe(2);
+  });
+
+  it("guias carrera: firma base != actual -> rechaza sin pisar (StaleGuidelinesError)", async () => {
+    const antes = await guideCount();
+    await expect(
+      saveGuidelines({ treatmentId, guidelines: [], baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
+    ).rejects.toBeInstanceOf(StaleGuidelinesError);
+    expect(await guideCount()).toBe(antes); // no se borraron
   });
 
   // Tratamiento sub-tarea 2: candado de saveAdjustments (BD real). saveAdjustments ESCRIBE LAS SEIS columnas

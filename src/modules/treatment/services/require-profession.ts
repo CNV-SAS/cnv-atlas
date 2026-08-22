@@ -7,9 +7,9 @@ import { getActorProfession } from "../data/actor-profession-reader";
 
 // GUARD de ámbito de práctica de las escrituras del PROTOCOLO NUTRICIONAL (T2b). El protocolo del
 // Nivel IV es nutricional; Gildardo cerró Q17 (tercera ronda, 2026-07-30): "el protocolo nutricional
-// lo aprueba el nutricionista". Así que las cinco escrituras de prescripción (saveProtocol,
-// saveAdjustments, acknowledgeRestrictions, approveProtocol, generateMenu) exigen
-// profession === "nutricionista" del actor.
+// lo aprueba el nutricionista". Así que las escrituras de prescripción (saveRestricciones, saveGuidelines,
+// saveNutraceuticals, saveAdjustments, acknowledgeRestrictions, approveProtocol, generateMenu) exigen
+// profession === "nutricionista" del actor. (El bloque "saveProtocol" se desarmo en el checkpoint 2.)
 //
 // Es la única defensa a NIVEL DE ACCIÓN: las server actions se invocan sin pasar por la UI (un enlace
 // guardado, un cache, una llamada directa con la sesión abierta), así que ocultar la subpestaña por

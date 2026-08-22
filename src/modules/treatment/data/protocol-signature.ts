@@ -1,70 +1,29 @@
-// Firma de los campos que EDITA el ProtocolForm. Pura y AUTOCONTENIDA (sin imports server-only): la usan
-// el panel client (para el `key`) y el writer server (para el candado de concurrencia). Un solo lugar =
-// cliente y servidor computan lo mismo, sin deriva.
+// Firmas de las secciones EDITABLES del panel de tratamiento. Puras y AUTOCONTENIDAS (sin imports
+// server-only): las usan el panel client (para el `key` de remonte) y el writer server (para el candado de
+// concurrencia). Un solo lugar = cliente y servidor computan lo mismo, sin deriva.
 //
-// El defecto que arranco esto NO es solo de la lista de nutraceuticos: TODO el estado editable del panel
-// (kcal, proteina, restricciones, prescripcion, guias) es useState inicializado UNA sola vez desde el prop,
-// asi que si el servidor cambia un campo tras el montaje, el panel se queda pegado sin forma de notarlo (los
-// nutraceuticos se delataron porque la seccion de entrega muestra el dato real; kcal/proteina no).
-//
-// Dos usos:
-//  - `key={protocolSignature(p)}` en ProtocolForm: un cambio real del servidor mueve la firma y remonta el
-//    form (re-deriva del prop); una revalidacion que no tocó estos campos (entrega/menu/nota) la deja igual
-//    y no remonta, preservando una edicion en curso.
-//  - candado de concurrencia en saveProtocol: el cliente manda la firma POR SECCION de lo que cargó; el
-//    servidor recomputa la actual bajo lock y, si difiere, rechaza la escritura (no pisa el cambio ajeno) y
-//    dice QUE seccion cambió. Sin esto, saveProtocol REEMPLAZA en bloque: un guardado con estado viejo
-//    borraria la prescripcion entera sin dejar rastro.
+// El defecto que arranco esto: TODO el estado editable del panel es useState inicializado UNA sola vez desde
+// el prop, asi que si el servidor cambia un campo tras el montaje, el panel se queda pegado (estado pegado).
+// La firma keyea la seccion: un cambio del servidor la remonta. Y como cada guardado REEMPLAZA su set en
+// bloque, la firma es la base del candado: el cliente manda la que cargó, el servidor la recomputa bajo lock
+// y rechaza si difiere (no pisa un cambio ajeno). Checkpoint 2.4/2.5: cada seccion editable (cadena/ajustes,
+// nutraceuticos, restricciones, guias) tiene su PROPIA accion y su PROPIA firma; la maquinaria de "firma por
+// secciones del protocolo" (protocolSectionSignatures/saveProtocol) se retiro, era de un solo proposito.
 
-// Entrada minima estructural: TreatmentProtocol la satisface (superset), y el writer arma este subset desde
-// las filas de BD. Los conjuntos se firman ORDENADOS: cliente y servidor deben coincidir sin importar el
-// orden en que la BD devuelva las filas (un SELECT sin ORDER BY no garantiza orden).
-export type SignableProtocol = {
-  treatmentId: string;
-  kcalObjetivo: number | null;
-  proteinaGramos: number | null;
-  restricciones: string[];
-  guidelines: { text: string }[];
-};
-
-// La prescripcion de nutraceuticos se PARTIO a su propia accion/candado (checkpoint 2.3, misma razon que
-// los ajustes: dos formularios sobre una accion que reemplaza en bloque se pisan). Ya no es seccion del
-// protocolo; su firma vive abajo (nutraceuticalsSignature).
-export type SectionKey = "objetivos" | "restricciones" | "guidelines";
-
-export type SectionSignatures = Record<SectionKey, string>;
-
-// Etiqueta en lenguaje de producto de cada seccion, para el mensaje de rechazo (el profesional decide con
-// criterio: sabe QUE cambió, no solo que "algo cambió").
-const SECTION_LABEL: Record<SectionKey, string> = {
-  objetivos: "los objetivos (calorías/proteína)",
-  restricciones: "las restricciones",
-  guidelines: "las guías dietarias",
-};
-
-export function protocolSectionSignatures(p: SignableProtocol): SectionSignatures {
-  return {
-    objetivos: `${p.kcalObjetivo ?? ""}:${p.proteinaGramos ?? ""}`,
-    restricciones: [...p.restricciones].sort().join("|"),
-    guidelines: [...p.guidelines.map((g) => g.text)].sort().join("|"),
-  };
+// Firma de una lista de texto (treatmentId + el set ORDENADO): base del candado + key de remonte. Ordenado
+// para no depender del orden de filas (un SELECT sin ORDER BY no lo garantiza).
+function stringListSignature(treatmentId: string, items: string[]): string {
+  return `${treatmentId}§${[...items].sort().join("|")}`;
 }
 
-// Firma combinada para el `key` del form. Incluye treatmentId (un tratamiento distinto, p. ej. tras una
-// correccion, siempre remonta).
-export function protocolSignature(p: SignableProtocol): string {
-  const s = protocolSectionSignatures(p);
-  return [p.treatmentId, s.objetivos, s.restricciones, s.guidelines].join("§");
+// Restricciones alimentarias (columna treatments.restricciones, text[]).
+export function restriccionesSignature(p: { treatmentId: string; restricciones: string[] }): string {
+  return stringListSignature(p.treatmentId, p.restricciones);
 }
 
-// Secciones que difieren entre una base (lo que el cliente cargó) y la actual (lo que hay en BD ahora).
-export function changedSections(base: SectionSignatures, current: SectionSignatures): SectionKey[] {
-  return (Object.keys(current) as SectionKey[]).filter((k) => base[k] !== current[k]);
-}
-
-// Frase legible con las secciones que cambiaron ("los objetivos (calorías/proteína), las restricciones").
-export function describeChangedSections(keys: SectionKey[]): string {
-  return keys.map((k) => SECTION_LABEL[k]).join(", ");
+// Guias dietarias (tabla treatment_diet_guidelines).
+export function guidelinesSignature(p: { treatmentId: string; guidelines: string[] }): string {
+  return stringListSignature(p.treatmentId, p.guidelines);
 }
 
 // --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---

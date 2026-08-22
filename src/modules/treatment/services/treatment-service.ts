@@ -5,18 +5,19 @@ import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
-import { describeChangedSections } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import { requireNutricionista } from "./require-profession";
 import {
   acknowledgeRestrictions as writeAcknowledge,
   addTreatmentNote,
   saveAdjustments as writeAdjustments,
+  saveGuidelines as writeGuidelines,
   saveNutraceuticals as writeNutraceuticals,
-  saveProtocol as writeProtocol,
+  saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
+  StaleGuidelinesError,
   StaleNutraceuticalsError,
-  StaleProtocolError,
+  StaleRestriccionesError,
   TreatmentStateError,
   writeApproveProtocol,
 } from "../data/treatment-writer";
@@ -25,8 +26,9 @@ import type {
   AddNoteInput,
   ApproveProtocolInput,
   SaveAdjustmentsInput,
+  SaveGuidelinesInput,
   SaveNutraceuticalsInput,
-  SaveProtocolInput,
+  SaveRestriccionesInput,
 } from "../validations";
 
 // Servicio del protocolo de tratamiento (la logica vive aqui; las actions son thin,
@@ -37,55 +39,85 @@ import type {
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
-export async function saveProtocol(
-  input: SaveProtocolInput,
+// Checkpoint 2.4: restricciones alimentarias, su propio camino de guardado. Solo nutricionista; ownership
+// por lectura RLS del treatmentId via evaluationId. La lista alimenta el menu (una restriccion perdida por
+// sobreescritura produce un plan que ignora una alergia): por eso el candado, como en nutraceuticos.
+export async function saveRestricciones(
+  input: SaveRestriccionesInput,
   actor: Actor,
 ): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  // Guard interino de ambito de practica: sin profesion configurada no se escribe (ver
-  // require-profession.ts). Va tras el not_found (RLS) para no filtrar existencia.
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
   if (!protocol.diagnosisConfirmed) {
-    return err(
-      appError(
-        "conflict",
-        "El diagnóstico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
-      ),
-    );
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar las restricciones."));
   }
-
   try {
-    await writeProtocol({
+    await writeRestricciones({
       treatmentId: protocol.treatmentId,
-      kcalObjetivo: input.kcalObjetivo,
-      proteinaGramos: input.proteinaGramos,
       restricciones: input.restricciones,
-      guidelines: input.guidelines,
-      baseSignatures: input.baseSignatures,
+      baseSignature: input.baseSignature,
       ...actor,
     });
   } catch (e) {
-    // Rechazo por concurrencia: NO se pisó el cambio ajeno. Va como stale_write (el action lo muestra como
-    // aviso, no error) y nombra que seccion cambió para que el profesional decida con criterio.
-    if (e instanceof StaleProtocolError) {
+    if (e instanceof StaleRestriccionesError) {
       return err(
         appError(
           "stale_write",
-          `El protocolo cambió en otra sesión (otra pestaña o dispositivo): ${describeChangedSections(e.sections)}. ` +
-            "Para no borrar ese cambio no se guardó lo que hiciste. Tu trabajo sigue en pantalla: recarga para " +
-            "ver la versión actual y vuelve a aplicarlo.",
+          "Otro profesional cambió las restricciones en otra sesión (otra pestaña o dispositivo). Para no " +
+            "borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
         ),
       );
     }
-    // lock_timeout (55P03): otra sesión tiene el protocolo bloqueado y no se liberó a tiempo. No es un
-    // cuelgue: se avisa y el profesional reintenta (su trabajo sigue en pantalla, igual que en stale_write).
     if ((e as { code?: string })?.code === "55P03") {
       return err(
         appError(
           "stale_write",
-          "El protocolo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+          "Las restricciones están bloqueadas por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// Checkpoint 2.4: guias dietarias, su propio camino de guardado.
+export async function saveGuidelines(
+  input: SaveGuidelinesInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar las guías dietarias."));
+  }
+  try {
+    await writeGuidelines({
+      treatmentId: protocol.treatmentId,
+      guidelines: input.guidelines,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleGuidelinesError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió las guías dietarias en otra sesión (otra pestaña o dispositivo). Para no " +
+            "borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "Las guías están bloqueadas por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }

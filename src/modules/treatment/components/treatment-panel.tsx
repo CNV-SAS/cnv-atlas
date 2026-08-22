@@ -17,14 +17,15 @@ import {
   addNoteAction,
   generateMenuAction,
   saveAdjustmentsAction,
-  saveProtocolAction,
+  saveGuidelinesAction,
+  saveRestriccionesAction,
   type TreatmentActionState,
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
 import {
   adjustmentSignature,
-  protocolSectionSignatures,
-  protocolSignature,
+  guidelinesSignature,
+  restriccionesSignature,
 } from "../data/protocol-signature";
 import type { MenuSuggestion, TreatmentProtocol } from "../data/treatment-view-types";
 
@@ -319,6 +320,16 @@ function CadenaCaloricaSection({
               : undefined
           }
         />
+        {/* Biody reubicado aqui (checkpoint 2.4), aclarado: son DOS fuentes distintas de gasto. Santiago
+            dudo al ver "medido 2590" al lado de la cadena que calcula otro numero. La base del plan es el
+            CALCULADO (como el HTML); el medido queda como referencia del equipo. */}
+        {protocol.kcalSugerido != null ? (
+          <p className="pt-1 text-xs text-muted-foreground">
+            El equipo (Biody) <strong>midió</strong> un gasto de {protocol.kcalSugerido} kcal; la cadena de
+            arriba lo <strong>calcula</strong> por fórmula (GEB × actividad). Son dos fuentes distintas: la
+            base del plan es el <strong>calculado</strong>, el medido queda como referencia.
+          </p>
+        ) : null}
 
         {/* Reparto de macronutrientes (sub-tarea 3). El profesional FIJA proteina y grasa; los carbohidratos
             salen del residuo (calculado). El tag lo hace explicito para que no crea que ajusta los tres. */}
@@ -441,17 +452,9 @@ export function TreatmentPanel({
             evaluación (versión nueva de toda la cadena), no se edita aquí.
           </p>
         ) : null}
-        {/* key = firma de los campos guardados que edita el form. Un cambio real del servidor (guardado,
-            correccion) remonta y re-deriva el estado desde el protocolo; una revalidacion que no tocó esos
-            campos (entrega, menu, nota) NO remonta, preservando una edicion en curso. Ver protocol-signature. */}
-        <ProtocolForm
-          key={protocolSignature(protocol)}
-          evaluationId={evaluationId}
-          protocol={protocol}
-          locked={locked}
-        />
-        {/* key = firma de los seis ajustes: un cambio del servidor (otro profesional, o el propio guardado)
-            remonta la seccion y re-deriva el estado, para que no quede pegada mostrando valores viejos. */}
+        {/* El bloque "Protocolo de tratamiento" se DESARMO (checkpoint 2.4/2.5): el objetivo vive en la
+            cadena, la prescripcion y el despacho en Rutas, y restricciones/guias son secciones propias abajo.
+            key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection
           key={adjustmentSignature({
             treatmentId: protocol.treatmentId,
@@ -466,7 +469,27 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
+        <GuidelinesSection
+          key={guidelinesSignature({
+            treatmentId: protocol.treatmentId,
+            guidelines: protocol.guidelines.map((g) => g.text),
+          })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         <CelularSection celular={celular} />
+        {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
+            cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
+        <RestriccionesSection
+          key={restriccionesSignature({
+            treatmentId: protocol.treatmentId,
+            restricciones: protocol.restricciones,
+          })}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
         <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
       </CardContent>
@@ -554,7 +577,9 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
   );
 }
 
-function ProtocolForm({
+// Restricciones alimentarias (checkpoint 2.4): seccion propia, JUNTO al menu (son su insumo). Guardado
+// propio con candado y firma de remonte (saveRestriccionesAction), como la cadena/nutraceuticos.
+function RestriccionesSection({
   evaluationId,
   protocol,
   locked,
@@ -563,47 +588,32 @@ function ProtocolForm({
   protocol: TreatmentProtocol;
   locked: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(saveProtocolAction, EMPTY);
-  // RefreshOnSuccess: mismo motivo que CadenaCaloricaSection. Este form se remonta por protocolSignature al
-  // guardar; el aviso de exito se perdia en la carrera con el remonte. Toast primero, refresh despues.
+  const [state, formAction, pending] = useActionState(saveRestriccionesAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
-
   const [restricciones, setRestricciones] = useState<string[]>(protocol.restricciones);
   const [restrInput, setRestrInput] = useState("");
-  const [guidelines, setGuidelines] = useState<string[]>(protocol.guidelines.map((g) => g.text));
-  const [guideInput, setGuideInput] = useState("");
-
   const addRestriccion = () => {
     const v = restrInput.trim();
     if (v && !restricciones.includes(v)) setRestricciones([...restricciones, v]);
     setRestrInput("");
   };
-  const addGuideline = () => {
-    const v = guideInput.trim();
-    if (v) setGuidelines([...guidelines, v]);
-    setGuideInput("");
-  };
-
-  // Firma base para el candado de concurrencia: se computa del PROTOCOLO CARGADO (el prop), no del estado
-  // editado. Como el form se remonta cuando el servidor cambia (por el `key`), esta firma siempre refleja el
-  // estado que el cliente tiene enfrente. El servidor la compara con la actual bajo lock y rechaza si difiere.
-  const baseSignatures = JSON.stringify(protocolSectionSignatures(protocol));
+  const baseSignature = restriccionesSignature({
+    treatmentId: protocol.treatmentId,
+    restricciones: protocol.restricciones,
+  });
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
-      <input type="hidden" name="evaluationId" value={evaluationId} />
-      <input type="hidden" name="baseSignatures" value={baseSignatures} />
-      <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
-      <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
-
-      {/* Objetivo calorico y proteina: RETIRADOS en el checkpoint 2 (colapso de los dos objetivos). El
-          objetivo es unico y sale de la cadena calorica (abajo); el menu lo lee de ahi y la aprobacion lo
-          sella de ahi. El "Gasto medido por el Biody" se reubica en la cadena, aclarado como otra fuente
-          (checkpoint 2.4). Este fieldset queda para las restricciones (que se mueven al menu en 2.4). */}
-      <fieldset disabled={locked} className="flex flex-col gap-4">
-        {/* Restricciones */}
-        <div className="flex flex-col gap-1.5">
-          <Label>Restricciones alimentarias</Label>
+    <section className="flex flex-col gap-2 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Restricciones alimentarias</h3>
+      <p className="text-sm text-muted-foreground">
+        Lo que marques aquí condiciona el <strong>menú de abajo</strong>: la IA lo genera excluyendo estos
+        alimentos o nutrientes. Guárdalas antes de generar el menú.
+      </p>
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
+        <fieldset disabled={locked} className="flex flex-col gap-2">
           <div className="flex gap-2">
             <Input
               value={restrInput}
@@ -637,53 +647,90 @@ function ProtocolForm({
               ))}
             </div>
           ) : null}
-        </div>
-      </fieldset>
+          <div>
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar restricciones"}
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
 
-      {/* Guias dietarias */}
-      <fieldset disabled={locked} className="flex flex-col gap-3">
-        <legend className="text-sm font-semibold text-foreground">Guías dietarias</legend>
-        <div className="flex gap-2">
-          <Textarea
-            value={guideInput}
-            onChange={(e) => setGuideInput(e.target.value)}
-            placeholder="Escribe una guía dietaria y agregala"
-            rows={2}
-          />
-          <Button type="button" variant="outline" onClick={addGuideline} className="self-start">
-            Agregar
-          </Button>
-        </div>
-        {guidelines.length ? (
-          <ul className="flex flex-col gap-2">
-            {guidelines.map((g, i) => (
-              <li
-                key={`${i}-${g.slice(0, 12)}`}
-                className="flex items-start justify-between gap-2 rounded-lg border border-border p-3 text-sm text-foreground"
-              >
-                <span>{g}</span>
-                <button
-                  type="button"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => setGuidelines(guidelines.filter((_, j) => j !== i))}
-                  aria-label="Quitar guía"
+// Guias dietarias (checkpoint 2.4): seccion propia con guardado propio (saveGuidelinesAction).
+function GuidelinesSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveGuidelinesAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+  const [guidelines, setGuidelines] = useState<string[]>(protocol.guidelines.map((g) => g.text));
+  const [guideInput, setGuideInput] = useState("");
+  const addGuideline = () => {
+    const v = guideInput.trim();
+    if (v) setGuidelines([...guidelines, v]);
+    setGuideInput("");
+  };
+  const baseSignature = guidelinesSignature({
+    treatmentId: protocol.treatmentId,
+    guidelines: protocol.guidelines.map((g) => g.text),
+  });
+
+  return (
+    <section className="flex flex-col gap-2 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Guías dietarias</h3>
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
+        <fieldset disabled={locked} className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Textarea
+              value={guideInput}
+              onChange={(e) => setGuideInput(e.target.value)}
+              placeholder="Escribe una guía dietaria y agregala"
+              rows={2}
+            />
+            <Button type="button" variant="outline" onClick={addGuideline} className="self-start">
+              Agregar
+            </Button>
+          </div>
+          {guidelines.length ? (
+            <ul className="flex flex-col gap-2">
+              {guidelines.map((g, i) => (
+                <li
+                  key={`${i}-${g.slice(0, 12)}`}
+                  className="flex items-start justify-between gap-2 rounded-lg border border-border p-3 text-sm text-foreground"
                 >
-                  Quitar
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">Sin guías dietarias.</p>
-        )}
-      </fieldset>
-
-      <div>
-        <Button type="submit" disabled={locked || pending}>
-          {pending ? "Guardando..." : "Guardar protocolo"}
-        </Button>
-      </div>
-    </form>
+                  <span>{g}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setGuidelines(guidelines.filter((_, j) => j !== i))}
+                    aria-label="Quitar guía"
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin guías dietarias.</p>
+          )}
+          <div>
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar guías"}
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
   );
 }
 

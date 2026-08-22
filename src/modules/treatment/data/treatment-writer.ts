@@ -14,11 +14,9 @@ import { recordAudit } from "@/modules/audit/log";
 
 import {
   adjustmentSignature,
-  changedSections,
+  guidelinesSignature,
   nutraceuticalsSignature,
-  protocolSectionSignatures,
-  type SectionKey,
-  type SectionSignatures,
+  restriccionesSignature,
 } from "./protocol-signature";
 
 // Escritura del protocolo de tratamiento (Drizzle owner, para el audit INLINE, regla 8).
@@ -36,18 +34,24 @@ export class TreatmentStateError extends Error {
   }
 }
 
-// El protocolo cambio (en otra sesion/pestana/dispositivo) desde que el cliente lo cargó. Lleva las
-// secciones que difieren para que el mensaje diga QUE cambió. Revierte la transaccion: NO se pisa el
-// cambio ajeno (saveProtocol reemplaza en bloque; una escritura ciega borraria la prescripcion entera).
-export class StaleProtocolError extends Error {
-  constructor(public readonly sections: SectionKey[]) {
-    super("El protocolo cambio desde que se cargo.");
-    this.name = "StaleProtocolError";
+// Rechazo por concurrencia de las secciones editables (misma familia: la seccion se reemplaza en bloque, un
+// guardado con estado viejo borraria el cambio ajeno). El servicio traduce cada una a su aviso.
+export class StaleRestriccionesError extends Error {
+  constructor() {
+    super("Las restricciones cambiaron desde que se cargaron.");
+    this.name = "StaleRestriccionesError";
   }
 }
 
-// Rechazo por concurrencia en saveAdjustments (misma familia que StaleProtocolError, sin secciones: los
-// seis ajustes son una unidad). El servicio lo traduce a un aviso "otro profesional cambió la cadena".
+export class StaleGuidelinesError extends Error {
+  constructor() {
+    super("Las guías dietarias cambiaron desde que se cargaron.");
+    this.name = "StaleGuidelinesError";
+  }
+}
+
+// Rechazo por concurrencia en saveAdjustments (los seis ajustes son una unidad). El servicio lo traduce a
+// un aviso "otro profesional cambió la cadena".
 export class StaleAdjustmentsError extends Error {
   constructor() {
     super("Los ajustes cambiaron desde que se cargaron.");
@@ -70,46 +74,73 @@ type NutraceuticalLine = {
   durationDays: number | null;
 };
 
-export type SaveProtocolWrite = {
+// NATURALEZA de treatment_diet_guidelines (y treatment_nutraceuticals) segun el estado: ANTES de aprobar
+// (draft) estas tablas hijas SON autoritativas; un guardado que las reemplaza con estado viejo las PIERDE
+// sin rastro. DESPUES de aprobar, lo autoritativo es el jsonb sellado (protocol_approved, inmutable por el
+// trigger 0026). Por eso el candado de abajo importa sobre todo en borrador.
+
+export type SaveRestriccionesWrite = {
   treatmentId: string;
-  kcalObjetivo: number | null;
-  proteinaGramos: number | null;
   restricciones: string[];
-  guidelines: string[];
-  // Firma por seccion del protocolo que el cliente CARGÓ (candado de concurrencia).
-  baseSignatures: SectionSignatures;
+  // Firma de las restricciones que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
   actorId: string;
   actorEmail: string;
   ip: string | null;
 };
 
-// NATURALEZA DE treatment_nutraceuticals / treatment_diet_guidelines segun el estado del tratamiento
-// (no es evidente leyendo solo el esquema): ANTES de aprobar (status='draft') estas tablas hijas SON la
-// prescripcion autoritativa; un guardado que las reemplaza con estado viejo la PIERDE de verdad, sin
-// rastro. DESPUES de aprobar, lo autoritativo es el jsonb sellado (treatments.protocol_approved, inmutable
-// por el trigger 0026); estas tablas quedan como COPIA DE TRABAJO (editable por diseno para el generador de
-// menu). Por eso el candado de abajo importa sobre todo en borrador.
-//
-// Guarda el protocolo completo en una transaccion: objetivos + reemplazo del set de nutraceuticos +
-// reemplazo del set de guias. Un solo audit treatment.protocol_updated.
-export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
+// Restricciones alimentarias (checkpoint 2.4): reemplaza el arreglo treatments.restricciones. Camino propio
+// con candado, como saveNutraceuticals: la lista ALIMENTA EL MENU, y una restriccion que se pierda por
+// sobreescritura produce un plan que ignora una alergia. Lock de la fila + recompute de la firma bajo lock.
+export async function saveRestricciones(input: SaveRestriccionesWrite): Promise<void> {
   await db.transaction(async (tx) => {
     await assertConfirmedDiagnosis(tx, input.treatmentId);
-
-    // Techo de espera del lock: el rol tiene lock_timeout=0 (espera infinita). Sin esto, un FOR UPDATE que
-    // no consigue el lock (otra transaccion colgada sobre el mismo tratamiento) dejaria el guardado en un
-    // spinner eterno. SET LOCAL solo aplica a esta transaccion. Al vencer, el FOR UPDATE lanza 55P03
-    // (lock_not_available), que el service traduce a un aviso "intenta de nuevo", no a un cuelgue.
     await tx.execute(sql`set local lock_timeout = '3s'`);
-
-    // 0. Candado de concurrencia. Lock de la fila (FOR UPDATE) para SERIALIZAR dos guardados del mismo
-    // tratamiento: sin el, dos sesiones leen la misma firma vieja y ambas escriben (la ultima pisa). Con el
-    // lock, la segunda espera, re-lee la firma ya cambiada, y se rechaza. Se compara la firma actual (bajo
-    // lock) contra la base que trajo el cliente; si alguna seccion difiere, alguien mas la cambió: se aborta
-    // sin pisar, diciendo QUE cambió. saveProtocol REEMPLAZA en bloque, asi que una escritura ciega no
-    // corrompe un campo: borra el protocolo entero.
     const [locked] = await tx
-      .select({ kcal: treatments.kcalObjetivo, prot: treatments.proteinaGramos, restr: treatments.restricciones })
+      .select({ restr: treatments.restricciones })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = restriccionesSignature({
+      treatmentId: input.treatmentId,
+      restricciones: locked.restr ?? [],
+    });
+    if (current !== input.baseSignature) throw new StaleRestriccionesError();
+    await tx
+      .update(treatments)
+      .set({ restricciones: input.restricciones })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.restricciones_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: { restricciones_count: input.restricciones.length },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveGuidelinesWrite = {
+  treatmentId: string;
+  guidelines: string[];
+  // Firma de las guias que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guias dietarias (checkpoint 2.4): reemplaza el set de treatment_diet_guidelines. Camino propio con candado.
+export async function saveGuidelines(input: SaveGuidelinesWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ id: treatments.id })
       .from(treatments)
       .where(eq(treatments.id, input.treatmentId))
       .for("update")
@@ -119,57 +150,26 @@ export async function saveProtocol(input: SaveProtocolWrite): Promise<void> {
       .select({ text: treatmentDietGuidelines.guidelineText })
       .from(treatmentDietGuidelines)
       .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
-    const current = protocolSectionSignatures({
+    const current = guidelinesSignature({
       treatmentId: input.treatmentId,
-      kcalObjetivo: locked.kcal,
-      proteinaGramos: locked.prot,
-      restricciones: locked.restr ?? [],
-      guidelines: curGuides,
+      guidelines: curGuides.map((g) => g.text),
     });
-    const changed = changedSections(input.baseSignatures, current);
-    if (changed.length) throw new StaleProtocolError(changed);
-
-    // 1. Objetivos del protocolo.
-    await tx
-      .update(treatments)
-      .set({
-        kcalObjetivo: input.kcalObjetivo,
-        proteinaGramos: input.proteinaGramos,
-        restricciones: input.restricciones,
-      })
-      .where(eq(treatments.id, input.treatmentId));
-
-    // 2. Set de guias dietarias: reemplazo total. (La prescripcion de nutraceuticos se partio a
-    //    saveNutraceuticals en el checkpoint 2.3; ya no se toca aqui.)
+    if (current !== input.baseSignature) throw new StaleGuidelinesError();
     await tx
       .delete(treatmentDietGuidelines)
       .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
     if (input.guidelines.length) {
       await tx.insert(treatmentDietGuidelines).values(
-        input.guidelines.map((text) => ({
-          treatmentId: input.treatmentId,
-          guidelineText: text,
-        })),
+        input.guidelines.map((text) => ({ treatmentId: input.treatmentId, guidelineText: text })),
       );
     }
-
-    // DETECTOR de perdida de prescripcion: nutraceuticals_count/guidelines_count por guardado NO son
-    // redundantes. Como saveProtocol REEMPLAZA en bloque, un guardado que baja el conteo de positivo a 0 es
-    // la huella de un borrado (p. ej. un panel pegado-vacio que guardo encima). Sirvio para verificar que el
-    // sintoma del smoke 2026-08-07 fue solo display, no perdida de dato (ningun tratamiento paso de >0 a 0).
-    // No quitar por parecer redundantes.
     await recordAudit(tx, {
-      event: "treatment.protocol_updated",
+      event: "treatment.guidelines_updated",
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: input.treatmentId,
-      payload: {
-        kcal_objetivo: input.kcalObjetivo,
-        proteina_g: input.proteinaGramos,
-        restricciones_count: input.restricciones.length,
-        guidelines_count: input.guidelines.length,
-      },
+      payload: { guidelines_count: input.guidelines.length },
       ip: input.ip,
     });
   });
