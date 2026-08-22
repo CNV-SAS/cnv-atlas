@@ -14,11 +14,13 @@ import {
   saveGuidelines as writeGuidelines,
   saveNutraceuticals as writeNutraceuticals,
   saveObjetivo as writeObjetivo,
+  saveIntercambio as writeIntercambio,
   saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
   StaleGuidelinesError,
   StaleNutraceuticalsError,
   StaleObjetivoError,
+  StaleIntercambioError,
   StaleRestriccionesError,
   TreatmentStateError,
   writeApproveProtocol,
@@ -31,6 +33,7 @@ import type {
   SaveGuidelinesInput,
   SaveNutraceuticalsInput,
   SaveObjetivoInput,
+  SaveIntercambioInput,
   SaveRestriccionesInput,
 } from "../validations";
 
@@ -121,6 +124,49 @@ export async function saveObjetivo(
         appError(
           "stale_write",
           "El objetivo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// CP1.2: lista de intercambio, su propio camino de guardado. Solo el nutricionista (edita el plan nutricional).
+export async function saveIntercambio(
+  input: SaveIntercambioInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la lista de intercambio."));
+  }
+  try {
+    await writeIntercambio({
+      treatmentId: protocol.treatmentId,
+      intercambio: input.intercambio,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleIntercambioError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió la lista de intercambio en otra sesión (otra pestaña o dispositivo). " +
+            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "La lista de intercambio está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }

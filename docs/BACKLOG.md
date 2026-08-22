@@ -29,6 +29,12 @@
 
 **REABRE UNA DECISIÓN:** decidimos que el Reporte se quedaba en Tratamiento (checkpoint 2) **porque no había pestaña destino.** Si se crea la quinta pestaña "Reporte/HC", esa decisión se revisa: el reporte se movería ahí. No se construye ahora; es después de Tratamiento.
 
+## Dos hallazgos del build de CP1.2 (intercambio), 2026-08-22
+
+**1. El MENÚ guardado tiene el mismo riesgo de desfase que resolvió DIV-11 (opción 3).** `recordMenuSuggestion` persiste el menú, que `generateMenu` deriva del protocolo efectivo (objetivo/macros). Si el objetivo cambia después de guardar un menú, el menú persistido queda desfasado, sin aviso, igual que le pasaba al intercambio. La lista de intercambio (CP1.2) lo resuelve guardando `objetivoBase` y avisando (DIV-11). **El menú debería seguir el mismo patrón** cuando se construya la tabla 7×5 editable (CP-menú). Registrado para no repetir el defecto.
+
+**2. El trigger de inmutabilidad NO congela `objetivo_texto` (ni lo congelará el intercambio), pese al comentario.** El comentario de la columna `objetivo_texto` (schema) afirmaba "inmutable al aprobar (trigger), como restricciones/guías"; es FALSO: el trigger `treatments_immutability` (0026, nunca actualizado) no lista `objetivo_texto`, y restricciones es explícitamente EDITABLE tras aprobar. Se corrigió el comentario (de objetivo y de intercambio) a la realidad: el plan que se arma alrededor de la prescripción es editable tras aprobar; solo la cadena calórica se congela. **PREGUNTA para decidir:** ¿el contenido del PLAN (objetivo, guías, intercambio, menú) DEBE congelarse al aprobar, o es correcto que se siga refinando? Si debe congelarse, se agregan esas columnas al trigger 0026 de forma explícita. Hoy NO se congela (comportamiento real, ahora bien documentado). No bloquea.
+
 ## CI: correr `pnpm verify` en cada push/PR (registrado 2026-08-22, decide Santiago)
 
 **Contexto:** hoy no hay CI en el repo (no existe `.github/workflows/`). El 500 de `/evaluaciones` (2026-08-21) fue una arista RSC servidor->cliente que tsc/lint/tests/build no vieron; se cerro con `pnpm check:rsc` (barrido de las DOS direcciones, ~0,4s) y se junto todo en `pnpm verify` (typecheck + lint + check:rsc + test). Pero un barrido que hay que acordarse de correr un dia no se corre. **Falta un CI que corra `pnpm verify` en cada push/PR.** El barrido RSC entra como un paso de ~1s dentro de verify, sin costo.

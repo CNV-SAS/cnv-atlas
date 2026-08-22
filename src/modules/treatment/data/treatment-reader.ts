@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
-import type { TreatmentProtocol } from "./treatment-view-types";
+import type { IntercambioSaved, TreatmentProtocol } from "./treatment-view-types";
 
 // Lectura del protocolo de tratamiento de una evaluacion para la vista interna del
 // profesional (B13). Todo por RLS (regla dura 3): el cliente anon con sesion solo ve los
@@ -52,7 +52,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -145,6 +145,7 @@ export async function getTreatmentProtocol(
     adjFatPct: treatment.adj_fat_pct != null ? Number(treatment.adj_fat_pct) : null,
     restricciones: treatment.restricciones ?? [],
     objetivoTexto: treatment.objetivo_texto ?? null,
+    intercambioPorciones: (treatment.intercambio_porciones as IntercambioSaved | null) ?? null,
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({
       id: n.id,

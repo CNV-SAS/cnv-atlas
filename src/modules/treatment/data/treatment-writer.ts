@@ -15,10 +15,12 @@ import { recordAudit } from "@/modules/audit/log";
 import {
   adjustmentSignature,
   guidelinesSignature,
+  intercambioSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
 } from "./protocol-signature";
+import type { IntercambioSaved } from "./treatment-view-types";
 
 // Escritura del protocolo de tratamiento (Drizzle owner, para el audit INLINE, regla 8).
 // La autorizacion (ownership) se verifica ANTES en el action leyendo el tratamiento bajo
@@ -55,6 +57,13 @@ export class StaleObjetivoError extends Error {
   constructor() {
     super("El objetivo del tratamiento cambió desde que se cargó.");
     this.name = "StaleObjetivoError";
+  }
+}
+
+export class StaleIntercambioError extends Error {
+  constructor() {
+    super("La lista de intercambio cambió desde que se cargó.");
+    this.name = "StaleIntercambioError";
   }
 }
 
@@ -219,6 +228,51 @@ export async function saveObjetivo(input: SaveObjetivoWrite): Promise<void> {
       entityType: "treatment",
       entityId: input.treatmentId,
       payload: { objetivo_len: (input.objetivo ?? "").length },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveIntercambioWrite = {
+  treatmentId: string;
+  intercambio: IntercambioSaved;
+  // Firma del intercambio que el cliente CARGÓ (candado de concurrencia).
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda la lista de intercambio (CP1.2): jsonb en treatments.intercambio_porciones. Camino propio con candado
+// como las demas secciones editables; REEMPLAZA EN BLOQUE, asi que la firma que carga el cliente es la base del
+// candado (rechaza si otro profesional lo cambio). El baseSignature "" corresponde a null (nunca guardado).
+export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ inter: treatments.intercambioPorciones })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = intercambioSignature({
+      treatmentId: input.treatmentId,
+      intercambio: (locked.inter as IntercambioSaved | null) ?? null,
+    });
+    if (current !== input.baseSignature) throw new StaleIntercambioError();
+    await tx
+      .update(treatments)
+      .set({ intercambioPorciones: input.intercambio })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.intercambio_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: { objetivo_base: input.intercambio.objetivoBase, grupos: Object.keys(input.intercambio.grupos).length },
       ip: input.ip,
     });
   });

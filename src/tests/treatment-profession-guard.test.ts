@@ -28,6 +28,7 @@ vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   saveRestricciones: vi.fn(),
   saveGuidelines: vi.fn(),
   saveObjetivo: vi.fn(),
+  saveIntercambio: vi.fn(),
   saveAdjustments: vi.fn(),
   saveNutraceuticals: vi.fn(),
   acknowledgeRestrictions: vi.fn(),
@@ -54,6 +55,7 @@ import {
   acknowledgeRestrictions as writeAcknowledge,
   saveAdjustments as writeAdjustments,
   saveGuidelines as writeGuidelines,
+  saveIntercambio as writeIntercambio,
   saveNutraceuticals as writeNutraceuticals,
   saveObjetivo as writeObjetivo,
   saveRestricciones as writeRestricciones,
@@ -64,6 +66,7 @@ import {
   addNote,
   saveAdjustments,
   saveGuidelines,
+  saveIntercambio,
   saveNutraceuticals,
   saveObjetivo,
   saveRestricciones,
@@ -84,6 +87,7 @@ const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as 
 const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" };
 const GUIDE_INPUT = { evaluationId: "E1", guidelines: [], baseSignature: "" };
 const OBJ_INPUT = { evaluationId: "E1", objetivo: "x", baseSignature: "" };
+const INTER_INPUT = { evaluationId: "E1", intercambio: { objetivoBase: 2000, grupos: {} }, baseSignature: "" };
 const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
 const ADJ_INPUT = {
   evaluationId: "E1",
@@ -174,6 +178,19 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     r = await saveNutraceuticals(NUTRA_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeNutraceuticals).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveIntercambio: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
+    profOf.mockResolvedValueOnce(PRO("medico")); // solo el nutricionista edita el plan nutricional
+    let r = await saveIntercambio(INTER_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeIntercambio).not.toHaveBeenCalled();
+
+    profOf.mockResolvedValueOnce(PRO("nutricionista"));
+    r = await saveIntercambio(INTER_INPUT, actor);
+    expect(r.ok).toBe(true);
+    expect(writeIntercambio).toHaveBeenCalledTimes(1);
   });
 
   it("acknowledgeRestrictions: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {

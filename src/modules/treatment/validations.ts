@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+
 // Validaciones del protocolo de tratamiento (B13). Toda entrada externa pasa por Zod
 // (ARCHITECTURE). Los ids se validan con z.guid(): z.uuid() de Zod 4 rechaza los UUIDs
 // deterministas del seed. Nota (checkpoint 2): el objetivo calorico y la proteina ya NO se
@@ -65,6 +67,49 @@ export const saveObjetivoSchema = z.object({
 });
 
 export type SaveObjetivoInput = z.infer<typeof saveObjetivoSchema>;
+
+// Lista de intercambio (CP1.2, primer campo ESTRUCTURADO que guardamos). La validacion DERIVA los grupos y los
+// alimentos validos de INTER_GRUPOS / INTER_TABLA_A (cuidado b: si la tabla cambia de grupos manana, esto se
+// mueve solo, no hay lista escrita aparte). Rechaza forma incorrecta: si llega con !=12 grupos, un id de grupo
+// que no existe, o un `sub` que no pertenece a ese grupo, NO se guarda.
+const GRUPO_IDS: string[] = INTER_GRUPOS.map((g) => g.id);
+const SUBS_POR_GRUPO: Record<string, Set<string>> = Object.fromEntries(
+  INTER_GRUPOS.map((g) => [g.id, new Set(INTER_TABLA_A.filter((r) => r.gr === g.id).map((r) => r.sub))]),
+);
+
+const intercambioGrupoSchema = z.object({
+  porciones: z.number().int("Las porciones deben ser un entero.").min(0).max(50, "Porciones fuera de rango."),
+  sub: z.string().min(1),
+});
+
+export const saveIntercambioSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  intercambio: z
+    .object({
+      objetivoBase: z.number().finite().min(0),
+      grupos: z.record(z.string(), intercambioGrupoSchema),
+    })
+    .superRefine((val, ctx) => {
+      const ids = Object.keys(val.grupos);
+      // exactamente los grupos del modelo (ni mas ni menos): 12 hoy, lo que diga INTER_GRUPOS manana.
+      if (ids.length !== GRUPO_IDS.length || !GRUPO_IDS.every((id) => id in val.grupos)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `La lista de intercambio debe traer exactamente los ${GRUPO_IDS.length} grupos del modelo.`,
+        });
+        return;
+      }
+      // cada alimento elegido debe pertenecer a su grupo (existir en INTER_TABLA_A con ese gr).
+      for (const id of ids) {
+        if (!SUBS_POR_GRUPO[id]?.has(val.grupos[id].sub)) {
+          ctx.addIssue({ code: "custom", message: `Alimento inválido para el grupo ${id}.` });
+        }
+      }
+    }),
+  baseSignature: z.string().max(4200).default(""),
+});
+
+export type SaveIntercambioInput = z.infer<typeof saveIntercambioSchema>;
 
 // Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
 // reemplaza por completo (el formulario envia el estado final deseado).

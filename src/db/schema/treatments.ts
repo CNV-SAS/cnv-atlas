@@ -87,9 +87,19 @@ export const treatments = pgTable("treatments", {
   micronutrientesTexto: text("micronutrientes_texto"),
   // "Objetivo del tratamiento nutricional" (pieza 1, checkpoint 2.4): el objetivo/tipo de dieta que ESCRIBE
   // el profesional (distinto de las guias, que son una lista). Texto libre acotado. Es contenido del PLAN
-  // (patient-facing via el futuro envio del plan, no el reporte del diagnostico); inmutable al aprobar el
-  // protocolo (trigger), como restricciones/guias.
+  // (patient-facing via el futuro envio del plan, no el reporte del diagnostico). CORRECCION 2026-08-22: el
+  // comentario anterior decia "inmutable al aprobar (trigger)"; era FALSO, el trigger treatments_immutability
+  // (0026) NO lista objetivo_texto (ni restricciones, que es editable a proposito). El plan es EDITABLE tras
+  // aprobar; solo la prescripcion (cadena calorica) se congela. Ver BACKLOG (hallazgos de CP1.2).
   objetivoTexto: text("objetivo_texto"),
+  // Lista de intercambio (CP1.2): porciones por grupo que el profesional ajusta, con el objetivo con el que se
+  // calcularon (objetivoBase) para avisar de desfase sin recalcular (opcion 3, DIV-11). jsonb:
+  // { objetivoBase: number, grupos: { G1: {porciones,sub}, ... } }. null = nunca guardada (el panel usa los
+  // defaults frescos de computeIntercambio). Contenido del PLAN, EDITABLE tras aprobar (el trigger de
+  // inmutabilidad NO lo congela, igual que objetivo_texto/restricciones/menu: la prescripcion -cadena calorica-
+  // se congela, el plan que se arma alrededor se sigue refinando). Si algun dia el plan debe congelarse al
+  // aprobar, se agrega esta columna al trigger treatments_immutability (0026) de forma explicita.
+  intercambioPorciones: jsonb("intercambio_porciones"),
   // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
   // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
   // esta implicita en created_by. Si algun dia hay agenda, se migra.

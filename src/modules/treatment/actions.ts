@@ -21,6 +21,7 @@ import {
   saveGuidelines,
   saveNutraceuticals,
   saveObjetivo,
+  saveIntercambio,
   saveRestricciones,
 } from "./services/treatment-service";
 import {
@@ -31,6 +32,7 @@ import {
   saveGuidelinesSchema,
   saveNutraceuticalsSchema,
   saveObjetivoSchema,
+  saveIntercambioSchema,
   saveRestriccionesSchema,
 } from "./validations";
 
@@ -129,6 +131,44 @@ export async function saveObjetivoAction(
     return fail(result.error.message);
   }
   return { error: null, success: "Objetivo del tratamiento guardado.", warning: null };
+}
+
+// CP1.2: guarda la lista de intercambio. Primer campo ESTRUCTURADO: llega como JSON en el FormData, se parsea y
+// pasa por saveIntercambioSchema (rechaza forma incorrecta). El resto del patron es identico a las demas.
+export async function saveIntercambioAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  let intercambio: unknown;
+  try {
+    intercambio = JSON.parse((form.get("intercambio") as string | null) ?? "");
+  } catch {
+    return fail("Lista de intercambio inválida.");
+  }
+  const parsed = saveIntercambioSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    intercambio,
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Lista de intercambio inválida.");
+  }
+
+  const result = await saveIntercambio(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Lista de intercambio guardada.", warning: null };
 }
 
 // Checkpoint 2.4: guias dietarias, su propia accion.

@@ -4,10 +4,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   adjustmentSignature,
   guidelinesSignature,
+  intercambioSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
+import type { IntercambioSaved } from "@/modules/treatment/data/treatment-view-types";
 
 // Candado de concurrencia de las secciones editables del tratamiento (BD real): restricciones, guias,
 // nutraceuticos, ajustes de la cadena. Cada una tiene su propia accion que REEMPLAZA su set EN BLOQUE, con
@@ -39,6 +41,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let StaleGuidelinesError: any;
   let saveObjetivo: any;
   let StaleObjetivoError: any;
+  let saveIntercambio: any;
+  let StaleIntercambioError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -92,6 +96,8 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       StaleGuidelinesError,
       saveObjetivo,
       StaleObjetivoError,
+      saveIntercambio,
+      StaleIntercambioError,
     } = await import("@/modules/treatment/data/treatment-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
@@ -300,5 +306,30 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     ).rejects.toBeInstanceOf(StaleObjetivoError);
     const [t] = await db.select({ obj: schema.treatments.objetivoTexto }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
     expect(t.obj).toBe("Dieta antiinflamatoria"); // el del camino feliz, no PISADO
+  });
+
+  // CP1.2: candado de saveIntercambio (columna jsonb intercambio_porciones). Arranca NULL (firma base "§none").
+  async function currentIntercambioSignature(): Promise<string> {
+    const [t] = await db
+      .select({ inter: schema.treatments.intercambioPorciones })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    return intercambioSignature({ treatmentId, intercambio: (t.inter as IntercambioSaved | null) ?? null });
+  }
+  const INTER: IntercambioSaved = { objetivoBase: 2000, grupos: { G1: { porciones: 3, sub: "Cereales" } } };
+
+  it("intercambio camino feliz: firma base == actual -> escribe el jsonb", async () => {
+    const base = await currentIntercambioSignature();
+    await saveIntercambio({ treatmentId, intercambio: INTER, baseSignature: base, ...actor });
+    const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000);
+  });
+
+  it("intercambio carrera: firma base != actual -> rechaza sin pisar (StaleIntercambioError)", async () => {
+    await expect(
+      saveIntercambio({ treatmentId, intercambio: { objetivoBase: 9999, grupos: {} }, baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
+    ).rejects.toBeInstanceOf(StaleIntercambioError);
+    const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000); // el del camino feliz, no 9999
   });
 });

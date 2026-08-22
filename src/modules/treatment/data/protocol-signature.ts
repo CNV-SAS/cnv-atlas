@@ -10,7 +10,7 @@
 // nutraceuticos, restricciones, guias) tiene su PROPIA accion y su PROPIA firma; la maquinaria de "firma por
 // secciones del protocolo" (protocolSectionSignatures/saveProtocol) se retiro, era de un solo proposito.
 
-import type { TreatmentProtocol } from "./treatment-view-types";
+import type { IntercambioSaved, TreatmentProtocol } from "./treatment-view-types";
 
 // Firma de una lista de texto (treatmentId + el set ORDENADO): base del candado + key de remonte. Ordenado
 // para no depender del orden de filas (un SELECT sin ORDER BY no lo garantiza).
@@ -31,6 +31,19 @@ export function guidelinesSignature(p: { treatmentId: string; guidelines: string
 // Objetivo del tratamiento nutricional (columna treatments.objetivo_texto, texto libre). Un solo string.
 export function objetivoSignature(p: { treatmentId: string; objetivo: string | null }): string {
   return `${p.treatmentId}§${p.objetivo ?? ""}`;
+}
+
+// Lista de intercambio (columna treatments.intercambio_porciones, jsonb). ORDEN-INDEPENDIENTE: serializa las
+// entradas por CLAVE ORDENADA (Object.keys().sort()), no por el orden del objeto (que jsonb no garantiza al
+// volver de la BD). Incluye objetivoBase: un cambio del objetivo con el que se guardo tambien mueve la firma.
+export function intercambioSignature(p: { treatmentId: string; intercambio: IntercambioSaved | null }): string {
+  if (!p.intercambio) return `${p.treatmentId}§none`;
+  const { grupos, objetivoBase } = p.intercambio;
+  const entries = Object.keys(grupos)
+    .sort()
+    .map((id) => `${id}:${grupos[id].porciones}:${grupos[id].sub}`)
+    .join("|");
+  return `${p.treatmentId}§${objetivoBase}§${entries}`;
 }
 
 // --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---

@@ -3188,6 +3188,7 @@ export type Database = {
           created_by: string
           diagnosis_id: string
           id: string
+          intercambio_porciones: Json | null
           kcal_objetivo: number | null
           micronutrientes_texto: string | null
           objetivo_texto: string | null
@@ -3213,6 +3214,7 @@ export type Database = {
           created_by: string
           diagnosis_id: string
           id?: string
+          intercambio_porciones?: Json | null
           kcal_objetivo?: number | null
           micronutrientes_texto?: string | null
           objetivo_texto?: string | null
@@ -3238,6 +3240,7 @@ export type Database = {
           created_by?: string
           diagnosis_id?: string
           id?: string
+          intercambio_porciones?: Json | null
           kcal_objetivo?: number | null
           micronutrientes_texto?: string | null
           objetivo_texto?: string | null

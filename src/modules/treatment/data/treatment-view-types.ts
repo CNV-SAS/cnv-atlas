@@ -14,6 +14,13 @@ export type PrescribedNutraceutical = {
 };
 
 export type DietGuideline = { id: string; text: string };
+
+// Lista de intercambio guardada (CP1.2, columna treatments.intercambio_porciones, jsonb). `objetivoBase` es el
+// objetivo calorico efectivo con el que se calcularon las porciones: se guarda para COMPARAR contra el objetivo
+// actual y avisar de desfase sin recalcular (opcion 3, DIV-11). `grupos` va keyed por id de grupo (G1..G12),
+// cada uno con las porciones editadas y el alimento (`sub`) elegido del desplegable.
+export type IntercambioGrupoSaved = { porciones: number; sub: string };
+export type IntercambioSaved = { objetivoBase: number; grupos: Record<string, IntercambioGrupoSaved> };
 export type TreatmentNote = { id: string; note: string; createdAt: string };
 export type CatalogItem = {
   id: string;
@@ -62,6 +69,9 @@ export type TreatmentProtocol = {
   restricciones: string[];
   // Objetivo del tratamiento nutricional (pieza 1): texto libre del profesional; null si no lo ha escrito.
   objetivoTexto: string | null;
+  // Lista de intercambio guardada (CP1.2). null = nunca guardada -> el panel usa los defaults de
+  // computeIntercambio(objetivo actual), siempre frescos.
+  intercambioPorciones: IntercambioSaved | null;
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
   recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)
