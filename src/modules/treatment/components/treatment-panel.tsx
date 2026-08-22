@@ -1080,8 +1080,13 @@ function TiemposSection({
 
           {gruposOcultos > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {gruposOcultos === 1 ? "Un grupo no aparece" : `${gruposOcultos} grupos no aparecen`} porque tienen
-              0 porciones. Si les subes porciones en la lista de intercambio, aparecen aquí.
+              No {gruposOcultos === 1 ? "aparece" : "aparecen"}{" "}
+              {defaults
+                .filter((g) => porcionesActuales[g.id] === 0)
+                .map((g) => g.nom)
+                .join(", ")}{" "}
+              porque {gruposOcultos === 1 ? "tiene" : "tienen"} 0 porciones. Si les subes porciones en la lista
+              de intercambio, {gruposOcultos === 1 ? "aparece" : "aparecen"} aquí.
             </p>
           ) : null}
 
@@ -1138,15 +1143,27 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     edad: snap.caloricoInputs.edad,
   });
 
-  // Color del % de cubrimiento. Para los nutrientes a CUBRIR: bajo = alerta, adecuado = bien, exceso = neutro.
-  // Para el SODIO (a limitar, cuidado a): la lectura se INVIERTE, bajo = bien, alto = alerta.
+  // SEMAFORO portado del v8 (interCobColor/interIcnColor, cortes verbatim), con los tokens clinicos de Atlas
+  // (verde=optimal, ambar=warning, rojo=critical; NO el azul de excellent, reservado a lo optimo de escala).
+  // Cubrimiento: [90,110] optimo, [70,130) alerta, resto critico. Sodio (a LIMITAR): <=100 bien, <=115 alerta,
+  // resto critico. ICN: [0.9,1.15] optimo, [0.7,1.3) alerta, resto critico; null (kcal) neutro.
   const cobColor = (n: (typeof nutrientes)[number]): string => {
-    if (n.lim) return n.cob > 100 ? "text-clinical-warning" : "text-clinical-excellent";
-    if (n.cob < 90) return "text-clinical-warning";
-    if (n.cob > 140) return "text-muted-foreground";
-    return "text-clinical-excellent";
+    if (n.lim) return n.cob <= 100 ? "text-clinical-optimal" : n.cob <= 115 ? "text-clinical-warning" : "text-clinical-critical";
+    if (n.cob >= 90 && n.cob <= 110) return "text-clinical-optimal";
+    if (n.cob >= 70 && n.cob < 130) return "text-clinical-warning";
+    return "text-clinical-critical";
+  };
+  const icnColor = (v: number | null): string => {
+    if (v == null) return "text-muted-foreground";
+    if (v >= 0.9 && v <= 1.15) return "text-clinical-optimal";
+    if (v >= 0.7 && v < 1.3) return "text-clinical-warning";
+    return "text-clinical-critical";
   };
   const fmt = (v: number, d: number) => v.toFixed(d);
+
+  // % de nutrientes con ICN >= 0,9 (resumen util del v8, _icnPctOk): excluye energia y los "a limitar".
+  const icnVals = nutrientes.filter((n) => n.k !== "kcal" && !n.lim && n.icn != null).map((n) => n.icn as number);
+  const icnPctOk = icnVals.length ? Math.round((icnVals.filter((v) => v >= 0.9).length / icnVals.length) * 100) : 0;
 
   return (
     <section className="flex flex-col gap-2 border-t border-border pt-6">
@@ -1166,8 +1183,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="py-1 pr-3 text-left font-medium">Nutriente</th>
                 <th className="px-2 py-1 text-right font-medium">Obtenido</th>
-                <th className="px-2 py-1 text-right font-medium">Requerido</th>
-                <th className="px-2 py-1 text-right font-medium">Cubrimiento</th>
+                <th className="px-2 py-1 text-right font-medium">Necesidad</th>
+                <th className="px-2 py-1 text-right font-medium">% Cubrim.</th>
                 <th className="px-2 py-1 text-right font-medium">ICN</th>
               </tr>
             </thead>
@@ -1183,13 +1200,20 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
                   <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + cobColor(n)}>
                     {Math.round(n.cob)}%
                   </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
-                    {n.icn == null ? "—" : n.icn.toFixed(2)}
+                  {/* ICN: "límite" para los a limitar (sodio), "—" para energia, si no el valor coloreado. */}
+                  <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + (n.lim ? "text-muted-foreground" : icnColor(n.icn))}>
+                    {n.lim ? "límite" : n.k === "kcal" ? "—" : n.icn == null ? "—" : n.icn.toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {/* Leyenda del ICN portada del v8: sin ella la columna es numeros sin significado. Incluye el % de
+              nutrientes con ICN >= 0,9 (resumen util). */}
+          <p className="mt-2 text-xs text-muted-foreground">
+            ICN = (nutriente aportado / requerido) ÷ (energía aportada / requerida). ≈1 balanceado · &gt;1 denso
+            · &lt;1 deficitario. Nutrientes con ICN ≥ 0,9: <span className="font-semibold text-foreground">{icnPctOk}%</span>.
+          </p>
         </div>
       )}
     </section>
