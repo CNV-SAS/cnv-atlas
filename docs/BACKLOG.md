@@ -17,7 +17,17 @@
 
 ## El PLAN de tratamiento no tiene forma de llegar al paciente (hallazgo 2026-08-22, pieza propia)
 
-**Hueco que no estaba en el inventario.** Hoy el paciente recibe el REPORTE del diagnóstico (`sendReport`, con `send_mode`/`storage_path`). Pero el **plan de tratamiento** (objetivo, guías, menú semanal, distribución por tiempos, lista de intercambio) **no tiene envío**: se arma en el workspace del nutricionista y se queda ahí. El HTML de Gildardo SÍ lo contempla: la sección del menú semanal tiene un botón **"Enviar al paciente"** (+ "Guardar plan completo", "Imprimir plan"). Salió al verificar el cuidado (b) de la pieza 1 (el objetivo del tratamiento es contenido del plan, y "llegará al paciente por el envío del plan", que no existe). **Es una pieza propia, probablemente DESPUÉS del menú** (el plan completo se envía cuando el menú existe): decidir formato (PDF del plan como el reporte, o superficie propia), qué incluye, y el gate (protocolo aprobado). No se construye ahora; entra al plan de Tratamiento.
+**Hueco que no estaba en el inventario.** Hoy el paciente recibe el REPORTE del diagnóstico (`sendReport`, con `send_mode`/`storage_path`). Pero el **plan de tratamiento** (objetivo, guías, menú semanal, distribución por tiempos, lista de intercambio) **no tiene envío**: se arma en el workspace del nutricionista y se queda ahí. El HTML de Gildardo SÍ lo contempla: la sección del menú semanal tiene un botón **"Enviar al paciente"**. Salió al verificar el cuidado (b) de la pieza 1 (el objetivo del tratamiento es contenido del plan, y "llegará al paciente por el envío del plan", que no existe). **Pieza propia, DESPUÉS del menú.**
+
+**MARCO (Santiago 2026-08-22), dos ideas, las dos buenas:**
+- **(a) Una QUINTA pestaña tipo "Reporte / HC"** (como el HTML), donde viva todo lo que se le entrega al paciente. Razón que la sostiene: **el reporte no pertenece a una etapa, las recoge todas.** Hoy vive en Tratamiento solo porque no había dónde ponerlo.
+- **(b) Que el PROFESIONAL VAYA MARCANDO** durante las cuatro etapas qué incluir en lo que se envía. La más interesante: **hoy el sistema decide solo qué mandar; con esto, el profesional elige.**
+
+**Verificado para cuando se construya (2026-08-22):**
+- **Qué incluye HOY el reporte al paciente:** es 100% diagnóstico, del `EngineOutput` sellado: indicadores, estado EFR/fenotipo, fenotipo estructural, sector funcional, rutas del DFI, nutracéuticos **recomendados** (string del modelo) + versiones + las notas del profesional al paciente. NADA de tratamiento (objetivo, guías, prescritos, menú).
+- **Qué de tratamiento tendría sentido ahí:** el objetivo del tratamiento, las guías, el menú y (quizá) los nutracéuticos prescritos son contenido del PLAN, patient-facing; encajan en esa superficie. El resumen funcional + la meta (pieza 1a.1) también.
+
+**REABRE UNA DECISIÓN:** decidimos que el Reporte se quedaba en Tratamiento (checkpoint 2) **porque no había pestaña destino.** Si se crea la quinta pestaña "Reporte/HC", esa decisión se revisa: el reporte se movería ahí. No se construye ahora; es después de Tratamiento.
 
 ## CI: correr `pnpm verify` en cada push/PR (registrado 2026-08-22, decide Santiago)
 
