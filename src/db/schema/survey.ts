@@ -113,7 +113,15 @@ export const surveyAnswers = pgTable(
       .references(() => surveyQuestions.id),
     answerValue: text("answer_value"),
   },
-  (t) => [index("survey_answers_response_idx").on(t.responseId)],
+  // UNIQUE (response_id, question_id): una respuesta por pregunta en cada response. El camino de la app ya es
+  // idempotente (intake/survey-edit hacen delete-then-insert; la correccion escribe a un response nuevo), pero
+  // sin restriccion nada lo garantiza estructuralmente: un writer futuro que olvide el delete, o una carrera,
+  // podrian duplicar, y el guard de correccion lee sin ORDER BY y deduplica con Map (gana una fila arbitraria).
+  // La restriccion cierra esa clase de bug (un doble insert falla en el acto, como habria pasado con el fixture).
+  (t) => [
+    index("survey_answers_response_idx").on(t.responseId),
+    unique("survey_answers_response_question_unique").on(t.responseId, t.questionId),
+  ],
 );
 
 // Links de acceso a la encuesta publica (B7). El token opaco de la URL mapea, en
