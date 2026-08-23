@@ -59,6 +59,29 @@ describe("intercambio: golden diferencial del reparto de porciones (PASO 3) cont
     expect(computeIntercambio(2000)).toEqual(computeIntercambio(2000));
   });
 
+  // Las columnas de macros de la tabla (porte del v8: kcal/porcion, kcal, proteina, CHO y grasa) se calculan
+  // como porciones x el valor POR PORCION que expone computeIntercambio. Se assertan los NUMEROS contra
+  // INTER_TABLA_A, no que los campos existan: un test de existencia pasaria verde con el macro equivocado
+  // (p.ej. grasa donde va CHO), que es justo el error que nadie veria en pantalla.
+  it("expone los macros POR PORCION con el valor exacto de INTER_TABLA_A (no solo que existan)", () => {
+    const porSub = new Map(INTER_TABLA_A.map((r) => [r.sub, r]));
+    const alimentos = computeIntercambio(2000);
+    expect(alimentos.length).toBe(INTER_TABLA_A.length);
+    for (const a of alimentos) {
+      const r = porSub.get(a.sub)!;
+      expect(a.kcal, `kcal de ${a.sub}`).toBe(r.kcal);
+      expect(a.prot, `proteina de ${a.sub}`).toBe(r.prot);
+      expect(a.cho, `CHO de ${a.sub}`).toBe(r.cho);
+      expect(a.gras, `grasa de ${a.sub}`).toBe(r.gras);
+    }
+    // Un caso concreto, por si algun dia se reordenan los campos: las carnes magras aportan mucha proteina y
+    // casi nada de CHO; si se cruzaran, este numero cambia.
+    const carnes = alimentos.find((a) => a.sub === "Carnes magras")!;
+    expect(carnes.prot).toBe(19.1);
+    expect(carnes.cho).toBe(1);
+    expect(carnes.gras).toBe(3.1);
+  });
+
   it("Verduras (G2) es SIEMPRE 2 porciones en total, no computadas (excepcion del v8)", () => {
     for (const kcal of [1000, 2000, 3500]) {
       const totalG2 = computeIntercambio(kcal)

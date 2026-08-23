@@ -87,6 +87,9 @@ export function esGrupoNuclear(id: string): boolean {
 // grupo, los demas 0; el profesional los mueve. `grNom` = nombre del grupo (para el encabezado de seccion).
 export type IntercambioAlimento = {
   gr: string; grNom: string; sub: string; kcal: number; porciones: number; esRepresentativo: boolean;
+  // Macros POR PORCION (prot/cho/gras de INTER_TABLA_A). Los consume la tabla del panel; el resto de los
+  // 26 nutrientes no se expone aqui porque su consumidor es la validacion, que lee INTER_TABLA_A directo.
+  prot: number; cho: number; gras: number;
 };
 
 const GRUPO_NOMBRE: Record<string, string> = Object.fromEntries(INTER_GRUPOS.map((g) => [g.id, g.nom]));
@@ -110,6 +113,12 @@ export function computeIntercambio(kcalObj: number): IntercambioAlimento[] {
       grNom: GRUPO_NOMBRE[r.gr] ?? r.gr,
       sub: r.sub,
       kcal: r.kcal,
+      // Macros POR PORCION, tal cual vienen de INTER_TABLA_A (ya portada verbatim). Se exponen para que la
+      // tabla del panel muestre las columnas del v8 (proteina, CHO y grasa por alimento y en el total). No es
+      // ciencia nueva ni un calculo: es el dato de la tabla, que ya estaba y no se estaba usando.
+      prot: r.prot,
+      cho: r.cho,
+      gras: r.gras,
       porciones: esRepresentativo ? porcionesGrupoDefault(r.gr, kcalObj) : 0,
       esRepresentativo,
     };

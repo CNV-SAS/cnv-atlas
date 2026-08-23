@@ -851,6 +851,14 @@ function IntercambioSection({
 
   const desfase = saved != null && saved.objetivoBase !== objetivoEfectivo;
   const totalKcal = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.kcal, 0);
+  // Macros del reparto (porte fiel del v8: columnas kcal/porcion, kcal, proteina, CHO y grasa por alimento,
+  // mas la fila TOTAL). No es calculo nuevo: INTER_TABLA_A ya trae los 26 nutrientes por porcion, portados
+  // verbatim con candado de transcripcion; aqui solo se multiplica por las porciones. La ADECUACION real
+  // (contra la necesidad de cada nutriente) sigue viviendo en la validacion, mas abajo: esta tabla dice
+  // cuanto APORTA lo repartido, no si alcanza.
+  const totalProt = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.prot, 0);
+  const totalCho = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.cho, 0);
+  const totalGras = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.gras, 0);
   const setP = (sub: string, v: number) => setPorciones((p) => ({ ...p, [sub]: Math.max(0, v) }));
 
   // Lo que se guarda: las porciones POR ALIMENTO en pantalla + el objetivo con el que se calcularon
@@ -888,8 +896,12 @@ function IntercambioSection({
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-1 pr-3 font-medium">Alimento</th>
+                  <th className="py-1 pr-3 text-right font-medium">kcal/porción</th>
                   <th className="py-1 pr-3 text-right font-medium">Porciones</th>
-                  <th className="py-1 text-right font-medium">kcal</th>
+                  <th className="py-1 pr-3 text-right font-medium">kcal</th>
+                  <th className="py-1 pr-3 text-right font-medium">Proteína (g)</th>
+                  <th className="py-1 pr-3 text-right font-medium">CHO (g)</th>
+                  <th className="py-1 text-right font-medium">Grasa (g)</th>
                 </tr>
               </thead>
               <tbody>
@@ -904,7 +916,7 @@ function IntercambioSection({
                     const sinPorcion = grupoSinPorcion(a.gr, porciones);
                     filas.push(
                       <tr key={`g-${a.gr}`} className="bg-muted/40">
-                        <td colSpan={3} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <td colSpan={7} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {a.grNom}
                           {sinPorcion ? (
                             <span className="ml-2 font-normal normal-case text-clinical-warning" title="Grupo base sin porciones: el objetivo puede ser muy bajo">
@@ -918,6 +930,7 @@ function IntercambioSection({
                   filas.push(
                     <tr key={a.sub} className="border-b border-border/50">
                       <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{a.kcal}</td>
                       <td className="py-1.5 pr-3 text-right">
                         <input
                           type="number"
@@ -927,21 +940,39 @@ function IntercambioSection({
                           className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
                         />
                       </td>
-                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{Math.round(n * a.kcal)}</td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums font-medium text-foreground">
+                        {Math.round(n * a.kcal)}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                        {(n * a.prot).toFixed(1)}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                        {(n * a.cho).toFixed(1)}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">
+                        {(n * a.gras).toFixed(1)}
+                      </td>
                     </tr>,
                   );
                   return filas;
                 })}
-                <tr className="font-semibold text-foreground">
-                  <td className="py-2" colSpan={2}>
+                <tr className="border-t-2 border-border font-semibold text-foreground">
+                  <td className="py-2" colSpan={3}>
                     Total
                   </td>
-                  {/* El total dice contra QUE se compara (objetivo): las porciones enteras lo aproximan, no lo
-                      igualan, asi que los dos numeros conviven sin confundir. */}
-                  <td className="py-2 text-right tabular-nums">
-                    {Math.round(totalKcal)} kcal{" "}
-                    <span className="font-normal text-muted-foreground">(objetivo: {objetivoEfectivo})</span>
+                  {/* El total de kcal dice contra QUE se compara (objetivo): las porciones enteras lo aproximan,
+                      no lo igualan, asi que los dos numeros conviven sin confundir. Los macros NO llevan su
+                      objetivo al lado a proposito: su adecuacion es la tabla de validacion, que ademas la
+                      colorea; repetir aqui un segundo juicio invitaria a leer dos veredictos distintos. */}
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    {Math.round(totalKcal)}
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      objetivo {objetivoEfectivo}
+                    </span>
                   </td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{totalProt.toFixed(1)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{totalCho.toFixed(1)}</td>
+                  <td className="py-2 text-right tabular-nums">{totalGras.toFixed(1)}</td>
                 </tr>
               </tbody>
             </table>
