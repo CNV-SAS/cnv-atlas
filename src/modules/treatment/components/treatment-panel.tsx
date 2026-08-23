@@ -28,6 +28,7 @@ import {
   type TreatmentActionState,
 } from "../actions";
 import type { CelularBadges } from "../data/celular-badges";
+import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
   guidelinesSignature,
@@ -492,6 +493,17 @@ export function TreatmentPanel({
             diagnóstico.
           </p>
         </div>
+
+        {/* Aviso ACCIONABLE de realimentacion (instruye: QUE hacer con las kcal), ENCIMA de la cadena, que es
+            donde el nutricionista fija el objetivo calorico. La lectura informativa (QUE tiene el paciente) va
+            en el resumen. Aqui no depende de la posicion de la cadena: se ancla al inicio del bloque del plan. */}
+        {protocol.protocolSuggested?.alertaSindRealim ? (
+          <RealimentacionAlert>
+            Riesgo de síndrome de realimentación. Inicia con 10 kcal/kg/día y aumenta de forma gradual (ASPEN
+            2023). Vigila fósforo, potasio, magnesio y tiamina; los exámenes críticos están en la vista del
+            médico.
+          </RealimentacionAlert>
+        ) : null}
 
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection

@@ -9,6 +9,7 @@ import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
 import { ConsultationSection } from "./consultation-section";
+import { RealimentacionAlert } from "./realimentacion-alert";
 import { TreatmentPanel } from "./treatment-panel";
 
 // B1 (T2b): area de tratamiento POR PROFESION. La parte comun (estado del paciente + rutas de atencion
@@ -39,7 +40,13 @@ export type TreatmentNarrative =
 // el FUNCIONAL (del DFI; 1a.1). El de dieta puede faltar (encuesta sin datos legibles): entonces se omite y
 // queda solo el funcional. La Meta va aparte a proposito: el resumen dice DONDE esta el paciente, la meta
 // HACIA DONDE va.
-function DiagnosisReadingBlock({ narrative }: { narrative: TreatmentNarrative }) {
+function DiagnosisReadingBlock({
+  narrative,
+  alertaRealimentacion,
+}: {
+  narrative: TreatmentNarrative;
+  alertaRealimentacion: boolean;
+}) {
   if (narrative.kind === "unavailable") {
     return (
       <section className="rounded-xl border border-dashed border-border bg-muted/30 p-6">
@@ -54,6 +61,16 @@ function DiagnosisReadingBlock({ narrative }: { narrative: TreatmentNarrative })
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-2 rounded-xl border border-border border-l-4 border-l-primary/50 bg-muted/40 p-6">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen clínico</h3>
+        {/* Aviso critico como parte del CUADRO del paciente (informa, no instruye): dice QUE tiene. El aviso
+            accionable con las 10 kcal/kg/dia va encima de la cadena calorica (dice QUE hacer). Dos lecturas del
+            mismo hecho; el profesional lee el resumen primero. No depende de la posicion de la cadena. */}
+        {alertaRealimentacion ? (
+          <RealimentacionAlert>
+            Este paciente tiene riesgo de síndrome de realimentación (fenotipo de bajo peso o desnutrición). La
+            reintroducción de calorías debe ser gradual y vigilada; las indicaciones están sobre la cadena
+            calórica.
+          </RealimentacionAlert>
+        ) : null}
         {narrative.parrafoDieta ? (
           <p className="max-w-prose text-sm leading-relaxed text-foreground">{narrative.parrafoDieta}</p>
         ) : null}
@@ -155,7 +172,10 @@ async function Panel({
           El estado del paciente y hacia dónde va. Debajo se construye el plan.
         </p>
       </div>
-      <DiagnosisReadingBlock narrative={narrative} />
+      <DiagnosisReadingBlock
+        narrative={narrative}
+        alertaRealimentacion={protocol.protocolSuggested?.alertaSindRealim ?? false}
+      />
       <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
