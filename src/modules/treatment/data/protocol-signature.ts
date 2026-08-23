@@ -38,8 +38,13 @@ export function objetivoSignature(p: { treatmentId: string; objetivo: string | n
 // jsonb no garantiza al volver de la BD). Incluye objetivoBase: un cambio del objetivo con el que se guardo
 // tambien mueve la firma.
 export function intercambioSignature(p: { treatmentId: string; intercambio: IntercambioSaved | null }): string {
-  if (!p.intercambio) return `${p.treatmentId}§none`;
-  const { porciones, objetivoBase } = p.intercambio;
+  // Defensivo: el writer relee el jsonb CRUDO de la BD, que puede traer una forma VIEJA/ajena (por-grupo:
+  // {grupos}, sin `porciones`). Sin este guard, Object.keys(undefined) tumbaba el guardado con 500 (2026-08-22).
+  // Una forma que no es la actual == "none", IGUAL que el reader la normaliza a null: asi el baseSignature del
+  // cliente (§none) coincide y el guardado sobrescribe la fila vieja en vez de reventar.
+  const inter = p.intercambio;
+  if (!inter || !inter.porciones || typeof inter.porciones !== "object") return `${p.treatmentId}§none`;
+  const { porciones, objetivoBase } = inter;
   const entries = Object.keys(porciones)
     .sort()
     .map((sub) => `${sub}:${porciones[sub]}`)
@@ -57,8 +62,13 @@ function sortBoolMap(m: Record<string, boolean>): string {
     .join(",");
 }
 export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved | null }): string {
-  if (!p.tiempos) return `${p.treatmentId}§none`;
-  const { activos, celdas, base } = p.tiempos;
+  // Misma defensa que intercambioSignature: el writer relee el jsonb crudo, que puede venir malformado/ajeno.
+  // Sin las tres partes esperadas se trata como "none" (el reader lo normaliza a null igual), sin reventar.
+  const t = p.tiempos;
+  if (!t || !t.activos || typeof t.activos !== "object" || !t.celdas || typeof t.celdas !== "object" || !t.base || typeof t.base !== "object" || !t.base.porciones || typeof t.base.porciones !== "object" || !t.base.activos || typeof t.base.activos !== "object") {
+    return `${p.treatmentId}§none`;
+  }
+  const { activos, celdas, base } = t;
   const serCeldas = Object.keys(celdas)
     .sort()
     .map(

@@ -56,6 +56,14 @@ describe("tiemposSignature: orden-independiente en las tres partes", () => {
     expect(sig(null)).toBe("t-1§none");
     expect(tiemposSignature({ treatmentId: "t-2", tiempos: base })).not.toBe(sig(base));
   });
+
+  // REGRESION (2026-08-22, familia del 500 del intercambio): el writer relee el jsonb crudo; una forma
+  // malformada/ajena (sin las tres partes) NO debe reventar la firma -> "none".
+  it("una forma malformada/ajena NO revienta: firma == none", () => {
+    expect(() => sig({} as unknown as TiemposSaved)).not.toThrow();
+    expect(sig({} as unknown as TiemposSaved)).toBe("t-1§none");
+    expect(sig({ activos: { desayuno: true } } as unknown as TiemposSaved)).toBe("t-1§none");
+  });
 });
 
 describe("saveTiemposSchema: validacion estricta (tres partes, >=1 activo)", () => {

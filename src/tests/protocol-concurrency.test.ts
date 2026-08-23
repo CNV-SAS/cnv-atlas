@@ -338,6 +338,26 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000); // el del camino feliz, no 9999
   });
 
+  // CAMINO REAL del 500 (2026-08-22): una fila guardada con la FORMA VIEJA (por-grupo, {grupos}) de las pruebas
+  // de CP1 antes del cambio a por-alimento. El writer la RELEE cruda y calculaba Object.keys(undefined) -> 500.
+  // Este test siembra la forma vieja en la BD y guarda con el baseSignature que manda el cliente (el panel la
+  // normaliza a null -> §none): el guardado debe SOBRESCRIBIRLA sin reventar, no rechazarla. Es el camino que
+  // ningun test cubria (los otros arrancan de NULL o construyen el objeto a mano con la forma nueva).
+  it("intercambio con forma VIEJA guardada: el writer la sobrescribe sin 500 (camino real)", async () => {
+    await db
+      .update(schema.treatments)
+      .set({ intercambioPorciones: { objetivoBase: 1800, grupos: { G1: { porciones: 3, sub: "Cereales" } } } as never })
+      .where(eq(schema.treatments.id, treatmentId));
+    // El cliente ve la fila normalizada a null, asi que su baseSignature es §none (no la firma de la forma vieja).
+    const baseComoCliente = `${treatmentId}§none`;
+    await expect(
+      saveIntercambio({ treatmentId, intercambio: INTER, baseSignature: baseComoCliente, ...actor }),
+    ).resolves.toBeUndefined();
+    const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    expect((t.inter as IntercambioSaved).porciones).toBeDefined();
+    expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000);
+  });
+
   // CP2.2: candado de saveTiempos (columna jsonb tiempos). Arranca NULL.
   async function currentTiemposSignature(): Promise<string> {
     const [t] = await db

@@ -44,6 +44,19 @@ describe("intercambioSignature: orden-independiente (cuidado c)", () => {
     expect(sig(null)).toBe("t-1§none");
     expect(intercambioSignature({ treatmentId: "t-2", intercambio: base })).not.toBe(sig(base));
   });
+
+  // REGRESION del 500 (2026-08-22): el writer relee el jsonb CRUDO de la BD y se lo pasa a la firma. Una fila
+  // guardada con la FORMA VIEJA (por-grupo: {grupos}, sin `porciones`) hacia Object.keys(undefined) y tumbaba
+  // el guardado con 500. El camino real (no el de prueba a mano) pasa cualquier shape almacenado; la firma NO
+  // debe reventar: una forma que no es la actual == "none" (igual que el reader la normaliza a null), asi el
+  // baseSignature del cliente (§none) coincide y el guardado sobrescribe la fila vieja.
+  it("una forma VIEJA/ajena (sin `porciones`) NO revienta: firma == none (camino real del writer)", () => {
+    const vieja = { objetivoBase: 2000, grupos: { G1: { porciones: 3, sub: "Cereales" } } } as unknown as IntercambioSaved;
+    expect(() => sig(vieja)).not.toThrow();
+    expect(sig(vieja)).toBe("t-1§none");
+    // y un objeto vacio/raro tampoco revienta.
+    expect(sig({} as unknown as IntercambioSaved)).toBe("t-1§none");
+  });
 });
 
 describe("saveIntercambioSchema: validacion estricta (cuidado a) derivada de INTER_TABLA_A (cuidado b)", () => {
