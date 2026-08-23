@@ -22,6 +22,7 @@ import {
   saveNutraceuticals,
   saveObjetivo,
   saveIntercambio,
+  saveMenuSemanal,
   saveTiempos,
   saveRestricciones,
 } from "./services/treatment-service";
@@ -34,6 +35,7 @@ import {
   saveNutraceuticalsSchema,
   saveObjetivoSchema,
   saveIntercambioSchema,
+  saveMenuSemanalSchema,
   saveTiemposSchema,
   saveRestriccionesSchema,
 } from "./validations";
@@ -209,6 +211,43 @@ export async function saveTiemposAction(
     return fail(result.error.message);
   }
   return { error: null, success: "Distribución por tiempos guardada.", warning: null };
+}
+
+// CP4: menu semanal, su propia accion.
+export async function saveMenuSemanalAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  let menu: unknown;
+  try {
+    menu = JSON.parse((form.get("menu") as string | null) ?? "");
+  } catch {
+    return fail("Menú semanal inválido.");
+  }
+  const parsed = saveMenuSemanalSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    menu,
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Menú semanal inválido.");
+  }
+
+  const result = await saveMenuSemanal(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Menú semanal guardado.", warning: null };
 }
 
 // Checkpoint 2.4: guias dietarias, su propia accion.

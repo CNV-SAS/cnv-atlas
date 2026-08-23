@@ -33,6 +33,7 @@ const BASE: TreatmentProtocol = {
   objetivoTexto: "Dieta antiinflamatoria, proteína alta.",
   intercambioPorciones: null,
   tiempos: null,
+  menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [
     { id: "tn-1", nutraceuticalId: "n-multicell", name: "MULTICELL BASE", dosage: "1/dia", durationDays: 30 },

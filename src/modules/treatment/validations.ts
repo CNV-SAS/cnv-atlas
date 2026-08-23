@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import { DIAS_DEL_CICLO } from "@/clinical-engine/menu-ciclo";
 import { TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 
 // Validaciones del protocolo de tratamiento (B13). Toda entrada externa pasa por Zod
@@ -145,6 +146,39 @@ export const saveTiemposSchema = z.object({
 });
 
 export type SaveTiemposInput = z.infer<typeof saveTiemposSchema>;
+
+// Menu semanal (CP4). Texto libre del profesional, asi que lo que se valida es el CONTINENTE, no el
+// contenido: que la clave sea "dia_tiempo" con dia 0-6 y un tiempo conocido, que el dia de arranque este
+// dentro del ciclo, y un TOPE de tamaño por celda y en total (regla dura: toda entrada externa con limite
+// de payload; sin el, una celda podria traer un texto arbitrario a un jsonb).
+const MENU_CELDA_MAX = 500;
+const MENU_CELDAS_MAX = 7 * TIEMPOS_DEF.length;
+
+export const saveMenuSemanalSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  menu: z
+    .object({
+      diaInicio: z.number().int().min(0).max(DIAS_DEL_CICLO - 1),
+      celdas: z.record(z.string(), z.string().max(MENU_CELDA_MAX, "Ese texto del menú es demasiado largo.")),
+    })
+    .superRefine((val, ctx) => {
+      const claves = Object.keys(val.celdas);
+      if (claves.length > MENU_CELDAS_MAX) {
+        ctx.addIssue({ code: "custom", message: "El menú trae más celdas de las que tiene la semana." });
+      }
+      for (const k of claves) {
+        const [dia, ...resto] = k.split("_");
+        const tiempo = resto.join("_");
+        const d = Number(dia);
+        if (!Number.isInteger(d) || d < 0 || d > 6 || !MEAL_IDS.has(tiempo)) {
+          ctx.addIssue({ code: "custom", message: `Celda de menú inválida: ${k}.` });
+        }
+      }
+    }),
+  baseSignature: z.string().max(6000).default(""),
+});
+
+export type SaveMenuSemanalInput = z.infer<typeof saveMenuSemanalSchema>;
 
 // Prescripcion de nutraceuticos (checkpoint 2.3): set completo + firma base del candado. El set se
 // reemplaza por completo (el formulario envia el estado final deseado).

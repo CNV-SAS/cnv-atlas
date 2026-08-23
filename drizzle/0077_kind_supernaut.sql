@@ -1,0 +1,1 @@
+ALTER TABLE "treatments" ADD COLUMN "menu_semanal" jsonb;

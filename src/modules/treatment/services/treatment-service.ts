@@ -15,6 +15,7 @@ import {
   saveNutraceuticals as writeNutraceuticals,
   saveObjetivo as writeObjetivo,
   saveIntercambio as writeIntercambio,
+  saveMenuSemanal as writeMenuSemanal,
   saveTiempos as writeTiempos,
   saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
@@ -22,6 +23,7 @@ import {
   StaleNutraceuticalsError,
   StaleObjetivoError,
   StaleIntercambioError,
+  StaleMenuSemanalError,
   StaleTiemposError,
   StaleRestriccionesError,
   TreatmentStateError,
@@ -36,6 +38,7 @@ import type {
   SaveNutraceuticalsInput,
   SaveObjetivoInput,
   SaveIntercambioInput,
+  SaveMenuSemanalInput,
   SaveTiemposInput,
   SaveRestriccionesInput,
 } from "../validations";
@@ -226,6 +229,47 @@ export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promis
         appError(
           "stale_write",
           "La distribución por tiempos está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// CP4: menu semanal, su propio camino de guardado. Mismos gates y mismo candado que las demas secciones.
+export async function saveMenuSemanal(input: SaveMenuSemanalInput, actor: Actor): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el menú semanal."));
+  }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
+  try {
+    await writeMenuSemanal({
+      treatmentId: protocol.treatmentId,
+      menu: input.menu,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleMenuSemanalError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió el menú semanal en otra sesión (otra pestaña o dispositivo). Para no borrar " +
+            "ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "El menú semanal está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }

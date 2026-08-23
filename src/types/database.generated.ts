@@ -3190,6 +3190,7 @@ export type Database = {
           id: string
           intercambio_porciones: Json | null
           kcal_objetivo: number | null
+          menu_semanal: Json | null
           micronutrientes_texto: string | null
           objetivo_texto: string | null
           proteina_g: number | null
@@ -3217,6 +3218,7 @@ export type Database = {
           id?: string
           intercambio_porciones?: Json | null
           kcal_objetivo?: number | null
+          menu_semanal?: Json | null
           micronutrientes_texto?: string | null
           objetivo_texto?: string | null
           proteina_g?: number | null
@@ -3244,6 +3246,7 @@ export type Database = {
           id?: string
           intercambio_porciones?: Json | null
           kcal_objetivo?: number | null
+          menu_semanal?: Json | null
           micronutrientes_texto?: string | null
           objetivo_texto?: string | null
           proteina_g?: number | null

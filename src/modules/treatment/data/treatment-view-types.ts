@@ -34,6 +34,13 @@ export type TiemposSaved = {
   celdas: Record<string, Record<string, number>>;
   base: { porciones: Record<string, number>; activos: Record<string, boolean> };
 };
+// Menu semanal (CP4). `celdas` keyed "dia_tiempo" (dia 0-6, id de tiempo) con SOLO lo que el profesional
+// escribio; lo que no toco se recomputa del ciclo, asi que la precarga nunca se congela por accidente.
+// `diaInicio` es el dia del ciclo de 21 con el que arranca la semana, PERSISTIDO (ver el schema).
+export type MenuSemanalSaved = {
+  diaInicio: number;
+  celdas: Record<string, string>;
+};
 export type TreatmentNote = { id: string; note: string; createdAt: string };
 export type CatalogItem = {
   id: string;
@@ -88,6 +95,9 @@ export type TreatmentProtocol = {
   // Distribucion por tiempos guardada (CP2.2). null = nunca guardada -> el panel usa el reparto auto de
   // computeTiempos con los tiempos activos por defecto.
   tiempos: TiemposSaved | null;
+  // Menu semanal guardado (CP4). null = nunca guardado -> la grilla usa la precarga del ciclo con el
+  // arranque DERIVADO del treatmentId.
+  menuSemanal: MenuSemanalSaved | null;
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
   recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)

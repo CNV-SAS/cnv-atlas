@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 // TreatmentProtocol (anotacion del reader) vive en el modulo neutro; ver el reexport abajo.
-import type { IntercambioSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
+import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
 // El intercambio y los tiempos cambiaron de forma (por-grupo -> por-alimento, ronda P-29). Un jsonb guardado con la
 // forma VIEJA (`grupos` en vez de `porciones`) no se puede leer como el nuevo shape: se trata como AUSENTE
@@ -21,6 +21,15 @@ function normalizeTiempos(raw: unknown): TiemposSaved | null {
   const v = raw as Record<string, unknown>;
   const base = v.base as Record<string, unknown> | undefined;
   return base && base.porciones && typeof base.porciones === "object" ? (v as TiemposSaved) : null;
+}
+
+// Menu semanal: misma tolerancia que las otras dos formas jsonb. Una forma que no es la actual se trata
+// como "nunca guardado" (la grilla cae a la precarga) en vez de reventar o pintar celdas vacias.
+function normalizeMenuSemanal(raw: unknown): MenuSemanalSaved | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as Record<string, unknown>;
+  if (typeof v.diaInicio !== "number" || !v.celdas || typeof v.celdas !== "object") return null;
+  return v as MenuSemanalSaved;
 }
 
 // Lectura del protocolo de tratamiento de una evaluacion para la vista interna del
@@ -68,7 +77,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, menu_semanal, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -163,6 +172,7 @@ export async function getTreatmentProtocol(
     objetivoTexto: treatment.objetivo_texto ?? null,
     intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
     tiempos: normalizeTiempos(treatment.tiempos),
+    menuSemanal: normalizeMenuSemanal(treatment.menu_semanal),
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({
       id: n.id,

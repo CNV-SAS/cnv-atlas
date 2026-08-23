@@ -16,12 +16,13 @@ import {
   adjustmentSignature,
   guidelinesSignature,
   intercambioSignature,
+  menuSemanalSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
   tiemposSignature,
 } from "./protocol-signature";
-import type { IntercambioSaved, TiemposSaved } from "./treatment-view-types";
+import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved } from "./treatment-view-types";
 
 // Escritura del protocolo de tratamiento (Drizzle owner, para el audit INLINE, regla 8).
 // La autorizacion (ownership) se verifica ANTES en el action leyendo el tratamiento bajo
@@ -72,6 +73,13 @@ export class StaleTiemposError extends Error {
   constructor() {
     super("La distribución por tiempos cambió desde que se cargó.");
     this.name = "StaleTiemposError";
+  }
+}
+
+export class StaleMenuSemanalError extends Error {
+  constructor() {
+    super("El menú semanal cambió desde que se cargó.");
+    this.name = "StaleMenuSemanalError";
   }
 }
 
@@ -283,6 +291,54 @@ export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void
       payload: {
         objetivo_base: input.intercambio.objetivoBase,
         alimentos_con_porcion: Object.values(input.intercambio.porciones).filter((n) => n > 0).length,
+      },
+      ip: input.ip,
+    });
+  });
+}
+
+export type SaveMenuSemanalWrite = {
+  treatmentId: string;
+  menu: MenuSemanalSaved;
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda el menu semanal (CP4): jsonb en treatments.menu_semanal. Mismo patron con candado; REEMPLAZA EN
+// BLOQUE. Se persiste diaInicio ademas de las celdas: el dia de arranque es parte del plan, no un detalle
+// de render (si no, el menu cambiaria al recargar).
+export async function saveMenuSemanal(input: SaveMenuSemanalWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ m: treatments.menuSemanal })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = menuSemanalSignature({
+      treatmentId: input.treatmentId,
+      menu: (locked.m as MenuSemanalSaved | null) ?? null,
+    });
+    if (current !== input.baseSignature) throw new StaleMenuSemanalError();
+    await tx
+      .update(treatments)
+      .set({ menuSemanal: input.menu })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.menu_semanal_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      // Se auditan CIFRAS, no el contenido del menu: es texto libre del profesional y el log no es su copia.
+      payload: {
+        dia_inicio: input.menu.diaInicio,
+        celdas_editadas: Object.values(input.menu.celdas).filter((v) => String(v).trim().length > 0).length,
       },
       ip: input.ip,
     });

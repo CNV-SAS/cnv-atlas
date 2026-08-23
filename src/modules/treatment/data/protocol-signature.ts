@@ -10,7 +10,7 @@
 // nutraceuticos, restricciones, guias) tiene su PROPIA accion y su PROPIA firma; la maquinaria de "firma por
 // secciones del protocolo" (protocolSectionSignatures/saveProtocol) se retiro, era de un solo proposito.
 
-import type { IntercambioSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
+import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
 // LA KEY DE REACT NO ES LA FIRMA: es "que seccion es" + la firma (defecto real, 2026-08-23).
 // La firma es "treatmentId + contenido", asi que DOS SECCIONES SIN DATO GUARDADO producen la MISMA
@@ -97,6 +97,22 @@ export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved
     .map((k) => `${k}:${base.porciones[k]}`)
     .join(",");
   return `${p.treatmentId}§${sortBoolMap(activos)}§${serCeldas}§${serPorc}§${sortBoolMap(base.activos)}`;
+}
+
+// Menu semanal (columna treatments.menu_semanal, jsonb). ORDEN-INDEPENDIENTE: serializa las celdas por
+// clave ordenada. Incluye diaInicio: cambiar la semana base tambien mueve la firma, porque cambia el plan.
+export function menuSemanalSignature(p: { treatmentId: string; menu: MenuSemanalSaved | null }): string {
+  // Misma defensa que las otras dos formas jsonb: el writer relee el crudo, que puede venir de una forma
+  // vieja o ajena. Lo que no es la forma actual == "none", igual que el reader lo normaliza a null.
+  const m = p.menu;
+  if (!m || typeof m.diaInicio !== "number" || !m.celdas || typeof m.celdas !== "object") {
+    return `${p.treatmentId}§none`;
+  }
+  const ser = Object.keys(m.celdas)
+    .sort()
+    .map((k) => `${k}=${m.celdas[k]}`)
+    .join("|");
+  return `${p.treatmentId}§${m.diaInicio}§${ser}`;
 }
 
 // --- Firma de los AJUSTES a la cadena calorica (columnas adj_*, pieza 2) ---

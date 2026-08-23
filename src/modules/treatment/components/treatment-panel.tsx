@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
+import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { AlimentosDelSubgrupo, ListaIntercambioPaciente } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
@@ -23,6 +24,7 @@ import {
   saveAdjustmentsAction,
   saveGuidelinesAction,
   saveIntercambioAction,
+  saveMenuSemanalAction,
   saveTiemposAction,
   saveObjetivoAction,
   saveRestriccionesAction,
@@ -37,6 +39,7 @@ import {
   objetivoSignature,
   restriccionesSignature,
   sectionKey,
+  menuSemanalSignature,
   tiemposSignature,
 } from "../data/protocol-signature";
 import type { IntercambioSaved, MenuSuggestion, TiemposSaved, TreatmentProtocol } from "../data/treatment-view-types";
@@ -576,6 +579,13 @@ export function TreatmentPanel({
             en el v8 (su seccion E precede a la F). No depende del protocolo: es la tabla completa, la misma
             para todos; lo que cambia por paciente son las PORCIONES, que estan arriba. */}
         <ListaIntercambioPaciente />
+        {/* Menu semanal (CP4). key = firma del menu guardado (remonte, como las demas secciones). */}
+        <MenuSemanalSection
+          key={sectionKey("menu-semanal", menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal }))}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection
@@ -1008,6 +1018,136 @@ function IntercambioSection({
               onClick={() => setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])))}
             >
               Recalcular desde el objetivo (borra tus ajustes)
+            </Button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
+// MENU SEMANAL (CP4, porte de la seccion F del v8): grilla 7 dias x tiempos ACTIVOS, una celda de texto
+// editable por comida, precargada desde el ciclo de 21 dias.
+//
+// LA SEMILLA. El v8 arranca el ciclo en un dia ALEATORIO y puede permitirselo porque su menu es transitorio
+// (localStorage, se recalcula al recargar). Aqui el plan se GUARDA, y un menu que cambia al recargar no es
+// un plan. Dos capas: antes del primer guardado el arranque se DERIVA del treatmentId (determinista, sin
+// parpadeo, y distinto entre evaluaciones del mismo paciente, para no repetirle la semana en el
+// seguimiento); al guardar se PERSISTE, y desde ahi queda congelado aunque un dia cambiemos la derivacion.
+// El boton de cambiar la semana base si puede usar azar: al ser una accion del profesional, el resultado se
+// guarda y deja de ser azaroso.
+const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+function MenuSemanalSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveMenuSemanalAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+
+  const saved = protocol.menuSemanal;
+  const [diaInicio, setDiaInicio] = useState<number>(() => saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId));
+  const [celdas, setCeldas] = useState<Record<string, string>>(() => saved?.celdas ?? {});
+
+  // Los tiempos ACTIVOS son los de la distribucion: el plan es uno solo, no dos configuraciones distintas.
+  const activos = protocol.tiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
+
+  // Texto de una celda: lo que el profesional escribio, o la precarga del ciclo. El ciclo NO trae merienda:
+  // esa columna queda vacia y la UI dice por que (un blanco sin explicacion se lee como fallo).
+  const precarga = (dia: number, tiempo: string): string => {
+    const delCiclo = diaDelCiclo(diaInicio, dia) as unknown as Record<string, string | undefined>;
+    return delCiclo[tiempo] ?? "";
+  };
+  const valor = (dia: number, tiempo: string): string => celdas[`${dia}_${tiempo}`] ?? precarga(dia, tiempo);
+  const sinCiclo = vivos.filter((t) => !(diaDelCiclo(diaInicio, 0) as unknown as Record<string, unknown>)[t.id]);
+
+  const setCelda = (dia: number, tiempo: string, v: string) =>
+    setCeldas((c) => ({ ...c, [`${dia}_${tiempo}`]: v }));
+
+  // Lo que se guarda: SOLO lo que difiere de la precarga. Asi la precarga no se congela: si mañana el
+  // profesional cambia la semana base, las celdas que no toco siguen el ciclo nuevo.
+  const payload = {
+    diaInicio,
+    celdas: Object.fromEntries(
+      Object.entries(celdas).filter(([k, v]) => {
+        const [d, ...resto] = k.split("_");
+        return v !== precarga(Number(d), resto.join("_"));
+      }),
+    ),
+  };
+  const baseSignature = menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal });
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Menú semanal</h3>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Una semana de menús colombianos, precargada desde el ciclo de {DIAS_DEL_CICLO} días. Es un punto de
+        partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas son los tiempos
+        que dejaste activos en la distribución.
+      </p>
+      {sinCiclo.length > 0 ? (
+        <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          El ciclo base no trae {sinCiclo.map((t) => t.n.toLowerCase()).join(" ni ")}: esa columna queda
+          vacía y la escribes tú.
+        </p>
+      ) : null}
+      <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="menu" value={JSON.stringify(payload)} />
+        <fieldset disabled={locked} className="flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-1 pr-3 font-medium">Día</th>
+                  {vivos.map((t) => (
+                    <th key={t.id} className="py-1 pr-3 font-medium">
+                      {t.n}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {DIAS_SEMANA.map((nombre, dia) => (
+                  <tr key={nombre} className="border-b border-border/50 align-top">
+                    <td className="py-1.5 pr-3 font-medium text-foreground">{nombre}</td>
+                    {vivos.map((t) => (
+                      <td key={t.id} className="py-1.5 pr-3">
+                        <textarea
+                          rows={3}
+                          value={valor(dia, t.id)}
+                          onChange={(e) => setCelda(dia, t.id, e.target.value)}
+                          className="w-full min-w-48 rounded border border-border bg-background px-2 py-1 text-xs"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar menú"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                // Azar en una ACCION del profesional: el resultado se guarda, asi que deja de ser azaroso.
+                // Se avanza a un dia DISTINTO del actual para que el boton siempre haga algo visible.
+                setDiaInicio((d) => (d + 1 + Math.floor(Math.random() * (DIAS_DEL_CICLO - 1))) % DIAS_DEL_CICLO);
+              }}
+            >
+              Cambiar la semana base
             </Button>
           </div>
         </fieldset>

@@ -109,6 +109,15 @@ export const treatments = pgTable("treatments", {
   // para el aviso de desfase DOBLE (porciones y activos). Editable tras aprobar como el resto del plan (ver la
   // nota de objetivo_texto). null = nunca guardada.
   tiempos: jsonb("tiempos"),
+  // Menu semanal (CP4): { diaInicio, celdas } jsonb. `celdas` son los textos que el profesional dejo,
+  // keyed "dia_tiempo" (0-6 x id de tiempo); solo se guarda lo EDITADO, no la precarga del ciclo, que se
+  // recomputa. `diaInicio` es el dia del ciclo de 21 con el que arranca la semana: se PERSISTE porque el
+  // dia de arranque es parte del plan. El v8 lo sortea con Math.random() y puede permitirselo porque su
+  // menu es transitorio (localStorage, se recalcula al recargar); aqui el plan se GUARDA, y un menu que
+  // cambia al recargar no es un plan. Antes del primer guardado se DERIVA del treatmentId (determinista,
+  // sin parpadeo, y distinto entre evaluaciones del mismo paciente, para no repetirle la semana en el
+  // seguimiento). Editable tras aprobar como el resto del plan. null = nunca guardado.
+  menuSemanal: jsonb("menu_semanal"),
   // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
   // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
   // esta implicita en created_by. Si algun dia hay agenda, se migra.
