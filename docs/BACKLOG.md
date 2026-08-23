@@ -5,6 +5,24 @@
 
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
+## El ack de restricciones: maquinaria construida y SIN CABLEAR, a propósito (decisión 2026-08-23)
+
+**DECIDIDO: no se cablea (opción iii). Esto no es un olvido; queda escrito para quien lo retome.**
+
+**Qué existe.** En T2 A2 se construyó el reconocimiento del profesional de las restricciones del MODELO, diseñado como gate del generador de menú ("Opción B"): columnas `restrictions_ack_at` / `restrictions_ack_by`, `acknowledgeRestrictionsAction`, service, writer con auditoría (`treatment.restrictions_acknowledged`), policy `canAcknowledgeRestrictions` (profesional-solo) y una excepción explícita en el trigger de inmutabilidad para no congelarlo.
+
+**Qué NO existe.** Ninguna UI invoca la acción, el reader no lee esas columnas y `generate-menu.ts` no las mira. **Era un gate que no gateaba**, y cinco textos (schema, policy, service, writer y `ARCHITECTURE.md`) lo llamaban gate. Corregidos en el mismo commit que esta entrada: un gate falso documentado es peor que no tenerlo.
+
+**Por qué no se cablea.** El 2026-08-23, con `menu.v2`, **las restricciones del modelo YA llegan al prompt del menú** (era el hueco EN2: no llegaban). Eso cambia lo que el ack significa: deja de ser la protección (la restricción llega igual, la reconozca alguien o no) y pasa a ser **constancia** de que el profesional las vio. Sigue teniendo valor como acto clínico auditado, pero no justifica sumar un gate más antes del Hito 1, con el precedente del gate `diagnosisConfirmed` (cinco operaciones bloqueadas) a la vista.
+
+**Si algún día se retoma:** es cablear, no construir. Falta (a) exponer `restrictions_ack_*` en el reader, (b) la casilla junto a la lista del modelo, y (c) la verificación en `generateMenu`. La maquinaria y su auditoría ya están escritas y probadas.
+
+## Fixtures de encuesta que envejecen solos: `DFI_COMPLETE_ANSWERS` ya no cubre la vigente (hallazgo 2026-08-23)
+
+**PENDIENTE, chico.** `DFI_COMPLETE_ANSWERS` se escribió como lista de respuestas por `field_key`. Al crecer la encuesta, la lista dejó de cubrirla: sembrar con ella hoy deja **33 respuestas sin contestar** y el pipeline rechaza por encuesta incompleta. Es la familia de "el dato existe y no llega": el fixture no falla, se queda corto, y quien lo use ve un error que parece de otra cosa.
+
+**La solución ya está escrita en uno de los tres seeds.** `demo-realimentacion.seed.test.ts` rellena **por TIPO de pregunta** (usa el fixture donde lo cubre; el resto cae a la primera opción, o a un valor neutro si es abierta), así sobrevive a los bumps de la encuesta. **Falta aplicar el mismo relleno a `trajectory-demo.seed.test.ts` y `golden-path.seed.test.ts`**, que hoy tienen el problema. Cuando haya hueco; no bloquea nada (los dos son seeds gateados por env var).
+
 ## Corregir las condiciones BIS después de generar el diagnóstico (Santiago 2026-08-20)
 
 **PENDIENTE.** Hoy las condiciones BIS (el estado/contraindicaciones de la medición que captura `bis-conditions-capture`) se registran ANTES de generar el diagnóstico; una vez generado, no hay flujo para corregirlas. Santiago pide poder corregirlas después. **Dimensionado MEDIO:** toca el flujo de corrección (recomputar el diagnóstico con las condiciones nuevas, versionar la constelación, auditar), de la misma familia que el flujo de corrección de evaluación ya existente (C2) y que el pendiente "cerrar eval con diagnóstico". Se ve DESPUÉS de Tratamiento (decisión del 2026-08-20).

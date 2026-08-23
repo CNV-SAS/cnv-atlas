@@ -20,7 +20,9 @@ export function canEditProtocolDraft(user: CurrentUser): boolean {
   return hasRole(user, "professional");
 }
 
-// Reconocer las restricciones del modelo (gate del generador de menu, Opcion B).
+// Reconocer las restricciones del modelo. OJO: la operacion existe pero NO esta cableada a ninguna UI
+// ni la exige generateMenu (decision 2026-08-23, opcion iii; ver BACKLOG). La policy se conserva con la
+// maquinaria; no gatea nada hoy.
 export function canAcknowledgeRestrictions(user: CurrentUser): boolean {
   return hasRole(user, "professional");
 }

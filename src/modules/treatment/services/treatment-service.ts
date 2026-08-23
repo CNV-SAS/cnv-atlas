@@ -52,8 +52,8 @@ type Actor = { actorId: string; actorEmail: string; ip: string | null };
 // (fieldset disabled), pero las actions son invocables directo: con DOS PESTAÑAS (una sin aprobar, otra que
 // aprueba) el guardado de la vieja pisaba un plan aprobado sin querer, y el candado de firma NO lo atrapaba
 // (aprobar no cambia los datos de la seccion). Se aplica a las SEIS escrituras de seccion; NO a
-// acknowledgeRestrictions (el reconocimiento de restricciones ES un paso legitimo post-aprobacion, gate del
-// menu) ni a addNote (documentacion). La pregunta CLINICA -si el plan debe congelarse o seguir editable- sigue
+// acknowledgeRestrictions (el reconocimiento de restricciones ES un paso legitimo post-aprobacion; no
+// gatea el menu, ver su nota abajo) ni a addNote (documentacion). La pregunta CLINICA -si el plan debe congelarse o seguir editable- sigue
 // para Gildardo (BACKLOG); si dice editable, se relaja aqui Y en la UI. Hoy la UI ya lo bloquea; el servidor
 // lo respalda.
 const PROTOCOL_APPROVED_MSG =
@@ -388,7 +388,9 @@ export async function saveAdjustments(
   return ok(undefined);
 }
 
-// T2 A2: reconocimiento de las restricciones del modelo (gate del generador de menu).
+// T2 A2: reconocimiento de las restricciones del modelo. NO es un gate: ninguna UI lo invoca y
+// generateMenu no lo exige (decision 2026-08-23, opcion iii; ver BACKLOG). Queda como maquinaria
+// construida y auditada, lista si algun dia se decide exigir la constancia.
 export async function acknowledgeRestrictions(
   input: AcknowledgeRestrictionsInput,
   actor: Actor,

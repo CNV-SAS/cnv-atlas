@@ -76,9 +76,13 @@ export const treatments = pgTable("treatments", {
   // RESTRICT explicito (regla 14, escrito, no por defecto).
   approvedBy: uuid("approved_by").references(() => profiles.id, { onDelete: "restrict" }),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
-  // Reconocimiento del profesional de las restricciones del MODELO antes de generar el menu
-  // (gate del generador, Opcion B). El "que se reconocio" no se duplica: son las
-  // restricciones de protocol_suggested (inmutable), asi que basta at + by. RESTRICT (regla 14).
+  // Reconocimiento del profesional de las restricciones del MODELO. El "que se reconocio" no se
+  // duplica: son las de protocol_suggested (inmutable), asi que basta at + by. RESTRICT (regla 14).
+  // NO CABLEADO (decision 2026-08-23, ver BACKLOG "el ack de restricciones"): se diseño como gate del
+  // generador de menu, pero ninguna UI lo invoca y generateMenu no lo exige. NO es un olvido: desde
+  // menu.v2 las restricciones del modelo YA llegan al prompt, asi que reconocerlas seria CONSTANCIA de
+  // que el profesional las vio, no proteccion, y no se suma un gate mas antes del Hito 1. Las columnas
+  // se conservan (la maquinaria esta escrita y auditada); cablearlo es cambiar de opinion, no construir.
   restrictionsAckAt: timestamp("restrictions_ack_at", { withTimezone: true }),
   restrictionsAckBy: uuid("restrictions_ack_by").references(() => profiles.id, {
     onDelete: "restrict",

@@ -518,12 +518,13 @@ export type AcknowledgeRestrictionsWrite = {
   ip: string | null;
 };
 
-// Reconocimiento del profesional de las restricciones del MODELO (gate del generador de menu,
-// Opcion B). Depende de que protocol_suggested EXISTA: sus restricciones son las que se
-// reconocen (ajuste conocido: la operacion no tiene cobertura end-to-end hasta A3, que sella
-// protocol_suggested; se ejercita en test contra un protocol_suggested insertado a mano). Los
-// restrictions_ack_* NO los congela el trigger: el reconocimiento puede ocurrir al ir a
-// generar el menu, despues de aprobar el protocolo.
+// Reconocimiento del profesional de las restricciones del MODELO. Depende de que protocol_suggested
+// EXISTA: sus restricciones son las que se reconocen (se ejercita en test contra un protocol_suggested
+// insertado a mano). Los restrictions_ack_* NO los congela el trigger: el reconocimiento podria ocurrir
+// despues de aprobar el protocolo.
+// NO CABLEADO (decision 2026-08-23, opcion iii; ver BACKLOG): se diseño como gate del generador de menu
+// y hoy no gatea nada, porque ninguna UI llama esta escritura y generateMenu no la exige. Con menu.v2 las
+// restricciones del modelo ya llegan al prompt, asi que el reconocimiento seria constancia, no proteccion.
 export async function acknowledgeRestrictions(
   input: AcknowledgeRestrictionsWrite,
 ): Promise<void> {
