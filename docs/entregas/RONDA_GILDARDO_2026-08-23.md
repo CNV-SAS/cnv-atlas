@@ -6,6 +6,10 @@
 
 Los tres primeros salieron de portar, no de opinar. Ninguno es una preferencia nuestra.
 
+**Fuente.** Todo lo que sigue está verificado contra la entrega que confirmaste como vigente el 17 de agosto (`ATLAS_v8.html` del 2026-08-19, la que nos llegó con tu respuesta), no contra la del 13. Lo comprobamos pieza por pieza: `motorTratNutri`, el bloque de recomendaciones, las dos tablas de intercambio y el ciclo de menús son idénticos entre las dos entregas, así que los hallazgos no vienen de mirar un archivo superado.
+
+**Y antes de la pregunta 1, lo que ya nos dijiste**, para que no tengas que reconstruirlo: el 17 escribiste que *"el objetivo calórico ya no lo deriva el sistema (13-ago). Se retiraron los cinco déficits sugeridos por fenotipo. El déficit queda en 0 y la orientación del fenotipo se conserva como texto sin cifra, en el campo perfil. **Lo decide el nutricionista**"*, y también que *"el déficit sigue partiendo del **peso meta** acordado con el paciente"*. Y el 19 confirmaste que `motorTratNutri` está al día con la corrección del 9-ago. Eso ya inclina una de las nueve filas y es parte de lo que preguntamos abajo.
+
 ---
 
 ## 1. Dos motores prescriben la dieta y no coinciden. ¿Cuál manda?
@@ -32,6 +36,21 @@ Al hacerlo notamos que `motorTratNutri` prescribe **otro** límite de sodio para
 **Por qué esto importa hoy y no en abstracto.** Atlas usa el primero, así que **para un hipertenso estamos prescribiendo 2.300 mg de sodio y mandando ese número a la IA que genera el menú**. Si el que manda es el otro, el límite correcto es 1.500. Entre 2.300 y 1.500 no hay matiz clínico: hay una dieta distinta.
 
 **Lo que NO vamos a hacer sin tu respuesta.** Tenemos `motorTratNutri` listo para portar (es la pieza que falta de las cuatro; médico, ejercicio y psicología ya están). **No lo portamos**, porque meter un segundo motor que contradice al que ya prescribe empeoraría la incoherencia en vez de cerrarla. Esperamos tu decisión.
+
+### Dos señales dentro de tu propio archivo, que apuntan al segundo motor
+
+No queremos que decidas contra un vacío, así que va lo que encontramos a favor de `motorTratNutri`:
+
+- **Tus propias recomendaciones ya usan su sodio.** Los dos bloques de recomendaciones de la pantalla de nutrición imprimen `sodioMax` de `motorTratNutri` (1.500 en hipertensión, 2.000 en enfermedad renal). O sea: **en tu archivo, lo que se le recomienda al paciente ya sale del segundo motor**, mientras las restricciones que muestra el primero dicen 2.300.
+- **Lo que nos dijiste el 17 va en la misma dirección:** el déficit por fenotipo (que es del primer motor) lo retiraste, y dijiste que el déficit parte del peso meta, que es el mecanismo del segundo.
+
+### Un desajuste entre tu carta y tu archivo, que te reportamos
+
+Aplicamos la regla que nos diste el 19 (*"cuando el texto y el motor se contradigan, manda el motor, y repórtenmelo"*):
+
+> Escribiste que **"el déficit sigue partiendo del peso meta acordado"**. En el archivo vigente, `motorTratNutri` fija **`deficit = 500` en obesidad** (un valor constante), editable después por el profesional. **No lo deriva del peso meta.**
+
+No lo tocamos ni lo interpretamos. Te lo reportamos porque si la intención es que se derive del peso meta, hoy el archivo no lo hace.
 
 **Lo que necesitamos de ti, en una línea:** ¿cuál de los dos gobierna la prescripción nutricional? Y si la respuesta es "cada uno en lo suyo", cuál manda en cada fila de la tabla.
 
@@ -67,7 +86,22 @@ isSarco_pn = FFMI > 0 && FFMI < (sexoM ? 17.92 : 15.64)
 
 Es la condición que activa el bloque de **"Preservación y ganancia de masa muscular"**. Con el umbral viejo, un hombre con FFMI 17,5 recibe esas recomendaciones; con el vigente, no.
 
-Lo traemos con el marco que nos diste en el caso del SMM/W (24 a 22): **cuando cambias un umbral, buscamos todos los sitios donde vive ese número.** Este es uno que estaba en una pieza que aún no habíamos portado, así que el barrido anterior no lo alcanzó.
+Lo traemos con el marco que nos diste en el caso del SMM/W (24 a 22): **cuando cambias un umbral, buscamos todos los sitios donde vive ese número.** Este estaba en una pieza que aún no habíamos portado, así que el barrido anterior no lo alcanzó.
+
+**Y al buscar todos los sitios apareció algo más: hay DOS copias de ese bloque de recomendaciones en tu archivo, y no usan el mismo umbral.**
+
+| | Copia en la tarjeta "RECOMENDACIONES" | Copia en la subpestaña del nutricionista |
+|---|---|---|
+| Sarcopenia | `ffmi < 17` | `ffmi < (hombre ? 17,92 : 15,64)` |
+| Distingue sexo | **no** | sí |
+| Proteína que imprime | `protKg` de `motorTratNutri` | la de la fórmula sintética |
+
+Dos consecuencias, y las dos afectan a pacientes reales:
+
+- **Un mismo paciente puede recibir el bloque en una pantalla y no en la otra.** Un hombre con FFMI 17,5 lo recibe en la segunda copia y no en la primera.
+- **La primera copia aplica el umbral masculino a las mujeres.** Sin la distinción por sexo, una mujer con FFMI 16 queda marcada como sarcopénica, cuando su frontera vigente es 15. Le recomienda preservación de masa muscular a una mujer que no la necesita por ese criterio.
+
+**Lo que necesitamos de ti (ahora sí es decisión, no solo confirmación):** ¿las dos copias deben quedar con **17 / 15** y distinguiendo sexo? Es lo que entendemos, y es lo que portaríamos. Si alguna debía comportarse distinto, dinos cuál y por qué.
 
 **Lo que necesitamos de ti (confirmación, no decisión abierta):** entendemos que se porta con **17 / 15**, la frontera vigente. Confírmanoslo y lo portamos así. Si por alguna razón esa condición debía quedarse en el umbral anterior, dinos por qué y la dejamos como está.
 
@@ -127,7 +161,7 @@ Atlas ofrece un atajo "gasto medido por el Biody: N kcal — usar", al lado de l
 |---|---|---|
 | 1 | **Cuál de los dos motores gobierna la prescripción nutricional** (nueve puntos de discrepancia, sodio incluido) | **Decisión, bloquea** |
 | 2 | Qué hacer con el bloque de recomendaciones que quedó huérfano | Decisión, pequeña |
-| 3 | Confirmar FFMI 17 / 15 en la condición de sarcopenia de las recomendaciones | Confirmación |
+| 3 | FFMI 17 / 15 y distinción por sexo en las **dos copias** del bloque de sarcopenia | Decisión, pequeña |
 | P-25 | Porcentajes por tiempo de comida: ¿finales? ¿fijos o ajustables? | Confirmación + decisión |
 | P-26 | Lista de intercambio: ¿dataset final? | Confirmación |
 | P-27 | Micronutrientes fijos por sexo y edad, sin ajuste por condición | Confirmación |
