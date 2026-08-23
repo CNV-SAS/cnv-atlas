@@ -635,10 +635,17 @@ function MenuSection({
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Menu sugerido (IA)</h3>
-      <p className="text-sm text-muted-foreground">
-        La IA propone un menu diario a partir del objetivo de la cadena calórica. Es un borrador para
-        que lo revises; no se aplica al protocolo automaticamente. El diagnostico no usa IA.
+      <h3 className="text-sm font-semibold text-foreground">Menú sugerido (IA)</h3>
+      {/* QUE MIRA LA IA: se escribe lo que el contrato del prompt REALMENTE lleva (menu.v2.ts), no lo que
+          suena bien. Hoy son siete campos: objetivo calórico, proteína objetivo, las restricciones del
+          modelo, las del profesional, fenotipo estructural, sector funcional y rutas. NO viaja ninguna
+          respuesta cruda de la encuesta, ni el peso, ni los macros de grasa y CHO. Si el contrato cambia,
+          este texto cambia con el: un texto que describe mal el motor es un defecto de seguridad. */}
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Propone un menú de <strong>un día</strong> a partir de las restricciones del paciente (las del modelo
+        y las tuyas), su objetivo de calorías y proteína, y su fenotipo, sector funcional y rutas. No lee las
+        respuestas de la encuesta. Es un borrador para que lo revises: no se aplica al protocolo ni toca la
+        tabla de arriba. El diagnóstico no usa IA.
       </p>
       <form action={formAction}>
         <input type="hidden" name="evaluationId" value={evaluationId} />
@@ -1082,6 +1089,21 @@ function MenuSemanalSection({
     ),
   };
   const baseSignature = menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal });
+  // Una celda esta EDITADA si difiere de lo que propone el ciclo. Es la misma comparacion que decide que se
+  // guarda, asi que no puede desincronizarse del payload.
+  const editada = (dia: number, tiempo: string) => valor(dia, tiempo) !== precarga(dia, tiempo);
+  const hayEdiciones = DIAS_SEMANA.some((_, d) => vivos.some((t) => editada(d, t.id)));
+  // La semana propuesta aun no esta guardada: si recarga, vuelve la anterior. Se avisa (Santiago perdio el
+  // menu varias veces por esto).
+  const semanaSinGuardar = diaInicio !== (saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId));
+  // Devuelve una celda al ciclo: se BORRA el override, no se escribe el texto del ciclo. Asi la celda vuelve
+  // a seguir el ciclo tambien cuando se proponga otra semana; escribir el texto la dejaria fija otra vez.
+  const volverAlCiclo = (dia: number, tiempo: string) =>
+    setCeldas((c) => {
+      const resto = { ...c };
+      delete resto[`${dia}_${tiempo}`];
+      return resto;
+    });
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
@@ -1089,7 +1111,7 @@ function MenuSemanalSection({
       <p className="max-w-prose text-sm text-muted-foreground">
         Una semana de menús colombianos, precargada desde el ciclo de {DIAS_DEL_CICLO} días. Es un punto de
         partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas son los tiempos
-        que dejaste activos en la distribución.
+        de comida que aplicaste arriba.
       </p>
       {sinCiclo.length > 0 ? (
         <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
@@ -1126,6 +1148,17 @@ function MenuSemanalSection({
                           onChange={(e) => setCelda(dia, t.id, e.target.value)}
                           className="w-full min-w-48 rounded border border-border bg-background px-2 py-1 text-xs"
                         />
+                        {/* Solo en las celdas EDITADAS: sin esto, una celda tocada por error queda fija para
+                            siempre y ninguna semana nueva vuelve a tocarla. Era una trampa, no una falta. */}
+                        {editada(dia, t.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => volverAlCiclo(dia, t.id)}
+                            className="mt-0.5 text-xs text-muted-foreground underline hover:text-foreground"
+                          >
+                            Volver al menú del ciclo
+                          </button>
+                        ) : null}
                       </td>
                     ))}
                   </tr>
@@ -1133,7 +1166,7 @@ function MenuSemanalSection({
               </tbody>
             </table>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar menú"}
             </Button>
@@ -1147,9 +1180,35 @@ function MenuSemanalSection({
                 setDiaInicio((d) => (d + 1 + Math.floor(Math.random() * (DIAS_DEL_CICLO - 1))) % DIAS_DEL_CICLO);
               }}
             >
-              Cambiar la semana base
+              Proponer otra semana
             </Button>
+            {hayEdiciones ? (
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
+                Descartar mis ediciones
+              </Button>
+            ) : null}
           </div>
+          {/* Que hace cada boton, en una linea. Sin esto "Proponer otra semana" y "Generar menu con IA"
+              (mas abajo) se confunden, y hacen cosas muy distintas. */}
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <p>
+              <span className="font-medium text-foreground">Proponer otra semana:</span> arranca el ciclo base
+              en otro día. No mira al paciente ni usa IA; son los mismos {DIAS_DEL_CICLO} días, en otro orden.
+              Respeta las celdas que ya editaste.
+            </p>
+            {hayEdiciones ? (
+              <p>
+                <span className="font-medium text-foreground">Descartar mis ediciones:</span> devuelve todas
+                las celdas al menú del ciclo. Para una sola, usa el enlace debajo de esa celda.
+              </p>
+            ) : null}
+          </div>
+          {semanaSinGuardar ? (
+            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+              Semana nueva propuesta, sin guardar todavía. Si recargas, vuelve la anterior: pulsa
+              &quot;Guardar menú&quot; para dejarla fija.
+            </p>
+          ) : null}
         </fieldset>
       </form>
     </section>
@@ -1216,10 +1275,19 @@ function TiemposSection({
 
   if (!snap || objetivoEfectivo == null) return null;
 
-  const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
+  // LAS DOS TABLAS (esta y el menu semanal) LEEN LOS TIEMPOS GUARDADOS, no la edicion en vivo. Los tiempos
+  // activos son una decision CLINICA (definen la estructura del dia del paciente), no un ajuste visual: se
+  // toman una vez y se aplican con un boton. Con reaccion en vivo, tantear marcando y desmarcando
+  // reconstruiria la tabla Y el menu en cada clic, lo que distrae en vez de ayudar. Y asi las dos superficies
+  // cuentan lo mismo SIN compartir estado entre secciones hermanas, que habria exigido subir el estado al
+  // panel y poner en riesgo el remonte por firma (el arreglo del estado pegado).
+  const activosGuardados = savedTiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  const tiemposSinAplicar = TIEMPOS_DEF.some((t) => Boolean(activos[t.id]) !== Boolean(activosGuardados[t.id]));
+
+  const vivos = TIEMPOS_DEF.filter((t) => activosGuardados[t.id]);
   const alimentosConPorciones = defaults.filter((a) => porcionesActuales[a.sub] > 0);
   const alimentosOcultos = defaults.length - alimentosConPorciones.length;
-  const auto = computeTiempos(porcionesActuales, activos); // alimento (sub) -> tiempo (solo activos)
+  const auto = computeTiempos(porcionesActuales, activosGuardados); // alimento (sub) -> tiempo (solo activos)
   const celda = (sub: string, mid: string) => celdas[sub]?.[mid] ?? auto[sub]?.[mid] ?? 0;
 
   // Total por tiempo: porciones y kcal (lo que el nutricionista mira). kcal = porciones * kcal/porcion del alimento.
@@ -1289,14 +1357,40 @@ function TiemposSection({
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
-          {/* Toggles de tiempos activos */}
-          <div className="flex flex-wrap gap-3">
-            {TIEMPOS_DEF.map((t) => (
-              <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
-                <input type="checkbox" checked={Boolean(activos[t.id])} onChange={() => toggle(t.id)} />
-                {t.n}
-              </label>
-            ))}
+          {/* TIEMPOS DE COMIDA: apartado propio, con su boton. Son una decision CLINICA (definen la
+              estructura del dia del paciente), no un ajuste visual, asi que se aplican con un paso
+              explicito y no en vivo. OJO AL GUARDADO: el jsonb `tiempos` es UNO SOLO (activos + celdas +
+              base), asi que este boton y el de abajo envian el MISMO formulario y el MISMO payload; son dos
+              entradas al mismo guardado, no dos guardados. Se hizo asi a proposito: partir el payload
+              habria partido tambien la firma del candado de concurrencia. */}
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-3">
+            <p className="text-sm font-medium text-foreground">Tiempos de comida</p>
+            <p className="max-w-prose text-xs text-muted-foreground">
+              Definen la estructura del día del paciente. Al aplicarlos se rehacen esta tabla y el menú
+              semanal; por eso no cambian mientras marcas, sino cuando aplicas.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {TIEMPOS_DEF.map((t) => (
+                <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
+                  <input type="checkbox" checked={Boolean(activos[t.id])} onChange={() => toggle(t.id)} />
+                  {t.n}
+                </label>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" variant="outline" size="sm" disabled={pending}>
+                {pending ? "Aplicando..." : "Aplicar tiempos de comida"}
+              </Button>
+              {tiemposSinAplicar ? (
+                <span className="text-xs text-clinical-warning">
+                  Cambiaste los tiempos y aún no los has aplicado: la tabla y el menú siguen mostrando los
+                  anteriores.
+                </span>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aplicar guarda toda esta sección, incluidos los ajustes de la tabla de abajo: es una sola.
+            </p>
           </div>
 
           <div className="overflow-x-auto">
