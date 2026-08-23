@@ -357,7 +357,9 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 
 ### Para Santiago (requiere OJOS)
 
-- **[OJOS]** El aviso de realimentación (EN1) renderizando: sembrar con `SEED_REALIMENTACION=1 pnpm vitest run --project db src/tests/demo-realimentacion.seed.test.ts` y abrir `/evaluaciones/a0000000-0000-4000-8000-0000000000f2`.
+- **[OJOS]** Los avisos del plan (EN1 y EN2) renderizando. Sembrar con `SEED_REALIMENTACION=1 pnpm vitest run --project db src/tests/demo-realimentacion.seed.test.ts`, entrar **con la cuenta nutricionista** (`profesional.demo@cnvsystem.com`; el seed asigna los dos pacientes a ella, y el reader es RLS: con otra cuenta la página da 404) y abrir:
+  - `/evaluaciones/a0000000-0000-4000-8000-0000000000f2` — solo el aviso de realimentación (sin comorbilidad, sin restricciones).
+  - `/evaluaciones/a0000000-0000-4000-8000-0000000000f4` — realimentación **más** las cuatro restricciones del modelo (IRC + HTA: proteína, fósforo, potasio, sodio, con su referencia).
 - **[OJOS]** Rutas (Sección 1) y remisiones: que se vean como el v8.
 - **[OJOS]** Los tres paneles de profesión (médico/psico/ejercicio): textos de metas, alertas por sector, interacciones, FITT-VP, SCOFF.
 - **[OJOS]** El despacho de nutracéuticos: dosis y prioridad.
