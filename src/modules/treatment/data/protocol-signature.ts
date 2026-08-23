@@ -104,7 +104,9 @@ export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved
 // (saveAdjustments, que ESCRIBE LAS SEIS COLUMNAS DE GOLPE). Dos usos, identicos a los de arriba:
 //  - `key={adjustmentSignature(p)}` en la seccion de la cadena: un cambio del servidor a cualquiera de los
 //    seis ajustes remonta la seccion y re-deriva el estado del prop, para que no quede pegada (el bug del
-//    estado pegado que hoy tiene latente PesoMetaSection: useState-once sin firma de remonte).
+//    estado pegado). El comentario anterior citaba una "PesoMetaSection" con el hazard latente: ese
+//    componente ya no existe, el peso meta se edita DENTRO de la seccion de la cadena y por lo tanto
+//    queda cubierto por esta misma firma. Se corrige el texto, no el codigo (afirmaba un estado falso).
 //  - candado de concurrencia en saveAdjustments: el cliente manda la firma que cargó; el servidor la
 //    recomputa bajo lock y, si difiere, rechaza en vez de pisar. Sin esto, como el .set toca las seis
 //    columnas, un guardado con estado viejo borraria el ajuste que otro profesional acaba de fijar.
