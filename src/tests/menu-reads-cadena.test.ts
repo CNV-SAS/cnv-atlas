@@ -20,10 +20,10 @@ const { buildMenuPrompt } = vi.hoisted(() => ({
     return [{ role: "system", content: "s" }] as unknown as never;
   }),
 }));
-vi.mock("@/modules/treatment/ai/prompts/menu.v1", () => ({
+vi.mock("@/modules/treatment/ai/prompts/menu.v2", () => ({
   buildMenuPrompt,
   MENU_PROMPT_KEY: "menu.generate",
-  MENU_PROMPT_VERSION: "v1",
+  MENU_PROMPT_VERSION: 2,
 }));
 vi.mock("@/lib/ai/provider", () => ({
   AiError: class AiError extends Error {},

@@ -443,6 +443,9 @@ export function TreatmentPanel({
   // editable y el guardado chocaria contra el trigger). Se distinguen para dar el mensaje correcto.
   const diagnosisPending = !protocol.diagnosisConfirmed;
   const locked = diagnosisPending || protocol.approved;
+  // Restricciones del MODELO (salida del motor, selladas write-once). Un tratamiento anterior al snapshot
+  // no las tiene: lista vacia, no aviso.
+  const snapRestricciones = protocol.protocolSuggested?.restricciones ?? [];
 
   return (
     <Card>
@@ -503,6 +506,27 @@ export function TreatmentPanel({
             2023). Vigila fósforo, potasio, magnesio y tiamina; los exámenes críticos están en la vista del
             médico.
           </RealimentacionAlert>
+        ) : null}
+
+        {/* Restricciones del MODELO (porte fiel del v8, aviso al inicio de la Formula sintetica = nuestra
+            cadena). Son las contraindicaciones por comorbilidad/fenotipo que calcula el motor (proteina,
+            fosforo y potasio por IRC; sodio por HTA; CHO simples por DM; AGS y ultraprocesados por
+            fenotipo), CON su referencia. Solo lectura: no son editables, son la salida del motor. Van
+            ENCIMA de la cadena porque es lo que el nutricionista debe saber que excluir ANTES de armar el
+            plan; hasta 2026-08-23 el motor las calculaba y nadie las veia mientras armaba (hueco clinico
+            EN2 del barrido, COTEJOS_VISUALES). Distintas del campo de restricciones del PROFESIONAL, que
+            vive junto al menu y es aditivo. */}
+        {snapRestricciones.length > 0 ? (
+          <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+            <p className="font-medium">Restricciones activas del modelo</p>
+            <ul className="mt-1 flex flex-col gap-0.5">
+              {snapRestricciones.map((r) => (
+                <li key={r.nombre}>
+                  {r.nombre}: {r.valor} <span className="opacity-80">({r.ref})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
 
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
@@ -662,10 +686,17 @@ function RestriccionesSection({
 
   return (
     <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Restricciones alimentarias</h3>
+      <h3 className="text-sm font-semibold text-foreground">Restricciones alimentarias del profesional</h3>
       <p className="text-sm text-muted-foreground">
         Lo que marques aquí condiciona el <strong>menú de abajo</strong>: la IA lo genera excluyendo estos
         alimentos o nutrientes. Guárdalas antes de generar el menú.
+      </p>
+      {/* Desambiguacion: hay DOS cosas llamadas restricciones (las del modelo, por comorbilidad, arriba de
+          la cadena; y estas, del profesional). Las dos van al menu, en bloques separados del prompt. Decirlo
+          aqui evita que este campo se lea como "todas las restricciones del paciente". */}
+      <p className="text-sm text-muted-foreground">
+        Son <strong>adicionales</strong> a las restricciones del modelo (las de arriba, por comorbilidad y
+        fenotipo): esas no se editan y ya condicionan el menú por su cuenta.
       </p>
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />

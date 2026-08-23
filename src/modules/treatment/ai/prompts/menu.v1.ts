@@ -2,6 +2,11 @@ import type { AiMessage } from "@/lib/ai/provider";
 
 import { MENU_SYSTEM_PROMPT } from "./menu.system";
 
+// RETIRADA el 2026-08-23: el generador usa menu.v2.ts (agrega el bloque de restricciones del MODELO,
+// que no llegaban al menu; hueco clinico EN2). Este archivo NO se borra ni se edita: las sugerencias
+// ya generadas quedaron con procedencia "menu.generate@N+u1" y su prompt exacto tiene que seguir
+// siendo legible. Su test (ai-menu-prompt.test.ts) sigue corriendo como candado del artefacto viejo.
+//
 // Prompt VERSIONADO de generacion de menu (regla dura 9: prompts nunca inline; versionados
 // en modules/*/ai/prompts). El texto de sistema canonico vive en menu.system.ts (fuente
 // unica, sembrada como ai_prompts v1). Desde B14 el admin lo edita creando versiones nuevas

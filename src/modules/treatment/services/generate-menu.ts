@@ -12,7 +12,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
-import { buildMenuPrompt, MENU_PROMPT_KEY, MENU_PROMPT_VERSION } from "../ai/prompts/menu.v1";
+import { buildMenuPrompt, MENU_PROMPT_KEY, MENU_PROMPT_VERSION } from "../ai/prompts/menu.v2";
 
 // Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
 // variables clinicas y objetivos (barrera PII estructural, regla 15): fenotipo, sector,
@@ -79,7 +79,12 @@ export async function generateMenu(
   // Prompt de sistema: prefiere la version activa en BD (editable por admin, B14); si no hay,
   // cae al texto canonico en codigo. La procedencia guardada refleja la version usada.
   const activePrompt = await getActivePrompt(MENU_PROMPT_KEY);
-  const promptVersion = `${MENU_PROMPT_KEY}@${activePrompt?.version ?? MENU_PROMPT_VERSION}`;
+  // Procedencia con las DOS versiones, que son independientes: "@N" es la del texto de SISTEMA (la
+  // que el admin edita en BD; 1 si no hay ninguna activa) y "+uM" la del CONTRATO en codigo (el
+  // mensaje de usuario, menu.vM.ts). Antes solo se guardaba la del sistema, asi que un cambio del
+  // contrato -como el bloque de restricciones del modelo, v2- habria quedado registrado como si el
+  // prompt no hubiera cambiado.
+  const promptVersion = `${MENU_PROMPT_KEY}@${activePrompt?.version ?? 1}+u${MENU_PROMPT_VERSION}`;
 
   const { structural, frSector, dfi } = results.snapshot;
   // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas. El texto de
@@ -88,7 +93,10 @@ export async function generateMenu(
     {
       kcalObjetivo: efectivo.calorico.kcalObj,
       proteinaGramos: efectivo.calorico.protG,
-      restricciones: protocol.restricciones,
+      // Las DOS listas, separadas (v2): las del MODELO son la salida del motor con su referencia
+      // clinica y son no negociables; las del PROFESIONAL son aditivas. Fundirlas perderia ambas cosas.
+      restriccionesModelo: protocol.protocolSuggested.restricciones ?? [],
+      restriccionesProfesional: protocol.restricciones,
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
       rutasAtencion: dfi.rutas,
