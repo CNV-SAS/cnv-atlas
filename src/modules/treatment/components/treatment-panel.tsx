@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
+import { AlimentosDelSubgrupo, ListaIntercambioPaciente } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
 import { Badge } from "@/components/ui/badge";
@@ -571,6 +572,10 @@ export function TreatmentPanel({
         />
         {/* Validacion (CP3.2): DERIVADA en vivo, solo lectura, no persiste (no puede desfasarse). */}
         <ValidacionSection protocol={protocol} />
+        {/* La lista que se lleva el paciente. Va aqui, despues de la validacion y antes del menu, igual que
+            en el v8 (su seccion E precede a la F). No depende del protocolo: es la tabla completa, la misma
+            para todos; lo que cambia por paciente son las PORCIONES, que estan arriba. */}
+        <ListaIntercambioPaciente />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection
@@ -901,7 +906,8 @@ function IntercambioSection({
                   <th className="py-1 pr-3 text-right font-medium">kcal</th>
                   <th className="py-1 pr-3 text-right font-medium">Proteína (g)</th>
                   <th className="py-1 pr-3 text-right font-medium">CHO (g)</th>
-                  <th className="py-1 text-right font-medium">Grasa (g)</th>
+                  <th className="py-1 pr-3 text-right font-medium">Grasa (g)</th>
+                  <th className="py-1 font-medium">Alimentos</th>
                 </tr>
               </thead>
               <tbody>
@@ -916,7 +922,7 @@ function IntercambioSection({
                     const sinPorcion = grupoSinPorcion(a.gr, porciones);
                     filas.push(
                       <tr key={`g-${a.gr}`} className="bg-muted/40">
-                        <td colSpan={7} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <td colSpan={8} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {a.grNom}
                           {sinPorcion ? (
                             <span className="ml-2 font-normal normal-case text-clinical-warning" title="Grupo base sin porciones: el objetivo puede ser muy bajo">
@@ -949,8 +955,15 @@ function IntercambioSection({
                       <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
                         {(n * a.cho).toFixed(1)}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">
+                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
                         {(n * a.gras).toFixed(1)}
+                      </td>
+                      {/* Alimentos concretos, PLEGADOS (porte fiel del v8). El plegado no es decoracion: el
+                          primer subgrupo tiene 39 alimentos y desplegados romperian la tabla. Es referencia,
+                          NO edita el calculo: el intercambio se cuenta por PORCIONES del subgrupo, y que
+                          alimento se elija dentro del subgrupo es del paciente. */}
+                      <td className="py-1.5">
+                        <AlimentosDelSubgrupo sub={a.sub} />
                       </td>
                     </tr>,
                   );
@@ -972,7 +985,8 @@ function IntercambioSection({
                   </td>
                   <td className="py-2 pr-3 text-right tabular-nums">{totalProt.toFixed(1)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">{totalCho.toFixed(1)}</td>
-                  <td className="py-2 text-right tabular-nums">{totalGras.toFixed(1)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{totalGras.toFixed(1)}</td>
+                  <td />
                 </tr>
               </tbody>
             </table>
