@@ -1,4 +1,4 @@
-# Ronda para Gildardo — 2026-08-23
+# Ronda para Gildardo · 2026-08-23
 
 **De:** Equipo Atlas · **Para:** Gildardo Uribe, Dirección Científica CNV
 
@@ -37,7 +37,7 @@ Al hacerlo notamos que `motorTratNutri` prescribe **otro** límite de sodio para
 
 **Por qué esto importa hoy y no en abstracto.** Atlas usa el primero, así que **para un hipertenso estamos prescribiendo 2.300 mg de sodio y mandando ese número a la IA que genera el menú**. Si el que manda es el otro, el límite correcto es 1.500. Entre 2.300 y 1.500 no hay matiz clínico: hay una dieta distinta.
 
-**Lo que NO vamos a hacer sin tu respuesta.** Tenemos `motorTratNutri` listo para portar (es la pieza que falta de las cuatro; médico, ejercicio y psicología ya están). **No lo portamos**, porque meter un segundo motor que contradice al que ya prescribe empeoraría la incoherencia en vez de cerrarla. Esperamos tu decisión.
+**Lo que NO vamos a hacer sin tu respuesta.** Tenemos `motorTratNutri` listo para portar (es la pieza que falta de las cuatro; médico, ejercicio y psicología ya están). **No lo portamos**, porque meter un segundo motor que contradice al que ya prescribe empeoraría la incoherencia en vez de cerrarla.
 
 ### Dos señales dentro de tu propio archivo, que apuntan al segundo motor
 
@@ -78,7 +78,7 @@ Y su contenido cita justo lo retirado:
 
 ---
 
-## 3. Un umbral viejo sobrevivió en una pieza sin portar: FFMI 17,92 / 15,64
+## 3. Dos copias del mismo bloque de recomendaciones usan umbrales distintos de sarcopenia
 
 Cuando unificaste la frontera de desnutrición (FFMI de 17,92 a **17** en hombres y de 15,64 a **15** en mujeres), barrimos el motor y lo aplicamos. Pero esa pieza de recomendaciones todavía no la habíamos portado, y ahí el umbral viejo sigue vivo:
 
@@ -104,8 +104,6 @@ Dos consecuencias, y las dos afectan a pacientes reales:
 - **La primera copia aplica el umbral masculino a las mujeres.** Sin la distinción por sexo, una mujer con FFMI 16 queda marcada como sarcopénica, cuando su frontera vigente es 15. Le recomienda preservación de masa muscular a una mujer que no la necesita por ese criterio.
 
 **Lo que necesitamos de ti (ahora sí es decisión, no solo confirmación):** ¿las dos copias deben quedar con **17 / 15** y distinguiendo sexo? Es lo que entendemos, y es lo que portaríamos. Si alguna debía comportarse distinto, dinos cuál y por qué.
-
-**Lo que necesitamos de ti (confirmación, no decisión abierta):** entendemos que se porta con **17 / 15**, la frontera vigente. Confírmanoslo y lo portamos así. Si por alguna razón esa condición debía quedarse en el umbral anterior, dinos por qué y la dejamos como está.
 
 ---
 
@@ -151,7 +149,7 @@ En la distribución por tiempos, si un alimento tiene 2 porciones en la lista de
 
 ### P-31 · ¿Cuál gasto energético manda: el medido por el equipo o el calculado? (antes P-29)
 
-Atlas ofrece un atajo "gasto medido por el Biody: N kcal — usar", al lado de la cadena que calcula otro gasto total (basal por Cunningham/Mifflin × factor de actividad). Difieren por método, no por paciente. Tu v8 usa **solo el calculado**; no muestra el medido. Atlas alinea la base al calculado y deja el medido como referencia informativa.
+Atlas ofrece un atajo "gasto medido por el Biody: N kcal, usar", al lado de la cadena que calcula otro gasto total (basal por Cunningham/Mifflin × factor de actividad). Difieren por método, no por paciente. Tu v8 usa **solo el calculado**; no muestra el medido. Atlas alinea la base al calculado y deja el medido como referencia informativa.
 
 **Pregunta (confirmación):** ¿correcto que la base sea el calculado y el medido quede como referencia, o prefieres que el medido entre en algún caso?
 
