@@ -1192,9 +1192,8 @@ function MenuSemanalSection({
               (mas abajo) se confunden, y hacen cosas muy distintas. */}
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">Proponer otra semana:</span> arranca el ciclo base
-              en otro día. No mira al paciente ni usa IA; son los mismos {DIAS_DEL_CICLO} días, en otro orden.
-              Respeta las celdas que ya editaste.
+              <span className="font-medium text-foreground">Proponer otra semana:</span> propone otra
+              combinación del menú base, sin mirar al paciente ni usar IA. Respeta las celdas que ya editaste.
             </p>
             {hayEdiciones ? (
               <p>
@@ -1389,7 +1388,8 @@ function TiemposSection({
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Aplicar guarda toda esta sección, incluidos los ajustes de la tabla de abajo: es una sola.
+              Los tiempos y la tabla de abajo se guardan juntos: son un solo dato. Da igual cuál de los dos
+              botones pulses.
             </p>
           </div>
 
@@ -1489,7 +1489,7 @@ function TiemposSection({
 
           <div className="flex gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar distribución"}
+              {pending ? "Guardando..." : "Guardar distribución y tiempos"}
             </Button>
             <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
               Recalcular desde el intercambio (borra tus ajustes)
