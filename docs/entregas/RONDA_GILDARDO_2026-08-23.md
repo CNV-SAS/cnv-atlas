@@ -2,6 +2,8 @@
 
 **De:** Equipo Atlas · **Para:** Gildardo Uribe, Dirección Científica CNV
 
+> **Esta no es una ronda paralela a la anterior.** Es **una sola cola**, en su versión de hoy: los puntos P-25 a P-31 vienen acumulados de días atrás y nunca se te enviaron en un documento; los puntos 1, 2 y 3 son nuevos, de esta semana. La ronda del **20 de agosto** era de otro tema (etnia y encuesta) y ya te la mandamos: de esa **solo queda una cosa sin responder**, y va al final de este documento para que no se pierda.
+
 **Contexto.** Cerramos el plan alimentario del nutricionista (lista de intercambio por alimento, distribución por tiempos, validación de nutrientes) y, al conectar las restricciones que calcula el modelo, apareció algo que no podemos resolver nosotros: **tu prototipo tiene dos motores que prescriben la dieta y no coinciden**. Ese es el punto 1 y es el más importante de esta ronda; los otros dos son hallazgos concretos que te reportamos, y al final va la cola acumulada.
 
 Los tres primeros salieron de portar, no de opinar. Ninguno es una preferencia nuestra.
@@ -171,3 +173,14 @@ Atlas ofrece un atajo "gasto medido por el Biody: N kcal — usar", al lado de l
 | P-31 | Gasto medido vs calculado | Confirmación |
 
 **Lo único que bloquea construcción es el punto 1.** Los demás los seguimos portando fieles a tu archivo mientras respondes.
+
+---
+
+## Lo único que quedó sin responder de la ronda del 20 (otro tema, para que no se pierda)
+
+**La residencia prolongada.** La pediste el 17 ("región de origen o residencia prolongada"), con un argumento que compartimos: la adaptación a la altura viene de vivir años en altura, no de dónde se está hoy. La **retiramos** siguiendo tu regla del 20 (la encuesta no se adelanta al archivo), pero tu carta no la mencionó, así que no sabemos si la retiras de verdad o la vas a parametrizar.
+
+- ¿La retiras definitivamente, o la parametrizas en el archivo para volver a capturarla?
+- Con ella fuera, **la altitud fisiológica se queda sin fuente**: la altitud de la ciudad actual mide otra cosa. Si el observatorio va a segmentar por altitud de adaptación, hoy no tiene de dónde derivarla.
+
+La columna que la guardaba se conserva, sin uso, esperando tu decisión.
