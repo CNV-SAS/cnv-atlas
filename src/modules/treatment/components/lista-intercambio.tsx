@@ -35,9 +35,13 @@ export function AlimentosDelSubgrupo({ sub }: { sub: string }) {
 // lista de 39 no se usa en casa) y la encabeza con el parrafo de como usarla. Se porta el recorte tal cual:
 // no es una decision nuestra de diseño, es la suya.
 //
-// OJO (no es un olvido): hoy esta lista se VE en pantalla y no tiene forma de LLEGAR al paciente. El envio
-// del plan es un item propio de BACKLOG ("el PLAN de tratamiento no tiene forma de llegar al paciente");
-// cuando exista, esta seccion es su contenido.
+// DIVERGENCIA CONOCIDA (P-36, verificada el 2026-08-23 trazando el render del v8, no leyendo el codigo):
+// en su archivo esta lista NO SE VE EN PANTALLA. Su contenedor es `plan-print-only` y el CSS la oculta
+// (`display:none`) salvo al IMPRIMIR. El v8 tiene dos caras deliberadas: lo tecnico (cadena, tabla de
+// trabajo, validacion) lleva `no-print` y no sale en papel; esta lista es al reves. Nosotros no tenemos
+// superficie de impresion ni de envio del plan, asi que la mostramos en pantalla. Se deja asi a proposito
+// (decision de Santiago: se resuelve en el cotejo final); cuando exista el envio del plan (item de BACKLOG)
+// esta seccion es su contenido y sale de aqui.
 export const ALIMENTOS_VISIBLES_PACIENTE = 8;
 
 export function ListaIntercambioPaciente() {

@@ -299,3 +299,15 @@ Contexto: cerrada la CADENA CALORICA (tres eslabones: mostrar la cadena; los cin
 **La ronda del 2026-08-23 SE ENVIO. No se le agrega nada mas.** Decision de Santiago, con su razon escrita: el punto 1 bloquea el porte de `motorTratNutri`, y cada dia que espera es un dia prescribiendo un sodio que puede estar mal; si la ronda sigue creciendo, el tarda mas en responderla. Y hay trabajo suficiente sin su respuesta (INTER_TABLA_B, y despues el menu semanal).
 
 **Todo hallazgo nuevo que salga desde ahora va DEBAJO de esta linea**, no dentro de aquel documento. Se numera desde P-36.
+
+**P-36 · El v8 tiene DOS CARAS (pantalla e impresion) y no lo habiamos modelado (hallazgo 2026-08-23, NO es pregunta a Gildardo: es nuestro).** Santiago noto que la "LISTA DE INTERCAMBIO U DE A" que portamos no aparece en sus capturas. Verificado trazando el render: su contenedor es `className:"plan-print-only"` y el CSS dice `.plan-print-only{display:none!important}` + `@media print{...display:block!important}`. **Es de IMPRESION, no de pantalla.** Y al barrer aparecio la division completa, que es deliberada:
+
+| Seccion | Pantalla | Impresion |
+|---|---|---|
+| Resumen clinico · Objetivo · Necesidades · Formula desarrollada · Distribucion · Menu semanal | si | si |
+| **Formula sintetica (cadena) · Tabla de intercambio del profesional · Validacion** (`no-print`) | si | **NO** |
+| **Lista de intercambio del paciente** (`plan-print-only`) | **NO** | si |
+
+Lo que se IMPRIME excluye lo tecnico (la cadena, la tabla de trabajo, la validacion) y deja lo que el paciente usa. Nosotros no tenemos superficie de impresion/envio del plan, asi que la portamos a pantalla. **Divergencia registrada, NO se revierte ahora** (decision de Santiago: se ve en el cotejo final). Cuando exista el envio del plan (item de BACKLOG), esa lista es su contenido y sale de la pantalla. Barrido hacia atras: **es la UNICA pieza portada en esa situacion**; todas las demas que portamos si estan en su vista de pantalla.
+
+**P-37 · La HISTORIA CLINICA (pestaña Reporte/HC) y la decision del reporte, conectadas (2026-08-23).** El v8 tiene una HC de ONCE secciones numeradas (datos del paciente, motivo de consulta, antecedentes, tabla de Wang, resumen dx + meta + objetivo, rutas activadas, tratamiento, recomendaciones, remisiones y derivaciones, examenes solicitados, proxima cita + firma). Nuestro PDF de reporte trae SEIS (paciente, documento, indicadores, cambio vs anterior, notas, nutraceuticos). Santiago confirma que es una pestaña suya que no tenemos. **Y esto REABRE una decision nuestra:** dijimos que el reporte se quedaba en Tratamiento porque no habia pestaña destino; si se construye la quinta pestaña (Reporte/HC), esa decision se revisa. Va junto con la pregunta ya registrada en BACKLOG de si `reports` son DOS documentos (el del diagnostico y el del tratamiento). No se abre bloque: es material del cotejo final.
