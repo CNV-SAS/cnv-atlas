@@ -30,19 +30,33 @@ const meta = {
 const isPdf = (b: Buffer) =>
   Buffer.isBuffer(b) && b.subarray(0, 5).toString("latin1") === "%PDF-" && b.length > 1000;
 
-describe("renderReportPdf", () => {
-  it("genera un PDF valido (cabecera %PDF) desde el snapshot", async () => {
-    expect(isPdf(await renderReportPdf(sampleSnapshot(), meta))).toBe(true);
-  });
+// renderReportPdf hace render REAL con @react-pdf/renderer (CPU-pesado): aislado ~2s, pero bajo la carga
+// paralela del resto del suite un solo test puede pasar de los 5s del default de vitest y truena por TIMEOUT
+// (no por contencion de estado, distinto del grupo serial de BD: aqui no hay estado compartido, solo trabajo
+// lento). Se les da un timeout holgado (20s), como el proyecto "db" para lo suyo. Flake cazado 3 veces.
+const RENDER_TIMEOUT = 20000;
 
-  it("rinde en los tres modos (atlas, notas, ambos) con notas del profesional", async () => {
-    const snap = sampleSnapshot();
-    const notes = "Interpretacion del profesional para el paciente.";
-    for (const mode of ["atlas", "notas", "ambos"] as const) {
-      const buf = await renderReportPdf(snap, meta, { mode, professionalNotes: notes });
-      expect(isPdf(buf)).toBe(true);
-    }
-  });
+describe("renderReportPdf", () => {
+  it(
+    "genera un PDF valido (cabecera %PDF) desde el snapshot",
+    async () => {
+      expect(isPdf(await renderReportPdf(sampleSnapshot(), meta))).toBe(true);
+    },
+    RENDER_TIMEOUT,
+  );
+
+  it(
+    "rinde en los tres modos (atlas, notas, ambos) con notas del profesional",
+    async () => {
+      const snap = sampleSnapshot();
+      const notes = "Interpretacion del profesional para el paciente.";
+      for (const mode of ["atlas", "notas", "ambos"] as const) {
+        const buf = await renderReportPdf(snap, meta, { mode, professionalNotes: notes });
+        expect(isPdf(buf)).toBe(true);
+      }
+    },
+    RENDER_TIMEOUT,
+  );
 
   // GATE (Hito 3, P0): el reporte del PACIENTE nunca muestra la cifra de EB-BIS ni la de IAE. Gildardo
   // decidio que ninguna se comunica al paciente (la de EB porque es no comunicable, la de IAE porque
