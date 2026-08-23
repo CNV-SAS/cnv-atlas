@@ -298,6 +298,8 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 
 ---
 
+> **El cotejo de las DOS subpestañas (Nutricionista y Rutas) vive en `COTEJO_TRATAMIENTO_2026-08-24.md`**, hecho cuando el plan alimentario quedó completo. Trae el inventario de los dos lados con la columna "¿se ve en pantalla?" (la regla nueva: verificar que la pieza se RENDERICE, no solo que exista), la clasificación en cuatro grupos, y el aviso de qué cifras van a diferir por P-32 y por qué. Esta sección de abajo es la pasada anterior (2026-08-08) y se conserva por sus decisiones deliberadas, que siguen vigentes.
+
 ## TRATAMIENTO — tabla de registro (pre-llena, 2026-08-08)
 
 **AVISO de la regla de oro.** A diferencia de las otras tres pantallas, Tratamiento **tiene construcción pendiente**: la cadena calórica (re-port del 3er modelo, Q14) y el plan alimentario detallado (grupos de intercambio, menú, secciones E/F del HTML) están en pausa/en curso (ver `handoff-2026-08-05-plan-alimentario`). **Esas piezas NO se cotejan todavía** (cotejar lo que vamos a cambiar es cotejar dos veces). Se cotejan las partes CERRADAS: estructura, rutas, remisiones, paneles médico/psico/ejercicio, despacho de nutracéuticos, y los gates. Fuente HTML: `ModTratamiento` L16002-17754, motores L15402-15575. Santiago tiene capturas del v8 de esta pantalla.
