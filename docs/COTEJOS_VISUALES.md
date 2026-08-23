@@ -342,8 +342,22 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 - **Plan por grupos de alimentos** (secciones D/E/F del HTML): fórmula sintética, lista de intercambio ICBF 2025 (12 grupos), DRI de micros, validación ICN, distribución por tiempos, menú semanal por IA. En curso (Plan alimentario Alcance B).
 - Cuando esas piezas cierren, se añade su fila aquí. Hasta entonces, cotejarlas sería cotejar dos veces.
 
+### F. Señales que el motor produce y no llegan al profesional (barrido 2026-08-22/23)
+
+**Qué es esto.** No es un cotejo de forma: es un barrido de "el dato existe y no llega" (la familia del párrafo de dieta). Se revisó, señal por señal, qué sella el motor en `protocol_suggested` y quién la ve. Resultado: **dos** señales huérfanas, más la confirmación de que `examenes` y `suplementacion` sí están donde corresponde (panel del médico, verificado en código, no asumido).
+
+| # | Señal del motor | Quién la ve hoy | Veredicto | Estado |
+|---|---|---|---|---|
+| EN1 | `alertaSindRealim` (síndrome de realimentación: F7/F10 + GEB<1200 + IMC<18.5) | solo el médico | **hueco clínico** (el nutricionista fija las kcal y no veía el riesgo) | **CERRADO 2026-08-22**: se surfacea en dos sitios (resumen informa, encima de la cadena instruye 10 kcal/kg/día ASPEN), crítico y no descartable. Caso de smoke sembrable: `demo-realimentacion.seed.test.ts` |
+| EN2 | `restricciones` del MODELO (proteína/fósforo/potasio por IRC, sodio por HTA, CHO simples por DM, AGS/ultraprocesados por fenotipo) | **nadie** en el armado del plan | **hueco clínico** (el v8 las muestra como aviso al inicio de la Fórmula sintética, y además son lo ÚNICO que alimenta su adaptación de menú) | en decisión (ver el reporte a/b/c: mostrar + cablear al menú + qué hacer con el gate `restrictions_ack_*` a medio cablear) |
+| EN3 | `flags` de comorbilidad (IRC / cáncer / DM / HTA) | ningún consumidor en Tratamiento | **presentación, no hueco** | **DIFERIDO** (decisión de Santiago 2026-08-23): las comorbilidades ya se ven en Diagnóstico; se decide junto con el resto del cotejo de la subpestaña del Nutricionista |
+| EN4 | `examenes` y `suplementacion` | panel del médico | **correcto** | ninguna acción (verificado en `profession-treatment-section.tsx`, no asumido) |
+
+**No hay más señales huérfanas:** el barrido recorrió los campos de `ProtocoloSnapshot` uno por uno.
+
 ### Para Santiago (requiere OJOS)
 
+- **[OJOS]** El aviso de realimentación (EN1) renderizando: sembrar con `SEED_REALIMENTACION=1 pnpm vitest run --project db src/tests/demo-realimentacion.seed.test.ts` y abrir `/evaluaciones/a0000000-0000-4000-8000-0000000000f2`.
 - **[OJOS]** Rutas (Sección 1) y remisiones: que se vean como el v8.
 - **[OJOS]** Los tres paneles de profesión (médico/psico/ejercicio): textos de metas, alertas por sector, interacciones, FITT-VP, SCOFF.
 - **[OJOS]** El despacho de nutracéuticos: dosis y prioridad.
