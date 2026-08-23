@@ -118,7 +118,12 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
       .from(schema.surveyQuestions)
       .where(eq(schema.surveyQuestions.surveyVersionId, svId));
     // TODAS las preguntas (gate de 64, Gildardo §1): field_key con su valor del fixture, el resto por defecto.
+    // EXCEPTO nonFieldQId: ya se sembro con "original" (L94) para el test de no-op. Re-insertarla aqui creaba
+    // una SEGUNDA fila (survey_answers no tiene unique en response_id+question_id) y, como el guard lee sin
+    // ORDER BY y deduplica con Map (gana la ultima en orden fisico), el valor efectivo quedaba indeterminado:
+    // rompia "corregir a original == no-op" cuando el heap devolvia el default de ultimo (2026-08-22).
     for (const q of questions as { id: string; fieldKey: string | null; type: string }[]) {
+      if (q.id === nonFieldQId) continue;
       const opts = await db
         .select({ text: schema.surveyOptions.optionText })
         .from(schema.surveyOptions)
