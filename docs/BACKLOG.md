@@ -27,6 +27,20 @@
 
 **Lo que SIGUE abierto de esta entrada es el relleno por tipo, y hoy tiene consecuencia visible: `golden-path.seed` está ROJO** (3 de 10) por las 33 respuestas que faltan, verificado pre-existente (falla igual en `HEAD` sin los cambios de hoy). No se arregló con el relleno por tipo porque **cambiaría el diagnóstico del paciente golden**: contestar 33 preguntas que hoy quedan vacías mueve su DFI y su EB, y ese paciente es el caso de referencia. Es una decisión, no una línea; por eso queda aquí y no se hizo de paso.
 
+## Lo que queda de TRATAMIENTO y en qué orden (cierre del plan alimentario, 2026-08-24)
+
+**El plan alimentario esta CERRADO** salvo lo que espera a Gildardo. Estado por pieza en `COTEJOS_VISUALES.md` (seccion del plan por grupos de alimentos).
+
+**Espera a Gildardo (no se construye):** la pieza 4 del menu (la IA como adaptador del ciclo, bloqueada por la Parte 1 de la ronda del 24: alergias, distribucion, contexto y "que mas"); `motorTratNutri` (P-32/P-35); las recomendaciones por diagnostico (P-33/P-34); y el resto de las dos colas (P-25 a P-31, P-36 a P-43).
+
+**NO espera a nadie, y este es el orden propuesto:**
+
+1. **El pulido de fidelidad de Tratamiento, COMPLETO.** Es el gate 3 del Hito 1 (`LANZAMIENTO.md`), y son DOS superficies, no una: la subpestaña del Nutricionista (que ya tiene todas sus tablas, por eso ahora si tiene sentido cotejarla) **y la de Rutas de atencion**, que quedo con lo que ya existia y nunca se reviso con este detalle. Cotejarlas juntas evita cotejar dos veces la misma pantalla.
+2. **El envio del plan al paciente + la quinta pestaña.** Ya no es un hueco sin forma: P-36 (que se imprime y que no), P-37 (la HC de once secciones) y P-38 (cuatro salidas, tres documentos, dos canales) lo dejaron dimensionado. **No espera a Gildardo:** la decision de la quinta pestaña es NUESTRA, y es la que reabre lo de dejar el reporte dentro de Tratamiento.
+3. **La nota interna universal en las cuatro etapas** (decision de Santiago 2026-08-21, ya registrada arriba). Chica, y Tratamiento es una de las cuatro.
+
+**CORRECCION DE ORDEN (2026-08-24):** el "diseño grafico de Tratamiento" **NO es la ultima fase de este ciclo**. Lo registrado (gate 4 del Hito 1 y la entrada de rediseño en este mismo doc) es un **rediseño grafico TRANSVERSAL de toda la app, de una sola vez, DESPUES de los cuatro bloques de pulido**, con su razon escrita: es de bajo riesgo clinico y hacerlo por pantalla obliga a rediseñar dos veces. Lo que si cierra el ciclo de Tratamiento es el **pulido de fidelidad** (punto 1). Se anota porque en la conversacion se mezclaron las dos cosas.
+
 ## Corregir las condiciones BIS después de generar el diagnóstico (Santiago 2026-08-20)
 
 **PENDIENTE.** Hoy las condiciones BIS (el estado/contraindicaciones de la medición que captura `bis-conditions-capture`) se registran ANTES de generar el diagnóstico; una vez generado, no hay flujo para corregirlas. Santiago pide poder corregirlas después. **Dimensionado MEDIO:** toca el flujo de corrección (recomputar el diagnóstico con las condiciones nuevas, versionar la constelación, auditar), de la misma familia que el flujo de corrección de evaluación ya existente (C2) y que el pendiente "cerrar eval con diagnóstico". Se ve DESPUÉS de Tratamiento (decisión del 2026-08-20).
