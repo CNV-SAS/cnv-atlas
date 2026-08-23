@@ -339,7 +339,11 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 ### E. PENDIENTE de construir (NO se coteja aún)
 
 - **Cadena calórica completa** (GEB Mifflin/Cunningham → FA → GET → objetivo con déficit y pisos; proteína g/kg por protocolo; macros): en pausa (re-port 3er modelo, Q14). Cuando se porte, se cotejan las fórmulas contra el HTML (L15402-15494) como golden, no a ojo.
-- **Plan por grupos de alimentos** (secciones D/E/F del HTML): fórmula sintética, lista de intercambio ICBF 2025 (12 grupos), DRI de micros, validación ICN, distribución por tiempos, menú semanal por IA. En curso (Plan alimentario Alcance B).
+- **Plan por grupos de alimentos** (secciones D/E/F del HTML). Estado al 2026-08-23, pieza por pieza:
+  - **HECHO:** fórmula sintética (cadena calórica), lista de intercambio **por alimento** con sus columnas de macros, alimentos concretos con gramaje en las dos superficies (plegada para el profesional, recortada a 8 para el paciente), distribución por tiempos con cuadre, validación de nutrientes con ICN.
+  - **FALTA:** el **menú semanal editable** (grilla 7 × tiempos con `CICLO_MENU_21` de precarga; hoy Atlas genera texto libre con IA). Arrastra migración (el v8 persiste en `localStorage`) y una decisión nuestra: el v8 arranca el ciclo en un día **aleatorio**, y en Atlas el plan se GUARDA, así que un menú que cambia al recargar no es un plan.
+  - **FALTA:** las **recomendaciones por diagnóstico**, bloqueadas por la ronda (P-32 el motor, P-33 el bloque huérfano, P-34 los dos umbrales de sarcopenia).
+  - **DIFERIDO:** los badges de comorbilidad (EN3).
 - Cuando esas piezas cierren, se añade su fila aquí. Hasta entonces, cotejarlas sería cotejar dos veces.
 
 ### F. Señales que el motor produce y no llegan al profesional (barrido 2026-08-22/23)
