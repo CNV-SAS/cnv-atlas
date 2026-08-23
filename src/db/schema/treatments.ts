@@ -104,10 +104,20 @@ export const treatments = pgTable("treatments", {
   // se congela, el plan que se arma alrededor se sigue refinando). Si algun dia el plan debe congelarse al
   // aprobar, se agrega esta columna al trigger treatments_immutability (0026) de forma explicita.
   intercambioPorciones: jsonb("intercambio_porciones"),
-  // Distribucion por tiempos (CP2.2): { activos, celdas (overrides manuales), base:{porciones,activos} }. El
+  // Distribucion por tiempos (CP2.2): { celdas (overrides manuales), base:{porciones,activos} }. Los activos
+  // VIGENTES salen de tiempos_activos (columna de arriba); el `base.activos` de aqui NO es lo mismo y NO se
+  // debe "limpiar": es el CONTEXTO SELLADO con el que se calcularon esos overrides, y es contra el que se
+  // detecta el desfase (overrides hechos con otros tiempos activos). Borrarlo apagaria ese aviso. El
   // auto NO se guarda (se recomputa de las porciones de CP1 + activos); solo los overrides + el contexto base
   // para el aviso de desfase DOBLE (porciones y activos). Editable tras aprobar como el resto del plan (ver la
   // nota de objetivo_texto). null = nunca guardada.
+  // Tiempos de comida ACTIVOS (CP2.3, partido de `tiempos` el 2026-08-23). Columna PROPIA porque son una
+  // decision distinta: definen la estructura del dia del paciente, mandan sobre la distribucion Y sobre el
+  // menu semanal, y se guardan con su propio boton. Que estuvieran dentro de `tiempos` fue decision NUESTRA,
+  // no del modelo: en el prototipo de Gildardo viven en OTRA clave (`atlas:plan`, junto al menu semanal),
+  // separados de la distribucion (`atlas:plan_inter`). Partirlos nos acerca a su modelo, no nos aleja.
+  // { desayuno: true, ... }. null = nunca guardados -> el panel usa TIEMPOS_ACTIVOS_DEFAULT.
+  tiemposActivos: jsonb("tiempos_activos"),
   tiempos: jsonb("tiempos"),
   // Menu semanal (CP4): { diaInicio, celdas } jsonb. `celdas` son los textos que el profesional dejo,
   // keyed "dia_tiempo" (0-6 x id de tiempo); solo se guarda lo EDITADO, no la precarga del ciclo, que se

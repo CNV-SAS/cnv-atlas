@@ -35,6 +35,7 @@ const DB_TESTS = [
   "src/tests/survey-edit-writer.test.ts",
   "src/tests/survey-engine-coupling.test.ts",
   "src/tests/survey-intake.test.ts",
+  "src/tests/tiempos-activos-migration.test.ts",
   "src/tests/trajectory-demo.seed.test.ts",
   "src/tests/treatment-approve.test.ts",
   "src/tests/treatment-immutability.test.ts",

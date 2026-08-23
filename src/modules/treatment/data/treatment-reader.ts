@@ -23,6 +23,15 @@ function normalizeTiempos(raw: unknown): TiemposSaved | null {
   return base && base.porciones && typeof base.porciones === "object" ? (v as TiemposSaved) : null;
 }
 
+// Tiempos activos: un mapa plano de tiempo -> bool. Una forma que no sea esa se trata como "nunca
+// guardados" (el panel cae a los activos por defecto) en vez de dejar la tabla en blanco.
+function normalizeTiemposActivos(raw: unknown): Record<string, boolean> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const v = raw as Record<string, unknown>;
+  const entries = Object.entries(v).filter(([, val]) => typeof val === "boolean");
+  return entries.length > 0 ? (Object.fromEntries(entries) as Record<string, boolean>) : null;
+}
+
 // Menu semanal: misma tolerancia que las otras dos formas jsonb. Una forma que no es la actual se trata
 // como "nunca guardado" (la grilla cae a la precarga) en vez de reventar o pintar celdas vacias.
 function normalizeMenuSemanal(raw: unknown): MenuSemanalSaved | null {
@@ -77,7 +86,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, menu_semanal, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -172,6 +181,7 @@ export async function getTreatmentProtocol(
     objetivoTexto: treatment.objetivo_texto ?? null,
     intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
     tiempos: normalizeTiempos(treatment.tiempos),
+    tiemposActivos: normalizeTiemposActivos(treatment.tiempos_activos),
     menuSemanal: normalizeMenuSemanal(treatment.menu_semanal),
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({

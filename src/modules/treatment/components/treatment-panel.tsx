@@ -26,6 +26,7 @@ import {
   saveIntercambioAction,
   saveMenuSemanalAction,
   saveTiemposAction,
+  saveTiemposActivosAction,
   saveObjetivoAction,
   saveRestriccionesAction,
   type TreatmentActionState,
@@ -40,6 +41,7 @@ import {
   restriccionesSignature,
   sectionKey,
   menuSemanalSignature,
+  tiemposActivosSignature,
   tiemposSignature,
 } from "../data/protocol-signature";
 import type { IntercambioSaved, MenuSuggestion, TiemposSaved, TreatmentProtocol } from "../data/treatment-view-types";
@@ -566,7 +568,18 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        {/* Tiempos (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
+        {/* Tiempos de comida (CP2.3): seccion propia, MANDAN sobre la distribucion y sobre el menu. Va antes
+            de las dos, que es el orden en que se decide. key = su propia firma. */}
+        <TiemposActivosSection
+          key={sectionKey(
+            "tiempos-activos",
+            tiemposActivosSignature({ treatmentId: protocol.treatmentId, activos: protocol.tiemposActivos }),
+          )}
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+        />
+        {/* Distribucion (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
         <TiemposSection
           key={sectionKey("tiempos", tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos }))}
           evaluationId={evaluationId}
@@ -1061,8 +1074,8 @@ function MenuSemanalSection({
   const [diaInicio, setDiaInicio] = useState<number>(() => saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId));
   const [celdas, setCeldas] = useState<Record<string, string>>(() => saved?.celdas ?? {});
 
-  // Los tiempos ACTIVOS son los de la distribucion: el plan es uno solo, no dos configuraciones distintas.
-  const activos = protocol.tiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  // Los tiempos ACTIVOS son los GUARDADOS, los mismos que manda la seccion de tiempos: el plan es uno solo.
+  const activos = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
   const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
 
   // Texto de una celda: lo que el profesional escribio, o la precarga del ciclo. El ciclo NO trae merienda:
@@ -1214,6 +1227,82 @@ function MenuSemanalSection({
   );
 }
 
+// TIEMPOS DE COMIDA (CP2.3): seccion propia, columna propia, guardado propio. Se partio de la distribucion
+// el 2026-08-23 con el argumento de Santiago: el MENU tambien depende de estas casillas y esta en su propio
+// contenedor, asi que la dependencia no justificaba agruparlas con la tabla; lo que las unia era nuestro
+// jsonb, no el modelo. Y en el prototipo de Gildardo ya viven aparte (`atlas:plan`, junto al menu semanal;
+// la distribucion vive en `atlas:plan_inter`), asi que partirlas es MAS fiel, no menos.
+//
+// NO reaccionan en vivo: son una decision CLINICA (definen la estructura del dia del paciente) y mandan
+// sobre la tabla Y sobre el menu. Con reaccion en vivo, tantear marcando reconstruiria las dos en cada clic.
+function TiemposActivosSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(saveTiemposActivosAction, EMPTY);
+  useFormToastRefreshOnSuccess(state);
+
+  const guardados = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  const [activos, setActivos] = useState<Record<string, boolean>>(() => guardados);
+  const sinAplicar = TIEMPOS_DEF.some((t) => Boolean(activos[t.id]) !== Boolean(guardados[t.id]));
+  const baseSignature = tiemposActivosSignature({
+    treatmentId: protocol.treatmentId,
+    activos: protocol.tiemposActivos,
+  });
+
+  // DIV-13: al menos uno activo. Se impide en el cliente y lo revalida el schema.
+  const toggle = (mid: string) =>
+    setActivos((a) => {
+      const activosCount = TIEMPOS_DEF.filter((t) => a[t.id]).length;
+      if (a[mid] && activosCount <= 1) return a;
+      return { ...a, [mid]: !a[mid] };
+    });
+
+  // DIV-13: al menos uno activo. Se impide en el cliente y lo revalida el schema.
+
+  return (
+    <section className="flex flex-col gap-3 border-t border-border pt-6">
+      <h3 className="text-sm font-semibold text-foreground">Tiempos de comida</h3>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Definen la estructura del día del paciente. Mandan sobre las dos tablas de abajo: la distribución
+        reparte dentro de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como
+        columnas. Por eso se aplican con un paso propio y no cambian mientras marcas.
+      </p>
+      <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="baseSignature" value={baseSignature} />
+        <input type="hidden" name="activos" value={JSON.stringify(activos)} />
+        <fieldset disabled={locked} className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            {TIEMPOS_DEF.map((t) => (
+              <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
+                <input type="checkbox" checked={Boolean(activos[t.id])} onChange={() => toggle(t.id)} />
+                {t.n}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="outline" size="sm" disabled={pending}>
+              {pending ? "Aplicando..." : "Aplicar tiempos de comida"}
+            </Button>
+            {sinAplicar ? (
+              <span className="text-xs text-clinical-warning">
+                Cambiaste los tiempos y aún no los has aplicado: la distribución y el menú siguen mostrando
+                los anteriores.
+              </span>
+            ) : null}
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  );
+}
+
 // Distribucion por tiempos (CP2.2b): reparte las porciones del intercambio (CP1) por tiempo de comida. Filas =
 // grupos con porciones > 0; columnas = tiempos ACTIVOS. Celdas editables (override sobre el auto). Toggles de
 // tiempos activos con recompute en vivo. Aviso de desfase DOBLE (por porciones y por activos) sin borrar los
@@ -1267,9 +1356,6 @@ function TiemposSection({
     kcalPorPorcion[a.sub] = a.kcal;
   }
 
-  const [activos, setActivos] = useState<Record<string, boolean>>(
-    () => savedTiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT,
-  );
   const [celdas, setCeldas] = useState<Record<string, Record<string, number>>>(() => savedTiempos?.celdas ?? {});
 
   if (!snap || objetivoEfectivo == null) return null;
@@ -1280,8 +1366,7 @@ function TiemposSection({
   // reconstruiria la tabla Y el menu en cada clic, lo que distrae en vez de ayudar. Y asi las dos superficies
   // cuentan lo mismo SIN compartir estado entre secciones hermanas, que habria exigido subir el estado al
   // panel y poner en riesgo el remonte por firma (el arreglo del estado pegado).
-  const activosGuardados = savedTiempos?.activos ?? TIEMPOS_ACTIVOS_DEFAULT;
-  const tiemposSinAplicar = TIEMPOS_DEF.some((t) => Boolean(activos[t.id]) !== Boolean(activosGuardados[t.id]));
+  const activosGuardados = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
 
   const vivos = TIEMPOS_DEF.filter((t) => activosGuardados[t.id]);
   const alimentosConPorciones = defaults.filter((a) => porcionesActuales[a.sub] > 0);
@@ -1306,6 +1391,14 @@ function TiemposSection({
     const suma = vivos.reduce((s, t) => s + celda(sub, t.id), 0);
     return { suma, obj: porcionesActuales[sub] ?? 0 };
   };
+  // COMIDA ACTIVA Y VACIA (P-41, propuesta nuestra: el v8 no lo detecta, solo compara por ALIMENTO -fila-,
+  // nunca por TIEMPO -columna-). Si el desayuno esta activo y no tiene ni una porcion, el plan dice dos cosas
+  // contradictorias: la casilla dice que el paciente desayuna y la tabla dice que no come nada. El modelo
+  // mental correcto es que las CASILLAS mandan y la tabla reparte dentro de lo que ellas definen, asi que la
+  // salida no es repartirle algo: es apagar la casilla. Se AVISA en vivo, no se bloquea (mismo trato que el
+  // descuadre por alimento, DIV-11: no destruir el trabajo del profesional).
+  const comidasVacias = vivos.filter((t) => totalPorc[t.id] === 0);
+
   const descuadres = alimentosConPorciones.filter((a) => {
     const r = reparto(a.sub);
     return r.suma !== r.obj;
@@ -1318,21 +1411,13 @@ function TiemposSection({
     savedTiempos != null &&
     Object.keys(savedTiempos.celdas).length > 0 &&
     (serMap(porcionesActuales) !== serMap(savedTiempos.base.porciones) ||
-      serMap(savedTiempos.activos) !== serMap(savedTiempos.base.activos));
+      serMap(activosGuardados) !== serMap(savedTiempos.base.activos));
 
   const setCelda = (gid: string, mid: string, v: number) =>
     setCeldas((c) => ({ ...c, [gid]: { ...(c[gid] ?? {}), [mid]: Math.max(0, v) } }));
-  const toggle = (mid: string) =>
-    setActivos((a) => {
-      const activosCount = TIEMPOS_DEF.filter((t) => a[t.id]).length;
-      if (a[mid] && activosCount <= 1) return a; // DIV-13: no apagar el ultimo
-      return { ...a, [mid]: !a[mid] };
-    });
-
   const payload: TiemposSaved = {
-    activos,
     celdas, // se conservan TODOS, incluidos los de comidas apagadas (no se muestran, no se borran)
-    base: { porciones: porcionesActuales, activos },
+    base: { porciones: porcionesActuales, activos: activosGuardados },
   };
   const baseSignature = tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: savedTiempos });
 
@@ -1356,43 +1441,6 @@ function TiemposSection({
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
-          {/* TIEMPOS DE COMIDA: apartado propio, con su boton. Son una decision CLINICA (definen la
-              estructura del dia del paciente), no un ajuste visual, asi que se aplican con un paso
-              explicito y no en vivo. OJO AL GUARDADO: el jsonb `tiempos` es UNO SOLO (activos + celdas +
-              base), asi que este boton y el de abajo envian el MISMO formulario y el MISMO payload; son dos
-              entradas al mismo guardado, no dos guardados. Se hizo asi a proposito: partir el payload
-              habria partido tambien la firma del candado de concurrencia. */}
-          <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-3">
-            <p className="text-sm font-medium text-foreground">Tiempos de comida</p>
-            <p className="max-w-prose text-xs text-muted-foreground">
-              Definen la estructura del día del paciente. Al aplicarlos se rehacen esta tabla y el menú
-              semanal; por eso no cambian mientras marcas, sino cuando aplicas.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {TIEMPOS_DEF.map((t) => (
-                <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
-                  <input type="checkbox" checked={Boolean(activos[t.id])} onChange={() => toggle(t.id)} />
-                  {t.n}
-                </label>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" variant="outline" size="sm" disabled={pending}>
-                {pending ? "Aplicando..." : "Aplicar tiempos de comida"}
-              </Button>
-              {tiemposSinAplicar ? (
-                <span className="text-xs text-clinical-warning">
-                  Cambiaste los tiempos y aún no los has aplicado: la tabla y el menú siguen mostrando los
-                  anteriores.
-                </span>
-              ) : null}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Los tiempos y la tabla de abajo se guardan juntos: son un solo dato. Da igual cuál de los dos
-              botones pulses.
-            </p>
-          </div>
-
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -1469,6 +1517,15 @@ function TiemposSection({
             </table>
           </div>
 
+          {comidasVacias.length > 0 ? (
+            <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+              {comidasVacias.length === 1
+                ? `${comidasVacias[0].n} está activo pero no tiene porciones asignadas.`
+                : `${comidasVacias.map((t) => t.n).join(", ")} están activos pero no tienen porciones asignadas.`}{" "}
+              Si el paciente no {comidasVacias.length === 1 ? "hace esa comida" : "hace esas comidas"}, apaga la
+              casilla de arriba; si sí, repártele porciones.
+            </div>
+          ) : null}
           {descuadres > 0 ? (
             <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
               {descuadres === 1 ? "Un alimento reparte" : `${descuadres} alimentos reparten`} menos o más porciones
@@ -1489,7 +1546,7 @@ function TiemposSection({
 
           <div className="flex gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar distribución y tiempos"}
+              {pending ? "Guardando..." : "Guardar distribución"}
             </Button>
             <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
               Recalcular desde el intercambio (borra tus ajustes)

@@ -3202,6 +3202,7 @@ export type Database = {
           restrictions_ack_by: string | null
           status: Database["public"]["Enums"]["treatment_status"]
           tiempos: Json | null
+          tiempos_activos: Json | null
         }
         Insert: {
           adj_fat_pct?: number | null
@@ -3230,6 +3231,7 @@ export type Database = {
           restrictions_ack_by?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
           tiempos?: Json | null
+          tiempos_activos?: Json | null
         }
         Update: {
           adj_fat_pct?: number | null
@@ -3258,6 +3260,7 @@ export type Database = {
           restrictions_ack_by?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
           tiempos?: Json | null
+          tiempos_activos?: Json | null
         }
         Relationships: [
           {

@@ -110,23 +110,31 @@ export type SaveIntercambioInput = z.infer<typeof saveIntercambioSchema>;
 const MEAL_IDS: Set<string> = new Set(TIEMPOS_DEF.map((t) => t.id));
 const boolMapSchema = z.record(z.string(), z.boolean());
 
+// Tiempos de comida ACTIVOS: su propio schema, su propio guardado. Reglas: solo tiempos conocidos, y AL
+// MENOS UNO activo (un plan sin ninguna comida no es un plan; DIV-13).
+export const saveTiemposActivosSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  activos: boolMapSchema.superRefine((val, ctx) => {
+    for (const k of Object.keys(val)) {
+      if (!MEAL_IDS.has(k)) ctx.addIssue({ code: "custom", message: `Tiempo de comida desconocido: ${k}.` });
+    }
+    if (!Object.values(val).some(Boolean)) {
+      ctx.addIssue({ code: "custom", message: "Debe haber al menos un tiempo de comida activo." });
+    }
+  }),
+  baseSignature: z.string().max(6000).default(""),
+});
+export type SaveTiemposActivosInput = z.infer<typeof saveTiemposActivosSchema>;
+
 export const saveTiemposSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
   tiempos: z
     .object({
-      activos: boolMapSchema,
       celdas: z.record(z.string(), z.record(z.string(), porcionesInt)),
       base: z.object({ porciones: z.record(z.string(), porcionesInt), activos: boolMapSchema }),
     })
     .superRefine((val, ctx) => {
       const badMeal = (m: string) => !MEAL_IDS.has(m);
-      // activos: tiempos conocidos + AL MENOS UNO activo.
-      for (const k of Object.keys(val.activos)) {
-        if (badMeal(k)) ctx.addIssue({ code: "custom", message: `Tiempo de comida desconocido: ${k}.` });
-      }
-      if (!Object.values(val.activos).some(Boolean)) {
-        ctx.addIssue({ code: "custom", message: "Debe haber al menos un tiempo de comida activo." });
-      }
       // celdas: alimentos existentes y tiempos conocidos.
       for (const s of Object.keys(val.celdas)) {
         if (!ALL_SUBS_SET.has(s)) {

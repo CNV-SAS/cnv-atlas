@@ -33,6 +33,7 @@ const BASE: TreatmentProtocol = {
   objetivoTexto: "Dieta antiinflamatoria, proteína alta.",
   intercambioPorciones: null,
   tiempos: null,
+  tiemposActivos: null,
   menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [

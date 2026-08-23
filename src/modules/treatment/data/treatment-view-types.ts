@@ -30,8 +30,10 @@ export type IntercambioSaved = { objetivoBase: number; porciones: Record<string,
 // no se guarda: se recomputa en vivo con computeTiempos(porciones por alimento de CP1, activos); solo los
 // overrides se persisten. Todo keyed por `sub` (por-alimento), coherente con el intercambio.
 export type TiemposSaved = {
-  activos: Record<string, boolean>;
   celdas: Record<string, Record<string, number>>;
+  // CONTEXTO SELLADO de esos overrides, no la decision vigente. `base.activos` NO es una copia de
+  // tiempos_activos y NO se debe "limpiar": es contra el que se detecta el desfase (overrides hechos con
+  // otros tiempos activos o con otras porciones). Borrarlo apagaria ese aviso en silencio.
   base: { porciones: Record<string, number>; activos: Record<string, boolean> };
 };
 // Menu semanal (CP4). `celdas` keyed "dia_tiempo" (dia 0-6, id de tiempo) con SOLO lo que el profesional
@@ -95,6 +97,9 @@ export type TreatmentProtocol = {
   // Distribucion por tiempos guardada (CP2.2). null = nunca guardada -> el panel usa el reparto auto de
   // computeTiempos con los tiempos activos por defecto.
   tiempos: TiemposSaved | null;
+  // Tiempos de comida ACTIVOS (columna propia desde 2026-08-23). Mandan sobre la distribucion Y sobre el
+  // menu semanal, y tienen su propio guardado. null = nunca guardados.
+  tiemposActivos: Record<string, boolean> | null;
   // Menu semanal guardado (CP4). null = nunca guardado -> la grilla usa la precarga del ciclo con el
   // arranque DERIVADO del treatmentId.
   menuSemanal: MenuSemanalSaved | null;

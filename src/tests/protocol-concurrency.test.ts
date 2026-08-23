@@ -367,7 +367,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     return tiemposSignature({ treatmentId, tiempos: (t.t as TiemposSaved | null) ?? null });
   }
   const TIEMPOS: TiemposSaved = {
-    activos: { desayuno: true, almuerzo: true, cena: true },
     celdas: { G1: { desayuno: 3 } },
     base: { porciones: { G1: 8 }, activos: { desayuno: true, almuerzo: true, cena: true } },
   };

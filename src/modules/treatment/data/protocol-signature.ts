@@ -74,14 +74,25 @@ function sortBoolMap(m: Record<string, boolean>): string {
     .map((k) => `${k}:${m[k] ? 1 : 0}`)
     .join(",");
 }
+// Tiempos ACTIVOS (columna propia desde 2026-08-23): su propia firma, porque su guardado es propio. Que
+// sea independiente de la de la distribucion es justo el punto: guardar las casillas no debe rechazarse
+// porque otro toco la tabla, ni al reves.
+export function tiemposActivosSignature(p: { treatmentId: string; activos: Record<string, boolean> | null }): string {
+  const a = p.activos;
+  if (!a || typeof a !== "object" || Array.isArray(a)) return `${p.treatmentId}§none`;
+  return `${p.treatmentId}§${sortBoolMap(a)}`;
+}
+
 export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved | null }): string {
   // Misma defensa que intercambioSignature: el writer relee el jsonb crudo, que puede venir malformado/ajeno.
-  // Sin las tres partes esperadas se trata como "none" (el reader lo normaliza a null igual), sin reventar.
+  // Sin las partes esperadas se trata como "none" (el reader lo normaliza a null igual), sin reventar. Una
+  // fila ANTERIOR al corte de 2026-08-23 traia ademas `activos`; la data-migration la saco, y si quedara
+  // alguna, la clave sobrante NO cambia la firma porque solo se serializa lo que se lista abajo.
   const t = p.tiempos;
-  if (!t || !t.activos || typeof t.activos !== "object" || !t.celdas || typeof t.celdas !== "object" || !t.base || typeof t.base !== "object" || !t.base.porciones || typeof t.base.porciones !== "object" || !t.base.activos || typeof t.base.activos !== "object") {
+  if (!t || !t.celdas || typeof t.celdas !== "object" || !t.base || typeof t.base !== "object" || !t.base.porciones || typeof t.base.porciones !== "object" || !t.base.activos || typeof t.base.activos !== "object") {
     return `${p.treatmentId}§none`;
   }
-  const { activos, celdas, base } = t;
+  const { celdas, base } = t;
   const serCeldas = Object.keys(celdas)
     .sort()
     .map(
@@ -96,7 +107,7 @@ export function tiemposSignature(p: { treatmentId: string; tiempos: TiemposSaved
     .sort()
     .map((k) => `${k}:${base.porciones[k]}`)
     .join(",");
-  return `${p.treatmentId}§${sortBoolMap(activos)}§${serCeldas}§${serPorc}§${sortBoolMap(base.activos)}`;
+  return `${p.treatmentId}§${serCeldas}§${serPorc}§${sortBoolMap(base.activos)}`;
 }
 
 // Menu semanal (columna treatments.menu_semanal, jsonb). ORDEN-INDEPENDIENTE: serializa las celdas por

@@ -16,6 +16,7 @@ import {
   saveObjetivo as writeObjetivo,
   saveIntercambio as writeIntercambio,
   saveMenuSemanal as writeMenuSemanal,
+  saveTiemposActivos as writeTiemposActivos,
   saveTiempos as writeTiempos,
   saveRestricciones as writeRestricciones,
   StaleAdjustmentsError,
@@ -24,6 +25,7 @@ import {
   StaleObjetivoError,
   StaleIntercambioError,
   StaleMenuSemanalError,
+  StaleTiemposActivosError,
   StaleTiemposError,
   StaleRestriccionesError,
   TreatmentStateError,
@@ -39,6 +41,7 @@ import type {
   SaveObjetivoInput,
   SaveIntercambioInput,
   SaveMenuSemanalInput,
+  SaveTiemposActivosInput,
   SaveTiemposInput,
   SaveRestriccionesInput,
 } from "../validations";
@@ -229,6 +232,48 @@ export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promis
         appError(
           "stale_write",
           "La distribución por tiempos está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// CP2.3: tiempos de comida activos, su propio camino de guardado (partido de la distribucion el
+// 2026-08-23). Mismos gates; candado independiente.
+export async function saveTiemposActivos(input: SaveTiemposActivosInput, actor: Actor): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar los tiempos de comida."));
+  }
+  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
+  try {
+    await writeTiemposActivos({
+      treatmentId: protocol.treatmentId,
+      activos: input.activos,
+      baseSignature: input.baseSignature,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof StaleTiemposActivosError) {
+      return err(
+        appError(
+          "stale_write",
+          "Otro profesional cambió los tiempos de comida en otra sesión (otra pestaña o dispositivo). Para no " +
+            "borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "Los tiempos de comida están bloqueados por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }

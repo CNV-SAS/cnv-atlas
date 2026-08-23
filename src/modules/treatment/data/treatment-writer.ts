@@ -20,6 +20,7 @@ import {
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
+  tiemposActivosSignature,
   tiemposSignature,
 } from "./protocol-signature";
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved } from "./treatment-view-types";
@@ -297,6 +298,59 @@ export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void
   });
 }
 
+export class StaleTiemposActivosError extends Error {
+  constructor() {
+    super("Los tiempos de comida cambiaron desde que se cargaron.");
+    this.name = "StaleTiemposActivosError";
+  }
+}
+
+export type SaveTiemposActivosWrite = {
+  treatmentId: string;
+  activos: Record<string, boolean>;
+  baseSignature: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda los tiempos de comida ACTIVOS (CP2.3): columna propia `tiempos_activos`. Escritura INDEPENDIENTE
+// de la distribucion, con su propio candado: guardar las casillas no se rechaza porque otro haya tocado la
+// tabla. Los overrides de la distribucion NO se tocan aqui; si quedan calculados contra otros tiempos, el
+// panel lo detecta comparando estos activos contra `tiempos.base.activos` (el aviso de desfase).
+export async function saveTiemposActivos(input: SaveTiemposActivosWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx.execute(sql`set local lock_timeout = '3s'`);
+    const [locked] = await tx
+      .select({ a: treatments.tiemposActivos })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .for("update")
+      .limit(1);
+    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+    const current = tiemposActivosSignature({
+      treatmentId: input.treatmentId,
+      activos: (locked.a as Record<string, boolean> | null) ?? null,
+    });
+    if (current !== input.baseSignature) throw new StaleTiemposActivosError();
+    await tx
+      .update(treatments)
+      .set({ tiemposActivos: input.activos })
+      .where(eq(treatments.id, input.treatmentId));
+    await recordAudit(tx, {
+      event: "treatment.tiempos_activos_updated",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      // Se audita QUE tiempos quedaron activos: definen la estructura del dia del paciente.
+      payload: { activos: Object.entries(input.activos).filter(([, v]) => v).map(([k]) => k) },
+      ip: input.ip,
+    });
+  });
+}
+
 export type SaveMenuSemanalWrite = {
   treatmentId: string;
   menu: MenuSemanalSaved;
@@ -379,10 +433,7 @@ export async function saveTiempos(input: SaveTiemposWrite): Promise<void> {
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: input.treatmentId,
-      payload: {
-        activos: Object.entries(input.tiempos.activos).filter(([, v]) => v).length,
-        overrides: Object.keys(input.tiempos.celdas).length,
-      },
+      payload: { overrides: Object.keys(input.tiempos.celdas).length },
       ip: input.ip,
     });
   });

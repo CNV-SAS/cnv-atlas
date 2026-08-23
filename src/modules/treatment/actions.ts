@@ -24,6 +24,7 @@ import {
   saveIntercambio,
   saveMenuSemanal,
   saveTiempos,
+  saveTiemposActivos,
   saveRestricciones,
 } from "./services/treatment-service";
 import {
@@ -36,6 +37,7 @@ import {
   saveObjetivoSchema,
   saveIntercambioSchema,
   saveMenuSemanalSchema,
+  saveTiemposActivosSchema,
   saveTiemposSchema,
   saveRestriccionesSchema,
 } from "./validations";
@@ -211,6 +213,43 @@ export async function saveTiemposAction(
     return fail(result.error.message);
   }
   return { error: null, success: "Distribución por tiempos guardada.", warning: null };
+}
+
+// CP2.3: tiempos de comida activos, su propia accion.
+export async function saveTiemposActivosAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  let activos: unknown;
+  try {
+    activos = JSON.parse((form.get("activos") as string | null) ?? "");
+  } catch {
+    return fail("Tiempos de comida inválidos.");
+  }
+  const parsed = saveTiemposActivosSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    activos,
+    baseSignature: (form.get("baseSignature") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Tiempos de comida inválidos.");
+  }
+
+  const result = await saveTiemposActivos(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Tiempos de comida aplicados.", warning: null };
 }
 
 // CP4: menu semanal, su propia accion.
