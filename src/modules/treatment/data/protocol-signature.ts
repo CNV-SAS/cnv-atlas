@@ -12,6 +12,19 @@
 
 import type { IntercambioSaved, TiemposSaved, TreatmentProtocol } from "./treatment-view-types";
 
+// LA KEY DE REACT NO ES LA FIRMA: es "que seccion es" + la firma (defecto real, 2026-08-23).
+// La firma es "treatmentId + contenido", asi que DOS SECCIONES SIN DATO GUARDADO producen la MISMA
+// (`T§` para objetivo/guias/restricciones/nutraceuticos vacios; `T§none` para intercambio/tiempos sin
+// guardar), y eso pasa SIEMPRE en un paciente nuevo. Con dos hermanos con la misma key React avisa y
+// puede duplicar u omitir: en una actualizacion la reconciliacion puede casar el hermano equivocado y
+// remontar el que no era, perdiendo lo que el profesional esta escribiendo. Justo lo que la firma
+// venia a evitar. El prefijo se aplica SOLO en el `key`; la firma que viaja al servidor como
+// baseSignature (el candado de concurrencia) queda intacta, o cliente y servidor dejarian de coincidir.
+// Candado: section-keys-unique.test.ts.
+export function sectionKey(section: string, signature: string): string {
+  return `${section}:${signature}`;
+}
+
 // Firma de una lista de texto (treatmentId + el set ORDENADO): base del candado + key de remonte. Ordenado
 // para no depender del orden de filas (un SELECT sin ORDER BY no lo garantiza).
 function stringListSignature(treatmentId: string, items: string[]): string {

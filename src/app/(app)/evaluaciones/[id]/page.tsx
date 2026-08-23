@@ -70,7 +70,7 @@ import { canManageReports } from "@/modules/reports/policies/can-manage-reports"
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
-import { prescriptionSignature } from "@/modules/treatment/data/protocol-signature";
+import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
 import { getDietaResumenForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
 import {
   ProfessionTreatmentSection,
@@ -418,7 +418,7 @@ export default async function ResultadosEvaluacionPage({
                     prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}
                 {protocol ? (
                   <NutraceuticalsSection
-                    key={prescriptionSignature(protocol)}
+                    key={sectionKey("nutraceuticos", prescriptionSignature(protocol))}
                     evaluationId={id}
                     protocol={protocol}
                     canPrescribe={canPrescribeNutraceuticals}

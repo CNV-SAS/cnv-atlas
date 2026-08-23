@@ -16,6 +16,7 @@ import biodyGold from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 import biodyFemale from "./fixtures/clinical-engine/biody-mujer-zm3-anon.json";
 // Juego de respuestas que deja dfi.complete = true (fuente unica, compartida con el test de correccion).
 import { DFI_COMPLETE_ANSWERS as ANSWERS } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
 
 // SEED del caso golden-path por la VIA REAL (bloque prerrequisito "profesional primero").
 // No es un test de aserciones: es una rutina de sembrado idempotente y RESUMIBLE que corre
@@ -116,14 +117,18 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       .runClinicalPipeline;
 
     orgId = (await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1))[0]?.id;
-    const pro = (
-      await db
-        .select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId })
-        .from(schema.professionalProfiles)
-        .limit(1)
-    )[0];
-    proId = pro?.id;
-    actorId = pro?.profileId;
+    // El dueño se elige por PROFESION y de forma determinista, no "el primero" (ver demo-professional.ts:
+    // un LIMIT 1 sin ORDER BY le tocaba el MEDICO y la pagina daba 404 por RLS). Y se REPARA lo ya
+    // sembrado con el dueño equivocado, que si no queda inabrible para siempre.
+    const pro = await pickDemoProfessional(db, schema, "nutricionista");
+    proId = pro.proId;
+    actorId = pro.actorId;
+    await reassignDemoEvaluations(
+      db,
+      schema,
+      [EVAL_ID, EVAL_ID_NODIAG, FEMALE_EVAL_ID, FEMALE2_EVAL_ID, FEMALE_COMPLETE_EVAL_ID],
+      proId,
+    );
     actorEmail = (
       await db.select({ email: schema.profiles.email }).from(schema.profiles).where(eq(schema.profiles.id, actorId)).limit(1)
     )[0]?.email;

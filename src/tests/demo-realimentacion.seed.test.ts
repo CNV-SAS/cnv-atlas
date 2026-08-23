@@ -1,10 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-demo-realimentacion-f10.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
 
 // SEED de los avisos del PLAN ALIMENTARIO. Siembra, por la VIA REAL del pipeline, dos pacientes de
 // demostracion que hacen visible lo que el motor calcula y el nutricionista tiene que ver:
@@ -73,21 +74,10 @@ describe.skipIf(!RUN)("seed demo de los avisos del plan (via pipeline real)", ()
     db = (await import("@/db")).db;
     runClinicalPipeline = (await import("@/modules/clinical-pipeline/services/run-pipeline")).runClinicalPipeline;
     orgId = (await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1))[0].id;
-    // La NUTRICIONISTA, no "la primera fila". Determinista (order by id) para que dos corridas coincidan.
-    const nutri = await db
-      .select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId })
-      .from(schema.professionalProfiles)
-      .where(eq(schema.professionalProfiles.profession, "nutricionista"))
-      .orderBy(asc(schema.professionalProfiles.id))
-      .limit(1);
-    if (nutri.length === 0) {
-      throw new Error(
-        "No hay ningun professional_profile con profession='nutricionista'. El smoke es del panel del " +
-          "nutricionista: sin esa cuenta nadie puede abrir el paciente demo. Crea la cuenta antes de sembrar.",
-      );
-    }
-    proId = nutri[0].id;
-    actorId = nutri[0].profileId;
+    // La NUTRICIONISTA, no "la primera fila" (ver demo-professional.ts, fuente unica de los tres seeds).
+    const pro = await pickDemoProfessional(db, schema, "nutricionista");
+    proId = pro.proId;
+    actorId = pro.actorId;
     svId = (
       await db
         .select({ id: schema.surveyVersions.id })
@@ -189,10 +179,8 @@ describe.skipIf(!RUN)("seed demo de los avisos del plan (via pipeline real)", ()
       const res = await runClinicalPipeline({ evaluationId: evalId, actorId, actorEmail: "realim-demo@cnv", ip: null });
       expect(res.ok, res.ok ? "" : JSON.stringify(res.error)).toBe(true);
     } else {
-      // REPARACION de lo ya sembrado: la primera version asigno el profesional equivocado y la pagina daba
-      // 404. Re-sembrar exigiria borrar registros clinicos; se corrige el dueño en su sitio, que es barato
-      // y deja el demo abrible sin tocar el diagnostico ni el tratamiento.
-      await db.update(schema.evaluations).set({ professionalId: proId }).where(eq(schema.evaluations.id, evalId));
+      // REPARACION de lo ya sembrado con el dueño equivocado (ver demo-professional.ts).
+      await reassignDemoEvaluations(db, schema, [evalId], proId);
     }
 
     const dxId = (

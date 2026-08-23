@@ -35,6 +35,7 @@ import {
   intercambioSignature,
   objetivoSignature,
   restriccionesSignature,
+  sectionKey,
   tiemposSignature,
 } from "../data/protocol-signature";
 import type { IntercambioSaved, MenuSuggestion, TiemposSaved, TreatmentProtocol } from "../data/treatment-view-types";
@@ -470,16 +471,19 @@ export function TreatmentPanel({
             del diagnostico (resumen + meta, que rendriza el Panel server, + objetivo + guias + salud celular);
             una marca de bloque abajo abre el PLAN ALIMENTARIO. La marca es visual, NO un control. */}
         <ObjetivoSection
-          key={objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto })}
+          key={sectionKey("objetivo", objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto }))}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
         />
         <GuidelinesSection
-          key={guidelinesSignature({
-            treatmentId: protocol.treatmentId,
-            guidelines: protocol.guidelines.map((g) => g.text),
-          })}
+          key={sectionKey(
+            "guias",
+            guidelinesSignature({
+              treatmentId: protocol.treatmentId,
+              guidelines: protocol.guidelines.map((g) => g.text),
+            }),
+          )}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
@@ -531,15 +535,18 @@ export function TreatmentPanel({
 
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection
-          key={adjustmentSignature({
-            treatmentId: protocol.treatmentId,
-            adjGeb: protocol.adjGeb,
-            adjPal: protocol.adjPal,
-            adjKcalObj: protocol.adjKcalObj,
-            adjProtGkg: protocol.adjProtGkg,
-            adjFatPct: protocol.adjFatPct,
-            adjPesoMeta: protocol.adjPesoMeta,
-          })}
+          key={sectionKey(
+            "cadena",
+            adjustmentSignature({
+              treatmentId: protocol.treatmentId,
+              adjGeb: protocol.adjGeb,
+              adjPal: protocol.adjPal,
+              adjKcalObj: protocol.adjKcalObj,
+              adjProtGkg: protocol.adjProtGkg,
+              adjFatPct: protocol.adjFatPct,
+              adjPesoMeta: protocol.adjPesoMeta,
+            }),
+          )}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
@@ -547,14 +554,17 @@ export function TreatmentPanel({
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
             guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}
         <IntercambioSection
-          key={intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: protocol.intercambioPorciones })}
+          key={sectionKey(
+            "intercambio",
+            intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: protocol.intercambioPorciones }),
+          )}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
         />
         {/* Tiempos (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
         <TiemposSection
-          key={tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos })}
+          key={sectionKey("tiempos", tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos }))}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
@@ -564,10 +574,13 @@ export function TreatmentPanel({
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
         <RestriccionesSection
-          key={restriccionesSignature({
-            treatmentId: protocol.treatmentId,
-            restricciones: protocol.restricciones,
-          })}
+          key={sectionKey(
+            "restricciones",
+            restriccionesSignature({
+              treatmentId: protocol.treatmentId,
+              restricciones: protocol.restricciones,
+            }),
+          )}
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}

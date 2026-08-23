@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { desc, eq } from "drizzle-orm";
 
 import { normalizeHeader } from "@/modules/bis/services/header-map";
+import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 
@@ -58,10 +59,12 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     db = (await import("@/db")).db;
     runClinicalPipeline = (await import("@/modules/clinical-pipeline/services/run-pipeline")).runClinicalPipeline;
     orgId = (await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1))[0].id;
-    proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
-    actorId = (
-      await db.select({ profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).where(eq(schema.professionalProfiles.id, proId)).limit(1)
-    )[0].profileId;
+    // El dueño se elige por PROFESION y de forma determinista, no "el primero" (ver demo-professional.ts:
+    // un LIMIT 1 sin ORDER BY le tocaba el MEDICO y la pagina daba 404 por RLS). Y se REPARA lo ya sembrado.
+    const pro = await pickDemoProfessional(db, schema, "nutricionista");
+    proId = pro.proId;
+    actorId = pro.actorId;
+    await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
   });
 
