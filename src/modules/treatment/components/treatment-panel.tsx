@@ -1278,6 +1278,14 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
             ICN = (nutriente aportado / requerido) ÷ (energía aportada / requerida). ≈1 balanceado · &gt;1 denso
             · &lt;1 deficitario. Nutrientes con ICN ≥ 0,9: <span className="font-semibold text-foreground">{icnPctOk}%</span>.
           </p>
+          {/* Las dos columnas responden preguntas distintas y por eso su color puede discrepar en una misma
+              fila (p. ej. fibra al 136% en rojo pero su ICN en ámbar): NO es un error. */}
+          <p className="mt-1 text-xs text-muted-foreground">
+            El <span className="font-medium">% de cubrimiento</span> mide cuánto se cubre respecto a la necesidad;
+            el <span className="font-medium">ICN</span>, si el nutriente viene en proporción a las calorías del
+            plan. Un nutriente puede sobrar en cantidad y aun así estar bien proporcionado, así que las dos
+            columnas pueden tener colores distintos en la misma fila.
+          </p>
         </div>
       )}
     </section>
