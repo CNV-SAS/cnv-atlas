@@ -989,6 +989,20 @@ function TiemposSection({
     totalKcal[t.id] = alimentosConPorciones.reduce((s, a) => s + celda(a.sub, t.id) * kcalPorPorcion[a.sub], 0);
   }
 
+  // CUADRE del reparto (fiel al v8, celda "suma/total ✓/⚠"): la distribucion es un REPARTO, la suma de un
+  // alimento por los tiempos debe igualar sus porciones del intercambio. El auto siempre cuadra (interSplit);
+  // un override manual puede romperlo. Se avisa EN VIVO por fila (verde/rojo), no se bloquea el guardado (el v8
+  // tampoco lo bloquea; DIV-11: no destruir el trabajo del profesional, avisar). Es aritmetica, no criterio
+  // clinico: no va a Gildardo.
+  const reparto = (sub: string) => {
+    const suma = vivos.reduce((s, t) => s + celda(sub, t.id), 0);
+    return { suma, obj: porcionesActuales[sub] ?? 0 };
+  };
+  const descuadres = alimentosConPorciones.filter((a) => {
+    const r = reparto(a.sub);
+    return r.suma !== r.obj;
+  }).length;
+
   // Desfase DOBLE (DIV-11): overrides hechos con otras porciones o con otros tiempos activos. Se compara el
   // contexto SELLADO (savedTiempos.base) contra la realidad actual (porciones del intercambio + activos
   // guardados), no contra la edicion en vivo, para no titilar mientras se ajusta.
@@ -1054,6 +1068,9 @@ function TiemposSection({
                       {t.n}
                     </th>
                   ))}
+                  <th className="px-2 py-1 text-right font-medium" title="Suma del reparto / porciones del alimento">
+                    Reparto
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1065,12 +1082,14 @@ function TiemposSection({
                   if (nuevoGrupo) {
                     filas.push(
                       <tr key={`g-${a.gr}`} className="bg-muted/40">
-                        <td colSpan={vivos.length + 1} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <td colSpan={vivos.length + 2} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {a.grNom}
                         </td>
                       </tr>,
                     );
                   }
+                  const cuadre = reparto(a.sub);
+                  const cuadra = cuadre.suma === cuadre.obj;
                   filas.push(
                     <tr key={a.sub} className="border-b border-border/50">
                       <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
@@ -1085,6 +1104,10 @@ function TiemposSection({
                           />
                         </td>
                       ))}
+                      {/* Cuadre por alimento en vivo (v8): suma/porciones + ✓/⚠, verde si cuadra, rojo si no. */}
+                      <td className={"px-2 py-1.5 text-right tabular-nums font-semibold " + (cuadra ? "text-clinical-optimal" : "text-clinical-critical")}>
+                        {cuadre.suma}/{cuadre.obj} {cuadra ? "✓" : "⚠"}
+                      </td>
                     </tr>,
                   );
                   return filas;
@@ -1096,6 +1119,7 @@ function TiemposSection({
                       {totalPorc[t.id]}
                     </td>
                   ))}
+                  <td />
                 </tr>
                 <tr className="text-muted-foreground">
                   <td className="py-1 pr-3">Total kcal</td>
@@ -1104,10 +1128,20 @@ function TiemposSection({
                       {Math.round(totalKcal[t.id])}
                     </td>
                   ))}
+                  <td />
                 </tr>
               </tbody>
             </table>
           </div>
+
+          {descuadres > 0 ? (
+            <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+              {descuadres === 1 ? "Un alimento reparte" : `${descuadres} alimentos reparten`} menos o más porciones
+              de las que {descuadres === 1 ? "tiene" : "tienen"} en la lista de intercambio (marcados en rojo en la
+              columna Reparto). El reparto por tiempos debe sumar las porciones del alimento; ajusta las celdas o
+              usa Recalcular desde el intercambio. Puedes guardar igual, pero el plan quedará descuadrado.
+            </div>
+          ) : null}
 
           {alimentosOcultos > 0 ? (
             <p className="text-xs text-muted-foreground">
@@ -1228,8 +1262,10 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
                   <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + cobColor(n)}>
                     {Math.round(n.cob)}%
                   </td>
-                  {/* ICN: "límite" para los a limitar (sodio), "—" para energia, si no el valor coloreado. */}
-                  <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + (n.lim ? "text-muted-foreground" : icnColor(n.icn))}>
+                  {/* ICN: texto "límite" para los a limitar (sodio), "—" para energia, si no el valor. El COLOR
+                      va por el ICN incluso para el sodio (fiel al v8: interIcnColor(interICN("na")) lo colorea;
+                      un sodio denso -> ICN alto -> rojo, que refuerza el "te pasas"). kcal (icn null) -> gris. */}
+                  <td className={"px-2 py-1.5 text-right tabular-nums font-medium " + icnColor(n.icn)}>
                     {n.lim ? "límite" : n.k === "kcal" ? "—" : n.icn == null ? "—" : n.icn.toFixed(2)}
                   </td>
                 </tr>
