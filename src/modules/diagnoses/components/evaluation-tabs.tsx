@@ -18,17 +18,30 @@ import { type ReactNode } from "react";
 // conmutar se COPIAN todos los params y solo se fija el propio, asi las cuatro conviven sin pisarse y cada
 // etapa recuerda su subpestaña al volver. Default: Diagnostico (lo mas mirado); sin ?etapa abre ahi, como hoy.
 
-type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento";
+// QUINTA ETAPA (2026-08-24): "Reporte / HC", donde vive lo que se le ENTREGA al paciente y el cierre de la
+// consulta. Nace por dos razones que ya estaban registradas: el reporte se habia quedado en Tratamiento
+// PORQUE NO HABIA PESTAÑA DESTINO (no fue decision de diseño, fue la unica opcion), y el prototipo de
+// Gildardo tiene una historia clinica de once secciones que no teniamos dimensionada.
+//
+// Va AL FINAL y en ese orden a proposito: es la ultima etapa de la consulta, la que cierra. El default
+// sigue siendo Diagnostico, que es lo mas mirado; abrir en la quinta al entrar seria empezar por el final.
+type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento" | "reporte";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "evaluacion", label: "Evaluación" },
   { id: "diagnostico", label: "Diagnóstico" },
   { id: "tratamiento", label: "Tratamiento" },
   { id: "seguimiento", label: "Seguimiento" },
+  { id: "reporte", label: "Reporte / HC" },
 ];
 
+const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
+
+// Un ?etapa desconocido cae a Diagnostico, igual que antes. Se valida contra la LISTA y no contra una
+// cadena de comparaciones: agregar una etapa y olvidar el parseo daria un tab al que la URL nunca llega,
+// que es el defecto silencioso que este cambio podia introducir.
 function parseTab(raw: string | null): TabId {
-  return raw === "evaluacion" || raw === "tratamiento" || raw === "seguimiento" ? raw : "diagnostico";
+  return raw && TAB_IDS.has(raw) && raw !== "diagnostico" ? (raw as TabId) : "diagnostico";
 }
 
 export function EvaluationTabs({
@@ -36,16 +49,18 @@ export function EvaluationTabs({
   diagnostico,
   tratamiento,
   seguimiento,
+  reporte,
 }: {
   evaluacion: ReactNode;
   diagnostico: ReactNode;
   tratamiento: ReactNode;
   seguimiento: ReactNode;
+  reporte: ReactNode;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const active = parseTab(searchParams.get("etapa"));
-  const content: Record<TabId, ReactNode> = { evaluacion, diagnostico, tratamiento, seguimiento };
+  const content: Record<TabId, ReactNode> = { evaluacion, diagnostico, tratamiento, seguimiento, reporte };
 
   function select(id: TabId) {
     // Copia TODOS los params (conserva ?sub/?ev/?trat de las subpestañas) y fija solo el propio; ninguno

@@ -66,6 +66,7 @@ import { FollowupComparison } from "@/modules/followups/components/followup-comp
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
+import { EtapaReporte } from "@/modules/reports/components/etapa-reporte";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -185,6 +186,10 @@ export default async function ResultadosEvaluacionPage({
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
+        reporte={
+          // Sin diagnostico no hay nada que reportar ni que cerrar.
+          <StagePlaceholder label="Reporte / HC" />
+        }
         diagnostico={
           <div className="flex flex-col gap-6">
             <header className="flex flex-col gap-2">
@@ -493,6 +498,12 @@ export default async function ResultadosEvaluacionPage({
         ) : (
           <StagePlaceholder label="Seguimiento" />
         )
+      }
+      reporte={
+        // QUINTA ETAPA (2026-08-24), pieza 1: la pestaña con su acceso y navegacion. El reporte y el cierre
+        // se MUEVEN aqui en la pieza siguiente, con su diff aparte, porque mover el reporte reabre una
+        // decision anterior (se dejo en Tratamiento porque no habia pestaña destino).
+        <EtapaReporte />
       }
       diagnostico={
         // EvaluationResults ES el orquestador del Diagnostico: cabecera + franja persistentes + 3
