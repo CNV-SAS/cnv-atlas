@@ -113,7 +113,7 @@ export async function getTreatmentProtocol(
       .order("created_at", { ascending: false }),
     supabase
       .from("nutraceuticals")
-      .select("id, name, unit, indication, commercial_availability")
+      .select("id, name, unit, indication, commercial_availability, serving_size, presentation, composition")
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
@@ -205,6 +205,9 @@ export async function getTreatmentProtocol(
       unit: c.unit,
       indication: c.indication ?? null,
       commercialAvailability: c.commercial_availability ?? "no_disponible",
+      servingSize: c.serving_size ?? null,
+      presentation: c.presentation ?? null,
+      composition: c.composition ?? null,
     })),
     menuSuggestions: (menus.data ?? []).map((m) => ({
       id: m.id,

@@ -441,3 +441,12 @@ export const RUTAS_CONTENT: Record<string, RutaContent> = {
     },
   },
 };
+
+// Nombre completo de una ruta por su id ("R4" -> "R4 · Desaceleracion del Envejecimiento"). El v8 rotula
+// las remisiones con el titulo completo y nosotros mostrabamos solo el codigo (cotejo 2026-08-24, A.2.3):
+// "R4" a secas no dice nada a quien no se sabe las seis de memoria. Si el id no existe, devuelve el id
+// tal cual en vez de inventar un nombre.
+export function rutaLabel(id: string): string {
+  const r = (RUTAS_CONTENT as Record<string, { label?: string } | undefined>)[id];
+  return r?.label ? `${id} · ${r.label}` : id;
+}

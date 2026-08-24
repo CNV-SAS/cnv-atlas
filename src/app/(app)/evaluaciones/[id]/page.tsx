@@ -71,6 +71,7 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
+import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
 import { getDietaResumenForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
@@ -414,10 +415,15 @@ export default async function ResultadosEvaluacionPage({
             profesionLabel={profesionLabel}
             rutas={
               <div className="flex flex-col gap-8">
+                {/* TITULOS DE SECCION NUMERADOS (cotejo 2026-08-24, punto A.1): su HTML numera y separa
+                    los tres bloques de esta subpestaña, y se lee mejor que una pila sin rotulos. Se porta
+                    la numeracion y el separador; sin guion largo (regla de estilo del proyecto). */}
+                <SeccionRuta n={1} titulo="Rutas de atención activadas" />
                 <RutasSection rutas={rutas} />
                 {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, el despacho DESPUES, para que se
                     lea la secuencia (primero se prescribe, luego se entrega) y nadie despache sin mirar lo
                     prescrito. El orden Rutas -> Nutraceuticos -> Remisiones sigue al HTML (Sec 1/2/3). */}
+                <SeccionRuta n={2} titulo="Nutracéuticos recomendados" />
                 {protocol ? (
                   <NutraceuticalsSection
                     key={sectionKey("nutraceuticos", prescriptionSignature(protocol))}
@@ -430,6 +436,7 @@ export default async function ResultadosEvaluacionPage({
                 {protocol && actorProfession.isProfessional ? (
                   <DespachoSection evaluationId={id} protocol={protocol} />
                 ) : null}
+                <SeccionRuta n={3} titulo="Remisiones" />
                 <RemisionesSection rutas={rutas} register={referralRegister} />
               </div>
             }

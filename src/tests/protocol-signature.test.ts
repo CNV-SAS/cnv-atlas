@@ -47,7 +47,16 @@ const BASE: TreatmentProtocol = {
   ],
   notes: [{ id: "note-1", note: "Nota inicial", createdAt: "2026-08-01T00:00:00Z" }],
   catalog: [
-    { id: "n-multicell", name: "MULTICELL BASE", unit: "frasco", indication: "Basal", commercialAvailability: "en_consultorio" },
+    {
+      id: "n-multicell",
+      name: "MULTICELL BASE",
+      unit: "frasco",
+      indication: "Basal",
+      commercialAvailability: "en_consultorio",
+      servingSize: "30 mL",
+      presentation: "liquida",
+      composition: "Multivitaminico con calostro",
+    },
   ],
   menuSuggestions: [],
   protocolSuggested: null,

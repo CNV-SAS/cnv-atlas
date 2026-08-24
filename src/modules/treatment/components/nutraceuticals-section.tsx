@@ -190,6 +190,13 @@ export function NutraceuticalsSection({
   );
 }
 
+// "30 mL · linea liquida" a partir de lo que el catalogo ya tiene. Sin inventar nada: si falta un campo,
+// se muestra lo que haya, y si no hay ninguno, no se muestra la linea.
+function posologia(p: { servingSize?: string | null; presentation?: string | null }): string {
+  const linea = p.presentation ? `línea ${p.presentation}` : null;
+  return [p.servingSize, linea].filter(Boolean).join(" · ");
+}
+
 // La lista "El modelo recomienda": en lectura (consulta) sin boton, o con "Agregar" (nutricionista).
 function RecommendedList({
   recommended,
@@ -224,8 +231,19 @@ function RecommendedList({
                     {AVAILABILITY_LABEL[r.product.commercialAvailability] ?? r.product.commercialAvailability}
                   </Badge>
                 </div>
+                {/* Posologia y composicion (cotejo 2026-08-24): el v8 las muestra en esta tarjeta
+                    ("30 mL/dia · 1 vez al dia · linea liquida" y los ingredientes). Verificado que NO
+                    son calculadas: salen de una tabla fija por producto. En Atlas ya vivian en el
+                    catalogo y no se estaban leyendo. La FRECUENCIA es lo unico que su tabla trae y el
+                    catalogo no: la fija el profesional al prescribir, que es donde tiene criterio. */}
+                {posologia(r.product) ? (
+                  <p className="text-xs font-medium text-foreground">{posologia(r.product)}</p>
+                ) : null}
                 {r.product.indication ? (
                   <p className="text-xs text-muted-foreground">{r.product.indication}</p>
+                ) : null}
+                {r.product.composition ? (
+                  <p className="text-xs text-muted-foreground">{r.product.composition}</p>
                 ) : null}
               </div>
               {!readOnly && onAdd && isAdded ? (

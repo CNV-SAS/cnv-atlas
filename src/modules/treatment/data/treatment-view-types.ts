@@ -50,6 +50,13 @@ export type CatalogItem = {
   unit: string | null;
   indication: string | null;
   commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
+  // Posologia y composicion del catalogo (cotejo 2026-08-24). En el v8 la tarjeta muestra "30 mL/dia ·
+  // 1 vez al dia · linea liquida" y una descripcion de ingredientes; verificado que NO es calculado: sale
+  // de una tabla FIJA por producto (NUTR_DOSIS). Aqui esos datos ya viven en el catalogo, solo no se
+  // estaban leyendo. servingSize + presentation dan la porcion y la linea; composition, los ingredientes.
+  servingSize: string | null; // "30 mL", "25 g"
+  presentation: string | null; // liquida | polvo
+  composition: string | null; // ingredientes
 };
 
 export type MenuSuggestion = {

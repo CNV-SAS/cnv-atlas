@@ -20,6 +20,11 @@ export type RecommendationCatalogItem = {
   name: string;
   indication: string | null;
   commercialAvailability: string; // en_consultorio | solo_tienda | no_disponible
+  // Posologia y composicion del catalogo (cotejo 2026-08-24): las muestra la tarjeta del recomendado,
+  // como en el v8. Opcionales: un producto sin ellas se muestra igual, sin la linea.
+  servingSize?: string | null;
+  presentation?: string | null;
+  composition?: string | null;
 };
 
 export type RecommendedItem =

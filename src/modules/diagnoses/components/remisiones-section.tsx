@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { rutaLabel } from "@/clinical-engine/rutas-content";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   buildRemisiones,
@@ -80,7 +81,7 @@ export function RemisionesSection({
                   </ul>
                 ) : null}
                 {/* Las rutas que la originan, como referencia (no se repite el detalle ruta por ruta). */}
-                <p className="text-xs text-muted-foreground">Rutas: {rem.rutaIds.join(", ")}</p>
+                <p className="text-xs text-muted-foreground">Rutas: {rem.rutaIds.map(rutaLabel).join(" · ")}</p>
                 {register != null ? (
                   <RegisterReferralForm
                     treatmentId={register.treatmentId}
