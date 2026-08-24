@@ -87,17 +87,37 @@ Estábamos por rehacer el generador de menús para que **adapte** el menú base 
 
 **Lo que el menú mira HOY en Atlas:** objetivo calórico · proteína objetivo · restricciones del modelo · restricciones que escribe el profesional · fenotipo estructural · sector funcional · rutas priorizadas.
 
-## 3.1 · Las alergias y las intolerancias no llegan (esto es seguridad)
+## 3.1 · El bloque entero de antecedentes clínicos quedó fuera del contrato del motor
 
-Un paciente que declaró **alergia a los mariscos puede recibir un menú con mariscos**, salvo que el profesional la teclee a mano.
+Empezamos buscando una cosa (¿el menú ve las alergias?) y encontramos otra más grande. **Cuatro preguntas de antecedentes se le hacen al paciente, se guardan, se muestran, y no entran al motor.** No es que falten datos: es que el bloque entero quedó fuera del contrato.
 
-La encuesta las captura con opciones cerradas: alergias (leche, huevo, maní, trigo, soya, pescado, mariscos) e intolerancias (lactosa, gluten, fructosa).
+| Pregunta de la encuesta | ¿Entra al motor? |
+|---|---|
+| ¿Le han diagnosticado hipertensión arterial? | sí |
+| **¿Toma medicamentos para la presión arterial?** | **no** |
+| ¿Familiares cercanos con estas enfermedades? | sí |
+| ¿Tiene alguno de estos diagnósticos personales? | sí |
+| ¿Qué medicamentos toma actualmente? | sí |
+| **¿Alergias alimentarias diagnosticadas?** | **no** |
+| **¿Intolerancias alimentarias?** | **no** |
+| **¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?** | **no** |
 
-**Verificamos qué hace tu archivo:** las lee **en un solo sitio**, para el párrafo clínico ("presenta ... alergia a X"). En toda el área del plan y del menú no aparecen. **Tampoco llegan al menú en tu prototipo**, así que es probable que sea una conexión que no se pensó.
+**Dos de las cuatro pesan más que las alergias en algunos pacientes:**
 
-**Y hay algo que lo empeora, que apareció al armar la historia clínica.** Esa historia sí va a mostrar las alergias, porque salen de la encuesta. Es decir: el documento clínico que firma el profesional **va a decir que el paciente es alérgico al marisco**, en la misma consulta en la que el menú se lo puede servir. No es que el dato falte: es que el dato está a la vista en una hoja y ausente en la otra. Un plan que contradice a la historia clínica del mismo paciente es peor que un plan sin el dato, porque parece verificado.
+- **La cirugía metabólica o digestiva.** Un bypass gástrico no es un detalle: cambia absorción, requerimiento proteico y tolerancia. Hoy el motor no sabe que existió.
+- **"¿Toma medicamentos para la presión?"** es lo que separa una hipertensión **controlada** de una que no lo está. El motor sabe el diagnóstico (esa sí entra) y **no sabe si está tratada**.
 
-**Nuestra propuesta:** que viajen al menú **en bloque propio y por encima de todo lo demás**. Una restricción médica se puede matizar; una alergia declarada, no. ¿La apruebas? ¿Y la intolerancia igual de dura, o con matiz (la lactosa admite grados, el maní no)?
+**Y las alergias, que fue por donde llegamos:** un paciente que declaró **alergia a los mariscos puede recibir un menú con mariscos**, salvo que el profesional la teclee a mano. Verificamos qué hace tu archivo: las lee **en un solo sitio**, para el párrafo clínico ("presenta ... alergia a X"), y en toda el área del plan y del menú no aparecen. **Tampoco llegan al menú en tu prototipo**, así que es probable que sea una conexión que no se pensó, no que se descartara.
+
+**El agravante, y es el que más nos preocupa.** Tu historia clínica **muestra las cuatro**: vimos en tu pantalla "Medicación antihipertensiva", "Alergias alimentarias" e "Intolerancias" con su valor. La nuestra las va a mostrar también, porque salen de la encuesta. Entonces el documento clínico que firma el profesional **afirma que el paciente es alérgico al marisco** en la misma consulta en la que el menú se lo puede servir. El dato no falta: está a la vista en una hoja y ausente en la otra, que es peor, porque el plan parece verificado contra la historia.
+
+**Nuestra propuesta:** que las cuatro entren al motor, y que las alergias viajen al menú **en bloque propio y por encima de todo lo demás**. Una restricción médica se puede matizar; una alergia declarada, no. ¿La apruebas? ¿Y la intolerancia igual de dura, o con matiz (la lactosa admite grados, el maní no)?
+
+### Y una pregunta de fondo, que es la que de verdad importa
+
+Si el bloque de antecedentes quedó **entero** fuera, es razonable que haya otro igual. Encontramos este porque estábamos armando la historia clínica, no porque lo buscáramos.
+
+**¿Convendría revisar el contrato del motor completo, en vez de campo por campo?** Es decir: recorrer la encuesta entera preguntando de cada respuesta "¿esto lo consume el motor, y si no, debería?", y dejar constancia de las dos listas. Nosotros podemos preparar el inventario (qué se pregunta, qué llega, qué no) para que tú decidas sobre una tabla y no sobre hallazgos sueltos. Preferimos preguntarlo antes de seguir encontrándolos de a uno.
 
 ## 3.2 · El menú no sabe cuántas porciones lleva cada comida
 
@@ -154,7 +174,7 @@ No requieren nada de ti. Van porque cambian qué tenemos que construir.
 | 1.3 | ¿1,25 g/kg aplica también al desnutrido? | **Bloquea el porte** |
 | 1.4 | El par H/M de ECM/BCM | Dato que falta |
 | 2 | Salud celular salió de tu archivo, línea 17126 | **Respuesta a tu pregunta** |
-| 3.1 | **Alergias e intolerancias al menú** | Propuesta, seguridad |
+| 3.1 | **Cuatro antecedentes clínicos no entran al motor** (alergias, intolerancias, cirugía metabólica, medicación antihipertensiva) + ¿revisamos el contrato completo? | Propuesta, seguridad |
 | 3.2 | ¿El menú debe respetar el reparto por tiempos? | Pregunta |
 | 3.3 | ¿El menú debe considerar el acceso a alimentos? | Criterio tuyo |
 | 3.4 | ¿Qué más debería alimentar el menú? | Pregunta abierta |

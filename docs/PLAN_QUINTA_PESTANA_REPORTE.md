@@ -20,9 +20,39 @@
 
 # 2. Qué tiene él y qué tenemos nosotros
 
-## Su historia clínica: once secciones
+## Su historia clínica, VERIFICADA contra las capturas (2026-08-24)
 
-1. Datos del paciente · 2. Motivo de consulta · 3. Antecedentes personales · 4. Tabla resumen de índices por niveles de Wang · 5. Resumen diagnóstico (DFI, meta, objetivo) · 6. Rutas activadas · 7. Tratamiento · 8. Recomendaciones · 9. Remisiones y derivaciones · 10. Exámenes solicitados · 11. Próxima cita y firma.
+El inventario decía "once secciones". **Las capturas muestran catorce bloques**, y la lista del inventario no coincidía: fundía algunos y nombraba uno que no existe. Esta es la lista real, en su orden:
+
+| # | Bloque | De dónde sale | ¿Sin recalcular? |
+|---|---|---|---|
+| 1 | **Datos del paciente** (paciente, edad/sexo, peso/talla, fecha, profesional, **ocupación**) | perfil + medición | sí |
+| 2 | **Motivo de consulta** | `evaluations.reason_for_visit` | sí |
+| 3 | **Antecedentes personales** (diagnósticos + "Otro", HTA, **medicación antihipertensiva**, familiares, **lactancia materna**, medicamentos actuales, **alergias**, **intolerancias**) | encuesta | sí, pero cuatro campos **no los consume el motor** (P-39) |
+| 4 | **Composición corporal, niveles de Wang** | snapshot | la **referencia** se computa en vivo (ver §4.5) |
+| 5 | **Resumen diagnóstico · \<profesión\>** | snapshot | sí |
+| 6 | **Diagnóstico funcional integrado (DFI)** | snapshot | sí |
+| 7 | **Meta terapéutica** | snapshot | sí |
+| 8 | **Objetivo del tratamiento** | protocolo sellado | sí |
+| 9 | **Rutas de intervención activadas** | snapshot (`rutasContent`) | sí |
+| 10 | **Tratamiento · plan nutricional** (GEB, GET, objetivo, proteínas, carbohidratos, grasas, sodio, actividad física) | protocolo sellado | sí |
+| 11 | **Recomendaciones** | condicional por diagnóstico + bloque genérico | **parcial** (ver §4.6) |
+| 12 | **Remisiones y derivaciones** | `referrals` | sí |
+| 13 | **Próxima consulta** | `treatments.proxima_cita` | sí |
+| 14 | **Firma y fecha** | línea en blanco + nombre + fecha | sí |
+
+**Correcciones al inventario anterior, que hay que registrar porque cambian el trabajo:**
+
+- **"Exámenes solicitados" NO es una sección suya.** Los estudios aparecen **dentro del texto de la remisión** ("Estudios sugeridos: vitamina D, testosterona/estrógenos, IGF-1"). No hay bloque propio.
+- **Su tabla de Wang en la HC es ABREVIADA**, no la de la pestaña de Diagnóstico: seis filas (IMC en Nivel V; % Grasa y SMM/W en Nivel IV; AF en Nivel III) más un bloque **ANI BIS-E** con IEHH e IAE. La HC resume; el Diagnóstico despliega.
+- **Aparecen dos campos que no teníamos en la lista: "Ocupación" y "Lactancia materna".**
+- **El "Resumen diagnóstico" lleva la PROFESIÓN en el título** ("RESUMEN DIAGNÓSTICO · NUTRICIONISTA"): es el resumen del profesional que atiende, no uno solo.
+
+**Dos defectos de su prototipo que NO se copian** (regla: cuando el prototipo difiere de lo correcto, el equivocado es el prototipo):
+
+1. **El motivo de consulta sale sin separador**: "Control de peso / composición corporal**Rendimiento deportivo**Envejecimiento saludable / longevidad". Las opciones se concatenan pegadas. Nosotros unimos con coma.
+2. **`Fenotipo MCCB: F7 — undefined` y `PBI: undefined`** salen literalmente en su pantalla. Es un `undefined` suyo, no un dato.
+3. **La fecha de la firma es `new Date()`**, la de impresión, no la de la consulta. Un documento clínico impreso seis meses después diría la fecha equivocada. Nosotros usamos la fecha de la evaluación.
 
 ## Nuestro PDF: seis
 
@@ -80,6 +110,54 @@ Las once secciones, **reusando lo que existe**: ninguna exige capturar un dato n
 **Vive aquí**, y es lo que conecta este plan con el de nutracéuticos: la lista de lo que quedó sin decidir, la opción de cerrar marcando pendientes, y el cambio de `in_progress` a `completed`, que hoy **nadie pone** (38 abiertas, cero cerradas). La columna Estado de la ficha del paciente **ya existe y ya tiene la etiqueta "Completada"** escrita: solo falta que algo ponga el valor.
 
 ---
+
+### 4.5 · La tabla de Wang: los rangos son de HOY, los valores son de ENTONCES
+
+**Hallazgo (2026-08-24).** Los valores de la tabla salen del snapshot sellado, pero la columna de **referencia y Δ** se computa **en vivo** en la página (`indicatorRange` sobre `snapshot.indicators`, con el clasificador de hoy). En la pestaña de Diagnóstico eso es correcto: se mira el caso vivo. En una **historia clínica** no: se mira lo que se decidió entonces, y un documento con **valores viejos y rangos nuevos** miente sin que nada avise.
+
+**DECIDIDO: se marca que los rangos son actuales** (opción C). Las tres que se consideraron:
+
+| Opción | Qué implica | Tamaño |
+|---|---|---|
+| A · **Sellar los rangos con el reporte** | los rangos entran al snapshot al crear el reporte. Es lo más fiel a "documento clínico"; pero **solo sirve de aquí en adelante** (los reportes ya emitidos no lo tienen, y no se reescriben) y suma campo al snapshot inmutable | media |
+| B · **Mostrar la tabla sin referencia** | quita el problema quitando la información. La referencia es justo lo que hace legible un valor: sin ella la tabla pierde su función | chica |
+| C · **Marcar que los rangos son los vigentes** | una nota al pie: los valores son los de la evaluación, los rangos son los del modelo vigente hoy. No miente, no borra información, y funciona **también para lo ya emitido** | **chica** |
+
+**Por qué C y no A:** A es mejor en teoría y peor en la práctica, porque deja fuera a todos los reportes anteriores, que son los que más riesgo corren (son los más viejos). C cubre a todos desde el primer día. **Y A sigue disponible después**: si algún día el rango cambia de verdad, sellarlo se vuelve necesario y C ya habrá evitado el daño mientras tanto. Se anota como el disparador que reabre la decisión.
+
+### 4.6 · Las recomendaciones: NO están bloqueadas enteras
+
+Corrección a lo que este plan decía. Verificado en su archivo (L15255-15272): la sección **es condicional por diagnóstico**, con siete bloques posibles:
+
+| Bloque | Se activa con | ¿Portable ya? |
+|---|---|---|
+| Control glucémico | Diabetes 2 / Prediabetes | **sí** (texto fijo) |
+| Control de lípidos | Dislipidemia / Hipertrigliceridemia | **sí** (texto fijo) |
+| Alimentación saludable general | **siempre** | **sí** (seis viñetas fijas) |
+| Dieta DASH y control de sodio | HTA | no: cita `sodioMax` |
+| Nefroprotección (KDIGO 2024) | IRC | no: cita `protKg`/`protG` |
+| Preservación de masa muscular | FFMI < 17 | no: cita `protKg`/`protG` |
+| Manejo del exceso de grasa | déficit > 0 y sin sarcopenia | no: cita `kcalObjetivo`/`deficit` |
+
+Los cuatro que faltan citan cifras que produce `motorTratNutri`, que es el porte bloqueado. **Los tres primeros se portan ya.** La captura muestra solo el genérico porque el paciente demo no tiene comorbilidades: no es que la sección sea genérica, es que ese caso lo es.
+
+**La sección se muestra SIEMPRE, con su título**, aunque falten los cuatro condicionales: omitirla haría que el documento pareciera completo cuando le falta algo que él sí tiene.
+
+### 4.7 · La firma: qué es, verificado
+
+No hay que decidirlo: su archivo lo resuelve (L15328). **`FIRMA Y FECHA` es una línea en blanco para firmar en papel** (un borde inferior de 32 px de alto), y debajo el nombre del profesional y la fecha. **No es firma gráfica ni acto de firma con marca de tiempo.** Es el pie de un documento que se imprime.
+
+Se porta igual, con **una corrección**: él usa `new Date()` (la fecha de impresión); nosotros usamos la fecha de la evaluación, porque un documento impreso meses después no debe fecharse hoy.
+
+Si algún día hace falta una firma con valor probatorio, ya existe la maquinaria del consentimiento (hash + marca de tiempo + aceptación del medio electrónico); pero eso sería otra decisión, y hoy el documento es para imprimir.
+
+### 4.8 · "Existe pero no llegó al motor": se marca en la sección
+
+Tercera categoría, que no habíamos previsto y que no es un vacío sino una cuestión de **procedencia**. Las cuatro preguntas del bloque de antecedentes (alergias, intolerancias, cirugía metabólica, medicación antihipertensiva) se muestran porque el paciente las declaró, y son ciertas. Lo que no se puede es dejar creer que el diagnóstico las consideró.
+
+**Se marca en la propia sección:** lo declarado por el paciente que el diagnóstico no consumió va señalado, con una nota que lo dice en una línea. Es incómodo a propósito: es lo que va a hacer que se arregle.
+
+**Cuando P-39 se resuelva y las cuatro entren al motor, la marca desaparece sola** si se deriva de la lista de campos que el motor consume, en vez de escribirse a mano. Esa es la forma correcta de construirla (familia de "texto que afirma un estado sin derivarlo").
 
 # 5. Lo que NO entra
 
