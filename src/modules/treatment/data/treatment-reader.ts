@@ -66,6 +66,13 @@ export type {
   TreatmentProtocol,
 } from "./treatment-view-types";
 
+// El embed anidado de PostgREST puede volver objeto o arreglo segun el shape; misma tolerancia que
+// nutraceuticalName. Sin patient_id no se puede registrar una contraindicacion, asi que se resuelve aqui.
+function patientIdFrom(evaluations: unknown): string {
+  const e = Array.isArray(evaluations) ? evaluations[0] : evaluations;
+  return (e as { patient_id?: string } | null)?.patient_id ?? "";
+}
+
 export async function getTreatmentProtocol(
   evaluationId: string,
 ): Promise<TreatmentProtocol | null> {
@@ -74,7 +81,7 @@ export async function getTreatmentProtocol(
   // Diagnostico de la evaluacion (RLS). Sin diagnostico no hay tratamiento que ver.
   const { data: diag, error: dErr } = await supabase
     .from("diagnoses")
-    .select("id, confirmed_at")
+    .select("id, confirmed_at, evaluations!inner(patient_id)")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -86,7 +93,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -181,7 +188,18 @@ export async function getTreatmentProtocol(
     objetivoTexto: treatment.objetivo_texto ?? null,
     intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
     tiempos: normalizeTiempos(treatment.tiempos),
+    patientId: patientIdFrom((diag as { evaluations?: unknown }).evaluations),
     tiemposActivos: normalizeTiemposActivos(treatment.tiempos_activos),
+    // Sin `at` no hay decision: la fecha es parte del dato, no un adorno (ver el schema).
+    nutraceuticalDecision:
+      treatment.nutraceutical_decision && treatment.nutraceutical_decision_at
+        ? {
+            decision: treatment.nutraceutical_decision as "si" | "no" | "pendiente",
+            reason: treatment.nutraceutical_decision_reason ?? null,
+            note: treatment.nutraceutical_decision_note ?? null,
+            at: treatment.nutraceutical_decision_at,
+          }
+        : null,
     menuSemanal: normalizeMenuSemanal(treatment.menu_semanal),
     kcalSugerido,
     nutraceuticals: (nutras.data ?? []).map((n) => ({

@@ -129,6 +129,28 @@ describe("RLS por rol en pacientes y evaluaciones", () => {
     });
   });
 
+  // Contraindicaciones del paciente (2026-08-24): tabla NUEVA de datos clinicos. Drizzle crea la tabla
+  // pero NO enciende RLS: verificado que nacio con relrowsecurity=false y se encendio en su propia
+  // migracion. Este candado prueba que el gate quedo puesto de verdad, no solo escrito, y que es el MISMO
+  // que el del resto de su historia: se ve si y solo si el paciente es tuyo.
+  it("contraindicaciones: sin sesion (rol anon) no se leen", async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx.unsafe("set local role anon");
+        await tx`select id from public.patient_contraindications limit 1`;
+      }),
+    ).rejects.toThrow(/permission denied|row-level security/i);
+  });
+
+  it("contraindicaciones: la tabla tiene RLS encendida y sus dos politicas", async () => {
+    const [{ on }] = await sql`
+      select relrowsecurity as on from pg_class where relname = 'patient_contraindications'`;
+    expect(on).toBe(true);
+    const pols = await sql`
+      select policyname from pg_policies where tablename = 'patient_contraindications'`;
+    expect(pols.length).toBe(2);
+  });
+
   it("sin sesion (rol anon) no obtiene datos del paciente", async () => {
     await expect(
       sql.begin(async (tx) => {

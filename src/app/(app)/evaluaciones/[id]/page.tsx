@@ -71,6 +71,7 @@ import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repos
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
+import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decision-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
@@ -433,8 +434,23 @@ export default async function ResultadosEvaluacionPage({
                     locked={nutraLocked}
                   />
                 ) : null}
+                {/* LA DECISION VA ANTES DE LA ENTREGA, y ese orden es el diseño: antes se entregaba sin
+                    haber preguntado si el paciente puede tomarlos ni si los quiere. */}
                 {protocol && actorProfession.isProfessional ? (
-                  <DespachoSection evaluationId={id} protocol={protocol} />
+                  <NutraDecisionSection evaluationId={id} protocol={protocol} locked={nutraLocked} />
+                ) : null}
+                {/* La entrega SOLO si la respuesta fue que si. Un aviso, no un formulario deshabilitado: un
+                    bloque en gris invita a buscar como habilitarlo; una frase dice que falta. */}
+                {protocol && actorProfession.isProfessional ? (
+                  protocol.nutraceuticalDecision?.decision === "si" ? (
+                    <DespachoSection evaluationId={id} protocol={protocol} />
+                  ) : (
+                    <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                      {protocol.nutraceuticalDecision
+                        ? "La entrega se habilita cuando el paciente los adquiere. Si cambia de decisión, actualízala arriba."
+                        : "Registra arriba si el paciente los adquiere; la entrega se habilita entonces."}
+                    </p>
+                  )
                 ) : null}
                 <SeccionRuta n={3} titulo="Remisiones" />
                 <RemisionesSection rutas={rutas} register={referralRegister} />

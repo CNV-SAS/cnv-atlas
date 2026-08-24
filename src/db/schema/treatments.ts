@@ -3,7 +3,7 @@ import { date, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "d
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
-import { treatmentStatus } from "./enums";
+import { nutraceuticalDecision, nutraceuticalDecisionReason, treatmentStatus } from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
 import { profiles } from "./organizations";
 
@@ -128,6 +128,21 @@ export const treatments = pgTable("treatments", {
   // sin parpadeo, y distinto entre evaluaciones del mismo paciente, para no repetirle la semana en el
   // seguimiento). Editable tras aprobar como el resto del plan. null = nunca guardado.
   menuSemanal: jsonb("menu_semanal"),
+  // DECISION SOBRE LOS NUTRACEUTICOS (CP-N1, 2026-08-24). Se pregunta SIEMPRE en la consulta; antes el
+  // bloque de entrega ASUMIA que el paciente compraba. `pendiente` es respuesta valida y de primera clase:
+  // el paciente puede volver, y forzar un si/no fabricaria un dato que nadie dio y que la direccion leeria
+  // como decision. NO vence solo, por la misma razon. La fecha la da decision_at (un "pendiente" sin fecha
+  // se lee igual el dia uno que a los seis meses).
+  //
+  // La RAZON es dato COMERCIAL (la lee direccion). Cuando es `profesional_clinica`, el motivo se guarda
+  // ADEMAS en patient_contraindications, que es dato clinico del PACIENTE y persiste entre consultas.
+  nutraceuticalDecision: nutraceuticalDecision("nutraceutical_decision"),
+  nutraceuticalDecisionReason: nutraceuticalDecisionReason("nutraceutical_decision_reason"),
+  nutraceuticalDecisionNote: text("nutraceutical_decision_note"),
+  nutraceuticalDecisionAt: timestamp("nutraceutical_decision_at", { withTimezone: true }),
+  nutraceuticalDecisionBy: uuid("nutraceutical_decision_by").references(() => profiles.id, {
+    onDelete: "restrict",
+  }),
   // Nivel V: proxima cita. CAMPO BOBO: dato clinico, NO sistema de agendamiento (sin
   // notificaciones, recordatorios, calendario ni logica). Una sola fecha; la profesion ya
   // esta implicita en created_by. Si algun dia hay agenda, se migra.

@@ -16,6 +16,7 @@ import {
   saveObjetivo as writeObjetivo,
   saveIntercambio as writeIntercambio,
   saveMenuSemanal as writeMenuSemanal,
+  saveNutraDecision as writeNutraDecision,
   saveTiemposActivos as writeTiemposActivos,
   saveTiempos as writeTiempos,
   saveRestricciones as writeRestricciones,
@@ -41,6 +42,7 @@ import type {
   SaveObjetivoInput,
   SaveIntercambioInput,
   SaveMenuSemanalInput,
+  SaveNutraDecisionInput,
   SaveTiemposActivosInput,
   SaveTiemposInput,
   SaveRestriccionesInput,
@@ -235,6 +237,37 @@ export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promis
         ),
       );
     }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// CP-N1: la decision sobre los nutraceuticos. Se pregunta SIEMPRE, y "pendiente" es respuesta valida.
+export async function saveNutraDecision(input: SaveNutraDecisionInput, actor: Actor): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!protocol.diagnosisConfirmed) {
+    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de registrar la decisión."));
+  }
+  // NO se bloquea tras aprobar: la decision del paciente puede llegar despues de aprobar el protocolo (de
+  // hecho es lo normal), y es justo el caso que el "pendiente" contempla.
+  if (!protocol.patientId) {
+    return err(appError("internal", "No se pudo resolver el paciente de este tratamiento."));
+  }
+  try {
+    await writeNutraDecision({
+      treatmentId: protocol.treatmentId,
+      patientId: protocol.patientId,
+      decision: input.decision,
+      reason: input.reason,
+      note: input.note,
+      contraindicationFor: input.contraindicationFor,
+      ...actor,
+    });
+  } catch (e) {
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }

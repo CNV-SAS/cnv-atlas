@@ -107,6 +107,17 @@ export type TreatmentProtocol = {
   // Tiempos de comida ACTIVOS (columna propia desde 2026-08-23). Mandan sobre la distribucion Y sobre el
   // menu semanal, y tienen su propio guardado. null = nunca guardados.
   tiemposActivos: Record<string, boolean> | null;
+  // Decision sobre los nutraceuticos (CP-N1). null = todavia no se pregunto. La FECHA importa: un
+  // "pendiente" sin fecha se lee igual el dia uno que a los seis meses.
+  // El paciente del que es este tratamiento. Lo necesita la contraindicacion, que cuelga del PACIENTE
+  // (una contraindicacion es de la persona, no de la consulta).
+  patientId: string;
+  nutraceuticalDecision: {
+    decision: "si" | "no" | "pendiente";
+    reason: string | null;
+    note: string | null;
+    at: string;
+  } | null;
   // Menu semanal guardado (CP4). null = nunca guardado -> la grilla usa la precarga del ciclo con el
   // arranque DERIVADO del treatmentId.
   menuSemanal: MenuSemanalSaved | null;

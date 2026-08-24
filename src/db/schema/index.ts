@@ -19,6 +19,7 @@ export * from "./followups"; // grupo 10
 export * from "./reports"; // grupo 11
 export * from "./comodato"; // grupo 12
 export * from "./nutraceuticals"; // grupo 13
+export * from "./contraindications"; // contraindicaciones del paciente (2026-08-24)
 export * from "./payments"; // grupo 14
 export * from "./research"; // grupo 15
 export * from "./audit"; // grupo 16

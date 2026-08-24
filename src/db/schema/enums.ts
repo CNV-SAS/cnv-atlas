@@ -53,9 +53,11 @@ export const evaluationStatus = pgEnum("evaluation_status", [
   "draft",
   "in_progress",
   "completed",
-  // Shell que nunca completo la encuesta. El proceso que lo aplica (ventana temporal) es un SEGUIMIENTO
-  // (la ventana se decide con datos de uso, no adivinando); por ahora el estado solo EXISTE. No se borra:
-  // el consentimiento firmado es un acto real, se conserva para auditoria.
+  // Shell que nunca completo la encuesta. CABLEADO (corregido 2026-08-24): el comentario anterior decia
+  // que "por ahora el estado solo EXISTE", y era FALSO desde hace tiempo: hay writer (abandonEvaluation),
+  // action y componente, y el profesional lo aplica a mano desde la ficha. Lo que sigue sin existir es el
+  // proceso AUTOMATICO por ventana temporal, que es otra cosa y se decide con datos de uso. No se borra: el
+  // consentimiento firmado es un acto real, se conserva para auditoria.
   "abandoned",
 ]);
 
@@ -282,4 +284,36 @@ export const referralTarget = pgEnum("referral_target", [
   "deportologo",
   "nutricionista",
   "otro",
+]);
+
+// Decision sobre los nutraceuticos en la consulta (CP-N1, 2026-08-24). Se pregunta SIEMPRE, y "pendiente"
+// es una respuesta de primera clase: el paciente puede volver, y forzar un si/no fabricaria un dato que
+// nadie dio. La fecha la da `nutraceutical_decision_at`: "pendiente" sin fecha se lee igual el dia uno
+// que a los seis meses.
+export const nutraceuticalDecision = pgEnum("nutraceutical_decision", [
+  "si", // el paciente los adquiere
+  "no", // no los adquiere (con razon obligatoria)
+  "pendiente", // aun no decide
+]);
+
+// Por que NO. Las dos primeras son del PROFESIONAL y van separadas a proposito (propuesta de Santiago):
+// clasifica el, y el sistema no tiene que adivinar si "alergia al calostro" es clinico mientras "no le
+// gusta el sabor" no lo es. Esa adivinanza no la puede hacer un switch, y equivocarla mandaria un dato
+// comercial a la historia clinica o al reves. Cuando la razon es CLINICA, el motivo se guarda ademas como
+// contraindicacion del PACIENTE (patient_contraindications), porque vale para la proxima consulta.
+export const nutraceuticalDecisionReason = pgEnum("nutraceutical_decision_reason", [
+  "profesional_clinica", // el profesional no lo recomienda por razones clinicas
+  "profesional_no_clinica", // el profesional no lo recomienda por razones no clinicas
+  "costo",
+  "lo_piensa",
+  "ya_toma_otros",
+  "otra", // texto obligatorio
+]);
+
+// Origen de una contraindicacion del paciente. Nace acotada a lo que la produce hoy (el descarte
+// profesional en la consulta) pero NO exclusiva de nutraceuticos: el mismo sitio sirve para cualquier
+// contraindicacion que el profesional observe.
+export const contraindicationSource = pgEnum("contraindication_source", [
+  "descarte_nutraceutico",
+  "observacion_clinica",
 ]);

@@ -23,6 +23,7 @@ import {
   saveObjetivo,
   saveIntercambio,
   saveMenuSemanal,
+  saveNutraDecision,
   saveTiempos,
   saveTiemposActivos,
   saveRestricciones,
@@ -37,6 +38,7 @@ import {
   saveObjetivoSchema,
   saveIntercambioSchema,
   saveMenuSemanalSchema,
+  saveNutraDecisionSchema,
   saveTiemposActivosSchema,
   saveTiemposSchema,
   saveRestriccionesSchema,
@@ -213,6 +215,35 @@ export async function saveTiemposAction(
     return fail(result.error.message);
   }
   return { error: null, success: "Distribución por tiempos guardada.", warning: null };
+}
+
+// CP-N1: la decision sobre los nutraceuticos, su propia accion.
+export async function saveNutraDecisionAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  const parsed = saveNutraDecisionSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    decision: (form.get("decision") as string | null) ?? "",
+    reason: (form.get("reason") as string | null) || null,
+    note: (form.get("note") as string | null) || null,
+    contraindicationFor: (form.get("contraindicationFor") as string | null) || null,
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Decisión inválida.");
+  }
+
+  const result = await saveNutraDecision(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Decisión registrada.", warning: null };
 }
 
 // CP2.3: tiempos de comida activos, su propia accion.

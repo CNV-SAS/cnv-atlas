@@ -34,6 +34,8 @@ const BASE: TreatmentProtocol = {
   intercambioPorciones: null,
   tiempos: null,
   tiemposActivos: null,
+  patientId: "pat-1",
+  nutraceuticalDecision: null,
   menuSemanal: null,
   kcalSugerido: 2100,
   nutraceuticals: [

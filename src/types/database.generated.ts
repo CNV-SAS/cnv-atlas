@@ -1998,6 +1998,58 @@ export type Database = {
           },
         ]
       }
+      patient_contraindications: {
+        Row: {
+          created_at: string
+          id: string
+          nutraceutical_id: string | null
+          patient_id: string
+          reason: string
+          recorded_by: string
+          source: Database["public"]["Enums"]["contraindication_source"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nutraceutical_id?: string | null
+          patient_id: string
+          reason: string
+          recorded_by: string
+          source: Database["public"]["Enums"]["contraindication_source"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nutraceutical_id?: string | null
+          patient_id?: string
+          reason?: string
+          recorded_by?: string
+          source?: Database["public"]["Enums"]["contraindication_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_contraindications_nutraceutical_id_nutraceuticals_id_fk"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_contraindications_patient_id_patients_id_fk"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_contraindications_recorded_by_profiles_id_fk"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_professional_relationships: {
         Row: {
           assigned_at: string
@@ -3186,6 +3238,15 @@ export type Database = {
           kcal_objetivo: number | null
           menu_semanal: Json | null
           micronutrientes_texto: string | null
+          nutraceutical_decision:
+            | Database["public"]["Enums"]["nutraceutical_decision"]
+            | null
+          nutraceutical_decision_at: string | null
+          nutraceutical_decision_by: string | null
+          nutraceutical_decision_note: string | null
+          nutraceutical_decision_reason:
+            | Database["public"]["Enums"]["nutraceutical_decision_reason"]
+            | null
           objetivo_texto: string | null
           proteina_g: number | null
           protocol_approved: Json | null
@@ -3215,6 +3276,15 @@ export type Database = {
           kcal_objetivo?: number | null
           menu_semanal?: Json | null
           micronutrientes_texto?: string | null
+          nutraceutical_decision?:
+            | Database["public"]["Enums"]["nutraceutical_decision"]
+            | null
+          nutraceutical_decision_at?: string | null
+          nutraceutical_decision_by?: string | null
+          nutraceutical_decision_note?: string | null
+          nutraceutical_decision_reason?:
+            | Database["public"]["Enums"]["nutraceutical_decision_reason"]
+            | null
           objetivo_texto?: string | null
           proteina_g?: number | null
           protocol_approved?: Json | null
@@ -3244,6 +3314,15 @@ export type Database = {
           kcal_objetivo?: number | null
           menu_semanal?: Json | null
           micronutrientes_texto?: string | null
+          nutraceutical_decision?:
+            | Database["public"]["Enums"]["nutraceutical_decision"]
+            | null
+          nutraceutical_decision_at?: string | null
+          nutraceutical_decision_by?: string | null
+          nutraceutical_decision_note?: string | null
+          nutraceutical_decision_reason?:
+            | Database["public"]["Enums"]["nutraceutical_decision_reason"]
+            | null
           objetivo_texto?: string | null
           proteina_g?: number | null
           protocol_approved?: Json | null
@@ -3276,6 +3355,13 @@ export type Database = {
             columns: ["diagnosis_id"]
             isOneToOne: false
             referencedRelation: "diagnoses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_nutraceutical_decision_by_profiles_id_fk"
+            columns: ["nutraceutical_decision_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3383,6 +3469,7 @@ export type Database = {
         | "representante_legal"
         | "asentimiento_menor"
         | "aceptacion_medio_electronico"
+      contraindication_source: "descarte_nutraceutico" | "observacion_clinica"
       correction_trigger_type:
         | "correccion_profesional"
         | "recalibracion_ciencia"
@@ -3409,6 +3496,14 @@ export type Database = {
         | "en_consultorio"
         | "solo_tienda"
         | "no_disponible"
+      nutraceutical_decision: "si" | "no" | "pendiente"
+      nutraceutical_decision_reason:
+        | "profesional_clinica"
+        | "profesional_no_clinica"
+        | "costo"
+        | "lo_piensa"
+        | "ya_toma_otros"
+        | "otra"
       nutraceutical_faltante_charge:
         | "sin_cargo"
         | "pendiente_liquidacion"
@@ -3612,6 +3707,7 @@ export const Constants = {
         "asentimiento_menor",
         "aceptacion_medio_electronico",
       ],
+      contraindication_source: ["descarte_nutraceutico", "observacion_clinica"],
       correction_trigger_type: [
         "correccion_profesional",
         "recalibracion_ciencia",
@@ -3641,6 +3737,15 @@ export const Constants = {
         "en_consultorio",
         "solo_tienda",
         "no_disponible",
+      ],
+      nutraceutical_decision: ["si", "no", "pendiente"],
+      nutraceutical_decision_reason: [
+        "profesional_clinica",
+        "profesional_no_clinica",
+        "costo",
+        "lo_piensa",
+        "ya_toma_otros",
+        "otra",
       ],
       nutraceutical_faltante_charge: [
         "sin_cargo",

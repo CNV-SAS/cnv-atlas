@@ -144,7 +144,7 @@ Santiago quiere que el cobro viva aquí y no en otra pestaña. **Tiene razón en
 | `draft` | el paciente, al completar la encuesta |
 | `in_progress` | el profesional, al confirmar la identidad |
 | `completed` | **nadie** |
-| `abandoned` | **nadie** (el enum lo dice: "por ahora el estado solo EXISTE") |
+| `abandoned` | **sí**: el profesional lo aplica a mano desde la ficha (`abandonEvaluation`). *(El comentario del enum decía que "solo EXISTE"; era falso y se corrigió. Lo que no existe es el proceso automático por ventana temporal.)* |
 
 **En la base: 38 en progreso, cero cerradas.** No hay cierre: una evaluación entra en "en progreso" y se queda ahí para siempre.
 

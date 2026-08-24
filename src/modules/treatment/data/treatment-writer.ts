@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   diagnoses,
+  patientContraindications,
   treatmentDietGuidelines,
   treatmentNotes,
   treatmentNutraceuticals,
@@ -303,6 +304,69 @@ export class StaleTiemposActivosError extends Error {
     super("Los tiempos de comida cambiaron desde que se cargaron.");
     this.name = "StaleTiemposActivosError";
   }
+}
+
+export type SaveNutraDecisionWrite = {
+  treatmentId: string;
+  patientId: string;
+  decision: "si" | "no" | "pendiente";
+  reason: string | null;
+  note: string | null;
+  // Cuando la razon es clinica, el motivo se guarda ADEMAS como contraindicacion del paciente.
+  contraindicationFor: string | null; // nutraceuticalId, si el descarte fue de un producto concreto
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// Guarda la decision sobre los nutraceuticos (CP-N1) y, si la razon es CLINICA, la contraindicacion del
+// PACIENTE, en la MISMA transaccion. Las dos juntas a proposito: si se guardara la decision comercial y
+// fallara la contraindicacion, quedaria registrado que se descarto por alergia sin que la alergia exista
+// en ninguna parte, que es el peor de los dos estados posibles.
+//
+// Sin candado de firma: no es un set que se reemplace en bloque como el resto de las secciones, es UNA
+// decision con su fecha. Si dos profesionales la responden a la vez, la ultima gana y las dos quedan en el
+// audit log; no hay trabajo que se pueda perder.
+export async function saveNutraDecision(input: SaveNutraDecisionWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await tx
+      .update(treatments)
+      .set({
+        nutraceuticalDecision: input.decision,
+        nutraceuticalDecisionReason: input.reason as never,
+        nutraceuticalDecisionNote: input.note,
+        nutraceuticalDecisionAt: sql`now()`,
+        nutraceuticalDecisionBy: input.actorId,
+      })
+      .where(eq(treatments.id, input.treatmentId));
+
+    if (input.reason === "profesional_clinica" && input.note) {
+      await tx.insert(patientContraindications).values({
+        patientId: input.patientId,
+        nutraceuticalId: input.contraindicationFor,
+        source: "descarte_nutraceutico",
+        reason: input.note,
+        recordedBy: input.actorId,
+      });
+    }
+
+    await recordAudit(tx, {
+      event: "treatment.nutraceutical_decision",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      // Se audita la decision y su razon (dato comercial). El MOTIVO en texto libre NO va al log: cuando es
+      // clinico es dato del paciente y ya queda en su contraindicacion, con su propio control de acceso.
+      payload: {
+        decision: input.decision,
+        reason: input.reason,
+        contraindicacion_registrada: input.reason === "profesional_clinica" && Boolean(input.note),
+      },
+      ip: input.ip,
+    });
+  });
 }
 
 export type SaveTiemposActivosWrite = {
