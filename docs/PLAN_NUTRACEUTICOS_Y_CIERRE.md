@@ -193,11 +193,23 @@ Y un dato que los cruza: **ninguno de los 7 con diagnóstico confirmado tiene un
 
 Lo único que sí conviene: que la lista **distinga** una sin cerrar de una cerrada, **y que entre con el cierre, no después**: un estado nuevo que no se ve no cambia nada.
 
-**Con una corrección de premisa, verificada:** los "Borrador" y "En progreso" que vio Santiago en `/evaluaciones` **no son el estado de la evaluación**. Esa pantalla lista **reportes pendientes**, y esas etiquetas son de `reports.status` (Borrador → Aprobado → Enviado), que sí se mueven: aprobar el reporte y enviarlo. **El estado de la evaluación no se muestra en ninguna parte hoy.**
+**Y el estado YA SE MUESTRA, en el sitio correcto** (verificado el 2026-08-24, corrigiendo una conclusión anterior mía que era falsa):
 
-Así que el indicador de cerrada/abierta **no re-significa una columna existente: es nuevo**. Conviene decirlo porque cambia el trabajo (hay que añadir la columna, no reinterpretarla) y porque explica por qué Santiago no sabía qué movía esos estados: estaba mirando otra cosa.
+En `/pacientes/[patientId]`, la tabla **Evaluaciones** tiene una columna **Estado** que pinta `evaluations.status` con `estadoEvaluacionLabel`. **Una sola fuente, sin mezcla.** Su mapa de etiquetas ya está completo:
 
----
+| Valor | Etiqueta | ¿Alguien lo pone? |
+|---|---|---|
+| `awaiting_survey` | "Firmada, esperando la encuesta" | sí |
+| `draft` | "Borrador" | sí |
+| `in_progress` | "En progreso" | sí |
+| `completed` | **"Completada"** | **no** |
+| `abandoned` | "Abandonada" | no |
+
+Los "Borrador" y "En progreso" que vio Santiago son exactamente eso: `draft` (encuesta completada, identidad sin confirmar) e `in_progress` (identidad confirmada).
+
+**Lo que esto cambia en el trabajo:** el cierre **NO necesita columna nueva ni etiquetas nuevas**. La columna existe, la etiqueta "Completada" está escrita, y la pantalla ya sabe pintarla. **Solo falta que alguien ponga el valor.** La pieza baja de "añadir columna + etiquetas + estado" a "poner el estado y la superficie que lo pone".
+
+*(Mi conclusión anterior decía que el estado de la evaluación no se mostraba en ninguna parte. Salía de mirar `/evaluaciones`, que lista REPORTES pendientes con `reports.status`, y de generalizar desde ahí sin buscar los demás sitios.)*
 
 # Parte F · Orden y dimensión
 
@@ -208,7 +220,7 @@ Así que el indicador de cerrada/abierta **no re-significa una columna existente
 | 3 | El bloque de entrega condicionado a "sí" | chica | 1 |
 | 4 | Estado de cobro en el movimiento + vínculo con `transactions` | **media** | nada |
 | 5 | Vencimiento de entrega sin pago hacia faltantes | media | 4 |
-| 6 | El cierre de la consulta con su lista de pendientes | **media** | 1, y la quinta pestaña |
+| 6 | El cierre de la consulta con su lista de pendientes | **media**, y menos de lo estimado: la columna y la etiqueta "Completada" ya existen | 1, y la quinta pestaña |
 | 7 | Pago mixto | media | 4 |
 | 8 | El cobro dentro de Tratamiento | media | 4, 7 |
 | · | Bloquear la prescripción por alergia registrada | **aparte** | Gildardo + modelo de componentes |

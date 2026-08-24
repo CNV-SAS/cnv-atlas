@@ -77,7 +77,7 @@ Las once secciones, **reusando lo que existe**: ninguna exige capturar un dato n
 
 ### 4.4 · El cierre de la consulta
 
-**Vive aquí**, y es lo que conecta este plan con el de nutracéuticos: la lista de lo que quedó sin decidir, la opción de cerrar marcando pendientes, y el cambio de `in_progress` a `completed`, que hoy **nadie pone** (38 abiertas, cero cerradas).
+**Vive aquí**, y es lo que conecta este plan con el de nutracéuticos: la lista de lo que quedó sin decidir, la opción de cerrar marcando pendientes, y el cambio de `in_progress` a `completed`, que hoy **nadie pone** (38 abiertas, cero cerradas). La columna Estado de la ficha del paciente **ya existe y ya tiene la etiqueta "Completada"** escrita: solo falta que algo ponga el valor.
 
 ---
 
