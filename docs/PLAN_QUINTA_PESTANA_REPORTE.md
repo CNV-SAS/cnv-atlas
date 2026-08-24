@@ -73,7 +73,7 @@ Lo que hoy vive en Tratamiento y pertenece aquí: la `ReportCard` (aprobar, modo
 
 ### 4.3 · La historia clínica
 
-Las once secciones, reusando lo que existe. **El motivo de consulta es lo único nuevo**: un campo, y la decisión de dónde se pregunta (probablemente en la Entrada, junto a la identidad, que es cuando el paciente lo dice).
+Las once secciones, **reusando lo que existe**: ninguna exige capturar un dato nuevo. El motivo de consulta ya viene del intake (ver §2), la tabla de Wang se reusa de Diagnóstico, y tratamiento, remisiones y exámenes salen del snapshot del protocolo.
 
 ### 4.4 · El cierre de la consulta
 
@@ -105,15 +105,13 @@ Las once secciones, reusando lo que existe. **El motivo de consulta es lo único
 
 ---
 
-# 7. La decisión que hay que tomar antes de la pieza 4
+# 7. La decisión sobre partir `reports` (tomada)
 
-**¿`reports` se parte en dos documentos?**
+**¿`reports` se parte en dos documentos, uno del diagnóstico y otro del tratamiento?**
 
 - **Si NO se parte:** la HC es una vista que reúne diagnóstico y tratamiento, y el `reports` actual sigue siendo el único documento emitible. Más simple, y suficiente por ahora.
 - **Si SÍ se parte:** hay un reporte del diagnóstico (emitible sin prescribir, para remitir) y uno del tratamiento (documenta la prescripción). Eso **reordena T4** y toca la confirmación del diagnóstico, que hoy es efecto lateral de aprobar el reporte.
 
-**Recomendación: NO partirlo ahora.** Construir la pestaña con el reporte que existe, y dejar la partición como decisión propia cuando haya un caso real que la pida (un paciente al que se remite sin prescribir). Partir un documento clínico sin ese caso delante es diseñar para una hipótesis.
-
-**DECIDIDO (Santiago, 2026-08-24): NO se parte ahora**, con el argumento tal cual: partir un documento clínico sin el caso real delante es diseñar para una hipótesis.
+**DECIDIDO (Santiago, 2026-08-24): NO se parte ahora.** Se construye la pestaña con el reporte que existe. El argumento, tal cual: **partir un documento clínico sin el caso real delante es diseñar para una hipótesis.**
 
 **El disparador que la reabre, escrito para que no se pierda:** cuando aparezca un paciente **al que se remite sin prescribir** (una consulta que emite diagnóstico y termina en remisión, sin protocolo), ese es el caso que pide un reporte del diagnóstico emitible por su cuenta. Ahí se revisa.
