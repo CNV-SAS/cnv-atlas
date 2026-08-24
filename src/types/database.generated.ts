@@ -2610,8 +2610,10 @@ export type Database = {
           created_at: string
           evaluation_id: string
           id: string
+          last_resent_at: string | null
           patient_id: string
           professional_notes: string | null
+          resent_count: number
           send_mode: string | null
           sent_at: string | null
           snapshot: Json
@@ -2628,8 +2630,10 @@ export type Database = {
           created_at?: string
           evaluation_id: string
           id?: string
+          last_resent_at?: string | null
           patient_id: string
           professional_notes?: string | null
+          resent_count?: number
           send_mode?: string | null
           sent_at?: string | null
           snapshot: Json
@@ -2646,8 +2650,10 @@ export type Database = {
           created_at?: string
           evaluation_id?: string
           id?: string
+          last_resent_at?: string | null
           patient_id?: string
           professional_notes?: string | null
+          resent_count?: number
           send_mode?: string | null
           sent_at?: string | null
           snapshot?: Json

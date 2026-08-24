@@ -233,3 +233,51 @@ export async function markReportSent(input: MarkReportSentInput): Promise<void> 
     });
   });
 }
+
+export type MarkReportResentInput = {
+  reportId: string;
+  reason: string; // motivo del reenvio; queda en el audit, que es el registro que no se reescribe
+  sendMode: string; // el MISMO del envio original: reenviar no cambia el documento
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// REENVIO del mismo documento (sent -> sent). No toca snapshot, notas, trayectoria ni sent_at: la fecha
+// del PRIMER envio es dato clinico y no se reescribe. Solo incrementa el contador visible y audita
+// report.resent con el motivo. Reenviar NO es reemitir: no nace un documento nuevo.
+export async function markReportResent(input: MarkReportResentInput): Promise<{ attempt: number }> {
+  return db.transaction(async (tx) => {
+    const [report] = await tx
+      .select({ id: reports.id, evaluationId: reports.evaluationId, status: reports.status })
+      .from(reports)
+      .where(eq(reports.id, input.reportId))
+      .limit(1);
+    if (!report) throw new ReportStateError("Reporte no encontrado.");
+    if (report.status !== "sent") {
+      throw new ReportStateError("Solo se puede reenviar un reporte que ya fue enviado.");
+    }
+    const [updated] = await tx
+      .update(reports)
+      .set({ resentCount: sql`${reports.resentCount} + 1`, lastResentAt: sql`now()` })
+      .where(and(eq(reports.id, report.id), eq(reports.status, "sent")))
+      .returning({ count: reports.resentCount });
+    if (!updated) throw new ReportStateError("No se pudo registrar el reenvío.");
+    await recordAudit(tx, {
+      event: "report.resent",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "report",
+      entityId: report.id,
+      // El MOTIVO es el dato: un documento clinico que sale dos veces deja rastro de por que.
+      payload: {
+        evaluation_id: report.evaluationId,
+        send_mode: input.sendMode,
+        reason: input.reason,
+        attempt: updated.count,
+      },
+      ip: input.ip,
+    });
+    return { attempt: updated.count };
+  });
+}

@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/format/date";
 
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
-import { markReportSent, ReportStateError } from "../data/reports-writer";
+import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
 import { renderReportPdf } from "./render-report";
 
@@ -95,4 +95,73 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   }
 
   return ok({ emailId: sent.value.id });
+}
+
+// REENVIO del MISMO documento (2026-08-24). Mismo snapshot, mismas notas, MISMO modo de envio: lo unico
+// que cambia es que sale otra vez. Deliberadamente NO se ofrece elegir modo, porque cambiar el modo
+// cambia lo que el paciente recibe y eso ya seria otro documento (reemitir), que no existe todavia y va
+// con el mecanismo de sucesion de versiones.
+export type ResendReportInput = {
+  reportId: string;
+  reason: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+export async function resendReport(input: ResendReportInput): Promise<Result<{ emailId: string; attempt: number }>> {
+  const dispatch = await getReportDispatch(input.reportId);
+  if (!dispatch) return err(appError("not_found", "Reporte no encontrado."));
+  if (dispatch.status !== "sent") {
+    return err(appError("conflict", "Solo se puede reenviar un reporte que ya fue enviado."));
+  }
+  if (!dispatch.email) {
+    return err(appError("validation", "El paciente no tiene un correo registrado."));
+  }
+  // El modo del envio original. Si por cualquier via falta, se cae al reporte de Atlas, que es el que no
+  // depende de las notas: reenviar nunca puede quedarse sin poder mandar nada.
+  const mode = (dispatch.sendMode ?? "atlas") as SendMode;
+
+  const pdf = await renderReportPdf(
+    dispatch.snapshot,
+    {
+      patientName: dispatch.patientName || "Paciente",
+      documentLabel: dispatch.documentLabel,
+      evaluationDate: formatDate(dispatch.evaluationDate),
+      reportId: dispatch.reportId,
+    },
+    {
+      mode,
+      professionalNotes: dispatch.professionalNotes,
+      bandText: dispatch.patientBandText,
+      bandAppointmentDate: dispatch.patientBandAppointmentDate,
+    },
+  );
+
+  const uploaded = await uploadReportPdf(dispatch.patientId, dispatch.reportId, pdf);
+  if (!uploaded) return err(appError("internal", "No se pudo almacenar el PDF del reporte."));
+
+  const filename = `reporte-${dispatch.documentLabel.replace(/\s+/g, "-") || "clinico"}.pdf`;
+  const sent = await sendReportEmail({
+    to: dispatch.email,
+    subject: "Tu reporte clínico ANI-BIS-E",
+    text: `Hola ${dispatch.patientName || ""}. Te reenviamos tu reporte clinico, es el mismo documento. Si tienes dudas, escribe a tu profesional de salud.`.trim(),
+    pdf: { filename, content: pdf },
+  });
+  if (!sent.ok) return sent;
+
+  try {
+    const { attempt } = await markReportResent({
+      reportId: dispatch.reportId,
+      reason: input.reason,
+      sendMode: mode,
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      ip: input.ip,
+    });
+    return ok({ emailId: sent.value.id, attempt });
+  } catch (e) {
+    if (e instanceof ReportStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
 }

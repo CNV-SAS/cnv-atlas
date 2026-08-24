@@ -126,7 +126,11 @@ export async function listReports(): Promise<ReportListItem[]> {
 // sin el reader server-only. El reader lo reexporta para el server.
 export type { TrajectoryConfirmation } from "./reports-view-types";
 
-export type ReportCardData = ReportListItem & { trajectory: TrajectoryConfirmation | null };
+export type ReportCardData = ReportListItem & {
+  trajectory: TrajectoryConfirmation | null;
+  // Cuantas veces salio el MISMO documento despues del primer envio. 0 = solo el envio original.
+  resentCount: number;
+};
 
 // Reporte del paciente de UNA evaluacion, con los campos que consume la ReportCard. El mas reciente
 // (order created_at desc): si una correccion supero a un reporte enviado, se muestra el vigente. Lo
@@ -138,7 +142,7 @@ export async function getReportCardForEvaluation(
   const { data: row, error } = await supabase
     .from("reports")
     .select(
-      "id, status, evaluation_id, created_at, trajectory, trajectory_communicated_at, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
+      "id, status, evaluation_id, created_at, trajectory, trajectory_communicated_at, resent_count, evaluations!inner(type, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)))",
     )
     .eq("type", "paciente")
     .eq("evaluation_id", evaluationId)
@@ -187,6 +191,7 @@ export async function getReportCardForEvaluation(
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
+    resentCount: (row.resent_count as number | null) ?? 0,
   };
 }
 

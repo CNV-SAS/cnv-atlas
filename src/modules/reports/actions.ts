@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { z } from "zod";
+
 import { getClientIp } from "@/core/http/client-ip";
 import { limitReportSendByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
@@ -10,7 +12,7 @@ import { getReportDispatch } from "./data/reports-repository";
 import { approveReport, confirmTrajectoryCommunication, ReportStateError } from "./data/reports-writer";
 import { SEND_MODES, type SendMode } from "./pdf/report-document";
 import { canManageReports } from "./policies/can-manage-reports";
-import { sendReport } from "./services/send-report";
+import { resendReport, sendReport } from "./services/send-report";
 
 // Estado de los botones (useActionState). Forma FormToastState para el toast.
 export type ReportActionState = {
@@ -144,6 +146,51 @@ export async function sendReportAction(
   return {
     error: null,
     success: "Reporte enviado al paciente. Queda disponible en Reportes.",
+    warning: null,
+  };
+}
+
+// Motivo del reenvio: obligatorio y corto. Obligatorio porque un documento clinico que sale dos veces
+// deja rastro de por que; corto porque no es una nota clinica, es una razon operativa ("el correo rebotó",
+// "corrigieron la dirección"). Tope de tamaño como toda entrada externa (regla de validacion).
+const resendReasonSchema = z
+  .string()
+  .trim()
+  .min(3, "Escribe el motivo del reenvío.")
+  .max(300, "El motivo es demasiado largo.");
+
+export async function resendReportAction(
+  _prev: ReportActionState,
+  form: FormData,
+): Promise<ReportActionState> {
+  const user = await requireUser();
+  if (!canManageReports(user)) return fail("No autorizado.");
+  const reportId = reportIdOf(form);
+  if (!reportId) return fail("Reporte inválido.");
+
+  const parsed = resendReasonSchema.safeParse((form.get("reason") as string | null) ?? "");
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Motivo inválido.");
+
+  // Mismo limite que el envio: un reenvio manda un correo igual que el primero.
+  const rl = await limitReportSendByUser(user.id);
+  if (!rl.success) return fail("Has enviado demasiados reportes. Espera unos minutos.");
+
+  const ip = await getClientIp();
+  const result = await resendReport({
+    reportId,
+    reason: parsed.data,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  revalidatePath("/evaluaciones");
+  revalidatePath("/evaluaciones/[id]", "page");
+  revalidatePath("/reportes");
+  return {
+    error: null,
+    success: `Se reenvió el mismo documento al paciente (reenvío ${result.value.attempt}).`,
     warning: null,
   };
 }

@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk } from "./_columns";
 import { reportStatus } from "./enums";
@@ -42,7 +42,13 @@ export const reports = pgTable(
     storagePath: text("storage_path"), // PDF en Storage privado
     approvedBy: uuid("approved_by").references(() => profiles.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
-    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }), // PRIMER envio; un reenvio NO lo reescribe
+    // REENVIO del MISMO documento (2026-08-24). No es reemitir: el snapshot, las notas y la trayectoria
+    // no se tocan, se vuelve a mandar lo mismo (correo perdido, direccion corregida). El CONTADOR vive
+    // aqui solo para que la pantalla lo pueda decir; el rastro con MOTIVO de cada reenvio vive en
+    // clinical_audit_log (evento report.resent), que es el registro que no se reescribe (regla 8).
+    resentCount: integer("resent_count").notNull().default(0),
+    lastResentAt: timestamp("last_resent_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index("reports_eval_idx").on(t.evaluationId)],

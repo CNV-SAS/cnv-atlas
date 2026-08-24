@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDate } from "@/lib/format/date";
@@ -14,6 +14,7 @@ import {
   approveReportAction,
   confirmTrajectoryCommunicationAction,
   type ReportActionState,
+  resendReportAction,
   sendReportAction,
 } from "../actions";
 import type { TrajectoryConfirmation } from "../data/reports-view-types";
@@ -23,6 +24,8 @@ export type ReportCardView = {
   evaluationId: string;
   evaluationType: "inicial" | "seguimiento";
   status: "draft" | "approved" | "sent";
+  // Cuantas veces salio el MISMO documento despues del primer envio (0 = solo el original).
+  resentCount?: number;
   documentLabel: string;
   patientName: string;
   createdAt: string;
@@ -44,9 +47,11 @@ export function ReportCard({ report }: { report: ReportCardView }) {
   const [approveState, approve, approving] = useActionState(approveReportAction, initialState);
   const [sendState, send, sending] = useActionState(sendReportAction, initialState);
   const [confirmState, confirm, confirming] = useActionState(confirmTrajectoryCommunicationAction, initialState);
+  const [resendState, resend, resending] = useActionState(resendReportAction, initialState);
   useFormToast(approveState);
   useFormToast(sendState);
   useFormToast(confirmState);
+  useFormToast(resendState);
 
   // Superficie de confirmacion de "empeoro" (P0 Parte 2): solo cuando el reporte esta en draft, la
   // banda sellada es 'empeoro' y aun no se confirmo. Es un acto APARTE de aprobar: comunicar un
@@ -54,6 +59,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
   // el TEXTO que recibira el paciente (lo que autoriza), luego la cifra (respaldo tecnico), luego la
   // cita (obligatoria), luego el boton.
   const t = report.trajectory;
+  const resentCount = report.resentCount ?? 0;
   const showConfirm = report.status === "draft" && t?.band === "empeoro" && !t.communicated;
 
   return (
@@ -185,6 +191,49 @@ export function ReportCard({ report }: { report: ReportCardView }) {
             </span>
             <Button type="submit" size="sm" disabled={sending} className="self-start">
               {sending ? "Enviando..." : "Enviar al paciente"}
+            </Button>
+          </form>
+        ) : null}
+
+        {/* REENVIO del MISMO documento. Separado del envio a proposito: el titulo, el texto y el boton
+            dicen "el mismo" en los tres sitios, para que no se lea como emitir uno nuevo (que no existe;
+            va con el mecanismo de sucesion de versiones). El modo de envio NO se ofrece: cambiarlo
+            cambiaria lo que el paciente recibe, y eso ya seria otro documento.
+            El envio va por onSubmit + startTransition y NO por la prop `action`: la prop resetea los
+            inputs no controlados tras la accion, y un error borraria el motivo que el profesional escribio
+            (hazard de React 19 registrado en CLAUDE.md). */}
+        {report.status === "sent" ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              startTransition(() => resend(data));
+            }}
+            className="flex w-full flex-col gap-2 rounded-md border border-border bg-muted/30 p-3"
+          >
+            <input type="hidden" name="reportId" value={report.reportId} />
+            <span className="text-sm font-semibold">Reenviar el mismo documento</span>
+            <span className="text-xs text-muted-foreground">
+              Vuelve a mandar por correo <strong>el mismo reporte</strong>, con el mismo contenido y el
+              mismo modo de envío. No genera un reporte nuevo ni recalcula nada. Úsalo si el correo se
+              perdió o si se corrigió la dirección del paciente.
+              {resentCount > 0
+                ? ` Ya se reenvió ${resentCount} ${resentCount === 1 ? "vez" : "veces"}.`
+                : ""}
+            </span>
+            <label htmlFor={`motivo-${report.reportId}`} className="text-xs text-muted-foreground">
+              Motivo del reenvío (obligatorio). Queda registrado en la auditoría.
+            </label>
+            <input
+              id={`motivo-${report.reportId}`}
+              name="reason"
+              required
+              maxLength={300}
+              placeholder="Por ejemplo: el correo rebotó, o el paciente corrigió su dirección."
+              className="w-full rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            />
+            <Button type="submit" size="sm" variant="outline" disabled={resending} className="self-start">
+              {resending ? "Reenviando…" : "Reenviar el mismo documento"}
             </Button>
           </form>
         ) : null}
