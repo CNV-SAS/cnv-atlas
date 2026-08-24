@@ -104,7 +104,11 @@ export async function getTreatmentProtocol(
 
   const treatmentId = treatment.id;
 
-  const [nutras, guides, notes, catalog, menus, get, report] = await Promise.all([
+  // El paciente sale del embed del diagnostico; se resuelve ANTES porque la consulta de sus
+  // contraindicaciones lo necesita (son de la PERSONA, no de esta consulta).
+  const patientId = patientIdFrom((diag as { evaluations?: unknown }).evaluations);
+
+  const [nutras, guides, notes, catalog, menus, get, report, contra] = await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
       .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
@@ -145,6 +149,13 @@ export async function getTreatmentProtocol(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // Contraindicaciones del PACIENTE. RLS propia (is_patient_professional): si el paciente no es tuyo,
+    // no hay filas. Se piden aunque no haya nutraceuticos prescritos: lo que importa es advertir ANTES.
+    supabase
+      .from("patient_contraindications")
+      .select("id, nutraceutical_id, reason, created_at")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false })
   ]);
 
   if (nutras.error) throw new Error(`treatment-reader: nutraceuticals: ${nutras.error.message}`);
@@ -188,7 +199,13 @@ export async function getTreatmentProtocol(
     objetivoTexto: treatment.objetivo_texto ?? null,
     intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
     tiempos: normalizeTiempos(treatment.tiempos),
-    patientId: patientIdFrom((diag as { evaluations?: unknown }).evaluations),
+    patientId,
+    contraindications: (contra?.data ?? []).map((c: { id: string; nutraceutical_id: string | null; reason: string; created_at: string }) => ({
+      id: c.id,
+      nutraceuticalId: c.nutraceutical_id ?? null,
+      reason: c.reason,
+      createdAt: c.created_at,
+    })),
     tiemposActivos: normalizeTiemposActivos(treatment.tiempos_activos),
     // Sin `at` no hay decision: la fecha es parte del dato, no un adorno (ver el schema).
     nutraceuticalDecision:

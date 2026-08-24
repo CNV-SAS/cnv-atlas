@@ -77,6 +77,14 @@ export function NutraceuticalsSection({
   if (!canPrescribe) {
     return (
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-6">
+      {/* CONTRAINDICACIONES DEL PACIENTE (2026-08-24). Guardar una contraindicacion que nadie ve es la
+          mitad del valor: sin esto, el siguiente profesional no se entera de que otro ya descarto un
+          producto por una razon clinica. Va ARRIBA y en tono critico, no como nota al pie, porque su
+          trabajo es que se lea ANTES de prescribir. Vienen de TODAS las consultas del paciente, no de esta.
+          Se muestra tambien en la vista de consulta (otras profesiones): es informacion clinica que
+          cualquiera que atienda al paciente debe tener. */}
+      <ContraindicacionesAviso protocol={protocol} />
+
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-base font-semibold text-foreground">Nutracéuticos</h3>
           <Badge variant="outline" className="text-[10px] font-normal">
@@ -112,6 +120,14 @@ export function NutraceuticalsSection({
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-6">
       <h3 className="text-base font-semibold text-foreground">Nutracéuticos</h3>
+      {/* CONTRAINDICACIONES DEL PACIENTE (2026-08-24). Guardar una contraindicacion que nadie ve es la
+          mitad del valor: sin esto, el siguiente profesional no se entera de que otro ya descarto un
+          producto por una razon clinica. Va ARRIBA y en tono critico, no como nota al pie, porque su
+          trabajo es que se lea ANTES de prescribir. Vienen de TODAS las consultas del paciente, no de esta.
+          Se muestra tambien en la vista de consulta (otras profesiones): es informacion clinica que
+          cualquiera que atienda al paciente debe tener. */}
+      <ContraindicacionesAviso protocol={protocol} />
+
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         {/* Firma de concurrencia: la prescripcion que el cliente cargó. Si otro profesional la cambió, el
@@ -196,6 +212,38 @@ export function NutraceuticalsSection({
         </fieldset>
       </form>
     </section>
+  );
+}
+
+// Nombre del producto de una contraindicacion. Si es de un COMPONENTE (sin producto asociado) o de uno
+// retirado del catalogo, se dice asi en vez de mostrar un id o esconder la fila: una contraindicacion sin
+// nombre sigue siendo una advertencia.
+function nombreDe(protocol: TreatmentProtocol, nutraceuticalId: string | null): string {
+  if (!nutraceuticalId) return "General";
+  return protocol.catalog.find((c) => c.id === nutraceuticalId)?.name ?? "Producto retirado del catálogo";
+}
+
+function ContraindicacionesAviso({ protocol }: { protocol: TreatmentProtocol }) {
+  if (protocol.contraindications.length === 0) return null;
+  return (
+    <div
+      role="alert"
+      className="rounded-md border-2 border-clinical-critical bg-clinical-critical-bg px-3 py-2 text-sm text-clinical-critical"
+    >
+      <p className="font-medium">
+        {protocol.contraindications.length === 1
+          ? "Este paciente tiene una contraindicación registrada"
+          : `Este paciente tiene ${protocol.contraindications.length} contraindicaciones registradas`}
+      </p>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {protocol.contraindications.map((c) => (
+          <li key={c.id}>
+            <span className="font-medium">{nombreDe(protocol, c.nutraceuticalId)}:</span> {c.reason}
+            <span className="opacity-80"> ({new Date(c.createdAt).toLocaleDateString("es-CO")})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

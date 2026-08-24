@@ -44,6 +44,15 @@ export type MenuSemanalSaved = {
   celdas: Record<string, string>;
 };
 export type TreatmentNote = { id: string; note: string; createdAt: string };
+
+// Contraindicaciones del PACIENTE (no de esta consulta). Se leen para MOSTRARLAS al prescribir: guardar
+// una contraindicacion que nadie ve es la mitad del valor, porque el siguiente profesional no se entera.
+export type PatientContraindication = {
+  id: string;
+  nutraceuticalId: string | null;
+  reason: string;
+  createdAt: string;
+};
 export type CatalogItem = {
   id: string;
   name: string;
@@ -112,6 +121,9 @@ export type TreatmentProtocol = {
   // El paciente del que es este tratamiento. Lo necesita la contraindicacion, que cuelga del PACIENTE
   // (una contraindicacion es de la persona, no de la consulta).
   patientId: string;
+  // Contraindicaciones vigentes del paciente, mas recientes primero. Vienen de TODAS sus consultas, no
+  // solo de esta: es dato de la persona.
+  contraindications: PatientContraindication[];
   nutraceuticalDecision: {
     decision: "si" | "no" | "pendiente";
     reason: string | null;
