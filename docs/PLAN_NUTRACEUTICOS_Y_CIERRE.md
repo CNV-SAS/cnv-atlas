@@ -25,23 +25,34 @@ Todo lo demás sale de ahí.
 
 Están discutidas y acordadas; se registran para no relitigarlas.
 
-### B1 · El descuento va al ENTREGAR, no al cobrar
+### B1 · El descuento ocurre al CONFIRMAR EL PAGO (corregido 2026-08-24)
 
-Se evaluó descontar contra el cobro confirmado y **se descartó por un caso que no es la excepción sino la norma**: el paciente recibe el frasco en la consulta y el pago digital tarda o no llega. Si el descuento espera, **durante ese hueco el inventario miente al revés**: dice que el profesional tiene un producto que ya entregó, y un conteo en ese momento arroja un sobrante que no existe.
+**Se invierte el orden. No es "entrego y espero el pago": es "espero el pago y entrego".**
 
-**El movimiento de inventario ocurre cuando el producto sale de la vitrina.** Lo que se añade es el **estado de cobro** al lado: `entregado, pago pendiente` → `pagado` · `no pagado`.
+La primera versión de este plan descontaba al entregar, por miedo a que el inventario mintiera durante el hueco entre la entrega física y la confirmación. **Ese miedo estaba mal planteado**, y el argumento que lo desmonta es de Santiago: entregar un producto de CNV sin pago confirmado **no es un caso de borde, es entregar mercancía ajena a crédito**, y quien responde por ella es el profesional que la tiene en consignación.
 
-### B2 · Una entrega sin pago es un FALTANTE con causa conocida
+**Y el hueco desaparece con el orden invertido**: el paciente está delante, el enlace se paga en minutos, y el profesional entrega **cuando ve la confirmación en pantalla**. No hay ventana en la que el inventario mienta, porque el producto no sale antes.
 
-No se inventa una categoría nueva. El módulo de faltantes ya hace exactamente esto: un caso, una clasificación, un responsable, una resolución. Una entrega que vence sin pago **cae ahí**, con su causa escrita.
+**Lo que esto exige, y por eso B1 depende de ello:** que el profesional **VEA el pago confirmado sin recargar**. Ver la Parte D.
 
-Eso respeta la regla de fondo (**el producto es de CNV en consignación**, nadie regala inventario sin que se note) sin romper la verdad física del saldo.
+### B2 · Sin entrega sin pago, no hay faltante por esa vía
+
+Con B1 invertido, **la categoría casi desaparece**: si el producto no sale hasta que el pago está confirmado, no existe la entrega impaga que había que perseguir.
+
+**Queda un solo caso residual, y hay que decidirlo a propósito:** el profesional entrega igual, saltándose el flujo (porque conoce al paciente, porque el enlace no cargó, porque decidió confiar). Eso no lo impide el software: lo que hace el software es **no tener un botón que lo facilite**. Si ocurre, aparece como diferencia en el conteo y **cae en el mecanismo de faltantes que ya existe**, sin categoría nueva y sin que hayamos diseñado una vía para ello.
 
 ### B3 · Una sola pregunta, con la decisión clínica dentro
 
 *"¿El paciente adquirió los nutracéuticos?"* → **sí** · **no** · **pendiente**, con lista de razones y "otra" con texto obligatorio.
 
-Una de las razones es **"como profesional no se lo recomendé"**, con motivo obligatorio. Eso resuelve el orden de las dos decisiones (primero si PUEDE, después si QUIERE) **sin dos pantallas**: el profesional que descartó no llega a preguntarle al paciente, marca esa razón.
+Y **dos entradas separadas** para el descarte del profesional (propuesta de Santiago, adoptada):
+
+- *"Como profesional no lo recomiendo por razones **clínicas**"*
+- *"Como profesional no lo recomiendo por razones **no clínicas**"*
+
+Las dos con texto obligatorio. **Es más limpio que meter la distinción dentro de una lista de razones:** clasifica el propio profesional, y el sistema no tiene que adivinar si "alergia al calostro" es clínico mientras "no le gusta el sabor" no lo es. Esa adivinanza no la puede hacer un `switch`, y equivocarla mandaría un dato comercial a la historia clínica o al revés.
+
+Y resuelve el orden de las dos decisiones (primero si PUEDE, después si QUIERE) **sin dos pantallas**: el profesional que descartó no llega a preguntarle al paciente, marca su razón.
 
 ### B4 · El "pendiente" lleva fecha, y NO vence solo
 
@@ -59,7 +70,25 @@ Si la razón del descarte es **clínica** (alergia a un componente, interacción
 2. **Debería alimentar el motor.** Es la misma familia que P-39 (las alergias que no llegan al menú).
 3. **El destinatario es otro.** La razón comercial la lee dirección; la clínica la lee el siguiente profesional.
 
-**Una sola pregunta en pantalla**, pero cuando la razón es clínica se pide el motivo y **se guarda también como dato clínico del paciente**.
+**Una sola pregunta en pantalla**, y cuando el profesional marca la opción **clínica**, ese motivo se guarda **también** como dato clínico del paciente.
+
+## Dónde vive ese dato
+
+**Criterios:** tiene que verse en la próxima consulta, incluso con otro profesional; y verse al prescribir, junto al producto descartado.
+
+**Los tres sitios que ya existen, y por qué ninguno sirve:**
+
+| Sitio | Qué guarda | Por qué no |
+|---|---|---|
+| **Condiciones de la toma** (`bis_conditions`) | el estado del paciente el día de la medición (ayuno, hidratación) | son **de esa medición**; no persisten |
+| **Antecedentes de la encuesta** (d5_39, d6_43...) | lo que el **paciente declara** | los declara él, no el profesional, y **se rehacen cada evaluación** |
+| **Notas** (`treatment_notes`) | bitácora del profesional | texto libre **de esa consulta**; no es consultable ni se puede mostrar junto a un producto |
+
+**Lectura: hace falta un sitio nuevo, y va en el PACIENTE, no en la evaluación.** Coincide con la lectura preliminar de Santiago, y la razón es la que él da: **una contraindicación es de la persona, no de esa consulta.** Una alergia al calostro vale con cualquier profesional y en cualquier evaluación futura.
+
+**Forma mínima:** contraindicaciones del paciente, cada una con el producto o componente, el motivo, quién la registró y cuándo. Es una tabla nueva, chica, colgada de `patients`.
+
+**Y no es solo para nutracéuticos:** el mismo sitio sirve para cualquier contraindicación que el profesional observe. Nace acotado a esto, pero no se diseña como si fuera exclusivo.
 
 ## La pregunta que abre, y su respuesta
 
@@ -75,27 +104,35 @@ Si la razón del descarte es **clínica** (alergia a un componente, interacción
 
 ---
 
-# Parte D · El cobro dentro de Tratamiento
+# Parte D · El cobro dentro de Tratamiento (ahora es requisito de B1)
 
-Santiago quiere que el cobro viva aquí y no en otra pestaña. **Tiene razón en el flujo**: el profesional está con el paciente delante, y mandarlo a `/pagos` corta la consulta.
+Santiago quiere que el cobro viva aquí y no en otra pestaña. **Tiene razón en el flujo**, y con B1 invertido **ya no es una comodidad: es la condición para que el flujo funcione.** El profesional necesita ver el pago confirmado sin salir de la consulta.
 
 ## Lo que ya existe (verificado)
 
-- `createCheckout` (Wompi) y `registerCashSale` (efectivo) **existen como servicios**.
-- `transactions` tiene paciente, profesional y los ítems vendidos.
-- **El modelo YA anticipó el pago mixto**: el schema dice, textual, *"Un pago mixto = dos transacciones, una por medio"*.
+- `createCheckout` (Wompi) y `registerCashSale` (efectivo) existen como servicios.
+- **El webhook de Wompi existe y funciona**: `/api/webhooks/wompi` recibe la notificación, mapea el estado y **sella el pago** (comisión, ingreso, y factura en Alegra best-effort). Es idempotente, con control de eventos duplicados.
+- **El efectivo sella de inmediato y en sincronía**: `registerCashSale` crea la transacción **ya pagada**. Ahí la confirmación es del profesional, y el descuento puede dispararse en el mismo acto.
+- **El modelo ya anticipó el pago mixto**: el schema dice, textual, *"Un pago mixto = dos transacciones, una por medio"*.
 
 ## Lo que falta
 
-1. **El vínculo.** `nutraceutical_stock_movements` tiene `treatment_id` pero **ninguna referencia a `transactions`**. Hoy se puede entregar sin cobrar y cobrar sin entregar, **y nada lo detecta**. Es el hueco central, no el cobro.
-2. **La superficie mixta.** El modelo la soporta; falta la pantalla que cree las dos transacciones (una parte digital, otra en efectivo).
-3. **El cobro en Tratamiento.** Reusar los servicios existentes desde el panel, no duplicarlos.
+1. **El vínculo.** `nutraceutical_stock_movements` tiene `treatment_id` pero **ninguna referencia a `transactions`**. Hoy se puede entregar sin cobrar y cobrar sin entregar, **y nada lo detecta**. Es el hueco central.
+2. **Que el pago confirmado se VEA sin recargar.** El webhook sella en el servidor, pero **el panel no se entera solo**: hoy no hay nada que refresque esa vista. Sin esto, B1 obliga al profesional a recargar a ciegas hasta que aparezca, que es peor que el flujo de hoy. **Es la pieza que hace viable todo lo demás.** Un sondeo acotado mientras el pago esté pendiente es suficiente y es lo más barato; no hace falta tiempo real.
+3. **La superficie mixta.** El modelo la soporta; falta la pantalla que cree las dos transacciones.
+4. **El cobro en Tratamiento.** Reusar los servicios existentes desde el panel, no duplicarlos.
 
-**Dimensión: MEDIA-ALTA, y es superficie de dinero.** Lo grande no es llamar a `createCheckout`: es que a partir de aquí **entrega y cobro dejan de ser dos registros que no se conocen**, y eso hay que hacerlo bien una vez.
+## Si Wompi no responde
 
-**Orden recomendado:** primero el vínculo y los estados de cobro (B1/B2), después el mixto, y el cobro en Tratamiento al final, cuando ya haya qué mostrar.
+**El principio se mantiene: sin confirmación no sale el producto.** Las salidas, de menor a mayor costo:
 
----
+- **El efectivo ya es la vía alterna**, y es inmediata: lo confirma el profesional y sella en el acto. Hoy ya funciona.
+- **Una llave BRE-B (transferencia directa)** es la propuesta de Santiago. **No existe hoy** y es una integración nueva: hay que verificar si el proveedor notifica el pago o si el profesional confirma a mano. Si es lo segundo, **es equivalente al efectivo** y su costo baja mucho: no es una pasarela, es un medio de pago más con confirmación del profesional.
+- **Lo que NO conviene:** un "confirmar a mano" genérico para cualquier medio. Eso reabre por la puerta de atrás lo que B1 cierra.
+
+**Dimensión: MEDIA-ALTA, y es superficie de dinero.** Lo grande no es llamar a `createCheckout`: es que a partir de aquí **entrega y cobro dejan de ser dos registros que no se conocen**.
+
+**Orden recomendado:** el vínculo y la visibilidad del pago primero (sin eso B1 no se puede construir), después el mixto, y BRE-B al final, cuando se sepa si notifica.
 
 # Parte E · El cierre de la consulta
 
@@ -127,7 +164,7 @@ Los números son de una base de pruebas, así que valen como **señal del patró
 |---|---|---|
 | Diagnóstico generado | **5 de 38** evaluaciones sin diagnóstico | no |
 | Diagnóstico **confirmado** | **26 de 33 sin confirmar** | no |
-| Protocolo **aprobado** | **33 de 33 sin aprobar** | no |
+| Protocolo **aprobado** | **33 de 33 sin aprobar** (ver abajo: son TRES casos distintos) | no |
 | Reporte **enviado** | **31 de 33 sin enviar** | no |
 | Remisión con **retorno** | **4 de 5 sin retorno** | no |
 | Próxima cita | **1 de 33** fijada | no |
@@ -136,7 +173,15 @@ Los números son de una base de pruebas, así que valen como **señal del patró
 **Dos lecturas que salen de esto:**
 
 - **El reporte sin enviar es el más grave**, y es el que la reformulación arregla mejor: un reporte aprobado y no enviado significa que **el paciente no recibió nada**, y hoy nadie se entera.
-- **El 100 % de protocolos sin aprobar tiene causa conocida**: es el gate `diagnosisConfirmed`, ya registrado en BACKLOG como precondición (el profesional puede aprobar lo del modelo pero no puede cambiarle un valor antes de aprobarlo). El cierre lo haría **visible**, que es justo lo que hace falta para que se resuelva.
+- **"Protocolo sin aprobar" NO es una sola cosa, y el gate no lo explica entero.** Al mirar los 33 uno por uno salen **tres casos**, y la lista del cierre tiene que distinguirlos o mostraría 33 pendientes cuando 28 no son accionables hoy:
+
+| Caso | Cuántos | Qué significa |
+|---|---|---|
+| Diagnóstico sin confirmar | **26** | no se puede aprobar todavía. Es el gate `diagnosisConfirmed`, ya registrado en BACKLOG |
+| **Sin `protocol_suggested`** | **2** | **no se puede aprobar nunca por esta vía**: son tratamientos anteriores al sellado del protocolo, y `approveProtocol` los rechaza a propósito ("no se aprueba lo que nunca se computó") |
+| Se puede aprobar y nadie lo hizo | **5** | el caso que el cierre debería sacar a la luz |
+
+Y un dato que los cruza: **ninguno de los 7 con diagnóstico confirmado tiene un solo ajuste** (`adj_*` todos nulos). Nadie entró a trabajar esos protocolos. Es coherente con el gate (si no puedes cambiar nada antes de aprobar, no hay razón para entrar), pero también significa que el "se puede aprobar y nadie lo hizo" es real, no un artefacto.
 
 ## Qué hacer con las 38 abiertas
 
@@ -146,7 +191,11 @@ Los números son de una base de pruebas, así que valen como **señal del patró
 2. **Es la misma regla que ya aplicamos** con `structural_mccb`: *"de aquí en adelante; no se rellena hacia atrás"*.
 3. **Y en la nube conviene mirarlas antes**: si alguna es de un integrante real, el criterio es distinto y lo decide Santiago con la lista delante.
 
-Lo único que sí conviene: que la lista de evaluaciones **distinga visualmente** una sin cerrar de una cerrada, para que el estado nuevo se note desde el primer día.
+Lo único que sí conviene: que la lista **distinga** una sin cerrar de una cerrada, **y que entre con el cierre, no después**: un estado nuevo que no se ve no cambia nada.
+
+**Con una corrección de premisa, verificada:** los "Borrador" y "En progreso" que vio Santiago en `/evaluaciones` **no son el estado de la evaluación**. Esa pantalla lista **reportes pendientes**, y esas etiquetas son de `reports.status` (Borrador → Aprobado → Enviado), que sí se mueven: aprobar el reporte y enviarlo. **El estado de la evaluación no se muestra en ninguna parte hoy.**
+
+Así que el indicador de cerrada/abierta **no re-significa una columna existente: es nuevo**. Conviene decirlo porque cambia el trabajo (hay que añadir la columna, no reinterpretarla) y porque explica por qué Santiago no sabía qué movía esos estados: estaba mirando otra cosa.
 
 ---
 

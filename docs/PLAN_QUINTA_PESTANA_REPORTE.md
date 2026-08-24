@@ -32,13 +32,13 @@ Paciente · Documento · Indicadores · Cambio respecto a la medición anterior 
 
 | Sección | Estado del dato | Trabajo |
 |---|---|---|
-| **Motivo de consulta** | **no se captura** | pieza nueva (un campo, y decidir dónde se pregunta) |
+| **Motivo de consulta** | **YA SE CAPTURA** (verificado): `evaluations.reason_for_visit`, multi-select de 8 opciones con "Otro" y texto libre, en el intake | **solo mostrarlo** |
 | **Antecedentes personales** | **existe**, en la encuesta (d5_39, d5_38, d6_43, d6_44) | mostrar; **ojo**: d6_43/d6_44 no llegan al motor (P-39) |
 | **Tabla de Wang** | **existe**, ya se muestra en Diagnóstico | reusar el componente |
 | **Tratamiento, remisiones, exámenes** | **existen** | reusar; los exámenes salen del snapshot del protocolo |
 | **Próxima cita y firma** | la cita **existe** (se captura al aprobar el reporte); la firma **no** | decidir qué significa "firma" aquí |
 
-**La única de verdad nueva es el motivo de consulta.** El resto es reunir lo que ya está.
+**No hay ninguna de verdad nueva: todo es reunir lo que ya está.** El motivo de consulta parecía la excepción y no lo es: se captura desde el intake (es el campo que tuvo el arreglo del texto libre de "Otro"), y es el mismo concepto que su sección 2. **Ojo a una diferencia de forma:** el suyo es texto libre y el nuestro es multi-select; al mostrarlo se unen las opciones elegidas, y el "Otro: <texto>" ya viaja completo desde el arreglo del texto libre.
 
 ---
 
@@ -97,11 +97,11 @@ Las once secciones, reusando lo que existe. **El motivo de consulta es lo único
 | 2 | Mover la `ReportCard` y el historial de envíos | chica | 1 |
 | 3 | Decidir y mover la próxima cita | chica | 2 |
 | 4 | La HC con lo que ya existe (Wang, tratamiento, remisiones, exámenes, antecedentes) | **media** | 1 |
-| 5 | El motivo de consulta (captura + muestra) | chica | dónde se pregunta |
+| 5 | Mostrar el motivo de consulta (ya capturado) | **trivial** | 4 |
 | 6 | El cierre de la consulta con su lista | media | 1, y la pregunta del nutracéutico |
 | 7 | Mover la lista de intercambio del paciente | chica | 1 |
 
-**Total: media.** Casi todo es reunir lo que ya está; lo único nuevo es el motivo de consulta y el cierre.
+**Total: media, y menor de lo estimado.** Todo es reunir lo que ya está; **lo único nuevo es el cierre**.
 
 ---
 
@@ -114,4 +114,6 @@ Las once secciones, reusando lo que existe. **El motivo de consulta es lo único
 
 **Recomendación: NO partirlo ahora.** Construir la pestaña con el reporte que existe, y dejar la partición como decisión propia cuando haya un caso real que la pida (un paciente al que se remite sin prescribir). Partir un documento clínico sin ese caso delante es diseñar para una hipótesis.
 
-**Es decisión de Santiago**, y es la única que bloquea algo de este plan.
+**DECIDIDO (Santiago, 2026-08-24): NO se parte ahora**, con el argumento tal cual: partir un documento clínico sin el caso real delante es diseñar para una hipótesis.
+
+**El disparador que la reabre, escrito para que no se pierda:** cuando aparezca un paciente **al que se remite sin prescribir** (una consulta que emite diagnóstico y termina en remisión, sin protocolo), ese es el caso que pide un reporte del diagnóstico emitible por su cuenta. Ahí se revisa.
