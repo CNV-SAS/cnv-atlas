@@ -162,7 +162,17 @@ export function ReportCard({ report }: { report: ReportCardView }) {
               className="w-full rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               placeholder="Tus notas para el paciente (opcional)."
             />
-            <Button type="submit" size="sm" disabled={approving} className="self-start">
+            {/* El boton no queda MUERTO: dice por que no se puede todavia. Un control deshabilitado sin
+                explicacion se lee como defecto de la pantalla, no como una condicion que falta cumplir.
+                Solo aparece cuando la banda es 'empeoro' y falta confirmar (showConfirm): una trayectoria
+                estable o mejor, y un reporte sin banda, no ven nada de esto. */}
+            {showConfirm ? (
+              <span className="text-xs text-clinical-warning">
+                Falta confirmar la comunicación del cambio desfavorable y agendar la próxima cita. Es el
+                bloque de arriba: sin eso, este reporte no se puede aprobar ni enviar.
+              </span>
+            ) : null}
+            <Button type="submit" size="sm" disabled={approving || showConfirm} className="self-start">
               {approving ? "Aprobando..." : "Aprobar"}
             </Button>
           </form>

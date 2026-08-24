@@ -37,13 +37,36 @@ export type ApproveReportInput = {
 export async function approveReport(input: ApproveReportInput): Promise<{ diagnosisId: string }> {
   return db.transaction(async (tx) => {
     const [report] = await tx
-      .select({ id: reports.id, evaluationId: reports.evaluationId, status: reports.status })
+      .select({
+        id: reports.id,
+        evaluationId: reports.evaluationId,
+        status: reports.status,
+        trajectory: reports.trajectory,
+        trajectoryCommunicatedAt: reports.trajectoryCommunicatedAt,
+      })
       .from(reports)
       .where(eq(reports.id, input.reportId))
       .limit(1);
     if (!report) throw new ReportStateError("Reporte no encontrado.");
     if (report.status !== "draft") {
       throw new ReportStateError("El reporte ya fue aprobado o enviado.");
+    }
+
+    // GATE del "empeoró" (2026-08-24). Aprobar es el paso que manda el documento hacia el paciente, y un
+    // documento que dice que empeoró no puede salir sin que alguien lo haya decidido Y sin cita. Hasta hoy
+    // el bloque de confirmación INVITABA: se podía aprobar y enviar saltándoselo, y el paciente recibía la
+    // mala noticia sin saber cuándo lo vuelven a ver.
+    //
+    // El matiz de Gildardo se conserva: confirmar sigue siendo un ACTO APARTE de aprobar (una decisión, no
+    // un automatismo). Lo que cambia es que aprobar ya no puede saltárselo.
+    //
+    // SOLO alcanza a 'empeoro'. Una trayectoria estable o mejor no pide nada, y un reporte sin banda
+    // (inicial, o seguimiento sin previa comparable) tampoco: son la mayoría y no deben notar este gate.
+    const band = (report.trajectory as { band?: string } | null)?.band;
+    if (band === "empeoro" && report.trajectoryCommunicatedAt == null) {
+      throw new ReportStateError(
+        "Este reporte informa un cambio desfavorable. Confirma la comunicación y agenda la próxima cita antes de aprobarlo.",
+      );
     }
 
     // 1. Confirmar el diagnostico de la evaluacion, TOLERANTE (mini-bloque de confirmacion como acto
