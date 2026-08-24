@@ -614,7 +614,11 @@ async function main() {
   // 8. Catalogo VITACELLEBIS: 10 productos. GRAFIA del nombre = registro sanitario (INVIMA), no la
   // tienda: donde difieran, manda el registro ("MULTICELL BASE" sin guion, no "MULTI-CELL BASE" de la
   // tienda). Precio, porcion y registro salen de la tienda (confirmados por Santiago). Disponibilidad
-  // comercial (dato del producto, distinto del stock): 4 en_consultorio, 6 solo_tienda.
+  // comercial (dato del producto, distinto del stock): 4 en_consultorio, 6 NO DISPONIBLE.
+  // CORREGIDO 2026-08-24 (cotejo, Santiago): los otros seis estaban como "solo_tienda", y eso hacia creer
+  // que el paciente los podia comprar. HOY SOLO EXISTEN CUATRO REFERENCIAS, y son justamente las que los
+  // profesionales tienen en consignacion. El resto no esta ni en consultorio ni en tienda: no existe.
+  // "solo_tienda" queda en el enum para cuando la tienda tenga referencias que el profesional no lleve.
   const LIQ = { presentation: "liquida", serving_size: "30 mL", unit: "mL", unit_price: "107100", sanitary_registration: "RSA-3987-2026" };
   const POL = { presentation: "polvo", unit: "g", unit_price: "166600", sanitary_registration: "NSA-3618-2026" };
   const VITACELLEBIS = [
@@ -622,12 +626,12 @@ async function main() {
     { id: NUTRA_IDS[1], name: "MULTICELL BASE", indication: "Micronutrición basal", composition: "Calostro bovino fortificado", availability: "en_consultorio", ...LIQ },
     { id: NUTRA_IDS[2], name: "CURCUMIN BIOACTIV", indication: "Modulación inflamatoria", composition: "Cúrcuma, jengibre, pimienta negra, selenio, zinc", availability: "en_consultorio", ...LIQ },
     { id: NUTRA_IDS[3], name: "D3-K2 OSTEO", indication: "Metabolismo óseo", composition: "Calcio, magnesio, vitamina D, K2", availability: "en_consultorio", ...POL, serving_size: "10 g" },
-    { id: NUTRA_IDS[4], name: "BERBERINA METABO", indication: "Metabolismo glucosa-insulina", composition: "Arándano, inulina, canela, té verde, cromo", availability: "solo_tienda", ...LIQ },
-    { id: NUTRA_IDS[5], name: "MITO-Q10 PLUS", indication: "Función mitocondrial", composition: "Remolacha, espinaca, jengibre, ajo negro, complejo B", availability: "solo_tienda", ...LIQ },
-    { id: NUTRA_IDS[6], name: "HEPA-DETOX", indication: "Hepatoprotección", composition: "Alcachofa, ajo negro, cisteína, colina", availability: "solo_tienda", ...LIQ },
-    { id: NUTRA_IDS[7], name: "ADAPTO-STRESS", indication: "Eje HPA (estrés)", composition: "L-teanina, inositol, colina, omega-3", availability: "solo_tienda", ...LIQ },
-    { id: NUTRA_IDS[8], name: "SARCO-PROTECT", indication: "Masa muscular", composition: "BCAA, magnesio, zinc, complejo B", availability: "solo_tienda", ...POL, serving_size: "25 g" },
-    { id: NUTRA_IDS[9], name: "GUT-IMMUNE PRO", indication: "Barrera intestinal", composition: "Inulina, aloe vera, probióticos, vitamina A", availability: "solo_tienda", ...POL, serving_size: "20 g" },
+    { id: NUTRA_IDS[4], name: "BERBERINA METABO", indication: "Metabolismo glucosa-insulina", composition: "Arándano, inulina, canela, té verde, cromo", availability: "no_disponible", ...LIQ },
+    { id: NUTRA_IDS[5], name: "MITO-Q10 PLUS", indication: "Función mitocondrial", composition: "Remolacha, espinaca, jengibre, ajo negro, complejo B", availability: "no_disponible", ...LIQ },
+    { id: NUTRA_IDS[6], name: "HEPA-DETOX", indication: "Hepatoprotección", composition: "Alcachofa, ajo negro, cisteína, colina", availability: "no_disponible", ...LIQ },
+    { id: NUTRA_IDS[7], name: "ADAPTO-STRESS", indication: "Eje HPA (estrés)", composition: "L-teanina, inositol, colina, omega-3", availability: "no_disponible", ...LIQ },
+    { id: NUTRA_IDS[8], name: "SARCO-PROTECT", indication: "Masa muscular", composition: "BCAA, magnesio, zinc, complejo B", availability: "no_disponible", ...POL, serving_size: "25 g" },
+    { id: NUTRA_IDS[9], name: "GUT-IMMUNE PRO", indication: "Barrera intestinal", composition: "Inulina, aloe vera, probióticos, vitamina A", availability: "no_disponible", ...POL, serving_size: "20 g" },
   ];
   check(
     "nutraceuticals",

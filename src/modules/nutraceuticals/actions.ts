@@ -145,6 +145,10 @@ export async function updateNutraceuticalFormAction(
 ): Promise<NutraceuticalFormState> {
   const result = await updateNutraceuticalAction({
     id: String(formData.get("id") ?? ""),
+    commercialAvailability: String(formData.get("commercialAvailability") ?? "no_disponible") as
+      | "en_consultorio"
+      | "solo_tienda"
+      | "no_disponible",
     name: optStr(formData, "name") ?? "",
     description: optStr(formData, "description"),
     unit: optStr(formData, "unit"),

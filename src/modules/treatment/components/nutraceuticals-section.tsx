@@ -130,9 +130,18 @@ export function NutraceuticalsSection({
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             >
               <option value="">Selecciona un nutracéutico</option>
+              {/* El ESTADO va en la etiqueta de cada opcion (cotejo 2026-08-24): sin el, se puede
+                  prescribir un producto que no existe todavia y el paciente se va con una indicacion que
+                  no puede cumplir. Los no disponibles NO se ocultan (el profesional debe saber que el
+                  modelo los contempla), se marcan. */}
               {protocol.catalog.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
+                  {c.commercialAvailability === "en_consultorio"
+                    ? " · en consultorio"
+                    : c.commercialAvailability === "solo_tienda"
+                      ? " · solo en tienda"
+                      : " · aún no disponible"}
                 </option>
               ))}
             </select>

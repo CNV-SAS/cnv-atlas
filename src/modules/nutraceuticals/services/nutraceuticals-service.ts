@@ -38,6 +38,8 @@ export function createNutraceutical(
 
 export function updateNutraceutical(input: UpdateNutraceuticalInput): Promise<Nutraceutical> {
   return repo.updateNutraceutical(input.id, {
+    // La disponibilidad es EDITABLE aqui (no al crear): un producto nuevo nace `no_disponible`.
+    commercial_availability: input.commercialAvailability,
     name: input.name,
     description: input.description ?? null,
     unit: input.unit ?? null,

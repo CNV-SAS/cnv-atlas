@@ -34,6 +34,23 @@ export function EditNutraceuticalForm({ nutraceutical: n }: { nutraceutical: Nut
           <Label htmlFor={`unit-${n.id}`}>Unidad</Label>
           <Input id={`unit-${n.id}`} name="unit" defaultValue={n.unit ?? ""} />
         </div>
+        {/* DISPONIBILIDAD COMERCIAL (cotejo 2026-08-24): el badge se veia en la tarjeta y no habia forma
+            de cambiarlo, asi que el catalogo no se podia mantener al dia. Es dato COMERCIAL y lo mueve el
+            admin del catalogo. "No disponible" no es un estado de relleno: hoy solo cuatro referencias
+            existen de verdad, y marcar el resto como "solo tienda" hace creer que se pueden conseguir. */}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`avail-${n.id}`}>Disponibilidad</Label>
+          <select
+            id={`avail-${n.id}`}
+            name="commercialAvailability"
+            defaultValue={n.commercial_availability ?? "no_disponible"}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="en_consultorio">En consultorio</option>
+            <option value="solo_tienda">Solo en tienda</option>
+            <option value="no_disponible">No disponible</option>
+          </select>
+        </div>
         <PriceIvaField
           id={`price-${n.id}`}
           initialValue={n.unit_price != null ? Number(n.unit_price) : null}

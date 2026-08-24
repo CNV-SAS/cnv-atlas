@@ -50,7 +50,7 @@ export async function createNutraceutical(
 
 export async function updateNutraceutical(
   id: string,
-  patch: { name: string; description: string | null; unit: string | null; unit_price: number | null },
+  patch: { commercial_availability: "en_consultorio" | "solo_tienda" | "no_disponible"; name: string; description: string | null; unit: string | null; unit_price: number | null },
 ): Promise<Nutraceutical> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

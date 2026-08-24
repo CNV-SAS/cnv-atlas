@@ -14,8 +14,14 @@ export const createNutraceuticalSchema = z.object({
 });
 export type CreateNutraceuticalInput = z.infer<typeof createNutraceuticalSchema>;
 
+// La DISPONIBILIDAD solo se edita (al crear nace `no_disponible`, que es el default de la columna): un
+// producto nuevo no esta en ninguna parte hasta que alguien diga que si. Es dato COMERCIAL y lo mueve el
+// admin del catalogo, no el profesional. Cotejo 2026-08-24: el badge se veia y no habia como cambiarlo.
+export const nutraceuticalAvailabilityValues = ["en_consultorio", "solo_tienda", "no_disponible"] as const;
+
 export const updateNutraceuticalSchema = createNutraceuticalSchema.extend({
   id: dbUuid,
+  commercialAvailability: z.enum(nutraceuticalAvailabilityValues),
 });
 export type UpdateNutraceuticalInput = z.infer<typeof updateNutraceuticalSchema>;
 
