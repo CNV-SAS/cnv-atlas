@@ -162,6 +162,6 @@ Lo único que sí conviene: que la lista de evaluaciones **distinga visualmente*
 | 6 | El cierre de la consulta con su lista de pendientes | **media** | 1, y la quinta pestaña |
 | 7 | Pago mixto | media | 4 |
 | 8 | El cobro dentro de Tratamiento | media | 4, 7 |
-| — | Bloquear la prescripción por alergia registrada | **aparte** | Gildardo + modelo de componentes |
+| · | Bloquear la prescripción por alergia registrada | **aparte** | Gildardo + modelo de componentes |
 
 **Las tres primeras se pueden hacer ya** y resuelven el problema que Santiago vio. El resto es la superficie de dinero, y va después, en ese orden.
