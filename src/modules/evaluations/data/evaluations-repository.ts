@@ -184,12 +184,12 @@ export async function getPatientSex(patientId: string): Promise<"M" | "F" | null
 // RLS: devuelve null si el paciente no es del profesional (no lo puede leer).
 export async function getPatientPrefill(
   patientId: string,
-): Promise<{ city: string | null; longestResidenceCity: string | null; phone: string | null } | null> {
+): Promise<{ city: string | null; phone: string | null } | null> {
   const supabase = await createSupabaseServerClient();
   const [{ data: profile, error: pErr }, { data: contact, error: cErr }] = await Promise.all([
     supabase
       .from("patient_profiles")
-      .select("city, longest_residence_city")
+      .select("city")
       .eq("patient_id", patientId)
       .maybeSingle(),
     supabase.from("patient_contacts").select("phone").eq("patient_id", patientId).maybeSingle(),
@@ -199,7 +199,6 @@ export async function getPatientPrefill(
   if (!profile) return null; // sin acceso (RLS) o no existe
   return {
     city: profile.city ?? null,
-    longestResidenceCity: profile.longest_residence_city ?? null,
     phone: contact?.phone ?? null,
   };
 }

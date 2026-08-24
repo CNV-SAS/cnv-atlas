@@ -62,7 +62,6 @@ export const evaluations = pgTable(
     // Opcional, caracterizacion, sin field_key. Distinta de la ciudad ACTUAL (perfil, contacto). De aqui
     // saldria la altitud FISIOLOGICA cuando el observatorio la use (hoy no alimenta el motor). El perfil es
     // la fuente del PREFILL. Se captura en la fase de firma, junto a la ciudad actual, no en la fase 2.
-    longestResidenceCity: text("longest_residence_city"),
     // Flag de vigencia del flujo de correccion (gate del Hito 1, ver PLAN_FLUJO_CORRECCION.md).
     // NULL = evaluacion vigente; con valor = fue reemplazada por una version corregida. NO es la
     // relacion (a cual la reemplazo eso vive en clinical_corrections, UNA vez); es una proyeccion

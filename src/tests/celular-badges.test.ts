@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { BIODY_COLUMNS } from "@/clinical-engine";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
-import { computeCelularBadges } from "@/modules/treatment/data/celular-badges";
+import { computeCelularBadges } from "@/modules/diagnoses/data/celular-badges";
 
 // Arma el `raw` (variable_name normalizado -> valor) desde claves de BIODY_COLUMNS, como llega de B8.
 function mk(vals: Partial<Record<string, number>>): Record<string, number> {

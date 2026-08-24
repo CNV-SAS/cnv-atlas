@@ -31,7 +31,6 @@ import {
   saveRestriccionesAction,
   type TreatmentActionState,
 } from "../actions";
-import type { CelularBadges } from "../data/celular-badges";
 import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
@@ -51,17 +50,6 @@ const EMPTY: TreatmentActionState = { error: null, success: null, warning: null 
 // Panel del protocolo de tratamiento (B13), vista interna del profesional. Edita objetivos,
 // nutraceuticos y guias, y agrega notas. Si el diagnostico no esta confirmado, la edicion
 // se bloquea (gate de B13: el protocolo se autoriza tras aprobar el reporte).
-// Tono de la badge celular. warn/alert usan tokens de BRAND; info (hidratacion) un cian estandar.
-const CEL_TONE_CLS: Record<CelularBadges["badges"][number]["tone"], string> = {
-  warn: "border-clinical-warning/40 bg-clinical-warning-bg text-clinical-warning",
-  alert: "border-destructive/40 bg-destructive/10 text-destructive",
-  info: "border-sky-500/40 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
-};
-
-// Nivel III · Salud celular (portado del vigente, celBadges). TRES estados que se distinguen a
-// proposito (misma disciplina que el menu deshabilitado): (1) badges de alteracion; (2) datos
-// presentes y ninguna alteracion -> se DICE ("sin alteraciones"); (3) sin las columnas necesarias
-// -> "no se pudo evaluar", que NO es lo mismo que "sin alteraciones".
 // Peso meta (cadena calórica, pieza 1: HECHO VISIBLE — nota 3 de Gildardo). Hoy el peso sobre el que se
 // calcula la prescripción sale del snapshot (pesoCalculo) y, si nadie lo fija, se usa sin decirlo. Aquí se
 // MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, vía saveAdjustmentsAction). No
@@ -391,59 +379,13 @@ function CadenaCaloricaSection({
   );
 }
 
-function CelularSection({ celular }: { celular?: CelularBadges | null }) {
-  if (!celular) return null; // sin medicion BIS: no hay seccion (tampoco habria protocolo).
-  return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-foreground">Nivel III · Salud celular</h3>
-      {!celular.dataAvailable ? (
-        <p className="text-sm text-muted-foreground">
-          Esta medicion BIS no incluye los parametros necesarios para evaluar la salud celular
-          (angulo de fase, MCA, hidratacion, ECM/BCM).
-        </p>
-      ) : (
-        <>
-          {celular.badges.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {celular.notEvaluable.length > 0
-                ? "Sin alteraciones en los parámetros evaluados."
-                : "Sin alteraciones celulares que requieran priorizacion."}
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {celular.badges.map((b) => (
-                <li
-                  key={b.id}
-                  className={`flex flex-col gap-0.5 rounded-md border px-3 py-2 text-sm ${CEL_TONE_CLS[b.tone]}`}
-                >
-                  <span className="font-semibold">{b.label}</span>
-                  <span className="text-foreground/80">{b.guidance}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* No evaluables por falta de referencia (no de dato): que "sin alteraciones" no se lea como
-              si estos parametros se hubieran evaluado. La referencia la debe Gildardo (Q35). */}
-          {celular.notEvaluable.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No evaluables aun (esperan las referencias poblacionales del modelo):{" "}
-              {celular.notEvaluable.map((n) => n.label).join(", ")}.
-            </p>
-          ) : null}
-        </>
-      )}
-    </section>
-  );
-}
 
 export function TreatmentPanel({
   evaluationId,
   protocol,
-  celular,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  celular?: CelularBadges | null;
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -494,7 +436,6 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        <CelularSection celular={celular} />
 
         {/* Marca de bloque: aqui empieza el PLAN ALIMENTARIO. Borde superior mas fuerte + titulo, distinto de
             los separadores de seccion (border-t simple), para que se vea donde termina la lectura y empieza el

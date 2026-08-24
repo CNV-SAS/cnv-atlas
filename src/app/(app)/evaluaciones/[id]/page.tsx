@@ -25,6 +25,8 @@ import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { formatDate } from "@/lib/format/date";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
+import { CelularSection } from "@/modules/diagnoses/components/celular-section";
+import { getCelularBadgesForEvaluation } from "@/modules/diagnoses/data/celular-badges-reader";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { getPendingReferralHints } from "@/modules/referrals/data/referrals-reader";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
@@ -486,16 +488,23 @@ export default async function ResultadosEvaluacionPage({
           }
           composition={
             composition ? (
-              <CompositionSection
-                composition={composition}
-                sexoM={sexoM}
-                classifications={results.snapshot.classifications}
-                sevByCode={
-                  isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}
-                }
-                references={wangRefs}
-                fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
-              />
+              <>
+                <CompositionSection
+                  composition={composition}
+                  sexoM={sexoM}
+                  classifications={results.snapshot.classifications}
+                  sevByCode={
+                    isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}
+                  }
+                  references={wangRefs}
+                  fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
+                />
+                {/* Nivel III · Salud celular. Estaba en Tratamiento (portada de donde el la tenia: su
+                    subpestaña del nutricionista) y la movio Gildardo a Diagnostico el 2026-08-23: son
+                    HALLAZGOS, no conducta. Va junto a la composicion, que es su vecina natural: las dos
+                    leen los crudos del BIS por niveles de Wang. */}
+                <CelularSection celular={await getCelularBadgesForEvaluation(id)} />
+              </>
             ) : null
           }
           // Encuesta (D1-D8): D1 = patron; D2-D8 = read-out por dominio.

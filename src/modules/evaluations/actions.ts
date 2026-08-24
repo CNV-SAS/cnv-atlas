@@ -118,7 +118,6 @@ function readIdentityFromForm(form: FormData) {
     sex: str(form, "sex") || null,
     country: str(form, "country") || null,
     city: str(form, "city") || null,
-    longestResidenceCity: str(form, "longestResidenceCity") || null,
     email: str(form, "email") || null,
     phone: str(form, "phone") || null,
   };

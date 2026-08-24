@@ -33,9 +33,10 @@ export const intakeIdentitySchema = z.object({
   sex: z.enum(["F", "M"]),
   country: z.string().trim().max(80).nullish().transform((v) => v ?? null),
   city: z.string().trim().max(80).nullish().transform((v) => v ?? null),
-  // Residencia prolongada (Gildardo §1). Opcional (nullish), max 80 como la ciudad. Sin gate: es
-  // caracterizacion, no dato sensible como la etnia.
-  longestResidenceCity: z.string().trim().max(80).nullish().transform((v) => v ?? null),
+  // Residencia prolongada RETIRADA (Gildardo, 2026-08-23): "no la parametrice nunca y no va". Lo que
+  // interesa es donde esta la persona al hacer la encuesta, que es lo que la ciudad ACTUAL ya captura, y
+  // de ahi sale la altitud con la tabla ciudad -> altitud. Se retira del schema, del formulario y del
+  // writer; la columna se retira aparte (nunca recibio nada en produccion).
   email: z.email().max(160).nullish().transform((v) => v ?? null),
   phone: z.string().trim().max(40).nullish().transform((v) => v ?? null),
 });

@@ -18,7 +18,7 @@ const { importBisMeasurement } = await import("@/modules/bis/services/bis-import
 const { buildComposition, allCompositionRows } = await import("@/modules/diagnoses/data/composition-map");
 const { buildBisRow } = await import("@/modules/clinical-pipeline/services/build-engine-input");
 const { analizarDesdeBiody } = await import("@/clinical-engine/analysis");
-const { computeCelularBadges } = await import("@/modules/treatment/data/celular-badges");
+const { computeCelularBadges } = await import("@/modules/diagnoses/data/celular-badges");
 const { BIODY_COLUMNS } = await import("@/clinical-engine");
 const { normalizeHeader } = await import("@/modules/bis/services/header-map");
 

@@ -56,7 +56,6 @@ export const patientProfiles = pgTable("patient_profiles", {
   // sale la altitud FISIOLOGICA (la adaptacion a la altura viene de vivir años en altura, no de donde esta
   // hoy); hoy NO alimenta el motor, entra al observatorio. Perfil = ultimo valor conocido (prefill); el valor
   // versionado por encuentro vive en evaluations (alguien puede mudarse entre consultas). Sin field_key.
-  longestResidenceCity: text("longest_residence_city"),
   // Caracterizacion sociodemografica OPCIONAL (observatorio/ObBIA). Nullable a proposito: si el paciente no
   // responde queda VACIO, nunca un valor por defecto (un dato inventado es peor que uno vacio). No alimentan
   // ningun motor (sin field_key). Se capturan al inicio de la fase 2 del intake, ya autorizado. Etnia y

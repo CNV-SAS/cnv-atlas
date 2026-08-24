@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 
 import type { ActorProfession } from "../data/actor-profession-reader";
-import { getCelularBadgesForEvaluation } from "../data/celular-badges-reader";
 import { getMedicoEjercicioForEvaluation } from "../data/medico-ejercicio-treatment-reader";
 import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
@@ -157,9 +156,6 @@ async function Panel({
       </div>
     );
   }
-  // Badges de salud celular (Nivel III): se leen server-side de los crudos BIS (misma fuente que la
-  // composicion de Diagnostico) y se pasan al panel client. null si no hay medicion BIS.
-  const celular = await getCelularBadgesForEvaluation(evaluationId);
   // AGRUPACION (2026-08-22): dos bloques SEGUIDOS en un solo scroll, sin nivel de navegacion nuevo. Arriba
   // LECTURA DEL DIAGNOSTICO (resumen + meta aqui, server; objetivo + guias + celular en el panel client); una
   // marca de bloque dentro del panel abre el PLAN ALIMENTARIO. El titulo de aqui nombra el bloque superior,
@@ -176,7 +172,7 @@ async function Panel({
         narrative={narrative}
         alertaRealimentacion={protocol.protocolSuggested?.alertaSindRealim ?? false}
       />
-      <TreatmentPanel evaluationId={evaluationId} protocol={protocol} celular={celular} />
+      <TreatmentPanel evaluationId={evaluationId} protocol={protocol} />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
   );

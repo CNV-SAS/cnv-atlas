@@ -25,6 +25,8 @@ export function AlimentosDelSubgrupo({ sub }: { sub: string }) {
       <p className="mt-1 max-w-prose leading-relaxed text-muted-foreground">
         {alimentos.map((a) => `${a.al} (${a.g} g)`).join(" · ")}
       </p>
+      {/* Mismo aviso que la lista del paciente, en una linea: aqui tambien es la lista base. */}
+      <p className="mt-1 text-muted-foreground/80">Lista base, sin adaptar a la ciudad del paciente.</p>
     </details>
   );
 }
@@ -48,6 +50,17 @@ export function ListaIntercambioPaciente() {
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
       <h3 className="text-sm font-semibold text-foreground">Lista de intercambio para el paciente</h3>
+      {/* LISTA BASE, no la del paciente (Gildardo, P-26, 2026-08-23): "los alimentos que entran a la lista
+          se escogen por REPRESENTATIVIDAD SEGUN LA CIUDAD donde vive el paciente, y esa seleccion se hace
+          con IA. Un intercambio de cereales en Riohacha no se compone igual que en Bogota". Esa seleccion
+          hoy NO se puede construir (depende de un proxy de IA caido). Lo que se muestra es la lista base
+          del ICBF. Decirlo NO es un detalle: sin este rotulo el profesional cree que ya esta adaptada a su
+          paciente y se la entrega como tal. Los 12 grupos y los nutrientes por porcion SI son estables. */}
+      <p className="max-w-prose rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+        Esta es la <strong>lista base</strong> (U de A · ICBF 2025), la misma para todos. Todavía no está
+        adaptada a la ciudad del paciente: la selección de qué alimentos representan cada grupo según dónde
+        vive está pendiente. Revísala antes de entregarla.
+      </p>
       <p className="max-w-prose text-sm text-muted-foreground">
         Cómo usar esta lista: los alimentos de un mismo grupo aportan aproximadamente lo mismo por porción,
         así que puedes intercambiarlos libremente. Sigue las porciones que te indicó tu nutricionista para

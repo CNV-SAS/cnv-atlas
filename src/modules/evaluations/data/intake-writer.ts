@@ -124,7 +124,6 @@ async function writePatientConsentsAndGate(
       sex: input.identity.sex,
       country: input.identity.country,
       city: input.identity.city,
-      longestResidenceCity: input.identity.longestResidenceCity,
     });
     await tx.insert(patientContacts).values({
       patientId,
@@ -321,7 +320,6 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         resumeToken,
         // Residencia prolongada VERSIONADA por evaluacion (Gildardo §1): el valor de ESTE encuentro, por si
         // el paciente se mudo entre consultas. El perfil (patient_profiles) guarda el ultimo conocido (prefill).
-        longestResidenceCity: input.identity.longestResidenceCity,
         // El nombre declarado se guarda SIEMPRE que hay conflicto (es lo que lo hace resoluble: sin el, el
         // profesional veria "hay conflicto" sin saber con que). Sin conflicto, no se guarda.
         identityConflict: conflict,
