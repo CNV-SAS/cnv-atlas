@@ -6,6 +6,7 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-demo-realimentacion-f10.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
 import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
+import { fillSurveyComplete } from "./fixtures/survey-fill";
 
 // SEED de los avisos del PLAN ALIMENTARIO. Siembra, por la VIA REAL del pipeline, dos pacientes de
 // demostracion que hacen visible lo que el motor calcula y el nutricionista tiene que ver:
@@ -133,40 +134,9 @@ describe.skipIf(!RUN)("seed demo de los avisos del plan (via pipeline real)", ()
           .values({ evaluationId: evalId, surveyVersionId: svId })
           .returning({ id: schema.surveyResponses.id })
       )[0].id;
-      // La encuesta se responde COMPLETA: el pipeline rechaza una incompleta (validacion de dominio).
-      // Prioridad: override del caso > fixture DFI > primera opcion (o valor neutro si es abierta). El
-      // relleno es por TIPO y no por lista, asi un bump de la encuesta no lo deja a medias en silencio.
-      const questions = await db
-        .select({
-          id: schema.surveyQuestions.id,
-          fieldKey: schema.surveyQuestions.fieldKey,
-          tipo: schema.surveyQuestions.questionType,
-        })
-        .from(schema.surveyQuestions)
-        .where(eq(schema.surveyQuestions.surveyVersionId, svId));
-      for (const q of questions as { id: string; fieldKey: string | null; tipo: string }[]) {
-        const opts = await db
-          .select({ text: schema.surveyOptions.optionText })
-          .from(schema.surveyOptions)
-          .where(eq(schema.surveyOptions.questionId, q.id))
-          .orderBy(schema.surveyOptions.orderIndex);
-        const texts = opts.map((o: { text: string }) => o.text);
-        let value: string;
-        if (q.fieldKey && q.fieldKey in overrides) {
-          value = overrides[q.fieldKey];
-          const elegidas: string[] = value.startsWith("[") ? JSON.parse(value) : [value];
-          for (const t of elegidas) {
-            if (!texts.includes(t)) throw new Error(`opcion inexistente para ${q.fieldKey}: ${t}`);
-          }
-        } else if (q.fieldKey && q.fieldKey in ANSWERS) {
-          value = resolveAnswerValue(texts, ANSWERS[q.fieldKey]);
-        } else if (texts.length > 0) {
-          value = q.tipo === "opcion_multiple" ? JSON.stringify([texts[0]]) : texts[0];
-        } else {
-          value = q.tipo === "numero" ? "1" : "Sin dato (paciente demo)";
-        }
-        await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
-      }
+      // La encuesta se responde COMPLETA por TIPO (el pipeline rechaza una incompleta). El relleno se
+      // comparte con el seed de trayectoria: tenerlo dos veces fue justo lo que dejo al otro a medias.
+      await fillSurveyComplete(db, schema, eq, respId, svId, { overrides, fixture: ANSWERS, resolve: resolveAnswerValue });
       const measId = (
         await db
           .insert(schema.bisMeasurements)

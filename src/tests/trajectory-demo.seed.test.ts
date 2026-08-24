@@ -6,6 +6,7 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { fillSurveyComplete, lastOptionByFieldKey } from "./fixtures/survey-fill";
 
 // SEED del smoke de P0 Parte 2 (trayectoria de EB-BIS). Fabrica, por la VIA REAL del pipeline, tres
 // pacientes que ejercitan las tres superficies distintas: EMPEORO (confirmacion + PDF), MEJORO (PDF
@@ -40,11 +41,18 @@ const EMP_E2 = "a0000000-0000-4000-8000-0000000000d3"; // seguimiento hoy, DEGRA
 const MEJ_PAT = "a0000000-0000-4000-8000-0000000000d4";
 const MEJ_E1 = "a0000000-0000-4000-8000-0000000000d5"; // inicial, 4 meses atras, DEGRADADA -> EB alta
 const MEJ_E2 = "a0000000-0000-4000-8000-0000000000d6"; // seguimiento hoy, COMPLETA -> EB baja -> mejoro
+// SEGUNDO caso EMPEORO, para el bloque de "confirmar y agendar" (2026-08-24). Existe porque ese bloque se
+// CONSUME al aprobar y enviar el reporte, y no hay forma de reemitirlo: el primero (EMP_*) ya se gasto en
+// un smoke. No es duplicar por duplicar; es que el caso es de UN SOLO USO mientras no exista la reemision.
+const EMP2_PAT = "a0000000-0000-4000-8000-0000000000e1";
+const EMP2_E1 = "a0000000-0000-4000-8000-0000000000e2"; // inicial, 4 meses atras, COMPLETA
+const EMP2_E2 = "a0000000-0000-4000-8000-0000000000e3"; // seguimiento hoy, DEGRADADA -> empeoro
 const SHT_PAT = "a0000000-0000-4000-8000-0000000000d7";
 const SHT_E1 = "a0000000-0000-4000-8000-0000000000d8"; // inicial, hace 2 semanas
 const SHT_E2 = "a0000000-0000-4000-8000-0000000000d9"; // seguimiento hoy -> intervalo corto -> aviso
 
-// Subconjunto para la encuesta DEGRADADA (dfi.complete=false, EB mas alta por defaults).
+// Preguntas del DFI que la encuesta DEGRADADA responde IGUAL que la buena. El resto va al extremo del
+// catalogo. El subconjunto se conserva del diseno original para que las dos EB difieran, no coincidan.
 const PARTIAL = new Set(["d2_19", "d3_23", "d3_24"]);
 
 describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", () => {
@@ -64,7 +72,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     const pro = await pickDemoProfessional(db, schema, "nutricionista");
     proId = pro.proId;
     actorId = pro.actorId;
-    await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
+    await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, EMP2_E1, EMP2_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
   });
 
@@ -76,27 +84,46 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     await db.insert(schema.patientContacts).values({ patientId, email: "sau.idk001@gmail.com" }).onConflictDoNothing();
   }
 
-  async function ensureEval(patientId: string, evalId: string, type: string, measurementDate: string, complete: boolean) {
+  // El deterioro YA NO se logra dejando la encuesta a medias: el gate de completitud (Gildardo §1 del
+  // 2026-08-13) prohibe diagnosticar con encuesta incompleta, y eso dejo al seed sin poder crear ni un caso
+  // (respondia 31 de 64). Ahora las DOS encuestas van completas y lo que cambia son las RESPUESTAS: la
+  // degradada responde el extremo del catalogo en las preguntas del DFI que no estan en PARTIAL. La banda
+  // no se asume: la sella el pipeline y cada caso la assertea.
+  async function ensureEval(patientId: string, evalId: string, type: string, measurementDate: string, buena: boolean) {
     const has = await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, evalId)).limit(1);
     if (has.length > 0) return; // ya sembrada
     await db.insert(schema.evaluations).values({ id: evalId, patientId, professionalId: proId, organizationId: orgId, type, status: "in_progress" }).onConflictDoNothing();
     const respId = (await db.insert(schema.surveyResponses).values({ evaluationId: evalId, surveyVersionId: svId }).returning({ id: schema.surveyResponses.id }))[0].id;
-    const questions = await db
-      .select({ id: schema.surveyQuestions.id, fieldKey: schema.surveyQuestions.fieldKey })
-      .from(schema.surveyQuestions)
-      .where(eq(schema.surveyQuestions.surveyVersionId, svId));
-    for (const q of questions as { id: string; fieldKey: string | null }[]) {
-      if (!q.fieldKey || !(q.fieldKey in ANSWERS)) continue;
-      if (!complete && !PARTIAL.has(q.fieldKey)) continue; // degradada: solo el subconjunto
-      const opts = await db.select({ text: schema.surveyOptions.optionText }).from(schema.surveyOptions).where(eq(schema.surveyOptions.questionId, q.id)).orderBy(schema.surveyOptions.orderIndex);
-      const value = resolveAnswerValue(opts.map((o: { text: string }) => o.text), ANSWERS[q.fieldKey]);
-      await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: q.id, answerValue: value });
-    }
+    const overrides = buena
+      ? {}
+      : await lastOptionByFieldKey(db, schema, eq, svId, Object.keys(ANSWERS).filter((k) => !PARTIAL.has(k)));
+    await fillSurveyComplete(db, schema, eq, respId, svId, { overrides, fixture: ANSWERS, resolve: resolveAnswerValue });
     const measId = (await db.insert(schema.bisMeasurements).values({ evaluationId: evalId, measurementDate: new Date(measurementDate) }).returning({ id: schema.bisMeasurements.id }))[0].id;
     await db.insert(schema.bisRawValues).values(bisRawRows(biody).map((r) => ({ measurementId: measId, variableName: r.name, value: r.value })));
     const res = await runClinicalPipeline({ evaluationId: evalId, actorId, actorEmail: "traj-demo@cnv", ip: null });
-    expect(res.ok).toBe(true);
+    expect(res.ok, res.ok ? "" : JSON.stringify(res.error)).toBe(true);
   }
+
+  // EL BLOQUE AMBAR DE "CONFIRMAR Y AGENDAR" SOLO SE VE CON EL REPORTE EN `draft` (report-card.tsx:57:
+  // `status === "draft" && band === "empeoro" && !communicated`). Es decir: el caso se CONSUME al aprobar
+  // y enviar el reporte, y despues no hay forma de volver a verlo, porque un reporte enviado no se puede
+  // reenviar ni reemitir (ver el hallazgo del 2026-08-24). Por eso el seed avisa cuando el caso ya se gasto:
+  // sin este chequeo, quien lo corra vuelve a la pantalla, no ve el bloque, y cree que esta roto.
+  it("EMPEORO: avisa si el caso NUEVO ya se consumio (el bloque ambar es de un solo uso)", async () => {
+    const { eq } = await import("drizzle-orm");
+    const [r] = await db
+      .select({ status: schema.reports.status })
+      .from(schema.reports)
+      .where(eq(schema.reports.evaluationId, EMP2_E2))
+      .limit(1);
+    if (!r) return; // todavia no sembrado; la prueba de abajo lo crea
+    expect(
+      r.status,
+      `El reporte del caso EMPEORO 2 esta en "${r.status}", no en "draft": el bloque de confirmar y agendar ` +
+        "ya se consumio en un smoke anterior y NO se puede volver a ver (un reporte enviado no se reenvia " +
+        "ni se reemite). Para volver a probarlo hace falta un par de evaluaciones nuevo.",
+    ).toBe("draft");
+  });
 
   it("EMPEORO: inicial completa (4 meses) + seguimiento degradado hoy -> banda empeoro sin confirmar", async () => {
     await ensurePatient(EMP_PAT, "Empeoro (smoke)");
@@ -104,6 +131,21 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     await ensureEval(EMP_PAT, EMP_E2, "seguimiento", "2026-08-05T10:00:00Z", false);
     const t = (await db.select({ t: schema.reports.trajectory }).from(schema.reports).where(eq(schema.reports.evaluationId, EMP_E2)).limit(1))[0].t;
     expect(t?.band).toBe("empeoro");
+  });
+
+  it("EMPEORO (2o caso, para el bloque de confirmar y agendar): banda empeoro y reporte en draft", async () => {
+    const { eq } = await import("drizzle-orm");
+    await ensurePatient(EMP2_PAT, "Empeoro 2 (confirmar y agendar)");
+    await ensureEval(EMP2_PAT, EMP2_E1, "inicial", "2026-04-05T10:00:00Z", true);
+    await ensureEval(EMP2_PAT, EMP2_E2, "seguimiento", "2026-08-05T10:00:00Z", false);
+    const [r] = await db
+      .select({ status: schema.reports.status, t: schema.reports.trajectory })
+      .from(schema.reports)
+      .where(eq(schema.reports.evaluationId, EMP2_E2))
+      .limit(1);
+    expect(r.t?.band).toBe("empeoro");
+    // Las DOS condiciones que hacen visible el bloque ambar, juntas: banda y estado.
+    expect(r.status).toBe("draft");
   });
 
   it("MEJORO: inicial degradada (4 meses) + seguimiento completo hoy -> banda mejoro", async () => {

@@ -95,6 +95,8 @@ La encuesta las captura con opciones cerradas: alergias (leche, huevo, maní, tr
 
 **Verificamos qué hace tu archivo:** las lee **en un solo sitio**, para el párrafo clínico ("presenta ... alergia a X"). En toda el área del plan y del menú no aparecen. **Tampoco llegan al menú en tu prototipo**, así que es probable que sea una conexión que no se pensó.
 
+**Y hay algo que lo empeora, que apareció al armar la historia clínica.** Esa historia sí va a mostrar las alergias, porque salen de la encuesta. Es decir: el documento clínico que firma el profesional **va a decir que el paciente es alérgico al marisco**, en la misma consulta en la que el menú se lo puede servir. No es que el dato falte: es que el dato está a la vista en una hoja y ausente en la otra. Un plan que contradice a la historia clínica del mismo paciente es peor que un plan sin el dato, porque parece verificado.
+
 **Nuestra propuesta:** que viajen al menú **en bloque propio y por encima de todo lo demás**. Una restricción médica se puede matizar; una alergia declarada, no. ¿La apruebas? ¿Y la intolerancia igual de dura, o con matiz (la lactosa admite grados, el maní no)?
 
 ## 3.2 · El menú no sabe cuántas porciones lleva cada comida
