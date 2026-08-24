@@ -472,21 +472,14 @@ export default async function ResultadosEvaluacionPage({
               />
             }
           />
-          {/* Reporte: cierre natural de la etapa de Tratamiento (es su salida: el profesional termina el
-              plan y genera el reporte). DECIDIDO 2026-08-21 (Santiago): se QUEDA aqui, NO se mueve. Atlas no
-              tiene pestaña Reporte, y crear una quinta para mover algo que ya esta en su sitio no gana nada;
-              el HTML lo tiene aparte porque su estructura es otra, no porque la nuestra este mal. No reabrir.
-              La aprobacion/envio la gobierna la propia ReportCard; aqui solo cambia donde se renderiza. */}
-          {reportCard ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
-              {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
-                  corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
-                  hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
-              <TrajectoryNotice notice={trajectoryNotice} />
-              <ReportCard report={reportCard} />
-            </section>
-          ) : null}
+          {/* EL REPORTE SE MOVIO A LA QUINTA ETAPA (2026-08-24). Aqui vivia por la decision del 2026-08-21,
+              que decia "se QUEDA aqui, NO se mueve... No reabrir". Esa decision NO se ignoro: su PREMISA
+              cambio, y estaba escrita en ella misma ("Atlas no tiene pestaña Reporte, y crear una quinta
+              para mover algo que ya esta en su sitio no gana nada"). Ahora la quinta existe, y no se creo
+              para mover el reporte: se creo porque el cotejo saco su historia clinica de once secciones,
+              las cuatro salidas al paciente, y el cierre de la consulta, que no tenian donde vivir. Con esa
+              pestaña, el reporte esta en su sitio alli. Se deja escrito para que no se lea como que se
+              paso por encima de una decision tomada. */}
           {/* La correccion de la encuesta NO se duplica aqui: es el MISMO componente (misma ruta /corregir)
               que ya vive en el "Cierre del diagnostico" (junto a ConfirmDiagnosisPanel, en Diagnostico). Se
               quito la copia de Tratamiento (checkpoint 2, 2026-08-21): una sola via, en Diagnostico. */}
@@ -500,10 +493,23 @@ export default async function ResultadosEvaluacionPage({
         )
       }
       reporte={
-        // QUINTA ETAPA (2026-08-24), pieza 1: la pestaña con su acceso y navegacion. El reporte y el cierre
-        // se MUEVEN aqui en la pieza siguiente, con su diff aparte, porque mover el reporte reabre una
-        // decision anterior (se dejo en Tratamiento porque no habia pestaña destino).
-        <EtapaReporte />
+        // QUINTA ETAPA, pieza 2 (2026-08-24): el reporte vive aqui, con su aprobacion, sus tres modos de
+        // envio y su historial. Se MOVIO entero, sin partirlo: el flujo lo gobierna la propia ReportCard y
+        // sus acciones revalidan la PAGINA (revalidatePath "/evaluaciones/[id]"), no una pestaña, asi que
+        // cambiar de etapa no toca nada del acto. La proxima cita se va con el: se captura DENTRO de la
+        // ReportCard (en la confirmacion de trayectoria desfavorable), no como un paso aparte.
+        reportCard ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
+            {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
+                corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
+                hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
+            <TrajectoryNotice notice={trajectoryNotice} />
+            <ReportCard report={reportCard} />
+          </section>
+        ) : (
+          <EtapaReporte />
+        )
       }
       diagnostico={
         // EvaluationResults ES el orquestador del Diagnostico: cabecera + franja persistentes + 3
