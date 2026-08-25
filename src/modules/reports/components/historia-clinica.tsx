@@ -119,7 +119,9 @@ export function HcAntecedentes({
         // Una fila AUSENTE (la pregunta no existe en esta version de la encuesta) no se pinta: pintarla
         // vacia diria "no se registró" de algo que nunca se preguntó. Un grupo que queda sin filas
         // desaparece entero.
-        const filas = g.filas.filter((f) => !f.ausente);
+        // AUSENTE: la pregunta no existe en esta version. SOLO-NINGUNA: su guarda (una seccion que solo
+        // diria "Ninguna" no se pinta). Un grupo que se queda sin filas desaparece entero.
+        const filas = g.filas.filter((f) => !f.ausente && !f.soloNinguna);
         if (filas.length === 0) return null;
         return (
           <div key={g.titulo} className="flex flex-col gap-2">

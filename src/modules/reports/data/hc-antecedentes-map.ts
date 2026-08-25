@@ -18,6 +18,13 @@ export type HcAntecedenteRow = {
   patron?: RegExp; // ultimo recurso: las que no tienen field_key
   /** Chips en vez de fila etiqueta/valor (listas: diagnosticos, medicamentos). */
   comoLista?: boolean;
+  /**
+   * Guarda de Gildardo: la fila DESAPARECE si lo unico respondido es "Ninguna". Su HC no pinta
+   * "Antecedentes quirurgicos: Ninguna"; oculta la seccion entera. Es coherente con la distincion que ya
+   * usamos: "ninguna" es un resultado, no una ausencia, pero en un documento que se imprime no aporta una
+   * linea para decir que no hay nada. Se porta su guarda EXACTA, no una aproximacion.
+   */
+  ocultarSiNinguna?: boolean;
 };
 
 export type HcAntecedenteGrupo = { titulo: string; filas: HcAntecedenteRow[] };
@@ -46,12 +53,30 @@ export const HC_ANTECEDENTES: HcAntecedenteGrupo[] = [
     ],
   },
   {
-    titulo: "Antecedente quirúrgico",
+    // PORTE de su seccion "ANTECEDENTES QUIRURGICOS" (v8 L14991). Es CONDICIONAL en su archivo, no
+    // ausente: creimos que no la tenia porque la captura era de un paciente sin cirugias.
+    titulo: "Antecedentes quirúrgicos",
     filas: [
-      // No esta en SU HC, y se agrega a proposito: una cirugia que afecta la digestion o el metabolismo
-      // cambia absorcion, requerimiento proteico y tolerancia. Omitirla de la historia clinica porque su
-      // prototipo no la muestra seria copiar un hueco.
-      { id: "cirugia", etiqueta: "Cirugía digestiva o metabólica", patron: /cirugía que afecte la digestión/i },
+      {
+        id: "cirugia",
+        etiqueta: "Cirugía digestiva o metabólica",
+        patron: /cirugía que afecte la digestión/i,
+        comoLista: true,
+        ocultarSiNinguna: true,
+      },
+    ],
+  },
+  {
+    // PORTE de su seccion "EXPOSICION A CONTAMINANTES" (v8 L14999), con la misma guarda.
+    titulo: "Exposición a contaminantes",
+    filas: [
+      {
+        id: "contaminantes",
+        etiqueta: "Exposición habitual a contaminantes",
+        patron: /exposición habitual a contaminantes/i,
+        comoLista: true,
+        ocultarSiNinguna: true,
+      },
     ],
   },
 ];
@@ -66,6 +91,8 @@ export type HcAntecedenteResuelto = {
   declaradoNoConsumido: boolean;
   /** La pregunta no existe en esta version de la encuesta (distinto de existir y estar sin responder). */
   ausente: boolean;
+  /** Su guarda: respondio, y lo unico que respondio es "Ninguna". La fila no se pinta. */
+  soloNinguna: boolean;
 };
 
 /** Divide una respuesta guardada en sus valores: multi (JSON) o token plano. Conserva el texto de "Otra". */
@@ -104,11 +131,16 @@ export function resolverAntecedentes(
     titulo: g.titulo,
     filas: g.filas.map((fila) => {
       const q = encontrar(answers, fila);
+      const valores = valoresDeRespuesta(q?.answerValue);
       return {
         id: fila.id,
         etiqueta: fila.etiqueta,
-        valores: valoresDeRespuesta(q?.answerValue),
+        valores,
         comoLista: fila.comoLista === true,
+        soloNinguna:
+          fila.ocultarSiNinguna === true &&
+          valores.length > 0 &&
+          valores.every((v) => /^ningun[ao]s?$/i.test(v.trim())),
         // La marca sale del contrato del motor, no de una lista escrita a mano.
         declaradoNoConsumido: q != null && q.fieldKey == null,
         ausente: q == null,

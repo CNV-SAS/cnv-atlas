@@ -101,3 +101,62 @@ describe("antecedentes de la historia clinica", () => {
     expect(ids).toContain("cirugia");
   });
 });
+
+// ── Las dos secciones CONDICIONALES portadas (2026-08-24) ────────────────────────────────────────────
+// Creimos que su HC no las tenia. Las tiene, con guarda: se ocultan cuando lo unico respondido es
+// "Ninguna". La captura era de un paciente sin cirugias y sin exposicion, y una captura dice que aparecio,
+// no que puede aparecer. Se porta su guarda EXACTA.
+
+describe("secciones condicionales de antecedentes", () => {
+  it("la cirugía aparece cuando el paciente declaró alguna", () => {
+    const g = resolverAntecedentes([
+      q({
+        questionText: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?",
+        answerValue: '["Bypass gástrico"]',
+      }),
+    ]);
+    const f = fila(g, "cirugia");
+    expect(f?.valores).toEqual(["Bypass gástrico"]);
+    expect(f?.soloNinguna).toBe(false);
+  });
+
+  it("y DESAPARECE cuando lo único respondido es 'Ninguna'", () => {
+    const g = resolverAntecedentes([
+      q({
+        questionText: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?",
+        answerValue: '["Ninguna"]',
+      }),
+    ]);
+    expect(fila(g, "cirugia")?.soloNinguna).toBe(true);
+  });
+
+  it("si además de 'Ninguna' hay algo real, NO desaparece", () => {
+    const g = resolverAntecedentes([
+      q({
+        questionText: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?",
+        answerValue: '["Ninguna","Colecistectomía"]',
+      }),
+    ]);
+    expect(fila(g, "cirugia")?.soloNinguna).toBe(false);
+  });
+
+  it("exposición a contaminantes, con la misma guarda", () => {
+    const con = resolverAntecedentes([
+      q({ questionText: "¿Exposición habitual a contaminantes?", answerValue: '["Humo de leña"]' }),
+    ]);
+    expect(fila(con, "contaminantes")?.valores).toEqual(["Humo de leña"]);
+    const sin = resolverAntecedentes([
+      q({ questionText: "¿Exposición habitual a contaminantes?", answerValue: "Ninguna" }),
+    ]);
+    expect(fila(sin, "contaminantes")?.soloNinguna).toBe(true);
+  });
+
+  it("la guarda SOLO aplica donde él la puso: una fila sin ella muestra 'Ninguna'", () => {
+    // Alergias: su HC pinta "Alergias alimentarias: Ninguna" (se ve en su captura), no la oculta.
+    const g = resolverAntecedentes([
+      q({ questionText: "¿Alergias alimentarias diagnosticadas?", answerValue: "Ninguna" }),
+    ]);
+    expect(fila(g, "alergias")?.soloNinguna).toBe(false);
+    expect(fila(g, "alergias")?.valores).toEqual(["Ninguna"]);
+  });
+});
