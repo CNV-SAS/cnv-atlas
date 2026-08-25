@@ -1,4 +1,3 @@
-import type { DfiDomain } from "@/clinical-engine";
 
 import { SEV_LABEL } from "../severity-labels";
 
@@ -64,7 +63,23 @@ function ringPoly(n: number, r: number): string {
     .join(" ");
 }
 
-export function DfiRadar({ domains }: { domains: DfiDomain[] }) {
+export type RadarDomain = { id: string; nombre: string; sev: number };
+
+export function DfiRadar({
+  domains,
+  /**
+   * SEGUNDO poligono, para el radar comparativo de Seguimiento (2026-08-25): el estado INICIAL debajo del
+   * actual. Se dibuja punteado y sin relleno, para que el actual siga siendo el que se lee primero. Se
+   * porta su eleccion de comparar inicial contra ultima; las mediciones del medio viven en las series, que
+   * si muestran todos los puntos.
+   */
+  comparar,
+}: {
+  // El radar solo usa id, nombre y sev: pedir el DfiDomain entero obligaria a los llamadores a arrastrar
+  // lectura, clasif e items, que aqui no se pintan (el de Seguimiento los saca del snapshot sellado).
+  domains: RadarDomain[];
+  comparar?: RadarDomain[];
+}) {
   const n = domains.length;
 
   // Poligono de datos: cada vertice al centro de su zona de severidad ((sev+0.5)/BANDS), como en el
@@ -72,9 +87,24 @@ export function DfiRadar({ domains }: { domains: DfiDomain[] }) {
   const dataPts = domains.map((d, i) => axisPoint(i, n, ((clampSev(d.sev) + 0.5) / BANDS) * RMAX));
   const dataPoly = dataPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
 
+  // El poligono de comparacion se alinea por INDICE con el actual: los dominios llegan en el mismo orden
+  // del motor. Si por cualquier via llegara con otra longitud, no se dibuja antes que dibujar un poligono
+  // que mezcla ejes.
+  const cmpPts =
+    comparar && comparar.length === n
+      ? comparar.map((d, i) => axisPoint(i, n, ((clampSev(d.sev) + 0.5) / BANDS) * RMAX))
+      : null;
+  const cmpPoly = cmpPts?.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ") ?? null;
+
   const label = `Radar funcional: ${domains
     .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${SEV_LABEL[clampSev(d.sev)]}`)
-    .join(", ")}.`;
+    .join(", ")}.${
+    cmpPts
+      ? ` Comparado con el estado inicial: ${comparar!
+          .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${SEV_LABEL[clampSev(d.sev)]}`)
+          .join(", ")}.`
+      : ""
+  }`;
 
   return (
     <figure className="flex flex-col items-center gap-2">
@@ -110,6 +140,16 @@ export function DfiRadar({ domains }: { domains: DfiDomain[] }) {
         })}
         {/* Poligono del paciente: linea OSCURA + puntos, encima de los anillos solidos (como la imagen). No
             se colorea por el riesgo integrado (eso lo dice el badge de riesgo aparte): aqui es la FORMA. */}
+        {/* El INICIAL va primero (debajo) y punteado: el actual es el que se lee. */}
+        {cmpPoly ? (
+          <polygon
+            points={cmpPoly}
+            fill="none"
+            className="stroke-muted-foreground"
+            strokeWidth={1.6}
+            strokeDasharray="5 4"
+          />
+        ) : null}
         <polygon
           points={dataPoly}
           className="fill-foreground stroke-foreground"

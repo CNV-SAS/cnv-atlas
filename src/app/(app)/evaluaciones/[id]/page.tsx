@@ -66,6 +66,11 @@ import {
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { ProximoControl } from "@/modules/followups/components/proximo-control";
 import { getProximoControl } from "@/modules/followups/data/proximo-control-reader";
+import {
+  SeguimientoSinPrevia,
+  SeguimientoVisual,
+} from "@/modules/followups/components/seguimiento-visual";
+import { getSerieSeguimiento } from "@/modules/followups/data/serie-reader";
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
@@ -259,6 +264,7 @@ export default async function ResultadosEvaluacionPage({
     profileHasCharacterization,
     hcHeader,
     proximoControl,
+    serie,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -288,6 +294,8 @@ export default async function ResultadosEvaluacionPage({
     getHcHeaderForEvaluation(id),
     // Proximo control (Seguimiento, pieza 1): ruta activa, criterio de egreso y la cita.
     getProximoControl(id),
+    // Serie del paciente para las tres visuales de Seguimiento.
+    getSerieSeguimiento(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -609,11 +617,20 @@ export default async function ResultadosEvaluacionPage({
         // PRIMERA consulta es justo cuando hace falta agendar. Antes de esto la unica via de fijar la cita
         // era confirmar un "empeoro", que exige una segunda medicion: un paciente que mejoro no tenia donde.
         <section className="flex flex-col gap-4">
+          {/* Con UNA sola medicion su pantalla dibuja igual (el radar compara la medicion contra si misma).
+              Aqui se dice que falta la segunda Y cuando corresponderia, con la frecuencia de la ruta. */}
+          {serie.puntos.length >= 2 ? (
+            <SeguimientoVisual serie={serie} />
+          ) : (
+            <SeguimientoSinPrevia
+              fechaSugerida={proximoControl?.citaSugerida ?? null}
+              frecuencia={proximoControl?.ruta?.frecuencia ?? null}
+            />
+          )}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
           {proximoControl ? (
             <ProximoControl evaluationId={id} vista={proximoControl} />
           ) : null}
-          {!comparison && !proximoControl ? <StagePlaceholder label="Seguimiento" /> : null}
         </section>
       }
       reporte={
