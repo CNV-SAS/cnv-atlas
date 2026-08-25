@@ -64,6 +64,8 @@ import {
   getPatientProfileHasCharacterization,
 } from "@/modules/evaluations/data/characterization-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
+import { ProximoControl } from "@/modules/followups/components/proximo-control";
+import { getProximoControl } from "@/modules/followups/data/proximo-control-reader";
 import { TrajectoryNotice } from "@/modules/followups/components/trajectory-notice";
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
@@ -256,6 +258,7 @@ export default async function ResultadosEvaluacionPage({
     characterization,
     profileHasCharacterization,
     hcHeader,
+    proximoControl,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -283,6 +286,8 @@ export default async function ResultadosEvaluacionPage({
     getPatientProfileHasCharacterization(id),
     // Encabezado de la historia clinica (bloques 1 y 2).
     getHcHeaderForEvaluation(id),
+    // Proximo control (Seguimiento, pieza 1): ruta activa, criterio de egreso y la cita.
+    getProximoControl(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
@@ -600,11 +605,16 @@ export default async function ResultadosEvaluacionPage({
         </div>
       }
       seguimiento={
-        comparison ? (
-          <FollowupComparison comparison={comparison} />
-        ) : (
-          <StagePlaceholder label="Seguimiento" />
-        )
+        // La comparacion aparece solo con una previa; el PROXIMO CONTROL aparece siempre, porque en la
+        // PRIMERA consulta es justo cuando hace falta agendar. Antes de esto la unica via de fijar la cita
+        // era confirmar un "empeoro", que exige una segunda medicion: un paciente que mejoro no tenia donde.
+        <section className="flex flex-col gap-4">
+          {comparison ? <FollowupComparison comparison={comparison} /> : null}
+          {proximoControl ? (
+            <ProximoControl evaluationId={id} vista={proximoControl} />
+          ) : null}
+          {!comparison && !proximoControl ? <StagePlaceholder label="Seguimiento" /> : null}
+        </section>
       }
       reporte={
         // QUINTA ETAPA, pieza 2 (2026-08-24): el reporte vive aqui, con su aprobacion, sus tres modos de

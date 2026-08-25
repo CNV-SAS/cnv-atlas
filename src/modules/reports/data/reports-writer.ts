@@ -181,6 +181,14 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       .where(eq(diagnoses.evaluationId, report.evaluationId))
       .limit(1);
     if (!diag) throw new ReportStateError("La evaluación no tiene diagnóstico.");
+    // La cita ANTERIOR, para que la traza distinga quien la puso: desde 2026-08-25 se puede fijar en
+    // Seguimiento, asi que el bloque ambar puede encontrarla ya agendada y solo confirmar. Sin esto, el
+    // audit diria "cita agendada" en los dos casos y no se sabria si alguien la decidio aqui.
+    const [prevT] = await tx
+      .select({ cita: treatments.proximaCita })
+      .from(treatments)
+      .where(eq(treatments.diagnosisId, diag.id))
+      .limit(1);
     const updatedT = await tx
       .update(treatments)
       .set({ proximaCita: input.proximaCita })
@@ -204,7 +212,13 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       actorEmail: input.actorEmail,
       entityType: "report",
       entityId: report.id,
-      payload: { evaluation_id: report.evaluationId, band, proxima_cita: input.proximaCita },
+      payload: {
+        evaluation_id: report.evaluationId,
+        band,
+        proxima_cita: input.proximaCita,
+        cita_previa: prevT?.cita ?? null,
+        cita_venia_de_antes: prevT?.cita != null,
+      },
       ip: input.ip,
     });
   });
