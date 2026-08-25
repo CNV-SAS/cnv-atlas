@@ -351,9 +351,11 @@ Pero al revisarlo encontramos que **no está vacía de contenido tuyo**: al gene
 1. **¿Te parece bien que tu resumen clínico aterrice ahí, editable?** La alternativa es mostrarlo como salida del modelo, en solo lectura, y dejar la caja para lo que escribe el profesional.
 2. **Y la caja en sí: ¿sobra?** Si crees que el plan y las restricciones ya cubren lo que el nutricionista necesita escribir, la quitamos.
 
-## 8.3 · El nutricionista es la única profesión sin notas, y nosotros se las dimos
+## 8.3 · Las observaciones del profesional: dos sitios en tu modelo, y uno de los dos se pierde
 
-Tu archivo tiene notas clínicas **estructuradas por profesión**, y aterrizan en la historia clínica:
+Al cotejar Seguimiento encontramos que tu modelo tiene **dos formas distintas** de que un profesional anote, y no se parecen entre sí.
+
+**La primera: notas clínicas estructuradas por profesión**, que aterrizan en la historia clínica.
 
 | | Campos |
 |---|---|
@@ -361,13 +363,27 @@ Tu archivo tiene notas clínicas **estructuradas por profesión**, y aterrizan e
 | Psicología | Evaluación psicológica · Objetivos psicológicos · Técnicas / indicaciones |
 | Entrenamiento | Diagnóstico funcional · Programa de ejercicio · Intensidad y frecuencia |
 
-**El nutricionista no tiene**, y entendemos por qué: su plan **es** el registro.
+El **nutricionista no tiene**, y entendemos por qué: su plan es el registro.
 
-Nosotros le pusimos unas "Notas del tratamiento". Y aquí está el dato que hace la pregunta respondible: **hoy nuestras notas del nutricionista no llegan a ningún documento. Si deben quedarse, irían a la historia clínica como las tuyas; si no, sobran.**
+**La segunda: las "Observaciones" del bloque de próximo control**, en Seguimiento. Esa no es por disciplina: es del **control**, y la escribe quien atienda.
 
-¿Debería el nutricionista tener las suyas? El argumento a favor: su única vía de registro es el plan, y no todo lo que observa en consulta cabe ahí. El argumento en contra es el tuyo, y por eso preguntamos.
+**Y aquí está lo que queremos decirte, porque creemos que no es lo que pretendías.** Seguimos esa observación en tu archivo:
 
-*(Las tres tuyas las estamos portando: nos faltaban.)*
+- Se guarda como `notas_profesional` en `evaluaciones_obbia`, **con `onConflict: 'documento'`**. Es decir: **una sola fila por paciente**. La observación del control de marzo **se sobrescribe** cuando se guarda la de junio.
+- Y **no la lee nadie**: buscamos `notas_profesional` en todo el archivo y solo aparece al escribir. No sale en la historia clínica ni en ninguna otra pantalla.
+
+**Así que hoy, en tu prototipo, lo que el profesional escribe en Observaciones se guarda, borra lo anterior, y no lo vuelve a ver nadie.** Es la misma familia del 8.5, pero al revés: ahí el modelo propone y nadie recoge; aquí la persona escribe y nada lo muestra.
+
+### Lo que te proponemos
+
+**Que las observaciones sean POR EVALUACIÓN, no por paciente, y que aparezcan en la historia clínica de esa consulta.** Una observación de seguimiento es sobre *ese* control: guardarla por paciente hace que la historia del paciente tenga una sola observación, la última, y que las anteriores desaparezcan sin dejar rastro.
+
+Y con eso resuelto, la pregunta del nutricionista se ordena sola. Son dos, no una:
+
+1. **¿Confirmas que las observaciones del control deben conservarse por consulta y verse en la historia clínica?**
+2. **¿Y el nutricionista debería tener además su nota estructurada, como las otras tres profesiones?** El argumento a favor es que hoy su única vía de registro es el plan, y no todo lo que observa cabe ahí. El argumento en contra es el tuyo, y por eso preguntamos. *(Nosotros le pusimos unas "Notas del tratamiento" que hoy no llegan a ningún documento; si deben quedarse, irían a la historia clínica como las tuyas.)*
+
+*(Las tres notas por profesión las estamos portando: nos faltaban. Y las portaremos precargadas desde lo que ya calculan tus motores, por lo que decimos en el 8.5.)*
 
 ## 8.4 · El orden de los bloques
 
@@ -397,6 +413,19 @@ Esta no salió de un cotejo. Salió de juntar tres hallazgos que veníamos trata
 
 *(Verificamos el nuestro antes de preguntarte: en Atlas, cada salida de los tres motores portados llega hoy a una pantalla. El hueco no es de consumo, es de que la propuesta no se pueda tomar.)*
 
+## 8.6 · La próxima cita: tú la propones desde la ruta y nosotros no
+
+Verificamos de dónde sale la fecha que aparece al final de tu historia clínica, y **es la misma del bloque de próximo control de Seguimiento**, con una cascada que nos parece bien pensada:
+
+1. La fecha que el profesional guardó en Seguimiento.
+2. Si no hay, **la que sugiere el protocolo del DFI**: la frecuencia de la ruta activa (por ejemplo "Cada 90 días") sumada a la fecha de consulta.
+
+O sea: **el modelo propone la fecha, el profesional la confirma o la cambia, y la historia clínica muestra la que valga.** Es justo el criterio que pedimos en el 8.5, aplicado por ti.
+
+**En Atlas la próxima cita solo se captura en un caso:** cuando el profesional confirma que va a comunicarle un "empeoró" al paciente. En un seguimiento normal **no hay dónde fijarla**, y nunca la proponemos desde la ruta.
+
+No es una pregunta, es un hueco nuestro que vamos a cerrar copiando tu mecánica. Te lo decimos por si la frecuencia de cada ruta debe leerse de otra parte, o si hay rutas donde la fecha no deba sugerirse sola.
+
 ---
 
 # Resumen
@@ -422,9 +451,10 @@ Esta no salió de un cotejo. Salió de juntar tres hallazgos que veníamos trata
 | 7.4 | Dos cosas que dependen del 7.1: la EB-BIS en la historia clínica y el resumen por profesión | Informativo |
 | 8.1 | **Fundimos tu "Objetivo del tratamiento" y tu "Fórmula sintética" en una sola cadena.** ¿Lo apruebas? | **Propuesta nuestra** |
 | 8.2 | Las "Guías dietarias": ahí aterriza tu resumen clínico, editable. ¿Bien así? | Propuesta nuestra |
-| 8.3 | El nutricionista es la única profesión sin notas: ¿debería tenerlas? | Pregunta |
+| 8.3 | **Las observaciones del control se sobrescriben por paciente y no las lee nadie.** ¿Por evaluación y a la historia clínica? | **Pregunta + reporte** |
 | 8.4 | Nos alineamos a tu orden de bloques; dos avisos | Declaración |
 | 8.5 | **¿Qué otras salidas del modelo no llegan a donde deberían?** (tres casos concretos) | **Pregunta abierta, la más útil** |
+| 8.6 | Tú propones la próxima cita desde la ruta y nosotros no: hueco nuestro | Declaración |
 
 
 
