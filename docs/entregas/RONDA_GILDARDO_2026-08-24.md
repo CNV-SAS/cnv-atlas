@@ -201,25 +201,46 @@ No requieren nada de ti. Van porque cambian qué tenemos que construir.
 
 ---
 
-# Parte 6 · Tres cosas de tu archivo que vimos al portar la historia clínica
+# Parte 6 · Cuatro defectos NUESTROS, ya arreglados, que quizá te sirvan para tu archivo
 
-Esto **no es una pregunta**: es un reporte. Las tres las encontramos armando la HC contra tus capturas, y en Atlas ya salen corregidas. Te las pasamos porque la primera puede apuntar a algo roto de verdad en tu prototipo, no solo a un rótulo.
+Esto **no es una pregunta**: es un reporte. Los cuatro son defectos de Atlas, no tuyos, y ya están corregidos. Te los pasamos porque salen de cómo leímos **tus** clasificadores, y puede que a ti te interese revisar cómo los pintas.
 
-**1. `undefined` literales en la pantalla.** En el bloque de composición corporal aparece, tal cual:
+**No es que copiáramos mal tus colores. Es que dedujimos la severidad del TONO, y el tono no la lleva.**
+
+Nuestra tabla de índices pinta un semáforo a partir del color que devuelve cada clasificador. La regla era: verde óptimo, ámbar alerta, rojo crítico. Y comparábamos dos canales del color antes de mirar la etiqueta. **Todo azul caía en "óptimo"**, porque en un azul el verde supera al rojo. Los cuatro casos:
+
+| Lo que decía la etiqueta | Cómo se veía |
+|---|---|
+| **"Desnutrición"** (FFMI bajo) | color de **óptimo** |
+| **"Disfunción celular severa"** (mapa AF×IR) | color de **óptimo** |
+| **"Alto — sospecha anabolizantes"** (FFMI alto) | color de **óptimo** |
+| **"Bajo"** (FMI, déficit de masa grasa) | color de **óptimo** |
+
+**El primero es el que importa.** La historia clínica que acabamos de construir muestra **solo los índices alterados**, siguiendo tu propia regla. Con el defecto vivo, un paciente **desnutrido** habría recibido un documento clínico que dice **"Sin índices alterados"**. Un papel firmado afirmando que un desnutrido está bien.
+
+**Lo que lo hace difícil de ver, y es lo que quizá te sirva:** el azul en tu archivo **no tiene un significado único**. `cSMM` lo usa para **"Óptimo"**, que es el mejor nivel; `cFMI` lo usa para el déficit. Es coincidencia de tono, no semántica. Por eso nuestro arreglo dejó de mirar el color y pasó a mirar **la etiqueta**, con los benignos nombrados uno por uno ("Óptimo", "Bajo (atleta)") y con el default del lado seguro: un azul que no reconozcamos se trata como alteración, porque en un documento que filtra por alteración es mejor que algo aparezca de más.
+
+En el mapa AF×IR ni la etiqueta alcanzaba: *"Hidratación óptima · Masa celular límite"* contiene la palabra "óptima" y lo que se clasifica es la otra mitad. Ahí la severidad quedó escrita para las nueve interpretaciones, una por una.
+
+**Si tu archivo también decide algo a partir de ese color, vale la pena mirarlo.** Y si el azul de `cSMM` y el de `cFMI` deberían ser tonos distintos, es cosa tuya, no nuestra: nosotros no cambiamos tus colores, solo dejamos de deducir de ellos.
+
+---
+
+## Y tres cosas de tu pantalla que vimos al portar la historia clínica
+
+**1. `undefined` literales.** En el bloque de composición corporal aparece, tal cual:
 
 > Fenotipo MCCB: F7 — **undefined**   PBI: **undefined**
 
-Son dos variables que tu archivo no resuelve y que se imprimen en la pantalla del profesional. El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del todo. **Esta es la que nos preocupa:** no es un detalle de formato, es que dos valores que deberían estar no están, y puede que el problema no sea solo la etiqueta.
+El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del todo. Es la que más nos preocupa de las tres: puede que el problema no sea solo el rótulo.
 
-**2. El motivo de consulta sale sin separador.** Las opciones elegidas se concatenan pegadas:
+**2. El motivo de consulta sale sin separador.** Las opciones se concatenan pegadas: *"Control de peso / composición corporal**Rendimiento deportivo**Envejecimiento saludable / longevidad"*. Nosotros las unimos con coma.
 
-> "Control de peso / composición corporal**Rendimiento deportivo**Envejecimiento saludable / longevidad"
+**3. La fecha de la firma es la de impresión.** El pie `FIRMA Y FECHA` usa la fecha del día en que se abre el documento. Una historia clínica impresa tres meses después queda fechada tres meses tarde. Nosotros usamos la fecha de la evaluación.
 
-Se leen como una sola frase. Nosotros las unimos con coma.
+**Y una cosa que sí agregamos a la HC**, para que la conozcas: **la cirugía digestiva o metabólica**. La encuesta la pregunta y tu HC no la muestra. Un bypass gástrico cambia absorción, requerimiento proteico y tolerancia, así que omitirla de una historia clínica nos pareció copiar un hueco. Si tienes una razón para dejarla fuera, dínosla y la quitamos.
 
-**3. La fecha de la firma es la de impresión, no la de la consulta.** El pie `FIRMA Y FECHA` usa la fecha del día en que se abre el documento. Una historia clínica impresa tres meses después queda fechada tres meses tarde, junto a datos de una consulta anterior. Nosotros usamos la fecha de la evaluación.
-
-**Y una cosa que sí agregamos a la HC**, para que la conozcas: **la cirugía digestiva o metabólica**. La encuesta la pregunta y tu HC no la muestra. Un bypass gástrico cambia absorción, requerimiento proteico y tolerancia, así que nos pareció que omitirla de una historia clínica sería copiar un hueco. Si tienes una razón para dejarla fuera, dínosla y la quitamos.
+---
 
 # Resumen
 
@@ -237,6 +258,6 @@ Se leen como una sola frase. Nosotros las unimos con coma.
 | 3.5 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
 | 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
 | 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
-| 6 | **Dos valores sin resolver en tu pantalla** (fenotipo MCCB y PBI), el motivo sin separador y la fecha de firma | **Reporte, no pregunta** |
+| 6 | **Cuatro defectos nuestros ya arreglados** por deducir severidad del tono (un desnutrido salia en verde) + tres cosas de tu pantalla | **Reporte, no pregunta** |
 
 **Lo que bloquea es la Parte 1. Lo más importante es el 3.1.** El resto lo seguimos construyendo mientras respondes.
