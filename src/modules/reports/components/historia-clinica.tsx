@@ -420,3 +420,51 @@ export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
     </Tarjeta>
   );
 }
+
+// Bloque ANI BIS-E de la tabla de la historia clinica (porte 2026-08-24). Su HC los pone DENTRO de la
+// tabla de Wang, como un nivel mas; en Atlas viven en la tabla de indices del Diagnostico, que es una
+// tabla aparte. Portarlos al mapa de composicion los DUPLICARIA en Diagnostico, asi que se anaden solo
+// aqui: en el documento clinico van juntos, en la pantalla de trabajo siguen separados.
+//
+// Se aplican los MISMOS dos filtros que el resto de la tabla: solo lo alterado (sev >= 1) y nada sin valor.
+export type HcIndiceAni = {
+  codigo: string;
+  referencia: string;
+  valor: string;
+  clasificacion: string;
+  sev: number;
+};
+
+export function HcIndicesAniBise({ indices }: { indices: HcIndiceAni[] }) {
+  if (indices.length === 0) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-y border-border bg-muted">
+            <td
+              colSpan={4}
+              className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
+            >
+              ANI BIS-E
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          {indices.map((i) => (
+            <tr key={i.codigo} className="border-b border-border/40">
+              <td className="py-1.5 pr-4 font-medium text-foreground">{i.codigo}</td>
+              <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{i.valor}</td>
+              <td className="py-1.5 pr-4 text-right text-muted-foreground">{i.referencia}</td>
+              <td className="py-1.5">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                  {i.clasificacion}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

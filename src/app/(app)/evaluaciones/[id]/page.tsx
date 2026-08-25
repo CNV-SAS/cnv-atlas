@@ -78,6 +78,7 @@ import {
   HcPlanNutricional,
   HcProximaConsulta,
   HcRecomendaciones,
+  HcIndicesAniBise,
   HcRemisiones,
   HcRutasActivadas,
   HcMotivoDeConsulta,
@@ -87,6 +88,7 @@ import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map
 import { CierreConsulta } from "@/modules/reports/components/cierre-consulta";
 import { pendientesDeLaConsulta } from "@/modules/reports/data/cierre-pendientes";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
+import { indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
@@ -382,6 +384,27 @@ export default async function ResultadosEvaluacionPage({
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
   // CIERRE de la consulta: los pendientes se DERIVAN del estado real en cada render, no se guardan, asi
   // que un pendiente resuelto despues del cierre deja de aparecer solo.
+  // Bloque ANI BIS-E de la tabla de la HC: su historia clinica los muestra dentro de la tabla de Wang y
+  // Atlas los tiene en la tabla de indices del Diagnostico. Se anaden SOLO aqui para no duplicarlos alli.
+  const hcSev = isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {};
+  const hcAni = isEngineOutput(results.snapshot)
+    ? indicesAniAlterados(
+        {
+          IFC: results.snapshot.indicators.ifc,
+          IRC: results.snapshot.indicators.irc,
+          ISCM: results.snapshot.indicators.iscm,
+          IEHH: results.snapshot.indicators.iehh,
+          EB: results.snapshot.indicators.eb,
+          IAE: results.snapshot.indicators.iae,
+          PABU: results.snapshot.indicators.pabu,
+          "ICA-BIS": results.snapshot.indicators.icaBis,
+        },
+        results.snapshot.classifications,
+        hcSev,
+        sexoM,
+      )
+    : [];
+
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
   const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
 
@@ -633,11 +656,12 @@ export default async function ResultadosEvaluacionPage({
                     composition={composition}
                     sexoM={sexoM}
                     classifications={results.snapshot.classifications}
-                    sevByCode={isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}}
+                    sevByCode={hcSev}
                     references={wangRefs}
                     fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
                     soloAlterados
                   />
+                  <HcIndicesAniBise indices={hcAni} />
                   <p className="text-xs text-muted-foreground">
                     Los valores son los de esta evaluación. Los rangos de referencia son los del modelo
                     vigente hoy, no los del día de la consulta.
