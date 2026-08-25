@@ -127,7 +127,9 @@ Aquí están las 25, por dominio. La última columna dice si algo en Atlas las u
 | Hidratación | Jugos naturales (vasos por día) | nadie |
 | Hidratación | ¿Color de su orina habitualmente? | nadie |
 
-**Cinco tienen consumidor y veinte no tienen ninguno.** Las cinco de la historia clínica lo son **desde ayer**, porque las pusimos ahí al portar tu HC. Las otras veinte se le preguntan al paciente, se guardan, y no las lee nada: ni un motor, ni un resumen, ni un documento. El profesional solo puede verlas abriendo las respuestas crudas de la encuesta.
+**Cinco tienen consumidor y veinte no tienen NINGUNO.** Y es importante el matiz: no es que el modelo no las use, es que **no las usa nada**. Verificamos que todos los lectores de los cuatro motores (nutricional, médico, ejercicio y psicológico) y la vista de patrón alimentario descartan la respuesta si la pregunta no está en el contrato. Las cinco que sí tienen consumidor lo tienen **desde ayer**, porque las pusimos en la historia clínica al portar la tuya. **Las otras veinte: el paciente las responde y no llegan a ninguna parte.**
+
+Y una curiosidad que salió de ahí y que quizá te diga algo: **la pregunta "¿Sigue algún patrón alimentario?" no alimenta la vista de patrón alimentario.** Esa sale de los 15 grupos de D1 más los 3 horarios. El nombre sugiere un consumidor que no existe. Es el tipo de cosa que pasa cuando el instrumento y el modelo crecen por caminos distintos, y por eso preferimos preguntarte por el contrato completo en vez de ir campo por campo.
 
 ### Las dos preguntas que salen de aquí
 
