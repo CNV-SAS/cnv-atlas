@@ -70,7 +70,10 @@ import { EtapaReporte } from "@/modules/reports/components/etapa-reporte";
 import {
   HcAntecedentes,
   HcDatosDelPaciente,
+  HcDiagnosticoFuncional,
+  HcMetaTerapeutica,
   HcMotivoDeConsulta,
+  HcResumenDiagnostico,
 } from "@/modules/reports/components/historia-clinica";
 import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
@@ -364,6 +367,18 @@ export default async function ResultadosEvaluacionPage({
     };
   }
 
+  // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
+  // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
+  const hcNarrativa =
+    treatmentNarrative.kind === "text"
+      ? {
+          parrafoDieta: treatmentNarrative.parrafoDieta,
+          parrafo: treatmentNarrative.parrafo,
+          meta: treatmentNarrative.metaNutricion,
+          motivo: null as string | null,
+        }
+      : { parrafoDieta: null, parrafo: null, meta: null, motivo: treatmentNarrative.reason };
+
   // Nombre de la segunda subpestaña de Tratamiento: la profesion del que mira (nunca hardcodeado). Admin o
   // actor sin profesion (que ve la vista de consulta) cae a un generico.
   const profesionLabel =
@@ -544,6 +559,13 @@ export default async function ResultadosEvaluacionPage({
               />
               <HcMotivoDeConsulta motivos={hcHeader.motivos} />
               <HcAntecedentes grupos={hcAntecedentes} />
+              <HcResumenDiagnostico
+                profesionLabel={profesionLabel}
+                texto={hcNarrativa.parrafoDieta}
+                motivo={hcNarrativa.motivo}
+              />
+              <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />
+              <HcMetaTerapeutica texto={hcNarrativa.meta} motivo={hcNarrativa.motivo} />
             </div>
           ) : null}
         </section>

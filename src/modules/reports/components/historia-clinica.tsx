@@ -162,3 +162,56 @@ export function HcAntecedentes({
     </Tarjeta>
   );
 }
+
+// Bloques 5 a 7: los tres parrafos del diagnostico. NO se recalculan aqui: los deriva la pagina del
+// snapshot sellado (dfiNarrativeFromOutput) y del parrafo de dieta, que es lo mismo que ve el
+// Diagnostico. La HC los REUNE, no los vuelve a producir.
+//
+// Cuando no se pueden emitir (snapshot anterior al porte, o encuesta incompleta), se muestra el MOTIVO en
+// vez de un vacio mudo: la seccion aparece con su titulo y dice por que esta vacia. Omitirla haria que el
+// documento pareciera completo cuando le falta algo.
+function Parrafo({ texto, motivo }: { texto: string | null; motivo: string | null }) {
+  if (texto && texto.trim() !== "") {
+    return <p className="text-sm leading-relaxed text-foreground">{texto}</p>;
+  }
+  return <p className="text-sm italic text-muted-foreground">{motivo ?? "No se registró"}</p>;
+}
+
+export function HcResumenDiagnostico({
+  profesionLabel,
+  texto,
+  motivo,
+}: {
+  profesionLabel: string;
+  texto: string | null;
+  motivo: string | null;
+}) {
+  return (
+    <Tarjeta>
+      {/* La PROFESION va en el titulo, como en su HC: el resumen es del profesional que atiende, no uno
+          solo. Sale del dato que ya tenemos, nunca cableado. */}
+      <TituloSeccion>Resumen diagnóstico · {profesionLabel}</TituloSeccion>
+      <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+        <Parrafo texto={texto} motivo={motivo} />
+      </div>
+    </Tarjeta>
+  );
+}
+
+export function HcDiagnosticoFuncional({ texto, motivo }: { texto: string | null; motivo: string | null }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Diagnóstico funcional integrado (DFI)</TituloSeccion>
+      <Parrafo texto={texto} motivo={motivo} />
+    </Tarjeta>
+  );
+}
+
+export function HcMetaTerapeutica({ texto, motivo }: { texto: string | null; motivo: string | null }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Meta terapéutica</TituloSeccion>
+      <Parrafo texto={texto} motivo={motivo} />
+    </Tarjeta>
+  );
+}
