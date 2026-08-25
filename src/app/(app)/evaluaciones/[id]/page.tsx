@@ -608,7 +608,7 @@ export default async function ResultadosEvaluacionPage({
                   tallaCm: composition?.talla ?? null,
                   fecha: formatDate(hcHeader.fechaConsulta),
                   profesional: hcHeader.profesional,
-                  ocupacion: characterization?.occupation ?? null,
+                  ocupacion: hcHeader.ocupacion,
                 }}
               />
               <HcMotivoDeConsulta motivos={hcHeader.motivos} />

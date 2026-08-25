@@ -47,6 +47,12 @@ const MEJ_E2 = "a0000000-0000-4000-8000-0000000000d6"; // seguimiento hoy, COMPL
 const EMP2_PAT = "a0000000-0000-4000-8000-0000000000e1";
 const EMP2_E1 = "a0000000-0000-4000-8000-0000000000e2"; // inicial, 4 meses atras, COMPLETA
 const EMP2_E2 = "a0000000-0000-4000-8000-0000000000e3"; // seguimiento hoy, DEGRADADA -> empeoro
+// TERCER caso EMPEORO. El segundo se gasto en el smoke del 24 (se confirmo la comunicacion), y el bloque
+// solo se ve ANTES de confirmar. Mientras no exista la reemision, cada smoke del bloque ambar consume un
+// par de evaluaciones: por eso el candado de abajo avisa, y por eso se siembra otro.
+const EMP3_PAT = "a0000000-0000-4000-8000-0000000000f4";
+const EMP3_E1 = "a0000000-0000-4000-8000-0000000000f5";
+const EMP3_E2 = "a0000000-0000-4000-8000-0000000000f6";
 const SHT_PAT = "a0000000-0000-4000-8000-0000000000d7";
 const SHT_E1 = "a0000000-0000-4000-8000-0000000000d8"; // inicial, hace 2 semanas
 const SHT_E2 = "a0000000-0000-4000-8000-0000000000d9"; // seguimiento hoy -> intervalo corto -> aviso
@@ -72,7 +78,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     const pro = await pickDemoProfessional(db, schema, "nutricionista");
     proId = pro.proId;
     actorId = pro.actorId;
-    await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, EMP2_E1, EMP2_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
+    await reassignDemoEvaluations(db, schema, [EMP_E1, EMP_E2, EMP2_E1, EMP2_E2, EMP3_E1, EMP3_E2, MEJ_E1, MEJ_E2, SHT_E1, SHT_E2], proId);
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
   });
 
@@ -114,12 +120,12 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     const [r] = await db
       .select({ status: schema.reports.status })
       .from(schema.reports)
-      .where(eq(schema.reports.evaluationId, EMP2_E2))
+      .where(eq(schema.reports.evaluationId, EMP3_E2))
       .limit(1);
     if (!r) return; // todavia no sembrado; la prueba de abajo lo crea
     expect(
       r.status,
-      `El reporte del caso EMPEORO 2 esta en "${r.status}", no en "draft": el bloque de confirmar y agendar ` +
+      `El reporte del caso EMPEORO vigente esta en "${r.status}", no en "draft": el bloque de confirmar y agendar ` +
         "ya se consumio en un smoke anterior y NO se puede volver a ver (un reporte enviado no se reenvia " +
         "ni se reemite). Para volver a probarlo hace falta un par de evaluaciones nuevo.",
     ).toBe("draft");
@@ -133,7 +139,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     expect(t?.band).toBe("empeoro");
   });
 
-  it("EMPEORO (2o caso, para el bloque de confirmar y agendar): banda empeoro y reporte en draft", async () => {
+  it("EMPEORO (2o caso): CONSUMIDO en el smoke del 24; la banda sellada no cambia", async () => {
     const { eq } = await import("drizzle-orm");
     await ensurePatient(EMP2_PAT, "Empeoro 2 (confirmar y agendar)");
     await ensureEval(EMP2_PAT, EMP2_E1, "inicial", "2026-04-05T10:00:00Z", true);
@@ -143,9 +149,25 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
       .from(schema.reports)
       .where(eq(schema.reports.evaluationId, EMP2_E2))
       .limit(1);
+    // La banda es INMUTABLE (trigger): sigue diciendo empeoro aunque el reporte ya se enviara. Lo que se
+    // gasto es la VISIBILIDAD del bloque ambar, que exige draft + sin confirmar. Por eso hay un tercero.
     expect(r.t?.band).toBe("empeoro");
-    // Las DOS condiciones que hacen visible el bloque ambar, juntas: banda y estado.
+  });
+
+  it("EMPEORO (3er caso, vigente para el bloque de confirmar y agendar)", async () => {
+    const { eq } = await import("drizzle-orm");
+    await ensurePatient(EMP3_PAT, "Empeoro 3 (confirmar y agendar)");
+    await ensureEval(EMP3_PAT, EMP3_E1, "inicial", "2026-04-05T10:00:00Z", true);
+    await ensureEval(EMP3_PAT, EMP3_E2, "seguimiento", "2026-08-05T10:00:00Z", false);
+    const [r] = await db
+      .select({ status: schema.reports.status, t: schema.reports.trajectory, com: schema.reports.trajectoryCommunicatedAt })
+      .from(schema.reports)
+      .where(eq(schema.reports.evaluationId, EMP3_E2))
+      .limit(1);
+    expect(r.t?.band).toBe("empeoro");
+    // Las TRES condiciones que hacen visible el bloque ambar, juntas (report-card.tsx:57).
     expect(r.status).toBe("draft");
+    expect(r.com).toBeNull();
   });
 
   it("MEJORO: inicial degradada (4 meses) + seguimiento completo hoy -> banda mejoro", async () => {

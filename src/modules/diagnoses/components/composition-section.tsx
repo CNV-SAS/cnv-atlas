@@ -145,9 +145,31 @@ export function CompositionSection({
     return wangRowDx(r.key, r.value, sexoM, diagCtx, effRef, (v) => fmt(v, r.decimals ?? 2))?.dx ?? null;
   }
 
+  // El filtro deja fuera DOS cosas mas, y las dos salen del cotejo del 2026-08-24 contra su HC:
+  //
+  // 1. El COMPARADOR GENERICO ("Por encima/Por debajo de la referencia"). No es un veredicto clinico: es
+  //    un contraste contra una referencia que en muchas filas es POBLACIONAL y esta EN VALIDACION por la
+  //    Direccion Cientifica (las que llevan el asterisco). Listar "AEC por debajo de la referencia" como
+  //    indice ALTERADO en un documento clinico, sobre una referencia que ni siquiera esta confirmada, es
+  //    afirmar mas de lo que sabemos. En el Diagnostico sigue mostrandose (ahi se mira el caso vivo).
+  // 2. Las filas SIN valor. Una fila sin dato no puede estar alterada.
+  //
+  // Efecto medido en el smoke: la tabla pasaba de trece filas a las que de verdad dicen algo. Su HC ni
+  // siquiera tiene esas filas (su tabla son veinte indices concretos), asi que esto nos ACERCA a su
+  // documento, no nos aleja.
+  const COMPARADOR_GENERICO = /^por (encima|debajo) de la referencia$/i;
+
   const levelsToRender = soloAlterados
     ? activeLevels
-        .map((l) => ({ ...l, rows: l.rows.filter((r) => (dxDeFila(r)?.sev ?? 0) >= 1) }))
+        .map((l) => ({
+          ...l,
+          rows: l.rows.filter((r) => {
+            if (r.value == null) return false;
+            const d = dxDeFila(r);
+            if (!d || d.sev < 1) return false;
+            return !COMPARADOR_GENERICO.test(d.label);
+          }),
+        }))
         .filter((l) => l.rows.length > 0)
     : activeLevels;
 

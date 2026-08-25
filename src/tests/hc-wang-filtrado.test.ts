@@ -19,7 +19,20 @@ describe("tabla de Wang de la historia clinica", () => {
   });
 
   it("el umbral es sev >= 1: 0 es el unico nivel optimo de esta escala", () => {
-    expect(SRC).toMatch(/dxDeFila\(r\)\?\.sev \?\? 0\) >= 1/);
+    expect(SRC).toContain("d.sev < 1");
+  });
+
+  it("el COMPARADOR GENERICO no cuenta como indice alterado", () => {
+    // "Por debajo de la referencia" no es un veredicto clinico: es un contraste contra una referencia que
+    // en muchas filas es POBLACIONAL y esta EN VALIDACION por la Direccion Cientifica. Afirmarlo como
+    // alteracion en un documento clinico es afirmar mas de lo que sabemos. En el Diagnostico se sigue
+    // mostrando, porque ahi se mira el caso vivo.
+    expect(SRC).toContain("COMPARADOR_GENERICO");
+    expect(SRC).toContain("por (encima|debajo) de la referencia");
+  });
+
+  it("una fila SIN valor no puede estar alterada", () => {
+    expect(SRC).toContain("if (r.value == null) return false;");
   });
 
   it("un nivel que se queda sin filas no se pinta vacio", () => {

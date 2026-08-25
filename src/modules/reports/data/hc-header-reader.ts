@@ -22,9 +22,11 @@ export type HcHeader = {
   estado: string;
   cerradaEl: string | null;
   cerradaPor: string | null;
+  /** Ocupacion: la del ENCUENTRO si se capturo, y si no la del perfil (ver nota abajo). */
+  ocupacion: string | null;
 };
 
-type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null };
+type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null; occupation: string | null };
 type PacienteEmbed = { patient_profiles: PerfilEmbed | PerfilEmbed[] | null };
 type ProfesionalEmbed = { profiles: { full_name: string | null } | { full_name: string | null }[] | null };
 
@@ -50,7 +52,7 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     .select(
       // Hint del FK OBLIGATORIO en professional_profiles -> profiles: hay TRES relaciones (profile_id,
       // rut_verified_by, rut_rejected_by) y un embed sin hint revienta en runtime, no en tsc.
-      "created_at, status, closed_at, reason_for_visit, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
+      "created_at, status, closed_at, occupation, reason_for_visit, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -102,5 +104,10 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     cerradaEl: (data.closed_at as string | null) ?? null,
     cerradaPor:
       (uno(data.cerrada as never) as { full_name: string | null } | null)?.full_name ?? null,
+    // OCUPACION con respaldo en el PERFIL. La caracterizacion esta versionada por evaluacion, pero el
+    // intake solo la pide en la INICIAL (includeProfile = !isFollowup), asi que en un seguimiento la
+    // columna de la evaluacion queda null y la historia clinica decia "No se registró" de un dato que el
+    // paciente si dio. Versionar existe para registrar un CAMBIO entre visitas, no para perder el dato.
+    ocupacion: (data.occupation as string | null) ?? paciente?.occupation ?? null,
   };
 }
