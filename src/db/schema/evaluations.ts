@@ -41,6 +41,11 @@ export const evaluations = pgTable(
     // aqui y no en patient_profiles). MULTI-select en el archivo de Gildardo: se guarda como arreglo JSON de
     // strings (mismo patron que las respuestas opcion_multiple). Opcional (nullable); sin efecto en el motor.
     reasonForVisit: text("reason_for_visit"),
+    // CIERRE de la consulta (2026-08-24). Quien y cuando, como cualquier acto clinico. La lista de
+    // pendientes NO se guarda: se deriva del estado real, asi no queda stale. Reversible (reabrir vuelve a
+    // in_progress): cerrar es contabilidad de la consulta, no un sello clinico.
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => profiles.id),
     // Caracterizacion sociodemografica DEL ENCUENTRO (versionada por evaluacion, no solo en el perfil):
     // etnia, educacion, ocupacion, estado civil y estrato pueden cambiar entre consultas, y guardarlas
     // solo en patient_profiles (que se sobrescribe) perdia el historico. Columnas (no JSONB): el

@@ -18,6 +18,10 @@ export type HcHeader = {
   motivos: string[];
   /** Proxima cita del tratamiento (bloque 13). En VIVO, no sellada: es la cita vigente. */
   proximaCita: string | null;
+  /** Cierre de la consulta: estado y quien/cuando. */
+  estado: string;
+  cerradaEl: string | null;
+  cerradaPor: string | null;
 };
 
 type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null };
@@ -46,7 +50,7 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     .select(
       // Hint del FK OBLIGATORIO en professional_profiles -> profiles: hay TRES relaciones (profile_id,
       // rut_verified_by, rut_rejected_by) y un embed sin hint revienta en runtime, no en tsc.
-      "created_at, reason_for_visit, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date)), professional_profiles!inner(profiles!profile_id!inner(full_name))",
+      "created_at, status, closed_at, reason_for_visit, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -94,5 +98,9 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     profesional: profesional?.full_name ?? "",
     motivos,
     proximaCita: (t?.proxima_cita as string | null) ?? null,
+    estado: data.status as string,
+    cerradaEl: (data.closed_at as string | null) ?? null,
+    cerradaPor:
+      (uno(data.cerrada as never) as { full_name: string | null } | null)?.full_name ?? null,
   };
 }

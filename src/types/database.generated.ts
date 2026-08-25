@@ -1027,6 +1027,8 @@ export type Database = {
       evaluations: {
         Row: {
           ancestry: string | null
+          closed_at: string | null
+          closed_by: string | null
           consent_version: string | null
           created_at: string
           declared_first_name: string | null
@@ -1050,6 +1052,8 @@ export type Database = {
         }
         Insert: {
           ancestry?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           consent_version?: string | null
           created_at?: string
           declared_first_name?: string | null
@@ -1073,6 +1077,8 @@ export type Database = {
         }
         Update: {
           ancestry?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           consent_version?: string | null
           created_at?: string
           declared_first_name?: string | null
@@ -1095,6 +1101,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "evaluations_closed_by_profiles_id_fk"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "evaluations_organization_id_organizations_id_fk"
             columns: ["organization_id"]

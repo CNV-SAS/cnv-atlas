@@ -43,6 +43,8 @@ import {
   confirmEvaluationIdentity,
   ConsentBranchMismatchError,
   resolveIdentityConflict,
+  closeEvaluation,
+  reopenEvaluation,
 } from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
 import {
@@ -745,4 +747,65 @@ export async function saveSurveyEditAction(input: {
   revalidatePath(`/evaluaciones/${input.evaluationId}`);
   revalidatePath(`/evaluaciones/${input.evaluationId}/encuesta`);
   return { error: null, success: true };
+}
+
+// --- CIERRE Y REAPERTURA DE LA CONSULTA (2026-08-24) ---
+
+export type CloseEvaluationState = { error: string | null; success: string | null; warning: string | null };
+
+// La autoridad fina la da la RLS del reader (getEvaluationOwnership devuelve null si no es suya) mas el
+// guard coarse de rol. Cerrar no exige que no haya pendientes: la lista se muestra, no se impone.
+export async function closeEvaluationAction(
+  _prev: CloseEvaluationState,
+  form: FormData,
+): Promise<CloseEvaluationState> {
+  const user = await requireUser();
+  if (!canConfirmIdentity(user)) return { error: "No autorizado.", success: null, warning: null };
+  const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
+  if (!evaluationId) return { error: "Evaluación inválida.", success: null, warning: null };
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+  if (ownership.status === "completed") return { error: null, success: "Esta consulta ya estaba cerrada.", warning: null };
+  if (ownership.status !== "in_progress") {
+    return { error: "Solo se puede cerrar una consulta en curso.", success: null, warning: null };
+  }
+  const ip = await getClientIp();
+  const { closed } = await closeEvaluation({
+    evaluationId,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!closed) return { error: "No se pudo cerrar la consulta.", success: null, warning: null };
+  revalidatePath("/evaluaciones");
+  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath("/pacientes");
+  return { error: null, success: "Consulta cerrada.", warning: null };
+}
+
+export async function reopenEvaluationAction(
+  _prev: CloseEvaluationState,
+  form: FormData,
+): Promise<CloseEvaluationState> {
+  const user = await requireUser();
+  if (!canConfirmIdentity(user)) return { error: "No autorizado.", success: null, warning: null };
+  const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
+  if (!evaluationId) return { error: "Evaluación inválida.", success: null, warning: null };
+  const ownership = await getEvaluationOwnership(evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+  if (ownership.status !== "completed") {
+    return { error: "Esta consulta no está cerrada.", success: null, warning: null };
+  }
+  const ip = await getClientIp();
+  const { reopened } = await reopenEvaluation({
+    evaluationId,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!reopened) return { error: "No se pudo reabrir la consulta.", success: null, warning: null };
+  revalidatePath("/evaluaciones");
+  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath("/pacientes");
+  return { error: null, success: "Consulta reabierta. Vuelve a estar en curso.", warning: null };
 }

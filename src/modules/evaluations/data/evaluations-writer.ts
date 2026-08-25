@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { evaluations, patientConsents, patientProfiles } from "@/db/schema";
@@ -184,5 +184,69 @@ export async function resolveIdentityConflict(
       ip: input.ip,
     });
     return { resolved: true };
+  });
+}
+
+export type CloseEvaluationInput = {
+  evaluationId: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// CIERRE de la consulta: in_progress -> completed, con quien y cuando. Es el acto que faltaba: nadie ponia
+// 'completed' y la ficha del paciente mostraba todas las consultas como abiertas.
+//
+// No exige que no haya pendientes A PROPOSITO: cerrar con cosas pendientes es una decision legitima del
+// profesional (el paciente se lo piensa, la remision depende de otro). La lista se le muestra antes; no se
+// le impone.
+export async function closeEvaluation(input: CloseEvaluationInput): Promise<{ closed: boolean }> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(evaluations)
+      .set({ status: "completed", closedAt: sql`now()`, closedBy: input.actorId })
+      .where(and(eq(evaluations.id, input.evaluationId), eq(evaluations.status, "in_progress")))
+      .returning({ id: evaluations.id });
+    if (updated.length === 0) return { closed: false };
+    await recordAudit(tx, {
+      event: "evaluation.closed",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      ip: input.ip,
+    });
+    return { closed: true };
+  });
+}
+
+// REAPERTURA: completed -> in_progress. Cerrar es contabilidad de la consulta, no un sello clinico, asi
+// que no puede ser una puerta que se traba: `in_progress` es lo que habilita importar un BIS, correr el
+// pipeline y editar la encuesta, y si hay que volver a tocar algo el cierre no debe impedirlo. Los sellos
+// de verdad (diagnostico confirmado, protocolo aprobado, reporte enviado) son inmutables y NO se tocan
+// aqui: reabrir no deshace ninguno.
+//
+// A diferencia de 'abandoned', que NO es reversible (reabrirla reviviria el resume_token que queremos
+// muerto). Aqui no hay token de por medio.
+//
+// Quien: el mismo que puede cerrar (profesional asignado; la policy la impone el action). Deja su propio
+// evento de audit, no borra el del cierre: la historia de la consulta conserva los dos actos.
+export async function reopenEvaluation(input: CloseEvaluationInput): Promise<{ reopened: boolean }> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(evaluations)
+      .set({ status: "in_progress", closedAt: null, closedBy: null })
+      .where(and(eq(evaluations.id, input.evaluationId), eq(evaluations.status, "completed")))
+      .returning({ id: evaluations.id });
+    if (updated.length === 0) return { reopened: false };
+    await recordAudit(tx, {
+      event: "evaluation.reopened",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "evaluation",
+      entityId: input.evaluationId,
+      ip: input.ip,
+    });
+    return { reopened: true };
   });
 }

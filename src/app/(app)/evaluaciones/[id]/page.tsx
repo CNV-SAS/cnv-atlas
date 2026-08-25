@@ -84,6 +84,8 @@ import {
   HcResumenDiagnostico,
 } from "@/modules/reports/components/historia-clinica";
 import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
+import { CierreConsulta } from "@/modules/reports/components/cierre-consulta";
+import { pendientesDeLaConsulta } from "@/modules/reports/data/cierre-pendientes";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
 import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
 import { ReportCard } from "@/modules/reports/components/report-card";
@@ -378,6 +380,8 @@ export default async function ResultadosEvaluacionPage({
 
   // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
+  // CIERRE de la consulta: los pendientes se DERIVAN del estado real en cada render, no se guardan, asi
+  // que un pendiente resuelto despues del cierre deja de aparecer solo.
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
   const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
 
@@ -661,6 +665,24 @@ export default async function ResultadosEvaluacionPage({
               <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDate(hcHeader.proximaCita) : null} />
               <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />
             </div>
+          ) : null}
+          {hcHeader ? (
+            <CierreConsulta
+              evaluationId={id}
+              cerrada={hcHeader.estado === "completed"}
+              cerradaPor={hcHeader.cerradaPor}
+              cerradaEl={hcHeader.cerradaEl ? formatDate(hcHeader.cerradaEl) : null}
+              pendientes={pendientesDeLaConsulta({
+                encuestaCompleta: results.compatible ? results.snapshot.dfi.complete : true,
+                diagnosticoConfirmado: Boolean(protocol?.diagnosisConfirmed),
+                protocoloComputado: protocol?.protocolSuggested != null,
+                protocoloAprobado: Boolean(protocol?.approved),
+                reporteEstado: reportCard?.status ?? null,
+                nutraceuticosDecision: protocol?.nutraceuticalDecision?.decision ?? null,
+                proximaCita: hcHeader.proximaCita,
+                remisionesSinRetorno: hcRemisiones.filter((r) => !r.returnedAt).length,
+              })}
+            />
           ) : null}
         </section>
       }
