@@ -18,6 +18,7 @@ const DB_TESTS = [
   "src/tests/demo-realimentacion.seed.test.ts",
   "src/tests/diet-field-keys-in-used-versions.test.ts",
   "src/tests/diagnosis-confirmation-immutability.test.ts",
+  "src/tests/hc-antecedentes-encuesta.test.ts",
   "src/tests/faltante-case.test.ts",
   "src/tests/faltante-settle-sobrante.test.ts",
   "src/tests/faltante-two-person.test.ts",

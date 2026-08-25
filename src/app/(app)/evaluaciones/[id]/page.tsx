@@ -67,6 +67,13 @@ import { TrajectoryNotice } from "@/modules/followups/components/trajectory-noti
 import { getFollowupComparison } from "@/modules/followups/data/comparison-reader";
 import { getTrajectoryNotice } from "@/modules/followups/data/trajectory-notice-reader";
 import { EtapaReporte } from "@/modules/reports/components/etapa-reporte";
+import {
+  HcAntecedentes,
+  HcDatosDelPaciente,
+  HcMotivoDeConsulta,
+} from "@/modules/reports/components/historia-clinica";
+import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
+import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -232,6 +239,7 @@ export default async function ResultadosEvaluacionPage({
     correctionAvailability,
     characterization,
     profileHasCharacterization,
+    hcHeader,
   ] = await Promise.all([
     getTreatmentProtocol(id),
     getFollowupComparison(id),
@@ -257,9 +265,15 @@ export default async function ResultadosEvaluacionPage({
     getEvaluationCharacterization(id),
     // ¿El perfil tiene sociodemograficos? Para distinguir en D8 "no respondio" de "eval anterior al registro".
     getPatientProfileHasCharacterization(id),
+    // Encabezado de la historia clinica (bloques 1 y 2).
+    getHcHeaderForEvaluation(id),
   ]);
 
   const sexoM = (results.snapshot as { sexo?: string }).sexo !== "F";
+
+  // Antecedentes de la HC: se resuelven sobre las respuestas YA leidas (entrySurvey), sin consulta nueva.
+  // La marca de "solo registro" sale del field_key de cada pregunta, no de una lista escrita a mano.
+  const hcAntecedentes = resolverAntecedentes(entrySurvey?.flatMap((d) => d.questions) ?? []);
   // Referencia + Δ (rango COMPLETO del motor) de los indicadores que viven en la tabla de Wang (FFMI/FMI/
   // AF/IR): del clasificador del motor (indicator-ranges), computadas aca porque tienen los indicadores.
   const wangRefs: Record<string, { reference: string; delta: string | null }> = {};
@@ -498,18 +512,41 @@ export default async function ResultadosEvaluacionPage({
         // sus acciones revalidan la PAGINA (revalidatePath "/evaluaciones/[id]"), no una pestaña, asi que
         // cambiar de etapa no toca nada del acto. La proxima cita se va con el: se captura DENTRO de la
         // ReportCard (en la confirmacion de trayectoria desfavorable), no como un paso aparte.
-        reportCard ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
-            {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
-                corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
-                hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
-            <TrajectoryNotice notice={trajectoryNotice} />
-            <ReportCard report={reportCard} />
-          </section>
-        ) : (
-          <EtapaReporte />
-        )
+        <section className="flex flex-col gap-4">
+          {reportCard ? (
+            <div className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
+              {/* P0 Parte 2 (P5): si el paciente NO verá un cambio (sin previa comparable o intervalo
+                  corto), se explica al profesional junto al reporte, donde estaría la confirmación si la
+                  hubiera. Recomputado en vivo; null si hay banda o es inicial. */}
+              <TrajectoryNotice notice={trajectoryNotice} />
+              <ReportCard report={reportCard} />
+            </div>
+          ) : (
+            <EtapaReporte />
+          )}
+          {/* HISTORIA CLINICA de la consulta (bloques 1 a 3 de catorce, 2026-08-24). Se muestra aunque no
+              haya reporte: la historia documenta la CONSULTA, no el envio. */}
+          {hcHeader ? (
+            <div className="flex flex-col gap-4">
+              <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
+              <HcDatosDelPaciente
+                datos={{
+                  paciente: hcHeader.paciente,
+                  edad: hcHeader.edad,
+                  sexo: hcHeader.sexo,
+                  pesoKg: composition?.peso ?? null,
+                  tallaCm: composition?.talla ?? null,
+                  fecha: formatDate(hcHeader.fechaConsulta),
+                  profesional: hcHeader.profesional,
+                  ocupacion: characterization?.occupation ?? null,
+                }}
+              />
+              <HcMotivoDeConsulta motivos={hcHeader.motivos} />
+              <HcAntecedentes grupos={hcAntecedentes} />
+            </div>
+          ) : null}
+        </section>
       }
       diagnostico={
         // EvaluationResults ES el orquestador del Diagnostico: cabecera + franja persistentes + 3

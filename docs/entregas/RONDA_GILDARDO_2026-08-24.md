@@ -165,6 +165,26 @@ No requieren nada de ti. Van porque cambian qué tenemos que construir.
 
 ---
 
+# Parte 6 · Tres cosas de tu archivo que vimos al portar la historia clínica
+
+Esto **no es una pregunta**: es un reporte. Las tres las encontramos armando la HC contra tus capturas, y en Atlas ya salen corregidas. Te las pasamos porque la primera puede apuntar a algo roto de verdad en tu prototipo, no solo a un rótulo.
+
+**1. `undefined` literales en la pantalla.** En el bloque de composición corporal aparece, tal cual:
+
+> Fenotipo MCCB: F7 — **undefined**   PBI: **undefined**
+
+Son dos variables que tu archivo no resuelve y que se imprimen en la pantalla del profesional. El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del todo. **Esta es la que nos preocupa:** no es un detalle de formato, es que dos valores que deberían estar no están, y puede que el problema no sea solo la etiqueta.
+
+**2. El motivo de consulta sale sin separador.** Las opciones elegidas se concatenan pegadas:
+
+> "Control de peso / composición corporal**Rendimiento deportivo**Envejecimiento saludable / longevidad"
+
+Se leen como una sola frase. Nosotros las unimos con coma.
+
+**3. La fecha de la firma es la de impresión, no la de la consulta.** El pie `FIRMA Y FECHA` usa la fecha del día en que se abre el documento. Una historia clínica impresa tres meses después queda fechada tres meses tarde, junto a datos de una consulta anterior. Nosotros usamos la fecha de la evaluación.
+
+**Y una cosa que sí agregamos a la HC**, para que la conozcas: **la cirugía digestiva o metabólica**. La encuesta la pregunta y tu HC no la muestra. Un bypass gástrico cambia absorción, requerimiento proteico y tolerancia, así que nos pareció que omitirla de una historia clínica sería copiar un hueco. Si tienes una razón para dejarla fuera, dínosla y la quitamos.
+
 # Resumen
 
 | # | Qué | Tipo |
@@ -180,5 +200,6 @@ No requieren nada de ti. Van porque cambian qué tenemos que construir.
 | 3.4 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
 | 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
 | 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
+| 6 | **Dos valores sin resolver en tu pantalla** (fenotipo MCCB y PBI), el motivo sin separador y la fecha de firma | **Reporte, no pregunta** |
 
 **Lo que bloquea es la Parte 1.** El resto lo seguimos construyendo mientras respondes.
