@@ -847,7 +847,7 @@ function IntercambioSection({
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Lista de intercambio</h3>
+      <h3 className="text-sm font-semibold text-foreground">Lista de intercambio U de A · ICBF 2025</h3>
       <p className="text-sm text-muted-foreground">
         Porciones por alimento para cubrir el objetivo calórico ({objetivoEfectivo} kcal). El auto-llenado
         sugiere un alimento representativo por grupo; puedes repartir dentro de un grupo (por ejemplo dos de
@@ -1364,7 +1364,7 @@ function TiemposSection({
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Distribución por tiempos</h3>
+      <h3 className="text-sm font-semibold text-foreground">Distribución por tiempos de comida</h3>
       <p className="text-sm text-muted-foreground">
         Reparte las porciones de cada alimento entre los tiempos de comida activos. Ajusta las celdas si hace
         falta; el total por tiempo (porciones y kcal) se recalcula abajo.
@@ -1562,7 +1562,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
 
   return (
     <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Validación nutricional</h3>
+      <h3 className="text-sm font-semibold text-foreground">Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)</h3>
       <p className="text-sm text-muted-foreground">
         Calculada del plan, no editable: cubrimiento de nutrientes contra los requerimientos por sexo y edad. El
         sodio se limita (menos es mejor); el resto se cubre.
