@@ -16,6 +16,8 @@ export type HcHeader = {
   fechaConsulta: string; // ISO; la formatea la vista
   profesional: string;
   motivos: string[];
+  /** Proxima cita del tratamiento (bloque 13). En VIVO, no sellada: es la cita vigente. */
+  proximaCita: string | null;
 };
 
 type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null };
@@ -74,6 +76,16 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     }
   }
 
+  // La proxima cita vive en el tratamiento; se lee aparte y EN VIVO (no se sella: si el profesional la
+  // mueve, la historia debe decir la vigente). Lectura chica por evaluation -> diagnosis -> treatment.
+  const { data: t } = await supabase
+    .from("treatments")
+    .select("proxima_cita, diagnoses!inner(evaluation_id)")
+    .eq("diagnoses.evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return {
     paciente: `${paciente?.first_name ?? ""} ${paciente?.last_name ?? ""}`.trim(),
     edad: edadEnFecha(paciente?.birth_date ?? null, fechaConsulta),
@@ -81,5 +93,6 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     fechaConsulta,
     profesional: profesional?.full_name ?? "",
     motivos,
+    proximaCita: (t?.proxima_cita as string | null) ?? null,
   };
 }

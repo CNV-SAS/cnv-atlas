@@ -215,3 +215,78 @@ export function HcMetaTerapeutica({ texto, motivo }: { texto: string | null; mot
     </Tarjeta>
   );
 }
+
+// Bloques 8, 9, 13 y 14. Los cuatro salen de datos ya sellados o ya leidos; ninguno recalcula.
+
+export function HcObjetivoTratamiento({ texto }: { texto: string | null }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Objetivo del tratamiento</TituloSeccion>
+      {texto && texto.trim() !== "" ? (
+        <p className="text-base font-semibold text-primary">{texto}</p>
+      ) : (
+        // "No se registró" y no "no aplica": el objetivo SIEMPRE deberia estar en una consulta con
+        // prescripcion; si falta, falta de verdad.
+        <p className="text-sm text-muted-foreground">{SIN_DATO}</p>
+      )}
+    </Tarjeta>
+  );
+}
+
+export type HcRuta = { id: string; label: string; activacion: string; prioritaria?: boolean };
+
+export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Rutas de intervención activadas</TituloSeccion>
+      {rutas.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {rutas.map((r) => (
+            <div key={r.id} className="rounded-md border border-border bg-muted/40 p-3">
+              <span className="text-sm font-semibold text-primary">
+                {r.id} — {r.label}
+              </span>
+              <p className="text-xs text-muted-foreground">Indicador: {r.activacion}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Aqui SI es "no aplica": ninguna ruta activada es un resultado clinico valido, no un hueco.
+        <p className="text-sm text-muted-foreground">
+          No se activó ninguna ruta de intervención en esta evaluación.
+        </p>
+      )}
+    </Tarjeta>
+  );
+}
+
+export function HcProximaConsulta({ fecha }: { fecha: string | null }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Próxima consulta</TituloSeccion>
+      {fecha ? (
+        <p className="text-xl font-bold tabular-nums text-primary">{fecha}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Sin fecha registrada</p>
+      )}
+    </Tarjeta>
+  );
+}
+
+export function HcFirmaYFecha({ profesional, fecha }: { profesional: string; fecha: string }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Firma y fecha</TituloSeccion>
+      {/* Linea EN BLANCO para firmar en papel, como en su HC: no es firma grafica ni acto de firma con
+          marca de tiempo, es el pie de un documento que se imprime. */}
+      <div className="h-8 border-b border-border" />
+      <div className="flex flex-col">
+        <span className="text-sm text-muted-foreground">{profesional || "Profesional de salud"}</span>
+        {/* DIVERGENCIA deliberada: su archivo usa la fecha de IMPRESION (new Date()). Una historia clinica
+            impresa tres meses despues quedaria fechada tres meses tarde, junto a datos de otra consulta.
+            Aqui va la fecha de la EVALUACION. */}
+        <span className="text-xs text-muted-foreground">{fecha}</span>
+      </div>
+    </Tarjeta>
+  );
+}

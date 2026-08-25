@@ -71,7 +71,11 @@ import {
   HcAntecedentes,
   HcDatosDelPaciente,
   HcDiagnosticoFuncional,
+  HcFirmaYFecha,
   HcMetaTerapeutica,
+  HcObjetivoTratamiento,
+  HcProximaConsulta,
+  HcRutasActivadas,
   HcMotivoDeConsulta,
   HcResumenDiagnostico,
 } from "@/modules/reports/components/historia-clinica";
@@ -590,6 +594,12 @@ export default async function ResultadosEvaluacionPage({
                   </p>
                 </section>
               ) : null}
+              <HcObjetivoTratamiento texto={protocol?.objetivoTexto ?? null} />
+              <HcRutasActivadas
+                rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
+              />
+              <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDate(hcHeader.proximaCita) : null} />
+              <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />
             </div>
           ) : null}
         </section>
