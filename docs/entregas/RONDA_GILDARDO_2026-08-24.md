@@ -315,6 +315,65 @@ Si tu respuesta al 7.1 fuera que la historia clínica también llega al paciente
 
 ---
 
+# Parte 8 · La pantalla del nutricionista: cuatro cosas del cotejo
+
+Cotejamos tu subpestaña de nutrición contra la nuestra, pantalla contra pantalla. La mayoría coincide. Estas cuatro no, y tres de ellas son cosas que hicimos nosotros.
+
+## 8.1 · Fundimos tus dos bloques en uno, y queremos que lo apruebes
+
+Tu pantalla tiene **dos bloques separados**:
+
+- **Objetivo del tratamiento nutricional:** el texto del objetivo, con cuatro campos debajo (objetivo calórico, actividad prescrita, déficit, peso meta).
+- **Fórmula sintética:** la calculadora, con GEB, factor de actividad, GET, objetivo, peso de cálculo, proteína g/kg, proteína total, grasas % y g, y CHO por diferencia.
+
+**Nosotros los fundimos en uno solo, que llamamos la cadena calórica.** La ciencia es la que tú nos diste el 9 de agosto (Mifflin sobre el peso actual, el déficit desde el peso meta, las cifras de proteína por condición); lo que cambiamos es cómo se presenta.
+
+**Lo que gana al estar junto:**
+
+- **Cuadre de macros:** las calorías de proteína, grasa y carbohidratos tienen que sumar el objetivo. Si no cierran, se ve. En dos bloques separados, un objetivo movido a mano puede quedar sin cuadrar con los macros y nadie lo nota.
+- **Se distingue lo calculado de lo ajustado:** cada cifra muestra si es la del motor o la que movió el profesional. Hoy en tu pantalla, una vez escrita, una cifra ajustada se ve igual que una calculada.
+- **Un solo sitio donde se toca el objetivo.** En tu pantalla el objetivo calórico aparece en los dos bloques, y hay que saber cuál manda.
+
+**Lo que se pierde, y es lo que queremos preguntarte:** tú separaste **dos momentos** distintos, *decidir la meta* y *ver la cadena que la produce*. Fundidos, decidir queda dentro de calcular, y eso puede empujar al profesional a mover la calculadora cuando solo quería fijar una meta.
+
+**¿Apruebas nuestro modelo, o prefieres tus dos bloques separados?** No lo cambiamos sin tu visto bueno: reorganiza cómo se prescribe.
+
+**Y un detalle de tu pantalla, de paso:** el mismo factor de actividad se llama **"Actividad prescrita (FA)"** en un bloque y **"Factor actividad (PAL)"** en el otro. Parece un desliz.
+
+## 8.2 · Tenemos unas "Guías dietarias" que tú no tienes
+
+Es un bloque donde el profesional agrega recomendaciones escritas a mano, junto al objetivo. **Lo diseñamos nosotros**, antes de tener tu archivo; no responde a nada tuyo y no hay equivalente en tu pantalla.
+
+**¿Sobra, o te parece que vale?** Si sobra lo quitamos sin más. Si vale, lo dejamos y te decimos cómo queda.
+
+## 8.3 · El nutricionista es la única profesión sin notas, y nosotros se las dimos
+
+Tu archivo tiene notas clínicas **estructuradas por profesión**, y aterrizan en la historia clínica:
+
+| | Campos |
+|---|---|
+| Médico | Diagnóstico médico · Medicamentos prescritos · Indicaciones médicas |
+| Psicología | Evaluación psicológica · Objetivos psicológicos · Técnicas / indicaciones |
+| Entrenamiento | Diagnóstico funcional · Programa de ejercicio · Intensidad y frecuencia |
+
+**El nutricionista no tiene**, y entendemos por qué: su plan **es** el registro.
+
+Nosotros le pusimos unas "Notas del tratamiento". Y aquí está el dato que hace la pregunta respondible: **hoy nuestras notas del nutricionista no llegan a ningún documento. Si deben quedarse, irían a la historia clínica como las tuyas; si no, sobran.**
+
+¿Debería el nutricionista tener las suyas? El argumento a favor: su única vía de registro es el plan, y no todo lo que observa en consulta cabe ahí. El argumento en contra es el tuyo, y por eso preguntamos.
+
+*(Las tres tuyas las estamos portando: nos faltaban.)*
+
+## 8.4 · El orden de los bloques
+
+Los dos órdenes difieren bastante, y el tuyo tiene una lógica que nos convenció: **fijar el objetivo → ver si el plan cumple → ajustar la calculadora → repartir**. Pones la validación arriba, antes de la fórmula; nosotros al final.
+
+Vamos a alinearnos con el tuyo. Solo te avisamos de un caso que tu prototipo no tiene que resolver y el nuestro sí: en una **consulta inicial** todavía no hay plan, así que la validación arriba estaría vacía. Ahí mostraremos un aviso de que aparece al armar el plan, en vez de una tabla de ceros.
+
+Y una diferencia donde nos quedamos con lo nuestro, dinos si te parece mal: tú pones **los tiempos de comida activos DESPUÉS** de la tabla de distribución, y nosotros antes. Como los tiempos activos gobiernan la distribución, ponerlos después obliga a subir a corregir.
+
+---
+
 # Resumen
 
 | # | Qué | Tipo |
@@ -336,5 +395,11 @@ Si tu respuesta al 7.1 fuera que la historia clínica también llega al paciente
 | 7.2 | El bloqueo de enviar sin agendar lo pusimos NOSOTROS: ¿lo apruebas? | Restricción nuestra |
 | 7.3 | Tu tabla de la HC muestra "Normal" y "Óptimo" como alterados (cAF y el azul) | Reporte |
 | 7.4 | Dos cosas que dependen del 7.1: la EB-BIS en la historia clínica y el resumen por profesión | Informativo |
+| 8.1 | **Fundimos tu "Objetivo del tratamiento" y tu "Fórmula sintética" en una sola cadena.** ¿Lo apruebas? | **Propuesta nuestra** |
+| 8.2 | Las "Guías dietarias" son nuestras y tú no las tienes: ¿sobran? | Propuesta nuestra |
+| 8.3 | El nutricionista es la única profesión sin notas: ¿debería tenerlas? | Pregunta |
+| 8.4 | Nos alineamos a tu orden de bloques; dos avisos | Declaración |
+
+
 
 **Lo que bloquea es la Parte 1. Lo más importante son el 3.1 y el 7.1.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.
