@@ -446,7 +446,7 @@ Y ahí nos frenamos, porque **no sabemos qué decir**. Un valor que no cambia pu
 Entonces:
 
 1. **¿Existe un cambio mínimo detectable para la EB-BIS y para C?** Si lo tienes, lo cableamos en los dos sitios.
-2. **Si no existe todavía: ¿de dónde saldría?** ¿De la repetibilidad del equipo, de una cohorte, de un criterio tuyo?
+2. **Si no existe todavía: ¿de dónde saldría?** ¿De la repetibilidad del equipo, de una cohorte, de un criterio tuyo? Miramos si lo teníamos a mano y **no está en nuestra documentación**; si el BiodyXpert publica su repetibilidad (el CV % de mediciones repetidas) en su ficha técnica, esa sería la vía más corta y la buscamos nosotros. Solo dinos si te sirve como base o si prefieres otra.
 3. **Y mientras tanto: ¿te parece bien decir "sin cambio" sin calificar**, o prefieres otra redacción?
 
 ## 9.2 · Dos cosas de tu pantalla de Seguimiento
@@ -463,7 +463,11 @@ Reporte, no pregunta. Las dos las vimos en tus capturas y **no las vamos a copia
 
 Tu bloque de próximo control **propone** la fecha (la frecuencia de la ruta sumada a la consulta) y el profesional puede cambiarla y guardar. Eso está bien pensado, y es lo que vamos a copiar: **en Atlas hoy la próxima cita solo se puede fijar cuando se confirma un "empeoró"**, y en un seguimiento normal no hay dónde ponerla.
 
-Pero al seguir el dato encontramos esto: **la fecha sugerida queda persistida en cuanto la pantalla la propone**, antes de que nadie pulse "Guardar próximo control" (un efecto la escribe cada vez que cambia el campo, incluida la precarga). Y tu historia clínica lee de ahí. Así que **una fecha que nadie confirmó aparece como la próxima cita del paciente**.
+Pero al seguir el dato encontramos algo que creemos que no viste, y tiene dos mitades.
+
+**La primera: la fecha sugerida queda guardada en cuanto la pantalla la propone**, antes de que nadie pulse "Guardar próximo control". Un efecto la escribe cada vez que el campo cambia, y la precarga cuenta como un cambio. Tu historia clínica lee de ahí. Así que **una cita que nadie confirmó figura como la próxima cita del paciente**, y se imprime como tal.
+
+**La segunda, y es la que importa: eso deja sin efecto una regla que pusiste tú.** Dijiste que un "empeoró" solo se le comunica al paciente **con la próxima cita agendada**. Pero si el sistema la agenda solo, esa condición **siempre está cumplida**, y nunca obliga a nadie a decidir nada. La regla sigue escrita y ya no protege lo que querías proteger.
 
 **Nosotros lo vamos a hacer distinto, y te decimos por qué:** la sugerida se **muestra**, y se **guarda solo cuando el profesional confirma**. La razón no es de estilo. Tu propia regla dice que un "empeoró" solo se le comunica al paciente **con la cita agendada**; si la sugerida se guardara sola, esa condición se cumpliría sin que nadie decidiera nada, y la regla quedaría vacía por dentro.
 
