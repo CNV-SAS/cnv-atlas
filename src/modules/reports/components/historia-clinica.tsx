@@ -429,6 +429,7 @@ export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
 // Se aplican los MISMOS dos filtros que el resto de la tabla: solo lo alterado (sev >= 1) y nada sin valor.
 export type HcIndiceAni = {
   codigo: string;
+  nombre: string | null;
   referencia: string;
   valor: string;
   clasificacion: string;
@@ -453,7 +454,19 @@ export function HcIndicesAniBise({ indices }: { indices: HcIndiceAni[] }) {
         <tbody>
           {indices.map((i) => (
             <tr key={i.codigo} className="border-b border-border/40">
-              <td className="py-1.5 pr-4 font-medium text-foreground">{i.codigo}</td>
+              {/* Nombre arriba y sigla debajo, en la MISMA celda: otro profesional lee el nombre, y la
+                  columna no se ensancha (que era el riesgo de ponerlos en linea). Cuando su archivo no le
+                  da nombre al indice, va la sigla sola: no se inventa uno para un documento clinico. */}
+              <td className="py-1.5 pr-4">
+                {i.nombre ? (
+                  <span className="flex flex-col">
+                    <span className="font-medium text-foreground">{i.nombre}</span>
+                    <span className="text-[11px] text-muted-foreground">{i.codigo}</span>
+                  </span>
+                ) : (
+                  <span className="font-medium text-foreground">{i.codigo}</span>
+                )}
+              </td>
               <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{i.valor}</td>
               <td className="py-1.5 pr-4 text-right text-muted-foreground">{i.referencia}</td>
               <td className="py-1.5">

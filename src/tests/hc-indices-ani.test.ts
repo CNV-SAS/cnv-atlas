@@ -24,6 +24,28 @@ describe("indices ANI BIS-E de la historia clinica", () => {
     ]);
   });
 
+  it("el NOMBRE completo sale de SU archivo, no de nuestro glosario", () => {
+    // La HC la puede leer otro profesional y un medico no tiene por que saber que es un IAE. Los nombres
+    // son los que el usa ("IFC · Funcion Celular"): el glosario interno marca varios como "confirmar
+    // Gildardo", asi que escribir ahi un nombre nuestro seria afirmar algo que el no confirmo.
+    const n = Object.fromEntries(INDICES_ANI.map((f) => [f.codigo, f.nombre]));
+    expect(n.IFC).toBe("Función Celular");
+    expect(n.IRC).toBe("Riesgo Celular");
+    expect(n.ISCM).toBe("Síndrome Celular");
+    expect(n.IEHH).toBe("Hidro-Homeostasis");
+    expect(n.IAE).toBe("Aceleración del Envejecimiento");
+  });
+
+  it("PABU va SIN nombre: su archivo no le da uno y no se inventa", () => {
+    expect(INDICES_ANI.find((f) => f.codigo === "PABU")!.nombre).toBeNull();
+  });
+
+  it("EB-BIS va SIN nombre: el suyo dice 'Edad Biológica' y nosotros NO la rotulamos como edad", () => {
+    // Divergencia deliberada ya registrada (D-010/D-011): la EB-BIS es un indice funcional bioelectrico,
+    // no la edad del cuerpo. Poner "Edad Biologica" en la historia clinica la contradiria.
+    expect(INDICES_ANI.find((f) => f.codigo === "EB")!.nombre).toBeNull();
+  });
+
   it("las referencias son las suyas, verbatim y por sexo", () => {
     const ifc = INDICES_ANI.find((f) => f.codigo === "IFC")!;
     expect(ifc.referencia(true)).toBe("≥6,68 óptimo");

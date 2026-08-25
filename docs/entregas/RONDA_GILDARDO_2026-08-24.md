@@ -323,9 +323,9 @@ No copiamos ninguna de las dos: nuestra tabla oculta lo que nuestras etiquetas l
 | 3.5 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
 | 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
 | 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
+| 6 | **Cuatro defectos nuestros ya arreglados** por deducir severidad del tono (un desnutrido salía en verde) + tres cosas de tu pantalla | **Reporte, no pregunta** |
 | 7.1 | **¿Qué recibe el paciente?** Hoy le mandamos IFC, IRC, PABU y el código N_N_N_A. Tu informe amigable ya existe en tu archivo | **La más importante, con 3.1** |
 | 7.2 | El bloqueo de enviar sin agendar lo pusimos NOSOTROS: ¿lo apruebas? | Restricción nuestra |
 | 7.3 | Tu tabla de la HC muestra "Normal" y "Óptimo" como alterados (cAF y el azul) | Reporte |
-| 6 | **Cuatro defectos nuestros ya arreglados** por deducir severidad del tono (un desnutrido salia en verde) + tres cosas de tu pantalla | **Reporte, no pregunta** |
 
 **Lo que bloquea es la Parte 1. Lo más importante son el 3.1 y el 7.1.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.

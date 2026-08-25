@@ -207,8 +207,8 @@ const DIAG_LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["AIC con grasa", "ICW_pct", "ICW_pct_ref", "% de ACT"],
       ["AIC sin grasa", "ICW_sg", "ICW_sg_ref", "L"],
       ["AIC sin grasa", "ICW_sg_pct", "ICW_sg_pct_ref", "% de MLG"],
-      ["E/I con grasa (AEC/AIC)", "ei", null, ""],
-      ["E/I sin grasa (AEC_sg/AIC_sg)", "ei_sg", null, ""],
+      ["Extracelular/intracelular con grasa (E/I)", "ei", null, ""],
+      ["Extracelular/intracelular sin grasa (E/I)", "ei_sg", null, ""],
       // AF e IR en Nivel III (celular), donde Gildardo los tiene. DESPUES de los dos E/I (smoke l).
       ["AF - Ángulo de fase", "AF", null, "°"],
       ["IR - Radio de impedancia", "IR", null, ""],

@@ -6,8 +6,23 @@
 //
 // La severidad sale de `indicatorSeverities` (que ya desambigua el azul por etiqueta), no de un color.
 
+// NOMBRE COMPLETO junto a la sigla. La historia clinica la puede leer OTRO profesional, y un medico no
+// tiene por que saber que es un IAE. Los nombres NO se inventan: son los que usa el propio archivo de
+// Gildardo con su formato "SIGLA · Nombre" (IFC · Funcion Celular, IRC · Riesgo Celular, ISCM · Sindrome
+// Celular, IEHH · Hidro-Homeostasis, IAE · Aceleracion del Envejecimiento, ICA-BIS · Desv. φ). El glosario
+// interno marca varios de estos como "confirmar Gildardo", asi que escribir ahi un nombre nuestro seria
+// afirmar en un documento clinico algo que el no ha confirmado.
+//
+// DOS EXCEPCIONES deliberadas:
+//   - PABU: su archivo NO le da nombre en ninguna parte (solo lo describe como marcador direccional de
+//     desviacion de φ). Va la sigla sola antes que un nombre inventado.
+//   - EB-BIS: el suyo lo rotula "Edad Biologica" y NOSOTROS NO podemos (divergencia deliberada ya
+//     registrada: la EB-BIS es un indice funcional bioelectrico, no la edad del cuerpo, y no se rotula
+//     como edad; ver BACKLOG y D-010/D-011). Va la sigla sola.
 export type IndiceAniFila = {
   codigo: string;
+  /** Nombre completo del propio archivo de Gildardo. null cuando el no le da uno (ver nota arriba). */
+  nombre: string | null;
   referencia: (sexoM: boolean) => string;
   /** Formato del valor, verbatim del suyo (decimales y sufijo). */
   formato: (v: number) => string;
@@ -15,30 +30,31 @@ export type IndiceAniFila = {
 
 // Orden y referencias EXACTOS de su tabla (v8 L15087-15095).
 export const INDICES_ANI: IndiceAniFila[] = [
-  { codigo: "IFC", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => v.toFixed(2) },
+  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => v.toFixed(2) },
   {
-    codigo: "IRC",
+    codigo: "IRC", nombre: "Riesgo Celular",
     referencia: (m) => (m ? "<1,68 bajo riesgo" : "<2,27 bajo riesgo"),
     formato: (v) => v.toFixed(2),
   },
-  { codigo: "ISCM", referencia: () => "ISCM-1 ≤ −1", formato: (v) => v.toFixed(2) },
-  { codigo: "IEHH", referencia: () => "≤0.0 óptimo", formato: (v) => v.toFixed(2) },
-  { codigo: "EB", referencia: () => "= Edad cronológica", formato: (v) => `${v.toFixed(1)} a` },
+  { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => v.toFixed(2) },
+  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "≤0.0 óptimo", formato: (v) => v.toFixed(2) },
+  { codigo: "EB", nombre: null, referencia: () => "= Edad cronológica", formato: (v) => `${v.toFixed(1)} a` },
   {
-    codigo: "IAE",
+    codigo: "IAE", nombre: "Aceleración del Envejecimiento",
     referencia: () => "−5 a +5 años",
     formato: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} a`,
   },
   {
-    codigo: "PABU",
+    codigo: "PABU", nombre: null,
     referencia: (m) => (m ? "φ = 1,618 (k=0,78)" : "φ = 1,618 (k=0,46)"),
     formato: (v) => v.toFixed(3),
   },
-  { codigo: "ICA-BIS", referencia: () => "0.00–0.15 Zona φ", formato: (v) => v.toFixed(4) },
+  { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: () => "0.00–0.15 Zona φ", formato: (v) => v.toFixed(4) },
 ];
 
 export type IndiceAniResuelto = {
   codigo: string;
+  nombre: string | null;
   referencia: string;
   valor: string;
   clasificacion: string;
@@ -66,6 +82,7 @@ export function indicesAniAlterados(
     if (!label) continue; // sin clasificacion no se puede decir que esta alterado
     out.push({
       codigo: fila.codigo,
+      nombre: fila.nombre,
       referencia: fila.referencia(sexoM),
       valor: fila.formato(v),
       clasificacion: label,
