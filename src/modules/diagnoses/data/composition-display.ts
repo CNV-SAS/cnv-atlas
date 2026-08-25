@@ -20,16 +20,43 @@ export type DisplayDx = { label: string; sev: number } | null;
 // NHLBI devuelve ademas la clase (para la columna Valor) y el texto de cintura (para la columna Δ).
 export type NhlbiDx = { label: string; sev: number; clase: string; ccAltaText: string } | null;
 
-// Color del frozen -> severidad 0-3 para el semaforo (SEV_CLS). Verde/azul/teal = optimo/informativo (0);
-// ambar = leve (1); naranja = moderado (2); rojo (todas las variantes) = alto (3).
-function sevFromColor(c: string): number {
+// Color del frozen -> severidad 0-3 para el semaforo (SEV_CLS). Ambar = leve (1); naranja = moderado (2);
+// rojo (todas las variantes) = alto (3); verde = optimo (0).
+//
+// EL AZUL NO SE PUEDE LEER POR EL TONO (2026-08-24). Esta capa lo trataba como "optimo/informativo" junto
+// al verde, y con eso **"Desnutricion" (FFMI bajo) y "Bajo peso" (IMC < 18,5) se pintaban de OPTIMO** en la
+// tabla de Wang del Diagnostico. Es la SEGUNDA copia de la misma suposicion: `colorSev` (severity.ts) la
+// tenia igual, se arreglo primero, y arreglar una sola dejaba viva la otra, que es justo la que pinta esta
+// tabla. Barrer una regla exige los mismos sitios que barrer un umbral.
+//
+// Lo grave no era el color: era el FILTRO. La historia clinica muestra solo los indices alterados, asi que
+// un paciente DESNUTRIDO habria salido con "Sin indices alterados": un documento clinico afirmando que un
+// desnutrido esta bien. Ese caso es el que justifica todo el trabajo del filtro.
+//
+// El desempate lo da la ETIQUETA, que es lo unico inequivoco, y el default cae del lado seguro: un azul
+// cuya etiqueta no reconozcamos se trata como alteracion. En un documento que filtra por alteracion es
+// mejor que algo aparezca de mas y el profesional decida no mirarlo; al reves no se recupera.
+const AZUL = new Set(["#3b82f6", "#60a5fa"]);
+// Los DOS azules benignos del archivo: "Optimo" (SMM/W) y "Bajo (atleta)" (FM_pct/FFMI en deportistas).
+const AZUL_BENIGNO = /óptim|optim|\(atleta\)/i;
+// Comparador generico: su otra mitad ("Por debajo de la referencia") es ambar = 1, asi que la de arriba va
+// al MISMO nivel. Es alteracion (algo se desvia), pero leve: no es un veredicto clinico, es un contraste.
+const AZUL_LEVE = /por encima de la referencia/i;
+
+function sevFromColor(c: string, label?: string): number {
   const hex = c.toLowerCase();
   if (["#f59e0b"].includes(hex)) return 1;
   if (["#f97316", "#ea580c"].includes(hex)) return 2;
   if (["#ef4444", "#dc2626", "#991b1b", "#7b0000"].includes(hex)) return 3;
-  return 0; // #16a34a/#10b981 (verde), #3b82f6/#60a5fa (azul), #0f766e/#0891b2 (teal): optimo/informativo
+  if (AZUL.has(hex)) {
+    if (label && AZUL_BENIGNO.test(label)) return 0;
+    if (label && AZUL_LEVE.test(label)) return 1;
+    return 2; // deficit, desnutricion, edema, exceso: alteracion
+  }
+  return 0; // #16a34a/#10b981 (verde) y #0f766e/#0891b2 (teal, mapa informativo): optimo/informativo
 }
-const dx = (label: string, c: string): DisplayDx => ({ label, sev: sevFromColor(c) });
+const dx = (label: string, c: string): DisplayDx => ({ label, sev: sevFromColor(c, label) });
+
 
 // ── E/I (radio AEC/AIC) — ATLAS_v8.html:14085 (dEI). Sobre el valor absoluto del radio. ──
 export function dEI(v: number | null): DisplayDx {
