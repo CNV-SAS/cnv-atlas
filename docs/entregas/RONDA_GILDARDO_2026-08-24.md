@@ -282,17 +282,20 @@ Tenemos el contenido, así que la pregunta no es qué lleva, es cómo debe llega
 
 **Mientras respondes no tocamos el envío.** Lo que se manda cambia con tu respuesta, y no queremos versionar dos veces un documento que sale hacia una persona.
 
-## 7.2 · Y una restricción que pusimos nosotros de más
+## 7.2 · Una restricción que pusimos nosotros de más, y cómo quedó
 
 En tu decisión del 3 de agosto (§7) dijiste que un "empeoró" solo se comunica si el profesional lo **confirma** y va **acompañado de la próxima cita agendada**; y que **sin eso, el reporte sale sin esa sección**.
 
-Lo implementamos así. Pero además hicimos algo que **tú no pediste**: hoy Atlas **impide aprobar y enviar el reporte** mientras no se confirme y se agende.
+Lo implementamos así. Pero además hicimos algo que **tú no pediste**: Atlas **impide aprobar y enviar el reporte** mientras no se confirme. Tu regla degrada (el documento sale, sin la sección del cambio); la nuestra bloquea (el documento no sale).
 
-La diferencia importa. Tu regla degrada: el documento sale, sin la sección del cambio. La nuestra bloquea: el documento no sale.
+Nos pareció coherente —mandarle una mala noticia sin decirle cuándo lo vuelven a ver es peor que no mandarla—, pero **es una restricción sobre un acto clínico y la pusimos nosotros**.
 
-Nos pareció coherente (mandarle una mala noticia sin decirle cuándo lo vuelven a ver es peor que no mandarla), pero **es una restricción sobre un acto clínico y la pusimos nosotros**. ¿La apruebas, o prefieres tu versión, donde el reporte se puede enviar y simplemente no lleva esa sección?
+**Y en el camino la simplificamos, porque descubrimos que el acto estaba haciendo dos cosas.** Antes, ese mismo bloque **pedía la fecha**: confirmar la comunicación y agendar eran un solo gesto. Ahora la cita se fija en Seguimiento, que es donde vive, y el bloque solo **verifica que exista** y confirma la comunicación. Si no hay cita, lo dice y lleva a agendarla. Tu regla queda intacta; lo que se separó es agendar de confirmar.
 
-Y sigue abierta una consulta tuya de entonces que nunca cerramos: **¿"cita agendada" se cumple con el campo de fecha lleno**, o exige algo más?
+**Dos cosas, entonces:**
+
+1. **¿Apruebas que aprobar quede bloqueado sin la confirmación**, o prefieres tu versión, donde el reporte se puede enviar y simplemente no lleva esa sección?
+2. Y sigue abierta una consulta tuya de entonces que nunca cerramos: **¿"cita agendada" se cumple con el campo de fecha lleno**, o exige algo más?
 
 ## 7.3 · Tu tabla de la historia clínica muestra dos filas que dicen "Normal" y "Óptimo"
 
@@ -389,7 +392,7 @@ Y con eso resuelto, la pregunta del nutricionista se ordena sola. Son dos, no un
 
 Los dos órdenes difieren bastante, y el tuyo tiene una lógica que nos convenció: **fijar el objetivo → ver si el plan cumple → ajustar la calculadora → repartir**. Pones la validación arriba, antes de la fórmula; nosotros al final.
 
-Vamos a alinearnos con el tuyo. Solo te avisamos de un caso que tu prototipo no tiene que resolver y el nuestro sí: en una **consulta inicial** todavía no hay plan, así que la validación arriba estaría vacía. Ahí mostraremos un aviso de que aparece al armar el plan, en vez de una tabla de ceros.
+**Ya nos alineamos con el tuyo.** Solo te avisamos de un caso que tu prototipo no tiene que resolver y el nuestro sí: en una **consulta inicial** todavía no hay plan, así que la validación arriba quedaría vacía. Ahí mostramos un aviso de que aparece al armar el plan, en vez de una tabla de ceros que diría que el plan cubre el 0 % de todo.
 
 Y una diferencia donde nos quedamos con lo nuestro, dinos si te parece mal: tú pones **los tiempos de comida activos DESPUÉS** de la tabla de distribución, y nosotros antes. Como los tiempos activos gobiernan la distribución, ponerlos después obliga a subir a corregir.
 
@@ -424,7 +427,7 @@ O sea: **el modelo propone la fecha, el profesional la confirma o la cambia, y l
 
 **En Atlas la próxima cita solo se captura en un caso:** cuando el profesional confirma que va a comunicarle un "empeoró" al paciente. En un seguimiento normal **no hay dónde fijarla**, y nunca la proponemos desde la ruta.
 
-No es una pregunta, es un hueco nuestro que vamos a cerrar copiando tu mecánica. Te lo decimos por si la frecuencia de cada ruta debe leerse de otra parte, o si hay rutas donde la fecha no deba sugerirse sola.
+No es una pregunta, es un hueco nuestro, y **ya lo cerramos copiando tu mecánica**: el bloque de Seguimiento propone la fecha desde la frecuencia de la ruta y el profesional la confirma. Te lo decimos por si la frecuencia de alguna ruta debe leerse de otra parte, o si hay rutas donde la fecha no deba sugerirse sola.
 
 # Parte 9 · Seguimiento: una pregunta y tres cosas de tu pantalla
 
@@ -457,7 +460,7 @@ Reporte, no pregunta. Las dos las vimos en tus capturas y **no las vamos a copia
 
 *(Y una cosa que sí hiciste bien y portamos tal cual: PABU e ICA-BIS van en dos gráficos separados, con su propia escala y su propia línea de referencia. Tienen objetivos distintos —acercarse a φ, y tender a cero— y juntarlos habría sido peor.)*
 
-**Dos: con una sola consulta, la pantalla dibuja igual.** El radar compara "Inicial 2026-08-13 vs Última 2026-08-13": **la misma medición contra sí misma**, con dos polígonos. Y las series pintan un punto suelto. Nosotros vamos a decir en su lugar que hace falta una segunda medición, y **cuándo correspondería** según la frecuencia de la ruta activa. Convierte un vacío en información, que es lo que el profesional necesita en la primera consulta.
+**Dos: con una sola consulta, la pantalla dibuja igual.** El radar compara "Inicial 2026-08-13 vs Última 2026-08-13": **la misma medición contra sí misma**, con dos polígonos. Y las series pintan un punto suelto. Nosotros decimos en su lugar que hace falta una segunda medición, y **cuándo correspondería** según la frecuencia de la ruta activa. Convierte un vacío en información, que es lo que el profesional necesita en la primera consulta.
 
 ## 9.3 · La fecha del próximo control se guarda sin que nadie la confirme
 
@@ -469,7 +472,7 @@ Pero al seguir el dato encontramos algo que creemos que no viste, y tiene dos mi
 
 **La segunda, y es la que importa: eso deja sin efecto una regla que pusiste tú.** Dijiste que un "empeoró" solo se le comunica al paciente **con la próxima cita agendada**. Pero si el sistema la agenda solo, esa condición **siempre está cumplida**, y nunca obliga a nadie a decidir nada. La regla sigue escrita y ya no protege lo que querías proteger.
 
-**Nosotros lo vamos a hacer distinto, y te decimos por qué:** la sugerida se **muestra**, y se **guarda solo cuando el profesional confirma**. La razón no es de estilo. Tu propia regla dice que un "empeoró" solo se le comunica al paciente **con la cita agendada**; si la sugerida se guardara sola, esa condición se cumpliría sin que nadie decidiera nada, y la regla quedaría vacía por dentro.
+**Nosotros ya lo hicimos distinto, y te decimos por qué:** la sugerida se **muestra**, y se **guarda solo cuando el profesional confirma**. La razón no es de estilo. Tu propia regla dice que un "empeoró" solo se le comunica al paciente **con la cita agendada**; si la sugerida se guardara sola, esa condición se cumpliría sin que nadie decidiera nada, y la regla quedaría vacía por dentro.
 
 Dinos si lo ves de otra forma.
 
