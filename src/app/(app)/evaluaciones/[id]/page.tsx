@@ -446,6 +446,14 @@ export default async function ResultadosEvaluacionPage({
     exceso: (ps?.estrategia.deficit ?? 0) > 0,
   });
 
+  // El RESUMEN DIAGNOSTICO de la HC lleva la profesion del actor en el titulo, como el suyo. Y por eso
+  // el CONTENIDO tiene que ser el de esa profesion: el parrafo de dieta es del nutricionista (es el que su
+  // captura muestra bajo "RESUMEN DIAGNOSTICO · NUTRICIONISTA"), y para el resto va el abordaje por
+  // profesion del motor. Titular con la profesion de quien mira un parrafo de dieta seria decir que el
+  // modelo dice de su disciplina algo que no dijo.
+  const hcEsNutricionista = actorProfession.profession === "nutricionista";
+  const hcAbordaje = abordaje.kind === "text" ? abordaje.text : null;
+
   const hcNarrativa =
     treatmentNarrative.kind === "text"
       ? {
@@ -638,8 +646,14 @@ export default async function ResultadosEvaluacionPage({
               <HcAntecedentes grupos={hcAntecedentes} />
               <HcResumenDiagnostico
                 profesionLabel={profesionLabel}
-                texto={hcNarrativa.parrafoDieta}
-                motivo={hcNarrativa.motivo}
+                texto={hcEsNutricionista ? hcNarrativa.parrafoDieta : hcAbordaje}
+                motivo={
+                  hcEsNutricionista
+                    ? hcNarrativa.motivo
+                    : (hcAbordaje
+                        ? null
+                        : "El modelo tiene contenido para esta disciplina; su resumen todavía no se ha portado.")
+                }
               />
               <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />
               <HcMetaTerapeutica texto={hcNarrativa.meta} motivo={hcNarrativa.motivo} />

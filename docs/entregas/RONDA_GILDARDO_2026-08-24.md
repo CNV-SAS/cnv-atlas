@@ -304,6 +304,14 @@ Portamos tu regla de la tabla de la HC: *"mostrar ítems alterados; ocultar solo
 - **AF 6,7 "Normal"** aparece porque **`cAF` devuelve la etiqueta "Normal" con el color ámbar** (`#f59e0b`) para el rango 6,5-7,0 en hombres. La etiqueta y el color se contradicen dentro del mismo clasificador.
 
 No copiamos ninguna de las dos: nuestra tabla oculta lo que nuestras etiquetas llaman óptimo o normal. Te lo decimos por si el color de `cAF` es un error de tecleo, que es lo que parece.
+## 7.4 · Dos cosas que se deciden con tu respuesta al 7.1
+
+**La primera.** Tú decidiste (1 de agosto) que **la cifra de EB-BIS nunca va al paciente**, y lo respetamos: no está en el reporte que le enviamos. Pero la **historia clínica sí la muestra**, junto a los demás índices del modelo, porque es el documento del profesional.
+
+Si tu respuesta al 7.1 fuera que la historia clínica también llega al paciente, esa fila tendría que salir, y con ella todo el bloque ANI BIS-E. **No lo cambiamos hasta que respondas**, pero queremos que sepas que esa pregunta decide esto también.
+
+**La segunda.** Tu historia clínica titula el resumen con la profesión de quien atiende ("RESUMEN DIAGNÓSTICO · NUTRICIONISTA") y lo llena con el contenido de esa disciplina. Nosotros tenemos portado **el resumen del nutricionista**; para las otras tres profesiones el modelo tiene contenido y todavía no lo hemos portado, así que en esos casos la sección lo dice en vez de mostrar el del nutricionista con otro título. Es coherente con lo que ya acordamos para las pantallas de las otras profesiones, y lo mencionamos por si el orden de porte te importa.
+
 
 ---
 
@@ -327,5 +335,6 @@ No copiamos ninguna de las dos: nuestra tabla oculta lo que nuestras etiquetas l
 | 7.1 | **¿Qué recibe el paciente?** Hoy le mandamos IFC, IRC, PABU y el código N_N_N_A. Tu informe amigable ya existe en tu archivo | **La más importante, con 3.1** |
 | 7.2 | El bloqueo de enviar sin agendar lo pusimos NOSOTROS: ¿lo apruebas? | Restricción nuestra |
 | 7.3 | Tu tabla de la HC muestra "Normal" y "Óptimo" como alterados (cAF y el azul) | Reporte |
+| 7.4 | Dos cosas que dependen del 7.1: la EB-BIS en la historia clínica y el resumen por profesión | Informativo |
 
 **Lo que bloquea es la Parte 1. Lo más importante son el 3.1 y el 7.1.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.
