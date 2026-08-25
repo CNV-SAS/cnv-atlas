@@ -178,6 +178,28 @@ const PSC_INTERP: Record<string, string> = {
   Bajo_Normal: "Hidratación óptima · Masa celular límite",
   Bajo_Alto: "Perfil de salud celular ideal",
 };
+// SEVERIDAD del mapa, POR CLAVE y no por el tono ni por la etiqueta (2026-08-24). Las nueve
+// interpretaciones se pintaban con el mismo teal, que caia en 0, asi que **"Disfuncion celular severa"
+// salia con el color de optimo**. El argumento de que el teal es "informativo" no se sostiene: la etiqueta
+// EMITE UN VEREDICTO, no describe. Si dice disfuncion severa, el color no puede decir optimo.
+//
+// Y aqui NO sirve el desempate por etiqueta que se uso en los azules: "Hidratacion optima · Masa celular
+// limite" contiene la palabra "optima" y sin embargo la alteracion es la otra mitad. Con nueve claves
+// estables, el mapa explicito es mas seguro que cualquier regla sobre el texto.
+//
+// Criterio, deliberadamente grueso para no inventar matices: benigno 0; "limite" 1; alteracion 2;
+// "severa" 3. Una clave desconocida cae del lado SEGURO (2), como en las otras dos capas.
+const PSC_SEV: Record<string, number> = {
+  Elevado_Bajo: 3, // disfuncion celular SEVERA
+  Elevado_Normal: 2, // inflamacion de bajo grado, funcion conservada
+  Elevado_Alto: 2, // desequilibrio hidrico
+  Normal_Bajo: 2, // deficit de masa celular activa
+  Normal_Normal: 0, // adecuado
+  Normal_Alto: 0, // buena masa celular activa
+  Bajo_Bajo: 2, // deficit celular
+  Bajo_Normal: 1, // masa celular LIMITE (la "hidratacion optima" no es lo que se clasifica)
+  Bajo_Alto: 0, // ideal
+};
 export function pscAFxIR(
   af: number | null,
   ir: number | null,
@@ -187,8 +209,9 @@ export function pscAFxIR(
   const t = sexoM ? 0.78 : 0.82;
   const irK = !ir || ir <= 0 ? "N/D" : ir < t * 0.97 ? "Bajo" : ir <= t * 1.03 ? "Normal" : "Elevado";
   const valueText = afK !== "N/D" && irK !== "N/D" ? `IR ${irK} · AF ${afK}` : "—";
-  const interp = PSC_INTERP[`${irK}_${afK}`];
-  return { valueText, dx: interp ? dx(interp, "#0f766e") : null };
+  const clave = `${irK}_${afK}`;
+  const interp = PSC_INTERP[clave];
+  return { valueText, dx: interp ? { label: interp, sev: PSC_SEV[clave] ?? 2 } : null };
 }
 
 // ── Clasificadores de la tabla que en el HTML son DISTINTOS de los del motor (verbatim, ATLAS_v8:14072+).

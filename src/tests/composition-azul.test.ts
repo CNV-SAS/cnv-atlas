@@ -57,3 +57,48 @@ describe("el azul de la capa de display", () => {
     expect(normal?.sev).toBe(0); // verde
   });
 });
+
+// ── Mapa AFxIR (Perfil de Salud Celular) ──────────────────────────────────────────────────────────────
+// Cuarto caso de la misma familia: las NUEVE interpretaciones se pintaban con el mismo teal y caian en 0,
+// asi que "Disfuncion celular severa" salia con el color de optimo. El teal es "informativo", pero la
+// etiqueta EMITE UN VEREDICTO: si dice disfuncion severa, el color no puede decir optimo.
+
+import { pscAFxIR } from "@/modules/diagnoses/data/composition-display";
+
+// af/ir que producen cada combinacion (hombre: AF bajo <6.5, normal <=7, alto >7; IR con corte 0.78).
+const psc = (ir: number, af: number) => pscAFxIR(af, ir, true).dx;
+
+describe("mapa AFxIR", () => {
+  it("la disfunción celular SEVERA no es óptimo", () => {
+    const d = psc(0.9, 6); // IR elevado + AF bajo
+    expect(d?.label).toContain("Disfunción celular severa");
+    expect(d?.sev).toBe(3);
+  });
+
+  it("las tres interpretaciones BENIGNAS quedan en óptimo explícito", () => {
+    // Como los benignos del azul (SMM/W y el atleta): un default del lado seguro obliga a nombrar las
+    // excepciones, o marca por alterado lo que esta bien.
+    expect(psc(0.78, 6.8)?.label).toBe("Perfil de Salud Celular adecuado");
+    expect(psc(0.78, 6.8)?.sev).toBe(0);
+    expect(psc(0.78, 8)?.sev).toBe(0); // Buena Masa Celular Activa
+    expect(psc(0.7, 8)?.sev).toBe(0); // Perfil de salud celular ideal
+  });
+
+  it("un déficit de masa celular cuenta como alteración", () => {
+    const d = psc(0.78, 6);
+    expect(d?.label).toBe("Déficit de masa celular activa");
+    expect(d?.sev).toBeGreaterThanOrEqual(1);
+  });
+
+  it("'Hidratación óptima · Masa celular límite' NO se lee como benigna por la palabra óptima", () => {
+    // Por esto el desempate aqui es por CLAVE y no por etiqueta: la alteracion es la otra mitad del texto.
+    const d = psc(0.7, 6.8);
+    expect(d?.label).toContain("óptima");
+    expect(d?.sev).toBe(1);
+  });
+
+  it("sin AF o sin IR no hay interpretación (no se inventa una)", () => {
+    expect(pscAFxIR(null, 0.78, true).dx).toBeNull();
+    expect(pscAFxIR(6.8, null, true).dx).toBeNull();
+  });
+});

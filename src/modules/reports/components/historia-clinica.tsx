@@ -381,3 +381,42 @@ export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
     </Tarjeta>
   );
 }
+
+// Bloque 12: REMISIONES Y DERIVACIONES. Las de ESTA consulta. Los examenes solicitados NO son seccion
+// aparte: viajan dentro del texto de la remision ("Estudios sugeridos: ..."), como en su HC.
+export type HcRemision = {
+  id: string;
+  destino: string;
+  motivo: string;
+  fecha: string;
+  retorno: string | null;
+};
+
+export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Remisiones y derivaciones</TituloSeccion>
+      {remisiones.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {remisiones.map((r) => (
+            <div key={r.id} className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground">{r.destino}</span>
+                <span className="text-xs text-muted-foreground">
+                  {r.retorno ? `Regresó el ${r.retorno}` : "Sin retorno registrado"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-foreground">{r.motivo}</p>
+              <span className="text-xs text-muted-foreground">Remitido el {r.fecha}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        // "No aplica", no "no se registró": no remitir es una decisión clínica válida y frecuente.
+        <p className="text-sm text-muted-foreground">
+          No se registraron remisiones ni derivaciones en esta consulta.
+        </p>
+      )}
+    </Tarjeta>
+  );
+}

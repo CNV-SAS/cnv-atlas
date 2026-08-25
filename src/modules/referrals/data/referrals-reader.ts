@@ -107,3 +107,26 @@ export async function getPendingReferralHints(treatmentId: string): Promise<Pend
     referredAt: r.referred_at,
   }));
 }
+
+// Remisiones que salieron de ESTA consulta (bloque 12 de la historia clinica). Se ancla al treatmentId,
+// que es de donde sale la remision, y no al paciente: la historia documenta la consulta, no el historial
+// completo del paciente (para eso esta el listado de /pacientes).
+export async function listReferralsForTreatment(
+  treatmentId: string,
+): Promise<{ id: string; referredTo: ReferralTargetValue; referredToOther: string | null; reason: string; referredAt: string; returnedAt: string | null }[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("referrals")
+    .select("id, referred_to, referred_to_other, reason, referred_at, returned_at")
+    .eq("treatment_id", treatmentId)
+    .order("referred_at", { ascending: true });
+  if (error) throw new Error(`referrals-reader: listReferralsForTreatment: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    referredTo: r.referred_to as ReferralTargetValue,
+    referredToOther: (r.referred_to_other as string | null) ?? null,
+    reason: r.reason as string,
+    referredAt: r.referred_at as string,
+    returnedAt: (r.returned_at as string | null) ?? null,
+  }));
+}

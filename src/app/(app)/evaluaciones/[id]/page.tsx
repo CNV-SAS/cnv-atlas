@@ -28,7 +28,8 @@ import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-sec
 import { CelularSection } from "@/modules/diagnoses/components/celular-section";
 import { getCelularBadgesForEvaluation } from "@/modules/diagnoses/data/celular-badges-reader";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
-import { getPendingReferralHints } from "@/modules/referrals/data/referrals-reader";
+import { REFERRAL_TARGET_LABEL } from "@/modules/referrals/components/patient-referrals-section";
+import { getPendingReferralHints, listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { SurveyDiagnosisSection } from "@/modules/diagnoses/components/survey-diagnosis-section";
 import { missingDomainsFrom } from "@/modules/diagnoses/missing-domains";
 import { GenerateDiagnosisPanel } from "@/modules/clinical-pipeline/components/generate-diagnosis-panel";
@@ -77,6 +78,7 @@ import {
   HcPlanNutricional,
   HcProximaConsulta,
   HcRecomendaciones,
+  HcRemisiones,
   HcRutasActivadas,
   HcMotivoDeConsulta,
   HcResumenDiagnostico,
@@ -376,6 +378,9 @@ export default async function ResultadosEvaluacionPage({
 
   // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
+  // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
+  const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
+
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
   const ps = protocol?.protocolSuggested ?? null;
@@ -638,6 +643,18 @@ export default async function ResultadosEvaluacionPage({
               <HcObjetivoTratamiento texto={protocol?.objetivoTexto ?? null} />
               <HcPlanNutricional plan={hcPlan} />
               <HcRecomendaciones bloques={hcRecs} />
+              <HcRemisiones
+                remisiones={hcRemisiones.map((r) => ({
+                  id: r.id,
+                  destino:
+                    r.referredTo === "otro"
+                      ? (r.referredToOther ?? "Otro")
+                      : (REFERRAL_TARGET_LABEL[r.referredTo] ?? r.referredTo),
+                  motivo: r.reason,
+                  fecha: formatDate(r.referredAt),
+                  retorno: r.returnedAt ? formatDate(r.returnedAt) : null,
+                }))}
+              />
               <HcRutasActivadas
                 rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
               />

@@ -4,7 +4,7 @@ import { listPatientReferrals, type PatientReferral } from "../data/referrals-re
 import type { ReferralTargetValue } from "../validations";
 import { MarkReturnForm } from "./mark-return-form";
 
-const TARGET_LABEL: Record<ReferralTargetValue, string> = {
+export const REFERRAL_TARGET_LABEL: Record<ReferralTargetValue, string> = {
   medico: "Médico",
   psicologo: "Psicólogo/a",
   deportologo: "Deportólogo/a",
@@ -13,7 +13,7 @@ const TARGET_LABEL: Record<ReferralTargetValue, string> = {
 };
 
 function targetLabel(r: PatientReferral): string {
-  return r.referredTo === "otro" ? (r.referredToOther ?? "Otro") : TARGET_LABEL[r.referredTo];
+  return r.referredTo === "otro" ? (r.referredToOther ?? "Otro") : REFERRAL_TARGET_LABEL[r.referredTo];
 }
 
 // Cuánto lleva PENDIENTE (referredAt -> ahora). Una remisión de hace meses sin retorno dice algo. El
