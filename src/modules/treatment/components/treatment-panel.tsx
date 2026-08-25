@@ -480,6 +480,11 @@ export function TreatmentPanel({
           </div>
         ) : null}
 
+        {/* ORDEN DE GILDARDO (2026-08-24): la validacion va ARRIBA, antes de la formula. Su logica es fijar
+            la meta, ver si el plan la cumple, ajustar y repartir; en un SEGUIMIENTO, que va a ser el caso
+            frecuente, responde la primera pregunta del profesional. DERIVADA en vivo, solo lectura, no
+            persiste (no puede desfasarse), asi que subirla no mueve ninguna firma ni ningun candado. */}
+        <ValidacionSection protocol={protocol} />
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection
           key={sectionKey(
@@ -510,7 +515,9 @@ export function TreatmentPanel({
           locked={locked}
         />
         {/* Tiempos de comida (CP2.3): seccion propia, MANDAN sobre la distribucion y sobre el menu. Va antes
-            de las dos, que es el orden en que se decide. key = su propia firma. */}
+            de las dos, que es el orden en que se decide. key = su propia firma.
+            DIVERGENCIA DELIBERADA de su orden (2026-08-24): el los pone DESPUES de la tabla de distribucion.
+            Como gobiernan el reparto, ponerlos despues obliga a subir a corregir. Reportado en la ronda. */}
         <TiemposActivosSection
           key={sectionKey(
             "tiempos-activos",
@@ -527,8 +534,6 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        {/* Validacion (CP3.2): DERIVADA en vivo, solo lectura, no persiste (no puede desfasarse). */}
-        <ValidacionSection protocol={protocol} />
         {/* La lista que se lleva el paciente. Va aqui, despues de la validacion y antes del menu, igual que
             en el v8 (su seccion E precede a la F). No depende del protocolo: es la tabla completa, la misma
             para todos; lo que cambia por paciente son las PORCIONES, que estan arriba. */}
@@ -1525,6 +1530,24 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     const p = savedInter?.porciones[a.sub] ?? a.porciones;
     porcionesPorSub[a.sub] = p;
     if (p > 0) algunaPorcion = true;
+  }
+
+  // ESTADO VACIO (2026-08-24, al adoptar su orden). La validacion pasa ARRIBA, antes de la formula, porque
+  // en un seguimiento responde la primera pregunta del profesional ("¿como va este plan?"). Pero en una
+  // consulta INICIAL todavia no hay plan: sin porciones asignadas todo daria 0 % y el ICN 0, y una tabla de
+  // ceros se lee como "este plan cubre el 0 % de todo", que es falso. No es que el plan no cubra: es que no
+  // hay plan. Se dice, en vez de mostrarla. Es la misma distincion de "no aplica" vs "no se registro".
+  if (!algunaPorcion) {
+    return (
+      <section className="flex flex-col gap-2 border-t border-border pt-6">
+        <h3 className="text-sm font-semibold text-foreground">
+          Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)
+        </h3>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          Aparece al asignar porciones en la lista de intercambio. Todavía no hay plan que validar.
+        </p>
+      </section>
+    );
   }
 
   const nutrientes = computeValidacion({
