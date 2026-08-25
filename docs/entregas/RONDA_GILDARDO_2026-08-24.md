@@ -187,17 +187,37 @@ Tu regla del 23 (**el motor propone, el profesional dispone**) resolvió esto si
 
 Si prefieres que no se avise, se quita en una línea.
 
+### Y siete más, con el mismo criterio
+
+Las agrupamos aquí para que veas **con qué regla decidimos construir sin preguntarte**: cuando lo que hacemos se **deriva de tu ciencia** en vez de cambiarla, lo aplicamos y te lo contamos. Si alguna no te cuadra, se corrige.
+
+**El cambio de cada índice ahora se lee, no solo se ve.** Nuestra tabla de seguimiento mostraba "+4,54" en gris y el profesional no sabía si eso era bueno. Ahora el cambio va coloreado, y **el color sale de tus propios clasificadores**: se compara la severidad que tu clasificador le da al valor anterior contra la del actual. No declaramos ninguna dirección propia, que era el riesgo: en unos índices subir es mejorar, en otros empeorar, y el PABU mejora **acercándose** a φ. Tus clasificadores ya saben leer cada uno.
+
+**Un cambio dentro de la misma banda NO se llama mejora.** Si los dos valores caen en el mismo nivel de tu clasificador, el cambio sale en neutro y dice "misma lectura". Es la contención del 9.1: sin el cambio mínimo detectable, colorear un movimiento de 0,02 como mejora afirmaría más de lo que sabemos.
+
+**La validación del plan, cuando no hay plan, lo dice.** Al adoptar tu orden (validación arriba), en una consulta inicial quedaría vacía y todo daría 0 %. Una tabla de ceros se lee como "este plan cubre el 0 % de todo", que es falso: no es que no cubra, es que no hay plan. Mostramos un aviso en su lugar.
+
+**Un índice que no se mueve sale en gris y sin adjetivo.** En tu pantalla ya sale en gris (tu propio código lo distingue); lo que agregamos es decirlo con palabras, sin llamarlo "estable". Misma razón: eso lo decide el 9.1.
+
+**Tu filtro de "índices alterados", con dos exclusiones.** Portamos tu regla de la tabla de la historia clínica (mostrar lo alterado, ocultar lo normal). Dejamos fuera dos cosas más, y te lo decimos porque cambia qué ve el profesional en ese documento: las filas **sin valor** (no puede estar alterado lo que no se midió) y el comparador genérico **"por encima / por debajo de la referencia"**. Ese último no es un veredicto clínico: es un contraste contra una referencia que en varias filas es poblacional y está **en validación**, y presentarlo como índice alterado en un documento clínico afirma más de lo que sabemos. En la pantalla de Diagnóstico se sigue mostrando, porque ahí se mira el caso vivo.
+
+**Los índices llevan su nombre completo, y son los tuyos.** En la historia clínica un médico o un psicólogo pueden leer la tabla, y "IAE" no le dice nada a quien no trabaja con el modelo. Usamos los nombres que ya usa tu archivo (Función Celular, Riesgo Celular, Síndrome Celular, Hidro-Homeostasis, Aceleración del Envejecimiento, Desviación de φ) en vez de inventar los nuestros. **Dos van sin nombre a propósito:** el PABU, porque tu archivo no le da uno y preferimos la sigla sola antes que inventarlo; y la EB-BIS, porque el tuyo la rotula "Edad Biológica" y tú mismo decidiste que no se presenta como una edad. Si alguno de esos nombres no es el que quieres en un documento clínico, dínoslo.
+
+**Un reporte enviado se puede reenviar.** Antes, un correo perdido o una dirección mal escrita obligaban a rehacer la evaluación entera. Ahora el mismo documento se puede mandar otra vez, con motivo obligatorio que queda en la auditoría, sin tocar nada de su contenido. **Reenviar no es reemitir:** emitir un documento nuevo sobre la misma evaluación sigue sin existir, y ahí sí te preguntaremos cuando toque.
+
+
+
 ---
 
 # Parte 5 · Tres cosas que encontramos mirando tu archivo (informativo)
 
-No requieren nada de ti. Van porque cambian qué tenemos que construir.
+No requieren nada de ti. Van porque cambiaron qué teníamos que construir, y las tres ya están resueltas de nuestro lado.
 
-**Tu plan tiene dos caras.** La lista de intercambio del paciente está marcada como "solo impresión": no se ve en pantalla. Al mirarlo completo, lo que se imprime **excluye lo técnico** (fórmula sintética, tabla de trabajo, validación) y deja lo que el paciente usa. Nos parece bien y no lo teníamos modelado. **La dejamos visible en pantalla por ahora**, porque todavía no tenemos superficie de impresión; la moveremos cuando construyamos el envío. Lo decimos para que no parezca que la pusimos ahí por decisión propia.
+**Tu plan tiene dos caras.** La lista de intercambio del paciente está marcada como "solo impresión": no se ve en pantalla. Al mirarlo completo, lo que se imprime **excluye lo técnico** (fórmula sintética, tabla de trabajo, validación) y lo que se ve en pantalla excluye la lista del paciente. Son dos documentos distintos que conviven en la misma vista, y eso define qué lleva cada envío. *(Nosotros la teníamos en pantalla por no haber mirado ese filtro; hoy sabemos que es contenido del envío, y ahí quedará cuando respondas el 7.1.)*
 
-**Hay cuatro salidas al paciente, no una:** el plan impreso, un correo que hoy manda una sola línea sin adjunto, el envío del informe de composición a la app del paciente, y la impresión de la pestaña completa. Son **tres documentos por dos canales**; nos sirve para ordenar el bloque de envío antes de construirlo.
+**Hay cuatro salidas al paciente, no una:** el plan impreso, un correo que hoy manda una sola línea sin adjunto, el envío del informe de composición a la app del paciente, y la impresión de la pestaña completa. Son **tres documentos por dos canales**. De ahí sale la pregunta del **7.1**, que es la que de verdad nos importa: cuál de esos recibe el paciente y en qué lenguaje.
 
-**Tu historia clínica tiene once secciones** y nuestro reporte en PDF trae seis. No es una pregunta: es alcance que no teníamos dimensionado, y probablemente sea una pestaña propia.
+**Tu historia clínica tiene DIECIOCHO bloques, no once**, y ya la portamos entera. Lo decimos con el número corregido porque nos equivocamos primero: contamos once mirando una captura, y al leer el código aparecieron cuatro secciones más que **solo se dibujan si se cumple su condición** (antecedentes quirúrgicos y exposición a contaminantes salen si el paciente respondió algo distinto de "Ninguna"; las notas clínicas por profesión, solo para el profesional de esa disciplina y si escribió algo), más los nutracéuticos enviados. **Atlas tiene ahora su propia pestaña Reporte/HC** con la historia clínica completa, el reporte al paciente y el cierre de la consulta. Lo que falta de ella son piezas concretas que esperan tus respuestas: el sodio del plan, cuatro de las siete recomendaciones y qué recibe el paciente.
 
 ---
 
@@ -492,8 +512,8 @@ Dinos si lo ves de otra forma.
 | 3.3 | ¿El menú debe respetar el reparto por tiempos? | Pregunta |
 | 3.4 | ¿El menú debe considerar el acceso a alimentos? | Criterio tuyo |
 | 3.5 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
-| 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
-| 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
+| 4 | Ocho cosas aplicadas con tu regla, sin preguntarte (con el criterio) | Declaración |
+| 5 | Dos caras, cuatro salidas, y tu historia clínica (18 bloques) ya portada | Informativo |
 | 6 | **Cuatro defectos nuestros ya arreglados** por deducir severidad del tono (un desnutrido salía en verde) + tres cosas de tu pantalla | **Reporte, no pregunta** |
 | 7.1 | **¿Qué recibe el paciente?** Hoy le mandamos IFC, IRC, PABU y el código N_N_N_A. Tu informe amigable ya existe en tu archivo | **La más importante, con 3.1** |
 | 7.2 | El bloqueo de enviar sin agendar lo pusimos NOSOTROS: ¿lo apruebas? | Restricción nuestra |
