@@ -238,7 +238,7 @@ El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del t
 
 **3. La fecha de la firma es la de impresión.** El pie `FIRMA Y FECHA` usa la fecha del día en que se abre el documento. Una historia clínica impresa tres meses después queda fechada tres meses tarde. Nosotros usamos la fecha de la evaluación.
 
-**Y una cosa que sí agregamos a la HC**, para que la conozcas: **la cirugía digestiva o metabólica**. La encuesta la pregunta y tu HC no la muestra. Un bypass gástrico cambia absorción, requerimiento proteico y tolerancia, así que omitirla de una historia clínica nos pareció copiar un hueco. Si tienes una razón para dejarla fuera, dínosla y la quitamos.
+**Y una corrección nuestra, antes de que la leas en otro lado:** en un borrador de esta ronda te íbamos a decir que habíamos agregado la **cirugía digestiva o metabólica** porque tu HC no la mostraba. **Nos equivocamos: tu historia clínica sí la tiene**, en su propia sección ("ANTECEDENTES QUIRÚRGICOS"), y también tiene "EXPOSICIÓN A CONTAMINANTES", que nosotros todavía no mostramos. Lo revisamos mirando una captura de un paciente que no tenía ninguna de las dos, y una captura enseña un caso, no lo que el programa hace. Las dos van a nuestra historia clínica, sin pregunta de por medio: son tuyas.
 
 ---
 
