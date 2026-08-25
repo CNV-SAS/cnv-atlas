@@ -81,45 +81,79 @@ Nuestro comentario de porte cita `ATLAS_v7.html:15702-15706`, el mismo bloque en
 
 ---
 
-# Parte 3 · El menú: cuatro cosas que quizá debería mirar y no mira
+# Parte 3 · Qué alimenta al modelo, y qué alimenta al menú
 
-Estábamos por rehacer el generador de menús para que **adapte** el menú base según las restricciones, como hace el tuyo. Antes de escribir ese prompt necesitamos saber qué debe mirar, porque cada versión queda registrada y no queremos versionarlo dos veces.
+Dos preguntas distintas que se tocan. La primera (3.1) es la grande y es del MODELO: qué de lo que se le pregunta al paciente debe llegar al motor. La segunda (3.3 a 3.5) es del MENÚ: estábamos por rehacer el generador para que **adapte** el menú base según las restricciones, como hace el tuyo, y antes de escribir ese prompt necesitamos saber qué debe mirar, porque cada versión queda registrada y no queremos versionarlo dos veces.
 
 **Lo que el menú mira HOY en Atlas:** objetivo calórico · proteína objetivo · restricciones del modelo · restricciones que escribe el profesional · fenotipo estructural · sector funcional · rutas priorizadas.
 
-## 3.1 · El bloque entero de antecedentes clínicos quedó fuera del contrato del motor
+## 3.1 · La pregunta más importante de esta ronda: 25 de las 64 preguntas no llegan al modelo
 
-Empezamos buscando una cosa (¿el menú ve las alergias?) y encontramos otra más grande. **Cuatro preguntas de antecedentes se le hacen al paciente, se guardan, se muestran, y no entran al motor.** No es que falten datos: es que el bloque entero quedó fuera del contrato.
+Verificamos las **64 preguntas** de la encuesta vigente, una por una. **39 alimentan el motor y 25 no.**
 
-| Pregunta de la encuesta | ¿Entra al motor? |
-|---|---|
-| ¿Le han diagnosticado hipertensión arterial? | sí |
-| **¿Toma medicamentos para la presión arterial?** | **no** |
-| ¿Familiares cercanos con estas enfermedades? | sí |
-| ¿Tiene alguno de estos diagnósticos personales? | sí |
-| ¿Qué medicamentos toma actualmente? | sí |
-| **¿Alergias alimentarias diagnosticadas?** | **no** |
-| **¿Intolerancias alimentarias?** | **no** |
-| **¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?** | **no** |
+Y comprobamos qué hace tu archivo con esas 25: **tampoco las consume**. Aparecen en la declaración de la encuesta y en el conteo de completitud, no en el cálculo. **Así que no es que se nos haya perdido nada al portar:** es que el instrumento pregunta más de lo que el modelo consume, y eso es igual en los dos.
 
-**Dos de las cuatro pesan más que las alergias en algunos pacientes:**
+**El dominio de alergias y digestión queda ENTERO fuera**, las diez preguntas, incluidos los siete síntomas digestivos. Y hay una que nos llamó la atención: **"¿ronca durante el sueño?" es tamizaje de apnea**, y hoy no entra a ninguna parte.
 
-- **La cirugía metabólica o digestiva.** Un bypass gástrico no es un detalle: cambia absorción, requerimiento proteico y tolerancia. Hoy el motor no sabe que existió.
+### La tabla completa, para que decidas sobre ella
+
+Aquí están las 25, por dominio. La última columna dice si algo en Atlas las usa hoy, aunque no sea el motor.
+
+| Dominio | Pregunta | ¿Alguien la usa? |
+|---|---|---|
+| Hábitos | ¿Qué tipo de actividad realiza? | nadie |
+| Hábitos | ¿Cómo califica la calidad de su sueño? | nadie |
+| Hábitos | **¿Ronca durante el sueño?** | nadie |
+| Hábitos | ¿Con qué frecuencia consume alcohol? | nadie |
+| Conductas alimentarias | ¿Cuántas comidas hace al día? | nadie |
+| Conductas alimentarias | ¿Desayuna regularmente? | nadie |
+| Conductas alimentarias | ¿Sigue algún patrón alimentario? | nadie |
+| Conductas alimentarias | ¿Qué suplementos toma actualmente? | nadie |
+| Antecedentes | ¿Toma medicamentos para la presión arterial? | historia clínica |
+| Antecedentes | ¿Fue amamantado/a en su infancia? | historia clínica |
+| Antecedentes | ¿Exposición habitual a contaminantes? | nadie |
+| Alergias y digestión | ¿Alergias alimentarias diagnosticadas? | historia clínica |
+| Alergias y digestión | ¿Intolerancias alimentarias? | historia clínica |
+| Alergias y digestión | ¿Cirugía que afecte la digestión o el metabolismo? | historia clínica |
+| Alergias y digestión | Hinchazón abdominal | nadie |
+| Alergias y digestión | Gases / flatulencia | nadie |
+| Alergias y digestión | Dolor abdominal | nadie |
+| Alergias y digestión | Diarrea | nadie |
+| Alergias y digestión | Estreñimiento | nadie |
+| Alergias y digestión | Reflujo / acidez | nadie |
+| Alergias y digestión | Náuseas | nadie |
+| Hidratación | Café (tazas por día) | nadie |
+| Hidratación | Té (tazas por día) | nadie |
+| Hidratación | Jugos naturales (vasos por día) | nadie |
+| Hidratación | ¿Color de su orina habitualmente? | nadie |
+
+**Cinco tienen consumidor y veinte no tienen ninguno.** Las cinco de la historia clínica lo son **desde ayer**, porque las pusimos ahí al portar tu HC. Las otras veinte se le preguntan al paciente, se guardan, y no las lee nada: ni un motor, ni un resumen, ni un documento. El profesional solo puede verlas abriendo las respuestas crudas de la encuesta.
+
+### Las dos preguntas que salen de aquí
+
+1. **¿Cuáles de esas 25 deberían entrar al modelo?** Es criterio tuyo, no nuestro. Decide sobre la tabla y lo cableamos.
+2. **Y las que no deban entrar ni las use nadie: ¿siguen valiendo la pena en el instrumento?** No lo preguntamos para recortar: puede que las quieras ahí como registro clínico, y es una razón válida. Pero si alguna no la va a usar nadie nunca, el paciente está dedicando tiempo a una pregunta que no cambia nada, y eso también es un costo.
+
+Preferimos preguntarlo así, de una, en vez de irlos encontrando de a uno en cada bloque que construimos.
+
+## 3.2 · El caso concreto: los antecedentes clínicos, y por qué urgen
+
+Esto es un **caso particular de 3.1**, y va aparte porque tiene consecuencia inmediata sobre lo que se le entrega al paciente.
+
+**Un paciente que declaró alergia a los mariscos puede recibir un menú con mariscos**, salvo que el profesional la teclee a mano. Verificamos qué hace tu archivo: las lee **en un solo sitio**, para el párrafo clínico ("presenta ... alergia a X"), y en toda el área del plan y del menú no aparecen.
+
+**Dos de este bloque pesan más que las alergias en algunos pacientes:**
+
+- **La cirugía metabólica o digestiva.** Un bypass gástrico no es un detalle: cambia absorción, requerimiento proteico y tolerancia.
 - **"¿Toma medicamentos para la presión?"** es lo que separa una hipertensión **controlada** de una que no lo está. El motor sabe el diagnóstico (esa sí entra) y **no sabe si está tratada**.
 
-**Y las alergias, que fue por donde llegamos:** un paciente que declaró **alergia a los mariscos puede recibir un menú con mariscos**, salvo que el profesional la teclee a mano. Verificamos qué hace tu archivo: las lee **en un solo sitio**, para el párrafo clínico ("presenta ... alergia a X"), y en toda el área del plan y del menú no aparecen. **Tampoco llegan al menú en tu prototipo**, así que es probable que sea una conexión que no se pensó, no que se descartara.
+**El agravante, y es el que más nos preocupa.** Tu historia clínica **muestra estas preguntas** con su valor: vimos en tu pantalla "Medicación antihipertensiva", "Alergias alimentarias" e "Intolerancias". La nuestra las muestra también. Entonces el documento clínico que firma el profesional **afirma que el paciente es alérgico al marisco** en la misma consulta en la que el menú se lo puede servir. El dato no falta: está a la vista en una hoja y ausente en la otra, que es peor, porque el plan parece verificado contra la historia.
 
-**El agravante, y es el que más nos preocupa.** Tu historia clínica **muestra las cuatro**: vimos en tu pantalla "Medicación antihipertensiva", "Alergias alimentarias" e "Intolerancias" con su valor. La nuestra las va a mostrar también, porque salen de la encuesta. Entonces el documento clínico que firma el profesional **afirma que el paciente es alérgico al marisco** en la misma consulta en la que el menú se lo puede servir. El dato no falta: está a la vista en una hoja y ausente en la otra, que es peor, porque el plan parece verificado contra la historia.
+Mientras se decide, en Atlas esos datos salen en la historia clínica **marcados como "solo registro"**, con una nota que dice que el paciente los declaró y que el diagnóstico no los tuvo en cuenta. Es incómodo a propósito.
 
-**Nuestra propuesta:** que las cuatro entren al motor, y que las alergias viajen al menú **en bloque propio y por encima de todo lo demás**. Una restricción médica se puede matizar; una alergia declarada, no. ¿La apruebas? ¿Y la intolerancia igual de dura, o con matiz (la lactosa admite grados, el maní no)?
+**Nuestra propuesta:** que las alergias viajen al menú **en bloque propio y por encima de todo lo demás**. Una restricción médica se puede matizar; una alergia declarada, no. ¿La apruebas? ¿Y la intolerancia igual de dura, o con matiz (la lactosa admite grados, el maní no)?
 
-### Y una pregunta de fondo, que es la que de verdad importa
-
-Si el bloque de antecedentes quedó **entero** fuera, es razonable que haya otro igual. Encontramos este porque estábamos armando la historia clínica, no porque lo buscáramos.
-
-**¿Convendría revisar el contrato del motor completo, en vez de campo por campo?** Es decir: recorrer la encuesta entera preguntando de cada respuesta "¿esto lo consume el motor, y si no, debería?", y dejar constancia de las dos listas. Nosotros podemos preparar el inventario (qué se pregunta, qué llega, qué no) para que tú decidas sobre una tabla y no sobre hallazgos sueltos. Preferimos preguntarlo antes de seguir encontrándolos de a uno.
-
-## 3.2 · El menú no sabe cuántas porciones lleva cada comida
+## 3.3 · El menú no sabe cuántas porciones lleva cada comida
 
 El desayuno del menú **no refleja las porciones que la distribución le asignó al desayuno**. La cadena va objetivo → intercambio → distribución → menú, y **se corta en el último eslabón**.
 
@@ -127,7 +161,7 @@ El desayuno del menú **no refleja las porciones que la distribución le asignó
 
 Tu respuesta a P-25 nos dice que los porcentajes por tiempo son un valor por defecto que el nutricionista ajusta. Eso hace la pregunta más concreta: **si el profesional ajusta el reparto, ¿el menú debe respetarlo, o solo tenerlo en cuenta?** Hoy no hace ninguna de las dos.
 
-## 3.3 · El contexto del paciente: acceso e inseguridad alimentaria
+## 3.4 · El contexto del paciente: acceso e inseguridad alimentaria
 
 Un paciente con inseguridad alimentaria o acceso limitado **no debería recibir un menú con salmón**.
 
@@ -135,7 +169,7 @@ Un paciente con inseguridad alimentaria o acceso limitado **no debería recibir 
 
 **Esto no lo proponemos: te lo preguntamos.** Que un menú se module por la situación socioeconómica es criterio clínico y toca cómo se le presenta el plan a una persona. ¿Debe considerarlo? Y si sí, ¿cómo lo dirías sin que el paciente lea un plan que le recuerda lo que no puede comprar?
 
-## 3.4 · Y la pregunta de fondo: ¿qué más?
+## 3.5 · Y la pregunta de fondo: ¿qué más?
 
 Las tres de arriba aparecieron **buscando otra cosa**. Si tres salen solas, probablemente haya más que no vemos porque no sabemos qué buscar. **Con la lista de lo que hoy viaja (arriba), ¿qué falta?**
 
@@ -194,12 +228,13 @@ Se leen como una sola frase. Nosotros las unimos con coma.
 | 1.3 | ¿1,25 g/kg aplica también al desnutrido? | **Bloquea el porte** |
 | 1.4 | El par H/M de ECM/BCM | Dato que falta |
 | 2 | Salud celular salió de tu archivo, línea 17126 | **Respuesta a tu pregunta** |
-| 3.1 | **Cuatro antecedentes clínicos no entran al motor** (alergias, intolerancias, cirugía metabólica, medicación antihipertensiva) + ¿revisamos el contrato completo? | Propuesta, seguridad |
-| 3.2 | ¿El menú debe respetar el reparto por tiempos? | Pregunta |
-| 3.3 | ¿El menú debe considerar el acceso a alimentos? | Criterio tuyo |
-| 3.4 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
+| 3.1 | **25 de las 64 preguntas no llegan al modelo. ¿Cuáles deberían?** (con la tabla completa) | **La más importante** |
+| 3.2 | Los antecedentes clínicos: el caso concreto, con consecuencia sobre el menú | Propuesta, seguridad |
+| 3.3 | ¿El menú debe respetar el reparto por tiempos? | Pregunta |
+| 3.4 | ¿El menú debe considerar el acceso a alimentos? | Criterio tuyo |
+| 3.5 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
 | 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
 | 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
 | 6 | **Dos valores sin resolver en tu pantalla** (fenotipo MCCB y PBI), el motivo sin separador y la fecha de firma | **Reporte, no pregunta** |
 
-**Lo que bloquea es la Parte 1.** El resto lo seguimos construyendo mientras respondes.
+**Lo que bloquea es la Parte 1. Lo más importante es el 3.1.** El resto lo seguimos construyendo mientras respondes.
