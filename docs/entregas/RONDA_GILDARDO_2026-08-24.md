@@ -426,6 +426,49 @@ O sea: **el modelo propone la fecha, el profesional la confirma o la cambia, y l
 
 No es una pregunta, es un hueco nuestro que vamos a cerrar copiando tu mecánica. Te lo decimos por si la frecuencia de cada ruta debe leerse de otra parte, o si hay rutas donde la fecha no deba sugerirse sola.
 
+# Parte 9 · Seguimiento: una pregunta y tres cosas de tu pantalla
+
+Con esto queda cotejada la última etapa. Tu pantalla de Seguimiento es **visual** (tres gráficos) y la nuestra es **tabular** (deltas de los siete índices). Vamos a tener las dos: un gráfico muestra la tendencia, una tabla da el número.
+
+## 9.1 · ¿Cuál es el cambio mínimo detectable? (la pregunta)
+
+Tu pantalla sigue la **capacitancia de membrana (C)** como parámetro de control. En las capturas que miramos, C pasa de **2,960 a 2,960** entre dos consultas: no se movió.
+
+Y ahí nos frenamos, porque **no sabemos qué decir**. Un valor que no cambia puede ser dos cosas muy distintas:
+
+- El paciente se mantuvo estable, que es información clínica real.
+- O el cambio fue **más pequeño de lo que la medición distingue**, y entonces no sabemos nada.
+
+**Sin saber cuál de las dos, "se mantuvo estable" afirma más de lo que tenemos.** Por eso, mientras respondes, nuestra pantalla va a decir **"sin cambio respecto de la medición anterior"**, sin calificarlo.
+
+**Y la misma pregunta resuelve algo que dejaste abierto en agosto.** El corte de ±2 años de las tres bandas de la EB-BIS lo diste como **operativo y provisional**, "a reemplazar por el cambio mínimo detectable cuando exista". Es la misma pieza que falta aquí.
+
+Entonces:
+
+1. **¿Existe un cambio mínimo detectable para la EB-BIS y para C?** Si lo tienes, lo cableamos en los dos sitios.
+2. **Si no existe todavía: ¿de dónde saldría?** ¿De la repetibilidad del equipo, de una cohorte, de un criterio tuyo?
+3. **Y mientras tanto: ¿te parece bien decir "sin cambio" sin calificar**, o prefieres otra redacción?
+
+## 9.2 · Dos cosas de tu pantalla de Seguimiento
+
+Reporte, no pregunta. Las dos las vimos en tus capturas y **no las vamos a copiar**.
+
+**Una: el gráfico de convergencia se sale de su panel.** Con dos consultas, la serie de ICA-BIS se dibuja más allá del recuadro y se monta sobre el gráfico vecino; las etiquetas se pisan. Miramos por qué, y no es cosa del tamaño: tu `lineFollow` emite el SVG con ancho fijo de 560 y `overflow: visible`, **sin `viewBox`**. Sin `viewBox`, el `maxWidth: 100%` recorta la ventana pero no encoge el dibujo, y `overflow: visible` deja que lo que sobra se pinte encima. Como el contenedor reparte el ancho entre dos columnas, cada una puede quedar en menos de 560. **Agregarle un `viewBox` lo arregla entero.**
+
+*(Y una cosa que sí hiciste bien y portamos tal cual: PABU e ICA-BIS van en dos gráficos separados, con su propia escala y su propia línea de referencia. Tienen objetivos distintos —acercarse a φ, y tender a cero— y juntarlos habría sido peor.)*
+
+**Dos: con una sola consulta, la pantalla dibuja igual.** El radar compara "Inicial 2026-08-13 vs Última 2026-08-13": **la misma medición contra sí misma**, con dos polígonos. Y las series pintan un punto suelto. Nosotros vamos a decir en su lugar que hace falta una segunda medición, y **cuándo correspondería** según la frecuencia de la ruta activa. Convierte un vacío en información, que es lo que el profesional necesita en la primera consulta.
+
+## 9.3 · La fecha del próximo control se guarda sin que nadie la confirme
+
+Tu bloque de próximo control **propone** la fecha (la frecuencia de la ruta sumada a la consulta) y el profesional puede cambiarla y guardar. Eso está bien pensado, y es lo que vamos a copiar: **en Atlas hoy la próxima cita solo se puede fijar cuando se confirma un "empeoró"**, y en un seguimiento normal no hay dónde ponerla.
+
+Pero al seguir el dato encontramos esto: **la fecha sugerida queda persistida en cuanto la pantalla la propone**, antes de que nadie pulse "Guardar próximo control" (un efecto la escribe cada vez que cambia el campo, incluida la precarga). Y tu historia clínica lee de ahí. Así que **una fecha que nadie confirmó aparece como la próxima cita del paciente**.
+
+**Nosotros lo vamos a hacer distinto, y te decimos por qué:** la sugerida se **muestra**, y se **guarda solo cuando el profesional confirma**. La razón no es de estilo. Tu propia regla dice que un "empeoró" solo se le comunica al paciente **con la cita agendada**; si la sugerida se guardara sola, esa condición se cumpliría sin que nadie decidiera nada, y la regla quedaría vacía por dentro.
+
+Dinos si lo ves de otra forma.
+
 ---
 
 # Resumen
@@ -455,6 +498,9 @@ No es una pregunta, es un hueco nuestro que vamos a cerrar copiando tu mecánica
 | 8.4 | Nos alineamos a tu orden de bloques; dos avisos | Declaración |
 | 8.5 | **¿Qué otras salidas del modelo no llegan a donde deberían?** (tres casos concretos) | **Pregunta abierta, la más útil** |
 | 8.6 | Tú propones la próxima cita desde la ruta y nosotros no: hueco nuestro | Declaración |
+| 9.1 | **¿Cuál es el cambio mínimo detectable?** (resuelve C y el ±2 provisional de la EB-BIS) | **Pregunta** |
+| 9.2 | Tu gráfico de convergencia se desborda (le falta el viewBox del SVG); y con una consulta dibuja igual | Reporte |
+| 9.3 | La fecha sugerida se guarda sin confirmar; nosotros la mostramos y la guardamos al confirmar | Reporte + declaración |
 
 
 
