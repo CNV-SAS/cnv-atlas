@@ -340,11 +340,16 @@ Tu pantalla tiene **dos bloques separados**:
 
 **Y un detalle de tu pantalla, de paso:** el mismo factor de actividad se llama **"Actividad prescrita (FA)"** en un bloque y **"Factor actividad (PAL)"** en el otro. Parece un desliz.
 
-## 8.2 · Tenemos unas "Guías dietarias" que tú no tienes
+## 8.2 · Nuestras "Guías dietarias": el sitio donde aterriza tu resumen clínico
 
-Es un bloque donde el profesional agrega recomendaciones escritas a mano, junto al objetivo. **Lo diseñamos nosotros**, antes de tener tu archivo; no responde a nada tuyo y no hay equivalente en tu pantalla.
+Es un bloque donde el profesional escribe recomendaciones a mano, junto al objetivo. **La caja la diseñamos nosotros**, antes de tener tu archivo, y no tiene equivalente en tu pantalla.
 
-**¿Sobra, o te parece que vale?** Si sobra lo quitamos sin más. Si vale, lo dejamos y te decimos cómo queda.
+Pero al revisarlo encontramos que **no está vacía de contenido tuyo**: al generar el diagnóstico, Atlas siembra ahí, como primera guía, **el resumen clínico que emite tu motor**. Así que hoy es el único sitio donde ese texto llega a una pantalla, y encima queda editable por el profesional.
+
+**Dos preguntas, entonces:**
+
+1. **¿Te parece bien que tu resumen clínico aterrice ahí, editable?** La alternativa es mostrarlo como salida del modelo, en solo lectura, y dejar la caja para lo que escribe el profesional.
+2. **Y la caja en sí: ¿sobra?** Si crees que el plan y las restricciones ya cubren lo que el nutricionista necesita escribir, la quitamos.
 
 ## 8.3 · El nutricionista es la única profesión sin notas, y nosotros se las dimos
 
@@ -372,6 +377,26 @@ Vamos a alinearnos con el tuyo. Solo te avisamos de un caso que tu prototipo no 
 
 Y una diferencia donde nos quedamos con lo nuestro, dinos si te parece mal: tú pones **los tiempos de comida activos DESPUÉS** de la tabla de distribución, y nosotros antes. Como los tiempos activos gobiernan la distribución, ponerlos después obliga a subir a corregir.
 
+## 8.5 · La pregunta que vale más que las otras cuatro: ¿qué otras salidas del modelo no llegan a donde deberían?
+
+Esta no salió de un cotejo. Salió de juntar tres hallazgos que veníamos tratando por separado, y al ponerlos en fila resultan el mismo:
+
+**Uno.** Tu motor de ejercicio calcula la prescripción completa (frecuencia, intensidad, tiempo, tipo, volumen, progresión) y tu pantalla la muestra. Al lado tienes un campo de notas llamado **"Intensidad y frecuencia"**, y **empieza vacío**. El deportólogo lee lo que el modelo calculó y **lo vuelve a teclear**. Lo mismo con "Programa de ejercicio".
+
+**Dos.** Tu motor emite las restricciones médicas del paciente (hiposódica, nefroprotectora, lo que aplique) y tu pantalla las muestra. **No viajaban al prompt del menú**: la IA generaba sin verlas, salvo que el profesional las volviera a escribir a mano en el campo de restricciones.
+
+**Tres.** La encuesta captura alergias e intolerancias con opciones cerradas, y tu historia clínica las muestra. **No entran a ningún motor ni al menú.**
+
+**Los tres tienen la misma forma: el modelo produce algo correcto, y luego el sistema le pide a una persona que lo escriba otra vez, o simplemente no lo pasa al siguiente paso.** No es un descuido puntual; parece una característica de cómo creció el prototipo, y es entendible: cada pantalla se construyó como una pieza que funciona sola.
+
+**Nosotros ya arreglamos dos** (las restricciones ahora sí viajan al menú; las alergias esperan tu respuesta del 3.2). El tercero lo estábamos a punto de portar **como caja de texto vacía**, hasta que nos dimos cuenta de que sería importar el hueco.
+
+**Lo que hicimos en Atlas, y que te proponemos como criterio general:** donde el modelo propone algo, la pantalla lo precarga y el profesional lo ajusta, marcando lo que cambió. Es lo que ya hacemos en la cadena calórica.
+
+**Y por eso la pregunta:** en lugar de irte preguntando pieza por pieza si esto o aquello debería precargarse, **¿qué otras salidas del modelo sabes que no están llegando a donde deberían?** Tú sabes lo que el modelo calcula mejor que nosotros; nosotros sabemos lo que la pantalla consume. Si nos das la lista, la cerramos de una vez en vez de irla descubriendo de a un hallazgo por cotejo.
+
+*(Verificamos el nuestro antes de preguntarte: en Atlas, cada salida de los tres motores portados llega hoy a una pantalla. El hueco no es de consumo, es de que la propuesta no se pueda tomar.)*
+
 ---
 
 # Resumen
@@ -396,10 +421,11 @@ Y una diferencia donde nos quedamos con lo nuestro, dinos si te parece mal: tú 
 | 7.3 | Tu tabla de la HC muestra "Normal" y "Óptimo" como alterados (cAF y el azul) | Reporte |
 | 7.4 | Dos cosas que dependen del 7.1: la EB-BIS en la historia clínica y el resumen por profesión | Informativo |
 | 8.1 | **Fundimos tu "Objetivo del tratamiento" y tu "Fórmula sintética" en una sola cadena.** ¿Lo apruebas? | **Propuesta nuestra** |
-| 8.2 | Las "Guías dietarias" son nuestras y tú no las tienes: ¿sobran? | Propuesta nuestra |
+| 8.2 | Las "Guías dietarias": ahí aterriza tu resumen clínico, editable. ¿Bien así? | Propuesta nuestra |
 | 8.3 | El nutricionista es la única profesión sin notas: ¿debería tenerlas? | Pregunta |
 | 8.4 | Nos alineamos a tu orden de bloques; dos avisos | Declaración |
+| 8.5 | **¿Qué otras salidas del modelo no llegan a donde deberían?** (tres casos concretos) | **Pregunta abierta, la más útil** |
 
 
 
-**Lo que bloquea es la Parte 1. Lo más importante son el 3.1 y el 7.1.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.
+**Lo que bloquea es la Parte 1. Lo más importante son el 3.1, el 7.1 y el 8.5.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.
