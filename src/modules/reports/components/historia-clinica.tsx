@@ -290,3 +290,94 @@ export function HcFirmaYFecha({ profesional, fecha }: { profesional: string; fec
     </Tarjeta>
   );
 }
+
+// Bloque 10: PLAN NUTRICIONAL. Las ocho celdas de su HC. Siete salen del protocolo sellado; el SODIO no.
+export type HcPlanNutricional = {
+  geb: number | null;
+  get: number | null;
+  kcalObjetivo: number | null;
+  proteinaG: number | null;
+  proteinaGKg: number | null;
+  carbohidratosG: number | null;
+  grasasG: number | null;
+  actividadFisica: string | null;
+};
+
+export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) {
+  if (!plan) {
+    return (
+      <Tarjeta>
+        <TituloSeccion>Tratamiento · plan nutricional</TituloSeccion>
+        <p className="text-sm text-muted-foreground">
+          Esta evaluación todavía no tiene una prescripción nutricional.
+        </p>
+      </Tarjeta>
+    );
+  }
+  const n = (v: number | null, u: string) => (v == null ? SIN_DATO : `${Math.round(v)} ${u}`);
+  return (
+    <Tarjeta>
+      <TituloSeccion>Tratamiento · plan nutricional</TituloSeccion>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Dato etiqueta="GEB (Mifflin)" valor={n(plan.geb, "kcal")} />
+        <Dato etiqueta="GET" valor={n(plan.get, "kcal")} />
+        <Dato etiqueta="Objetivo" valor={plan.kcalObjetivo == null ? SIN_DATO : `${Math.round(plan.kcalObjetivo)} kcal/día`} />
+        <Dato
+          etiqueta="Proteínas"
+          valor={
+            plan.proteinaG == null
+              ? SIN_DATO
+              : `${Math.round(plan.proteinaG)} g/día${plan.proteinaGKg != null ? ` (${plan.proteinaGKg} g/kg)` : ""}`
+          }
+        />
+        <Dato etiqueta="Carbohidratos" valor={plan.carbohidratosG == null ? SIN_DATO : `${Math.round(plan.carbohidratosG)} g/día`} />
+        <Dato etiqueta="Grasas" valor={plan.grasasG == null ? SIN_DATO : `${Math.round(plan.grasasG)} g/día`} />
+        {/* SODIO: pendiente A PROPOSITO, y se dice. El limite lo fija el motor de prescripcion que aun no
+            se porta, y ese porte lo CAMBIA (2.300 -> 1.500 mg en el hipertenso). Imprimir hoy un valor que
+            el porte va a contradecir, en un documento clinico, es peor que dejarlo pendiente. Se distingue
+            del guion de "no aplica" con la palabra: el suyo sale vacio cuando el paciente no es hipertenso;
+            el nuestro sale asi para TODOS, y por otra razon. */}
+        <div className="flex flex-col gap-0.5 rounded-md border border-dashed border-border bg-muted/20 p-2.5">
+          <span className="text-[11px] text-muted-foreground">Sodio</span>
+          <span className="text-sm font-semibold text-muted-foreground">Pendiente</span>
+        </div>
+        <Dato etiqueta="Actividad física" valor={plan.actividadFisica ?? SIN_DATO} />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        El límite de sodio se emitirá cuando se incorpore el motor de prescripción nutricional. No es que
+        este paciente no lo tenga: todavía no se calcula.
+      </p>
+    </Tarjeta>
+  );
+}
+
+// Bloque 11: RECOMENDACIONES. Bloques condicionales por diagnostico; los que aun dependen del motor de
+// prescripcion aparecen CON SU TITULO diciendo que esperan. La seccion existe y se ve que le falta algo,
+// en vez de parecer completa.
+export type HcRecomendacion = { titulo: string; items: string[]; pendiente?: boolean };
+
+export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Recomendaciones</TituloSeccion>
+      {bloques.map((b) => (
+        <div key={b.titulo} className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-primary">{b.titulo}</span>
+          {b.pendiente ? (
+            <span className="text-xs italic text-muted-foreground">
+              Pendiente: se emite con el motor de prescripción nutricional.
+            </span>
+          ) : (
+            <ul className="ml-4 list-disc text-sm text-foreground">
+              {b.items.map((i) => (
+                <li key={i} className="leading-relaxed">
+                  {i}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </Tarjeta>
+  );
+}

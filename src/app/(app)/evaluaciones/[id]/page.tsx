@@ -74,13 +74,16 @@ import {
   HcFirmaYFecha,
   HcMetaTerapeutica,
   HcObjetivoTratamiento,
+  HcPlanNutricional,
   HcProximaConsulta,
+  HcRecomendaciones,
   HcRutasActivadas,
   HcMotivoDeConsulta,
   HcResumenDiagnostico,
 } from "@/modules/reports/components/historia-clinica";
 import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
+import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -373,6 +376,44 @@ export default async function ResultadosEvaluacionPage({
 
   // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
+  // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
+  // viaja: lo fija el motor de prescripcion que aun no se porta.
+  const ps = protocol?.protocolSuggested ?? null;
+  const hcPlan = ps
+    ? {
+        geb: ps.calorico.geb,
+        get: ps.calorico.get,
+        kcalObjetivo: protocol?.kcalObjetivo ?? ps.calorico.kcalObj,
+        proteinaG: protocol?.proteinaGramos ?? ps.calorico.protG,
+        proteinaGKg: ps.calorico.protGKg,
+        carbohidratosG: ps.calorico.choG,
+        grasasG: ps.calorico.fatG,
+        actividadFisica: ps.calorico.pal === 1.375 ? "FA ligera" : `PAL ${ps.calorico.pal}`,
+      }
+    : null;
+  // Diagnosticos personales declarados (d5_39), para los bloques condicionales de recomendaciones.
+  const hcDx = (entrySurvey ?? [])
+    .flatMap((d) => d.questions)
+    .filter((q) => q.fieldKey === "d5_39")
+    .flatMap((q) => {
+      const raw = (q.answerValue ?? "").trim();
+      if (raw === "" || raw === "[]") return [];
+      if (!raw.startsWith("[")) return [raw];
+      try {
+        const arr: unknown = JSON.parse(raw);
+        return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
+      } catch {
+        return [raw];
+      }
+    });
+  const hcRecs = recomendacionesDe({
+    diagnosticos: hcDx,
+    tieneHTA: ps?.flags.tieneHTA ?? false,
+    tieneIRC: ps?.flags.tieneIRC ?? false,
+    sarcopenia: isEngineOutput(results.snapshot) ? results.snapshot.indicators.FFMI > 0 && results.snapshot.indicators.FFMI < 17 : false,
+    exceso: (ps?.estrategia.deficit ?? 0) > 0,
+  });
+
   const hcNarrativa =
     treatmentNarrative.kind === "text"
       ? {
@@ -595,6 +636,8 @@ export default async function ResultadosEvaluacionPage({
                 </section>
               ) : null}
               <HcObjetivoTratamiento texto={protocol?.objetivoTexto ?? null} />
+              <HcPlanNutricional plan={hcPlan} />
+              <HcRecomendaciones bloques={hcRecs} />
               <HcRutasActivadas
                 rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
               />
