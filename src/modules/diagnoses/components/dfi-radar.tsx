@@ -74,11 +74,16 @@ export function DfiRadar({
    * si muestran todos los puntos.
    */
   comparar,
+  /** Fechas de los dos polígonos, para la leyenda. Solo se usan cuando hay comparación. */
+  fechaComparar,
+  fechaActual,
 }: {
   // El radar solo usa id, nombre y sev: pedir el DfiDomain entero obligaria a los llamadores a arrastrar
   // lectura, clasif e items, que aqui no se pintan (el de Seguimiento los saca del snapshot sellado).
   domains: RadarDomain[];
   comparar?: RadarDomain[];
+  fechaComparar?: string;
+  fechaActual?: string;
 }) {
   const n = domains.length;
 
@@ -183,6 +188,26 @@ export function DfiRadar({
           );
         })}
       </svg>
+      {/* LEYENDA del radar comparativo (porte: su pantalla la tiene, con muestra de linea y fecha). Sin
+          ella el punteado no significa nada para quien no sepa que es la inicial: el profesional ve dos
+          poligonos y no sabe cual es cual. */}
+      {cmpPoly ? (
+        <figcaption className="flex flex-col items-center gap-1">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="inline-block w-5 border-t-[3px] border-dashed border-muted-foreground" />
+              Inicial{fechaComparar ? ` · ${fechaComparar}` : ""}
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+              <span className="inline-block w-5 border-t-[3px] border-solid border-foreground" />
+              Actual{fechaActual ? ` · ${fechaActual}` : ""}
+            </span>
+          </div>
+          <span className="text-center text-xs text-muted-foreground">
+            A menor polígono, mejor estado funcional.
+          </span>
+        </figcaption>
+      ) : null}
       {/* Leyenda de las 4 zonas de severidad con su color (vocabulario del motor). */}
       <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
         {SEV_LABEL.map((z, k) => (

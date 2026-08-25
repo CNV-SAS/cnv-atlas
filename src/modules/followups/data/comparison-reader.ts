@@ -1,6 +1,6 @@
 import "server-only";
 
-import { type EngineIndicators, isEngineOutput } from "@/clinical-engine";
+import { type EngineIndicators, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { pickPreviousEvaluation } from "./comparison-chronology";
 import {
@@ -35,6 +35,17 @@ export type IndicatorDelta = {
   current: number | null;
   previous: number | null;
   delta: number | null; // current - previous (null si falta alguno)
+  /**
+   * LECTURA del cambio, para que el numero no quede mudo. NO se deduce del signo del delta: en unos
+   * indices subir es mejorar (IFC), en otros empeorar (IAE), y en el PABU lo mejor es ACERCARSE a phi, ni
+   * subir ni bajar. La direccion deseada no existe como dato en el frozen, pero SI existe algo mejor: los
+   * clasificadores, que ya saben leer cada valor. Se compara la SEVERIDAD del previo contra la del actual.
+   *
+   * "igual" cuando los dos valores caen en la MISMA banda: el numero se movio pero la lectura clinica no
+   * cambio. No es una limitacion, es lo correcto mientras no exista el cambio minimo detectable (9.1 de la
+   * ronda): llamar mejora a un movimiento dentro de la misma banda afirmaria mas de lo que sabemos.
+   */
+  lectura: "mejora" | "empeora" | "igual" | null;
 };
 
 export type FollowupComparison = {
@@ -121,11 +132,20 @@ export async function getFollowupComparison(
   // forma no coincide y no se puede comparar campo a campo: se omite la comparacion.
   if (!isEngineOutput(cur) || !isEngineOutput(pre)) return null;
 
+  // Severidades de los dos snapshots, con los clasificadores del motor (que ya desambiguan el azul por
+  // etiqueta). De aqui sale la LECTURA del cambio, no del signo del delta.
+  const sevCur = indicatorSeverities(cur);
+  const sevPre = indicatorSeverities(pre);
+
   const indicators: IndicatorDelta[] = INDICATORS.map(({ code, key }) => {
     const current = cur.indicators[key];
     const previous = pre.indicators[key];
     const delta = current != null && previous != null ? round(current - previous) : null;
-    return { code, current, previous, delta };
+    const sc = sevCur[code];
+    const sp = sevPre[code];
+    const lectura: IndicatorDelta["lectura"] =
+      sc == null || sp == null ? null : sc < sp ? "mejora" : sc > sp ? "empeora" : "igual";
+    return { code, current, previous, delta, lectura };
   });
 
   return {

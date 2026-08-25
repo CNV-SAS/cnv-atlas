@@ -80,3 +80,48 @@ describe("el estado de una sola consulta", () => {
     expect(VISUAL).toContain("correspondería alrededor del");
   });
 });
+
+// ── Las dos del smoke de Seguimiento (2026-08-25) ────────────────────────────────────────────────────
+
+const TABLA = readFileSync("src/modules/followups/components/followup-comparison.tsx", "utf8");
+const COMP = readFileSync("src/modules/followups/data/comparison-reader.ts", "utf8");
+
+describe("la leyenda del radar", () => {
+  it("dice cuál polígono es cuál, con su fecha", () => {
+    // Sin ella el punteado no significa nada para quien no sepa que es la inicial. Su pantalla la tiene
+    // (muestra de línea + fecha), así que es porte, no mejora.
+    expect(RADAR).toContain("Inicial{fechaComparar");
+    expect(RADAR).toContain("Actual{fechaActual");
+    expect(RADAR).toContain("A menor polígono, mejor estado funcional");
+  });
+
+  it("solo aparece cuando hay comparación", () => {
+    expect(RADAR).toContain("{cmpPoly ? (");
+  });
+});
+
+describe("la lectura del cambio en la tabla de deltas", () => {
+  it("NO sale del signo del delta", () => {
+    // En unos índices subir es mejorar y en otros empeorar, y el PABU mejora al ACERCARSE a phi: el signo
+    // no alcanza. Sale de comparar la severidad que el clasificador le da a cada valor.
+    expect(COMP).toContain("indicatorSeverities(cur)");
+    expect(COMP).toContain("indicatorSeverities(pre)");
+    expect(COMP).toContain('sc < sp ? "mejora" : sc > sp ? "empeora" : "igual"');
+  });
+
+  it("un movimiento dentro de la MISMA banda no se llama mejora", () => {
+    // Mientras no exista el cambio mínimo detectable (9.1), colorear un cambio de 0,02 como mejora
+    // afirmaría más de lo que sabemos. Se dice "misma lectura", en neutro.
+    expect(TABLA).toContain("misma lectura");
+    expect(TABLA).toContain('igual: "text-muted-foreground"');
+  });
+
+  it("y la tabla explica qué significa el color", () => {
+    expect(TABLA).toContain("no del signo");
+    expect(TABLA).toContain("sigue en el mismo nivel clínico");
+  });
+
+  it("un indicador sin clasificador queda neutro y lo dice", () => {
+    expect(TABLA).toContain("sin clasificar");
+  });
+});

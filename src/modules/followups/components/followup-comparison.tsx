@@ -27,6 +27,23 @@ function fecha(iso: string): string {
   return formatDate(iso);
 }
 
+// LECTURA del cambio. La tabla estaba entera en gris: el profesional veia "+4.54" y no sabia si era bueno
+// (mismo defecto de "numeros sin lectura" que se arreglo en la tabla de Wang).
+//
+// El color NO sale del signo del delta: en unos indices subir es mejorar y en otros empeorar, y en el PABU
+// lo mejor es acercarse a phi, ni subir ni bajar. Sale de comparar la SEVERIDAD que el clasificador del
+// motor le da a cada valor, que es un dato que ya existe.
+const LECTURA_CLS: Record<string, string> = {
+  mejora: "text-clinical-optimal",
+  empeora: "text-clinical-critical",
+  igual: "text-muted-foreground",
+};
+const LECTURA_TXT: Record<string, string> = {
+  mejora: "mejora",
+  empeora: "empeora",
+  igual: "misma lectura",
+};
+
 export function FollowupComparison({ comparison }: { comparison: Comparison }) {
   const c = comparison;
   return (
@@ -81,7 +98,8 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
                 <th className="py-2 pr-4 font-medium">Indicador</th>
                 <th className="py-2 pr-4 font-medium">Previo</th>
                 <th className="py-2 pr-4 font-medium">Actual</th>
-                <th className="py-2 font-medium">Cambio</th>
+                <th className="py-2 pr-4 font-medium">Cambio</th>
+                <th className="py-2 font-medium">Lectura</th>
               </tr>
             </thead>
             <tbody>
@@ -90,12 +108,28 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
                   <td className="py-2 pr-4 font-medium text-foreground">{it.code}</td>
                   <td className="py-2 pr-4 tabular-nums text-muted-foreground">{fmt(it.previous, it.code)}</td>
                   <td className="py-2 pr-4 tabular-nums text-foreground">{fmt(it.current, it.code)}</td>
-                  <td className="py-2 tabular-nums text-muted-foreground">{fmtDelta(it.delta, it.code)}</td>
+                  <td
+                    className={`py-2 pr-4 tabular-nums ${it.lectura ? (LECTURA_CLS[it.lectura] ?? "text-muted-foreground") : "text-muted-foreground"}`}
+                  >
+                    {fmtDelta(it.delta, it.code)}
+                  </td>
+                  <td className="py-2 text-xs text-muted-foreground">
+                    {it.lectura ? (LECTURA_TXT[it.lectura] ?? "") : "sin clasificar"}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {/* Se dice QUE significa el color, y sobre todo que "misma lectura" no es "no cambio": el numero se
+            movio, pero se quedo en la misma banda del clasificador. Mientras no exista el cambio minimo
+            detectable (pendiente con Gildardo), llamar mejora a un movimiento dentro de la misma banda
+            afirmaria mas de lo que sabemos. */}
+        <p className="text-xs text-muted-foreground">
+          El color del cambio sale de la clasificación del modelo, no del signo: en unos índices subir es
+          mejorar y en otros empeorar, y el PABU mejora al acercarse a φ. <strong>Misma lectura</strong>{" "}
+          quiere decir que el valor se movió pero sigue en el mismo nivel clínico.
+        </p>
       </CardContent>
     </Card>
   );

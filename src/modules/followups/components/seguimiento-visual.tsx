@@ -107,7 +107,12 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
             </span>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-2">
-            <DfiRadar domains={ultima.dominios!} comparar={inicial.dominios!} />
+            <DfiRadar
+              domains={ultima.dominios!}
+              comparar={inicial.dominios!}
+              fechaComparar={formatDateOnlyShort(inicial.fecha)}
+              fechaActual={formatDateOnlyShort(ultima.fecha)}
+            />
           </CardContent>
         </Card>
       ) : null}
