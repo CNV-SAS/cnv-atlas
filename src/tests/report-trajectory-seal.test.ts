@@ -188,13 +188,19 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
     const diagPre = (await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, follow.evaluationId)).limit(1))[0];
     await db.update(schema.treatments).set({ status: "approved" }).where(eq(schema.treatments.diagnosisId, diagPre.id));
 
-    // Sin cita: rechaza (el gate).
+    // Sin cita AGENDADA: rechaza. Desde 2026-08-25 el gate VERIFICA la cita en vez de fijarla; la cita se
+    // agenda en Seguimiento, que es el unico sitio donde se decide. La regla de Gildardo no cambia
+    // ("un empeoro no se comunica sin cita agendada"), cambia quien la pone.
     await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "", actorId, actorEmail: "traj@cnv", ip: null }),
+      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
     ).rejects.toThrow(/próxima cita/i);
 
-    // Con cita: agenda en el tratamiento Y sella la confirmacion, en una tx.
-    await confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-11-01", actorId, actorEmail: "traj@cnv", ip: null });
+    // Con la cita ya agendada (como la dejaria Seguimiento): sella la confirmacion.
+    await db
+      .update(schema.treatments)
+      .set({ proximaCita: "2026-11-01" })
+      .where(eq(schema.treatments.diagnosisId, diagPre.id));
+    await confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null });
     const r = (await db.select({ at: schema.reports.trajectoryCommunicatedAt, by: schema.reports.trajectoryCommunicatedBy }).from(schema.reports).where(eq(schema.reports.id, report.id)).limit(1))[0];
     expect(r.at).not.toBeNull();
     expect(r.by).toBe(actorId);
@@ -204,7 +210,7 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
 
     // No se puede re-confirmar.
     await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-12-01", actorId, actorEmail: "traj@cnv", ip: null }),
+      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
     ).rejects.toThrow(/ya fue confirmada/i);
   });
 
@@ -214,7 +220,7 @@ describe.skipIf(!HAS_DB)("sellado de la trayectoria de EB-BIS (BD real)", () => 
     const follow = await makeDiagnosed("NOEMP", "seguimiento", "2026-08-05T10:00:00Z", prior.patientId); // sin_cambio
     const report = (await db.select({ id: schema.reports.id }).from(schema.reports).where(eq(schema.reports.evaluationId, follow.evaluationId)).limit(1))[0];
     await expect(
-      confirmTrajectoryCommunication({ reportId: report.id, proximaCita: "2026-11-01", actorId, actorEmail: "traj@cnv", ip: null }),
+      confirmTrajectoryCommunication({ reportId: report.id, actorId, actorEmail: "traj@cnv", ip: null }),
     ).rejects.toThrow(/empeoro/i);
   });
 });

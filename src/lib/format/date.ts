@@ -53,3 +53,35 @@ export function formatDateLong(iso: string | number | Date | null | undefined): 
     year: "numeric",
   });
 }
+
+// FECHAS PURAS (columnas `date`: proxima_cita, referred_at, returned_at, birth_date, comodato...).
+//
+// NO PASAN por las funciones de arriba, y esto es un defecto real, no una preferencia: `new Date("2026-09-04")`
+// se parsea como MEDIANOCHE UTC, y convertirlo a America/Bogota (UTC-5) da el 3 de septiembre a las 19:00,
+// asi que la fecha SE MUESTRA UN DIA ANTES. Le paso a la proxima cita en la historia clinica (smoke
+// 2026-08-25: se agendo el 4/9 y salia 3/9).
+//
+// La causa de fondo: una columna `date` NO ES UN INSTANTE. No tiene hora ni zona, asi que convertirla a
+// cualquier zona es un error de categoria. Fijar la zona (que es lo correcto para un timestamp) es
+// justamente lo que la rompe.
+//
+// Aqui se leen los componentes del texto y se formatean tal cual, sin construir un Date intermedio.
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** dd/mm/aaaa de una fecha PURA (YYYY-MM-DD). Sin conversion de zona. */
+export function formatDateOnly(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso; // no es una fecha pura: se devuelve tal cual antes que mentir
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/** "4 sep 2026" de una fecha PURA. Sin conversion de zona. */
+export function formatDateOnlyShort(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const mes = MESES_CORTOS[Number(m[2]) - 1];
+  if (!mes) return iso;
+  return `${Number(m[3])} ${mes} ${m[1]}`;
+}

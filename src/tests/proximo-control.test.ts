@@ -103,9 +103,12 @@ describe("la traza distingue quién puso la cita", () => {
     expect(WRITER).toContain("acepto_sugerida");
   });
 
-  it("y el bloque del empeoró registra si la cita venía de antes", () => {
-    // Si el ambar la encuentra puesta y solo confirma, el audit tiene que decirlo: sin esto, "cita
-    // agendada" se leeria igual en los dos casos.
-    expect(REPORTS).toContain("cita_venia_de_antes");
+  it("y el bloque del empeoró YA NO fija la cita: la verifica", () => {
+    // Desde 2026-08-25 hay UN SOLO sitio donde se fija (Seguimiento) y el ámbar es la condición: verifica
+    // que exista y confirma la comunicación. La regla de Gildardo se conserva entera; lo que se quitó es
+    // que el mismo acto fuera también el de agendar.
+    const fn = REPORTS.slice(REPORTS.indexOf("export async function confirmTrajectoryCommunication"));
+    expect(fn).toContain("Agéndala en Seguimiento");
+    expect(fn).not.toContain("set({ proximaCita:");
   });
 });

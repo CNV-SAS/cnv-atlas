@@ -3,7 +3,7 @@
 import { startTransition, useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
-import { formatDate } from "@/lib/format/date";
+import { formatDate, formatDateOnly } from "@/lib/format/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,21 +120,31 @@ export function ReportCard({ report }: { report: ReportCardView }) {
               Respaldo (no va al paciente): la edad bioeléctrica subió {t.ebDelta.toFixed(1)} años respecto
               de la medición anterior{t.provisional ? " · calibración provisional, no comunicable" : ""}.
             </span>
-            {/* 3. La proxima cita (obligatoria): sin agenda propia, la fecha se registra en el tratamiento. */}
-            <label htmlFor={`cita-${report.reportId}`} className="text-xs text-muted-foreground">
-              Próxima cita (obligatoria para comunicar este cambio). Queda registrada en el tratamiento.
-            </label>
-            <input
-              id={`cita-${report.reportId}`}
-              type="date"
-              name="proximaCita"
-              defaultValue={t.proximaCita ?? ""}
-              required
-              className="w-fit rounded-md border border-input bg-background p-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            />
-            {/* 4. El boton: nombra el acto doble (confirmar + agendar). */}
-            <Button type="submit" size="sm" disabled={confirming} className="self-start">
-              {confirming ? "Confirmando…" : "Confirmar y agendar"}
+            {/* 3. La proxima cita: se MUESTRA, no se pide (2026-08-25). Se fija en Seguimiento, que es el
+                unico sitio donde se decide; aqui es la CONDICION del acto. La regla de Gildardo se conserva
+                entera: un "empeoro" no se comunica sin cita agendada. Lo que cambia es que este acto deja
+                de ser tambien el de agendar, y queda limpio: confirmar que se le comunica al paciente. */}
+            {t.proximaCita ? (
+              <span className="rounded border border-clinical-warning/30 bg-background/60 px-2 py-1.5 text-xs text-foreground">
+                Próxima cita agendada: <strong>{formatDateOnly(t.proximaCita)}</strong>. Para cambiarla, ve
+                a Seguimiento.
+              </span>
+            ) : (
+              <span className="rounded border border-clinical-warning/30 bg-background/60 px-2 py-1.5 text-xs text-foreground">
+                Este paciente <strong>no tiene próxima cita agendada</strong>, y un cambio desfavorable no
+                se comunica sin ella.{" "}
+                <a
+                  href={`/evaluaciones/${report.evaluationId}?etapa=seguimiento`}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Agéndala en Seguimiento
+                </a>{" "}
+                y vuelve aquí.
+              </span>
+            )}
+            {/* 4. El boton: nombra el acto (confirmar la comunicacion). Sin cita no se puede. */}
+            <Button type="submit" size="sm" disabled={confirming || !t.proximaCita} className="self-start">
+              {confirming ? "Confirmando…" : "Confirmar la comunicación"}
             </Button>
           </form>
         ) : null}

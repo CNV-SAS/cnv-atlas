@@ -134,7 +134,6 @@ export async function approveReport(input: ApproveReportInput): Promise<{ diagno
 
 export type ConfirmTrajectoryInput = {
   reportId: string;
-  proximaCita: string; // fecha YYYY-MM-DD; OBLIGATORIA (el gate de Gildardo: "empeoro" solo con cita)
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -167,9 +166,10 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       throw new ReportStateError("Solo se confirma la comunicación cuando el cambio empeoro.");
     }
     if (report.communicatedAt) throw new ReportStateError("La comunicación ya fue confirmada.");
-    if (!input.proximaCita) {
-      throw new ReportStateError("Para comunicar este cambio hace falta agendar la próxima cita.");
-    }
+    // La cita ya NO llega del formulario del bloque ambar (2026-08-25): se fija en Seguimiento, que es el
+    // unico sitio donde se decide, y aqui solo se VERIFICA que exista. La regla de Gildardo se conserva
+    // entera ("un empeoro no se comunica sin cita agendada"); lo que cambia es que este acto deja de ser
+    // tambien el de agendar, y queda limpio: confirmar que se comunica un empeoramiento.
 
     // Agendar la cita en el tratamiento (evaluation -> diagnosis -> treatment). La condicion (cita) se
     // evalua AQUI, al confirmar; si despues alguien borra proxima_cita, la confirmacion queda (el
@@ -181,21 +181,20 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       .where(eq(diagnoses.evaluationId, report.evaluationId))
       .limit(1);
     if (!diag) throw new ReportStateError("La evaluación no tiene diagnóstico.");
-    // La cita ANTERIOR, para que la traza distinga quien la puso: desde 2026-08-25 se puede fijar en
-    // Seguimiento, asi que el bloque ambar puede encontrarla ya agendada y solo confirmar. Sin esto, el
-    // audit diria "cita agendada" en los dos casos y no se sabria si alguien la decidio aqui.
+    // La cita VIGENTE del tratamiento: es la condicion de este acto y queda en la traza, para que se sepa
+    // con que fecha se autorizo comunicar el cambio.
     const [prevT] = await tx
       .select({ cita: treatments.proximaCita })
       .from(treatments)
       .where(eq(treatments.diagnosisId, diag.id))
       .limit(1);
-    const updatedT = await tx
-      .update(treatments)
-      .set({ proximaCita: input.proximaCita })
-      .where(eq(treatments.diagnosisId, diag.id))
-      .returning({ id: treatments.id });
-    if (updatedT.length === 0) {
-      throw new ReportStateError("La evaluación no tiene tratamiento donde agendar la cita.");
+    if (!prevT) {
+      throw new ReportStateError("La evaluación no tiene tratamiento donde consultar la cita.");
+    }
+    if (!prevT.cita) {
+      throw new ReportStateError(
+        "Para comunicar este cambio hace falta que el paciente tenga la próxima cita agendada. Agéndala en Seguimiento.",
+      );
     }
 
     // Sellar la confirmacion en el reporte (draft; se congela al aprobar).
@@ -212,13 +211,7 @@ export async function confirmTrajectoryCommunication(input: ConfirmTrajectoryInp
       actorEmail: input.actorEmail,
       entityType: "report",
       entityId: report.id,
-      payload: {
-        evaluation_id: report.evaluationId,
-        band,
-        proxima_cita: input.proximaCita,
-        cita_previa: prevT?.cita ?? null,
-        cita_venia_de_antes: prevT?.cita != null,
-      },
+      payload: { evaluation_id: report.evaluationId, band, proxima_cita: prevT.cita },
       ip: input.ip,
     });
   });

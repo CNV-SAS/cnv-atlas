@@ -22,7 +22,7 @@ import {
   EvaluationResults,
 } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
-import { formatDate } from "@/lib/format/date";
+import { formatDate, formatDateOnly } from "@/lib/format/date";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { CelularSection } from "@/modules/diagnoses/components/celular-section";
@@ -703,14 +703,14 @@ export default async function ResultadosEvaluacionPage({
                       ? (r.referredToOther ?? "Otro")
                       : (REFERRAL_TARGET_LABEL[r.referredTo] ?? r.referredTo),
                   motivo: r.reason,
-                  fecha: formatDate(r.referredAt),
-                  retorno: r.returnedAt ? formatDate(r.returnedAt) : null,
+                  fecha: formatDateOnly(r.referredAt),
+                  retorno: r.returnedAt ? formatDateOnly(r.returnedAt) : null,
                 }))}
               />
               <HcRutasActivadas
                 rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
               />
-              <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDate(hcHeader.proximaCita) : null} />
+              <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDateOnly(hcHeader.proximaCita) : null} />
               <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />
             </div>
           ) : null}

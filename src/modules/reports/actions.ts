@@ -77,8 +77,6 @@ export async function confirmTrajectoryCommunicationAction(
   const reportId = reportIdOf(form);
   if (!reportId) return fail("Reporte inválido.");
 
-  const proximaCita = (form.get("proximaCita") as string | null)?.trim() ?? "";
-  if (!proximaCita) return fail("Para comunicar este cambio hace falta agendar la próxima cita.");
 
   const dispatch = await getReportDispatch(reportId);
   if (!dispatch) return fail("Reporte no encontrado.");
@@ -87,7 +85,6 @@ export async function confirmTrajectoryCommunicationAction(
   try {
     await confirmTrajectoryCommunication({
       reportId,
-      proximaCita,
       actorId: user.id,
       actorEmail: user.email,
       ip: ip === "unknown" ? null : ip,
