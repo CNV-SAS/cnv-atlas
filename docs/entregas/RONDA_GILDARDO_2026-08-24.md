@@ -242,6 +242,71 @@ El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del t
 
 ---
 
+# Parte 7 · Lo que recibe el paciente (la más importante de esta ronda, junto con la 3.1)
+
+## 7.1 · Hoy le mandamos el documento clínico, no uno para él
+
+El único documento que Atlas le envía hoy al paciente lleva, tal cual: **IFC, IRC, PABU, ICA-BIS, ISCM, IEHH**, el código de estado **N_N_N_A** y la frase **"Sector funcional (FyR)"**.
+
+Un paciente no puede leer eso. Y es lo único que recibe.
+
+**Encontramos que tú ya resolviste esto y nosotros no lo habíamos visto.** Tu archivo tiene `enviarInformePaciente`, con un botón que dice *"Comparte una versión amigable de la composición corporal"*, y el contenido está completo en el código (L13394). Lleva:
+
+- **peso, talla, IMC con su categoría, ICT con su categoría, cintura**
+- **masa grasa en kg y en %, masa magra, masa muscular, agua total**
+- **ángulo de fase con su categoría**
+- el **DFI reescrito para el paciente**
+- el **resumen** del análisis
+
+Y el DFI reescrito es lo que más nos llamó la atención, porque es una decisión clínica tuya, no una simplificación:
+
+| Lo interno | Lo que ve el paciente |
+|---|---|
+| BAJO / MEDIO / ALTO / CRÍTICO | **Óptimo / A mejorar / Requiere atención / Prioritario** |
+| severidad 0-3 por dominio | **En equilibrio / A vigilar / A trabajar / Prioritario** |
+| dominio conductual con severidad alta | *"Te acompañaremos de cerca en tu relación con la alimentación y la imagen corporal; tu bienestar emocional es la prioridad."* |
+| el veto | *"Tu profesional te acompañará de cerca; priorizaremos tu bienestar emocional antes que cualquier cambio en la alimentación."* |
+
+Tu propio comentario en el código lo dice: *"sin CRÍTICO alarmante, sin mencionar TCA; el veto se reformula como acompañamiento"*.
+
+**Y no lleva ninguno de los índices del modelo.** Ni IFC, ni IRC, ni PABU, ni ICA-BIS, ni ISCM, ni IEHH, ni el código de estado. Justo lo que nosotros sí estamos mandando.
+
+### Lo que te preguntamos
+
+Tenemos el contenido, así que la pregunta no es qué lleva, es cómo debe llegar:
+
+1. **¿Confirmas que es ESE el documento que recibe el paciente, y que el nuestro de hoy no debería enviarse tal cual?** Queremos oírtelo antes de cambiar lo que sale de la clínica.
+2. **En tu archivo ese informe va a la app del paciente**, que entra con documento y fecha de nacimiento. Nosotros hoy mandamos por **correo**. ¿El mismo contenido sirve por correo, o hay algo que solo tiene sentido en la app?
+3. **¿Cuántos documentos son en total?** Tu prototipo tiene botones de envío en varias pantallas. Nosotros hemos inventariado tres: el **plan** (papel), el **informe de composición** (este) y la **consulta completa** (papel). ¿Falta alguno, y cuál recibe el paciente por defecto?
+4. **Y la historia clínica: ¿la recibe el paciente?** Nuestra lectura es que no, que es el documento del profesional y de la institución. Confírmalo o corrígenos.
+
+**Mientras respondes no tocamos el envío.** Lo que se manda cambia con tu respuesta, y no queremos versionar dos veces un documento que sale hacia una persona.
+
+## 7.2 · Y una restricción que pusimos nosotros de más
+
+En tu decisión del 3 de agosto (§7) dijiste que un "empeoró" solo se comunica si el profesional lo **confirma** y va **acompañado de la próxima cita agendada**; y que **sin eso, el reporte sale sin esa sección**.
+
+Lo implementamos así. Pero además hicimos algo que **tú no pediste**: hoy Atlas **impide aprobar y enviar el reporte** mientras no se confirme y se agende.
+
+La diferencia importa. Tu regla degrada: el documento sale, sin la sección del cambio. La nuestra bloquea: el documento no sale.
+
+Nos pareció coherente (mandarle una mala noticia sin decirle cuándo lo vuelven a ver es peor que no mandarla), pero **es una restricción sobre un acto clínico y la pusimos nosotros**. ¿La apruebas, o prefieres tu versión, donde el reporte se puede enviar y simplemente no lleva esa sección?
+
+Y sigue abierta una consulta tuya de entonces que nunca cerramos: **¿"cita agendada" se cumple con el campo de fecha lleno**, o exige algo más?
+
+## 7.3 · Tu tabla de la historia clínica muestra dos filas que dicen "Normal" y "Óptimo"
+
+Esto es un **reporte**, no una pregunta, y es de la misma familia que la Parte 6.
+
+Portamos tu regla de la tabla de la HC: *"mostrar ítems alterados; ocultar solo los normales y sin clasificación"*. Al comparar las dos pantallas con el mismo paciente vimos que la tuya muestra **SMM/W: Óptimo** y **AF: Normal**. Lo verificamos con sus valores reales y hay dos causas distintas:
+
+- **SMM/W 41,2 "Óptimo"** aparece porque tu regla cuenta el **azul** como alterado (`clf.c==="#3b82f6"`) y `cSMM` usa ese azul justamente para **Óptimo**. Es el mismo azul ambiguo del que te hablamos en la Parte 6, ahora al revés: a nosotros nos pintaba un desnutrido de verde, a ti te mete lo óptimo en la lista de alterados.
+- **AF 6,7 "Normal"** aparece porque **`cAF` devuelve la etiqueta "Normal" con el color ámbar** (`#f59e0b`) para el rango 6,5-7,0 en hombres. La etiqueta y el color se contradicen dentro del mismo clasificador.
+
+No copiamos ninguna de las dos: nuestra tabla oculta lo que nuestras etiquetas llaman óptimo o normal. Te lo decimos por si el color de `cAF` es un error de tecleo, que es lo que parece.
+
+---
+
 # Resumen
 
 | # | Qué | Tipo |
@@ -258,6 +323,9 @@ El fenotipo sí sale (F7), lo que falta es su **nombre**; y el PBI no sale del t
 | 3.5 | ¿Qué más debería alimentar el menú? | Pregunta abierta |
 | 4 | Aviso de comida activa y vacía: aplicado con tu regla | Declaración |
 | 5 | Dos caras, cuatro salidas, historia clínica | Informativo |
+| 7.1 | **¿Qué recibe el paciente?** Hoy le mandamos IFC, IRC, PABU y el código N_N_N_A. Tu informe amigable ya existe en tu archivo | **La más importante, con 3.1** |
+| 7.2 | El bloqueo de enviar sin agendar lo pusimos NOSOTROS: ¿lo apruebas? | Restricción nuestra |
+| 7.3 | Tu tabla de la HC muestra "Normal" y "Óptimo" como alterados (cAF y el azul) | Reporte |
 | 6 | **Cuatro defectos nuestros ya arreglados** por deducir severidad del tono (un desnutrido salia en verde) + tres cosas de tu pantalla | **Reporte, no pregunta** |
 
-**Lo que bloquea es la Parte 1. Lo más importante es el 3.1.** El resto lo seguimos construyendo mientras respondes.
+**Lo que bloquea es la Parte 1. Lo más importante son el 3.1 y el 7.1.** El envío al paciente queda congelado hasta que respondas el 7.1. El resto lo seguimos construyendo mientras respondes.
