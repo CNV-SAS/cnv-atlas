@@ -566,6 +566,30 @@ export default async function ResultadosEvaluacionPage({
               />
               <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />
               <HcMetaTerapeutica texto={hcNarrativa.meta} motivo={hcNarrativa.motivo} />
+              {/* Bloque 4: la MISMA tabla de Wang del Diagnostico, filtrada a lo alterado. No es una tabla
+                  mas corta: es la regla de su HC (la historia muestra lo que esta mal, el diagnostico
+                  muestra todo). Los VALORES son los sellados; los RANGOS son los del modelo vigente, y eso
+                  se dice al pie en vez de sellarlos, para cubrir tambien los reportes ya emitidos. */}
+              {composition ? (
+                <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                    Composición corporal · índices alterados
+                  </h3>
+                  <CompositionSection
+                    composition={composition}
+                    sexoM={sexoM}
+                    classifications={results.snapshot.classifications}
+                    sevByCode={isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}}
+                    references={wangRefs}
+                    fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
+                    soloAlterados
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Los valores son los de esta evaluación. Los rangos de referencia son los del modelo
+                    vigente hoy, no los del día de la consulta.
+                  </p>
+                </section>
+              ) : null}
             </div>
           ) : null}
         </section>

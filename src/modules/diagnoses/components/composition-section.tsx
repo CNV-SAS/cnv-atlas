@@ -63,6 +63,7 @@ export function CompositionSection({
   references = {},
   fenotipoMccb = null,
   showDiagnosis = true,
+  soloAlterados = false,
 }: {
   composition: Composition;
   sexoM?: boolean;
@@ -76,6 +77,8 @@ export function CompositionSection({
   // HTML de Gildardo (smoke Santiago d). No sale del mapa PURO (es salida del diagnostico); lo pasa la pagina.
   fenotipoMccb?: { id: string; nombre: string } | null;
   showDiagnosis?: boolean;
+  /** Historia clinica: muestra SOLO las filas con clasificacion alterada (sev >= 1). */
+  soloAlterados?: boolean;
 }) {
   const colCount = showDiagnosis ? 5 : 4;
   // Disposicion segun el proposito de la tabla: Diagnostico muestra lo clasificado; Evaluacion lo medido y
@@ -124,6 +127,29 @@ export function CompositionSection({
       if (w ? w.cut === effRef : true) starKeys.add(r.key);
     }
   const hayEnValidacion = starKeys.size > 0;
+
+  // FILTRO "SOLO ALTERADOS" (bloque 4 de la historia clinica, 2026-08-24). Es la MISMA tabla, no otra mas
+  // corta: su HC pinta las mismas filas y oculta las normales y las sin clasificar. La regla, con sus
+  // palabras: "mostrar items alterados (naranja=riesgo, rojo=alto, azul=deficit); ocultar solo los normales
+  // (verde) y sin clasificacion". Traducida a nuestra escala: se muestra sev >= 1 (0 es el unico optimo).
+  //
+  // El sentido clinico es el que hace que valga la pena portarlo: la HISTORIA muestra lo que esta mal, el
+  // DIAGNOSTICO muestra todo. Un documento que se imprime y se archiva no es una hoja de trabajo.
+  function dxDeFila(r: CompositionRow): { label: string; sev: number } | null {
+    if (r.key === "FMI") {
+      const label = classifications["FMI"]?.label;
+      return label ? { label, sev: sevByCode["FMI"] ?? 0 } : null;
+    }
+    const rpe = r.reference == null && r.refKey ? refPob[r.refKey] : undefined;
+    const effRef = r.reference ?? rpe?.value ?? null;
+    return wangRowDx(r.key, r.value, sexoM, diagCtx, effRef, (v) => fmt(v, r.decimals ?? 2))?.dx ?? null;
+  }
+
+  const levelsToRender = soloAlterados
+    ? activeLevels
+        .map((l) => ({ ...l, rows: l.rows.filter((r) => (dxDeFila(r)?.sev ?? 0) >= 1) }))
+        .filter((l) => l.rows.length > 0)
+    : activeLevels;
 
   // FUENTE UNICA por fila: Referencia + Δ + Diagnostico salen de wangRowDx (capa de display), NO se escriben
   // a mano al lado del clasificador (ese desajuste dejaba celdas vacias, ver leccion). UNICA excepcion: FMI,
@@ -225,7 +251,7 @@ export function CompositionSection({
               </tr>
             </thead>
             <tbody>
-              {activeLevels.map((lvl) => (
+              {levelsToRender.map((lvl) => (
                 <Fragment key={lvl.title}>
                   {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver BRAND.md, matiz
                       de reserva del color de riesgo). */}
@@ -252,6 +278,15 @@ export function CompositionSection({
                   ) : null}
                 </Fragment>
               ))}
+              {/* Como en su HC: si NADA esta alterado se dice, en vez de dejar la tabla vacia (una tabla
+                  vacia se lee como dato faltante, no como "todo en rango"). */}
+              {soloAlterados && levelsToRender.length === 0 ? (
+                <tr>
+                  <td colSpan={colCount} className="py-3 text-sm italic text-muted-foreground">
+                    Sin índices alterados: todos los valores medidos están en rango normal.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
