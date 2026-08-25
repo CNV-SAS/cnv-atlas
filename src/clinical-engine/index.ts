@@ -27,7 +27,7 @@ export { BIODY_COLUMNS, ENGINE_REQUIRED } from "./analysis";
 // la prescripcion en silencio. Ver peso-meta.ts.
 export { pesoIdealLorentz, pesoMetaDefault, type PesoMetaDefault } from "./peso-meta";
 // Severidad de riesgo por indicador (recomputada del snapshot) para la capa de color de BRAND.
-export { indicatorSeverities } from "./severity";
+export { indicatorSeverities, veredictoSev } from "./severity";
 // Abordaje por profesion (6ª card del estado EFR): ORIENTACION que se COMPUTA en tiempo de vista
 // (clave EFR sellada + profesion del que mira), no se sella. Ver el criterio en abordaje.ts.
 export { abordajeProfesional } from "./abordaje";
