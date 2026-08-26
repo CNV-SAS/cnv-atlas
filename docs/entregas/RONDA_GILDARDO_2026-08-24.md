@@ -381,73 +381,35 @@ Al cotejar Seguimiento encontramos que tu modelo tiene **dos formas distintas** 
 **La primera: notas clínicas estructuradas por profesión**, que aterrizan en la historia clínica.
 
 | | Campos |
+|---|
+## 8.7 · Tu encuesta y tu motor agrupan las carnes rojas distinto
+
+Encontramos esto queriendo hacer algo pequeño: agrupar las quince preguntas de frecuencia de Alimentación bajo tus tres encabezados, para que el paciente no lea quince bloques idénticos seguidos.
+
+Al ir a colocarlos nos frenamos, porque **el orden de la encuesta y el agrupamiento del motor no coinciden**.
+
+En tu `FREQ_GROUPS` los quince van así:
+
+| Bloque | Alimentos |
 |---|---|
-| Médico | Diagnóstico médico · Medicamentos prescritos · Indicaciones médicas |
-| Psicología | Evaluación psicológica · Objetivos psicológicos · Técnicas / indicaciones |
-| Entrenamiento | Diagnóstico funcional · Programa de ejercicio · Intensidad y frecuencia |
+| Alimentación real protectora | 1 a 7 |
+| Alimentación real energética (moderar cantidad) | 8, 9, 10 **y 15 (carnes rojas)** |
+| Procesados y ultraprocesados: reducir | 11, 12, 13, 14 |
 
-El **nutricionista no tiene**, y entendemos por qué: su plan es el registro.
+Pero en la **encuesta** el paciente las responde en orden 1 a 15, así que **las carnes rojas quedan al final, después de los ultraprocesados**, aunque tu motor las clasifique como **energéticas a moderar**, no como de riesgo.
 
-**La segunda: las "Observaciones" del bloque de próximo control**, en Seguimiento. Esa no es por disciplina: es del **control**, y la escribe quien atienda.
+**No decimos que esté mal.** Tiene sentido clínico: una carne roja es alimento real y su problema es de cantidad, no de procesamiento. Pero significa que **no podemos poner los tres encabezados sin que uno quede sobre el alimento equivocado**: "Procesados: reducir" caería encima de las carnes rojas.
 
-**Y aquí está lo que queremos decirte, porque creemos que no es lo que pretendías.** Seguimos esa observación en tu archivo:
+Y eso sería peor que no agrupar nada: le diríamos al paciente que su carne es un ultraprocesado.
 
-- Se guarda como `notas_profesional` en `evaluaciones_obbia`, **con `onConflict: 'documento'`**. Es decir: **una sola fila por paciente**. La observación del control de marzo **se sobrescribe** cuando se guarda la de junio.
-- Y **no la lee nadie**: buscamos `notas_profesional` en todo el archivo y solo aparece al escribir. No sale en la historia clínica ni en ninguna otra pantalla.
+**Lo que preguntamos, y es de instrumento, no de pantalla:**
 
-**Así que hoy, en tu prototipo, lo que el profesional escribe en Observaciones se guarda, borra lo anterior, y no lo vuelve a ver nadie.** Es la misma familia del 8.5, pero al revés: ahí el modelo propone y nadie recoge; aquí la persona escribe y nada lo muestra.
+1. **¿Las carnes rojas deben preguntarse junto a las otras carnes** (después de las blancas, posición 11), que es donde tu motor las agrupa? Sería mover **una** pregunta y con eso los tres bloques quedan contiguos y se pueden rotular.
+2. **O prefieres el orden actual**, y entonces dejamos las quince sin encabezados, como están hoy.
 
-### Lo que te proponemos
+Mientras respondes no tocamos nada: reordenar preguntas es tu instrumento, no nuestro diseño.
 
-**Que las observaciones sean POR EVALUACIÓN, no por paciente, y que aparezcan en la historia clínica de esa consulta.** Una observación de seguimiento es sobre *ese* control: guardarla por paciente hace que la historia del paciente tenga una sola observación, la última, y que las anteriores desaparezcan sin dejar rastro.
-
-Y con eso resuelto, la pregunta del nutricionista se ordena sola. Son dos, no una:
-
-1. **¿Confirmas que las observaciones del control deben conservarse por consulta y verse en la historia clínica?**
-2. **¿Y el nutricionista debería tener además su nota estructurada, como las otras tres profesiones?** El argumento a favor es que hoy su única vía de registro es el plan, y no todo lo que observa cabe ahí. El argumento en contra es el tuyo, y por eso preguntamos. *(Nosotros le pusimos unas "Notas del tratamiento" que hoy no llegan a ningún documento; si deben quedarse, irían a la historia clínica como las tuyas.)*
-
-*(Las tres notas por profesión las estamos portando: nos faltaban. Y las portaremos precargadas desde lo que ya calculan tus motores, por lo que decimos en el 8.5.)*
-
-## 8.4 · El orden de los bloques
-
-Los dos órdenes difieren bastante, y el tuyo tiene una lógica que nos convenció: **fijar el objetivo → ver si el plan cumple → ajustar la calculadora → repartir**. Pones la validación arriba, antes de la fórmula; nosotros al final.
-
-**Ya nos alineamos con el tuyo.** Solo te avisamos de un caso que tu prototipo no tiene que resolver y el nuestro sí: en una **consulta inicial** todavía no hay plan, así que la validación arriba quedaría vacía. Ahí mostramos un aviso de que aparece al armar el plan, en vez de una tabla de ceros que diría que el plan cubre el 0 % de todo.
-
-Y una diferencia donde nos quedamos con lo nuestro, dinos si te parece mal: tú pones **los tiempos de comida activos DESPUÉS** de la tabla de distribución, y nosotros antes. Como los tiempos activos gobiernan la distribución, ponerlos después obliga a subir a corregir.
-
-## 8.5 · La pregunta que vale más que las otras cuatro: ¿qué otras salidas del modelo no llegan a donde deberían?
-
-Esta no salió de un cotejo. Salió de juntar tres hallazgos que veníamos tratando por separado, y al ponerlos en fila resultan el mismo:
-
-**Uno.** Tu motor de ejercicio calcula la prescripción completa (frecuencia, intensidad, tiempo, tipo, volumen, progresión) y tu pantalla la muestra. Al lado tienes un campo de notas llamado **"Intensidad y frecuencia"**, y **empieza vacío**. El deportólogo lee lo que el modelo calculó y **lo vuelve a teclear**. Lo mismo con "Programa de ejercicio".
-
-**Dos.** Tu motor emite las restricciones médicas del paciente (hiposódica, nefroprotectora, lo que aplique) y tu pantalla las muestra. **No viajaban al prompt del menú**: la IA generaba sin verlas, salvo que el profesional las volviera a escribir a mano en el campo de restricciones.
-
-**Tres.** La encuesta captura alergias e intolerancias con opciones cerradas, y tu historia clínica las muestra. **No entran a ningún motor ni al menú.**
-
-**Los tres tienen la misma forma: el modelo produce algo correcto, y luego el sistema le pide a una persona que lo escriba otra vez, o simplemente no lo pasa al siguiente paso.** No es un descuido puntual; parece una característica de cómo creció el prototipo, y es entendible: cada pantalla se construyó como una pieza que funciona sola.
-
-**Nosotros ya arreglamos dos** (las restricciones ahora sí viajan al menú; las alergias esperan tu respuesta del 3.2). El tercero lo estábamos a punto de portar **como caja de texto vacía**, hasta que nos dimos cuenta de que sería importar el hueco.
-
-**Lo que hicimos en Atlas, y que te proponemos como criterio general:** donde el modelo propone algo, la pantalla lo precarga y el profesional lo ajusta, marcando lo que cambió. Es lo que ya hacemos en la cadena calórica.
-
-**Y por eso la pregunta:** en lugar de irte preguntando pieza por pieza si esto o aquello debería precargarse, **¿qué otras salidas del modelo sabes que no están llegando a donde deberían?** Tú sabes lo que el modelo calcula mejor que nosotros; nosotros sabemos lo que la pantalla consume. Si nos das la lista, la cerramos de una vez en vez de irla descubriendo de a un hallazgo por cotejo.
-
-*(Verificamos el nuestro antes de preguntarte: en Atlas, cada salida de los tres motores portados llega hoy a una pantalla. El hueco no es de consumo, es de que la propuesta no se pueda tomar.)*
-
-## 8.6 · La próxima cita: tú la propones desde la ruta y nosotros no
-
-Verificamos de dónde sale la fecha que aparece al final de tu historia clínica, y **es la misma del bloque de próximo control de Seguimiento**, con una cascada que nos parece bien pensada:
-
-1. La fecha que el profesional guardó en Seguimiento.
-2. Si no hay, **la que sugiere el protocolo del DFI**: la frecuencia de la ruta activa (por ejemplo "Cada 90 días") sumada a la fecha de consulta.
-
-O sea: **el modelo propone la fecha, el profesional la confirma o la cambia, y la historia clínica muestra la que valga.** Es justo el criterio que pedimos en el 8.5, aplicado por ti.
-
-**En Atlas la próxima cita solo se captura en un caso:** cuando el profesional confirma que va a comunicarle un "empeoró" al paciente. En un seguimiento normal **no hay dónde fijarla**, y nunca la proponemos desde la ruta.
-
-No es una pregunta, es un hueco nuestro, y **ya lo cerramos copiando tu mecánica**: el bloque de Seguimiento propone la fecha desde la frecuencia de la ruta y el profesional la confirma. Te lo decimos por si la frecuencia de alguna ruta debe leerse de otra parte, o si hay rutas donde la fecha no deba sugerirse sola.
+---
 
 # Parte 9 · Seguimiento: una pregunta y tres cosas de tu pantalla
 
@@ -525,6 +487,7 @@ Dinos si lo ves de otra forma.
 | 8.4 | Nos alineamos a tu orden de bloques; dos avisos | Declaración |
 | 8.5 | **¿Qué otras salidas del modelo no llegan a donde deberían?** (tres casos concretos) | **Pregunta abierta, la más útil** |
 | 8.6 | Tú propones la próxima cita desde la ruta y nosotros no: hueco nuestro | Declaración |
+| 8.7 | **Las carnes rojas: tu encuesta las pone con los procesados y tu motor con los energéticos** | Pregunta de instrumento |
 | 9.1 | **¿Cuál es el cambio mínimo detectable?** (resuelve C y el ±2 provisional de la EB-BIS) | **Pregunta** |
 | 9.2 | Tu gráfico de convergencia se desborda (le falta el viewBox del SVG); y con una consulta dibuja igual | Reporte |
 | 9.3 | La fecha sugerida se guarda sin confirmar; nosotros la mostramos y la guardamos al confirmar | Reporte + declaración |
