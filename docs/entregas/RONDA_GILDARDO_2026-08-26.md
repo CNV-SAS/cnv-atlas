@@ -35,7 +35,42 @@ decimos porque es tuya, y la decisión de rotarla también.
 
 ---
 
-# 1 · Antes del 3.1: dos dominios del DFI están clavados en el mismo valor para todos los pacientes
+# 1 · Hallazgo nuevo: con el déficit en cero, el piso de 1.500 / 1.200 dejó de ser una red
+
+Aplicamos tu regla del 1.2, la de sumar dos correcciones antes de aplicarlas. Esta es la suma.
+
+Dijiste: *"El piso de 1.500 / 1.200 se conserva como red de seguridad. Con el déficit en cero casi nunca
+debería activarse."* Fuimos a verificarlo en tu archivo, y el piso está guardado así:
+
+```js
+else { kcalObjetivo = get - deficit; }
+if (deficit > 0) { var piso = sexoM ? 1500 : 1200; kcalObjetivo = Math.max(piso, kcalObjetivo); }
+```
+
+**El piso está condicionado a que haya déficit.** Con `deficit = 0` no se activa *casi* nunca: **no se
+activa nunca**. Y el objetivo pasa a ser el gasto calculado sobre el peso meta, sin ninguna red debajo.
+
+El caso reproducible, en tu estilo. Mujer de 60 años, 150 cm, 60 kg, sedentaria:
+
+| Paso | Valor |
+|---|---|
+| Peso ideal (tu fórmula, mujer) | 50,0 kg |
+| IMC 26,7, entonces peso meta = peso ideal | 50 kg |
+| GEB sobre peso meta | 977 kcal |
+| GET (× 1,2 sedentaria) | **1.172 kcal** |
+| Su piso | 1.200 kcal |
+
+**Le prescribe 1.172 kcal, por debajo de su propio piso**, y el piso no lo corrige porque el déficit es
+cero. Es exactamente la situación que el 1.2 quería evitar, llegando por el otro lado: no por dos
+descuentos sumados, sino por una red que quedó colgada de la condición equivocada.
+
+> **Pregunta 1.** ¿Movemos el piso fuera de la condición del déficit, para que aplique siempre? Es un
+> cambio de una línea y creemos que es lo que querías decir, pero es tu red y tu número: no lo tocamos
+> sin que lo digas.
+
+---
+
+# 2 · Antes del 3.1: dos dominios del DFI están clavados en el mismo valor para todos los pacientes
 
 Este es el hallazgo que tu 3.1 vuelve urgente, y creemos que te va a interesar más que la discusión
 sobre el inventario.
@@ -70,14 +105,14 @@ Está escrito y desactivado a propósito detrás de un interruptor, esperando tu
 encenderlo cambia el diagnóstico de todos los pacientes ya evaluados**. No es un arreglo mecánico: es un
 cambio de resultado clínico con efecto retroactivo.
 
-> **Pregunta 1.** ¿Encendemos el mapeo corregido? Y si sí, ¿qué hacemos con las evaluaciones ya hechas:
+> **Pregunta 2.** ¿Encendemos el mapeo corregido? Y si sí, ¿qué hacemos con las evaluaciones ya hechas:
 > se quedan con el valor viejo, se recalculan, o se recalculan y queda anotado en la historia que el DFI
 > cambió de versión? Lo tercero es lo que recomendamos, pero la decisión es tuya porque es un cambio de
 > diagnóstico, no de software.
 
 ---
 
-# 2 · El 3.1 rehecho, con la columna que ninguno de los dos estaba mirando
+# 3 · El 3.1 rehecho, con la columna que ninguno de los dos estaba mirando
 
 **Tienes razón y nuestra tabla estaba mal enunciada.** Decir "nadie las usa" era falso, y además era
 ambiguo, porque no dijimos respecto a qué. Lo rehicimos sobre todo el archivo, como pediste.
@@ -141,7 +176,7 @@ con catorce campos**, no dos tareas.
 
 ---
 
-# 3 · Hallazgo nuevo: tu numeración y la nuestra se separaron, y un mismo código nombra preguntas distintas
+# 4 · Hallazgo nuevo: tu numeración y la nuestra se separaron, y un mismo código nombra preguntas distintas
 
 Salió de mapear la tabla anterior, y conviene que lo sepas antes de que nos escribas otra instrucción
 citando un código.
@@ -167,40 +202,6 @@ energéticas.
 
 ---
 
-# 4 · Hallazgo nuevo: con el déficit en cero, el piso de 1.500 / 1.200 dejó de ser una red
-
-Aplicamos tu regla del 1.2, la de sumar dos correcciones antes de aplicarlas. Esta es la suma.
-
-Dijiste: *"El piso de 1.500 / 1.200 se conserva como red de seguridad. Con el déficit en cero casi nunca
-debería activarse."* Fuimos a verificarlo en tu archivo, y el piso está guardado así:
-
-```js
-else { kcalObjetivo = get - deficit; }
-if (deficit > 0) { var piso = sexoM ? 1500 : 1200; kcalObjetivo = Math.max(piso, kcalObjetivo); }
-```
-
-**El piso está condicionado a que haya déficit.** Con `deficit = 0` no se activa *casi* nunca: **no se
-activa nunca**. Y el objetivo pasa a ser el gasto calculado sobre el peso meta, sin ninguna red debajo.
-
-El caso reproducible, en tu estilo. Mujer de 60 años, 150 cm, 60 kg, sedentaria:
-
-| Paso | Valor |
-|---|---|
-| Peso ideal (tu fórmula, mujer) | 50,0 kg |
-| IMC 26,7, entonces peso meta = peso ideal | 50 kg |
-| GEB sobre peso meta | 977 kcal |
-| GET (× 1,2 sedentaria) | **1.172 kcal** |
-| Su piso | 1.200 kcal |
-
-**Le prescribe 1.172 kcal, por debajo de su propio piso**, y el piso no lo corrige porque el déficit es
-cero. Es exactamente la situación que el 1.2 quería evitar, llegando por el otro lado: no por dos
-descuentos sumados, sino por una red que quedó colgada de la condición equivocada.
-
-> **Pregunta 2.** ¿Movemos el piso fuera de la condición del déficit, para que aplique siempre? Es un
-> cambio de una línea y creemos que es lo que querías decir, pero es tu red y tu número: no lo tocamos
-> sin que lo digas.
-
----
 
 # 5 · Cinco preguntas
 
@@ -332,6 +333,11 @@ Dices que no puedes contestarlos sin ver el software. Tienes cuenta en Atlas des
 el acceso ya lo tienes. Lo que creemos que te falta no es entrar: es **ver qué consume cada pantalla**,
 que es justamente lo que usando Atlas no se ve.
 
+Y hay una razón práctica que quizá explica por qué el acceso no te ha servido: **la herramienta con la
+que trabajas lee archivos que tengas en tu computador**. No navega a Atlas ni tiene nuestro repositorio,
+y no puede entrar con tu cuenta. Así que para lo que quieres hacer, un documento sirve y un usuario y
+contraseña no.
+
 Te vamos a mandar un documento con eso: el inventario de las 64 preguntas con las tres columnas de
 arriba, más el mapa de qué salida del modelo alimenta cada pantalla. Con eso puedes contestar las dos de
 una, porque tendrías las dos mitades que decías que te faltaban.
@@ -345,10 +351,10 @@ Si además quieres el código, dilo y te lo mandamos.
 | # | Qué es | Qué necesitamos |
 |---|---|---|
 | 0 | **Tu clave de Groq viaja al navegador** de cualquiera que abra tu HTML | Que la rotes. No es clínico y no espera |
-| 1 | **Alimentación e Hidratación del DFI están clavadas en 30 y 20 para todos** | ¿Encendemos el mapeo corregido? ¿Qué pasa con lo ya evaluado? |
-| 2 | **3.1 rehecho.** Nuestra tabla estaba mal enunciada; la columna que decide es "¿llega el dato?", y son **0 de 25** | Nada. Lo construimos nosotros |
-| 3 | **Tu numeración y la nuestra se separaron**: `d6_45` es Hinchazón para ti y Cirugía para nosotros | Nada. Citaremos siempre tu código |
-| 4 | **El piso de 1.500/1.200 dejó de activarse** al poner el déficit en cero. Caso: 1.172 kcal prescritas con piso de 1.200 | ¿Sacamos el piso de la condición del déficit? |
+| 1 | **El piso de 1.500/1.200 dejó de activarse** al poner el déficit en cero. Caso: 1.172 kcal prescritas con piso de 1.200 | ¿Sacamos el piso de la condición del déficit? |
+| 2 | **Alimentación e Hidratación del DFI están clavadas en 30 y 20 para todos** | ¿Encendemos el mapeo corregido? ¿Qué pasa con lo ya evaluado? |
+| 3 | **3.1 rehecho.** Nuestra tabla estaba mal enunciada; la columna que decide es "¿llega el dato?", y son **0 de 25** | Nada. Lo construimos nosotros |
+| 4 | **Tu numeración y la nuestra se separaron**: `d6_45` es Hinchazón para ti y Cirugía para nosotros | Nada. Citaremos siempre tu código |
 | 5.1 | Rango proteico: portamos **1,5**, que es lo que tu archivo hace | ¿El 2,0 es techo de referencia? |
 | 5.2 | **El tamizaje de apnea no tiene instrumento** | Instrumento y puntos de corte |
 | 5.3 | Los **0,1 nF**: ¿solo capacitancia? | El alcance, y los números si son varios |
