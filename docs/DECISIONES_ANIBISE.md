@@ -388,3 +388,61 @@ La segunda mitad de su frase ("los alimentos se despliegan para verlos") describ
 **P-49 · P-26 tiene una consecuencia que el no menciona: lo que mostramos HOY es una lista base, y la pantalla no lo dice.** Si los alimentos concretos los escoge la IA segun la ciudad, y eso no se puede construir (proxy caido, modelos que la cuenta no tiene), entonces `INTER_TABLA_B` tal como la portamos es un **fallback**, no la lista del paciente. Un profesional que la lea hoy creera que es la lista definitiva para ESE paciente. Es nuestro y es chico: rotularla.
 
 **RESPUESTA A SU PREGUNTA (P-28, "¿de donde sacaron salud celular en Tratamiento?"): de su propio archivo, y no por interpretacion.** `celBadges` esta en la entrega VIGENTE (2026-08-19) en la **linea 17126**, y esa linea cae **dentro de la subpestaña del nutricionista de Tratamiento** (`tabTrat === "plan_nutricional"` abre en 16595 y la del medico en 17184). Nuestro comentario de porte cita `ATLAS_v7.html:15702-15706`, el mismo bloque en la entrega anterior. Lo portamos de donde estaba, no lo movimos. **Y eso contesta su preocupacion de fondo: no hay mas piezas movidas por ese camino, porque esta no se movio.** Si va a Diagnostico, es un cambio suyo, y lo hacemos.
+
+---
+
+## COLA NUEVA (ronda del 2026-08-26, enviada)
+
+Documento: `docs/entregas/RONDA_GILDARDO_2026-08-26.md`. Estas entradas son la cola INTERNA; lo que
+Gildardo recibe es el documento. No confundir (leccion "cola viva vs documento enviado").
+
+**P-55 · Los dominios Alimentacion e Hidratacion del DFI estan clavados en 30 y 20 para TODOS.**
+`calcLE8` lee `d1_9`, `d1_10` y `d1_16`, que no existen en la encuesta (solo en el objeto demo). El
+mapeo correcto (`calcPatron(enc).score` y `enc.d7_agua`) esta escrito y desactivado tras
+`LE8_MAPEO_CORREGIDO`, porque encenderlo cambia el diagnostico de todo lo ya evaluado. Preguntado como
+punto 1 de la ronda, con la sub-pregunta de que hacer con las evaluaciones existentes.
+
+**P-56 · Inventario del 3.1 rehecho: la columna que decide es "llega el dato en Atlas", y son 0 de 25.**
+Su medida (consumidores en SU archivo: 19 de 25 verificadas, su cifra de 22 compatible) y la nuestra
+(consumidores en lo PORTADO: 1 de 25, y muerta) median cosas distintas y ninguna era la que decide.
+Ninguna de las 25 tiene `field_key`. Dominios `d4` (Conductas alimentarias) y `d6` (Alergias y
+digestion) no tienen NI UN `field_key`: nada de esos dos dominios llega a ningun motor. No requiere
+decision suya, es trabajo nuestro.
+
+**P-57 · Su numeracion y la nuestra se separaron: un mismo codigo nombra preguntas distintas.**
+Nuestra encuesta tiene dos preguntas que su numeracion no contempla (cirugia digestiva = `d6_qx`, que el
+muestra como num 63, y agua = `d7_agua`). Desde P45 el desfase es -1 y desde P58 es -2. `d6_45` es
+Hinchazon para el y Cirugia para nosotros. **Regla: citar siempre SU CODIGO, nunca el numero de
+pantalla.** Familia de la leccion "los recorridos de smoke se escriben en el lenguaje de la pantalla".
+
+**P-58 · Con el deficit en cero, el piso de 1.500/1.200 dejo de activarse.** El piso esta guardado tras
+`if(deficit>0)`. Con `deficit=0` (su decision 1.2) no se activa "casi nunca": no se activa NUNCA. Caso
+reproducible: mujer 60 anos, 150 cm, 60 kg, sedentaria -> GET 1.172 kcal, piso 1.200, sin correccion.
+Es el 1.2 llegando por el otro lado: no dos descuentos sumados, sino una red colgada de la condicion
+equivocada. Preguntado como punto 4.
+
+**P-59 · El tamizaje de apnea no tiene instrumento.** Aprueba construirlo y lo llama "la omision mas
+grande", pero no da instrumento ni puntos de corte. Los cuatro datos estan capturados (`d3_28`, `d3_27`,
+`d3_26`, IMC). NO se construye sin cortes: es el mismo caso del ECM/BCM en el que el mismo nos dijo que
+hicimos bien en no inventar un umbral.
+
+**P-60 · El rango proteico 1,5-2,0 se resolvio contra el archivo: portamos 1,5.** Su documento da un
+rango y `protKg` es escalar; su archivo nuevo implementa `protKg = desnutricion ? 1.5 : 1.25`. Manda el
+archivo. Queda preguntado si el 2,0 es techo de referencia. **No bloquea el porte de `motorTratNutri`.**
+
+**P-61 · Suplementos (`d4_35`) y medicacion (`d5_37`) son texto libre.** Para no duplicar vitamina D o
+saber si la HTA esta tratada habria que interpretar texto libre. Preguntado: mostrar literal al
+profesional, u opciones cerradas (toca contenido congelado, es suyo).
+
+**P-62 · Separacion declarada: la alergia se filtra en CODIGO, el patron alimentario va por prompt.**
+La seguridad no puede depender de que el modelo obedezca. Declarado en la ronda para que lo objete si no
+esta de acuerdo.
+
+**Sin responder de la ronda anterior, remandados CON NUMERO** (iban sin numerar, probable causa de que
+se pasaran): 7.1 (era 8.7, carnes rojas / orden de `FREQ_GROUPS`, **bloquea el rediseno del formulario**),
+7.2 (era 7.3), 7.3 (era 9.2), y 7.4/7.5/7.6 (los tres del porte de la HC; **el de la fecha de la firma es
+probatorio**).
+
+**Diferidos por el:** 3.4 (acceso a alimentos e inseguridad alimentaria, "sigan sin tocarlo").
+**Bloqueados por falta de vision del software:** 8.5 y 3.5. Se resuelven con el DOCUMENTO DEL MAPA
+(inventario de tres columnas + que consume cada pantalla), no con acceso: ya tiene cuenta.
