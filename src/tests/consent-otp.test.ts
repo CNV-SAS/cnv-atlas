@@ -133,4 +133,31 @@ describe("consent OTP service", () => {
     // verifyOtp no lanza: devuelve unavailable (falla cerrado, nunca "invalid" ni "expired").
     expect((await verifyOtp("s1", "123456", boom)).status).toBe("unavailable");
   });
+  // ── EL CAMINO REAL: se equivoca y despues acierta (defecto del smoke 2026-08-26) ─────────────────────
+  //
+  // El camino feliz estaba cubierto y el de fallo tambien, pero NO el de fallo SEGUIDO DE ACIERTO, que es
+  // justo el que recorre cualquiera que se equivoque al copiar el codigo. Se agrega porque Santiago llego
+  // al defecto por ahi.
+  describe("codigo malo, codigo malo, codigo bueno", () => {
+    it("el bueno sigue sirviendo despues de dos fallos, y firmar puede consumirlo", async () => {
+      await storeOtp("s1", "123456", META, store);
+      expect((await verifyOtp("s1", "000000", store)).status).toBe("invalid");
+      expect((await verifyOtp("s1", "111111", store)).status).toBe("invalid");
+      // El bueno: comprueba bien y NO se gasta por comprobarlo (esa es la separacion de ayer).
+      expect((await verifyOtp("s1", "123456", store)).status).toBe("ok");
+      // Y firmar lo consume, ya con la firma persistida.
+      expect(await consumeOtp("s1", store)).toBe(true);
+      expect((await verifyOtp("s1", "123456", store)).status).toBe("expired");
+    });
+
+    it("los fallos previos NO dejan la sesion marcada: el acierto es limpio", async () => {
+      // La sospecha al ver el defecto era que algo del intento fallido no se limpiaba. No es asi: los
+      // fallos solo suben el contador, y mientras no llegue al tope el codigo bueno vale igual.
+      await storeOtp("s1", "123456", META, store);
+      for (let i = 0; i < 4; i++) await verifyOtp("s1", "000000", store);
+      const r = await verifyOtp("s1", "123456", store);
+      expect(r.status).toBe("ok");
+      expect(r.meta).toEqual(META); // la traza sale intacta pese a los fallos
+    });
+  });
 });

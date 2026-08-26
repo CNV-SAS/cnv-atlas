@@ -53,8 +53,8 @@ describe("mientras comprueba se ve, y al validar se cierra", () => {
     expect(FORM).toContain("Comprobando el código…");
   });
 
-  it("el campo se bloquea al validar", () => {
-    expect(FORM).toContain("disabled={otpValidado}");
+  it("el campo se bloquea al validar, pero SIN disabled (ver el bloque de abajo)", () => {
+    expect(FORM).toContain("readOnly={otpValidado}");
   });
 
   it("y el botón de pedir otro DESAPARECE", () => {
@@ -64,5 +64,29 @@ describe("mientras comprueba se ve, y al validar se cierra", () => {
 
   it("firmar exige código COMPROBADO, no solo escrito", () => {
     expect(FORM).toContain("!otpState.sent || !otpValidado || pending");
+  });
+});
+
+// ── EL DEFECTO DEL SMOKE (2026-08-26): la pantalla se contradecia ────────────────────────────────────
+//
+// Se pegaba el codigo bueno, salia el verde "Código correcto. Ya puedes firmar", se pulsaba Firmar y el
+// servidor respondia "Ingresa el código de verificación". Dos partes de la misma pantalla afirmando lo
+// contrario.
+//
+// La causa no eran los codigos fallidos previos (esa fue la sospecha razonable al verlo): era que al
+// validar se ponia `disabled` en el campo, y UN INPUT DESHABILITADO NO SE ENVIA EN EL FORMDATA. Es
+// comportamiento del navegador, invisible a tsc y a los tests que no montan el DOM. El codigo dejaba de
+// viajar justo cuando ya se habia validado.
+describe("el campo bloqueado SIGUE enviando el codigo", () => {
+  it("es readOnly, NUNCA disabled", () => {
+    expect(FORM).toContain("readOnly={otpValidado}");
+    // El guard es sobre el CAMPO DEL CODIGO: `disabled` en el, y solo en el, rompe el envio.
+    const campo = FORM.slice(FORM.indexOf('name="otpCode"'), FORM.indexOf('</Field>', FORM.indexOf('name="otpCode"')));
+    expect(campo).not.toContain("disabled=");
+  });
+
+  it("y se ve bloqueado sin estarlo para el navegador", () => {
+    expect(FORM).toContain('otpValidado ? "bg-muted text-muted-foreground" : ""');
+    expect(FORM).toContain("aria-readonly={otpValidado}");
   });
 });

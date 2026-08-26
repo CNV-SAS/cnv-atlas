@@ -835,9 +835,15 @@ export function SignPhaseForm({
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     maxLength={6}
-                    className="h-9 w-40 tracking-[0.3em]"
+                    className={`h-9 w-40 tracking-[0.3em] ${otpValidado ? "bg-muted text-muted-foreground" : ""}`}
                     value={otpCode}
-                    disabled={otpValidado}
+                    // readOnly, NUNCA disabled (defecto del smoke 2026-08-26). Un input DESHABILITADO no
+                    // se envia en el FormData: es comportamiento del navegador, no un detalle de React. Con
+                    // `disabled` el codigo dejaba de viajar justo cuando ya se habia validado, y el
+                    // servidor respondia "Ingresa el codigo" con el mensaje verde en pantalla diciendo lo
+                    // contrario. readOnly bloquea la edicion Y sigue enviando.
+                    readOnly={otpValidado}
+                    aria-readonly={otpValidado}
                     // Se limpia lo PEGADO: mucha gente copia el codigo con espacios, guiones o un salto de
                     // linea del correo. Un codigo bueno no puede fallar por como se copio. El servidor lo
                     // vuelve a limpiar antes de comparar, por si llega por otra via.
