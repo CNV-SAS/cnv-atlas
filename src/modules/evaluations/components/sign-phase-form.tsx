@@ -12,7 +12,7 @@ import {
 } from "@/modules/consent/consent-instance";
 
 import { citiesForCountry, COUNTRIES, DEFAULT_COUNTRY } from "../data/geo";
-import { sendConsentOtpAction, signSurveyAction } from "../actions";
+import { checkConsentOtpAction, sendConsentOtpAction, signSurveyAction } from "../actions";
 import type { SignIdentityPrefill } from "../types";
 import type { OtpSendState, SignSurveyState } from "../validations";
 import { Field, checkboxClass, selectClass } from "./survey-form-shared";
@@ -27,6 +27,7 @@ import { Field, checkboxClass, selectClass } from "./survey-form-shared";
 // (auto-reset de React 19); (3) el codigo OTP se pide al FINAL de esta fase (vence en 10 min).
 
 const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null, ethnicityAuthorized: false };
+const initialOtpCheck = { error: null, valid: null, retryable: false };
 const initialOtp: OtpSendState = { error: null, sent: false, maskedDestination: null, remaining: null };
 
 // Validez de correo para habilitar el envio del codigo en cliente (el servidor revalida con Zod).
@@ -95,6 +96,13 @@ export function SignPhaseForm({
   const [otpState, sendOtp, otpPending] = useActionState(sendConsentOtpAction, initialOtp);
   const [email, setEmail] = useState(prefill?.email ?? "");
   const [otpCode, setOtpCode] = useState("");
+  // COMPROBACION AUTOMATICA del codigo (2026-08-26). El paciente sabe que su codigo sirve mientras escribe,
+  // en vez de descubrirlo al pulsar "Firmar". Solo es posible desde que verificar dejo de consumir.
+  const [otpCheck, checkOtp, otpChecking] = useActionState(checkConsentOtpAction, initialOtpCheck);
+  // El ultimo codigo que se mando a comprobar. Cada comprobacion GASTA INTENTO (es lo que sostiene el
+  // limite anti-fuerza-bruta), asi que no se puede comprobar el mismo dos veces: sin esto, escribir un
+  // digito, borrarlo y volver a escribirlo gastaria dos de los cinco.
+  const otpChecked = useRef<string>("");
 
   // Rama de edad (mayor/menor): eleccion explicita y obligatoria (DELTA2 B2).
   const [ageBranch, setAgeBranch] = useState<"" | "mayor" | "menor">("");
@@ -296,6 +304,24 @@ export function SignPhaseForm({
   };
 
   const otpCodeOk = /^\d{6}$/.test(otpCode.trim());
+  const otpValidado = otpCheck.valid === true;
+
+  // Se dispara con el VALOR, no con teclas: asi vale igual escribir, PEGAR o que el telefono autocomplete
+  // el codigo del correo, que es lo que hace la mayoria.
+  useEffect(() => {
+    if (!otpState.sent || !otpCodeOk || otpValidado) return;
+    if (otpChecked.current === otpCode) return; // ya se comprobo ESTE codigo: no se gasta otro intento
+    otpChecked.current = otpCode;
+    const fd = new FormData();
+    fd.set("sessionId", sessionId);
+    fd.set("otpCode", otpCode);
+    startTransition(() => checkOtp(fd));
+  }, [otpCode, otpCodeOk, otpState.sent, otpValidado, sessionId, checkOtp]);
+
+  // Un fallo de RED no es un codigo equivocado: se permite reintentar el MISMO sin gastar intento nuevo.
+  useEffect(() => {
+    if (otpCheck.retryable) otpChecked.current = "";
+  }, [otpCheck.retryable]);
 
   return (
     <form
@@ -811,10 +837,28 @@ export function SignPhaseForm({
                     maxLength={6}
                     className="h-9 w-40 tracking-[0.3em]"
                     value={otpCode}
+                    disabled={otpValidado}
+                    // Se limpia lo PEGADO: mucha gente copia el codigo con espacios, guiones o un salto de
+                    // linea del correo. Un codigo bueno no puede fallar por como se copio. El servidor lo
+                    // vuelve a limpiar antes de comparar, por si llega por otra via.
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   />
                 </Field>
-                <div className="flex flex-wrap items-center gap-3">
+                {otpChecking ? (
+                  <p className="text-xs text-muted-foreground">Comprobando el código…</p>
+                ) : otpValidado ? (
+                  <p className="text-xs font-medium text-clinical-optimal">
+                    Código correcto. Ya puedes firmar.
+                  </p>
+                ) : otpCheck.error ? (
+                  <p className="text-xs text-destructive">
+                    {otpCheck.error}
+                    {otpCheck.retryable ? " (no gastaste ningún intento)" : ""}
+                  </p>
+                ) : null}
+                {/* El boton de pedir otro DESAPARECE cuando el codigo ya se comprobo: pulsarlo invalidaria
+                    justo el codigo que acaba de servir, y a esas alturas ya no hace falta. */}
+                <div className={`flex flex-wrap items-center gap-3 ${otpValidado ? "hidden" : ""}`}>
                   {/* AVISO antes de reenviar: pedir otro codigo INVALIDA el anterior (el nuevo sobrescribe
                       al viejo en el almacen). Sin decirlo, el paciente pulsa "Reenviar" creyendo que no
                       cuesta nada y el codigo que ya tenia escrito deja de servir: ese es uno de los dos
@@ -862,7 +906,9 @@ export function SignPhaseForm({
             <Button
               key="nav-submit"
               type="submit"
-              disabled={!consentOk || !identityOk || !otpState.sent || !otpCodeOk || pending}
+              // El codigo ya se COMPROBO antes de llegar aqui, asi que firmar deja de ser el sitio donde
+              // se descubre que no servia. Se exige comprobado, no solo escrito.
+              disabled={!consentOk || !identityOk || !otpState.sent || !otpValidado || pending}
             >
               {pending ? "Firmando..." : "Firmar y continuar"}
             </Button>

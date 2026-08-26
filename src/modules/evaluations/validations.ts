@@ -128,6 +128,17 @@ export type OtpSendInput = z.infer<typeof otpSendSchema>;
 // Estado del envio del OTP (useActionState). maskedDestination es el correo ENMASCARADO (nunca el
 // completo) para decirle al paciente a donde llego sin exponerlo; remaining son los reenvios que quedan
 // en la ventana. sent marca que ya se envio (la UI pasa a pedir el codigo).
+// Comprobacion del codigo SIN firmar (2026-08-26). Existe para que el paciente sepa que su codigo sirve
+// ANTES de pulsar "Firmar", en vez de descubrirlo al final. Solo es posible desde que verificar dejo de
+// consumir: antes esta comprobacion habria quemado el codigo.
+export type OtpCheckState = {
+  error: string | null;
+  /** true = el servidor comparo y coincide. null = todavia no se comprobo. */
+  valid: boolean | null;
+  /** Fallo de RED o de infraestructura: se puede reintentar, no es un codigo equivocado. */
+  retryable: boolean;
+};
+
 export type OtpSendState = {
   error: string | null;
   sent: boolean;

@@ -19,6 +19,7 @@ import {
   generateOtpCode,
   maskEmail,
   storeOtp,
+  verifyOtp,
 } from "@/modules/consent/otp/otp-service";
 import { sendConsentOtpEmail } from "@/lib/email/resend";
 import {
@@ -72,6 +73,7 @@ import type {
   BaseSurveyQrState,
   ConfirmIdentityState,
   FollowupLinkState,
+  OtpCheckState,
   OtpSendState,
   ResolveConflictState,
   SaveProgressState,
@@ -808,4 +810,45 @@ export async function reopenEvaluationAction(
   revalidatePath(`/evaluaciones/${evaluationId}`);
   revalidatePath("/pacientes");
   return { error: null, success: "Consulta reabierta. Vuelve a estar en curso.", warning: null };
+}
+
+// Comprueba el codigo SIN firmar y SIN consumirlo. Solo dice si sirve; la firma sigue siendo el acto que
+// lo gasta. Existe para que el paciente lo sepa mientras escribe y no al final.
+//
+// GASTA INTENTO, y por eso el cliente no debe llamarla dos veces con el mismo codigo: el contador del
+// servicio sube en cada comparacion (es lo que sostiene el limite anti-fuerza-bruta).
+export async function checkConsentOtpAction(
+  _prev: OtpCheckState,
+  form: FormData,
+): Promise<OtpCheckState> {
+  const sessionId = str(form, "sessionId");
+  // LIMPIEZA antes de comparar: mucha gente PEGA el codigo con lo que venga alrededor (espacios, guiones,
+  // un salto de linea del correo). Un codigo bueno no puede fallar por como se copio.
+  const code = str(form, "otpCode").replace(/D/g, "");
+  if (!sessionId || code.length !== 6) {
+    return { error: null, valid: null, retryable: false };
+  }
+  const r = await verifyOtp(sessionId, code);
+  if (r.status === "ok") return { error: null, valid: true, retryable: false };
+  // 'unavailable' es infraestructura (Upstash caido), no un codigo equivocado: se puede reintentar y el
+  // contador NO subio (el servicio no llego a comparar).
+  if (r.status === "unavailable") {
+    return {
+      error: "No pudimos comprobar el código en este momento. Intenta de nuevo en unos segundos.",
+      valid: null,
+      retryable: true,
+    };
+  }
+  return { error: otpCheckMessage(r.status), valid: false, retryable: false };
+}
+
+function otpCheckMessage(status: "expired" | "invalid" | "too_many_attempts"): string {
+  switch (status) {
+    case "invalid":
+      return "Ese código no coincide. Revisa el último que te llegó.";
+    case "expired":
+      return "Ese código ya no sirve: venció, ya se usó, o pediste uno nuevo después.";
+    case "too_many_attempts":
+      return "Demasiados intentos con ese código. Pide uno nuevo para continuar.";
+  }
 }
