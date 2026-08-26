@@ -193,9 +193,15 @@ El resultado:
 | `d6_50` | Reflujo / acidez | Estreñimiento (P50) |
 | `d7_57` | ¿Siente sed con frecuencia? | Agua, vasos por día (P57) |
 
-**El código manda, no el número.** Nosotros vamos a citar siempre tu código y a decir entre paréntesis
-qué pregunta es, para que no se cuele un error silencioso. Si tú nos escribes "la 45", vamos a
-preguntarte cuál de las dos.
+**Y lo verificamos hacia atrás antes de contarte esto: no se aplicó nada mal.** Revisamos las doce veces
+que nos has citado un código (`d5_39`, `d6_44`, `d4_34`, `d3_31`, `d7_57`, `d8_59` y las demás) y las
+comparamos, una por una, contra la pregunta que ese código tiene en Atlas. **Coinciden todas.** La razón
+es que cuando cableamos las preguntas usamos tu código, no la posición, así que el desfase de numeración
+nunca entró en el cableado.
+
+**El código manda, no el número.** Vamos a seguir citando siempre tu código y a decir entre paréntesis
+qué pregunta es, para que no se cuele un error silencioso más adelante. Si tú nos escribes "la 45", vamos
+a preguntarte cuál de las dos.
 
 Y un detalle menor de tu archivo, por si te sirve: **hay dos preguntas con `num: 56`**, Agua y Bebidas
 energéticas.

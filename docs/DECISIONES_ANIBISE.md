@@ -446,3 +446,12 @@ probatorio**).
 **Diferidos por el:** 3.4 (acceso a alimentos e inseguridad alimentaria, "sigan sin tocarlo").
 **Bloqueados por falta de vision del software:** 8.5 y 3.5. Se resuelven con el DOCUMENTO DEL MAPA
 (inventario de tres columnas + que consume cada pantalla), no con acceso: ya tiene cuenta.
+
+**P-57b · Verificacion hacia atras del desfase (P-57): CERO instrucciones mal aplicadas.** Se reviso
+cada codigo que Gildardo nos ha citado en toda la correspondencia (`d5_39`, `d5_38`, `d6_43`, `d6_44`,
+`d5_36`, `d4_34`, `d4_35`, `d3_31`, `d2_21`, `d8_59`, `d7_57`, `d5_42`) contra la pregunta que ese
+codigo tiene en Atlas: **coinciden todas**. Tambien se coteja el tramo de hidratacion, que es el mas
+desfasado: `d7_55` (Gaseosas), `d7_agua` (Agua) y `d7_56` (Bebidas energeticas) son **sus** codigos, no
+nuestros, y coinciden. La razon de fondo: **el cableado se hizo por SU CODIGO, no por posicion**, asi
+que el desfase de numeracion nunca entro. El hazard es prospectivo, no retrospectivo, y asi queda dicho
+en la ronda. Ademas, el nunca cita por numero: siempre por codigo.
