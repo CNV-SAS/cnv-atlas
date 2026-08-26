@@ -48,7 +48,10 @@ function otpMessage(status: Exclude<OtpVerifyStatus, "ok">): string {
     case "invalid":
       return "El código no es correcto. Revisa el correo e ingrésalo de nuevo.";
     case "expired":
-      return "El código venció o ya no está disponible. Pide uno nuevo para continuar.";
+      // Las TRES razones por las que la clave ya no esta, dichas: vencio, se uso, o se pidio otro. La
+      // segunda es la que mas confunde (el codigo se consume aunque la firma falle despues) y la tercera
+      // la provoca el propio paciente sin saberlo.
+      return "Ese código ya no sirve: venció, ya se usó, o pediste uno nuevo después. Pide uno nuevo y escríbelo sin volver a pulsar “Reenviar”.";
     case "too_many_attempts":
       return "Demasiados intentos con ese código. Pide uno nuevo para continuar.";
     case "unavailable":

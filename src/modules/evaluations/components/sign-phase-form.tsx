@@ -800,6 +800,9 @@ export function SignPhaseForm({
                     ? "¿No llega? Revisa que el correo del representante esté bien escrito en el paso de consentimiento; corrígelo y pide el código de nuevo."
                     : "¿No llega? Revisa que tu correo esté bien escrito arriba; puedes corregirlo y pedir el código de nuevo."}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Si pides otro código, el anterior deja de servir: escribe el último que te llegó.
+                </p>
                 <Field label="Código de verificación (6 dígitos)">
                   <Input
                     name="otpCode"
@@ -812,8 +815,20 @@ export function SignPhaseForm({
                   />
                 </Field>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button key="otp-resend" type="button" variant="outline" size="sm" onClick={sendCode} disabled={otpPending}>
-                    {otpPending ? "Reenviando..." : "Reenviar código"}
+                  {/* AVISO antes de reenviar: pedir otro codigo INVALIDA el anterior (el nuevo sobrescribe
+                      al viejo en el almacen). Sin decirlo, el paciente pulsa "Reenviar" creyendo que no
+                      cuesta nada y el codigo que ya tenia escrito deja de servir: ese es uno de los dos
+                      caminos al bucle de "pide uno nuevo" que se vio en produccion. */}
+                  <Button
+                    key="otp-resend"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={sendCode}
+                    disabled={otpPending}
+                    title="Al pedir otro código, el anterior deja de servir"
+                  >
+                    {otpPending ? "Reenviando..." : "Pedir otro código"}
                   </Button>
                   {typeof otpState.remaining === "number" ? (
                     <span className="text-xs text-muted-foreground">
