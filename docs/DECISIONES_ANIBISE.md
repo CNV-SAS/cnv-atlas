@@ -455,3 +455,12 @@ desfasado: `d7_55` (Gaseosas), `d7_agua` (Agua) y `d7_56` (Bebidas energeticas) 
 nuestros, y coinciden. La razon de fondo: **el cableado se hizo por SU CODIGO, no por posicion**, asi
 que el desfase de numeracion nunca entro. El hazard es prospectivo, no retrospectivo, y asi queda dicho
 en la ronda. Ademas, el nunca cita por numero: siempre por codigo.
+
+**P-56b · `d3_31` (alcohol) es HOY inerte, y dejara de serlo al portar su constructor de texto
+clinico.** El DFI lo lee en `engine.dfi.js:76` y en su copia autorizada (`const alcohol = enc.d3_31 ||
+""`) y **ningun calculo lo consume**: lectura muerta, probado por el candado de inercia
+(`src/tests/field-key-inertness.test.ts`). Por eso darle `field_key` no mueve nada hoy. **Pero su
+constructor de texto clinico (su L13172) SI lo consume**, y esa pieza no esta portada. **Al portarla,
+`alcohol` pasara de `""` a un valor real y el texto clinico cambiara para todos los pacientes.** No es
+un defecto: es el efecto buscado. Queda anotado aqui para que quien porte esa pieza no lo lea como
+regresion, y para que el candado de inercia se actualice en ese momento (dejara de aplicar a `d3_31`).

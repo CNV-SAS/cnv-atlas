@@ -5,8 +5,9 @@
 **Fecha:** 26 de agosto de 2026
 
 Recibidas las dos partes. Arrancamos con lo que desbloqueaste. Esta ronda trae, en orden: **una cosa
-urgente que no es clínica**, el **inventario del 3.1 rehecho** como pediste, **dos hallazgos nuevos** que
-salieron de verificar tu archivo, **siete preguntas** y **cuatro puntos que se te pasaron**.
+urgente que no es clínica**, **dos hallazgos nuevos** que salieron de verificar tu archivo, el
+**inventario del 3.1 rehecho** como pediste, **siete preguntas** en total y **seis puntos que se te
+pasaron**.
 
 Y al final, como **anexo**, el mapa de Atlas que te debíamos: las 64 preguntas con su estado, qué
 consume cada pantalla y cuáles de tus motores están portados. **Contesta tu 8.5 y tu 3.5.** Va aquí
@@ -175,8 +176,8 @@ digestión* (`d6`). Nada de lo que el paciente responde en esos dos dominios lle
 están el patrón alimentario y las alergias, que es exactamente lo que señalaste.
 
 **Esto no requiere decisión tuya y ya lo estamos construyendo.** Es trabajo nuestro, no ciencia. Lo
-decimos para que sepas que el arreglo del patrón alimentario y el de las alergias son **la misma pieza
-con catorce campos**, no dos tareas.
+decimos para que sepas que el arreglo del patrón alimentario y el de las alergias son **la misma
+pieza**, no dos tareas, y que con ella entran las veinticinco de golpe.
 
 ---
 
@@ -213,7 +214,7 @@ energéticas.
 ---
 
 
-# 5 · Cinco preguntas
+# 5 · Cuatro preguntas y una nota
 
 ## 5.1 · El rango proteico: tu documento dice 1,5 a 2,0 y tu archivo implementa 1,5
 
@@ -297,7 +298,7 @@ Si no estás de acuerdo con esa separación, dilo y la cambiamos.
 
 ---
 
-# 7 · Cuatro puntos de la ronda anterior que quedaron sin respuesta
+# 7 · Seis puntos de la ronda anterior que quedaron sin respuesta
 
 Van con número esta vez. Los tres últimos iban sin numerar en el documento anterior, bajo un título
 corrido, y sospechamos que por eso se pasaron.
