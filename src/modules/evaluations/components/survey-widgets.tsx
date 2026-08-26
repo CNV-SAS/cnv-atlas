@@ -19,7 +19,7 @@ import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-view-t
 
 // Estilo de una pastilla (pill) segun estado, con tokens de marca.
 export function pillClass(active: boolean): string {
-  return `rounded-full border px-3 py-1.5 text-sm transition-colors ${
+  return `min-h-11 rounded-full border px-4 py-2 text-sm transition-colors ${
     active
       ? "border-primary bg-primary text-primary-foreground"
       : "border-input bg-background text-foreground hover:bg-muted"

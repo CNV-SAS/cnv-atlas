@@ -92,7 +92,6 @@ export function SurveyPhaseForm({
   const isAbout = step === 0;
   const current = isAbout ? null : sections[step - 1];
   const isLast = step === totalSteps - 1;
-  const currentTitle = isAbout ? "Sobre ti" : (current?.title ?? "");
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -204,22 +203,24 @@ export function SurveyPhaseForm({
 
       {/* Progreso */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
+        {/* El TITULO de la seccion ya va en el h2 de abajo: aqui salia dos veces, con los chips en medio.
+            En un telefono eso son dos renglones de una pantalla que todavia no muestra ninguna pregunta. */}
+        <div className="flex items-baseline justify-between gap-2">
           <p className="text-xs font-medium text-muted-foreground">
             Paso {step + 1} de {totalSteps}
           </p>
-          <p className="text-sm font-semibold text-foreground">
-            {currentTitle}
-            {current ? (
-              <span className="ml-2 font-normal text-muted-foreground">
-                · {current.questions.length} {current.questions.length === 1 ? "pregunta" : "preguntas"}
-              </span>
-            ) : null}
-          </p>
+          {current ? (
+            <p className="text-xs text-muted-foreground">
+              {current.questions.length} {current.questions.length === 1 ? "pregunta" : "preguntas"}
+            </p>
+          ) : null}
         </div>
         <Progress value={Math.round(((step + 1) / totalSteps) * 100)} />
         {/* Subpestanas: "Sobre ti" (paso 0) + las secciones de encuesta. Todas alcanzables (opcional). */}
-        <nav aria-label="Secciones de la encuesta" className="flex flex-wrap gap-1.5">
+        <nav
+          aria-label="Secciones de la encuesta"
+          className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible"
+        >
           {["Sobre ti", ...sections.map((s) => s.title)].map((title, i) => {
             const activo = i === step;
             return (
@@ -228,7 +229,16 @@ export function SurveyPhaseForm({
                 type="button"
                 onClick={() => goTo(i)}
                 aria-current={activo ? "step" : undefined}
-                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                ref={
+                  activo
+                    ? (el) => {
+                        // En la tira con desplazamiento el chip activo puede quedar fuera de vista al
+                        // avanzar; se trae al centro. "nearest" evita mover la pagina entera.
+                        el?.scrollIntoView({ block: "nearest", inline: "center" });
+                      }
+                    : undefined
+                }
+                className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                   activo
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-foreground hover:bg-muted/70"
@@ -272,17 +282,24 @@ export function SurveyPhaseForm({
                 Responde lo que aplique a tu caso. Puedes dejar en blanco lo que no sepas.
               </p>
             </div>
-            {s.questions.map((q) => (
-              <SurveyQuestion key={q.id} q={q} answer={prefill?.[q.id] ?? null} />
-            ))}
+            <div className="flex flex-col gap-3 sm:gap-6">
+              {s.questions.map((q) => (
+                <div
+                  key={q.id}
+                  className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
+                >
+                  <SurveyQuestion q={q} answer={prefill?.[q.id] ?? null} />
+                </div>
+              ))}
+            </div>
           </section>
         );
       })}
 
       {/* Navegacion + estado de guardado */}
       <div className="flex flex-col gap-3 border-t border-border pt-4">
-        <div className="flex min-h-5 items-center gap-2 text-xs">
-          <span className="text-muted-foreground">Guardamos tu avance cada vez que pasas de sección.</span>
+        <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="text-muted-foreground">Guardamos tu avance al pasar de sección.</span>
           {saveStatus === "saving" ? (
             <span className="font-medium text-muted-foreground">Guardando…</span>
           ) : saveStatus === "saved" ? (
@@ -309,8 +326,8 @@ export function SurveyPhaseForm({
               </span>{" "}
               por responder. Puedes enviarla así y completarlas con tu profesional, o volver a revisarlas.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button key="confirm-send" type="button" onClick={doSubmit} disabled={submitting}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button key="confirm-send" type="button" onClick={doSubmit} disabled={submitting} className="w-full sm:w-auto">
                 {submitting ? "Enviando..." : "Enviar así"}
               </Button>
               <Button
@@ -319,6 +336,7 @@ export function SurveyPhaseForm({
                 variant="outline"
                 onClick={() => setConfirmMissing(null)}
                 disabled={submitting}
+                className="w-full sm:w-auto"
               >
                 Volver a revisar
               </Button>
@@ -326,7 +344,11 @@ export function SurveyPhaseForm({
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between gap-3">
+        <div
+          className={`flex items-center justify-between gap-3 ${
+            isLast && confirmMissing !== null ? "hidden" : ""
+          }`}
+        >
           <Button key="nav-back" type="button" variant="outline" onClick={goBack} disabled={step === 0 || submitting}>
             Anterior
           </Button>

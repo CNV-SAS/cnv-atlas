@@ -17,8 +17,8 @@ export const metadata = { title: "Encuesta - Atlas" };
 // ancho que el checkout y alineado arriba: es un formulario largo.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-svh justify-center bg-muted/30 px-4 py-10">
-      <div className="flex w-full max-w-2xl flex-col gap-8 rounded-2xl border border-border bg-background p-6 shadow-sm sm:p-8">
+    <main className="flex min-h-svh justify-center bg-muted/30 px-3 py-4 sm:px-4 sm:py-10">
+      <div className="flex w-full max-w-2xl flex-col gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm sm:gap-8 sm:p-8">
         {/* "Atlas Pacientes": logo + rotulo, en espanol (toda la encuesta es de cara al paciente). */}
         <div className="flex items-center gap-2 self-start">
           <Image
