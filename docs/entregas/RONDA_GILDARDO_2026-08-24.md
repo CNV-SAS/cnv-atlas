@@ -402,10 +402,13 @@ Pero en la **encuesta** el paciente las responde en orden 1 a 15, así que **las
 
 Y eso sería peor que no agrupar nada: le diríamos al paciente que su carne es un ultraprocesado.
 
+**Y hay algo que quizá te importe más que el rótulo.** No es solo la pantalla del paciente: **el orden de la encuesta y el agrupamiento del modelo cuentan cosas distintas**. Un profesional que mire las respuestas crudas ve las carnes rojas al final, entre los procesados, y podría leerlas como parte de ese grupo; el modelo, en cambio, las está tratando como energéticas a moderar. Las dos lecturas conviven hoy sin que nada las concilie.
+
 **Lo que preguntamos, y es de instrumento, no de pantalla:**
 
 1. **¿Las carnes rojas deben preguntarse junto a las otras carnes** (después de las blancas, posición 11), que es donde tu motor las agrupa? Sería mover **una** pregunta y con eso los tres bloques quedan contiguos y se pueden rotular.
 2. **O prefieres el orden actual**, y entonces dejamos las quince sin encabezados, como están hoy.
+3. **Y una pregunta más simple que puede resolver todo:** ¿fue deliberado, o el array quedó así al construirlo? Si es lo segundo, se arregla solo moviendo la entrada a su sitio.
 
 Mientras respondes no tocamos nada: reordenar preguntas es tu instrumento, no nuestro diseño.
 
