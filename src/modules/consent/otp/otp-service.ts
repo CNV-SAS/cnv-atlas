@@ -11,7 +11,15 @@ import * as Sentry from "@sentry/nextjs";
 //  - NUNCA se guarda el código, ni cifrado: es un secreto de un solo uso; su valor probatorio está en
 //    HABERSE VALIDADO, no en su contenido. Se guarda solo su HASH (con sal por sesión).
 //  - Vigencia corta (TTL nativo de Redis, sin depender de la BD) e intentos limitados.
-//  - Un solo uso: al validar, se consume.
+//  - Un solo uso: se consume CUANDO LA FIRMA SE PERSISTE, no al validarlo.
+//
+// SEPARAR VERIFICAR DE CONSUMIR (2026-08-26, defecto real en produccion). Antes verifyOtp borraba el
+// codigo al validarlo, y la firma seguia despues: resolver identidad, persistir. Si algo de eso fallaba,
+// EL CODIGO YA SE HABIA QUEMADO SIN QUE HUBIERA FIRMA, el paciente reintentaba con el mismo codigo y
+// recibia "ya no sirve, pide otro". Ese era el bucle que se vio.
+//
+// Y el requisito del dictamen se cumple MEJOR asi, no peor: "un solo uso" protege que un codigo no firme
+// dos veces, no que se gaste en un intento que no firmo ninguna.
 // La traza (canal, destino enmascarado, timestamps de envío y validación) se registra en el flujo, no aquí.
 
 const TTL_SECONDS = 600; // 10 minutos (rango 5-10 del dictamen)
@@ -89,9 +97,32 @@ export async function storeOtp(
 export type OtpVerifyStatus = "ok" | "expired" | "invalid" | "too_many_attempts" | "unavailable";
 export type OtpVerifyResult = { status: OtpVerifyStatus; meta?: OtpMeta };
 
-// Verifica el código: 'expired' si no existe o venció (TTL); 'too_many_attempts' al superar el tope
-// (invalida la sesión); 'invalid' si no coincide; 'ok' si coincide (y CONSUME el código, un solo uso).
-// En 'ok' devuelve la metadata de la traza (canal, destino enmascarado, sentAt) para registrar la firma.
+// Verifica el código SIN consumirlo: 'expired' si no existe o venció (TTL); 'too_many_attempts' al superar
+// el tope (invalida la sesión); 'invalid' si no coincide; 'ok' si coincide. En 'ok' devuelve la metadata de
+// la traza (canal, destino enmascarado, sentAt) para registrar la firma. El consumo es consumeOtp, que se
+// llama cuando la firma YA se persistió.
+//
+// FUERZA BRUTA: verificar sin consumir NO abre esa puerta, y es el riesgo que habia que mirar. El contador
+// se incrementa ANTES de comparar, en cada verificación, y al superar el tope la sesión se invalida
+// entera. Un atacante tiene los mismos 5 intentos que antes; lo unico que cambia es que un acierto ya no
+// borra el codigo por si solo.
+// Consume el código: se llama SOLO cuando la firma ya se persistió. No cuenta intento (ya se verificó).
+// Devuelve false si no se pudo borrar; el llamador NO debe fallar por eso (la firma ya ocurrió y el TTL
+// cierra la ventana en minutos), pero se avisa a Sentry para que quede rastro.
+export async function consumeOtp(
+  sessionId: string,
+  store: OtpStore | null = getRedis(),
+): Promise<boolean> {
+  if (!store) return false;
+  try {
+    await store.del(keyFor(sessionId));
+    return true;
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: "consent-otp", op: "consume" } });
+    return false;
+  }
+}
+
 export async function verifyOtp(
   sessionId: string,
   code: string,
@@ -113,7 +144,6 @@ export async function verifyOtp(
       return { status: "too_many_attempts" };
     }
     if (data.hash !== hashCode(sessionId, code)) return { status: "invalid" };
-    await store.del(key); // un solo uso
     return {
       status: "ok",
       meta: {

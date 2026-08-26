@@ -7,6 +7,7 @@ vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 const {
   generateOtpCode,
   storeOtp,
+  consumeOtp,
   verifyOtp,
   maskEmail,
 } = await import("@/modules/consent/otp/otp-service");
@@ -64,12 +65,32 @@ describe("consent OTP service", () => {
     expect(String(stored.hash)).not.toContain("123456");
   });
 
-  it("código correcto -> ok con la metadata de la traza, y se CONSUME (2do intento -> expired)", async () => {
+  it("código correcto -> ok con la metadata, y NO se consume solo por verificarlo", async () => {
+    // ANTES verifyOtp borraba el codigo al validarlo, y la firma seguia despues (resolver identidad,
+    // persistir). Si algo de eso fallaba, el codigo quedaba quemado SIN QUE HUBIERA FIRMA y el paciente
+    // reintentaba con el mismo recibiendo "ya no sirve, pide otro": el bucle visto en produccion.
     await storeOtp("s1", "123456", META, store);
     const r = await verifyOtp("s1", "123456", store);
     expect(r.status).toBe("ok");
     expect(r.meta).toEqual(META); // canal + destino enmascarado + sentAt para la traza
-    expect((await verifyOtp("s1", "123456", store)).status).toBe("expired"); // ya consumido
+    // Sigue sirviendo: el consumo es un acto aparte, y va cuando la firma ya se persistio.
+    expect((await verifyOtp("s1", "123456", store)).status).toBe("ok");
+  });
+
+  it("consumeOtp lo gasta: despues ya no vale (un solo uso, donde toca)", async () => {
+    await storeOtp("s1", "123456", META, store);
+    expect((await verifyOtp("s1", "123456", store)).status).toBe("ok");
+    expect(await consumeOtp("s1", store)).toBe(true);
+    expect((await verifyOtp("s1", "123456", store)).status).toBe("expired");
+  });
+
+  it("verificar SIN consumir no abre fuerza bruta: los aciertos tambien gastan intento", async () => {
+    // Es el riesgo real del cambio. El contador se incrementa ANTES de comparar, en CADA verificacion,
+    // asi que un atacante tiene los mismos 5 intentos de antes; lo unico que cambia es que acertar ya no
+    // borra el codigo por si solo.
+    await storeOtp("s1", "123456", META, store);
+    for (let i = 0; i < 5; i++) expect((await verifyOtp("s1", "123456", store)).status).toBe("ok");
+    expect((await verifyOtp("s1", "123456", store)).status).toBe("too_many_attempts");
   });
 
   it("código incorrecto -> invalid; el correcto sigue valiendo hasta el tope", async () => {

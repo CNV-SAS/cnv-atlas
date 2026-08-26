@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 
 import { appError, err, ok, type Result } from "@/core/errors";
 import { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } from "@/modules/consent/consent-hash";
-import { verifyOtp, type OtpVerifyStatus } from "@/modules/consent/otp/otp-service";
+import { consumeOtp, verifyOtp, type OtpVerifyStatus } from "@/modules/consent/otp/otp-service";
 import {
   assentApplies,
   computeAgeYears,
@@ -88,7 +88,10 @@ async function resolveSignedIntake(input: {
     return err(appError("validation", "Revisa los datos de identificación."));
   }
 
-  // FIRMA ELECTRONICA (dictamen art. 4 Decreto 2364): verificar el codigo. Se CONSUME aqui (un solo uso).
+  // FIRMA ELECTRONICA (dictamen art. 4 Decreto 2364): verificar el codigo. NO se consume aqui: el consumo
+  // va DESPUES de persistir (ver abajo). Antes se borraba en esta linea, y si algo posterior fallaba el
+  // codigo quedaba quemado sin que hubiera firma: el paciente reintentaba con el mismo y recibia "ya no
+  // sirve, pide otro". Ese era el bucle visto en produccion.
   const otp = await verifyOtp(input.otp.sessionId, input.otp.code);
   if (otp.status !== "ok") {
     // 'unavailable' es fallo de infraestructura (Upstash caido), no del paciente: se mapea a internal.
@@ -199,6 +202,16 @@ export async function signSurveyIntake(
       signature,
       identityConflict: resolution.identityConflict,
     });
+    // CONSUMO del codigo, ya con la firma PERSISTIDA. No puede ir dentro de la transaccion de BD porque el
+    // codigo vive en otro almacen (Redis), asi que va inmediatamente despues de que la transaccion
+    // confirmo. El orden importa y es este a proposito:
+    //   - persistir y luego consumir deja, en el peor caso, un codigo vivo hasta su TTL (minutos) DESPUES
+    //     de una firma que si ocurrio;
+    //   - consumir y luego persistir deja al paciente bloqueado sin haber firmado, que es el defecto que
+    //     se esta corrigiendo.
+    // El segundo riesgo es peor y es real (paso en produccion); el primero esta acotado por el TTL y por
+    // que el link de la encuesta ya se consumio en la misma transaccion.
+    await consumeOtp(input.otp.sessionId);
     return ok({
       evaluationId: signed.evaluationId,
       patientId: signed.patientId,

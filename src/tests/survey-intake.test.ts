@@ -31,6 +31,7 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
 // OTP (server-only + Redis) para probar la orquestacion sin Upstash; por defecto devuelve 'ok'.
 vi.mock("@/modules/consent/otp/otp-service", () => ({
   verifyOtp: vi.fn(),
+  consumeOtp: vi.fn(),
 }));
 
 import * as intakeReads from "@/modules/patients/data/patients-intake";
@@ -83,6 +84,8 @@ beforeEach(() => {
   vi.mocked(writer.signIntakeEvaluation).mockReset();
   vi.mocked(otp.verifyOtp).mockReset();
   vi.mocked(otp.verifyOtp).mockResolvedValue(okOtp);
+  vi.mocked(otp.consumeOtp).mockReset();
+  vi.mocked(otp.consumeOtp).mockResolvedValue(true);
   vi.mocked(intakeReads.findDuplicateCandidates).mockResolvedValue([]);
   vi.mocked(writer.signIntakeEvaluation).mockResolvedValue({
     evaluationId: "ev-1",
@@ -283,5 +286,42 @@ describe("signSurveyIntake", () => {
     const followLink: SurveyLinkView = { ...initialLink, type: "seguimiento", patientId: "pat-x" };
     await signSurveyIntake(input({ link: followLink }));
     expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].linkId).toBe("link-1");
+  });
+});
+
+// ── EL CASO QUE ORIGINO EL CAMBIO (defecto real en produccion, 2026-08-26) ───────────────────────────
+//
+// Una persona pidio el codigo, lo puso, y el sistema le seguia pidiendo que lo pidiera. La causa: el
+// codigo se CONSUMIA al verificarlo, y la firma seguia despues. Si algo posterior fallaba, el codigo ya
+// estaba quemado sin que hubiera firma, y el reintento con el mismo codigo daba "ya no sirve, pide otro".
+describe("el codigo sobrevive a un fallo posterior a la verificacion", () => {
+  it("si la persistencia falla, el codigo NO se consume", async () => {
+    vi.mocked(writer.signIntakeEvaluation).mockRejectedValue(new Error("cayo la BD"));
+    const r = await signSurveyIntake(input());
+    expect(r.ok).toBe(false);
+    // Lo que importa: el codigo sigue vivo, asi que el paciente puede reintentar con el MISMO.
+    expect(otp.consumeOtp).not.toHaveBeenCalled();
+  });
+
+  it("y se consume SOLO cuando la firma quedo persistida", async () => {
+    const r = await signSurveyIntake(input());
+    expect(r.ok).toBe(true);
+    expect(otp.consumeOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("el consumo va DESPUES de persistir, no antes", async () => {
+    // Si se invirtiera el orden volveria el defecto: se gastaria el codigo y despues se veria si la firma
+    // se puede completar.
+    const orden: string[] = [];
+    vi.mocked(writer.signIntakeEvaluation).mockImplementation(async () => {
+      orden.push("persistir");
+      return { evaluationId: "e1", patientId: "p1", resumeToken: "t1" };
+    });
+    vi.mocked(otp.consumeOtp).mockImplementation(async () => {
+      orden.push("consumir");
+      return true;
+    });
+    await signSurveyIntake(input());
+    expect(orden).toEqual(["persistir", "consumir"]);
   });
 });
