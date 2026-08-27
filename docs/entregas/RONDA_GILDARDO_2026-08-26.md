@@ -56,19 +56,31 @@ if (deficit > 0) { var piso = sexoM ? 1500 : 1200; kcalObjetivo = Math.max(piso,
 **El piso está condicionado a que haya déficit.** Con `deficit = 0` no se activa *casi* nunca: **no se
 activa nunca**. Y el objetivo pasa a ser el gasto calculado sobre el peso meta, sin ninguna red debajo.
 
-El caso reproducible, en tu estilo. Mujer de 60 años, 150 cm, 60 kg, sedentaria:
+El caso reproducible. Lo corrimos **contra tu motor ya portado**, no a mano. Mujer de 60 años, 150 cm,
+60 kg, con el factor de actividad en "sedentario":
 
 | Paso | Valor |
 |---|---|
 | Peso ideal (tu fórmula, mujer) | 50,0 kg |
 | IMC 26,7, entonces peso meta = peso ideal | 50 kg |
 | GEB sobre peso meta | 977 kcal |
-| GET (× 1,2 sedentaria) | **1.172 kcal** |
+| GET (× 1,2 sedentario) | **1.172 kcal** |
 | Su piso | 1.200 kcal |
 
 **Le prescribe 1.172 kcal, por debajo de su propio piso**, y el piso no lo corrige porque el déficit es
-cero. Es exactamente la situación que el 1.2 quería evitar, llegando por el otro lado: no por dos
-descuentos sumados, sino por una red que quedó colgada de la condición equivocada.
+cero.
+
+**Y hay una consecuencia que lo deja sin discusión.** A esa misma paciente, ponerle un déficit de 300
+kcal **le SUBE el objetivo**:
+
+| | Objetivo |
+|---|---|
+| Déficit **0** (tu decisión del 1.2) | **1.172 kcal** |
+| Déficit **300** | **1.200 kcal** |
+
+Pedirle que coma 300 menos hace que el sistema le prescriba 28 más, porque **solo al haber déficit
+aparece el piso que la protege**. Es exactamente lo que el 1.2 quería evitar, llegando por el otro
+lado: no por dos descuentos sumados, sino por una red que quedó colgada de la condición equivocada.
 
 > **Pregunta 1.** ¿Movemos el piso fuera de la condición del déficit, para que aplique siempre? Es un
 > cambio de una línea y creemos que es lo que querías decir, pero es tu red y tu número: no lo tocamos

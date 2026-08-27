@@ -1,0 +1,154 @@
+/**
+ * atlas-tratamiento-nutri.js - CIENCIA CONGELADA (regla dura 16). NO editar, NO convertir, NO reformatear.
+ *
+ * motorTratNutri del modelo ANI-BIS-E. Autoria clinica de Gildardo; Atlas no lo edita ni reinterpreta.
+ * Portado VERBATIM (byte a byte, copiado por script y no transcrito a mano) del rango CONTIGUO
+ * L15630-15744 de docs/entregas/Gildardo responses/html actualizado 28 agosto/ATLAS_v8.html.
+ *
+ * POR QUE EN SU PROPIO ARCHIVO Y NO EN atlas-tratamiento.js. Los otros tres motores por profesion
+ * (medico, ejercicio, psico) estan portados verbatim del archivo del 2026-07-30. Este viene del archivo
+ * del 2026-08-26, que es donde viven las tres correcciones que Gildardo nos desbloqueo el 26. Meterlos
+ * en el mismo archivo romperia el contrato de "verbatim del rango X del archivo Y", que es lo que hace
+ * verificable un porte fiel. Son fuentes distintas y por eso son archivos distintos.
+ *
+ * Y ese desfase de fechas NO es un descuido nuestro: el mismo lo anoto en su Parte 1 al dejar cancer en
+ * 1,25, diciendo que ese es "el punto donde el motor que gobierna es el menos actualizado".
+ *
+ * LAS TRES CORRECCIONES QUE TRAE ESTE ARCHIVO Y QUE EL PORTE PRESERVA (Parte 1, 2026-08-26), cada una
+ * con su candado en motor-trat-nutri.test.ts:
+ *   1. deficit = 0 por defecto. El gasto calculado sobre el peso meta YA ES la ingesta que lleva a ese
+ *      peso; restarle 500 encima aplicaba un segundo descuento sobre el primero (hasta 926 kcal por
+ *      debajo del mantenimiento real en su propio caso).
+ *   2. El GEB se calcula sobre el PESO META, no sobre el peso actual.
+ *   3. La proteina se SEPARA: desnutricion conserva 1,5 g/kg (el rango de F7/F10 de su archivo) y
+ *      cancer se queda en 1,25. Antes compartian rama. La nota de realimentacion (fosfato, potasio,
+ *      magnesio; 10-15 kcal/kg si hay riesgo) viaja SOLO con desnutricion, que es lo que protege al
+ *      paciente mas fragil de los dos.
+ *
+ * PREGUNTA ABIERTA QUE ESTE PORTE NO RESUELVE (ronda 2026-08-26, pregunta 2): el piso de 1.500/1.200
+ * esta guardado tras `if(deficit>0)`, asi que con el deficit en cero NO SE ACTIVA NUNCA. Su documento
+ * dice que el piso "se conserva como red de seguridad", pero la red esta colgada de una condicion que
+ * ya no se cumple. Caso reproducible: mujer de 60 anos, 150 cm, 60 kg, sedentaria -> 1.172 kcal
+ * prescritas con un piso de 1.200 que no la corrige. NO SE TOCA hasta que responda: un candado escrito
+ * sobre lo que nosotros creemos convertiria nuestra suposicion en regla.
+ *
+ * Lo unico que no esta en la fuente es el module.exports final.
+ */
+
+function motorTratNutri(enc, bis, edit){
+  edit = edit || {}; var e = enc||{}, b = bis||{};
+  var sexoM = (b.sexo==='M'||b.sexo==='Masculino'||e.sexo==='M'||e.sexo==='Masculino');
+  var edad = Number(e.edad||b.edad)||30;
+  var talla = Number(b.talla||e.talla||e.tallaCm||b.tallaCm)||170;
+  var pesoAct = Number(b.peso||e.peso)||70;
+  var imc = talla>0 ? pesoAct/Math.pow(talla/100,2) : 0;
+  var PI = sexoM ? (talla-100-((talla-150)/4)) : (talla-100-((talla-150)/2.5));
+  var pesoAjust = imc>=25 ? PI+0.25*(pesoAct-PI) : pesoAct;
+  var pesoMeta = Number(edit.peso_meta)>0 ? Number(edit.peso_meta) : ((imc>=25||imc<18.5) ? Math.max(1,Math.round(PI)) : pesoAct);
+  // A1 GEB Mifflin-St Jeor (medicion, peso actual)
+  // Mifflin sobre el PESO DE REFERENCIA (peso meta), no sobre el peso actual.
+  // Decision de la direccion cientifica del 26-ago-2026: el gasto calculado
+  // sobre el peso meta ES la ingesta que lleva a ese peso, asi que el descuento
+  // ya esta dentro del numero. Antes se calculaba sobre `pesoAct` y ademas se
+  // restaba un deficit: dos descuentos sobre el mismo paciente (ver el deficit
+  // mas abajo, ahora en 0). El peso meta queda como la unica palanca, y es la
+  // que el profesional mueve.
+  var geb = Math.round(sexoM ? (10*pesoMeta+6.25*talla-5*edad+5) : (10*pesoMeta+6.25*talla-5*edad-161));
+  // A2 FA de la actividad PRESCRITA
+  var FA_MAP = {sedentario:1.2, ligera:1.375, moderada:1.55, alta:1.725, muy_alta:1.9};
+  var faNivel = edit.fa_nivel || (function(){ try { return motorTratEjercicio(enc,bis).faRec; } catch(_x){ return "ligera"; } })();
+  var fa = FA_MAP[faNivel] || 1.375;
+  var get = Math.round(geb*fa);
+  // condiciones (encuesta + composicion objetiva IV-V)
+  var dx = (Array.isArray(e.d5_39)?e.d5_39:[]).map(function(x){return String(x).toLowerCase();});
+  var fam = (Array.isArray(e.d5_38)?e.d5_38:[]).map(function(x){return String(x).toLowerCase();});
+  var hasHTA = dx.some(function(d){return /hipert|hta/.test(d);}) || e.d5_36==="Sí";
+  var hasDM = dx.some(function(d){return /diabet/.test(d);});
+  var hasDislip = dx.some(function(d){return /dislip|colesterol|triglic/.test(d);});
+  var hasERC = dx.some(function(d){return /renal|erc/.test(d);});
+  var hasCancer = dx.some(function(d){return /c[áa]ncer/.test(d);});
+  var FMI=Number(b.FMI||e.FMI)||0, FFMI=Number(b.FFMI||e.FFMI)||0, ASMI=Number(b.ASMI||e.ASMI)||0;
+  var obesidad = imc>=30 || (sexoM?FMI>6:FMI>9);
+  var sarcopenia = (FFMI>0&&(sexoM?FFMI<17:FFMI<15)) || (ASMI>0&&(sexoM?ASMI<7:ASMI<5.5));
+  var desnutricion = imc>0 && imc<18.5;
+  var tca = (Array.isArray(e.d2_21)?e.d2_21:[]).some(function(m){return /v[óo]mito|laxante|ayuno|excesivo/i.test(String(m));}) || !!edit.tcaFlag;
+  var protKg=1.0, deficit=0, tipoEnergia="Normocalórica", attrs=[], notas=[], refs=[];
+  // PARTE C/D protocolos con precedencia
+  if(hasCancer || desnutricion){
+    // Rama separada el 26-ago-2026. Antes cancer y desnutricion compartian
+    // protKg=1.25. Son dos indicaciones distintas: el desnutrido conserva el
+    // rango alto que `motorProtocolo` ya asigna a F7/F10 (1,5-2,0 g/kg) y aqui
+    // se toma su extremo inferior, 1,5. Si coinciden las dos condiciones manda
+    // la desnutricion, que es la indicacion mas exigente.
+    tipoEnergia="Hipercalórica"; protKg = desnutricion ? 1.5 : 1.25;
+    attrs.push(desnutricion?"Densidad energética y proteica alta, fraccionada":"Hiperproteica, densidad energética alta");
+    notas.push("Prioriza recuperar el estado nutricional; el control de peso se pospone.");
+    if(desnutricion) notas.push("Vigilar realimentación (fosfato, potasio, magnesio); iniciar 10-15 kcal/kg si hay riesgo (ASPEN).");
+    refs.push(hasCancer?"ESPEN 2021 (cáncer); ESMO":"GLIM (ESPEN/ASPEN/FELANPE); ESPEN hospital; ASPEN");
+  } else if(obesidad){
+    // Deficit en 0 desde el 26-ago-2026. El gasto ya se calcula sobre el peso
+    // meta (arriba), que de por si es un objetivo con el descuento dentro;
+    // restar ademas 500 aplicaba un segundo descuento y podia llevar al piso
+    // por dos vias sumadas. El piso de 1.500/1.200 se conserva como red: si se
+    // activa, es senal de que el peso meta quedo demasiado bajo.
+    deficit = 0; tipoEnergia="Hipocalórica"; protKg = sarcopenia?1.4:1.3;
+    attrs.push("Densidad energética baja","Fibra alta","Controlada en carbohidratos concentrados","Azúcares añadidos bajos");
+    if(sarcopenia){ attrs.push("Hiperproteica (preserva masa magra)"); notas.push("Obesidad con baja masa magra: déficit moderado + proteína alta + fuerza."); }
+    refs.push("AND AWM 2014; AHA/ACC/TOS 2013; NICE CG189");
+  } else if(sarcopenia){
+    tipoEnergia="Normocalórica"; protKg=1.4;
+    attrs.push("Hiperproteica (leucina)","25-40 g de proteína por comida en 3-4 tomas");
+    notas.push("Acompañar SIEMPRE de entrenamiento de fuerza.");
+    refs.push("EWGSOP2 2019; PROT-AGE 2013; ESPEN 2014");
+  }
+  // ERC manda sobre proteína alta
+  if(hasERC){ protKg=0.7; attrs.push("Nefroprotectora","Proteína controlada 0,6-0,8 g/kg"); notas.push("ERC: proteína baja bajo guía de nefrología (precede a la proteína alta)."); refs.push("KDIGO 2024; KDOQI 2020; ESPEN renal 2021"); }
+  // sodio (mas restrictivo se conserva)
+  var sodioMax=null;
+  if(hasHTA){ sodioMax=1500; attrs.push("Hiposódica (<1.500 mg Na)","Patrón DASH"); refs.push("OMS; DASH/NHLBI; AHA/ACC 2025; ESC/ESH"); }
+  if(hasERC){ sodioMax = sodioMax? Math.min(sodioMax,2000):2000; }
+  if(hasDM){ attrs.push("Controlada en CHO concentrados","Bajo índice glucémico"); refs.push("ADA; ALAD 2019; EASD"); }
+  var grasaSatMax=null;
+  if(hasDislip){ grasaSatMax=7; attrs.push("Baja en grasas saturadas (<7%)","Cardioprotectora (MUFA/PUFA, fibra soluble)"); refs.push("AHA; ESC/EAS; NLA"); }
+  // Hidratación / desequilibrio hídrico (ANI BIS-E, PARTE C [OTROS]): sed y AEC/IEHH altos.
+  var _iehh=Number(b.iehh||b.IEHH||e.iehh)||0, _aec=Number(b.AEC||e.AEC)||0, _act=Number(b.ACT||e.ACT)||0;
+  var _aecPct=(_aec&&_act)?(_aec/_act*100):0;
+  var _sed=/frecuente|siempre/i.test(String(e.d7_57||""));
+  var hidrAlt=_iehh>1 || _aecPct>44 || _sed;
+  if(hidrAlt){ attrs.push("Control de sodio e hidratación guiada"); notas.push("Alteración hídrica o sed reportada: reforzar hidratación guiada y control de sodio."); if(!sodioMax) sodioMax=2000; refs.push("ANI BIS-E; OMS (sodio)"); }
+  // deficit editable
+  if(edit.deficit!==undefined && String(edit.deficit)!=="" && !isNaN(Number(edit.deficit))) deficit=Number(edit.deficit);
+  // SALVAGUARDA TCA (Trastorno de la Conducta Alimentaria — NO confundir con el
+  // ICA-BIS, que es la carga alostática: son cosas distintas).
+  //
+  // Corregido el 9-ago-2026 por la Dirección Científica: la salvaguarda AVISA,
+  // no bloquea. Antes ponía el déficit en cero y forzaba dieta normocalórica;
+  // eso arrebataba al profesional una decisión que es suya. El déficit sigue
+  // partiendo del peso meta acordado con el paciente, igual que en cualquier
+  // otro caso, y lo que hace el sistema es levantar la alerta y marcar remisión.
+  var alertaTCA=false;
+  if(tca){ alertaTCA=true; notas.unshift("Riesgo de conducta alimentaria detectado: revisar el peso meta con el paciente antes de sostener un déficit, y remitir a valoración especializada."); }
+  var pausadoTCA=false;   // se conserva en false: ya no se pausa nada
+  // objetivo calorico
+  var kcalObjetivo;
+  if(hasCancer||desnutricion){ kcalObjetivo = Math.round(27.5*pesoAct); }
+  else { kcalObjetivo = get - deficit; }
+  if(deficit>0){ var piso = sexoM?1500:1200; kcalObjetivo = Math.max(piso, kcalObjetivo); }
+  kcalObjetivo = Math.round(kcalObjetivo);
+  if(Number(edit.kcal_obj)>0) kcalObjetivo = Number(edit.kcal_obj);
+  if(!pausadoTCA && !hasCancer && !desnutricion){ tipoEnergia = kcalObjetivo>get ? "Hipercalórica" : (kcalObjetivo<get ? "Hipocalórica" : "Normocalórica"); }
+  var fatPct = hasDislip?25:30;
+  var protG = Math.round(protKg*pesoMeta);
+  var fatG = Math.round(kcalObjetivo*fatPct/100/9);
+  var choG = Math.round(Math.max(0,(kcalObjetivo-protG*4-fatG*9))/4);
+  var actividad = { aerob:"150-300 min/sem moderada (o 75-150 vigorosa)", fuerza:"2 o más días/sem, grandes grupos musculares", remision:"Remitir a deportología para modalidad, intensidad y progresión." };
+  if(sarcopenia||obesidad||hasCancer) actividad.fuerza="Fuerza progresiva 2-3 días/sem (imprescindible en este perfil)";
+  refs.push("Actividad: OMS 2020; ACSM; PAG Americans 2018");
+  var etiqueta = "Dieta "+tipoEnergia+" de "+kcalObjetivo+" kcal/día";
+  var chips = ["Proteína "+String(protKg).replace(".",",")+" g/kg"].concat(attrs);
+  var alertaFam = fam.filter(function(f){return /diabet|hipert|cardiov|c[áa]ncer|obesidad/.test(f);});
+  var _refs=[]; refs.forEach(function(r){ if(_refs.indexOf(r)<0) _refs.push(r); });
+  return { alertaTCA:alertaTCA, geb:geb, fa:fa, faNivel:faNivel, get:get, kcalObjetivo:kcalObjetivo, deficit:deficit, tipoEnergia:tipoEnergia, etiqueta:etiqueta, protKg:protKg, protG:protG, fatPct:fatPct, fatG:fatG, choG:choG, sodioMax:sodioMax, grasaSatMax:grasaSatMax, chips:chips, attrs:attrs, notas:notas, refs:_refs, actividad:actividad, pausadoTCA:pausadoTCA, alertaFam:alertaFam, pesoAct:pesoAct, pesoMeta:pesoMeta, pesoAjust:pesoAjust, imc:imc };
+}
+
+module.exports = { motorTratNutri };
