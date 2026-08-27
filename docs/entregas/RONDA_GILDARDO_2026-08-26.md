@@ -6,7 +6,7 @@
 
 Recibidas las dos partes. Arrancamos con lo que desbloqueaste. Esta ronda trae, en orden: **una cosa
 urgente que no es clínica**, **dos hallazgos nuevos** que salieron de verificar tu archivo, el
-**inventario del 3.1 rehecho** como pediste, **doce preguntas numeradas** (más la 5b, que salió de portar `CAP_REF`), **seis puntos que se te
+**inventario del 3.1 rehecho** como pediste, **doce preguntas numeradas** (más la 5.3b, que salió de portar `CAP_REF`), **seis puntos que se te
 pasaron**, y al final **lo que construimos de tu 3.2**, con dos tablas de criterio nutricional que
 redactamos nosotros y que necesitamos que revises.
 
@@ -268,36 +268,42 @@ la capacitancia. La tabla de cambios de Seguimiento muestra bastantes más indic
 > por cada indicador? Si es lo segundo, necesitamos el número de cada uno. Si no, los demás se reportan
 > siempre, con cualquier magnitud de cambio.
 
-**Y dos cosas que vimos al portar `CAP_REF`, que ya está en Atlas con su candado de transcripción:**
+## 5.3b · Dos cosas que vimos al portar `CAP_REF`, y una tiene consecuencia hoy
 
-1. **"Alta" queda pintada de verde**, el mismo color que "Normal" (`#16a34a` en tu `cC`). Pero tu
-   documento dice que por encima de P75 se rotula "Alta" y **no** "Óptimo", porque *"el alto no lo
-   presenta como bueno"*. La etiqueta dice una cosa y el color dice otra: en pantalla, verde se lee como
-   "está bien". Lo portamos tal cual está en tu archivo, sin cambiarlo. **¿Le pones otro color, o el
-   verde es deliberado?**
+Ya está en Atlas, con su candado de transcripción. Al portarla salieron estas dos.
 
-   **Y esto ya tiene una consecuencia visible hoy, que es lo que nos hace preguntártelo con urgencia.**
-   Fuimos a ver dónde aparece la capacitancia en Atlas. No está en la tabla de índices alterados de la
-   historia clínica (esa lleva los índices del modelo: IFC, IRC, ISCM, IEHH, EB, IAE, PABU e ICA-BIS),
-   así que por ahí no hay riesgo. **Pero está en la tarjeta de Seguimiento, y ahí decimos esto:**
+### La primera: "Alta" queda pintada de verde
 
-   > *"Según protocolo, C es el parámetro a seguir. Mayor capacitancia = mejor integridad celular:
-   > verde si mejora, rojo si retrocede."*
+Es el mismo color que "Normal" (`#16a34a`, en tu `cC`). Pero tu documento dice que por encima de P75 se
+rotula "Alta" y **no** "Óptimo", porque *"el alto no lo presenta como bueno"*.
 
-   O sea: **subir se pinta como mejora, sin techo.** Un paciente que pasa de 2,40 a 4,00 nF, muy por
-   encima de su P95, sale en verde y "mejorando". Y tú dices que el alto no es bueno y que **sube con
-   el IMC**, es decir que ese ascenso puede ser un artefacto y no una mejoría.
+**La etiqueta dice una cosa y el color dice otra**, y en pantalla el verde se lee como "está bien". Lo
+portamos tal cual, sin tocarlo.
 
-   Ese texto es nuestro y lo escribimos antes de tener tu referencia. **No lo cambiamos por nuestra
-   cuenta porque es criterio clínico tuyo:** ahora que `CAP_REF` existe, la alternativa natural sería
-   que mejorar deje de ser "subir" y pase a ser "acercarse a la mediana de su grupo", que es lo que se
-   deduce de tu 9.1. Pero eso cambia lo que la pantalla le dice al profesional en cada control.
+**Y esto ya tiene una consecuencia visible, que es lo que nos hace preguntártelo con urgencia.** Fuimos a
+ver dónde aparece la capacitancia en Atlas. **No** está en la tabla de índices alterados de la historia
+clínica (esa lleva los índices del modelo: IFC, IRC, ISCM, IEHH, EB, IAE, PABU e ICA-BIS), así que por
+ahí no hay riesgo. **Pero está en la tarjeta de Seguimiento, y ahí decimos esto:**
 
-   > **Pregunta 5b.** ¿Mejorar en capacitancia es SUBIR, o es ACERCARSE A LA MEDIANA del grupo? Y si un
-   > paciente ya está por encima del P95, ¿seguir subiendo es mejorar, es indiferente, o es una señal?
-2. **Tu última banda es `[70, 200]`**, así que absorbe a todos los mayores de 70 sin marcarlos como
-   fuera de rango. Un paciente de 95 años se compara contra el grupo de 70+ (n=87) como si fuera del
-   artículo. No lo tocamos; lo decimos por si querías marcarlo.
+> *"Según protocolo, C es el parámetro a seguir. Mayor capacitancia = mejor integridad celular: verde si
+> mejora, rojo si retrocede."*
+
+O sea: **subir se pinta como mejora, sin techo.** Un paciente que pasa de 2,40 a 4,00 nF, muy por encima
+de su P95, sale en verde y "mejorando". Y tú dices que el alto no es bueno y que **sube con el IMC**, es
+decir que ese ascenso puede ser un artefacto y no una mejoría.
+
+Ese texto es nuestro y lo escribimos antes de tener tu referencia. **No lo cambiamos por nuestra cuenta
+porque es criterio clínico tuyo:** ahora que `CAP_REF` existe, la alternativa natural sería que mejorar
+deje de ser "subir" y pase a ser "acercarse a la mediana de su grupo", que es lo que se deduce de tu 9.1.
+Pero eso cambia lo que la pantalla le dice al profesional en cada control.
+
+> **Pregunta 5.3b.** ¿Mejorar en capacitancia es SUBIR, o es ACERCARSE A LA MEDIANA del grupo? Y si un
+> paciente ya está por encima del P95, ¿seguir subiendo es mejorar, es indiferente, o es una señal?
+
+### La segunda: tu última banda absorbe a todos los mayores
+
+Es `[70, 200]`, así que un paciente de 95 años se compara contra el grupo de 70+ (n=87) **sin quedar
+marcado como fuera de rango**. No lo tocamos; lo decimos por si querías marcarlo.
 
 ## 5.4 · La casilla de porciones se mueve dos niveles, no uno (nota, no pregunta)
 
@@ -693,7 +699,7 @@ se le recomienda al paciente ya sale de uno mientras las restricciones salen del
 | 5.1 | Rango proteico: portamos **1,5**, que es lo que tu archivo hace | ¿El 2,0 es techo de referencia? |
 | 5.2 | **El tamizaje de apnea no tiene instrumento** | Instrumento y puntos de corte |
 | 5.3 | Los **0,1 nF**: ¿solo capacitancia? | El alcance, y los números si son varios |
-| 5b | **Seguimiento dice hoy "mayor capacitancia = mejor", sin techo**, y tu 9.1 dice que el alto no es bueno y sube con el IMC | ¿Mejorar es subir, o acercarse a la mediana? |
+| 5.3b | **Seguimiento dice hoy "mayor capacitancia = mejor", sin techo**, y tu 9.1 dice que el alto no es bueno y sube con el IMC | ¿Mejorar es subir, o acercarse a la mediana? |
 | 5.4 | La casilla revierte **dos** niveles | Nada, es aviso |
 | 5.5 | Suplementos y medicación son **texto libre** | ¿Se muestran literal, o pasan a opciones cerradas? |
 | 6 | La alergia **se filtra en código**, no por instrucción al modelo | Confirmar que estás de acuerdo |
