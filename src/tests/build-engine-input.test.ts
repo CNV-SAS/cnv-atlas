@@ -121,18 +121,41 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
     expect(input.survey.d6_44).toEqual(["intolerancia a la lactosa"]);
   });
 
-  it("las DEMAS preguntas con 'Otra' (§3): su texto libre es REGISTRO, NO alimenta el motor", () => {
+  // ALCANCE AJUSTADO 2026-08-26 (no la asercion: el ejemplo). Este caso usaba d6_43 (alergias) como
+  // muestra de "texto libre que es solo registro". Dejo de aplicar a d6_43 cuando Gildardo, en su 3.2
+  // del 2026-08-26, convirtio las alergias en RESTRICCION del plan: una restriccion que el motor no ve
+  // no es una restriccion. Y su propia regla del §4 (2026-08-15) era uniforme, "una sola regla para
+  // todo el instrumento, sin excepciones por pregunta"; lo que nombro fue cuales alimentaban el motor
+  // ENTONCES (d5_38 y d6_44), no una lista de exclusion permanente.
+  // El caso sigue vivo con un campo que de verdad es registro: d5_42 (exposicion a contaminantes),
+  // una de las nueve, sobre la que ningun motor actua.
+  it("una pregunta con 'Otra' que es solo REGISTRO: su texto libre NO alimenta el motor", () => {
     const raw = {
       sex: "M",
       birthDate: "1990-01-01",
       surveyAnswers: [
-        // d6_43 (alergias, una de las 9 pero NO de las que alimentan el motor): "Otra: mango" NO llega (registro).
+        { fieldKey: "d5_42", type: "opcion_multiple", value: JSON.stringify(["Metales pesados", "Otra: humo de leña"]) },
+      ],
+      expectedFieldKeys: ["d5_42"],
+      bisRaw: {},
+    };
+    const input = buildEngineInput(raw, model, NOW);
+    expect(input.survey.d5_42).toEqual(["Metales pesados"]);
+  });
+
+  it("d6_43 (alergias): su texto libre SI alimenta el motor desde el 3.2. El alergeno raro es el que importa", () => {
+    const raw = {
+      sex: "M",
+      birthDate: "1990-01-01",
+      surveyAnswers: [
         { fieldKey: "d6_43", type: "opcion_multiple", value: JSON.stringify(["Maní", "Otra: mango"]) },
       ],
       expectedFieldKeys: ["d6_43"],
       bisRaw: {},
     };
     const input = buildEngineInput(raw, model, NOW);
-    expect(input.survey.d6_43).toEqual(["Maní"]);
+    // La lista cerrada cubre los alergenos COMUNES. El que se perdia era el raro, que es justo el que
+    // el profesional no adivina: un alergico al mango llegaba al filtro como si no tuviera alergias.
+    expect(input.survey.d6_43).toEqual(["Maní", "mango"]);
   });
 });

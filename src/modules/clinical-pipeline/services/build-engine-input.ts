@@ -64,7 +64,36 @@ const stripOtherPrefix = (el: string): string => el.replace(/^otr[oa]s?\s*:\s*/i
 // alimenta el motor, y todo lo que resulte lo puede cambiar el profesional"). Una sola regla para las tres;
 // el resto de las "Otra" (§3, registro) se stripea. Inerte hasta que esas preguntas tengan la opcion "Otra"
 // (bump de encuesta v5): sin texto "Otra:" que procesar, no cambia nada para las respuestas existentes.
-const FREE_TEXT_TO_ENGINE = new Set(["d5_39", "d5_38", "d6_44"]);
+// AMPLIADO 2026-08-26 tras barrer las DOCE preguntas con opcion "Otra". La lista nombraba tres campos
+// (RESPUESTA_GILDARDO 2026-08-15 §4) y nunca se volvio a mirar; no es que las hermanas se excluyeran, es
+// que se escribio una vez. El criterio, ahora explicito: el texto libre ALIMENTA al motor cuando el motor
+// ACTUA sobre su contenido, y se stripea cuando la respuesta es solo REGISTRO.
+//
+// Lo que esto arregla es un fallo silencioso en el peor sitio: la lista cerrada cubre los casos COMUNES,
+// asi que lo que se perdia eran los RAROS, que son los que el profesional no adivina. Un alergico al kiwi
+// marcaba "Otra", escribia "kiwi", y llegaba al motor COMO SI NO TUVIERA ALERGIAS.
+//
+// DOS DE ESTOS YA ERAN DEFECTO VIVO, no futuro: d2_21 y d5_40 tienen field_key desde siempre, asi que su
+// dato ya llegaba y su texto libre ya se estaba tirando. En d2_21 eso significa que un "Otra: me provoco
+// vomito" NO encendia la deteccion de metodos (engine.dfi.js:264, atlas-tratamiento.js:88). Y como la
+// HISTORIA CLINICA lee crudo (survey-answers-reader, sin pasar por esta glue), el documento mostraba el
+// medicamento o el metodo que el motor no habia visto: dos superficies leyendo fuentes distintas.
+//
+// d8_59 ("¿Quien prepara sus alimentos?") se queda FUERA a proposito: resumen-dieta.ts documenta que su
+// "Otra" no se lista por no tener frase canonica. Es exclusion decidida, no olvido.
+// d5_42 (contaminantes) se queda fuera por el criterio: es registro, ningun motor actua sobre el.
+const FREE_TEXT_TO_ENGINE = new Set([
+  "d5_39", // diagnosticos personales (original)
+  "d5_38", // antecedentes familiares (original)
+  "d6_44", // intolerancias (original)
+  "d6_43", // ALERGIAS: seguridad. El alergeno no listado es el que hay que ver.
+  "d6_qx", // cirugia digestiva: cambia absorcion y requerimiento proteico
+  "d4_34", // patron alimentario: condiciona TODAS las comidas del plan
+  "d4_35", // suplementos: para no duplicar el que no esta en la lista
+  "d2_21", // metodos para cambiar de peso: alimenta la deteccion de TCA
+  "d5_40", // medicamentos actuales: motorTratMedico actua sobre ellos
+  "d3_25", // tipo de actividad: la prescripcion de ejercicio actua sobre el
+]);
 
 function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   const survey: Record<string, unknown> = {};

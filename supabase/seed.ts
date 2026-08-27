@@ -228,46 +228,50 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // D3 · Habitos
   { key: "d3_23", type: "opcion", text: "¿Cuántos días/semana hace actividad física (≥30 min)?", options: ["0", "1", "2", "3", "4", "5", "6", "7"], engine: true },
   { key: "d3_24", type: "opcion", text: "¿Cuánto dura cada sesión?", options: ["Menos de 15", "15–30 min", "30–45 min", "45–60 min", "Más de 60 min"], engine: true },
-  { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna", "Otra"] },
+  { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna", "Otra"], treatmentEngine: true },
   { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
-  { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"] },
-  { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"] },
+  { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"], treatmentEngine: true },
+  { key: "d3_28", type: "opcion", text: "¿Ronca durante el sueño?", options: ["No", "A veces", "Frecuentemente"], treatmentEngine: true },
   { key: "d3_29", type: "escala", text: "Nivel de estrés en el último mes (1 = sin estrés, 10 = máximo)", treatmentEngine: true },
   { key: "d3_30", type: "opcion", text: "¿Su relación con el tabaco / nicotina?", options: ["Nunca he fumado", "Dejé hace 5 años o más", "Dejé hace menos de 5 años", "Fumo ocasionalmente", "Fumo diariamente", "Solo vapeo", "Exposición pasiva"], engine: true },
-  // Alcohol: registro clinico, NO alimenta el motor (Q6, resuelto por Gildardo 2026-07-21: calcLE8
-  // lo leia en una variable muerta). Sin field_key para que no viaje al LE8; efecto cero en el
-  // diagnostico. La pregunta sigue en la encuesta como registro.
-  { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"] },
+  // Alcohol: CONSERVA la intencion de Q6 (Gildardo, 2026-07-21) cambiando su mecanismo. Q6 pedia
+  // EFECTO CERO EN EL DIAGNOSTICO y eligio como mecanismo no darle field_key, porque calcLE8 lo leia
+  // en una variable muerta. Su Parte 2 (2026-08-26) ahora lo pide en Medico y en Psicologia, asi que
+  // el dato tiene que llegar. Con treatmentEngine llega al lector y NO al diagnostico
+  // (used_in_diagnosis = false), y el efecto sobre el diagnostico sigue siendo cero: la variable
+  // `alcohol` de engine.dfi.js:76 sigue muerta, y eso lo PRUEBA field-key-inertness.test.ts, que es
+  // justo la garantia que Q6 queria. Va a la ronda del 26-ago para que lo confirme.
+  { key: "d3_31", type: "opcion", text: "¿Con qué frecuencia consume alcohol?", options: ["Nunca", "1–2 veces al mes", "1–2 veces a la semana", "Todos los días"], treatmentEngine: true },
   // D4 · Conductas alimentarias
-  { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"] },
-  { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"] },
-  { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal", "Otra"] },
-  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos", "Otra"] },
+  { key: "d4_32", type: "opcion", text: "¿Cuántas comidas hace al día?", options: ["1 comida", "2 comidas", "3 comidas", "4 o más comidas"], treatmentEngine: true },
+  { key: "d4_33", type: "opcion", text: "¿Desayuna regularmente?", options: ["Nunca", "Rara vez", "A veces", "Casi siempre", "Siempre"], treatmentEngine: true },
+  { key: "d4_34", type: "opcion_multiple", text: "¿Sigue algún patrón alimentario?", options: ["Ninguno", "Vegetariano", "Vegano", "Keto / bajo en carbohidratos", "Sin gluten", "Sin lácteos", "Bajo en sal", "Otra"], treatmentEngine: true },
+  { key: "d4_35", type: "opcion_multiple", text: "¿Qué suplementos toma actualmente?", options: ["Ninguno", "Multivitamínico", "Vitamina D", "Omega-3", "Proteína en polvo", "Hierro", "Magnesio", "Probióticos", "Otra"], treatmentEngine: true },
   // D5 · Epigenetico / LE8
   { key: "d5_36", type: "opcion", text: "¿Le han diagnosticado hipertensión arterial?", options: ["Sí", "No", "No sé"], engine: true },
-  { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"] },
+  { key: "d5_37", type: "opcion", text: "¿Toma medicamentos para la presión arterial?", options: ["Sí", "No"], treatmentEngine: true },
   { key: "d5_38", type: "opcion_multiple", text: "¿Familiares cercanos con estas enfermedades?", sub: "Padres, hermanos, abuelos", options: ["DM2 (diabetes)", "HTA (presión alta)", "Obesidad", "Infarto / ACV", "Cáncer", "Enfermedad de tiroides", "Depresión", "Ninguna", "Otra"], engine: true },
   { key: "d5_39", type: "opcion_multiple", text: "¿Tiene alguno de estos diagnósticos personales?", options: ["Diabetes tipo 1", "Diabetes tipo 2", "Prediabetes", "HTA", "Dislipidemia (colesterol alto)", "Hipertrigliceridemia", "Hipotiroidismo", "Hipertiroidismo", "Obesidad", "Síndrome Metabólico", "Cáncer (activo)", "Cáncer (en remisión)", "Enfermedad cardiovascular", "Insuficiencia renal", "Enfermedad hepática", "Artritis/Artrosis", "Osteoporosis", "Depresión", "Ansiedad", "Trastornos de la conducta alimentaria", "Ninguna", "Otra"], engine: true },
   { key: "d5_40", type: "opcion_multiple", text: "¿Qué medicamentos toma actualmente?", options: ["Ninguno", "Metformina", "Antihipertensivo", "Estatinas", "Levotiroxina", "Insulina", "Otros"], treatmentEngine: true },
-  { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"] },
-  { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna", "Otra"] },
+  { key: "d5_41", type: "opcion", text: "¿Fue amamantado/a en su infancia?", options: ["No sé", "No", "Sí, menos de 6 meses", "Sí, 6 meses o más"], treatmentEngine: true },
+  { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna", "Otra"], treatmentEngine: true },
   // D6 · Alergias y salud digestiva
-  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otra"] },
-  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa", "Otra"] },
+  { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otra"], treatmentEngine: true },
+  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa", "Otra"], treatmentEngine: true },
   // d6_qx (cirugias) va AQUI, tras Intolerancias (orden del v8 al dia); antes quedaba tras los sintomas
   // digestivos (Nauseas), donde no tenia sentido (Santiago, cotejo punto l).
-  { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"] },
-  { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", sub: "Síntomas digestivos (ítems 45 a 51): con qué frecuencia los presenta", options: GI_OPC },
-  { key: "d6_46", type: "opcion", text: "Gases / flatulencia", options: GI_OPC },
-  { key: "d6_47", type: "opcion", text: "Dolor abdominal", options: GI_OPC },
-  { key: "d6_48", type: "opcion", text: "Diarrea", options: GI_OPC },
-  { key: "d6_49", type: "opcion", text: "Estreñimiento", options: GI_OPC },
-  { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC },
-  { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC },
+  { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"], treatmentEngine: true },
+  { key: "d6_45", type: "opcion", text: "Hinchazón abdominal", sub: "Síntomas digestivos (ítems 45 a 51): con qué frecuencia los presenta", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_46", type: "opcion", text: "Gases / flatulencia", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_47", type: "opcion", text: "Dolor abdominal", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_48", type: "opcion", text: "Diarrea", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_49", type: "opcion", text: "Estreñimiento", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_50", type: "opcion", text: "Reflujo / acidez", options: GI_OPC, treatmentEngine: true },
+  { key: "d6_51", type: "opcion", text: "Náuseas", options: GI_OPC, treatmentEngine: true },
   // D7 · Hidratacion (bebidas: conteo por dia)
-  { key: "d7_52", type: "contador", text: "Café (tazas por día)" },
-  { key: "d7_53", type: "contador", text: "Té (tazas por día)" },
-  { key: "d7_54", type: "contador", text: "Jugos naturales (vasos por día)" },
+  { key: "d7_52", type: "contador", text: "Café (tazas por día)", treatmentEngine: true },
+  { key: "d7_53", type: "contador", text: "Té (tazas por día)", treatmentEngine: true },
+  { key: "d7_54", type: "contador", text: "Jugos naturales (vasos por día)", treatmentEngine: true },
   // d7_55/d7_agua/d7_56: field_key para que el parrafo de dieta del Resumen Clinico (1b) los reciba.
   // treatmentEngine (used_in_diagnosis=false): NO gatean dfi.complete. d7_agua lo LEE el frozen, pero solo si
   // LE8_MAPEO_CORREGIDO=true (hoy false, P-04): con el switch OFF entra sin efecto en el diagnostico (probado
@@ -278,7 +282,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)", treatmentEngine: true },
   { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)", treatmentEngine: true },
   { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], treatmentEngine: true },
-  { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"] },
+  { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"], treatmentEngine: true },
   // D8 · Contexto social
   // d8_59/d8_60: field_key para el parrafo de dieta (1b). treatmentEngine: el frozen NO los lee (inocuos al
   // diagnostico); solo alimentan el Resumen Clinico de Tratamiento.

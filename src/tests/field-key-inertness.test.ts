@@ -13,6 +13,14 @@ import enc from "./fixtures/clinical-engine/encuesta-sintetica.json";
 //
 // La respuesta esperada es NO para todas menos d3_31 (que el DFI lee y no usa: lectura
 // muerta). Si alguna mueve algo, la migracion NO es mecanica y hay que parar.
+//
+// ⚠️ d3_31 (alcohol) ES INERTE HOY Y DEJARA DE SERLO. El DFI lo lee en engine.dfi.js:76
+// (`const alcohol = enc.d3_31 || ""`) y ningun calculo lo consume. Pero el CONSTRUCTOR DE
+// TEXTO CLINICO de Gildardo (su L13172) SI lo consume, y esa pieza no esta portada. Cuando
+// se porte, `alcohol` pasara de "" a un valor real y el texto clinico cambiara para todos
+// los pacientes: es el efecto BUSCADO, no una regresion. Este candado se pondra rojo ese
+// dia; lo correcto entonces es sacar d3_31 de NUEVOS, no relajar la asercion. Ver P-56b en
+// DECISIONES_ANIBISE.md.
 
 // Los 25 codigos, con el codigo de GILDARDO (no el numero de nuestra pantalla: ver la
 // leccion del desfase de numeracion). Valores plausibles, del tipo que de verdad
