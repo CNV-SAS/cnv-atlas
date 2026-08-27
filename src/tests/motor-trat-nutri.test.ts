@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-// @ts-expect-error modulo congelado en JS, sin tipos: se consume tal cual (regla 16)
+// Modulo congelado en JS. `allowJs` lo resuelve, asi que NO lleva ts-expect-error: ponerlo hacia que
+// tsc fallara por directiva inutil, que es un rojo que no dice nada.
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
 
 // CANDADO DE motorTratNutri. Dos niveles, como con CAP_REF:
