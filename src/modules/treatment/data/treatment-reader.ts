@@ -128,7 +128,7 @@ export async function getTreatmentProtocol(
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
-      .select("id, provider, model, prompt_version, generated_text, menu_json, alergenos_detectados, status, latency_ms, generated_at")
+      .select("id, provider, model, prompt_version, generated_text, menu_json, alergenos_detectados, patron_conflictos, status, latency_ms, generated_at")
       .eq("treatment_id", treatmentId)
       .order("generated_at", { ascending: false }),
     // GET medido: bis_raw_values de la medicion de esta evaluacion (RLS via la evaluacion).
@@ -175,6 +175,30 @@ export async function getTreatmentProtocol(
       ? snap.nutraceuticos
       : null;
   const suggestedSnapshot = (treatment.protocol_suggested as ProtocoloSnapshot | null) ?? null;
+
+  // DESCARTES DEL AVISO DE ALERGENO. Viven en clinical_audit_log y no en la sugerencia, porque
+  // ai_menu_suggestions es INMUTABLE (RLS sin UPDATE/DELETE). Eso no es un rodeo: es lo que garantiza
+  // que descartar NO borre el aviso. Si alguien vuelve a mirar esta sugerencia, ve que hubo un alergeno
+  // y que alguien lo descarto, con su motivo. Descartar es decir "lo mire y esta bien", no "no paso nada".
+  const idsMenu = (menus.data ?? []).map((m) => m.id);
+  const descartes = new Map<string, { porEmail: string; motivo: string; en: string }>();
+  if (idsMenu.length > 0) {
+    const { data: eventos } = await supabase
+      .from("clinical_audit_log")
+      .select("entity_id, actor_email, payload, created_at")
+      .eq("event", "menu.allergen_alert_dismissed")
+      .in("entity_id", idsMenu)
+      .order("created_at", { ascending: false });
+    for (const e of eventos ?? []) {
+      // El primero que llega es el mas reciente (orden desc); no se sobreescribe.
+      if (e.entity_id == null || descartes.has(e.entity_id)) continue;
+      descartes.set(e.entity_id, {
+        porEmail: e.actor_email ?? "(desconocido)",
+        motivo: String((e.payload as { reason?: unknown } | null)?.reason ?? ""),
+        en: e.created_at,
+      });
+    }
+  }
 
   return {
     treatmentId,
@@ -253,6 +277,9 @@ export async function getTreatmentProtocol(
       menuJson: (m.menu_json as TreatmentProtocol["menuSuggestions"][number]["menuJson"]) ?? null,
       alergenosDetectados:
         (m.alergenos_detectados as TreatmentProtocol["menuSuggestions"][number]["alergenosDetectados"]) ?? null,
+      patronConflictos:
+        (m.patron_conflictos as TreatmentProtocol["menuSuggestions"][number]["patronConflictos"]) ?? null,
+      alergenoDescartado: descartes.get(m.id) ?? null,
       status: m.status,
       latencyMs: m.latency_ms,
       generatedAt: m.generated_at,

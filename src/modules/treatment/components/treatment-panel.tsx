@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -20,6 +20,7 @@ import { useFormToast, useFormToastRefreshOnSuccess } from "@/components/shared/
 
 import {
   addNoteAction,
+  dismissMenuAllergenAlertAction,
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
@@ -629,6 +630,48 @@ function MenuSection({
   );
 }
 
+// Descarte del aviso de alergeno. El motivo es obligatorio (minimo 10 caracteres, validado tambien en el
+// servidor): un campo que se llena con "ok" no sirve de traza. Lo que se escribe va a clinical_audit_log,
+// no a un campo que nadie lee.
+function DismissAllergenForm({ suggestionId }: { suggestionId: string }) {
+  const [state, formAction, pending] = useActionState(dismissMenuAllergenAlertAction, EMPTY);
+  useFormToast(state);
+  // NO se usa la prop `action`: en React 19 resetea los inputs no controlados tras la accion, asi que un
+  // motivo rechazado por corto borraria lo que el profesional acababa de escribir (hazard 2 de CLAUDE.md).
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const datos = new FormData(e.currentTarget);
+        startTransition(() => formAction(datos));
+      }}
+      className="mt-3 flex flex-col gap-2"
+    >
+      <input type="hidden" name="suggestionId" value={suggestionId} />
+      <label htmlFor={`motivo-${suggestionId}`} className="text-xs font-medium text-foreground">
+        Motivo del descarte
+      </label>
+      <textarea
+        id={`motivo-${suggestionId}`}
+        name="reason"
+        rows={2}
+        minLength={10}
+        maxLength={300}
+        required
+        placeholder="Por qué el alérgeno señalado no aplica a este menú"
+        className="rounded border border-border bg-surface p-2 text-sm text-foreground"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="self-start rounded border border-border px-3 py-1 text-xs font-medium text-foreground disabled:opacity-50"
+      >
+        {pending ? "Registrando..." : "Descartar el aviso"}
+      </button>
+    </form>
+  );
+}
+
 function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
   const status = MENU_STATUS[m.status] ?? { label: m.status, cls: "bg-muted text-muted-foreground" };
   return (
@@ -657,10 +700,45 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-clinical-critical">
-            No lo entregues así. Genera el menú de nuevo, o revisa el alimento señalado si consideras
-            que la coincidencia es errónea.
+          {m.alergenoDescartado ? (
+            // El aviso NO desaparece al descartarlo: la fila es inmutable y el hallazgo queda. Lo que se
+            // agrega es QUIEN dijo que estaba bien y POR QUE. Descartar es "lo miré y está bien", no
+            // "no pasó nada".
+            <div className="mt-3 rounded border border-border bg-surface p-2">
+              <p className="text-xs font-semibold text-foreground">Revisado y descartado</p>
+              <p className="text-xs text-muted-foreground">
+                {m.alergenoDescartado.porEmail} · {formatDateTime(m.alergenoDescartado.en)}
+              </p>
+              <p className="mt-1 text-xs text-foreground">{m.alergenoDescartado.motivo}</p>
+            </div>
+          ) : (
+            <>
+              <p className="mt-2 text-xs text-clinical-critical">
+                No lo entregues así. Genera el menú de nuevo, o descarta el aviso explicando por qué la
+                coincidencia no aplica. Lo que escribas queda registrado.
+              </p>
+              <DismissAllergenForm suggestionId={m.id} />
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {/* PATRON ALIMENTARIO: mismo mecanismo, otra consecuencia. Avisa, no bloquea, porque la lista de
+          lo que excluye un patron es ABIERTA (un vegano no excluye "pollo", excluye todo lo animal) y
+          este cruce encuentra lo evidente sin poder prometer completitud. Un menu que se salta el patron
+          es un plan que el paciente no va a seguir, no uno que lo lastima. */}
+      {m.patronConflictos != null && m.patronConflictos.length > 0 ? (
+        <div className="rounded-md border border-clinical-warning bg-clinical-warning-bg p-3">
+          <p className="text-sm font-semibold text-clinical-warning">
+            Este menú no respeta el patrón alimentario que declaró el paciente.
           </p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {m.patronConflictos.map((c, i) => (
+              <li key={`${c.patron}-${c.tiempo}-${i}`} className="text-sm text-clinical-warning">
+                <strong>{c.patron}</strong> en {c.tiempo}: {c.alimento}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

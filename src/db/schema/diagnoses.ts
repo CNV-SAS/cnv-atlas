@@ -100,6 +100,9 @@ export const aiMenuSuggestions = pgTable(
     // Hallazgos del cruce de alergenos. Array VACIO = se cruzo y no habia nada; NULL = no se pudo
     // cruzar (menu v2 o parseo fallido). No son lo mismo aguas abajo.
     alergenosDetectados: jsonb("alergenos_detectados"),
+    // Choques con el patron alimentario. Aparte de los alergenos a proposito: mismo mecanismo, pero
+    // uno es SEGURIDAD (lista cerrada) y el otro ADHERENCIA (categorias abiertas, sin completitud).
+    patronConflictos: jsonb("patron_conflictos"),
     rawResponse: jsonb("raw_response"),
     status: aiSuggestionStatus("status").notNull(),
     latencyMs: integer("latency_ms"),

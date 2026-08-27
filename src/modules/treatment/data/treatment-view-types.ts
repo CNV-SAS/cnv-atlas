@@ -79,6 +79,10 @@ export type MenuSuggestion = {
   menuJson: { comidas: { tiempo: string; alimentos: { nombre: string; porcion?: string }[] }[] } | null;
   // [] = se cruzo y no habia nada. NULL = NO se pudo cruzar. La pantalla los dice distinto.
   alergenosDetectados: { alergeno: string; tiempo: string; alimento: string }[] | null;
+  patronConflictos: { patron: string; tiempo: string; alimento: string }[] | null;
+  // Descarte del aviso de alergeno: quien y por que. El aviso NO se borra (la fila es inmutable):
+  // descartar es decir "lo mire y esta bien", no "no paso nada". Null = nadie lo ha descartado.
+  alergenoDescartado: { porEmail: string; motivo: string; en: string } | null;
   status: string; // success, timeout, parse_failed, provider_error
   latencyMs: number | null;
   generatedAt: string;

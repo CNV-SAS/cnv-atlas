@@ -95,7 +95,15 @@ export function terminosDeAlergeno(declaradas: string[]): { alergeno: string; fo
  * ignorar, y entonces deja de proteger el dia que acierta.
  */
 export function cruzarAlergenos(menu: MenuEstructurado, declaradas: string[]): HallazgoAlergeno[] {
-  const terminos = terminosDeAlergeno(declaradas);
+  return buscarEnMenu(menu, terminosDeAlergeno(declaradas));
+}
+
+// El nucleo de comparacion, compartido por el cruce de alergenos y el de patron alimentario. Es el mismo
+// mecanismo (alimentos de la salida contra una lista de formas) y por eso vive una sola vez.
+function buscarEnMenu(
+  menu: MenuEstructurado,
+  terminos: { alergeno: string; formas: string[] }[],
+): HallazgoAlergeno[] {
   if (terminos.length === 0) return [];
   const hallazgos: HallazgoAlergeno[] = [];
   for (const comida of menu.comidas ?? []) {
@@ -169,4 +177,56 @@ export function extraerDeEncuesta(
     else if (r.fieldKey === PATRON_FIELD_KEY) patron.push(...decod(r.valor));
   }
   return { alergias: [...new Set(alergias)], patron: [...new Set(patron)] };
+}
+
+// ── Patron alimentario ────────────────────────────────────────────────────────────────────────────
+//
+// MISMO MECANISMO, CONFIANZA DISTINTA, Y POR ESO CONSECUENCIA DISTINTA. Comparar los alimentos de la
+// salida contra una lista es identico; lo que cambia es la naturaleza de la lista:
+//
+//   - Un ALERGENO es una lista CERRADA de cosas concretas ("mariscos", "mani"). Se puede enumerar, y si
+//     falta un sinonimo se pierde UN alimento.
+//   - Un PATRON excluye CATEGORIAS ENTERAS y abiertas. Un vegano no excluye "pollo": excluye todo lo de
+//     origen animal, y esa lista no se termina nunca (chorizo, chicharron, morcilla, manteca...).
+//
+// Consecuencia: este cruce **encuentra lo evidente y no puede prometer completitud**. Por eso lo que
+// produce es un AVISO DE ADHERENCIA, no un bloqueo de seguridad: un menu que se salta el patron es un
+// plan que el paciente no va a seguir (Gildardo, 3.2), no un plan que lo manda a urgencias. La alergia
+// se trata como seguridad; esto, como calidad del plan.
+//
+// Un detector honesto sobre lo que NO garantiza vale mas que uno que se presenta como completo.
+const PATRON_EXCLUYE: Record<string, string[]> = {
+  vegano: ["pollo", "carne", "res", "cerdo", "pescado", "atun", "salmon", "mariscos", "camaron", "camarones",
+    "jamon", "chorizo", "tocino", "chicharron", "huevo", "huevos", "leche", "queso", "yogur", "yogurt",
+    "mantequilla", "miel", "crema de leche", "cuajada", "kumis"],
+  vegetariano: ["pollo", "carne", "res", "cerdo", "pescado", "atun", "salmon", "mariscos", "camaron",
+    "camarones", "jamon", "chorizo", "tocino", "chicharron"],
+  "sin gluten": ["trigo", "pan", "pasta", "cebada", "centeno", "harina de trigo", "galleta", "galletas"],
+  "sin lacteos": ["leche", "queso", "yogur", "yogurt", "mantequilla", "crema de leche", "cuajada", "kumis"],
+  keto: ["arroz", "pan", "pasta", "papa", "yuca", "platano", "azucar", "arepa", "harina"],
+  "bajo en sal": ["embutido", "embutidos", "jamon", "chorizo", "salchicha", "enlatado", "enlatados"],
+};
+
+export type ConflictoPatron = { patron: string; tiempo: string; alimento: string };
+
+/**
+ * Cruza el menu contra el patron alimentario declarado (d4_34). Devuelve los choques evidentes.
+ *
+ * Es el caso que Gildardo puso por delante de todo: "el menu no sabe si el paciente es vegano".
+ */
+export function cruzarPatron(menu: MenuEstructurado, patrones: string[]): ConflictoPatron[] {
+  const terminos: { alergeno: string; formas: string[] }[] = [];
+  for (const p of patrones) {
+    const limpio = String(p ?? "").trim();
+    if (limpio === "" || NO_ES_ALERGENO.test(norm(limpio))) continue;
+    const clave = norm(limpio);
+    const entrada = Object.keys(PATRON_EXCLUYE).find((k) => clave === k || clave.includes(k));
+    if (!entrada) continue; // patron libre que no sabemos traducir a alimentos: no se inventa nada
+    terminos.push({ alergeno: limpio, formas: PATRON_EXCLUYE[entrada].map(norm) });
+  }
+  return buscarEnMenu(menu, terminos).map((h) => ({
+    patron: h.alergeno,
+    tiempo: h.tiempo,
+    alimento: h.alimento,
+  }));
 }

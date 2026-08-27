@@ -610,6 +610,13 @@
       "when": 1787780000000,
       "tag": "0086_menu_estructurado_alergenos",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1787783600000,
+      "tag": "0087_menu_patron_conflictos",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cruzarAlergenos, resumenHallazgos, terminosDeAlergeno, type MenuEstructurado } from "@/modules/treatment/services/alergenos";
+import { cruzarAlergenos, cruzarPatron, resumenHallazgos, terminosDeAlergeno, type MenuEstructurado } from "@/modules/treatment/services/alergenos";
 
 const menu = (alimentos: string[], tiempo = "Almuerzo"): MenuEstructurado => ({
   comidas: [{ tiempo, alimentos: alimentos.map((n) => ({ nombre: n })) }],
@@ -87,5 +87,31 @@ describe("cruce de alergenos: menus mal formados no tumban nada", () => {
     expect(cruzarAlergenos({ comidas: [] }, ["Leche"])).toEqual([]);
     expect(cruzarAlergenos({} as MenuEstructurado, ["Leche"])).toEqual([]);
     expect(cruzarAlergenos({ comidas: [{ tiempo: "Cena" }] } as MenuEstructurado, ["Leche"])).toEqual([]);
+  });
+});
+
+describe("cruce de patron alimentario", () => {
+  it("el caso que Gildardo puso por delante: un vegano con pollo en el menu", () => {
+    const c = cruzarPatron(menu(["Pechuga de pollo a la plancha", "Ensalada"]), ["Vegano"]);
+    expect(c).toHaveLength(1);
+    expect(c[0]).toEqual({ patron: "Vegano", tiempo: "Almuerzo", alimento: "Pechuga de pollo a la plancha" });
+  });
+
+  it("vegetariano tolera lacteos y huevo; vegano no", () => {
+    expect(cruzarPatron(menu(["Huevos revueltos con queso"]), ["Vegetariano"])).toHaveLength(0);
+    expect(cruzarPatron(menu(["Huevos revueltos con queso"]), ["Vegano"]).length).toBeGreaterThan(0);
+  });
+
+  it("'Ninguno' no es un patron", () => {
+    expect(cruzarPatron(menu(["Pollo"]), ["Ninguno"])).toHaveLength(0);
+  });
+
+  it("un patron que no sabemos traducir a alimentos NO inventa hallazgos", () => {
+    // Preferimos no decir nada a decir algo mal: un aviso inventado entrena a ignorar el mecanismo.
+    expect(cruzarPatron(menu(["Pollo"]), ["Otra: dieta de mi abuela"])).toHaveLength(0);
+  });
+
+  it("no se dispara con un menu que si respeta el patron", () => {
+    expect(cruzarPatron(menu(["Lentejas guisadas", "Arroz integral"]), ["Vegano"])).toHaveLength(0);
   });
 });

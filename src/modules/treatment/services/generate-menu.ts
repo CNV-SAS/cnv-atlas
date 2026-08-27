@@ -20,7 +20,7 @@ import {
   MENU_PROMPT_VERSION,
   parseMenuEstructurado,
 } from "../ai/prompts/menu.v3";
-import { cruzarAlergenos, extraerDeEncuesta } from "./alergenos";
+import { cruzarAlergenos, cruzarPatron, extraerDeEncuesta } from "./alergenos";
 
 // Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
 // variables clinicas y objetivos (barrera PII estructural, regla 15): fenotipo, sector,
@@ -150,6 +150,8 @@ export async function generateMenu(
     // de [] que significa "revisado y limpio").
     const menuJson = parseMenuEstructurado(completion.text);
     const hallazgos = menuJson ? cruzarAlergenos(menuJson, alergias) : null;
+    // Mismo mecanismo, otra consecuencia: el patron avisa (adherencia), el alergeno bloquea (seguridad).
+    const conflictosPatron = menuJson ? cruzarPatron(menuJson, patron) : null;
     await recordMenuSuggestion({
       treatmentId: protocol.treatmentId,
       provider: completion.provider,
@@ -163,6 +165,7 @@ export async function generateMenu(
       },
       menuJson,
       alergenosDetectados: hallazgos,
+      patronConflictos: conflictosPatron,
       status: menuJson ? "success" : "parse_failed",
       latencyMs: completion.latencyMs,
       ...actor,
@@ -180,6 +183,7 @@ export async function generateMenu(
       generatedText: null,
       menuJson: null,
       alergenosDetectados: null, // no se pudo cruzar; NO es "limpio"
+      patronConflictos: null,
       rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
       status,
       latencyMs: null,

@@ -133,6 +133,7 @@ export type Database = {
           latency_ms: number | null
           menu_json: Json | null
           model: string
+          patron_conflictos: Json | null
           prompt_version: string
           provider: string
           raw_response: Json | null
@@ -148,6 +149,7 @@ export type Database = {
           latency_ms?: number | null
           menu_json?: Json | null
           model: string
+          patron_conflictos?: Json | null
           prompt_version: string
           provider: string
           raw_response?: Json | null
@@ -163,6 +165,7 @@ export type Database = {
           latency_ms?: number | null
           menu_json?: Json | null
           model?: string
+          patron_conflictos?: Json | null
           prompt_version?: string
           provider?: string
           raw_response?: Json | null

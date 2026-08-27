@@ -23,6 +23,7 @@ export type RecordMenuInput = {
   // cruce; [] = revisado y limpio, NULL = NO se pudo revisar. Los dos estados se leen distinto.
   menuJson?: unknown;
   alergenosDetectados?: unknown;
+  patronConflictos?: unknown;
   rawResponse: unknown;
   status: MenuSuggestionStatus;
   latencyMs: number | null;
@@ -44,6 +45,7 @@ export async function recordMenuSuggestion(input: RecordMenuInput): Promise<{ id
         generatedText: input.generatedText,
         menuJson: input.menuJson ?? null,
         alergenosDetectados: input.alergenosDetectados ?? null,
+        patronConflictos: input.patronConflictos ?? null,
         rawResponse: input.rawResponse ?? null,
         status: input.status,
         latencyMs: input.latencyMs,
@@ -68,5 +70,36 @@ export async function recordMenuSuggestion(input: RecordMenuInput): Promise<{ id
     });
 
     return { id: row.id };
+  });
+}
+
+/**
+ * Descarta el aviso de alergeno de UNA sugerencia concreta, con motivo obligatorio.
+ *
+ * NO TOCA LA SUGERENCIA, y eso es deliberado, no una limitacion: `ai_menu_suggestions` es inmutable
+ * (RLS sin UPDATE/DELETE), asi que el aviso no se puede borrar ni queriendo. Descartar es decir "lo mire
+ * y esta bien", no "no paso nada": quien vuelva a abrir esa sugerencia sigue viendo el alergeno detectado
+ * Y, al lado, quien lo descarto y por que.
+ *
+ * El evento va INLINE en la transaccion (regla dura 8), nunca por el bus.
+ */
+export async function dismissMenuAllergenAlert(input: {
+  suggestionId: string;
+  reason: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    await recordAudit(tx, {
+      event: "menu.allergen_alert_dismissed",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "ai_menu_suggestion",
+      entityId: input.suggestionId,
+      // El MOTIVO es el dato: alguien decidio que un menu con un alergeno detectado se podia usar.
+      payload: { reason: input.reason },
+      ip: input.ip,
+    });
   });
 }
