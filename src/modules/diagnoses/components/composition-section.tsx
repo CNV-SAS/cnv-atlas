@@ -63,6 +63,10 @@ export function CompositionSection({
   references = {},
   fenotipoMccb = null,
   showDiagnosis = true,
+  // El titulo se OCULTA cuando el bloque ya viene envuelto en algo que lo titula (la entrada de la
+  // evaluacion lo mete en un DetailsSection que dice "Composición corporal (Niveles de Wang)"). Sin
+  // esto salia dos veces, casi con el mismo texto. En Diagnostico se usa suelto, asi que ahi si va.
+  showTitle = true,
   soloAlterados = false,
 }: {
   composition: Composition;
@@ -77,6 +81,7 @@ export function CompositionSection({
   // HTML de Gildardo (smoke Santiago d). No sale del mapa PURO (es salida del diagnostico); lo pasa la pagina.
   fenotipoMccb?: { id: string; nombre: string } | null;
   showDiagnosis?: boolean;
+  showTitle?: boolean;
   /** Historia clinica: muestra SOLO las filas con clasificacion alterada (sev >= 1). */
   soloAlterados?: boolean;
 }) {
@@ -258,9 +263,11 @@ export function CompositionSection({
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
-        <h3 className="text-base font-semibold text-foreground">
-          Composición corporal - Niveles de Wang
-        </h3>
+        {showTitle ? (
+          <h3 className="text-base font-semibold text-foreground">
+            Composición corporal - Niveles de Wang
+          </h3>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[38rem] text-sm">
             <thead>

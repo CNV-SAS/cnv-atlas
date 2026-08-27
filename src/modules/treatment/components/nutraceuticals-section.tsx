@@ -179,7 +179,15 @@ export function NutraceuticalsSection({
                 </option>
               ))}
             </select>
-            <Button type="button" variant="outline" onClick={addNutra}>
+            {/* EL BOTON SE ENCIENDE CUANDO HAY ALGO SELECCIONADO Y SIN AGREGAR. Santiago elegia en el
+                desplegable y se saltaba este paso, y no aparecia ningun aviso.
+                El aviso de "cambios sin guardar" hace bien en NO dispararse aqui, y la razon es la que
+                explica el arreglo: SELECCIONAR EN UN DESPLEGABLE NO ES UNA DECISION, ES UNA INTENCION.
+                Todavia no hay ningun cambio que guardar porque nada entro a la lista.
+                Y por eso el arreglo tampoco es otro aviso: esta seccion ya tiene tres (sin guardar,
+                contraindicaciones, disponibilidad) y uno mas compite con los otros. Que se encienda el
+                boton dice que le toca a el, sin texto nuevo. */}
+            <Button type="button" variant={pickId ? "default" : "outline"} onClick={addNutra}>
               Agregar
             </Button>
           </div>

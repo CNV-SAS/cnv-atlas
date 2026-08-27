@@ -185,7 +185,7 @@ export function EntradaEvaluacion({
               </span>
             </div>
             <DetailsSection title="Composición corporal (Niveles de Wang)">
-              <CompositionSection composition={composition} showDiagnosis={false} />
+              <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
             </DetailsSection>
           </div>
         ) : !identityConfirmed || !bisImportEval ? (
