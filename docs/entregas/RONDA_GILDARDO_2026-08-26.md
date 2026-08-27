@@ -256,6 +256,17 @@ la capacitancia. La tabla de cambios de Seguimiento muestra bastantes más indic
 > por cada indicador? Si es lo segundo, necesitamos el número de cada uno. Si no, los demás se reportan
 > siempre, con cualquier magnitud de cambio.
 
+**Y dos cosas que vimos al portar `CAP_REF`, que ya está en Atlas con su candado de transcripción:**
+
+1. **"Alta" queda pintada de verde**, el mismo color que "Normal" (`#16a34a` en tu `cC`). Pero tu
+   documento dice que por encima de P75 se rotula "Alta" y **no** "Óptimo", porque *"el alto no lo
+   presenta como bueno"*. La etiqueta dice una cosa y el color dice otra: en pantalla, verde se lee como
+   "está bien". Lo portamos tal cual está en tu archivo, sin cambiarlo. **¿Le pones otro color, o el
+   verde es deliberado?**
+2. **Tu última banda es `[70, 200]`**, así que absorbe a todos los mayores de 70 sin marcarlos como
+   fuera de rango. Un paciente de 95 años se compara contra el grupo de 70+ (n=87) como si fuera del
+   artículo. No lo tocamos; lo decimos por si querías marcarlo.
+
 ## 5.4 · La casilla de porciones se mueve dos niveles, no uno (nota, no pregunta)
 
 Dices *"muevan la casilla del nivel 2 al nivel 1"*. Hoy en Atlas la casilla está en el **alimento**, no en
