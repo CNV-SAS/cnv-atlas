@@ -89,6 +89,15 @@ export function SurveyPhaseForm({
   // Advertencia de envio con preguntas sin responder (no bloquea): al pulsar "Enviar", si faltan, se
   // muestra el conteo y se deja enviar igual. null = sin advertencia pendiente.
   const [confirmMissing, setConfirmMissing] = useState<number | null>(null);
+  // Total de preguntas de ENCUESTA (sin "Sobre ti", que es opcional): el denominador de la barra.
+  const totalPreguntas = questions.length;
+  // Arranca contando el PREFILL, no en cero: quien reanuda con media encuesta hecha tiene que ver la
+  // barra donde la dejo. Arrancar en cero le diria que perdio el avance justo cuando volvio a
+  // comprobar que no lo perdio. Se usa el MISMO isAnswered que el resto, sobre el valor tal como lo
+  // guarda el servidor (que es lo que trae el prefill), no sobre el DOM, que aun no esta montado.
+  const [respondidas, setRespondidas] = useState(() =>
+    prefill ? questions.filter((q) => isAnswered(prefill[q.id])).length : 0,
+  );
   const isAbout = step === 0;
   const current = isAbout ? null : sections[step - 1];
   const isLast = step === totalSteps - 1;
@@ -104,10 +113,50 @@ export function SurveyPhaseForm({
     startTransition(() => save(new FormData(form)));
   };
 
+  // GUARDADO DENTRO DE LA SECCION (2026-08-27). Antes solo se guardaba AL PASAR de seccion, asi que una
+  // seccion de 18 preguntas eran 18 respuestas que se perdian si el telefono se quedaba sin bateria, se
+  // cerraba la pestaña o se caia la conexion a mitad. La encuesta es larga y el paciente la contesta en
+  // un rato, no de corrido.
+  //
+  // CADA CUANTO: no en cada pulsacion. Se espera a que deje de responder (1,2 s sin cambios) y entonces
+  // se guarda UNA vez; marcar cinco opciones seguidas produce un guardado, no cinco. Y como persist
+  // manda el SNAPSHOT COMPLETO, un guardado que llegue tarde no puede dejar el estado a medias: el
+  // ultimo siempre gana. Por eso mismo el indicador tampoco parpadea en cada clic.
+  //
+  // NUNCA BLOQUEA. Es una accion aparte del envio, asi que un fallo de red no detiene la encuesta: el
+  // paciente sigue contestando y el siguiente cambio reintenta solo. Y el envio final manda todo de
+  // nuevo, asi que un guardado intermedio fallido cuesta el punto de retomado, nunca las respuestas.
+  const guardadoPendiente = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistDiferido = () => {
+    // El conteo se refresca EN EL ACTO (es leer el formulario, no una llamada), aunque el guardado
+    // espere: la barra tiene que moverse cuando el paciente responde, no 1,2 s despues.
+    recontar();
+    if (guardadoPendiente.current) clearTimeout(guardadoPendiente.current);
+    guardadoPendiente.current = setTimeout(() => {
+      guardadoPendiente.current = null;
+      persist();
+    }, 1200);
+  };
+
+  // CUANTAS LLEVA RESPONDIDAS, con LA MISMA VARA que el aviso de "te faltan N" (countUnanswered) y que
+  // el gate del servidor. Si la barra contara distinto, el paciente veria la barra al 100 % y el aviso
+  // diciendole que le faltan tres: dos superficies leyendo fuentes distintas, que es justo el fallo que
+  // ya nos costo un smoke. "Sobre ti" es opcional y no entra en el conteo, igual que en el aviso.
+  const recontar = () => {
+    const form = formRef.current;
+    if (!form) return;
+    setRespondidas(questions.length - countUnanswered(form));
+  };
+
   // Toda navegacion guarda primero (el snapshot captura la seccion que se deja). Navegar tambien
   // descarta la advertencia pendiente: el paciente esta revisando, ya no esta en el punto de envio.
   const goTo = (i: number) => {
     if (i < 0 || i > totalSteps - 1) return;
+    // Cancela el guardado en espera: navegar ya guarda, y dejarlo correr dispararia dos seguidos.
+    if (guardadoPendiente.current) {
+      clearTimeout(guardadoPendiente.current);
+      guardadoPendiente.current = null;
+    }
     persist();
     setConfirmMissing(null);
     setStep(i);
@@ -188,6 +237,7 @@ export function SurveyPhaseForm({
       ref={formRef}
       onSubmit={handleSubmit}
       className="flex w-full flex-col gap-6"
+      onChange={persistDiferido}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !isLast && e.target instanceof HTMLElement && e.target.tagName !== "TEXTAREA") {
           e.preventDefault();
@@ -207,15 +257,19 @@ export function SurveyPhaseForm({
             En un telefono eso son dos renglones de una pantalla que todavia no muestra ninguna pregunta. */}
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-xs font-medium text-muted-foreground">
-            Paso {step + 1} de {totalSteps}
+            {respondidas} de {totalPreguntas} {totalPreguntas === 1 ? "pregunta" : "preguntas"}
           </p>
           {current ? (
             <p className="text-xs text-muted-foreground">
-              {current.questions.length} {current.questions.length === 1 ? "pregunta" : "preguntas"}
+              Sección {step} de {sections.length}
             </p>
           ) : null}
         </div>
-        <Progress value={Math.round(((step + 1) / totalSteps) * 100)} />
+        {/* LA BARRA MIDE TRABAJO, NO PASOS (2026-08-27). Antes iba por paso, y "paso 2 de 9" con la barra
+            al 22 % mentia por el lado que desanima: ese paso 2 es Alimentación, que tiene 18 preguntas
+            por delante, mientras que otros tienen tres. El paciente veia poco avance justo donde mas
+            estaba trabajando. Contar respuestas dice lo que de verdad lleva hecho. */}
+        <Progress value={totalPreguntas > 0 ? Math.round((respondidas / totalPreguntas) * 100) : 0} />
         {/* Subpestanas: "Sobre ti" (paso 0) + las secciones de encuesta. Todas alcanzables (opcional). */}
         <nav
           aria-label="Secciones de la encuesta"
@@ -299,7 +353,11 @@ export function SurveyPhaseForm({
       {/* Navegacion + estado de guardado */}
       <div className="flex flex-col gap-3 border-t border-border pt-4">
         <div className="flex min-h-5 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span className="text-muted-foreground">Guardamos tu avance al pasar de sección.</span>
+          {/* El texto dice lo que el sistema HACE. Antes decia "al pasar de sección" y era cierto;
+              desde que se guarda tambien dentro de la seccion, dejarlo habria sido describir mal el
+              mecanismo, y eso hace que el paciente decida mal (aqui: cerrar la pestaña creyendo que
+              pierde lo que lleva de esta seccion). */}
+          <span className="text-muted-foreground">Guardamos tu avance a medida que respondes.</span>
           {saveStatus === "saving" ? (
             <span className="font-medium text-muted-foreground">Guardando…</span>
           ) : saveStatus === "saved" ? (
