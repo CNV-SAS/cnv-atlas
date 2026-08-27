@@ -263,6 +263,26 @@ la capacitancia. La tabla de cambios de Seguimiento muestra bastantes más indic
    presenta como bueno"*. La etiqueta dice una cosa y el color dice otra: en pantalla, verde se lee como
    "está bien". Lo portamos tal cual está en tu archivo, sin cambiarlo. **¿Le pones otro color, o el
    verde es deliberado?**
+
+   **Y esto ya tiene una consecuencia visible hoy, que es lo que nos hace preguntártelo con urgencia.**
+   Fuimos a ver dónde aparece la capacitancia en Atlas. No está en la tabla de índices alterados de la
+   historia clínica (esa lleva los índices del modelo: IFC, IRC, ISCM, IEHH, EB, IAE, PABU e ICA-BIS),
+   así que por ahí no hay riesgo. **Pero está en la tarjeta de Seguimiento, y ahí decimos esto:**
+
+   > *"Según protocolo, C es el parámetro a seguir. Mayor capacitancia = mejor integridad celular:
+   > verde si mejora, rojo si retrocede."*
+
+   O sea: **subir se pinta como mejora, sin techo.** Un paciente que pasa de 2,40 a 4,00 nF, muy por
+   encima de su P95, sale en verde y "mejorando". Y tú dices que el alto no es bueno y que **sube con
+   el IMC**, es decir que ese ascenso puede ser un artefacto y no una mejoría.
+
+   Ese texto es nuestro y lo escribimos antes de tener tu referencia. **No lo cambiamos por nuestra
+   cuenta porque es criterio clínico tuyo:** ahora que `CAP_REF` existe, la alternativa natural sería
+   que mejorar deje de ser "subir" y pase a ser "acercarse a la mediana de su grupo", que es lo que se
+   deduce de tu 9.1. Pero eso cambia lo que la pantalla le dice al profesional en cada control.
+
+   > **Pregunta 5b.** ¿Mejorar en capacitancia es SUBIR, o es ACERCARSE A LA MEDIANA del grupo? Y si un
+   > paciente ya está por encima del P95, ¿seguir subiendo es mejorar, es indiferente, o es una señal?
 2. **Tu última banda es `[70, 200]`**, así que absorbe a todos los mayores de 70 sin marcarlos como
    fuera de rango. Un paciente de 95 años se compara contra el grupo de 70+ (n=87) como si fuera del
    artículo. No lo tocamos; lo decimos por si querías marcarlo.
@@ -609,6 +629,7 @@ guardadas todavía. No hay nada que migrar ni que se pierda, decidas lo que deci
 | 5.1 | Rango proteico: portamos **1,5**, que es lo que tu archivo hace | ¿El 2,0 es techo de referencia? |
 | 5.2 | **El tamizaje de apnea no tiene instrumento** | Instrumento y puntos de corte |
 | 5.3 | Los **0,1 nF**: ¿solo capacitancia? | El alcance, y los números si son varios |
+| 5b | **Seguimiento dice hoy "mayor capacitancia = mejor", sin techo**, y tu 9.1 dice que el alto no es bueno y sube con el IMC | ¿Mejorar es subir, o acercarse a la mediana? |
 | 5.4 | La casilla revierte **dos** niveles | Nada, es aviso |
 | 5.5 | Suplementos y medicación son **texto libre** | ¿Se muestran literal, o pasan a opciones cerradas? |
 | 6 | La alergia **se filtra en código**, no por instrucción al modelo | Confirmar que estás de acuerdo |
