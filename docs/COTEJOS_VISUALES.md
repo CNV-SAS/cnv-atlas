@@ -74,6 +74,15 @@ Una **tabla por pantalla**. Santiago la va llenando (o reporta lo que ve y yo la
 
 ---
 
+## Aviso antes de mirar (2026-08-27)
+
+**Tres de las once entradas [OJOS] se REESCRIBIERON**, porque describían el layout anterior al rediseño
+del 26 y 27 de agosto. Cotejar contra ellas habría dado hallazgos falsos: dirían que Atlas no se parece
+al HTML en cosas que cambiamos a propósito, con criterio escrito en `BRAND.md`.
+
+**Las otras ocho valen tal cual**: son color, posición, contenido y comprensión, y el rediseño no las
+tocó. Cada entrada reescrita lo dice en su propio texto.
+
 ## Estado
 
 - **Precondición:** que no quede nada por construir en las cuatro pantallas. Tratamiento cierra su construible con D-009 (Parte A hecha; Parte B espera a Gildardo, no bloquea el cotejo de forma). La **barra de subpestañas NO se construye** (decisión de visibilidad, arriba): no es una pieza pendiente que retenga el cotejo.
@@ -149,7 +158,7 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 
 - **[OJOS] La Diana:** que el color por celda (verde al centro degradando a rojo al exterior) y las posiciones se vean IGUAL que en el HTML. El port está hecho y verificado en lógica; falta confirmar que en pantalla luce igual con el paciente Demo GoldenPath.
 - **[OJOS] El radar funcional:** que los 5 vértices y la severidad se lean igual.
-- **[OJOS] Layout general:** que el orden de las cards y su jerarquía visual se sienta equivalente (Atlas es página única; el HTML es pestañas).
+- **[OJOS] Jerarquía visual (REESCRITA 2026-08-27, la anterior describía el layout de antes del rediseño).** Ya NO se compara contra el HTML: Atlas usa a propósito un sistema propio de tres niveles (`decision` / `derivado` / `registro`, ver `BRAND.md`), porque su pantalla es una interfaz de trabajo y la del HTML no. Lo que hay que mirar es si **el sistema funciona**: ¿se ve de un golpe qué decidió el profesional y qué calculó el motor? ¿Los bloques del mismo nivel se ven iguales entre sí? Un hallazgo aquí es "no se distinguen" o "este bloque está en el nivel equivocado", NUNCA "no se parece al HTML".
 - **[OJOS] Comprensión:** que un profesional entienda la tabla de indicadores igual de bien (Atlas separa ANI-BIS-E de Composición; el HTML los junta en Niveles de Wang).
 
 ### Resumen de la pasada (para el BACKLOG)
@@ -207,7 +216,7 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 ### Para Santiago (requiere OJOS)
 
 - **[OJOS]** Que la tabla de condiciones BIA se lea igual (colores Sí/No, prominencia del bloqueo de marcapasos vs el ámbar del HTML).
-- **[OJOS]** Layout de la entrada (Atlas pestaña única vs 3 superficies del HTML): que el flujo se sienta natural.
+- **[OJOS] Layout de la entrada (REESCRITA 2026-08-27).** La comparación "pestaña única vs 3 superficies del HTML" ya no aplica: la diferencia es deliberada. Lo que se mira es si el orden de la entrada acompaña lo que el profesional hace primero, y si al bajar sigue sabiendo dónde está (la barra lateral ahora es fija).
 - **[OJOS]** El feedback de peso meta (EC1) y si su ausencia en la entrada se echa de menos.
 
 ### Resumen de la pasada (para el BACKLOG)
@@ -366,7 +375,7 @@ Atlas agrupa los 12 índices ANI-BIS-E en una tabla propia ("Indicadores ANI-BIS
 - **[OJOS]** Los avisos del plan (EN1 y EN2) renderizando. Sembrar con `SEED_REALIMENTACION=1 pnpm vitest run --project db src/tests/demo-realimentacion.seed.test.ts`, entrar **con la cuenta nutricionista** (`profesional.demo@cnvsystem.com`; el seed asigna los dos pacientes a ella, y el reader es RLS: con otra cuenta la página da 404) y abrir:
   - `/evaluaciones/a0000000-0000-4000-8000-0000000000f2` — solo el aviso de realimentación (sin comorbilidad, sin restricciones).
   - `/evaluaciones/a0000000-0000-4000-8000-0000000000f4` — realimentación **más** las cuatro restricciones del modelo (IRC + HTA: proteína, fósforo, potasio, sodio, con su referencia).
-- **[OJOS]** Rutas (Sección 1) y remisiones: que se vean como el v8.
+- **[OJOS] Rutas (Sección 1) y remisiones (REESCRITA 2026-08-27).** "Que se vean como el v8" dejó de ser el criterio: sus bloques se migraron al sistema de tres niveles, así que ahora se ven como el RESTO DE ATLAS y no como el v8. Lo que se coteja contra el v8 es el CONTENIDO (que estén las mismas rutas, los mismos textos, el mismo orden); la forma se coteja contra las demás pantallas de Atlas.
 - **[OJOS]** Los tres paneles de profesión (médico/psico/ejercicio): textos de metas, alertas por sector, interacciones, FITT-VP, SCOFF.
 - **[OJOS]** El despacho de nutracéuticos: dosis y prioridad.
 - Con las capturas que ya tienes del v8.
