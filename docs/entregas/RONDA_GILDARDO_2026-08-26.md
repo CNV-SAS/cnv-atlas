@@ -6,8 +6,8 @@
 
 Recibidas las dos partes. Arrancamos con lo que desbloqueaste. Esta ronda trae, en orden: **una cosa
 urgente que no es clínica**, **dos hallazgos nuevos** que salieron de verificar tu archivo, el
-**inventario del 3.1 rehecho** como pediste, **siete preguntas** en total y **seis puntos que se te
-pasaron**.
+**inventario del 3.1 rehecho** como pediste, **nueve preguntas** en total, **seis puntos que se te
+pasaron** y **tres cosas que salieron de construir tu 3.2**.
 
 Y al final, como **anexo**, el mapa de Atlas que te debíamos: las 64 preguntas con su estado, qué
 consume cada pantalla y cuáles de tus motores están portados. **Contesta tu 8.5 y tu 3.5.** Va aquí
@@ -357,6 +357,71 @@ Si además quieres el código, dilo y te lo mandamos.
 
 ---
 
+# 9 · Tres cosas que hicimos al cablear las alergias, dos para que las confirmes y una que es reporte
+
+Construimos lo del 3.2: las 25 preguntas ya llegan al motor. Al hacerlo aparecieron tres cosas que
+tienes que saber.
+
+## 9.1 · El alcohol: conservamos tu intención cambiando tu mecanismo
+
+En julio (Q6) nos dijiste que el alcohol no debía alimentar el motor, porque `calcLE8` lo leía en una
+variable muerta. El mecanismo que elegiste fue **no darle `field_key`**, y así quedó escrito.
+
+Tu Parte 2 ahora lo pide en Médico y en Psicología. Para eso el dato tiene que llegar.
+
+Lo hicimos así: **le dimos `field_key` pero marcado como de tratamiento, no de diagnóstico.** El dato
+llega a los profesionales y **el efecto sobre el diagnóstico sigue siendo cero**, porque esa variable
+sigue muerta. Y eso no lo afirmamos: lo prueba un candado que corre el motor antes y después, campo por
+campo, y que además comprueba que sí detecta un cambio real cuando lo hay.
+
+**O sea: conservamos tu intención cambiando tu mecanismo.** Q6 quería efecto cero en el diagnóstico, y
+el candado prueba justo esa garantía, mejor de lo que la probaba la ausencia del `field_key`.
+
+> **Pregunta 8.** ¿Lo confirmas? Si prefieres que el alcohol siga sin llegar a ninguna parte, lo
+> devolvemos, pero entonces no puede aparecer en Médico ni en Psicología.
+
+## 9.2 · El texto libre de "Otra": tu regla del 15 era más amplia de lo que nosotros implementamos
+
+En tu §4 del 15 de agosto nombraste las nueve preguntas con opción "Otra" y dijiste que en `d5_38` y
+`d6_44`, **las que alimentaban el motor**, el texto libre también lo alimenta. Y pediste una cosa más:
+
+> *"Una sola regla para todo el instrumento, sin excepciones por pregunta."*
+
+**Nosotros lo implementamos como una lista de tres campos, y el resto quedó excluido.** En ese momento
+daba igual, porque los demás no llegaban al motor de todos modos. Pero al volver las alergias una
+restricción del plan, esa lista pasó a hacer daño:
+
+**Un paciente alérgico al mango marcaba "Otra", escribía "mango", y llegaba al motor como si no tuviera
+alergias.** La lista cerrada cubre los alérgenos comunes, así que **lo que se perdía era el raro**, que
+es justamente el que el profesional no adivina.
+
+Lo corregimos aplicando tu regla como la enunciaste: el texto libre alimenta al motor **cuando el motor
+actúa sobre su contenido**, y se descarta cuando la respuesta es solo registro. Son diez campos ahora.
+`d5_42` (contaminantes) y `d8_59` (quién prepara los alimentos) se quedan fuera por ese criterio.
+
+> **Pregunta 9.** ¿Es ese el criterio correcto? Lo preferimos a una lista porque una lista describe el
+> estado de hoy y deja de valer cuando el estado cambia, que es exactamente lo que nos acaba de pasar.
+
+## 9.3 · Reporte, no pregunta: dos campos ya perdían el texto libre, y uno importa
+
+Esto no lo estamos preguntando. Es algo que ya estaba pasando y que conviene que sepas.
+
+`d2_21` (métodos que ha usado para cambiar de peso) y `d5_40` (medicamentos actuales) **sí tenían
+`field_key` desde siempre**, así que su dato ya llegaba y su texto libre ya se estaba descartando.
+
+En `d2_21` eso significa que un paciente que escribía **"Otra: me provoco vómito"** no encendía la
+detección de métodos de control de peso. El motor veía la lista sin ese elemento.
+
+**Y hay un agravante:** la historia clínica lee las respuestas **en crudo**, sin pasar por esa capa. Así
+que el documento mostraba el método o el medicamento **que el motor no había visto**. Dos superficies del
+mismo sistema leyendo fuentes distintas, y la que firma el profesional era la que sí lo mostraba.
+
+**Ninguna evaluación real quedó afectada:** revisamos la base y no hay ni una respuesta con texto libre
+en esos dos campos. El defecto era real y estaba vivo en el código, pero ningún paciente lo alcanzó.
+Queda corregido con el mismo cambio del 9.2.
+
+---
+
 # Resumen
 
 | # | Qué es | Qué necesitamos |
@@ -375,6 +440,9 @@ Si además quieres el código, dilo y te lo mandamos.
 | 7.1 | **Carnes rojas: el orden de `FREQ_GROUPS`.** Bloquea el rediseño del formulario | ¿Deliberado o descuido? |
 | 7.2 a 7.6 | Cinco defectos de tu archivo sin comentar. **El de la fecha de la firma es probatorio** | Acuse |
 | 8 | El **anexo** de este documento contesta el 8.5 y el 3.5 | Nada |
+| 9.1 | **El alcohol conserva tu intención de Q6 cambiando su mecanismo**: llega al profesional, efecto cero en el diagnóstico, probado por un candado | Confirmar |
+| 9.2 | Tu regla del §4 era **más amplia** que nuestra implementación. Un alérgico al mango llegaba sin alergias | ¿El criterio es el correcto? |
+| 9.3 | **Reporte:** `d2_21` y `d5_40` ya perdían su texto libre. Ninguna evaluación real afectada | Nada, ya corregido |
 
 **Lo que más nos bloquea, en orden: el 7.1**, que tiene el formulario parado; **el 5.2**, porque no
 construimos el tamizaje sin cortes; y **el 1**, que es un cambio de diagnóstico con efecto sobre lo ya

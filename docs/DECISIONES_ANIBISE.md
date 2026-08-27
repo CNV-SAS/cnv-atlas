@@ -464,3 +464,25 @@ constructor de texto clinico (su L13172) SI lo consume**, y esa pieza no esta po
 `alcohol` pasara de `""` a un valor real y el texto clinico cambiara para todos los pacientes.** No es
 un defecto: es el efecto buscado. Queda anotado aqui para que quien porte esa pieza no lo lea como
 regresion, y para que el candado de inercia se actualice en ese momento (dejara de aplicar a `d3_31`).
+
+**P-63 · Las 25 field_key: CONSTRUIDO y aplicado (migration 0085, 2026-08-26).** Las tres versiones
+(v2, v3, v5) quedan con CERO preguntas sin `field_key`. Dos piezas: el flag `treatmentEngine` en
+`supabase/seed.ts` (para bases nuevas) y la data-migration por `question_text` sin filtro de version
+(para las sembradas). Efecto sobre el calculo: NINGUNO, probado por `field-key-inertness.test.ts` con
+control negativo. Completitud: de 32 encuestas, 13 ya incompletas, 19 completas que siguen completas,
+CERO volteos.
+
+**P-64 · `FREE_TEXT_TO_ENGINE` de 3 a 10 campos. El marco, corregido dos veces antes de acertar.**
+No fue descuido nuestro ni exclusion de Gildardo. Su §4 del 15-ago nombro las nueve preguntas con
+"Otra" y describio cuales alimentaban el motor ENTONCES (`d5_38`, `d6_44`), cuando `d6_43` ni siquiera
+tenia `field_key`. Nuestro codigo congelo esa DESCRIPCION como lista de exclusion permanente, que es
+justo la "excepcion por pregunta" que el rechazo al pedir **"una sola regla para todo el instrumento"**.
+Criterio ahora explicito: el texto libre alimenta al motor cuando el motor ACTUA sobre su contenido.
+Va como pregunta 9 de la ronda.
+
+**P-65 · Reporte (no pregunta): `d2_21` y `d5_40` YA perdian su texto libre, con el motor portado.**
+Tienen `field_key` desde siempre, asi que un `"Otra: me provoco vomito"` NO encendia la deteccion de
+metodos (`engine.dfi.js:264`, `atlas-tratamiento.js:88`). Agravante: la historia clinica lee CRUDO
+(`survey-answers-reader`, sin la glue), asi que el documento mostraba lo que el motor no habia visto.
+**Verificado contra la base: CERO respuestas reales con texto libre en esos campos**, asi que ninguna
+evaluacion se emitio sin el dato. Corregido por P-64. Va como 9.3 de la ronda, como reporte.
