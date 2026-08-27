@@ -245,7 +245,11 @@ export async function saveNutraDecisionAction(
     ...(await actor()),
   });
   if (!result.ok) return fail(result.error.message);
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO se revalida: el componente ya refresca con useFormToastRefreshOnSuccess, asi que este
+  // revalidatePath era REDUNDANTE, y ademas es el que arrastraba la pagina al inicio al pulsar
+  // "Registrar decisión" (revalidar una ruta la trata como navegacion; router.refresh preserva el
+  // scroll). El sintoma "la primera vez salta y la segunda no" es que salta SIEMPRE: la segunda vez ya
+  // se esta arriba. Verificado sobre esta accion, que es una de las cuatro que hacian las dos cosas.
   return { error: null, success: "Decisión registrada.", warning: null };
 }
 
