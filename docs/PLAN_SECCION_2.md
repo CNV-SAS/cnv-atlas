@@ -118,24 +118,52 @@ remonte del panel compara lo guardado con lo que está en pantalla.
 
 ## 4 · OTROS PRODUCTOS (LUVIA)
 
-Va **al final de la sección**, después de los nutracéuticos, como en su archivo.
+**CAMBIO DE FORMA (2026-08-27, dato de Santiago): LUVIA VA EN CONSIGNACIÓN**, igual que los
+nutracéuticos. Se le envía inventario al integrante y se puede agotar. Así que no es una casilla con
+unidades: **tiene saldo, se descuenta y se liquida.**
 
-**Su forma es distinta a propósito y hay que respetarla:** LUVIA **no se indica por diagnóstico**, así
-que no tiene "recomendado" ni pasa por el acto 1. El profesional lo ofrece por criterio.
+Eso la mueve al bloque de dinero, y el punto 4 **deja de ser construible ya**.
 
-- **Casilla + campo de unidades** que aparece al marcarla, como en su captura.
-- El texto va verbatim del archivo: la posología (1 scoop de 15 g en un vaso con agua · Polvo · 600 g),
-  la composición, el **aviso de alérgenos** (contiene avena, gluten) y el registro INVIMA.
-- **Botón propio de entrega.** Esto es lo que Santiago señaló y es correcto: si el paciente no tiene
-  nutracéuticos indicados, hoy no existe ningún camino para entregarle LUVIA. Con el botón propio, la
-  sección de otros productos funciona sola.
+### (a) ¿Catálogo propio o el existente? El existente, y encaja sin forzar
 
-**El aviso de alérgenos NO se cruza automáticamente contra las alergias declaradas.** Es la instrucción
-explícita de Gildardo ("el alérgeno se avisa pero no se cruza") y se respeta. Pero **ahora tenemos el
-cruce construido** para el menú, así que queda como pregunta para él: si un paciente declaró alergia al
-gluten y se le ofrece LUVIA, ¿el sistema debería avisar? **No se construye sin su respuesta.**
+Su documento planteaba un catálogo aparte (`OTROS_PRODUCTOS`, extensible), pero eso era cuando LUVIA
+solo se registraba. Con consignación, la tabla `nutraceuticals` ya tiene **todo** lo que necesita:
+`name`, `unit`, `unitPrice`, `indication`, `composition`, `presentation`, `servingSize`,
+`commercialAvailability` y hasta `sanitaryRegistration`, que es donde va su INVIMA RSA-0019736-2022.
 
----
+**Faltan dos cosas, y son chicas:**
+- **Un discriminador.** Sin él, LUVIA aparecería en el selector libre de prescripción, y no se prescribe
+  por diagnóstico. Basta una columna (`indicado_por_diagnostico`, o un `tipo`) que la UI use para
+  ponerla en OTROS PRODUCTOS en vez de en la lista de prescripción.
+- **El campo de alérgenos.** El aviso "Contiene avena (gluten)" no tiene dónde guardarse hoy.
+
+**Una tabla aparte sería peor**, y no por gusto: obligaría a duplicar inventario, movimientos, despacho,
+faltantes y liquidación. Ver (b).
+
+### (b) El movimiento de inventario: es el mismo mecanismo, sin replicar nada
+
+`nutraceutical_inventory` y `nutraceutical_stock_movements` se llavean por `(professional_id,
+nutraceutical_id)`. **Si LUVIA es una fila de `nutraceuticals`, el despacho, el saldo, los faltantes y
+la liquidación funcionan tal cual, sin una línea nueva.**
+
+Esa es la razón de peso para no darle tabla propia: la consignación no es un CRUD, son cinco piezas
+acopladas, y duplicarlas es duplicar sus defectos.
+
+### (c) Comisión: la genera automáticamente, y NO hay forma de darle otra tarifa
+
+La comisión **no es por producto**: `commission_rate` vive en `professional_profiles` (0,20 por defecto,
+editable por admin) y se calcula **sobre el monto de la transacción**. Así que si LUVIA se cobra por el
+mismo flujo de pago, **genera comisión al integrante a su misma tarifa, sin que haya que hacer nada**.
+
+**Y eso es justo lo que hay que confirmar**, porque el sistema no puede expresar lo contrario: si LUVIA
+debiera pagar una tarifa distinta, o ninguna, **hoy no hay estructura para eso** y habría que
+construirla. Es decisión de negocio, no técnica.
+
+### Lo que sigue en pie del diseño de la sección
+
+Casilla, campo de unidades al marcarla, botón propio de entrega (para el paciente sin nutracéuticos
+indicados), y el texto verbatim de su archivo con la posología, la composición, el aviso de alérgenos y
+el INVIMA. Eso no cambia: lo que cambia es que ahora **entra al mismo circuito de inventario y cobro**.
 
 ## 5 · El checkout, dimensionado
 
@@ -154,7 +182,11 @@ evento**, y el sistema necesita un estado intermedio ("entregado, pendiente de p
 **b · El saldo cobrado que no existe.** No hay estructura para lo que el profesional cobró y todavía no
 liquidó contra la consignación. Es una cuenta, no un campo.
 
-**c · El pago mixto.** Parte en efectivo y parte por enlace, que es lo que pasa en consultorio.
+**c · El pago mixto YA ESTA RESUELTO, y me equivoque al listarlo como pendiente.** Esta decidido y
+construido: se modela como **dos transacciones, una por medio de pago** (`payment_method` = `wompi` |
+`efectivo`), no como una con dos pagos. La comision de cada una va sobre su monto, asi que la del total
+es la suma, y el efectivo solo define cuanto custodia el integrante. Esta escrito en el enum y
+`registerCashSaleFormAction` existe.
 
 **d · Y una pregunta de alcance:** ¿el cobro es por la entrega (lo que sale del consultorio) o por la
 prescripción completa (incluida la parte que compra en tienda)? Son dos negocios distintos y cambian
@@ -172,8 +204,11 @@ qué se cobra aquí.
 | 1 | Los tres estados del bloque ausente, con su frase | nada. Es el defecto que se ve hoy |
 | 2 | El acto 2 no aparece sin prescritos guardados | nada |
 | 3 | El acto 3 depende de la respuesta del acto 2 | 2 |
-| 4 | OTROS PRODUCTOS (LUVIA) con casilla, unidades y botón propio | nada |
+| 4 | OTROS PRODUCTOS (LUVIA) | **YA NO es libre.** Va en consignación: entra al bloque de dinero |
 | 5 | El aviso de alérgenos de LUVIA cruzado | **respuesta de Gildardo** |
-| 6 | El checkout en la sección | **las cuatro decisiones de dinero** |
+| 6 | LUVIA en el catálogo, con discriminador y campo de alérgenos | **confirmar la comisión** |
+| 7 | El checkout en la sección | **las tres decisiones de dinero que quedan** |
 
-Del 1 al 4 se puede construir ya. El 5 y el 6 esperan.
+**Del 1 al 3 se puede construir ya**, y son los tres defectos que Santiago ve hoy. Del 4 en adelante
+espera: LUVIA porque entra a consignación, el 5 a Gildardo, el 6 a la confirmación de comisión, y el 7
+a las decisiones de dinero.

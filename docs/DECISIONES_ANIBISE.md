@@ -491,15 +491,15 @@ evaluacion se emitio sin el dato. Corregido por P-64. Va como 9.3 de la ronda, c
 
 ## ESTADO DE LA RONDA DEL 2026-08-26
 
-**ESCRITA Y COMITEADA, NO ENVIADA.** `docs/entregas/RONDA_GILDARDO_2026-08-26.md` (nueve preguntas,
-seis puntos remandados, tres cosas del cableado, y el mapa como anexo). **Santiago avisa cuando la
-envie.** Hasta ese aviso:
+**ENVIADA el 2026-08-27 por Santiago.** `docs/entregas/RONDA_GILDARDO_2026-08-26.md`: doce preguntas
+numeradas mas la 5.3b, seis puntos remandados, y el mapa de Atlas como anexo.
 
-- **Gildardo NO la ha visto.** No dar por respondido nada de lo que pregunta, ni citarla como enviada.
-- **Se le puede seguir agregando.** Si aparece algo nuevo que le toque decidir, entra al documento en
-  vez de quedar para una ronda siguiente. Es la ventaja de que aun no haya salido.
-- **P-55 a P-65** son la cola interna correspondiente; la ronda es lo que el recibe. No confundirlas
-  (leccion "cola viva vs documento enviado").
+Consecuencias, ahora que salio:
+
+- **Ya NO se le agrega nada.** Mientras estuvo escrita sin enviar se le podian sumar hallazgos; desde el
+  27 no. Lo nuevo abre una ronda siguiente (`RONDA_GILDARDO_2026-08-28.md`).
+- **Gildardo aun no ha respondido.** No dar por contestado nada de lo que pregunta.
+- **P-55 a P-65** son su cola interna; la ronda es lo que el recibe. No confundirlas.
 
 **Lo que quedo esperando su respuesta y NO se construye mientras tanto:** el tamizaje de apnea (sin
 instrumento ni puntos de corte, pregunta 4), el agrupamiento de Alimentacion del formulario (7.1,
