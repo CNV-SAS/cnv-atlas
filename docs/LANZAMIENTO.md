@@ -30,6 +30,18 @@
    4. Completar la encuesta y verificar que ahora SÍ genera.
 3. **Los cuatro bloques de pulido de fidelidad** (encuesta, evaluación, diagnóstico, tratamiento), cada uno con comparación crítica contra el HTML. **Avance (2026-08-12):** el PASE DE INSTRUMENTO de la encuesta está HECHO (encuesta v3): ECA1 cirugías, ECA2 porciones + intro D1, ECA3 nombres de grupos, rótulos, todo verbatim de v8; sociodemográficos (4 al perfil + motivo); nombres de indicadores (P-18). ECA4a (texto libre en "Otra") separado por implicación de motor → pregunta a Gildardo (ECA4b). Queda el COTEJO VISUAL con ojos de las cuatro pantallas (comparación forma-a-forma). `COTEJOS_VISUALES.md` / `MAPA.md` / `BACKLOG.md`.
 4. **Diseño gráfico coherente** de toda la app (al final del Hito 1, después de los cuatro bloques de pulido). `BACKLOG.md`.
+   **Avance (2026-08-27):** hecho lo que NO depende de Gildardo, y con smoke de Santiago en cada paso.
+   (a) **Intake del paciente**, móvil primero: tira de navegación, una columna, superficie por pregunta.
+   (b) **Panel del nutricionista**, jerarquía de tres niveles en vez de doce bloques separados por la
+   misma línea. (c) **Sistema entre pantallas:** los tres niveles suben a `components/shared/bloque` y
+   se aplican a 21 superficies de Tratamiento y Diagnóstico, que antes hablaban cuatro dialectos
+   distintos. Documentado en `BRAND.md`, con la regla de jerarquía y nunca navegación interna en
+   pantallas del profesional.
+   **Queda:** la tabla de intercambio (espera la pregunta 11 de la ronda: si se resuelve pasa de 21
+   filas a 12 y cambia de forma, así que rediseñarla ahora es rediseñar algo que va a cambiar), y la
+   barra lateral, los componentes y el layout general, que van al final a propósito: si se rediseñan
+   antes, se vuelven a tocar cuando cambie el contenido. **La historia clínica queda fuera** por ser
+   documento imprimible con su cotejo propio (`BRAND.md`).
 
 ## Gates del Hito 2 (revisión de Integrantes en la nube)
 
@@ -67,4 +79,4 @@
 
 ---
 
-**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 4 · Hito 3 = 8.** De los 4 del Hito 1, DOS están CONSTRUIDOS y solo esperan el smoke de Santiago (gate 1 corrección, gate 2bis-b bloqueo por encuesta incompleta, ver la naturaleza nueva arriba); los otros dos (gate 3 cotejo visual, gate 4 diseño gráfico) están abiertos de trabajo. (El 2026-08-02 se cerraron el gate 2/bug D8 y 2bis-a; el 2026-08-11/12 se CONSTRUYÓ 2bis-b, la suspensión Q28. Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG.) **Total ~19.** La matriz rol × hito se completa aquí cuando se decida por rol.
+**Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 4 · Hito 3 = 8.** De los 4 del Hito 1, DOS están CONSTRUIDOS y solo esperan el smoke de Santiago (gate 1 corrección, gate 2bis-b bloqueo por encuesta incompleta, ver la naturaleza nueva arriba); los otros dos (gate 3 cotejo visual, gate 4 diseño gráfico) están abiertos de trabajo; el 4 con la mayor parte HECHA desde el 2026-08-27 (ver su avance), a falta de lo que espera a Gildardo y del layout general. (El 2026-08-02 se cerraron el gate 2/bug D8 y 2bis-a; el 2026-08-11/12 se CONSTRUYÓ 2bis-b, la suspensión Q28. Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG.) **Total ~19.** La matriz rol × hito se completa aquí cuando se decida por rol.
