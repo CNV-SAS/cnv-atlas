@@ -183,17 +183,50 @@ vencimiento por lote no hay contra qué alertar.
 
 ---
 
+---
+
+## Decisiones CERRADAS con el legal (2026-08-27)
+
+### 1 · El faltante va al PVP, no al costo. **Lo que tenemos hoy está bien y no se toca**
+
+Lo fija la **Cláusula 5.4 del Anexo 2**, y el legal lo confirma con un argumento que es mejor que la
+cláusula sola:
+
+> **Si se cobra el costo, el integrante queda indiferente entre vender y perder.**
+
+**Esto CONTRADICE al contable**, que sugería el costo. Manda el legal, y queda escrito aquí para que
+nadie "corrija" el PVP más adelante creyendo que es un descuido.
+
+**Y verificado antes de tocarlo: el faltante NO se factura.** No hay ninguna referencia a Alegra ni a
+factura en el módulo; es un caso con cargo sellado que se materializa como `pendiente_liquidacion`. Así
+que el PVP que sella es un **valor de indemnización**, no un precio de venta, y nunca sale como tal
+hacia la DIAN. Es lo que el contable pedía, y ya estaba así.
+
+### 2 · Los vencidos son DOS preguntas, no una
+
+- **Hacia el integrante:** la regla de la **Cláusula 7**, que ya conocemos. Si Atlas alertó y no actuó,
+  asume él; si no alertó, asume CNV.
+- **Hacia el consignante:** revierten **sin cargo para CNV**, pero **hay que pactarlo**. Santiago lo
+  cierra en el addendum.
+
+El legal recomienda **devolver tres o cuatro meses antes del vencimiento**, para que el consignante
+pueda colocarlas.
+
+### La alerta de vencimiento BAJA DE PRIORIDAD
+
+Con vencimiento en **2028** y 60 unidades, **no es urgente**. Sigue en el plan porque la Cláusula 7 hace
+que "si Atlas alertó" tenga consecuencia económica, pero no bloquea nada hoy.
+
 ## Pendientes de SANTIAGO (no son de sistema y no los decidimos)
 
 El contable señala dos que hay que cerrar **con el consignante**, y advierte que son de las que más
 pleitos generan en consignación:
 
-1. **A qué precio se le cobra el faltante al profesional.** Sugiere el costo (63.000), no el PVP
-   (90.000). Hoy el sistema sella el PVP por la Cláusula 5.4 del Anexo 2, así que **cambiarlo exige
-   cambiar el contrato**, no el código.
-2. **Quién asume el producto vencido, y el plazo máximo de consignación.** Lo natural es que lo asuma el
-   consignante porque el producto es suyo, pero si se venció estando meses en poder de un profesional de
-   CNV, puede reclamar. **Tiene que quedar escrito en el acuerdo.**
+1. ~~A qué precio se le cobra el faltante al profesional.~~ **CERRADA por el legal: al PVP**, y el
+   sistema ya lo hace. Ver arriba.
+2. **El ADDENDUM con el consignante** (lo único que sigue abierto de este bloque): que los vencidos
+   revierten sin cargo para CNV, y el plazo máximo de consignación. Hacia el integrante ya está resuelto
+   por la Cláusula 7.
 
 ---
 
