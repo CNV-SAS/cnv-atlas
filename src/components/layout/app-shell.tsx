@@ -142,8 +142,12 @@ export function AppShell({
 
   return (
     <div className="flex min-h-svh">
-      {/* Sidebar desktop */}
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-background lg:flex">
+      {/* Sidebar desktop. FIJA (`sticky top-0`, alto de viewport): en una pantalla larga, perder la
+          navegacion al bajar es real, y el panel del nutricionista pasa de las mil lineas. Sin esto, para
+          cambiar de seccion habia que subir hasta arriba primero.
+          `overflow-y-auto` en el propio aside y no en el nav: si la lista de items crece mas que la
+          pantalla (roles con muchos accesos), tiene que poder desplazarse sola sin arrastrar la pagina. */}
+      <aside className="sticky top-0 hidden h-svh w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-background lg:flex">
         <div className="flex h-16 items-center px-6">
           <AtlasLogo />
         </div>

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { VolverA } from "@/components/shared/volver-a";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { formatDateTime } from "@/lib/format/date";
@@ -47,6 +48,10 @@ export default async function IdentifiedAccessPage({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
+          {/* Se llega SOLO desde /auditoria/solicitar (unico enlace entrante), asi que ahi vuelve. Sin
+              esto era un callejon: se entraba y no habia salida hacia la lista de solicitudes. */}
+
+          <VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Acceso identificado
           </h1>

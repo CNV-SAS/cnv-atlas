@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,7 @@ export default async function EncuestaEvaluacionPage({
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <Link
-          href={`/evaluaciones/${id}`}
-          className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Volver a la evaluación
-        </Link>
+        <VolverA href={`/evaluaciones/${id}`}>Volver a la evaluación</VolverA>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
           Encuesta del paciente
         </h1>

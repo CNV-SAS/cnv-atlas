@@ -73,6 +73,7 @@ export type EvaluationResults = {
 };
 
 export type EvaluationHeader = {
+  patientId: string; // para poder VOLVER a la ficha del paciente desde la evaluacion
   patientName: string;
   documentLabel: string;
   evaluationDate: string;
@@ -88,7 +89,7 @@ export async function getEvaluationHeaderForSession(
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      "created_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+      "created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -108,6 +109,7 @@ export async function getEvaluationHeaderForSession(
       | null,
   );
   return {
+    patientId: data.patient_id,
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     evaluationDate: data.created_at,

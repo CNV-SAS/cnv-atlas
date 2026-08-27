@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
@@ -38,12 +38,7 @@ export default async function CorregirEvaluacionPage({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 py-6">
       <header className="flex flex-col gap-2">
-        <Link
-          href={backHref}
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          ← Volver a la evaluación
-        </Link>
+        <VolverA href={backHref}>Volver a la evaluación</VolverA>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Corregir la evaluación</h1>
         <p className="text-sm text-muted-foreground">
           {header.patientName} · {header.documentLabel} ·{" "}

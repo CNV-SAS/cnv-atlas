@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
@@ -73,12 +74,7 @@ export default async function HistoriaPacientePage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <Link
-          href="/pacientes"
-          className="w-fit text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Volver a pacientes
-        </Link>
+        <VolverA href="/pacientes">Volver a pacientes</VolverA>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{nombre}</h1>
         <p className="text-muted-foreground">Historia clínica del paciente.</p>
       </div>

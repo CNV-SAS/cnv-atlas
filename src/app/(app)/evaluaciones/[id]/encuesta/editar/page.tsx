@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
@@ -33,12 +33,7 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <Link
-          href={backHref}
-          className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Volver a la encuesta
-        </Link>
+        <VolverA href={backHref}>Volver a la encuesta</VolverA>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Completar la encuesta</h1>
         <p className="text-muted-foreground">
           {header.patientName} · {header.documentLabel} ·{" "}

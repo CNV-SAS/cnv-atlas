@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { VolverA } from "@/components/shared/volver-a";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/session";
@@ -147,10 +148,12 @@ export default async function ResultadosEvaluacionPage({
   const supersession = await getSupersessionStatus(id);
 
   const results = await getEvaluationResults(id);
+  // Cabecera minima (trae el patientId): la necesitan LAS DOS ramas, porque la salida hacia la ficha
+  // del paciente tiene que existir haya diagnostico o no.
+  const header = await getEvaluationHeaderForSession(id);
   if (!results) {
     // Sin diagnostico todavia: si la evaluacion existe y es del profesional, estado vacio
     // elegante (no un 404 crudo). Si no existe o no es suya (RLS), sigue siendo 404.
-    const header = await getEvaluationHeaderForSession(id);
     if (!header) notFound();
     // La etapa de ENTRADA existe desde el intake, con o sin diagnostico: consentimiento, encuesta y
     // composicion cruda. Es el uso principal de la pestana Evaluacion (revisar la entrada ANTES de
@@ -195,6 +198,7 @@ export default async function ResultadosEvaluacionPage({
     );
     return (
       <div className="flex flex-col gap-4">
+        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
         {supersession.superseded ? (
           <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
         ) : null}
@@ -509,6 +513,13 @@ export default async function ResultadosEvaluacionPage({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* SALIDA de la pantalla. Va al NIVEL DE PAGINA y no dentro de una pestaña, porque la evaluacion
+          se abre desde la ficha del paciente y hay que poder volver desde cualquiera de las cinco
+          etapas, no solo desde la que la tenia. Es un enlace a un sitio concreto, no un "atras" del
+          historial: quien llega desde un correo no tiene a donde volver. */}
+      {header ? (
+        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
+      ) : null}
       {supersession.superseded ? (
         <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
       ) : null}
