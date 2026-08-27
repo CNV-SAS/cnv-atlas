@@ -54,7 +54,11 @@ const RELATIONSHIP: Record<string, { label: string; boxMarker: string }> = {
   tutor: { label: "Tutor legal", boxMarker: "box_tutor" },
   curador: { label: "Curador", boxMarker: "box_curador" },
 };
-const ALL_BOX_MARKERS = ["box_padre", "box_madre", "box_tutor", "box_curador"];
+// DERIVADO de RELATIONSHIP a proposito, no enumerado. Enumerarlo lo volvia una DESCRIPCION del estado
+// de hoy: agregar un parentesco nuevo arriba dejaba esta lista corta en silencio, y su casilla no se
+// limpiaba nunca. Derivandolo, el criterio queda dicho por la propia expresion: son TODOS los
+// marcadores de casilla que RELATIONSHIP conoce.
+const ALL_BOX_MARKERS = Object.values(RELATIONSHIP).map((r) => r.boxMarker);
 
 const clean = (v: string | null | undefined): string => (v ?? "").trim();
 

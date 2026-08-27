@@ -12,7 +12,7 @@
 // Salida: lista las migraciones pendientes (o "al dia"). Exit code 1 si hay pendientes, para
 // poder encadenarlo en un checklist o CI.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import postgres from "postgres";
 
@@ -26,6 +26,32 @@ const journal = JSON.parse(
   readFileSync(new URL("../drizzle/meta/_journal.json", import.meta.url), "utf8"),
 );
 const repoEntries = journal.entries ?? [];
+
+// GUARDA DE INTEGRIDAD (2026-08-26): este chequeo mide el journal, NO el disco. Un .sql sin su entrada
+// en el journal era INVISIBLE aqui, asi que el script decia "al dia" con una migracion sin aplicar
+// esperando en el repo: mentia por el lado peligroso, que es peor que no tener chequeo. Paso con 0083,
+// 0084 y 0085. Ahora se cotejan las dos listas y se FALLA si divergen.
+const sqlFiles = readdirSync(new URL("../drizzle/", import.meta.url))
+  .filter((f) => f.endsWith(".sql"))
+  .map((f) => f.replace(/\.sql$/, ""))
+  .sort();
+const tags = new Set(repoEntries.map((e) => e.tag));
+const huerfanos = sqlFiles.filter((f) => !tags.has(f));
+const fantasmas = [...tags].filter((t) => !sqlFiles.includes(t));
+if (huerfanos.length > 0 || fantasmas.length > 0) {
+  console.error("INTEGRIDAD DEL JOURNAL ROTA: el journal y los archivos .sql no coinciden.\n");
+  if (huerfanos.length > 0) {
+    console.error(`  .sql SIN entrada en el journal (${huerfanos.length}). Drizzle NO los va a aplicar:`);
+    for (const f of huerfanos) console.error(`    - ${f}.sql`);
+    console.error("  Agrega su entrada a drizzle/meta/_journal.json (idx, version, when, tag, breakpoints).");
+  }
+  if (fantasmas.length > 0) {
+    console.error(`\n  Entradas del journal SIN archivo .sql (${fantasmas.length}):`);
+    for (const t of fantasmas) console.error(`    - ${t}`);
+  }
+  console.error("\nHasta arreglarlo, este chequeo NO puede afirmar que la BD esta al dia.");
+  process.exit(1);
+}
 
 const sql = postgres(DATABASE_URL, { max: 1, prepare: false });
 try {
