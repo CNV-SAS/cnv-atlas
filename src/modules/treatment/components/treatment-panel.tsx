@@ -141,6 +141,68 @@ function PrevRow({
 // no fragilidad futura). La vista previa recalcula EN VIVO con computeProtocoloEfectivo, la MISMA funcion que
 // el servidor sella al aprobar: lo que ve el profesional == lo que se guarda. La seccion se REMONTA cuando el
 // servidor cambia un ajuste (key = adjustmentSignature en el padre), evitando el estado pegado.
+
+// ── JERARQUIA VISUAL DEL PANEL (2026-08-27) ──────────────────────────────────────────────────────
+//
+// EL PROBLEMA QUE RESUELVE. Las doce secciones se separaban con el MISMO recurso repetido doce veces
+// (`border-t border-border pt-6`): una linea horizontal identica entre cada par. Doce bloques del mismo
+// peso visual, en fila, sin que nada dijera cual es la prescripcion y cual es el registro. En una
+// pantalla de 1.900 lineas eso no es estetica: es que no se puede leer.
+//
+// POR QUE SUPERFICIES Y NO LINEAS. Una linea SEPARA pero no JERARQUIZA: dice "aqui termina una cosa y
+// empieza otra", no "esta pesa mas". La superficie si, porque agrupa y eleva a la vez. Es lo que hace
+// Polaris, que usa fondo claro para el contenido primario y fondo apagado para el secundario.
+//
+// POR QUE NO "UNA PREGUNTA POR PANTALLA", que es lo que SI aplicamos en el intake del paciente. GOV.UK
+// lo separa explicitamente: esa regla es para servicios al publico, que la gente usa una vez y no
+// conoce. Para interfaces de trabajo dicen lo contrario, y con estas palabras: "para interfaces de
+// administracion puedes asumir que el personal conoce el proceso y optimizar para la VELOCIDAD. Eso
+// probablemente significa poner MAS de una cosa por pantalla". El nutricionista vive en esta pantalla
+// todos los dias; partirla en pasos le haria pagar navegacion en cada consulta.
+//
+// TRES NIVELES, y lo que decide en cual cae cada seccion NO es cuanto ocupa sino QUE ES:
+//
+//   PRESCRIPCION  Lo que el profesional DECIDE y queda sellado en el plan. Superficie elevada.
+//   DERIVADO      Lo que el sistema CALCULA o propone a partir de esa decision. Superficie plana.
+//   REGISTRO      Lo que se ESCRIBE y acompana al plan. Sin superficie, titulo menor.
+//
+// CUIDADO DELIBERADO CON "REGISTRO": baja el peso VISUAL, NO la importancia. Las restricciones
+// alimentan el filtro del menu y las notas son documento clinico. Por eso el nivel 3 conserva el
+// tamano de texto del cuerpo y su titulo sigue siendo un h3: lo que cambia es que no compite por la
+// atencion, no que parezca opcional. Polaris usa el fondo apagado para "menos importante", y ese es
+// justo el matiz que aqui NO queremos, asi que el nivel 3 se distingue por AUSENCIA de superficie y no
+// por un gris que lo apague.
+//
+// LO QUE ESTO NO CAMBIA: ni una sola seccion se mueve de sitio, se funde, se parte ni cambia de
+// contenido. El orden de las secciones 4 a 8 lo fijo Gildardo en su 8.4 y la jerarquia visual no lo
+// toca; la Validacion sigue donde el la puso aunque sea derivada.
+type NivelSeccion = "prescripcion" | "derivado" | "registro";
+
+const NIVEL: Record<NivelSeccion, { wrapper: string; titulo: string }> = {
+  prescripcion: {
+    wrapper: "rounded-xl border border-border bg-card p-5 shadow-sm",
+    titulo: "text-base font-semibold text-foreground",
+  },
+  derivado: {
+    wrapper: "rounded-xl border border-border/60 bg-background p-5",
+    titulo: "text-sm font-semibold text-foreground",
+  },
+  registro: {
+    // Sin superficie a proposito (ver el cuidado de arriba): se distingue por no competir, no por
+    // parecer secundario. Mantiene el tamano de texto del cuerpo.
+    wrapper: "px-1 py-2",
+    titulo: "text-sm font-semibold text-foreground",
+  },
+};
+
+/**
+ * Clases del envoltorio y del titulo de una seccion, por NIVEL. Se aplican a las `<section>` que ya
+ * existen en vez de envolverlas: el cambio es de aspecto, no de estructura, y asi el diff no toca el
+ * arbol de ningun formulario.
+ */
+const secCls = (n: NivelSeccion) => `flex flex-col gap-3 ${NIVEL[n].wrapper}`;
+const tituloCls = (n: NivelSeccion) => NIVEL[n].titulo;
+
 function CadenaCaloricaSection({
   evaluationId,
   protocol,
@@ -210,8 +272,8 @@ function CadenaCaloricaSection({
   const objetivoEsMantenimiento = adj.kcalObj == null && cal.kcalObj === cal.get;
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Cadena calórica</h3>
+    <section className={secCls("prescripcion")}>
+      <h3 className={tituloCls("prescripcion")}>Cadena calórica</h3>
       <p className="text-sm text-muted-foreground">
         {snap.estrategia.label}
         {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. El modelo sugiere la cadena a partir
@@ -594,8 +656,8 @@ function MenuSection({
   const disabled = locked || pending || !cadenaLista;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Menú sugerido (IA)</h3>
+    <div className={secCls("derivado")}>
+      <h3 className={tituloCls("derivado")}>Menú sugerido (IA)</h3>
       {/* QUE MIRA LA IA: se escribe lo que el contrato del prompt REALMENTE lleva (menu.v2.ts), no lo que
           suena bien. Hoy son siete campos: objetivo calórico, proteína objetivo, las restricciones del
           modelo, las del profesional, fenotipo estructural, sector funcional y rutas. NO viaja ninguna
@@ -806,8 +868,8 @@ function RestriccionesSection({
   });
 
   return (
-    <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Restricciones alimentarias del profesional</h3>
+    <section className={secCls("prescripcion")}>
+      <h3 className={tituloCls("prescripcion")}>Restricciones alimentarias del profesional</h3>
       <p className="text-sm text-muted-foreground">
         Lo que marques aquí condiciona el <strong>menú de abajo</strong>: la IA lo genera excluyendo estos
         alimentos o nutrientes. Guárdalas antes de generar el menú.
@@ -889,8 +951,8 @@ function ObjetivoSection({
   });
 
   return (
-    <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Objetivo del tratamiento nutricional</h3>
+    <section className={secCls("prescripcion")}>
+      <h3 className={tituloCls("prescripcion")}>Objetivo del tratamiento nutricional</h3>
       <p className="text-sm text-muted-foreground">
         El objetivo o tipo de dieta que defines para este paciente, en tus palabras. Es distinto de las guías
         (que son una lista de indicaciones puntuales).
@@ -978,8 +1040,8 @@ function IntercambioSection({
   const baseSignature = intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: saved });
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Lista de intercambio U de A · ICBF 2025</h3>
+    <section className={secCls("prescripcion")}>
+      <h3 className={tituloCls("prescripcion")}>Lista de intercambio U de A · ICBF 2025</h3>
       <p className="text-sm text-muted-foreground">
         Porciones por alimento para cubrir el objetivo calórico ({objetivoEfectivo} kcal). El auto-llenado
         sugiere un alimento representativo por grupo; puedes repartir dentro de un grupo (por ejemplo dos de
@@ -1192,8 +1254,8 @@ function MenuSemanalSection({
     });
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Menú semanal</h3>
+    <section className={secCls("derivado")}>
+      <h3 className={tituloCls("derivado")}>Menú semanal</h3>
       <p className="max-w-prose text-sm text-muted-foreground">
         Una semana de menús colombianos, precargada desde el ciclo de {DIAS_DEL_CICLO} días. Es un punto de
         partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas son los tiempos
@@ -1339,8 +1401,13 @@ function TiemposActivosSection({
   // DIV-13: al menos uno activo. Se impide en el cliente y lo revalida el schema.
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Tiempos de comida</h3>
+    <section className={secCls("prescripcion")}>
+      <h3 className={tituloCls("prescripcion")}>Tiempos de comida</h3>
+      {/* Se dice aqui lo que la seccion GOBIERNA, porque es lo que explica por que va antes y por que es
+          una decision y no un ajuste. Sin esto, su titulo y el de la distribucion competian. */}
+      <p className="text-xs text-muted-foreground">
+        Qué comidas hace el paciente. Gobiernan el reparto de porciones y el menú.
+      </p>
       <p className="max-w-prose text-sm text-muted-foreground">
         Definen la estructura del día del paciente. Mandan sobre las dos tablas de abajo: la distribución
         reparte dentro de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como
@@ -1495,8 +1562,16 @@ function TiemposSection({
   const baseSignature = tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: savedTiempos });
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Distribución por tiempos de comida</h3>
+    <section className={secCls("derivado")}>
+      {/* El titulo va VERBATIM de su archivo y NO se acorta: lo intentamos y el candado
+          titulos-tablas-plan.test.ts lo freno, con razon. La referencia es parte del dato, asi que
+          acortarlo no es presentacion, es quitar informacion (y el diseno no cambia QUE se muestra).
+          Lo que las ordena sin tocar el titulo es el NIVEL (esta es derivada, los tiempos son
+          prescripcion) mas la linea de abajo, que es ADITIVA. */}
+      <h3 className={tituloCls("derivado")}>Distribución por tiempos de comida</h3>
+      <p className="text-xs text-muted-foreground">
+        Se calcula sobre los tiempos de comida activos. Puedes ajustar celda por celda.
+      </p>
       <p className="text-sm text-muted-foreground">
         Reparte las porciones de cada alimento entre los tiempos de comida activos. Ajusta las celdas si hace
         falta; el total por tiempo (porciones y kcal) se recalcula abajo.
@@ -1666,8 +1741,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
   // hay plan. Se dice, en vez de mostrarla. Es la misma distincion de "no aplica" vs "no se registro".
   if (!algunaPorcion) {
     return (
-      <section className="flex flex-col gap-2 border-t border-border pt-6">
-        <h3 className="text-sm font-semibold text-foreground">
+      <section className={secCls("derivado")}>
+        <h3 className={tituloCls("derivado")}>
           Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)
         </h3>
         <p className="max-w-prose text-sm text-muted-foreground">
@@ -1711,8 +1786,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
   const icnPctOk = icnVals.length ? Math.round((icnVals.filter((v) => v >= 0.9).length / icnVals.length) * 100) : 0;
 
   return (
-    <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)</h3>
+    <section className={secCls("derivado")}>
+      <h3 className={tituloCls("derivado")}>Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)</h3>
       <p className="text-sm text-muted-foreground">
         Calculada del plan, no editable: cubrimiento de nutrientes contra los requerimientos por sexo y edad. El
         sodio se limita (menos es mejor); el resto se cubre.
@@ -1800,8 +1875,8 @@ function GuidelinesSection({
   });
 
   return (
-    <section className="flex flex-col gap-2 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Guías dietarias</h3>
+    <section className={secCls("registro")}>
+      <h3 className={tituloCls("registro")}>Guías dietarias</h3>
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
@@ -1875,8 +1950,8 @@ function NotesSection({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold text-foreground">Notas del tratamiento</h3>
+    <div className={secCls("registro")}>
+      <h3 className={tituloCls("registro")}>Notas del tratamiento</h3>
       <p className="text-xs text-muted-foreground">
         Notas internas del protocolo de tratamiento. Se agregan al historial (no se editan ni se
         borran) y no se envian al paciente. Distintas del criterio del diagnostico y de las notas
