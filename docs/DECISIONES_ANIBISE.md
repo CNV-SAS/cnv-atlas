@@ -504,3 +504,26 @@ Consecuencias, ahora que salio:
 **Lo que quedo esperando su respuesta y NO se construye mientras tanto:** el tamizaje de apnea (sin
 instrumento ni puntos de corte, pregunta 4), el agrupamiento de Alimentacion del formulario (7.1,
 carnes rojas), y el flip de `LE8_MAPEO_CORREGIDO` (pregunta 2, cambia diagnosticos ya emitidos).
+
+---
+
+## RONDA NUEVA 2026-08-28 (abierta)
+
+`docs/entregas/RONDA_GILDARDO_2026-08-28.md`. **Abierta porque la del 26 ya salio** (27-ago) y a un
+documento entregado no se le agrega.
+
+**P-66 · El asesor legal CONTRADICE su instruccion del alergeno, y hay que decirselo asi.** El dijo "el
+alergeno se avisa pero no se cruza"; el legal dice que mostrarlo NO basta porque el sistema ya tiene el
+dato ("un sistema que tenia el dato y no lo uso es mucho mas dificil de defender que uno que nunca lo
+tuvo") y recomienda bloqueo activo con confirmacion afirmativa y registro.
+
+**No es que dudemos de su instruccion: cambio la premisa.** Cuando la dio, las alergias NI SIQUIERA
+llegaban al motor (dos de las 25 sin field_key). Hoy el cruce existe, construido para el menu y con su
+patron ya aprobado por el: aviso arriba, confirmacion con motivo obligatorio, registro en auditoria, y
+el aviso NO se borra al descartarlo.
+
+Se le pregunta a EL y no se aplica el criterio legal directamente, porque el legal opina sobre
+exposicion y no sobre practica: un bloqueo que estorba en cada consulta se vuelve un clic automatico y
+deja de proteger. Eso es criterio clinico.
+
+**LUVIA no esta construida**, asi que no hay nada que deshacer: entra con el criterio que el diga.
