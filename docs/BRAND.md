@@ -15,7 +15,7 @@ Dos capas separadas a propósito.
 ### Capa de marca (identidad, navegación, acciones)
 Dos anclas, todo lo demás derivado (como el esmeralda del LMS). Valores aproximados; se afinan al implementar con verificación de contraste WCAG AA.
 
-**Azul de marca (acción, CNV Data)** — primario:
+**Azul de marca (acción, CNV Data)**: primario:
 | Token | Hex | Uso |
 |---|---|---|
 | blue-50 | `#EEF2FF` | Fondos suaves, badges |
@@ -27,7 +27,7 @@ Dos anclas, todo lo demás derivado (como el esmeralda del LMS). Valores aproxim
 
 `#205DFD` se reserva para botones y elementos grandes; para texto/link en azul sobre blanco se usa `blue-700` (contraste).
 
-**Ink (estructura, foreground)** — neutros fríos derivados del casi-negro:
+**Ink (estructura, foreground)**: neutros fríos derivados del casi-negro:
 | Token | Hex | Uso |
 |---|---|---|
 | ink (`--foreground`) | `#15161A` | Texto principal, headings, paneles oscuros |
@@ -107,6 +107,64 @@ El gráfico polar de 81 estados es la imagen característica de Atlas. Reglas: u
 - Sidebar: `w-72`/`w-80`, `bg-background`, borde derecho `border-border`, items `rounded-xl`.
 - Header: `h-16`/`h-20`, fondo blanco, border-bottom sutil, avatar con dropdown a la derecha.
 - Páginas: contenido `max-w-7xl` centrado; padding lateral `px-6` (móvil) / `px-10` (desktop); vertical `py-10`.
+
+## Bloques de una pantalla clínica: los tres niveles
+
+**Decisión de sistema, no de pantalla.** Un bloque se ve igual en Diagnóstico, en Tratamiento y en
+Seguimiento, y lo decide un solo sitio: `src/components/shared/bloque.tsx`. Antes cada superficie tenía
+su propio dialecto (líneas divisorias en el panel del nutricionista, recuadro con acento en Rutas,
+`Card` en Diagnóstico, y tres tokens de fondo sin criterio), y el profesional **cambiaba de idioma
+visual al cruzar de una etapa a otra**.
+
+El nivel dice **qué es** el bloque, no cuánto ocupa:
+
+| Nivel | Qué es | Cómo se ve | Ejemplos |
+|---|---|---|---|
+| `decision` | Lo que el **profesional** decide y queda sellado | superficie elevada (`bg-card`, sombra), título `text-base` | objetivo del tratamiento, cadena calórica, restricciones, lista de intercambio, tiempos de comida, confirmar el diagnóstico, próximo control |
+| `derivado` | Lo que el **sistema** calcula o propone a partir de esa decisión | superficie plana (`bg-background`, borde suave), título `text-sm` | DFI, radar, Diana, validación del plan, distribución por tiempos, menú semanal, menú IA, comparación de seguimiento |
+| `registro` | Lo que se **escribe** y acompaña al plan | sin superficie, título `text-sm` | guías dietarias, notas del tratamiento, criterio del profesional |
+
+**Por qué "decisión" y no "prescripción".** Fue el primer nombre y no sirvió: en Tratamiento el
+profesional prescribe, pero en Diagnóstico **confirma** y en Seguimiento **agenda**. Lo común no es
+prescribir, es decidir. Un nombre que solo describe una pantalla obliga a forzarlo en las otras, y un
+nivel forzado se aplica mal.
+
+**El nivel `registro` baja el peso VISUAL, no la importancia.** Las restricciones alimentan el filtro de
+alérgenos del menú y las notas son documento clínico. Por eso se distingue **por ausencia de
+superficie** y conserva el tamaño de texto del cuerpo, **no** por un gris que lo apague. Polaris usa el
+fondo apagado para "menos importante", y ese es justo el matiz que aquí no queremos: si alguien
+"arregla" esto poniéndole gris, lo empeora.
+
+### Jerarquía, nunca navegación interna
+
+En las pantallas del **profesional** no se usan anclas, pasos ni pestañas internas para partir una
+pantalla larga. La razón no es de gusto: **el instrumento del paciente y el panel del profesional son
+dos clases de superficie con reglas opuestas.**
+
+GOV.UK lo separa de forma explícita. Su regla de *una cosa por pantalla* es para **servicios al
+público**, que la gente usa una vez y no conoce, y por eso **sí** se aplica al intake del paciente. Para
+**interfaces de trabajo** escriben lo contrario: *"puedes asumir que el personal conoce el proceso y
+optimizar para la velocidad, lo que probablemente significa poner más de una cosa por pantalla"*. El
+nutricionista vive en su panel todos los días; partirlo le cobraría navegación en cada consulta.
+
+No unificar el criterio entre las dos clases: la regla correcta de una es la equivocada de la otra.
+
+### Lo que el componente NO hace
+
+No mueve nada de sitio, no funde secciones, no acorta títulos y no cambia contenido. Solo decide la
+superficie. **Varios títulos van verbatim del archivo de Gildardo y no se pueden acortar**, porque la
+referencia es parte del dato (`titulos-tablas-plan.test.ts` lo bloquea). Para decir de qué depende un
+bloque o qué gobierna está la línea `sub`, que es aditiva.
+
+Si al aplicar el componente una pantalla necesitara mover algo de sitio, eso ya no es un ajuste de
+estilo: se para y se reporta.
+
+### La historia clínica va aparte, a propósito
+
+`historia-clinica.tsx` **no usa estos niveles y no se le deben aplicar por uniformidad.** Es un
+documento **imprimible y probatorio**, con dos caras deliberadas (lo que va a pantalla y lo que va al
+papel, con sus `no-print` y `print-only`), y su aspecto se cotejó contra el documento de referencia.
+Uniformarla con las pantallas de trabajo rompería ese cotejo.
 
 ## Responsive y accesibilidad
 - Target principal desktop, pero usable en móvil: sidebar a hamburguesa en `<lg`, formularios apilados en `<md`, tablas con scroll horizontal.

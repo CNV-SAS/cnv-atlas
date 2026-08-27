@@ -8,6 +8,8 @@ import { getPsicoTreatmentForEvaluation } from "../data/psico-treatment-reader";
 import type { TreatmentProtocol } from "../data/treatment-reader";
 import { professionRutaBlocks } from "../services/consultation-content";
 import { ConsultationSection } from "./consultation-section";
+import { bloqueCls } from "@/components/shared/bloque";
+
 import { RealimentacionAlert } from "./realimentacion-alert";
 import { TreatmentPanel } from "./treatment-panel";
 
@@ -58,7 +60,7 @@ function DiagnosisReadingBlock({
   }
   return (
     <div className="flex flex-col gap-4">
-      <section className="flex flex-col gap-2 rounded-xl border border-border border-l-4 border-l-primary/50 bg-muted/40 p-6">
+      <section className={bloqueCls("derivado")}>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen clínico</h3>
         {/* Aviso critico como parte del CUADRO del paciente (informa, no instruye): dice QUE tiene. El aviso
             accionable con las 10 kcal/kg/dia va encima de la cadena calorica (dice QUE hacer). Dos lecturas del
@@ -93,7 +95,7 @@ function ReadingCard({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-border border-l-4 border-l-primary/50 bg-muted/40 p-6">
+    <section className={bloqueCls("derivado")}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</h3>
       <p className="max-w-prose text-sm leading-relaxed text-foreground">{children}</p>
       <p className="text-xs text-muted-foreground">{caption}</p>
@@ -130,7 +132,7 @@ const SCOPE_EJERCICIO =
 
 function Notice({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-6">
+    <section className={bloqueCls("derivado")}>
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       <p className="max-w-prose text-sm text-muted-foreground">{children}</p>
     </section>
@@ -191,7 +193,7 @@ async function PsicoPanel({ evaluationId }: { evaluationId: string }) {
     );
   }
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
+    <section className={bloqueCls("derivado")}>
       <h3 className="text-base font-semibold text-foreground">Consulta de Psicología</h3>
       {p.salvaguarda ? (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -262,7 +264,7 @@ function MotorSection({
   children?: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
+    <section className={bloqueCls("derivado")}>
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       {asmiAvailable ? null : <AsmiCaveat />}
       {children}

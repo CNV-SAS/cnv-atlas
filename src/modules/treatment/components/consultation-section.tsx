@@ -1,3 +1,4 @@
+import { bloqueCls } from "@/components/shared/bloque";
 import { FlaskConical, Info, ListChecks, Pill } from "lucide-react";
 
 import type { ProtocoloSnapshot } from "@/clinical-engine";
@@ -37,7 +38,7 @@ export function ConsultationSection({
 }) {
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-5">
+      <div className={bloqueCls("derivado")}>
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         <p className="flex items-start gap-2 text-sm text-foreground">
           <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />

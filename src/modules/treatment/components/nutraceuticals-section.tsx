@@ -1,5 +1,6 @@
 "use client";
 
+import { bloqueCls } from "@/components/shared/bloque";
 import { useActionState, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +77,7 @@ export function NutraceuticalsSection({
   // --- VISTA DE CONSULTA (no nutricionista): recomendados + prescritos en lectura, sin controles ---
   if (!canPrescribe) {
     return (
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-6">
+      <section className={bloqueCls("derivado")}>
       {/* CONTRAINDICACIONES DEL PACIENTE (2026-08-24). Guardar una contraindicacion que nadie ve es la
           mitad del valor: sin esto, el siguiente profesional no se entera de que otro ya descarto un
           producto por una razon clinica. Va ARRIBA y en tono critico, no como nota al pie, porque su
@@ -118,7 +119,7 @@ export function NutraceuticalsSection({
 
   // --- VISTA DEL NUTRICIONISTA (editable; deshabilitada si locked) ---
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-6">
+    <section className={bloqueCls("derivado")}>
       <h3 className="text-base font-semibold text-foreground">Nutracéuticos</h3>
       {/* CONTRAINDICACIONES DEL PACIENTE (2026-08-24). Guardar una contraindicacion que nadie ve es la
           mitad del valor: sin esto, el siguiente profesional no se entera de que otro ya descarto un

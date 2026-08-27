@@ -1,3 +1,4 @@
+import { bloqueCls } from "@/components/shared/bloque";
 import { requireUser } from "@/modules/auth/session";
 import {
   getDespachosForTreatment,
@@ -48,7 +49,7 @@ export async function DespachoSection({
   const products = ids.map((id) => ({ id, name: byId.get(id) ?? "", stock: stock[id] ?? 0 }));
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-6">
+    <section className={bloqueCls("derivado")}>
       <div className="flex flex-col gap-1">
         <h3 className="text-base font-semibold text-foreground">Entrega de nutracéuticos</h3>
         <p className="max-w-prose text-sm text-muted-foreground">
