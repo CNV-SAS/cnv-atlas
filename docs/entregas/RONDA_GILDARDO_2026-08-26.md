@@ -6,8 +6,9 @@
 
 Recibidas las dos partes. Arrancamos con lo que desbloqueaste. Esta ronda trae, en orden: **una cosa
 urgente que no es clínica**, **dos hallazgos nuevos** que salieron de verificar tu archivo, el
-**inventario del 3.1 rehecho** como pediste, **nueve preguntas** en total, **seis puntos que se te
-pasaron** y **tres cosas que salieron de construir tu 3.2**.
+**inventario del 3.1 rehecho** como pediste, **diez preguntas** en total, **seis puntos que se te
+pasaron**, y al final **lo que construimos de tu 3.2**, con dos tablas de criterio nutricional que
+redactamos nosotros y que necesitamos que revises.
 
 Y al final, como **anexo**, el mapa de Atlas que te debíamos: las 64 preguntas con su estado, qué
 consume cada pantalla y cuáles de tus motores están portados. **Contesta tu 8.5 y tu 3.5.** Va aquí
@@ -296,6 +297,10 @@ la alergia mal respetada produce un paciente en urgencias.
 
 Si no estás de acuerdo con esa separación, dilo y la cambiamos.
 
+**Actualización, porque ya está construido:** el patrón también se comprueba en código ahora, pero como
+**aviso** y no como bloqueo, por una razón que explicamos en el punto 10.3. Lo que sigue en pie de este
+punto es lo de fondo: la alergia no depende de que el modelo obedezca.
+
 ---
 
 # 7 · Seis puntos de la ronda anterior que quedaron sin respuesta
@@ -422,6 +427,100 @@ Queda corregido con el mismo cambio del 9.2.
 
 ---
 
+# 10 · Construimos el filtro de alergias, y en el camino escribimos contenido clínico que tienes que revisar
+
+Esto es lo último y es lo que más nos importa que veas, porque **hay dos listas que redactamos nosotros
+y son criterio nutricional, no código**.
+
+## 10.1 · El menú ahora se le pide al modelo de otra forma
+
+Hasta hoy le pedíamos el menú en prosa: *"responde solo con el menú"*. Lo cambiamos a una lista de
+alimentos por tiempo de comida.
+
+**La razón no es de formato, es que sobre prosa no se puede comprobar nada.** Para verificar que un menú
+no lleva mariscos, con prosa lo único posible es buscar la palabra, y eso falla en las dos direcciones:
+se le escapa "camarones" cuando la alergia dice "mariscos", y se dispara con "leche de almendras" cuando
+la alergia es a la leche. Con el menú como lista, la comprobación es alimento contra alimento.
+
+Y hay una razón de fondo: **sin esa comprobación, el aviso de alergias que le damos al modelo parece
+proteger y no protege.** Una instrucción se cumple casi siempre, y "casi siempre" no es criterio cuando
+lo que está en juego es una reacción alérgica.
+
+**Lo que esto NO detecta, dicho claro:** un alimento que contiene el alérgeno sin nombrarlo. Un "pan de
+trigo" lo dice; una "salsa césar" lleva anchoas y no lo dice. Por eso el resultado se le presenta al
+profesional y no sustituye su lectura.
+
+## 10.2 · La lista de qué cuenta como cada alérgeno: la escribimos nosotros
+
+Para que "Mariscos" cruce con un menú que dice "camarones", hubo que escribir a qué se traduce cada
+alérgeno. **Eso es criterio nutricional y lo redactamos nosotros. Necesitamos que lo revises.**
+
+| El paciente declara | Lo tratamos como | ¿Es correcto? |
+|---|---|---|
+| Leche | leche, lácteo, queso, yogur, mantequilla, crema de leche, kumis, cuajada | |
+| Huevo | huevo, clara, yema, tortilla de huevo, revuelto | |
+| Maní | maní, cacahuate, mantequilla de maní | |
+| Trigo | trigo, pan, pasta, harina de trigo, galletas | |
+| Soya | soya, tofu, salsa de soya, leche de soya, edamame | |
+| Pescado | pescado, atún, salmón, tilapia, bagre, trucha, sardina, bacalao, mojarra | |
+| Mariscos | camarón, langostino, langosta, cangrejo, almeja, mejillón, calamar, pulpo | |
+| Lactosa | los mismos que leche, más helado | |
+| Gluten | gluten, trigo, cebada, centeno, pan, pasta | |
+| Fructosa | fructosa, jarabe de maíz, miel, jugo concentrado | |
+
+**Dinos qué falta y qué sobra.** Sobra importa tanto como falta: si marcamos de más, el nutricionista ve
+avisos falsos, y a la tercera vez aprende a ignorarlos. Entonces el mecanismo deja de proteger el día
+que acierta.
+
+Cuando el paciente escribe su alergia en "Otra" (mango, kiwi, ajonjolí), se busca tal cual, sin
+traducción. Ahí no inventamos nada.
+
+## 10.3 · El patrón alimentario: lo tratamos distinto que la alergia, y queremos que lo confirmes
+
+Hicimos también lo del vegano al que le proponen pollo. **Pero no lo tratamos igual que una alergia**, y
+la diferencia es clínica:
+
+- **La alergia excluye cosas concretas.** La lista se puede escribir entera.
+- **El patrón excluye categorías abiertas.** Un vegano no excluye "pollo": excluye todo lo de origen
+  animal, y esa lista no se termina nunca (chorizo, chicharrón, manteca, morcilla).
+
+Así que el cruce del patrón **encuentra lo evidente y no puede prometer que los encuentra todos**. Por
+eso lo tratamos como un aviso de calidad del plan y no como un bloqueo de seguridad: un menú que se
+salta el patrón es un plan que el paciente no va a seguir, como tú mismo dijiste, no uno que lo manda a
+urgencias.
+
+Y la segunda lista que escribimos nosotros:
+
+| Patrón | Lo que excluimos |
+|---|---|
+| Vegano | carnes, pescados, mariscos, embutidos, huevo, lácteos, miel |
+| Vegetariano | carnes, pescados, mariscos, embutidos (sí permite huevo y lácteos) |
+| Sin gluten | trigo, cebada, centeno, pan, pasta, galletas |
+| Sin lácteos | leche, queso, yogur, mantequilla, crema, cuajada, kumis |
+| Keto | arroz, pan, pasta, papa, yuca, plátano, azúcar, arepa, harina |
+| Bajo en sal | embutidos, jamón, chorizo, salchicha, enlatados |
+
+**El de keto es el que más dudamos:** lo armamos por carbohidratos de uso habitual, pero el umbral de
+qué entra y qué no es tuyo, no nuestro.
+
+Si un paciente escribe un patrón en "Otra" que no está en esa tabla, **no producimos ningún aviso**. Es
+deliberado: preferimos no decir nada a decir algo mal.
+
+## 10.4 · Qué pasa cuando el sistema detecta un alérgeno
+
+Se muestra el aviso **arriba del menú**, con el alérgeno, la comida y el alimento. Y no se puede
+silenciar sin dueño: el nutricionista puede descartarlo, pero **tiene que escribir por qué**, y eso queda
+en la historia de auditoría con su nombre y la fecha.
+
+**El aviso no desaparece al descartarlo.** Quien vuelva a abrir esa sugerencia ve las dos cosas: que se
+detectó un alérgeno, y quién dijo que estaba bien. Descartar es decir "lo miré y está bien", no "no pasó
+nada".
+
+> **Pregunta 10.** ¿Las dos tablas de arriba son correctas? Y en la de patrones, ¿el keto es el que tú
+> usarías?
+
+---
+
 # Resumen
 
 | # | Qué es | Qué necesitamos |
@@ -443,6 +542,7 @@ Queda corregido con el mismo cambio del 9.2.
 | 9.1 | **El alcohol conserva tu intención de Q6 cambiando su mecanismo**: llega al profesional, efecto cero en el diagnóstico, probado por un candado | Confirmar |
 | 9.2 | Tu regla del §4 era **más amplia** que nuestra implementación. Un alérgico al mango llegaba sin alergias | ¿El criterio es el correcto? |
 | 9.3 | **Reporte:** `d2_21` y `d5_40` ya perdían su texto libre. Ninguna evaluación real afectada | Nada, ya corregido |
+| 10 | **El filtro de alergias está construido**, y con él DOS TABLAS que redactamos nosotros: qué cuenta como cada alérgeno, y qué excluye cada patrón | **Revisarlas.** Es criterio nutricional, no código |
 
 **Lo que más nos bloquea, en orden: el 7.1**, que tiene el formulario parado; **el 5.2**, porque no
 construimos el tamizaje sin cortes; y **el 1**, que es un cambio de diagnóstico con efecto sobre lo ya
