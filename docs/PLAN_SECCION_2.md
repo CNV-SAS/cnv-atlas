@@ -159,6 +159,46 @@ mismo flujo de pago, **genera comisión al integrante a su misma tarifa, sin que
 debiera pagar una tarifa distinta, o ninguna, **hoy no hay estructura para eso** y habría que
 construirla. Es decisión de negocio, no técnica.
 
+### CAMBIO MAYOR (2026-08-27, soporte de entrega): LUVIA NO ES DE CNV
+
+Viene en consignación de un TERCERO (Centro de Nutrición Integral Katherine Ruiz), 60 unidades, PVP
+90.000 con IVA incluido. **La cadena es de TRES eslabones, no de dos:** el consignante nos la da,
+nosotros al profesional, el profesional al paciente. Y el dinero vuelve por el mismo camino, menos
+márgenes.
+
+Verificado contra el modelo, y las tres respuestas son las que hacen que esto NO se pueda construir aún.
+
+**(a) El inventario NO distingue lo propio de lo ajeno.** `nutraceutical_inventory` es
+`(professional_id, nutraceutical_id, stock_quantity)`: quién tiene cuánto, sin dueño. Y los tipos de
+movimiento codifican la cadena de DOS explícitamente: `remesa` es *"CNV envía al integrante"*,
+`recepcion` es *"el integrante reconoce que recibió en custodia"*. **No hay tipo para "el consignante
+nos entregó a nosotros"**, ni saldo que represente lo que CNV custodia sin ser suyo.
+
+El catálogo tampoco: `nutraceuticals.organization_id` ata el producto a UNA organización, así que hoy
+LUVIA quedaría registrada como producto de CNV, que es justo lo que no es.
+
+**(b) Sí hace falta distinguirlo, y no por prolijidad contable.** Hay un caso concreto donde el modelo
+actual da la respuesta equivocada: **el faltante**. Hoy, si a un integrante le falta una unidad, se
+materializa un cargo contra él y el asunto se cierra entre CNV y el integrante. Con un producto ajeno,
+**CNV le debe esa unidad al consignante pase lo que pase con el integrante**. Son dos obligaciones
+distintas y hoy solo existe una.
+
+Lo mismo con la conciliación tras conteo físico: un ajuste negativo sobre stock propio es una pérdida
+nuestra; sobre stock ajeno es una deuda.
+
+**(c) Sí: es una SEGUNDA LIQUIDACIÓN que no existe.** Hoy la cadena económica es una sola: se cobra al
+paciente y se liquida la comisión al integrante. Con un tercero aparece otra, en el otro sentido: **CNV
+le debe al consignante por cada unidad vendida**, y esa liquidación no tiene ni tabla ni concepto.
+
+Y encima **cambia el margen**: hoy la comisión sale sola sobre el monto de la transacción a la tarifa
+del integrante (0,20). Con un producto ajeno hay que repartir entre tres, no entre dos. Ahí es donde
+pega lo que ya habíamos anotado: **el sistema no puede expresar una tarifa distinta por producto**, y
+con un producto de tercero eso deja de ser hipotético.
+
+**NO SE CONSTRUYE NADA DE ESTO** hasta que Santiago tenga las respuestas de contabilidad y legal. Son
+ellas las que definen si el stock ajeno se registra como propio con una marca, si va en un circuito
+aparte, y contra quién se liquida. Cualquier cosa que construyamos antes habría que rehacerla.
+
 ### Lo que sigue en pie del diseño de la sección
 
 Casilla, campo de unidades al marcarla, botón propio de entrega (para el paciente sin nutracéuticos
@@ -206,7 +246,7 @@ qué se cobra aquí.
 | 3 | El acto 3 depende de la respuesta del acto 2 | 2 |
 | 4 | OTROS PRODUCTOS (LUVIA) | **YA NO es libre.** Va en consignación: entra al bloque de dinero |
 | 5 | El aviso de alérgenos de LUVIA cruzado | **respuesta de Gildardo** |
-| 6 | LUVIA en el catálogo, con discriminador y campo de alérgenos | **confirmar la comisión** |
+| 6 | LUVIA en el catálogo, con discriminador y campo de alérgenos | **contabilidad y legal**: es de un TERCERO, no de CNV |
 | 7 | El checkout en la sección | **las tres decisiones de dinero que quedan** |
 
 **Del 1 al 3 se puede construir ya**, y son los tres defectos que Santiago ve hoy. Del 4 en adelante
