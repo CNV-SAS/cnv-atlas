@@ -6,7 +6,7 @@
 
 Recibidas las dos partes. Arrancamos con lo que desbloqueaste. Esta ronda trae, en orden: **una cosa
 urgente que no es clínica**, **dos hallazgos nuevos** que salieron de verificar tu archivo, el
-**inventario del 3.1 rehecho** como pediste, **diez preguntas** en total, **seis puntos que se te
+**inventario del 3.1 rehecho** como pediste, **once preguntas** en total, **seis puntos que se te
 pasaron**, y al final **lo que construimos de tu 3.2**, con dos tablas de criterio nutricional que
 redactamos nosotros y que necesitamos que revises.
 
@@ -521,6 +521,71 @@ nada".
 
 ---
 
+# 11 · La casilla al nivel 1: al ir a construirlo encontramos que rompe el cuadre calórico
+
+Aprobaste mover la casilla de porciones del subgrupo al grupo (1.1). Fuimos a hacerlo y **paramos**,
+porque el cambio deja una pregunta sin respuesta que es tuya, no nuestra.
+
+**Y hay una razón por la que no la podemos sacar de tu archivo: tu archivo tiene la casilla en el
+subgrupo.** Tú mismo lo dijiste. Así que sus totales son por subgrupo, y esto no es un porte: es diseño
+nuevo. El número que falta es clínico.
+
+## El problema, con tu propia tabla
+
+Los alimentos de un mismo grupo **no aportan lo mismo**. En Lácteos (G4), de `INTER_TABLA_A`:
+
+| Alimento | kcal por porción |
+|---|---|
+| Leche entera | **134** |
+| Leche semidescremada | **100** |
+| Leche descremada | **74** |
+
+Hoy el cuadre se calcula multiplicando las porciones de **cada alimento** por su kcal, y ese total es lo
+que se compara contra el objetivo calórico. Es el cuadre, no un adorno.
+
+Si el nutricionista prescribe **"3 porciones de lácteos"** sin decir cuáles, el sistema no tiene con qué
+número multiplicar:
+
+> **3 lácteos son 222 kcal o 402 kcal según cuáles sean. Un 80 % de diferencia, en un solo grupo.**
+
+Y por el P-26, cuáles lo resuelve la IA según la ciudad. O sea: **el dato que hace falta para el cuadre
+no existe en el momento en que el profesional prescribe.**
+
+## Y no afecta solo al cuadre: cuelgan tres cosas de esas porciones
+
+Lo verificamos antes de escribirte, porque cambia el tamaño de la decisión:
+
+1. **El cuadre calórico y los macros.** Proteína, carbohidrato y grasa se calculan igual.
+2. **La distribución por tiempos de comida.** Reparte las porciones de cada alimento entre desayuno,
+   almuerzo y cena. Repartir "3 lácteos" sí funciona; lo que queda sin número es cuántas kcal lleva cada
+   comida.
+3. **La validación de nutrientes (los 26 y el ICN).** Esta es la más seria: hoy dice qué porcentaje de
+   cada nutriente cubre el plan. Con porciones por grupo pasaría a decir *"cubre entre el 60 % y el 110 %
+   del calcio"*, y eso no es una afirmación clínica usable.
+
+## Las cuatro salidas que vemos
+
+| | Qué sería | Qué cuesta |
+|---|---|---|
+| **1** | Un **alimento representante** por grupo, con su kcal fija | El cuadre vuelve a ser un número. Pero **hay que elegir cuál**, y esa elección cambia el objetivo del paciente |
+| **2** | El **promedio** del grupo | No corresponde a ningún alimento real: el cuadre sería de algo que nadie come |
+| **3** | El cuadre **se calcula después**, cuando la IA elija por ciudad | Coherente con tu P-26, pero el profesional prescribe **sin ver el total**, que es para lo que existe la tabla |
+| **4** | La prescripción sigue por grupo y el cuadre se muestra como **RANGO**: *"3 porciones de lácteos = entre 222 y 402 kcal según cuáles elija la IA"* | No inventa un número ni elige por ti, y el profesional ve la incertidumbre en vez de un total falso. Pero el rango **se propaga** a los macros, a los tiempos y a la validación de nutrientes |
+
+**La 4 no es nuestra recomendación**, es una posibilidad que queremos que tengas delante porque puede
+ser la que quieras. Si la eliges, lo que hay que decidir además es hasta dónde dejamos que el rango
+llegue: un rango en el cuadre se entiende; un rango en la adecuación de calcio, no sabemos.
+
+> **Pregunta 11.** ¿Cuál de las cuatro? Y si es la 1, ¿cuál es el alimento representante de cada uno de
+> los 12 grupos? Si es la 4, ¿el rango llega hasta la validación de nutrientes o esa se queda como está?
+
+**Mientras respondes no lo tocamos.** El cambio es de cálculo, y la regla que nos diste es parar.
+
+**Una buena noticia, para que sepas que no urge por datos:** ningún tratamiento tiene porciones
+guardadas todavía. No hay nada que migrar ni que se pierda, decidas lo que decidas.
+
+---
+
 # Resumen
 
 | # | Qué es | Qué necesitamos |
@@ -542,6 +607,7 @@ nada".
 | 9.1 | **El alcohol conserva tu intención de Q6 cambiando su mecanismo**: llega al profesional, efecto cero en el diagnóstico, probado por un candado | Confirmar |
 | 9.2 | Tu regla del §4 era **más amplia** que nuestra implementación. Un alérgico al mango llegaba sin alergias | ¿El criterio es el correcto? |
 | 9.3 | **Reporte:** `d2_21` y `d5_40` ya perdían su texto libre. Ninguna evaluación real afectada | Nada, ya corregido |
+| 11 | **La casilla al nivel 1 rompe el cuadre calórico**: 3 lácteos son 222 o 402 kcal. Tu archivo no lo puede responder porque tiene la casilla en el subgrupo | **Cuál de las cuatro salidas.** Parados hasta entonces |
 | 10 | **El filtro de alergias está construido**, y con él DOS TABLAS que redactamos nosotros: qué cuenta como cada alérgeno, y qué excluye cada patrón | **Revisarlas.** Es criterio nutricional, no código |
 
 **Lo que más nos bloquea, en orden: el 7.1**, que tiene el formulario parado; **el 5.2**, porque no
