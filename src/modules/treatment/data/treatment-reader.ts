@@ -176,29 +176,28 @@ export async function getTreatmentProtocol(
       : null;
   const suggestedSnapshot = (treatment.protocol_suggested as ProtocoloSnapshot | null) ?? null;
 
-  // DESCARTES DEL AVISO DE ALERGENO. Viven en clinical_audit_log y no en la sugerencia, porque
-  // ai_menu_suggestions es INMUTABLE (RLS sin UPDATE/DELETE). Eso no es un rodeo: es lo que garantiza
-  // que descartar NO borre el aviso. Si alguien vuelve a mirar esta sugerencia, ve que hubo un alergeno
-  // y que alguien lo descarto, con su motivo. Descartar es decir "lo mire y esta bien", no "no paso nada".
+  // DESCARTES DEL AVISO DE ALERGENO. Se leen de su TABLA DE DOMINIO, no del audit log: el audit log es
+  // solo-admin para SELECT, asi que con la sesion del profesional devolvia vacio SIEMPRE y el descarte
+  // nunca se veia (defecto cazado en el smoke; ver 0088). La traza del mismo hecho sigue en el audit log.
+  //
+  // El aviso NO se borra al descartarlo: el hallazgo vive en ai_menu_suggestions, que es inmutable, y el
+  // descarte vive aparte. Descartar es decir "lo mire y esta bien", no "no paso nada".
   const idsMenu = (menus.data ?? []).map((m) => m.id);
   const descartes = new Map<string, { porEmail: string; motivo: string; en: string }>();
   if (idsMenu.length > 0) {
-    const { data: eventos } = await supabase
-      .from("clinical_audit_log")
-      .select("entity_id, actor_email, payload, created_at")
-      .eq("event", "menu.allergen_alert_dismissed")
-      .in("entity_id", idsMenu)
-      .order("created_at", { ascending: false });
-    for (const e of eventos ?? []) {
-      // El primero que llega es el mas reciente (orden desc); no se sobreescribe.
-      if (e.entity_id == null || descartes.has(e.entity_id)) continue;
-      descartes.set(e.entity_id, {
-        porEmail: e.actor_email ?? "(desconocido)",
-        motivo: String((e.payload as { reason?: unknown } | null)?.reason ?? ""),
-        en: e.created_at,
+    const { data: filas } = await supabase
+      .from("menu_allergen_dismissals")
+      .select("suggestion_id, dismissed_by_email, reason, dismissed_at")
+      .in("suggestion_id", idsMenu);
+    for (const f of filas ?? []) {
+      descartes.set(f.suggestion_id, {
+        porEmail: f.dismissed_by_email,
+        motivo: f.reason,
+        en: f.dismissed_at,
       });
     }
   }
+
 
   return {
     treatmentId,

@@ -1388,6 +1388,45 @@ export type Database = {
           },
         ]
       }
+      menu_allergen_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string
+          dismissed_by_email: string
+          reason: string
+          suggestion_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by: string
+          dismissed_by_email: string
+          reason: string
+          suggestion_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string
+          dismissed_by_email?: string
+          reason?: string
+          suggestion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_allergen_dismissals_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_allergen_dismissals_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: true
+            referencedRelation: "ai_menu_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       model_variables: {
         Row: {
           description: string | null

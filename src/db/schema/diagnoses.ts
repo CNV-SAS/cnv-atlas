@@ -141,3 +141,18 @@ export const aiCriterionSuggestions = pgTable(
   },
   (t) => [index("ai_criterion_suggestions_diagnosis_idx").on(t.diagnosisId)],
 );
+
+// Descarte del aviso de alergeno. Tabla de DOMINIO, no de traza: la pantalla la lee con la sesion del
+// profesional. El mismo hecho deja su evento en clinical_audit_log, que es solo-admin y por eso no sirve
+// para mostrar nada (ver 0088). Los dos se escriben en la misma transaccion.
+export const menuAllergenDismissals = pgTable("menu_allergen_dismissals", {
+  suggestionId: uuid("suggestion_id")
+    .primaryKey()
+    .references(() => aiMenuSuggestions.id, { onDelete: "cascade" }),
+  dismissedBy: uuid("dismissed_by")
+    .notNull()
+    .references(() => profiles.id),
+  dismissedByEmail: text("dismissed_by_email").notNull(),
+  reason: text("reason").notNull(),
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
+});

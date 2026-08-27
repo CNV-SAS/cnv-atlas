@@ -1,7 +1,9 @@
 import "server-only";
 
+import { sql } from "drizzle-orm";
+
 import { db } from "@/db";
-import { aiMenuSuggestions } from "@/db/schema";
+import { aiMenuSuggestions, menuAllergenDismissals } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 // Persistencia de una sugerencia de menu por IA (B13). ai_menu_suggestions es INMUTABLE
@@ -91,6 +93,28 @@ export async function dismissMenuAllergenAlert(input: {
   ip: string | null;
 }): Promise<void> {
   await db.transaction(async (tx) => {
+    // ESTADO (lo que la pantalla lee) y TRAZA (el evento), en la MISMA transaccion para que no puedan
+    // divergir. El audit log solo no bastaba: es admin-only para SELECT, asi que el profesional escribia
+    // su descarte y no lo veia nunca (defecto cazado en el smoke, ver 0088).
+    await tx
+      .insert(menuAllergenDismissals)
+      .values({
+        suggestionId: input.suggestionId,
+        dismissedBy: input.actorId,
+        dismissedByEmail: input.actorEmail,
+        reason: input.reason,
+      })
+      .onConflictDoUpdate({
+        target: menuAllergenDismissals.suggestionId,
+        // Descartar dos veces el mismo aviso es la MISMA decision, no historia nueva: gana el ultimo.
+        // La historia completa de intentos queda en el audit log, que es donde va la traza.
+        set: {
+          dismissedBy: input.actorId,
+          dismissedByEmail: input.actorEmail,
+          reason: input.reason,
+          dismissedAt: sql`now()`,
+        },
+      });
     await recordAudit(tx, {
       event: "menu.allergen_alert_dismissed",
       actorId: input.actorId,

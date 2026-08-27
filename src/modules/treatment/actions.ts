@@ -573,8 +573,7 @@ export async function dismissMenuAllergenAlertAction(
     actorEmail: user.email,
     ip: await getClientIp(),
   });
-  // SI se revalida: el aviso cambia de forma (pasa a mostrar quien lo descarto y por que) y no depende
-  // de una firma de remonte, asi que la pantalla tiene que volver a leer.
-  revalidatePath("/evaluaciones");
+  // NO se revalida aqui, igual que sus vecinas del panel: la accion no revalida y el refresco lo dispara
+  // el hook DESPUES del toast (si revalidara, el remonte correria contra el efecto y el toast se perderia).
   return { error: null, success: "Aviso de alérgeno descartado. Queda registrado.", warning: null };
 }

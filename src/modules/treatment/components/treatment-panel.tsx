@@ -635,7 +635,9 @@ function MenuSection({
 // no a un campo que nadie lee.
 function DismissAllergenForm({ suggestionId }: { suggestionId: string }) {
   const [state, formAction, pending] = useActionState(dismissMenuAllergenAlertAction, EMPTY);
-  useFormToast(state);
+  // Refresca en success para que la tarjeta re-derive del servidor y aparezca el descarte; en error NO,
+  // que preserva lo escrito. El toast va antes del refresh (misma razon que en el resto del panel).
+  useFormToastRefreshOnSuccess(state);
   // NO se usa la prop `action`: en React 19 resetea los inputs no controlados tras la accion, asi que un
   // motivo rechazado por corto borraria lo que el profesional acababa de escribir (hazard 2 de CLAUDE.md).
   return (

@@ -617,6 +617,13 @@
       "when": 1787783600000,
       "tag": "0087_menu_patron_conflictos",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1787787200000,
+      "tag": "0088_menu_allergen_dismissals",
+      "breakpoints": true
     }
   ]
 }
