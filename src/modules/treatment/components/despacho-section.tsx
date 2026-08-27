@@ -38,7 +38,49 @@ export async function DespachoSection({
   for (const n of protocol.nutraceuticals) {
     if (availById.get(n.nutraceuticalId) === "en_consultorio") byId.set(n.nutraceuticalId, n.name);
   }
-  if (byId.size === 0) return null;
+
+  // CUANDO NO HAY NADA QUE ENTREGAR, SE DICE POR QUE. Antes esto era `return null` y el bloque entero
+  // desaparecia, asi que el profesional no podia distinguir tres situaciones distintas: que no habia
+  // prescrito nada, que lo prescrito no se entrega aqui, o que habia prescrito y no habia guardado. Y
+  // la frase que lo explicaba ("los productos de solo tienda no aparecen aqui") vivia DENTRO del bloque
+  // que no se mostraba, asi que no la leia nunca.
+  //
+  // Es la misma leccion de ausencia contra fila vacia: un bloque que no esta no informa de nada.
+  if (byId.size === 0) {
+    const noEntregables = protocol.nutraceuticals.filter(
+      (n) => availById.get(n.nutraceuticalId) !== "en_consultorio",
+    );
+    const soloTienda = noEntregables.filter((n) => availById.get(n.nutraceuticalId) === "solo_tienda");
+    const noDisponibles = noEntregables.filter(
+      (n) => availById.get(n.nutraceuticalId) !== "solo_tienda",
+    );
+    return (
+      <section className={bloqueCls("derivado")}>
+        <h3 className="text-sm font-semibold text-foreground">Entrega de nutracéuticos</h3>
+        {noEntregables.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay nada que entregar: todavía no has prescrito ningún nutracéutico.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <p>Lo que prescribiste no se entrega en consultorio:</p>
+            <ul className="ml-4 list-disc">
+              {soloTienda.map((n) => (
+                <li key={n.nutraceuticalId}>
+                  <span className="text-foreground">{n.name}</span> · se compra en la tienda
+                </li>
+              ))}
+              {noDisponibles.map((n) => (
+                <li key={n.nutraceuticalId}>
+                  <span className="text-foreground">{n.name}</span> · aún no está disponible
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   const user = await requireUser();
   const ids = [...byId.keys()];

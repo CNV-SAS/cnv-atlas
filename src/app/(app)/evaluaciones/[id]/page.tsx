@@ -578,13 +578,18 @@ export default async function ResultadosEvaluacionPage({
                   />
                 ) : null}
                 {/* LA DECISION VA ANTES DE LA ENTREGA, y ese orden es el diseño: antes se entregaba sin
-                    haber preguntado si el paciente puede tomarlos ni si los quiere. */}
-                {protocol && actorProfession.isProfessional ? (
+                    haber preguntado si el paciente puede tomarlos ni si los quiere.
+                    Y NO APARECE SIN PRESCRIPCION GUARDADA: preguntar "¿el paciente los adquiere?" sin que
+                    haya nada prescrito es preguntar si adquiere QUE. Se podia marcar "si" con la lista
+                    vacia, que no significa nada. Ojo con la distincion, que es clinica: NO PRESCRIBIR no
+                    es lo mismo que prescribir y que el paciente NO los compre; lo segundo es una
+                    indicacion que no se cumple, y por eso la opcion "no" sigue existiendo aqui. */}
+                {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
                   <NutraDecisionSection evaluationId={id} protocol={protocol} locked={nutraLocked} />
                 ) : null}
                 {/* La entrega SOLO si la respuesta fue que si. Un aviso, no un formulario deshabilitado: un
                     bloque en gris invita a buscar como habilitarlo; una frase dice que falta. */}
-                {protocol && actorProfession.isProfessional ? (
+                {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
                   protocol.nutraceuticalDecision?.decision === "si" ? (
                     <DespachoSection evaluationId={id} protocol={protocol} />
                   ) : (

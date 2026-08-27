@@ -1,6 +1,10 @@
 # Plan de la Sección 2 (nutracéuticos, otros productos y cobro)
 
-**Estado: PROPUESTA. No se ha construido nada.**
+**Estado (2026-08-27): los puntos 1 a 3 CONSTRUIDOS.** El resto sigue en propuesta y espera.
+
+Y al construirlos aparecio que **el acto 3 YA dependia del acto 2**: la entrega solo se montaba con la
+decision en "si", con su razon escrita en la pagina. Lo que faltaba de verdad era mas chico y mas
+preciso que lo que el plan suponia.
 Es superficie de dinero, así que se planea entera y se construye una vez.
 
 ---

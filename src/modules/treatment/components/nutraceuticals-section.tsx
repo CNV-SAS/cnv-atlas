@@ -66,6 +66,23 @@ export function NutraceuticalsSection({
     addProduct(pickId);
     setPickId("");
   };
+  // CAMBIOS SIN GUARDAR. Es el tercero de los tres estados que antes se confundian: agregar un producto
+  // solo cambia estado LOCAL, y todo lo de abajo (la pregunta de si lo adquiere, la entrega) lee del
+  // SERVIDOR. Sin este aviso, el profesional agregaba, no guardaba, y el resto de la seccion se
+  // comportaba como si no hubiera prescrito nada, sin decir por que. Y al reves: quitar un producto sin
+  // guardar dejaba la entrega mostrandolo, que es lo que se veia como defecto.
+  //
+  // Se compara contra lo GUARDADO (protocol.nutraceuticals), que es la misma fuente que leen los bloques
+  // de abajo: si comparara contra otra cosa, el aviso podria decir "guardado" mientras la entrega sigue
+  // viendo lo viejo.
+  const guardadoFirma = JSON.stringify(
+    protocol.nutraceuticals.map((n) => [n.nutraceuticalId, n.dosage ?? "", n.durationDays?.toString() ?? ""]),
+  );
+  const enPantallaFirma = JSON.stringify(
+    nutras.map((n) => [n.nutraceuticalId, n.dosage.trim(), n.durationDays.trim()]),
+  );
+  const haycambiosSinGuardar = guardadoFirma !== enPantallaFirma;
+
   const nutrasPayload = JSON.stringify(
     nutras.map((n) => ({
       nutraceuticalId: n.nutraceuticalId,
@@ -205,10 +222,17 @@ export function NutraceuticalsSection({
           ) : (
             <p className="text-sm text-muted-foreground">Sin nutracéuticos en la prescripción.</p>
           )}
-          <div>
+          <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={pending}>
               {pending ? "Guardando..." : "Guardar prescripción"}
             </Button>
+            {/* El aviso va JUNTO AL BOTON, que es donde se resuelve. Puesto al final de la sección o
+                arriba, el profesional lo lee cuando ya bajó a la entrega y no sabe qué hacer con él. */}
+            {haycambiosSinGuardar ? (
+              <span className="text-xs text-clinical-warning">
+                Tienes cambios sin guardar. La entrega y la decisión del paciente usan lo guardado.
+              </span>
+            ) : null}
           </div>
         </fieldset>
       </form>
