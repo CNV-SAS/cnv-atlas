@@ -19,6 +19,10 @@ export type RecordMenuInput = {
   model: string;
   promptVersion: string;
   generatedText: string | null;
+  // v3. menuJson: el menu parseado (NULL en v2 y en fallos). alergenosDetectados: los hallazgos del
+  // cruce; [] = revisado y limpio, NULL = NO se pudo revisar. Los dos estados se leen distinto.
+  menuJson?: unknown;
+  alergenosDetectados?: unknown;
   rawResponse: unknown;
   status: MenuSuggestionStatus;
   latencyMs: number | null;
@@ -38,6 +42,8 @@ export async function recordMenuSuggestion(input: RecordMenuInput): Promise<{ id
         model: input.model,
         promptVersion: input.promptVersion,
         generatedText: input.generatedText,
+        menuJson: input.menuJson ?? null,
+        alergenosDetectados: input.alergenosDetectados ?? null,
         rawResponse: input.rawResponse ?? null,
         status: input.status,
         latencyMs: input.latencyMs,

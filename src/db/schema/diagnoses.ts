@@ -94,7 +94,12 @@ export const aiMenuSuggestions = pgTable(
     provider: text("provider").notNull(), // groq, gemini
     model: text("model").notNull(),
     promptVersion: text("prompt_version").notNull(),
-    generatedText: text("generated_text"), // el menu generado
+    generatedText: text("generated_text"), // el menu generado (v2: prosa; v3: el JSON crudo)
+    // v3: el menu ya parseado. NULL en las filas de la v2 y en los intentos fallidos.
+    menuJson: jsonb("menu_json"),
+    // Hallazgos del cruce de alergenos. Array VACIO = se cruzo y no habia nada; NULL = no se pudo
+    // cruzar (menu v2 o parseo fallido). No son lo mismo aguas abajo.
+    alergenosDetectados: jsonb("alergenos_detectados"),
     rawResponse: jsonb("raw_response"),
     status: aiSuggestionStatus("status").notNull(),
     latencyMs: integer("latency_ms"),

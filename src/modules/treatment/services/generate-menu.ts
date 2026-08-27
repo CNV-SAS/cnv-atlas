@@ -12,7 +12,15 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
-import { buildMenuPrompt, MENU_PROMPT_KEY, MENU_PROMPT_VERSION } from "../ai/prompts/menu.v2";
+import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+
+import {
+  buildMenuPrompt,
+  MENU_PROMPT_KEY,
+  MENU_PROMPT_VERSION,
+  parseMenuEstructurado,
+} from "../ai/prompts/menu.v3";
+import { cruzarAlergenos, extraerDeEncuesta } from "./alergenos";
 
 // Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
 // variables clinicas y objetivos (barrera PII estructural, regla 15): fenotipo, sector,
@@ -89,6 +97,23 @@ export async function generateMenu(
   const { structural, frSector, dfi } = results.snapshot;
   // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas. El texto de
   // sistema es lo unico parametrizable; el mensaje de usuario se arma dentro de buildMenuPrompt.
+  // ALERGIAS Y PATRON ALIMENTARIO (3.2 de Gildardo, 2026-08-26). Son lo unico del prompt que sale de la
+  // ENCUESTA y no del motor, asi que hasta que estas preguntas tuvieron field_key el generador no las
+  // podia ver ni queriendo: le proponia mariscos a un alergico y carne a un vegano. Si la lectura falla,
+  // NO se genera: un menu sin las alergias es peor que ningun menu.
+  const dominios = await getSurveyAnswersForEvaluation(evaluationId);
+  if (dominios == null) {
+    return err(
+      appError(
+        "conflict",
+        "No se pudieron leer las respuestas de la encuesta, y el menú no se genera sin las alergias del paciente.",
+      ),
+    );
+  }
+  const { alergias, patron } = extraerDeEncuesta(
+    dominios.flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
+  );
+
   const messages = buildMenuPrompt(
     {
       kcalObjetivo: efectivo.calorico.kcalObj,
@@ -100,6 +125,8 @@ export async function generateMenu(
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
       rutasAtencion: dfi.rutas,
+      alergias,
+      patronAlimentario: patron,
     },
     activePrompt?.content,
   );
@@ -116,6 +143,13 @@ export async function generateMenu(
 
   try {
     const completion = await generateText(messages, config);
+
+    // CAPA 3: el chequeo exacto. El menu se parsea a la forma del contrato v3 y se cruza alimento contra
+    // alimento. Si no parsea NO se cruza, y entonces la sugerencia no puede afirmarse revisada: se
+    // guarda como parse_failed con alergenosDetectados en NULL (que significa "no revisado", distinto
+    // de [] que significa "revisado y limpio").
+    const menuJson = parseMenuEstructurado(completion.text);
+    const hallazgos = menuJson ? cruzarAlergenos(menuJson, alergias) : null;
     await recordMenuSuggestion({
       treatmentId: protocol.treatmentId,
       provider: completion.provider,
@@ -127,11 +161,13 @@ export async function generateMenu(
         model: completion.model,
         latency_ms: completion.latencyMs,
       },
-      status: "success",
+      menuJson,
+      alergenosDetectados: hallazgos,
+      status: menuJson ? "success" : "parse_failed",
       latencyMs: completion.latencyMs,
       ...actor,
     });
-    return ok({ status: "success" });
+    return ok({ status: menuJson ? "success" : "parse_failed" });
   } catch (e) {
     // Persistir el fallo tambien (procedencia). El proveedor/modelo del intento primario;
     // el mensaje de error nunca contiene PII (el prompt no la lleva).
@@ -142,6 +178,8 @@ export async function generateMenu(
       model: config.model,
       promptVersion,
       generatedText: null,
+      menuJson: null,
+      alergenosDetectados: null, // no se pudo cruzar; NO es "limpio"
       rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
       status,
       latencyMs: null,

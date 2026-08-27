@@ -20,10 +20,20 @@ const { buildMenuPrompt } = vi.hoisted(() => ({
     return [{ role: "system", content: "s" }] as unknown as never;
   }),
 }));
-vi.mock("@/modules/treatment/ai/prompts/menu.v2", () => ({
+vi.mock("@/modules/treatment/ai/prompts/menu.v3", () => ({
   buildMenuPrompt,
   MENU_PROMPT_KEY: "menu.generate",
-  MENU_PROMPT_VERSION: 2,
+  MENU_PROMPT_VERSION: 3,
+  // El parser real es estricto a proposito; aqui devuelve una forma valida minima para que el test
+  // siga midiendo lo suyo (que el objetivo sale de la cadena) y no el contrato de la IA.
+  parseMenuEstructurado: vi.fn(() => ({ comidas: [{ tiempo: "Desayuno", alimentos: [{ nombre: "Arepa" }] }] })),
+}));
+// El generador lee la encuesta para las alergias y el patron alimentario (3.2). Sin este mock, la
+// lectura real intenta abrir una sesion de Supabase fuera de un request y tumba el test.
+vi.mock("@/modules/evaluations/data/survey-answers-reader", () => ({
+  getSurveyAnswersForEvaluation: vi.fn(async () => [
+    { section: "Alergias y digestión", questions: [{ fieldKey: "d6_43", answerValue: JSON.stringify(["Ninguna"]) }] },
+  ]),
 }));
 vi.mock("@/lib/ai/provider", () => ({
   AiError: class AiError extends Error {},

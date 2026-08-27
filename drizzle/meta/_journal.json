@@ -603,6 +603,13 @@
       "when": 1787776400000,
       "tag": "0085_field_keys_faltantes",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1787780000000,
+      "tag": "0086_menu_estructurado_alergenos",
+      "breakpoints": true
     }
   ]
 }

@@ -128,7 +128,7 @@ export async function getTreatmentProtocol(
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
-      .select("id, provider, model, prompt_version, generated_text, status, latency_ms, generated_at")
+      .select("id, provider, model, prompt_version, generated_text, menu_json, alergenos_detectados, status, latency_ms, generated_at")
       .eq("treatment_id", treatmentId)
       .order("generated_at", { ascending: false }),
     // GET medido: bis_raw_values de la medicion de esta evaluacion (RLS via la evaluacion).
@@ -250,6 +250,9 @@ export async function getTreatmentProtocol(
       model: m.model,
       promptVersion: m.prompt_version,
       generatedText: m.generated_text,
+      menuJson: (m.menu_json as TreatmentProtocol["menuSuggestions"][number]["menuJson"]) ?? null,
+      alergenosDetectados:
+        (m.alergenos_detectados as TreatmentProtocol["menuSuggestions"][number]["alergenosDetectados"]) ?? null,
       status: m.status,
       latencyMs: m.latency_ms,
       generatedAt: m.generated_at,

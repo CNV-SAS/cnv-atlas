@@ -642,7 +642,54 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
         <span>· {formatDateTime(m.generatedAt)}</span>
         <span>· prompt {m.promptVersion}</span>
       </div>
-      {m.generatedText ? (
+      {/* AVISO DE ALERGENO, arriba del menu y no al pie: si va debajo, se lee despues de haber leido el
+          menu, que es justo cuando ya no sirve. Dice QUE alergeno, en QUE comida y en QUE alimento,
+          para que el profesional lo verifique de un vistazo sin releer. */}
+      {m.alergenosDetectados != null && m.alergenosDetectados.length > 0 ? (
+        <div className="rounded-md border border-clinical-critical bg-clinical-critical-bg p-3">
+          <p className="text-sm font-semibold text-clinical-critical">
+            Este menú contiene un alimento al que el paciente declaró alergia o intolerancia.
+          </p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {m.alergenosDetectados.map((h, i) => (
+              <li key={`${h.alergeno}-${h.tiempo}-${i}`} className="text-sm text-clinical-critical">
+                <strong>{h.alergeno}</strong> en {h.tiempo}: {h.alimento}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-clinical-critical">
+            No lo entregues así. Genera el menú de nuevo, o revisa el alimento señalado si consideras
+            que la coincidencia es errónea.
+          </p>
+        </div>
+      ) : null}
+
+      {/* "No se pudo revisar" NO es lo mismo que "revisado y limpio", y la pantalla no los puede
+          confundir: una sugerencia vieja (prosa, sin cruce posible) no debe leerse como segura. */}
+      {m.alergenosDetectados == null && m.generatedText ? (
+        <p className="text-xs text-clinical-warning">
+          Menú sin revisión automática de alérgenos. Revísalo contra las alergias del paciente.
+        </p>
+      ) : null}
+
+      {m.menuJson ? (
+        <div className="flex flex-col gap-2">
+          {m.menuJson.comidas.map((c) => (
+            <div key={c.tiempo}>
+              <p className="text-sm font-semibold text-foreground">{c.tiempo}</p>
+              <ul className="ml-4 list-disc">
+                {c.alimentos.map((a, i) => (
+                  <li key={`${c.tiempo}-${a.nombre}-${i}`} className="text-sm text-foreground">
+                    {a.nombre}
+                    {a.porcion ? <span className="text-muted-foreground"> · {a.porcion}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : m.generatedText ? (
+        // Sugerencias de la v2: prosa. Se siguen mostrando como estaban.
         <div className="text-sm text-foreground">
           <Markdown text={m.generatedText} />
         </div>

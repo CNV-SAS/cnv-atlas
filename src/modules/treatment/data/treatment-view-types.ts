@@ -74,6 +74,11 @@ export type MenuSuggestion = {
   model: string;
   promptVersion: string;
   generatedText: string | null;
+  // v3: el menu estructurado y el resultado del cruce de alergenos. Los dos NULL en las sugerencias
+  // de la v2 (prosa), que se siguen mostrando desde generatedText. La pantalla tolera LAS DOS formas.
+  menuJson: { comidas: { tiempo: string; alimentos: { nombre: string; porcion?: string }[] }[] } | null;
+  // [] = se cruzo y no habia nada. NULL = NO se pudo cruzar. La pantalla los dice distinto.
+  alergenosDetectados: { alergeno: string; tiempo: string; alimento: string }[] | null;
   status: string; // success, timeout, parse_failed, provider_error
   latencyMs: number | null;
   generatedAt: string;

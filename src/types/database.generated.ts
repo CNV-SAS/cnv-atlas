@@ -125,11 +125,13 @@ export type Database = {
       }
       ai_menu_suggestions: {
         Row: {
+          alergenos_detectados: Json | null
           generated_at: string
           generated_by: string
           generated_text: string | null
           id: string
           latency_ms: number | null
+          menu_json: Json | null
           model: string
           prompt_version: string
           provider: string
@@ -138,11 +140,13 @@ export type Database = {
           treatment_id: string
         }
         Insert: {
+          alergenos_detectados?: Json | null
           generated_at?: string
           generated_by: string
           generated_text?: string | null
           id?: string
           latency_ms?: number | null
+          menu_json?: Json | null
           model: string
           prompt_version: string
           provider: string
@@ -151,11 +155,13 @@ export type Database = {
           treatment_id: string
         }
         Update: {
+          alergenos_detectados?: Json | null
           generated_at?: string
           generated_by?: string
           generated_text?: string | null
           id?: string
           latency_ms?: number | null
+          menu_json?: Json | null
           model?: string
           prompt_version?: string
           provider?: string
