@@ -11,6 +11,7 @@ import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-condi
 import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
+import { AntropometriaEditable } from "@/modules/bis-intake/components/antropometria-editable";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
@@ -39,9 +40,14 @@ export function EntradaEvaluacion({
   bisIntake,
   patientIsFemale,
   bisReadonly,
+  diagnosticoGenerado,
   identityConfirmationSlot = null,
 }: {
   evaluationId: string;
+  // ¿Ya se genero el diagnostico? Es lo que SELLA las medidas: despues de diagnosticar, cambiarlas no
+  // es editar, es corregir, y va por el flujo que versiona. No se deriva de bisReadonly porque ese es
+  // otro hecho (si hay condiciones capturadas), y confundirlos dejaria la edicion abierta en un caso.
+  diagnosticoGenerado: boolean;
   consentStatus: ConsentStatus | null;
   surveyDomains: SurveyDomain[] | null;
   composition: Composition | null;
@@ -184,6 +190,19 @@ export function EntradaEvaluacion({
                 .
               </span>
             </div>
+            {/* Las medidas van ANTES de la tabla: se corrigen y despues se lee lo que sale de ellas.
+                Al reves, el profesional lee una tabla calculada sobre un valor que aun no ha revisado. */}
+            <AntropometriaEditable
+              evaluationId={evaluationId}
+              valores={{
+                peso: composition.peso,
+                talla: composition.talla,
+                cintura: composition.cintura,
+                cadera: composition.cadera,
+              }}
+              corrections={composition.corrections}
+              sellada={diagnosticoGenerado}
+            />
             <DetailsSection title="Composición corporal (Niveles de Wang)">
               <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
             </DetailsSection>

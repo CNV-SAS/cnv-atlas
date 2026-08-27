@@ -416,6 +416,48 @@ export type Database = {
           },
         ]
       }
+      bis_value_corrections: {
+        Row: {
+          corrected_at: string
+          corrected_by: string
+          corrected_by_email: string
+          measurement_id: string
+          value: number
+          variable_name: string
+        }
+        Insert: {
+          corrected_at?: string
+          corrected_by: string
+          corrected_by_email: string
+          measurement_id: string
+          value: number
+          variable_name: string
+        }
+        Update: {
+          corrected_at?: string
+          corrected_by?: string
+          corrected_by_email?: string
+          measurement_id?: string
+          value?: number
+          variable_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bis_value_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bis_value_corrections_measurement_id_fkey"
+            columns: ["measurement_id"]
+            isOneToOne: false
+            referencedRelation: "bis_measurements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bis_variables: {
         Row: {
           description: string | null

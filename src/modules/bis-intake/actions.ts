@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ZodError } from "zod";
+import { z, type ZodError } from "zod";
 
 import { appError, err, ok, type Result } from "@/core/errors";
 import { getClientIp } from "@/core/http/client-ip";
@@ -12,6 +12,12 @@ import {
   getActiveBisConditionCatalog,
   getEvaluationPatientSex,
 } from "./data/bis-conditions-reader";
+import {
+  BisCorrectionError,
+  clearBisCorrection,
+  correctBisValue,
+  CORREGIBLES,
+} from "./data/bis-correction-writer";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
 import { saveBisConditionsSchema, validateBisConditionsCapture } from "./validations";
@@ -88,4 +94,81 @@ export async function saveBisConditionsAction(
     warnings: validated.value.warnings,
     existingBisWarning: written.existingMeasurementDespiteContraindication,
   });
+}
+
+// CORRECCION DE UNA MEDIDA ANTROPOMETRICA (2026-08-27). Ver bis-correction-writer y la migracion 0089.
+//
+// Estado de formulario, no `Result`: lo consume un formulario del panel, como el resto de la pantalla de
+// evaluacion. El gate de "antes del diagnostico" NO vive aqui: vive dentro de la transaccion del writer,
+// porque un boton oculto no es un candado.
+export type BisCorrectionState = { error: string | null; success: string | null; warning: string | null };
+
+const correctionSchema = z.object({
+  evaluationId: z.guid(),
+  variableName: z.enum(CORREGIBLES),
+  // Se acepta coma decimal, que es como se escribe aqui. Tope alto y bajo para atrapar el dedo gordo:
+  // una talla de 1770 o un peso de 8 no son correcciones, son errores de tecleo.
+  value: z.coerce.number().positive().max(400),
+});
+
+export async function correctBisValueAction(
+  _prev: BisCorrectionState,
+  form: FormData,
+): Promise<BisCorrectionState> {
+  const user = await requireUser();
+  if (!canCaptureBisConditions(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const parsed = correctionSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    variableName: form.get("variableName"),
+    value: String(form.get("value") ?? "").replace(",", "."),
+  });
+  if (!parsed.success) return { error: "Valor inválido.", success: null, warning: null };
+
+  const ownership = await getEvaluationOwnership(parsed.data.evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+
+  try {
+    await correctBisValue({
+      ...parsed.data,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+  } catch (e) {
+    if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
+    throw e;
+  }
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Medida corregida. Queda registrado.", warning: null };
+}
+
+export async function clearBisCorrectionAction(
+  _prev: BisCorrectionState,
+  form: FormData,
+): Promise<BisCorrectionState> {
+  const user = await requireUser();
+  if (!canCaptureBisConditions(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const parsed = z
+    .object({ evaluationId: z.guid(), variableName: z.enum(CORREGIBLES) })
+    .safeParse({
+      evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+      variableName: form.get("variableName"),
+    });
+  if (!parsed.success) return { error: "Datos inválidos.", success: null, warning: null };
+
+  try {
+    await clearBisCorrection({
+      ...parsed.data,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: await getClientIp(),
+    });
+  } catch (e) {
+    if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
+    throw e;
+  }
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  return { error: null, success: "Se restauró el valor del equipo.", warning: null };
 }

@@ -256,3 +256,26 @@ qué se cobra aquí.
 **Del 1 al 3 se puede construir ya**, y son los tres defectos que Santiago ve hoy. Del 4 en adelante
 espera: LUVIA porque entra a consignación, el 5 a Gildardo, el 6 a la confirmación de comisión, y el 7
 a las decisiones de dinero.
+
+---
+
+## Nota: por qué "Meta kg" NO se construyó en la entrada (2026-08-27)
+
+Su archivo tiene un campo **"Meta kg"** en la fila de Peso, y decidimos **no portarlo**. La razón, para
+que no se reabra al volver a ver la captura:
+
+**Sería una segunda fuente para un concepto que ya tiene una.** El peso meta de Atlas **no lo escribe
+nadie: lo calcula el motor congelado** (`atlas-protocolo.authorized.js`), a partir del peso, el IMC, el
+peso ideal y las comorbilidades. Y el profesional puede sobrescribirlo con `adj_peso_meta`, que **entra
+a toda la cadena calórica**.
+
+Un campo editable en la entrada crearía **dos pesos meta**: el escrito antes del diagnóstico y el
+calculado después. **Es exactamente el problema de los dos objetivos calóricos**, que ya nos costó una
+reversión y que Gildardo hizo colapsar en el checkpoint 2 ("el objetivo sale de la cadena, fuente
+única").
+
+**Y hay un obstáculo concreto encima:** `adj_peso_meta` vive en `treatments`, que **no existe antes del
+diagnóstico**. Habría que inventar un segundo almacén para el mismo dato.
+
+**Su archivo lo tiene porque allí TODO el bloque es editable y no hay motor que lo calcule. Nosotros sí
+lo tenemos.** Esa es la diferencia, y es la que decide.

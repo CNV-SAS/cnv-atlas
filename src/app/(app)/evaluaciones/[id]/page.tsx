@@ -207,6 +207,7 @@ export default async function ResultadosEvaluacionPage({
         evaluacion={
           <EntradaEvaluacion
             evaluationId={id}
+            diagnosticoGenerado={false}
             consentStatus={entryConsent}
             surveyDomains={entrySurvey}
             composition={entryComposition}
@@ -541,6 +542,7 @@ export default async function ResultadosEvaluacionPage({
           bisIntake={null}
           patientIsFemale={false}
           bisReadonly={entryReadonly}
+          diagnosticoGenerado={Boolean(results)}
         />
       }
       tratamiento={

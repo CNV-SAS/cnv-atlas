@@ -3,6 +3,7 @@ import {
   index,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -11,7 +12,7 @@ import {
 import { createdAt, pk, updatedAt } from "./_columns";
 import { bisValueOrigin, deviceStatus } from "./enums";
 import { evaluations } from "./evaluations";
-import { organizations } from "./organizations";
+import { organizations, profiles } from "./organizations";
 
 // Grupo 6: BIS (bioimpedancia). El import del export XLSX de Biody Manager se
 // modela flexible (nombre+valor) para absorberlo sin conocer su forma exacta.
@@ -85,3 +86,24 @@ export const bisImportLogs = pgTable("bis_import_logs", {
   errorDetail: text("error_detail"),
   createdAt: createdAt(),
 });
+
+// Correccion de una medida antropometrica de una medicion BIS. NO sobrescribe bis_raw_values: el crudo
+// del equipo se conserva como evidencia de lo que ese aparato midio, y la pantalla puede mostrar cual es
+// cual. Solo peso, estatura, cintura y cadera; solo ANTES del diagnostico (despues el camino es el flujo
+// de correccion, que versiona). Ver la migracion 0089 para el porque completo.
+export const bisValueCorrections = pgTable(
+  "bis_value_corrections",
+  {
+    measurementId: uuid("measurement_id")
+      .notNull()
+      .references(() => bisMeasurements.id, { onDelete: "cascade" }),
+    variableName: text("variable_name").notNull(),
+    value: numeric("value").notNull(),
+    correctedBy: uuid("corrected_by")
+      .notNull()
+      .references(() => profiles.id),
+    correctedByEmail: text("corrected_by_email").notNull(),
+    correctedAt: timestamp("corrected_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.measurementId, t.variableName] })],
+);

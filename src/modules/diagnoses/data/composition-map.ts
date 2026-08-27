@@ -34,7 +34,17 @@ export type CompositionRow = {
   bioelectric?: boolean;
 };
 export type CompositionLevel = { title: string; rows: CompositionRow[] };
+// Correcciones del profesional sobre una medida del equipo (0089). Se conserva el MEDIDO junto al
+// corregido: la pantalla tiene que poder decir cual es cual, porque un valor corregido que se ve igual
+// que uno medido deja al profesional sin saber que esta mirando.
+export type CompositionCorrections = Record<
+  string,
+  { medido: number | null; corregido: number; porEmail: string; en: string }
+>;
+
 export type Composition = {
+  // Vacio cuando no se corrigio nada. Solo lo llena el reader; el resto de la composicion no cambia.
+  corrections?: CompositionCorrections;
   // Disposicion de EVALUACION (medido + crudo) y de DIAGNOSTICO (clasificado). Ver nota de arriba.
   eval: CompositionLevel[];
   diag: CompositionLevel[];
