@@ -350,7 +350,7 @@ en la pieza más mirada del sistema y no lo tocamos por nuestra cuenta.
 
 ---
 
-# 9 · Los subrótulos del radar: información que tú das y nosotros perdemos
+# 9 · Dos sitios donde tú rotulas y nosotros no: el radar y la Diana
 
 ## Qué hicimos
 
@@ -366,8 +366,18 @@ no. Con cinco dominios en gris, encontrar cuál está mal exige leer los cinco.
 Probablemente esto sea simplemente un porte que nos faltó, no una decisión, pero
 preferimos confirmarlo antes de tocar el radar.
 
-> **Pregunta 9.** ¿Confirmas que los subrótulos deben ir coloreados por severidad,
-> como en tu archivo? Si es sí, lo portamos tal cual.
+## Y el mismo caso en la Diana
+
+En tu Diana, cada sector lleva debajo del código lo que significa: bajo **E9** dice *"FMI Alto · FFMI
+Bajo"*, bajo **E1** *"FMI Bajo · FFMI Alto"*, bajo **E4** *"FFMI Normal · FMI Normal"*, y así los nueve.
+En Atlas los sectores salen con el código solo: **E1, E2, E3...** sin nada debajo.
+
+Es la misma pérdida y pesa más aquí, porque son 81 celdas: sin el rótulo, `E4` es un código opaco y hay
+que saberse el mapa de memoria para leer la posición del paciente. Tu centro además dice *"EFR · #1
+centro"* y el nuestro solo *"EFR"*.
+
+> **Pregunta 9.** ¿Confirmamos que los subrótulos van, en los dos sitios: coloreados por severidad en el
+> radar, y con el par FMI/FFMI en cada sector de la Diana? Si es sí, los portamos tal cual.
 
 **Qué hacemos mientras respondes:** nada, por lo mismo del punto anterior.
 
