@@ -571,15 +571,11 @@ la 12a: es la que decide si el mecanismo es masivo o uno por uno, y construirlo 
 entero.
 
 ---
+---
 
-# 13 · El generador de menú: vamos a alinearlo al tuyo, porque hoy hacemos más que tú
+# 13 · Tú tienes UN menú y nosotros dos: ¿los unimos?
 
-Este no es una pregunta abierta: es una decisión que tomamos, lo que cambia, y la opción de revertirla.
-Te la contamos porque es visible y porque el hallazgo es incómodo para nosotros.
-
-## Lo que encontramos al recorrer tu `generarMenuGroq`
-
-Tu generador hace esto, y es más simple de lo que teníamos planeado:
+## Lo que hace tu `generarMenuGroq`
 
 ```
 1. Elige un día de arranque al azar en el ciclo de 21
@@ -589,47 +585,42 @@ Tu generador hace esto, y es más simple de lo que teníamos planeado:
 5. Si la IA falla o el JSON no parsea → vuelve al ciclo base
 ```
 
-**La IA no inventa un menú: adapta uno que ya existe.** Y solo entra cuando hay restricciones.
+**La IA no inventa un menú: adapta uno que ya existe**, y solo entra cuando hay restricciones. En tu
+archivo hay **un solo menú**: la grilla de 7 días, llena por el ciclo y opcionalmente adaptada.
 
-## Y lo que hace Atlas hoy
+## Lo que hay en Atlas, y es la divergencia de fondo
 
-| | Tu archivo | Atlas hoy |
-|---|---|---|
-| Punto de partida | El ciclo de 21 días | Nada: genera desde cero |
-| Cuándo llama a la IA | Solo si hay restricciones | Siempre |
-| Qué le manda | Menú base + restricciones + ciudad | Objetivo, proteína, restricciones del modelo y del profesional, fenotipo, sector funcional, rutas y patrón |
-| Si la IA falla | Vuelve al ciclo | No hay menú |
+**Nosotros tenemos DOS cosas donde tú tienes una:**
 
-**Hacemos más que tú, y es justo lo que tu punto 0 mira con lupa.** Un modelo de lenguaje inventando un
-menú a partir del contexto clínico **es otro instrumento** que un adaptador de un ciclo fijo. No es el
-caso de `generarAlertas` (aquella no se ejecuta nunca), pero es la misma familia: construimos de más sin
-preguntarte.
+1. **La grilla semanal editable**, precargada desde tu ciclo de 21 días (portado verbatim, con golden
+   test). Esta funciona hoy y no depende de la IA.
+2. **Una tarjeta de "sugerencia de menú" aparte**, generada por IA **desde cero**: no parte de tu ciclo,
+   le manda objetivo, proteína, restricciones del modelo y del profesional, fenotipo, sector funcional,
+   rutas y patrón, y le pide componer un menú estructurado.
 
-**Y hay un detalle que lo vuelve más claro: tu ciclo ya está portado en Atlas** (verbatim, por script,
-con su golden test) y lo usamos para precargar la grilla semanal. Lo teníamos, y lo teníamos
-**desconectado del generador**, que es donde tú lo usas.
+Las dos conviven en la misma pantalla y **no se hablan**.
 
-## Lo que vamos a hacer
+## Por qué te lo preguntamos en vez de resolverlo
 
-Tres cambios, los tres hacia **menos** código:
+Porque **hacemos más que tú, y es justo lo que tu punto 0 mira con lupa.** Un modelo de lenguaje
+componiendo un menú a partir del contexto clínico **es otro instrumento** que un adaptador de un ciclo
+fijo. No es el caso de `generarAlertas` (aquella no se ejecuta nunca), pero es la misma familia:
+construimos de más sin preguntarte.
 
-1. El **ciclo como base** del prompt, en vez de generar desde cero.
-2. **Llamar a la IA solo si hay restricciones.** Sin restricciones, el ciclo tal cual.
-3. El **ciclo como respaldo** cuando la IA falla.
+Y porque unirlas no es un ajuste: las dos tienen formas distintas (la tuya son textos por tiempo de
+comida, la nuestra una lista de alimentos con porción), así que alinearlas es rehacer el contrato de
+salida, no cambiar tres líneas.
 
-## Y por qué no esperamos tu respuesta para esto
+> **Pregunta 13.** ¿Unimos las dos en una sola, como en tu archivo, con el ciclo como base y la IA solo
+> para adaptarlo cuando hay restricciones? ¿O prefieres conservar la sugerencia aparte, y entonces
+> dinos qué debe hacer que la grilla no haga?
+>
+> Y una que cambia cómo lo explicamos en pantalla: **¿partir del ciclo es criterio clínico o economía?**
+> Si es porque el paciente debe recibir comida colombiana conocida y no lo que un modelo componga, eso
+> hay que decirlo en la pantalla, no solo hacerlo.
 
-Porque el tercero **cierra un defecto real que existe hoy**: si la IA no responde, el nutricionista se
-queda sin menú, y tu ciclo está ahí esperando para dárselo. Dejarlo así mientras consultamos sería
-mantener un hueco que ya sabemos cómo tapar, con la pieza ya portada.
-
-> **Pregunta 13.** ¿Estás de acuerdo con alinearlo al tuyo? Si prefieres que Atlas genere desde cero
-> como hasta ahora, **lo revertimos**: es un cambio pequeño en las dos direcciones. Y si el motivo por el
-> que el tuyo parte del ciclo es clínico y no de economía (que el paciente reciba comida colombiana
-> conocida en vez de lo que un modelo componga), dínoslo, porque eso cambia también cómo lo explicamos en
-> pantalla.
-
-**Qué hacemos mientras respondes:** lo alineamos, y queda revertible.
+**Qué hacemos mientras respondes:** nada. Las dos siguen como están. La grilla, que es la que el
+profesional usa para trabajar, funciona con tu ciclo y no depende de la IA.
 
 
 # Resumen: las dieciséis, por si prefieres responder por prioridad
@@ -651,7 +642,7 @@ mantener un hueco que ya sabemos cómo tapar, con la pieza ya portada.
 | **12a** | Una **recalibración afecta a todos por definición**. Uno por uno garantiza que quede parcial | Si se dispara en bloque desde Dirección Científica o decide cada profesional | **No.** Pero **decide la forma del bloque**, así que no lo construimos |
 | **12b** | Si siempre decide el profesional, un diagnóstico que sabemos mal puede quedarse en pie para siempre | Si hay casos de reemisión obligatoria, y con qué criterio | **No** |
 | **12c** | **El paciente ya recibió el reporte anterior**: no es si le mandamos el nuevo, es si le decimos que cambió | Qué prefieres, y si cambia entre diagnóstico y tratamiento | **No** |
-| **13** | Tu generador ADAPTA el ciclo de 21; el nuestro INVENTA desde cero y llama a la IA siempre | Confirmar que lo alineamos al tuyo. Ya lo hicimos, y se revierte | **No.** Hecho y reversible |
+| **13** | Tú tienes UN menú (la grilla, llena por el ciclo); nosotros DOS que no se hablan, y la segunda la compone la IA desde cero | Si las unimos como en tu archivo, y si partir del ciclo es criterio clínico o economía | **No.** Las dos siguen como están |
 
 ## Lo que esto quiere decir, y por eso va la petición que sigue
 
