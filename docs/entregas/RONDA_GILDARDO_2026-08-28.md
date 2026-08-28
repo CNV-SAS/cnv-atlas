@@ -4,79 +4,67 @@
 **Para:** Gildardo Uribe, Dirección Científica CNV
 **Fecha:** 28 de agosto de 2026
 
-Nueve puntos, en tres grupos:
+## Primero: aceptamos el punto 0, y ya estamos retirando
 
-- **1 a 3 · decisiones nuestras que te devolvemos.** Qué hicimos, por qué, y si lo mantenemos o lo
-  revertimos.
-- **4 a 7 · defectos de tu archivo que encontramos cotejando pantalla contra pantalla.** El 4 y el 5
-  tienen cifras clínicas de por medio y los reprodujimos al decimal contra tus propias fórmulas antes
-  de escribirte. El 4 es el que más nos preocupa.
-- **8 y 9 · dos divergencias del radar que son nuestras**, y que tocan cómo se lee el instrumento, así
-  que no las tocamos sin tu respuesta.
+**Retirado y commiteado:**
 
-**Nada de esto está cerrado por nuestra cuenta:** cada punto dice qué hacemos mientras respondes, y en
-todos los casos es "nada" o algo reversible.
+- **Las dos tablas**, de alérgenos y de patrón, con todo lo que colgaba: el filtro en código, el bloqueo
+  del menú, el descarte con motivo y sus columnas en base de datos.
+- **El bloque de alergias del prompt.** Nos pediste que la pantalla no afirme verificación; pasarle las
+  alergias al modelo es una forma parcial de lo mismo, y no la podemos sostener. El plan lo revisa el
+  profesional, como dices.
+- **Los seis techos y pisos** de la prescripción: proteína 0-4 g/kg, factor de actividad 1-2,5, gasto
+  basal, objetivo calórico y peso meta.
+- **La apnea**, y su tarea.
 
-Una nota sobre el método, porque afecta a lo que sigue: el diagnóstico de Nico está **sellado**, y el
-motor cambió después del sello. Eso significa que una diferencia en las tarjetas del DFI puede ser el
-sello y no un defecto. Los puntos 4 a 7 no dependen de eso (salen de tu tabla de composición y de
-aritmética que reprodujimos), pero vamos a repetir el cotejo sobre un diagnóstico recién generado
-antes de mandarte nada más de esa pantalla.
+Todo eso era contenido clínico que redactamos nosotros y no debía estar. **Verificado además: la pantalla
+no dice en ningún sitio que el menú fue verificado contra las alergias**, ni lo decía antes.
 
----
+**Lo que queda, que es lo que pediste:** que aparezca que el paciente tiene alergias, tal como la encuesta
+las capturó.
 
-# 1 · El alérgeno de LUVIA: el criterio legal cambió la premisa, y el cruce ya existe
+### Y una consecuencia buena de tu punto 0: tu lista del 26 no hay que construirla
 
-## Lo que nos dijiste, y por qué tenía sentido
+Aplicamos tu regla de las dos condiciones (el dato en la encuesta **y** el criterio en el archivo) a la
+lista de "lo que debe aparecer en el diagnóstico de cada profesional" que aprobaste el 26. El resultado:
 
-**"El alérgeno se avisa pero no se cruza."** Cuando lo dijiste, el sistema **no tenía con qué cruzarlo**:
-las alergias del paciente ni siquiera llegaban al motor (son dos de las 25 preguntas sin `field_key` que
-te reportamos en la ronda del 26). Avisar era todo lo que se podía hacer.
+**Los diez ítems restantes ya están en tu archivo**, en el bloque `=== DATOS CRUDOS DEL PACIENTE
+(evidencia de respaldo) ===` que alimenta el diagnóstico (L13785-13830): medicación antihipertensiva
+(`d5_37`), alcohol y tabaco, alergias e intolerancias, patrón alimentario, los siete síntomas digestivos,
+suplementos, número de comidas y desayuno, tipo de actividad, sueño y ronquido, e inseguridad alimentaria.
 
-## Las dos cosas que cambiaron desde entonces
+**El único ausente de tu archivo es el tamizaje de apnea**, que es justo el que retiraste. Y no es
+casualidad: los diez que están son **datos mostrados**; la apnea era el único que exigía **cruzar** datos
+en una conclusión nueva.
 
-**Primera: el cruce ya está construido.** Al cablear tu 3.2 hicimos el filtro de alérgenos del menú, con
-la tabla de traducción que te mandamos para revisar (la del punto 10 de la ronda anterior). El sistema
-hoy **sabe** que un paciente declaró alergia al gluten y **sabe** que LUVIA contiene avena.
-
-**Segunda, y es la que pesa: el asesor legal dice que mostrarlo no basta.** Su argumento, textual:
-
-> *"Un sistema que tenía el dato y no lo usó es mucho más difícil de defender que uno que nunca lo
-> tuvo."*
-
-Recomienda **bloquear activamente**, con confirmación afirmativa y registro de quién la vio y decidió
-seguir.
-
-## Por qué te lo preguntamos en vez de aplicarlo
-
-Porque **es criterio clínico y es tuyo**, y porque el legal opina sobre exposición, no sobre práctica. Un
-bloqueo que estorbe en cada consulta se convierte en un clic automático, y entonces no protege a nadie y
-además estorba. Eso lo sabes tú, no él.
-
-## Y no habría que inventar nada: el patrón ya existe y lo aprobaste
-
-Es **exactamente el mismo** que construimos para el alérgeno del menú, que ya viste en la ronda anterior:
-
-- El aviso sale **arriba**, con el alérgeno, el producto y por qué.
-- El profesional puede seguir, pero **escribiendo el motivo** (mínimo 10 caracteres, validado en el
-  servidor).
-- Eso queda en la **historia de auditoría** con su nombre y la fecha.
-- **El aviso no desaparece al descartarlo**: quien vuelva a abrirlo ve las dos cosas, el alérgeno
-  detectado y quién dijo que estaba bien. Descartar es decir "lo miré y está bien", no "no pasó nada".
-
-> **Pregunta 1.** ¿Mantenemos "se avisa pero no se cruza" para LUVIA, o aplicamos el mismo bloqueo con
-> confirmación y motivo que ya usa el menú? Y si es lo segundo, ¿vale para **todos** los productos con
-> alérgeno declarado, o solo cuando el paciente tiene esa alergia registrada?
-
-**Mientras respondes no lo tocamos.** LUVIA no está construida todavía, así que no hay nada que
-deshacer: entra ya con el criterio que nos digas.
+Así que no construimos nada: **portamos tu bloque**. Una sola pregunta sobre eso, al final (punto 10).
 
 ---
 
-# 2 · El "Meta kg" de tu tabla: no lo portamos, y queremos que lo sepas
+## Segundo: un grupo distinto, que queremos que veas antes de retirar
 
-Es una **divergencia visible**: tu archivo lo tiene y Atlas no va a tenerlo, así que preferimos
-decírtelo antes de que lo notes.
+Hay piezas nuestras que **no son contenido clínico**. Son decisiones que existen porque **Atlas guarda lo
+que tu prototipo recalcula.**
+
+Tu archivo vive en el navegador y se rehace en cada carga. El nuestro persiste, lo usan varios
+profesionales a la vez, y **lo que se guarda mal queda mal**. De ahí salen los candados de concurrencia,
+el sellado de versiones y la fuente única del peso meta.
+
+**Retirarlos no nos acercaría a tu archivo: nos daría sus limitaciones sin sus ventajas, porque las suyas
+vienen de ser transitorio.**
+
+Las que están en juego en esta ronda son tres, y van como preguntas 2 y 3. No las tocamos sin tu
+respuesta.
+
+---
+
+# 2 · El "Meta kg": no es contenido clínico, es DÓNDE VIVE un dato
+
+Esta entra en el grupo de arriba, y por eso te la preguntamos en vez de resolverla con el punto 0. Tu
+archivo lo tiene y Atlas no, así que por la regla "no puede tener menos" tocaría portarlo. Pero **el peso
+meta no es contenido clínico: es un dato que ya existe, y la pregunta es en cuántos sitios se puede
+editar.** Tener el mismo dato en dos sitios editables es un defecto de ingeniería que tu archivo no tiene
+porque no guarda nada.
 
 ## Qué es
 
@@ -108,6 +96,9 @@ todavía** cuando se está mirando esa pantalla.
 > es lo segundo lo construimos, pero entonces ese campo tiene que SER el mismo ajuste del tratamiento y
 > no otro dato.
 
+**Si nos dices que lo portemos, lo portamos**; solo queremos que sea con esto a la vista, porque el día
+que los dos números discrepen en un paciente real nadie va a saber cuál mandaba.
+
 ---
 
 # 3 · Una pieza tuya que sí portamos, para que sepas que está
@@ -130,8 +121,12 @@ Tres diferencias con el tuyo, todas deliberadas:
 3. **Se ve cuál valor es cuál.** Si se corrige la cintura, la pantalla dice "el equipo midió 84". El
    dato del aparato no se pierde ni se disimula.
 
-**Y no te lo contamos solo para informarte: la decisión es tuya.** Las tres diferencias son juicios
-nuestros sobre una pieza tuya, y cualquiera de ellas se revierte si no estás de acuerdo.
+**Las tres son del grupo de arriba: ninguna añade contenido clínico, las tres existen porque guardamos.**
+La primera protege un diagnóstico ya emitido de cambiar bajo sus pies. La segunda evita dos capturas del
+mismo dato que puedan contradecirse. La tercera conserva el valor del aparato, que en tu archivo no hace
+falta conservar porque no se guarda nada.
+
+**Y la decisión es tuya igual.** Son juicios nuestros sobre una pieza tuya, y cualquiera se revierte.
 
 > **Pregunta 3.** ¿Las mantenemos o revertimos alguna? En concreto: ¿el sellado tras el diagnóstico te
 > parece bien, o el profesional debería poder corregir también después? ¿Y la fuerza prensil se queda
@@ -142,7 +137,7 @@ nuestros sobre una pieza tuya, y cualquiera de ellas se revierte si no estás de
 
 # 4 · El MCA que falta se está calculando como 0, y el 0 ahí significa "normal"
 
-Es el más grave de los cuatro y por eso va primero.
+Es el más grave de los defectos que encontramos en tu archivo, y por eso abre ese grupo.
 
 ## Qué encontramos
 
@@ -346,6 +341,10 @@ conviven en la misma pantalla con el mismo vocabulario.
 > cambien las etiquetas para que no repitan las de los badges? Cualquiera de las
 > dos la aplicamos; lo que no queremos dejar es la misma palabra con dos colores.
 
+**Tu punto 0 ya apunta a la respuesta** (tu archivo manda, y tu radar usa el semáforo), pero preferimos
+que la des tú: el azul lo pusimos por una razón que puede seguir valiendo, y cambiar la pieza más mirada
+del sistema sin que lo digas no nos parece.
+
 **Qué hacemos mientras respondes:** nada, se queda como está. Es un cambio visual
 en la pieza más mirada del sistema y no lo tocamos por nuestra cuenta.
 
@@ -371,6 +370,23 @@ preferimos confirmarlo antes de tocar el radar.
 > como en tu archivo? Si es sí, lo portamos tal cual.
 
 **Qué hacemos mientras respondes:** nada, por lo mismo del punto anterior.
+
+---
+
+# 10 · Tu bloque de datos crudos: ¿uno o cuatro?
+
+Al aplicar tu regla de las dos condiciones encontramos que tu bloque `=== DATOS CRUDOS DEL PACIENTE ===`
+ya trae los diez ítems de la lista del 26. Lo portamos tal cual. Una sola duda antes:
+
+**Tu bloque es UNO SOLO**, el mismo para todo el diagnóstico. La lista del 26 estaba organizada por
+profesión (médico, nutricionista, entrenamiento, psicología). Armar cuatro versiones sería inventar una
+estructura que tu archivo no tiene, así que no lo hacemos.
+
+> **Pregunta 10.** ¿Confirmas que va un bloque único, igual para los cuatro profesionales, como en tu
+> archivo? Si querías cuatro vistas, dinos qué lleva cada una y lo hacemos con tu criterio, no con el
+> nuestro.
+
+**Qué hacemos mientras respondes:** portamos el bloque único, que es lo que tu archivo tiene.
 
 ---
 
