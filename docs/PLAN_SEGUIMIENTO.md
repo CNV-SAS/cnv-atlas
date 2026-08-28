@@ -12,7 +12,7 @@
 
 | # | Bloque | Qué muestra |
 |---|---|---|
-| 1 | **Capacitancia de membrana (C)** | serie temporal. *"Según protocolo, C es el parámetro a seguir. Mayor C = mejor integridad de membrana celular."* |
+| 1 | **Capacitancia de membrana (C)** | serie temporal. Texto vigente (Gildardo 2026-08-27 §9): *"mejorar es acercarse a la mediana de su grupo de edad y sexo, no subir"*. El *"Mayor C = mejor integridad de membrana"* anterior se RETIRO: su articulo muestra que C discrimina masa muscular baja por abajo y obesidad por arriba, y sube con el IMC. Mientras la mediana de CAP_REF no este cableada, la serie va NEUTRA (sin verde ni rojo). |
 | 2 | **Diagnóstico Funcional — Inicial vs Última** | radar de 5 dominios, dos polígonos superpuestos. *"A menor polígono, mejor estado funcional."* |
 | 3 | **φ Convergencia bioeléctrica** | dos gráficos: PABU con su línea φ=1,618, e ICA-BIS con su línea objetivo 0 |
 | 4 | **Próximo control — según protocolo del DFI** | ruta activa · frecuencia recomendada · criterio de egreso · fecha (sugerida) · frecuencia · observaciones |

@@ -77,15 +77,23 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Capacitancia de membrana (C)</CardTitle>
+            {/* TEXTO CORREGIDO (Gildardo 2026-08-27 §9). Decia "Mayor C indica mejor integridad de la
+                membrana celular: verde si mejora...", y su artículo de referencia dice lo contrario:
+                la capacitancia discrimina masa muscular baja POR ABAJO y obesidad POR ARRIBA (AUC 0,734
+                por IMC), y sube con el IMC. Un paciente que pasa de 2,40 a 4,00 nF puede estar ganando
+                adiposidad, no integridad de membrana. */}
             <span className="text-xs text-muted-foreground">
-              Según protocolo, C es el parámetro a seguir. Mayor C indica mejor integridad de la membrana
-              celular: verde si mejora, rojo si retrocede, gris si no cambia.
+              Según protocolo, C es el parámetro a seguir. Mejorar es acercarse a la mediana de su grupo
+              de edad y sexo, no subir: alejarse, en cualquier dirección, no es mejoría. La referencia de
+              su grupo aún no se muestra aquí, así que el gráfico traza la trayectoria sin calificarla.
             </span>
           </CardHeader>
           <CardContent>
             <SerieLinea
               puntos={puntosC}
-              subirEsMejor
+              // null, NO true: hasta que la mediana de CAP_REF este cableada no hay criterio de direccion,
+              // y pintar de verde el tramo que sube afirmaria justo lo que Gildardo retiro.
+              subirEsMejor={null}
               ariaLabel={`Capacitancia de membrana: ${puntosC
                 .map((p) => `${formatDateOnlyShort(p.fecha)} ${p.valor.toFixed(3)}`)
                 .join(", ")}.`}

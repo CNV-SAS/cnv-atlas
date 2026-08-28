@@ -27,14 +27,22 @@ export function SerieLinea({
   puntos,
   referencia,
   referenciaLabel,
-  /** true = subir es mejorar (capacitancia). Se ignora cuando hay `referencia`: ahi mejora es acercarse. */
+  /**
+   * Direccion de la mejora cuando NO hay `referencia`: true = subir mejora, false = bajar mejora.
+   * `null` = NO SE SABE, y entonces ningun tramo se colorea (todo neutro).
+   *
+   * El null existe por la capacitancia (Gildardo 2026-08-27 §9): "mejorar es acercarse a la mediana de
+   * su grupo, no subir... por encima de P95, seguir subiendo es una señal, no una mejoria". Hasta que la
+   * mediana de CAP_REF este cableada, pintar de verde el tramo que sube afirmaria justo lo que el
+   * retiro. Se ignora cuando hay `referencia`: ahi mejora SIEMPRE es acercarse.
+   */
   subirEsMejor = true,
   ariaLabel,
 }: {
   puntos: PuntoLinea[];
   referencia?: number;
   referenciaLabel?: string;
-  subirEsMejor?: boolean;
+  subirEsMejor?: boolean | null;
   ariaLabel: string;
 }) {
   if (puntos.length === 0) return null;
@@ -114,13 +122,22 @@ export function SerieLinea({
           // cambio por debajo de lo que la medicion distingue, y no tenemos el cambio minimo detectable
           // (P 9.1 de la ronda). Colorearlo afirmaria mas de lo que sabemos.
           const igual = Math.abs(delta) < 1e-9;
+          // SIN CRITERIO DE DIRECCION (subirEsMejor null y sin referencia): todo neutro. No es lo mismo
+          // que "no cambio": es que no sabemos si moverse hacia alla es mejorar, y el color no puede
+          // inventarlo.
+          const sinCriterio = referencia == null && subirEsMejor == null;
           const mejora =
             referencia != null
               ? Math.abs(p.valor - referencia) < Math.abs(prev.valor - referencia)
               : subirEsMejor
                 ? delta > 0
                 : delta < 0;
-          const cls = igual ? "stroke-muted-foreground" : mejora ? "stroke-clinical-optimal" : "stroke-clinical-critical";
+          const cls =
+            igual || sinCriterio
+              ? "stroke-muted-foreground"
+              : mejora
+                ? "stroke-clinical-optimal"
+                : "stroke-clinical-critical";
           return (
             <line
               key={`s${p.fecha}`}
