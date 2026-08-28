@@ -15,6 +15,7 @@ import { clasificarIcaBis, indicatorBands, indicatorRange } from "../data/indica
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
+import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { formatDate } from "@/lib/format/date";
 import { fmtDec } from "@/lib/format/decimal";
@@ -389,6 +390,12 @@ export function EvaluationResults({
         dfiComplete={dfi.complete}
         rutaPrioritaria={dfi.rutas[0] ?? null}
       />
+
+      {/* Procedencia del documento: se emitió con una versión anterior del modelo. Va DEBAJO del
+          veredicto y ARRIBA de las subpestañas, para que se vea sin tener que abrir ninguna, pero
+          nunca por encima de la conclusión: es una nota de procedencia, no un hallazgo clínico.
+          NO invalida el diagnóstico (ver el componente). */}
+      <AvisoCienciaAnterior vigencia={results.vigencia} />
 
       {/* Tres subpestañas (QUE de Gildardo, COMO nuestro). Default Funcional (DIV-7). */}
       <DiagnosisSubtabs

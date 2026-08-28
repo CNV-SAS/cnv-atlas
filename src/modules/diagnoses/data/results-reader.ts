@@ -4,6 +4,7 @@ import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { vigenciaEmision, type VigenciaEmision } from "@/modules/clinical-pipeline/emision-vigencia";
 import {
   getReportDispatch,
   getReportForEvaluation,
@@ -70,6 +71,9 @@ export type EvaluationResults = {
   // a la columna. Alimenta la marca "calibracion provisional" de EB-BIS/IAE (P0), que se lee del dato
   // sellado, no de una constante (ver isProvisionalCalibration).
   emissionVersions: Record<string, unknown> | null;
+  // Si el documento se emitio con una version anterior del modelo, y que dimensiones se movieron.
+  // NO invalida nada: el diagnostico sigue vigente hasta que alguien reemita (ver el aviso).
+  vigencia: VigenciaEmision;
 };
 
 export type EvaluationHeader = {
@@ -127,7 +131,15 @@ export async function getEvaluationResults(
 
   // Versiones de emision selladas del diagnostico (columna aparte de diagnoses, NO en el snapshot
   // del reporte). Para la marca de calibracion provisional (P0). RLS: si no es del profesional, null.
-  const emissionVersions = await getDiagnosisEmissionVersions(evaluationId);
+  const sellado = await getDiagnosisEmissionVersions(evaluationId);
+  const emissionVersions = sellado.emissionVersions;
+  // Vigencia de la ciencia con que se emitio: se computa AL LEER (como el delta de los rangos), nunca
+  // se sella. Un documento no cambia porque el motor avance; lo que cambia es la distancia entre lo
+  // que sello y lo que rige, y esa se mide hoy. Ver emision-vigencia.
+  const vigencia = vigenciaEmision({
+    engineVersion: sellado.engineVersion,
+    emissionVersions: sellado.emissionVersions,
+  });
 
   // Compatibilidad del snapshot con la forma actual del motor. Los snapshots de eras
   // anteriores (stub-0.1.0 pre-B11) no tienen efrPhenotype/dfi/structural: se degrada la
@@ -140,6 +152,7 @@ export async function getEvaluationResults(
       snapshot: dispatch.snapshot,
       compatible: false,
       engineVersion,
+      vigencia,
       efrState: null,
       validityCaveats: [],
       rutasContent: [],
@@ -207,6 +220,7 @@ export async function getEvaluationResults(
   return {
     snapshot: dispatch.snapshot,
     compatible: true,
+    vigencia,
     engineVersion,
     efrState,
     validityCaveats,
@@ -228,17 +242,23 @@ export async function getEvaluationResults(
 // Lee las versiones de emision selladas del diagnostico mas reciente de la evaluacion (columna jsonb
 // de diagnoses). RLS: si la evaluacion no es del profesional, no hay fila -> null. Se lee aparte del
 // snapshot del reporte porque emission_versions NO viaja en el EngineOutput; es columna de diagnoses.
+// Devuelve tambien `engine_version`: es la COLUMNA SELLADA (constelacion de la regla 7), que es la
+// autoridad sobre con que motor se emitio. El `versions.engine` del snapshot deberia coincidir, pero
+// para decidir si un documento quedo con ciencia anterior manda lo sellado en la fila, no lo copiado.
 async function getDiagnosisEmissionVersions(
   evaluationId: string,
-): Promise<Record<string, unknown> | null> {
+): Promise<{ emissionVersions: Record<string, unknown> | null; engineVersion: string | null }> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("diagnoses")
-    .select("emission_versions")
+    .select("emission_versions, engine_version")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`results-reader: emission_versions: ${error.message}`);
-  return (data?.emission_versions as Record<string, unknown> | null) ?? null;
+  if (error) throw new Error(`results-reader: emission_versions: `);
+  return {
+    emissionVersions: (data?.emission_versions as Record<string, unknown> | null) ?? null,
+    engineVersion: data?.engine_version ?? null,
+  };
 }
