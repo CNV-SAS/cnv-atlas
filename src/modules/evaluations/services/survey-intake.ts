@@ -17,6 +17,7 @@ import { resolveIdentity } from "@/modules/patients/services/identity-resolution
 
 import {
   completeSurvey,
+  closeAwaitingIfConsentRevoked,
   ConsentGateError,
   getResumeTokenStatus,
   getSurveyProgress,
@@ -25,6 +26,7 @@ import {
   signIntakeEvaluation,
   type IntakeConsent,
   type SurveyAnswer,
+  type ResumeTokenStatus,
   type SurveyProgressCharacterization,
 } from "../data/intake-writer";
 import { characterizationSchema, intakeAnswersSchema, intakeIdentitySchema } from "../validations";
@@ -247,11 +249,24 @@ export type SurveyPhase2Input = {
 
 const RESUME_INVALID = "El enlace de la encuesta no es válido o la encuesta ya se completó.";
 
+// MENSAJE AL PACIENTE QUE REVOCO MIENTRAS RESPONDIA. Tres piezas, y las tres importan: RECONOCE el acto
+// (no es un fallo del enlace, es su derecho ejercido), explica la CONSECUENCIA con lo que pasa con lo que
+// ya escribio, y da una SALIDA. Nunca un error crudo: acaba de ejercer un derecho y la pantalla no puede
+// tratarlo como si algo se hubiera roto.
+export const CONSENT_REVOKED_DURING_SURVEY =
+  "Retiraste tu autorización, así que no podemos continuar con la encuesta. Lo que ya respondiste se " +
+  "conserva y no se usará. Si cambias de opinión, habla con tu profesional.";
+
 // GUARDAR PROGRESO (a medida). El snapshot completo de respuestas; queda en 'awaiting_survey'.
 export async function saveProgress(input: SurveyPhase2Input): Promise<Result<{ evaluationId: string }>> {
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   const characterization = characterizationSchema.safeParse(input.characterization);
+  // GUARD DE REVOCACION A MEDIA SESION: se pregunta ANTES de escribir. Si revoco, cierra la evaluacion y
+  // no guarda nada nuevo (lo ya guardado se conserva).
+  if ((await closeAwaitingIfConsentRevoked(input.resumeToken, input.ipAddress)).bloqueada) {
+    return err(appError("forbidden", CONSENT_REVOKED_DURING_SURVEY));
+  }
   try {
     const res = await saveSurveyProgress({
       resumeToken: input.resumeToken,
@@ -272,6 +287,10 @@ export async function submitSurveyAnswers(input: SurveyPhase2Input): Promise<Res
   const answers = intakeAnswersSchema.safeParse(input.answers);
   if (!answers.success) return err(appError("validation", "Hay respuestas inválidas en la encuesta."));
   const characterization = characterizationSchema.safeParse(input.characterization);
+  // Mismo guard que en el guardado de progreso: la captura se detiene desde el instante de la revocacion.
+  if ((await closeAwaitingIfConsentRevoked(input.resumeToken, input.ipAddress)).bloqueada) {
+    return err(appError("forbidden", CONSENT_REVOKED_DURING_SURVEY));
+  }
   try {
     const res = await completeSurvey({
       resumeToken: input.resumeToken,
@@ -301,8 +320,8 @@ export async function readSurveyProgress(
   return getSurveyProgress(resumeToken);
 }
 
-// Estado actual del token cuando ya NO abre la encuesta, para el mensaje de reanudacion (cerrada /
-// completada / invalido). null si el token no existe.
-export async function readResumeTokenStatus(resumeToken: string): Promise<string | null> {
+// Estado actual del token cuando ya NO abre la encuesta, para el mensaje de reanudacion (revocada /
+// cerrada / completada / invalido). null si el token no existe.
+export async function readResumeTokenStatus(resumeToken: string): Promise<ResumeTokenStatus | null> {
   return getResumeTokenStatus(resumeToken);
 }

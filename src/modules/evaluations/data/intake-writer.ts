@@ -706,12 +706,90 @@ export function parseReasonForVisit(value: string | null): string[] {
 // reanudacion cuando el token ya NO abre la encuesta: distinguir cerrada / ya completada / enlace
 // invalido; son tres situaciones y tres acciones del paciente distintas). null si el token no existe. El
 // token se conserva tras completar o cerrar, asi que sigue resolviendo al estado actual de la evaluacion.
-export async function getResumeTokenStatus(resumeToken: string): Promise<string | null> {
+export async function getResumeTokenStatus(resumeToken: string): Promise<ResumeTokenStatus | null> {
   const [ev] = await db
-    .select({ status: evaluations.status })
+    .select({ status: evaluations.status, patientId: evaluations.patientId })
     .from(evaluations)
     .where(eq(evaluations.resumeToken, resumeToken))
     .limit(1);
-  return ev?.status ?? null;
+  if (!ev) return null;
+  // POR QUE SE MIRA EL CONSENTIMIENTO AQUI Y NO UNA MARCA GUARDADA: una evaluacion cerrada por revocacion
+  // y una cerrada por el profesional quedan las dos en 'abandoned', y el mensaje al paciente NO puede ser
+  // el mismo. Decirle "tu profesional cerro esta evaluacion" a quien acaba de revocar es contarle algo
+  // falso sobre lo que paso. Se DERIVA del estado real de sus autorizaciones en vez de sellar un motivo:
+  // asi no hay dos fuentes que puedan discrepar.
+  return { status: ev.status, consentRevocado: !(await tienenLasNecesarias(db, ev.patientId)) };
+}
+
+export type ResumeTokenStatus = { status: string; consentRevocado: boolean };
+
+// Las autorizaciones NECESARIAS vigentes del paciente, por el gate real (regla dura 15), no por una copia.
+async function tienenLasNecesarias(ejecutor: typeof db | Tx, patientId: string): Promise<boolean> {
+  const active = await ejecutor
+    .select({ type: patientConsents.consentType })
+    .from(patientConsents)
+    .where(and(eq(patientConsents.patientId, patientId), isNull(patientConsents.revokedAt)));
+  return canCreateEvaluation(active.map((r) => r.type as ConsentType)).ok;
+}
+
+// Se lanza cuando el paciente REVOCO mientras respondia. No es un fallo del enlace: es su derecho
+// ejercido, y por eso lleva mensaje propio (ver `survey-intake`).
+export class ConsentRevokedDuringSurveyError extends Error {
+  constructor() {
+    super("consent revoked during survey");
+    this.name = "ConsentRevokedDuringSurveyError";
+  }
+}
+
+// LA REVOCACION A MEDIA SESION DETIENE LA CAPTURA DESDE ESE INSTANTE (`DATA_GOVERNANCE.md` (c)).
+//
+// EL HUECO QUE CIERRA (verificado 2026-08-28). El gate de la regla dura 15 corria en dos sitios, los dos
+// AL CREAR la evaluacion; despues nadie volvia a preguntar. Secuencia alcanzable: se crea el shell (gate
+// verde) -> el paciente responde a medias y lo deja -> revoca -> vuelve al enlace y SIGUE respondiendo
+// hasta completar. La captura continuaba tras la revocacion.
+//
+// SE CIERRA LA EVALUACION, no se deja colgada en 'awaiting_survey': una espera indefinida por un caso que
+// probablemente no vuelve es basura acumulada, y si el paciente vuelve a firmar se crea una NUEVA, que es
+// mas limpio que revivir una que quedo a medias bajo una autorizacion ya revocada. Se usa el camino que ya
+// existe para el shell abandonado ('abandoned'), con evento propio para distinguir POR QUE se cerro.
+//
+// LO YA CAPTURADO NO SE DESCARTA, que es la otra mitad de la regla: las respuestas guardadas siguen en
+// survey_answers. Lo que se detiene es la captura, no la historia.
+//
+// VA EN SU PROPIA TRANSACCION, y no dentro de la del guardado, por una razon que se olvida facil: si el
+// cierre se escribiera y despues se lanzara el error, el rollback se llevaria el cierre por delante.
+export async function closeAwaitingIfConsentRevoked(
+  resumeToken: string,
+  ipAddress: string | null,
+): Promise<{ bloqueada: boolean }> {
+  return db.transaction(async (tx) => {
+    const [ev] = await tx
+      .select({ id: evaluations.id, patientId: evaluations.patientId })
+      .from(evaluations)
+      .where(and(eq(evaluations.resumeToken, resumeToken), eq(evaluations.status, "awaiting_survey")))
+      .limit(1);
+    if (!ev) return { bloqueada: false }; // no existe o ya no esta abierta: no es asunto de este guard
+
+    if (await tienenLasNecesarias(tx, ev.patientId)) return { bloqueada: false };
+
+    const updated = await tx
+      .update(evaluations)
+      .set({ status: "abandoned" })
+      .where(and(eq(evaluations.id, ev.id), eq(evaluations.status, "awaiting_survey")))
+      .returning({ id: evaluations.id });
+    if (updated.length === 0) return { bloqueada: true }; // otro la cerro entre medias: igual se bloquea
+
+    await recordAudit(tx, {
+      event: "evaluation.closed_consent_revoked",
+      // Sin actor: el acto es del PACIENTE, que no tiene sesion. Atribuirlo a un profesional seria falso.
+      actorId: null,
+      actorEmail: null,
+      entityType: "evaluation",
+      entityId: ev.id,
+      payload: { patient_id: ev.patientId },
+      ip: ipAddress,
+    });
+    return { bloqueada: true };
+  });
 }
 

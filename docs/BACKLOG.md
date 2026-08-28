@@ -14,7 +14,19 @@
 
 - **Revocación ante el profesional o por el canal de protección de datos** (numerales 9 y 10). Construida el 2026-08-28: por finalidad, con motivo, con actor y con `consent.revoked` en `clinical_audit_log`. Antes solo se podía con un UPDATE a mano en la base.
 
-### HUECO REAL VERIFICADO: la revocación a media sesión NO detiene la captura
+### [CERRADO 2026-08-28] La revocación a media sesión NO detenía la captura
+
+**Cerrado en el mismo día que se detectó, con las dos decisiones de Santiago tomadas:** la evaluación se
+CIERRA (camino del shell abandonado, con evento propio `evaluation.closed_consent_revoked` y sin actor,
+porque el acto es del paciente), y el paciente ve un mensaje con tres piezas (reconoce el acto, explica que
+lo ya respondido se conserva y no se usará, y da la salida), nunca un error. Guard en `survey-intake`,
+antes de escribir, en los dos escritores de la fase 2. Estado: corre `pnpm vitest run --project db
+src/tests/consent-revocation.test.ts` y `--project unit src/tests/survey-consent-guard-wiring.test.ts`.
+
+Lo que sigue debajo es el diagnóstico original, que se conserva porque explica POR QUE el hueco existía
+aunque "sí había gate".
+
+#### Diagnóstico original
 
 `DATA_GOVERNANCE.md` (c) dice: *"Una revocación a media sesión detiene la captura desde ese instante, pero no descarta lo ya capturado."* **La primera mitad no se cumple.**
 

@@ -49,6 +49,7 @@ import {
 } from "./data/evaluations-writer";
 import { emitFollowupLink } from "./data/survey-links-writer";
 import {
+  CONSENT_REVOKED_DURING_SURVEY,
   saveProgress,
   signSurveyIntake,
   submitSurveyAnswers,
@@ -392,7 +393,13 @@ export async function saveProgressAction(
     ipAddress: ip === "unknown" ? null : ip,
     characterization: readCharacterizationFromForm(form),
   });
-  if (!res.ok) return { saved: false, error: res.error.message };
+  if (!res.ok) {
+    // REVOCO MIENTRAS RESPONDIA: no se le pinta una caja roja encima de un formulario que ya no sirve. Se
+    // le lleva a la pagina que reconoce lo que hizo, explica que pasa con lo que ya escribio y da la
+    // salida. Es su derecho ejercido, no un fallo.
+    if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+    return { saved: false, error: res.error.message };
+  }
   return { saved: true, error: null };
 }
 
@@ -415,7 +422,11 @@ export async function submitSurveyAnswersAction(
     ipAddress: ip === "unknown" ? null : ip,
     characterization: readCharacterizationFromForm(form),
   });
-  if (!res.ok) return fail(res.error.message);
+  if (!res.ok) {
+    // Mismo trato que en el guardado: la pagina de reanudacion ya dice lo que hay que decir.
+    if (res.error.message === CONSENT_REVOKED_DURING_SURVEY) redirect(`/encuesta/reanudar/${resumeToken}`);
+    return fail(res.error.message);
+  }
   redirect("/encuesta/gracias");
 }
 

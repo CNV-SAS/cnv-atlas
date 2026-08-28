@@ -50,7 +50,16 @@ export default async function ReanudarEncuestaPage({
   if (!progress) {
     const status = await readResumeTokenStatus(token);
     const msg =
-      status === "abandoned"
+      // LA REVOCACION VA PRIMERO, y no es un matiz de redaccion: una evaluacion cerrada por revocacion y
+      // una cerrada por el profesional quedan las dos en 'abandoned'. Decirle "tu profesional cerró esta
+      // evaluación" a quien acaba de retirar su autorizacion es contarle algo FALSO sobre lo que pasó.
+      // Tres piezas: reconoce el acto, explica qué pasa con lo que ya escribió, y da una salida.
+      status?.consentRevocado
+        ? {
+            title: "Retiraste tu autorización",
+            body: "Como retiraste tu autorización, no podemos continuar con la encuesta. Lo que ya respondiste se conserva y no se usará. Si cambias de opinión, habla con tu profesional.",
+          }
+        : status?.status === "abandoned"
         ? {
             title: "Evaluación cerrada",
             body: "Tu profesional cerró esta evaluación sin completar. Si quieres retomarla, habla con tu profesional para empezar una nueva.",
