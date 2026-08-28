@@ -74,15 +74,8 @@ export type MenuSuggestion = {
   model: string;
   promptVersion: string;
   generatedText: string | null;
-  // v3: el menu estructurado y el resultado del cruce de alergenos. Los dos NULL en las sugerencias
-  // de la v2 (prosa), que se siguen mostrando desde generatedText. La pantalla tolera LAS DOS formas.
+  // v3: el menu estructurado. NULL en las sugerencias v2 (prosa) y en los fallos de parseo.
   menuJson: { comidas: { tiempo: string; alimentos: { nombre: string; porcion?: string }[] }[] } | null;
-  // [] = se cruzo y no habia nada. NULL = NO se pudo cruzar. La pantalla los dice distinto.
-  alergenosDetectados: { alergeno: string; tiempo: string; alimento: string }[] | null;
-  patronConflictos: { patron: string; tiempo: string; alimento: string }[] | null;
-  // Descarte del aviso de alergeno: quien y por que. El aviso NO se borra (la fila es inmutable):
-  // descartar es decir "lo mire y esta bien", no "no paso nada". Null = nadie lo ha descartado.
-  alergenoDescartado: { porEmail: string; motivo: string; en: string } | null;
   status: string; // success, timeout, parse_failed, provider_error
   latencyMs: number | null;
   generatedAt: string;

@@ -13,6 +13,7 @@ import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
+import { patronDeclarado } from "./patron-declarado";
 
 import {
   buildMenuPrompt,
@@ -20,7 +21,6 @@ import {
   MENU_PROMPT_VERSION,
   parseMenuEstructurado,
 } from "../ai/prompts/menu.v3";
-import { cruzarAlergenos, cruzarPatron, extraerDeEncuesta } from "./alergenos";
 
 // Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
 // variables clinicas y objetivos (barrera PII estructural, regla 15): fenotipo, sector,
@@ -97,21 +97,11 @@ export async function generateMenu(
   const { structural, frSector, dfi } = results.snapshot;
   // Contrato PII-free: solo objetivos y variables clinicas seudonimizadas. El texto de
   // sistema es lo unico parametrizable; el mensaje de usuario se arma dentro de buildMenuPrompt.
-  // ALERGIAS Y PATRON ALIMENTARIO (3.2 de Gildardo, 2026-08-26). Son lo unico del prompt que sale de la
-  // ENCUESTA y no del motor, asi que hasta que estas preguntas tuvieron field_key el generador no las
-  // podia ver ni queriendo: le proponia mariscos a un alergico y carne a un vegano. Si la lectura falla,
-  // NO se genera: un menu sin las alergias es peor que ningun menu.
+  // PATRON ALIMENTARIO declarado (3.2b de Gildardo del 26): sin esto el generador le propone carne a un
+  // vegano. Es leer un campo de la encuesta, no una tabla de exclusiones (ver patron-declarado).
   const dominios = await getSurveyAnswersForEvaluation(evaluationId);
-  if (dominios == null) {
-    return err(
-      appError(
-        "conflict",
-        "No se pudieron leer las respuestas de la encuesta, y el menú no se genera sin las alergias del paciente.",
-      ),
-    );
-  }
-  const { alergias, patron } = extraerDeEncuesta(
-    dominios.flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
+  const patron = patronDeclarado(
+    (dominios ?? []).flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
   );
 
   const messages = buildMenuPrompt(
@@ -125,7 +115,6 @@ export async function generateMenu(
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
       rutasAtencion: dfi.rutas,
-      alergias,
       patronAlimentario: patron,
     },
     activePrompt?.content,
@@ -146,12 +135,8 @@ export async function generateMenu(
 
     // CAPA 3: el chequeo exacto. El menu se parsea a la forma del contrato v3 y se cruza alimento contra
     // alimento. Si no parsea NO se cruza, y entonces la sugerencia no puede afirmarse revisada: se
-    // guarda como parse_failed con alergenosDetectados en NULL (que significa "no revisado", distinto
     // de [] que significa "revisado y limpio").
     const menuJson = parseMenuEstructurado(completion.text);
-    const hallazgos = menuJson ? cruzarAlergenos(menuJson, alergias) : null;
-    // Mismo mecanismo, otra consecuencia: el patron avisa (adherencia), el alergeno bloquea (seguridad).
-    const conflictosPatron = menuJson ? cruzarPatron(menuJson, patron) : null;
     await recordMenuSuggestion({
       treatmentId: protocol.treatmentId,
       provider: completion.provider,
@@ -164,8 +149,6 @@ export async function generateMenu(
         latency_ms: completion.latencyMs,
       },
       menuJson,
-      alergenosDetectados: hallazgos,
-      patronConflictos: conflictosPatron,
       status: menuJson ? "success" : "parse_failed",
       latencyMs: completion.latencyMs,
       ...actor,
@@ -182,8 +165,6 @@ export async function generateMenu(
       promptVersion,
       generatedText: null,
       menuJson: null,
-      alergenosDetectados: null, // no se pudo cruzar; NO es "limpio"
-      patronConflictos: null,
       rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
       status,
       latencyMs: null,

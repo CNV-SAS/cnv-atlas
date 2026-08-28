@@ -1,9 +1,8 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { aiMenuSuggestions, menuAllergenDismissals } from "@/db/schema";
+import { aiMenuSuggestions } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 // Persistencia de una sugerencia de menu por IA (B13). ai_menu_suggestions es INMUTABLE
@@ -21,11 +20,8 @@ export type RecordMenuInput = {
   model: string;
   promptVersion: string;
   generatedText: string | null;
-  // v3. menuJson: el menu parseado (NULL en v2 y en fallos). alergenosDetectados: los hallazgos del
-  // cruce; [] = revisado y limpio, NULL = NO se pudo revisar. Los dos estados se leen distinto.
+  // v3: el menu ya parseado. NULL en las filas de la v2 (prosa) y en los intentos con parseo fallido.
   menuJson?: unknown;
-  alergenosDetectados?: unknown;
-  patronConflictos?: unknown;
   rawResponse: unknown;
   status: MenuSuggestionStatus;
   latencyMs: number | null;
@@ -46,8 +42,6 @@ export async function recordMenuSuggestion(input: RecordMenuInput): Promise<{ id
         promptVersion: input.promptVersion,
         generatedText: input.generatedText,
         menuJson: input.menuJson ?? null,
-        alergenosDetectados: input.alergenosDetectados ?? null,
-        patronConflictos: input.patronConflictos ?? null,
         rawResponse: input.rawResponse ?? null,
         status: input.status,
         latencyMs: input.latencyMs,
@@ -75,55 +69,3 @@ export async function recordMenuSuggestion(input: RecordMenuInput): Promise<{ id
   });
 }
 
-/**
- * Descarta el aviso de alergeno de UNA sugerencia concreta, con motivo obligatorio.
- *
- * NO TOCA LA SUGERENCIA, y eso es deliberado, no una limitacion: `ai_menu_suggestions` es inmutable
- * (RLS sin UPDATE/DELETE), asi que el aviso no se puede borrar ni queriendo. Descartar es decir "lo mire
- * y esta bien", no "no paso nada": quien vuelva a abrir esa sugerencia sigue viendo el alergeno detectado
- * Y, al lado, quien lo descarto y por que.
- *
- * El evento va INLINE en la transaccion (regla dura 8), nunca por el bus.
- */
-export async function dismissMenuAllergenAlert(input: {
-  suggestionId: string;
-  reason: string;
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-}): Promise<void> {
-  await db.transaction(async (tx) => {
-    // ESTADO (lo que la pantalla lee) y TRAZA (el evento), en la MISMA transaccion para que no puedan
-    // divergir. El audit log solo no bastaba: es admin-only para SELECT, asi que el profesional escribia
-    // su descarte y no lo veia nunca (defecto cazado en el smoke, ver 0088).
-    await tx
-      .insert(menuAllergenDismissals)
-      .values({
-        suggestionId: input.suggestionId,
-        dismissedBy: input.actorId,
-        dismissedByEmail: input.actorEmail,
-        reason: input.reason,
-      })
-      .onConflictDoUpdate({
-        target: menuAllergenDismissals.suggestionId,
-        // Descartar dos veces el mismo aviso es la MISMA decision, no historia nueva: gana el ultimo.
-        // La historia completa de intentos queda en el audit log, que es donde va la traza.
-        set: {
-          dismissedBy: input.actorId,
-          dismissedByEmail: input.actorEmail,
-          reason: input.reason,
-          dismissedAt: sql`now()`,
-        },
-      });
-    await recordAudit(tx, {
-      event: "menu.allergen_alert_dismissed",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "ai_menu_suggestion",
-      entityId: input.suggestionId,
-      // El MOTIVO es el dato: alguien decidio que un menu con un alergeno detectado se podia usar.
-      payload: { reason: input.reason },
-      ip: input.ip,
-    });
-  });
-}

@@ -1,13 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { getClientIp } from "@/core/http/client-ip";
 import { limitAiMenuByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
-import { dismissMenuAllergenAlert } from "./data/menu-writer";
-import { requireNutricionista } from "./services/require-profession";
 
 import { generateMenu } from "./services/generate-menu";
 import {
@@ -540,44 +537,3 @@ export async function generateMenuAction(
   return { error: null, success: "Menu generado. Revisalo antes de usarlo.", warning: null };
 }
 
-// Motivo del descarte del aviso de alergeno: obligatorio y corto, como el del reenvio de un reporte.
-// Obligatorio porque alguien esta decidiendo que un menu con un alergeno detectado se puede usar, y esa
-// decision tiene dueno. Corto porque no es una nota clinica, es una razon ("la coincidencia es del
-// nombre, el plato no lleva leche"). Tope de tamano como toda entrada externa.
-const dismissAllergenReasonSchema = z
-  .string()
-  .trim()
-  .min(10, "Explica por qué el alérgeno detectado no aplica.")
-  .max(300, "El motivo es demasiado largo.");
-
-export async function dismissMenuAllergenAlertAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  const suggestionId = (form.get("suggestionId") as string | null)?.trim() ?? "";
-  const parsedId = z.guid().safeParse(suggestionId);
-  if (!parsedId.success) return fail("Sugerencia inválida.");
-
-  const parsedReason = dismissAllergenReasonSchema.safeParse(form.get("reason") ?? "");
-  if (!parsedReason.success) {
-    return fail(parsedReason.error.issues[0]?.message ?? "Motivo inválido.");
-  }
-
-  // Solo el nutricionista: es una decision de ambito nutricional, la misma guarda que generar el menu.
-  const prof = await requireNutricionista(user.id);
-  if (!prof.ok) return fail(prof.error.message);
-
-  await dismissMenuAllergenAlert({
-    suggestionId: parsedId.data,
-    reason: parsedReason.data,
-    actorId: user.id,
-    actorEmail: user.email,
-    ip: await getClientIp(),
-  });
-  // NO se revalida aqui, igual que sus vecinas del panel: la accion no revalida y el refresco lo dispara
-  // el hook DESPUES del toast (si revalidara, el remonte correria contra el efecto y el toast se perderia).
-  return { error: null, success: "Aviso de alérgeno descartado. Queda registrado.", warning: null };
-}

@@ -54,6 +54,37 @@ Viven en `ARCHITECTURE.md`. No se rompen sin actualizar el doc primero.
 
 ---
 
+## Regla 0: qué es este software, y qué no es (gobierna todo lo demás)
+
+**Instrucción de Gildardo, 2026-08-27. Está por encima de cualquier otra consideración de producto.**
+
+> **Esto no es un software clínico para médicos. Es un software para aplicar el modelo ANI BIS-E.**
+> No es un sistema de soporte a la decisión clínica, ni un verificador de seguridad alimentaria, ni un
+> tamizador de patologías. **No se compliquen la vida.**
+
+**Y la regla que sale de ahí: el software representa el archivo, LITERALMENTE. No puede tener más, no
+puede tener menos.** No se añaden datos que el archivo no captura, ni secuencias distintas de las que el
+archivo tiene, ni instrumentos que el archivo no incluye. Aplica a la encuesta y a los módulos de
+antropometría, diagnóstico con sus submódulos, rutas de tratamiento y reporte/HC.
+
+**La pregunta cuando algo parece faltar NO es "¿lo construimos?", es "¿por qué no está?", y se le hace a
+él.** Ni nosotros ni su herramienta podemos atribuirnos cambios en el software clínico.
+
+Cómo se aplica en la práctica:
+
+- **Antes de construir contenido diagnóstico, verificar las DOS condiciones:** que el dato ya esté en la
+  encuesta **y** que el criterio ya esté en el archivo. Lo que no cumpla las dos, se le devuelve.
+- **Mostrar un dato capturado NO es construir contenido.** Su archivo ya trae un bloque de datos crudos
+  del paciente; portar eso es representar el archivo. Inventar un tamizaje que cruce esos datos, no.
+- **El motor propone, el profesional dispone.** Ninguna cifra de la prescripción nutricional lleva techo,
+  piso, validación ni advertencia (2026-08-27, §5: vale para TODA la prescripción, no indicador por
+  indicador).
+- **Los ajustes salen de nuestros datos y de nuestros artículos**, no de lo que parezca razonable.
+- Si una propuesta nuestra ya se construyó y resulta que el archivo no la tiene, **se retira**, no se
+  defiende. Precedente: las tablas de alérgenos y patrones (2026-08-27, §10).
+
+---
+
 ## Lo clínico (atención máxima)
 
 Esto es lo que diferencia a Atlas de un proyecto normal. Léelo dos veces.

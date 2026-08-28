@@ -125,7 +125,6 @@ export type Database = {
       }
       ai_menu_suggestions: {
         Row: {
-          alergenos_detectados: Json | null
           generated_at: string
           generated_by: string
           generated_text: string | null
@@ -133,7 +132,6 @@ export type Database = {
           latency_ms: number | null
           menu_json: Json | null
           model: string
-          patron_conflictos: Json | null
           prompt_version: string
           provider: string
           raw_response: Json | null
@@ -141,7 +139,6 @@ export type Database = {
           treatment_id: string
         }
         Insert: {
-          alergenos_detectados?: Json | null
           generated_at?: string
           generated_by: string
           generated_text?: string | null
@@ -149,7 +146,6 @@ export type Database = {
           latency_ms?: number | null
           menu_json?: Json | null
           model: string
-          patron_conflictos?: Json | null
           prompt_version: string
           provider: string
           raw_response?: Json | null
@@ -157,7 +153,6 @@ export type Database = {
           treatment_id: string
         }
         Update: {
-          alergenos_detectados?: Json | null
           generated_at?: string
           generated_by?: string
           generated_text?: string | null
@@ -165,7 +160,6 @@ export type Database = {
           latency_ms?: number | null
           menu_json?: Json | null
           model?: string
-          patron_conflictos?: Json | null
           prompt_version?: string
           provider?: string
           raw_response?: Json | null
@@ -1426,45 +1420,6 @@ export type Database = {
             columns: ["survey_version_id"]
             isOneToOne: false
             referencedRelation: "survey_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      menu_allergen_dismissals: {
-        Row: {
-          dismissed_at: string
-          dismissed_by: string
-          dismissed_by_email: string
-          reason: string
-          suggestion_id: string
-        }
-        Insert: {
-          dismissed_at?: string
-          dismissed_by: string
-          dismissed_by_email: string
-          reason: string
-          suggestion_id: string
-        }
-        Update: {
-          dismissed_at?: string
-          dismissed_by?: string
-          dismissed_by_email?: string
-          reason?: string
-          suggestion_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "menu_allergen_dismissals_dismissed_by_fkey"
-            columns: ["dismissed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "menu_allergen_dismissals_suggestion_id_fkey"
-            columns: ["suggestion_id"]
-            isOneToOne: true
-            referencedRelation: "ai_menu_suggestions"
             referencedColumns: ["id"]
           },
         ]

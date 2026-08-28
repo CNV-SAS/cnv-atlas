@@ -421,10 +421,18 @@ reproducible: mujer 60 anos, 150 cm, 60 kg, sedentaria -> GET 1.172 kcal, piso 1
 Es el 1.2 llegando por el otro lado: no dos descuentos sumados, sino una red colgada de la condicion
 equivocada. Preguntado como punto 4.
 
-**P-59 · El tamizaje de apnea no tiene instrumento.** Aprueba construirlo y lo llama "la omision mas
-grande", pero no da instrumento ni puntos de corte. Los cuatro datos estan capturados (`d3_28`, `d3_27`,
-`d3_26`, IMC). NO se construye sin cortes: es el mismo caso del ECM/BCM en el que el mismo nos dijo que
-hicimos bien en no inventar un umbral.
+**P-59 · El tamizaje de apnea. CERRADA el 2026-08-27: NO SE CONSTRUYE, y la retiro el.** Su respuesta,
+textual: *"No la construyan. Retiren la tarea. El tamizaje de apnea no esta en el cuestionario, y no esta
+porque yo no lo puse. No hay instrumento que darles porque nunca hubo instrumento."* Y lo asumio entero:
+*"esa propuesta salio de mi lado, no del suyo"*, de un analisis que aprobo en bloque sin ver que inventaba
+un instrumento que el archivo no tiene. Es el caso que origina su regla 0 (ver CLAUDE.md).
+
+**Y la instruccion general que sale de ahi:** antes de construir cualquier contenido diagnostico por
+profesion, verificar que **el dato ya este en la encuesta Y el criterio ya este en el archivo**. Lo que no
+cumpla las dos, se le devuelve. Aplicado a su lista aprobada del 26: los diez items restantes YA estan en
+su archivo, en el bloque `=== DATOS CRUDOS DEL PACIENTE ===` que alimenta el diagnostico (L13785-13830).
+No hay que construirlos: hay que portar ese bloque. La apnea era el unico que exigia CRUZAR datos en una
+conclusion nueva, y es el unico ausente de su archivo.
 
 **P-60 · El rango proteico 1,5-2,0 se resolvio contra el archivo: portamos 1,5.** Su documento da un
 rango y `protKg` es escalar; su archivo nuevo implementa `protKg = desnutricion ? 1.5 : 1.25`. Manda el
@@ -544,3 +552,39 @@ Peso, estatura, cintura y cadera corregibles ANTES del diagnostico (despues el c
 correccion, que versiona). SIN fuerza prensil, que ya se captura en condiciones BIS. Y mostrando cual
 valor es el del equipo y cual el corregido. Se le cuenta en la ronda del 28 como aviso, no como
 pregunta: es su pieza y quedo distinta.
+
+---
+
+## Cerradas por su respuesta del 2026-08-27
+
+**P-62 · La casilla de porciones se queda en el SUBGRUPO. Retira su instruccion del 26.** Textual: *"se
+queda en el subgrupo, como esta en mi archivo. Con eso desaparece el problema del cuadre calorico: no
+hacen falta alimentos representantes, ni rangos, ni tocar la validacion de nutrientes."* **Con esto se cae
+entera la Pregunta 11 de la ronda del 26** (cual de las cuatro opciones, y cual es el alimento
+representante de cada grupo): no hay que elegir ninguna, porque no hay que mover nada. Codigo actual
+(casilla en el subgrupo) = archivo. Nada que construir ni que retirar.
+
+**P-63 · Ninguna cifra de la prescripcion nutricional lleva techo, piso, validacion ni advertencia.**
+Textual: *"El software propone y quien decide la cantidad es el profesional. No existe techo y no existe
+piso. Existe una recomendacion, y punto... No me la vuelvan a preguntar indicador por indicador: vale para
+toda la prescripcion nutricional."* Aplicado: `saveAdjustmentsSchema` tenia SEIS limites clinicos
+(proteina 0-4 g/kg, factor de actividad 1-2,5, GEB 500-4000, objetivo 500-6000, peso meta 20-400). Se
+retiraron. Queda solo lo ESTRUCTURAL (numero finito y no negativo), que no limita su criterio: evita que
+un dedo pegado escriba 40.000 y que la cadena calcule sobre basura. `adjFatPct` conserva 0-100 porque es
+el dominio del porcentaje, no un juicio clinico.
+
+**P-64 · Las tablas de alergenos y de patron: RETIRADAS enteras.** Textual: *"Nada de tablas de alergenos,
+ni de equivalencias, ni de filtros. Retiren las dos tablas."* Y el motivo, con nuestras propias palabras
+citadas por el: *"si marcamos de mas, el nutricionista ve avisos falsos, y a la tercera vez aprende a
+ignorarlos"*. Lo retirado: `services/alergenos.ts` (SINONIMOS y PATRON_EXCLUYE), el cruce en el generador,
+los dos avisos del panel, el bloqueo del menu, el descarte con motivo (tabla `menu_allergen_dismissals`),
+las columnas `alergenos_detectados` y `patron_conflictos`, y el bloque de alergias del prompt. Migracion
+`0091`.
+
+**Lo que QUEDA, que es lo que el pide:** que aparezca que el paciente tiene alergias, tal como la encuesta
+las capturo. Su `field_key` sigue cableado y su texto libre sigue alimentando el motor (su 3.1: todas las
+preguntas entran). El PATRON alimentario sigue llegando al generador porque el lo pidio explicitamente en
+su 3.2b, pero como dato declarado, sin tabla de exclusiones (`services/patron-declarado.ts`).
+
+**Y lo que la pantalla no puede decir:** que el menu fue verificado contra las alergias. Verificado: no lo
+decia antes (barrido del copy) y ahora no hay nada que lo insinue, porque no se emite ningun aviso.

@@ -97,12 +97,6 @@ export const aiMenuSuggestions = pgTable(
     generatedText: text("generated_text"), // el menu generado (v2: prosa; v3: el JSON crudo)
     // v3: el menu ya parseado. NULL en las filas de la v2 y en los intentos fallidos.
     menuJson: jsonb("menu_json"),
-    // Hallazgos del cruce de alergenos. Array VACIO = se cruzo y no habia nada; NULL = no se pudo
-    // cruzar (menu v2 o parseo fallido). No son lo mismo aguas abajo.
-    alergenosDetectados: jsonb("alergenos_detectados"),
-    // Choques con el patron alimentario. Aparte de los alergenos a proposito: mismo mecanismo, pero
-    // uno es SEGURIDAD (lista cerrada) y el otro ADHERENCIA (categorias abiertas, sin completitud).
-    patronConflictos: jsonb("patron_conflictos"),
     rawResponse: jsonb("raw_response"),
     status: aiSuggestionStatus("status").notNull(),
     latencyMs: integer("latency_ms"),
@@ -141,18 +135,3 @@ export const aiCriterionSuggestions = pgTable(
   },
   (t) => [index("ai_criterion_suggestions_diagnosis_idx").on(t.diagnosisId)],
 );
-
-// Descarte del aviso de alergeno. Tabla de DOMINIO, no de traza: la pantalla la lee con la sesion del
-// profesional. El mismo hecho deja su evento en clinical_audit_log, que es solo-admin y por eso no sirve
-// para mostrar nada (ver 0088). Los dos se escriben en la misma transaccion.
-export const menuAllergenDismissals = pgTable("menu_allergen_dismissals", {
-  suggestionId: uuid("suggestion_id")
-    .primaryKey()
-    .references(() => aiMenuSuggestions.id, { onDelete: "cascade" }),
-  dismissedBy: uuid("dismissed_by")
-    .notNull()
-    .references(() => profiles.id),
-  dismissedByEmail: text("dismissed_by_email").notNull(),
-  reason: text("reason").notNull(),
-  dismissedAt: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
-});

@@ -202,22 +202,36 @@ export const saveNutraceuticalsSchema = z.object({
 export type SaveNutraceuticalsInput = z.infer<typeof saveNutraceuticalsSchema>;
 
 // Ajustes del profesional sobre el protocolo sugerido (T2 A2), apartados B/D + peso meta de
-// Nivel V. Todos opcionales (ajusta algunos, ninguno o todos); acotados a rangos clinicos
-// razonables para atajar errores obvios. El valor efectivo (ajuste ?? sugerido) y los
-// derivados los resuelve el service; la UI nunca escribe kcal_objetivo/proteina_g directo.
-const optInt = (min: number, max: number, msg: string) =>
-  z.coerce.number().int(msg).min(min, msg).max(max, msg).nullable();
-const optNum = (min: number, max: number, msg: string) =>
-  z.coerce.number().min(min, msg).max(max, msg).nullable();
+// Nivel V. Todos opcionales (ajusta algunos, ninguno o todos). El valor efectivo (ajuste ?? sugerido)
+// y los derivados los resuelve el service; la UI nunca escribe kcal_objetivo/proteina_g directo.
+//
+// SIN TECHOS NI PISOS CLINICOS (Gildardo 2026-08-27 §5). Antes estos campos estaban "acotados a rangos
+// clinicos razonables": proteina 0-4 g/kg, factor de actividad 1-2,5, objetivo 500-6000. Su instruccion,
+// textual: **"El software propone y quien decide la cantidad es el profesional. No existe techo y no
+// existe piso. Existe una recomendacion, y punto. No hay nada que validar, ni que limitar, ni que
+// advertir."** Y vale para TODA la prescripcion nutricional, no indicador por indicador.
+//
+// LO QUE QUEDA ES ESTRUCTURAL, NO CLINICO, y la diferencia importa: que sea un numero FINITO (no NaN,
+// no Infinity, que romperian la cadena de calculo aguas abajo) y NO NEGATIVO donde la unidad no admite
+// negativos. Eso no limita el criterio del profesional: evita que un dedo pegado en el teclado escriba
+// 40.000 y que el resto de la cadena calcule sobre basura. `adjFatPct` conserva el 0-100 porque es el
+// dominio del PORCENTAJE, no un juicio clinico: 120 % no es una prescripcion agresiva, es imposible.
+const optInt = (msg: string) => z.coerce.number().int(msg).finite(msg).min(0, msg).nullable();
+const optNum = (msg: string) => z.coerce.number().finite(msg).min(0, msg).nullable();
 
 export const saveAdjustmentsSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
-  adjGeb: optInt(500, 4000, "El gasto basal ajustado está fuera de rango."),
-  adjPal: optNum(1, 2.5, "El factor de actividad está fuera de rango."),
-  adjKcalObj: optInt(500, 6000, "El objetivo calórico ajustado está fuera de rango."),
-  adjProtGkg: optNum(0, 4, "La proteína g/kg ajustada está fuera de rango."),
-  adjFatPct: optInt(0, 100, "El porcentaje de grasa ajustado está fuera de rango."),
-  adjPesoMeta: optNum(20, 400, "El peso meta está fuera de rango."),
+  adjGeb: optInt("El gasto basal ajustado debe ser un número positivo."),
+  adjPal: optNum("El factor de actividad debe ser un número positivo."),
+  adjKcalObj: optInt("El objetivo calórico ajustado debe ser un número positivo."),
+  adjProtGkg: optNum("La proteína g/kg ajustada debe ser un número positivo."),
+  adjFatPct: z.coerce
+    .number()
+    .int("El porcentaje de grasa debe ser un número entero entre 0 y 100.")
+    .min(0, "El porcentaje de grasa debe ser un número entero entre 0 y 100.")
+    .max(100, "El porcentaje de grasa debe ser un número entero entre 0 y 100.")
+    .nullable(),
+  adjPesoMeta: optNum("El peso meta debe ser un número positivo."),
   // Firma de los seis ajustes que el cliente cargó (candado de concurrencia; ver adjustmentSignature).
   // String opaco: se compara por igualdad, no se interpreta. Default "" para llamadas viejas sin firma.
   baseSignature: z.string().max(200).default(""),

@@ -128,7 +128,7 @@ export async function getTreatmentProtocol(
       .order("name", { ascending: true }),
     supabase
       .from("ai_menu_suggestions")
-      .select("id, provider, model, prompt_version, generated_text, menu_json, alergenos_detectados, patron_conflictos, status, latency_ms, generated_at")
+      .select("id, provider, model, prompt_version, generated_text, menu_json, status, latency_ms, generated_at")
       .eq("treatment_id", treatmentId)
       .order("generated_at", { ascending: false }),
     // GET medido: bis_raw_values de la medicion de esta evaluacion (RLS via la evaluacion).
@@ -182,21 +182,6 @@ export async function getTreatmentProtocol(
   //
   // El aviso NO se borra al descartarlo: el hallazgo vive en ai_menu_suggestions, que es inmutable, y el
   // descarte vive aparte. Descartar es decir "lo mire y esta bien", no "no paso nada".
-  const idsMenu = (menus.data ?? []).map((m) => m.id);
-  const descartes = new Map<string, { porEmail: string; motivo: string; en: string }>();
-  if (idsMenu.length > 0) {
-    const { data: filas } = await supabase
-      .from("menu_allergen_dismissals")
-      .select("suggestion_id, dismissed_by_email, reason, dismissed_at")
-      .in("suggestion_id", idsMenu);
-    for (const f of filas ?? []) {
-      descartes.set(f.suggestion_id, {
-        porEmail: f.dismissed_by_email,
-        motivo: f.reason,
-        en: f.dismissed_at,
-      });
-    }
-  }
 
 
   return {
@@ -274,11 +259,6 @@ export async function getTreatmentProtocol(
       promptVersion: m.prompt_version,
       generatedText: m.generated_text,
       menuJson: (m.menu_json as TreatmentProtocol["menuSuggestions"][number]["menuJson"]) ?? null,
-      alergenosDetectados:
-        (m.alergenos_detectados as TreatmentProtocol["menuSuggestions"][number]["alergenosDetectados"]) ?? null,
-      patronConflictos:
-        (m.patron_conflictos as TreatmentProtocol["menuSuggestions"][number]["patronConflictos"]) ?? null,
-      alergenoDescartado: descartes.get(m.id) ?? null,
       status: m.status,
       latencyMs: m.latency_ms,
       generatedAt: m.generated_at,

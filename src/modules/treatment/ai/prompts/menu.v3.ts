@@ -1,27 +1,16 @@
-// Prompt del menu, version 3. Cambia el CONTRATO DE SALIDA: de prosa libre a JSON estructurado.
+// Prompt del menu, version 3. El CONTRATO DE SALIDA es JSON estructurado (lista de alimentos), no prosa.
 //
-// QUE CAMBIA Y POR QUE. La v2 pedia "Responde solo con el menu" y devolvia prosa. Sobre prosa, el
-// unico chequeo posible de alergenos es buscar subcadenas, y eso falla en las dos direcciones: se le
-// escapa "camarones" cuando la alergia dice "mariscos", y se dispara con "leche de almendras" cuando
-// la alergia es a la leche. Con el menu como LISTA DE ALIMENTOS el cruce es alimento contra alimento
-// (ver alergenos.ts).
+// POR QUE ESTRUCTURADO, tras el retiro del cruce de alergenos (Gildardo 2026-08-27 §10). El JSON nacio
+// para poder cruzar alimento contra alimento; ese cruce se retiro entero. La forma estructurada SE QUEDA
+// por la otra razon, que sigue viva: es lo que permite RENDERIZAR y EDITAR el menu semanal por celda y
+// conectarlo con la lista de intercambio. Sobre prosa libre nada de eso es posible.
 //
-// Y hay una razon de fondo para no dejarlo para despues: sin el chequeo exacto, el bloque de alergenos
-// del prompt PARECE proteger y no protege. Una instruccion al modelo se cumple casi siempre, y "casi
-// siempre" no es criterio cuando lo que esta en juego es una reaccion alergica.
-//
-// LAS TRES CAPAS, y que garantiza cada una:
-//   1. Bloque de alergenos en el prompt (aqui) ....... que el modelo lo SEPA. Instruccion, no garantia.
-//   2. Barrido sobre la salida ....................... alarma de humo.
-//   3. Cruce sobre la salida ESTRUCTURADA (v3) ....... el unico chequeo exacto.
-//
-// LO QUE NINGUNA DE LAS TRES GARANTIZA: un alimento que CONTIENE el alergeno sin nombrarlo (una salsa
-// cesar lleva anchoas y no lo dice). Por eso el resultado se le presenta al profesional y no sustituye
-// su lectura. Esta dicho tambien en alergenos.ts, a proposito, en los dos sitios.
-//
-// La alergia va en su propio bloque y NO mezclada con las restricciones medicas, porque no es del mismo
-// orden: una restriccion medica mal cumplida da un plan subóptimo, una alergia mal cumplida manda a
-// alguien a urgencias.
+// LO QUE ESTE PROMPT NO HACE, Y ES DELIBERADO: no lleva bloque de alergias. Pasarle las alergias al
+// modelo era una verificacion PARCIAL que no podemos sostener (una instruccion se cumple "casi siempre",
+// y casi siempre no es criterio en una reaccion alergica), y el software no es un verificador de
+// seguridad alimentaria (regla 0). El plan lo revisa el profesional antes de entregarlo, que es lo que
+// Gildardo pide. El PATRON alimentario si va: el lo pidio explicitamente (3.2b del 26) y es lo que el
+// paciente declaro, sin tabla de exclusiones ni nadie decidiendo que es keto.
 
 export const MENU_PROMPT_KEY = "menu.generate";
 // Version del CONTRATO en codigo (independiente de la version del texto de sistema editable en BD).
@@ -38,7 +27,6 @@ export type MenuPromptInput = {
   restriccionesModelo: RestriccionModelo[]; // del MOTOR, con referencia; no negociables
   restriccionesProfesional: string[]; // ej. "sin gluten", "vegetariano"
   // NUEVOS EN v3, del 3.2 de Gildardo (2026-08-26).
-  alergias: string[]; // declaradas por el paciente (d6_43 + d6_44), texto libre incluido
   patronAlimentario: string[]; // d4_34: vegetariano, vegano, keto, sin gluten, sin lacteos, bajo en sal
 };
 
@@ -76,18 +64,6 @@ export function buildMenuPrompt(
     `Rutas de atencion priorizadas: ${rutas}.`,
     "",
   ];
-
-  // Bloque de ALERGIAS, primero y aparte. Va antes que todo lo demas porque es lo unico de esta lista
-  // que puede hacer dano fisico inmediato.
-  if (input.alergias.length > 0) {
-    partes.push(
-      "ALERGIAS E INTOLERANCIAS DEL PACIENTE (PROHIBICION ABSOLUTA). Ninguna comida puede incluir " +
-        "estos alimentos, ni preparaciones que los contengan como ingrediente. No hay excepcion ni " +
-        "sustitucion parcial: si una receta habitual los lleva, elige otra receta.",
-      input.alergias.map((a) => `- ${a}`).join("\n"),
-      "",
-    );
-  }
 
   // Patron alimentario: condiciona TODAS las comidas, no excluye un alimento suelto.
   if (input.patronAlimentario.length > 0) {
