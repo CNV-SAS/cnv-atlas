@@ -56,6 +56,16 @@ vienen de ser transitorio.**
 Las que están en juego en esta ronda son tres, y van como preguntas 2 y 3. No las tocamos sin tu
 respuesta.
 
+## Y tercero: cuatro defectos de tu archivo, y tres preguntas de forma
+
+Los puntos **4 a 7** son defectos que encontramos cotejando pantalla contra pantalla. El 4 y el 5 tienen
+cifras clínicas de por medio y los reprodujimos al decimal contra tus propias fórmulas antes de
+escribirte; el 4 es el que más nos preocupa.
+
+Los puntos **8 a 11** son de forma, y en los cuatro tu archivo no decide por nosotros: los colores del
+radar, los rótulos que tú pones y nosotros perdemos, si tu bloque de datos crudos va uno o cuatro, y cómo
+se acota el resumen de condiciones sin volverlo la lista de mercado que no quieres.
+
 ---
 
 # 2 · El "Meta kg": no es contenido clínico, es DÓNDE VIVE un dato
@@ -397,6 +407,90 @@ estructura que tu archivo no tiene, así que no lo hacemos.
 > nuestro.
 
 **Qué hacemos mientras respondes:** portamos el bloque único, que es lo que tu archivo tiene.
+
+---
+
+# 11 · El resumen de condiciones: tus tres fuentes son tuyas, el bloque único no
+
+Nos diste la instrucción en tu punto 11: el resumen del tratamiento son **las alertas de la encuesta, más
+las de la composición corporal, más las autodeclaradas**, y **un resumen, no una lista de mercado**.
+
+Fuimos a tu archivo a buscar qué cuenta como "alerta" en cada una, en vez de decidirlo nosotros. Las tres
+tienen criterio y **las tres son tuyas**:
+
+| Fuente | Criterio | Dónde |
+|---|---|---|
+| Autodeclaradas | diagnósticos salvo "Ninguno", antecedentes solo los de tu `AF_MAP`, TCA prioritario, HTA por campo si no está en el listado | tu bloque de la franja de alertas |
+| Composición | clasificación alterada (`sev ≥ 1`) | tu tabla, como tu HC |
+| Encuesta | `generarAlertas`, 15 reglas con su nivel | tu `generarAlertas` |
+
+Y sobre la última hay dos cosas que tenemos que decirte antes de portarla.
+
+## 11a · `generarAlertas` está escrita pero nunca se ejecuta
+
+**No la llama nadie.** Ni en el archivo del 19 ni en el del 26: la función se define y ahí termina. Cada
+uno de sus quince títulos aparece **exactamente una vez** en todo el archivo, dentro de la definición.
+
+Lo verificamos porque nos pasó justo lo contrario de lo que esperábamos: fuimos a buscar el criterio, lo
+encontramos, y al ir a portarlo vimos que tu software **no emite ninguna de esas quince alertas hoy**.
+
+Por eso no la portamos todavía. Portarla haría que Atlas muestre quince avisos que tu pantalla no muestra,
+y eso es exactamente el "no puede tener más" de tu punto 0. **Es una decisión tuya, no nuestra.**
+
+> **Pregunta 11a.** ¿`generarAlertas` es una pieza que quedó pendiente de conectar, o quedó fuera a
+> propósito? Si la quieres viva, la portamos con sus quince reglas tal cual. Si quedó fuera, la dejamos
+> donde está.
+
+## 11b · Y si la conectas, dos de sus quince reglas leen el grupo equivocado
+
+Esto lo encontramos al portarla, y por tu propia regla del punto 8 ("nunca rotulen por posición, siempre
+por `n`"). Contra tu `FREQ_GROUPS`:
+
+- `n: 13` = **Azúcares añadidos y bebidas azucaradas**
+- `n: 14` = **Ultraprocesados (PCBU)**
+- `n: 15` = **Carnes rojas**
+
+Y las reglas:
+
+| Regla | Lee | Debería leer | Consecuencia |
+|---|---|---|---|
+| **"Riesgo glucémico crítico"**, cuyo texto dice *"N porciones de **bebidas azucaradas** con DM2"* | `d1_15` = **carnes rojas** | `d1_13` | Un diabético con alto consumo de bebidas azucaradas **no dispara la alerta**; uno que come carne roja, sí |
+| **"Estrés alto + azúcares elevados"** | `d1_14` = **ultraprocesados** | `d1_13` | La alerta se llama de azúcares y mide otra cosa |
+
+La primera es la que nos preocupa: es una alerta de nivel **crítico**, y hoy está invertida respecto de lo
+que su propio texto anuncia.
+
+**Y creemos que las dos siguen ahí justamente porque la función no corre.** Nunca han producido una salida
+que alguien pudiera contrastar. Es el argumento más fuerte que se nos ocurre para conectarla o retirarla,
+pero no para dejarla como está.
+
+> **Pregunta 11b.** ¿Confirmas que son `d1_13` en los dos casos? Si la conectamos, la portamos con la
+> corrección; si prefieres que la portemos literal y la arregles tú en el archivo, dinos y lo hacemos así.
+
+## 11c · Lo que no está en tu archivo es el bloque único, y ahí está el riesgo que tú señalaste
+
+Tus tres fuentes viven **en tres sitios distintos**: la franja de autodeclaradas es un encabezado,
+`generarAlertas` es una función aparte, y la composición es tu tabla. **El bloque único que las funde
+está en tu instrucción, no en tu archivo.** Así que la forma la elegimos nosotros, y preferimos no hacerlo
+solos porque es donde aparece la lista de mercado que no quieres.
+
+Con tu propio paciente de demo (`d5_39: ["Diabetes tipo 2", "HTA", "Dislipidemia"]`) la cuenta da así:
+
+- 3 diagnósticos declarados
+- los antecedentes familiares que estén en tu `AF_MAP`
+- las alertas de encuesta que disparen
+- las filas de composición con clasificación alterada
+
+**Entre diez y catorce líneas.** Eso ya no es un resumen, y es tu propio caso de prueba, no uno extremo
+que hayamos construido.
+
+> **Pregunta 11c.** ¿Cómo lo acotamos? Se nos ocurren tres formas y cualquiera nos sirve: **(1)** solo
+> `crítico` y `alto`, dejando lo moderado fuera; **(2)** agrupado por dominio, con un renglón por dominio
+> y el detalle plegado; **(3)** un tope de N líneas por prioridad. Pero elegir cuál **es criterio clínico
+> y es tuyo**: la diferencia entre las tres es qué deja de ver el profesional.
+
+**Qué hacemos mientras respondes:** nada de las tres. La composición ya muestra sus alteradas en su tabla,
+que es donde tu archivo las tiene.
 
 ---
 
