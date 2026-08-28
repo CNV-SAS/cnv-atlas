@@ -110,10 +110,15 @@ function NavLinks({
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              // EL ACTIVO NO ES AZUL, y no es preferencia (ver `--nav-accent` en globals.css): el azul de
+              // accion en el item activo compite con los botones, y un azul nuevo tendria que distinguirse
+              // ademas del `clinical-excellent` del radar. En una barra de 10-15 items el activo necesita
+              // CONTRASTE, no un tono: se pinta con el blanco del contenido sobre el cromo hundido, asi
+              // que se lee "levantado" y conectado con la pagina que muestra.
               active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-nav-accent-bg font-semibold text-nav-accent shadow-sm"
+                : "font-medium text-muted-foreground hover:bg-background/60 hover:text-foreground",
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
@@ -147,18 +152,18 @@ export function AppShell({
           cambiar de seccion habia que subir hasta arriba primero.
           `overflow-y-auto` en el propio aside y no en el nav: si la lista de items crece mas que la
           pantalla (roles con muchos accesos), tiene que poder desplazarse sola sin arrastrar la pagina. */}
-      <aside className="sticky top-0 hidden h-svh w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-background lg:flex">
-        <div className="flex h-16 items-center px-6">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-sunken lg:flex">
+        <div className="flex h-14 items-center px-4">
           <AtlasLogo />
         </div>
-        <nav className="flex flex-1 flex-col gap-1 px-4 py-4">
+        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
           <NavLinks items={navItems} pathname={pathname} />
         </nav>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-background px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border bg-surface-sunken px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
@@ -171,12 +176,12 @@ export function AppShell({
                   <Menu className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
+              <SheetContent side="left" className="w-64 bg-surface-sunken p-0">
                 <SheetTitle className="sr-only">Navegación</SheetTitle>
-                <div className="flex h-16 items-center px-6">
+                <div className="flex h-14 items-center px-4">
                   <AtlasLogo />
                 </div>
-                <nav className="flex flex-col gap-1 px-4 py-4">
+                <nav className="flex flex-col gap-0.5 px-3 py-2">
                   <NavLinks
                     items={navItems}
                     pathname={pathname}
@@ -218,8 +223,20 @@ export function AppShell({
           </DropdownMenu>
         </header>
 
-        <main className="flex-1">
-          <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10">{children}</div>
+        {/* EL TECHO DE ANCHO ERA LA CAUSA REAL de que las pantallas se vieran vacias en escritorio: con
+            `max-w-7xl` (1280px) en un monitor de 1900 quedaban 620 pixeles muertos, y la lista de
+            pacientes se leia como bandeja de correo por el hueco a la derecha, no por la fila.
+
+            NO SE QUITA EL TECHO DEL TODO, que seria el error opuesto: una linea de texto de 1900 pixeles
+            es ilegible (el ojo pierde el renglon al volver). 100rem (1600px) usa el monitor sin llegar
+            ahi, y la longitud de linea del TEXTO se resuelve donde le corresponde, en el componente que
+            lo pinta (`TituloPantalla` acota su descripcion), porque el ancho de lectura es propiedad del
+            texto, no de la pagina.
+
+            El padding vertical baja de py-10 (40px) a py-6: 40px de aire sobre el titulo es de pagina de
+            marketing, y aqui esa altura es tabla que no se ve. */}
+        <main className="flex-1 bg-background">
+          <div className="mx-auto w-full max-w-[100rem] px-4 py-6 lg:px-8">{children}</div>
         </main>
       </div>
     </div>

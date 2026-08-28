@@ -21,6 +21,25 @@
   --color-clinical-moderate-bg: var(--clinical-moderate-bg);
   --color-clinical-critical: var(--clinical-critical);
   --color-clinical-critical-bg: var(--clinical-critical-bg);
+  /*
+   * CAPA DE INTERFAZ (rediseño global 2026-08-28). Separada de la clinica A PROPOSITO, y la separacion
+   * es de AUTORIDAD, no de gusto: los hexadecimales clinicos salen de los clasificadores de Gildardo (el
+   * naranja de Moderado es el hex exacto de su `_DFI_SEVC`), asi que el verde-optimo y el rojo-critico no
+   * se tocan. Esto de aqui si es nuestro y es libre.
+   */
+  --color-surface-sunken: var(--surface-sunken);
+  --color-nav-accent: var(--nav-accent);
+  --color-nav-accent-bg: var(--nav-accent-bg);
+  /*
+   * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
+   * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
+   * roba altura util: el profesional viene a leer una tabla, no un titular. Los nombres son semanticos
+   * para que un cambio de escala sea UN sitio y no 28.
+   */
+  --text-titulo: 1.5rem; /* 24px, titulo de pantalla (antes text-3xl / 30px) */
+  --text-titulo--line-height: 2rem;
+  --text-seccion: 1.125rem; /* 18px, h2 de seccion (antes text-2xl / 24px, competia con el h1) */
+  --text-seccion--line-height: 1.75rem;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -104,8 +123,34 @@
   /* Radios. Base 8px (rounded-lg = inputs/badges, BRAND.md). */
   --radius: 0.5rem;
 
-  /* Sidebar (BRAND.md layout): fondo blanco como el background, items rounded-xl */
-  --sidebar: #ffffff;
+  /*
+   * SUPERFICIE HUNDIDA: el "cromo" de la aplicacion (barra lateral, cabecera) frente al BLANCO del
+   * contenido. Antes la barra lateral era blanca como el contenido y solo la separaba una linea de 1px,
+   * asi que no se leia como barra: se leia como mas pagina. Es un ink-25, mas claro que el ink-50 de los
+   * fondos de area, para que un area hundida dentro del contenido siga distinguiendose del cromo.
+   */
+  --surface-sunken: #fafbfc;
+
+  /*
+   * ACENTO DE NAVEGACION. NO ES UN AZUL, y es deliberado.
+   *
+   * El azul de accion (#205dfd) en el item activo compite con los botones: dos cosas azules en pantalla
+   * y solo una es clicable-para-hacer-algo. Y meter un azul NUEVO tendria que distinguirse ademas del
+   * `--clinical-excellent` (#0ea5e9), que ya significa "banda mejor" en el radar. Tres azules con tres
+   * significados es como se rompen los codigos de color.
+   *
+   * En una barra de 10-15 items, el activo necesita CONTRASTE, no un tono. Asi que el activo se pinta con
+   * ink sobre el blanco del contenido: parece "levantado" del cromo hundido y conectado con la pagina que
+   * esta mostrando. Eso deja el azul entero para la accion y no toca la capa clinica.
+   *
+   * CANDADO: `nav-accent-lock.test.ts` fija que el acento de navegacion no aparezca en ningun componente
+   * que pinte veredicto clinico.
+   */
+  --nav-accent: #15161a; /* ink: el activo es contraste, no color */
+  --nav-accent-bg: #ffffff; /* el blanco del contenido: el item activo se "conecta" con la pagina */
+
+  /* Sidebar (BRAND.md layout): cromo hundido, items rounded-xl */
+  --sidebar: #fafbfc;
   --sidebar-foreground: #15161a;
   --sidebar-primary: #205dfd;
   --sidebar-primary-foreground: #ffffff;
@@ -171,6 +216,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Capa de interfaz en oscuro. MODO OSCURO ESTA FUERA DE ALCANCE (decision de Santiago 2026-08-28) y
+   * ninguna superficie clinica se ha visto en oscuro; estos valores estan para que los tokens NUEVOS no
+   * queden definidos en un solo tema (un color con una sola definicion es el clasico defecto de tema),
+   * no porque el modo oscuro este verificado. */
+  --surface-sunken: oklch(0.205 0 0);
+  --nav-accent: oklch(0.985 0 0);
+  --nav-accent-bg: oklch(0.145 0 0);
 }
 
 @layer base {
