@@ -720,7 +720,7 @@ function RestriccionesSection({
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input
               value={restrInput}
               onChange={(e) => setRestrInput(e.target.value)}
@@ -1025,7 +1025,7 @@ function IntercambioSection({
             Las porciones enteras aproximan el objetivo, no lo igualan; las verduras se fijan en 2 porciones. La
             adecuación real por nutriente se ve en la validación, más abajo.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar intercambio"}
             </Button>
@@ -1557,7 +1557,7 @@ function TiemposSection({
             </p>
           ) : null}
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar distribución"}
             </Button>
@@ -1748,7 +1748,7 @@ function GuidelinesSection({
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Textarea
               value={guideInput}
               onChange={(e) => setGuideInput(e.target.value)}

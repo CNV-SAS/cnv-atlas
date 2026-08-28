@@ -184,6 +184,18 @@ Una tabla clínica dentro de `overflow-x-auto` necesita las tres, y con dos no f
 
 Caso real (2026-08-27): las tres tablas de Diagnóstico funcionaban con 1 y 2 porque no viven dentro de
 un fieldset; las cuatro de Tratamiento, que sí, se partían. Esa era toda la diferencia.
+
+### Y la cuarta, para las filas de acciones: `flex-wrap`
+
+Una fila de botones es el mismo problema en otro sitio: **una fila que no encoge dentro de su
+contenedor**. Dos botones con texto largo ("Guardar distribución" + "Recalcular desde el objetivo") no
+caben en un teléfono, y sin `flex-wrap` el segundo se sale por el borde en vez de bajar a la línea
+siguiente.
+
+**Regla: toda fila de acciones va `flex flex-wrap gap-2`.** El `flex-wrap` no cuesta nada donde sobra
+espacio (no cambia nada en escritorio) y es lo único que evita el desborde donde falta. Barrido del
+2026-08-27: las cuatro filas de acciones del panel de tratamiento lo necesitaban; las demás de la app
+tienen un solo botón o botones cortos.
 - Contraste WCAG AA; focus visible en todo lo interactivo; alt text en imágenes informativas; labels asociados (no solo placeholder); `aria-label` en botones de solo ícono. El riesgo clínico nunca se comunica solo por color.
 
 ## Animaciones
