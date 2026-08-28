@@ -168,6 +168,22 @@ Uniformarla con las pantallas de trabajo rompería ese cotejo.
 
 ## Responsive y accesibilidad
 - Target principal desktop, pero usable en móvil: sidebar a hamburguesa en `<lg`, formularios apilados en `<md`, tablas con scroll horizontal.
+
+### Tablas densas: las TRES piezas, o no se desplaza
+
+Una tabla clínica dentro de `overflow-x-auto` necesita las tres, y con dos no funciona:
+
+1. **`overflow-x-auto` en el contenedor.** Solo, no hace nada: si la tabla puede encogerse, se encoge.
+2. **`min-w-[Nrem]` en la TABLA.** Sin esto el navegador APRIETA las columnas hasta partir los números,
+   y el desplazamiento nunca llega a activarse. El scroll horizontal no es el defecto: es la solución.
+   Valores en uso: 32rem (4-5 columnas), 38rem (8 columnas), 42rem (menú semanal).
+3. **`min-w-0` en el ANCESTRO que sea flex item, y OBLIGATORIO si es un `<fieldset>`.** Un fieldset trae
+   de fábrica `min-inline-size: min-content` y se niega a encogerse; con la tabla ancha estira el
+   fieldset, el fieldset desborda la tarjeta y la tarjeta recorta. Se ve una tabla **partida**, con la
+   barra de scroll flotando fuera, y hasta el texto que está fuera del contenedor sale cortado.
+
+Caso real (2026-08-27): las tres tablas de Diagnóstico funcionaban con 1 y 2 porque no viven dentro de
+un fieldset; las cuatro de Tratamiento, que sí, se partían. Esa era toda la diferencia.
 - Contraste WCAG AA; focus visible en todo lo interactivo; alt text en imágenes informativas; labels asociados (no solo placeholder); `aria-label` en botones de solo ícono. El riesgo clínico nunca se comunica solo por color.
 
 ## Animaciones

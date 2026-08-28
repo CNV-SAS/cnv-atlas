@@ -228,7 +228,7 @@ function CadenaCaloricaSection({
         {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
             lo detecta bajo lock y rechaza sin pisar. */}
         <input type="hidden" name="baseSignature" value={baseSignature} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             <AdjInput
               name="adjPesoMeta"
@@ -719,7 +719,7 @@ function RestriccionesSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
-        <fieldset disabled={locked} className="flex flex-col gap-2">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
           <div className="flex gap-2">
             <Input
               value={restrInput}
@@ -794,7 +794,7 @@ function ObjetivoSection({
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
-        <fieldset disabled={locked} className="flex flex-col gap-2">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
           <Textarea
             name="objetivo"
             value={objetivo}
@@ -894,7 +894,7 @@ function IntercambioSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
           {/* QUE ES UN INTERCAMBIO, en una linea. Es la frase de su archivo, y sin ella la tabla es una
               lista de numeros sin decir para que sirve. La unidad de los macros va AQUI y no en tres
               encabezados: repetir "(g)" tres veces cuesta el ancho que necesitan los numeros. */}
@@ -902,12 +902,21 @@ function IntercambioSection({
             Dentro de un mismo grupo los alimentos son equivalentes: puedes sustituir libremente.
             Proteína, CHO y grasa en gramos.
           </p>
-          <div className="overflow-x-auto">
+          <div className="min-w-0 overflow-x-auto">
             {/* ANCHO MINIMO, y es lo que arregla el "no cabe" (cotejo 2026-08-27). Con `w-full` sin
                 minimo, en pantalla estrecha las columnas se APRIETAN y los numeros se parten en dos
                 lineas; el desplazamiento lateral nunca llega a activarse. Su tabla fija `minWidth: 600`
                 (~38rem) justamente para forzarlo antes de que nada se apriete: el scroll horizontal no
-                era el defecto, era la solucion sin activar. Mismo valor que la tabla de composicion. */}
+                era el defecto, era la solucion sin activar. Mismo valor que la tabla de composicion.
+
+                Y EL `min-w-0` DEL FIELDSET DE ARRIBA ES PARTE DEL MISMO ARREGLO, no un extra. Un
+                `<fieldset>` trae de fabrica `min-inline-size: min-content`: se NIEGA a encogerse por
+                debajo de su contenido, y `min-width:0` del flex item no lo alcanza. Sin el, la tabla de
+                38rem estiraba el fieldset, el fieldset desbordaba la tarjeta y la TARJETA recortaba: se
+                veia una tabla PARTIDA (con la barra de scroll flotando fuera) en vez de una que se
+                desplaza, y hasta el parrafo de ayuda salia cortado, aunque esta fuera de este div.
+                Las tres tablas de Diagnostico funcionaban con el mismo `min-w-` desde antes porque NO
+                estan dentro de un fieldset; esa era toda la diferencia. */}
             <table className="w-full min-w-[38rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -1125,8 +1134,8 @@ function MenuSemanalSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="menu" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
-          <div className="overflow-x-auto">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+          <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className="w-full min-w-[42rem] border-collapse text-sm">
               <thead>
@@ -1272,7 +1281,7 @@ function TiemposActivosSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="activos" value={JSON.stringify(activos)} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             {TIEMPOS_DEF.map((t) => (
               <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
@@ -1443,8 +1452,8 @@ function TiemposSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
-          <div className="overflow-x-auto">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+          <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className="w-full min-w-[38rem] border-collapse text-sm">
               <thead>
@@ -1653,7 +1662,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
           La validación aparece cuando hay porciones en la lista de intercambio.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="min-w-0 overflow-x-auto">
           {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
           <table className="w-full min-w-[32rem] border-collapse text-sm">
             <thead>
@@ -1738,7 +1747,7 @@ function GuidelinesSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
-        <fieldset disabled={locked} className="flex flex-col gap-2">
+        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
           <div className="flex gap-2">
             <Textarea
               value={guideInput}
