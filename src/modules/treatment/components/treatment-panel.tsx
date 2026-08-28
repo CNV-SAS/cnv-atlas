@@ -895,18 +895,35 @@ function IntercambioSection({
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
+          {/* QUE ES UN INTERCAMBIO, en una linea. Es la frase de su archivo, y sin ella la tabla es una
+              lista de numeros sin decir para que sirve. La unidad de los macros va AQUI y no en tres
+              encabezados: repetir "(g)" tres veces cuesta el ancho que necesitan los numeros. */}
+          <p className="text-xs text-muted-foreground">
+            Dentro de un mismo grupo los alimentos son equivalentes: puedes sustituir libremente.
+            Proteína, CHO y grasa en gramos.
+          </p>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            {/* ANCHO MINIMO, y es lo que arregla el "no cabe" (cotejo 2026-08-27). Con `w-full` sin
+                minimo, en pantalla estrecha las columnas se APRIETAN y los numeros se parten en dos
+                lineas; el desplazamiento lateral nunca llega a activarse. Su tabla fija `minWidth: 600`
+                (~38rem) justamente para forzarlo antes de que nada se apriete: el scroll horizontal no
+                era el defecto, era la solucion sin activar. Mismo valor que la tabla de composicion. */}
+            <table className="w-full min-w-[38rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-1 pr-3 font-medium">Alimento</th>
-                  <th className="py-1 pr-3 text-right font-medium">kcal/porción</th>
+                  {/* "Grupo / subgrupo", no "Alimento": las filas SON subgrupos (Cereales, Leche entera)
+                      y los alimentos estan en la ultima columna. Y no es cosmetico: esta columna define
+                      que significa la casilla de Porciones, que Gildardo dejo en el SUBGRUPO el 27. Con
+                      "Alimento" la pantalla contradecia esa decision. Rotulos cortos como los suyos: en
+                      una tabla que no cabe, el ancho del encabezado fuerza el de la columna. */}
+                  <th className="py-1 pr-3 font-medium">Grupo / subgrupo</th>
+                  <th className="py-1 pr-3 text-right font-medium">kcal/porc</th>
                   <th className="py-1 pr-3 text-right font-medium">Porciones</th>
                   <th className="py-1 pr-3 text-right font-medium">kcal</th>
-                  <th className="py-1 pr-3 text-right font-medium">Proteína (g)</th>
-                  <th className="py-1 pr-3 text-right font-medium">CHO (g)</th>
-                  <th className="py-1 pr-3 text-right font-medium">Grasa (g)</th>
-                  <th className="py-1 font-medium">Alimentos</th>
+                  <th className="py-1 pr-3 text-right font-medium">Prot</th>
+                  <th className="py-1 pr-3 text-right font-medium">CHO</th>
+                  <th className="py-1 pr-3 text-right font-medium">Grasa</th>
+                  <th className="py-1 font-medium">Alimentos del grupo</th>
                 </tr>
               </thead>
               <tbody>
@@ -937,10 +954,13 @@ function IntercambioSection({
                       <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{a.kcal}</td>
                       <td className="py-1.5 pr-3 text-right">
+                        {/* Vacio con placeholder, no un 0 literal (como el suyo): en 21 filas, los ceros
+                            compiten visualmente con las porciones asignadas, que es lo que hay que ver. */}
                         <input
                           type="number"
                           min={0}
-                          value={n}
+                          value={n || ""}
+                          placeholder="0"
                           onChange={(e) => setP(a.sub, Math.round(Number(e.target.value) || 0))}
                           className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
                         />
@@ -1107,7 +1127,8 @@ function MenuSemanalSection({
         <input type="hidden" name="menu" value={JSON.stringify(payload)} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
+            <table className="w-full min-w-[42rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-1 pr-3 font-medium">Día</th>
@@ -1424,7 +1445,8 @@ function TiemposSection({
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
+            <table className="w-full min-w-[38rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
                   <th className="py-1 pr-3 text-left font-medium">Alimento</th>
@@ -1632,7 +1654,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
+          <table className="w-full min-w-[32rem] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="py-1 pr-3 text-left font-medium">Nutriente</th>
