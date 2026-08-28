@@ -5,6 +5,77 @@
 
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
+
+## Promesas del consentimiento FIRMADO: barrido de las que el sistema no puede cumplir (2026-08-28)
+
+**Por qué este barrido y no otro.** `CONSENT_ATLAS.md` no es un documento interno: es el texto que el paciente **firma**. Una promesa suya que el sistema no puede ejercer no es deuda de producto, es **una promesa incumplida por escrito**. El barrido se hizo sobre el texto que se sirve HOY (`consent-v1.0.ts`), no sobre el doc, porque es el que se firma.
+
+### Lo que quedó CONSTRUIDO en este barrido
+
+- **Revocación ante el profesional o por el canal de protección de datos** (numerales 9 y 10). Construida el 2026-08-28: por finalidad, con motivo, con actor y con `consent.revoked` en `clinical_audit_log`. Antes solo se podía con un UPDATE a mano en la base.
+
+### HUECO REAL VERIFICADO: la revocación a media sesión NO detiene la captura
+
+`DATA_GOVERNANCE.md` (c) dice: *"Una revocación a media sesión detiene la captura desde ese instante, pero no descarta lo ya capturado."* **La primera mitad no se cumple.**
+
+El gate de la regla dura 15 (`canCreateEvaluation`) corre en **dos** sitios, los dos en `intake-writer`, y los dos **al CREAR** la evaluación. Despues de eso nadie vuelve a preguntar: `saveSurveyProgress` y `completeSurvey` solo resuelven el `resumeToken` (`findAwaitingByToken`) y escriben. Secuencia alcanzable hoy:
+
+1. Se crea el shell (`awaiting_survey`) con las autorizaciones vigentes. El gate pasa.
+2. El paciente empieza a responder y lo deja a medias. El enlace sigue sirviendo.
+3. El paciente revoca (en consulta o por el canal).
+4. Vuelve al enlace y **sigue respondiendo**: las respuestas se escriben y la evaluación llega a `draft`.
+
+**No se arregló en el mismo bloque a propósito: hay una decisión de producto en medio, no solo código.** Bloquear `completeSurvey` deja la evaluación colgada en `awaiting_survey` para siempre. Las preguntas, en orden:
+
+- ¿La evaluación se **cierra** (como el shell abandonado, que ya tiene camino) o **queda esperando** por si el paciente vuelve a firmar?
+- ¿Qué ve **el paciente** al volver al enlace? Un error crudo sería lo peor: acaba de ejercer un derecho, y la pantalla tiene que decírselo en sus términos.
+- El gate nuevo iría en `findAwaitingByToken`, que es el sitio por donde pasan los dos escritores. Es la corrección barata; lo que no es barato es decidir lo de arriba.
+
+### Promesas que siguen sin instrumento
+
+- **"En lo demás, se suprimirá o anonimizará en un plazo razonable"** (numeral 10), y su gemela del numeral 8: *"Si usted solicita la supresión de sus datos, atenderemos su solicitud anonimizando o desvinculando su identidad de la información que no esté sujeta a conservación legal obligatoria."* **No existe ni construido ni especificado** más allá de esas dos frases. No es pantalla, es proceso de retención, y toca decidir qué se anonimiza, cuándo y quién lo dispara. Es lo único del barrido que sigue prometido y sin nada detrás.
+- **"Conocer, actualizar, rectificar"** (numeral 9): diferido, ya registrado (ver "Corrección de datos del paciente después de firmar").
+- **"Solicitar prueba de su autorización"** (numeral 9): parcial. La copia se envía AL FIRMAR (`consent-copy-service`); **reenviarla después** está registrado aparte (ver "Reenviar la copia del consentimiento").
+
+### Lo que SÍ cumple (verificado en este barrido, para no volver a barrerlo)
+
+| Promesa | Dónde | Qué lo cumple |
+|---|---|---|
+| Copia del consentimiento al finalizar | numeral 13 | `consent-copy-service` |
+| Copia al representante y también al menor con correo propio | numeral 11, nota | `ConsentCopyRecipient` (titular / representante / menor) |
+| Rama de edad determinada automáticamente por la fecha de nacimiento | numeral 11 | `consent-branch-check` (dos muros) |
+| Bloque del profesional rellenado automáticamente | numeral 2 | `consent-instance` |
+| Acceso excepcional minimizado y registrado a la historia identificada | numeral 4 | módulo `clinical-access` + `/auditoria` |
+| Control de calidad sobre datos seudonimizados | numeral 4 | `/auditoria`, grants temporales |
+
+**Nota de proceso, para el próximo barrido:** `docs/CONSENT_ATLAS.md` está en v1.7 y el texto que se SIRVE es v1.0 (`consent-v1.0.ts`). Barrer el doc en vez del código habría barrido un texto que nadie firma.
+
+
+## Estados del paciente: archivado (acto) e inactivo (lectura) — DIFERIDO tras la revocación (registrado 2026-08-28)
+
+**Pedido de Santiago:** archivar y desarchivar por profesional, y poder filtrar la lista entre archivados, activos e inactivos. Se difiere porque la **revocación del consentimiento** va primero (promesa escrita en un documento firmado, sin instrumento); ver la entrada de revocación.
+
+**La distinción que hay que preservar al retomarlo: son TRES conceptos y solo UNO es un estado guardado.**
+
+| | Qué es | ¿Se ve en la lista? | Consecuencia |
+|---|---|---|---|
+| **Archivado** | ACTO del profesional, con autor y motivo | No, se esconde | Sale del roster |
+| **Inactivo** | LECTURA derivada del tiempo | Sí, y destacado | Es a quien hay que llamar |
+| **Revocado** | ACTO del paciente (derecho legal) | Sí, obligatorio | Bloquea evaluaciones nuevas (regla dura 15) |
+
+Confundirlos sería el error caro: un revocado NO está archivado (sigue en la lista con su historia, y **tiene que verse** para que el profesional no descubra el bloqueo al intentar); un archivado puede no haber revocado nunca (se mudó, falleció); un inactivo simplemente hace tiempo que no viene.
+
+**Dos hallazgos que abaratan la pieza cuando llegue:**
+
+1. **`patients.deleted_at` YA EXISTE y ya está cableado.** Cinco readers lo filtran con `.is("deleted_at", null)`. Nadie lo escribe. Archivar no necesita columna nueva ni migración: **falta la acción**, no el campo. Con audit log inline (regla dura 8), porque es un acto con autor y motivo.
+2. **El umbral de "inactivo" NO hay que inventarlo.** `src/modules/followups/data/proximo-control.ts` ya deriva la cadencia de control de la **frecuencia de la ruta primaria activa** ("Cada 90 días") con `diasDeFrecuencia()`, por paciente. Un paciente cuya ruta prescribe control cada 90 días y lleva 400 sin volver está atrasado **según el modelo**, no según un número nuestro.
+
+**Por qué "inactivo" NO se guarda.** Es una lectura derivada, de la misma familia que `vigenciaEmision`: se computa al leer. Guardarla trae el problema conocido de sellar lo que hay que derivar (¿quién la apaga cuando el paciente vuelve?).
+
+**Lo único que queda por decidir es cuántos ciclos de retraso cuentan** (uno, dos, tres). Va a Gildardo: es criterio sobre su modelo de seguimiento, no preferencia de UI.
+
+**Consecuencia de esquema, a resolver ENTONCES y no antes:** si archivado usa `deleted_at`, inactivo se deriva y revocado usa `revoked_at`, **`patients.status` se queda sin propósito**. Hoy es un enum de dos valores donde `inactive` no tiene escritor y `active` es el de todos. El chip de la lista debería leer la **revocación**, que es el estado con consecuencia real. Cambio de esquema en tabla ya migrada: se propone, no se hace.
+
 ## El ack de restricciones: maquinaria construida y SIN CABLEAR, a propósito (decisión 2026-08-23)
 
 **DECIDIDO: no se cablea (opción iii). Esto no es un olvido; queda escrito para quien lo retome.**
