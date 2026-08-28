@@ -148,7 +148,7 @@ export default async function MiInventarioPage() {
                     <td className="py-2 pr-4 text-foreground">{m.nutraceuticalName}</td>
                     <td className="py-2 pr-4 text-foreground">{MOVEMENT_LABEL[m.type] ?? m.type}</td>
                     <td className="py-2 pr-4 text-muted-foreground">{m.lote ?? "-"}</td>
-                    <td className={`py-2 pr-4 text-right font-bold ${m.delta < 0 ? "text-clinical-warning" : "text-clinical-optimal"}`}>
+                    <td className={`py-2 pr-4 text-right font-bold tabular-nums ${m.delta < 0 ? "text-clinical-warning" : "text-clinical-optimal"}`}>
                       {m.delta > 0 ? `+${m.delta}` : m.delta}
                     </td>
                   </tr>

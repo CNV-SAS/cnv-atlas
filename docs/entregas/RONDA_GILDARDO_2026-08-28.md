@@ -392,6 +392,13 @@ centro"* y el nuestro solo *"EFR"*.
 > **Pregunta 9.** ¿Confirmamos que los subrótulos van, en los dos sitios: coloreados por severidad en el
 > radar, y con el par FMI/FFMI en cada sector de la Diana? Los portamos ya, por lo que sigue.
 
+**Y dos cosas de la tabla de intercambio, que declaramos sin preguntarte porque no cambian cifra,
+corte ni rótulo clínico, solo cómo se leen:** los números van alineados a la **derecha** con cifras
+tabulares y no centrados como en tu tabla (centrar impide que los dígitos se alineen entre filas), y las
+porciones van **prellenadas** en vez de tras un botón "Sugerir" (el valor prellenado sale de tu propio
+`computeIntercambio`, así que no es una sugerencia nuestra). **Las dos se revierten si prefieres las
+tuyas.**
+
 **Este SÍ lo adelantamos, y te decimos por qué:** es "no puede tener menos" puro, tu archivo ya los tiene
 y el criterio no cambia con la entrega nueva. En el radar el nivel va con el mismo semáforo de los badges
 (no con la escala de los anillos, que es otra cosa); en la Diana el par sale DERIVADO de tu propio
