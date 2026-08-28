@@ -197,6 +197,24 @@ No es preferencia: **se deriva de qué hace el profesional con esa lista.**
 Clasificación actual: `/pacientes` **busca** (dos líneas); `/pacientes/[id]` **compara** (tabla, 2-20
 evaluaciones por paciente); `/evaluaciones` **busca**, y ya son filas agrupadas por estado.
 
+**Corrección del 2026-08-28: "busca" no significa dos líneas SIEMPRE, significa dos líneas EN ESTRECHO.**
+La fila de dos líneas resuelve el teléfono, pero en 1900 píxeles deja la mitad derecha vacía y la lista se
+lee como bandeja de correo. Lo que la clasificación decide es la forma **en el ancho escaso**; en el ancho
+sobrado, los mismos datos van en columnas. `fila-lista.tsx` lo hace: **un solo DOM, un solo contenido, dos
+disposiciones**.
+
+Y las otras dos formas de lograr lo mismo están descartadas, con su razón, porque las tres se ven igual:
+
+- **Renderizar las dos disposiciones y ocultar una con CSS** duplica el contenido en el DOM, y un lector de
+  pantalla anuncia cada fila dos veces. Solo lo nota quien use lector: el smoke visual pasa.
+- **Elegir la disposición en JavaScript** según el ancho rompe la hidratación (el servidor no sabe el ancho)
+  y la primera pintura sale con la disposición equivocada.
+
+**Y la distinción que lo hace seguro, porque no siempre lo es:** lo que descartamos en la matriz de
+frecuencia eran **dos contenidos distintos** según el ancho, y ahí sí se puede enviar una cosa y mostrar
+otra. Esto es **un contenido repartido**. Lo fija `fila-lista.test.tsx`: cada campo aparece exactamente una
+vez en la fila.
+
 Y dos reglas de densidad que salen de lo mismo:
 
 - **Un chip solo cuando dice algo excepcional.** El estado "Activo" no lleva chip; "Inactivo" sí. Gastar

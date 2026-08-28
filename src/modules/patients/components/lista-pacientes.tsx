@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { FilaLista } from "@/components/shared/fila-lista";
+import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { formatDateOnlyShort } from "@/lib/format/date";
 import { edadEnAnios } from "../format";
 import type { PatientListItem } from "../types";
 
-// Lista de pacientes: filas de dos lineas + buscador (BRAND, "si busca, densidad").
+// Lista de pacientes: una sola fila en dos disposiciones (columnas en ancho, dos lineas en estrecho), con
+// buscador. Ver `fila-lista.tsx` para el porque de la mecanica; aqui solo se declara QUE columnas van.
 //
 // EL FILTRO ES EN CLIENTE, y el limite queda escrito porque un dia va a importar. La pagina es un
 // Server Component que trae el roster COMPLETO y lo pasa aqui; filtrar en cliente da respuesta
@@ -25,6 +26,17 @@ import type { PatientListItem } from "../types";
 // dentro de un panel desplegable y el scroll anidado tiene sentido. En una pagina nuestra, un area con
 // scroll propio dentro del scroll de la pagina se pelean en movil (el clasico "se mueve la de adentro
 // cuando querias mover la de afuera"). Y con buscador no hace falta: cuando escribes ya estas arriba.
+
+// EL ORDEN NO ES ARBITRARIO: lo mas mirado primero, tanto en columnas como en la linea concatenada. La
+// ULTIMA CONSULTA abre porque es lo que responde "a quien no veo hace meses"; el DOCUMENTO cierra porque es
+// por lo que se BUSCA (y de eso ya se encarga el buscador de arriba), no lo que se lee.
+const COLUMNAS: readonly ColumnaLista[] = [
+  { rotulo: "Última", ancho: "7rem", numerico: true, rotularEnEstrecho: true },
+  { rotulo: "Evaluaciones", ancho: "7rem", numerico: true, rotularEnEstrecho: true },
+  { rotulo: "Edad", ancho: "4.5rem", numerico: true, rotularEnEstrecho: true },
+  // El documento ya carga su tipo delante ("CC 1.020..."), asi que en estrecho se explica solo.
+  { rotulo: "Documento", ancho: "11rem", numerico: true },
+];
 
 export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) {
   const [busqueda, setBusqueda] = useState("");
@@ -56,59 +68,51 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
         />
       </div>
 
-      <div className="rounded-xl border border-border">
-        {filtrados.length === 0 ? (
-          // Dos vacios DISTINTOS: "no encontré lo que buscas" y "no tienes pacientes" son situaciones
-          // opuestas, y decirle "no hay pacientes" a quien acaba de escribir mal un apellido lo manda a
-          // buscar un problema que no existe.
+      {filtrados.length === 0 ? (
+        // Dos vacios DISTINTOS: "no encontré lo que buscas" y "no tienes pacientes" son situaciones
+        // opuestas, y decirle "no hay pacientes" a quien acaba de escribir mal un apellido lo manda a
+        // buscar un problema que no existe.
+        <div className="rounded-xl border border-border">
           <p className="px-3 py-8 text-center text-sm text-muted-foreground">
             {busqueda.trim()
               ? `Ningún paciente coincide con "${busqueda.trim()}".`
               : "Todavía no tienes pacientes asignados."}
           </p>
-        ) : (
-          <ul className="flex flex-col">
-            {filtrados.map((p) => {
-              const anos = edadEnAnios(p.birthDate);
-              // Linea de metadatos: los cuatro datos secundarios en el ancho de uno. Se omite lo que no
-              // hay en vez de escribir "-": un guion ocupa lo mismo que un dato y no dice nada.
-              // EL ORDEN NO ES ARBITRARIO: lo mas mirado primero. En estrecho la linea envuelve, asi que
-              // no se pierde nada, pero lo que queda en la primera linea es lo que se lee de un vistazo.
-              // La ULTIMA CONSULTA abre porque es lo que responde "a quien no veo hace meses"; el
-              // DOCUMENTO cierra porque es por lo que se BUSCA (y de eso ya se encarga el buscador de
-              // arriba), no lo que se lee. Antes abria el documento y en un telefono la fecha se cortaba.
-              const meta = [
-                p.lastEvaluationDate ? `Última: ${formatDateOnlyShort(p.lastEvaluationDate)}` : null,
-                p.evaluationCount > 0
-                  ? `${p.evaluationCount} ${p.evaluationCount === 1 ? "evaluación" : "evaluaciones"}`
-                  : "Sin evaluaciones",
-                anos !== null ? `${anos} años` : null,
-                `${p.documentType} ${p.documentNumber}`.trim() || "Sin documento",
-              ]
-                .filter(Boolean)
-                .join(" · ");
+        </div>
+      ) : (
+        <ListaFilas columnas={COLUMNAS}>
+          {filtrados.map((p) => {
+            const anos = edadEnAnios(p.birthDate);
+            // Un valor por columna, en el mismo orden. `null` deja la celda vacia en columnas y se omite en
+            // la linea concatenada: un guion ocupa lo mismo que un dato y no dice nada.
+            const valores = [
+              p.lastEvaluationDate ? formatDateOnlyShort(p.lastEvaluationDate) : null,
+              String(p.evaluationCount),
+              anos !== null ? String(anos) : null,
+              `${p.documentType} ${p.documentNumber}`.trim() || null,
+            ];
 
-              return (
-                <FilaLista
-                  key={p.patientId}
-                  href={`/pacientes/${p.patientId}`}
-                  titulo={`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
-                  meta={meta}
-                  // CHIP SOLO SI ES EXCEPCIONAL (BRAND): "Activo" es lo normal y no lleva distintivo;
-                  // gastar ancho en lo que casi siempre es igual es lo contrario de una lista escaneable.
-                  chip={
-                    p.status !== "active" ? (
-                      <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Inactivo
-                      </span>
-                    ) : null
-                  }
-                />
-              );
-            })}
-          </ul>
-        )}
-      </div>
+            return (
+              <FilaLista
+                key={p.patientId}
+                href={`/pacientes/${p.patientId}`}
+                titulo={`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
+                columnas={COLUMNAS}
+                valores={valores}
+                // CHIP SOLO SI ES EXCEPCIONAL (BRAND): "Activo" es lo normal y no lleva distintivo;
+                // gastar ancho en lo que casi siempre es igual es lo contrario de una lista escaneable.
+                chip={
+                  p.status !== "active" ? (
+                    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      Inactivo
+                    </span>
+                  ) : null
+                }
+              />
+            );
+          })}
+        </ListaFilas>
+      )}
 
       {/* Cuantos se ven, para que el filtro no esconda su efecto: si alguien busca y quedan 2 de 40,
           tiene que saber que hay 38 fuera de la vista. */}
