@@ -51,9 +51,13 @@ export function FilaLista({
           </Link>
           {chip}
         </div>
-        {/* `truncate`: la fila NUNCA crece de alto. En una lista que se barre, una fila que se parte en
-            dos rompe el ritmo vertical, que es lo que permite recorrerla con la vista. */}
-        <span className="truncate text-xs text-muted-foreground">{meta}</span>
+        {/* LA META ENVUELVE, EL TITULO NO. Es lo que hace el archivo de Gildardo, y lo corregimos aqui
+            tras el smoke del 2026-08-28: con `truncate` en la meta, en un telefono la linea se cortaba en
+            "Última..." y se perdia la fecha de ultima consulta, que es el dato MAS util para barrer una
+            lista de pacientes. El ritmo vertical uniforme ayuda a recorrer, pero vale MENOS que el dato:
+            una fila desigual se lee, un dato ausente no esta. El titulo si trunca, porque es el ancla
+            visual de la fila. */}
+        <span className="text-xs text-muted-foreground">{meta}</span>
       </div>
       {acciones ? <div className="relative z-10 flex shrink-0 gap-2">{acciones}</div> : null}
     </li>

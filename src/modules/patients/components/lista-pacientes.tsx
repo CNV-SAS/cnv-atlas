@@ -72,13 +72,18 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
               const anos = edadEnAnios(p.birthDate);
               // Linea de metadatos: los cuatro datos secundarios en el ancho de uno. Se omite lo que no
               // hay en vez de escribir "-": un guion ocupa lo mismo que un dato y no dice nada.
+              // EL ORDEN NO ES ARBITRARIO: lo mas mirado primero. En estrecho la linea envuelve, asi que
+              // no se pierde nada, pero lo que queda en la primera linea es lo que se lee de un vistazo.
+              // La ULTIMA CONSULTA abre porque es lo que responde "a quien no veo hace meses"; el
+              // DOCUMENTO cierra porque es por lo que se BUSCA (y de eso ya se encarga el buscador de
+              // arriba), no lo que se lee. Antes abria el documento y en un telefono la fecha se cortaba.
               const meta = [
-                `${p.documentType} ${p.documentNumber}`.trim() || "Sin documento",
-                anos !== null ? `${anos} años` : null,
+                p.lastEvaluationDate ? `Última: ${formatDateOnlyShort(p.lastEvaluationDate)}` : null,
                 p.evaluationCount > 0
                   ? `${p.evaluationCount} ${p.evaluationCount === 1 ? "evaluación" : "evaluaciones"}`
                   : "Sin evaluaciones",
-                p.lastEvaluationDate ? `Última: ${formatDateOnlyShort(p.lastEvaluationDate)}` : null,
+                anos !== null ? `${anos} años` : null,
+                `${p.documentType} ${p.documentNumber}`.trim() || "Sin documento",
               ]
                 .filter(Boolean)
                 .join(" · ");
