@@ -29,8 +29,6 @@
    */
   --color-surface-sunken: var(--surface-sunken);
   --color-nav-accent: var(--nav-accent);
-  --color-sidebar-top: var(--sidebar-top);
-  --color-sidebar-bottom: var(--sidebar-bottom);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -125,57 +123,42 @@
   --radius: 0.5rem;
 
   /*
-   * SUPERFICIE HUNDIDA: el "cromo" de la aplicacion (barra lateral, cabecera) frente al BLANCO del
-   * contenido. Antes la barra lateral era blanca como el contenido y solo la separaba una linea de 1px,
-   * asi que no se leia como barra: se leia como mas pagina. Es un ink-25, mas claro que el ink-50 de los
-   * fondos de area, para que un area hundida dentro del contenido siga distinguiendose del cromo.
+   * SUPERFICIE HUNDIDA: el gris del CONTENIDO, frente al blanco del cromo (barra lateral y cabecera).
+   *
+   * DISPOSICION INVERTIDA el 2026-08-28, tras cotejar la referencia de Santiago: la barra es BLANCA y el
+   * contenido es el gris. Lo teniamos al reves. El argumento es funcional y no estetico: sobre gris, una
+   * tarjeta blanca se lee LEVANTADA sola; sobre blanco, una tarjeta necesita un borde para existir. Con
+   * esta disposicion la jerarquia de superficie de `bloque.tsx` (elevada / plana / sin superficie)
+   * funciona por si misma en vez de apoyarse solo en la sombra.
    */
-  --surface-sunken: #fafbfc;
+  --surface-sunken: #f6f7f9;
 
   /*
-   * BARRA LATERAL: SUPERFICIE PROPIA, en navy con degradado (direccion C, 2026-08-28).
+   * ACENTO DE NAVEGACION: el navy, NO el azul de accion.
    *
-   * POR QUE NO ES EL AZUL DE MARCA TAL CUAL, que es lo que pedia la referencia. Medido con WCAG sobre
-   * #205dfd: blanco puro da 5,19:1 (pasa AA justo), pero el estado INACTIVO no llega ni al 85% de blanco
-   * (4,20:1, por debajo de 4,5). Es un azul claro y saturado: buen fondo, mal contraste. Eso no mata la
-   * barra azul, mata usar ESE azul como superficie de texto. Este navy es de la misma familia y da
-   * 14,66:1 con blanco y 7,82:1 con el inactivo al 70%.
+   * Este token ha ido y vuelto, y la razon es que su contexto cambio dos veces. Con la barra CLARA vuelve
+   * a valer el argumento original: el azul de accion vive al lado, en los botones del contenido, y dos
+   * cosas azules en pantalla donde solo una hace algo confunden. Con la barra oscura ese argumento no
+   * aplicaba (dentro de una superficie propia no hay botones con los que competir) y el token fue el azul
+   * de marca. La barra volvio a ser clara, asi que el token vuelve al navy.
    *
-   * EL DEGRADADO da caracter con LUMINOSIDAD y no con un tono nuevo. Es deliberado: un tono nuevo habria
-   * que defenderlo despues frente a la capa clinica; la luminosidad no compite con nada.
+   * Y en 3px SEÑALA sin COLOREAR: el ojo lo encuentra de reojo y no gasta una superficie entera en un
+   * tono que despues habria que defender frente a la capa clinica.
    *
-   * LA SEPARACION CON LA CAPA CLINICA AQUI ES ESTRUCTURAL, no de disciplina: `NavItem` es
-   * {label, href, icon, roles} y NO admite badge ni contador, asi que no hay forma de meter una cifra con
-   * severidad en la barra. El unico color clinico del layout esta en el banner de MFA, que va POR ENCIMA
-   * del shell. Y el candado lo mantiene asi hacia adelante.
+   * CANDADO: `nav-accent-lock.test.ts` fija que no sea el azul CLINICO (#0ea5e9, "banda mejor" del DFI)
+   * NI el azul de accion, que no aparezca en ningun archivo que pinte veredicto, y que viva solo en el
+   * shell.
    */
-  --sidebar-top: #12245c;
-  --sidebar-bottom: #0d1a3f;
+  --nav-accent: #12245c;
 
-  /*
-   * ACENTO DE NAVEGACION: el azul de marca, pero como SEÑAL de 3px, no como superficie.
-   *
-   * Cambio deliberado respecto de la primera version del rediseño, y la razon es que cambio el contexto.
-   * Aquel argumento ("el azul en el activo compite con los botones") valia para un acento sobre BLANCO,
-   * donde el azul de accion vive al lado. Dentro de una barra con superficie propia no hay ningun boton
-   * de accion con el que competir, y las dos superficies nunca se tocan.
-   *
-   * Y en 3px el azul SEÑALA sin COLOREAR: el ojo lo encuentra de reojo y no gasta una superficie entera
-   * en un tono que despues habria que defender.
-   *
-   * CANDADO: `nav-accent-lock.test.ts` fija que no sea el azul CLINICO (#0ea5e9, "banda mejor" del DFI),
-   * que no aparezca en ningun archivo que pinte veredicto, y que viva solo en el shell.
-   */
-  --nav-accent: #205dfd;
-
-  /* Sidebar de shadcn: se alinea con la superficie propia de arriba. */
-  --sidebar: #12245c;
-  --sidebar-foreground: #ffffff;
+  /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #15161a;
   --sidebar-primary: #205dfd;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(255 255 255 / 0.1);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.12);
+  --sidebar-accent: #f6f7f9;
+  --sidebar-accent-foreground: #15161a;
+  --sidebar-border: #edeff3;
   --sidebar-ring: #205dfd;
 
   /*
@@ -240,9 +223,7 @@
    * queden definidos en un solo tema (un color con una sola definicion es el clasico defecto de tema),
    * no porque el modo oscuro este verificado. */
   --surface-sunken: oklch(0.205 0 0);
-  --sidebar-top: #12245c;
-  --sidebar-bottom: #0d1a3f;
-  --nav-accent: #205dfd;
+  --nav-accent: oklch(0.985 0 0);
 }
 
 @layer base {

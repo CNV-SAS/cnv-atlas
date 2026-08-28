@@ -57,7 +57,13 @@ const NIVEL: Record<NivelBloque, { caja: string; titulo: string }> = {
     titulo: "text-base font-semibold text-foreground",
   },
   derivado: {
-    caja: "rounded-xl border border-border/60 bg-background p-5",
+    // SUPERFICIE PLANA = LA DEL FONDO, no un blanco fijo. Antes era `bg-background` (blanco), que sobre la
+    // pagina BLANCA de entonces daba "plana" por casualidad: los dos niveles eran del mismo color y solo
+    // los separaba la sombra de `decision`. Al invertir la disposicion (contenido gris, 2026-08-28) ese
+    // blanco habria pasado a leerse ELEVADO, igual que `decision`, y los dos niveles habrian colapsado.
+    // `bg-transparent` hereda la superficie sobre la que este, que es lo que "plana" significa de verdad:
+    // plana RESPECTO A SU CONTENEDOR, sea la pagina o una tarjeta que lo contenga.
+    caja: "rounded-xl border border-border/60 bg-transparent p-5",
     titulo: "text-sm font-semibold text-foreground",
   },
   registro: {

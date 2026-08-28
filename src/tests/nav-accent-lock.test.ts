@@ -77,24 +77,26 @@ describe("frontera entre la capa de interfaz y la capa clinica", () => {
     expect(css).toContain("--clinical-excellent: #0ea5e9");
   });
 
-  it("el acento de navegacion NO es el azul CLINICO", () => {
+  // ESTA CLAUSULA SE RETIRO Y VOLVIO EL MISMO DIA, y queda escrito porque es justo el caso que la regla
+  // de "un candado que se afloja cuando estorba deja de ser candado" quiere gobernar.
+  //
+  // La clausula del azul de ACCION se escribio para un acento sobre barra CLARA, donde el azul de los
+  // botones vive al lado. Al pasar la barra a una superficie oscura propia, ese supuesto dejo de ser
+  // cierto (dentro de la barra no hay botones con los que competir) y la clausula se retiro, con la razon
+  // y la condicion de vuelta escritas. La barra volvio a ser clara al cotejar la referencia, asi que el
+  // supuesto volvio a ser cierto y la clausula vuelve.
+  //
+  // Lo que hace que esto sea disciplina y no arbitrariedad: en ningun momento se retiro la clausula que
+  // protege la capa CLINICA, que es la que no depende del contexto.
+  it("el acento de navegacion NO es ninguno de los azules que ya significan algo", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     const nav = /--nav-accent:\s*([^;]+);/.exec(css)?.[1].trim();
     expect(nav).toBeDefined();
-    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO: "banda mejor" del DFI. Esta es la que no se negocia.
+    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO: "banda mejor" del DFI. Esta no se negocia nunca.
+    expect(nav).not.toBe("#205dfd"); // azul de ACCION: con la barra clara vuelve a competir con los botones.
   });
 
-  // ALCANCE REDUCIDO EL MISMO DIA, y queda escrito por que, porque un candado que se afloja cuando estorba
-  // deja de ser candado. La version original tambien exigia que el acento NO fuera el azul de ACCION
-  // (#205dfd). Esa clausula se escribio para un acento sobre BLANCO, donde el azul de accion vive al lado
-  // y compite con los botones. La barra pasa a ser una SUPERFICIE PROPIA (navy) y dentro de ella no hay
-  // ningun boton de accion: el azul de marca ahi es una señal de 3px, no una superficie, y las dos
-  // superficies nunca se tocan.
-  //
-  // NO SE TOCA LA ASERCION, SE ACOTA: lo que se quita es la clausula cuyo supuesto dejo de ser cierto, y
-  // se conserva entera la que protege la capa clinica. Si la barra volviera a ser clara, esa clausula
-  // vuelve.
-  it("y el AZUL DE ACCION dentro de la barra no es una contradiccion: nunca comparte superficie", () => {
+  it("y la frontera con lo clinico es ESTRUCTURAL, no de disciplina", () => {
     // Lo que hace segura la excepcion no es la disciplina, es la ESTRUCTURA: `NavItem` no admite badge ni
     // contador, asi que no hay forma de meter una cifra con severidad en la barra. Si alguien se lo
     // añade, este candado cae y obliga a reabrir la decision.

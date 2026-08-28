@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { MfaRelaxedBanner } from "@/components/layout/mfa-relaxed-banner";
-import { navItemsForRoles } from "@/components/layout/nav-config";
+import { navGroupsForRoles } from "@/components/layout/nav-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MFA_REQUIRED_ROLES, mfaRequirement } from "@/modules/auth/mfa-policy";
 import { mfaRelaxedForTesting } from "@/modules/auth/mfa-relaxation";
@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {mfaRelaxed ? <MfaRelaxedBanner /> : null}
       <AppShell
         user={{ fullName: user.fullName, email: user.email }}
-        navItems={navItemsForRoles(user.roles)}
+        grupos={navGroupsForRoles(user.roles)}
       >
         {children}
       </AppShell>

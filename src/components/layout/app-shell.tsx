@@ -37,7 +37,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { isNavItemActive, type NavIconKey, type NavItem } from "@/components/layout/nav-config";
+import {
+  isNavItemActive,
+  type NavGrupoVisible,
+  type NavIconKey,
+  type NavItem,
+} from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/modules/auth/actions";
 
@@ -73,48 +78,67 @@ function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-function AtlasLogo({ sobreOscuro = false }: { sobreOscuro?: boolean }) {
+function AtlasLogo() {
+  // Con la barra CLARA el logo actual funciona tal cual: no hace falta la version en blanco ni la placa
+  // provisional que hizo falta con la barra navy. El obstaculo desaparecio con la disposicion invertida.
   return (
     <Link href="/dashboard" className="flex items-center" aria-label="Atlas, inicio">
-      {/* PLACA CLARA DETRAS DEL LOGO: ANDAMIO TEMPORAL, no una decision de diseño.
-          El wordmark es una imagen RASTERIZADA embebida en el SVG con filtros de color, asi que no se
-          puede recolorear por CSS: sobre el navy quedaria ilegible. Falta la version en blanco, que es
-          pieza de marca y la decide Santiago. Hasta entonces, la placa deja JUZGAR LA BARRA sin que el
-          logo estorbe la lectura, que es justo para lo que existe. Cuando llegue el logo en blanco,
-          `sobreOscuro` deja de pintar placa y solo cambia la fuente de la imagen. */}
-      {sobreOscuro ? (
-        <span className="rounded-lg bg-white px-2.5 py-1.5">
-          <Image
-            src="/brand/logo-horizontal.svg"
-            alt="Atlas"
-            width={140}
-            height={28}
-            priority
-            unoptimized
-            className="h-6 w-auto"
-          />
-        </span>
-      ) : (
-        <Image
-          src="/brand/logo-horizontal.svg"
-          alt="Atlas"
-          width={140}
-          height={28}
-          priority
-          unoptimized
-          className="h-7 w-auto"
-        />
-      )}
+      <Image
+        src="/brand/logo-horizontal.svg"
+        alt="Atlas"
+        width={140}
+        height={28}
+        priority
+        unoptimized
+        className="h-7 w-auto"
+      />
     </Link>
+  );
+}
+
+function NavGrupos({
+  grupos,
+  pathname,
+  onNavigate,
+}: {
+  grupos: NavGrupoVisible[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const todos = grupos.flatMap((g) => g.items);
+  return (
+    <>
+      {grupos.map((g) => (
+        <div key={g.group ?? "general"} className="flex flex-col gap-0.5">
+          {/* EL ROTULO SOLO CUANDO AHORRA. Lo decide `navGroupsForRoles` por el total de items visibles:
+              en la lista de ocho de un profesional los rotulos son ruido; en la de dieciseis de un admin
+              la lista plana es la que cuesta. `aria-hidden` porque el grupo no es un destino ni un
+              control: con lector de pantalla la lista de enlaces ya se recorre bien sin el. */}
+          {g.label ? (
+            <span
+              aria-hidden
+              className="px-4 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground/70"
+            >
+              {g.label}
+            </span>
+          ) : null}
+          <NavLinks items={g.items} todos={todos} pathname={pathname} onNavigate={onNavigate} />
+        </div>
+      ))}
+    </>
   );
 }
 
 function NavLinks({
   items,
+  todos,
   pathname,
   onNavigate,
 }: {
   items: NavItem[];
+  /** TODOS los items visibles, no solo los del grupo: `isNavItemActive` desempata por prefijo mas largo
+   *  y con una lista parcial marcaria activo un ancestro de otro grupo. */
+  todos: NavItem[];
   pathname: string;
   onNavigate?: () => void;
 }) {
@@ -122,7 +146,7 @@ function NavLinks({
     <>
       {items.map((item) => {
         const Icon = ICONS[item.icon];
-        const active = isNavItemActive(item.href, pathname, items);
+        const active = isNavItemActive(item.href, pathname, todos);
         return (
           <Link
             key={item.href}
@@ -130,23 +154,31 @@ function NavLinks({
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex items-center gap-3 rounded-lg py-1.5 pl-4 pr-3 text-sm transition-colors",
-              // SOBRE LA SUPERFICIE OSCURA, el activo se distingue por CONTRASTE, no por tono: blanco
-              // pleno sobre un velo del 10%. El inactivo va al 70% de blanco, que sobre este navy da
-              // 7,82:1 (el mismo inactivo sobre el azul de marca puro no llegaba a AA: 4,20:1).
+              "relative flex items-center gap-3 rounded-l-lg py-1.5 pl-4 pr-3 text-sm transition-colors",
+              // LA MUESCA. El activo NO lleva bloque ni tinte propio: lleva el GRIS DEL CONTENIDO, con la
+              // señal de 3px y el texto en navy. Redondeado solo a la izquierda y sin margen a la derecha,
+              // asi que se abre hacia la pagina: se lee como una muesca recortada en la barra por la que
+              // asoma el contenido, no como un objeto encima de la barra.
+              //
+              // POR QUE ASI Y NO UN RECTANGULO OSCURO, que es lo que hace la referencia. Un bloque macizo
+              // pesa mucho en una barra de 15 items y arrastra la vista todo el tiempo; el problema no es
+              // el tono, es el bloque. Aqui el activo se marca por PERTENENCIA (es la misma superficie que
+              // la pagina que estas viendo), no por peso. Navy sobre el gris: 13,67:1.
               active
-                ? "bg-white/10 font-semibold text-white"
-                : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
+                ? "bg-surface-sunken font-semibold text-nav-accent"
+                : "font-medium text-muted-foreground hover:bg-surface-sunken/60 hover:text-foreground",
             )}
           >
-            {/* LA SEÑAL DE 3px, y es la pieza que mas rinde de esta direccion: el azul de marca SEÑALA
-                sin COLOREAR una superficie. Va como nodo real y no como `before:` con valor arbitrario,
-                por la misma razon que el separador de la fila de lista: un valor que el compilador no
-                reconoce no da error, simplemente no emite la regla, y desaparece en silencio. */}
+            {/* LA SEÑAL DE 3px: es lo que hace legible la muesca, porque el gris solo es deliberadamente
+                sutil. Va como nodo real y no como `before:` con valor arbitrario, por la misma razon que
+                el separador de la fila de lista: un valor que el compilador no reconoce no da error,
+                simplemente no emite la regla, y el efecto desaparece en silencio.
+                SI EN EL SMOKE QUEDA DEMASIADO SUTIL, el arreglo es subir a `w-1.5` o sumar un tinte al
+                fondo del activo; no hay que rehacer nada. */}
             {active ? (
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-nav-accent"
+                className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-nav-accent"
               />
             ) : null}
             <Icon className="size-4 shrink-0" aria-hidden />
@@ -163,11 +195,12 @@ function NavLinks({
 // Server Component que lo monta) y un subconjunto serializable del usuario.
 export function AppShell({
   user,
-  navItems,
+  grupos,
   children,
 }: {
   user: ShellUser;
-  navItems: NavItem[];
+  /** Items ya filtrados por rol Y repartidos en grupos: la decision la tomo el Server Component. */
+  grupos: NavGrupoVisible[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -180,18 +213,20 @@ export function AppShell({
           cambiar de seccion habia que subir hasta arriba primero.
           `overflow-y-auto` en el propio aside y no en el nav: si la lista de items crece mas que la
           pantalla (roles con muchos accesos), tiene que poder desplazarse sola sin arrastrar la pagina. */}
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-sidebar-top to-sidebar-bottom lg:flex">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-background lg:flex">
         <div className="flex h-14 items-center px-4">
-          <AtlasLogo sobreOscuro />
+          <AtlasLogo />
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-          <NavLinks items={navItems} pathname={pathname} />
+        {/* `pl-3 pr-0`: los items llegan al borde derecho de la barra para que la muesca del activo se
+            abra hacia el contenido en vez de flotar dentro de la barra. */}
+        <nav className="flex flex-1 flex-col gap-0.5 py-2 pl-3 pr-0">
+          <NavGrupos grupos={grupos} pathname={pathname} />
         </nav>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border bg-surface-sunken px-4 lg:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b border-border bg-background px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
@@ -204,17 +239,13 @@ export function AppShell({
                   <Menu className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 border-0 bg-gradient-to-b from-sidebar-top to-sidebar-bottom p-0 text-white">
+              <SheetContent side="left" className="w-64 bg-background p-0">
                 <SheetTitle className="sr-only">Navegación</SheetTitle>
                 <div className="flex h-14 items-center px-4">
-                  <AtlasLogo sobreOscuro />
+                  <AtlasLogo />
                 </div>
-                <nav className="flex flex-col gap-0.5 px-3 py-2">
-                  <NavLinks
-                    items={navItems}
-                    pathname={pathname}
-                    onNavigate={() => setOpen(false)}
-                  />
+                <nav className="flex flex-col gap-0.5 py-2 pl-3 pr-0">
+                  <NavGrupos grupos={grupos} pathname={pathname} onNavigate={() => setOpen(false)} />
                 </nav>
               </SheetContent>
             </Sheet>
@@ -263,7 +294,7 @@ export function AppShell({
 
             El padding vertical baja de py-10 (40px) a py-6: 40px de aire sobre el titulo es de pagina de
             marketing, y aqui esa altura es tabla que no se ve. */}
-        <main className="flex-1 bg-background">
+        <main className="flex-1 bg-surface-sunken">
           <div className="mx-auto w-full max-w-[100rem] px-4 py-6 lg:px-8">{children}</div>
         </main>
       </div>
