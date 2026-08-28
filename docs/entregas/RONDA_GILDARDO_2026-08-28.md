@@ -503,8 +503,68 @@ que hayamos construido.
 que es donde tu archivo las tiene.
 
 ---
+---
 
-# Resumen: las doce, por si prefieres responder por prioridad
+# 12 · Qué pasa con lo ya emitido cuando cambia la ciencia
+
+Tu instrucción sobre el LE8 abrió esto, y es la más grande de la ronda:
+
+> *"Sobre lo ya evaluado: recalcular, y que quede anotado en la historia que el DFI cambió de versión.
+> Recalcular en silencio borra el rastro; no recalcular deja en pie diagnósticos que sabemos mal."*
+
+Estamos construyendo las dos mitades. Ya está la primera: el sistema **detecta y marca** los documentos
+emitidos con una versión anterior, sin invalidarlos (siguen siendo válidos: se emitieron correctamente con
+lo que regía entonces). Lo que falta es quién decide reemitir, y eso es tuyo.
+
+## Antes de las preguntas, el dato que las hace concretas
+
+**No es hipotético: ya pasó.** Lo medimos sobre nuestra base:
+
+- **23 de 40 diagnósticos** siguen emitidos con el motor anterior, tras el cambio de versión del 19 de
+  agosto.
+- **Y 7 de los 8 diagnósticos CONFIRMADOS**, que son los sellados, los que un profesional firmó.
+
+Nadie se enteró, porque hasta ahora no había nada que lo dijera. Y eso fue con **un** cambio de versión.
+El del LE8 va a mover más.
+
+## Y una distinción que cambia la urgencia, aunque el mecanismo sea el mismo
+
+Los casos que esperan esto son de dos clases:
+
+- La **calibración de la EB-BIS** y el **LE8** cambian el **diagnóstico**.
+- El porte de `motorTratNutri` cambia el **tratamiento**: el sodio del hipertenso pasa de 2.300 a 1.500,
+  y un plan aprobado antes sigue prescribiendo lo anterior.
+
+**Un diagnóstico reemitido cambia una lectura; un tratamiento reemitido cambia lo que alguien come hoy.**
+La máquina puede ser la misma; a quién se le avisa y con qué prisa, no.
+
+---
+
+> **Pregunta 12a (la que decide la forma).** Una recalibración poblacional **afecta a todos por
+> definición**. Si la reemisión queda en manos de cada profesional, uno por uno, **garantiza que quede
+> parcial**: unos pacientes con la ciencia nueva y otros con la vieja, sin criterio, según quién entró a
+> mirar. ¿Quieres que una recalibración se dispare **en bloque desde la Dirección Científica**, y que el
+> profesional se entere en vez de decidir? ¿O prefieres que decida siempre él, aceptando que quede
+> parcial?
+
+> **Pregunta 12b (la que la complementa).** Si siempre queda en manos del profesional, **un diagnóstico
+> que sabemos mal puede quedarse en pie para siempre**, que es exactamente lo que dices que no quieres.
+> ¿Hay casos en que la reemisión debe ser **obligatoria** y no opcional? Y si los hay, ¿cuál es el
+> criterio: el tipo de cambio (calibración sí, clasificador no), o cuánto se mueve el resultado?
+
+> **Pregunta 12c (el paciente).** Aquí el dato que la hace decidible: **el paciente ya recibió el reporte
+> anterior.** Así que no es "¿le mandamos el nuevo?", es **"¿le decimos que el anterior cambió?"**. Un
+> reporte reemitido en silencio deja al paciente con dos documentos distintos y sin saber cuál manda;
+> avisarle de un cambio que no altera su conducta puede alarmarlo sin motivo. ¿Qué prefieres, y cambia
+> según si es diagnóstico o tratamiento?
+
+**Qué hacemos mientras respondes:** la detección y el marcado, que no dependen de tu respuesta y son útiles
+igual (hoy nadie sabe qué documentos quedaron atrás). **No construimos la reemisión** hasta que contestes
+la 12a: es la que decide si el mecanismo es masivo o uno por uno, y construirlo al revés sería rehacerlo
+entero.
+
+
+# Resumen: las quince, por si prefieres responder por prioridad
 
 | # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
 |---|---|---|---|
@@ -520,10 +580,13 @@ que es donde tu archivo las tiene.
 | **8** | Nuestro radar usa los colores de tu radar **retirado**: "Bajo" sale azul aquí y verde en tu semáforo | Si retiramos el azul o cambian las etiquetas | **No.** No lo tocamos por nuestra cuenta |
 | **9** | Los **subrótulos** del radar y de la Diana, que tú pones y nosotros perdíamos | Confirmar. **Este ya lo adelantamos**, y se revierte si lo ves mal | **No.** Hecho y reversible |
 | **10** | Tu bloque de datos crudos: **¿uno solo o cuatro** vistas por profesión? | Confirmar que va uno, como en tu archivo | **No.** Pero **espera tu archivo** |
+| **12a** | Una **recalibración afecta a todos por definición**. Uno por uno garantiza que quede parcial | Si se dispara en bloque desde Dirección Científica o decide cada profesional | **No.** Pero **decide la forma del bloque**, así que no lo construimos |
+| **12b** | Si siempre decide el profesional, un diagnóstico que sabemos mal puede quedarse en pie para siempre | Si hay casos de reemisión obligatoria, y con qué criterio | **No** |
+| **12c** | **El paciente ya recibió el reporte anterior**: no es si le mandamos el nuevo, es si le decimos que cambió | Qué prefieres, y si cambia entre diagnóstico y tratamiento | **No** |
 
 ## Lo que esto quiere decir, y por eso va la petición que sigue
 
-**Ninguna de las doce bloquea construcción.** Las doce dicen lo mismo en la última columna, y no es
+**Ninguna de las quince bloquea construcción.** Las quince dicen lo mismo en la última columna, y no es
 casualidad: cada punto está escrito para que podamos seguir mientras respondes, y en todos el estado
 provisional es el que ya tenemos, no uno inventado a la espera.
 
