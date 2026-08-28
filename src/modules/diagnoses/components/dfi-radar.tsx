@@ -1,5 +1,6 @@
 
 import { SEV_LABEL } from "../severity-labels";
+import { SEV_FILL } from "./risk-severity";
 
 // Radar de los 5 dominios del DFI (Diagnostico Funcional Integral): una lectura de forma, de un
 // vistazo, de la severidad por dominio. Cada eje es un dominio; el radio es la severidad (0 al
@@ -181,7 +182,11 @@ export function DfiRadar({
               fontSize={10}
             >
               <tspan x={lx}>{RADAR_LABEL[d.id] ?? d.nombre}</tspan>
-              <tspan x={lx} dy={12} className="fill-muted-foreground" fontSize={9}>
+              {/* El NIVEL del dominio va coloreado por severidad, como en su radar: asi el dominio malo
+                  salta a la vista sin leer los cinco. Mismo semaforo que los badges de las tarjetas
+                  (SEV_FILL sale de risk-severity, la misma fuente unica), NO la escala del radar: los
+                  anillos son ESCALA de fondo y esto es CLASIFICACION, que es lo que el badge dice. */}
+              <tspan x={lx} dy={12} className={SEV_FILL[clampSev(d.sev)]} fontSize={9} fontWeight={700}>
                 {SEV_LABEL[clampSev(d.sev)]}
               </tspan>
             </text>

@@ -229,6 +229,26 @@ const EFR_RISK_ORDER: ReadonlyArray<readonly [number, number]> = [
   [1, 3],
 ];
 
+/**
+ * INVERSA de `efrRiskRank` para el eje ESTRUCTURAL: dado el indice de sector de la Diana (0..8),
+ * que par de bandas (FFMI x FMI) representa. Sale del MISMO `EFR_RISK_ORDER`, asi que no puede
+ * desincronizarse de la posicion ni del color de la celda.
+ *
+ * Existe para rotular los sectores de la Diana. Su archivo los rotula ("E9 · FMI Alto / FFMI Bajo") y
+ * nosotros los pintabamos con el codigo solo, que en 81 celdas obliga a saberse el mapa de memoria.
+ * Se DERIVA y no se escribe a mano justamente porque escribir nueve pares a mano es la forma de que
+ * un dia digan otra cosa que la posicion.
+ */
+export function efrSectorBands(sectorIndex: number): { ffmi: number; fmi: number } | null {
+  const par = EFR_RISK_ORDER[sectorIndex];
+  return par ? { ffmi: par[0], fmi: par[1] } : null;
+}
+
+/** Banda (3/2/1) -> palabra, para los rotulos de eje. Alineado con `bandToLetter`. */
+export function bandToWord(k: number): "Alto" | "Normal" | "Bajo" {
+  return k === 3 ? "Alto" : k === 1 ? "Bajo" : "Normal";
+}
+
 // Rango de riesgo (0..8) de un par de bandas, contra el orden de Gildardo. Clampa a 1..3.
 // Exportado para la Diana visual (posicion y color de las celdas), que ordena por rango, no
 // por banda cruda. Es el MISMO orden que define el numero de estado (unica fuente).

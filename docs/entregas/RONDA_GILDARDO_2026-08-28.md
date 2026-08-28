@@ -23,6 +23,9 @@ no dice en ningún sitio que el menú fue verificado contra las alergias**, ni l
 **Lo que queda, que es lo que pediste:** que aparezca que el paciente tiene alergias, tal como la encuesta
 las capturó.
 
+Con eso se cae también la pregunta que traíamos sobre el alérgeno de LUVIA, así que esta ronda empieza en
+la 2: tu punto 10 la contestó antes de que te llegara.
+
 ### Y una consecuencia buena de tu punto 0: tu lista del 26 no hay que construirla
 
 Aplicamos tu regla de las dos condiciones (el dato en la encuesta **y** el criterio en el archivo) a la
@@ -380,16 +383,21 @@ preferimos confirmarlo antes de tocar el radar.
 
 En tu Diana, cada sector lleva debajo del código lo que significa: bajo **E9** dice *"FMI Alto · FFMI
 Bajo"*, bajo **E1** *"FMI Bajo · FFMI Alto"*, bajo **E4** *"FFMI Normal · FMI Normal"*, y así los nueve.
-En Atlas los sectores salen con el código solo: **E1, E2, E3...** sin nada debajo.
+En Atlas los sectores salían con el código solo: **E1, E2, E3...** sin nada debajo.
 
 Es la misma pérdida y pesa más aquí, porque son 81 celdas: sin el rótulo, `E4` es un código opaco y hay
 que saberse el mapa de memoria para leer la posición del paciente. Tu centro además dice *"EFR · #1
 centro"* y el nuestro solo *"EFR"*.
 
 > **Pregunta 9.** ¿Confirmamos que los subrótulos van, en los dos sitios: coloreados por severidad en el
-> radar, y con el par FMI/FFMI en cada sector de la Diana? Si es sí, los portamos tal cual.
+> radar, y con el par FMI/FFMI en cada sector de la Diana? Los portamos ya, por lo que sigue.
 
-**Qué hacemos mientras respondes:** nada, por lo mismo del punto anterior.
+**Este SÍ lo adelantamos, y te decimos por qué:** es "no puede tener menos" puro, tu archivo ya los tiene
+y el criterio no cambia con la entrega nueva. En el radar el nivel va con el mismo semáforo de los badges
+(no con la escala de los anillos, que es otra cosa); en la Diana el par sale DERIVADO de tu propio
+`EFR_RISK_ORDER`, el mismo que decide la posición y el color de la celda, así que rótulo y posición no se
+pueden desincronizar. Cotejamos los seis sectores cuyos rótulos se leen en tu captura y coinciden los
+seis. **Si alguno te parece mal, se revierte.**
 
 ---
 
@@ -406,7 +414,9 @@ estructura que tu archivo no tiene, así que no lo hacemos.
 > archivo? Si querías cuatro vistas, dinos qué lleva cada una y lo hacemos con tu criterio, no con el
 > nuestro.
 
-**Qué hacemos mientras respondes:** portamos el bloque único, que es lo que tu archivo tiene.
+**Qué hacemos mientras respondes:** esperamos, y por una razón concreta: el bloque conviene portarlo
+contra tu archivo nuevo, no contra el del 26, para no portar dos veces una pieza que acabas de tocar. En
+cuanto llegue, lo portamos como bloque único salvo que nos digas otra cosa.
 
 ---
 
@@ -491,6 +501,26 @@ que hayamos construido.
 
 **Qué hacemos mientras respondes:** nada de las tres. La composición ya muestra sus alteradas en su tabla,
 que es donde tu archivo las tiene.
+
+---
+
+# Una petición de proceso, y la razón
+
+**Cuando respondas y ajustes tu archivo, mándanos la versión modificada en la misma entrega.**
+
+No es un reclamo: es que casi cada ronda produce correcciones en tu HTML, y en el intervalo entre tu
+respuesta y el archivo nuevo **quedamos portando una versión que tú ya cambiaste**. Esta misma ronda es el
+ejemplo: tu respuesta del 27 dice *"va el `ATLAS_v8.html` de hoy, con el piso corregido y los cinco
+defectos"*, y el archivo no venía. Mientras tanto, el piso, los cinco defectos y el cableado de `CAP_REF`
+están detenidos, aunque ya sabemos exactamente qué hay que hacer con los tres.
+
+Lo que perdemos no es tiempo de trabajo: es que **portar contra la versión anterior nos obliga a portar
+dos veces**, y la segunda vez el riesgo no es repetir el esfuerzo, es que quede una mezcla de las dos
+versiones sin que nadie lo note. Un rango de un archivo con una fórmula del otro no da un error: da un
+número plausible y equivocado.
+
+Con el archivo en la misma entrega, tu respuesta y su implementación quedan en el mismo acto, que es lo
+mismo que tú nos pediste para el LE8: **dos cosas que tienen que caer juntas o ninguna.**
 
 ---
 

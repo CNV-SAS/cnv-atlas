@@ -28,6 +28,17 @@ export const DOT_CLS = [
   "bg-clinical-critical",
 ];
 
+// El MISMO semaforo en `fill-*`, para texto dentro de un SVG (los subrotulos del radar). No es una escala
+// nueva: es DOT_CLS con el prefijo que necesita SVG, y por eso vive aqui al lado y no en el componente.
+// Nace del cotejo del 2026-08-27: su radar colorea el nivel de cada dominio ("Alto" en rojo, "Bajo" en
+// verde) y el nuestro los pintaba todos en gris, asi que el dominio malo no saltaba a la vista.
+export const SEV_FILL = [
+  "fill-clinical-optimal",
+  "fill-clinical-warning",
+  "fill-clinical-moderate",
+  "fill-clinical-critical",
+];
+
 // Escala de 3 niveles (optimo / alerta / critico) de los CLASIFICADORES POR INDICADOR (colorSev: verde 0,
 // ambar 2, rojo 3) y de la antropometria (composicion). El azul (excellent) es EXCLUSIVO del mejor nivel
 // del DFI (Bajo), que es una escala de 4; aqui no hay "Bajo", el mejor es OPTIMO = VERDE. Sin esto, cada

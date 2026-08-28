@@ -1,6 +1,6 @@
 "use client";
 
-import { efrRiskRank } from "@/clinical-engine";
+import { bandToWord, efrRiskRank, efrSectorBands } from "@/clinical-engine";
 
 // La Diana EFR: grafico polar de los 81 estados (imagen caracteristica de Atlas, BRAND).
 // Fiel a la definicion del modelo (ATLAS_v7.html:11166,:11177): 9 ANILLOS radiales = IFC x IRC
@@ -170,8 +170,14 @@ export function Diana({
             A1-A9 sobre el radio superior (radial, IFC x IRC, funcion y riesgo). Son rotulos fijos de eje.
             El prefijo se DERIVA del rango al pintar (efrRiskRank), nunca se sella: por eso el renombre no
             necesita migracion ni traduccion, y viejas y nuevas evaluaciones se leen igual. */}
+        {/* El sector lleva DEBAJO del codigo el par de bandas que representa, como en su Diana ("E9 ·
+            FMI Alto / FFMI Bajo"). Sin eso, `E4` es un codigo opaco y hay que saberse el mapa de 81
+            celdas de memoria para leer donde cayo el paciente. El par se DERIVA de EFR_RISK_ORDER
+            (efrSectorBands), la misma fuente que decide la posicion y el color de la celda, asi que
+            rotulo y posicion no se pueden desincronizar. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
-          const [lx, ly] = polar(R + 9, sc * SECTOR_DEG + SECTOR_DEG / 2);
+          const [lx, ly] = polar(R + 13, sc * SECTOR_DEG + SECTOR_DEG / 2);
+          const bandas = efrSectorBands(sc);
           return (
             <text
               key={`sl${sc}`}
@@ -182,7 +188,19 @@ export function Diana({
               fontSize={8}
               className="fill-muted-foreground"
             >
-              E{sc + 1}
+              {bandas ? (
+                <>
+                  <tspan x={lx} dy={-7} fontSize={6}>
+                    FMI {bandToWord(bandas.fmi)}
+                  </tspan>
+                  <tspan x={lx} dy={6} fontSize={6}>
+                    FFMI {bandToWord(bandas.ffmi)}
+                  </tspan>
+                </>
+              ) : null}
+              <tspan x={lx} dy={bandas ? 8 : 0} fontWeight={700}>
+                E{sc + 1}
+              </tspan>
             </text>
           );
         })}
