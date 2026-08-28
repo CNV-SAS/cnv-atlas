@@ -37,11 +37,16 @@
    se aplican a 21 superficies de Tratamiento y Diagnóstico, que antes hablaban cuatro dialectos
    distintos. Documentado en `BRAND.md`, con la regla de jerarquía y nunca navegación interna en
    pantallas del profesional.
-   **Queda:** la tabla de intercambio (espera la pregunta 11 de la ronda: si se resuelve pasa de 21
-   filas a 12 y cambia de forma, así que rediseñarla ahora es rediseñar algo que va a cambiar), y la
-   barra lateral, los componentes y el layout general, que van al final a propósito: si se rediseñan
-   antes, se vuelven a tocar cuando cambie el contenido. **La historia clínica queda fuera** por ser
-   documento imprimible con su cotejo propio (`BRAND.md`).
+   **DESBLOQUEADO (2026-08-27): la tabla de intercambio ya se puede rediseñar.** Esperaba la pregunta 11
+   de la ronda del 26 (mover la casilla de porciones al grupo, que la habría pasado de 21 filas a 12).
+   Gildardo la contestó el 27: **"se queda en el subgrupo, como está en mi archivo"**, y RETIRA su
+   instrucción del 26. La tabla conserva su forma, así que rediseñarla ya no es rediseñar algo que va a
+   cambiar.
+
+   **Queda:** la tabla de intercambio (ya desbloqueada), las superficies de LISTA (/pacientes,
+   /pacientes/[id], /evaluaciones/[id]), y la barra lateral, los componentes y el layout general, que van
+   al final a propósito: si se rediseñan antes, se vuelven a tocar cuando cambie el contenido. **La historia
+   clínica queda fuera** por ser documento imprimible con su cotejo propio (`BRAND.md`).
 
 ## Gates del Hito 2 (revisión de Integrantes en la nube)
 
