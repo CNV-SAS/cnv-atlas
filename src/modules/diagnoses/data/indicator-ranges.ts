@@ -1,4 +1,5 @@
 import type { EngineIndicators } from "@/clinical-engine";
+import { fmtDec } from "@/lib/format/decimal";
 
 // Rangos de referencia y DELTA de la tabla de indicadores. Los RANGOS de referencia se transcriben
 // VERBATIM del HTML de Gildardo (docs/entregas/gildardo-2026-07-30/ATLAS_v7.html, filas R(...) de los
@@ -30,7 +31,9 @@ import type { EngineIndicators } from "@/clinical-engine";
 export type IndicatorRange = { reference: string; delta: string | null };
 
 // Formato como el HTML (fN / toFixed): N decimales, conservando ceros a la derecha y el signo.
-const f = (n: number, d: number) => n.toFixed(d);
+// Coma decimal: es texto que ve el profesional (ver lib/format/decimal). Solo cambia el separador;
+// los decimales y el signo quedan exactamente como estaban.
+const f = (n: number, d: number) => n.toFixed(d).replace(".", ",");
 
 // Clasificacion de la DESVIACION del ICA-BIS (PABU − φ), PORTADA VERBATIM de la rama de desviacion del
 // clasificador del PABU en el frozen (engine.core.derived.js:73-77, `d = Math.abs(raw)`): la misma que su
@@ -65,16 +68,16 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
   switch (code) {
     case "IFC": // cIFC: >hi optima · lo–hi alerta · <lo disfuncion (mas alto es mejor)
       return sexM
-        ? "óptima >6.68 · alerta 4.12–6.68 · disfunción <4.12"
-        : "óptima >3.28 · alerta 2.08–3.28 · disfunción <2.08";
+        ? "óptima >6,68 · alerta 4,12–6,68 · disfunción <4,12"
+        : "óptima >3,28 · alerta 2,08–3,28 · disfunción <2,08";
     case "IRC": // cIRC: <lo bajo · lo–hi moderado · >hi alto (mas bajo es mejor)
       return sexM
-        ? "bajo <1.68 · moderado 1.68–2.11 · alto >2.11"
-        : "bajo <2.27 · moderado 2.27–2.85 · alto >2.85";
+        ? "bajo <1,68 · moderado 1,68–2,11 · alto >2,11"
+        : "bajo <2,27 · moderado 2,27–2,85 · alto >2,85";
     case "IEHH": // cIEHH (sin sexo): ≤0 óptimo · ≤1 leve · ≤2 moderado · >2 severo
       return "óptimo ≤0 · leve ≤1 · moderado ≤2 · severo >2";
     case "ISCM": // cISCM (sin sexo): ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5
-      return "ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5";
+      return "ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2,5 · ISCM-4 >2,5";
     case "IAE": // cIAE (sin sexo, años): <−5 desacelerado · −5..5 concordante · >5 acelerado
       return "desacelerado <−5 · concordante −5 a 5 · acelerado >5";
     case "FMI": // cFMI: banda media Normal (H 3–6, F 5–9)
@@ -113,13 +116,13 @@ export function indicatorRange(
       // cIFC: sano = optima (> hi). Umbral = hi (M 6.68, F 3.28). Δ = valor − hi (corte unico).
       if (ind.ifc == null) return null;
       const hi = sexM ? 6.68 : 3.28;
-      return { reference: `> ${hi}`, delta: f(ind.ifc - hi, 2) };
+      return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, 2) };
     }
     case "IRC": {
       // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.68, F 2.27). Δ = valor − lo (corte unico).
       if (ind.irc == null) return null;
       const lo = sexM ? 1.68 : 2.27;
-      return { reference: `< ${lo}`, delta: f(ind.irc - lo, 2) };
+      return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, 2) };
     }
     case "FMI": {
       // cFMI: sano = Normal (M 3-6, F 5-9). Gildardo §2 (2026-08-17): Δ contra el BORDE SUPERIOR (M 6 / F 9),
@@ -130,7 +133,7 @@ export function indicatorRange(
     }
     case "PABU":
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618 (sin cambio respecto al HTML).
-      return ind.pabu != null ? { reference: "φ = 1.618", delta: f(ind.pabu - 1.618, 4) } : null;
+      return ind.pabu != null ? { reference: "φ = 1,618", delta: f(ind.pabu - 1.618, 4) } : null;
     case "ICA-BIS":
       // ICA-BIS = PABU − φ: su referencia de normalidad es 0 (coherencia perfecta), NO φ. Δ = valor − 0
       // = el valor mismo. La etiqueta de referencia decia "φ = 1.618" (copiada de PABU): era inconsistente
@@ -173,13 +176,13 @@ export function indicatorRange(
       // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 6.5 / F 6.0), no el punto medio del rango.
       const ref = sexM ? 6.5 : 6.0;
       // D-016: el AF (y su delta) siempre con 1 decimal.
-      return { reference: sexM ? "6.5–7.0°" : "6.0–6.5°", delta: f(ind.AF - ref, 1) };
+      return { reference: sexM ? "6,5–7,0°" : "6,0–6,5°", delta: f(ind.AF - ref, 1) };
     }
     case "IR": {
       if (!(ind.IR > 0)) return null;
       // CA-2: corte unico (M 0.78; F 0.82); la referencia ES el corte. Δ = valor − corte (sin cambio).
       const ref = sexM ? 0.78 : 0.82;
-      return { reference: sexM ? "<0.78" : "<0.82", delta: f(ind.IR - ref, 3) };
+      return { reference: sexM ? "<0,78" : "<0,82", delta: f(ind.IR - ref, 3) };
     }
     default:
       return null;

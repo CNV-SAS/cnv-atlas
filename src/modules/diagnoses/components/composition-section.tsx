@@ -13,6 +13,7 @@ import {
   wangRowDx,
 } from "../data/composition-display";
 import { SEV_CLS } from "./risk-severity";
+import { decimalesEsp, fmtDec } from "@/lib/format/decimal";
 
 // Composicion corporal (Niveles de Wang) + clasificacion antropometrica de referencia. Todo desde
 // bis_raw_values (inmutable por medicion), no del registry vivo. La clasificacion antropometrica
@@ -29,9 +30,11 @@ import { SEV_CLS } from "./risk-severity";
 
 // Dos decimales por defecto (Gildardo usa dos; en composicion la segunda cifra importa). El guard de
 // entero evita "80.00" donde no aporta; la referenceLabel (cadenas como "<0.45") no pasa por aqui.
+// Coma decimal (lib/format/decimal): esta tabla convive con las tarjetas del DFI, que traen las cadenas
+// del motor ya en español. Con toFixed crudo la pantalla mezclaba los dos separadores.
 function fmt(v: number | null, dec = 2): string {
   if (v == null) return "-";
-  return Number.isInteger(v) ? String(v) : v.toFixed(dec);
+  return fmtDec(v, dec);
 }
 
 type Classifications = Record<string, { label?: string } | null>;
@@ -193,11 +196,16 @@ export function CompositionSection({
 
     // Columna Referencia
     const motorRef = references[r.key]; // FMI (y FFMI/AF/IR si no hay display): rango del motor + Δ formateado
-    const refText = isFmi && motorRef
-      ? motorRef.reference
-      : w
-        ? w.referenceLabel
-        : (r.referenceLabel ?? fmt(effectiveRef, dec));
+    // decimalesEsp en el BORDE de render: las referenceLabel son cadenas ya armadas ("<0.45",
+    // "18.5-24.9", "IMC 18.5-24.9 · CC ≤102 cm") repartidas por composition-display. Se convierte el
+    // separador aqui, en el unico sitio que las pinta, en vez de editar quince literales sueltos.
+    const refText = decimalesEsp(
+      isFmi && motorRef
+        ? motorRef.reference
+        : w
+          ? w.referenceLabel
+          : (r.referenceLabel ?? fmt(effectiveRef, dec)),
+    );
     // El "*" de REF_POB "en validacion" se derivo una vez en starKeys (solo referencias numericas, no bandas).
     const showStar = starKeys.has(r.key);
 

@@ -15,6 +15,7 @@ import {
   type Sexo,
 } from "@/clinical-engine/frozen/engine.core.derived.js";
 import { indicatorBands, indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
+import { fmtDec } from "@/lib/format/decimal";
 
 // Rangos de referencia (verbatim del HTML) + DELTA unificada de Gildardo (CA-2, opcion B): Δ = valor −
 // referencia de normalidad (promedio del rango si dos bordes; el corte si uno). Ancla los casos
@@ -38,31 +39,31 @@ const ind = {
 
 describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2)", () => {
   it("AF (M) 5,8: rango '6.5–7.0°', Δ contra el BORDE inferior (6.5) = -0.7 (Gildardo §2)", () => {
-    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6.5–7.0°", delta: "-0.7" });
+    expect(indicatorRange("AF", ind, true)).toEqual({ reference: "6,5–7,0°", delta: "-0,7" });
   });
 
   it("IR (M) 0,798: un solo limite '<0.78', Δ contra el corte = 0.018 (sin cambio)", () => {
-    expect(indicatorRange("IR", ind, true)).toEqual({ reference: "<0.78", delta: "0.018" });
+    expect(indicatorRange("IR", ind, true)).toEqual({ reference: "<0,78", delta: "0,018" });
   });
 
   it("IFC/IRC/FMI (M): salen del CLASIFICADOR del motor (Q20/C11), no de la tabla de display", () => {
     // IFC 5.3651: sano = optima (> hi 6.68). Umbral 6.68, Δ = valor − 6.68 = -1.31.
-    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6.68", delta: "-1.31" });
+    expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,68", delta: "-1,31" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
-    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1.68", delta: "0.14" });
+    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,68", delta: "0,14" });
     // FMI 6.369: Normal 3–6. Gildardo §2: Δ contra el BORDE superior 6 = 0.37 (antes promedio 4.5 = 1.87).
-    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "0.37" });
+    expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "0,37" });
   });
 
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
     // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9. FMI Δ contra el BORDE superior 9 = -2.63 (Gildardo §2).
-    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3.28", delta: "2.09" });
-    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2.27", delta: "-0.45" });
-    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2.63" });
+    expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,28", delta: "2,09" });
+    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,27", delta: "-0,45" });
+    expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2,63" });
   });
 
   it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
-    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0.3745" });
+    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0,3745" });
   });
 
   it("EB: referencia '—' (edad no sellada) → Δ TAMBIEN oculta (no se muestra una diferencia sin referencia)", () => {
@@ -97,22 +98,22 @@ describe("la Δ se resuelve por indicador, no por referencia (guard de ICA-BIS)"
 // corte unico; IAE se queda en punto medio (excepcion pendiente, a la ronda).
 describe("regresion Δ sobre el donante golden (antes punto medio → despues borde, Gildardo §2)", () => {
   it("AF: -1.0 (promedio 6.75) → -0.7 (borde inferior 6.5, 1 decimal)", () => {
-    expect(indicatorRange("AF", ind, true)?.delta).toBe("-0.7");
+    expect(indicatorRange("AF", ind, true)?.delta).toBe("-0,7");
   });
 
   it("ISCM: -2.07 (valor crudo, ref implicita 0) → -1.07 (corte -1)", () => {
-    expect(indicatorRange("ISCM", ind, true)).toEqual({ reference: "≤−1", delta: "-1.07" });
+    expect(indicatorRange("ISCM", ind, true)).toEqual({ reference: "≤−1", delta: "-1,07" });
   });
 
   it("FFMI: 0.10 (promedio 21) → 4.10 (borde inferior 17)", () => {
-    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4.10" });
+    expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4,10" });
   });
 
   it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500", () => {
-    expect(indicatorRange("IR", ind, true)?.delta).toBe("0.018");
-    expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0.3745");
-    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0.3745");
-    expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0.500");
+    expect(indicatorRange("IR", ind, true)?.delta).toBe("0,018");
+    expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0,3745");
+    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,3745");
+    expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,500");
   });
 
   it("IAE (dos colas): Δ en guion (null), referencia conservada (Santiago 2026-08-19)", () => {
@@ -186,16 +187,16 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(cIFC(4.12, M).risk).toBe("moderado");
     expect(cIFC(6.68, M).risk).toBe("moderado");
     expect(cIFC(6.69, M).risk).toBe("bajo");
-    expect(indicatorBands("IFC", true)).toContain("4.12");
-    expect(indicatorBands("IFC", true)).toContain("6.68");
+    expect(indicatorBands("IFC", true)).toContain(fmtDec(4.12));
+    expect(indicatorBands("IFC", true)).toContain(fmtDec(6.68));
   });
   it("IRC (M): transiciones en 1.68 y 2.11", () => {
     expect(cIRC(1.67, M).risk).toBe("bajo");
     expect(cIRC(1.68, M).risk).toBe("moderado");
     expect(cIRC(2.11, M).risk).toBe("moderado");
     expect(cIRC(2.12, M).risk).toBe("alto");
-    expect(indicatorBands("IRC", true)).toContain("1.68");
-    expect(indicatorBands("IRC", true)).toContain("2.11");
+    expect(indicatorBands("IRC", true)).toContain(fmtDec(1.68));
+    expect(indicatorBands("IRC", true)).toContain(fmtDec(2.11));
   });
   it("IEHH: transiciones en 0/1/2 (Optimo/Leve/Moderado/Severo)", () => {
     expect(cIEHH(0).l).toBe("Óptimo");
@@ -210,7 +211,7 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(cISCM(2.5).l).toContain("ISCM-3");
     expect(cISCM(2.6).l).toContain("ISCM-4");
     expect(indicatorBands("ISCM", true)).toContain("≤−1");
-    expect(indicatorBands("ISCM", true)).toContain("2.5");
+    expect(indicatorBands("ISCM", true)).toContain(fmtDec(2.5, 1));
   });
   it("IAE: transiciones en -5/5 (desacelerado/concordante/acelerado)", () => {
     expect(cIAE(-6).l).toBe("Desacelerado");

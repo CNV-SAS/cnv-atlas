@@ -17,6 +17,7 @@ import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
 import { formatDate } from "@/lib/format/date";
+import { fmtDec } from "@/lib/format/decimal";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
 // pura desde el snapshot inmutable + contenido EFR. Sin PII al exterior; el profesional
@@ -54,8 +55,11 @@ function fmtNum(v: number | null, code?: string): string {
   if (v == null) return "N/D";
   // D-016: el angulo de fase SIEMPRE con 1 decimal (2 sugieren una exactitud que el equipo no tiene).
   // Solo el AF; el resto de indicadores conserva su formato (2 decimales / entero).
-  if (code === "AF") return v.toFixed(1);
-  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  // Coma decimal (lib/format/decimal): las tarjetas del DFI de esta misma pantalla traen las cadenas
+  // del motor, que ya vienen en español ("IFC 6,98"). Con toFixed crudo el mismo renglon mezclaba
+  // 6,98 y 6.68. Solo cambia el separador; los decimales quedan igual.
+  if (code === "AF") return fmtDec(v, 1);
+  return fmtDec(v, 2);
 }
 
 // Cortes inline de un item de dominio del DFI (hibrido aprobado): detecta el codigo del indicador al inicio
