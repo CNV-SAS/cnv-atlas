@@ -527,3 +527,20 @@ exposicion y no sobre practica: un bloqueo que estorba en cada consulta se vuelv
 deja de proteger. Eso es criterio clinico.
 
 **LUVIA no esta construida**, asi que no hay nada que deshacer: entra con el criterio que el diga.
+
+**P-67 · "Meta kg": divergencia visible con su archivo, y NO se porta.** Su tabla de composicion tiene
+un campo editable "Meta kg" en la fila de Peso; Atlas deja esa celda vacia. La razon: en Atlas el peso
+meta YA tiene fuente unica (lo calcula su propio `motorProtocolo` y el nutricionista lo sobrescribe con
+`adj_peso_meta`, que entra a toda la cadena). Un campo editable en la ENTRADA seria una SEGUNDA fuente
+del mismo concepto, o sea el problema de los dos objetivos caloricos que el mismo hizo colapsar. Y hay
+obstaculo practico: `adj_peso_meta` vive en `treatments`, que no existe antes del diagnostico.
+
+**Su archivo lo tiene porque alli todo el bloque es editable y no hay motor que lo calcule. Nosotros si
+lo tenemos.** Esa es la diferencia y es la que decide. Va como pregunta 2 de la ronda del 28, por ser
+divergencia VISIBLE (si la ve en una captura, va a preguntar).
+
+**P-68 · Portado el bloque de medidas editables de su archivo, con tres diferencias deliberadas.**
+Peso, estatura, cintura y cadera corregibles ANTES del diagnostico (despues el camino es el flujo de
+correccion, que versiona). SIN fuerza prensil, que ya se captura en condiciones BIS. Y mostrando cual
+valor es el del equipo y cual el corregido. Se le cuenta en la ronda del 28 como aviso, no como
+pregunta: es su pieza y quedo distinta.
