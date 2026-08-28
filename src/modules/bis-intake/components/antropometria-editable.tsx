@@ -8,6 +8,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 import type { CompositionCorrections } from "@/modules/diagnoses/data/composition-map";
 
 import { clearBisCorrectionAction, correctBisValueAction, type BisCorrectionState } from "../actions";
+import { variableCruda } from "../services/medidas-corregibles";
 
 // ANTROPOMETRIA EDITABLE. Porte del bloque "Datos Personales" de su archivo, con su nota:
 //
@@ -70,8 +71,11 @@ export function AntropometriaEditable({
 
       <div className="grid gap-3 sm:grid-cols-2">
         {CAMPOS.map((c) => {
-          const fix = corrections[c.key];
-          const actual = fix ? fix.corregido : valores[c.key];
+          // Las correcciones vienen keyed por el nombre CRUDO (el encabezado normalizado del Biody),
+          // que es como se guardan. La traduccion la hace el MISMO helper que usa el writer: con dos
+          // traducciones distintas volveriamos al fallo mudo de buscar en un sitio y guardar en otro.
+          const fix = corrections[variableCruda(c.key)];
+          const actual = valores[c.key];
           return (
             <div key={c.key} className="flex flex-col gap-1">
               <label htmlFor={`antro-${c.key}`} className="text-xs font-medium text-foreground">
@@ -84,6 +88,11 @@ export function AntropometriaEditable({
                 // accion, asi que un valor rechazado borraria lo que el profesional acaba de escribir
                 // (hazard 2 de CLAUDE.md).
                 <form
+                  // KEY DERIVADA DEL VALOR GUARDADO: sin esto el input es no controlado y conserva lo
+                  // que el profesional escribio, asi que al restaurar "el del equipo" el aviso decia
+                  // que se restauro y el campo seguia mostrando lo otro. Con la key, el campo se
+                  // remonta cuando el valor del servidor cambia. Mismo patron que el panel.
+                  key={`${c.key}-${actual ?? "sin"}`}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const datos = new FormData(e.currentTarget);

@@ -422,7 +422,7 @@ export type Database = {
           corrected_by: string
           corrected_by_email: string
           measurement_id: string
-          value: number
+          original_value: number
           variable_name: string
         }
         Insert: {
@@ -430,7 +430,7 @@ export type Database = {
           corrected_by: string
           corrected_by_email: string
           measurement_id: string
-          value: number
+          original_value: number
           variable_name: string
         }
         Update: {
@@ -438,7 +438,7 @@ export type Database = {
           corrected_by?: string
           corrected_by_email?: string
           measurement_id?: string
-          value?: number
+          original_value?: number
           variable_name?: string
         }
         Relationships: [

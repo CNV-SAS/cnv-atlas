@@ -16,8 +16,8 @@ import {
   BisCorrectionError,
   clearBisCorrection,
   correctBisValue,
-  CORREGIBLES,
 } from "./data/bis-correction-writer";
+import { CORREGIBLES } from "./services/medidas-corregibles";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
 import { saveBisConditionsSchema, validateBisConditionsCapture } from "./validations";

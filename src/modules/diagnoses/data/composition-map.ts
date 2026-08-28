@@ -39,7 +39,7 @@ export type CompositionLevel = { title: string; rows: CompositionRow[] };
 // que uno medido deja al profesional sin saber que esta mirando.
 export type CompositionCorrections = Record<
   string,
-  { medido: number | null; corregido: number; porEmail: string; en: string }
+  { medido: number | null; corregido: number | null; porEmail: string; en: string }
 >;
 
 export type Composition = {

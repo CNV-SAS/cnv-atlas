@@ -98,7 +98,8 @@ export const bisValueCorrections = pgTable(
       .notNull()
       .references(() => bisMeasurements.id, { onDelete: "cascade" }),
     variableName: text("variable_name").notNull(),
-    value: numeric("value").notNull(),
+    // Lo que midio el EQUIPO. El valor vigente vive en bis_raw_values (invertido en 0090).
+    originalValue: numeric("original_value").notNull(),
     correctedBy: uuid("corrected_by")
       .notNull()
       .references(() => profiles.id),

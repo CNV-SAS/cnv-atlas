@@ -31,13 +31,14 @@ export async function getCompositionForEvaluation(
     .eq("measurement_id", meas.id);
   if (rErr) throw new Error(`composition-reader: bis_raw_values: ${rErr.message}`);
 
-  // CORRECCIONES del profesional (0089). Viven APARTE para no pisar el crudo del equipo, que es la
-  // evidencia de lo que ese aparato midio. Aqui la correccion GANA sobre el medido, y se guarda cual
-  // era el original para que la pantalla pueda decir cual es cual: un peso corregido que se ve igual
-  // que uno medido es exactamente el "dos superficies leyendo cosas distintas" que venimos evitando.
+  // CORRECCIONES del profesional. Tras la inversion (0090) el valor CORREGIDO ya viene en
+  // bis_raw_values, asi que aqui NO hay que aplicarlo: la composicion sale bien sola, igual que para
+  // los otros cinco consumidores del crudo. Lo unico que se lee de esta tabla es el ORIGINAL, para que
+  // la pantalla pueda decir CUAL ES CUAL: un valor corregido que se ve igual que uno medido deja al
+  // profesional sin saber que esta mirando.
   const { data: fixes, error: cErr } = await supabase
     .from("bis_value_corrections")
-    .select("variable_name, value, corrected_by_email, corrected_at")
+    .select("variable_name, original_value, corrected_by_email, corrected_at")
     .eq("measurement_id", meas.id);
   if (cErr) throw new Error(`composition-reader: bis_value_corrections: ${cErr.message}`);
 
@@ -52,17 +53,17 @@ export async function getCompositionForEvaluation(
     if (r.origin === "derivado") hasDerived = true;
   }
 
+  // Keyed por el nombre CRUDO (el encabezado normalizado), que es como se guardan. La pantalla traduce
+  // de la medida a ese nombre con el mismo helper que usa el writer, para que no haya dos traducciones.
   const corrections: CompositionCorrections = {};
   for (const f of fixes ?? []) {
-    const v = Number(f.value);
-    if (!Number.isFinite(v)) continue;
+    const orig = Number(f.original_value);
     corrections[f.variable_name] = {
-      medido: raw[f.variable_name] ?? null,
-      corregido: v,
+      medido: Number.isFinite(orig) && orig > 0 ? orig : null,
+      corregido: raw[f.variable_name] ?? null,
       porEmail: f.corrected_by_email,
       en: f.corrected_at,
     };
-    raw[f.variable_name] = v; // la correccion GANA: es lo que el profesional afirma que midio
   }
 
   return { ...buildComposition(raw, meas.measurement_date, hasDerived), corrections };
