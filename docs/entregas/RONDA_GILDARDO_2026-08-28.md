@@ -4,9 +4,12 @@
 **Para:** Gildardo Uribe, Dirección Científica CNV
 **Fecha:** 28 de agosto de 2026
 
-Dos preguntas y un aviso. La primera es sobre una instrucción tuya que **no estamos cuestionando**: lo
-que cambió es la premisa sobre la que la diste. La segunda es una divergencia con tu archivo que
-preferimos contarte antes de que la notes.
+Cuatro puntos. Los tres primeros son decisiones que te devolvemos: qué hicimos, por qué, y si lo
+mantenemos o lo revertimos. El cuarto es un defecto de tu archivo que encontramos al cotejar, con dos
+cifras clínicas de por medio.
+
+**Ninguno de los tres primeros está cerrado por nuestra cuenta:** si no estás de acuerdo con alguno,
+se revierte.
 
 ---
 
@@ -115,7 +118,62 @@ Tres diferencias con el tuyo, todas deliberadas:
 3. **Se ve cuál valor es cuál.** Si se corrige la cintura, la pantalla dice "el equipo midió 84". El
    dato del aparato no se pierde ni se disimula.
 
-No necesitamos nada tuyo aquí: te lo contamos porque es tu pieza y quedó distinta.
+**Y no te lo contamos solo para informarte: la decisión es tuya.** Las tres diferencias son juicios
+nuestros sobre una pieza tuya, y cualquiera de ellas se revierte si no estás de acuerdo.
+
+> **Pregunta 3.** ¿Las mantenemos o revertimos alguna? En concreto: ¿el sellado tras el diagnóstico te
+> parece bien, o el profesional debería poder corregir también después? ¿Y la fuerza prensil se queda
+> donde está (condiciones del BIS) o la quieres también aquí, aunque sean dos sitios? Si revertimos
+> algo, dinos qué prefieres en su lugar.
+
+---
+
+# 4 · Dos filas de tu tabla muestran un indicador con la etiqueta del otro
+
+Esto no es una divergencia nuestra: es un defecto de tu pantalla, y lo verificamos **contra tus propias
+fórmulas** antes de decírtelo, porque son dos cifras clínicas.
+
+## Las dos filas
+
+Mismo paciente, misma medición (Nico, ACT 44,66 · masa grasa 18,04 · peso 80,40):
+
+| Fila | Tu pantalla | Atlas |
+|---|---|---|
+| **FFW, agua libre de grasa (L)** | 44,66 | **41,95** |
+| **Hidratación sin grasa (%)** | 71,60 | **70,33** |
+
+## Las dos tienen la misma causa, y está en tu propio archivo
+
+Tu `derivar-composicion.js` define **dos** indicadores de hidratación, y el comentario 4.7 dice
+literalmente que **no son el mismo**:
+
+```js
+poner('ACT_MLG', ACT / FFM * 100,             'Hidratación de la masa sin grasa')
+poner('hidSG',   FFW / (FFM - 0,15*FM) * 100, 'Hidratación sin grasa')
+```
+
+Con los números de este paciente:
+
+- `ACT / FFM` = **71,62** → es lo que tu pantalla muestra bajo la etiqueta *"Hidratación sin grasa"*
+- `FFW / (FFM − 0,15 × FM)` = **70,33** → es lo que muestra Atlas
+
+O sea: **tu pantalla rotula "Hidratación sin grasa" y muestra el otro**, el que tu propio archivo llama
+"Hidratación de la masa sin grasa".
+
+**Y el FFW es la misma historia.** Tu fórmula es `FFW = ACT − 0,15 × FM`, que da **41,95**, lo que
+muestra Atlas. Tu pantalla muestra **44,66**, que es exactamente ACT: la fila de FFW está mostrando el
+agua corporal total.
+
+## Lo que queremos que veas
+
+**Atlas está bien, y lo está por usar tus fórmulas.** No cambiamos nada ni interpretamos: la derivación
+usa tus identidades congeladas, verificadas sobre 5.073 registros. Lo decimos así porque es lo que te
+permite arreglar tu archivo: **no hay que decidir qué número es correcto, hay que hacer que cada fila
+muestre el indicador que su etiqueta nombra.**
+
+> **Pregunta 4.** ¿Confirmas que las dos filas de tu pantalla están tomando el indicador equivocado? Y
+> si en realidad la etiqueta es la que está mal (es decir, querías mostrar `ACT/FFM` y llamarlo de otro
+> modo), dinos cuál es el rótulo correcto y lo ajustamos en Atlas.
 
 ---
 
