@@ -61,12 +61,13 @@ export async function correctBisValue(input: {
   actorId: string;
   actorEmail: string;
   ip: string | null;
-}): Promise<void> {
+  // Se devuelve QUE paso, para que el mensaje de la pantalla no afirme una correccion que no ocurrio.
+}): Promise<"corregida" | "restaurada" | "sin_cambio"> {
   if (!(input.value > 0)) throw new BisCorrectionError("El valor debe ser mayor que cero.");
   // La traduccion al nombre del crudo se hace UNA VEZ, aqui. Lanza si el campo no tiene equivalente.
   const cruda = variableCruda(input.variableName);
 
-  await db.transaction(async (tx) => {
+  return await db.transaction(async (tx) => {
     const med = await medicionEditable(tx, input.evaluationId);
 
     const [actual] = await tx
@@ -74,6 +75,56 @@ export async function correctBisValue(input: {
       .from(bisRawValues)
       .where(and(eq(bisRawValues.measurementId, med.id), eq(bisRawValues.variableName, cruda)))
       .limit(1);
+
+    const [previa] = await tx
+      .select({ original: bisValueCorrections.originalValue })
+      .from(bisValueCorrections)
+      .where(
+        and(
+          eq(bisValueCorrections.measurementId, med.id),
+          eq(bisValueCorrections.variableName, cruda),
+        ),
+      )
+      .limit(1);
+
+    // SIN CAMBIO, SIN REGISTRO. Pulsar "Guardar" sin tocar el numero no es una correccion: dejaba la
+    // medida marcada como "Corregido. El equipo midio 106" con 106 en el campo, que es falso y ademas
+    // ensucia la traza. Mismo criterio que el guard de sin-cambios del consentimiento: entrar y
+    // confirmar sin cambiar nada no crea un registro.
+    if (actual != null && Number(actual.value) === input.value) return "sin_cambio";
+
+    // EL CASO INVERSO, que NO es "sin cambio": si el valor tecleado coincide con el del EQUIPO y habia
+    // una correccion, eso equivale a RESTAURAR. Registrarlo como correccion dejaria la medida marcada
+    // como corregida mostrando exactamente lo que midio el equipo, que es la misma mentira al reves.
+    if (previa && Number(previa.original) === input.value) {
+      await tx
+        .update(bisRawValues)
+        .set({ value: previa.original })
+        .where(and(eq(bisRawValues.measurementId, med.id), eq(bisRawValues.variableName, cruda)));
+      await tx
+        .delete(bisValueCorrections)
+        .where(
+          and(
+            eq(bisValueCorrections.measurementId, med.id),
+            eq(bisValueCorrections.variableName, cruda),
+          ),
+        );
+      await recordAudit(tx, {
+        event: "bis.correction_cleared",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "bis_measurement",
+        entityId: med.id,
+        payload: {
+          evaluation_id: input.evaluationId,
+          medida: input.variableName,
+          a: previa.original,
+          via: "tecleo del valor original",
+        },
+        ip: input.ip,
+      });
+      return "restaurada";
+    }
 
     // EL ORIGINAL SE GUARDA UNA SOLA VEZ, en la PRIMERA correccion. Si se corrige dos veces, el
     // original sigue siendo lo que midio el equipo, no la correccion anterior: `onConflictDoNothing`
@@ -125,6 +176,7 @@ export async function correctBisValue(input: {
       },
       ip: input.ip,
     });
+    return "corregida";
   });
 }
 

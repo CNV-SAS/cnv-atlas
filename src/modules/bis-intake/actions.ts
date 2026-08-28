@@ -129,18 +129,29 @@ export async function correctBisValueAction(
   if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
 
   try {
-    await correctBisValue({
+    // El mensaje DERIVA de lo que el writer hizo. Decir "corregida" cuando no se escribio nada seria
+    // afirmar un estado sin derivarlo, y ademas le haria creer al profesional que dejo un registro.
+    const hecho = await correctBisValue({
       ...parsed.data,
       actorId: user.id,
       actorEmail: user.email,
       ip: await getClientIp(),
     });
+    revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+    return {
+      error: null,
+      success:
+        hecho === "corregida"
+          ? "Medida corregida. Queda registrado."
+          : hecho === "restaurada"
+            ? "Se restauró el valor del equipo."
+            : "No había nada que cambiar: el valor ya era ese.",
+      warning: null,
+    };
   } catch (e) {
     if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
     throw e;
   }
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
-  return { error: null, success: "Medida corregida. Queda registrado.", warning: null };
 }
 
 export async function clearBisCorrectionAction(
