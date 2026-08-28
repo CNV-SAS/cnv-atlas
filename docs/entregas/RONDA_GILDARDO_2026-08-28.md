@@ -504,6 +504,37 @@ que es donde tu archivo las tiene.
 
 ---
 
+# Resumen: las doce, por si prefieres responder por prioridad
+
+| # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
+|---|---|---|---|
+| **4** | Tu ISCM se calcula con **MCA = 0** cuando el MCA falta, y ahí el 0 significa "está en su teórico" | Confirmar que no debe calcularse sin MCA. Y por qué el MCA no llega a tu pantalla | **No.** Atlas ya devuelve null si falta un insumo |
+| **5** | **Siete filas "sin grasa"** de tu tabla muestran el valor "con grasa". Alimenta IEHH e ISCM | Confirmar que deben derivarse, o decirnos en cuál el valor con grasa es el correcto | **No.** Atlas ya las deriva con tus fórmulas |
+| **6** | El mismo IRC sale **"Alto riesgo" en rojo** en tu tabla y **"Bajo" en verde** en tu tarjeta | Cuál es la referencia correcta y en qué escala | **No.** Atlas usa el corte de tu clasificador |
+| **7** | Tres menores: Δ del ISCM y del IAE, referencia del PABU en el ICA-BIS, AEC/MCA sin dato | Si los tomas los tres o alguno es deliberado | **No.** El del ICA-BIS ya está corregido aquí |
+| **11a** | **`generarAlertas` está escrita y nunca se ejecuta.** Cero llamadores en tus dos entregas | Si quedó pendiente de conectar o quedó fuera a propósito | **No.** No la portamos hasta que lo digas |
+| **11b** | Dos de sus quince reglas leen el grupo equivocado. La de **riesgo glucémico es de nivel crítico** | Confirmar que son `d1_13` las dos | **No.** El cambio está listo y sin aplicar |
+| **11c** | El **bloque único** que funde tus tres fuentes no está en tu archivo. Con tu paciente demo: 10 a 14 líneas | Cómo se acota: solo crítico y alto, agrupado por dominio, o tope por prioridad | **No.** No construimos ninguna de las tres |
+| **2** | El **"Meta kg"**: no es contenido clínico, es en cuántos sitios se puede editar un dato | Si lo portamos a la entrada o se queda solo en el tratamiento | **No.** No lo portamos mientras tanto |
+| **3** | Las **tres diferencias** de tu bloque de medidas editables: sellado, fuerza prensil, traza del valor | Si las mantenemos o revertimos alguna | **No.** Se quedan como están, y cualquiera se revierte |
+| **8** | Nuestro radar usa los colores de tu radar **retirado**: "Bajo" sale azul aquí y verde en tu semáforo | Si retiramos el azul o cambian las etiquetas | **No.** No lo tocamos por nuestra cuenta |
+| **9** | Los **subrótulos** del radar y de la Diana, que tú pones y nosotros perdíamos | Confirmar. **Este ya lo adelantamos**, y se revierte si lo ves mal | **No.** Hecho y reversible |
+| **10** | Tu bloque de datos crudos: **¿uno solo o cuatro** vistas por profesión? | Confirmar que va uno, como en tu archivo | **No.** Pero **espera tu archivo** |
+
+## Lo que esto quiere decir, y por eso va la petición que sigue
+
+**Ninguna de las doce bloquea construcción.** Las doce dicen lo mismo en la última columna, y no es
+casualidad: cada punto está escrito para que podamos seguir mientras respondes, y en todos el estado
+provisional es el que ya tenemos, no uno inventado a la espera.
+
+**Lo que nos tiene detenidos no son tus respuestas: es tu archivo.** El piso calórico corregido, los cinco
+defectos, el cableado de `CAP_REF` y el porte de tu bloque de datos crudos están los cuatro parados, y de
+los cuatro ya sabemos exactamente qué hay que hacer. Solo falta el `ATLAS_v8.html` que anuncia tu
+respuesta del 27.
+
+Por eso lo que sigue no es una queja de proceso: es lo único de esta ronda que de verdad nos frena.
+
+
 # Una petición de proceso, y la razón
 
 **Cuando respondas y ajustes tu archivo, mándanos la versión modificada en la misma entrega.**
