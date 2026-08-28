@@ -31,7 +31,21 @@
 
 **El plan alimentario esta CERRADO** salvo lo que espera a Gildardo. Estado por pieza en `COTEJOS_VISUALES.md` (seccion del plan por grupos de alimentos).
 
-**Espera a Gildardo (no se construye):** la pieza 4 del menu (la IA como adaptador del ciclo, bloqueada por la Parte 1 de la ronda del 24: alergias, distribucion, contexto y "que mas"); `motorTratNutri` (P-32/P-35); las recomendaciones por diagnostico (P-33/P-34); y el resto de las dos colas (P-25 a P-31, P-36 a P-43).
+**Espera a Gildardo (no se construye) — RECOTEJADO 2026-08-27, y quedaba MENOS de lo que decia:**
+
+- **La pieza 4 del menu (IA como adaptador del ciclo): YA NO ESTA BLOQUEADA.** Su bloqueo citaba "la
+  Parte 1 de la ronda del 24", y las CUATRO preguntas de esa Parte 1 estan contestadas desde el 26
+  (1.1 casilla, 1.2 deficit, 1.3 proteina, 1.4 ECM/BCM), con la 1.1 re-contestada el 27 (vuelve al
+  subgrupo). Ademas la descripcion del bloqueo ("alergias, distribucion, contexto") nombraba cosas de
+  la Parte 2, tambien contestadas (3.2 y 3.3). **Se puede construir.**
+- **`motorTratNutri`: PORTADO** el 26 (`e7ea626`). P-35 actualizada; P-32 quedo PARCIALMENTE contestada
+  (manda motorTratNutri en el factor de actividad; los otros ocho puntos siguen vivos).
+- **Sigue esperando:** las recomendaciones por diagnostico (P-33/P-34) y el resto de las dos colas
+  (P-25 a P-31, P-36 a P-43).
+
+**Patron, tercera vez en un solo barrido:** un bloqueo escrito sigue bloqueando hasta que alguien lo
+coteja contra la respuesta que ya llego. Al cerrar una ronda, barrer los bloqueos que citaban sus
+preguntas.
 
 **NO espera a nadie, y este es el orden propuesto:**
 
