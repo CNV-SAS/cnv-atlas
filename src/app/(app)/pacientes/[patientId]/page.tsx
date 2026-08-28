@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -80,11 +81,11 @@ export default async function HistoriaPacientePage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <VolverA href="/pacientes">Volver a pacientes</VolverA>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{nombre}</h1>
-        <p className="text-muted-foreground">Historia clínica del paciente.</p>
-      </div>
+      <TituloPantalla
+        volver={<VolverA href="/pacientes">Volver a pacientes</VolverA>}
+        titulo={nombre}
+        descripcion="Historia clínica del paciente."
+      />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {datos.map((d) => (
@@ -97,7 +98,7 @@ export default async function HistoriaPacientePage({
 
       {puedeEmitirSeguimiento ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Seguimiento</h2>
+          <TituloSeccion>Seguimiento</TituloSeccion>
           <p className="text-sm text-muted-foreground">
             Emite un enlace para que el paciente responda una encuesta de seguimiento. Su identidad ya está
             registrada.
@@ -107,7 +108,7 @@ export default async function HistoriaPacientePage({
       ) : null}
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Evaluaciones</h2>
+        <TituloSeccion>Evaluaciones</TituloSeccion>
         {paciente.evaluations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             Este paciente todavía no tiene evaluaciones.

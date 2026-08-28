@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { revokeConsentAction } from "../actions";
 import type { AutorizacionPaciente } from "../data/consent-reader";
 import { formatDate } from "@/lib/format/date";
+import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { CANALES_REVOCACION, CONSENT_TYPE_LABELS } from "../labels";
 
 // PANEL DE AUTORIZACIONES de la ficha del paciente: que autorizo, cuando, y la via para registrar una
@@ -71,7 +72,7 @@ export function PanelAutorizaciones({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-2xl font-bold tracking-tight text-foreground">Autorizaciones</h2>
+      <TituloSeccion>Autorizaciones</TituloSeccion>
 
       {autorizaciones.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

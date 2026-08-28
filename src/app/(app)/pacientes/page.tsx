@@ -1,6 +1,7 @@
 
 import { redirect } from "next/navigation";
 
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
@@ -21,12 +22,10 @@ export default async function PacientesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Pacientes</h1>
-        <p className="text-muted-foreground">
-          Tus pacientes y el acceso a su historia clínica. Solo ves los pacientes asignados a ti.
-        </p>
-      </header>
+      <TituloPantalla
+        titulo="Pacientes"
+        descripcion="Tus pacientes y el acceso a su historia clínica. Solo ves los pacientes asignados a ti."
+      />
 
       {pacientes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
