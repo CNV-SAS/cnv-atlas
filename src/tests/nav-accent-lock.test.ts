@@ -77,11 +77,29 @@ describe("frontera entre la capa de interfaz y la capa clinica", () => {
     expect(css).toContain("--clinical-excellent: #0ea5e9");
   });
 
-  it("el acento de navegacion NO es ninguno de los azules que ya significan algo", () => {
+  it("el acento de navegacion NO es el azul CLINICO", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     const nav = /--nav-accent:\s*([^;]+);/.exec(css)?.[1].trim();
     expect(nav).toBeDefined();
-    expect(nav).not.toBe("#205dfd"); // azul de ACCION (botones, focus)
-    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO (banda mejor del DFI)
+    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO: "banda mejor" del DFI. Esta es la que no se negocia.
+  });
+
+  // ALCANCE REDUCIDO EL MISMO DIA, y queda escrito por que, porque un candado que se afloja cuando estorba
+  // deja de ser candado. La version original tambien exigia que el acento NO fuera el azul de ACCION
+  // (#205dfd). Esa clausula se escribio para un acento sobre BLANCO, donde el azul de accion vive al lado
+  // y compite con los botones. La barra pasa a ser una SUPERFICIE PROPIA (navy) y dentro de ella no hay
+  // ningun boton de accion: el azul de marca ahi es una señal de 3px, no una superficie, y las dos
+  // superficies nunca se tocan.
+  //
+  // NO SE TOCA LA ASERCION, SE ACOTA: lo que se quita es la clausula cuyo supuesto dejo de ser cierto, y
+  // se conserva entera la que protege la capa clinica. Si la barra volviera a ser clara, esa clausula
+  // vuelve.
+  it("y el AZUL DE ACCION dentro de la barra no es una contradiccion: nunca comparte superficie", () => {
+    // Lo que hace segura la excepcion no es la disciplina, es la ESTRUCTURA: `NavItem` no admite badge ni
+    // contador, asi que no hay forma de meter una cifra con severidad en la barra. Si alguien se lo
+    // añade, este candado cae y obliga a reabrir la decision.
+    const nav = readFileSync("src/components/layout/nav-config.ts", "utf8");
+    const tipo = /export type NavItem = \{([\s\S]*?)\}/.exec(nav)?.[1] ?? "";
+    expect(tipo).not.toMatch(/badge|contador|count|severidad/i);
   });
 });

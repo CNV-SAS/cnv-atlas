@@ -73,18 +73,38 @@ function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-function AtlasLogo() {
+function AtlasLogo({ sobreOscuro = false }: { sobreOscuro?: boolean }) {
   return (
     <Link href="/dashboard" className="flex items-center" aria-label="Atlas, inicio">
-      <Image
-        src="/brand/logo-horizontal.svg"
-        alt="Atlas"
-        width={140}
-        height={28}
-        priority
-        unoptimized
-        className="h-7 w-auto"
-      />
+      {/* PLACA CLARA DETRAS DEL LOGO: ANDAMIO TEMPORAL, no una decision de diseño.
+          El wordmark es una imagen RASTERIZADA embebida en el SVG con filtros de color, asi que no se
+          puede recolorear por CSS: sobre el navy quedaria ilegible. Falta la version en blanco, que es
+          pieza de marca y la decide Santiago. Hasta entonces, la placa deja JUZGAR LA BARRA sin que el
+          logo estorbe la lectura, que es justo para lo que existe. Cuando llegue el logo en blanco,
+          `sobreOscuro` deja de pintar placa y solo cambia la fuente de la imagen. */}
+      {sobreOscuro ? (
+        <span className="rounded-lg bg-white px-2.5 py-1.5">
+          <Image
+            src="/brand/logo-horizontal.svg"
+            alt="Atlas"
+            width={140}
+            height={28}
+            priority
+            unoptimized
+            className="h-6 w-auto"
+          />
+        </span>
+      ) : (
+        <Image
+          src="/brand/logo-horizontal.svg"
+          alt="Atlas"
+          width={140}
+          height={28}
+          priority
+          unoptimized
+          className="h-7 w-auto"
+        />
+      )}
     </Link>
   );
 }
@@ -110,17 +130,25 @@ function NavLinks({
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
-              // EL ACTIVO NO ES AZUL, y no es preferencia (ver `--nav-accent` en globals.css): el azul de
-              // accion en el item activo compite con los botones, y un azul nuevo tendria que distinguirse
-              // ademas del `clinical-excellent` del radar. En una barra de 10-15 items el activo necesita
-              // CONTRASTE, no un tono: se pinta con el blanco del contenido sobre el cromo hundido, asi
-              // que se lee "levantado" y conectado con la pagina que muestra.
+              "relative flex items-center gap-3 rounded-lg py-1.5 pl-4 pr-3 text-sm transition-colors",
+              // SOBRE LA SUPERFICIE OSCURA, el activo se distingue por CONTRASTE, no por tono: blanco
+              // pleno sobre un velo del 10%. El inactivo va al 70% de blanco, que sobre este navy da
+              // 7,82:1 (el mismo inactivo sobre el azul de marca puro no llegaba a AA: 4,20:1).
               active
-                ? "bg-nav-accent-bg font-semibold text-nav-accent shadow-sm"
-                : "font-medium text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                ? "bg-white/10 font-semibold text-white"
+                : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
             )}
           >
+            {/* LA SEÑAL DE 3px, y es la pieza que mas rinde de esta direccion: el azul de marca SEÑALA
+                sin COLOREAR una superficie. Va como nodo real y no como `before:` con valor arbitrario,
+                por la misma razon que el separador de la fila de lista: un valor que el compilador no
+                reconoce no da error, simplemente no emite la regla, y desaparece en silencio. */}
+            {active ? (
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-nav-accent"
+              />
+            ) : null}
             <Icon className="size-4 shrink-0" aria-hidden />
             {item.label}
           </Link>
@@ -152,9 +180,9 @@ export function AppShell({
           cambiar de seccion habia que subir hasta arriba primero.
           `overflow-y-auto` en el propio aside y no en el nav: si la lista de items crece mas que la
           pantalla (roles con muchos accesos), tiene que poder desplazarse sola sin arrastrar la pagina. */}
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface-sunken lg:flex">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-sidebar-top to-sidebar-bottom lg:flex">
         <div className="flex h-14 items-center px-4">
-          <AtlasLogo />
+          <AtlasLogo sobreOscuro />
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
           <NavLinks items={navItems} pathname={pathname} />
@@ -176,10 +204,10 @@ export function AppShell({
                   <Menu className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 bg-surface-sunken p-0">
+              <SheetContent side="left" className="w-64 border-0 bg-gradient-to-b from-sidebar-top to-sidebar-bottom p-0 text-white">
                 <SheetTitle className="sr-only">Navegación</SheetTitle>
                 <div className="flex h-14 items-center px-4">
-                  <AtlasLogo />
+                  <AtlasLogo sobreOscuro />
                 </div>
                 <nav className="flex flex-col gap-0.5 px-3 py-2">
                   <NavLinks

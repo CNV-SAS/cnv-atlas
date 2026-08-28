@@ -29,7 +29,8 @@
    */
   --color-surface-sunken: var(--surface-sunken);
   --color-nav-accent: var(--nav-accent);
-  --color-nav-accent-bg: var(--nav-accent-bg);
+  --color-sidebar-top: var(--sidebar-top);
+  --color-sidebar-bottom: var(--sidebar-bottom);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -132,31 +133,49 @@
   --surface-sunken: #fafbfc;
 
   /*
-   * ACENTO DE NAVEGACION. NO ES UN AZUL, y es deliberado.
+   * BARRA LATERAL: SUPERFICIE PROPIA, en navy con degradado (direccion C, 2026-08-28).
    *
-   * El azul de accion (#205dfd) en el item activo compite con los botones: dos cosas azules en pantalla
-   * y solo una es clicable-para-hacer-algo. Y meter un azul NUEVO tendria que distinguirse ademas del
-   * `--clinical-excellent` (#0ea5e9), que ya significa "banda mejor" en el radar. Tres azules con tres
-   * significados es como se rompen los codigos de color.
+   * POR QUE NO ES EL AZUL DE MARCA TAL CUAL, que es lo que pedia la referencia. Medido con WCAG sobre
+   * #205dfd: blanco puro da 5,19:1 (pasa AA justo), pero el estado INACTIVO no llega ni al 85% de blanco
+   * (4,20:1, por debajo de 4,5). Es un azul claro y saturado: buen fondo, mal contraste. Eso no mata la
+   * barra azul, mata usar ESE azul como superficie de texto. Este navy es de la misma familia y da
+   * 14,66:1 con blanco y 7,82:1 con el inactivo al 70%.
    *
-   * En una barra de 10-15 items, el activo necesita CONTRASTE, no un tono. Asi que el activo se pinta con
-   * ink sobre el blanco del contenido: parece "levantado" del cromo hundido y conectado con la pagina que
-   * esta mostrando. Eso deja el azul entero para la accion y no toca la capa clinica.
+   * EL DEGRADADO da caracter con LUMINOSIDAD y no con un tono nuevo. Es deliberado: un tono nuevo habria
+   * que defenderlo despues frente a la capa clinica; la luminosidad no compite con nada.
    *
-   * CANDADO: `nav-accent-lock.test.ts` fija que el acento de navegacion no aparezca en ningun componente
-   * que pinte veredicto clinico.
+   * LA SEPARACION CON LA CAPA CLINICA AQUI ES ESTRUCTURAL, no de disciplina: `NavItem` es
+   * {label, href, icon, roles} y NO admite badge ni contador, asi que no hay forma de meter una cifra con
+   * severidad en la barra. El unico color clinico del layout esta en el banner de MFA, que va POR ENCIMA
+   * del shell. Y el candado lo mantiene asi hacia adelante.
    */
-  --nav-accent: #15161a; /* ink: el activo es contraste, no color */
-  --nav-accent-bg: #ffffff; /* el blanco del contenido: el item activo se "conecta" con la pagina */
+  --sidebar-top: #12245c;
+  --sidebar-bottom: #0d1a3f;
 
-  /* Sidebar (BRAND.md layout): cromo hundido, items rounded-xl */
-  --sidebar: #fafbfc;
-  --sidebar-foreground: #15161a;
+  /*
+   * ACENTO DE NAVEGACION: el azul de marca, pero como SEÑAL de 3px, no como superficie.
+   *
+   * Cambio deliberado respecto de la primera version del rediseño, y la razon es que cambio el contexto.
+   * Aquel argumento ("el azul en el activo compite con los botones") valia para un acento sobre BLANCO,
+   * donde el azul de accion vive al lado. Dentro de una barra con superficie propia no hay ningun boton
+   * de accion con el que competir, y las dos superficies nunca se tocan.
+   *
+   * Y en 3px el azul SEÑALA sin COLOREAR: el ojo lo encuentra de reojo y no gasta una superficie entera
+   * en un tono que despues habria que defender.
+   *
+   * CANDADO: `nav-accent-lock.test.ts` fija que no sea el azul CLINICO (#0ea5e9, "banda mejor" del DFI),
+   * que no aparezca en ningun archivo que pinte veredicto, y que viva solo en el shell.
+   */
+  --nav-accent: #205dfd;
+
+  /* Sidebar de shadcn: se alinea con la superficie propia de arriba. */
+  --sidebar: #12245c;
+  --sidebar-foreground: #ffffff;
   --sidebar-primary: #205dfd;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f6f7f9;
-  --sidebar-accent-foreground: #15161a;
-  --sidebar-border: #edeff3;
+  --sidebar-accent: rgb(255 255 255 / 0.1);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.12);
   --sidebar-ring: #205dfd;
 
   /*
@@ -221,8 +240,9 @@
    * queden definidos en un solo tema (un color con una sola definicion es el clasico defecto de tema),
    * no porque el modo oscuro este verificado. */
   --surface-sunken: oklch(0.205 0 0);
-  --nav-accent: oklch(0.985 0 0);
-  --nav-accent-bg: oklch(0.145 0 0);
+  --sidebar-top: #12245c;
+  --sidebar-bottom: #0d1a3f;
+  --nav-accent: #205dfd;
 }
 
 @layer base {
