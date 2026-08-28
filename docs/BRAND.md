@@ -185,6 +185,25 @@ Una tabla clínica dentro de `overflow-x-auto` necesita las tres, y con dos no f
 Caso real (2026-08-27): las tres tablas de Diagnóstico funcionaban con 1 y 2 porque no viven dentro de
 un fieldset; las cuatro de Tratamiento, que sí, se partían. Esa era toda la diferencia.
 
+### Qué forma tiene una lista: si busca, densidad; si compara, columnas
+
+No es preferencia: **se deriva de qué hace el profesional con esa lista.**
+
+| Qué hace | Forma | Por qué |
+|---|---|---|
+| **Busca** uno entre muchos, N sin techo | **Fila de dos líneas** + buscador | La línea concatenada (`documento · 34a · 3 consultas · Última: 12/08`) mete cuatro datos en el ancho de uno, así que cabe en un teléfono sin desplazar. Y el buscador es lo único que evita que la lista crezca sin techo |
+| **Compara** entre filas, N acotado | **Tabla densa** | Las columnas alineadas son lo que deja ver una trayectoria. Una línea concatenada la pierde |
+
+Clasificación actual: `/pacientes` **busca** (dos líneas); `/pacientes/[id]` **compara** (tabla, 2-20
+evaluaciones por paciente); `/evaluaciones` **busca**, y ya son filas agrupadas por estado.
+
+Y dos reglas de densidad que salen de lo mismo:
+
+- **Un chip solo cuando dice algo excepcional.** El estado "Activo" no lleva chip; "Inactivo" sí. Gastar
+  ancho en lo que casi siempre es igual es lo contrario de hacer una lista escaneable.
+- **La acción idéntica en todas las filas no es una columna:** es la fila entera. Una acción que VARÍA
+  según el estado sí se gana su columna.
+
 ### Y la cuarta, para las filas de acciones: `flex-wrap`
 
 Una fila de botones es el mismo problema en otro sitio: **una fila que no encoge dentro de su
@@ -210,3 +229,38 @@ Sutiles y breves: `transition-all duration-200`, `animate-pulse` para loading, f
 - Em-dash en texto de cara al usuario.
 - Copy dramático o alarmista en lo clínico.
 - Gradientes llamativos, sombras de neón, imágenes stock genéricas.
+
+---
+
+## Qué se cierra por pantalla y qué es global
+
+Distinción para no rediseñar dos veces. **"Diseño" nombra dos cosas**: la ESTRUCTURA (qué forma tiene una
+lista, dónde va cada dato, si es tabla o filas) y la DECORACIÓN (color, tipografía, espaciado, layout).
+
+**Se cierra por pantalla**, porque vive dentro del sistema que este documento ya fija:
+
+- espaciado interno y ritmo vertical de la superficie
+- jerarquía de superficie (los tres niveles de `components/shared/bloque`)
+- uso del color clínico (semáforo, chips de estado)
+- densidad de fila, alineación, cifras tabulares
+- estados vacíos y textos de ayuda
+- qué acciones se muestran y dónde
+
+**Es global**, porque si se fija mal en una pantalla hay que cambiarlas todas:
+
+- **tipografía**: familia, escala de tamaños, pesos
+- **layout general**: ancho máximo del contenido, relación sidebar/contenido, dónde vive el título de
+  página
+- **escala de espaciado base**: si el ritmo cambia, cambia todo
+- **ampliaciones de la paleta** (un color nuevo para un rol nuevo)
+- **el patrón de fila de lista**: parece de pantalla y no lo es. Si cada lista inventa su fila, divergen,
+  que es lo que pasó con los bloques antes de `bloque.tsx`
+
+**Y el orden que sale de ahí:** lo global va AL FINAL, a propósito. La tipografía y el layout **se juzgan
+con superficies terminadas**; fijarlos con dos pantallas hechas es fijarlos a ciegas y volver a tocarlos
+en la quinta.
+
+**El camino, con precedente en la casa:** construir en una superficie real y **subir el patrón a
+componente compartido en cuanto la segunda lo necesite**. Es lo que hizo `bloque.tsx`: nació resolviendo
+el panel del nutricionista y al turno siguiente subió a componente sobre 21 superficies. Ni diseñar en
+abstracto, ni dejarlo suelto en una pantalla.

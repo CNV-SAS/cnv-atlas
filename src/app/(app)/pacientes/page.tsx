@@ -1,10 +1,10 @@
-import Link from "next/link";
+
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
-import { edadEnAnios } from "@/modules/patients/format";
-import { estadoPacienteLabel } from "@/modules/patients/labels";
+
+import { ListaPacientes } from "@/modules/patients/components/lista-pacientes";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
 export const metadata = { title: "Pacientes - Atlas" };
@@ -34,50 +34,10 @@ export default async function PacientesPage() {
           evaluación recibida por la encuesta.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-semibold">Paciente</th>
-                <th className="px-3 py-2 font-semibold">Documento</th>
-                <th className="px-3 py-2 font-semibold">Edad</th>
-                <th className="px-3 py-2 font-semibold">Estado</th>
-                <th className="px-3 py-2 font-semibold">Evaluaciones</th>
-                <th className="px-3 py-2 font-semibold text-right">Historia</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pacientes.map((p) => {
-                const anos = edadEnAnios(p.birthDate);
-                return (
-                  <tr key={p.patientId} className="border-b border-border/60 last:border-0">
-                    <td className="px-3 py-2 font-medium text-foreground">
-                      {`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                      {`${p.documentType} ${p.documentNumber}`.trim()}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {anos === null ? "-" : anos}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {estadoPacienteLabel(p.status)}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">{p.evaluationCount}</td>
-                    <td className="px-3 py-2 text-right">
-                      <Link
-                        href={`/pacientes/${p.patientId}`}
-                        className="font-semibold text-primary underline-offset-4 hover:underline"
-                      >
-                        Ver historia
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        // Filas de dos lineas con buscador, no tabla: esta lista se BUSCA (BRAND, "si busca,
+        // densidad; si compara, columnas"). El buscador necesita estado, asi que la lista es un
+        // componente cliente; la pagina sigue siendo servidor y trae el roster bajo RLS.
+        <ListaPacientes pacientes={pacientes} />
       )}
     </div>
   );

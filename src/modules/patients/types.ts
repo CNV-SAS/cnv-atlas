@@ -56,6 +56,8 @@ export type PatientListItem = {
   birthDate: string | null; // yyyy-MM-dd
   status: string;
   evaluationCount: number;
+  /** Fecha de la ultima evaluacion REAL (medicion; created_at si no se midio). null si no tiene. */
+  lastEvaluationDate: string | null;
 };
 
 // Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la

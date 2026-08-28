@@ -28,7 +28,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // superseded_at por evaluacion (no `evaluations(count)`): el conteo debe excluir las
       // reemplazadas por correccion (contarlas infla el numero de consultas del paciente). Se cuentan
       // las vigentes del lado del cliente; el volumen por paciente es chico y va gateado por RLS.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at, status)",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -42,10 +42,25 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     // Cuenta solo evaluaciones REALES: vigentes (no supersedidas) y que no sean un shell firmado sin
     // responder ni una abandonada (esas existen pero no son una evaluacion hecha).
     const evals =
-      (row.evaluations as { superseded_at: string | null; status: string }[] | null) ?? [];
-    const evaluationCount = evals.filter(
+      (row.evaluations as
+        | {
+            superseded_at: string | null;
+            status: string;
+            created_at: string;
+            bis_measurements: { measurement_date: string | null }[] | null;
+          }[]
+        | null) ?? [];
+    // Las que CUENTAN: vigentes y que sean una evaluacion hecha. La misma condicion sirve para el
+    // conteo y para la ultima fecha; separarlas dejaria "3 consultas · Ultima: <de una reemplazada>".
+    const reales = evals.filter(
       (e) => e.superseded_at == null && !NON_COUNTING_EVALUATION_STATUSES.has(e.status),
-    ).length;
+    );
+    // FECHA DE MEDICION, no la de creacion del registro: es la cronologia clinica, la misma que usa la
+    // ficha del paciente. Si no se midio, cae a created_at para no perder la fila del listado.
+    const fechas = reales
+      .map((e) => e.bis_measurements?.[0]?.measurement_date ?? e.created_at)
+      .filter(Boolean)
+      .sort();
     return {
       patientId: row.id,
       documentType: row.document_type as DocumentType,
@@ -54,7 +69,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       lastName: profile?.last_name ?? "",
       birthDate: profile?.birth_date ?? null,
       status: row.status,
-      evaluationCount,
+      evaluationCount: reales.length,
+      lastEvaluationDate: fechas.length ? fechas[fechas.length - 1] : null,
     } satisfies PatientListItem;
   });
 
