@@ -83,6 +83,24 @@ Cómo se aplica en la práctica:
 - Si una propuesta nuestra ya se construyó y resulta que el archivo no la tiene, **se retira**, no se
   defiende. Precedente: las tablas de alérgenos y patrones (2026-08-27, §10).
 
+### Su archivo manda en lo clínico. Una referencia visual no manda en nada (Santiago, 2026-08-28)
+
+La Regla 0 dice que el archivo de Gildardo se representa literalmente. **Eso no se extiende a las
+referencias visuales que pasa Santiago.** Textual suyo: *"no comerse entero lo que manda, sino pensamiento
+crítico buscando la mejor alternativa."*
+
+Así que con una referencia visual: **donde resuelva bien, se adopta; donde nosotros tengamos algo mejor, se
+defiende con el argumento; y donde ninguna sirva, se propone otra cosa.**
+
+La diferencia con el archivo de Gildardo es de autoridad, no de actitud: **el suyo manda en lo clínico**
+(fórmulas, umbrales, clasificaciones, colores de veredicto), y ahí no cabe mejorarlo por nuestra cuenta.
+Una referencia de interfaz no manda en nada: es un punto de partida.
+
+**Y la frontera entre las dos capas es la que hay que mantener viva al aplicar cualquier referencia:** la
+capa de INTERFAZ (paleta general, barra lateral, tipografía, layout) es libre; la capa CLÍNICA
+(`--clinical-*`) no, porque sus hexadecimales salen de sus clasificadores (el naranja de Moderado es el hex
+exacto de su `_DFI_SEVC`). Que el verde signifique óptimo y el rojo crítico no es preferencia nuestra.
+
 ---
 
 ## Lo clínico (atención máxima)

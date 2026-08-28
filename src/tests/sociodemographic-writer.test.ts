@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { characterizationSchema } from "@/modules/evaluations/validations";
 
@@ -190,5 +190,106 @@ describe.skipIf(!HAS_DB)("caracterizacion: persistencia (BD real)", () => {
     const e = (await evalRow(evaluationId))[0];
     expect(e.status).toBe("draft");
     expect(JSON.parse(e.reasonForVisit)).toEqual(["Envejecimiento saludable / longevidad"]);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────────────
+  // CANDADO DEL GATE DE ETNIA (dato sensible), escrito el 2026-08-28 tras un barrido de candados.
+  //
+  // POR QUE FALTABA Y POR QUE IMPORTA. El gate existe en el writer desde que se capturo la etnia, y este
+  // mismo archivo lo APUNTABA sin probarlo: el comentario de arriba dice "el gate de investigacion va en
+  // el writer". Lo que se probaba era la NORMALIZACION (schema) y la PERSISTENCIA, no la unica regla que
+  // hace legal guardar el dato. Un gate de consentimiento sobre dato sensible sin candado es la peor
+  // combinacion: si alguien lo borra "simplificando" el writer, nada se pone rojo y el dato empieza a
+  // guardarse sin autorizacion, en silencio.
+  //
+  // El paciente de `makeShell` nace SIN consentimientos, asi que la rama sin autorizacion es la de por
+  // defecto; la rama autorizada tiene que sembrar la autorizacion explicitamente.
+  async function autorizarInvestigacion(patientId: string) {
+    await db.insert(schema.patientConsents).values({
+      patientId,
+      consentType: "investigacion",
+      consentVersion: "1.0",
+      documentHash: "hash-de-prueba",
+    });
+  }
+
+  it("SIN autorizacion de investigacion: la etnia se DESCARTA, aunque el cliente la mande", async () => {
+    const { patientId, token } = await makeShell("ETNIA-NO");
+    await saveSurveyProgress({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [],
+      ipAddress: null,
+      characterization: {
+        // El servidor NO confia en que la UI la oculte: llega con valor y aun asi no se guarda.
+        profile: { educationLevel: "Posgrado", ethnicity: "Indígena", ancestry: "Predominantemente indígena" },
+        reasonForVisit: [],
+      },
+    });
+    const p = (await profileRow(patientId))[0];
+    expect(p.ethnicity).toBeNull();
+    expect(p.ancestry).toBeNull();
+    // Y el resto del perfil SI se guarda: el gate descarta el dato sensible, no tumba la caracterizacion.
+    expect(p.educationLevel).toBe("Posgrado");
+  });
+
+  it("CON autorizacion de investigacion: la etnia si se guarda", async () => {
+    const { patientId, token } = await makeShell("ETNIA-SI");
+    await autorizarInvestigacion(patientId);
+    await saveSurveyProgress({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [],
+      ipAddress: null,
+      characterization: {
+        profile: { educationLevel: "Posgrado", ethnicity: "Indígena", ancestry: "Predominantemente indígena" },
+        reasonForVisit: [],
+      },
+    });
+    const p = (await profileRow(patientId))[0];
+    expect(p.ethnicity).toBe("Indígena");
+    expect(p.ancestry).toBe("Predominantemente indígena");
+  });
+
+  it("REVOCADA la autorizacion, vuelve a descartarse: el gate mira lo VIGENTE, no que alguna vez firmara", async () => {
+    const { patientId, token } = await makeShell("ETNIA-REV");
+    await autorizarInvestigacion(patientId);
+    await db
+      .update(schema.patientConsents)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(schema.patientConsents.patientId, patientId),
+          eq(schema.patientConsents.consentType, "investigacion"),
+        ),
+      );
+    await saveSurveyProgress({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [],
+      ipAddress: null,
+      characterization: {
+        profile: { ethnicity: "Indígena", ancestry: "Predominantemente indígena" },
+        reasonForVisit: [],
+      },
+    });
+    const p = (await profileRow(patientId))[0];
+    expect(p.ethnicity).toBeNull();
+    expect(p.ancestry).toBeNull();
+  });
+
+  it("COMPLETAR pasa por el mismo gate: no hay una puerta trasera en el envio final", async () => {
+    // El gate vive en writeCharacterization, que llaman los DOS escritores. Este caso fija que el envio
+    // final no lo esquiva: si alguien lo cablea solo en el guardado de progreso, esto se pone rojo.
+    const { patientId, token } = await makeShell("ETNIA-FIN");
+    await completeSurvey({
+      resumeToken: token,
+      surveyVersionId: svId,
+      answers: [],
+      ipAddress: null,
+      characterization: { profile: { ethnicity: "Indígena" }, reasonForVisit: [] },
+    });
+    const p = (await profileRow(patientId))[0];
+    expect(p.ethnicity).toBeNull();
   });
 });
