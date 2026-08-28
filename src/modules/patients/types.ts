@@ -58,6 +58,11 @@ export type PatientListItem = {
   evaluationCount: number;
   /** Fecha de la ultima evaluacion REAL (medicion; created_at si no se midio). null si no tiene. */
   lastEvaluationDate: string | null;
+  /**
+   * Le falta alguna autorizacion NECESARIA vigente (regla dura 15): no se le pueden crear evaluaciones.
+   * Se calcula con la MISMA policy que gatea la creacion, para que la lista y el gate no discrepen.
+   */
+  sinAutorizacionVigente: boolean;
 };
 
 // Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la

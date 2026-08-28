@@ -2,6 +2,9 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+import type { ConsentType } from "@/modules/consent/validations";
+import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-evaluation";
+
 import { NON_COUNTING_EVALUATION_STATUSES } from "../labels";
 import type { DocumentType, PatientListItem } from "../types";
 
@@ -28,7 +31,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // superseded_at por evaluacion (no `evaluations(count)`): el conteo debe excluir las
       // reemplazadas por correccion (contarlas infla el numero de consultas del paciente). Se cuentan
       // las vigentes del lado del cliente; el volumen por paciente es chico y va gateado por RLS.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date))",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -61,6 +64,15 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       .map((e) => e.bis_measurements?.[0]?.measurement_date ?? e.created_at)
       .filter(Boolean)
       .sort();
+    // AUTORIZACIONES VIGENTES, para avisar en la LISTA y no al intentar (hallazgo 2026-08-28: hoy el
+    // profesional descubre el bloqueo de la regla dura 15 cuando ya esta creando la evaluacion). Se
+    // pregunta a la MISMA policy que gatea la creacion, no a una copia del criterio: la regla vive en un
+    // solo sitio, asi que la lista y el gate no pueden discrepar.
+    const consents =
+      (row.patient_consents as { consent_type: string; revoked_at: string | null }[] | null) ?? [];
+    const vigentes = consents
+      .filter((c) => c.revoked_at === null)
+      .map((c) => c.consent_type as ConsentType);
     return {
       patientId: row.id,
       documentType: row.document_type as DocumentType,
@@ -71,6 +83,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       status: row.status,
       evaluationCount: reales.length,
       lastEvaluationDate: fechas.length ? fechas[fechas.length - 1] : null,
+      sinAutorizacionVigente: !canCreateEvaluation(vigentes).ok,
     } satisfies PatientListItem;
   });
 

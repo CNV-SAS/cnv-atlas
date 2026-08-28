@@ -103,7 +103,7 @@ El consentimiento opera por capas y se presenta antes de la encuesta. El texto c
 ### Técnica de registro
 - Un registro en `patient_consents` por cada tipo de autorización otorgada.
 - Campos: `consent_type`, `consent_version`, `document_hash` (hash del texto exacto), `signed_at` (timestamp inmutable).
-- PENDIENTE DE IMPLEMENTACIÓN: agregar campo `revoked_at` (o equivalente) para registrar la revocación de cada autorización.
+- `revoked_at` por autorización, con índice parcial único sobre (`patient_id`, `consent_type`) donde `revoked_at IS NULL`: una sola vigente por tipo. Existe desde la migración `0000`. **La revocación como acto del titular se registra desde `/pacientes/[patientId]`** (profesional o admin, las dos vías del numeral 10 del consentimiento), por finalidad, con motivo y con `consent.revoked` en `clinical_audit_log`.
 - Ningún paciente entra al flujo sin las autorizaciones necesarias (1–3) registradas.
 
 ### Versiones del consentimiento

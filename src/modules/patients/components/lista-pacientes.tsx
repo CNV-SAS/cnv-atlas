@@ -99,12 +99,23 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
                 titulo={`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
                 columnas={COLUMNAS}
                 valores={valores}
-                // CHIP SOLO SI ES EXCEPCIONAL (BRAND): "Activo" es lo normal y no lleva distintivo;
-                // gastar ancho en lo que casi siempre es igual es lo contrario de una lista escaneable.
+                // CHIP SOLO SI ES EXCEPCIONAL (BRAND): lo normal no lleva distintivo; gastar ancho en lo
+                // que casi siempre es igual es lo contrario de una lista escaneable.
+                //
+                // EL CHIP LEE LA AUTORIZACION, no `patients.status`. `status` no tiene escritor (nadie pone
+                // nunca "inactive"), asi que el chip no aparecia jamas. La falta de autorizacion vigente si
+                // tiene consecuencia real y hoy se descubre AL INTENTAR crear la evaluacion.
+                //
+                // Y NO ES ROJO CLINICO a proposito: `clinical-critical` significa riesgo del PACIENTE, y un
+                // paciente que ejercio su derecho no esta en riesgo. El texto habla de la AUTORIZACION, no
+                // de la persona: "Revocado" sonaria a que el revocado es el paciente.
                 chip={
-                  p.status !== "active" ? (
-                    <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      Inactivo
+                  p.sinAutorizacionVigente ? (
+                    <span
+                      className="shrink-0 rounded-full border border-clinical-warning/40 bg-clinical-warning-bg px-2 py-0.5 text-xs font-medium text-clinical-warning"
+                      title="Le falta alguna autorización necesaria vigente. No se le pueden crear evaluaciones nuevas."
+                    >
+                      Sin autorización vigente
                     </span>
                   ) : null
                 }

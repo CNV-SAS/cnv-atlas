@@ -184,3 +184,30 @@ export type ConsentInput = z.infer<typeof consentSchema>;
 export function grantedConsentTypes(input: ConsentInput): ConsentType[] {
   return CONSENT_TYPES.filter((t) => input[t] === true);
 }
+
+// ---------------------------------------------------------------------------
+// Revocacion (DATA_GOVERNANCE.md (c), CONSENT_ATLAS.md seccion 10)
+// ---------------------------------------------------------------------------
+
+// POR FINALIDAD, NO UN INTERRUPTOR GENERAL: se revoca autorizacion por autorizacion. Por eso la entrada es
+// una LISTA de tipos y no un booleano; un "revocar todo" convertiria en una sola decision lo que la ley
+// (y el documento firmado) tratan como decisiones separadas por finalidad.
+//
+// EL MOTIVO ES OBLIGATORIO y no tiene columna propia a proposito: es un hecho sobre el ACTO, no sobre la
+// autorizacion, asi que su hogar es `clinical_audit_log` (regla dura 8), que ademas es inmutable. Sin
+// motivo, la traza diria que alguien revoco pero no por que, que es justo lo que la traza existe para
+// evitar.
+export const revokeConsentSchema = z.object({
+  patientId: z.guid(),
+  types: z.array(z.enum(CONSENT_TYPES)).min(1, "Selecciona al menos una autorización."),
+  motivo: z
+    .string()
+    .trim()
+    .min(10, "Describe el motivo (mínimo 10 caracteres).")
+    .max(500, "El motivo no puede pasar de 500 caracteres."),
+  // Por cual de las dos vias del documento firmado llego la solicitud. No es cosmetico: ante un reclamo,
+  // es lo que dice si el paciente lo pidio en consulta o por el canal de proteccion de datos.
+  canal: z.enum(["profesional", "proteccion_datos"]),
+});
+
+export type RevokeConsentInput = z.infer<typeof revokeConsentSchema>;

@@ -9,6 +9,9 @@ import {
   canAbandonEvaluation,
   canEmitFollowupLink,
 } from "@/modules/evaluations/policies/can-manage-evaluations";
+import { PanelAutorizaciones } from "@/modules/consent/components/panel-autorizaciones";
+import { getPatientConsents } from "@/modules/consent/data/consent-reader";
+import { canRevokeConsent } from "@/modules/consent/policies/can-revoke-consent";
 import { getPatientDetail } from "@/modules/patients/data/patient-detail-reader";
 import { edadEnAnios, fechaCorta } from "@/modules/patients/format";
 import {
@@ -41,6 +44,10 @@ export default async function HistoriaPacientePage({
 
   const paciente = await getPatientDetail(patientId);
   if (!paciente) notFound();
+
+  // Autorizaciones del paciente y la via para registrar una revocacion (CONSENT_ATLAS seccion 10). Se lee
+  // DESPUES del 404: si el paciente no es suyo, no se consulta nada mas.
+  const autorizaciones = await getPatientConsents(patientId);
 
   // Solo el profesional dueno puede cerrar un shell firmado sin responder (la RLS ya acota que sea suyo).
   const puedeCerrar = canAbandonEvaluation(user);
@@ -166,6 +173,12 @@ export default async function HistoriaPacientePage({
           </div>
         )}
       </section>
+
+      <PanelAutorizaciones
+        patientId={patientId}
+        autorizaciones={autorizaciones}
+        puedeRevocar={canRevokeConsent(user)}
+      />
 
       <PatientReferralsSection patientId={patientId} canMarkReturn={canRegisterReferral(user)} />
     </div>

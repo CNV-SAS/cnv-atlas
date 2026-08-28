@@ -13,6 +13,7 @@ const DB_TESTS = [
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",
   "src/tests/comodato.test.ts",
+  "src/tests/consent-revocation.test.ts",
   "src/tests/correct-evaluation.test.ts",
   "src/tests/count-session.test.ts",
   "src/tests/demo-realimentacion.seed.test.ts",
