@@ -215,20 +215,36 @@ function CadenaCaloricaSection({
   const objetivoEsMantenimiento = adj.kcalObj == null && cal.kcalObj === cal.get;
 
   return (
-    <section className={bloqueCls("decision")}>
-      <h3 className={tituloBloqueCls("decision")}>Cadena calórica</h3>
-      <p className="text-sm text-muted-foreground">
-        {snap.estrategia.label}
-        {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. El modelo sugiere la cadena a partir
-        del BIS; puedes ajustar cualquier eslabón. La vista previa se recalcula en vivo con la misma fórmula
-        que se sella al aprobar. Deja un campo vacío para usar el valor del modelo.
-      </p>
-      <form action={formAction} className="flex flex-col gap-3">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
-            lo detecta bajo lock y rechaza sin pisar. */}
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+    // DOS BLOQUES, NO UNO, por instruccion suya (2026-08-26 Parte 2, §8.1). Habiamos propuesto FUNDIRLOS y
+    // dijo que no, con una razon que es de orden de trabajo y no de estetica:
+    //
+    //   "La formula desarrollada depende de la decision del nutricionista de subir o bajar las calorias.
+    //    PRIMERO SE DECIDE LA META; DESPUES SE VE LA CADENA QUE LA PRODUCE. Fundirlas invierte el orden y
+    //    empuja al profesional a mover la calculadora cuando lo que queria era fijar un objetivo."
+    //
+    // Y concedio los tres beneficios que habiamos pedido, sin fundir: el cuadre de macros va en el bloque
+    // de la FORMULA, la distincion entre calculado y ajustado tambien, y el objetivo (que aparece en los
+    // dos) queda EDITABLE EN UNO Y EN LECTURA EN EL OTRO.
+    //
+    // LO QUE NO SE PARTE ES EL GUARDADO, y es deliberado: los seis ajustes son una columna cada uno pero
+    // UNA SOLA unidad clinica, `saveAdjustments` las escribe de golpe y `adjustmentSignature` cubre las
+    // seis. Partir el guardado obligaria a dos firmas sobre las mismas columnas, y un guardado parcial
+    // dejaria que la cadena de un profesional pisara la meta de otro. Se parte la PRESENTACION; el
+    // formulario y su boton siguen siendo uno.
+    <form action={formAction} className="flex flex-col gap-4">
+      <input type="hidden" name="evaluationId" value={evaluationId} />
+      {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
+          lo detecta bajo lock y rechaza sin pisar. */}
+      <input type="hidden" name="baseSignature" value={baseSignature} />
+      <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
+        {/* BLOQUE 1 · LA META. Lo que el profesional DECIDE. */}
+        <section className={bloqueCls("decision")}>
+          <h3 className={tituloBloqueCls("decision")}>Objetivo del plan</h3>
+          <p className="text-sm text-muted-foreground">
+            {snap.estrategia.label}
+            {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. Aquí decides a dónde va el
+            plan. Deja un campo vacío para usar el valor del modelo.
+          </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
               name="adjPesoMeta"
@@ -239,43 +255,11 @@ function CadenaCaloricaSection({
               step="0.1"
             />
             <AdjInput
-              name="adjGeb"
-              label="GEB (kcal)"
-              value={geb}
-              onChange={setGeb}
-              placeholder={`modelo: ${d0(base.geb)}`}
-              step="1"
-            />
-            <AdjInput
-              name="adjPal"
-              label="PAL (factor)"
-              value={pal}
-              onChange={setPal}
-              placeholder={`modelo: ${base.pal}`}
-              step="0.025"
-            />
-            <AdjInput
               name="adjKcalObj"
               label="Objetivo (kcal)"
               value={kcalObj}
               onChange={setKcalObj}
               placeholder={`modelo: ${d0(base.kcalObj)}`}
-              step="1"
-            />
-            <AdjInput
-              name="adjProtGkg"
-              label="Proteína (g/kg)"
-              value={protGkg}
-              onChange={setProtGkg}
-              placeholder={`modelo: ${base.protGKg}`}
-              step="0.1"
-            />
-            <AdjInput
-              name="adjFatPct"
-              label="Grasa (%)"
-              value={fatPct}
-              onChange={setFatPct}
-              placeholder={`modelo: ${base.fatPct}`}
               step="1"
             />
           </div>
@@ -302,86 +286,148 @@ function CadenaCaloricaSection({
               Usar el calculado ({pesoCalcDisp} kg)
             </button>
           </div>
-          <div>
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar ajustes"}
-            </Button>
-          </div>
-        </fieldset>
-      </form>
-      {/* Vista previa EN VIVO: la cadena efectiva con lo que hay en pantalla, antes de guardar. */}
-      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-        <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Cadena efectiva (vista previa)
-        </p>
-        <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
-        <PrevRow
-          label="Gasto energético basal (GEB)"
-          value={`${d0(cal.geb)} kcal`}
-          detail={`(${cal.formula})`}
-        />
-        <PrevRow label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
-        <PrevRow label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
-        <PrevRow
-          label="Objetivo calórico"
-          value={`${d0(cal.kcalObj)} kcal`}
-          detail={
-            objetivoEsMantenimiento
-              ? "(= GET, mantenimiento: el modelo no aplica déficit; el objetivo lo defines tú)"
-              : undefined
-          }
-        />
-        {/* Biody reubicado aqui (checkpoint 2.4), aclarado: son DOS fuentes distintas de gasto. Santiago
-            dudo al ver "medido 2590" al lado de la cadena que calcula otro numero. La base del plan es el
-            CALCULADO (como el HTML); el medido queda como referencia del equipo. */}
-        {protocol.kcalSugerido != null ? (
-          <p className="pt-1 text-xs text-muted-foreground">
-            El equipo (Biody) <strong>midió</strong> un gasto de {protocol.kcalSugerido} kcal; la cadena de
-            arriba lo <strong>calcula</strong> por fórmula (GEB × actividad). Son dos fuentes distintas: la
-            base del plan es el <strong>calculado</strong>, el medido queda como referencia.
-          </p>
-        ) : null}
-
-        {/* Reparto de macronutrientes (sub-tarea 3). El profesional FIJA proteina y grasa; los carbohidratos
-            salen del residuo (calculado). El tag lo hace explicito para que no crea que ajusta los tres. */}
-        <p className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Reparto de macronutrientes
-        </p>
-        <PrevRow
-          label="Proteína"
-          tag="la fijas tú (g/kg de peso)"
-          value={`${d0(cal.protG)} g`}
-          detail={`(${cal.protGKg} g/kg · ${protPct}% · ${d0(cal.protKcal)} kcal)`}
-        />
-        <PrevRow
-          label="Grasa"
-          tag="la fijas tú (% de las calorías)"
-          value={`${d0(cal.fatG)} g`}
-          detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
-        />
-        <PrevRow
-          label="Carbohidratos"
-          tag="calculado (residuo)"
-          value={`${d0(cal.choG)} g`}
-          detail={`(${cal.choPct}% · ${d0(cal.choKcal)} kcal)`}
-        />
-        {/* Cuadre: la suma en kcal es exacta por construccion (== objetivo), salvo el borde de excedente. */}
-        {proteinaGrasaExcedenObjetivo ? (
-          <p className="mt-2 rounded-md border border-clinical-critical/40 bg-clinical-critical-bg px-2 py-1.5 text-xs text-clinical-critical">
-            La proteína y la grasa que fijaste suman <strong>{d0(macrosKcal)} kcal</strong>, más que el
-            objetivo ({d0(cal.kcalObj)} kcal). No queda margen para carbohidratos (0 g). Baja la proteína o la
-            grasa, o sube el objetivo calórico.
-          </p>
-        ) : (
-          <p className="mt-1 flex items-baseline justify-between gap-4 text-xs text-clinical-optimal">
-            <span>Suma de los tres</span>
-            <span>
-              <strong>{d0(macrosKcal)} kcal</strong> = objetivo
+          {/* La distincion CALCULADO vs AJUSTADO, que es el segundo de los tres beneficios que concedio. */}
+          <p className="flex items-baseline justify-between gap-4 border-t border-border pt-2 text-sm">
+            <span className="text-muted-foreground">Objetivo calórico del plan</span>
+            <span className="font-semibold text-foreground">
+              {d0(cal.kcalObj)} kcal
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {adj.kcalObj != null ? "fijado por ti" : "sugerido por el modelo"}
+              </span>
             </span>
           </p>
-        )}
-      </div>
-    </section>
+        </section>
+
+        {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META. */}
+        <section className={bloqueCls("derivado")}>
+          <h3 className={tituloBloqueCls("derivado")}>Cómo se llega a ese objetivo</h3>
+          <p className="text-sm text-muted-foreground">
+            La fórmula que sostiene el objetivo de arriba y su reparto en macronutrientes. Puedes ajustar
+            cualquier eslabón; la vista previa se recalcula en vivo con la misma fórmula que se sella al
+            aprobar.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <AdjInput
+              name="adjGeb"
+              label="GEB (kcal)"
+              value={geb}
+              onChange={setGeb}
+              placeholder={`modelo: ${d0(base.geb)}`}
+              step="1"
+            />
+            <AdjInput
+              name="adjPal"
+              label="PAL (factor)"
+              value={pal}
+              onChange={setPal}
+              placeholder={`modelo: ${base.pal}`}
+              step="0.025"
+            />
+            <AdjInput
+              name="adjProtGkg"
+              label="Proteína (g/kg)"
+              value={protGkg}
+              onChange={setProtGkg}
+              placeholder={`modelo: ${base.protGKg}`}
+              step="0.1"
+            />
+            <AdjInput
+              name="adjFatPct"
+              label="Grasa (%)"
+              value={fatPct}
+              onChange={setFatPct}
+              placeholder={`modelo: ${base.fatPct}`}
+              step="1"
+            />
+          </div>
+          {/* Vista previa EN VIVO: la cadena efectiva con lo que hay en pantalla, antes de guardar. */}
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+            <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Cadena efectiva (vista previa)
+            </p>
+            <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
+            <PrevRow
+              label="Gasto energético basal (GEB)"
+              value={`${d0(cal.geb)} kcal`}
+              detail={`(${cal.formula})`}
+            />
+            <PrevRow label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
+            <PrevRow label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
+            {/* EN LECTURA, no editable: es su instruccion literal para el dato que aparece en los dos
+                bloques. Se edita arriba, donde se decide; aqui solo se ve a que llega la cadena. */}
+            <PrevRow
+              label="Objetivo calórico"
+              tag="lo fijas arriba"
+              value={`${d0(cal.kcalObj)} kcal`}
+              detail={
+                objetivoEsMantenimiento
+                  ? "(= GET, mantenimiento: el modelo no aplica déficit; el objetivo lo defines tú)"
+                  : undefined
+              }
+            />
+            {/* Biody reubicado aqui (checkpoint 2.4), aclarado: son DOS fuentes distintas de gasto. Santiago
+                dudo al ver "medido 2590" al lado de la cadena que calcula otro numero. La base del plan es el
+                CALCULADO (como el HTML); el medido queda como referencia del equipo. */}
+            {protocol.kcalSugerido != null ? (
+              <p className="pt-1 text-xs text-muted-foreground">
+                El equipo (Biody) <strong>midió</strong> un gasto de {protocol.kcalSugerido} kcal; la cadena
+                de arriba lo <strong>calcula</strong> por fórmula (GEB × actividad). Son dos fuentes
+                distintas: la base del plan es el <strong>calculado</strong>, el medido queda como
+                referencia.
+              </p>
+            ) : null}
+
+            {/* Reparto de macronutrientes. El profesional FIJA proteina y grasa; los carbohidratos salen del
+                residuo (calculado). El tag lo hace explicito para que no crea que ajusta los tres. Va en
+                ESTE bloque por instruccion suya: "el cuadre de macros puede mostrarse en el bloque de la
+                formula". */}
+            <p className="pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Reparto de macronutrientes
+            </p>
+            <PrevRow
+              label="Proteína"
+              tag="la fijas tú (g/kg de peso)"
+              value={`${d0(cal.protG)} g`}
+              detail={`(${cal.protGKg} g/kg · ${protPct}% · ${d0(cal.protKcal)} kcal)`}
+            />
+            <PrevRow
+              label="Grasa"
+              tag="la fijas tú (% de las calorías)"
+              value={`${d0(cal.fatG)} g`}
+              detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
+            />
+            <PrevRow
+              label="Carbohidratos"
+              tag="calculado (residuo)"
+              value={`${d0(cal.choG)} g`}
+              detail={`(${cal.choPct}% · ${d0(cal.choKcal)} kcal)`}
+            />
+            {/* Cuadre: la suma en kcal es exacta por construccion (== objetivo), salvo el borde de excedente. */}
+            {proteinaGrasaExcedenObjetivo ? (
+              <p className="mt-2 rounded-md border border-clinical-critical/40 bg-clinical-critical-bg px-2 py-1.5 text-xs text-clinical-critical">
+                La proteína y la grasa que fijaste suman <strong>{d0(macrosKcal)} kcal</strong>, más que el
+                objetivo ({d0(cal.kcalObj)} kcal). No queda margen para carbohidratos (0 g). Baja la
+                proteína o la grasa, o sube el objetivo calórico.
+              </p>
+            ) : (
+              <p className="mt-1 flex items-baseline justify-between gap-4 text-xs text-clinical-optimal">
+                <span>Suma de los tres</span>
+                <span>
+                  <strong>{d0(macrosKcal)} kcal</strong> = objetivo
+                </span>
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Un solo boton para los dos bloques: el guardado es atomico sobre las seis columnas. */}
+        <div>
+          <Button type="submit" variant="outline" disabled={pending}>
+            {pending ? "Guardando..." : "Guardar ajustes"}
+          </Button>
+        </div>
+      </fieldset>
+    </form>
   );
 }
 
