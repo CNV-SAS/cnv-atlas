@@ -51,11 +51,15 @@ const registry: RegistryData = JSON.parse(
   ),
 );
 
-// Texto canonico del prompt de menu (fuente unica; el mismo JSON que consume el builder del
-// prompt en la app). Se siembra como ai_prompts menu.generate v1.
-const menuSystemPrompt: string = JSON.parse(
+// Texto canonico del prompt de ADAPTACION del menu (fuente unica; el mismo JSON que consume el builder
+// en la app). Se siembra como ai_prompts menu.adapt v1.
+//
+// CLAVE NUEVA desde el contrato v4 (2026-08-29): la IA ya no COMPONE menus, ADAPTA el ciclo. El texto de
+// `menu.generate` describia la tarea vieja, y un texto de sistema que describe mal la tarea es un defecto
+// de seguridad: el modelo obedece lo que lee. Sus filas quedan en BD como historia, sin tocar.
+const menuAdaptSystemPrompt: string = JSON.parse(
   readFileSync(
-    new URL("../src/modules/treatment/ai/prompts/menu.system.v1.json", import.meta.url),
+    new URL("../src/modules/treatment/ai/prompts/menu.adapt.system.v1.json", import.meta.url),
     "utf8",
   ),
 ).system;
@@ -774,9 +778,9 @@ async function main() {
       await supabase.from("ai_prompts").upsert(
         [
           {
-            prompt_key: "menu.generate",
+            prompt_key: "menu.adapt",
             version: 1,
-            content: menuSystemPrompt,
+            content: menuAdaptSystemPrompt,
             status: "active",
             created_by: adminId,
           },
