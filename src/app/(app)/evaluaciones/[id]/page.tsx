@@ -24,7 +24,7 @@ import {
   EvaluationResults,
 } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
-import { formatDate, formatDateOnly } from "@/lib/format/date";
+import { formatDate, formatDateOnly, formatDateTime } from "@/lib/format/date";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { CelularSection } from "@/modules/diagnoses/components/celular-section";
@@ -94,6 +94,7 @@ import {
   HcRemisiones,
   HcRutasActivadas,
   HcMotivoDeConsulta,
+  HcObservaciones,
   HcResumenDiagnostico,
 } from "@/modules/reports/components/historia-clinica";
 import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
@@ -810,6 +811,17 @@ export default async function ResultadosEvaluacionPage({
               />
               <HcRutasActivadas
                 rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
+              />
+              {/* OBSERVACIONES (§8.3): "deben aparecer en la historia, y POR CONSULTA, no por paciente".
+                  Cuelgan del tratamiento de ESTA evaluacion, asi que lo de "por consulta" se cumple por
+                  construccion. Van al final del cuerpo clinico, antes de la proxima cita y la firma:
+                  es lo que el profesional anade despues de todo lo derivado. */}
+              <HcObservaciones
+                observaciones={(protocol?.notes ?? []).map((n) => ({
+                  id: n.id,
+                  note: n.note,
+                  fecha: formatDateTime(n.createdAt),
+                }))}
               />
               <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDateOnly(hcHeader.proximaCita) : null} />
               <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />

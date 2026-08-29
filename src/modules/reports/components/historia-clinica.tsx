@@ -262,6 +262,45 @@ export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
   );
 }
 
+// OBSERVACIONES DEL PROFESIONAL, por instruccion suya (§8.3, 2026-08-26 Parte 2): "Deben aparecer en la
+// historia. Y POR CONSULTA, NO POR PACIENTE".
+//
+// Lo que el diagnostico en su archivo: "notas_profesional aparece UNA SOLA VEZ en todo el archivo,
+// ESCRIBIENDO. Nadie la lee, y con onConflict: 'documento' cada control borra el anterior. Lo que el
+// profesional escribe hoy se pierde DOS VECES: se sobrescribe y no se muestra".
+//
+// EN ATLAS SOLO PASABA LA MITAD, y esa mitad estaba viva: las notas SI se guardan bien (tabla propia por
+// tratamiento, append-only, con auditoria; no se sobrescriben), pero NO SE MOSTRABAN en ninguna parte
+// fuera del panel de tratamiento. O sea que no se perdian, pero tampoco llegaban al documento que es
+// probatorio. La otra mitad de su defecto, la del onConflict, nunca la tuvimos.
+//
+// POR CONSULTA se cumple por construccion: cuelgan del tratamiento de ESTA evaluacion, no del paciente.
+export type HcObservacion = { id: string; note: string; fecha: string };
+
+export function HcObservaciones({ observaciones }: { observaciones: HcObservacion[] }) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Observaciones del profesional</TituloSeccion>
+      {observaciones.length > 0 ? (
+        <ul className="flex flex-col gap-3">
+          {observaciones.map((o) => (
+            <li key={o.id} className="border-l-2 border-border pl-3">
+              <p className="whitespace-pre-line text-sm text-foreground">{o.note}</p>
+              <p className="pt-1 text-xs text-muted-foreground">{o.fecha}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // No dice "sin observaciones" a secas: en un documento probatorio, un bloque vacio sin explicar
+        // deja la duda de si el profesional no escribio nada o si el sistema no lo trajo.
+        <p className="text-sm text-muted-foreground">
+          El profesional no registró observaciones en esta consulta.
+        </p>
+      )}
+    </Tarjeta>
+  );
+}
+
 export function HcProximaConsulta({ fecha }: { fecha: string | null }) {
   return (
     <Tarjeta>
