@@ -42,15 +42,22 @@
    profesión que faltaban, las observaciones del profesional en la historia clínica, y la reemisión
    obligatoria por cambio de banda.
 
-   **Queda UNA pieza sin bloqueo: la unificación del menú** (su §13: "únanlas, el ciclo de 21 días es la
-   base y la IA solo lo adapta"). Es la más grande y la que más dependía de lo demás, por eso va al final.
+   **CERRADO TODO LO CIENTÍFICO SIN BLOQUEO (2026-08-29).** La unificación del menú era la última: la IA
+   dejó de componer y pasa a ADAPTAR el ciclo de 21 días, solo entra si hay restricciones, devuelve solo
+   las sustituciones con su motivo, y el profesional las acepta cambio por cambio. Contrato `menu.v4` con
+   clave de prompt propia (`menu.adapt`).
 
-   **Y DOS SMOKES EN NAVEGADOR REAL, que Santiago hace en una sola pasada al cerrar:** los tres
-   encabezados de la encuesta (toca el formulario del paciente) y el panel de tratamiento en dos bloques.
-   Es la clase de defecto que ni tsc ni jsdom distinguen de la versión rota.
+   **QUEDAN DOS SMOKES EN NAVEGADOR REAL, que Santiago hace en UNA sola pasada:**
+   1. **Los tres encabezados de la encuesta** (toca el formulario del paciente: la familia de defectos que
+      ni tsc ni jsdom distinguen de la versión rota).
+   2. **El panel de tratamiento**, con la cadena en dos bloques y el menú unificado.
 
-   **Esperan respuesta las de `RONDA_GILDARDO_2026-08-29.md`, y solo DOS bloquean construcción:** el
-   puente frecuencia-porciones con el omega-3, y el ICEC.
+   **Y EL COTEJO VISUAL SE PUEDE HACER YA**, que era la decisión de Santiago: una sola vez, contra lo
+   definitivo.
+
+   **Esperan respuesta las de `RONDA_GILDARDO_2026-08-29.md`, y NINGUNA bloquea el cotejo.** Solo dos
+   bloquean construcción futura: el puente frecuencia-porciones con el omega-3 (que enciende las diez
+   alertas de consumo) y el ICEC.
 
    **Queda:** la tabla de intercambio (ya desbloqueada), las superficies de LISTA (/pacientes,
    /pacientes/[id], /evaluaciones/[id]), y la barra lateral, los componentes y el layout general, que van

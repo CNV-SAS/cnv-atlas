@@ -670,3 +670,23 @@ motor nuevo ("sigue haciendo falta" o "Gildardo ya la absorbio, se retira"). Abs
 vimos hasta el 29. El original se re-porto con su texto y el `.authorized.js` se elimino: sin
 modificaciones que aplicar no hay nada que generar, y dejarlo habria mantenido un archivo stale que dos
 readers importaban.
+
+**P-79 · Aplicada su §13 (un solo menu). Y tres decisiones NUESTRAS que van declaradas.** La IA dejo de
+componer y pasa a ADAPTAR el ciclo. Sobre eso decidimos tres cosas que el no especifico, y por eso se le
+cuentan:
+
+1. **Devuelve SOLO LOS CAMBIOS, no el menu adaptado.** Si devolviera el menu entero no sabriamos que toco,
+   y le estariamos confiando el 90% que no debia tocar. Ademas hace posible aceptar cambio por cambio.
+2. **Cada cambio cita la restriccion que atiende, y esa cita se coteja** contra las que se enviaron. NO
+   BLOQUEA (juzgar si una preparacion incumple una restriccion es clinico, y es del profesional), pero el
+   que cita algo que nadie pidio queda marcado.
+3. **Se acepta cambio por cambio**, no en bloque: una sustitucion puede ser buena y la de al lado no.
+
+**Y una nota de forma que puede importarle:** el texto de sistema tiene CLAVE NUEVA (`menu.adapt`). Con la
+vieja, un texto editado por el admin para la tarea ANTERIOR seguiria mandando sobre el contrato nuevo: el
+sistema diria componer y el usuario sustituir. Con clave propia es imposible por construccion.
+
+**P-80 · Reporte: la merienda sigue vacia y NO se inventa.** Su ciclo de 21 dias trae cinco tiempos y
+Atlas maneja seis. La columna queda vacia, la pantalla dice por que, y el prompt de adaptacion NO manda
+las celdas vacias: mandarlas invitaria al modelo a inventarlas, y eso seria contenido clinico nuestro
+(regla 0). Si algun dia el la agrega al ciclo, la columna se llena sola.
