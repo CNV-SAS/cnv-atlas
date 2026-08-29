@@ -395,7 +395,7 @@ export function EvaluationResults({
           veredicto y ARRIBA de las subpestañas, para que se vea sin tener que abrir ninguna, pero
           nunca por encima de la conclusión: es una nota de procedencia, no un hallazgo clínico.
           NO invalida el diagnóstico (ver el componente). */}
-      <AvisoCienciaAnterior vigencia={results.vigencia} />
+      <AvisoCienciaAnterior vigencia={results.vigencia} veredicto={results.veredictoReemision} />
 
       {/* Tres subpestañas (QUE de Gildardo, COMO nuestro). Default Funcional (DIV-7). */}
       <DiagnosisSubtabs

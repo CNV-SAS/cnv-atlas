@@ -4,7 +4,9 @@ import { type EngineOutput, isEngineOutput } from "@/clinical-engine";
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 import type { ValidityCaveat } from "@/modules/bis-intake/services/validity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { simularConCienciaDeHoy } from "@/modules/clinical-pipeline/data/simular-con-ciencia-de-hoy";
 import { vigenciaEmision, type VigenciaEmision } from "@/modules/clinical-pipeline/emision-vigencia";
+import { veredictoDeReemision, type VeredictoReemision } from "@/modules/clinical-pipeline/reemision";
 import {
   getReportDispatch,
   getReportForEvaluation,
@@ -74,6 +76,8 @@ export type EvaluationResults = {
   // Si el documento se emitio con una version anterior del modelo, y que dimensiones se movieron.
   // NO invalida nada: el diagnostico sigue vigente hasta que alguien reemita (ver el aviso).
   vigencia: VigenciaEmision;
+  // §12b: si cambió de banda, la reemisión es obligatoria. Solo se computa cuando hay desfase.
+  veredictoReemision: VeredictoReemision;
 };
 
 export type EvaluationHeader = {
@@ -168,6 +172,16 @@ export async function getEvaluationResults(
     emissionVersions: sellado.emissionVersions,
   });
 
+  // §12b: la reemision es obligatoria si el paciente CAMBIA DE BANDA, y "el criterio es el RESULTADO, no
+  // el tipo de cambio". Saberlo exige recomputar con la ciencia de hoy y comparar las clasificaciones.
+  //
+  // SOLO SI HAY DESFASE, y eso no es una optimizacion: si el documento esta al dia no hay nada que
+  // comparar, y recomputar de todas formas gastaria el motor en cada apertura de cada evaluacion.
+  //
+  // La simulacion NO ESCRIBE nada: el diagnostico emitido sigue siendo el que es. Recalcular en silencio
+  // borraria el rastro, que es la otra mitad de su misma instruccion.
+  const recomputado = vigencia.alDia ? null : await simularConCienciaDeHoy(evaluationId);
+
   // Compatibilidad del snapshot con la forma actual del motor. Los snapshots de eras
   // anteriores (stub-0.1.0 pre-B11) no tienen efrPhenotype/dfi/structural: se degrada la
   // vista en vez de tronar. reports es inmutable, no se pueden migrar.
@@ -180,6 +194,11 @@ export async function getEvaluationResults(
       compatible: false,
       engineVersion,
       vigencia,
+      veredictoReemision: veredictoDeReemision(
+        rawSnapshot as never,
+        recomputado,
+        !vigencia.alDia,
+      ),
       efrState: null,
       validityCaveats: [],
       rutasContent: [],
@@ -248,6 +267,7 @@ export async function getEvaluationResults(
     snapshot: dispatch.snapshot,
     compatible: true,
     vigencia,
+    veredictoReemision: veredictoDeReemision(rawSnapshot, recomputado, !vigencia.alDia),
     engineVersion,
     efrState,
     validityCaveats,
