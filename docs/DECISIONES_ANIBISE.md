@@ -588,3 +588,55 @@ su 3.2b, pero como dato declarado, sin tabla de exclusiones (`services/patron-de
 
 **Y lo que la pantalla no puede decir:** que el menu fue verificado contra las alergias. Verificado: no lo
 decia antes (barrido del copy) y ahora no hay nada que lo insinue, porque no se emite ningun aviso.
+
+---
+
+## Cola de la ronda del 2026-08-29
+
+**Enviadas en `docs/entregas/RONDA_GILDARDO_2026-08-29.md`.** La cola es interna; la ronda es lo que el
+recibe. Cotejadas una por una antes de cerrar: las ocho de abajo estan las ocho en el documento.
+
+**P-69 · Sus alertas leen `d1_14`, `d1_15` y `d1_16`, de la matriz de 18 items.** No existen en la de 15.
+No es sospecha nuestra: es SU nota sobre el mismo grupo de campos, *"Los campos d1_9, d1_10 y d1_16 que
+lee calcLE8 NO existen en la encuesta: solo viven en el objeto DEMO"*. Cuatro de las quince reglas quedan
+muertas y UNA MIENTE: "Deshidratacion probable" pide `agua <= 3` sobre un campo siempre 0, asi que se
+dispara solo por la orina oscura y afirma "Agua: 0 vasos". Preguntadas las equivalencias (`d1_13_i`,
+`d7_agua`) **junto con el umbral**, porque sus condiciones son `>= 2` sobre porciones y los `_i` guardan
+un indice 0-4: responder solo el campo dejaria el umbral sobre otra escala. Portadas las quince verbatim;
+corre una (TCA activo).
+
+**P-70 · El puente de frecuencia a porciones.** Bloquea las diez reglas de consumo. Es chico: la tabla de
+nutrientes (`INTER_TABLA_A`) y la aritmetica (`validacion.ts`) ya existen; falta solo la equivalencia
+frecuencia -> porciones/dia. El omega-3 NO esta en la tabla: preguntado si se agrega o si esa regla se
+retira.
+
+**P-71 · El ICEC y el interruptor `LE8_MAPEO_CORREGIDO`.** Su respuesta del 27 dice "enciendan el mapeo",
+pero su propio archivo advierte que encenderlo baja la EB-BIS de TODOS los pacientes entre 1 y 8 anos, y
+que antes hay que establecer de donde salen la media 58,578 y la desviacion 13,332. Las dos cosas
+comparten interruptor. NO SE HA ENCENDIDO. Preguntado si la media y la desviacion se conservan, si hay
+que partir el interruptor, y si la conducta de recalcular-y-anotar que dio para el DFI aplica igual a la
+EB-BIS.
+
+**P-72 · Un dominio sin dato sigue puntuando severidad 1.** Aplicado su punto 4 (el ISCM ausente ya no se
+clasifica), la severidad del dominio 2 la fija su `?? 1`, escrito para una clasificacion fuera del mapa.
+NO SE TOCA: es su decision y es para este caso exacto. Pero deja el radar dibujando "susceptibilidad
+leve" sobre un dominio que no se midio, que es la misma lectura favorable que el senalo. Preguntado.
+
+**P-73 · Las tres reglas "positivo" en la misma lista que las criticas.** Forma, no ciencia.
+
+**P-74 · Su punto 3, sin dimensionar.** Enunciado sin alcance.
+
+**P-75 · Declaracion (no pregunta): el orden de la matriz era NUESTRO error y esta corregido.** Su
+`FREQ_GROUPS` va por categoria y las carnes rojas ocupan la 11 (neutro); nuestra encuesta ordenaba por el
+NUMERO DEL CAMPO y las sacaba las ultimas, entre las de riesgo. Con su regla *"el orden es el mensaje"*,
+le deciamos al paciente que son alimento de riesgo. Corregido sin bump de version (ninguna pregunta cambia
+de enunciado, opciones ni campo; las respuestas apuntan al identificador, no a la posicion), migracion
+`0092`, mas los tres encabezados de grupo. **Por que no lo vimos: nuestro orden era coherente CONSIGO
+MISMO.** Lo encontro Santiago respondiendo la encuesta con su archivo al lado.
+
+**P-76 · Las tres notas por profesion del panel de tratamiento.** No encontramos en su archivo la regla de
+que va en cada una ni si son tres campos o uno compartido. Citadas donde las vimos.
+
+**Y una que NO va a la ronda porque es nuestra:** `SECONDARY_REQUIRED` en `biody-columns.ts` esta
+declarada y no la consume nadie. No es defecto vivo (el ISCM ya sale null por `SECONDARY_FIELDS` en
+`analysis.ts`, que si se usa), pero es una constante que aparenta gobernar algo y no gobierna nada.

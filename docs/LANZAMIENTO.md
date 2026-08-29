@@ -29,6 +29,18 @@
    3. Verificar que NO deja: el aviso dice CUÁNTAS faltan ("Encuesta incompleta: faltan N de M respuestas que usa el diagnóstico", verificado en `engine.ts`), y aparece el enlace "Completar la encuesta con el paciente".
    4. Completar la encuesta y verificar que ahora SÍ genera.
 3. **Los cuatro bloques de pulido de fidelidad** (encuesta, evaluación, diagnóstico, tratamiento), cada uno con comparación crítica contra el HTML. **Avance (2026-08-12):** el PASE DE INSTRUMENTO de la encuesta está HECHO (encuesta v3): ECA1 cirugías, ECA2 porciones + intro D1, ECA3 nombres de grupos, rótulos, todo verbatim de v8; sociodemográficos (4 al perfil + motivo); nombres de indicadores (P-18). ECA4a (texto libre en "Otra") separado por implicación de motor → pregunta a Gildardo (ECA4b). Queda el COTEJO VISUAL con ojos de las cuatro pantallas (comparación forma-a-forma). `COTEJOS_VISUALES.md` / `MAPA.md` / `BACKLOG.md`.
+
+   **DECISION DE SANTIAGO (2026-08-29): el cotejo visual se hace UNA SOLA VEZ, contra lo definitivo, y
+   por eso espera a que cierre todo lo científico.** El motivo es el del propio gate: cotejar contra una
+   versión que aún va a cambiar obliga a cotejar dos veces, y la segunda vez el riesgo no es repetir el
+   esfuerzo sino que quede una mezcla de las dos versiones sin que nadie lo note.
+
+   **Estado de lo científico (2026-08-29):** aplicados el piso calórico, los cortes del IRC, el orden de
+   la matriz con sus tres encabezados, el punto 4 (ISCM sin MCA) y las quince alertas portadas. Quedan,
+   sin depender de Gildardo: la separación de la cadena calórica, los dos resúmenes, las notas de clase
+   B, la reemisión por cambio de banda y el menú. Esperan respuesta las ocho de
+   `RONDA_GILDARDO_2026-08-29.md`, y de esas **solo dos bloquean construcción**: las diez alertas de
+   consumo (P-69/P-70) y el ICEC (P-71).
 4. **Diseño gráfico coherente** de toda la app (al final del Hito 1, después de los cuatro bloques de pulido). `BACKLOG.md`.
    **Avance (2026-08-27):** hecho lo que NO depende de Gildardo, y con smoke de Santiago en cada paso.
    (a) **Intake del paciente**, móvil primero: tira de navegación, una columna, superficie por pregunta.
