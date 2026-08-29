@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useMemo, useRef, useState } from "react";
+import { Fragment, startTransition, useActionState, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -13,6 +13,7 @@ import type { SurveyQuestionView } from "../data/survey-view-types";
 import { AboutYouSection, type AboutYouPrefill } from "./about-you-section";
 import { ResumeLinkBox } from "./resume-link-box";
 import { SurveyQuestion } from "./survey-widgets";
+import { encabezadoAntesDe } from "@/clinical-engine/encabezados-frecuencia";
 
 // FASE 2 del intake: la ENCUESTA. Se llega aqui ya firmado (fase 1) con un resume_token que autentica la
 // escritura de respuestas sin sesion. Guarda a medida (al pasar de seccion) para que quien pause y vuelva
@@ -337,14 +338,23 @@ export function SurveyPhaseForm({
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:gap-6">
-              {s.questions.map((q) => (
-                <div
-                  key={q.id}
-                  className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
-                >
-                  <SurveyQuestion q={q} answer={prefill?.[q.id] ?? null} />
-                </div>
-              ))}
+              {s.questions.map((q, qi) => {
+                // El encabezado se DERIVA de la categoria de la pregunta anterior, nunca de una posicion
+                // escrita a mano: asi aparece solo en el primer item de cada bloque y sigue al orden.
+                const encabezado = encabezadoAntesDe(q.fieldKey, s.questions[qi - 1]?.fieldKey ?? null);
+                return (
+                  <Fragment key={q.id}>
+                    {encabezado ? (
+                      <h3 className="mt-2 border-b border-border pb-1 text-sm font-semibold text-foreground first:mt-0">
+                        {encabezado}
+                      </h3>
+                    ) : null}
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0">
+                      <SurveyQuestion q={q} answer={prefill?.[q.id] ?? null} />
+                    </div>
+                  </Fragment>
+                );
+              })}
             </div>
           </section>
         );

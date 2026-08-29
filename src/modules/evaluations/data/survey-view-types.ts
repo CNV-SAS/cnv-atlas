@@ -9,6 +9,9 @@ export type SurveyQuestionView = {
   hint: string | null; // ayuda bajo el enunciado (ejemplos + ancla de porcion en D1, o aclaracion de item)
   type: string; // texto, numero, opcion, opcion_multiple
   section: string | null; // dominio para agrupar en el intake (B7.1)
+  fieldKey: string | null; // clave del prototipo (d1_1_i, d2_21...). El intake la usa para saber que
+  // preguntas forman la matriz de frecuencia y de que categoria clinica es cada una. Se ancla en la
+  // CLAVE y no en la posicion ni en el texto: un orden se desincroniza en cuanto se inserta algo.
   options: SurveyOptionView[];
 };
 export type ActiveSurvey = {
