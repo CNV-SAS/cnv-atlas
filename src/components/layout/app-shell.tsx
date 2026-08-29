@@ -117,7 +117,7 @@ function NavGrupos({
           {g.label ? (
             <span
               aria-hidden
-              className="px-4 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground/70"
+              className="px-3 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground/70"
             >
               {g.label}
             </span>
@@ -154,33 +154,23 @@ function NavLinks({
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex items-center gap-3 rounded-l-lg py-1.5 pl-4 pr-3 text-sm transition-colors",
-              // LA MUESCA. El activo NO lleva bloque ni tinte propio: lleva el GRIS DEL CONTENIDO, con la
-              // señal de 3px y el texto en navy. Redondeado solo a la izquierda y sin margen a la derecha,
-              // asi que se abre hacia la pagina: se lee como una muesca recortada en la barra por la que
-              // asoma el contenido, no como un objeto encima de la barra.
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              // EL ACTIVO VA RELLENO EN EL AZUL DE MARCA. La muesca gris que probamos antes se leia plana:
+              // marcaba por pertenencia, que es correcto, pero en una barra clara sobre superficie clara la
+              // diferencia era demasiado poca para encontrarla de un vistazo. Blanco sobre #205dfd da
+              // 5,19:1, que pasa AA para texto normal (no AAA).
               //
-              // POR QUE ASI Y NO UN RECTANGULO OSCURO, que es lo que hace la referencia. Un bloque macizo
-              // pesa mucho en una barra de 15 items y arrastra la vista todo el tiempo; el problema no es
-              // el tono, es el bloque. Aqui el activo se marca por PERTENENCIA (es la misma superficie que
-              // la pagina que estas viendo), no por peso. Navy sobre el gris: 13,67:1.
+              // Y el argumento de que "el azul compite con los botones" NO aplica aqui: no hay ningun boton
+              // de accion DENTRO de la barra. Vale para un acento suelto en el contenido, no para la unica
+              // superficie azul de una columna de navegacion.
               active
-                ? "bg-surface-sunken font-semibold text-nav-accent"
-                : "font-medium text-muted-foreground hover:bg-surface-sunken/60 hover:text-foreground",
+                ? "bg-nav-accent font-semibold text-white"
+                : // EL HOVER NO ES UN GRIS: es un tinte del MISMO azul del activo (5%). Asi el reposo
+                  // ANTICIPA el destino en vez de solo "encenderse": el item se tiñe de lo que va a ser
+                  // cuando lo elijas. Un gris no dice nada, solo confirma que el raton esta encima.
+                  "font-medium text-muted-foreground hover:bg-nav-accent/5 hover:text-foreground",
             )}
           >
-            {/* LA SEÑAL DE 3px: es lo que hace legible la muesca, porque el gris solo es deliberadamente
-                sutil. Va como nodo real y no como `before:` con valor arbitrario, por la misma razon que
-                el separador de la fila de lista: un valor que el compilador no reconoce no da error,
-                simplemente no emite la regla, y el efecto desaparece en silencio.
-                SI EN EL SMOKE QUEDA DEMASIADO SUTIL, el arreglo es subir a `w-1.5` o sumar un tinte al
-                fondo del activo; no hay que rehacer nada. */}
-            {active ? (
-              <span
-                aria-hidden
-                className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-nav-accent"
-              />
-            ) : null}
             <Icon className="size-4 shrink-0" aria-hidden />
             {item.label}
           </Link>
@@ -217,9 +207,7 @@ export function AppShell({
         <div className="flex h-14 items-center px-4">
           <AtlasLogo />
         </div>
-        {/* `pl-3 pr-0`: los items llegan al borde derecho de la barra para que la muesca del activo se
-            abra hacia el contenido en vez de flotar dentro de la barra. */}
-        <nav className="flex flex-1 flex-col gap-0.5 py-2 pl-3 pr-0">
+        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
           <NavGrupos grupos={grupos} pathname={pathname} />
         </nav>
       </aside>
@@ -244,7 +232,7 @@ export function AppShell({
                 <div className="flex h-14 items-center px-4">
                   <AtlasLogo />
                 </div>
-                <nav className="flex flex-col gap-0.5 py-2 pl-3 pr-0">
+                <nav className="flex flex-col gap-0.5 px-3 py-2">
                   <NavGrupos grupos={grupos} pathname={pathname} onNavigate={() => setOpen(false)} />
                 </nav>
               </SheetContent>

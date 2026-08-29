@@ -129,3 +129,30 @@ describe("ListaFilas: la cabecera", () => {
     expect(veces(markup, "Documento")).toBe(1); // no se rotula en estrecho
   });
 });
+
+describe("FilaLista: DEFECTO CORREGIDO, un valor ausente no corre las columnas", () => {
+  // Visto en la captura de Santiago del 2026-08-28: un paciente sin ultima consulta mostraba su numero de
+  // evaluaciones bajo "Última" y su edad bajo "Evaluaciones". La primera version filtraba los nulos ANTES
+  // de pintar, asi que en columnas los valores siguientes se corrian una celda a la izquierda.
+  //
+  // NO ERA UN FALLO VISIBLE: los valores se leen perfectamente, solo que rotulados mal, que es justo el
+  // modo de fallo contra el que existe el `throw` de alineacion. Por eso el candado mira el CONTEO de
+  // celdas y no solo el contenido.
+  const conHueco = filaSola([null, "3", "CC 1.020.334.221"]);
+
+  it("en COLUMNAS la celda vacia se pinta igual: tantas celdas como columnas", () => {
+    // Una celda por columna, siempre. Si se filtrara el nulo, saldrian 2 y las dos ultimas se correrian.
+    expect(veces(conHueco, "<span class=")).toBeGreaterThanOrEqual(COLUMNAS.length);
+    expect(conHueco).toContain("hidden md:block");
+  });
+
+  it("y en DOS LINEAS desaparece: un hueco no dice nada donde no hay cabecera", () => {
+    expect(conHueco).toContain("hidden md:block");
+    expect(conHueco).not.toContain("Última: ");
+  });
+
+  it("el separador no queda HUERFANO cuando falta el primer valor", () => {
+    // Solo un separador: entre "3" y el documento. No uno delante del "3" por ser el indice 1.
+    expect(veces(conHueco, ">·</span>")).toBe(1);
+  });
+});

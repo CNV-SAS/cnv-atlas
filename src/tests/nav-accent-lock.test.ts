@@ -77,23 +77,28 @@ describe("frontera entre la capa de interfaz y la capa clinica", () => {
     expect(css).toContain("--clinical-excellent: #0ea5e9");
   });
 
-  // ESTA CLAUSULA SE RETIRO Y VOLVIO EL MISMO DIA, y queda escrito porque es justo el caso que la regla
-  // de "un candado que se afloja cuando estorba deja de ser candado" quiere gobernar.
+  // LA CLAUSULA DEL AZUL DE ACCION SE RETIRA DEFINITIVAMENTE, y la razon es lo que paso con ella.
   //
-  // La clausula del azul de ACCION se escribio para un acento sobre barra CLARA, donde el azul de los
-  // botones vive al lado. Al pasar la barra a una superficie oscura propia, ese supuesto dejo de ser
-  // cierto (dentro de la barra no hay botones con los que competir) y la clausula se retiro, con la razon
-  // y la condicion de vuelta escritas. La barra volvio a ser clara al cotejar la referencia, asi que el
-  // supuesto volvio a ser cierto y la clausula vuelve.
+  // En un solo dia (2026-08-28) oscilo TRES veces: se escribio para un acento sobre barra clara (donde el
+  // azul de los botones vive al lado), se retiro al pasar la barra a superficie oscura (donde no hay
+  // botones con los que competir), volvio al volver la barra a clara, y vuelve a caer ahora que el item
+  // activo va RELLENO de azul y deja de ser un acento para ser una superficie.
   //
-  // Lo que hace que esto sea disciplina y no arbitrariedad: en ningun momento se retiro la clausula que
-  // protege la capa CLINICA, que es la que no depende del contexto.
-  it("el acento de navegacion NO es ninguno de los azules que ya significan algo", () => {
+  // ESA OSCILACION ES LA INFORMACION: si una asercion cambia con cada decision de diseño, no es un
+  // invariante, es una DECISION disfrazada de candado. Y aflojarla cada vez desgasta la disciplina de las
+  // que si importan: el dia que haya que discutir un rojo de verdad, el precedente sera "esta se afloja".
+  //
+  // Lo que se conserva entero es lo que NO depende del contexto: que jamas sea el azul CLINICO. Esa no ha
+  // cambiado ni una vez, y es la que protege lo que no es nuestro.
+  it("el acento de navegacion NO es el azul CLINICO, que es lo unico que no depende del contexto", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     const nav = /--nav-accent:\s*([^;]+);/.exec(css)?.[1].trim();
     expect(nav).toBeDefined();
-    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO: "banda mejor" del DFI. Esta no se negocia nunca.
-    expect(nav).not.toBe("#205dfd"); // azul de ACCION: con la barra clara vuelve a competir con los botones.
+    expect(nav).not.toBe("#0ea5e9"); // azul CLINICO: "banda mejor" del DFI.
+    expect(nav).not.toBe("#10b981"); // ni ningun otro de la escala de veredicto.
+    expect(nav).not.toBe("#f59e0b");
+    expect(nav).not.toBe("#ea580c");
+    expect(nav).not.toBe("#dc2626");
   });
 
   it("y la frontera con lo clinico es ESTRUCTURAL, no de disciplina", () => {

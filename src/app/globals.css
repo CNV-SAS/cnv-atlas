@@ -127,29 +127,31 @@
    *
    * DISPOSICION INVERTIDA el 2026-08-28, tras cotejar la referencia de Santiago: la barra es BLANCA y el
    * contenido es el gris. Lo teniamos al reves. El argumento es funcional y no estetico: sobre gris, una
-   * tarjeta blanca se lee LEVANTADA sola; sobre blanco, una tarjeta necesita un borde para existir. Con
-   * esta disposicion la jerarquia de superficie de `bloque.tsx` (elevada / plana / sin superficie)
-   * funciona por si misma en vez de apoyarse solo en la sombra.
+   * tarjeta blanca se lee LEVANTADA sola; sobre blanco, una tarjeta necesita un borde para existir.
+   *
+   * EL TONO SE ACLARO (de #f6f7f9 a #f8f9fb) porque la pagina se veia apagada. Pero el gris NO era la
+   * causa principal: lo era que el contenido NO estaba en tarjetas, asi que el gris no hacia de calle
+   * entre bloques, hacia de fondo de un texto suelto. Aclararlo sin cartear el contenido no lo habria
+   * arreglado. A este tono la separacion con el blanco es 1,053:1, suficiente con el borde y la sombra
+   * suave de la tarjeta, y sin que la pagina pierda luz.
    */
-  --surface-sunken: #f6f7f9;
+  --surface-sunken: #f8f9fb;
 
   /*
-   * ACENTO DE NAVEGACION: el navy, NO el azul de accion.
+   * ACENTO DE NAVEGACION: el azul de marca.
    *
-   * Este token ha ido y vuelto, y la razon es que su contexto cambio dos veces. Con la barra CLARA vuelve
-   * a valer el argumento original: el azul de accion vive al lado, en los botones del contenido, y dos
-   * cosas azules en pantalla donde solo una hace algo confunden. Con la barra oscura ese argumento no
-   * aplicaba (dentro de una superficie propia no hay botones con los que competir) y el token fue el azul
-   * de marca. La barra volvio a ser clara, asi que el token vuelve al navy.
+   * Este token ha ido y vuelto tres veces en un dia, y esa es la informacion util: NO es un invariante,
+   * es una DECISION DE DISEÑO que depende de como sea la barra. Con la barra clara el argumento original
+   * era que el azul de accion compite con los botones; con el item activo RELLENO de azul, el activo deja
+   * de ser un acento y pasa a ser una superficie propia, y dentro de la barra no hay ningun boton con el
+   * que competir.
    *
-   * Y en 3px SEÑALA sin COLOREAR: el ojo lo encuentra de reojo y no gasta una superficie entera en un
-   * tono que despues habria que defender frente a la capa clinica.
-   *
-   * CANDADO: `nav-accent-lock.test.ts` fija que no sea el azul CLINICO (#0ea5e9, "banda mejor" del DFI)
-   * NI el azul de accion, que no aparezca en ningun archivo que pinte veredicto, y que viva solo en el
-   * shell.
+   * POR ESO EL CANDADO YA NO INTENTA FIJARLO: lo que se blinda es lo que NO depende del contexto, que es
+   * que jamas sea el azul CLINICO. Una asercion que cambia con cada decision de diseño no es un candado,
+   * es una decision disfrazada de candado, y aflojarla cada vez desgasta la disciplina de las que si
+   * importan.
    */
-  --nav-accent: #12245c;
+  --nav-accent: #205dfd;
 
   /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
   --sidebar: #ffffff;
