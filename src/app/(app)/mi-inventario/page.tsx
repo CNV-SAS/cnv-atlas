@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { Panel } from "@/components/shared/panel";
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
@@ -59,8 +60,7 @@ export default async function MiInventarioPage() {
 
       <MisFaltantesSection userId={user.id} />
 
-      <section className="flex flex-col gap-3">
-        <TituloSeccion>Registrar recepción</TituloSeccion>
+      <Panel titulo="Registrar recepción">
         <Card>
           <CardHeader>
             <CardDescription>
@@ -77,10 +77,9 @@ export default async function MiInventarioPage() {
             )}
           </CardContent>
         </Card>
-      </section>
+      </Panel>
 
-      <section className="flex flex-col gap-3">
-        <TituloSeccion>Conteo físico</TituloSeccion>
+      <Panel titulo="Conteo físico">
         <Card>
           <CardHeader>
             <CardDescription>
@@ -97,10 +96,9 @@ export default async function MiInventarioPage() {
             )}
           </CardContent>
         </Card>
-      </section>
+      </Panel>
 
-      <section className="flex flex-col gap-3">
-        <TituloSeccion>Saldo actual</TituloSeccion>
+      <Panel titulo="Saldo actual">
         {lines.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia.</p>
         ) : (
@@ -124,10 +122,9 @@ export default async function MiInventarioPage() {
             ))}
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section className="flex flex-col gap-3">
-        <TituloSeccion>Historial de movimientos</TituloSeccion>
+      <Panel titulo="Historial de movimientos">
         {!movements || movements.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos todavia.</p>
         ) : (
@@ -158,7 +155,7 @@ export default async function MiInventarioPage() {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
@@ -51,7 +52,7 @@ export default async function EncuestaEvaluacionPage({
         titulo="Encuesta del paciente"
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />
-      <div className="flex flex-col gap-2">
+      <Panel>
         {preDiagnosis ? (
           // SIN diagnostico: edicion DIRECTA (nada sellado, sin version nueva).
           <div className="flex flex-col gap-2">
@@ -91,7 +92,7 @@ export default async function EncuestaEvaluacionPage({
             )}
           </div>
         )}
-      </div>
+      </Panel>
 
       <SurveyReadonly domains={domains ?? []} />
     </div>

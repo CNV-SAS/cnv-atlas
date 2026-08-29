@@ -1,3 +1,4 @@
+import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -21,9 +22,8 @@ export default async function PerfilPage() {
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
       <TituloPantalla titulo="Mi perfil" descripcion="Tus datos para la operación con CNV." />
 
-      <section className="flex flex-col gap-4">
+      <Panel titulo="Datos tributarios y cuenta">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">Datos tributarios y cuenta</h2>
           <p className="text-sm text-muted-foreground">
             CNV te paga tu comisión y, como agente de retención, retiene el impuesto en la fuente y te
             entrega el certificado. Con tu RUT tomamos tu clasificación del documento, no de lo que
@@ -42,7 +42,7 @@ export default async function PerfilPage() {
           </p>
         </div>
         <TaxStatusForm professionalId={professionalId} current={view.fields} />
-      </section>
+      </Panel>
     </div>
   );
 }

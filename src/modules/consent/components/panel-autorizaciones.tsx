@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { revokeConsentAction } from "../actions";
 import type { AutorizacionPaciente } from "../data/consent-reader";
 import { formatDate } from "@/lib/format/date";
-import { TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { Panel } from "@/components/shared/panel";
 import { CANALES_REVOCACION, CONSENT_TYPE_LABELS } from "../labels";
 
 // PANEL DE AUTORIZACIONES de la ficha del paciente: que autorizo, cuando, y la via para registrar una
@@ -71,8 +71,7 @@ export function PanelAutorizaciones({
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <TituloSeccion>Autorizaciones</TituloSeccion>
+    <Panel titulo="Autorizaciones">
 
       {autorizaciones.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -96,7 +95,11 @@ export function PanelAutorizaciones({
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {a.vigente
-                    ? `Vigente${a.firmadaEl ? ` desde ${formatDate(a.firmadaEl)}` : ""}${a.version ? ` · versión ${a.version}` : ""}`
+                    ? // "VIGENTE DESDE" Y "FIRMADO EL" ERAN EL MISMO DATO (`signed_at`) con dos rotulos, en
+                      // esta ficha y en la tarjeta de la evaluacion. Ademas "vigente desde" insinuaba una
+                      // ventana de validez que no existe: una autorizacion no caduca, se revoca. Ahora el
+                      // ESTADO y la FECHA se dicen por separado, y la fecha se llama por lo que es.
+                      `Vigente${a.firmadaEl ? ` · firmada el ${formatDate(a.firmadaEl)}` : ""}${a.version ? ` · versión ${a.version}` : ""}`
                     : `Revocada${a.revocadaEl ? ` el ${formatDate(a.revocadaEl)}` : ""}`}
                 </span>
               </div>
@@ -223,6 +226,6 @@ export function PanelAutorizaciones({
           </div>
         )
       ) : null}
-    </section>
+    </Panel>
   );
 }

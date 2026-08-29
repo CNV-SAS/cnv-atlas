@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { Panel } from "@/components/shared/panel";
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -97,18 +98,16 @@ export default async function HistoriaPacientePage({
       </section>
 
       {puedeEmitirSeguimiento ? (
-        <section className="flex flex-col gap-3">
-          <TituloSeccion>Seguimiento</TituloSeccion>
+        <Panel titulo="Seguimiento">
           <p className="text-sm text-muted-foreground">
             Emite un enlace para que el paciente responda una encuesta de seguimiento. Su identidad ya está
             registrada.
           </p>
           <FollowupLinkEmitter patientId={patientId} />
-        </section>
+        </Panel>
       ) : null}
 
-      <section className="flex flex-col gap-4">
-        <TituloSeccion>Evaluaciones</TituloSeccion>
+      <Panel titulo="Evaluaciones">
         {paciente.evaluations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             Este paciente todavía no tiene evaluaciones.
@@ -173,7 +172,7 @@ export default async function HistoriaPacientePage({
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
       <PanelAutorizaciones
         patientId={patientId}

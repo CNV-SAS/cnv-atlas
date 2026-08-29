@@ -17,12 +17,33 @@ import type { SurveyOptionView, SurveyQuestionView } from "../data/survey-view-t
 // el TEXTO de la opcion o el numero). El prop `defaultValue` es ADITIVO: el intake no lo pasa (arranca
 // vacio, como siempre); la edicion lo pasa con la respuesta actual para prefillear. Backward-compatible.
 
-// Estilo de una pastilla (pill) segun estado, con tokens de marca.
+// Estilo de una pastilla (pill) segun estado, con tokens de marca. Para los CONTROLES (el formulario del
+// paciente y el de edicion del profesional), donde tocar una pastilla hace algo.
 export function pillClass(active: boolean): string {
   return `min-h-11 rounded-full border px-4 py-2 text-sm transition-colors ${
     active
       ? "border-primary bg-primary text-primary-foreground"
       : "border-input bg-background text-foreground hover:bg-muted"
+  }`;
+}
+
+// EN LECTURA NO SE MUESTRA UN CONTROL, SE MUESTRA UN VALOR. Hallazgo de Santiago (2026-08-29): la vista de
+// solo lectura de la encuesta reusaba `pillClass`, asi que cada pregunta salia como cinco botones con uno
+// azul. Tres cosas mal a la vez:
+//   - Las no elegidas conservaban BORDE y `hover:bg-muted`, o sea que prometian ser clicables sin serlo.
+//   - La elegida iba en el AZUL DE ACCION, que en esta aplicacion significa "haz clic" y en la barra
+//     lateral "estas aqui". Aqui significa "este es el valor": tres significados para un color.
+//   - Y el conjunto se leia como un formulario a medio rellenar, no como una respuesta.
+//
+// LA ESCALA SE CONSERVA, y es deliberado: saber que el paciente eligio "1-2 dias" de cinco niveles ubica la
+// respuesta, y mostrar solo el valor elegido perderia esa referencia. Lo que cambia es QUIEN tiene
+// superficie: la elegida es la unica con relleno y borde; las demas se quedan sin caja y pasan a leerse
+// como los rotulos de la escala que son.
+export function pillReadonlyClass(active: boolean): string {
+  return `rounded-full px-3 py-1.5 text-sm ${
+    active
+      ? "border border-border bg-muted font-semibold text-foreground"
+      : "border border-transparent text-muted-foreground"
   }`;
 }
 
@@ -347,7 +368,7 @@ export function SurveyAnswerReadonly({
             <span
               key={`${o}-${i}`}
               aria-pressed={active}
-              className={`${pillClass(active)} cursor-default ${active ? "" : "opacity-50"}`}
+              className={`${pillReadonlyClass(active)} cursor-default`}
             >
               {label}
             </span>

@@ -1,5 +1,7 @@
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
+import { Panel } from "@/components/shared/panel";
+
 import type { SurveyDomain } from "../data/survey-answers-reader";
 import { SurveyAnswerReadonly } from "./survey-widgets";
 
@@ -22,16 +24,17 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
     0,
   );
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {totalMissing > 0 ? (
         <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
           {totalMissing === 1 ? "Falta 1 pregunta" : `Faltan ${totalMissing} preguntas`} por responder.
           Edita y completa la encuesta con el paciente antes de generar el diagnóstico.
         </div>
       ) : null}
+      {/* CADA DOMINIO EN SU PANEL: sobre el fondo gris, las secciones sueltas se leian como texto flotando.
+          Y de paso el dominio deja de ser solo un titulo mas grande: es un bloque que se puede recorrer. */}
       {domains.map((d) => (
-        <section key={d.section} className="flex flex-col gap-4">
-          <h3 className="text-base font-semibold text-foreground">{d.section}</h3>
+        <Panel key={d.section} titulo={d.section}>
           <div className="flex flex-col gap-4">
             {d.questions.map((q) => (
               <div key={q.questionId} className="flex flex-col gap-2">
@@ -46,7 +49,7 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
       ))}
     </div>
   );
