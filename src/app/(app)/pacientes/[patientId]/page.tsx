@@ -80,7 +80,7 @@ export default async function HistoriaPacientePage({
   ];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
       <TituloPantalla
         volver={<VolverA href="/pacientes">Volver a pacientes</VolverA>}
         titulo={nombre}
@@ -89,7 +89,7 @@ export default async function HistoriaPacientePage({
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {datos.map((d) => (
-          <div key={d.label} className="flex flex-col gap-1 rounded-xl border border-border p-4">
+          <div key={d.label} className="flex flex-col gap-1 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <span className="text-xs uppercase tracking-wide text-muted-foreground">{d.label}</span>
             <span className="text-sm font-medium text-foreground">{d.value}</span>
           </div>
@@ -114,9 +114,9 @@ export default async function HistoriaPacientePage({
             Este paciente todavía no tiene evaluaciones.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+              <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 font-semibold">Tipo</th>
                   <th className="px-3 py-2 font-semibold">Fecha</th>

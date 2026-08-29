@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { BisImportForm } from "@/modules/bis/components/bis-import-form";
 import { listEvaluationsForBisImport } from "@/modules/bis/data/bis-evaluations-reader";
@@ -49,19 +50,21 @@ export default async function EvaluacionesPage() {
   // evaluacion, donde se revisa y confirma. Asi el profesional no pierde el "tienes N por confirmar".
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+      {/* EL TITULO DE LA PAGINA ES LA SECCION, no el bloque que hay dentro. Antes el h1 decia "Evaluaciones
+          por confirmar", que es el nombre de UNA de las dos partes de esta pantalla (la otra es el enlace
+          de consultorio) y ademas discrepaba del rotulo de la barra superior. Ahora la pagina se llama
+          como la seccion y "Por confirmar" baja a titulo de bloque, que es lo que es. */}
+      <TituloPantalla
+        titulo="Evaluaciones"
+        descripcion="Revisa la identidad de cada paciente y confirma para continuar la atención."
+      />
+
       {/* Link/QR base de consultorio (get-or-create del profesional), arriba del panel. */}
       <ConsultorioLink />
 
-      <section className="flex flex-col gap-6">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Evaluaciones por confirmar
-          </h1>
-          <p className="text-muted-foreground">
-            Revisa la identidad de cada paciente y confirma para continuar la atencion.
-          </p>
-        </header>
+      <section className="flex flex-col gap-3">
+        <TituloSeccion>Por confirmar</TituloSeccion>
 
         {pending.length === 0 ? (
           <p className="text-sm text-muted-foreground">

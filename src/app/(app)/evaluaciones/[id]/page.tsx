@@ -228,10 +228,13 @@ export default async function ResultadosEvaluacionPage({
         diagnostico={
           <div className="flex flex-col gap-6">
             <header className="flex flex-col gap-2">
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+              {/* NO LLEVA BLOQUE OSCURO: este encabezado vive DENTRO de una etapa del conmutador, no es el
+                  titulo de la pagina. Un bloque de titulo dentro de una pestaña diria que la pestaña es la
+                  pantalla. Solo se ajusta a la escala nueva. */}
+              <h2 className="text-seccion font-semibold tracking-tight text-foreground">
                 Resultados de la evaluación
-              </h1>
-              <p className="text-muted-foreground">
+              </h2>
+              <p className="text-sm text-muted-foreground">
                 {header.patientName} · {header.documentLabel} ·{" "}
                 {formatDate(header.evaluationDate)}
               </p>

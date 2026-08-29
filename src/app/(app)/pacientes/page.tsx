@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
@@ -24,6 +25,9 @@ export default async function PacientesPage() {
   }
 
   const pacientes = await listPatientsForProfessional();
+  // El alcance real de la lista lo pone la RLS por rol; la pantalla solo necesita saber cual de las dos
+  // lecturas esta mostrando para no rotular mal la cifra.
+  const esAdmin = hasAnyRole(user, ["admin"]);
 
   // LAS TRES METRICAS SALEN DEL MISMO ARREGLO QUE YA SE TRAE: CERO CONSULTAS NUEVAS. El reader ya devuelve
   // el conteo de evaluaciones y el estado de autorizaciones por paciente, asi que esto es aritmetica sobre
@@ -43,12 +47,18 @@ export default async function PacientesPage() {
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* SIN TEXTO, y ahora con una razon mas fuerte que "no encontre nada util": "asignados a ti" seria
-            FALSO para un admin. Esta pantalla la ven dos roles (`canViewPatients`: profesional y admin) y
-            el alcance lo pone la RLS, que al profesional le da los suyos y al admin TODOS. Una nota fija
-            diria una cosa cierta para uno y falsa para el otro.
-            Lo demas que se podria poner ("total de pacientes") solo repite el rotulo. Va sola. */}
-        <TarjetaMetrica icono={Users} rotulo="Pacientes" valor={pacientes.length} />
+        {/* EL TEXTO DEPENDE DEL ROL, porque el DATO depende del rol y la pantalla ya sabe quien mira.
+            Descartamos una frase fija porque cualquiera era mentira para alguien: "asignados a ti" es
+            falso para un admin y "totales en el sistema" es falso para un profesional. El alcance lo pone
+            la RLS (`patients_select`: el profesional ve los suyos, el admin todos), asi que la nota dice
+            lo que ese usuario esta viendo de verdad. La simetria no vale mas que la verdad, pero aqui no
+            hace falta elegir entre las dos. */}
+        <TarjetaMetrica
+          icono={Users}
+          rotulo="Pacientes"
+          valor={pacientes.length}
+          detalle={esAdmin ? "Todos los del sistema" : "Asignados a ti"}
+        />
         {/* AQUI SI HAY ALGO QUE EL NUMERO NO DICE: el PERIODO. Una cifra en una tarjeta de cabecera se lee
             por defecto como "este mes", y esta es acumulada desde siempre. Sustituye a la nota anterior
             ("sin contar las reemplazadas"), que hablaba de un concepto interno del flujo de correccion:
