@@ -68,14 +68,40 @@ export type CatalogItem = {
   composition: string | null; // ingredientes
 };
 
+/** Forma v4: las sustituciones propuestas sobre la semana base. `citaVerificada` la calcula el servicio. */
+export type MenuCambios = {
+  cambios: { dia: number; tiempo: string; reemplazo: string; motivo: string; citaVerificada?: boolean }[];
+};
+/** Forma v3, historica: un menu de un dia compuesto por el modelo. */
+export type MenuComidas = {
+  comidas: { tiempo: string; alimentos: { nombre: string; porcion?: string }[] }[];
+};
+export type MenuSuggestionJson = MenuCambios | MenuComidas;
+
+/** Discriminador por CLAVE, no por la version del prompt (texto libre que puede venir de cualquier fila). */
+export function esMenuCambios(j: MenuSuggestionJson | null): j is MenuCambios {
+  return j != null && Array.isArray((j as MenuCambios).cambios);
+}
+export function esMenuComidas(j: MenuSuggestionJson | null): j is MenuComidas {
+  return j != null && Array.isArray((j as MenuComidas).comidas);
+}
+
 export type MenuSuggestion = {
   id: string;
   provider: string;
   model: string;
   promptVersion: string;
   generatedText: string | null;
-  // v3: el menu estructurado. NULL en las sugerencias v2 (prosa) y en los fallos de parseo.
-  menuJson: { comidas: { tiempo: string; alimentos: { nombre: string; porcion?: string }[] }[] } | null;
+  // LA COLUMNA GUARDA TRES FORMAS DISTINTAS, y las tres siguen vivas en BD porque `ai_menu_suggestions`
+  // es INMUTABLE: no se pueden migrar. Se distinguen por su clave, no por la version del prompt (que es
+  // texto libre y podria venir de una fila vieja escrita de otra forma):
+  //   · v4 (hoy): { cambios: [...] } - la IA ADAPTA el ciclo y devuelve solo las sustituciones.
+  //   · v3:       { comidas: [...] } - la IA COMPONIA un menu de un dia.
+  //   · v2:       null - la respuesta era prosa. Tambien null en los fallos de parseo.
+  //
+  // El reader NO castea a ciegas y el render distingue las dos formas. Es la leccion del cambio de shape
+  // de un jsonb: al cambiar la forma, el que RELEE lo viejo revienta si solo se penso en la nueva.
+  menuJson: MenuSuggestionJson | null;
   status: string; // success, timeout, parse_failed, provider_error
   latencyMs: number | null;
   generatedAt: string;

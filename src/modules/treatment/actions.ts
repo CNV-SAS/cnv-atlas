@@ -16,6 +16,7 @@ import { canManageTreatment } from "./policies/can-manage-treatment";
 import {
   acknowledgeRestrictions,
   addNote,
+  aplicarCambioMenu,
   approveProtocol,
   saveAdjustments,
   saveGuidelines,
@@ -31,6 +32,7 @@ import {
 import {
   acknowledgeRestrictionsSchema,
   addNoteSchema,
+  aplicarCambioMenuSchema,
   approveProtocolSchema,
   saveAdjustmentsSchema,
   saveGuidelinesSchema,
@@ -324,6 +326,28 @@ export async function saveMenuSemanalAction(
   return { error: null, success: "Menú semanal guardado.", warning: null };
 }
 
+// Aplica UN cambio propuesto por la IA a la grilla. Cambio por cambio, no en bloque.
+export async function aplicarCambioMenuAction(form: FormData): Promise<void> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return;
+
+  const parsed = aplicarCambioMenuSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    dia: Number(form.get("dia")),
+    tiempo: (form.get("tiempo") as string | null)?.trim() ?? "",
+    reemplazo: (form.get("reemplazo") as string | null) ?? "",
+  });
+  if (!parsed.success) return;
+
+  await aplicarCambioMenu(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  // Revalida para que la celda aparezca ya con el reemplazo y el boton pase a "Aplicado".
+  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+}
+
 // Checkpoint 2.4: guias dietarias, su propia accion.
 export async function saveGuidelinesAction(
   _prev: TreatmentActionState,
@@ -534,6 +558,24 @@ export async function generateMenuAction(
   if (!result.ok) return fail(result.error.message);
 
   revalidatePath(`/evaluaciones/${evaluationId}`);
-  return { error: null, success: "Menu generado. Revisalo antes de usarlo.", warning: null };
+  // TRES DESENLACES DISTINTOS, y decirlos distinto importa: "no habia nada que adaptar" NO es lo mismo que
+  // "la IA fallo" ni que "hay propuestas para revisar". Un solo mensaje para los tres dejaria al
+  // profesional sin saber si tiene que mirar algo.
+  if (result.value.status === "sin_restricciones") {
+    return {
+      error: null,
+      success: null,
+      warning:
+        "Este paciente no tiene restricciones registradas, así que no hay nada que adaptar: el menú del ciclo es el que aplica.",
+    };
+  }
+  if (result.value.status !== "success") {
+    return {
+      error: null,
+      success: null,
+      warning: "No se pudo adaptar el menú. La grilla se queda con el menú del ciclo, que sigue siendo válido.",
+    };
+  }
+  return { error: null, success: "Revisa las sustituciones propuestas y aplica las que apruebes.", warning: null };
 }
 

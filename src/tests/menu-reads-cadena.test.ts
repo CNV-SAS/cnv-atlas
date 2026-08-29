@@ -20,13 +20,15 @@ const { buildMenuPrompt } = vi.hoisted(() => ({
     return [{ role: "system", content: "s" }] as unknown as never;
   }),
 }));
-vi.mock("@/modules/treatment/ai/prompts/menu.v3", () => ({
-  buildMenuPrompt,
-  MENU_PROMPT_KEY: "menu.generate",
-  MENU_PROMPT_VERSION: 3,
+// CONTRATO v4 (2026-08-29): la IA ADAPTA en vez de componer, asi que el mock sigue al contrato nuevo.
+vi.mock("@/modules/treatment/ai/prompts/menu.v4", () => ({
+  buildMenuAdaptarPrompt: buildMenuPrompt,
+  MENU_PROMPT_KEY: "menu.adapt",
+  MENU_PROMPT_VERSION: 4,
   // El parser real es estricto a proposito; aqui devuelve una forma valida minima para que el test
   // siga midiendo lo suyo (que el objetivo sale de la cadena) y no el contrato de la IA.
-  parseMenuEstructurado: vi.fn(() => ({ comidas: [{ tiempo: "Desayuno", alimentos: [{ nombre: "Arepa" }] }] })),
+  parseCambiosMenu: vi.fn(() => ({ cambios: [] })),
+  verificarCita: vi.fn(() => true),
 }));
 // El generador lee la encuesta para las alergias y el patron alimentario (3.2). Sin este mock, la
 // lectura real intenta abrir una sesion de Supabase fuera de un request y tumba el test.
@@ -74,7 +76,9 @@ describe("generateMenu: el objetivo sale de la cadena, no del campo guardado (ch
       // Campo VIEJO en un valor absurdo: si el menu lo leyera, generaria sobre 9999 (o null en la practica).
       kcalObjetivo: 9999,
       proteinaGramos: 8888,
-      restricciones: [],
+      // CON UNA RESTRICCION: desde el contrato v4 la IA solo entra si hay alguna (su §13). Sin esto el
+      // gate corta antes de armar el prompt, y este test dejaria de medir lo suyo.
+      restricciones: ["Sin gluten"],
       protocolSuggested: SNAP,
       adjGeb: null,
       adjPal: null,
@@ -110,5 +114,83 @@ describe("generateMenu: el objetivo sale de la cadena, no del campo guardado (ch
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("conflict");
     expect(buildMenuPrompt).not.toHaveBeenCalled();
+  });
+});
+
+describe("la IA solo entra si hay restricciones (su §13)", () => {
+  // LIMPIAR LOS MOCKS AQUI TAMBIEN, y no es ceremonia: `beforeEach` se aplica al describe donde se
+  // declara, asi que sin esto `buildMenuPrompt.mock.calls[0]` devuelve la llamada de un test de OTRO
+  // describe, y la asercion mide el caso equivocado. Me paso escribiendo esto.
+  beforeEach(() => vi.clearAllMocks());
+
+  it("SIN ninguna restricción no llama al modelo, y lo dice", async () => {
+    // Su instrucción literal: "la IA solo lo adapta CUANDO HAY RESTRICCIONES". Sin ninguna, el ciclo YA es
+    // el menú correcto; llamar al modelo solo abriría la puerta a que cambie algo que no había que cambiar.
+    readProtocol.mockResolvedValue({
+      treatmentId: "T1",
+      diagnosisConfirmed: true,
+      restricciones: [],
+      protocolSuggested: { ...SNAP, restricciones: [] },
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+    } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
+
+    const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.status).toBe("sin_restricciones");
+    // Y no se armó prompt: no hubo llamada que hacer.
+    expect(buildMenuPrompt).not.toHaveBeenCalled();
+  });
+
+  it("con el PATRÓN declarado como única fuente, SÍ entra", async () => {
+    // Las tres fuentes cuentan por igual. Si esta se cayera, a un vegano sin más restricciones se le diría
+    // "no hay nada que adaptar" mientras el ciclo le propone carne.
+    readProtocol.mockResolvedValue({
+      treatmentId: "T1",
+      diagnosisConfirmed: true,
+      restricciones: [],
+      protocolSuggested: { ...SNAP, restricciones: [] },
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+    } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
+    const { getSurveyAnswersForEvaluation } = await import(
+      "@/modules/evaluations/data/survey-answers-reader"
+    );
+    vi.mocked(getSurveyAnswersForEvaluation).mockResolvedValueOnce([
+      { section: "Dieta", questions: [{ fieldKey: "d4_34", answerValue: JSON.stringify(["Vegetariano"]) }] },
+    ] as unknown as Awaited<ReturnType<typeof getSurveyAnswersForEvaluation>>);
+
+    const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });
+    expect(r.ok).toBe(true);
+    expect(buildMenuPrompt).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("lo que se adapta es la semana que el profesional TIENE DELANTE", () => {
+  // LIMPIAR LOS MOCKS AQUI TAMBIEN, y no es ceremonia: `beforeEach` se aplica al describe donde se
+  // declara, asi que sin esto `buildMenuPrompt.mock.calls[0]` devuelve la llamada de un test de OTRO
+  // describe, y la asercion mide el caso equivocado. Me paso escribiendo esto.
+  beforeEach(() => vi.clearAllMocks());
+
+  it("el prompt lleva la base con las ediciones del profesional, no el ciclo crudo", async () => {
+    // Si se mandara el ciclo crudo, la IA propondría sustituir celdas que en pantalla dicen otra cosa: una
+    // propuesta clínica sobre un dato falso. El cálculo es el MISMO que usa la grilla (`semanaEfectiva`).
+    readProtocol.mockResolvedValue({
+      treatmentId: "T1",
+      diagnosisConfirmed: true,
+      restricciones: ["Sin gluten"],
+      protocolSuggested: SNAP,
+      menuSemanal: { diaInicio: 0, celdas: { "0_desayuno": "LO QUE ESCRIBIO EL PROFESIONAL" } },
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+    } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
+
+    const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });
+    expect(r.ok).toBe(true);
+    const input = buildMenuPrompt.mock.calls[0]![0] as unknown as {
+      base: { dia: number; tiempo: string; texto: string }[];
+    };
+    const celda = input.base.find((c) => c.dia === 0 && c.tiempo === "desayuno");
+    expect(celda?.texto).toBe("LO QUE ESCRIBIO EL PROFESIONAL");
+    // Y el resto de la semana sí sale del ciclo.
+    expect(input.base.length).toBeGreaterThan(20);
   });
 });

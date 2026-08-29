@@ -65,3 +65,36 @@ export function diaInicioDerivado(treatmentId: string): number {
   for (let i = 0; i < treatmentId.length; i++) h = (h * 31 + treatmentId.charCodeAt(i)) >>> 0;
   return h % DIAS_DEL_CICLO;
 }
+
+// LA SEMANA EFECTIVA: lo que el profesional VE hoy en la grilla, celda por celda.
+//
+// POR QUE VIVE AQUI Y NO EN EL COMPONENTE. Lo calculaba solo la grilla; ahora lo necesita tambien el
+// servicio que arma el prompt de adaptacion, porque lo que se le manda a la IA tiene que ser EXACTAMENTE
+// lo que el profesional esta viendo. Dos calculos separados de la misma semana derivarian en silencio, y
+// entonces la IA adaptaria un menu que nadie tiene delante: propondria sustituir una celda que en pantalla
+// dice otra cosa. Es la misma familia de las dos fuentes sin nada que las compare, pero peor, porque aqui
+// la divergencia produce una propuesta clinica sobre un dato falso.
+//
+// La regla es la misma que ya usaba la grilla: la celda es lo que el profesional ESCRIBIO, y si no
+// escribio nada, lo que propone el ciclo. Las celdas guardadas son solo los overrides.
+
+export type CeldaSemana = { dia: number; tiempo: string; texto: string };
+
+export function semanaEfectiva(
+  diaInicio: number,
+  celdas: Record<string, string>,
+  tiempos: string[],
+  dias = 7,
+): CeldaSemana[] {
+  const out: CeldaSemana[] = [];
+  for (let dia = 0; dia < dias; dia++) {
+    const delCiclo = diaDelCiclo(diaInicio, dia) as unknown as Record<string, string | undefined>;
+    for (const tiempo of tiempos) {
+      const texto = celdas[`${dia}_${tiempo}`] ?? delCiclo[tiempo] ?? "";
+      // Una celda VACIA no se manda: hoy es el caso de la merienda, que el ciclo de Gildardo no trae.
+      // Mandarla vacia invitaria al modelo a INVENTARLA, y eso seria contenido clinico nuestro.
+      if (texto.trim() !== "") out.push({ dia, tiempo, texto });
+    }
+  }
+  return out;
+}

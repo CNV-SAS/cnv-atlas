@@ -305,3 +305,15 @@ export const saveNutraDecisionSchema = z
   });
 
 export type SaveNutraDecisionInput = z.infer<typeof saveNutraDecisionSchema>;
+
+// Aplicar UN cambio propuesto por la IA a la grilla del menu semanal.
+//
+// El `dia` y el `tiempo` se validan aqui ADEMAS de en el parseo del contrato, y no es redundante: el
+// contrato valida lo que devolvio el modelo, esto valida lo que llega del navegador. Son dos entradas
+// distintas y la segunda es la que puede venir manipulada.
+export const aplicarCambioMenuSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  dia: z.number().int().min(0).max(6),
+  tiempo: z.enum(TIEMPOS_DEF.map((t) => t.id) as [string, ...string[]]),
+  reemplazo: z.string().trim().min(1, "El reemplazo no puede estar vacío.").max(500),
+});

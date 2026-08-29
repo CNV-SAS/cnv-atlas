@@ -165,10 +165,12 @@ async function Panel({
   evaluationId,
   protocol,
   narrative,
+  patronAlimentario,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
   narrative: TreatmentNarrative;
+  patronAlimentario: string[];
 }) {
   if (!protocol) {
     return (
@@ -196,7 +198,11 @@ async function Panel({
         narrative={narrative}
         alertaRealimentacion={protocol.protocolSuggested?.alertaSindRealim ?? false}
       />
-      <TreatmentPanel evaluationId={evaluationId} protocol={protocol} />
+      <TreatmentPanel
+        evaluationId={evaluationId}
+        protocol={protocol}
+        patronAlimentario={patronAlimentario}
+      />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
   );
@@ -394,6 +400,7 @@ export function ProfessionTreatmentSection({
   abordaje,
   rutas,
   narrative,
+  patronAlimentario,
 }: {
   evaluationId: string;
   actor: ActorProfession;
@@ -403,6 +410,9 @@ export function ProfessionTreatmentSection({
   rutas: RutaContent[];
   // Resumen funcional + meta del DFI, computados en la pagina. Solo lo consume el panel del Nutricionista.
   narrative: TreatmentNarrative;
+  // Patron alimentario DECLARADO por el paciente (d4_34), leido en la pagina. Baja hasta la seccion de
+  // adaptacion del menu: es una de las tres fuentes de restriccion que deciden si la IA entra.
+  patronAlimentario: string[];
 }) {
   // Medico: panel de consulta con abordaje + indicaciones medicas de las rutas + examenes/suplementacion
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
@@ -440,5 +450,10 @@ export function ProfessionTreatmentSection({
   // acceso de admin al tratamiento es gobernanza aparte (BACKLOG); aqui se conserva como estaba. La
   // entrega de nutraceuticos es solo del nutricionista (actor.isProfessional aqui = nutricionista: las
   // otras profesiones y el profesional sin profesion ya se ramificaron arriba).
-  return <Panel evaluationId={evaluationId} protocol={protocol} narrative={narrative} />;
+  return <Panel
+        evaluationId={evaluationId}
+        protocol={protocol}
+        narrative={narrative}
+        patronAlimentario={patronAlimentario}
+      />;
 }

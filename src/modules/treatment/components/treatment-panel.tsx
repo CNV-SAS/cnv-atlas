@@ -21,6 +21,7 @@ import { useFormToast, useFormToastRefreshOnSuccess } from "@/components/shared/
 
 import {
   addNoteAction,
+  aplicarCambioMenuAction,
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
@@ -44,7 +45,14 @@ import {
   tiemposActivosSignature,
   tiemposSignature,
 } from "../data/protocol-signature";
-import type { IntercambioSaved, MenuSuggestion, TiemposSaved, TreatmentProtocol } from "../data/treatment-view-types";
+import {
+  esMenuCambios,
+  esMenuComidas,
+  type IntercambioSaved,
+  type MenuSuggestion,
+  type TiemposSaved,
+  type TreatmentProtocol,
+} from "../data/treatment-view-types";
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
@@ -435,9 +443,14 @@ function CadenaCaloricaSection({
 export function TreatmentPanel({
   evaluationId,
   protocol,
+  patronAlimentario,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
+  // Lo que el paciente DECLARO (d4_34). Llega como prop desde la pagina, que ya leyo la encuesta: es una
+  // de las TRES fuentes de restriccion que deciden si la IA entra, y sin ella la pantalla diria "no hay
+  // nada que adaptar" a un vegano. Un texto que describe mal lo que hace el motor es defecto de seguridad.
+  patronAlimentario: string[];
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -611,7 +624,12 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        <MenuSection
+          evaluationId={evaluationId}
+          protocol={protocol}
+          locked={locked}
+          patronAlimentario={patronAlimentario}
+        />
         <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
       </CardContent>
     </Card>
@@ -630,10 +648,12 @@ function MenuSection({
   evaluationId,
   protocol,
   locked,
+  patronAlimentario,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
+  patronAlimentario: string[];
 }) {
   const [state, formAction, pending] = useActionState(generateMenuAction, EMPTY);
   useFormToast(state);
@@ -642,30 +662,55 @@ function MenuSection({
   // se retiro en el checkpoint 2). Basta con que el protocolo este calculado (snapshot sellado); sin el no
   // hay cadena que computar.
   const cadenaLista = protocol.protocolSuggested != null;
-  const disabled = locked || pending || !cadenaLista;
+  // SIN RESTRICCIONES LA IA NO ENTRA (su §13, "solo lo adapta CUANDO HAY RESTRICCIONES"). El servicio ya lo
+  // corta, pero la pantalla tiene que DECIRLO: un boton que se puede pulsar y no hace nada se lee como que
+  // el sistema esta roto. Las tres fuentes son las mismas que viajan en el prompt.
+  const hayRestricciones =
+    (protocol.protocolSuggested?.restricciones?.length ?? 0) > 0 ||
+    protocol.restricciones.length > 0 ||
+    patronAlimentario.length > 0;
+  const disabled = locked || pending || !cadenaLista || !hayRestricciones;
+
+  // QUE CAMBIOS YA SE APLICARON. No se guarda una marca aparte: se DERIVA de la grilla, comparando el
+  // reemplazo propuesto con lo que la celda tiene guardado. Una marca aparte seria un segundo estado que
+  // puede desincronizarse del real (el profesional puede editar la celda a mano despues de aplicar).
+  const celdasGuardadas = protocol.menuSemanal?.celdas ?? {};
+  const aplicados = new Set(
+    protocol.menuSuggestions
+      .flatMap((m) => (esMenuCambios(m.menuJson) ? m.menuJson.cambios : []))
+      .filter((c) => celdasGuardadas[`${c.dia}_${c.tiempo}`] === c.reemplazo)
+      .map((c) => `${c.dia}_${c.tiempo}`),
+  );
 
   return (
     <div className={bloqueCls("derivado")}>
-      <h3 className={tituloBloqueCls("derivado")}>Menú sugerido (IA)</h3>
-      {/* QUE MIRA LA IA: se escribe lo que el contrato del prompt REALMENTE lleva (menu.v2.ts), no lo que
-          suena bien. Hoy son siete campos: objetivo calórico, proteína objetivo, las restricciones del
-          modelo, las del profesional, fenotipo estructural, sector funcional y rutas. NO viaja ninguna
-          respuesta cruda de la encuesta, ni el peso, ni los macros de grasa y CHO. Si el contrato cambia,
-          este texto cambia con el: un texto que describe mal el motor es un defecto de seguridad. */}
+      <h3 className={tituloBloqueCls("derivado")}>Adaptar el menú a las restricciones (IA)</h3>
+      {/* QUE MIRA LA IA: se escribe lo que el contrato del prompt REALMENTE lleva (menu.v4.ts), no lo que
+          suena bien. Si el contrato cambia, este texto cambia con el: un texto que describe mal el motor
+          es un defecto de seguridad. */}
       <p className="max-w-prose text-sm text-muted-foreground">
-        Propone un menú de <strong>un día</strong> a partir de las restricciones del paciente (las del modelo
-        y las tuyas), su objetivo de calorías y proteína, y su fenotipo, sector funcional y rutas. No lee las
-        respuestas de la encuesta. Es un borrador para que lo revises: no se aplica al protocolo ni toca la
-        tabla de arriba. El diagnóstico no usa IA.
+        No compone un menú: <strong>revisa la semana de arriba</strong> y propone sustituir solo las
+        preparaciones que incumplen una restricción del paciente. Lo que no incumple nada se queda como
+        está. Ve el menú de la grilla, las restricciones del modelo y las tuyas, el patrón alimentario que
+        el paciente declaró, y su objetivo de calorías y proteína. No lee las respuestas de la encuesta.
+      </p>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Cada propuesta viene con el motivo, y las aceptas <strong>una por una</strong>. Si falla o no
+        responde, la grilla se queda con el ciclo.
       </p>
       <form action={formAction}>
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Button type="submit" variant="outline" disabled={disabled}>
-          {pending ? "Generando..." : "Generar menu"}
+          {pending ? "Adaptando..." : "Adaptar a las restricciones"}
         </Button>
         {!cadenaLista && !locked ? (
           <p className="pt-2 text-xs text-muted-foreground">
-            El protocolo aún no está calculado; no se puede generar el menú.
+            El protocolo aún no está calculado; no se puede adaptar el menú.
+          </p>
+        ) : !hayRestricciones && !locked ? (
+          <p className="max-w-prose pt-2 text-xs text-muted-foreground">
+            Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas, ni patrón
+            alimentario declarado), así que no hay nada que adaptar: el menú del ciclo es el que aplica.
           </p>
         ) : null}
       </form>
@@ -673,7 +718,13 @@ function MenuSection({
       {protocol.menuSuggestions.length ? (
         <ul className="flex flex-col gap-3">
           {protocol.menuSuggestions.map((m) => (
-            <MenuCard key={m.id} suggestion={m} />
+            <MenuCard
+              key={m.id}
+              suggestion={m}
+              evaluationId={evaluationId}
+              locked={locked}
+              aplicados={aplicados}
+            />
           ))}
         </ul>
       ) : null}
@@ -681,8 +732,21 @@ function MenuSection({
   );
 }
 
-function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
+function MenuCard({
+  suggestion: m,
+  evaluationId,
+  locked,
+  aplicados,
+}: {
+  suggestion: MenuSuggestion;
+  evaluationId: string;
+  locked: boolean;
+  /** Claves `dia_tiempo` que el profesional ya aceptó: su celda ya trae el reemplazo. */
+  aplicados: Set<string>;
+}) {
   const status = MENU_STATUS[m.status] ?? { label: m.status, cls: "bg-muted text-muted-foreground" };
+  // Constante local: el estrechamiento de un acceso a propiedad (`m.menuJson`) no sobrevive al ternario.
+  const json = m.menuJson;
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -694,9 +758,64 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
         <span>· {formatDateTime(m.generatedAt)}</span>
         <span>· prompt {m.promptVersion}</span>
       </div>
-      {m.menuJson ? (
+      {esMenuCambios(json) ? (
+        json.cambios.length === 0 ? (
+          // LISTA VACIA NO ES FALLO: es "revise la semana y no habia nada que sustituir". Decirlo cierra
+          // la pregunta; dejarlo en blanco haria pensar que la IA no respondio.
+          <p className="text-sm text-foreground">
+            Revisó la semana y <strong>no encontró nada que sustituir</strong>: el menú del ciclo ya
+            cumple las restricciones de este paciente.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {json.cambios.map((c) => {
+              const clave = `${c.dia}_${c.tiempo}`;
+              const yaEsta = aplicados.has(clave);
+              return (
+                <li key={clave} className="rounded-md border border-border bg-muted/30 p-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {DIAS_SEMANA[c.dia]} · {TIEMPOS_DEF.find((t) => t.id === c.tiempo)?.n ?? c.tiempo}
+                  </p>
+                  <p className="pt-0.5 text-sm text-foreground">{c.reemplazo}</p>
+                  <p className="pt-0.5 text-xs text-muted-foreground">
+                    Motivo: {c.motivo}
+                    {c.citaVerificada === false ? (
+                      // EL CAMBIO QUE PUEDE NO CORRESPONDER. No se bloquea (juzgarlo es clínico), pero el
+                      // profesional ve cuál cita una restricción que nadie le pidió atender.
+                      <span className="ml-2 text-attention">
+                        · no corresponde a ninguna restricción registrada
+                      </span>
+                    ) : null}
+                  </p>
+                  {/* CAMBIO POR CAMBIO, no en bloque: una sustitución puede ser buena y la de al lado no,
+                      y aceptar en bloque obligaría a tragarse las dos. */}
+                  <form action={aplicarCambioMenuAction} className="pt-1.5">
+                    <input type="hidden" name="evaluationId" value={evaluationId} />
+                    <input type="hidden" name="dia" value={c.dia} />
+                    <input type="hidden" name="tiempo" value={c.tiempo} />
+                    <input type="hidden" name="reemplazo" value={c.reemplazo} />
+                    {yaEsta ? (
+                      <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
+                    ) : (
+                      <Button type="submit" variant="outline" size="sm" disabled={locked}>
+                        Aplicar a la grilla
+                      </Button>
+                    )}
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      ) : esMenuComidas(json) ? (
+        // FORMA v3, HISTORICA: cuando la IA componia un menu de un dia. Sus filas siguen en BD porque
+        // `ai_menu_suggestions` es inmutable, asi que se siguen mostrando tal como se generaron. Lo que NO
+        // se hace es ofrecer aplicarlas: se compusieron con otra regla.
         <div className="flex flex-col gap-2">
-          {m.menuJson.comidas.map((c) => (
+          <p className="text-xs text-muted-foreground">
+            Generada con la versión anterior, cuando el modelo componía el menú. Se conserva como está.
+          </p>
+          {json.comidas.map((c) => (
             <div key={c.tiempo}>
               <p className="text-sm font-semibold text-foreground">{c.tiempo}</p>
               <ul className="ml-4 list-disc">
@@ -716,7 +835,7 @@ function MenuCard({ suggestion: m }: { suggestion: MenuSuggestion }) {
           <Markdown text={m.generatedText} />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Sin contenido (el intento fallo).</p>
+        <p className="text-sm text-muted-foreground">Sin contenido (el intento falló).</p>
       )}
     </li>
   );
@@ -1165,10 +1284,20 @@ function MenuSemanalSection({
   return (
     <section className={bloqueCls("derivado")}>
       <h3 className={tituloBloqueCls("derivado")}>Menú semanal</h3>
+      {/* EL PORQUE VA AQUI, EN EL CUERPO, NO DE NOTA AL PIE. Es lo que pidio Gildardo que se leyera en
+          pantalla (§13): "partir del ciclo es CRITERIO CLINICO. El paciente debe recibir comida colombiana
+          conocida, de su ciudad y de su mercado, no lo que un modelo componga. Que eso se lea en la
+          pantalla". Puesto al pie se leeria como una limitacion tecnica o un ahorro; puesto arriba dice lo
+          que es: la razon por la que el menu es como es. */}
+      <p className="max-w-prose text-sm text-foreground">
+        La base es un ciclo de {DIAS_DEL_CICLO} días de menús colombianos, y eso es{" "}
+        <strong>criterio clínico</strong>: el paciente debe recibir comida conocida, de su ciudad y de su
+        mercado, no un menú compuesto desde cero. Un plan que no se parece a lo que la persona come no se
+        sigue.
+      </p>
       <p className="max-w-prose text-sm text-muted-foreground">
-        Una semana de menús colombianos, precargada desde el ciclo de {DIAS_DEL_CICLO} días. Es un punto de
-        partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas son los tiempos
-        de comida que aplicaste arriba.
+        Es un punto de partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas
+        son los tiempos de comida que aplicaste arriba.
       </p>
       {sinCiclo.length > 0 ? (
         <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">

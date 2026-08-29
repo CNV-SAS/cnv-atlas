@@ -1,10 +1,12 @@
 import "server-only";
 
 import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
+import { diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 
+import { menuSemanalSignature } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import { requireNutricionista } from "./require-profession";
 import {
@@ -355,6 +357,56 @@ export async function saveMenuSemanal(input: SaveMenuSemanalInput, actor: Actor)
     throw e;
   }
   return ok(undefined);
+}
+
+// APLICAR UN CAMBIO PROPUESTO POR LA IA a la grilla del menu semanal.
+//
+// CAMBIO POR CAMBIO, no en bloque, y es la decision que pidio Santiago: una sustitucion puede ser buena y
+// la de al lado no, asi que aceptar en bloque obligaria a tragarse las dos.
+//
+// NO HAY WRITER NUEVO NI FORMA NUEVA, y ese es el hallazgo que hizo esto barato: la grilla ya guarda
+// `{diaInicio, celdas}` donde `celdas` son SOLO los overrides contra el ciclo. Una adaptacion de la IA ES
+// un override. Asi que aplicar un cambio es escribir una celda por el camino que ya existe, con su
+// candado de concurrencia, su auditoria y su firma.
+//
+// SOBRE LA FIRMA: se manda la que se acaba de leer en esta misma peticion. Si otra sesion escribio entre
+// la lectura y la escritura, el candado rechaza y el profesional recarga, que es la conducta que ya tiene
+// el guardado manual. No se computa una firma "fresca" para saltarse el candado: eso convertiria un merge
+// en un pisotón silencioso.
+export async function aplicarCambioMenu(
+  input: { evaluationId: string; dia: number; tiempo: string; reemplazo: string },
+  actor: Actor,
+): Promise<Result<void>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+
+  const guardado = protocol.menuSemanal;
+  const diaInicio = guardado?.diaInicio ?? diaInicioDerivado(protocol.treatmentId);
+  const celdas = { ...(guardado?.celdas ?? {}) };
+
+  // MISMA REGLA QUE LA GRILLA: solo se guarda lo que DIFIERE del ciclo. Si el reemplazo coincidiera con lo
+  // que el ciclo ya propone, guardarlo lo congelaria: la celda dejaria de seguir al ciclo si mañana se
+  // propone otra semana.
+  const delCiclo = (diaDelCiclo(diaInicio, input.dia) as unknown as Record<string, string | undefined>)[
+    input.tiempo
+  ];
+  if (input.reemplazo === delCiclo) {
+    delete celdas[`${input.dia}_${input.tiempo}`];
+  } else {
+    celdas[`${input.dia}_${input.tiempo}`] = input.reemplazo;
+  }
+
+  return saveMenuSemanal(
+    {
+      evaluationId: input.evaluationId,
+      menu: { diaInicio, celdas },
+      baseSignature: menuSemanalSignature({
+        treatmentId: protocol.treatmentId,
+        menu: guardado,
+      }),
+    },
+    actor,
+  );
 }
 
 // Checkpoint 2.4: guias dietarias, su propio camino de guardado.

@@ -3,6 +3,8 @@ import "server-only";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { computeProtocoloEfectivo, isEngineOutput } from "@/clinical-engine";
+import { diaInicioDerivado, semanaEfectiva } from "@/clinical-engine/menu-ciclo";
+import { TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { getActivePrompt } from "@/lib/ai/prompts";
 import { AiError, generateText } from "@/lib/ai/provider";
@@ -16,13 +18,22 @@ import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey
 import { patronDeclarado } from "./patron-declarado";
 
 import {
-  buildMenuPrompt,
+  buildMenuAdaptarPrompt,
   MENU_PROMPT_KEY,
   MENU_PROMPT_VERSION,
-  parseMenuEstructurado,
-} from "../ai/prompts/menu.v3";
+  parseCambiosMenu,
+  verificarCita,
+} from "../ai/prompts/menu.v4";
 
-// Generacion real del menu por IA (B13). Arma el contrato MenuPromptInput SOLO con
+// ADAPTACION del menu por IA (contrato v4, su §13). LA IA YA NO COMPONE: recibe la semana que el
+// profesional tiene delante (el ciclo de 21 dias con sus ediciones) y devuelve SOLO las celdas que
+// incumplen una restriccion, con la sustitucion y su motivo.
+//
+// Y NO SE LLAMA SI NO HAY RESTRICCIONES, que es literalmente su instruccion: "la IA solo lo adapta CUANDO
+// HAY RESTRICCIONES". Sin ninguna, el ciclo YA es el menu correcto y llamar al modelo seria gastar por
+// nada y abrir la puerta a que cambie algo que no habia que cambiar.
+//
+// (Historico) Arma el contrato SOLO con
 // variables clinicas y objetivos (barrera PII estructural, regla 15): fenotipo, sector,
 // rutas y los objetivos del protocolo; jamas nombre, documento ni contacto. Llama a la
 // infra de B12 (provider con timeout + fallback) y persiste SIEMPRE una fila en
@@ -36,10 +47,14 @@ function classifyFailure(e: unknown): MenuSuggestionStatus {
   return /timeout|timed out|abort/i.test(msg) ? "timeout" : "provider_error";
 }
 
+// `sin_restricciones` NO es un estado de sugerencia (no hubo intento, no hay fila que registrar): es una
+// respuesta del servicio. Por eso el Result lo lleva aparte del enum de la tabla.
+export type ResultadoAdaptacion = MenuSuggestionStatus | "sin_restricciones";
+
 export async function generateMenu(
   evaluationId: string,
   actor: Actor,
-): Promise<Result<{ status: MenuSuggestionStatus }>> {
+): Promise<Result<{ status: ResultadoAdaptacion }>> {
   const [protocol, results] = await Promise.all([
     getTreatmentProtocol(evaluationId),
     getEvaluationResults(evaluationId),
@@ -104,18 +119,40 @@ export async function generateMenu(
     (dominios ?? []).flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
   );
 
-  const messages = buildMenuPrompt(
+  const restriccionesModelo = protocol.protocolSuggested.restricciones ?? [];
+
+  // GATE: sin NINGUNA restriccion la IA no entra. Es su instruccion literal ("la IA solo lo adapta cuando
+  // hay restricciones") y ademas es lo prudente: sin restricciones el ciclo YA es el menu correcto, y
+  // llamar al modelo solo abriria la puerta a que cambie algo que no habia que cambiar.
+  //
+  // No es un error: es una respuesta. Por eso vuelve `ok` con su propio estado y NO deja fila en
+  // ai_menu_suggestions (no hubo intento que dejar en procedencia).
+  const hayRestricciones =
+    restriccionesModelo.length > 0 || protocol.restricciones.length > 0 || patron.length > 0;
+  if (!hayRestricciones) return ok({ status: "sin_restricciones" as const });
+
+  // LA SEMANA QUE SE ADAPTA ES LA QUE EL PROFESIONAL TIENE DELANTE, no una recien sacada del ciclo: si
+  // el ya edito celdas, adaptar el ciclo crudo propondria sustituir cosas que en pantalla dicen otra cosa.
+  // El calculo es el MISMO que usa la grilla (semanaEfectiva), no una copia.
+  const guardado = protocol.menuSemanal;
+  const diaInicio = guardado?.diaInicio ?? diaInicioDerivado(protocol.treatmentId);
+  const activos = protocol.tiemposActivos;
+  const tiempos = TIEMPOS_DEF.filter((t) => activos?.[t.id] ?? true).map((t) => t.id);
+  const base = semanaEfectiva(diaInicio, guardado?.celdas ?? {}, tiempos);
+
+  const messages = buildMenuAdaptarPrompt(
     {
       kcalObjetivo: efectivo.calorico.kcalObj,
       proteinaGramos: efectivo.calorico.protG,
-      // Las DOS listas, separadas (v2): las del MODELO son la salida del motor con su referencia
-      // clinica y son no negociables; las del PROFESIONAL son aditivas. Fundirlas perderia ambas cosas.
-      restriccionesModelo: protocol.protocolSuggested.restricciones ?? [],
+      // Las DOS listas, separadas: las del MODELO son la salida del motor con su referencia clinica y son
+      // no negociables; las del PROFESIONAL son aditivas. Fundirlas perderia ambas cosas.
+      restriccionesModelo,
       restriccionesProfesional: protocol.restricciones,
       fenotipoEstructural: structural.nombre,
       sectorFuncional: frSector.nombre,
       rutasAtencion: dfi.rutas,
       patronAlimentario: patron,
+      base,
     },
     activePrompt?.content,
   );
@@ -133,10 +170,28 @@ export async function generateMenu(
   try {
     const completion = await generateText(messages, config);
 
-    // CAPA 3: el chequeo exacto. El menu se parsea a la forma del contrato v3 y se cruza alimento contra
-    // alimento. Si no parsea NO se cruza, y entonces la sugerencia no puede afirmarse revisada: se
-    // de [] que significa "revisado y limpio").
-    const menuJson = parseMenuEstructurado(completion.text);
+    // Se parsea a la forma del contrato v4: una lista de CAMBIOS, no un menu. Si no parsea, la
+    // sugerencia queda `parse_failed` y LA GRILLA SE QUEDA CON EL CICLO, que es la conducta correcta:
+    // el ciclo no es un plan B, es la base.
+    const parsed = parseCambiosMenu(completion.text);
+
+    // VERIFICACION DE LA CITA, por cambio. No bloquea: juzgar si una preparacion incumple una restriccion
+    // es contenido clinico y lo decide el profesional. Lo que si se puede es decirle CUALES cambios citan
+    // una restriccion que de verdad se envio, para que sepa a cual mirar primero. El cambio que no
+    // corresponde (una celda que no chocaba con nada) cae aqui como `citaVerificada: false`.
+    const todasLasRestricciones = [
+      ...restriccionesModelo.map((r) => r.nombre),
+      ...protocol.restricciones,
+      ...patron,
+    ];
+    const menuJson = parsed
+      ? {
+          cambios: parsed.cambios.map((c) => ({
+            ...c,
+            citaVerificada: verificarCita(c.motivo, todasLasRestricciones),
+          })),
+        }
+      : null;
     await recordMenuSuggestion({
       treatmentId: protocol.treatmentId,
       provider: completion.provider,
