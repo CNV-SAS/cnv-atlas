@@ -247,7 +247,7 @@ const computeDFIFromData = (enc, bis) => {
     // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
     sexoRef: {
       ifc:  esMasc ? "H: <4,12 bajo · 4,12–6,68 normal · >6,68 alto" : "M: <2,08 bajo · 2,08–3,28 normal · >3,28 alto",
-      irc:  esMasc ? "H: <1,68 bajo · 1,68–2,11 normal · >2,11 alto" : "M: <2,27 bajo · 2,27–2,85 normal · >2,85 alto",
+      irc:  esMasc ? "H: <1,7 bajo · 1,7–2,1 normal · >2,1 alto" : "M: <2,3 bajo · 2,3–2,8 normal · >2,8 alto",
       pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
     },
     pabuCl: { l: cPABU(pabu).l },

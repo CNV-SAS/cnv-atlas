@@ -203,7 +203,11 @@ const computeDFIFromData = (enc, bis) => {
   const ifc = num("IFC", "ifc") || calcIFC(C, Rinf),
         irc = num("IRC", "irc") || calcIRC(Re, Ri, C),
         pabu = num("PABU", "pabu") || calcPABU(Re, Ri, Rinf, C, sexoM);
-  const iehh = num("IEHH", "iehh"), iscm = num("ISCM", "iscm"), iae = num("IAE", "iae"),
+  const iehh = num("IEHH", "iehh"), iae = num("IAE", "iae"),
+        // AUSENTE != 0: si el ISCM no se pudo calcular (falta MCA_dif u otro insumo
+        // secundario) vale null y no se clasifica. Con num() valia 0, y 0 sale "Leve".
+        iscm = (d.ISCM != null && d.ISCM !== "" && !isNaN(Number(d.ISCM))) ? Number(d.ISCM)
+             : (d.iscm != null && d.iscm !== "" && !isNaN(Number(d.iscm))) ? Number(d.iscm) : null,
         ebBis = num("EB_BIS", "eb", "ebBis"), FMI = num("FMI", "fmi"), FFMI = num("FFMI", "ffmi");
   const icaBis = num("ICA_BIS", "icaBis") || (pabu ? pabu - 1.618 : null);
   const sexoM = (d.sexo === "Masculino" || d.sexo === "M") ? "M" : "F";
@@ -227,14 +231,14 @@ const computeDFIFromData = (enc, bis) => {
     // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
     sexoRef: {
       ifc:  esMasc ? "H: <4,12 bajo · 4,12–6,68 normal · >6,68 alto" : "M: <2,08 bajo · 2,08–3,28 normal · >3,28 alto",
-      irc:  esMasc ? "H: <1,68 bajo · 1,68–2,11 normal · >2,11 alto" : "M: <2,27 bajo · 2,27–2,85 normal · >2,85 alto",
+      irc:  esMasc ? "H: <1,7 bajo · 1,7–2,1 normal · >2,1 alto" : "M: <2,3 bajo · 2,3–2,8 normal · >2,8 alto",
       pabu: esMasc ? "k=0,78 (H)" : "k=0,46 (M)"
     },
     pabuCl: { l: cPABU(pabu).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
     iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
-    iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },
+    iscmCl: iscm == null ? null : { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },
     iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === "Desacelerado" ? "Enlentecido" : x; })() },
     fmiCat: (_fmiK <= 1 ? "bajo_grasa" : _fmiK === 2 ? "normal" : "exceso"),
     structL: _obSarc ? "Obesidad sarcopénica" : ("Fenotipo " + cFMI(FMI, sexoM).l + "/" + cFFMI(FFMI, sexoM).l)

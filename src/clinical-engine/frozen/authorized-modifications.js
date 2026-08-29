@@ -97,6 +97,56 @@ const AUTHORIZED_MODIFICATIONS = [
   if (!_le8Req.every(_le8Pres)) return { scores: [], total: null };
   const scores = [];`,
   },
+  {
+    caId: "CA-4",
+    decision: "D-007",
+    date: "2026-08-29",
+    targetFile: "engine.dfi.js",
+    // Instruccion verbatim de Gildardo, escrita en su propio ATLAS_v8.html del 2026-08-29 sobre este
+    // mismo punto (ronda del 28, punto 4): "el insumo ausente entra hoy como 0, y en una desviacion
+    // respecto del teorico el 0 afirma que el paciente esta en su valor esperado -una lectura
+    // favorable- sin marca de que faltaba el dato. La conducta correcta es NO EMITIR EL INDICE. No se
+    // cambia aqui todavia porque propagar el sin dato obliga a tocar las siete pantallas que consumen
+    // el ISCM con Number(x)||0 y luego .toFixed(), y eso se hace con la app corriendo."
+    //
+    // ES LA MISMA INSTRUCCION QUE CA-3, aplicada a otro indice: "que deje de rellenar con ceros en
+    // silencio: que distinga el paciente respondio 0 de el paciente no respondio".
+    //
+    // LO QUE ATLAS YA HACIA BIEN, y por eso esto es mas chico de lo que parece: analizarDesdeBiody ya
+    // devuelve ISCM = null cuando falta alguno de los cuatro insumos secundarios (MCA_dif entre ellos).
+    // El defecto estaba AGUAS ABAJO: num() convertia ese null en 0 y iscmCl lo clasificaba como "Leve"
+    // (0 <= 1). Suprimir la cifra no basta si lo derivado sigue visible.
+    //
+    // LO QUE NO SE TOCA, A PROPOSITO: el "?? 1" con que el dominio 2 puntua una clasificacion
+    // desconocida. Es suyo y esta escrito para exactamente este caso (etiqueta fuera del mapa), asi que
+    // dejarlo respeta su decision; cambiarlo seria tomarla nosotros. Queda preguntado en la ronda.
+    instruction:
+      "El ISCM ausente no se emite ni se clasifica: el 0 afirma que el paciente esta en su valor esperado, una lectura favorable sin marca de que faltaba el dato (ronda 2026-08-28 punto 4, respondido en su archivo del 29).",
+    oldSlice:
+      '  const iehh = num("IEHH", "iehh"), iscm = num("ISCM", "iscm"), iae = num("IAE", "iae"),',
+    newSlice: [
+      '  const iehh = num("IEHH", "iehh"), iae = num("IAE", "iae"),',
+      '        // AUSENTE != 0: si el ISCM no se pudo calcular (falta MCA_dif u otro insumo',
+      '        // secundario) vale null y no se clasifica. Con num() valia 0, y 0 sale "Leve".',
+      '        iscm = (d.ISCM != null && d.ISCM !== "" && !isNaN(Number(d.ISCM))) ? Number(d.ISCM)',
+      '             : (d.iscm != null && d.iscm !== "" && !isNaN(Number(d.iscm))) ? Number(d.iscm) : null,',
+    ].join(String.fromCharCode(10)),  // sin secuencia de escape: mas legible y no se rompe al editar
+  },
+  {
+    caId: "CA-5",
+    decision: "D-007",
+    date: "2026-08-29",
+    targetFile: "engine.dfi.js",
+    // Segunda mitad de CA-4: con el ISCM en null la clasificacion tiene que ser null tambien, no
+    // "Leve". Los consumidores del frozen ya escriben idx.iscmCl?.l || "-", asi que en cuanto esto es
+    // null la pantalla dice "-" sola, sin tocar ninguno de los siete.
+    instruction:
+      "El ISCM ausente no se clasifica (misma instruccion de CA-4).",
+    oldSlice:
+      '    iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
+    newSlice:
+      '    iscmCl: iscm == null ? null : { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
+  },
 ];
 
 // Aplica las modificaciones sobre el texto original. Todas se ubican en el ORIGINAL (no en el texto
