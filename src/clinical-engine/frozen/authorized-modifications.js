@@ -45,28 +45,16 @@ const AUTHORIZED_MODIFICATIONS = [
       "    iae > 5 ? { nombre:'Telómeros/estrés oxidativo', razon:'IAE acelerado +'+iae.toFixed(1)+' años', protocolo:'ANI BIS-E 2026', prioridad:'media' } : null,\n",
     newSlice: "",
   },
-  {
-    caId: "CA-2",
-    decision: "D-002",
-    date: "2026-08-09",
-    targetFile: "atlas-tratamiento.js",
-    // Instruccion verbatim de Gildardo (respuesta 2026-08-09 §5, enmienda 2 a D-002): "cuando hay
-    // riesgo de trastorno de la conducta alimentaria, la decision sigue partiendo del peso meta, igual
-    // que en cualquier otro caso, y se genera la alerta... el plan no se bloquea. Lo que hace el sistema
-    // es avisar -al profesional, con la marca de remision- y el peso meta acordado sigue gobernando el
-    // calculo." El mensaje viejo AFIRMA que el modulo PAUSA la restriccion calorica; en Atlas eso ni
-    // siquiera ocurre (nada consume tcaFlag en la cadena calorica: el deficit no se anula), asi que el
-    // texto ademas MIENTE sobre lo que hace el sistema. Se reemplaza por lo que SI pasa: alerta + remision,
-    // el plan no se bloquea, el peso meta gobierna. Solo cambia el mensaje (string); la conducta ya era
-    // correcta. El v8 2026-08-04 de nuestro repo aun trae el texto viejo (Gildardo lo corrigio en un v8
-    // posterior que no tenemos); la autoridad es su instruccion escrita (D-014), no el archivo archivado.
-    instruction:
-      "Salvaguarda de TCA: alerta, NO bloqueo. El plan no se pausa; se avisa con marca de remision y el peso meta acordado sigue gobernando el calculo (D-002 enmienda 2, §5).",
-    oldSlice:
-      '  var salvaguarda=tcaFlag?"Salvaguarda activa: el módulo nutricional PAUSA la restricción calórica automática (prescribir dieta hipocalórica en TCA es dañino).":null;',
-    newSlice:
-      '  var salvaguarda=tcaFlag?"Alerta de conducta alimentaria de riesgo: se marca remisión a psicología clínica o psiquiatría. El plan no se bloquea; el peso meta acordado sigue gobernando el cálculo (no se fuerza dieta normocalórica).":null;',
-  },
+  // CA-2 RETIRADA el 2026-08-29. Su ATLAS_v8.html del 29 ya trae la correccion CON SUS PROPIAS
+  // PALABRAS: "Salvaguarda activa: el sistema AVISA y marca remision; NO pausa el plan. El deficit sigue
+  // partiendo del peso meta acordado con el paciente y la decision de restringir es del profesional".
+  //
+  // Es la regla de VIGENCIA que este mismo archivo exige al portar un motor nuevo: "sigue haciendo falta"
+  // o "Gildardo ya la absorbio en su archivo, se retira de aqui". Absorbida. El original se re-porto con
+  // su texto, asi que ahora el generado dice lo suyo y no una parafrasis nuestra que decia lo mismo.
+  //
+  // Lo encontro el candado de deriva contra la entrega vigente (`frozen-deriva-vigente.test.ts`), no una
+  // revision a mano: nadie se acuerda de revisar vigencia si nada lo pregunta.
   {
     caId: "CA-3",
     decision: "D-007",

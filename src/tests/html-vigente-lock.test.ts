@@ -1,7 +1,20 @@
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
+
+const CONGELADOS = new Set([
+  "celular-badges.test.ts",
+  "frozen-derivar-composicion-diff.test.ts",
+  "frozen-dfi-calcle8-diff.test.ts",
+  "frozen-dfi-ffmilow-diff.test.ts",
+  "frozen-fenotipo-diff.test.ts",
+  "frozen-patron-diff.test.ts",
+  "frozen-protocolo-chain-diff.test.ts",
+  "frozen-protocolo-diff.test.ts",
+  // No ancla nada: CITA la entrega vigente para verificar que el texto salio de su archivo.
+  "salvaguarda-tca-mensaje.test.ts",
+]);
 
 // CANDADO SOBRE EL SITIO DE LLAMADA, no sobre la funcion, porque el defecto es una OMISION: nadie
 // "llamo mal" a nada, simplemente se dejo una ruta escrita a mano apuntando a la entrega anterior. Un
@@ -16,30 +29,48 @@ describe("la fuente vigente de Gildardo se deriva, y nadie la escribe a mano", (
     expect(existsSync(HTML_VIGENTE)).toBe(true);
   });
 
-  it("ningún test ancla a un ATLAS_v8.html por ruta literal: todos pasan por HTML_VIGENTE", () => {
-    // EXCEPCIONES DELIBERADAS, cada una con su razon. Anclan a una entrega CONGELADA a proposito: no
-    // son "el archivo vigente", son la foto contra la que se porto un trozo que el no ha vuelto a tocar.
-    // Si alguna vez lo toca, el candado de abajo (el de las entregas nuevas) es el que avisa.
-    const CONGELADOS = new Set([
-      "frozen-derivar-composicion-diff.test.ts",
-      "frozen-dfi-ffmilow-diff.test.ts",
-      "frozen-patron-diff.test.ts",
-      "frozen-protocolo-diff.test.ts",
-      "dfi-narrative.golden.test.ts",
-    ]);
+  it("ningún test ancla a una entrega por ruta literal fuera de la lista de congelados", () => {
+    // CORRECCION DE MI PROPIO CANDADO (2026-08-29). La primera version solo buscaba el patron
+    // "html actualizado <dia> <mes>", que es UNA de las dos convenciones de carpeta que hay en
+    // `docs/entregas`. La otra ("gildardo-2026-07-30") pasaba entera: CUATRO tests anclados por ruta
+    // literal quedaban fuera de vigilancia y el candado se creia completo. Es la misma forma del defecto
+    // que este archivo cierra, cometida aqui: una garantia que no cubre lo que dice cubrir. Ahora busca
+    // cualquier ruta literal a `docs/entregas`.
+    //
+    // CONGELADOS: anclan a una entrega CONGELADA a proposito. No son "el archivo vigente", son la foto
+    // contra la que se porto un trozo. Que sean legitimos NO los exime de deriva: por eso existe ademas
+    // `frozen-deriva-vigente.test.ts`, que compara todo el frozen contra la entrega de hoy. Los dos hacen
+    // falta: aquel prueba que el porte fue fiel a su entrega, este que esa entrega sigue siendo la de hoy.
 
     const sueltos: string[] = [];
     for (const f of readdirSync("src/tests").filter((f) => f.endsWith(".test.ts"))) {
       if (CONGELADOS.has(f) || f === "html-vigente-lock.test.ts") continue;
       const src = readFileSync(`src/tests/${f}`, "utf8");
       // Solo lineas de CODIGO: un comentario que nombre el archivo es documentacion, no un anclaje.
-      const codigo = src.split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");
-      if (/html actualizado \d+ \p{L}+/u.test(codigo)) sueltos.push(f);
+      const codigo = src
+        .split("\n")
+        .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+        .join("\n");
+      if (/docs\/entregas\//.test(codigo)) sueltos.push(f);
     }
     expect(
       sueltos,
-      `estos tests anclan a una entrega por ruta literal; usa HTML_VIGENTE de fixtures/html-vigente: ${sueltos.join(", ")}`,
+      `estos tests anclan a una entrega por ruta literal; usa HTML_VIGENTE de fixtures/html-vigente, o ` +
+        `agrégalos a CONGELADOS con su razón: ${sueltos.join(", ")}`,
     ).toEqual([]);
+  });
+
+  it("la lista de CONGELADOS no tiene sobrantes: todos existen y todos anclan de verdad", () => {
+    // Una excepcion que ya no corresponde es un agujero abierto sin que nadie lo note: el dia que ese
+    // test se re-ancle bien, la excepcion sigue tapando al siguiente que se escriba con ese nombre.
+    for (const f of CONGELADOS) {
+      expect(existsSync(`src/tests/${f}`), `${f} está en CONGELADOS y no existe`).toBe(true);
+      const src = readFileSync(`src/tests/${f}`, "utf8");
+      expect(
+        /docs\/entregas\//.test(src),
+        `${f} ya no ancla a ninguna entrega: sácalo de CONGELADOS`,
+      ).toBe(true);
+    }
   });
 
   it("los tests CONGELADOS declaran contra qué entrega están anclados", () => {

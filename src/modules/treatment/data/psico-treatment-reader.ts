@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // lento). Ver acuerdo de dos carriles en ARCHITECTURE.
 // El que CORRE es el .authorized (original + modificaciones autorizadas; CA-2 corrige el mensaje de la
 // salvaguarda de TCA). El original queda intacto como referencia byte-identica a Gildardo.
-import { motorTratPsico } from "@/clinical-engine/frozen/atlas-tratamiento.authorized.js";
+import { motorTratPsico } from "@/clinical-engine/frozen/atlas-tratamiento.js";
 
 export type PsicoTreatment = {
   tamizaje: { inst: string; res: string }[];

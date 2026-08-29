@@ -84,11 +84,11 @@ const cAF = (v, sexo) => {
   if (!v || v <= 0) return { l: 'Sin dato', c: '#94a3b8' };
   if (m) {
     if (v < 6.5) return { l: 'Bajo',   c: '#dc2626' };
-    if (v <= 7.0) return { l: 'Normal', c: '#f59e0b' };
+    if (v <= 7.0) return { l: 'Normal', c: '#16a34a' };
     return              { l: 'Alto',   c: '#16a34a' };
   } else {
     if (v < 6.0) return { l: 'Bajo',   c: '#dc2626' };
-    if (v <= 6.5) return { l: 'Normal', c: '#f59e0b' };
+    if (v <= 6.5) return { l: 'Normal', c: '#16a34a' };
     return              { l: 'Alto',   c: '#16a34a' };
   }
 };

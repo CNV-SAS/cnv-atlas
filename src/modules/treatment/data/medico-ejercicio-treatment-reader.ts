@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // profesional, no se sella nada, no entra al pipeline. Salida PROFESIONAL-FACING (nada al paciente).
 // El que CORRE es el .authorized (original + modificaciones autorizadas). El original queda intacto
 // como referencia byte-identica a Gildardo.
-import { motorTratEjercicio, motorTratMedico } from "@/clinical-engine/frozen/atlas-tratamiento.authorized.js";
+import { motorTratEjercicio, motorTratMedico } from "@/clinical-engine/frozen/atlas-tratamiento.js";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
 export type MedicoTreatment = {

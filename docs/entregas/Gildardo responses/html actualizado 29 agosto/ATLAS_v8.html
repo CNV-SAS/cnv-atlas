@@ -19038,7 +19038,7 @@ function ATLAS() {
     if (!adminAccess) {
       const handlePin = () => {
         const pin = adminPinInput.trim();
-        if (pin === "SCRUBBED_PIN") { // SCRUB Atlas: PIN admin hardcodeado (era "1234") retirado al versionar la entrega. Mismo scrub que en la entrega del 28: su archivo lo trae vivo en cada entrega porque el no sabe que lo retiramos.
+        if (pin === "1234") {
           setAdminAccess({ level:"admin" });
           setAdminPinInput(""); setAdminPinErr("");
           return;
@@ -19055,7 +19055,7 @@ function ATLAS() {
         React.createElement("div", { style:{ background:"white", borderRadius:16, boxShadow:"0 4px 24px rgba(0,0,0,0.10)", padding:"40px 32px", width:"100%", maxWidth:380, textAlign:"center" } },
           React.createElement("div", { style:{ fontSize:22, fontWeight:900, color:"#7c3aed", marginBottom:4 } }, "ATLAS"),
           React.createElement("div", { style:{ fontSize:14, fontWeight:700, color:"#0f172a", marginBottom:6 } }, "Módulo Administrador · CNV"),
-          React.createElement("div", { style:{ fontSize:11, color:"#94a3b8", marginBottom:28 } }, "PIN admin: (retirado) · Integrante: últimos 4 dígitos del documento"),
+          React.createElement("div", { style:{ fontSize:11, color:"#94a3b8", marginBottom:28 } }, "PIN admin: 1234 · Integrante: últimos 4 dígitos del documento"),
           React.createElement("input", { type:"password", maxLength:8, placeholder:"Ingrese PIN", value:adminPinInput, onChange:e=>{ setAdminPinInput(e.target.value); setAdminPinErr(""); }, onKeyDown:e=>{ if(e.key==="Enter") handlePin(); }, style:{ width:"100%", padding:"12px 14px", borderRadius:10, border:"2px solid "+(adminPinErr?"#fca5a5":"#e2e8f0"), fontSize:18, textAlign:"center", outline:"none", letterSpacing:6, boxSizing:"border-box", marginBottom:8 } }),
           adminPinErr && React.createElement("div", { style:{ color:"#dc2626", fontSize:11, marginBottom:8 } }, adminPinErr),
           React.createElement("button", { onClick:handlePin, style:{ width:"100%", padding:"12px", borderRadius:10, border:"none", background:"#7c3aed", color:"white", fontWeight:800, fontSize:14, cursor:"pointer", marginBottom:16 } }, "Ingresar"),

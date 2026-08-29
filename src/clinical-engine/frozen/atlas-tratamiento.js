@@ -99,7 +99,13 @@ function motorTratPsico(enc, bis){
   var enfoque=["Modelo Transteórico: ubicar la etapa de cambio","Entrevista Motivacional para la motivación intrínseca","TCC y metas SMART"];
   var temas=["Manejo del estrés (nivel "+(estres||"-")+"/10)","Sueño","Alimentación emocional","Adherencia"];
   var remision=[]; if(tcaFlag) remision.push("Remitir a psicología clínica o psiquiatría (sospecha de TCA)"); if(estres>=8) remision.push("Valorar apoyo por estrés elevado");
-  var salvaguarda=tcaFlag?"Salvaguarda activa: el módulo nutricional PAUSA la restricción calórica automática (prescribir dieta hipocalórica en TCA es dañino).":null;
+  // Texto corregido el 2026-08-19. Decia que el modulo "PAUSA la restriccion
+  // calorica automatica", pero `motorTratNutri` dejo de pausar el 9-ago-2026
+  // (`pausadoTCA` se conserva en false): la salvaguarda AVISA y marca remision,
+  // y el deficit sigue partiendo del peso meta acordado. La frase describia un
+  // comportamiento que el motor ya no tiene, y le decia al profesional que su
+  // plan estaba frenado cuando no lo estaba.
+  var salvaguarda=tcaFlag?"Salvaguarda activa: el sistema AVISA y marca remisión; NO pausa el plan. El déficit sigue partiendo del peso meta acordado con el paciente y la decisión de restringir es del profesional (prescribir dieta hipocalórica en TCA sin acompañamiento es dañino).":null;
   var refs=["Prochaska y DiClemente; Miller y Rollnick; TCC; PHQ-9; GAD-7; SCOFF"];
   return { tamizaje:tamizaje, enfoque:enfoque, temas:temas, tcaFlag:tcaFlag, remision:remision, salvaguarda:salvaguarda, estres:estres, refs:refs };
 }
