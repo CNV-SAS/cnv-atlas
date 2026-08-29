@@ -42,7 +42,7 @@ export function pillClass(active: boolean): string {
 export function pillReadonlyClass(active: boolean): string {
   return `rounded-full px-3 py-1.5 text-sm ${
     active
-      ? "bg-primary font-semibold text-primary-foreground"
+      ? "border border-primary bg-primary font-semibold text-primary-foreground"
       : "border border-transparent text-muted-foreground"
   }`;
 }

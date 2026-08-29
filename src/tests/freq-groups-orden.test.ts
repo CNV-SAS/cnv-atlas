@@ -64,3 +64,31 @@ describe("el orden de la encuesta sigue al de FREQ_GROUPS, no al numero del camp
     expect(bloques).toEqual(["protector", "neutro", "riesgo"]);
   });
 });
+
+// SEGUNDO PAR DE LA MISMA FORMA, encontrado al barrer (2026-08-29): los QUINCE ROTULOS viven dos veces,
+// como `label` en `FREQ_GROUPS` (frozen) y como `text` en el seed. Nada los comparaba.
+//
+// El barrido dio UNA diferencia y es presentacional, no semantica: el frozen mete los ejemplos dentro del
+// rotulo ("Grasas saludables (aguacate, aceite de oliva y frutos secos)") y el seed los separa en el campo
+// `sub`, mas completos. El paciente ve la misma informacion. Se documenta la tolerancia en vez de
+// "arreglar" uno de los dos, porque los dos estan bien: son dos formas de presentar lo mismo.
+//
+// Lo que el candado SI atrapa es una divergencia de verdad: que uno diga un grupo de alimentos y el otro
+// diga otro, que es como empezo el defecto del orden.
+describe("los rotulos de los quince grupos no divergen entre el seed y el motor", () => {
+  const seedTexts = new Map(
+    [...readFileSync("supabase/seed.ts", "utf8").matchAll(
+      /\{ key: "d1_(\d+)_i", type: "opcion", text: "([^"]+?) \(frecuencia de consumo\)"/g,
+    )].map((m) => [Number(m[1]), m[2]]),
+  );
+
+  it("cada rotulo del motor empieza por el texto de su pregunta en la encuesta", () => {
+    for (const g of FREQ_GROUPS) {
+      const enSeed = seedTexts.get(g.n);
+      expect(enSeed, `falta d1_${g.n}_i en el seed`).toBeDefined();
+      // `startsWith` y no igualdad: el frozen puede llevar los ejemplos pegados al rotulo (caso n=5).
+      // Lo que no puede es nombrar OTRO grupo.
+      expect(g.label.startsWith(enSeed!)).toBe(true);
+    }
+  });
+});
