@@ -51,7 +51,14 @@ describe("la fuente vigente de Gildardo se deriva, y nadie la escribe a mano", (
         .split("\n")
         .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
         .join("\n");
-      if (/docs\/entregas\//.test(codigo)) sueltos.push(f);
+      // Una ruta DERIVADA no es un anclaje: `${ENTREGAS[...]}` sigue a la carpeta y se mueve con ella. Lo
+      // que se persigue es la ruta ESCRITA A MANO, que es la que envejece. Lo aprendí comiteando este
+      // mismo candado en rojo: marcó al candado de deriva, que construye su ruta desde ENTREGAS.
+      const derivada = /docs\/entregas\/[^"'`]*\$\{\s*ENTREGAS/;
+      const literales = codigo
+        .split("\n")
+        .filter((l) => /docs\/entregas\//.test(l) && !derivada.test(l));
+      if (literales.length > 0) sueltos.push(f);
     }
     expect(
       sueltos,
