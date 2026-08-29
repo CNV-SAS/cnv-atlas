@@ -64,3 +64,24 @@ export function funcionDelHtml(nombre: string, ruta: string = HTML_VIGENTE): str
   }
   throw new Error(`function ${nombre} no cierra en ${ruta}`);
 }
+
+/**
+ * Igual que `funcionDelHtml`, para las declaradas como `const NOMBRE = (...) => {`. Mismo motivo para
+ * anclar por nombre: el rango de lineas es una posicion y se desincroniza sola.
+ */
+export function constFlechaDelHtml(nombre: string, ruta: string = HTML_VIGENTE): string {
+  const src = readFileSync(ruta, "utf8").replace(/\r\n/g, "\n");
+  const i = src.indexOf(`const ${nombre} = (`);
+  if (i < 0) throw new Error(`no aparece const ${nombre} = ( en ${ruta}`);
+  let prof = 0;
+  for (let j = src.indexOf("{", i); j < src.length; j++) {
+    const c = src[j];
+    if (c === "{") prof++;
+    else if (c === "}") {
+      prof--;
+      // La flecha cierra con `};`, no con `}` sola.
+      if (prof === 0) return src.slice(i, j + 2);
+    }
+  }
+  throw new Error(`const ${nombre} no cierra en ${ruta}`);
+}

@@ -48,6 +48,8 @@ import {
   getEvaluationHeaderForSession,
   getEvaluationResults,
 } from "@/modules/diagnoses/data/results-reader";
+import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
+import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
 import {
   IdentityConfirmation,
@@ -234,6 +236,15 @@ export default async function ResultadosEvaluacionPage({
         <CorrectionHistory evaluationId={id} />
         <EvaluationTabs
         evaluacion={
+          <div className="flex flex-col gap-6">
+            {/* Las alertas van ARRIBA de la entrada: una bandera de conducta alimentaria manda derivar
+                antes de seguir revisando, no despues. Se computan sobre las respuestas YA leidas, sin
+                consulta nueva, igual que los antecedentes de la HC. */}
+            <AlertasClinicas
+              alertas={alertasDisponibles(
+                encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
+              )}
+            />
           <EntradaEvaluacion
             evaluationId={id}
             diagnosticoGenerado={false}
@@ -247,6 +258,7 @@ export default async function ResultadosEvaluacionPage({
             bisReadonly={null}
             identityConfirmationSlot={identityNode}
           />
+          </div>
         }
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
@@ -548,11 +560,17 @@ export default async function ResultadosEvaluacionPage({
       <CorrectionHistory evaluationId={id} />
       <EvaluationTabs
       evaluacion={
-        // Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
-        // composicion y el import BIS no aplica (bisImportEval null).
-        // La correccion YA NO vive en Evaluacion (Santiago 2026-08-15, b): en Evaluacion el profesional
-        // REVISA la encuesta, no decide sobre un diagnostico. La via de correccion versionada se movio a la
-        // pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. Aqui solo la Entrada.
+        <div className="flex flex-col gap-6">
+        <AlertasClinicas
+          alertas={alertasDisponibles(
+            encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
+          )}
+        />
+        {/* Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
+            composicion y el import BIS no aplica (bisImportEval null).
+            La correccion YA NO vive en Evaluacion (Santiago 2026-08-15, b): en Evaluacion el profesional
+            REVISA la encuesta, no decide sobre un diagnostico. La via de correccion versionada se movio a
+            la pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. */}
         <EntradaEvaluacion
           evaluationId={id}
           consentStatus={entryConsent}
@@ -565,6 +583,7 @@ export default async function ResultadosEvaluacionPage({
           bisReadonly={entryReadonly}
           diagnosticoGenerado={Boolean(results)}
         />
+        </div>
       }
       tratamiento={
         <div className="flex flex-col gap-8">
