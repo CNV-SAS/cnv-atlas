@@ -43,10 +43,11 @@ export default async function PacientesPage() {
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* SIN TEXTO, y es una decision. "Total de pacientes" debajo de "Pacientes: 31" no aporta nada: el
-            rotulo ya lo dice. Y "asignados a ti" es justo la frase que acabamos de retirar del subtitulo
-            porque el profesional ya lo sabe. No hay nada que el numero no diga, asi que va sola: mejor sin
-            texto que con relleno. */}
+        {/* SIN TEXTO, y ahora con una razon mas fuerte que "no encontre nada util": "asignados a ti" seria
+            FALSO para un admin. Esta pantalla la ven dos roles (`canViewPatients`: profesional y admin) y
+            el alcance lo pone la RLS, que al profesional le da los suyos y al admin TODOS. Una nota fija
+            diria una cosa cierta para uno y falsa para el otro.
+            Lo demas que se podria poner ("total de pacientes") solo repite el rotulo. Va sola. */}
         <TarjetaMetrica icono={Users} rotulo="Pacientes" valor={pacientes.length} />
         {/* AQUI SI HAY ALGO QUE EL NUMERO NO DICE: el PERIODO. Una cifra en una tarjeta de cabecera se lee
             por defecto como "este mes", y esta es acumulada desde siempre. Sustituye a la nota anterior

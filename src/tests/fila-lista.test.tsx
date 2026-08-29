@@ -183,3 +183,41 @@ describe("rotulos de columna: un adjetivo solo no nombra un dato", () => {
     expect(COLUMNAS_PACIENTES[1].rotulo).toBe("Evaluaciones");
   });
 });
+
+describe("el pie de la lista: solo cuando el filtro esconde algo", () => {
+  // Sin filtro repetia la tarjeta de metrica de arriba, y dos sitios con la misma cifra no informan mas,
+  // solo hacen dudar de si son lo mismo. Con filtro NO es la misma cifra: dice cuantos quedaron FUERA, que
+  // es justo lo que la tarjeta no puede decir.
+  const conPie = renderToStaticMarkup(
+    h(ListaFilas, {
+      columnas: COLUMNAS,
+      pie: "3 de 40 pacientes",
+      children: h(FilaLista, {
+        href: "/p/1",
+        titulo: "María Restrepo",
+        columnas: COLUMNAS,
+        valores: ["12 ago", "3", "CC 1"],
+      }),
+    }),
+  );
+  const sinPie = renderToStaticMarkup(
+    h(ListaFilas, {
+      columnas: COLUMNAS,
+      pie: null,
+      children: h(FilaLista, {
+        href: "/p/1",
+        titulo: "María Restrepo",
+        columnas: COLUMNAS,
+        valores: ["12 ago", "3", "CC 1"],
+      }),
+    }),
+  );
+
+  it("con pie lo pinta, y sin pie NO deja la franja vacia", () => {
+    expect(conPie).toContain("3 de 40 pacientes");
+    // La franja del pie tiene borde superior: sin contenido no debe existir, o quedaria una linea suelta
+    // bajo la ultima fila.
+    expect(veces(conPie, "border-t border-border")).toBe(1);
+    expect(veces(sinPie, "border-t border-border")).toBe(0);
+  });
+});

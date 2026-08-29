@@ -101,12 +101,12 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
       {buscador}
       <ListaFilas
       columnas={COLUMNAS_PACIENTES}
-      // Cuantos se ven, para que el filtro no esconda su efecto: si alguien busca y quedan 2 de 40, tiene
-      // que saber que hay 38 fuera de la vista.
+      // EL PIE SOLO CUANDO HAY FILTRO. Sin filtro repetia la tarjeta de metrica de arriba, que ya dice
+      // cuantos pacientes hay; dos sitios con la misma cifra no informan mas, solo hacen dudar de si son
+      // lo mismo. Pero con el buscador activo NO es la misma cifra: dice cuantos quedaron FUERA de la
+      // vista, que es justo lo que la tarjeta no puede decir. Se quita donde repite y se queda donde avisa.
       pie={
-        busqueda.trim()
-          ? `${filtrados.length} de ${pacientes.length} pacientes`
-          : `${pacientes.length} ${pacientes.length === 1 ? "paciente" : "pacientes"}`
+        busqueda.trim() ? `${filtrados.length} de ${pacientes.length} pacientes` : null
       }
       // DOS VACIOS DISTINTOS: "no encontré lo que buscas" y "no tienes pacientes" son situaciones
       // opuestas, y decirle "no hay pacientes" a quien acaba de escribir mal un apellido lo manda a buscar
