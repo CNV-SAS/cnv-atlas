@@ -94,7 +94,7 @@ export function ListaFilas({
         <>
           <div
             aria-hidden
-            className="hidden border-b border-border bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground md:grid md:items-center md:gap-3"
+            className="hidden border-b border-border bg-muted px-3 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground md:grid md:items-center md:gap-3"
             style={{ gridTemplateColumns: "var(--cols)" }}
           >
             <span>Paciente</span>

@@ -196,6 +196,12 @@ export function AppShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // El titulo de la seccion sale del item activo, que es la misma resolucion que ya usa el resaltado de la
+  // barra: una sola fuente para "donde estoy". Si ninguna coincide (una ruta sin item propio), no se pinta
+  // nada en vez de inventar un rotulo.
+  const todosLosItems = grupos.flatMap((g) => g.items);
+  const tituloSeccion = todosLosItems.find((i) => isNavItemActive(i.href, pathname, todosLosItems))?.label;
+
   return (
     <div className="flex min-h-svh">
       {/* Sidebar desktop. FIJA (`sticky top-0`, alto de viewport): en una pantalla larga, perder la
@@ -240,6 +246,17 @@ export function AppShell({
             <div className="lg:hidden">
               <AtlasLogo />
             </div>
+            {/* EL TITULO DE PANTALLA VIVE AQUI, en la franja blanca, no sobre el gris del contenido.
+                Es lo que hace su referencia "diseño sobrio" (el "Sales" de la cabecera), y resuelve tres
+                cosas de una: el titulo nunca cae sobre el gris (que era la queja), recupera altura en las
+                28 pantallas, y sale del `nav-config` que ya existe, asi que no hay trabajo por pantalla.
+
+                Y establece una distincion que se sostiene sola: LA CABECERA DICE DONDE ESTAS (la seccion)
+                y EL CONTENIDO DICE QUE MIRAS (el registro). En /pacientes el contenido ya no necesita
+                titulo; en /pacientes/[id] la cabecera dice "Pacientes" y el contenido, el nombre. */}
+            <h1 className="hidden truncate text-base font-semibold text-foreground lg:block">
+              {tituloSeccion}
+            </h1>
           </div>
 
           <DropdownMenu>

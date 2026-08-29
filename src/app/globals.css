@@ -29,6 +29,8 @@
    */
   --color-surface-sunken: var(--surface-sunken);
   --color-nav-accent: var(--nav-accent);
+  --color-attention: var(--attention);
+  --color-attention-bg: var(--attention-bg);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -153,6 +155,20 @@
    */
   --nav-accent: #205dfd;
 
+  /*
+   * ATENCION OPERATIVA: "esto pide que hagas algo", que NO es lo mismo que "este paciente esta asi".
+   *
+   * Existe separado de `--clinical-warning` a proposito, aunque hoy sean tonos vecinos. Son DOS EJES
+   * distintos: la escala clinica es un VEREDICTO sobre el estado de una persona y sale de los
+   * clasificadores de Gildardo; esto es un aviso sobre el TRABAJO (siete pacientes sin evaluar, una
+   * autorizacion que falta). Mezclarlos tiene un coste concreto: el dia que la escala clinica cambie, los
+   * avisos operativos se moverian con ella sin que nadie lo decidiera, y al reves.
+   *
+   * Un tono distinto (ambar-600 en vez de ambar-500) para que tampoco sean identicos en pantalla.
+   */
+  --attention: #d97706;
+  --attention-bg: #fffbeb;
+
   /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
   --sidebar: #ffffff;
   --sidebar-foreground: #15161a;
@@ -226,6 +242,8 @@
    * no porque el modo oscuro este verificado. */
   --surface-sunken: oklch(0.205 0 0);
   --nav-accent: oklch(0.985 0 0);
+  --attention: #fbbf24;
+  --attention-bg: oklch(0.269 0 0);
 }
 
 @layer base {

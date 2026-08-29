@@ -87,9 +87,13 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   );
 
   return (
-    <ListaFilas
+    <div className="flex flex-col gap-3">
+      {/* EL BUSCADOR VA FUERA DE LA TARJETA (prueba pedida por Santiago, 2026-08-28). Mi lectura al verlo
+          va en el reporte: el argumento para meterlo dentro sigue siendo que buscar y mirar el resultado
+          es un solo gesto, pero fuera gana aire y la tarjeta empieza directamente por los datos. */}
+      {buscador}
+      <ListaFilas
       columnas={COLUMNAS}
-      encabezado={buscador}
       // Cuantos se ven, para que el filtro no esconda su efecto: si alguien busca y quedan 2 de 40, tiene
       // que saber que hay 38 fuera de la vista.
       pie={
@@ -151,6 +155,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
           />
         );
       })}
-    </ListaFilas>
+      </ListaFilas>
+    </div>
   );
 }
