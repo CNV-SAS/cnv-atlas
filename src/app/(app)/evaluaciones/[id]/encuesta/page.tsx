@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -40,16 +41,17 @@ export default async function EncuestaEvaluacionPage({
   const preDiagnosis = results == null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <VolverA href={`/evaluaciones/${id}`}>Volver a la evaluación</VolverA>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Encuesta del paciente
-        </h1>
-        <p className="text-muted-foreground">
-          {header.patientName} · {header.documentLabel} ·{" "}
-          {formatDate(header.evaluationDate)}
-        </p>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+      {/* AL REVES QUE EN /evaluaciones/[id], y a proposito: alli el titulo es el PACIENTE porque se llega
+          desde el roster y lo primero que hay que confirmar es de quien es. Aqui se llega DESDE la
+          evaluacion, con eso ya resuelto, asi que el titulo es lo que estas haciendo y el paciente baja a
+          la descripcion, como confirmacion. */}
+      <TituloPantalla
+        volver={<VolverA href={`/evaluaciones/${id}`}>Volver a la evaluación</VolverA>}
+        titulo="Encuesta del paciente"
+        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+      />
+      <div className="flex flex-col gap-2">
         {preDiagnosis ? (
           // SIN diagnostico: edicion DIRECTA (nada sellado, sin version nueva).
           <div className="flex flex-col gap-2">
@@ -89,7 +91,7 @@ export default async function EncuestaEvaluacionPage({
             )}
           </div>
         )}
-      </header>
+      </div>
 
       <SurveyReadonly domains={domains ?? []} />
     </div>

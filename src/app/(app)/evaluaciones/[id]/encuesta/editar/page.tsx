@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -31,15 +32,12 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   const backHref = `/evaluaciones/${id}/encuesta`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <VolverA href={backHref}>Volver a la encuesta</VolverA>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Completar la encuesta</h1>
-        <p className="text-muted-foreground">
-          {header.patientName} · {header.documentLabel} ·{" "}
-          {formatDate(header.evaluationDate)}
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+      <TituloPantalla
+        volver={<VolverA href={backHref}>Volver a la encuesta</VolverA>}
+        titulo="Completar la encuesta"
+        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+      />
 
       <SurveyEditForm evaluationId={id} domains={domains ?? []} backHref={backHref} />
     </div>

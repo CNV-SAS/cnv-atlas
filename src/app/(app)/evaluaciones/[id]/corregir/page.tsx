@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -37,14 +38,14 @@ export default async function CorregirEvaluacionPage({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 py-6">
-      <header className="flex flex-col gap-2">
-        <VolverA href={backHref}>Volver a la evaluación</VolverA>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Corregir la evaluación</h1>
-        <p className="text-sm text-muted-foreground">
-          {header.patientName} · {header.documentLabel} ·{" "}
-          {formatDate(header.evaluationDate)}
-        </p>
-      </header>
+      {/* Conserva su ancho ESTRECHO (max-w-3xl), que no es descuido: es un formulario largo de una sola
+          columna y ahi el ancho de lectura manda sobre el de la pantalla. Es el mismo criterio del ancho
+          por tipo de contenido, aplicado al caso opuesto que la tabla. */}
+      <TituloPantalla
+        volver={<VolverA href={backHref}>Volver a la evaluación</VolverA>}
+        titulo="Corregir la evaluación"
+        descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+      />
 
       {domains ? (
         <CorrectEvaluationForm

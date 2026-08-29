@@ -215,6 +215,14 @@ frecuencia eran **dos contenidos distintos** según el ancho, y ahí sí se pued
 otra. Esto es **un contenido repartido**. Lo fija `fila-lista.test.tsx`: cada campo aparece exactamente una
 vez en la fila.
 
+**El subtítulo dice lo que la pantalla NO muestra, y casi siempre eso es una garantía o una consecuencia.**
+Formulacion salida de propagar el patron a las 24 pantallas (2026-08-29). Lo que CAE es casi siempre lo
+mismo: la enumeracion de las secciones que hay debajo, que el usuario tiene delante. Lo que QUEDA son
+cosas que la pantalla no puede enseñar: que el registro es append-only, que la aprobacion la hace un
+tercero y nunca tu mismo, que el acceso vence solo, que los datasets nunca llevan datos personales, que
+sin la verificacion no se paga la comision, que un reporte enviado ya no se deshace. Dos pantallas se
+quedaron SIN subtitulo, y es correcto: su titulo ya lo decia todo.
+
 Y dos reglas de densidad que salen de lo mismo:
 
 - **Un chip solo cuando dice algo excepcional.** El estado "Activo" no lleva chip; "Inactivo" sí. Gastar

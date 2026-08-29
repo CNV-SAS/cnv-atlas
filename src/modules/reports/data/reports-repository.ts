@@ -249,7 +249,9 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
   const { data, error } = await supabase
     .from("reports")
     .select(
-      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
+      // La fecha de la EVALUACION sale de su medicion, no del `created_at` del REPORTE. Se suma a la
+      // misma consulta: cero consultas nuevas.
+      "id, evaluation_id, patient_id, status, snapshot, professional_notes, send_mode, storage_path, created_at, trajectory, trajectory_communicated_at, evaluations!inner(created_at, bis_measurements(measurement_date)), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name), patient_contacts(email))",
     )
     .eq("id", reportId)
     .maybeSingle();
@@ -292,8 +294,32 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     email: contact?.email ?? null,
-    evaluationDate: data.created_at,
+    // DEFECTO CORREGIDO (2026-08-29), y era mas grave de lo que parecia: el campo se llama
+    // `evaluationDate` y llevaba `data.created_at`, que en esta consulta es el `created_at` del REPORTE.
+    // O sea que el PDF y el correo del paciente imprimian, bajo el rotulo de la fecha de la evaluacion, el
+    // dia en que alguien genero el reporte. En la BD local eso cambiaba la fecha de 37 de 40 reportes, con
+    // diferencias de hasta 35 dias.
+    //
+    // Ahora sale de la MEDICION de la evaluacion (la cronologia clinica, la regla de
+    // `comparison-chronology`), con caida a su `created_at` si aun no se midio, que es exactamente el
+    // mismo criterio que la ficha del paciente y la cabecera de la evaluacion. Los tres coinciden.
+    //
+    // LO YA ENVIADO NO CAMBIA, y no hace falta hacer nada para conseguirlo: un reporte enviado se sirve
+    // desde Storage (`storagePath`), es un archivo y no se vuelve a renderizar. Solo cambian los que aun
+    // no han salido de la clinica, que es lo que se quiere.
+    evaluationDate: fechaDeMedicion(data.evaluations) ?? data.created_at,
     patientBandText,
     patientBandAppointmentDate,
   };
+}
+
+// Fecha de MEDICION de la evaluacion del reporte; null si aun no se midio.
+function fechaDeMedicion(ev: unknown): string | null {
+  const uno = (Array.isArray(ev) ? ev[0] : ev) as
+    | { bis_measurements?: { measurement_date?: string | null }[] | null }
+    | undefined;
+  const fechas = (uno?.bis_measurements ?? [])
+    .map((m) => m.measurement_date)
+    .filter((d): d is string => Boolean(d));
+  return fechas.length ? fechas.sort()[fechas.length - 1] : null;
 }
