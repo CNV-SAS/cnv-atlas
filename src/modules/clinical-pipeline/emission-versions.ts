@@ -36,7 +36,19 @@ export type EmissionVersions = Record<EmissionVersionKey, string>;
 //    adelante"; si hiciera falta el MCCB en un paciente anterior, se emite una versión nueva). El
 //    fenotipo mismo se sella en el snapshot (id+nombre); esta clave marca CON QUÉ versión.
 const CURRENT: EmissionVersions = {
-  classification: "cXXX-1.0", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
+  // BUMP 2026-08-29: se portaron los CORTES DEL IRC POR SEXO (respuesta de Gildardo del 28, punto 6).
+  // `cIRC` pasa de un corte unico 1,68/2,11 (H) y 2,27/2,85 (M) a los publicados 1,7/2,1 y 2,3/2,8, y ESO
+  // MUEVE DE BANDA: un hombre con IRC 1,69 estaba en "Bajo" y ahora esta en "Normal". Es exactamente el
+  // caso para el que existe esta clave.
+  //
+  // NO SE HABIA BUMPEADO, y hay que decirlo porque el hueco duro varios dias: el porte cambio la ciencia y
+  // esta etiqueta se quedo igual, asi que los diagnosticos de antes y de despues se veian "al dia" con la
+  // misma version y la comparacion de bandas de su §12b no podia dispararse NUNCA para este cambio. El
+  // mecanismo estaba y nadie lo llamo, que es la forma que este proyecto repite.
+  //
+  // (El cambio de `cAF` del mismo dia NO justifica por si solo el bump: solo cambio el COLOR del label
+  // "Normal", y el color no se sella. La etiqueta sellada no se movio.)
+  classification: "cXXX-2026-08-29", // etiqueta interna de Atlas, no de Gildardo (ver comentario arriba)
   calibration: "ebbis-v5-provisional",
   // BUMP 2026-08-02 (mccb-1.0 -> mccb-2026-07-30, fechada al vigente): el re-sync unificó la frontera
   // de desnutrición del clasificador MCCB con el vigente (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15).
