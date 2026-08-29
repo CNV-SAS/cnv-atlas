@@ -50,7 +50,7 @@ export default async function RequestAccessPage() {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 font-semibold">Solicitada</th>
+                <th className="px-3 py-2 font-semibold">Fecha de solicitud</th>
                 <th className="px-3 py-2 font-semibold">Nivel</th>
                 <th className="px-3 py-2 font-semibold">Motivo</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>

@@ -32,14 +32,19 @@ export function TituloPantalla({
   volver?: ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-2">
+    // BANDA EN INK, no en el azul de marca. El azul de la primera prueba saturaba porque ya lo llevan el
+    // item activo de la barra y los botones: tres cosas azules y solo una hace algo. El ink es el SEGUNDO
+    // ancla de marca de Atlas (BRAND: "azul = accion, ink = estructura"), asi que da presencia sin gastar
+    // el unico color que significa "esto es clicable". Blanco sobre ink: 18,08:1.
+    //
+    // EL DEGRADADO ES MINIMO y va hacia un ink AZULADO (#1c2333), no hacia otro tono: da profundidad con
+    // luminosidad, que es lo mismo que defendimos en la barra navy. Si se quiere plano, se quita una clase.
+    <header className="flex flex-col gap-2 rounded-2xl bg-gradient-to-br from-[#15161a] to-[#1c2333] px-6 py-5 text-white">
       {volver}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-titulo font-bold tracking-tight text-foreground">{titulo}</h1>
-          {descripcion ? (
-            <p className="max-w-2xl text-sm text-muted-foreground">{descripcion}</p>
-          ) : null}
+          <h1 className="text-titulo font-bold tracking-tight">{titulo}</h1>
+          {descripcion ? <p className="max-w-2xl text-sm text-white/70">{descripcion}</p> : null}
         </div>
         {acciones ? <div className="flex shrink-0 flex-wrap gap-2">{acciones}</div> : null}
       </div>

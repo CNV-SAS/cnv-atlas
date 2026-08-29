@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
+import { COLUMNAS_PACIENTES } from "@/modules/patients/components/lista-pacientes";
 
 // CANDADO DE "UN SOLO DOM, UN SOLO CONTENIDO, DOS DISPOSICIONES" (2026-08-28).
 //
@@ -154,5 +155,31 @@ describe("FilaLista: DEFECTO CORREGIDO, un valor ausente no corre las columnas",
   it("el separador no queda HUERFANO cuando falta el primer valor", () => {
     // Solo un separador: entre "3" y el documento. No uno delante del "3" por ser el indice 1.
     expect(veces(conHueco, ">·</span>")).toBe(1);
+  });
+});
+
+describe("rotulos de columna: un adjetivo solo no nombra un dato", () => {
+  // DEFECTO ENCONTRADO POR SANTIAGO (2026-08-28): la columna decia "Última", que es un adjetivo sin
+  // sustantivo. Un profesional nuevo no sabia si era la ultima consulta, la ultima cita o la ultima
+  // evaluacion. Es la misma familia que ya le reportamos tres veces a Gildardo: una etiqueta que nombra una
+  // cosa y muestra otra, o que no nombra nada.
+  //
+  // LA REGLA QUE SALE DEL BARRIDO, y explica por que "Previo"/"Actual" en la tabla de seguimiento SI estan
+  // bien: un adjetivo funciona como encabezado solo cuando la PRIMERA columna nombra el sujeto de la fila.
+  // Alli la fila empieza por "Indicador", asi que "previo" y "actual" se enganchan a el. Aqui la fila
+  // empieza por el paciente, y "ultima" no describe al paciente.
+  const ADJETIVOS_SOLOS = /^(Última|Últimos?|Actual|Previo|Anterior|Siguiente|Nuevo|Nueva)$/i;
+
+  it("ninguna columna de la lista de pacientes es un adjetivo suelto", () => {
+    for (const c of COLUMNAS_PACIENTES) expect(c.rotulo).not.toMatch(ADJETIVOS_SOLOS);
+  });
+
+  it("y el rotulo dice lo que el dato ES: la fecha viene de EVALUACIONES, no de consultas", () => {
+    // No es un matiz: la fecha sale del MISMO filtro que produce la columna "Evaluaciones". Llamar
+    // "consulta" a lo que la columna de al lado llama "evaluacion" sugeriria que son dos cosas distintas.
+    const fecha = COLUMNAS_PACIENTES[0].rotulo;
+    expect(fecha).toContain("evaluación");
+    expect(fecha).not.toContain("consulta");
+    expect(COLUMNAS_PACIENTES[1].rotulo).toBe("Evaluaciones");
   });
 });

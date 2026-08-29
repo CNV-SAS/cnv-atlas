@@ -2,6 +2,7 @@ import { ClipboardList, UserRoundX, Users } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
@@ -36,12 +37,27 @@ export default async function PacientesPage() {
     // nombre y el documento en extremos lejanos, y el ojo pierde la fila al cruzarla. El ancho de lectura
     // es propiedad del CONTENIDO, igual que ya decidimos para el texto: aqui la pantalla elige el suyo.
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+      <TituloPantalla
+        titulo="Pacientes"
+        descripcion="Tus pacientes y el acceso a su historia clínica."
+      />
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* SIN TEXTO, y es una decision. "Total de pacientes" debajo de "Pacientes: 31" no aporta nada: el
+            rotulo ya lo dice. Y "asignados a ti" es justo la frase que acabamos de retirar del subtitulo
+            porque el profesional ya lo sabe. No hay nada que el numero no diga, asi que va sola: mejor sin
+            texto que con relleno. */}
         <TarjetaMetrica icono={Users} rotulo="Pacientes" valor={pacientes.length} />
-        {/* SIN NOTA AL PIE. Decia "vigentes, sin contar las reemplazadas", y una evaluacion reemplazada es
-            un concepto interno del flujo de correccion: quien no lo conozca queda peor que sin la nota.
-            Una cifra que necesita una aclaracion que el lector no puede entender esta mejor sola. */}
-        <TarjetaMetrica icono={ClipboardList} rotulo="Evaluaciones" valor={totalEvaluaciones} />
+        {/* AQUI SI HAY ALGO QUE EL NUMERO NO DICE: el PERIODO. Una cifra en una tarjeta de cabecera se lee
+            por defecto como "este mes", y esta es acumulada desde siempre. Sustituye a la nota anterior
+            ("sin contar las reemplazadas"), que hablaba de un concepto interno del flujo de correccion:
+            quien no lo conozca quedaba peor que sin la nota. */}
+        <TarjetaMetrica
+          icono={ClipboardList}
+          rotulo="Evaluaciones"
+          valor={totalEvaluaciones}
+          detalle="Acumuladas desde el inicio"
+        />
         {/* LA TERCERA ES ACCIONABLE, que era el criterio: nombra una lista de personas a las que hay que
             hacerles algo. Un paciente registrado sin ninguna evaluacion es un hueco operativo real, y no
             necesita ningun umbral clinico para definirse. Se apaga sola cuando esta en 0. */}

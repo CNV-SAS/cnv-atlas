@@ -42,8 +42,15 @@ import type { PatientListItem } from "../types";
 // EL ORDEN NO ES ARBITRARIO: lo mas mirado primero, tanto en columnas como en la linea concatenada. La
 // ULTIMA CONSULTA abre porque es lo que responde "a quien no veo hace meses"; el DOCUMENTO cierra porque es
 // por lo que se BUSCA (y de eso ya se encarga el buscador de arriba), no lo que se lee.
-const COLUMNAS: readonly ColumnaLista[] = [
-  { rotulo: "Última", ancho: "7rem", numerico: true, rotularEnEstrecho: true },
+// EXPORTADA para que el candado de rotulos mire ESTAS columnas y no una copia suya: un test que compara
+// dos copias pasa verde aunque la de produccion este mal.
+export const COLUMNAS_PACIENTES: readonly ColumnaLista[] = [
+  // "Última" a secas era un ADJETIVO SIN SUSTANTIVO: no decia si era la ultima consulta, la ultima cita o
+  // la ultima evaluacion. Y el dato es lo ultimo: la fecha de medicion de la evaluacion mas reciente,
+  // filtrada por la MISMA condicion que produce la columna "Evaluaciones". Por eso NO es "Última consulta":
+  // llamar consulta a lo que la columna de al lado llama evaluacion sugeriria que son dos cosas distintas,
+  // y ademas no toda evaluacion es una visita (la encuesta se responde en casa).
+  { rotulo: "Última evaluación", ancho: "9rem", numerico: true, rotularEnEstrecho: true },
   { rotulo: "Evaluaciones", ancho: "7rem", numerico: true, rotularEnEstrecho: true },
   { rotulo: "Edad", ancho: "4.5rem", numerico: true, rotularEnEstrecho: true },
   // El documento ya carga su tipo delante ("CC 1.020..."), asi que en estrecho se explica solo.
@@ -93,7 +100,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
           es un solo gesto, pero fuera gana aire y la tarjeta empieza directamente por los datos. */}
       {buscador}
       <ListaFilas
-      columnas={COLUMNAS}
+      columnas={COLUMNAS_PACIENTES}
       // Cuantos se ven, para que el filtro no esconda su efecto: si alguien busca y quedan 2 de 40, tiene
       // que saber que hay 38 fuera de la vista.
       pie={
@@ -130,7 +137,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
             key={p.patientId}
             href={`/pacientes/${p.patientId}`}
             titulo={`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
-            columnas={COLUMNAS}
+            columnas={COLUMNAS_PACIENTES}
             valores={valores}
             // CHIP SOLO SI ES EXCEPCIONAL (BRAND): lo normal no lleva distintivo; gastar ancho en lo que
             // casi siempre es igual es lo contrario de una lista escaneable.
