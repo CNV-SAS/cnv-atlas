@@ -35,25 +35,22 @@
    versión que aún va a cambiar obliga a cotejar dos veces, y la segunda vez el riesgo no es repetir el
    esfuerzo sino que quede una mezcla de las dos versiones sin que nadie lo note.
 
-   **Estado de lo científico (2026-08-29):** aplicados el piso calórico, los cortes del IRC, el orden de
-   la matriz con sus tres encabezados, el punto 4 (ISCM sin MCA) y las quince alertas portadas. Quedan,
-   sin depender de Gildardo: la separación de la cadena calórica, los dos resúmenes, las notas de clase
-   B, la reemisión por cambio de banda y el menú. Esperan respuesta las ocho de
-   `RONDA_GILDARDO_2026-08-29.md`, y de esas **solo dos bloquean construcción**: las diez alertas de
-   consumo (P-69/P-70) y el ICEC (P-71).
-4. **Diseño gráfico coherente** de toda la app (al final del Hito 1, después de los cuatro bloques de pulido). `BACKLOG.md`.
-   **Avance (2026-08-27):** hecho lo que NO depende de Gildardo, y con smoke de Santiago en cada paso.
-   (a) **Intake del paciente**, móvil primero: tira de navegación, una columna, superficie por pregunta.
-   (b) **Panel del nutricionista**, jerarquía de tres niveles en vez de doce bloques separados por la
-   misma línea. (c) **Sistema entre pantallas:** los tres niveles suben a `components/shared/bloque` y
-   se aplican a 21 superficies de Tratamiento y Diagnóstico, que antes hablaban cuatro dialectos
-   distintos. Documentado en `BRAND.md`, con la regla de jerarquía y nunca navegación interna en
-   pantallas del profesional.
-   **DESBLOQUEADO (2026-08-27): la tabla de intercambio ya se puede rediseñar.** Esperaba la pregunta 11
-   de la ronda del 26 (mover la casilla de porciones al grupo, que la habría pasado de 21 filas a 12).
-   Gildardo la contestó el 27: **"se queda en el subgrupo, como está en mi archivo"**, y RETIRA su
-   instrucción del 26. La tabla conserva su forma, así que rediseñarla ya no es rediseñar algo que va a
-   cambiar.
+   **Estado de lo científico (2026-08-29, cerrado):** aplicados el piso calórico, los cortes del IRC (motor
+   y texto), el orden de la matriz con sus tres encabezados, el punto 4 (ISCM sin MCA), el `cAF` que
+   pintaba de ámbar un ángulo de fase normal, las quince alertas portadas con su corrección de campos, la
+   separación de la cadena calórica en dos bloques, los dos resúmenes separados con los tres párrafos por
+   profesión que faltaban, las observaciones del profesional en la historia clínica, y la reemisión
+   obligatoria por cambio de banda.
+
+   **Queda UNA pieza sin bloqueo: la unificación del menú** (su §13: "únanlas, el ciclo de 21 días es la
+   base y la IA solo lo adapta"). Es la más grande y la que más dependía de lo demás, por eso va al final.
+
+   **Y DOS SMOKES EN NAVEGADOR REAL, que Santiago hace en una sola pasada al cerrar:** los tres
+   encabezados de la encuesta (toca el formulario del paciente) y el panel de tratamiento en dos bloques.
+   Es la clase de defecto que ni tsc ni jsdom distinguen de la versión rota.
+
+   **Esperan respuesta las de `RONDA_GILDARDO_2026-08-29.md`, y solo DOS bloquean construcción:** el
+   puente frecuencia-porciones con el omega-3, y el ICEC.
 
    **Queda:** la tabla de intercambio (ya desbloqueada), las superficies de LISTA (/pacientes,
    /pacientes/[id], /evaluaciones/[id]), y la barra lateral, los componentes y el layout general, que van

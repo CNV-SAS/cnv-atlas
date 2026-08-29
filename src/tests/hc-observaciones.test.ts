@@ -62,3 +62,45 @@ describe("las observaciones del profesional aparecen en la historia clínica", (
     expect(bloque).not.toContain("update(treatmentNotes)");
   });
 });
+
+describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () => {
+  // AL MEDIRLO RESULTO MAS CHICO DE LO QUE YO HABIA DESCRITO. Hablé de "cinco notas de tratamiento y una
+  // de evaluación" que había que unificar. Contadas en el código hay CUATRO superficies que escriben nota,
+  // y solo UNA es de observación libre (clase B). Las otras tres van pegadas a una decisión concreta
+  // (clase A) y no se tocan: mezclarlas perdería justamente lo que las hace útiles, que es el vínculo con
+  // la decisión que explican.
+  //
+  // Y la tabla `evaluation_notes` existe SIN WRITER: nadie escribe en ella. No se retira aquí (una
+  // migración para borrar una tabla vacía no gana nada), pero queda dicho para que no se lea como una
+  // superficie más.
+  const surfaces = () => {
+    const dirs = [
+      "src/modules/diagnoses/components/professional-criterion.tsx",
+      "src/modules/treatment/components/nutra-decision-section.tsx",
+      "src/modules/treatment/components/treatment-panel.tsx",
+      "src/modules/nutraceuticals/components/mi-conteo-form.tsx",
+    ];
+    return dirs.filter((f) => readFileSync(f, "utf8").includes('name="note"'));
+  };
+
+  it("las cuatro superficies de nota siguen siendo cuatro", () => {
+    // Si aparece una quinta sin pasar por aquí, la clasificación A/B deja de estar completa y este archivo
+    // dejaría de describir el sistema. Es la lección del candado que se cree completo.
+    expect(surfaces()).toHaveLength(4);
+  });
+
+  it("la de CLASE B (observación libre del tratamiento) es la que llega a la historia", () => {
+    const panel = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
+    expect(panel).toContain("Notas del tratamiento");
+    expect(PAGE).toContain("protocol?.notes");
+  });
+
+  it("las de CLASE A siguen pegadas a su decisión, no se unifican", () => {
+    // El criterio del diagnóstico explica UN diagnóstico; el motivo del nutracéutico explica UNA decisión
+    // de prescripción. Sacarlas a un cajón común las volvería anotaciones sueltas.
+    const criterio = readFileSync("src/modules/diagnoses/components/professional-criterion.tsx", "utf8");
+    const nutra = readFileSync("src/modules/treatment/components/nutra-decision-section.tsx", "utf8");
+    expect(criterio).toContain('name="note"');
+    expect(nutra).toContain('name="note"');
+  });
+});
