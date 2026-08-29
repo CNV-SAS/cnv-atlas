@@ -153,7 +153,7 @@ export function CorrectEvaluationForm({
         <h2 className="text-lg font-semibold text-foreground">Confirmar la corrección</h2>
         <p className="text-sm text-muted-foreground">Revisa los cambios antes de continuar. Esto genera una versión nueva.</p>
 
-        <section className="flex flex-col gap-2 rounded-xl border border-border p-4">
+        <section className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">Cambios ({changes.length})</h3>
           <ul className="flex flex-col gap-2">
             {changes.map((c) => (
@@ -237,7 +237,7 @@ export function CorrectEvaluationForm({
       ) : null}
 
       {domains.map((dom, i) => (
-        <details key={dom.section} className="rounded-xl border border-border">
+        <details key={dom.section} className="rounded-2xl border border-border bg-card shadow-sm">
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
             {dom.section}{" "}
             <span className="font-normal text-muted-foreground">

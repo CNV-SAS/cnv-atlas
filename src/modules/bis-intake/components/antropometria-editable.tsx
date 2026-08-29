@@ -1,5 +1,6 @@
 "use client";
 
+import { Panel } from "@/components/shared/panel";
 import { startTransition, useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export function AntropometriaEditable({
   useFormToast(limpiarState);
 
   return (
-    <div className="flex flex-col gap-3">
+    <Panel>
       <div className="flex flex-col gap-1">
         <h4 className="text-sm font-semibold text-foreground">Medidas del paciente</h4>
         <p className="text-xs text-muted-foreground">
@@ -145,6 +146,6 @@ export function AntropometriaEditable({
           );
         })}
       </div>
-    </div>
+    </Panel>
   );
 }

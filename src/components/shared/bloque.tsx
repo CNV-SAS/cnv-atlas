@@ -57,13 +57,17 @@ const NIVEL: Record<NivelBloque, { caja: string; titulo: string }> = {
     titulo: "text-base font-semibold text-foreground",
   },
   derivado: {
-    // SUPERFICIE PLANA = LA DEL FONDO, no un blanco fijo. Antes era `bg-background` (blanco), que sobre la
-    // pagina BLANCA de entonces daba "plana" por casualidad: los dos niveles eran del mismo color y solo
-    // los separaba la sombra de `decision`. Al invertir la disposicion (contenido gris, 2026-08-28) ese
-    // blanco habria pasado a leerse ELEVADO, igual que `decision`, y los dos niveles habrian colapsado.
-    // `bg-transparent` hereda la superficie sobre la que este, que es lo que "plana" significa de verdad:
-    // plana RESPECTO A SU CONTENEDOR, sea la pagina o una tarjeta que lo contenga.
-    caja: "rounded-xl border border-border/60 bg-transparent p-5",
+    // CORRECCION DE UNA CORRECCION MIA (2026-08-29). Al invertir la disposicion puse esto en
+    // `bg-transparent` razonando que "plana" significa plana RESPECTO A SU CONTENEDOR. El razonamiento
+    // era bonito y el resultado, malo: sobre la pagina gris, transparente es gris, y todo lo que vive en
+    // este nivel (composicion corporal, el nutraceutico elegido, el resumen clinico del nutricionista)
+    // se quedo sin superficie. Santiago los reporto uno por uno; no eran tres defectos, era este.
+    //
+    // Los tres niveles se leen CONTRA LA PAGINA, no contra su contenedor inmediato, porque es la pagina la
+    // que da la referencia: sobre gris, ELEVADA es blanca con sombra, PLANA es blanca sin sombra, y SIN
+    // SUPERFICIE es el gris. Con la pagina blanca de antes esa escala no se podia expresar, y por eso
+    // decision y derivado habian acabado siendo los dos blancos.
+    caja: "rounded-xl border border-border bg-card p-5",
     titulo: "text-sm font-semibold text-foreground",
   },
   registro: {

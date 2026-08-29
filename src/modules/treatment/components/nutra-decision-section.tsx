@@ -1,5 +1,6 @@
 "use client";
 
+import { Panel } from "@/components/shared/panel";
 import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -67,8 +68,7 @@ export function NutraDecisionSection({
   const esClinica = reason === "profesional_clinica";
 
   return (
-    <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <h3 className="text-base font-semibold text-foreground">¿El paciente adquiere los nutracéuticos?</h3>
+    <Panel titulo="¿El paciente adquiere los nutracéuticos?">
       <p className="max-w-prose text-sm text-muted-foreground">
         Se registra siempre, también si todavía no lo ha decidido. La entrega de abajo se habilita solo si
         la respuesta es que sí.
@@ -148,6 +148,6 @@ export function NutraDecisionSection({
           </div>
         </fieldset>
       </form>
-    </section>
+    </Panel>
   );
 }

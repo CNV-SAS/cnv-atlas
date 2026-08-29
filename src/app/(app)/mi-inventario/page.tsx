@@ -128,7 +128,10 @@ export default async function MiInventarioPage() {
         {!movements || movements.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos todavia.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
+          // SIN TARJETA PROPIA: ya vive dentro de un `Panel`, que pone la superficie. Con las dos salia
+          // una tarjeta dentro de otra. El borde y el redondeo se quedan en el Panel; aqui solo el
+          // desplazamiento lateral y la banda de encabezados.
+          <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[36rem] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -142,11 +145,11 @@ export default async function MiInventarioPage() {
               <tbody>
                 {movements.map((m) => (
                   <tr key={m.id} className="border-b border-border/60">
-                    <td className="py-2 pr-4 text-muted-foreground">{fmtDate(m.createdAt)}</td>
-                    <td className="py-2 pr-4 text-foreground">{m.nutraceuticalName}</td>
-                    <td className="py-2 pr-4 text-foreground">{MOVEMENT_LABEL[m.type] ?? m.type}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{m.lote ?? "-"}</td>
-                    <td className={`py-2 pr-4 text-right font-bold tabular-nums ${m.delta < 0 ? "text-clinical-warning" : "text-clinical-optimal"}`}>
+                    <td className="px-3 py-2 text-muted-foreground">{fmtDate(m.createdAt)}</td>
+                    <td className="px-3 py-2 text-foreground">{m.nutraceuticalName}</td>
+                    <td className="px-3 py-2 text-foreground">{MOVEMENT_LABEL[m.type] ?? m.type}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.lote ?? "-"}</td>
+                    <td className={`px-3 py-2 text-right font-bold tabular-nums ${m.delta < 0 ? "text-clinical-warning" : "text-clinical-optimal"}`}>
                       {m.delta > 0 ? `+${m.delta}` : m.delta}
                     </td>
                   </tr>

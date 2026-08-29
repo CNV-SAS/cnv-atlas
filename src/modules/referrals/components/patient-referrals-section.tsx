@@ -1,3 +1,4 @@
+import { Panel } from "@/components/shared/panel";
 import { formatDateShort } from "@/lib/format/date";
 
 import { listPatientReferrals, type PatientReferral } from "../data/referrals-reader";
@@ -56,7 +57,7 @@ export async function PatientReferralsSection({
   const cerradas = referrals.filter((r) => r.returnedAt != null);
 
   return (
-    <section className="flex flex-col gap-4">
+    <Panel>
       <h2 className="text-2xl font-bold tracking-tight text-foreground">Remisiones</h2>
 
       {referrals.length === 0 ? (
@@ -114,6 +115,6 @@ export async function PatientReferralsSection({
           ) : null}
         </div>
       )}
-    </section>
+    </Panel>
   );
 }
