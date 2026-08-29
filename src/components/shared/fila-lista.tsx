@@ -86,7 +86,7 @@ export function ListaFilas({
     // faltaba tras invertir la disposicion (hallazgo de Santiago, 2026-08-28): pusimos el fondo gris pero
     // dejamos el contenido suelto encima, asi que la pagina se veia apagada en vez de organizada. El gris
     // no es un fondo: es la CALLE entre bloques, y sin bloques no hay calle, solo penumbra.
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm" style={vars}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" style={vars}>
       {encabezado ? <div className="border-b border-border p-4">{encabezado}</div> : null}
       {vacia ? (
         vacia

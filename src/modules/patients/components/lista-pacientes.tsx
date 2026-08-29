@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
 import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { formatDateOnlyShort } from "@/lib/format/date";
@@ -63,18 +64,24 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
     });
   }, [pacientes, busqueda]);
 
+  // BUSCADOR SIN ROTULO VISIBLE: el placeholder ya dice que hace, asi que el rotulo encima repetia lo
+  // mismo y gastaba una linea. Pero el nombre accesible NO desaparece: va en `aria-label`, porque un campo
+  // sin nombre solo se anuncia como "cuadro de busqueda" y el placeholder no lo sustituye (se borra al
+  // escribir y algunos lectores no lo leen).
   const buscador = (
-    <div className="flex flex-col gap-1">
-      <label htmlFor="buscar-paciente" className="text-sm font-medium text-foreground">
-        Buscar paciente
-      </label>
+    <div className="relative sm:max-w-md">
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
       <input
         id="buscar-paciente"
         type="search"
+        aria-label="Buscar paciente por nombre o número de documento"
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Nombre o número de documento"
-        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground sm:max-w-md"
+        placeholder="Buscar por nombre o número de documento"
+        className="w-full rounded-full border border-input bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </div>
   );
