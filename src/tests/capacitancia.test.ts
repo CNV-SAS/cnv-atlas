@@ -10,6 +10,8 @@ import {
   type CapRefRow,
 } from "@/clinical-engine/capacitancia";
 
+import { HTML_VIGENTE } from "./fixtures/html-vigente";
+
 // CANDADO DE TRANSCRIPCION de CAP_REF, en DOS niveles, porque uno solo no basta:
 //
 //   1. Contra SU ARCHIVO. Cotejo cifra por cifra de las doce filas.
@@ -17,7 +19,9 @@ import {
 //      viene de la fuente, las dos coinciden y pasa verde. Los percentiles tienen que ser crecientes,
 //      los n positivos y las decadas contiguas y sin huecos.
 
-const RUTA = "docs/entregas/Gildardo responses/html actualizado 28 agosto/ATLAS_v8.html";
+// Ancla DERIVADA, no escrita a mano: hasta el 29-ago este test miraba la entrega del 28. Una ruta literal
+// a una entrega superada deja el candado verde POR CONSTRUCCION. Ver `html-vigente-lock.test.ts`.
+const RUTA = HTML_VIGENTE;
 
 // Extrae CAP_REF de su archivo parseando las filas, sin evaluar codigo suyo.
 function capRefDeSuArchivo(): { M: CapRefRow[]; F: CapRefRow[] } {

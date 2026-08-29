@@ -25,12 +25,13 @@
  *      magnesio; 10-15 kcal/kg si hay riesgo) viaja SOLO con desnutricion, que es lo que protege al
  *      paciente mas fragil de los dos.
  *
- * PREGUNTA ABIERTA QUE ESTE PORTE NO RESUELVE (ronda 2026-08-26, pregunta 2): el piso de 1.500/1.200
- * esta guardado tras `if(deficit>0)`, asi que con el deficit en cero NO SE ACTIVA NUNCA. Su documento
- * dice que el piso "se conserva como red de seguridad", pero la red esta colgada de una condicion que
- * ya no se cumple. Caso reproducible: mujer de 60 anos, 150 cm, 60 kg, sedentaria -> 1.172 kcal
- * prescritas con un piso de 1.200 que no la corrige. NO SE TOCA hasta que responda: un candado escrito
- * sobre lo que nosotros creemos convertiria nuestra suposicion en regla.
+ * RESPONDIDA Y PORTADA (respuesta del 2026-08-27, punto 2; codigo en su ATLAS_v8.html del 29): el piso
+ * de 1.500/1.200 estaba guardado tras `if(deficit>0)`, asi que con el deficit en cero NO SE ACTIVABA
+ * NUNCA. Textual: "Al pasar el deficit a cero no mire de que colgaba el piso, y lo deje sin activarse
+ * nunca". Reprodujo nuestro caso (mujer de 60 anos, 150 cm, 60 kg, sedentaria: 1.172 kcal con un piso
+ * de 1.200) y la paradoja de que poner deficit 300 SUBIA el objetivo. La condicion pasa a ser la rama de
+ * la formula. La salvedad de cancer/desnutricion, que quedan FUERA del piso, tambien es suya y es
+ * deliberada: 27,5 kcal x peso actual, con inicio a 10-15 kcal/kg si hay riesgo de realimentacion.
  *
  * Lo unico que no esta en la fuente es el module.exports final.
  */
@@ -133,7 +134,19 @@ function motorTratNutri(enc, bis, edit){
   var kcalObjetivo;
   if(hasCancer||desnutricion){ kcalObjetivo = Math.round(27.5*pesoAct); }
   else { kcalObjetivo = get - deficit; }
-  if(deficit>0){ var piso = sexoM?1500:1200; kcalObjetivo = Math.max(piso, kcalObjetivo); }
+  // El piso ya NO cuelga del deficit. Corregido el 27-ago-2026: al pasar el
+  // deficit a 0 (Parte 1, punto 1.2) esta red dejo de activarse NUNCA, y el
+  // objetivo quedaba sin nada debajo. Caso real: mujer de 60 anos, 150 cm,
+  // 60 kg, sedentaria -> GET sobre peso meta 1.172 kcal, por debajo de su
+  // propio piso de 1.200. Y al reves: ponerle un deficit de 300 le SUBIA el
+  // objetivo a 1.200, porque solo entonces aparecia el piso.
+  //
+  // Se aplica solo a la via calculada (get - deficit). La rama de cancer y
+  // desnutricion mantiene su propia formula (27,5 kcal x peso actual) y queda
+  // FUERA del piso a proposito: un paciente con riesgo de realimentacion debe
+  // iniciar a 10-15 kcal/kg segun su propia nota, y un piso de 1.200-1.500 lo
+  // empujaria por encima de lo que ese protocolo permite.
+  if(!hasCancer && !desnutricion){ var piso = sexoM?1500:1200; kcalObjetivo = Math.max(piso, kcalObjetivo); }
   kcalObjetivo = Math.round(kcalObjetivo);
   if(Number(edit.kcal_obj)>0) kcalObjetivo = Number(edit.kcal_obj);
   if(!pausadoTCA && !hasCancer && !desnutricion){ tipoEnergia = kcalObjetivo>get ? "Hipercalórica" : (kcalObjetivo<get ? "Hipocalórica" : "Normocalórica"); }

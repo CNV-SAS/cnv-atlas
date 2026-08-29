@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 // Modulo congelado en JS. `allowJs` lo resuelve, asi que NO lleva ts-expect-error: ponerlo hacia que
 // tsc fallara por directiva inutil, que es un rojo que no dice nada.
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
+import { funcionDelHtml } from "./fixtures/html-vigente";
 
 // CANDADO DE motorTratNutri. Dos niveles, como con CAP_REF:
 //   1. TRANSCRIPCION: el archivo portado es byte a byte el rango de su archivo. Se coteja, no se cree.
 //   2. COMPORTAMIENTO: los casos que fijan las tres correcciones de su Parte 1 (2026-08-26), para que
 //      una regresion futura no las deshaga en silencio.
 
-const RUTA = "docs/entregas/Gildardo responses/html actualizado 28 agosto/ATLAS_v8.html";
 
 const enc = (extra: Record<string, unknown> = {}) => ({
   sexo: "F",
@@ -24,8 +24,13 @@ const enc = (extra: Record<string, unknown> = {}) => ({
 const bis = (extra: Record<string, unknown> = {}) => ({ sexo: "F", talla: 150, peso: 60, edad: 60, ...extra });
 
 describe("motorTratNutri: transcripción verbatim del archivo de Gildardo", () => {
-  it("el módulo portado contiene el rango L15630-15744 sin una sola diferencia", () => {
-    const fuente = readFileSync(RUTA, "utf8").split(/\r?\n/).slice(15629, 15744).join("\n");
+  it("el módulo portado contiene su función entera, sin una sola diferencia", () => {
+    // POR NOMBRE, NO POR RANGO DE LINEAS, y el cambio tiene motivo: estaba anclado a L15630-15744 del
+    // archivo del 28; el del 29 metio 12 lineas de comentario mas arriba y el rango dejo de cubrir la
+    // funcion. Un rango es una POSICION y se desincroniza en cuanto el autor inserta algo; el nombre no.
+    // Y la ENTREGA tambien se deriva ahora (ver html-vigente-lock.test.ts): este test seguia mirando la
+    // del 28, y por eso nadie vio que faltaba portar la correccion del piso calorico.
+    const fuente = funcionDelHtml("motorTratNutri");
     const portado = readFileSync("src/clinical-engine/frozen/atlas-tratamiento-nutri.js", "utf8");
     // El portado lleva cabecera propia y el module.exports final; el CUERPO tiene que ser identico.
     expect(portado).toContain(fuente);
@@ -66,32 +71,41 @@ describe("motorTratNutri: las tres correcciones de su Parte 1 (2026-08-26)", () 
   });
 });
 
-describe("motorTratNutri: el piso de 1.500/1.200 (PREGUNTA ABIERTA, no se toca)", () => {
-  // ESTE BLOQUE FIJA LO QUE EL MOTOR HACE HOY, NO LO QUE CREEMOS QUE DEBERIA HACER.
+describe("motorTratNutri: el piso de 1.500/1.200 (RESPONDIDA, y los dos casos se invirtieron)", () => {
+  // ESTE BLOQUE NACIO FIJANDO LO QUE EL MOTOR HACIA, con la nota de que se pondria rojo el dia que
+  // Gildardo respondiera. RESPONDIO (2026-08-27, punto 2) y el dia llego: los dos casos estan
+  // invertidos y esta es su decision, ya no una observacion nuestra.
   //
-  // El piso esta guardado tras `if(deficit>0)`, asi que con el deficit en cero NO SE ACTIVA NUNCA. Le
-  // preguntamos a Gildardo si moverlo fuera de esa condicion (ronda 2026-08-26, pregunta 2). Hasta que
-  // responda, el candado describe el comportamiento observado y CITA la pregunta: escribirlo sobre
-  // nuestra suposicion convertiria la suposicion en regla, y el verde dejaria de significar "correcto"
-  // para significar "coincide con lo que supuse".
+  // Textual: "Tienen toda la razon, y encontraron exactamente lo que les pedi que buscaran. Al pasar el
+  // deficit a cero no mire de que colgaba el piso, y lo deje sin activarse nunca". Reprodujo nuestro
+  // mismo caso y la paradoja del deficit que subia el objetivo. La condicion pasa de `deficit>0` a
+  // `!hasCancer && !desnutricion`: el piso protege la via calculada SIEMPRE.
   //
-  // CUANDO RESPONDA: si dice que el piso debe aplicar siempre, estos dos casos se invierten y se anota
-  // su decision al lado. Que se pongan rojos ese dia es la senal de que hay que venir aqui.
+  // POR QUE LA SALVEDAD DE CANCER Y DESNUTRICION NO ES UN OLVIDO: es suya y es explicita. Esa rama usa
+  // 27,5 kcal x peso actual y su nota manda iniciar a 10-15 kcal/kg si hay riesgo de realimentacion.
+  // Un piso de 1.200-1.500 empujaria por encima de ese protocolo justo al paciente mas fragil.
 
-  it("con déficit CERO el piso NO se aplica: prescribe 1.172 con un piso de 1.200", () => {
+  it("con déficit CERO el piso YA SE APLICA: la paciente sube de 1.172 a su piso de 1.200", () => {
     const r = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario" });
-    expect(r.get).toBe(1172);
-    expect(r.kcalObjetivo).toBe(1172); // por debajo de su piso de 1.200, sin corregir
+    expect(r.get).toBe(1172);          // el gasto no cambia: sigue siendo el mismo calculo
+    expect(r.kcalObjetivo).toBe(1200); // y ahora el piso lo levanta, que es la correccion
   });
 
-  it("y la consecuencia absurda: poner un déficit de 300 le SUBE el objetivo a 1.200", () => {
-    // Pedirle que coma 300 menos hace que el sistema le prescriba 28 mas, porque solo al haber deficit
-    // aparece el piso que la protege. Es el argumento de la pregunta 2, fijado como caso.
+  it("y la consecuencia absurda desaparecio: con y sin déficit da lo mismo, no MAS", () => {
+    // Antes, pedirle que comiera 300 menos le prescribia 28 mas. Ahora los dos caminos llegan al piso.
     const sinDeficit = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario" });
     const conDeficit = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario", deficit: 300 });
-    expect(sinDeficit.kcalObjetivo).toBe(1172);
+    expect(sinDeficit.kcalObjetivo).toBe(1200);
     expect(conDeficit.kcalObjetivo).toBe(1200);
-    expect(conDeficit.kcalObjetivo).toBeGreaterThan(sinDeficit.kcalObjetivo);
+    expect(conDeficit.kcalObjetivo).not.toBeGreaterThan(sinDeficit.kcalObjetivo);
+  });
+
+  it("pero la rama de desnutrición queda FUERA del piso, que es la salvedad que él marcó", () => {
+    // 27,5 x 38 kg = 1.045 kcal, por debajo del piso femenino de 1.200. Si el piso se le aplicara,
+    // este paciente arrancaria por encima de lo que su propio protocolo de realimentacion permite.
+    const desnutrida = motorTratNutri(enc(), bis({ peso: 38 }), { fa_nivel: "sedentario" });
+    expect(desnutrida.kcalObjetivo).toBe(1045);
+    expect(desnutrida.kcalObjetivo).toBeLessThan(1200);
   });
 });
 
