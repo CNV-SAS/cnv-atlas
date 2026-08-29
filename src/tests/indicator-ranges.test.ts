@@ -50,7 +50,7 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
     // IFC 5.3651: sano = optima (> hi 6.68). Umbral 6.68, Δ = valor − 6.68 = -1.31.
     expect(indicatorRange("IFC", ind, true)).toEqual({ reference: "> 6,68", delta: "-1,31" });
     // IRC 1.8218: sano = bajo riesgo (< lo 1.68). Umbral 1.68, Δ = valor − 1.68 = 0.14.
-    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,68", delta: "0,14" });
+    expect(indicatorRange("IRC", ind, true)).toEqual({ reference: "< 1,70", delta: "0,12" });
     // FMI 6.369: Normal 3–6. Gildardo §2: Δ contra el BORDE superior 6 = 0.37 (antes promedio 4.5 = 1.87).
     expect(indicatorRange("FMI", ind, true)).toEqual({ reference: "3–6", delta: "0,37" });
   });
@@ -58,7 +58,7 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
   it("IFC/IRC/FMI (F): usan los cortes femeninos del clasificador", () => {
     // F: cIFC hi 3.28, cIRC lo 2.27, cFMI Normal 5–9. FMI Δ contra el BORDE superior 9 = -2.63 (Gildardo §2).
     expect(indicatorRange("IFC", ind, false)).toEqual({ reference: "> 3,28", delta: "2,09" });
-    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,27", delta: "-0,45" });
+    expect(indicatorRange("IRC", ind, false)).toEqual({ reference: "< 2,30", delta: "-0,48" });
     expect(indicatorRange("FMI", ind, false)).toEqual({ reference: "5–9", delta: "-2,63" });
   });
 
@@ -139,9 +139,12 @@ describe("CANDADO · la referencia sale del clasificador del motor (no de una ta
     b2(cIFC, "M", 6.68);
     b2(cIFC, "F", 3.28);
   });
-  it("IRC: umbral sano/alerta 1.68 (M) / 2.27 (F)", () => {
-    b2(cIRC, "M", 1.68);
-    b2(cIRC, "F", 2.27);
+  // ACTUALIZADO al porte del ATLAS_v8 del 2026-08-29 (punto 6 de su respuesta): los cortes pasan a los del
+  // articulo. Este candado se puso ROJO al portar, que es exactamente para lo que existe: un cambio de
+  // ciencia no puede entrar en silencio.
+  it("IRC: umbral sano/alerta 1.7 (M) / 2.3 (F)", () => {
+    b2(cIRC, "M", 1.7);
+    b2(cIRC, "F", 2.3);
   });
   it("FMI: banda Normal 3–6 (M) / 5–9 (F)", () => {
     b2(cFMI, "M", 3);
@@ -190,13 +193,13 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
     expect(indicatorBands("IFC", true)).toContain(fmtDec(4.12));
     expect(indicatorBands("IFC", true)).toContain(fmtDec(6.68));
   });
-  it("IRC (M): transiciones en 1.68 y 2.11", () => {
+  it("IRC (M): transiciones en 1.7 y 2.1", () => {
     expect(cIRC(1.67, M).risk).toBe("bajo");
-    expect(cIRC(1.68, M).risk).toBe("moderado");
-    expect(cIRC(2.11, M).risk).toBe("moderado");
-    expect(cIRC(2.12, M).risk).toBe("alto");
-    expect(indicatorBands("IRC", true)).toContain(fmtDec(1.68));
-    expect(indicatorBands("IRC", true)).toContain(fmtDec(2.11));
+    expect(cIRC(1.7, M).risk).toBe("moderado");
+    expect(cIRC(2.1, M).risk).toBe("moderado");
+    expect(cIRC(2.11, M).risk).toBe("alto");
+    expect(indicatorBands("IRC", true)).toContain(fmtDec(1.7));
+    expect(indicatorBands("IRC", true)).toContain(fmtDec(2.1));
   });
   it("IEHH: transiciones en 0/1/2 (Optimo/Leve/Moderado/Severo)", () => {
     expect(cIEHH(0).l).toBe("Óptimo");
@@ -231,5 +234,66 @@ describe("indicatorBands: cortes anclados contra el clasificador frozen (no drif
   it("los indicadores sin bandas de display devuelven null (PABU/EB)", () => {
     expect(indicatorBands("PABU", true)).toBeNull();
     expect(indicatorBands("EB", true)).toBeNull();
+  });
+});
+
+// GOLDEN DEL IRC contra el ATLAS_v8 del 2026-08-29 (respuesta a la ronda del 28, punto 6).
+//
+// LO QUE ANCLA, y por que no basta con los dos cortes: el cambio con consecuencia clinica NO son los
+// decimales (1,68 -> 1,7), es el caso SIN SEXO. Antes caia a un corte propio de 2,0/3,4 que, segun su
+// respuesta, "no sale de ninguna parte"; ahora cae al MASCULINO, que es el mas exigente, "porque usar el
+// femenino subestimaria el riesgo de un hombre". Un paciente sin sexo registrado con IRC 2,5 pasaba de
+// moderado a ALTO. Eso es lo que se blinda.
+describe("IRC · golden contra el archivo de Gildardo (2026-08-29)", () => {
+  const M = "Masculino";
+  const F = "Femenino";
+
+  it("hombre: <1,7 bajo · 1,7–2,1 moderado · >2,1 alto", () => {
+    expect(cIRC(1.69, M).risk).toBe("bajo");
+    expect(cIRC(1.7, M).risk).toBe("moderado");
+    expect(cIRC(2.1, M).risk).toBe("moderado");
+    expect(cIRC(2.11, M).risk).toBe("alto");
+  });
+
+  it("mujer: <2,3 bajo · 2,3–2,8 moderado · >2,8 alto", () => {
+    expect(cIRC(2.29, F).risk).toBe("bajo");
+    expect(cIRC(2.3, F).risk).toBe("moderado");
+    expect(cIRC(2.8, F).risk).toBe("moderado");
+    expect(cIRC(2.81, F).risk).toBe("alto");
+  });
+
+  // LA RAMA SIN SEXO NO ES ALCANZABLE EN ATLAS, y conviene que quede escrito porque es lo que decide
+  // cuanto de esta correccion nos afecta.
+  //
+  // Su cambio mas significativo es este: el respaldo sin sexo pasa de un 2,0/3,4 que "no sale de ninguna
+  // parte" al corte masculino. Pero en Atlas `normalizeSexo` LANZA si el sexo falta o no se reconoce
+  // ("ningun indice puede calcularse sin el"), asi que esa rama nunca se ejecuta por el pipeline: nuestro
+  // guard ya era mas estricto que su archivo. Lo que SI nos cambia son los decimales.
+  //
+  // El candado se queda igualmente, sobre el frozen directamente: protege el comportamiento del motor por
+  // si ese guard se relajara alguna vez, que es justo cuando la rama pasaria a importar.
+  const SIN_SEXO = "" as unknown as Parameters<typeof cIRC>[1];
+
+  it("SIN SEXO (rama inalcanzable hoy) usa el corte masculino, el mas exigente", () => {
+    // Con el corte viejo (2,0/3,4) un 2,5 era moderado; con el masculino es ALTO.
+    expect(cIRC(2.5, SIN_SEXO).risk).toBe("alto");
+    // Y coincide con el masculino en las tres bandas, que es la forma de decir "es el mismo corte".
+    for (const v of [1.5, 1.69, 1.7, 2.0, 2.1, 2.11, 3.0]) {
+      expect(cIRC(v, SIN_SEXO).risk).toBe(cIRC(v, M).risk);
+    }
+  });
+
+  it("los cortes RETIRADOS ya no clasifican a nadie", () => {
+    expect(cIRC(2.0, SIN_SEXO).risk).not.toBe("bajo"); // con el corte viejo, 2,0 era el limite bajo
+    expect(cIRC(3.0, SIN_SEXO).risk).toBe("alto"); // con 3,4 de hi, 3,0 era moderado
+    // 2,28 es el caso que SEPARA los dos cortes femeninos: con el viejo lo=2,27 era moderado; con el
+    // nuevo lo=2,3 es bajo. Si el corte viejo volviera, esta linea cae.
+    expect(cIRC(2.28, F).risk).toBe("bajo");
+  });
+
+  it("el valor NO se multiplica por diez al mostrarlo: el x10 ya esta en la formula", () => {
+    // De ahi salia el 16,222 que le reportamos. `indicatorBands` habla en la escala del clasificador.
+    expect(indicatorBands("IRC", true)).toContain(fmtDec(1.7));
+    expect(indicatorBands("IRC", true)).not.toContain("17,0");
   });
 });

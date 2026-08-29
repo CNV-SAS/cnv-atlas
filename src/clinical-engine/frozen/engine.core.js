@@ -39,12 +39,24 @@ const cIFC = (v, sexo) => {
     : v >= lo    ? { l: 'Alerta funcional',   c: '#e6a817', risk: 'moderado', k: 2 }
     : { l: 'Disfunción celular', c: '#c0392b', risk: 'alto',     k: 1 };
 };
-// IRC por sexo (cohorte 6.063, P25/P75): H Bajo<1,68 Normal 1,68–2,11 Alto>2,11 · M Bajo<2,27 Normal 2,27–2,85 Alto>2,85
-// (sin sexo → corte histórico 2,0/3,4). IRC alto = mayor riesgo.
+// IRC por sexo (Articulo_IRC_vs_IR, Tabla 3, cohorte 6.063, P25/P75): H Bajo<1,7 Normal 1,7–2,1 Alto>2,1
+// · M Bajo<2,3 Normal 2,3–2,8 Alto>2,8. IRC alto = mayor riesgo.
+//
+// PORTE del ATLAS_v8 del 2026-08-29 (respuesta a la ronda del 28, punto 6). Dos cambios, y el segundo NO
+// es cosmetico:
+//   1. Los cortes pasan a los del articulo: 1,68/2,11 -> 1,7/2,1 y 2,27/2,85 -> 2,3/2,8.
+//   2. SIN SEXO YA NO HAY CORTE PROPIO. Antes caia al 2,0/3,4 "historico", que segun su respuesta "no sale
+//      de ninguna parte"; ahora cae al corte MASCULINO, que es el mas exigente, porque usar el femenino
+//      subestimaria el riesgo de un hombre. Es el cambio con consecuencia clinica: un paciente sin sexo
+//      registrado y con IRC 2,5 pasaba de "moderado" a ALTO.
+//
+// Y EL VALOR NO SE MULTIPLICA POR DIEZ AL MOSTRARLO: el x10 ya esta dentro de `calcIRC`. De ahi salia el
+// 16,222 que le reportamos, de una tabla que multiplicaba lo ya multiplicado y lo comparaba contra una
+// referencia sin multiplicar.
 const cIRC = (v, sexo) => {
-  const m = sexo === 'M' || sexo === 'Masculino', f = sexo === 'F' || sexo === 'Femenino';
-  const lo = m ? 1.68 : f ? 2.27 : 2.0;
-  const hi = m ? 2.11 : f ? 2.85 : 3.4;
+  const f = sexo === 'F' || sexo === 'Femenino';
+  const lo = f ? 2.3 : 1.7;
+  const hi = f ? 2.8 : 2.1;
   return v < lo  ? { l: 'Bajo riesgo',         c: '#1a7a4a', risk: 'bajo',     k: 1 }
     : v <= hi    ? { l: 'Riesgo moderado',     c: '#e6a817', risk: 'moderado', k: 2 }
     : { l: 'Alto riesgo celular', c: '#c0392b', risk: 'alto',     k: 3 };

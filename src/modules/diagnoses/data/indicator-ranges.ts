@@ -72,8 +72,10 @@ export function indicatorBands(code: string, sexM: boolean): string | null {
         : "óptima >3,28 · alerta 2,08–3,28 · disfunción <2,08";
     case "IRC": // cIRC: <lo bajo · lo–hi moderado · >hi alto (mas bajo es mejor)
       return sexM
-        ? "bajo <1,68 · moderado 1,68–2,11 · alto >2,11"
-        : "bajo <2,27 · moderado 2,27–2,85 · alto >2,85";
+        ? // Los cortes se escriben con `fmtDec`, no a mano: la cadena a mano decia "1,7" y el resto de la
+          // pantalla "1,70", asi que el MISMO corte salia con dos formas segun donde se leyera.
+          `bajo <${fmtDec(1.7)} · moderado ${fmtDec(1.7)}–${fmtDec(2.1)} · alto >${fmtDec(2.1)}`
+        : `bajo <${fmtDec(2.3)} · moderado ${fmtDec(2.3)}–${fmtDec(2.8)} · alto >${fmtDec(2.8)}`;
     case "IEHH": // cIEHH (sin sexo): ≤0 óptimo · ≤1 leve · ≤2 moderado · >2 severo
       return "óptimo ≤0 · leve ≤1 · moderado ≤2 · severo >2";
     case "ISCM": // cISCM (sin sexo): ISCM-1 ≤−1 · ISCM-2 ≤1 · ISCM-3 ≤2.5 · ISCM-4 >2.5
@@ -119,9 +121,9 @@ export function indicatorRange(
       return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, 2) };
     }
     case "IRC": {
-      // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.68, F 2.27). Δ = valor − lo (corte unico).
+      // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.7, F 2.3). Δ = valor − lo (corte unico).
       if (ind.irc == null) return null;
-      const lo = sexM ? 1.68 : 2.27;
+      const lo = sexM ? 1.7 : 2.3;
       return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, 2) };
     }
     case "FMI": {
