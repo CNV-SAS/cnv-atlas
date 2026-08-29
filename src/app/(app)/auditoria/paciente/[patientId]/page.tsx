@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 import { VolverA } from "@/components/shared/volver-a";
 
@@ -51,13 +52,11 @@ export default async function IdentifiedAccessPage({
           {/* Se llega SOLO desde /auditoria/solicitar (unico enlace entrante), asi que ahi vuelve. Sin
               esto era un callejon: se entraba y no habia salida hacia la lista de solicitudes. */}
 
-          <VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Acceso identificado
-          </h1>
-          <p className="text-muted-foreground">
-            Acceso excepcional a la historia narrativa de un paciente, con identidad.
-          </p>
+          <TituloPantalla
+            volver={<VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>}
+            titulo="Acceso identificado"
+            descripcion="Acceso excepcional a la historia narrativa de un paciente, con identidad."
+          />
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
           {result.error.message}
@@ -71,19 +70,20 @@ export default async function IdentifiedAccessPage({
   const heading = fullName || `${view.patient.documentType} ${view.patient.documentNumber}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{heading}</h1>
-        <p className="text-muted-foreground">
-          {view.patient.documentType} {view.patient.documentNumber}. Acceso identificado
-          excepcional; tu permiso vence el {fmt(expiresAt.toISOString())}. Este acceso
-          queda registrado.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* EL TITULO ES EL PACIENTE (el registro; la seccion la dice la barra superior) y la descripcion
+          lleva lo que NO se ve en ninguna parte de la pantalla: que este permiso VENCE, cuando, y que el
+          acceso queda registrado. En una superficie de acceso excepcional eso no es un adorno: es el
+          recordatorio de que lo que se hace aqui deja rastro. */}
+      <TituloPantalla
+        volver={<VolverA href="/auditoria/solicitar">Volver a las solicitudes</VolverA>}
+        titulo={heading}
+        descripcion={`${view.patient.documentType} ${view.patient.documentNumber}. Tu permiso vence el ${fmt(expiresAt.toISOString())}. Este acceso queda registrado.`}
+      />
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+          <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-semibold">Fecha</th>
               <th className="px-3 py-2 font-semibold">Origen</th>

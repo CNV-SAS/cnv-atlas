@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { ConsentDocument } from "@/modules/consent/components/consent-document";
 import { buildConsentFullPreview } from "@/modules/consent/consent-instance";
@@ -12,16 +13,15 @@ export default async function ConsentimientoPage() {
   await requireUser();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Consentimiento informado
-        </h1>
-        <p className="text-muted-foreground">
-          Texto vigente que se presenta a los pacientes antes de la encuesta. Version{" "}
-          {CONSENT_VERSION}. Solo lectura.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* La VERSION se queda: es el dato que hace util la pantalla (saber cual esta vigente) y no se ve
+          en el texto de abajo. "Solo lectura" tambien, porque la ausencia de botones lo sugiere pero no lo
+          afirma. Cae "texto que se presenta a los pacientes antes de la encuesta", que es lo que la
+          pantalla muestra. */}
+      <TituloPantalla
+        titulo="Consentimiento informado"
+        descripcion={`Versión ${CONSENT_VERSION} vigente. Solo lectura.`}
+      />
 
       {/* Vista COMPLETA de la plantilla vigente: AMBAS ramas (mayor y menor) con los campos como rotulos.
           NO una instancia de un paciente (esa filtra la rama menor). Asi se lee el texto entero, incluido

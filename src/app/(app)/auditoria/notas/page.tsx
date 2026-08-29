@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { getClientIp } from "@/core/http/client-ip";
@@ -38,12 +39,12 @@ export default async function NotesAuditPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-            Auditoria de notas
-          </h1>
-          <p className="text-muted-foreground">
-            Revision seudonimizada de las notas narrativas, sin identidad del paciente.
-          </p>
+          {/* Queda entero: "seudonimizada, sin identidad del paciente" es una garantia que la pantalla
+              no puede mostrar (se ve la ausencia de nombres, no la regla que la produce). */}
+          <TituloPantalla
+            titulo="Auditoría de notas"
+            descripcion="Revisión seudonimizada de las notas narrativas, sin identidad del paciente."
+          />
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
           No tienes un permiso de auditoria activo. Solicita un permiso de auditoria
@@ -66,21 +67,18 @@ export default async function NotesAuditPage() {
   const notes = await getPseudonymousNotes();
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Auditoria de notas
-        </h1>
-        <p className="text-muted-foreground">
-          Revision seudonimizada de las notas narrativas, sin identidad del paciente. Tu
-          permiso vence el {fmt(grant.expiresAt.toISOString())}. Este acceso queda
-          registrado.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* Esta es la rama CON permiso vigente, y por eso su descripcion dice mas que la de arriba: ademas
+          de la garantia (seudonimizada, sin identidad), lleva CUANDO VENCE tu permiso y que el acceso
+          queda registrado. Nada de eso se ve en la tabla. */}
+      <TituloPantalla
+        titulo="Auditoría de notas"
+        descripcion={`Revisión seudonimizada, sin identidad del paciente. Tu permiso vence el ${fmt(grant.expiresAt.toISOString())}. Este acceso queda registrado.`}
+      />
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+          <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-semibold">Fecha</th>
               <th className="px-3 py-2 font-semibold">Origen</th>

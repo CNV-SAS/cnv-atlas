@@ -80,7 +80,10 @@ export type EvaluationHeader = {
   patientId: string; // para poder VOLVER a la ficha del paciente desde la evaluacion
   patientName: string;
   documentLabel: string;
-  /** `created_at` de la evaluacion, no la fecha de MEDICION. Ver la nota del reader. */
+  /**
+   * FECHA DE MEDICION (cronologia clinica), con caida a `created_at` si aun no se midio. NO es
+   * `created_at` a secas: ver la nota del reader.
+   */
   evaluationDate: string;
   /** inicial | seguimiento. Ubica la evaluacion sin abrir ninguna etapa. */
   evaluationType: string;
@@ -96,8 +99,8 @@ export async function getEvaluationHeaderForSession(
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      // `type` se suma a la MISMA consulta: una columna mas, cero consultas nuevas.
-      "created_at, type, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+      // `type` y la MEDICION se suman a la MISMA consulta: cero consultas nuevas.
+      "created_at, type, patient_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -120,9 +123,28 @@ export async function getEvaluationHeaderForSession(
     patientId: data.patient_id,
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
-    evaluationDate: data.created_at,
+    // LA FECHA ES LA DE MEDICION, no `created_at`, y es un DEFECTO CORREGIDO (2026-08-29).
+    //
+    // La regla ya estaba escrita en `comparison-chronology`: la cronologia clinica se ancla a
+    // `measurement_date` porque una evaluacion CORREGIDA arrastra la medicion original y estrena
+    // `created_at`. Se verifico en `correct-evaluation`: la correccion COPIA `measurementDate` del BIS
+    // viejo a la fila nueva, cuyo `created_at` es el momento de corregir, que puede ser meses despues.
+    //
+    // Con `created_at`, las cuatro pantallas que usan esta cabecera (la evaluacion, corregir, ver encuesta
+    // y editar encuesta) le decian al profesional que la consulta fue el dia en que alguien la corrigio.
+    // La ficha del paciente, que ya usaba la medicion, mostraba OTRO dia para el mismo registro.
+    //
+    // Caida a `created_at` solo si aun no se midio, igual que hace la ficha: asi las dos coinciden.
+    evaluationDate: latestMeasurementDate(data.bis_measurements) ?? data.created_at,
     evaluationType: data.type as string,
   };
+}
+
+// La medicion mas reciente de la evaluacion. Son pocas por evaluacion (normalmente una).
+function latestMeasurementDate(m: unknown): string | null {
+  const filas = (Array.isArray(m) ? m : m ? [m] : []) as { measurement_date?: string | null }[];
+  const fechas = filas.map((f) => f.measurement_date).filter((d): d is string => Boolean(d));
+  return fechas.length ? fechas.sort()[fechas.length - 1] : null;
 }
 
 export async function getEvaluationResults(

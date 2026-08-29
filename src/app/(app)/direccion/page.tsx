@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { getDireccionDashboard } from "@/modules/direccion/data/dashboard-reader";
@@ -36,10 +37,9 @@ export default async function DireccionPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Dirección</h1>
-        <p className="text-muted-foreground">
-          Vista consolidada de finanzas e inventario. Agregados sin datos personales.
-        </p>
+        {/* Cae "vista consolidada de finanzas e inventario" (son las tarjetas de abajo) y queda que son
+            AGREGADOS SIN DATOS PERSONALES, que es una garantia de gobernanza y no se ve en las cifras. */}
+        <TituloPantalla titulo="Dirección" descripcion="Agregados, sin datos personales." />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

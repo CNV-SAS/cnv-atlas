@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { AiConfigForm } from "@/modules/ai-admin/components/ai-config-form";
@@ -24,17 +25,14 @@ export default async function AdminAiPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Inteligencia artificial
-        </h1>
-        <p className="text-muted-foreground">
-          Proveedor y modelo que usa toda la aplicación para generar texto con IA (hoy el menú de
-          apoyo; las funciones que vengan usarán el mismo). No es una configuración por función. Lo
-          que sí es por función son los prompts, cada uno con su versión. Las claves de API viven
-          solo en el entorno; aquí eliges cuál está activo. El diagnóstico nunca usa IA.
-        </p>
-      </div>
+      {/* SUBTITULO RECORTADO de cinco frases a dos. Caen las que describen la pantalla ("proveedor y
+          modelo que usa la aplicacion", "aqui eliges cual esta activo": el formulario de abajo lo
+          muestra). Quedan las dos que NO se ven y que alguien podria suponer al reves: que la
+          configuracion es GLOBAL y no por funcion, y que el diagnostico nunca usa IA. */}
+      <TituloPantalla
+        titulo="Inteligencia artificial"
+        descripcion="La configuración es global, no por función; lo que sí es por función son los prompts, cada uno con su versión. El diagnóstico nunca usa IA."
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-foreground">Proveedor y modelo</h2>

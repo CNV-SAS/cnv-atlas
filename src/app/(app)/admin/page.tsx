@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -34,7 +35,8 @@ export default async function AdminPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Usuarios</h1>
+      {/* SIN SUBTITULO: no lo tenia, y la lista de abajo ya dice que es. */}
+      <TituloPantalla titulo="Usuarios" />
       <ul className="flex flex-col gap-3 text-sm">
         {(users ?? []).map((u) => {
           const prof = byProfile.get(u.id) ?? null;

@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -51,11 +52,12 @@ export default async function AdminAuditPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Auditoria</h1>
-        <p className="text-muted-foreground">
-          Registro de eventos clinicos criticos. Es append-only: no se edita ni se borra.
-          {result.total > 0 ? ` ${result.total} eventos.` : ""}
-        </p>
+        {/* Queda la PROPIEDAD del registro (append-only), que no se ve mirando la tabla y es justo lo
+            que alguien podria dar por sentado que no es. El conteo se va: lo dice la tabla. */}
+        <TituloPantalla
+          titulo="Auditoría"
+          descripcion="Registro de eventos clínicos críticos. Es append-only: no se edita ni se borra."
+        />
       </div>
 
       <form method="get" className="flex items-end gap-2">
@@ -84,9 +86,9 @@ export default async function AdminAuditPage({
         ) : null}
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+          <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-semibold">Fecha</th>
               <th className="px-3 py-2 font-semibold">Evento</th>

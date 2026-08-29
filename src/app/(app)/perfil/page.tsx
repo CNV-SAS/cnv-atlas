@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
@@ -17,11 +18,8 @@ export default async function PerfilPage() {
   const view = await getTaxStatusView(professionalId);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Mi perfil</h1>
-        <p className="text-muted-foreground">Tus datos para la operación con CNV.</p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      <TituloPantalla titulo="Mi perfil" descripcion="Tus datos para la operación con CNV." />
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">

@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { formatDate } from "@/lib/format/date";
@@ -25,11 +26,12 @@ export default async function ObbiaPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Investigación</h1>
-        <p className="text-muted-foreground">
-          Datasets de investigacion gobernados. Solo data agregada o anonimizada; nunca datos
-          personales del paciente.
-        </p>
+        {/* Cae "datasets de investigacion gobernados" (la tabla los lista) y queda la GARANTIA: nunca
+            datos personales del paciente. */}
+        <TituloPantalla
+          titulo="Investigación"
+          descripcion="Solo data agregada o anonimizada; nunca datos personales del paciente."
+        />
       </div>
 
       {datasets.length === 0 ? (
@@ -38,14 +40,14 @@ export default async function ObbiaPage() {
           capa posterior al MVP; por ahora los exports se gobiernan de forma manual.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
           <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+            <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-semibold">Alcance</th>
                 <th className="px-3 py-2 font-semibold">Anonimización</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
-                <th className="px-3 py-2 font-semibold">Creado</th>
+                <th className="px-3 py-2 font-semibold">Fecha de creación</th>
               </tr>
             </thead>
             <tbody>

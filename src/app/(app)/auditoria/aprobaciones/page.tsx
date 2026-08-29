@@ -1,3 +1,4 @@
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
 import { formatDateTime } from "@/lib/format/date";
@@ -31,18 +32,17 @@ export default async function ApprovalsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Aprobaciones de acceso
-        </h1>
-        <p className="text-muted-foreground">
-          Solicitudes pendientes que te toca decidir. Al aprobar, el acceso vence
-          automaticamente segun la duracion (con tope duro por nivel).
-        </p>
+        {/* Cae "solicitudes pendientes que te toca decidir" (es la tabla de abajo) y queda que el acceso
+            VENCE SOLO, con tope duro: es lo que hace segura la aprobacion y no se ve en ningun sitio. */}
+        <TituloPantalla
+          titulo="Aprobaciones de acceso"
+          descripcion="Al aprobar, el acceso vence automáticamente según la duración, con tope duro por nivel."
+        />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+          <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-semibold">Fecha de solicitud</th>
               <th className="px-3 py-2 font-semibold">Solicitante</th>
