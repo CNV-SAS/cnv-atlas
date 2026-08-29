@@ -197,9 +197,24 @@ const FREQ_OPC = ["Nunca", "1–2 días", "3–4 días", "5–6 días", "Todos l
 const GI_OPC = ["Nunca", "A veces", "Frecuente", "Siempre"];
 
 const SURVEY_QUESTIONS: SurveyQ[] = [
-  // D1 · Patron alimentario. 15 grupos de frecuencia (d1_N_i) + 3 horarios (d1f_*_i), alineado al
-  // instrumento vigente v8 (implementa C9, firmado por Gildardo 2026-08-03): carnes rojas (d1_15_i,
-  // neutro) SEPARADA de procesadas (d1_12_i, riesgo); d1_10 = "Carnes blancas". Todos con
+  // D1 · Patron alimentario. 15 grupos de frecuencia (d1_N_i) + 3 horarios (d1f_*_i).
+  //
+  // EL ORDEN ES POR CATEGORIA CLINICA, NO POR EL NUMERO DEL CAMPO (corregido el 2026-08-29). Su
+  // `FREQ_GROUPS` va 1-7 protector, 8-11 neutro, 12-15 riesgo, y las CARNES ROJAS ocupan la posicion 11
+  // (neutro) aunque su campo sea `d1_15_i`: el 15 es el identificador, no el lugar. Su regla, textual:
+  // "nunca roten por posicion, siempre por `n`", y "la agrupacion que ve el paciente es esa misma: EL
+  // ORDEN ES EL MENSAJE".
+  //
+  // ANTES ORDENABAMOS POR EL NUMERO DEL CAMPO, asi que las carnes rojas salian las ULTIMAS, despues de
+  // ultraprocesados, o sea entre los de RIESGO. Le deciamos al paciente que son alimento de riesgo cuando
+  // su modelo las clasifica como neutras. Y el comentario de estas mismas lineas YA DECIA "neutro": no
+  // fue desconocimiento, fue que el orden no siguio lo que ya sabiamos.
+  //
+  // NINGUN TEST LO IBA A ENCONTRAR, porque nuestro orden era coherente consigo mismo. Lo encontro
+  // Santiago respondiendo la encuesta con el archivo de Gildardo al lado: la consistencia interna no
+  // prueba fidelidad. El candado de correspondencia (`freq-groups-orden.test.ts`) lo fija ahora.
+  //
+  // Todos con
   // patternEngine: field_key = key, used_in_diagnosis=false, para alimentar el DISPLAY calcPatron
   // (no el diagnostico). calcPatron lee el ORDINAL de la opcion (FREQ_OPC), no el texto.
   { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", sub: "espinaca, acelga, brócoli, tomate, zanahoria, ahuyama, remolacha, pepino (frescas, de hoja verde y fuente de vitamina A) · Un puño cerrado", options: FREQ_OPC, patternEngine: true },
@@ -212,11 +227,11 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d1_8_i", type: "opcion", text: "Cereales integrales y otros (frecuencia de consumo)", sub: "avena, quinua, maíz, arroz integral, cebada, cuchuco, pan integral · ½ pocillo cocido o 1 tajada", options: FREQ_OPC, patternEngine: true },
   { key: "d1_9_i", type: "opcion", text: "Raíces, tubérculos y plátanos (frecuencia de consumo)", sub: "papa, yuca, plátano, arracacha, ñame, batata · 1 papa mediana o ½ plátano", options: FREQ_OPC, patternEngine: true },
   { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", sub: "pollo, pavo, aves sin piel · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro) · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
   { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas blancas (frecuencia de consumo)", sub: "pan blanco, arroz blanco, pasta blanca, galletas, arepa de harina refinada · ½ pocillo o 1 unidad", options: FREQ_OPC, patternEngine: true },
   { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", sub: "salchicha, chorizo, jamón, tocineta, mortadela, enlatados · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
   { key: "d1_13_i", type: "opcion", text: "Azúcares añadidos y bebidas azucaradas (frecuencia de consumo)", sub: "gaseosas, jugos de caja, dulces, chocolatinas, postres, exceso de panela o azúcar · 1 vaso o 1 unidad", options: FREQ_OPC, patternEngine: true },
   { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", sub: "productos de paquete, papas fritas, comidas rápidas, hamburguesa, pizza, perro, sopas de sobre, caldos concentrados y sazonadores industriales · 1 paquete o 1 porción", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro) · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
   { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"], patternEngine: true },
   { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"], patternEngine: true },
   { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"], patternEngine: true },

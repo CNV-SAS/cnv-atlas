@@ -645,6 +645,13 @@
       "when": 1787880800000,
       "tag": "0091_retirar_cruce_alergenos",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1787967200000,
+      "tag": "0092_orden_matriz_frecuencia",
+      "breakpoints": true
     }
   ]
 }
