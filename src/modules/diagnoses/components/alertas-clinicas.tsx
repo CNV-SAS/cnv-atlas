@@ -7,10 +7,14 @@ import { Bloque } from "@/components/shared/bloque";
 // Es nivel DECISION y no de registro: una bandera de conducta alimentaria manda derivar hoy,
 // no queda anotada para despues.
 //
-// LA NOTA DE ABAJO NO ES UN DESCARGO, ES LA PIEZA PRINCIPAL. De sus quince reglas hoy corre una. Sin
-// decirlo, "ninguna alerta" se lee como "el paciente esta bien", cuando lo que significa es "de lo
-// nutricional no estamos evaluando nada". Ese malentendido es exactamente el que hace dano: el silencio
-// de un sistema que el profesional cree completo pesa mas que un aviso.
+// VA EN EVALUACION Y NO EN DIAGNOSTICO POR INSTRUCCION SUYA (2026-08-28, 11a): "Esas alertas aparecen al
+// inicio, cuando el profesional abre la informacion de la encuesta del paciente. Son lo que le dice que
+// mirar ANTES de evaluar, no una conclusion del diagnostico".
+//
+// LA NOTA DE ABAJO NO ES UN DESCARGO, ES LA PIEZA PRINCIPAL. De sus quince reglas corren cinco: las diez
+// restantes necesitan el consumo de nutrientes, que todavia no se calcula. Sin decirlo, "ninguna alerta"
+// se lee como "el paciente esta bien", cuando significa "de lo nutricional no estamos evaluando nada". El
+// silencio de un sistema que el profesional cree completo pesa mas que un aviso.
 
 const ESTILO: Record<string, { caja: string; texto: string }> = {
   crítico: {
@@ -47,9 +51,8 @@ export function AlertasClinicas({ alertas }: { alertas: AlertaClinica[] }) {
       )}
       <p className="border-t border-border pt-3 text-xs text-muted-foreground">
         El cuadro nutricional todavía no se evalúa. De las quince alertas del modelo,{" "}
-        {ALERTAS_NO_DISPONIBLES.porConsumo} necesitan el consumo de nutrientes, que aún no se calcula, y{" "}
-        {ALERTAS_NO_DISPONIBLES.porCampoInexistente} leen campos de una versión anterior de la encuesta,
-        pendientes de confirmación. La ausencia de avisos no equivale a ausencia de riesgo.
+        {ALERTAS_NO_DISPONIBLES.porConsumo} necesitan el consumo de nutrientes, que aún no se calcula. La
+        ausencia de avisos no equivale a ausencia de riesgo.
       </p>
     </Bloque>
   );

@@ -594,17 +594,29 @@ decia antes (barrido del copy) y ahora no hay nada que lo insinue, porque no se 
 ## Cola de la ronda del 2026-08-29
 
 **Enviadas en `docs/entregas/RONDA_GILDARDO_2026-08-29.md`.** La cola es interna; la ronda es lo que el
-recibe. Cotejadas una por una antes de cerrar: las ocho de abajo estan las ocho en el documento.
+recibe. Cotejadas una por una antes de cerrar: las de abajo estan todas en el documento. P-69 se CERRO al redactarla: ya estaba contestada.
 
-**P-69 · Sus alertas leen `d1_14`, `d1_15` y `d1_16`, de la matriz de 18 items.** No existen en la de 15.
-No es sospecha nuestra: es SU nota sobre el mismo grupo de campos, *"Los campos d1_9, d1_10 y d1_16 que
-lee calcLE8 NO existen en la encuesta: solo viven en el objeto DEMO"*. Cuatro de las quince reglas quedan
-muertas y UNA MIENTE: "Deshidratacion probable" pide `agua <= 3` sobre un campo siempre 0, asi que se
-dispara solo por la orina oscura y afirma "Agua: 0 vasos". Preguntadas las equivalencias (`d1_13_i`,
-`d7_agua`) **junto con el umbral**, porque sus condiciones son `>= 2` sobre porciones y los `_i` guardan
-un indice 0-4: responder solo el campo dejaria el umbral sobre otra escala. Portadas las quince verbatim;
-corre una (TCA activo).
+**P-69 · CERRADA POR EL, Y ANTES DE PREGUNTARLA. Los campos de sus alertas: `d1_13_i` y `d7_agua`.** La
+habia redactado como pregunta abierta, con un argumento que sonaba bien (corregir haria discrepar Atlas de
+su archivo, y el reportaria nuestra mejora como defecto). El argumento era correcto y la conclusion
+equivocada, porque **el ya habia decidido esa disyuntiva** el 28, punto 11b: *"Las dos leen el grupo
+equivocado y las dos deben leer d1_13... Portenla YA CON LA CORRECCION; no la porten literal para que yo
+la arregle despues"*. Y el agua sale de su mapeo del 28-jul (*"d7_agua, vasos de 200 ml, la misma unidad
+que esperaba d1_16"*). **Aplicado en el adaptador**, no en el frozen, para que la transcripcion siga
+byte a byte. Corren CINCO reglas.
 
+Enesima vez que doy por abierto algo ya contestado, y esta vez con la instruccion explicita de no volver a
+preguntarlo. La forma de no repetirlo: antes de escribir una pregunta en la ronda, grepear SUS terminos en
+las respuestas anteriores, no los nuestros.
+
+**P-69b · Declarado (no pregunta): la escala de sus umbrales.** Sus condiciones de azucares son `>= 2` y
+en su objeto demo esos campos valen 1 y 2, asi que se leen como el INDICE 0-4 de `FREQ_OPC`. El agua no es
+indice: son vasos, porque sus cortes son `<= 3` y `>= 8`. Declarado por si lo lee distinto.
+
+**P-69c · Decision NUESTRA sobre una regla suya, declarada: sin el dato del agua, la regla no se evalua.**
+`agua <= 3` con el dato ausente es verdadero SIEMPRE, asi que "Deshidratacion probable" se disparaba por
+la orina oscura sola y afirmaba "Agua: 0 vasos" sobre una pregunta sin responder. Resuelto como el
+resolvio el ISCM en su punto 4 y calcLE8 en CA-3: sin insumo, no se emite. Un 0 RESPONDIDO si alerta.
 **P-70 · El puente de frecuencia a porciones.** Bloquea las diez reglas de consumo. Es chico: la tabla de
 nutrientes (`INTER_TABLA_A`) y la aritmetica (`validacion.ts`) ya existen; falta solo la equivalencia
 frecuencia -> porciones/dia. El omega-3 NO esta en la tabla: preguntado si se agrega o si esa regla se

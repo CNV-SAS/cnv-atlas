@@ -1,5 +1,6 @@
 // Modulo congelado en JS. `allowJs` lo resuelve, asi que NO lleva ts-expect-error.
 import { generarAlertas } from "./frozen/atlas-alertas.js";
+import { FREQ_OPC } from "./frozen/engine.patron.js";
 
 // ADAPTADOR entre `generarAlertas` (frozen, quince reglas) y lo que Atlas puede mostrar HOY sin mentir.
 //
@@ -17,27 +18,48 @@ export interface AlertaClinica {
   dom: string;
 }
 
-// Reglas que su funcion emite pero que Atlas NO muestra, cada una con su motivo. Se excluyen POR TITULO
-// porque el titulo es su identificador estable dentro de la funcion; el orden no lo es.
-const EXCLUIDAS: ReadonlyMap<string, string> = new Map([
-  [
-    "Deshidratación probable",
-    // La unica que no esta simplemente muerta: MIENTE. Pide `agua <= 3` sobre `enc.d1_16`, un campo de la
-    // encuesta anterior que ya no existe, asi que `agua` es siempre 0 y esa mitad de la condicion se
-    // cumple SIEMPRE. La regla queda reducida a "orina oscura", y su texto le afirma al profesional
-    // "Agua: 0 vasos" sobre una pregunta que el paciente nunca respondio. Un texto que describe mal lo
-    // que el motor hizo es un defecto de seguridad, no de redaccion: induce a decidir sobre un dato
-    // inventado. Vuelve en cuanto Gildardo diga con que campo se lee el agua (d7_agua es su propio
-    // mapeo del 2026-07-28, pero aplicarlo aqui seria decidirlo nosotros).
-    "lee d1_16 (encuesta anterior); con agua siempre 0 se dispara solo por la orina y afirma '0 vasos'",
-  ],
+// TRADUCCION DE CAMPOS, y es SU instruccion, no una decision nuestra.
+//
+// `generarAlertas` lee `d1_14`, `d1_15` y `d1_16`, que son de la matriz de 18 items y no existen en la
+// de 15. Su respuesta del 2026-08-28, punto 11b, textual: "Las dos leen el grupo equivocado y LAS DOS
+// DEBEN LEER d1_13, azucares anadidos y bebidas azucaradas. Portenla ya con la correccion; NO LA PORTEN
+// LITERAL PARA QUE YO LA ARREGLE DESPUES". Y sobre el agua, su mapeo del 2026-07-28: "Hidratacion ->
+// enc.d7_agua, vasos de 200 ml, LA MISMA UNIDAD QUE ESPERABA d1_16".
+//
+// Se traduce AQUI y no en el frozen a proposito: asi su funcion sigue byte a byte la suya (el candado de
+// transcripcion la coteja contra su archivo) y la correccion queda visible como lo que es, una capa
+// nuestra con su instruccion citada al lado.
+const CAMPOS_TRADUCIDOS: ReadonlyMap<string, { desde: string; escala: "indice" | "numero" }> = new Map([
+  // Su condicion es `>= 2` sobre un INDICE 0-4, no sobre porciones: en su objeto demo estos campos valen
+  // 1 y 2, y `FREQ_OPC` tiene cinco opciones. Nuestra encuesta guarda el TEXTO de la opcion, asi que hay
+  // que convertirlo; leerlo crudo daria null y la regla se saltaria MUDA, que es como fallan los portes
+  // que no verifican la FORMA del dato.
+  ["d1_14", { desde: "d1_13_i", escala: "indice" }],
+  ["d1_15", { desde: "d1_13_i", escala: "indice" }],
+  // El agua no es un indice: son vasos. Su regla pide `<= 3` y `>= 8`, que solo tienen sentido contados.
+  ["d1_16", { desde: "d7_agua", escala: "numero" }],
 ]);
 
+/** Traduce los campos de la encuesta vieja a los de la vigente, con su instruccion como fuente. */
+function traducirCampos(enc: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...enc };
+  for (const [viejo, { desde, escala }] of CAMPOS_TRADUCIDOS) {
+    const v = enc[desde];
+    if (v == null || v === "") continue;
+    if (escala === "indice") {
+      const i = FREQ_OPC.indexOf(String(v));
+      if (i >= 0) out[viejo] = i;
+    } else {
+      const n = Number(v);
+      if (!isNaN(n)) out[viejo] = n;
+    }
+  }
+  return out;
+}
 /** Las reglas que hoy NO pueden correr, con su motivo. Para explicarlo en pantalla, no para decorar. */
 export const ALERTAS_NO_DISPONIBLES = {
   porConsumo: 10,
-  porCampoInexistente: 4,
-  disponibles: 1,
+  disponibles: 5,
 } as const;
 
 /**
@@ -48,15 +70,28 @@ export const ALERTAS_NO_DISPONIBLES = {
  * false, y las que dependen de `get` o `peso` se saltan por la guarda que el mismo escribio. Una lista
  * blanca a mano quedaria desactualizada el dia que el agregue una regla; esto no.
  */
+// REGLAS QUE NO SE EVALUAN SI LES FALTA SU INSUMO, y hace falta una por una: la traduccion de campos NO
+// alcanza para esto. Su funcion trata el dato ausente como 0, y para las diez de consumo eso las apaga
+// solas (undefined > 3000 es false), pero para el agua el 0 es CUMPLIR: `agua <= 3` con agua ausente es
+// verdadero SIEMPRE, asi que "Deshidratacion probable" se disparaba por la orina oscura sola y le
+// afirmaba al profesional "Agua: 0 vasos" sobre una pregunta sin responder.
+//
+// La conducta es la misma que el fijo para el ISCM en el punto 4 y para calcLE8 en CA-3: sin el insumo,
+// el indicador NO SE EMITE. Un cero medido si cuenta (un paciente que responde 0 vasos esta deshidratado
+// de verdad, y la alerta debe salir); lo que frena es la AUSENCIA.
+const INSUMO_REQUERIDO: ReadonlyMap<string, string> = new Map([
+  ["Deshidratación probable", "d7_agua"],
+  ["Hidratación adecuada", "d7_agua"],
+]);
+
 export function alertasDisponibles(enc: Record<string, unknown>): AlertaClinica[] {
-  const todas = generarAlertas(enc, {}, 0, {}, 0) as AlertaClinica[];
-  return todas.filter((a) => !EXCLUIDAS.has(a.t));
+  const todas = generarAlertas(traducirCampos(enc), {}, 0, {}, 0) as AlertaClinica[];
+  return todas.filter((a) => {
+    const campo = INSUMO_REQUERIDO.get(a.t);
+    return campo == null || (enc[campo] != null && enc[campo] !== "");
+  });
 }
 
-/** Motivo por el que una regla suya no se muestra, o `null` si si se muestra. */
-export function motivoDeExclusion(titulo: string): string | null {
-  return EXCLUIDAS.get(titulo) ?? null;
-}
 
 /**
  * Arma el `enc` que sus reglas esperan a partir de las respuestas YA leidas de la pantalla.

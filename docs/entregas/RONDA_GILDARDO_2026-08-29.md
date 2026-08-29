@@ -29,45 +29,36 @@ portado a medias.
 
 ---
 
-# 1 · Tus alertas leen tres campos de la encuesta anterior
+# 1 · Tus alertas: aplicada tu corrección, y una sola pregunta encima
 
-**Esta es la que más te pedimos que mires, porque bloquea diez reglas y deja una emitiendo un texto
-falso.**
+**Esta sección cambió después de escribirla, y el cambio es nuestro error.** La habíamos redactado
+preguntándote por los campos `d1_14`, `d1_15` y `d1_16`. **Ya nos habías contestado**, el 28, punto
+11b, y con instrucción explícita de no volver a preguntar:
 
-`generarAlertas` tiene quince reglas. Las portamos todas, verbatim. Hoy **corre una**.
+> *"Las dos leen el grupo equivocado y las dos deben leer `d1_13`, azúcares añadidos y bebidas
+> azucaradas. Pórtenla ya con la corrección; no la porten literal para que yo la arregle después."*
 
-**Diez necesitan `cons`** (el consumo de nutrientes: kcal, sodio, fibra, hierro, calcio, proteína,
-omega-3). No lo calculamos nosotros y no lo calcula tu archivo. Es la pregunta 4 de abajo.
+**Aplicado.** Las dos de azúcares leen `d1_13_i`. Y el agua lee `d7_agua`, que es tu propio
+mapeo del 28 de julio: *"Hidratación → `enc.d7_agua`, vasos de 200 ml, la misma unidad que esperaba
+`d1_16`"*. Con eso **corren cinco** de tus quince reglas: TCA activo, riesgo glucémico, estrés más
+azúcares, deshidratación probable e hidratación adecuada.
 
-**Cuatro leen `d1_14`, `d1_15` y `d1_16`,** que son de la matriz de **18 ítems** y no existen en la de
-15. No es sospecha nuestra: es tu propia nota, sobre el mismo grupo de campos, unas líneas más arriba en
-el archivo:
+**Un detalle de forma que resolvimos y te declaramos**, por si lo lees distinto: tus condiciones de
+azúcares son `>= 2`, y en tu objeto demo esos campos valen 1 y 2, así que las leímos como el
+**índice 0–4** de `FREQ_OPC` ("Nunca" … "Todos los días"). Umbral 2 = "3–4 días" o más. El agua no
+es índice: son vasos contados, porque tus cortes son `<= 3` y `>= 8`.
 
-> *"Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo viven en el objeto
-> DEMO, y por eso el defecto pasó inadvertido."*
+## Lo único que sí preguntamos aquí
 
-**Y una de esas cuatro no está muerta: miente.** "Deshidratación probable" pide `agua <= 3` sobre
-`d1_16`. Como `agua` es siempre 0, esa mitad de la condición **se cumple siempre**: la regla queda
-reducida a "orina oscura" y el texto le afirma al profesional *"Agua: 0 vasos"* sobre una pregunta que
-el paciente nunca respondió. La excluimos explícitamente mientras respondes.
+**Tu regla de deshidratación se disparaba sola, y sigue pudiendo hacerlo si el paciente no responde.**
 
-**Lo que necesitamos de ti son las equivalencias:**
+`agua <= 3` con el dato ausente es verdadero **siempre**: la regla quedaba reducida a "orina
+oscura" y el texto afirmaba *"Agua: 0 vasos"* sobre una pregunta sin responder. **Lo resolvimos como tú
+resolviste el ISCM en tu punto 4:** sin el insumo, la regla no se evalúa. Un 0 respondido sí cuenta y sí
+alerta; lo que frena es la ausencia.
 
-| Tu regla lee | Es | ¿El equivalente en la encuesta de 15 es…? |
-| --- | --- | --- |
-| `d1_15` | bebidas azucaradas | `d1_13_i` (azúcares añadidos y bebidas azucaradas) |
-| `d1_14` | azúcares | ¿el mismo `d1_13_i`, o se separaron? |
-| `d1_16` | vasos de agua | `d7_agua`, que es el mapeo que **tú mismo** diste el 28-jul |
-
-**Y una advertencia sobre los umbrales, que no es un detalle de forma.** Tus condiciones son `>= 2` sobre
-una escala de porciones. Los `_i` guardan un **índice de frecuencia de 0 a 4** ("Nunca" … "Todos los
-días"), que no es la misma magnitud. Si respondes solo el campo, aplicaremos el umbral sobre una escala
-distinta de la que pensaste. **Necesitamos el campo y el umbral juntos.**
-
-**No arreglamos ninguna por nuestra cuenta,** aunque el mapeo del agua ya lo diste. Dos razones, y la
-segunda pesa más que la primera: sería sustituir tu diseño por el nuestro en contenido clínico; y
-Santiago está por cotejar Atlas contra tu archivo, así que una regla que nosotros "mejoremos" hace que
-los dos dejen de coincidir y **tú la reportarías como defecto**.
+**¿Es la conducta que quieres?** Es una decisión nuestra sobre una regla tuya, y por eso te la
+declaramos en vez de dejarla pasar.
 
 ---
 
@@ -122,7 +113,7 @@ favorable que tú señalaste. **¿El dominio debe puntuar 1, o no debe puntuar?*
 
 ---
 
-# 5 · Las tres reglas "positivo" y el umbral de la escala
+# 5 · Las tres reglas "positivo", junto a las críticas
 
 Tres de tus quince alertas son felicitaciones: fibra suficiente, buen omega-3, hidratación adecuada.
 Aparecen en la misma lista y con el mismo peso visual que un TCA activo.
@@ -180,7 +171,9 @@ vimos: son los del bloque de tratamiento, uno por cada rol.
 La separación de la cadena calórica en tus dos bloques, la unificación del menú, la reemisión obligatoria
 cuando el paciente cambia de banda y los dos resúmenes. Ninguna depende de estas respuestas.
 
-**Lo único que sí depende de ti son las diez alertas** (preguntas 1 y 2) y **el ICEC** (pregunta 3).
+**Lo único que sí depende de ti son las diez alertas de consumo** (pregunta 2: el puente de frecuencia a
+porciones, más el omega-3) y **el ICEC** (pregunta 3). La pregunta 1 ya no bloquea nada: tu corrección
+está aplicada y lo que queda ahí es una declaración.
 
 ---
 
