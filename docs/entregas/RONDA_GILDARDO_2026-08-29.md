@@ -25,9 +25,14 @@ orden de lo que cambia un veredicto:
 **Dos que estaban vivas en pantalla, ya corregidas, y las dos por la misma causa nuestra: teníamos
 candados mirando una entrega tuya anterior, así que pasaban verdes contra un archivo de hace días.**
 
-**`cAF` pintaba de ámbar un ángulo de fase NORMAL.** Tu corrección (la quinta de tus cinco defectos)
-estaba sin portar: la etiqueta decía "Normal" y el color decía alerta, sobre el mismo número. Es el tipo
-de contradicción que hace dudar al profesional de la pantalla entera.
+**`cAF` pintaba de ámbar un ángulo de fase NORMAL.** La etiqueta decía "Normal" y el color decía alerta,
+sobre el mismo número. Es el tipo de contradicción que hace dudar al profesional de la pantalla entera.
+
+**Y al verificarlo salió que llevaba más tiempo del que creíamos:** tu corrección ya estaba en el archivo
+del **28**, no solo en el del 29, y nuestro motor seguía trayendo el ámbar de una entrega del 19 o
+anterior. O sea que no se nos escapó la última entrega: se nos escaparon varias, y ninguno de nuestros
+nueve cotejos podía verlo porque todos miraban archivos viejos. Lo decimos con el dato correcto porque el
+otro nos dejaba mejor parados de lo que estábamos.
 
 **Y la salvaguarda de TCA seguía diciendo lo nuestro.** La habíamos corregido por tu instrucción del 13 de
 agosto, tú la corregiste en tu archivo el 19 con tus palabras, y durante diez días nuestro texto siguió

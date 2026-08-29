@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { HTML_VIGENTE } from "./fixtures/html-vigente";
+import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
 
 // CANDADO DE DERIVA CONTRA LA ENTREGA VIGENTE, y es el que faltaba a los nueve diff que ya existen.
 //
@@ -11,10 +11,17 @@ import { HTML_VIGENTE } from "./fixtures/html-vigente";
 // algo que ya no era cierto.
 //
 // LO ENCONTRO EN LA PRIMERA CORRIDA, y era un defecto vivo en pantalla: `cAF` devolvia "Normal" con el
-// color AMBAR (#f59e0b), asi que un paciente con angulo de fase NORMAL se pintaba con color de alerta.
-// Gildardo lo corrigio (es el quinto de sus cinco defectos, "cAF ya no devuelve Normal con el color de
-// alerta") y nosotros no lo habiamos portado. Ninguno de los nueve diff lo vio, y mi propia verificacion
-// a mano tampoco: grepee que `cAF` EXISTIERA, que no es lo mismo que verificar que sea correcto.
+// color AMBAR (#f59e0b), asi que un paciente con angulo de fase NORMAL se pintaba con color de alerta. La
+// etiqueta decia una cosa y el color la contraria, sobre el mismo numero.
+//
+// Y AL ESCRIBIR EL CONTROL NEGATIVO SALIO QUE LA DERIVA ERA PEOR DE LO QUE YO CONTABA. Dije que el lo
+// habia corregido en su archivo del 29; no: ya estaba corregido en el del 28, y en el del 19 y anteriores
+// seguia en ambar. O sea que nuestro frozen venia de una entrega VARIAS versiones atras, no una. Ninguno
+// de los nueve diff podia verlo, porque todos miraban entregas viejas. Vale la pena dejarlo escrito: el
+// relato "se nos escapo la ultima entrega" era mas benigno que el hecho.
+//
+// Y mi verificacion a mano tampoco lo vio: grepee que `cAF` EXISTIERA, que no es lo mismo que verificar
+// que sea correcto. Es la leccion que ya teniamos escrita, cometida sobre la leccion misma.
 //
 // COMO COMPARA, y por que asi. Linea de codigo a linea de codigo, IGNORANDO TODO EL ESPACIO, porque entre
 // v7 y v8 el reformateo cambio el espaciado sin tocar la ciencia (`0.25*x` paso a `0.25 * x`). Comparar
@@ -229,4 +236,54 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
       ).toEqual([]);
     });
   }
+});
+
+describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone rojo", () => {
+  // CONTROL NEGATIVO, y aquí es imprescindible. Todo lo de arriba son aserciones de la forma "no falta
+  // nada", y esa forma pasa verde tambien cuando no hay NADA que comparar: si el filtro de líneas dejara
+  // la lista vacía, si `vigente` se leyera mal, o si alguien ampliara las tolerancias hasta cubrirlo todo,
+  // el archivo entero seguiría verde diciendo "sin deriva". Un candado que solo sabe decir que sí es un
+  // candado apagado.
+  //
+  // La prueba de que está vivo: corriendo la MISMA comparación contra la entrega ANTERIOR tiene que
+  // encontrar diferencias, porque entre las dos él cambió cosas que ya portamos (el `cAF`, el piso
+  // calórico, los cortes del IRC). Si esto deja de encontrarlas, la maquinaria dejó de mirar.
+
+  it("hay al menos dos entregas, o no hay nada contra qué contrastar", () => {
+    expect(ENTREGAS.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("el frozen SÍ difiere de la entrega anterior: la comparación está viva", () => {
+    const anterior = `docs/entregas/Gildardo responses/${ENTREGAS[ENTREGAS.length - 2]}/ATLAS_v8.html`;
+    const previa = sinEspacio(readFileSync(anterior, "utf8"));
+    const faltan = MODULOS.flatMap((m) =>
+      lineasDeCodigo(m)
+        .filter((l) => !previa.includes(sinEspacio(sinDeclaracion(l))))
+        .filter((l) => !(TOLERADAS[m] ?? []).some((t) => t.patron.test(l))),
+    );
+    expect(
+      faltan.length,
+      `el frozen coincide igual con la entrega anterior (${anterior}) que con la vigente. O él no cambió ` +
+        `nada entre las dos, o esta comparación dejó de mirar lo que dice mirar.`,
+    ).toBeGreaterThan(0);
+  });
+
+  it("y entre lo que difiere está el PISO CALÓRICO, que es un número prescrito", () => {
+    // Ancla CONCRETA, no un conteo: un conteo se satisface con cualquier ruido. El piso pasó de colgar del
+    // déficit a colgar de la rama de la fórmula entre esas dos entregas, y eso cambia las kcal que se le
+    // prescriben a una paciente real. Si esta diferencia deja de verse, la maquinaria dejó de mirar.
+    //
+    // ES EL PISO Y NO EL `cAF`, y la corrección de mi propio relato importa: el `cAF` no cambió entre el 28
+    // y el 29. Él lo había corregido YA en la entrega del 28, y nuestro frozen seguía trayendo el ámbar
+    // porque venía portado de una entrega del 19 o anterior. O sea que la deriva no era de una entrega,
+    // era de varias, y ninguno de los nueve diff podía verla porque todos miraban entregas viejas.
+    const anterior = readFileSync(
+      `docs/entregas/Gildardo responses/${ENTREGAS[ENTREGAS.length - 2]}/ATLAS_v8.html`,
+      "utf8",
+    );
+    const nutri = readFileSync("src/clinical-engine/frozen/atlas-tratamiento-nutri.js", "utf8");
+    expect(sinEspacio(nutri)).toContain(sinEspacio("if(!hasCancer && !desnutricion){ var piso"));
+    expect(sinEspacio(anterior)).toContain(sinEspacio("if(deficit>0){ var piso"));
+    expect(sinEspacio(anterior)).not.toContain(sinEspacio("if(!hasCancer && !desnutricion){ var piso"));
+  });
 });
