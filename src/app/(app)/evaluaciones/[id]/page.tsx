@@ -105,13 +105,14 @@ import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
+import { bloqueCls } from "@/components/shared/bloque";
 import { PatientStateHeader } from "@/modules/treatment/components/patient-state-header";
 import { DespachoSection } from "@/modules/treatment/components/despacho-section";
 import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decision-section";
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
-import { getDietaResumenForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
+import { getResumenProfesionForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
 import {
   ProfessionTreatmentSection,
   type TreatmentNarrative,
@@ -422,12 +423,17 @@ export default async function ResultadosEvaluacionPage({
     };
   } else {
     const n = dfiNarrativeFromOutput(results.snapshot);
-    // Parrafo de dieta (1b): de la encuesta, no del snapshot. Va PRIMERO en el Resumen Clinico; null si la
-    // encuesta no tiene datos legibles (se omite ese parrafo y queda solo el funcional).
-    const parrafoDieta = await getDietaResumenForEvaluation(id, results.snapshot.sexo);
+    // Parrafo del PROFESIONAL que mira: de la encuesta y la composicion, no del snapshot del DFI. Es el
+    // segundo de los dos resumenes de su §11c; el primero (el del DFI) va en Rutas de atencion.
+    const parrafoProfesion = await getResumenProfesionForEvaluation(
+      id,
+      results.snapshot.sexo,
+      actorProfession.profession,
+      results.snapshot.indicators as unknown as Record<string, unknown>,
+    );
     treatmentNarrative = {
       kind: "text",
-      parrafoDieta,
+      parrafoProfesion,
       parrafo: n.parrafo,
       metaNutricion: n.metas.nutricion,
     };
@@ -510,7 +516,7 @@ export default async function ResultadosEvaluacionPage({
   const hcNarrativa =
     treatmentNarrative.kind === "text"
       ? {
-          parrafoDieta: treatmentNarrative.parrafoDieta,
+          parrafoDieta: treatmentNarrative.parrafoProfesion,
           parrafo: treatmentNarrative.parrafo,
           meta: treatmentNarrative.metaNutricion,
           motivo: null as string | null,
@@ -604,6 +610,26 @@ export default async function ResultadosEvaluacionPage({
                 {/* TITULOS DE SECCION NUMERADOS (cotejo 2026-08-24, punto A.1): su HTML numera y separa
                     los tres bloques de esta subpestaña, y se lee mejor que una pila sin rotulos. Se porta
                     la numeracion y el separador; sin guion largo (regla de estilo del proyecto). */}
+                {/* EL PRIMERO DE LOS DOS RESUMENES (su §11c): "En mod ruta de atencion, el resumen del
+                    diagnostico, LAS CONDICIONES ALTERADAS DEL DFI. Nada mas". Es el parrafo del DFI, que es
+                    como el lo define en su archivo: "Resumen del diagnostico = DFI redactado como parrafo
+                    (transcripcion de los 5 dominios; NO redaccion libre de IA)".
+                    Estaba en la subpestana del profesional, junto al otro. Aqui es donde va, y su razon es
+                    de uso: el que abre Rutas quiere saber que esta alterado antes de mirar que ruta se
+                    activo. */}
+                {treatmentNarrative.kind === "text" ? (
+                  <section className={bloqueCls("derivado")}>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Resumen del diagnóstico
+                    </h3>
+                    <p className="max-w-prose text-sm leading-relaxed text-foreground">
+                      {treatmentNarrative.parrafo}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Generado del diagnóstico. No editable.
+                    </p>
+                  </section>
+                ) : null}
                 <SeccionRuta n={1} titulo="Rutas de atención activadas" />
                 <RutasSection rutas={rutas} />
                 {/* Nutraceuticos (checkpoint 2.3): la prescripcion PRIMERO, el despacho DESPUES, para que se

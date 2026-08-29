@@ -29,18 +29,35 @@ import { TreatmentPanel } from "./treatment-panel";
 // `text` cuando el diagnostico esta completo; `unavailable` con el MOTIVO cuando no (snapshot viejo o
 // encuesta incompleta), para que el hueco lo explique en vez de quedar vacio.
 export type TreatmentNarrative =
-  | { kind: "text"; parrafoDieta: string | null; parrafo: string; metaNutricion: string }
+  | {
+      kind: "text";
+      // El del profesional que mira (dieta si es nutricionista). Su §11c: "todas las condiciones
+      // clinicas a las que se tiene acceso con la encuesta y la composicion corporal".
+      parrafoProfesion: string | null;
+      // El del DFI. Vive aqui todavia porque la HC lo consume; en PANTALLA ya no se muestra en esta
+      // subpestana, se movio a Rutas de atencion (su §11c: son dos resumenes, no uno).
+      parrafo: string;
+      metaNutricion: string;
+    }
   | { kind: "unavailable"; reason: string };
 
 // Bloque de LECTURA DEL DIAGNOSTICO (Resumen Clinico + Meta terapeutica). Read-only, generado del snapshot:
 // NO es algo que el profesional escribio. Se distingue de un vistazo del objetivo editable (que es un
 // textarea): fondo tenue, borde de acento a la izquierda, eyebrow, caption "Generado ... no editable".
 //
-// El "Resumen Clinico" (asi lo titula Gildardo) une DOS parrafos apilados, sin subrotulos (Gildardo los
-// escribe como una lectura continua): primero el de DIETA (patron alimentario, de la encuesta; 1b), y despues
-// el FUNCIONAL (del DFI; 1a.1). El de dieta puede faltar (encuesta sin datos legibles): entonces se omite y
-// queda solo el funcional. La Meta va aparte a proposito: el resumen dice DONDE esta el paciente, la meta
-// HACIA DONDE va.
+// SON DOS RESUMENES, NO UNO, y aqui va SOLO EL DEL PROFESIONAL (su §11c, 2026-08-28):
+//
+//   "Estaban fundiendo en un solo bloque dos resumenes que van en sitios distintos y responden preguntas
+//    distintas. En mod ruta de atencion: el resumen del diagnostico, LAS CONDICIONES ALTERADAS DEL DFI,
+//    nada mas. En profesional: el resumen de TODAS LAS CONDICIONES CLINICAS a las que se tiene acceso con
+//    la encuesta y la composicion corporal."
+//
+// Asi que el parrafo del DFI se movio a la subpestana de Rutas de atencion, y aqui queda el de la profesion
+// de quien mira: dieta para el nutricionista, y los de medico/entrenador/psicologo, portados el 29-ago (su
+// archivo los traia desde hace meses; Atlas mostraba "su resumen todavia no se ha portado", que hacia
+// parecer trabajo suyo lo que era nuestro).
+//
+// La Meta va aparte a proposito: el resumen dice DONDE esta el paciente, la meta HACIA DONDE va.
 function DiagnosisReadingBlock({
   narrative,
   alertaRealimentacion,
@@ -72,10 +89,15 @@ function DiagnosisReadingBlock({
             calórica.
           </RealimentacionAlert>
         ) : null}
-        {narrative.parrafoDieta ? (
-          <p className="max-w-prose text-sm leading-relaxed text-foreground">{narrative.parrafoDieta}</p>
-        ) : null}
-        <p className="max-w-prose text-sm leading-relaxed text-foreground">{narrative.parrafo}</p>
+        {narrative.parrafoProfesion ? (
+          <p className="max-w-prose text-sm leading-relaxed text-foreground">
+            {narrative.parrafoProfesion}
+          </p>
+        ) : (
+          <p className="max-w-prose text-sm text-muted-foreground">
+            La encuesta no tiene datos legibles para redactar este resumen.
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">Generado del diagnóstico. No editable.</p>
       </section>
       <ReadingCard eyebrow="Meta terapéutica" caption="Generada de las rutas activas. No editable.">

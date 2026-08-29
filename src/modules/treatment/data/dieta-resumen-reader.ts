@@ -2,6 +2,11 @@ import "server-only";
 
 import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
 import { resumenDietaParrafo } from "@/clinical-engine/resumen-dieta";
+import {
+  resumenEjercicioParrafo,
+  resumenMedicoParrafo,
+  resumenPsicoParrafo,
+} from "@/clinical-engine/resumen-profesion";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Parrafo de dieta del Resumen Clinico (pieza 1b). Reconstruye la encuesta (enc) de la evaluacion y corre
@@ -18,10 +23,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const FREQ_CANON: Record<string, string[]> = { ...Object.fromEntries(FREQ_SUP.map((s) => [s.key, s.opts])) };
 for (let i = 1; i <= 15; i++) FREQ_CANON[`d1_${i}_i`] = FREQ_OPC;
 
-export async function getDietaResumenForEvaluation(
+// CONSTRUCTOR UNICO DEL `enc`, compartido por el parrafo de dieta y los tres por profesion. Dos
+// constructores serian dos fuentes del mismo dato sin nada que las compare, que es como se cuelan las
+// divergencias silenciosas. Devuelve null si la evaluacion no tiene respuestas.
+async function buildEnc(
   evaluationId: string,
   sexo: string,
-): Promise<string | null> {
+): Promise<Record<string, unknown> | null> {
   const supabase = await createSupabaseServerClient();
 
   const { data: response, error: rErr } = await supabase
@@ -57,6 +65,48 @@ export async function getDietaResumenForEvaluation(
     }
   }
 
+  return enc;
+}
+
+export async function getDietaResumenForEvaluation(
+  evaluationId: string,
+  sexo: string,
+): Promise<string | null> {
+  const enc = await buildEnc(evaluationId, sexo);
+  if (!enc) return null;
   const parrafo = resumenDietaParrafo(enc);
   return parrafo === "" ? null : parrafo; // "" = nada legible: se omite (no se muestra un parrafo vacio)
+}
+
+// PARRAFO DEL RESUMEN CLINICO SEGUN LA PROFESION DE QUIEN MIRA (su §11c: el resumen del profesional es "el
+// de todas las condiciones clinicas a las que se tiene acceso con la encuesta y la composicion corporal").
+//
+// Reusa el MISMO enc que el parrafo de dieta, con su misma conversion texto->ordinal, y por eso vive aqui y
+// no en un reader nuevo: dos constructores del enc serian dos fuentes del mismo dato, y ya sabemos como
+// termina eso. Se paga una consulta, no dos.
+//
+// El del NUTRICIONISTA es el de dieta y ya estaba portado; los otros tres se portaron el 2026-08-29.
+export async function getResumenProfesionForEvaluation(
+  evaluationId: string,
+  sexo: string,
+  profession: string | null,
+  bis: Record<string, unknown>,
+): Promise<string | null> {
+  if (!profession) return null;
+  if (profession === "nutricionista") return getDietaResumenForEvaluation(evaluationId, sexo);
+
+  const fn =
+    profession === "medico"
+      ? resumenMedicoParrafo
+      : profession === "entrenador"
+        ? resumenEjercicioParrafo
+        : profession === "psicologo"
+          ? resumenPsicoParrafo
+          : null;
+  if (!fn) return null;
+
+  const enc = await buildEnc(evaluationId, sexo);
+  if (!enc) return null;
+  const parrafo = fn(enc, bis);
+  return parrafo === "" ? null : parrafo;
 }
