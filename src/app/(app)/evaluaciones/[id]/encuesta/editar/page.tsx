@@ -1,3 +1,4 @@
+import { Panel } from "@/components/shared/panel";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
@@ -39,7 +40,10 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />
 
-      <SurveyEditForm evaluationId={id} domains={domains ?? []} backHref={backHref} />
+      {/* En superficie, igual que la vista de lectura: el formulario estaba suelto sobre el gris. */}
+      <Panel>
+        <SurveyEditForm evaluationId={id} domains={domains ?? []} backHref={backHref} />
+      </Panel>
     </div>
   );
 }

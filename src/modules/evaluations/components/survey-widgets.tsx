@@ -27,34 +27,22 @@ export function pillClass(active: boolean): string {
   }`;
 }
 
-// EN LECTURA NO SE MUESTRA UN CONTROL, SE MUESTRA UN VALOR. Hallazgo de Santiago (2026-08-29): la vista de
-// solo lectura de la encuesta reusaba `pillClass`, asi que cada pregunta salia como cinco botones con uno
-// azul. Tres cosas mal a la vez:
-//   - Las no elegidas conservaban BORDE y `hover:bg-muted`, o sea que prometian ser clicables sin serlo.
-//   - La elegida iba en el AZUL DE ACCION, que en esta aplicacion significa "haz clic" y en la barra
-//     lateral "estas aqui". Aqui significa "este es el valor": tres significados para un color.
-//   - Y el conjunto se leia como un formulario a medio rellenar, no como una respuesta.
+// LECTURA: la elegida con relleno, las demas sin caja.
 //
-// LA ESCALA SE CONSERVA, y es deliberado: saber que el paciente eligio "1-2 dias" de cinco niveles ubica la
-// respuesta, y mostrar solo el valor elegido perderia esa referencia. Lo que cambia es QUIEN tiene
-// superficie: la elegida es la unica con relleno y borde; las demas se quedan sin caja y pasan a leerse
-// como los rotulos de la escala que son.
-// EL RELLENO FUERTE VUELVE, PERO EN INK Y NO EN EL AZUL DE ACCION (2026-08-29). Santiago pidio el relleno
-// con texto blanco de la version anterior, y tiene razon en lo de fondo: el contraste de la respuesta
-// elegida es INFORMACION, no decoracion, y apagarla la escondia. Pero el azul de accion sumaba un tercer
-// significado a un color que ya dice "haz clic" y "estas aqui".
+// EL DEFECTO QUE SE ARREGLO (Santiago, 2026-08-29) no era el color: era que las NO elegidas conservaban
+// BORDE y `hover:bg-muted`, o sea que prometian ser clicables en una pantalla que es de lectura. Ahora se
+// quedan sin caja y se leen como los rotulos de escala que son. LA ESCALA SE CONSERVA a proposito: saber
+// que eligio "1-2 dias" de cinco niveles ubica la respuesta, y mostrar solo el valor elegido la perderia.
 //
-// El ink del bloque de titulo (#1c2333) da las dos cosas: relleno fuerte con blanco encima a 15,70:1, que
-// es TRES VECES el contraste del azul (5,19:1), y sin gastar el color de la accion. Ademas ya esta en el
-// vocabulario de la aplicacion, asi que no se lee como un color nuevo.
-//
-// Y LA DIFERENCIA CON EL FORMULARIO PASA A DECIR ALGO: en `corregir` las pastillas siguen azules porque
-// ahi se TOCAN; aqui son ink porque solo se leen. El color distingue lo que puedes cambiar de lo que solo
-// estas mirando.
+// Y LA ELEGIDA VA EN EL AZUL DE ACCION, igual que en el formulario. Propuse el ink por el contraste
+// (15,70:1 frente a 5,19:1) y para no sumar un tercer significado al azul; Santiago las comparo lado a
+// lado con la pantalla de editar y decidio el azul, con un argumento mejor que el mio: si el profesional
+// LEE la encuesta y despues la CORRIGE, que el valor elegido cambie de color entre una pantalla y otra es
+// una diferencia sin significado, y le hace buscar uno.
 export function pillReadonlyClass(active: boolean): string {
   return `rounded-full px-3 py-1.5 text-sm ${
     active
-      ? "bg-[#1c2333] font-semibold text-white"
+      ? "bg-primary font-semibold text-primary-foreground"
       : "border border-transparent text-muted-foreground"
   }`;
 }
