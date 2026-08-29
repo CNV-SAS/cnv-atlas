@@ -636,8 +636,32 @@ leve" sobre un dominio que no se midio, que es la misma lectura favorable que el
 
 **P-73 · Las tres reglas "positivo" en la misma lista que las criticas.** Forma, no ciencia.
 
-**P-74 · Su punto 3, sin dimensionar.** Enunciado sin alcance.
+**P-74 · CERRADA COMO PREGUNTA: su punto 3 SI estaba dimensionado, y es TRABAJO NUESTRO.** Lo habia
+escrito como "quedo enunciado pero sin alcance" y le iba a preguntar que esperaba que construyeramos. Lo
+vio Santiago: es concreto. Mismo error que con la cadena calorica y las carnes rojas, tercera vez.
 
+Son TRES piezas y solo la tercera tiene pregunta:
+
+**a) La fuerza prensil vuelve a mod antropometria.** Textual: "Nunca la puse en las condiciones del BIS...
+Devuelvanla a mod antropometria". Verificado: hoy vive exactamente donde el dice que no va
+(`bis-conditions-capture`, campo `gripStrengthKg`). Mover el campo. CHICO.
+
+**b) Y lo que el no señalo porque desde fuera no se ve: LA PRENSIL NO LLEGA AL MOTOR.** `dxSarcopenia`
+esta portado entero con sus cortes (H <27 / M <16 Kgf, ASMI, AF), pero el motor recibe SIEMPRE fuerza = 0
+(brecha declarada en `protocolo-fenotipo.ts`), asi que corta en su primer guard y devuelve "ingrese la
+fuerza prensil" AUNQUE el profesional la haya registrado. La rama que emite probable/confirmada/severa
+NUNCA se ejecuta en produccion. O sea: pasaba lo que el describe para el dato ausente, pero pasaba
+siempre. MEDIO: meterla al input del motor y verificar la constelacion de versiones (regla 7).
+
+**c) "Se cae el sellado": LA MITAD YA ESTA.** El flujo de correccion versionada ya hace literalmente lo
+que el pide ("si eso obliga a versionar el documento, se versiona"): no edita nada, crea una version
+nueva con el insumo corregido, recalcula y encadena la anterior. Lo unico que sigue sellado es la
+PRESCRIPCION APROBADA, por trigger de BD.
+
+**Y ahi si hay pregunta, formulada sobre la CONSECUENCIA y no sobre el alcance:** si una prescripcion
+aprobada se puede reabrir, el reporte que el paciente YA TIENE deja de coincidir con el del sistema.
+Nuestra lectura, que va declarada: se reabre, y eso dispara la regla de reemision de su 12b. Asi el
+sellado deja de ser un candado y pasa a ser una consecuencia registrada.
 **P-75 · Declaracion (no pregunta): el orden de la matriz era NUESTRO error y esta corregido.** Su
 `FREQ_GROUPS` va por categoria y las carnes rojas ocupan la 11 (neutro); nuestra encuesta ordenaba por el
 NUMERO DEL CAMPO y las sacaba las ultimas, entre las de riesgo. Con su regla *"el orden es el mensaje"*,

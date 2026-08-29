@@ -47,6 +47,26 @@ portado a medias.
 
 ---
 
+## Los ocho de un vistazo
+
+**Solo dos bloquean construcción.** Los demás se pueden responder cuando puedas, y cuatro de ellos ni
+siquiera son preguntas: son cosas que ya hicimos y te declaramos por si las ves distinto.
+
+| # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
+| --- | --- | --- | --- |
+| **1** | Tus alertas: aplicamos tu corrección de campos (`d1_13`, `d7_agua`) | Solo confirmar una conducta: sin el dato del agua, la regla no se evalúa | No |
+| **2** | El puente de frecuencia a porciones, y el omega-3 | **La equivalencia**: cada frecuencia, cuántas porciones al día. Y si el omega-3 entra a la tabla o su regla se retira | **SÍ · diez alertas** |
+| **3** | El ICEC: mapeo y recalibración van en el mismo acto | **De dónde salen μ = 58,578 y σ = 13,332**, o si el interruptor se puede partir en dos | **SÍ · la EB-BIS** |
+| **4** | Un dominio sin dato sigue puntuando severidad 1 (tu `?? 1`) | ¿Debe puntuar 1, o no debe puntuar? | No |
+| **5** | Las tres reglas "positivo", junto a las críticas | Forma: ¿juntas o en bloque aparte? | No |
+| **6** | Tu punto 3, dimensionado por nosotros | Solo el 6c: si reabrir una prescripción aprobada dispara la reemisión | No |
+| **7** | El orden de la matriz: era nuestro error, corregido | Nada. Es aviso | No |
+| **8** | Las tres notas por profesión del panel | ¿Una por profesión, o una sola compartida? | No |
+
+**Si solo puedes responder dos, que sean el 2 y el 3.**
+
+---
+
 # 1 · Tus alertas: aplicada tu corrección, y una sola pregunta encima
 
 **Esta sección cambió después de escribirla, y el cambio es nuestro error.** La habíamos redactado
@@ -91,7 +111,7 @@ está.
 - **Lo único que falta es la conversión:** el paciente responde *"3–4 días por semana"* y el cálculo
   necesita *"tantas porciones al día"*.
 
-**La pregunta es sola una:** ¿cuál es la equivalencia entre cada una de las cinco frecuencias y una
+**La pregunta es solo una:** ¿cuál es la equivalencia entre cada una de las cinco frecuencias y una
 cantidad diaria de porciones? Con esa tabla, las diez reglas se encienden.
 
 **El séptimo nutriente, el omega-3, no está en `INTER_TABLA_A`.** Tu regla "Buena ingesta de Omega-3"
@@ -154,10 +174,52 @@ ciencia: si la respuesta es "van juntas", las dejamos juntas.
 
 ---
 
-# 6 · Tu punto 3, sin dimensionar
+# 6 · Tu punto 3: dimensionado, y es trabajo nuestro
 
-Tu punto 3 quedó enunciado pero sin alcance, y no sabemos si es un ajuste o un bloque. **¿Qué esperas que
-construyamos y sobre qué pantallas?**
+**Habíamos escrito aquí que tu punto 3 "quedó sin alcance" y que te preguntáramos qué esperabas que
+construyéramos. Lo retiramos: estaba concreto, y preguntarlo habría sido pedirte que decidieras dos veces.**
+Nos ha pasado ya con la cadena calórica y con las carnes rojas, así que lo dimensionamos nosotros y te
+decimos qué vamos a hacer.
+
+Tu punto 3 son **tres cosas distintas**, y solo la tercera tiene una pregunta de verdad.
+
+## 6a · La fuerza prensil vuelve a antropometría · tienes razón y era literal
+
+**"Nunca la puse en las condiciones del BIS. Devuélvanla a mod antropometría."** Fuimos a mirar: está
+exactamente donde dices que no va, en las condiciones de la toma BIS. Se mueve.
+
+## 6b · Y lo importante no era dónde estaba, sino que no llegaba al motor
+
+**Esto no lo señalaste porque desde fuera no se ve, y es lo que de verdad rompe tu diagnóstico.**
+
+Tu `dxSarcopenia` está portado entero y con sus cortes correctos (fuerza H <27 · M <16 Kgf, ASMI, ángulo).
+Pero en Atlas la dinamometría **se captura y no entra al cálculo**: el motor recibe siempre fuerza = 0, así
+que la función corta en su primer guard y devuelve *"ingrese la fuerza prensil"* **incluso cuando el
+profesional la registró**. La rama que emite "sarcopenia probable", "confirmada" o "severa" nunca se
+ejecuta.
+
+**O sea: pasaba lo que tú describes que debe pasar cuando falta el dato, pero pasaba siempre.** Se conecta.
+
+## 6c · "Se cae el sellado" · la mitad ya está, y la otra mitad tiene una consecuencia que sí te preguntamos
+
+**Lo que ya está:** el profesional corrige antes y después del diagnóstico, y el sistema versiona solo. Una
+corrección no edita nada: crea una versión nueva de la evaluación con el insumo corregido, recalcula
+diagnóstico, tratamiento y reporte, y encadena la anterior como reemplazada. Es literalmente tu frase, *"si
+eso obliga a versionar el documento, se versiona: el registro es problema del sistema, no del profesional"*.
+
+**Lo que queda sellado es una sola cosa: la prescripción YA APROBADA.** Ahí sí hay un candado, y es de base
+de datos.
+
+**Y la pregunta no es si se quita, es qué pasa con lo que ya salió.** Si una prescripción aprobada se puede
+volver a abrir, hay que decidir qué ocurre con el reporte que el paciente **ya recibió**: el documento que
+tiene en la mano deja de coincidir con el que está en el sistema.
+
+Nuestra lectura, para que la confirmes o la corrijas: **se puede reabrir, y eso dispara la misma regla de
+reemisión que nos diste en el 12b** (obligatoria si cambia de banda, y al paciente se le avisa siempre que
+cambie su tratamiento, "porque cambia lo que la persona come"). Así el sellado deja de ser un candado y
+pasa a ser una consecuencia registrada, que es lo que pides.
+
+**Si lo ves distinto, dilo aquí:** es el único punto de tu 3 donde no nos alcanza tu instrucción.
 
 ---
 
@@ -197,14 +259,17 @@ vimos: son los del bloque de tratamiento, uno por cada rol.
 
 ---
 
-## Lo que sigue de nuestro lado, sin esperarte
+## Lo que ya no está esperándote
 
-La separación de la cadena calórica en tus dos bloques, la unificación del menú, la reemisión obligatoria
-cuando el paciente cambia de banda y los dos resúmenes. Ninguna depende de estas respuestas.
+**Todo lo que dependía de nosotros está cerrado.** La separación de la cadena calórica en tus dos bloques,
+los dos resúmenes (con los tres párrafos por profesión que llevaban meses en tu archivo sin portar), las
+observaciones del profesional en la historia clínica, la reemisión obligatoria por cambio de banda, y la
+unificación del menú: el ciclo es la base y la IA solo adapta cuando hay restricciones.
 
-**Lo único que sí depende de ti son las diez alertas de consumo** (pregunta 2: el puente de frecuencia a
-porciones, más el omega-3) y **el ICEC** (pregunta 3). La pregunta 1 ya no bloquea nada: tu corrección
-está aplicada y lo que queda ahí es una declaración.
+**Y lo tuyo aplicado también**, salvo lo que aquí se pregunta.
+
+**Solo dos cosas siguen detenidas y las dos son de la tabla de arriba:** las diez alertas de consumo
+esperan el puente de frecuencia a porciones (2), y la EB-BIS espera la recalibración del ICEC (3).
 
 ---
 
