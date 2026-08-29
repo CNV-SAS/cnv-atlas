@@ -1,5 +1,6 @@
 "use client";
 
+import { Panel } from "@/components/shared/panel";
 import { Fragment } from "react";
 import { Zap } from "lucide-react";
 
@@ -270,7 +271,10 @@ export function CompositionSection({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
+      {/* PANEL, no `bloque`. Este componente nunca uso el sistema de niveles clinicos (siempre fue un
+         `<section>` pelado), asi que la correccion de `bloque` del 2026-08-29 no lo alcanzo: seguia sin
+         superficie sobre el gris. Lo que le faltaba no era semantica clinica, era superficie. */}
+      <Panel>
         {showTitle ? (
           <h3 className="text-base font-semibold text-foreground">
             Composición corporal - Niveles de Wang
@@ -279,7 +283,7 @@ export function CompositionSection({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[38rem] text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 <th className="py-2 pr-4 font-medium">Variable</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
@@ -349,7 +353,7 @@ export function CompositionSection({
             referencia médica estándar (OMS), no un resultado del motor ANI-BIS-E.
           </p>
         ) : null}
-      </section>
+      </Panel>
     </div>
   );
 }

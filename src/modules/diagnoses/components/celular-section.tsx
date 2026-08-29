@@ -1,3 +1,4 @@
+import { Panel } from "@/components/shared/panel";
 import type { CelularBadges } from "../data/celular-badges";
 
 // Nivel III · Salud celular. VIVE EN DIAGNOSTICO desde 2026-08-23, por decision de Gildardo: hidratacion
@@ -25,7 +26,7 @@ const CEL_TONE_CLS: Record<CelularBadges["badges"][number]["tone"], string> = {
 export function CelularSection({ celular }: { celular?: CelularBadges | null }) {
   if (!celular) return null; // sin medicion BIS: no hay seccion (tampoco habria protocolo).
   return (
-    <section className="flex flex-col gap-2">
+    <Panel>
       <h3 className="text-sm font-semibold text-foreground">Nivel III · Salud celular</h3>
       {!celular.dataAvailable ? (
         <p className="text-sm text-muted-foreground">
@@ -63,6 +64,6 @@ export function CelularSection({ celular }: { celular?: CelularBadges | null }) 
           ) : null}
         </>
       )}
-    </section>
+    </Panel>
   );
 }
