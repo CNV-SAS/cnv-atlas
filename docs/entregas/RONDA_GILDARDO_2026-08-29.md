@@ -19,8 +19,21 @@ orden de lo que cambia un veredicto:
 | **El punto 4**, que el ISCM no se emita sin MCA | Aplicado |
 | **La dirección de la capacitancia** (acercarse a la mediana) | Ya estaba portada |
 | **El motivo de consulta** con separador | Ya estaba, como divergencia declarada |
+| **`cAF`**, que devolvía "Normal" con el color de alerta | Portado. **Estaba vivo en pantalla** |
+| **La salvaguarda de TCA**, tu texto del 19 de agosto | Portado. Retiramos nuestra versión |
 
-**Y una cosa que encontramos al portar, ya corregida, porque estaba viva en pantalla.** Al cambiar los
+**Dos que estaban vivas en pantalla, ya corregidas, y las dos por la misma causa nuestra: teníamos
+candados mirando una entrega tuya anterior, así que pasaban verdes contra un archivo de hace días.**
+
+**`cAF` pintaba de ámbar un ángulo de fase NORMAL.** Tu corrección (la quinta de tus cinco defectos)
+estaba sin portar: la etiqueta decía "Normal" y el color decía alerta, sobre el mismo número. Es el tipo
+de contradicción que hace dudar al profesional de la pantalla entera.
+
+**Y la salvaguarda de TCA seguía diciendo lo nuestro.** La habíamos corregido por tu instrucción del 13 de
+agosto, tú la corregiste en tu archivo el 19 con tus palabras, y durante diez días nuestro texto siguió
+sobrescribiendo el tuyo. Decían lo mismo, pero sobre lo clínico manda tu archivo: retirada la nuestra.
+
+**Y la tercera, del mismo origen.** Al cambiar los
 cortes del IRC cambiamos `cIRC`, que es quien **clasifica**, pero el DFI imprime aparte una cadena con
 los cortes escritos a mano, y esa se quedó en los viejos. La pantalla decía *"IRC 1,9 (Normal, corte H:
 <1,68 bajo · 1,68–2,11 normal)"* cuando el corte real ya era 1,7–2,1. El número y su explicación se
@@ -82,22 +95,35 @@ esa regla se retira?
 
 ---
 
-# 3 · El ICEC: si cambia de mecanismo, cambia un diagnóstico
+# 3 · El ICEC: no encendimos el mapeo, y la razón es tuya
 
-Tu nota en el archivo dice que encender `LE8_MAPEO_CORREGIDO` **baja la EB-BIS de todos los pacientes
-entre 1 y 8 años**, y que antes hay que establecer de dónde salieron la media 58,578 y la desviación
-13,332 del ICEC en la EB-BIS v5.
+**Nos diste dos instrucciones que comparten un mismo interruptor, y una de las dos todavía no se puede
+cumplir.**
 
-Tu respuesta del 27 dice *"enciendan el mapeo"*, y lo entendemos referido al DFI clavado en 30 y 20.
-**No lo hemos encendido**, porque las dos cosas comparten el mismo interruptor y una de ellas mueve una
-edad biológica en toda la base.
+**La primera:** *"Enciendan `LE8_MAPEO_CORREGIDO`. El defecto es real, está documentado en mi propio
+archivo desde el 28 de julio, y el campo correcto es `d1_9_i`, no `d1_9`."* Clara, y la aplicaríamos hoy.
 
-**Lo que preguntamos:**
+**La segunda está escrita en tu propio archivo, al lado del interruptor**, y es la que nos frena:
 
-1. ¿La media y la desviación del ICEC se conservan al corregir el mapeo, o hay que recalcularlas?
-2. ¿Encendemos el interruptor completo, o hay que separarlo en dos?
-3. Ya dijiste que lo evaluado **se recalcula y queda anotado en la historia que el DFI cambió de
-   versión**. ¿Esa misma conducta aplica a la EB-BIS, que es la que se mueve entre 1 y 8 años?
+> *"DESACTIVADO A PROPÓSITO. NO PONER EN true SIN RESOLVER LO SIGUIENTE. Activarlo baja la EB-BIS de TODOS
+> los pacientes entre 1 y 8 años (más cuanto más sano está el paciente), porque el ICEC deja de estar
+> artificialmente deprimido. Antes hay que establecer de dónde salieron la media 58,578 y la desviación
+> 13,332 del ICEC en la ecuación EB-BIS v5."*
+
+**El mapeo y la recalibración van en el mismo acto, y la recalibración no ha llegado.** Encender solo la
+mitad que tenemos dejaría a todos los pacientes con una edad biológica movida entre uno y ocho años,
+calculada con una media y una desviación que tú mismo marcaste como sin establecer.
+
+**Así que está sin encender, y esperando una de estas dos:**
+
+1. **La recalibración:** de dónde salen μ = 58,578 y σ = 13,332, y si se conservan o se recalculan al
+   corregir el mapeo.
+2. **O partir el interruptor en dos**, si el DFI clavado en 30 y 20 se puede corregir sin tocar la EB-BIS.
+   Hoy es uno solo y mueve las dos cosas.
+
+**Y una tercera, que se deriva de tu propia respuesta.** Dijiste que lo ya evaluado *"se recalcula, y que
+quede anotado en la historia que el DFI cambió de versión"*. ¿Esa misma conducta aplica a la EB-BIS, que
+es la que se mueve entre uno y ocho años?
 
 ---
 

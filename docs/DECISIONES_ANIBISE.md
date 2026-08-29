@@ -652,3 +652,21 @@ que va en cada una ni si son tres campos o uno compartido. Citadas donde las vim
 **Y una que NO va a la ronda porque es nuestra:** `SECONDARY_REQUIRED` en `biody-columns.ts` esta
 declarada y no la consume nadie. No es defecto vivo (el ISCM ya sale null por `SECONDARY_FIELDS` en
 `analysis.ts`, que si se usa), pero es una constante que aparenta gobernar algo y no gobierna nada.
+
+**P-77 · Reporte (no pregunta): DOS defectos suyos vivos en pantalla, por candados anclados a una entrega
+vieja.** `cAF` devolvia "Normal" con el color AMBAR, asi que un angulo de fase NORMAL se pintaba con
+color de alerta: la etiqueta decia una cosa y el color la contraria sobre el mismo numero. Y la
+salvaguarda de TCA seguia mostrando NUESTRA parafrasis diez dias despues de que el la corrigiera en su
+archivo (19-ago) con sus palabras: decian lo mismo, pero sobre lo clinico manda su archivo.
+
+**La causa de los dos es la misma y es nuestra:** los candados de paridad comparaban contra la entrega
+desde la que se porto cada trozo, y esa entrega se quedo atras. Un candado anclado a una entrega superada
+no compara mal, compara BIEN contra el archivo de hace dias. Cerrado con
+`frozen-deriva-vigente.test.ts`, que compara todo el frozen y las siete copias de fixtures contra la
+entrega de HOY. Los dos van a la ronda como reporte.
+
+**P-78 · CA-2 RETIRADA: el absorbio la correccion.** El manifiesto exige revisar VIGENCIA al portar un
+motor nuevo ("sigue haciendo falta" o "Gildardo ya la absorbio, se retira"). Absorbida el 19-ago y no lo
+vimos hasta el 29. El original se re-porto con su texto y el `.authorized.js` se elimino: sin
+modificaciones que aplicar no hay nada que generar, y dejarlo habria mantenido un archivo stale que dos
+readers importaban.
