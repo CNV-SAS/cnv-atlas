@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ import {
   getEfrStatesForModel,
 } from "@/modules/diagnoses/data/efr-states-reader";
 import {
+  type EvaluationHeader,
   getEvaluationHeaderForSession,
   getEvaluationResults,
 } from "@/modules/diagnoses/data/results-reader";
@@ -120,6 +122,33 @@ export const metadata = { title: "Resultados - Atlas" };
 
 // Placeholder de una etapa aun sin construir (Evaluacion / Tratamiento / Seguimiento se reubican
 // en A2/A3; su pulido es de bloques futuros). Mover no es rediseñar.
+// CABECERA DE PAGINA de la evaluacion (2026-08-29). Antes esta pantalla NO tenia ninguna: se llegaba
+// desde el roster y, salvo que abrieras la etapa de Diagnostico, no decia de QUIEN era la evaluacion que
+// estabas mirando.
+//
+// QUE LLEVA Y POR QUE ESO: el nombre del paciente como titulo (es el registro; la seccion la dice la barra
+// superior) y, en la descripcion, el TIPO, el documento y la fecha. El tipo ubica sin abrir nada
+// (una inicial y un seguimiento se trabajan distinto) y sale de la MISMA consulta, una columna mas.
+//
+// Y LA FECHA ES `created_at`, no la de medicion. Se conserva tal cual estaba antes en la etapa de
+// Diagnostico para no cambiar en silencio la cronologia; queda anotado que la ficha del paciente usa la
+// fecha de MEDICION para lo mismo, asi que las dos pantallas pueden mostrar dias distintos de la misma
+// evaluacion. Es una discrepancia real y se reporta, no se resuelve aqui.
+const TIPO_EVALUACION: Record<string, string> = { inicial: "Inicial", seguimiento: "Seguimiento" };
+
+function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
+  const tipo = TIPO_EVALUACION[header.evaluationType] ?? header.evaluationType;
+  return (
+    <TituloPantalla
+      volver={
+        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
+      }
+      titulo={header.patientName}
+      descripcion={`${tipo} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+    />
+  );
+}
+
 function StagePlaceholder({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border p-10 text-center">
@@ -197,8 +226,8 @@ export default async function ResultadosEvaluacionPage({
       <IdentityConfirmation evaluation={pendingIdentity} duplicateCandidates={identityDups} />
     );
     return (
-      <div className="flex flex-col gap-4">
-        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
+      <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-4">
+        <CabeceraEvaluacion header={header} />
         {supersession.superseded ? (
           <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
         ) : null}
@@ -227,18 +256,9 @@ export default async function ResultadosEvaluacionPage({
         }
         diagnostico={
           <div className="flex flex-col gap-6">
-            <header className="flex flex-col gap-2">
-              {/* NO LLEVA BLOQUE OSCURO: este encabezado vive DENTRO de una etapa del conmutador, no es el
-                  titulo de la pagina. Un bloque de titulo dentro de una pestaña diria que la pestaña es la
-                  pantalla. Solo se ajusta a la escala nueva. */}
-              <h2 className="text-seccion font-semibold tracking-tight text-foreground">
-                Resultados de la evaluación
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {header.patientName} · {header.documentLabel} ·{" "}
-                {formatDate(header.evaluationDate)}
-              </p>
-            </header>
+            {/* SIN REPETIR AL PACIENTE: el nombre, el documento y la fecha viven ahora en la cabecera
+                de la PAGINA, visible desde las cinco etapas. Aqui solo queda el nombre de la etapa. */}
+            <TituloSeccion>Resultados de la evaluación</TituloSeccion>
             <GenerateDiagnosisPanel
               evaluationId={id}
               identityConfirmed={!pendingIdentity}
@@ -517,13 +537,11 @@ export default async function ResultadosEvaluacionPage({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* SALIDA de la pantalla. Va al NIVEL DE PAGINA y no dentro de una pestaña, porque la evaluacion
-          se abre desde la ficha del paciente y hay que poder volver desde cualquiera de las cinco
-          etapas, no solo desde la que la tenia. Es un enlace a un sitio concreto, no un "atras" del
-          historial: quien llega desde un correo no tiene a donde volver. */}
-      {header ? (
-        <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
-      ) : null}
+      {/* CABECERA DE PAGINA, con la SALIDA dentro. Las dos van al NIVEL DE PAGINA y no dentro de una
+          pestaña: la evaluacion se abre desde la ficha del paciente, y desde cualquiera de las cinco
+          etapas hay que saber DE QUIEN es y poder volver. El enlace es a un sitio concreto, no un "atras"
+          del historial: quien llega desde un correo no tiene a donde volver. */}
+      {header ? <CabeceraEvaluacion header={header} /> : null}
       {supersession.superseded ? (
         <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
       ) : null}

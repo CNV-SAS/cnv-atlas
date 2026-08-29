@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { formatDate } from "@/lib/format/date";
 import * as nutraService from "@/modules/nutraceuticals/services/nutraceuticals-service";
@@ -80,13 +81,9 @@ export default async function PagosPage() {
   }
 
   return (
-    <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Pagos</h1>
-        <p className="text-muted-foreground">
-          Checkout de nutraceuticos y seguimiento de transacciones.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* SIN SUBTITULO: enumeraba las dos secciones que la pantalla ya muestra. */}
+      <TituloPantalla titulo="Pagos" />
 
       {canCreate ? (
         <Card>
@@ -118,7 +115,7 @@ export default async function PagosPage() {
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Transacciones</h2>
+        <TituloSeccion>Transacciones</TituloSeccion>
         {transactions.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aun no hay transacciones.</p>
         ) : (

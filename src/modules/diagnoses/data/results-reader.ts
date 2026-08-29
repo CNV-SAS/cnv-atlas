@@ -80,7 +80,10 @@ export type EvaluationHeader = {
   patientId: string; // para poder VOLVER a la ficha del paciente desde la evaluacion
   patientName: string;
   documentLabel: string;
+  /** `created_at` de la evaluacion, no la fecha de MEDICION. Ver la nota del reader. */
   evaluationDate: string;
+  /** inicial | seguimiento. Ubica la evaluacion sin abrir ninguna etapa. */
+  evaluationType: string;
 };
 
 // Cabecera minima de una evaluacion por RLS (existe y es del profesional?). Distingue
@@ -93,7 +96,8 @@ export async function getEvaluationHeaderForSession(
   const { data, error } = await supabase
     .from("evaluations")
     .select(
-      "created_at, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+      // `type` se suma a la MISMA consulta: una columna mas, cero consultas nuevas.
+      "created_at, type, patient_id, patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -117,6 +121,7 @@ export async function getEvaluationHeaderForSession(
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
     evaluationDate: data.created_at,
+    evaluationType: data.type as string,
   };
 }
 

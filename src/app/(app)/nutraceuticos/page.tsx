@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { CreateNutraceuticalForm } from "@/modules/nutraceuticals/components/create-nutraceutical-form";
 import { EditNutraceuticalForm } from "@/modules/nutraceuticals/components/edit-nutraceutical-form";
@@ -28,14 +29,16 @@ export default async function NutraceuticosPage() {
   const items = await service.listCatalog();
 
   return (
-    <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Nutracéuticos</h1>
-        <p className="text-muted-foreground">Catalogo comercial. El stock es por profesional (consignación), en Mi inventario.</p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* Cae "Catalogo comercial" (es lo que la pantalla muestra) y queda donde vive el STOCK, que esta
+          pantalla NO muestra y es la confusion mas probable de quien llega buscandolo. */}
+      <TituloPantalla
+        titulo="Nutracéuticos"
+        descripcion="El stock es por profesional (consignación), en Mi inventario."
+      />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Catalogo</h2>
+        <TituloSeccion>Catalogo</TituloSeccion>
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aun no hay nutracéuticos.</p>
         ) : (

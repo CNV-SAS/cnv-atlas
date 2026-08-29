@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { TaxVerificationRow } from "@/modules/professionals/components/tax-verification-row";
 import { listPendingTaxVerifications } from "@/modules/professionals/data/tax-verification-reader";
@@ -19,14 +20,13 @@ export default async function VerificacionesPage() {
   const nowMs = Date.now();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Verificación tributaria</h1>
-        <p className="text-muted-foreground">
-          Lee el RUT de cada integrante y registra su clasificación (declarante, IVA, obligado a facturar) y
-          la fecha del documento. Sin esto, su comisión no puede pagarse.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* Cae la descripcion de la tarea (el formulario de abajo la muestra campo por campo) y queda la
+          CONSECUENCIA, que no se ve: sin esta verificacion la comision del integrante no se paga. */}
+      <TituloPantalla
+        titulo="Verificación tributaria"
+        descripcion="Sin esto, la comisión del integrante no puede pagarse."
+      />
 
       {pending.length === 0 ? (
         <p className="text-sm text-muted-foreground">No hay RUTs pendientes de verificar.</p>

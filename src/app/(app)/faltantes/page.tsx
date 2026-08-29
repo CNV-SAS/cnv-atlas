@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { Badge } from "@/components/ui/badge";
 import { hasRole, requireUser } from "@/modules/auth/session";
 import { ClasificarFaltanteForm } from "@/modules/nutraceuticals/components/clasificar-faltante-form";
@@ -97,15 +98,14 @@ export default async function FaltantesPage() {
   const nowMs = Date.now();
 
   return (
-    <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Revisión de inventario</h1>
-        <p className="max-w-prose text-muted-foreground">
-          Inventario en consignación que CNV revisa: remesas (envíos a los integrantes) y faltantes. El cargo
-          por un faltante injustificado exige dos: un administrador lo propone y dirección lo confirma. Nada se
-          cobra hasta que ambos estén de acuerdo.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* Cae la enumeracion de secciones (remesas y faltantes, que son los bloques de abajo) y queda la
+          REGLA de los dos pares de ojos, que no se ve en ninguna parte de la pantalla y es justo lo que
+          alguien podria intentar saltarse. */}
+      <TituloPantalla
+        titulo="Revisión de inventario"
+        descripcion="El cargo por un faltante injustificado exige dos: un administrador lo propone y dirección lo confirma. Nada se cobra hasta que ambos estén de acuerdo."
+      />
 
       {seeRemesas ? (
         <RemesasCnvSection
@@ -120,7 +120,7 @@ export default async function FaltantesPage() {
       {isAdmin ? (
         <>
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold tracking-tight">Por revisar</h2>
+            <TituloSeccion>Por revisar</TituloSeccion>
             {porRevisar.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay justificaciones por revisar.</p>
             ) : (
@@ -138,7 +138,7 @@ export default async function FaltantesPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold tracking-tight">Vencidos sin justificar</h2>
+            <TituloSeccion>Vencidos sin justificar</TituloSeccion>
             {vencidos.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay casos vencidos.</p>
             ) : (
@@ -156,7 +156,7 @@ export default async function FaltantesPage() {
 
           {esperandoIntegrante.length > 0 ? (
             <section className="flex flex-col gap-3">
-              <h2 className="text-xl font-bold tracking-tight">Esperando al integrante</h2>
+              <TituloSeccion>Esperando al integrante</TituloSeccion>
               <p className="text-sm text-muted-foreground">
                 El integrante aún tiene plazo para justificar; no requieren tu acción todavía.
               </p>
@@ -170,7 +170,7 @@ export default async function FaltantesPage() {
           ) : null}
 
           <section className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold tracking-tight">Sobrantes por revisar</h2>
+            <TituloSeccion>Sobrantes por revisar</TituloSeccion>
             <p className="max-w-prose text-sm text-muted-foreground">
               Un conteo arrojó MÁS de lo que el sistema tenía. No es una deuda ni tiene plazo: es información,
               significa que algo no se registró (una recepción, o un despacho que no ocurrió). Ajusta el saldo
@@ -194,7 +194,7 @@ export default async function FaltantesPage() {
 
       {isDireccion ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-bold tracking-tight">Esperando tu confirmación</h2>
+          <TituloSeccion>Esperando tu confirmación</TituloSeccion>
           <p className="max-w-prose text-sm text-muted-foreground">
             Un administrador propuso estos como injustificados. Al confirmar, el cargo entra en la liquidación
             del período. Puedes rechazarlo: el caso queda sin cargo.

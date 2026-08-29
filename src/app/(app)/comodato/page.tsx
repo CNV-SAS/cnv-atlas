@@ -13,6 +13,7 @@ import {
 } from "@/modules/comodato/components/status-meta";
 import * as service from "@/modules/comodato/services/comodato-service";
 import type { DeviceAssignment } from "@/modules/comodato/types";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 
 export const metadata = { title: "Comodato - Atlas" };
@@ -73,17 +74,14 @@ export default async function ComodatoPage() {
   const proName = (id: string) => proById.get(id)?.fullName ?? "(profesional no visible)";
 
   return (
-    <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Comodato</h1>
-        <p className="text-muted-foreground">
-          Inventario de equipos BIS y sus contratos de comodato.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* SIN SUBTITULO: "Inventario de equipos BIS y sus contratos" describia exactamente lo que las
+          secciones de abajo muestran, y no habia nada que la pantalla no enseñe. */}
+      <TituloPantalla titulo="Comodato" />
 
       {/* Por vencer en 30 dias */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Vencen en 30 días</h2>
+        <TituloSeccion>Vencen en 30 días</TituloSeccion>
         {expiring.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay comodatos por vencer en los proximos 30 dias.
@@ -108,7 +106,7 @@ export default async function ComodatoPage() {
 
       {/* Equipos + historial por equipo */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Equipos</h2>
+        <TituloSeccion>Equipos</TituloSeccion>
         {devices.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aun no hay equipos registrados.</p>
         ) : (

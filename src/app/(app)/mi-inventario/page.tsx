@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { requireUser } from "@/modules/auth/session";
 import { ConfirmarRemesaSection } from "@/modules/nutraceuticals/components/confirmar-remesa-section";
 import { MiConteoForm } from "@/modules/nutraceuticals/components/mi-conteo-form";
@@ -45,21 +46,21 @@ export default async function MiInventarioPage() {
   const recibibles = lines.filter((l) => l.commercialAvailability === "en_consultorio");
 
   return (
-    <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Mi inventario</h1>
-        <p className="max-w-prose text-muted-foreground">
-          Los productos son de CNV, en tu custodia (consignacion). Aqui registras lo que recibes y ves tu
-          saldo. Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo.
-        </p>
-      </header>
+    <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
+      {/* De las tres frases cae la del medio ("aqui registras lo que recibes y ves tu saldo"), que es lo
+          que la pantalla hace y se ve. Quedan las dos que no se ven: de QUIEN son los productos, y que
+          cada movimiento sirve de evidencia ante una diferencia de conteo. */}
+      <TituloPantalla
+        titulo="Mi inventario"
+        descripcion="Los productos son de CNV, en tu custodia (consignación). Cada movimiento queda como registro: es tu evidencia si hay una diferencia en un conteo."
+      />
 
       <ConfirmarRemesaSection pending={pendingRemesas ?? []} />
 
       <MisFaltantesSection userId={user.id} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Registrar recepción</h2>
+        <TituloSeccion>Registrar recepción</TituloSeccion>
         <Card>
           <CardHeader>
             <CardDescription>
@@ -79,7 +80,7 @@ export default async function MiInventarioPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Conteo físico</h2>
+        <TituloSeccion>Conteo físico</TituloSeccion>
         <Card>
           <CardHeader>
             <CardDescription>
@@ -99,7 +100,7 @@ export default async function MiInventarioPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Saldo actual</h2>
+        <TituloSeccion>Saldo actual</TituloSeccion>
         {lines.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aun no tienes productos en custodia.</p>
         ) : (
@@ -126,19 +127,19 @@ export default async function MiInventarioPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold tracking-tight">Historial de movimientos</h2>
+        <TituloSeccion>Historial de movimientos</TituloSeccion>
         {!movements || movements.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin movimientos todavia.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
             <table className="w-full min-w-[36rem] text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-widest text-muted-foreground">
-                  <th className="py-2 pr-4 font-semibold">Fecha</th>
-                  <th className="py-2 pr-4 font-semibold">Producto</th>
-                  <th className="py-2 pr-4 font-semibold">Movimiento</th>
-                  <th className="py-2 pr-4 font-semibold">Lote</th>
-                  <th className="py-2 pr-4 text-right font-semibold">Cantidad</th>
+                <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5 font-semibold">Fecha</th>
+                  <th className="px-3 py-2.5 font-semibold">Producto</th>
+                  <th className="px-3 py-2.5 font-semibold">Movimiento</th>
+                  <th className="px-3 py-2.5 font-semibold">Lote</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Cantidad</th>
                 </tr>
               </thead>
               <tbody>
