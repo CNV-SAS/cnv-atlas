@@ -520,6 +520,12 @@ export default async function ResultadosEvaluacionPage({
     tieneIRC: ps?.flags.tieneIRC ?? false,
     sarcopenia: isEngineOutput(results.snapshot) ? results.snapshot.indicators.FFMI > 0 && results.snapshot.indicators.FFMI < 17 : false,
     exceso: (ps?.estrategia.deficit ?? 0) > 0,
+    // Las cifras del motor que gobierna, ya computadas arriba. Con ellas, tres de los cuatro bloques que
+    // esperaban dejan de esperar; el cuarto (exceso de grasa) cita el objetivo calorico, que es lo que
+    // sigue preguntado.
+    sodioMax: prescripcionNutricional?.sodioMax ?? null,
+    protKg: prescripcionNutricional?.protKg ?? null,
+    protG: prescripcionNutricional?.protG ?? null,
   });
 
   // El RESUMEN DIAGNOSTICO de la HC lleva la profesion del actor en el titulo, como el suyo. Y por eso

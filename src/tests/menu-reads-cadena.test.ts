@@ -56,6 +56,9 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({ getTreatmentProtoc
 vi.mock("@/modules/treatment/data/dieta-resumen-reader", () => ({
   getPrescripcionNutricional: vi.fn(async () => ({
     tipoEnergia: "Hipocalórica",
+    protKg: 1.3,
+    protG: 91,
+    sodioMax: 1500,
     filas: [{ nombre: "Sodio", valor: "< 1.500 mg/día", ref: "OMS; DASH/NHLBI; AHA/ACC 2025" }],
     limites: [{ nombre: "Sodio", valor: "< 1.500 mg/día", ref: "OMS; DASH/NHLBI; AHA/ACC 2025" }],
     atributos: ["Hiposódica (<1.500 mg Na)", "Patrón DASH"],
@@ -154,6 +157,9 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
     // no un limite, y contarla abriria el gate para todos.
     vi.mocked(getPrescripcionNutricional).mockResolvedValueOnce({
       tipoEnergia: "Normocalórica",
+      protKg: 1,
+      protG: 70,
+      sodioMax: null,
       filas: [{ nombre: "Proteína", valor: "1 g/kg", ref: "ANI BIS-E" }],
       limites: [],
       atributos: [],

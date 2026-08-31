@@ -28,15 +28,33 @@ describe("recomendaciones de la historia clinica", () => {
     ]);
   });
 
-  it("los cuatro bloqueados aparecen CON SU TITULO y marcados como pendientes", () => {
-    // Sin esto la seccion pareceria completa cuando le falta algo que su archivo si tiene.
-    const r = recomendacionesDe({ ...base, tieneHTA: true, tieneIRC: true, sarcopenia: true });
+  it("TRES de los cuatro dejaron de estar pendientes al conectar el motor (2026-08-31)", () => {
+    // Este test decia "los cuatro bloqueados aparecen con su titulo y marcados como pendientes", y se
+    // INVIERTE porque el motor que produce sus cifras se conecto: DASH, nefroproteccion y masa muscular
+    // solo necesitaban `sodioMax` y `protKg/protG`. Se conserva la asercion de fondo (la seccion no puede
+    // parecer completa cuando falta algo), aplicada a lo que de verdad falta.
+    const r = recomendacionesDe({
+      ...base,
+      tieneHTA: true,
+      tieneIRC: true,
+      sarcopenia: true,
+      sodioMax: 1500,
+      protKg: 0.7,
+      protG: 49,
+    });
+    expect(r.filter((b) => b.pendiente)).toEqual([]);
+    const dash = r.find((b) => b.titulo === "Dieta DASH y control de sodio");
+    expect(dash?.items[0]).toBe("Limitar sodio a <1.500 mg/día");
+    const nefro = r.find((b) => b.titulo === "Nefroprotección (KDIGO 2024)");
+    expect(nefro?.items[0]).toBe("Proteína 0,7 g/kg/día (49 g) en ERC sin diálisis");
+  });
+
+  it("y SIN las cifras vuelven a marcarse pendientes, en vez de imprimir un valor inventado", () => {
+    // Es la mitad que protege el documento clinico: si el motor no pudo correr (evaluacion sin encuesta
+    // legible), un default pondria una cifra que nadie prescribio en la historia del paciente.
+    const r = recomendacionesDe({ ...base, tieneIRC: true, sarcopenia: true });
     const pend = r.filter((b) => b.pendiente).map((b) => b.titulo);
-    expect(pend).toEqual([
-      "Dieta DASH y control de sodio",
-      "Nefroprotección (KDIGO 2024)",
-      "Preservación de masa muscular",
-    ]);
+    expect(pend).toEqual(["Nefroprotección (KDIGO 2024)", "Preservación de masa muscular"]);
     for (const b of r.filter((x) => x.pendiente)) expect(b.items).toEqual([]);
   });
 

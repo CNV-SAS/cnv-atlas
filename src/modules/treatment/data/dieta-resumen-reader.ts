@@ -141,13 +141,21 @@ export async function getPrescripcionNutricional(
   evaluationId: string,
   sexo: string,
   bis: Record<string, unknown>,
+  /**
+   * Peso EFECTIVO de la cadena (`adj_peso_meta ?? pesoCalculo`). Se le pasa al motor como su `peso_meta`
+   * para que los gramos de proteína que imprime sean LOS MISMOS que muestra la cadena. Sin esto el motor
+   * usaría su propio default (Lorentz) e ignoraría el peso meta que fijó el profesional: dos gramajes del
+   * mismo concepto en dos pantallas, que es el defecto que esta pieza vino a cerrar.
+   */
+  pesoMeta?: number | null,
 ): Promise<PrescripcionNutricional | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
 
-  const m = motorTratNutri(enc, bis, {}) as {
+  const m = motorTratNutri(enc, bis, pesoMeta != null && pesoMeta > 0 ? { peso_meta: pesoMeta } : {}) as {
     tipoEnergia: string;
     protKg: number;
+    protG: number;
     sodioMax: number | null;
     grasaSatMax: number | null;
     attrs: string[];
@@ -178,6 +186,9 @@ export async function getPrescripcionNutricional(
 
   return {
     tipoEnergia: m.tipoEnergia,
+    protKg: m.protKg,
+    protG: m.protG,
+    sodioMax: m.sodioMax,
     filas,
     limites,
     atributos: m.attrs,

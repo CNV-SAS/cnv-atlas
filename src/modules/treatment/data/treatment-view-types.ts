@@ -195,6 +195,12 @@ export type TreatmentProtocol = {
 export type FilaPrescripcion = { nombre: string; valor: string; ref: string };
 export type PrescripcionNutricional = {
   tipoEnergia: string;
+  /** g/kg de su motor (una razón: no depende del peso, así que no puede divergir de la cadena). */
+  protKg: number;
+  /** Gramos, calculados sobre el peso EFECTIVO de la cadena, para que sean el mismo número que ella. */
+  protG: number;
+  /** Sodio máximo en mg/día, o null si su motor no fija uno. En CRUDO: quien lo muestra le da formato. */
+  sodioMax: number | null;
   /** Filas con cifra para MOSTRAR (proteína objetivo, sodio, grasa saturada). */
   filas: FilaPrescripcion[];
   /**

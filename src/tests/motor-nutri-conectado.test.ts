@@ -49,7 +49,9 @@ describe("el sodio que ve el hipertenso es el que él ordenó", () => {
 
 describe("los dos consumidores leen del motor que gobierna, y de UNA sola fuente", () => {
   it("hay un solo lector (`getPrescripcionNutricional`) y corre el motor correcto", () => {
-    expect(READER).toContain("motorTratNutri(enc, bis, {})");
+    // La llamada lleva el peso EFECTIVO de la cadena como `peso_meta`, para que los gramos de proteina
+    // que imprime sean los mismos que muestra la cadena y no los de su default (Lorentz).
+    expect(READER).toContain("motorTratNutri(enc, bis, pesoMeta != null");
     expect(READER).toContain("export async function getPrescripcionNutricional");
   });
 
@@ -92,5 +94,40 @@ describe("lo que NO se conectó, y es deliberado", () => {
     const m = motorTratNutri(HIPERTENSO, BIS, {}) as { kcalObjetivo: number; geb: number };
     expect(m.kcalObjetivo).toBeGreaterThan(0);
     expect(m.geb).toBeGreaterThan(0);
+  });
+});
+
+describe("los bloques de la historia clínica que esperaban al motor", () => {
+  const HC = readFileSync("src/modules/reports/data/hc-recomendaciones.ts", "utf8");
+
+  it("TRES dejaron de esperar: DASH, nefroprotección y masa muscular", () => {
+    // Solo necesitaban `sodioMax` y `protKg/protG`, que el motor ya entrega. Su texto va verbatim.
+    for (const f of ["function dash(", "function nefro(", "function masaMuscular("]) {
+      expect(HC, `falta el bloque ${f}`).toContain(f);
+    }
+    expect(HC).toContain("Al menos 3 g de leucina por comida");
+    expect(HC).toContain("Evitar aditivos de fosfato en procesados");
+  });
+
+  it("y UNO sigue esperando, con el motivo CORRECTO", () => {
+    // Decía "el porte bloqueado", que era falso desde el 23 de agosto: el motor estaba portado y su
+    // respuesta había llegado. Lo que de verdad espera es la fórmula del gasto.
+    // El comentario CITA la frase vieja para explicar por qué cambió, así que se mira solo el bloque de
+    // PENDIENTES, donde vive el motivo vigente. Un candado que caza su propia documentación es ruido.
+    const doc = HC.slice(HC.indexOf("// EL UNICO que sigue esperando"), HC.indexOf("const PENDIENTES"));
+    expect(doc, "el motivo volvió a ser el porte").not.toContain("porte bloqueado");
+    expect(doc).toContain("FORMULA DEL GASTO");
+    const i = HC.indexOf("const PENDIENTES");
+    const j = HC.indexOf("];", i);
+    const bloque = HC.slice(i, j);
+    expect(bloque).toContain("Manejo del exceso de grasa corporal");
+    expect(bloque, "se quedó pendiente algo que ya se puede resolver").not.toContain("DASH");
+  });
+
+  it("sin las cifras, los tres vuelven a marcarse pendientes en vez de inventar una", () => {
+    // La otra mitad: si la evaluación no tiene encuesta legible, el motor no corre. Un valor por defecto
+    // pondría una cifra inventada en un documento clínico.
+    expect(HC).toContain("const hayCifras = ctx.protKg != null && ctx.protG != null");
+    expect(HC).toContain("pendiente: true");
   });
 });
