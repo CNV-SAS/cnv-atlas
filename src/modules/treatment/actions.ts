@@ -17,6 +17,7 @@ import {
   aplicarCambioMenu,
   aplicarCambiosMenu,
   approveProtocol,
+  reopenProtocol,
   saveAdjustments,
   saveGuidelines,
   saveNutraceuticals,
@@ -34,6 +35,7 @@ import {
   aplicarCambioMenuSchema,
   aplicarCambiosMenuSchema,
   approveProtocolSchema,
+  reopenProtocolSchema,
   saveAdjustmentsSchema,
   saveGuidelinesSchema,
   saveNutraceuticalsSchema,
@@ -576,6 +578,41 @@ export async function acknowledgeRestrictionsAction(
 
 // T2 A3: aprueba el protocolo (sella la prescripcion efectiva). PROFESIONAL-SOLO (admin no); la
 // asignacion explicita y los gates de estado los verifica el service.
+// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c). Misma policy que aprobar, y no por
+// simetria: reabrir es el acto que DESHACE una prescripcion, asi que no puede exigir menos que hacerla.
+export async function reopenProtocolAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canApproveProtocol(user)) return fail("No autorizado.");
+
+  const parsed = reopenProtocolSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    reason: (form.get("reason") as string | null) ?? "",
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "No se pudo reabrir la prescripción.");
+  }
+
+  const result = await reopenProtocol(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  // WARNING, no success, y la diferencia importa: reabrir NO es un logro, es un acto con consecuencia.
+  // El mensaje dice las dos que su §6c/§12c fijan: queda registrado, y al paciente se le avisa.
+  return {
+    error: null,
+    success: null,
+    warning:
+      "Prescripción reabierta. Queda registrada en la historia con tu motivo, y al aprobar la nueva se " +
+      "avisará al paciente, porque cambia lo que come.",
+  };
+}
+
 export async function approveProtocolAction(
   _prev: TreatmentActionState,
   form: FormData,

@@ -255,6 +255,21 @@ export const approveProtocolSchema = z.object({
 
 export type ApproveProtocolInput = z.infer<typeof approveProtocolSchema>;
 
+// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c). El MOTIVO es obligatorio y tiene minimo
+// util (no un caracter): "el sellado no es un candado, es una consecuencia REGISTRADA", y una razon
+// vacia o de una letra no registra nada. El mismo minimo lo exige el trigger de la base, para que el
+// rastro no dependa de que la validacion corra.
+export const reopenProtocolSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Escribe por qué reabres la prescripción: queda en la historia del paciente.")
+    .max(500, "El motivo es demasiado largo."),
+});
+
+export type ReopenProtocolInput = z.infer<typeof reopenProtocolSchema>;
+
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),

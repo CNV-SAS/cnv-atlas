@@ -33,11 +33,13 @@ import {
   StaleRestriccionesError,
   TreatmentStateError,
   writeApproveProtocol,
+  writeReopenProtocol,
 } from "../data/treatment-writer";
 import type {
   AcknowledgeRestrictionsInput,
   AddNoteInput,
   ApproveProtocolInput,
+  ReopenProtocolInput,
   SaveAdjustmentsInput,
   SaveGuidelinesInput,
   SaveNutraceuticalsInput,
@@ -680,6 +682,50 @@ export async function approveProtocol(
       approvedAt,
       versionApproved,
       versionSuggested,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
+// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c).
+//
+// SU FORMULACION, que es la que gobierna el diseño: "El sellado no es un candado: es una consecuencia
+// registrada. Un profesional que necesita corregir un plan aprobado tiene que poder hacerlo; lo que no
+// puede es que el cambio no deje rastro ni le llegue al paciente que ya se lo llevo."
+//
+// De ahi salen las tres condiciones, y ninguna es opcional: (1) SE PUEDE, contra el candado anterior;
+// (2) DEJA RASTRO, por eso el motivo es obligatorio y la aprobacion anterior se conserva entera en
+// `treatment_approvals`; (3) LE LLEGA AL PACIENTE, que es lo que resuelve `avisarAlPaciente`: un
+// tratamiento reemitido se avisa SIEMPRE, "porque cambia lo que la persona come".
+//
+// MISMOS GUARDS QUE APROBAR, y no por simetria: reabrir es el acto que DESHACE una prescripcion, asi que
+// no puede exigir menos que hacerla. Asignacion explicita + profesion, en ese orden (la asignacion va
+// primero para no filtrar existencia).
+export async function reopenProtocol(
+  input: ReopenProtocolInput,
+  actor: Actor,
+): Promise<Result<void>> {
+  const t = await getTreatmentForApproval(input.evaluationId);
+  if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
+
+  const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
+  if (!professionalId || professionalId !== t.evaluationProfessionalId) {
+    return err(appError("forbidden", "No estas asignado a este paciente."));
+  }
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (t.status !== "approved") {
+    return err(appError("conflict", "Esta prescripción no está aprobada: no hay nada que reabrir."));
+  }
+
+  try {
+    await writeReopenProtocol({
+      treatmentId: t.treatmentId,
+      reason: input.reason,
       ...actor,
     });
   } catch (e) {

@@ -3190,6 +3190,70 @@ export type Database = {
           },
         ]
       }
+      treatment_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          id: string
+          kcal_objetivo: number | null
+          proteina_g: number | null
+          protocol_approved: Json
+          reopen_reason: string
+          reopened_at: string
+          reopened_by: string | null
+          treatment_id: string
+        }
+        Insert: {
+          approved_at: string
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          kcal_objetivo?: number | null
+          proteina_g?: number | null
+          protocol_approved: Json
+          reopen_reason: string
+          reopened_at?: string
+          reopened_by?: string | null
+          treatment_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          kcal_objetivo?: number | null
+          proteina_g?: number | null
+          protocol_approved?: Json
+          reopen_reason?: string
+          reopened_at?: string
+          reopened_by?: string | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_approvals_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_approvals_reopened_by_fkey"
+            columns: ["reopened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_approvals_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_diet_guidelines: {
         Row: {
           guideline_text: string
@@ -3316,6 +3380,9 @@ export type Database = {
           protocol_approved: Json | null
           protocol_suggested: Json | null
           proxima_cita: string | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
           restricciones: string[]
           restrictions_ack_at: string | null
           restrictions_ack_by: string | null
@@ -3354,6 +3421,9 @@ export type Database = {
           protocol_approved?: Json | null
           protocol_suggested?: Json | null
           proxima_cita?: string | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           restricciones?: string[]
           restrictions_ack_at?: string | null
           restrictions_ack_by?: string | null
@@ -3392,6 +3462,9 @@ export type Database = {
           protocol_approved?: Json | null
           protocol_suggested?: Json | null
           proxima_cita?: string | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
           restricciones?: string[]
           restrictions_ack_at?: string | null
           restrictions_ack_by?: string | null
@@ -3424,6 +3497,13 @@ export type Database = {
           {
             foreignKeyName: "treatments_nutraceutical_decision_by_profiles_id_fk"
             columns: ["nutraceutical_decision_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_reopened_by_fkey"
+            columns: ["reopened_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

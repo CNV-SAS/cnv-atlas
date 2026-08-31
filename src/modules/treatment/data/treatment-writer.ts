@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   diagnoses,
   patientContraindications,
+  treatmentApprovals,
   treatmentDietGuidelines,
   treatmentNotes,
   treatmentNutraceuticals,
@@ -788,6 +789,92 @@ export async function writeApproveProtocol(input: ApproveProtocolWrite): Promise
         version_approved: input.versionApproved,
         version_suggested: input.versionSuggested,
         version_mismatch: input.versionApproved !== input.versionSuggested,
+      },
+      ip: input.ip,
+    });
+  });
+}
+
+export type ReopenProtocolWrite = {
+  treatmentId: string;
+  reason: string;
+  actorId: string;
+  actorEmail: string;
+  ip: string | null;
+};
+
+// REABRE una prescripcion aprobada (Gildardo 2026-08-30 §6c). Owner client + audit inline.
+//
+// EL ORDEN IMPORTA Y NO ES INTERCAMBIABLE: primero se COPIA la aprobacion vigente a la historia, y solo
+// despues se limpia la fila. Al reves, un fallo entre los dos pasos perderia la prescripcion que el
+// paciente tiene en la mano. Van en la misma transaccion, asi que o quedan las dos cosas o ninguna.
+//
+// El trigger 0093 exige los tres sellos (quien, cuando, por que) y que la aprobacion salga de la fila:
+// si este writer se equivocara, la base rechaza, no queda a medias.
+export async function writeReopenProtocol(input: ReopenProtocolWrite): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        status: treatments.status,
+        approved: treatments.protocolApproved,
+        approvedBy: treatments.approvedBy,
+        approvedAt: treatments.approvedAt,
+        kcalObjetivo: treatments.kcalObjetivo,
+        proteinaGramos: treatments.proteinaGramos,
+      })
+      .from(treatments)
+      .where(eq(treatments.id, input.treatmentId))
+      .limit(1);
+    if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
+    if (row.status !== "approved") {
+      throw new TreatmentStateError("Solo se reabre una prescripción aprobada.");
+    }
+    if (row.approved == null || row.approvedAt == null) {
+      // No deberia pasar (aprobar sella las dos), pero reabrir SIN historia perderia el documento.
+      throw new TreatmentStateError(
+        "La prescripción aprobada no tiene contenido sellado; no se reabre para no perder el registro.",
+      );
+    }
+
+    const reopenedAt = new Date();
+    await tx.insert(treatmentApprovals).values({
+      treatmentId: input.treatmentId,
+      protocolApproved: row.approved,
+      approvedBy: row.approvedBy,
+      approvedAt: row.approvedAt,
+      kcalObjetivo: row.kcalObjetivo,
+      proteinaG: row.proteinaGramos,
+      reopenedBy: input.actorId,
+      reopenedAt,
+      reopenReason: input.reason,
+    });
+
+    await tx
+      .update(treatments)
+      .set({
+        status: "draft",
+        protocolApproved: null,
+        approvedBy: null,
+        approvedAt: null,
+        reopenedAt,
+        reopenedBy: input.actorId,
+        reopenReason: input.reason,
+      })
+      .where(eq(treatments.id, input.treatmentId));
+
+    // Inline en la transaccion, nunca por el bus (regla dura 8): reabrir una prescripcion es un evento
+    // clinico critico, y su rastro no puede depender de que otro proceso lo recoja.
+    await recordAudit(tx, {
+      event: "protocol.reopened",
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      entityType: "treatment",
+      entityId: input.treatmentId,
+      payload: {
+        reason: input.reason,
+        approved_at: row.approvedAt.toISOString(),
+        kcal_objetivo: row.kcalObjetivo,
+        proteina_g: row.proteinaGramos,
       },
       ip: input.ip,
     });

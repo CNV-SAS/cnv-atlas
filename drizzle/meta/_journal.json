@@ -652,6 +652,13 @@
       "when": 1787967200000,
       "tag": "0092_orden_matriz_frecuencia",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1788053600000,
+      "tag": "0093_reapertura_prescripcion",
+      "breakpoints": true
     }
   ]
 }

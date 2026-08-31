@@ -76,6 +76,15 @@ export const treatments = pgTable("treatments", {
   // RESTRICT explicito (regla 14, escrito, no por defecto).
   approvedBy: uuid("approved_by").references(() => profiles.id, { onDelete: "restrict" }),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
+  // REAPERTURA de una prescripcion aprobada (Gildardo 2026-08-30 §6c: "el sellado no es un candado: es
+  // una consecuencia registrada"). Los tres sellos de la ULTIMA reapertura. Duplican lo que guarda
+  // `treatment_approvals` a proposito: el trigger de inmutabilidad no puede mirar otra tabla en el mismo
+  // UPDATE, asi que son estas columnas las que le permiten EXIGIR el rastro a nivel de base de datos.
+  // El motivo es obligatorio en el trigger: una reapertura sin razon escrita no es una consecuencia
+  // registrada, es un borrado con pasos extra.
+  reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+  reopenedBy: uuid("reopened_by").references(() => profiles.id, { onDelete: "restrict" }),
+  reopenReason: text("reopen_reason"),
   // Reconocimiento del profesional de las restricciones del MODELO. El "que se reconocio" no se
   // duplica: son las de protocol_suggested (inmutable), asi que basta at + by. RESTRICT (regla 14).
   // NO CABLEADO (decision 2026-08-23, ver BACKLOG "el ack de restricciones"): se diseño como gate del
@@ -180,5 +189,35 @@ export const treatmentNotes = pgTable("treatment_notes", {
     .notNull()
     .references(() => treatments.id, { onDelete: "cascade" }),
   note: text("note").notNull(),
+  createdAt: createdAt(),
+});
+
+// HISTORIA DE APROBACIONES: append-only, una fila por prescripcion que estuvo aprobada y se reabrio.
+//
+// POR QUE EXISTE. `treatments.protocol_approved` es lo que el paciente RECIBIO. Si al reabrir la
+// siguiente aprobacion lo sobrescribiera, el documento que la persona tiene en la mano desapareceria del
+// sistema, que es el daño que Gildardo nombra al autorizar la reapertura. Al reabrir, la aprobacion
+// vigente se MUEVE aqui y la fila de treatments queda limpia en draft.
+//
+// Y NO VIVE EN EL AUDIT LOG aunque el acto tambien se audite: `clinical_audit_log` es admin-only para
+// SELECT, asi que el profesional no podria ver la prescripcion anterior de su propio paciente. La
+// propiedad de LECTURA es la que decide donde vive un dato, no solo la de escritura.
+export const treatmentApprovals = pgTable("treatment_approvals", {
+  id: pk(),
+  treatmentId: uuid("treatment_id")
+    .notNull()
+    .references(() => treatments.id, { onDelete: "cascade" }),
+  // La prescripcion tal como se aprobo (misma forma que treatments.protocol_approved).
+  protocolApproved: jsonb("protocol_approved").notNull(),
+  approvedBy: uuid("approved_by").references(() => profiles.id, { onDelete: "restrict" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }).notNull(),
+  // La prescripcion efectiva sellada con ella, para mostrarla sin recomputar. MISMOS tipos que en
+  // `treatments` (integer los dos): copiar no puede convertir, o la historia diria otro numero.
+  kcalObjetivo: integer("kcal_objetivo"),
+  proteinaG: integer("proteina_g"),
+  // El acto que la reemplazo.
+  reopenedBy: uuid("reopened_by").references(() => profiles.id, { onDelete: "restrict" }),
+  reopenedAt: timestamp("reopened_at", { withTimezone: true }).notNull().defaultNow(),
+  reopenReason: text("reopen_reason").notNull(),
   createdAt: createdAt(),
 });
