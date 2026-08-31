@@ -24,6 +24,7 @@ const DB_TESTS = [
   "src/tests/faltante-settle-sobrante.test.ts",
   "src/tests/faltante-two-person.test.ts",
   "src/tests/golden-path.seed.test.ts",
+  "src/tests/reapertura-prescripcion.test.ts",
   "src/tests/intake-writer-split.test.ts",
   "src/tests/nutraceuticals.test.ts",
   "src/tests/nutra-inventory.test.ts",

@@ -6,6 +6,11 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // Juego que deja dfi.complete=true: el gate de generacion (Gildardo 2026-08-13 §1) no sella incompletas.
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
+import { ENGINE_VERSION, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine/version";
+import {
+  borrarPreguntaSinFieldKey,
+  crearPreguntaSinFieldKey,
+} from "./fixtures/pregunta-sin-field-key";
 
 // Propagacion (B11 ST7): input REAL (fila anonimizada del Biody, guardada como la guarda
 // B8: header normalizado -> valor) -> motor real -> persistencia -> relectura. Aserta
@@ -88,7 +93,9 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
         .values({ evaluationId, surveyVersionId: svId })
         .returning({ id: schema.surveyResponses.id })
     )[0].id;
-    await db.insert(schema.surveyAnswers).values({ responseId: respId, questionId: qId, answerValue: "x" });
+    // La pregunta sin field_key NO se responde aparte: el bucle de abajo responde TODAS las de la version,
+    // y esta ahora vive en ella (la crea el fixture). Antes salia de otra version por accidente del
+    // `limit(1)`, y por eso las dos inserciones no chocaban.
     // Juego COMPLETO de field_key: sin esto el gate bloquea el sellado (encuesta incompleta). El diagnostico
     // por la ruta BIS (fenotipo, indicadores, protocolo) es el mismo; ademas ahora dfi.complete=true.
     {
@@ -151,19 +158,17 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     proId = (await db.select({ id: schema.professionalProfiles.id }).from(schema.professionalProfiles).limit(1))[0].id;
     actorId = (await db.select({ id: schema.profiles.id }).from(schema.profiles).limit(1))[0].id;
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).limit(1))[0].id;
-    // Pregunta SIN field_key (para el caso de correccion de un dato que no mueve el motor).
-    // Se responde ademas (makeEvaluation siembra el juego completo de field_key); esta pregunta sin
-    qId = (
-      await db
-        .select({ id: schema.surveyQuestions.id })
-        .from(schema.surveyQuestions)
-        .where(isNull(schema.surveyQuestions.fieldKey))
-        .limit(1)
-    )[0].id;
+    // Pregunta SIN field_key (para el caso de correccion de un dato que no mueve el motor). Se CREA:
+    // desde la migracion 0085 ninguna pregunta sembrada tiene field_key nulo, asi que buscarla devolvia
+    // vacio y este beforeAll reventaba. Ver el fixture.
+    qId = await crearPreguntaSinFieldKey(db, svId);
   });
 
   afterAll(async () => {
     if (!db) return;
+    // La pregunta que creo este test se borra AQUI. Dejarla convertiria la encuesta en una version con
+    // una pregunta de mas, y la numeracion continua que ve el paciente cambiaria para todos.
+    if (qId) await borrarPreguntaSinFieldKey(db, qId);
     const evalIds = created.map((c) => c.evaluationId);
     const patientIds = created.map((c) => c.patientId);
     if (!evalIds.length) return;
@@ -206,7 +211,11 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // este fixture male 89/180): F5, Cunningham gebAuto 2004, pesoCalculo 76.625.
     const proto = treatment.protocolSuggested;
     expect(proto).not.toBeNull();
-    expect(proto.protocolEngineVersion).toBe("anibise-protocolo-2026-08-19b");
+    // Contra la CONSTANTE, no contra una copia de la cadena de hoy: lo que este test afirma es que el
+    // protocolo SELLA su version, no cual es. Decidir cuando sube es trabajo de protocol-version-lock,
+    // que hashea los artefactos. Es la tercera copia a mano de esta cadena que ponia un test en rojo por
+    // la razon equivocada; las tres retiradas.
+    expect(proto.protocolEngineVersion).toBe(PROTOCOL_ENGINE_VERSION);
     expect(proto.fenotipo.id).toBe("F5");
     expect(proto.calorico.formula).toBe("Cunningham");
     expect(proto.calorico.gebAuto).toBe(2004);
@@ -242,11 +251,14 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     expect(typeof snapshot.asmi).toBe("number");
 
     // constelacion del motor real sellada en cada indicador.
-    expect(snapshot.versions.engine).toBe("anibise-1.1.0");
+    // Contra la CONSTANTE: lo que se afirma es que el diagnostico SELLA la version del motor, no cual es.
+    // Los literales "anibise-1.0.0" de otros tests SI se quedan a mano, y la diferencia importa: alli el
+    // literal representa una version VIEJA a proposito (probar el camino del documento desfasado).
+    expect(snapshot.versions.engine).toBe(ENGINE_VERSION);
     expect(
       indicators.every(
         (r: { engineVersion: string; surveyVersionId: string; modelVersionId: string; rulesVersion: string }) =>
-          r.engineVersion === "anibise-1.1.0" && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
+          r.engineVersion === ENGINE_VERSION && r.surveyVersionId && r.modelVersionId && r.rulesVersion,
       ),
     ).toBe(true);
   });

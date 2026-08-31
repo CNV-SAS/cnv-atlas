@@ -6,6 +6,10 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // Juego de respuestas que deja dfi.complete = true (fuente unica, compartida con golden-path.seed).
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
+import {
+  borrarPreguntaSinFieldKey,
+  crearPreguntaSinFieldKey,
+} from "./fixtures/pregunta-sin-field-key";
 
 // Flujo de correccion S1: verificacion ejecutando contra la BD local seedada, como
 // pipeline-propagation. Prueba las dos mitades (PLAN): el camino feliz completo, y cada gate
@@ -170,17 +174,15 @@ describe.skipIf(!HAS_DB)("flujo de correccion S1 (BD real)", () => {
     // Pregunta sin field_key DE LA VERSION ACTIVA (svId): con mas de una version publicada (v2+v3), un
     // limit(1) sin filtrar por version podia agarrar una pregunta de OTRA version y romper la validacion
     // de la correccion (que valida contra la version activa). Se escopa a svId.
-    nonFieldQId = (
-      await db
-        .select({ id: schema.surveyQuestions.id })
-        .from(schema.surveyQuestions)
-        .where(and(isNull(schema.surveyQuestions.fieldKey), eq(schema.surveyQuestions.surveyVersionId, svId)))
-        .limit(1)
-    )[0].id;
+    nonFieldQId = await crearPreguntaSinFieldKey(db, svId);
   });
 
   afterAll(async () => {
-    if (!db || !createdEvals.length) return;
+    if (!db) return;
+    // La pregunta que creo este test se borra AQUI. Dejarla convertiria la encuesta en una version con
+    // una pregunta de mas, y la numeracion continua que ve el paciente cambiaria para todos.
+    if (nonFieldQId) await borrarPreguntaSinFieldKey(db, nonFieldQId);
+    if (!createdEvals.length) return;
     const all = createdEvals;
     const diags = await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(inArray(schema.diagnoses.evaluationId, all));
     const diagIds = diags.map((d: { id: string }) => d.id);

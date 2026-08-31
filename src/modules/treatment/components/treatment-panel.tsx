@@ -26,6 +26,7 @@ import {
   addNoteAction,
   aplicarCambioMenuAction,
   aplicarCambiosMenuAction,
+  reopenProtocolAction,
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
@@ -479,10 +480,23 @@ export function TreatmentPanel({
             habilita editar y aprobar el tratamiento.
           </p>
         ) : protocol.approved ? (
-          <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-            Este protocolo ya fue aprobado: la prescripción es inmutable. Para cambiarla se corrige la
-            evaluación (versión nueva de toda la cadena), no se edita aquí.
-          </p>
+          <ProtocoloAprobado evaluationId={evaluationId} protocol={protocol} />
+        ) : null}
+
+        {/* ESTA PRESCRIPCIÓN REEMPLAZA A OTRA. Va aunque el protocolo esté en borrador: es justo mientras
+            se rehace cuando el profesional necesita saber que hay una anterior que el paciente ya tiene. */}
+        {!protocol.approved && protocol.aprobacionesPrevias > 0 ? (
+          <div className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
+            <p className="font-medium">Esta prescripción reemplaza a otra que el paciente ya recibió.</p>
+            <p className="pt-1 text-foreground/90">
+              {protocol.aprobacionesPrevias === 1
+                ? "Hay una prescripción anterior aprobada"
+                : `Hay ${protocol.aprobacionesPrevias} prescripciones anteriores aprobadas`}
+              , guardada{protocol.aprobacionesPrevias === 1 ? "" : "s"} en la historia del paciente.
+              {protocol.reopenReason ? ` Motivo de la última reapertura: "${protocol.reopenReason}".` : ""}{" "}
+              Al aprobar la nueva se le avisará, porque cambia lo que come.
+            </p>
+          </div>
         ) : null}
         {/* AGRUPACION (2026-08-22): dos bloques SEGUIDOS, sin nivel de navegacion nuevo (el orden natural es
             leer el caso y bajar a construir; no son dos modos alternativos, son dos momentos). Arriba LECTURA
@@ -825,6 +839,86 @@ function MenuCard({
         <p className="text-sm text-muted-foreground">Sin contenido (el intento falló).</p>
       )}
     </li>
+  );
+}
+
+// LA PRESCRIPCIÓN APROBADA, con su salida (Gildardo 2026-08-30 §6c).
+//
+// EL TEXTO CAMBIÓ, y el cambio es la instrucción: decía "para cambiarla se corrige la evaluación (versión
+// nueva de toda la cadena), no se edita aquí", y eso ya no es cierto ni es lo que él quiere. Su palabra:
+// "el sellado no es un candado: es una consecuencia registrada. Un profesional que necesita corregir un
+// plan aprobado tiene que poder hacerlo". Un texto que describe mal lo que el sistema hace es un defecto
+// de seguridad, no de redacción: le decía al profesional que su única salida era rehacer la evaluación.
+//
+// EL MOTIVO NO ES OPCIONAL Y NO SE ESCONDE detrás de una confirmación: se escribe ANTES de poder pulsar,
+// porque es lo que queda en la historia. Un diálogo de "¿seguro?" pide una confirmación; esto pide una
+// razón, que es otra cosa.
+function ProtocoloAprobado({
+  evaluationId,
+  protocol,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+}) {
+  const [state, formAction, pending] = useActionState(reopenProtocolAction, EMPTY);
+  useFormToastAndRefresh(state);
+  const [motivo, setMotivo] = useState("");
+  const [abierto, setAbierto] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted px-3 py-3">
+      <p className="text-sm text-muted-foreground">
+        Este protocolo ya fue aprobado, así que la prescripción está congelada: para editarla hay que
+        reabrirla. Reabrir queda registrado en la historia del paciente con tu motivo, y al aprobar la
+        nueva se le avisa, porque cambia lo que come.
+        {protocol.aprobacionesPrevias > 0
+          ? " Esta prescripción ya reemplazó a otra anterior."
+          : ""}
+      </p>
+      {abierto ? (
+        <form action={formAction} className="flex flex-col gap-2">
+          <input type="hidden" name="evaluationId" value={evaluationId} />
+          <Label htmlFor="reopen-reason" className="text-sm">
+            ¿Por qué la reabres?
+          </Label>
+          <Textarea
+            id="reopen-reason"
+            name="reason"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            rows={2}
+            maxLength={500}
+            placeholder="Ej. El paciente reportó una intolerancia que no estaba registrada al aprobar."
+            disabled={pending}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="outline" size="sm" disabled={pending || motivo.trim().length < 10}>
+              {pending ? "Reabriendo..." : "Reabrir la prescripción"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setAbierto(false)}
+              disabled={pending}
+            >
+              Cancelar
+            </Button>
+          </div>
+          {motivo.trim().length > 0 && motivo.trim().length < 10 ? (
+            <p className="text-xs text-muted-foreground">
+              Escribe un motivo un poco más largo: queda en la historia del paciente.
+            </p>
+          ) : null}
+        </form>
+      ) : (
+        <div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setAbierto(true)}>
+            Reabrir la prescripción
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

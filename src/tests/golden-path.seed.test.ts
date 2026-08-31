@@ -17,6 +17,7 @@ import biodyFemale from "./fixtures/clinical-engine/biody-mujer-zm3-anon.json";
 // Juego de respuestas que deja dfi.complete = true (fuente unica, compartida con el test de correccion).
 import { DFI_COMPLETE_ANSWERS as ANSWERS } from "./fixtures/clinical-engine/dfi-complete-answers";
 import { pickDemoProfessional, reassignDemoEvaluations } from "./fixtures/demo-professional";
+import { ENGINE_VERSION } from "@/clinical-engine/version";
 
 // SEED del caso golden-path por la VIA REAL (bloque prerrequisito "profesional primero").
 // No es un test de aserciones: es una rutina de sembrado idempotente y RESUMIBLE que corre
@@ -284,7 +285,10 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
       await db.select().from(schema.diagnoses).where(eq(schema.diagnoses.evaluationId, EVAL_ID))
     )[0];
     expect(diag).toBeTruthy();
-    expect(diag.engineVersion).toBe("anibise-1.1.0");
+    // Contra la CONSTANTE: lo que se afirma es que el diagnostico SELLA la version del motor, no cual es.
+    // Los literales "anibise-1.0.0" de otros tests SI se quedan a mano, y la diferencia importa: alli el
+    // literal representa una version VIEJA a proposito (probar el camino del documento desfasado).
+    expect(diag.engineVersion).toBe(ENGINE_VERSION);
 
     const report = (
       await db.select().from(schema.reports).where(eq(schema.reports.evaluationId, EVAL_ID))
@@ -298,7 +302,7 @@ describe.skipIf(!RUN)("seed golden-path (via real pipeline)", () => {
     };
     // Snapshot GENUINO del motor real (no fabricado a mano): forma actual + version real.
     expect(snap.efrPhenotype).toBeTruthy();
-    expect(snap.versions?.engine).toBe("anibise-1.1.0");
+    expect(snap.versions?.engine).toBe(ENGINE_VERSION);
     // AUTOSUFICIENTE (ii): el contenido clinico del estado EFR quedo congelado en el snapshot,
     // asi la vista de resultados no re-deriva evidencia del registry vivo.
     expect(snap.efrContent?.mechanism).toBeTruthy();

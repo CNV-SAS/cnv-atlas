@@ -114,6 +114,11 @@ export type TreatmentProtocol = {
   // de BD la congela). La UI lo usa para bloquear la edición y no dejar que un guardado choque contra
   // el trigger (se veria editable pero fallaria). Se corrige por versión nueva, no editando.
   approved: boolean;
+  // REAPERTURA (§6c): sellos de la ultima, y cuantas prescripciones estuvieron aprobadas antes. El
+  // conteo > 0 es lo que hace de este un tratamiento REEMITIDO, con su aviso obligatorio al paciente.
+  reopenedAt: string | null;
+  reopenReason: string | null;
+  aprobacionesPrevias: number;
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
   // Peso meta (cadena calórica, pieza 1 — HECHO VISIBLE, nota 3 de Gildardo). pesoCalculo es el peso

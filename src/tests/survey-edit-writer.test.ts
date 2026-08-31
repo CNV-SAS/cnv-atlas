@@ -6,6 +6,10 @@ import { normalizeHeader } from "@/modules/bis/services/header-map";
 import biodyJson from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // Juego que deja dfi.complete=true: el gate de generacion (Gildardo 2026-08-13 §1) no sella incompletas.
 import { DFI_COMPLETE_ANSWERS as ANSWERS, resolveAnswerValue, defaultAnswerFor } from "./fixtures/clinical-engine/dfi-complete-answers";
+import {
+  borrarPreguntaSinFieldKey,
+  crearPreguntaSinFieldKey,
+} from "./fixtures/pregunta-sin-field-key";
 
 // (a) Edicion de la encuesta por el profesional ANTES del diagnostico. Verificacion contra la BD real
 // (como correct-evaluation): el camino feliz + los guards que importan (asignacion, y sobre todo el de
@@ -116,11 +120,15 @@ describe.skipIf(!HAS_DB)("saveSurveyEdit (BD real)", () => {
       await db.select({ profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).where(eq(schema.professionalProfiles.id, proId)).limit(1)
     )[0].profileId;
     svId = (await db.select({ id: schema.surveyVersions.id }).from(schema.surveyVersions).orderBy(desc(schema.surveyVersions.publishedAt)).limit(1))[0].id;
-    qId = (await db.select({ id: schema.surveyQuestions.id }).from(schema.surveyQuestions).where(isNull(schema.surveyQuestions.fieldKey)).limit(1))[0].id;
+    qId = await crearPreguntaSinFieldKey(db, svId);
   });
 
   afterAll(async () => {
-    if (!db || !createdEvals.length) return;
+    if (!db) return;
+    // La pregunta que creo este test se borra AQUI. Dejarla convertiria la encuesta en una version con
+    // una pregunta de mas, y la numeracion continua que ve el paciente cambiaria para todos.
+    if (qId) await borrarPreguntaSinFieldKey(db, qId);
+    if (!createdEvals.length) return;
     const all = createdEvals;
     const diags = await db.select({ id: schema.diagnoses.id }).from(schema.diagnoses).where(inArray(schema.diagnoses.evaluationId, all));
     const diagIds = diags.map((d: { id: string }) => d.id);

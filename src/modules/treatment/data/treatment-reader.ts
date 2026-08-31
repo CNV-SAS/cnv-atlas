@@ -93,7 +93,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -184,10 +184,26 @@ export async function getTreatmentProtocol(
   // descarte vive aparte. Descartar es decir "lo mire y esta bien", no "no paso nada".
 
 
+  // Cuantas prescripciones de este tratamiento estuvieron aprobadas antes. Solo el CONTEO: el contenido
+  // de cada una se lee cuando el profesional lo pide, no en cada carga del panel. Por RLS, como todo lo
+  // demas de este reader: si la evaluacion no es suya, no hay filas.
+  const previas = await supabase
+    .from("treatment_approvals")
+    .select("id", { count: "exact", head: true })
+    .eq("treatment_id", treatmentId);
+  if (previas.error) throw new Error(`treatment-reader: approvals: ${previas.error.message}`);
+
   return {
     treatmentId,
     diagnosisConfirmed: Boolean(diag.confirmed_at),
     approved: treatment.status === "approved",
+    // REAPERTURA (§6c). `aprobacionesPrevias` se DERIVA de la historia, no de un flag: una prescripcion
+    // que ya estuvo aprobada y se reabrio es un tratamiento REEMITIDO, y eso obliga a avisarle al
+    // paciente cuando se apruebe la nueva ("porque cambia lo que la persona come", §12c). Un flag aparte
+    // seria un segundo estado que puede desincronizarse del real.
+    reopenedAt: treatment.reopened_at,
+    reopenReason: treatment.reopen_reason,
+    aprobacionesPrevias: previas.count ?? 0,
     kcalObjetivo: treatment.kcal_objetivo,
     proteinaGramos: treatment.proteina_g,
     // Peso meta VISIBLE (pieza 1): pesoCalculo/label salen del snapshot sugerido sellado; adjPesoMeta es
