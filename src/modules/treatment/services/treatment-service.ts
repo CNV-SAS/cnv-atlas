@@ -359,24 +359,33 @@ export async function saveMenuSemanal(input: SaveMenuSemanalInput, actor: Actor)
   return ok(undefined);
 }
 
-// APLICAR UN CAMBIO PROPUESTO POR LA IA a la grilla del menu semanal.
+// APLICAR CAMBIOS PROPUESTOS POR LA IA a la grilla del menu semanal.
 //
-// CAMBIO POR CAMBIO, no en bloque, y es la decision que pidio Santiago: una sustitucion puede ser buena y
-// la de al lado no, asi que aceptar en bloque obligaria a tragarse las dos.
+// UNO A UNO SIGUE SIENDO LO PRINCIPAL: una sustitucion puede ser buena y la de al lado no, asi que la
+// aceptacion es cambio a cambio. Lo que se agrego el 2026-08-31, a peticion de Santiago, es el ATAJO de
+// aplicar todas las de una propuesta: con los botones individuales presentes, el global no obliga a nada,
+// solo ahorra clics. Lo que se descarto en su momento era el global SOLO, que si obligaba a tragarse todo.
 //
 // NO HAY WRITER NUEVO NI FORMA NUEVA, y ese es el hallazgo que hizo esto barato: la grilla ya guarda
 // `{diaInicio, celdas}` donde `celdas` son SOLO los overrides contra el ciclo. Una adaptacion de la IA ES
 // un override. Asi que aplicar un cambio es escribir una celda por el camino que ya existe, con su
 // candado de concurrencia, su auditoria y su firma.
 //
+// Y POR ESO "TODAS" ES UN SOLO GUARDADO, no un bucle sobre el de a uno. Un bucle haria N lecturas y N
+// escrituras: la primera invalidaria la firma de la segunda, asi que o se salta el candado (inaceptable) o
+// se cae a la mitad dejando la grilla aplicada por partes. Con una sola escritura hay una sola firma, un
+// solo chequeo de concurrencia y una sola entrada de auditoria: se aplican todas o no se aplica ninguna.
+//
 // SOBRE LA FIRMA: se manda la que se acaba de leer en esta misma peticion. Si otra sesion escribio entre
 // la lectura y la escritura, el candado rechaza y el profesional recarga, que es la conducta que ya tiene
 // el guardado manual. No se computa una firma "fresca" para saltarse el candado: eso convertiria un merge
 // en un pisotón silencioso.
-export async function aplicarCambioMenu(
-  input: { evaluationId: string; dia: number; tiempo: string; reemplazo: string },
+export async function aplicarCambiosMenu(
+  input: { evaluationId: string; cambios: { dia: number; tiempo: string; reemplazo: string }[] },
   actor: Actor,
 ): Promise<Result<void>> {
+  if (input.cambios.length === 0) return ok(undefined);
+
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
 
@@ -384,16 +393,18 @@ export async function aplicarCambioMenu(
   const diaInicio = guardado?.diaInicio ?? diaInicioDerivado(protocol.treatmentId);
   const celdas = { ...(guardado?.celdas ?? {}) };
 
-  // MISMA REGLA QUE LA GRILLA: solo se guarda lo que DIFIERE del ciclo. Si el reemplazo coincidiera con lo
-  // que el ciclo ya propone, guardarlo lo congelaria: la celda dejaria de seguir al ciclo si mañana se
-  // propone otra semana.
-  const delCiclo = (diaDelCiclo(diaInicio, input.dia) as unknown as Record<string, string | undefined>)[
-    input.tiempo
-  ];
-  if (input.reemplazo === delCiclo) {
-    delete celdas[`${input.dia}_${input.tiempo}`];
-  } else {
-    celdas[`${input.dia}_${input.tiempo}`] = input.reemplazo;
+  for (const cambio of input.cambios) {
+    // MISMA REGLA QUE LA GRILLA: solo se guarda lo que DIFIERE del ciclo. Si el reemplazo coincidiera con
+    // lo que el ciclo ya propone, guardarlo lo congelaria: la celda dejaria de seguir al ciclo si mañana
+    // se propone otra semana.
+    const delCiclo = (
+      diaDelCiclo(diaInicio, cambio.dia) as unknown as Record<string, string | undefined>
+    )[cambio.tiempo];
+    if (cambio.reemplazo === delCiclo) {
+      delete celdas[`${cambio.dia}_${cambio.tiempo}`];
+    } else {
+      celdas[`${cambio.dia}_${cambio.tiempo}`] = cambio.reemplazo;
+    }
   }
 
   return saveMenuSemanal(
@@ -407,6 +418,15 @@ export async function aplicarCambioMenu(
     },
     actor,
   );
+}
+
+/** Aplicar UN cambio: el de a uno delega en el de a varios, para que haya UNA sola regla de escritura. */
+export async function aplicarCambioMenu(
+  input: { evaluationId: string; dia: number; tiempo: string; reemplazo: string },
+  actor: Actor,
+): Promise<Result<void>> {
+  const { evaluationId, ...cambio } = input;
+  return aplicarCambiosMenu({ evaluationId, cambios: [cambio] }, actor);
 }
 
 // Checkpoint 2.4: guias dietarias, su propio camino de guardado.

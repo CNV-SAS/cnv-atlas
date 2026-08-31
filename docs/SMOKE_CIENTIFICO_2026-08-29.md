@@ -36,8 +36,7 @@ que es no probar nada.
 **Una prueba gasta el caso de la siguiente si se hace al revés.** El orden de abajo evita tres choques:
 
 1. **La encuesta va primero** porque las alertas, el menú y el diagnóstico leen lo que respondas ahí.
-2. **El ISCM sin MCA va antes de generar el diagnóstico**, porque se decide al importar el BIS: después ya
-   está sellado.
+2. **El paso del ISCM sin MCA se retiró** (ver 3a): no es alcanzable por el Excel, y lo cubre un test.
 3. **La reemisión va al final**, sobre los pacientes de trayectoria, y no sobre el que usaste para todo lo
    demás: necesita una evaluación **vieja**, y la que acabas de crear es nueva por definición.
 
@@ -57,17 +56,22 @@ Abre el enlace del paciente y **respóndela entera**, con estos valores en las p
 
 > Los números son los que **ves en pantalla**, no los códigos internos.
 
-## 1a · Los tres encabezados de grupo
+## 1a · Los tres encabezados de grupo · **ya NO van en la encuesta del paciente**
 
-**Qué mirar:** en la matriz de frecuencia (preguntas 1 a 15) tienen que aparecer **tres encabezados**, en
-este orden: *Alimentación Real protectora*, *Alimentación Real energética (moderar)*, *Procesados y
-ultraprocesados (PCBU)*.
+**Corregido el 2026-08-31 tras el primer smoke.** Estaban aquí, portados de su archivo, y se **retiraron**
+por sesgo de deseabilidad: rotular un bloque como *Procesados y ultraprocesados (PCBU)* antes de que el
+paciente conteste empuja la respuesta hacia lo que se espera de él, y esto es un cuestionario de
+frecuencia. Está preguntado en la ronda del 31.
 
-**Y lo que de verdad se está probando:** que **las carnes rojas queden bajo el encabezado del MEDIO**, no
-bajo el de procesados. Estaban mal y es lo que corregimos.
+**Qué mirar en la encuesta del paciente:** que **NO** aparezca ningún encabezado de categoría, y que el
+**orden** siga siendo el del modelo: **carnes rojas justo después de carnes blancas** (posición 11), no al
+final. El orden es lo que él pidió; el rótulo es lo que quitamos.
 
-**Sería defecto:** que aparezcan cuatro encabezados, que uno se repita, o que las carnes rojas caigan en el
-último bloque.
+**Dónde se ven ahora, y hay que mirarlo:** en la evaluación, *Ver o editar encuesta*. Ahí sí salen los
+tres, como **banda de color** (verde protector, azul neutro, rojo riesgo), que es la forma de su archivo.
+
+**Sería defecto:** que aparezcan en la del paciente; que NO aparezcan en la del profesional; que sean
+cuatro o se repitan; o que las carnes rojas caigan en el último bloque.
 
 ## 1b · Las respuestas que disparan las alertas
 
@@ -117,20 +121,22 @@ vacía) y mira que **la deshidratación desaparezca**. Sin el dato, la regla no 
 
 # 3 · Diagnóstico
 
-## 3a · El ISCM sin MCA · **hazlo ANTES de generar**
+## 3a · El ISCM sin MCA · **retirado del recorrido (no se puede provocar así)**
 
-**Qué provocar:** al importar el archivo del Biody, usa uno **sin la columna de la desviación teórica de la
-masa celular activa** (`Masa celular activa measurementDetails.ECARTTHEORIQUEEXPORT kg`). La forma más
-simple: abre el Excel del demo, **borra esa columna**, y súbelo.
+**Era errata mía, verificada el 2026-08-31.** El paso decía "borra la columna de la desviación teórica de
+la masa celular activa y súbelo". **No sirve, y no por el nombre de la columna:** Atlas la **reconstruye**.
+`deriveMissingComposition` calcula `MCA_dif = MCA − MCA_ref`, y si además borras la MCA, la deriva del agua
+intracelular (`MCA = 1,0162 × AIC + MPM`). La cadena de derivación de su archivo es tan completa que **un
+export normal del Biody siempre produce ISCM**.
 
-**Qué mirar:** en el dominio *Metabólico-Estructural* del DFI tiene que decir **"ISCM –"** y la fila
-**"ISCM-BIS – (–)"**.
+O sea que el caso no es alcanzable por el Excel, y eso es una buena noticia, no un hueco: la guarda existe
+para el dato que de verdad falta (entrada manual, equipo viejo), no para el export completo.
 
-**Sería defecto:** que diga **"ISCM Leve"** o **"ISCM-BIS 0"**. Ese era el defecto: el dato ausente entraba
-como cero, y un cero ahí afirma que el paciente está en su valor esperado.
+**Dónde queda probado:** `src/tests/iscm-sin-mca.test.ts`, con su control negativo (con ISCM presente todo
+sigue igual) y con el caso que los distingue: un ISCM de **cero medido** sí se clasifica.
 
-**Lo que NO es defecto:** que el dominio siga puntuando severidad 1 en el radar. Eso es decisión de
-Gildardo y está preguntado en la ronda.
+**Lo que sigue sin ser defecto:** que el dominio puntúe severidad 1 sin dato. Es su `?? 1` y está preguntado
+en la ronda.
 
 ## 3b · Los cortes del IRC
 
@@ -197,12 +203,17 @@ técnica.
 **Ahora pulsa "Adaptar a las restricciones".** Lo que tiene que verse:
 
 - Una lista de **sustituciones**, no un menú nuevo. Cada una con **día, tiempo, el reemplazo y su motivo**.
-- Un botón **"Aplicar a la grilla"** en **cada una**, no uno solo para todas.
+- Un botón **"Aplicar a la grilla"** en **cada una**.
+- Y debajo, el atajo: **"Aplicar las N a la grilla"**, que aparece solo si quedan **dos o más** por aceptar
+  (agregado el 2026-08-31). Con los individuales presentes es un atajo, no una imposición.
 - Al aplicar una, esa celda de la grilla cambia y el botón pasa a **"Aplicado a la grilla"**. **Las demás
   siguen sin aplicar.**
+- **Y la página NO salta al inicio** en ninguno de los dos botones, ni al pulsar "Adaptar a las
+  restricciones". Ese era el defecto del primer smoke.
 
-**Sería defecto:** que devuelva la semana entera; que solo haya un botón para aceptar todo; o que aplicar
-una cambie más de una celda.
+**Sería defecto:** que devuelva la semana entera; que el atajo sea el ÚNICO botón; que aplicar una cambie
+más de una celda; que el atajo aplique unas sí y otras no (va todo en un solo guardado); o que la página
+salte al inicio al pulsar cualquiera de los tres botones.
 
 **Y la comprobación en negativo:** quita las restricciones (borra "Sin gluten" y pon el patrón en
 *Ninguno*), y el botón debe quedar **deshabilitado**, diciendo que no hay nada que adaptar.
@@ -228,10 +239,25 @@ diga solo "sin observaciones", sin explicar que el profesional no registró ning
 
 **Qué mirar:** la fecha del encabezado y la de la HC son la de la **medición**, no la de hoy.
 
-## 5c · La reemisión por cambio de banda · **usa los de trayectoria**
+## 5c · La reemisión por cambio de banda
 
-**Qué provocar:** abre uno de los **Demo Trayectoria** (tienen dos evaluaciones) y entra a la **más
-antigua**.
+**Cómo llegas a una evaluación antigua** (no quedó claro en el primer smoke): *Pacientes* → abres el
+paciente → la tabla de evaluaciones las lista todas, **más reciente primero, por fecha de medición**, con
+**"Ver resultados"** en cada fila. Desde el panel de una evaluación no hay ruta directa a otra: la salida es
+"Volver a la ficha del paciente", que es esa misma tabla.
+
+**Los dos pacientes que SÍ cambian de banda** (barrida toda la base el 2026-08-31; son los únicos):
+
+| Paciente | IRC | Sellado | Con los cortes de hoy |
+| --- | --- | --- | --- |
+| **Demo Realimentación Bajo peso (smoke)** | 2,2794 | Riesgo moderado | **Bajo riesgo** |
+| **Demo Restricciones Renal (smoke)** | 2,2794 | Riesgo moderado | **Bajo riesgo** |
+
+Los dos son de **Profesional Demo** (nutricionista) y los siembra `SEED_REALIMENTACION=1`. El corte de
+mujeres pasó de 2,27 a 2,30, y 2,2794 cae justo en esa ventana.
+
+**Qué provocar:** abre cualquiera de esos dos. En **Demo Trayectoria** verás el otro desenlace (el gris),
+porque su clasificación no se mueve: los dos son correctos y conviene ver los dos.
 
 **Por qué funciona ahora y no antes:** hoy subimos la versión de los clasificadores, porque el porte del IRC
 mueve de banda. Así que las evaluaciones emitidas antes quedan marcadas como **emitidas con versión

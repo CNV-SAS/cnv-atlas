@@ -17,11 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/shared/markdown";
-import { useFormToast, useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
+import {
+  useFormToastAndRefresh,
+  useFormToastRefreshOnSuccess,
+} from "@/components/shared/use-form-toast";
 
 import {
   addNoteAction,
   aplicarCambioMenuAction,
+  aplicarCambiosMenuAction,
   generateMenuAction,
   saveAdjustmentsAction,
   saveGuidelinesAction,
@@ -49,6 +53,7 @@ import {
   esMenuCambios,
   esMenuComidas,
   type IntercambioSaved,
+  type MenuCambios,
   type MenuSuggestion,
   type TiemposSaved,
   type TreatmentProtocol,
@@ -656,7 +661,10 @@ function MenuSection({
   patronAlimentario: string[];
 }) {
   const [state, formAction, pending] = useActionState(generateMenuAction, EMPTY);
-  useFormToast(state);
+  // AndRefresh, no useFormToast a secas: la accion ya no revalida (el revalidatePath era el que arrastraba
+  // la pagina al inicio al pulsar "Adaptar a las restricciones", reportado en el smoke del 2026-08-31).
+  // El refresco lo dispara el hook DESPUES del aviso, para que la propuesta aparezca sin mover el scroll.
+  useFormToastAndRefresh(state);
 
   // El menu se genera contra el objetivo de la CADENA CALORICA (fuente unica; el input manual de objetivo
   // se retiro en el checkpoint 2). Basta con que el protocolo este calculado (snapshot sellado); sin el no
@@ -767,45 +775,24 @@ function MenuCard({
             cumple las restricciones de este paciente.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {json.cambios.map((c) => {
-              const clave = `${c.dia}_${c.tiempo}`;
-              const yaEsta = aplicados.has(clave);
-              return (
-                <li key={clave} className="rounded-md border border-border bg-muted/30 p-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {DIAS_SEMANA[c.dia]} · {TIEMPOS_DEF.find((t) => t.id === c.tiempo)?.n ?? c.tiempo}
-                  </p>
-                  <p className="pt-0.5 text-sm text-foreground">{c.reemplazo}</p>
-                  <p className="pt-0.5 text-xs text-muted-foreground">
-                    Motivo: {c.motivo}
-                    {c.citaVerificada === false ? (
-                      // EL CAMBIO QUE PUEDE NO CORRESPONDER. No se bloquea (juzgarlo es clínico), pero el
-                      // profesional ve cuál cita una restricción que nadie le pidió atender.
-                      <span className="ml-2 text-attention">
-                        · no corresponde a ninguna restricción registrada
-                      </span>
-                    ) : null}
-                  </p>
-                  {/* CAMBIO POR CAMBIO, no en bloque: una sustitución puede ser buena y la de al lado no,
-                      y aceptar en bloque obligaría a tragarse las dos. */}
-                  <form action={aplicarCambioMenuAction} className="pt-1.5">
-                    <input type="hidden" name="evaluationId" value={evaluationId} />
-                    <input type="hidden" name="dia" value={c.dia} />
-                    <input type="hidden" name="tiempo" value={c.tiempo} />
-                    <input type="hidden" name="reemplazo" value={c.reemplazo} />
-                    {yaEsta ? (
-                      <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
-                    ) : (
-                      <Button type="submit" variant="outline" size="sm" disabled={locked}>
-                        Aplicar a la grilla
-                      </Button>
-                    )}
-                  </form>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-2">
+              {json.cambios.map((c) => (
+                <CambioMenu
+                  key={`${c.dia}_${c.tiempo}`}
+                  cambio={c}
+                  evaluationId={evaluationId}
+                  locked={locked}
+                  yaEsta={aplicados.has(`${c.dia}_${c.tiempo}`)}
+                />
+              ))}
+            </ul>
+            <AplicarTodasMenu
+              evaluationId={evaluationId}
+              locked={locked}
+              pendientes={json.cambios.filter((c) => !aplicados.has(`${c.dia}_${c.tiempo}`))}
+            />
+          </div>
         )
       ) : esMenuComidas(json) ? (
         // FORMA v3, HISTORICA: cuando la IA componia un menu de un dia. Sus filas siguen en BD porque
@@ -838,6 +825,104 @@ function MenuCard({
         <p className="text-sm text-muted-foreground">Sin contenido (el intento falló).</p>
       )}
     </li>
+  );
+}
+
+type CambioPropuestoView = MenuCambios["cambios"][number];
+
+// UNA sustitución propuesta, con su botón. Es componente propio y no JSX suelto dentro del `.map` porque
+// necesita su propio `useActionState`: los hooks no se pueden llamar dentro de un bucle.
+//
+// EL BOTON YA NO FALLA EN SILENCIO. Antes la acción era `Promise<void>` y descartaba el resultado, así que
+// si el candado de concurrencia rechazaba el guardado no pasaba nada en pantalla y el profesional se
+// quedaba creyendo que había aplicado el cambio. Ahora el rechazo sale como aviso.
+function CambioMenu({
+  cambio: c,
+  evaluationId,
+  locked,
+  yaEsta,
+}: {
+  cambio: CambioPropuestoView;
+  evaluationId: string;
+  locked: boolean;
+  yaEsta: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(aplicarCambioMenuAction, EMPTY);
+  // AndRefresh, no useFormToast: la acción ya no revalida (revalidar arrastraba la página al inicio en cada
+  // clic), así que el refresco lo dispara el hook DESPUÉS del aviso, que es lo que lo hace visible.
+  useFormToastAndRefresh(state);
+
+  return (
+    <li className="rounded-md border border-border bg-muted/30 p-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {DIAS_SEMANA[c.dia]} · {TIEMPOS_DEF.find((t) => t.id === c.tiempo)?.n ?? c.tiempo}
+      </p>
+      <p className="pt-0.5 text-sm text-foreground">{c.reemplazo}</p>
+      <p className="pt-0.5 text-xs text-muted-foreground">
+        Motivo: {c.motivo}
+        {c.citaVerificada === false ? (
+          // EL CAMBIO QUE PUEDE NO CORRESPONDER. No se bloquea (juzgarlo es clínico), pero el
+          // profesional ve cuál cita una restricción que nadie le pidió atender.
+          <span className="ml-2 text-attention">· no corresponde a ninguna restricción registrada</span>
+        ) : null}
+      </p>
+      {/* CAMBIO POR CAMBIO: una sustitución puede ser buena y la de al lado no. El botón global de abajo
+          es un atajo sobre estos, no un reemplazo de ellos. */}
+      <form action={formAction} className="pt-1.5">
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="dia" value={c.dia} />
+        <input type="hidden" name="tiempo" value={c.tiempo} />
+        <input type="hidden" name="reemplazo" value={c.reemplazo} />
+        {yaEsta ? (
+          <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
+        ) : (
+          <Button type="submit" variant="outline" size="sm" disabled={locked || pending}>
+            {pending ? "Aplicando..." : "Aplicar a la grilla"}
+          </Button>
+        )}
+      </form>
+    </li>
+  );
+}
+
+// EL ATAJO: aplicar de una vez las sustituciones que quedan por aceptar.
+//
+// POR QUE NO ES LO QUE HABIAMOS DESCARTADO. Lo que se descartó fue un botón global COMO UNICA VIA, que
+// obliga a tragarse todas. Con los botones individuales presentes, este solo ahorra clics: el profesional
+// que quiere elegir sigue eligiendo (Santiago, 2026-08-31).
+//
+// UN SOLO GUARDADO, no un bucle: el servicio aplica las N celdas sobre una sola firma, así que el candado
+// de concurrencia se comprueba una vez y se aplican todas o ninguna. Un bucle invalidaría su propia firma
+// en la segunda escritura y dejaría la grilla a medias.
+//
+// NO APARECE con una sola pendiente: un "aplicar todas" que aplica una es ruido al lado de su propio botón.
+function AplicarTodasMenu({
+  evaluationId,
+  locked,
+  pendientes,
+}: {
+  evaluationId: string;
+  locked: boolean;
+  pendientes: CambioPropuestoView[];
+}) {
+  const [state, formAction, pending] = useActionState(aplicarCambiosMenuAction, EMPTY);
+  useFormToastAndRefresh(state);
+  if (pendientes.length < 2) return null;
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="evaluationId" value={evaluationId} />
+      <input
+        type="hidden"
+        name="cambios"
+        value={JSON.stringify(
+          pendientes.map((c) => ({ dia: c.dia, tiempo: c.tiempo, reemplazo: c.reemplazo })),
+        )}
+      />
+      <Button type="submit" variant="outline" size="sm" disabled={locked || pending}>
+        {pending ? "Aplicando..." : `Aplicar las ${pendientes.length} a la grilla`}
+      </Button>
+    </form>
   );
 }
 
@@ -1977,7 +2062,8 @@ function NotesSection({
   locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(addNoteAction, EMPTY);
-  useFormToast(state);
+  // Mismo motivo que en el menu: addNoteAction dejo de revalidar, asi que el refresco va aqui, tras el aviso.
+  useFormToastAndRefresh(state);
   const [note, setNote] = useState("");
   // Append-only: limpiar el campo tras un guardado exitoso. Si no, el texto recien enviado
   // queda visible como si fuera una nota nueva por agregar, y el profesional podria darle a

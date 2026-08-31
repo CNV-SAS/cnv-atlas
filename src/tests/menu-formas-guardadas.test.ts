@@ -70,41 +70,64 @@ describe("el render distingue las dos formas, no castea a ciegas", () => {
   it("solo la forma v4 ofrece aplicar a la grilla", () => {
     // El boton de aplicar vive DENTRO de la rama de `cambios`. Si estuviera fuera, un menu v3 (que no
     // tiene dia ni tiempo) intentaria escribir una celda inexistente.
+    //
+    // EL MARCADOR CAMBIO, NO LA ASERCION (2026-08-31): la accion ya no se nombra inline en el JSX, porque
+    // cada sustitucion es ahora su propio componente (necesita su useActionState) y hay ademas un boton
+    // global. Lo que se comprueba sigue siendo lo mismo: que aplicar se ofrezca en la rama v4 y en ninguna
+    // otra. Se miran los DOS botones, para que retirar uno no deje la asercion en pie por el otro.
     const ramaCambios = PANEL.slice(
       PANEL.indexOf("esMenuCambios(json)"),
       PANEL.indexOf("esMenuComidas(json)"),
     );
-    expect(ramaCambios).toContain("aplicarCambioMenuAction");
+    expect(ramaCambios).toContain("<CambioMenu");
+    expect(ramaCambios).toContain("<AplicarTodasMenu");
     const ramaComidas = PANEL.slice(
       PANEL.indexOf("esMenuComidas(json)"),
       PANEL.indexOf("m.generatedText ?"),
     );
-    expect(ramaComidas).not.toContain("aplicarCambioMenuAction");
+    expect(ramaComidas).not.toContain("<CambioMenu");
+    expect(ramaComidas).not.toContain("<AplicarTodasMenu");
   });
 });
 
 describe("aplicar un cambio escribe en la forma que YA existe", () => {
   const SERVICE = readFileSync("src/modules/treatment/services/treatment-service.ts", "utf8");
 
+  // EL ANCLA SE MOVIO, NO LO QUE SE AFIRMA (2026-08-31). Al agregar el atajo de aplicar todas, la escritura
+  // paso a `aplicarCambiosMenu` (en plural) y `aplicarCambioMenu` quedo como delegado de una linea. Estas
+  // dos aserciones son las mismas; lo unico que cambia es de que funcion se recorta el bloque. La conducta
+  // (una sola escritura, la firma leida, el override que se borra si coincide con el ciclo) la prueba
+  // EJECUTANDO aplicar-cambios-menu.test.ts, que es la cobertura de verdad; esto solo fija la forma.
+  const bloqueEscritura = () =>
+    SERVICE.slice(
+      SERVICE.indexOf("export async function aplicarCambiosMenu"),
+      SERVICE.indexOf("// Checkpoint 2.4: guias dietarias"),
+    );
+
   it("reusa saveMenuSemanal: no hay writer nuevo ni forma nueva", () => {
     // El hallazgo que hizo esto barato: la grilla ya guarda `{diaInicio, celdas}` con SOLO los overrides
     // contra el ciclo, y una adaptación de la IA ES un override. Sin migración y sin tocar la firma.
-    const bloque = SERVICE.slice(
-      SERVICE.indexOf("export async function aplicarCambioMenu"),
-      SERVICE.indexOf("// Checkpoint 2.4: guias dietarias"),
-    );
-    expect(bloque).toContain("return saveMenuSemanal(");
-    expect(bloque).toContain("menuSemanalSignature");
+    expect(bloqueEscritura()).toContain("return saveMenuSemanal(");
+    expect(bloqueEscritura()).toContain("menuSemanalSignature");
   });
 
   it("y NO guarda el reemplazo si coincide con el ciclo: lo congelaría", () => {
     // Misma regla que la grilla. Guardar un texto igual al del ciclo fija la celda: dejaría de seguir al
     // ciclo el día que se proponga otra semana base.
-    const bloque = SERVICE.slice(
-      SERVICE.indexOf("export async function aplicarCambioMenu"),
+    expect(bloqueEscritura()).toContain("if (cambio.reemplazo === delCiclo)");
+    expect(bloqueEscritura()).toContain("delete celdas[");
+  });
+
+  it("el de a uno NO tiene regla propia: delega en el de a varios", () => {
+    // Sin esto quedarian dos caminos de escritura que pueden divergir en silencio, que es como empezaron
+    // varios de los defectos de este proyecto.
+    const delegado = SERVICE.slice(
+      SERVICE.indexOf("export async function aplicarCambioMenu("),
       SERVICE.indexOf("// Checkpoint 2.4: guias dietarias"),
     );
-    expect(bloque).toContain("if (input.reemplazo === delCiclo)");
-    expect(bloque).toContain("delete celdas[");
+    expect(delegado).toContain("aplicarCambiosMenu(");
+    expect(delegado, "el de a uno volvió a tener su propia regla de escritura").not.toContain(
+      "saveMenuSemanal(",
+    );
   });
 });

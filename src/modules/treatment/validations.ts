@@ -311,9 +311,19 @@ export type SaveNutraDecisionInput = z.infer<typeof saveNutraDecisionSchema>;
 // El `dia` y el `tiempo` se validan aqui ADEMAS de en el parseo del contrato, y no es redundante: el
 // contrato valida lo que devolvio el modelo, esto valida lo que llega del navegador. Son dos entradas
 // distintas y la segunda es la que puede venir manipulada.
-export const aplicarCambioMenuSchema = z.object({
-  evaluationId: z.guid("Evaluación inválida."),
+const cambioMenuSchema = z.object({
   dia: z.number().int().min(0).max(6),
   tiempo: z.enum(TIEMPOS_DEF.map((t) => t.id) as [string, ...string[]]),
   reemplazo: z.string().trim().min(1, "El reemplazo no puede estar vacío.").max(500),
+});
+
+export const aplicarCambioMenuSchema = cambioMenuSchema.extend({
+  evaluationId: z.guid("Evaluación inválida."),
+});
+
+// Aplicar TODAS las de una propuesta (el atajo). El tope de 42 no es decorativo: es el maximo de celdas
+// que puede tener una semana (7 dias x 6 tiempos), asi que una lista mas larga no viene de la pantalla.
+export const aplicarCambiosMenuSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  cambios: z.array(cambioMenuSchema).min(1, "No hay cambios que aplicar.").max(42),
 });

@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { getClientIp } from "@/core/http/client-ip";
 import { limitAiMenuByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
@@ -17,6 +15,7 @@ import {
   acknowledgeRestrictions,
   addNote,
   aplicarCambioMenu,
+  aplicarCambiosMenu,
   approveProtocol,
   saveAdjustments,
   saveGuidelines,
@@ -33,6 +32,7 @@ import {
   acknowledgeRestrictionsSchema,
   addNoteSchema,
   aplicarCambioMenuSchema,
+  aplicarCambiosMenuSchema,
   approveProtocolSchema,
   saveAdjustmentsSchema,
   saveGuidelinesSchema,
@@ -326,10 +326,23 @@ export async function saveMenuSemanalAction(
   return { error: null, success: "Menú semanal guardado.", warning: null };
 }
 
-// Aplica UN cambio propuesto por la IA a la grilla. Cambio por cambio, no en bloque.
-export async function aplicarCambioMenuAction(form: FormData): Promise<void> {
+// Aplica UN cambio propuesto por la IA a la grilla. Cambio por cambio; el global es aparte.
+//
+// DEVUELVE ESTADO, Y ESO ES UN ARREGLO, no una preferencia de forma. Hasta el 2026-08-31 esta accion era
+// `Promise<void>` y DESCARTABA el Result del service: si el candado de concurrencia rechazaba el guardado
+// (otra sesion escribio entretanto), no pasaba absolutamente nada en pantalla y el profesional se quedaba
+// creyendo que habia aplicado el cambio. Un fallo silencioso en una escritura clinica es peor que un error
+// visible. Ahora el rechazo del candado sale como warning, con su mensaje, igual que en el guardado manual.
+//
+// Y NO REVALIDA: el refresco lo hace el cliente DESPUES de disparar el aviso (useFormToastAndRefresh). Un
+// `revalidatePath` aqui arrastraba la pagina al inicio en cada clic, que es lo que Santiago reporto en el
+// smoke, y ademas desmontaba el formulario antes de que el aviso se viera.
+export async function aplicarCambioMenuAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
   const user = await requireUser();
-  if (!canManageTreatment(user)) return;
+  if (!canManageTreatment(user)) return fail("No autorizado.");
 
   const parsed = aplicarCambioMenuSchema.safeParse({
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
@@ -337,15 +350,66 @@ export async function aplicarCambioMenuAction(form: FormData): Promise<void> {
     tiempo: (form.get("tiempo") as string | null)?.trim() ?? "",
     reemplazo: (form.get("reemplazo") as string | null) ?? "",
   });
-  if (!parsed.success) return;
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Cambio inválido.");
 
-  await aplicarCambioMenu(parsed.data, {
+  const result = await aplicarCambioMenu(parsed.data, {
     actorId: user.id,
     actorEmail: user.email,
     ...(await actor()),
   });
-  // Revalida para que la celda aparezca ya con el reemplazo y el boton pase a "Aplicado".
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  return { error: null, success: "Cambio aplicado a la grilla.", warning: null };
+}
+
+// Aplica TODAS las sustituciones de una propuesta. El atajo, no la unica via: los botones individuales
+// siguen ahi, asi que esto ahorra clics sin obligar a aceptar nada en bloque (Santiago, 2026-08-31).
+//
+// UN SOLO GUARDADO para todas (ver `aplicarCambiosMenu`): un bucle sobre el de a uno invalidaria su propia
+// firma en la segunda escritura y dejaria la grilla aplicada a medias.
+export async function aplicarCambiosMenuAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  // Los cambios viajan como JSON en un hidden: son una lista de objetos, y un FormData plano no la
+  // representa sin inventar una convencion de nombres que habria que parsear igual.
+  let cambios: unknown = [];
+  try {
+    cambios = JSON.parse((form.get("cambios") as string | null) ?? "[]");
+  } catch {
+    return fail("No se pudieron leer los cambios.");
+  }
+
+  const parsed = aplicarCambiosMenuSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    cambios,
+  });
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Cambios inválidos.");
+
+  const result = await aplicarCambiosMenu(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+  const n = parsed.data.cambios.length;
+  return {
+    error: null,
+    success: n === 1 ? "Cambio aplicado a la grilla." : `${n} cambios aplicados a la grilla.`,
+    warning: null,
+  };
 }
 
 // Checkpoint 2.4: guias dietarias, su propia accion.
@@ -436,7 +500,8 @@ export async function addNoteAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
+  // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
   return { error: null, success: "Nota agregada.", warning: null };
 }
 
@@ -504,7 +569,8 @@ export async function acknowledgeRestrictionsAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
+  // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
   return { error: null, success: "Restricciones reconocidas.", warning: null };
 }
 
@@ -531,7 +597,8 @@ export async function approveProtocolAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
+  // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
   return { error: null, success: "Protocolo aprobado.", warning: null };
 }
 
@@ -557,7 +624,8 @@ export async function generateMenuAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath(`/evaluaciones/${evaluationId}`);
+  // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
+  // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
   // TRES DESENLACES DISTINTOS, y decirlos distinto importa: "no habia nada que adaptar" NO es lo mismo que
   // "la IA fallo" ni que "hay propuestas para revisar". Un solo mensaje para los tres dejaria al
   // profesional sin saber si tiene que mirar algo.
