@@ -105,9 +105,10 @@ const AUTHORIZED_MODIFICATIONS = [
     // El defecto estaba AGUAS ABAJO: num() convertia ese null en 0 y iscmCl lo clasificaba como "Leve"
     // (0 <= 1). Suprimir la cifra no basta si lo derivado sigue visible.
     //
-    // LO QUE NO SE TOCA, A PROPOSITO: el "?? 1" con que el dominio 2 puntua una clasificacion
-    // desconocida. Es suyo y esta escrito para exactamente este caso (etiqueta fuera del mapa), asi que
-    // dejarlo respeta su decision; cambiarlo seria tomarla nosotros. Queda preguntado en la ronda.
+    // EL "?? 1" DEL DOMINIO 2: preguntado en la ronda del 29 y RESPONDIDO el 30 (punto 4). Lo dejamos
+    // aqui a proposito porque cambiarlo habria sido tomar su decision; el contesto que sin dato el
+    // dominio NO puntua, y que ese `?? 1` estaba escrito para otra cosa (una clasificacion fuera del
+    // mapa, donde SI hay dato). Lo aplica CA-6, que ademas encontro otros tres sitios con esa forma.
     instruction:
       "El ISCM ausente no se emite ni se clasifica: el 0 afirma que el paciente esta en su valor esperado, una lectura favorable sin marca de que faltaba el dato (ronda 2026-08-28 punto 4, respondido en su archivo del 29).",
     oldSlice:
@@ -134,6 +135,206 @@ const AUTHORIZED_MODIFICATIONS = [
       '    iscmCl: { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
     newSlice:
       '    iscmCl: iscm == null ? null : { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },',
+  },
+  // ── CA-6 · El dominio sin dato no puntua (Gildardo 2026-08-30 §4) ──────────────────────────────
+  //
+  // EL NOMBRO UNO Y HAY CUATRO. Su punto 4 senala el `?? 1` del dominio 2 (ISCM). Al ir a aplicarlo
+  // aparecieron los otros tres, y uno NO es del mismo tipo:
+  //   · d1 Celular      · `if(s1==null) s1=1` colapsa DOS casos: combinacion fuera del mapa (lo que
+  //                       el quiso) y ausencia de IFC o IRC (lo que no).
+  //   · d2 Metabolico   · el que el nombro.
+  //   · d5 Epigenetico  · `if(icecTotal==null) s5=1`, mismo patron.
+  //   · d3 Envejecimiento · SIN `iaeCl` la cadena cae al `else` y da 2. Eso NO es una lectura favorable
+  //                       de un vacio: es una AFIRMACION DE PATOLOGIA sobre un vacio ("Envejecimiento
+  //                       acelerado: intervenir sobre funcion y masa") en un dominio que nadie midio.
+  //
+  // Se parte en varias entradas pequenas a proposito: cada una es un corte revisable a mano, que es lo
+  // que este mecanismo garantiza. Todas comparten la misma instruccion suya.
+  {
+    caId: "CA-6a",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  let s1 = D1[`${ifcL}|${ircL}`]; if(s1==null) s1=1;",
+    newSlice: "  // Etiqueta unica del dominio no medido. Vive aqui (primera modificacion del bloque) para que las\n  // cinco lecturas usen LA MISMA cadena y no cinco copias que puedan divergir.\n  const _DFI_SIN_DATO = \"Sin dato: este dominio no se midió, así que no puntúa ni entra al radar.\";\n  // Se separan los dos casos que antes colapsaban en el mismo 1: sin IFC o sin IRC no hay dominio\n  // que puntuar; con los dos presentes y una combinacion que el mapa no tiene, se conserva SU 1.\n  let s1 = (ifcL == null || ircL == null) ? null : (D1[`${ifcL}|${ircL}`] ?? 1);",
+  },
+  {
+    caId: "CA-6b",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  if(iehhAlt) s1=_dfiCap3(s1+1);",
+    newSlice: "  if(iehhAlt && s1 != null) s1=_dfiCap3(s1+1); // un matiz no crea severidad donde no hay dato",
+  },
+  {
+    caId: "CA-6c",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,",
+    newSlice: "    clasif: s1==null ? \"IFC — · IRC —\" : (idx.frL || `IFC ${ifcL} · IRC ${ircL}`),",
+  },
+  {
+    caId: "CA-6d",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    lectura: s1>=3?",
+    newSlice: "    lectura: s1==null?_DFI_SIN_DATO:s1>=3?",
+  },
+  {
+    caId: "CA-6e",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  let s2 = iscmMap[idx.iscmCl?.l] ?? 1;",
+    newSlice: "  // El caso que el nombro. El `?? 1` se conserva para lo que el lo escribio: una etiqueta que existe\n  // y el mapa no reconoce. Lo que cambia es la AUSENCIA de clasificacion, que ya no puntua.\n  let s2 = idx.iscmCl?.l == null ? null : (iscmMap[idx.iscmCl.l] ?? 1);",
+  },
+  {
+    caId: "CA-6f",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  if(/Sarcop|Déficit|Deficit/i.test(fen)) s2=_dfiCap3(s2+1);",
+    newSlice: "  if(/Sarcop|Déficit|Deficit/i.test(fen) && s2 != null) s2=_dfiCap3(s2+1);",
+  },
+  {
+    caId: "CA-6g",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    lectura: s2>=3?",
+    newSlice: "    lectura: s2==null?_DFI_SIN_DATO:s2>=3?",
+  },
+  {
+    caId: "CA-6h",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  let s3;\n  if(idx.iaeCl?.l===\"Enlentecido\") s3=0;\n  else if(idx.iaeCl?.l===\"Concordante\") s3 = iae>3?1:0;\n  else s3 = iae>10?3:2;",
+    newSlice: "  // EL PEOR DE LOS CUATRO. Sin EB-BIS no hay `iaeCl`, ninguna rama coincidia y la cadena caia al\n  // `else`, que con iae = 0 devuelve 2: envejecimiento acelerado AFIRMADO sobre lo no medido.\n  let s3;\n  if(idx.iaeCl?.l == null) s3=null;\n  else if(idx.iaeCl.l===\"Enlentecido\") s3=0;\n  else if(idx.iaeCl.l===\"Concordante\") s3 = iae>3?1:0;\n  else s3 = iae>10?3:2;",
+  },
+  {
+    caId: "CA-6i",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    clasif:`IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||\"-\"}`,",
+    newSlice: "    clasif: s3==null ? \"IAE — · sin dato\" : `IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||\"-\"}`,",
+  },
+  {
+    caId: "CA-6j",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    lectura: s3>=3?",
+    newSlice: "    lectura: s3==null?_DFI_SIN_DATO:s3>=3?",
+  },
+  {
+    caId: "CA-6k",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  if(icecTotal==null) s5=1;",
+    newSlice: "  if(icecTotal==null) s5=null;",
+  },
+  {
+    caId: "CA-6l",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  if(barrera) s5=_dfiCap3(s5+1);",
+    newSlice: "  if(barrera && s5 != null) s5=_dfiCap3(s5+1);",
+  },
+  {
+    caId: "CA-6m",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "    lectura: s5>=3?",
+    newSlice: "    lectura: s5==null?_DFI_SIN_DATO:s5>=3?",
+  },
+  {
+    caId: "CA-6n",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  const W=[0.30,0.25,0.15,0.15,0.15];\n  const score01 = domains.reduce((a,d,i)=>a+W[i]*(d.sev/3),0);",
+    newSlice: "  // EL RIESGO INTEGRADO SE RENORMALIZA sobre los dominios medidos, y esta parte SI es decision\n  // nuestra (declarada en la ronda del 31, no dada por buena): dejar el termino en cero es lo que\n  // hacia solo, porque en JavaScript null/3 es 0, y eso BAJA el riesgo por no haber medido, que es\n  // la misma lectura favorable de un vacio. El denominador nunca es cero: el dominio 4 arranca en 0\n  // y siempre tiene severidad, asi que su peso siempre cuenta.\n  const W=[0.30,0.25,0.15,0.15,0.15];\n  const _wMedidos = domains.reduce((a,d,i)=>a+(d.sev==null?0:W[i]),0);\n  const score01 = domains.reduce((a,d,i)=>a+(d.sev==null?0:W[i]*(d.sev/3)),0)/_wMedidos;",
+  },
+  {
+    caId: "CA-6o",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dominio SIN DATO no puntua y el radar no dibuja ese vertice (Gildardo 2026-08-30 punto 4): \"Un vertice de susceptibilidad leve dibujado sobre un dominio que no se midio es la misma lectura favorable de un vacio que corregimos en el ISCM, y en el radar pesa mas porque se ve de un golpe. Ese ?? 1 esta escrito para una clasificacion fuera del mapa, que es otra cosa: ahi si hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntua y el radar no dibuja ese vertice.\"",
+    oldSlice: "  return { domains, riesgo:{...NIV[nivel], score:Math.round(score01*100)}, veto, rutas };",
+    newSlice: "  // `sinDato` viaja con el resultado para que la pantalla pueda DECIRLO. Sin esto, el riesgo\n  // integrado saldria calculado sobre menos dominios sin que nadie lo supiera, que es cambiar una\n  // cifra clinica en silencio.\n  return { domains, riesgo:{...NIV[nivel], score:Math.round(score01*100)}, veto, rutas,\n    sinDato: domains.filter(d=>d.sev==null).map(d=>d.id) };",
+  },
+  // ── CA-7 · El adaptador deja de clasificar ceros fabricados: IAE, EB-BIS e IEHH ───────────────
+  //
+  // MISMA FORMA QUE CA-4/CA-5, aplicada a los tres indices que quedaban. `num()` devuelve 0 cuando el
+  // dato no esta, y aguas abajo ese 0 SE CLASIFICA: cIAE(0) da "Concordante" y cIEHH(0) da "Optimo".
+  // Un paciente sin EB-BIS salia con el dominio Envejecimiento en severidad 0 y la frase "su ritmo de
+  // envejecimiento es acorde con su edad cronologica", afirmada sobre lo que nadie midio.
+  //
+  // CORRIGE ADEMAS UN HALLAZGO NUESTRO MAL DESCRITO, y queda escrito para no repetirlo: reportamos que
+  // el dominio 3 sin dato AFIRMABA PATOLOGIA (severidad 2, "envejecimiento acelerado"). Esa rama existe
+  // en `computeDFI`, pero por el camino REAL no se alcanza, porque el adaptador nunca deja `iaeCl`
+  // vacio: lo que de verdad pasaba era la lectura FAVORABLE. La correccion es la misma; el relato no.
+  //
+  // POR QUE NO VA EN LA LINEA DE CA-4, que seria lo natural: esa linea ya la reescribe CA-4 con OTRA
+  // instruccion suya (la del ISCM), y el mecanismo prohibe modificaciones solapadas a proposito. Se
+  // repone el valor en `_idx`, que es por donde los tres entran al calculo.
+  {
+    caId: "CA-7a",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dato que falta no puede entrar al calculo como si fuera una respuesta, y menos como una respuesta favorable (Gildardo 2026-08-30 punto 1, CONDUCTA GENERAL: \"aplica a todo el sistema, no solo a esa regla. No me lo pregunten regla por regla\"). Aplicado al IAE, la EB-BIS y el IEHH, donde el adaptador seguia fabricando un 0 y clasificandolo.",
+    oldSlice: "  const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);",
+    newSlice: "  const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);\n  // ¿Vino el dato, o lo fabrico `num()` con su cero? La misma prueba de presencia de CA-4, extraida\n  // para reusarla en los tres indices de CA-7.\n  const _presente = (...ks) => ks.some(k => d[k] != null && d[k] !== \"\" && !isNaN(Number(d[k])));",
+  },
+  {
+    caId: "CA-7b",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dato que falta no puede entrar al calculo como si fuera una respuesta, y menos como una respuesta favorable (Gildardo 2026-08-30 punto 1, CONDUCTA GENERAL: \"aplica a todo el sistema, no solo a esa regla. No me lo pregunten regla por regla\"). Aplicado al IAE, la EB-BIS y el IEHH, donde el adaptador seguia fabricando un 0 y clasificandolo.",
+    oldSlice: "    ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,",
+    newSlice: "    ifc, irc, iscm, icaBis, pabu,\n    // AUSENTE != 0: se repone null cuando el valor lo puso el fallback de `num()` y no el paciente.\n    iehh: _presente(\"IEHH\", \"iehh\") ? iehh : null,\n    iae: _presente(\"IAE\", \"iae\") ? iae : null,\n    ebBis: _presente(\"EB_BIS\", \"eb\", \"ebBis\") ? ebBis : null,",
+  },
+  {
+    caId: "CA-7c",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dato que falta no puede entrar al calculo como si fuera una respuesta, y menos como una respuesta favorable (Gildardo 2026-08-30 punto 1, CONDUCTA GENERAL: \"aplica a todo el sistema, no solo a esa regla. No me lo pregunten regla por regla\"). Aplicado al IAE, la EB-BIS y el IEHH, donde el adaptador seguia fabricando un 0 y clasificandolo.",
+    oldSlice: "    iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === \"Severo\" ? \"Alto\" : x; })() },",
+    newSlice: "    iehhCl: !_presente(\"IEHH\", \"iehh\") ? null : { l: (() => { const x = cIEHH(iehh).l; return x === \"Severo\" ? \"Alto\" : x; })() },",
+  },
+  {
+    caId: "CA-7d",
+    decision: "D-007",
+    date: "2026-08-31",
+    targetFile: "engine.dfi.js",
+    instruction: "Un dato que falta no puede entrar al calculo como si fuera una respuesta, y menos como una respuesta favorable (Gildardo 2026-08-30 punto 1, CONDUCTA GENERAL: \"aplica a todo el sistema, no solo a esa regla. No me lo pregunten regla por regla\"). Aplicado al IAE, la EB-BIS y el IEHH, donde el adaptador seguia fabricando un 0 y clasificandolo.",
+    oldSlice: "    iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === \"Desacelerado\" ? \"Enlentecido\" : x; })() },",
+    newSlice: "    iaeCl: !_presente(\"IAE\", \"iae\") ? null : { l: (() => { const x = cIAE(iae).l; return x === \"Desacelerado\" ? \"Enlentecido\" : x; })() },",
   },
 ];
 

@@ -195,6 +195,10 @@ export function runEngine(input: EngineInput): EngineOutput {
     // ICEC/LE8 depende de la encuesta: con incompleta NO se emite (antes se anulaba solo si NO habia
     // ningun dato; ahora tambien si esta incompleta, para no sellar un ICEC calculado con defaults).
     le8Total: surveyComplete ? dfiRaw.le8.total : null,
+    // Dominios sin dato (CA-6). Se SELLA con el diagnostico, no se recalcula al mostrar: un diagnostico
+    // emitido tiene que poder decir sobre cuantos dominios se calculo su riesgo, aunque manana el
+    // paciente complete lo que faltaba.
+    dfiSinDato: dfiRaw.sinDato,
   };
 
   const rutasTxt = dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas";

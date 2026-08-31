@@ -212,6 +212,10 @@ export function EvaluationResults({
   const { indicators, classifications, efrPhenotype, structural, fenotipoMCCB, frSector, dfi, versions } =
     snapshot;
   const sexM = snapshot.sexo === "M"; // para los rangos de referencia por sexo (indicator-ranges)
+  // Dominios que el motor NO puntuó (CA-6). Del snapshot SELLADO, no recalculado: lo que se emitió es
+  // lo que se muestra. Ausente en snapshots anteriores a CA-6, donde todos los dominios puntuaban:
+  // por eso el `?? []` y no una guarda de "incompatible".
+  const dominiosSinDato = dfi.dfiSinDato ?? [];
   // Marca de calibracion provisional de EB-BIS/IAE (P0). Se lee del campo SELLADO del diagnostico
   // (emission_versions.calibration), NO de una constante: el dia que exista la calibracion
   // poblacional, los diagnosticos nuevos dejan de marcarse solos. Primer uso real de emission_versions.
@@ -458,6 +462,22 @@ export function EvaluationResults({
                 ? dfi.riesgo.descripcion
                 : "El riesgo integrado se recalcula al completar la encuesta: depende de dominios que hoy salen sobre respuestas que faltan."}
             </p>
+            {/* SOBRE CUÁNTOS DOMINIOS SE CALCULÓ. Cuando alguno no se midió, el riesgo se renormaliza
+                sobre los demás, y eso cambia lo que significa la cifra: 60 sobre cuatro dominios no es
+                60 sobre cinco. Callarlo sería cambiar un número clínico en silencio. */}
+            {dominiosSinDato.length ? (
+              <p className="text-sm text-attention">
+                Calculado sobre {dfi.domains.length - dominiosSinDato.length} de los{" "}
+                {dfi.domains.length} dominios:{" "}
+                {/* El nombre sale del propio snapshot, no de una tabla nuestra: dos fuentes del mismo
+                    rótulo es como empezó el defecto del orden de la matriz. */}
+                {dominiosSinDato
+                  .map((id) => dfi.domains.find((d) => d.id === id)?.nombre ?? id)
+                  .join(" y ")}{" "}
+                {dominiosSinDato.length === 1 ? "no se midió" : "no se midieron"}, así que{" "}
+                {dominiosSinDato.length === 1 ? "no puntúa" : "no puntúan"} en vez de puntuar bajo.
+              </p>
+            ) : null}
           </div>
 
           {/* Banner del veto conductual: cadena EXACTA del frozen (ATLAS_v8.html _DFIView). Sin el aviso, el
@@ -490,8 +510,13 @@ export function EvaluationResults({
                     {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
                     {d.nombre}
                   </span>
+                  {/* Tres estados, no dos. "No evaluable" es la encuesta incompleta; "Sin dato" es el
+                      dominio que el motor NO puntuó (CA-6). Un clamp sobre null daría 0, que es ÓPTIMO:
+                      exactamente la lectura favorable de un vacío que su punto 4 prohíbe. */}
                   {noEvaluable ? (
                     <Badge className="bg-muted text-muted-foreground">No evaluable</Badge>
+                  ) : d.sev == null ? (
+                    <Badge className="bg-muted text-muted-foreground">Sin dato</Badge>
                   ) : (
                     <Badge className={SEV_CLS[Math.min(3, Math.max(0, d.sev))]}>
                       {SEV_LABEL[Math.min(3, Math.max(0, d.sev))]}

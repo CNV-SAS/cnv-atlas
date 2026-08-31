@@ -6,7 +6,8 @@ export interface DFIDomain {
   id: string;
   nombre: string;
   icon?: string;
-  sev: number;
+  /** 0..3, o null si el dominio NO SE MIDIO (CA-6, Gildardo 2026-08-30 §4): sin dato no puntua. */
+  sev: number | null;
   clasif: string;
   lectura: string;
   items: string[];
@@ -18,6 +19,8 @@ export interface DFIResult {
   riesgo: { l: string; c: string; d: string; score: number };
   veto: boolean;
   rutas: string[];
+  /** ids de los dominios sin dato. El riesgo integrado se renormalizo sobre los demas. */
+  sinDato: string[];
 }
 
 export interface LE8Result {

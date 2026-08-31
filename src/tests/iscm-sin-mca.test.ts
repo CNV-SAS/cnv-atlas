@@ -51,11 +51,30 @@ describe("el ISCM ausente no se clasifica (punto 4)", () => {
     expect(d.items[0]).toBe("ISCM-BIS 0 (Leve)");
   });
 
-  it("la severidad del dominio 2 sin ISCM sigue siendo 1, que es SU default", () => {
-    // NO lo cambiamos nosotros: el `?? 1` es suyo y esta escrito para este caso exacto (etiqueta fuera
-    // del mapa). Queda fijado aqui para que se vea, y preguntado en la ronda: un dominio sin dato sigue
-    // puntuando severidad 1. Si el responde otra cosa, este es el test que se invierte.
-    expect(dom2(bis()).sev).toBe(1);
+  it("la severidad del dominio 2 sin ISCM es null: el dominio NO puntúa", () => {
+    // ESTE TEST SE INVIRTIÓ, Y ASÍ ES COMO SE INVIERTE UN CANDADO: citando la respuesta, no borrándolo.
+    // Decía "sigue siendo 1, que es SU default", con la nota de que estaba preguntado en la ronda y de
+    // que si él respondía otra cosa este era el test a invertir. Respondió el 2026-08-30, punto 4:
+    //
+    //   "No debe puntuar 1. Un vértice de susceptibilidad leve dibujado sobre un dominio que no se midió
+    //    es la misma lectura favorable de un vacío que corregimos en el ISCM, y en el radar pesa más
+    //    porque se ve de un golpe. Ese `?? 1` está escrito para una clasificación fuera del mapa, que es
+    //    otra cosa: ahí sí hay dato y no lo reconoce el clasificador. Sin dato, el dominio no puntúa."
+    //
+    // Lo aplica CA-6, que al ir a aplicarlo encontró otros tres sitios con la misma forma.
+    expect(dom2(bis()).sev).toBe(null);
+  });
+
+  it("pero una clasificación FUERA DEL MAPA con dato sí puntúa 1: su `?? 1` se conserva", () => {
+    // La otra mitad, y es la que impide que "aplicar su punto 4" se lleve por delante lo que él SÍ quiso.
+    // Con una etiqueta que existe y el mapa no reconoce hay dato: no es el caso del vacío.
+    const d = dom2(bis({ ISCM: 2.0 }));
+    expect(d.sev).toBe(2); // control: la etiqueta conocida sigue mapeando
+    // Y con una etiqueta desconocida (dato presente, clasificador que no la reconoce) cae en su default.
+    const raro = computeDFIFromData({}, bis({ ISCM: 2.0 })) as {
+      domains: { id: string; sev: number | null }[];
+    };
+    expect(raro.domains.find((x) => x.id === "d2")!.sev).not.toBe(null);
   });
 
   it("el cambio está en el MANIFIESTO, no editado a mano en el generado", () => {

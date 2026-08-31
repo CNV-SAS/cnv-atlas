@@ -112,12 +112,17 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   // ---- Dominio 1 · Celular-Eléctrico (IFC × IRC, matiz IEHH) ----
   const ifcL = idx.ifcCl?.l, ircL = idx.ircCl?.l;
   const D1 = { "Alto|Bajo":0,"Alto|Normal":1,"Normal|Bajo":1,"Alto|Alto":2,"Normal|Normal":2,"Bajo|Bajo":2,"Normal|Alto":2,"Bajo|Normal":3,"Bajo|Alto":3 };
-  let s1 = D1[`${ifcL}|${ircL}`]; if(s1==null) s1=1;
+  // Etiqueta unica del dominio no medido. Vive aqui (primera modificacion del bloque) para que las
+  // cinco lecturas usen LA MISMA cadena y no cinco copias que puedan divergir.
+  const _DFI_SIN_DATO = "Sin dato: este dominio no se midió, así que no puntúa ni entra al radar.";
+  // Se separan los dos casos que antes colapsaban en el mismo 1: sin IFC o sin IRC no hay dominio
+  // que puntuar; con los dos presentes y una combinacion que el mapa no tiene, se conserva SU 1.
+  let s1 = (ifcL == null || ircL == null) ? null : (D1[`${ifcL}|${ircL}`] ?? 1);
   const iehhAlt = idx.iehhCl && (idx.iehhCl.l==="Moderado"||idx.iehhCl.l==="Alto");
-  if(iehhAlt) s1=_dfiCap3(s1+1);
+  if(iehhAlt && s1 != null) s1=_dfiCap3(s1+1); // un matiz no crea severidad donde no hay dato
   const dom1 = { id:"d1", nombre:"Celular-Eléctrico", icon:"🔬", sev:s1,
-    clasif: idx.frL || `IFC ${ifcL} · IRC ${ircL}`,
-    lectura: s1>=3?"Función celular comprometida con microambiente hostil.":s1===2?"Estado celular en presión: vigilar función y riesgo.":s1===1?"Función conservada con señal de riesgo a observar.":"Homeostasis celular: membranas íntegras y microambiente equilibrado.",
+    clasif: s1==null ? "IFC — · IRC —" : (idx.frL || `IFC ${ifcL} · IRC ${ircL}`),
+    lectura: s1==null?_DFI_SIN_DATO:s1>=3?"Función celular comprometida con microambiente hostil.":s1===2?"Estado celular en presión: vigilar función y riesgo.":s1===1?"Función conservada con señal de riesgo a observar.":"Homeostasis celular: membranas íntegras y microambiente equilibrado.",
     items:[
       `IFC ${_dfiFmt(idx.ifc)} (${ifcL}${idx.sexoRef?.ifc ? " — corte " + idx.sexoRef.ifc : ""})`,
       `IRC ${_dfiFmt(idx.irc)} (${ircL}${idx.sexoRef?.irc ? " — corte " + idx.sexoRef.irc : ""})`,
@@ -128,22 +133,27 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
     ] };
   // ---- Dominio 2 · Metabólico-Estructural (ISCM-BIS × fenotipo) ----
   const iscmMap = { Bajo:0, Leve:1, Moderado:2, Alto:3 };
-  let s2 = iscmMap[idx.iscmCl?.l] ?? 1;
+  // El caso que el nombro. El `?? 1` se conserva para lo que el lo escribio: una etiqueta que existe
+  // y el mapa no reconoce. Lo que cambia es la AUSENCIA de clasificacion, que ya no puntua.
+  let s2 = idx.iscmCl?.l == null ? null : (iscmMap[idx.iscmCl.l] ?? 1);
   const fen = idx.structL || "";
-  if(/Sarcop|Déficit|Deficit/i.test(fen)) s2=_dfiCap3(s2+1);
+  if(/Sarcop|Déficit|Deficit/i.test(fen) && s2 != null) s2=_dfiCap3(s2+1);
   const dom2 = { id:"d2", nombre:"Metabólico-Estructural", icon:"❤️", sev:s2,
     clasif:`ISCM ${idx.iscmCl?.l||"-"} · ${fen||"fenotipo N/C"}`,
-    lectura: s2>=3?"Susceptibilidad cardiometabólica alta; fenotipo de riesgo.":s2===2?"Vulnerabilidad metabólica o fenotipo a corregir.":s2===1?"Susceptibilidad leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
+    lectura: s2==null?_DFI_SIN_DATO:s2>=3?"Susceptibilidad cardiometabólica alta; fenotipo de riesgo.":s2===2?"Vulnerabilidad metabólica o fenotipo a corregir.":s2===1?"Susceptibilidad leve: prevención eficaz.":"Perfil metabólico-estructural favorable.",
     items:[`ISCM-BIS ${_dfiFmt(idx.iscm)} (${idx.iscmCl?.l||"-"})`,`Fenotipo: ${fen||"N/C"}`,`FMI ${_dfiFmt(dv.fmi)} · FFMI ${_dfiFmt(dv.ffmi)}`] };
   // ---- Dominio 3 · Envejecimiento (EB-BIS · IAE) ----
   const iae = idx.iae ?? 0;
+  // EL PEOR DE LOS CUATRO. Sin EB-BIS no hay `iaeCl`, ninguna rama coincidia y la cadena caia al
+  // `else`, que con iae = 0 devuelve 2: envejecimiento acelerado AFIRMADO sobre lo no medido.
   let s3;
-  if(idx.iaeCl?.l==="Enlentecido") s3=0;
-  else if(idx.iaeCl?.l==="Concordante") s3 = iae>3?1:0;
+  if(idx.iaeCl?.l == null) s3=null;
+  else if(idx.iaeCl.l==="Enlentecido") s3=0;
+  else if(idx.iaeCl.l==="Concordante") s3 = iae>3?1:0;
   else s3 = iae>10?3:2;
   const dom3 = { id:"d3", nombre:"Envejecimiento", icon:"⏳", sev:s3,
-    clasif:`IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||"-"}`,
-    lectura: s3>=3?"Envejecimiento biológico marcadamente acelerado.":s3===2?"Envejecimiento acelerado: intervenir sobre función y masa.":s3===1?"Ritmo en el límite superior de lo esperado.":"Ritmo de envejecimiento esperado o enlentecido.",
+    clasif: s3==null ? "IAE — · sin dato" : `IAE ${_dfiSigned(iae)} años · ${idx.iaeCl?.l||"-"}`,
+    lectura: s3==null?_DFI_SIN_DATO:s3>=3?"Envejecimiento biológico marcadamente acelerado.":s3===2?"Envejecimiento acelerado: intervenir sobre función y masa.":s3===1?"Ritmo en el límite superior de lo esperado.":"Ritmo de envejecimiento esperado o enlentecido.",
     items:[`EB-BIS ${_dfiFmt(idx.ebBis)} años`,`Edad cronológica ${pt.edad ?? "-"} años`,`IAE ${_dfiSigned(iae)} años`] };
   // ---- Dominio 4 · Conductual-Perceptual ----
   let s4=0, veto=false; const f4=[];
@@ -161,20 +171,26 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   // ---- Dominio 5 · Epigenético-Contextual (ICEC/LE8 · contexto) ----
   const icecTotal = icec.total ?? null;
   let s5;
-  if(icecTotal==null) s5=1;
+  if(icecTotal==null) s5=null;
   else if(icecTotal>=80) s5=0;
   else if(icecTotal>=50) s5 = famHx.length>=3?2:1;
   else s5=3;
   const barrera = _dfiIsLimiting(soc.insec) || _dfiIsLimiting(soc.access);
-  if(barrera) s5=_dfiCap3(s5+1);
+  if(barrera && s5 != null) s5=_dfiCap3(s5+1);
   const dom5 = { id:"d5", nombre:"Epigenético-Contextual", icon:"🧬", sev:s5,
     clasif:`ICEC ${icecTotal==null?"-":Math.round(icecTotal)} · ${icec.cl?.l||"-"}`,
-    lectura: s5>=3?"Carga epigenética alta o barreras estructurales del contexto.":s5===2?"Carga contextual amplificada por antecedentes o entorno.":s5===1?"Carga contextual moderada y modificable.":"Estilo de vida y contexto protectores.",
+    lectura: s5==null?_DFI_SIN_DATO:s5>=3?"Carga epigenética alta o barreras estructurales del contexto.":s5===2?"Carga contextual amplificada por antecedentes o entorno.":s5===1?"Carga contextual moderada y modificable.":"Estilo de vida y contexto protectores.",
     items:[`ICEC/LE8 ${icecTotal==null?"-":Math.round(icecTotal)} (${icec.cl?.l||"-"})`,`Antecedentes familiares: ${famHx.length||0}`, barrera?"Barreras del contexto presentes":"Sin barreras estructurales mayores"] };
   const domains=[dom1,dom2,dom3,dom4,dom5];
   // ---- Síntesis · Riesgo integrado (ponderado) ----
+  // EL RIESGO INTEGRADO SE RENORMALIZA sobre los dominios medidos, y esta parte SI es decision
+  // nuestra (declarada en la ronda del 31, no dada por buena): dejar el termino en cero es lo que
+  // hacia solo, porque en JavaScript null/3 es 0, y eso BAJA el riesgo por no haber medido, que es
+  // la misma lectura favorable de un vacio. El denominador nunca es cero: el dominio 4 arranca en 0
+  // y siempre tiene severidad, asi que su peso siempre cuenta.
   const W=[0.30,0.25,0.15,0.15,0.15];
-  const score01 = domains.reduce((a,d,i)=>a+W[i]*(d.sev/3),0);
+  const _wMedidos = domains.reduce((a,d,i)=>a+(d.sev==null?0:W[i]),0);
+  const score01 = domains.reduce((a,d,i)=>a+(d.sev==null?0:W[i]*(d.sev/3)),0)/_wMedidos;
   let nivel = score01<0.20?0:score01<0.45?1:score01<0.70?2:3;
   const anySev3 = domains.some(d=>d.sev===3);
   if(anySev3) nivel=Math.max(nivel,2);
@@ -189,7 +205,11 @@ function computeDFI({ idx, dv={}, bc={}, pt={}, icec={}, perc={}, hab={}, soc={}
   if(dom3.sev>=2) rutas.push("R4 · Desaceleración Envejecimiento");
   if(dom5.sev>=2) rutas.push("R5 · Contextual");
   if(!rutas.length) rutas.push("R6 · Mantenimiento");
-  return { domains, riesgo:{...NIV[nivel], score:Math.round(score01*100)}, veto, rutas };
+  // `sinDato` viaja con el resultado para que la pantalla pueda DECIRLO. Sin esto, el riesgo
+  // integrado saldria calculado sobre menos dominios sin que nadie lo supiera, que es cambiar una
+  // cifra clinica en silencio.
+  return { domains, riesgo:{...NIV[nivel], score:Math.round(score01*100)}, veto, rutas,
+    sinDato: domains.filter(d=>d.sev==null).map(d=>d.id) };
 }
 
 // ── computeDFIFromData (adaptador) ──
@@ -225,8 +245,15 @@ const computeDFIFromData = (enc, bis) => {
   const _asmiLow = _asmi > 0 && _asmi < (esMasc ? 7.0 : 5.5);
   const _smmwLow = _smmw > 0 && _smmw < (esMasc ? 27 : 22); // mujer 24 -> 22 (Gildardo §1 2026-08-19: barrido del umbral; 2o sitio, ver DECISIONES P-24)
   const _obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow);
+  // ¿Vino el dato, o lo fabrico `num()` con su cero? La misma prueba de presencia de CA-4, extraida
+  // para reusarla en los tres indices de CA-7.
+  const _presente = (...ks) => ks.some(k => d[k] != null && d[k] !== "" && !isNaN(Number(d[k])));
   const _idx = {
-    ifc, irc, iehh, iscm, iae, ebBis, icaBis, pabu,
+    ifc, irc, iscm, icaBis, pabu,
+    // AUSENTE != 0: se repone null cuando el valor lo puso el fallback de `num()` y no el paciente.
+    iehh: _presente("IEHH", "iehh") ? iehh : null,
+    iae: _presente("IAE", "iae") ? iae : null,
+    ebBis: _presente("EB_BIS", "eb", "ebBis") ? ebBis : null,
     // Referencias del sexo del paciente, para que el DFI las pueda citar en vez de
     // dejar sólo la etiqueta Alto/Normal/Bajo, que no dice contra qué se comparó.
     sexoRef: {
@@ -237,9 +264,9 @@ const computeDFIFromData = (enc, bis) => {
     pabuCl: { l: cPABU(pabu).l },
     ifcCl: { l: ifcK === 3 ? "Alto" : ifcK === 2 ? "Normal" : "Bajo" },
     ircCl: { l: ircK === 1 ? "Bajo" : ircK === 2 ? "Normal" : "Alto" },
-    iehhCl: { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
+    iehhCl: !_presente("IEHH", "iehh") ? null : { l: (() => { const x = cIEHH(iehh).l; return x === "Severo" ? "Alto" : x; })() },
     iscmCl: iscm == null ? null : { l: (iscm <= -1 ? "Bajo" : iscm <= 1 ? "Leve" : iscm <= 2.5 ? "Moderado" : "Alto") },
-    iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === "Desacelerado" ? "Enlentecido" : x; })() },
+    iaeCl: !_presente("IAE", "iae") ? null : { l: (() => { const x = cIAE(iae).l; return x === "Desacelerado" ? "Enlentecido" : x; })() },
     fmiCat: (_fmiK <= 1 ? "bajo_grasa" : _fmiK === 2 ? "normal" : "exceso"),
     structL: _obSarc ? "Obesidad sarcopénica" : ("Fenotipo " + cFMI(FMI, sexoM).l + "/" + cFFMI(FFMI, sexoM).l)
   };

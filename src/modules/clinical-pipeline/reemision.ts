@@ -52,7 +52,10 @@ const NOMBRE_DOMINIO: Record<string, string> = {
 };
 
 const SEV_LABEL = ["Bajo", "Leve", "Moderado", "Alto"] as const;
-const sevTexto = (s: number): string => SEV_LABEL[Math.max(0, Math.min(3, s))] ?? String(s);
+// `null` es "no se midió", que NO es una severidad: un dominio que pasa de sin dato a Leve cambió de
+// banda de verdad, y decirlo "Óptimo → Leve" (que es lo que daría clamp sobre null) sería falso.
+const sevTexto = (s: number | null): string =>
+  s == null ? "sin dato" : (SEV_LABEL[Math.max(0, Math.min(3, s))] ?? String(s));
 
 /**
  * Compara el documento SELLADO con el recomputado con la ciencia de hoy.

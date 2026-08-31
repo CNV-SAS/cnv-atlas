@@ -51,6 +51,19 @@ function clampSev(s: number): number {
   return Math.min(3, Math.max(0, s));
 }
 
+// UN DOMINIO SIN DATO NO DIBUJA VERTICE (Gildardo 2026-08-30 §4: "sin dato, el dominio no puntúa y el
+// radar no dibuja ese vértice"). Y la forma de no dibujarlo importa: si se le pusiera severidad 0 el
+// vértice caería EN EL CENTRO, que es óptimo, y el radar afirmaría de un golpe lo contrario de lo que
+// pasa. Lo que se hace es SALTAR el eje: el polígono se cierra entre los medidos (una cuerda que cruza
+// el eje sin tocarlo), el eje se conserva en su sitio y se rotula "sin dato".
+function poligonoDeMedidos(ds: RadarDomain[], n: number): { pts: [number, number][]; poly: string } {
+  const pts = ds
+    .map((d, i) => [d, i] as const)
+    .filter(([d]) => d.sev != null)
+    .map(([d, i]) => axisPoint(i, n, ((clampSev(d.sev as number) + 0.5) / BANDS) * RMAX));
+  return { pts, poly: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ") };
+}
+
 // Punto en el eje i (0..n-1), a un radio dado. Eje 0 arriba, luego en sentido horario.
 function axisPoint(i: number, n: number, r: number): [number, number] {
   const a = (-90 + (360 / n) * i) * (Math.PI / 180);
@@ -64,7 +77,8 @@ function ringPoly(n: number, r: number): string {
     .join(" ");
 }
 
-export type RadarDomain = { id: string; nombre: string; sev: number };
+/** `sev` null = el dominio no se midió. No es 0: 0 es óptimo. */
+export type RadarDomain = { id: string; nombre: string; sev: number | null };
 
 export function DfiRadar({
   domains,
@@ -90,24 +104,23 @@ export function DfiRadar({
 
   // Poligono de datos: cada vertice al centro de su zona de severidad ((sev+0.5)/BANDS), como en el
   // radar del HTML, para que el punto caiga dentro de la banda y no sobre su borde.
-  const dataPts = domains.map((d, i) => axisPoint(i, n, ((clampSev(d.sev) + 0.5) / BANDS) * RMAX));
-  const dataPoly = dataPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const { pts: dataPts, poly: dataPoly } = poligonoDeMedidos(domains, n);
 
   // El poligono de comparacion se alinea por INDICE con el actual: los dominios llegan en el mismo orden
   // del motor. Si por cualquier via llegara con otra longitud, no se dibuja antes que dibujar un poligono
   // que mezcla ejes.
   const cmpPts =
     comparar && comparar.length === n
-      ? comparar.map((d, i) => axisPoint(i, n, ((clampSev(d.sev) + 0.5) / BANDS) * RMAX))
+      ? poligonoDeMedidos(comparar, n).pts
       : null;
   const cmpPoly = cmpPts?.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ") ?? null;
 
   const label = `Radar funcional: ${domains
-    .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${SEV_LABEL[clampSev(d.sev)]}`)
+    .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
     .join(", ")}.${
     cmpPts
       ? ` Comparado con el estado inicial: ${comparar!
-          .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${SEV_LABEL[clampSev(d.sev)]}`)
+          .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
           .join(", ")}.`
       : ""
   }`;
@@ -186,8 +199,14 @@ export function DfiRadar({
                   salta a la vista sin leer los cinco. Mismo semaforo que los badges de las tarjetas
                   (SEV_FILL sale de risk-severity, la misma fuente unica), NO la escala del radar: los
                   anillos son ESCALA de fondo y esto es CLASIFICACION, que es lo que el badge dice. */}
-              <tspan x={lx} dy={12} className={SEV_FILL[clampSev(d.sev)]} fontSize={9} fontWeight={700}>
-                {SEV_LABEL[clampSev(d.sev)]}
+              <tspan
+                x={lx}
+                dy={12}
+                className={d.sev == null ? "fill-muted-foreground" : SEV_FILL[clampSev(d.sev)]}
+                fontSize={9}
+                fontWeight={700}
+              >
+                {d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}
               </tspan>
             </text>
           );

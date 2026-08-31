@@ -89,7 +89,9 @@ export type FrSector = { key: string; nombre: string };
 export type DfiDomain = {
   id: string; // d1..d5
   nombre: string;
-  sev: number; // 0..3
+  // 0..3, o NULL si el dominio no se midio: sin dato no puntua y el radar no dibuja ese vertice
+  // (Gildardo 2026-08-30 §4). Todo consumidor tiene que distinguir null de 0: 0 es OPTIMO.
+  sev: number | null;
   clasif: string;
   lectura: string;
   items: string[];
@@ -118,6 +120,14 @@ export type EngineDfi = {
   riesgo: DfiRisk;
   veto: boolean;
   rutas: string[]; // AUTORITATIVAS (del DFI, no de los predicados sueltos R1-R6)
+  // Dominios que no se midieron (ids d1..d5). El riesgo integrado se renormalizo sobre los medidos,
+  // asi que la pantalla tiene que poder DECIR sobre cuantos se calculo.
+  //
+  // OPCIONAL A PROPOSITO: `reports` es INMUTABLE y guarda snapshots sellados antes de CA-6, que no
+  // llevan este campo. Tiparlo obligatorio haria que TypeScript prometiera un arreglo donde en runtime
+  // hay `undefined`, que es el cambio de shape de un jsonb que ya nos costo un 500. En un snapshot
+  // viejo la ausencia significa "ningun dominio sin dato", que es cierto: antes todos puntuaban.
+  dfiSinDato?: string[];
   le8Total: number | null;
 };
 

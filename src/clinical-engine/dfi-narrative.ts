@@ -21,7 +21,10 @@ import type { EngineOutput } from "./types";
 // Lo que la narrativa necesita, explicito (para que el golden alimente exactamente esto y no una abstraccion).
 // domSev: severidad 0..3 por dominio d1..d5; dom4Veto: veto conductual (senal dura); veto: veto global del DFI.
 export type DfiNarrativeInput = {
-  domSev: { d1: number; d2: number; d3: number; d4: number; d5: number };
+  // `null` = el dominio NO SE MIDIO (CA-6, Gildardo 2026-08-30 §4). No es 0: 0 es optimo, y en prosa
+  // un dominio no medido leido como 0 sale como "entorno favorable" o "funcion celular optima", que es
+  // la misma lectura favorable de un vacio, dicha en palabras en vez de en un vertice.
+  domSev: { d1: number | null; d2: number | null; d3: number | null; d4: number; d5: number | null };
   dom4Veto: boolean;
   veto: boolean;
   nivelLabel: string; // NIV[nivel].l -> "BAJO"|"MEDIO"|"ALTO"|"CRITICO" (== dfi.riesgo.nivel)
@@ -115,15 +118,20 @@ function prW(p: number): string {
   return p === 0 ? "crítica" : p === 1 ? "prioritaria" : p === 2 ? "complementaria" : "de mantenimiento";
 }
 
+// Severidad para COMPARAR. Un dominio sin dato no activa ruta ni meta, que es la misma conducta que
+// ya tiene el motor (`dom3.sev>=2` con null es false). El -1 lo hace explicito en vez de depender de
+// como compara JavaScript un null, que es de las cosas que se leen mal al revisar.
+const sv = (x: number | null): number => x ?? -1;
+
 // _acts verbatim (L12966-12973): rutas activas con prioridad, ordenadas.
 function buildActs(i: DfiNarrativeInput): Act[] {
   const { d1, d2, d3, d4, d5 } = i.domSev;
   const acts: Act[] = [];
-  if (d1 >= 2) acts.push({ k: "R1", pr: d1 === 3 ? 1 : 2, nom: "Ruta 1 (Restauración Celular)" });
-  if (d2 >= 2) acts.push({ k: "R2", pr: d2 === 3 ? 1 : 2, nom: "Ruta 2 (Reducción Cardiometabólica)" });
+  if (sv(d1) >= 2) acts.push({ k: "R1", pr: d1 === 3 ? 1 : 2, nom: "Ruta 1 (Restauración Celular)" });
+  if (sv(d2) >= 2) acts.push({ k: "R2", pr: d2 === 3 ? 1 : 2, nom: "Ruta 2 (Reducción Cardiometabólica)" });
   if (i.dom4Veto || d4 === 3) acts.push({ k: "R3", pr: i.veto ? 0 : 1, nom: "Ruta 3 (Conductual)" });
-  if (d3 >= 2) acts.push({ k: "R4", pr: d3 === 3 ? 1 : 2, nom: "Ruta 4 (Desaceleración del Envejecimiento)" });
-  if (d5 >= 2) acts.push({ k: "R5", pr: 2, nom: "Ruta 5 (Contextual)" });
+  if (sv(d3) >= 2) acts.push({ k: "R4", pr: d3 === 3 ? 1 : 2, nom: "Ruta 4 (Desaceleración del Envejecimiento)" });
+  if (sv(d5) >= 2) acts.push({ k: "R5", pr: 2, nom: "Ruta 5 (Contextual)" });
   if (!acts.length) acts.push({ k: "R6", pr: 3, nom: "Ruta 6 (Mantenimiento)" });
   acts.sort((a, b) => a.pr - b.pr);
   return acts;
@@ -136,8 +144,8 @@ function metaDe(rol: Rol, i: DfiNarrativeInput, acts: Act[]): string {
   if (i.veto) {
     if (rol === "nutricion") {
       ph = [OBJ.R3.nutricion];
-      if (d1 >= 2) ph.push("aportando la densidad nutricional y la proteína necesarias para superar la disfunción celular");
-      if (d3 >= 2) ph.push("y asegurando proteína alta para desacelerar el envejecimiento");
+      if (sv(d1) >= 2) ph.push("aportando la densidad nutricional y la proteína necesarias para superar la disfunción celular");
+      if (sv(d3) >= 2) ph.push("y asegurando proteína alta para desacelerar el envejecimiento");
     } else {
       const r3 = OBJ.R3[rol];
       if (r3) ph = [r3].concat(ph.filter((x) => x !== r3));
@@ -147,8 +155,8 @@ function metaDe(rol: Rol, i: DfiNarrativeInput, acts: Act[]): string {
   let txt = "Meta de " + ROLN[rol] + ": " + ph.join("; ") + ".";
   if (rol === "nutricion" || rol === "ejercicio") {
     const med: string[] = [];
-    if (d1 >= 2 && i.ifcL === "Bajo") med.push("mejora del IFC de al menos 0,5 unidades y salida del rango de disfunción");
-    if (d3 >= 2) med.push("reducción del IAE de al menos 2 años");
+    if (sv(d1) >= 2 && i.ifcL === "Bajo") med.push("mejora del IFC de al menos 0,5 unidades y salida del rango de disfunción");
+    if (sv(d3) >= 2) med.push("reducción del IAE de al menos 2 años");
     if (med.length) txt += " Meta a 24 semanas: " + med.join(" y ") + ".";
   }
   if (i.veto && rol === "nutricion")
@@ -158,19 +166,24 @@ function metaDe(rol: Rol, i: DfiNarrativeInput, acts: Act[]): string {
 
 // Reconstruye parrafo + metas del DFI (transcripcion fiel de L12955-13010, sin tocar el frozen).
 export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
-  const { d3, d4, d5 } = i.domSev;
+  const { d1, d2, d3, d4, d5 } = i.domSev;
   const iehhAlt = i.iehhL === "Moderado" || i.iehhL === "Alto";
   const iae = i.iae ?? 0;
 
+  // Los cuatro segmentos con dominio anulable abren con el caso "no medido". Va PRIMERO en cada uno,
+  // antes de mirar etiquetas: sin datos, `ifcL` e `iscmL` llegan vacios y las cadenas caen a la rama
+  // por defecto ("muestra disfuncion celular", "susceptibilidad intermedia"), afirmando sobre nada.
   const seg1 =
-    "El paciente " +
-    (i.ifcL === "Alto"
+    d1 == null
+      ? "no se evaluó el dominio celular-eléctrico: faltan sus índices"
+      : "El paciente " +
+        (i.ifcL === "Alto"
       ? "conserva una función celular óptima"
       : i.ifcL === "Normal"
         ? "presenta una función celular en rango normal"
-        : "muestra disfunción celular") +
-    " " +
-    (i.ircL === "Bajo"
+          : "muestra disfunción celular") +
+        " " +
+        (i.ircL === "Bajo"
       ? "con riesgo celular bajo"
       : i.ircL === "Normal"
         ? "con riesgo celular en rango normal"
@@ -179,16 +192,20 @@ export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
 
   const iscmW = ISCM_W[i.iscmL ?? ""] || "intermedia";
   const seg2 =
-    "en el dominio metabólico-estructural presenta susceptibilidad cardiometabólica " +
-    iscmW +
-    (i.fen ? " con un fenotipo estructural de " + String(i.fen).replace(/^Fenotipo\s+/i, "").toLowerCase() : "");
+    d2 == null
+      ? "el dominio metabólico-estructural no se evaluó: falta el ISCM"
+      : "en el dominio metabólico-estructural presenta susceptibilidad cardiometabólica " +
+        iscmW +
+        (i.fen ? " con un fenotipo estructural de " + String(i.fen).replace(/^Fenotipo\s+/i, "").toLowerCase() : "");
 
   const seg3 =
-    i.aeL === "Enlentecido"
-      ? "su ritmo de envejecimiento es más lento que su edad cronológica"
-      : d3 >= 2
-        ? "su envejecimiento biológico está acelerado (" + Math.round(Math.abs(iae)) + " años por encima de lo esperado)"
-        : "su ritmo de envejecimiento es acorde con su edad cronológica";
+    d3 == null
+      ? "su ritmo de envejecimiento no se evaluó: falta la edad biológica"
+      : i.aeL === "Enlentecido"
+        ? "su ritmo de envejecimiento es más lento que su edad cronológica"
+        : sv(d3) >= 2
+          ? "su envejecimiento biológico está acelerado (" + Math.round(Math.abs(iae)) + " años por encima de lo esperado)"
+          : "su ritmo de envejecimiento es acorde con su edad cronológica";
 
   const seg4 =
     "en lo conductual-perceptual " +
@@ -201,8 +218,10 @@ export function dfiNarrative(i: DfiNarrativeInput): DfiNarrative {
           : "no hay distorsión de la imagen corporal");
 
   const seg5 =
-    "y la carga contextual y de estilo de vida es " +
-    (d5 <= 0 ? "baja (entorno favorable)" : d5 === 1 ? "moderada" : "alta (determinantes desfavorables)");
+    d5 == null
+      ? "y la carga contextual y de estilo de vida no se evaluó: falta el ICEC"
+      : "y la carga contextual y de estilo de vida es " +
+        (d5 <= 0 ? "baja (entorno favorable)" : d5 === 1 ? "moderada" : "alta (determinantes desfavorables)");
 
   const acts = buildActs(i);
   const rutasTxt = acts.map((a) => a.nom + ", " + prW(a.pr)).join("; ");
@@ -292,7 +311,15 @@ export function dfiNarrativeFromOutput(o: EngineOutput): DfiNarrative {
   const { d1, d2, d3, d4, d5 } = DOMS(o);
   const cat = dfiCategoriesFromOutput(o);
   return dfiNarrative({
-    domSev: { d1: d1?.sev ?? 0, d2: d2?.sev ?? 0, d3: d3?.sev ?? 0, d4: d4?.sev ?? 0, d5: d5?.sev ?? 0 },
+    // El `?? 0` se conserva SOLO para el dominio ausente del snapshot (forma vieja); la severidad null
+    // del dominio no medido viaja tal cual, para que la prosa pueda decirlo.
+    domSev: {
+      d1: d1 ? d1.sev : 0,
+      d2: d2 ? d2.sev : 0,
+      d3: d3 ? d3.sev : 0,
+      d4: d4?.sev ?? 0,
+      d5: d5 ? d5.sev : 0,
+    },
     dom4Veto: Boolean(d4?.veto),
     veto: o.dfi.veto,
     nivelLabel: o.dfi.riesgo.nivel,
