@@ -714,3 +714,84 @@ sistema diria componer y el usuario sustituir. Con clave propia es imposible por
 Atlas maneja seis. La columna queda vacia, la pantalla dice por que, y el prompt de adaptacion NO manda
 las celdas vacias: mandarlas invitaria al modelo a inventarlas, y eso seria contenido clinico nuestro
 (regla 0). Si algun dia el la agrega al ciclo, la columna se llena sola.
+
+---
+
+## RESPUESTA DE GILDARDO 2026-08-30: lo que cierra y lo que abre
+
+**Cierra cinco de la cola del 29 y reasigna una.** Cotejado uno por uno contra el documento enviado.
+
+**P-70 · CERRADA, Y LA PREGUNTA ERA EL ERROR. No hay puente que construir.** Su punto 0: el patron usual de
+consumo de la encuesta (`FREQ_GROUPS`, 15 grupos, frecuencia semanal), la tabla de composicion (`TCAC`, 18
+grupos, nutrientes por porcion) y la lista de intercambio (`INTER_TABLA_A/B`, porciones del plan) son TRES
+INSTRUMENTOS DISTINTOS. "Ninguno es la traduccion de otro. La numeracion es un identificador interno de
+cada tabla, no una clave comun." La frecuencia NO se convierte en porciones porque es un patron, no una
+cuantificacion. Y el omega-3 SI esta: en la TCAC, con su valor por grupo; lo buscamos en la lista de
+intercambio, que es el instrumento equivocado. **Su leccion, registrada como regla de trabajo:** "cuando una
+pieza del archivo no coincide con otra, la primera pregunta no es cual corregir, sino si estan mirando dos
+instrumentos distintos". Barrido hecho: el unico cruce era ese.
+
+**P-71 · REASIGNADA A EL, no cerrada.** El interruptor del ICEC se queda en `false`. mu = 58,578 y sigma =
+13,332 "no estan establecidas" y la recalibracion "va por mi lado y llega con el dato, no con una
+instruccion". Hicimos bien en no encenderlo. Y confirma que la conducta de reemision del 12b aplica igual a
+la EB-BIS cuando llegue. NO SE TOCA hasta que el mande el dato.
+
+**P-72 · CERRADA: un dominio sin dato NO puntua.** Aplicada como CA-6 (y CA-7). Ver P-81.
+
+**P-73 · CERRADA: las tres positivas en bloque aparte.** "Una hidratacion adecuada y un TCA activo no pueden
+compartir lista ni peso visual." Aplicado: dos listas, la segunda con menos peso visual y sin mostrarse
+vacia. La particion es por `niv === "positivo"` (su campo), no por una lista nuestra de titulos.
+
+**P-74 (6c) · CERRADA: el sellado se reabre.** "La prescripcion aprobada se puede reabrir, y reabrirla
+dispara la regla de reemision del 12b. El sellado no es un candado: es una consecuencia registrada." Y su
+razon del 6b, que no habiamos visto: los tres criterios de sarcopenia (prensil, ASMI, angulo) SON UN
+DIAGNOSTICO, y "un criterio que se captura lejos del calculo termina no llegando a el".
+
+**P-76 · CERRADA: una nota por profesion, tres campos distintos.** "Cada rol escribe lo suyo y no se pisan:
+el nutricionista no edita la nota del medico."
+
+**P-69c · CONFIRMADA, y ampliada a conducta general.** "Un dato que falta no puede entrar al calculo como si
+fuera una respuesta, y menos como una respuesta favorable. No me lo pregunten regla por regla: es la
+conducta general del sistema." Permiso explicito para aplicarla sin preguntar caso por caso.
+
+---
+
+## Cola de la ronda del 2026-08-31
+
+**Enviadas en `docs/entregas/RONDA_GILDARDO_2026-08-31.md`.** Cotejadas una por una: las cinco estan en el
+documento. P-84 se MOVIO desde la ronda del 29, donde se escribio DESPUES de que el la contestara.
+
+**P-81 · Declaracion: su punto 4 tenia CUATRO sitios, y describimos mal uno.** Senalo el `?? 1` del dominio
+2; los dominios 1, 3 y 5 tenian la misma forma. Aplicado en los cuatro (CA-6), conservando su `?? 1` para lo
+que lo escribio (clasificacion fuera del mapa CON dato). **Y la correccion de nuestro relato, que vale mas
+que el arreglo:** reportamos que el dominio 3 sin dato AFIRMABA PATOLOGIA (severidad 2, "envejecimiento
+acelerado"). Esa rama existe en `computeDFI` pero NO se alcanzaba: el adaptador fabricaba un IAE de 0 y lo
+clasificaba "Concordante", asi que lo vivo era la lectura FAVORABLE (dominio en verde, "ritmo acorde con su
+edad cronologica"). Razonamos sobre la funcion suelta en vez de ejecutar el pipeline. CA-7 cierra el
+adaptador; CA-6 corta las dos ramas. **Consecuencia clinica que va declarada:** ese dominio inventado
+activaba la Ruta 4 y ponia a las cuatro profesiones un objetivo de envejecimiento con meta medible a 24
+semanas ("reduccion del IAE de al menos 2 años") sobre un IAE inexistente.
+
+**P-82 · Decision NUESTRA declarada: el riesgo integrado se RENORMALIZA sobre los dominios medidos.** Dejar
+el termino ausente sumando cero (que es lo que hacia solo, porque `null/3` es 0) BAJA el riesgo por no haber
+medido. La pantalla dice sobre cuantos dominios se calculo. Si el prefiere otra conducta, se cambia.
+
+**P-83 · Donde se capturan las porciones por grupo de la TCAC.** ES LA UNICA QUE BLOQUEA: `calcConsumo` lee
+`d1_1`..`d1_18` (porciones/dia) y esos campos NO los captura ninguna encuesta, ni la suya ni la nuestra;
+viven solo en su objeto demo (`// Consumo D1`). El argumento que se le lleva es SUYO: escribio esa misma
+nota, tres campos mas alla, para `calcLE8`. Va con la sub-pregunta del umbral `>= 2` de las dos reglas de
+azucares (indice de frecuencia vs porciones), que es la misma decision del otro lado. **El porte de la TCAC
+va CON LAS REGLAS APAGADAS**: con porciones en cero, "Fibra muy baja" se disparia en todos los pacientes.
+
+**P-84 · Los encabezados de categoria de la matriz: los retiramos de la encuesta del paciente.** MOVIDA
+desde la ronda del 29 (se escribio ahi el 31, despues de su respuesta del 30: nunca la habria visto).
+Divergencia declarada por sesgo de deseabilidad; el orden no se toco. Candado en
+`encabezados-frecuencia.test.tsx`, con el mensaje que dice como invertirlo si el responde que vuelven.
+
+**P-85 · La fecha de consulta: su archivo la CAPTURA y es la unica que tiene; Atlas la deduce.** Su campo
+"Fecha de consulta" (`fechaConsulta`, input `type=date`) viaja de la encuesta al reporte, y la fecha de
+medicion del equipo no aparece nunca en su archivo. Atlas la deduce de `evaluations.created_at`, que en una
+inicial es CUANDO EL PACIENTE FIRMA. Hoy coincide (el BIS se toma en consulta); en el modelo a mediano plazo
+(tamizaje antes, incluso en casa) deja de coincidir, y quien se equivoca es la HISTORIA CLINICA. Va con la
+declaracion de que nuestra HC y nuestro reporte dicen "Fecha" con fechas distintas, que en su archivo no
+puede pasar porque solo hay una.

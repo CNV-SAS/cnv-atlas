@@ -2,7 +2,12 @@
 
 **De:** Equipo Atlas
 **Para:** Gildardo Uribe, Dirección Científica CNV
-**Fecha:** 29 de agosto de 2026 · **ampliada el 31** con el punto 9, que salió de probar la encuesta
+**Fecha:** 29 de agosto de 2026
+
+> **ENVIADA CON OCHO PUNTOS, y respondida el 30.** El punto 9 sobre los encabezados de categoría llegó a
+> escribirse aquí el 31, DESPUÉS de que él contestara, así que nunca lo habría visto: se movió a
+> `RONDA_GILDARDO_2026-08-31.md`, punto 5. Agregar a un documento ya respondido es la forma más silenciosa
+> de que una pregunta no llegue nunca.
 
 ---
 
@@ -15,7 +20,7 @@ orden de lo que cambia un veredicto:
 | --- | --- |
 | **El piso calórico** (`if(deficit>0)` → `if(!hasCancer && !desnutricion)`) | Portado verbatim, con la salvedad de cáncer y desnutrición fuera del piso |
 | **Los cortes del IRC** por sexo (1,7/2,1 y 2,3/2,8) | Portado, con golden |
-| **El orden de la matriz** por categoría clínica | Corregido en base de datos. Los encabezados de grupo: ver el punto 9 |
+| **El orden de la matriz** por categoría clínica | Corregido en base de datos. Los encabezados de grupo: ver la ronda del 31 |
 | **El punto 4**, que el ISCM no se emita sin MCA | Aplicado |
 | **La dirección de la capacitancia** (acercarse a la mediana) | Ya estaba portada |
 | **El motivo de consulta** con separador | Ya estaba, como divergencia declarada |
@@ -47,7 +52,7 @@ portado a medias.
 
 ---
 
-## Los nueve de un vistazo
+## Los ocho de un vistazo
 
 **Solo dos bloquean construcción.** Los demás se pueden responder cuando puedas, y cuatro de ellos ni
 siquiera son preguntas: son cosas que ya hicimos y te declaramos por si las ves distinto.
@@ -62,7 +67,6 @@ siquiera son preguntas: son cosas que ya hicimos y te declaramos por si las ves 
 | **6** | Tu punto 3, dimensionado por nosotros | Solo el 6c: si reabrir una prescripción aprobada dispara la reemisión | No |
 | **7** | El orden de la matriz: era nuestro error, corregido | Nada. Es aviso | No |
 | **8** | Las tres notas por profesión del panel | ¿Una por profesión, o una sola compartida? | No |
-| **9** | Los encabezados de categoría en la encuesta: los retiramos de la del paciente | Si se quedan solo para el profesional, o vuelven también a la del paciente | No |
 
 **Si solo puedes responder dos, que sean el 2 y el 3.**
 
@@ -242,7 +246,7 @@ de campo. Solo cambia la secuencia, y las respuestas ya guardadas apuntan al ide
 posición. **También añadimos los tres encabezados de grupo**, que solo se podían poner después de corregir
 el orden: con las carnes rojas al final, un encabezado "procesados a reducir" habría quedado encima de
 ellas, haciendo **visible** un error que hasta entonces solo estaba implícito. Dónde quedaron esos
-encabezados es el **punto 9**, y ahí sí hay pregunta.
+encabezados se pregunta en la ronda del 31, punto 5.
 
 **Por qué no lo vimos antes, que es lo que nos importa:** nuestro orden era coherente **consigo mismo**.
 El motor leía por campo, las respuestas se guardaban bien y el patrón usaba tu orden. Lo único mal era la
@@ -258,34 +262,6 @@ regla de qué va en cada uno ni si son el mismo campo repetido o tres distintos.
 vimos: son los del bloque de tratamiento, uno por cada rol.
 
 **¿Es una nota por profesión, o una sola nota compartida que cada quien edita?**
-
----
-
-# 9 · Los encabezados de categoría: los quitamos de la encuesta del paciente
-
-**Es una divergencia contra tu archivo, decidida por nosotros, y por eso te la traemos con las dos
-mitades y no como un hecho consumado.**
-
-**La primera mitad es tuya, y la portamos.** Tu `ATLAS_v8.html` agrupa los quince alimentos en tres
-bloques y pinta el rótulo de cada uno encima, en la encuesta **que responde el paciente**: *Alimentación
-Real protectora*, *Alimentación Real energética (moderar)*, *Procesados y ultraprocesados (PCBU)*, cada
-uno con su banda de color. Y tu regla es explícita: *"la agrupación que ve el paciente es esa misma: el
-orden es el mensaje"*.
-
-**La segunda mitad es la que nos hizo dudar.** Es un **cuestionario de frecuencia de consumo**, y decirle
-a alguien que el bloque que está por contestar son "procesados y ultraprocesados" antes de que conteste
-lo empuja hacia la respuesta que se espera de él. El sesgo de deseabilidad social está descrito
-justamente en este instrumento, y no es parejo: aprieta hacia abajo en el bloque de riesgo y hacia arriba
-en el protector, que son los dos que más pesan en el patrón.
-
-**Qué hicimos, mientras respondes:** los **retiramos de la pantalla del paciente** y los dejamos en las
-vistas del profesional (ver y editar la encuesta), con tu banda de color. **El orden no se tocó:** las
-carnes rojas siguen en la posición 11, entre las neutras. Se retiró el rótulo, no la agrupación, así que
-el mensaje del orden sigue entero en el dato.
-
-**¿Se quedan solo en la vista del profesional, o vuelven también a la del paciente?** Si nos dices que
-vuelven, vuelven: es tu instrumento. Revertirlo es una línea, y el candado que lo fija cita esta pregunta
-para que se invierta con tu respuesta al lado.
 
 ---
 
