@@ -319,7 +319,18 @@ export function BisConditionsCapture({
           </div>
         ) : null}
 
-        <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+        {/* NO SON CONDICIONES DE LA TOMA, y por eso llevan su propio rótulo (Gildardo, 2026-08-30 §6a:
+            "nunca la puse en las condiciones del BIS"). Ni la fuerza prensil ni la meta de peso son
+            preparación ni contraindicación: son un dato que el profesional MIDE y una decisión clínica
+            que TOMA. Comparten formulario con las condiciones porque se llenan en el mismo momento de la
+            consulta, no porque sean lo mismo, y el rótulo es lo que impide que se lean como tales.
+            Dónde vive el campo en la interfaz (aquí o en la subpestaña Antropometría) se decide en el
+            cotejo visual, con su pantalla al lado. */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Medidas del profesional
+          </span>
+          <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor="weight-goal" className="text-sm">
               Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
@@ -355,6 +366,7 @@ export function BisConditionsCapture({
               dominante, sentado, codo a 90°, mejor de tres intentos con descanso. Se registra el mejor,
               no el promedio, en Kgf con un decimal.
             </p>
+          </div>
           </div>
         </div>
 
