@@ -78,6 +78,7 @@ export async function runClinicalPipeline(
       surveyAnswers: inputs.surveyAnswers,
       expectedFieldKeys: inputs.expectedFieldKeys,
       bisRaw: inputs.bisRaw,
+      gripStrengthKg: inputs.gripStrengthKg,
     },
     { version: model.versionName, rulesVersion: model.rulesVersion },
     new Date(),

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { computeProtocolo, computeProtocoloEfectivo, runEngine } from "@/clinical-engine";
+import { PROTOCOL_ENGINE_VERSION } from "@/clinical-engine/version";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import {
   buildEngineInput,
@@ -38,7 +39,7 @@ const FIX = bisRawFromFixture();
 
 function mkInput(surveyAnswers: SurveyFieldAnswer[]) {
   return buildEngineInput(
-    { sex: "M", birthDate: "1971-11-05", surveyAnswers, expectedFieldKeys: ["d2_19"], bisRaw: FIX }, // edad 54 al 2026-06-22
+    { sex: "M", birthDate: "1971-11-05", surveyAnswers, expectedFieldKeys: ["d2_19"], bisRaw: FIX, gripStrengthKg: null }, // edad 54 al 2026-06-22
     MODEL,
     NOW,
   );
@@ -165,7 +166,11 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
   });
 
   it("sella la version del protocolo y marca los defaults con la afirmacion de propagacion", () => {
-    expect(o.protocolEngineVersion).toBe("anibise-protocolo-2026-08-19b");
+    // Se compara contra la CONSTANTE, no contra una copia de la cadena de hoy. Lo que este golden
+    // afirma es que el protocolo SELLA su version, no cual es: decidir cuando sube es trabajo de
+    // `protocol-version-lock.test.ts`, que hashea los artefactos y obliga a tomar la decision. Con la
+    // cadena escrita a mano, cada bump legitimo ponia este test en rojo por la razon equivocada.
+    expect(o.protocolEngineVersion).toBe(PROTOCOL_ENGINE_VERSION);
     expect(o.calorico.defaults).toEqual(["pal", "fatPct"]);
     expect(o._nota).toContain("provisional");
     expect(o._nota).toContain("protocol_approved");

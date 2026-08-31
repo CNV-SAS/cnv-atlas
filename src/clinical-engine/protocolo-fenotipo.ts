@@ -15,14 +15,22 @@
 // La TABLA FENOTIPOS_MCCB si es contenido verbatim (datos, no logica): vive en fenotipos-mccb.ts
 // con su DIFF byte a byte (frozen-fenotipo-diff.test.ts). Aqui solo se importa.
 //
-// BRECHA DECLARADA (fuerza prensil): en Atlas la dinamometria NO entra al motor (solo captura,
-// Q5), asi que `fuerzaPrensil` llega SIEMPRE en su fallback (0). Con prensil=0, dxSarcopenia
-// retorna en su PRIMER guard (k=0, ATLAS.html:3419) ANTES de mirar ASMI/AF, de modo que el
-// disyunto `sarcoDx.k >= 2` de `sarcopenia` NUNCA se activa en produccion: la sarcopenia se decide
-// solo por smmW. La transcripcion de dxSarcopenia es fiel (el golden la ejercita con prensil > 0),
-// pero esa rama esta muerta mientras no entre la dinamometria. Si algun dia entra, revive aqui sin
-// cambiar codigo. ASMI, en cambio, SI es input vivo e independiente: entra por `asmiLow`, que no
-// pasa por dxSarcopenia. Se deriva (MMEM/talla^2) en biody-import.ts, igual que FMI.
+// LA BRECHA DE LA FUERZA PRENSIL: CERRADA el 2026-08-31 (Gildardo 2026-08-30 §6).
+//
+// Lo que pasaba: la dinamometria se capturaba (condiciones de la toma BIS) y NO entraba al motor, asi que
+// `fuerzaPrensil` llegaba SIEMPRE en su fallback (0). Con prensil = 0, dxSarcopenia retorna en su PRIMER
+// guard (k=0, ATLAS.html:3419) ANTES de mirar ASMI/AF, de modo que el disyunto `sarcoDx.k >= 2` NUNCA se
+// activaba: la sarcopenia se decidia solo por smmW, y la funcion devolvia "Ingrese fuerza prensil"
+// INCLUSO con el dato registrado. La rama que emite sarcopenia probable, confirmada o severa no se
+// ejecuto jamas en produccion.
+//
+// Su razon, que no habiamos visto: los TRES criterios (fuerza, ASMI, angulo de fase) son UN diagnostico,
+// y "un criterio que se captura lejos del calculo termina no llegando a el".
+//
+// Ahora entra por `EngineInput.fuerzaPrensil`, desde `evaluation_bis_intake.grip_strength_kg`. Cuando el
+// profesional NO la registro sigue llegando `undefined` y el fallback a 0 hace lo correcto: pedir el dato.
+// ASMI es input vivo e independiente: entra por `asmiLow`, que no pasa por dxSarcopenia. Se deriva
+// (MMEM/talla^2) en biody-import.ts, igual que FMI.
 
 import { FENOTIPOS_MCCB, type Fenotipo } from "./fenotipos-mccb";
 
@@ -37,7 +45,7 @@ export interface FenotipoInput {
   smmW: number;
   ASMI: number;
   AF: number;
-  fuerzaPrensil?: number; // brecha: en Atlas siempre 0 (ver encabezado)
+  fuerzaPrensil?: number; // Kgf, del dinamometro. undefined = no se midio -> el fallback 0 pide el dato
   sexoM: boolean;
 }
 
@@ -118,7 +126,7 @@ export function classifyFenotipo(i: FenotipoInput): FenotipoResult {
   const fenotipo = FENOTIPOS_MCCB[keyMCCB] ?? NO_CLASIFICADO; // :10906
 
   const smmW = i.smmW; // :10908
-  const _fzP = i.fuerzaPrensil ?? 0; // :10910 (brecha: siempre 0 en Atlas)
+  const _fzP = i.fuerzaPrensil ?? 0; // :10910 (0 = sin medir: dxSarcopenia corta pidiendo el dato)
   const sarcoDx = dxSarcopenia(_fzP, i.ASMI, i.AF, i.sexoM); // :10911-10913
   // Gate SMM/W: mujer 24 -> 22 (RESPUESTA_GILDARDO 2026-08-19 §1). El 24 era un resto: el umbral masculino
   // del mismo gate es 27 = cSMM clavado; un criterio externo diferiria en ambos sexos, no solo en mujeres.

@@ -137,6 +137,9 @@ export function runEngine(input: EngineInput): EngineOutput {
     ASMI: a.fuente.ASMI,
     AF: indicators.AF,
     sexoM: sexo === "M",
+    // Se pasa aunque este rotulo no dependa de ella (solo de FMI/FFMI/MCA): asi las DOS llamadas a
+    // classifyFenotipo reciben los mismos insumos y no puede haber una que vea la fuerza y otra no.
+    fuerzaPrensil: input.fuerzaPrensil ?? undefined,
   }).fenotipo;
   const fenotipoMCCB = {
     id: fenMCCB.id,

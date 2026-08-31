@@ -24,6 +24,9 @@ export type RawEvaluationData = {
   // version, respondidas o no). Es la lista contra la cual el motor mide dfi.complete (regla 7).
   expectedFieldKeys: string[];
   bisRaw: Record<string, number>; // header normalizado (B8) -> valor
+  // Fuerza prensil (Kgf) de las condiciones de la toma. Criterio PRIMARIO de fuerza del EWGSOP2; sin
+  // ella `dxSarcopenia` corta pidiendo el dato, que es lo correcto. null = no se registro.
+  gripStrengthKg: number | null;
 };
 
 // Decodifica el valor almacenado de una pregunta multi-select a array. El intake guarda
@@ -162,6 +165,7 @@ export function buildEngineInput(
     // Lista declarada por la version (regla 7): el motor mide dfi.complete contra ella. Viene
     // del reader; si esta vacia, run-pipeline ya fallo antes (no se llega aqui con lista vacia).
     expectedFieldKeys: raw.expectedFieldKeys,
+    fuerzaPrensil: raw.gripStrengthKg,
     model,
   };
 }

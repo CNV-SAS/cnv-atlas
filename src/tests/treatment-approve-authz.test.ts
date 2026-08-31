@@ -49,7 +49,7 @@ for (const [k, v] of Object.entries(biodyJson as Record<string, unknown>)) {
   if (typeof v === "number" && Number.isFinite(v)) FIX[normalizeHeader(k)] = v;
 }
 const engineInput = buildEngineInput(
-  { sex: "M", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: ["d2_19"], bisRaw: FIX },
+  { sex: "M", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: ["d2_19"], bisRaw: FIX, gripStrengthKg: null },
   { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   new Date("2026-06-22T00:00:00Z"),
 );

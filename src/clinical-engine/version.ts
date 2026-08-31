@@ -13,7 +13,17 @@
 //    el _smmwLow del DFI (engine.dfi, alimenta obSarc -> Dominio 2) baja mujer 24 -> 22, junto con el
 //    gate del fenotipo (protocolo-fenotipo, que sube PROTOCOL a 2026-08-19b). Se folda en 1.1.0 porque
 //    aun no hay despliegue: 1.1.0 = el re-port completo a la ciencia del 19 (18 + los tres residuos).
-export const ENGINE_VERSION = "anibise-1.1.0";
+//  · 1.2.0 (2026-08-31): LA DINAMOMETRIA ENTRA AL MOTOR (Gildardo 2026-08-30 §6). Hasta aqui la fuerza
+//    prensil se capturaba y no llegaba a `classifyFenotipo`, asi que `dxSarcopenia` devolvia "Ingrese
+//    fuerza prensil" SIEMPRE, incluso con el dato registrado, y el disyunto `sarcoDx.k >= 2` nunca se
+//    activaba. CAMBIA SALIDAS para todo paciente con la fuerza registrada: `sarcopenia` y
+//    `obesidadSarcopenica` pueden voltear, y con ellas `structL`, la severidad del Dominio 2 del DFI, el
+//    riesgo integrado y las rutas. Por eso sube la version y NO se folda: los diagnosticos sellados con
+//    1.1.0 quedan marcados como emitidos con ciencia anterior, que es lo que hace que la comparacion de
+//    bandas del §12b pueda dispararse y proponer la reemision donde corresponda.
+//    Incluye tambien CA-6/CA-7 (el dominio sin dato no puntua; el adaptador deja de clasificar ceros
+//    fabricados), que cambian severidades y el riesgo integrado por la misma via.
+export const ENGINE_VERSION = "anibise-1.2.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
@@ -32,7 +42,11 @@ export const ENGINE_VERSION = "anibise-1.1.0";
 // Bump 2026-08-19b (mismo dia, 2a): residuo del 19 (RESPUESTA_GILDARDO §1). El gate de sarcopenia del
 // fenotipo (protocolo-fenotipo.ts) baja mujer 24 -> 22 (barrido del umbral); el contenido sellado en
 // protocol_suggested puede moverse para mujeres con SMM/W 22-24, por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-19b";
+// Bump 2026-08-31 (2026-08-19b -> 2026-08-31): la dinamometria entra al motor. `classifyFenotipo` recibe
+// `fuerzaPrensil` real, asi que `sarcopenia`/`obesidadSarcopenica` pueden voltear y con ellas la estrategia
+// y la proteina del protocolo. El contenido sellado en protocol_suggested cambia para los pacientes con la
+// fuerza registrada; por eso sube.
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-31";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -59,6 +73,9 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
   // SHA actualizado (2026-08-19b): gate de sarcopenia del fenotipo, mujer 24 -> 22 (Gildardo §1 del 19).
-  "protocolo-fenotipo.ts": "17423e036600acf9154421d12109663acc04c11c60eaf4fb4d2b37ebe606069e",
+  // SHA actualizado (2026-08-31) CON subida de version: la dinamometria entra al motor (§6 del 30). Lo que
+  // cambia en ESTE archivo es la brecha declarada en su encabezado, que dejo de ser cierta; el efecto
+  // clinico viene de que sus llamadores ya le pasan la fuerza.
+  "protocolo-fenotipo.ts": "644af070a8b10014078781300663c0806d938d467617c0818b733a31d60498d1",
   "fenotipos-mccb.ts": "78b30afed8b0554c611b5e329ca0a46b3bb8fb300b860c49eaf0c812944f217a",
 };

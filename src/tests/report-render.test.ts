@@ -15,6 +15,7 @@ function sampleSnapshot() {
     bisRow: biody as Record<string, unknown>,
     survey: {},
     expectedFieldKeys: ["d2_19"],
+    fuerzaPrensil: null,
     model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
   return runEngine(input);

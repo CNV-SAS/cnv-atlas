@@ -32,7 +32,7 @@ function bisRaw(): Record<string, number> {
 function run(surveyAnswers: SurveyFieldAnswer[]) {
   return runEngine(
     buildEngineInput(
-      { sex: "M", birthDate: "1971-11-05", surveyAnswers, expectedFieldKeys: ["d2_19"], bisRaw: bisRaw() },
+      { sex: "M", birthDate: "1971-11-05", surveyAnswers, expectedFieldKeys: ["d2_19"], bisRaw: bisRaw(), gripStrengthKg: null },
       MODEL,
       NOW,
     ),

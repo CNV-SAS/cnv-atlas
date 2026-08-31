@@ -7,6 +7,7 @@ import {
   bisMeasurements,
   bisRawValues,
   efrStates,
+  evaluationBisIntake,
   evaluations,
   frSectors,
   indicatorDefinitions,
@@ -40,6 +41,13 @@ export type PipelineInputs = {
   surveyGaps: SurveyGap[];
   bisRaw: Record<string, number>;
   hasBis: boolean;
+  // FUERZA PRENSIL (Kgf), de las condiciones de la toma BIS. Alimenta el criterio PRIMARIO de fuerza del
+  // EWGSOP2 en `classifyFenotipo`. Hasta el 2026-08-31 se capturaba y NO llegaba al motor, asi que
+  // `dxSarcopenia` devolvia "Ingrese fuerza prensil" SIEMPRE, incluso con el dato registrado, y la rama
+  // que emite sarcopenia probable/confirmada/severa no se ejecuto nunca. null si no se registro: es
+  // opcional, y la ausencia NO es un cero (con 0 el clasificador corta pidiendo el dato, que es lo
+  // correcto, pero el 0 tiene que venir de que falta, no de un paciente con fuerza cero).
+  gripStrengthKg: number | null;
 };
 
 export async function readPipelineInputs(evaluationId: string): Promise<PipelineInputs | null> {
@@ -126,6 +134,13 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     .where(eq(bisMeasurements.evaluationId, evaluationId))
     .limit(1);
 
+  // Condiciones de la toma: de ahi sale la fuerza prensil que el profesional midio en consulta.
+  const [intake] = await db
+    .select({ gripStrengthKg: evaluationBisIntake.gripStrengthKg })
+    .from(evaluationBisIntake)
+    .where(eq(evaluationBisIntake.evaluationId, evaluationId))
+    .limit(1);
+
   const bisRaw: Record<string, number> = {};
   const hasBis = Boolean(measurement);
   if (measurement) {
@@ -147,6 +162,7 @@ export async function readPipelineInputs(evaluationId: string): Promise<Pipeline
     surveyGaps,
     bisRaw,
     hasBis,
+    gripStrengthKg: intake?.gripStrengthKg == null ? null : Number(intake.gripStrengthKg),
   };
 }
 

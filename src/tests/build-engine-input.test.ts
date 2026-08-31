@@ -58,6 +58,7 @@ describe("buildEngineInput", () => {
         [normalizeHeader(BIODY_COLUMNS.peso.header)]: 70,
         [normalizeHeader(BIODY_COLUMNS.AF.header)]: 6.2,
       },
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.sexo).toBe("F");
@@ -79,6 +80,7 @@ describe("buildEngineInput", () => {
       surveyAnswers: [],
       expectedFieldKeys: ["d2_19"],
       bisRaw: { [normalizeHeader(BIODY_COLUMNS.peso.header)]: Number.NaN },
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.bisRow[BIODY_COLUMNS.peso.header]).toBeUndefined();
@@ -99,6 +101,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
       ],
       expectedFieldKeys: ["d5_39"],
       bisRaw: {},
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.survey.d5_39).toEqual(["Diabetes tipo 2", "cancer de piel"]);
@@ -114,6 +117,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
       ],
       expectedFieldKeys: ["d5_38", "d6_44"],
       bisRaw: {},
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     // Misma regla que d5_39: el texto llega pelado del centinela "Otra:" para que el motor lo lea por substring.
@@ -138,6 +142,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
       ],
       expectedFieldKeys: ["d5_42"],
       bisRaw: {},
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     expect(input.survey.d5_42).toEqual(["Metales pesados"]);
@@ -152,6 +157,7 @@ describe("buildSurvey: el texto libre de 'Otra' (Gildardo 2026-08-13)", () => {
       ],
       expectedFieldKeys: ["d6_43"],
       bisRaw: {},
+      gripStrengthKg: null,
     };
     const input = buildEngineInput(raw, model, NOW);
     // La lista cerrada cubre los alergenos COMUNES. El que se perdia era el raro, que es justo el que

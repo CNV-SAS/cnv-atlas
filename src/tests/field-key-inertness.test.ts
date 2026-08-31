@@ -63,6 +63,7 @@ function input(survey: Record<string, unknown>): EngineInput {
     bisRow: biody as Record<string, unknown>,
     survey,
     expectedFieldKeys: EXPECTED,
+    fuerzaPrensil: null,
     model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
 }

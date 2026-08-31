@@ -38,6 +38,7 @@ export async function simularConCienciaDeHoy(
         surveyAnswers: inputs.surveyAnswers,
         expectedFieldKeys: inputs.expectedFieldKeys,
         bisRaw: inputs.bisRaw,
+        gripStrengthKg: inputs.gripStrengthKg,
       },
       { version: model.versionName, rulesVersion: model.rulesVersion },
       new Date(),

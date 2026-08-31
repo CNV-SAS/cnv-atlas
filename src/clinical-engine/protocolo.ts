@@ -101,6 +101,11 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     ASMI: num(imp.ASMI),
     AF: output.indicators.AF,
     sexoM,
+    // LA DINAMOMETRIA, conectada el 2026-08-31. Hasta entonces no llegaba y `dxSarcopenia` cortaba en su
+    // primer guard SIEMPRE, incluso con el dato registrado: la rama que emite sarcopenia probable,
+    // confirmada o severa nunca se ejecuto. `?? undefined` para que el clasificador aplique SU fallback
+    // (0 -> "Ingrese fuerza prensil") cuando el profesional no la midio, que es la conducta correcta.
+    fuerzaPrensil: input.fuerzaPrensil ?? undefined,
   });
 
   // motorProtocolo (frozen). enc = la encuesta cruda (input.survey): motorProtocolo deriva los flags

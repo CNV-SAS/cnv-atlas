@@ -55,7 +55,7 @@ type RefDfi = {
 
 const o = runEngine(
   buildEngineInput(
-    { sex: "M", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: ["d2_19"], bisRaw: bisRawFromFixture() },
+    { sex: "M", birthDate: "1971-11-05", surveyAnswers: [], expectedFieldKeys: ["d2_19"], bisRaw: bisRawFromFixture(), gripStrengthKg: null },
     MODEL,
     NOW,
   ),

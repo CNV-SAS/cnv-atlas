@@ -34,6 +34,12 @@ export type EngineInput = {
   // Anclarla a la version hace que dfi.complete sea reconstruible: survey_version_id (sellado
   // en el snapshot) -> esta lista.
   expectedFieldKeys: string[];
+  // FUERZA PRENSIL (Kgf), la que el profesional mide en consulta con el dinamometro. Criterio PRIMARIO
+  // de fuerza del EWGSOP2 y, con el ASMI y el angulo de fase, uno de los TRES que forman el diagnostico
+  // de sarcopenia; por eso entra al motor y no se queda en la pantalla que la captura ("un criterio que
+  // se captura lejos del calculo termina no llegando a el", Gildardo 2026-08-30 §6).
+  // null = no se registro. NO es cero: el clasificador corta pidiendo el dato, que es lo correcto.
+  fuerzaPrensil: number | null;
   model: EngineModelContext;
 };
 

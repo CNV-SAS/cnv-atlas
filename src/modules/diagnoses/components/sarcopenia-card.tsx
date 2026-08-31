@@ -10,6 +10,10 @@ import { SEV_CLS } from "./risk-severity";
 // FUERZA PRENSIL (dinamometria, criterio PRIMARIO del EWGSOP2): se captura en las condiciones de la toma BIS
 // (campo gripStrengthKg, subpestaña Encuesta), la mide el profesional en consulta. Si no la registro, la card
 // dice "Sin dato" y remite a capturarla, NO queda vacia ni se inventa. Su ausencia se hace visible.
+//
+// Y DESDE EL 2026-08-31 TAMBIEN ALIMENTA EL MOTOR (Gildardo §6 del 30). Antes esta card era el UNICO sitio
+// donde el dato se usaba: `classifyFenotipo` recibia siempre 0 y `dxSarcopenia` cortaba pidiendo la fuerza
+// aunque estuviera registrada. O sea que la card mostraba un numero que ningun calculo leia.
 
 function Metric({
   label,
@@ -47,7 +51,7 @@ export function SarcopeniaCard({
   asmi,
   af,
   sexoM,
-  // Fuerza prensil (dinamometria): HOY no se captura -> null. Ver nota arriba.
+  // Fuerza prensil (dinamometria). null = el profesional no la registro. Ver la nota de arriba.
   fuerzaPrensil = null,
 }: {
   asmi: number | null;

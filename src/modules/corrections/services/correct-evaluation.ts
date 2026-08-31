@@ -230,6 +230,9 @@ export async function correctEvaluation(
       surveyAnswers: engineAnswers,
       expectedFieldKeys: inputs.expectedFieldKeys,
       bisRaw: inputs.bisRaw,
+      // La fuerza prensil viaja con la corrección: la medición se PRESERVA al corregir (condición 2),
+      // así que su dinamometría también, y el diagnóstico regenerado la vuelve a leer.
+      gripStrengthKg: inputs.gripStrengthKg,
     },
     { version: model.versionName, rulesVersion: model.rulesVersion },
     new Date(),

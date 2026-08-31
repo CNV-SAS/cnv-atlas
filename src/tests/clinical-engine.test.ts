@@ -30,6 +30,7 @@ function input(survey: Record<string, unknown> = {}, expected: string[] = CANON)
     bisRow: biody as Record<string, unknown>,
     survey,
     expectedFieldKeys: expected,
+    fuerzaPrensil: null,
     model: { version: "ANI-BIS-E 1.0", rulesVersion: "1.0" },
   };
 }
