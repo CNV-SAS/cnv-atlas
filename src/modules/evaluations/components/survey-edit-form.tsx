@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { Fragment, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { encabezadoAntesDe } from "@/clinical-engine/encabezados-frecuencia";
+import { EncabezadoDeFrecuencia } from "@/modules/evaluations/components/encabezado-frecuencia";
 // Tipo desde el modulo NEUTRO de tipos, NO desde el reader server-only (este es componente cliente).
 import type { SurveyDomain } from "@/modules/evaluations/data/survey-answers-types";
 import { SurveyQuestion } from "@/modules/evaluations/components/survey-widgets";
@@ -96,22 +98,29 @@ export function SurveyEditForm({
             </span>
           </summary>
           <div className="flex flex-col gap-4 border-t border-border p-4">
-            {dom.questions.map((q) => (
-              <SurveyQuestion
-                key={q.questionId}
-                q={{
-                  id: q.questionId,
-                  number: q.number,
-                  text: q.questionText,
-                  hint: q.questionHint,
-                  type: q.questionType,
-                  section: dom.section,
-                  fieldKey: q.fieldKey,
-                  options: q.options.map((o, idx) => ({ id: `${q.questionId}-${idx}`, text: o })),
-                }}
-                answer={q.answerValue}
-              />
-            ))}
+            {/* Los encabezados de categoria de la matriz de frecuencia: aqui si, en la del paciente no
+                (Santiago, 2026-08-31). Ver encabezados-frecuencia.ts para las dos mitades del porque. */}
+            {dom.questions.map((q, i) => {
+              const encabezado = encabezadoAntesDe(q.fieldKey, dom.questions[i - 1]?.fieldKey ?? null);
+              return (
+                <Fragment key={q.questionId}>
+                  {encabezado ? <EncabezadoDeFrecuencia encabezado={encabezado} /> : null}
+                  <SurveyQuestion
+                    q={{
+                      id: q.questionId,
+                      number: q.number,
+                      text: q.questionText,
+                      hint: q.questionHint,
+                      type: q.questionType,
+                      section: dom.section,
+                      fieldKey: q.fieldKey,
+                      options: q.options.map((o, idx) => ({ id: `${q.questionId}-${idx}`, text: o })),
+                    }}
+                    answer={q.answerValue}
+                  />
+                </Fragment>
+              );
+            })}
           </div>
         </details>
       ))}

@@ -1,8 +1,10 @@
+import { encabezadoAntesDe } from "@/clinical-engine/encabezados-frecuencia";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import { Panel } from "@/components/shared/panel";
 
 import type { SurveyDomain } from "../data/survey-answers-reader";
+import { EncabezadoDeFrecuencia } from "./encabezado-frecuencia";
 import { SurveyAnswerReadonly } from "./survey-widgets";
 
 // Vista de SOLO LECTURA de la encuesta del paciente para el profesional (pestana Evaluacion).
@@ -36,18 +38,26 @@ export function SurveyReadonly({ domains }: { domains: SurveyDomain[] }) {
       {domains.map((d) => (
         <Panel key={d.section} titulo={d.section}>
           <div className="flex flex-col gap-4">
-            {d.questions.map((q) => (
-              <div key={q.questionId} className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-foreground">
-                  <span className="text-muted-foreground">{q.number}.</span> {q.questionText}
-                </p>
-                <SurveyAnswerReadonly
-                  questionType={q.questionType}
-                  answerValue={q.answerValue}
-                  options={q.options}
-                />
-              </div>
-            ))}
+            {/* LOS ENCABEZADOS DE CATEGORIA VIVEN AQUI, no en la encuesta del paciente (Santiago,
+                2026-08-31): al profesional le dicen contra que agrupa el modelo, y a esta altura ya no
+                pueden sesgar una respuesta, porque ya esta dada. Se derivan de la categoria de la pregunta
+                anterior, nunca de una posicion escrita a mano. */}
+            {d.questions.map((q, i) => {
+              const encabezado = encabezadoAntesDe(q.fieldKey, d.questions[i - 1]?.fieldKey ?? null);
+              return (
+                <div key={q.questionId} className="flex flex-col gap-2">
+                  {encabezado ? <EncabezadoDeFrecuencia encabezado={encabezado} /> : null}
+                  <p className="text-sm font-medium text-foreground">
+                    <span className="text-muted-foreground">{q.number}.</span> {q.questionText}
+                  </p>
+                  <SurveyAnswerReadonly
+                    questionType={q.questionType}
+                    answerValue={q.answerValue}
+                    options={q.options}
+                  />
+                </div>
+              );
+            })}
           </div>
         </Panel>
       ))}
