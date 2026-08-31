@@ -147,3 +147,40 @@ describe("un cero MEDIDO no es un cero ausente, tampoco aquí", () => {
     expect(al.find((a) => a.t === "Deshidratación probable")?.txt).toContain("Agua: 2 vasos");
   });
 });
+
+// ─── LAS TRES POSITIVAS, EN BLOQUE APARTE (Gildardo 2026-08-30 §5) ───────────────────────────────────
+//
+// Su instruccion, textual: "Aparte. Una hidratacion adecuada y un TCA activo no pueden compartir lista ni
+// peso visual. Lo que la alerta hace es dirigir la mirada del profesional, y mezclarlas gasta esa atencion
+// en lo que ya esta bien."
+//
+// El candado va sobre el COMPONENTE y no solo sobre el motor, porque la particion es de presentacion: el
+// motor devuelve las quince juntas, con su nivel, y quien las separa es la pantalla.
+
+describe("las positivas se separan por SU nivel, no por una lista nuestra", () => {
+  const COMP = readFileSync("src/modules/diagnoses/components/alertas-clinicas.tsx", "utf8");
+
+  it("la partición usa `niv === \"positivo\"`, que es el campo que trae su regla", () => {
+    // Una lista de titulos a mano quedaria desactualizada el dia que el agregue una cuarta positiva, y
+    // esa cuarta caeria entre las criticas sin que nadie se entere.
+    expect(COMP).toContain('a.niv !== "positivo"');
+    expect(COMP).toContain('a.niv === "positivo"');
+  });
+
+  it("y son DOS listas distintas, no una con orden", () => {
+    // Ordenarlas al final seguiria compartiendo lista y peso visual, que es lo que el excluye.
+    expect(COMP).toContain("Lo que el paciente ya hace bien");
+    expect((COMP.match(/<ul /g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("el bloque de positivas no se muestra vacío", () => {
+    // Un encabezado sin contenido tambien reclama la mirada, que es justo el recurso que su punto 5 cuida.
+    expect(COMP).toContain("positivas.length ?");
+  });
+
+  it("y las tres positivas de su modelo siguen siendo tres", () => {
+    // Si alguna dejara de estar marcada como positiva, se iria al bloque de las criticas sin ruido.
+    const FROZEN = readFileSync("src/clinical-engine/frozen/atlas-alertas.js", "utf8");
+    expect((FROZEN.match(/niv: "positivo"/g) ?? []).length).toBe(3);
+  });
+});
