@@ -119,7 +119,7 @@ export async function getTreatmentProtocol(
       .eq("treatment_id", treatmentId),
     supabase
       .from("treatment_notes")
-      .select("id, note, created_at")
+      .select("id, note, created_at, profession")
       .eq("treatment_id", treatmentId)
       .order("created_at", { ascending: false }),
     supabase
@@ -257,6 +257,9 @@ export async function getTreatmentProtocol(
       id: n.id,
       note: n.note,
       createdAt: n.created_at,
+      // null = nota ANTERIOR a la separacion por profesion (§8). No se rellena: no sabemos con que rol
+      // se escribio, y ponerle uno seria fabricar autoria clinica.
+      profession: n.profession,
     })),
     catalog: (catalog.data ?? []).map((c) => ({
       id: c.id,

@@ -25,9 +25,9 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ---
 
-## Los cinco de un vistazo
+## Los seis de un vistazo
 
-**Solo uno bloquea construcción**, y es el que queda de tu punto 2. Tres son declaraciones.
+**Solo uno bloquea construcción**, y es el que queda de tu punto 2. Los demás son declaraciones y una corrección nuestra.
 
 | # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
 | --- | --- | --- | --- |
@@ -36,6 +36,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **3** | Declaración: nuestra historia clínica y nuestro reporte dicen "Fecha" con **fechas distintas** | Nada, salvo que lo veas distinto | No |
 | **4** | Declaración: tu punto 4 tenía **cuatro sitios**, y describimos mal uno | Nada, salvo que lo veas distinto | No |
 | **5** | Los **encabezados de categoría** de la matriz: los quitamos de la encuesta del paciente | Si se quedan solo para el profesional | No |
+| **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 
 ---
 
@@ -166,6 +167,30 @@ Se retiró el rótulo, no la agrupación.
 
 **¿Se quedan solo en la vista del profesional, o vuelven también a la del paciente?** Si dices que vuelven,
 vuelven: es tu instrumento.
+
+---
+
+# 6 · Las notas por profesión: aplicamos tu principio, y te preguntamos mal
+
+**Tu instrucción está aplicada:** cada nota se sella con la profesión desde la que se escribió, y esa
+profesión sale del perfil de quien escribe, nunca de un campo del formulario (si viajara en el formulario,
+un profesional podría firmar con el rol de otro). Nadie puede pisar la nota de nadie.
+
+**Y ahora la corrección, que es lo que de verdad traemos aquí.** Nuestra pregunta decía que en tu archivo
+*"hay tres campos de nota, uno por profesión"*. Fuimos a verificarlo al aplicar tu respuesta y **no es**
+**así**. Tu archivo tiene `trat.porProfesional`: un sub-almacén por profesión con **cuatro** roles (tu
+propio `PROF_LABELS`: nutricionista, médico, entrenador, psicólogo), y sus campos de texto libre son
+**`diagProf`** y **`tratSugerido`**. No hay unas "notas".
+
+**Contestaste sobre nuestra premisa, no sobre tu archivo**, y eso es culpa nuestra. El principio que diste
+vale igual y es el que aplicamos. Lo que queda abierto es la correspondencia:
+
+**¿Nuestras "Notas del tratamiento" son tu `diagProf`, tu `tratSugerido`, o una tercera cosa que no está**
+**en tu archivo?** Lo preguntamos porque ninguno de los dos está portado todavía, y si nuestra nota ES uno
+de ellos, lo que hay que hacer es portarlo con tu nombre y no mantener un campo paralelo.
+
+**Un detalle menor del mismo hilo:** dijiste "tres campos" y tu archivo tiene cuatro roles. Usamos los
+cuatro, que son los que Atlas ya tiene. Si el cuarto no lleva nota, dilo.
 
 ---
 

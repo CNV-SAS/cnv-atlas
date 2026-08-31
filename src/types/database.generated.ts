@@ -3285,18 +3285,27 @@ export type Database = {
           created_at: string
           id: string
           note: string
+          profession:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           treatment_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           note: string
+          profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           treatment_id: string
         }
         Update: {
           created_at?: string
           id?: string
           note?: string
+          profession?:
+            | Database["public"]["Enums"]["professional_profession"]
+            | null
           treatment_id?: string
         }
         Relationships: [

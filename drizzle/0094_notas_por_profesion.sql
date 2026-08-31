@@ -1,0 +1,27 @@
+-- UNA NOTA POR PROFESION, no una compartida (Gildardo, 2026-08-30 §8).
+--
+-- SU INSTRUCCION, textual: "Una por profesion, tres campos distintos. Cada rol escribe lo suyo y no se
+-- pisan: el nutricionista no edita la nota del medico."
+--
+-- QUE CAMBIA. `treatment_notes` era una sola lista compartida por todo el tratamiento: cualquier
+-- profesional agregaba a la misma pila y no habia forma de saber quien era el autor CLINICO de cada nota
+-- (el `actor` queda en el audit log, que es admin-only para SELECT). Ahora cada nota lleva la PROFESION
+-- con la que se escribio, sellada en el acto.
+--
+-- POR QUE `profession` Y NO SOLO `created_by`. El autor puede cambiar de profesion configurada, o dejar la
+-- organizacion; la nota tiene que seguir diciendo desde que rol clinico se escribio. Es la misma familia
+-- que `protocol_approved.approvedProfession`: un acto clinico registra las condiciones bajo las que se
+-- ejecuto, no un puntero a un perfil que puede moverse.
+--
+-- NULLABLE, y no por comodidad: las notas ANTERIORES a esta separacion se escribieron cuando el campo era
+-- uno solo y compartido. Ponerles una profesion ahora seria FABRICAR el dato (no sabemos con cual rol se
+-- escribieron); dejarlas en null dice la verdad, y la pantalla las muestra como "sin profesion registrada".
+-- Un backfill "razonable" aqui seria inventar autoria clinica.
+--
+-- LAS CUATRO PROFESIONES, no tres. Su respuesta dice "tres campos", pero el enum de Atlas (y su propio
+-- PROF_LABELS: nutricionista, medico, entrenador, psicologo) tiene CUATRO. Se usa el enum existente, sin
+-- inventar una lista propia. La discrepancia va declarada en la ronda: la pregunta que le hicimos describia
+-- mal su archivo y el contesto sobre nuestra premisa.
+ALTER TABLE "treatment_notes" ADD COLUMN IF NOT EXISTS "profession" "professional_profession";
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "treatment_notes_profession_idx" ON "treatment_notes" ("treatment_id", "profession");

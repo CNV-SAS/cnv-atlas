@@ -108,6 +108,11 @@ describe("guard de profesion: escrituras de tratamiento", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     readProtocol.mockResolvedValue(CONFIRMED);
+    // DEFAULT (no `once`): el reader real SIEMPRE devuelve un objeto, nunca undefined. Los casos que
+    // prueban el guard encolan su forma con `mockResolvedValueOnce`, que tiene prioridad; este default
+    // es para las llamadas que NO encolan nada, como la de addNote. Sin el, addNote reventaba al
+    // destructurar undefined y el test decia "el guard se le colo a la nota", que era falso.
+    profOf.mockResolvedValue(NOT_PRO);
   });
 
   it("saveRestricciones: profesional sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
@@ -224,11 +229,13 @@ describe("guard de profesion: escrituras de tratamiento", () => {
   });
 
   it("addNote NO esta gateada por profesion (es documentacion, no prescripcion): sin profesion igual escribe", async () => {
-    // Decision explicita: la nota clinica es documentacion, no un acto de prescripcion. Un
-    // profesional sin profesion configurada igual puede documentar; el guard cubre solo las cinco
-    // escrituras que crean o producen la prescripcion. addNote NO llama a getActorProfession, por eso
-    // aqui no se encola ningun valor (encolarlo contaminaria la cola "once" de otros tests). Si esto
-    // cambia a forbidden, se rompio la decision (se le colo el guard a la nota).
+    // Decision explicita: la nota clinica es documentacion, no un acto de prescripcion. Un profesional
+    // sin profesion configurada igual puede documentar; el guard cubre solo las cinco escrituras que
+    // crean o producen la prescripcion. Si esto cambia a forbidden, se rompio la decision.
+    //
+    // EL COMENTARIO DECIA "addNote NO llama a getActorProfession", y desde el 2026-08-31 SI la llama:
+    // no para gatear, sino para SELLAR con que rol se escribio (Gildardo §8, una nota por profesion).
+    // Por eso este caso ahora afirma algo mas fuerte que antes: la lee Y NO la usa como puerta.
     const r = await addNote({ evaluationId: "E1", note: "hola" }, actor);
     expect(r.ok).toBe(true);
     expect(addTreatmentNote).toHaveBeenCalledTimes(1);

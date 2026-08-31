@@ -795,3 +795,22 @@ inicial es CUANDO EL PACIENTE FIRMA. Hoy coincide (el BIS se toma en consulta); 
 (tamizaje antes, incluso en casa) deja de coincidir, y quien se equivoca es la HISTORIA CLINICA. Va con la
 declaracion de que nuestra HC y nuestro reporte dicen "Fecha" con fechas distintas, que en su archivo no
 puede pasar porque solo hay una.
+
+**P-86 · Las notas por profesion: aplicado su principio, y LE PREGUNTAMOS MAL.** Su §8 del 30 ("una por
+profesion, tres campos distintos; cada rol escribe lo suyo y no se pisan") esta aplicado: `treatment_notes`
+lleva ahora la PROFESION, sellada en el acto y leida del PERFIL del actor, nunca del formulario (si viajara
+en el FormData, un profesional podria firmar con el rol de otro). Nullable para las notas anteriores a la
+separacion: ponerles una profesion seria fabricar autoria clinica.
+
+**Y la correccion, que es lo que importa:** nuestra pregunta (ronda del 29, punto 8) decia que su archivo
+tiene "tres campos de nota, uno por profesion". Verificado al aplicar su respuesta: NO ES ASI. Su archivo
+tiene `trat.porProfesional`, un sub-almacen por profesion con CUATRO roles (su propio `PROF_LABELS`:
+nutricionista, medico, entrenador, psicologo), y sus campos de texto libre son `diagProf` y `tratSugerido`.
+No hay unas "notas". EL CONTESTO SOBRE NUESTRA PREMISA. El principio vale igual; la correspondencia queda
+preguntada en la ronda del 31, punto 6: nuestras "Notas del tratamiento" son su `diagProf`, su
+`tratSugerido`, o una tercera cosa. Ninguno de los dos esta portado, asi que si nuestra nota ES uno de
+ellos, lo que toca es portarlo con su nombre y no mantener un campo paralelo.
+
+**Es la leccion de buscar SUS terminos, al reves:** no fallamos verificando si habia contestado, fallamos
+describiendo su archivo en la pregunta. Antes de preguntar por una pieza suya, hay que citarla por su
+identificador, no por lo que parece que es.

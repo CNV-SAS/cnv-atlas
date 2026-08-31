@@ -659,6 +659,13 @@
       "when": 1788053600000,
       "tag": "0093_reapertura_prescripcion",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1788057200000,
+      "tag": "0094_notas_por_profesion",
+      "breakpoints": true
     }
   ]
 }

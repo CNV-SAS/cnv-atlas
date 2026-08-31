@@ -3,7 +3,12 @@ import { date, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "d
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
-import { nutraceuticalDecision, nutraceuticalDecisionReason, treatmentStatus } from "./enums";
+import {
+  nutraceuticalDecision,
+  nutraceuticalDecisionReason,
+  professionalProfession,
+  treatmentStatus,
+} from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
 import { profiles } from "./organizations";
 
@@ -189,6 +194,12 @@ export const treatmentNotes = pgTable("treatment_notes", {
     .notNull()
     .references(() => treatments.id, { onDelete: "cascade" }),
   note: text("note").notNull(),
+  // PROFESION con la que se escribio (Gildardo 2026-08-30 §8: "una por profesion, tres campos distintos;
+  // cada rol escribe lo suyo y no se pisan"). Se sella EN EL ACTO, como `approvedProfession`: el autor
+  // puede cambiar de profesion o dejar la organizacion, y la nota tiene que seguir diciendo desde que rol
+  // clinico se escribio. Nullable para las notas ANTERIORES a la separacion: ponerles una profesion ahora
+  // seria fabricar autoria clinica, no completarla.
+  profession: professionalProfession("profession"),
   createdAt: createdAt(),
 });
 

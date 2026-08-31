@@ -55,6 +55,7 @@ import {
   esMenuComidas,
   type IntercambioSaved,
   type MenuCambios,
+  type TreatmentNote,
   type MenuSuggestion,
   type TiemposSaved,
   type TreatmentProtocol,
@@ -920,6 +921,29 @@ function ProtocoloAprobado({
       )}
     </div>
   );
+}
+
+// Rótulo de cada profesión, y el de las notas SIN profesión: son las anteriores a la separación del §8,
+// cuando el campo era uno solo y compartido. No se les inventa un rol: decirlo es más honesto que
+// repartirlas por lo que parezca.
+const PROFESION_NOTA: Record<string, string> = {
+  nutricionista: "Nutricionista",
+  medico: "Médico",
+  psicologo: "Psicólogo",
+  deportologo: "Deportólogo",
+  "sin-profesion": "Sin profesión registrada",
+};
+
+/** Agrupa por profesión conservando el orden de llegada dentro de cada grupo. */
+function agruparNotasPorProfesion(notas: TreatmentNote[]): [string, TreatmentNote[]][] {
+  const grupos = new Map<string, TreatmentNote[]>();
+  for (const n of notas) {
+    const k = n.profession ?? "sin-profesion";
+    const lista = grupos.get(k);
+    if (lista) lista.push(n);
+    else grupos.set(k, [n]);
+  }
+  return [...grupos.entries()];
 }
 
 type CambioPropuestoView = MenuCambios["cambios"][number];
@@ -2175,20 +2199,31 @@ function NotesSection({
       <h3 className={tituloBloqueCls("registro")}>Notas del tratamiento</h3>
       <p className="text-xs text-muted-foreground">
         Notas internas del protocolo de tratamiento. Se agregan al historial (no se editan ni se
-        borran) y no se envian al paciente. Distintas del criterio del diagnostico y de las notas
+        borran) y no se envían al paciente. Distintas del criterio del diagnóstico y de las notas
         del reporte.
       </p>
+      {/* UNA NOTA POR PROFESIÓN (Gildardo 2026-08-30 §8: "cada rol escribe lo suyo y no se pisan").
+          Se AGRUPAN, no se ocultan: el médico necesita leer lo que anotó la nutricionista. Lo que su
+          instrucción excluye es compartir el campo, no compartir la información. Y como las notas son
+          append-only, nadie puede editar la de otro ni por accidente. */}
       {protocol.notes.length ? (
-        <ul className="flex flex-col gap-2">
-          {protocol.notes.map((n) => (
-            <li key={n.id} className="rounded-lg border border-border p-3 text-sm text-foreground">
-              <p>{n.note}</p>
-              <p className="pt-1 text-xs text-muted-foreground">
-                {formatDateTime(n.createdAt)}
+        <div className="flex flex-col gap-3">
+          {agruparNotasPorProfesion(protocol.notes).map(([prof, notas]) => (
+            <div key={prof} className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {PROFESION_NOTA[prof] ?? prof}
               </p>
-            </li>
+              <ul className="flex flex-col gap-2">
+                {notas.map((n) => (
+                  <li key={n.id} className="rounded-lg border border-border p-3 text-sm text-foreground">
+                    <p>{n.note}</p>
+                    <p className="pt-1 text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground">Sin notas.</p>
       )}
@@ -2198,7 +2233,7 @@ function NotesSection({
           name="note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Agrega una nota al tratamiento"
+          placeholder="Agrega una nota desde tu profesión"
           rows={2}
           disabled={locked}
         />

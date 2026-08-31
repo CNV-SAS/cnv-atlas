@@ -570,6 +570,8 @@ export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promis
 }
 
 export type AddNoteWrite = {
+  /** Profesion con la que se escribe (null si el actor no la tiene configurada). Se SELLA en el acto. */
+  profession: "medico" | "psicologo" | "deportologo" | "nutricionista" | null;
   treatmentId: string;
   note: string;
   actorId: string;
@@ -583,7 +585,7 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
     await assertConfirmedDiagnosis(tx, input.treatmentId);
     const [note] = await tx
       .insert(treatmentNotes)
-      .values({ treatmentId: input.treatmentId, note: input.note })
+      .values({ treatmentId: input.treatmentId, note: input.note, profession: input.profession })
       .returning({ id: treatmentNotes.id });
     await recordAudit(tx, {
       event: "treatment.note_added",
@@ -591,7 +593,7 @@ export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
       actorEmail: input.actorEmail,
       entityType: "treatment",
       entityId: input.treatmentId,
-      payload: { note_id: note.id },
+      payload: { note_id: note.id, profession: input.profession },
       ip: input.ip,
     });
   });

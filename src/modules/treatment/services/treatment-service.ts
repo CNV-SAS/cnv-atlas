@@ -8,6 +8,8 @@ import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments
 
 import { menuSemanalSignature } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
+import { getActorProfession } from "../data/actor-profession-reader";
+import type { ProfesionNota } from "../data/treatment-view-types";
 import { requireNutricionista } from "./require-profession";
 import {
   acknowledgeRestrictions as writeAcknowledge,
@@ -746,8 +748,19 @@ export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de agregar notas."));
   }
+  // LA PROFESION SE LEE, NO SE PIDE (§8: "cada rol escribe lo suyo"). Viene del perfil del actor, no de un
+  // campo del formulario: si viajara en el FormData, un profesional podria firmar la nota de otro rol. Y NO
+  // se exige (a diferencia de las escrituras de prescripcion): esto es DOCUMENTACION, y bloquear una nota
+  // clinica por un campo administrativo vacio seria un gate de mas. Sin profesion configurada, la nota
+  // entra sin ella y la pantalla lo dice.
+  const { profession } = await getActorProfession(actor.actorId);
   try {
-    await addTreatmentNote({ treatmentId: protocol.treatmentId, note: input.note, ...actor });
+    await addTreatmentNote({
+      treatmentId: protocol.treatmentId,
+      note: input.note,
+      profession: (profession as ProfesionNota | null) ?? null,
+      ...actor,
+    });
   } catch (e) {
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;

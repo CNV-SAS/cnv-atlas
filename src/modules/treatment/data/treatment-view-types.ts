@@ -43,7 +43,15 @@ export type MenuSemanalSaved = {
   diaInicio: number;
   celdas: Record<string, string>;
 };
-export type TreatmentNote = { id: string; note: string; createdAt: string };
+// La PROFESION con la que se escribio la nota (Gildardo 2026-08-30 §8). `null` = nota anterior a la
+// separacion, cuando el campo era uno solo y compartido: la pantalla lo dice, no lo adivina.
+export type ProfesionNota = "medico" | "psicologo" | "deportologo" | "nutricionista";
+export type TreatmentNote = {
+  id: string;
+  note: string;
+  createdAt: string;
+  profession: ProfesionNota | null;
+};
 
 // Contraindicaciones del PACIENTE (no de esta consulta). Se leen para MOSTRARLAS al prescribir: guardar
 // una contraindicacion que nadie ve es la mitad del valor, porque el siguiente profesional no se entera.
