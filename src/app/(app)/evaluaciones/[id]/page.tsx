@@ -114,7 +114,10 @@ import { NutraDecisionSection } from "@/modules/treatment/components/nutra-decis
 import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
-import { getResumenProfesionForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
+import {
+  getPrescripcionNutricional,
+  getResumenProfesionForEvaluation,
+} from "@/modules/treatment/data/dieta-resumen-reader";
 import {
   ProfessionTreatmentSection,
   type TreatmentNarrative,
@@ -441,6 +444,18 @@ export default async function ResultadosEvaluacionPage({
     };
   }
 
+  // LA PRESCRIPCION DEL MOTOR QUE GOBIERNA (`motorTratNutri`, Gildardo 2026-08-23 §1). Se computa al vuelo,
+  // como los parrafos: no se sella. El snapshot conserva lo que `atlas-protocolo` computo al diagnosticar
+  // (historia); lo que el profesional LEE hoy sale del motor vigente. Hasta el 2026-08-31 el panel mostraba
+  // lo sellado, y a un hipertenso le decia "Sodio < 2300 mg/dia" con 1.500 ordenado ocho dias antes.
+  const prescripcionNutricional = isEngineOutput(results.snapshot)
+    ? await getPrescripcionNutricional(
+        id,
+        results.snapshot.sexo,
+        results.snapshot.indicators as unknown as Record<string, unknown>,
+      )
+    : null;
+
   // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
   // CIERRE de la consulta: los pendientes se DERIVAN del estado real en cada render, no se guardan, asi
@@ -687,6 +702,7 @@ export default async function ResultadosEvaluacionPage({
                     d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue })),
                   ),
                 )}
+                prescripcion={prescripcionNutricional}
               />
             }
           />

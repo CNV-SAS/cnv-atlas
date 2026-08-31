@@ -89,7 +89,11 @@
 ## Q5 · Fuerza prensil: ¿debe influir en el DFI y las rutas, o es solo de display?
 
 - **Fecha:** 2026-07-10 (verificación del HTML actualizado)
-- **Estado:** CONFIRMADO (Gildardo, 2026-07-15; solo captura, delta futuro del motor si debe influir)
+- **Estado:** **REVERTIDO POR EL Y APLICADO (2026-08-30 §6b).** La ficha decia "solo captura, delta futuro
+  del motor si debe influir" desde el 15-jul, y quedo stale ocho semanas. Su instruccion nueva: *"que la
+  dinamometria se capture y no llegue al motor significa que `dxSarcopenia` devolvia ingrese la fuerza
+  prensil SIEMPRE... Conectenla"*, con su razon: los tres criterios (fuerza, ASMI, angulo) son UN
+  diagnostico. **Conectada el 2026-08-31**; ver `dinamometria-al-motor.test.ts`.
 - **Contexto:** Gildardo entregó un `ATLAS_v7.html` actualizado (10 jul) con, entre otros, la fuerza prensil (dinamometría) agregada a antropometría y "al diagnóstico de sarcopenia". Se comparó contra los tres `.js` congelados.
 - **Hallazgo:** la ciencia que Atlas porta NO cambió. `dxSarcopenia`, `cSMM`, `cMMEM`, `cASMI` y las constantes de los índices (ISCM/IEHH/EB-BIS/IAE) son idénticas byte a byte; la fuerza prensil ya era el criterio primario EWGSOP2 en el paquete congelado del 5 de julio. Los `.js` de `src/clinical-engine/frozen/` siguen byte-idénticos al paquete de referencia.
 - **La distinción clave:** en el HTML nuevo, la fuerza prensil entra a un flag de obesidad sarcopénica que vive en el bloque de **render MCCB** (`ATLAS_v7.html` ~L11008: `const sarcopenia = ... || sarcoDx.k >= 2`, con `sarcoDx` calculado desde `dxSarcopenia(fuerzaPrensil, ...)`). Ese bloque es una ruta de **visualización**, distinta de `computeDFIFromData` (~L9456) y `computeDFI` (~L11304), que son las funciones que Atlas realmente porta. El DFI congelado calcula su propia obesidad sarcopénica SIN prensil: `_obSarc = _fmiElev && (_ffmiLow || _asmiLow || _smmwLow)`. Y `engine.ts` arma `rutas: dfiRaw.rutas` desde `computeDFIFromData`, no desde `rutasPorCondicion`. Es decir, hoy la fuerza prensil no toca ningún indicador, DFI, ruta ni fenotipo del `EngineOutput`; `EngineInput` ni siquiera tiene un campo `fuerzaPrensil`.
@@ -430,7 +434,10 @@
 
 ## Q26 · El interruptor del mapeo del ICEC está APAGADO en tu archivo vigente (ligada a C1)
 
-- **Fecha:** 2026-08-01. **Estado:** ABIERTA. **NO bloquea el re-sync; bloquea el follow-on (C1/C9).**
+- **Fecha:** 2026-08-01. **Estado: CONTESTADA (2026-08-30 §3) Y REASIGNADA A EL.** Textual: *"la media
+  58,578 y la desviacion 13,332 del ICEC no estan establecidas... La recalibracion va por mi lado y llega
+  con el dato, no con una instruccion. Hasta entonces el interruptor se queda en `false`. No lo enciendan
+  por partes ni por su cuenta."* No es trabajo nuestro: se espera SU dato.
 - **Consecuencia que salió del re-sync:** el mapeo del índice contextual (Alimentación → puntaje del patrón, Hidratación → vasos de agua) está ESCRITO en tu `ATLAS_v7.html`, pero el interruptor `LE8_MAPEO_CORREGIDO` está en `false`. O sea que **hoy tu propio prototipo calcula la EB-BIS con Alimentación e Hidratación en valores por defecto**, exactamente igual que Atlas. Tu instrucción C1 dice "activar", pero tu archivo dice lo contrario (es el patrón "un doc de decisiones no es evidencia de que el artefacto cambió"). Importa porque si Atlas lo activa y tú no, los dos sistemas divergen en el indicador que acabas de decidir que se muestre tal cual, sin correcciones (P0).
 
 **Para Gildardo (breve):** el mapeo del índice contextual está escrito en tu archivo pero el interruptor está apagado, así que hoy tu prototipo también calcula la EB-BIS con esos dos dominios en valores por defecto. Tu instrucción C1 dice que lo activemos. ¿Lo activas también en tu archivo, o Atlas queda con un valor distinto al de tu prototipo para el mismo paciente?
@@ -522,7 +529,9 @@
 
 ## Q35 · Import del Biody BIS: faltan `MCA_ref` y `hidSG_ref`, ¿tabla de referencia o gateamos a null?
 
-- **Fecha:** 2026-08-08. **Estado:** ABIERTA. Sale de verificar el export REAL del Biody BIS contra Atlas.
+- **Fecha:** 2026-08-08. **Estado: CONTESTADA (2026-08-15 §5) Y APLICADA.** Textual: *"derivenlas, es lo
+  que dice mi propio archivo"*, y `computeISCM` ya trae el respaldo `MCA − MCA_ref`. Aplicado en
+  `derive-composition.ts` con el bloque REF_POB y el %MCA corregido a 52,4 (§9 del 12).
 - **Contexto:** tu `derivarFaltantes` (v8) resuelve casi toda la composición que el export corto del Biody BIS no trae (FFW, ECW_sg, ICW_sg, MPM, MCA, `smmW`, `ECM_BCM`, `hidSG`). Con eso, IEHH queda completo y ISCM casi. **Lo único que queda sin cubrir son dos VALORES DE REFERENCIA que ninguna identidad produce:**
   - `MCA_ref` (referencia de masa celular activa): tu ISCM lo usa como `MCA_dif` = MCA − MCA_ref (`engine.indices.js`). Sin él, ese término de ISCM cae a 0 en silencio (y la badge "MCA reducida" nunca dispara).
   - `hidSG_ref` (referencia de hidratación sin grasa): la badge de hidratación compara `hidSG < hidSG_ref`. Sin la referencia, no dispara.

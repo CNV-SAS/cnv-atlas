@@ -49,9 +49,24 @@ vi.mock("@/modules/treatment/services/require-profession", () => ({
   requireNutricionista: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("@/modules/treatment/data/treatment-reader", () => ({ getTreatmentProtocol: vi.fn() }));
+// LA PRESCRIPCION DEL MOTOR QUE GOBIERNA (2026-08-31): `generateMenu` la lee para armar las restricciones
+// del prompt, en vez de tomarlas del snapshot sellado (que las computa con el motor que NO gobierna: a un
+// hipertenso le mandaba "Sodio < 2300" al generador). Se mockea con el caso del hipertenso, que es el que
+// hizo visible el defecto, para que el prompt de estos tests lleve lo que de verdad lleva en produccion.
+vi.mock("@/modules/treatment/data/dieta-resumen-reader", () => ({
+  getPrescripcionNutricional: vi.fn(async () => ({
+    tipoEnergia: "Hipocalórica",
+    filas: [{ nombre: "Sodio", valor: "< 1.500 mg/día", ref: "OMS; DASH/NHLBI; AHA/ACC 2025" }],
+    limites: [{ nombre: "Sodio", valor: "< 1.500 mg/día", ref: "OMS; DASH/NHLBI; AHA/ACC 2025" }],
+    atributos: ["Hiposódica (<1.500 mg Na)", "Patrón DASH"],
+    notas: [],
+    referencias: ["OMS; DASH/NHLBI; AHA/ACC 2025"],
+  })),
+}));
 vi.mock("@/modules/diagnoses/data/results-reader", () => ({ getEvaluationResults: vi.fn() }));
 
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
+import { getPrescripcionNutricional } from "@/modules/treatment/data/dieta-resumen-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
 
@@ -133,6 +148,18 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
       protocolSuggested: { ...SNAP, restricciones: [] },
       adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
     } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
+    // Y el MOTOR tampoco devuelve ninguna: desde el 2026-08-31 el gate lo decide `motorTratNutri`, no el
+    // snapshot. Este es el paciente sin comorbilidad y con composicion normal, para el que su motor no
+    // fija limites ni atributos (verificado ejecutandolo). La proteina objetivo NO cuenta: es una meta,
+    // no un limite, y contarla abriria el gate para todos.
+    vi.mocked(getPrescripcionNutricional).mockResolvedValueOnce({
+      tipoEnergia: "Normocalórica",
+      filas: [{ nombre: "Proteína", valor: "1 g/kg", ref: "ANI BIS-E" }],
+      limites: [],
+      atributos: [],
+      notas: [],
+      referencias: [],
+    });
 
     const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });
     expect(r.ok).toBe(true);

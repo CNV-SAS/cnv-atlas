@@ -25,7 +25,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ---
 
-## Los seis de un vistazo
+## Los ocho de un vistazo
 
 **Solo uno bloquea construcción**, y es el que queda de tu punto 2. Los demás son declaraciones y una corrección nuestra.
 
@@ -37,6 +37,8 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **4** | Declaración: tu punto 4 tenía **cuatro sitios**, y describimos mal uno | Nada, salvo que lo veas distinto | No |
 | **5** | Los **encabezados de categoría** de la matriz: los quitamos de la encuesta del paciente | Si se quedan solo para el profesional | No |
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
+| **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
+| **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
 
 ---
 
@@ -191,6 +193,53 @@ de ellos, lo que hay que hacer es portarlo con tu nombre y no mantener un campo 
 
 **Un detalle menor del mismo hilo:** dijiste "tres campos" y tu archivo tiene cuatro roles. Usamos los
 cuatro, que son los que Atlas ya tiene. Si el cuarto no lleva nota, dilo.
+
+---
+
+# 7 · Tu `importarComposicion` mapea la cintura al umbral, no a la medida
+
+**Nunca te lo habíamos preguntado, y llevamos un mes divergiendo de tu archivo a propósito.**
+
+En `importarComposicion`, la cintura sale de la columna de **referencia** del export del Biody:
+
+```js
+cintura: nv(row["Patient risk monitoring Waist Size ... REFERENCEESTIMEEEXPORT cm"])   // = 102
+```
+
+Esa columna es el **corte de riesgo de la OMS**, no la medida del paciente: vale **102 para todo hombre**,
+lo mida quien lo mida. Lo verificamos en dos entregas tuyas distintas, así que **no es un error de nuestra
+transcripción: es tu mapeo.**
+
+**Qué hicimos, y por qué es seguro:** en Atlas ese campo **no se mapea**. Ningún cálculo nuestro consume
+`cintura` desde ahí (el ICC, el ICT y el IR se leen como columnas propias), así que la trampa está inerte;
+la circunferencia MEDIDA la leemos de `Waist Size cm`, que es la buena. Hay un test que impide que reaparezca.
+
+**¿Es deliberado?** Preguntamos porque si en algún momento tu archivo empieza a calcular un ratio con esa
+variable, lo haría con 102 para todos los pacientes y no se notaría.
+
+---
+
+# 8 · `diagProf` y `tratSugerido`: dos campos tuyos que no están en Atlas
+
+**Salieron hoy, verificando lo de las notas, y no están en ninguna ronda anterior.**
+
+Tu archivo guarda por profesión (`trat.porProfesional[rol]`) al menos estos campos de texto:
+
+| Campo | Lo que parece ser |
+| --- | --- |
+| `diagProf` | La impresión diagnóstica que escribe ese profesional |
+| `tratSugerido` | El tratamiento que ese profesional propone |
+
+**Ninguno de los dos está portado.** Atlas tiene, por profesión, el abordaje y las indicaciones que
+**calcula** el modelo, pero no un sitio donde el profesional **escriba** su impresión ni su propuesta.
+
+**Dos preguntas, y la segunda es la que decide:**
+
+1. **¿Qué son exactamente?** ¿`diagProf` es la impresión clínica del profesional, distinta del diagnóstico
+   del modelo? ¿`tratSugerido` es lo que él propone, frente a lo que el motor propone?
+2. **¿Van en Atlas, o eran del prototipo?** Si van, portarlos con tus nombres es lo correcto, y entonces
+   **nuestras "Notas del tratamiento" probablemente son uno de los dos** (ver el punto 6) y no un tercer
+   campo que mantener en paralelo.
 
 ---
 

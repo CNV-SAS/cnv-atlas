@@ -14,6 +14,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
+import { getPrescripcionNutricional } from "../data/dieta-resumen-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { patronDeclarado } from "./patron-declarado";
 
@@ -119,7 +120,24 @@ export async function generateMenu(
     (dominios ?? []).flatMap((d) => d.questions.map((q) => ({ fieldKey: q.fieldKey, valor: q.answerValue }))),
   );
 
-  const restriccionesModelo = protocol.protocolSuggested.restricciones ?? [];
+  // LAS RESTRICCIONES QUE VIAJAN AL MODELO SALEN DEL MOTOR QUE GOBIERNA (Gildardo, respuesta a la ronda
+  // del 2026-08-23: "motorTratNutri gobierna la prescripcion nutricional... los 2.300 del otro motor son
+  // el corte viejo"). Hasta el 2026-08-31 salian de protocol_suggested, que las sella desde
+  // atlas-protocolo: al generador de menus de un hipertenso se le decia "Sodio < 2300 mg/dia".
+  //
+  // Se lee al vuelo, no del snapshot sellado, y es deliberado: el snapshot conserva lo que se computo al
+  // diagnosticar (historia), y la prescripcion que gobierna hoy es la del motor vigente. Sellar una segunda
+  // copia crearia otra vez dos fuentes de lo mismo, que es el defecto que esto cierra.
+  const prescripcion = await getPrescripcionNutricional(
+    evaluationId,
+    results.snapshot.sexo,
+    results.snapshot.indicators as unknown as Record<string, unknown>,
+  );
+  // Fallback al snapshot si la evaluacion no tiene encuesta legible: sin ella el motor no puede correr, y
+  // quedarse sin restricciones apagaria la IA en vez de adaptarla.
+  const restriccionesModelo = prescripcion
+    ? prescripcion.limites.concat(prescripcion.atributos.map((a) => ({ nombre: a, valor: "", ref: "" })))
+    : (protocol.protocolSuggested.restricciones ?? []);
 
   // GATE: sin NINGUNA restriccion la IA no entra. Es su instruccion literal ("la IA solo lo adapta cuando
   // hay restricciones") y ademas es lo prudente: sin restricciones el ciclo YA es el menu correcto, y

@@ -186,3 +186,27 @@ export type TreatmentProtocol = {
   // tratamiento se creo antes de sellar protocol_suggested.
   protocolSuggested: ProtocoloSnapshot | null;
 };
+
+// LA PRESCRIPCIÓN DEL MOTOR QUE GOBIERNA (`motorTratNutri`, Gildardo 2026-08-23 §1). Vive AQUÍ y no en el
+// reader que la produce porque `dieta-resumen-reader` es `server-only` y el panel es un componente
+// CLIENTE: un `import type` desde un módulo server-only deja el reader al alcance del boundary y el
+// bundler de producción puede volverlo referencia-cliente (hazard A de CLAUDE.md, real dos veces en este
+// repo). El tipo compartido va en el módulo neutro; el reader lo importa de aquí.
+export type FilaPrescripcion = { nombre: string; valor: string; ref: string };
+export type PrescripcionNutricional = {
+  tipoEnergia: string;
+  /** Filas con cifra para MOSTRAR (proteína objetivo, sodio, grasa saturada). */
+  filas: FilaPrescripcion[];
+  /**
+   * Las que RESTRINGEN lo que el paciente puede comer (sodio, grasa saturada). Van al prompt del menú y
+   * deciden si la IA entra. La proteína objetivo NO está aquí a propósito: es una META, no un límite, y
+   * como el motor siempre devuelve una, incluirla abriría el gate para TODOS los pacientes y rompería su
+   * §13 ("la IA solo lo adapta cuando hay restricciones").
+   */
+  limites: FilaPrescripcion[];
+  /** Atributos cualitativos ("Hiposódica (<1.500 mg Na)", "Patrón DASH", "Nefroprotectora"...). */
+  atributos: string[];
+  /** Notas clínicas del motor (realimentación, ERC bajo guía de nefrología, fuerza siempre...). */
+  notas: string[];
+  referencias: string[];
+};

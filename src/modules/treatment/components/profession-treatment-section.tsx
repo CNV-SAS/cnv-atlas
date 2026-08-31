@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { PrescripcionNutricional } from "../data/treatment-view-types";
+
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 
 import type { ActorProfession } from "../data/actor-profession-reader";
@@ -166,11 +168,13 @@ async function Panel({
   protocol,
   narrative,
   patronAlimentario,
+  prescripcion,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
   narrative: TreatmentNarrative;
   patronAlimentario: string[];
+  prescripcion: PrescripcionNutricional | null;
 }) {
   if (!protocol) {
     return (
@@ -202,6 +206,7 @@ async function Panel({
         evaluationId={evaluationId}
         protocol={protocol}
         patronAlimentario={patronAlimentario}
+        prescripcion={prescripcion}
       />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
@@ -401,6 +406,7 @@ export function ProfessionTreatmentSection({
   rutas,
   narrative,
   patronAlimentario,
+  prescripcion,
 }: {
   evaluationId: string;
   actor: ActorProfession;
@@ -413,6 +419,7 @@ export function ProfessionTreatmentSection({
   // Patron alimentario DECLARADO por el paciente (d4_34), leido en la pagina. Baja hasta la seccion de
   // adaptacion del menu: es una de las tres fuentes de restriccion que deciden si la IA entra.
   patronAlimentario: string[];
+  prescripcion: PrescripcionNutricional | null;
 }) {
   // Medico: panel de consulta con abordaje + indicaciones medicas de las rutas + examenes/suplementacion
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
@@ -455,5 +462,6 @@ export function ProfessionTreatmentSection({
         protocol={protocol}
         narrative={narrative}
         patronAlimentario={patronAlimentario}
+        prescripcion={prescripcion}
       />;
 }

@@ -171,7 +171,10 @@ export function runEngine(input: EngineInput): EngineOutput {
 
   // DFI (autoritativo). Se computa con lo que haya (LE8/EB sobre lo presente); la marca de
   // completitud es surveyComplete (todos los field_key declarados), no "hay algun dato".
-  // Q28 (pendiente): complete=false NO impide emitir el diagnostico hoy, solo lo marca.
+  // Q28: CERRADA por Gildardo (ronda 2026-08-03), no pendiente. Su decision: el diagnostico bioelectrico
+  // se emite SIEMPRE (sale de la medicion); lo que depende de la encuesta (ICEC, EB-BIS, rutas de esos
+  // dominios) NO se emite si esta incompleta, y el profesional ve que falta y que queda suspendido. Es lo
+  // que hace el codigo de abajo. El comentario decia "(pendiente)" desde antes de su respuesta.
   const dfiRaw = analizarDFI(bisRow, { ...survey, sexo, edad });
   const dfi: EngineDfi = {
     complete: surveyComplete,

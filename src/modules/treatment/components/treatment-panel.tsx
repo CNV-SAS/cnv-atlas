@@ -55,6 +55,7 @@ import {
   esMenuComidas,
   type IntercambioSaved,
   type MenuCambios,
+  type PrescripcionNutricional,
   type TreatmentNote,
   type MenuSuggestion,
   type TiemposSaved,
@@ -451,6 +452,7 @@ export function TreatmentPanel({
   evaluationId,
   protocol,
   patronAlimentario,
+  prescripcion,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
@@ -458,6 +460,9 @@ export function TreatmentPanel({
   // de las TRES fuentes de restriccion que deciden si la IA entra, y sin ella la pantalla diria "no hay
   // nada que adaptar" a un vegano. Un texto que describe mal lo que hace el motor es defecto de seguridad.
   patronAlimentario: string[];
+  // Prescripcion del motor que gobierna (motorTratNutri), computada al vuelo por la pagina. null si la
+  // evaluacion no tiene encuesta legible: ahi se cae a lo sellado, marcado como tal.
+  prescripcion: PrescripcionNutricional | null;
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -552,9 +557,47 @@ export function TreatmentPanel({
             plan; hasta 2026-08-23 el motor las calculaba y nadie las veia mientras armaba (hueco clinico
             EN2 del barrido, COTEJOS_VISUALES). Distintas del campo de restricciones del PROFESIONAL, que
             vive junto al menu y es aditivo. */}
-        {snapRestricciones.length > 0 ? (
+        {/* LA PRESCRIPCIÓN DEL MOTOR QUE GOBIERNA (Gildardo, respuesta a la ronda del 2026-08-23:
+            "motorTratNutri gobierna la prescripción nutricional... los 2.300 del otro motor son el corte
+            viejo"). Hasta el 2026-08-31 este bloque salía del snapshot sellado, que las computa con
+            `atlas-protocolo`: a un hipertenso le decía "Sodio < 2300 mg/día" mientras él había ordenado
+            1.500 ocho días antes. El snapshot sigue sellado (es la historia de lo que se computó al
+            diagnosticar); lo que cambia es de dónde sale lo que el profesional LEE hoy.
+
+            Se muestran las filas CUALITATIVAS. Las cifras calóricas de ese motor NO se muestran aquí
+            porque la cadena de abajo es la que el profesional edita, y su fórmula de gasto difiere; él
+            dijo "no lo cambien ahora" y está preguntado. Dos números del mismo concepto en la misma
+            pantalla es exactamente el defecto que esto cierra. */}
+        {prescripcion ? (
           <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-            <p className="font-medium">Restricciones activas del modelo</p>
+            <p className="font-medium">Prescripción del modelo · {prescripcion.tipoEnergia}</p>
+            {prescripcion.filas.length ? (
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {prescripcion.filas.map((r) => (
+                  <li key={r.nombre}>
+                    {r.nombre}: {r.valor} <span className="opacity-80">({r.ref})</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {prescripcion.atributos.length ? (
+              <p className="mt-1 text-foreground/90">{prescripcion.atributos.join(" · ")}</p>
+            ) : null}
+            {prescripcion.notas.length ? (
+              <ul className="mt-1 flex list-inside list-disc flex-col gap-0.5 text-foreground/90">
+                {prescripcion.notas.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            ) : null}
+            {prescripcion.referencias.length ? (
+              <p className="mt-1 text-xs opacity-80">{prescripcion.referencias.join(" · ")}</p>
+            ) : null}
+          </div>
+        ) : snapRestricciones.length > 0 ? (
+          // Sin encuesta legible el motor no corre; se muestra lo sellado antes que nada, marcado.
+          <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+            <p className="font-medium">Restricciones del modelo (de la emisión)</p>
             <ul className="mt-1 flex flex-col gap-0.5">
               {snapRestricciones.map((r) => (
                 <li key={r.nombre}>

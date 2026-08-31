@@ -116,7 +116,9 @@ export type EngineDfi = {
   // cuentan aqui: exigirlos para la completitud del diagnostico seria incorrecto (no lo alimentan). La
   // completitud del TRATAMIENTO es un hueco aparte, ligado a D-007 (ver BACKLOG). Un rename a
   // diagnosisInputsComplete es deseable pero toca el contrato; va como nota. Regla 7, def. 2026-08-02.
-  // OJO (Q28/D-007, pendiente): complete=false HOY solo MARCA, no impide emitir. Que deba impedirlo es Q28.
+  // Q28: CERRADA por Gildardo (ronda 2026-08-03). Decidio que NO se bloquea: el diagnostico bioelectrico
+  // se emite siempre y lo que depende de la encuesta queda suspendido y marcado. `complete` es esa marca.
+  // El comentario decia "(pendiente)" desde antes de su respuesta.
   complete: boolean;
   // field_key esperados que faltaron al emitir (ids estables, no etiquetas). Se sella; la
   // vista los traduce a dominios para decirle al profesional QUE completar en consulta.
