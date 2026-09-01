@@ -82,6 +82,11 @@
    `getPrescripcionNutricional` son OBLIGATORIOS, asi que tsc marca a todos los callers el dia que se
    agrega uno. Era lo que dejaba pasar que una pieza se quedara sin su ultimo cable.
 
+   **REPORTES (2026-09-01):** retirados del PDF del paciente los indices del modelo (su §7.1 del 26-ago,
+   que llevaba seis dias aplicada a medias por un congelamiento vencido en la cola), y anadida la linea del
+   derecho a la historia clinica. Estado: `report-render`. **El PLAN del paciente y la HC imprimible siguen
+   sin construir** (BACKLOG); P1 de la ronda los bloquea.
+
    **OJO AL DESPLEGAR: la 0095, la 0096 y la 0097 son migraciones con DATOS o con columnas nuevas.** Copia `treatments.adj_peso_meta` al registro
    del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
    `pnpm db:check:cloud` antes de dar el push por terminado.

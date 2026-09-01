@@ -25,9 +25,9 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ---
 
-## Los nueve de un vistazo
+## Los diez de un vistazo
 
-**Solo uno bloquea construcción**, y es el que queda de tu punto 2. Los demás son declaraciones y una corrección nuestra.
+**Dos bloquean construcción:** el que queda de tu punto 2, y el mapa de lenguaje del paciente del punto 10. Los demás son declaraciones y una corrección nuestra.
 
 | # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
 | --- | --- | --- | --- |
@@ -39,6 +39,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
+| **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no. Y tres cosas más | **El mapa de lenguaje del paciente (P1)**, contra qué se recorta la lista por región (P2) | **SÍ · P1 bloquea el plan del paciente** |
 | **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
 
 ---
@@ -380,6 +381,88 @@ encontrar.
 
 ---
 
+# 10 · Tu §7.1 está aplicado a medias, y tenemos que decirte por qué
+
+**Lo primero, porque es lo que más importa: durante seis días seguimos mandándole al paciente lo que tú
+dijiste que no debía salir.** IFC, IRC, PABU, ICA-BIS, ISCM, IEHH y el código de estado, en el PDF que
+sale por correo. Tu instrucción es del 26 de agosto y es literal:
+
+> *"lo que hoy le mandan —IFC, IRC, PABU, ICA-BIS, ISCM, IEHH y el código `N_N_N_A`— **no debe salir así**.
+> Ningún índice del modelo va al paciente."*
+
+**Ya no salen.** Se retiraron los cuatro bloques del modelo. No fue que no lo hubiéramos entendido: lo
+teníamos registrado con tu respuesta al lado, y con una nota que decía "congelado hasta que responda". Tú
+respondiste y nadie volvió a esa nota. El error es de proceso y es nuestro.
+
+## 10.1 · Lo que queda en el documento, y por qué queda tan corto
+
+Hoy el paciente recibe: el cambio respecto a su medición anterior (con el texto que tú redactaste), la
+recomendación de nutracéuticos, las notas de su profesional, y una línea sobre su historia clínica (ver
+10.2). **Nada más.**
+
+Es poco, y es a propósito. **Preferimos un documento corto a uno que le diga "CRÍTICO" a una persona sin
+nadie que se lo explique.** El plan completo de tu §7.1 se construye aparte; este PDF todavía no es ese
+plan.
+
+## 10.2 · Declaración: el paciente sí puede pedir su historia clínica, y se lo decimos
+
+**Consultamos al asesor legal, y tu criterio y el derecho del paciente conviven sin ceder ninguno.**
+
+Tú decidiste que la historia clínica es el documento del profesional y que el paciente no la recibe.
+Legalmente el paciente tiene derecho a su historia clínica completa (Resolución 1995 y Ley 1581), y un
+criterio clínico legítimo no puede ser una barrera de acceso.
+
+**Las dos mitades, y la primera te da la razón entera:**
+
+1. **No se envía por defecto, y sigue pasando por el profesional.** El derecho es de acceso **a solicitud**.
+   Tu criterio se respeta completo: no se adjunta, no sale sola, y quien la entrega eres tú y no CNV,
+   porque el profesional es el responsable del tratamiento.
+2. **Pero el paciente tiene que saber que puede pedirla**, o el derecho queda vacío. Por eso el reporte
+   lleva ahora una línea, discreta y en el pie: *"Puedes solicitar tu historia clínica completa a tu
+   profesional tratante."*
+
+**No te lo preguntamos porque no hay nada que decidir:** tu criterio queda intacto y el derecho queda
+cubierto. Te lo declaramos para que sepas que esa línea existe y por qué.
+
+## 10.3 · P1 · ¿Portamos TU mapa de lenguaje para el paciente? (bloquea el plan)
+
+**Va primero porque sin esto no se puede escribir el bloque del diagnóstico**, que es lo primero de tu
+lista del §7.1.
+
+Tu archivo **ya lo tiene resuelto**, y no como una simplificación de presentación sino como una decisión
+clínica: en `enviarInformePaciente` traduces BAJO/MEDIO/ALTO/CRÍTICO a **Óptimo / A mejorar / Requiere
+atención / Prioritario**, las severidades por dominio a **En equilibrio / A vigilar / A trabajar /
+Prioritario**, reemplazas el dominio conductual con severidad alta por una frase de acompañamiento que **no
+menciona TCA**, y reformulas el veto como acompañamiento. Tu propio comentario: *"sin CRÍTICO alarmante,
+sin mencionar TCA"*.
+
+**¿Lo portamos tal cual?** Escribirlo nosotros sería inventar contenido clínico, y preguntártelo cuesta
+menos que acertar. Hasta que respondas, el bloque del DFI no va en el reporte.
+
+## 10.4 · P2 · ¿Qué significa "por región o ciudad" en la lista de intercambio?
+
+Tu §7.1 dice que el paciente recibe la lista **"no completa, sino los alimentos principales por región o
+ciudad"**, con tu razón: *"entregarle 350 alimentos a un paciente no es informarlo, es abrumarlo"*.
+
+**Dos cosas nos faltan para construirlo:**
+
+1. **Contra qué se recorta.** Tenemos dos datos: la ciudad de residencia actual y la residencia prolongada
+   (la que pediste el 17 de agosto para la altitud). ¿Cuál manda?
+2. **El mapa de alimentos por región no está en tu archivo.** `INTER_TABLA_B` es nacional. ¿Lo entregas tú,
+   o el criterio es otro (por ejemplo, los N más comunes de cada grupo, sin región)?
+
+## 10.5 · P3 · Declaración: seguimos enviando por correo, no por app
+
+Tu prototipo guarda el informe y el paciente lo abre en su app **con su documento y su fecha de
+nacimiento**. Atlas manda un PDF adjunto al correo registrado.
+
+**Nos quedamos con el correo, y la razón es de protección de datos:** documento y fecha de nacimiento son
+dos datos que aparecen juntos en cualquier documento de identidad, así que quien tenga una foto de la
+cédula entra. Para datos de salud es un acceso débil. **Si prefieres la app, se construye, pero con
+autenticación de verdad.**
+
+---
+
 ## Lo que queda esperando, y de quién es
 
 **Tuyo:** la recalibración del ICEC (μ y σ), que dijiste que va por tu lado y llega con el dato. El
@@ -389,7 +472,7 @@ interruptor sigue en `false` y no lo tocamos.
 reapertura del sellado, las notas por profesión, la unificación del peso meta y el pulido completo de la
 subpestaña del nutricionista, que estaban en construcción cuando empezamos esta ronda, ya están.
 
-**Y una sola pregunta bloquea algo:** la del punto 1.
+**Y dos preguntas bloquean algo:** la del punto 1 (las diez alertas de consumo) y la P1 del punto 10 (el plan del paciente).
 
 ---
 

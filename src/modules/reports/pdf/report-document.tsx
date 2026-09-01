@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import { type EngineIndicators, type EngineOutput, suspendSurveyRoutes } from "@/clinical-engine";
+import { type EngineOutput } from "@/clinical-engine";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -19,21 +19,10 @@ export type ReportMeta = {
 // IAE revela el constructo; la clase de IAE tampoco se imprime. La expresion "edad biologica" es
 // termino retirado del sistema. La EB-BIS/IAE SI las ve el profesional (con marca de calibracion
 // provisional), en la vista interna. Gate del Hito 3 en LANZAMIENTO.md.
-export const INDICATOR_LABELS: { key: keyof EngineIndicators; label: string }[] = [
-  { key: "ifc", label: "IFC" },
-  { key: "irc", label: "IRC" },
-  { key: "pabu", label: "PABU" },
-  { key: "icaBis", label: "ICA-BIS" },
-  { key: "iscm", label: "ISCM" },
-  { key: "iehh", label: "IEHH" },
-  { key: "FMI", label: "FMI" },
-  { key: "FFMI", label: "FFMI" },
-  { key: "AF", label: "AF" },
-  { key: "IR", label: "IR" },
-];
-
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
+  // Discreta: mismo gris del pie, sin negrita y sin caja. Informa, no invita ni disuade.
+  derechoHc: { marginTop: 18, fontSize: 8, color: "#6b7280" },
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 2 },
   subtitle: { fontSize: 10, color: "#555", marginBottom: 12 },
   meta: { marginBottom: 12 },
@@ -82,14 +71,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function fmt(v: number | null, code?: string): string {
-  if (v == null) return "Pendiente";
-  // D-016: el angulo de fase siempre con 1 decimal.
-  if (code === "AF") return v.toFixed(1);
-  // El resto, igual que la tabla del profesional (evaluation-results fmtNum): entero tal cual, o 2
-  // decimales. ANTES esto era String(v), que imprimia el float crudo (IFC 5.365137870630431...).
-  return Number.isInteger(v) ? String(v) : v.toFixed(2);
-}
 
 // Modo de envio: que contenido incluye el PDF (B10.1). 'atlas' = reporte del motor;
 // 'notas' = solo las notas del profesional; 'ambos' = los dos.
@@ -115,8 +96,10 @@ export function ReportDocument({
   // APARTE, después del texto verbatim de Gildardo (no se edita su redacción). null = no se pinta.
   bandAppointmentDate?: string | null;
 }) {
-  const { indicators, efrPhenotype, structural, frSector, dfi, nutraceuticos, versions } =
-    snapshot;
+  // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
+  // `structural` y `frSector` se retiraron con sus bloques (§7.1): un documento que no tiene el dato no
+  // puede filtrarlo por descuido. `dfi` se conserva SOLO por `dfi.complete`, que gatea la banda.
+  const { dfi, nutraceuticos, versions } = snapshot;
   const notes = (professionalNotes ?? "").trim();
   const showAtlas = mode === "atlas" || mode === "ambos";
   const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;
@@ -174,73 +157,37 @@ export function ReportDocument({
             la ve en su pantalla. Si el paciente debe saber algo, será otra cosa y en su lenguaje, y lo redacta
             Gildardo. `dfi.degradedReason` sigue disponible en el snapshot para la vista del profesional. */}
 
+        {/* ═══ LO QUE YA NO VA AL PACIENTE (Gildardo, §7.1 del 2026-08-26) ═══
+            Aqui iban CUATRO bloques y los cuatro se retiraron el 2026-09-01, por instruccion suya literal:
+
+              "lo que hoy le mandan -IFC, IRC, PABU, ICA-BIS, ISCM, IEHH y el codigo N_N_N_A- NO DEBE
+               SALIR ASI. Ningun indice del modelo va al paciente. Eso es el documento del profesional."
+
+            1 · INDICADORES: los seis que nombra, mas FMI, FFMI, AF e IR. Todos son indices del modelo.
+            2 · DIAGNOSTICO FUNCIONAL (EFR): llevaba el codigo de estado que el nombra y el sector FyR.
+            3 · DIAGNOSTICO FUNCIONAL INTEGRAL (DFI): riesgo, score y severidades por dominio.
+            4 · Y con ellos la RAMA de "diagnostico incompleto", que era jerga sobre jerga.
+
+            POR QUE EL DFI SE VA ENTERO Y NO SE "SUAVIZA" AQUI: su archivo YA TIENE la version para el
+            paciente, y no es una simplificacion nuestra sino una decision clinica suya (BAJO/MEDIO/ALTO/
+            CRITICO pasan a Optimo/A mejorar/Requiere atencion/Prioritario; el dominio conductual con
+            severidad alta se reemplaza por una frase de acompanamiento que NO menciona TCA; el veto se
+            reformula como acompanamiento). Escribir nosotros ese lenguaje seria inventar contenido
+            clinico. Esta preguntado; hasta que responda, el bloque no va.
+
+            LO QUE QUEDA es lo que SI es para el paciente: el cambio respecto a su medicion anterior (texto
+            que redacto el), la recomendacion de nutraceuticos, las notas de su profesional y su derecho a
+            pedir la historia clinica. El documento queda corto, y eso es correcto: es preferible a mandarle
+            indices que no puede leer y una palabra como "CRITICO" sin nadie que se la explique.
+
+            El PLAN COMPLETO -diagnostico, meta, plan dietetico, menu, distribucion, recomendaciones y la
+            lista de intercambio recortada por region- es lo que su §7.1 dice que el paciente debe recibir,
+            y se construye aparte. Este documento NO es ese plan todavia. ═══ */}
         {showAtlas ? (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Indicadores</Text>
-              {INDICATOR_LABELS.map(({ key, label }) => (
-                <View key={key} style={styles.tableRow}>
-                  <Text style={styles.cellLabel}>{label}</Text>
-                  <Text style={styles.cellValue}>{fmt(indicators[key], key)}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Diagnóstico funcional (EFR)</Text>
-              <Text style={styles.para}>
-                <Text style={styles.bold}>
-                  Estado EFR {efrPhenotype.stateNumber} ({efrPhenotype.key}):{" "}
-                </Text>
-                {efrPhenotype.diagnostico}
-              </Text>
-              <Text style={styles.para}>Fenotipo estructural: {structural.nombre}</Text>
-              <Text style={styles.para}>Sector funcional (FyR): {frSector.nombre}</Text>
-            </View>
-
-            {/* Gate de render (Q28): con la encuesta incompleta, el bloque DFI se COLAPSA a una nota +
-                las rutas de la medicion (BIS). Suprime el riesgo, las lecturas de dominios y las rutas
-                que dependen de la encuesta, que salen inflados sobre defaults. Reaplica suspendSurveyRoutes
-                (idempotente) para proteger tambien snapshots viejos ya sellados incompletos, sin
-                reescribirlos (misma disciplina que la banda de trayectoria). Con encuesta completa, sin
-                cambio. */}
-            {dfi.complete ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Diagnostico funcional integral (DFI)</Text>
-                <Text style={styles.para}>
-                  <Text style={styles.bold}>Riesgo {dfi.riesgo.nivel} </Text>
-                  (score {String(dfi.riesgo.score)}): {dfi.riesgo.descripcion}
-                </Text>
-                {dfi.domains.map((d) => (
-                  <Text key={d.id} style={styles.para}>
-                    {d.nombre} (sev {String(d.sev)}): {d.lectura}
-                  </Text>
-                ))}
-                <Text style={styles.para}>
-                  Rutas de atencion:{" "}
-                  {dfi.rutas.length ? dfi.rutas.join("; ") : "sin rutas activas"}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Diagnostico funcional integral (DFI) (incompleto)</Text>
-                <Text style={styles.para}>
-                  El diagnostico funcional integral se completara al terminar la encuesta. La edad
-                  bioelectrica, el indice contextual y las rutas que dependen de la encuesta no se emiten
-                  todavia (no se calculan sobre respuestas que faltan).
-                </Text>
-                <Text style={styles.para}>
-                  Rutas por la medicion:{" "}
-                  {suspendSurveyRoutes(dfi.rutas).join("; ") || "pendientes de completar la encuesta"}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>
-              <Text style={styles.para}>{nutraceuticos}</Text>
-            </View>
-          </>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>
+            <Text style={styles.para}>{nutraceuticos}</Text>
+          </View>
         ) : null}
 
         {showNotes ? (
@@ -249,6 +196,25 @@ export function ReportDocument({
             <Text style={styles.para}>{notes}</Text>
           </View>
         ) : null}
+
+        {/* EL DERECHO A LA HISTORIA CLINICA, y va SIEMPRE, en los tres modos de envio.
+            Asesoria legal (2026-09-01): el paciente tiene derecho a su historia clinica COMPLETA
+            (Resolucion 1995 y Ley 1581). El criterio clinico de Gildardo -que la historia es el documento
+            del profesional y no se manda por defecto- es legitimo y se respeta: NO se adjunta. Pero el
+            derecho es de acceso A SOLICITUD, y un derecho que el titular no sabe que tiene esta vacio.
+            Esta linea es lo unico que hace que exista.
+
+            DISCRETA A PROPOSITO, no destacada: no invita ni disuade, informa. Va en el pie y no en un
+            bloque propio.
+
+            Y DICE "A TU PROFESIONAL", no a CNV, porque es exacto: el profesional es el responsable del
+            tratamiento y CNV el encargado (Anexo 3, clausula 13). Mandarlo a CNV lo mandaria a quien no
+            puede entregarsela.
+
+            La entrega es GRATUITA y no se dice aqui porque decirlo invita a pensar que podria no serlo. */}
+        <Text style={styles.derechoHc}>
+          Puedes solicitar tu historia clínica completa a tu profesional tratante.
+        </Text>
 
         <Text style={styles.footer} fixed>
           Motor {versions.engine} · Modelo {versions.model} · Reglas {versions.rules} ·

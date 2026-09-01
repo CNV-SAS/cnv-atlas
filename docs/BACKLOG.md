@@ -6,6 +6,85 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## Derechos del paciente sobre su historia clínica (asesoría legal, 2026-09-01)
+
+**El criterio de Gildardo y el derecho del paciente no se contradicen, y la asesoría legal dice cómo
+conviven.** Él decidió (§7.1, 26-ago) que la historia clínica es el documento del profesional y que el
+paciente no la recibe. El asesor legal: **el paciente tiene derecho a su historia clínica completa**
+(Resolución 1995 y Ley 1581), y un criterio clínico legítimo **no puede ser una barrera de acceso**.
+
+Las dos precisiones que hacen que convivan:
+
+1. **No hay que enviarla por defecto.** El derecho es de acceso **a solicitud**. El criterio de Gildardo se
+   respeta entero: no se adjunta, no se manda sola.
+2. **Pero el paciente tiene que saber que puede pedirla.** Ocultarlo vacía el derecho.
+
+**Y la entrega la hace el PROFESIONAL, no CNV:** él es el responsable del tratamiento y CNV el encargado
+(Anexo 3, cláusula 13). **Es gratuita**: no se cobra por ejercer un derecho.
+
+### [HECHO 2026-09-01] La línea en el reporte del paciente
+
+`Puedes solicitar tu historia clínica completa a tu profesional tratante.` Discreta, en el pie, en **los
+tres modos de envío** (un derecho que aparece según el modo es un derecho que a veces no existe; hay
+candado). Dice "a tu profesional" y no a CNV porque es exacto: CNV no puede entregársela.
+
+### PENDIENTE · Generar y enviar la historia clínica desde la vista del profesional
+
+Dos piezas, y la primera ya estaba en el orden del inventario de reportes:
+
+1. **La HC como PDF**, desde su pantalla, sin depender de CNV. Hoy la historia clínica existe como pantalla
+   y no se puede imprimir ni archivar.
+2. **Poder enviársela al paciente desde ahí, con registro del evento**: quién la generó, para qué paciente,
+   cuándo. Es el rastro que prueba que el derecho se atendió.
+
+### PENDIENTE · Módulo de solicitudes de derechos
+
+Con **plazos de 10 y 15 días hábiles** y **alerta antes del vencimiento**. Un plazo legal sin alerta se
+incumple por olvido, no por decisión.
+
+### PENDIENTE · El canal para cuando el paciente escribe a CNV
+
+El derecho se ejerce ante el profesional, pero el paciente no tiene por qué saber esa distinción: va a
+escribirle a quien tenga a mano. Hace falta la vía para encauzar esa solicitud sin que se pierda ni se
+conteste "no es con nosotros".
+
+### PENDIENTE · Desvinculación de un profesional: quién custodia y cómo se informa
+
+Si un profesional se retira, **sus pacientes siguen teniendo derecho a su historia clínica**. Falta definir
+quién la custodia y cómo se les informa. Cruza con la regla dura 14 (una cuenta clínica no se recicla:
+offboarding es desactivar y reasignar), pero la reasignación resuelve la atención, **no la custodia
+documental ni el aviso al titular**.
+
+---
+
+## Exportar la historia clínica y la encuesta a otro software (Himed) — Hito 2
+
+**Pedido real de una profesional.** Santiago decide backlog para el Hito 2, y parte del camino se hace
+solo: **la HC exportable se construye igual** (arriba), así que lo que falta después es el formato y el
+canal, no el documento.
+
+### La distinción que trae la asesoría legal, y que no teníamos
+
+| | |
+| --- | --- |
+| **Los datos CRUDOS son del paciente y se exportan** | Identificación, respuestas de la encuesta, mediciones, antropometría, notas, diagnóstico y plan |
+| **Los ÍNDICES CALCULADOS del modelo son propiedad de CNV** | Pueden ir en el **PDF** como resultado documentado (son parte del registro clínico y no se ocultan), **pero no como dataset estructurado y reutilizable** que permita replicar el modelo en otra plataforma |
+
+**Registrada porque va a volver con otros profesionales**, y porque la frontera no es obvia: el mismo
+número puede salir o no según **la forma** en que sale. Un IFC impreso en un PDF es registro clínico; el
+mismo IFC en una columna de un CSV, junto a sus entradas, es el modelo.
+
+**Y ojo con la interacción:** esto NO es una excusa para negar el acceso. El derecho del paciente se
+cumple con el PDF completo. Lo que se protege es la reutilización como dataset, no la lectura.
+
+**Las preguntas que traerá:** en qué formato (Himed acepta lo que acepte), y si un export de datos clínicos
+a un tercero necesita algo del consentimiento vigente. Esa segunda no es menor: hoy las autorizaciones
+cubren servicio, datos sensibles, investigación y continuidad asistencial; **una exportación a una
+plataforma de terceros a solicitud del paciente probablemente cae en su derecho de portabilidad y no
+necesita autorización nueva, pero hay que confirmarlo antes de construirlo.**
+
+---
+
 ## Barrido de los OTROS tres hazards de CLAUDE.md (2026-09-01)
 
 **Pedido de Santiago tras el del auto-reset:** si un hazard documentado podía estar vivo en 17 de 18
