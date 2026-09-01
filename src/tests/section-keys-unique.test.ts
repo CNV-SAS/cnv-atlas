@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 import {
   adjustmentSignature,
   guidelinesSignature,
+  menuSemanalSignature,
   intercambioSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
   sectionKey,
+  tiemposActivosSignature,
   tiemposSignature,
 } from "@/modules/treatment/data/protocol-signature";
 
@@ -34,7 +36,6 @@ const T = "3bfbcc45-0000-4000-8000-000000000000";
 // Paciente NUEVO: ninguna seccion tiene dato guardado. Es el caso que colisiona siempre.
 const KEYS_VACIAS: Record<string, string> = {
   objetivo: sectionKey("objetivo", objetivoSignature({ treatmentId: T, objetivo: null })),
-  guias: sectionKey("guias", guidelinesSignature({ treatmentId: T, guidelines: [] })),
   cadena: sectionKey(
     "cadena",
     adjustmentSignature({
@@ -52,9 +53,40 @@ const KEYS_VACIAS: Record<string, string> = {
   tiempos: sectionKey("tiempos", tiemposSignature({ treatmentId: T, tiempos: null })),
   restricciones: sectionKey("restricciones", restriccionesSignature({ treatmentId: T, restricciones: [] })),
   nutraceuticos: sectionKey("nutraceuticos", nutraceuticalsSignature({ treatmentId: T, nutraceuticals: [] })),
+  // Las dos que faltaban. `tiempos-activos` y `menu-semanal` se agregaron despues de escribir este
+  // candado y nadie las anadio aqui: el test seguia verde mirando siete secciones de las ocho que hay.
+  "tiempos-activos": sectionKey("tiempos-activos", tiemposActivosSignature({ treatmentId: T, activos: null })),
+  "menu-semanal": sectionKey("menu-semanal", menuSemanalSignature({ treatmentId: T, menu: null })),
 };
 
+// LAS SECCIONES REALES, LEIDAS DEL CODIGO. La lista de arriba tiene que escribirse a mano (cada firma
+// recibe argumentos distintos), y una lista a mano envejece: este candado llevaba semanas mirando
+// `guias`, que se retiro en el cotejo, y sin mirar `tiempos-activos` ni `menu-semanal`, que se agregaron
+// despues. Verde, y cubriendo siete de ocho.
+//
+// Es la misma familia del candado anclado a una entrega superada: pasaba por construccion. Por eso ahora
+// la lista de la verdad se DERIVA del codigo y lo escrito a mano se compara contra ella.
+const FUENTES = [
+  "src/modules/treatment/components/treatment-panel.tsx",
+  "src/app/(app)/evaluaciones/[id]/page.tsx",
+];
+const SECCIONES_REALES = new Set(
+  FUENTES.flatMap((f) => [...readFileSync(f, "utf8").matchAll(/sectionKey\(\s*"([a-z-]+)"/g)].map((m) => m[1])),
+);
+
 describe("keys de las secciones del panel de tratamiento", () => {
+  it("la lista de este candado cubre TODAS las secciones que existen, y ninguna que no", () => {
+    // Sin esto, agregar una seccion nueva deja el candado verde sin cubrirla, y retirar una lo deja
+    // probando algo que ya no existe. Las dos cosas pasaron.
+    const cubiertas = new Set(Object.keys(KEYS_VACIAS));
+    const sinCandado = [...SECCIONES_REALES].filter((x) => !cubiertas.has(x));
+    const fantasma = [...cubiertas].filter((x) => !SECCIONES_REALES.has(x));
+    expect(sinCandado, `secciones del panel SIN candado de key: ${sinCandado.join(", ")}`).toEqual([]);
+    expect(fantasma, `el candado prueba secciones que ya no existen: ${fantasma.join(", ")}`).toEqual([]);
+    // CONTROL: si la extraccion fallara, las dos listas quedarian vacias y el test pasaria sin mirar nada.
+    expect(SECCIONES_REALES.size).toBeGreaterThanOrEqual(8);
+  });
+
   it("son UNICAS en un paciente nuevo, donde todas las firmas son vacias", () => {
     const keys = Object.values(KEYS_VACIAS);
     expect(new Set(keys).size, `keys duplicadas: ${keys.join(" , ")}`).toBe(keys.length);

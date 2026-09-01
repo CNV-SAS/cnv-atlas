@@ -6,6 +6,51 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## Barrido de los OTROS tres hazards de CLAUDE.md (2026-09-01)
+
+**Pedido de Santiago tras el del auto-reset:** si un hazard documentado podía estar vivo en 17 de 18
+sitios, ¿en cuántos se aplicaron los demás? Se barrieron los tres, con **control** en cada uno (una
+aserción negativa sin control pasa verde también cuando no se miró nada).
+
+| Hazard | Resultado | Control |
+| --- | --- | --- |
+| Campo `disabled` que no viaja en el FormData | **Limpio.** Un candidato (`bis-import-form`, `name="file"` con `disabled={pending \|\| blocked}`), y es legítimo: es guarda de envío | 247 elementos con `name` examinados |
+| `key` compartida entre los botones de navegación | **Limpio.** Los dos formularios por pasos tienen `nav-back` / `nav-next` / `nav-submit` distintas | 2 formularios por pasos encontrados |
+| Fecha PURA formateada como instante | **Limpio.** Ninguna de las 11 columnas `date` pasa por un helper de instante | 11 columnas × 39 llamadas examinadas |
+
+**Y la primera pasada dio dos falsos positivos, los dos comentarios que CITAN el hazard para explicar por
+qué no está.** Un detector que caza su propia documentación no sirve: se repitió quitando comentarios.
+
+### Por qué esos tres aguantaron y el del `<form action>` no
+
+No es disciplina, es **superficie y idioma**:
+
+- Los tres limpios tienen **superficie pequeña** (un campo OTP, dos formularios por pasos) o **el nombre
+  correcto a mano** (`formatDateOnly` frente a `formatDate`: escribir el bueno es tan fácil como el malo).
+- El del `<form action>` tiene **42 superficies**, y sobre todo: **la forma incorrecta es la idiomática**.
+  `<form action={fn}>` es lo que enseña la documentación de React; `onSubmit + startTransition` es lo raro.
+
+**La regla que sale, y es la accionable:** cuando la forma INCORRECTA de un hazard es la que cualquiera
+escribiría por defecto, el documento no alcanza y hace falta un candado. Cuando la forma correcta es la
+natural, documentar basta. Los tres limpios no necesitan check; el cuarto sí, y ya lo tiene en tratamiento.
+
+### HALLAZGO · El candado de las keys llevaba semanas mirando siete secciones de ocho
+
+Buscando lo anterior apareció otro, y es de la familia del **candado anclado a una entrega superada**:
+`section-keys-unique.test.ts` enumeraba las secciones **a mano**, y la lista envejeció en las dos
+direcciones a la vez:
+
+- **Probaba `guias`**, que se retiró en el cotejo del 31.
+- **No probaba `tiempos-activos` ni `menu-semanal`**, agregadas después de escribirlo.
+
+Verde por construcción, y sin cubrir dos de las secciones que remonta el panel. **Corregido**, y además la
+lista de la verdad **se deriva ahora del código**: un guardián compara lo escrito a mano contra las
+secciones que existen de verdad, así que agregar una nueva o retirar una pone el candado rojo en vez de
+dejarlo verde a medias. Con su propio control (si la extracción fallara, las dos listas quedarían vacías y
+el test pasaría sin mirar nada).
+
+---
+
 ## El auto-reset de React 19 (`<form action>`): 14 formularios más, fuera de tratamiento (2026-09-01)
 
 **El hazard estaba en `CLAUDE.md` desde hace semanas** ("Auto-reset de React 19 con `<form action={fn}>`"),
