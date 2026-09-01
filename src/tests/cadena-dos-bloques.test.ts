@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+/** El codigo sin comentarios: los comentarios CITAN las frases prohibidas para explicar por que lo estan.
+ *  Un candado que caza su propia documentacion es ruido, y el ruido es como mueren los candados. */
+function quitarComentarios(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
 // CANDADO DE LA SEPARACION DE LA CADENA CALORICA en sus dos bloques (§8.1, 2026-08-26 Parte 2).
 //
 // LO QUE FIJA, y es una decision suya que va contra la nuestra: habiamos propuesto FUNDIR el objetivo y la
@@ -95,9 +101,16 @@ describe("el desliz del doble nombre del factor de actividad", () => {
     // §8.1: "«Actividad prescrita (FA)» y «Factor actividad (PAL)» son el mismo factor con dos nombres.
     // Unifíquenlo en el suyo." El desliz es de SU archivo, no del nuestro: Atlas siempre dijo PAL, y él nos
     // manda conservarlo. El candado impide que el doble nombre entre al portar otra pieza suya.
-    expect(PANEL).not.toContain("Actividad prescrita");
-    expect(PANEL).not.toContain("(FA)");
-    expect(PANEL).toContain('label="PAL (factor)"');
-    expect(PANEL).toContain("Nivel de actividad física (PAL)");
+    // EL MARCADOR CAMBIÓ, NO LA ASERCIÓN (2026-08-31): el PAL pasó de `AdjInput` a un `<select>` con sus
+    // cinco niveles (su instrumento; un campo libre dejaba escribir 3, que no existe). Lo que se afirma
+    // sigue siendo lo mismo, y este candado acaba de ganarse el sueldo: al portar su desplegable estuve a
+    // punto de traerme también su rótulo "Actividad prescrita (FA)", que es exactamente el desliz que él
+    // mandó no copiar. Se mira el CÓDIGO sin comentarios, porque el comentario cita la frase prohibida
+    // para explicar por qué lo está.
+    const sinComentarios = quitarComentarios(PANEL);
+    expect(sinComentarios).not.toContain("Actividad prescrita");
+    expect(sinComentarios).not.toContain("(FA)");
+    expect(sinComentarios).toContain(">PAL (factor)<");
+    expect(sinComentarios).toContain("Nivel de actividad física (PAL)");
   });
 });

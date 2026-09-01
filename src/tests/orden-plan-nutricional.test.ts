@@ -45,9 +45,12 @@ describe("orden del plan alimentario", () => {
     // La validación es la única sin key, y es correcto: es derivada en vivo y de solo lectura.
     // Se compara sobre el texto con los espacios colapsados, porque varias llamadas son multilínea.
     const FLAT = PANEL.replace(/\s+/g, " ");
+    // "guias" salió de la lista el 2026-08-31: la sección se RETIRÓ (cotejo, punto g). Eran nuestras, su
+    // archivo no tiene una lista de guías, y decían con otras palabras lo que ya dice el objetivo más los
+    // atributos del motor. Va declarado en la ronda porque él aprobó la caja el 26 ("la caja se queda").
+    // El servicio, la acción y la tabla NO se tocaron: devolverla es volver a montar un componente.
     for (const sec of [
       "objetivo",
-      "guias",
       "cadena",
       "intercambio",
       "tiempos-activos",

@@ -29,7 +29,6 @@ import {
   reopenProtocolAction,
   generateMenuAction,
   saveAdjustmentsAction,
-  saveGuidelinesAction,
   saveIntercambioAction,
   saveMenuSemanalAction,
   saveTiemposAction,
@@ -41,7 +40,6 @@ import {
 import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
-  guidelinesSignature,
   intercambioSignature,
   objetivoSignature,
   restriccionesSignature,
@@ -87,6 +85,16 @@ const d0 = (n: number): string => String(Math.round(n));
 
 // Un campo numerico de ajuste. Controlado (no lo resetea la prop `action` de React 19), con el valor del
 // modelo como placeholder para que el profesional sepa sobre que esta ajustando.
+// Los cinco niveles de actividad de su desplegable, VERBATIM (FA_MAP de `motorTratNutri` y el select de su
+// pantalla). Lista cerrada a proposito: el factor de actividad no es un numero libre.
+const NIVELES_FA = [
+  { valor: "1.2", label: "Sedentario (1.2)" },
+  { valor: "1.375", label: "Ligera (1.375)" },
+  { valor: "1.55", label: "Moderada (1.55)" },
+  { valor: "1.725", label: "Alta (1.725)" },
+  { valor: "1.9", label: "Muy alta (1.9)" },
+] as const;
+
 function AdjInput({
   name,
   label,
@@ -331,14 +339,31 @@ function CadenaCaloricaSection({
               placeholder={`modelo: ${d0(base.geb)}`}
               step="1"
             />
-            <AdjInput
-              name="adjPal"
-              label="PAL (factor)"
-              value={pal}
-              onChange={setPal}
-              placeholder={`modelo: ${base.pal}`}
-              step="0.025"
-            />
+            {/* PAL COMO DESPLEGABLE, no campo libre (cotejo 2026-08-31, decisión de Santiago). Un campo
+                libre deja escribir 3, que no es un factor de actividad que exista; el desplegable con sus
+                cinco niveles ES su instrumento. La opción vacía conserva nuestra semántica: sin elegir,
+                manda el valor del modelo.
+
+                EL RÓTULO SIGUE SIENDO "PAL", y no es un detalle: su §8.1 del 26 dice que «Actividad
+                prescrita (FA)» y «Factor actividad (PAL)» son el mismo factor con dos nombres, y nos mandó
+                "unifíquenlo en el suyo", que es PAL. Al portar su desplegable estuve a punto de traerme
+                también su rótulo, que es justo el desliz que él pidió no copiar. Lo atrapó el candado. */}
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground">PAL (factor)</span>
+              <select
+                name="adjPal"
+                value={pal}
+                onChange={(e) => setPal(e.target.value)}
+                className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+              >
+                <option value="">modelo: {base.pal}</option>
+                {NIVELES_FA.map((n) => (
+                  <option key={n.valor} value={n.valor}>
+                    {n.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <AdjInput
               name="adjProtGkg"
               label="Proteína (g/kg)"
@@ -472,6 +497,20 @@ export function TreatmentPanel({
   // Restricciones del MODELO (salida del motor, selladas write-once). Un tratamiento anterior al snapshot
   // no las tiene: lista vacia, no aviso.
   const snapRestricciones = protocol.protocolSuggested?.restricciones ?? [];
+  // Objetivo EFECTIVO desde los ajustes GUARDADOS, para el título del bloque de objetivo. Misma fuente que
+  // la cadena y que el intercambio: el título no puede decir un número distinto del que se prescribe.
+  const objetivoEfectivoPanel = protocol.protocolSuggested
+    ? Math.round(
+        computeProtocoloEfectivo(protocol.protocolSuggested, {
+          geb: protocol.adjGeb,
+          pal: protocol.adjPal,
+          kcalObj: protocol.adjKcalObj,
+          protGkg: protocol.adjProtGkg,
+          fatPct: protocol.adjFatPct,
+          pesoMeta: protocol.adjPesoMeta,
+        }).calorico.kcalObj,
+      )
+    : null;
 
   return (
     <Card>
@@ -513,19 +552,21 @@ export function TreatmentPanel({
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
+          prescripcion={prescripcion}
+          kcalObjetivo={objetivoEfectivoPanel}
         />
-        <GuidelinesSection
-          key={sectionKey(
-            "guias",
-            guidelinesSignature({
-              treatmentId: protocol.treatmentId,
-              guidelines: protocol.guidelines.map((g) => g.text),
-            }),
-          )}
-          evaluationId={evaluationId}
-          protocol={protocol}
-          locked={locked}
-        />
+        {/* LAS GUIAS DIETARIAS SE RETIRARON (2026-08-31, declarado en la ronda del 31).
+
+            Eran nuestras: su archivo no tiene una lista de guias. Lo que el tiene es el objetivo del
+            tratamiento (texto libre, que si conservamos) mas los atributos que calcula el motor
+            ("Hiposodica", "Patron DASH", "Nefroprotectora"), que ahora se muestran en el bloque de objetivo.
+            Una caja mas para escribir lo mismo con otras palabras no aporta y alarga la pantalla.
+
+            CUIDADO, Y VA DECLARADO: el 2026-08-26 el APROBO la caja explicitamente ("la caja se queda"), asi
+            que retirarla es ir contra una decision suya aunque el argumento sea bueno. Se le dice en la
+            ronda con la razon, y si las quiere se devuelven: el servicio, la accion y la tabla
+            `treatment_diet_guidelines` NO se tocan, asi que volver a montarlo es un componente, y ninguna
+            guia guardada se pierde. */}
 
         {/* Marca de bloque: aqui empieza el PLAN ALIMENTARIO. Borde superior mas fuerte + titulo, distinto de
             los separadores de seccion (border-t simple), para que se vea donde termina la lectura y empieza el
@@ -557,45 +598,11 @@ export function TreatmentPanel({
             plan; hasta 2026-08-23 el motor las calculaba y nadie las veia mientras armaba (hueco clinico
             EN2 del barrido, COTEJOS_VISUALES). Distintas del campo de restricciones del PROFESIONAL, que
             vive junto al menu y es aditivo. */}
-        {/* LA PRESCRIPCIÓN DEL MOTOR QUE GOBIERNA (Gildardo, respuesta a la ronda del 2026-08-23:
-            "motorTratNutri gobierna la prescripción nutricional... los 2.300 del otro motor son el corte
-            viejo"). Hasta el 2026-08-31 este bloque salía del snapshot sellado, que las computa con
-            `atlas-protocolo`: a un hipertenso le decía "Sodio < 2300 mg/día" mientras él había ordenado
-            1.500 ocho días antes. El snapshot sigue sellado (es la historia de lo que se computó al
-            diagnosticar); lo que cambia es de dónde sale lo que el profesional LEE hoy.
-
-            Se muestran las filas CUALITATIVAS. Las cifras calóricas de ese motor NO se muestran aquí
-            porque la cadena de abajo es la que el profesional edita, y su fórmula de gasto difiere; él
-            dijo "no lo cambien ahora" y está preguntado. Dos números del mismo concepto en la misma
-            pantalla es exactamente el defecto que esto cierra. */}
-        {prescripcion ? (
-          <div className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-            <p className="font-medium">Prescripción del modelo · {prescripcion.tipoEnergia}</p>
-            {prescripcion.filas.length ? (
-              <ul className="mt-1 flex flex-col gap-0.5">
-                {prescripcion.filas.map((r) => (
-                  <li key={r.nombre}>
-                    {r.nombre}: {r.valor} <span className="opacity-80">({r.ref})</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {prescripcion.atributos.length ? (
-              <p className="mt-1 text-foreground/90">{prescripcion.atributos.join(" · ")}</p>
-            ) : null}
-            {prescripcion.notas.length ? (
-              <ul className="mt-1 flex list-inside list-disc flex-col gap-0.5 text-foreground/90">
-                {prescripcion.notas.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            ) : null}
-            {prescripcion.referencias.length ? (
-              <p className="mt-1 text-xs opacity-80">{prescripcion.referencias.join(" · ")}</p>
-            ) : null}
-          </div>
-        ) : snapRestricciones.length > 0 ? (
-          // Sin encuesta legible el motor no corre; se muestra lo sellado antes que nada, marcado.
+        {/* La prescripción del modelo se muestra en el BLOQUE DE OBJETIVO, no aquí (cotejo 2026-08-31,
+            punto h): es la misma información que su chip y sus atributos, y decía dos veces lo mismo. El
+            respaldo de lo SELLADO se conserva para las evaluaciones sin encuesta legible, donde el motor no
+            puede correr y lo único que hay es lo que se computó al diagnosticar. */}
+        {!prescripcion && snapRestricciones.length > 0 ? (
           <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
             <p className="font-medium">Restricciones del modelo (de la emisión)</p>
             <ul className="mt-1 flex flex-col gap-0.5">
@@ -1178,14 +1185,28 @@ function RestriccionesSection({
 // Objetivo del tratamiento nutricional (pieza 1): lo que el profesional ESCRIBE sobre el plan (el objetivo /
 // tipo de dieta), distinto de las guias (que son una lista). Un textarea con su guardado propio. En 1a.3 se
 // le antepone el encabezado generado "Dieta ... de X kcal/dia" (de la cadena) y va arriba, antes de la formula.
+// OBJETIVO DEL TRATAMIENTO NUTRICIONAL, con la forma de su pantalla (cotejo 2026-08-31).
+//
+// SU BLOQUE tiene cuatro cosas que el nuestro no tenia: un TITULO QUE CAMBIA con el objetivo calorico
+// ("Dieta Normocalorica de 2339 kcal/dia"), el chip de proteina, los atributos del patron que calcula el
+// motor, y la alerta de antecedentes FAMILIARES. Las cuatro salen de `motorTratNutri`, que es el que
+// gobierna; ninguna es dato nuevo, es dato que ya teniamos y no se veia junto.
+//
+// EL TITULO NO ES DECORATIVO: es la unica linea de la pantalla que dice, de un vistazo, QUE dieta es esta.
+// Sin el, el profesional tiene que leer las cifras para saberlo.
 function ObjetivoSection({
   evaluationId,
   protocol,
   locked,
+  prescripcion,
+  kcalObjetivo,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
+  prescripcion: PrescripcionNutricional | null;
+  /** El objetivo EFECTIVO de la cadena (el que el profesional ve abajo), para que el título no diga otro. */
+  kcalObjetivo: number | null;
 }) {
   const [state, formAction, pending] = useActionState(saveObjetivoAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -1198,10 +1219,14 @@ function ObjetivoSection({
   return (
     <section className={bloqueCls("decision")}>
       <h3 className={tituloBloqueCls("decision")}>Objetivo del tratamiento nutricional</h3>
-      <p className="text-sm text-muted-foreground">
-        El objetivo o tipo de dieta que defines para este paciente, en tus palabras. Es distinto de las guías
-        (que son una lista de indicaciones puntuales).
-      </p>
+      {/* El título que cambia con el objetivo, como el suyo. Se arma con el tipo energético del motor que
+          gobierna y el objetivo EFECTIVO de la cadena, no con las kcal del otro motor: dos números del
+          mismo concepto en la misma pantalla es el defecto que venimos cerrando. */}
+      {prescripcion && kcalObjetivo != null ? (
+        <p className="text-base font-bold text-foreground">
+          Dieta {prescripcion.tipoEnergia.toLowerCase()} de {kcalObjetivo} kcal/día
+        </p>
+      ) : null}
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
@@ -1221,6 +1246,45 @@ function ObjetivoSection({
           </div>
         </fieldset>
       </form>
+
+      {/* LO QUE PRESCRIBE EL MODELO, junto al objetivo y no suelto abajo (cotejo 2026-08-31, punto h): es
+          la misma información que su chip y sus atributos, y leerla aquí es leerla donde se decide. */}
+      {prescripcion ? (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            {prescripcion.filas.map((f) => (
+              <span
+                key={f.nombre}
+                className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
+                title={f.ref}
+              >
+                {f.nombre} {f.valor}
+              </span>
+            ))}
+            {prescripcion.atributos.map((a) => (
+              <span
+                key={a}
+                className="rounded-full border border-clinical-warning/40 bg-clinical-warning-bg px-2.5 py-0.5 text-xs font-medium text-clinical-warning"
+              >
+                {a}
+              </span>
+            ))}
+          </div>
+          {prescripcion.notas.length ? (
+            <ul className="flex list-inside list-disc flex-col gap-0.5 text-xs text-muted-foreground">
+              {prescripcion.notas.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          ) : null}
+          {/* Su línea de antecedentes familiares, en el mismo sitio que él la pone. */}
+          {prescripcion.alertaFam.length ? (
+            <p className="text-xs text-attention">
+              Antecedentes familiares (alerta preventiva): {prescripcion.alertaFam.join(", ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2133,82 +2197,6 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
           </p>
         </div>
       )}
-    </section>
-  );
-}
-
-// Guias dietarias (checkpoint 2.4): seccion propia con guardado propio (saveGuidelinesAction).
-function GuidelinesSection({
-  evaluationId,
-  protocol,
-  locked,
-}: {
-  evaluationId: string;
-  protocol: TreatmentProtocol;
-  locked: boolean;
-}) {
-  const [state, formAction, pending] = useActionState(saveGuidelinesAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
-  const [guidelines, setGuidelines] = useState<string[]>(protocol.guidelines.map((g) => g.text));
-  const [guideInput, setGuideInput] = useState("");
-  const addGuideline = () => {
-    const v = guideInput.trim();
-    if (v) setGuidelines([...guidelines, v]);
-    setGuideInput("");
-  };
-  const baseSignature = guidelinesSignature({
-    treatmentId: protocol.treatmentId,
-    guidelines: protocol.guidelines.map((g) => g.text),
-  });
-
-  return (
-    <section className={bloqueCls("registro")}>
-      <h3 className={tituloBloqueCls("registro")}>Guías dietarias</h3>
-      <form action={formAction} className="flex flex-col gap-2">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="guidelines" value={JSON.stringify(guidelines)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Textarea
-              value={guideInput}
-              onChange={(e) => setGuideInput(e.target.value)}
-              placeholder="Escribe una guía dietaria y agregala"
-              rows={2}
-            />
-            <Button type="button" variant="outline" onClick={addGuideline} className="self-start">
-              Agregar
-            </Button>
-          </div>
-          {guidelines.length ? (
-            <ul className="flex flex-col gap-2">
-              {guidelines.map((g, i) => (
-                <li
-                  key={`${i}-${g.slice(0, 12)}`}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-border p-3 text-sm text-foreground"
-                >
-                  <span>{g}</span>
-                  <button
-                    type="button"
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setGuidelines(guidelines.filter((_, j) => j !== i))}
-                    aria-label="Quitar guía"
-                  >
-                    Quitar
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">Sin guías dietarias.</p>
-          )}
-          <div>
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar guías"}
-            </Button>
-          </div>
-        </fieldset>
-      </form>
     </section>
   );
 }

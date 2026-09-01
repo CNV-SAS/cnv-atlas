@@ -56,11 +56,18 @@ describe("los dos consumidores leen del motor que gobierna, y de UNA sola fuente
   });
 
   it("la PANTALLA del nutricionista muestra esa prescripción, no las restricciones selladas", () => {
-    expect(PANEL).toContain("Prescripción del modelo");
+    // EL SITIO CAMBIÓ, NO LA ASERCIÓN (cotejo 2026-08-31, punto h): la prescripción se muestra ahora DENTRO
+    // del bloque de objetivo, con el título dinámico y los chips, en vez de suelta en el plan alimentario,
+    // donde repetía lo que el título ya decía. Lo que se afirma sigue siendo lo mismo: que la pantalla lee
+    // del motor que gobierna y no del snapshot.
+    expect(PANEL).toContain("prescripcion.filas.map");
+    expect(PANEL).toContain("prescripcion.atributos.map");
     // El bloque sellado sigue existiendo SOLO como respaldo, y rotulado como "de la emisión": si volviera a
     // ser la fuente principal, el hipertenso vería otra vez el 2.300.
     expect(PANEL).toContain("Restricciones del modelo (de la emisión)");
-    expect(PANEL, "el bloque sellado volvió a ser la fuente principal").toContain("{prescripcion ? (");
+    expect(PANEL, "el bloque sellado volvió a ser la fuente principal").toContain(
+      "{!prescripcion && snapRestricciones.length > 0 ? (",
+    );
   });
 
   it("y el PROMPT DEL MENÚ recibe las mismas, no las del snapshot", () => {

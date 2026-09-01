@@ -159,6 +159,7 @@ export async function getPrescripcionNutricional(
     sodioMax: number | null;
     grasaSatMax: number | null;
     attrs: string[];
+    alertaFam: string[];
     notas: string[];
     refs: string[];
   };
@@ -180,12 +181,17 @@ export async function getPrescripcionNutricional(
     limites.push({ nombre: "Grasa saturada", valor: `< ${m.grasaSatMax} % del total`, ref: "AHA; ESC/EAS; NLA" });
   }
   const filas: FilaPrescripcion[] = [
-    { nombre: "Proteína", valor: `${String(m.protKg).replace(".", ",")} g/kg`, ref: m.refs[0] ?? "ANI BIS-E" },
+    // La referencia de la proteina es ESPEN, la que su formula sintetica pone al lado del campo. Antes se
+    // tomaba `refs[0]`, que en un paciente sin comorbilidad es la de ACTIVIDAD: la pantalla decia
+    // "Proteína 1 g/kg (Actividad: OMS 2020...)" y repetia esa misma linea abajo. Una referencia que no
+    // corresponde al dato es peor que ninguna: dice que ese numero sale de donde no sale.
+    { nombre: "Proteína", valor: `${String(m.protKg).replace(".", ",")} g/kg`, ref: "ESPEN 2023" },
     ...limites,
   ];
 
   return {
     tipoEnergia: m.tipoEnergia,
+    alertaFam: m.alertaFam,
     protKg: m.protKg,
     protG: m.protG,
     sodioMax: m.sodioMax,

@@ -56,6 +56,7 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({ getTreatmentProtoc
 vi.mock("@/modules/treatment/data/dieta-resumen-reader", () => ({
   getPrescripcionNutricional: vi.fn(async () => ({
     tipoEnergia: "Hipocalórica",
+    alertaFam: [],
     protKg: 1.3,
     protG: 91,
     sodioMax: 1500,
@@ -157,6 +158,7 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
     // no un limite, y contarla abriria el gate para todos.
     vi.mocked(getPrescripcionNutricional).mockResolvedValueOnce({
       tipoEnergia: "Normocalórica",
+      alertaFam: [],
       protKg: 1,
       protG: 70,
       sodioMax: null,

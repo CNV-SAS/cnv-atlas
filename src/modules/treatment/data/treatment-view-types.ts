@@ -195,6 +195,9 @@ export type TreatmentProtocol = {
 export type FilaPrescripcion = { nombre: string; valor: string; ref: string };
 export type PrescripcionNutricional = {
   tipoEnergia: string;
+  /** Antecedentes FAMILIARES que su motor marca como alerta preventiva. Su pantalla los pone bajo los
+   *  campos del objetivo, en una linea. Vacio = ninguno. */
+  alertaFam: string[];
   /** g/kg de su motor (una razón: no depende del peso, así que no puede divergir de la cadena). */
   protKg: number;
   /** Gramos, calculados sobre el peso EFECTIVO de la cadena, para que sean el mismo número que ella. */
