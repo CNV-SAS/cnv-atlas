@@ -49,10 +49,39 @@ describe("el sodio que ve el hipertenso es el que él ordenó", () => {
 
 describe("los dos consumidores leen del motor que gobierna, y de UNA sola fuente", () => {
   it("hay un solo lector (`getPrescripcionNutricional`) y corre el motor correcto", () => {
-    // La llamada lleva el peso EFECTIVO de la cadena como `peso_meta`, para que los gramos de proteina
-    // que imprime sean los mismos que muestra la cadena y no los de su default (Lorentz).
-    expect(READER).toContain("motorTratNutri(enc, bis, pesoMeta != null");
     expect(READER).toContain("export async function getPrescripcionNutricional");
+    expect(READER).toContain("motorTratNutri(enc, bis, edit)");
+  });
+
+  it("y los DOS argumentos de la cadena LLEGAN, desde los dos sitios de llamada", () => {
+    // EL CANDADO VA SOBRE LOS SITIOS DE LLAMADA, no sobre la firma (smoke 2026-09-01). Al conectar el motor
+    // el 31 se le dio el parametro `pesoMeta` y NINGUN CALLER LO PASABA: el motor caia a su peso por
+    // defecto (Lorentz) y los gramos de proteina no eran los de la cadena que el profesional miraba. Igual
+    // el objetivo: sin el, `tipoEnergia` se computa con el objetivo interno del motor y el titulo se queda
+    // clavado en "hipocalorica" ponga el profesional 500 o 5.000. Tercera vez en la semana que una pieza
+    // terminada se queda sin su ultimo cable, y la segunda en esta misma pieza.
+    expect(READER).toContain("edit.peso_meta = pesoMeta");
+    expect(READER).toContain("edit.kcal_obj = kcalObjetivo");
+    // La PANTALLA los computa de la cadena efectiva y los pasa.
+    expect(PAGE).toContain("cadenaEfectiva?.pesoEfectivo ?? null");
+    expect(PAGE).toContain("Math.round(cadenaEfectiva.calorico.kcalObj)");
+    // Y el MENU, de la suya.
+    expect(MENU).toContain("efectivo.pesoEfectivo");
+    expect(MENU).toContain("Math.round(efectivo.calorico.kcalObj)");
+  });
+
+  it("el `enc` entrega los multi-select como ARRAY, con el decodificador compartido", () => {
+    // EL DEFECTO MAS CARO DEL SMOKE. Habia DOS constructores del `enc` y solo el del motor principal
+    // decodificaba los multi. Este dejaba el JSON crudo (`'["Cáncer"]'`), asi que el
+    // `Array.isArray(e.d5_39)` del motor daba false y `dx` quedaba VACIO: hasCancer, hasDM, hasDislip y
+    // hasERC en falso PARA TODOS LOS PACIENTES. Al de ERC no le bajaba la proteina a 0,7; al de cancer no
+    // le aplicaba la rama hipercalorica; al de dislipidemia no le ponia el limite de grasa saturada. Y lo
+    // mismo viajaba al prompt del menu. Lo que se vio en pantalla fue la punta: faltaba una alerta.
+    expect(READER).toContain("decodeSurveyValue(key, q?.question_type");
+    expect(READER).toContain("question_type");
+    // Y se REUSA, no se reescribe: dos decodificadores es como se llego aqui.
+    const BEI = readFileSync("src/modules/clinical-pipeline/services/build-engine-input.ts", "utf8");
+    expect(BEI).toContain("export function decodeSurveyValue(");
   });
 
   it("la PANTALLA del nutricionista muestra esa prescripción, no las restricciones selladas", () => {

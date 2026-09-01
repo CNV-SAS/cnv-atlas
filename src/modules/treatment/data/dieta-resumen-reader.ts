@@ -1,6 +1,7 @@
 import "server-only";
 
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
+import { decodeSurveyValue } from "@/modules/clinical-pipeline/services/build-engine-input";
 import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
 import { resumenDietaParrafo } from "@/clinical-engine/resumen-dieta";
 import {
@@ -47,13 +48,16 @@ async function buildEnc(
 
   const { data: rows, error: aErr } = await supabase
     .from("survey_answers")
-    .select("answer_value, survey_questions!inner(field_key)")
+    .select("answer_value, survey_questions!inner(field_key, question_type)")
     .eq("response_id", response.id);
   if (aErr) throw new Error(`dieta-resumen-reader: survey_answers: ${aErr.message}`);
 
   const enc: Record<string, unknown> = { sexo };
   for (const r of rows ?? []) {
-    const q = r.survey_questions as unknown as { field_key: string | null } | null;
+    const q = r.survey_questions as unknown as {
+      field_key: string | null;
+      question_type: string | null;
+    } | null;
     const key = q?.field_key;
     if (!key) continue;
     const value = r.answer_value ?? "";
@@ -63,9 +67,19 @@ async function buildEnc(
       // no reconocido NO debe leerse como "Nunca". En la practica el candado de patron impide el -1.
       const ord = canon.indexOf(value);
       enc[key] = ord >= 0 ? ord : null;
-    } else {
-      enc[key] = value; // contexto (texto) y contadores (texto numerico, toNum lo lee)
+      continue;
     }
+    // LOS MULTI-SELECT ENTRAN COMO ARRAY, con el MISMO decodificador que usa el motor principal.
+    //
+    // AQUI ESTABA EL DEFECTO (smoke 2026-09-01). Este constructor dejaba el valor crudo, que para un
+    // multi es el JSON `'["Cáncer"]'`. `motorTratNutri` hace `Array.isArray(e.d5_39)`, que sobre un
+    // string da false, asi que `dx` quedaba VACIO y con el TODAS las comorbilidades: hasCancer, hasDM,
+    // hasDislip y hasERC en falso para todos los pacientes. Al de ERC no le bajaba la proteina a 0,7; al
+    // de cancer no le aplicaba la rama hipercalorica; al de dislipidemia no le ponia el limite de grasa
+    // saturada. Y lo mismo viajaba al prompt del menu. Sin error y con el numero puesto.
+    //
+    // El sintoma que se vio en el smoke era la punta: "no aparece la alerta de antecedentes familiares".
+    enc[key] = decodeSurveyValue(key, q?.question_type ?? "", value);
   }
 
   return enc;
@@ -137,6 +151,17 @@ export async function getResumenProfesionForEvaluation(
 // solo las filas CUALITATIVAS de la prescripción, que son las que él mandó portar y las que estaban mal.
 // El tipo vive en el modulo NEUTRO (treatment-view-types): lo consume tambien el panel, que es cliente.
 
+/** Los cinco factores de su escala, al nombre que espera su `FA_MAP`. Un factor fuera de la escala no
+ *  mapea a nada y el motor se queda con su propia recomendacion, que es el comportamiento correcto:
+ *  inventarle un nombre seria decidir por el profesional. */
+const FA_NIVEL_POR_FACTOR: Record<string, string> = {
+  "1.2": "sedentario",
+  "1.375": "ligera",
+  "1.55": "moderada",
+  "1.725": "alta",
+  "1.9": "muy_alta",
+};
+
 export async function getPrescripcionNutricional(
   evaluationId: string,
   sexo: string,
@@ -148,11 +173,38 @@ export async function getPrescripcionNutricional(
    * mismo concepto en dos pantallas, que es el defecto que esta pieza vino a cerrar.
    */
   pesoMeta?: number | null,
+  /**
+   * Objetivo calorico EFECTIVO de la cadena (el que el profesional fijo, o el del modelo). Entra como su
+   * `edit.kcal_obj`, que es la entrada que SU PROPIO motor tiene para esto.
+   *
+   * SIN ESTO EL TITULO MENTIA (smoke 2026-09-01). `tipoEnergia` sale de comparar el objetivo contra el
+   * GET, y su motor lo RECALCULA despues de aplicar `edit.kcal_obj`. Al no pasarselo, el tipo se computaba
+   * con el objetivo INTERNO del motor y quedaba clavado: el titulo decia "hipocalorica" con 500 kcal y con
+   * 5.000. Su pantalla cambia a "hipercalorica" porque a la suya si le llega el numero.
+   *
+   * No hay ciencia nuestra aqui: la precedencia de cancer y desnutricion (que NO recalculan el tipo) la
+   * sigue resolviendo su propia linea, dentro del motor.
+   */
+  kcalObjetivo?: number | null,
+  /**
+   * PAL efectivo de la cadena. Entra como su `edit.fa_nivel`, la otra entrada que su motor ya tiene.
+   *
+   * Alinea el FACTOR de actividad de los dos calculos. Lo que NO alinea, porque su motor no acepta un GEB
+   * de entrada, es la FORMULA del gasto: el suyo usa Mifflin sobre el peso meta y la cadena usa Cunningham
+   * sobre masa libre de grasa. Esa es la pregunta abierta P-32/P-35 y NO se decide aqui.
+   */
+  palEfectivo?: number | null,
 ): Promise<PrescripcionNutricional | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
 
-  const m = motorTratNutri(enc, bis, pesoMeta != null && pesoMeta > 0 ? { peso_meta: pesoMeta } : {}) as {
+  const edit: Record<string, number> = {};
+  if (pesoMeta != null && pesoMeta > 0) edit.peso_meta = pesoMeta;
+  if (kcalObjetivo != null && kcalObjetivo > 0) edit.kcal_obj = kcalObjetivo;
+  const faNivel = palEfectivo != null ? FA_NIVEL_POR_FACTOR[String(palEfectivo)] : undefined;
+  if (faNivel) (edit as Record<string, unknown>).fa_nivel = faNivel;
+
+  const m = motorTratNutri(enc, bis, edit) as {
     tipoEnergia: string;
     protKg: number;
     protG: number;

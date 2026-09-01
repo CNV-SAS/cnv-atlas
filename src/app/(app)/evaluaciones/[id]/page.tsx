@@ -18,7 +18,13 @@ import { getCorrectionAvailability } from "@/modules/corrections/data/correction
 import { getSupersessionStatus } from "@/modules/corrections/data/supersession-reader";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { ConfirmDiagnosisPanel } from "@/modules/diagnoses/components/confirm-diagnosis-panel";
-import { abordajeProfesional, dfiNarrativeFromOutput, indicatorSeverities, isEngineOutput } from "@/clinical-engine";
+import {
+  abordajeProfesional,
+  computeProtocoloEfectivo,
+  dfiNarrativeFromOutput,
+  indicatorSeverities,
+  isEngineOutput,
+} from "@/clinical-engine";
 import {
   type AbordajeCardData,
   EvaluationResults,
@@ -448,11 +454,32 @@ export default async function ResultadosEvaluacionPage({
   // como los parrafos: no se sella. El snapshot conserva lo que `atlas-protocolo` computo al diagnosticar
   // (historia); lo que el profesional LEE hoy sale del motor vigente. Hasta el 2026-08-31 el panel mostraba
   // lo sellado, y a un hipertenso le decia "Sodio < 2300 mg/dia" con 1.500 ordenado ocho dias antes.
+  //
+  // LOS DOS ARGUMENTOS DE LA CADENA (peso efectivo y objetivo efectivo) NO SON OPCIONALES EN LA PRACTICA,
+  // aunque el tipo los deje omitir: sin el peso, el motor cae a su default (Lorentz) y los gramos de
+  // proteina que imprime NO son los de la cadena que el profesional esta mirando; sin el objetivo, el tipo
+  // energetico del titulo se queda clavado en el que el motor calculo por su cuenta. Los dos se olvidaron
+  // al conectar el motor el 2026-08-31: el parametro existia y ningun caller lo pasaba, que es la tercera
+  // vez esta semana que una pieza terminada se queda sin su ultimo cable.
+  const cadenaEfectiva =
+    protocol?.protocolSuggested != null
+      ? computeProtocoloEfectivo(protocol.protocolSuggested, {
+          geb: protocol.adjGeb,
+          pal: protocol.adjPal,
+          kcalObj: protocol.adjKcalObj,
+          protGkg: protocol.adjProtGkg,
+          fatPct: protocol.adjFatPct,
+          pesoMeta: protocol.pesoMetaFijado,
+        })
+      : null;
   const prescripcionNutricional = isEngineOutput(results.snapshot)
     ? await getPrescripcionNutricional(
         id,
         results.snapshot.sexo,
         results.snapshot.indicators as unknown as Record<string, unknown>,
+        cadenaEfectiva?.pesoEfectivo ?? null,
+        cadenaEfectiva != null ? Math.round(cadenaEfectiva.calorico.kcalObj) : null,
+        cadenaEfectiva?.calorico.pal ?? null,
       )
     : null;
 

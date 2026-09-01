@@ -6,6 +6,59 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## Lo que el smoke del 2026-09-01 dejó abierto
+
+### PENDIENTE · Los cuatro campos de la cadena, repetidos arriba (Santiago, aprobado)
+
+Su pantalla pone **objetivo calórico, PAL, déficit y peso meta DENTRO del bloque de objetivo**, y no solo
+abajo en la fórmula. Atlas los tiene solo abajo. Santiago: *"me parece que va a tocar hacer lo mismo que
+hicimos con peso meta para ser fieles al html... que se repitan los campos, pero si cambio un campo en uno,
+inmediatamente se cambia en el otro y ambos valores siempre van a ser iguales."* Aprobado.
+
+**Y el déficit pasa a editable**, que hoy no lo es. Aprobado con su razón: el valor del modelo es 0 para
+todos desde que Gildardo retiró los déficits por fenotipo, así que ponerlo editable **no elige de qué motor
+sale nada**. `motorTratNutri` ya acepta `edit.deficit`.
+
+**Por qué NO se hizo en la misma tanda que el resto:** esa tanda cerró un bloqueo, una migración de datos
+y seis defectos. Meterle además un cambio de forma del bloque principal es exactamente el mal smoke que
+Santiago señaló el 31 (*"un cambio de guardado junto a cuatro de pantalla es mal smoke"*).
+
+**Cuidado al construirlo:** un dato con dos superficies dentro del MISMO formulario no es como el peso meta
+(dos formularios, dos guardados). Aquí los dos campos viven bajo el mismo `<form>` y el mismo estado, así
+que "el mismo dato" se resuelve con un solo `useState` leído desde los dos sitios, no con sincronización.
+Sincronizar dos estados es como se crean las discrepancias que esto viene a evitar.
+
+### PENDIENTE · El campo de peso meta desaparece de la entrada al sellar las condiciones
+
+Reportado en el smoke (punto 7): *"En condiciones ya no aparece el peso meta una vez acepto las
+condiciones."* Con el peso meta ya fuera de `evaluation_bis_intake` (migración 0096), el campo **no tiene
+por qué seguir atado al ciclo de vida de ese formulario**: es un dato de la consulta, como el motivo.
+
+Falta decidir dónde queda cuando las condiciones ya están selladas: en la vista de solo lectura del intake,
+o subido al bloque de datos de la consulta, donde viven el motivo y los sociodemográficos. Lo segundo es
+más coherente con la 0096; lo primero es más barato.
+
+### ABIERTO CON GILDARDO · El tipo energético se decide con un GET que la pantalla no muestra
+
+**Apareció al arreglar el título** (que decía "hipocalórica" con cualquier objetivo). El arreglo fue pasarle
+al motor el objetivo editado, que es la entrada que su propio motor tiene (`edit.kcal_obj`), y entonces su
+línea recalcula el tipo. Correcto y fiel.
+
+**Pero el tipo sale de comparar el objetivo contra el GET de `motorTratNutri`, que es Mifflin sobre el peso
+meta, y la pantalla muestra el GET de la cadena, que es Cunningham sobre masa libre de grasa.** Para el
+paciente del smoke: cadena 2.574 kcal, GET del motor 2.536. El plan se rotula **"Hipercalórica"** aunque el
+profesional lo dejó en mantenimiento puro, por 38 kcal de diferencia de método.
+
+Se alineó lo que se podía sin tocar ciencia: el **factor** de actividad viaja al motor (`edit.fa_nivel`), y
+con eso la única divergencia que queda es la fórmula del gasto. Su motor no acepta un GEB de entrada, así
+que alinear eso exigiría decidir cuál manda, que es justo P-32/P-35.
+
+**Por qué importa más que antes:** hasta ahora la divergencia era invisible, porque deliberadamente no
+mostrábamos las cifras calóricas de `motorTratNutri`. El tipo energético la vuelve **una palabra clínica en
+pantalla**. Es la misma pregunta, con una superficie nueva. Va al punto 9 de la ronda.
+
+---
+
 ## Barrido de campos capturados SIN LECTOR (2026-09-01, pedido de Santiago)
 
 **Por qué se hizo.** Tres defectos de la misma forma en cinco días: `motorTratNutri` portado y no llamado,

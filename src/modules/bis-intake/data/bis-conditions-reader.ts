@@ -143,19 +143,30 @@ export async function getBisIntakeForEvaluation(
   const { data, error } = await supabase
     .from("evaluation_bis_intake")
     .select(
-      "bis_condition_version_id, condition_answers, contraindicated, grip_strength_kg, weight_goal_kg, updated_at",
+      "bis_condition_version_id, condition_answers, contraindicated, grip_strength_kg, updated_at",
     )
     .eq("evaluation_id", evaluationId)
     .maybeSingle();
   if (error) throw new Error(`bis-conditions-reader: intake: ${error.message}`);
   if (!data) return null;
 
+  // EL PESO META VIVE EN LA EVALUACION (migracion 0096), no aqui. Se lee aparte y se devuelve junto con lo
+  // del intake porque se CAPTURAN en el mismo formulario, que es lo unico que comparten. Su fila es la que
+  // siempre existe; la del intake no, y de ahi vino el bloqueo del panel en el primer smoke.
+  const { data: ev, error: evErr } = await supabase
+    .from("evaluations")
+    .select("weight_goal_kg")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (evErr) throw new Error(`bis-conditions-reader: peso meta: ${evErr.message}`);
+  const pesoMeta = ev?.weight_goal_kg == null ? null : Number(ev.weight_goal_kg);
+
   return {
     versionId: data.bis_condition_version_id,
     answers: (data.condition_answers ?? {}) as BisConditionAnswers,
     contraindicated: data.contraindicated,
     gripStrengthKg: data.grip_strength_kg == null ? null : Number(data.grip_strength_kg),
-    weightGoalKg: data.weight_goal_kg == null ? null : Number(data.weight_goal_kg),
+    weightGoalKg: pesoMeta,
     updatedAt: data.updated_at,
   };
 }

@@ -129,17 +129,10 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     )[0].id;
     await db.insert(schema.treatmentNutraceuticals).values({ treatmentId, nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 });
     await db.insert(schema.treatmentDietGuidelines).values({ treatmentId, guidelineText: "5 comidas al dia" });
-    // FILA DE INTAKE. El peso meta vive aqui desde la migracion 0095 (es del PACIENTE, no del
-    // tratamiento), asi que sin esta fila el candado de la cadena no tiene donde escribirlo. No es
-    // andamiaje del test: es lo que el flujo real garantiza siempre, porque sin las condiciones de la toma
-    // no se habilita el import, sin import no hay diagnostico y sin diagnostico no hay tratamiento.
-    const [bcv] = await db.select({ id: schema.bisConditionVersions.id }).from(schema.bisConditionVersions).limit(1);
-    await db.insert(schema.evaluationBisIntake).values({
-      evaluationId,
-      bisConditionVersionId: bcv.id,
-      conditionAnswers: {},
-      contraindicated: false,
-    });
+    // SIN FILA DE INTAKE, A PROPOSITO. El peso meta vive en `evaluations` desde la 0096 justamente porque
+    // esta fila es OPCIONAL: al medirlo, 41 de 60 tratamientos tenian su evaluacion sin ella, y la version
+    // anterior dejaba el panel bloqueado. Esta fixture reproduce ese estado, asi que si el peso meta
+    // volviera a colgar de las condiciones de la toma, estos tests se ponen rojos aqui y no en produccion.
   });
 
   afterAll(async () => {
@@ -150,7 +143,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     await db.delete(schema.treatmentDietGuidelines).where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
     await db.delete(schema.treatmentNotes).where(eq(schema.treatmentNotes.treatmentId, treatmentId));
     await db.delete(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    await db.delete(schema.evaluationBisIntake).where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
     await db.delete(schema.diagnoses).where(eq(schema.diagnoses.id, diagnosisId));
     await db.delete(schema.evaluations).where(eq(schema.evaluations.id, evaluationId));
     await db.delete(schema.patientProfiles).where(eq(schema.patientProfiles.patientId, patientId));
@@ -227,22 +219,22 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     });
   }
 
-  /** El peso meta GUARDADO, de su sitio unico. */
+  /** El peso meta GUARDADO, de su sitio unico: la EVALUACION (migracion 0096). */
   async function pesoMetaGuardado(): Promise<number | null> {
-    const [i] = await db
-      .select({ peso: schema.evaluationBisIntake.weightGoalKg })
-      .from(schema.evaluationBisIntake)
-      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
-    return i?.peso != null ? Number(i.peso) : null;
+    const [e] = await db
+      .select({ peso: schema.evaluations.weightGoalKg })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.id, evaluationId));
+    return e?.peso != null ? Number(e.peso) : null;
   }
 
   /** La PROCEDENCIA guardada: se conserva al unificar porque es informacion clinica. */
   async function origenPesoMeta(): Promise<string | null> {
-    const [i] = await db
-      .select({ origen: schema.evaluationBisIntake.weightGoalSetIn })
-      .from(schema.evaluationBisIntake)
-      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
-    return i?.origen ?? null;
+    const [e] = await db
+      .select({ origen: schema.evaluations.weightGoalSetIn })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.id, evaluationId));
+    return e?.origen ?? null;
   }
 
   it("adjustments camino feliz: firma base == actual -> escribe los seis", async () => {
@@ -310,9 +302,9 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     // acordado quien hizo la entrada. La procedencia es informacion clinica, no un sello de "ultimo que
     // guardo": se conservo justo para poder distinguir esas dos cosas.
     await db
-      .update(schema.evaluationBisIntake)
+      .update(schema.evaluations)
       .set({ weightGoalKg: "72.5", weightGoalSetIn: "entrada" })
-      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
+      .where(eq(schema.evaluations.id, evaluationId));
 
     await saveAdjustments({
       treatmentId,

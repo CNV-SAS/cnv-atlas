@@ -37,6 +37,8 @@ const INTAKE_WRITER = readFileSync("src/modules/bis-intake/data/bis-intake-write
 const MENU = readFileSync("src/modules/treatment/services/generate-menu.ts", "utf8");
 const CAPTURA = readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8");
 const MIGRACION = readFileSync("drizzle/0095_peso_meta_una_sola_fuente.sql", "utf8");
+const MUDANZA = readFileSync("drizzle/0096_peso_meta_en_la_evaluacion.sql", "utf8");
+const CORRECCION = readFileSync("src/modules/corrections/services/correct-evaluation.ts", "utf8");
 const FIRMA = readFileSync("src/modules/treatment/data/protocol-signature.ts", "utf8");
 
 /** El codigo sin comentarios: los comentarios CITAN lo que el candado prohibe, para explicar por que. */
@@ -101,6 +103,72 @@ describe("la migración copia lo que ya existía, sin cambiarle la prescripción
   });
 });
 
+describe("vive donde la fila SIEMPRE existe (migración 0096)", () => {
+  it("en `evaluations`, no en la fila opcional de las condiciones de la toma", () => {
+    // EL DEFECTO QUE CIERRA, y lo encontro el primer smoke: la 0095 puso el peso meta en
+    // `evaluation_bis_intake` porque la columna YA EXISTIA ahi. Eso no es una razon. Esa fila es OPCIONAL
+    // (existe si alguien respondio las condiciones de la toma) y al medirlo, 41 de 60 tratamientos tenian
+    // su evaluacion sin ella. El panel quedo bloqueado: "no se puede guardar el peso meta: esta evaluacion
+    // no tiene registradas las condiciones de la toma". El error era correcto y describia un problema que
+    // no tenia por que existir.
+    expect(MUDANZA).toContain('ALTER TABLE "evaluations" ADD COLUMN "weight_goal_kg"');
+    expect(MUDANZA).toContain('COMMENT ON COLUMN "evaluation_bis_intake"."weight_goal_kg"');
+    expect(MUDANZA).toContain("SUPERSEDIDA");
+    // Y los lectores/escritores apuntan ahi, no al intake.
+    expect(READER).toContain('.from("evaluations")');
+    expect(WRITER).toContain(".from(evaluations)");
+    expect(quitarComentarios(WRITER)).not.toContain("evaluationBisIntake");
+  });
+
+  it("y por eso el writer ya no tiene guarda de \"y si no existe la fila\"", () => {
+    // La guarda era correcta mientras el dato colgara de una fila opcional. Con el dato en su sitio, la
+    // guarda sobra: si volviera a hacer falta, es que el peso meta volvio a colgar de algo opcional.
+    expect(quitarComentarios(WRITER)).not.toContain("no tiene registradas las condiciones de la toma");
+  });
+
+  it("es POR EVALUACION y no por paciente, y la base lo explica", () => {
+    // Cada consulta acuerda el suyo. En el perfil del paciente, cambiarlo en un seguimiento reescribiria
+    // la prescripcion de una consulta pasada.
+    expect(MUDANZA).toContain("POR EVALUACION y no por paciente");
+  });
+});
+
+describe("una corrección no pierde los datos de la consulta", () => {
+  it("copia motivo, sociodemográficos, peso meta y condiciones de la toma", () => {
+    // HALLAZGO DEL SMOKE (2026-09-01): la evaluacion corregida nacia con motivo de consulta, escolaridad,
+    // ocupacion, estado civil, estrato, etnia y ascendencia en NULL. Corregir un decimal de la encuesta
+    // borraba la caracterizacion entera de la consulta, sin error y sin aviso: la pantalla nueva
+    // simplemente los mostraba vacios. El observatorio estratifica por esos campos.
+    for (const campo of [
+      "reasonForVisit: ev.reasonForVisit",
+      "educationLevel: ev.educationLevel",
+      "occupation: ev.occupation",
+      "maritalStatus: ev.maritalStatus",
+      "socioeconomicStratum: ev.socioeconomicStratum",
+      "ethnicity: ev.ethnicity",
+      "ancestry: ev.ancestry",
+      "weightGoalKg: ev.weightGoalKg",
+    ]) {
+      expect(CORRECCION, `la corrección dejó de copiar ${campo}`).toContain(campo);
+    }
+  });
+
+  it("y la FUERZA PRENSIL, que desde el 31 alimenta el fenotipo", () => {
+    // La mitad clinica del hallazgo: la medicion BIS se copia tal cual, pero las condiciones de esa toma
+    // no viajaban. Desde el 2026-08-31 la fuerza prensil de esa fila es criterio PRIMARIO del fenotipo
+    // (EWGSOP2), asi que perderla degradaba el diagnostico de sarcopenia de una correccion a la siguiente,
+    // en silencio y con el numero puesto.
+    expect(CORRECCION).toContain("gripStrengthKg: oldIntake.gripStrengthKg");
+    expect(CORRECCION).toContain("tx.insert(evaluationBisIntake)");
+  });
+
+  it("se COPIAN del encuentro, no se releen del perfil", () => {
+    // `patient_profiles` guarda el valor ACTUAL; estos son del ENCUENTRO. Tomarlos del perfil fabricaria
+    // un historico falso, que es la razon por la que estas columnas existen versionadas por evaluacion.
+    expect(CORRECCION).toContain("no se releen del perfil");
+  });
+});
+
 describe("no se perdió quién lo fijó", () => {
   it("el panel distingue las tres procedencias", () => {
     expect(PANEL).toContain('const origenPeso: "tratamiento" | "entrada" | "calculado"');
@@ -120,7 +188,7 @@ describe("no se perdió quién lo fijó", () => {
     // Reescribir la procedencia ahi convertiria un guardado cualquiera en una afirmacion falsa sobre quien
     // decidio el peso del paciente.
     expect(WRITER).toContain("const cambio = anterior !== input.pesoMetaFijado");
-    expect(WRITER).toContain("intakeLocked.origen");
+    expect(WRITER).toContain("evalLocked?.origen");
     expect(INTAKE_WRITER).toContain("const pesoMetaCambio = pesoMetaAnterior !== input.weightGoalKg");
     expect(INTAKE_WRITER).toContain("previo?.origen");
   });
@@ -136,15 +204,11 @@ describe("el candado de concurrencia sigue cubriendo el peso meta, ahora en dos 
   });
 
   it("el writer lo lee bajo lock, y en un orden que no puede dar deadlock", () => {
-    // Dos filas de dos tablas. El orden es siempre tratamiento y luego intake; la otra escritura del
-    // intake (las condiciones de la toma) no toca `treatments`, asi que no hay ciclo posible.
-    expect(WRITER).toContain(".from(evaluationBisIntake)");
+    // Dos filas de dos tablas. El orden es siempre tratamiento y luego evaluacion; las otras escrituras de
+    // `evaluations` no tocan `treatments`, asi que no hay ciclo posible.
+    expect(WRITER).toContain(".from(evaluations)");
     expect(WRITER).toContain('.for("update", { of: [treatments] })');
-    expect(WRITER).toContain("no hay ciclo posible entre las dos y no hay deadlock");
-  });
-
-  it("y si no hay fila de intake, se ataja con un error legible", () => {
-    expect(WRITER).toContain("no tiene registradas las condiciones de la toma");
+    expect(WRITER).toContain("no hay ciclo posible entre ellas y no hay deadlock");
   });
 });
 

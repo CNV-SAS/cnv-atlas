@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
 import { evaluationStatus, evaluationType } from "./enums";
@@ -62,6 +62,23 @@ export const evaluations = pgTable(
     // Ascendencia (RESPUESTA_GILDARDO 2026-08-15 §3): 2a pregunta de etnia, mismo dato sensible y MISMO gate
     // de investigacion que `ethnicity` (el writer nulifica ambas sin autorizacion). Versionada por evaluacion.
     ancestry: text("ancestry"),
+    // PESO META (kg) acordado en esta consulta. SITIO UNICO (migracion 0096). Gobierna TODA la cadena
+    // calorica: gasto, objetivo y gramos de proteina. Gildardo, 2026-08-28 §2: "el peso meta no pertenece al
+    // tratamiento, pertenece al paciente. El motor lo calcula como punto de partida, el profesional lo fija,
+    // y el tratamiento lo LEE. No lo crea... no son dos pesos meta, es uno."
+    //
+    // POR EVALUACION Y NO POR PACIENTE, a proposito: cada consulta acuerda el suyo, y ponerlo en el perfil
+    // haria que cambiarlo en un seguimiento reescribiera la prescripcion de una consulta pasada. Misma razon
+    // por la que el motivo de consulta vive aqui.
+    //
+    // Y AQUI Y NO EN `evaluation_bis_intake`, que es donde lo puso la 0095 porque la columna ya existia ahi:
+    // esa fila es OPCIONAL (existe si alguien respondio las condiciones de la toma) y colgar de ella un dato
+    // que gobierna la prescripcion dejo el panel bloqueado en el primer smoke.
+    weightGoalKg: numeric("weight_goal_kg"),
+    // De cual de las dos superficies salio (entrada / tratamiento). Informacion clinica, no metadato: no es
+    // lo mismo el peso acordado con el paciente en la consulta que uno ajustado despues al armar el plan.
+    // Viaja SIEMPRE con el valor (CHECK de coherencia en la 0096).
+    weightGoalSetIn: text("weight_goal_set_in", { enum: ["entrada", "tratamiento"] }),
     // Residencia PROLONGADA del encuentro (RESPUESTA_GILDARDO 2026-08-17 §1), VERSIONADA por evaluacion:
     // alguien puede mudarse entre consultas y ese es el dato que importa para la adaptacion a la altura.
     // Opcional, caracterizacion, sin field_key. Distinta de la ciudad ACTUAL (perfil, contacto). De aqui

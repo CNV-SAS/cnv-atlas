@@ -1097,6 +1097,8 @@ export type Database = {
           superseded_at: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at: string
+          weight_goal_kg: number | null
+          weight_goal_set_in: string | null
         }
         Insert: {
           ancestry?: string | null
@@ -1122,6 +1124,8 @@ export type Database = {
           superseded_at?: string | null
           type: Database["public"]["Enums"]["evaluation_type"]
           updated_at?: string
+          weight_goal_kg?: number | null
+          weight_goal_set_in?: string | null
         }
         Update: {
           ancestry?: string | null
@@ -1147,6 +1151,8 @@ export type Database = {
           superseded_at?: string | null
           type?: Database["public"]["Enums"]["evaluation_type"]
           updated_at?: string
+          weight_goal_kg?: number | null
+          weight_goal_set_in?: string | null
         }
         Relationships: [
           {

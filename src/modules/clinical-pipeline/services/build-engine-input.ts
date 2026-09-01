@@ -98,18 +98,28 @@ const FREE_TEXT_TO_ENGINE = new Set([
   "d3_25", // tipo de actividad: la prescripcion de ejercicio actua sobre el
 ]);
 
+/**
+ * El valor de UNA respuesta con la forma que el motor congelado espera: array para los multi-select,
+ * string para el resto.
+ *
+ * EXPORTADA a proposito, y esa es la leccion: habia DOS constructores del `enc` y solo este decodificaba.
+ * `dieta-resumen-reader` armaba el suyo dejando los multi como el JSON crudo, asi que el
+ * `Array.isArray(e.d5_39)` de `motorTratNutri` daba false y TODAS las comorbilidades del multi-select
+ * quedaban en falso: al de ERC no le bajaba la proteina, al de cancer no le subia las calorias, al de
+ * dislipidemia no le ponia el limite de grasa saturada. Sin error, sin pantalla rota, con el numero
+ * puesto. Quien arme un `enc` para un motor congelado usa ESTA funcion; no escribe la suya.
+ */
+export function decodeSurveyValue(fieldKey: string, type: string, value: string): unknown {
+  if (type !== "opcion_multiple") return value;
+  const els = decodeMulti(value);
+  return FREE_TEXT_TO_ENGINE.has(fieldKey)
+    ? els.map(stripOtherPrefix) // d5_39: conserva el texto libre (sin el centinela "Otra:")
+    : els.filter((el) => !isFreeTextOther(el)); // resto: registro, no alimenta el motor
+}
+
 function buildSurvey(answers: SurveyFieldAnswer[]): Record<string, unknown> {
   const survey: Record<string, unknown> = {};
-  for (const a of answers) {
-    if (a.type !== "opcion_multiple") {
-      survey[a.fieldKey] = a.value;
-      continue;
-    }
-    const els = decodeMulti(a.value);
-    survey[a.fieldKey] = FREE_TEXT_TO_ENGINE.has(a.fieldKey)
-      ? els.map(stripOtherPrefix) // d5_39: conserva el texto libre (sin el centinela "Otra:")
-      : els.filter((el) => !isFreeTextOther(el)); // resto: registro, no alimenta el motor
-  }
+  for (const a of answers) survey[a.fieldKey] = decodeSurveyValue(a.fieldKey, a.type, a.value);
   return survey;
 }
 

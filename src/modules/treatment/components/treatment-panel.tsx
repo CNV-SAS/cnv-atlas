@@ -96,6 +96,12 @@ const NIVELES_FA = [
   { valor: "1.9", label: "Muy alta (1.9)" },
 ] as const;
 
+/** El nivel con su nombre, no el numero solo: "Ligera (1.375)". Si el modelo devolviera un factor que no
+ *  esta en su escala (no deberia: es la misma lista), se muestra el numero antes que inventar un nombre. */
+function nivelFaLabel(valor: number): string {
+  return NIVELES_FA.find((n) => Number(n.valor) === valor)?.label ?? String(valor);
+}
+
 function AdjInput({
   name,
   label,
@@ -481,13 +487,37 @@ function CadenaCaloricaSection({
                 onChange={(e) => setPal(e.target.value)}
                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
               >
-                <option value="">modelo: {base.pal}</option>
+                {/* SUS CINCO NIVELES Y NADA MAS. Habia un sexto, "modelo: 1.375", que era nuestro y no
+                    suyo: mezclaba en la misma lista los niveles de actividad (una escala clinica) con
+                    "no elegi ninguno" (un estado del formulario). Se lee como si existiera un sexto nivel.
+                    Volver al valor del modelo es un ACTO, y los actos van en un boton aparte, que es el
+                    mismo patron del peso meta y del objetivo. */}
+                {pal === "" ? <option value="">Sin elegir</option> : null}
                 {NIVELES_FA.map((n) => (
                   <option key={n.valor} value={n.valor}>
                     {n.label}
                   </option>
                 ))}
               </select>
+              {/* El valor del modelo, FUERA de la lista y con su nombre. Es el mismo patron del peso meta
+                  y del objetivo: el valor sugerido se dice, y volver a el es un boton. */}
+              <span className="flex flex-wrap items-baseline gap-1.5 text-xs">
+                {pal === "" ? (
+                  <span className="text-muted-foreground">
+                    Sin elegir: se usa la del modelo, <strong>{nivelFaLabel(base.pal)}</strong>.
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+                    onClick={() => setPal("")}
+                    disabled={locked}
+                    title="Vuelve al nivel que recomienda el modelo"
+                  >
+                    Usar la recomendación del modelo ({nivelFaLabel(base.pal)})
+                  </button>
+                )}
+              </span>
             </label>
             <AdjInput
               name="adjProtGkg"
@@ -526,7 +556,10 @@ function CadenaCaloricaSection({
                 aplica deficit por fenotipo (Gildardo los retiro el 19), asi que el 0 es el estado normal,
                 no un dato faltante; el rotulo lo dice para que no se lea como un hueco. */}
             <PrevRow
-              op={deficitCadena > 0 ? "−" : "+"}
+              // SIEMPRE "−": es un DEFICIT, y lo que la fila dice es que operacion entra en la cuenta, no
+              // si esa operacion cambia algo. Con el signo colgando del valor, un deficit de 0 aparecia
+              // como "+ Deficit del modelo", que es una suma que nadie hace.
+              op="−"
               label="Déficit del modelo"
               value={deficitCadena > 0 ? `${d0(deficitCadena)} kcal` : "0 kcal"}
               detail={deficitCadena > 0 ? undefined : "(no aplica déficit por fenotipo)"}
@@ -1417,9 +1450,12 @@ function ObjetivoSection({
               <span
                 key={f.nombre}
                 className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground"
-                title={f.ref}
               >
                 {f.nombre} {f.valor}
+                {/* LA REFERENCIA SE VE, no se esconde en un tooltip. Vivia en `title`, que exige hover y en
+                    tactil no existe: en el smoke se reporto como "no aparece ESPEN 2023 en ningun sitio", y
+                    era cierto. Una referencia que hay que descubrir no respalda nada. */}
+                {f.ref ? <span className="ml-1 font-normal text-muted-foreground">({f.ref})</span> : null}
               </span>
             ))}
             {prescripcion.atributos.map((a) => (

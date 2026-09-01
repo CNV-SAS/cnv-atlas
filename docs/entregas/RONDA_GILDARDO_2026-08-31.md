@@ -292,6 +292,29 @@ Tu pantalla tiene la salida impresa del plan alimentario para entregárselo al p
 tiene.** No es una decisión nuestra ni una discrepancia: es un hueco que no habíamos registrado, y lo
 vamos a construir. Lo declaramos para que sepas que lo vimos y que no está esperando nada tuyo.
 
+## 9.6 · El tipo de dieta lo decide un gasto que la pantalla no muestra
+
+**Apareció arreglando otra cosa, y te lo contamos porque es tu pregunta del gasto con una superficie
+nueva.** Nuestro título de la dieta decía siempre "hipocalórica", pusiera el nutricionista 500 kcal o
+5.000. Lo arreglamos pasándole a `motorTratNutri` el objetivo editado, que es la entrada que tu propio
+motor ya tiene, y entonces tu línea recalcula el tipo. Fiel, y sin ciencia nuestra de por medio.
+
+**Pero el tipo sale de comparar el objetivo contra el GET de `motorTratNutri`, que es Mifflin sobre el
+peso meta, y la pantalla muestra el GET de la cadena, que es Cunningham sobre masa libre de grasa.** En el
+paciente de prueba: cadena 2.574 kcal, GET del motor 2.536. El plan queda rotulado **"Hipercalórica"**
+aunque el nutricionista lo dejó en mantenimiento puro. Treinta y ocho calorías de diferencia de método,
+convertidas en una palabra clínica.
+
+Alineamos lo que se podía sin tocar tu ciencia: el **factor** de actividad ya viaja al motor, así que la
+única diferencia que queda es la fórmula del gasto. Tu motor no acepta un GEB de entrada, así que alinear
+eso es exactamente decidir cuál manda.
+
+**Es la misma pregunta que ya te hicimos, y por eso no la contamos como nueva.** Lo que cambia es que
+antes era invisible (no mostrábamos las cifras calóricas de ese motor, a propósito) y ahora se lee en el
+título del plan. No tocamos nada más mientras respondes.
+
+---
+
 ## 9.5 · El peso meta ya es un solo dato, con un residuo que estamos cerrando
 
 **Tu punto 2 del 28 está aplicado**, y el defecto que anunciaste era peor de lo que suponíamos: el campo de

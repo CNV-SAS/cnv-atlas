@@ -156,14 +156,13 @@ export async function getTreatmentProtocol(
       .select("id, nutraceutical_id, reason, created_at")
       .eq("patient_id", patientId)
       .order("created_at", { ascending: false }),
-    // PESO META DE INGRESO. Es el campo que el profesional llena en la entrada ("Meta de peso", junto a la
-    // fuerza prensil) y que Gildardo situa ahi: "el peso meta no pertenece al tratamiento, pertenece al
-    // paciente. El motor lo calcula como punto de partida, el profesional lo fija, y el tratamiento lo
-    // LEE" (2026-08-28 §2). Hasta hoy se GUARDABA Y NO LO LEIA NADIE: un campo vivo que no movia nada.
+    // PESO META. Vive en la EVALUACION (migracion 0096): es un dato de la consulta, como el motivo o el
+    // estrato, y su fila siempre existe. Gildardo, 2026-08-28 §2: "el peso meta no pertenece al
+    // tratamiento, pertenece al paciente... el tratamiento lo LEE. No lo crea."
     supabase
-      .from("evaluation_bis_intake")
+      .from("evaluations")
       .select("weight_goal_kg, weight_goal_set_in")
-      .eq("evaluation_id", evaluationId)
+      .eq("id", evaluationId)
       .maybeSingle(),
   ]);
 
@@ -174,7 +173,7 @@ export async function getTreatmentProtocol(
   if (menus.error) throw new Error(`treatment-reader: menu_suggestions: ${menus.error.message}`);
   if (get.error) throw new Error(`treatment-reader: get: ${get.error.message}`);
   if (report.error) throw new Error(`treatment-reader: report snapshot: ${report.error.message}`);
-  if (intake.error) throw new Error(`treatment-reader: bis intake: ${intake.error.message}`);
+  if (intake.error) throw new Error(`treatment-reader: peso meta: ${intake.error.message}`);
 
   const kcalSugerido = get.data?.value != null ? Math.round(Number(get.data.value)) : null;
   // Recomendacion del modelo (string plano, p. ej. "MULTI-CELL BASE, OMEGA COMPLEX"). El P1/P2/dosis
@@ -370,15 +369,15 @@ export async function getTreatmentForApproval(
     .maybeSingle();
   if (mErr) throw new Error(`treatment-reader(approval): bis_measurements: ${mErr.message}`);
 
-  // El peso meta vive en el intake (sitio unico, migracion 0095). Se lee aqui, no en los sitios que arman
-  // los ajustes: si la lectura viviera en el caller, un caller nuevo la olvidaria y el sellado usaria un
-  // peso meta distinto del que muestra la pantalla.
+  // El peso meta vive en la evaluacion (sitio unico, migracion 0096). Se lee aqui, no en los sitios que
+  // arman los ajustes: si la lectura viviera en el caller, un caller nuevo la olvidaria y el sellado usaria
+  // un peso meta distinto del que muestra la pantalla.
   const { data: intake, error: iErr } = await supabase
-    .from("evaluation_bis_intake")
+    .from("evaluations")
     .select("weight_goal_kg")
-    .eq("evaluation_id", evaluationId)
+    .eq("id", evaluationId)
     .maybeSingle();
-  if (iErr) throw new Error(`treatment-reader(approval): bis intake: ${iErr.message}`);
+  if (iErr) throw new Error(`treatment-reader(approval): peso meta: ${iErr.message}`);
 
   const n = (v: unknown): number | null => (v == null ? null : Number(v));
   return {

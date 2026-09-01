@@ -68,7 +68,14 @@
    `recalculo-dos-actos`, `cadena-dos-bloques` y `protocol-concurrency` (BD real). **Falta la subpestaña de
    Rutas de atención**, que es la otra mitad del gate 3 (`BACKLOG.md`).
 
-   **OJO AL DESPLEGAR: la 0095 es una migracion con DATOS.** Copia `treatments.adj_peso_meta` al registro
+   **Tanda 4 (smoke del 2026-09-01):** desbloqueo del panel (el peso meta paso a `evaluations`, migracion
+   0096, porque la fila del intake es OPCIONAL y 41 de 60 tratamientos no la tenian), la correccion de una
+   evaluacion dejo de perder motivo, sociodemograficos, peso meta y condiciones de la toma, y seis defectos
+   de pantalla, de los cuales DOS eran clinicos: los multi-select llegaban al motor de nutricion como texto
+   crudo (todas las comorbilidades en falso para todos los pacientes) y ningun caller pasaba el peso ni el
+   objetivo al motor. Candados: `peso-meta-una-sola-fuente` y `motor-nutri-conectado`.
+
+   **OJO AL DESPLEGAR: la 0095 y la 0096 son migraciones con DATOS.** Copia `treatments.adj_peso_meta` al registro
    del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
    `pnpm db:check:cloud` antes de dar el push por terminado.
 

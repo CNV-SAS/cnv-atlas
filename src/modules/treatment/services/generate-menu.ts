@@ -134,6 +134,12 @@ export async function generateMenu(
     evaluationId,
     results.snapshot.sexo,
     results.snapshot.indicators as unknown as Record<string, unknown>,
+    // La MISMA cadena efectiva que ya se computo arriba para el prompt: el menu se arma sobre las calorias
+    // y los gramos de proteina que el nutricionista tiene delante, no sobre los que el motor calcularia por
+    // su cuenta con su peso por defecto.
+    efectivo.pesoEfectivo,
+    Math.round(efectivo.calorico.kcalObj),
+    efectivo.calorico.pal,
   );
   // Fallback al snapshot si la evaluacion no tiene encuesta legible: sin ella el motor no puede correr, y
   // quedarse sin restricciones apagaria la IA en vez de adaptarla.

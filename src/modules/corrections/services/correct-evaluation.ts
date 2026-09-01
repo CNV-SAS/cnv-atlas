@@ -11,6 +11,7 @@ import {
   bisRawValues,
   clinicalCorrections,
   diagnoses,
+  evaluationBisIntake,
   evaluations,
   professionalProfiles,
   surveyAnswers,
@@ -81,6 +82,18 @@ export async function correctEvaluation(
       organizationId: evaluations.organizationId,
       type: evaluations.type,
       supersededAt: evaluations.supersededAt,
+      // Los datos de la CONSULTA, que viajan con la correccion (ver la copia mas abajo).
+      declaredFirstName: evaluations.declaredFirstName,
+      declaredLastName: evaluations.declaredLastName,
+      reasonForVisit: evaluations.reasonForVisit,
+      educationLevel: evaluations.educationLevel,
+      occupation: evaluations.occupation,
+      maritalStatus: evaluations.maritalStatus,
+      socioeconomicStratum: evaluations.socioeconomicStratum,
+      ethnicity: evaluations.ethnicity,
+      ancestry: evaluations.ancestry,
+      weightGoalKg: evaluations.weightGoalKg,
+      weightGoalSetIn: evaluations.weightGoalSetIn,
     })
     .from(evaluations)
     .where(eq(evaluations.id, input.evaluationId))
@@ -311,6 +324,17 @@ export async function correctEvaluation(
   try {
     const result = await db.transaction(async (tx) => {
       // (i) evaluacion nueva (misma constelacion de pertenencia)
+      // LOS DATOS DE LA CONSULTA VIAJAN CON LA CORRECCION (hallazgo del smoke, 2026-09-01). Hasta hoy la
+      // evaluacion corregida nacia con motivo de consulta, escolaridad, ocupacion, estado civil, estrato,
+      // etnia, ascendencia y nombre declarado en NULL. No es cosmetico: corregir un decimal de la encuesta
+      // borraba la caracterizacion entera de la consulta, y el observatorio estratifica por esos campos
+      // (sobre todo la etnia). El profesional no tenia como saberlo: la pantalla nueva simplemente los
+      // mostraba vacios, sin error y sin aviso.
+      //
+      // SE COPIAN, no se releen del perfil: `patient_profiles` guarda el valor ACTUAL y estos son del
+      // ENCUENTRO. Tomarlos del perfil fabricaria un historico falso, que es la razon por la que estas
+      // columnas existen versionadas por evaluacion. (Y por eso el motivo de consulta, que solo vive aqui,
+      // no tendria de donde recuperarse.)
       const [newEval] = await tx
         .insert(evaluations)
         .values({
@@ -323,8 +347,46 @@ export async function correctEvaluation(
           // version actual (hoy todos en v1.0; cuando las versiones diverjan, revisar si debe copiar la del
           // original). El dato original se capturo bajo la misma o una version compatible.
           consentVersion: CONSENT_VERSION,
+          declaredFirstName: ev.declaredFirstName,
+          declaredLastName: ev.declaredLastName,
+          reasonForVisit: ev.reasonForVisit,
+          educationLevel: ev.educationLevel,
+          occupation: ev.occupation,
+          maritalStatus: ev.maritalStatus,
+          socioeconomicStratum: ev.socioeconomicStratum,
+          ethnicity: ev.ethnicity,
+          ancestry: ev.ancestry,
+          // El PESO META tambien: gobierna las calorias y los gramos de proteina del plan. Perderlo hacia
+          // que la prescripcion de la evaluacion corregida cayera al peso CALCULADO sin decir nada.
+          weightGoalKg: ev.weightGoalKg,
+          weightGoalSetIn: ev.weightGoalSetIn,
         })
         .returning({ id: evaluations.id });
+
+      // LAS CONDICIONES DE LA TOMA tambien viajan. Son el sello de en que estado se hizo la medicion, y la
+      // medicion se esta copiando tal cual: copiar una sin la otra deja el diagnostico nuevo afirmando
+      // sobre una toma cuyas condiciones ya no constan. Y desde el 2026-08-31 la FUERZA PRENSIL de esa fila
+      // alimenta el fenotipo (criterio primario EWGSOP2), asi que perderla degradaba el diagnostico de
+      // sarcopenia de una correccion a la siguiente, en silencio.
+      const [oldIntake] = await tx
+        .select({
+          versionId: evaluationBisIntake.bisConditionVersionId,
+          answers: evaluationBisIntake.conditionAnswers,
+          contraindicated: evaluationBisIntake.contraindicated,
+          gripStrengthKg: evaluationBisIntake.gripStrengthKg,
+        })
+        .from(evaluationBisIntake)
+        .where(eq(evaluationBisIntake.evaluationId, input.evaluationId))
+        .limit(1);
+      if (oldIntake) {
+        await tx.insert(evaluationBisIntake).values({
+          evaluationId: newEval.id,
+          bisConditionVersionId: oldIntake.versionId,
+          conditionAnswers: oldIntake.answers,
+          contraindicated: oldIntake.contraindicated,
+          gripStrengthKg: oldIntake.gripStrengthKg,
+        });
+      }
 
       // (ii) copiar la medicion: measurement_date PRESERVADA (Condicion 2), id/created_at NUEVOS
       const [newMeas] = await tx
