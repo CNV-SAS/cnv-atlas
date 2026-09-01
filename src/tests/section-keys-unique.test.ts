@@ -44,6 +44,7 @@ const KEYS_VACIAS: Record<string, string> = {
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
+  adjDeficit: null,
       pesoMetaFijado: null,
     }),
   ),

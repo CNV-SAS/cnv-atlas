@@ -232,6 +232,15 @@ export const saveAdjustmentsSchema = z.object({
     .max(100, "El porcentaje de grasa debe ser un número entero entre 0 y 100.")
     .nullable(),
   pesoMeta: optNum("El peso meta debe ser un número positivo."),
+  // EL DEFICIT ES EL UNICO QUE ADMITE NEGATIVOS, y no es un descuido: un deficit negativo es un
+  // SUPERAVIT, que es exactamente lo que se prescribe para recuperar peso. Ponerle un min(0) le quitaria
+  // al profesional media escala clinica. Se conserva la guarda estructural (entero finito), que es la que
+  // impide que un dedo pegado en el teclado deje la cadena calculando sobre basura.
+  adjDeficit: z.coerce
+    .number()
+    .int("El déficit debe ser un número entero de kilocalorías.")
+    .finite("El déficit debe ser un número entero de kilocalorías.")
+    .nullable(),
   // Firma de los seis ajustes que el cliente cargó (candado de concurrencia; ver adjustmentSignature).
   // String opaco: se compara por igualdad, no se interpreta. Default "" para llamadas viejas sin firma.
   baseSignature: z.string().max(200).default(""),

@@ -75,7 +75,14 @@
    crudo (todas las comorbilidades en falso para todos los pacientes) y ningun caller pasaba el peso ni el
    objetivo al motor. Candados: `peso-meta-una-sola-fuente` y `motor-nutri-conectado`.
 
-   **OJO AL DESPLEGAR: la 0095 y la 0096 son migraciones con DATOS.** Copia `treatments.adj_peso_meta` al registro
+   **Tanda 5 (2026-09-01):** los cuatro campos de la cadena juntos en el bloque de la meta, como su
+   pantalla los agrupa, con el PAL y el deficit repetidos dentro de la cuenta y UN solo estado detras; el
+   deficit pasa a editable (migracion 0097, aprobado porque el valor del modelo es 0 para todos y abrirlo
+   no elige de que motor sale nada). Y el candado que faltaba: los argumentos clinicos de
+   `getPrescripcionNutricional` son OBLIGATORIOS, asi que tsc marca a todos los callers el dia que se
+   agrega uno. Era lo que dejaba pasar que una pieza se quedara sin su ultimo cable.
+
+   **OJO AL DESPLEGAR: la 0095, la 0096 y la 0097 son migraciones con DATOS o con columnas nuevas.** Copia `treatments.adj_peso_meta` al registro
    del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
    `pnpm db:check:cloud` antes de dar el push por terminado.
 

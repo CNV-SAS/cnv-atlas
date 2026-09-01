@@ -8,7 +8,7 @@
 
 ## Lo que el smoke del 2026-09-01 dejó abierto
 
-### PENDIENTE · Los cuatro campos de la cadena, repetidos arriba (Santiago, aprobado)
+### [HECHO 2026-09-01] Los cuatro campos de la cadena, repetidos arriba
 
 Su pantalla pone **objetivo calórico, PAL, déficit y peso meta DENTRO del bloque de objetivo**, y no solo
 abajo en la fórmula. Atlas los tiene solo abajo. Santiago: *"me parece que va a tocar hacer lo mismo que
@@ -23,10 +23,18 @@ sale nada**. `motorTratNutri` ya acepta `edit.deficit`.
 y seis defectos. Meterle además un cambio de forma del bloque principal es exactamente el mal smoke que
 Santiago señaló el 31 (*"un cambio de guardado junto a cuatro de pantalla es mal smoke"*).
 
-**Cuidado al construirlo:** un dato con dos superficies dentro del MISMO formulario no es como el peso meta
-(dos formularios, dos guardados). Aquí los dos campos viven bajo el mismo `<form>` y el mismo estado, así
-que "el mismo dato" se resuelve con un solo `useState` leído desde los dos sitios, no con sincronización.
-Sincronizar dos estados es como se crean las discrepancias que esto viene a evitar.
+**CONSTRUIDO ASÍ.** Los cuatro (peso meta, objetivo, PAL, déficit) van juntos en el bloque de la meta;
+el PAL y el déficit se repiten dentro de la cuenta con el MISMO `useState`, no con dos sincronizados. El
+objetivo NO se repite editable: su §8.1 dice "editable en uno solo y en lectura en el otro", y ahí se
+conserva su regla. Migración 0097 (`treatments.adj_deficit`).
+
+**Y apareció un hazard que no estaba en el plan: dos inputs con el mismo `name` mandan DOS valores en el
+FormData** y el servidor se queda con uno cualquiera. El profesional editaría el de abajo y se guardaría el
+de arriba, sin aviso. El espejo NO lleva `name`; lo cubre un candado que cuenta cada `name` en el
+formulario (`cadena-dos-bloques`).
+
+**Estado: lo dicen los tests, no esta línea** (`cadena-dos-bloques`, bloque "los cuatro campos de la cadena
+se ven arriba, y son UN dato").
 
 ### PENDIENTE · El campo de peso meta desaparece de la entrada al sellar las condiciones
 

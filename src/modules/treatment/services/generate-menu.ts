@@ -87,6 +87,7 @@ export async function generateMenu(
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
+    deficit: protocol.adjDeficit,
     // El peso meta que gobierna, de su sitio unico (migracion 0095): el menu se arma sobre las mismas
     // calorias y los mismos gramos de proteina que ve el nutricionista.
     pesoMeta: protocol.pesoMetaFijado,

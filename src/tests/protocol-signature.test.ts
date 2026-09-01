@@ -33,6 +33,7 @@ const BASE: TreatmentProtocol = {
   adjKcalObj: null,
   adjProtGkg: null,
   adjFatPct: null,
+  adjDeficit: null,
   restricciones: ["sin gluten", "sin lactosa"],
   objetivoTexto: "Dieta antiinflamatoria, proteína alta.",
   intercambioPorciones: null,

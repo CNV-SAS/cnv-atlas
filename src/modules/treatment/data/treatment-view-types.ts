@@ -152,6 +152,8 @@ export type TreatmentProtocol = {
   adjKcalObj: number | null;
   adjProtGkg: number | null;
   adjFatPct: number | null;
+  // Deficit fijado por el profesional (0097). null = el del modelo, hoy 0 para todos.
+  adjDeficit: number | null;
   restricciones: string[];
   // Objetivo del tratamiento nutricional (pieza 1): texto libre del profesional; null si no lo ha escrito.
   objetivoTexto: string | null;

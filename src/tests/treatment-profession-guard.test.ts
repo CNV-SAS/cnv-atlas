@@ -100,6 +100,7 @@ const ADJ_INPUT = {
   adjKcalObj: null,
   adjProtGkg: null,
   adjFatPct: null,
+  adjDeficit: null,
   pesoMeta: null,
   baseSignature: "",
 };

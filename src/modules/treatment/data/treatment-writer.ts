@@ -609,6 +609,7 @@ export type SaveAdjustmentsWrite = {
   adjKcalObj: number | null;
   adjProtGkg: number | null;
   adjFatPct: number | null;
+  adjDeficit: number | null;
   // El peso meta viaja con los otros cinco porque el formulario es UNO, pero se guarda en OTRA TABLA
   // (`evaluation_bis_intake`, migracion 0095): el peso meta es del paciente, no del tratamiento.
   pesoMetaFijado: number | null;
@@ -638,6 +639,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         kcalObj: treatments.adjKcalObj,
         protGkg: treatments.adjProtGkg,
         fatPct: treatments.adjFatPct,
+        deficit: treatments.adjDeficit,
         evaluationId: diagnoses.evaluationId,
       })
       .from(treatments)
@@ -673,6 +675,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
       adjKcalObj: locked.kcalObj != null ? Number(locked.kcalObj) : null,
       adjProtGkg: locked.protGkg != null ? Number(locked.protGkg) : null,
       adjFatPct: locked.fatPct != null ? Number(locked.fatPct) : null,
+      adjDeficit: locked.deficit != null ? Number(locked.deficit) : null,
       pesoMetaFijado: evalLocked?.pesoMeta != null ? Number(evalLocked.pesoMeta) : null,
     });
     if (current !== input.baseSignature) throw new StaleAdjustmentsError();
@@ -685,6 +688,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         adjKcalObj: input.adjKcalObj,
         adjProtGkg: input.adjProtGkg != null ? String(input.adjProtGkg) : null,
         adjFatPct: input.adjFatPct,
+        adjDeficit: input.adjDeficit,
       })
       .where(eq(treatments.id, input.treatmentId));
 
@@ -718,6 +722,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         adj_kcal_obj: input.adjKcalObj,
         adj_prot_gkg: input.adjProtGkg,
         adj_fat_pct: input.adjFatPct,
+        adj_deficit: input.adjDeficit,
         peso_meta: input.pesoMetaFijado,
       },
       ip: input.ip,

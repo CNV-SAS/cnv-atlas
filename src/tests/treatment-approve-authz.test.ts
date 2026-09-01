@@ -61,7 +61,7 @@ const treatment: TreatmentForApproval = {
   treatmentId: "T1",
   status: "draft",
   protocolSuggested: SUGGESTED,
-  adjustments: { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, pesoMeta: null },
+  adjustments: { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, deficit: null, pesoMeta: null },
   evaluationProfessionalId: ASSIGNED,
   bisMeasurementDate: null,
 };

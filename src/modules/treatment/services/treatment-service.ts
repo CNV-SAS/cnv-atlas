@@ -554,6 +554,7 @@ export async function saveAdjustments(
       adjKcalObj: input.adjKcalObj,
       adjProtGkg: input.adjProtGkg,
       adjFatPct: input.adjFatPct,
+      adjDeficit: input.adjDeficit,
       pesoMetaFijado: input.pesoMeta,
       baseSignature: input.baseSignature,
       ...actor,

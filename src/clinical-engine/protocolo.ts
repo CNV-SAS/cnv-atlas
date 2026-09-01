@@ -199,6 +199,15 @@ export type ProtocoloAjustes = {
   protGkg: number | null;
   fatPct: number | null;
   pesoMeta: number | null;
+  /**
+   * Deficit calorico fijado por el profesional (kcal/dia). null = el del modelo
+   * (`sug.estrategia.deficit`, hoy 0 para todos desde que se retiraron los cinco por fenotipo).
+   *
+   * Es un OVERRIDE mas, de la misma forma que geb/pal/kcalObj: no cambia la matematica, cambia de donde
+   * sale una de sus entradas. Sin techo ni piso propios (2026-08-27 §5); el unico limite que lo alcanza
+   * es el piso de 1.000 kcal que la cadena ya aplica al objetivo.
+   */
+  deficit: number | null;
 };
 
 export type ProtocoloEfectivo = {
@@ -221,7 +230,9 @@ export function computeProtocoloEfectivo(
     talla: sug.caloricoInputs.talla,
     edad: sug.caloricoInputs.edad,
     sexoM: sug.caloricoInputs.sexoM,
-    deficit: sug.estrategia.deficit,
+    // El del profesional si lo fijo, y si no el del modelo. `?? ` y no `||`: un deficit de 0 fijado a
+    // mano es una decision, no un valor ausente, y `||` lo confundiria con el del modelo.
+    deficit: adj.deficit ?? sug.estrategia.deficit,
     protMin: sug.protMin,
     geb: adj.geb ?? undefined,
     pal: adj.pal ?? undefined,

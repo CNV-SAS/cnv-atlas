@@ -523,6 +523,7 @@ export async function saveAdjustmentsAction(
     adjKcalObj: strOrNull(form.get("adjKcalObj")),
     adjProtGkg: strOrNull(form.get("adjProtGkg")),
     adjFatPct: strOrNull(form.get("adjFatPct")),
+    adjDeficit: strOrNull(form.get("adjDeficit")),
     pesoMeta: strOrNull(form.get("pesoMeta")),
     baseSignature: (form.get("baseSignature") as string | null) ?? "",
   });

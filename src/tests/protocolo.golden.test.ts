@@ -113,6 +113,7 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
       kcalObj: null,
       protGkg: null,
       fatPct: null,
+      deficit: null,
       pesoMeta: null,
     });
     // defaults es metadato del snapshot (no lo produce computeProtocoloCalorico); se excluye para comparar
@@ -128,6 +129,7 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
       kcalObj: null,
       protGkg: null,
       fatPct: null,
+      deficit: null,
       pesoMeta: null,
     });
     expect(conPal.calorico.get).toBeGreaterThan(o.calorico.get);
@@ -138,6 +140,7 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
       kcalObj: 1800,
       protGkg: null,
       fatPct: null,
+      deficit: null,
       pesoMeta: null,
     });
     expect(conObj.calorico.kcalObj).toBe(1800);
@@ -158,6 +161,7 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
       kcalObj: null,
       protGkg: 4,
       fatPct: 90,
+      deficit: null,
       pesoMeta: null,
     }).calorico;
     expect(excede.choKcal).toBe(0);
@@ -239,7 +243,7 @@ describe("GOLDEN orquestador: flags clinicos desde el TEXTO exacto de encuesta (
 
 describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)", () => {
   const sug = run([]); // sugerido base (F5, sin flags)
-  const nada = { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, pesoMeta: null };
+  const nada = { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, deficit: null, pesoMeta: null };
 
   it("sin ajustes: el efectivo reproduce el sugerido (mismos inputs y defaults)", () => {
     const ef = computeProtocoloEfectivo(sug, nada);

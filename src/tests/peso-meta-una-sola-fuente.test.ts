@@ -238,6 +238,7 @@ describe("CONTROL: el peso meta MUEVE la prescripción", () => {
     kcalObj: null,
     protGkg: null,
     fatPct: null,
+    deficit: null,
     pesoMeta: null,
   };
 

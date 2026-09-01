@@ -146,6 +146,7 @@ export type SignableAdjustments = {
   adjKcalObj: number | null;
   adjProtGkg: number | null;
   adjFatPct: number | null;
+  adjDeficit: number | null;
   // El peso meta ya NO vive en `treatments` sino en `evaluation_bis_intake` (migracion 0095), pero SIGUE
   // en la firma, y es deliberado: el formulario lo escribe, asi que el candado tiene que cubrirlo o dos
   // profesionales podrian pisarse el peso meta sin que nadie lo note. El writer lo lee bajo el mismo lock.
@@ -163,6 +164,7 @@ export function adjustmentSignature(a: SignableAdjustments): string {
     a.adjKcalObj ?? "",
     a.adjProtGkg ?? "",
     a.adjFatPct ?? "",
+    a.adjDeficit ?? "",
     a.pesoMetaFijado ?? "",
   ].join("§");
 }

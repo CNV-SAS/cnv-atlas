@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useId } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -102,6 +102,58 @@ function nivelFaLabel(valor: number): string {
   return NIVELES_FA.find((n) => Number(n.valor) === valor)?.label ?? String(valor);
 }
 
+// UN DATO, DOS SUPERFICIES, DENTRO DEL MISMO FORMULARIO. El `name` es opcional a proposito: los cuatro
+// campos de la cadena se ven arriba (donde se decide) y abajo (dentro de la cuenta), pero SOLO UNA de las
+// dos copias lo lleva. Dos inputs con el mismo `name` mandan DOS valores en el FormData y el servidor se
+// queda con uno cualquiera; el espejo sin `name` no viaja, solo edita el mismo estado.
+// EL SELECT DEL PAL, en un componente porque aparece DOS veces: arriba, entre los cuatro campos que su
+// pantalla agrupa, y abajo, dentro de la cuenta, donde es el factor que multiplica. Mismo estado, un solo
+// `name` (el de arriba): dos inputs con el mismo name mandarian dos valores en el FormData.
+function PalSelect({
+  name,
+  value,
+  onChange,
+  modelo,
+  compacto,
+}: {
+  name?: string;
+  value: string;
+  onChange: (v: string) => void;
+  modelo: number;
+  compacto?: boolean;
+}) {
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="Nivel de actividad física (PAL)"
+      className={
+        compacto
+          ? "h-7 rounded-md border border-border bg-background px-1.5 text-sm tabular-nums text-foreground"
+          : "h-9 w-36 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+      }
+    >
+      {/* "Sin elegir" NO SOBRA, y la razon es del navegador, no de diseño: un `select` cuyo `value` no
+          corresponde a ninguna `option` no muestra vacio, muestra LA PRIMERA. Sin esta linea, un PAL sin
+          elegir se veria como "Sedentario (1.2)" seleccionado, que es una mentira sobre una entrada de la
+          formula. Va `disabled`, que es la respuesta a lo que se pregunto en el smoke: SE VE como estado
+          actual y NO se puede elegir a proposito. Volver al valor del modelo es un acto, y su via es el
+          boton que va al lado. */}
+      {value === "" ? (
+        <option value="" disabled>
+          {compacto ? `modelo: ${modelo}` : "Sin elegir"}
+        </option>
+      ) : null}
+      {NIVELES_FA.map((n) => (
+        <option key={n.valor} value={n.valor}>
+          {n.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function AdjInput({
   name,
   label,
@@ -110,18 +162,21 @@ function AdjInput({
   placeholder,
   step,
 }: {
-  name: string;
+  name?: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   step: string;
 }) {
+  // El id sale de `useId` y no del `name`: el espejo no tiene name, y un `htmlFor` apuntando a nada deja
+  // la etiqueta sin asociar (el clic no enfoca, y un lector de pantalla anuncia un campo sin nombre).
+  const id = useId();
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Input
-        id={name}
+        id={id}
         name={name}
         type="number"
         inputMode="decimal"
@@ -223,6 +278,7 @@ function PrevRow({
   tag,
   op,
   resultado,
+  control,
 }: {
   label: string;
   value: string;
@@ -232,6 +288,13 @@ function PrevRow({
   op?: string;
   /** Renglon de RESULTADO: raya arriba y numero en negrita, como el total de una operacion. */
   resultado?: boolean;
+  /**
+   * Control editable EN LUGAR del valor. Es el espejo de un campo que tambien vive arriba: mismo estado,
+   * sin `name` (el name lo lleva la copia de arriba). Que un eslabon se pueda tocar donde se ve la cuenta
+   * es lo que pidio el cotejo; que sea el MISMO dato y no una copia sincronizada es lo que impide que las
+   * dos superficies discrepen.
+   */
+  control?: React.ReactNode;
 }) {
   return (
     <div
@@ -250,8 +313,10 @@ function PrevRow({
           </span>
         ) : null}
       </span>
-      <span className={`shrink-0 tabular-nums ${resultado ? "text-foreground" : "text-foreground/90"}`}>
-        <strong className={resultado ? "text-base" : ""}>{value}</strong>
+      <span
+        className={`flex shrink-0 items-baseline gap-1.5 tabular-nums ${resultado ? "text-foreground" : "text-foreground/90"}`}
+      >
+        {control ?? <strong className={resultado ? "text-base" : ""}>{value}</strong>}
         {detail ? <span className="text-xs font-normal text-muted-foreground"> {detail}</span> : null}
       </span>
     </div>
@@ -300,6 +365,7 @@ function CadenaCaloricaSection({
   const [kcalObj, setKcalObj] = useState(numToInput(protocol.adjKcalObj));
   const [protGkg, setProtGkg] = useState(numToInput(protocol.adjProtGkg));
   const [fatPct, setFatPct] = useState(numToInput(protocol.adjFatPct));
+  const [deficit, setDeficit] = useState(numToInput(protocol.adjDeficit));
 
   const snap = protocol.protocolSuggested;
   // Sin snapshot sellado (o sin cadena, o sin peso de calculo) no hay que ajustar: tratamiento pre-snapshot.
@@ -312,6 +378,7 @@ function CadenaCaloricaSection({
     kcalObj: inputToNum(kcalObj),
     protGkg: inputToNum(protGkg),
     fatPct: inputToNum(fatPct),
+    deficit: inputToNum(deficit),
     // Vacio significa "nadie lo fijo": manda el peso CALCULADO. Ya no hay una segunda fuente detras (la
     // 0095 unifico el guardado), asi que el campo dice exactamente lo que gobierna.
     pesoMeta: inputToNum(pesoMeta),
@@ -334,6 +401,7 @@ function CadenaCaloricaSection({
     adjKcalObj: protocol.adjKcalObj,
     adjProtGkg: protocol.adjProtGkg,
     adjFatPct: protocol.adjFatPct,
+    adjDeficit: protocol.adjDeficit,
     pesoMetaFijado: protocol.pesoMetaFijado,
   });
 
@@ -354,7 +422,11 @@ function CadenaCaloricaSection({
   // Deficit SELLADO de la estrategia, la misma fuente que entra al motor (`snap.estrategia.deficit`). No
   // se re-deriva de GET - objetivo: si el profesional fija el objetivo a mano, esa resta daria un numero
   // que el modelo nunca calculo y el renglon estaria diciendo que el modelo mando algo que no mando.
-  const deficitCadena = snap.estrategia.deficit ?? 0;
+  // El deficit EFECTIVO: el del profesional si lo fijo, y si no el del modelo. Es la misma resolucion que
+  // hace `computeProtocoloEfectivo`, y tiene que serlo: con la del modelo a secas, el renglon "= Objetivo
+  // del modelo" no cuadraria con la cuenta en cuanto alguien escribiera un deficit, y una cuenta cuyo total
+  // no sale de sus terminos es una lista que miente.
+  const deficitCadena = adj.deficit ?? snap.estrategia.deficit ?? 0;
   // A DONDE LLEGA LA CUENTA por si sola, con la MISMA aritmetica del motor (:14128), piso incluido. Se
   // computa aparte del objetivo efectivo porque los dos pueden diferir por dos razones distintas: que el
   // profesional lo haya fijado a mano, o que el piso de 1.000 kcal haya mordido. Una cuenta cuyo renglon
@@ -411,7 +483,47 @@ function CadenaCaloricaSection({
               placeholder={`modelo: ${d0(base.kcalObj)}`}
               step="1"
             />
+            {/* LOS CUATRO CAMPOS JUNTOS, como su pantalla los agrupa (cotejo 2026-09-01, punto a). El PAL
+                y el deficit tambien se ven abajo, dentro de la cuenta, con el MISMO estado: se cambia uno
+                y el otro cambia con el, porque no son dos campos, es uno mostrado dos veces. */}
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-sm font-medium leading-none">PAL (factor)</span>
+              <PalSelect name="adjPal" value={pal} onChange={setPal} modelo={base.pal} />
+            </label>
+            <AdjInput
+              name="adjDeficit"
+              label="Déficit (kcal)"
+              value={deficit}
+              onChange={setDeficit}
+              placeholder={`modelo: ${d0(snap.estrategia.deficit ?? 0)}`}
+              step="1"
+            />
           </div>
+          {/* El valor del modelo, FUERA de la lista y con su nombre. Mismo patron que el peso meta: el
+              valor sugerido se dice, y volver a el es un boton. */}
+          <p className="flex flex-wrap items-baseline gap-2 text-xs">
+            {pal === "" ? (
+              <span className="text-muted-foreground">
+                Actividad sin elegir: se usa la del modelo, <strong>{nivelFaLabel(base.pal)}</strong>.
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+                onClick={() => setPal("")}
+                disabled={locked}
+                title="Vuelve al nivel que recomienda el modelo"
+              >
+                Usar la recomendación del modelo ({nivelFaLabel(base.pal)})
+              </button>
+            )}
+            {/* EL DEFICIT NO LLEVA TECHO NI PISO (Gildardo 2026-08-27 §5: "no existe techo y no existe
+                piso; existe una recomendacion, y punto"). Lo unico que se dice es que un negativo es un
+                superavit, porque es la mitad de la escala que nadie espera de un campo llamado deficit. */}
+            <span className="text-muted-foreground">
+              Un déficit negativo es un superávit (para recuperar peso).
+            </span>
+          </p>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {origenPeso === "tratamiento" ? (
               <span className="text-clinical-optimal">
@@ -479,46 +591,6 @@ function CadenaCaloricaSection({
                 prescrita (FA)» y «Factor actividad (PAL)» son el mismo factor con dos nombres, y nos mandó
                 "unifíquenlo en el suyo", que es PAL. Al portar su desplegable estuve a punto de traerme
                 también su rótulo, que es justo el desliz que él pidió no copiar. Lo atrapó el candado. */}
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs font-medium text-muted-foreground">PAL (factor)</span>
-              <select
-                name="adjPal"
-                value={pal}
-                onChange={(e) => setPal(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
-              >
-                {/* SUS CINCO NIVELES Y NADA MAS. Habia un sexto, "modelo: 1.375", que era nuestro y no
-                    suyo: mezclaba en la misma lista los niveles de actividad (una escala clinica) con
-                    "no elegi ninguno" (un estado del formulario). Se lee como si existiera un sexto nivel.
-                    Volver al valor del modelo es un ACTO, y los actos van en un boton aparte, que es el
-                    mismo patron del peso meta y del objetivo. */}
-                {pal === "" ? <option value="">Sin elegir</option> : null}
-                {NIVELES_FA.map((n) => (
-                  <option key={n.valor} value={n.valor}>
-                    {n.label}
-                  </option>
-                ))}
-              </select>
-              {/* El valor del modelo, FUERA de la lista y con su nombre. Es el mismo patron del peso meta
-                  y del objetivo: el valor sugerido se dice, y volver a el es un boton. */}
-              <span className="flex flex-wrap items-baseline gap-1.5 text-xs">
-                {pal === "" ? (
-                  <span className="text-muted-foreground">
-                    Sin elegir: se usa la del modelo, <strong>{nivelFaLabel(base.pal)}</strong>.
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
-                    onClick={() => setPal("")}
-                    disabled={locked}
-                    title="Vuelve al nivel que recomienda el modelo"
-                  >
-                    Usar la recomendación del modelo ({nivelFaLabel(base.pal)})
-                  </button>
-                )}
-              </span>
-            </label>
             <AdjInput
               name="adjProtGkg"
               label="Proteína (g/kg)"
@@ -549,7 +621,12 @@ function CadenaCaloricaSection({
               value={`${d0(cal.geb)} kcal`}
               detail={`(${cal.formula})`}
             />
-            <PrevRow op="×" label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
+            <PrevRow
+              op="×"
+              label="Nivel de actividad física (PAL)"
+              value={String(cal.pal)}
+              control={<PalSelect value={pal} onChange={setPal} modelo={base.pal} compacto />}
+            />
             <PrevRow op="=" resultado label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
             {/* El deficit se muestra SIEMPRE, tambien cuando es 0, y es deliberado: es un eslabon de la
                 cuenta, y una cuenta a la que le falta un renglon no cuadra a la vista. Hoy el modelo no
@@ -560,9 +637,21 @@ function CadenaCaloricaSection({
               // si esa operacion cambia algo. Con el signo colgando del valor, un deficit de 0 aparecia
               // como "+ Deficit del modelo", que es una suma que nadie hace.
               op="−"
-              label="Déficit del modelo"
-              value={deficitCadena > 0 ? `${d0(deficitCadena)} kcal` : "0 kcal"}
-              detail={deficitCadena > 0 ? undefined : "(no aplica déficit por fenotipo)"}
+              label={adj.deficit != null ? "Déficit (lo fijas tú)" : "Déficit del modelo"}
+              control={
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  value={deficit}
+                  onChange={(e) => setDeficit(e.target.value)}
+                  placeholder={d0(snap.estrategia.deficit ?? 0)}
+                  aria-label="Déficit calórico (kcal)"
+                  className="h-7 w-20 rounded-md border border-border bg-background px-1.5 text-right text-sm tabular-nums text-foreground"
+                />
+              }
+              value=""
+              detail="kcal"
             />
             {/* A DONDE LLEGA LA CUENTA. Cuando el profesional NO fijo el objetivo, este renglon ES el
                 objetivo y no hay dos numeros. Cuando SI lo fijo, se muestran los dos y rotulados: el de la
@@ -700,6 +789,7 @@ export function TreatmentPanel({
           kcalObj: protocol.adjKcalObj,
           protGkg: protocol.adjProtGkg,
           fatPct: protocol.adjFatPct,
+          deficit: protocol.adjDeficit,
           pesoMeta: protocol.pesoMetaFijado,
         }).calorico.kcalObj,
       )
@@ -825,6 +915,7 @@ export function TreatmentPanel({
               adjKcalObj: protocol.adjKcalObj,
               adjProtGkg: protocol.adjProtGkg,
               adjFatPct: protocol.adjFatPct,
+              adjDeficit: protocol.adjDeficit,
               pesoMetaFijado: protocol.pesoMetaFijado,
             }) + `§origen:${protocol.pesoMetaOrigen ?? ""}`,
           )}
@@ -1508,6 +1599,7 @@ function IntercambioSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
+    deficit: protocol.adjDeficit,
     pesoMeta: protocol.pesoMetaFijado,
   };
   // Objetivo efectivo desde los ajustes GUARDADOS (misma fuente que la cadena): base estable del intercambio.
@@ -2025,6 +2117,7 @@ function TiemposSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
+    deficit: protocol.adjDeficit,
     pesoMeta: protocol.pesoMetaFijado,
   };
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
@@ -2263,6 +2356,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
+    deficit: protocol.adjDeficit,
     pesoMeta: protocol.pesoMetaFijado,
   };
   const ef = computeProtocoloEfectivo(snap, adjGuardados);

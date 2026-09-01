@@ -104,6 +104,7 @@ describe("generateMenu: el objetivo sale de la cadena, no del campo guardado (ch
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
+  adjDeficit: null,
       adjPesoMeta: null,
     } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
     readResults.mockResolvedValue({
@@ -150,7 +151,8 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
       diagnosisConfirmed: true,
       restricciones: [],
       protocolSuggested: { ...SNAP, restricciones: [] },
-      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null,
+  adjDeficit: null, adjPesoMeta: null,
     } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
     // Y el MOTOR tampoco devuelve ninguna: desde el 2026-08-31 el gate lo decide `motorTratNutri`, no el
     // snapshot. Este es el paciente sin comorbilidad y con composicion normal, para el que su motor no
@@ -185,7 +187,8 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
       diagnosisConfirmed: true,
       restricciones: [],
       protocolSuggested: { ...SNAP, restricciones: [] },
-      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null,
+  adjDeficit: null, adjPesoMeta: null,
     } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
     const { getSurveyAnswersForEvaluation } = await import(
       "@/modules/evaluations/data/survey-answers-reader"
@@ -215,7 +218,8 @@ describe("lo que se adapta es la semana que el profesional TIENE DELANTE", () =>
       restricciones: ["Sin gluten"],
       protocolSuggested: SNAP,
       menuSemanal: { diaInicio: 0, celdas: { "0_desayuno": "LO QUE ESCRIBIO EL PROFESIONAL" } },
-      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null, adjPesoMeta: null,
+      adjGeb: null, adjPal: null, adjKcalObj: null, adjProtGkg: null, adjFatPct: null,
+  adjDeficit: null, adjPesoMeta: null,
     } as unknown as Awaited<ReturnType<typeof getTreatmentProtocol>>);
 
     const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });

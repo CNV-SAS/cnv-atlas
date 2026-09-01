@@ -469,6 +469,7 @@ export default async function ResultadosEvaluacionPage({
           kcalObj: protocol.adjKcalObj,
           protGkg: protocol.adjProtGkg,
           fatPct: protocol.adjFatPct,
+          deficit: protocol.adjDeficit,
           pesoMeta: protocol.pesoMetaFijado,
         })
       : null;

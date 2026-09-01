@@ -3368,6 +3368,7 @@ export type Database = {
       }
       treatments: {
         Row: {
+          adj_deficit: number | null
           adj_fat_pct: number | null
           adj_geb: number | null
           adj_kcal_obj: number | null
@@ -3409,6 +3410,7 @@ export type Database = {
           tiempos_activos: Json | null
         }
         Insert: {
+          adj_deficit?: number | null
           adj_fat_pct?: number | null
           adj_geb?: number | null
           adj_kcal_obj?: number | null
@@ -3450,6 +3452,7 @@ export type Database = {
           tiempos_activos?: Json | null
         }
         Update: {
+          adj_deficit?: number | null
           adj_fat_pct?: number | null
           adj_geb?: number | null
           adj_kcal_obj?: number | null

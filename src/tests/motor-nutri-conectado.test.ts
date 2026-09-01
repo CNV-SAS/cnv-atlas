@@ -120,8 +120,13 @@ describe("lo que NO se conectó, y es deliberado", () => {
     // Cunningham cuando hay masa libre de grasa, que es siempre (medimos bioimpedancia). El lo nombro y
     // dijo "no lo cambien ahora". Mostrar las dos seria repetir el defecto que esto cierra: dos numeros del
     // mismo concepto en la misma pantalla. Esta preguntado en la ronda del 31.
-    expect(READER, "se filtraron las kcal del otro motor a la pantalla").not.toContain("kcalObjetivo:");
-    expect(READER).not.toContain("geb:");
+    // SE MIRA LO QUE SALE DEL MOTOR, no cualquier aparicion del nombre: desde el 2026-09-01 el lector
+    // RECIBE un `kcalObjetivo` (el de la cadena, que entra como su `edit.kcal_obj` para que el tipo
+    // energetico se recalcule). Entrar no es mostrarse, y confundir las dos cosas volveria este candado
+    // un detector de nombres. Lo que sigue prohibido es leer las CIFRAS que el motor calcula.
+    expect(READER, "se filtraron las kcal del otro motor a la pantalla").not.toContain("m.kcalObjetivo");
+    expect(READER, "se filtro el GEB del otro motor a la pantalla").not.toContain("m.geb");
+    expect(READER, "se filtro el GET del otro motor a la pantalla").not.toContain("m.get");
   });
 
   it("CONTROL: el motor SÍ calcula esas cifras; lo que se decide es no mostrarlas", () => {

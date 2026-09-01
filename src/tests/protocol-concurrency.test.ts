@@ -204,6 +204,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
         kcalObj: schema.treatments.adjKcalObj,
         protGkg: schema.treatments.adjProtGkg,
         fatPct: schema.treatments.adjFatPct,
+        deficit: schema.treatments.adjDeficit,
       })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
@@ -215,6 +216,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: t.kcalObj != null ? Number(t.kcalObj) : null,
       adjProtGkg: t.protGkg != null ? Number(t.protGkg) : null,
       adjFatPct: t.fatPct != null ? Number(t.fatPct) : null,
+      adjDeficit: t.deficit != null ? Number(t.deficit) : null,
       pesoMetaFijado: pesoMeta,
     });
   }
@@ -246,6 +248,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
+      adjDeficit: null,
       pesoMetaFijado: 72.5,
       baseSignature: base,
       ...actor,
@@ -277,6 +280,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
         adjKcalObj: null,
         adjProtGkg: null,
         adjFatPct: null,
+      adjDeficit: null,
         pesoMetaFijado: null, // un guardado ciego aqui BORRARIA el peso meta fijado
         baseSignature: "STALE-DE-OTRA-SESION",
         ...actor,
@@ -313,6 +317,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
+      adjDeficit: null,
       pesoMetaFijado: 72.5, // el MISMO que ya estaba
       baseSignature: await currentAdjSignature(),
       ...actor,
@@ -332,6 +337,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
+      adjDeficit: null,
       pesoMetaFijado: 70,
       baseSignature: await currentAdjSignature(),
       ...actor,

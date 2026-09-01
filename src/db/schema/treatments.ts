@@ -70,6 +70,13 @@ export const treatments = pgTable("treatments", {
   adjKcalObj: integer("adj_kcal_obj"),
   adjProtGkg: numeric("adj_prot_gkg"),
   adjFatPct: integer("adj_fat_pct"),
+  // DEFICIT fijado por el profesional (kcal/dia). NULL = el del modelo (protocol_suggested.estrategia,
+  // hoy 0 para todos: Gildardo retiro los cinco por fenotipo el 2026-08-19). Entra a la cadena como
+  // kcalObj = max(1000, GET - deficit). Sin techo ni piso propios (2026-08-27 §5: ninguna cifra de la
+  // prescripcion nutricional lleva validacion; el motor propone y el profesional dispone).
+  adjDeficit: integer("adj_deficit"),
+  // SUPERSEDIDA por evaluations.weight_goal_kg (migracion 0096). No se escribe ni se lee: el peso meta es
+  // del paciente, no del tratamiento, y su fila tiene que existir siempre. Se conserva como historico.
   adjPesoMeta: numeric("adj_peso_meta"),
   // Estado de aprobacion. default 'draft' es una decision SEMANTICA deliberada: los
   // tratamientos previos (B13/demo) nunca pasaron por una aprobacion formal porque el

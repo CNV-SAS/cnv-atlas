@@ -93,7 +93,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -232,6 +232,7 @@ export async function getTreatmentProtocol(
     adjKcalObj: treatment.adj_kcal_obj != null ? Number(treatment.adj_kcal_obj) : null,
     adjProtGkg: treatment.adj_prot_gkg != null ? Number(treatment.adj_prot_gkg) : null,
     adjFatPct: treatment.adj_fat_pct != null ? Number(treatment.adj_fat_pct) : null,
+    adjDeficit: treatment.adj_deficit != null ? Number(treatment.adj_deficit) : null,
     restricciones: treatment.restricciones ?? [],
     objetivoTexto: treatment.objetivo_texto ?? null,
     intercambioPorciones: normalizeIntercambio(treatment.intercambio_porciones),
@@ -351,7 +352,7 @@ export async function getTreatmentForApproval(
   const { data: t, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_deficit",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -390,6 +391,7 @@ export async function getTreatmentForApproval(
       kcalObj: n(t.adj_kcal_obj),
       protGkg: n(t.adj_prot_gkg),
       fatPct: n(t.adj_fat_pct),
+      deficit: n(t.adj_deficit),
       pesoMeta: n(intake?.weight_goal_kg),
     },
     evaluationProfessionalId: evalRow.professional_id,

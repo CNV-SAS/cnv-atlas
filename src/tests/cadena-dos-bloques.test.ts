@@ -84,14 +84,22 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
     // Y el déficit es un eslabón de la cuenta, no un dato suelto: se computa del snapshot SELLADO (la
     // misma fuente que entra al motor), no restando GET menos objetivo, que con un objetivo fijado a mano
     // daría un déficit que el modelo nunca calculó.
-    expect(PANEL).toContain("const deficitCadena = snap.estrategia.deficit ?? 0");
-    expect(f).toContain('label="Déficit del modelo"');
+    expect(PANEL).toContain("const deficitCadena = adj.deficit ?? snap.estrategia.deficit ?? 0");
+    // EL MARCADOR CAMBIÓ, NO LA ASERCIÓN (2026-09-01): el déficit pasó a editable, así que su rótulo dice
+    // ahora quién lo fijó ("Déficit del modelo" / "Déficit (lo fijas tú)"). Lo que se afirma sigue siendo
+    // que el déficit es un renglón de la cuenta y no un dato suelto.
+    expect(f).toContain('"Déficit (lo fijas tú)" : "Déficit del modelo"');
   });
 
   it("la fórmula lleva GEB, PAL y el cuadre de macros", () => {
     // Los tres beneficios que pedimos y él concedió SIN fundir: el cuadre de macros va en el bloque de la
     // fórmula, no en el de la meta.
-    for (const marca of ['name="adjGeb"', 'name="adjPal"', 'name="adjProtGkg"', 'name="adjFatPct"']) {
+    //
+    // EL MARCADOR DEL PAL CAMBIÓ, NO LA ASERCIÓN (cotejo 2026-09-01, punto a): el PAL ahora se edita en
+    // LOS DOS bloques (arriba, entre los cuatro campos que su pantalla agrupa; abajo, dentro de la cuenta,
+    // donde es el factor que multiplica), con un solo estado detrás. El `name` lo lleva la copia de
+    // arriba, así que aquí el marcador es el componente, no el atributo.
+    for (const marca of ['name="adjGeb"', "<PalSelect value={pal}", 'name="adjProtGkg"', 'name="adjFatPct"']) {
       expect(FORMULA()).toContain(marca);
     }
     expect(FORMULA()).toContain("Reparto de macronutrientes");
@@ -105,6 +113,60 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
     // modelo, que es justo lo que le hace falta para decidir si moverlo.
     expect(META()).toContain("fijado por ti");
     expect(META()).toContain("sugerido por el modelo");
+  });
+});
+
+describe("los cuatro campos de la cadena se ven arriba, y son UN dato", () => {
+  // SU PANTALLA LOS AGRUPA (cotejo 2026-09-01, punto a): objetivo, PAL, déficit y peso meta van juntos en
+  // el bloque del objetivo, no repartidos entre dos bloques. Santiago: "que se repitan los campos, es
+  // decir, poner PAL 2 veces, pero si cambio un campo en uno, inmediatamente se cambia en el otro y ambos
+  // valores siempre van a ser iguales".
+  //
+  // "IGUALES" NO SE CONSIGUE SINCRONIZANDO, se consigue no teniendo dos: un solo `useState` leído desde
+  // los dos sitios. Dos estados sincronizados es como se crean las discrepancias que esto viene a evitar.
+
+  it("los cuatro están en el bloque de la meta", () => {
+    const meta = META();
+    for (const marca of ['name="pesoMeta"', 'name="adjKcalObj"', 'name="adjPal"', 'name="adjDeficit"']) {
+      expect(meta, `falta ${marca} arriba`).toContain(marca);
+    }
+  });
+
+  it("y el PAL y el déficit se repiten abajo con el MISMO estado, no con una copia", () => {
+    // El espejo de la cuenta lee `pal` y `deficit` (el estado) y escribe con `setPal`/`setDeficit`. Si
+    // alguna vez apareciera un segundo useState para lo mismo, aquí es donde se ve.
+    const formula = FORMULA();
+    expect(formula).toContain("<PalSelect value={pal} onChange={setPal}");
+    expect(formula).toContain("value={deficit}");
+    expect(formula).toContain("onChange={(e) => setDeficit(e.target.value)}");
+    const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
+    expect((seccion.match(/useState\(numToInput\(protocol\.adjPal\)\)/g) ?? []).length).toBe(1);
+    expect((seccion.match(/useState\(numToInput\(protocol\.adjDeficit\)\)/g) ?? []).length).toBe(1);
+  });
+
+  it("cada `name` aparece UNA SOLA VEZ en el formulario", () => {
+    // EL HAZARD DE REPETIR UN CAMPO, y solo se ve en un navegador real: dos inputs con el mismo `name`
+    // mandan DOS valores en el FormData y el servidor se queda con uno cualquiera. El profesional edita
+    // el de abajo, se guarda el de arriba, y nada avisa. Por eso el espejo NO lleva `name`.
+    const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
+    for (const n of ["pesoMeta", "adjGeb", "adjPal", "adjKcalObj", "adjProtGkg", "adjFatPct", "adjDeficit"]) {
+      const veces = (seccion.match(new RegExp(`name="${n}"`, "g")) ?? []).length;
+      expect(veces, `el campo ${n} lleva name ${veces} veces; con más de una el FormData manda dos valores`).toBe(1);
+    }
+  });
+
+  it("el déficit es editable, y admite negativos porque un déficit negativo es un superávit", () => {
+    // Aprobado el 2026-09-01 con su razón: el valor del modelo es 0 para todos desde que Gildardo retiró
+    // los cinco por fenotipo, así que abrir el campo NO elige de qué motor sale nada. Sin techo ni piso
+    // (2026-08-27 §5). El único límite que lo alcanza es el piso de 1.000 kcal de su propia cadena.
+    const val = readFileSync("src/modules/treatment/validations.ts", "utf8");
+    const i = val.indexOf("adjDeficit: z.coerce");
+    expect(i).toBeGreaterThan(-1);
+    expect(
+      val.slice(i, val.indexOf("baseSignature", i)),
+      "el déficit dejó de admitir negativos",
+    ).not.toContain(".min(0");
+    expect(PANEL).toContain("Un déficit negativo es un superávit");
   });
 });
 

@@ -162,6 +162,16 @@ const FA_NIVEL_POR_FACTOR: Record<string, string> = {
   "1.9": "muy_alta",
 };
 
+// LOS TRES ARGUMENTOS DE LA CADENA SON OBLIGATORIOS, y no es rigor de estilo: es el candado que faltaba.
+//
+// El 2026-08-31 se agrego `pesoMeta` como OPCIONAL y ningun caller lo paso. El motor cayo a su peso por
+// defecto (Lorentz) y los gramos de proteina que imprimia no eran los de la cadena que el profesional
+// tenia delante. Nada truena cuando se omite un parametro opcional: eso es lo que significa opcional.
+//
+// LA REGLA QUE SALE DE AHI: un parametro nuevo que cambia una salida CLINICA se declara obligatorio,
+// aunque su tipo admita null. Obligatorio-y-nullable obliga a ESCRIBIR la decision ("aqui no hay peso",
+// `null`) en vez de dejarla caer por omision, y tsc marca en rojo a todos los callers el dia que se
+// agrega. Es la unica forma barata de que una pieza no se quede sin su ultimo cable.
 export async function getPrescripcionNutricional(
   evaluationId: string,
   sexo: string,
@@ -172,7 +182,7 @@ export async function getPrescripcionNutricional(
    * usaría su propio default (Lorentz) e ignoraría el peso meta que fijó el profesional: dos gramajes del
    * mismo concepto en dos pantallas, que es el defecto que esta pieza vino a cerrar.
    */
-  pesoMeta?: number | null,
+  pesoMeta: number | null,
   /**
    * Objetivo calorico EFECTIVO de la cadena (el que el profesional fijo, o el del modelo). Entra como su
    * `edit.kcal_obj`, que es la entrada que SU PROPIO motor tiene para esto.
@@ -185,7 +195,7 @@ export async function getPrescripcionNutricional(
    * No hay ciencia nuestra aqui: la precedencia de cancer y desnutricion (que NO recalculan el tipo) la
    * sigue resolviendo su propia linea, dentro del motor.
    */
-  kcalObjetivo?: number | null,
+  kcalObjetivo: number | null,
   /**
    * PAL efectivo de la cadena. Entra como su `edit.fa_nivel`, la otra entrada que su motor ya tiene.
    *
@@ -193,7 +203,7 @@ export async function getPrescripcionNutricional(
    * de entrada, es la FORMULA del gasto: el suyo usa Mifflin sobre el peso meta y la cadena usa Cunningham
    * sobre masa libre de grasa. Esa es la pregunta abierta P-32/P-35 y NO se decide aqui.
    */
-  palEfectivo?: number | null,
+  palEfectivo: number | null,
 ): Promise<PrescripcionNutricional | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
