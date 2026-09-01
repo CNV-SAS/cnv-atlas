@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   diagnoses,
+  evaluationBisIntake,
   patientContraindications,
   treatmentApprovals,
   treatmentDietGuidelines,
@@ -608,7 +609,9 @@ export type SaveAdjustmentsWrite = {
   adjKcalObj: number | null;
   adjProtGkg: number | null;
   adjFatPct: number | null;
-  adjPesoMeta: number | null;
+  // El peso meta viaja con los otros cinco porque el formulario es UNO, pero se guarda en OTRA TABLA
+  // (`evaluation_bis_intake`, migracion 0095): el peso meta es del paciente, no del tratamiento.
+  pesoMetaFijado: number | null;
   // Firma de los seis ajustes que el cliente CARGÓ (candado de concurrencia).
   baseSignature: string;
   actorId: string;
@@ -635,13 +638,35 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         kcalObj: treatments.adjKcalObj,
         protGkg: treatments.adjProtGkg,
         fatPct: treatments.adjFatPct,
-        pesoMeta: treatments.adjPesoMeta,
+        evaluationId: diagnoses.evaluationId,
       })
       .from(treatments)
+      .innerJoin(diagnoses, eq(diagnoses.id, treatments.diagnosisId))
       .where(eq(treatments.id, input.treatmentId))
-      .for("update")
+      .for("update", { of: [treatments] })
       .limit(1);
     if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
+
+    // EL PESO META SE LOCKEA APARTE, porque vive en otra tabla desde la 0095. El orden importa y es
+    // siempre este (tratamiento y luego intake): la otra escritura del intake, la de las condiciones de la
+    // toma, no toca `treatments`, asi que no hay ciclo posible entre las dos y no hay deadlock.
+    const [intakeLocked] = await tx
+      .select({
+        pesoMeta: evaluationBisIntake.weightGoalKg,
+        origen: evaluationBisIntake.weightGoalSetIn,
+      })
+      .from(evaluationBisIntake)
+      .where(eq(evaluationBisIntake.evaluationId, locked.evaluationId))
+      .for("update")
+      .limit(1);
+    // Sin fila de intake no hay donde guardar el peso meta. Pasa solo si alguien llega al panel sin haber
+    // respondido las condiciones de la toma, que el propio flujo impide (sin ellas no se habilita el
+    // import y sin import no hay diagnostico). Se ataja con un error legible en vez de un null-deref.
+    if (!intakeLocked && input.pesoMetaFijado != null) {
+      throw new TreatmentStateError(
+        "No se puede guardar el peso meta: esta evaluación no tiene registradas las condiciones de la toma.",
+      );
+    }
     // Number() en TODO (los numeric vuelven string, los integer numero): misma normalizacion que el reader,
     // sin la cual la firma divergiria por scale y rechazaria guardados legitimos.
     const current = adjustmentSignature({
@@ -651,7 +676,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
       adjKcalObj: locked.kcalObj != null ? Number(locked.kcalObj) : null,
       adjProtGkg: locked.protGkg != null ? Number(locked.protGkg) : null,
       adjFatPct: locked.fatPct != null ? Number(locked.fatPct) : null,
-      adjPesoMeta: locked.pesoMeta != null ? Number(locked.pesoMeta) : null,
+      pesoMetaFijado: intakeLocked?.pesoMeta != null ? Number(intakeLocked.pesoMeta) : null,
     });
     if (current !== input.baseSignature) throw new StaleAdjustmentsError();
 
@@ -663,9 +688,30 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         adjKcalObj: input.adjKcalObj,
         adjProtGkg: input.adjProtGkg != null ? String(input.adjProtGkg) : null,
         adjFatPct: input.adjFatPct,
-        adjPesoMeta: input.adjPesoMeta != null ? String(input.adjPesoMeta) : null,
       })
       .where(eq(treatments.id, input.treatmentId));
+
+    // El peso meta, a su tabla. Se marca la PROCEDENCIA: lo fijo el nutricionista desde el tratamiento.
+    // Es informacion clinica, no metadato (no es lo mismo el peso acordado en la consulta que uno ajustado
+    // despues al armar el plan), y el CHECK de la 0095 exige que valor y procedencia viajen juntos.
+    if (intakeLocked) {
+      const anterior = intakeLocked.pesoMeta != null ? Number(intakeLocked.pesoMeta) : null;
+      // LA PROCEDENCIA SOLO CAMBIA SI CAMBIA EL VALOR. El formulario de la cadena manda las seis columnas
+      // de golpe, asi que se guarda tambien cuando el profesional vino a mover el PAL y ni toco el peso
+      // meta. Reescribir la procedencia en ese caso diria que el peso lo fijo el nutricionista cuando lo
+      // habia acordado el que hizo la entrada: convertiria un guardado cualquiera en una afirmacion falsa
+      // sobre quien decidio.
+      const cambio = anterior !== input.pesoMetaFijado;
+      await tx
+        .update(evaluationBisIntake)
+        .set({
+          weightGoalKg: input.pesoMetaFijado != null ? String(input.pesoMetaFijado) : null,
+          weightGoalSetIn:
+            input.pesoMetaFijado == null ? null : cambio ? "tratamiento" : (intakeLocked.origen ?? "tratamiento"),
+          updatedAt: sql`now()`,
+        })
+        .where(eq(evaluationBisIntake.evaluationId, locked.evaluationId));
+    }
     await recordAudit(tx, {
       event: "treatment.adjustments_updated",
       actorId: input.actorId,
@@ -678,7 +724,7 @@ export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void
         adj_kcal_obj: input.adjKcalObj,
         adj_prot_gkg: input.adjProtGkg,
         adj_fat_pct: input.adjFatPct,
-        adj_peso_meta: input.adjPesoMeta,
+        peso_meta: input.pesoMetaFijado,
       },
       ip: input.ip,
     });

@@ -6,6 +6,76 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## Barrido de campos capturados SIN LECTOR (2026-09-01, pedido de Santiago)
+
+**Por qué se hizo.** Tres defectos de la misma forma en cinco días: `motorTratNutri` portado y no llamado,
+la dinamometría capturada y no cableada, y el peso meta de la entrada escrito y sin lector. La
+característica común es la peligrosa: **ninguno da error.** No hay test rojo, no hay `tsc`, no hay pantalla
+rota. Hay un valor por defecto plausible ocupando el sitio. La señal barata es *"un campo que se escribe y
+del que no puedes nombrar quién lo lee, sin mirar, hay que ir a buscarlo"*.
+
+**Cómo se hizo.** Script sobre las 319 columnas del schema Drizzle: para cada una, se busca su nombre
+camelCase y su nombre `snake_case` en todo `src/`, `supabase/` y `scripts/`, y se clasifica cada archivo
+donde aparece en lado ESCRITURA (writer, action, form, validations, seed) o lado LECTURA. Se marcan las que
+solo aparecen del lado de escritura. **35 candidatas, y la mayoría son falsos positivos** de dos clases,
+que conviene tener escritas porque cualquier repetición del barrido las va a volver a producir:
+
+1. **El valor se consume DENTRO de su propio writer.** `nutraceutical_count_lines.physical_qty` parecía sin
+   lector y es el corazón de la conciliación de inventario: `count-writer` lo relee para calcular el
+   faltante y el sobrante. Un clasificador por ruta de archivo no puede ver eso.
+2. **Sellos de auditoría** (`*_by`, `*_at`). Se escriben para dejar rastro y que nadie los muestre es
+   correcto: el registro ES su función.
+
+### HALLAZGO 1 · Los cuatro campos tributarios del RUT: se capturan y no los lee nadie
+
+`professional_profiles.tax_is_income_declarant`, `tax_is_vat_responsible`, `tax_must_invoice`,
+`rut_document_date`.
+
+**Alguien de CNV los teclea.** Están en un formulario real (`tax-verification-row.tsx`), con sus rótulos
+*"¿Declarante de renta?"* y *"¿Obligado a facturar?"*; la acción los valida y `tax-verification-writer` los
+guarda. **Y ahí se acaban.** El único lector del estado tributario, `tax-status-reader.ts`, selecciona los
+otros trece campos de RUT y **no selecciona estos cuatro.** Fuera del payload de auditoría, nada los toca.
+
+**Por qué importa más que los otros:** no es un dato de pantalla, es una obligación. *"Obligado a facturar"*
+decide si el profesional debe emitir factura por su comisión; *"declarante de renta"* y *"responsable de
+IVA"* deciden retenciones. Alguien verificó un RUT, contestó cuatro preguntas de plata, y el sistema no usa
+ninguna de las cuatro respuestas.
+
+**Qué falta decidir antes de construir:** si estos campos deben CONDICIONAR el flujo de pago (retención,
+exigencia de factura) o solo mostrarse a quien revisa el RUT. Es una pregunta para Santiago, no técnica.
+Mientras tanto el dato está guardado y completo, así que no se perdió nada: solo no se usa.
+
+### HALLAZGO 2 · `followup_metrics`: la tabla entera se escribe y no se lee
+
+`pipeline-writer.ts:267` inserta una fila por métrica de cada seguimiento (`metric_name`, valor,
+`followup_id`). **Ningún lector.** La trayectoria que sí se muestra sale de otro lado: `serie-reader` lee
+`reports` y `bis_raw_values`, y `pipeline-trajectory` lee `bis_measurements` y `evaluations`. Fuera de los
+tests, nada consulta `followup_metrics`.
+
+**Menos grave que el 1**, y la diferencia vale registrarla: aquí no hay nada MAL en pantalla ni una decisión
+tomada sobre un dato inerte. Hay trabajo de cómputo y almacenamiento que no sirve a nadie. Las opciones son
+las dos de siempre: cablearla (si la trayectoria debería salir de ahí, que sería más barato que releer los
+reportes) o retirarla. **No se toca sin decidir cuál**, porque escribir en ella es lo único que hoy
+garantiza que el dato exista si mañana se cablea.
+
+### TERCERA CATEGORÍA · Columnas sin escritura NI lectura (schema muerto)
+
+`indicator_ranges.min_value` y `max_value`, `professional_certifications.certification_name` e
+`institution`, `nutraceuticals.last_updated`, `patient_contacts.assigned_at`,
+`research_datasets.requested_by`, `roles.assigned_at`.
+
+**No son el mismo defecto** y por eso van aparte: nadie las llena, así que nadie puede estar confiando en
+ellas. Son schema que se creó para algo que no se construyó. Se dejan como están; se revisan cuando se
+construya la pieza que las iba a usar.
+
+### Lo que este barrido deja instalado
+
+El script vive en el scratchpad y no en `scripts/`, a propósito: **produce más ruido que señal** (35
+candidatas para 2 hallazgos) y un check con esa proporción se ignora a la semana. Lo que sí queda es el
+criterio, que es lo reusable: al capturar un dato nuevo, nombrar quién lo lee ANTES de darlo por hecho.
+
+---
+
 ## Promesas del consentimiento FIRMADO: barrido de las que el sistema no puede cumplir (2026-08-28)
 
 **Por qué este barrido y no otro.** `CONSENT_ATLAS.md` no es un documento interno: es el texto que el paciente **firma**. Una promesa suya que el sistema no puede ejercer no es deuda de producto, es **una promesa incumplida por escrito**. El barrido se hizo sobre el texto que se sirve HOY (`consent-v1.0.ts`), no sobre el doc, porque es el que se firma.

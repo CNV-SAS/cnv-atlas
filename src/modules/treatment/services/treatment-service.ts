@@ -554,7 +554,7 @@ export async function saveAdjustments(
       adjKcalObj: input.adjKcalObj,
       adjProtGkg: input.adjProtGkg,
       adjFatPct: input.adjFatPct,
-      adjPesoMeta: input.adjPesoMeta,
+      pesoMetaFijado: input.pesoMeta,
       baseSignature: input.baseSignature,
       ...actor,
     });

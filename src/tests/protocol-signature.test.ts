@@ -26,8 +26,8 @@ const BASE: TreatmentProtocol = {
   proteinaGramos: 110,
   pesoCalculo: 70,
   pesoCalculoLabel: "Peso actual (IMC normal)",
-  adjPesoMeta: null,
-  pesoMetaIngreso: null,
+  pesoMetaFijado: null,
+  pesoMetaOrigen: null,
   adjGeb: null,
   adjPal: null,
   adjKcalObj: null,
@@ -102,7 +102,7 @@ describe("adjustmentSignature: key de remonte + base del candado de la cadena ca
     { nombre: "adjKcalObj", set: (p) => (p.adjKcalObj = 1800) },
     { nombre: "adjProtGkg", set: (p) => (p.adjProtGkg = 1.2) },
     { nombre: "adjFatPct", set: (p) => (p.adjFatPct = 25) },
-    { nombre: "adjPesoMeta", set: (p) => (p.adjPesoMeta = 72.5) },
+    { nombre: "adjPesoMeta", set: (p) => (p.pesoMetaFijado = 72.5) },
   ];
   for (const c of CAMPOS) {
     it(`un cambio del servidor en ${c.nombre} mueve la firma`, () => {

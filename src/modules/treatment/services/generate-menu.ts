@@ -87,10 +87,9 @@ export async function generateMenu(
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    // Peso meta EFECTIVO: el ajuste del panel o, si no lo hay, el que el profesional fijo en la entrada
-    // (un solo dato, dos superficies; Gildardo 2026-08-28 §2). El menu se arma sobre las mismas calorias y
-    // los mismos gramos de proteina que ve el nutricionista.
-    pesoMeta: protocol.adjPesoMeta ?? protocol.pesoMetaIngreso,
+    // El peso meta que gobierna, de su sitio unico (migracion 0095): el menu se arma sobre las mismas
+    // calorias y los mismos gramos de proteina que ve el nutricionista.
+    pesoMeta: protocol.pesoMetaFijado,
   });
   // El menu se arma desde el snapshot; si es de una era anterior del motor no tiene la forma
   // esperada (fenotipo/sector/rutas). Se bloquea con un mensaje claro en vez de tronar.

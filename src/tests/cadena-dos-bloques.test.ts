@@ -44,7 +44,7 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
   });
 
   it("el peso meta y el objetivo se EDITAN en el bloque de la meta", () => {
-    expect(META()).toContain('name="adjPesoMeta"');
+    expect(META()).toContain('name="pesoMeta"');
     expect(META()).toContain('name="adjKcalObj"');
   });
 
@@ -122,7 +122,7 @@ describe("se partió la PRESENTACIÓN, no el guardado", () => {
 
   it("los seis ajustes siguen viajando juntos en ese único formulario", () => {
     const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
-    for (const n of ["adjPesoMeta", "adjGeb", "adjPal", "adjKcalObj", "adjProtGkg", "adjFatPct"]) {
+    for (const n of ["pesoMeta", "adjGeb", "adjPal", "adjKcalObj", "adjProtGkg", "adjFatPct"]) {
       expect(seccion, `falta ${n} en el formulario de la cadena`).toContain(`name="${n}"`);
     }
   });

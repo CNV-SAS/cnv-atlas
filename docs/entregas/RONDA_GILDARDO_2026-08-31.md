@@ -39,7 +39,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
-| **9** | Declaración: **cinco cambios en la pantalla del nutricionista**, uno de ellos contra algo que aprobaste | Si las guías dietarias vuelven, y si los tiempos van en otro sitio | No |
+| **9** | Declaración: **cinco cambios en la pantalla del nutricionista**, uno de ellos contra algo que aprobaste | Si las guías dietarias vuelven, si los tiempos van en otro sitio, y si te sobra la procedencia del peso meta | No |
 
 ---
 
@@ -301,11 +301,16 @@ sellado, ni el menú. Se acordaba un peso meta con el paciente y la prescripció
 Ya está conectado: el peso de la entrada gobierna toda la cadena, el ajuste del panel lo reemplaza cuando
 el nutricionista lo mueve, y la pantalla dice de dónde viene el número en cada caso.
 
-**El residuo, y te lo decimos porque es exactamente lo que advertiste:** hoy los dos campos siguen
-guardándose en sitios distintos, así que en teoría pueden llegar a decir números diferentes aunque la
-pantalla muestre siempre cuál gobierna. *"Si los construyen como campos separados, el defecto lo crean
-ustedes"*, dijiste. Lo estamos unificando en un solo sitio de guardado. No necesitamos nada tuyo: es
-trabajo nuestro y va en la lista.
+**Y ya hay un solo sitio de guardado.** Cuando escribimos esto quedaba un residuo, dos columnas que en
+teoría podían decir números distintos, que es literalmente lo que advertiste (*"si los construyen como
+campos separados, el defecto lo crean ustedes"*). Se cerró el mismo día: el peso meta vive en el registro
+del **paciente** y el tratamiento lo lee, como dijiste. Las dos pantallas escriben en el mismo campo.
+
+**Lo que sí conservamos, y queremos que lo sepas porque no lo pediste:** de cuál de las dos superficies
+salió el número. En la pantalla del nutricionista dice *"fijado en la entrada"* o *"fijado por ti aquí"*.
+No es un dato de sistema: no es lo mismo el peso que acordaste con el paciente en la consulta que uno
+ajustado después, al armar el plan, y quien lee el plan tiene derecho a distinguirlos. **Si te sobra, se
+quita.**
 
 ---
 
@@ -314,9 +319,9 @@ trabajo nuestro y va en la lista.
 **Tuyo:** la recalibración del ICEC (μ y σ), que dijiste que va por tu lado y llega con el dato. El
 interruptor sigue en `false` y no lo tocamos.
 
-**Nuestro:** la salida impresa del plan alimentario (punto 9.4) y unificar el guardado del peso meta en un
-solo sitio (punto 9.5). Los dos sin bloqueo. La dinamometría, la reapertura del sellado y las notas por
-profesión, que estaban en construcción cuando empezamos esta ronda, ya están.
+**Nuestro:** la salida impresa del plan alimentario (punto 9.4), sin bloqueo. La dinamometría, la
+reapertura del sellado, las notas por profesión y la unificación del peso meta, que estaban en construcción
+cuando empezamos esta ronda, ya están.
 
 **Y una sola pregunta bloquea algo:** la del punto 1.
 

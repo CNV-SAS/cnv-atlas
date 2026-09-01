@@ -135,12 +135,14 @@ export type TreatmentProtocol = {
   // profesional (override); null = se usa el calculado. Todos null si el tratamiento no selló snapshot.
   pesoCalculo: number | null;
   pesoCalculoLabel: string | null;
-  adjPesoMeta: number | null;
-  // LA OTRA SUPERFICIE DEL MISMO DATO (Gildardo 2026-08-28 §2): "el campo va en la entrada, en mod
-  // antropometria... no son dos pesos meta, es uno. Si los construyen como campos separados, el defecto lo
-  // crean ustedes". Es `evaluation_bis_intake.weight_goal_kg`, que el profesional llena al ingreso.
-  // El peso que GOBIERNA la cadena es `adjPesoMeta ?? pesoMetaIngreso ?? pesoCalculo`, en ese orden.
-  pesoMetaIngreso: number | null;
+  // EL PESO META FIJADO, de un SOLO sitio (`evaluation_bis_intake.weight_goal_kg`, migracion 0095). Antes
+  // eran dos columnas que podian discrepar, que es justo lo que Gildardo advirtio el 28 (§2): "no son dos
+  // pesos meta, es uno... si los construyen como campos separados, el defecto lo crean ustedes". null = no
+  // lo ha fijado nadie y gobierna `pesoCalculo`.
+  pesoMetaFijado: number | null;
+  // De cual de las dos superficies salio. Se conserva al unificar porque es informacion clinica: no es lo
+  // mismo el peso acordado con el paciente en la consulta que uno ajustado despues al armar el plan.
+  pesoMetaOrigen: "entrada" | "tratamiento" | null;
   // Ajustes del profesional sobre la cadena calorica (pieza 2, columnas adj_*). null = usar el sugerido
   // sellado (protocolSuggested.calorico). Los cinco cascadean al recomputar con computeProtocoloEfectivo:
   // geb/pal cambian el GET; kcalObj lo fija a mano; protGkg/fatPct reparten macros. Entran a la firma de

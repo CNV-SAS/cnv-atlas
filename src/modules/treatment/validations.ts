@@ -231,7 +231,7 @@ export const saveAdjustmentsSchema = z.object({
     .min(0, "El porcentaje de grasa debe ser un número entero entre 0 y 100.")
     .max(100, "El porcentaje de grasa debe ser un número entero entre 0 y 100.")
     .nullable(),
-  adjPesoMeta: optNum("El peso meta debe ser un número positivo."),
+  pesoMeta: optNum("El peso meta debe ser un número positivo."),
   // Firma de los seis ajustes que el cliente cargó (candado de concurrencia; ver adjustmentSignature).
   // String opaco: se compara por igualdad, no se interpreta. Default "" para llamadas viejas sin firma.
   baseSignature: z.string().max(200).default(""),

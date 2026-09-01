@@ -69,7 +69,8 @@ const EMPTY: TreatmentActionState = { error: null, success: null, warning: null 
 // calcula la prescripción sale del snapshot (pesoCalculo) y, si nadie lo fija, se usa sin decirlo. Aquí se
 // MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, vía saveAdjustmentsAction). No
 // cambia el modelo del cálculo (eso es pieza 2, el re-port): solo lo hace visible y editable, honesto sobre
-// lo que hay. La key en el call-site (incluye adjPesoMeta) remonta al guardar, para que "fijado" se vea.
+// lo que hay. La key en el call-site (incluye el peso meta y su procedencia) remonta al guardar, para
+// que "fijado" se vea.
 // Entrada <-> numero para los ajustes. "" = sin ajuste (usar el valor del modelo). Basura tecleada (NaN)
 // tambien cuenta como sin ajuste, para que la vista previa no muestre NaN mientras el profesional escribe.
 const numToInput = (n: number | null): string => (n != null ? String(n) : "");
@@ -266,11 +267,11 @@ function PrevRow({
 // entrada ("Meta de peso", en las condiciones de la toma) y el ajuste de este panel. Textual suyo: "no son
 // dos pesos meta, es uno... si los construyen como campos separados, el defecto lo crean ustedes".
 //
-// Se resuelve en UNA funcion y no en cada sitio: el peso meta entra a la cadena entera (GEB, objetivo,
-// proteina), asi que un sitio que se olvide de la resolucion no da error, prescribe distinto.
-function pesoMetaFijado(p: TreatmentProtocol): number | null {
-  return p.adjPesoMeta ?? p.pesoMetaIngreso;
-}
+// YA NO HAY NADA QUE RESOLVER AQUI (migracion 0095): hasta el 2026-08-31 habia dos columnas y este panel
+// las resolvia con un helper; ahora hay UNA (`evaluation_bis_intake.weight_goal_kg`) y el lector la trae
+// como `pesoMetaFijado`, con `pesoMetaOrigen` diciendo de cual de las dos superficies salio. La
+// resolucion en el lector era el paso intermedio correcto, pero un helper por el que TODOS tienen que
+// acordarse de pasar sigue siendo mas fragil que no tener dos fuentes.
 
 function CadenaCaloricaSection({
   evaluationId,
@@ -287,7 +288,7 @@ function CadenaCaloricaSection({
   // perdia. Aqui el toast se dispara y LUEGO el refresh. En warning (stale) NO refresca: preserva la edicion.
   useFormToastRefreshOnSuccess(state);
   // useState-once desde la prop; el remonte (key del padre) re-deriva cuando el servidor cambia algo.
-  const [pesoMeta, setPesoMeta] = useState(numToInput(protocol.adjPesoMeta));
+  const [pesoMeta, setPesoMeta] = useState(numToInput(protocol.pesoMetaFijado));
   const [geb, setGeb] = useState(numToInput(protocol.adjGeb));
   const [pal, setPal] = useState(numToInput(protocol.adjPal));
   const [kcalObj, setKcalObj] = useState(numToInput(protocol.adjKcalObj));
@@ -305,19 +306,18 @@ function CadenaCaloricaSection({
     kcalObj: inputToNum(kcalObj),
     protGkg: inputToNum(protGkg),
     fatPct: inputToNum(fatPct),
-    // Vacio aqui NO significa "usa el calculado": significa "no lo ajusto en este panel", y entonces manda
-    // el que el profesional fijo en la ENTRADA. Es la misma resolucion que usa el servidor al sellar.
-    pesoMeta: inputToNum(pesoMeta) ?? protocol.pesoMetaIngreso,
+    // Vacio significa "nadie lo fijo": manda el peso CALCULADO. Ya no hay una segunda fuente detras (la
+    // 0095 unifico el guardado), asi que el campo dice exactamente lo que gobierna.
+    pesoMeta: inputToNum(pesoMeta),
   };
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
   const cal = computeProtocoloEfectivo(snap, adj).calorico;
   const base = snap.calorico; // cadena del MODELO (sellada), placeholder de cada campo.
   const pesoEfectivo = adj.pesoMeta ?? protocol.pesoCalculo;
-  // DE DONDE VIENE el peso meta que gobierna. Tres estados, no dos: el profesional pudo fijarlo aqui, o
-  // en la entrada (mod antropometria), o no fijarlo y quedarse con el calculado. Decir "sin registrar"
-  // cuando esta registrado arriba es la contradiccion entre superficies que ya nos costo un defecto.
-  const origenPeso: "panel" | "ingreso" | "calculado" =
-    protocol.adjPesoMeta != null ? "panel" : protocol.pesoMetaIngreso != null ? "ingreso" : "calculado";
+  // DE DONDE VIENE el peso meta que gobierna. Es UN valor, pero saber en cual de las dos superficies se
+  // fijo es informacion clinica y por eso se conservo al unificar: no es lo mismo el peso acordado con el
+  // paciente en la consulta que uno ajustado despues, aqui, al armar el plan.
+  const origenPeso: "tratamiento" | "entrada" | "calculado" = protocol.pesoMetaOrigen ?? "calculado";
 
   // Firma de los ajustes GUARDADOS (de la prop, invariante mientras se edita): es lo que el cliente cargó y
   // contra lo que el servidor compara bajo lock. NO la de lo que se esta editando.
@@ -328,7 +328,7 @@ function CadenaCaloricaSection({
     adjKcalObj: protocol.adjKcalObj,
     adjProtGkg: protocol.adjProtGkg,
     adjFatPct: protocol.adjFatPct,
-    adjPesoMeta: protocol.adjPesoMeta,
+    pesoMetaFijado: protocol.pesoMetaFijado,
   });
 
   const pesoCalcDisp = d1(protocol.pesoCalculo);
@@ -390,15 +390,11 @@ function CadenaCaloricaSection({
           </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
-              name="adjPesoMeta"
+              name="pesoMeta"
               label="Peso meta (kg)"
               value={pesoMeta}
               onChange={setPesoMeta}
-              placeholder={
-                protocol.pesoMetaIngreso != null
-                  ? `del ingreso: ${d1(protocol.pesoMetaIngreso)}`
-                  : `calculado: ${pesoCalcDisp}`
-              }
+              placeholder={`calculado: ${pesoCalcDisp}`}
               step="0.1"
             />
             <AdjInput
@@ -411,20 +407,16 @@ function CadenaCaloricaSection({
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {origenPeso === "panel" ? (
+            {origenPeso === "tratamiento" ? (
               <span className="text-clinical-optimal">
-                Peso meta fijado por ti aquí: <strong>{d1(protocol.adjPesoMeta as number)} kg</strong>.
-                {protocol.pesoMetaIngreso != null ? (
-                  <>
-                    {" "}
-                    Reemplaza el del ingreso ({d1(protocol.pesoMetaIngreso)} kg).
-                  </>
-                ) : null}
+                Peso meta fijado por ti aquí:{" "}
+                <strong>{d1(protocol.pesoMetaFijado as number)} kg</strong>.
               </span>
-            ) : origenPeso === "ingreso" ? (
+            ) : origenPeso === "entrada" ? (
               <span className="text-clinical-optimal">
-                Peso meta fijado en la entrada: <strong>{d1(protocol.pesoMetaIngreso as number)} kg</strong>
-                . Es el mismo dato, no otro: escribir aquí lo reemplaza para este plan.
+                Peso meta fijado en la entrada:{" "}
+                <strong>{d1(protocol.pesoMetaFijado as number)} kg</strong>. Es el mismo campo, no otro:
+                cambiarlo aquí lo cambia también allá.
               </span>
             ) : (
               <span className="text-muted-foreground">
@@ -432,20 +424,16 @@ function CadenaCaloricaSection({
                 {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO.
               </span>
             )}
-            {/* Vacia el campo. Al guardar con el campo vacio, adj_peso_meta queda null y manda el peso meta
-                del INGRESO si lo hay; si no, el pesoCalculo COMPLETO (no el mostrado redondeado). Por eso
-                el rotulo dice a donde vuelve de verdad: prometer "el calculado" cuando vuelve al del
-                ingreso seria el mismo desajuste que este bloque viene a cerrar. */}
+            {/* Vacia el campo. Al guardar vacio, el peso meta queda null (en las DOS superficies, que son
+                una) y manda el pesoCalculo COMPLETO, no el mostrado redondeado. */}
             <button
               type="button"
               className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
               onClick={() => setPesoMeta("")}
               disabled={locked}
-              title="Vacía el campo; guarda para quitar el ajuste de este panel"
+              title="Vacía el campo; guarda para volver al peso calculado"
             >
-              {protocol.pesoMetaIngreso != null
-                ? `Usar el del ingreso (${d1(protocol.pesoMetaIngreso)} kg)`
-                : `Usar el calculado (${pesoCalcDisp} kg)`}
+              Usar el calculado ({pesoCalcDisp} kg)
             </button>
           </div>
           {/* La distincion CALCULADO vs AJUSTADO, que es el segundo de los tres beneficios que concedio. */}
@@ -679,7 +667,7 @@ export function TreatmentPanel({
           kcalObj: protocol.adjKcalObj,
           protGkg: protocol.adjProtGkg,
           fatPct: protocol.adjFatPct,
-          pesoMeta: pesoMetaFijado(protocol),
+          pesoMeta: protocol.pesoMetaFijado,
         }).calorico.kcalObj,
       )
     : null;
@@ -804,8 +792,8 @@ export function TreatmentPanel({
               adjKcalObj: protocol.adjKcalObj,
               adjProtGkg: protocol.adjProtGkg,
               adjFatPct: protocol.adjFatPct,
-              adjPesoMeta: protocol.adjPesoMeta,
-            }) + `§ingreso:${protocol.pesoMetaIngreso ?? ""}`,
+              pesoMetaFijado: protocol.pesoMetaFijado,
+            }) + `§origen:${protocol.pesoMetaOrigen ?? ""}`,
           )}
           evaluationId={evaluationId}
           protocol={protocol}
@@ -1484,7 +1472,7 @@ function IntercambioSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: pesoMetaFijado(protocol),
+    pesoMeta: protocol.pesoMetaFijado,
   };
   // Objetivo efectivo desde los ajustes GUARDADOS (misma fuente que la cadena): base estable del intercambio.
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
@@ -2001,7 +1989,7 @@ function TiemposSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: pesoMetaFijado(protocol),
+    pesoMeta: protocol.pesoMetaFijado,
   };
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
   const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
@@ -2239,7 +2227,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: pesoMetaFijado(protocol),
+    pesoMeta: protocol.pesoMetaFijado,
   };
   const ef = computeProtocoloEfectivo(snap, adjGuardados);
   const objetivoEfectivo = Math.round(ef.calorico.kcalObj);

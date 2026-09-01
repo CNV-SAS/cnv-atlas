@@ -44,7 +44,7 @@ const KEYS_VACIAS: Record<string, string> = {
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
-      adjPesoMeta: null,
+      pesoMetaFijado: null,
     }),
   ),
   intercambio: sectionKey("intercambio", intercambioSignature({ treatmentId: T, intercambio: null })),

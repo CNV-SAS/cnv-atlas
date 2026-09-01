@@ -42,12 +42,34 @@ export async function writeBisConditionsIntake(
       .limit(1);
     const hasMeasurement = existing.length > 0;
 
+    // PESO META: sitio unico desde la 0095, compartido con el panel de tratamiento. La PROCEDENCIA solo
+    // cambia si cambia el VALOR: este formulario se re-guarda para corregir las condiciones de la toma, y
+    // marcar "entrada" en ese caso borraria el rastro de que lo habia fijado el nutricionista. Un guardado
+    // que no toco el dato no puede afirmar quien lo decidio.
+    const [previo] = await tx
+      .select({
+        pesoMeta: evaluationBisIntake.weightGoalKg,
+        origen: evaluationBisIntake.weightGoalSetIn,
+      })
+      .from(evaluationBisIntake)
+      .where(eq(evaluationBisIntake.evaluationId, input.evaluationId))
+      .limit(1);
+    const pesoMetaAnterior = previo?.pesoMeta != null ? Number(previo.pesoMeta) : null;
+    const pesoMetaCambio = pesoMetaAnterior !== input.weightGoalKg;
+    const weightGoalSetIn =
+      input.weightGoalKg == null
+        ? null
+        : pesoMetaCambio
+          ? "entrada"
+          : (previo?.origen ?? "entrada");
+
     const values = {
       evaluationId: input.evaluationId,
       bisConditionVersionId: input.versionId,
       conditionAnswers: input.answers,
       contraindicated: input.contraindicated,
       weightGoalKg: input.weightGoalKg == null ? null : String(input.weightGoalKg),
+      weightGoalSetIn,
       gripStrengthKg: input.gripStrengthKg == null ? null : String(input.gripStrengthKg),
     };
 
@@ -62,6 +84,7 @@ export async function writeBisConditionsIntake(
           conditionAnswers: values.conditionAnswers,
           contraindicated: values.contraindicated,
           weightGoalKg: values.weightGoalKg,
+          weightGoalSetIn: values.weightGoalSetIn,
           gripStrengthKg: values.gripStrengthKg,
           updatedAt: sql`now()`,
         },

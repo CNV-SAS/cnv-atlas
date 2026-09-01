@@ -93,7 +93,7 @@ export async function getTreatmentProtocol(
   const { data: treatment, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_peso_meta, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
+      "id, status, reopened_at, reopen_reason, kcal_objetivo, proteina_g, restricciones, objetivo_texto, intercambio_porciones, tiempos, tiempos_activos, menu_semanal, nutraceutical_decision, nutraceutical_decision_reason, nutraceutical_decision_note, nutraceutical_decision_at, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -162,7 +162,7 @@ export async function getTreatmentProtocol(
     // LEE" (2026-08-28 §2). Hasta hoy se GUARDABA Y NO LO LEIA NADIE: un campo vivo que no movia nada.
     supabase
       .from("evaluation_bis_intake")
-      .select("weight_goal_kg")
+      .select("weight_goal_kg, weight_goal_set_in")
       .eq("evaluation_id", evaluationId)
       .maybeSingle(),
   ]);
@@ -220,9 +220,11 @@ export async function getTreatmentProtocol(
     // el override del profesional (columna adj_peso_meta). Sin snapshot, pesoCalculo/label quedan null.
     pesoCalculo: suggestedSnapshot?.pesoCalculo ?? null,
     pesoCalculoLabel: suggestedSnapshot?.pesoCalculoLabel ?? null,
-    adjPesoMeta: treatment.adj_peso_meta != null ? Number(treatment.adj_peso_meta) : null,
-    pesoMetaIngreso:
-      intake.data?.weight_goal_kg != null ? Number(intake.data.weight_goal_kg) : null,
+    // NO se lee `treatments.adj_peso_meta`: quedo supersedida por la migracion 0095 y su contenido se
+    // copio aqui. Leerla otra vez reabriria las dos fuentes que esa migracion cerro.
+    pesoMetaFijado: intake.data?.weight_goal_kg != null ? Number(intake.data.weight_goal_kg) : null,
+    pesoMetaOrigen:
+      (intake.data?.weight_goal_set_in as "entrada" | "tratamiento" | null | undefined) ?? null,
     // Ajustes de la cadena (pieza 2). Numeros: los numeric (pal/prot_gkg) vuelven como string de PostgREST,
     // los integer (geb/kcal_obj/fat_pct) como numero; se normalizan TODOS con Number para que la firma de
     // ajustes coincida byte a byte con la que recomputa el writer bajo lock (misma normalizacion alla).
@@ -350,7 +352,7 @@ export async function getTreatmentForApproval(
   const { data: t, error: tErr } = await supabase
     .from("treatments")
     .select(
-      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct, adj_peso_meta",
+      "id, status, protocol_suggested, adj_geb, adj_pal, adj_kcal_obj, adj_prot_gkg, adj_fat_pct",
     )
     .eq("diagnosis_id", diag.id)
     .order("created_at", { ascending: false })
@@ -368,9 +370,9 @@ export async function getTreatmentForApproval(
     .maybeSingle();
   if (mErr) throw new Error(`treatment-reader(approval): bis_measurements: ${mErr.message}`);
 
-  // Peso meta de INGRESO, la otra superficie del MISMO dato (Gildardo 2026-08-28 §2). Se resuelve aqui,
-  // no en los ocho sitios que arman los ajustes: si la resolucion viviera en el caller, un caller nuevo
-  // la olvidaria y el sellado usaria un peso meta distinto del que muestra la pantalla.
+  // El peso meta vive en el intake (sitio unico, migracion 0095). Se lee aqui, no en los sitios que arman
+  // los ajustes: si la lectura viviera en el caller, un caller nuevo la olvidaria y el sellado usaria un
+  // peso meta distinto del que muestra la pantalla.
   const { data: intake, error: iErr } = await supabase
     .from("evaluation_bis_intake")
     .select("weight_goal_kg")
@@ -389,10 +391,7 @@ export async function getTreatmentForApproval(
       kcalObj: n(t.adj_kcal_obj),
       protGkg: n(t.adj_prot_gkg),
       fatPct: n(t.adj_fat_pct),
-      // EFECTIVO: el ajuste del tratamiento si lo hay, y si no el que el profesional fijo en la entrada.
-      // Los consumidores de esta lectura (el sellado al aprobar y el prompt del menu) necesitan el peso
-      // que GOBIERNA, no el de una de las dos superficies.
-      pesoMeta: n(t.adj_peso_meta) ?? n(intake?.weight_goal_kg),
+      pesoMeta: n(intake?.weight_goal_kg),
     },
     evaluationProfessionalId: evalRow.professional_id,
     bisMeasurementDate: meas?.measurement_date ?? null,

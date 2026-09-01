@@ -90,12 +90,20 @@ export const evaluationBisIntake = pgTable(
     // se computa una vez al guardar para que el bloqueo sea un check simple y robusto, no una
     // recomputacion del JSONB + catalogo en cada lectura. No recomputar despues.
     contraindicated: boolean("contraindicated").notNull().default(false),
-    // Fuerza prensil (kg): captura OPCIONAL en Atlas. Solo el dato; no viene del Biody, no
-    // alimenta el motor (Q5) y el veredicto de sarcopenia es materia de Diagnostico.
+    // Fuerza prensil (kg): captura del profesional (dinamometria). ENTRA AL MOTOR desde el 2026-08-31
+    // (criterio primario del fenotipo, EWGSOP2 segun su §2 del 28); el veredicto de sarcopenia se pinta
+    // en Diagnostico. Antes se capturaba y no la leia nadie.
     gripStrengthKg: numeric("grip_strength_kg"),
-    // Meta de peso (kg): la fija el PROFESIONAL (su recomendacion clinica). Campo propio; no
-    // se hereda del Delta de la tabla de composicion (semantica de signo confusa).
+    // PESO META (kg). SITIO UNICO desde la migracion 0095: es UN dato con dos superficies de edicion (esta
+    // pantalla y el panel de tratamiento), no dos datos. Gildardo, 2026-08-28 §2: "el peso meta no pertenece
+    // al tratamiento, pertenece al paciente. El motor lo calcula como punto de partida, el profesional lo
+    // fija, y el tratamiento lo LEE. No lo crea." Gobierna TODA la cadena calorica: gasto, objetivo y gramos
+    // de proteina. No se hereda del Delta de la tabla de composicion (semantica de signo confusa).
     weightGoalKg: numeric("weight_goal_kg"),
+    // De cual de las dos superficies salio. Es informacion clinica, no metadato: no es lo mismo el peso
+    // acordado con el paciente en la consulta que uno ajustado despues al armar el plan. Viaja SIEMPRE con
+    // el valor (CHECK de coherencia en la 0095): un valor sin procedencia es medio dato.
+    weightGoalSetIn: text("weight_goal_set_in", { enum: ["entrada", "tratamiento"] }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

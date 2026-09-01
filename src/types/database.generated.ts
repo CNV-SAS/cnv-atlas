@@ -990,6 +990,7 @@ export type Database = {
           id: string
           updated_at: string
           weight_goal_kg: number | null
+          weight_goal_set_in: string | null
         }
         Insert: {
           bis_condition_version_id: string
@@ -1001,6 +1002,7 @@ export type Database = {
           id?: string
           updated_at?: string
           weight_goal_kg?: number | null
+          weight_goal_set_in?: string | null
         }
         Update: {
           bis_condition_version_id?: string
@@ -1012,6 +1014,7 @@ export type Database = {
           id?: string
           updated_at?: string
           weight_goal_kg?: number | null
+          weight_goal_set_in?: string | null
         }
         Relationships: [
           {

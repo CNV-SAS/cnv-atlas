@@ -62,9 +62,15 @@
    desplegable con sus cinco niveles. **Tanda 2 (items 3-6):** el peso meta como un solo dato (la
    superficie de la entrada existía y NO LA LEIA NADIE), la poda de las ayudas que repetían la pantalla,
    la cadena dispuesta como una cuenta vertical, y la confirmación de los dos recálculos.
+   **Tanda 3 (unificacion del peso meta, migracion 0095):** un solo sitio de guardado, el del paciente,
+   conservando de cual de las dos superficies salio el numero.
    Su estado no se afirma aquí: lo dicen `peso-meta-una-sola-fuente`, `ayudas-que-son-garantias`,
-   `recalculo-dos-actos` y `cadena-dos-bloques`. **Falta la subpestaña de Rutas de atención**, que es la
-   otra mitad del gate 3 (`BACKLOG.md`).
+   `recalculo-dos-actos`, `cadena-dos-bloques` y `protocol-concurrency` (BD real). **Falta la subpestaña de
+   Rutas de atención**, que es la otra mitad del gate 3 (`BACKLOG.md`).
+
+   **OJO AL DESPLEGAR: la 0095 es una migracion con DATOS.** Copia `treatments.adj_peso_meta` al registro
+   del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
+   `pnpm db:check:cloud` antes de dar el push por terminado.
 
    **Esperan respuesta las de `RONDA_GILDARDO_2026-08-29.md`, y NINGUNA bloquea el cotejo.** Solo dos
    bloquean construcción futura: el puente frecuencia-porciones con el omega-3 (que enciende las diez

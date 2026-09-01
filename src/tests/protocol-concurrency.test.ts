@@ -129,6 +129,17 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     )[0].id;
     await db.insert(schema.treatmentNutraceuticals).values({ treatmentId, nutraceuticalId: nutraA, dosage: "1/dia", durationDays: 30 });
     await db.insert(schema.treatmentDietGuidelines).values({ treatmentId, guidelineText: "5 comidas al dia" });
+    // FILA DE INTAKE. El peso meta vive aqui desde la migracion 0095 (es del PACIENTE, no del
+    // tratamiento), asi que sin esta fila el candado de la cadena no tiene donde escribirlo. No es
+    // andamiaje del test: es lo que el flujo real garantiza siempre, porque sin las condiciones de la toma
+    // no se habilita el import, sin import no hay diagnostico y sin diagnostico no hay tratamiento.
+    const [bcv] = await db.select({ id: schema.bisConditionVersions.id }).from(schema.bisConditionVersions).limit(1);
+    await db.insert(schema.evaluationBisIntake).values({
+      evaluationId,
+      bisConditionVersionId: bcv.id,
+      conditionAnswers: {},
+      contraindicated: false,
+    });
   });
 
   afterAll(async () => {
@@ -139,6 +150,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     await db.delete(schema.treatmentDietGuidelines).where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
     await db.delete(schema.treatmentNotes).where(eq(schema.treatmentNotes.treatmentId, treatmentId));
     await db.delete(schema.treatments).where(eq(schema.treatments.id, treatmentId));
+    await db.delete(schema.evaluationBisIntake).where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
     await db.delete(schema.diagnoses).where(eq(schema.diagnoses.id, diagnosisId));
     await db.delete(schema.evaluations).where(eq(schema.evaluations.id, evaluationId));
     await db.delete(schema.patientProfiles).where(eq(schema.patientProfiles.patientId, patientId));
@@ -188,6 +200,10 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   // Tratamiento sub-tarea 2: candado de saveAdjustments (BD real). saveAdjustments ESCRIBE LAS SEIS columnas
   // adj_* de golpe; sin candado, dos guardados se pisan (el peso meta que otro profesional fijo se pierde).
   // Firma de los seis ajustes GUARDADOS = lo que el cliente cargo; el servidor la recomputa bajo lock.
+  // EL PESO META SE LEE DE OTRA TABLA (migracion 0095), y por eso esta funcion consulta dos: la firma
+  // tiene que recomponerse EXACTAMENTE como la recompone el servidor bajo lock, o el candado rechazaria
+  // guardados legitimos. Es la mitad que se rompe en silencio si alguien mueve el peso meta y se olvida
+  // de este lado.
   async function currentAdjSignature(): Promise<string> {
     const [t] = await db
       .select({
@@ -196,10 +212,10 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
         kcalObj: schema.treatments.adjKcalObj,
         protGkg: schema.treatments.adjProtGkg,
         fatPct: schema.treatments.adjFatPct,
-        pesoMeta: schema.treatments.adjPesoMeta,
       })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
+    const pesoMeta = await pesoMetaGuardado();
     return adjustmentSignature({
       treatmentId,
       adjGeb: t.geb != null ? Number(t.geb) : null,
@@ -207,8 +223,26 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: t.kcalObj != null ? Number(t.kcalObj) : null,
       adjProtGkg: t.protGkg != null ? Number(t.protGkg) : null,
       adjFatPct: t.fatPct != null ? Number(t.fatPct) : null,
-      adjPesoMeta: t.pesoMeta != null ? Number(t.pesoMeta) : null,
+      pesoMetaFijado: pesoMeta,
     });
+  }
+
+  /** El peso meta GUARDADO, de su sitio unico. */
+  async function pesoMetaGuardado(): Promise<number | null> {
+    const [i] = await db
+      .select({ peso: schema.evaluationBisIntake.weightGoalKg })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
+    return i?.peso != null ? Number(i.peso) : null;
+  }
+
+  /** La PROCEDENCIA guardada: se conserva al unificar porque es informacion clinica. */
+  async function origenPesoMeta(): Promise<string | null> {
+    const [i] = await db
+      .select({ origen: schema.evaluationBisIntake.weightGoalSetIn })
+      .from(schema.evaluationBisIntake)
+      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
+    return i?.origen ?? null;
   }
 
   it("adjustments camino feliz: firma base == actual -> escribe los seis", async () => {
@@ -220,16 +254,24 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       adjKcalObj: null,
       adjProtGkg: null,
       adjFatPct: null,
-      adjPesoMeta: 72.5,
+      pesoMetaFijado: 72.5,
       baseSignature: base,
       ...actor,
     });
     const [t] = await db
-      .select({ geb: schema.treatments.adjGeb, pesoMeta: schema.treatments.adjPesoMeta })
+      .select({ geb: schema.treatments.adjGeb })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
     expect(Number(t.geb)).toBe(1950);
-    expect(Number(t.pesoMeta)).toBe(72.5);
+    // El peso meta se guardo en SU tabla, no en la del tratamiento, y con su procedencia: lo fijo el
+    // nutricionista desde el panel. Sin la procedencia, el dato queda a medias (CHECK de la 0095).
+    expect(await pesoMetaGuardado()).toBe(72.5);
+    expect(await origenPesoMeta()).toBe("tratamiento");
+    const [viejo] = await db
+      .select({ pesoMeta: schema.treatments.adjPesoMeta })
+      .from(schema.treatments)
+      .where(eq(schema.treatments.id, treatmentId));
+    expect(viejo.pesoMeta, "la columna supersedida volvió a escribirse").toBeNull();
   });
 
   it("adjustments carrera: firma base != actual -> rechaza sin pisar (StaleAdjustmentsError)", async () => {
@@ -243,19 +285,67 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
         adjKcalObj: null,
         adjProtGkg: null,
         adjFatPct: null,
-        adjPesoMeta: null, // un guardado ciego aqui BORRARIA el peso meta fijado
+        pesoMetaFijado: null, // un guardado ciego aqui BORRARIA el peso meta fijado
         baseSignature: "STALE-DE-OTRA-SESION",
         ...actor,
       }),
     ).rejects.toBeInstanceOf(StaleAdjustmentsError);
 
-    // El dato quedo INTACTO: ni el GEB se piso ni el peso meta se borro.
+    // El dato quedo INTACTO: ni el GEB se piso ni el peso meta se borro. Y el peso meta importa doble
+    // aqui, porque ahora vive en OTRA TABLA: un rechazo que revirtiera solo la del tratamiento dejaria las
+    // dos escrituras desparejas, que es peor que no tener candado.
     const [t] = await db
-      .select({ geb: schema.treatments.adjGeb, pesoMeta: schema.treatments.adjPesoMeta })
+      .select({ geb: schema.treatments.adjGeb })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
     expect(Number(t.geb)).toBe(1950); // el del camino feliz, no 3000
-    expect(Number(t.pesoMeta)).toBe(72.5); // no se borro
+    expect(await pesoMetaGuardado()).toBe(72.5); // no se borro
+    expect(await origenPesoMeta()).toBe("tratamiento");
+  });
+
+  it("guardar la cadena SIN tocar el peso meta no reescribe quién lo fijó", async () => {
+    // El formulario de la cadena manda las seis columnas de golpe, asi que se guarda tambien cuando el
+    // profesional vino a mover el PAL y ni miro el peso meta. Si la procedencia se reescribiera en ese
+    // caso, un guardado cualquiera afirmaria que el peso lo decidio el nutricionista cuando lo habia
+    // acordado quien hizo la entrada. La procedencia es informacion clinica, no un sello de "ultimo que
+    // guardo": se conservo justo para poder distinguir esas dos cosas.
+    await db
+      .update(schema.evaluationBisIntake)
+      .set({ weightGoalKg: "72.5", weightGoalSetIn: "entrada" })
+      .where(eq(schema.evaluationBisIntake.evaluationId, evaluationId));
+
+    await saveAdjustments({
+      treatmentId,
+      adjGeb: 1950,
+      adjPal: 1.55, // lo unico que cambia
+      adjKcalObj: null,
+      adjProtGkg: null,
+      adjFatPct: null,
+      pesoMetaFijado: 72.5, // el MISMO que ya estaba
+      baseSignature: await currentAdjSignature(),
+      ...actor,
+    });
+
+    expect(await pesoMetaGuardado()).toBe(72.5);
+    expect(await origenPesoMeta(), "un guardado que no tocó el peso meta reescribió su procedencia").toBe(
+      "entrada",
+    );
+
+    // Y CAMBIARLO SI la cambia: sin esta mitad, el test de arriba pasaria verde tambien con la procedencia
+    // congelada para siempre, que es el otro modo de mentir sobre quien decidio.
+    await saveAdjustments({
+      treatmentId,
+      adjGeb: 1950,
+      adjPal: 1.55,
+      adjKcalObj: null,
+      adjProtGkg: null,
+      adjFatPct: null,
+      pesoMetaFijado: 70,
+      baseSignature: await currentAdjSignature(),
+      ...actor,
+    });
+    expect(await pesoMetaGuardado()).toBe(70);
+    expect(await origenPesoMeta()).toBe("tratamiento");
   });
 
   // Checkpoint 2.3: candado de saveNutraceuticals (BD real). Mismo patron que saveAdjustments: la prescripcion
