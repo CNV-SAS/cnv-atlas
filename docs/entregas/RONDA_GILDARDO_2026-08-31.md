@@ -39,7 +39,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
-| **9** | Declaración: **cinco cambios en la pantalla del nutricionista**, uno de ellos contra algo que aprobaste | Si las guías dietarias vuelven, si los tiempos van en otro sitio, y si te sobra la procedencia del peso meta | No |
+| **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
 
 ---
 
@@ -244,11 +244,15 @@ Tu archivo guarda por profesión (`trat.porProfesional[rol]`) al menos estos cam
 
 ---
 
-# 9 · Declaración: cinco cosas que cambiamos en la pantalla del nutricionista
+# 9 · Declaración: siete cosas que cambiamos en la pantalla del nutricionista
 
-**Cotejamos tu pantalla contra la nuestra, zona por zona.** Casi todo fue adoptar tu disposición. Estas
-cinco son las que te debemos decir, porque una va contra algo que aprobaste, otra es un hallazgo tuyo que
-nos sirvió, y las demás son huecos nuestros.
+**Cotejamos tu pantalla contra la nuestra, zona por zona, y la corregimos por tandas con una prueba en
+navegador entre cada una.** Casi todo fue adoptar tu disposición. Estas siete son las que te debemos
+decir: una va **contra algo que aprobaste** (9.1), otra **agrupa distinto que la tuya** (9.7), dos son
+**hallazgos que nos sirvieron a nosotros** (9.3 y 9.6) y el resto son **huecos nuestros** que ya cerramos
+o vamos a cerrar.
+
+**Ninguna te pide una decisión para seguir.** Si alguna no te gusta, se revierte.
 
 ## 9.1 · Retiramos las guías dietarias, que tú habías aprobado
 
@@ -292,6 +296,28 @@ Tu pantalla tiene la salida impresa del plan alimentario para entregárselo al p
 tiene.** No es una decisión nuestra ni una discrepancia: es un hueco que no habíamos registrado, y lo
 vamos a construir. Lo declaramos para que sepas que lo vimos y que no está esperando nada tuyo.
 
+## 9.5 · El peso meta ya es un solo dato, con un residuo que estamos cerrando
+
+**Tu punto 2 del 28 está aplicado**, y el defecto que anunciaste era peor de lo que suponíamos: el campo de
+la entrada existía desde hace meses, el profesional lo llenaba, y **no lo leía nada**. Ni la cadena, ni el
+sellado, ni el menú. Se acordaba un peso meta con el paciente y la prescripción no se movía un gramo.
+
+Ya está conectado: el peso de la entrada gobierna toda la cadena, el ajuste del panel lo reemplaza cuando
+el nutricionista lo mueve, y la pantalla dice de dónde viene el número en cada caso.
+
+**Y ya hay un solo sitio de guardado.** Cuando escribimos esto quedaba un residuo, dos columnas que en
+teoría podían decir números distintos, que es literalmente lo que advertiste (*"si los construyen como
+campos separados, el defecto lo crean ustedes"*). Se cerró el mismo día: el peso meta vive en el registro
+del **paciente** y el tratamiento lo lee, como dijiste. Las dos pantallas escriben en el mismo campo.
+
+**Lo que sí conservamos, y queremos que lo sepas porque no lo pediste:** de cuál de las dos superficies
+salió el número. En la pantalla del nutricionista dice *"fijado en la entrada"* o *"fijado por ti aquí"*.
+No es un dato de sistema: no es lo mismo el peso que acordaste con el paciente en la consulta que uno
+ajustado después, al armar el plan, y quien lee el plan tiene derecho a distinguirlos. **Si te sobra, se
+quita.**
+
+---
+
 ## 9.6 · El tipo de dieta lo decide un gasto que la pantalla no muestra
 
 **Apareció arreglando otra cosa, y te lo contamos porque es tu pregunta del gasto con una superficie
@@ -315,25 +341,42 @@ título del plan. No tocamos nada más mientras respondes.
 
 ---
 
-## 9.5 · El peso meta ya es un solo dato, con un residuo que estamos cerrando
+## 9.7 · Declaración: agrupamos en dos bloques lo que tu pantalla agrupa en uno
 
-**Tu punto 2 del 28 está aplicado**, y el defecto que anunciaste era peor de lo que suponíamos: el campo de
-la entrada existía desde hace meses, el profesional lo llenaba, y **no lo leía nada**. Ni la cadena, ni el
-sellado, ni el menú. Se acordaba un peso meta con el paciente y la prescripción no se movía un gramo.
+**Es forma, no contenido, y por eso te lo declaramos en vez de preguntártelo.** Los mismos campos, los
+mismos números, la misma cadena. Lo único distinto es dónde cae la línea que separa un bloque del
+siguiente.
 
-Ya está conectado: el peso de la entrada gobierna toda la cadena, el ajuste del panel lo reemplaza cuando
-el nutricionista lo mueve, y la pantalla dice de dónde viene el número en cada caso.
+Tu pantalla tiene **un bloque**, "Objetivo del tratamiento nutricional", con el objetivo calórico y los
+cuatro campos que lo producen. Atlas tiene **dos**: "Objetivo del plan" (donde se decide) y "Cómo se llega
+a ese objetivo" (la cadena que lo produce).
 
-**Y ya hay un solo sitio de guardado.** Cuando escribimos esto quedaba un residuo, dos columnas que en
-teoría podían decir números distintos, que es literalmente lo que advertiste (*"si los construyen como
-campos separados, el defecto lo crean ustedes"*). Se cerró el mismo día: el peso meta vive en el registro
-del **paciente** y el tratamiento lo lee, como dijiste. Las dos pantallas escriben en el mismo campo.
+**Y la razón de partirlo es tuya.** Es tu §8.1 del 26 de agosto, cuando te propusimos justo lo contrario,
+fundirlos, y dijiste que no:
 
-**Lo que sí conservamos, y queremos que lo sepas porque no lo pediste:** de cuál de las dos superficies
-salió el número. En la pantalla del nutricionista dice *"fijado en la entrada"* o *"fijado por ti aquí"*.
-No es un dato de sistema: no es lo mismo el peso que acordaste con el paciente en la consulta que uno
-ajustado después, al armar el plan, y quien lee el plan tiene derecho a distinguirlos. **Si te sobra, se
-quita.**
+> *"La fórmula desarrollada depende de la decisión del nutricionista de subir o bajar las calorías.
+> Primero se decide la meta; después se ve la cadena que la produce. Fundirlas invierte el orden y empuja
+> al profesional a mover la calculadora cuando lo que quería era fijar un objetivo."*
+
+Nos pareció una razón de orden de trabajo, no de estética, y la sostuvimos. **Lo que sí corregimos en esta
+ronda es que los cuatro campos estaban repartidos entre los dos bloques**, y ahora están juntos arriba,
+donde tú los pones. El PAL y el déficit se repiten abajo, dentro de la cuenta, pero son el mismo dato: se
+cambia uno y el otro cambia con él.
+
+**El objetivo calórico es el único que no repetimos como editable**, y también por tu instrucción de ese
+mismo §8.1: *"editable en uno solo y en lectura en el otro"*. Abajo se ve, con una etiqueta que dice dónde
+se cambia.
+
+**Si prefieres tu agrupación, se cambia.** Es una tarde de trabajo y no toca un solo número.
+
+### Y de paso, un rótulo
+
+A lo que tú llamas **"fórmula sintética"** nosotros le pusimos **"Cómo se llega a ese objetivo"**. No fue
+descuido: el rótulo nuestro dice lo que el bloque hace, y "sintética" describe cómo está escrita la
+fórmula, no para qué sirve mirarla. Un nutricionista que abre esa pantalla por primera vez sabe qué va a
+encontrar.
+
+**Si el rótulo te importa, lo devolvemos.** Es una palabra.
 
 ---
 
@@ -343,8 +386,8 @@ quita.**
 interruptor sigue en `false` y no lo tocamos.
 
 **Nuestro:** la salida impresa del plan alimentario (punto 9.4), sin bloqueo. La dinamometría, la
-reapertura del sellado, las notas por profesión y la unificación del peso meta, que estaban en construcción
-cuando empezamos esta ronda, ya están.
+reapertura del sellado, las notas por profesión, la unificación del peso meta y el pulido completo de la
+subpestaña del nutricionista, que estaban en construcción cuando empezamos esta ronda, ya están.
 
 **Y una sola pregunta bloquea algo:** la del punto 1.
 

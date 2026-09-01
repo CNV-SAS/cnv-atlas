@@ -170,6 +170,53 @@ describe("los cuatro campos de la cadena se ven arriba, y son UN dato", () => {
   });
 });
 
+describe("el desplegable del PAL nunca muestra un nivel que no es", () => {
+  // ESTA CLASE DE DEFECTO YA MORDIÓ DOS VECES, y la segunda la introduje arreglando la primera:
+  //
+  //   1 · Un `select` cuyo `value` no corresponde a ninguna `option` no muestra vacío: muestra LA
+  //       PRIMERA. Con el PAL sin elegir, eso pintaba "Sedentario (1.2)" como seleccionado.
+  //   2 · Se le puso una `option` de relleno... `disabled`. Y un navegador NO SELECCIONA una opción
+  //       deshabilitada: vuelve a caer en la primera elegible. La opción existía pero era inelegible, que
+  //       para el navegador es casi lo mismo que no existir. Mismo síntoma, causa nueva.
+  //
+  // Las dos son mentiras sobre una ENTRADA DE LA FÓRMULA, en la pantalla donde menos se puede mentir, y
+  // ninguna de las dos rompe nada: tsc, lint y jsdom pasan verdes. Solo se ven en un navegador real.
+  //
+  // POR ESO EL CANDADO ES SOBRE LA REGLA, no sobre el síntoma: el valor que se le da al `select` SIEMPRE
+  // tiene que corresponder a una `option` ELEGIBLE.
+
+  // Sin comentarios: el comentario del componente CITA la palabra prohibida para explicar por que no esta.
+  const PAL = quitarComentarios(bloque("function PalSelect", "function AdjInput"));
+
+  it("ninguna opción del PAL va deshabilitada", () => {
+    expect(
+      PAL,
+      "una option deshabilitada no se puede seleccionar: el navegador cae en la primera",
+    ).not.toContain("disabled");
+  });
+
+  it("sin elegir, el valor es el nivel del MODELO, no la cadena vacía", () => {
+    // Así el valor siempre corresponde a una option real de la lista.
+    expect(PAL).toContain("const modeloEnEscala = NIVELES_FA.some((n) => Number(n.valor) === modelo)");
+    expect(PAL).toContain('const mostrado = value !== "" ? value : modeloEnEscala ? String(modelo) : ""');
+    expect(PAL).toContain("value={mostrado}");
+  });
+
+  it("y el borde imposible (un factor fuera de su escala) tiene su propia opción, elegible", () => {
+    // Preferimos mostrar un número raro a mostrar uno falso: un factor que no esté en sus cinco niveles se
+    // ve tal cual, no se disfraza del primero de la lista.
+    expect(PAL).toContain('{mostrado === "" ? <option value="">');
+  });
+
+  it("lo que se GUARDA sigue distinguiendo 'no lo decidí' de 'elegí ese nivel'", () => {
+    // La mitad que no se ve, y es la razón por la que el botón no escribe el valor del modelo: ver el
+    // nivel del modelo no es lo mismo que haberlo elegido, y el registro clínico no puede atribuirle al
+    // profesional una decisión que no tomó. El estado sigue siendo "" y la columna sigue siendo null.
+    expect(PANEL).toContain('onClick={() => setPal("")}');
+    expect(PANEL).toContain("recomendada por el modelo");
+  });
+});
+
 describe("se partió la PRESENTACIÓN, no el guardado", () => {
   it("hay UN solo formulario y UN solo botón para los dos bloques", () => {
     // Los seis ajustes son una columna cada uno pero UNA unidad clínica: `saveAdjustments` las escribe de

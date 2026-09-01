@@ -122,10 +122,32 @@ function PalSelect({
   modelo: number;
   compacto?: boolean;
 }) {
+  // SIN OPCION DE RELLENO: cuando el profesional no ha elegido, el desplegable muestra EL NIVEL QUE
+  // RECOMIENDA EL MODELO, que es un nivel de verdad.
+  //
+  // ESTO ARREGLA UN DEFECTO Y RESPONDE UNA PREGUNTA, y las dos mitades importan:
+  //
+  // 1 · EL DEFECTO. Ayer la opcion de relleno iba `disabled`, y un navegador NO SELECCIONA una opcion
+  //     deshabilitada: cae a la primera que si lo este. Con "Sin elegir" deshabilitada, un PAL sin decidir
+  //     se veia como "Sedentario (1.2)" seleccionado. Es la MISMA familia que ya habiamos cazado (un
+  //     `select` cuyo `value` no corresponde a ninguna `option` muestra la primera), y el `disabled` la
+  //     reintrodujo por la puerta de atras: la opcion existia pero era inelegible, que para el navegador
+  //     es casi lo mismo que no existir. Se vio como un parpadeo al guardar; era permanente.
+  //
+  // 2 · LA PREGUNTA (Santiago, 2026-09-01): que el boton deje el valor recomendado en vez de "Sin elegir".
+  //     Asi queda, y SIN perder la distincion: lo que se muestra es el nivel del modelo, lo que se guarda
+  //     sigue siendo `null` = "el profesional no lo decidio". Ver o decidir no son lo mismo, y separar las
+  //     dos cosas deja las dos bien: la pantalla dice un nivel real y el registro no le atribuye al
+  //     profesional una decision que no tomo.
+  //
+  // El borde imposible (que el modelo devuelva un factor fuera de su escala de cinco) se cubre con una
+  // opcion propia, NO deshabilitada: preferimos mostrar un numero raro a mostrar uno falso.
+  const modeloEnEscala = NIVELES_FA.some((n) => Number(n.valor) === modelo);
+  const mostrado = value !== "" ? value : modeloEnEscala ? String(modelo) : "";
   return (
     <select
       name={name}
-      value={value}
+      value={mostrado}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Nivel de actividad física (PAL)"
       className={
@@ -134,17 +156,7 @@ function PalSelect({
           : "h-9 w-36 rounded-md border border-border bg-background px-2 text-sm text-foreground"
       }
     >
-      {/* "Sin elegir" NO SOBRA, y la razon es del navegador, no de diseño: un `select` cuyo `value` no
-          corresponde a ninguna `option` no muestra vacio, muestra LA PRIMERA. Sin esta linea, un PAL sin
-          elegir se veria como "Sedentario (1.2)" seleccionado, que es una mentira sobre una entrada de la
-          formula. Va `disabled`, que es la respuesta a lo que se pregunto en el smoke: SE VE como estado
-          actual y NO se puede elegir a proposito. Volver al valor del modelo es un acto, y su via es el
-          boton que va al lado. */}
-      {value === "" ? (
-        <option value="" disabled>
-          {compacto ? `modelo: ${modelo}` : "Sin elegir"}
-        </option>
-      ) : null}
+      {mostrado === "" ? <option value="">{`modelo: ${modelo}`}</option> : null}
       {NIVELES_FA.map((n) => (
         <option key={n.valor} value={n.valor}>
           {n.label}
@@ -153,7 +165,6 @@ function PalSelect({
     </select>
   );
 }
-
 function AdjInput({
   name,
   label,
@@ -503,8 +514,11 @@ function CadenaCaloricaSection({
               valor sugerido se dice, y volver a el es un boton. */}
           <p className="flex flex-wrap items-baseline gap-2 text-xs">
             {pal === "" ? (
+              // El desplegable YA muestra el nivel; aqui solo se dice de quien es. La distincion la pidio
+              // conservar el propio diseño: ver el nivel del modelo no es lo mismo que haberlo elegido, y
+              // el registro no debe atribuirle al profesional una decision que no tomo.
               <span className="text-muted-foreground">
-                Actividad sin elegir: se usa la del modelo, <strong>{nivelFaLabel(base.pal)}</strong>.
+                Actividad <strong>recomendada por el modelo</strong>. Elige otra si no corresponde.
               </span>
             ) : (
               <button
@@ -512,7 +526,7 @@ function CadenaCaloricaSection({
                 className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
                 onClick={() => setPal("")}
                 disabled={locked}
-                title="Vuelve al nivel que recomienda el modelo"
+                title="Deja el nivel que recomienda el modelo, sin registrarlo como decisión tuya"
               >
                 Usar la recomendación del modelo ({nivelFaLabel(base.pal)})
               </button>
