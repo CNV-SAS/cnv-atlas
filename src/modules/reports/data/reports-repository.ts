@@ -208,6 +208,10 @@ export type ReportDispatch = {
   documentLabel: string;
   email: string | null;
   evaluationDate: string;
+  /** Fecha de la CONSULTA (`evaluations.created_at`). Distinta de la de la medicion, que sale del BIS.
+   *  Hoy se DEDUCE del registro; su archivo la captura, y esta preguntado (ronda del 31, punto 2). Si
+   *  responde que debe capturarse, cambia de donde sale, no si se muestra. */
+  consultationDate: string;
   // P0 Parte 2 (P5): el TEXTO de la banda que el PACIENTE debe ver en el PDF, o null si no va sección.
   // Regla: hay banda sellada Y (banda != empeoró, O empeoró confirmado). La confirmación garantizó la
   // cita, así que confirmado implica cita. Computado aquí (una sola fuente de la regla); el PDF lo pinta.
@@ -308,9 +312,18 @@ export async function getReportDispatch(reportId: string): Promise<ReportDispatc
     // desde Storage (`storagePath`), es un archivo y no se vuelve a renderizar. Solo cambian los que aun
     // no han salido de la clinica, que es lo que se quiere.
     evaluationDate: fechaDeMedicion(data.evaluations) ?? data.created_at,
+    // La de la CONSULTA sale del embed que la consulta ya trae: cero consultas nuevas.
+    consultationDate: fechaDeConsulta(data.evaluations) ?? data.created_at,
     patientBandText,
     patientBandAppointmentDate,
   };
+}
+
+// Fecha de la CONSULTA (`evaluations.created_at`), del mismo embed. Va aparte de la de MEDICION porque
+// son dos fechas distintas y el paciente no tiene como saber cual esta viendo si el rotulo dice "Fecha".
+function fechaDeConsulta(ev: unknown): string | null {
+  const uno = (Array.isArray(ev) ? ev[0] : ev) as { created_at?: string | null } | undefined;
+  return uno?.created_at ?? null;
 }
 
 // Fecha de MEDICION de la evaluacion del reporte; null si aun no se midio.

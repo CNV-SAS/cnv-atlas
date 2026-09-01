@@ -1,11 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-/** El codigo sin comentarios: los comentarios CITAN las frases prohibidas para explicar por que lo estan.
- *  Un candado que caza su propia documentacion es ruido, y el ruido es como mueren los candados. */
-function quitarComentarios(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-}
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 
 // CANDADO DE LA SEPARACION DE LA CADENA CALORICA en sus dos bloques (§8.1, 2026-08-26 Parte 2).
 //
@@ -186,7 +183,7 @@ describe("el desplegable del PAL nunca muestra un nivel que no es", () => {
   // tiene que corresponder a una `option` ELEGIBLE.
 
   // Sin comentarios: el comentario del componente CITA la palabra prohibida para explicar por que no esta.
-  const PAL = quitarComentarios(bloque("function PalSelect", "function AdjInput"));
+  const PAL = sinComentarios(bloque("function PalSelect", "function AdjInput"));
 
   it("ninguna opción del PAL va deshabilitada", () => {
     expect(
@@ -248,10 +245,10 @@ describe("el desliz del doble nombre del factor de actividad", () => {
     // punto de traerme también su rótulo "Actividad prescrita (FA)", que es exactamente el desliz que él
     // mandó no copiar. Se mira el CÓDIGO sin comentarios, porque el comentario cita la frase prohibida
     // para explicar por qué lo está.
-    const sinComentarios = quitarComentarios(PANEL);
-    expect(sinComentarios).not.toContain("Actividad prescrita");
-    expect(sinComentarios).not.toContain("(FA)");
-    expect(sinComentarios).toContain(">PAL (factor)<");
-    expect(sinComentarios).toContain("Nivel de actividad física (PAL)");
+    const codigo = sinComentarios(PANEL);
+    expect(codigo).not.toContain("Actividad prescrita");
+    expect(codigo).not.toContain("(FA)");
+    expect(codigo).toContain(">PAL (factor)<");
+    expect(codigo).toContain("Nivel de actividad física (PAL)");
   });
 });

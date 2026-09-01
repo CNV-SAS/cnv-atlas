@@ -51,6 +51,7 @@ export async function GET(
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
       evaluationDate: formatDate(dispatch.evaluationDate),
+      consultationDate: formatDate(dispatch.consultationDate),
       reportId: dispatch.reportId,
     },
     {

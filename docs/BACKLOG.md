@@ -6,6 +6,79 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## El reporte del paciente en su idioma: lo que podemos hacer sin inventar (smoke 2026-09-01)
+
+**Observación de Santiago, y es la correcta:** hay cifras en el reporte que un paciente no puede leer.
+*"Proteína: 1 g/kg"*, *"Hidratación de 30 a 35 mL/kg/día"*, *"MULTI-CELL BASE, OMEGA COMPLEX"*.
+
+**La frontera es clara y conviene tenerla escrita**, porque la línea entre traducir y reescribir es
+justo donde la Regla 0 muerde:
+
+| Podemos | No podemos |
+| --- | --- |
+| **Convertir a lo que la persona usa**: 30-35 mL/kg × 80 kg = 2,4 a 2,8 L, y eso son ~10 vasos. Es aritmética sobre su cifra, no una cifra nueva | **Cambiar el número**. Si dice 30-35 mL/kg, no se redondea a "2 litros" |
+| **Decir qué significa un rótulo suyo** cuando él ya lo explicó en algún sitio del archivo | **Escribir la explicación** de qué hace un nutracéutico, si no está en su archivo |
+| **Añadir la unidad cotidiana AL LADO de la clínica**, sin sustituirla | **Sustituir** la clínica por la cotidiana: la primera es la que el profesional verifica |
+
+### Los tres casos, medidos
+
+1. **Hidratación → vasos.** *Se puede hoy.* Es su misma cifra multiplicada por el peso y dividida por
+   250 mL. Ojo con una cosa: el vaso de 250 mL es una convención, no un dato suyo, así que va **junto** a
+   los mL, no en su lugar.
+2. **Proteína 1 g/kg.** *Se puede a medias.* Los gramos al día (1 × peso meta) ya los calcula el motor
+   (`protG`), así que decir "80 g al día" es su dato, no uno nuevo. Traducirlo a alimentos ("equivale a...")
+   **no**: eso es contenido nutricional que no está en su archivo.
+3. **Nutracéuticos.** *No se puede.* Hoy solo tenemos el nombre comercial (`nutraceuticos`, una cadena de
+   texto del snapshot). Qué hace cada uno y qué componentes tiene **no está en ninguna parte de su
+   archivo**. Y el catálogo de Atlas tiene `indication` y `composition`, pero son campos de operación
+   (inventario), no textos escritos para un paciente.
+
+**Va a la ronda como pregunta, con la propuesta ya hecha:** los dos primeros los podemos redactar nosotros
+porque son aritmética sobre sus cifras; el tercero necesita que él escriba (o apruebe) una línea por
+nutracéutico. Y hasta que la escriba, el paciente recibe el nombre, que es lo que hay.
+
+---
+
+## Unificar las notas por evaluación (propuesta de Santiago, 2026-09-01)
+
+**Hoy hay TRES sitios donde se escribe una nota, y cada uno va a un lado distinto:**
+
+| Dónde se escribe | Dónde vive | Quién la ve |
+| --- | --- | --- |
+| Panel de tratamiento ("Notas del tratamiento") | `treatment_notes`, por consulta, con su profesión | Solo la historia clínica. **No sale al paciente** |
+| Reporte/HC ("mis notas") | `reports.professional_notes`, se congela al aprobar | El paciente, si el modo de envío las incluye |
+| Seguimiento | (verificado: no hay campo de notas propio) | — |
+
+**La propuesta:** un solo apartado, desplegable, por evaluación; en blanco al abrir una evaluación nueva.
+
+**Lo que hay que resolver antes de construirlo, y es lo que la hace más que un cambio de sitio:** las dos
+notas que existen tienen **destinatarios distintos**, y esa diferencia es clínica, no de organización. Las
+del tratamiento son internas y su propia pantalla lo dice ("no se envían al paciente"); las del reporte se
+escriben PARA el paciente y se congelan al aprobar, porque son parte de un documento que sale de la
+clínica.
+
+**Unificarlas sin conservar esa distinción haría que una nota interna termine en el correo de un paciente,
+o al revés.** Así que el apartado único necesita, por nota, una marca de a dónde va. Con eso, la propuesta
+es buena: un solo sitio donde escribir, y el sistema decide dónde aparece.
+
+**Y una pieza más, que Santiago pidió sin nombrarla:** que al abrir una evaluación nueva salga en blanco.
+Eso ya se cumple para las del tratamiento (cuelgan del tratamiento de esa evaluación) pero **no** para las
+del reporte, y esa es otra razón para unificar.
+
+---
+
+## Los tres modos de envío del reporte ("Reporte de Atlas / Solo mis notas / Ambos")
+
+Santiago: *"pienso que esto lo debemos cambiar"*. **De acuerdo, y hay una razón nueva:** los tres modos se
+diseñaron cuando el reporte era el documento clínico. Ahora el reporte **es el plan del paciente** (su
+§7.1), y "solo mis notas" significa mandarle al paciente sus notas **sin el plan**, que no es un modo que
+alguien vaya a querer.
+
+Va con la unificación de notas, porque el modo `notas` desaparece si la nota lleva su propia marca de
+destino.
+
+---
+
 ## Derechos del paciente sobre su historia clínica (asesoría legal, 2026-09-01)
 
 **El criterio de Gildardo y el derecho del paciente no se contradicen, y la asesoría legal dice cómo

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import type { ProtocoloSnapshot } from "@/clinical-engine/protocolo";
 
@@ -41,10 +43,6 @@ const MUDANZA = readFileSync("drizzle/0096_peso_meta_en_la_evaluacion.sql", "utf
 const CORRECCION = readFileSync("src/modules/corrections/services/correct-evaluation.ts", "utf8");
 const FIRMA = readFileSync("src/modules/treatment/data/protocol-signature.ts", "utf8");
 
-/** El codigo sin comentarios: los comentarios CITAN lo que el candado prohibe, para explicar por que. */
-function quitarComentarios(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-}
 
 describe("hay UN solo sitio de guardado, y es el del paciente", () => {
   it("nadie lee ni escribe `adj_peso_meta`: quedó supersedida", () => {
@@ -58,8 +56,8 @@ describe("hay UN solo sitio de guardado, y es el del paciente", () => {
       ["menú", MENU],
     ];
     for (const [nombre, src] of fuentes) {
-      expect(quitarComentarios(src), `${nombre} volvió a tocar adj_peso_meta`).not.toContain("adj_peso_meta");
-      expect(quitarComentarios(src), `${nombre} volvió a tocar adjPesoMeta`).not.toContain("adjPesoMeta");
+      expect(sinComentarios(src), `${nombre} volvió a tocar adj_peso_meta`).not.toContain("adj_peso_meta");
+      expect(sinComentarios(src), `${nombre} volvió a tocar adjPesoMeta`).not.toContain("adjPesoMeta");
     }
   });
 
@@ -75,7 +73,7 @@ describe("hay UN solo sitio de guardado, y es el del paciente", () => {
     expect(READER).toContain("pesoMeta: n(intake?.weight_goal_kg)");
     expect(MENU).toContain("pesoMeta: protocol.pesoMetaFijado");
     // Y el panel no resuelve nada: si volviera a haber un helper de resolucion, es que volvieron las dos.
-    expect(quitarComentarios(PANEL)).not.toContain("function pesoMetaFijado(");
+    expect(sinComentarios(PANEL)).not.toContain("function pesoMetaFijado(");
   });
 });
 
@@ -117,13 +115,13 @@ describe("vive donde la fila SIEMPRE existe (migración 0096)", () => {
     // Y los lectores/escritores apuntan ahi, no al intake.
     expect(READER).toContain('.from("evaluations")');
     expect(WRITER).toContain(".from(evaluations)");
-    expect(quitarComentarios(WRITER)).not.toContain("evaluationBisIntake");
+    expect(sinComentarios(WRITER)).not.toContain("evaluationBisIntake");
   });
 
   it("y por eso el writer ya no tiene guarda de \"y si no existe la fila\"", () => {
     // La guarda era correcta mientras el dato colgara de una fila opcional. Con el dato en su sitio, la
     // guarda sobra: si volviera a hacer falta, es que el peso meta volvio a colgar de algo opcional.
-    expect(quitarComentarios(WRITER)).not.toContain("no tiene registradas las condiciones de la toma");
+    expect(sinComentarios(WRITER)).not.toContain("no tiene registradas las condiciones de la toma");
   });
 
   it("es POR EVALUACION y no por paciente, y la base lo explica", () => {

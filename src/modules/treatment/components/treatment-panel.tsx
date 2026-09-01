@@ -360,10 +360,13 @@ function CadenaCaloricaSection({
   evaluationId,
   protocol,
   locked,
+  prescripcion,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
+  /** La prescripcion del motor que gobierna, para AVISAR si su proteina difiere de la de la cadena. */
+  prescripcion: PrescripcionNutricional | null;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
   // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
@@ -623,6 +626,22 @@ function CadenaCaloricaSection({
               step="1"
             />
           </div>
+          {/* DOS PROTEINAS DEL MISMO PACIENTE, y hay que decirlo (hallazgo del smoke, 2026-09-01).
+              El chip de arriba dice lo que PRESCRIBE `motorTratNutri`, el motor que Gildardo puso a
+              gobernar la prescripcion nutricional. Esta cadena calcula los macros con el `protMin` de
+              `atlas-protocolo`. Para el paciente del smoke: 1 g/kg contra 0,8. Es el mismo concepto con
+              dos valores, y en 80 kg son 16 gramos de proteina al dia de diferencia.
+              NO SE ELIGE POR EL PROFESIONAL: cual motor manda las cifras es la pregunta abierta P-32/P-35.
+              Lo que si se puede es que no descubra la diferencia comparando dos numeros a ojo. El campo de
+              arriba es editable: si quiere el del modelo de nutricion, lo escribe. */}
+          {prescripcion != null && prescripcion.protKg !== cal.protGKg ? (
+            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
+              El modelo de nutrición prescribe <strong>{String(prescripcion.protKg).replace(".", ",")} g/kg</strong> y
+              esta cadena está calculando con <strong>{String(cal.protGKg).replace(".", ",")} g/kg</strong>{" "}
+              ({d0(cal.protG)} g al día). Si quieres el del modelo, escríbelo en Proteína (g/kg).
+            </p>
+          ) : null}
+
           {/* Vista previa EN VIVO: la cadena efectiva con lo que hay en pantalla, antes de guardar. */}
           <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
             <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -937,6 +956,7 @@ export function TreatmentPanel({
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
+          prescripcion={prescripcion}
         />
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
             guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}

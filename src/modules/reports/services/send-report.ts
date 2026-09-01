@@ -65,6 +65,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
       evaluationDate: formatDate(dispatch.evaluationDate),
+      consultationDate: formatDate(dispatch.consultationDate),
       reportId: dispatch.reportId,
     },
     {
@@ -144,6 +145,7 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
       patientName: dispatch.patientName || "Paciente",
       documentLabel: dispatch.documentLabel,
       evaluationDate: formatDate(dispatch.evaluationDate),
+      consultationDate: formatDate(dispatch.consultationDate),
       reportId: dispatch.reportId,
     },
     {
