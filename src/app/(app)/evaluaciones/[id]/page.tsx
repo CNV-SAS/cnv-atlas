@@ -533,16 +533,44 @@ export default async function ResultadosEvaluacionPage({
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
   const ps = protocol?.protocolSuggested ?? null;
-  const hcPlan = ps
+  // LA HISTORIA REGISTRA LO PRESCRITO, NO LO SUGERIDO (defecto del smoke, 2026-09-01). Estos seis campos
+  // salian del snapshot SELLADO (`ps.calorico`), que es la propuesta del modelo ANTES de los ajustes del
+  // profesional. El plan que recibe el paciente sale de la cadena EFECTIVA. Resultado: los DOS DOCUMENTOS
+  // DE LA MISMA CONSULTA decian cifras distintas. Con el paciente del smoke: el reporte llevaba el
+  // objetivo que el nutricionista fijo y la historia registraba 2.574 kcal y 58 g de proteina, que es lo
+  // que el modelo habia propuesto y nadie prescribio.
+  //
+  // Y no era solo el objetivo: `kcal_objetivo` y `proteina_g` (las columnas que se llenan AL APROBAR)
+  // estan en null mientras el tratamiento sea borrador, asi que el fallback al sellado se usaba SIEMPRE en
+  // borrador, que es cuando el profesional esta trabajando.
+  //
+  // Ahora es la MISMA funcion que usan el panel y el plan del paciente. Un documento clinico no puede
+  // registrar una cifra que nadie prescribio.
+  const hcEfectivo = ps
+    ? computeProtocoloEfectivo(ps, {
+        geb: protocol?.adjGeb ?? null,
+        pal: protocol?.adjPal ?? null,
+        kcalObj: protocol?.adjKcalObj ?? null,
+        protGkg: protocol?.adjProtGkg ?? null,
+        fatPct: protocol?.adjFatPct ?? null,
+        deficit: protocol?.adjDeficit ?? null,
+        pesoMeta: protocol?.pesoMetaFijado ?? null,
+      }).calorico
+    : null;
+  const hcPlan = hcEfectivo
     ? {
-        geb: ps.calorico.geb,
-        get: ps.calorico.get,
-        kcalObjetivo: protocol?.kcalObjetivo ?? ps.calorico.kcalObj,
-        proteinaG: protocol?.proteinaGramos ?? ps.calorico.protG,
-        proteinaGKg: ps.calorico.protGKg,
-        carbohidratosG: ps.calorico.choG,
-        grasasG: ps.calorico.fatG,
-        actividadFisica: ps.calorico.pal === 1.375 ? "FA ligera" : `PAL ${ps.calorico.pal}`,
+        geb: hcEfectivo.geb,
+        get: hcEfectivo.get,
+        kcalObjetivo: hcEfectivo.kcalObj,
+        proteinaG: hcEfectivo.protG,
+        proteinaGKg: hcEfectivo.protGKg,
+        carbohidratosG: hcEfectivo.choG,
+        grasasG: hcEfectivo.fatG,
+        actividadFisica: `PAL ${hcEfectivo.pal}`,
+        // EL SODIO YA SE CALCULA: el motor de prescripcion lleva conectado desde el 2026-08-31. El bloque
+        // decia "se emitira cuando se incorpore el motor", que era cierto al escribirlo y dejo de serlo sin
+        // que nadie volviera a esa linea. Es la misma forma que el congelamiento vencido de P-50.
+        sodioMax: prescripcionNutricional?.sodioMax ?? null,
       }
     : null;
   // Diagnosticos personales declarados (d5_39), para los bloques condicionales de recomendaciones.

@@ -12,7 +12,10 @@ import type { PlanPaciente } from "../data/reports-view-types";
 export type ReportMeta = {
   patientName: string;
   documentLabel: string; // "CC 12345"
-  evaluationDate: string; // ya formateada
+  /** Fecha de la MEDICION BIS. Se rotula como tal: no es la de la consulta. */
+  evaluationDate: string;
+  /** Fecha de la CONSULTA. null = no se pudo resolver; entonces solo se muestra la de la medicion. */
+  consultationDate?: string | null; // ya formateada
   reportId: string;
 };
 
@@ -146,15 +149,30 @@ export function ReportDocument({
             <Text style={styles.metaLabel}>Documento</Text>
             <Text>{meta.documentLabel}</Text>
           </View>
+          {/* DOS FECHAS, no una (smoke 2026-09-01). "Fecha" a secas era la de la MEDICION, y el paciente no
+              tiene como saberlo: puede haberse medido un dia y haber sido atendido otro, y con el tamizaje
+              en casa las dos se van a separar siempre. Rotularlas es lo que las distingue.
+              La de consulta esta preguntada a Gildardo (punto 2 de la ronda del 31: su archivo la CAPTURA y
+              Atlas la deduce). Mostrarla no se adelanta a esa respuesta: si dice que debe capturarse,
+              cambia de DONDE sale, no si se muestra. */}
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Fecha</Text>
+            <Text style={styles.metaLabel}>Fecha de la medición</Text>
             <Text>{meta.evaluationDate}</Text>
           </View>
+          {meta.consultationDate ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Fecha de la consulta</Text>
+              <Text>{meta.consultationDate}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <Text style={styles.disclaimer}>
-          Patrones asociados a valorar clínicamente, no constituye diagnóstico.
-        </Text>
+        {/* AQUI IBA "Patrones asociados a valorar clínicamente, no constituye diagnóstico", y se retiro el
+            2026-09-01. Era NUESTRA (no aparece ni una vez en su archivo) y contradecia dos cosas a la vez:
+            el bloque siguiente, que se titula "Cómo estás" y le dice al paciente que su envejecimiento
+            esta acelerado; y su §7.1, que pone el DIAGNOSTICO como lo primero que el paciente recibe.
+            Un documento que diagnostica y ademas declara que no diagnostica no protege a nadie: confunde
+            al paciente sobre que tiene en la mano. */}
 
         {showBand ? (
           <View style={styles.section}>
@@ -345,8 +363,14 @@ export function ReportDocument({
           Puedes solicitar tu historia clínica completa a tu profesional tratante.
         </Text>
 
+        {/* EL PIE: SOLO EL IDENTIFICADOR (decision del smoke 2026-09-01).
+            Llevaba tambien "Motor anibise-1.2.0 · Modelo ANI-BIS-E 1.0 · Reglas 1.0". Esas tres versiones
+            son la CONSTELACION de la regla dura 7 y NO se pierden: viven selladas en el snapshot y en el
+            diagnostico, que es donde se piden si alguien reconstruye un caso. En el documento del paciente
+            no informan a nadie y suman jerga a un pie de pagina.
+            El ID SE QUEDA porque es lo unico del pie que el paciente puede USAR: es como se identifica su
+            documento si llama a preguntar. Y desde el se llega a las tres versiones. */}
         <Text style={styles.footer} fixed>
-          Motor {versions.engine} · Modelo {versions.model} · Reglas {versions.rules} ·
           Reporte {meta.reportId}
         </Text>
       </Page>

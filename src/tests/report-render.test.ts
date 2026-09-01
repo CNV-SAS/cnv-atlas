@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { sinComentarios } from "./helpers/sin-comentarios";
+
 import { type EngineInput, runEngine } from "@/clinical-engine";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
@@ -77,9 +79,7 @@ describe("renderReportPdf", () => {
     const DOC = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
     // Sin comentarios: el comentario del documento CITA los nombres prohibidos para explicar por qué no
     // están. Ya nos pasó dos veces que un detector cace su propia documentación.
-    const CODIGO = DOC.replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-      .replace(/\/\/[^\n]*/g, "");
+    const CODIGO = sinComentarios(DOC);
 
     it("no desestructura del snapshot lo que no puede imprimir", () => {
       // Si el documento no TIENE el dato, no puede filtrarlo por descuido. Es más fuerte que prohibir

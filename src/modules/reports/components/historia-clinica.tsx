@@ -334,6 +334,8 @@ export function HcFirmaYFecha({ profesional, fecha }: { profesional: string; fec
 
 // Bloque 10: PLAN NUTRICIONAL. Las ocho celdas de su HC. Siete salen del protocolo sellado; el SODIO no.
 export type HcPlanNutricional = {
+  /** Limite de sodio del motor de prescripcion. null = el paciente no tiene condicion que lo pida. */
+  sodioMax?: number | null;
   geb: number | null;
   get: number | null;
   kcalObjetivo: number | null;
@@ -373,21 +375,19 @@ export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) 
         />
         <Dato etiqueta="Carbohidratos" valor={plan.carbohidratosG == null ? SIN_DATO : `${Math.round(plan.carbohidratosG)} g/día`} />
         <Dato etiqueta="Grasas" valor={plan.grasasG == null ? SIN_DATO : `${Math.round(plan.grasasG)} g/día`} />
-        {/* SODIO: pendiente A PROPOSITO, y se dice. El limite lo fija el motor de prescripcion que aun no
-            se porta, y ese porte lo CAMBIA (2.300 -> 1.500 mg en el hipertenso). Imprimir hoy un valor que
-            el porte va a contradecir, en un documento clinico, es peor que dejarlo pendiente. Se distingue
-            del guion de "no aplica" con la palabra: el suyo sale vacio cuando el paciente no es hipertenso;
-            el nuestro sale asi para TODOS, y por otra razon. */}
-        <div className="flex flex-col gap-0.5 rounded-md border border-dashed border-border bg-muted/20 p-2.5">
-          <span className="text-[11px] text-muted-foreground">Sodio</span>
-          <span className="text-sm font-semibold text-muted-foreground">Pendiente</span>
-        </div>
+        {/* SODIO: YA SE CALCULA. Estuvo en "Pendiente" con un texto que decia "se emitira cuando se
+            incorpore el motor de prescripcion nutricional", cierto cuando se escribio y falso desde el
+            2026-08-31, cuando ese motor se conecto. Nadie volvio a esta linea: la misma forma que el
+            congelamiento vencido de P-50, y la razon por la que un texto que AFIRMA UN ESTADO tiene que
+            derivarlo y no declararlo.
+            Sin valor sale el guion de "no aplica", como el resto: el motor solo prescribe limite de sodio
+            cuando hay condicion que lo pida (HTA, ERC, alteracion hidrica). */}
+        <Dato
+          etiqueta="Sodio"
+          valor={plan.sodioMax == null ? SIN_DATO : `< ${plan.sodioMax.toLocaleString("es-CO")} mg/día`}
+        />
         <Dato etiqueta="Actividad física" valor={plan.actividadFisica ?? SIN_DATO} />
       </div>
-      <p className="text-xs text-muted-foreground">
-        El límite de sodio se emitirá cuando se incorpore el motor de prescripción nutricional. No es que
-        este paciente no lo tenga: todavía no se calcula.
-      </p>
     </Tarjeta>
   );
 }
