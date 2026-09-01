@@ -87,6 +87,10 @@
    derecho a la historia clinica. Estado: `report-render`. **El PLAN del paciente y la HC imprimible siguen
    sin construir** (BACKLOG); P1 de la ronda los bloquea.
 
+   **EL PLAN DEL PACIENTE (2026-09-01):** seis de los siete bloques de su §7.1, dentro del reporte que el
+   paciente ya recibe, con el diagnostico primero. Estado: `plan-paciente`. Falta el septimo (la lista
+   recortada por region), bloqueado por P2.
+
    **HISTORIA CLINICA IMPRIMIBLE + DFI EN LENGUAJE DE PACIENTE (2026-09-01):** la HC se imprime y se
    guarda como PDF desde la pantalla del profesional, con sello de consentimiento (mitad legal del derecho
    de acceso); y el DFI vuelve al reporte del paciente TRADUCIDO con el mapa de Gildardo. Estado:

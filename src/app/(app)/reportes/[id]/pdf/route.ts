@@ -5,6 +5,7 @@ import { getReportDispatch } from "@/modules/reports/data/reports-repository";
 import { formatDate } from "@/lib/format/date";
 import { downloadReportPdf } from "@/modules/reports/data/report-storage";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
+import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
 import { renderReportPdf } from "@/modules/reports/services/render-report";
 
 // Acceso interno al PDF del reporte. Valida ownership (sesion + RLS via
@@ -57,6 +58,9 @@ export async function GET(
       professionalNotes: dispatch.professionalNotes,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
+      // EL PLAN TAMBIEN EN EL PREVIEW, y es la mitad que se olvida: el profesional aprueba mirando ESTO.
+      // Un preview sin el plan le haria aprobar un documento que no es el que se envia.
+      plan: await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot),
     },
   );
   return new NextResponse(new Uint8Array(pdf), {

@@ -2,6 +2,8 @@ import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 
+import type { PlanPaciente } from "../data/reports-view-types";
+
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
 // renderiza render-report.tsx a Buffer en el servidor. El contenido es el del motor clinico REAL
@@ -23,6 +25,8 @@ const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a2e", lineHeight: 1.4 },
   // Discreta: mismo gris del pie, sin negrita y sin caja. Informa, no invita ni disuade.
   derechoHc: { marginTop: 18, fontSize: 8, color: "#6b7280" },
+  // Cada dia del menu junto: un dia partido entre dos hojas obliga a pasar pagina a media comida.
+  diaMenu: { marginTop: 6 },
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 2 },
   subtitle: { fontSize: 10, color: "#555", marginBottom: 12 },
   meta: { marginBottom: 12 },
@@ -84,6 +88,7 @@ export function ReportDocument({
   professionalNotes = null,
   bandText = null,
   bandAppointmentDate = null,
+  plan = null,
 }: {
   snapshot: EngineOutput;
   meta: ReportMeta;
@@ -95,6 +100,15 @@ export function ReportDocument({
   // §6 (Gildardo Q33): la fecha de la próxima cita, solo para el "empeoró" confirmado. Va como frase
   // APARTE, después del texto verbatim de Gildardo (no se edita su redacción). null = no se pinta.
   bandAppointmentDate?: string | null;
+  /**
+   * EL PLAN QUE RECIBE EL PACIENTE (Gildardo §7.1). null = la evaluacion no tiene tratamiento con
+   * protocolo sellado, y entonces no hay plan que entregar: un plan a medias es peor que ninguno.
+   *
+   * EL ORDEN DE LOS BLOQUES ES EL SUYO, y es el que Santiago pidio conservar: primero se le explica al
+   * paciente QUE TIENE (el diagnostico, ya traducido arriba), y despues LA SOLUCION. Su §7.1 pone el
+   * diagnostico primero en la lista por esa misma razon.
+   */
+  plan?: PlanPaciente | null;
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
   // `structural` y `frSector` se retiraron con sus bloques (§7.1): un documento que no tiene el dato no
@@ -207,6 +221,95 @@ export function ReportDocument({
               <Text style={styles.para}>{dfiPac.acompanamiento}</Text>
             ) : null}
           </View>
+        ) : null}
+
+        {/* ═══ EL PLAN, en su orden: meta, dieta, menu, distribucion, recomendaciones ═══
+            El DIAGNOSTICO va ARRIBA, en el bloque "Cómo estás": primero que tiene, despues la solucion.
+            Falta el septimo bloque de su §7.1, la lista de intercambio recortada por region: su tabla es
+            nacional y no existe el mapa de que alimentos corresponden a cada region. Preguntado (P2). ═══ */}
+        {showAtlas && plan ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tu meta</Text>
+              {plan.objetivoTexto ? <Text style={styles.para}>{plan.objetivoTexto}</Text> : null}
+              {plan.pesoMeta != null ? (
+                <Text style={styles.para}>Peso que acordaste con tu profesional: {plan.pesoMeta} kg.</Text>
+              ) : null}
+              {plan.kcalObjetivo != null ? (
+                <Text style={styles.para}>Tu plan es de {plan.kcalObjetivo} calorías al día.</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tu plan de alimentación</Text>
+              {plan.tipoDieta ? (
+                <Text style={styles.para}>
+                  <Text style={styles.bold}>Dieta {plan.tipoDieta.toLowerCase()}</Text>
+                  {plan.kcalObjetivo != null ? ` de ${plan.kcalObjetivo} kcal al día.` : "."}
+                </Text>
+              ) : null}
+              {plan.prescripcion.map((f) => (
+                <Text key={f.nombre} style={styles.para}>
+                  {f.nombre}: {f.valor}
+                </Text>
+              ))}
+              {plan.atributos.length ? (
+                <Text style={styles.para}>{plan.atributos.join(" · ")}</Text>
+              ) : null}
+              {plan.notasDelModelo.map((n) => (
+                <Text key={n} style={styles.para}>
+                  {n}
+                </Text>
+              ))}
+            </View>
+
+            {plan.menu.length ? (
+              <View style={styles.section} break>
+                <Text style={styles.sectionTitle}>Ejemplo de menú para una semana</Text>
+                <Text style={styles.para}>
+                  Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
+                </Text>
+                {plan.menu.map((d) => (
+                  <View key={d.dia} style={styles.diaMenu}>
+                    <Text style={styles.bold}>{d.dia}</Text>
+                    {d.comidas.map((c) => (
+                      <Text key={c.tiempo} style={styles.para}>
+                        {c.tiempo}: {c.texto}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {plan.distribucion.length ? (
+              <View style={styles.section} break>
+                <Text style={styles.sectionTitle}>Cómo repartir tus porciones en el día</Text>
+                <Text style={styles.para}>
+                  Comidas de tu día: {plan.tiemposActivos.join(", ")}.
+                </Text>
+                {plan.distribucion.map((f) => (
+                  <View key={f.alimento} style={styles.tableRow}>
+                    <Text style={styles.cellLabel}>{f.alimento}</Text>
+                    <Text style={styles.cellValue}>
+                      {f.porTiempo.map((t) => `${t.tiempo} ${t.porciones}`).join(" · ")}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {plan.recomendaciones.map((r) => (
+              <View key={r.titulo} style={styles.section}>
+                <Text style={styles.sectionTitle}>{r.titulo}</Text>
+                {r.lineas.map((l) => (
+                  <Text key={l} style={styles.para}>
+                    {l}
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </>
         ) : null}
 
         {showAtlas ? (

@@ -45,6 +45,27 @@ ancestro esconde también a sus descendientes y no hay forma de volver a mostrar
 historia saldría en blanco. Y el color se fuerza (`print-color-adjust`), porque aquí el color **es**
 información clínica: el naranja de Moderado sale de sus clasificadores.
 
+### [HECHO 2026-09-01] El plan que recibe el paciente (Gildardo §7.1)
+
+Seis de sus siete bloques, dentro del reporte que el paciente ya recibe (**no es un documento nuevo**:
+mandarle dos por la misma consulta repetiría el defecto que acabamos de cerrar en la subpestaña del
+nutricionista). En su orden, con el **diagnóstico primero** — primero qué tiene, después la solución:
+diagnóstico (traducido con su mapa), meta, plan dietético, ejemplo de menú, distribución por porciones y
+recomendaciones. Estado: `plan-paciente.test.ts`.
+
+**Sale de los mismos números que ve el nutricionista**: `computeProtocoloEfectivo` sobre los ajustes
+guardados, y las porciones guardadas pisan a las calculadas, igual que en su pantalla. El paciente no
+puede recibir un objetivo distinto del que su profesional prescribió.
+
+**Falta el séptimo, y no por olvido:** la lista de intercambio recortada por región. Bloqueada por P2 (su
+`INTER_TABLA_B` es nacional; no existe el mapa de qué alimentos corresponden a cada región). Está escrito
+en el reader, para que quien compare el documento contra su §7.1 lea una pregunta abierta y no un olvido.
+
+### PENDIENTE · Imprimir el plan desde la subpestaña del nutricionista
+
+Ahora es barato: la hoja de impresión ya existe (`globals.css`) y el patrón está probado con la historia
+clínica. Es marcar el contenedor y poner el botón.
+
 ### PENDIENTE · Enviársela al paciente, con registro del evento · DECISIÓN ANTES DE CONSTRUIR
 
 Las otras dos piezas del pedido legal. **No se construyeron porque hay una decisión de arquitectura que no
@@ -56,8 +77,22 @@ correo. Para enviarla hacen falta bytes, y solo hay dos caminos:
 | **Adjunto**, como el reporte del paciente | Portar los quince bloques a `@react-pdf`: exactamente la segunda construcción que acabamos de evitar | Un archivo que el paciente conserva, y el mismo canal que ya usamos |
 | **Enlace a una vista firmada** | Una superficie de paciente autenticada, que hoy no existe | No deja datos de salud en una bandeja de entrada para siempre, y el acceso se puede revocar |
 
-**El segundo es mejor en protección de datos y bastante peor en esfuerzo**, y elegirlo decide si Atlas
-tiene o no una superficie de paciente. Eso no se decide al paso.
+**DECIDIDO (Santiago, 2026-09-01): adjunto, el mismo canal.** El enlace firmado es mejor en protección de
+datos, pero crear una superficie de paciente autenticada es un bloque entero, y el reporte ya sale por
+correo con adjunto.
+
+**Y va DESPUÉS del plan del paciente**, con su razón: el plan es lo que el paciente recibe siempre, la
+historia solo si la pide.
+
+**El abaratamiento es PARCIAL, y conviene tenerlo medido antes de empezar.** Al portar el plan a
+`@react-pdf` quedó reutilizable la mitad de infraestructura: el andamiaje del documento y sus estilos, y
+la tubería completa de envío (render, subida a Storage, correo, marcar enviado, auditar). Lo que **no** se
+abarata es el contenido: los quince bloques de la historia clínica siguen sin portar, y son justo lo que
+el camino de impresión ya resuelve sin portar nada.
+
+**Así que la pregunta al empezarla no es cómo, es si:** la impresión ya le da al profesional un PDF de la
+historia para entregar. El adjunto añade poder **mandarla por correo sin salir de Atlas**, y cuesta portar
+quince bloques que se pueden desincronizar de la pantalla. Vale la pena decidirlo con eso a la vista.
 
 **Y el registro del evento va con cualquiera de los dos, con un cuidado ya escrito: NO puede vivir solo en
 `clinical_audit_log`.** Ya nos pasó con el descarte de nutracéuticos: el log es admin-only para SELECT, así

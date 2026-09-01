@@ -9,6 +9,7 @@ import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
 import { markReportResent, markReportSent, ReportStateError } from "../data/reports-writer";
 import type { SendMode } from "../pdf/report-document";
+import { getPlanPaciente } from "../data/plan-paciente-reader";
 import { renderReportPdf } from "./render-report";
 
 // Orquesta el envio del reporte al paciente. Orden (D4, accion externa hacia afuera):
@@ -48,6 +49,15 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     );
   }
 
+  // EL PLAN DEL PACIENTE (Gildardo §7.1: "el paciente recibe el plan completo"). Se arma AQUI, no se
+  // sella: el tratamiento ya esta APROBADO cuando el reporte se envia (el gate de arriba lo exige), y un
+  // protocolo aprobado esta congelado por su trigger. Asi que leerlo en vivo es reproducible, y sellar una
+  // segunda copia crearia otra vez dos fuentes de lo mismo.
+  //
+  // Si la evaluacion no tiene tratamiento con protocolo, viaja null y el PDF omite el plan entero: es
+  // preferible a mandar un plan a medias.
+  const plan = await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot);
+
   // 1. Render del PDF desde el snapshot inmutable, segun el modo elegido.
   const pdf = await renderReportPdf(
     dispatch.snapshot,
@@ -62,6 +72,7 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
       professionalNotes: dispatch.professionalNotes,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
+      plan,
     },
   );
 
@@ -122,6 +133,11 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
   // depende de las notas: reenviar nunca puede quedarse sin poder mandar nada.
   const mode = (dispatch.sendMode ?? "atlas") as SendMode;
 
+  // El plan tambien en el REENVIO: si uno de los dos sitios se lo olvidara, el reenvio mandaria un
+  // documento distinto del original, que es peor que no reenviar. Se lee igual que en el envio (el
+  // tratamiento aprobado esta congelado, asi que da lo mismo).
+  const plan = await getPlanPaciente(dispatch.evaluationId, dispatch.snapshot);
+
   const pdf = await renderReportPdf(
     dispatch.snapshot,
     {
@@ -135,6 +151,7 @@ export async function resendReport(input: ResendReportInput): Promise<Result<{ e
       professionalNotes: dispatch.professionalNotes,
       bandText: dispatch.patientBandText,
       bandAppointmentDate: dispatch.patientBandAppointmentDate,
+      plan,
     },
   );
 

@@ -10,6 +10,12 @@ vi.mock("@/modules/reports/services/render-report", () => ({
 vi.mock("@/modules/reports/data/reports-repository", () => ({
   getReportDispatch: vi.fn(),
 }));
+// El PLAN del paciente (Gildardo §7.1) lo lee `sendReport` de la BD. Se mockea como el resto de la
+// cadena: este test es de ORQUESTACION (que el orden de los pasos sea el correcto y que un fallo no marque
+// enviado), no del contenido del documento. El contenido lo cubre `report-render`.
+vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
+  getPlanPaciente: vi.fn(async () => null),
+}));
 vi.mock("@/modules/reports/data/report-storage", () => ({
   uploadReportPdf: vi.fn(),
 }));
