@@ -130,30 +130,122 @@ function AdjInput({
 
 // Una fila de la vista previa (etiqueta + valor efectivo, con la derivacion entre parentesis). El `tag`
 // distingue lo que el profesional FIJA de lo que sale CALCULADO (sub-tarea 3, cuidado b).
+// LA CADENA SE LEE COMO UNA CUENTA, NO COMO UNA LISTA (cotejo 2026-08-31, punto 5). Su pantalla la
+// dispone en vertical con el OPERADOR a la izquierda y una raya antes de cada resultado, que es como se
+// lee una operacion: el profesional ve que el GET SALE de multiplicar, no que sea un tercer dato al lado
+// de los otros dos. Nuestra version anterior era una lista de filas iguales: decia los mismos numeros y
+// escondia que unos se derivan de otros.
+//
+// Lo unico que se porta es la DISPOSICION. Las dos marcas nuestras se conservan porque no las tiene y
+// resuelven cosas reales: el tag "lo fijas arriba" (el objetivo aparece en los dos bloques y solo se edita
+// en uno, instruccion suya del 26) y la distincion calculado/ajustado.
+// LOS DOS RECALCULOS SON DOS ACTOS DISTINTOS, y por eso son dos botones y no uno (asi los tiene el
+// tambien): "recalcular desde el objetivo" rehace el REPARTO por alimento, y "recalcular desde el
+// intercambio" rehace la DISTRIBUCION por tiempos. Uno solo obligaria a rehacer las dos cosas para
+// corregir una.
+//
+// LO QUE FALTABA NO ERAN LOS BOTONES, ERA EL FRENO. Los dos borran de un clic todo lo que el profesional
+// ajusto a mano, y el aviso vivia solo en la etiqueta: se lee DESPUES de hacer clic, que es cuando ya no
+// sirve. La confirmacion aparece SOLO si de verdad hay ajustes que perder; pedirla cuando no hay nada que
+// borrar es la ceremonia que entrena a confirmar sin leer.
+function BotonRecalcular({
+  etiqueta,
+  hayAjustes,
+  onRecalcular,
+  disabled,
+}: {
+  etiqueta: string;
+  hayAjustes: boolean;
+  onRecalcular: () => void;
+  disabled: boolean;
+}) {
+  const [confirmando, setConfirmando] = useState(false);
+
+  if (!hayAjustes) {
+    return (
+      <Button type="button" variant="ghost" disabled={disabled} onClick={onRecalcular}>
+        {etiqueta}
+      </Button>
+    );
+  }
+
+  // `key` distintas en los dos botones: es el hazard del wizard, que solo aparece en un navegador real.
+  // Con la misma key React reutiliza el nodo y el clic que pide confirmacion aterriza en el que confirma.
+  return confirmando ? (
+    <span className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-clinical-warning">Se pierden tus ajustes manuales.</span>
+      <Button
+        key="recalcular-confirmar"
+        type="button"
+        variant="outline"
+        disabled={disabled}
+        onClick={() => {
+          setConfirmando(false);
+          onRecalcular();
+        }}
+      >
+        Sí, recalcular
+      </Button>
+      <Button
+        key="recalcular-cancelar"
+        type="button"
+        variant="ghost"
+        disabled={disabled}
+        onClick={() => setConfirmando(false)}
+      >
+        Cancelar
+      </Button>
+    </span>
+  ) : (
+    <Button
+      key="recalcular-pedir"
+      type="button"
+      variant="ghost"
+      disabled={disabled}
+      onClick={() => setConfirmando(true)}
+    >
+      {etiqueta}
+    </Button>
+  );
+}
+
 function PrevRow({
   label,
   value,
   detail,
   tag,
+  op,
+  resultado,
 }: {
   label: string;
   value: string;
   detail?: string;
   tag?: string;
+  /** Operador de la cuenta ("×", "=", "−"). La columna es fija para que los signos queden alineados. */
+  op?: string;
+  /** Renglon de RESULTADO: raya arriba y numero en negrita, como el total de una operacion. */
+  resultado?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border/50 py-1 last:border-0">
-      <span className="flex items-baseline gap-1.5 text-muted-foreground">
-        {label}
+    <div
+      className={`flex items-baseline justify-between gap-4 py-1 ${
+        resultado ? "mt-0.5 border-t border-border pt-1.5" : ""
+      }`}
+    >
+      <span className="flex min-w-0 items-baseline gap-1.5 text-muted-foreground">
+        {/* Ancho fijo aunque no haya operador: sin el, las etiquetas de las filas con y sin signo
+            arrancarian en columnas distintas y la cuenta dejaria de leerse como cuenta. */}
+        <span className="w-3 shrink-0 text-right font-medium text-muted-foreground/70">{op ?? ""}</span>
+        <span className={resultado ? "font-medium text-foreground" : ""}>{label}</span>
         {tag ? (
           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {tag}
           </span>
         ) : null}
       </span>
-      <span className="text-foreground">
-        <strong>{value}</strong>
-        {detail ? <span className="text-muted-foreground"> {detail}</span> : null}
+      <span className={`shrink-0 tabular-nums ${resultado ? "text-foreground" : "text-foreground/90"}`}>
+        <strong className={resultado ? "text-base" : ""}>{value}</strong>
+        {detail ? <span className="text-xs font-normal text-muted-foreground"> {detail}</span> : null}
       </span>
     </div>
   );
@@ -169,6 +261,16 @@ function PrevRow({
 // La jerarquia visual de los bloques vive en @/components/shared/bloque: es decision de SISTEMA y no
 // de esta pantalla. Aqui solo se dice de que NIVEL es cada seccion. Los tres niveles y su porque estan
 // documentados alli y en BRAND.md.
+
+// EL PESO META ES UN SOLO DATO CON DOS SUPERFICIES DE EDICION (Gildardo, 2026-08-28 §2): el campo de la
+// entrada ("Meta de peso", en las condiciones de la toma) y el ajuste de este panel. Textual suyo: "no son
+// dos pesos meta, es uno... si los construyen como campos separados, el defecto lo crean ustedes".
+//
+// Se resuelve en UNA funcion y no en cada sitio: el peso meta entra a la cadena entera (GEB, objetivo,
+// proteina), asi que un sitio que se olvide de la resolucion no da error, prescribe distinto.
+function pesoMetaFijado(p: TreatmentProtocol): number | null {
+  return p.adjPesoMeta ?? p.pesoMetaIngreso;
+}
 
 function CadenaCaloricaSection({
   evaluationId,
@@ -203,13 +305,19 @@ function CadenaCaloricaSection({
     kcalObj: inputToNum(kcalObj),
     protGkg: inputToNum(protGkg),
     fatPct: inputToNum(fatPct),
-    pesoMeta: inputToNum(pesoMeta),
+    // Vacio aqui NO significa "usa el calculado": significa "no lo ajusto en este panel", y entonces manda
+    // el que el profesional fijo en la ENTRADA. Es la misma resolucion que usa el servidor al sellar.
+    pesoMeta: inputToNum(pesoMeta) ?? protocol.pesoMetaIngreso,
   };
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
   const cal = computeProtocoloEfectivo(snap, adj).calorico;
   const base = snap.calorico; // cadena del MODELO (sellada), placeholder de cada campo.
   const pesoEfectivo = adj.pesoMeta ?? protocol.pesoCalculo;
-  const pesoFijado = protocol.adjPesoMeta != null;
+  // DE DONDE VIENE el peso meta que gobierna. Tres estados, no dos: el profesional pudo fijarlo aqui, o
+  // en la entrada (mod antropometria), o no fijarlo y quedarse con el calculado. Decir "sin registrar"
+  // cuando esta registrado arriba es la contradiccion entre superficies que ya nos costo un defecto.
+  const origenPeso: "panel" | "ingreso" | "calculado" =
+    protocol.adjPesoMeta != null ? "panel" : protocol.pesoMetaIngreso != null ? "ingreso" : "calculado";
 
   // Firma de los ajustes GUARDADOS (de la prop, invariante mientras se edita): es lo que el cliente cargó y
   // contra lo que el servidor compara bajo lock. NO la de lo que se esta editando.
@@ -237,6 +345,17 @@ function CadenaCaloricaSection({
   // el sistema no deriva el objetivo, deja mantenimiento). Se explica junto al numero para que la coincidencia
   // GET == objetivo no se lea como un error (fix 1: Santiago dudo, un nutricionista tambien).
   const objetivoEsMantenimiento = adj.kcalObj == null && cal.kcalObj === cal.get;
+  // Deficit SELLADO de la estrategia, la misma fuente que entra al motor (`snap.estrategia.deficit`). No
+  // se re-deriva de GET - objetivo: si el profesional fija el objetivo a mano, esa resta daria un numero
+  // que el modelo nunca calculo y el renglon estaria diciendo que el modelo mando algo que no mando.
+  const deficitCadena = snap.estrategia.deficit ?? 0;
+  // A DONDE LLEGA LA CUENTA por si sola, con la MISMA aritmetica del motor (:14128), piso incluido. Se
+  // computa aparte del objetivo efectivo porque los dos pueden diferir por dos razones distintas: que el
+  // profesional lo haya fijado a mano, o que el piso de 1.000 kcal haya mordido. Una cuenta cuyo renglon
+  // final no es el resultado de los de arriba deja de ser una cuenta y pasa a ser una lista que miente.
+  const objetivoDelModelo = Math.max(1000, Math.round(cal.get - deficitCadena));
+  const objetivoLoFijoElProfesional = adj.kcalObj != null;
+  const pisoMordio = !objetivoLoFijoElProfesional && Math.round(cal.get - deficitCadena) < 1000;
 
   return (
     // DOS BLOQUES, NO UNO, por instruccion suya (2026-08-26 Parte 2, §8.1). Habiamos propuesto FUNDIRLOS y
@@ -266,8 +385,8 @@ function CadenaCaloricaSection({
           <h3 className={tituloBloqueCls("decision")}>Objetivo del plan</h3>
           <p className="text-sm text-muted-foreground">
             {snap.estrategia.label}
-            {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. Aquí decides a dónde va el
-            plan. Deja un campo vacío para usar el valor del modelo.
+            {snap.estrategia.perfil ? ` · ${snap.estrategia.perfil}` : ""}. Deja un campo vacío para usar
+            el valor del modelo.
           </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
@@ -275,7 +394,11 @@ function CadenaCaloricaSection({
               label="Peso meta (kg)"
               value={pesoMeta}
               onChange={setPesoMeta}
-              placeholder={`calculado: ${pesoCalcDisp}`}
+              placeholder={
+                protocol.pesoMetaIngreso != null
+                  ? `del ingreso: ${d1(protocol.pesoMetaIngreso)}`
+                  : `calculado: ${pesoCalcDisp}`
+              }
               step="0.1"
             />
             <AdjInput
@@ -288,9 +411,20 @@ function CadenaCaloricaSection({
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {pesoFijado ? (
+            {origenPeso === "panel" ? (
               <span className="text-clinical-optimal">
-                Peso meta fijado por ti: <strong>{d1(protocol.adjPesoMeta as number)} kg</strong>.
+                Peso meta fijado por ti aquí: <strong>{d1(protocol.adjPesoMeta as number)} kg</strong>.
+                {protocol.pesoMetaIngreso != null ? (
+                  <>
+                    {" "}
+                    Reemplaza el del ingreso ({d1(protocol.pesoMetaIngreso)} kg).
+                  </>
+                ) : null}
+              </span>
+            ) : origenPeso === "ingreso" ? (
+              <span className="text-clinical-optimal">
+                Peso meta fijado en la entrada: <strong>{d1(protocol.pesoMetaIngreso as number)} kg</strong>
+                . Es el mismo dato, no otro: escribir aquí lo reemplaza para este plan.
               </span>
             ) : (
               <span className="text-muted-foreground">
@@ -298,16 +432,20 @@ function CadenaCaloricaSection({
                 {protocol.pesoCalculoLabel ? ` (${protocol.pesoCalculoLabel})` : ""}, un valor CALCULADO.
               </span>
             )}
-            {/* Vacia el campo; al guardar con el campo vacio, adj_peso_meta queda null y el calculo usa el
-                pesoCalculo COMPLETO (no el mostrado redondeado). */}
+            {/* Vacia el campo. Al guardar con el campo vacio, adj_peso_meta queda null y manda el peso meta
+                del INGRESO si lo hay; si no, el pesoCalculo COMPLETO (no el mostrado redondeado). Por eso
+                el rotulo dice a donde vuelve de verdad: prometer "el calculado" cuando vuelve al del
+                ingreso seria el mismo desajuste que este bloque viene a cerrar. */}
             <button
               type="button"
               className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
               onClick={() => setPesoMeta("")}
               disabled={locked}
-              title="Vacía el campo; guarda para volver al peso calculado"
+              title="Vacía el campo; guarda para quitar el ajuste de este panel"
             >
-              Usar el calculado ({pesoCalcDisp} kg)
+              {protocol.pesoMetaIngreso != null
+                ? `Usar el del ingreso (${d1(protocol.pesoMetaIngreso)} kg)`
+                : `Usar el calculado (${pesoCalcDisp} kg)`}
             </button>
           </div>
           {/* La distincion CALCULADO vs AJUSTADO, que es el segundo de los tres beneficios que concedio. */}
@@ -326,9 +464,8 @@ function CadenaCaloricaSection({
         <section className={bloqueCls("derivado")}>
           <h3 className={tituloBloqueCls("derivado")}>Cómo se llega a ese objetivo</h3>
           <p className="text-sm text-muted-foreground">
-            La fórmula que sostiene el objetivo de arriba y su reparto en macronutrientes. Puedes ajustar
-            cualquier eslabón; la vista previa se recalcula en vivo con la misma fórmula que se sella al
-            aprobar.
+            Ajusta cualquier eslabón: la vista previa se recalcula en vivo con la misma fórmula que se
+            sella al aprobar.
           </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
@@ -386,26 +523,54 @@ function CadenaCaloricaSection({
             <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Cadena efectiva (vista previa)
             </p>
+            {/* LA CUENTA, en el orden en que se hace: del peso sale el GEB, por el PAL da el GET, y de
+                ahi el objetivo. El peso NO lleva operador porque es el punto de partida, no un termino. */}
             <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
             <PrevRow
               label="Gasto energético basal (GEB)"
               value={`${d0(cal.geb)} kcal`}
               detail={`(${cal.formula})`}
             />
-            <PrevRow label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
-            <PrevRow label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
-            {/* EN LECTURA, no editable: es su instruccion literal para el dato que aparece en los dos
-                bloques. Se edita arriba, donde se decide; aqui solo se ve a que llega la cadena. */}
+            <PrevRow op="×" label="Nivel de actividad física (PAL)" value={String(cal.pal)} />
+            <PrevRow op="=" resultado label="Gasto energético total (GET)" value={`${d0(cal.get)} kcal`} />
+            {/* El deficit se muestra SIEMPRE, tambien cuando es 0, y es deliberado: es un eslabon de la
+                cuenta, y una cuenta a la que le falta un renglon no cuadra a la vista. Hoy el modelo no
+                aplica deficit por fenotipo (Gildardo los retiro el 19), asi que el 0 es el estado normal,
+                no un dato faltante; el rotulo lo dice para que no se lea como un hueco. */}
             <PrevRow
-              label="Objetivo calórico"
-              tag="lo fijas arriba"
-              value={`${d0(cal.kcalObj)} kcal`}
+              op={deficitCadena > 0 ? "−" : "+"}
+              label="Déficit del modelo"
+              value={deficitCadena > 0 ? `${d0(deficitCadena)} kcal` : "0 kcal"}
+              detail={deficitCadena > 0 ? undefined : "(no aplica déficit por fenotipo)"}
+            />
+            {/* A DONDE LLEGA LA CUENTA. Cuando el profesional NO fijo el objetivo, este renglon ES el
+                objetivo y no hay dos numeros. Cuando SI lo fijo, se muestran los dos y rotulados: el de la
+                cuenta y el suyo, que la reemplaza. Es la distincion calculado/ajustado, en el sitio donde
+                de verdad se decide algo. */}
+            <PrevRow
+              op="="
+              resultado={!objetivoLoFijoElProfesional}
+              label={objetivoLoFijoElProfesional ? "Objetivo del modelo" : "Objetivo calórico"}
+              tag={objetivoLoFijoElProfesional ? undefined : "lo fijas arriba"}
+              value={`${d0(objetivoDelModelo)} kcal`}
               detail={
-                objetivoEsMantenimiento
-                  ? "(= GET, mantenimiento: el modelo no aplica déficit; el objetivo lo defines tú)"
-                  : undefined
+                pisoMordio
+                  ? "(piso de 1.000 kcal)"
+                  : objetivoEsMantenimiento
+                    ? "(= GET: sin déficit, el objetivo es de mantenimiento salvo que lo fijes tú)"
+                    : undefined
               }
             />
+            {objetivoLoFijoElProfesional ? (
+              <PrevRow
+                op="→"
+                resultado
+                label="Objetivo del plan"
+                tag="lo fijas arriba"
+                value={`${d0(cal.kcalObj)} kcal`}
+                detail="(fijado por ti; reemplaza el del modelo)"
+              />
+            ) : null}
             {/* Biody reubicado aqui (checkpoint 2.4), aclarado: son DOS fuentes distintas de gasto. Santiago
                 dudo al ver "medido 2590" al lado de la cadena que calcula otro numero. La base del plan es el
                 CALCULADO (como el HTML); el medido queda como referencia del equipo. */}
@@ -426,18 +591,21 @@ function CadenaCaloricaSection({
               Reparto de macronutrientes
             </p>
             <PrevRow
+              op="+"
               label="Proteína"
               tag="la fijas tú (g/kg de peso)"
               value={`${d0(cal.protG)} g`}
               detail={`(${cal.protGKg} g/kg · ${protPct}% · ${d0(cal.protKcal)} kcal)`}
             />
             <PrevRow
+              op="+"
               label="Grasa"
               tag="la fijas tú (% de las calorías)"
               value={`${d0(cal.fatG)} g`}
               detail={`(${cal.fatPct}% · ${d0(cal.fatKcal)} kcal)`}
             />
             <PrevRow
+              op="+"
               label="Carbohidratos"
               tag="calculado (residuo)"
               value={`${d0(cal.choG)} g`}
@@ -451,10 +619,14 @@ function CadenaCaloricaSection({
                 proteína o la grasa, o sube el objetivo calórico.
               </p>
             ) : (
-              <p className="mt-1 flex items-baseline justify-between gap-4 text-xs text-clinical-optimal">
-                <span>Suma de los tres</span>
-                <span>
-                  <strong>{d0(macrosKcal)} kcal</strong> = objetivo
+              <p className="mt-0.5 flex items-baseline justify-between gap-4 border-t border-border pt-1.5 text-sm text-clinical-optimal">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="w-3 shrink-0 text-right font-medium">=</span>
+                  <span className="font-medium">Suma de los tres</span>
+                </span>
+                <span className="shrink-0 tabular-nums">
+                  <strong className="text-base">{d0(macrosKcal)} kcal</strong>
+                  <span className="text-xs font-normal"> = objetivo</span>
                 </span>
               </p>
             )}
@@ -507,7 +679,7 @@ export function TreatmentPanel({
           kcalObj: protocol.adjKcalObj,
           protGkg: protocol.adjProtGkg,
           fatPct: protocol.adjFatPct,
-          pesoMeta: protocol.adjPesoMeta,
+          pesoMeta: pesoMetaFijado(protocol),
         }).calorico.kcalObj,
       )
     : null;
@@ -573,10 +745,6 @@ export function TreatmentPanel({
             plan. No es navegacion: se sigue en un solo scroll. */}
         <div className="mt-4 border-t-2 border-foreground/20 pt-6">
           <h3 className="text-base font-bold text-foreground">Plan alimentario</h3>
-          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-            La cadena calórica y su desarrollo: intercambio, restricciones y menú. Arriba está la lectura del
-            diagnóstico.
-          </p>
         </div>
 
         {/* Aviso ACCIONABLE de realimentacion (instruye: QUE hacer con las kcal), ENCIMA de la cadena, que es
@@ -624,6 +792,11 @@ export function TreatmentPanel({
         <CadenaCaloricaSection
           key={sectionKey(
             "cadena",
+            // El peso meta de INGRESO va en la KEY y NO en la firma, y la distincion importa: la firma es el
+            // candado de concurrencia que el servidor recomputa sobre las columnas que ESTE formulario
+            // escribe (adj_*), y meterle un dato de otra tabla la haria diverger. La key solo tiene que
+            // remontar la seccion cuando el servidor cambia algo que se muestra, y el peso del ingreso se
+            // muestra (placeholder, procedencia, boton). Sin esto la seccion quedaria pegada al valor viejo.
             adjustmentSignature({
               treatmentId: protocol.treatmentId,
               adjGeb: protocol.adjGeb,
@@ -632,7 +805,7 @@ export function TreatmentPanel({
               adjProtGkg: protocol.adjProtGkg,
               adjFatPct: protocol.adjFatPct,
               adjPesoMeta: protocol.adjPesoMeta,
-            }),
+            }) + `§ingreso:${protocol.pesoMetaIngreso ?? ""}`,
           )}
           evaluationId={evaluationId}
           protocol={protocol}
@@ -1311,7 +1484,7 @@ function IntercambioSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: protocol.adjPesoMeta,
+    pesoMeta: pesoMetaFijado(protocol),
   };
   // Objetivo efectivo desde los ajustes GUARDADOS (misma fuente que la cadena): base estable del intercambio.
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
@@ -1339,6 +1512,10 @@ function IntercambioSection({
   const totalCho = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.cho, 0);
   const totalGras = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.gras, 0);
   const setP = (sub: string, v: number) => setPorciones((p) => ({ ...p, [sub]: Math.max(0, v) }));
+  // Hay algo que perder si alguna porcion en pantalla difiere de la que calcula el objetivo actual. Se
+  // compara contra los DEFAULTS vivos y no contra lo guardado: si el objetivo cambio, lo guardado tambien
+  // es "ajuste" frente a lo que el recalculo va a poner.
+  const hayAjustesIntercambio = defaults.some((a) => (porciones[a.sub] ?? 0) !== a.porciones);
 
   // Lo que se guarda: las porciones POR ALIMENTO en pantalla + el objetivo con el que se calcularon
   // (objetivoBase, DIV-11). Se serializan los 21 alimentos (contexto completo del desfase).
@@ -1354,7 +1531,7 @@ function IntercambioSection({
       <p className="text-sm text-muted-foreground">
         Porciones por alimento para cubrir el objetivo calórico ({objetivoEfectivo} kcal). El auto-llenado
         sugiere un alimento representativo por grupo; puedes repartir dentro de un grupo (por ejemplo dos de
-        leche entera y una descremada). El total se recalcula abajo.
+        leche entera y una descremada).
       </p>
 
       {desfase ? (
@@ -1504,14 +1681,14 @@ function IntercambioSection({
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar intercambio"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
+            <BotonRecalcular
+              etiqueta="Recalcular desde el objetivo"
+              hayAjustes={hayAjustesIntercambio}
               disabled={pending}
-              onClick={() => setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])))}
-            >
-              Recalcular desde el objetivo (borra tus ajustes)
-            </Button>
+              onRecalcular={() =>
+                setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])))
+              }
+            />
           </div>
         </fieldset>
       </form>
@@ -1604,10 +1781,6 @@ function MenuSemanalSection({
         <strong>criterio clínico</strong>: el paciente debe recibir comida conocida, de su ciudad y de su
         mercado, no un menú compuesto desde cero. Un plan que no se parece a lo que la persona come no se
         sigue.
-      </p>
-      <p className="max-w-prose text-sm text-muted-foreground">
-        Es un punto de partida editable, no una prescripción: cambia lo que quieras y guarda. Las columnas
-        son los tiempos de comida que aplicaste arriba.
       </p>
       {sinCiclo.length > 0 ? (
         <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
@@ -1753,14 +1926,12 @@ function TiemposActivosSection({
     <section className={bloqueCls("decision")}>
       <h3 className={tituloBloqueCls("decision")}>Tiempos de comida</h3>
       {/* Se dice aqui lo que la seccion GOBIERNA, porque es lo que explica por que va antes y por que es
-          una decision y no un ajuste. Sin esto, su titulo y el de la distribucion competian. */}
-      <p className="text-xs text-muted-foreground">
-        Qué comidas hace el paciente. Gobiernan el reparto de porciones y el menú.
-      </p>
+          una decision y no un ajuste. Sin esto, su titulo y el de la distribucion competian. Eran DOS
+          parrafos que decian lo mismo; se conservo el que ademas explica el paso propio de "aplicar". */}
       <p className="max-w-prose text-sm text-muted-foreground">
-        Definen la estructura del día del paciente. Mandan sobre las dos tablas de abajo: la distribución
-        reparte dentro de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como
-        columnas. Por eso se aplican con un paso propio y no cambian mientras marcas.
+        Qué comidas hace el paciente. Mandan sobre las dos tablas de abajo: la distribución reparte dentro
+        de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como columnas. Por eso
+        se aplican con un paso propio y no cambian mientras marcas.
       </p>
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
@@ -1830,7 +2001,7 @@ function TiemposSection({
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: protocol.adjPesoMeta,
+    pesoMeta: pesoMetaFijado(protocol),
   };
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
   const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
@@ -1918,12 +2089,8 @@ function TiemposSection({
           Lo que las ordena sin tocar el titulo es el NIVEL (esta es derivada, los tiempos son
           prescripcion) mas la linea de abajo, que es ADITIVA. */}
       <h3 className={tituloBloqueCls("derivado")}>Distribución por tiempos de comida</h3>
-      <p className="text-xs text-muted-foreground">
-        Se calcula sobre los tiempos de comida activos. Puedes ajustar celda por celda.
-      </p>
       <p className="text-sm text-muted-foreground">
-        Reparte las porciones de cada alimento entre los tiempos de comida activos. Ajusta las celdas si hace
-        falta; el total por tiempo (porciones y kcal) se recalcula abajo.
+        Reparte las porciones de cada alimento entre los tiempos de comida activos.
       </p>
 
       {desfase ? (
@@ -2046,9 +2213,12 @@ function TiemposSection({
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar distribución"}
             </Button>
-            <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
-              Recalcular desde el intercambio (borra tus ajustes)
-            </Button>
+            <BotonRecalcular
+              etiqueta="Recalcular desde el intercambio"
+              hayAjustes={Object.keys(celdas).length > 0}
+              disabled={pending}
+              onRecalcular={() => setCeldas({})}
+            />
           </div>
         </fieldset>
       </form>
@@ -2069,7 +2239,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     kcalObj: protocol.adjKcalObj,
     protGkg: protocol.adjProtGkg,
     fatPct: protocol.adjFatPct,
-    pesoMeta: protocol.adjPesoMeta,
+    pesoMeta: pesoMetaFijado(protocol),
   };
   const ef = computeProtocoloEfectivo(snap, adjGuardados);
   const objetivoEfectivo = Math.round(ef.calorico.kcalObj);
@@ -2139,8 +2309,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     <section className={bloqueCls("derivado")}>
       <h3 className={tituloBloqueCls("derivado")}>Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)</h3>
       <p className="text-sm text-muted-foreground">
-        Calculada del plan, no editable: cubrimiento de nutrientes contra los requerimientos por sexo y edad. El
-        sodio se limita (menos es mejor); el resto se cubre.
+        Cubrimiento de nutrientes contra los requerimientos por sexo y edad. El sodio se{" "}
+        <strong>limita</strong> (menos es mejor); el resto se cubre.
       </p>
       {!algunaPorcion ? (
         <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">

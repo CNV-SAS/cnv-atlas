@@ -339,11 +339,20 @@ export function BisConditionsCapture({
               id="weight-goal"
               type="number"
               inputMode="decimal"
+              step="0.1"
               value={weightGoal}
               onChange={(e) => setWeightGoal(e.target.value)}
               disabled={pending}
               placeholder="Ej. 70"
             />
+            {/* QUE HACE EL CAMPO, junto al campo. Es "la palanca" en sus palabras (2026-08-26), y hasta el
+                2026-08-31 este input se GUARDABA y no lo leia nadie: el profesional lo fijaba y la
+                prescripcion no se movia. Decir a donde va es lo que impide volver a dejarlo suelto. */}
+            <p className="text-xs text-muted-foreground">
+              Es la base del cálculo: el gasto y los gramos de proteína del plan salen de este peso, no del
+              medido. Si lo dejas vacío, el modelo usa un peso calculado. El nutricionista puede ajustarlo
+              en Tratamiento, pero es el mismo dato, no otro.
+            </p>
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="grip-strength" className="text-sm">

@@ -51,9 +51,41 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
   it("y el objetivo NO se edita en el de la fórmula: ahí va en lectura", () => {
     // Es su instrucción literal para el dato que aparece en los dos bloques: "editable en uno solo y en
     // lectura en el otro". Un segundo input aquí es exactamente la fusión volviendo por la puerta de atrás.
+    //
+    // EL MARCADOR CAMBIÓ, NO LA ASERCIÓN (cotejo 2026-08-31, punto 5): la cadena se dispone ahora como una
+    // CUENTA vertical, y el rótulo del objetivo pasó a ser dinámico porque cuando el profesional lo fija a
+    // mano hay dos renglones que distinguir (el que da la cuenta y el suyo, que la reemplaza). Lo que se
+    // afirma sigue siendo lo mismo: aquí se lee, no se edita, y el tag dice dónde se edita.
     expect(FORMULA()).not.toContain('name="adjKcalObj"');
-    expect(FORMULA()).toContain('label="Objetivo calórico"');
+    expect(FORMULA()).toContain('"Objetivo calórico"');
     expect(FORMULA()).toContain('tag="lo fijas arriba"');
+  });
+
+  it("la cuenta se lee como cuenta: operadores y renglones de resultado", () => {
+    // Su pantalla dispone la cadena en vertical con el operador a la izquierda. La nuestra decía los mismos
+    // números en filas iguales, y eso esconde que unos SALEN de otros: el GET parecía un tercer dato al
+    // lado del GEB y del PAL, no su producto.
+    const f = FORMULA();
+    expect(f).toContain('op="×"');
+    expect(f).toContain('op="="');
+    expect(f).toContain("resultado");
+  });
+
+  it("el renglón final es el RESULTADO de los de arriba, o dice que alguien lo reemplazó", () => {
+    // Una cuenta cuyo total no sale de sus términos deja de ser una cuenta y pasa a ser una lista que
+    // miente. Hay dos formas de que eso ocurra y las dos están cubiertas: que el profesional fije el
+    // objetivo a mano (se muestran los dos renglones, rotulados) y que muerda el piso de 1.000 kcal.
+    const f = FORMULA();
+    expect(f).toContain("objetivoLoFijoElProfesional");
+    expect(f).toContain('label="Objetivo del plan"');
+    expect(f).toContain("reemplaza el del modelo");
+    expect(PANEL).toContain("const pisoMordio");
+    expect(f).toContain("piso de 1.000 kcal");
+    // Y el déficit es un eslabón de la cuenta, no un dato suelto: se computa del snapshot SELLADO (la
+    // misma fuente que entra al motor), no restando GET menos objetivo, que con un objetivo fijado a mano
+    // daría un déficit que el modelo nunca calculó.
+    expect(PANEL).toContain("const deficitCadena = snap.estrategia.deficit ?? 0");
+    expect(f).toContain('label="Déficit del modelo"');
   });
 
   it("la fórmula lleva GEB, PAL y el cuadre de macros", () => {

@@ -27,6 +27,7 @@ const BASE: TreatmentProtocol = {
   pesoCalculo: 70,
   pesoCalculoLabel: "Peso actual (IMC normal)",
   adjPesoMeta: null,
+  pesoMetaIngreso: null,
   adjGeb: null,
   adjPal: null,
   adjKcalObj: null,

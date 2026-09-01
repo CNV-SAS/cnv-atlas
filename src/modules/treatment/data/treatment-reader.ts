@@ -108,7 +108,7 @@ export async function getTreatmentProtocol(
   // contraindicaciones lo necesita (son de la PERSONA, no de esta consulta).
   const patientId = patientIdFrom((diag as { evaluations?: unknown }).evaluations);
 
-  const [nutras, guides, notes, catalog, menus, get, report, contra] = await Promise.all([
+  const [nutras, guides, notes, catalog, menus, get, report, contra, intake] = await Promise.all([
     supabase
       .from("treatment_nutraceuticals")
       .select("id, nutraceutical_id, dosage, duration_days, nutraceuticals(name)")
@@ -155,7 +155,16 @@ export async function getTreatmentProtocol(
       .from("patient_contraindications")
       .select("id, nutraceutical_id, reason, created_at")
       .eq("patient_id", patientId)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false }),
+    // PESO META DE INGRESO. Es el campo que el profesional llena en la entrada ("Meta de peso", junto a la
+    // fuerza prensil) y que Gildardo situa ahi: "el peso meta no pertenece al tratamiento, pertenece al
+    // paciente. El motor lo calcula como punto de partida, el profesional lo fija, y el tratamiento lo
+    // LEE" (2026-08-28 §2). Hasta hoy se GUARDABA Y NO LO LEIA NADIE: un campo vivo que no movia nada.
+    supabase
+      .from("evaluation_bis_intake")
+      .select("weight_goal_kg")
+      .eq("evaluation_id", evaluationId)
+      .maybeSingle(),
   ]);
 
   if (nutras.error) throw new Error(`treatment-reader: nutraceuticals: ${nutras.error.message}`);
@@ -165,6 +174,7 @@ export async function getTreatmentProtocol(
   if (menus.error) throw new Error(`treatment-reader: menu_suggestions: ${menus.error.message}`);
   if (get.error) throw new Error(`treatment-reader: get: ${get.error.message}`);
   if (report.error) throw new Error(`treatment-reader: report snapshot: ${report.error.message}`);
+  if (intake.error) throw new Error(`treatment-reader: bis intake: ${intake.error.message}`);
 
   const kcalSugerido = get.data?.value != null ? Math.round(Number(get.data.value)) : null;
   // Recomendacion del modelo (string plano, p. ej. "MULTI-CELL BASE, OMEGA COMPLEX"). El P1/P2/dosis
@@ -211,6 +221,8 @@ export async function getTreatmentProtocol(
     pesoCalculo: suggestedSnapshot?.pesoCalculo ?? null,
     pesoCalculoLabel: suggestedSnapshot?.pesoCalculoLabel ?? null,
     adjPesoMeta: treatment.adj_peso_meta != null ? Number(treatment.adj_peso_meta) : null,
+    pesoMetaIngreso:
+      intake.data?.weight_goal_kg != null ? Number(intake.data.weight_goal_kg) : null,
     // Ajustes de la cadena (pieza 2). Numeros: los numeric (pal/prot_gkg) vuelven como string de PostgREST,
     // los integer (geb/kcal_obj/fat_pct) como numero; se normalizan TODOS con Number para que la firma de
     // ajustes coincida byte a byte con la que recomputa el writer bajo lock (misma normalizacion alla).
@@ -356,6 +368,16 @@ export async function getTreatmentForApproval(
     .maybeSingle();
   if (mErr) throw new Error(`treatment-reader(approval): bis_measurements: ${mErr.message}`);
 
+  // Peso meta de INGRESO, la otra superficie del MISMO dato (Gildardo 2026-08-28 §2). Se resuelve aqui,
+  // no en los ocho sitios que arman los ajustes: si la resolucion viviera en el caller, un caller nuevo
+  // la olvidaria y el sellado usaria un peso meta distinto del que muestra la pantalla.
+  const { data: intake, error: iErr } = await supabase
+    .from("evaluation_bis_intake")
+    .select("weight_goal_kg")
+    .eq("evaluation_id", evaluationId)
+    .maybeSingle();
+  if (iErr) throw new Error(`treatment-reader(approval): bis intake: ${iErr.message}`);
+
   const n = (v: unknown): number | null => (v == null ? null : Number(v));
   return {
     treatmentId: t.id,
@@ -367,7 +389,10 @@ export async function getTreatmentForApproval(
       kcalObj: n(t.adj_kcal_obj),
       protGkg: n(t.adj_prot_gkg),
       fatPct: n(t.adj_fat_pct),
-      pesoMeta: n(t.adj_peso_meta),
+      // EFECTIVO: el ajuste del tratamiento si lo hay, y si no el que el profesional fijo en la entrada.
+      // Los consumidores de esta lectura (el sellado al aprobar y el prompt del menu) necesitan el peso
+      // que GOBIERNA, no el de una de las dos superficies.
+      pesoMeta: n(t.adj_peso_meta) ?? n(intake?.weight_goal_kg),
     },
     evaluationProfessionalId: evalRow.professional_id,
     bisMeasurementDate: meas?.measurement_date ?? null,

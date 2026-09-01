@@ -15,8 +15,8 @@
 | **Punto 1** · la conducta general del dato ausente | **Aplicada sin volver a preguntar**, como pediste. Barrimos y arreglamos dos sitios más |
 | **Punto 2** · no hay puente que construir | **Retirada la pregunta.** Y de ahí sale el punto 1 de esta ronda |
 | **Punto 3** · el interruptor del ICEC se queda en `false` | **Sin tocar.** Queda esperando tu recalibración |
-| **Punto 6** · conectar la dinamometría; el sellado se reabre | **En construcción**, en ese orden |
-| **Punto 8** · una nota por profesión | **En construcción** |
+| **Punto 6** · conectar la dinamometría; el sellado se reabre | **Aplicado**, en ese orden. La fuerza prensil ya entra al fenotipo y el sellado se reabre con motivo, registrado |
+| **Punto 8** · una nota por profesión | **Aplicado.** Y de ahí sale el punto 6 de esta ronda |
 
 **Y tu punto 0 quedó registrado como regla de trabajo nuestra**, no como una corrección puntual: *"cuando
 una pieza del archivo no coincide con otra, la primera pregunta no es cuál corregir, sino si están mirando
@@ -25,7 +25,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ---
 
-## Los ocho de un vistazo
+## Los nueve de un vistazo
 
 **Solo uno bloquea construcción**, y es el que queda de tu punto 2. Los demás son declaraciones y una corrección nuestra.
 
@@ -39,6 +39,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
+| **9** | Declaración: **cinco cambios en la pantalla del nutricionista**, uno de ellos contra algo que aprobaste | Si las guías dietarias vuelven, y si los tiempos van en otro sitio | No |
 
 ---
 
@@ -243,13 +244,79 @@ Tu archivo guarda por profesión (`trat.porProfesional[rol]`) al menos estos cam
 
 ---
 
+# 9 · Declaración: cinco cosas que cambiamos en la pantalla del nutricionista
+
+**Cotejamos tu pantalla contra la nuestra, zona por zona.** Casi todo fue adoptar tu disposición. Estas
+cinco son las que te debemos decir, porque una va contra algo que aprobaste, otra es un hallazgo tuyo que
+nos sirvió, y las demás son huecos nuestros.
+
+## 9.1 · Retiramos las guías dietarias, que tú habías aprobado
+
+**Aprobaste expresamente que se quedaran**, el 26: *"la caja se queda"*. Las quitamos igual, y esta es la
+razón, para que la revises:
+
+La caja era un campo de texto libre donde el profesional escribía recomendaciones. En la práctica decía lo
+mismo que ya dicen, en el mismo scroll, la prescripción del modelo (proteína, sodio, grasa) y las notas del
+tratamiento. Y lo único que alguien había escrito en ella, en el paciente de prueba, era una línea de
+**fenotipo EFR**, que el modelo ya calcula y ya muestra: la caja estaba sirviendo para teclear a mano un
+dato que el sistema tiene.
+
+**Lo dejamos reversible a propósito.** La tabla, el servicio y la acción de guardar siguen en su sitio; lo
+único que se quitó fue el montaje en la pantalla. Si nos dices que la caja se queda, vuelve con una línea y
+sin perder nada de lo guardado.
+
+## 9.2 · Los tiempos de comida quedan ARRIBA de las dos tablas, no junto a ellas
+
+En tu pantalla el bloque de tiempos está al lado de las tablas que alimenta. En la nuestra va **antes**, y
+lo mantuvimos así por una razón de orden de trabajo, la misma con la que tú separaste el objetivo de la
+cadena: **los tiempos gobiernan las dos tablas de abajo** (la distribución reparte dentro de los tiempos
+activos, y el menú semanal usa esos mismos tiempos como columnas). Puestos al lado, el profesional los
+cambia después de haber repartido y tiene que rehacer las dos.
+
+**Si en tu flujo se deciden en otro momento, dilo y los movemos.**
+
+## 9.3 · Tu GEB usa Cunningham, igual que el nuestro. Eso reduce una pregunta abierta
+
+Verificándolo encontramos que **tu pantalla calcula el gasto basal con Cunningham sobre masa libre de
+grasa**, exactamente como la cadena de Atlas.
+
+Lo decimos porque cambia el tamaño de una pregunta que tenemos abierta: `motorTratNutri` calcula el gasto
+con **Mifflin sobre el peso meta**, y eso no discrepa con nosotros, **discrepa con tu propia pantalla**. Es
+otra de las diferencias entre tus dos motores, como el sodio. No tocamos nada: seguimos mostrando la cadena
+con Cunningham y las cifras calóricas de `motorTratNutri` siguen sin conectarse, esperando tu decisión
+sobre cuál motor manda.
+
+## 9.4 · Imprimir el plan: tu pantalla lo hace, la nuestra no
+
+Tu pantalla tiene la salida impresa del plan alimentario para entregárselo al paciente. **Atlas no la
+tiene.** No es una decisión nuestra ni una discrepancia: es un hueco que no habíamos registrado, y lo
+vamos a construir. Lo declaramos para que sepas que lo vimos y que no está esperando nada tuyo.
+
+## 9.5 · El peso meta ya es un solo dato, con un residuo que estamos cerrando
+
+**Tu punto 2 del 28 está aplicado**, y el defecto que anunciaste era peor de lo que suponíamos: el campo de
+la entrada existía desde hace meses, el profesional lo llenaba, y **no lo leía nada**. Ni la cadena, ni el
+sellado, ni el menú. Se acordaba un peso meta con el paciente y la prescripción no se movía un gramo.
+
+Ya está conectado: el peso de la entrada gobierna toda la cadena, el ajuste del panel lo reemplaza cuando
+el nutricionista lo mueve, y la pantalla dice de dónde viene el número en cada caso.
+
+**El residuo, y te lo decimos porque es exactamente lo que advertiste:** hoy los dos campos siguen
+guardándose en sitios distintos, así que en teoría pueden llegar a decir números diferentes aunque la
+pantalla muestre siempre cuál gobierna. *"Si los construyen como campos separados, el defecto lo crean
+ustedes"*, dijiste. Lo estamos unificando en un solo sitio de guardado. No necesitamos nada tuyo: es
+trabajo nuestro y va en la lista.
+
+---
+
 ## Lo que queda esperando, y de quién es
 
 **Tuyo:** la recalibración del ICEC (μ y σ), que dijiste que va por tu lado y llega con el dato. El
 interruptor sigue en `false` y no lo tocamos.
 
-**Nuestro:** conectar la dinamometría al motor, reabrir el sellado con la reemisión del 12b, y las tres
-notas por profesión. Los tres en construcción, sin bloqueo.
+**Nuestro:** la salida impresa del plan alimentario (punto 9.4) y unificar el guardado del peso meta en un
+solo sitio (punto 9.5). Los dos sin bloqueo. La dinamometría, la reapertura del sellado y las notas por
+profesión, que estaban en construcción cuando empezamos esta ronda, ya están.
 
 **Y una sola pregunta bloquea algo:** la del punto 1.
 

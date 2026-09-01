@@ -55,6 +55,17 @@
    **Y EL COTEJO VISUAL SE PUEDE HACER YA**, que era la decisión de Santiago: una sola vez, contra lo
    definitivo.
 
+   **EL COTEJO ESTA EN CURSO (2026-08-31), subpestaña del Nutricionista.** Santiago va reportando por
+   zonas y se construye por tandas, cada una con su smoke. **Tanda 1 (items 1-2, commit `6ebe698`):**
+   fuera las guías dietarias y el fenotipo tecleado a mano; el bloque de objetivo con la forma de su
+   pantalla (título dinámico, chips de la prescripción, notas, alerta de antecedentes) y el PAL como
+   desplegable con sus cinco niveles. **Tanda 2 (items 3-6):** el peso meta como un solo dato (la
+   superficie de la entrada existía y NO LA LEIA NADIE), la poda de las ayudas que repetían la pantalla,
+   la cadena dispuesta como una cuenta vertical, y la confirmación de los dos recálculos.
+   Su estado no se afirma aquí: lo dicen `peso-meta-una-sola-fuente`, `ayudas-que-son-garantias`,
+   `recalculo-dos-actos` y `cadena-dos-bloques`. **Falta la subpestaña de Rutas de atención**, que es la
+   otra mitad del gate 3 (`BACKLOG.md`).
+
    **Esperan respuesta las de `RONDA_GILDARDO_2026-08-29.md`, y NINGUNA bloquea el cotejo.** Solo dos
    bloquean construcción futura: el puente frecuencia-porciones con el omega-3 (que enciende las diez
    alertas de consumo) y el ICEC.
