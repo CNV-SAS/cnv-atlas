@@ -796,7 +796,7 @@ conducta general del sistema." Permiso explicito para aplicarla sin preguntar ca
 
 ## Cola de la ronda del 2026-08-31
 
-**Enviadas en `docs/entregas/RONDA_GILDARDO_2026-08-31.md`.** Cotejadas una por una: las cinco estan en el
+**Enviadas en `docs/entregas/RONDA_GILDARDO_2026-09-01.md`** (se abrio el 31 de agosto y se renombro al cerrarla, para que la fecha del documento sea la de su envio y no la de su primera linea). Cotejadas una por una: las cinco estan en el
 documento. P-84 se MOVIO desde la ronda del 29, donde se escribio DESPUES de que el la contestara.
 
 **P-81 · Declaracion: su punto 4 tenia CUATRO sitios, y describimos mal uno.** Senalo el `?? 1` del dominio

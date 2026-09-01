@@ -6,7 +6,7 @@
 
 > **ENVIADA CON OCHO PUNTOS, y respondida el 30.** El punto 9 sobre los encabezados de categoría llegó a
 > escribirse aquí el 31, DESPUÉS de que él contestara, así que nunca lo habría visto: se movió a
-> `RONDA_GILDARDO_2026-08-31.md`, punto 5. Agregar a un documento ya respondido es la forma más silenciosa
+> `RONDA_GILDARDO_2026-09-01.md`, punto 5. Agregar a un documento ya respondido es la forma más silenciosa
 > de que una pregunta no llegue nunca.
 
 ---

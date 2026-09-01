@@ -132,6 +132,10 @@ export async function getPlanPaciente(
     notasDelModelo: prescripcion?.notas ?? [],
     menu,
     tiemposActivos: vivos.map((t) => t.n),
+    // SOLO LAS DEL PROFESIONAL. Las del MODELO ya salen arriba, en el bloque del plan dietetico, con su
+    // cifra ("Sodio < 1.500 mg/dia") y sus atributos ("Hiposodica", "Patron DASH"). Repetirlas aqui sin el
+    // numero seria decir dos veces lo mismo, y peor la segunda.
+    restricciones: protocol.restricciones.filter((r) => r.trim() !== ""),
     distribucion,
     // Los bloques PENDIENTES no viajan: son avisos para el profesional ("esto se emitirá cuando..."), y en
     // el documento del paciente serían ruido sobre algo que no puede resolver.

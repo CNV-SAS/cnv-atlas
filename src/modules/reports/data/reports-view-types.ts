@@ -34,4 +34,12 @@ export type PlanPaciente = {
   distribucion: FilaDistribucion[];
   /** Bloque 6 · las recomendaciones que aplican a su caso. */
   recomendaciones: { titulo: string; lineas: string[] }[];
+  /**
+   * LO QUE EL PACIENTE NO PUEDE COMER, anadido por su profesional (`treatments.restricciones`). Las del
+   * MODELO no se repiten aqui: ya salen en el bloque del plan dietetico, con su cifra.
+   *
+   * Su §7.1 no las nombra, y va declarado: un plan sin las restricciones es un plan que el paciente no
+   * puede seguir, porque el menu que recibe puede contradecirlas.
+   */
+  restricciones: string[];
 };
