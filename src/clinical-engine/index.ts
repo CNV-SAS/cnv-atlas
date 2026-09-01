@@ -11,6 +11,9 @@ export { suspendSurveyRoutes, isBisDerivedRoute, isBisDerivedDomain } from "./df
 // Resumen funcional (parrafo) + meta terapeutica (metas) del DFI. Modulo DERIVADO: reconstruye lo que el
 // frozen engine.dfi dejo sin portar, sin tocar la ciencia congelada. Ver dfi-narrative.ts.
 export { dfiNarrative, dfiNarrativeFromOutput, dfiCategoriesFromOutput, type DfiNarrative } from "./dfi-narrative";
+// El DFI en lenguaje de PACIENTE: porte del mapa de Gildardo (_dfiPac). Distinto de dfi-narrative, que es
+// la narrativa del PROFESIONAL: son dos lenguajes para el mismo dato, y no se mezclan.
+export { dfiParaPaciente, type DfiPaciente, type DominioPaciente } from "./dfi-paciente";
 // Orquestador del protocolo (T2 A3): encadena los tres motores y arma el protocol_suggested; y el
 // computo del set EFECTIVO al aprobar (aplica los adj_* sobre los inputs sellados del sugerido).
 export {

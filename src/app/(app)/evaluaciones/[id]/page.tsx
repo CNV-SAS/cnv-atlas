@@ -106,6 +106,10 @@ import {
 import { resolverAntecedentes } from "@/modules/reports/data/hc-antecedentes-map";
 import { CierreConsulta } from "@/modules/reports/components/cierre-consulta";
 import { pendientesDeLaConsulta } from "@/modules/reports/data/cierre-pendientes";
+import { getPatientConsents } from "@/modules/consent/data/consent-reader";
+import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
+import { HcConsentimiento } from "@/modules/reports/components/hc-consentimiento";
+import { HcImprimir } from "@/modules/reports/components/hc-imprimir";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
 import { indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
@@ -355,6 +359,20 @@ export default async function ResultadosEvaluacionPage({
   // Antecedentes de la HC: se resuelven sobre las respuestas YA leidas (entrySurvey), sin consulta nueva.
   // La marca de "solo registro" sale del field_key de cada pregunta, no de una lista escrita a mano.
   const hcAntecedentes = resolverAntecedentes(entrySurvey?.flatMap((d) => d.questions) ?? []);
+  // SELLO DE CONSENTIMIENTO de la historia clinica. Se leen del MISMO reader que usa la ficha del paciente
+  // (`getPatientConsents`): una segunda lectura del mismo dato es como se crean las discrepancias, y este
+  // es un documento probatorio. La etiqueta sale de `CONSENT_TYPE_LABELS`, tambien compartida.
+  const hcAutorizaciones = protocol?.patientId
+    ? (await getPatientConsents(protocol.patientId)).map((a) => ({
+        tipo: a.tipo as string,
+        etiqueta: CONSENT_TYPE_LABELS[a.tipo] ?? (a.tipo as string),
+        necesaria: a.necesaria,
+        vigente: a.vigente,
+        firmadaEl: a.firmadaEl,
+        version: a.version,
+        revocadaEl: a.revocadaEl,
+      }))
+    : [];
   // Referencia + Δ (rango COMPLETO del motor) de los indicadores que viven en la tabla de Wang (FFMI/FMI/
   // AF/IR): del clasificador del motor (indicator-ranges), computadas aca porque tienen los indicadores.
   const wangRefs: Record<string, { reference: string; delta: string | null }> = {};
@@ -796,8 +814,14 @@ export default async function ResultadosEvaluacionPage({
           {/* HISTORIA CLINICA de la consulta (bloques 1 a 3 de catorce, 2026-08-24). Se muestra aunque no
               haya reporte: la historia documenta la CONSULTA, no el envio. */}
           {hcHeader ? (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
+            // `hc-print`: al imprimir, esto es LO UNICO que sale en la hoja (ver globals.css). El
+            // documento impreso es el mismo que el profesional tiene delante, sin una segunda
+            // construccion que pueda desincronizarse.
+            <div className="hc-print flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
+                <HcImprimir />
+              </div>
               <HcDatosDelPaciente
                 datos={{
                   paciente: hcHeader.paciente,
@@ -880,6 +904,12 @@ export default async function ResultadosEvaluacionPage({
                 }))}
               />
               <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDateOnly(hcHeader.proximaCita) : null} />
+              {/* EL SELLO DE CONSENTIMIENTO va ANTES de la firma, que es donde cierra el documento: la
+                  firma del profesional queda abajo del todo, como en cualquier documento clinico. */}
+              <HcConsentimiento
+                autorizaciones={hcAutorizaciones}
+                versionDeLaConsulta={hcHeader.consentVersion}
+              />
               <HcFirmaYFecha profesional={hcHeader.profesional} fecha={formatDate(hcHeader.fechaConsulta)} />
             </div>
           ) : null}

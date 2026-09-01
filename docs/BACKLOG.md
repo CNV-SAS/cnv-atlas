@@ -28,14 +28,42 @@ Las dos precisiones que hacen que convivan:
 tres modos de envío** (un derecho que aparece según el modo es un derecho que a veces no existe; hay
 candado). Dice "a tu profesional" y no a CNV porque es exacto: CNV no puede entregársela.
 
-### PENDIENTE · Generar y enviar la historia clínica desde la vista del profesional
+### [HECHO 2026-09-01] La HC se imprime y se guarda como PDF
 
-Dos piezas, y la primera ya estaba en el orden del inventario de reportes:
+Botón en la pantalla del profesional, hoja de impresión en `globals.css`, y el **sello de consentimiento**
+(versión bajo la que se capturó la consulta, más el estado de cada autorización, distinguiendo *revocada*
+de *nunca otorgada*, que en un documento probatorio no es lo mismo). Estado: `hc-imprimible.test.ts`.
 
-1. **La HC como PDF**, desde su pantalla, sin depender de CNV. Hoy la historia clínica existe como pantalla
-   y no se puede imprimir ni archivar.
-2. **Poder enviársela al paciente desde ahí, con registro del evento**: quién la generó, para qué paciente,
-   cuándo. Es el rastro que prueba que el derecho se atendió.
+**Se imprime lo que se ve, a propósito.** Generarla en el servidor exigiría una SEGUNDA construcción del
+documento (con `@react-pdf`, que no entiende este HTML), y dos construcciones del mismo insumo es el
+defecto que llevamos una semana cerrando: la segunda hereda los huecos de la primera y se desincronizan
+sin que nada avise. Con `window.print()` lo impreso ES lo que se ve, por construcción, y es además lo que
+hace el prototipo de Gildardo (sus seis botones de impresión son eso).
+
+**Se oculta por `visibility` y no por `display`**, y está anotado en el CSS: `display:none` sobre un
+ancestro esconde también a sus descendientes y no hay forma de volver a mostrar uno; con `display` la
+historia saldría en blanco. Y el color se fuerza (`print-color-adjust`), porque aquí el color **es**
+información clínica: el naranja de Moderado sale de sus clasificadores.
+
+### PENDIENTE · Enviársela al paciente, con registro del evento · DECISIÓN ANTES DE CONSTRUIR
+
+Las otras dos piezas del pedido legal. **No se construyeron porque hay una decisión de arquitectura que no
+es nuestra:** `window.print()` no produce bytes en el servidor, así que no hay nada que adjuntar a un
+correo. Para enviarla hacen falta bytes, y solo hay dos caminos:
+
+| | Qué cuesta | Qué gana |
+| --- | --- | --- |
+| **Adjunto**, como el reporte del paciente | Portar los quince bloques a `@react-pdf`: exactamente la segunda construcción que acabamos de evitar | Un archivo que el paciente conserva, y el mismo canal que ya usamos |
+| **Enlace a una vista firmada** | Una superficie de paciente autenticada, que hoy no existe | No deja datos de salud en una bandeja de entrada para siempre, y el acceso se puede revocar |
+
+**El segundo es mejor en protección de datos y bastante peor en esfuerzo**, y elegirlo decide si Atlas
+tiene o no una superficie de paciente. Eso no se decide al paso.
+
+**Y el registro del evento va con cualquiera de los dos, con un cuidado ya escrito: NO puede vivir solo en
+`clinical_audit_log`.** Ya nos pasó con el descarte de nutracéuticos: el log es admin-only para SELECT, así
+que el profesional escribía su registro y no lo veía nunca. Aquí el profesional necesita **poder mostrar**
+que entregó la historia, que es la mitad legal del asunto. Tabla propia con RLS legible por él, **más** el
+audit inline (regla dura 8).
 
 ### PENDIENTE · Módulo de solicitudes de derechos
 

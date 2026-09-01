@@ -424,10 +424,10 @@ criterio clínico legítimo no puede ser una barrera de acceso.
 **No te lo preguntamos porque no hay nada que decidir:** tu criterio queda intacto y el derecho queda
 cubierto. Te lo declaramos para que sepas que esa línea existe y por qué.
 
-## 10.3 · P1 · ¿Portamos TU mapa de lenguaje para el paciente? (bloquea el plan)
+## 10.3 · Declaración: portamos TU mapa de lenguaje, tal cual
 
-**Va primero porque sin esto no se puede escribir el bloque del diagnóstico**, que es lo primero de tu
-lista del §7.1.
+**Ya no te lo preguntamos: lo portamos.** Estaba en tu archivo completo, así que esperar era esperar por
+algo que ya habías escrito. Lo que va abajo es lo que quedó sin traducir, para que lo revises.
 
 Tu archivo **ya lo tiene resuelto**, y no como una simplificación de presentación sino como una decisión
 clínica: en `enviarInformePaciente` traduces BAJO/MEDIO/ALTO/CRÍTICO a **Óptimo / A mejorar / Requiere
@@ -436,20 +436,37 @@ Prioritario**, reemplazas el dominio conductual con severidad alta por una frase
 menciona TCA**, y reformulas el veto como acompañamiento. Tu propio comentario: *"sin CRÍTICO alarmante,
 sin mencionar TCA"*.
 
-**¿Lo portamos tal cual?** Escribirlo nosotros sería inventar contenido clínico, y preguntártelo cuesta
-menos que acertar. Hasta que respondas, el bloque del DFI no va en el reporte.
+**Portado tal cual, y con tu misma regla para lo que el mapa no cubre:** tu código deja el valor original
+cuando no encuentra traducción (`_NIVPAC[nivel] || nivel`). Nosotros igual: lo que no traduces, no se
+toca.
+
+**Y dos cosas quedaron fuera, las dos a propósito:**
+
+1. **Tu mapa no cubre un dominio SIN DATO.** `_SEVPAC[sev]` espera 0 a 3, y desde tu punto 4 del 30 de
+   agosto un dominio sin dato no puntúa: su severidad es nula. Tu mapa es anterior a esa decisión tuya.
+   En ese caso no le ponemos etiqueta de nivel: decimos que no se evaluó, con el texto que ya usamos.
+   **Inventarle una quinta etiqueta a tu escala sería agregarle un nivel que no tiene.**
+
+2. **El índice numérico de riesgo no va.** Tu `informePaciente` incluye `indice: dfi.riesgo.score`, pero
+   tu §7.1 dice que ningún índice del modelo va al paciente. Ante la contradicción entre tu instrucción y
+   tu implementación, nos quedamos con la instrucción. **El nivel sí va** ("Requiere atención"), que es lo
+   que la persona puede leer; el número no.
+
+Si alguna de las dos te parece mal, se cambia.
 
 ## 10.4 · P2 · ¿Qué significa "por región o ciudad" en la lista de intercambio?
 
 Tu §7.1 dice que el paciente recibe la lista **"no completa, sino los alimentos principales por región o
 ciudad"**, con tu razón: *"entregarle 350 alimentos a un paciente no es informarlo, es abrumarlo"*.
 
-**Dos cosas nos faltan para construirlo:**
+**Tenemos la ciudad. Nos falta el mapa.**
 
-1. **Contra qué se recorta.** Tenemos dos datos: la ciudad de residencia actual y la residencia prolongada
-   (la que pediste el 17 de agosto para la altitud). ¿Cuál manda?
-2. **El mapa de alimentos por región no está en tu archivo.** `INTER_TABLA_B` es nacional. ¿Lo entregas tú,
-   o el criterio es otro (por ejemplo, los N más comunes de cada grupo, sin región)?
+Del paciente sabemos su ciudad y su país, así que contra qué recortar no es problema. Lo que no existe es
+**qué alimentos corresponden a cada región**: tu `INTER_TABLA_B` es nacional, los 350 sin marca de origen.
+
+**¿Lo entregas tú, o el criterio es otro?** Podría ser algo más simple que un mapa por región (por ejemplo
+los más comunes de cada grupo, iguales para todos), pero eso ya no sería lo que pediste y no lo decidimos
+nosotros. **Sin esto la lista recortada no se puede construir.**
 
 ## 10.5 · P3 · Declaración: seguimos enviando por correo, no por app
 

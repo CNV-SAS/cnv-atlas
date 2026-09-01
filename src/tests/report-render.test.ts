@@ -103,13 +103,22 @@ describe("renderReportPdf", () => {
     });
 
     it("el DFI no sale con el lenguaje del modelo (riesgo, score, severidades)", () => {
-      // Su versión para el paciente REESCRIBE ese lenguaje (BAJO/CRÍTICO a Óptimo/Prioritario, y el
-      // dominio conductual sin mencionar TCA). Es decisión clínica suya, no simplificación nuestra: hasta
-      // que responda si portamos su mapa, el bloque no va. `dfi.complete` sí se usa, para gatear la banda.
+      // EL BLOQUE VOLVIO, TRADUCIDO, Y LA ASERCION NO CAMBIA (2026-09-01): se porto SU mapa
+      // (`dfiParaPaciente`), asi que el DFI vuelve al reporte pero en su lenguaje, no en el del modelo.
+      // Lo que sigue prohibido es exactamente lo mismo: leer el DFI CRUDO. `dfi.complete` si se usa (gatea
+      // la banda y el bloque), y `dfi.riesgo.score` no sale ni traducido, porque es un indice.
       expect(CODIGO).not.toContain("dfi.riesgo");
       expect(CODIGO).not.toContain("dfi.domains");
       expect(CODIGO).not.toContain("dfi.rutas");
       expect(CODIGO).toContain("dfi.complete");
+      expect(CODIGO).toContain("dfiParaPaciente(snapshot)");
+    });
+
+    it("el bloque traducido no imprime el índice numérico de riesgo", () => {
+      // Su `informePaciente` SI lo incluye (`indice: dfi.riesgo.score`), pero su §7.1 dice que ningun
+      // indice del modelo va al paciente. Entre su instruccion y su implementacion mandan sus palabras.
+      expect(CODIGO).not.toContain("score");
+      expect(CODIGO).not.toContain("indice");
     });
 
     it("la EB-BIS y el IAE siguen fuera (gate del Hito 3, P0)", () => {

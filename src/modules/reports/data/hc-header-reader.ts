@@ -24,6 +24,11 @@ export type HcHeader = {
   cerradaPor: string | null;
   /** Ocupacion: la del ENCUENTRO si se capturo, y si no la del perfil (ver nota abajo). */
   ocupacion: string | null;
+  /** Version del consentimiento bajo la que se capturo ESTA consulta (`evaluations.consent_version`).
+   *  Va al sello de la historia clinica: el legal pide que el documento diga bajo que autorizaciones se
+   *  recogio cada cosa, y "hubo permiso" sin decir DE QUE texto no es constancia de nada. Puede diferir de
+   *  la vigente hoy: es la de la consulta, no la del momento en que se imprime. */
+  consentVersion: string | null;
 };
 
 type PerfilEmbed = { first_name: string | null; last_name: string | null; sex: string | null; birth_date: string | null; occupation: string | null };
@@ -52,7 +57,7 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     .select(
       // Hint del FK OBLIGATORIO en professional_profiles -> profiles: hay TRES relaciones (profile_id,
       // rut_verified_by, rut_rejected_by) y un embed sin hint revienta en runtime, no en tsc.
-      "created_at, status, closed_at, occupation, reason_for_visit, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
+      "created_at, status, closed_at, occupation, reason_for_visit, consent_version, patients!inner(patient_profiles!inner(first_name, last_name, sex, birth_date, occupation)), professional_profiles!inner(profiles!profile_id!inner(full_name)), cerrada:profiles!closed_by(full_name)",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -109,5 +114,6 @@ export async function getHcHeaderForEvaluation(evaluationId: string): Promise<Hc
     // columna de la evaluacion queda null y la historia clinica decia "No se registró" de un dato que el
     // paciente si dio. Versionar existe para registrar un CAMBIO entre visitas, no para perder el dato.
     ocupacion: (data.occupation as string | null) ?? paciente?.occupation ?? null,
+    consentVersion: (data.consent_version as string | null) ?? null,
   };
 }

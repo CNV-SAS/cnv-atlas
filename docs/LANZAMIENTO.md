@@ -87,6 +87,12 @@
    derecho a la historia clinica. Estado: `report-render`. **El PLAN del paciente y la HC imprimible siguen
    sin construir** (BACKLOG); P1 de la ronda los bloquea.
 
+   **HISTORIA CLINICA IMPRIMIBLE + DFI EN LENGUAJE DE PACIENTE (2026-09-01):** la HC se imprime y se
+   guarda como PDF desde la pantalla del profesional, con sello de consentimiento (mitad legal del derecho
+   de acceso); y el DFI vuelve al reporte del paciente TRADUCIDO con el mapa de Gildardo. Estado:
+   `hc-imprimible` y `dfi-paciente`. **Enviar la HC al paciente NO esta construido**: necesita una decision
+   de arquitectura (adjunto contra enlace firmado), en BACKLOG.
+
    **OJO AL DESPLEGAR: la 0095, la 0096 y la 0097 son migraciones con DATOS o con columnas nuevas.** Copia `treatments.adj_peso_meta` al registro
    del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
    `pnpm db:check:cloud` antes de dar el push por terminado.

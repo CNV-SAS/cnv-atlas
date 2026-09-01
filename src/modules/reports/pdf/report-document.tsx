@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import { type EngineOutput } from "@/clinical-engine";
+import { dfiParaPaciente, type EngineOutput } from "@/clinical-engine";
 
 // Documento PDF del reporte del paciente, construido desde el snapshot inmutable (el
 // EngineOutput que la propagacion dejo en reports). NO es un componente de Next: lo
@@ -100,6 +100,10 @@ export function ReportDocument({
   // `structural` y `frSector` se retiraron con sus bloques (§7.1): un documento que no tiene el dato no
   // puede filtrarlo por descuido. `dfi` se conserva SOLO por `dfi.complete`, que gatea la banda.
   const { dfi, nutraceuticos, versions } = snapshot;
+  // EL DFI EN SU LENGUAJE, no en el del modelo. Porte de su mapa (`dfiParaPaciente`): CRITICO pasa a
+  // Prioritario, el dominio conductual con severidad alta se reemplaza por una frase que no menciona TCA,
+  // y el veto se reformula como acompañamiento. Ver el porqué en `clinical-engine/dfi-paciente.ts`.
+  const dfiPac = dfiParaPaciente(snapshot);
   const notes = (professionalNotes ?? "").trim();
   const showAtlas = mode === "atlas" || mode === "ambos";
   const showNotes = (mode === "notas" || mode === "ambos") && notes.length > 0;
@@ -183,6 +187,28 @@ export function ReportDocument({
             El PLAN COMPLETO -diagnostico, meta, plan dietetico, menu, distribucion, recomendaciones y la
             lista de intercambio recortada por region- es lo que su §7.1 dice que el paciente debe recibir,
             y se construye aparte. Este documento NO es ese plan todavia. ═══ */}
+        {showAtlas && dfiPac && dfi.complete ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Cómo estás</Text>
+            <Text style={styles.para}>
+              <Text style={styles.bold}>{dfiPac.riesgo}. </Text>
+              {dfiPac.enfoque}
+            </Text>
+            {dfiPac.dominios.map((d) => (
+              <Text key={d.id} style={styles.para}>
+                {/* SIN ETIQUETA cuando el dominio no se midio: su mapa no cubre ese caso porque es
+                    anterior a su punto 4 del 30-ago, y ponerle una seria agregarle un nivel a su escala.
+                    La lectura que el motor produce ya dice que no se evaluo. */}
+                {d.nivel ? `${d.dominio} (${d.nivel}): ` : `${d.dominio}: `}
+                {d.lectura}
+              </Text>
+            ))}
+            {dfiPac.acompanamiento ? (
+              <Text style={styles.para}>{dfiPac.acompanamiento}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {showAtlas ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recomendación de nutracéuticos</Text>

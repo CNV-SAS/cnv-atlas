@@ -257,3 +257,66 @@
     @apply font-sans;
   }
 }
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   IMPRESION DE LA HISTORIA CLINICA (2026-09-01)
+
+   El paciente tiene derecho a su historia clinica completa (Resolucion 1995, Ley 1581) y quien se la
+   entrega es su profesional. Para poder entregarla hay que poder sacarla, y esto es lo que la saca.
+
+   COMO FUNCIONA, y por que asi: se marca el contenedor de la historia con `hc-print` y al imprimir se
+   OCULTA todo lo demas por `visibility`, no por `display`. La diferencia importa: `display:none` sobre un
+   ancestro esconde tambien a sus descendientes y no hay forma de volver a mostrar uno solo; `visibility`
+   si se puede revertir hijo por hijo, que es justo lo que hace falta cuando el bloque a imprimir esta
+   dentro de la pagina entera (barra lateral, pestanas, encabezado).
+
+   `no-print` es el escape para lo que esta DENTRO de la historia y no debe salir en papel: botones,
+   ayudas de navegacion, avisos de la interfaz. Un documento clinico con un boton impreso encima se ve
+   como una captura de pantalla.
+
+   LOS COLORES SE FUERZAN (`print-color-adjust`): los veredictos clinicos usan color como significado (el
+   naranja de Moderado sale de sus clasificadores), asi que un navegador que los quite por ahorrar tinta
+   estaria borrando informacion clinica, no decoracion.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .hc-print,
+  .hc-print * {
+    visibility: visible;
+  }
+
+  /* Lo de dentro de la historia que no va en papel. Va DESPUES de la regla de arriba para ganarle. */
+  .hc-print .no-print,
+  .hc-print .no-print * {
+    visibility: hidden;
+  }
+
+  /* La historia ocupa la hoja: sin esto se imprime en el hueco que le dejaba el layout en pantalla
+     (barra lateral incluida), con un margen izquierdo vacio de varios centimetros. */
+  .hc-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+  }
+
+  /* El color ES informacion clinica aqui, no adorno. */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Una tabla partida a la mitad entre dos hojas es ilegible en un documento probatorio. */
+  table,
+  section {
+    break-inside: avoid;
+  }
+
+  @page {
+    size: letter;
+    margin: 1.6cm 1.8cm;
+  }
+}
