@@ -1,5 +1,6 @@
 "use client";
 
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { Panel } from "@/components/shared/panel";
 import { useActionState, useState } from "react";
 
@@ -84,7 +85,7 @@ export function NutraDecisionSection({
         </p>
       ) : null}
 
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <fieldset disabled={locked} className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-4">

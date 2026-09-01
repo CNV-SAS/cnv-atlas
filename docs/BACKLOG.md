@@ -6,6 +6,67 @@
 > **Estado de gates e hitos: la fuente es `LANZAMIENTO.md`.** Este documento describe el TRABAJO de cada ítem. Las etiquetas de HITO que aparecen inline (`[GATE HITO 2]`, `[GATE HITO 3]`, "gate del Hito N") y cualquier "abierto/cerrado" de un gate son ORIENTATIVAS: el estado autoritativo, el hito y el conteo los declara `LANZAMIENTO.md`. Si este doc y `LANZAMIENTO.md` discrepan, gana `LANZAMIENTO.md`. (Los tags `[HECHO]`/`PENDIENTE` sobre un ÍTEM de backlog, en cambio, sí son estado de trabajo y viven aquí.)
 
 
+## El auto-reset de React 19 (`<form action>`): 14 formularios más, fuera de tratamiento (2026-09-01)
+
+**El hazard estaba en `CLAUDE.md` desde hace semanas** ("Auto-reset de React 19 con `<form action={fn}>`"),
+con su arreglo escrito, porque ya nos mordió en el formulario del paciente, donde borraba lo que la persona
+había llenado. **Se aplicó allí y en ningún otro sitio.** El smoke del 2026-09-01 lo encontró vivo en el
+panel de tratamiento: al guardar, los desplegables del PAL saltaban a otro nivel durante uno o dos
+segundos, sin que nadie tocara el PAL.
+
+**El mecanismo, verificado en el react-dom instalado (19.2.4), no razonado.** Con la prop `action`, React
+programa un `form.reset()` nativo dentro de la transición. Y el reset no afecta a todos los campos igual:
+
+| | |
+| --- | --- |
+| `input` / `textarea` | `element.defaultValue = value` en **cada** actualización → **inmunes** |
+| `select` | `defaultSelected` solo se fija **al montar** → vuelve a la opción de montaje |
+| `checkbox` / `radio` controlado | con `checked` presente React **no toca** `defaultChecked` → igual |
+
+Por eso el mismo formulario se porta de dos maneras y el defecto se lee como un fantasma.
+
+**CERRADO en `src/modules/treatment/`** (los 12 formularios del panel más despacho, decisión de
+nutracéuticos y la sección de nutracéuticos), con un mecanismo único
+(`src/components/shared/enviar-sin-reset.ts`) y un candado sobre la REGLA, no sobre el PAL: ningún
+formulario del módulo puede usar la prop `action`, tenga select hoy o se lo agreguen mañana
+(`form-action-no-resetea.test.ts`).
+
+### Los que quedan, y por qué no se tocaron en el mismo turno
+
+De 42 formularios con la prop `action` en toda la app, **18 tienen un `select` o un checkbox/radio dentro**.
+Cuatro eran de tratamiento y están cerrados. Los otros **catorce**:
+
+`ai-config-form` · `create-user-form` · `assign-comodato-form` · `device-status-form` ·
+`return-comodato-form` · `panel-autorizaciones` · `clasificar-faltante-form` · `declarar-remesa-form` ·
+`edit-nutraceutical-form` · `justificar-faltante-form` · `mi-inventario-form` · `create-checkout-form` ·
+`register-referral-form` · `report-card`
+
+**No se arreglaron a la vez a propósito:** son cinco módulos que Santiago no está smokeando, y el arreglo
+cambia cómo se envía cada formulario. Meterlos en la misma tanda que el cotejo sería exactamente el mal
+smoke que ya evitamos dos veces.
+
+**Cuál duele y cuál no, para priorizar:** el síntoma solo se ve si el formulario **sigue montado** después
+de enviar. Los que navegan o desmontan al terminar (`create-user-form`, `register-referral-form`,
+`create-checkout-form`) no lo muestran aunque tengan el defecto. Los que se quedan en pantalla
+(`panel-autorizaciones`, `mi-inventario-form`, `report-card`, los de comodato) sí.
+
+**Cuando se haga:** el arreglo es mecánico (`action={x}` → `onSubmit={enviarSinReset(x)}`) y el candado se
+extiende cambiando una constante de directorio. Lo que NO es mecánico es la verificación: esto solo se ve
+en un navegador real, así que cada módulo necesita su paso de smoke.
+
+### Y de paso, dos debilidades de `check:rsc` que aparecieron aquí
+
+1. **Mira el TEXTO, no el árbol.** Una cadena que se parece a una línea de import la lee como import: este
+   candado lo disparó con una aserción que contenía `import { enviarSinReset } from "..."` como texto.
+2. **No excluye los tests.** Un archivo de `src/tests/` no es un componente de servidor y no debería
+   entrar al análisis.
+
+La primera implica que también puede **fallar al revés** (no ver un import escrito de otra forma). Ninguna
+es urgente; se anotan porque el checker es uno de los pocos candados que atrapan defectos invisibles a tsc,
+y un candado en el que se confía merece que sus límites estén escritos.
+
+---
+
 ## Lo que el smoke del 2026-09-01 dejó abierto
 
 ### [HECHO 2026-09-01] Los cuatro campos de la cadena, repetidos arriba

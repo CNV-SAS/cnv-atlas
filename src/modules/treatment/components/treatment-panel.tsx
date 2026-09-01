@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState, useId } from "react";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { useActionState, useId, useState } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -463,7 +464,7 @@ function CadenaCaloricaSection({
     // seis. Partir el guardado obligaria a dos firmas sobre las mismas columnas, y un guardado parcial
     // dejaria que la cadena de un profesional pisara la meta de otro. Se parte la PRESENTACION; el
     // formulario y su boton siguen siendo uno.
-    <form action={formAction} className="flex flex-col gap-4">
+    <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-4">
       <input type="hidden" name="evaluationId" value={evaluationId} />
       {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
           lo detecta bajo lock y rechaza sin pisar. */}
@@ -1070,7 +1071,7 @@ function MenuSection({
         Cada propuesta viene con el motivo, y las aceptas <strong>una por una</strong>. Si falla o no
         responde, la grilla se queda con el ciclo.
       </p>
-      <form action={formAction}>
+      <form onSubmit={enviarSinReset(formAction)}>
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Button type="submit" variant="outline" disabled={disabled}>
           {pending ? "Adaptando..." : "Adaptar a las restricciones"}
@@ -1226,7 +1227,7 @@ function ProtocoloAprobado({
           : ""}
       </p>
       {abierto ? (
-        <form action={formAction} className="flex flex-col gap-2">
+        <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
           <input type="hidden" name="evaluationId" value={evaluationId} />
           <Label htmlFor="reopen-reason" className="text-sm">
             ¿Por qué la reabres?
@@ -1335,7 +1336,7 @@ function CambioMenu({
       </p>
       {/* CAMBIO POR CAMBIO: una sustitución puede ser buena y la de al lado no. El botón global de abajo
           es un atajo sobre estos, no un reemplazo de ellos. */}
-      <form action={formAction} className="pt-1.5">
+      <form onSubmit={enviarSinReset(formAction)} className="pt-1.5">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="dia" value={c.dia} />
         <input type="hidden" name="tiempo" value={c.tiempo} />
@@ -1377,7 +1378,7 @@ function AplicarTodasMenu({
   if (pendientes.length < 2) return null;
 
   return (
-    <form action={formAction}>
+    <form onSubmit={enviarSinReset(formAction)}>
       <input type="hidden" name="evaluationId" value={evaluationId} />
       <input
         type="hidden"
@@ -1432,7 +1433,7 @@ function RestriccionesSection({
         Son <strong>adicionales</strong> a las restricciones del modelo (las de arriba, por comorbilidad y
         fenotipo): esas no se editan y ya condicionan el menú por su cuenta.
       </p>
-      <form action={formAction} className="flex flex-col gap-2">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
@@ -1526,7 +1527,7 @@ function ObjetivoSection({
           Dieta {prescripcion.tipoEnergia.toLowerCase()} de {kcalObjetivo} kcal/día
         </p>
       ) : null}
-      <form action={formAction} className="flex flex-col gap-2">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
@@ -1672,7 +1673,7 @@ function IntercambioSection({
         </div>
       ) : null}
 
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
@@ -1918,7 +1919,7 @@ function MenuSemanalSection({
           vacía y la escribes tú.
         </p>
       ) : null}
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="menu" value={JSON.stringify(payload)} />
@@ -2063,7 +2064,7 @@ function TiemposActivosSection({
         de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como columnas. Por eso
         se aplican con un paso propio y no cambian mientras marcas.
       </p>
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="activos" value={JSON.stringify(activos)} />
@@ -2231,7 +2232,7 @@ function TiemposSection({
         </div>
       ) : null}
 
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
@@ -2560,7 +2561,7 @@ function NotesSection({
       ) : (
         <p className="text-sm text-muted-foreground">Sin notas.</p>
       )}
-      <form action={formAction} className="flex flex-col gap-2">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <Textarea
           name="note"

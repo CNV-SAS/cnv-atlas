@@ -1,5 +1,6 @@
 "use client";
 
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
@@ -36,7 +37,7 @@ export function DespachoForm({
   const resulting = prod && Number.isInteger(q) && q > 0 ? prod.stock - q : null;
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
       <input type="hidden" name="treatmentId" value={treatmentId} />
       <input type="hidden" name="evaluationId" value={evaluationId} />
       <div className="flex flex-wrap items-end gap-3">

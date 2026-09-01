@@ -1,5 +1,6 @@
 "use client";
 
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { bloqueCls } from "@/components/shared/bloque";
 import { useActionState, useState } from "react";
 
@@ -146,7 +147,7 @@ export function NutraceuticalsSection({
           cualquiera que atienda al paciente debe tener. */}
       <ContraindicacionesAviso protocol={protocol} />
 
-      <form action={formAction} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         {/* Firma de concurrencia: la prescripcion que el cliente cargó. Si otro profesional la cambió, el
             servidor lo detecta bajo lock y rechaza sin pisar. */}
