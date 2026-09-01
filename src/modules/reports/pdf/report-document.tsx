@@ -281,6 +281,21 @@ export function ReportDocument({
               ))}
             </View>
 
+            {/* LO QUE NO PUEDE COMER, ANTES DEL MENU y no despues, y el orden importa: el paciente lee el
+                menu para saber que comer, y tiene que llegar sabiendo que evitar. Su §7.1 no nombra este
+                bloque; va declarado, con su razon: un plan sin las restricciones es un plan que el
+                paciente no puede seguir, porque el menu que recibe puede contradecirlas. */}
+            {plan.restricciones.length ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Lo que debes evitar</Text>
+                {plan.restricciones.map((r) => (
+                  <Text key={r} style={styles.para}>
+                    {r}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
             {plan.menu.length ? (
               <View style={styles.section} break>
                 <Text style={styles.sectionTitle}>Ejemplo de menú para una semana</Text>

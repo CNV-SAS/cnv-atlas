@@ -1,8 +1,8 @@
-# Ronda del 2026-08-31
+# Ronda del 2026-09-01
 
 **De:** Equipo Atlas
 **Para:** Gildardo Uribe, Dirección Científica CNV
-**Fecha:** 31 de agosto de 2026
+**Fecha:** 1 de septiembre de 2026
 
 ---
 
@@ -27,7 +27,14 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ## Los diez de un vistazo
 
-**Dos bloquean construcción:** el que queda de tu punto 2, y el mapa de lenguaje del paciente del punto 10. Los demás son declaraciones y una corrección nuestra.
+**Se abrió el 31 de agosto y se cerró el 1 de septiembre**, así que algunos puntos dicen "hoy" de un día y
+otros del siguiente. Los diez van fechados donde importa.
+
+**Dos preguntas bloquean construcción:** la del punto 1 (las diez alertas de consumo) y la del 10.4 (el
+mapa de alimentos por región, sin el cual el paciente no puede recibir su lista de intercambio).
+
+**Y una no bloquea nada y es la más cara:** la del 9.6. Tus dos motores prescriben cifras distintas para
+el mismo paciente, y desde esta semana la diferencia se ve en pantalla y en el documento que él recibe. Los demás son declaraciones y una corrección nuestra.
 
 | # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
 | --- | --- | --- | --- |
@@ -39,7 +46,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
-| **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no. Y tres cosas más | **El mapa de lenguaje del paciente (P1)**, contra qué se recorta la lista por región (P2) | **SÍ · P1 bloquea el plan del paciente** |
+| **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no, y ahora recibe el plan completo | El **mapa de alimentos por región** (10.4) y una línea por **nutracéutico** en su idioma (10.8) | **SÍ · 10.4 bloquea la lista de intercambio del paciente** |
 | **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
 
 ---
@@ -319,7 +326,7 @@ quita.**
 
 ---
 
-## 9.6 · El tipo de dieta lo decide un gasto que la pantalla no muestra
+## 9.6 · Tus dos motores discrepan en dos sitios que ahora se ven
 
 **Apareció arreglando otra cosa, y te lo contamos porque es tu pregunta del gasto con una superficie
 nueva.** Nuestro título de la dieta decía siempre "hipocalórica", pusiera el nutricionista 500 kcal o
@@ -336,9 +343,23 @@ Alineamos lo que se podía sin tocar tu ciencia: el **factor** de actividad ya v
 única diferencia que queda es la fórmula del gasto. Tu motor no acepta un GEB de entrada, así que alinear
 eso es exactamente decidir cuál manda.
 
+**Y hay una segunda superficie, que apareció en el smoke: la PROTEÍNA.**
+
+En la misma pantalla, el chip dice **"Proteína 1 g/kg"** (lo que prescribe `motorTratNutri`) y la cadena
+calórica calcula con **0,8 g/kg** (el `protMin` de `atlas-protocolo`). **En un paciente de 80 kg son
+dieciséis gramos de proteína al día de diferencia**, y hasta el smoke los dos números convivían sin que
+nada dijera que discrepaban.
+
+**No elegimos.** Añadimos un aviso en la cadena que dice las dos cifras y deja el campo editable al lado,
+para que el nutricionista decida con la diferencia a la vista. Pero el aviso es un parche: **quien tiene
+que decidir cuál manda eres tú.**
+
 **Es la misma pregunta que ya te hicimos, y por eso no la contamos como nueva.** Lo que cambia es que
-antes era invisible (no mostrábamos las cifras calóricas de ese motor, a propósito) y ahora se lee en el
-título del plan. No tocamos nada más mientras respondes.
+antes era invisible (no mostrábamos las cifras calóricas de ese motor, a propósito) y ahora se lee en dos
+sitios que el profesional y el paciente sí ven: el título del plan y los gramos de proteína.
+
+**Es la pregunta más cara que tienes abierta.** No bloquea construcción, pero cada día que pasa hay
+pacientes con una prescripción que sale de dos motores que no coinciden.
 
 ---
 
@@ -394,15 +415,21 @@ sale por correo. Tu instrucción es del 26 de agosto y es literal:
 teníamos registrado con tu respuesta al lado, y con una nota que decía "congelado hasta que responda". Tú
 respondiste y nadie volvió a esa nota. El error es de proceso y es nuestro.
 
-## 10.1 · Lo que queda en el documento, y por qué queda tan corto
+## 10.1 · Y ya lleva el plan completo, no solo el informe
 
-Hoy el paciente recibe: el cambio respecto a su medición anterior (con el texto que tú redactaste), la
-recomendación de nutracéuticos, las notas de su profesional, y una línea sobre su historia clínica (ver
-10.2). **Nada más.**
+Cuando escribimos el párrafo de arriba, el reporte se había quedado en cuatro cosas: el cambio respecto a
+la medición anterior, los nutracéuticos, las notas del profesional y la línea de la historia clínica.
+**Preferimos un documento corto a uno que le dijera "CRÍTICO" a una persona sin nadie que se lo explique.**
 
-Es poco, y es a propósito. **Preferimos un documento corto a uno que le diga "CRÍTICO" a una persona sin
-nadie que se lo explique.** El plan completo de tu §7.1 se construye aparte; este PDF todavía no es ese
-plan.
+**Ya no está corto: lleva seis de los siete bloques de tu §7.1.** El diagnóstico (traducido, ver 10.3),
+la meta, el plan dietético, lo que debe evitar, el ejemplo de menú, la distribución por porciones y las
+recomendaciones que aplican a su caso.
+
+**En tu orden, con el diagnóstico primero**, que es como lo pusiste en tu lista: primero qué tiene,
+después la solución.
+
+**Falta el séptimo: la lista de intercambio recortada por región.** Es la del 10.4, y es lo único de tu
+§7.1 que sigue sin poder construirse.
 
 ## 10.2 · Declaración: el paciente sí puede pedir su historia clínica, y se lo decimos
 
@@ -478,18 +505,79 @@ dos datos que aparecen juntos en cualquier documento de identidad, así que quie
 cédula entra. Para datos de salud es un acceso débil. **Si prefieres la app, se construye, pero con
 autenticación de verdad.**
 
+## 10.6 · Declaración: le añadimos un bloque que tu §7.1 no nombra
+
+**"Lo que debes evitar":** las restricciones alimentarias que el profesional le puso a ese paciente.
+
+Tu lista del §7.1 no las menciona, y lo añadimos igual, con esta razón: **el paciente recibe un menú, y un
+menú sin las restricciones al lado es un plan que no puede seguir.** Peor: puede contradecirlas sin que él
+lo note.
+
+Va **antes** del menú, no después, y eso también es deliberado: se lee el menú para saber qué comer, así
+que hay que llegar sabiendo qué evitar.
+
+**Las tuyas no se repiten ahí.** El sodio, la grasa saturada y los atributos del patrón (hiposódica, DASH,
+nefroprotectora) ya salen arriba, en el plan dietético, con su cifra. Repetirlos sin el número sería decir
+dos veces lo mismo y peor la segunda.
+
+## 10.7 · Declaración: retiramos una línea nuestra que te contradecía
+
+El reporte llevaba, debajo de los datos del paciente: *"Patrones asociados a valorar clínicamente, no
+constituye diagnóstico."*
+
+**La escribimos nosotros** (verificamos: no aparece ni una vez en tu archivo), y contradecía dos cosas a
+la vez. Al bloque siguiente, que se titula "Cómo estás" y le dice al paciente cómo está su envejecimiento.
+Y a tu §7.1, que pone el **diagnóstico** como lo primero que el paciente recibe.
+
+**Un documento que diagnostica y además declara que no diagnostica no protege a nadie:** confunde al
+paciente sobre qué tiene en la mano. Retirada.
+
+## 10.8 · Los nutracéuticos, en un idioma que el paciente entienda
+
+**Hay tres cifras del reporte que un paciente no puede leer**, y dos las podemos resolver nosotros sin
+inventar nada. La tercera no.
+
+| | |
+| --- | --- |
+| **Hidratación "30 a 35 mL/kg/día"** | **Lo hacemos nosotros.** Multiplicar por su peso y dividir por un vaso es aritmética sobre tu cifra, no una cifra nueva. Los mL se quedan al lado |
+| **"Proteína 1 g/kg"** | **Lo hacemos nosotros.** Los gramos al día ya los calcula tu motor (`protG`), así que decir "80 g al día" es tu dato. Traducirlo a alimentos, no |
+| **"MULTI-CELL BASE, OMEGA COMPLEX"** | **No podemos.** Solo tenemos el nombre comercial |
+
+**Lo que te pedimos es lo tercero:** una línea por nutracéutico, en lenguaje de paciente, diciendo para qué
+sirve. Buscamos en tu archivo y no está; y nuestro catálogo tiene campos de indicación y composición, pero
+son de inventario, escritos para operaciones y no para una persona.
+
+**Mientras tanto el paciente recibe el nombre**, que es lo que hay. No lo escribimos nosotros: qué hace un
+nutracéutico en un cuerpo es contenido clínico tuyo.
+
+
 ---
 
 ## Lo que queda esperando, y de quién es
 
-**Tuyo:** la recalibración del ICEC (μ y σ), que dijiste que va por tu lado y llega con el dato. El
+**De esta ronda, dos preguntas bloquean construcción:**
+
+1. **Dónde se capturan las porciones por grupo** (punto 1). Sin ellas, tu `calcConsumo` suma cero y las
+   diez alertas de consumo no se pueden encender.
+2. **El mapa de alimentos por región** (10.4). Sin él, el paciente no puede recibir su lista de
+   intercambio, que es el único bloque de tu §7.1 que sigue sin construirse.
+
+**Y una no bloquea nada y es la más cara: la del 9.6.** Tus dos motores prescriben cifras distintas para
+el mismo paciente, en dos sitios que ahora se ven. Cada día que pasa hay planes con un objetivo calórico y
+unos gramos de proteína que salen de dos cálculos que no coinciden.
+
+**Sigue esperando de rondas anteriores, y no lo repetimos aquí para no hacerte leer dos veces lo mismo:**
+el bloqueo activo del alérgeno frente a la opinión del asesor legal (ronda del 28), y las cuatro que
+quedaron abiertas en la del 29.
+
+**Tuyo, por tu lado:** la recalibración del ICEC (μ y σ), que dijiste que llega con el dato. El
 interruptor sigue en `false` y no lo tocamos.
 
-**Nuestro:** la salida impresa del plan alimentario (punto 9.4), sin bloqueo. La dinamometría, la
-reapertura del sellado, las notas por profesión, la unificación del peso meta y el pulido completo de la
-subpestaña del nutricionista, que estaban en construcción cuando empezamos esta ronda, ya están.
-
-**Y dos preguntas bloquean algo:** la del punto 1 (las diez alertas de consumo) y la P1 del punto 10 (el plan del paciente).
+**Nuestro, sin bloqueo:** la salida impresa del plan alimentario (9.4), enviarte la historia clínica al
+paciente por correo, y unificar las notas del profesional en un solo sitio. La dinamometría, la reapertura
+del sellado, las notas por profesión, la unificación del peso meta, el pulido de la subpestaña del
+nutricionista, el plan del paciente y la historia clínica imprimible, que estaban por hacer cuando
+empezamos esta ronda, ya están.
 
 ---
 

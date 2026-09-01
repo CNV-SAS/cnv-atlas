@@ -48,6 +48,29 @@ describe("los seis bloques que sí se pueden construir están en el documento", 
   });
 });
 
+describe("lo que el paciente NO puede comer va en el plan, y antes del menú", () => {
+  it("el bloque existe", () => {
+    // Su §7.1 no lo nombra, y va igual, declarado (punto 10.6 de la ronda): el paciente recibe un menú, y
+    // un menú sin las restricciones al lado es un plan que no puede seguir. Peor: puede contradecirlas.
+    expect(DOC).toContain("Lo que debes evitar");
+    expect(READER).toContain("restricciones: protocol.restricciones");
+  });
+
+  it("y va ANTES del menú, no después", () => {
+    // Se lee el menú para saber qué comer, así que hay que llegar sabiendo qué evitar.
+    const evitar = DOC.indexOf("Lo que debes evitar");
+    const menu = DOC.indexOf("Ejemplo de menú para una semana");
+    expect(evitar).toBeGreaterThan(-1);
+    expect(evitar, "las restricciones quedaron después del menú").toBeLessThan(menu);
+  });
+
+  it("no repite las del MODELO, que ya salen con su cifra", () => {
+    // El sodio y los atributos del patrón salen arriba, en el plan dietético, con su número. Repetirlos
+    // aquí sin el número sería decir dos veces lo mismo y peor la segunda.
+    expect(READER).not.toContain("...(prescripcion?.atributos ?? []),");
+  });
+});
+
 describe("el séptimo bloque falta, y está dicho dónde", () => {
   it("el reader deja escrito por qué la lista recortada no está", () => {
     // Sin esta nota, el día que alguien compare el documento contra su §7.1 va a leer un olvido donde hay

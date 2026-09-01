@@ -392,9 +392,15 @@ export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) 
   );
 }
 
-// Bloque 11: RECOMENDACIONES. Bloques condicionales por diagnostico; los que aun dependen del motor de
-// prescripcion aparecen CON SU TITULO diciendo que esperan. La seccion existe y se ve que le falta algo,
-// en vez de parecer completa.
+// Bloque 11: RECOMENDACIONES. Bloques condicionales por diagnostico; el que todavia no se puede emitir
+// aparece CON SU TITULO diciendo que espera. La seccion existe y se ve que le falta algo, en vez de
+// parecer completa.
+//
+// EL MOTIVO SE CORRIGIO (barrido del 2026-09-01, segundo hallazgo de la misma forma en tres dias): decia
+// "se emite con el motor de prescripcion nutricional", y ese motor lleva conectado desde el 31. Al
+// arreglarlo la primera vez se corrigio el COMENTARIO del codigo y no el TEXTO DE PANTALLA, que es el que
+// alguien lee. Lo que de verdad espera es cual formula de gasto manda (P-32/P-35): su bloque imprime un
+// objetivo calorico, y los dos motores calculan uno distinto.
 export type HcRecomendacion = { titulo: string; items: string[]; pendiente?: boolean };
 
 export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
@@ -406,7 +412,8 @@ export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
           <span className="text-sm font-bold text-primary">{b.titulo}</span>
           {b.pendiente ? (
             <span className="text-xs italic text-muted-foreground">
-              Pendiente: se emite con el motor de prescripción nutricional.
+              Pendiente: este bloque cita un objetivo calórico, y los dos motores calculan uno distinto.
+              Se emite cuando la Dirección Científica defina cuál manda.
             </span>
           ) : (
             <ul className="ml-4 list-disc text-sm text-foreground">
