@@ -156,12 +156,38 @@ describe("lo que NO cambia por sí solo, y es lo que hay que saber", () => {
   });
 });
 
-describe("el desfase de versión se avisa donde se ve la cifra", () => {
-  it("el panel compara la versión sellada de la cadena contra la vigente", () => {
-    // EL HUECO: el mecanismo de vigencia de emisión mira tres dimensiones y NO el protocolo. La versión
-    // del motor calórico se sella dentro de `protocol_suggested` y no la miraba nadie: al medirlo había
-    // CINCO versiones distintas vivas. Subir la versión, por sí solo, no avisaba a nadie.
-    expect(PANEL).toContain("snap.protocolEngineVersion !== PROTOCOL_ENGINE_VERSION");
-    expect(PANEL).toContain("los gramos de proteína pueden moverse");
+describe("el desfase de versión se avisa donde se ve la cifra, y SOLO si movió algo", () => {
+  // EL HUECO ORIGINAL: el mecanismo de vigencia de emisión mira tres dimensiones y NO el protocolo. La
+  // versión del motor calórico se sella dentro de `protocol_suggested` y no la miraba nadie: al medirlo
+  // había CINCO versiones distintas vivas. Subir la versión, por sí solo, no avisaba a nadie.
+  //
+  // Y EL CANDADO CAMBIÓ DE ASERCIÓN el 2026-09-02, por dos defectos que salieron en el smoke. Se movió el
+  // MECANISMO, no la garantía: el profesional tiene que enterarse cuando la ciencia se mueve bajo una
+  // cifra que él prescribe, y eso sigue exigido abajo.
+  //
+  //   1. Comparar las CADENAS DE VERSIÓN no se podía apagar nunca. `protocol_suggested` es write-once
+  //      (trigger 0026): la versión sellada no cambia al guardar ajustes ni al reabrir, así que no había
+  //      ninguna acción capaz de quitar el aviso. Santiago guardó sin cambiar nada, luego cambió valores y
+  //      volvió a guardar, y seguía ahí. Un aviso que no se puede resolver entrena a ignorarlo.
+  //   2. Y el texto afirmaba un movimiento que no ocurre: el peso meta sale de `snap.pesoCalculo`, que
+  //      está sellado, y el bump del 1-sep tocó `motorTratNutri`, cuyo peso meta interno Atlas no ejecuta.
+  it("el aviso se DERIVA de las cifras, no de que dos cadenas de versión difieran", () => {
+    // La pregunta con respuesta: el código de hoy, sobre los inputs SELLADOS y sin ajustes, ¿da la misma
+    // cadena que la sellada? Sin ajustes a propósito: con ellos la diferencia diría lo que cambió el
+    // profesional, no lo que cambió la ciencia.
+    expect(PANEL).toContain("computeProtocoloEfectivo(snap, SIN_AJUSTES)");
+    expect(PANEL).toContain("const cienciaSeMovio =");
+    expect(PANEL).toContain("{cienciaSeMovio ? (");
+  });
+
+  it("y dice las DOS cifras, la sellada y la de hoy", () => {
+    // Sin los dos números, "las cifras no dan lo mismo" no le dice al profesional si tiene que hacer algo.
+    expect(PANEL).toContain("no dan lo mismo");
+    expect(PANEL).toContain("kcalHoy");
+    expect(PANEL).toContain("protHoy");
+  });
+
+  it("y ya NO afirma que el peso meta se mueve, porque está sellado", () => {
+    expect(sinComentarios(PANEL)).not.toContain("los gramos de proteína pueden moverse");
   });
 });

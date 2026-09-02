@@ -3,7 +3,7 @@
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useActionState, useId, useState } from "react";
 
-import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION, type ProtocoloAjustes } from "@/clinical-engine";
+import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { AlimentosDelSubgrupo, ListaIntercambioPaciente } from "./lista-intercambio";
@@ -402,6 +402,40 @@ function CadenaCaloricaSection({
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
   const cal = computeProtocoloEfectivo(snap, adj).calorico;
   const base = snap.calorico; // cadena del MODELO (sellada), placeholder de cada campo.
+
+  // ¿LA CIENCIA SE MOVIO DE VERDAD? Se DERIVA comparando cifras, no de que dos cadenas de version difieran.
+  //
+  // EL DEFECTO QUE CIERRA (smoke de Santiago, 2026-09-02): el aviso miraba solo
+  // `snap.protocolEngineVersion !== PROTOCOL_ENGINE_VERSION`, y con eso NO SE PODIA APAGAR NUNCA.
+  // `protocol_suggested` es write-once (trigger 0026): la version sellada no cambia al guardar ajustes ni
+  // al reabrir. Santiago guardo sin cambiar nada, luego cambio valores y volvio a guardar, y el aviso
+  // seguia ahi, porque NINGUNA accion de la aplicacion podia quitarlo. Un aviso que no se puede resolver
+  // entrena a ignorarlo, que es peor que no tenerlo.
+  //
+  // Y ADEMAS AFIRMABA UN MOVIMIENTO QUE NO OCURRE: decia que "el peso meta y con el los gramos de proteina
+  // pueden moverse". El peso meta sale de `snap.pesoCalculo`, que esta SELLADO; y el bump del 1-sep toco
+  // `motorTratNutri`, cuyo peso meta interno Atlas ni siquiera ejecuta. Para esa diferencia de version no
+  // se mueve NADA.
+  //
+  // LO QUE SI ES CIERTO: las cifras salen del codigo de HOY corriendo sobre los inputs SELLADOS. Asi que la
+  // pregunta con respuesta es esta: el codigo de hoy, sobre esos mismos inputs y SIN ajustes, ¿da la misma
+  // cadena que la sellada? Se comparan SIN ajustes a proposito: con ellos, la diferencia diria lo que
+  // cambio el profesional, no lo que cambio la ciencia.
+  const SIN_AJUSTES = {
+    geb: null,
+    pal: null,
+    kcalObj: null,
+    protGkg: null,
+    fatPct: null,
+    deficit: null,
+    pesoMeta: null,
+  };
+  const modeloHoy = computeProtocoloEfectivo(snap, SIN_AJUSTES).calorico;
+  const kcalSellado = Math.round(base.kcalObj);
+  const kcalHoy = Math.round(modeloHoy.kcalObj);
+  const protSellada = Math.round(base.protG);
+  const protHoy = Math.round(modeloHoy.protG);
+  const cienciaSeMovio = kcalSellado !== kcalHoy || protSellada !== protHoy;
   const pesoEfectivo = adj.pesoMeta ?? protocol.pesoCalculo;
   // DE DONDE VIENE el peso meta que gobierna. Es UN valor, pero saber en cual de las dos superficies se
   // fijo es informacion clinica y por eso se conservo al unificar: no es lo mismo el peso acordado con el
@@ -637,11 +671,16 @@ function CadenaCaloricaSection({
               cambia. Un aviso arriba, en la pantalla de diagnostico, no llega a la pantalla donde se
               prescribe. Y se dice QUE cambia, no solo que hay desfase: sin eso, "emitido con version
               anterior" no le dice si tiene que hacer algo. */}
-          {snap.protocolEngineVersion !== PROTOCOL_ENGINE_VERSION ? (
+          {cienciaSeMovio ? (
             <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
-              Esta cadena se selló con una versión anterior del modelo calórico
-              ({snap.protocolEngineVersion}). Si reabres la prescripción y se recalcula, el peso meta y con
-              él los gramos de proteína pueden moverse: la fórmula del peso meta cambió el 1 de septiembre.
+              Esta cadena se selló con una versión anterior del modelo ({snap.protocolEngineVersion}), y con
+              el de hoy las cifras del modelo <strong>no dan lo mismo</strong>
+              {kcalSellado !== kcalHoy ? `: el objetivo daría ${kcalHoy} kcal en vez de ${kcalSellado}` : ""}
+              {protSellada !== protHoy
+                ? `${kcalSellado !== kcalHoy ? ", y" : ":"} la proteína, ${protHoy} g en vez de ${protSellada}`
+                : ""}
+              . Lo sellado sigue siendo válido para la fecha en que se emitió. Los campos de abajo ya usan el
+              modelo de hoy.
             </p>
           ) : null}
 
@@ -847,6 +886,7 @@ export function TreatmentPanel({
         }).calorico.kcalObj,
       )
     : null;
+
 
   return (
     <Card>
