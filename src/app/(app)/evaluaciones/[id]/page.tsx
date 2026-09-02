@@ -559,6 +559,8 @@ export default async function ResultadosEvaluacionPage({
       null,
     flags: { tieneHTA: ps?.flags.tieneHTA ?? false, tieneIRC: ps?.flags.tieneIRC ?? false },
     deficitEstrategia: ps?.estrategia.deficit ?? 0,
+    // El peso EFECTIVO (el que gobierna la prescripcion), para traducir la hidratacion a litros y vasos.
+    pesoKg: cadenaEfectiva?.pesoEfectivo ?? null,
   });
   const hcSev = hcCompuesta.severidades;
   const hcAni = hcCompuesta.indices;

@@ -55,6 +55,8 @@ export type HcEntradas = {
   flags: { tieneHTA: boolean; tieneIRC: boolean };
   /** Deficit de la estrategia sellada; > 0 significa exceso de grasa. */
   deficitEstrategia: number;
+  /** Peso del paciente, SOLO para traducir la hidratacion a litros y vasos. null = se deja en mL/kg. */
+  pesoKg: number | null;
 };
 
 export type HcCompuesta = {
@@ -144,6 +146,7 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
     sodioMax: e.sodioMax,
     protKg: e.protKg,
     protG: e.protG,
+    pesoKg: e.pesoKg,
   });
 
   return { severidades, indices, plan, diagnosticos, recomendaciones };

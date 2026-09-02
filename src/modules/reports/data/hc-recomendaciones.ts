@@ -17,18 +17,43 @@
 
 export type RecomendacionBloque = { titulo: string; items: string[]; pendiente?: boolean };
 
-// Verbatim de su archivo.
-const GENERAL: RecomendacionBloque = {
+/**
+ * LA HIDRATACION, TRADUCIDA A LO QUE LA PERSONA USA (decisión declarada en la ronda del 2026-09-01).
+ *
+ * SU CIFRA NO SE TOCA: "30 a 35 mL/kg/día" se queda entera y primero. Lo que se añade al lado son los mL
+ * del paciente y los vasos que eso significa, y eso es **aritmética sobre su cifra, no una cifra nueva**,
+ * que es la línea que separa lo que podemos hacer de lo que no (Regla 0).
+ *
+ * Un vaso son 200 mL, que es la unidad que él mismo fijó para el agua de la encuesta ("d7_agua, vasos de
+ * 200 mL"). No se elige aquí: se reusa la suya.
+ *
+ * SIN PESO NO SE TRADUCE. La cifra por kilo se queda sola, que es lo que su archivo dice. Inventar un peso
+ * para poder mostrar un número redondo sería prescribir sobre un dato que no existe.
+ */
+const ML_POR_VASO = 200;
+
+function hidratacion(pesoKg: number | null): string {
+  const base = "Hidratación de 30 a 35 mL/kg/día";
+  if (pesoKg == null || !(pesoKg > 0)) return base;
+  const min = Math.round(30 * pesoKg);
+  const max = Math.round(35 * pesoKg);
+  const litros = (n: number) => (n / 1000).toFixed(1).replace(".", ",");
+  const vasos = `${Math.round(min / ML_POR_VASO)} a ${Math.round(max / ML_POR_VASO)}`;
+  return `${base}: para tu peso son ${litros(min)} a ${litros(max)} litros al día, unos ${vasos} vasos`;
+}
+
+// Verbatim de su archivo, salvo la hidratación, que lleva su traducción al lado (ver arriba).
+const general = (pesoKg: number | null): RecomendacionBloque => ({
   titulo: "Alimentación saludable general",
   items: [
-    "Hidratación de 30 a 35 mL/kg/día",
+    hidratacion(pesoKg),
     "Frutas y verduras de varios colores en cada comida",
     "Preparaciones al vapor, al horno o a la plancha",
     "Planificar las compras según el plan",
     "Leer etiquetas (grasa saturada, azúcar, sodio)",
     "Distribuir las comidas cada 3 a 4 horas",
   ],
-};
+});
 
 const GLUCEMICO: RecomendacionBloque = {
   titulo: "Control glucémico",
@@ -105,6 +130,8 @@ export type RecomendacionesContexto = {
   sodioMax?: number | null;
   protKg?: number | null;
   protG?: number | null;
+  /** Peso del paciente, SOLO para traducir la hidratación a litros y vasos. null = se deja en mL/kg. */
+  pesoKg?: number | null;
 };
 
 export function recomendacionesDe(ctx: RecomendacionesContexto): RecomendacionBloque[] {
@@ -133,6 +160,6 @@ export function recomendacionesDe(ctx: RecomendacionesContexto): RecomendacionBl
     if (p.activa(ctx)) out.push({ titulo: p.titulo, items: [], pendiente: true });
   }
   // El generico va SIEMPRE y al final, como en su archivo.
-  out.push(GENERAL);
+  out.push(general(ctx.pesoKg ?? null));
   return out;
 }
