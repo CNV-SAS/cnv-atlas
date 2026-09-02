@@ -17,7 +17,7 @@ export function SectionPlaceholder({
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
       <TituloPantalla titulo={title} descripcion={description} />
       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-        En construccion
+        En construcción
       </p>
     </div>
   );

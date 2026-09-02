@@ -34,7 +34,11 @@ otros del siguiente. Los diez van fechados donde importa.
 mapa de alimentos por región, sin el cual el paciente no puede recibir su lista de intercambio).
 
 **Y una no bloquea nada y es la más cara:** la del 9.6. Tus dos motores prescriben cifras distintas para
-el mismo paciente, y desde esta semana la diferencia se ve en pantalla y en el documento que él recibe. Los demás son declaraciones y una corrección nuestra.
+el mismo paciente, y desde esta semana la diferencia se ve en pantalla y en el documento que él recibe.
+
+**Los demás son declaraciones**, y de esas hay dos que pueden hacernos revertir algo si no te gustan: el
+9.1 (retiramos las guías dietarias, que habías aprobado) y el 9.7 (agrupamos en dos bloques lo que tu
+pantalla agrupa en uno).
 
 | # | Qué es | Qué necesitamos de ti | ¿Bloquea? |
 | --- | --- | --- | --- |
@@ -46,8 +50,8 @@ el mismo paciente, y desde esta semana la diferencia se ve en pantalla y en el d
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
 | **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
-| **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no, y ahora recibe el plan completo | El **mapa de alimentos por región** (10.4) y una línea por **nutracéutico** en su idioma (10.8) | **SÍ · 10.4 bloquea la lista de intercambio del paciente** |
 | **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
+| **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no, y ahora recibe el plan completo | El **mapa de alimentos por región** (10.4) y una línea por **nutracéutico** en su idioma (10.8) | **SÍ · 10.4 bloquea la lista de intercambio del paciente** |
 
 ---
 
