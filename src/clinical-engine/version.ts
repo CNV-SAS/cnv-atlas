@@ -46,7 +46,7 @@ export const ENGINE_VERSION = "anibise-1.2.0";
 // `fuerzaPrensil` real, asi que `sarcopenia`/`obesidadSarcopenica` pueden voltear y con ellas la estrategia
 // y la proteina del protocolo. El contenido sellado en protocol_suggested cambia para los pacientes con la
 // fuerza registrada; por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-01";
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-02";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -70,7 +70,7 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   "frozen/atlas-protocolo.authorized.js": "670d58f864cd27a9a3481e7473ad0988681ca4a0d20efbe5152c8bf9389e0dde",
   // SHA de la primera modificacion autorizada (CA-1/D-012, retirar telomeros). Antes se hasheaba el
   // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
-  "protocolo-calorico.ts": "c5c0229c47626f756bdc3dfdad75e173a8723a20999bc116ff80387a76ab6b4a",
+  "protocolo-calorico.ts": "4e5573e81e6d3da8eb6399e3a8c7d88217fc69e30e18ceb101bed4b0d7f9a276",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
   // SHA actualizado (2026-08-19b): gate de sarcopenia del fenotipo, mujer 24 -> 22 (Gildardo §1 del 19).
   // SHA actualizado (2026-08-31) CON subida de version: la dinamometria entra al motor (§6 del 30). Lo que

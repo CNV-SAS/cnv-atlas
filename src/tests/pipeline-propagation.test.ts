@@ -208,7 +208,11 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
 
     // T2 A3: el protocolo sugerido quedo SELLADO en el tratamiento (INSERT, write-once), poblado y
     // COHERENTE con lo que el orquestador produce en aislamiento (mismos valores que su golden para
-    // este fixture male 89/180): F5, Cunningham gebAuto 2004, pesoCalculo 76.625.
+    // este fixture male 89/180): F5, gasto por Harris-Benedict, pesoCalculo 76.625.
+    //
+    // LA FORMULA SE NOMBRA, LA CIFRA NO: el gasto paso de Mifflin a Harris-Benedict el 2026-09-02 (su
+    // §9.6), y una cifra pegada aqui volveria a ponerse roja en el proximo bump por la razon equivocada.
+    // Lo que este test afirma es que el protocolo se SELLA completo y coherente, no cual es el numero.
     const proto = treatment.protocolSuggested;
     expect(proto).not.toBeNull();
     // Contra la CONSTANTE, no contra una copia de la cadena de hoy: lo que este test afirma es que el
@@ -217,8 +221,10 @@ describe.skipIf(!HAS_DB)("propagacion BIS real -> diagnostico (BD real)", () => 
     // la razon equivocada; las tres retiradas.
     expect(proto.protocolEngineVersion).toBe(PROTOCOL_ENGINE_VERSION);
     expect(proto.fenotipo.id).toBe("F5");
-    expect(proto.calorico.formula).toBe("Cunningham");
-    expect(proto.calorico.gebAuto).toBe(2004);
+    expect(proto.calorico.formula).toBe("Harris-Benedict");
+    // Harris-Benedict sobre el peso efectivo (76.625). Se escribe la FORMULA y no la cifra, por lo mismo
+    // que arriba: asi el candado sigue probando el sellado y no un numero.
+    expect(proto.calorico.gebAuto).toBe(Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54));
     expect(proto.pesoCalculo).toBeCloseTo(76.625, 3);
 
     // el diagnostico real de Juan Esteban (oro): N_N_N_A, estado 33 (numeracion de Gildardo).

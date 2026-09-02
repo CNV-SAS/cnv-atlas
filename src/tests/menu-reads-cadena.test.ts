@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // objetivo EFECTIVO de la cadena calorica (computeProtocoloEfectivo sobre el snapshot + ajustes, la misma
 // funcion que sella la aprobacion). Este test blinda el cuidado: si alguien dejara el menu apuntando al
 // campo muerto (que ahora queda null en borrador), generaria sobre cero. Se prueba con el objetivo
-// guardado en un valor ABSURDO (9999) y un snapshot valido: el menu debe usar el de la cadena (2503), no 9999.
+// guardado en un valor ABSURDO (9999) y un snapshot valido: el menu debe usar el de la cadena, no 9999.
 
 vi.mock("server-only", () => ({}));
 // isEngineOutput mockeado a true (no armar un diagnostico completo); computeProtocoloEfectivo queda REAL.
@@ -73,12 +73,16 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getPrescripcionNutricional } from "@/modules/treatment/data/dieta-resumen-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
+import { computeProtocoloEfectivo } from "@/clinical-engine/protocolo";
 
 const readProtocol = vi.mocked(getTreatmentProtocol);
 const readResults = vi.mocked(getEvaluationResults);
 
-// Snapshot minimo para computeProtocoloEfectivo: ffm 60 -> GEB round(500+22*60)=1820; PAL 1.375 ->
-// GET round(1820*1.375)=2503; deficit 0 -> kcalObj 2503; protG round(0.8*70)=56.
+// Snapshot minimo para computeProtocoloEfectivo. El GEB sale de Harris-Benedict sobre el peso efectivo
+// (2026-09-02); la cifra no se pega aqui, se deriva. PAL 1.375 ->
+// La cifra exacta la fija la formula vigente (Harris-Benedict desde el 2026-09-02) y por eso NO se pega
+// aqui: lo que este candado prueba es que el menu lea la CADENA y no el campo guardado, no cual es el
+// numero. Se compara contra la cadena corrida, que es lo que hace la aserción inmune al proximo bump.
 const SNAP = {
   pesoCalculo: 70,
   estrategia: { deficit: 0 },
@@ -112,13 +116,20 @@ describe("generateMenu: el objetivo sale de la cadena, no del campo guardado (ch
     } as unknown as Awaited<ReturnType<typeof getEvaluationResults>>);
   });
 
-  it("usa el objetivo EFECTIVO de la cadena (2503/56), no el guardado (9999/8888)", async () => {
+  it("usa el objetivo EFECTIVO de la cadena, no el guardado (9999/8888)", async () => {
     const r = await generateMenu("E1", { actorId: "u", actorEmail: "x@cnv", ip: null });
     expect(r.ok).toBe(true);
     expect(buildMenuPrompt).toHaveBeenCalledTimes(1);
     const input = buildMenuPrompt.mock.calls[0]![0];
-    expect(input.kcalObjetivo).toBe(2503); // de la cadena, no 9999
-    expect(input.proteinaGramos).toBe(56); // de la cadena, no 8888
+    // De la CADENA, no del campo guardado. Se compara contra la cadena corrida con el mismo snapshot:
+    // asi el candado sigue probando lo suyo cuando la formula del gasto cambie.
+    const esperado = computeProtocoloEfectivo(SNAP as never, {
+      geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, deficit: null, pesoMeta: null,
+    }).calorico;
+    expect(input.kcalObjetivo).toBe(Math.round(esperado.kcalObj)); // no 9999
+    expect(input.proteinaGramos).toBe(Math.round(esperado.protG)); // no 8888
+    // CONTROL: si la cadena diera justo 9999 el caso no probaria nada.
+    expect(input.kcalObjetivo).not.toBe(9999);
   });
 
   it("sin snapshot sellado -> no genera (guarda defensiva contra el null-deref, no gate de 'objetivo')", async () => {
