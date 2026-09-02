@@ -7,7 +7,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
 import { getResumenProfesionForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
 import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
-import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
+import { composicionClasificada } from "@/modules/diagnoses/data/composition-clasificada";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -150,27 +150,17 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       label: r.label,
       activacion: r.activacion ?? null,
     })),
-    // LA MISMA TABLA QUE LA PANTALLA, fila por fila y con su referencia.
+    // LA MISMA TABLA QUE LA PANTALLA, fila por fila, CON SU VEREDICTO.
     //
-    // SIN LA CLASIFICACION DE CADA FILA, Y VA DICHO: el veredicto ("Optimo", "Riesgo") lo produce
-    // `wangRowDx`, que necesita un contexto que la pantalla arma (referencias poblacionales, IMC, cintura,
-    // angulo de fase, indice de reactancia, y el formateador de cada fila). Reproducirlo aqui seria una
-    // SEGUNDA CONSTRUCCION del clasificador, que es justo lo que este documento existe para no tener: si
-    // divergiera, la historia impresa y la enviada clasificarian distinto al mismo paciente.
-    //
-    // El DATO va completo, que es lo que la historia clinica debe llevar; el veredicto de cada medida vive
-    // en los indices y en el diagnostico funcional, que si viajan. Sacar `wangRowDx` a una capa compartida
-    // es el siguiente paso y esta anotado.
-    composicion: composition
-      ? allCompositionRows(composition)
-          .filter((f) => f.value != null)
-          .map((f) => ({
-            etiqueta: f.label,
-            valor: `${f.value!.toFixed(f.decimals ?? 2)} ${f.unit}`.trim(),
-            clasificacion:
-              f.referenceLabel ?? (f.reference != null ? `ref ${f.reference}` : null),
-          }))
-      : [],
+    // Al portar la HC esto salio sin clasificacion, porque `wangRowDx` necesitaba un contexto que solo
+    // armaba el componente de pantalla y reconstruirlo aqui habria sido una segunda construccion del
+    // clasificador. Ese contexto vive ahora en `composicionClasificada`, que llaman los dos: el veredicto
+    // por fila es informacion clinica y no podia estar en una sola de las dos historias.
+    composicion: composicionClasificada(composition, sexoM).map((f) => ({
+      etiqueta: f.etiqueta,
+      valor: f.valor,
+      clasificacion: f.clasificacion ?? (f.referencia ? `ref ${f.referencia}` : null),
+    })),
     edad: header.edad,
     sexo: header.sexo,
     pesoKg: composition?.peso ?? null,
