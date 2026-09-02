@@ -38,6 +38,24 @@ const sinEspacio = (t: string) => t.replace(/\s+/g, "");
 // para comparar el CONTENIDO. Solo la de apertura de línea: un `var` en medio de una expresión sí contaría.
 const sinDeclaracion = (l: string) => l.replace(/^(const|let|var)\s+/, "");
 
+// UNA ASIGNACION SE COMPARA AUNQUE SEA CORTA, y esta linea es el arreglo de un hueco real.
+//
+// El filtro de abajo descartaba toda linea de 45 caracteres o menos, para no ahogarse en `}` y `else {`,
+// que aparecen en cualquier parte y no distinguen nada. Pero una DECLARACION CON VALOR tambien puede ser
+// corta, y ahi si vive la ciencia. El caso que lo destapo:
+//
+//   const LE8_MAPEO_CORREGIDO = false;   <- 34 caracteres
+//
+// El 2 de septiembre Gildardo lo puso en `true` en su archivo. Ese interruptor cambia la edad
+// bioelectrica de TODOS los pacientes entre 1 y 8 anos, y lo dice su propio comentario. Los DOS candados
+// que tenian que verlo pasaron verdes: el diff byte-a-byte porque mira la entrega de la que se porto, y
+// ESTE porque la linea mide 34 caracteres. La cobertura era menor de lo que su nombre promete, que es
+// exactamente la forma de defecto que este archivo dice cerrar.
+//
+// Medido ANTES de aplicarlo: suma 121 lineas vigiladas y produce 2 rojos, uno real (el interruptor) y uno
+// que ya estaba tolerado por sus cuerpos pero no por su linea de apertura (RUTA_COND).
+const ES_ASIGNACION = /^(const|let|var)\s+[A-Za-z_$][\w$]*\s*=/;
+
 /** Lineas de CODIGO de un modulo frozen: sin comentarios y sin el andamiaje que es nuestro, no suyo. */
 function lineasDeCodigo(modulo: string): string[] {
   const src = readFileSync(`src/clinical-engine/frozen/${modulo}`, "utf8")
@@ -48,8 +66,9 @@ function lineasDeCodigo(modulo: string): string[] {
     .map((l) => l.trim())
     .filter(
       (l) =>
-        // Cortas no: `}` o `else {` aparecen en cualquier parte y no distinguen nada.
-        l.length > 45 &&
+        // Cortas no: `}` o `else {` aparecen en cualquier parte y no distinguen nada. PERO una
+        // asignacion si, por corta que sea: ahi es donde vive un interruptor (ver arriba).
+        (l.length > 45 || ES_ASIGNACION.test(l)) &&
         !l.startsWith("//") &&
         // Andamiaje del port a modulo CommonJS, que en su HTML no existe.
         !l.startsWith("module.exports") &&
@@ -62,6 +81,16 @@ function lineasDeCodigo(modulo: string): string[] {
 const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
   "engine.dfi.js": [
     {
+      patron: /^const LE8_MAPEO_CORREGIDO = false;$/,
+      razon:
+        "DIVERGENCIA DELIBERADA Y FECHADA, no un porte olvidado. El 2-sep su archivo encendio el " +
+        "interruptor SIN recalibrar la media y la desviacion del ICEC, que es lo que su propio " +
+        "comentario exige hacer 'en el MISMO acto, nunca por separado'. Encenderlo solo baja la edad " +
+        "bioelectrica de TODOS los pacientes entre 1 y 8 anos (cifra suya). Preguntado en la ronda del " +
+        "2026-09-02 (P-92). NO se tolera a ciegas: 'le8-interruptor-pendiente.test.ts' fija los cuatro " +
+        "hechos y se pone ROJO en cuanto el recalibre o vuelva atras, que es cuando hay que portar.",
+    },
+    {
       patron: /^return \{ domains, riesgo:/,
       razon: "el return final: en su v8 el objeto se arma distinto, mismos campos",
     },
@@ -71,6 +100,13 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
     },
   ],
   "engine.indices.js": [
+    {
+      patron: /^const RUTA_COND = \{$/,
+      razon:
+        "la LINEA DE APERTURA del mismo mapa cuyos cuerpos ya estan tolerados abajo: en su v8 las " +
+        "condiciones viven dentro de RUTAS[].condicion y este mapa es andamiaje NUESTRO, no ciencia. " +
+        "Aparece al empezar a vigilar las asignaciones cortas (2026-09-02); es la excepcion de siempre.",
+    },
     {
       patron: /_zBis|iscm|iehh|ifcZ|mcaZ|eisgZ|fmiZ|ffwZ|reRinfZ|cZ2|41\.438|computeEB|computeIAE|parseFloat/,
       razon:
