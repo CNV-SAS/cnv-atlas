@@ -175,6 +175,14 @@ async function Panel({
   narrative: TreatmentNarrative;
   patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
+  /**
+   * La hoja del plan que el paciente se lleva de la consulta. Llega ya RENDERIZADA desde la pagina (es un
+   * componente de servidor que lee de `getPlanPaciente`), no como dato: asi el panel, que es cliente, no
+   * arrastra el lector `server-only`.
+   *
+   * null cuando la evaluacion todavia no tiene protocolo con snapshot: no hay plan que entregar.
+   */
+  planImprimible?: ReactNode;
 }) {
   if (!protocol) {
     return (
@@ -407,6 +415,7 @@ export function ProfessionTreatmentSection({
   narrative,
   patronAlimentario,
   prescripcion,
+  planImprimible,
 }: {
   evaluationId: string;
   actor: ActorProfession;
@@ -420,6 +429,14 @@ export function ProfessionTreatmentSection({
   // adaptacion del menu: es una de las tres fuentes de restriccion que deciden si la IA entra.
   patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
+  /**
+   * La hoja del plan que el paciente se lleva de la consulta. Llega ya RENDERIZADA desde la pagina (es un
+   * componente de servidor que lee de `getPlanPaciente`), no como dato: asi el panel, que es cliente, no
+   * arrastra el lector `server-only`.
+   *
+   * null cuando la evaluacion todavia no tiene protocolo con snapshot: no hay plan que entregar.
+   */
+  planImprimible?: ReactNode;
 }) {
   // Medico: panel de consulta con abordaje + indicaciones medicas de las rutas + examenes/suplementacion
   // (del protocolo sellado; si aun no hay protocolo, se dice). El contenido medico de las rutas trae que
@@ -457,11 +474,18 @@ export function ProfessionTreatmentSection({
   // acceso de admin al tratamiento es gobernanza aparte (BACKLOG); aqui se conserva como estaba. La
   // entrega de nutraceuticos es solo del nutricionista (actor.isProfessional aqui = nutricionista: las
   // otras profesiones y el profesional sin profesion ya se ramificaron arriba).
-  return <Panel
+  return (
+    <div className="flex flex-col gap-8">
+      <Panel
         evaluationId={evaluationId}
         protocol={protocol}
         narrative={narrative}
         patronAlimentario={patronAlimentario}
         prescripcion={prescripcion}
-      />;
+      />
+      {/* LA HOJA DEL PACIENTE, AL FINAL: primero se construye el plan, y esto es lo que se entrega. Va
+          DESPUES del panel por la misma razon por la que el boton de aprobar va al final. */}
+      {planImprimible}
+    </div>
+  );
 }
