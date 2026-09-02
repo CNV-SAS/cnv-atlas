@@ -59,6 +59,17 @@ export function SerieLinea({
   maxV += span * 0.15;
 
   const xOf = (i: number) => (puntos.length === 1 ? PAD_L + IW / 2 : PAD_L + (i * IW) / (puntos.length - 1));
+
+  // ANCLAJE DE LAS ETIQUETAS EN LOS EXTREMOS (smoke de Santiago, 2026-09-02). Con `textAnchor="middle"` el
+  // primer punto y el ultimo quedan CENTRADOS sobre el borde del area de dibujo, asi que la mitad de su
+  // texto se sale: la fecha se corta contra el marco y el valor del primer punto cae encima de la columna
+  // de numeros del eje. Anclando el del extremo izquierdo por su inicio y el del derecho por su final, el
+  // texto crece hacia adentro y no hay que ensanchar el grafico.
+  const anclaDe = (i: number): "start" | "middle" | "end" =>
+    puntos.length === 1 ? "middle" : i === 0 ? "start" : i === puntos.length - 1 ? "end" : "middle";
+  // Y un desplazamiento pequeño en el mismo sentido, para que el texto no arranque justo sobre el punto.
+  const dxDe = (i: number): number =>
+    puntos.length === 1 ? 0 : i === 0 ? -4 : i === puntos.length - 1 ? 4 : 0;
   const yOf = (v: number) => PAD_T + IH - ((v - minV) / (maxV - minV)) * IH;
 
   const ticks = [0, 1, 2, 3, 4].map((t) => {
@@ -156,9 +167,9 @@ export function SerieLinea({
           <g key={`p${p.fecha}`}>
             <circle cx={xOf(i)} cy={yOf(p.valor)} r={4} className="fill-primary" />
             <text
-              x={xOf(i)}
+              x={xOf(i) + dxDe(i)}
               y={yOf(p.valor) - 10}
-              textAnchor="middle"
+              textAnchor={anclaDe(i)}
               className="fill-foreground"
               fontSize={9}
               fontWeight={600}
@@ -166,9 +177,9 @@ export function SerieLinea({
               {fmt(p.valor)}
             </text>
             <text
-              x={xOf(i)}
+              x={xOf(i) + dxDe(i)}
               y={PAD_T + IH + 16}
-              textAnchor="middle"
+              textAnchor={anclaDe(i)}
               className="fill-muted-foreground"
               fontSize={8}
             >

@@ -573,13 +573,19 @@ export async function reopenProtocolAction(
   if (!result.ok) return fail(result.error.message);
 
   // WARNING, no success, y la diferencia importa: reabrir NO es un logro, es un acto con consecuencia.
-  // El mensaje dice las dos que su §6c/§12c fijan: queda registrado, y al paciente se le avisa.
+  // El mensaje dice las dos que su §6c/§12c fijan: queda registrado, y al paciente hay que avisarle.
+  //
+  // DECIA "al aprobar la nueva se avisará al paciente", y se CONTRADECIA con el bloque de la pantalla, que
+  // dice "el sistema no se lo avisa solo" (lo cazo Santiago en el smoke del 2026-09-02, preguntando cual de
+  // los dos era). El bloque tenia razon: aprobar escribe el evento en la auditoria y nada mas. Este toast
+  // se quedo con la redaccion vieja porque al corregir los textos se barrio la PANTALLA y no las acciones.
+  // Su §12c exige que al paciente se le diga; lo que no existe es el automatismo.
   return {
     error: null,
     success: null,
     warning:
-      "Prescripción reabierta. Queda registrada en la historia con tu motivo, y al aprobar la nueva se " +
-      "avisará al paciente, porque cambia lo que come.",
+      "Prescripción reabierta. Queda registrada en la historia con tu motivo. Cuando apruebes la nueva, " +
+      "envíale el reporte: cambia lo que come y el sistema no se lo avisa solo.",
   };
 }
 
