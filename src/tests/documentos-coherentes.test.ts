@@ -19,6 +19,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // consulta no pueden contradecirse.
 
 const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const COMP = readFileSync("src/modules/reports/data/hc-composicion.ts", "utf8");
 const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
 const PLAN = readFileSync("src/modules/reports/data/plan-paciente-reader.ts", "utf8");
 const DOC = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
@@ -26,13 +27,26 @@ const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx
 
 describe("la historia y el plan salen de la MISMA cadena", () => {
   it("la historia clínica computa el efectivo, no lee el sellado", () => {
-    expect(PAGE).toContain("const hcEfectivo = ps");
-    expect(PAGE).toContain("computeProtocoloEfectivo(ps, {");
-    // Los seis campos salen del efectivo. Si alguno volviera a `ps.calorico`, los documentos se separan.
+    // LA ASERCIÓN SE MOVIÓ DE SITIO, no de contenido (2026-09-02). El cómputo salió de `page.tsx` a
+    // `componerHistoriaClinica`, que es la condición para portar la HC a PDF: los seis bloques que se
+    // armaban sueltos en la página no tenían nombre en ninguna parte, así que un segundo documento los
+    // habría armado a su manera. La garantía es la misma y por eso la fila se queda: la historia computa
+    // el efectivo, nunca lee el sellado.
+    expect(COMP).toContain("computeProtocoloEfectivo(e.suggested, e.ajustes)");
+    expect(PAGE).toContain("componerHistoriaClinica({");
+    // Los seis campos salen del efectivo. Si alguno volviera al SELLADO, los documentos se separan.
+    //
+    // SE NOMBRA LA VARIABLE DEL SELLADO, no `.calorico.` a secas: al generalizar la aserción la escribí
+    // así y cazó `cadenaEfectiva.calorico.kcalObj`, que es JUSTO lo correcto (la cadena efectiva del
+    // panel). Un candado que prohíbe la forma buena junto con la mala se relaja al primer rojo legítimo.
     for (const campo of ["geb", "get", "kcalObj", "protG", "protGKg", "choG", "fatG"]) {
-      expect(sinComentarios(PAGE), `el plan de la HC volvió a leer ${campo} del sellado`).not.toContain(
-        `ps.calorico.${campo}`,
-      );
+      for (const [nombre, src, sellado] of [
+        ["la página", PAGE, "ps.calorico"],
+        ["la composición", COMP, "suggested.calorico"],
+      ] as const) {
+        expect(sinComentarios(src), `el plan de la HC volvió a leer ${campo} del sellado en ${nombre}`)
+          .not.toContain(`${sellado}.${campo}`);
+      }
     }
   });
 
