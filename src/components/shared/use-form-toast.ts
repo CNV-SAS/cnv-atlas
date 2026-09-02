@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+
+import { preservarScroll } from "./preservar-scroll";
 import { toast } from "sonner";
 
 // Estado generico de formularios con useActionState: exactamente uno de
@@ -14,11 +16,16 @@ export type FormToastState = {
 
 // Dispara el toast correcto cuando cambia el estado. Ignora el estado inicial
 // (todo nulo) y compara por referencia para no repetir el toast en cada render.
+// EL SALTO AL INICIO EN LA PRIMERA ACCION DE CADA RUTA. Los tres hooks lo deshacen, incluido este que ni
+// refresca: la causa es INVOCAR la server action (navega con ScrollBehavior.Default), no el refresco, que
+// usa NoScroll. Por eso el arreglo va aqui, en el mecanismo unico por donde pasan los 78 formularios, y no
+// en el panel donde se noto. Ver el porque completo en `preservar-scroll.ts`.
 export function useFormToast(state: FormToastState) {
   const last = useRef(state);
   useEffect(() => {
     if (state === last.current) return;
     last.current = state;
+    preservarScroll();
     if (state.error) toast.error(state.error);
     else if (state.warning) toast.warning(state.warning);
     else if (state.success) toast.success(state.success);
@@ -37,6 +44,7 @@ export function useFormToastAndRefresh(state: FormToastState) {
   useEffect(() => {
     if (state === last.current) return;
     last.current = state;
+    preservarScroll();
     if (state.error) {
       toast.error(state.error);
       return; // error: nada cambió en el servidor, no hay que refrescar
@@ -63,6 +71,7 @@ export function useFormToastRefreshOnSuccess(state: FormToastState) {
   useEffect(() => {
     if (state === last.current) return;
     last.current = state;
+    preservarScroll();
     if (state.error) {
       toast.error(state.error);
       return;
