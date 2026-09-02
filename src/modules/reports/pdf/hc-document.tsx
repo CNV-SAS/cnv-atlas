@@ -40,10 +40,22 @@ const styles = StyleSheet.create({
   firma: { marginTop: 18, borderTopWidth: 0.5, borderColor: "#9ca3af", paddingTop: 6, fontSize: 9 },
 });
 
+// EL SOLAPAMIENTO DE "META TERAPEUTICA" (smoke de Santiago, 2026-09-02): la seccion llevaba
+// `wrap={false}`, que le prohibe partirse entre dos hojas. Cuando una seccion NO CABE en lo que queda de
+// hoja, `@react-pdf` la empuja a la siguiente; pero si tampoco cabe alli (o si arranca la hoja y se pasa),
+// no tiene a donde empujarla y la PINTA ENCIMA de lo que sigue. Un parrafo largo con `wrap={false}` es
+// justo ese caso.
+//
+// AHORA LAS SECCIONES SE PARTEN (que en un documento largo es lo normal) y lo que NO se parte es la
+// unidad chica: la fila de un dato y el bloque de una recomendacion, que si es ilegible a medias. Es la
+// misma regla que ya aplica la hoja impresa con `break-inside: avoid` sobre tablas y secciones.
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <View style={styles.seccion} wrap={false}>
-      <Text style={styles.h2}>{titulo}</Text>
+    <View style={styles.seccion}>
+      {/* El titulo no se queda solo al pie de una hoja: viaja con al menos parte de su contenido. */}
+      <Text style={styles.h2} minPresenceAhead={40}>
+        {titulo}
+      </Text>
       {children}
     </View>
   );
@@ -51,7 +63,7 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <View style={styles.fila}>
+    <View style={styles.fila} wrap={false}>
       <Text style={styles.etiqueta}>{etiqueta}</Text>
       <Text style={styles.valor}>{valor}</Text>
     </View>
@@ -142,56 +154,72 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
 
         {/* LA COMPOSICIÓN CORPORAL. Peso y talla ya van arriba; aquí van las medidas del equipo que
             sostienen el diagnóstico, con su clasificación. */}
-        {hc.composicion.length > 0 ? (
-          <Seccion titulo="Composición corporal">
-            {hc.composicion.map((c) => (
-              <View key={c.etiqueta} style={styles.fila}>
+        <Seccion titulo="Composición corporal">
+          {hc.composicion.length > 0 ? (
+            hc.composicion.map((c) => (
+              <View key={c.etiqueta} style={styles.fila} wrap={false}>
                 <Text style={[styles.etiqueta, { width: 170 }]}>{c.etiqueta}</Text>
                 <Text style={styles.valor}>{c.valor}</Text>
                 <Text style={styles.valor}>{c.clasificacion ?? ""}</Text>
               </View>
-            ))}
-          </Seccion>
-        ) : null}
+            ))
+          ) : (
+            <Text style={styles.vacio}>Esta evaluación no tiene medición de composición corporal.</Text>
+          )}
+        </Seccion>
 
         {/* LOS ÍNDICES ANI BIS-E. Aquí SÍ van, al revés que en el reporte del paciente: este es el
             documento técnico. Su §7.1 prohíbe los índices en lo que el paciente recibe COMO reporte; la
             historia que él mismo pide es otra cosa, es su registro clínico. */}
-        {hc.indices.length > 0 ? (
-          <Seccion titulo="Índices ANI BIS-E alterados">
-            <View style={styles.fila}>
+        <Seccion titulo="Índices ANI BIS-E alterados">
+          {hc.indices.length === 0 ? (
+            <Text style={styles.vacio}>Ningún índice quedó fuera de su rango de referencia.</Text>
+          ) : null}
+          {hc.indices.length > 0 ? (
+            <View style={styles.fila} wrap={false}>
               <Text style={[styles.etiqueta, { width: 150, fontWeight: "bold" }]}>Índice</Text>
               <Text style={[styles.valor, { fontWeight: "bold" }]}>Valor</Text>
               <Text style={[styles.valor, { fontWeight: "bold" }]}>Clasificación</Text>
               <Text style={[styles.valor, { fontWeight: "bold" }]}>Referencia</Text>
             </View>
-            {hc.indices.map((i) => (
-              <View key={i.codigo} style={styles.fila}>
-                <Text style={[styles.etiqueta, { width: 150 }]}>{i.nombre}</Text>
-                <Text style={styles.valor}>{i.valor ?? "—"}</Text>
-                <Text style={styles.valor}>{i.clasificacion ?? "—"}</Text>
-                <Text style={styles.valor}>{i.referencia ?? "—"}</Text>
-              </View>
-            ))}
-          </Seccion>
-        ) : null}
+          ) : null}
+          {hc.indices.map((i) => (
+            <View key={i.codigo} style={styles.fila} wrap={false}>
+              <Text style={[styles.etiqueta, { width: 150 }]}>{i.nombre}</Text>
+              <Text style={styles.valor}>{i.valor ?? "—"}</Text>
+              <Text style={styles.valor}>{i.clasificacion ?? "—"}</Text>
+              <Text style={styles.valor}>{i.referencia ?? "—"}</Text>
+            </View>
+          ))}
+        </Seccion>
 
-        {hc.rutas.length > 0 ? (
-          <Seccion titulo="Rutas de atención activadas">
-            {hc.rutas.map((r) => (
+        <Seccion titulo="Rutas de atención activadas">
+          {hc.rutas.length > 0 ? (
+            hc.rutas.map((r) => (
               <Text key={r.label} style={styles.item}>
                 {r.label}
                 {r.activacion ? ` · ${r.activacion}` : ""}
               </Text>
-            ))}
-          </Seccion>
-        ) : null}
+            ))
+          ) : (
+            <Text style={styles.vacio}>El diagnóstico no activó rutas de atención.</Text>
+          )}
+        </Seccion>
 
-        {hc.objetivoTratamiento ? (
-          <Seccion titulo="Objetivo del tratamiento">
+        {/* EL BLOQUE VA SIEMPRE, aunque este vacio (smoke de Santiago, 2026-09-02). En la pantalla estos
+            dos bloques SI aparecen cuando no hay dato, diciendo "No se registró" y "Sin remisiones"; en el
+            PDF se omitian, asi que el documento enviado tenia dos bloques menos que el impreso.
+            Y en un documento probatorio la diferencia importa: un bloque AUSENTE se lee como que no se
+            evaluo, mientras que uno que dice "no se registró" dice que se miro y no habia. */}
+        <Seccion titulo="Objetivo del tratamiento">
+          {hc.objetivoTratamiento && hc.objetivoTratamiento.trim() !== "" ? (
             <Text>{hc.objetivoTratamiento}</Text>
-          </Seccion>
-        ) : null}
+          ) : (
+            // "No se registró" y no "no aplica": el objetivo SIEMPRE deberia estar en una consulta con
+            // prescripcion; si falta, falta de verdad. Mismo texto que la pantalla.
+            <Text style={styles.vacio}>No se registró</Text>
+          )}
+        </Seccion>
 
         {hc.plan ? (
           <Seccion titulo="Plan nutricional">
@@ -208,52 +236,59 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           </Seccion>
         ) : null}
 
-        {hc.recomendaciones.length > 0 ? (
-          <Seccion titulo="Recomendaciones">
-            {hc.recomendaciones.map((r) => (
-              <View key={r.titulo} style={{ marginBottom: 4 }}>
-                <Text style={{ fontWeight: "bold" }}>{r.titulo}</Text>
-                {/* UN BLOQUE PENDIENTE SE DICE, no se omite: omitirlo haría creer que no aplicaba. */}
-                {r.pendiente ? (
-                  <Text style={styles.vacio}>
-                    Este bloque necesita cifras que esta evaluación no tiene.
+        <Seccion titulo="Recomendaciones">
+          {hc.recomendaciones.length === 0 ? (
+            <Text style={styles.vacio}>No se emitieron recomendaciones para este caso.</Text>
+          ) : null}
+          {hc.recomendaciones.map((r) => (
+            <View key={r.titulo} style={{ marginBottom: 4 }} wrap={false}>
+              <Text style={{ fontWeight: "bold" }}>{r.titulo}</Text>
+              {/* UN BLOQUE PENDIENTE SE DICE, no se omite: omitirlo haría creer que no aplicaba. */}
+              {r.pendiente ? (
+                <Text style={styles.vacio}>
+                  Este bloque necesita cifras que esta evaluación no tiene.
+                </Text>
+              ) : (
+                r.items.map((i) => (
+                  <Text key={i} style={styles.item}>
+                    {i}
                   </Text>
-                ) : (
-                  r.items.map((i) => (
-                    <Text key={i} style={styles.item}>
-                      {i}
-                    </Text>
-                  ))
-                )}
-              </View>
-            ))}
-          </Seccion>
-        ) : null}
+                ))
+              )}
+            </View>
+          ))}
+        </Seccion>
 
-        {hc.remisiones.length > 0 ? (
-          <Seccion titulo="Remisiones">
-            {hc.remisiones.map((r, i) => (
+        <Seccion titulo="Remisiones">
+          {hc.remisiones.length > 0 ? (
+            hc.remisiones.map((r, i) => (
               <Text key={`${r.profesion}-${i}`} style={styles.item}>
                 {r.fecha} · {r.profesion} · {r.estado}
                 {r.motivo ? ` · ${r.motivo}` : ""}
               </Text>
-            ))}
-          </Seccion>
-        ) : null}
+            ))
+          ) : (
+            <Text style={styles.vacio}>No se remitió a otro profesional en esta consulta.</Text>
+          )}
+        </Seccion>
 
-        {hc.observaciones.length > 0 ? (
-          <Seccion titulo="Observaciones del profesional">
-            {hc.observaciones.map((o, i) => (
-              <View key={`${o.fecha}-${i}`} style={{ marginBottom: 3 }}>
-                <Text style={{ color: "#6b7280", fontSize: 9 }}>
-                  {o.fecha}
-                  {o.profesion ? ` · ${o.profesion}` : ""}
-                </Text>
-                <Text>{o.texto}</Text>
-              </View>
-            ))}
-          </Seccion>
-        ) : null}
+        <Seccion titulo="Observaciones del profesional">
+          {hc.observaciones.length === 0 ? (
+            // No dice "sin observaciones" a secas: en un documento probatorio, un bloque vacio sin
+            // explicar deja la duda de si el profesional no escribio nada o si el sistema no lo trajo.
+            // Mismo texto que la pantalla.
+            <Text style={styles.vacio}>El profesional no registró observaciones en esta consulta.</Text>
+          ) : null}
+          {hc.observaciones.map((o, i) => (
+            <View key={`${o.fecha}-${i}`} style={{ marginBottom: 3 }} wrap={false}>
+              <Text style={{ color: "#6b7280", fontSize: 9 }}>
+                {o.fecha}
+                {o.profesion ? ` · ${o.profesion}` : ""}
+              </Text>
+              <Text>{o.texto}</Text>
+            </View>
+          ))}
+        </Seccion>
 
         <Seccion titulo="Próxima consulta">
           <Text>{hc.proximaCita ?? "No agendada"}</Text>

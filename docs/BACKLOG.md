@@ -1619,20 +1619,9 @@ sola vez, escritas, antes de tocar cualquiera de los dos.**
 
 La historia clínica en PDF, cuando exista, entra en la misma pasada por la misma razón.
 
-### PENDIENTE · Sacar `wangRowDx` a una capa compartida (lo único que el PDF de la HC no pudo traer igual)
+### HECHO (2026-09-02) · `wangRowDx` en capa compartida
 
-**Qué falta.** La tabla de composición del PDF lleva **el dato completo** (cada medida con su valor y su
-referencia) pero **no el veredicto de cada fila** ("Óptimo", "Riesgo"), que en pantalla produce
-`wangRowDx`.
-
-**Por qué no se copió, y es deliberado.** `wangRowDx` necesita un contexto que la pantalla arma: las
-referencias poblacionales (`refPob`), el IMC, la cintura, el ángulo de fase, el índice de reactancia y el
-formateador de cada fila. Reconstruirlo en el lector del PDF habría sido una **segunda construcción del
-clasificador**, y si divergiera, la historia impresa y la enviada clasificarían distinto al mismo paciente.
-Es exactamente lo que todo este bloque existe para evitar.
-
-**Lo que hay que hacer:** mover la resolución del contexto (`refPob` + `diagCtx`) al lector de composición,
-para que la pantalla y el PDF pidan la fila YA clasificada. Entonces el veredicto viaja sin duplicar nada.
-
-**Mientras tanto no hay hueco de contenido:** el dato va completo, y el veredicto de cada medida vive en
-los índices ANI y en el diagnóstico funcional, que sí viajan.
+El veredicto por fila de la composición era informacion clínica que solo estaba en una de las dos
+historias. El contexto que necesitaba (`computeRefPob` + IMC/cintura/AF/IR) vive ahora en
+`composition-clasificada.ts`, que llaman la pantalla y el PDF. No cambia ningún corte ni ninguna
+etiqueta: mueve de sitio quién arma el contexto.

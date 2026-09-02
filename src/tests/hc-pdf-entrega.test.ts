@@ -158,10 +158,81 @@ describe("el PDF lleva TODO lo que lleva la pantalla, no un extracto", () => {
     expect(DOC).toContain("Índices ANI BIS-E");
   });
 
-  it("y la composición NO reconstruye el clasificador de la pantalla", () => {
-    // `wangRowDx` necesita un contexto que la pantalla arma; reproducirlo aquí sería una SEGUNDA
-    // construcción del clasificador, y si divergiera, la historia impresa y la enviada clasificarían
-    // distinto al mismo paciente. El DATO va completo; el veredicto vive en los índices y en el DFI.
-    expect(sinComentarios(READER)).not.toContain("wangRowDx");
+  it("y la composición lleva su VEREDICTO, del clasificador compartido", () => {
+    // Al portar la HC esto salió sin clasificación: `wangRowDx` necesitaba un contexto que solo armaba el
+    // componente de pantalla, y reconstruirlo aquí habría sido una segunda construcción del clasificador
+    // (si divergiera, la historia impresa y la enviada clasificarían distinto al mismo paciente).
+    //
+    // Ese contexto vive ahora en `composicionClasificada`, que llaman los dos. El veredicto por fila es
+    // información clínica y no podía estar en una sola de las dos historias.
+    expect(sinComentarios(READER)).toContain("composicionClasificada(composition, sexoM)");
+    // Y el reader sigue SIN reconstruirlo por su cuenta.
+    expect(sinComentarios(READER)).not.toContain("computeRefPob");
+    expect(sinComentarios(READER)).not.toContain("wangRowDx(");
+  });
+});
+
+// ── LO QUE SALIO DEL COTEJO DEL PDF ENVIADO (versión 2, 2026-09-02) ────────────────────────────────
+//
+// Se extrajo el TEXTO del PDF real y se comparó bloque por bloque contra la pantalla. Dos hallazgos, y los
+// dos de la misma familia: **un bloque que en pantalla dice "no hay" y en el PDF desaparece.**
+describe("los quince bloques van SIEMPRE, con o sin dato", () => {
+  // EN UN DOCUMENTO PROBATORIO LA DIFERENCIA DECIDE: un bloque AUSENTE se lee como que no se evaluó; uno
+  // que dice "no se registró" dice que se miró y no había. En la pantalla estos bloques SÍ aparecen
+  // vacíos; en el PDF se omitían, así que el documento enviado tenía menos bloques que el impreso.
+  it.each([
+    ["Objetivo del tratamiento", "No se registró"],
+    ["Remisiones", "No se remitió a otro profesional"],
+    ["Rutas de atención activadas", "no activó rutas"],
+    ["Composición corporal", "no tiene medición de composición"],
+    ["Índices ANI BIS-E alterados", "quedó fuera de su rango"],
+  ])("%s se imprime aunque esté vacío", (titulo, vacio) => {
+    expect(DOC, `falta el bloque ${titulo}`).toContain(titulo);
+    expect(DOC, `${titulo} desaparece cuando no hay dato`).toContain(vacio);
+  });
+
+  it("y la SECCIÓN nunca cuelga de un condicional: solo su contenido", () => {
+    // LA FORMA EXACTA QUE LOS HACÍA DESAPARECER, y la distinción importa: que el CONTENIDO elija entre la
+    // lista y el "no hay" está bien; lo que no puede es que el `<Seccion>` entero viva dentro de un
+    // `length > 0 ? (`, porque entonces el bloque se va del documento.
+    //
+    // (Mi primera versión de este candado prohibía la cadena a secas y se puso roja sobre el código
+    // CORRECTO, que usa ese mismo condicional dentro de la sección para elegir el contenido.)
+    const codigo = sinComentarios(DOC);
+    for (const titulo of [
+      "Objetivo del tratamiento",
+      "Remisiones",
+      "Rutas de atención activadas",
+      "Composición corporal",
+      "Índices ANI BIS-E alterados",
+      "Observaciones del profesional",
+      "Recomendaciones",
+    ]) {
+      const i = codigo.indexOf(`<Seccion titulo="${titulo}">`);
+      expect(i, `falta la sección ${titulo}`).toBeGreaterThan(-1);
+      const antes = codigo.slice(Math.max(0, i - 90), i);
+      // Se comprueba sin regex a propósito: al escribir este archivo por script los escapes se pierden, y
+      // una regex rota aquí haría pasar el candado por construcción (ya me pasó tres veces esta semana).
+      expect(
+        antes.trimEnd().endsWith("? ("),
+        `la sección ${titulo} quedó dentro de un condicional`,
+      ).toBe(false);
+    }
+  });
+});
+
+describe("el solapamiento de `Meta terapéutica`", () => {
+  it("las secciones se pueden partir entre hojas; lo que no se parte es la fila", () => {
+    // `wrap={false}` en la sección le prohíbe partirse: cuando no cabe, `@react-pdf` la empuja, y si
+    // tampoco cabe allí la PINTA ENCIMA de lo que sigue. Un párrafo largo es justo ese caso.
+    const seccion = DOC.slice(DOC.indexOf("function Seccion("), DOC.indexOf("function Dato("));
+    expect(seccion, "la sección volvió a llevar wrap={false}").not.toContain("wrap={false}");
+    // Y la unidad chica sí: una fila de datos partida a la mitad es ilegible.
+    const dato = DOC.slice(DOC.indexOf("function Dato("), DOC.indexOf("const noRegistrado"));
+    expect(dato).toContain("wrap={false}");
+  });
+
+  it("y el título no se queda solo al pie de una hoja", () => {
+    expect(DOC).toContain("minPresenceAhead");
   });
 });
