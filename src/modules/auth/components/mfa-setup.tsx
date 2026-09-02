@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useActionState } from "react";
 
 import { startMfaEnroll, verifyMfaEnrollAction } from "@/modules/auth/mfa-actions";
 import type { AuthFormState } from "@/modules/auth/validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 type Enroll = { factorId: string; qrCode: string; secret: string };
 type EnrollPromise = ReturnType<typeof startMfaEnroll>;
@@ -88,7 +89,7 @@ export function MfaSetup() {
       <p className="text-sm">
         O ingresa la clave manualmente: <code>{enroll.secret}</code>
       </p>
-      <form action={action} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
         <input type="hidden" name="factorId" value={enroll.factorId} />
         <label className="flex flex-col gap-1">
           <span>Código de 6 dígitos</span>

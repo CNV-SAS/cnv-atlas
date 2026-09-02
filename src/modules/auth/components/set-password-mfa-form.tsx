@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { verifyMfaForPasswordResetAction } from "@/modules/auth/actions";
 import type { AuthFormState } from "@/modules/auth/validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: AuthFormState = { error: null };
 
@@ -15,7 +16,7 @@ export function SetPasswordMfaForm() {
   const [state, action, pending] = useActionState(verifyMfaForPasswordResetAction, initialState);
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         Para cambiar tu contraseña necesitamos confirmar que eres tú. Ingresa el código de tu aplicación de
         autenticación.

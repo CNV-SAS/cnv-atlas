@@ -8,6 +8,7 @@ import {
   setProfessionalLicenseFormAction,
 } from "@/modules/auth/admin-actions";
 import type { AdminFormState } from "@/modules/auth/admin-validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: AdminFormState = { error: null, success: null };
 
@@ -64,7 +65,7 @@ export function UserRowActions({
       </div>
 
       {open === "pwd" ? (
-        <form action={pwdAction} className="flex flex-col gap-2 rounded border p-3">
+        <form onSubmit={enviarSinReset(pwdAction)} className="flex flex-col gap-2 rounded border p-3">
           <p className="text-xs text-muted-foreground">
             Verifica primero la identidad del usuario por una vía distinta (llamada, en persona). Se le
             enviará un correo para que fije una nueva contraseña; su acceso actual no cambia hasta que lo use.
@@ -83,7 +84,7 @@ export function UserRowActions({
       ) : null}
 
       {open === "mfa" ? (
-        <form action={mfaAction} className="flex flex-col gap-2 rounded border p-3">
+        <form onSubmit={enviarSinReset(mfaAction)} className="flex flex-col gap-2 rounded border p-3">
           <p className="text-xs text-muted-foreground">
             Verifica primero la identidad del usuario por una vía distinta (llamada, en persona). Esto
             elimina su segundo factor; en su próximo ingreso configurará uno nuevo.
@@ -113,7 +114,7 @@ export function UserRowActions({
       ) : null}
 
       {open === "lic" ? (
-        <form action={licAction} className="flex flex-col gap-2 rounded border p-3">
+        <form onSubmit={enviarSinReset(licAction)} className="flex flex-col gap-2 rounded border p-3">
           <p className="text-xs text-muted-foreground">
             El registro profesional aparece en el consentimiento que firma el paciente. Si se deja vacío,
             esa línea no aparece en el documento.

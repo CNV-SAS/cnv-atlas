@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { runPipelineAction, type RunPipelineState } from "../actions";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 export type DiagnosisCandidateView = {
   evaluationId: string;
@@ -57,7 +58,7 @@ export function PipelineRunner({ evaluation }: { evaluation: DiagnosisCandidateV
             Diagnostico generado
           </Badge>
         ) : (
-          <form action={action} className="flex flex-col gap-2">
+          <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-2">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
             {/* Encuesta incompleta: no queda bloqueado a ciegas. Enlace a completarla con el paciente

@@ -18,6 +18,7 @@ import {
   sendReportAction,
 } from "../actions";
 import type { TrajectoryConfirmation } from "../data/reports-view-types";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 export type ReportCardView = {
   reportId: string;
@@ -106,7 +107,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         </div>
 
         {showConfirm && t ? (
-          <form action={confirm} className="flex w-full flex-col gap-3 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg p-3">
+          <form onSubmit={enviarSinReset(confirm)} className="flex w-full flex-col gap-3 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg p-3">
             <input type="hidden" name="reportId" value={report.reportId} />
             <span className="text-sm font-semibold text-clinical-warning">
               Comunicar un cambio desfavorable al paciente
@@ -157,7 +158,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         ) : null}
 
         {report.status === "draft" ? (
-          <form action={approve} className="flex w-full flex-col gap-2">
+          <form onSubmit={enviarSinReset(approve)} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
             <label htmlFor={`notes-${report.reportId}`} className="text-xs text-muted-foreground">
               Notas del reporte (opcional). Se escriben aqui, se congelan al aprobar y pueden
@@ -189,7 +190,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
         ) : null}
 
         {report.status === "approved" ? (
-          <form action={send} className="flex w-full flex-col gap-2">
+          <form onSubmit={enviarSinReset(send)} className="flex w-full flex-col gap-2">
             <input type="hidden" name="reportId" value={report.reportId} />
             <fieldset className="flex flex-col gap-1">
               <legend className="text-xs text-muted-foreground">Modo de envio al paciente</legend>

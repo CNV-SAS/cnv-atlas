@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { recordReceptionFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -19,7 +20,7 @@ export function MiInventarioForm({ products }: { products: { id: string; name: s
   useFormToast(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nutraceuticalId">Producto</Label>
         <select

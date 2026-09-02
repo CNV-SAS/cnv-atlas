@@ -10,6 +10,7 @@ import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
 import { DEVICE_STATUS_LABELS, DEVICE_STATUS_OPTIONS } from "./status-meta";
 import { useComodatoToast } from "./use-comodato-toast";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
@@ -25,7 +26,7 @@ export function DeviceStatusForm({
   useComodatoToast(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="deviceId" value={deviceId} />
       <select
         name="status"

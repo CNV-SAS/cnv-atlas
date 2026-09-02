@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { createUserFormAction } from "@/modules/auth/admin-actions";
 import type { AdminFormState } from "@/modules/auth/admin-validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: AdminFormState = { error: null, success: null };
 
@@ -15,7 +16,7 @@ export function CreateUserForm() {
   const [role, setRole] = useState("professional");
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
       <input name="email" type="email" placeholder="correo" required className="border p-2" />
       <input
         name="fullName"

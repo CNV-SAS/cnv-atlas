@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { submitJustificationFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -30,7 +31,7 @@ export function JustificarFaltanteForm({ caseId }: { caseId: string }) {
   const cat = CATEGORIES.find((c) => c.value === category);
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
       <input type="hidden" name="caseId" value={caseId} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`cat-${caseId}`}>Motivo</Label>

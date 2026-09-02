@@ -11,6 +11,7 @@ import { createReferralFormAction } from "../actions";
 // Tipos desde validations (modulo neutro), NO desde el reader `server-only`: este es un componente
 // cliente, y esa arista puede convertir el reader en referencia-cliente en produccion.
 import type { PendingReferralHint, ReferralFormState, ReferralTargetValue } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ReferralFormState = { error: null, success: null };
 
@@ -102,7 +103,7 @@ export function RegisterReferralForm({
   const showSiblings = siblingReasons.length > 0 && target === prefillTarget;
 
   return (
-    <form action={action} className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3">
       {fromRoute ? (
         <p className="text-xs text-muted-foreground">
           Destino y motivo vienen de la ruta del modelo como propuesta. Confírmalos o cámbialos: registrar es

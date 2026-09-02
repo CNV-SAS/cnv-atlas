@@ -1,11 +1,12 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
 import { abandonEvaluationAction } from "../actions";
 import type { AbandonEvaluationState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 // Cerrar (archivar) un shell firmado sin responder, desde la ficha del paciente. Dos pasos: "Cerrar" abre
 // una confirmacion que dice EXPLICITO que no se elimina el consentimiento y que el paciente puede empezar
@@ -17,11 +18,6 @@ const initial: AbandonEvaluationState = { error: null, closed: false };
 export function AbandonEvaluation({ evaluationId }: { evaluationId: string }) {
   const [state, action, pending] = useActionState(abandonEvaluationAction, initial);
   const [confirming, setConfirming] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startTransition(() => action(new FormData(e.currentTarget)));
-  };
 
   if (!confirming) {
     return (
@@ -39,7 +35,7 @@ export function AbandonEvaluation({ evaluationId }: { evaluationId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex max-w-xs flex-col items-end gap-2 text-right">
+    <form onSubmit={enviarSinReset(action)} className="flex max-w-xs flex-col items-end gap-2 text-right">
       <input type="hidden" name="evaluationId" value={evaluationId} />
       <p className="text-xs text-muted-foreground">
         ¿Cerrar esta evaluación sin completar? El consentimiento firmado y su registro se conservan; no se

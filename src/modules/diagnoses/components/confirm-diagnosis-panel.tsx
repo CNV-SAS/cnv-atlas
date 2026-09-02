@@ -19,6 +19,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDateTime } from "@/lib/format/date";
 
 import { confirmDiagnosisAction, type DiagnosisActionState } from "../actions";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const EMPTY: DiagnosisActionState = { error: null, success: null, warning: null };
 
@@ -94,7 +95,7 @@ export function ConfirmDiagnosisPanel({
                 Cancelar
               </Button>
             </DialogClose>
-            <form action={formAction}>
+            <form onSubmit={enviarSinReset(formAction)}>
               <input type="hidden" name="evaluationId" value={evaluationId} />
               <Button type="submit" disabled={pending}>
                 {pending ? "Confirmando..." : "Confirmar definitivamente"}

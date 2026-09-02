@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { createCheckoutFormAction } from "../actions";
 import type { PaymentFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: PaymentFormState = {
   error: null,
@@ -67,7 +68,7 @@ export function CreateCheckoutForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={action} className="flex flex-wrap items-end gap-3">
+      <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <Label htmlFor="patientId" className="text-xs">
             Paciente

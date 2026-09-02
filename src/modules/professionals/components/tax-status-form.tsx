@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { saveTaxStatusAction } from "../actions";
 import type { TaxStatusFields, TaxStatusFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: TaxStatusFormState = { error: null, success: false };
 
@@ -43,13 +44,8 @@ export function TaxStatusForm({
   const isJuridica = personType === "juridica";
   const rutRequired = isJuridica || hasRut === "true"; // juridica siempre tiene RUT
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startTransition(() => action(new FormData(e.currentTarget)));
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <Label htmlFor="personType" className="text-xs">
           Tipo de persona

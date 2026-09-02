@@ -5,6 +5,7 @@ import { useActionState } from "react";
 
 import { loginAction } from "@/modules/auth/actions";
 import type { AuthFormState } from "@/modules/auth/validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: AuthFormState = { error: null };
 
@@ -13,7 +14,7 @@ export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialState);
 
   return (
-    <form action={action} className="flex flex-col gap-3" noValidate>
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3" noValidate>
       <label className="flex flex-col gap-1">
         <span>Correo</span>
         <input

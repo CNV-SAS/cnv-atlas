@@ -11,6 +11,7 @@ import { updateNutraceuticalFormAction } from "../actions";
 import type { Nutraceutical } from "../types";
 import type { NutraceuticalFormState } from "../validations";
 import { PriceIvaField } from "./price-iva-field";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -19,7 +20,7 @@ export function EditNutraceuticalForm({ nutraceutical: n }: { nutraceutical: Nut
   useFormToast(state);
 
   return (
-    <form action={action} className="mt-2 flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="mt-2 flex flex-col gap-3">
       <input type="hidden" name="id" value={n.id} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5 sm:col-span-2">

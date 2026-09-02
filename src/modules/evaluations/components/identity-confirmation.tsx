@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format/date";
 
 import { confirmIdentityAction } from "../actions";
 import type { ConfirmIdentityState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 export type DuplicateCandidateView = {
   patientId: string;
@@ -123,7 +124,7 @@ export function IdentityConfirmation({
               Identidad confirmada
             </Badge>
           ) : (
-            <form action={confirmAction}>
+            <form onSubmit={enviarSinReset(confirmAction)}>
               <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
               <Button type="submit" disabled={confirming}>
                 {confirming ? "Confirmando..." : "Confirmar identidad"}

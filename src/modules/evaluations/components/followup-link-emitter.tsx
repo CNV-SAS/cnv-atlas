@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { emitFollowupLinkAction } from "../actions";
 import type { FollowupLinkState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const followupInitial: FollowupLinkState = { error: null, linkPath: null };
 
@@ -18,7 +19,7 @@ export function FollowupLinkEmitter({ patientId }: { patientId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <form action={action} className="flex items-center gap-2">
+      <form onSubmit={enviarSinReset(action)} className="flex items-center gap-2">
         <input type="hidden" name="patientId" value={patientId} />
         <Button type="submit" variant="outline" disabled={emitting}>
           {emitting ? "Generando..." : "Emitir link de seguimiento"}

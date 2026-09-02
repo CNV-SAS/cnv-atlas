@@ -45,6 +45,7 @@ import {
 } from "@/components/layout/nav-config";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/modules/auth/actions";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 // Mapeo clave -> icono (lucide-react, libreria unica por BRAND.md). El config de
 // nav viaja como datos serializables; el icono se resuelve aqui, en el cliente.
@@ -276,7 +277,7 @@ export function AppShell({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <form action={logoutAction}>
+                <form onSubmit={enviarSinReset(logoutAction)}>
                   <button type="submit" className="flex w-full items-center gap-2">
                     <LogOut className="size-4" aria-hidden />
                     Cerrar sesion

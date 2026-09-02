@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { createDeviceFormAction } from "../actions";
 import type { ComodatoFormState } from "../validations";
 import { useComodatoToast } from "./use-comodato-toast";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
@@ -38,7 +39,7 @@ export function CreateDeviceForm() {
   useComodatoToast(state);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="assetCode" label="Código de activo" required placeholder="CNV-BIS-0001" />
         <Field name="manufacturerSerial" label="Serial de fabrica" required />

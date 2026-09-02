@@ -15,6 +15,7 @@ import {
   generateCriterionAction,
 } from "../actions";
 import type { DiagnosisNote } from "../data/diagnosis-notes-types";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const EMPTY: DiagnosisActionState = { error: null, success: null, warning: null };
 
@@ -104,7 +105,7 @@ export function ProfessionalCriterion({
         </p>
       )}
 
-      <form action={formAction} className="flex flex-col gap-2">
+      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="aiAssisted" value={aiAssisted ? "true" : "false"} />
 
