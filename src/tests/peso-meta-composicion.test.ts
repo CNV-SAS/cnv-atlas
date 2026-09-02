@@ -64,9 +64,18 @@ describe("el porte es VERBATIM del archivo vigente", () => {
   it("y la version del protocolo subió: sin eso el cambio entra en silencio", () => {
     // Si la version no sube, nada distingue una cadena sellada con la formula vieja de una con la nueva.
     // Sube con cada cambio de la ciencia del protocolo. El 2026-09-02 subio por el GEB: pasa de Mifflin a
-    // Harris-Benedict, la formula del propio equipo. Sin el bump, una cadena sellada con la formula vieja
-    // no se distingue de una con la nueva.
-    expect(PROTOCOL_ENGINE_VERSION).toBe("anibise-protocolo-2026-09-02");
+    // Harris-Benedict, la formula del propio equipo.
+    //
+    // SE COMPARA "DE ESA VERSION EN ADELANTE", NO IGUALDAD EXACTA, y el motivo salio el mismo dia: la
+    // version volvio a subir horas despues (09-02b, la correccion del gasto medido) y este caso se puso
+    // rojo sin que nada estuviera mal. Una igualdad exacta contra algo que sube a proposito obliga a
+    // editar la asercion en cada bump, y un candado que se edita de rutina deja de leerse. Lo que este
+    // caso afirma es que el bump del GEB OCURRIO y no se ha revertido; las versiones son cadenas
+    // ordenadas por fecha, asi que la comparacion sirve.
+    expect(PROTOCOL_ENGINE_VERSION >= "anibise-protocolo-2026-09-02").toBe(true);
+    // CONTROL: sin esto, la comparacion de arriba pasaria verde con CUALQUIER cadena posterior en el
+    // alfabeto, incluida una que no fuera una version del protocolo.
+    expect(PROTOCOL_ENGINE_VERSION).toMatch(/^anibise-protocolo-\d{4}-\d{2}-\d{2}[a-z]?$/);
   });
 });
 

@@ -46,7 +46,7 @@ export const ENGINE_VERSION = "anibise-1.2.0";
 // `fuerzaPrensil` real, asi que `sarcopenia`/`obesidadSarcopenica` pueden voltear y con ellas la estrategia
 // y la proteina del protocolo. El contenido sellado en protocol_suggested cambia para los pacientes con la
 // fuerza registrada; por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-02";
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-02b";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -70,7 +70,14 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   "frozen/atlas-protocolo.authorized.js": "670d58f864cd27a9a3481e7473ad0988681ca4a0d20efbe5152c8bf9389e0dde",
   // SHA de la primera modificacion autorizada (CA-1/D-012, retirar telomeros). Antes se hasheaba el
   // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
-  "protocolo-calorico.ts": "4e5573e81e6d3da8eb6399e3a8c7d88217fc69e30e18ceb101bed4b0d7f9a276",
+  // SHA actualizado (2026-09-02b) CON subida de version, y la razon vale la pena dejarla escrita: el
+  // porte del GEB de esta manana (version 2026-09-02) dejaba que el GASTO MEDIDO por el equipo ganara
+  // sobre el Harris-Benedict DENTRO de la cadena que fija la ingesta. Su motor dice lo contrario en el
+  // comentario pegado a `_mtn.geb`: el medido es el basal de HOY (peso actual) y sirve para mostrarlo,
+  // no para fijar la ingesta que lleva a la META. Era un defecto LATENTE (ningun caller pasaba el
+  // medido) y por eso la version de la manana no sello cifras equivocadas; se sube igual porque la
+  // cadena cambio y esta version es la que se sella de aqui en adelante.
+  "protocolo-calorico.ts": "f49f60d68da84101adb54f6fbd74e3dccaaea52b1c033faa012db003824ecd36",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
   // SHA actualizado (2026-08-19b): gate de sarcopenia del fenotipo, mujer 24 -> 22 (Gildardo §1 del 19).
   // SHA actualizado (2026-08-31) CON subida de version: la dinamometria entra al motor (§6 del 30). Lo que

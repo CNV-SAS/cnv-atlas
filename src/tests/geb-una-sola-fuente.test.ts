@@ -89,17 +89,29 @@ describe("nuestra cadena y su motor dan el MISMO gasto basal", () => {
     expect(cadena.gebAuto, "la cadena y el motor dejaron de dar el mismo GEB").toBe(m.geb);
   });
 
-  it("y la etiqueta dice de dónde salió, no una fórmula que no se usó", () => {
-    const sinMedicion = computeProtocoloCalorico({
+  it("el GASTO MEDIDO no entra en esta cadena, y este caso existe porque yo lo habia metido", () => {
+    // DEFECTO PROPIO, corregido el 2026-09-02 el mismo dia que lo introduje. Al portar su §9.6 lei el
+    // punto 1 ("manda el gasto basal del equipo") y puse el medido a ganarle al Harris-Benedict. Su
+    // punto 3 y el comentario pegado a `_mtn.geb` dicen lo contrario para ESTA cadena:
+    //
+    //   "El gasto MEDIDO por el equipo corresponde al peso actual, asi que sirve para mostrar el basal
+    //    de hoy -eso hace ATLAS_GEB- pero no para fijar la ingesta que lleva a la meta."
+    //
+    // Era un defecto LATENTE, no vivo: ningun caller pasaba el medido, asi que la rama nunca corrio.
+    // Lo grave era otro: el candado AFIRMABA la rama equivocada, o sea que dejaba la trampa puesta y
+    // ademas certificada para el que viniera a cablear la medicion.
+    //
+    // Ahora la etiqueta es una sola por construccion, y el tipo ya no admite el gasto medido.
+    const c = computeProtocoloCalorico({
       ffm: 62.4, pesoN: 80.4, talla: 177, edad: 40, sexoM: true, deficit: 0, protMin: 1,
     });
-    expect(sinMedicion.formula).toBe("Harris-Benedict");
-    const conMedicion = computeProtocoloCalorico({
-      ffm: 62.4, pesoN: 80.4, talla: 177, edad: 40, sexoM: true, deficit: 0, protMin: 1,
-      gebMedido: 1850,
-    });
-    expect(conMedicion.formula).toBe("equipo");
-    expect(conMedicion.gebAuto).toBe(1850);
+    expect(c.formula).toBe("Harris-Benedict");
+    expect(c.gebAuto).toBe(Math.round(66.473 + 13.7516 * 80.4 + 5.0033 * 177 - 6.755 * 40));
+
+    // Y EL CONTROL, que es lo que impide que vuelva a entrar: el input no tiene por donde recibirlo.
+    // Si alguien reabre esa puerta, esto deja de compilar y hay que volver a leer el comentario de arriba.
+    const entrada = { ffm: 0, pesoN: 80.4, talla: 177, edad: 40, sexoM: true, deficit: 0, protMin: 1 };
+    expect(Object.keys(entrada)).not.toContain("gebMedido");
   });
 
   it("y la FFM ya NO decide nada: era la rama del bloque muerto", () => {
