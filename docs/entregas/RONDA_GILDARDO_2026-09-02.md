@@ -1,11 +1,14 @@
 # Ronda del 2026-09-02
 
-**Abierta el 2 de septiembre y cerrada el 3, con la del 1 ya enviada.** Los tres primeros puntos salen de
-revisar tu entrega del 2 contra tu documento; los dos últimos, del trabajo de estos dos días. Ninguno es
-una respuesta a lo que todavía tienes en el escritorio.
+**Abierta el 2 de septiembre y cerrada el 3, con la del 1 ya enviada.** Ninguno de los siete puntos es una
+respuesta a lo que todavía tienes en el escritorio. Vienen de tres sitios distintos, y vale separarlos
+porque lo que te pedimos en cada grupo es distinto:
 
-**Los tres primeros son de la misma clase y vale decirlo:** en los tres, tu documento y tu archivo no dicen
-lo mismo, o tu archivo no dice lo mismo en dos sitios. No son desacuerdos con tu criterio.
+| Puntos | De dónde salen | Qué son |
+| --- | --- | --- |
+| **1 a 3** | Revisar tu entrega del 2 contra tu documento | **Tu documento y tu archivo no dicen lo mismo**, o tu archivo no dice lo mismo en dos sitios. No son desacuerdos con tu criterio |
+| **4 y 5** | El trabajo de estos dos días | Casos que aparecieron al construir y que dos reglas tuyas resuelven distinto |
+| **6 y 7** | **Valentina, usando la encuesta con pacientes** | Observaciones sobre el instrumento. No son nuestras, y no hemos tocado nada |
 
 ## De un vistazo
 
@@ -16,6 +19,8 @@ lo mismo, o tu archivo no dice lo mismo en dos sitios. No son desacuerdos con tu
 | **3** | Tu punto 0 pide convertir la frecuencia de consumo en porciones, pero **tus 18 grupos y los 21 subgrupos de la lista de intercambio no son uno a uno** | La correspondencia entre unos y otros. **No te pedimos el dato, te pedimos el mapa** | Sí, para el consumo actual |
 | **4** | **Dos frases tuyas se contradicen en un caso que ninguna contempla**: reabrir una prescripción y volver a aprobarla **sin cambiar nada** | Cuál de las dos manda ahí, con nuestra propuesta al lado | No, pero decide qué le llega al paciente |
 | **5** | Un campo de la cadena calórica que se queda **vacío** produce una prescripción implausible sin que nada lo distinga de una decisión | Si esos campos deben tener un valor por defecto que no se pueda borrar. **No te pedimos validar una cifra** | No |
+| **6** | **P24 no tiene dónde marcar "no hago ejercicio"**, y dejarla en blanco impide diagnosticar | Si le agregas una opción. **Observación de Valentina usando el instrumento** | No, pero hoy obliga a contestar algo falso |
+| **7** | **P43 y P44 hablan idiomas distintos** (alimentos contra sustancias), y el paciente no distingue alergia de intolerancia | El lenguaje de las opciones, y si separarlas tiene sentido para quien responde | No |
 
 ---
 
@@ -233,6 +238,77 @@ vacío se lea como un 3 %**. Si un profesional escribe 3 % a propósito, el sist
 
 **Si te parece que esto también es meterse donde no debemos, se queda como está.** Lo preguntamos porque la
 diferencia entre "lo decidió" y "se le borró" no la puede resolver el motor, y quien la paga es el paciente.
+
+---
+
+# 6 · P24: un paciente que no hace ejercicio no tiene dónde marcarlo
+
+**Esta observación y la siguiente son de Valentina, usando el instrumento con pacientes.** No son nuestras
+y no hemos tocado nada: la encuesta es tuya, y el texto y las opciones también.
+
+## Lo que dice hoy, textual
+
+| | |
+| --- | --- |
+| **P23** (`d3_23`) | *"¿Cuántos días/semana hace actividad física (≥30 min)?"* — opciones **0** a 7 |
+| **P24** (`d3_24`) | *"¿Cuánto dura cada sesión?"* — **Menos de 15** · 15-30 min · 30-45 min · 45-60 min · Más de 60 min |
+
+**La 23 sí permite decir "ninguno". La 24 arranca en "menos de 15 minutos".** Un paciente sedentario ya
+dijo que no hace ejercicio ningún día, y la pregunta siguiente le pide la duración de unas sesiones que no
+existen.
+
+## Y verificamos qué pasa hoy, porque cambia el tamaño del problema
+
+**La P24 sigue apareciendo aunque conteste 0 días.** La encuesta no tiene saltos condicionales: todas las
+preguntas se muestran siempre.
+
+**Y dejarla en blanco no es una salida:** el diagnóstico exige la encuesta completa, así que una P24 vacía
+**impide diagnosticar** hasta que alguien la llene. O sea que hoy el paciente sedentario tiene que marcar
+una duración que no hace.
+
+**Lo que sí verificamos es que el dato del modelo no se corrompe:** el LE8 calcula
+`metMin = días × minutos`, y con 0 días el producto es 0 sea cual sea la duración marcada. **El puntaje
+no cambia.** Lo decimos porque acota el riesgo: el problema es de instrumento y de lo que queda escrito en
+la historia, no del cálculo.
+
+## Lo que te pedimos
+
+**Si le agregas una opción a la P24** (del tipo "No hago ejercicio" o "No aplica"), la ponemos. **O si
+prefieres que la P24 desaparezca cuando la 23 responde 0**, también, pero eso es un salto condicional y
+la encuesta hoy no tiene ninguno: sería el primero, y la decisión de estrenarlo es tuya.
+
+---
+
+# 7 · P43 y P44: el paciente no distingue alergia de intolerancia, y las dos preguntas hablan idiomas distintos
+
+**La observación de Valentina es sobre la P44:** los pacientes no saben qué es la fructosa o el gluten, y
+responden con alimentos ("frijoles", "leche"). Hay opción "Otra", pero se está usando para lo que debería
+estar en la lista.
+
+**Al ir a mirarlo apareció algo más, y es lo que hace la pregunta:**
+
+| | |
+| --- | --- |
+| **P43** (`d6_43`) | *"¿Alergias alimentarias diagnosticadas?"* — Ninguna · **Leche · Huevo · Maní · Trigo · Soya · Pescado · Mariscos** · Otra |
+| **P44** (`d6_44`) | *"¿Intolerancias alimentarias?"* — Ninguna · **Lactosa · Gluten · Fructosa** · Otra |
+
+**La 43 habla en ALIMENTOS y la 44 en SUSTANCIAS**, y van una detrás de la otra. Para quien responde, "leche"
+está en la primera lista y "lactosa" en la segunda: alguien con intolerancia a la lactosa encuentra la
+palabra que reconoce en la pregunta de ALERGIAS, que es la que no le corresponde.
+
+**Y la mitad de fondo, que Santiago plantea sin saber la respuesta:** son cosas distintas clínicamente (una
+inmune, otra digestiva), pero preguntarlas por separado supone que el paciente ya sabe cuál de las dos
+tiene. Muchos no lo saben, y algunos ni siquiera con diagnóstico médico de por medio.
+
+## Lo que te pedimos, en dos mitades
+
+1. **El lenguaje de las opciones de la P44.** Si aterrizarlas a alimentos (leche/lácteos, trigo o pan,
+   frutas) sirve mejor, mándanos la lista y la ponemos tal cual.
+2. **Si separar las dos preguntas tiene sentido para quien responde.** No te pedimos que las unas: te
+   preguntamos si la distinción es del paciente o del profesional. Si es del profesional, quizá el paciente
+   deba marcar el alimento y la clasificación la haga quien lo atiende.
+
+**No tocamos nada mientras respondes.** Las dos preguntas siguen exactamente como están.
 
 ---
 
