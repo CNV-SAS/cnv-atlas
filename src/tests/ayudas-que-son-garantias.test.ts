@@ -84,7 +84,13 @@ const GARANTIAS: [string, string, string][] = [
   ],
   [
     "aprobar congela, reabrir queda registrado",
-    "nueva se le avisa, porque cambia lo que come",
+    // CAMBIO EL FRAGMENTO, NO LA GARANTIA (2026-09-01). Decia "nueva se le avisa, porque cambia lo que
+    // come", y ese texto era FALSO: aprobar escribe el evento en la auditoria y nada mas, no notifica a
+    // nadie. La garantia que este candado protege ("nunca se poda un texto que anuncia una consecuencia
+    // que llega al paciente") sigue igual y por eso la fila se queda; lo que cambio es que ahora el texto
+    // dice lo que el profesional TIENE QUE HACER en vez de prometer un automatismo que no existe.
+    // No se relajo el candado: se corrigio el texto que vigilaba.
+    "envíale el reporte",
     "Consecuencias de un acto que sale del sistema y llega al paciente. Nunca se poda un texto que anuncia eso.",
   ],
   [

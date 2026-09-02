@@ -26,6 +26,7 @@ import {
 import {
   addNoteAction,
   aplicarCambioMenuAction,
+  approveProtocolAction,
   aplicarCambiosMenuAction,
   reopenProtocolAction,
   generateMenuAction,
@@ -874,7 +875,13 @@ export function TreatmentPanel({
                 : `Hay ${protocol.aprobacionesPrevias} prescripciones anteriores aprobadas`}
               , guardada{protocol.aprobacionesPrevias === 1 ? "" : "s"} en la historia del paciente.
               {protocol.reopenReason ? ` Motivo de la última reapertura: "${protocol.reopenReason}".` : ""}{" "}
-              Al aprobar la nueva se le avisará, porque cambia lo que come.
+              {/* DECIA "Al aprobar la nueva se le avisará". NO ES ASI: aprobar sella la prescripción y
+                  escribe el evento en la auditoría, y nada más; el paciente se entera cuando le envías el
+                  reporte, que es un acto tuyo aparte. Un texto que le dice al profesional que el sistema
+                  avisa por él hace que NO avise. Su §12c exige que se le diga; lo que no existe es el
+                  automatismo, y eso va preguntado, no inventado. */}
+              Cuando apruebes la nueva, envíale el reporte: cambia lo que come y hoy el sistema no se lo
+              avisa solo.
             </p>
           </div>
         ) : null}
@@ -1039,8 +1046,65 @@ export function TreatmentPanel({
           patronAlimentario={patronAlimentario}
         />
         <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        {/* APROBAR VA AL FINAL, y no es estetico: es el acto que CIERRA la consulta. Todo lo de arriba se
+            edita; esto lo sella. Un boton de sellar arriba invita a pulsarlo antes de leer lo que sella. */}
+        {!protocol.approved && !diagnosisPending ? (
+          <AprobarProtocolo evaluationId={evaluationId} protocol={protocol} />
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+// EL ACTO QUE FALTABA. La vertical de aprobar estaba construida entera (policy `canApproveProtocol`,
+// servicio con sus cuatro gates, writer transaccional con audit inline, trigger 0026 de inmutabilidad y
+// dos suites de tests) y NINGUNA PANTALLA INVOCABA LA ACTION. Lo encontro el barrido del 2026-09-01
+// comparando las 99 server actions contra quien las nombra.
+//
+// LO QUE ARRASTRABA, y por eso no era un boton de menos: con `approved` clavado en false, nunca se
+// activaba el bloqueo de edicion, nunca se veia el aviso de que la prescripcion reemplaza a otra, y la
+// REAPERTURA era inalcanzable porque vive dentro del bloque de aprobado. Y sobre todo: **todo plan que
+// le llegaba a un paciente salia de una prescripcion en borrador**.
+//
+// NO LLEVA DIALOGO DE CONFIRMACION, y es la misma razon que ya esta escrita en `ProtocoloAprobado`: un
+// "¿seguro?" pide una confirmacion, no una razon. Aqui la salvaguarda no es un paso mas, es que el acto
+// se puede DESHACER (reabrir, con motivo, que queda en la historia). Lo que si lleva es decir ANTES de
+// pulsar que es lo que va a pasar.
+function AprobarProtocolo({
+  evaluationId,
+  protocol,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+}) {
+  const [state, formAction, pending] = useActionState(approveProtocolAction, EMPTY);
+  useFormToastAndRefresh(state);
+  // Sin sugerido no hay nada que sellar, y el servicio lo rechaza. Se dice aqui para que el profesional
+  // no descubra el gate con un error: un guard correcto mal expuesto se siente como defecto.
+  const sinSugerido = !protocol.protocolSuggested;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted px-3 py-3">
+      <h3 className="text-sm font-medium">Aprobar la prescripción</h3>
+      <p className="text-sm text-muted-foreground">
+        Al aprobar, la prescripción queda sellada tal como está y deja de ser editable. Es la que se
+        registra en la historia clínica y la que recibe el paciente en su plan. Si después necesitas
+        cambiarla, puedes reabrirla escribiendo el motivo.
+      </p>
+      {sinSugerido ? (
+        <p className="text-sm text-clinical-warning">
+          Todavía no se puede aprobar: esta evaluación no tiene la prescripción del modelo calculada, y no
+          se sella lo que nunca se computó.
+        </p>
+      ) : (
+        <form onSubmit={enviarSinReset(formAction)}>
+          <input type="hidden" name="evaluationId" value={evaluationId} />
+          <Button type="submit" size="sm" disabled={pending}>
+            {pending ? "Aprobando..." : "Aprobar la prescripción"}
+          </Button>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -1258,8 +1322,8 @@ function ProtocoloAprobado({
     <div className="flex flex-col gap-3 rounded-md border border-border bg-muted px-3 py-3">
       <p className="text-sm text-muted-foreground">
         Este protocolo ya fue aprobado, así que la prescripción está congelada: para editarla hay que
-        reabrirla. Reabrir queda registrado en la historia del paciente con tu motivo, y al aprobar la
-        nueva se le avisa, porque cambia lo que come.
+        reabrirla. Reabrir queda registrado en la historia del paciente con tu motivo, y cuando apruebes la
+        nueva tendrás que enviarle el reporte: cambia lo que come y el sistema no se lo avisa solo.
         {protocol.aprobacionesPrevias > 0
           ? " Esta prescripción ya reemplazó a otra anterior."
           : ""}
