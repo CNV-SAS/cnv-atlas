@@ -441,7 +441,25 @@ function CadenaCaloricaSection({
   const protSellada = Math.round(base.protG);
   const protHoy = Math.round(modeloHoy.protG);
   const cienciaSeMovio = kcalSellado !== kcalHoy || protSellada !== protHoy;
+  // SOBRE QUE PESO SE COMPARA, que es el dato que al aviso le faltaba (smoke 2026-09-03).
+  //
+  // El aviso comparaba SIN ajustes (peso de calculo del modelo) y los campos de abajo corren CON ellos
+  // (peso meta del profesional). Para el paciente del smoke eso son dos cifras distintas del mismo
+  // concepto en la misma pantalla, sin nada que las explique: 1.631 kcal y 85 g arriba, 1.529 kcal y 78 g
+  // abajo. El profesional lo lee como una contradiccion, y tiene razon en leerlo asi.
+  //
+  // NO SE CAMBIA LA COMPARACION, SE DICE. Comparar sin ajustes es lo correcto y no solo lo defendible:
+  //   1. Con ajustes, la diferencia mezclaria lo que cambio el MODELO con lo que cambio el PROFESIONAL, y
+  //      el aviso dejaria de responder la pregunta que existe para responder.
+  //   2. Y peor: un override a mano haria DESAPARECER el aviso. Si el profesional fijo el objetivo
+  //      calorico, lo sellado y lo de hoy mostrarian ese mismo numero, la diferencia seria cero y el aviso
+  //      se callaria justo en los pacientes cuya cadena mas se toco, con la ciencia movida por debajo.
+  //
+  // Asi que el aviso NOMBRA su peso, y solo menciona el otro cuando de verdad difieren: con un unico peso
+  // la aclaracion seria ruido, y un aviso con ruido se deja de leer.
   const pesoEfectivo = adj.pesoMeta ?? protocol.pesoCalculo;
+  const pesoModelo = protocol.pesoCalculo;
+  const pesosDifieren = pesoModelo != null && Math.abs(pesoEfectivo - pesoModelo) > 0.05;
   // DE DONDE VIENE el peso meta que gobierna. Es UN valor, pero saber en cual de las dos superficies se
   // fijo es informacion clinica y por eso se conservo al unificar: no es lo mismo el peso acordado con el
   // paciente en la consulta que uno ajustado despues, aqui, al armar el plan.
@@ -690,6 +708,9 @@ function CadenaCaloricaSection({
               {protSellada !== protHoy
                 ? `${kcalSellado !== kcalHoy ? ", y" : ":"} la proteína, ${protHoy} g en vez de ${protSellada}`
                 : ""}
+              {pesosDifieren
+                ? `. Las dos cifras se comparan sobre el peso de cálculo del modelo (${d1(pesoModelo!)} kg) y sin tus ajustes, para separar lo que cambió el modelo de lo que cambiaste tú; los campos de abajo usan el peso meta que fijaste (${d1(pesoEfectivo)} kg), así que darán otro número`
+                : `. Se comparan sin tus ajustes, para separar lo que cambió el modelo de lo que cambiaste tú`}
               . Lo sellado sigue siendo válido para la fecha en que se emitió. Los campos de abajo ya usan el
               modelo de hoy.
             </p>

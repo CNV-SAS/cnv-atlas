@@ -183,6 +183,29 @@ describe("el desfase de versión se avisa donde se ve la cifra, y SOLO si movió
   //      volvió a guardar, y seguía ahí. Un aviso que no se puede resolver entrena a ignorarlo.
   //   2. Y el texto afirmaba un movimiento que no ocurre: el peso meta sale de `snap.pesoCalculo`, que
   //      está sellado, y el bump del 1-sep tocó `motorTratNutri`, cuyo peso meta interno Atlas no ejecuta.
+  it("el aviso DICE sobre qué peso compara, porque si no su número se lee como contradicción", () => {
+    // EL DEFECTO (smoke 2026-09-03, lo vio Santiago). El aviso compara SIN ajustes, o sea sobre el peso de
+    // cálculo del modelo, y los campos de abajo corren CON ellos, sobre el peso meta que fijó el
+    // profesional. Para el paciente del smoke eso eran 1.631 kcal y 85 g en el aviso contra 1.529 kcal y
+    // 78 g en la calculadora, con la misma etiqueta y a un palmo de distancia. Las cuatro cifras eran
+    // correctas; lo que faltaba era decir sobre qué peso está cada par.
+    //
+    // NO SE CAMBIÓ LA COMPARACIÓN, Y ESO ES PARTE DE LO QUE ESTE CASO FIJA: comparar sin ajustes es lo
+    // correcto, porque con ellos un override a mano haría DESAPARECER el aviso (lo sellado y lo de hoy
+    // mostrarían el mismo número escrito por el profesional, la diferencia sería cero) justo en los
+    // pacientes cuya cadena más se tocó.
+    expect(PANEL).toContain("peso de cálculo del modelo");
+    expect(PANEL).toContain("para separar lo que cambió el modelo de lo que cambiaste tú");
+    expect(PANEL).toContain("los campos de abajo usan el peso meta que fijaste");
+
+    // Y LA ACLARACIÓN ES CONDICIONAL: con un solo peso, mencionar el otro sería ruido, y un aviso con
+    // ruido se deja de leer. Sin esto, la frase larga saldría también donde no explica nada.
+    expect(PANEL).toContain("pesosDifieren");
+    expect(PANEL).toContain(
+      "const pesosDifieren = pesoModelo != null && Math.abs(pesoEfectivo - pesoModelo) > 0.05",
+    );
+  });
+
   it("el aviso se DERIVA de las cifras, no de que dos cadenas de versión difieran", () => {
     // La pregunta con respuesta: el código de hoy, sobre los inputs SELLADOS y sin ajustes, ¿da la misma
     // cadena que la sellada? Sin ajustes a propósito: con ellos la diferencia diría lo que cambió el
