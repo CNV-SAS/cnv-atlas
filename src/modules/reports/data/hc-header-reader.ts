@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { edadEnFecha } from "@/lib/format/edad";
 
 // Encabezado de la HISTORIA CLINICA (bloques 1 y 2): datos del paciente y motivo de consulta.
 // Bajo RLS: null si la evaluacion no es del profesional de la sesion.
@@ -39,16 +40,6 @@ const uno = <T,>(v: T | T[] | null | undefined): T | null =>
   Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
 
 /** Edad cumplida en una fecha dada. null si falta la fecha de nacimiento. */
-export function edadEnFecha(birthDate: string | null, enFecha: string): number | null {
-  if (!birthDate) return null;
-  const n = new Date(birthDate);
-  const f = new Date(enFecha);
-  if (Number.isNaN(n.getTime()) || Number.isNaN(f.getTime())) return null;
-  let edad = f.getUTCFullYear() - n.getUTCFullYear();
-  const mes = f.getUTCMonth() - n.getUTCMonth();
-  if (mes < 0 || (mes === 0 && f.getUTCDate() < n.getUTCDate())) edad -= 1;
-  return edad >= 0 ? edad : null;
-}
 
 export async function getHcHeaderForEvaluation(evaluationId: string): Promise<HcHeader | null> {
   const supabase = await createSupabaseServerClient();

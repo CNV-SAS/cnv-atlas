@@ -82,17 +82,40 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
                 la capacitancia discrimina masa muscular baja POR ABAJO y obesidad POR ARRIBA (AUC 0,734
                 por IMC), y sube con el IMC. Un paciente que pasa de 2,40 a 4,00 nF puede estar ganando
                 adiposidad, no integridad de membrana. */}
+            {/* LA REFERENCIA YA SE MUESTRA (cableada el 2026-09-01). Decía "aún no se muestra aquí", y era
+                cierto: la tabla de percentiles estaba portada verbatim con su candado desde el 26 de
+                agosto y nadie la había conectado. El texto era honesto sobre la ausencia, y por eso esto
+                no fue un fallo silencioso; pero seguía siendo una pieza sin su último cable. */}
             <span className="text-xs text-muted-foreground">
               Según protocolo, C es el parámetro a seguir. Mejorar es acercarse a la mediana de su grupo
-              de edad y sexo, no subir: alejarse, en cualquier dirección, no es mejoría. La referencia de
-              su grupo aún no se muestra aquí, así que el gráfico traza la trayectoria sin calificarla.
+              de edad y sexo, no subir: alejarse, en cualquier dirección, no es mejoría.
+              {serie.refC ? (
+                <>
+                  {" "}
+                  La línea marca la mediana de {serie.refC.grupo} ({serie.refC.mediana.toFixed(2)} nF). Su
+                  última medición es{" "}
+                  <strong>{serie.refC.etiqueta.toLowerCase()}</strong>
+                  {serie.refC.banda ? ` (${serie.refC.banda})` : ""}.
+                </>
+              ) : (
+                <>
+                  {" "}
+                  No se puede comparar con su grupo porque falta el sexo o la fecha de nacimiento del
+                  paciente, así que el gráfico traza la trayectoria sin calificarla.
+                </>
+              )}
             </span>
           </CardHeader>
           <CardContent>
             <SerieLinea
               puntos={puntosC}
-              // null, NO true: hasta que la mediana de CAP_REF este cableada no hay criterio de direccion,
-              // y pintar de verde el tramo que sube afirmaria justo lo que Gildardo retiro.
+              // Con referencia, `SerieLinea` ya calcula la mejora como ACERCARSE, que es su regla; sin ella
+              // no hay criterio de direccion. NUNCA `true`: pintar de verde el tramo que sube afirmaria
+              // justo lo que Gildardo retiro (la capacitancia sube con el IMC, asi que subir puede ser
+              // adiposidad y no integridad de membrana).
+              {...(serie.refC
+                ? { referencia: serie.refC.mediana, referenciaLabel: `Mediana ${serie.refC.grupo}` }
+                : {})}
               subirEsMejor={null}
               ariaLabel={`Capacitancia de membrana: ${puntosC
                 .map((p) => `${formatDateOnlyShort(p.fecha)} ${p.valor.toFixed(3)}`)
