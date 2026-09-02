@@ -34,6 +34,9 @@ export type ReportCardView = {
   // detalle de la evaluacion (getReportCardForEvaluation); las LISTAS la dejan undefined (no muestran la
   // confirmacion: la comunicacion del cambio se decide en el detalle, con el reporte completo a la vista).
   trajectory?: TrajectoryConfirmation | null;
+  // ¿La prescripcion esta aprobada? undefined = no se consulto (las listas no lo traen); null = la
+  // evaluacion no tiene tratamiento. Solo se explica el bloqueo cuando se sabe que esta en borrador.
+  protocoloAprobado?: boolean | null;
 };
 
 const initialState: ReportActionState = { error: null, success: null, warning: null };
@@ -191,6 +194,16 @@ export function ReportCard({ report }: { report: ReportCardView }) {
 
         {report.status === "approved" ? (
           <form onSubmit={enviarSinReset(send)} className="flex w-full flex-col gap-2">
+            {/* EL BOTON NO QUEDA MUERTO: dice por que no se puede todavia y DONDE se resuelve. Mismo
+                criterio que la confirmacion de "empeoro" de arriba. Solo aparece cuando se SABE que la
+                prescripcion esta en borrador (`false`); con undefined (listas) no se afirma nada. */}
+            {report.protocoloAprobado === false ? (
+              <span className="text-xs text-clinical-warning">
+                Falta aprobar la prescripción. El paciente recibe su plan en este reporte, y una
+                prescripción en borrador se puede seguir editando después de que él la reciba. Está en la
+                pestaña Tratamiento, subpestaña Nutricionista, al final: “Aprobar la prescripción”.
+              </span>
+            ) : null}
             <input type="hidden" name="reportId" value={report.reportId} />
             <fieldset className="flex flex-col gap-1">
               <legend className="text-xs text-muted-foreground">Modo de envio al paciente</legend>
@@ -210,7 +223,12 @@ export function ReportCard({ report }: { report: ReportCardView }) {
             <span className="text-xs text-muted-foreground">
               Los modos con notas requieren que las hayas escrito al aprobar.
             </span>
-            <Button type="submit" size="sm" disabled={sending} className="self-start">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={sending || report.protocoloAprobado === false}
+              className="self-start"
+            >
               {sending ? "Enviando..." : "Enviar al paciente"}
             </Button>
           </form>

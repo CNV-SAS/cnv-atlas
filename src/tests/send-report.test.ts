@@ -16,6 +16,12 @@ vi.mock("@/modules/reports/data/reports-repository", () => ({
 vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
   getPlanPaciente: vi.fn(async () => null),
 }));
+// EL GATE DE EMISION (2026-09-01): el protocolo tiene que estar aprobado para que el reporte salga. Se
+// mockea aprobado por defecto, y hay un caso propio abajo para el borrador: si no se mockeara, TODOS los
+// casos de orquestacion se caerian por el gate y el test diria que el orden de los pasos esta mal.
+vi.mock("@/modules/treatment/data/treatment-reader", () => ({
+  getProtocolApprovalState: vi.fn(async () => ({ approved: true })),
+}));
 vi.mock("@/modules/reports/data/report-storage", () => ({
   uploadReportPdf: vi.fn(),
 }));
@@ -24,14 +30,15 @@ vi.mock("@/lib/email/resend", () => ({
 }));
 vi.mock("@/modules/reports/data/reports-writer", () => {
   class ReportStateError extends Error {}
-  return { ReportStateError, markReportSent: vi.fn() };
+  return { ReportStateError, markReportSent: vi.fn(), markReportResent: vi.fn() };
 });
 
 const repo = await import("@/modules/reports/data/reports-repository");
 const storage = await import("@/modules/reports/data/report-storage");
 const email = await import("@/lib/email/resend");
 const writer = await import("@/modules/reports/data/reports-writer");
-const { sendReport } = await import("@/modules/reports/services/send-report");
+const treatmentReader = await import("@/modules/treatment/data/treatment-reader");
+const { sendReport, resendReport } = await import("@/modules/reports/services/send-report");
 
 function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
   return {
@@ -55,6 +62,8 @@ function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
   };
 }
 
+const baseInput = () => ({ ...input });
+
 const input = {
   reportId: "rep-1",
   mode: "atlas" as const,
@@ -69,6 +78,10 @@ describe("sendReport (orquestacion D4)", () => {
     vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
     vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
     vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
+    vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
+    vi.mocked(treatmentReader.getProtocolApprovalState)
+      .mockReset()
+      .mockResolvedValue({ approved: true });
   });
 
   it("orden: sube a Storage, luego envia correo, luego marca enviado", async () => {
@@ -142,5 +155,85 @@ describe("sendReport (orquestacion D4)", () => {
     if (res.ok) return;
     expect(res.error.code).toBe("validation");
     expect(storage.uploadReportPdf).not.toHaveBeenCalled();
+  });
+});
+
+// ── EL GATE DE EMISION: la prescripcion tiene que estar aprobada ────────────────────────────────────
+//
+// LA RAZON QUE DECIDE (Santiago, 2026-09-01), y no es la simetria con el reporte: un plan emitido desde el
+// BORRADOR no es RECONSTRUIBLE. Los `adj_*` se pueden mover despues de enviarlo y nadie sabra que recibio
+// el paciente. Con el protocolo aprobado, el trigger 0026 lo congela.
+//
+// Y NO ES UNA REGLA NUEVA: el comentario de `sendReport` ya AFIRMABA que "el tratamiento ya esta aprobado
+// cuando el reporte se envia (el gate de arriba lo exige)", y era falso: ese gate mira el estado del
+// REPORTE. El codigo ya suponia lo que ahora se comprueba.
+describe("gate de emision: el protocolo aprobado", () => {
+  beforeEach(() => {
+    vi.mocked(storage.uploadReportPdf).mockReset().mockResolvedValue({ path: "pat-1/rep-1.pdf" });
+    vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
+    vi.mocked(writer.markReportSent).mockReset().mockResolvedValue(undefined);
+    vi.mocked(repo.getReportDispatch).mockReset().mockResolvedValue(dispatch());
+    vi.mocked(treatmentReader.getProtocolApprovalState)
+      .mockReset()
+      .mockResolvedValue({ approved: true });
+  });
+
+  it("con la prescripcion en BORRADOR no se envia, y NO se toca nada externo", async () => {
+    // Lo que mas importa del caso: no basta con que devuelva error. Si el PDF se hubiera subido o el
+    // correo hubiera salido, el gate llegaria tarde.
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValueOnce({ approved: false });
+    const r = await sendReport(baseInput());
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.code).toBe("conflict");
+      // EL MENSAJE TIENE QUE SER UTIL: que hacer y donde, no un error generico.
+      expect(r.error.message).toContain("aprobar la prescripción");
+      expect(r.error.message).toContain("Tratamiento");
+    }
+    expect(storage.uploadReportPdf).not.toHaveBeenCalled();
+    expect(email.sendReportEmail).not.toHaveBeenCalled();
+    expect(writer.markReportSent).not.toHaveBeenCalled();
+  });
+
+  it("y con la prescripcion aprobada sale, que es el control", async () => {
+    // Sin este control, el caso de arriba pasaria verde tambien con un `sendReport` que nunca envia nada.
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValueOnce({ approved: true });
+    const r = await sendReport(baseInput());
+    expect(r.ok).toBe(true);
+    expect(email.sendReportEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("una evaluacion SIN tratamiento no se bloquea: no hay prescripcion que aprobar", async () => {
+    // Ausencia contra fila vacia. `null` = no hay tratamiento (el PDF omite el plan entero, que ya estaba
+    // resuelto); `{approved:false}` = hay una prescripcion viva sin firmar, que es lo que se frena.
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValueOnce(null);
+    const r = await sendReport(baseInput());
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("el REENVIO no lleva el gate, a proposito", () => {
+  beforeEach(() => {
+    vi.mocked(storage.uploadReportPdf).mockReset().mockResolvedValue({ path: "pat-1/rep-1.pdf" });
+    vi.mocked(email.sendReportEmail).mockReset().mockResolvedValue(okResult({ id: "email-1" }));
+    vi.mocked(writer.markReportResent).mockReset().mockResolvedValue({ attempt: 1 });
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockReset();
+  });
+
+  it("reenvia aunque la prescripcion este en borrador", async () => {
+    // Un paciente que ya tiene su plan no puede quedarse sin poder recibirlo otra vez porque hoy pidamos
+    // una firma que cuando se emitio no existia. `resendReport` reenvia el archivo que YA salio de la
+    // clinica: no rearma nada, asi que no hay prescripcion nueva que firmar.
+    vi.mocked(repo.getReportDispatch).mockResolvedValue({ ...dispatch(), status: "sent", sendMode: "atlas" });
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValue({ approved: false });
+    const r = await resendReport({
+      reportId: "rep-1",
+      reason: "el correo rebotó",
+      actorId: "u-1",
+      actorEmail: "pro@cnv.test",
+      ip: null,
+    });
+    expect(r.ok, "el reenvio quedo bloqueado por el gate de emision").toBe(true);
+    expect(treatmentReader.getProtocolApprovalState).not.toHaveBeenCalled();
   });
 });

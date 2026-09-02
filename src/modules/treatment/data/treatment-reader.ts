@@ -398,3 +398,43 @@ export async function getTreatmentForApproval(
     bisMeasurementDate: meas?.measurement_date ?? null,
   };
 }
+
+/**
+ * ¿El protocolo de esta evaluacion esta APROBADO? Lectura minima (una consulta), para el gate de emision
+ * del reporte.
+ *
+ * POR QUE EXISTE, y no se reusa `getTreatmentProtocol`: ese lee el protocolo entero (menu, intercambio,
+ * tiempos, notas, nutraceuticos, aprobaciones previas) y aqui solo hace falta un estado. El gate corre
+ * antes de renderizar el PDF, asi que pagar esa lectura completa para mirar una columna seria caro por
+ * nada.
+ *
+ * Devuelve `null` si la evaluacion no tiene diagnostico o no tiene tratamiento: es distinto de "existe y
+ * esta en borrador", y aguas arriba se dicen cosas distintas (ausencia contra fila vacia).
+ */
+export async function getProtocolApprovalState(
+  evaluationId: string,
+): Promise<{ approved: boolean } | null> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: diag, error: dErr } = await supabase
+    .from("diagnoses")
+    .select("id")
+    .eq("evaluation_id", evaluationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (dErr) throw new Error(`treatment-reader(approval-state): diagnoses: ${dErr.message}`);
+  if (!diag) return null;
+
+  const { data: t, error: tErr } = await supabase
+    .from("treatments")
+    .select("status")
+    .eq("diagnosis_id", diag.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (tErr) throw new Error(`treatment-reader(approval-state): treatments: ${tErr.message}`);
+  if (!t) return null;
+
+  return { approved: t.status === "approved" };
+}
