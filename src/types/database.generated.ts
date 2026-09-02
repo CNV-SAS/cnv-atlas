@@ -1292,6 +1292,61 @@ export type Database = {
           },
         ]
       }
+      hc_deliveries: {
+        Row: {
+          delivered_at: string
+          delivered_by: string
+          delivered_by_email: string
+          evaluation_id: string
+          id: string
+          medium: string
+          patient_id: string
+          sent_to: string
+        }
+        Insert: {
+          delivered_at?: string
+          delivered_by: string
+          delivered_by_email: string
+          evaluation_id: string
+          id?: string
+          medium?: string
+          patient_id: string
+          sent_to: string
+        }
+        Update: {
+          delivered_at?: string
+          delivered_by?: string
+          delivered_by_email?: string
+          evaluation_id?: string
+          id?: string
+          medium?: string
+          patient_id?: string
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hc_deliveries_delivered_by_fkey"
+            columns: ["delivered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hc_deliveries_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hc_deliveries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       indicator_definitions: {
         Row: {
           code: string

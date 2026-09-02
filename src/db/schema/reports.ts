@@ -53,3 +53,35 @@ export const reports = pgTable(
   },
   (t) => [index("reports_eval_idx").on(t.evaluationId)],
 );
+
+// ENTREGAS DE LA HISTORIA CLINICA AL PACIENTE (derecho de acceso, Resolucion 1995 / Ley 1581).
+//
+// POR QUE ES TABLA DE DOMINIO Y NO SOLO AUDIT LOG: el profesional necesita poder MOSTRAR que la entrego, y
+// `clinical_audit_log` es admin-only para SELECT. Un registro que el escribe y no ve nunca es medio
+// registro. Ya nos paso con el descarte del aviso de alergeno: un almacen se elige por TODAS sus
+// propiedades, y la de LECTURA es la que se olvida.
+//
+// Y ADEMAS va al audit log, inline en la misma transaccion (regla dura 8). No es duplicar: la tabla es el
+// HECHO que el profesional consulta; el log es el RASTRO del acto con su actor y su IP.
+export const hcDeliveries = pgTable(
+  "hc_deliveries",
+  {
+    id: pk(),
+    evaluationId: uuid("evaluation_id")
+      .notNull()
+      .references(() => evaluations.id, { onDelete: "cascade" }),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => patients.id, { onDelete: "restrict" }),
+    /** Medio por el que salio. Hoy solo 'email'. */
+    medium: text("medium").notNull().default("email"),
+    /** A DONDE se envio, tal como estaba: el contacto puede cambiar despues. */
+    sentTo: text("sent_to").notNull(),
+    deliveredBy: uuid("delivered_by")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "restrict" }),
+    deliveredByEmail: text("delivered_by_email").notNull(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("hc_deliveries_evaluation_idx").on(t.evaluationId, t.deliveredAt)],
+);
