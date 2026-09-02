@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   adjustmentSignature,
-  guidelinesSignature,
   menuSemanalSignature,
   intercambioSignature,
   nutraceuticalsSignature,
@@ -95,9 +94,10 @@ describe("keys de las secciones del panel de tratamiento", () => {
   it("las firmas SIN el prefijo si colisionan: es lo que hay que seguir cubriendo", () => {
     // Deja escrito POR QUE hace falta el prefijo. Si algun dia las firmas dejaran de colisionar, este
     // test lo dice en vez de que el prefijo quede como cargo cult.
+    // Eran cinco firmas; la de guias se fue con la retirada de las guias dietarias (2026-09-01). Las
+    // cuatro que quedan siguen colisionando entre si, que es lo que este control tiene que demostrar.
     const soloFirmas = [
       objetivoSignature({ treatmentId: T, objetivo: null }),
-      guidelinesSignature({ treatmentId: T, guidelines: [] }),
       restriccionesSignature({ treatmentId: T, restricciones: [] }),
       intercambioSignature({ treatmentId: T, intercambio: null }),
       tiemposSignature({ treatmentId: T, tiempos: null }),

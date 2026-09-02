@@ -186,6 +186,11 @@ export type TreatmentProtocol = {
   kcalSugerido: number | null; // GET medido por el Biody, si existe
   nutraceuticals: PrescribedNutraceutical[]; // los que AGREGA el profesional
   recommendedNutraceuticals: string | null; // los que RECOMIENDA el modelo (string del snapshot)
+  // GUIAS DIETARIAS: SOLO LECTURA desde el 2026-09-01. La caja se retiro el 31 de agosto (eran nuestras,
+  // su archivo no tiene una lista de guias) y el camino de ESCRITURA se retiro entero al barrer los cables:
+  // la action seguia viva escribiendo datos clinicos sin ninguna pantalla que la llamara.
+  // La LECTURA se queda a proposito: hay tratamientos anteriores con guias guardadas, y un dato clinico que
+  // existio no debe volverse inalcanzable desde el codigo. La tabla y sus filas no se tocan.
   guidelines: DietGuideline[];
   notes: TreatmentNote[];
   catalog: CatalogItem[];

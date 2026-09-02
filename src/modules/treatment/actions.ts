@@ -19,7 +19,6 @@ import {
   approveProtocol,
   reopenProtocol,
   saveAdjustments,
-  saveGuidelines,
   saveNutraceuticals,
   saveObjetivo,
   saveIntercambio,
@@ -37,7 +36,6 @@ import {
   approveProtocolSchema,
   reopenProtocolSchema,
   saveAdjustmentsSchema,
-  saveGuidelinesSchema,
   saveNutraceuticalsSchema,
   saveObjetivoSchema,
   saveIntercambioSchema,
@@ -415,35 +413,6 @@ export async function aplicarCambiosMenuAction(
 }
 
 // Checkpoint 2.4: guias dietarias, su propia accion.
-export async function saveGuidelinesAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  const parsed = saveGuidelinesSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    guidelines: parseJsonArray(form.get("guidelines")),
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Guías inválidas.");
-  }
-
-  const result = await saveGuidelines(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Guías guardadas.", warning: null };
-}
 
 // Checkpoint 2.3: prescripcion de nutraceuticos, su propia accion (partida de saveProtocolAction). Mismo
 // patron que saveAdjustmentsAction: candado, firma de remonte, y stale_write como aviso que preserva la edicion.

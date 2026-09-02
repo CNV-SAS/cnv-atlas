@@ -10,7 +10,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check:rsc": "node scripts/check-rsc-boundaries.mjs",
-    "verify": "pnpm typecheck && pnpm lint && pnpm check:rsc && pnpm test",
+    "verify": "pnpm typecheck && pnpm lint && pnpm check:rsc && pnpm check:cables && pnpm test",
     "test": "vitest run --project unit && vitest run --project db",
     "test:unit": "vitest run --project unit",
     "test:db": "vitest run --project db",
@@ -22,7 +22,8 @@
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed.ts",
     "db:seed:bis": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed-bis-conditions.ts",
     "seed:golden": "node scripts/seed-golden.mjs",
-    "db:types": "pnpm dlx supabase gen types typescript --local > src/types/database.generated.ts"
+    "db:types": "pnpm dlx supabase gen types typescript --local > src/types/database.generated.ts",
+    "check:cables": "node scripts/check-cables.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "0.24.1",

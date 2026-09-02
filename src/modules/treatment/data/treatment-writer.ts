@@ -8,7 +8,6 @@ import {
   evaluations,
   patientContraindications,
   treatmentApprovals,
-  treatmentDietGuidelines,
   treatmentNotes,
   treatmentNutraceuticals,
   treatments,
@@ -17,7 +16,6 @@ import { recordAudit } from "@/modules/audit/log";
 
 import {
   adjustmentSignature,
-  guidelinesSignature,
   intercambioSignature,
   menuSemanalSignature,
   nutraceuticalsSignature,
@@ -52,12 +50,6 @@ export class StaleRestriccionesError extends Error {
   }
 }
 
-export class StaleGuidelinesError extends Error {
-  constructor() {
-    super("Las guías dietarias cambiaron desde que se cargaron.");
-    this.name = "StaleGuidelinesError";
-  }
-}
 
 export class StaleObjetivoError extends Error {
   constructor() {
@@ -172,45 +164,6 @@ export type SaveGuidelinesWrite = {
 };
 
 // Guias dietarias (checkpoint 2.4): reemplaza el set de treatment_diet_guidelines. Camino propio con candado.
-export async function saveGuidelines(input: SaveGuidelinesWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ id: treatments.id })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const curGuides = await tx
-      .select({ text: treatmentDietGuidelines.guidelineText })
-      .from(treatmentDietGuidelines)
-      .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
-    const current = guidelinesSignature({
-      treatmentId: input.treatmentId,
-      guidelines: curGuides.map((g) => g.text),
-    });
-    if (current !== input.baseSignature) throw new StaleGuidelinesError();
-    await tx
-      .delete(treatmentDietGuidelines)
-      .where(eq(treatmentDietGuidelines.treatmentId, input.treatmentId));
-    if (input.guidelines.length) {
-      await tx.insert(treatmentDietGuidelines).values(
-        input.guidelines.map((text) => ({ treatmentId: input.treatmentId, guidelineText: text })),
-      );
-    }
-    await recordAudit(tx, {
-      event: "treatment.guidelines_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: { guidelines_count: input.guidelines.length },
-      ip: input.ip,
-    });
-  });
-}
 
 export type SaveObjetivoWrite = {
   treatmentId: string;

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   adjustmentSignature,
-  guidelinesSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
@@ -194,28 +193,6 @@ describe("restriccionesSignature: key de remonte + base del candado de restricci
   });
 });
 
-describe("guidelinesSignature: key de remonte + base del candado de guias", () => {
-  const asList = (p: TreatmentProtocol) => ({
-    treatmentId: p.treatmentId,
-    guidelines: p.guidelines.map((g) => g.text),
-  });
-  const sig = () => guidelinesSignature(asList(BASE));
-  it("igual set (aun reordenado) -> igual firma", () => {
-    const p = clone(BASE);
-    p.guidelines.reverse();
-    expect(guidelinesSignature(asList(p))).toBe(sig());
-  });
-  it("cambiar el texto de una guia mueve la firma", () => {
-    const p = clone(BASE);
-    p.guidelines[0].text = "3 comidas al dia";
-    expect(guidelinesSignature(asList(p))).not.toBe(sig());
-  });
-  it("otro tratamiento mueve la firma", () => {
-    const p = clone(BASE);
-    p.treatmentId = "t-2";
-    expect(guidelinesSignature(asList(p))).not.toBe(sig());
-  });
-});
 
 // Pieza 1 (checkpoint 2.4): firma del objetivo del tratamiento (key de remonte + base del candado).
 describe("objetivoSignature: key de remonte + base del candado del objetivo del tratamiento", () => {
