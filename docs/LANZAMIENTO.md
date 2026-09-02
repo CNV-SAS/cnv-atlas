@@ -84,8 +84,9 @@
 
    **REPORTES (2026-09-01):** retirados del PDF del paciente los indices del modelo (su §7.1 del 26-ago,
    que llevaba seis dias aplicada a medias por un congelamiento vencido en la cola), y anadida la linea del
-   derecho a la historia clinica. Estado: `report-render`. **El PLAN del paciente y la HC imprimible siguen
-   sin construir** (BACKLOG); P1 de la ronda los bloquea.
+   derecho a la historia clinica. Estado: `report-render`. (Esta linea decia que el PLAN del paciente y la HC
+   imprimible seguian sin construir; se escribio antes de construirlos ESE MISMO DIA, y quedo contradicha
+   por los dos parrafos de abajo. Corregida el 2026-09-02.)
 
    **ENTREGA DE GILDARDO DEL 1-SEP, cruzada (2026-09-01):** de sus nueve cambios, SEIS ya los teniamos y
    dos con la correccion mas adelantada que su archivo. Re-portado `motorTratNutri` del HTML nuevo (peso
@@ -102,6 +103,34 @@
    de acceso); y el DFI vuelve al reporte del paciente TRADUCIDO con el mapa de Gildardo. Estado:
    `hc-imprimible` y `dfi-paciente`. **Enviar la HC al paciente NO esta construido**: necesita una decision
    de arquitectura (adjunto contra enlace firmado), en BACKLOG.
+
+   **APROBAR EL TRATAMIENTO (2026-09-02):** el barrido de cables encontro que la vertical entera de
+   aprobar (policy, servicio, writer, trigger 0026 y dos suites) existia SIN NINGUNA PANTALLA que la
+   invocara. No habia forma de aprobar un tratamiento, asi que **todo plan que le llegaba a un paciente
+   salia de una prescripcion en BORRADOR**. Construido el boton, y con el se activaron el bloqueo de
+   edicion, el aviso de reemplazo y la reapertura, que eran inalcanzables. Estado:
+   `aprobar-protocolo-cableado`.
+
+   **Y EL REPORTE YA NO SE EMITE SIN LA PRESCRIPCION APROBADA** (decision de Santiago): un plan emitido
+   desde el borrador no es reconstruible, porque los `adj_*` se pueden mover despues. El REENVIO no lo
+   exige: reenvia el archivo que ya salio. Estado: `send-report`.
+
+   **CHECK DE CABLES (2026-09-02):** `pnpm check:cables`, dentro de `verify`. Ninguna server action puede
+   quedarse sin pantalla que la invoque; las dos excepciones llevan su razon y su fuente dentro del script.
+   Sin dependencia nueva, en la familia de `check-rsc-boundaries`.
+
+   **EL AUTO-RESET DE REACT 19, EN TODA LA APP (2026-09-02):** el candado miraba un modulo y la regla es de
+   React. Habia 36 formularios con la prop `action` y DOCE con select o checkbox, entre ellos el modo de
+   envio del reporte al paciente. Migrados los 36. Estado: `form-action-no-resetea`.
+
+   **EL SALTO AL INICIO (2026-09-02):** causa encontrada en el Next instalado. Invocar una server action
+   navega con `ScrollBehavior.Default` y scrollea a los segmentos nuevos al montar; `router.refresh()` usa
+   `NoScroll` y nunca fue el culpable, asi que quitar los `revalidatePath` no podia arreglarlo del todo.
+   Estado: `preservar-scroll`.
+
+   **LA CAPACITANCIA, CABLEADA (2026-09-02):** la tabla estaba portada con su candado desde el 26 de agosto
+   y ninguna raiz la alcanzaba. La tarjeta de Seguimiento ya dibuja la mediana del grupo. Estado:
+   `capacitancia`.
 
    **OJO AL DESPLEGAR: la 0095, la 0096 y la 0097 son migraciones con DATOS o con columnas nuevas.** Copia `treatments.adj_peso_meta` al registro
    del paciente y falla a proposito si algun tratamiento con peso meta no tiene fila de intake. Correr
