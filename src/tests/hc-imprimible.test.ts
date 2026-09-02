@@ -29,7 +29,7 @@ describe("se imprime lo que se ve, sin una segunda construcción del documento",
   });
 
   it("la historia lleva la marca de impresión, y el botón no sale en el papel", () => {
-    expect(PAGE).toContain('<div className="hc-print flex flex-col gap-4">');
+    expect(PAGE).toContain('<div className="imprimible flex flex-col gap-4">');
     expect(BOTON).toContain("no-print");
   });
 
@@ -41,7 +41,7 @@ describe("se imprime lo que se ve, sin una segunda construcción del documento",
     expect(i, "se perdió el bloque @media print").toBeGreaterThan(-1);
     const impresion = GLOBALS.slice(i);
     expect(impresion).toContain("visibility: hidden");
-    expect(impresion).toContain(".hc-print,");
+    expect(impresion).toContain(".imprimible,");
     expect(impresion).toContain("visibility: visible");
     expect(impresion, "ocultar por display dejaría la historia en blanco").not.toContain("display: none");
   });

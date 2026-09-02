@@ -258,12 +258,16 @@
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════════
-   IMPRESION DE LA HISTORIA CLINICA (2026-09-01)
+   IMPRESION DE UN BLOQUE DE LA PANTALLA (2026-09-01; generalizado el 2026-09-02)
 
    El paciente tiene derecho a su historia clinica completa (Resolucion 1995, Ley 1581) y quien se la
    entrega es su profesional. Para poder entregarla hay que poder sacarla, y esto es lo que la saca.
 
-   COMO FUNCIONA, y por que asi: se marca el contenedor de la historia con `hc-print` y al imprimir se
+   DOS DOCUMENTOS LO USAN: la historia clinica (que entrega el profesional por el derecho de acceso) y el
+   PLAN del paciente (la hoja que se lleva de la consulta). El mecanismo es el mismo y la clase por eso se
+   llama `imprimible` y no `imprimible`: dos nombres para una sola cosa es como empiezan las dos fuentes.
+
+   COMO FUNCIONA, y por que asi: se marca el contenedor con `imprimible` y al imprimir se
    OCULTA todo lo demas por `visibility`, no por `display`. La diferencia importa: `display:none` sobre un
    ancestro esconde tambien a sus descendientes y no hay forma de volver a mostrar uno solo; `visibility`
    si se puede revertir hijo por hijo, que es justo lo que hace falta cuando el bloque a imprimir esta
@@ -282,20 +286,20 @@
     visibility: hidden;
   }
 
-  .hc-print,
-  .hc-print * {
+  .imprimible,
+  .imprimible * {
     visibility: visible;
   }
 
   /* Lo de dentro de la historia que no va en papel. Va DESPUES de la regla de arriba para ganarle. */
-  .hc-print .no-print,
-  .hc-print .no-print * {
+  .imprimible .no-print,
+  .imprimible .no-print * {
     visibility: hidden;
   }
 
   /* La historia ocupa la hoja: sin esto se imprime en el hueco que le dejaba el layout en pantalla
      (barra lateral incluida), con un margen izquierdo vacio de varios centimetros. */
-  .hc-print {
+  .imprimible {
     position: absolute;
     left: 0;
     top: 0;

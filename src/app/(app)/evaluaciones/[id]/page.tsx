@@ -133,6 +133,8 @@ import {
   type TreatmentNarrative,
 } from "@/modules/treatment/components/profession-treatment-section";
 import { TreatmentSubtabs } from "@/modules/treatment/components/treatment-subtabs";
+import { getPlanPaciente } from "@/modules/reports/data/plan-paciente-reader";
+import { PlanImprimible } from "@/modules/reports/components/plan-imprimible";
 import { getActorProfession } from "@/modules/treatment/data/actor-profession-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 
@@ -502,6 +504,14 @@ export default async function ResultadosEvaluacionPage({
       )
     : null;
 
+  // EL PLAN DEL PACIENTE, para la hoja imprimible de la subpestaña del nutricionista. MISMO lector que
+  // alimenta el PDF del correo (`getPlanPaciente`): el papel y el correo no pueden decir cosas distintas,
+  // y con una sola fuente no hay nada que sincronizar. null si la evaluación aún no tiene protocolo con
+  // snapshot, que es cuando no hay plan que entregar.
+  const planPaciente = isEngineOutput(results.snapshot)
+    ? await getPlanPaciente(id, results.snapshot)
+    : null;
+
   // Los tres parrafos que la HC REUNE (bloques 5 a 7). Salen de lo ya derivado para el Diagnostico: la
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
   // CIERRE de la consulta: los pendientes se DERIVAN del estado real en cada render, no se guardan, asi
@@ -783,6 +793,15 @@ export default async function ResultadosEvaluacionPage({
                   ),
                 )}
                 prescripcion={prescripcionNutricional}
+                planImprimible={
+                  planPaciente ? (
+                    <PlanImprimible
+                      plan={planPaciente}
+                      paciente={hcHeader?.paciente ?? "Paciente"}
+                      fecha={formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString())}
+                    />
+                  ) : null
+                }
               />
             }
           />
@@ -842,10 +861,10 @@ export default async function ResultadosEvaluacionPage({
           {/* HISTORIA CLINICA de la consulta (bloques 1 a 3 de catorce, 2026-08-24). Se muestra aunque no
               haya reporte: la historia documenta la CONSULTA, no el envio. */}
           {hcHeader ? (
-            // `hc-print`: al imprimir, esto es LO UNICO que sale en la hoja (ver globals.css). El
+            // `imprimible`: al imprimir, esto es LO UNICO que sale en la hoja (ver globals.css). El
             // documento impreso es el mismo que el profesional tiene delante, sin una segunda
             // construccion que pueda desincronizarse.
-            <div className="hc-print flex flex-col gap-4">
+            <div className="imprimible flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
                 <HcImprimir />
