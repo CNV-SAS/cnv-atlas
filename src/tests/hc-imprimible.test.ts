@@ -33,17 +33,28 @@ describe("se imprime lo que se ve, sin una segunda construcción del documento",
     expect(BOTON).toContain("no-print");
   });
 
-  it("al imprimir se oculta por `visibility`, nunca por `display`", () => {
-    // `display:none` sobre un ancestro esconde tambien a sus descendientes y no hay forma de volver a
-    // mostrar uno solo. `visibility` si se revierte hijo por hijo, que es lo que hace falta cuando el
-    // bloque a imprimir vive dentro de la pagina entera. Con `display` la historia saldria en blanco.
+  it("al imprimir sale la hoja y SOLO la hoja, sin páginas en blanco", () => {
+    // ESTE CANDADO CAMBIÓ DE MECANISMO, NO DE GARANTÍA (2026-09-02). Exigía ocultar por `visibility` y
+    // PROHIBÍA `display`, con esta razón: "display:none sobre un ancestro esconde también a sus
+    // descendientes". Eso es cierto, y por eso hace falta `:has()`; lo que la razón no vio es que
+    // `visibility:hidden` ESCONDE PERO DEJA EL ALTO, así que todo el resto de la página seguía paginando
+    // en blanco. El plan del paciente ocupa dos hojas y salían QUINCE. Con la historia no se notó porque
+    // es larga y su propio contenido llenaba las hojas: el defecto llevaba ahí desde el principio.
+    //
+    // La garantía que este caso protege es la misma de siempre y por eso la fila se queda: se imprime el
+    // bloque marcado, sin el layout alrededor. Lo que cambia es cómo se consigue.
     const i = GLOBALS.indexOf("@media print");
     expect(i, "se perdió el bloque @media print").toBeGreaterThan(-1);
     const impresion = GLOBALS.slice(i);
-    expect(impresion).toContain("visibility: hidden");
-    expect(impresion).toContain(".imprimible,");
-    expect(impresion).toContain("visibility: visible");
-    expect(impresion, "ocultar por display dejaría la historia en blanco").not.toContain("display: none");
+    expect(impresion).toContain("display: none !important");
+    // La cadena de ancestros se conserva: es lo que la razón vieja protegía, y sigue siendo necesario.
+    expect(impresion, "sin :has() el display:none escondería también la hoja").toContain(
+      ":has(.imprimible)",
+    );
+    // Y NO se vuelve a ocultar por visibility, que es lo que dejaba las hojas en blanco.
+    expect(impresion, "ocultar por visibility deja el alto y pagina en blanco").not.toContain(
+      "visibility: hidden",
+    );
   });
 
   it("el color se fuerza: en esta pantalla el color ES información clínica", () => {

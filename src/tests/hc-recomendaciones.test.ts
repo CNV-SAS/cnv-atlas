@@ -79,3 +79,47 @@ describe("recomendaciones de la historia clinica", () => {
     ]);
   });
 });
+
+// ── LA HIDRATACIÓN, TRADUCIDA A LO QUE LA PERSONA USA ───────────────────────────────────────────────
+//
+// DECISIÓN DECLARADA EN LA RONDA DEL 2026-09-01 y que llevaba un día sin aplicar: multiplicar su cifra por
+// el peso y dividirla por un vaso es **aritmética sobre su cifra, no una cifra nueva**, que es la línea
+// que separa lo que podemos hacer de lo que no. Lo que NO se puede es cambiar el número: si dice 30-35
+// mL/kg, no se redondea a "2 litros".
+describe("hidratación: los mL se quedan, y al lado va lo que la persona usa", () => {
+  const general = (pesoKg: number | null) =>
+    recomendacionesDe({
+      diagnosticos: [],
+      tieneHTA: false,
+      tieneIRC: false,
+      sarcopenia: false,
+      exceso: false,
+      pesoKg,
+    }).find((b) => b.titulo === "Alimentación saludable general");
+
+  it("SU CIFRA SE CONSERVA ENTERA Y PRIMERO", () => {
+    // Lo que no se puede tocar. Si algún día la traducción reemplazara la cifra por kilo, este caso truena.
+    const hidr = general(80)?.items[0] ?? "";
+    expect(hidr.startsWith("Hidratación de 30 a 35 mL/kg/día")).toBe(true);
+  });
+
+  it("y al lado van los litros y los vasos de ESE paciente", () => {
+    // 80 kg → 2.400 a 2.800 mL → 12 a 14 vasos de 200 mL (la unidad que él fijó para el agua).
+    const hidr = general(80)?.items[0] ?? "";
+    expect(hidr).toContain("2,4 a 2,8 litros");
+    expect(hidr).toContain("12 a 14 vasos");
+  });
+
+  it("SIN PESO no se traduce: la cifra por kilo se queda sola", () => {
+    // Inventar un peso para poder mostrar un número redondo sería prescribir sobre un dato que no existe.
+    expect(general(null)?.items[0]).toBe("Hidratación de 30 a 35 mL/kg/día");
+    expect(general(0)?.items[0]).toBe("Hidratación de 30 a 35 mL/kg/día");
+  });
+
+  it("y el resto del bloque general no se toca", () => {
+    // CONTROL: sin esto, un cambio que se llevara por delante los otros cinco ítems pasaría verde.
+    const items = general(80)?.items ?? [];
+    expect(items).toHaveLength(6);
+    expect(items[1]).toBe("Frutas y verduras de varios colores en cada comida");
+  });
+});

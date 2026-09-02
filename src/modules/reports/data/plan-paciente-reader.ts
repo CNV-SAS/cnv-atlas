@@ -118,6 +118,9 @@ export async function getPlanPaciente(
     sodioMax: prescripcion?.sodioMax ?? null,
     protKg: prescripcion?.protKg ?? null,
     protG: prescripcion?.protG ?? null,
+    // El PESO EFECTIVO, que es sobre el que se prescribe, no el actual: la hidratacion se traduce a los
+    // litros y los vasos de ESTE plan. Su cifra por kilo se conserva entera y primero.
+    pesoKg: efectivo.pesoEfectivo,
   });
 
   return {
