@@ -896,3 +896,16 @@ el EFECTO). Ninguna contempla el caso identico.
 porciones) y avisar solo entonces; el registro en la historia se conserva SIEMPRE, cambien o no las cifras,
 que es su formulacion del sellado como "consecuencia registrada". **No se toca nada mientras responde:**
 seguir avisando siempre es el lado conservador. Ronda del 2026-09-02, punto 1.
+
+**P-91 · ¿Un campo de la cadena calorica puede quedar VACIO? (ronda del 2026-09-02, punto 2.)** Caso real
+del smoke: una prescripcion de 2.000 kcal con 427 g de carbohidratos y 7 g de grasa. Las cuatro cifras son
+CORRECTAS y se reprodujeron exactas: salen de que el porcentaje de grasa quedo en 3 %. Se barrieron los 50
+tratamientos de la base y ninguno lo produce solo, asi que el 3 % se escribio.
+
+**NO se pide validar la cifra**, que su §5 del 27-ago prohibe expresamente ("ninguna cifra de la
+prescripcion lleva techo, piso, validacion ni advertencia", y dijo que vale para TODA la prescripcion). Lo
+que se pregunta es otra cosa: si los campos deben tener un valor por defecto que NO SE PUEDA DEJAR VACIO,
+de modo que borrarlo devuelva el del modelo en vez de dejar un numero suelto. Un valor escrito a mano y un
+campo mal borrado se ven identicos desde el motor.
+
+**Mientras responde no se toca nada.** Si dice que tampoco corresponde, se queda como esta.
