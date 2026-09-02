@@ -32,7 +32,7 @@ describe("la historia y el plan salen de la MISMA cadena", () => {
     // armaban sueltos en la página no tenían nombre en ninguna parte, así que un segundo documento los
     // habría armado a su manera. La garantía es la misma y por eso la fila se queda: la historia computa
     // el efectivo, nunca lee el sellado.
-    expect(COMP).toContain("computeProtocoloEfectivo(e.suggested, e.ajustes)");
+    expect(COMP).toContain("computeProtocoloEfectivo(e.suggested, e.ajustes, {");
     expect(PAGE).toContain("componerHistoriaClinica({");
     // Los seis campos salen del efectivo. Si alguno volviera al SELLADO, los documentos se separan.
     //
@@ -105,14 +105,33 @@ describe("el reporte del paciente ya no se contradice consigo mismo", () => {
   });
 });
 
-describe("las dos proteínas del mismo paciente se avisan, no se esconden", () => {
-  it("el panel avisa cuando el motor que gobierna y la cadena no coinciden", () => {
-    // El chip dice lo que PRESCRIBE `motorTratNutri`; la cadena calcula con el `protMin` de
-    // `atlas-protocolo`. Para el paciente del smoke: 1 g/kg contra 0,8, que en 80 kg son 16 gramos al día.
-    // Cuál motor manda es la pregunta abierta P-32/P-35 y NO se decide aquí; lo que no puede pasar es que
-    // el profesional descubra la diferencia comparando dos números a ojo.
-    expect(PANEL).toContain("prescripcion != null && prescripcion.protKg !== cal.protGKg");
-    expect(PANEL).toContain("El modelo de nutrición prescribe");
-    expect(PANEL).toContain("Si quieres el del modelo, escríbelo en Proteína (g/kg)");
+describe("ya no hay dos proteínas del mismo paciente: la prescribe el motor", () => {
+  // ESTE BLOQUE CAMBIÓ DE SIGNO EL 2026-09-03, y el cambio es el hallazgo. Antes afirmaba que el panel
+  // AVISABA de la diferencia (el chip decía 1 g/kg y la cadena calculaba con 0,8), porque cuál motor
+  // manda era la pregunta abierta P-32/P-35. Gildardo la respondió en su §9.6 punto 4: "la proteína la
+  // prescribe el motor -1 g/kg, no el mínimo poblacional de 0,8- sobre el peso meta que fije el
+  // nutricionista". Con la cadena leyendo esa misma cifra, las dos coinciden por construcción y el aviso
+  // dejó de tener objeto: seguir avisando sería advertir sobre la cifra que el profesional acaba de
+  // escribir, que es justo lo que su §5 del 27-ago prohíbe.
+
+  it("el aviso de las dos proteínas se retiró, y no quedó su texto suelto", () => {
+    // Se barren las TRES cadenas, no solo la condición: un texto que describe un mecanismo retirado
+    // miente igual que uno que describe uno que nunca existió.
+    expect(PANEL).not.toContain("prescripcion.protKg !== cal.protGKg");
+    expect(PANEL).not.toContain("El modelo de nutrición prescribe");
+    expect(PANEL).not.toContain("Si quieres el del modelo, escríbelo en Proteína (g/kg)");
+  });
+
+  it("y en su lugar el panel declara de dónde salió la proteína", () => {
+    // La cascada resuelve entre cuatro fuentes; la única que no debería alcanzarse por un camino vivo
+    // es el mínimo poblacional, y por eso es la que se dice en pantalla.
+    expect(PANEL).toContain('efectivo.protFuente === "protMin"');
+    expect(PANEL).toContain("sale del mínimo poblacional");
+  });
+
+  it("y la cadena efectiva del panel recibe la proteína del motor", () => {
+    // CONTROL del cableado: sin esto, los snapshots anteriores al sellado caerían al mínimo poblacional
+    // y el defecto seguiría vivo justo en los pacientes que ya existen.
+    expect(PANEL).toContain("protKgVigente: prescripcion?.protKg ?? null");
   });
 });

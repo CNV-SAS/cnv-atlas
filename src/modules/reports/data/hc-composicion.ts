@@ -40,6 +40,12 @@ export type HcEntradas = {
     deficit: number | null;
     pesoMeta: number | null;
   };
+  /**
+   * Proteina que prescribe el motor, para los snapshots ANTERIORES al sellado (2026-09-03). Los nuevos la
+   * traen dentro de `suggested.mtn` y esto se ignora. Obligatorio-y-nullable a proposito: un parametro
+   * opcional que cambia una cifra clinica se queda sin cablear y nada truena.
+   */
+  protKgVigente: number | null;
   /** Sexo del paciente: los cortes de varios indices son sexo-especificos. */
   sexoM: boolean;
   /**
@@ -113,7 +119,9 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
 
   // LA CADENA EFECTIVA, la misma funcion que usan el panel y el plan del paciente. Un documento clinico no
   // puede registrar una cifra que nadie prescribio.
-  const efectivo = e.suggested ? computeProtocoloEfectivo(e.suggested, e.ajustes).calorico : null;
+  const efectivo = e.suggested
+    ? computeProtocoloEfectivo(e.suggested, e.ajustes, { protKgVigente: e.protKgVigente }).calorico
+    : null;
 
   const plan: HcPlanNutricional | null = efectivo
     ? {

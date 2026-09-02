@@ -162,6 +162,29 @@ const FA_NIVEL_POR_FACTOR: Record<string, string> = {
   "1.9": "muy_alta",
 };
 
+/**
+ * LA PROTEINA QUE PRESCRIBE EL MOTOR, sola, para los snapshots ANTERIORES al sellado (2026-09-03).
+ *
+ * Existe por una razon de orden y no de calculo: en la pagina, `getPrescripcionNutricional` se llama
+ * DESPUES de la cadena, porque necesita su objetivo calorico y su PAL. Pero la cadena necesita la
+ * proteina ANTES. La circularidad es solo aparente: `protKg` NO depende de `edit` (ni del objetivo, ni
+ * del PAL, ni del peso meta), solo del fenotipo, las comorbilidades y la composicion. Asi que se puede
+ * resolver primero, con `edit` vacio, y el resultado es el mismo que devolvera la llamada completa.
+ *
+ * Devuelve null si la evaluacion no tiene encuesta. Ahi la cascada cae a `protMin`, que es lo que habia.
+ */
+export async function getProtKgPrescrito(
+  evaluationId: string,
+  sexo: string,
+  bis: Record<string, unknown>,
+): Promise<number | null> {
+  const enc = await buildEnc(evaluationId, sexo);
+  if (!enc) return null;
+  const m = motorTratNutri(enc, bis, {}) as { protKg: number };
+  const v = Number(m?.protKg);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
 // LOS TRES ARGUMENTOS DE LA CADENA SON OBLIGATORIOS, y no es rigor de estilo: es el candado que faltaba.
 //
 // El 2026-08-31 se agrego `pesoMeta` como OPCIONAL y ningun caller lo paso. El motor cayo a su peso por

@@ -3,7 +3,7 @@ import "server-only";
 import { computeIntercambio } from "@/clinical-engine/intercambio";
 import { computeTiempos, TIEMPOS_DEF, tiemposVivos } from "@/clinical-engine/tiempos";
 import { diaDelCiclo, DIAS_DEL_CICLO } from "@/clinical-engine/menu-ciclo";
-import { getPrescripcionNutricional } from "@/modules/treatment/data/dieta-resumen-reader";
+import { getPrescripcionNutricional, getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 import { computeProtocoloEfectivo } from "@/clinical-engine";
 import type { EngineOutput } from "@/clinical-engine";
@@ -45,6 +45,14 @@ export async function getPlanPaciente(
   const protocol = await getTreatmentProtocol(evaluationId);
   const snap = protocol?.protocolSuggested;
   if (!protocol || !snap) return null;
+
+  // La proteína del motor, para los snapshots anteriores al 2026-09-03 (los nuevos la traen sellada).
+  // Va antes porque la cadena la necesita, y no depende de nada que la cadena produzca.
+  const protKgVigente = await getProtKgPrescrito(
+    evaluationId,
+    snapshot.sexo,
+    snapshot.indicators as unknown as Record<string, unknown>,
+  );
 
   // La cadena EFECTIVA, la misma que ve el nutricionista en su pantalla. No se recalcula con otros
   // criterios: el paciente tiene que recibir el mismo objetivo que su profesional prescribió.

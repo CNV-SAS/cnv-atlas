@@ -187,7 +187,9 @@ describe("el desfase de versión se avisa donde se ve la cifra, y SOLO si movió
     // La pregunta con respuesta: el código de hoy, sobre los inputs SELLADOS y sin ajustes, ¿da la misma
     // cadena que la sellada? Sin ajustes a propósito: con ellos la diferencia diría lo que cambió el
     // profesional, no lo que cambió la ciencia.
-    expect(PANEL).toContain("computeProtocoloEfectivo(snap, SIN_AJUSTES)");
+    // El tercer argumento entro el 2026-09-03 (la proteina del motor para los snapshots viejos); lo que
+    // este caso afirma sigue siendo lo mismo: que el aviso compara contra el modelo SIN ajustes.
+    expect(PANEL).toContain("computeProtocoloEfectivo(snap, SIN_AJUSTES, opciones)");
     expect(PANEL).toContain("const cienciaSeMovio =");
     expect(PANEL).toContain("{cienciaSeMovio ? (");
   });

@@ -25,6 +25,22 @@ export type ProtocoloCaloricoInput = {
   sexoM: boolean; // :14118 sexoM_pn
   deficit: number; // pr.estrategia.deficit (del motorProtocolo congelado)
   protMin: number; // pr.protMin (del motorProtocolo congelado)
+  /**
+   * PROTEINA QUE PRESCRIBE EL MOTOR (`motorTratNutri.protKg`), que es la que manda desde su §9.6 punto 4
+   * del 2026-09-02: *"La proteina la prescribe el motor -1 g/kg, no el minimo poblacional de 0,8- sobre
+   * el peso meta que fije el nutricionista."*
+   *
+   * LA DIFERENCIA CON `protMin` NO ES DE CIFRA, ES DE NATURALEZA. `protMin` viene de `motorProtocolo` y
+   * es un MINIMO poblacional (base 0,8); `protKg` viene de `motorTratNutri` y es una PRESCRIPCION
+   * (base 1,0, con sus ramas: cancer 1,25, desnutricion 1,5, obesidad 1,3, con sarcopenia 1,4, ERC 0,7).
+   * Su cadena siempre leyo la segunda (`protGKg = override ?? _mtn.protKg`); la nuestra leia la primera.
+   * Con las dos en la misma pantalla, el profesional veia dos gramajes del mismo concepto.
+   *
+   * undefined = no llego (snapshot anterior al 2026-09-03 y sin motor a mano). Ahi se cae a `protMin`,
+   * que es lo que habia antes: nunca deja la pantalla sin cifra. Quien resuelve la cascada y DECLARA de
+   * donde salio es `computeProtocoloEfectivo` (`protFuente`), para que el ultimo recurso no sea mudo.
+   */
+  protPrescrita?: number;
   // NO HAY `gebMedido` AQUI, y es deliberado: el gasto que mide el equipo corresponde al peso ACTUAL,
   // asi que sirve para mostrar el basal de hoy, no para fijar la ingesta que lleva a la meta. Es la frase
   // que Gildardo dejo pegada a `_mtn.geb` en su archivo. Lo verifica `geb-una-sola-fuente`.
@@ -118,8 +134,17 @@ export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCa
   // :14128 kcalObj = override ?? max(1000, round(getN - deficit))
   const kcalObj =
     i.kcalObj !== undefined ? Number(i.kcalObj) : Math.max(1000, Math.round(getN - deficit));
-  // :14129 protGKg = override ?? protMin
-  const protGKg = i.protGkg !== undefined ? Number(i.protGkg) : protMin;
+  // :14129 protGKg = override ?? _mtn.protKg  (su cadena SIEMPRE leyo el motor; ver `protPrescrita`)
+  //
+  // `protMin` queda de ultimo recurso, no de default: solo lo alcanza un snapshot viejo al que ademas
+  // no se le paso el motor. No se elimina porque dejar la pantalla sin proteina seria peor que darla
+  // por el minimo poblacional, y porque los snapshots sellados antes del 2026-09-03 solo tienen eso.
+  const protGKg =
+    i.protGkg !== undefined
+      ? Number(i.protGkg)
+      : i.protPrescrita !== undefined
+        ? Number(i.protPrescrita)
+        : protMin;
   // :14130 fatPct = override ?? 30
   const fatPct = i.fatPct !== undefined ? Number(i.fatPct) : 30;
   // :14131 protG = round(protGKg * pesoN)  (pesoN a precision completa)

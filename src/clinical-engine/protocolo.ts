@@ -21,6 +21,7 @@
 import { parseBiodyRow } from "./edge/biody-import";
 // El que CORRE es el GENERADO (original + modificaciones autorizadas del manifiesto), no el original.
 import { motorProtocolo } from "./frozen/atlas-protocolo.authorized.js";
+import { motorTratNutri } from "./frozen/atlas-tratamiento-nutri.js";
 import { computeProtocoloCalorico, type ProtocoloCaloricoOutput } from "./protocolo-calorico";
 import { classifyFenotipo } from "./protocolo-fenotipo";
 import type { Fenotipo } from "./fenotipos-mccb";
@@ -57,6 +58,20 @@ export type ProtocoloSnapshot = {
   // pero asi el approve es self-contained y no re-deriva de la evaluacion). deficit/protMin/pesoCalculo
   // ya viven arriba (motorProtocolo).
   caloricoInputs: { ffm: number; talla: number; edad: number; sexoM: boolean };
+  /**
+   * LO QUE PRESCRIBE `motorTratNutri`, sellado para que el recomputo efectivo no tenga que volver a
+   * correr el motor (necesita la encuesta, y la cadena efectiva corre tambien en cliente).
+   *
+   * SOLO `protKg`, y la ausencia de los otros tres es deliberada. Su cadena tambien lee del motor el
+   * objetivo calorico, el porcentaje de grasa y el factor de actividad; esos NO se sellan porque ya
+   * estan alineados por el otro lado (a su motor le pasamos el objetivo y el PAL efectivos por sus
+   * propias entradas `edit.*`), y sellarlos moveria cifras que el no mando mover. La divergencia de
+   * esos tres sigue fijada, ejecutable, en `protocolo-calorico.golden`.
+   *
+   * OPCIONAL porque los snapshots sellados antes del 2026-09-03 no lo traen. Para esos, el caller pasa
+   * el valor del motor (que tiene a mano) y la cascada de `computeProtocoloEfectivo` lo declara.
+   */
+  mtn?: { protKg: number };
   calorico: {
     defaults: string[]; // claves que son suposiciones del sistema (no modelo, no profesional)
     pal: number;
@@ -134,6 +149,28 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     },
   );
 
+  // LA PROTEINA QUE PRESCRIBE EL MOTOR (su §9.6 punto 4, 2026-09-03). Se corre aqui, al diagnosticar,
+  // y se sella: `protKg` NO depende de `edit` (ni del objetivo calorico ni del PAL ni del peso meta),
+  // solo del fenotipo, las comorbilidades y la composicion, asi que su valor es estable y sellarlo es
+  // exacto. Lo verifica `proteina-motor-prescribe` corriendo las dos vias sobre la misma evaluacion.
+  //
+  // `input.survey` YA trae los multi-select como ARRAY (build-engine-input los decodifica), que es lo
+  // que este motor necesita: hace `Array.isArray(e.d5_39)`, y con un JSON crudo veria CERO
+  // comorbilidades y le daria 1,0 a un paciente con ERC. Ese defecto ya nos paso una vez.
+  const mtn = motorTratNutri(
+    input.survey,
+    {
+      sexo: input.sexo,
+      edad: input.edad,
+      peso,
+      talla,
+      FMI: output.indicators.FMI,
+      FFMI: output.indicators.FFMI,
+      ASMI: imp.ASMI,
+    },
+    {},
+  ) as { protKg: number };
+
   // Cadena calorica (A3.2). SIN overrides del profesional al diagnosticar: pal=1.375 y grasa=30% por
   // DEFAULT; pesoN = pesoCalculo (peso_efectivo sin adj_peso_meta). Ver ajuste 1 arriba.
   const cal = computeProtocoloCalorico({
@@ -144,6 +181,7 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     sexoM,
     deficit: pr.estrategia.deficit,
     protMin: pr.protMin,
+    protPrescrita: mtn.protKg,
   });
 
   return {
@@ -156,6 +194,7 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     PI: pr.PI,
     estrategia: pr.estrategia,
     protMin: pr.protMin,
+    mtn: { protKg: mtn.protKg },
     protMax: pr.protMax,
     protRef: pr.protRef,
     restricciones: pr.restricciones,
@@ -213,6 +252,24 @@ export type ProtocoloAjustes = {
 export type ProtocoloEfectivo = {
   pesoEfectivo: number; // adj_peso_meta ?? sugerido.pesoCalculo, entra a TODA la cadena
   calorico: ProtocoloCaloricoOutput; // recomputado con los adj_* sobre los inputs sellados del sugerido
+  /**
+   * DE DONDE SALIO LA PROTEINA. Va a pantalla y es la razon de que la cascada no sea muda: una fuente
+   * que se degrada sin decirlo se lee como decision. `"protMin"` es el ultimo recurso (snapshot viejo
+   * al que ademas no se le paso el motor) y NO deberia alcanzarse por ningun camino vivo.
+   */
+  protFuente: "profesional" | "sellado" | "motor" | "protMin";
+};
+
+/** Lo que el caller aporta cuando el snapshot es anterior al sellado del motor (2026-09-03). */
+export type ProtocoloOpciones = {
+  /**
+   * `motorTratNutri.protKg` calculado en vivo. Lo pasa quien lo tenga a mano (la pagina ya lo recibe
+   * como `prescripcionNutricional`), y solo se usa si el snapshot no lo trae sellado.
+   *
+   * POR QUE NO SE DEJA CAER EN `protMin`: mantendria el defecto justo en los pacientes que existen hoy,
+   * que son a quienes se les ven los dos gramajes en la misma pantalla.
+   */
+  protKgVigente?: number | null;
 };
 
 // Recomputa el set EFECTIVO al aprobar: aplica los adj_* del profesional sobre EXACTAMENTE los inputs
@@ -222,8 +279,21 @@ export type ProtocoloEfectivo = {
 export function computeProtocoloEfectivo(
   sug: ProtocoloSnapshot,
   adj: ProtocoloAjustes,
+  opciones: ProtocoloOpciones = {},
 ): ProtocoloEfectivo {
   const pesoEfectivo = adj.pesoMeta ?? sug.pesoCalculo;
+  // LA CASCADA, en un solo sitio y con la fuente declarada. El orden es el de la autoridad: lo que
+  // decidio el profesional, lo que se sello al diagnosticar, lo que el motor dice hoy, y el minimo
+  // poblacional como ultimo recurso.
+  const prescrita = sug.mtn?.protKg ?? opciones.protKgVigente ?? undefined;
+  const protFuente: ProtocoloEfectivo["protFuente"] =
+    adj.protGkg != null
+      ? "profesional"
+      : sug.mtn?.protKg != null
+        ? "sellado"
+        : opciones.protKgVigente != null
+          ? "motor"
+          : "protMin";
   const calorico = computeProtocoloCalorico({
     ffm: sug.caloricoInputs.ffm,
     pesoN: pesoEfectivo,
@@ -234,11 +304,12 @@ export function computeProtocoloEfectivo(
     // mano es una decision, no un valor ausente, y `||` lo confundiria con el del modelo.
     deficit: adj.deficit ?? sug.estrategia.deficit,
     protMin: sug.protMin,
+    protPrescrita: prescrita,
     geb: adj.geb ?? undefined,
     pal: adj.pal ?? undefined,
     kcalObj: adj.kcalObj ?? undefined,
     protGkg: adj.protGkg ?? undefined,
     fatPct: adj.fatPct ?? undefined,
   });
-  return { pesoEfectivo, calorico };
+  return { pesoEfectivo, calorico, protFuente };
 }

@@ -4,7 +4,9 @@ import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-en
 import { diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
+import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
+import { getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
 
 import { menuSemanalSignature } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
@@ -601,7 +603,21 @@ export async function approveProtocol(
   }
 
   const suggested = t.protocolSuggested;
-  const efectivo = computeProtocoloEfectivo(suggested, t.adjustments);
+
+  // LA PROTEINA DEL MOTOR TAMBIEN AL APROBAR, y aqui es donde mas importa: lo que se sella en
+  // `protocol_approved` ES la prescripcion, y tiene que ser la misma cifra que el profesional tenia
+  // delante al aprobar. Un snapshot anterior al 2026-09-03 no la trae sellada, asi que se resuelve en
+  // vivo con el mismo helper que usa la pantalla; los posteriores la ignoran, porque manda lo sellado.
+  // Sin encuesta legible queda null y la cascada cae al minimo poblacional, declarandolo en protFuente.
+  const resultados = await getEvaluationResults(input.evaluationId);
+  const protKgVigente = resultados
+    ? await getProtKgPrescrito(
+        input.evaluationId,
+        resultados.snapshot.sexo,
+        resultados.snapshot.indicators as unknown as Record<string, unknown>,
+      )
+    : null;
+  const efectivo = computeProtocoloEfectivo(suggested, t.adjustments, { protKgVigente });
   const approvedAt = new Date();
   const versionApproved = PROTOCOL_ENGINE_VERSION;
   const versionSuggested = suggested.protocolEngineVersion;

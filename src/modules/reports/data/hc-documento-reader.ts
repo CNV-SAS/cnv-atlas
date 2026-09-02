@@ -11,7 +11,7 @@ import { composicionClasificada } from "@/modules/diagnoses/data/composition-cla
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
-import { getPrescripcionNutricional } from "@/modules/treatment/data/dieta-resumen-reader";
+import { getPrescripcionNutricional, getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
 
@@ -68,7 +68,18 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const engine = results && results.compatible ? results.snapshot : null;
   const sexoM = engine ? engine.sexo !== "F" : header.sexo !== "F";
 
+  // La proteina del motor para los snapshots anteriores al sellado. El PDF y la pantalla tienen que
+  // registrar la misma cifra: si el documento clinico dijera otra, el que vale es el que se archiva.
+  const protKgVigente = engine
+    ? await getProtKgPrescrito(
+        evaluationId,
+        engine.sexo,
+        engine.indicators as unknown as Record<string, unknown>,
+      ).catch(() => null)
+    : null;
+
   const compuesta = componerHistoriaClinica({
+    protKgVigente,
     snapshot: engine
       ? {
           indicators: engine.indicators as unknown as Record<string, number | null> & { FFMI: number },

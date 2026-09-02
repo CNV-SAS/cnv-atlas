@@ -399,8 +399,13 @@ function CadenaCaloricaSection({
     // 0095 unifico el guardado), asi que el campo dice exactamente lo que gobierna.
     pesoMeta: inputToNum(pesoMeta),
   };
+  // LA PROTEINA DEL MOTOR para los snapshots ANTERIORES al 2026-09-03, que no la traen sellada. La
+  // pagina ya la trae aqui dentro de `prescripcion`, asi que no hace falta leer nada mas. Los sellados
+  // desde esa fecha la ignoran: manda `snap.mtn.protKg`, que es lo reproducible.
+  const opciones = { protKgVigente: prescripcion?.protKg ?? null };
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
-  const cal = computeProtocoloEfectivo(snap, adj).calorico;
+  const efectivo = computeProtocoloEfectivo(snap, adj, opciones);
+  const cal = efectivo.calorico;
   const base = snap.calorico; // cadena del MODELO (sellada), placeholder de cada campo.
 
   // ¿LA CIENCIA SE MOVIO DE VERDAD? Se DERIVA comparando cifras, no de que dos cadenas de version difieran.
@@ -430,7 +435,7 @@ function CadenaCaloricaSection({
     deficit: null,
     pesoMeta: null,
   };
-  const modeloHoy = computeProtocoloEfectivo(snap, SIN_AJUSTES).calorico;
+  const modeloHoy = computeProtocoloEfectivo(snap, SIN_AJUSTES, opciones).calorico;
   const kcalSellado = Math.round(base.kcalObj);
   const kcalHoy = Math.round(modeloHoy.kcalObj);
   const protSellada = Math.round(base.protG);
@@ -671,8 +676,14 @@ function CadenaCaloricaSection({
               cambia. Un aviso arriba, en la pantalla de diagnostico, no llega a la pantalla donde se
               prescribe. Y se dice QUE cambia, no solo que hay desfase: sin eso, "emitido con version
               anterior" no le dice si tiene que hacer algo. */}
+          {/* CONTENEDOR NEUTRO, NO AMBAR, y el motivo es de proporcion (2026-09-03). Al pasar la
+              proteina a prescribirse por el motor, este aviso deja de ser raro: lo van a ver 56 de los 60
+              tratamientos de la base, o sea casi todos. Una franja ambar en casi toda la base no comunica
+              "revisa esto", comunica "algo se rompio", y entrena a ignorarla. El hecho que reporta es
+              normal despues de una actualizacion del modelo, y el texto ya dice QUE cambia y que lo
+              sellado sigue siendo valido. El contenedor tambien afirma, no solo el texto. */}
           {cienciaSeMovio ? (
-            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               Esta cadena se selló con una versión anterior del modelo ({snap.protocolEngineVersion}), y con
               el de hoy las cifras del modelo <strong>no dan lo mismo</strong>
               {kcalSellado !== kcalHoy ? `: el objetivo daría ${kcalHoy} kcal en vez de ${kcalSellado}` : ""}
@@ -684,19 +695,19 @@ function CadenaCaloricaSection({
             </p>
           ) : null}
 
-          {/* DOS PROTEINAS DEL MISMO PACIENTE, y hay que decirlo (hallazgo del smoke, 2026-09-01).
-              El chip de arriba dice lo que PRESCRIBE `motorTratNutri`, el motor que Gildardo puso a
-              gobernar la prescripcion nutricional. Esta cadena calcula los macros con el `protMin` de
-              `atlas-protocolo`. Para el paciente del smoke: 1 g/kg contra 0,8. Es el mismo concepto con
-              dos valores, y en 80 kg son 16 gramos de proteina al dia de diferencia.
-              NO SE ELIGE POR EL PROFESIONAL: cual motor manda las cifras es la pregunta abierta P-32/P-35.
-              Lo que si se puede es que no descubra la diferencia comparando dos numeros a ojo. El campo de
-              arriba es editable: si quiere el del modelo de nutricion, lo escribe. */}
-          {prescripcion != null && prescripcion.protKg !== cal.protGKg ? (
-            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
-              El modelo de nutrición prescribe <strong>{String(prescripcion.protKg).replace(".", ",")} g/kg</strong> y
-              esta cadena está calculando con <strong>{String(cal.protGKg).replace(".", ",")} g/kg</strong>{" "}
-              ({d0(cal.protG)} g al día). Si quieres el del modelo, escríbelo en Proteína (g/kg).
+          {/* EL AVISO DE LAS DOS PROTEINAS SE RETIRO EL 2026-09-03, porque ya no hay dos.
+              Existia para que el profesional no descubriera a ojo que el chip de arriba decia 1 g/kg
+              (lo que prescribe `motorTratNutri`) y esta cadena calculaba con 0,8 (el `protMin` de
+              `motorProtocolo`). Era el sintoma visible de P-32/P-35, y Gildardo la respondio en su §9.6
+              punto 4: "la proteina la prescribe el motor -1 g/kg, no el minimo poblacional de 0,8-".
+              Ahora la cadena LEE esa misma cifra, asi que las dos coinciden por construccion y el aviso
+              solo podria dispararse cuando el profesional escribe otra a proposito. Advertir sobre la
+              cifra que el acaba de escribir es justo lo que su §5 del 27-ago prohibe. En su lugar va la
+              linea de PROCEDENCIA de abajo, que informa sin corregir. */}
+          {efectivo.protFuente === "protMin" ? (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              La proteína de esta cadena sale del mínimo poblacional, no del modelo de nutrición: esta
+              evaluación no tiene encuesta legible. Al volver a diagnosticar, la prescribe el modelo.
             </p>
           ) : null}
 
@@ -883,7 +894,7 @@ export function TreatmentPanel({
           fatPct: protocol.adjFatPct,
           deficit: protocol.adjDeficit,
           pesoMeta: protocol.pesoMetaFijado,
-        }).calorico.kcalObj,
+        }, { protKgVigente: prescripcion?.protKg ?? null }).calorico.kcalObj,
       )
     : null;
 
