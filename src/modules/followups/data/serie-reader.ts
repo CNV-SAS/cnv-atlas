@@ -4,7 +4,10 @@ import { BIODY_COLUMNS } from "@/clinical-engine/edge/biody-columns";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { SERIE_MAX, type PuntoSerie, type SerieSeguimiento } from "./serie-types";
+import { capRef, clasificarCapacitancia } from "@/clinical-engine/capacitancia";
+import { edadEnFecha } from "@/lib/format/edad";
+
+import { SERIE_MAX, type PuntoSerie, type RefCapacitancia, type SerieSeguimiento } from "./serie-types";
 
 export { SERIE_MAX };
 export type { PuntoSerie, SerieSeguimiento };
@@ -30,7 +33,7 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
     .eq("id", evaluationId)
     .maybeSingle();
   const patientId = ev?.patient_id as string | undefined;
-  if (!patientId) return { puntos: [], omitidas: 0 };
+  if (!patientId) return { puntos: [], omitidas: 0, refC: null };
   const { data, error } = await supabase
     .from("reports")
     .select(
@@ -95,5 +98,36 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
 
   puntos.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
   const omitidas = Math.max(0, puntos.length - SERIE_MAX);
-  return { puntos: puntos.slice(-SERIE_MAX), omitidas };
+  const enPantalla = puntos.slice(-SERIE_MAX);
+
+  // LA REFERENCIA DE CAPACITANCIA (porte del 2026-08-26 §9.1, cableado el 2026-09-01). El modulo estaba
+  // portado con sus doce filas verbatim y su candado, y la tarjeta lo decia: "la referencia de su grupo
+  // aun no se muestra aqui". Era una pieza terminada a la que le faltaba el ultimo cable.
+  //
+  // SE RESUELVE CON LA ULTIMA MEDICION, no con la primera: la decada de edad puede cambiar a lo largo del
+  // seguimiento, y la comparacion que le importa al profesional es la de hoy.
+  const ultimo = enPantalla[enPantalla.length - 1];
+  let refC: RefCapacitancia | null = null;
+  if (ultimo) {
+    // El sexo y la fecha de nacimiento son PII y viven en `patient_profiles`, no en `patients`.
+    const { data: pac } = await supabase
+      .from("patient_profiles")
+      .select("sex, birth_date")
+      .eq("patient_id", patientId)
+      .maybeSingle();
+    const sexo = (pac?.sex as string | null) ?? null;
+    const edad = edadEnFecha((pac?.birth_date as string | null) ?? null, ultimo.fecha);
+    const r = capRef(sexo, edad);
+    if (r) {
+      const cl = clasificarCapacitancia(ultimo.c, sexo, edad);
+      refC = {
+        mediana: r.p50,
+        etiqueta: cl.l,
+        banda: cl.banda,
+        grupo: `${r.sexo === "M" ? "Hombres" : "Mujeres"} ${r.d[0]}-${r.d[1]}`,
+      };
+    }
+  }
+
+  return { puntos: enPantalla, omitidas, refC };
 }

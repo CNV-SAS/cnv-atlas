@@ -11,6 +11,7 @@ import {
 } from "@/clinical-engine/capacitancia";
 
 import { HTML_VIGENTE } from "./fixtures/html-vigente";
+import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DE TRANSCRIPCION de CAP_REF, en DOS niveles, porque uno solo no basta:
 //
@@ -166,5 +167,56 @@ describe("medianaCapacitancia: la línea de referencia de Seguimiento", () => {
     expect(medianaCapacitancia("M", 25)).toBe(2.4);
     expect(medianaCapacitancia("F", 25)).toBe(1.37);
     expect(medianaCapacitancia(null, 25)).toBeNull();
+  });
+});
+
+// ── EL ÚLTIMO CABLE (2026-09-01) ────────────────────────────────────────────────────────────────────
+//
+// Todo lo de arriba pasaba verde con la tabla PORTADA Y DESCONECTADA: durante seis días el módulo tenía
+// sus doce filas verbatim, su candado y las tres decisiones suyas, y ninguna raíz de la app lo alcanzaba.
+// La tarjeta de Seguimiento lo decía en pantalla ("la referencia de su grupo aún no se muestra aquí"), que
+// es lo único que impidió que fuera un fallo silencioso.
+//
+// POR ESO EL CANDADO VA SOBRE EL SITIO DE LLAMADA. Un test de la función no distingue "portada y usada" de
+// "portada y muerta", que es exactamente la clase de defecto que llevamos seis veces en una semana.
+describe("la referencia está CABLEADA, no solo portada", () => {
+  const READER = readFileSync("src/modules/followups/data/serie-reader.ts", "utf8");
+  // SIN COMENTARIOS, y es la QUINTA vez: el comentario que explica el cambio CITA el texto viejo ("decía
+  // aún no se muestra aquí"), asi que el candado se cazaba a si mismo. Ya no se escribe la funcion a mano.
+  const TARJETA = sinComentarios(
+    readFileSync("src/modules/followups/components/seguimiento-visual.tsx", "utf8"),
+  );
+
+  it("el reader de la serie resuelve la referencia del grupo del paciente", () => {
+    expect(READER).toContain("capRef");
+    expect(READER).toContain("clasificarCapacitancia");
+    // Con la ÚLTIMA medición, no la primera: la década de edad puede cambiar durante el seguimiento.
+    expect(READER).toContain("enPantalla[enPantalla.length - 1]");
+  });
+
+  it("y la tarjeta la dibuja como línea de referencia", () => {
+    expect(TARJETA).toContain("referencia: serie.refC.mediana");
+    expect(TARJETA).toContain("referenciaLabel");
+  });
+
+  it("`subirEsMejor` NUNCA es true: subir puede ser adiposidad, no mejoría", () => {
+    // Su corrección del 2026-08-27 §9. Es la aserción que no se puede relajar aunque estorbe: pintar de
+    // verde el tramo que sube afirmaría justo lo que él retiró.
+    expect(TARJETA).toContain("subirEsMejor={null}");
+    expect(TARJETA).not.toContain("subirEsMejor={true}");
+  });
+
+  it("y el texto ya NO dice que la referencia no se muestra", () => {
+    // El texto era honesto mientras el cable faltaba; dejarlo ahora sería el defecto inverso, un texto que
+    // describe mal lo que el sistema hace.
+    expect(TARJETA).not.toContain("aún no se muestra aquí");
+  });
+
+  it("sin sexo o sin edad NO se inventa una referencia, y la pantalla lo dice", () => {
+    // Su decisión 1, la que este cableado no puede romper: a diferencia de calcPABU, aquí no hay respaldo
+    // razonable y cualquier elección se equivoca en casi un nanofaradio.
+    expect(medianaCapacitancia(null, 40)).toBeNull();
+    expect(medianaCapacitancia("M", null)).toBeNull();
+    expect(TARJETA).toContain("falta el sexo o la fecha de nacimiento");
   });
 });

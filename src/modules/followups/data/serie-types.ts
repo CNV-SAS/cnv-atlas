@@ -22,8 +22,31 @@ export type PuntoSerie = {
   dominios: { id: string; nombre: string; sev: number }[] | null;
 };
 
+/**
+ * Referencia poblacional de capacitancia del grupo del paciente (sexo + decada de edad).
+ *
+ * SU REGLA, y por eso es una MEDIANA y no un rango: "mejorar es acercarse a la mediana de su grupo de
+ * edad y sexo, no subir; alejarse, en cualquier direccion, no es mejoria". La tarjeta la dibuja como linea
+ * de referencia, y `SerieLinea` ya sabe que con referencia la mejora es siempre acercarse.
+ *
+ * null cuando falta sexo o fecha de nacimiento: sin eso NO SE CLASIFICA, que es su decision explicita
+ * (a diferencia de calcPABU no hay respaldo razonable, cualquier eleccion se equivoca en casi un
+ * nanofaradio). Y no queda mudo: la tarjeta dice por que no hay referencia.
+ */
+export type RefCapacitancia = {
+  mediana: number;
+  /** Donde cae la ultima medicion: "Normal", "Baja", "Muy baja", "Alta". */
+  etiqueta: string;
+  /** El percentil donde cae ("P25-P75"), para que la pantalla diga mas que la etiqueta. */
+  banda: string | null;
+  /** El grupo contra el que se compara, para poder decirlo: "Hombres 30-39". */
+  grupo: string;
+};
+
 export type SerieSeguimiento = {
   puntos: PuntoSerie[];
+  /** Referencia de la capacitancia. null = no se puede comparar (falta sexo o edad). */
+  refC: RefCapacitancia | null;
   /** Cuantas mediciones quedaron fuera por el tope. 0 = se muestran todas. */
   omitidas: number;
 };
