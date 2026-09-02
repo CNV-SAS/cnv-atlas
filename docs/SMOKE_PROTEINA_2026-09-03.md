@@ -1,109 +1,63 @@
-# Smoke: la proteína la prescribe el motor (2026-09-03)
+# Smoke corto: lo que se arregló después del primero (2026-09-03)
 
-**Qué cambió, en una línea.** La cadena calórica dejó de calcular la proteína con el mínimo poblacional
-de `motorProtocolo` (base 0,8 g/kg) y pasa a usar la que prescribe `motorTratNutri` (base 1,0, con sus
-ramas). Es la §9.6 punto 4 de Gildardo, respondiendo una divergencia que le reportamos.
+**Tres cosas, y las tres salen del smoke anterior.** El recorrido largo de los cuatro casos ya se hizo;
+esto solo verifica los arreglos.
 
-**Por qué hay que verlo en el navegador y no basta con los tests.** Los tests prueban que la cifra sale
-bien. Lo que no pueden ver es si la pantalla se entiende: son 56 de 60 tratamientos los que cambian, y
-uno de los avisos va a aparecer en casi todos por primera vez.
-
-**Antes de empezar:** `pnpm dev`. Los cuatro casos son evaluaciones que ya existen en tu base local.
+`pnpm dev` y las mismas evaluaciones de siempre.
 
 ---
 
-## Caso 1 · La proteína sube, y el aviso de desfase aparece
+## 1 · El caso 2, que decía tres cifras distintas
 
-**Abre** `/evaluaciones/a0000000-0000-4000-8000-0000000000a3` y baja al bloque **Cadena calórica**.
+**Abre** `/evaluaciones/a0000000-0000-4000-8000-0000000000f2` (el F10 de 43,7 kg, IMC 18,2).
 
-**Qué tiene que pasar:**
+**Antes:** el campo decía *modelo 1.5*, la validación 73 g y la calculadora 44 g con 1 g/kg.
 
-1. **La proteína ya no dice 0,8 g/kg.** El paciente es fenotipo F5, 65,4 kg. La cifra que salga es la que
-   prescribe el motor para su composición; lo que importa es que **no sea 0,8**.
-2. **El bloque de arriba (la prescripción del modelo) y la cadena dicen el MISMO número.** Ese es todo el
-   punto del cambio: antes decían 1 g/kg y 0,8.
-3. **Aparece el aviso de desfase**, con este texto: *"Esta cadena se selló con una versión anterior del
-   modelo (...), y con el de hoy las cifras del modelo no dan lo mismo: la proteína, N g en vez de M.
-   Lo sellado sigue siendo válido para la fecha en que se emitió. Los campos de abajo ya usan el modelo
-   de hoy."*
+**Ahora la proteína tiene que decir 1,5 g/kg en los tres sitios:**
 
-**Lo que te pido que juzgues, que es lo que ningún test puede:**
+| Dónde | Qué tiene que decir |
+| --- | --- |
+| Chip del objetivo de tratamiento | **Proteína 1,5 g/kg** |
+| Campo "Proteína (g/kg)" | placeholder **modelo: 1.5** |
+| Calculadora, reparto de macros | **1,5 g/kg** (unos 66 g) |
 
-- **¿Se entiende sin explicación?** Es la primera vez que este aviso dispara, y va a estar en casi todos
-  los pacientes que abras.
-- **El recuadro es GRIS, no ámbar.** Lo cambié a propósito: una franja de alerta en 56 de 60 pacientes no
-  comunica "revisa esto", comunica "algo se rompió". **Si te parece que gris lo esconde demasiado, se
-  vuelve ámbar**, es una línea.
-- **¿Las dos cifras se leen bien?** Dice los gramos al día, no los g/kg.
+**Si alguno de los tres dice otra cosa, párate ahí:** es el perfil donde una proteína equivocada hace más
+daño, y era el que estaba mal.
 
----
+## 2 · Y en ese mismo caso, el atributo que faltaba
 
-## Caso 2 · La desnutrición, que NO se debe mover
+El bloque de chips tenía que traer **"Densidad energética y proteica alta, fraccionada"** y no estaba: es
+el que aporta la rama de desnutrición, que el motor no estaba viendo porque le faltaban peso y talla.
 
-**Abre** `/evaluaciones/a0000000-0000-4000-8000-0000000000f2`.
-
-Fenotipo **F10**, 43,7 kg, talla 155 (IMC 18,2). Tiene sellado `protMin` **1,5**.
-
-**Qué tiene que pasar: la proteína sigue en 1,5 g/kg (unos 66 g/día).** Las dos vías coinciden aquí, y
-por eso este caso es el control: si esta cifra se movió, el cambio tocó algo que no debía.
-
-Es el perfil donde una proteína equivocada haría más daño, así que **si ves cualquier otro número,
-párate y avísame antes de seguir.**
+**Verifica que ahora aparezca**, junto con las dos notas de esa rama (recuperar el estado nutricional, y
+la de vigilar la realimentación).
 
 ---
 
-## Caso 3 · La insuficiencia renal, que SÍ se mueve, y poco
+## 3 · Los chips del caso 3, a ver si siguen duplicados
 
-**Abre** `/evaluaciones/a0000000-0000-4000-8000-0000000000f4`.
+**Abre** `/evaluaciones/a0000000-0000-4000-8000-0000000000f4` (F10 con insuficiencia renal).
 
-Fenotipo F10 con **insuficiencia renal declarada**, mismo peso (43,7 kg).
+**No pude reproducirlo:** el motor devuelve la lista una sola vez (5 atributos y 3 notas, todos distintos)
+y en el código hay un solo sitio que la pinta, montado una sola vez.
 
-**Qué tiene que pasar: la proteína pasa de 0,6 a 0,7 g/kg** (de unos 26 a unos 31 gramos al día).
-
-**Las dos cifras son de Gildardo, no nuestras:** `motorProtocolo` devuelve 0,6 para cualquier IRC (el
-extremo inferior del rango) y la rama renal de `motorTratNutri` fija 0,7 declarando el rango *"proteína
-controlada 0,6-0,8 g/kg"*, o sea su punto medio. Su §9.6 dice cuál manda.
-
-**Verifica también** que el bloque de la prescripción siga mostrando los atributos renales
-("Nefroprotectora", el sodio máximo).
+**Míralo otra vez, porque el contenido cambió:** ahora tiene que traer también el atributo de
+desnutrición, así que si sigue duplicado se va a notar mejor. **Si lo ves repetido, dímelo y lo busco con
+la pantalla delante**; puede haber sido de la selección al copiar.
 
 ---
 
-## Caso 4 · Que el ajuste del profesional siga ganando
+## Y lo que cambió en el aviso de desfase, por tu duda
 
-En cualquiera de los tres, **escribe un valor a mano en Proteína (g/kg)** (por ejemplo 1,1) y guarda.
+Tenías razón: el aviso comparaba sobre el **peso de cálculo del modelo** y los campos de abajo corren
+sobre el **peso meta**, sin que nada lo dijera. Eran 1.631 kcal y 85 g arriba contra 1.529 y 78 abajo.
 
-**Qué tiene que pasar:**
+**Mantuve la comparación sin ajustes y le puse el dato al texto.** Ahora, cuando los dos pesos difieren,
+dice sobre cuál compara y sobre cuál corren los campos de abajo. Cuando no hay peso meta fijado, esa
+aclaración no sale, porque ahí sería ruido.
 
-1. Los gramos al día se recalculan con tu número.
-2. **No aparece ningún aviso diciéndote que el modelo prescribe otra cosa.** Ese aviso existía y lo
-   retiré: advertir sobre la cifra que acabas de escribir es justo lo que él prohibió en su §5 del 27 de
-   agosto ("ninguna cifra de la prescripción lleva techo, piso, validación ni advertencia").
-3. Bórralo y guarda otra vez: vuelve la del motor.
-
----
-
-## Lo que este smoke NO puede probar, y hay que decirlo
-
-**Los 60 tratamientos de tu base son de la forma ANTERIOR**, o sea que reciben la proteína del motor
-calculada al vuelo (`protFuente: "motor"`). La rama de la cifra **sellada** solo se ejercita en una
-evaluación diagnosticada DESPUÉS de este cambio.
-
-**Si quieres cubrirla:** haz un diagnóstico nuevo completo y abre su tratamiento. La cifra tiene que ser
-la misma; lo que cambia es de dónde sale, y eso no se ve en pantalla.
-
----
-
-## Y una cosa que verifiqué mal y quedó registrada
-
-Al medir el impacto contra la base, mi script le pasó al motor un `bis` **sin peso ni talla** (el snapshot
-del reporte no los trae), así que el motor usó sus propios defaults (70 kg / 170 cm) y me devolvió 1,0 para
-todos. Con eso "medí" que al paciente F10 le bajaba la proteína de 1,5 a 1,0, y era falso: con sus datos
-reales da 1,5.
-
-**El motor no falla cuando le falta el insumo: contesta.** Queda como caso de prueba con nombre propio
-(`CONTROL NEGATIVO` en `proteina-la-prescribe-el-motor.test.ts`) para que la próxima medición no repita la
-trampa.
+**Míralo en el caso 1** (`/evaluaciones/a0000000-0000-4000-8000-0000000000a3`, que tiene peso meta 60): la
+frase larga tiene que aparecer con los dos pesos. **Y en un paciente sin peso meta**, la frase corta.
 
 ---
 
