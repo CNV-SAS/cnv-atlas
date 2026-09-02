@@ -260,6 +260,24 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
   const sug = run([]); // sugerido base (F5, sin flags)
   const nada = { geb: null, pal: null, kcalObj: null, protGkg: null, fatPct: null, deficit: null, pesoMeta: null };
 
+  it("un diagnóstico de HOY no muestra el aviso de desfase: sellado y recomputado son iguales", () => {
+    // LA INVARIANTE DE LA QUE CUELGA EL AVISO, y Santiago preguntó justo por ella en el smoke: si el
+    // aviso de desfase lo van a ver todos los pacientes o solo los anteriores al bump.
+    //
+    // El aviso se DERIVA comparando las cifras selladas contra las que da el código de hoy sobre esos
+    // mismos inputs, SIN ajustes. Para un snapshot sellado hoy las dos son la misma corrida, así que no
+    // pueden diferir y el aviso no aparece. Esto lo deja demostrado en vez de razonado: si algún día el
+    // recomputo dejara de reproducir el sellado, este caso se pone rojo y el aviso saldría en pacientes
+    // recién diagnosticados, que es como se pierde la confianza en un aviso.
+    const hoy = computeProtocoloEfectivo(sug, nada).calorico;
+    expect(Math.round(hoy.kcalObj)).toBe(Math.round(sug.calorico.kcalObj));
+    expect(Math.round(hoy.protG)).toBe(Math.round(sug.calorico.protG));
+    expect(hoy.protGKg).toBe(sug.calorico.protGKg);
+    // Y el CONTROL de que la comparación de verdad ocurre: el snapshot trae cifras, no ceros.
+    expect(sug.calorico.protG).toBeGreaterThan(0);
+    expect(sug.calorico.kcalObj).toBeGreaterThan(0);
+  });
+
   it("sin ajustes: el efectivo reproduce el sugerido (mismos inputs y defaults)", () => {
     const ef = computeProtocoloEfectivo(sug, nada);
     expect(ef.pesoEfectivo).toBeCloseTo(76.625, 3);

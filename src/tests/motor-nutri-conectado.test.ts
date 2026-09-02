@@ -50,7 +50,11 @@ describe("el sodio que ve el hipertenso es el que él ordenó", () => {
 describe("los dos consumidores leen del motor que gobierna, y de UNA sola fuente", () => {
   it("hay un solo lector (`getPrescripcionNutricional`) y corre el motor correcto", () => {
     expect(READER).toContain("export async function getPrescripcionNutricional");
-    expect(READER).toContain("motorTratNutri(enc, bis, edit)");
+    // El tercer argumento del motor pasa por el COMPLETADOR desde el 2026-09-03: `indicators` no trae
+    // peso ni talla, y sin ellos el motor no falla, contesta con sus defaults (70/170) y devuelve 1,0 g/kg
+    // para todos. Lo que este caso afirma sigue siendo lo mismo (hay un solo lector y corre el motor
+    // correcto); lo que cambia es que el bis que le entra esta completo. Ver `motor-bis-completo`.
+    expect(READER).toContain("motorTratNutri(enc, bisCompleto, edit)");
   });
 
   it("y los DOS argumentos de la cadena LLEGAN, desde los dos sitios de llamada", () => {
