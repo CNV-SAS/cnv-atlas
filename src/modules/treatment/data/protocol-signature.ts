@@ -36,11 +36,6 @@ export function restriccionesSignature(p: { treatmentId: string; restricciones: 
   return stringListSignature(p.treatmentId, p.restricciones);
 }
 
-// Guias dietarias (tabla treatment_diet_guidelines).
-export function guidelinesSignature(p: { treatmentId: string; guidelines: string[] }): string {
-  return stringListSignature(p.treatmentId, p.guidelines);
-}
-
 // Objetivo del tratamiento nutricional (columna treatments.objetivo_texto, texto libre). Un solo string.
 export function objetivoSignature(p: { treatmentId: string; objetivo: string | null }): string {
   return `${p.treatmentId}§${p.objetivo ?? ""}`;

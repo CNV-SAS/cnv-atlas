@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   adjustmentSignature,
-  guidelinesSignature,
   intercambioSignature,
   tiemposSignature,
   nutraceuticalsSignature,
@@ -38,8 +37,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let StaleNutraceuticalsError: any;
   let saveRestricciones: any;
   let StaleRestriccionesError: any;
-  let saveGuidelines: any;
-  let StaleGuidelinesError: any;
   let saveObjetivo: any;
   let StaleObjetivoError: any;
   let saveIntercambio: any;
@@ -62,13 +59,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
     return restriccionesSignature({ treatmentId, restricciones: t.restr ?? [] });
-  }
-  async function currentGuidelinesSignature(): Promise<string> {
-    const guides = await db
-      .select({ text: schema.treatmentDietGuidelines.guidelineText })
-      .from(schema.treatmentDietGuidelines)
-      .where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
-    return guidelinesSignature({ treatmentId, guidelines: guides.map((g: { text: string }) => g.text) });
   }
 
   // Firma actual de la PRESCRIPCION de nutraceuticos (base del candado de saveNutraceuticals).
@@ -95,8 +85,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       StaleNutraceuticalsError,
       saveRestricciones,
       StaleRestriccionesError,
-      saveGuidelines,
-      StaleGuidelinesError,
       saveObjetivo,
       StaleObjetivoError,
       saveIntercambio,
@@ -169,25 +157,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     expect(t.restr).toEqual(["sin gluten", "sin lactosa"]); // no se borro
   });
 
-  // Checkpoint 2.4: candado de saveGuidelines (reemplaza el set de treatment_diet_guidelines EN BLOQUE).
-  async function guideCount(): Promise<number> {
-    const rows = await db.select({ id: schema.treatmentDietGuidelines.id }).from(schema.treatmentDietGuidelines).where(eq(schema.treatmentDietGuidelines.treatmentId, treatmentId));
-    return rows.length;
-  }
-
-  it("guias camino feliz: firma base == actual -> escribe (reemplaza el set)", async () => {
-    const base = await currentGuidelinesSignature();
-    await saveGuidelines({ treatmentId, guidelines: ["5 comidas al dia", "mas verduras"], baseSignature: base, ...actor });
-    expect(await guideCount()).toBe(2);
-  });
-
-  it("guias carrera: firma base != actual -> rechaza sin pisar (StaleGuidelinesError)", async () => {
-    const antes = await guideCount();
-    await expect(
-      saveGuidelines({ treatmentId, guidelines: [], baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
-    ).rejects.toBeInstanceOf(StaleGuidelinesError);
-    expect(await guideCount()).toBe(antes); // no se borraron
-  });
 
   // Tratamiento sub-tarea 2: candado de saveAdjustments (BD real). saveAdjustments ESCRIBE LAS SEIS columnas
   // adj_* de golpe; sin candado, dos guardados se pisan (el peso meta que otro profesional fijo se pierde).

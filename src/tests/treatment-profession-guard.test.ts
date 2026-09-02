@@ -26,7 +26,6 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
 }));
 vi.mock("@/modules/treatment/data/treatment-writer", () => ({
   saveRestricciones: vi.fn(),
-  saveGuidelines: vi.fn(),
   saveObjetivo: vi.fn(),
   saveIntercambio: vi.fn(),
   saveTiempos: vi.fn(),
@@ -55,7 +54,6 @@ import {
   addTreatmentNote,
   acknowledgeRestrictions as writeAcknowledge,
   saveAdjustments as writeAdjustments,
-  saveGuidelines as writeGuidelines,
   saveIntercambio as writeIntercambio,
   saveTiempos as writeTiempos,
   saveNutraceuticals as writeNutraceuticals,
@@ -67,7 +65,6 @@ import {
   acknowledgeRestrictions,
   addNote,
   saveAdjustments,
-  saveGuidelines,
   saveIntercambio,
   saveTiempos,
   saveNutraceuticals,
@@ -88,7 +85,6 @@ const actor = { actorId: "user-x", actorEmail: "x@cnv", ip: null };
 const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as TreatmentProtocol;
 
 const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" };
-const GUIDE_INPUT = { evaluationId: "E1", guidelines: [], baseSignature: "" };
 const OBJ_INPUT = { evaluationId: "E1", objetivo: "x", baseSignature: "" };
 const INTER_INPUT = { evaluationId: "E1", intercambio: { objetivoBase: 2000, porciones: {} }, baseSignature: "" };
 const TIEMPOS_INPUT = { evaluationId: "E1", tiempos: { activos: { desayuno: true }, celdas: {}, base: { porciones: {}, activos: {} } }, baseSignature: "" };
@@ -138,18 +134,6 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     expect(writeRestricciones).toHaveBeenCalledTimes(1);
   });
 
-  it("saveGuidelines: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await saveGuidelines(GUIDE_INPUT, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeGuidelines).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveGuidelines(GUIDE_INPUT, actor);
-    expect(r.ok).toBe(true);
-    expect(writeGuidelines).toHaveBeenCalledTimes(1);
-  });
 
   it("saveObjetivo: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
     profOf.mockResolvedValueOnce(PRO_NULL);
@@ -247,6 +231,8 @@ describe("guard de profesion: escrituras de tratamiento", () => {
 // pestañas era alcanzable por accidente. Las SEIS escrituras de seccion deben rechazar con conflict cuando el
 // protocolo ya fue aprobado, sin tocar el writer. (acknowledgeRestrictions y addNote NO se bloquean: son
 // legitimos post-aprobacion; se cubren en sus propios casos.)
+// Eran SIETE en la tabla aunque el titulo dijera seis; al retirar las guias dietarias (2026-09-01) quedan
+// las seis reales, asi que el titulo y la tabla por fin dicen lo mismo.
 describe("guard de aprobado: las seis escrituras de seccion rechazan si el protocolo ya fue aprobado", () => {
   const APPROVED = { treatmentId: "T1", diagnosisConfirmed: true, approved: true } as unknown as TreatmentProtocol;
   beforeEach(() => {
@@ -257,7 +243,6 @@ describe("guard de aprobado: las seis escrituras de seccion rechazan si el proto
 
   const casos: [string, () => Promise<{ ok: boolean; error?: { code: string } }>, unknown][] = [
     ["saveRestricciones", () => saveRestricciones(RESTR_INPUT, actor), writeRestricciones],
-    ["saveGuidelines", () => saveGuidelines(GUIDE_INPUT, actor), writeGuidelines],
     ["saveObjetivo", () => saveObjetivo(OBJ_INPUT, actor), writeObjetivo],
     ["saveIntercambio", () => saveIntercambio(INTER_INPUT, actor), writeIntercambio],
     ["saveTiempos", () => saveTiempos(TIEMPOS_INPUT, actor), writeTiempos],

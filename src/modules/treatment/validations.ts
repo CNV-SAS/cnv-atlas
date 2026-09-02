@@ -26,11 +26,6 @@ const nutraceuticalLineSchema = z.object({
     .nullable(),
 });
 
-const guidelineSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(1000, "La guía dietaria es demasiado larga.");
 
 // Checkpoint 2.4/2.5: el "Protocolo de tratamiento" se desarmo. Cada seccion editable tiene su propia
 // accion/firma/candado (objetivo -> cadena; nutraceuticos, restricciones, guias por separado); saveProtocol
@@ -46,14 +41,6 @@ export const saveRestriccionesSchema = z.object({
 export type SaveRestriccionesInput = z.infer<typeof saveRestriccionesSchema>;
 
 // Guias dietarias (checkpoint 2.4): set completo + firma base del candado.
-export const saveGuidelinesSchema = z.object({
-  evaluationId: z.guid("Evaluación inválida."),
-  guidelines: z.array(guidelineSchema).max(30, "Demasiadas guías dietarias."),
-  baseSignature: z.string().max(8000).default(""),
-});
-
-export type SaveGuidelinesInput = z.infer<typeof saveGuidelinesSchema>;
-
 // Objetivo del tratamiento nutricional (checkpoint 2.4, pieza 1): texto libre del profesional. Limite HOLGADO
 // (un par de parrafos clinicos) pero ACOTADO: un campo sin limite es un campo que alguien llena con un
 // documento entero. Vacio -> null (el textarea vacio no cuenta como objetivo).
