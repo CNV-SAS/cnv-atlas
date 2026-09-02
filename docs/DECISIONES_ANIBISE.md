@@ -882,3 +882,17 @@ DE SALIDA en el prompt (version 2 de `criterion.system`) y filtro a la salida, *
 desobedece, que es lo que hacen"*. **La sugerencia guarda el texto CRUDO**, no el limpio: si algun dia el
 filtro se comiera algo, el original tiene que estar. Y se mide cuanto desobedece (`traia_marcadores` en el
 `rawResponse`), que es lo unico que dira si el bloque del prompt sirve.
+
+## Cola de la ronda del 2026-09-02 (abierta)
+
+**P-90 · Un tratamiento reemitido IDENTICO: ¿el aviso al paciente cuelga del acto o del efecto?** Caso que
+aparecio al cablear el boton de aprobar: reabrir y volver a aprobar sin cambiar nada deja un tratamiento
+reemitido con prescripcion identica. Ahi sus dos frases de la §12c apuntan a lados distintos: "un
+tratamiento reemitido se avisa SIEMPRE" (mira el ACTO) contra "no se alarma a nadie por un decimal" (mira
+el EFECTO). Ninguna contempla el caso identico.
+
+**Hoy Atlas avisa siempre**, porque la condicion que usa es el acto (`aprobacionesPrevias > 0`).
+**Propuesta que va en la ronda:** derivar si la prescripcion cambio (kcal, proteina, restricciones,
+porciones) y avisar solo entonces; el registro en la historia se conserva SIEMPRE, cambien o no las cifras,
+que es su formulacion del sellado como "consecuencia registrada". **No se toca nada mientras responde:**
+seguir avisando siempre es el lado conservador. Ronda del 2026-09-02, punto 1.
