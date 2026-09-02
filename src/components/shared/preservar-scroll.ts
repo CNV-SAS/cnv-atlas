@@ -21,12 +21,24 @@
 // toast (el scroll se dispara cuando MONTAN los segmentos, no al pulsar), y pasa en los dos entornos
 // porque es del router en el cliente, no de la red.
 //
+// POR QUE SE DESHACE Y NO SE IMPIDE, que seria mejor: NO HAY FORMA DE IMPEDIRLO. `ScrollBehavior.Default`
+// esta escrito como constante en el reducer de la action, sin opcion ni API que lo cambie, y los refs con
+// que Next lo cancela (`scrollRef.current = false`, `layout-router.js`) viven dentro del router y no se
+// alcanzan desde nuestro codigo. Deshacerlo es el limite de lo posible.
+//
 // LO QUE ESTO HACE, y es deliberadamente poco: no "restaura una posicion", DESHACE UN SCROLL QUE NADIE
 // PIDIO. Por eso solo actua si se cumplen todas:
-//   - la ruta no cambio (un redirect legitimo se respeta; ver abajo),
+//   - la ruta no cambio (un redirect legitimo se respeta),
 //   - el usuario no toco nada (rueda, dedo o teclado cancelan),
 //   - y la posicion se movio de verdad.
 // Y se acota a una ventana corta: pasada esa, cualquier movimiento ya es del usuario o de la pagina.
+//
+// POR QUE ESCUCHA EL EVENTO `scroll` Y NO SONDEA CADA 100 ms, que es como estaba: sondeando, el salto y la
+// vuelta ALCANZABAN A VERSE (Santiago los noto estando atento). Next hace el scroll dentro del commit de
+// React (`componentDidMount` de `ScrollAndFocusHandler`, que llama a `scrollIntoView`), asi que el evento
+// `scroll` se despacha en el mismo ciclo de renderizado, ANTES de pintar. Corrigiendo ahi, el navegador no
+// llega a pintar la posicion equivocada. El `requestAnimationFrame` queda de respaldo por si el evento se
+// agrupa; sondear cada 100 ms garantizaba al menos un fotograma malo.
 //
 // MODULO NEUTRO, sin "use client", y a proposito: no usa ningun hook, solo toca `window` detras de una
 // guarda de SSR. Con la directiva, `check:rsc` marcaba con razon la arista de su propio test (un archivo
@@ -50,23 +62,22 @@ export function preservarScroll(): void {
 
   const desde = window.scrollY;
   const ruta = window.location.pathname;
-  let cancelado = false;
+  let terminado = false;
 
-  const cancelar = () => {
-    cancelado = true;
-    quitar();
-  };
-  // El usuario manda: si se mueve el solo, no se le pelea la pagina.
-  const eventos = ["wheel", "touchstart", "keydown", "mousedown"] as const;
   const quitar = () => {
-    for (const e of eventos) window.removeEventListener(e, cancelar);
-    window.clearInterval(timer);
+    terminado = true;
+    window.removeEventListener("scroll", revisar);
+    for (const e of CANCELAN) window.removeEventListener(e, cancelar);
     window.clearTimeout(fin);
   };
-  for (const e of eventos) window.addEventListener(e, cancelar, { passive: true, once: true });
 
-  const timer = window.setInterval(() => {
-    if (cancelado) return;
+  // El usuario manda: si se mueve el solo, no se le pelea la pagina. Estos eventos llegan ANTES del
+  // `scroll` que provocan, asi que cancelan a tiempo.
+  const CANCELAN = ["wheel", "touchstart", "keydown", "mousedown"] as const;
+  const cancelar = () => quitar();
+
+  function revisar(): void {
+    if (terminado) return;
     // Un redirect real cambia la ruta: ahi el scroll de Next es correcto y no se toca.
     if (window.location.pathname !== ruta) {
       quitar();
@@ -78,9 +89,23 @@ export function preservarScroll(): void {
     // quedar fuera del documento. Se acota al maximo actual en vez de no hacer nada: quedarse cerca de
     // donde estaba es mejor que quedarse arriba del todo, que es justo lo que se esta deshaciendo.
     const maximo = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo({ top: Math.min(desde, maximo), behavior: "instant" as ScrollBehavior });
+    // `quitar()` ANTES de corregir: nuestro propio `scrollTo` dispara otro evento `scroll`, y sin esto se
+    // reentraria en `revisar` con la posicion ya buena.
     quitar();
-  }, 100);
+    window.scrollTo({ top: Math.min(desde, maximo), behavior: "instant" as ScrollBehavior });
+  }
+
+  window.addEventListener("scroll", revisar, { passive: true });
+  for (const e of CANCELAN) window.addEventListener(e, cancelar, { passive: true, once: true });
+
+  // RESPALDO. El evento `scroll` es lo que corrige a tiempo; esto solo cubre que el navegador lo agrupe o
+  // que el salto llegue sin evento. Se para en cuanto `revisar` corrige o se acaba la ventana.
+  const siguienteCuadro = () => {
+    if (terminado) return;
+    revisar();
+    if (!terminado) window.requestAnimationFrame(siguienteCuadro);
+  };
+  window.requestAnimationFrame(siguienteCuadro);
 
   const fin = window.setTimeout(quitar, VENTANA_MS);
 }
