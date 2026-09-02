@@ -12,6 +12,7 @@ import { confirmRemesaFormAction } from "../actions";
 // Tipo desde el módulo neutro, NO desde el service `server-only` (este es un componente cliente).
 import type { PendingRemesa } from "../remesa-types";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -27,7 +28,7 @@ function ConfirmRemesaForm({ remesa }: { remesa: PendingRemesa }) {
   useFormToastAndRefresh(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
       <input type="hidden" name="remesaId" value={remesa.remesaId} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`qty-${remesa.remesaId}`}>Cuántas llegaron</Label>

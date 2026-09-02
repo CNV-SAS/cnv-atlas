@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 import { importBisAction, type ImportBisState } from "../actions";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 export type BisImportEvaluationView = {
   evaluationId: string;
@@ -78,7 +79,7 @@ export function BisImportForm({
             ) : null}
           </div>
         ) : (
-          <form action={action} className="flex flex-col gap-3">
+          <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`file-${evaluation.evaluationId}`} className="text-sm font-medium">

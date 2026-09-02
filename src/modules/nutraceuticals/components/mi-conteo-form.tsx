@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { recordCountFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -35,7 +36,7 @@ export function MiConteoForm({ products }: { products: { id: string; name: strin
     }));
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-4">
       <input type="hidden" name="lines" value={JSON.stringify(lines)} />
       <div className="flex flex-col gap-2">
         {products.map((p) => (

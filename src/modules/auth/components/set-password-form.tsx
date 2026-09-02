@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { setPasswordAction } from "@/modules/auth/actions";
 import type { AuthFormState } from "@/modules/auth/validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: AuthFormState = { error: null };
 
@@ -11,7 +12,7 @@ export function SetPasswordForm() {
   const [state, action, pending] = useActionState(setPasswordAction, initialState);
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1">
         <span>Nueva contraseña</span>
         <input

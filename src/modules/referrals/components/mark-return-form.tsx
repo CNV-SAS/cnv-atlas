@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { markReturnFormAction } from "../actions";
 import type { ReferralFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ReferralFormState = { error: null, success: null };
 
@@ -42,7 +43,7 @@ export function MarkReturnForm({
   }
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="referralId" value={referralId} />
       <input type="hidden" name="patientId" value={patientId} />
       <div className="flex flex-col gap-1">

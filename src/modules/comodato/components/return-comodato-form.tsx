@@ -10,6 +10,7 @@ import { returnComodatoFormAction } from "../actions";
 import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
 import { useComodatoToast } from "./use-comodato-toast";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
@@ -19,7 +20,7 @@ export function ReturnComodatoForm({ assignmentId }: { assignmentId: string }) {
   useComodatoToast(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="assignmentId" value={assignmentId} />
       <div className="flex flex-col gap-1">
         <Label htmlFor={`return-${assignmentId}`} className="text-xs">

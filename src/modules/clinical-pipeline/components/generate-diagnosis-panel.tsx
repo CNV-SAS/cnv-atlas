@@ -7,6 +7,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
 import { runPipelineAction, type RunPipelineState } from "../actions";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: RunPipelineState = {
   error: null,
@@ -57,7 +58,7 @@ export function GenerateDiagnosisPanel({
       <p className="text-sm text-foreground">
         Todo listo: identidad confirmada y medición BIS importada.
       </p>
-      <form action={action} className="flex flex-col items-center gap-2">
+      <form onSubmit={enviarSinReset(action)} className="flex flex-col items-center gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
         {/* Encuesta incompleta: no queda bloqueado a ciegas. Enlace a completarla (la pagina de editar

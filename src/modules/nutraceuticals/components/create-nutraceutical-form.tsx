@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { createNutraceuticalFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
 import { PriceIvaField } from "./price-iva-field";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -18,7 +19,7 @@ export function CreateNutraceuticalForm() {
   useFormToast(state);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor="name">Nombre</Label>

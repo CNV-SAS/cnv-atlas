@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { confirmFaltanteFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -19,7 +20,7 @@ export function ConfirmarFaltanteForm({ caseId }: { caseId: string }) {
   useFormToastAndRefresh(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="caseId" value={caseId} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`creason-${caseId}`}>Motivo (opcional)</Label>

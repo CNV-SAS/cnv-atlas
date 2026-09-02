@@ -11,6 +11,7 @@ import type { AssignableProfessional, Device } from "../types";
 import type { ComodatoFormState } from "../validations";
 import { selectClass } from "./field-styles";
 import { useComodatoToast } from "./use-comodato-toast";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: ComodatoFormState = { error: null, success: null, warning: null };
 
@@ -25,7 +26,7 @@ export function AssignComodatoForm({
   useComodatoToast(state);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="deviceId">Equipo</Label>

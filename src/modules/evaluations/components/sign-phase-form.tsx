@@ -16,6 +16,7 @@ import { checkConsentOtpAction, sendConsentOtpAction, signSurveyAction } from ".
 import type { SignIdentityPrefill } from "../types";
 import type { OtpSendState, SignSurveyState } from "../validations";
 import { Field, checkboxClass, selectClass } from "./survey-form-shared";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 // FASE 1 del intake: FIRMAR. Consentimiento + identidad + verificacion por codigo (OTP). Al firmar crea
 // el shell 'awaiting_survey' y devuelve el resume_token; el orquestador pasa entonces a la pantalla
@@ -297,12 +298,6 @@ export function SignPhaseForm({
     startTransition(() => sendOtp(fd));
   };
 
-  // Envio SIN el auto-reset de React 19: la action se invoca en una transicion, no como prop `action`.
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startTransition(() => action(new FormData(e.currentTarget)));
-  };
-
   const otpCodeOk = /^\d{6}$/.test(otpCode.trim());
   const otpValidado = otpCheck.valid === true;
 
@@ -325,7 +320,7 @@ export function SignPhaseForm({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={enviarSinReset(action)}
       className="flex w-full flex-col gap-6"
       onKeyDown={(e) => {
         if (e.key === "Enter" && !isLast && e.target instanceof HTMLElement && e.target.tagName !== "TEXTAREA") {

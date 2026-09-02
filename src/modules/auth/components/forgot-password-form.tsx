@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { requestPasswordResetAction } from "@/modules/auth/actions";
 import type { ForgotPasswordState } from "@/modules/auth/validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: ForgotPasswordState = { error: null, sent: false };
 
@@ -22,7 +23,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3" noValidate>
+    <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3" noValidate>
       <label className="flex flex-col gap-1">
         <span>Correo</span>
         <input name="email" type="email" autoComplete="email" required className="border p-2" />

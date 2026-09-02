@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 
 import { resolveSobranteFormAction } from "../actions";
 import type { NutraceuticalFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: NutraceuticalFormState = { error: null, success: null, warning: null };
 
@@ -19,7 +20,7 @@ export function ResolverSobranteForm({ countLineId }: { countLineId: string }) {
   useFormToastAndRefresh(state);
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
+    <form onSubmit={enviarSinReset(action)} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="countLineId" value={countLineId} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`sob-${countLineId}`}>Motivo (por qué sobra)</Label>

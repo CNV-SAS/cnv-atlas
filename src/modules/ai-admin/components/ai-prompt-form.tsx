@@ -7,6 +7,7 @@ import { useFormToast } from "@/components/shared/use-form-toast";
 import { savePromptAction, type AiAdminActionState } from "../actions";
 import type { PromptView } from "../data/ai-prompt-types";
 import { formatDate } from "@/lib/format/date";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: AiAdminActionState = { error: null, success: null, warning: null };
 
@@ -16,7 +17,7 @@ export function AiPromptForm({ view }: { view: PromptView }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <form action={action} className="flex flex-col gap-3">
+      <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
         <input type="hidden" name="promptKey" value={view.promptKey} />
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-foreground">

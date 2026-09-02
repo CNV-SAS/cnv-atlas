@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { startFollowupAction } from "../actions";
 import type { StartFollowupState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false };
 
@@ -50,7 +51,7 @@ export function FollowupStartScreen({
 
       {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
 
-      <form action={action}>
+      <form onSubmit={enviarSinReset(action)}>
         <input type="hidden" name="token" value={token} />
         <Button type="submit" disabled={pending} className="self-start">
           {pending ? "Un momento..." : "Comenzar la encuesta"}

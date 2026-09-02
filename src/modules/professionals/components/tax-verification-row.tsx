@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, FileText } from "lucide-react";
-import { startTransition, useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { rejectTaxRutAction, verifyTaxStatusAction } from "../actions";
 import { rutNeedsRenewal } from "../tax-rules";
 import type { PendingTaxVerification, TaxVerificationFormState } from "../validations";
+import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 const initial: TaxVerificationFormState = { error: null, success: false };
 
@@ -71,16 +72,6 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
   // rechazo, para que lo devuelva pidiendo uno actualizado.
   const stale = documentDate !== "" && rutNeedsRenewal(documentDate, new Date(nowMs));
 
-  const handleVerify = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startTransition(() => action(new FormData(e.currentTarget)));
-  };
-
-  const handleReject = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startTransition(() => rejAction(new FormData(e.currentTarget)));
-  };
-
   const suggestStaleReason = () => {
     setReason(`El RUT tiene fecha ${documentDate}, con más de un año de expedido. Descarga uno actualizado del portal de la DIAN y súbelo.`);
   };
@@ -114,7 +105,7 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
       </a>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <form onSubmit={handleVerify} className="flex flex-col gap-3">
+        <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
           <input type="hidden" name="professionalId" value={item.professionalId} />
           <div className="flex flex-col gap-1">
             <Label htmlFor={`doc-${item.professionalId}`} className="text-xs">
@@ -158,7 +149,7 @@ export function TaxVerificationRow({ item, nowMs }: { item: PendingTaxVerificati
         </form>
 
         {/* Rechazo: motivo OBLIGATORIO. El integrante lo ve en su banner y por correo, y sube uno nuevo. */}
-        <form onSubmit={handleReject} className="flex flex-col gap-2 rounded-md border border-destructive/30 p-3">
+        <form onSubmit={enviarSinReset(rejAction)} className="flex flex-col gap-2 rounded-md border border-destructive/30 p-3">
           <input type="hidden" name="professionalId" value={item.professionalId} />
           <Label htmlFor={`rej-${item.professionalId}`} className="text-xs">
             Rechazar el RUT (dile qué corregir)
