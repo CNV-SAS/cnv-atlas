@@ -10,14 +10,30 @@
 // PRECISION COMPLETA (no se redondea; el 73.6 de la pantalla es solo render). pesoN entra a
 // TODA la cadena donde el HTML usa pesoN: la rama Mifflin del GEB y protG.
 
+import { ATLAS_GEB_HB } from "./frozen/atlas-geb.js";
+
 export type ProtocoloCaloricoInput = {
-  ffm: number; // b_.FFM (ATLAS.html:14123 ffmN). Si >0, GEB por Cunningham; si no, Mifflin.
+  /**
+   * Masa libre de grasa. SE CONSERVA EN LA ENTRADA pero YA NO DECIDE LA FORMULA (2026-09-02): sostenia la
+   * rama del `500 + 22 x FFM`, que el declaro mal rotulada. Sigue aqui porque el snapshot sellado la trae
+   * y quitarla del tipo rompería la lectura de todo lo ya sellado.
+   */
+  ffm: number;
   pesoN: number; // peso_efectivo = adj_peso_meta ?? pesoCalculo, resuelto por el caller (:14122)
   talla: number; // :14120 tallaP
   edad: number; // :14119 edadN
   sexoM: boolean; // :14118 sexoM_pn
   deficit: number; // pr.estrategia.deficit (del motorProtocolo congelado)
   protMin: number; // pr.protMin (del motorProtocolo congelado)
+  /**
+   * GASTO BASAL MEDIDO POR EL EQUIPO (`bis.GEB` del export del Biody). Es el que MANDA.
+   *
+   * Su §9.6 del 2026-09-02: "manda el gasto basal del equipo... calcularlo con una formula propia es
+   * sustituir una medicion por una estimacion". null/undefined cuando el export no lo trajo, y ahi entra
+   * el respaldo Harris-Benedict, que es la formula DEL PROPIO EQUIPO: asi la estimacion da la misma cifra
+   * que habria dado la medicion, y no un tercer criterio.
+   */
+  gebMedido?: number | null;
   // Overrides del profesional (formulaEditPN / protocAprobado). undefined = usar el sugerido.
   geb?: number; // formulaEditPN.geb
   pal?: number; // formulaEditPN.pal
@@ -27,7 +43,14 @@ export type ProtocoloCaloricoInput = {
 };
 
 export type ProtocoloCaloricoOutput = {
-  formula: "Cunningham" | "Mifflin";
+  /**
+   * DE DONDE SALIO EL GASTO BASAL, y va a pantalla: el profesional tiene que saber si mira una MEDICION o
+   * una ESTIMACION. Es su propia condicion al entregar `ATLAS_GEB`.
+   *
+   * "Cunningham" desaparece de los valores nuevos, pero se conserva en el tipo porque los snapshots
+   * SELLADOS antes del 2026-09-02 lo llevan escrito y siguen leyendose.
+   */
+  formula: "equipo" | "Harris-Benedict" | "Cunningham" | "Mifflin";
   gebAuto: number;
   geb: number;
   pal: number; // factor de actividad usado (1.375 por default; ver encabezado de atlas-protocolo.js)
@@ -45,15 +68,40 @@ export type ProtocoloCaloricoOutput = {
 };
 
 export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCaloricoOutput {
-  const { ffm, pesoN, talla, edad, sexoM, deficit, protMin } = i;
+  // `ffm` ya NO se desestructura: sostenia la rama del "Cunningham" que se retiro. Se conserva en la
+  // ENTRADA (el snapshot sellado la trae) pero aqui no decide nada.
+  const { pesoN, talla, edad, sexoM, deficit, protMin } = i;
 
-  // :14124 gebAuto = ffm>0 ? Cunningham : Mifflin (rama gobernada por disponibilidad de FFM)
-  const gebAuto =
-    ffm > 0
-      ? Math.round(500 + 22 * ffm)
-      : sexoM
-        ? Math.round(10 * pesoN + 6.25 * talla - 5 * edad + 5)
-        : Math.round(10 * pesoN + 6.25 * talla - 5 * edad - 161);
+  // EL GASTO BASAL SALE DEL EQUIPO, Y SI NO VINO, DE HARRIS-BENEDICT (su §9.6, 2026-09-02).
+  //
+  // Y AL PORTARLO APARECIO DE DONDE VENIA NUESTRA FORMULA, que es peor que el cambio en si: el
+  // `ffm > 0 ? 500 + 22 x FFM : Mifflin` que vivia aqui NO se copio de su cadena del nutricionista. Se
+  // copio del bloque de la FORMULA SINTETICA DEL MEDICO, que en su archivo esta DESACTIVADO
+  // (`false && hasBis`, marcado "OLD MEDICO IIFE REMOVED"). Su cadena del plan nutricional NO calcula
+  // el GEB desde al menos el 19 de agosto: lo LEE de `motorTratNutri` (`var gebAuto = _mtn.geb`).
+  //
+  // O sea que llevabamos semanas calculando el gasto con una formula de un bloque muerto, mientras la
+  // suya leia la del motor. Es la divergencia que el midio en hasta 205 kcal sobre el mismo paciente.
+  //
+  // LO QUE ESTO REPRODUCE, y por eso no es una formula nuestra: `_mtn.geb` ES `ATLAS_GEB_HB(pesoMeta,
+  // talla, edad, sexoM)`. Aqui se llama a la MISMA funcion congelada con el mismo peso efectivo, asi que
+  // da la misma cifra por construccion. No se puede llamar al motor entero desde aqui porque necesita la
+  // encuesta, y esta cadena corre sobre el snapshot SELLADO; el candado `geb-una-sola-fuente` comprueba
+  // que las dos den lo mismo, que es lo que impide que vuelvan a separarse.
+  //
+  // LO QUE ESTO RETIRA: aqui vivia `ffm > 0 ? 500 + 22 x FFM : Mifflin`, con la primera rama rotulada
+  // "Cunningham". El acaba de declarar que ESA FORMULA NO ES CUNNINGHAM (que es 370 + 21,6 x FFM), y que
+  // entre ella y la Mifflin del otro motor habia hasta 205 kcal de diferencia sobre el mismo paciente.
+  // Su frase: "esa diferencia no era de criterio clinico, era de no haber usado el dato que ya estaba".
+  //
+  // Y EL PESO CON EL QUE SE CALCULA SIGUE SIENDO EL META, no el actual, que es la otra mitad de su
+  // decision (§9.6 punto 3, confirmando lo del 26-ago): "el gasto medido es el de hoy, sobre el peso
+  // actual; la ingesta que lleva a la meta se calcula sobre la meta". Son dos preguntas distintas con la
+  // misma formula, y `pesoN` ya es el peso efectivo que resuelve el caller.
+  const medido = Number(i.gebMedido ?? 0);
+  const hb = ATLAS_GEB_HB(pesoN, talla, edad, sexoM);
+  const gebAuto = medido > 0 ? Math.round(medido) : (hb ?? 0);
+  const formula: ProtocoloCaloricoOutput["formula"] = medido > 0 ? "equipo" : "Harris-Benedict";
   // :14125 gebN = override ?? gebAuto
   const gebN = i.geb !== undefined ? Number(i.geb) : gebAuto;
   // :14126 palN = override ?? 1.375 (PAL es ENTRADA, ver encabezado de frozen/atlas-protocolo.js)
@@ -83,7 +131,7 @@ export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCa
   const choPct = kcalObj > 0 ? Math.round((choKcal / kcalObj) * 100) : 0;
 
   return {
-    formula: ffm > 0 ? "Cunningham" : "Mifflin",
+    formula,
     gebAuto,
     geb: gebN,
     pal: palN,

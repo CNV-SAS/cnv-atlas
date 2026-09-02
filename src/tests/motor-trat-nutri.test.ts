@@ -46,9 +46,19 @@ describe("motorTratNutri: las tres correcciones de su Parte 1 (2026-08-26)", () 
   });
 
   it("2 · el GEB se calcula sobre el PESO META, no sobre el peso actual", () => {
-    // Mujer 150 cm, 60 kg: peso ideal 50, IMC 26,7 -> peso meta = 50. Mifflin sobre 50 kg da 977.
-    // Sobre los 60 kg reales daria 1.077: la diferencia es la prueba de que usa el meta.
-    expect(motorTratNutri(enc(), bis(), {}).geb).toBe(977);
+    // LA GARANTIA NO CAMBIA, LA FORMULA SI (2026-09-02). Seguia siendo Mifflin sobre el peso meta (977);
+    // ahora es HARRIS-BENEDICT sobre el peso meta, que es la formula del PROPIO EQUIPO: su §9.6, medida
+    // sobre once mediciones reales, 20 kcal de error medio contra los 71 de Mifflin. Lo que este caso
+    // protege es lo mismo de siempre: que el gasto se calcule sobre el peso META y no sobre el actual.
+    //
+    // Mujer de 60 años, 150 cm, 60 kg: peso ideal 50, IMC 26,7 -> peso meta = 50.
+    const r = motorTratNutri(enc(), bis(), {}) as { geb: number };
+    const hbSobreLaMeta = Math.round(655.0955 + 9.5634 * 50 + 1.8496 * 150 - 4.6756 * 60);
+    const hbSobreElActual = Math.round(655.0955 + 9.5634 * 60 + 1.8496 * 150 - 4.6756 * 60);
+    expect(r.geb).toBe(hbSobreLaMeta);
+    // Y LA DIFERENCIA ES LA PRUEBA: sobre los 60 kg reales daria casi cien kcal mas.
+    expect(r.geb).not.toBe(hbSobreElActual);
+    expect(hbSobreElActual - hbSobreLaMeta).toBeGreaterThan(90);
   });
 
   it("3 · la proteína se SEPARA: desnutrición 1,5 y cáncer 1,25", () => {
@@ -85,16 +95,34 @@ describe("motorTratNutri: el piso de 1.500/1.200 (RESPONDIDA, y los dos casos se
   // 27,5 kcal x peso actual y su nota manda iniciar a 10-15 kcal/kg si hay riesgo de realimentacion.
   // Un piso de 1.200-1.500 empujaria por encima de ese protocolo justo al paciente mas fragil.
 
-  it("con déficit CERO el piso YA SE APLICA: la paciente sube de 1.172 a su piso de 1.200", () => {
-    const r = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario" });
-    expect(r.get).toBe(1172);          // el gasto no cambia: sigue siendo el mismo calculo
-    expect(r.kcalObjetivo).toBe(1200); // y ahora el piso lo levanta, que es la correccion
+  it("con déficit CERO el piso se aplica cuando el gasto queda por debajo", () => {
+    // LAS CIFRAS SE MOVIERON CON EL CAMBIO DE FORMULA (2026-09-02), la garantía no. Con Mifflin, esta
+    // paciente daba un gasto de 1.172 y el piso la subía a 1.200. Con Harris-Benedict —la del propio
+    // equipo— su gasto sube a 1.356, así que **ya no necesita el piso**: y eso es información, no un
+    // fallo del caso. Lo que el caso prueba sigue siendo lo mismo: el piso NO cuelga del déficit.
+    const r = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario" }) as {
+      get: number;
+      kcalObjetivo: number;
+    };
+    expect(r.get).toBeGreaterThan(1200);
+    expect(r.kcalObjetivo).toBe(r.get); // por encima del piso, el objetivo ES el gasto
+
+    // Y EL CASO QUE SÍ LO EJERCITA, para que el piso no quede sin probar al subir la fórmula: una mujer
+    // más pequeña y mayor, cuyo gasto sí queda por debajo de su piso de 1.200.
+    const chica = motorTratNutri(enc({ edad: 78 }), bis({ talla: 145, peso: 44, edad: 78 }), {
+      fa_nivel: "sedentario",
+    }) as { get: number; kcalObjetivo: number };
+    expect(chica.get, "el caso dejó de ejercitar el piso").toBeLessThan(1200);
+    expect(chica.kcalObjetivo).toBe(1200);
   });
 
   it("y la consecuencia absurda desaparecio: con y sin déficit da lo mismo, no MAS", () => {
     // Antes, pedirle que comiera 300 menos le prescribia 28 mas. Ahora los dos caminos llegan al piso.
-    const sinDeficit = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario" });
-    const conDeficit = motorTratNutri(enc(), bis(), { fa_nivel: "sedentario", deficit: 300 });
+    // Se usa el caso que SÍ toca el piso: con la fórmula nueva, la paciente original ya no lo alcanza.
+    const chica = () => ({ e: enc({ edad: 78 }), b: bis({ talla: 145, peso: 44, edad: 78 }) });
+    const a = chica();
+    const sinDeficit = motorTratNutri(a.e, a.b, { fa_nivel: "sedentario" });
+    const conDeficit = motorTratNutri(a.e, a.b, { fa_nivel: "sedentario", deficit: 300 });
     expect(sinDeficit.kcalObjetivo).toBe(1200);
     expect(conDeficit.kcalObjetivo).toBe(1200);
     expect(conDeficit.kcalObjetivo).not.toBeGreaterThan(sinDeficit.kcalObjetivo);

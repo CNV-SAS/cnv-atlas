@@ -102,6 +102,7 @@ const MODULOS = [
   "engine.indices.js",
   "atlas-protocolo.js",
   "atlas-tratamiento.js",
+  "atlas-geb.js",
   "atlas-tratamiento-nutri.js",
   "derivar-composicion.js",
   "atlas-alertas.js",
@@ -268,7 +269,7 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     ).toBeGreaterThan(0);
   });
 
-  it("y entre lo que difiere está el PESO META, que es la palanca de toda la cadena", () => {
+  it("y entre lo que difiere está el GASTO BASAL, que es de donde cuelga toda la cadena", () => {
     // Ancla CONCRETA, no un conteo: un conteo se satisface con cualquier ruido. El piso pasó de colgar del
     // déficit a colgar de la rama de la fórmula entre esas dos entregas, y eso cambia las kcal que se le
     // prescriben a una paciente real. Si esta diferencia deja de verse, la maquinaria dejó de mirar.
@@ -286,11 +287,15 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     // la entrega del 1-sep: "la anterior" paso a ser la del 29, que YA traia el piso corregido. El test se
     // puso rojo, que es exactamente lo que tenia que hacer una lista de entregas que crece.
     //
-    // El ancla nueva es la diferencia concreta entre el 29 y el 1-sep: el PESO META pasa de calcularse por
-    // IMC a la identidad peso = (FMI + FFMI) x talla^2. Es la palanca de toda la cadena calorica, asi que
-    // si esta diferencia deja de verse, la maquinaria dejo de mirar sobre el numero que mas pesa.
-    expect(sinEspacio(nutri)).toContain(sinEspacio("var _pesoMetaComp = null;"));
-    expect(sinEspacio(anterior)).toContain(sinEspacio("(imc>=25||imc<18.5) ? Math.max(1,Math.round(PI))"));
-    expect(sinEspacio(anterior)).not.toContain(sinEspacio("var _pesoMetaComp = null;"));
+    // EL ANCLA SE MUEVE CON CADA ENTREGA, y eso es lo que la mantiene viva: apunta a la diferencia
+    // CONCRETA entre la vigente y la anterior, no a una que ya quedo atras. La del 1-sep era el peso meta;
+    // la del 2-sep es el GASTO BASAL, que pasa de Mifflin a Harris-Benedict (la formula del propio equipo,
+    // verificada por el sobre once mediciones reales). De ahi cuelga toda la cadena, asi que si esta
+    // diferencia deja de verse, la maquinaria dejo de mirar sobre el numero que mas pesa.
+    expect(sinEspacio(nutri)).toContain(sinEspacio("ATLAS_GEB_HB(pesoMeta, talla, edad, sexoM)"));
+    expect(sinEspacio(anterior)).toContain(
+      sinEspacio("var geb = Math.round(sexoM ? (10*pesoMeta+6.25*talla-5*edad+5)"),
+    );
+    expect(sinEspacio(anterior)).not.toContain(sinEspacio("ATLAS_GEB_HB(pesoMeta"));
   });
 });

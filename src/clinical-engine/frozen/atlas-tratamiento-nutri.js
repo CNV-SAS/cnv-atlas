@@ -36,6 +36,11 @@
  * Lo unico que no esta en la fuente es el module.exports final.
  */
 
+// SU MOTOR LLAMA A `ATLAS_GEB_HB`, que el define aparte en su archivo. Se trae de nuestro modulo
+// congelado equivalente, portado del mismo HTML y en la misma entrega: NO se copia la formula aqui, que
+// seria una segunda fuente de la misma cifra.
+const { ATLAS_GEB_HB } = require("./atlas-geb.js");
+
 function motorTratNutri(enc, bis, edit){
   edit = edit || {}; var e = enc||{}, b = bis||{};
   var sexoM = (b.sexo==='M'||b.sexo==='Masculino'||e.sexo==='M'||e.sexo==='Masculino');
@@ -94,7 +99,15 @@ function motorTratNutri(enc, bis, edit){
   // restaba un deficit: dos descuentos sobre el mismo paciente (ver el deficit
   // mas abajo, ahora en 0). El peso meta queda como la unica palanca, y es la
   // que el profesional mueve.
-  var geb = Math.round(sexoM ? (10*pesoMeta+6.25*talla-5*edad+5) : (10*pesoMeta+6.25*talla-5*edad-161));
+  // Harris-Benedict sobre el PESO META, no sobre el actual, y esto conserva las dos
+  // decisiones a la vez: la fórmula es la del equipo (1-sep-2026, una sola fuente) y
+  // el peso de referencia sigue siendo la meta (26-ago-2026: «el gasto calculado
+  // sobre el peso meta ES la ingesta que lleva a ese peso»).
+  // El gasto MEDIDO por el equipo corresponde al peso actual, así que sirve para
+  // mostrar el basal de hoy —eso hace `ATLAS_GEB`— pero no para fijar la ingesta que
+  // lleva a la meta. Son dos preguntas distintas con la misma fórmula.
+  var geb = ATLAS_GEB_HB(pesoMeta, talla, edad, sexoM)
+         || Math.round(sexoM ? (10*pesoMeta+6.25*talla-5*edad+5) : (10*pesoMeta+6.25*talla-5*edad-161));
   // A2 FA de la actividad PRESCRITA
   var FA_MAP = {sedentario:1.2, ligera:1.375, moderada:1.55, alta:1.725, muy_alta:1.9};
   var faNivel = edit.fa_nivel || (function(){ try { return motorTratEjercicio(enc,bis).faRec; } catch(_x){ return "ligera"; } })();

@@ -63,7 +63,10 @@ describe("el porte es VERBATIM del archivo vigente", () => {
 
   it("y la version del protocolo subió: sin eso el cambio entra en silencio", () => {
     // Si la version no sube, nada distingue una cadena sellada con la formula vieja de una con la nueva.
-    expect(PROTOCOL_ENGINE_VERSION).toBe("anibise-protocolo-2026-09-01");
+    // Sube con cada cambio de la ciencia del protocolo. El 2026-09-02 subio por el GEB: pasa de Mifflin a
+    // Harris-Benedict, la formula del propio equipo. Sin el bump, una cadena sellada con la formula vieja
+    // no se distingue de una con la nueva.
+    expect(PROTOCOL_ENGINE_VERSION).toBe("anibise-protocolo-2026-09-02");
   });
 });
 
