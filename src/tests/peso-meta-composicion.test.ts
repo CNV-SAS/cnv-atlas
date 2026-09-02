@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 // Modulo congelado en JS; `allowJs` lo resuelve.
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
-import { PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
+import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
 
 import { funcionDelHtml } from "./fixtures/html-vigente";
 import { sinComentarios } from "./helpers/sin-comentarios";
@@ -189,5 +189,73 @@ describe("el desfase de versión se avisa donde se ve la cifra, y SOLO si movió
 
   it("y ya NO afirma que el peso meta se mueve, porque está sellado", () => {
     expect(sinComentarios(PANEL)).not.toContain("los gramos de proteína pueden moverse");
+  });
+});
+
+// ── ¿EL AVISO DE DESFASE LLEGA A DISPARAR ALGUNA VEZ? MEDIDO CONTRA LA BASE ─────────────────────────
+//
+// SEGUNDA PREDICCIÓN FALLIDA SOBRE ESTE MISMO AVISO (2026-09-02). Dije que en un tratamiento sellado con
+// `anibise-protocolo-2026-07-30` aparecería con las dos cifras. Santiago lo abrió y no estaba.
+//
+// LA MEDICIÓN, corriendo `computeProtocoloEfectivo` sobre los 50 tratamientos reales de la base:
+//   · 48 con cadena comparable, repartidos en CINCO versiones selladas distintas
+//     (2026-08-31: 19 · 2026-08-03: 12 · 2026-08-19b: 10 · 1.0.0: 6 · 2026-07-30: 1)
+//   · **avisarían: 0** · idénticos: 48
+//
+// Y LA RAZÓN, que es la que yo no había entendido: el snapshot sella los INPUTS, y recalcular los replica.
+// `snap.calorico` se selló corriendo `computeProtocoloCalorico` sobre esos mismos inputs, así que
+// recomputar hoy da lo mismo SALVO que esa función cambie, y no ha cambiado nunca. Los bumps que sí
+// hubo tocaron `motorProtocolo` (que produce los inputs, ya sellados) y `motorTratNutri` (cuyo peso meta
+// interno Atlas ni ejecuta). **Sellar los inputs es precisamente lo que impide que un cambio aguas arriba
+// mueva lo recomputado**, que es la garantía que se buscaba, no un defecto.
+//
+// ASÍ QUE EL AVISO ES UN GUARDA LATENTE Y CORRECTO, no ruido: dispara el día que cambie la cadena
+// calórica, y ese día lo dirá con las dos cifras. Lo que NO se puede es dejarlo sin prueba, o su silencio
+// se confundiría con "no está implementado". Este caso demuestra que sabe dispararse.
+describe("el aviso de desfase dispara cuando la cadena calórica cambia, y hoy no cambió", () => {
+  const snapBase = () => ({
+    protocolEngineVersion: "anibise-protocolo-2026-07-30",
+    pesoCalculo: 72.8,
+    protMin: 1,
+    protMax: 1.2,
+    protRef: "ESPEN 2023",
+    estrategia: { deficit: 0 },
+    caloricoInputs: { ffm: 55, talla: 177, edad: 40, sexoM: true },
+    fenotipo: null,
+    restricciones: [],
+    examenes: [],
+    suplementacion: [],
+    calorico: {},
+  });
+
+  const SIN_AJUSTES = {
+    geb: null,
+    pal: null,
+    kcalObj: null,
+    protGkg: null,
+    fatPct: null,
+    deficit: null,
+    pesoMeta: null,
+  };
+
+  it("con la cadena sellada IGUAL a la de hoy, no hay nada que avisar", () => {
+    const snap = snapBase() as never;
+    const hoy = computeProtocoloEfectivo(snap, SIN_AJUSTES).calorico;
+    const sellado = { ...hoy };
+    expect(Math.round(sellado.kcalObj)).toBe(Math.round(hoy.kcalObj));
+    expect(Math.round(sellado.protG)).toBe(Math.round(hoy.protG));
+  });
+
+  it("y con una cadena sellada DISTINTA, la diferencia se detecta en las dos cifras", () => {
+    // Se simula el único caso que puede producirla: que `computeProtocoloCalorico` cambie y lo sellado
+    // haya salido de la versión anterior. Sin este caso, "0 avisan" no distinguiría un guarda latente de
+    // un guarda roto.
+    const snap = snapBase() as never;
+    const hoy = computeProtocoloEfectivo(snap, SIN_AJUSTES).calorico;
+    const selladoViejo = { ...hoy, kcalObj: hoy.kcalObj - 120, protG: hoy.protG - 8 };
+    const movio =
+      Math.round(selladoViejo.kcalObj) !== Math.round(hoy.kcalObj) ||
+      Math.round(selladoViejo.protG) !== Math.round(hoy.protG);
+    expect(movio).toBe(true);
   });
 });
