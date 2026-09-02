@@ -1,5 +1,7 @@
 import type { PlanPaciente } from "../data/reports-view-types";
 
+import { bloqueCls } from "@/components/shared/bloque";
+
 import { PlanImprimirBoton } from "./plan-imprimir-boton";
 
 // EL PLAN DEL PACIENTE, EN PAPEL. La hoja que se lleva de la consulta, ahora mismo, sin esperar a que le
@@ -47,7 +49,10 @@ export function PlanImprimible({
   const hayMeta = plan.objetivoTexto || plan.kcalObjetivo != null || plan.pesoMeta != null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    // SUPERFICIE PLANA, como el resto de los bloques de la subpestaña. Quedaba con un borde suelto sobre
+    // el gris de la pagina, y los tres niveles se leen CONTRA LA PAGINA: sobre gris, sin `bg-card` no hay
+    // superficie. Es el mismo defecto que ya se corrigio una vez en `bloque.tsx`.
+    <div className={bloqueCls("derivado")}>
       {/* LO QUE SE VE EN PANTALLA: el boton y una linea que dice para que es. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">

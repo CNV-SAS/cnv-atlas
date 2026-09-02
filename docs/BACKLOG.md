@@ -1592,3 +1592,29 @@ Dos valores clinicos que hoy NO tienen candado de su NUMERO (solo de existencia 
 
 - [ ] **Validar los dos resúmenes con las OTRAS profesiones (Santiago, del smoke del 2026-08-31).** El smoke confirmó que los dos resúmenes (el clínico y el de la profesión) aparecen y que los tres párrafos por profesión portados de su archivo (médico, ejercicio, psicología) están en el código. **Lo que NO se probó es cómo se leen desde cada profesión**, porque el recorrido se hizo entrando como nutricionista: falta abrir la misma evaluación como médico, como profesional del ejercicio y como psicólogo, y revisar que cada uno vea SU párrafo y que el texto tenga sentido para su rol.
   **Por qué no es solo "mirar":** cada profesión tiene su propia subpestaña y su propio gate de escritura (`require-profession`), así que el riesgo real es de dos clases: que una profesión vea el párrafo de otra, o que no vea ninguno y la sección quede vacía sin decir por qué. La revisión es de Santiago (es criterio clínico de lectura, no de código). Necesita una cuenta por profesión en el entorno de pruebas.
+
+### PENDIENTE · PASADA DE DISEÑO A LOS DOS DOCUMENTOS QUE SALEN DE LA CLÍNICA
+
+**Los dos van juntos a propósito.** El reporte del paciente (PDF por correo) y el plan imprimible salen de
+la misma clínica, al mismo paciente, a veces el mismo día. **Si se diseñan por separado no se van a
+parecer**, y dos documentos de la misma consulta que no se parecen se leen como dos consultas.
+
+**Lo que Santiago reportó del plan impreso (smoke 2026-09-02), y que aplica igual al reporte:**
+
+- **Sin jerarquía**: los títulos apenas se distinguen del cuerpo. Es texto plano de arriba abajo.
+- **La tabla no tiene líneas ni separación**: la distribución por porciones es la pieza que el paciente más
+  va a consultar y es la que peor se lee.
+- **Las listas van sin viñetas**, así que un ítem de dos líneas parece dos ítems.
+
+**Lo que NO se toca en esa pasada, y hay que decirlo antes de empezar:** la capa clínica (`--clinical-*`).
+Sus hexadecimales salen de sus clasificadores (el naranja de Moderado es el hex exacto de su `_DFI_SEVC`),
+así que el color de un veredicto no es preferencia nuestra. Lo libre es la tipografía, el espaciado, las
+reglas de la tabla y la jerarquía.
+
+**Y hay una restricción técnica que condiciona el alcance:** el plan impreso es HTML (se imprime con
+`window.print()`) y el reporte es `@react-pdf`, que tiene sus propias primitivas y no entiende ese CSS. Así
+que "que se parezcan" no se consigue compartiendo hojas de estilo: se consigue fijando las mismas
+decisiones (escala tipográfica, grosores, espaciado) y aplicándolas dos veces. **Conviene decidirlas una
+sola vez, escritas, antes de tocar cualquiera de los dos.**
+
+La historia clínica en PDF, cuando exista, entra en la misma pasada por la misma razón.
