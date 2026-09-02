@@ -25,15 +25,9 @@ export type ProtocoloCaloricoInput = {
   sexoM: boolean; // :14118 sexoM_pn
   deficit: number; // pr.estrategia.deficit (del motorProtocolo congelado)
   protMin: number; // pr.protMin (del motorProtocolo congelado)
-  /**
-   * GASTO BASAL MEDIDO POR EL EQUIPO (`bis.GEB` del export del Biody). Es el que MANDA.
-   *
-   * Su §9.6 del 2026-09-02: "manda el gasto basal del equipo... calcularlo con una formula propia es
-   * sustituir una medicion por una estimacion". null/undefined cuando el export no lo trajo, y ahi entra
-   * el respaldo Harris-Benedict, que es la formula DEL PROPIO EQUIPO: asi la estimacion da la misma cifra
-   * que habria dado la medicion, y no un tercer criterio.
-   */
-  gebMedido?: number | null;
+  // NO HAY `gebMedido` AQUI, y es deliberado: el gasto que mide el equipo corresponde al peso ACTUAL,
+  // asi que sirve para mostrar el basal de hoy, no para fijar la ingesta que lleva a la meta. Es la frase
+  // que Gildardo dejo pegada a `_mtn.geb` en su archivo. Lo verifica `geb-una-sola-fuente`.
   // Overrides del profesional (formulaEditPN / protocAprobado). undefined = usar el sugerido.
   geb?: number; // formulaEditPN.geb
   pal?: number; // formulaEditPN.pal
@@ -98,10 +92,23 @@ export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCa
   // decision (§9.6 punto 3, confirmando lo del 26-ago): "el gasto medido es el de hoy, sobre el peso
   // actual; la ingesta que lleva a la meta se calcula sobre la meta". Son dos preguntas distintas con la
   // misma formula, y `pesoN` ya es el peso efectivo que resuelve el caller.
-  const medido = Number(i.gebMedido ?? 0);
-  const hb = ATLAS_GEB_HB(pesoN, talla, edad, sexoM);
-  const gebAuto = medido > 0 ? Math.round(medido) : (hb ?? 0);
-  const formula: ProtocoloCaloricoOutput["formula"] = medido > 0 ? "equipo" : "Harris-Benedict";
+  // EL GASTO MEDIDO POR EL EQUIPO NO ENTRA AQUI, y esto es lo contrario de lo que parece decir su
+  // §9.6 punto 1 leido solo. Lo aclara el comentario que el mismo dejo pegado a `_mtn.geb`:
+  //
+  //   "El gasto MEDIDO por el equipo corresponde al peso actual, asi que sirve para mostrar el basal de
+  //    hoy -eso hace ATLAS_GEB- pero no para fijar la ingesta que lleva a la meta. Son dos preguntas
+  //    distintas con la misma formula."
+  //
+  // O sea: `ATLAS_GEB` (medido primero) es para MOSTRAR el basal de hoy, en otro sitio de su archivo;
+  // `ATLAS_GEB_HB(pesoMeta, ...)` es lo que fija la INGESTA, y es lo unico que su cadena lee. Su propia
+  // pantalla lo confirma sin querer: la nota del campo GEB mira `_mtn.gebOrigen`, que motorTratNutri
+  // NUNCA define, asi que en el panel de prescripcion siempre dice "Harris-Benedict".
+  //
+  // POR QUE IMPORTA: para un paciente que baja de peso, la meta es MENOR que el peso actual, asi que el
+  // basal medido (que es el de hoy) es MAYOR. Usarlo aqui prescribiria mas calorias justo en la
+  // direccion que aleja de la meta. Sobre un hombre de 90 kg con meta 80 son ~190 kcal/dia de mas.
+  const gebAuto = ATLAS_GEB_HB(pesoN, talla, edad, sexoM) ?? 0;
+  const formula: ProtocoloCaloricoOutput["formula"] = "Harris-Benedict";
   // :14125 gebN = override ?? gebAuto
   const gebN = i.geb !== undefined ? Number(i.geb) : gebAuto;
   // :14126 palN = override ?? 1.375 (PAL es ENTRADA, ver encabezado de frozen/atlas-protocolo.js)
