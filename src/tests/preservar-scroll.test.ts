@@ -44,8 +44,7 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
       location: { pathname: "/evaluaciones/e1" },
       addEventListener: vi.fn((_e: string, _h: unknown, _o?: unknown) => undefined),
       removeEventListener: vi.fn(),
-      setInterval: vi.fn((_fn: () => void, _ms?: number) => 1),
-      clearInterval: vi.fn(),
+      requestAnimationFrame: vi.fn((_fn: () => void) => 1),
       setTimeout: vi.fn(() => 2),
       clearTimeout: vi.fn(),
       scrollTo: vi.fn(),
@@ -54,10 +53,13 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     vi.stubGlobal("document", { documentElement: { scrollHeight: alto } });
     return w;
   };
+  // El corrector reacciona al evento `scroll`, que es lo que lo hace imperceptible: Next scrollea dentro
+  // del commit de React, asi que el evento llega antes de pintar. Aqui se dispara como lo haria el
+  // navegador. (El `requestAnimationFrame` es solo respaldo y se prueba aparte.)
   const tick = (w: ReturnType<typeof entorno>) => {
-    const fn = w.setInterval.mock.calls[0]?.[0];
-    if (typeof fn !== "function") throw new Error("preservarScroll no programó el vigilante");
-    fn();
+    const fn = w.addEventListener.mock.calls.find((c) => c[0] === "scroll")?.[1];
+    if (typeof fn !== "function") throw new Error("preservarScroll no escucha el evento scroll");
+    (fn as () => void)();
   };
 
   afterEach(() => vi.unstubAllGlobals());
@@ -118,5 +120,55 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     w.scrollY = 0;
     tick(w);
     expect(w.scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe("por qué es imperceptible: corrige en el evento, no sondeando", () => {
+  // EL RESIDUO QUE ESTO CIERRA (smoke, 2026-09-02): con la primera versión, que sondeaba cada 100 ms, el
+  // salto y la vuelta ALCANZABAN A VERSE. Next hace el scroll dentro del commit de React
+  // (`componentDidMount` de `ScrollAndFocusHandler` → `scrollIntoView`), así que el evento `scroll` se
+  // despacha en el mismo ciclo de renderizado, ANTES de pintar: corrigiendo ahí, el navegador no llega a
+  // pintar la posición equivocada. Sondear garantizaba al menos un fotograma malo.
+  const entorno = () => {
+    const w = {
+      scrollY: 900,
+      innerHeight: 800,
+      location: { pathname: "/evaluaciones/e1" },
+      addEventListener: vi.fn((_e: string, _h: unknown, _o?: unknown) => undefined),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: vi.fn((_fn: () => void) => 1),
+      setTimeout: vi.fn(() => 2),
+      clearTimeout: vi.fn(),
+      scrollTo: vi.fn(),
+    };
+    vi.stubGlobal("window", w);
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 4000 } });
+    return w;
+  };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("escucha `scroll`, que es lo que llega a tiempo", () => {
+    const w = entorno();
+    preservarScroll();
+    expect(w.addEventListener.mock.calls.some((c) => c[0] === "scroll")).toBe(true);
+  });
+
+  it("y deja un respaldo por cuadro, por si el navegador agrupa el evento", () => {
+    const w = entorno();
+    preservarScroll();
+    expect(w.requestAnimationFrame).toHaveBeenCalled();
+  });
+
+  it("no se reentra con su propio scroll: corrige UNA vez", () => {
+    // `scrollTo` dispara otro evento `scroll`. Sin desmontarse antes de corregir, se volvería a evaluar
+    // con la posición ya buena, y en el peor caso se pelearía consigo mismo.
+    const w = entorno();
+    preservarScroll();
+    const revisar = w.addEventListener.mock.calls.find((c) => c[0] === "scroll")?.[1] as () => void;
+    w.scrollY = 0;
+    revisar();
+    revisar(); // el eco de nuestro propio scrollTo
+    expect(w.scrollTo).toHaveBeenCalledTimes(1);
   });
 });
