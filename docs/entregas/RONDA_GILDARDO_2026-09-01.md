@@ -53,7 +53,7 @@ pantalla agrupa en uno).
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
 | **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
 | **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no, y ahora recibe el plan completo | El **mapa de alimentos por región** (10.4) y una línea por **nutracéutico** en su idioma (10.8) | **SÍ · 10.4 bloquea la lista de intercambio del paciente** |
-| **11** | **Tu entrega del 1-sep**: seis cambios ya los teníamos, portamos el peso meta, y tu corrección va al motor que no usamos | **Si `motorProtocolo` adopta tu identidad FMI+FFMI** (11.1) y si la meta del desnutrido severo se acota (11.3) | **SÍ · 11.1 decide qué peso meta gobierna** |
+| **11** | **Tu entrega del 1-sep**: seis cambios ya los teníamos, portamos el peso meta, y tu corrección va al motor que no usamos. Tus puntos 7 y 8 ya están construidos, y tu 5c **retira tu propia decisión del 18 de agosto** (11.5) | **Si `motorProtocolo` adopta tu identidad FMI+FFMI** (11.1) y si la meta del desnutrido severo se acota (11.3) | **SÍ · 11.1 decide qué peso meta gobierna** |
 
 ---
 
@@ -618,19 +618,38 @@ Lo preguntamos porque el nutricionista ve ese número como "peso meta" y sobre �
 proteína del plan de ESTA consulta. Si es un destino a dos años, la cifra que gobierna el plan de hoy
 debería ser otra.
 
-## 11.4 · Y una nota sobre tu punto 7, para que no pierdas tiempo con nosotros
+## 11.4 · Tus puntos 7 y 8, ya construidos. No necesitan respuesta
 
 De las tres cosas de tu cadena de IA, **dos ya las teníamos**: el modelo en un solo sitio, y el
 presupuesto acotado con el razonamiento en `low` (desde el 13 de agosto, y por el mismo motivo que
 describes: el razonamiento se comía el presupuesto y la respuesta volvía vacía).
 
-**La tercera no, y la vamos a construir:** el reintento ante el tope por minuto. Hoy caemos a otro
-proveedor, que para una cola de dos segundos es peor que esperar.
+**La tercera no la teníamos, y ya está construida:** el reintento ante el tope por minuto. Caíamos a otro
+proveedor, que para una cola de dos segundos es peor que esperar, y además hacía que el texto clínico
+saliera de otro modelo sin que nadie lo hubiera pedido. Ahora se esperan los segundos que Groq indica y se
+reintenta una vez, **antes** de considerar el otro proveedor.
 
 **Y tu punto 8 nos aplica**, porque usamos tu mismo modelo. Nuestro menú devuelve JSON y ya tolera el
 envoltorio, pero el texto del criterio clínico es prosa y se muestra en plano: si el modelo devuelve
-asteriscos, el profesional los ve. Vamos por los dos lados, como dices. Tu frase se queda con nosotros:
+asteriscos, el profesional los ve. Hecho por los dos lados, como dices. Tu frase se queda con nosotros:
 *"por si el modelo desobedece, que es lo que hacen"*.
+
+## 11.5 · Declaración: tu punto 5c retira una decisión tuya del 18 de agosto, y la aplicamos
+
+**No es una pregunta. Es para que sepas qué se movió y por qué**, porque el cambio lo pediste tú y borra
+algo que también habías decidido tú.
+
+Tu 5c define el Δ del IAE: *"la distancia al límite del rango que se cruzó, y cero mientras esté dentro de
+−5 a +5"*. **Portado tal cual.** Un IAE de −17,6 muestra −12,6; uno de +8,2 muestra 3,2; cualquiera entre
+−5 y +5 muestra 0,0.
+
+**Lo que retira:** esa celda mostraba un guion. La razón era tu §2 del 18 de agosto, *"el dato que manda es
+el valor, no el Δ"*: como el IAE ya es una diferencia, su Δ sería la distancia de una distancia, y lo
+dejamos en blanco. **Tu definición nueva es posterior y explícita donde la anterior era una lectura
+nuestra, así que manda la nueva.**
+
+**Si el guion era deliberado y sigue siéndolo, dilo y lo devolvemos.** Lo decimos porque una decisión tuya
+que se retira en silencio deja de ser tuya.
 
 ---
 

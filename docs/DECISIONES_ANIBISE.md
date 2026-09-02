@@ -866,9 +866,10 @@ es una diferencia y el Delta seria la distancia de una distancia. **No fue un de
 criterio es suyo, y el nuevo es posterior y explicito donde el anterior era inferido.** El candado
 `indicator-ranges.test.ts` cambio de asercion por eso, con el motivo escrito dentro.
 
-**LO QUE FALTA, Y ES DE SANTIAGO:** esto NO quedo declarado en la ronda del 1 de septiembre, que ya estaba
-cerrada cuando se porto. Va en la siguiente, o como anexo si la ronda todavia no salio. Un cambio que
-retira una decision suya anterior no puede consolidarse por silencio.
+**DECLARADO EN LA RONDA, punto 11.5.** La ronda del 1 de septiembre no habia salido todavia, asi que la
+declaracion entra en el mismo documento en vez de quedar para la siguiente. Dice que se retira, por que se
+retira, y que si el guion era deliberado lo devolvemos. Un cambio que retira una decision suya anterior no
+puede consolidarse por silencio.
 
 **P-88 · Su §7c (el reintento ante el tope por minuto): construido, y no necesita respuesta.** "No es un
 fallo, es una cola." Groq responde 429 con los segundos de espera en la prosa del error; ahora se esperan y
