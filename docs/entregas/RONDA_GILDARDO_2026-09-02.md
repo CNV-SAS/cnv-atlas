@@ -1,18 +1,154 @@
 # Ronda del 2026-09-02
 
-**Abierta el 2 de septiembre, con la del 1 ya enviada.** Aquí va lo que sale del trabajo posterior, no
-respuestas a lo que todavía tienes en tu escritorio.
+**Abierta el 2 de septiembre y cerrada el 3, con la del 1 ya enviada.** Los tres primeros puntos salen de
+revisar tu entrega del 2 contra tu documento; los dos últimos, del trabajo de estos dos días. Ninguno es
+una respuesta a lo que todavía tienes en el escritorio.
+
+**Los tres primeros son de la misma clase y vale decirlo:** en los tres, tu documento y tu archivo no dicen
+lo mismo, o tu archivo no dice lo mismo en dos sitios. No son desacuerdos con tu criterio.
 
 ## De un vistazo
 
 | # | Qué es | Qué te pedimos | ¿Bloquea? |
 | --- | --- | --- | --- |
-| **1** | **Dos frases tuyas se contradicen en un caso que ninguna contempla**: reabrir una prescripción y volver a aprobarla **sin cambiar nada** | Cuál de las dos manda ahí, con nuestra propuesta al lado | No, pero decide qué le llega al paciente |
-| **2** | Un campo de la cadena calórica que se queda **vacío** produce una prescripción implausible sin que nada lo distinga de una decisión | Si esos campos deben tener un valor por defecto que no se pueda borrar. **No te pedimos validar una cifra** | No |
+| **1** | **Tu archivo del 2 de septiembre encendió `LE8_MAPEO_CORREGIDO`, y el comentario que lo acompaña dice que así no se enciende** | Confirmar si fue deliberado. **No lo portamos hasta que respondas** | **Sí**: bloquea portar tu `engine.dfi` |
+| **2** | **El bloque de código del mapa de regiones no venía en la entrega**, aunque el documento dice que va | Que nos lo mandes | Sí, para construir el recorte por ciudad |
+| **3** | Tu punto 0 pide convertir la frecuencia de consumo en porciones, pero **tus 18 grupos y los 21 subgrupos de la lista de intercambio no son uno a uno** | La correspondencia entre unos y otros. **No te pedimos el dato, te pedimos el mapa** | Sí, para el consumo actual |
+| **4** | **Dos frases tuyas se contradicen en un caso que ninguna contempla**: reabrir una prescripción y volver a aprobarla **sin cambiar nada** | Cuál de las dos manda ahí, con nuestra propuesta al lado | No, pero decide qué le llega al paciente |
+| **5** | Un campo de la cadena calórica que se queda **vacío** produce una prescripción implausible sin que nada lo distinga de una decisión | Si esos campos deben tener un valor por defecto que no se pueda borrar. **No te pedimos validar una cifra** | No |
 
 ---
 
-# 1 · Un tratamiento reemitido que es idéntico al anterior: ¿se le avisa al paciente?
+# 1 · El interruptor del LE8 quedó encendido, y tu propio archivo dice que así no
+
+**Esto lo escribimos con cuidado, porque es señalarte una contradicción dentro de tu archivo, no discutirte
+un criterio.** Puede que sea deliberado y que la recalibración venga aparte. Preferimos preguntarlo a
+portarlo.
+
+## Lo que cambió entre tus dos entregas
+
+En la del **1 de septiembre**: `const LE8_MAPEO_CORREGIDO = false;`
+En la del **2 de septiembre**: `const LE8_MAPEO_CORREGIDO = true;`
+
+## Y lo que sigue escrito, intacto, en la MISMA entrega del 2
+
+Tu comentario pegado a esa línea, entero:
+
+> **DESACTIVADO A PROPÓSITO, NO PONER EN true SIN RESOLVER LO SIGUIENTE.** Activarlo baja la EB-BIS de
+> TODOS los pacientes entre 1 y 8 años (más cuanto más sano está el paciente), porque el ICEC deja de estar
+> artificialmente deprimido. Antes hay que establecer de dónde salieron la media 58,578 y la desviación
+> 13,332 del ICEC en la ecuación EB-BIS v5:
+>
+> - si se calcularon sobre un ICEC correcto, activar esto CORRIGE un sesgo real y las edades biológicas
+>   emitidas hasta hoy estaban infladas;
+> - si se calcularon sobre el ICEC ya roto, μ y σ incorporan el sesgo y hay que recalibrarlas ANTES, o
+>   todos quedarán con edad biológica demasiado joven.
+>
+> **CONDICIÓN DE ACTIVACIÓN (Dirección Científica, 9-ago-2026).** El ICEC es el componente contextual que
+> afecta la edad bioeléctrica, y por tanto NO puede activarse el mapeo dejando intactas la media y la
+> desviación con que se estandariza. **Se recalibran en el MISMO acto, nunca por separado.**
+>
+> Para poner esto en `true` hacen falta las dos cosas a la vez: **1.** Recalcular μ y σ del ICEC sobre la
+> base de datos con el mapeo YA corregido. **2.** Sustituir esos dos números en la llamada a `_zBis`.
+>
+> Recalcular μ y σ es un cálculo sobre nuestros propios registros, no una decisión de diseño: **mientras no
+> exista, esta bandera se queda en `false`.**
+
+Y el 30 de agosto nos lo habías escrito a nosotros con las mismas palabras: *"la media 58,578 y la
+desviación 13,332 del ICEC no están establecidas... el interruptor se queda en `false`. No lo enciendan por
+partes ni por su cuenta."*
+
+## El dato que hace la pregunta
+
+**Los dos números no se movieron.** La llamada del término contextual sigue diciendo, byte por byte igual
+que el 1 de septiembre:
+
+```
++ (-7.982) * _zBis(_icecVal, 58.578, 13.332)    // Contextual (ICEC/LE8)
+```
+
+O sea que la primera condición está, y la segunda no.
+
+## Qué hicimos y qué te preguntamos
+
+**No lo portamos.** Atlas se queda con el interruptor en `false` hasta que respondas. No es corregirte la
+ciencia: es no aplicar un cambio que tu propio archivo declara incompleto sin el otro medio.
+
+**Tres salidas posibles, y cualquiera nos sirve:**
+
+1. **Recalibraste y los números nuevos vienen aparte.** Mándanoslos y portamos las dos cosas juntas.
+2. **Fue un cambio de prueba que se quedó puesto.** Nos lo dices y sigue en `false`.
+3. **Decidiste activarlo sin recalibrar**, con una razón que no conocemos. Escríbela y la aplicamos, pero
+   queremos que quede dicha: por tu propia cifra, la edad bioeléctrica de todos baja entre 1 y 8 años.
+
+**Mientras tanto queda un candado en nuestro lado** que se pone en rojo el día que μ y σ cambien, para que
+la recalibración no se nos pase.
+
+---
+
+# 2 · El bloque del mapa de regiones no venía en la entrega
+
+**Tu §10.4 dice: "el bloque de código va en la entrega, con las diez zonas, las ciudades, el núcleo y la
+función que resuelve la lista a partir de la ciudad. Está probado: Barranquilla resuelve a Caribe, Pasto a
+Nariño, una ciudad desconocida devuelve los 350, y funciona con o sin tildes."**
+
+**Lo buscamos y no está.** En el `ATLAS_v8.html` del 2 de septiembre no aparece ninguna de las diez zonas
+(ni "Cundiboyacense", ni "Orinoquía", ni "Insular", ni "Eje Cafetero"), ni el núcleo nacional, ni una
+función que resuelva la ciudad. "Barranquilla" sale una sola vez, y es en la lista de ciudades del
+formulario, la misma que estaba en la entrega anterior.
+
+**Suponemos que se quedó sin pegar.** El criterio sí llegó completo y es el que necesitábamos: las diez
+zonas con lo que marca cada una, el núcleo de 56 alimentos que va siempre, y las dos reglas (ciudad
+desconocida devuelve la lista completa; 111 ciudades mapeadas).
+
+**Lo que te pedimos: el bloque.** Con él construimos; sin él tendríamos que reconstruir la asignación
+alimento-zona a mano, y ahí sí estaríamos inventando contenido clínico. **Es la única de las cinco cosas de
+esta ronda donde no hay nada que podamos hacer mientras tanto.**
+
+---
+
+# 3 · La lista de intercambio sí tiene porciones, pero tus grupos y sus subgrupos no son uno a uno
+
+**Tu punto 0 dice que la frecuencia de consumo no se convierte en porciones**, y que el consumo actual del
+paciente se estima desde la lista de intercambio. Fuimos a hacerlo y nos frenó una cosa concreta que no
+podemos resolver sin ti.
+
+**No es que falte el dato: la lista tiene las porciones.** Lo que no tenemos es **la correspondencia** entre
+los 18 grupos con que la encuesta pregunta y los 21 subgrupos con que la lista reparte.
+
+## Dónde calza directo (6 de 18)
+
+| Tu grupo de la encuesta | Subgrupo de la lista |
+| --- | --- |
+| Leguminosas | Leguminosas |
+| Cereales | Cereales |
+| Tubérculos | Raíces, tubérculos y plátanos |
+| Frutas | Frutas |
+| Grasas saturadas | Grasas saturadas |
+| Alcohol | Bebidas alcohólicas |
+
+## Dónde no, y por qué cada caso es distinto
+
+| Caso | El problema |
+| --- | --- |
+| **Carnes rojas · Pollo y pavo · Pescado** | Son **tres** grupos en la encuesta y la lista reparte por contenido graso: "carnes magras" y "carnes altas en lípidos". No es un corte por animal, así que no podemos repartirlos sin tu criterio |
+| **Huevos** | En la encuesta es un grupo propio; en la lista va dentro de "sustitutos (embutidos, quesos, huevo)", junto a cosas de perfil muy distinto |
+| **Verduras crudas · Verduras cocidas** | **Dos** grupos en la encuesta, **un** subgrupo en la lista |
+| **Grasas saludables** | Un grupo en la encuesta que se reparte en **cuatro** subgrupos de la lista |
+| **Agua pura · Café y té** | **No tienen subgrupo en la lista.** El agua además se captura aparte, en su propia pregunta |
+
+## Y una cosa que vimos en tu archivo, por si cambia la respuesta
+
+En la entrega vigente **`calcConsumo` está como stub vacío**, con tu nota: *"mantener `calcConsumo` como
+stub vacío para no romper referencias"*. O sea que hoy la conversión no la hace tu prototipo tampoco.
+
+**Lo que te pedimos: el mapa, no el dato.** Para cada uno de los 18 grupos, a qué subgrupo (o subgrupos, y
+en qué proporción) corresponde. Con eso lo construimos. **No lo resolvemos por nuestra cuenta porque
+repartir "carnes rojas" entre magras y altas en lípidos es una decisión clínica, no de programación.**
+
+---
+
+# 4 · Un tratamiento reemitido que es idéntico al anterior: ¿se le avisa al paciente?
 
 **Es un caso que apareció al construir, no una duda de lectura.** Desde esta semana un profesional puede
 aprobar una prescripción, reabrirla escribiendo el motivo, y volver a aprobarla. Si en el medio **no cambia
@@ -64,7 +200,7 @@ que come)?
 
 ---
 
-# 2 · Un campo vacío se lee igual que una decisión, y ahí sí podemos hacer algo
+# 5 · Un campo vacío se lee igual que una decisión, y ahí sí podemos hacer algo
 
 **Empezamos aclarando lo que NO te estamos pidiendo**, porque tu regla es clara y no la discutimos:
 *"Ninguna cifra de la prescripción nutricional lleva techo, piso, validación ni advertencia"* (§5 del 27 de
