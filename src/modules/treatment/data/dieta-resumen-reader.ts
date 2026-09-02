@@ -1,6 +1,7 @@
 import "server-only";
 
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
+import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { decodeSurveyValue } from "@/modules/clinical-pipeline/services/build-engine-input";
 import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
 import { resumenDietaParrafo } from "@/clinical-engine/resumen-dieta";
@@ -163,6 +164,34 @@ const FA_NIVEL_POR_FACTOR: Record<string, string> = {
 };
 
 /**
+ * COMPLETA EL `bis` CON EL PESO Y LA TALLA, y devuelve null si no los hay.
+ *
+ * EL DEFECTO QUE CIERRA, encontrado en el smoke del 2026-09-03 y cometido por mi el mismo dia en que
+ * registre la leccion: los callers pasan `snapshot.indicators`, que trae FMI y FFMI pero **NO trae peso
+ * ni talla**. `motorTratNutri` no falla cuando le faltan: usa sus propios defaults (70 kg / 170 cm), o
+ * sea IMC 24,2, y **contesta 1,0 g/kg**. Un numero plausible, en la unidad correcta, que se lee como
+ * resultado.
+ *
+ * A QUIEN LE DOLIA: solo a las ramas que dependen del IMC. Obesidad se decide por FMI (que si llega) y
+ * ERC por la encuesta, asi que esas dos salian bien. La que salia mal era la DESNUTRICION, o sea el
+ * perfil donde una proteina equivocada hace mas dano: un paciente de 43,7 kg y 155 cm (IMC 18,2) recibia
+ * 1,0 g/kg en vez de 1,5, y la pantalla mostraba tres cifras distintas del mismo concepto.
+ *
+ * POR QUE DEVUELVE NULL EN VEZ DE SEGUIR: porque la alternativa es exactamente el defecto. Sin peso el
+ * motor igual contesta, y su respuesta no se distingue de una buena. Un null viaja hasta `protFuente`,
+ * que lo DICE en pantalla; un 1,0 inventado no lo dice nadie.
+ */
+function conPesoYTalla(
+  bis: Record<string, unknown>,
+  comp: { peso: number | null; talla: number | null } | null,
+): Record<string, unknown> | null {
+  const peso = Number(bis.peso ?? comp?.peso ?? 0);
+  const talla = Number(bis.talla ?? comp?.talla ?? 0);
+  if (!(peso > 0) || !(talla > 0)) return null;
+  return { ...bis, peso, talla };
+}
+
+/**
  * LA PROTEINA QUE PRESCRIBE EL MOTOR, sola, para los snapshots ANTERIORES al sellado (2026-09-03).
  *
  * Existe por una razon de orden y no de calculo: en la pagina, `getPrescripcionNutricional` se llama
@@ -180,7 +209,11 @@ export async function getProtKgPrescrito(
 ): Promise<number | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
-  const m = motorTratNutri(enc, bis, {}) as { protKg: number };
+  // El peso y la talla NO vienen en `indicators`; se leen de la composicion. Sin ellos no se corre el
+  // motor (ver `conPesoYTalla`): contestaria con sus defaults y nadie podria notarlo.
+  const completo = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
+  if (!completo) return null;
+  const m = motorTratNutri(enc, completo, {}) as { protKg: number };
   const v = Number(m?.protKg);
   return Number.isFinite(v) && v > 0 ? v : null;
 }
@@ -230,6 +263,12 @@ export async function getPrescripcionNutricional(
 ): Promise<PrescripcionNutricional | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
+  // MISMA GUARDA que en `getProtKgPrescrito`, y por la misma razon: este chip llevaba diciendo
+  // "Proteína 1 g/kg" desde que el motor se conecto (2026-08-31) para los pacientes cuyo IMC decide la
+  // rama, porque el bis llegaba sin peso ni talla. No es un defecto que introdujo el sellado; es el que
+  // el sellado hizo visible al poner la misma cifra en dos sitios.
+  const bisCompleto = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
+  if (!bisCompleto) return null;
 
   const edit: Record<string, number> = {};
   if (pesoMeta != null && pesoMeta > 0) edit.peso_meta = pesoMeta;
@@ -237,7 +276,7 @@ export async function getPrescripcionNutricional(
   const faNivel = palEfectivo != null ? FA_NIVEL_POR_FACTOR[String(palEfectivo)] : undefined;
   if (faNivel) (edit as Record<string, unknown>).fa_nivel = faNivel;
 
-  const m = motorTratNutri(enc, bis, edit) as {
+  const m = motorTratNutri(enc, bisCompleto, edit) as {
     tipoEnergia: string;
     protKg: number;
     protG: number;

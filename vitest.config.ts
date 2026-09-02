@@ -32,6 +32,7 @@ const DB_TESTS = [
   "src/tests/pipeline-propagation.test.ts",
   "src/tests/profession-enum.test.ts",
   "src/tests/protocol-concurrency.test.ts",
+  "src/tests/motor-bis-completo.test.ts",
   "src/tests/proteina-forma-vieja.test.ts",
   "src/tests/report-trajectory-seal.test.ts",
   "src/tests/rls.test.ts",
