@@ -58,8 +58,32 @@ export type HcObservacionDoc = {
   fecha: string;
 };
 
+export type HcIndiceDoc = {
+  codigo: string;
+  nombre: string;
+  valor: string | null;
+  clasificacion: string | null;
+  referencia: string | null;
+  severidad: number | null;
+};
+
 export type HistoriaClinicaDoc = {
   paciente: string;
+  /** Resumen diagnostico del NUTRICIONISTA (su §11c). null si el DFI no esta completo. */
+  resumenProfesional: string | null;
+  /** El DFI redactado como parrafo. null si el DFI no esta completo. */
+  dfiParrafo: string | null;
+  /** Meta terapeutica de nutricion, de las rutas activas. */
+  metaTerapeutica: string | null;
+  /** POR QUE no se pudieron emitir los tres de arriba. Un bloque ausente sin explicacion, en un documento
+   *  probatorio, se lee como que no se evaluo. */
+  motivoSinNarrativa: string | null;
+  /** Indices ANI BIS-E alterados, con su referencia y su severidad. */
+  indices: HcIndiceDoc[];
+  /** Rutas de atencion activadas por el diagnostico. */
+  rutas: { label: string; activacion: string | null }[];
+  /** Composicion corporal del equipo, con su clasificacion. Peso y talla van arriba, en los datos. */
+  composicion: { etiqueta: string; valor: string; clasificacion: string | null }[];
   edad: number | null;
   sexo: string | null;
   pesoKg: number | null;

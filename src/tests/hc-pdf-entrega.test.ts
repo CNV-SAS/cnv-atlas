@@ -110,3 +110,58 @@ describe("sin correo del paciente se dice qué falta y dónde se arregla", () =>
     expect(SERVICIO).toContain("Regístralo en su ficha");
   });
 });
+
+// ── LOS SIETE BLOQUES QUE FALTABAN (smoke de Santiago, 2026-09-02) ─────────────────────────────────
+//
+// EL PDF ENVIADO NO LLEVABA: el resumen diagnóstico del nutricionista, el DFI narrativo, la meta
+// terapéutica, la composición corporal, los índices ANI y las rutas activadas. **Los seis por la MISMA
+// razón**: el lector pasaba `snapshot: null`, así que todo lo que depende del diagnóstico salía vacío.
+//
+// Y LA LECTURA DE SANTIAGO, que es la que gobierna: es el mismo documento por otro canal, y el paciente que
+// pide su historia clínica tiene derecho a la COMPLETA, no a un extracto. Una HC sin el diagnóstico
+// funcional ni la composición corporal no es la historia clínica: es un resumen, que es justo lo que el
+// legal dijo que no se puede entregar.
+describe("el PDF lleva TODO lo que lleva la pantalla, no un extracto", () => {
+  it("el lector carga el snapshot del diagnóstico", () => {
+    // La causa raíz de los seis: sin esto, todos los bloques del diagnóstico salían vacíos.
+    expect(READER).toContain("getEvaluationResults(evaluationId)");
+    expect(sinComentarios(READER)).not.toContain("snapshot: null,");
+  });
+
+  it.each([
+    ["resumen diagnóstico del nutricionista", "resumenProfesional"],
+    ["DFI narrativo", "dfiParrafo"],
+    ["meta terapéutica", "metaTerapeutica"],
+    ["índices ANI", "indices"],
+    ["rutas activadas", "rutas"],
+    ["composición corporal", "composicion"],
+    ["remisiones", "remisiones"],
+  ])("y el documento imprime %s", (_n, campo) => {
+    expect(sinComentarios(DOC), `el PDF no imprime ${campo}`).toContain(`hc.${campo}`);
+  });
+
+  it("el resumen del profesional es SIEMPRE el del nutricionista", () => {
+    // No el de quien genera el documento: la historia que se entrega no puede depender de quién la sacó.
+    expect(READER).toContain('"nutricionista"');
+  });
+
+  it("y cuando la narrativa NO se puede emitir, se dice POR QUÉ", () => {
+    // Un bloque ausente sin explicación, en un documento probatorio, se lee como que no se evaluó.
+    expect(READER).toContain("motivoSinNarrativa");
+    expect(DOC).toContain("hc.motivoSinNarrativa");
+  });
+
+  it("los índices ANI SÍ van aquí, al revés que en el reporte del paciente", () => {
+    // CONTROL de que este candado y el de `report-render` no se confundan: lo que allí está prohibido,
+    // aquí es obligatorio. Su §7.1 prohíbe los índices en lo que el paciente recibe COMO reporte; la
+    // historia que él mismo pide es su registro clínico.
+    expect(DOC).toContain("Índices ANI BIS-E");
+  });
+
+  it("y la composición NO reconstruye el clasificador de la pantalla", () => {
+    // `wangRowDx` necesita un contexto que la pantalla arma; reproducirlo aquí sería una SEGUNDA
+    // construcción del clasificador, y si divergiera, la historia impresa y la enviada clasificarían
+    // distinto al mismo paciente. El DATO va completo; el veredicto vive en los índices y en el DFI.
+    expect(sinComentarios(READER)).not.toContain("wangRowDx");
+  });
+});

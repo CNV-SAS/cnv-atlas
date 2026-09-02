@@ -110,6 +110,83 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           )}
         </Seccion>
 
+        {/* LOS TRES PÁRRAFOS DEL DIAGNÓSTICO. Faltaban los SIETE bloques que dependen del snapshot, y
+            todos por la misma razón: el lector no lo cargaba. Una historia clínica sin el diagnóstico
+            funcional ni la composición corporal no es la historia clínica, es un resumen, y el paciente
+            que la pide tiene derecho a la completa. */}
+        {hc.motivoSinNarrativa ? (
+          <Seccion titulo="Resumen del diagnóstico">
+            {/* SE DICE POR QUÉ NO ESTÁ. Un bloque ausente sin explicación, en un documento probatorio, se
+                lee como que no se evaluó. */}
+            <Text style={styles.vacio}>{hc.motivoSinNarrativa}</Text>
+          </Seccion>
+        ) : (
+          <>
+            {hc.resumenProfesional ? (
+              <Seccion titulo="Resumen diagnóstico · Nutricionista">
+                <Text>{hc.resumenProfesional}</Text>
+              </Seccion>
+            ) : null}
+            {hc.dfiParrafo ? (
+              <Seccion titulo="Diagnóstico funcional">
+                <Text>{hc.dfiParrafo}</Text>
+              </Seccion>
+            ) : null}
+            {hc.metaTerapeutica ? (
+              <Seccion titulo="Meta terapéutica">
+                <Text>{hc.metaTerapeutica}</Text>
+              </Seccion>
+            ) : null}
+          </>
+        )}
+
+        {/* LA COMPOSICIÓN CORPORAL. Peso y talla ya van arriba; aquí van las medidas del equipo que
+            sostienen el diagnóstico, con su clasificación. */}
+        {hc.composicion.length > 0 ? (
+          <Seccion titulo="Composición corporal">
+            {hc.composicion.map((c) => (
+              <View key={c.etiqueta} style={styles.fila}>
+                <Text style={[styles.etiqueta, { width: 170 }]}>{c.etiqueta}</Text>
+                <Text style={styles.valor}>{c.valor}</Text>
+                <Text style={styles.valor}>{c.clasificacion ?? ""}</Text>
+              </View>
+            ))}
+          </Seccion>
+        ) : null}
+
+        {/* LOS ÍNDICES ANI BIS-E. Aquí SÍ van, al revés que en el reporte del paciente: este es el
+            documento técnico. Su §7.1 prohíbe los índices en lo que el paciente recibe COMO reporte; la
+            historia que él mismo pide es otra cosa, es su registro clínico. */}
+        {hc.indices.length > 0 ? (
+          <Seccion titulo="Índices ANI BIS-E alterados">
+            <View style={styles.fila}>
+              <Text style={[styles.etiqueta, { width: 150, fontWeight: "bold" }]}>Índice</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Valor</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Clasificación</Text>
+              <Text style={[styles.valor, { fontWeight: "bold" }]}>Referencia</Text>
+            </View>
+            {hc.indices.map((i) => (
+              <View key={i.codigo} style={styles.fila}>
+                <Text style={[styles.etiqueta, { width: 150 }]}>{i.nombre}</Text>
+                <Text style={styles.valor}>{i.valor ?? "—"}</Text>
+                <Text style={styles.valor}>{i.clasificacion ?? "—"}</Text>
+                <Text style={styles.valor}>{i.referencia ?? "—"}</Text>
+              </View>
+            ))}
+          </Seccion>
+        ) : null}
+
+        {hc.rutas.length > 0 ? (
+          <Seccion titulo="Rutas de atención activadas">
+            {hc.rutas.map((r) => (
+              <Text key={r.label} style={styles.item}>
+                {r.label}
+                {r.activacion ? ` · ${r.activacion}` : ""}
+              </Text>
+            ))}
+          </Seccion>
+        ) : null}
+
         {hc.objetivoTratamiento ? (
           <Seccion titulo="Objetivo del tratamiento">
             <Text>{hc.objetivoTratamiento}</Text>
