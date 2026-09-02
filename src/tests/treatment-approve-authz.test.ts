@@ -15,6 +15,16 @@ vi.mock("@/modules/treatment/data/treatment-reader", () => ({
 vi.mock("@/modules/payments/data/payments-repository", () => ({
   getProfessionalProfileIdByUser: vi.fn(),
 }));
+// LOS DOS LECTORES QUE LA APROBACION GANO EL 2026-09-03, al pasar la proteina a prescribirla el motor:
+// un snapshot anterior al sellado no la trae, asi que el service la resuelve en vivo. Se mockean porque
+// este test es de AUTORIZACION y corre aislado; que devuelvan null ejercita ademas el peor caso (sin
+// encuesta legible), donde la cascada cae al minimo poblacional y lo declara.
+vi.mock("@/modules/diagnoses/data/results-reader", () => ({
+  getEvaluationResults: vi.fn(async () => null),
+}));
+vi.mock("@/modules/treatment/data/dieta-resumen-reader", () => ({
+  getProtKgPrescrito: vi.fn(async () => null),
+}));
 vi.mock("@/modules/treatment/data/actor-profession-reader", () => ({
   getActorProfession: vi.fn(),
 }));

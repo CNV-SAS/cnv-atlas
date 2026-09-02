@@ -103,7 +103,12 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(o.calorico.pal).toBe(1.375);
     expect(o.calorico.get).toBe(Math.round(o.calorico.gebAuto * 1.375));
     expect(o.calorico.kcalObj).toBe(o.calorico.get); // max(1000, round(GET - 0))
-    expect(o.calorico.protG).toBe(61); // round(0.8*76.625)=round(61.3); no depende del GEB
+    // LA PROTEINA LA PRESCRIBE EL MOTOR desde el 2026-09-03 (su §9.6 punto 4): 1,3 g/kg, no el 0,8 del
+    // minimo poblacional. Este paciente cae en la rama de OBESIDAD de `motorTratNutri` (FMI 6,369 > 6 en
+    // hombre) y sin sarcopenia (FFMI 21,1 y ASMI 8,625, los dos por encima de su corte), asi que
+    // `protKg = 1.3`. round(1.3*76.625) = round(99.6) = 100. Antes salia round(0.8*76.625) = 61.
+    expect(o.calorico.protGKg).toBe(1.3);
+    expect(o.calorico.protG).toBe(100); // round(1.3*76.625)=round(99.6); no depende del GEB
     // Y LA COHERENCIA DEL REPARTO, que es lo que de verdad hay que proteger cuando las cifras se mueven:
     // los tres macros tienen que sumar el objetivo.
     const suma = o.calorico.protG * 4 + o.calorico.fatG * 9 + o.calorico.choG * 4;
@@ -263,7 +268,7 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
     expect(ef.calorico.gebAuto).toBe(Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54));
     expect(ef.calorico.get).toBe(Math.round(ef.calorico.gebAuto * 1.375));
     expect(ef.calorico.kcalObj).toBe(ef.calorico.get); // deficit 0 (punto 6): sugerido = mantenimiento
-    expect(ef.calorico.protG).toBe(61);
+    expect(ef.calorico.protG).toBe(100); // 1,3 g/kg del motor sobre 76,625 (ver el caso base)
   });
 
   it("con peso meta y PAL ajustados: RE-CORRE la cadena completa (no sustituye)", () => {
@@ -276,6 +281,6 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
     expect(ef.calorico.gebAuto).not.toBe(Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54));
     expect(ef.calorico.get).toBe(Math.round(ef.calorico.gebAuto * 1.55));
     expect(ef.calorico.kcalObj).toBe(ef.calorico.get); // deficit 0 (punto 6)
-    expect(ef.calorico.protG).toBe(64); // round(0.8*80), protMin sin cambiar
+    expect(ef.calorico.protG).toBe(104); // round(1.3*80): el peso meta cambia, la prescripcion del motor no
   });
 });

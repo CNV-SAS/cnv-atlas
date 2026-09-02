@@ -127,6 +127,7 @@ import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuti
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
 import {
   getPrescripcionNutricional,
+  getProtKgPrescrito,
   getResumenProfesionForEvaluation,
 } from "@/modules/treatment/data/dieta-resumen-reader";
 import {
@@ -482,6 +483,17 @@ export default async function ResultadosEvaluacionPage({
   // energetico del titulo se queda clavado en el que el motor calculo por su cuenta. Los dos se olvidaron
   // al conectar el motor el 2026-08-31: el parametro existia y ningun caller lo pasaba, que es la tercera
   // vez esta semana que una pieza terminada se queda sin su ultimo cable.
+  // La proteina del motor, para los snapshots anteriores al 2026-09-03. Se resuelve ANTES que la cadena
+  // porque la cadena la consume, y despues se vuelve a llamar al motor COMPLETO con el objetivo y el PAL
+  // ya efectivos. No es la misma llamada dos veces por descuido: `protKg` no depende de esos dos, pero el
+  // tipo energetico del titulo si, y ese solo se puede calcular cuando la cadena ya dio su objetivo.
+  const protKgVigente = isEngineOutput(results.snapshot)
+    ? await getProtKgPrescrito(
+        id,
+        results.snapshot.sexo,
+        results.snapshot.indicators as unknown as Record<string, unknown>,
+      )
+    : null;
   const cadenaEfectiva =
     protocol?.protocolSuggested != null
       ? computeProtocoloEfectivo(protocol.protocolSuggested, {
@@ -492,7 +504,7 @@ export default async function ResultadosEvaluacionPage({
           fatPct: protocol.adjFatPct,
           deficit: protocol.adjDeficit,
           pesoMeta: protocol.pesoMetaFijado,
-        })
+        }, { protKgVigente })
       : null;
   const prescripcionNutricional = isEngineOutput(results.snapshot)
     ? await getPrescripcionNutricional(
@@ -543,6 +555,7 @@ export default async function ResultadosEvaluacionPage({
   // riesgo eran estos seis, que no tenian nombre en ninguna parte y un segundo sitio los habria armado a
   // su manera.
   const hcCompuesta = componerHistoriaClinica({
+    protKgVigente,
     snapshot: isEngineOutput(results.snapshot)
       ? {
           indicators: results.snapshot.indicators as unknown as Record<string, number | null> & {
