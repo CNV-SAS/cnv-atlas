@@ -264,7 +264,13 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
       const faltan = src
         .split("\n")
         .map((l) => l.trim())
-        .filter((l) => l.length > 45 && !l.startsWith("//") && !ANDAMIAJE.test(l))
+        // La asignacion entra aunque sea corta, por lo mismo que arriba: el umbral de longitud dejaba
+        // fuera los interruptores. Este era el SEGUNDO filtro con el mismo hueco, en el mismo archivo;
+        // aparecio al barrer los demas candados. Medido: +36 lineas vigiladas, 0 rojos.
+        .filter(
+          (l) =>
+            (l.length > 45 || ES_ASIGNACION.test(l)) && !l.startsWith("//") && !ANDAMIAJE.test(l),
+        )
         .filter((l) => !vigente.includes(sinEspacio(sinDeclaracion(l))));
       expect(
         faltan,
