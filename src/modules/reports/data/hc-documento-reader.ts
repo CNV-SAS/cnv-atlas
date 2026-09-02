@@ -1,7 +1,13 @@
 import "server-only";
 
+import { dfiNarrativeFromOutput } from "@/clinical-engine/dfi-narrative";
+import { indicatorSeverities } from "@/clinical-engine/severity";
 import { getPatientConsents } from "@/modules/consent/data/consent-reader";
+import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
+import { indicatorRange } from "@/modules/diagnoses/data/indicator-ranges";
+import { getResumenProfesionForEvaluation } from "@/modules/treatment/data/dieta-resumen-reader";
 import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
+import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
@@ -28,10 +34,16 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const header = await getHcHeaderForEvaluation(evaluationId);
   if (!header) return null;
 
-  const [composition, protocol, answers] = await Promise.all([
+  const [composition, protocol, answers, results] = await Promise.all([
     getCompositionForEvaluation(evaluationId),
     getTreatmentProtocol(evaluationId),
     getSurveyAnswersForEvaluation(evaluationId),
+    // EL SNAPSHOT DEL DIAGNOSTICO. Sin el faltaban SIETE bloques (el resumen del profesional, el DFI
+    // narrativo, la meta terapeutica, la composicion corporal, los indices ANI y las rutas activadas), y
+    // todos por la MISMA razon: no estaban disponibles, no es que se hubieran dejado fuera. Una historia
+    // clinica sin el diagnostico funcional ni la composicion corporal no es la historia clinica: es un
+    // resumen, y es exactamente lo que el legal dijo que no se puede entregar.
+    getEvaluationResults(evaluationId),
   ]);
 
   const preguntas = (answers ?? []).flatMap((d) => d.questions);
@@ -51,11 +63,18 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       ).catch(() => null)
     : null;
 
+  // `getEvaluationResults` devuelve null si la evaluacion no tiene diagnostico: ahi no hay snapshot y los
+  // bloques que dependen de el salen con su motivo, no vacios.
+  const engine = results && results.compatible ? results.snapshot : null;
+  const sexoM = engine ? engine.sexo !== "F" : header.sexo !== "F";
+
   const compuesta = componerHistoriaClinica({
-    // El PDF no recibe el snapshot del motor: sus indices se sellan en el diagnostico y no en el
-    // protocolo. Sin el, los bloques que dependen de indicadores salen vacios, que es lo correcto: es
-    // preferible un bloque ausente a uno con cifras de otra parte.
-    snapshot: null,
+    snapshot: engine
+      ? {
+          indicators: engine.indicators as unknown as Record<string, number | null> & { FFMI: number },
+          classifications: engine.classifications as unknown as Record<string, unknown>,
+        }
+      : null,
     suggested: snapshot,
     ajustes: {
       geb: protocol?.adjGeb ?? null,
@@ -66,7 +85,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       deficit: protocol?.adjDeficit ?? null,
       pesoMeta: protocol?.pesoMetaFijado ?? null,
     },
-    sexoM: header.sexo !== "F",
+    sexoM,
     sodioMax: prescripcion?.sodioMax ?? null,
     protKg: prescripcion?.protKg ?? null,
     protG: prescripcion?.protG ?? null,
@@ -86,8 +105,72 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   // se pacto fue el texto de SU version.
   const consents = protocol?.patientId ? await getPatientConsents(protocol.patientId) : [];
 
+  // LOS TRES PARRAFOS. Mismas fuentes que la pantalla: el del DFI sale de `dfiNarrativeFromOutput` y el
+  // del profesional de `getResumenProfesionForEvaluation`, que es el que cambia segun quien mira. Aqui se
+  // pide el del NUTRICIONISTA a proposito: es el que su archivo pone bajo "RESUMEN DIAGNOSTICO", y el
+  // documento que se entrega no puede depender de quien lo genero.
+  //
+  // Y CUANDO NO SE PUEDEN EMITIR SE DICE POR QUE, no se omiten: un bloque ausente sin explicacion en un
+  // documento probatorio se lee como que no se evaluo.
+  const dfiCompleto = engine != null && engine.dfi.complete;
+  const narrativa = dfiCompleto ? dfiNarrativeFromOutput(engine) : null;
+  const motivoSinNarrativa = !engine
+    ? "Este diagnóstico se emitió antes de portar el resumen funcional y la meta terapéutica al motor."
+    : !dfiCompleto
+      ? "La encuesta está incompleta. El resumen funcional y la meta terapéutica se emiten cuando el diagnóstico está completo."
+      : null;
+  const resumenProfesional = dfiCompleto
+    ? await getResumenProfesionForEvaluation(
+        evaluationId,
+        engine.sexo,
+        "nutricionista",
+        engine.indicators as unknown as Record<string, unknown>,
+      )
+    : null;
+
+  // LOS INDICES ANI y la composicion, que son lo que hace de esto un documento TECNICO y no un extracto.
+  const severidades = engine ? (indicatorSeverities(engine) as Record<string, number>) : {};
+  const indices = compuesta.indices.map((i) => ({
+    codigo: i.codigo,
+    nombre: i.nombre ?? i.codigo,
+    valor: i.valor,
+    clasificacion: i.clasificacion,
+    referencia: engine ? (indicatorRange(i.codigo, engine.indicators, sexoM)?.reference ?? null) : null,
+    severidad: severidades[i.codigo] ?? null,
+  }));
+
   return {
     paciente: header.paciente,
+    resumenProfesional,
+    dfiParrafo: narrativa?.parrafo ?? null,
+    metaTerapeutica: narrativa?.metas.nutricion ?? null,
+    motivoSinNarrativa,
+    indices,
+    rutas: (results?.rutasContent ?? []).map((r) => ({
+      label: r.label,
+      activacion: r.activacion ?? null,
+    })),
+    // LA MISMA TABLA QUE LA PANTALLA, fila por fila y con su referencia.
+    //
+    // SIN LA CLASIFICACION DE CADA FILA, Y VA DICHO: el veredicto ("Optimo", "Riesgo") lo produce
+    // `wangRowDx`, que necesita un contexto que la pantalla arma (referencias poblacionales, IMC, cintura,
+    // angulo de fase, indice de reactancia, y el formateador de cada fila). Reproducirlo aqui seria una
+    // SEGUNDA CONSTRUCCION del clasificador, que es justo lo que este documento existe para no tener: si
+    // divergiera, la historia impresa y la enviada clasificarian distinto al mismo paciente.
+    //
+    // El DATO va completo, que es lo que la historia clinica debe llevar; el veredicto de cada medida vive
+    // en los indices y en el diagnostico funcional, que si viajan. Sacar `wangRowDx` a una capa compartida
+    // es el siguiente paso y esta anotado.
+    composicion: composition
+      ? allCompositionRows(composition)
+          .filter((f) => f.value != null)
+          .map((f) => ({
+            etiqueta: f.label,
+            valor: `${f.value!.toFixed(f.decimals ?? 2)} ${f.unit}`.trim(),
+            clasificacion:
+              f.referenceLabel ?? (f.reference != null ? `ref ${f.reference}` : null),
+          }))
+      : [],
     edad: header.edad,
     sexo: header.sexo,
     pesoKg: composition?.peso ?? null,
