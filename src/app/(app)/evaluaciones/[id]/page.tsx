@@ -111,8 +111,7 @@ import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
 import { HcConsentimiento } from "@/modules/reports/components/hc-consentimiento";
 import { HcImprimir } from "@/modules/reports/components/hc-imprimir";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
-import { indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
-import { recomendacionesDe } from "@/modules/reports/data/hc-recomendaciones";
+import { componerHistoriaClinica } from "@/modules/reports/data/hc-composicion";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -518,24 +517,6 @@ export default async function ResultadosEvaluacionPage({
   // que un pendiente resuelto despues del cierre deja de aparecer solo.
   // Bloque ANI BIS-E de la tabla de la HC: su historia clinica los muestra dentro de la tabla de Wang y
   // Atlas los tiene en la tabla de indices del Diagnostico. Se anaden SOLO aqui para no duplicarlos alli.
-  const hcSev = isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {};
-  const hcAni = isEngineOutput(results.snapshot)
-    ? indicesAniAlterados(
-        {
-          IFC: results.snapshot.indicators.ifc,
-          IRC: results.snapshot.indicators.irc,
-          ISCM: results.snapshot.indicators.iscm,
-          IEHH: results.snapshot.indicators.iehh,
-          EB: results.snapshot.indicators.eb,
-          IAE: results.snapshot.indicators.iae,
-          PABU: results.snapshot.indicators.pabu,
-          "ICA-BIS": results.snapshot.indicators.icaBis,
-        },
-        results.snapshot.classifications,
-        hcSev,
-        sexoM,
-      )
-    : [];
 
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).
   const hcRemisiones = protocol?.treatmentId ? await listReferralsForTreatment(protocol.treatmentId) : [];
@@ -543,6 +524,47 @@ export default async function ResultadosEvaluacionPage({
   // Bloques 10 y 11: salen del protocolo SELLADO (protocol_suggested), no se recalculan. El sodio no
   // viaja: lo fija el motor de prescripcion que aun no se porta.
   const ps = protocol?.protocolSuggested ?? null;
+
+  // LOS SEIS BLOQUES DE LA HISTORIA QUE SE ARMABAN AQUI SUELTOS ahora salen de UNA composicion
+  // compartida (`componerHistoriaClinica`). No es limpieza: es la condicion para portar la historia a PDF
+  // sin que el papel y la pantalla se desincronicen. Los bloques con lector propio (cabecera, antecedentes,
+  // remisiones, autorizaciones) nunca fueron el riesgo, porque el PDF puede llamar al mismo lector; el
+  // riesgo eran estos seis, que no tenian nombre en ninguna parte y un segundo sitio los habria armado a
+  // su manera.
+  const hcCompuesta = componerHistoriaClinica({
+    snapshot: isEngineOutput(results.snapshot)
+      ? {
+          indicators: results.snapshot.indicators as unknown as Record<string, number | null> & {
+            FFMI: number;
+          },
+          classifications: results.snapshot.classifications as unknown as Record<string, unknown>,
+        }
+      : null,
+    suggested: ps,
+    ajustes: {
+      geb: protocol?.adjGeb ?? null,
+      pal: protocol?.adjPal ?? null,
+      kcalObj: protocol?.adjKcalObj ?? null,
+      protGkg: protocol?.adjProtGkg ?? null,
+      fatPct: protocol?.adjFatPct ?? null,
+      deficit: protocol?.adjDeficit ?? null,
+      pesoMeta: protocol?.pesoMetaFijado ?? null,
+    },
+    sexoM,
+    sodioMax: prescripcionNutricional?.sodioMax ?? null,
+    protKg: prescripcionNutricional?.protKg ?? null,
+    protG: prescripcionNutricional?.protG ?? null,
+    d5_39:
+      (entrySurvey ?? []).flatMap((d) => d.questions).find((q) => q.fieldKey === "d5_39")?.answerValue ??
+      null,
+    flags: { tieneHTA: ps?.flags.tieneHTA ?? false, tieneIRC: ps?.flags.tieneIRC ?? false },
+    deficitEstrategia: ps?.estrategia.deficit ?? 0,
+  });
+  const hcSev = hcCompuesta.severidades;
+  const hcAni = hcCompuesta.indices;
+  const hcPlan = hcCompuesta.plan;
+  const hcRecs = hcCompuesta.recomendaciones;
+
   // LA HISTORIA REGISTRA LO PRESCRITO, NO LO SUGERIDO (defecto del smoke, 2026-09-01). Estos seis campos
   // salian del snapshot SELLADO (`ps.calorico`), que es la propuesta del modelo ANTES de los ajustes del
   // profesional. El plan que recibe el paciente sale de la cadena EFECTIVA. Resultado: los DOS DOCUMENTOS
@@ -556,61 +578,9 @@ export default async function ResultadosEvaluacionPage({
   //
   // Ahora es la MISMA funcion que usan el panel y el plan del paciente. Un documento clinico no puede
   // registrar una cifra que nadie prescribio.
-  const hcEfectivo = ps
-    ? computeProtocoloEfectivo(ps, {
-        geb: protocol?.adjGeb ?? null,
-        pal: protocol?.adjPal ?? null,
-        kcalObj: protocol?.adjKcalObj ?? null,
-        protGkg: protocol?.adjProtGkg ?? null,
-        fatPct: protocol?.adjFatPct ?? null,
-        deficit: protocol?.adjDeficit ?? null,
-        pesoMeta: protocol?.pesoMetaFijado ?? null,
-      }).calorico
-    : null;
-  const hcPlan = hcEfectivo
-    ? {
-        geb: hcEfectivo.geb,
-        get: hcEfectivo.get,
-        kcalObjetivo: hcEfectivo.kcalObj,
-        proteinaG: hcEfectivo.protG,
-        proteinaGKg: hcEfectivo.protGKg,
-        carbohidratosG: hcEfectivo.choG,
-        grasasG: hcEfectivo.fatG,
-        actividadFisica: `PAL ${hcEfectivo.pal}`,
-        // EL SODIO YA SE CALCULA: el motor de prescripcion lleva conectado desde el 2026-08-31. El bloque
-        // decia "se emitira cuando se incorpore el motor", que era cierto al escribirlo y dejo de serlo sin
-        // que nadie volviera a esa linea. Es la misma forma que el congelamiento vencido de P-50.
-        sodioMax: prescripcionNutricional?.sodioMax ?? null,
-      }
-    : null;
   // Diagnosticos personales declarados (d5_39), para los bloques condicionales de recomendaciones.
-  const hcDx = (entrySurvey ?? [])
-    .flatMap((d) => d.questions)
-    .filter((q) => q.fieldKey === "d5_39")
-    .flatMap((q) => {
-      const raw = (q.answerValue ?? "").trim();
-      if (raw === "" || raw === "[]") return [];
-      if (!raw.startsWith("[")) return [raw];
-      try {
-        const arr: unknown = JSON.parse(raw);
-        return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
-      } catch {
-        return [raw];
-      }
-    });
-  const hcRecs = recomendacionesDe({
-    diagnosticos: hcDx,
-    tieneHTA: ps?.flags.tieneHTA ?? false,
-    tieneIRC: ps?.flags.tieneIRC ?? false,
-    sarcopenia: isEngineOutput(results.snapshot) ? results.snapshot.indicators.FFMI > 0 && results.snapshot.indicators.FFMI < 17 : false,
-    exceso: (ps?.estrategia.deficit ?? 0) > 0,
-    // Las cifras del motor que gobierna, ya computadas arriba. Con ellas, tres de los cuatro bloques que
-    // esperaban dejan de esperar; el cuarto (exceso de grasa) cita el objetivo calorico, que es lo que
-    // sigue preguntado.
-    sodioMax: prescripcionNutricional?.sodioMax ?? null,
-    protKg: prescripcionNutricional?.protKg ?? null,
-    protG: prescripcionNutricional?.protG ?? null,
-  });
+
+
 
   // El RESUMEN DIAGNOSTICO de la HC lleva la profesion del actor en el titulo, como el suyo. Y por eso
   // el CONTENIDO tiene que ser el de esa profesion: el parrafo de dieta es del nutricionista (es el que su
