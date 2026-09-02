@@ -3,7 +3,7 @@
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useActionState, useId, useState } from "react";
 
-import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
+import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { AlimentosDelSubgrupo, ListaIntercambioPaciente } from "./lista-intercambio";
@@ -626,6 +626,24 @@ function CadenaCaloricaSection({
               step="1"
             />
           </div>
+          {/* LA CADENA SE SELLO CON UNA CIENCIA ANTERIOR, y hay que decirlo donde se ve la cifra.
+              EL HUECO QUE CIERRA: el mecanismo de vigencia de emision compara tres dimensiones
+              (`classification`, `calibration`, `structural_mccb`) y NO el protocolo. La version del motor
+              calorico se sella dentro de `protocol_suggested` y no la mira nadie: al medirlo habia CINCO
+              versiones distintas vivas en la base. Asi que subir la version, por si sola, no avisaba a
+              nadie.
+              POR QUE AQUI Y NO EN EL AVISO GENERAL: es donde el nutricionista va a ver la cifra que
+              cambia. Un aviso arriba, en la pantalla de diagnostico, no llega a la pantalla donde se
+              prescribe. Y se dice QUE cambia, no solo que hay desfase: sin eso, "emitido con version
+              anterior" no le dice si tiene que hacer algo. */}
+          {snap.protocolEngineVersion !== PROTOCOL_ENGINE_VERSION ? (
+            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
+              Esta cadena se selló con una versión anterior del modelo calórico
+              ({snap.protocolEngineVersion}). Si reabres la prescripción y se recalcula, el peso meta y con
+              él los gramos de proteína pueden moverse: la fórmula del peso meta cambió el 1 de septiembre.
+            </p>
+          ) : null}
+
           {/* DOS PROTEINAS DEL MISMO PACIENTE, y hay que decirlo (hallazgo del smoke, 2026-09-01).
               El chip de arriba dice lo que PRESCRIBE `motorTratNutri`, el motor que Gildardo puso a
               gobernar la prescripcion nutricional. Esta cadena calcula los macros con el `protMin` de

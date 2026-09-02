@@ -98,6 +98,18 @@ describe("las versiones subieron: sin eso, la reemisión del 12b no puede dispar
   });
 
   it("y el conjunto de protocolo también, porque el fenotipo alimenta la prescripción", () => {
-    expect(VERSION).toContain('PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-31"');
+    // LA ASERCION SE HIZO DERIVADA (2026-09-01), y la razon es la de siempre: fijaba la version del 31 a
+    // mano, asi que el siguiente bump legitimo la ponia roja. Un candado que se pone rojo cuando el
+    // sistema hace lo correcto entrena a actualizarlo sin leerlo, y ahi deja de ser candado.
+    //
+    // Lo que este test quiere afirmar no es "la version es esta", es "la version SUBIO respecto de la que
+    // habia cuando se conecto la dinamometria". Eso es lo que hace falta para que la reemision del 12b
+    // pueda dispararse, y es lo unico que no envejece.
+    const PREVIA_A_LA_DINAMOMETRIA = "anibise-protocolo-2026-08-19b";
+    const m = /PROTOCOL_ENGINE_VERSION = "([^"]+)"/.exec(VERSION);
+    expect(m, "no se encuentra PROTOCOL_ENGINE_VERSION").not.toBeNull();
+    expect(m![1]).not.toBe(PREVIA_A_LA_DINAMOMETRIA);
+    // Y que siga siendo una version de protocolo, no cualquier cadena.
+    expect(m![1]).toMatch(/^anibise-protocolo-/);
   });
 });

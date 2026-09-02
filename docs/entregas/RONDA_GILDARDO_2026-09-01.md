@@ -25,13 +25,14 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 
 ---
 
-## Los diez de un vistazo
+## Los once de un vistazo
 
 **Se abrió el 31 de agosto y se cerró el 1 de septiembre**, así que algunos puntos dicen "hoy" de un día y
 otros del siguiente. Los diez van fechados donde importa.
 
-**Dos preguntas bloquean construcción:** la del punto 1 (las diez alertas de consumo) y la del 10.4 (el
-mapa de alimentos por región, sin el cual el paciente no puede recibir su lista de intercambio).
+**Tres preguntas bloquean construcción:** la del punto 1 (las diez alertas de consumo), la del 10.4 (el
+mapa de alimentos por región, sin el cual el paciente no puede recibir su lista de intercambio) y la del
+**11.1**, que llegó con tu entrega de hoy y decide qué peso meta gobierna la prescripción.
 
 **Y una no bloquea nada y es la más cara:** la del 9.6. Tus dos motores prescriben cifras distintas para
 el mismo paciente, y desde esta semana la diferencia se ve en pantalla y en el documento que él recibe.
@@ -48,10 +49,11 @@ pantalla agrupa en uno).
 | **4** | Declaración: tu punto 4 tenía **cuatro sitios**, y describimos mal uno | Nada, salvo que lo veas distinto | No |
 | **5** | Los **encabezados de categoría** de la matriz: los quitamos de la encuesta del paciente | Si se quedan solo para el profesional | No |
 | **6** | Las notas por profesión: **te preguntamos mal y contestaste sobre nuestra premisa** | A qué campo tuyo corresponde nuestra nota | No |
-| **7** | Tu `importarComposicion` mapea la **cintura al umbral OMS (102)**, no a la medida | Si es deliberado o es un descuido | No |
+| **7** | ~~La cintura al umbral~~ · **CERRADO por tu entrega del 1-sep** (punto 2: le diste el tercer respaldo) | Nada | No |
 | **8** | **`diagProf` y `tratSugerido`**: los campos por profesión de tu archivo, sin portar | Qué son y si van en Atlas | No |
 | **9** | Declaraciones sobre **la pantalla del nutricionista**: siete, una contra algo que aprobaste y una que agrupa distinto que la tuya | Si vuelven las guías dietarias, si los tiempos van en otro sitio, si te sobra la procedencia del peso meta, y si prefieres tu agrupación y tu rótulo | No |
 | **10** | **Tu §7.1 estaba aplicado a medias**: le seguíamos mandando al paciente los índices que prohibiste. Ya no, y ahora recibe el plan completo | El **mapa de alimentos por región** (10.4) y una línea por **nutracéutico** en su idioma (10.8) | **SÍ · 10.4 bloquea la lista de intercambio del paciente** |
+| **11** | **Tu entrega del 1-sep**: seis cambios ya los teníamos, portamos el peso meta, y tu corrección va al motor que no usamos | **Si `motorProtocolo` adopta tu identidad FMI+FFMI** (11.1) y si la meta del desnutrido severo se acota (11.3) | **SÍ · 11.1 decide qué peso meta gobierna** |
 
 ---
 
@@ -557,6 +559,81 @@ nutracéutico en un cuerpo es contenido clínico tuyo.
 
 ---
 
+# 11 · Tu entrega del 1 de septiembre: portada, medida, y una pregunta que no podemos resolver
+
+**De tus nueve cambios, seis ya los teníamos**, y dos de esos con la corrección más adelantada que tu
+archivo (el MCA con el 52,4 % que tú mismo corregiste el 12, y las remisiones consolidadas por
+profesional, que aplicamos con tu §9). El punto 9 no aplica: nunca tuvimos panel de DEBUG.
+
+**Portamos el 3**, que es el que pesa. Y al portarlo apareció algo que hay que decirte antes de nada.
+
+## 11.1 · Tu corrección va al motor cuyo peso meta nosotros no usamos
+
+**Y esto es lo único de tu entrega que necesita respuesta tuya.**
+
+Tu punto 3 corrige el peso meta dentro de `motorTratNutri`. Pero en Atlas ese motor **recibe el peso meta
+desde fuera**: se lo pasa la cadena calórica, que lo saca de `motorProtocolo`
+(`imc<25 ? peso : PI + 0,25 × (peso − PI)`). Así que **tu fórmula interna nunca se ejecuta en nuestro
+camino**, y la que gobierna es la del IMC que tú acabas de retirar del otro motor.
+
+**Medimos qué significa eso, con un paciente real:** talla 177, FMI 5,76 (dentro de tu rango normal 3-6),
+FFMI 19,9. Su IMC es 25,7.
+
+| | |
+| --- | --- |
+| Lo que le prescribe Atlas hoy | peso meta **72,8 kg** · **73 g** de proteína |
+| Lo que da tu fórmula nueva | peso meta **80,4 kg** · **80 g** de proteína |
+
+**80,4 es su peso actual**, porque sus dos índices están en rango. O sea: **le estamos recortando 7,6 kg a
+alguien cuya composición corporal es normal.** Es tu caso del deportista, y lo tenemos vivo.
+
+**La pregunta:** ¿`motorProtocolo` adopta la misma identidad `peso = (FMI + FFMI) × talla²`?
+
+No lo hacemos por nuestra cuenta porque sería mover una corrección tuya de un motor a otro, y eso es
+decidir ciencia. Pero aplicarla solo donde no se ejecuta sería aplicarla en el papel y no en el paciente.
+
+**Mientras respondes**, el motor queda portado verbatim y la cadena sigue como estaba. Nada cambió para
+ningún paciente.
+
+## 11.2 · Tu piso del FFMI no produce el problema inverso. Lo comprobamos
+
+Nos dijiste que sin el piso la meta de un desnutrido salía por debajo de su peso actual. Fuimos a ver si
+el piso creaba el problema contrario: mandar a subir a alguien que debe bajar.
+
+**Recorrimos toda la malla de perfiles donde el piso se activa** (FFMI bajo el mínimo), en las dos escalas
+y de 150 a 190 cm. **Ninguno con IMC ≥ 25 sale mandado a subir.** Queda como candado, así que si algún día
+apareciera, se pone rojo.
+
+## 11.3 · Pero hay un perfil donde la meta es muy ambiciosa, y queremos tu criterio
+
+**Un desnutrido severo recibe una meta de +15,9 kg.** IMC 14,5, meta con IMC 20.
+
+**No es un defecto de tu fórmula: es lo que da la identidad**, y tu piso es lo que la hace apuntar a
+recuperar la masa magra que falta, que es correcto. Lo que nos hace ruido es otra cosa: **ningún plan
+recupera 16 kg**, y tu propio motor prescribe para ese perfil realimentación gradual a 10-15 kcal/kg.
+
+**¿La meta debe acotarse en ese perfil, o es un destino y el objetivo de la consulta es otro?**
+
+Lo preguntamos porque el nutricionista ve ese número como "peso meta" y sobre él se calculan los gramos de
+proteína del plan de ESTA consulta. Si es un destino a dos años, la cifra que gobierna el plan de hoy
+debería ser otra.
+
+## 11.4 · Y una nota sobre tu punto 7, para que no pierdas tiempo con nosotros
+
+De las tres cosas de tu cadena de IA, **dos ya las teníamos**: el modelo en un solo sitio, y el
+presupuesto acotado con el razonamiento en `low` (desde el 13 de agosto, y por el mismo motivo que
+describes: el razonamiento se comía el presupuesto y la respuesta volvía vacía).
+
+**La tercera no, y la vamos a construir:** el reintento ante el tope por minuto. Hoy caemos a otro
+proveedor, que para una cola de dos segundos es peor que esperar.
+
+**Y tu punto 8 nos aplica**, porque usamos tu mismo modelo. Nuestro menú devuelve JSON y ya tolera el
+envoltorio, pero el texto del criterio clínico es prosa y se muestra en plano: si el modelo devuelve
+asteriscos, el profesional los ve. Vamos por los dos lados, como dices. Tu frase se queda con nosotros:
+*"por si el modelo desobedece, que es lo que hacen"*.
+
+---
+
 ## Lo que queda esperando, y de quién es
 
 **De esta ronda, dos preguntas bloquean construcción:**
@@ -565,6 +642,8 @@ nutracéutico en un cuerpo es contenido clínico tuyo.
    diez alertas de consumo no se pueden encender.
 2. **El mapa de alimentos por región** (10.4). Sin él, el paciente no puede recibir su lista de
    intercambio, que es el único bloque de tu §7.1 que sigue sin construirse.
+3. **Si `motorProtocolo` adopta tu identidad FMI+FFMI** (11.1). Hoy le recortamos 7,6 kg a un paciente
+   con composición normal, y tu corrección de hoy va al motor que en Atlas no calcula ese número.
 
 **Y una no bloquea nada y es la más cara: la del 9.6.** Tus dos motores prescriben cifras distintas para
 el mismo paciente, en dos sitios que ahora se ven. Cada día que pasa hay planes con un objetivo calórico y
@@ -573,6 +652,9 @@ unos gramos de proteína que salen de dos cálculos que no coinciden.
 **Sigue esperando de rondas anteriores, y no lo repetimos aquí para no hacerte leer dos veces lo mismo:**
 el bloqueo activo del alérgeno frente a la opinión del asesor legal (ronda del 28), y las cuatro que
 quedaron abiertas en la del 29.
+
+**Y una que puede que quieras responder rápido**, porque es corta y cambia una cifra que el nutricionista
+tiene delante: la del **11.3**, si la meta del desnutrido severo se acota.
 
 **Tuyo, por tu lado:** la recalibración del ICEC (μ y σ), que dijiste que llega con el dato. El
 interruptor sigue en `false` y no lo tocamos.
