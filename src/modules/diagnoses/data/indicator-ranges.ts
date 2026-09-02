@@ -158,7 +158,23 @@ export function indicatorRange(
       // REGLA GENERAL DE DOS COLAS (registrada aunque el IAE no muestre su Δ): cuando aparezca otro
       // clasificador de dos colas, el Δ va contra el borde DEL LADO DEL SIGNO (>=0 contra +borde; <0 contra
       // −borde), asi el numero responde "cuanto falta para cruzar". Sin volver a preguntar (Gildardo §2).
-      return ind.iae != null ? { reference: "−5 a +5 años", delta: null } : null;
+      // CAMBIO DE CRITERIO SUYO (entrega del 2026-09-01, §5): ahora el IAE SI lleva Δ, y lo define él:
+      // "el IAE da la distancia al límite del rango que se cruzó, y cero mientras esté dentro de −5 a +5".
+      //
+      // CONTRADICE SU §2 DEL 19 DE AGOSTO, que es la razón por la que este Δ estaba en null: entonces dijo
+      // "el dato que manda es el valor, no el Δ". No es un descuido nuestro: cambió de criterio, y va
+      // declarado en la ronda para que lo sepa.
+      //
+      // Y COINCIDE CON LA REGLA DE DOS COLAS que dejamos registrada aquí mismo esperando este caso: el Δ
+      // va contra el borde DEL LADO DEL SIGNO. La regla se escribió sin preguntar y su definición la
+      // confirma; se conserva escrita porque el siguiente clasificador de dos colas la va a necesitar.
+      return ind.iae != null
+        ? {
+            reference: "−5 a +5 años",
+            // Dentro del rango, CERO y no null: cero dice "no ha cruzado", null diría "no se puede saber".
+            delta: f(ind.iae > 5 ? ind.iae - 5 : ind.iae < -5 ? ind.iae + 5 : 0, 1),
+          }
+        : null;
     case "EB":
       // La referencia de EB es la edad cronologica, que NO se sella en el EngineOutput (vive en
       // EngineInput). Sin edad sellada la referencia queda "—", y el delta TAMBIEN se oculta: una

@@ -5,6 +5,7 @@ import { err, ok, type Result } from "@/core/errors/result";
 import { type IndicatorClass, isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { getActivePrompt } from "@/lib/ai/prompts";
+import { limpiarMarcadores, traiaMarcadores } from "@/lib/ai/limpiar-marcadores";
 import { AiError, generateText } from "@/lib/ai/provider";
 import { reportServerError } from "@/lib/observability/report-error";
 import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
@@ -101,22 +102,30 @@ export async function generateCriterion(
 
   try {
     const completion = await generateText(messages, config);
+    // El filtro de marcadores (Gildardo §8, 2026-09-01). El prompt ya se lo pide, pero un prompt no es un
+    // contrato: esto es lo que se aplica "por si el modelo desobedece, que es lo que hacen". El criterio
+    // se pinta como texto plano, asi que un `**` que se cuele lo ve el profesional.
+    const limpio = limpiarMarcadores(completion.text);
     await recordCriterionSuggestion({
       diagnosisId: criterion.diagnosisId,
       provider: completion.provider,
       model: completion.model,
       promptVersion,
+      // Se guarda el texto CRUDO, no el limpio: la sugerencia es el registro de lo que el modelo
+      // devolvio, y si algun dia el filtro se come algo, el original tiene que estar.
       generatedText: completion.text,
       rawResponse: {
         provider: completion.provider,
         model: completion.model,
         latency_ms: completion.latencyMs,
+        // Para MEDIR cuanto desobedece, que es lo que dira si el bloque del prompt sirve.
+        traia_marcadores: traiaMarcadores(completion.text),
       },
       status: "success",
       latencyMs: completion.latencyMs,
       ...actor,
     });
-    return ok({ text: completion.text });
+    return ok({ text: limpio });
   } catch (e) {
     const status = classifyFailure(e);
     await recordCriterionSuggestion({

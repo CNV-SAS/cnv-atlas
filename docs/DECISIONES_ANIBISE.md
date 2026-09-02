@@ -852,3 +852,32 @@ ellos, lo que toca es portarlo con su nombre y no mantener un campo paralelo.
 **Es la leccion de buscar SUS terminos, al reves:** no fallamos verificando si habia contestado, fallamos
 describiendo su archivo en la pregunta. Antes de preguntar por una pieza suya, hay que citarla por su
 identificador, no por lo que parece que es.
+
+## ENTREGA DE GILDARDO 2026-09-01: lo aplicado y lo que hay que decirle
+
+**P-87 · Su §5c le pone Delta al IAE, y eso RETIRA su propia §2 del 18 de agosto. Aplicado y declarado.**
+Su entrega del 1 de septiembre define el Delta del IAE: *"la distancia al limite del rango que se cruzo, y
+cero mientras este dentro de -5 a +5"*. Portado tal cual (`indicator-ranges.ts`, case "IAE"): un IAE de
+-17,6 muestra -12,6; uno de +8,2 muestra 3,2; cualquiera entre -5 y +5 muestra 0,0.
+
+**Lo que retira:** hasta ahora esa celda mostraba un guion. La razon era su §2 del 18 de agosto ("el dato
+que manda es el valor, no el Delta"), que Santiago tradujo el 19 a dejar el Delta en blanco porque el IAE ya
+es una diferencia y el Delta seria la distancia de una distancia. **No fue un descuido nuestro: el cambio de
+criterio es suyo, y el nuevo es posterior y explicito donde el anterior era inferido.** El candado
+`indicator-ranges.test.ts` cambio de asercion por eso, con el motivo escrito dentro.
+
+**LO QUE FALTA, Y ES DE SANTIAGO:** esto NO quedo declarado en la ronda del 1 de septiembre, que ya estaba
+cerrada cuando se porto. Va en la siguiente, o como anexo si la ronda todavia no salio. Un cambio que
+retira una decision suya anterior no puede consolidarse por silencio.
+
+**P-88 · Su §7c (el reintento ante el tope por minuto): construido, y no necesita respuesta.** "No es un
+fallo, es una cola." Groq responde 429 con los segundos de espera en la prosa del error; ahora se esperan y
+se reintenta UNA vez, **dentro de la llamada a Groq y antes del fallback**. Lo que haciamos era peor:
+cualquier fallo nos cambiaba de proveedor, asi que una cola de dos segundos hacia que el texto clinico
+saliera de otro modelo sin que nadie lo pidiera. Declarado en la ronda (punto 11.4).
+
+**P-89 · Su §8 (el filtro de marcadores): construido por los dos lados, como el dijo.** Bloque de FORMATO
+DE SALIDA en el prompt (version 2 de `criterion.system`) y filtro a la salida, *"por si el modelo
+desobedece, que es lo que hacen"*. **La sugerencia guarda el texto CRUDO**, no el limpio: si algun dia el
+filtro se comiera algo, el original tiene que estar. Y se mide cuanto desobedece (`traia_marcadores` en el
+`rawResponse`), que es lo unico que dira si el bloque del prompt sirve.

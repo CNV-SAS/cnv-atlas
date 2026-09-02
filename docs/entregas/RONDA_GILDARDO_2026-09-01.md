@@ -28,7 +28,7 @@ el que tú señalaste**: el resto lee cada regla contra su tabla.
 ## Los once de un vistazo
 
 **Se abrió el 31 de agosto y se cerró el 1 de septiembre**, así que algunos puntos dicen "hoy" de un día y
-otros del siguiente. Los diez van fechados donde importa.
+otros del siguiente. Los once van fechados donde importa.
 
 **Tres preguntas bloquean construcción:** la del punto 1 (las diez alertas de consumo), la del 10.4 (el
 mapa de alimentos por región, sin el cual el paciente no puede recibir su lista de intercambio) y la del

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { fetchJson } from "@/core/http/fetch-json";
+import { conReintentoAnteTope } from "@/lib/ai/reintento-tope";
 
 // Abstraccion de proveedor de IA (API_INTEGRATIONS seccion 4). La IA SOLO genera el
 // menu/dieta (B13); el diagnostico es determinista, nunca IA. Aqui vive el transporte con
@@ -44,18 +45,23 @@ async function callGroq(messages: AiMessage[], model: string): Promise<string> {
   // "low" y se da un tope de salida holgado para que quepan razonamiento + menu. `reasoning_effort`
   // NO se envia a modelos sin razonamiento (llama): Groq lo rechaza con 400 (verificado 2026-08-13).
   const isReasoningModel = model.includes("gpt-oss");
-  const res = await fetchJson<GroqResponse>("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}` },
-    body: {
-      model,
-      messages,
-      temperature: 0.4,
-      max_completion_tokens: 4096,
-      ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
-    },
-    timeoutMs: AI_TIMEOUT_MS,
-  });
+  const pedir = () =>
+    fetchJson<GroqResponse>("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}` },
+      body: {
+        model,
+        messages,
+        temperature: 0.4,
+        max_completion_tokens: 4096,
+        ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
+      },
+      timeoutMs: AI_TIMEOUT_MS,
+    });
+
+  // El reintento va AQUI, dentro de la llamada a Groq, y no en `generateText`: asi ocurre ANTES del
+  // fallback. Un 429 es una cola de segundos, y cambiar de proveedor por eso es peor que esperar.
+  const res = await conReintentoAnteTope(pedir);
   const text = res.choices?.[0]?.message?.content;
   if (!text) throw new AiError("Groq: respuesta vacía");
   return text;
