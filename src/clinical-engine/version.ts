@@ -46,7 +46,7 @@ export const ENGINE_VERSION = "anibise-1.2.0";
 // `fuerzaPrensil` real, asi que `sarcopenia`/`obesidadSarcopenica` pueden voltear y con ellas la estrategia
 // y la proteina del protocolo. El contenido sellado en protocol_suggested cambia para los pacientes con la
 // fuerza registrada; por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-08-31";
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-01";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para

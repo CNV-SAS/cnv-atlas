@@ -45,7 +45,47 @@ function motorTratNutri(enc, bis, edit){
   var imc = talla>0 ? pesoAct/Math.pow(talla/100,2) : 0;
   var PI = sexoM ? (talla-100-((talla-150)/4)) : (talla-100-((talla-150)/2.5));
   var pesoAjust = imc>=25 ? PI+0.25*(pesoAct-PI) : pesoAct;
-  var pesoMeta = Number(edit.peso_meta)>0 ? Number(edit.peso_meta) : ((imc>=25||imc<18.5) ? Math.max(1,Math.round(PI)) : pesoAct);
+  // ── PESO META · sale del FMI y del FFMI, no del IMC ──────────────────────
+  // Decision de la direccion cientifica del 1-sep-2026. El IMC no distingue grasa
+  // de musculo, y el peso meta es la palanca de toda la cadena calorica: con el IMC
+  // como criterio, un paciente con obesidad sarcopenica e IMC normal recibia una
+  // estrategia "hipocalorica" con un objetivo de mantenimiento —porque su peso meta
+  // salia igual a su peso actual—, y un deportista con IMC alto por musculo recibia
+  // un recorte sobre kilos que no son grasa. La estrategia ya miraba FMI y FFMI; el
+  // peso meta no. Ahora los dos leen lo mismo.
+  //
+  //     peso = MG + MLG  →  peso = (FMI + FFMI) x talla^2
+  //
+  // La META lleva CADA indice a su rango normal y deja el resto como esta:
+  //   · FMI  (cFMI:  3-6 H · 5-9 M)  → al limite si se pasa o si no llega
+  //   · FFMI (cFFMI: 17-25 H · 15-23 M) → al minimo si esta por debajo; si no, se
+  //     conserva el medido. No se "promete" musculo en quien ya lo tiene: solo se
+  //     recupera el que falta, que es lo que el propio motor prescribe con proteina
+  //     alta y fuerza en sarcopenia y desnutricion. Conservar un FFMI deficitario
+  //     haria que la meta heredara la desnutricion y saliera POR DEBAJO del peso
+  //     actual en un paciente que tiene que subir.
+  // Cuando los dos indices ya estan en rango, meta y peso actual coinciden por la
+  // propia identidad peso = (FMI + FFMI) x talla^2.
+  var FMI_m  = Number(b.FMI  || e.FMI)  || 0;
+  var FFMI_m = Number(b.FFMI || e.FFMI) || 0;
+  var _pesoMetaComp = null;
+  if (FMI_m > 0 && FFMI_m > 0 && talla > 0) {
+    var _fmiLo = sexoM ? 3 : 5, _fmiHi = sexoM ? 6 : 9, _ffmiLo = sexoM ? 17 : 15;
+    var _fmiMeta  = FMI_m > _fmiHi ? _fmiHi : (FMI_m < _fmiLo ? _fmiLo : FMI_m);
+    var _ffmiMeta = FFMI_m < _ffmiLo ? _ffmiLo : FFMI_m;
+    _pesoMetaComp = Math.round((_fmiMeta + _ffmiMeta) * Math.pow(talla/100, 2) * 10) / 10;
+  }
+  // ── PRECEDENCIA · un solo dato, tres sitios donde puede quedar fijado ────
+  // 1. Lo que el profesional ajusta AQUI, en el tratamiento.
+  // 2. Lo que el nutricionista escribio en mod ANTROPOMETRIA. No es otro peso meta:
+  //    es el mismo, escrito antes. Si lo puso a mano, manda sobre el calculo.
+  // 3. El calculado por FMI/FFMI.
+  // 4. Sin composicion corporal, el criterio por IMC.
+  var _pesoMetaAnt = Number(b.pesoMeta || e.pesoMeta) || 0;
+  var pesoMeta = Number(edit.peso_meta)>0 ? Number(edit.peso_meta)
+               : (_pesoMetaAnt > 0 ? _pesoMetaAnt
+               : (_pesoMetaComp != null ? _pesoMetaComp
+               : ((imc>=25||imc<18.5) ? Math.max(1,Math.round(PI)) : pesoAct)));
   // A1 GEB Mifflin-St Jeor (medicion, peso actual)
   // Mifflin sobre el PESO DE REFERENCIA (peso meta), no sobre el peso actual.
   // Decision de la direccion cientifica del 26-ago-2026: el gasto calculado

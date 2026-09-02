@@ -268,7 +268,7 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     ).toBeGreaterThan(0);
   });
 
-  it("y entre lo que difiere está el PISO CALÓRICO, que es un número prescrito", () => {
+  it("y entre lo que difiere está el PESO META, que es la palanca de toda la cadena", () => {
     // Ancla CONCRETA, no un conteo: un conteo se satisface con cualquier ruido. El piso pasó de colgar del
     // déficit a colgar de la rama de la fórmula entre esas dos entregas, y eso cambia las kcal que se le
     // prescriben a una paciente real. Si esta diferencia deja de verse, la maquinaria dejó de mirar.
@@ -282,8 +282,15 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
       "utf8",
     );
     const nutri = readFileSync("src/clinical-engine/frozen/atlas-tratamiento-nutri.js", "utf8");
-    expect(sinEspacio(nutri)).toContain(sinEspacio("if(!hasCancer && !desnutricion){ var piso"));
-    expect(sinEspacio(anterior)).toContain(sinEspacio("if(deficit>0){ var piso"));
-    expect(sinEspacio(anterior)).not.toContain(sinEspacio("if(!hasCancer && !desnutricion){ var piso"));
+    // EL ANCLA CAMBIO, NO LA ASERCION (2026-09-01). Era el PISO CALORICO, y dejo de servir en cuanto llego
+    // la entrega del 1-sep: "la anterior" paso a ser la del 29, que YA traia el piso corregido. El test se
+    // puso rojo, que es exactamente lo que tenia que hacer una lista de entregas que crece.
+    //
+    // El ancla nueva es la diferencia concreta entre el 29 y el 1-sep: el PESO META pasa de calcularse por
+    // IMC a la identidad peso = (FMI + FFMI) x talla^2. Es la palanca de toda la cadena calorica, asi que
+    // si esta diferencia deja de verse, la maquinaria dejo de mirar sobre el numero que mas pesa.
+    expect(sinEspacio(nutri)).toContain(sinEspacio("var _pesoMetaComp = null;"));
+    expect(sinEspacio(anterior)).toContain(sinEspacio("(imc>=25||imc<18.5) ? Math.max(1,Math.round(PI))"));
+    expect(sinEspacio(anterior)).not.toContain(sinEspacio("var _pesoMetaComp = null;"));
   });
 });

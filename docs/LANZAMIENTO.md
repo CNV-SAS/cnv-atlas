@@ -87,6 +87,12 @@
    derecho a la historia clinica. Estado: `report-render`. **El PLAN del paciente y la HC imprimible siguen
    sin construir** (BACKLOG); P1 de la ronda los bloquea.
 
+   **ENTREGA DE GILDARDO DEL 1-SEP, cruzada (2026-09-01):** de sus nueve cambios, SEIS ya los teniamos y
+   dos con la correccion mas adelantada que su archivo. Re-portado `motorTratNutri` del HTML nuevo (peso
+   meta por FMI+FFMI) con bump de PROTOCOL_ENGINE_VERSION. **Su correccion NO gobierna todavia**: nuestra
+   cadena le pasa el peso meta desde `motorProtocolo`, cuya formula por IMC el no cambio. Preguntado
+   (punto 11.1 de la ronda). Estado: `peso-meta-composicion`.
+
    **EL PLAN DEL PACIENTE (2026-09-01):** seis de los siete bloques de su §7.1, dentro del reporte que el
    paciente ya recibe, con el diagnostico primero. Estado: `plan-paciente`. Falta el septimo (la lista
    recortada por region), bloqueado por P2.
