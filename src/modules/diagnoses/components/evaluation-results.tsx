@@ -84,23 +84,23 @@ function Line({ label, value }: { label: string; value: string | null }) {
 // Tarjeta de contenido del estado EFR (una de las 6 de la Diana). Tolera el vacio (algunos
 // estados no traen todos los campos) y el caso "pendiente" (abordaje por profesion). El motivo
 // tecnico (Q9: efrProf no expuesto) vive en docs/GILDARDO_QUERIES.md, no en pantalla.
+// EL PROP `pending` SE RETIRO (barrido de textos stale, 2026-09-01): pintaba "Disponible próximamente" y
+// NINGUNO de los cinco sitios de llamada lo pasaba, asi que ese texto era inalcanzable. Una promesa que
+// nadie puede leer no es inofensiva: es la que alguien cablea dentro de seis meses sin mirar que promete,
+// y entonces envejece como envejecieron las otras tres de este barrido.
 function ContentCard({
   label,
   value,
-  pending,
 }: {
   label: string;
   value: string | null;
-  pending?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      {pending ? (
-        <span className="text-sm italic text-muted-foreground">Disponible próximamente.</span>
-      ) : value ? (
+      {value ? (
         <p className="text-sm text-foreground">{value}</p>
       ) : (
         <span className="text-sm text-muted-foreground">Sin dato para este estado.</span>

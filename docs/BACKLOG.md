@@ -221,6 +221,52 @@ necesita autorización nueva, pero hay que confirmarlo antes de construirlo.**
 
 ---
 
+## Barrido de textos que prometen algo ya hecho, en TODA la aplicación (2026-09-01)
+
+**La forma:** una cadena que sale en pantalla y afirma que algo *"todavía no", "se emite con", "está
+pendiente de"*. Es cierta al escribirla y deja de serlo sin que nadie vuelva a esa línea. **Cuatro casos
+esta semana:** el congelamiento vencido de P-50, el sodio de la historia clínica, el bloque pendiente de
+recomendaciones, y los dos de abajo.
+
+**Resultado: 4 hallazgos sobre 8.623 cadenas de pantalla en 774 archivos.** Dos legítimos, dos reales.
+
+### Legítimos, y conviene que estén escritos para no volver a mirarlos
+
+- *"La encuesta está incompleta. El resumen funcional y la meta terapéutica se emiten cuando el diagnóstico
+  está completo."* Describe una condición del **dato**, no una pieza sin construir, y es la decisión D-007
+  de Gildardo.
+- *"Solicitud enviada. Queda pendiente de aprobación."* Es el estado real de un trámite.
+
+### [HECHO] La rama muerta de `ContentCard`
+
+`"Disponible próximamente."` se pintaba cuando el prop `pending` era true, y **ninguno de los cinco sitios
+de llamada lo pasaba**: texto inalcanzable. Retirado el prop.
+
+**Una promesa que nadie puede leer no es inofensiva:** es la que alguien cablea dentro de seis meses sin
+mirar qué promete, y entonces envejece como las otras. Es la misma familia que los campos que se capturan y
+no lee nadie, vista desde el otro lado.
+
+### PENDIENTE · `/comercial` promete lo que `/pagos` ya hace · DECIDE SANTIAGO
+
+La página **Comercial** es un placeholder que dice *"En construcción"* y se describe como *"Aquí verás
+pagos, facturación y comisiones"*. **Y `/pagos` existe, está construido y hace eso**: checkout, ingresos y
+comisiones. Las dos están en el menú, en el mismo grupo, y un admin ve las dos.
+
+**No es un texto que arreglar, es una decisión de producto:** o Comercial es algo más amplio que todavía no
+existe (y entonces su descripción debe decir qué, sin prometer lo que ya está al lado), o sobra y su
+entrada de menú se retira.
+
+**Lo que sí se corrigió:** *"En construccion"* no llevaba tilde, en una cadena que ve un usuario.
+
+### Lo que este barrido deja instalado
+
+**El script vive en el scratchpad, no en `scripts/`.** Cuatro hallazgos sobre 8.623 cadenas es buena señal,
+pero dos de los cuatro son legítimos por diseño y volverían a salir en cada corrida: un check que hay que
+leer y descartar a mano cada vez se ignora a la semana. **Lo reusable es la forma**, no la herramienta: un
+texto que AFIRMA UN ESTADO tiene que derivarlo o citar un test, nunca declararlo como cadena fija.
+
+---
+
 ## Barrido de los OTROS tres hazards de CLAUDE.md (2026-09-01)
 
 **Pedido de Santiago tras el del auto-reset:** si un hazard documentado podía estar vivo en 17 de 18
