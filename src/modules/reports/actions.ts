@@ -11,6 +11,7 @@ import { requireUser } from "@/modules/auth/session";
 import { getReportDispatch } from "./data/reports-repository";
 import { approveReport, confirmTrajectoryCommunication, ReportStateError } from "./data/reports-writer";
 import { SEND_MODES, type SendMode } from "./pdf/report-document";
+import { entregarHistoriaClinica } from "./services/entregar-hc";
 import { canManageReports } from "./policies/can-manage-reports";
 import { resendReport, sendReport } from "./services/send-report";
 
@@ -188,6 +189,40 @@ export async function resendReportAction(
   return {
     error: null,
     success: `Se reenvió el mismo documento al paciente (reenvío ${result.value.attempt}).`,
+    warning: null,
+  };
+}
+
+// ENTREGARLE LA HISTORIA CLINICA AL PACIENTE (derecho de acceso, Resolucion 1995 / Ley 1581).
+//
+// LA POLICY ES `canManageReports` y no una nueva: entregar la historia es la misma familia de acto que
+// enviarle el reporte, sobre el mismo paciente y por el mismo canal. Una policy nueva para el mismo
+// permiso seria un segundo sitio donde decidir lo mismo, que es como se desincronizan.
+//
+// NO REVALIDA la ruta: el refresco lo hace el cliente tras el aviso (misma razon que en el resto, el
+// revalidate arrastra la pagina al inicio y desmonta el form antes de que el toast se vea).
+export async function entregarHistoriaClinicaAction(
+  _prev: ReportActionState,
+  form: FormData,
+): Promise<ReportActionState> {
+  const user = await requireUser();
+  if (!canManageReports(user)) return fail("No autorizado.");
+  const evaluationId = (form.get("evaluationId") as string | null)?.trim() ?? "";
+  if (!evaluationId) return fail("Evaluación inválida.");
+
+  const ip = await getClientIp();
+  const result = await entregarHistoriaClinica({
+    evaluationId,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (!result.ok) return fail(result.error.message);
+
+  return {
+    error: null,
+    // Se dice A DONDE se envio: "enviada" a secas deja al profesional sin saber si fue al correo correcto.
+    success: `Historia clínica enviada a ${result.value.enviadaA}. Queda registrada la entrega.`,
     warning: null,
   };
 }

@@ -43,3 +43,50 @@ export type PlanPaciente = {
    */
   restricciones: string[];
 };
+
+// LA HISTORIA CLINICA COMO DATO, para el PDF que se le adjunta al paciente.
+//
+// Vive en el modulo NEUTRO por la misma razon que `PlanPaciente`: su lector es `server-only`, y un tipo
+// compartido que viva ahi es la arista latente de siempre (un componente cliente que lo importe con
+// `import type` compila verde y puede romper en produccion).
+export type HcAutorizacionDoc = { tipo: string; vigente: boolean; revocada: boolean };
+export type HcRemisionDoc = { profesion: string; motivo: string | null; estado: string; fecha: string };
+export type HcObservacionDoc = {
+  texto: string;
+  autor: string | null;
+  profesion: string | null;
+  fecha: string;
+};
+
+export type HistoriaClinicaDoc = {
+  paciente: string;
+  edad: number | null;
+  sexo: string | null;
+  pesoKg: number | null;
+  tallaCm: number | null;
+  fechaConsulta: string;
+  profesional: string;
+  motivos: string[];
+  antecedentes: { grupo: string; items: string[] }[];
+  objetivoTratamiento: string | null;
+  plan: HcPlanNutricionalDoc | null;
+  recomendaciones: { titulo: string; items: string[]; pendiente?: boolean }[];
+  remisiones: HcRemisionDoc[];
+  observaciones: HcObservacionDoc[];
+  proximaCita: string | null;
+  /** Version del consentimiento CON QUE SE CAPTURO ESTA CONSULTA, no la vigente hoy. */
+  consentVersion: string | null;
+  autorizaciones: HcAutorizacionDoc[];
+};
+
+export type HcPlanNutricionalDoc = {
+  geb: number | null;
+  get: number | null;
+  kcalObjetivo: number | null;
+  proteinaG: number | null;
+  proteinaGKg: number | null;
+  carbohidratosG: number | null;
+  grasasG: number | null;
+  actividadFisica: string | null;
+  sodioMax?: number | null;
+};

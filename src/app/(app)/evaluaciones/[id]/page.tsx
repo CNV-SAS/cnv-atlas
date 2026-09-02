@@ -111,6 +111,8 @@ import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
 import { HcConsentimiento } from "@/modules/reports/components/hc-consentimiento";
 import { HcImprimir } from "@/modules/reports/components/hc-imprimir";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
+import { getUltimaEntregaHc } from "@/modules/reports/data/hc-entregas-writer";
+import { HcEntregar } from "@/modules/reports/components/hc-entregar";
 import { componerHistoriaClinica } from "@/modules/reports/data/hc-composicion";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
@@ -507,6 +509,15 @@ export default async function ResultadosEvaluacionPage({
   // alimenta el PDF del correo (`getPlanPaciente`): el papel y el correo no pueden decir cosas distintas,
   // y con una sola fuente no hay nada que sincronizar. null si la evaluación aún no tiene protocolo con
   // snapshot, que es cuando no hay plan que entregar.
+  // La ultima entrega de la historia clinica, para decirlo en la pantalla: el profesional necesita poder
+  // MOSTRAR que la entrego, que es para lo que existe la tabla.
+  // `delivered_at` es un timestamptz, asi que se formatea con `formatDate` (zona de Colombia) y NO con
+  // `formatDateOnly`, que es para las columnas `date` puras: convertir una fecha pura la retrocede un dia.
+  const entregaHc = await getUltimaEntregaHc(id);
+  const ultimaEntregaHc = entregaHc
+    ? { fecha: formatDate(entregaHc.fecha), enviadaA: entregaHc.enviadaA }
+    : null;
+
   const planPaciente = isEngineOutput(results.snapshot)
     ? await getPlanPaciente(id, results.snapshot)
     : null;
@@ -839,7 +850,10 @@ export default async function ResultadosEvaluacionPage({
             <div className="imprimible flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-foreground">Historia clínica</h2>
-                <HcImprimir />
+                <div className="flex flex-wrap items-start gap-3">
+                  <HcImprimir />
+                  <HcEntregar evaluationId={id} ultimaEntrega={ultimaEntregaHc} />
+                </div>
               </div>
               <HcDatosDelPaciente
                 datos={{

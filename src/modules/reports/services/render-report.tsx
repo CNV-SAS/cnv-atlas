@@ -2,7 +2,8 @@ import { renderToBuffer } from "@react-pdf/renderer";
 
 import type { EngineOutput } from "@/clinical-engine";
 
-import type { PlanPaciente } from "../data/reports-view-types";
+import type { HistoriaClinicaDoc, PlanPaciente } from "../data/reports-view-types";
+import { HistoriaClinicaDocument } from "../pdf/hc-document";
 import { ReportDocument, type ReportMeta, type SendMode } from "../pdf/report-document";
 
 export type RenderReportOptions = {
@@ -33,4 +34,14 @@ export function renderReportPdf(
       plan={options.plan}
     />,
   );
+}
+
+// LA HISTORIA CLINICA A PDF. Mismo patron que el reporte y por la misma razon: puro respecto a BD y
+// secretos, recibe el documento ya armado y devuelve los bytes.
+//
+// EL DOCUMENTO LLEGA COMPUESTO, no se compone aqui: lo arma `getHistoriaClinicaDoc`, que llama a los
+// MISMOS lectores que la pantalla y a la MISMA composicion. Es la condicion que hizo aceptable portarla a
+// `@react-pdf` en vez de renderizar la pantalla con un navegador sin interfaz.
+export function renderHistoriaClinicaPdf(hc: HistoriaClinicaDoc): Promise<Buffer> {
+  return renderToBuffer(<HistoriaClinicaDocument hc={hc} />);
 }
