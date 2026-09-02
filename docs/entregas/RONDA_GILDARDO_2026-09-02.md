@@ -8,6 +8,7 @@ respuestas a lo que todavía tienes en tu escritorio.
 | # | Qué es | Qué te pedimos | ¿Bloquea? |
 | --- | --- | --- | --- |
 | **1** | **Dos frases tuyas se contradicen en un caso que ninguna contempla**: reabrir una prescripción y volver a aprobarla **sin cambiar nada** | Cuál de las dos manda ahí, con nuestra propuesta al lado | No, pero decide qué le llega al paciente |
+| **2** | Un campo de la cadena calórica que se queda **vacío** produce una prescripción implausible sin que nada lo distinga de una decisión | Si esos campos deben tener un valor por defecto que no se pueda borrar. **No te pedimos validar una cifra** | No |
 
 ---
 
@@ -60,6 +61,42 @@ revisado. Si es así, lo dejamos como está y no tocamos nada.
 que come)?
 
 **Mientras respondes, no cambiamos nada:** se sigue avisando siempre, que es el lado conservador.
+
+---
+
+# 2 · Un campo vacío se lee igual que una decisión, y ahí sí podemos hacer algo
+
+**Empezamos aclarando lo que NO te estamos pidiendo**, porque tu regla es clara y no la discutimos:
+*"Ninguna cifra de la prescripción nutricional lleva techo, piso, validación ni advertencia"* (§5 del 27 de
+agosto, y dijiste expresamente que vale para TODA la prescripción). **El motor propone, el profesional
+dispone.** No queremos validar ninguna cifra.
+
+**El caso, real, de una prueba de esta semana.** Un paciente salió con esta prescripción:
+
+| | |
+| --- | --- |
+| Objetivo | 2.000 kcal |
+| Proteína | 58 g |
+| Carbohidratos | **427 g** |
+| Grasa | **7 g** |
+
+**Las cuatro cifras son correctas**: lo reprodujimos exacto, y salen de que el porcentaje de grasa quedó en
+**3 %**. La cadena hizo lo que le pidieron; con 3 % de grasa quedan 63 kcal de grasa y los carbohidratos
+absorben el resto. Barrimos los cincuenta tratamientos de la base y **ninguno produce eso solo**: el 3 % se
+escribió en el campo.
+
+**Y aquí está la pregunta, que es de OTRA cosa.** Hoy ese campo se puede dejar en blanco, y cuando está en
+blanco el sistema usa tu valor por defecto (30 %). Pero **un valor escrito a mano y un campo mal borrado se
+ven exactamente igual desde el motor**: los dos son "lo que el profesional dejó ahí".
+
+**La pregunta:** ¿los campos de la cadena calórica deberían tener un valor por defecto que **no se pueda
+dejar vacío**, de modo que borrarlo lo devuelva al del modelo en vez de dejarlo en un número suelto?
+
+**No es validar una prescripción**, y por eso creemos que no choca con tu regla: **es evitar que un campo
+vacío se lea como un 3 %**. Si un profesional escribe 3 % a propósito, el sistema lo respeta, igual que hoy.
+
+**Si te parece que esto también es meterse donde no debemos, se queda como está.** Lo preguntamos porque la
+diferencia entre "lo decidió" y "se le borró" no la puede resolver el motor, y quien la paga es el paciente.
 
 ---
 
