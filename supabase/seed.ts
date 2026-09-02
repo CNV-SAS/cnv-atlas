@@ -68,7 +68,7 @@ const menuAdaptSystemPrompt: string = JSON.parse(
 // siembra como ai_prompts criterio.generate v1, para que el admin lo edite en /admin/ia como el del menu.
 const criterionSystemPrompt: string = JSON.parse(
   readFileSync(
-    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v1.json", import.meta.url),
+    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v2.json", import.meta.url),
     "utf8",
   ),
 ).system;
@@ -786,7 +786,9 @@ async function main() {
           },
           {
             prompt_key: "criterio.generate",
-            version: 1,
+            // v2 (2026-09-01): suma el bloque de formato de su §8. La v1 no se retira de la base: los
+            // borradores ya generados se hicieron con ella y su registro apunta a esa version.
+            version: 2,
             content: criterionSystemPrompt,
             status: "active",
             created_by: adminId,

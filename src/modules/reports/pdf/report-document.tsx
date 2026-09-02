@@ -114,9 +114,9 @@ export function ReportDocument({
   plan?: PlanPaciente | null;
 }) {
   // SOLO SE DESESTRUCTURA LO QUE ESTE DOCUMENTO PUEDE IMPRIMIR. `indicators`, `efrPhenotype`,
-  // `structural` y `frSector` se retiraron con sus bloques (§7.1): un documento que no tiene el dato no
-  // puede filtrarlo por descuido. `dfi` se conserva SOLO por `dfi.complete`, que gatea la banda.
-  const { dfi, nutraceuticos, versions } = snapshot;
+  // `structural`, `frSector` y `versions` se retiraron con sus bloques (§7.1): un documento que no tiene
+  // el dato no puede filtrarlo por descuido. `dfi` se conserva SOLO por `dfi.complete`, que gatea la banda.
+  const { dfi, nutraceuticos } = snapshot;
   // EL DFI EN SU LENGUAJE, no en el del modelo. Porte de su mapa (`dfiParaPaciente`): CRITICO pasa a
   // Prioritario, el dominio conductual con severidad alta se reemplaza por una frase que no menciona TCA,
   // y el veto se reformula como acompañamiento. Ver el porqué en `clinical-engine/dfi-paciente.ts`.

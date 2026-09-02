@@ -1,5 +1,7 @@
 import "server-only";
 
+import { HttpError } from "./http-error";
+
 // fetch con timeout explicito (regla dura 10: ninguna llamada externa sin
 // timeout). Devuelve el JSON parseado o lanza HttpError con contexto. Pensado para
 // los proveedores externos (Wompi, Alegra) desde el servidor.
@@ -12,16 +14,8 @@ export type FetchJsonOptions = {
 };
 
 // Error de transporte/HTTP: el proveedor respondio != 2xx o no se pudo contactar.
-export class HttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly body: unknown,
-  ) {
-    super(message);
-    this.name = "HttpError";
-  }
-}
+// Se reexporta para no mover a los llamadores que ya lo importan de aqui.
+export { HttpError } from "./http-error";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 

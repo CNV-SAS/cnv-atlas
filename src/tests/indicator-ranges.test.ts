@@ -116,9 +116,29 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,500");
   });
 
-  it("IAE (dos colas): Δ en guion (null), referencia conservada (Santiago 2026-08-19)", () => {
-    // Gildardo §2: el IAE ya es una diferencia; su Δ confunde. Se deja en "—" y manda el valor con su signo.
-    expect(indicatorRange("IAE", ind, true)).toEqual({ reference: "−5 a +5 años", delta: null });
+  it("IAE (dos colas): Δ = distancia al límite cruzado, 0 dentro del rango (Gildardo §5, 2026-09-01)", () => {
+    // ESTE CANDADO CAMBIÓ DE ASERCIÓN, y hay que saber por qué. Hasta el 2026-09-01 exigía `delta: null`:
+    // el Δ del IAE se dejaba en "—" por su §2 del 18 de agosto ("el dato que manda es el valor, no el Δ"),
+    // interpretado en una decisión de Santiago del 19.
+    //
+    // ÉL CAMBIÓ DE CRITERIO en la entrega del 1 de septiembre (§5): ahora el IAE sí lleva Δ, y lo define
+    // él mismo: "la distancia al límite del rango que se cruzó, y cero mientras esté dentro de −5 a +5".
+    // No se relajó el candado porque estorbara: se movió porque el autor movió la decisión, y la nueva es
+    // posterior y explícita donde la anterior era inferida. Va declarado, no aplicado en silencio.
+    //
+    // El donante golden tiene IAE −17,6: cruzó por abajo, así que la distancia al límite es −17,6 + 5.
+    expect(indicatorRange("IAE", ind, true)).toEqual({ reference: "−5 a +5 años", delta: "-12,6" });
+  });
+
+  it("y dentro del rango el Δ es cero, no la distancia a un borde", () => {
+    // La otra mitad de su regla, que es la que distingue su criterio del de los demás indicadores: mientras
+    // el IAE está dentro de −5 a +5 no hay límite cruzado, así que el Δ es 0. Sin este caso, el candado de
+    // arriba pasaría verde también con una fórmula que midiera siempre contra el borde más cercano.
+    for (const iae of [-5, -2.4, 0, 3.1, 5]) {
+      expect(indicatorRange("IAE", { ...ind, iae }, true)?.delta).toBe("0,0");
+    }
+    // Y por el otro lado cruza igual: +8,2 está 3,2 años por encima del límite superior.
+    expect(indicatorRange("IAE", { ...ind, iae: 8.2 }, true)?.delta).toBe("3,2");
   });
 });
 
