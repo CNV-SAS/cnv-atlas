@@ -4,6 +4,7 @@ import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail } from "@/lib/email/resend";
 
 import { formatDate } from "@/lib/format/date";
+import { getProtocolApprovalState } from "@/modules/treatment/data/treatment-reader";
 
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
@@ -49,8 +50,34 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     );
   }
 
+  // EL PROTOCOLO TIENE QUE ESTAR APROBADO PARA EMITIR (decision de Santiago, 2026-09-01).
+  //
+  // LA RAZON QUE DECIDE, y no es la simetria con el reporte: un plan emitido desde el BORRADOR no es
+  // RECONSTRUIBLE. Los `adj_*` se pueden mover despues de enviarlo y nadie sabra que recibio el paciente.
+  // Con el protocolo aprobado, el trigger 0026 lo congela y la prescripcion enviada queda fija; ademas la
+  // profesion con que se prescribio se sella en el acto, asi que consta bajo que ambito salio.
+  //
+  // Y ESTO NO ES UNA REGLA NUEVA: el comentario de aqui abajo ya AFIRMABA que "el tratamiento ya esta
+  // aprobado cuando el reporte se envia (el gate de arriba lo exige)", y era falso. El gate de arriba mira
+  // el estado del REPORTE, no el del tratamiento. El codigo ya suponia lo que ahora se comprueba.
+  //
+  // EL REENVIO NO PASA POR AQUI, a proposito: `resendReport` reenvia el archivo que ya salio de la
+  // clinica. Un paciente que ya tiene su plan no puede quedarse sin poder recibirlo otra vez porque hoy
+  // pidamos una firma que cuando se emitio no existia.
+  const protocolo = await getProtocolApprovalState(dispatch.evaluationId);
+  if (protocolo && !protocolo.approved) {
+    return err(
+      appError(
+        "conflict",
+        "Antes de enviarlo hay que aprobar la prescripción: el paciente recibe su plan en este reporte, y " +
+          "una prescripción en borrador se puede seguir editando después de que él la reciba. Ve a la " +
+          "pestaña Tratamiento, subpestaña Nutricionista, y usa “Aprobar la prescripción” al final.",
+      ),
+    );
+  }
+
   // EL PLAN DEL PACIENTE (Gildardo §7.1: "el paciente recibe el plan completo"). Se arma AQUI, no se
-  // sella: el tratamiento ya esta APROBADO cuando el reporte se envia (el gate de arriba lo exige), y un
+  // sella: el tratamiento esta APROBADO cuando el reporte se envia (el gate de arriba lo exige) y un
   // protocolo aprobado esta congelado por su trigger. Asi que leerlo en vivo es reproducible, y sellar una
   // segunda copia crearia otra vez dos fuentes de lo mismo.
   //

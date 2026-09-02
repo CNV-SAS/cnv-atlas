@@ -2,6 +2,7 @@ import "server-only";
 
 import type { EngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getProtocolApprovalState } from "@/modules/treatment/data/treatment-reader";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
 // TrajectoryConfirmation (usado en anotaciones del reader) vive en el modulo neutro; ver reexport abajo.
@@ -128,6 +129,15 @@ export type { TrajectoryConfirmation } from "./reports-view-types";
 
 export type ReportCardData = ReportListItem & {
   trajectory: TrajectoryConfirmation | null;
+  /**
+   * ¿La prescripcion de esta evaluacion esta aprobada? Gate de EMISION: el paciente recibe su plan en el
+   * reporte, y un plan emitido desde el borrador no es reconstruible.
+   *
+   * `undefined` = no se consulto (las LISTAS no lo traen, igual que `trajectory`: son N filas y seria una
+   * consulta por card). Ahi el boton no se explica de antemano, pero el servidor sigue frenando el envio
+   * con un mensaje que dice que hacer y donde. `null` = la evaluacion no tiene tratamiento todavia.
+   */
+  protocoloAprobado?: boolean | null;
   // Cuantas veces salio el MISMO documento despues del primer envio. 0 = solo el envio original.
   resentCount: number;
 };
@@ -182,6 +192,11 @@ export async function getReportCardForEvaluation(
     };
   }
 
+  // Estado de la prescripcion, para que el boton de enviar DIGA por que no se puede todavia en vez de
+  // que el profesional lo descubra con un error. Es el mismo criterio que ya usa la confirmacion de
+  // "empeoro": un guard correcto mal expuesto se siente como defecto de la pantalla.
+  const protocolo = await getProtocolApprovalState(row.evaluation_id);
+
   return {
     reportId: row.id,
     evaluationId: row.evaluation_id,
@@ -192,6 +207,7 @@ export async function getReportCardForEvaluation(
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
     resentCount: (row.resent_count as number | null) ?? 0,
+    protocoloAprobado: protocolo ? protocolo.approved : null,
   };
 }
 
