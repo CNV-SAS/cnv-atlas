@@ -265,15 +265,21 @@ export function AppShell({
                 "Pacientes" y la pagina el NOMBRE; en una evaluacion, "Evaluaciones" y el nombre otra vez.
                 Solo coinciden en las listas, que es donde el titulo de pagina ES el de la seccion.
 
-                Y VA A LA DERECHA, junto al avatar, como pidio Santiago: a la izquierda volvia a competir
-                con el titulo de la pagina, que empieza unos pixeles mas abajo en la misma columna.
+                Y VA A LA IZQUIERDA, antes del contenido, no junto al avatar. Estuvo a la derecha unas
+                horas y Santiago lo movio con una razon que no es de gusto: **el lado del avatar es donde
+                van a entrar los iconos de sesion** (notificaciones, ayuda), y un rotulo de texto ahi
+                acabaria empujado o compitiendo con ellos. A la izquierda el sitio es estable.
+
+                QUEDA PREPARADO EL SITIO DE UN ICONO a su izquierda: el `gap-2` y el `flex` estan puestos
+                para que entre uno sin recolocar nada.
                 Sigue siendo `lg:block`: en telefono el ancho lo necesita el logo. */}
+            {seccionActiva ? (
+              <span className="hidden items-center gap-2 truncate text-sm text-muted-foreground lg:flex">
+                {/* Aqui va el icono de la seccion cuando se decida. */}
+                {seccionActiva}
+              </span>
+            ) : null}
           </div>
-          {seccionActiva ? (
-            <span className="ml-auto hidden truncate pr-3 text-sm text-muted-foreground lg:block">
-              {seccionActiva}
-            </span>
-          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

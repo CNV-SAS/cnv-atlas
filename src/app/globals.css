@@ -354,3 +354,23 @@
     margin: 1.6cm 1.8cm;
   }
 }
+
+/* TRAMA DE MEDICION: el fondo de la banda con degradado (`components/shared/banda.tsx`).
+ *
+ * VA EN CSS REAL Y NO EN UN VALOR ARBITRARIO DE TAILWIND, y no es preferencia: un valor arbitrario que
+ * Tailwind no consigue parsear NO da error, simplemente no emite la regla, y el efecto desaparece en
+ * silencio. Con `radial-gradient` y `mask-image` (comas, parentesis y un prefijo -webkit) el riesgo es
+ * real, y aqui ademas el fallo seria invisible: la banda seguiria viendose bien, solo que lisa.
+ *
+ * QUE ES: una reticula de puntos que lee a INSTRUMENTO DE MEDICION, elegida entre cuatro fondos frente a
+ * un icono del dominio. Una reticula no representa ningun objeto; un icono reconocible detras del nombre
+ * de un paciente se lee como adorno y ademas dice algo que puede no corresponder.
+ *
+ * LA MASCARA ES LO QUE LA HACE USABLE: se desvanece hacia la IZQUIERDA, que es donde empieza el texto, asi
+ * que los puntos nunca cruzan el nombre del paciente. */
+.trama-medicion {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 62%);
+  mask-image: linear-gradient(to left, #000 0%, transparent 62%);
+}
