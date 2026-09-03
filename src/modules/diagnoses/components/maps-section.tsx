@@ -6,17 +6,30 @@ import type { DfiDomain } from "@/clinical-engine";
 import { bandToLetter, bandToWord, efrDesglose } from "@/clinical-engine/types";
 import * as core from "@/clinical-engine/frozen/engine.core.js";
 
-// COLOR DEL NUMERO DE ESTADO. Sale de la MISMA escala que pinta la celda en la Diana (el estado 1 es
-// optimo y el 81 riesgo maximo), no de un hex elegido aqui: un color escogido a mano sobre una cifra
-// clinica seria un veredicto nuestro. Se reparte en los tres tramos de la capa clinica.
-function colorEstado(n: number): string {
-  if (n <= 27) return "text-clinical-optimal";
-  if (n <= 54) return "text-clinical-warning";
-  return "text-clinical-critical";
+// EL SEMAFORO DE LOS CAMPOS, portado de su `lc` (ATLAS_v8, panel del estado seleccionado):
+//
+//   var lc=function(v,g2,b2){return v===g2?"#16a34a":v===b2?"#dc2626":"#ca8a04";};
+//
+// Es un mapeo de TRES VIAS por campo, donde cual banda es "buena" y cual "mala" se le pasa a cada uno,
+// porque NO es la misma para todos: en IFC lo bueno es Alto y en IRC lo bueno es Bajo. Por eso no se puede
+// colorear por la palabra ("Normal" no significa lo mismo en los cuatro), y por eso se porta su tabla en
+// vez de deducirla.
+//
+// COLOREA CUATRO DE LOS SIETE, y los otros tres NO, que tambien es su decision: "Anillo (funcion-riesgo)"
+// y "Fenotipo" van en negro porque son NOMBRES, no bandas, y "Estado EFR" lleva el color de su CELDA.
+const SEMAFORO = {
+  optimo: "text-clinical-optimal",
+  critico: "text-clinical-critical",
+  medio: "text-clinical-warning",
+} as const;
+
+/** `buena`/`mala` son las bandas (3/2/1) que en ESE campo significan bien y mal. Suyas, no nuestras. */
+function colorBanda(v: number, buena: number, mala: number): string {
+  return v === buena ? SEMAFORO.optimo : v === mala ? SEMAFORO.critico : SEMAFORO.medio;
 }
 import { ComparisonLayout } from "@/components/ui/comparison-layout";
 
-import { Diana } from "./diana";
+import { Diana, riskColor } from "./diana";
 import { DfiRadar } from "./dfi-radar";
 import type { EfrStateRef } from "../data/efr-states-types";
 
@@ -108,7 +121,15 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
           escala de riesgo, la MISMA que pinta su celda en la Diana. Un rojo elegido a mano aqui seria un
           veredicto nuestro. */}
       <div className="flex flex-col gap-0.5">
-        <span className={`text-3xl font-bold leading-none tabular-nums ${colorEstado(detail.stateNumber)}`}>
+        {/* EL COLOR DEL NUMERO ES EL DE SU CELDA EN LA DIANA, con `riskColor`, que es nuestro port de su
+            `rc`. Aqui hubo un invento mio que duro un commit: lo reparti en tres tramos (1-27, 28-54,
+            55-81) "de la capa clinica", teniendo la escala real a un import de distancia. Su escala es un
+            degradado continuo interpolado sobre los dos rangos, no tres tramos, y es la que ya pinta la
+            celda: con los tercios, el numero y su celda podian salir de colores distintos. */}
+        <span
+          className="text-3xl font-bold leading-none tabular-nums"
+          style={ejes ? { color: riskColor(ejes.sectorIndex + 1, ejes.ringIndex + 1) } : undefined}
+        >
           #{detail.stateNumber}
         </span>
         {ejes ? (
@@ -126,17 +147,28 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
       {ejes ? (
         <dl className="flex flex-col divide-y divide-border/60 border-y border-border/60 text-sm">
           {[
-            { k: "IFC", v: bandToWord(ejes.ifc) },
-            { k: "IRC", v: bandToWord(ejes.irc) },
-            { k: "Anillo (función-riesgo)", v: ejes.nombreAnillo },
-            { k: "FFMI", v: bandToWord(ejes.ffmi) },
-            { k: "FMI", v: bandToWord(ejes.fmi) },
-            { k: "Fenotipo", v: ejes.nombreSector },
-            { k: "Estado EFR", v: `#${detail.stateNumber} de 81` },
+            // El par (buena, mala) es SUYO y va por campo: en IFC lo bueno es Alto (3) y en IRC lo bueno
+            // es Bajo (1). Colorear por la palabra seria inventarlo.
+            { k: "IFC", v: bandToWord(ejes.ifc), c: colorBanda(ejes.ifc, 3, 1) },
+            { k: "IRC", v: bandToWord(ejes.irc), c: colorBanda(ejes.irc, 1, 3) },
+            { k: "Anillo (función-riesgo)", v: ejes.nombreAnillo, c: null },
+            { k: "FFMI", v: bandToWord(ejes.ffmi), c: colorBanda(ejes.ffmi, 3, 1) },
+            { k: "FMI", v: bandToWord(ejes.fmi), c: colorBanda(ejes.fmi, 1, 3) },
+            { k: "Fenotipo", v: ejes.nombreSector, c: null },
+            { k: "Estado EFR", v: `#${detail.stateNumber} de 81`, c: null },
           ].map((f) => (
             <div key={f.k} className="flex items-baseline justify-between gap-3 py-1.5">
               <dt className="text-muted-foreground">{f.k}</dt>
-              <dd className="text-right font-medium text-foreground">{f.v}</dd>
+              <dd
+                className={`text-right font-medium ${f.c ?? "text-foreground"}`}
+                style={
+                  f.k === "Estado EFR"
+                    ? { color: riskColor(ejes.sectorIndex + 1, ejes.ringIndex + 1) }
+                    : undefined
+                }
+              >
+                {f.v}
+              </dd>
             </div>
           ))}
         </dl>
@@ -280,19 +312,27 @@ export function DianaExplorer({
       {/* Exploracion como COMPARACION lado a lado (Santiago 2026-08-18 b): el estado del paciente queda en
           el panel PRINCIPAL y el explorado abre AL LADO (debajo en movil), en vez de reemplazarlo. Al
           cerrar, la Diana de arriba queda intacta en su lugar. */}
-      {exploring ? (
-        <div className="flex flex-col gap-3">
+      {/* LA CARD DEL PACIENTE VA SIEMPRE (2026-09-03, smoke de Santiago). Antes solo aparecia al explorar,
+          o sea que el DIAGNOSTICO del paciente era un efecto secundario de una accion opcional: quien no
+          pulsara "Explorar otros estados" no lo veia nunca. No es un elemento de comparacion, es el
+          diagnostico; la comparacion es lo que se AÑADE al explorar.
+          A ancho completo cuando esta sola (ComparisonLayout ya lo hace con `secondary` en null) y en dos
+          columnas al aparecer la referencia. */}
+      <div className="flex flex-col gap-3">
+        {exploring ? (
           <p className="text-sm text-muted-foreground">
             {exploredRef
               ? "Comparando el estado del paciente con el estado de referencia que elegiste en la Diana. La referencia no cambia el diagnóstico."
               : "Haz clic en una celda de la Diana para comparar ese estado de referencia con el del paciente. Explorar no cambia el diagnóstico."}
           </p>
-          <ComparisonLayout
-            primary={<StateDetailPanel detail={{ ...patientContent, stateNumber }} kind="paciente" />}
-            secondary={exploredRef ? <StateDetailPanel detail={exploredRef} kind="referencia" /> : null}
-          />
-        </div>
-      ) : null}
+        ) : null}
+        <ComparisonLayout
+          primary={<StateDetailPanel detail={{ ...patientContent, stateNumber }} kind="paciente" />}
+          secondary={
+            exploring && exploredRef ? <StateDetailPanel detail={exploredRef} kind="referencia" /> : null
+          }
+        />
+      </div>
     </div>
   );
 }
