@@ -74,15 +74,20 @@ export function Banda({
         compacta ? "px-5 py-4" : "px-6 py-6",
       ].join(" ")}
     >
-      {/* CIRCULOS DE BAJISIMO CONTRASTE: dan profundidad sin dibujar nada que compita con el texto.
-          `aria-hidden` y `pointer-events-none` porque no son contenido ni son clicables. */}
+{/* TRAMA DE PUNTOS (2026-09-03, elegida por Santiago entre cuatro). Sustituye a dos circulos.
+          POR QUE ESTA Y NO UN ICONO DEL DOMINIO, que era la pregunta: una reticula lee a INSTRUMENTO DE
+          MEDICION, que es lo que Atlas es, y sigue sin representar ningun objeto. Un icono reconocible
+          detras del nombre de un paciente se lee como adorno, y ademas cualquiera DICE algo: un corazon es
+          cardiologia, una hoja es dieta vegetal. Lo que diga va a chocar con algun paciente.
+          (La otra candidata era un trazo de señal, que es lo que de verdad mide la bioimpedancia, pero se
+          confunde con un electrocardiograma y no hacemos cardiologia.)
+
+          LA MASCARA ES LO QUE LA HACE USABLE: la trama se desvanece hacia la izquierda, asi que nunca le
+          pasa por detras al texto, que empieza ahi. Sin ella, los puntos cruzarian el nombre.
+          `aria-hidden` y `pointer-events-none` porque no es contenido ni es clicable. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-16 -top-24 -z-10 size-64 rounded-full bg-white/[0.07]"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-28 right-32 -z-10 size-40 rounded-full bg-white/[0.05]"
+        className="trama-medicion pointer-events-none absolute inset-0 -z-10"
       />
       <div className="flex flex-col gap-2">
         {volver}
