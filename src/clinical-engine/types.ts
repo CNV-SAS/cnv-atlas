@@ -281,6 +281,39 @@ export function efrRiskRank(a: number, b: number): number {
 // rango del sector (IFC x IRC) por 9, mas el rango del anillo (FFMI x FMI), mas 1. Antes
 // numerabamos base-3 posicional, que no coincidia con la Diana/reportes del prototipo
 // (nuestro estado 42 era su 33); se renumero para paridad (registry sin pacientes reales).
+/**
+ * INVERSA de `efrStateNumber`: del numero de estado (1..81) a sus dos ejes y sus cuatro bandas.
+ *
+ * PARA QUE: las cards del estado muestran la tabla de siete indicadores (IFC, IRC, anillo, FFMI, FMI,
+ * fenotipo, estado) tanto del PACIENTE como del estado de REFERENCIA que el profesional explora. Del de
+ * referencia no hay snapshot: solo se sabe su numero, asi que sus bandas hay que derivarlas.
+ *
+ * SE DERIVA DEL MISMO `EFR_RISK_ORDER` que numera y colorea, asi que no puede desincronizarse. Escribir
+ * el desglose a mano seria la forma de que un dia la tabla diga otra cosa que la celda.
+ *
+ * OJO AL NOMBRE DE LOS EJES, que aqui se cruzan y es un error facil: en la DIANA los ANILLOS (A1-A9) son
+ * IFC x IRC y los SECTORES (E1-E9) son FFMI x FMI. En `efrStateNumber` la variable del primero se llama
+ * `rSector` y la del segundo `rRing`, al reves. Se conserva su nombre para no tocar la aritmetica
+ * congelada, y aqui se devuelven con el nombre de la DIANA, que es el que ve el profesional.
+ */
+export function efrDesglose(stateNumber: number): {
+  ringIndex: number;
+  sectorIndex: number;
+  ifc: number;
+  irc: number;
+  ffmi: number;
+  fmi: number;
+} | null {
+  if (!Number.isInteger(stateNumber) || stateNumber < 1 || stateNumber > 81) return null;
+  const n = stateNumber - 1;
+  const ringIndex = Math.floor(n / 9); // IFC x IRC
+  const sectorIndex = n % 9; // FFMI x FMI
+  const anillo = EFR_RISK_ORDER[ringIndex];
+  const sector = EFR_RISK_ORDER[sectorIndex];
+  if (!anillo || !sector) return null;
+  return { ringIndex, sectorIndex, ifc: anillo[0], irc: anillo[1], ffmi: sector[0], fmi: sector[1] };
+}
+
 export function efrStateNumber(bands: {
   ifc: number;
   irc: number;
