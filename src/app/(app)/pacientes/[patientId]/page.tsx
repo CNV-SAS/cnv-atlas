@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Panel } from "@/components/shared/panel";
-import { TituloPantalla } from "@/components/shared/titulo-pantalla";
+import { Banda } from "@/components/shared/banda";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -59,14 +59,21 @@ export default async function HistoriaPacientePage({
 
   const anos = edadEnAnios(paciente.birthDate);
   const nombre = `${paciente.firstName} ${paciente.lastName}`.trim() || "Sin nombre";
-  const datos: { label: string; value: string }[] = [
-    { label: "Documento", value: `${paciente.documentType} ${paciente.documentNumber}`.trim() },
-    { label: "Edad", value: anos === null ? "-" : `${anos} años` },
-    { label: "Sexo", value: sexoLabel(paciente.sex) },
+  // LOS CUATRO DE IDENTIDAD SUBEN A LA BANDA (2026-09-03). Son los que dicen DE QUIEN es esta pantalla y
+  // no cambian de una consulta a otra; en la banda estan donde el ojo ya esta y dejan de gastar cuatro
+  // tarjetas. Ninguno es clinico, que es la condicion para que puedan ir sobre el degradado.
+  const identidad: { rotulo: string; valor: string }[] = [
+    { rotulo: "Documento", valor: `${paciente.documentType} ${paciente.documentNumber}`.trim() },
+    { rotulo: "Edad", valor: anos === null ? "-" : `${anos} años` },
+    { rotulo: "Sexo", valor: sexoLabel(paciente.sex) },
     {
-      label: "Ubicación",
-      value: [paciente.city, paciente.country].filter(Boolean).join(", ") || "-",
+      rotulo: "Ubicación",
+      valor: [paciente.city, paciente.country].filter(Boolean).join(", ") || "-",
     },
+  ];
+  // El resto sigue en tarjetas: son datos de CONTACTO y de caracterizacion, que se consultan cuando hacen
+  // falta y no identifican al paciente de un vistazo.
+  const datos: { label: string; value: string }[] = [
     { label: "Correo", value: paciente.email ?? "-" },
     { label: "Teléfono", value: paciente.phone ?? "-" },
     { label: "Estado", value: estadoPacienteLabel(paciente.status) },
@@ -82,10 +89,14 @@ export default async function HistoriaPacientePage({
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-6">
-      <TituloPantalla
+      {/* BANDA, no encabezado plano: es una de las dos pantallas donde se gana el sitio, porque aqui la
+          cabecera tiene que cargar IDENTIDAD (ver `banda.tsx`). */}
+      <Banda
         volver={<VolverA href="/pacientes">Volver a pacientes</VolverA>}
+        antetitulo="Paciente"
         titulo={nombre}
-        descripcion="Historia clínica del paciente."
+        bajada="Historia clínica del paciente."
+        datos={identidad}
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

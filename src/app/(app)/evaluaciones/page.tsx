@@ -53,8 +53,10 @@ export default async function EvaluacionesPage() {
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
       {/* EL TITULO DE LA PAGINA ES LA SECCION, no el bloque que hay dentro. Antes el h1 decia "Evaluaciones
           por confirmar", que es el nombre de UNA de las dos partes de esta pantalla (la otra es el enlace
-          de consultorio) y ademas discrepaba del rotulo de la barra superior. Ahora la pagina se llama
-          como la seccion y "Por confirmar" baja a titulo de bloque, que es lo que es. */}
+          de consultorio). Ahora la pagina se llama como la seccion y "Por confirmar" baja a titulo de
+          bloque, que es lo que es.
+          (La razon original citaba ademas que discrepaba del rotulo de la barra superior; ese rotulo se
+          retiro el 2026-09-03 y la pagina es hoy el UNICO sitio que dice donde estas.) */}
       <TituloPantalla
         titulo="Evaluaciones"
         descripcion="Revisa la identidad de cada paciente y confirma para continuar la atención."
