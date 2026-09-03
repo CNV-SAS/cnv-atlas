@@ -180,9 +180,9 @@ export function EvaluationResults({
     return (
       <div className="flex flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          <h2 className="text-seccion font-semibold tracking-tight text-foreground">
             Resultados de la evaluación
-          </h1>
+          </h2>
           <p className="text-muted-foreground">
             {results.patientName} · {results.documentLabel} ·{" "}
             {formatDate(results.evaluationDate)}
@@ -347,9 +347,9 @@ export function EvaluationResults({
       {/* Encabezado */}
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          <h2 className="text-seccion font-semibold tracking-tight text-foreground">
             Resultados de la evaluación
-          </h1>
+          </h2>
           {results.confirmed ? (
             <Badge className="bg-clinical-optimal-bg text-clinical-optimal">
               Diagnóstico confirmado
