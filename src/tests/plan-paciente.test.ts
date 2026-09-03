@@ -120,7 +120,16 @@ describe("el plan sale de los MISMOS números que ve el nutricionista", () => {
 describe("lo que NO viaja al paciente, y es deliberado", () => {
   it("la referencia bibliográfica de la prescripción se queda", () => {
     // Al paciente le sirve el número, no de qué guía sale. Eso es del documento del profesional.
-    expect(READER).toContain("({ nombre: f.nombre, valor: f.valor })");
+    //
+    // SE AFIRMA LA GARANTIA, NO LA FORMA (corregido el 2026-09-03). Este caso comparaba la expresion
+    // literal `({ nombre: f.nombre, valor: f.valor })`, y se puso rojo al reescribir el mapeo para que la
+    // proteina saliera de la cadena efectiva: la garantia seguia intacta y el candado decia que no. Un
+    // candado atado a como esta escrito algo se rompe cada vez que se reescribe sin cambiar lo que
+    // garantiza, y ahi se acaba editando la asercion, que es como los candados dejan de leerse.
+    expect(READER).toContain("nombre: f.nombre");
+    expect(READER).toContain("valor: f.valor");
+    // Lo que de verdad se prohibe: que la referencia viaje.
+    expect(READER).not.toContain("ref: f.ref");
   });
 
   it("el menú son SIETE días, no los veintiuno del ciclo", () => {
