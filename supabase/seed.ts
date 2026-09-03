@@ -566,23 +566,58 @@ async function main() {
     // completas y quedan no corregibles (gate de version).
     (await supabase.from("survey_versions").upsert({ id: SURVEY_VERSION_ID, template_id: SURVEY_TEMPLATE_ID, version_number: SURVEY_VERSION_NUMBER }, { onConflict: "id" })).error,
   );
-  // Reemplazo autoritativo: borra las preguntas de esta version (las opciones caen por
-  // cascade) y siembra el set real. Con UUIDs deterministicos por (tipo, clave) el borrar
-  // e insertar deja los mismos ids -> idempotente. Requiere una BD sin respuestas reales
-  // referenciando estas preguntas (contexto de seed dev), o el FK de survey_answers frena.
-  // Orden de borrado (dev): survey_answers -> survey_responses -> survey_questions, o el
-  // FK de answers frena el borrado de preguntas. Las answers se borran por question_id de
-  // esta version (survey_answers no tiene columna de version), cubriendo tambien answers
-  // huerfanas de smokes previos. En dev no hay historia clinica real que preservar; el
-  // seed reestablece el estado determinista.
-  const existingQ = await supabase.from("survey_questions").select("id").eq("survey_version_id", SURVEY_VERSION_ID);
-  check("survey_questions fetch", existingQ.error);
-  const existingQIds = (existingQ.data ?? []).map((r) => r.id);
-  if (existingQIds.length) {
-    check("survey_answers delete", (await supabase.from("survey_answers").delete().in("question_id", existingQIds)).error);
+  // ── SIEMBRA NO DESTRUCTIVA DE LA ENCUESTA (2026-09-03) ──────────────────────────────────────────
+  //
+  // ANTES ERA UN REEMPLAZO AUTORITATIVO: borraba `survey_answers` -> `survey_responses` ->
+  // `survey_questions` de esta version y volvia a sembrar. Su justificacion escrita era que "en dev no
+  // hay historia clinica real que preservar", y esa premisa resulto FALSA: la base local de Santiago
+  // tiene las respuestas de sus smokes, y correr el seed se las llevo. **Un borrado que se apoya en una
+  // suposicion sobre el entorno es un borrado que un dia se lleva algo.**
+  //
+  // Y LOS BORRADOS ERAN REDUNDANTES PARA EL CAMINO FELIZ, que es lo que lo hace barato de arreglar: las
+  // preguntas y las opciones ya se siembran con `upsert` por id, y los ids son DETERMINISTAS
+  // (`surveyUuid` sobre version + clave). O sea que el upsert solo, sin borrar nada, deja exactamente las
+  // mismas filas. El borrado solo servia para una cosa: quitar preguntas RETIRADAS del set.
+  //
+  // ASI QUE SE BARREN LOS HUERFANOS, y solo esos. Una pregunta de esta version que ya no esta en
+  // `SURVEY_QUESTIONS` es un huerfano; se borra SOLO SI NADIE LA RESPONDIO. Si tiene respuestas, el seed
+  // FALLA EN VOZ ALTA en vez de borrarlas: que el contenido de la encuesta cambie bajo respuestas que ya
+  // existen es exactamente lo que resuelve un BUMP DE VERSION, no un borrado silencioso.
+  //
+  // Las OPCIONES huerfanas si se borran sin mas: `survey_answers` guarda el TEXTO de la respuesta
+  // (`answer_value`), no el id de la opcion, asi que ninguna respuesta las referencia.
+  const idsNuevos = new Set(SURVEY_QUESTIONS.map((q) => surveyUuid("q", SURVEY_VERSION_ID, q.key)));
+  const existentes = await supabase
+    .from("survey_questions")
+    .select("id, question_text")
+    .eq("survey_version_id", SURVEY_VERSION_ID);
+  check("survey_questions fetch", existentes.error);
+  const huerfanas = (existentes.data ?? []).filter((r) => !idsNuevos.has(r.id));
+
+  if (huerfanas.length) {
+    const conRespuesta = await supabase
+      .from("survey_answers")
+      .select("question_id")
+      .in("question_id", huerfanas.map((r) => r.id));
+    check("survey_answers fetch", conRespuesta.error);
+    const respondidas = new Set((conRespuesta.data ?? []).map((r) => r.question_id));
+    const bloqueantes = huerfanas.filter((r) => respondidas.has(r.id));
+
+    if (bloqueantes.length) {
+      throw new Error(
+        `El seed NO puede continuar: ${bloqueantes.length} pregunta(s) salieron de la encuesta pero YA ` +
+          `TIENEN RESPUESTAS. Borrarlas destruiria datos de pacientes. Si el contenido de la encuesta ` +
+          `cambio, sube SURVEY_VERSION_ID (bump de version) en vez de reescribir la version vigente.\n  ` +
+          bloqueantes.map((r) => `${r.id}  ${r.question_text}`).join("\n  "),
+      );
+    }
+
+    check(
+      "survey_questions huerfanas delete",
+      (await supabase.from("survey_questions").delete().in("id", huerfanas.map((r) => r.id))).error,
+    );
+    console.log(`  · ${huerfanas.length} pregunta(s) retirada(s) del set, sin respuestas: borradas.`);
   }
-  check("survey_responses delete", (await supabase.from("survey_responses").delete().eq("survey_version_id", SURVEY_VERSION_ID)).error);
-  check("survey_questions delete", (await supabase.from("survey_questions").delete().eq("survey_version_id", SURVEY_VERSION_ID)).error);
 
   const surveyQuestionRows = SURVEY_QUESTIONS.map((q, i) => ({
     // Id de pregunta CON la version: al bumpear SURVEY_VERSION_ID, la version nueva recibe ids NUEVOS y
@@ -619,6 +654,25 @@ async function main() {
     })),
   );
   check("survey_options", (await supabase.from("survey_options").upsert(surveyOptionRows, { onConflict: "id" })).error);
+
+  // OPCIONES HUERFANAS: las de esta version que ya no estan en el set. Se borran sin ceremonia, y aqui si
+  // es seguro: `survey_answers` guarda el TEXTO de la respuesta (`answer_value`), no el id de la opcion,
+  // asi que ninguna respuesta las referencia. Sin este barrido, quitar una opcion de una pregunta la
+  // dejaria viva en pantalla para siempre.
+  {
+    const idsOpciones = new Set(surveyOptionRows.map((o) => o.id));
+    const idsPreguntas = surveyQuestionRows.map((q) => q.id);
+    const existentes = await supabase
+      .from("survey_options")
+      .select("id")
+      .in("question_id", idsPreguntas);
+    check("survey_options fetch", existentes.error);
+    const sobran = (existentes.data ?? []).filter((r) => !idsOpciones.has(r.id)).map((r) => r.id);
+    if (sobran.length) {
+      check("survey_options huerfanas delete", (await supabase.from("survey_options").delete().in("id", sobran)).error);
+      console.log(`  · ${sobran.length} opcion(es) retirada(s) del set: borradas.`);
+    }
+  }
 
   // 7. 2 devices en estados distintos.
   check(
