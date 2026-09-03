@@ -228,7 +228,15 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             <Dato etiqueta="Objetivo" valor={noRegistrado(hc.plan.kcalObjetivo, " kcal")} />
             <Dato etiqueta="Proteína" valor={noRegistrado(hc.plan.proteinaG, " g")} />
             <Dato etiqueta="Carbohidratos" valor={noRegistrado(hc.plan.carbohidratosG, " g")} />
-            <Dato etiqueta="Grasas" valor={noRegistrado(hc.plan.grasasG, " g")} />
+            {/* Igual que en pantalla: el porcentaje es la decision del profesional. */}
+            <Dato
+              etiqueta="Grasas"
+              valor={
+                hc.plan.grasasPct == null
+                  ? noRegistrado(hc.plan.grasasG, " g")
+                  : `${noRegistrado(hc.plan.grasasG, " g")} (${hc.plan.grasasPct} %)`
+              }
+            />
             <Dato etiqueta="Actividad física" valor={noRegistrado(hc.plan.actividadFisica)} />
             {hc.plan.sodioMax != null ? (
               <Dato etiqueta="Sodio" valor={`< ${hc.plan.sodioMax.toLocaleString("es-CO")} mg/día`} />

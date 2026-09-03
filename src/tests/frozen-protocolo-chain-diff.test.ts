@@ -1,6 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+
+import { ENTREGAS } from "./fixtures/html-vigente";
 
 // DIFF B: el harness Via C (`protocolo-chain-harness.mjs`) corre los bytes VERBATIM de la cadena de
 // Gildardo, no nuestra transcripción de `protocolo-calorico.ts`. Es el ORÁCULO de GOLDEN 1, y este test
@@ -25,27 +27,35 @@ import { describe, expect, it } from "vitest";
 // un número de línea. Es la misma corrección que ya se hizo en `motor-trat-nutri` y en `frozen-deriva`.
 
 const DIR = "docs/entregas/Gildardo responses";
-const MESES: Record<string, number> = {
-  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
-};
+// `MESES` se retiro con `entregaVigente`: el orden de las entregas lo resuelve `fixtures/html-vigente`.
 
 /** La entrega vigente, DERIVADA del directorio: escrita a mano envejece en silencio. */
-function entregaVigente(): string {
-  const carpetas = readdirSync(DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && /^html actualizado /.test(d.name))
-    .map((d) => {
-      const m = /^html actualizado (\d+) (\p{L}+)$/u.exec(d.name);
-      if (!m) throw new Error(`carpeta con nombre inesperado: ${d.name}`);
-      return { name: d.name, orden: MESES[m[2].toLowerCase()] * 100 + Number(m[1]) };
-    })
-    .sort((a, b) => a.orden - b.orden);
-  return carpetas[carpetas.length - 1].name;
+// `entregaVigente` se retiro: este candado compara contra la entrega que nuestro porte refleja, no
+// contra la de hoy (ver `HTML_DE_NUESTRO_PORTE`).
+
+/**
+ * LA ENTREGA QUE NUESTRA CADENA REFLEJA, que desde el 2026-09-03 ya no es la vigente.
+ *
+ * Su entrega del 3-sep RETIRA de `motorTratNutri` toda la prescripcion de proteina y el gasto basal, que
+ * es lo que el mismo nos mando portar dos dias antes. NO se porta la retirada hasta que confirme que es
+ * deliberada (ronda del 2026-09-04, P-99), asi que el oraculo de GOLDEN 1 se queda en la ultima entrega
+ * que SI prescribe: la del 2 de septiembre.
+ *
+ * ESTO NO ES VOLVER A ANCLAR POR RUTA LITERAL, que es el defecto que este archivo vino a cerrar: la
+ * carpeta se sigue DERIVANDO, y lo que se declara es un DESFASE de una entrega, con su razon y su fecha.
+ * Quien mira si esa entrega sigue siendo la de hoy es `frozen-deriva-vigente`, donde la divergencia esta
+ * declarada modulo por modulo. Cuando el responda, esto vuelve a `entregaVigente()`.
+ */
+function entregaDeNuestraCadena(): string {
+  const orden = ENTREGAS;
+  const i = orden.indexOf("html actualizado 2 septiembre");
+  if (i < 0) throw new Error("no encuentro la entrega que nuestra cadena refleja (2 septiembre)");
+  return orden[i];
 }
 
 /** La cadena del plan nutricional, localizada POR CONTENIDO y no por número de línea. */
 function cadenaViva(): string {
-  const html = readFileSync(`${DIR}/${entregaVigente()}/ATLAS_v8.html`, "utf8");
+  const html = readFileSync(`${DIR}/${entregaDeNuestraCadena()}/ATLAS_v8.html`, "utf8");
   const ini = html.indexOf("      var gebN = formulaEditPN.geb!==undefined");
   const fin = html.indexOf("var docKey", ini);
   if (ini < 0 || fin < 0) throw new Error("no se encuentra la cadena del plan nutricional en su archivo");
@@ -65,7 +75,7 @@ describe("DIFF B: el harness es verbatim de la cadena VIVA del plan nutricional"
   it("y se derivó de la entrega vigente, no de una anterior", () => {
     // CONTROL: sin esto, el caso de arriba pasaría verde con un harness regenerado de cualquier entrega
     // cuya cadena no hubiera cambiado. La cabecera dice de cuál salió, y tiene que ser la de hoy.
-    expect(harness).toContain(entregaVigente());
+    expect(harness).toContain(entregaDeNuestraCadena());
   });
 
   it("el envoltorio no agrega aritmética (fuera del slice no hay Math.round/max)", () => {

@@ -343,6 +343,8 @@ export type HcPlanNutricional = {
   proteinaGKg: number | null;
   carbohidratosG: number | null;
   grasasG: number | null;
+  /** El % que FIJA el profesional; los gramos son su consecuencia. Ver `hc-composicion`. */
+  grasasPct: number | null;
   actividadFisica: string | null;
 };
 
@@ -374,7 +376,15 @@ export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) 
           }
         />
         <Dato etiqueta="Carbohidratos" valor={plan.carbohidratosG == null ? SIN_DATO : `${Math.round(plan.carbohidratosG)} g/día`} />
-        <Dato etiqueta="Grasas" valor={plan.grasasG == null ? SIN_DATO : `${Math.round(plan.grasasG)} g/día`} />
+        {/* Los gramos Y el porcentaje: el % es la decision y los gramos su consecuencia. */}
+        <Dato
+          etiqueta="Grasas"
+          valor={
+            plan.grasasG == null
+              ? SIN_DATO
+              : `${Math.round(plan.grasasG)} g/día${plan.grasasPct == null ? "" : ` (${plan.grasasPct} %)`}`
+          }
+        />
         {/* SODIO: YA SE CALCULA. Estuvo en "Pendiente" con un texto que decia "se emitira cuando se
             incorpore el motor de prescripcion nutricional", cierto cuando se escribio y falso desde el
             2026-08-31, cuando ese motor se conecto. Nadie volvio a esta linea: la misma forma que el
