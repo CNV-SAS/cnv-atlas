@@ -6,7 +6,7 @@ import { useActionState, useId, useState } from "react";
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
-import { AlimentosDelSubgrupo, ListaIntercambioPaciente } from "./lista-intercambio";
+import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
 import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
@@ -1086,10 +1086,12 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
         />
-        {/* La lista que se lleva el paciente. Va aqui, despues de la validacion y antes del menu, igual que
-            en el v8 (su seccion E precede a la F). No depende del protocolo: es la tabla completa, la misma
-            para todos; lo que cambia por paciente son las PORCIONES, que estan arriba. */}
-        <ListaIntercambioPaciente />
+        {/* LA LISTA DEL PACIENTE SE RETIRO DE AQUI (2026-09-03), y era una divergencia nuestra que se cierra.
+            En su archivo esa lista es `plan-print-only`: NO se ve en pantalla, solo al imprimir. La
+            mostrabamos porque no teniamos superficie de entrega; desde el 1-sep el paciente recibe su plan
+            dentro del reporte, asi que la condicion de salida que este mismo codigo declaraba se cumplio.
+            El profesional no pierde nada: los alimentos con gramaje siguen en la tabla de trabajo de
+            arriba, plegados por subgrupo y COMPLETOS (no recortados a 8). */}
         {/* Menu semanal (CP4). key = firma del menu guardado (remonte, como las demas secciones). */}
         <MenuSemanalSection
           key={sectionKey("menu-semanal", menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal }))}

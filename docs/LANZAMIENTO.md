@@ -65,8 +65,25 @@
    **Tanda 3 (unificacion del peso meta, migracion 0095):** un solo sitio de guardado, el del paciente,
    conservando de cual de las dos superficies salio el numero.
    Su estado no se afirma aquí: lo dicen `peso-meta-una-sola-fuente`, `ayudas-que-son-garantias`,
-   `recalculo-dos-actos`, `cadena-dos-bloques` y `protocol-concurrency` (BD real). **Falta la subpestaña de
-   Rutas de atención**, que es la otra mitad del gate 3 (`BACKLOG.md`).
+   `recalculo-dos-actos`, `cadena-dos-bloques` y `protocol-concurrency` (BD real).
+
+   **LA SUBPESTAÑA DE RUTAS: SU TANDA SÍ SE HIZO (corregido el 2026-09-03).** Esta línea decía "falta la
+   subpestaña de Rutas", y se leía como si nunca se hubiera cotejado. No es así:
+   `COTEJO_TRATAMIENTO_2026-08-24.md` Parte 1 la cotejó inventario contra inventario, clasificó las cuatro
+   piezas (R1↔A1 mismo motor de rutas · R2↔A2 nutracéuticos · R3↔A4 remisiones · R4 el botón de imprimir,
+   solo en el HTML) y cierra con **"Sin clasificar: nada."**
+
+   **Lo que falta es una PASADA DE OJOS, y por una razón concreta:** el 2026-08-27 los bloques de Rutas y
+   remisiones se reescribieron al sistema de tres niveles, así que "que se vean como el v8" dejó de ser el
+   criterio y `COTEJOS_VISUALES.md` los volvió a marcar `[OJOS]`. Lo que se mira es el orden de las tres
+   secciones, los textos de las rutas activadas, y las dosis y prioridades de los nutracéuticos.
+
+   **Y esa pasada queda ABSORBIDA por el cotejo final** (decisión de Santiago, 2026-09-03): cuando llegue
+   la entrega de Gildardo se hace un paciente nuevo en los tres sitios y se coteja contra lo definitivo,
+   una sola vez. Así que el gate 3 no espera trabajo nuestro: espera esa entrega.
+
+   **Lo que NO es parte de este gate:** LUVIA y los otros productos. Es construcción diferida (fuera del
+   MVP, `PLAN_CONSIGNACION_TERCEROS.md`, nada construido), no un hueco del cotejo.
 
    **Tanda 4 (smoke del 2026-09-01):** desbloqueo del panel (el peso meta paso a `evaluations`, migracion
    0096, porque la fila del intake es OPCIONAL y 41 de 60 tratamientos no la tenian), la correccion de una
