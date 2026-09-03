@@ -3,18 +3,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { INTER_TABLA_B, alimentosDe } from "@/clinical-engine/intercambio-alimentos";
-import {
-  ALIMENTOS_VISIBLES_PACIENTE,
-  AlimentosDelSubgrupo,
-  ListaIntercambioPaciente,
-} from "@/modules/treatment/components/lista-intercambio";
+import { AlimentosDelSubgrupo } from "@/modules/treatment/components/lista-intercambio";
 
-// CANDADO DE LAS DOS SUPERFICIES de la lista de alimentos (porte del v8, 2026-08-23). Lo que se blinda no
-// es el estilo: son los DOS RECORTES, que son decisiones de Gildardo y no nuestras, y que un edit futuro
-// desharia con buena intencion ("¿por que ocultamos alimentos?").
-//   - La del PROFESIONAL va PLEGADA. El subgrupo Cereales tiene 39 alimentos; desplegados rompen la tabla.
-//   - La del PACIENTE va RECORTADA a 8 por subgrupo, con "entre otros". Una lista de 39 no se usa en casa.
-// Si alguno de los dos se pierde, la pantalla sigue "funcionando" y por eso nadie lo notaria en un smoke.
+// CANDADO DE LA LISTA DEL PROFESIONAL (porte del v8, 2026-08-23). Lo que se blinda no es el estilo: es el
+// RECORTE, que es decision de Gildardo y no nuestra, y que un edit futuro desharia con buena intencion
+// ("¿por que ocultamos alimentos?"). La del PROFESIONAL va PLEGADA: el subgrupo Cereales tiene 39
+// alimentos y desplegados rompen la tabla. Si se pierde, la pantalla sigue "funcionando" y nadie lo
+// notaria en un smoke.
+//
+// AQUI HABIA UN SEGUNDO BLOQUE, el de la lista del PACIENTE recortada a 8 con "entre otros". Se retiro con
+// el componente el 2026-09-03: en el archivo de Gildardo esa lista es `plan-print-only` y nosotros la
+// mostrabamos en pantalla por no tener superficie de entrega. Desde el 1-sep el paciente recibe su plan
+// dentro del reporte. El recorte a 8 sigue siendo suyo y se re-porta cuando llegue el mapa de regiones,
+// dentro del septimo bloque del plan; el commit que lo retira conserva el codigo si hace falta cotejarlo.
 
 const CEREALES = "Cereales"; // el subgrupo mas grande: 39 alimentos
 
@@ -37,45 +38,5 @@ describe("AlimentosDelSubgrupo (referencia del profesional)", () => {
   it("cada alimento va con su gramaje, que es el dato que se consulta", () => {
     const uno = alimentosDe(CEREALES)[0];
     expect(markup).toContain(`${uno.al} (${uno.g} g)`);
-  });
-});
-
-describe("ListaIntercambioPaciente (lo que se lleva el paciente)", () => {
-  const markup = renderToStaticMarkup(createElement(ListaIntercambioPaciente));
-
-  it("RECORTA a los primeros 8 por subgrupo y lo dice con 'entre otros'", () => {
-    const todos = alimentosDe(CEREALES);
-    expect(todos.length).toBeGreaterThan(ALIMENTOS_VISIBLES_PACIENTE); // si no, el caso no prueba nada
-    const visibles = todos.slice(0, ALIMENTOS_VISIBLES_PACIENTE);
-    const ocultos = todos.slice(ALIMENTOS_VISIBLES_PACIENTE);
-    for (const a of visibles) expect(markup, `deberia mostrar ${a.al}`).toContain(a.al);
-    expect(markup).toContain("entre otros");
-    // Y el ultimo oculto NO aparece: prueba que el recorte corta de verdad, no que solo diga la frase.
-    expect(markup, `no deberia mostrar ${ocultos[ocultos.length - 1].al}`).not.toContain(
-      ocultos[ocultos.length - 1].al,
-    );
-  });
-
-  it("NO dice 'entre otros' en un subgrupo que cabe entero", () => {
-    const corto = INTER_TABLA_B.reduce<Record<string, number>>((acc, a) => {
-      acc[a.sub] = (acc[a.sub] ?? 0) + 1;
-      return acc;
-    }, {});
-    const subCorto = Object.keys(corto).find((k) => corto[k] <= ALIMENTOS_VISIBLES_PACIENTE)!;
-    const bloque = markup.slice(markup.indexOf(subCorto));
-    const finBloque = bloque.indexOf("</p>");
-    expect(bloque.slice(0, finBloque)).not.toContain("entre otros");
-  });
-
-  it("lleva el parrafo de COMO USARLA (sin el, la lista no se entiende en casa)", () => {
-    expect(markup).toContain("puedes intercambiarlos libremente");
-    expect(markup).toContain("una porción de intercambio");
-  });
-
-  it("recorre los 12 grupos, no solo los que tienen porciones", () => {
-    // Es la tabla completa, igual para todos: lo que cambia por paciente son las PORCIONES, que estan
-    // en la tabla de arriba. Si algun dia se filtrara por porciones>0, el paciente perderia alternativas.
-    expect(markup).toContain("Harinas");
-    expect(markup).toContain("Bebidas");
   });
 });
