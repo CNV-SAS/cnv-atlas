@@ -195,6 +195,13 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // La SECCION sale del item activo, la misma resolucion que usa el resaltado de la barra lateral. Se
+  // aplana desde los grupos, igual que hace la navegacion: con una lista parcial, `isNavItemActive`
+  // marcaria activo el ancestro de otro grupo.
+  const itemsVisibles = grupos.flatMap((g) => g.items);
+  const seccionActiva = itemsVisibles.find((i) =>
+    isNavItemActive(i.href, pathname, itemsVisibles),
+  )?.label;
   const [open, setOpen] = useState(false);
 
 
@@ -242,19 +249,31 @@ export function AppShell({
             <div className="lg:hidden">
               <AtlasLogo />
             </div>
-            {/* AQUI VIVIA EL TITULO DE SECCION, y se retiro el 2026-09-03 (decision de Santiago).
-                Lo puso una version anterior porque el titulo "nunca deberia caer sobre el gris"; con el
-                encabezado nuevo (antetitulo + titulo + bajada) el trio SI se sostiene sobre el gris, y
-                mantener los dos dejaba la misma palabra escrita dos veces a un palmo de distancia.
+            {/* EL ROTULO DE SECCION, de vuelta el 2026-09-03 y con OTRO PAPEL que el que tenia.
+                Se habia retirado esa misma manana porque duplicaba el titulo de la pagina; Santiago lo
+                quiere de vuelta al verlo, y la duplicacion se resuelve por PESO en vez de por ausencia.
+                Queda escrito el ida y vuelta para que nadie lo retire otra vez por el mismo motivo.
 
-                QUE SE PIERDE, verificado y no supuesto: nada que no estuviera cubierto. Este titulo era
-                `lg:block`, o sea que en telefono no se veia ya. Y en escritorio la referencia al bajar la
-                sigue dando la BARRA LATERAL, que tambien es `sticky top-0` y marca el item activo, asi
-                que la cabecera solo llevaba una segunda copia.
+                COMO SE DISTINGUE DEL TITULO DE LA PAGINA, que es lo que hacia falta resolver:
+                  · Aqui va en `text-sm` y en gris (`text-muted-foreground`), no en negro y `text-base`.
+                    Es una MIGA DE PAN, no un titulo: dice en que seccion estas.
+                  · La pagina lleva el titulo de verdad, en `text-titulo` y en negro.
+                Con dos pesos distintos, ver "Pacientes" arriba en gris pequeno y "Pacientes" abajo en
+                grande no se lee como repeticion sino como jerarquia, que es lo que es.
 
-                Y la distincion que aquel comentario establecia sigue viva, solo que en un sitio: la
-                pantalla dice donde estas con su antetitulo y que miras con su titulo. */}
+                Y EN LA MAYORIA DE PANTALLAS NI SIQUIERA COINCIDEN: en la ficha del paciente la barra dice
+                "Pacientes" y la pagina el NOMBRE; en una evaluacion, "Evaluaciones" y el nombre otra vez.
+                Solo coinciden en las listas, que es donde el titulo de pagina ES el de la seccion.
+
+                Y VA A LA DERECHA, junto al avatar, como pidio Santiago: a la izquierda volvia a competir
+                con el titulo de la pagina, que empieza unos pixeles mas abajo en la misma columna.
+                Sigue siendo `lg:block`: en telefono el ancho lo necesita el logo. */}
           </div>
+          {seccionActiva ? (
+            <span className="ml-auto hidden truncate pr-3 text-sm text-muted-foreground lg:block">
+              {seccionActiva}
+            </span>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

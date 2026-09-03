@@ -67,7 +67,10 @@ export function Banda({
   return (
     <header
       className={[
-        "relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-[#143a9e] via-primary to-[#4a86ff] text-white",
+        // HORIZONTAL (`to-r`), no diagonal (2026-09-03, Santiago). En una banda ancha y baja la
+        // diagonal recorre poco antes de salirse por arriba, asi que el degradado se ve solo en las
+        // esquinas; en horizontal cruza el ancho entero, que es la dimension que la banda tiene.
+        "relative isolate overflow-hidden rounded-2xl bg-gradient-to-r from-[#143a9e] via-primary to-[#4a86ff] text-white",
         compacta ? "px-5 py-4" : "px-6 py-6",
       ].join(" ")}
     >
