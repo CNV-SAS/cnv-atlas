@@ -199,9 +199,8 @@ export function AppShell({
   // aplana desde los grupos, igual que hace la navegacion: con una lista parcial, `isNavItemActive`
   // marcaria activo el ancestro de otro grupo.
   const itemsVisibles = grupos.flatMap((g) => g.items);
-  const seccionActiva = itemsVisibles.find((i) =>
-    isNavItemActive(i.href, pathname, itemsVisibles),
-  )?.label;
+  const itemActivo = itemsVisibles.find((i) => isNavItemActive(i.href, pathname, itemsVisibles));
+  const IconoSeccion = itemActivo ? ICONS[itemActivo.icon] : null;
   const [open, setOpen] = useState(false);
 
 
@@ -273,10 +272,13 @@ export function AppShell({
                 QUEDA PREPARADO EL SITIO DE UN ICONO a su izquierda: el `gap-2` y el `flex` estan puestos
                 para que entre uno sin recolocar nada.
                 Sigue siendo `lg:block`: en telefono el ancho lo necesita el logo. */}
-            {seccionActiva ? (
-              <span className="hidden items-center gap-2 truncate text-sm text-muted-foreground lg:flex">
-                {/* Aqui va el icono de la seccion cuando se decida. */}
-                {seccionActiva}
+            {itemActivo ? (
+              <span className="hidden items-center gap-2 truncate text-base font-semibold text-foreground lg:flex">
+                {/* EL MISMO ICONO QUE LA BARRA LATERAL, del mismo mapa: las dos superficies nombran la
+                    seccion, asi que tienen que hacerlo con el mismo simbolo. Si se dibujara aqui uno
+                    propio, "Pacientes" tendria dos iconos distintos en la misma pantalla. */}
+                {IconoSeccion ? <IconoSeccion className="size-4 shrink-0" aria-hidden /> : null}
+                {itemActivo.label}
               </span>
             ) : null}
           </div>
