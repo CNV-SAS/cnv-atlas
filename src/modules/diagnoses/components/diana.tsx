@@ -44,7 +44,7 @@ const SCALE_GRADIENT = STOPS.map((s) => `rgb(${s.r},${s.g},${s.b}) ${Math.round(
 
 // Color de una celda a partir de los rangos de riesgo (1..9) de su sector y su anillo. Misma
 // interpolacion que el HTML: t = (a + b - 2) / 16, sobre las 10 paradas.
-function riskColor(a: number, b: number): string {
+export function riskColor(a: number, b: number): string {
   const t = (a + b - 2) / 16;
   let i = 0;
   while (i < STOPS.length - 1 && STOPS[i + 1].t < t) i++;
