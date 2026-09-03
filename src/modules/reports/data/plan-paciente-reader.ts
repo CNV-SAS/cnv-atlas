@@ -64,7 +64,7 @@ export async function getPlanPaciente(
     fatPct: protocol.adjFatPct,
     deficit: protocol.adjDeficit,
     pesoMeta: protocol.pesoMetaFijado,
-  });
+  }, { protKgVigente });
   const kcalObjetivo = Math.round(efectivo.calorico.kcalObj);
 
   const prescripcion = await getPrescripcionNutricional(
