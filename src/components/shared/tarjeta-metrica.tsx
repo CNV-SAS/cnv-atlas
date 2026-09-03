@@ -36,9 +36,12 @@ export function TarjetaMetrica({
 }) {
   const encendida = acento && valor !== 0 && valor !== "0";
   return (
+    // DISPOSICION VERTICAL (2026-09-03): el icono arriba, y debajo rotulo, cifra y alcance. Antes el icono
+    // iba al lado y le robaba ancho a la cifra, que es lo unico que se lee a distancia. En vertical la
+    // cifra manda y el icono queda como ancla, que es su papel.
     <div
       className={[
-        "flex items-start gap-3 rounded-2xl border p-4 shadow-sm",
+        "flex flex-col gap-3 rounded-2xl border p-4 shadow-sm",
         encendida ? "border-attention/40 bg-attention-bg" : "border-border bg-card",
       ].join(" ")}
     >
@@ -51,11 +54,11 @@ export function TarjetaMetrica({
         <span
           aria-hidden
           className={[
-            "flex size-9 shrink-0 items-center justify-center rounded-xl",
+            "flex size-10 shrink-0 items-center justify-center rounded-xl",
             encendida ? "bg-attention/15 text-attention" : "bg-primary/10 text-primary",
           ].join(" ")}
         >
-          <Icono className="size-4.5" />
+          <Icono className="size-5" />
         </span>
       ) : null}
       <div className="flex min-w-0 flex-col gap-0.5">
@@ -64,12 +67,17 @@ export function TarjetaMetrica({
         </span>
         <span
           className={[
-            "text-2xl font-bold leading-tight tabular-nums",
+            "text-3xl font-bold leading-tight tabular-nums",
             encendida ? "text-attention" : "text-foreground",
           ].join(" ")}
         >
           {valor}
         </span>
+        {/* EL PIE DICE EL ALCANCE DE LA CIFRA, no la adorna. Una cifra en una tarjeta de cabecera se lee
+            por defecto como "ahora mismo y todo lo que hay", y casi nunca es eso: puede ser lo asignado a
+            ti, lo acumulado desde el inicio, o lo medido en una fecha. Si un pie no puede decir algo
+            verdadero de ese tipo, se deja vacio: una frase de relleno gasta la linea que servia para
+            desambiguar. */}
         {detalle ? <span className="text-xs text-muted-foreground">{detalle}</span> : null}
       </div>
     </div>

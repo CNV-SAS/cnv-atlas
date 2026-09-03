@@ -14,37 +14,63 @@ import type { ReactNode } from "react";
 //    volver. La descripcion se acota AQUI, con `max-w-2xl`, porque el ancho de lectura es propiedad del
 //    TEXTO y no de la pagina: acotar la pagina entera para proteger un parrafo estropea las tablas.
 //
-// 3. EL SITIO DE LAS ACCIONES. Hoy cada pantalla las pone donde puede. Van a la derecha del titulo, y
-//    `flex-wrap` para que en un telefono caigan debajo en vez de aplastar el titulo.
+// 3. EL SITIO DE LAS ACCIONES. Van a la derecha del titulo, y `flex-wrap` para que en un telefono caigan
+//    debajo en vez de aplastar el titulo.
+//
+// ── SIN SUPERFICIE (2026-09-03), Y ESTO REEMPLAZA A LA BANDA OSCURA ──────────────────────────────────
+//
+// Hasta hoy la cabecera era una banda en ink con degradado. Se retira y el titulo pasa a ir DIRECTO sobre
+// el gris de la pagina, con tres piezas: un ANTETITULO corto en el azul de marca, el titulo, y la
+// descripcion. No hay dos cabeceras conviviendo: se cambia este componente, asi que las 28 pantallas
+// cambian con el y ninguna se queda con la vieja.
+//
+// POR QUE. La banda oscura resolvia "dar presencia", pero lo hacia gastando una superficie ELEVADA en algo
+// que no es contenido. En una pantalla clinica las superficies significan (los tres niveles de `bloque`:
+// decision, derivado, registro), y una cabecera no es ninguno de los tres: es el rotulo de la pagina. Al
+// quitarle la superficie, el primer bloque blanco que ve el profesional vuelve a ser el primer bloque de
+// CONTENIDO, que es lo que la jerarquia deberia decir.
+//
+// Y el degradado no desaparece del sistema: se reserva para una BANDA de pantalla clave, que se decide una
+// por una, en vez de repetirse en las 28 por defecto.
+//
+// EL CRITERIO DE LA DESCRIPCION NO CAMBIA (BRAND): dice lo que la pantalla NO muestra, casi siempre una
+// garantia o una consecuencia. No enumera las secciones que el usuario tiene delante.
 
 export function TituloPantalla({
   titulo,
+  antetitulo,
   descripcion,
   acciones,
   volver,
 }: {
   titulo: string;
-  /** Una linea sobre que hace la pantalla. Se acota sola: no hace falta pensarlo en cada pagina. */
+  /**
+   * Antetitulo corto en el azul de marca, ENCIMA del titulo. Dice a que ZONA pertenece la pantalla
+   * ("Seguimiento", "Inventario"), no lo que hace: eso ya lo dice el titulo. Opcional a proposito: una
+   * pantalla que no pertenece a ninguna zona no lleva uno inventado.
+   */
+  antetitulo?: string;
+  /** Una linea sobre lo que la pantalla NO muestra. Se acota sola: no hace falta pensarlo en cada pagina. */
   descripcion?: ReactNode;
   /** Acciones de la pantalla entera (no de una fila). A la derecha en ancho, debajo en estrecho. */
   acciones?: ReactNode;
-  /** Enlace de vuelta, cuando la pantalla es hija de otra. Va ENCIMA del titulo, no al lado. */
+  /** Enlace de vuelta, cuando la pantalla es hija de otra. Va ENCIMA del antetitulo, no al lado. */
   volver?: ReactNode;
 }) {
   return (
-    // BANDA EN INK, no en el azul de marca. El azul de la primera prueba saturaba porque ya lo llevan el
-    // item activo de la barra y los botones: tres cosas azules y solo una hace algo. El ink es el SEGUNDO
-    // ancla de marca de Atlas (BRAND: "azul = accion, ink = estructura"), asi que da presencia sin gastar
-    // el unico color que significa "esto es clicable". Blanco sobre ink: 18,08:1.
-    //
-    // EL DEGRADADO ES MINIMO y va hacia un ink AZULADO (#1c2333), no hacia otro tono: da profundidad con
-    // luminosidad, que es lo mismo que defendimos en la barra navy. Si se quiere plano, se quita una clase.
-    <header className="flex flex-col gap-2 rounded-2xl bg-gradient-to-br from-[#15161a] to-[#1c2333] px-6 py-5 text-white">
+    <header className="flex flex-col gap-2 pt-1">
       {volver}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-titulo font-bold tracking-tight">{titulo}</h1>
-          {descripcion ? <p className="max-w-2xl text-sm text-white/70">{descripcion}</p> : null}
+          {antetitulo ? (
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              {antetitulo}
+            </span>
+          ) : null}
+          <h1 className="text-titulo font-bold tracking-tight text-foreground">{titulo}</h1>
+          {descripcion ? (
+            <p className="max-w-2xl text-sm text-muted-foreground">{descripcion}</p>
+          ) : null}
         </div>
         {acciones ? <div className="flex shrink-0 flex-wrap gap-2">{acciones}</div> : null}
       </div>

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
+import { PillEstado } from "@/components/shared/pill-estado";
 import { formatDateOnlyShort } from "@/lib/format/date";
 import { edadEnAnios } from "../format";
 import type { PatientListItem } from "../types";
@@ -151,12 +152,12 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
             // la persona: "Revocado" sonaria a que el revocado es el paciente.
             chip={
               p.sinAutorizacionVigente ? (
-                <span
-                  className="shrink-0 rounded-full border border-clinical-warning/40 bg-clinical-warning-bg px-2 py-0.5 text-xs font-medium text-clinical-warning"
+                <PillEstado
+                  tono="atencion"
                   title="Le falta alguna autorización necesaria vigente. No se le pueden crear evaluaciones nuevas."
                 >
                   Sin autorización vigente
-                </span>
+                </PillEstado>
               ) : null
             }
           />
