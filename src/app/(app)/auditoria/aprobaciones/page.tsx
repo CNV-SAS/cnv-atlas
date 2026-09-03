@@ -1,3 +1,4 @@
+import { theadTr, th } from "@/components/shared/tabla";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -42,13 +43,13 @@ export default async function ApprovalsPage() {
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
         <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-semibold">Fecha de solicitud</th>
-              <th className="px-3 py-2 font-semibold">Solicitante</th>
-              <th className="px-3 py-2 font-semibold">Nivel</th>
-              <th className="px-3 py-2 font-semibold">Motivo</th>
-              <th className="px-3 py-2 font-semibold">Decisión</th>
+          <thead>
+            <tr className={theadTr}>
+              <th className={th}>Fecha de solicitud</th>
+              <th className={th}>Solicitante</th>
+              <th className={th}>Nivel</th>
+              <th className={th}>Motivo</th>
+              <th className={th}>Decisión</th>
             </tr>
           </thead>
           <tbody>

@@ -11,6 +11,9 @@ import type { ReactNode } from "react";
 //                        adelante lo que hay pendiente hoy).
 //   · Detalle paciente — SI. Ahi la cabecera tiene que cargar IDENTIDAD: de quien es esta pantalla. Los
 //                        datos de cabecera caben dentro en vez de robarle una tarjeta al contenido.
+//   · Una evaluacion   — SI, pero `compacta`. Misma razon (dice de quien es lo que estas mirando) con el
+//                        peso invertido: debajo hay mil lineas de trabajo clinico, asi que ubica y se
+//                        quita de en medio.
 //   · Listas y el resto — NO. La banda diria "Pacientes" y la navegacion ya lo dice; un degradado a todo
 //                        ancho para repetir una palabra es como el recurso deja de significar. Y si va en
 //                        las 28 pantallas deja de ser una banda de pantalla clave: es el fondo de la app.
@@ -38,6 +41,7 @@ export function Banda({
   datos,
   acciones,
   volver,
+  compacta = false,
 }: {
   /** Pastilla corta arriba del titulo. Dice QUE ES esto ("Paciente", una fecha), no lo que hace. */
   antetitulo?: string;
@@ -52,9 +56,21 @@ export function Banda({
   acciones?: ReactNode;
   /** Enlace de vuelta. Va encima de todo, y hereda el color: sobre la banda queda blanco. */
   volver?: ReactNode;
+  /**
+   * Banda MAS ANGOSTA, para pantallas donde el contenido es lo que pesa y la cabecera solo UBICA.
+   * El caso es la pantalla de una evaluacion: debajo hay mil lineas de trabajo clinico, asi que la
+   * cabecera tiene que decir de quien es y quitarse de en medio. En el detalle del paciente es al reves
+   * (la ficha ES la cabecera), y ahi va la normal.
+   */
+  compacta?: boolean;
 }) {
   return (
-    <header className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-[#143a9e] via-primary to-[#4a86ff] px-6 py-6 text-white">
+    <header
+      className={[
+        "relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-[#143a9e] via-primary to-[#4a86ff] text-white",
+        compacta ? "px-5 py-4" : "px-6 py-6",
+      ].join(" ")}
+    >
       {/* CIRCULOS DE BAJISIMO CONTRASTE: dan profundidad sin dibujar nada que compita con el texto.
           `aria-hidden` y `pointer-events-none` porque no son contenido ni son clicables. */}
       <span
@@ -74,13 +90,22 @@ export function Banda({
                 {antetitulo}
               </span>
             ) : null}
-            <h1 className="text-titulo font-bold tracking-tight">{titulo}</h1>
+            <h1
+              className={[
+                "font-bold tracking-tight",
+                compacta ? "text-seccion" : "text-titulo",
+              ].join(" ")}
+            >
+              {titulo}
+            </h1>
             {bajada ? <p className="max-w-2xl text-sm text-white/80">{bajada}</p> : null}
           </div>
           {acciones ? <div className="flex shrink-0 flex-wrap gap-2">{acciones}</div> : null}
         </div>
         {datos && datos.length > 0 ? (
-          <dl className="mt-1 flex flex-wrap gap-x-8 gap-y-2">
+          <dl
+            className={["flex flex-wrap gap-y-2", compacta ? "mt-0.5 gap-x-6" : "mt-1 gap-x-8"].join(" ")}
+          >
             {datos.map((d) => (
               <div key={d.rotulo} className="flex flex-col">
                 <dt className="text-xs uppercase tracking-[0.1em] text-white/65">{d.rotulo}</dt>

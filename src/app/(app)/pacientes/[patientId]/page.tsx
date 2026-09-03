@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Panel } from "@/components/shared/panel";
 import { Banda } from "@/components/shared/banda";
+import { PillEstado } from "@/components/shared/pill-estado";
+import { tabla, td, tdApagado, tdFuerte, tdNum, th, theadTr, thNum, tr } from "@/components/shared/tabla";
 import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
@@ -125,39 +127,44 @@ export default async function HistoriaPacientePage({
           </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">Tipo</th>
-                  <th className="px-3 py-2 font-semibold">Fecha</th>
-                  <th className="px-3 py-2 font-semibold">Motivo</th>
-                  <th className="px-3 py-2 font-semibold">Estado</th>
-                  <th className="px-3 py-2 text-right font-semibold">Resultados</th>
+            {/* DECORACION COMPARTIDA (2026-09-03): las clases salen de `components/shared/tabla`. */}
+            <table className={`${tabla} min-w-[560px] text-left`}>
+              <thead>
+                <tr className={theadTr}>
+                  {/* LA FECHA VA PRIMERO, y no es cosmetico: esta tabla existe para leer la TRAYECTORIA
+                      del paciente, y una trayectoria se recorre por fecha. El tipo (inicial o
+                      seguimiento) califica cada hito, asi que va despues. */}
+                  <th className={th}>Fecha</th>
+                  <th className={th}>Tipo</th>
+                  <th className={th}>Motivo</th>
+                  <th className={th}>Estado</th>
+                  <th className={thNum}>Resultados</th>
                 </tr>
               </thead>
               <tbody>
                 {paciente.evaluations.map((e) => (
-                  <tr key={e.evaluationId} className="border-b border-border/60 last:border-0">
-                    <td className="px-3 py-2 font-medium text-foreground">
-                      {TIPO_LABEL[e.type] ?? e.type}
-                      {e.superseded ? (
-                        <span className="ml-2 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
-                          reemplazada
-                        </span>
-                      ) : null}
-                    </td>
-                    {/* Fecha de MEDICION (cronologia clinica), no la de creacion del registro. */}
-                    <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                  <tr key={e.evaluationId} className={tr}>
+                    {/* LA NEGRITA VA EN LA FECHA, y es la unica de la tabla: es por donde se recorre.
+                        Fecha de MEDICION (cronologia clinica), no la de creacion del registro. */}
+                    <td className={`${tdFuerte} whitespace-nowrap`}>
                       {fechaCorta(e.measurementDate ?? e.createdAt)}
                     </td>
+                    <td className={td}>
+                      {TIPO_LABEL[e.type] ?? e.type}
+                      {/* CHIP SOLO SI ES EXCEPCIONAL: una evaluacion vigente no lleva distintivo; una
+                          reemplazada si, porque cambia como se lee todo lo que hay en su fila. */}
+                      {e.superseded ? (
+                        <PillEstado tono="neutro" className="ml-2 font-normal">
+                          reemplazada
+                        </PillEstado>
+                      ) : null}
+                    </td>
                     {/* Motivo de consulta (caracterizacion del encuentro, multi); "-" si no se dio. */}
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className={tdApagado}>
                       {e.reasonForVisit.length ? e.reasonForVisit.join(", ") : "-"}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {estadoEvaluacionLabel(e.status)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className={tdApagado}>{estadoEvaluacionLabel(e.status)}</td>
+                    <td className={tdNum}>
                       {/* Segun estado: firmada sin responder -> cerrar (si es su profesional); cerrada ->
                           rotulo sin accion; el resto -> ver resultados. Un shell no tiene resultados que ver. */}
                       {e.status === "awaiting_survey" ? (

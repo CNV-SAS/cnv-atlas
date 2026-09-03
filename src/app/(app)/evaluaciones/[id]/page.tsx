@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { TituloPantalla, TituloSeccion } from "@/components/shared/titulo-pantalla";
+import { Banda } from "@/components/shared/banda";
+import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { VolverA } from "@/components/shared/volver-a";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,9 +149,24 @@ export const metadata = { title: "Resultados - Atlas" };
 // desde el roster y, salvo que abrieras la etapa de Diagnostico, no decia de QUIEN era la evaluacion que
 // estabas mirando.
 //
-// QUE LLEVA Y POR QUE ESO: el nombre del paciente como titulo (es el registro; la seccion la dice la barra
-// superior) y, en la descripcion, el TIPO, el documento y la fecha. El tipo ubica sin abrir nada
-// (una inicial y un seguimiento se trabajan distinto) y sale de la MISMA consulta, una columna mas.
+// QUE LLEVA Y POR QUE ESO: el nombre del paciente como titulo y, como datos de cabecera, el TIPO, el
+// documento y la fecha. El tipo ubica sin abrir nada (una inicial y un seguimiento se trabajan distinto) y
+// sale de la MISMA consulta, una columna mas.
+//
+// VA EN BANDA COMPACTA (2026-09-03). Es el tercer sitio donde la banda se gana el espacio, por la misma
+// razon que el detalle del paciente (la cabecera carga IDENTIDAD) pero con el peso invertido: debajo hay
+// mil lineas de trabajo clinico, asi que ubica y se quita de en medio.
+//
+// Y LOS TRES DATOS CUMPLEN LA REGLA, verificado y no supuesto: tipo de evaluacion, documento y fecha son
+// administrativos. Ninguno es una clasificacion, una severidad, un indice ni la edad bioelectrica, que es
+// lo unico que no puede ir sobre el degradado (ver `banda.tsx`).
+//
+// LOS TRES PASAN DE UNA LINEA CONCATENADA A PARES ROTULO/VALOR. La linea "Inicial · CC 1.020.445.118 ·
+// 14 ago 2026" obliga a parsear para saber que es cada trozo; con su rotulo encima se leen de un vistazo,
+// que es lo que una cabecera tiene que hacer.
+//
+// (La razon original decia ademas que "la seccion la dice la barra superior". Ese rotulo se retiro el
+// 2026-09-03, asi que esta pantalla es hoy el unico sitio que lo dice.)
 //
 // Y LA FECHA ES `created_at`, no la de medicion. Se conserva tal cual estaba antes en la etapa de
 // Diagnostico para no cambiar en silencio la cronologia; queda anotado que la ficha del paciente usa la
@@ -161,12 +177,18 @@ const TIPO_EVALUACION: Record<string, string> = { inicial: "Inicial", seguimient
 function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
   const tipo = TIPO_EVALUACION[header.evaluationType] ?? header.evaluationType;
   return (
-    <TituloPantalla
+    <Banda
+      compacta
       volver={
         <VolverA href={`/pacientes/${header.patientId}`}>Volver a la ficha del paciente</VolverA>
       }
+      antetitulo="Evaluación"
       titulo={header.patientName}
-      descripcion={`${tipo} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
+      datos={[
+        { rotulo: "Tipo", valor: tipo },
+        { rotulo: "Documento", valor: header.documentLabel },
+        { rotulo: "Fecha", valor: formatDate(header.evaluationDate) },
+      ]}
     />
   );
 }
