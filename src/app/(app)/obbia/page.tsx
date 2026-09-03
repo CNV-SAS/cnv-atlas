@@ -1,3 +1,4 @@
+import { theadTr, th } from "@/components/shared/tabla";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -42,12 +43,12 @@ export default async function ObbiaPage() {
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
           <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-border bg-muted text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-semibold">Alcance</th>
-                <th className="px-3 py-2 font-semibold">Anonimización</th>
-                <th className="px-3 py-2 font-semibold">Estado</th>
-                <th className="px-3 py-2 font-semibold">Fecha de creación</th>
+            <thead>
+              <tr className={theadTr}>
+                <th className={th}>Alcance</th>
+                <th className={th}>Anonimización</th>
+                <th className={th}>Estado</th>
+                <th className={th}>Fecha de creación</th>
               </tr>
             </thead>
             <tbody>

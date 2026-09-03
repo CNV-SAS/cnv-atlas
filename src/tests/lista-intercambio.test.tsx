@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { INTER_TABLA_B, alimentosDe } from "@/clinical-engine/intercambio-alimentos";
+import { alimentosDe } from "@/clinical-engine/intercambio-alimentos";
 import { AlimentosDelSubgrupo } from "@/modules/treatment/components/lista-intercambio";
 
 // CANDADO DE LA LISTA DEL PROFESIONAL (porte del v8, 2026-08-23). Lo que se blinda no es el estilo: es el

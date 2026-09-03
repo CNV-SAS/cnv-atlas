@@ -1,3 +1,4 @@
+import { theadTr, th, thNum } from "@/components/shared/tabla";
 import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
@@ -134,12 +135,12 @@ export default async function MiInventarioPage() {
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[36rem] text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-3 py-2.5 font-semibold">Fecha</th>
-                  <th className="px-3 py-2.5 font-semibold">Producto</th>
-                  <th className="px-3 py-2.5 font-semibold">Movimiento</th>
-                  <th className="px-3 py-2.5 font-semibold">Lote</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">Cantidad</th>
+                <tr className={theadTr}>
+                  <th className={th}>Fecha</th>
+                  <th className={th}>Producto</th>
+                  <th className={th}>Movimiento</th>
+                  <th className={th}>Lote</th>
+                  <th className={thNum}>Cantidad</th>
                 </tr>
               </thead>
               <tbody>

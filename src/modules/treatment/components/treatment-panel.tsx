@@ -6,6 +6,19 @@ import { useActionState, useId, useState } from "react";
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
+import {
+  tabla,
+  td,
+  tdApagadoNum,
+  tdFuerte,
+  tdGrupo,
+  tdNum,
+  th,
+  theadTr,
+  thNum,
+  tr,
+  trGrupo,
+} from "@/components/shared/tabla";
 import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
@@ -1876,9 +1889,9 @@ function IntercambioSection({
                 desplaza, y hasta el parrafo de ayuda salia cortado, aunque esta fuera de este div.
                 Las tres tablas de Diagnostico funcionaban con el mismo `min-w-` desde antes porque NO
                 estan dentro de un fieldset; esa era toda la diferencia. */}
-            <table className="w-full min-w-[38rem] border-collapse text-sm">
+            <table className={`${tabla} min-w-[38rem]`}>
               <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <tr className={theadTr}>
                   {/* "Grupo / subgrupo", no "Alimento": las filas SON subgrupos (Cereales, Leche entera)
                       y los alimentos estan en la ultima columna. Y no es cosmetico: esta columna define
                       que significa la casilla de Porciones, que Gildardo dejo en el SUBGRUPO el 27. Con
@@ -1890,8 +1903,8 @@ function IntercambioSection({
                   <th className="py-1 pr-3 text-right font-medium">kcal</th>
                   <th className="py-1 pr-3 text-right font-medium">Prot</th>
                   <th className="py-1 pr-3 text-right font-medium">CHO</th>
-                  <th className="py-1 pr-3 text-right font-medium">Grasa</th>
-                  <th className="py-1 font-medium">Alimentos del grupo</th>
+                  <th className={thNum}>Grasa</th>
+                  <th className={th}>Alimentos del grupo</th>
                 </tr>
               </thead>
               <tbody>
@@ -1905,8 +1918,8 @@ function IntercambioSection({
                   if (nuevoGrupo) {
                     const sinPorcion = grupoSinPorcion(a.gr, porciones);
                     filas.push(
-                      <tr key={`g-${a.gr}`} className="bg-muted/40">
-                        <td colSpan={8} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <tr key={`g-${a.gr}`} className={trGrupo}>
+                        <td colSpan={8} className={tdGrupo}>
                           {a.grNom}
                           {sinPorcion ? (
                             <span className="ml-2 font-normal normal-case text-clinical-warning" title="Grupo base sin porciones: el objetivo puede ser muy bajo">
@@ -1918,8 +1931,8 @@ function IntercambioSection({
                     );
                   }
                   filas.push(
-                    <tr key={a.sub} className="border-b border-border/50">
-                      <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
+                    <tr key={a.sub} className={tr}>
+                      <td className={tdFuerte}>{a.sub}</td>
                       <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{a.kcal}</td>
                       <td className="py-1.5 pr-3 text-right">
                         {/* Vacio con placeholder, no un 0 literal (como el suyo): en 21 filas, los ceros
@@ -1933,23 +1946,23 @@ function IntercambioSection({
                           className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
                         />
                       </td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums font-medium text-foreground">
+                      <td className={tdNum}>
                         {Math.round(n * a.kcal)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                      <td className={tdApagadoNum}>
                         {(n * a.prot).toFixed(1)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                      <td className={tdApagadoNum}>
                         {(n * a.cho).toFixed(1)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                      <td className={tdApagadoNum}>
                         {(n * a.gras).toFixed(1)}
                       </td>
                       {/* Alimentos concretos, PLEGADOS (porte fiel del v8). El plegado no es decoracion: el
                           primer subgrupo tiene 39 alimentos y desplegados romperian la tabla. Es referencia,
                           NO edita el calculo: el intercambio se cuenta por PORCIONES del subgrupo, y que
                           alimento se elija dentro del subgrupo es del paciente. */}
-                      <td className="py-1.5">
+                      <td className={td}>
                         <AlimentosDelSubgrupo sub={a.sub} />
                       </td>
                     </tr>,
