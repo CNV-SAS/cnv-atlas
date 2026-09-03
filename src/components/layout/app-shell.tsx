@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   ClipboardCheck,
@@ -181,6 +181,86 @@ function NavLinks({
   );
 }
 
+// ROTULO DE SECCION: dice donde estas y, cuando la pagina esta bajada, sube al inicio.
+//
+// ── POR QUE SUBIR Y NO IR A LA SECCION ──────────────────────────────────────────────────────────────
+//
+// La alternativa natural era que "Pacientes" llevara a /pacientes, como una miga de pan. Se descarto al
+// mirar que hay ya en cada pantalla:
+//
+//   · En la ficha del paciente seria DUPLICACION EXACTA: la banda ya lleva "Volver a pacientes", al mismo
+//     destino y a un palmo. Y el que ya esta es mejor, porque dice a donde va con palabras.
+//   · En una evaluacion seria PEOR que duplicacion: el "Volver" de la banda lleva a la FICHA DEL PACIENTE
+//     y el rotulo llevaria a la LISTA de evaluaciones. Dos controles parecidos, en la misma barra, a
+//     destinos distintos. Eso no es una miga de pan, es una trampa.
+//   · En una lista apuntaria a si misma, que es la miga de pan muerta de siempre.
+//
+// Y se descarto tambien distinguir por tipo de pantalla ("en lista sube, en honda vuelve"): un control que
+// hace cosas distintas segun donde estes es lo que rompe la confianza en el control.
+//
+// ── POR QUE SOLO CUANDO HAY SCROLL ──────────────────────────────────────────────────────────────────
+//
+// Un control que al pulsarlo no hace nada se lee como roto. Estando arriba, subir al inicio es un no-op,
+// asi que el rotulo es TEXTO PLANO ahi y se vuelve boton cuando la pagina esta bajada: aparece cuando
+// tiene trabajo, y el hover azul aparece con el.
+//
+// SE MIRA EL SCROLL REAL, no una lista de rutas: que una pantalla scrollee depende del contenido y del
+// alto de la ventana, asi que no lo decide una ruta, lo decide el navegador.
+//
+// ── Y ES UN <button>, no un div con onClick ─────────────────────────────────────────────────────────
+//
+// Alcanzable con tabulador y anunciado como boton. El nombre accesible es "Subir al inicio" y no el de la
+// seccion: quien lo oiga tiene que saber que HACE, no donde esta (eso ya lo dice el texto visible).
+function RotuloSeccion({ label, Icono }: { label: string; Icono: LucideIcon | null }) {
+  const [bajada, setBajada] = useState(false);
+
+  useEffect(() => {
+    // El umbral evita que el rotulo parpadee entre texto y boton con el rebote de scroll de macOS.
+    const alMover = () => setBajada(window.scrollY > 120);
+    alMover();
+    window.addEventListener("scroll", alMover, { passive: true });
+    return () => window.removeEventListener("scroll", alMover);
+  }, []);
+
+  const contenido = (
+    <>
+      {/* EL MISMO ICONO QUE LA BARRA LATERAL, del mismo mapa: las dos superficies nombran la seccion, asi
+          que tienen que hacerlo con el mismo simbolo. Con dos iconos distintos, "Pacientes" tendria dos
+          caras en la misma pantalla. */}
+      {Icono ? <Icono className="size-4 shrink-0" aria-hidden /> : null}
+      {label}
+    </>
+  );
+
+  if (!bajada) {
+    return (
+      <span className="hidden items-center gap-2 truncate text-base font-semibold text-foreground lg:flex">
+        {contenido}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Subir al inicio"
+      onClick={() =>
+        window.scrollTo({
+          top: 0,
+          // `prefers-reduced-motion` no es un detalle de cortesia: para quien lo activo, un desplazamiento
+          // animado de pantalla completa puede producir mareo.
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+        })
+      }
+      className="hidden items-center gap-2 truncate rounded-md text-base font-semibold text-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:flex"
+    >
+      {contenido}
+    </button>
+  );
+}
+
 // Shell adaptativo: sidebar fijo en desktop, hamburguesa + Sheet en movil.
 // Recibe los items ya filtrados por rol (la decision de visibilidad la tomo el
 // Server Component que lo monta) y un subconjunto serializable del usuario.
@@ -272,15 +352,7 @@ export function AppShell({
                 QUEDA PREPARADO EL SITIO DE UN ICONO a su izquierda: el `gap-2` y el `flex` estan puestos
                 para que entre uno sin recolocar nada.
                 Sigue siendo `lg:block`: en telefono el ancho lo necesita el logo. */}
-            {itemActivo ? (
-              <span className="hidden items-center gap-2 truncate text-base font-semibold text-foreground lg:flex">
-                {/* EL MISMO ICONO QUE LA BARRA LATERAL, del mismo mapa: las dos superficies nombran la
-                    seccion, asi que tienen que hacerlo con el mismo simbolo. Si se dibujara aqui uno
-                    propio, "Pacientes" tendria dos iconos distintos en la misma pantalla. */}
-                {IconoSeccion ? <IconoSeccion className="size-4 shrink-0" aria-hidden /> : null}
-                {itemActivo.label}
-              </span>
-            ) : null}
+            {itemActivo ? <RotuloSeccion label={itemActivo.label} Icono={IconoSeccion} /> : null}
           </div>
 
           <DropdownMenu>
