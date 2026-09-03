@@ -1,6 +1,6 @@
 # Ronda del 2026-09-02
 
-**Abierta el 2 de septiembre y cerrada el 3, con la del 1 ya enviada.** Ninguno de los siete puntos es una
+**Abierta el 2 de septiembre, con la del 1 ya enviada.** Ninguno de los ocho puntos es una
 respuesta a lo que todavía tienes en el escritorio. Vienen de tres sitios distintos, y vale separarlos
 porque lo que te pedimos en cada grupo es distinto:
 
@@ -9,6 +9,7 @@ porque lo que te pedimos en cada grupo es distinto:
 | **1 a 3** | Revisar tu entrega del 2 contra tu documento | **Tu documento y tu archivo no dicen lo mismo**, o tu archivo no dice lo mismo en dos sitios. No son desacuerdos con tu criterio |
 | **4 y 5** | El trabajo de estos dos días | Casos que aparecieron al construir y que dos reglas tuyas resuelven distinto |
 | **6 y 7** | **Valentina, usando la encuesta con pacientes** | Observaciones sobre el instrumento. No son nuestras, y no hemos tocado nada |
+| **8** | Un smoke nuestro | Un caso donde dos de tus atributos se leen juntos como contradicción |
 
 ## De un vistazo
 
@@ -21,6 +22,7 @@ porque lo que te pedimos en cada grupo es distinto:
 | **5** | Un campo de la cadena calórica que se queda **vacío** produce una prescripción implausible sin que nada lo distinga de una decisión | Si esos campos deben tener un valor por defecto que no se pueda borrar. **No te pedimos validar una cifra** | No |
 | **6** | **P24 no tiene dónde marcar "no hago ejercicio"**, y dejarla en blanco impide diagnosticar | Si le agregas una opción. **Observación de Valentina usando el instrumento** | No, pero hoy obliga a contestar algo falso |
 | **7** | **P43 y P44 hablan idiomas distintos** (alimentos contra sustancias), y el paciente no distingue alergia de intolerancia | El lenguaje de las opciones, y si separarlas tiene sentido para quien responde | No |
+| **8** | Un paciente con **desnutrición y ERC a la vez** recibe tus dos juegos de atributos, y uno dice "proteica alta" al lado de "proteína controlada 0,6-0,8" | Si quieres que el de proteína alta se suprima cuando aplica la renal. **Tu nota ya lo resuelve; preguntamos por el chip** | No |
 
 ---
 
@@ -309,6 +311,40 @@ tiene. Muchos no lo saben, y algunos ni siquiera con diagnóstico médico de por
    deba marcar el alimento y la clasificación la haga quien lo atiende.
 
 **No tocamos nada mientras respondes.** Las dos preguntas siguen exactamente como están.
+
+---
+
+# 8 · Desnutrición y ERC a la vez: dos de tus atributos se leen como contradicción
+
+**Apareció en un smoke, en un paciente que tiene las dos condiciones** (F10 con IMC 18,2 e insuficiencia
+renal). Es un caso pequeño y no cambiamos nada; lo preguntamos porque el chip se lee raro.
+
+**Lo que tu motor hace, y está bien:** entra la rama de desnutrición (proteína 1,5) y después la renal, que
+la corrige a **0,7**. La cifra final es la correcta, y tu propia nota lo dice: *"ERC: proteína baja bajo
+guía de nefrología (precede a la proteína alta)."*
+
+**Lo que ve el profesional, en este orden:**
+
+| | |
+| --- | --- |
+| 1 | **Proteína 0,7 g/kg** |
+| 2 | Densidad energética y **proteica alta**, fraccionada |
+| 3 | Nefroprotectora |
+| 4 | **Proteína controlada 0,6-0,8 g/kg** |
+| 5 | Hiposódica · Patrón DASH |
+
+Y debajo, la nota que lo resuelve.
+
+**El número manda bien y el orden también** (la corrección va después de lo que corrige). Lo único es que
+**el chip 2 dice "proteica alta" y el 4 dice "controlada 0,6-0,8"**, y quien mire solo los chips ve las dos
+frases juntas sin la nota que las ordena.
+
+**Lo que te preguntamos, y es una sola cosa: ¿el atributo de proteína alta debe suprimirse cuando aplica la
+rama renal?** Si dices que sí, lo quitamos solo en ese caso. Si dices que no, se queda como está: la nota ya
+hace el trabajo y no vamos a reordenar tus atributos por nuestra cuenta.
+
+**Lo que NO te proponemos es reescribir el texto del atributo.** Es tuyo, y la densidad energética sigue
+siendo correcta para un desnutrido aunque la proteína se limite.
 
 ---
 
