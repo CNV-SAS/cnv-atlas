@@ -24,7 +24,7 @@ import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
 //
 // QUE HACE ATLAS MIENTRAS TANTO: NO porta el cambio. El frozen se queda en `false`. Esto NO es corregirle
 // la ciencia (Regla 0), es no aplicar un cambio que su propio archivo declara invalido sin el otro medio.
-// Va preguntado en la ronda del 2026-09-02 (P-92), y hasta que responda esta divergencia es deliberada.
+// Va preguntado en la ronda del 2026-09-03 (P-92), y hasta que responda esta divergencia es deliberada.
 //
 // COMO MUERE ESTE CANDADO, que es lo que lo hace util: el dia que el recalibre, mu y sigma dejaran de ser
 // 58.578 y 13.332, el tercer caso se pondra ROJO y ahi hay que portar las dos cosas juntas. Si en cambio

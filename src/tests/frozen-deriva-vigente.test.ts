@@ -87,7 +87,7 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
         "interruptor SIN recalibrar la media y la desviacion del ICEC, que es lo que su propio " +
         "comentario exige hacer 'en el MISMO acto, nunca por separado'. Encenderlo solo baja la edad " +
         "bioelectrica de TODOS los pacientes entre 1 y 8 anos (cifra suya). Preguntado en la ronda del " +
-        "2026-09-02 (P-92). NO se tolera a ciegas: 'le8-interruptor-pendiente.test.ts' fija los cuatro " +
+        "2026-09-03 (P-92). NO se tolera a ciegas: 'le8-interruptor-pendiente.test.ts' fija los cuatro " +
         "hechos y se pone ROJO en cuanto el recalibre o vuelva atras, que es cuando hay que portar.",
     },
     {

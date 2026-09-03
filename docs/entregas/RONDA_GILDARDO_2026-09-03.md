@@ -1,7 +1,7 @@
-# Ronda del 2026-09-02
+# Ronda del 2026-09-03
 
-**Abierta el 2 de septiembre, con la del 1 ya enviada.** Ninguno de los ocho puntos es una
-respuesta a lo que todavía tienes en el escritorio. Vienen de tres sitios distintos, y vale separarlos
+**Abierta el 2 de septiembre y enviada el 3, con la del 1 ya respondida.** Ninguno de los ocho puntos es
+una respuesta a lo que todavía tienes en el escritorio. Vienen de tres sitios distintos, y vale separarlos
 porque lo que te pedimos en cada grupo es distinto:
 
 | Puntos | De dónde salen | Qué son |
@@ -345,6 +345,27 @@ hace el trabajo y no vamos a reordenar tus atributos por nuestra cuenta.
 
 **Lo que NO te proponemos es reescribir el texto del atributo.** Es tuyo, y la densidad energética sigue
 siendo correcta para un desnutrido aunque la proteína se limite.
+
+---
+
+# Y lo último, que no es un punto pero hace falta: manda el archivo
+
+**Tres de los ocho puntos se resuelven cambiando tu HTML**, no solo contestando:
+
+| Punto | Qué cambia en tu archivo |
+| --- | --- |
+| **1** · el interruptor del LE8 | O vuelve a `false`, o se queda en `true` con la media y la desviación nuevas en la llamada a `_zBis` |
+| **2** · el mapa de regiones | El bloque de código que tu §10.4 dice que iba en la entrega |
+| **8** · el atributo de proteína alta | Solo si decides suprimirlo cuando aplica la rama renal |
+
+**Y la razón por la que lo pedimos explícito: sin el archivo no podemos portar nada.** Atlas no aplica
+cambios clínicos por su cuenta, así que una respuesta que describe el cambio pero no lo trae nos deja en el
+mismo sitio. **Ya nos pasó dos veces** que respondieras y el archivo se quedara sin adjuntar; la más
+reciente es el punto 2 de esta misma ronda, donde el criterio llegó completo y el bloque de código no.
+
+**Y si respondes SIN cambiar el archivo, dilo también.** Saber que no cambió nada es información: nos deja
+seguir sobre lo que ya tenemos en vez de esperar una entrega que no viene. Cuando no sabemos si el archivo
+va a cambiar, la conducta prudente es esperar, y esperar de más cuesta lo mismo que esperar de menos.
 
 ---
 
