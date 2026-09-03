@@ -107,9 +107,7 @@ export default async function EvaluacionesPage() {
 
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Mediciones BIS por importar
-          </h2>
+          <TituloSeccion>Mediciones BIS por importar</TituloSeccion>
           <p className="text-muted-foreground">
             Sube el XLSX exportado de Biody Manager para cada evaluacion con la
             identidad ya confirmada.
@@ -131,9 +129,7 @@ export default async function EvaluacionesPage() {
 
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Generar diagnostico
-          </h2>
+          <TituloSeccion>Generar diagnostico</TituloSeccion>
           <p className="text-muted-foreground">
             Con la medicion BIS importada, genera indicadores, diagnostico y reporte con
             el motor real ANI-BIS-E. Luego revisa los resultados y la Diana.
@@ -155,9 +151,7 @@ export default async function EvaluacionesPage() {
 
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
-            Reportes por aprobar y enviar
-          </h2>
+          <TituloSeccion>Reportes por aprobar y enviar</TituloSeccion>
           <p className="text-muted-foreground">
             Revisa el preview, aprueba (confirma el diagnostico) y envia el reporte al
             paciente. Los enviados quedan en Reportes.

@@ -58,7 +58,8 @@ export async function PatientReferralsSection({
 
   return (
     <Panel>
-      <h2 className="text-2xl font-bold tracking-tight text-foreground">Remisiones</h2>
+      {/* Misma correccion de escala que en la entrada de la evaluacion (2026-09-03). */}
+      <h2 className="text-seccion font-semibold tracking-tight text-foreground">Remisiones</h2>
 
       {referrals.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

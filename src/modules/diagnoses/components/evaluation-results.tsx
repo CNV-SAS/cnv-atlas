@@ -17,7 +17,6 @@ import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
-import { formatDate } from "@/lib/format/date";
 import { fmtDec } from "@/lib/format/decimal";
 
 // Vista INTERNA del profesional: resultados clinicos de una evaluacion (B12). Presentacion
@@ -183,10 +182,11 @@ export function EvaluationResults({
           <h2 className="text-seccion font-semibold tracking-tight text-foreground">
             Resultados de la evaluación
           </h2>
-          <p className="text-muted-foreground">
-            {results.patientName} · {results.documentLabel} ·{" "}
-            {formatDate(results.evaluationDate)}
-          </p>
+        {/* LA LINEA DE IDENTIDAD SE RETIRO (2026-09-03). Decia "nombre · documento · fecha", y la banda
+            de /evaluaciones/[id] -bajo la que se monta esta vista- ya dice los tres. Verificado dato por
+            dato antes de quitarla, que era la condicion: el nombre es el TITULO de la banda, el documento
+            es uno de sus datos de cabecera, y la fecha resuelve igual en los dos (la de MEDICION, con
+            caida a `created_at`), asi que en esta pantalla no puede diferir. */}
         </header>
         <Card>
           <CardHeader>
@@ -358,10 +358,7 @@ export function EvaluationResults({
             <Badge variant="outline">Pendiente de confirmar</Badge>
           )}
         </div>
-        <p className="text-muted-foreground">
-          {results.patientName} · {results.documentLabel} ·{" "}
-          {formatDate(results.evaluationDate)}
-        </p>
+
       </header>
 
       {/* Caveat de validez sellado en el snapshot: bajo que condicion(es) que comprometen la validez
