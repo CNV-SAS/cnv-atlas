@@ -1,3 +1,4 @@
+import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { redirect } from "next/navigation";
 
@@ -43,12 +44,12 @@ export default async function DireccionPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* LA TARJETA COMPARTIDA (2026-09-03): estas cifras estaban hechas a mano, con su propia escala
+            y su propio borde. Es la misma pieza que /pacientes, y tenerla dos veces es como se llega a
+            dos dialectos para lo mismo. El `hint` pasa a `detalle`, que es donde va el ALCANCE de la
+            cifra. */}
         {cards.map((c) => (
-          <div key={c.label} className="flex flex-col gap-1 rounded-xl border border-border p-5">
-            <span className="text-sm text-muted-foreground">{c.label}</span>
-            <span className="text-2xl font-bold text-foreground">{c.value}</span>
-            {c.hint ? <span className="text-xs text-muted-foreground">{c.hint}</span> : null}
-          </div>
+          <TarjetaMetrica key={c.label} rotulo={c.label} valor={c.value} detalle={c.hint} />
         ))}
       </div>
     </div>

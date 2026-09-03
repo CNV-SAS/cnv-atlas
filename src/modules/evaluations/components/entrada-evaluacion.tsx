@@ -246,7 +246,10 @@ export function EntradaEvaluacion({
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+        {/* ESCALA DEL SISTEMA (2026-09-03): era `text-2xl font-bold`, el mismo tamaño al que baja el
+            titulo de PANTALLA, y dos niveles de jerarquia con el mismo peso no son dos niveles. Es la
+            escala que `TituloSeccion` retiro y que a esta vista no le habia llegado. */}
+        <h2 className="text-seccion font-semibold tracking-tight text-foreground">
           Entrada de la evaluación
         </h2>
         <p className="text-sm text-muted-foreground">
