@@ -149,7 +149,14 @@ export function Diana({
         // (0..320), asi que la celda del paciente cae en la MISMA posicion relativa; solo cambia el tamaño
         // de render. Antes tenia width/height fijos en px (320x320, con max-w-full que solo encogia), que
         // no dejaban al radar reclamar su mitad. Candado de la posicion en diana-geometry.test.
-        className="h-auto w-full max-w-[22rem]"
+        // MAS GRANDE (2026-09-03), y no es preferencia: los rotulos de sector llevan DEBAJO del codigo
+        // el par de bandas ("FMI Alto / FFMI Bajo"), en 6 unidades del viewBox. A 22rem eso renderiza a
+        // ~7px y no se lee, asi que el rotulo estaba portado y era ilegible: la Diana volvia a ser un
+        // codigo opaco, que es justo lo que el par vino a resolver. A 44rem el mismo texto sale a ~14px.
+        //
+        // No se toca la geometria ni el tamaño de fuente: el viewBox conserva el sistema de coordenadas y
+        // el navegador escala. Subir la fuente en unidades habria desalineado los rotulos con su celda.
+        className="h-auto w-full max-w-[44rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -256,7 +263,9 @@ export function Diana({
       </svg>
       {/* Escala de riesgo con palabras (fiel al HTML :11174): del optimo (centro) al riesgo maximo
           (periferia), no solo degradado. */}
-      <div className="flex w-full max-w-[280px] flex-col gap-1">
+      {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 44rem quedaba
+          como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
+      <div className="flex w-full max-w-[44rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
