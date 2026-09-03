@@ -197,11 +197,6 @@ export function AppShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // El titulo de la seccion sale del item activo, que es la misma resolucion que ya usa el resaltado de la
-  // barra: una sola fuente para "donde estoy". Si ninguna coincide (una ruta sin item propio), no se pinta
-  // nada en vez de inventar un rotulo.
-  const todosLosItems = grupos.flatMap((g) => g.items);
-  const tituloSeccion = todosLosItems.find((i) => isNavItemActive(i.href, pathname, todosLosItems))?.label;
 
   return (
     <div className="flex min-h-svh">
@@ -247,17 +242,18 @@ export function AppShell({
             <div className="lg:hidden">
               <AtlasLogo />
             </div>
-            {/* EL TITULO DE PANTALLA VIVE AQUI, en la franja blanca, no sobre el gris del contenido.
-                Es lo que hace su referencia "diseño sobrio" (el "Sales" de la cabecera), y resuelve tres
-                cosas de una: el titulo nunca cae sobre el gris (que era la queja), recupera altura en las
-                28 pantallas, y sale del `nav-config` que ya existe, asi que no hay trabajo por pantalla.
+            {/* AQUI VIVIA EL TITULO DE SECCION, y se retiro el 2026-09-03 (decision de Santiago).
+                Lo puso una version anterior porque el titulo "nunca deberia caer sobre el gris"; con el
+                encabezado nuevo (antetitulo + titulo + bajada) el trio SI se sostiene sobre el gris, y
+                mantener los dos dejaba la misma palabra escrita dos veces a un palmo de distancia.
 
-                Y establece una distincion que se sostiene sola: LA CABECERA DICE DONDE ESTAS (la seccion)
-                y EL CONTENIDO DICE QUE MIRAS (el registro). En /pacientes el contenido ya no necesita
-                titulo; en /pacientes/[id] la cabecera dice "Pacientes" y el contenido, el nombre. */}
-            <h1 className="hidden truncate text-base font-semibold text-foreground lg:block">
-              {tituloSeccion}
-            </h1>
+                QUE SE PIERDE, verificado y no supuesto: nada que no estuviera cubierto. Este titulo era
+                `lg:block`, o sea que en telefono no se veia ya. Y en escritorio la referencia al bajar la
+                sigue dando la BARRA LATERAL, que tambien es `sticky top-0` y marca el item activo, asi
+                que la cabecera solo llevaba una segunda copia.
+
+                Y la distincion que aquel comentario establecia sigue viva, solo que en un sitio: la
+                pantalla dice donde estas con su antetitulo y que miras con su titulo. */}
           </div>
 
           <DropdownMenu>
