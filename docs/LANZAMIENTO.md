@@ -182,3 +182,55 @@
 ---
 
 **Conteo de gates abiertos: Hito 1 = 4 · Hito 2 = 4 · Hito 3 = 8.** De los 4 del Hito 1, DOS están CONSTRUIDOS y solo esperan el smoke de Santiago (gate 1 corrección, gate 2bis-b bloqueo por encuesta incompleta, ver la naturaleza nueva arriba); los otros dos (gate 3 cotejo visual, gate 4 diseño gráfico) están abiertos de trabajo; el 4 con la mayor parte HECHA desde el 2026-08-27 (ver su avance), a falta de lo que espera a Gildardo y del layout general. (El 2026-08-02 se cerraron el gate 2/bug D8 y 2bis-a; el 2026-08-11/12 se CONSTRUYÓ 2bis-b, la suspensión Q28. Q8/Q14/P0 cerradas en decisión, pendientes de OK/re-port/trabajo; el gate de opción B se movió de Hito 3 a Hito 2; el gate 19, la lectura funcional del reporte, se movió de BACKLOG.) **Total ~19.** La matriz rol × hito se completa aquí cuando se decida por rol.
+
+---
+
+## Qué falta para atender a un paciente real (mapa del 2026-09-03)
+
+**La pregunta que este bloque responde, y que no estaba escrita en ningún sitio:** llevamos semanas
+construyendo y no había forma de ver de un golpe cuánto falta para el primer paciente real, ni qué de lo
+que queda lo IMPIDE y qué es pulido.
+
+**La respuesta corta: la ruta crítica no pasa por el código.** Atender a un paciente real es el Hito 3, y
+de sus ocho gates **solo dos son construcción**.
+
+| Naturaleza | Gates | Estado |
+|---|---|---|
+| **Legal** | 17 (cierre de `SECURITY.md` y `DATA_GOVERNANCE.md`) · 18 (residencia y DPA de Supabase frente a la regulación colombiana de dato de salud) | **No empezados**, y no dependen de escribir código |
+| **Infraestructura** | 15 (Supabase Pro + PITR y backups externos) | No empezado. Es presupuesto y una tarde |
+| **Operativo** | 20 (reseteo de versiones al limpiar staging → producción) | Definido; se ejecuta en la limpieza |
+| **Código** | 16 (separación operativo/clínico completa) · 19 (lectura funcional de los indicadores en el reporte) | Abiertos |
+| **De Gildardo** | 12 y 13 cerradas en decisión · 14 con la Parte 1 hecha | Casi |
+
+**Lo que IMPIDE atender: los dos gates legales y el de infraestructura.** Ninguno de los tres es
+construcción, y ninguno ha empezado. Conviene arrancarlos en paralelo: lo que queda de código cabe en el
+tiempo que ellos tomen.
+
+**Lo que es MEJORA** (no impide atender a nadie; hace que el producto esté pulido para el Integrante, que
+es el Hito 1): el cotejo de Rutas, el diseño gráfico, el pase de diseño de los tres documentos
+imprimibles, y la deuda de infraestructura.
+
+### Los tres bloques abiertos de nuestro lado, con su tamaño
+
+| Bloque | Qué queda | Tamaño |
+|---|---|---|
+| **Cotejo de Rutas** (cierra el gate 3) | La subpestaña de Rutas de atención. Las otras cinco tandas están hechas | **Medio.** Una pantalla, por tandas, con smoke por tanda |
+| **Diseño de los tres documentos** | El plan del paciente, la HC imprimible y el reporte funcionan pero no pasaron por `BRAND.md`: heredan el estilo de pantalla | **Medio.** No toca lógica. El riesgo es de impresión (saltos de página), que solo se ve imprimiendo |
+| **Deuda técnica** | No es un bloque, son tres cosas distintas (ver abajo) | Mixto |
+
+**La deuda, separada por lo que de verdad es:**
+
+- **Dos son gates del Hito 2**, no deuda opcional: la siembra no destructiva y su patrón concreto. **Medio.**
+- **Dos son riesgo real y baratas:** los tests de integración no limpian tras de sí (ya dio flake al correr
+  `db` combinado con `unit`) y el seed principal es destructivo con las respuestas de encuesta. **Chicas.**
+- **El resto es infraestructura futura** (bus durable, jobs en background, E2E con Playwright, chequeo de
+  configuración al arranque). **Grande, y nada de eso hace falta para atender.**
+
+### Lo que espera a Gildardo, y qué bloquea
+
+**La ronda del 2026-09-03 tiene ocho puntos y TRES bloquean construcción:** el interruptor del LE8 (bloquea
+portar su `engine.dfi`), el bloque del mapa de regiones (bloquea el séptimo bloque del plan del paciente, y
+es lo único donde no podemos avanzar mientras responde) y la correspondencia de los 18 grupos con los 21
+subgrupos (bloquea estimar el consumo actual). De rondas anteriores siguen bloqueando el puente
+frecuencia-porciones con el omega-3 (enciende las diez alertas de consumo) y el ICEC. Los puntos 4 a 8 y
+P-10 no bloquean nada.
