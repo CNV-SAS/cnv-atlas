@@ -1897,12 +1897,12 @@ function IntercambioSection({
                       que significa la casilla de Porciones, que Gildardo dejo en el SUBGRUPO el 27. Con
                       "Alimento" la pantalla contradecia esa decision. Rotulos cortos como los suyos: en
                       una tabla que no cabe, el ancho del encabezado fuerza el de la columna. */}
-                  <th className="py-1 pr-3 font-medium">Grupo / subgrupo</th>
-                  <th className="py-1 pr-3 text-right font-medium">kcal/porc</th>
-                  <th className="py-1 pr-3 text-right font-medium">Porciones</th>
-                  <th className="py-1 pr-3 text-right font-medium">kcal</th>
-                  <th className="py-1 pr-3 text-right font-medium">Prot</th>
-                  <th className="py-1 pr-3 text-right font-medium">CHO</th>
+                  <th className={th}>Grupo / subgrupo</th>
+                  <th className={thNum}>kcal/porc</th>
+                  <th className={thNum}>Porciones</th>
+                  <th className={thNum}>kcal</th>
+                  <th className={thNum}>Prot</th>
+                  <th className={thNum}>CHO</th>
                   <th className={thNum}>Grasa</th>
                   <th className={th}>Alimentos del grupo</th>
                 </tr>
@@ -1933,8 +1933,8 @@ function IntercambioSection({
                   filas.push(
                     <tr key={a.sub} className={tr}>
                       <td className={tdFuerte}>{a.sub}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">{a.kcal}</td>
-                      <td className="py-1.5 pr-3 text-right">
+                      <td className={tdApagadoNum}>{a.kcal}</td>
+                      <td className={tdNum}>
                         {/* Vacio con placeholder, no un 0 literal (como el suyo): en 21 filas, los ceros
                             compiten visualmente con las porciones asignadas, que es lo que hay que ver. */}
                         <input
@@ -2115,12 +2115,12 @@ function MenuSemanalSection({
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
-            <table className="w-full min-w-[42rem] border-collapse text-sm">
+            <table className={`${tabla} min-w-[42rem]`}>
               <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-1 pr-3 font-medium">Día</th>
+                <tr className={theadTr}>
+                  <th className={th}>Día</th>
                   {vivos.map((t) => (
-                    <th key={t.id} className="py-1 pr-3 font-medium">
+                    <th key={t.id} className={th}>
                       {t.n}
                     </th>
                   ))}
@@ -2128,10 +2128,10 @@ function MenuSemanalSection({
               </thead>
               <tbody>
                 {DIAS_SEMANA.map((nombre, dia) => (
-                  <tr key={nombre} className="border-b border-border/50 align-top">
-                    <td className="py-1.5 pr-3 font-medium text-foreground">{nombre}</td>
+                  <tr key={nombre} className={`${tr} align-top`}>
+                    <td className={tdFuerte}>{nombre}</td>
                     {vivos.map((t) => (
-                      <td key={t.id} className="py-1.5 pr-3">
+                      <td key={t.id} className={td}>
                         <textarea
                           rows={3}
                           value={valor(dia, t.id)}
@@ -2428,10 +2428,10 @@ function TiemposSection({
         <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
-            <table className="w-full min-w-[38rem] border-collapse text-sm">
+            <table className={`${tabla} min-w-[38rem]`}>
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="py-1 pr-3 text-left font-medium">Alimento</th>
+                  <th className={th}>Alimento</th>
                   {vivos.map((t) => (
                     <th key={t.id} className="px-2 py-1 text-right font-medium">
                       {t.n}
@@ -2451,7 +2451,7 @@ function TiemposSection({
                   if (nuevoGrupo) {
                     filas.push(
                       <tr key={`g-${a.gr}`} className="bg-muted/40">
-                        <td colSpan={vivos.length + 2} className="py-1 pr-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <td colSpan={vivos.length + 2} className={tdGrupo}>
                           {a.grNom}
                         </td>
                       </tr>,
@@ -2460,8 +2460,8 @@ function TiemposSection({
                   const cuadre = reparto(a.sub);
                   const cuadra = cuadre.suma === cuadre.obj;
                   filas.push(
-                    <tr key={a.sub} className="border-b border-border/50">
-                      <td className="py-1.5 pl-3 pr-3 text-foreground">{a.sub}</td>
+                    <tr key={a.sub} className={tr}>
+                      <td className={tdFuerte}>{a.sub}</td>
                       {vivos.map((t) => (
                         <td key={t.id} className="px-2 py-1.5 text-right">
                           <input
@@ -2491,7 +2491,7 @@ function TiemposSection({
                   <td />
                 </tr>
                 <tr className="text-muted-foreground">
-                  <td className="py-1 pr-3">Total kcal</td>
+                  <td className={tdFuerte}>Total kcal</td>
                   {vivos.map((t) => (
                     <td key={t.id} className="px-2 py-1 text-right tabular-nums">
                       {Math.round(totalKcal[t.id])}
@@ -2641,10 +2641,10 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
       ) : (
         <div className="min-w-0 overflow-x-auto">
           {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
-          <table className="w-full min-w-[32rem] border-collapse text-sm">
+          <table className={`${tabla} min-w-[32rem]`}>
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="py-1 pr-3 text-left font-medium">Nutriente</th>
+                <th className={th}>Nutriente</th>
                 <th className="px-2 py-1 text-right font-medium">Obtenido</th>
                 <th className="px-2 py-1 text-right font-medium">Necesidad</th>
                 <th className="px-2 py-1 text-right font-medium">% Cubrim.</th>
@@ -2653,8 +2653,8 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
             </thead>
             <tbody>
               {nutrientes.map((n) => (
-                <tr key={n.k} className="border-b border-border/50">
-                  <td className="py-1.5 pr-3 text-foreground">
+                <tr key={n.k} className={tr}>
+                  <td className={tdFuerte}>
                     {n.l} <span className="text-xs text-muted-foreground">({n.u})</span>
                     {n.lim ? <span className="ml-1 text-xs text-muted-foreground">· a limitar</span> : null}
                   </td>
