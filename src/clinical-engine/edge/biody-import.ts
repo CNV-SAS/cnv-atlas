@@ -28,7 +28,11 @@ export interface BiodyImport {
 // Rangos fisiológicos de cordura para los insumos que mueven el diagnóstico.
 // No son cortes clínicos (esos viven en el motor); son un cinturón de seguridad
 // contra basura/unidades equivocadas antes de dejar correr la ciencia.
-const SANITY: Record<string, [number, number]> = {
+// EXPORTADO (2026-09-03) para el candado `diana-sin-medicion`: lo que impide que la Diana clasifique un
+// paciente sin medir NO es una guarda en los clasificadores (son ciencia congelada y no la tienen), es
+// que ningun rango de aqui admite el cero. Si alguien lo relaja, el hazard pasa de latente a vivo sin que
+// nada mas falle, asi que el rango tiene que ser verificable desde un test.
+export const SANITY: Record<string, [number, number]> = {
   Re:   [200, 1200],   // Ω
   Ri:   [400, 4000],   // Ω
   Rinf: [150, 1000],   // Ω

@@ -111,6 +111,8 @@ export type HcPlanNutricionalDoc = {
   proteinaGKg: number | null;
   carbohidratosG: number | null;
   grasasG: number | null;
+  /** El % que FIJA el profesional; los gramos son su consecuencia (su punto 9 del 3-sep). */
+  grasasPct: number | null;
   actividadFisica: string | null;
   sodioMax?: number | null;
 };

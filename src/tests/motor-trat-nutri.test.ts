@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 // Modulo congelado en JS. `allowJs` lo resuelve, asi que NO lleva ts-expect-error: ponerlo hacia que
 // tsc fallara por directiva inutil, que es un rojo que no dice nada.
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
-import { funcionDelHtml } from "./fixtures/html-vigente";
+import { funcionDelHtml, HTML_DE_NUESTRO_PORTE } from "./fixtures/html-vigente";
 
 // CANDADO DE motorTratNutri. Dos niveles, como con CAP_REF:
 //   1. TRANSCRIPCION: el archivo portado es byte a byte el rango de su archivo. Se coteja, no se cree.
@@ -30,7 +30,10 @@ describe("motorTratNutri: transcripción verbatim del archivo de Gildardo", () =
     // funcion. Un rango es una POSICION y se desincroniza en cuanto el autor inserta algo; el nombre no.
     // Y la ENTREGA tambien se deriva ahora (ver html-vigente-lock.test.ts): este test seguia mirando la
     // del 28, y por eso nadie vio que faltaba portar la correccion del piso calorico.
-    const fuente = funcionDelHtml("motorTratNutri");
+    // CONTRA LA ENTREGA QUE NUESTRO PORTE REFLEJA, no contra la vigente: su entrega del 3-sep retira de
+    // este motor toda la prescripcion de proteina, y no se porta hasta que confirme (ver la razon entera
+    // en `HTML_DE_NUESTRO_PORTE`, y la divergencia declarada en `frozen-deriva-vigente`).
+    const fuente = funcionDelHtml("motorTratNutri", HTML_DE_NUESTRO_PORTE);
     const portado = readFileSync("src/clinical-engine/frozen/atlas-tratamiento-nutri.js", "utf8");
     // El portado lleva cabecera propia y el module.exports final; el CUERPO tiene que ser identico.
     expect(portado).toContain(fuente);

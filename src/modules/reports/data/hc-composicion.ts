@@ -132,6 +132,11 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
         proteinaGKg: efectivo.protGKg,
         carbohidratosG: efectivo.choG,
         grasasG: efectivo.fatG,
+        // EL PORCENTAJE DE GRASA, que faltaba (su punto 9 del 3-sep, encontrado revisando). La historia
+        // imprimia los GRAMOS y no el porcentaje, y el porcentaje es el que el profesional FIJA: los
+        // gramos salen de el. Un documento clinico que registra la consecuencia y no la decision no deja
+        // reconstruir la prescripcion.
+        grasasPct: efectivo.fatPct,
         actividadFisica: `PAL ${efectivo.pal}`,
         // EL SODIO YA SE CALCULA: el motor de prescripcion lleva conectado desde el 2026-08-31. Este bloque
         // decia "se emitira cuando se incorpore el motor", que era cierto al escribirlo y dejo de serlo sin

@@ -119,7 +119,12 @@ export function resumenMedicoParrafo(enc: Enc, _bis: Bis = {}): string {
   const med = arr(enc.d5_40);
   if (med.length) cl.push("toma " + lista(lower(med)));
 
-  const naf = num(enc.d3_23);
+  // "NO HAGO EJERCICIO" VALE CERO, no "sin dato" (porte de su punto 6 del 3-sep, dos generadores).
+  // Al cambiar la opcion "0" por el texto "No hago ejercicio", `num()` devuelve null y la clausula
+  // entera se saltaba: el resumen no decia nada de actividad fisica en quien declara no hacer ninguna,
+  // que es justo el dato que importa. Su linea, verbatim: `/^no hago/i.test(...) ? 0 : _resNum(...)`.
+  // La rama de cero ya existia aqui, solo no se alcanzaba.
+  const naf = /^no hago/i.test(String(enc.d3_23 ?? "")) ? 0 : num(enc.d3_23);
   if (naf !== null) {
     cl.push(
       naf <= 0
@@ -149,7 +154,7 @@ export function resumenMedicoParrafo(enc: Enc, _bis: Bis = {}): string {
 /** Párrafo del ENTRENADOR: actividad, masa magra, hidratación y estrés. */
 export function resumenEjercicioParrafo(enc: Enc, bis: Bis = {}): string {
   const cl: string[] = [];
-  const naf = num(enc.d3_23);
+  const naf = /^no hago/i.test(String(enc.d3_23 ?? "")) ? 0 : num(enc.d3_23);
   if (naf === null) {
     // Sin dato: no se afirma nada sobre su actividad. (Su comentario: `/* sin dato */`.)
   } else if (naf <= 0) {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
+import { ENTREGAS, htmlDeEntrega, HTML_VIGENTE } from "./fixtures/html-vigente";
 
 // EL INTERRUPTOR `LE8_MAPEO_CORREGIDO`: su archivo lo ENCENDIO, y su propio archivo dice que asi no.
 //
@@ -33,7 +33,7 @@ import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
 
 const suyoVigente = () => readFileSync(HTML_VIGENTE, "utf8").replace(/\r\n/g, "\n");
 const suyoAnterior = () =>
-  readFileSync(`docs/entregas/Gildardo responses/${ENTREGAS[ENTREGAS.length - 2]}/ATLAS_v8.html`, "utf8")
+  readFileSync(htmlDeEntrega(ENTREGAS[ENTREGAS.length - 2]), "utf8")
     .replace(/\r\n/g, "\n");
 
 describe("LE8_MAPEO_CORREGIDO: encendido en su archivo, sin la recalibracion que el mismo exige", () => {
@@ -41,10 +41,28 @@ describe("LE8_MAPEO_CORREGIDO: encendido en su archivo, sin la recalibracion que
     expect(suyoVigente()).toContain("const LE8_MAPEO_CORREGIDO = true;");
   });
 
-  it("y la anterior lo tenia en false: el cambio es de esta entrega, no viene de atras", () => {
-    // CONTROL. Sin esto, el caso de arriba pasaria verde tambien si el interruptor llevara meses
-    // encendido y nosotros no nos hubieramos enterado nunca. Lo que se afirma es un CAMBIO fechado.
-    expect(suyoAnterior()).toContain("const LE8_MAPEO_CORREGIDO = false;");
+  it("y lleva DOS entregas encendido sin que mu y sigma se muevan", () => {
+    // EL CONTROL CAMBIO DE FORMA (2026-09-03), y el motivo es el hallazgo. Decia "la anterior lo tenia en
+    // false: el cambio es de esta entrega", y con la entrega del 3-sep la "anterior" paso a ser la del 2,
+    // que ya lo traia encendido. El caso se puso rojo diciendo algo cierto: **ya no es un cambio reciente,
+    // es un estado que PERSISTE**.
+    //
+    // Y eso es mas grave que lo que el control medía antes, asi que la asercion sube de nivel en vez de
+    // relajarse: lo que se afirma ahora es la DURACION. Si en la proxima entrega sigue igual, este texto
+    // hay que volver a mirarlo, porque tres entregas ya no es un descuido.
+    const entregasConElEncendido = ENTREGAS.filter((c) =>
+      readFileSync(htmlDeEntrega(c), "utf8").includes(
+        "const LE8_MAPEO_CORREGIDO = true;",
+      ),
+    );
+    expect(entregasConElEncendido.length).toBeGreaterThanOrEqual(2);
+    // Y en TODAS ellas mu y sigma siguen sin moverse, que es la condicion que el mismo puso.
+    for (const c of entregasConElEncendido) {
+      expect(
+        readFileSync(htmlDeEntrega(c), "utf8"),
+        `${c}: si aqui mu y sigma cambiaron, hay que portar`,
+      ).toContain("_zBis(_icecVal, 58.578, 13.332)");
+    }
   });
 
   it("PERO mu y sigma del ICEC siguen sin recalibrar, que es la condicion que el puso", () => {

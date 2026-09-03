@@ -39,7 +39,7 @@ function _resumenMedicoParrafo(enc, bis){
   var cl=[];
   if(pres.length) cl.push("presenta "+_resLista(pres));
   var med=_resArr(enc.d5_40); if(med.length) cl.push("toma "+_resLista(_resLower(med)));
-  var naf=_resNum(enc.d3_23);
+  var naf=/^no hago/i.test(String(enc.d3_23||"")) ? 0 : _resNum(enc.d3_23);
   if(naf!==null) cl.push(naf<=0 ? "no realiza actividad física" : "realiza actividad física "+naf+(naf===1?" día":" días")+" por semana");
   var tab=String(enc.d3_30||"").toLowerCase(); if(tab.indexOf("fumo")>=0||tab.indexOf("vapeo")>=0) cl.push("consume tabaco o nicotina");
   var alc=String(enc.d3_31||"").toLowerCase(); if(alc.indexOf("semana")>=0||alc.indexOf("todos")>=0) cl.push("consume alcohol con frecuencia");
@@ -53,7 +53,7 @@ function _resumenMedicoParrafo(enc, bis){
 function _resumenEjercicioParrafo(enc, bis){
   enc=enc||{}; bis=bis||{};
   var cl=[];
-  var naf=_resNum(enc.d3_23);
+  var naf=/^no hago/i.test(String(enc.d3_23||"")) ? 0 : _resNum(enc.d3_23);
   if(naf===null) { /* sin dato */ }
   else if(naf<=0) cl.push("no realiza actividad física actualmente");
   else {

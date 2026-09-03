@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
+import { ENTREGAS, htmlDeEntrega, HTML_VIGENTE } from "./fixtures/html-vigente";
 
 // CANDADO DE DERIVA CONTRA LA ENTREGA VIGENTE, y es el que faltaba a los nueve diff que ya existen.
 //
@@ -97,6 +97,61 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
     {
       patron: /_smmwLow/,
       razon: "lleva comentario NUESTRO pegado en la misma linea (el barrido del umbral 24 -> 22)",
+    },
+  ],
+  // ── LOS CUATRO MODULOS QUE SU ENTREGA DEL 3-SEP VACIA DE PROTEINA Y DE GASTO BASAL ──────────────
+  //
+  // No son cuatro toleradas sueltas: son UNA decision, partida en los modulos donde cae. Se agrupan aqui
+  // arriba para que se lean juntas, porque por separado cada una parece un detalle.
+  "engine.core.js": [
+    {
+      patron: /p\.push\("d[eé]ficit cal[oó]rico moderado con prote[ií]na|p\.push\("aumentar aporte proteico/,
+      razon: "DIVERGENCIA DELIBERADA, entrega del 2026-09-03. Su entrega RETIRA de cuatro modulos congelados " +
+        "toda la prescripcion de proteina y el gasto basal, que es lo que el mismo nos mando portar dos " +
+        "dias antes (su §9.6: 'la proteina la prescribe el motor' y 'Harris-Benedict'). Aplicado y en " +
+        "produccion: 56 de 60 tratamientos pasaron de 0,8 al valor del motor, y el GEB cambio para " +
+        "TODOS. NO se porta la retirada hasta que confirme que es deliberada y diga que hacer con lo " +
+        "ya prescrito. Preguntado en la ronda del 2026-09-04 (P-99). Es la misma forma que el " +
+        "interruptor del LE8: su documento y su archivo no dicen lo mismo, dos veces en la misma entrega.",
+    },
+  ],
+  "atlas-protocolo.js": [
+    {
+      patron: /tieneIRC \? \{ nombre:'Prote[ií]na'/,
+      razon: "DIVERGENCIA DELIBERADA, entrega del 2026-09-03. Su entrega RETIRA de cuatro modulos congelados " +
+        "toda la prescripcion de proteina y el gasto basal, que es lo que el mismo nos mando portar dos " +
+        "dias antes (su §9.6: 'la proteina la prescribe el motor' y 'Harris-Benedict'). Aplicado y en " +
+        "produccion: 56 de 60 tratamientos pasaron de 0,8 al valor del motor, y el GEB cambio para " +
+        "TODOS. NO se porta la retirada hasta que confirme que es deliberada y diga que hacer con lo " +
+        "ya prescrito. Preguntado en la ronda del 2026-09-04 (P-99). Es la misma forma que el " +
+        "interruptor del LE8: su documento y su archivo no dicen lo mismo, dos veces en la misma entrega.",
+    },
+  ],
+  "atlas-geb.js": [
+    {
+      // El modulo ENTERO: su entrega retira `ATLAS_GEB` y `ATLAS_GEB_HB` de raiz.
+      // El modulo ENTERO: su entrega lo retira de raiz, asi que se toleran todas sus lineas.
+      patron: /ATLAS_GEB|Number\(peso\)|medido|var hb =|66\.473|655\.0955|origen:/,
+      razon: "DIVERGENCIA DELIBERADA, entrega del 2026-09-03. Su entrega RETIRA de cuatro modulos congelados " +
+        "toda la prescripcion de proteina y el gasto basal, que es lo que el mismo nos mando portar dos " +
+        "dias antes (su §9.6: 'la proteina la prescribe el motor' y 'Harris-Benedict'). Aplicado y en " +
+        "produccion: 56 de 60 tratamientos pasaron de 0,8 al valor del motor, y el GEB cambio para " +
+        "TODOS. NO se porta la retirada hasta que confirme que es deliberada y diga que hacer con lo " +
+        "ya prescrito. Preguntado en la ronda del 2026-09-04 (P-99). Es la misma forma que el " +
+        "interruptor del LE8: su documento y su archivo no dicen lo mismo, dos veces en la misma entrega.",
+    },
+  ],
+  "atlas-tratamiento-nutri.js": [
+    {
+      patron:
+        /protKg|desnutricion|Hiperprote|hasERC|kcalObjetivo|tipoEnergia|ATLAS_GEB_HB|var fatPct|10\*pesoMeta|actividad\.fuerza=/,
+      razon: "DIVERGENCIA DELIBERADA, entrega del 2026-09-03. Su entrega RETIRA de cuatro modulos congelados " +
+        "toda la prescripcion de proteina y el gasto basal, que es lo que el mismo nos mando portar dos " +
+        "dias antes (su §9.6: 'la proteina la prescribe el motor' y 'Harris-Benedict'). Aplicado y en " +
+        "produccion: 56 de 60 tratamientos pasaron de 0,8 al valor del motor, y el GEB cambio para " +
+        "TODOS. NO se porta la retirada hasta que confirme que es deliberada y diga que hacer con lo " +
+        "ya prescrito. Preguntado en la ronda del 2026-09-04 (P-99). Es la misma forma que el " +
+        "interruptor del LE8: su documento y su archivo no dicen lo mismo, dos veces en la misma entrega.",
     },
   ],
   "engine.indices.js": [
@@ -297,18 +352,41 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
   });
 
   it("el frozen SÍ difiere de la entrega anterior: la comparación está viva", () => {
-    const anterior = `docs/entregas/Gildardo responses/${ENTREGAS[ENTREGAS.length - 2]}/ATLAS_v8.html`;
-    const previa = sinEspacio(readFileSync(anterior, "utf8"));
-    const faltan = MODULOS.flatMap((m) =>
-      lineasDeCodigo(m)
-        .filter((l) => !previa.includes(sinEspacio(sinDeclaracion(l))))
-        .filter((l) => !(TOLERADAS[m] ?? []).some((t) => t.patron.test(l))),
-    );
+    // BUSCA HACIA ATRAS HASTA ENCONTRAR UNA QUE DIFIERA, en vez de mirar solo la inmediatamente anterior.
+    //
+    // POR QUE SE CAMBIO (2026-09-03): este control se puso rojo diciendo la verdad. Nuestro frozen se
+    // porto DE la entrega del 2-sep, asi que contra ella coincide entero; con la del 3 como vigente, la
+    // "anterior" paso a ser justo aquella de la que venimos y el control no podia distinguir nada.
+    //
+    // Y ESE ROJO NO SIGNIFICABA QUE LA MAQUINARIA ESTUVIERA MUERTA, que es lo que el control existe para
+    // detectar: significaba que le toco comparar contra su propia fuente. Un control que se pone rojo por
+    // una coincidencia legitima acaba relajandose, y ahi se pierde. Lo que de verdad hay que probar es que
+    // la comparacion SABE encontrar diferencias, y para eso sirve cualquier entrega que difiera.
+    const anteriores = ENTREGAS.slice(0, -1).reverse();
+    let usada = "";
+    let faltan: string[] = [];
+    for (const carpeta of anteriores) {
+      const previa = sinEspacio(
+        readFileSync(htmlDeEntrega(carpeta), "utf8"),
+      );
+      faltan = MODULOS.flatMap((m) =>
+        lineasDeCodigo(m)
+          .filter((l) => !previa.includes(sinEspacio(sinDeclaracion(l))))
+          .filter((l) => !(TOLERADAS[m] ?? []).some((t) => t.patron.test(l))),
+      );
+      if (faltan.length) {
+        usada = carpeta;
+        break;
+      }
+    }
     expect(
       faltan.length,
-      `el frozen coincide igual con la entrega anterior (${anterior}) que con la vigente. O él no cambió ` +
-        `nada entre las dos, o esta comparación dejó de mirar lo que dice mirar.`,
+      `el frozen coincide con TODAS las entregas anteriores (${anteriores.join(", ")}), no solo con la ` +
+        `vigente. O él no cambió nada en ninguna, o esta comparación dejó de mirar lo que dice mirar.`,
     ).toBeGreaterThan(0);
+    // Y se deja constancia de contra cual encontro diferencias: sin esto, el verde no dice si tuvo que
+    // retroceder cinco entregas para hallar una, que ya seria una señal por si misma.
+    expect(usada, "deberia haber encontrado una entrega que difiera").not.toBe("");
   });
 
   it("y entre lo que difiere está el GASTO BASAL, que es de donde cuelga toda la cadena", () => {
@@ -331,13 +409,22 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     //
     // EL ANCLA SE MUEVE CON CADA ENTREGA, y eso es lo que la mantiene viva: apunta a la diferencia
     // CONCRETA entre la vigente y la anterior, no a una que ya quedo atras. La del 1-sep era el peso meta;
-    // la del 2-sep es el GASTO BASAL, que pasa de Mifflin a Harris-Benedict (la formula del propio equipo,
-    // verificada por el sobre once mediciones reales). De ahi cuelga toda la cadena, asi que si esta
-    // diferencia deja de verse, la maquinaria dejo de mirar sobre el numero que mas pesa.
-    expect(sinEspacio(nutri)).toContain(sinEspacio("ATLAS_GEB_HB(pesoMeta, talla, edad, sexoM)"));
-    expect(sinEspacio(anterior)).toContain(
-      sinEspacio("var geb = Math.round(sexoM ? (10*pesoMeta+6.25*talla-5*edad+5)"),
+    // la del 2-sep, el gasto basal; y la del 3-sep es LA RETIRADA DE LA PROTEINA, que es de otro orden:
+    // no cambia una formula, quita el bloque entero que prescribe.
+    //
+    // SE ANCLA AL SENTIDO CONTRARIO QUE LAS ANTERIORES, y por eso hay que leerlo con cuidado: aqui lo que
+    // la entrega VIGENTE tiene es una AUSENCIA. La anterior prescribe (protKg con sus ramas) y la de hoy
+    // no. Nuestro frozen conserva la version que prescribe, y eso es DELIBERADO mientras el confirme que
+    // la retirada es intencional (ver las cuatro toleradas de arriba y la ronda del 2026-09-04, P-99).
+    const vigenteTxt = readFileSync(HTML_VIGENTE, "utf8");
+    expect(sinEspacio(nutri), "nuestro motor conserva la prescripcion de proteina").toContain(
+      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
     );
-    expect(sinEspacio(anterior)).not.toContain(sinEspacio("ATLAS_GEB_HB(pesoMeta"));
+    expect(sinEspacio(anterior), "la entrega ANTERIOR tambien la tenia").toContain(
+      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
+    );
+    expect(sinEspacio(vigenteTxt), "y la VIGENTE la retiro: esa es la diferencia de hoy").not.toContain(
+      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
+    );
   });
 });
