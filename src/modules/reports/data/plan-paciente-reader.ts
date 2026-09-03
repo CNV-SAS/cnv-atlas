@@ -117,6 +117,24 @@ export async function getPlanPaciente(
     };
   }).filter((d) => d.comidas.length > 0);
 
+  // LA PROTEINA QUE VE EL PACIENTE ES LA EFECTIVA, no la del motor (defecto del smoke, 2026-09-03).
+  //
+  // QUE PASABA: las cifras del plan salian enteras de `prescripcion`, que es lo que PRESCRIBE el modelo.
+  // El ajuste del profesional no llegaba a ninguna: si fijaba 3 g/kg en la calculadora, su pantalla decia
+  // 3 y el plan del paciente decia 1. **El paciente recibia una prescripcion distinta de la que su
+  // profesional habia fijado**, y por los CUATRO caminos, porque los cuatro salen de este lector: el plan
+  // impreso, el PDF de la ruta, y las dos llamadas del envio por correo.
+  //
+  // POR QUE NO LO ARREGLO EL PARCHE DE AYER: aquel cableo `protKgVigente` a `computeProtocoloEfectivo`,
+  // que es correcto pero alimenta el OBJETIVO CALORICO y el peso; la proteina que se imprime nunca miraba
+  // esa cadena. El arreglo estaba en el archivo correcto y sobre el valor equivocado.
+  //
+  // QUE SE SUSTITUYE Y QUE NO: solo la PROTEINA, que es la unica cifra de la prescripcion con override del
+  // profesional (`adj_prot_gkg`). El sodio y la grasa saturada no lo tienen, asi que siguen saliendo del
+  // motor tal cual. Sustituir la fila entera habria borrado su referencia (ESPEN 2023) sin motivo.
+  const protGKgEfectiva = efectivo.calorico.protGKg;
+  const protGEfectiva = Math.round(efectivo.calorico.protG);
+
   const recs = recomendacionesDe({
     diagnosticos: [],
     tieneHTA: snap.flags.tieneHTA,
@@ -124,8 +142,10 @@ export async function getPlanPaciente(
     sarcopenia: snapshot.indicators.FFMI > 0 && snapshot.indicators.FFMI < 17,
     exceso: (snap.estrategia.deficit ?? 0) > 0,
     sodioMax: prescripcion?.sodioMax ?? null,
-    protKg: prescripcion?.protKg ?? null,
-    protG: prescripcion?.protG ?? null,
+    // La EFECTIVA, no la del motor: el texto de la recomendacion habla de la proteina que este paciente
+    // tiene prescrita, y esa es la que el profesional fijo.
+    protKg: protGKgEfectiva,
+    protG: protGEfectiva,
     // El PESO EFECTIVO, que es sobre el que se prescribe, no el actual: la hidratacion se traduce a los
     // litros y los vasos de ESTE plan. Su cifra por kilo se conserva entera y primero.
     pesoKg: efectivo.pesoEfectivo,
@@ -138,7 +158,11 @@ export async function getPlanPaciente(
     tipoDieta: prescripcion?.tipoEnergia ?? null,
     // Las filas CON CIFRA de su prescripción (proteína, sodio, grasa saturada), sin la referencia
     // bibliográfica: al paciente le sirve el número, no de qué guía sale. Eso es del profesional.
-    prescripcion: (prescripcion?.filas ?? []).map((f) => ({ nombre: f.nombre, valor: f.valor })),
+    prescripcion: (prescripcion?.filas ?? []).map((f) =>
+      f.nombre === "Proteína"
+        ? { nombre: f.nombre, valor: `${String(protGKgEfectiva).replace(".", ",")} g/kg` }
+        : { nombre: f.nombre, valor: f.valor },
+    ),
     atributos: prescripcion?.atributos ?? [],
     notasDelModelo: prescripcion?.notas ?? [],
     menu,
