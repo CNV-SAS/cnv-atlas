@@ -366,7 +366,15 @@ export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: 
           invisible. Es jerarquia, no contenido nuevo: ni una palabra que el no haya escrito. */}
       {hint ? <p className="text-xs text-muted-foreground">{hint.ejemplos}</p> : null}
       {hint?.referencia ? (
-        <p className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+        // EL TINTE ES DE MARCA, NO DE LA ESCALA CLINICA, y no estrena token: `primary/10` es el azul de
+        // marca al 10 %, que es lo que el resto de la app ya usa para superficies suaves.
+        //
+        // POR QUE AZUL Y NO AMBAR NI VERDE: esta pildora vive pegada a preguntas sobre comida. Un verde
+        // junto a "Verduras" leeria "alimento bueno" y el mismo verde junto a "Ultraprocesados" leeria lo
+        // contrario, asi que el color estaria calificando el ALIMENTO. El ambar es el token de atencion
+        // operativa ("esto pide que hagas algo") y aqui no se pide nada. El azul de marca no tiene
+        // valencia: dice "esto es de otra clase que los ejemplos", que es exactamente lo que hace falta.
+        <p className="w-fit rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-foreground">
           {hint.referencia}
         </p>
       ) : null}

@@ -4,6 +4,17 @@ import { startTransition, useActionState, useMemo, useRef, useState } from "reac
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  CalendarClock,
+  Droplet,
+  Footprints,
+  Home,
+  Leaf,
+  PersonStanding,
+  Stethoscope,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
 
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
@@ -24,6 +35,33 @@ import { SurveyQuestion } from "./survey-widgets";
 
 /** El id del contenedor de una pregunta, para el salto desde la lista de pendientes. */
 const anclaPregunta = (questionId: string) => `pregunta-${questionId}`;
+
+/**
+ * UN ICONO POR DOMINIO, para que las ocho secciones no se lean como ocho pantallas iguales.
+ *
+ * SON DE IDENTIDAD, NUNCA DE VEREDICTO, y esa es la regla entera. Un plato, una gota o una casa dicen
+ * DONDE estás; un triángulo de alerta o un visto bueno dicen QUÉ TAL vas, y eso califica al paciente antes
+ * de que conteste. Es la línea que cruza su archivo: pone ⚠ en "Conductas alimentarias" y pinta "Alergias
+ * y digestión" en rojo, sobre preguntas tan neutras como cuántas comidas haces o si te han operado.
+ *
+ * VAN EN `text-muted-foreground`, en ink y sin color propio. Un tono por dominio sería identidad legítima,
+ * pero la capa de interfaz no tiene hoy una rampa categórica: solo el azul de marca, que además es el
+ * color de acción, así que ocho encabezados azules se leerían como pulsables. Ampliar la paleta es
+ * decisión de Santiago (`BRAND.md`) y va después de ver la encuesta terminada; con la forma basta.
+ *
+ * Se anclan en la ETIQUETA de la sección, que es la misma cadena que agrupa las preguntas. Si una etiqueta
+ * cambia, la sección se queda sin icono y no pasa nada más: se degrada a lo que había.
+ */
+const ICONO_DOMINIO: Record<string, LucideIcon> = {
+  Alimentación: UtensilsCrossed,
+  "Percepción corporal": PersonStanding,
+  Hábitos: Footprints,
+  "Conductas alimentarias": CalendarClock,
+  "Antecedentes y estilo de vida": Stethoscope,
+  "Alergias y digestión": Leaf,
+  Hidratación: Droplet,
+  "Contexto social": Home,
+};
 
 const initialSubmit: SurveyFormState = { error: null, fields: null, done: false };
 const initialSave: SaveProgressState = { saved: false, error: null };
@@ -355,7 +393,15 @@ export function SurveyPhaseForm({
         return (
           <section key={s.title} className={`flex flex-col gap-4 ${active ? "" : "hidden"}`}>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold text-foreground">{s.title}</h2>
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                {ICONO_DOMINIO[s.title] ? (
+                  (() => {
+                    const Icono = ICONO_DOMINIO[s.title];
+                    return <Icono className="size-5 shrink-0 text-muted-foreground" aria-hidden />;
+                  })()
+                ) : null}
+                {s.title}
+              </h2>
               {SECTION_INTRO[s.title] ? (
                 <p className="rounded-md bg-muted/40 px-3 py-2 text-sm text-foreground">
                   {SECTION_INTRO[s.title]}
