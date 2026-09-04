@@ -45,7 +45,6 @@ const motorProtocolo = (bis, enc, motor) => {
   const protMax = (() => { if (tieneIRC) return 0.8; if (tieneCancer) return 2.0; if (fenotipo==='F1'||tieneObesidadSarcopenica) return 1.5; if (['F7','F10'].includes(fenotipo)) return 2.0; return 1.2; })();
   const protRef = tieneIRC ? 'KDIGO 2024' : tieneCancer ? 'ESPEN Oncología 2023' : tieneObesidadSarcopenica ? 'ESPEN Sarcopenia 2023' : 'ESPEN 2023';
   const restricciones = [
-    tieneIRC ? { nombre:'Proteína', valor:'0.6–0.8 g/kg', ref:'KDIGO 2024' } : null,
     tieneIRC ? { nombre:'Fósforo', valor:'< 800 mg/día', ref:'KDIGO 2024' } : null,
     tieneIRC ? { nombre:'Potasio', valor:'< 2000 mg/día', ref:'KDIGO 2024' } : null,
     tieneHTA ? { nombre:'Sodio', valor:'< 2300 mg/día', ref:'DASH — JNC 2023' } : null,

@@ -880,8 +880,8 @@ const efrProf = (role, i, r, f, m) => {
     if (ifcAdv || ircAdv) p.push("progresión gradual, vigilar recuperación");
     return p.length ? "Deportólogo/Entrenador: " + p.join("; ") + "." : "Deportólogo/Entrenador: entrenamiento mixto de mantenimiento.";
   }
-  if (fmiAdv) p.push("déficit calórico moderado con proteína ≥1,2 g/kg/día y patrón mediterráneo");
-  if (ffmiAdv) p.push("aumentar aporte proteico y energético para recuperar masa magra");
+  if (fmiAdv) p.push("déficit calórico moderado con patrón mediterráneo");
+  if (ffmiAdv) p.push("aumentar el aporte energético para recuperar masa magra");
   if (ifcAdv) p.push("optimizar densidad nutricional y micronutrientes");
   if (ircAdv) p.push("patrón antiinflamatorio, control de sodio e hidratación");
   return p.length ? "Nutricionista: " + p.join("; ") + "." : "Nutricionista: dieta de mantenimiento equilibrada, sin restricciones.";

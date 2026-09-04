@@ -46,7 +46,19 @@ export const ENGINE_VERSION = "anibise-1.2.0";
 // `fuerzaPrensil` real, asi que `sarcopenia`/`obesidadSarcopenica` pueden voltear y con ellas la estrategia
 // y la proteina del protocolo. El contenido sellado en protocol_suggested cambia para los pacientes con la
 // fuerza registrada; por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-03";
+// Bump 2026-09-04 (2026-09-03 -> 2026-09-04): se porta su entrega del 3 de septiembre, confirmada en su
+// respuesta del 4. Cambia LA CADENA ENTERA, no un detalle:
+//   · GASTO BASAL: Mifflin-St Jeor sobre el peso meta. Es la TERCERA formula en cuatro dias
+//     (500+22xFFM mal rotulado Cunningham -> Harris-Benedict -> Mifflin), y mueve el objetivo de TODOS
+//     entre 55 y 104 kcal hacia abajo.
+//   · PROTEINA: 0,8 g/kg plano y editable. Salen las cinco cifras por rama (1,5 desnutricion / 1,25
+//     cancer / 1,3-1,4 obesidad / 1,4 sarcopenia / 0,7 ERC).
+//   · GRASA: 30 % para todos; la dislipidemia ya no la baja a 25.
+//   · OBJETIVO: una sola via (gasto menos restriccion). Sale la formula por patologia (27,5 x peso
+//     actual) y el piso pasa a aplicar a todos.
+//   · DESNUTRICION y SARCOPENIA separadas, por FFMI y ASMI en vez de por IMC y un OR.
+// Todo el contenido sellado en protocol_suggested cambia; por eso sube.
+export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-04";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
@@ -67,7 +79,7 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   // El original (atlas-protocolo.js) queda como referencia byte-identica a Gildardo, guardada por su
   // DIFF-vs-fuente (frozen-protocolo-diff), no por este candado.
   // SHA actualizado (2026-08-19) CON subida de version: re-port del punto 6 (objetivo calorico a 0).
-  "frozen/atlas-protocolo.authorized.js": "670d58f864cd27a9a3481e7473ad0988681ca4a0d20efbe5152c8bf9389e0dde",
+  "frozen/atlas-protocolo.authorized.js": "c832aab5fc7b1ed53c4f644c9425b24d3b9ab51d4ce0996a4d5c0245a1c78eb1",
   // SHA de la primera modificacion autorizada (CA-1/D-012, retirar telomeros). Antes se hasheaba el
   // original bajo la EXENCION DE ARRANQUE (cerrada); ahora se hashea el generado (el que se sella).
   // SHA actualizado (2026-09-02b) CON subida de version, y la razon vale la pena dejarla escrita: el
@@ -84,7 +96,7 @@ export const PROTOCOL_ARTIFACTS_SHA: Record<string, string> = {
   // tratamientos de la base, 56 lo verian y NINGUNO esta aprobado, asi que ninguna prescripcion sellada
   // se mueve. El valor se SELLA en protocol_suggested.mtn; los snapshots anteriores lo reciben del caller
   // (cascada con `protFuente`), que es lo que impide que el defecto siga vivo justo en los que existen.
-  "protocolo-calorico.ts": "05e773aa1e30dfcc709ae12c2a95ac3548e8d08309bcd4b290fd3ce60746f835",
+  "protocolo-calorico.ts": "70818fb92b219fe1006893af1e05192bf19991c8cccb4b13803d4687aa0fd28f",
   // SHA actualizado (2026-08-02) CON subida de versión: re-sync de los 3 cortes inferiores al vigente.
   // SHA actualizado (2026-08-19b): gate de sarcopenia del fenotipo, mujer 24 -> 22 (Gildardo §1 del 19).
   // SHA actualizado (2026-08-31) CON subida de version: la dinamometria entra al motor (§6 del 30). Lo que

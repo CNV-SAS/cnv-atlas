@@ -11,7 +11,9 @@ const CONGELADOS = new Set([
   "frozen-fenotipo-diff.test.ts",
   "frozen-patron-diff.test.ts",
   "frozen-protocolo-chain-diff.test.ts",
-  "frozen-protocolo-diff.test.ts",
+  // `frozen-protocolo-diff` salio de esta lista el 2026-09-04: dejo de anclar por ruta literal al
+  // re-anclarse por NOMBRE a la entrega vigente. La lista se achica sola cuando un candado deja de
+  // necesitar la excepcion, que es lo que la mantiene honesta.
   // No ancla nada: CITA la entrega vigente para verificar que el texto salio de su archivo.
   "salvaguarda-tca-mensaje.test.ts",
 ]);

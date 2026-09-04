@@ -86,29 +86,31 @@ describe("GOLDEN orquestador: mapeo BIS -> motores (caso base, valores distintos
     expect(o.pesoCalculoLabel).toContain("obesidad");
   });
 
-  it("cadena calorica Harris-Benedict: gebAuto 1656 -> GET 2277 -> kcalObj 2277 (deficit 0, punto 6)", () => {
-    // LAS CIFRAS SE MOVIERON CON LA FORMULA (2026-09-02, su §9.6), la estructura no. Antes era
-    // `500 + 22 x FFM` rotulado "Cunningham", que el acaba de declarar que NO es Cunningham y que ademas
-    // no salia de su cadena del nutricionista sino del bloque del medico, que en su archivo esta
-    // desactivado. Ahora es Harris-Benedict sobre el peso efectivo, que es la formula del PROPIO EQUIPO.
+  it("cadena calorica Mifflin: gebAuto 1626 -> GET 2236 -> kcalObj 2236 (deficit 0, punto 6)", () => {
+    // TERCERA FORMULA EN CUATRO DIAS, y la estructura no se ha movido en ninguna de las tres. La
+    // secuencia: `500 + 22 x FFM` rotulado "Cunningham" (que no era Cunningham y ademas salia del bloque
+    // del medico, desactivado en su archivo) -> Harris-Benedict (su §9.6 del 2-sep) -> MIFFLIN-ST JEOR
+    // sobre el peso efectivo (su entrega del 3, confirmada el 4).
+    //
+    // LAS CIFRAS SE DERIVAN A MANO, no se copian de la salida, que es lo unico que hace util un golden:
+    // si se pegara lo que el codigo produce, el caso afirmaria "el codigo hace lo que hace".
     //
     // Punto 6: con deficit 0, el objetivo SUGERIDO queda en mantenimiento (kcalObj = GET). El profesional
     // fija el deficit real via computeProtocoloEfectivo (pesoMeta/pal). Los macros recalculan sobre GET.
-    expect(o.calorico.formula).toBe("Harris-Benedict");
-    // round(66.473 + 13.7516*76.625 + 5.0033*180 - 6.755*54)
-    expect(o.calorico.gebAuto).toBe(
-      Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54),
-    );
+    expect(o.calorico.formula).toBe("Mifflin");
+    // round(10*76.625 + 6.25*180 - 5*54 + 5) = round(766.25 + 1125 - 270 + 5) = 1626
+    expect(o.calorico.gebAuto).toBe(Math.round(10 * 76.625 + 6.25 * 180 - 5 * 54 + 5));
+    expect(o.calorico.gebAuto).toBe(1626);
     expect(o.calorico.geb).toBe(o.calorico.gebAuto);
     expect(o.calorico.pal).toBe(1.375);
     expect(o.calorico.get).toBe(Math.round(o.calorico.gebAuto * 1.375));
     expect(o.calorico.kcalObj).toBe(o.calorico.get); // max(1000, round(GET - 0))
-    // LA PROTEINA LA PRESCRIBE EL MOTOR desde el 2026-09-03 (su §9.6 punto 4): 1,3 g/kg, no el 0,8 del
-    // minimo poblacional. Este paciente cae en la rama de OBESIDAD de `motorTratNutri` (FMI 6,369 > 6 en
-    // hombre) y sin sarcopenia (FFMI 21,1 y ASMI 8,625, los dos por encima de su corte), asi que
-    // `protKg = 1.3`. round(1.3*76.625) = round(99.6) = 100. Antes salia round(0.8*76.625) = 61.
-    expect(o.calorico.protGKg).toBe(1.3);
-    expect(o.calorico.protG).toBe(100); // round(1.3*76.625)=round(99.6); no depende del GEB
+    // LA PROTEINA VUELVE A 0,8 EDITABLE (su entrega del 3, confirmada el 4). El motor ya no propone
+    // gramos por rama: este paciente caia en OBESIDAD y recibia 1,3; ahora recibe 0,8 como todos, y el
+    // 1,2-1,5 de su condicion se le MUESTRA al profesional en el panel de referencia en vez de
+    // imponerselo. round(0.8*76.625) = round(61.3) = 61.
+    expect(o.calorico.protGKg).toBe(0.8);
+    expect(o.calorico.protG).toBe(61); // round(0.8*76.625)=round(61.3); no depende del GEB
     // Y LA COHERENCIA DEL REPARTO, que es lo que de verdad hay que proteger cuando las cifras se mueven:
     // los tres macros tienen que sumar el objetivo.
     const suma = o.calorico.protG * 4 + o.calorico.fatG * 9 + o.calorico.choG * 4;
@@ -210,7 +212,9 @@ describe("GOLDEN orquestador: flags clinicos desde el TEXTO exacto de encuesta (
     expect(o.flags.tieneIRC).toBe(true);
     expect([o.protMin, o.protMax]).toEqual([0.6, 0.8]);
     expect(o.pesoCalculo).toBe(89); // IRC -> peso actual (no ajustado)
-    expect(N(o.restricciones)).toEqual(expect.arrayContaining(["Proteína", "Fósforo", "Potasio"]));
+    // Sin la fila de proteina, retirada el 2026-09-04: las renales que quedan no son proteina.
+    expect(N(o.restricciones)).toEqual(expect.arrayContaining(["Fósforo", "Potasio"]));
+    expect(N(o.restricciones)).not.toContain("Proteína");
   });
   it("IRC OFF con otro diagnostico: tieneIRC=false, protMin vuelve a 0.8", () => {
     const o = run(d5_39([TXT_DM]));
@@ -281,12 +285,12 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
   it("sin ajustes: el efectivo reproduce el sugerido (mismos inputs y defaults)", () => {
     const ef = computeProtocoloEfectivo(sug, nada);
     expect(ef.pesoEfectivo).toBeCloseTo(76.625, 3);
-    // Harris-Benedict sobre el peso efectivo (2026-09-02). Se escribe la formula y no la cifra: una cifra
+    // Mifflin-St Jeor sobre el peso efectivo (2026-09-04). Se escribe la FORMULA y no la cifra: una cifra
     // pegada no dice si el que la cambio entendio que cambiaba.
-    expect(ef.calorico.gebAuto).toBe(Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54));
+    expect(ef.calorico.gebAuto).toBe(Math.round(10 * 76.625 + 6.25 * 180 - 5 * 54 + 5));
     expect(ef.calorico.get).toBe(Math.round(ef.calorico.gebAuto * 1.375));
     expect(ef.calorico.kcalObj).toBe(ef.calorico.get); // deficit 0 (punto 6): sugerido = mantenimiento
-    expect(ef.calorico.protG).toBe(100); // 1,3 g/kg del motor sobre 76,625 (ver el caso base)
+    expect(ef.calorico.protG).toBe(61); // 0,8 g/kg sobre 76,625 (ver el caso base)
   });
 
   it("con peso meta y PAL ajustados: RE-CORRE la cadena completa (no sustituye)", () => {
@@ -295,10 +299,10 @@ describe("GOLDEN orquestador: set EFECTIVO al aprobar (computeProtocoloEfectivo)
     // Y AHORA EL GEB SI SE MUEVE CON EL PESO META, que antes no: Harris-Benedict lo usa y el
     // `500 + 22 x FFM` no. Es la consecuencia clinica del cambio de formula y por eso va con caso propio:
     // fijar el peso meta ahora mueve el gasto, no solo los gramos de proteina.
-    expect(ef.calorico.gebAuto).toBe(Math.round(66.473 + 13.7516 * 80 + 5.0033 * 180 - 6.755 * 54));
-    expect(ef.calorico.gebAuto).not.toBe(Math.round(66.473 + 13.7516 * 76.625 + 5.0033 * 180 - 6.755 * 54));
+    expect(ef.calorico.gebAuto).toBe(Math.round(10 * 80 + 6.25 * 180 - 5 * 54 + 5));
+    expect(ef.calorico.gebAuto).not.toBe(Math.round(10 * 76.625 + 6.25 * 180 - 5 * 54 + 5));
     expect(ef.calorico.get).toBe(Math.round(ef.calorico.gebAuto * 1.55));
     expect(ef.calorico.kcalObj).toBe(ef.calorico.get); // deficit 0 (punto 6)
-    expect(ef.calorico.protG).toBe(104); // round(1.3*80): el peso meta cambia, la prescripcion del motor no
+    expect(ef.calorico.protG).toBe(64); // round(0.8*80): el peso meta cambia, la base 0,8 no
   });
 });
