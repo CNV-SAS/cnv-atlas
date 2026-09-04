@@ -82,16 +82,26 @@ describe("el motor recibe peso y talla, o no se corre", () => {
 
   it("la diferencia que esto corrige, medida sobre el perfil que la sufría", () => {
     // El paciente del caso 2 del smoke: 43,7 kg / 155 cm (IMC 18,2), FMI 2,997, FFMI 15,19, sin
-    // diagnosticos. Con el `bis` incompleto el motor contesta 1,0; con peso y talla, 1,5.
+    // diagnosticos.
+    //
+    // LA CIFRA YA NO ES LA QUE DIFERENCIA (2026-09-04): desde su entrega del 3 la proteina sale 0,8 en
+    // los dos casos, porque el motor dejo de proponerla. Lo que este caso vigila SIGUE VIVO y ahora se
+    // ve mejor en el GASTO BASAL: con el `bis` incompleto el motor usa sus defaults (70 kg / 170 cm) y
+    // contesta un gasto que no es de este paciente, sin dar error. El defecto es de INSUMO, no de
+    // calculo, y por eso no se nota mirando la salida.
     const enc = { sexo: "F", d5_39: ["Ninguna"] };
     const indicadores = { sexo: "F", FMI: 2.997, FFMI: 15.19 };
-    const incompleto = motorTratNutri(enc, indicadores, {}) as { protKg: number };
+    const incompleto = motorTratNutri(enc, indicadores, {}) as { protKg: number; geb: number };
     const completo = motorTratNutri(
       enc,
       { ...indicadores, peso: 43.7, talla: 155 },
       {},
-    ) as { protKg: number };
-    expect(incompleto.protKg).toBe(1); // el default plausible, que es el defecto
-    expect(completo.protKg).toBe(1.5); // la desnutrición, que es la respuesta
+    ) as { protKg: number; geb: number };
+    // La proteina ya no distingue: los dos dan 0,8 (ver arriba).
+    expect(incompleto.protKg).toBe(0.8);
+    expect(completo.protKg).toBe(0.8);
+    // EL GASTO BASAL SI, y esa es ahora la medida del defecto: el incompleto calcula sobre 70 kg de
+    // default en vez de sobre el peso de esta paciente.
+    expect(incompleto.geb).not.toBe(completo.geb);
   });
 });
