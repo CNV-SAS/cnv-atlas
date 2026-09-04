@@ -1665,3 +1665,77 @@ pone nada rojo y una divergencia declarada puede haber dejado de serlo.
 clínico ni nada que llegue a un paciente, y extraer el orden de secciones de su HTML es un porte en sí
 mismo. Queda anotado en el propio archivo. Lo que sí se cerró de esa familia fue `dfi-paciente`, porque
 esas frases sí viajan en el documento del paciente.
+
+### PENDIENTE · Dónde puede llevar color la encuesta del paciente · DECIDE SANTIAGO
+
+Pregunta suya al cerrar la tanda del 2026-09-04: *"¿por qué no podemos usar más color?"*. La respuesta
+tiene dos mitades, y las dos importan.
+
+**La que limita.** El barrido de ese día encontró **trece** superficies usando la escala clínica para
+cosas que no son un veredicto (pago fallido, equipo perdido, remesa vieja). Ahí el margen es cero: los
+hexadecimales de `--clinical-*` salen de los clasificadores de Gildardo, y el día que él mueva un umbral
+se movería el color de un pago.
+
+**La que abre.** Pero **una píldora de porción no es un veredicto: es una unidad de medida.** Y el fondo
+de un dominio tampoco. Así que sí se puede dar color, con una condición: **que salga de la capa de
+INTERFAZ y nunca de la clínica.**
+
+#### Lo que SÍ puede llevar color, y por qué
+
+| Elemento | Por qué no se lee como calificación |
+| --- | --- |
+| **La píldora de porción** ("Un puño cerrado") | Es una unidad, no una opinión sobre el alimento. Separa la referencia de los ejemplos, que es la jerarquía que ya construimos |
+| **Los encabezados de dominio y sus pestañas** | Un tono por dominio es **categórico**, no ordinal: dice "estás en Hidratación", no "hidratación va mal" |
+| **Los iconos de dominio** | Identidad, igual que el encabezado |
+| **La opción elegida** (hoy azul) | Dice "esta es tu respuesta", no "esta respuesta es buena" |
+| **La barra de progreso** | Mide trabajo hecho, no calidad |
+
+**Con dos condiciones que son las que lo sostienen:**
+
+1. **Los ocho dominios, a la MISMA intensidad.** Si uno es más saturado que el resto, se lee como más
+   importante o más peligroso. Es exactamente lo que rompe en su archivo: D4 en ámbar y D6 en rojo
+   destacan sobre el verde y el azul de los demás.
+2. **Dentro de una pregunta, todas las opciones del mismo color.** En cuanto dos opciones de la misma
+   pregunta se pintan distinto, el color es un veredicto sobre la respuesta.
+
+#### Lo que NO puede llevar color
+
+| Elemento | Razón |
+| --- | --- |
+| **Cualquier cosa que varíe POR OPCIÓN dentro de una pregunta** | Es la regla de fondo. La tira de orina es la única excepción, y solo porque ahí el color **es la respuesta**, no una opinión sobre ella |
+| **El valor de un contador** | Pintar de rojo "3 vasos de gaseosa" es calificar. Neutro sea cual sea el número |
+| **El conteo de preguntas sin responder y su lista** | Ya corregido: es lo que el paciente no sabe, no un error suyo |
+| **Los encabezados de categoría de la matriz** ("protectora", "moderar") | Retirados el 2026-08-31. El color sería el mismo defecto que las palabras |
+| **La pestaña de un dominio sin empezar** | Un "pendiente" pintado es la misma familia que la lista en ámbar |
+| **Cualquier tinte que reaccione al CONTENIDO de una respuesta** | Un aviso junto a "Todos los días" en ultraprocesados es trabajo del motor, en la pantalla del profesional |
+
+#### ¿Hace falta ampliar la paleta? Sí, pero solo para UNA cosa
+
+Medido contra `globals.css`, la capa de interfaz tiene hoy: **el azul de marca** (`#205DFD`, que además es
+el color de acción: botones, focus, links), **la escala ink** de neutros, **un ámbar operativo**
+(`--attention`) y **el rojo destructivo**. **No hay ninguna rampa categórica.**
+
+O sea que Santiago tiene razón en su sospecha: **con lo que hay, lo único cromático que se puede pintar
+sin valencia es azul**, y ocho dominios no pueden ser ocho azules. Peor: el azul es el color de acción, así
+que un encabezado de dominio azul se lee como pulsable.
+
+**Pero de las cinco cosas de la primera tabla, cuatro se resuelven sin un solo color nuevo:**
+
+- **La píldora de porción**: `blue-50` (`#EEF2FF`), que ya está en la tabla de `BRAND.md` como "fondos
+  suaves, badges". Tinte de superficie, sin valencia, y distingue la referencia de los ejemplos.
+- **Los iconos de dominio**: en ink. La identidad la da la forma, no el color. **Y con el límite que sacó
+  el cotejo: ningún icono puede ser un símbolo de veredicto** (⚠, ✅, ✗). Un estetoscopio o una gota son
+  identidad; un triángulo de alerta es una calificación.
+- **La opción elegida** y **la barra**: ya son azules y así se quedan.
+
+**Lo único que pide tokens nuevos es el tono por dominio.** Y `BRAND.md` ya dice dos cosas al respecto:
+que "ampliaciones de la paleta (un color nuevo para un rol nuevo)" es decisión global, y que lo global va
+**al final, a propósito**, porque se juzga con superficies terminadas.
+
+**Recomendación: no ampliar todavía.** Hacer primero lo que no cuesta tokens (la píldora, los iconos, la
+jerarquía tipográfica), mirar la encuesta terminada, y decidir entonces si el tono por dominio sigue
+haciendo falta. Si se decide que sí, lo que hay que pedir es una **rampa categórica de ocho tonos a la
+misma intensidad**, que es un rol distinto de acción (azul), atención (ámbar) y destructivo (rojo).
+
+**Y el límite que ya fijó Santiago, para cuando llegue:** el amarillo de la píldora de Gildardo es de SU
+paleta. Los nuestros son los nuestros.
