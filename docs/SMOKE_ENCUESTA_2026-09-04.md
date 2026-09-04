@@ -1,7 +1,7 @@
 # Smoke: la encuesta del paciente (2026-09-04)
 
 **En el teléfono, que es donde importa.** Todo lo de esta tanda es de la encuesta que contesta un
-paciente, y las SIETE cosas que cambian se ven distinto en una pantalla angosta.
+paciente, y las OCHO cosas que cambian se ven distinto en una pantalla angosta.
 
 `pnpm dev`, abre el enlace del intake en el móvil (o el navegador en vista de móvil, 390 px de ancho).
 
@@ -74,7 +74,7 @@ rejilla, así que el emparejamiento no depende del ancho.
 
 ## 3 · Las preguntas pendientes, con salto
 
-**Es el más importante de los siete, y el que más pasos tiene.**
+**Es el más importante de los ocho, y el que más pasos tiene.**
 
 **Cómo provocarlo.** Empieza una encuesta y **deja preguntas sin responder a propósito** (por ejemplo
 contesta solo Alimentación y salta el resto). Ve hasta la última sección y pulsa **Enviar**.
@@ -155,6 +155,35 @@ sería peor que no moverse, porque parece que funciona. Si lo ves, dilo con el n
 
 **Y comprueba de paso el guardado**, que colgaba del mismo disparador: responde tres o cuatro píldoras sin
 cambiar de sección y mira que aparezca **"Avance guardado"** al parar de responder.
+
+---
+
+## 7 · El scroll que subia solo (el grave)
+
+**Este es el que hay que mirar primero.**
+
+**Que provocar.** Entra en **Alimentacion**, baja hasta la mitad de la seccion, para de scrollear y espera
+dos segundos. Despues responde una pildora y espera otros dos.
+
+**Que tiene que verse.** Que **la pagina se queda donde la dejaste**. Ni al parar de scrollear, ni al
+responder, ni 1,2 s despues (que es cuando guarda).
+
+**Que era.** La tira de subpestañas traia el chip activo a la vista con `scrollIntoView`, y eso estaba en
+un `ref` escrito como funcion en linea. React vuelve a adjuntar un ref de funcion **en cada render**, asi
+que la llamada no corria al cambiar de seccion sino cada vez que el componente se renderizaba. Y
+`block: "nearest"` no evita mover la pagina, la mueve: sube el documento lo justo para que el chip entre
+en vista. **Ese era el punto fijo**, el chip pegado al borde de arriba con el titulo de la seccion debajo.
+
+Lleva ahi desde el principio, y por eso lo tenias visto de antes. Empeoro esta semana porque al hacer que
+la barra recontara en cada clic, los renders pasaron de raros a uno por interaccion.
+
+**Que sería defecto ahora.**
+
+- Que siga subiendo. Si pasa, mira **si ocurre sin tocar nada**: solo rueda del raton o solo arrastrar con
+  el dedo, sin pulsar ninguna pildora. Ese dato decide, porque significaria que algo se renderiza sin
+  interaccion y hay que buscar por otro lado.
+- Que al **cambiar de seccion** el chip activo ya no se centre en su tira. Eso si tiene que seguir pasando:
+  es lo unico que la tira debe mover, y solo se mueve ella, nunca la pagina.
 
 ---
 

@@ -19,9 +19,23 @@ describe("la primera pantalla muestra preguntas", () => {
     expect(FORM).toContain("sm:flex-wrap");
   });
 
-  it("y el chip activo se trae a la vista al cambiar de paso", () => {
-    // En una tira que se desplaza, si no, el paso actual queda fuera de pantalla.
-    expect(FORM).toContain("scrollIntoView({ block: \"nearest\", inline: \"center\" })");
+  it("y el chip activo se trae a la vista al cambiar de paso, SIN mover la página", () => {
+    // ESTE CASO FIJABA EL BUG, no la garantía (corregido el 2026-09-04). Pinchaba la llamada literal
+    // `scrollIntoView({ block: "nearest", inline: "center" })`, que era exactamente lo que subía la página
+    // sola: `block: "nearest"` desplaza los ancestros con scroll INCLUIDO EL DOCUMENTO, y estaba en un
+    // `ref` de función en línea, que React vuelve a adjuntar en cada render. Resultado: en cada render, la
+    // página se subía hasta que el chip entraba en vista. Era el bug del scroll de las secciones largas.
+    //
+    // Lo que se afirma ahora es la GARANTÍA (el chip se centra al cambiar de paso) y, sobre todo, el
+    // MEDIO: se mueve el `scrollLeft` de la tira, que no puede desplazar el documento ni aunque el efecto
+    // corriera de más. Y el ref es estable, así que solo corre cuando cambia `step`.
+    expect(FORM).toContain("tira.scrollTo({");
+    expect(FORM).toContain("ref={activo ? chipActivoRef : undefined}");
+    expect(FORM).toContain("}, [step]);");
+    // Y NO vuelve el mecanismo que movía la página desde la tira.
+    expect(FORM, "`scrollIntoView` en la tira vuelve a subir la página sola").not.toContain(
+      'scrollIntoView({ block: "nearest"',
+    );
   });
 
   it("el título de la sección NO se repite", () => {
