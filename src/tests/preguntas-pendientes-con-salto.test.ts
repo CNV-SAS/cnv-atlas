@@ -130,3 +130,47 @@ describe("la tira de color de la orina", () => {
     expect(WIDGETS_SIN_COMENTARIOS).toContain("<div aria-hidden");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// COLOR E ICONOS EN LA ENCUESTA: identidad sí, veredicto no.
+//
+// La decisión completa vive en BACKLOG. Lo que se fija aquí son las dos reglas que evitan repetir el
+// defecto de su archivo, que pone ⚠ en "Conductas alimentarias" y pinta "Alergias y digestión" en rojo
+// sobre preguntas tan neutras como cuántas comidas haces o si te han operado.
+
+describe("los iconos de dominio son identidad, no calificación", () => {
+  it("hay un icono por cada uno de los ocho dominios", () => {
+    const bloque = FORM.slice(FORM.indexOf("const ICONO_DOMINIO"), FORM.indexOf("const initialSubmit"));
+    const iconos = bloque.match(/^\s{2}"?[A-ZÁÉÍÓÚa-zá-ú ]+"?:\s*[A-Z]\w+,$/gm) ?? [];
+    expect(iconos).toHaveLength(8);
+  });
+
+  it("y NINGUNO es un símbolo de veredicto", () => {
+    // Un plato, una gota o una casa dicen DÓNDE estás. Un triángulo de alerta, un visto bueno o una cruz
+    // dicen QUÉ TAL vas, y eso califica al paciente antes de que conteste. Es la línea exacta que su
+    // archivo cruza.
+    const bloque = FORM.slice(FORM.indexOf("const ICONO_DOMINIO"), FORM.indexOf("const initialSubmit"));
+    const prohibidos = /(?:Triangle|Alert|Warning|Check|Circle(?:Check|Alert|X)|XCircle|ShieldAlert|ThumbsUp|ThumbsDown|Ban|Skull)/;
+    expect(bloque, "un icono de veredicto en un encabezado de dominio").not.toMatch(prohibidos);
+  });
+
+  it("van en ink, sin color propio, porque no hay rampa categórica todavía", () => {
+    // Un tono por dominio sería identidad legítima, pero hoy lo único cromático sin valencia es el azul de
+    // marca, que además es el color de acción: ocho encabezados azules se leerían como pulsables. Ampliar
+    // la paleta es decisión de Santiago (BRAND.md) y va después de ver la encuesta terminada.
+    expect(SIN_COMENTARIOS).toContain('<Icono className="size-5 shrink-0 text-muted-foreground" aria-hidden />');
+  });
+});
+
+describe("la píldora de porción lleva tinte de marca, no de la escala clínica", () => {
+  it("usa el azul de marca al 10 %, que ya existe en la app", () => {
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("bg-primary/10");
+  });
+
+  it("y no verde ni ámbar, que ahí SÍ calificarían", () => {
+    // Un verde junto a "Verduras" leería "alimento bueno", y el mismo verde junto a "Ultraprocesados"
+    // leería lo contrario: el color estaría calificando el ALIMENTO, no señalando una unidad de medida.
+    const bloque = WIDGETS.slice(WIDGETS.indexOf("hint?.referencia"), WIDGETS.indexOf("{isMulti ?"));
+    expect(bloque).not.toMatch(/clinical-|attention|green|emerald|amber|yellow/);
+  });
+});
