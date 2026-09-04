@@ -197,6 +197,7 @@ const MODULOS = [
   "atlas-tratamiento-nutri.js",
   "derivar-composicion.js",
   "atlas-alertas.js",
+  "atlas-asesoria-macro.js",
 ];
 
 describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
