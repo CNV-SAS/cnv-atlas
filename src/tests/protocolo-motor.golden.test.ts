@@ -115,7 +115,11 @@ describe("GOLDEN 2: motorProtocolo (linea base de regresion)", () => {
     expect(o.tieneIRC).toBe(true);
     expect([o.protMin, o.protMax]).toEqual([0.6, 0.8]); // IRC gana sobre F2 (habria sido 0.8/1.2)
     expect(o.pesoCalculoLabel).toContain("IRC/Cáncer");
-    expect(N(o.restricciones)).toEqual(expect.arrayContaining(["Proteína", "Fósforo", "Potasio"]));
+    // LA FILA DE PROTEINA SALIO el 2026-09-04 (su entrega del 3, confirmada el 4): la cifra renal
+    // 0,6-0,8 ya no se impone desde aqui, se le MUESTRA al profesional en el panel de referencia. El
+    // fosforo y el potasio se quedan porque son restricciones renales que no son proteina.
+    expect(N(o.restricciones)).toEqual(expect.arrayContaining(["Fósforo", "Potasio"]));
+    expect(N(o.restricciones), "la fila de proteina tenia que salir").not.toContain("Proteína");
     expect(N(o.examenes)).toEqual(expect.arrayContaining(["Creatinina sérica", "TFG estimada", "BUN"]));
   });
 

@@ -41,6 +41,20 @@ export type ProtocoloCaloricoInput = {
    * donde salio es `computeProtocoloEfectivo` (`protFuente`), para que el ultimo recurso no sea mudo.
    */
   protPrescrita?: number;
+  /**
+   * El gasto basal que devuelve SU motor (`_mtn.geb`), que desde su entrega del 2026-09-03 es
+   * Mifflin-St Jeor sobre el PESO META.
+   *
+   * SE LEE DEL MOTOR, no se recalcula aqui, y es la misma razon que con la proteina: su cadena SIEMPRE
+   * leyo el motor, y copiar la formula seria una segunda fuente de la misma cifra. Ya nos costo una vez:
+   * aqui vivio un `500 + 22 x FFM` rotulado "Cunningham" que no era Cunningham, con 205 kcal de
+   * diferencia contra el otro motor sobre el mismo paciente.
+   *
+   * undefined = no llego (snapshot viejo replayado sin motor a mano). Ahi se cae a Harris-Benedict, que
+   * es lo que esos snapshots tenian cuando se sellaron.
+   */
+  /** El snapshot se sello ANTES del bump del 2026-09-04: se relee con la formula con la que se sello. */
+  selladoAntesDelBump?: boolean;
   // NO HAY `gebMedido` AQUI, y es deliberado: el gasto que mide el equipo corresponde al peso ACTUAL,
   // asi que sirve para mostrar el basal de hoy, no para fijar la ingesta que lleva a la meta. Es la frase
   // que Gildardo dejo pegada a `_mtn.geb` en su archivo. Lo verifica `geb-una-sola-fuente`.
@@ -123,8 +137,30 @@ export function computeProtocoloCalorico(i: ProtocoloCaloricoInput): ProtocoloCa
   // POR QUE IMPORTA: para un paciente que baja de peso, la meta es MENOR que el peso actual, asi que el
   // basal medido (que es el de hoy) es MAYOR. Usarlo aqui prescribiria mas calorias justo en la
   // direccion que aleja de la meta. Sobre un hombre de 90 kg con meta 80 son ~190 kcal/dia de mas.
-  const gebAuto = ATLAS_GEB_HB(pesoN, talla, edad, sexoM) ?? 0;
-  const formula: ProtocoloCaloricoOutput["formula"] = "Harris-Benedict";
+  // EL GASTO BASAL SALE DE SU MOTOR (2026-09-04). Su entrega del 3 retira `ATLAS_GEB` y `ATLAS_GEB_HB`
+  // enteras y su `motorTratNutri` calcula Mifflin-St Jeor sobre el peso meta. Es la TERCERA formula en
+  // cuatro dias (500+22xFFM mal rotulado Cunningham -> Harris-Benedict -> Mifflin), y por eso el bump.
+  //
+  // Harris-Benedict queda de RESPALDO, no de default: solo lo alcanza un snapshot viejo replayado sin el
+  // motor a mano, que es justo lo que esos snapshots tenian sellado. Cambiarles la formula al releerlos
+  // les moveria el objetivo sin que nadie lo decidiera.
+  // SE CALCULA AQUI, NO SE LEE DEL SELLO, y esto se corrigio sobre la marcha: la primera version sellaba
+  // `mtn.geb` y el replay lo leia. El golden lo tumbo, y con razon: un gasto sellado NO SE MUEVE cuando el
+  // profesional ajusta el peso meta, y la cadena efectiva existe justamente para RE-CORRER, no para
+  // sustituir. Habria quedado un objetivo calorico sordo al unico control que el profesional tiene.
+  //
+  // La formula es la de su motor (Mifflin-St Jeor sobre el peso de la cadena) y coincide con el por
+  // construccion: al calculo fresco le pasamos `peso_meta: pr.pesoCalculo`, asi que los dos evaluan el
+  // mismo peso. Que este escrita en dos sitios es el precio de que el replay no pueda llamar al motor
+  // (necesita la encuesta), y por eso `geb-una-sola-fuente` compara las dos salidas.
+  //
+  // HARRIS-BENEDICT PARA LOS SELLOS ANTERIORES AL BUMP: esos protocolos se sellaron con HB, y cambiarles
+  // la formula al releerlos les moveria el objetivo sin que nadie lo decidiera.
+  const anteriorAlBump = i.selladoAntesDelBump === true;
+  const gebAuto = anteriorAlBump
+    ? (ATLAS_GEB_HB(pesoN, talla, edad, sexoM) ?? 0)
+    : Math.round(10 * pesoN + 6.25 * talla - 5 * edad + (sexoM ? 5 : -161));
+  const formula: ProtocoloCaloricoOutput["formula"] = anteriorAlBump ? "Harris-Benedict" : "Mifflin";
   // :14125 gebN = override ?? gebAuto
   const gebN = i.geb !== undefined ? Number(i.geb) : gebAuto;
   // :14126 palN = override ?? 1.375 (PAL es ENTRADA, ver encabezado de frozen/atlas-protocolo.js)

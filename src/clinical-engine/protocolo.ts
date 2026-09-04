@@ -71,7 +71,8 @@ export type ProtocoloSnapshot = {
    * OPCIONAL porque los snapshots sellados antes del 2026-09-03 no lo traen. Para esos, el caller pasa
    * el valor del motor (que tiene a mano) y la cascada de `computeProtocoloEfectivo` lo declara.
    */
-  mtn?: { protKg: number };
+  /** Lo que SU motor prescribe, sellado: la proteina y (desde el 2026-09-04) el gasto basal. */
+  mtn?: { protKg: number; geb?: number };
   calorico: {
     defaults: string[]; // claves que son suposiciones del sistema (no modelo, no profesional)
     pal: number;
@@ -168,8 +169,16 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
       FFMI: output.indicators.FFMI,
       ASMI: imp.ASMI,
     },
-    {},
-  ) as { protKg: number };
+    // EL PESO DE LA CADENA ENTRA COMO SU `peso_meta` (2026-09-04). Sin esto habria DOS pesos en la misma
+    // cadena: el motor deriva el suyo de FMI/FFMI y calcularia el gasto sobre el (87,8 kg en el golden),
+    // mientras la proteina y los macros se calculan sobre `pr.pesoCalculo` (76,6). El gasto saldria de un
+    // paciente y el reparto de otro, con 112 kcal de diferencia y sin que nada lo dijera.
+    //
+    // Es la MISMA costura que `dieta-resumen-reader` ya usaba para que los gramos de proteina del panel
+    // coincidan con los de la cadena. Lo atrapo el golden al no cuadrar con la cifra derivada a mano, que
+    // es exactamente para lo que sirve derivarla a mano en vez de pegar la salida.
+    { peso_meta: pr.pesoCalculo },
+  ) as { protKg: number; geb: number };
 
   // Cadena calorica (A3.2). SIN overrides del profesional al diagnosticar: pal=1.375 y grasa=30% por
   // DEFAULT; pesoN = pesoCalculo (peso_efectivo sin adj_peso_meta). Ver ajuste 1 arriba.
@@ -182,6 +191,7 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     deficit: pr.estrategia.deficit,
     protMin: pr.protMin,
     protPrescrita: mtn.protKg,
+
   });
 
   return {
@@ -194,7 +204,7 @@ export function computeProtocolo(input: EngineInput, output: EngineOutput): Prot
     PI: pr.PI,
     estrategia: pr.estrategia,
     protMin: pr.protMin,
-    mtn: { protKg: mtn.protKg },
+    mtn: { protKg: mtn.protKg, geb: mtn.geb },
     protMax: pr.protMax,
     protRef: pr.protRef,
     restricciones: pr.restricciones,
@@ -305,6 +315,11 @@ export function computeProtocoloEfectivo(
     deficit: adj.deficit ?? sug.estrategia.deficit,
     protMin: sug.protMin,
     protPrescrita: prescrita,
+    // EL GASTO SELLADO, que es lo que hace que el replay reproduzca el sugerido. Sin esto, un protocolo
+    // recien sellado mostraria aviso de desfase contra si mismo: el sello se calculo con el motor y el
+    // replay caeria a Harris-Benedict. Los sellos anteriores al 2026-09-04 no lo traen y caen a HB, que
+    // es exactamente la formula con la que se sellaron.
+
     geb: adj.geb ?? undefined,
     pal: adj.pal ?? undefined,
     kcalObj: adj.kcalObj ?? undefined,

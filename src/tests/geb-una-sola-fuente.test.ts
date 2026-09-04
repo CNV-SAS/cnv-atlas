@@ -65,9 +65,14 @@ describe("MANDA EL DATO DEL EQUIPO; Harris-Benedict es el respaldo", () => {
 });
 
 describe("nuestra cadena y su motor dan el MISMO gasto basal", () => {
-  // ESTE ES EL CASO QUE IMPIDE QUE VUELVAN A SEPARARSE. La cadena no puede llamar al motor entero (necesita
-  // la encuesta, y corre sobre el snapshot sellado), así que reproduce su definición llamando a la misma
-  // función congelada. Si alguna de las dos se moviera, esto truena.
+  // ESTE ES EL CASO QUE IMPIDE QUE VUELVAN A SEPARARSE, y desde el 2026-09-04 vigila una fórmula nueva:
+  // Mifflin-St Jeor sobre el peso de la cadena, que es la que su entrega del 3 dejó en `motorTratNutri`.
+  //
+  // POR QUÉ SIGUE HABIENDO DOS SITIOS: el replay de un protocolo sellado no puede llamar al motor (le
+  // haría falta la encuesta), así que la cadena calcula la fórmula ella misma. Se intentó sellar el gasto
+  // y leerlo, y el golden lo tumbó: un gasto sellado no se mueve cuando el profesional ajusta el peso
+  // meta, y la cadena efectiva existe para RE-CORRER. Duplicar la fórmula es el precio, y ESTE CASO es lo
+  // que lo hace pagable: compara las dos salidas sobre los mismos datos.
   it.each([
     ["hombre", "Masculino", 80.4, 177, 40],
     ["mujer", "Femenino", 61, 160, 52],
@@ -85,6 +90,7 @@ describe("nuestra cadena y su motor dan el MISMO gasto basal", () => {
       sexoM: sexo === "Masculino",
       deficit: 0,
       protMin: 1,
+
     });
     expect(cadena.gebAuto, "la cadena y el motor dejaron de dar el mismo GEB").toBe(m.geb);
   });
@@ -101,12 +107,14 @@ describe("nuestra cadena y su motor dan el MISMO gasto basal", () => {
     // Lo grave era otro: el candado AFIRMABA la rama equivocada, o sea que dejaba la trampa puesta y
     // ademas certificada para el que viniera a cablear la medicion.
     //
-    // Ahora la etiqueta es una sola por construccion, y el tipo ya no admite el gasto medido.
+    // Ahora la etiqueta es una sola por construccion, y el tipo ya no admite el gasto medido. La formula
+    // paso a MIFFLIN el 2026-09-04 (su entrega del 3); lo que este caso protege no es cual es, sino que la
+    // cadena NO use el gasto medido del equipo, que sigue siendo del peso de hoy y no del peso meta.
     const c = computeProtocoloCalorico({
       ffm: 62.4, pesoN: 80.4, talla: 177, edad: 40, sexoM: true, deficit: 0, protMin: 1,
     });
-    expect(c.formula).toBe("Harris-Benedict");
-    expect(c.gebAuto).toBe(Math.round(66.473 + 13.7516 * 80.4 + 5.0033 * 177 - 6.755 * 40));
+    expect(c.formula).toBe("Mifflin");
+    expect(c.gebAuto).toBe(Math.round(10 * 80.4 + 6.25 * 177 - 5 * 40 + 5));
 
     // Y EL CONTROL, que es lo que impide que vuelva a entrar: el input no tiene por donde recibirlo.
     // Si alguien reabre esa puerta, esto deja de compilar y hay que volver a leer el comentario de arriba.

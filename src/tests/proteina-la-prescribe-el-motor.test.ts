@@ -98,47 +98,58 @@ describe("la cascada de la proteína: cuatro fuentes, y cada una se declara", ()
 });
 
 describe("los dos perfiles donde una proteína equivocada duele más", () => {
-  // Los dos existen HOY en la base (F10 con IMC 18,2 y F10 con insuficiencia renal, ambos 43,7 kg / 155
-  // cm), y son los que Santiago pidio verificar antes de aplicar el cambio. Se corre el motor CONGELADO
-  // con sus datos, que es lo unico que decide: la cascada no calcula, solo elige la fuente.
+  // ESTE BLOQUE SE DIO VUELTA EL 2026-09-04, y el motivo es que Gildardo revirtió la decisión que
+  // vigilaba. Su entrega del 3 de septiembre, confirmada en su respuesta del 4, RETIRA del motor toda la
+  // prescripción de proteína: `protKg` sale siempre 0,8 y el profesional la mueve en su campo editable.
+  //
+  // Su motivo, textual: "el motor no puede distinguir un dato escrito a propósito de un campo mal
+  // borrado, y la cadena por patología convertía esa ambigüedad en gramos prescritos. La solución no fue
+  // ponerle un piso al campo: fue quitarle al motor la pretensión de saber".
+  //
+  // LAS ASERCIONES NO SE RELAJAN, SE INVIERTEN: los mismos dos pacientes, y lo que se afirma ahora es que
+  // el motor NO les impone cifra. Y el criterio clínico que imponía no se pierde: pasó al panel de
+  // referencia (`asesoria-macro.test.ts`), que muestra el rango de cada condición al profesional en el
+  // momento de decidir, sin escoger por él.
   const bis = (over: Record<string, unknown> = {}) => ({
     sexo: "F", edad: 62, peso: 43.7, talla: 155, FMI: 2.997, FFMI: 15.19, ASMI: 5.2, ...over,
   });
 
-  it("DESNUTRICIÓN (F10, IMC 18,2): el motor prescribe 1,5, igual que el mínimo. NO se mueve", () => {
-    // 43,7 / 1,55² = 18,19, por debajo de 18,5. La rama de desnutricion de su motor toma el extremo
-    // inferior del rango que `motorProtocolo` ya asigna a F7/F10 (1,5-2,0), que es exactamente el 1,5 que
-    // este paciente tiene sellado. Las dos fuentes coinciden y la prescripcion no cambia.
+  it("DESNUTRICIÓN (F10, IMC 18,2): el motor ya NO impone 1,5", () => {
+    // Antes esta rama fijaba 1,5. Ahora sale 0,8 como todos, y el 1,2-1,5 de la desnutrición se le
+    // MUESTRA al profesional en el panel, con su mecanismo (ESPEN 2015 / GLIM 2019).
     const m = motorTratNutri({ sexo: "F", d5_39: ["Ninguna"] }, bis(), {}) as { protKg: number };
-    expect(m.protKg).toBe(1.5);
+    expect(m.protKg).toBe(0.8);
   });
 
-  it("ERC (F10 + insuficiencia renal): pasa de 0,6 a 0,7, y el 0,7 es de SU motor", () => {
-    // ESTE SI SE MUEVE, y hay que decirlo con su numero: `motorProtocolo` devuelve 0,6 para cualquier IRC
-    // (el extremo INFERIOR del rango), y la rama renal de `motorTratNutri` fija 0,7 declarando el rango
-    // "Proteína controlada 0,6-0,8 g/kg", o sea su punto medio. En 43,7 kg son 4 gramos al dia.
-    // No es una eleccion nuestra: las dos cifras son suyas, y su §9.6 dice cual manda.
+  it("ERC (F10 + insuficiencia renal): tampoco impone 0,7, y conserva la NOTA", () => {
+    // La distinción que él marcó al retirarla: la nota se queda porque ADVIERTE DE UN DAÑO; la cifra y el
+    // atributo "Proteína controlada 0,6-0,8" salen, como el resto de las recomendaciones proteicas.
     const m = motorTratNutri(
       { sexo: "F", d5_39: ["Insuficiencia renal", "HTA"] },
       bis(),
       {},
-    ) as { protKg: number; attrs: string[] };
-    expect(m.protKg).toBe(0.7);
-    expect(m.attrs).toContain("Proteína controlada 0,6-0,8 g/kg");
+    ) as { protKg: number; attrs: string[]; notas: string[] };
+    expect(m.protKg).toBe(0.8);
+    expect(m.attrs).toContain("Nefroprotectora");
+    expect(m.attrs, "el atributo con la cifra tenía que salir").not.toContain(
+      "Proteína controlada 0,6-0,8 g/kg",
+    );
+    expect(m.notas.join(" ")).toContain("bajo guía de nefrología");
   });
 
-  it("y la ERC manda sobre la desnutrición: el mismo paciente con las dos da 0,7", () => {
-    // CONTROL de precedencia, que es donde una proteina equivocada haria dano de verdad: si la rama
-    // renal no se aplicara ULTIMA, un desnutrido con ERC recibiria 1,5 g/kg.
+  it("y con las dos condiciones tampoco hay precedencia que resolver: no hay cifras que compitan", () => {
+    // Antes esto era un control de precedencia (la rama renal tenía que ir ÚLTIMA o un desnutrido con ERC
+    // recibía 1,5). Ya no hay ramas que impongan cifra, así que el conflicto se trasladó al panel, que lo
+    // DECLARA en vez de resolverlo: ahí ERC (0,6-0,8) y desnutrición (1,2-1,5) salen como conflicto.
     const m = motorTratNutri(
       { sexo: "F", d5_39: ["Insuficiencia renal"] },
       bis(),
       {},
     ) as { protKg: number };
-    expect(m.protKg).toBe(0.7);
+    expect(m.protKg).toBe(0.8);
   });
 
-  it("CONTROL NEGATIVO: sin peso ni talla el motor cae a sus defaults y contesta 1,0", () => {
+  it("CONTROL NEGATIVO: sin peso ni talla el motor NO da error, contesta con sus defaults", () => {
     // Esto NO es un caso de uso: es la trampa en la que cai al medir el impacto contra la base. Mi script
     // le paso un `bis` sin peso ni talla (el snapshot del reporte no los trae) y el motor uso sus propios
     // defaults (70 kg / 170 cm), o sea IMC 24,2: ni desnutricion ni obesidad, y devolvio 1,0 para TODOS.
@@ -146,7 +157,13 @@ describe("los dos perfiles donde una proteína equivocada duele más", () => {
     // Queda escrito porque el defecto no fue de calculo sino de INSUMO, y no da error: contesta.
     const m = motorTratNutri({ sexo: "F", d5_39: ["Ninguna"] }, { sexo: "F" }, {}) as {
       protKg: number;
+      geb: number;
     };
-    expect(m.protKg).toBe(1);
+    // La cifra ya no distingue (todos salen en 0,8 desde su entrega del 3), pero LA TRAMPA SIGUE VIVA y
+    // por eso el caso se queda: sin peso ni talla el motor usa 70 kg / 170 cm y contesta igual, sin dar
+    // error. Lo que hoy se falsearia no es la proteina sino el GASTO BASAL y con el todo el objetivo
+    // calorico, que es peor. El defecto no es de calculo, es de INSUMO.
+    expect(m.protKg).toBe(0.8);
+    expect(m.geb, "con defaults contesta un gasto basal que no es de este paciente").toBeGreaterThan(0);
   });
 });

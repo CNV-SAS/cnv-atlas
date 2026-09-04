@@ -31,7 +31,7 @@ const DIR = "docs/entregas/Gildardo responses";
 
 /** La entrega vigente, DERIVADA del directorio: escrita a mano envejece en silencio. */
 // `entregaVigente` se retiro: este candado compara contra la entrega que nuestro porte refleja, no
-// contra la de hoy (ver `HTML_DE_NUESTRO_PORTE`).
+// contra la de hoy (ver `HTML_VIGENTE`).
 
 /**
  * LA ENTREGA QUE NUESTRA CADENA REFLEJA, que desde el 2026-09-03 ya no es la vigente.

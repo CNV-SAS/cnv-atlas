@@ -42,24 +42,6 @@ export const ENTREGAS = entregasOrdenadas();
 export const HTML_VIGENTE = `${DIR}/${ENTREGAS[ENTREGAS.length - 1]}/ATLAS_v8.html`;
 
 /**
- * LA ENTREGA QUE NUESTRO PORTE DEL MOTOR NUTRICIONAL REFLEJA, que desde el 2026-09-03 ya NO es la vigente.
- *
- * Su entrega del 3-sep RETIRA de `motorTratNutri` (y de otros tres modulos) toda la prescripcion de
- * proteina y el gasto basal, que es lo que el mismo nos mando portar dos dias antes en su §9.6. Aplicado y
- * en produccion: 56 de 60 tratamientos pasaron de 0,8 al valor del motor, y el GEB cambio para todos.
- *
- * NO se porta la retirada hasta que confirme que es deliberada y diga que hacer con lo ya prescrito
- * (ronda del 2026-09-04, P-99). Mientras tanto, los candados de PARIDAD del motor nutricional comparan
- * contra esta entrega y no contra la vigente.
- *
- * VIVE AQUI Y NO EN CADA TEST a proposito: son CINCO los candados que toca esta decision, y repetir la
- * razon cinco veces es como una de las cinco acaba diciendo otra cosa. Quien vigila que esta entrega siga
- * siendo la correcta es `frozen-deriva-vigente`, donde la divergencia esta declarada modulo por modulo.
- *
- * CUANDO EL RESPONDA, esto se borra y los cinco vuelven a `HTML_VIGENTE`. Que sea una sola constante es lo
- * que hace que ese dia sea un cambio y no una busqueda.
- */
-/**
  * Ruta del HTML de UNA entrega concreta. Existe para que NINGUN test construya rutas de entrega a mano,
  * ni siquiera derivadas: el candado `html-vigente-lock` no puede distinguir una ruta armada desde
  * `ENTREGAS` de una escrita a dedo, y tampoco deberia tener que hacerlo. Con este helper la unica ruta
@@ -70,11 +52,6 @@ export function htmlDeEntrega(carpeta: string): string {
   return `${DIR}/${carpeta}/ATLAS_v8.html`;
 }
 
-const CARPETA_DE_NUESTRO_PORTE = "html actualizado 2 septiembre";
-if (!ENTREGAS.includes(CARPETA_DE_NUESTRO_PORTE)) {
-  throw new Error(`no existe la entrega que nuestro porte refleja: ${CARPETA_DE_NUESTRO_PORTE}`);
-}
-export const HTML_DE_NUESTRO_PORTE = `${DIR}/${CARPETA_DE_NUESTRO_PORTE}/ATLAS_v8.html`;
 
 /**
  * Extrae una funcion COMPLETA del HTML por su NOMBRE, contando llaves hasta cerrar.

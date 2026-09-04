@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
 import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
 
-import { funcionDelHtml, HTML_DE_NUESTRO_PORTE } from "./fixtures/html-vigente";
+import { funcionDelHtml, HTML_VIGENTE } from "./fixtures/html-vigente";
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DEL PESO META POR COMPOSICION (Gildardo, entrega del 2026-09-01, punto 3).
@@ -41,8 +41,8 @@ describe("el porte es VERBATIM del archivo vigente", () => {
     // un candado anclado a una entrega superada pasa verde por construccion.
     // CONTRA LA ENTREGA QUE NUESTRO PORTE REFLEJA, no contra la vigente: su entrega del 3-sep retira de
     // este motor toda la prescripcion de proteina, y no se porta hasta que confirme (ver la razon entera
-    // en `HTML_DE_NUESTRO_PORTE`, y la divergencia declarada en `frozen-deriva-vigente`).
-    const suyo = funcionDelHtml("motorTratNutri", HTML_DE_NUESTRO_PORTE);
+    // en `HTML_VIGENTE`, y la divergencia declarada en `frozen-deriva-vigente`).
+    const suyo = funcionDelHtml("motorTratNutri", HTML_VIGENTE);
     const sinEsp = (s: string) => s.replace(/\s+/g, "");
     // Se cuenta la llave, como hace `funcionDelHtml`. `lastIndexOf("}")` NO sirve: cae en la llave del
     // `module.exports = { motorTratNutri };` del final, y el cuerpo sale 31 caracteres más largo. Lo cazó
