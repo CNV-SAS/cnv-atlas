@@ -111,9 +111,11 @@
    cadena le pasa el peso meta desde `motorProtocolo`, cuya formula por IMC el no cambio. Preguntado
    (punto 11.1 de la ronda). Estado: `peso-meta-composicion`.
 
-   **EL PLAN DEL PACIENTE (2026-09-01):** seis de los siete bloques de su §7.1, dentro del reporte que el
-   paciente ya recibe, con el diagnostico primero. Estado: `plan-paciente`. Falta el septimo (la lista
-   recortada por region), bloqueado por P2.
+   **EL PLAN DEL PACIENTE (2026-09-01, COMPLETO el 2026-09-03):** los SIETE bloques de su §7.1, dentro del
+   reporte que el paciente ya recibe, con el diagnostico primero. El septimo (la lista de intercambio
+   recortada a la region del paciente) entro el 3 de septiembre: su mapa existia desde el 2 pero llego
+   SUELTO en la carpeta de la entrega, fuera del HTML donde su documento decia que estaba. Estado: corren
+   `plan-paciente.test.ts` e `intercambio-region.test.ts`.
 
    **HISTORIA CLINICA IMPRIMIBLE + DFI EN LENGUAJE DE PACIENTE (2026-09-01):** la HC se imprime y se
    guarda como PDF desde la pantalla del profesional, con sello de consentimiento (mitad legal del derecho
@@ -245,9 +247,17 @@ imprimibles, y la deuda de infraestructura.
 
 ### Lo que espera a Gildardo, y qué bloquea
 
-**La ronda del 2026-09-03 tiene ocho puntos y TRES bloquean construcción:** el interruptor del LE8 (bloquea
-portar su `engine.dfi`), el bloque del mapa de regiones (bloquea el séptimo bloque del plan del paciente, y
-es lo único donde no podemos avanzar mientras responde) y la correspondencia de los 18 grupos con los 21
-subgrupos (bloquea estimar el consumo actual). De rondas anteriores siguen bloqueando el puente
-frecuencia-porciones con el omega-3 (enciende las diez alertas de consumo) y el ICEC. Los puntos 4 a 8 y
-P-10 no bloquean nada.
+**La ronda del 2026-09-04 tiene siete puntos y CUATRO bloquean construcción:** los rótulos de los nueve
+sectores IFC x IRC, que dicen lo contrario de sus bandas en tres casos y están intercambiados en dos
+(P-103; es texto clínico que el profesional lee hoy, y los dos errores empujan al lado tranquilizador); el
+interruptor del LE8, tercera entrega encendido (P-92, bloquea portar su `engine.dfi`); la retirada de la
+proteína y el gasto basal de `motorTratNutri` dos días después de mandárnoslos portar (P-99, es la cifra
+que se prescribe); y `generarAlertas`, que él marcó para borrar y en Atlas está viva en dos sitios (P-104,
+bloquea si la borra). Los puntos 5 a 7 (los 21 estados con raya, Tumaco y Cartago en dos regiones, los
+subgrupos vacíos) no bloquean nada.
+
+**De la ronda del 2026-09-03 respondió los ocho.** Dos de sus respuestas cerraron bloqueos: el mapa de
+regiones llegó completo (el séptimo bloque del plan ya está construido) y la correspondencia de los 18
+grupos con los 21 subgrupos "no va, y no es que falte: es que no debe existir" (su punto 3). De rondas
+anteriores siguen bloqueando el puente frecuencia-porciones con el omega-3 (enciende las diez alertas de
+consumo) y el ICEC.
