@@ -5,28 +5,6 @@ tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene
 
 ---
 
-## Antes que nada: este documento se equivocaba, y en la forma de siempre
-
-La primera versión listaba **nueve** puntos pendientes. Al barrerlos contra sus cinco respuestas, **seis
-ya estaban contestados**, algunos desde el 3 de septiembre. Es la quinta vez que pasa lo mismo, así que
-vale la pena dejar escrito qué salió y por qué, en vez de borrarlo en silencio:
-
-| Lo que decía la primera versión | Lo que él ya había contestado |
-| --- | --- |
-| "De dónde salen las porciones que come hoy el paciente" | *"No va, y no es que falte: es que no debe existir"* (3-sep). Y añadió que era **la tercera vez que la pregunta volvía con otro traje** |
-| "Una prescripción puede quedar con 3 % de grasa" | Contestado el 3-sep, y la respuesta **es el panel de referencia**, que quedó cableado hoy |
-| "Desnutrición y ERC: el texto se contradice" | *"Se suprimieron todos"* los atributos de proteína (3-sep). Ya portado: no quedan dos frases opuestas |
-| "'No hago ejercicio' no existe como respuesta" | **Existe en su archivo desde el 3-sep.** Lo que falta es que Atlas lo porte (abajo) |
-| "¿Se le avisa al paciente si el tratamiento se reemite idéntico?" | *"Ni en ese caso ni en ninguno. No hay aviso al paciente"* (3-sep). Y yo te recomendaba lo contrario |
-| "Seis renglones salen con el título y nada debajo" | Contestado el 4-sep: mecato y alcohol vacíos **son decisión suya**, y *"portar el render tal cual fue lo correcto"* |
-
-El más grave de esos seis es el del aviso al paciente: no solo estaba contestado, sino que mi
-recomendación (*"avisar solo si algo cambió"*) **contradecía una instrucción directa suya**.
-
-**Lo que queda de verdad son cuatro cosas**, y solo dos son preguntas.
-
----
-
 ## Resumen
 
 | # | Qué es | ¿Pregunta o trabajo nuestro? | ¿Bloquea el hito 2? |
