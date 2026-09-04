@@ -229,19 +229,33 @@ tiempo que ellos tomen.
 es el Hito 1): el cotejo de Rutas, el diseño gráfico, el pase de diseño de los tres documentos
 imprimibles, y la deuda de infraestructura.
 
-### Los tres bloques abiertos de nuestro lado, con su tamaño
+### Lo que sigue abierto de nuestro lado (verificado el 2026-09-04)
 
-| Bloque | Qué queda | Tamaño |
+**ESTA TABLA SE VERIFICÓ CONTRA EL CÓDIGO, no se copió de la versión anterior.** Listaba tres bloques
+abiertos y **dos y medio ya estaban hechos**, cerrados por commits que están en este mismo repositorio. Y
+no es la primera vez: el commit que cerró la deuda de los tests (`a9a7aa5`) ya decía "es la cuarta entrada
+seguida que estaba hecha", y aun así esta tabla volvió a listarla. Fue **la quinta**.
+
+**La causa está localizada y es de este archivo:** LANZAMIENTO es la fuente única del estado, así que
+cuando se cierra algo y no se actualiza aquí, el desfase no se queda en un rincón: se convierte en la
+respuesta que se da cuando alguien pregunta qué falta. Por eso las filas de abajo **citan un test o un
+commit** en vez de afirmar; una aserción a mano envejece y un puntero a algo que corre, no.
+
+| Bloque | Estado, derivado | Tamaño |
 |---|---|---|
-| **Cotejo de Rutas** (cierra el gate 3) | La subpestaña de Rutas de atención. Las otras cinco tandas están hechas | **Medio.** Una pantalla, por tandas, con smoke por tanda |
-| **Diseño de los tres documentos** | El plan del paciente, la HC imprimible y el reporte funcionan pero no pasaron por `BRAND.md`: heredan el estilo de pantalla | **Medio.** No toca lógica. El riesgo es de impresión (saltos de página), que solo se ve imprimiendo |
-| **Deuda técnica** | No es un bloque, son tres cosas distintas (ver abajo) | Mixto |
+| **Cotejo de Rutas** (cierra el gate 3) | La tanda **se hizo el 2026-08-24** (`COTEJO_TRATAMIENTO_2026-08-24.md`, sección B "Rutas y remisiones (cerradas)"). Lo que queda es **la pasada de ojos de Santiago sobre la pantalla**, no construcción | **Chico.** Es mirar, no construir |
+| **Diseño de los tres documentos** | ABIERTO de verdad. El plan del paciente, la HC imprimible y el reporte funcionan y no pasaron por `BRAND.md` | **Medio.** No toca lógica. El riesgo es de impresión (saltos de página), que solo se ve imprimiendo |
+| **Diseño de la encuesta del paciente** | ABIERTO. Es lo único de diseño con capturas de referencia ya entregadas (`cotejo-visual/encuesta atlas pacientes`) | **Medio** |
 
-**La deuda, separada por lo que de verdad es:**
+**La deuda, con su estado verificado:**
 
-- **Dos son gates del Hito 2**, no deuda opcional: la siembra no destructiva y su patrón concreto. **Medio.**
-- **Dos son riesgo real y baratas:** los tests de integración no limpian tras de sí (ya dio flake al correr
-  `db` combinado con `unit`) y el seed principal es destructivo con las respuestas de encuesta. **Chicas.**
+- **CERRADA · La siembra no destructiva** (gate del Hito 2). Commit `f6741cc`; el estado lo sostiene
+  `seed-no-destructivo.test.ts`, que además falla en voz alta si una pregunta retirada ya tiene respuestas.
+- **CERRADA · Los tests de integración no limpiaban.** Commit `a9a7aa5`, cerrado con la verificación
+  **medida** (contar filas, correr la suite, contar otra vez): cero crecimiento en las seis tablas. La
+  acumulación local que se veía era histórica, anterior a los cleanups.
+- **ABIERTA · El flake de `db` corriendo junto a `unit`.** Es distinto de lo anterior y sigue vivo:
+  `fileParallelism:false` serializa solo DENTRO del proyecto `db`. **Chica.**
 - **El resto es infraestructura futura** (bus durable, jobs en background, E2E con Playwright, chequeo de
   configuración al arranque). **Grande, y nada de eso hace falta para atender.**
 
