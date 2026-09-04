@@ -241,10 +241,10 @@ export function ReportDocument({
           </View>
         ) : null}
 
-        {/* ═══ EL PLAN, en su orden: meta, dieta, menu, distribucion, recomendaciones ═══
+        {/* ═══ EL PLAN, en su orden: meta, dieta, menu, distribucion, recomendaciones, lista por region ═══
             El DIAGNOSTICO va ARRIBA, en el bloque "Cómo estás": primero que tiene, despues la solucion.
-            Falta el septimo bloque de su §7.1, la lista de intercambio recortada por region: su tabla es
-            nacional y no existe el mapa de que alimentos corresponden a cada region. Preguntado (P2). ═══ */}
+            Los SIETE bloques de su §7.1 estan aqui desde el 2026-09-03, cuando llego su mapa de regiones
+            (decia "falta el septimo, bloqueado por P2"; el bloqueo se cerro con su respuesta §2). ═══ */}
         {showAtlas && plan ? (
           <>
             <View style={styles.section}>

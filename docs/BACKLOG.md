@@ -145,9 +145,11 @@ recomendaciones. Estado: `plan-paciente.test.ts`.
 guardados, y las porciones guardadas pisan a las calculadas, igual que en su pantalla. El paciente no
 puede recibir un objetivo distinto del que su profesional prescribió.
 
-**Falta el séptimo, y no por olvido:** la lista de intercambio recortada por región. Bloqueada por P2 (su
-`INTER_TABLA_B` es nacional; no existe el mapa de qué alimentos corresponden a cada región). Está escrito
-en el reader, para que quien compare el documento contra su §7.1 lea una pregunta abierta y no un olvido.
+**El séptimo entró el 2026-09-03:** la lista de intercambio recortada por región. Estuvo bloqueado por P2
+(su `INTER_TABLA_B` es nacional y faltaba el mapa de qué alimentos corresponden a cada región), y su
+respuesta §2 lo cerró: el mapa existía desde el 2 de septiembre pero llegó suelto en la carpeta de la
+entrega, fuera del HTML donde su documento decía que estaba. Estado: corren `plan-paciente.test.ts` e
+`intercambio-region.test.ts`.
 
 ### PENDIENTE · Imprimir el plan desde la subpestaña del nutricionista
 
