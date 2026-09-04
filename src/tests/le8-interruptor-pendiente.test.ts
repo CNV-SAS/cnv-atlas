@@ -26,6 +26,16 @@ import { ENTREGAS, htmlDeEntrega, HTML_VIGENTE } from "./fixtures/html-vigente";
 // la ciencia (Regla 0), es no aplicar un cambio que su propio archivo declara invalido sin el otro medio.
 // Va preguntado en la ronda del 2026-09-03 (P-92), y hasta que responda esta divergencia es deliberada.
 //
+// SU RESPUESTA DEL 2026-09-04, que cambia el MOTIVO del bloqueo y por eso entra aqui: mu y sigma no
+// estan "pendientes de firma", estan BLOQUEADAS por ausencia de ICEC en toda fuente disponible. Textual:
+// "el ICEC se calcula desde la encuesta, y ninguna de esas fuentes la trae... se recalibra cuando haya
+// una masa de pacientes con encuesta completa".
+//
+// Y UN DATO SUYO QUE NO SE HABIA DICHO: mu = 58,578 y sigma = 13,332, las que el interruptor usa HOY,
+// TAMPOCO tienen origen documentado. Sus dos documentos tecnicos describen la v3 (Ridge sobre ocho
+// variables), que no lleva ICEC ni LE8; la v5 vigente vive solo en el HTML, y esas dos constantes con
+// ella. O sea que el candado no vigila "faltan las nuevas": vigila que las viejas tampoco tienen respaldo.
+//
 // COMO MUERE ESTE CANDADO, que es lo que lo hace util: el dia que el recalibre, mu y sigma dejaran de ser
 // 58.578 y 13.332, el tercer caso se pondra ROJO y ahi hay que portar las dos cosas juntas. Si en cambio
 // responde "vuelvanlo a false", el primer caso se pone rojo. Cualquiera de las dos salidas nos obliga a
