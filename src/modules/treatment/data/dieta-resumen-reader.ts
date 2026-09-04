@@ -1,5 +1,6 @@
 import "server-only";
 
+import { asesoriaFuera, asesoriaMacro } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { decodeSurveyValue } from "@/modules/clinical-pipeline/services/build-engine-input";
@@ -12,7 +13,12 @@ import {
 } from "@/clinical-engine/resumen-profesion";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import type { FilaPrescripcion, PrescripcionNutricional } from "./treatment-view-types";
+import type {
+  AsesoriaMacro,
+  AsesoriaMacroCruda,
+  FilaPrescripcion,
+  PrescripcionNutricional,
+} from "./treatment-view-types";
 
 // Parrafo de dieta del Resumen Clinico (pieza 1b). Reconstruye la encuesta (enc) de la evaluacion y corre
 // resumenDietaParrafo. DISPLAY-ONLY: se computa al vuelo, no se sella (como el resto de la lectura del
@@ -325,4 +331,49 @@ export async function getPrescripcionNutricional(
     notas: m.notas,
     referencias: m.refs,
   };
+}
+
+/**
+ * EL PANEL DE REFERENCIA POR DIAGNOSTICO para proteina y grasa (su punto 3 del 2026-09-04).
+ *
+ * ES LA OTRA MITAD de la decision del 3 de septiembre. Su entrega retira la proteina por patologia de los
+ * cuatro modulos congelados y la deja en 0,8 editable; esto es lo que la sustituye. Textual suyo: "si
+ * portaron la retirada sin portar el panel, lo que quedo en Atlas es media instruccion, y es la mitad
+ * peor". El criterio clinico que el motor imponia ahora se le MUESTRA a quien decide, en el momento de
+ * decidir, con el mecanismo y la fuente de cada rango.
+ *
+ * NO PRESCRIBE NADA. Devuelve rangos, no valores. Y `fuera` no es una validacion: dice que la cifra que
+ * el profesional escribio quedo fuera del rango sugerido, sin bloquear ni corregir, que es lo unico
+ * compatible con su §5 del 2026-08-27 ("ninguna cifra de la prescripcion lleva techo, piso, validacion
+ * ni advertencia").
+ *
+ * USA EL MISMO `enc` Y EL MISMO `bis` QUE `motorTratNutri`, por `buildEnc` y `conPesoYTalla`. No se
+ * construye un segundo insumo: dos constructores del mismo dato es como el motor de nutricion termino
+ * viendo cero comorbilidades en todos los pacientes (2026-09-01).
+ */
+export async function getAsesoriaMacros(
+  evaluationId: string,
+  sexo: string,
+  bis: Record<string, unknown>,
+  /** Lo que el profesional tiene escrito hoy, para decir si quedo fuera. `null` = sin escribir. */
+  protGKg: number | null,
+  fatPct: number | null,
+): Promise<{ prot: AsesoriaMacro; grasa: AsesoriaMacro } | null> {
+  const enc = await buildEnc(evaluationId, sexo);
+  if (!enc) return null;
+  const bisCompleto = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
+  if (!bisCompleto) return null;
+
+  const arma = (macro: "prot" | "grasa", valor: number | null): AsesoriaMacro => {
+    const a = asesoriaMacro(enc, bisCompleto, macro) as AsesoriaMacroCruda;
+    return {
+      unidad: a.unidad,
+      items: a.items,
+      conflicto: a.conflicto,
+      rango: a.rango,
+      nota: a.nota,
+      fuera: valor == null ? null : (asesoriaFuera(valor, a) as string | null),
+    };
+  };
+  return { prot: arma("prot", protGKg), grasa: arma("grasa", fatPct) };
 }

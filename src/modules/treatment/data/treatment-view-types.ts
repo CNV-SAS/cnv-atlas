@@ -233,3 +233,39 @@ export type PrescripcionNutricional = {
   notas: string[];
   referencias: string[];
 };
+/**
+ * UN RANGO SUGERIDO POR CONDICION, del panel de referencia de proteina y grasa (su punto 3, 2026-09-04).
+ *
+ * `porque` es el MECANISMO, no la cita: por que esa condicion pide ese rango. Es lo que convierte el
+ * panel en algo que se puede leer al decidir, en vez de una tabla de numeros con una referencia al lado.
+ */
+export type AsesoriaItem = {
+  cond: string;
+  min: number;
+  max: number;
+  porque: string;
+  fuente: string;
+};
+
+/** Lo que su `asesoriaMacro` devuelve, tal cual, antes de nuestro envoltorio. */
+export type AsesoriaMacroCruda = {
+  macro: string;
+  unidad: string;
+  items: AsesoriaItem[];
+  conflicto: boolean;
+  rango: [number, number] | null;
+  nota: string;
+};
+
+/**
+ * El panel de un macro, ya con la lectura de la cifra escrita.
+ *
+ * `rango` es null CUANDO HAY CONFLICTO, que es su forma de decir que dos condiciones piden rangos que no
+ * se solapan. Ahi el panel NO escoge: muestra los dos y su nota ("ATLAS no escoge por usted"). Es la
+ * distincion que hay que preservar al pintarlo, porque un rango vacio y un conflicto se ven igual si uno
+ * los trata como "sin dato".
+ */
+export type AsesoriaMacro = Omit<AsesoriaMacroCruda, "macro"> & {
+  /** Aviso de que la cifra escrita quedo fuera del rango. `null` = dentro, o sin cifra escrita. */
+  fuera: string | null;
+};
