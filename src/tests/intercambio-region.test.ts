@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import { computeIntercambio, INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
 import { INTER_TABLA_B } from "@/clinical-engine/intercambio-alimentos";
 import {
   ALIMENTOS_NUCLEO,
@@ -233,5 +233,35 @@ describe("4 · coherencia interna", () => {
     // La lista COMPLETA (ciudad sin region) no tiene ese hueco: confirma que es del recorte y no de
     // INTER_TABLA_B, que es la distincion que la pregunta necesita para que el pueda contestarla.
     expect(vacios("Madrid España")).toEqual([]);
+  });
+
+  it("y DOS de esos vacíos son grupos que el plan SÍ prescribe: el documento se contradice", () => {
+    // ESTO ES LO QUE CONVIERTE EL PUNTO EN UN DEFECTO Y NO EN UNA RAREZA, y salió de mirar los dos PDF
+    // que Santiago exportó el 2026-09-04, no de leer el código.
+    //
+    // En el MISMO documento, la tabla de "Cómo repartir tus porciones en el día" dice "Azúcares y dulces:
+    // 1" y tres páginas más abajo la lista de intercambio dice "Azúcares y dulces:" y no hay nada detrás.
+    // Al paciente se le prescribe una porción de un grupo y se le entrega una lista vacía para elegirla.
+    //
+    // Y NO ES DE UN PACIENTE NI DE UNA REGIÓN: medido sobre los tres objetivos calóricos y las diez
+    // regiones, "Azúcares y dulces" sale prescrito y vacío SIEMPRE, y "Nueces" en siete de las diez.
+    //
+    // Se fija lo que pasa HOY, con la pregunta citada (ronda del 2026-09-04, P-101). Cuando responda, este
+    // caso se pone rojo, que es la señal de portar su decisión.
+    const prescritosSinLista = (ciudad: string, kcal: number) => {
+      const zona = listaIntercambioPaciente(ciudad);
+      return computeIntercambio(kcal)
+        .filter((a) => a.porciones > 0 && !zona.some((f) => f.sub === a.sub))
+        .map((a) => a.sub);
+    };
+    for (const r of Object.keys(REGION_NOMBRE) as RegionKey[]) {
+      const ciudad = REGION_CIUDADES[r][0];
+      for (const kcal of [1529, 1800, 2200]) {
+        expect(prescritosSinLista(ciudad, kcal), `${r} a ${kcal} kcal`).toContain("Azúcares y dulces");
+      }
+    }
+    // Y el segundo, que NO es de todas: en el Caribe, el Pacífico y la Insular sí hay nueces.
+    expect(prescritosSinLista("Medellín", 1529)).toContain("Nueces");
+    expect(prescritosSinLista("Barranquilla", 1529)).not.toContain("Nueces");
   });
 });

@@ -332,16 +332,25 @@ export function ReportDocument({
               </View>
             ) : null}
 
-            {plan.recomendaciones.map((r) => (
-              <View key={r.titulo} style={styles.section}>
-                <Text style={styles.sectionTitle}>{r.titulo}</Text>
-                {r.lineas.map((l) => (
-                  <Text key={l} style={styles.para}>
-                    {l}
-                  </Text>
+            {/* EL ENCABEZADO QUE AGRUPA, que es la única alineación en esta dirección (2026-09-04). Aquí
+                cada recomendación era su propia sección de primer nivel, así que "Alimentación saludable
+                general" quedaba al mismo rango que "Tu meta" y sin decir de qué es. La hoja impresa sí
+                las agrupaba, y esa es la mejor de las dos. */}
+            {plan.recomendaciones.length ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Recomendaciones para tu caso</Text>
+                {plan.recomendaciones.map((r) => (
+                  <View key={r.titulo}>
+                    <Text style={styles.bold}>{r.titulo}</Text>
+                    {r.lineas.map((l) => (
+                      <Text key={l} style={styles.para}>
+                        {l}
+                      </Text>
+                    ))}
+                  </View>
                 ))}
               </View>
-            ))}
+            ) : null}
 
             {/* BLOQUE 7 · la lista de intercambio recortada por región. `break`: su archivo la imprime en
                 su propia página, y aquí importa más, porque es la hoja que el paciente lleva al mercado. */}

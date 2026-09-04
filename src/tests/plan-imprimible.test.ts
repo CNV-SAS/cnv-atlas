@@ -56,13 +56,24 @@ describe("el mecanismo de impresión es UNO para los dos documentos", () => {
 });
 
 describe("el contenido es el del paciente, en el orden del PDF", () => {
+  // ESTE BLOQUE SE CORRIGIÓ EL 2026-09-04, Y ES LA PARTE INCÓMODA DEL HALLAZGO: se llama "en el orden del
+  // PDF" y estaba fijando un orden y un título que el PDF NO tenía. Pinchaba el menú como
+  // "Un ejemplo de menú para tu semana" cuando el PDF dice "Ejemplo de menú para una semana", y ponía la
+  // distribución antes del menú cuando el PDF los tiene al revés.
+  //
+  // O sea que el candado no solo NO detectó el desfase entre los dos canales: lo CERTIFICABA. Un candado
+  // que afirma una relación mirando un solo lado no puede ver esa relación, y da la garantía igual. El que
+  // sí la mira ahora vive en `plan-paciente.test.ts` y compara las DOS superficies a la vez; estos casos
+  // se quedan porque siguen sirviendo para lo suyo (que los bloques existan y que las restricciones vayan
+  // antes del menú), pero ya no son los que sostienen la afirmación del título.
   it("lleva los bloques de su §7.1", () => {
     for (const t of [
       "Tu meta",
       "Tu plan de alimentación",
       "Cómo repartir tus porciones en el día",
-      "Un ejemplo de menú para tu semana",
+      "Ejemplo de menú para una semana",
       "Recomendaciones para tu caso",
+      "Tu lista de intercambio",
     ]) {
       expect(CODIGO, `falta el bloque "${t}"`).toContain(t);
     }
@@ -72,7 +83,7 @@ describe("el contenido es el del paciente, en el orden del PDF", () => {
     // Mismo orden y misma razón: un menú leído antes que sus restricciones es un menú que el paciente ya
     // empezó a seguir mal. Y dos órdenes distintos del mismo plan se leen como dos planes.
     const restr = CODIGO.indexOf("Lo que debes evitar");
-    const menu = CODIGO.indexOf("Un ejemplo de menú");
+    const menu = CODIGO.indexOf("Ejemplo de menú para una semana");
     expect(restr).toBeGreaterThan(-1);
     expect(menu).toBeGreaterThan(restr);
   });

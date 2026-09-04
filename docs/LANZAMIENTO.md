@@ -247,14 +247,16 @@ imprimibles, y la deuda de infraestructura.
 
 ### Lo que espera a Gildardo, y qué bloquea
 
-**La ronda del 2026-09-04 tiene siete puntos y CUATRO bloquean construcción:** los rótulos de los nueve
+**La ronda del 2026-09-04 tiene ocho puntos y CUATRO bloquean construcción:** los rótulos de los nueve
 sectores IFC x IRC, que dicen lo contrario de sus bandas en tres casos y están intercambiados en dos
 (P-103; es texto clínico que el profesional lee hoy, y los dos errores empujan al lado tranquilizador); el
 interruptor del LE8, tercera entrega encendido (P-92, bloquea portar su `engine.dfi`); la retirada de la
 proteína y el gasto basal de `motorTratNutri` dos días después de mandárnoslos portar (P-99, es la cifra
 que se prescribe); y `generarAlertas`, que él marcó para borrar y en Atlas está viva en dos sitios (P-104,
-bloquea si la borra). Los puntos 5 a 7 (los 21 estados con raya, Tumaco y Cartago en dos regiones, los
-subgrupos vacíos) no bloquean nada.
+bloquea si la borra). Los puntos 5 a 8 (los 21 estados con raya, Tumaco y Cartago en dos regiones, los
+subgrupos vacíos y las cuatro erratas de su tabla de alimentos) no bloquean nada, aunque el 7 deja hoy un
+documento que se contradice: prescribe una porción de "Azúcares y dulces" y entrega una lista vacía para
+ese grupo.
 
 **De la ronda del 2026-09-03 respondió los ocho.** Dos de sus respuestas cerraron bloqueos: el mapa de
 regiones llegó completo (el séptimo bloque del plan ya está construido) y la correspondencia de los 18
