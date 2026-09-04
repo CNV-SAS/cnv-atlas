@@ -1,7 +1,7 @@
 # Smoke: la encuesta del paciente (2026-09-04)
 
 **En el teléfono, que es donde importa.** Todo lo de esta tanda es de la encuesta que contesta un
-paciente, y las SEIS cosas que cambian se ven distinto en una pantalla angosta.
+paciente, y las SIETE cosas que cambian se ven distinto en una pantalla angosta.
 
 `pnpm dev`, abre el enlace del intake en el móvil (o el navegador en vista de móvil, 390 px de ancho).
 
@@ -74,7 +74,7 @@ rejilla, así que el emparejamiento no depende del ancho.
 
 ## 3 · Las preguntas pendientes, con salto
 
-**Es el más importante de los seis, y el que más pasos tiene.**
+**Es el más importante de los siete, y el que más pasos tiene.**
 
 **Cómo provocarlo.** Empieza una encuesta y **deja preguntas sin responder a propósito** (por ejemplo
 contesta solo Alimentación y salta el resto). Ve hasta la última sección y pulsa **Enviar**.
@@ -134,6 +134,27 @@ igual de largas al entrar. Saber que quedan tres es lo que evita abandonar.
 **Qué sería defecto.** Que diga cuántas te **faltan** en vez de cuántas **hay**. Cuántas hay es un hecho de
 la sección; cuántas faltan es un recordatorio, y eso ya lo lleva la barra de arriba, que además dice que
 puedes dejarlas.
+
+---
+
+## 6 · La barra de avance (defecto corregido)
+
+**Dónde.** Arriba, en cualquier sección.
+
+**Qué provocar.** Responde **píldoras**, que es lo que más hay: cualquier pregunta de Alimentación.
+
+**Qué tiene que verse.** Que la barra y el texto **"N de 64 preguntas" se muevan con CADA respuesta**, en
+el momento, no un segundo después. Y que al **pasar de sección** el número refleje lo que llevas.
+
+**Qué era el defecto.** La barra sí medía preguntas, pero solo se enteraba de un tipo de respuesta: el
+deslizable del estrés. Las píldoras y los contadores son botones, y un botón no emite el evento que la
+barra escuchaba. Se movía en **1 de 65 preguntas**, así que parecía congelada.
+
+**Qué sería defecto ahora.** Que vaya **una respuesta por detrás** (respondes la tercera y dice 2). Eso
+sería peor que no moverse, porque parece que funciona. Si lo ves, dilo con el número exacto.
+
+**Y comprueba de paso el guardado**, que colgaba del mismo disparador: responde tres o cuatro píldoras sin
+cambiar de sección y mira que aparezca **"Avance guardado"** al parar de responder.
 
 ---
 
