@@ -6,6 +6,18 @@ import { readFileSync } from "node:fs";
 // (objetivo → validación → fórmula → intercambio → distribución → menú) con DOS divergencias deliberadas.
 // Lo que se blinda es que un reorden futuro no las pierda por descuido, y que ninguna sección pierda su
 // firma al moverse (el reorden anterior de este panel dejo secciones pegadas por eso).
+//
+// LO QUE ESTE CANDADO **NO** VERIFICA, y va dicho para que nadie lo lea como una garantía que no da
+// (anotado el 2026-09-04, barriendo los candados que afirman una relación con un artefacto que no abren):
+// **no abre el archivo de Gildardo**. Lee solo nuestro panel. Así que cuando un caso dice "como en su
+// pantalla" o "DIVERGENCIA: él los pone después", está fijando NUESTRO orden y repitiendo lo que su
+// archivo decía el 2026-08-24; si él reordena su panel, aquí no se pone nada rojo y la divergencia
+// declarada puede haber dejado de serlo.
+//
+// NO SE CIERRA HOY, y la razón es de proporción: esto es el orden de la pantalla de trabajo del
+// profesional, no contenido clínico ni nada que llegue a un paciente, y extraer el orden de secciones de
+// su HTML es un porte en sí mismo. Se deja anotado y va al backlog. El caso que sí importaba de esta
+// familia (el lenguaje de paciente de `dfi-paciente`) sí se cerró, porque ese sí viaja en un documento.
 
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
 const pos = (t: string) => {
