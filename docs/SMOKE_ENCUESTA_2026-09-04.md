@@ -1,7 +1,7 @@
 # Smoke: la encuesta del paciente (2026-09-04)
 
 **En el teléfono, que es donde importa.** Todo lo de esta tanda es de la encuesta que contesta un
-paciente, y las CUATRO cosas que cambian se ven distinto en una pantalla angosta.
+paciente, y las SEIS cosas que cambian se ven distinto en una pantalla angosta.
 
 `pnpm dev`, abre el enlace del intake en el móvil (o el navegador en vista de móvil, 390 px de ancho).
 
@@ -74,7 +74,7 @@ rejilla, así que el emparejamiento no depende del ancho.
 
 ## 3 · Las preguntas pendientes, con salto
 
-**Es el más importante de los cuatro, y el que más pasos tiene.**
+**Es el más importante de los seis, y el que más pasos tiene.**
 
 **Cómo provocarlo.** Empieza una encuesta y **deja preguntas sin responder a propósito** (por ejemplo
 contesta solo Alimentación y salta el resto). Ve hasta la última sección y pulsa **Enviar**.
@@ -100,6 +100,40 @@ pregunta a la vista, con su enunciado**, no al principio de la sección ni a una
 - Que los dos botones queden **fuera de la pantalla** por culpa de la lista. Por eso se corta en ocho.
 - Que el número de la lista **no coincida** con el número que se ve al llegar a la pregunta.
 - Que la cuenta de la caja **no coincida** con "N de 64 preguntas" de la barra de arriba.
+
+---
+
+## 4 · El deslizable del estrés
+
+**Dónde.** Sección **Hábitos**, *"Nivel de estrés en el último mes"*.
+
+**Qué tiene que verse.** Un **disco grande a la derecha** con el número elegido, en azul. Sin tocar nada,
+el disco está apagado y muestra una raya.
+
+**Qué sería defecto.** Que el disco **cambie de color según el nivel** (ámbar o rojo al subir): eso
+calificaría la respuesta. Es azul siempre, el mismo azul de la opción elegida, porque dice "esta es tu
+respuesta", no "tu respuesta es buena".
+
+**Lo que NO se portó de él, y por qué:** sus etiquetas "Sin estrés" y "Máximo" bajo los extremos.
+**Ya están visibles en el enunciado**, dos líneas más arriba: *"(1 = sin estrés, 10 = máximo)"*.
+Repetirlas debajo sería redundancia, no el caso de la píldora de porción, donde el dato sí estaba
+enterrado. Sus dos emojis de cara tampoco van: el proyecto no lleva emojis en la interfaz.
+
+---
+
+## 5 · El conteo por sección
+
+**Dónde.** El título de cada sección.
+
+**Qué tiene que verse.** Una píldora gris junto al título: **"18 preguntas"** en Alimentación,
+**"3 preguntas"** en las cortas.
+
+**Para qué es:** acotar. Alimentación tiene dieciocho y otras tienen tres, y hasta ahora las dos se veían
+igual de largas al entrar. Saber que quedan tres es lo que evita abandonar.
+
+**Qué sería defecto.** Que diga cuántas te **faltan** en vez de cuántas **hay**. Cuántas hay es un hecho de
+la sección; cuántas faltan es un recordatorio, y eso ya lo lleva la barra de arriba, que además dice que
+puedes dejarlas.
 
 ---
 

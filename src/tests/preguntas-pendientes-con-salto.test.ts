@@ -174,3 +174,27 @@ describe("la píldora de porción lleva tinte de marca, no de la escala clínica
     expect(bloque).not.toMatch(/clinical-|attention|green|emerald|amber|yellow/);
   });
 });
+
+describe("el deslizable del estrés y el conteo por sección", () => {
+  it("el valor se ve en grande: en un deslizable, el número ES la respuesta", () => {
+    // Era un número de 6 px al final de la fila. Si no se ve, el paciente no sabe qué acaba de contestar.
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("size-10 shrink-0 items-center justify-center rounded-full");
+  });
+
+  it("y usa `primary`, el mismo color de la opción elegida", () => {
+    // Dice "esta es tu respuesta", no "tu respuesta es buena". Un ámbar o un rojo escalando con el nivel
+    // de estrés sería calificar la respuesta, que es la regla de toda esta tanda.
+    const bloque = WIDGETS.slice(WIDGETS.indexOf("export function Scale"), WIDGETS.indexOf("// Render de una pregunta"));
+    expect(bloque).toContain("bg-primary text-primary-foreground");
+    expect(bloque, "el deslizable no puede escalar de color con el valor").not.toMatch(
+      /clinical-|attention|amber|yellow|red-|green-|emerald/,
+    );
+  });
+
+  it("cada sección dice cuántas preguntas tiene, y NO cuántas faltan", () => {
+    // Cuántas hay es un hecho de la sección y acota (Alimentación tiene 18, otras tienen 3). Cuántas te
+    // faltan sería un recordatorio, y eso ya lo lleva la barra, que además dice que puedes dejarlas.
+    expect(SIN_COMENTARIOS).toContain("{s.questions.length} {s.questions.length === 1 ? \"pregunta\" : \"preguntas\"}");
+    expect(SIN_COMENTARIOS).not.toContain("sin responder en esta sección");
+  });
+});
