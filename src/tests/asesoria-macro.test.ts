@@ -300,3 +300,58 @@ describe("7 · el panel SALE SIEMPRE, que es su palabra", () => {
     expect(COMPONENTE).toContain("if (!asesoria || asesoria.items.length === 0) return null;");
   });
 });
+
+describe("8 · la rama de la EDAD, que estaba muerta y en silencio", () => {
+  // HALLAZGO DEL BARRIDO DEL 2026-09-04, y es un defecto NUESTRO del cableado del mismo dia.
+  //
+  // Su `asesoriaMacro` lee `e.edad || b.edad` y con edad >= 65 agrega "65 años o más" (1,0-1,2 g/kg).
+  // Pero `buildEnc` arma el `enc` SOLO con las respuestas de la encuesta más `sexo`, y el `bis` son los
+  // indicadores del snapshot, que tampoco traen la edad. **La rama no se alcanzaba nunca.**
+  //
+  // Y lo que la vuelve grave no es que faltara un item, es CUÁL faltaba: en un paciente mayor con ERC,
+  // la rama renal tira hacia abajo (0,6-0,8) y la de la edad hacia arriba (1,0-1,2). Sin la edad, el
+  // panel mostraba SOLO la mitad que baja, con su rango limpio y sin conflicto. Al profesional se le
+  // ocultaba justo la mitad que le habría hecho dudar.
+  //
+  // Nada daba error: `Number(undefined) || 0` es 0, y 0 no es >= 65. Es la familia de "un porte que lee
+  // la encuesta falla en silencio por la FORMA del enc".
+  const mayorConErc = {
+    enc: { d5_39: ["Enfermedad renal crónica"], sexo: "M" } as Record<string, unknown>,
+    bis: { sexo: "M", peso: 70, talla: 170, FFMI: 20, FMI: 5, ASMI: 8 } as Record<string, unknown>,
+  };
+
+  it("SIN edad sale un solo rango y sin conflicto: el caso que estaba pasando", () => {
+    const a = asesoriaMacro(mayorConErc.enc, mayorConErc.bis, "prot") as Ases;
+    expect(a.items.map((i) => i.cond)).toEqual(["ERC sin diálisis"]);
+    expect(a.conflicto).toBe(false);
+  });
+
+  it("CON edad 70 salen los dos y el conflicto aparece", () => {
+    const a = asesoriaMacro(mayorConErc.enc, { ...mayorConErc.bis, edad: 70 }, "prot") as Ases;
+    expect(a.items.map((i) => i.cond)).toEqual(["ERC sin diálisis", "65 años o más"]);
+    expect(a.conflicto).toBe(true);
+    expect(a.rango).toBeNull();
+  });
+
+  it("y el CABLE existe: el lector la pide y la página se la pasa", () => {
+    // EL CANDADO VA SOBRE EL SITIO DE LLAMADA, no sobre la función: los dos casos de arriba pasaban
+    // verdes mientras nadie le pasaba la edad. Que su motor sepa usarla no sirve de nada si no llega.
+    const READER = readFileSync("src/modules/treatment/data/dieta-resumen-reader.ts", "utf8");
+    const bloque = READER.slice(READER.indexOf("export async function getAsesoriaMacros"));
+    expect(bloque, "el lector tiene que pedirla en su firma").toContain("edad: number | null");
+    expect(bloque, "y tiene que meterla en el bis que le pasa a su motor").toContain(
+      "edad != null && edad > 0 ? { ...base, edad } : base",
+    );
+    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+    const llamada = PAGE.slice(PAGE.indexOf("await getAsesoriaMacros("));
+    expect(llamada.slice(0, 700), "la página tiene que pasarla").toContain("hcHeader?.edad ?? null");
+  });
+
+  it("sin fecha de nacimiento NO se supone una edad, y el resto sigue saliendo", () => {
+    // `null` es distinto de 0: no se inventa una edad, la rama simplemente no corre. Y lo que importa es
+    // que el panel NO se cae por eso: las demás condiciones siguen mostrándose.
+    const a = asesoriaMacro(mayorConErc.enc, { ...mayorConErc.bis, edad: 0 }, "prot") as Ases;
+    expect(a.items.map((i) => i.cond)).toEqual(["ERC sin diálisis"]);
+    expect(a.rango).toEqual([0.6, 0.8]);
+  });
+});

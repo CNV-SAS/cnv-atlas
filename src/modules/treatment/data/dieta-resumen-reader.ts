@@ -355,14 +355,33 @@ export async function getAsesoriaMacros(
   evaluationId: string,
   sexo: string,
   bis: Record<string, unknown>,
+  /**
+   * LA EDAD, EXPLICITA, y no es un parametro de adorno: sin ella una rama entera de su asesoria queda
+   * MUERTA y en silencio.
+   *
+   * Su `asesoriaMacro` lee `e.edad || b.edad` y con edad >= 65 agrega "65 años o más" (1,0-1,2 g/kg,
+   * resistencia anabolica de la edad). Pero `buildEnc` arma el `enc` SOLO con las respuestas de la
+   * encuesta mas `sexo`, y `bis` son los indicadores del snapshot, que tampoco la traen. Medido: un
+   * paciente de 70 con ERC salia con UN solo item y sin conflicto; con la edad salen DOS y el conflicto
+   * aparece. O sea que al profesional se le ocultaba justo la mitad que tira en sentido contrario.
+   *
+   * Es la familia de "un porte que lee la encuesta falla en silencio por la FORMA del enc": nada da
+   * error, la rama simplemente no se alcanza. Va explicita y no metida dentro de `bis` para que se vea
+   * en la firma que este panel la necesita.
+   *
+   * `null` cuando la evaluacion no tiene fecha de nacimiento: ahi la rama no debe correr (no se supone
+   * una edad), y el resto de la asesoria sigue funcionando.
+   */
+  edad: number | null,
   /** Lo que el profesional tiene escrito hoy, para decir si quedo fuera. `null` = sin escribir. */
   protGKg: number | null,
   fatPct: number | null,
 ): Promise<{ prot: AsesoriaMacro; grasa: AsesoriaMacro } | null> {
   const enc = await buildEnc(evaluationId, sexo);
   if (!enc) return null;
-  const bisCompleto = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
-  if (!bisCompleto) return null;
+  const base = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
+  if (!base) return null;
+  const bisCompleto = edad != null && edad > 0 ? { ...base, edad } : base;
 
   const arma = (macro: "prot" | "grasa", valor: number | null): AsesoriaMacro => {
     const a = asesoriaMacro(enc, bisCompleto, macro) as AsesoriaMacroCruda;

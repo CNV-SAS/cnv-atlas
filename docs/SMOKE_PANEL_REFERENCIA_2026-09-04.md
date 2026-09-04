@@ -86,23 +86,56 @@ servidor, iría un guardado por detrás: el campo diría una cifra y el aviso ha
 
 ## Recorrido 3 · El conflicto, que se ve distinto
 
-**Paciente sugerido: uno con enfermedad renal crónica Y desnutrición** (o renal y obesidad). Son dos
-condiciones que piden rangos de proteína que **no se solapan**: la renal pide bajar (0,6-0,8) y la otra
-subir (1,2-1,5).
+**Este es el que no pudiste probar, y era porque faltaba un cable.** Al buscarte el paciente apareció que
+la rama de la edad **no se disparaba nunca** (estaba arreglado a medias por mí, el mismo día). Ya está
+corregido, y con eso el caso es fácil de armar.
 
-**Qué tienes que ver:**
+### El paciente, y por qué este
+
+**Un paciente de 65 años o más que marque "Enfermedad renal crónica" en la encuesta.** Nada más: no hace
+falta tocar la bioimpedancia ni buscar una composición rara.
+
+Funciona porque las dos condiciones tiran en sentidos opuestos y sus rangos **no se solapan**:
+
+| Condición | Rango que pide | Por qué |
+| --- | --- | --- |
+| **ERC sin diálisis** | 0,6–0,8 g/kg | La urea que el riñón ya no filtra sale de la proteína |
+| **65 años o más** | 1,0–1,2 g/kg | Resistencia anabólica: el mismo aporte rinde menos |
+
+No hay ninguna cifra que cumpla las dos, y eso es exactamente lo que el panel tiene que decir en vez de
+escoger.
+
+### Cómo armarlo
+
+1. Crea un paciente con **fecha de nacimiento de 1955 o antes** (la edad se calcula a la fecha de la
+   consulta, no a hoy).
+2. En la encuesta, en **"¿Tiene alguno de estos diagnósticos personales?"**, marca **Enfermedad renal
+   crónica**.
+3. Completa la encuesta, carga la bioimpedancia y genera el diagnóstico.
+4. Tratamiento › Cadena calórica › el bloque debajo de **Proteína (g/kg)**.
+
+### Qué tienes que ver
 
 - **En vez de** la línea de `Referencia: X–Y`, un título que dice **"Dos condiciones piden rangos que no
   coinciden"**.
-- Debajo, **las dos condiciones con sus dos rangos**, cada una con su explicación.
-- Y al final una nota suya que dice, en sus palabras, que *ATLAS no escoge por usted*.
+- Debajo, **las dos condiciones con sus dos rangos**, cada una con su explicación y su fuente.
+- Y al final una nota suya diciendo, en sus palabras, que *ATLAS no escoge por usted*.
+- Y en el aviso de fuera de rango: escribir **0,7** o **1,1** NO debe marcar nada (cumplir una de las dos
+  es una decisión legítima); escribir **2,5** sí debe decir *"fuera de todos los rangos sugeridos"*.
 
 **Sería defecto si:**
 
-- Sale una línea de `Referencia:` **vacía**, o un rango raro tipo `1.2–0.8`.
-- Sale **una sola** de las dos condiciones, o el panel elige una por su cuenta.
+- Sale **una sola** condición. Ese era justo el defecto: aparecía solo la renal, con su rango limpio y sin
+  conflicto, **ocultando la mitad que tira hacia arriba**.
+- Sale una línea de `Referencia:` **vacía**, o un rango imposible tipo `1.0–0.8`.
+- El panel **escoge** uno de los dos.
 - El conflicto se ve **igual** que un paciente sin condiciones. Son cosas distintas: uno es "no hay nada
   que ajustar" y el otro es "hay una decisión que le toca a usted".
+
+### Si prefieres el de grasa
+
+Mismo patrón, con **hipertrigliceridemia** (20-25 %) más **cáncer** o FFMI bajo (30-35 %). Tampoco se
+solapan. Pero el de proteína es más barato de armar porque no depende de la composición.
 
 ---
 

@@ -1042,3 +1042,21 @@ pregunta: aqui una de las seis llevaba una recomendacion que contradecia una ins
 
 **Y LO QUE SI QUEDA ABIERTO, que son dos preguntas y no nueve:** el interruptor del LE8 (P-92) y los tres
 colores de los sectores (P-103, la mitad que el firmo aparte).
+
+**P-106 · Su archivo tiene DOS clasificadores del indice cintura-cadera con etiquetas distintas.**
+Barrido del 2026-09-04. `dICC` (linea 14423) devuelve "Normal" / "Riesgo cardiovascular"; `clasifICC`
+(linea 8019) devuelve "Riesgo bajo" / "Riesgo alto — distribucion central", y es el que esta VIVO en su
+linea 13598. **Los cortes son identicos** (0,90 hombre / 0,85 mujer) y los colores equivalentes, asi que
+no hay diferencia de clasificacion: la hay de REDACCION. Nuestro porte (`dICC` en composition-display)
+es fiel al primero, verificado byte a byte.
+
+Es la MISMA FORMA que el acaba de arreglar en los nueve sectores (dos sitios de su archivo nombrando lo
+mismo de dos maneras). Su etiqueta viva dice mas: "distribucion central" le explica al profesional POR
+QUE es riesgo. **Pregunta de una linea: cual de las dos manda.** No bloquea nada.
+
+**P-107 · `clasifLancet` esta declarado en su archivo y NADIE lo llama, ni el.** Barrido del 2026-09-04.
+Es un clasificador bidimensional IMC + FMI/FFMI de cuatro niveles, rotulado "Propuesta The Lancet 2025",
+completo y con sus colores. `grep -c` = 1 en su archivo: solo la declaracion. Es la misma situacion de
+`calcConsumo` y `TCAC`, que el declaro piezas muertas ("quedan marcadas para borrarse, no para
+conectarse"), **con la diferencia de que esta nunca la ha mencionado**. No se porta: se le pregunta si es
+resto o si es algo que piensa conectar.
