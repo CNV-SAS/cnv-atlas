@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -147,6 +147,42 @@ export function SurveyPhaseForm({
   const isLast = step === totalSteps - 1;
 
   const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // CENTRAR EL CHIP ACTIVO EN SU TIRA, SIN TOCAR EL SCROLL DE LA PAGINA (arreglo del 2026-09-04).
+  //
+  // EL BUG QUE CIERRA, y era el mas molesto que hemos tenido: al bajar por una seccion larga, cualquier
+  // interaccion (o el propio scroll, en el movil) subia la pagina sola hasta un punto fijo, donde se veia
+  // el titulo de la seccion. Siempre, no la primera vez. Hacia Alimentacion casi inusable.
+  //
+  // LAS DOS CAUSAS, y hacian falta las dos:
+  //
+  //   1. EL REF ERA UNA FUNCION EN LINEA. `ref={activo ? (el) => el?.scrollIntoView(...) : undefined}`
+  //      crea una funcion NUEVA en cada render, y React vuelve a adjuntar un ref de funcion cada vez que
+  //      su identidad cambia: lo llama con `null` y despues con el elemento. O sea que `scrollIntoView`
+  //      no corria al cambiar de seccion, corria **en cada render**.
+  //   2. Y `block: "nearest"` SI MUEVE LA PAGINA. El comentario decia que lo evitaba y es al reves:
+  //      "nearest" desplaza los ancestros con scroll, INCLUIDO el documento, lo justo para que el
+  //      elemento entre en vista. Con la tira fuera de pantalla por haber bajado, ese "lo justo" es subir
+  //      la pagina hasta el chip. **Ese es el punto fijo**: el chip queda pegado al borde superior, y
+  //      debajo el titulo de la seccion y las primeras preguntas.
+  //
+  // Por eso empeoro esta semana sin haber nacido esta semana: el ref lleva ahi desde el principio, pero al
+  // hacer que el formulario recontara en cada CLIC, los renders pasaron de raros a uno por interaccion.
+  //
+  // EL ARREGLO NO ES SOLO MOVERLO A UN EFECTO. Se mueve el `scrollLeft` DE LA TIRA en vez de llamar a
+  // `scrollIntoView`: manipular el scroll horizontal de un contenedor no puede desplazar el documento, ni
+  // aunque el efecto corriera de mas. `scrollIntoView` siempre puede.
+  const navRef = useRef<HTMLElement>(null);
+  const chipActivoRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const tira = navRef.current;
+    const chip = chipActivoRef.current;
+    if (!tira || !chip) return;
+    tira.scrollTo({
+      left: chip.offsetLeft - (tira.clientWidth - chip.clientWidth) / 2,
+      behavior: "smooth",
+    });
+  }, [step]);
 
   // Guarda el SNAPSHOT COMPLETO (contrato del writer): lee todo el formulario (todas las secciones estan
   // montadas, solo ocultas) y lo manda. Los guardados se serializan por useActionState; como cada uno
@@ -368,6 +404,7 @@ export function SurveyPhaseForm({
         <Progress value={totalPreguntas > 0 ? Math.round((respondidas / totalPreguntas) * 100) : 0} />
         {/* Subpestanas: "Sobre ti" (paso 0) + las secciones de encuesta. Todas alcanzables (opcional). */}
         <nav
+          ref={navRef}
           aria-label="Secciones de la encuesta"
           className="-mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible"
         >
@@ -379,15 +416,10 @@ export function SurveyPhaseForm({
                 type="button"
                 onClick={() => goTo(i)}
                 aria-current={activo ? "step" : undefined}
-                ref={
-                  activo
-                    ? (el) => {
-                        // En la tira con desplazamiento el chip activo puede quedar fuera de vista al
-                        // avanzar; se trae al centro. "nearest" evita mover la pagina entera.
-                        el?.scrollIntoView({ block: "nearest", inline: "center" });
-                      }
-                    : undefined
-                }
+                // REF ESTABLE, NUNCA UNA FUNCION EN LINEA. Aqui vivia
+                // `ref={activo ? (el) => el?.scrollIntoView(...) : undefined}`, y era el bug del scroll
+                // que subia la pagina sola (ver el `useEffect` de abajo).
+                ref={activo ? chipActivoRef : undefined}
                 className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                   activo
                     ? "bg-primary text-primary-foreground"
