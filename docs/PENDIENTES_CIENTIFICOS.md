@@ -13,6 +13,7 @@ tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene
 | 2 | Tres colores dicen lo contrario que su etiqueta | **Pregunta**, y es barata | No |
 | 3 | Dos cosas que prometió "para la próxima entrega" y no llegaron | Recordatorio | No |
 | 4 | Portar a Atlas las opciones de ejercicio que él ya arregló | **Trabajo nuestro** | No, pero se ve |
+| 5 | Dos cosas de su archivo que salieron de un barrido, las dos chicas | **Preguntas**, sin prisa | No |
 
 ---
 
@@ -218,6 +219,49 @@ campos vacíos. Eso es lo que vio Valentina, y en su archivo ya está resuelto.
 versión de la encuesta**, y eso tiene consecuencias que hay que planear (las evaluaciones viejas siguen
 apuntando a la versión anterior). Es un bloque con su plan y su prueba, no un cambio de una línea.
 Conviene juntarlo con las dos correcciones del punto 3, para hacer un solo bump en vez de tres.
+
+---
+
+## 5 · Dos cosas que salieron de barrer su archivo al revés
+
+Las dos aparecieron mirando **qué tiene su archivo que nosotros no**, que es la dirección que ningún
+candado nuestro vigila (los candados prueban que lo nuestro sigue estando en el suyo, no al revés).
+
+**Las dos son chicas y ninguna corre prisa.** Van aquí y no en una ronda: el ciclo con él está cerrado.
+
+### a) Su archivo tiene dos clasificadores del índice cintura-cadera, con etiquetas distintas
+
+El índice cintura-cadera se clasifica en su archivo en **dos sitios**, con los mismos cortes (0,90 en
+hombre, 0,85 en mujer) y **distinta redacción**:
+
+| Dónde | Debajo del corte | Encima |
+| --- | --- | --- |
+| `dICC` | "Normal" | "Riesgo cardiovascular" |
+| `clasifICC` | "Riesgo bajo" | "Riesgo alto — distribución central" |
+
+Es la **misma forma** del problema que él acaba de arreglar en los nueve sectores: dos sitios de su archivo
+nombrando lo mismo de dos maneras.
+
+**Verificado: no tiene consecuencia visible en Atlas.** Nosotros portamos solo `dICC`, byte a byte, y el
+índice se pinta en **un único sitio**. Un profesional nunca ve las dos etiquetas para el mismo paciente.
+El problema vive en su prototipo, no en nuestro porte.
+
+**Lo que se le preguntaría, cuando haya ocasión:** cuál de las dos manda. La suya viva dice más
+("distribución central" explica *por qué* es riesgo), así que puede que la nuestra se quede corta.
+
+### b) Tiene un clasificador completo que nadie llama, ni él
+
+`clasifLancet` es un clasificador de cuatro niveles que cruza IMC con masa grasa y masa magra, rotulado
+*"Propuesta The Lancet 2025"*. Está completo, con sus etiquetas y sus colores.
+
+**Y en su propio archivo aparece una sola vez: la declaración.** Nadie lo invoca.
+
+Es la misma situación de las tres piezas que él declaró muertas en septiembre (*"quedan marcadas para
+borrarse, no para conectarse"*), **con una diferencia: esta nunca la ha mencionado.**
+
+**No lo portamos**, y no por pereza: conectar una pieza que su propio archivo no conecta sería estrenar
+una clasificación clínica por nuestra cuenta, que es justo lo que la Regla 0 prohíbe. Lo que cabe es
+preguntarle si es un resto o algo que piensa usar.
 
 ---
 
