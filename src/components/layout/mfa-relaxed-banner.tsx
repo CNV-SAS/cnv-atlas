@@ -7,7 +7,7 @@ export function MfaRelaxedBanner() {
   return (
     <div
       role="alert"
-      className="border-b-2 border-clinical-warning bg-clinical-warning-bg px-4 py-2 text-center text-sm font-semibold text-clinical-warning"
+      className="border-b-2 border-attention bg-attention-bg px-4 py-2 text-center text-sm font-semibold text-attention"
     >
       Entorno de pruebas. Nada de lo que registres aquí es real ni tiene efectos: puedes crear pacientes,
       hacer evaluaciones y registrar ventas con libertad para conocer el sistema.

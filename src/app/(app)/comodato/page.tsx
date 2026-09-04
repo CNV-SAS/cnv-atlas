@@ -91,7 +91,7 @@ export default async function ComodatoPage() {
             {expiring.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-clinical-warning/40 bg-clinical-warning-bg px-4 py-3 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-attention/40 bg-attention-bg px-4 py-3 text-sm"
               >
                 <span>
                   <strong>{deviceById.get(a.device_id)?.asset_code ?? a.device_id}</strong> con{" "}

@@ -63,7 +63,7 @@ export function ConfirmarRemesaSection({ pending }: { pending: PendingRemesa[] }
     <section className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-bold tracking-tight">Remesas por confirmar</h2>
-        <Badge className="bg-clinical-warning-bg text-clinical-warning">{pending.length}</Badge>
+        <Badge className="bg-attention-bg text-attention">{pending.length}</Badge>
       </div>
       <p className="max-w-prose text-sm text-muted-foreground">
         CNV te envió estos productos en consignación. Confirma cuántos llegaron realmente (si difiere de lo que

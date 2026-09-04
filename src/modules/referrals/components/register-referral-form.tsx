@@ -158,7 +158,7 @@ export function RegisterReferralForm({
       </div>
 
       {pendingMatch ? (
-        <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-xs text-clinical-warning">
+        <p className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-xs text-attention">
           Ya remitiste a este paciente a {targetLabelOf(pendingMatch.referredTo, pendingMatch.referredToOther)} el{" "}
           {formatDayMonth(pendingMatch.referredAt)} y sigue pendiente de retorno. Puedes registrar otra igual si
           hace falta.

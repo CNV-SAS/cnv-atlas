@@ -76,7 +76,7 @@ export async function PatientReferralsSection({
                 <div key={r.id} className="flex flex-col gap-2 rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="text-sm font-medium text-foreground">{targetLabel(r)}</span>
-                    <span className="text-xs text-clinical-warning">{pendingLabel(r.referredAt, nowMs)}</span>
+                    <span className="text-xs text-attention">{pendingLabel(r.referredAt, nowMs)}</span>
                   </div>
                   {sourceLabel(r) ? (
                     <span className="text-xs text-muted-foreground">{sourceLabel(r)}</span>

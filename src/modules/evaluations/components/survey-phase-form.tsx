@@ -379,11 +379,23 @@ export function SurveyPhaseForm({
           ) : null}
         </div>
 
-        {/* Advertencia de envio con preguntas sin responder: informa, no culpa, no bloquea. Solo en el
+        {/* Confirmacion de envio con preguntas sin responder: informa, no culpa, no bloquea. Solo en el
             ultimo paso (donde vive "Enviar"). "Enviar asi" es type=button (no otro submit) para no
-            reintroducir el hazard de keys compartidas entre botones de envio (ver CLAUDE.md). */}
+            reintroducir el hazard de keys compartidas entre botones de envio (ver CLAUDE.md).
+
+            SUPERFICIE NEUTRA, y es un ARREGLO del 2026-09-04. Esto usaba `clinical-warning`, o sea la
+            capa donde el color SIGNIFICA severidad y sale de los clasificadores de Gildardo. **Una
+            pregunta en blanco no es una severidad clinica.** El texto decia "puedes enviarla asi" y el
+            contenedor decia "algo va mal", y en un cuestionario que el paciente contesta eso es de la
+            misma familia que los encabezados de categoria que retiramos el 2026-08-31: presion sobre la
+            respuesta antes de darla. Solo que aqui la presion es para que conteste algo que le acabamos
+            de decir que puede dejar.
+
+            Y NO SE USA `attention` (el ambar operativo) TAMPOCO, aunque existe y seria correcto en el eje:
+            ese token dice "esto pide que hagas algo", y aqui las dos salidas son igual de validas. Lo que
+            hay es una eleccion, no un pendiente. Neutro es lo que no empuja a ninguna de las dos. */}
         {isLast && confirmMissing !== null ? (
-          <div className="flex flex-col gap-2 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
             <p>
               Te {confirmMissing === 1 ? "falta" : "faltan"}{" "}
               <span className="font-semibold">
