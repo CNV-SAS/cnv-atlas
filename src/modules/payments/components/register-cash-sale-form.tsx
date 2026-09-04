@@ -155,8 +155,8 @@ export function RegisterCashSaleForm({
         </Button>
 
         {state.duplicateWarning ? (
-          <div className="flex w-full flex-col gap-2 rounded-lg bg-clinical-warning-bg p-3 text-sm">
-            <p className="text-clinical-warning">{state.duplicateWarning}</p>
+          <div className="flex w-full flex-col gap-2 rounded-lg bg-attention-bg p-3 text-sm">
+            <p className="text-attention">{state.duplicateWarning}</p>
             <Button
               type="button"
               variant="outline"

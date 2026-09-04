@@ -59,7 +59,7 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
             {c.justifiable ? (
               <>
                 <p
-                  className={`text-sm font-medium ${c.remainingBusinessDays <= 1 ? "text-clinical-warning" : "text-foreground"}`}
+                  className={`text-sm font-medium ${c.remainingBusinessDays <= 1 ? "text-attention" : "text-foreground"}`}
                 >
                   {c.remainingBusinessDays === 0
                     ? "Vence hoy: es tu último día hábil para justificar."
@@ -68,7 +68,7 @@ export async function MisFaltantesSection({ userId }: { userId: string }) {
                 <JustificarFaltanteForm caseId={c.id} />
               </>
             ) : c.status === "reportado" ? (
-              <p className="text-sm text-clinical-warning">
+              <p className="text-sm text-attention">
                 El plazo venció. El caso pasa a revisión de CNV.
               </p>
             ) : c.justificationCategory ? (
