@@ -51,6 +51,32 @@ export function pillReadonlyClass(active: boolean): string {
 // que ya lee el server action. Toca de nuevo para deseleccionar. "Otra": abre texto libre y emite "Otra: <texto>"
 // (igual que PillsMulti). SIN esto, una pregunta de opcion unica con "Otra" marcaba pero no abria donde escribir
 // (bug de P61, la unica de las nueve que es opcion unica; RESPUESTA_GILDARDO 2026-08-20 §5).
+/**
+ * LA MUESTRA DE COLOR DE LA ORINA (D7), portada de su encuesta.
+ *
+ * AQUI EL COLOR **ES LA RESPUESTA**, no un veredicto sobre ella, y por eso es de los pocos sitios donde
+ * pintar está bien: preguntarle a alguien de qué color es su orina y darle solo palabras es pedirle que
+ * traduzca algo que vio. Es el instrumento, igual que una escala de dolor con caras.
+ *
+ * NO SALE DE `--clinical-*` A PROPOSITO, y no es un descuido de tokens: estos cuatro son los colores
+ * FISICOS de las cuatro respuestas. Si vinieran de la escala clínica, el día que Gildardo mueva un umbral
+ * de severidad cambiaría el color de una orina, que no tiene ningún sentido.
+ *
+ * SE ANCLA EN EL TEXTO DE LA OPCION, que es contenido suyo. Si él reescribe una etiqueta, la muestra
+ * desaparece y la píldora queda como cualquier otra: se degrada a lo que había, nunca a un color
+ * equivocado.
+ *
+ * Y VA DENTRO DE LA PILDORA, no en una tira debajo como en su archivo. Su tira obliga a emparejar barra
+ * con opción POR POSICION, y en un teléfono, donde las píldoras se reparten en varias filas, ese
+ * emparejamiento se rompe. Dentro de la píldora no hay nada que emparejar.
+ */
+const MUESTRA_COLOR: Record<string, string> = {
+  Transparente: "#f8fafc",
+  "Amarillo claro": "#fde68a",
+  Amarillo: "#f59e0b",
+  "Oscuro (naranja / marrón)": "#92400e",
+};
+
 export function PillsSingle({
   id,
   options,
@@ -84,6 +110,13 @@ export function PillsSingle({
               onClick={() => setValue(active ? "" : o.text)}
               className={pillClass(active)}
             >
+              {MUESTRA_COLOR[o.text] ? (
+                <span
+                  aria-hidden
+                  className="mr-2 inline-block size-3.5 shrink-0 rounded-full border border-border align-[-2px]"
+                  style={{ background: MUESTRA_COLOR[o.text] }}
+                />
+              ) : null}
               {o.text}
             </button>
           );
