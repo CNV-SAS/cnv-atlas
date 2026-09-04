@@ -83,3 +83,50 @@ describe("el tono: es una ayuda para navegar, no un reproche", () => {
     expect(SIN_COMENTARIOS).toContain("pendientes.length - 8");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// LA TIRA DE COLOR DE LA ORINA, con la condición que la hace correcta.
+//
+// Santiago probó las dos versiones en el móvil y prefiere la de Gildardo: opciones arriba, tira debajo.
+// Se monta la suya. Lo que se conserva del argumento en contra es la CONDICIÓN: su tira es una fila
+// aparte de cuatro barras, y eso solo empareja mientras las cuatro opciones quepan en UNA fila. En un
+// teléfono no caben (las cuatro etiquetas de esta pregunta miden unos 540 px contra los ~358 px útiles de
+// una pantalla de 390), así que con `flex-wrap` caerían en dos filas y cada barra quedaría bajo la opción
+// equivocada. Eso no es una tira fea: es un dato mal leído.
+//
+// Por eso las barras y las opciones comparten REJILLA. El emparejamiento es por construcción, no por
+// suerte, y sobrevive a cualquier ancho. Si alguien vuelve a `flex-wrap` en las opciones y deja la tira
+// aparte, esto sale rojo, que es el único momento en que se puede saber.
+
+const WIDGETS = readFileSync("src/modules/evaluations/components/survey-widgets.tsx", "utf8");
+const WIDGETS_SIN_COMENTARIOS = sinComentarios(WIDGETS);
+
+describe("la tira de color de la orina", () => {
+  it("va debajo de las opciones, como en su archivo", () => {
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("const conTira =");
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("MUESTRA_COLOR");
+  });
+
+  it("y COMPARTE REJILLA con las opciones, que es lo que empareja cada barra con la suya", () => {
+    // Las dos rejillas tienen que declarar las MISMAS columnas. Si una cambia y la otra no, las barras
+    // dejan de caer bajo su opción sin que nada falle.
+    const rejillas = WIDGETS_SIN_COMENTARIOS.match(/grid grid-cols-2 gap-2 sm:grid-cols-4/g) ?? [];
+    expect(rejillas, "las opciones y la tira dejaron de compartir rejilla").toHaveLength(2);
+  });
+
+  it("la tira solo aparece si TODAS las opciones tienen muestra", () => {
+    // Una tira a medias emparejaría barras con opciones equivocadas, que es peor que no tenerla.
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("options.every((o) => MUESTRA_COLOR[o.text])");
+  });
+
+  it("los colores NO salen de la escala clínica: son los colores físicos de la respuesta", () => {
+    // Si vinieran de `--clinical-*`, mover un umbral de severidad cambiaría el color de una orina.
+    const bloque = WIDGETS.slice(WIDGETS.indexOf("const MUESTRA_COLOR"), WIDGETS.indexOf("export function PillsSingle"));
+    expect(bloque).not.toMatch(/clinical-/);
+    expect(bloque).toMatch(/#[0-9a-f]{6}/i);
+  });
+
+  it("y la tira no habla a los lectores de pantalla: el texto de la opción ya lo dice", () => {
+    expect(WIDGETS_SIN_COMENTARIOS).toContain("<div aria-hidden");
+  });
+});

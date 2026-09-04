@@ -66,9 +66,11 @@ export function pillReadonlyClass(active: boolean): string {
  * desaparece y la píldora queda como cualquier otra: se degrada a lo que había, nunca a un color
  * equivocado.
  *
- * Y VA DENTRO DE LA PILDORA, no en una tira debajo como en su archivo. Su tira obliga a emparejar barra
- * con opción POR POSICION, y en un teléfono, donde las píldoras se reparten en varias filas, ese
- * emparejamiento se rompe. Dentro de la píldora no hay nada que emparejar.
+ * VA EN UNA TIRA DEBAJO, COMO SU ARCHIVO (2026-09-04). La primera versión la puso DENTRO de la píldora,
+ * con este argumento: su tira obliga a emparejar barra con opción por posición, y en un teléfono, con las
+ * píldoras repartidas en varias filas, ese emparejamiento se rompe. **Santiago probó las dos en el móvil
+ * y prefiere la suya igual**, así que se monta la suya. El argumento no se tira a la basura: se convierte
+ * en la condición que la hace correcta, la rejilla compartida (ver el comentario en `PillsSingle`).
  */
 const MUESTRA_COLOR: Record<string, string> = {
   Transparente: "#f8fafc",
@@ -97,9 +99,26 @@ export function PillsSingle({
   const emitted =
     otherOption && value === otherOption && otherText.trim() ? `${value}: ${otherText.trim()}` : value;
 
+  // ¿Esta pregunta lleva la tira de color debajo? Solo si TODAS sus opciones tienen muestra: una tira a
+  // medias emparejaria barras con opciones equivocadas, que es peor que no tenerla.
+  const conTira = options.length > 0 && options.every((o) => MUESTRA_COLOR[o.text]);
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
+      {/* CON TIRA, LA REJILLA ES COMPARTIDA (2026-09-04). Santiago probó las dos en el teléfono y prefiere
+          la de Gildardo: las opciones arriba y la tira de color debajo. Se monta así, con UNA condición
+          que es la que la hace cierta: las barras y las opciones viven en la MISMA rejilla de columnas.
+
+          POR QUÉ IMPORTA. La tira de su archivo es una fila aparte de cuatro barras, y eso solo empareja
+          mientras las cuatro opciones quepan en UNA fila. En un teléfono no caben: las cuatro etiquetas
+          de esta pregunta miden unos 540 px de texto y píldora, contra los ~358 px de ancho útil de una
+          pantalla de 390. Con `flex-wrap` caen en dos filas y las barras de abajo quedan bajo la opción
+          equivocada, que es exactamente lo que convierte una ayuda en un dato mal leído.
+
+          Con la rejilla compartida el emparejamiento es por CONSTRUCCIÓN y no por suerte: dos columnas en
+          el teléfono y cuatro desde `sm`, y cada barra siempre debajo de su opción. El coste es que en el
+          teléfono la etiqueta larga ("Oscuro (naranja / marrón)") ocupa dos líneas dentro de su píldora. */}
+      <div className={conTira ? "grid grid-cols-2 gap-2 sm:grid-cols-4" : "flex flex-wrap gap-2"}>
         {options.map((o) => {
           const active = value === o.text;
           return (
@@ -108,20 +127,30 @@ export function PillsSingle({
               type="button"
               aria-pressed={active}
               onClick={() => setValue(active ? "" : o.text)}
-              className={pillClass(active)}
+              className={`${pillClass(active)} ${conTira ? "text-center" : ""}`}
             >
-              {MUESTRA_COLOR[o.text] ? (
-                <span
-                  aria-hidden
-                  className="mr-2 inline-block size-3.5 shrink-0 rounded-full border border-border align-[-2px]"
-                  style={{ background: MUESTRA_COLOR[o.text] }}
-                />
-              ) : null}
               {o.text}
             </button>
           );
         })}
       </div>
+      {/* LA TIRA, en la MISMA rejilla que las opciones: cada barra cae bajo la suya en los dos anchos.
+          La elegida lleva contorno oscuro, que es como la marca su archivo. `aria-hidden` porque no añade
+          informacion: el color ayuda a reconocer la respuesta y el texto ya la dice, asi que a un lector
+          de pantalla le sobra. */}
+      {conTira ? (
+        <div aria-hidden className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {options.map((o) => (
+            <span
+              key={`muestra-${o.id}`}
+              className={`h-2.5 rounded-full border ${
+                value === o.text ? "border-foreground" : "border-border"
+              }`}
+              style={{ background: MUESTRA_COLOR[o.text] }}
+            />
+          ))}
+        </div>
+      ) : null}
       {showOtherInput ? (
         <Input
           value={otherText}
