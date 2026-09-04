@@ -358,7 +358,7 @@ async function main() {
     (
       await supabase
         .from("organizations")
-        .upsert({ id: ORG_ID, name: "Connected Nutrition Ventures", type: "unidad CNV", country: "Colombia", city: "Medellin" }, { onConflict: "id" })
+        .upsert({ id: ORG_ID, name: "Connected Nutrition Ventures", type: "unidad CNV", country: "Colombia", city: "Medellín" }, { onConflict: "id" })
     ).error,
   );
 
@@ -783,7 +783,7 @@ async function main() {
     "patient_profiles",
     (
       await supabase.from("patient_profiles").upsert(
-        { patient_id: PATIENT_ID, first_name: "Paciente", last_name: "Demo", sex: "M", city: "Medellin" },
+        { patient_id: PATIENT_ID, first_name: "Paciente", last_name: "Demo", sex: "M", city: "Medellín" },
         { onConflict: "patient_id" },
       )
     ).error,

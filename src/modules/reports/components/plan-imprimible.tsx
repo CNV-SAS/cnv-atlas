@@ -16,6 +16,11 @@ import { PlanImprimirBoton } from "./plan-imprimir-boton";
 // EL ORDEN ES EL DEL PDF, y a proposito: el paciente puede tener las dos cosas delante (la hoja de la
 // consulta y el correo de despues), y dos ordenes distintos del mismo plan se leen como dos planes.
 //
+// ESO LO AFIRMA UN CANDADO, no este comentario (corregido el 2026-09-04). Hasta ese dia era una frase
+// suelta, y las frases sueltas envejecen: los dos canales habian divergido en SEIS cosas mientras esta
+// linea seguia diciendo que no. Quien lo sostiene ahora es `plan-paciente.test.ts`, que extrae los
+// titulos de seccion de los DOS archivos y compara el orden; si vuelven a separarse, sale rojo.
+//
 // EN PANTALLA SOLO SE VE EL BOTON (Santiago, 2026-09-02). El plan salia entero en la pantalla del
 // profesional, que ya tiene toda esa informacion arriba en su forma de trabajo: repetirla alarga la
 // pantalla sin aportar nada. Es lo que hace su archivo con la lista de intercambio (`plan-print-only`).
