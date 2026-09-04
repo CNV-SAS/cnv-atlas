@@ -1644,3 +1644,15 @@ El veredicto por fila de la composición era informacion clínica que solo estab
 historias. El contexto que necesitaba (`computeRefPob` + IMC/cintura/AF/IR) vive ahora en
 `composition-clasificada.ts`, que llaman la pantalla y el PDF. No cambia ningún corte ni ninguna
 etiqueta: mueve de sitio quién arma el contexto.
+
+### PENDIENTE · El orden del panel del nutricionista no se coteja contra su archivo
+
+Salió del barrido del 2026-09-04 (candados que afirman una relación con un artefacto que no abren).
+`orden-plan-nutricional.test.ts` fija el orden de las secciones del panel diciendo "como en su pantalla" y
+"DIVERGENCIA: él los pone después", y **lee solo nuestro panel**. Si Gildardo reordena el suyo, aquí no se
+pone nada rojo y una divergencia declarada puede haber dejado de serlo.
+
+**No se cerró, por proporción:** es el orden de la pantalla de trabajo del profesional, no contenido
+clínico ni nada que llegue a un paciente, y extraer el orden de secciones de su HTML es un porte en sí
+mismo. Queda anotado en el propio archivo. Lo que sí se cerró de esa familia fue `dfi-paciente`, porque
+esas frases sí viajan en el documento del paciente.

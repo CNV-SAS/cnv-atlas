@@ -275,6 +275,23 @@ Lo vimos en el PDF de un paciente real, no leyendo el código. En la misma hoja:
 
 **Al paciente se le prescribe una porción de un grupo y se le entrega una lista vacía para elegirla.**
 
+Y miramos si podíamos resolverlo de nuestro lado mientras respondes, **sin inventar contenido**. La
+respuesta es que no, y vale que sepas por qué:
+
+- **El núcleo nacional no sirve de respaldo**, porque **ya está dentro** de cada lista regional (tu
+  `permitidos` es el núcleo más los de la región). Sus 56 alimentos cubren 13 subgrupos, y ni "Azúcares y
+  dulces" ni "Nueces" están entre ellos. Mostrar el núcleo sería mostrar lo que ya se muestra.
+- **Caer a la tabla nacional para ese subgrupo sí resolvería la contradicción y no inventaría nada**
+  (serían alimentos tuyos), pero **deshace buena parte del recorte**: la lista pasaría de 80 a 128
+  alimentos en Antioquia y de 83 a 120 en el Caribe, cuando tu bloque existe justo para recortar un 80 %.
+  Y hay una objeción de fondo: la lista nacional de "Azúcares y dulces" son 37 entradas (arequipe, azúcar
+  blanca, bebidas azucaradas), y entregárselas a alguien con una dieta hipocalórica porque su región no
+  tiene ninguna sería peor que el rótulo vacío.
+- **Lo que sí resolvería el fondo es que el reparto no asigne porciones a un grupo que la región no puede
+  surtir**, pero eso es tu PASO 3 y no lo tocamos.
+
+Así que **no hicimos nada y queda como está**, con las tres salidas de abajo esperando tu respuesta.
+
 Y no es de ese paciente ni de esa región. Medido sobre las diez regiones y tres objetivos calóricos
 distintos:
 

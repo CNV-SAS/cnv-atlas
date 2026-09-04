@@ -9,9 +9,16 @@ import { describe, expect, it } from "vitest";
 // con el script de extraccion; nunca relajar esta comparacion a "aproximada".
 
 const read = (p: string) => readFileSync(p, "utf8");
-// RE-ANCLADO al VIGENTE (2026-08-02): antes leia la entrega de julio (gildardo-2026-07/ATLAS.html).
-// Gildardo unifico la frontera de desnutricion (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15) en el
-// vigente; nuestro port de julio quedo atras. Ahora el harness y la tabla se verifican contra el vigente.
+// RE-ANCLADO el 2026-08-02, cuando el `ATLAS_v7.html` del 30 de julio ERA el vigente: antes leia la
+// entrega anterior (gildardo-2026-07/ATLAS.html). Gildardo unifico la frontera de desnutricion
+// (FMI H 3.5->3.0, FFMI H 17.92->17, M 15.64->15) y nuestro port quedo atras.
+//
+// HOY ESA ENTREGA YA NO ES LA VIGENTE, y esta frase decia que si (corregido el 2026-09-04, barriendo los
+// candados que afirman una relacion con un artefacto que no abren). NO es un defecto: este archivo esta
+// en la lista CONGELADOS de `html-vigente-lock` a proposito, porque no compara contra "el archivo de hoy"
+// sino contra LA FOTO CONTRA LA QUE SE PORTO el trozo. Quien mira si esa foto sigue siendo la de hoy es
+// `frozen-deriva-vigente`, y esa division esta declarada alli. Lo que estaba mal era esta frase, que le
+// decia a quien la leyera que aqui se verificaba contra el vigente.
 const atlas = read("docs/entregas/gildardo-2026-07-30/ATLAS_v7.html").split("\n");
 const slice = (a: number, b: number) => atlas.slice(a - 1, b).join("\n"); // 1-indexed inclusivo
 
