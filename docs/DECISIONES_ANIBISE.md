@@ -955,3 +955,90 @@ campo mal borrado se ven identicos desde el motor.
 **P-104 · `generarAlertas` esta "marcada para borrarse" en su archivo y VIVA en Atlas. Ronda del 2026-09-04 punto 4.** Su punto 3 del 3-sep declara `calcConsumo`, `generarAlertas` y `TCAC` piezas muertas que "quedan marcadas para borrarse, no para conectarse". **Sobre `calcConsumo` y `TCAC` no hay nada que decir: en Atlas tampoco las invoca nadie.** `generarAlertas` es otra cosa: sus quince reglas se muestran en DOS sitios de la pantalla de evaluacion, a traves del adaptador `alertas-disponibles` que traduce los campos de la encuesta a los que ella lee. Su premisa ("nadie la invoca") es cierta de su archivo y falsa del nuestro, asi que la conclusion no se traslada sola. **No se le pide mantenerla por nosotros:** o no la borra (si las quince reglas siguen siendo validas y lo muerto era el cableado), o dice con que se reemplazan (quitarlas sin reemplazo le retira al profesional quince avisos clinicos que hoy ve). Importa avisarlo antes: si desaparece en la siguiente entrega, el candado de deriva se pone rojo sin poder distinguir "la retiro a proposito" de "quedo fuera".
 
 **P-105 · Cuatro erratas en su `INTER_TABLA_B` que salen impresas en el documento del paciente. Ronda del 2026-09-04 punto 8.** Aparecieron al revisar el PDF de un paciente, no leyendo codigo: "Cafe instantaneo en polvo" y "Cafe instantaneo descafeinado en polvo" dicen **instántaneo**; "Chocolate con **azticar**" (azucar); "Chocolate granulado con **panels**" (panela). Verificadas contra su entrega VIGENTE: **no son de nuestra transcripcion**, estan en su archivo y las portamos tal cual. **No se tocan** por lo mismo de siempre: es su tabla, y corregirla por nuestra cuenta abre la puerta a "corregirle" cosas que no son erratas. Con un "corrijanlas" se corrigen y quedan en el candado. **ALCANCE HONESTO:** salieron de la lista de UN paciente (80 de los 350 alimentos); no se hizo revision ortografica de los otros 270. Ofrecido hacerla completa en vez de por goteo.
+
+---
+
+## Cierre de la ronda del 2026-09-04 (su entrega del 4 de septiembre)
+
+Respondio con un archivo, no con un documento, y con una instruccion de cierre: *"No mas cambios, lo que
+envie quede tal cual lo envie"*. Lo que sigue es el estado de cada pregunta despues de VERIFICAR su archivo
+punto por punto, no de leer su mensaje.
+
+**P-99 · CERRADA.** La retirada de la proteina es deliberada. Su archivo del 4 mantiene `protKg = 0.8`
+plano y sin las ramas. Portado, y los cuatro modulos que conservaban la version que prescribe se
+alinearon. El golden de la cadena lo fija: `protGKg` 0,8 y `protG` 61 para el paciente de referencia.
+
+**P-100 · CERRADA, y el arreglo es suyo.** Tumaco queda solo en `pacifica` y Cartago solo en
+`andina_antioquia`. De 224 municipios se pasa a 222, sin retirar ninguno: eran los dos duplicados. Y
+aclaro algo que corrige nuestra lectura: la agrupacion es **alimentaria, no administrativa**, asi que
+Cartago fuera del Valle del Cauca nunca fue el error que parecia. El candado se invirtio: ahora afirma que
+NINGUN municipio esta en dos regiones.
+
+**P-101 · CERRADA EN LO CLINICO, ABIERTA EN LO COSMETICO.** Metio diez alimentos al nucleo nacional (seis
+azucares, cuatro nueces): el nucleo pasa de 56 a 66. Medido sobre las diez regiones y cinco objetivos
+caloricos, **cero grupos prescritos se quedan sin lista**, que era el defecto: al paciente se le prescribia
+una porcion de "Azucares y dulces" y se le entregaba el rotulo vacio. Lo que queda es de forma: seis
+subgrupos que el plan NO prescribe siguen imprimiendo el rotulo sin nada detras.
+
+**P-102 · CERRADA.** Adopto la caida CAMPO POR CAMPO en `getDX` y ademas trata la raya como AUSENCIA de
+texto y no como texto. Los 21 estados que mostraban "—" en mecanismo y biomarcadores ya muestran el texto
+que su propio `efrCompose` producia. `n` (los nutraceuticos) se quedo fuera a proposito.
+
+**P-103 · MITAD CERRADA, MITAD FIRMADA APARTE.** Las nueve etiquetas de `FYR_LABELS` ya son coherentes con
+sus bandas (`3_3` pasa a "Funcion normal con riesgo", `1_1` a "Disfuncion con bajo riesgo"). **Los tres
+colores siguen diciendo lo contrario que su etiqueta** y el lo dejo asi a proposito. Pasa a
+`PENDIENTES_CIENTIFICOS.md`.
+
+**P-105 · CERRADA.** Las cuatro erratas corregidas en su archivo. `INTER_TABLA_B` se re-porto ENTERA, no
+se parcharon las cadenas, porque los nombres son la clave de union con las listas regionales: corregir la
+tabla sola habria dejado alimentos huerfanos que no dan error, solo desaparecen de la lista del paciente.
+
+---
+
+## Barrido del 2026-09-04: seis "pendientes" que ya estaban contestados
+
+**Lo pidio Santiago antes de leer `PENDIENTES_CIENTIFICOS.md`, y tenia razon.** El documento nacio con
+nueve puntos; al cotejarlos contra sus cinco respuestas, SEIS estaban contestados, cuatro de ellos desde
+el 3 de septiembre. Es la quinta vez con esta forma.
+
+**P-83 · CERRADA (3-sep, su punto 3).** Las porciones por grupo de la TCAC: *"No va, y no es que falte: es
+que no debe existir."* La encuesta no convierte frecuencia en porciones. Y anadio el dato que hace de
+esto una leccion y no un cierre mas: *"es la tercera vez que la pregunta vuelve con otro traje"*.
+
+**P-90 · CERRADA (3-sep, su punto 4), y contra lo que ibamos a recomendar.** El tratamiento reemitido
+identico: *"Ni en ese caso ni en ninguno. No hay aviso al paciente."* El documento decia que esto lo podia
+decidir Santiago y recomendaba avisar solo si algo cambia. **Eso contradecia una instruccion directa.** Lo
+que si se conserva es la reapertura registrada en la historia con su motivo, cambien o no las cifras.
+
+**P-91 · CERRADA (3-sep, su punto 5), y la respuesta es el panel.** *"La solucion no era ponerle un piso
+al campo. Era quitarle al motor la pretension de saber."* El panel de referencia quedo cableado a la
+pantalla el 2026-09-04, que es lo que faltaba.
+
+**P-96 · CERRADA POR EL, ABIERTA POR NOSOTROS (3-sep, su punto 6).** "No hago ejercicio" en P23 y "0
+minutos a la semana" en P24 ESTAN en su archivo desde el 3. **Atlas no las ha portado**, asi que el
+defecto que vio Valentina sigue vivo en nuestra pantalla y la causa es nuestra, no suya. Necesita bump de
+version de encuesta. Lo unico que sigue pendiente de el es quitar el "(≥30 min)" de la P23, que prometio
+"para la proxima entrega" y NO llego en la del 4 (verificado: el rotulo sigue con `≥30 min`).
+
+**P-97 · CERRADA EN LO DE FONDO (3-sep, su punto 7).** *"Alergia e intolerancia no son lo mismo. ¿Por que
+habrian de preguntarse juntas?"* Siguen separadas y en ese orden. El documento proponia armonizar las dos
+listas, que es justo lo que el rechazo. Lo unico pendiente es el lenguaje de la P44 ("Lactosa (leche y
+lacteos)"), que prometio para la proxima entrega y NO llego (verificado: las opciones siguen desnudas).
+
+**P-98 · CERRADA (3-sep, su punto 8).** *"Se suprimieron todos"* los atributos de proteina, asi que no
+quedan dos chips contradiciendose. Ya portado. Y de paso corrigio algo mas grande: desnutricion colgaba
+del IMC < 18,5 y ahora cada condicion usa su indice (FFMI/ASMI) con su corte internacional.
+
+**P-101 · CERRADA ENTERA (4-sep, su punto 7), no a medias como quedo escrito arriba.** Sobre los seis
+subgrupos vacios que quedan: mecato y bebidas alcoholicas vacios **son decision suya** ("un plan no los
+prescribe"); leche descremada, semillas y reducidos en grasa quedan pendientes **solo si el reparto llega
+a asignarles porcion**. Y textual: *"portar el render tal cual, con los rotulos vacios incluidos, fue lo
+correcto. Suprimirlos habria sido un arreglo de forma que tapaba el defecto en vez de mostrarlo."* La
+entrada de arriba decia "abierta en lo cosmetico" y eso ya no es cierto.
+
+**LA SENAL, para la sexta vez:** cuando un documento NUESTRO diga "el no ha contestado X", ir a buscar si
+lo contesto, **con SUS terminos y no con los nuestros**. El costo de no hacerlo no es solo repetir una
+pregunta: aqui una de las seis llevaba una recomendacion que contradecia una instruccion suya.
+
+**Y LO QUE SI QUEDA ABIERTO, que son dos preguntas y no nueve:** el interruptor del LE8 (P-92) y los tres
+colores de los sectores (P-103, la mitad que el firmo aparte).

@@ -170,3 +170,133 @@ describe("5 · la guarda del campo vacío es nuestra, y no se puede quitar", () 
     expect(bloque).toContain("fatPct: number | null");
   });
 });
+
+describe("6 · el panel LLEGA A LA PANTALLA, que es lo que faltaba", () => {
+  // ESTE BLOQUE MIRA EL SITIO DE LLAMADA, NO LA FUNCION, y esa es toda su razón de ser.
+  //
+  // Los cinco bloques de arriba probaban que `getAsesoriaMacros` está bien construida: que es verbatim,
+  // que da rangos y no prescripciones, que no valida, que respeta el campo vacío. **Todos pasaban verde
+  // mientras NADIE la llamaba.** El lector existía desde el 3 de septiembre y su único consumidor eran
+  // estos tests: el profesional nunca vio un rango junto al campo de proteína.
+  //
+  // Es la forma de defecto que ya nos pasó cuatro veces y no da error en ninguna parte: una pieza
+  // terminada a la que le falta el último cable. `tsc` no la ve (el código compila), `lint` tampoco (no
+  // hay import sin usar, porque no hay import), y `check:cables` solo cubre server actions.
+  //
+  // La señal para reconocerla: **si no sabes QUIÉN LO LEE, es que nadie lo lee.**
+  const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+  const SECCION = readFileSync(
+    "src/modules/treatment/components/profession-treatment-section.tsx",
+    "utf8",
+  );
+  const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
+
+  it("la página lo computa y lo baja como dato", () => {
+    expect(PAGE).toContain("await getAsesoriaMacros(");
+    expect(PAGE).toContain("asesoria={asesoriaMacros}");
+  });
+
+  it("la cadena de props no se corta en ningún eslabón", () => {
+    // Cada uno de los tres saltos, por separado. Con solo el primero y el último, un eslabón roto en el
+    // medio pasaría verde: la página lo manda, el panel lo pinta, y en medio se pierde.
+    expect(SECCION, "página -> sección").toContain("asesoria={asesoria}");
+    expect(PANEL, "sección -> panel -> cadena calórica").toContain("asesoria={asesoria}");
+    expect(PANEL, "el panel lo declara como prop").toContain(
+      "asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null",
+    );
+  });
+
+  it("y se pinta junto a los DOS campos, no solo junto al de proteína", () => {
+    expect(PANEL).toContain("asesoria={asesoria?.prot ?? null}");
+    expect(PANEL).toContain("asesoria={asesoria?.grasa ?? null}");
+  });
+
+  it("el aviso de fuera de rango se calcula en el CLIENTE, contra lo que se está escribiendo", () => {
+    // Si se calculara en el servidor iría un guardado por detrás: el campo diría una cifra y el aviso
+    // hablaría de la anterior. Por eso la página pasa null en los dos últimos argumentos.
+    const COMPONENTE = readFileSync(
+      "src/modules/treatment/components/asesoria-macro-panel.tsx",
+      "utf8",
+    );
+    expect(COMPONENTE).toContain('"use client"');
+    expect(COMPONENTE).toContain("asesoriaFuera(escrito, asesoria)");
+  });
+
+  it("el aviso NO usa la capa clínica de color", () => {
+    // `--clinical-*` pinta un VEREDICTO sobre una persona y sus hexadecimales salen de los clasificadores
+    // de Gildardo. "Esta cifra quedó fuera del rango" es operativo, no un juicio sobre el paciente.
+    const COMPONENTE = readFileSync(
+      "src/modules/treatment/components/asesoria-macro-panel.tsx",
+      "utf8",
+    );
+    expect(COMPONENTE).toContain("text-attention");
+    // SE MIRA EL CODIGO, NO LOS COMENTARIOS, y el primer intento de este caso salio rojo por su propia
+    // prosa: el bloque que EXPLICA por que no se usa la capa clinica menciona `--clinical-*`. Una
+    // asercion sobre el texto crudo del archivo confunde lo que el componente HACE con lo que dice.
+    const codigo = COMPONENTE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(codigo).not.toMatch(/--clinical-|text-clinical-/);
+  });
+
+  it("el conflicto se pinta distinto de 'sin rango', que es lo que hay que preservar", () => {
+    // `rango` viene null CUANDO HAY CONFLICTO: dos condiciones del paciente piden rangos que no se
+    // solapan. Si el componente tratara los dos casos igual, un conflicto se vería como ausencia de dato
+    // y el profesional no sabría que hay una decisión que le toca a él.
+    const COMPONENTE = readFileSync(
+      "src/modules/treatment/components/asesoria-macro-panel.tsx",
+      "utf8",
+    );
+    expect(COMPONENTE).toContain("asesoria.conflicto ?");
+    expect(COMPONENTE).toContain("Dos condiciones piden rangos que no coinciden");
+  });
+});
+
+describe("7 · el panel SALE SIEMPRE, que es su palabra", () => {
+  // SU INSTRUCCION ES LITERAL (3-sep, punto 5): "Junto a los campos de proteína y grasa, un panel que
+  // sale **siempre** y dice, según el diagnóstico del paciente, qué rango recomienda cada condición".
+  //
+  // Y NUESTRO COMPONENTE TIENE UNA GUARDA QUE PODRIA INCUMPLIRLA: `if (!asesoria || items.length === 0)
+  // return null`. La guarda es defensiva y esta bien tenerla, pero mientras nadie compruebe que su
+  // funcion NUNCA devuelve la lista vacia, esa linea es una via silenciosa por la que el panel
+  // desaparece. Un paciente sin condiciones no veria nada, y "no veo nada" se lee como "no hay
+  // recomendacion", que es lo contrario de lo que este panel existe para decir.
+  //
+  // Lo que se afirma aqui es que la guarda es CODIGO MUERTO: su funcion siempre trae al menos un item,
+  // porque los dos macros terminan con un `if (!it.length) add("Sin condiciones que lo modifiquen", ...)`.
+  // Si algun dia deja de ser cierto, este caso se pone rojo ANTES de que un profesional vea el hueco.
+  const sano = {
+    d5_39: [],
+    d5_36: "No",
+  } as unknown as Record<string, unknown>;
+  const bis = { peso: 70, talla: 170, edad: 40, sexo: "F" } as unknown as Record<string, unknown>;
+
+  it("un paciente SIN ninguna condición igual recibe un item, en los dos macros", () => {
+    for (const macro of ["prot", "grasa"] as const) {
+      const a = asesoriaMacro(sano, bis, macro) as { items: unknown[]; rango: unknown };
+      expect(a.items.length, `${macro}: la lista vacia haria desaparecer el panel`).toBeGreaterThan(0);
+      expect(a.rango, `${macro}: sin conflicto tiene que haber rango`).not.toBeNull();
+    }
+  });
+
+  it("y ese item es su texto de 'sin condiciones', no uno nuestro", () => {
+    // CONTROL DE PROCEDENCIA: sin esto, el caso de arriba pasaria verde tambien si el item viniera de un
+    // relleno nuestro. El texto y la fuente son suyos, verbatim.
+    const a = asesoriaMacro(sano, bis, "prot") as {
+      items: { cond: string; min: number; max: number; fuente: string }[];
+    };
+    const base = a.items.find((i) => i.cond === "Sin condiciones que lo modifiquen");
+    expect(base, "su texto de base no aparece").toBeTruthy();
+    expect([base?.min, base?.max]).toEqual([0.8, 0.8]);
+    expect(base?.fuente).toBe("OMS/FAO/UNU 2007");
+  });
+
+  it("la guarda del componente solo puede dispararse por `asesoria` null, no por lista vacía", () => {
+    // Se deja escrito que la guarda TIENE dos mitades y que solo una es alcanzable: `asesoria` null (sin
+    // snapshot compatible, o sin composicion), que es cuando no hay diagnostico del que derivar un rango
+    // y no hay panel que mostrar. La otra mitad la cubren los dos casos de arriba.
+    const COMPONENTE = readFileSync(
+      "src/modules/treatment/components/asesoria-macro-panel.tsx",
+      "utf8",
+    );
+    expect(COMPONENTE).toContain("if (!asesoria || asesoria.items.length === 0) return null;");
+  });
+});
