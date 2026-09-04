@@ -267,18 +267,47 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
 // Render de una pregunta segun su widget. El value enviado es el TEXTO de la opcion (option_text) o
 // el numero; el contrato de datos con el server action no cambia. `answer` (opcional) prefillea el
 // valor actual para la EDICION del profesional; el intake publico no lo pasa (arranca vacio).
+/**
+ * Parte la ayuda en EJEMPLOS y REFERENCIA DE CANTIDAD, cuando la pregunta la tiene.
+ *
+ * SE ANCLA EN EL `field_key`, NO EN EL SEPARADOR, y esa es toda la decisión. El " · " aparece también en
+ * ayudas de otros dominios para cosas que no son una referencia de cantidad, así que partir por el
+ * separador a secas promovería a chip cualquier cola. La medición (2026-09-04): de las 18 preguntas con
+ * ayuda, 15 llevan separador y **las 15 son de D1**, siempre en dos partes. Fuera de D1 no hay nada
+ * enterrado, así que fuera de D1 esto no toca nada.
+ *
+ * Y va con la condición de las DOS partes: si algún día una ayuda de D1 trae tres, se muestra entera como
+ * hasta ahora en vez de adivinar cuál de los trozos era la referencia.
+ */
+function partirHint(q: SurveyQuestionView): { ejemplos: string; referencia: string | null } | null {
+  if (!q.hint) return null;
+  const partes = q.hint.split(" · ");
+  if (!q.fieldKey?.startsWith("d1_") || partes.length !== 2) return { ejemplos: q.hint, referencia: null };
+  return { ejemplos: partes[0], referencia: partes[1] };
+}
+
 export function SurveyQuestion({ q, answer }: { q: SurveyQuestionView; answer?: string | null }) {
   const a = answer ?? undefined;
   // Rotulo "puedes elegir varias" derivado del tipo (ECA-label): lo lleva el widget, no el seed, asi vale
   // para toda pregunta de seleccion multiple sin duplicar contenido.
   const isMulti = q.type === "opcion_multiple";
+  const hint = partirHint(q);
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-sm font-medium text-foreground">
         <span className="text-muted-foreground">{q.number}.</span> {q.text}
       </Label>
-      {/* Ayuda bajo el enunciado: ejemplos + ancla de porcion en D1, o aclaracion de item (ECA2/ECA3). */}
-      {q.hint ? <p className="text-xs text-muted-foreground">{q.hint}</p> : null}
+      {/* Ayuda bajo el enunciado: ejemplos + ancla de porcion en D1, o aclaracion de item (ECA2/ECA3).
+          LA REFERENCIA DE CANTIDAD SALE A SU PROPIA LINEA (2026-09-04), y esto NO agrega contenido: el
+          dato ya estaba, pegado al final de una linea gris larga, donde el ojo lo salta. Cotejando la
+          encuesta contra la de Gildardo, lo que el resuelve con un chip nosotros ya lo teniamos escrito e
+          invisible. Es jerarquia, no contenido nuevo: ni una palabra que el no haya escrito. */}
+      {hint ? <p className="text-xs text-muted-foreground">{hint.ejemplos}</p> : null}
+      {hint?.referencia ? (
+        <p className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+          {hint.referencia}
+        </p>
+      ) : null}
       {isMulti ? (
         <p className="text-xs font-medium text-muted-foreground">Puedes elegir varias.</p>
       ) : null}
