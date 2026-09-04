@@ -177,6 +177,34 @@ export function PlanImprimible({
             ))}
           </Bloque>
         ) : null}
+
+        {/* BLOQUE 7 · LA LISTA DE INTERCAMBIO, recortada a la región del paciente (su §7.1).
+            Va al FINAL y después del menú a propósito: es la lista que se consulta al hacer mercado, no
+            algo que se lea de corrido. Su archivo la imprime igual, en su propia página. */}
+        <Bloque titulo="Tu lista de intercambio">
+          <p className="text-xs">
+            Los alimentos de un mismo grupo aportan aproximadamente lo mismo por porción, así que puedes
+            intercambiarlos libremente. Sigue las porciones que te indicó tu nutricionista para cada grupo y
+            elige entre los alimentos de la lista, variando cada día para lograr una alimentación completa y
+            diversa. La cantidad entre paréntesis es el tamaño de una porción de intercambio.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {plan.listaIntercambio.region
+              ? `Preparada para ${plan.listaIntercambio.ciudad}, región ${plan.listaIntercambio.region}: ${plan.listaIntercambio.total} alimentos de los ${plan.listaIntercambio.deTotal}.`
+              : `Lista completa: ${plan.listaIntercambio.deTotal} alimentos.`}
+          </p>
+          {plan.listaIntercambio.grupos.map((g) => (
+            <div key={g.nombre} className="flex flex-col gap-0.5 break-inside-avoid">
+              <p className="text-xs font-medium text-foreground">{g.nombre}</p>
+              {g.subgrupos.map((s) => (
+                <p key={s.sub} className="text-xs">
+                  <span className="font-medium">{s.sub}:</span> {s.alimentos.join(", ")}
+                  {s.hayMas ? ", entre otros" : ""}
+                </p>
+              ))}
+            </div>
+          ))}
+        </Bloque>
       </div>
     </div>
   );

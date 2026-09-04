@@ -42,6 +42,39 @@ export type PlanPaciente = {
    * puede seguir, porque el menu que recibe puede contradecirlas.
    */
   restricciones: string[];
+  /** Bloque 7 · la lista de intercambio, recortada a la región del paciente. */
+  listaIntercambio: ListaIntercambioPlan;
+};
+
+/**
+ * BLOQUE 7 DEL PLAN · la lista de intercambio recortada por region (su entrega del 2026-09-03).
+ *
+ * Su §7.1, literal: "la lista de intercambio, no la lista completa, sino los alimentos principales por
+ * region o ciudad". Es el septimo de los siete bloques, y el unico que faltaba: hasta ahora `INTER_TABLA_B`
+ * era nacional y no existia el mapa de que alimentos corresponden a cada region.
+ *
+ * NUNCA ES `null`. Una ciudad sin region NO deja al paciente sin lista: recibe la NACIONAL entera, que es
+ * la regla suya ("mas vale una lista larga que una lista a la que le falte lo que la persona come"). Eso
+ * se distingue mirando `region`, que es lo unico que va en null.
+ */
+export type ListaIntercambioPlan = {
+  /** La ciudad del paciente, tal como esta en su perfil. `null` si no la tiene. */
+  ciudad: string | null;
+  /** El nombre legible de la region ("Cundiboyacense"), no la clave. `null` si la ciudad no resuelve. */
+  region: string | null;
+  /** Cuantos alimentos recibe y de cuantos, que es lo que el muestra encima de la lista. */
+  total: number;
+  deTotal: number;
+  grupos: {
+    nombre: string;
+    subgrupos: {
+      sub: string;
+      /** Ya formateados "nombre (N g)", maximo ocho, que es el corte de su render. */
+      alimentos: string[];
+      /** Habia mas de ocho: su lista lo dice con ", entre otros". */
+      hayMas: boolean;
+    }[];
+  }[];
 };
 
 // LA HISTORIA CLINICA COMO DATO, para el PDF que se le adjunta al paciente.
