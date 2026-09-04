@@ -40,7 +40,14 @@ import * as otp from "@/modules/consent/otp/otp-service";
 import { signSurveyIntake } from "@/modules/evaluations/services/survey-intake";
 import type { SurveyLinkView } from "@/modules/evaluations/types";
 
-const okOtp = { status: "ok" as const, meta: { channel: "email" as const, maskedDestination: "m***@example.com", sentAt: 1_700_000_000_000 } };
+const okOtp = {
+  status: "ok" as const,
+  meta: {
+    channel: "email" as const,
+    maskedDestination: "m***@example.com",
+    sentAt: 1_700_000_000_000,
+  },
+};
 
 const initialLink: SurveyLinkView = {
   id: "link-1",
@@ -65,6 +72,10 @@ const validIdentity = {
   lastName: "Gomez",
   birthDate: "1990-05-10",
   sex: "F", // obligatorio y exacto F/M (el motor lo exige)
+  // PAIS Y CIUDAD OBLIGATORIOS desde el 2026-09-04. Entraron al fixture porque sin ellos NINGUN caso de
+  // este archivo pasa, que es la señal de que el requisito muerde de verdad y no solo en su propio test.
+  country: "Colombia",
+  city: "Medellín",
 };
 
 function input(over: Partial<Parameters<typeof signSurveyIntake>[0]> = {}) {
@@ -119,7 +130,11 @@ describe("signSurveyIntake", () => {
 
   it("match exacto por documento -> seguimiento con el paciente existente", async () => {
     // Mismo nombre que validIdentity -> seguimiento sin conflicto de identidad.
-    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-existente", firstName: "Maria", lastName: "Gomez" });
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({
+      id: "pat-existente",
+      firstName: "Maria",
+      lastName: "Gomez",
+    });
     const res = await signSurveyIntake(input());
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.value.mode).toBe("seguimiento");
@@ -153,7 +168,10 @@ describe("signSurveyIntake", () => {
   it("rama menor 14-17 -> agrega representante_legal (con datos) y asentimiento_menor", async () => {
     vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue(null);
     await signSurveyIntake(
-      input({ consent: minorConsent, identity: { ...validIdentity, birthDate: "2010-01-01" } }),
+      input({
+        consent: minorConsent,
+        identity: { ...validIdentity, birthDate: "2010-01-01" },
+      }),
     );
     const call = vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0];
     const types = call.consents.map((c) => c.type);
@@ -272,20 +290,34 @@ describe("signSurveyIntake", () => {
   });
 
   it("no verifica la firma antes de validar la forma (no quema el codigo por un campo malo)", async () => {
-    const res = await signSurveyIntake(input({ consent: { ...validConsent, datos_sensibles: false } }));
+    const res = await signSurveyIntake(
+      input({ consent: { ...validConsent, datos_sensibles: false } }),
+    );
     expect(res.ok).toBe(false);
     expect(otp.verifyOtp).not.toHaveBeenCalled(); // validacion de forma primero
   });
 
   it("consume el link de seguimiento (un solo uso); no el inicial", async () => {
-    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({ id: "pat-x", firstName: "Maria", lastName: "Gomez" });
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({
+      id: "pat-x",
+      firstName: "Maria",
+      lastName: "Gomez",
+    });
     // inicial: linkId null
     await signSurveyIntake(input());
-    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0].linkId).toBeNull();
+    expect(
+      vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0].linkId,
+    ).toBeNull();
     // seguimiento: linkId = id del link
-    const followLink: SurveyLinkView = { ...initialLink, type: "seguimiento", patientId: "pat-x" };
+    const followLink: SurveyLinkView = {
+      ...initialLink,
+      type: "seguimiento",
+      patientId: "pat-x",
+    };
     await signSurveyIntake(input({ link: followLink }));
-    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].linkId).toBe("link-1");
+    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].linkId).toBe(
+      "link-1",
+    );
   });
 });
 
@@ -296,7 +328,9 @@ describe("signSurveyIntake", () => {
 // estaba quemado sin que hubiera firma, y el reintento con el mismo codigo daba "ya no sirve, pide otro".
 describe("el codigo sobrevive a un fallo posterior a la verificacion", () => {
   it("si la persistencia falla, el codigo NO se consume", async () => {
-    vi.mocked(writer.signIntakeEvaluation).mockRejectedValue(new Error("cayo la BD"));
+    vi.mocked(writer.signIntakeEvaluation).mockRejectedValue(
+      new Error("cayo la BD"),
+    );
     const r = await signSurveyIntake(input());
     expect(r.ok).toBe(false);
     // Lo que importa: el codigo sigue vivo, asi que el paciente puede reintentar con el MISMO.
@@ -323,5 +357,55 @@ describe("el codigo sobrevive a un fallo posterior a la verificacion", () => {
     });
     await signSurveyIntake(input());
     expect(orden).toEqual(["persistir", "consumir"]);
+  });
+
+  // PAIS Y CIUDAD OBLIGATORIOS (Santiago, 2026-09-04) ─────────────────────────────────────────────────
+  //
+  // POR QUE SON OBLIGATORIOS Y NO UN CAMPO MAS: la ciudad es lo que decide la REGION del paciente, y de
+  // la region sale la lista de intercambio que se le entrega impresa. Sin ciudad recibe la lista nacional
+  // de 350 alimentos en vez de la de su zona, y no es un dato que se pueda pedir despues: cuando el
+  // profesional imprime el plan, el paciente ya cerro la encuesta.
+  it("sin ciudad no se puede firmar, y el mensaje dice cual falta", async () => {
+    const r = await signSurveyIntake(
+      input({ identity: { ...validIdentity, city: "  " } }),
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.code).toBe("validation");
+    // EL MENSAJE NOMBRA EL CAMPO. Con el generico ("Revisa los datos de identificación") el paciente
+    // queda buscando cual de doce campos es, y estos dos viajan por un input OCULTO, asi que la
+    // validacion del navegador no siempre los atrapa antes.
+    expect(r.error.message).toContain("ciudad");
+  });
+
+  it("sin pais tampoco", async () => {
+    const r = await signSurveyIntake(
+      input({ identity: { ...validIdentity, country: "" } }),
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.message).toContain("país");
+  });
+
+  it("pero un municipio que NO esta en la lista curada entra igual", async () => {
+    // EL SEGUNDO CUIDADO DEL CAMBIO, y es el que lo hace seguro: obligatorio no es lo mismo que
+    // restringido a la lista. El desplegable conserva "Otra" con texto libre, asi que un municipio
+    // pequeño no queda fuera. Si algun dia alguien cierra la ciudad a un enum, este caso se pone rojo.
+    const r = await signSurveyIntake(
+      input({ identity: { ...validIdentity, city: "Sonsón" } }),
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("y el mensaje de los demas campos NO filtra el ingles de Zod al paciente", async () => {
+    // Zod trae sus textos por defecto en ingles ("Invalid email", "Too small: expected string..."), y
+    // esto lo lee un paciente. Solo pais y ciudad tienen mensaje escrito por nosotros; el resto cae al
+    // generico en español. Sin este caso, un campo nuevo filtraria ingles a la pantalla sin que se note.
+    const r = await signSurveyIntake(
+      input({ identity: { ...validIdentity, documentNumber: "1" } }),
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.message).toBe("Revisa los datos de identificación.");
   });
 });

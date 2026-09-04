@@ -676,7 +676,7 @@ export function SignPhaseForm({
               <option value="M">Masculino</option>
             </select>
           </Field>
-          <Field label="País">
+          <Field label="País" required>
             <select
               className={selectClass}
               value={countryChoice}
@@ -692,6 +692,7 @@ export function SignPhaseForm({
             {countryChoice === "Otro" ? (
               <Input
                 className="mt-2 h-9"
+                required
                 placeholder="Escribe tu país"
                 maxLength={60}
                 value={countryOther}
@@ -701,9 +702,10 @@ export function SignPhaseForm({
             {/* El pais EFECTIVO (opcion o texto libre de "Otro") viaja por el input oculto. */}
             <input type="hidden" name="country" value={country} />
           </Field>
-          <Field label="Ciudad">
+          <Field label="Ciudad" required>
             {cityList ? (
               <select
+                required
                 className={selectClass}
                 value={cityOtra ? "Otra" : city}
                 onChange={(e) => {
@@ -730,6 +732,7 @@ export function SignPhaseForm({
             {(cityList && cityOtra) || !cityList ? (
               <Input
                 className={`h-9 ${cityList ? "mt-2" : ""}`}
+                required
                 placeholder="Escribe tu ciudad"
                 maxLength={80}
                 value={city}

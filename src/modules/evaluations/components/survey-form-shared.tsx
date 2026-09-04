@@ -11,7 +11,9 @@ export const selectClass =
 export const checkboxClass = "mt-1 size-4 shrink-0 accent-primary";
 
 // Campo etiquetado (label arriba, control abajo). `required` pinta un asterisco: distingue de un vistazo
-// los campos sin los que no se puede firmar (identidad + correo) de los opcionales (ciudad, celular, etc.).
+// los campos sin los que no se puede firmar (identidad, pais, ciudad y correo) de los opcionales (celular,
+// etnia). La ciudad ENTRO a la lista el 2026-09-04: es la que decide la region, y de la region sale la
+// lista de intercambio impresa.
 export function Field({
   label,
   required = false,

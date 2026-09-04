@@ -31,8 +31,20 @@ export const intakeIdentitySchema = z.object({
   // voz alta). Se valida aqui, en el intake, para no dejar pasar un vacio que reventaria despues en el
   // pipeline. El select del formulario produce F/M.
   sex: z.enum(["F", "M"]),
-  country: z.string().trim().max(80).nullish().transform((v) => v ?? null),
-  city: z.string().trim().max(80).nullish().transform((v) => v ?? null),
+  // PAIS Y CIUDAD OBLIGATORIOS (Santiago, 2026-09-04). Eran opcionales, y ese vacio no se quedaba quieto:
+  // la ciudad es lo que decide la REGION del paciente, y de la region sale la lista de intercambio que se
+  // le entrega impresa. Sin ciudad no hay region, y sin region recibe la lista nacional de 350 alimentos
+  // en vez de la de su zona. Es un dato que no se puede pedir despues: cuando el profesional imprime el
+  // plan, el paciente ya no esta llenando la encuesta.
+  //
+  // SOLO AFECTA EL CAMINO DE ESCRITURA. Este schema valida el intake que llega, no lo que ya esta
+  // guardado: los pacientes anteriores sin ciudad se siguen leyendo igual (todos los lectores la tratan
+  // como nulable) y a ninguno se le pide volver.
+  //
+  // Y NO ESTRECHA LO QUE SE ACEPTA: el desplegable de ciudad conserva "Otra" con texto libre, asi que un
+  // municipio que no este en la lista curada entra igual. Lo que se exige es que no venga vacio.
+  country: z.string().trim().min(1, "Selecciona tu país").max(80),
+  city: z.string().trim().min(1, "Selecciona o escribe tu ciudad").max(80),
   // Residencia prolongada RETIRADA (Gildardo, 2026-08-23): "no la parametrice nunca y no va". Lo que
   // interesa es donde esta la persona al hacer la encuesta, que es lo que la ciudad ACTUAL ya captura, y
   // de ahi sale la altitud con la tabla ciudad -> altitud. Se retira del schema, del formulario y del
