@@ -151,10 +151,16 @@ respuesta §2 lo cerró: el mapa existía desde el 2 de septiembre pero llegó s
 entrega, fuera del HTML donde su documento decía que estaba. Estado: corren `plan-paciente.test.ts` e
 `intercambio-region.test.ts`.
 
-### PENDIENTE · Imprimir el plan desde la subpestaña del nutricionista
+### HECHO (2026-09-02) · Imprimir el plan desde la subpestaña del nutricionista
 
-Ahora es barato: la hoja de impresión ya existe (`globals.css`) y el patrón está probado con la historia
-clínica. Es marcar el contenedor y poner el botón.
+Existe: `plan-imprimir-boton.tsx` y `PlanImprimible`, montado en la subpestaña. En pantalla solo se ve el
+botón; el documento vive en el DOM (`solo-impresion`) y aparece al imprimir.
+
+**Esta entrada decía PENDIENTE hasta el 2026-09-04**, y se cerró al verificarla, no al construirla: el PDF
+que Santiago exportó para el cotejo de los dos canales **salió de este botón**. Es la cuarta vez que un
+"pendiente" resulta estar hecho, y por eso la regla es cotejar contra el código antes de construir.
+
+Estado: corren `plan-imprimible.test.ts` y el bloque de dos canales de `plan-paciente.test.ts`.
 
 ### PENDIENTE · Enviársela al paciente, con registro del evento · DECISIÓN ANTES DE CONSTRUIR
 
@@ -173,6 +179,9 @@ correo con adjunto.
 
 **Y va DESPUÉS del plan del paciente**, con su razón: el plan es lo que el paciente recibe siempre, la
 historia solo si la pide.
+
+**DESBLOQUEADO el 2026-09-03:** el plan del paciente está completo (los siete bloques de su §7.1, incluida
+la lista por región). Esta entrada era la que esperaba por él, así que ya se puede construir.
 
 **El abaratamiento es PARCIAL, y conviene tenerlo medido antes de empezar.** Al portar el plan a
 `@react-pdf` quedó reutilizable la mitad de infraestructura: el andamiaje del documento y sus estilos, y
