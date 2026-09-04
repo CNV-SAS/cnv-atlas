@@ -56,6 +56,33 @@ const sinDeclaracion = (l: string) => l.replace(/^(const|let|var)\s+/, "");
 // que ya estaba tolerado por sus cuerpos pero no por su linea de apertura (RUTA_COND).
 const ES_ASIGNACION = /^(const|let|var)\s+[A-Za-z_$][\w$]*\s*=/;
 
+// Y UNA PROPIEDAD CON VALOR LITERAL TAMBIEN, que es el MISMO hueco encontrado por segunda vez.
+//
+// El caso que lo destapo, el 2026-09-04: su punto 1 cambio SEIS etiquetas de `FYR_LABELS`, entre ellas
+// la del sector 3_3, que paso de "Disfunción sin riesgo" a "Función normal con riesgo". Son etiquetas que
+// el profesional LEE EN PANTALLA sobre un paciente concreto, o sea contenido clinico, y este candado no
+// vio ninguna. Solo se puso rojo por la cabecera de `getDX`, que es larga.
+//
+// El motivo es exactamente el de `LE8_MAPEO_CORREGIDO`: la linea mide 27 caracteres.
+//
+//     l: "Disfunción sin riesgo",     <- 27 caracteres, y es una clasificacion
+//
+// Que el mismo hueco reaparezca con otra FORMA es la leccion: la primera vez se arreglo para la forma
+// concreta que fallo (una declaracion) en vez de para el criterio (una linea que lleva un VALOR). Aqui se
+// amplia al criterio: cualquier propiedad cuyo valor sea una cadena, un numero o un color.
+//
+// MEDIDO ANTES DE APLICARLO, contra las dos entregas:
+//   - lineas vigiladas: 893 -> 1295 (+402, un 45% mas)
+//   - rojos nuevos contra la entrega VIGENTE: 0 (el porte esta al dia)
+//   - rojos nuevos contra la ANTERIOR: 5, y son las cinco etiquetas. O sea que con este filtro puesto,
+//     su punto 1 se habria detectado solo, sin que nadie fuera a leer su respuesta.
+//
+// LO QUE SIGUE SIN VER, y se deja escrito para que nadie le atribuya mas de lo que hace: compara LINEAS,
+// no posiciones. Una etiqueta que se MUEVE de una clave a otra sigue estando en el archivo y pasa verde.
+// Es justo lo que paso con la sexta: "Disfunción sin riesgo" era la de 3_3 y ahora es la de 1_2. Por eso
+// los rojos medidos son cinco y no seis.
+const ES_PROPIEDAD = /^"?[\w$]+"?\s*:\s*("|'|-?\d|#)/;
+
 /** Lineas de CODIGO de un modulo frozen: sin comentarios y sin el andamiaje que es nuestro, no suyo. */
 function lineasDeCodigo(modulo: string): string[] {
   const src = readFileSync(`src/clinical-engine/frozen/${modulo}`, "utf8")
@@ -66,9 +93,9 @@ function lineasDeCodigo(modulo: string): string[] {
     .map((l) => l.trim())
     .filter(
       (l) =>
-        // Cortas no: `}` o `else {` aparecen en cualquier parte y no distinguen nada. PERO una
-        // asignacion si, por corta que sea: ahi es donde vive un interruptor (ver arriba).
-        (l.length > 45 || ES_ASIGNACION.test(l)) &&
+        // Cortas no: `}` o `else {` aparecen en cualquier parte y no distinguen nada. PERO una linea
+        // que lleva un VALOR si, por corta que sea: ahi viven los interruptores y las etiquetas.
+        (l.length > 45 || ES_ASIGNACION.test(l) || ES_PROPIEDAD.test(l)) &&
         !l.startsWith("//") &&
         // Andamiaje del port a modulo CommonJS, que en su HTML no existe.
         !l.startsWith("module.exports") &&
@@ -92,17 +119,20 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
     },
     {
       patron: /^return \{ domains, riesgo:/,
-      razon: "el return final: en su v8 el objeto se arma distinto, mismos campos",
+      razon:
+        "el return final: en su v8 el objeto se arma distinto, mismos campos",
     },
     {
       patron: /_smmwLow/,
-      razon: "lleva comentario NUESTRO pegado en la misma linea (el barrido del umbral 24 -> 22)",
+      razon:
+        "lleva comentario NUESTRO pegado en la misma linea (el barrido del umbral 24 -> 22)",
     },
   ],
   "atlas-geb.js": [
     {
       // El modulo ENTERO: su entrega del 3 retira `ATLAS_GEB` y `ATLAS_GEB_HB` de raiz.
-      patron: /ATLAS_GEB|Number\(peso\)|medido|var hb =|66\.473|655\.0955|origen:/,
+      patron:
+        /ATLAS_GEB|Number\(peso\)|medido|var hb =|66\.473|655\.0955|origen:/,
       razon:
         "SE CONSERVA A PROPOSITO, y con razon NUEVA (2026-09-04): no es que no hayamos portado la " +
         "retirada, es que este modulo sigue haciendo falta para RELEER los protocolos sellados antes del " +
@@ -128,7 +158,8 @@ const TOLERADAS: Record<string, { patron: RegExp; razon: string }[]> = {
         "Aparece al empezar a vigilar las asignaciones cortas (2026-09-02); es la excepcion de siempre.",
     },
     {
-      patron: /_zBis|iscm|iehh|ifcZ|mcaZ|eisgZ|fmiZ|ffwZ|reRinfZ|cZ2|41\.438|computeEB|computeIAE|parseFloat/,
+      patron:
+        /_zBis|iscm|iehh|ifcZ|mcaZ|eisgZ|fmiZ|ffwZ|reRinfZ|cZ2|41\.438|computeEB|computeIAE|parseFloat/,
       razon:
         "portado del v7, donde era una FUNCION; en el v8 el mismo calculo va inline dentro del render. " +
         "Las constantes se verifican una por una abajo, que es lo que importa: la ciencia, no la forma.",
@@ -174,7 +205,12 @@ describe("el frozen no derivó de la entrega vigente de Gildardo", () => {
     const enDisco = readdirSync("src/clinical-engine/frozen")
       .filter((f) => f.endsWith(".js"))
       // Generados (se producen del original + manifiesto) y el manifiesto mismo: no son porte suyo.
-      .filter((f) => !/\.authorized\.js$|\.derived\.js$|^authorized-modifications\.js$/.test(f));
+      .filter(
+        (f) =>
+          !/\.authorized\.js$|\.derived\.js$|^authorized-modifications\.js$/.test(
+            f,
+          ),
+      );
     expect([...enDisco].sort()).toEqual([...MODULOS].sort());
   });
 
@@ -199,7 +235,10 @@ describe("las constantes de los índices secundarios, una por una", () => {
   // linea no aplica. Pero las CONSTANTES si se pueden cotejar, y son lo unico que hace ciencia: si el
   // moviera una media o una desviacion, aqui truena aunque el bloque entero este escrito de otra forma.
   const vigente = sinEspacio(readFileSync(HTML_VIGENTE, "utf8"));
-  const nuestro = readFileSync("src/clinical-engine/frozen/engine.indices.js", "utf8");
+  const nuestro = readFileSync(
+    "src/clinical-engine/frozen/engine.indices.js",
+    "utf8",
+  );
 
   const CONSTANTES = [
     ["ISCM · IFC", "4.1430, 3.0534"],
@@ -217,7 +256,10 @@ describe("las constantes de los índices secundarios, una por una", () => {
   for (const [nombre, par] of CONSTANTES) {
     it(`${nombre}: ${par.replace(/\s+/g, " ")} está en los dos`, () => {
       expect(nuestro.includes(par), "cambió en NUESTRO frozen").toBe(true);
-      expect(vigente.includes(sinEspacio(par)), "ya no está en SU archivo vigente").toBe(true);
+      expect(
+        vigente.includes(sinEspacio(par)),
+        "ya no está en SU archivo vigente",
+      ).toBe(true);
     });
   }
 });
@@ -227,11 +269,16 @@ describe("las condiciones de las seis rutas, cuerpo por cuerpo", () => {
   // viven dentro de `RUTAS[].condicion`. La condición en sí es la ciencia, y esa sí tiene que coincidir
   // con la de hoy: una ruta que se activa con otro corte cambia el tratamiento del paciente.
   const vigente = sinEspacio(readFileSync(HTML_VIGENTE, "utf8"));
-  const nuestro = readFileSync("src/clinical-engine/frozen/engine.indices.js", "utf8").replace(/\r\n/g, "\n");
+  const nuestro = readFileSync(
+    "src/clinical-engine/frozen/engine.indices.js",
+    "utf8",
+  ).replace(/\r\n/g, "\n");
   // Bloque COMPLETO de cada condición, de `Rn:` hasta la siguiente: R3 y R5 son multilínea y R6 toma dos
   // parámetros. Un regex de una sola línea solo cazaba tres de las seis, y las otras habrían pasado sin
   // mirarse: la peor forma de verde, la parcial y silenciosa.
-  const condiciones = [...nuestro.matchAll(/^ {2}(R\d): ([\s\S]*?)(?=\n {2}R\d: |\n\};)/gm)].map(
+  const condiciones = [
+    ...nuestro.matchAll(/^ {2}(R\d): ([\s\S]*?)(?=\n {2}R\d: |\n\};)/gm),
+  ].map(
     (m) =>
       [
         m[1],
@@ -249,7 +296,14 @@ describe("las condiciones de las seis rutas, cuerpo por cuerpo", () => {
   it("son las seis, ni una menos", () => {
     // Sin esto, si el regex dejara de casar la lista quedaria vacia y los `it` de abajo no correrian:
     // cero aserciones tambien pasa verde.
-    expect(condiciones.map(([id]) => id)).toEqual(["R1", "R2", "R3", "R4", "R5", "R6"]);
+    expect(condiciones.map(([id]) => id)).toEqual([
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+    ]);
   });
 
   for (const [id, cuerpo] of condiciones) {
@@ -275,7 +329,8 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
   const DIR = "src/tests/fixtures/reference";
 
   // Andamiaje NUESTRO, que en su HTML no existe porque allá todo vive en un solo archivo.
-  const ANDAMIAJE = /^(import |export |function computeValidacionRef|return INTER_NUTS\.map)/;
+  const ANDAMIAJE =
+    /^(import |export |function computeValidacionRef|return INTER_NUTS\.map)/;
 
   for (const f of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
     it(`${f} sigue siendo el de su archivo de hoy`, () => {
@@ -290,7 +345,9 @@ describe("las copias de su código en fixtures tampoco derivaron", () => {
         // aparecio al barrer los demas candados. Medido: +36 lineas vigiladas, 0 rojos.
         .filter(
           (l) =>
-            (l.length > 45 || ES_ASIGNACION.test(l)) && !l.startsWith("//") && !ANDAMIAJE.test(l),
+            (l.length > 45 || ES_ASIGNACION.test(l)) &&
+            !l.startsWith("//") &&
+            !ANDAMIAJE.test(l),
         )
         .filter((l) => !vigente.includes(sinEspacio(sinDeclaracion(l))));
       expect(
@@ -332,9 +389,7 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     let usada = "";
     let faltan: string[] = [];
     for (const carpeta of anteriores) {
-      const previa = sinEspacio(
-        readFileSync(htmlDeEntrega(carpeta), "utf8"),
-      );
+      const previa = sinEspacio(readFileSync(htmlDeEntrega(carpeta), "utf8"));
       faltan = MODULOS.flatMap((m) =>
         lineasDeCodigo(m)
           .filter((l) => !previa.includes(sinEspacio(sinDeclaracion(l))))
@@ -352,49 +407,66 @@ describe("el candado no es vacío: comparado con la entrega ANTERIOR, se pone ro
     ).toBeGreaterThan(0);
     // Y se deja constancia de contra cual encontro diferencias: sin esto, el verde no dice si tuvo que
     // retroceder cinco entregas para hallar una, que ya seria una señal por si misma.
-    expect(usada, "deberia haber encontrado una entrega que difiera").not.toBe("");
+    expect(usada, "deberia haber encontrado una entrega que difiera").not.toBe(
+      "",
+    );
   });
 
-  it("y entre lo que difiere está el GASTO BASAL, que es de donde cuelga toda la cadena", () => {
-    // Ancla CONCRETA, no un conteo: un conteo se satisface con cualquier ruido. El piso pasó de colgar del
-    // déficit a colgar de la rama de la fórmula entre esas dos entregas, y eso cambia las kcal que se le
-    // prescriben a una paciente real. Si esta diferencia deja de verse, la maquinaria dejó de mirar.
+  it("y entre lo que difiere está la CAIDA DE getDX, que decide lo que el paciente lee", () => {
+    // Ancla CONCRETA, no un conteo: un conteo se satisface con cualquier ruido. Lo que se exige es que
+    // una diferencia REAL entre la entrega de hoy y la anterior siga siendo visible desde aqui. Si deja
+    // de verse, la maquinaria dejo de mirar y todos los verdes de arriba no valen nada.
     //
-    // ES EL PISO Y NO EL `cAF`, y la corrección de mi propio relato importa: el `cAF` no cambió entre el 28
-    // y el 29. Él lo había corregido YA en la entrega del 28, y nuestro frozen seguía trayendo el ámbar
-    // porque venía portado de una entrega del 19 o anterior. O sea que la deriva no era de una entrega,
-    // era de varias, y ninguno de los nueve diff podía verla porque todos miraban entregas viejas.
+    // EL ANCLA SE MUEVE CON CADA ENTREGA, y eso es lo que la mantiene viva: apunta a la diferencia entre
+    // la VIGENTE y la ANTERIOR, no a una que ya quedo atras. El historial, que se deja porque explica por
+    // que este caso se reescribe tan seguido:
+    //
+    //   28-ago  el `cAF` en ambar. Corrigio MI relato: no cambio entre el 28 y el 29, ya estaba corregido
+    //           en el 28, y nuestro frozen venia de una entrega del 19 o anterior. La deriva no era de
+    //           una entrega, era de varias, y ninguno de los nueve diff podia verla.
+    //   01-sep  el piso calorico, que dejo de servir en cuanto la del 29 ya lo traia corregido.
+    //   02-sep  el peso meta. 03-sep, el gasto basal.
+    //   04-sep  la RETIRADA de la proteina, anclada al reves: lo que la vigente tenia era una AUSENCIA.
+    //
+    // Y HOY GIRA OTRA VEZ, al ancla mas util que ha tenido: la CABEZA DE `getDX`. Su entrega del 4 cambia
+    // la forma de la caida, de "compone solo si falta la clave entera" a "campo por campo, tratando la
+    // raya como ausencia". Es la diferencia con mas efecto visible de las cinco que trajo: es la que hace
+    // que veintiun estados dejen de mostrarle "—" al paciente en mecanismo y biomarcadores.
     const anterior = readFileSync(
-      `docs/entregas/Gildardo responses/${ENTREGAS[ENTREGAS.length - 2]}/ATLAS_v8.html`,
+      htmlDeEntrega(ENTREGAS[ENTREGAS.length - 2]),
       "utf8",
     );
-    const nutri = readFileSync("src/clinical-engine/frozen/atlas-tratamiento-nutri.js", "utf8");
-    // EL ANCLA CAMBIO, NO LA ASERCION (2026-09-01). Era el PISO CALORICO, y dejo de servir en cuanto llego
-    // la entrega del 1-sep: "la anterior" paso a ser la del 29, que YA traia el piso corregido. El test se
-    // puso rojo, que es exactamente lo que tenia que hacer una lista de entregas que crece.
-    //
-    // EL ANCLA SE MUEVE CON CADA ENTREGA, y eso es lo que la mantiene viva: apunta a la diferencia
-    // CONCRETA entre la vigente y la anterior, no a una que ya quedo atras. La del 1-sep era el peso meta;
-    // la del 2-sep, el gasto basal; y la del 3-sep es LA RETIRADA DE LA PROTEINA, que es de otro orden:
-    // no cambia una formula, quita el bloque entero que prescribe.
-    //
-    // SE ANCLA AL SENTIDO CONTRARIO QUE LAS ANTERIORES, y por eso hay que leerlo con cuidado: aqui lo que
-    // la entrega VIGENTE tiene es una AUSENCIA. La anterior prescribe (protKg con sus ramas) y la de hoy
-    // no. Nuestro frozen conserva la version que prescribe, y eso es DELIBERADO mientras el confirme que
-    // la retirada es intencional (ver las cuatro toleradas de arriba y la ronda del 2026-09-04, P-99).
-    // Y EL 2026-09-04 EL ANCLA VUELVE A GIRAR, porque la divergencia se cerro: Gildardo confirmo que la
-    // retirada es deliberada y se porto. Ahora nuestro frozen NO prescribe, igual que la vigente, y quien
-    // conserva la prescripcion es la entrega ANTERIOR. La diferencia sigue estando en el mismo sitio, con
-    // los papeles cambiados, que es lo que este control necesita para seguir demostrando que compara.
     const vigenteTxt = readFileSync(HTML_VIGENTE, "utf8");
-    expect(sinEspacio(nutri), "nuestro motor ya no prescribe: se porto la retirada").not.toContain(
-      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
+    const core = readFileSync(
+      "src/clinical-engine/frozen/engine.core.js",
+      "utf8",
     );
-    expect(sinEspacio(anterior), "la entrega ANTERIOR si la tenia: ahi esta la diferencia").toContain(
-      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
+    const CAIDA = sinEspacio("const _fb = (a, b) => {");
+
+    expect(
+      sinEspacio(vigenteTxt),
+      "la entrega VIGENTE trae la caida campo por campo",
+    ).toContain(CAIDA);
+    expect(
+      sinEspacio(anterior),
+      "la ANTERIOR no la tenia: ahi esta la diferencia",
+    ).not.toContain(CAIDA);
+    expect(
+      sinEspacio(core),
+      "y nuestro frozen la refleja: el porte esta al dia",
+    ).toContain(CAIDA);
+
+    // Y EL REVES DE LA MISMA DIFERENCIA, que es lo que impide que este caso pase verde a medias: la forma
+    // VIEJA de la caida sigue en la entrega anterior y ya no esta ni en la vigente ni en nuestro frozen.
+    const VIEJA = sinEspacio(
+      "const base = DX[key] ? { ...DX[key] } : efrCompose(",
     );
-    expect(sinEspacio(vigenteTxt), "y la VIGENTE tampoco: nuestro frozen la refleja").not.toContain(
-      sinEspacio("protKg = desnutricion ? 1.5 : 1.25"),
+    expect(
+      sinEspacio(anterior),
+      "la ANTERIOR conserva la caida vieja",
+    ).toContain(VIEJA);
+    expect(sinEspacio(core), "nuestro frozen ya no la tiene").not.toContain(
+      VIEJA,
     );
   });
 });

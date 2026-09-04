@@ -58,14 +58,28 @@ export const REGION_CIUDADES: Record<RegionKey, string[]> = {
   andina_antioquia: ["Medellín", "Bello", "Itagüí", "Envigado", "Rionegro", "Apartadó", "Turbo", "Sabaneta", "Caldas", "Copacabana", "La Estrella", "Pereira", "Manizales", "Armenia", "Dosquebradas", "Cartago", "Chinchiná", "Calarcá", "Santa Rosa de Cabal"],
   andina_cundiboyacense: ["Bogotá", "Soacha", "Zipaquirá", "Chía", "Facatativá", "Fusagasugá", "Girardot", "Tunja", "Duitama", "Sogamoso", "Chiquinquirá", "Ubaté", "Mosquera", "Madrid", "Funza", "Cajicá"],
   andina_santanderes: ["Bucaramanga", "Floridablanca", "Girón", "Piedecuesta", "Barrancabermeja", "San Gil", "Socorro", "Barbosa", "Cúcuta", "Ocaña", "Pamplona", "Villa del Rosario", "Los Patios"],
-  andina_valle: ["Cali", "Palmira", "Buga", "Tuluá", "Jamundí", "Yumbo", "Cartago", "Popayán", "Santander de Quilichao", "Florida", "Candelaria", "Puerto Tejada"],
-  andina_narino: ["Pasto", "Ipiales", "Túquerres", "Tumaco", "La Unión", "Sandoná"],
+  andina_valle: ["Cali", "Palmira", "Buga", "Tuluá", "Jamundí", "Yumbo", "Popayán", "Santander de Quilichao", "Florida", "Candelaria", "Puerto Tejada"],
+  andina_narino: ["Pasto", "Ipiales", "Túquerres", "La Unión", "Sandoná"],
   orinoquia: ["Villavicencio", "Yopal", "Arauca", "Puerto Carreño", "Acacías", "Granada", "Puerto López", "Tame", "Saravena", "Aguazul"],
   amazonia: ["Leticia", "Florencia", "Mocoa", "San José del Guaviare", "Puerto Asís", "Inírida", "Mitú", "Puerto Leguízamo"],
   insular: ["San Andrés", "Providencia", "Santa Catalina"]
 };
 
 export const ALIMENTOS_NUCLEO = [
+  // Azucares y dulces + Nueces: el reparto prescribe 1 porcion de cada uno y siete
+  // regiones no los surtian, dejando la lista vacia. Al nucleo entra un conjunto corto
+  // -endulzantes, dos postres y las nueces de consumo nacional-; las bebidas azucaradas
+  // y la confiteria quedan fuera a proposito (4-sep-2026).
+  "Azúcar blanca granulada",
+  "Miel de abejas",
+  "Panela en polvo",
+  "Jarabe de maple",
+  "Postre gelatina-leche",
+  "Helado de vainilla",
+  "Maní sin sal",
+  "Almendras tostadas sin sal",
+  "Marañón tostado sin sal",
+  "Nuez del nogal",
   "Leche de vaca entera pasteurizada",
   "Leche de vaca semidescremada en polvo",
   "Yogurt regular de leche entera",
@@ -103,7 +117,7 @@ export const ALIMENTOS_NUCLEO = [
   "Papaya",
   "Guayaba criolla",
   "Piña manzana",
-  "Manzana con cascara toda variedad",
+  "Manzana con cáscara toda variedad",
   "Mora",
   "Maracuyá",
   "Tomate chonto",
@@ -120,8 +134,8 @@ export const ALIMENTOS_NUCLEO = [
   "Aguacate común",
   "Aguacate Hass",
   "Mantequilla sin sal",
-  "Café instántaneo en polvo",
-  "Chocolate granulado con panels"
+  "Café instantáneo en polvo",
+  "Chocolate granulado con panela"
 ];
 
 export const ALIMENTOS_REGION = {
@@ -195,7 +209,7 @@ export const ALIMENTOS_REGION = {
     "Plátano verde",
     "Arracacha",
     "Carne de cerdo lomo o cañón magro",
-    "Chuleta de cerdo magro",
+    "Chuleta de cerdo magra",
     "Morcilla",
     "Quesito",
     "Cuajada de leche de vaca",
@@ -213,7 +227,7 @@ export const ALIMENTOS_REGION = {
     "Guayaba criolla",
     "Aguacate común",
     "Aguacate Hass",
-    "Chocolate granulado con panels",
+    "Chocolate granulado con panela",
     "Tomate chonto",
     "Habichuela",
     "Zanahoria"
@@ -251,8 +265,8 @@ export const ALIMENTOS_REGION = {
     "Cebolla puerro",
     "Cuajada de leche de vaca",
     "Queso Campesino (fresco semiduro, graso)",
-    "Chocolate con azticar",
-    "Chocolate granulado con panels"
+    "Chocolate con azúcar",
+    "Chocolate granulado con panela"
   ],
   andina_santanderes: [
     "Arepa redonda de maíz blanco trillado",
@@ -298,7 +312,7 @@ export const ALIMENTOS_REGION = {
     "Aceite de palma"
   ],
   andina_narino: [
-    "Carne de Cuy o cuy",
+    "Carne de cuy",
     "Trucha arcoíris",
     "Papa común",
     "Papa criolla",

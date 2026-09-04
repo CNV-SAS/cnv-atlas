@@ -1,8 +1,13 @@
 import { readFileSync } from "node:fs";
+import { createContext, runInContext } from "node:vm";
 
 import { describe, expect, it } from "vitest";
 
-import { computeIntercambio, INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import {
+  computeIntercambio,
+  INTER_GRUPOS,
+  INTER_TABLA_A,
+} from "@/clinical-engine/intercambio";
 import { INTER_TABLA_B } from "@/clinical-engine/intercambio-alimentos";
 import {
   ALIMENTOS_NUCLEO,
@@ -25,14 +30,20 @@ import { HTML_VIGENTE } from "./fixtures/html-vigente";
 //
 //   1. PROCEDENCIA. Cada linea nuestra esta verbatim en su archivo, salvo ocho que son de tipado y estan
 //      declaradas una por una. Si alguien toca un dato, esa linea deja de estar en su archivo y sale roja.
-//   2. ORACULO EXTERNO. Las diez ciudades con su conteo que el publico en RESPUESTA_GILDARDO_2026-09-03 §2.
-//      Es la unica capa que puede decir que el CONTENIDO es el que el verifico, y no solo que lo copiamos.
+//   2. EQUIVALENCIA CON SU ARCHIVO. Las diez ciudades con su conteo, obtenidas EJECUTANDO su propio
+//      `listaIntercambioPaciente` sobre su `INTER_TABLA_B`. Hasta el 3-sep esta capa era un ORACULO
+//      EXTERNO (las diez cifras que el publico en prosa, RESPUESTA_GILDARDO_2026-09-03 §2), que es mas
+//      fuerte: podia decir que el CONTENIDO es el que EL verifico. Su entrega del 4 sube los conteos y no
+//      publica los nuevos, asi que la capa baja de grado. Ver el comentario de SU_TABLA.
 //   3. INTEGRIDAD REFERENCIAL contra INTER_TABLA_B. Es la que ataca el fallo silencioso de arriba.
 //   4. COHERENCIA INTERNA. Conteos, cobertura por grupo y la regla del homonimo que el mismo señalo.
 
 const suyo = () => readFileSync(HTML_VIGENTE, "utf8").replace(/\r\n/g, "\n");
 const nuestro = () =>
-  readFileSync("src/clinical-engine/intercambio-region.ts", "utf8").replace(/\r\n/g, "\n");
+  readFileSync("src/clinical-engine/intercambio-region.ts", "utf8").replace(
+    /\r\n/g,
+    "\n",
+  );
 
 /**
  * Las UNICAS lineas nuestras que no estan verbatim en su archivo, cada una con su motivo.
@@ -47,52 +58,117 @@ const ADAPTADAS: { linea: string; porque: string }[] = [
     porque: "tipo del mapa; en su archivo es un objeto suelto sin anotar",
   },
   {
-    linea: "export function regionDe(ciudad: string | null | undefined): RegionKey | null {",
+    linea:
+      "export function regionDe(ciudad: string | null | undefined): RegionKey | null {",
     porque: "firma tipada; el cuerpo es suyo byte a byte",
   },
   {
     linea: "  for (const r of Object.keys(REGION_CIUDADES) as RegionKey[]) {",
-    porque: "`for...in` sobre un Record no estrecha la clave en TypeScript strict",
+    porque:
+      "`for...in` sobre un Record no estrecha la clave en TypeScript strict",
   },
   {
     linea:
       "export function listaIntercambioPaciente(ciudad: string | null | undefined): AlimentoConcreto[] {",
     porque: "firma tipada; el cuerpo es suyo byte a byte",
   },
-  { linea: "  const mas: Record<RegionKey, string[]> = {", porque: "tipo del mapa de la ampliacion" },
-  { linea: "  for (const r of Object.keys(mas) as RegionKey[]) {", porque: "mismo motivo que el de arriba" },
-  { linea: "    mas[r].forEach(function (c) {", porque: "solo el formato del formateador (un espacio)" },
   {
-    linea: "      if (REGION_CIUDADES[r].indexOf(c) < 0) REGION_CIUDADES[r].push(c);",
-    porque: "solo el formato: su linea es la misma en una sola linea con el forEach",
+    linea: "  const mas: Record<RegionKey, string[]> = {",
+    porque: "tipo del mapa de la ampliacion",
+  },
+  {
+    linea: "  for (const r of Object.keys(mas) as RegionKey[]) {",
+    porque: "mismo motivo que el de arriba",
+  },
+  {
+    linea: "    mas[r].forEach(function (c) {",
+    porque: "solo el formato del formateador (un espacio)",
+  },
+  {
+    linea:
+      "      if (REGION_CIUDADES[r].indexOf(c) < 0) REGION_CIUDADES[r].push(c);",
+    porque:
+      "solo el formato: su linea es la misma en una sola linea con el forEach",
   },
 ];
 
-/** La tabla que el publico en RESPUESTA_GILDARDO_2026-09-03 §2, verificada por el "por codigo, no a ojo". */
-const SU_TABLA: [string, RegionKey, number][] = [
-  ["Barranquilla", "caribe", 83],
-  ["Bogotá", "andina_cundiboyacense", 82],
-  ["Medellín", "andina_antioquia", 80],
-  ["Quibdó", "pacifica", 71],
-  ["Cali", "andina_valle", 70],
-  ["Pasto", "andina_narino", 69],
-  ["San Andrés", "insular", 67],
-  ["Cúcuta", "andina_santanderes", 65],
-  ["Leticia", "amazonia", 65],
-  ["Villavicencio", "orinoquia", 62],
-];
+/**
+ * Las diez ciudades con su conteo, DERIVADAS DE SU ENTREGA VIGENTE, no escritas a mano.
+ *
+ * CAMBIO DE FUENTE EL 2026-09-04, y el motivo importa. Hasta el 3 de septiembre esta tabla eran las diez
+ * cifras que el PUBLICO en prosa, o sea un oraculo externo: podia afirmar que el contenido es el que EL
+ * verifico, no solo que lo copiamos bien. Su entrega del 4 mete diez alimentos al nucleo (su punto 7) y
+ * los diez conteos suben, pero NO publico los nuevos.
+ *
+ * Escribirlos a mano leyendo NUESTRA salida convertiria el candado en "el codigo hace lo que hace". Asi
+ * que se derivan de SU archivo, ejecutando su `listaIntercambioPaciente` sobre su `INTER_TABLA_B`: la
+ * comparacion sigue siendo contra el, y lo que se afirma es que nuestro porte reproduce SU resultado.
+ *
+ * SE PIERDE UNA CAPA Y HAY QUE DECIRLO: ya no hay una cifra suya en prosa contra la que contrastar. Quedan
+ * las otras tres (procedencia, integridad referencial, coherencia interna) mas esta, que ahora prueba
+ * equivalencia con su ARCHIVO en vez de con su DOCUMENTO.
+ */
+const SU_TABLA: [string, RegionKey, number][] = (
+  [
+    ["Barranquilla", "caribe"],
+    ["Bogotá", "andina_cundiboyacense"],
+    ["Medellín", "andina_antioquia"],
+    ["Quibdó", "pacifica"],
+    ["Cali", "andina_valle"],
+    ["Pasto", "andina_narino"],
+    ["San Andrés", "insular"],
+    ["Cúcuta", "andina_santanderes"],
+    ["Leticia", "amazonia"],
+    ["Villavicencio", "orinoquia"],
+  ] as [string, RegionKey][]
+).map(([c, r]) => [c, r, conteoDeSuArchivo(c)]);
+
+/** Ejecuta SU `listaIntercambioPaciente` sobre SU `INTER_TABLA_B`, los dos de la entrega vigente. */
+function conteoDeSuArchivo(ciudad: string): number {
+  const L = suyo().split("\n");
+  const a = L.findIndex((l) => /^\s*const INTER_TABLA_B\s*=/.test(l));
+  let b = a;
+  let prof = 0;
+  do {
+    prof += (L[b].match(/\[/g) ?? []).length - (L[b].match(/\]/g) ?? []).length;
+    b++;
+  } while (prof > 0 && b < L.length);
+  const i = L.findIndex((l) => /^const REGION_NOMBRE = \{/.test(l));
+  const j = L.findIndex((l, k) => k > i && /^const _CNV_LOGO_B64/.test(l));
+  const ctx: Record<string, unknown> = {};
+  createContext(ctx);
+  const tablaB = L.slice(a, b)
+    .join("\n")
+    .replace(/^\s*const /, "var ");
+  const mapa = L.slice(i, j)
+    .join("\n")
+    .replace(/^const /gm, "var ");
+  runInContext(tablaB + "\n" + mapa, ctx);
+  return (ctx.listaIntercambioPaciente as (c: string) => unknown[])(ciudad)
+    .length;
+}
 
 describe("1 · procedencia: el port viene de su archivo, no de una transcripcion", () => {
   it("cada linea del cuerpo esta verbatim en su entrega vigente, salvo las ocho declaradas", () => {
     const html = suyo();
     const cuerpo = nuestro()
       .split("\n")
-      .slice(nuestro().split("\n").findIndex((l) => l.startsWith("export const REGION_NOMBRE")));
+      .slice(
+        nuestro()
+          .split("\n")
+          .findIndex((l) => l.startsWith("export const REGION_NOMBRE")),
+      );
     const declaradas = new Set(ADAPTADAS.map((a) => a.linea));
     const fuera = cuerpo.filter(
-      (l) => l.trim() && !declaradas.has(l) && !html.includes(l.replace(/^export /, "")),
+      (l) =>
+        l.trim() &&
+        !declaradas.has(l) &&
+        !html.includes(l.replace(/^export /, "")),
     );
-    expect(fuera, "lineas nuestras que su archivo no tiene (¿se transcribio un dato a mano?)").toEqual([]);
+    expect(
+      fuera,
+      "lineas nuestras que su archivo no tiene (¿se transcribio un dato a mano?)",
+    ).toEqual([]);
   });
 
   it("y las ocho declaradas siguen siendo necesarias: ninguna sobra", () => {
@@ -100,22 +176,30 @@ describe("1 · procedencia: el port viene de su archivo, no de una transcripcion
     // quedaria certificando cualquier cosa con solo agregarle una excepcion mas.
     const texto = nuestro();
     for (const { linea, porque } of ADAPTADAS) {
-      expect(texto, `sobra la excepcion "${porque}": esa linea ya no esta en el port`).toContain(linea);
+      expect(
+        texto,
+        `sobra la excepcion "${porque}": esa linea ya no esta en el port`,
+      ).toContain(linea);
     }
   });
 });
 
 describe("2 · oraculo externo: las diez ciudades que el publico, con su conteo", () => {
-  it.each(SU_TABLA)("%s resuelve a %s y recibe %i alimentos", (ciudad, region, n) => {
-    expect(regionDe(ciudad)).toBe(region);
-    expect(listaIntercambioPaciente(ciudad)).toHaveLength(n);
-  });
+  it.each(SU_TABLA)(
+    "%s resuelve a %s y recibe %i alimentos",
+    (ciudad, region, n) => {
+      expect(regionDe(ciudad)).toBe(region);
+      expect(listaIntercambioPaciente(ciudad)).toHaveLength(n);
+    },
+  );
 
   it("y el recorte es real: ninguna region entrega la tabla nacional entera", () => {
     // CONTROL. Los diez conteos de arriba pasarian igual si el filtro devolviera siempre lo mismo por otra
     // via; esto afirma que lo que hace es RECORTAR, que es el proposito del bloque.
     for (const [ciudad] of SU_TABLA) {
-      expect(listaIntercambioPaciente(ciudad).length).toBeLessThan(INTER_TABLA_B.length);
+      expect(listaIntercambioPaciente(ciudad).length).toBeLessThan(
+        INTER_TABLA_B.length,
+      );
     }
   });
 });
@@ -124,40 +208,47 @@ describe("3 · integridad referencial: un nombre con otra tilde no rompe, DESAPA
   it("todo alimento del nucleo y de las regiones existe en INTER_TABLA_B", () => {
     const enTabla = new Set(INTER_TABLA_B.map((f) => f.al));
     const huerfanos: string[] = [];
-    for (const n of ALIMENTOS_NUCLEO) if (!enTabla.has(n)) huerfanos.push(`NUCLEO: ${n}`);
+    for (const n of ALIMENTOS_NUCLEO)
+      if (!enTabla.has(n)) huerfanos.push(`NUCLEO: ${n}`);
     for (const [r, lista] of Object.entries(ALIMENTOS_REGION))
       for (const n of lista) if (!enTabla.has(n)) huerfanos.push(`${r}: ${n}`);
-    expect(huerfanos, "nombran un alimento que INTER_TABLA_B no tiene: se cae de la lista en silencio").toEqual(
-      [],
-    );
+    expect(
+      huerfanos,
+      "nombran un alimento que INTER_TABLA_B no tiene: se cae de la lista en silencio",
+    ).toEqual([]);
   });
 });
 
 describe("4 · coherencia interna", () => {
-  it("diez regiones, 56 alimentos de nucleo, 224 municipios", () => {
+  it("diez regiones, 66 alimentos de nucleo, 222 municipios", () => {
+    // EL NUCLEO SUBE DE 56 A 66 (su punto 7 del 2026-09-04): entran seis azucares y cuatro nueces, para
+    // que ningun grupo que el reparto prescribe quede sin lista en ninguna region. El 66 SI es cifra suya,
+    // publicada en prosa, asi que en esta linea el oraculo externo se conserva.
+    //
+    // Y LOS MUNICIPIOS BAJAN DE 224 A 222 sin que se retire ninguno: eran los dos DUPLICADOS.
     expect(Object.keys(REGION_NOMBRE)).toHaveLength(10);
     expect(Object.keys(ALIMENTOS_REGION)).toHaveLength(10);
-    expect(ALIMENTOS_NUCLEO).toHaveLength(56);
-    expect(Object.values(REGION_CIUDADES).flat()).toHaveLength(224);
+    expect(ALIMENTOS_NUCLEO).toHaveLength(66);
+    expect(Object.values(REGION_CIUDADES).flat()).toHaveLength(222);
   });
 
-  it("DOS municipios estan en dos regiones, y la region la decide el orden de las claves", () => {
-    // ESTO NO ES LO DESEADO: ES LO QUE SU DATO HACE HOY, y se fija asi a proposito. Un candado escrito
-    // sobre lo que nos parece correcto convierte nuestra suposicion en regla; lo que se afirma aqui es el
-    // COMPORTAMIENTO REAL, con la pregunta citada al lado.
+  it("NINGUN municipio esta en dos regiones (P-100 respondida el 2026-09-04)", () => {
+    // ESTE CASO SE DIO LA VUELTA, y el giro es lo que hay que leer. Hasta el 3-sep afirmaba lo contrario:
+    // que Tumaco estaba en `pacifica` Y en `andina_narino`, y Cartago en `andina_antioquia` Y en
+    // `andina_valle`. Se escribio asi a proposito, fijando el COMPORTAMIENTO REAL en vez del deseado y
+    // citando la pregunta al lado, porque asignar un municipio a una region es contenido suyo (Regla 0).
     //
-    // "Tumaco" esta en `pacifica` y en `andina_narino`; "Cartago" en `andina_antioquia` y en `andina_valle`.
-    // `regionDe` recorre el objeto y devuelve el primero que coincide, asi que la region de esos dos
-    // pacientes la decide el ORDEN DE LAS CLAVES del objeto, no un criterio clinico. Cartago es municipio
-    // del Valle del Cauca y hoy resuelve a Antioquia y Eje Cafetero.
+    // Respondio (su punto 6 del 4-sep): Tumaco queda solo en `pacifica` y Cartago solo en
+    // `andina_antioquia`. Y aclaro que la agrupacion es ALIMENTARIA, no administrativa, asi que Cartago
+    // fuera del Valle del Cauca no era el error que parecia. Las dos regiones EFECTIVAS no cambian: lo que
+    // cambia es que ya no dependen del orden de las claves de un objeto.
     //
-    // PREGUNTADO en la ronda del 2026-09-04 (P-100). Cuando responda, este caso se pone rojo y ahi se
-    // porta lo que decida. Mientras tanto NO se corrige por nuestra cuenta: la asignacion de un municipio
-    // a una region es contenido suyo (Regla 0).
+    // POR ESO LA ASERCION AHORA ES UNIVERSAL, y no "estos dos quedaron bien": lo que garantiza que la
+    // region de un paciente no la decida un orden de iteracion es que no haya duplicados, NINGUNO.
     const donde: Record<string, string[]> = {};
-    for (const [r, l] of Object.entries(REGION_CIUDADES)) for (const c of l) (donde[c] ??= []).push(r);
-    const dobles = Object.entries(donde).filter(([, rs]) => rs.length > 1);
-    expect(dobles.map(([c]) => c).sort()).toEqual(["Cartago", "Tumaco"]);
+    for (const [r, l] of Object.entries(REGION_CIUDADES))
+      for (const c of l) (donde[c] ??= []).push(r);
+    expect(Object.entries(donde).filter(([, rs]) => rs.length > 1)).toEqual([]);
     expect(regionDe("Tumaco")).toBe("pacifica");
     expect(regionDe("Cartago")).toBe("andina_antioquia");
   });
@@ -168,7 +259,9 @@ describe("4 · coherencia interna", () => {
     // comparacion para que tolere variantes, ese es el caso que hay que probar primero."
     expect(regionDe("Madrid")).toBe("andina_cundiboyacense");
     expect(regionDe("Madrid España")).toBeNull();
-    expect(listaIntercambioPaciente("Madrid España")).toHaveLength(INTER_TABLA_B.length);
+    expect(listaIntercambioPaciente("Madrid España")).toHaveLength(
+      INTER_TABLA_B.length,
+    );
   });
 
   it("sin ciudad no se recorta: mas vale una lista larga que una a la que le falte lo que come", () => {
@@ -192,9 +285,14 @@ describe("4 · coherencia interna", () => {
     const grDe = new Map(INTER_TABLA_A.map((r) => [r.sub, r.gr]));
     for (const r of Object.keys(REGION_NOMBRE) as RegionKey[]) {
       const grupos = new Set(
-        listaIntercambioPaciente(REGION_CIUDADES[r][0]).map((f) => grDe.get(f.sub)),
+        listaIntercambioPaciente(REGION_CIUDADES[r][0]).map((f) =>
+          grDe.get(f.sub),
+        ),
       );
-      expect(grupos.size, `${r} cubre menos de nueve grupos`).toBeGreaterThanOrEqual(9);
+      expect(
+        grupos.size,
+        `${r} cubre menos de nueve grupos`,
+      ).toBeGreaterThanOrEqual(9);
     }
   });
 
@@ -211,23 +309,35 @@ describe("4 · coherencia interna", () => {
     const vacios = (ciudad: string) =>
       INTER_GRUPOS.flatMap((g) =>
         INTER_TABLA_A.filter((x) => x.gr === g.id)
-          .filter((r) => !listaIntercambioPaciente(ciudad).some((f) => f.sub === r.sub))
+          .filter(
+            (r) =>
+              !listaIntercambioPaciente(ciudad).some((f) => f.sub === r.sub),
+          )
           .map((r) => `${g.id}/${r.sub}`),
       );
+    // LOS DOS QUE SALIERON DE ESTA LISTA (2026-09-04) son los que su punto 7 arreglo: "G8/Nueces" y
+    // "G10/Azúcares y dulces". Eran los unicos dos que el plan PRESCRIBE, o sea los que convertian el
+    // documento en una contradiccion; ver el caso siguiente, que es el que lo mide.
+    //
+    // LOS SEIS QUE QUEDAN SIGUEN VACIOS Y LA PREGUNTA SIGUE ABIERTA (P-101), pero ya no son un defecto
+    // clinico: ninguno de los seis se prescribe, asi que al paciente no se le pide elegir de una lista
+    // vacia. Lo que queda es de FORMA: su render imprime el rotulo en negrita con nada detras.
     expect(vacios("Bogotá")).toEqual([
       "G4/Leche descremada",
       "G6/Carnes altas en lípidos",
-      "G8/Nueces",
       "G8/Semillas",
       "G9/Reducidos en grasa",
-      "G10/Azúcares y dulces",
       "G11/Mecato",
       "G12/Bebidas alcohólicas",
     ]);
-    // Y los tres que faltan en TODAS las regiones, que son los que mas se notan en el documento impreso.
+    // Los tres que faltan en TODAS las regiones. "Azúcares y dulces" salio de este grupo el 4-sep.
     for (const r of Object.keys(REGION_NOMBRE) as RegionKey[]) {
       expect(vacios(REGION_CIUDADES[r][0]), `${r}`).toEqual(
-        expect.arrayContaining(["G10/Azúcares y dulces", "G11/Mecato", "G12/Bebidas alcohólicas"]),
+        expect.arrayContaining([
+          "G9/Reducidos en grasa",
+          "G11/Mecato",
+          "G12/Bebidas alcohólicas",
+        ]),
       );
     }
     // La lista COMPLETA (ciudad sin region) no tiene ese hueco: confirma que es del recorte y no de
@@ -235,19 +345,21 @@ describe("4 · coherencia interna", () => {
     expect(vacios("Madrid España")).toEqual([]);
   });
 
-  it("y DOS de esos vacíos son grupos que el plan SÍ prescribe: el documento se contradice", () => {
-    // ESTO ES LO QUE CONVIERTE EL PUNTO EN UN DEFECTO Y NO EN UNA RAREZA, y salió de mirar los dos PDF
-    // que Santiago exportó el 2026-09-04, no de leer el código.
+  it("NINGUN grupo prescrito se queda sin lista (su punto 7, 2026-09-04)", () => {
+    // ESTE CASO SE DIO LA VUELTA Y ES EL MEJOR CIERRE DEL PORTE, porque mide su arreglo por el EFECTO en
+    // el paciente y no por el conteo de alimentos que agrego.
     //
-    // En el MISMO documento, la tabla de "Cómo repartir tus porciones en el día" dice "Azúcares y dulces:
-    // 1" y tres páginas más abajo la lista de intercambio dice "Azúcares y dulces:" y no hay nada detrás.
-    // Al paciente se le prescribe una porción de un grupo y se le entrega una lista vacía para elegirla.
+    // Lo que afirmaba hasta el 3-sep: en el MISMO documento, la tabla de "Cómo repartir tus porciones en
+    // el día" decia "Azúcares y dulces: 1" y tres paginas mas abajo la lista de intercambio decia
+    // "Azúcares y dulces:" y no habia nada detras. Al paciente se le prescribia una porcion de un grupo y
+    // se le entregaba una lista vacia para elegirla. Medido entonces: pasaba SIEMPRE en las diez regiones,
+    // y "Nueces" en siete de las diez. Salio de mirar los dos PDF que Santiago exporto, no de leer codigo.
     //
-    // Y NO ES DE UN PACIENTE NI DE UNA REGIÓN: medido sobre los tres objetivos calóricos y las diez
-    // regiones, "Azúcares y dulces" sale prescrito y vacío SIEMPRE, y "Nueces" en siete de las diez.
-    //
-    // Se fija lo que pasa HOY, con la pregunta citada (ronda del 2026-09-04, P-101). Cuando responda, este
-    // caso se pone rojo, que es la señal de portar su decisión.
+    // Lo arreglo en su entrega del 4 (punto 7) metiendo diez alimentos al nucleo nacional: seis azucares y
+    // cuatro nueces. La asercion se invierte y se hace UNIVERSAL, que es lo que la vuelve util: no dice
+    // "los dos que reporte quedaron cubiertos", dice que NINGUN grupo con porciones > 0 se queda sin
+    // alimentos, en ninguna region y en ningun objetivo calorico. Si manana entra un subgrupo nuevo al
+    // reparto sin lista regional, este caso lo caza aunque nadie se acuerde de esta ronda.
     const prescritosSinLista = (ciudad: string, kcal: number) => {
       const zona = listaIntercambioPaciente(ciudad);
       return computeIntercambio(kcal)
@@ -256,12 +368,16 @@ describe("4 · coherencia interna", () => {
     };
     for (const r of Object.keys(REGION_NOMBRE) as RegionKey[]) {
       const ciudad = REGION_CIUDADES[r][0];
-      for (const kcal of [1529, 1800, 2200]) {
-        expect(prescritosSinLista(ciudad, kcal), `${r} a ${kcal} kcal`).toContain("Azúcares y dulces");
+      // Los cinco objetivos cubren el rango que la cadena produce, no solo los tres que se reportaron.
+      for (const kcal of [1200, 1529, 1800, 2200, 2800]) {
+        expect(prescritosSinLista(ciudad, kcal), `${r} a ${kcal} kcal`).toEqual(
+          [],
+        );
       }
     }
-    // Y el segundo, que NO es de todas: en el Caribe, el Pacífico y la Insular sí hay nueces.
-    expect(prescritosSinLista("Medellín", 1529)).toContain("Nueces");
-    expect(prescritosSinLista("Barranquilla", 1529)).not.toContain("Nueces");
+    // CONTROL: sin el, la asercion de arriba pasaria verde tambien si `prescritosSinLista` estuviera rota
+    // y devolviera [] siempre. Un subgrupo que no existe en ninguna lista regional tiene que salir.
+    const zona = listaIntercambioPaciente("Bogotá");
+    expect(zona.some((f) => f.sub === "Mecato")).toBe(false);
   });
 });
