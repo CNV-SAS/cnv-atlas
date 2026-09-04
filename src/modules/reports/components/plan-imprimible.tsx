@@ -88,13 +88,22 @@ export function PlanImprimible({
 
         {plan.tipoDieta || plan.prescripcion.length > 0 || plan.atributos.length > 0 ? (
           <Bloque titulo="Tu plan de alimentación">
-            {plan.tipoDieta ? <p className="text-sm">{plan.tipoDieta}</p> : null}
-            {plan.atributos.length > 0 ? <p className="text-sm">{plan.atributos.join(" · ")}</p> : null}
+            {/* LA MISMA FRASE QUE EL PDF, no el tipo de dieta a secas. Decía "Hipocalórica" donde el PDF
+                dice "Dieta hipocalórica de 1529 kcal al día", y son la misma prescripción escrita de dos
+                maneras: quien tenga las dos hojas delante lee dos planes. Y el mismo ORDEN interno, la
+                prescripción antes de los atributos. */}
+            {plan.tipoDieta ? (
+              <p className="text-sm">
+                <span className="font-medium">Dieta {plan.tipoDieta.toLowerCase()}</span>
+                {plan.kcalObjetivo != null ? ` de ${plan.kcalObjetivo} kcal al día.` : "."}
+              </p>
+            ) : null}
             {plan.prescripcion.map((f) => (
               <p key={f.nombre} className="text-sm">
                 {f.nombre}: {f.valor}
               </p>
             ))}
+            {plan.atributos.length > 0 ? <p className="text-sm">{plan.atributos.join(" · ")}</p> : null}
             {plan.notasDelModelo.map((n) => (
               <p key={n} className="text-sm text-muted-foreground">
                 {n}
@@ -114,6 +123,24 @@ export function PlanImprimible({
                 </li>
               ))}
             </ul>
+          </Bloque>
+        ) : null}
+
+        {plan.menu.length > 0 ? (
+          <Bloque titulo="Ejemplo de menú para una semana">
+            <p className="text-xs">
+              Es un ejemplo, no una obligación: puedes cambiar preparaciones por otras equivalentes.
+            </p>
+            {plan.menu.map((d) => (
+              <div key={d.dia} className="flex flex-col gap-0.5 break-inside-avoid">
+                <p className="text-xs font-medium text-foreground">{d.dia}</p>
+                {d.comidas.map((c) => (
+                  <p key={c.tiempo} className="text-xs">
+                    <span className="font-medium">{c.tiempo}:</span> {c.texto}
+                  </p>
+                ))}
+              </div>
+            ))}
           </Bloque>
         ) : null}
 
@@ -145,21 +172,6 @@ export function PlanImprimible({
                 </tbody>
               </table>
             </div>
-          </Bloque>
-        ) : null}
-
-        {plan.menu.length > 0 ? (
-          <Bloque titulo="Un ejemplo de menú para tu semana">
-            {plan.menu.map((d) => (
-              <div key={d.dia} className="flex flex-col gap-0.5 break-inside-avoid">
-                <p className="text-xs font-medium text-foreground">{d.dia}</p>
-                {d.comidas.map((c) => (
-                  <p key={c.tiempo} className="text-xs">
-                    <span className="font-medium">{c.tiempo}:</span> {c.texto}
-                  </p>
-                ))}
-              </div>
-            ))}
           </Bloque>
         ) : null}
 

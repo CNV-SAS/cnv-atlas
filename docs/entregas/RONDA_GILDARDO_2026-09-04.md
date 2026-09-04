@@ -1,8 +1,8 @@
 # Ronda del 2026-09-04
 
-**Siete puntos, y ninguno te pide construir nada nuevo.** Salieron de portar tu entrega del 3 de
-septiembre: seis de siete son cosas que ya están escritas en tu archivo y que ahí adentro se contradicen,
-o que tu propio código ya resuelve en un sitio y no en otro.
+**Ocho puntos, y ninguno te pide construir nada nuevo.** Salieron de portar tu entrega del 3 de
+septiembre y de revisar los dos PDF que produce Atlas hoy: son cosas que ya están escritas en tu archivo y
+que ahí adentro se contradicen, o que tu propio código ya resuelve en un sitio y no en otro.
 
 Vale separarlos porque lo que te pedimos en cada grupo es distinto:
 
@@ -11,19 +11,20 @@ Vale separarlos porque lo que te pedimos en cada grupo es distinto:
 | **1 y 5** | Cotejar tus dos superficies del mismo dato | **Tu archivo dice dos cosas distintas del mismo estado.** No son desacuerdos con tu criterio |
 | **2 y 3** | Tu entrega del 3 contra la del 2 | Cambios entre entregas que **no portamos** hasta que confirmes que son deliberados |
 | **4** | Tu punto 3 del 3 de septiembre | Una pieza que declaras muerta y que **en Atlas está viva** |
-| **6 y 7** | Portar tu mapa de regiones | Dos cosas que aparecieron al ejecutar tu bloque completo |
+| **6 a 8** | Portar tu mapa de regiones y mirar el PDF que recibe un paciente | Cosas que aparecieron al ejecutar tu bloque completo y al leer el documento impreso |
 
 ## De un vistazo
 
 | # | Qué es | Qué te pedimos | ¿Bloquea? |
 | --- | --- | --- | --- |
-| **1** | **Los rótulos de los nueve sectores IFC × IRC dicen lo contrario de sus bandas en tres casos, y dos de ellos están intercambiados entre sí.** El paciente con función alta y riesgo alto lee "Disfunción sin riesgo" | Confirmar el intercambio y los rótulos correctos. **No los tocamos** | **Sí**: es texto clínico que el profesional lee hoy |
+| **1** | **Los rótulos de los nueve sectores IFC × IRC dicen lo contrario de sus bandas en tres casos, y dos de ellos están intercambiados entre sí.** Quien tiene función alta con inflamación alta lee "Disfunción sin riesgo"; quien tiene función celular baja lee "Función estable". **Sale en dos pantallas y en ningún documento** | Confirmar el intercambio y los rótulos correctos. **No los tocamos** | **Sí**: es texto clínico que el profesional lee hoy |
 | **2** | `LE8_MAPEO_CORREGIDO` sigue encendido, y van **tres entregas** con mu y sigma sin recalibrar | Lo mismo que te preguntamos el 3. Sigue sin portarse | **Sí**: bloquea portar tu `engine.dfi` |
 | **3** | Tu entrega del 3 **retira** de `motorTratNutri` toda la prescripción de proteína y el gasto basal, que es lo que nos mandaste portar el 1 | Si la retirada es deliberada. **No la portamos** | **Sí**: es la cifra que se prescribe |
 | **4** | Declaras `generarAlertas` pieza muerta "marcada para borrarse". **En Atlas está viva**: sus quince reglas se muestran en dos sitios de la pantalla de evaluación | Que no la borres, o que nos digas con qué se reemplaza | **Sí** si la borras |
 | **5** | Veintiún estados EFR muestran "—" en mecanismo y biomarcadores. **Tu propio `efrCompose` ya escribe esos textos**; lo que lo impide es la forma de la caída de `getDX` | Cuál de tus dos caídas manda. **No te pedimos escribir veintiún textos** | No |
 | **6** | **Tumaco y Cartago están cada uno en dos regiones** de tu mapa, así que su región la decide el orden de las claves del objeto | A qué región va cada uno | No |
-| **7** | Entre seis y ocho subgrupos por región **quedan sin ningún alimento**, y tu lista impresa saca el rótulo con nada detrás | Si esos subgrupos deben salir vacíos, ocultarse, o llevar alimentos del núcleo | No |
+| **7** | Entre seis y ocho subgrupos por región **quedan sin ningún alimento**. Y **dos de ellos son grupos que el plan SÍ prescribe**: el mismo documento dice "Azúcares y dulces: 1 porción" y tres páginas después entrega una lista vacía para ese grupo | Cuál manda: que el reparto no asigne porciones a un grupo que la región no surte, o que la región lleve un alimento de cada grupo que el reparto usa | No, pero el documento se contradice |
+| **8** | **Cuatro erratas en tu tabla de alimentos** ("instántaneo", "azticar", "panels"), que salen impresas en el documento del paciente | Que nos digas si las corregimos. **No las tocamos por nuestra cuenta** | No |
 
 ---
 
@@ -71,12 +72,30 @@ tienes escrita, en el mismo archivo.
 
 ## Por qué esto no es cosmético
 
-El rótulo sale en dos sitios de Atlas: en la línea **"Estado funcional bioeléctrico (IFC × IRC)"** de la
-tarjeta de resultados, y como nombre del anillo en el desglose de la Diana.
+El rótulo sale en **dos sitios de Atlas**: en la línea **"Estado funcional bioeléctrico (IFC × IRC)"** de
+la tarjeta de resultados, y como nombre del anillo en el desglose de la Diana.
 
-Un paciente con **inflamación alta** (IRC Alto) lee hoy **"sin riesgo"**, y uno con **función celular
-baja** lee **"Función estable"**. Los dos errores empujan hacia el lado tranquilizador, que es el que no
-se revisa.
+Las dos lecturas concretas, que son las que preocupan:
+
+- Un paciente con **IFC Alto / IRC Alto** (función alta con inflamación alta) tiene en pantalla
+  **"Disfunción sin riesgo"**.
+- Un paciente con **IFC Bajo / IRC Normal** (función celular baja) tiene en pantalla
+  **"Función estable, riesgo elevado"**.
+
+**Los dos errores empujan hacia el lado tranquilizador**, que es el que nadie vuelve a revisar. Si
+apuntaran al lado alarmista, un profesional los cuestionaría al leerlos.
+
+## Hasta dónde llega, que es lo que acota la urgencia
+
+**Lo verificamos, y son buenas noticias: el rótulo NO viaja a ningún documento.**
+
+- **No está en el reporte del paciente.** El documento no recibe siquiera el dato: `frSector` se retiró de
+  su entrada junto con los bloques que tu §7.1 no pide, así que no puede filtrarse por descuido.
+- **No está en la historia clínica**, ni en pantalla ni en el PDF.
+
+O sea que **vive solo en la pantalla del profesional**, y ningún paciente ha recibido un documento que lo
+diga. Eso baja la urgencia de "hay que avisar a pacientes" a "hay que corregirlo antes de que alguien
+tome una decisión con ello delante". Sigue siendo lo primero de esta ronda.
 
 ## Qué hicimos y qué te pedimos
 
@@ -245,6 +264,29 @@ Medido sobre tres ciudades:
 **Tres se repiten en las diez regiones:** Azúcares y dulces, Mecato y Bebidas alcohólicas. Esos tres se
 leen como una decisión tuya, y muy razonable.
 
+## Y aquí está lo que lo convierte en un defecto y no en una rareza
+
+**Dos de esos grupos vacíos son grupos que tu propio plan PRESCRIBE.**
+
+Lo vimos en el PDF de un paciente real, no leyendo el código. En la misma hoja:
+
+- la tabla de "Cómo repartir tus porciones en el día" dice **"Azúcares y dulces: 1"**,
+- y tres páginas más abajo la lista de intercambio dice **"Azúcares y dulces:"** y no hay nada detrás.
+
+**Al paciente se le prescribe una porción de un grupo y se le entrega una lista vacía para elegirla.**
+
+Y no es de ese paciente ni de esa región. Medido sobre las diez regiones y tres objetivos calóricos
+distintos:
+
+| Grupo prescrito | Se queda sin lista en |
+| --- | --- |
+| **Azúcares y dulces** (1 porción) | **las diez regiones, siempre** |
+| **Nueces** (1 porción) | **siete de las diez** (en Caribe, Pacífica e Insular sí hay) |
+
+Eso cambia la pregunta. No es "¿se ve raro un rótulo vacío?", es **cuál de las dos partes manda**: si el
+reparto por grupos no debe asignar porciones a un grupo que la región no puede surtir, o si la región debe
+llevar al menos un alimento de cada grupo que el reparto usa.
+
 **Los otros no se leen igual.** "Leche descremada" vacío en las diez regiones, y "Nueces" o "Semillas"
 vacíos en casi todas, no parecen la misma clase de ausencia: son alimentos que un plan sí usa.
 
@@ -254,10 +296,33 @@ vacío), así que viene del recorte, no de `INTER_TABLA_B`.
 **Portamos tu render tal cual**, con los rótulos vacíos incluidos, porque suprimirlos sería un arreglo de
 forma que taparía esto. Te pedimos cuál de las tres:
 
-1. **Salen vacíos** y está bien, es información (aquí no hay opciones de este subgrupo).
-2. **Se ocultan** cuando no tienen alimentos.
-3. **Entran al núcleo nacional** los que no deberían faltarle a nadie (los lácteos descremados sobre
-   todo), y los tres discrecionales sí se quedan vacíos.
+1. **Salen vacíos** y está bien, es información (aquí no hay opciones de este subgrupo). Si es esta, sigue
+   abierto qué hacer con el "Azúcares y dulces: 1" de la tabla de porciones.
+2. **Se ocultan** cuando no tienen alimentos, y el reparto tampoco les asigna porciones.
+3. **Entran al núcleo nacional** los que no deberían faltarle a nadie (los lácteos descremados y las
+   nueces sobre todo), y los discrecionales sí se quedan vacíos.
+
+---
+
+# 8 · Tres erratas de tu tabla de alimentos, que el paciente lee
+
+Aparecieron al revisar el PDF de un paciente. Son de `INTER_TABLA_B`, verificadas contra tu entrega
+vigente, así que **no son de nuestra transcripción**: las portamos tal cual y salen impresas.
+
+| Dice | Debería decir |
+| --- | --- |
+| Café **instántaneo** en polvo | instantáneo |
+| Café **instántaneo** descafeinado en polvo | instantáneo |
+| Chocolate con **azticar** | azúcar |
+| Chocolate granulado con **panels** | panela |
+
+**No las tocamos**, por lo mismo de siempre: es tu tabla, y corregirla por nuestra cuenta abriría la
+puerta a "corregirte" cosas que no son erratas. Con que nos digas "corríjanlas", las corregimos y quedan
+en el candado.
+
+**Y el alcance, para ser honestos:** salieron de la lista de UN paciente, que son 80 de los 350 alimentos.
+No hicimos revisión ortográfica de los otros 270. Si prefieres, la hacemos y te la mandamos completa en
+vez de por goteo.
 
 ---
 

@@ -109,6 +109,101 @@ describe("el séptimo bloque ya está: la lista de intercambio recortada por reg
   });
 });
 
+describe("los DOS canales son el mismo documento, no dos documentos", () => {
+  // EL CANDADO QUE FALTABA, y es el que explica los seis desfases que salieron al cotejar los dos PDF que
+  // Santiago exportó el 2026-09-04 (la hoja que se imprime desde la subpestaña, y el preview del reporte).
+  //
+  // LO QUE SÍ ESTABA GARANTIZADO: el DATO. Las dos superficies leen el mismo `PlanPaciente`, así que no
+  // pueden decir dos cifras distintas. Eso funcionó: la meta, la proteína, el menú y la lista por región
+  // coinciden byte por byte en los dos PDF.
+  //
+  // LO QUE NO GARANTIZABA NADIE ERA EL DOCUMENTO, y `plan-imprimible.tsx` lo afirmaba en su cabecera
+  // ("EL ORDEN ES EL DEL PDF, y a propósito... dos órdenes distintos del mismo plan se leen como dos
+  // planes"). Era una afirmación sin nada que la derivara, que es como envejecen todas. Habían divergido
+  // en seis cosas: el menú y la distribución intercambiados, el tipo de dieta escrito de dos maneras
+  // ("Hipocalórica" contra "Dieta hipocalórica de 1529 kcal al día"), el orden interno del bloque de
+  // alimentación, el título del menú, la frase de "es un ejemplo" solo en uno, y el encabezado que
+  // agrupa las recomendaciones solo en el otro.
+  //
+  // NINGUNA ERA UN DATO MAL: las seis eran presentación, y las seis eran invisibles a los tests porque
+  // ningún test miraba las dos superficies A LA VEZ.
+
+  /** Los títulos de sección, en el orden en que salen en el documento. */
+  const seccionesDelPlan = () =>
+    [...DOC_PLAN.matchAll(/<Bloque titulo="([^"]+)"/g)].map((m) => m[1]);
+  const seccionesDelPdf = () =>
+    [...DOC.matchAll(/styles\.sectionTitle\}>([^<{][^<]*)</g)].map((m) => m[1].trim());
+
+  /**
+   * Las secciones que SOLO tiene el PDF, cada una con su razón. Van en lista cerrada a propósito: si
+   * mañana aparece una séptima, alguien añadió un bloque a un canal y no al otro, que es exactamente el
+   * desfase que esto vigila.
+   */
+  const SOLO_EN_EL_PDF: Record<string, string> = {
+    "Cambio respecto a tu medición anterior": "solo aplica en seguimiento, y la hoja de consulta es del día",
+    "Cómo estás":
+      "el diagnóstico abre el REPORTE completo; la hoja impresa es solo el plan, lo que el paciente necesita en la cocina (declarado en plan-imprimible.tsx)",
+    "Recomendación de nutracéuticos": "va con el reporte clínico, no con la hoja de la cocina",
+    "Notas del profesional": "lo mismo",
+  };
+
+  it("CONTROL: la comparación encuentra secciones de verdad en los dos archivos", () => {
+    // Sin esto, todo lo de abajo pasaría verde el día que un cambio de formato rompa la extracción: dos
+    // listas vacías coinciden perfectamente. Una afirmación de igualdad necesita saber que comparó algo.
+    expect(seccionesDelPlan().length, "no se extrajo ninguna sección de la hoja impresa").toBeGreaterThan(5);
+    expect(seccionesDelPdf().length, "no se extrajo ninguna sección del PDF").toBeGreaterThan(
+      seccionesDelPlan().length,
+    );
+    // Y que sean las de verdad, no cualquier cadena: dos anclas de las que el paciente lee.
+    expect(seccionesDelPlan()).toContain("Tu meta");
+    expect(seccionesDelPdf()).toContain("Cómo estás");
+  });
+
+  it("todas las secciones de la hoja impresa existen en el PDF, y con el MISMO título", () => {
+    const pdf = seccionesDelPdf();
+    for (const t of seccionesDelPlan()) {
+      expect(pdf, `"${t}" no existe en el PDF, o está escrito distinto`).toContain(t);
+    }
+  });
+
+  it("y en el MISMO ORDEN: dos órdenes del mismo plan se leen como dos planes", () => {
+    // Este es el que estaba roto: el menú iba después de la distribución en un canal y antes en el otro.
+    const enPlan = seccionesDelPlan();
+    const enPdfCompartidas = seccionesDelPdf().filter((t) => enPlan.includes(t));
+    expect(enPdfCompartidas).toEqual(enPlan);
+  });
+
+  it("y lo que solo tiene el PDF está declarado, uno por uno", () => {
+    const enPlan = seccionesDelPlan();
+    const sueltas = seccionesDelPdf().filter((t) => !enPlan.includes(t) && !(t in SOLO_EN_EL_PDF));
+    expect(
+      sueltas,
+      "bloques que solo salen por un canal sin decir por qué: decláralos o añádelos al otro",
+    ).toEqual([]);
+  });
+
+  it("la frase del tipo de dieta es la MISMA en los dos, no la misma prescripción escrita de dos maneras", () => {
+    for (const [que, texto] of [
+      ["la hoja impresa", DOC_PLAN],
+      ["el PDF", DOC],
+    ] as const) {
+      expect(texto, `${que}: el tipo de dieta no lleva la frase completa`).toContain(
+        "Dieta {plan.tipoDieta.toLowerCase()}",
+      );
+      expect(texto, `${que}: falta las kcal en la frase`).toContain("kcal al día.");
+    }
+  });
+
+  it("y la advertencia de que el menú es un ejemplo sale por los dos canales", () => {
+    for (const [que, texto] of [
+      ["la hoja impresa", DOC_PLAN],
+      ["el PDF", DOC],
+    ] as const) {
+      expect(texto, `${que}: el menú no dice que es un ejemplo`).toContain("Es un ejemplo, no una obligación");
+    }
+  });
+});
+
 describe("el plan llega a los TRES sitios que renderizan el documento", () => {
   it("al envío, al reenvío y al preview", () => {
     // EL CANDADO VA SOBRE LOS SITIOS DE LLAMADA, que es donde ya se nos quedó dos veces una pieza sin su
