@@ -24,17 +24,29 @@ import { ENTREGAS, HTML_VIGENTE } from "./fixtures/html-vigente";
 function motorSuyo(archivo: string): {
   DX: Record<string, Record<string, string>>;
   getDX: (i: number, r: number, f: number, m: number) => Record<string, string>;
-  efrCompose: (i: string, r: string, f: string, m: string) => Record<string, string>;
+  efrCompose: (
+    i: string,
+    r: string,
+    f: string,
+    m: string,
+  ) => Record<string, string>;
 } {
-  const lineas = readFileSync(archivo, "utf8").replace(/\r\n/g, "\n").split("\n");
+  const lineas = readFileSync(archivo, "utf8")
+    .replace(/\r\n/g, "\n")
+    .split("\n");
   const ini = lineas.findIndex((l) => /^const DX = \{/.test(l));
-  const desdeGetDx = lineas.findIndex((l, k) => k > ini && /^const getDX = /.test(l));
-  if (ini < 0 || desdeGetDx < 0) throw new Error(`no encuentro DX/getDX en ${archivo}`);
+  const desdeGetDx = lineas.findIndex(
+    (l, k) => k > ini && /^const getDX = /.test(l),
+  );
+  if (ini < 0 || desdeGetDx < 0)
+    throw new Error(`no encuentro DX/getDX en ${archivo}`);
   // El final se localiza cerrando las llaves de `getDX`, que es estructura y no posicion.
   let fin = desdeGetDx;
   let prof = 0;
   do {
-    prof += (lineas[fin].match(/[{[(]/g) ?? []).length - (lineas[fin].match(/[}\])]/g) ?? []).length;
+    prof +=
+      (lineas[fin].match(/[{[(]/g) ?? []).length -
+      (lineas[fin].match(/[}\])]/g) ?? []).length;
     fin++;
   } while (prof > 0 && fin < lineas.length);
 
@@ -44,7 +56,10 @@ function motorSuyo(archivo: string): {
   // la UNICA linea que no sale de su archivo, y es un mapeo de tres valores, no contenido clinico.
   runInContext(
     "var kl = b => (b===1?'B':b===2?'N':'A');\n" +
-      lineas.slice(ini, fin).join("\n").replace(/^const /gm, "var "),
+      lineas
+        .slice(ini, fin)
+        .join("\n")
+        .replace(/^const /gm, "var "),
     ctx,
   );
   return ctx as never;
@@ -78,7 +93,10 @@ describe("los 81 estados EFR coinciden con su entrega vigente, campo por campo",
       for (const [nuestro, deEl] of CAMPOS) {
         const a = String(dxSuyo[deEl] ?? "").trim();
         const b = String(s[nuestro] ?? "").trim();
-        if (a !== b) difs.push(`#${s.stateNumber} ${s.key}.${String(nuestro)}: suyo=${a} | nuestro=${b}`);
+        if (a !== b)
+          difs.push(
+            `#${s.stateNumber} ${s.key}.${String(nuestro)}: suyo=${a} | nuestro=${b}`,
+          );
       }
     }
     expect(
@@ -92,68 +110,99 @@ describe("los 81 estados EFR coinciden con su entrega vigente, campo por campo",
     // comparara "" contra "". Una asercion negativa necesita un control que demuestre que compara.
     const suyo = motorSuyo(HTML_VIGENTE);
     const uno = suyo.getDX(1, 3, 1, 3);
-    expect(Object.keys(uno).length, "la extraccion no devolvio nada").toBeGreaterThan(3);
-    expect(uno.dx, "el diagnostico salio vacio: la extraccion no corrio").toBeTruthy();
+    expect(
+      Object.keys(uno).length,
+      "la extraccion no devolvio nada",
+    ).toBeGreaterThan(3);
+    expect(
+      uno.dx,
+      "el diagnostico salio vacio: la extraccion no corrio",
+    ).toBeTruthy();
     // Y que un valor cambiado se detecte de verdad.
     const alterado = { ...estados[0], mechanism: "TEXTO QUE EL NO ESCRIBIO" };
     const [i, r, f, m] = alterado.key.split("_").map((b) => BANDA[b]);
-    expect(String(suyo.getDX(i, r, f, m).mec ?? "")).not.toBe(alterado.mechanism);
+    expect(String(suyo.getDX(i, r, f, m).mec ?? "")).not.toBe(
+      alterado.mechanism,
+    );
   });
 });
 
-describe("los 21 estados con raya: la ausencia es de SU contenido, no del porte", () => {
-  // ESTE BLOQUE EXISTE PARA QUE NADIE LO "ARREGLE" DESDE AQUI.
+describe("ya no queda ningun estado con raya (P-102 respondida el 2026-09-04)", () => {
+  // ESTE BLOQUE SE DIO LA VUELTA ENTERO, y conviene leer el giro antes que la asercion.
   //
-  // Veintiun estados muestran "—" en mecanismo, en biomarcadores o en los dos. Verificado contra su
-  // entrega vigente: la raya esta EN SU ARCHIVO, byte por byte. No es un campo que se nos perdiera al
-  // portar, y por eso no se rellena ni se oculta desde Atlas: ocultar el campo vacio seria un arreglo de
-  // FORMA que taparia un hueco de CONTENIDO suyo, y rellenarlo seria escribirle el diagnostico.
+  // Hasta el 3 de septiembre afirmaba lo contrario: que VEINTIUN estados mostraban "—" en mecanismo, en
+  // biomarcadores o en los dos, y que la raya estaba EN SU ARCHIVO byte por byte. Se fijo asi para que
+  // nadie lo "arreglara" desde Atlas: rellenar los textos habria sido escribirle el diagnostico, y ocultar
+  // el campo vacio habria sido un arreglo de FORMA tapando un hueco de CONTENIDO suyo.
   //
-  // LO QUE SI ENCONTRAMOS, y es lo que se le pregunta (ronda del 2026-09-04, P-102): SU PROPIO
-  // `efrCompose` YA PRODUCE ESOS TEXTOS. Para el estado 21 devuelve "Homeostasis celular y metabólica
-  // conservada." y "Biomarcadores dentro del rango esperado.". Lo que impide que lleguen es la forma de
-  // la caida de `getDX`, que solo compone cuando falta la CLAVE ENTERA:
+  // LO QUE SE LE PREGUNTO (P-102) no fue "escriba veintiun textos". Fue que su PROPIO `efrCompose` ya
+  // producia esos textos, y que lo que impedia que llegaran era la forma de la caida de `getDX`, que solo
+  // componia cuando faltaba la CLAVE ENTERA:
   //
   //     const base = DX[key] ? { ...DX[key] } : efrCompose(...)
   //
-  // y las 21 claves existen, con "—" dentro. Su OTRO visor del mismo archivo cae CAMPO POR CAMPO
-  // (`{d: base.d||comp.d, m: base.m||comp.m, ...}`), asi que el mismo paciente ve texto en una pantalla
-  // suya y una raya en la otra. La pregunta no es "escriba veintiun textos": es cual de sus dos caidas
-  // manda.
-  const conRaya = estados.filter((s) => [s.mechanism, s.biomarkers].some((v) => String(v).trim() === "—"));
+  // y las 21 claves existian, con "—" dentro. Su otro visor del mismo archivo caia CAMPO POR CAMPO, asi
+  // que el mismo paciente veia texto en una pantalla suya y una raya en la otra. La pregunta era cual de
+  // sus dos caidas manda.
+  //
+  // RESPONDIO ADOPTANDO LA CAIDA CAMPO POR CAMPO (su punto 5 del 4-sep), y ademas trata la raya como
+  // AUSENCIA de texto y no como texto, que es la parte que resuelve los 21 de una vez. Su comentario en
+  // el archivo lo dice: "la raya '—' es ausencia de texto, no texto. Unifica el comportamiento con el
+  // visor de los 81 estados". `n` (los nutraceuticos) se quedo fuera a proposito.
+  const conRaya = estados.filter((s) =>
+    [s.mechanism, s.biomarkers].some((v) => String(v).trim() === "—"),
+  );
 
-  it("son veintiuno, y la raya viene de su archivo", () => {
-    expect(conRaya).toHaveLength(21);
-    const suyo = motorSuyo(HTML_VIGENTE);
-    for (const s of conRaya) {
-      const [i, r, f, m] = s.key.split("_").map((b) => BANDA[b]);
-      const d = suyo.getDX(i, r, f, m);
-      const suyas = [d.mec, d.bio].filter((v) => String(v ?? "").trim() === "—").length;
-      expect(suyas, `#${s.stateNumber} ${s.key}: la raya no esta en su archivo, es nuestra`).toBeGreaterThan(0);
+  it("ninguno de los 81, en ninguno de los cinco campos", () => {
+    // LA ASERCION ES MAS ANCHA QUE EL DEFECTO QUE SE CERRO, a proposito. El arreglo toca cuatro campos
+    // (dx, mec, bio, rsk) y aqui se exige que NINGUNO de los cinco quede en raya ni vacio. Asi cubre
+    // tambien `n`, que su arreglo deliberadamente no toca: si algun dia una clave nueva entra con la
+    // raya en nutraceuticos, sale por aqui y no por un paciente.
+    expect(conRaya).toEqual([]);
+    for (const s of estados) {
+      for (const c of [
+        "diagnosisName",
+        "mechanism",
+        "biomarkers",
+        "risks",
+        "suggestedNutraceuticals",
+      ] as const) {
+        const v = String(s[c] ?? "").trim();
+        expect(v, `#${s.stateNumber} ${s.key}.${c}`).not.toBe("");
+        expect(v, `#${s.stateNumber} ${s.key}.${c}`).not.toBe("—");
+      }
     }
   });
 
-  it("su propio efrCompose ya escribe los veintiuno: es una caida, no un hueco de redaccion", () => {
-    // Este caso es el que sostiene la pregunta. Si algun dia deja de ser cierto, la pregunta cambia.
+  it("y el texto que llego es el que su efrCompose ya producia, no uno nuevo", () => {
+    // ESTE CASO ES EL QUE HACE LA VERIFICACION DE VERDAD, y por eso no basta con el de arriba.
+    //
+    // "Ningun campo esta vacio" tambien pasaria verde si alguien hubiera rellenado los 21 a mano con
+    // cualquier cosa. Lo que se afirma aqui es la PROCEDENCIA: para los 21 estados que antes tenian raya,
+    // el texto que hoy se ve es exactamente el que SU `efrCompose` compone, caracter por caracter.
     const suyo = motorSuyo(HTML_VIGENTE);
-    for (const s of conRaya) {
+    // Los 21 de la entrega anterior, listados por su clave para que el caso siga siendo el mismo aunque
+    // el numero cambie. Son los que tenian "—" en mecanismo, biomarcadores o los dos.
+    const antes = estados.filter((s) => {
       const [i, r, f, m] = s.key.split("_");
       const comp = suyo.efrCompose(i, r, f, m);
-      if (String(s.mechanism).trim() === "—")
-        expect(String(comp.mec ?? "").trim(), `#${s.stateNumber}`).not.toBe("");
-      if (String(s.biomarkers).trim() === "—")
-        expect(String(comp.bio ?? "").trim(), `#${s.stateNumber}`).not.toBe("");
-    }
-  });
-
-  it("ninguno pierde el diagnostico, el riesgo ni los nutraceuticos", () => {
-    // El alcance del hueco, medido. Lo que falta son las dos columnas explicativas; lo que el profesional
-    // necesita para actuar (que es, que arriesga, que se le sugiere) esta completo en los 81.
-    for (const s of estados) {
-      for (const c of ["diagnosisName", "risks", "suggestedNutraceuticals"] as const) {
-        expect(String(s[c] ?? "").trim(), `#${s.stateNumber} ${s.key}.${c}`).not.toBe("");
-        expect(String(s[c] ?? "").trim(), `#${s.stateNumber} ${s.key}.${c}`).not.toBe("—");
-      }
+      const [bi, br, bf, bm] = s.key.split("_").map((b) => BANDA[b]);
+      const d = suyo.getDX(bi, br, bf, bm);
+      return d.mec === comp.mec || d.bio === comp.bio;
+    });
+    expect(
+      antes.length,
+      "ningun estado cae al compose: el arreglo no esta activo",
+    ).toBeGreaterThan(0);
+    for (const s of antes) {
+      const [i, r, f, m] = s.key.split("_");
+      const comp = suyo.efrCompose(i, r, f, m);
+      const [bi, br, bf, bm] = s.key.split("_").map((b) => BANDA[b]);
+      const d = suyo.getDX(bi, br, bf, bm);
+      if (d.mec === comp.mec)
+        expect(s.mechanism, `#${s.stateNumber} mec`).toBe(comp.mec);
+      if (d.bio === comp.bio)
+        expect(s.biomarkers, `#${s.stateNumber} bio`).toBe(comp.bio);
     }
   });
 });

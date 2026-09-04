@@ -778,27 +778,27 @@ const FYR_LABELS = {
     c: "#10b981"
   },
   "3_3": {
-    l: "Disfunción sin riesgo",
+    l: "Función normal con riesgo",
     c: "#22d3ee"
   },
   "2_1": {
-    l: "Buen desempeño, señales tempranas",
+    l: "Función con bajo riesgo",
     c: "#65a30d"
   },
   "2_2": {
-    l: "Desempeño normal, riesgo moderado",
+    l: "Función sin riesgo",
     c: "#f59e0b"
   },
   "2_3": {
-    l: "Disfunción + riesgo creciente",
+    l: "Función con riesgo",
     c: "#ea580c"
   },
   "1_1": {
-    l: "Alto desempeño, riesgo oculto",
+    l: "Disfunción con bajo riesgo",
     c: "#d97706"
   },
   "1_2": {
-    l: "Función estable, riesgo elevado",
+    l: "Disfunción sin riesgo",
     c: "#dc2626"
   },
   "1_3": {
@@ -902,7 +902,12 @@ const efrProf = (role, i, r, f, m) => {
 };
 const getDX = (ifcK, ircK, ffmiK, fmiK) => {
   const key = `${kl(ifcK)}_${kl(ircK)}_${kl(ffmiK)}_${kl(fmiK)}`;
-  const base = DX[key] ? { ...DX[key] } : efrCompose(kl(ifcK), kl(ircK), kl(ffmiK), kl(fmiK));
+  const _comp = efrCompose(kl(ifcK), kl(ircK), kl(ffmiK), kl(fmiK));
+  const _dxE = DX[key] || {};
+  // Caida campo por campo: la raya "—" es ausencia de texto, no texto. Unifica el
+  // comportamiento con el visor de los 81 estados (4-sep-2026). No se toca `n`.
+  const _fb = (a, b) => { const s = (a == null ? "" : String(a)).trim(); return (s === "" || s === "\u2014" || s === "-") ? b : a; };
+  const base = { ..._dxE, dx: _fb(_dxE.dx, _comp.dx), mec: _fb(_dxE.mec, _comp.mec), bio: _fb(_dxE.bio, _comp.bio), rsk: _fb(_dxE.rsk, _comp.rsk) };
   if (!base.n) {
     const i=kl(ifcK), r=kl(ircK), f=kl(ffmiK), m=kl(fmiK);
     // ── IFC BAJO (B) ─────────────────────────────────────────────

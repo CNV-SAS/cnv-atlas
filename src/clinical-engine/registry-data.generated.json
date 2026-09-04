@@ -110,27 +110,27 @@
     },
     {
       "code": "3_3",
-      "name": "Disfunción sin riesgo"
+      "name": "Función normal con riesgo"
     },
     {
       "code": "2_1",
-      "name": "Buen desempeño, señales tempranas"
+      "name": "Función con bajo riesgo"
     },
     {
       "code": "2_2",
-      "name": "Desempeño normal, riesgo moderado"
+      "name": "Función sin riesgo"
     },
     {
       "code": "2_3",
-      "name": "Disfunción + riesgo creciente"
+      "name": "Función con riesgo"
     },
     {
       "code": "1_1",
-      "name": "Alto desempeño, riesgo oculto"
+      "name": "Disfunción con bajo riesgo"
     },
     {
       "code": "1_2",
-      "name": "Función estable, riesgo elevado"
+      "name": "Disfunción sin riesgo"
     },
     {
       "code": "1_3",
@@ -227,7 +227,7 @@
       "mechanism": "Alteración de membrana y bomba Na⁺-K⁺-ATPasa (pérdida de integridad celular).",
       "biomarkers": "Albúmina/prealbúmina bajas, ángulo de fase reducido.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional.",
-      "suggestedNutraceuticals": "OMEGA COMPLEX, MITO-Q10 PLUS, MULTICELL BASE"
+      "suggestedNutraceuticals": "MITO-Q10 PLUS, MULTI-CELL BASE, OMEGA COMPLEX"
     },
     {
       "stateNumber": 56,
@@ -500,7 +500,7 @@
       "mechanism": "Depleción de la reserva proteica y muscular.",
       "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional.",
-      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
+      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
       "stateNumber": 26,
@@ -513,7 +513,7 @@
       "mechanism": "Depleción de la reserva proteica y muscular.",
       "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional.",
-      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
+      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
       "stateNumber": 27,
@@ -526,7 +526,7 @@
       "mechanism": "Depleción de la reserva proteica y muscular; lipotoxicidad y desregulación de adipoquinas.",
       "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados; creatinina/índice muscular bajos.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional y complicaciones cardiometabólicas.",
-      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, BERBERINA METABO, HEPA DETOX, MULTICELL BASE"
+      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE, MITO-Q10 PLUS"
     },
     {
       "stateNumber": 21,
@@ -536,8 +536,8 @@
       "fmiBand": 1,
       "key": "N_B_N_B",
       "diagnosisName": "Magro con baja IRC → excelente pronóstico",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
@@ -550,7 +550,7 @@
       "key": "N_B_N_N",
       "diagnosisName": "Salud metabólica estable → bajo riesgo",
       "mechanism": "Homeostasis",
-      "biomarkers": "—",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
@@ -565,7 +565,7 @@
       "mechanism": "Lipotoxicidad y desregulación de adipoquinas.",
       "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional y complicaciones cardiometabólicas.",
-      "suggestedNutraceuticals": "BERBERINA METABO, HEPA DETOX, D3-K2 OSTEO, MULTICELL BASE"
+      "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
     {
       "stateNumber": 19,
@@ -576,7 +576,7 @@
       "key": "N_B_A_B",
       "diagnosisName": "Adiposo con baja IRC y baja grasa → bajo riesgo",
       "mechanism": "Buen pronóstico",
-      "biomarkers": "—",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX, MITO-Q10 PLUS"
     },
@@ -617,7 +617,7 @@
       "mechanism": "Depleción de la reserva proteica y muscular.",
       "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional.",
-      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
+      "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
       "stateNumber": 35,
@@ -630,7 +630,7 @@
       "mechanism": "Depleción de la reserva proteica y muscular.",
       "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Progresión hacia anillos/radios externos de la diana con deterioro funcional.",
-      "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTICELL BASE"
+      "suggestedNutraceuticals": "SARCO-PROTECT, MITO-Q10 PLUS, D3-K2 OSTEO, MULTI-CELL BASE"
     },
     {
       "stateNumber": 36,
@@ -848,8 +848,8 @@
       "fmiBand": 1,
       "key": "A_B_B_B",
       "diagnosisName": "Atlético magro óptimo → mínimo riesgo",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular.",
+      "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -861,8 +861,8 @@
       "fmiBand": 2,
       "key": "A_B_B_N",
       "diagnosisName": "Atlético magro con IFC alto y baja IRC → excelente resiliencia",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular.",
+      "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -874,8 +874,8 @@
       "fmiBand": 3,
       "key": "A_B_B_A",
       "diagnosisName": "Atlético magro con grasa alta y baja IRC → riesgo bajo-moderado",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular; lipotoxicidad y desregulación de adipoquinas.",
+      "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados; creatinina/índice muscular bajos.",
       "risks": "Evaluar distribución grasa",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -887,8 +887,8 @@
       "fmiBand": 1,
       "key": "A_B_N_B",
       "diagnosisName": "Atlético magro con IFC alto y baja IRC → estado celular óptimo",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -900,8 +900,8 @@
       "fmiBand": 2,
       "key": "A_B_N_N",
       "diagnosisName": "Composición y función óptimas, baja inflamación → estado celular ideal",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -913,8 +913,8 @@
       "fmiBand": 3,
       "key": "A_B_N_A",
       "diagnosisName": "Alta función y baja IRC con grasa alta → riesgo controlable",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Lipotoxicidad y desregulación de adipoquinas.",
+      "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados.",
       "risks": "Reducir grasa si visceral",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -926,8 +926,8 @@
       "fmiBand": 1,
       "key": "A_B_A_B",
       "diagnosisName": "Atleta con grasa y baja IRC → buen pronóstico",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -939,8 +939,8 @@
       "fmiBand": 2,
       "key": "A_B_A_N",
       "diagnosisName": "Fuerte-adiposo con baja inflamación → riesgo menor",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Intervención electiva",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -952,8 +952,8 @@
       "fmiBand": 3,
       "key": "A_B_A_A",
       "diagnosisName": "Atleta con grasa pero baja IRC → mejor pronóstico que con IRC alto",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Lipotoxicidad y desregulación de adipoquinas.",
+      "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados.",
       "risks": "Reducir grasa por rendimiento",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -965,8 +965,8 @@
       "fmiBand": 1,
       "key": "A_N_B_B",
       "diagnosisName": "Atlético magro óptimo → máximo rendimiento y baja morbilidad",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular.",
+      "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -978,8 +978,8 @@
       "fmiBand": 2,
       "key": "A_N_B_N",
       "diagnosisName": "Atlético magro con IFC alto → ideal para resistencia",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular.",
+      "biomarkers": "Creatinina/índice muscular bajos.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -991,8 +991,8 @@
       "fmiBand": 3,
       "key": "A_N_B_A",
       "diagnosisName": "Atlético magro con grasa alta → riesgo según visceralidad",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Depleción de la reserva proteica y muscular; lipotoxicidad y desregulación de adipoquinas.",
+      "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados; creatinina/índice muscular bajos.",
       "risks": "Evaluar cintura",
       "suggestedNutraceuticals": "SARCO-PROTECT, D3-K2 OSTEO, MULTI-CELL BASE"
     },
@@ -1004,8 +1004,8 @@
       "fmiBand": 1,
       "key": "A_N_N_B",
       "diagnosisName": "Atlético magro con IFC alto → rendimiento y salud óptimos",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -1018,7 +1018,7 @@
       "key": "A_N_N_N",
       "diagnosisName": "Función óptima y composición normal → excelente pronóstico",
       "mechanism": "Homeostasis",
-      "biomarkers": "—",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Mantener",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -1030,8 +1030,8 @@
       "fmiBand": 3,
       "key": "A_N_N_A",
       "diagnosisName": "Alta función con grasa alta → vigilar visceralidad",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Lipotoxicidad y desregulación de adipoquinas.",
+      "biomarkers": "HOMA-IR elevado, glucemia y perfil lipídico alterados.",
       "risks": "Reducir grasa si visceral",
       "suggestedNutraceuticals": "BERBERINA METABO, MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -1043,8 +1043,8 @@
       "fmiBand": 1,
       "key": "A_N_A_B",
       "diagnosisName": "Alta función con grasa alta y baja IRC → mejor pronóstico",
-      "mechanism": "—",
-      "biomarkers": "—",
+      "mechanism": "Homeostasis celular y metabólica conservada.",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Intervención electiva",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -1057,7 +1057,7 @@
       "key": "A_N_A_N",
       "diagnosisName": "Fuerte-adiposo con IFC alto → buen pronóstico funcional",
       "mechanism": "Masa magra protege",
-      "biomarkers": "—",
+      "biomarkers": "Biomarcadores dentro del rango esperado.",
       "risks": "Reducir grasa visceral",
       "suggestedNutraceuticals": "MULTI-CELL BASE, OMEGA COMPLEX"
     },
@@ -1095,7 +1095,7 @@
       "fmiBand": 2,
       "key": "A_A_B_N",
       "diagnosisName": "Alta función con IRC alto → vigilancia",
-      "mechanism": "—",
+      "mechanism": "Expansión del compartimento extracelular e inflamación de bajo grado; depleción de la reserva proteica y muscular.",
       "biomarkers": "PCR↑",
       "risks": "Ajustes recuperación",
       "suggestedNutraceuticals": "OMEGA COMPLEX, CURCUMIN BIOACTIV, SARCO-PROTECT, D3-K2 OSTEO"
