@@ -87,7 +87,24 @@ async function resolveSignedIntake(input: {
   }
   const identity = intakeIdentitySchema.safeParse(input.identity);
   if (!identity.success) {
-    return err(appError("validation", "Revisa los datos de identificación."));
+    // EL MENSAJE NOMBRA EL CAMPO, pero SOLO en los dos que traen mensaje escrito por nosotros.
+    //
+    // "Revisa los datos de identificación" a secas deja al paciente buscando cual de doce campos es, y
+    // desde que pais y ciudad son obligatorios (2026-09-04) ese caso dejo de ser raro: la validacion del
+    // navegador los atrapa antes, pero no cuando el dato viaja por un input oculto, que es justo como
+    // viajan estos dos.
+    //
+    // Y NO SE REENVIA EL MENSAJE DE ZOD TAL CUAL, que fue mi primer intento: sus textos por defecto estan
+    // en ingles ("Invalid email", "Too small: expected string...") y esto lo lee un paciente. La lista
+    // blanca es lo que impide que un campo nuevo filtre ingles a la pantalla sin que nadie lo note.
+    const CON_MENSAJE_PROPIO = new Set(["country", "city"]);
+    const propio = identity.error.issues.find((i) => CON_MENSAJE_PROPIO.has(String(i.path[0])));
+    return err(
+      appError(
+        "validation",
+        propio ? `${propio.message}.` : "Revisa los datos de identificación.",
+      ),
+    );
   }
 
   // FIRMA ELECTRONICA (dictamen art. 4 Decreto 2364): verificar el codigo. NO se consume aqui: el consumo
