@@ -9,7 +9,7 @@ Vale separarlos porque lo que te pedimos en cada grupo es distinto:
 | Puntos | De dónde salen | Qué son |
 | --- | --- | --- |
 | **1 y 5** | Cotejar tus dos superficies del mismo dato | **Tu archivo dice dos cosas distintas del mismo estado.** No son desacuerdos con tu criterio |
-| **2 y 3** | Tu entrega del 3 contra la del 2 | Cambios entre entregas que **no portamos** hasta que confirmes que son deliberados |
+| **2 y 3** | Tu entrega del 3 contra la del 2 | Cambios entre entregas que **no portamos** hasta que confirmes que son deliberados. **Los dos te los mandó Santiago por mensaje el 3 de septiembre**; van aquí para que tengas todo en un documento |
 | **4** | Tu punto 3 del 3 de septiembre | Una pieza que declaras muerta y que **en Atlas está viva** |
 | **6 a 8** | Portar tu mapa de regiones y mirar el PDF que recibe un paciente | Cosas que aparecieron al ejecutar tu bloque completo y al leer el documento impreso |
 
@@ -18,13 +18,13 @@ Vale separarlos porque lo que te pedimos en cada grupo es distinto:
 | # | Qué es | Qué te pedimos | ¿Bloquea? |
 | --- | --- | --- | --- |
 | **1** | **Los rótulos de los nueve sectores IFC × IRC dicen lo contrario de sus bandas en tres casos, y dos de ellos están intercambiados entre sí.** Quien tiene función alta con inflamación alta lee "Disfunción sin riesgo"; quien tiene función celular baja lee "Función estable". **Sale en dos pantallas y en ningún documento** | Confirmar el intercambio y los rótulos correctos. **No los tocamos** | **Sí**: es texto clínico que el profesional lee hoy |
-| **2** | `LE8_MAPEO_CORREGIDO` sigue encendido, y van **tres entregas** con mu y sigma sin recalibrar | Lo mismo que te preguntamos el 3. Sigue sin portarse | **Sí**: bloquea portar tu `engine.dfi` |
-| **3** | Tu entrega del 3 **retira** de `motorTratNutri` toda la prescripción de proteína y el gasto basal, que es lo que nos mandaste portar el 1 | Si la retirada es deliberada. **No la portamos** | **Sí**: es la cifra que se prescribe |
+| **2** | **Nos diste μ y σ recalibradas que no están en ningún archivo tuyo**, y el que llegó trae el interruptor encendido con las viejas: el estado que tu propio comentario prohíbe. Segunda vez | El archivo con las dos cosas juntas, **o** con el interruptor en `false`. **Preguntado por mensaje el 3-sep, sin respuesta** | **Sí**: bloquea portar tu `engine.dfi` |
+| **3** | **Dos instrucciones opuestas en tres días** sobre la proteína (tu §9.6 del 2 contra tu punto 5 del 3), y la del 3 retira de **cuatro** módulos lo que mandaste portar el 2 | Cuál rige, y si hay que recalcular los 56 tratamientos que ya se movieron. **Preguntado por mensaje el 3-sep, sin respuesta** | **Sí**: es la cifra que se prescribe |
 | **4** | Declaras `generarAlertas` pieza muerta "marcada para borrarse". **En Atlas está viva**: sus quince reglas se muestran en dos sitios de la pantalla de evaluación | Que no la borres, o que nos digas con qué se reemplaza | **Sí** si la borras |
 | **5** | Veintiún estados EFR muestran "—" en mecanismo y biomarcadores. **Tu propio `efrCompose` ya escribe esos textos**; lo que lo impide es la forma de la caída de `getDX` | Cuál de tus dos caídas manda. **No te pedimos escribir veintiún textos** | No |
 | **6** | **Tumaco y Cartago están cada uno en dos regiones** de tu mapa, así que su región la decide el orden de las claves del objeto | A qué región va cada uno | No |
 | **7** | Entre seis y ocho subgrupos por región **quedan sin ningún alimento**. Y **dos de ellos son grupos que el plan SÍ prescribe**: el mismo documento dice "Azúcares y dulces: 1 porción" y tres páginas después entrega una lista vacía para ese grupo | Cuál manda: que el reparto no asigne porciones a un grupo que la región no surte, o que la región lleve un alimento de cada grupo que el reparto usa | No, pero el documento se contradice |
-| **8** | **Cuatro erratas en tu tabla de alimentos** ("instántaneo", "azticar", "panels"), que salen impresas en el documento del paciente | Que nos digas si las corregimos. **No las tocamos por nuestra cuenta** | No |
+| **8** | **Tres erratas en tu tabla de alimentos** ("instántaneo", "azticar", "panels"), en **cuatro** nombres de alimento, que salen impresas en el documento del paciente | Que nos digas si las corregimos. **No las tocamos por nuestra cuenta** | No |
 
 ---
 
@@ -112,46 +112,97 @@ duplicidad. Es lo que recomendaríamos, porque un dato con dos versiones acaba d
 
 ---
 
-# 2 · El interruptor del LE8, tercera entrega encendido
+# 2 · El LE8: necesitamos las dos cifras firmadas
 
-**Es el punto 1 de la ronda del 3, sin novedad.** Lo repetimos porque cambió una cosa: ya no es un
-cambio reciente, es un estado que persiste.
+> **Esto te lo mandó Santiago por mensaje el 3 de septiembre y no hemos tenido respuesta.** Va aquí sin
+> cambios de fondo para que quede todo en un solo documento; no es una pregunta nueva.
 
-`LE8_MAPEO_CORREGIDO` está en `true` desde tu entrega del 2 de septiembre. La del 3 lo mantiene. Y en las
-dos, la llamada del término contextual sigue diciendo `_zBis(_icecVal, 58.578, 13.332)`, byte por byte
-igual que el 1 de septiembre.
+**Nos dijiste que recalibraste con μ = 54,306 y σ = 12,845 sobre 1.847 pacientes.**
 
-El comentario que acompaña la bandera, **que sigue intacto en el archivo de hoy**, exige las dos cosas a
-la vez: recalcular mu y sigma sobre la base con el mapeo ya corregido, **y** sustituir esos dos números en
-la llamada. Textual tuyo: *"Se recalibran en el MISMO acto, nunca por separado"*.
+**Esas cifras no están en ninguna parte.** Las buscamos en el `ATLAS_v8.html` del 3 de septiembre y en tu
+documento, en cualquier formato (con coma y con punto), y no aparecen.
 
-**Atlas no porta el cambio.** El frozen se queda en `false`, y va con candado: el día que mu y sigma dejen
-de ser 58.578 y 13.332, ese candado se pone rojo y portamos las dos cosas juntas.
+## Y tu propio documento lo confirma
+
+Tu punto 1 dice, textual: *"la llamada del término contextual sigue diciendo
+`_zBis(_icecVal, 58.578, 13.332)`"*. Y donde iba la decisión escribiste:
+**"[PENDIENTE — una de las dos, y va firmada aparte]"**.
+
+Pero el archivo que llegó viene con **el interruptor en `true` y las μ y σ viejas**, que es exactamente el
+estado que tú dijiste que no debía pasar. El comentario que acompaña la bandera, **intacto en el archivo
+de hoy**, exige las dos cosas a la vez: *"Se recalibran en el MISMO acto, nunca por separado"*.
+
+**Es la segunda vez.** El 2 de septiembre quedó encendido igual, sin la recalibración, y las μ y σ no se
+mueven desde el 1.
+
+## Lo que necesitamos, concreto
+
+1. **El archivo con las dos cosas juntas:** el interruptor en `true` **y** las μ y σ nuevas escritas en la
+   llamada.
+2. **O el archivo con el interruptor en `false`**, si la recalibración todavía no está lista.
+
+**Cualquiera de las dos nos sirve.** Lo que no podemos portar es el estado intermedio, y hasta que llegue
+una de las dos, **el LE8 se queda apagado en Atlas**: el frozen en `false`, con candado que se pone rojo
+el día que μ y σ dejen de ser 58.578 y 13.332.
 
 Con tu propia cifra de lo que está en juego: encenderlo sin recalibrar *"baja la edad bioeléctrica de
 todos los pacientes entre 1 y 8 años, más cuanto más sano esté el paciente"*.
 
 ---
 
-# 3 · Tu entrega del 3 retira la proteína y el gasto basal de `motorTratNutri`
+# 3 · La proteína: dos instrucciones opuestas en tres días
 
-**El 1 de septiembre nos mandaste portar la prescripción de proteína del motor** (tu §9.6 punto 4:
-"la proteína la prescribe el motor, no el mínimo poblacional"). Lo portamos el 3, con su cadena de
-sellado y su tolerancia para los tratamientos anteriores.
+> **Esto te lo mandó Santiago por mensaje el 3 de septiembre y no hemos tenido respuesta.** Va aquí sin
+> cambios de fondo para que quede todo en un solo documento; no es una pregunta nueva.
 
-**Tu entrega del mismo 3 de septiembre retira de `motorTratNutri` toda esa prescripción, y también el
-gasto basal.**
+## Las dos instrucciones
 
-No lo portamos, y la razón es la asimetría del riesgo: si la retirada es deliberada, portarla tarde
-cuesta un día; si es un descuido de edición, portarla deja a Atlas sin la cifra de proteína que tú mismo
-acababas de mandar prescribir.
+**El 2 de septiembre, tu §9.6 punto 4:** la proteína la prescribe `motorTratNutri`, con base 1 g/kg
+ajustada por fenotipo y comorbilidad. Nos dijiste que nuestra cadena estaba leyendo el mínimo poblacional
+(0,8) y que **eso era el defecto**.
 
-**Qué prescribe Atlas hoy**, para que decidas sobre lo que hay: la proteína del motor tal como estaba en
-tu entrega del 2, con el ajuste del profesional por encima cuando lo hay. El oráculo de nuestro candado
-de la cadena calórica quedó anclado a esa entrega del 2, **declarado y con fecha**, no en silencio.
+Lo aplicamos el 3.
 
-Te pedimos una sola frase: si la retirada es deliberada, la portamos; si no, la ignoramos y seguimos con
-la del 2.
+**El 3 de septiembre, tu punto 5:** la cadena calórica queda *"libre de patología"*, con proteína 0,8 y
+todo editable por el profesional.
+
+**Las dos no pueden ser.** Y la diferencia no es menor: en un paciente de 80 kg son **16 gramos al día**.
+
+## Y el alcance es mayor que una instrucción contra otra
+
+No es solo `motorTratNutri`. **Tu entrega del 3 retira de CUATRO módulos congelados lo que nos mandaste
+portar el día 2:**
+
+| Módulo | Qué desaparece |
+| --- | --- |
+| `atlas-tratamiento-nutri` | Toda la prescripción de proteína: `protKg` con sus ramas de desnutrición, cáncer, obesidad, sarcopenia y ERC, más el piso calórico y el tipo energético |
+| `atlas-protocolo` | La fila renal **Proteína 0,6-0,8 g/kg (KDIGO 2024)** |
+| `engine.core` | Las dos recomendaciones de proteína del texto |
+| `atlas-geb` | `ATLAS_GEB` y `ATLAS_GEB_HB` enteras |
+
+## Qué se movió con lo que aplicamos, medido
+
+Sobre nuestra base de trabajo: **60 tratamientos, 56 tenían 0,8** y los 56 pasaron al valor del motor. El
+gasto basal cambió para **todos**.
+
+**Y una precisión que te ahorra preocuparte de más: ninguno de esos 60 estaba aprobado.** Cero
+prescripciones selladas se movieron, y **Atlas todavía no ha atendido a un paciente real** (los requisitos
+de datos clínicos reales siguen abiertos de nuestro lado, no del tuyo). Así que **no hay nada emitido que
+haya que corregir**: lo que decidas se aplica limpio, sin deshacer nada que ya esté en manos de alguien.
+
+## Qué prescribe Atlas mientras respondes
+
+La proteína del motor **tal como estaba en tu entrega del 2**, con el ajuste del profesional por encima
+cuando lo hay. **No portamos la retirada**, y la razón es la asimetría: si es deliberada, portarla tarde
+cuesta un día; si es un descuido de edición, portarla deja a Atlas sin la cifra que tú mismo acababas de
+mandar prescribir.
+
+El ancla de nuestro candado quedó en esa entrega del 2, **declarada y con fecha**, no en silencio.
+
+## Las dos cosas que te pedimos
+
+1. **Cuál de las dos rige**, y si la retirada de los cuatro módulos es deliberada.
+2. **Si rige la segunda**, si hay que recalcular los 56 o dejarlos como están hasta la siguiente consulta.
 
 ---
 
@@ -321,7 +372,7 @@ forma que taparía esto. Te pedimos cuál de las tres:
 
 ---
 
-# 8 · Tres erratas de tu tabla de alimentos, que el paciente lee
+# 8 · Tres erratas de tu tabla de alimentos, en cuatro nombres, que el paciente lee
 
 Aparecieron al revisar el PDF de un paciente. Son de `INTER_TABLA_B`, verificadas contra tu entrega
 vigente, así que **no son de nuestra transcripción**: las portamos tal cual y salen impresas.
