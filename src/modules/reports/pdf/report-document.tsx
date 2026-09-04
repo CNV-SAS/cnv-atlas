@@ -342,6 +342,35 @@ export function ReportDocument({
                 ))}
               </View>
             ))}
+
+            {/* BLOQUE 7 · la lista de intercambio recortada por región. `break`: su archivo la imprime en
+                su propia página, y aquí importa más, porque es la hoja que el paciente lleva al mercado. */}
+            <View style={styles.section} break>
+              <Text style={styles.sectionTitle}>Tu lista de intercambio</Text>
+              <Text style={styles.para}>
+                Los alimentos de un mismo grupo aportan aproximadamente lo mismo por porción, así que puedes
+                intercambiarlos libremente. Sigue las porciones que te indicó tu nutricionista para cada
+                grupo y elige entre los alimentos de la lista, variando cada día para lograr una
+                alimentación completa y diversa. La cantidad entre paréntesis es el tamaño de una porción de
+                intercambio.
+              </Text>
+              <Text style={styles.para}>
+                {plan.listaIntercambio.region
+                  ? `Preparada para ${plan.listaIntercambio.ciudad}, región ${plan.listaIntercambio.region}: ${plan.listaIntercambio.total} alimentos de los ${plan.listaIntercambio.deTotal}.`
+                  : `Lista completa: ${plan.listaIntercambio.deTotal} alimentos.`}
+              </Text>
+              {plan.listaIntercambio.grupos.map((g) => (
+                <View key={g.nombre} style={styles.diaMenu}>
+                  <Text style={styles.bold}>{g.nombre}</Text>
+                  {g.subgrupos.map((s) => (
+                    <Text key={s.sub} style={styles.para}>
+                      {s.sub}: {s.alimentos.join(", ")}
+                      {s.hayMas ? ", entre otros" : ""}
+                    </Text>
+                  ))}
+                </View>
+              ))}
+            </View>
           </>
         ) : null}
 

@@ -1,6 +1,13 @@
 import "server-only";
 
-import { computeIntercambio } from "@/clinical-engine/intercambio";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { computeIntercambio, INTER_GRUPOS, INTER_TABLA_A } from "@/clinical-engine/intercambio";
+import {
+  listaIntercambioPaciente,
+  REGION_NOMBRE,
+  regionDe,
+} from "@/clinical-engine/intercambio-region";
+import { INTER_TABLA_B } from "@/clinical-engine/intercambio-alimentos";
 import { computeTiempos, TIEMPOS_DEF, tiemposVivos } from "@/clinical-engine/tiempos";
 import { diaDelCiclo, DIAS_DEL_CICLO } from "@/clinical-engine/menu-ciclo";
 import { getPrescripcionNutricional, getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
@@ -9,7 +16,7 @@ import { computeProtocoloEfectivo } from "@/clinical-engine";
 import type { EngineOutput } from "@/clinical-engine";
 
 import { recomendacionesDe } from "./hc-recomendaciones";
-import type { FilaDistribucion, PlanPaciente } from "./reports-view-types";
+import type { FilaDistribucion, ListaIntercambioPlan, PlanPaciente } from "./reports-view-types";
 
 export type { FilaDistribucion, PlanPaciente };
 
@@ -20,9 +27,9 @@ export type { FilaDistribucion, PlanPaciente };
 // porciones, las recomendaciones automáticas según el caso, y la lista de intercambio -no la lista
 // completa, sino los alimentos principales por región o ciudad-".
 //
-// SEIS DE LOS SIETE SE ARMAN AQUI. El septimo, la lista recortada por region, NO: su `INTER_TABLA_B` es
-// nacional y no existe el mapa de que alimentos corresponden a cada region. Esta preguntado (P2 de la
-// ronda del 31) y se suma cuando responda. El plan es util sin ella; sin las otras seis, no.
+// LOS SIETE SE ARMAN AQUI. El septimo, la lista recortada por region, entro el 2026-09-03: su mapa
+// existia desde el 2 de septiembre pero llego SUELTO en la carpeta de la entrega, fuera del HTML donde su
+// documento dijo que estaba, asi que ni el ni nosotros lo vimos. Ver `clinical-engine/intercambio-region`.
 //
 // NO ES UN DOCUMENTO NUEVO: entra en el reporte que el paciente YA recibe. Mandarle dos documentos por la
 // misma consulta seria repetir lo que acabamos de cerrar en la subpestaña del nutricionista, donde el
@@ -33,6 +40,69 @@ export type { FilaDistribucion, PlanPaciente };
 // viendo cero comorbilidades. Aqui solo se DA FORMA a lo que esos lectores devuelven.
 
 const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+/**
+ * La ciudad de RESIDENCIA ACTUAL del paciente. Es la que su archivo usa (`_ciudadPac = e_.ciudad`).
+ *
+ * NO la residencia PROLONGADA, que es otra columna y otro proposito: de aquella sale la altitud
+ * fisiologica (adaptarse a la altura viene de vivir años en ella), y esto es donde la persona hace hoy el
+ * mercado. Confundirlas le daria la lista del Pacifico a alguien que se mudo a Bogota hace diez años.
+ *
+ * CONSULTA DIRECTA, no un lector compuesto, y va razonado: ningun lector existente devuelve esta columna,
+ * y traerse `getHcHeaderForEvaluation` entero por un campo acoplaria el plan a la historia clinica.
+ * El hint `patients!inner` es obligatorio por la regla de embeds ambiguos (CLAUDE.md, Supabase).
+ */
+async function getCiudadPaciente(evaluationId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select("patients!inner(patient_profiles!inner(city))")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  if (error) throw new Error(`plan-paciente-reader (ciudad): ${error.message}`);
+  const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+  const perfil = uno(uno(data?.patients as never) as { patient_profiles?: unknown } | null)?.patient_profiles;
+  const ciudad = (uno(perfil as never) as { city?: string | null } | null)?.city ?? null;
+  return ciudad && ciudad.trim() !== "" ? ciudad : null;
+}
+
+/**
+ * El bloque 7, con la MISMA forma que su lista impresa: recorre los grupos en el orden de `INTER_GRUPOS`,
+ * dentro de cada uno los subgrupos de `INTER_TABLA_A`, y de cada subgrupo los alimentos de la zona.
+ *
+ * SE PORTAN SUS DOS CORTES tal cual: maximo OCHO alimentos por subgrupo, y ", entre otros" cuando hay mas.
+ *
+ * Y SE PORTA TAMBIEN LO QUE INCOMODA: un subgrupo sin alimentos en la region sale con el rotulo y nada
+ * detras. Son entre seis y ocho por region (azucares, mecato, bebidas alcoholicas en todas; lacteos
+ * descremados y semillas en casi todas). Suprimirlos seria un arreglo de FORMA que taparia un hueco de
+ * CONTENIDO, que no es nuestro para decidir. Medido y preguntado en la ronda del 2026-09-04 (P-101), con
+ * el candado en `intercambio-region.test.ts` fijando lo que hace HOY, no lo que nos parece.
+ */
+function armarListaIntercambio(ciudad: string | null): ListaIntercambioPlan {
+  const zona = listaIntercambioPaciente(ciudad);
+  const clave = regionDe(ciudad);
+  return {
+    ciudad,
+    region: clave ? (REGION_NOMBRE[clave] ?? clave) : null,
+    total: zona.length,
+    deTotal: INTER_TABLA_B.length,
+    grupos: INTER_GRUPOS.map((g) => {
+      const subs = INTER_TABLA_A.filter((r) => r.gr === g.id);
+      return {
+        nombre: g.nom,
+        subgrupos: subs.map((r) => {
+          const foods = zona.filter((x) => x.sub === r.sub);
+          return {
+            sub: r.sub,
+            alimentos: foods.slice(0, 8).map((x) => `${x.al} (${x.g} g)`),
+            hayMas: foods.length > 8,
+          };
+        }),
+      };
+      // `if(!subs.length) return null` en su codigo: un grupo sin subgrupos en TABLA_A no se pinta.
+    }).filter((g) => g.subgrupos.length > 0),
+  };
+}
 
 /**
  * Arma el plan del paciente para una evaluación. `null` si la evaluación no tiene tratamiento con
@@ -171,6 +241,7 @@ export async function getPlanPaciente(
     // cifra ("Sodio < 1.500 mg/dia") y sus atributos ("Hiposodica", "Patron DASH"). Repetirlas aqui sin el
     // numero seria decir dos veces lo mismo, y peor la segunda.
     restricciones: protocol.restricciones.filter((r) => r.trim() !== ""),
+    listaIntercambio: armarListaIntercambio(await getCiudadPaciente(evaluationId)),
     distribucion,
     // Los bloques PENDIENTES no viajan: son avisos para el profesional ("esto se emitirá cuando..."), y en
     // el documento del paciente serían ruido sobre algo que no puede resolver.

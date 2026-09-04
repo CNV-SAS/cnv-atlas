@@ -9,17 +9,19 @@ import { describe, expect, it } from "vitest";
 // porciones, las recomendaciones automáticas según el caso, y la lista de intercambio -no la lista
 // completa, sino los alimentos principales por región o ciudad-".
 //
-// SON SIETE BLOQUES Y VAN SEIS. El séptimo (la lista recortada por región) no se puede construir: su
-// `INTER_TABLA_B` es nacional y no existe el mapa de qué alimentos corresponden a cada región. Preguntado
-// como P2. Este candado cuenta los seis para que nadie los dé por completos.
+// SON SIETE BLOQUES Y VAN LOS SIETE (desde el 2026-09-03). El séptimo, la lista recortada por región,
+// estuvo meses fuera: su `INTER_TABLA_B` es nacional y faltaba el mapa de qué alimentos corresponden a
+// cada región. Llegó en su entrega del 3-sep (§2). Este candado los cuenta para que nadie los dé por
+// completos, y desde entonces también vigila que el séptimo esté cableado a las dos superficies.
 
 const DOC = readFileSync("src/modules/reports/pdf/report-document.tsx", "utf8");
 const READER = readFileSync("src/modules/reports/data/plan-paciente-reader.ts", "utf8");
 const SEND = readFileSync("src/modules/reports/services/send-report.ts", "utf8");
 const RENDER = readFileSync("src/modules/reports/services/render-report.tsx", "utf8");
 const RUTA = readFileSync("src/app/(app)/reportes/[id]/pdf/route.ts", "utf8");
+const DOC_PLAN = readFileSync("src/modules/reports/components/plan-imprimible.tsx", "utf8");
 
-describe("los seis bloques que sí se pueden construir están en el documento", () => {
+describe("los bloques del documento", () => {
   it.each([
     ["la meta", "Tu meta"],
     ["el plan dietético", "Tu plan de alimentación"],
@@ -71,12 +73,39 @@ describe("lo que el paciente NO puede comer va en el plan, y antes del menú", (
   });
 });
 
-describe("el séptimo bloque falta, y está dicho dónde", () => {
-  it("el reader deja escrito por qué la lista recortada no está", () => {
-    // Sin esta nota, el día que alguien compare el documento contra su §7.1 va a leer un olvido donde hay
-    // una pregunta abierta.
-    expect(READER).toContain("la lista recortada por region");
-    expect(READER).toContain("P2");
+describe("el séptimo bloque ya está: la lista de intercambio recortada por región", () => {
+  // ESTE CANDADO CAMBIO DE ASERCION EL 2026-09-03, y el motivo es que se cumplio lo que vigilaba. Decia
+  // "el séptimo bloque falta, y está dicho dónde", y afirmaba que el reader explicara la ausencia citando
+  // la pregunta P2 de la ronda del 31. Gildardo respondio (su §2 del 3-sep: el mapa existia desde el 2,
+  // pero llego SUELTO en la carpeta, fuera del HTML donde su documento dijo que estaba), asi que la
+  // ausencia dejo de existir y con ella el motivo del candado.
+  //
+  // La asercion no se relaja, se DA VUELTA: lo que se vigila ahora es que el bloque este cableado a las
+  // DOS superficies. Una pieza portada y no renderizada es el defecto que ya nos costo tres veces.
+  it("el reader lo arma y ya no habla de una ausencia", () => {
+    expect(READER).toContain("armarListaIntercambio");
+    expect(READER).toContain("LOS SIETE SE ARMAN AQUI");
+    expect(READER, "quedo texto describiendo el bloque como pendiente").not.toContain(
+      "El septimo, la lista recortada por region, NO",
+    );
+  });
+
+  it("y sale en las dos caras: la pantalla imprimible y el PDF", () => {
+    // Las dos leen el MISMO `plan.listaIntercambio`, que es la unica forma de que no puedan discrepar.
+    for (const [que, texto] of [
+      ["el plan imprimible", DOC_PLAN],
+      ["el PDF", DOC],
+    ] as const) {
+      expect(texto, `${que} no pinta la lista`).toContain("Tu lista de intercambio");
+      expect(texto, `${que} no lee el bloque del plan`).toContain("plan.listaIntercambio");
+    }
+  });
+
+  it("los dos cortes suyos viajan: ocho alimentos por subgrupo y el resto como «entre otros»", () => {
+    expect(READER).toContain("foods.slice(0, 8)");
+    expect(READER).toContain("foods.length > 8");
+    expect(DOC).toContain("entre otros");
+    expect(DOC_PLAN).toContain("entre otros");
   });
 });
 
@@ -109,11 +138,29 @@ describe("el plan sale de los MISMOS números que ve el nutricionista", () => {
     expect(READER).toContain("protocol.tiempos?.celdas?.[alimento]?.[t.id]");
   });
 
-  it("se compone de los lectores que ya existen, no consulta por su cuenta", () => {
+  it("se compone de los lectores que ya existen, con UNA consulta propia declarada", () => {
     // Dos formas de armar el mismo insumo es como el motor de nutrición terminó viendo cero
     // comorbilidades. Aquí solo se DA FORMA a lo que esos lectores devuelven.
     expect(READER).toContain("getTreatmentProtocol(evaluationId)");
     expect(READER).toContain("getPrescripcionNutricional(");
+  });
+
+  it("y esa consulta propia es UNA sola: la ciudad, que ningún lector devuelve", () => {
+    // EL TITULO DE ARRIBA DECIA "no consulta por su cuenta" HASTA EL 2026-09-03, y dejó de ser cierto al
+    // entrar el séptimo bloque: la lista por región necesita la ciudad del paciente, y ninguno de los
+    // lectores existentes la trae. Traerse `getHcHeaderForEvaluation` entero por una columna acoplaría el
+    // plan a la historia clínica, así que la excepción se toma y se DECLARA, que es la diferencia entre
+    // una decisión y una erosión.
+    //
+    // Lo que este caso vigila es que siga siendo UNA. En cuanto aparezca una segunda, el patrón dejó de
+    // ser una excepción y hay que volver a componer.
+    // Se cuenta la LLAMADA, no el import: el import aparece una vez pase lo que pase, así que contarlo
+    // haría que una segunda consulta no moviera el número y el candado no viera nada.
+    expect((READER.match(/await createSupabaseServerClient()/g) ?? []).length).toBe(1);
+    expect(READER).toContain("async function getCiudadPaciente(");
+    // Y con el hint del embed, que es la regla que ya nos rompió tres consultas en runtime sin que tsc
+    // dijera nada (CLAUDE.md, sección Supabase).
+    expect(READER).toContain("patients!inner(patient_profiles!inner(city))");
   });
 });
 
