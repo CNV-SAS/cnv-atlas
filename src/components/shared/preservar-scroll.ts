@@ -52,7 +52,10 @@ const VENTANA_MS = 3000;
 const MINIMO_PX = 24;
 
 /**
- * Vigila un salto de scroll no pedido y lo deshace una sola vez.
+ * Vigila un salto de scroll no pedido y lo deshace.
+ *
+ * DEJA DE VIGILAR EN CUANTO RESTAURA LA POSICION ENTERA. Lo unico que puede corregir dos veces es el caso
+ * del documento encogido: ahi la primera correccion es provisional y se sigue mirando (ver `revisar`).
  *
  * Se llama al recibir el resultado de la accion (que es cuando sale el toast): en ese momento la pagina
  * todavia esta donde el profesional la dejo, y el salto viene despues.
@@ -63,6 +66,8 @@ export function preservarScroll(): void {
   const desde = window.scrollY;
   const ruta = window.location.pathname;
   let terminado = false;
+  /** A donde se corrigio la ultima vez, para no reentrar mientras el documento no de para mas. */
+  let corregidoA: number | null = null;
 
   const quitar = () => {
     terminado = true;
@@ -89,10 +94,30 @@ export function preservarScroll(): void {
     // quedar fuera del documento. Se acota al maximo actual en vez de no hacer nada: quedarse cerca de
     // donde estaba es mejor que quedarse arriba del todo, que es justo lo que se esta deshaciendo.
     const maximo = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    // `quitar()` ANTES de corregir: nuestro propio `scrollTo` dispara otro evento `scroll`, y sin esto se
-    // reentraria en `revisar` con la posicion ya buena.
-    quitar();
-    window.scrollTo({ top: Math.min(desde, maximo), behavior: "instant" as ScrollBehavior });
+    const destino = Math.min(desde, maximo);
+
+    // Ya se corrigio a ese mismo destino y el documento sigue sin dar para mas: no se reentra. Esto
+    // sustituye al `quitar()` incondicional de antes como freno de la reentrada, y sin desarmar.
+    if (corregidoA === destino && Math.abs(window.scrollY - destino) < MINIMO_PX) return;
+    corregidoA = destino;
+
+    // SOLO SE DA POR TERMINADO SI SE PUDO RESTAURAR LA POSICION ENTERA, y ese es el arreglo del defecto
+    // del 2026-09-04 (Santiago: "salta y se queda arriba"; con la version que sondeaba cada 100 ms
+    // "saltaba y me bajaba donde estaba").
+    //
+    // EL DEFECTO: el panel de tratamiento se REMONTA por su key al guardar. Mientras remonta, el
+    // documento encoge un instante y el navegador ACOTA el scroll, o sea que la posicion baja sola sin
+    // que nadie haya saltado. Mirando cada cuadro, el corrector veia ESE movimiento, lo tomaba por el
+    // salto, corregia al maximo alcanzable de ese instante (pequeño, porque el documento estaba corto) y
+    // se desarmaba. Cuando llegaba el salto de verdad ya no quedaba nadie mirando. Sondear cada 100 ms
+    // era inmune por accidente: a esa granularidad se saltaba el cuadro del encogimiento. Ganar precision
+    // destapo el defecto, no lo causo.
+    //
+    // Por eso una correccion ACOTADA es provisional: se aplica (mejor cerca que arriba del todo) pero se
+    // sigue vigilando, y cuando el documento recupera su alto se corrige entero. Si nunca lo recupera, la
+    // ventana se acaba y queda la acotada, que es lo que ya se queria.
+    if (destino === desde) quitar();
+    window.scrollTo({ top: destino, behavior: "instant" as ScrollBehavior });
   }
 
   window.addEventListener("scroll", revisar, { passive: true });

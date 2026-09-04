@@ -110,6 +110,43 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     expect(w.scrollTo).toHaveBeenCalledWith({ top: 700, behavior: "instant" });
   });
 
+  it("un ENCOGIMIENTO PASAJERO no gasta el intento: el salto de verdad viene después", () => {
+    // EL DEFECTO QUE SANTIAGO REPORTÓ EL 2026-09-04, y el caso que lo reproduce.
+    //
+    // Sus dos observaciones lo acotaron entero: (1) salta SOLO la primera vez por ruta, así que el
+    // mecanismo de Next es el que ya teníamos identificado; y (2) **salta y se QUEDA arriba**, mientras
+    // que la versión que sondeaba cada 100 ms "saltaba y me bajaba donde estaba". Ese contraste es el
+    // dato: con la MISMA captura de `desde`, sondear funcionaba y mirar cada cuadro no. Así que `desde`
+    // no vale 0 (esa hipótesis muere ahí), y el problema es que el corrector se dispara ANTES de tiempo.
+    //
+    // QUÉ PASA. El panel de tratamiento se REMONTA por su key al guardar. Mientras remonta, el documento
+    // encoge un instante y el navegador ACOTA el scroll: la posición baja sola, sin que nadie salte. El
+    // corrector, que ahora mira cada cuadro, ve ese movimiento, lo toma por el salto, corrige al máximo
+    // alcanzable de ESE instante (que es pequeño porque el documento está corto) y se DESARMA. Cuando
+    // llega el salto de verdad, ya no queda nadie mirando.
+    //
+    // Sondear cada 100 ms era inmune por accidente: a esa granularidad se saltaba el cuadro del
+    // encogimiento. Ganar precisión fue lo que destapó el defecto, no lo que lo causó.
+    const w = entorno(1200, 4000);
+    preservarScroll();
+
+    // 1) El remonte: el documento encoge y el navegador arrastra la posición con él.
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 1000 } }); // máximo 200
+    w.scrollY = 200;
+    tick(w);
+
+    // 2) El documento vuelve a su alto, y AHORA sí llega el salto de Next.
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 4000 } });
+    w.scrollY = 0;
+    tick(w);
+
+    // Lo que importa es DÓNDE queda, no cuántas veces corrigió.
+    const ultima = w.scrollTo.mock.calls.at(-1)?.[0] as { top: number } | undefined;
+    expect(ultima?.top, "se gastó el intento en el encogimiento y el salto real quedó sin deshacer").toBe(
+      1200,
+    );
+  });
+
   it("y el usuario manda: si se movió él, se cancela", () => {
     const w = entorno(1200);
     preservarScroll();
@@ -161,8 +198,8 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
   });
 
   it("no se reentra con su propio scroll: corrige UNA vez", () => {
-    // `scrollTo` dispara otro evento `scroll`. Sin desmontarse antes de corregir, se volvería a evaluar
-    // con la posición ya buena, y en el peor caso se pelearía consigo mismo.
+    // `scrollTo` dispara otro evento `scroll`, y sin freno se volvería a evaluar con la posición ya buena.
+    // Cuando la restauración es ENTERA el freno sigue siendo desmontarse antes de corregir.
     const w = entorno();
     preservarScroll();
     const revisar = w.addEventListener.mock.calls.find((c) => c[0] === "scroll")?.[1] as () => void;
@@ -170,5 +207,27 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
     revisar();
     revisar(); // el eco de nuestro propio scrollTo
     expect(w.scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it("y TAMPOCO se reentra por el otro camino, el que sigue armado", () => {
+    // EL SEGUNDO CAMINO DE REENTRADA, que lo abrió el arreglo del 2026-09-04 y por eso lleva su propio
+    // caso: con el documento encogido la corrección es provisional y NO se desmonta, así que el freno de
+    // arriba no aplica. Sin este caso, el candado probaría una de las dos vías y se creería completo.
+    //
+    // Aquí el freno es recordar a dónde se corrigió: si el documento sigue sin dar para más, el eco del
+    // propio `scrollTo` no vuelve a corregir. Si no, se pelearía consigo mismo durante los tres segundos.
+    // Este `entorno` no parametriza el alto (arranca en 900 con documento de 4000), así que se encoge a
+    // mano: 1000 de alto con ventana de 800 deja el máximo en 200, muy por debajo de los 900 de partida.
+    const w = entorno();
+    preservarScroll();
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 1000 } });
+    const revisar = w.addEventListener.mock.calls.find((c) => c[0] === "scroll")?.[1] as () => void;
+    w.scrollY = 0;
+    revisar();
+    w.scrollY = 200; // el navegador ya nos llevó ahí: es el eco de nuestra propia corrección
+    revisar();
+    revisar();
+    expect(w.scrollTo).toHaveBeenCalledTimes(1);
+    expect(w.scrollTo).toHaveBeenCalledWith({ top: 200, behavior: "instant" });
   });
 });
