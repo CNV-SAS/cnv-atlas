@@ -261,16 +261,42 @@ commit** en vez de afirmar; una aserción a mano envejece y un puntero a algo qu
 
 ### Lo que espera a Gildardo, y qué bloquea
 
-**La ronda del 2026-09-04 tiene ocho puntos y CUATRO bloquean construcción:** los rótulos de los nueve
-sectores IFC x IRC, que dicen lo contrario de sus bandas en tres casos y están intercambiados en dos
-(P-103; es texto clínico que el profesional lee hoy, y los dos errores empujan al lado tranquilizador); el
-interruptor del LE8, tercera entrega encendido (P-92, bloquea portar su `engine.dfi`); la retirada de la
-proteína y el gasto basal de `motorTratNutri` dos días después de mandárnoslos portar (P-99, es la cifra
-que se prescribe); y `generarAlertas`, que él marcó para borrar y en Atlas está viva en dos sitios (P-104,
-bloquea si la borra). Los puntos 5 a 8 (los 21 estados con raya, Tumaco y Cartago en dos regiones, los
-subgrupos vacíos y las cuatro erratas de su tabla de alimentos) no bloquean nada, aunque el 7 deja hoy un
-documento que se contradice: prescribe una porción de "Azúcares y dulces" y entrega una lista vacía para
-ese grupo.
+**RESPONDIÓ LA RONDA DEL 2026-09-04, con archivo y no con documento, y con una instrucción de cierre:**
+*"No más cambios, lo que envié quedé tal cual lo envié"*. **Los cinco puntos que traían cambio están
+portados** (verificados ejecutando su archivo, no leyendo su mensaje): las nueve etiquetas de los sectores
+(P-103), la caída campo por campo de `getDX` que borra los 21 estados con raya (P-102), Tumaco y Cartago
+en una sola región (P-100), diez alimentos al núcleo con los que **ningún grupo prescrito se queda sin
+lista** (P-101) y las nueve ocurrencias de sus cuatro erratas (P-105). `generarAlertas` no se borra y su
+sitio ya era el correcto en Atlas, así que no hubo nada que mover (P-104). La proteína queda en 0,8
+editable y su rango se MUESTRA en el panel de referencia, ya cableado a la pantalla (P-99).
+
+El estado lo sostienen los tests, no esta frase: `intercambio-region.test.ts` (22 casos, incluido "ningún
+grupo prescrito se queda sin lista" sobre diez regiones y cinco objetivos calóricos),
+`efr-81-estados.test.ts` (los 405 campos contra su archivo, cero diferencias) y `asesoria-macro.test.ts`
+(20 casos, seis de ellos sobre el SITIO DE LLAMADA del panel).
+
+**QUEDA UNA COSA ABIERTA Y ES LA MÁS SERIA: el interruptor del LE8 (P-92).** Su archivo lo tiene
+encendido y **el comentario que él mismo escribió tres líneas más arriba dice que debe quedar apagado**
+hasta recalibrar dos constantes; su respuesta del 4 confirma que esa recalibración **hoy es imposible**
+por ausencia de dato. Portarlo encendido baja la edad bioeléctrica de todos los pacientes entre 1 y 8
+años (sus palabras) con constantes que él mismo dice que no tienen origen documentado; dejarlo apagado
+mantiene dos de los ocho dominios del LE8 clavados para todo el mundo. **No se tocó**, y las dos opciones
+con su efecto están en `PENDIENTES_CIENTIFICOS.md`, punto 1.
+
+**Y los tres colores de los sectores siguen contradiciendo su etiqueta.** Él los dejó así a propósito
+("el color es contenido de esta Dirección y va firmado aparte"). Es la pregunta más barata que queda:
+son tres códigos de color. `PENDIENTES_CIENTIFICOS.md`, punto 2.
+
+**El resto está en `docs/PENDIENTES_CIENTIFICOS.md`, en lenguaje no técnico**, y son CUATRO cosas de las
+que solo dos son preguntas: el LE8, los tres colores, dos correcciones que él prometió "para la próxima
+entrega" y no llegaron (el "(≥30 min)" de la P23 y el lenguaje de la P44), y el porte pendiente de las
+opciones de ejercicio, que es trabajo NUESTRO y necesita bump de la encuesta.
+
+**Ese documento nació con NUEVE puntos y seis ya estaban contestados**, algunos desde el 3 de septiembre;
+uno de ellos llevaba una recomendación que contradecía una instrucción directa suya. Es la quinta vez con
+esa forma, así que el documento deja el barrido escrito en su primera sección en vez de borrarlo. La señal
+que lo destapó es la de siempre: **cuando un documento nuestro dice "él no ha contestado X", ir a buscar
+si lo contestó.** Es para Santiago, no para Gildardo.
 
 **De la ronda del 2026-09-03 respondió los ocho.** Dos de sus respuestas cerraron bloqueos: el mapa de
 regiones llegó completo (el séptimo bloque del plan ya está construido) y la correspondencia de los 18

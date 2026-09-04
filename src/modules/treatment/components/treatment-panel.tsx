@@ -19,6 +19,7 @@ import {
   tr,
   trGrupo,
 } from "@/components/shared/tabla";
+import { AsesoriaMacroPanel } from "./asesoria-macro-panel";
 import { AlimentosDelSubgrupo } from "./lista-intercambio";
 import { computeTiempos, TIEMPOS_DEF } from "@/clinical-engine/tiempos";
 import { computeValidacion } from "@/clinical-engine/validacion";
@@ -68,6 +69,7 @@ import {
   esMenuComidas,
   type IntercambioSaved,
   type MenuCambios,
+  type AsesoriaMacro,
   type PrescripcionNutricional,
   type TreatmentNote,
   type MenuSuggestion,
@@ -375,12 +377,15 @@ function CadenaCaloricaSection({
   protocol,
   locked,
   prescripcion,
+  asesoria,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
   /** La prescripcion del motor que gobierna, para AVISAR si su proteina difiere de la de la cadena. */
   prescripcion: PrescripcionNutricional | null;
+  /** Los rangos que su ciencia SUGIERE para proteina y grasa. Muestran, no validan. */
+  asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
   // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
@@ -680,22 +685,40 @@ function CadenaCaloricaSection({
                 prescrita (FA)» y «Factor actividad (PAL)» son el mismo factor con dos nombres, y nos mandó
                 "unifíquenlo en el suyo", que es PAL. Al portar su desplegable estuve a punto de traerme
                 también su rótulo, que es justo el desliz que él pidió no copiar. Lo atrapó el candado. */}
-            <AdjInput
-              name="adjProtGkg"
-              label="Proteína (g/kg)"
-              value={protGkg}
-              onChange={setProtGkg}
-              placeholder={`modelo: ${base.protGKg}`}
-              step="0.1"
-            />
-            <AdjInput
-              name="adjFatPct"
-              label="Grasa (%)"
-              value={fatPct}
-              onChange={setFatPct}
-              placeholder={`modelo: ${base.fatPct}`}
-              step="1"
-            />
+            {/* PROTEINA Y GRASA LLEVAN SU PANEL DE REFERENCIA DEBAJO (Gildardo, 2026-09-03), y los otros
+                campos no: son los dos macros para los que su ciencia tiene un rango por diagnostico. El
+                panel MUESTRA, no valida: sin techo, sin piso y sin bloquear el guardado. */}
+            <div>
+              <AdjInput
+                name="adjProtGkg"
+                label="Proteína (g/kg)"
+                value={protGkg}
+                onChange={setProtGkg}
+                placeholder={`modelo: ${base.protGKg}`}
+                step="0.1"
+              />
+              {/* El valor que se le pasa es el ESCRITO, con la caida al del modelo cuando el campo esta
+                  vacio: es la cifra que de verdad se va a prescribir, y es sobre esa que hay que decir si
+                  quedo fuera de rango. Con el campo vacio manda el modelo, no "sin dato". */}
+              <AsesoriaMacroPanel
+                asesoria={asesoria?.prot ?? null}
+                valor={protGkg.trim() === "" ? String(base.protGKg ?? "") : protGkg}
+              />
+            </div>
+            <div>
+              <AdjInput
+                name="adjFatPct"
+                label="Grasa (%)"
+                value={fatPct}
+                onChange={setFatPct}
+                placeholder={`modelo: ${base.fatPct}`}
+                step="1"
+              />
+              <AsesoriaMacroPanel
+                asesoria={asesoria?.grasa ?? null}
+                valor={fatPct.trim() === "" ? String(base.fatPct ?? "") : fatPct}
+              />
+            </div>
           </div>
           {/* LA CADENA SE SELLO CON UNA CIENCIA ANTERIOR, y hay que decirlo donde se ve la cifra.
               EL HUECO QUE CIERRA: el mecanismo de vigencia de emision compara tres dimensiones
@@ -897,6 +920,7 @@ export function TreatmentPanel({
   protocol,
   patronAlimentario,
   prescripcion,
+  asesoria,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
@@ -907,6 +931,9 @@ export function TreatmentPanel({
   // Prescripcion del motor que gobierna (motorTratNutri), computada al vuelo por la pagina. null si la
   // evaluacion no tiene encuesta legible: ahi se cae a lo sellado, marcado como tal.
   prescripcion: PrescripcionNutricional | null;
+  // Rangos de referencia por diagnostico para proteina y grasa (Gildardo 2026-09-03). Bajan hasta la
+  // seccion de la cadena calorica, que es donde estan los dos campos.
+  asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
 }) {
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
@@ -1067,6 +1094,7 @@ export function TreatmentPanel({
           protocol={protocol}
           locked={locked}
           prescripcion={prescripcion}
+          asesoria={asesoria}
         />
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
             guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}

@@ -127,6 +127,7 @@ import { SeccionRuta } from "@/modules/treatment/components/seccion-ruta";
 import { NutraceuticalsSection } from "@/modules/treatment/components/nutraceuticals-section";
 import { prescriptionSignature, sectionKey } from "@/modules/treatment/data/protocol-signature";
 import {
+  getAsesoriaMacros,
   getPrescripcionNutricional,
   getProtKgPrescrito,
   getResumenProfesionForEvaluation,
@@ -539,6 +540,26 @@ export default async function ResultadosEvaluacionPage({
       )
     : null;
 
+  // EL PANEL DE REFERENCIA POR DIAGNOSTICO, junto al campo de proteina y al de grasa (Gildardo,
+  // 2026-09-03). Es la OTRA MITAD de la retirada de la proteina: el rango de la condicion del paciente
+  // deja de imponerse desde el motor y pasa a MOSTRARSE al profesional, que decide. Sin el, lo portado
+  // seria media instruccion, y textual suyo, "la mitad peor".
+  //
+  // SE COMPUTA AQUI Y NO EN EL PANEL porque el lector es server-only y el panel es cliente. Los DOS
+  // ultimos argumentos van en null a proposito: son la cifra escrita, y esa vive en el estado del
+  // cliente. El aviso de "fuera de rango" se calcula alla con su propia `asesoriaFuera`, contra lo que
+  // el profesional esta ESCRIBIENDO; calculado aqui iria un guardado por detras y diria lo contrario de
+  // lo que se ve en el campo.
+  const asesoriaMacros = isEngineOutput(results.snapshot)
+    ? await getAsesoriaMacros(
+        id,
+        results.snapshot.sexo,
+        results.snapshot.indicators as unknown as Record<string, unknown>,
+        null,
+        null,
+      )
+    : null;
+
   // EL PLAN DEL PACIENTE, para la hoja imprimible de la subpestaña del nutricionista. MISMO lector que
   // alimenta el PDF del correo (`getPlanPaciente`): el papel y el correo no pueden decir cosas distintas,
   // y con una sola fuente no hay nada que sincronizar. null si la evaluación aún no tiene protocolo con
@@ -811,6 +832,7 @@ export default async function ResultadosEvaluacionPage({
                   ),
                 )}
                 prescripcion={prescripcionNutricional}
+                asesoria={asesoriaMacros}
                 planImprimible={
                   planPaciente ? (
                     <PlanImprimible

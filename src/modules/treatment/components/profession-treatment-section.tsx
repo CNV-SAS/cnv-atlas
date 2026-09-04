@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { PrescripcionNutricional } from "../data/treatment-view-types";
+import type { AsesoriaMacro, PrescripcionNutricional } from "../data/treatment-view-types";
 
 import type { RutaContent } from "@/clinical-engine/rutas-content";
 
@@ -169,12 +169,23 @@ async function Panel({
   narrative,
   patronAlimentario,
   prescripcion,
+  asesoria,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol | null;
   narrative: TreatmentNarrative;
   patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
+  /**
+   * Los rangos que su ciencia SUGIERE para proteina y grasa segun el diagnostico del paciente, para
+   * mostrarlos JUNTO a los dos campos. Es la otra mitad de la retirada de la proteina (Gildardo,
+   * 2026-09-03): el rango deja de imponerse desde el motor y pasa a mostrarse. NO valida ni bloquea nada
+   * (su §5 del 27-ago: ninguna cifra de la prescripcion lleva techo, piso ni advertencia).
+   *
+   * null cuando el snapshot no es compatible o falta la composicion, que es cuando no hay diagnostico
+   * del que derivar un rango.
+   */
+  asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
   /**
    * La hoja del plan que el paciente se lleva de la consulta. Llega ya RENDERIZADA desde la pagina (es un
    * componente de servidor que lee de `getPlanPaciente`), no como dato: asi el panel, que es cliente, no
@@ -215,6 +226,7 @@ async function Panel({
         protocol={protocol}
         patronAlimentario={patronAlimentario}
         prescripcion={prescripcion}
+        asesoria={asesoria}
       />
       {/* Nutraceuticos (prescripcion) y despacho se movieron a la subpestaña Rutas (checkpoint 2.3). */}
     </div>
@@ -415,6 +427,7 @@ export function ProfessionTreatmentSection({
   narrative,
   patronAlimentario,
   prescripcion,
+  asesoria,
   planImprimible,
 }: {
   evaluationId: string;
@@ -429,6 +442,16 @@ export function ProfessionTreatmentSection({
   // adaptacion del menu: es una de las tres fuentes de restriccion que deciden si la IA entra.
   patronAlimentario: string[];
   prescripcion: PrescripcionNutricional | null;
+  /**
+   * Los rangos que su ciencia SUGIERE para proteina y grasa segun el diagnostico del paciente, para
+   * mostrarlos JUNTO a los dos campos. Es la otra mitad de la retirada de la proteina (Gildardo,
+   * 2026-09-03): el rango deja de imponerse desde el motor y pasa a mostrarse. NO valida ni bloquea nada
+   * (su §5 del 27-ago: ninguna cifra de la prescripcion lleva techo, piso ni advertencia).
+   *
+   * null cuando el snapshot no es compatible o falta la composicion, que es cuando no hay diagnostico
+   * del que derivar un rango.
+   */
+  asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
   /**
    * La hoja del plan que el paciente se lleva de la consulta. Llega ya RENDERIZADA desde la pagina (es un
    * componente de servidor que lee de `getPlanPaciente`), no como dato: asi el panel, que es cliente, no
@@ -482,6 +505,7 @@ export function ProfessionTreatmentSection({
         narrative={narrative}
         patronAlimentario={patronAlimentario}
         prescripcion={prescripcion}
+        asesoria={asesoria}
       />
       {/* LA HOJA DEL PACIENTE, AL FINAL: primero se construye el plan, y esto es lo que se entrega. Va
           DESPUES del panel por la misma razon por la que el boton de aprobar va al final. */}
