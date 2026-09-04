@@ -154,6 +154,11 @@ export function SurveyPhaseForm({
   const persist = () => {
     const form = formRef.current;
     if (!form) return;
+    // RECUENTA TAMBIEN AL GUARDAR, y es el segundo camino del mismo defecto: `persist` lo llaman las tres
+    // navegaciones (`goTo`, `goNext`, `goBack`) y solo guardaba. Asi que aunque el paciente respondiera
+    // media seccion, pasar a la siguiente tampoco movia la barra. Era lo que Santiago describia con "paso
+    // de seccion respondiendo preguntas y no se mueve".
+    recontar();
     startTransition(() => save(new FormData(form)));
   };
 
@@ -172,9 +177,17 @@ export function SurveyPhaseForm({
   // nuevo, asi que un guardado intermedio fallido cuesta el punto de retomado, nunca las respuestas.
   const guardadoPendiente = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistDiferido = () => {
-    // El conteo se refresca EN EL ACTO (es leer el formulario, no una llamada), aunque el guardado
+    // El conteo se refresca casi EN EL ACTO (es leer el formulario, no una llamada), aunque el guardado
     // espere: la barra tiene que moverse cuando el paciente responde, no 1,2 s despues.
-    recontar();
+    //
+    // AL CUADRO SIGUIENTE, NO EN LA MISMA LINEA, y esto es lo que lo hace correcto desde que tambien se
+    // dispara por CLIC (ver `onClick` del formulario). Al pulsar una pildora, el `onClick` del boton corre
+    // ANTES que el del formulario, pero lo que hace es un `setState`: el `<input type="hidden">` con la
+    // respuesta todavia no esta en el DOM cuando el formulario reacciona. Contar ahi leeria el estado
+    // ANTERIOR y la barra iria siempre una respuesta por detras, que es peor que no moverse porque parece
+    // que funciona. Un clic es un evento discreto y React vacia su estado al terminarlo, asi que en el
+    // cuadro siguiente el DOM ya esta al dia.
+    requestAnimationFrame(recontar);
     if (guardadoPendiente.current) clearTimeout(guardadoPendiente.current);
     guardadoPendiente.current = setTimeout(() => {
       guardadoPendiente.current = null;
@@ -304,7 +317,23 @@ export function SurveyPhaseForm({
       ref={formRef}
       onSubmit={handleSubmit}
       className="flex w-full flex-col gap-6"
+      // POR CLIC **Y** POR CAMBIO, y el clic es el que faltaba (2026-09-04, defecto que Santiago vio como
+      // "la barra no avanza"). `onChange` solo lo disparan los controles NATIVOS, y de las 65 preguntas de
+      // la encuesta hay 47 de opción única, 11 de múltiple y 6 contadores que son `<button>` con estado de
+      // React: un clic no emite `change`, y el `<input type="hidden">` que React escribe con la respuesta
+      // tampoco. **La única que emitía evento era el deslizable del estrés**, así que la barra se movía en
+      // 1 de 65 y el resto del tiempo parecía congelada.
+      //
+      // Y ARRASTRABA ALGO PEOR: este mismo disparador es el del guardado dentro de la sección, así que ese
+      // guardado tampoco corría al responder píldoras. No se perdían respuestas (navegar guarda y el envío
+      // manda todo), pero su propósito declarado, que una sección de 18 no cueste 18 respuestas si se cae
+      // la conexión, no se cumplía justo en Alimentación, que son 18 píldoras seguidas.
+      //
+      // Un clic sí burbujea, así que con las dos quedan cubiertos los dos tipos de widget. Que un clic en
+      // cualquier otro sitio del formulario dispare un reconteo es inofensivo: es leer el DOM, y el
+      // guardado sigue con su espera de 1,2 s.
       onChange={persistDiferido}
+      onClick={persistDiferido}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !isLast && e.target instanceof HTMLElement && e.target.tagName !== "TEXTAREA") {
           e.preventDefault();

@@ -198,3 +198,54 @@ describe("el deslizable del estrés y el conteo por sección", () => {
     expect(SIN_COMENTARIOS).not.toContain("sin responder en esta sección");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// LA BARRA SE MUEVE AL RESPONDER (defecto del 2026-09-04, "es como si no avanzara").
+//
+// EL DIAGNOSTICO, que no era ninguna de las dos hipotesis. La barra SI medía preguntas (`respondidas /
+// totalPreguntas`) y el texto SI decía "N de 64 preguntas"; "Sección X de 8" es otra línea, aparte y
+// correcta. Lo que fallaba era el DISPARADOR: `recontar()` colgaba solo de `onChange` del formulario, y
+// `onChange` solo lo emiten los controles NATIVOS. Las píldoras y los contadores son `<button>` con estado
+// de React, y un clic no emite `change`; el `<input type="hidden">` que React escribe con la respuesta,
+// tampoco. **La única pregunta que emitía evento era el deslizable del estrés.**
+//
+// Y ARRASTRABA ALGO PEOR: ese mismo disparador es el del guardado dentro de la sección, así que ese
+// guardado tampoco corría al responder píldoras. Su propósito declarado (que una sección de 18 no cueste
+// 18 respuestas si se cae la conexión) no se cumplía justo en Alimentación, que son 18 píldoras seguidas.
+
+describe("el reconteo llega desde los widgets de botón, no solo de los nativos", () => {
+  it("el formulario escucha CLIC además de CAMBIO", () => {
+    expect(SIN_COMENTARIOS).toContain("onChange={persistDiferido}");
+    expect(SIN_COMENTARIOS, "sin el clic, 64 de 65 preguntas no mueven la barra").toContain(
+      "onClick={persistDiferido}",
+    );
+  });
+
+  it("y el reconteo va al CUADRO SIGUIENTE, no en la misma línea", () => {
+    // Al pulsar una píldora, el `onClick` del botón corre antes que el del formulario, pero lo que hace es
+    // un `setState`: el hidden input todavía no está en el DOM. Contar ahí leería el estado ANTERIOR y la
+    // barra iría siempre una respuesta por detrás, que es peor que no moverse porque parece que funciona.
+    expect(SIN_COMENTARIOS).toContain("requestAnimationFrame(recontar)");
+  });
+
+  it("y navegar de sección también recuenta", () => {
+    // Segundo camino del mismo defecto: `persist` lo llaman las tres navegaciones y solo guardaba.
+    const bloque = FORM.slice(FORM.indexOf("const persist = ()"), FORM.indexOf("const guardadoPendiente"));
+    expect(bloque).toContain("recontar();");
+  });
+});
+
+describe("la premisa medida: casi ninguna pregunta emite un evento nativo", () => {
+  // Si esto cambia (por ejemplo si las opciones pasaran a ser `<input type=radio>`), la regla de arriba
+  // deja de ser necesaria y hay que volver a mirarla. Se re-mide contra el seed en vez de creerla.
+  const SEED = readFileSync("supabase/seed.ts", "utf8");
+  const tipos = (t: string) => (SEED.match(new RegExp(`type: "${t}"`, "g")) ?? []).length;
+
+  it("las de botón (opción, múltiple y contador) son la abrumadora mayoría", () => {
+    const deBoton = tipos("opcion") + tipos("opcion_multiple") + tipos("contador");
+    const nativas = tipos("escala");
+    expect(deBoton).toBeGreaterThan(50);
+    expect(nativas, "si aparecen más widgets nativos, re-mide la premisa").toBe(1);
+    expect(deBoton / (deBoton + nativas)).toBeGreaterThan(0.95);
+  });
+});
