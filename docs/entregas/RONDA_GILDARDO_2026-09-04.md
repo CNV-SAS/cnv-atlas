@@ -117,10 +117,17 @@ duplicidad. Es lo que recomendaríamos, porque un dato con dos versiones acaba d
 > **Esto te lo mandó Santiago por mensaje el 3 de septiembre y no hemos tenido respuesta.** Va aquí sin
 > cambios de fondo para que quede todo en un solo documento; no es una pregunta nueva.
 
-**Nos dijiste que recalibraste con μ = 54,306 y σ = 12,845 sobre 1.847 pacientes.**
+**RETIRADA LA ATRIBUCIÓN DE μ = 54,306 / σ = 12,845 / 1.847 pacientes (2026-09-04).**
 
-**Esas cifras no están en ninguna parte.** Las buscamos en el `ATLAS_v8.html` del 3 de septiembre y en tu
-documento, en cualquier formato (con coma y con punto), y no aparecen.
+Este punto te atribuía esas tres cifras. **Tienes razón: no salieron de ti.** Rastreadas de nuestro lado,
+su única aparición es un mensaje interno nuestro del 3 de septiembre, que se dobló verbatim en esta ronda
+sin verificar de dónde venía la atribución. Se retira, y va la regla que la evita: **toda cifra que se te
+atribuya viene con la entrega o el documento del que salió, citado.**
+
+Verificamos que no estaban en tu archivo. Lo que no verificamos, y es donde estuvo el fallo, fue de dónde
+salía **nuestra** afirmación de que las habías dicho.
+
+**Lo que queda del punto, que sigue en pie:** el interruptor está en `true` con las μ y σ viejas.
 
 ## Y tu propio documento lo confirma
 
