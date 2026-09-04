@@ -22,6 +22,9 @@ import { SurveyQuestion } from "./survey-widgets";
 // onSubmit + startTransition, NUNCA prop `action` (si el envio falla, el auto-reset de React 19 borraria
 // TODAS las respuestas del paciente). No hay OTP en esta fase (el codigo ya se verifico al firmar).
 
+/** El id del contenedor de una pregunta, para el salto desde la lista de pendientes. */
+const anclaPregunta = (questionId: string) => `pregunta-${questionId}`;
+
 const initialSubmit: SurveyFormState = { error: null, fields: null, done: false };
 const initialSave: SaveProgressState = { saved: false, error: null };
 
@@ -89,6 +92,9 @@ export function SurveyPhaseForm({
   // Advertencia de envio con preguntas sin responder (no bloquea): al pulsar "Enviar", si faltan, se
   // muestra el conteo y se deja enviar igual. null = sin advertencia pendiente.
   const [confirmMissing, setConfirmMissing] = useState<number | null>(null);
+  // Las preguntas sin responder, para el listado que lleva a cada una. Se calcula al pedirlo (no en cada
+  // tecla): recorrer el formulario entero en cada cambio no aporta nada y el paciente lo pide una vez.
+  const [pendientes, setPendientes] = useState<SurveyQuestionView[] | null>(null);
   // Total de preguntas de ENCUESTA (sin "Sobre ti", que es opcional): el denominador de la barra.
   const totalPreguntas = questions.length;
   // Arranca contando el PREFILL, no en cero: quien reanuda con media encuesta hecha tiene que ver la
@@ -182,19 +188,41 @@ export function SurveyPhaseForm({
   // pelado) se contaba como respondida aqui pero el gate la veia como hueco: dos varas para lo mismo, y el
   // paciente veia la que miente. Ahora se reconstruye el valor TAL COMO lo guarda el servidor (multi -> JSON,
   // resto -> el valor) y se evalua con el mismo isAnswered. "Sobre ti" es opcional y NO cuenta aqui.
-  const countUnanswered = (form: HTMLFormElement): number => {
+  // DEVUELVE LA LISTA, no el conteo, y el conteo sale de la lista (2026-09-04). Antes devolvia un numero
+  // y el aviso solo podia decir "te faltan 61", que es lo que Santiago pidio cambiar: la lista lleva a
+  // cada pregunta. Se hace asi, con UNA funcion, y no con una segunda que las liste: dos recorridos del
+  // mismo formulario son dos varas, y la barra diciendo 100 % con el aviso diciendo que faltan tres es
+  // exactamente el fallo que ya nos costo un smoke.
+  const sinResponder = (form: HTMLFormElement): SurveyQuestionView[] => {
     const fd = new FormData(form);
-    let missing = 0;
-    for (const q of questions) {
+    return questions.filter((q) => {
       const raw = fd
         .getAll(`answer_${q.id}`)
         .map((v) => String(v).trim())
         .filter((v) => v !== "");
       const stored =
         q.type === "opcion_multiple" ? (raw.length ? JSON.stringify(raw) : "") : (raw[0] ?? "");
-      if (!isAnswered(stored)) missing += 1;
-    }
-    return missing;
+      return !isAnswered(stored);
+    });
+  };
+  const countUnanswered = (form: HTMLFormElement): number => sinResponder(form).length;
+
+  /**
+   * Lleva a una pregunta: cambia a su seccion y la deja a la vista.
+   *
+   * EL SCROLL VA EN EL CUADRO SIGUIENTE porque la seccion destino todavia no esta VISIBLE cuando se pide
+   * el salto: `setStep` es un cambio de estado, y el nodo esta montado pero oculto hasta que React pinta.
+   * Buscarlo antes devuelve un elemento sin caja y `scrollIntoView` no hace nada.
+   */
+  const irAPregunta = (q: SurveyQuestionView) => {
+    const i = sections.findIndex((s) => s.title === q.section);
+    if (i < 0) return;
+    setPendientes(null);
+    setConfirmMissing(null);
+    setStep(i + 1);
+    requestAnimationFrame(() => {
+      document.getElementById(anclaPregunta(q.id))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   // Envio real, SIN auto-reset (transicion sobre el form del ref, no la prop `action`): si falla, no
@@ -212,10 +240,11 @@ export function SurveyPhaseForm({
     e.preventDefault();
     const form = formRef.current;
     if (!form) return;
-    const missing = countUnanswered(form);
-    if (missing > 0) {
+    const faltan = sinResponder(form);
+    if (faltan.length > 0) {
       // El aviso aparece pegado al boton (abajo): no se hace scroll, se veria fuera de pantalla.
-      setConfirmMissing(missing);
+      setConfirmMissing(faltan.length);
+      setPendientes(faltan);
       return;
     }
     doSubmit();
@@ -347,7 +376,10 @@ export function SurveyPhaseForm({
               {s.questions.map((q) => (
                 <div
                   key={q.id}
-                  className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
+                  // ANCLA para el salto desde la lista de preguntas pendientes. Va sobre el contenedor y
+                  // no sobre el input: al saltar tiene que verse el ENUNCIADO, no el control suelto.
+                  id={anclaPregunta(q.id)}
+                  className="scroll-mt-24 rounded-lg border border-border/60 bg-muted/20 p-3 sm:bg-transparent sm:p-0 sm:border-0"
                 >
                   <SurveyQuestion q={q} answer={prefill?.[q.id] ?? null} />
                 </div>
@@ -403,6 +435,39 @@ export function SurveyPhaseForm({
               </span>{" "}
               por responder. Puedes enviarla así y completarlas con tu profesional, o volver a revisarlas.
             </p>
+            {/* LA LISTA, QUE LLEVA A CADA PREGUNTA (2026-09-04, portado de su encuesta). Antes decia
+                cuantas faltaban y nada mas, asi que el paciente tenia que buscarlas a mano por ocho
+                secciones. Su archivo lo resuelve con un listado en el que cada fila salta a su pregunta.
+
+                LO QUE NO SE PORTA ES EL TONO. El suyo pinta las filas de ambar con numeros naranja, y el
+                contador en rojo. Eso convierte lo que el paciente NO SABE en un error suyo, y es lo
+                contrario de la frase de arriba: acabamos de decirle que puede dejarlas. La lista es una
+                ayuda para navegar, no un reproche, y va en superficie neutra.
+
+                SE MUESTRAN LAS PRIMERAS OCHO. Con 61 sin responder, una lista de 61 dentro de un aviso no
+                se lee ni se navega, y en un telefono empuja los dos botones fuera de la pantalla. Ocho
+                son un punto por donde empezar; al volver a "Enviar" se recalcula lo que quede. */}
+            {pendientes && pendientes.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {pendientes.slice(0, 8).map((q) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => irAPregunta(q)}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <span className="shrink-0 font-medium text-muted-foreground">{q.number}.</span>
+                    <span className="min-w-0 flex-1 truncate">{q.text}</span>
+                    <span className="shrink-0 text-muted-foreground">{q.section}</span>
+                  </button>
+                ))}
+                {pendientes.length > 8 ? (
+                  <p className="px-2 text-xs text-muted-foreground">
+                    y {pendientes.length - 8} más.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button key="confirm-send" type="button" onClick={doSubmit} disabled={submitting} className="w-full sm:w-auto">
                 {submitting ? "Enviando..." : "Enviar así"}
