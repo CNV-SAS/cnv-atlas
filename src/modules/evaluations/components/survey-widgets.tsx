@@ -320,7 +320,25 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
         }`}
       />
       <span className="text-xs text-muted-foreground">10</span>
-      <span className="w-6 text-center text-sm font-semibold tabular-nums">{value ?? "-"}</span>
+      {/* EL VALOR, EN GRANDE (2026-09-04). Era un número de 6 px al final de la fila, y en un deslizable
+          el número ES la respuesta: si no se ve, el paciente no sabe qué acaba de contestar. Su archivo lo
+          resuelve con un disco grande, y eso es lo único de su deslizable que hacía falta.
+
+          LO QUE **NO** SE PORTA de él son las etiquetas de los extremos ("Sin estrés" / "Máximo"), y no
+          por sesgo: **ya están visibles en el enunciado**, dos líneas más arriba ("Nivel de estrés en el
+          último mes (1 = sin estrés, 10 = máximo)"). Repetirlas debajo sería redundancia, no el caso de
+          D1, donde el dato estaba enterrado. Tampoco van sus dos emojis de cara: CLAUDE.md los prohíbe.
+
+          El disco usa `primary`, que es el mismo color de la opción elegida: dice "esta es tu respuesta",
+          no "tu respuesta es buena". Sin responder queda apagado y con raya. */}
+      <span
+        aria-hidden
+        className={`flex size-10 shrink-0 items-center justify-center rounded-full text-base font-semibold tabular-nums ${
+          value == null ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"
+        }`}
+      >
+        {value ?? "–"}
+      </span>
       {value !== null ? <input type="hidden" name={`answer_${id}`} value={String(value)} /> : null}
     </div>
   );

@@ -401,6 +401,15 @@ export function SurveyPhaseForm({
                   })()
                 ) : null}
                 {s.title}
+                {/* CUANTAS PREGUNTAS TIENE ESTA SECCION, portado de su archivo (su chip "15 ítems").
+                    ACOTA, que es lo contrario de presionar: Alimentación tiene dieciocho y otras tienen
+                    tres, y hasta ahora las dos se veían igual de largas al entrar. Saber que quedan tres
+                    es lo que evita abandonar. Va en neutro y sin cuenta de lo que falta: cuántas hay es
+                    un hecho de la sección; cuántas te faltan sería un recordatorio, y eso ya lo lleva la
+                    barra, que además dice que puedes dejarlas. */}
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                  {s.questions.length} {s.questions.length === 1 ? "pregunta" : "preguntas"}
+                </span>
               </h2>
               {SECTION_INTRO[s.title] ? (
                 <p className="rounded-md bg-muted/40 px-3 py-2 text-sm text-foreground">
