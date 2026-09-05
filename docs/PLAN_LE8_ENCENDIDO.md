@@ -208,17 +208,63 @@ Una coincidencia que vale la pena mirar: **los 7 a los que se les mueve el ICEC 
 cambian severidad en el dominio 5.** Es la cascada funcionando, aunque las dos cifras salen de
 mediciones distintas y no se puede afirmar que sean los mismos siete sin cruzarlos uno a uno.
 
-### PENDIENTE: la medición de la nube
+## La medición de la nube: por qué la dirección MIXTA no es un defecto
 
-No se pudo hacer desde aquí: no hay cadena de conexión a la nube en el entorno local, y tampoco debe
-haberla. **La corre Santiago**, apuntando `DATABASE_URL` a la nube y volviendo a ejecutar la medición
-(el archivo temporal `src/tests/zz-medicion-le8.test.ts` está en el árbol de trabajo, sin commitear, y se
-borra cuando la medición esté hecha).
+**Medido en la nube el 2026-09-05:** 23 comparables, el ICEC se mueve en las 23, la EB-BIS entre 0,6 y
+9,6 años, dirección **MIXTA**, una banda de IAE cambiada. Contra lo sellado: 9 reemisiones obligatorias,
+4 en confirmados.
 
-**Y si allá sale algo distinto de lo que él anunció** (un cambio mayor a 8 años, o alguno que SUBA la
-edad en vez de bajarla), **se para y se reporta**: su cifra sale de su propia medición sobre registros
-reales, así que una discrepancia grande significaría que algo no coincide.
+Se cumplían las dos condiciones de parada que se habían escrito (más de 8 años, y dirección mixta cuando
+él dijo que siempre baja). **Se paró y se verificó. La conclusión es que el porte está bien y su cifra
+describía el caso típico.** La razón es aritmética, no interpretativa.
 
+### La aritmética, que es lo que decide
+
+`computeEBBIS` lleva el término `-7.982 · z(ICEC, 58.578, 13.332)`, así que **un punto de ICEC son
+-0,5987 años**. El ICEC es el promedio de ocho dominios, luego **un punto de (Alimentación +
+Hidratación) son -0,0748 años**.
+
+El valor fijo viejo era **Alimentación 30 + Hidratación 20 = 50**. Entonces:
+
+> **La edad BAJA si la suma real supera 50, y SUBE si no llega.**
+
+No es una tendencia: es una identidad. Encender el interruptor sustituye una nota fija por la real, y una
+sustitución así **tiene que mover en las dos direcciones**. Quien come e hidrata mejor que ese 50 se
+rejuvenece; quien lo hace peor envejece, **porque el valor fijo lo estaba favoreciendo**.
+
+| | Suma real | Efecto |
+| --- | --- | --- |
+| **Máximo que puede BAJAR** | 200 (100 + 100) | **-11,23 años** |
+| **Máximo que puede SUBIR** | 20 (0 + 20) | **+2,25 años** |
+
+**De ahí salen las dos respuestas:**
+
+- **Los 9,6 años son de los que BAJAN.** La subida no puede pasar de 2,25 por construcción, así que un
+  9,6 solo cabe del lado del descenso: necesita una suma cercana a 178 de 200, o sea un paciente con muy
+  buena alimentación e hidratación. **Es el caso que él mismo describió** al escribir *"más cuanto más
+  sano esté el paciente"*.
+- **Su "entre 1 y 8" era un rango típico, no un límite.** El máximo aritmético es 11,23; su 8 se queda
+  corto en la cola, que es justamente el paciente más sano.
+
+**Nada de esto invalida el porte.** Lo que invalida es la lectura de su frase como una ley universal:
+dijo *"bajaría la edad de TODOS los pacientes"*, y eso solo es cierto si la alimentación e hidratación
+reales de todos superan 50.
+
+### El caso que se ve IGUAL y sí sería defecto
+
+Hay una forma de subir la edad que **no** es la corrección funcionando: un paciente cuya **matriz de
+frecuencia no esté respondida**. `calcPatron` sobre un enc vacío da **10**, y sin `d7_agua` la
+hidratación cae a **20**: suma 30, y la edad sube **+1,50 años exactos** sobre datos que el paciente
+nunca dio. Es el defecto que su CA-3 mandó cerrar, entrando por la puerta del que no respondió.
+
+**Por eso la medición ahora desglosa la dirección** y, de los que suben, cuenta cuántos respondieron la
+matriz y si el agua llegó. La lectura:
+
+| Lo que sale | Qué significa |
+| --- | --- |
+| Suben, con matriz y agua completas | **La corrección funcionando.** Su nota real es peor que el fijo viejo |
+| Suben, con `sinMatrizRespondida > 0` | **DEFECTO.** Se les está moviendo la edad sobre datos fabricados |
+| `porEncimaDelTopeAritmetico > 0` | La reconstrucción del ICEC apagado no es la que se supone. Parar |
 ---
 
 ## 4 · Los diagnósticos confirmados, y si el mecanismo dispara

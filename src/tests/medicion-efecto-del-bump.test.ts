@@ -69,6 +69,13 @@ describe("medicion del encendido del LE8", () => {
 
     const model = await readActiveModel();
     const DIST: string[] = [];
+    type Caso = { anos: number; alim: number; agua: number; gruposRespondidos: number; aguaPresente: boolean };
+    const SUBEN: Caso[] = [];
+    const BAJAN: Caso[] = [];
+    // Los ids de las evaluaciones que piden reemision, para que el smoke sepa CUAL abrir. Un UUID no es
+    // dato de paciente, y sin esto el recorrido de la reemision no se puede cerrar: hay que buscar a
+    // ciegas cual de todas muestra el ambar con la lista.
+    const PIDEN_REEMISION: { evaluationId: string; confirmado: boolean; cambios: string[] }[] = [];
     const deltasEb: number[] = [];
     let recomputables = 0;
     let icecMovido = 0;
@@ -122,6 +129,31 @@ describe("medicion del encendido del LE8", () => {
           const ebOn = ix.computeEBBIS(ifc, pabu, icecOn) as number;
           const ebOff = ix.computeEBBIS(ifc, pabu, icecOff) as number;
           deltasEb.push(Number((ebOn - ebOff).toFixed(2)));
+
+          // DIRECCION, Y POR QUE HAY QUE MIRARLA. El valor fijo viejo era alimentacion 30 + hidratacion
+          // 20 = 50. Al encender, la edad BAJA si la suma real supera 50 y SUBE si no llega, o sea que
+          // subir es la conducta correcta para quien come e hidrata peor que ese fijo.
+          //
+          // PERO HAY UN CASO QUE SE VE IGUAL Y ES UN DEFECTO: un paciente cuya MATRIZ no esta respondida
+          // (encuesta anterior a C9, o campos sin llegar) da `calcPatron` = 10 sobre un enc vacio y
+          // agua = 20 por ausencia, o sea suma 30 y la edad le sube 1,50 anos exactos sobre datos que no
+          // dio. Por eso se cuenta cuantos grupos respondio y si el agua llego: sin ese desglose, la
+          // correccion y el defecto se leen igual.
+          const respondidosMatriz = Array.from({ length: 15 }, (_, i) => `d1_${i + 1}_i`).filter(
+            (k) => {
+              const v = (ei.survey as Record<string, unknown>)[k];
+              return typeof v === "string" && v !== "";
+            },
+          ).length;
+          const aguaPresente =
+            typeof (ei.survey as Record<string, unknown>).d7_agua === "string" &&
+            (ei.survey as Record<string, unknown>).d7_agua !== "";
+          const delta = Number((ebOn - ebOff).toFixed(2));
+          if (delta > 0.005) {
+            SUBEN.push({ anos: delta, alim, agua, gruposRespondidos: respondidosMatriz, aguaPresente });
+          } else if (delta < -0.005) {
+            BAJAN.push({ anos: delta, alim, agua, gruposRespondidos: respondidosMatriz, aguaPresente });
+          }
           // La banda que dispara la reemision es la del IAE, y la edad se cancela al comparar las dos.
           const edad = ei.edad ?? 40;
           if (core.cIAE(ebOn - edad).l !== core.cIAE(ebOff - edad).l) bandaIaeAislada++;
@@ -143,6 +175,11 @@ describe("medicion del encendido del LE8", () => {
       if (v.kind === "reemision-obligatoria") {
         reemisionObligatoria++;
         if (f.confirmedAt != null) reemisionEnConfirmados++;
+        PIDEN_REEMISION.push({
+          evaluationId: f.evaluationId,
+          confirmado: f.confirmedAt != null,
+          cambios: v.cambios.map((c) => c.que),
+        });
       }
     }
 
@@ -170,6 +207,29 @@ describe("medicion del encendido del LE8", () => {
                 : movidos.every((d) => d > 0)
                   ? "SIEMPRE SUBE (contrario al anuncio)"
                   : "MIXTA",
+              // EL DESGLOSE QUE SEPARA LA CORRECCION DEL DEFECTO. Subir la edad es correcto cuando la
+              // suma real de alimentacion + hidratacion no llega a 50, que era el fijo viejo. NO lo es
+              // cuando el paciente no respondio la matriz: ahi el 10 de `calcPatron` sobre un enc vacio
+              // es un dato fabricado y el +1,50 exacto es su firma.
+              bajan: {
+                n: BAJAN.length,
+                maxAnos: BAJAN.length ? Number(Math.min(...BAJAN.map((c) => c.anos)).toFixed(2)) : null,
+                elExtremo: BAJAN.length
+                  ? BAJAN.slice().sort((x, y) => x.anos - y.anos)[0]
+                  : null,
+              },
+              suben: {
+                n: SUBEN.length,
+                maxAnos: SUBEN.length ? Number(Math.max(...SUBEN.map((c) => c.anos)).toFixed(2)) : null,
+                // El tope aritmetico de la subida es +2,25 anos (alim 0 + agua 20). Cualquier cosa por
+                // encima significa que la reconstruccion del ICEC apagado no es la que se supone.
+                porEncimaDelTopeAritmetico: SUBEN.filter((c) => c.anos > 2.26).length,
+                // La firma del defecto: matriz sin responder -> alim 10, agua ausente -> 20, +1,50 exacto.
+                sinMatrizRespondida: SUBEN.filter((c) => c.gruposRespondidos === 0).length,
+                sinAgua: SUBEN.filter((c) => !c.aguaPresente).length,
+                conMatrizYAguaCompletos: SUBEN.filter((c) => c.gruposRespondidos === 15 && c.aguaPresente).length,
+                casos: SUBEN.slice().sort((x, y) => y.anos - x.anos),
+              },
               bandaIaeCambia: bandaIaeAislada,
             },
             contraLoSellado: {
@@ -180,6 +240,8 @@ describe("medicion del encendido del LE8", () => {
               cambiaRutas,
               reemisionObligatoria,
               reemisionEnConfirmados,
+              // Cuales abrir en el smoke. Los confirmados primero: son los que muestran el ambar con la lista.
+              cuales: PIDEN_REEMISION.slice().sort((x, y) => Number(y.confirmado) - Number(x.confirmado)),
             },
           },
           null,
