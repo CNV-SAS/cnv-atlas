@@ -44,11 +44,12 @@ se envió"*, que la nota del 30 de agosto era prudencial y quedó superada por l
 septiembre. Así que el `true` de su archivo **es su decisión vigente** y el `false` de Atlas es
 simplemente lo que falta portar.
 
-**Consecuencia para el cotejo: no se hace antes de portarlo.** Si se hace ahora, todo lo de la tabla de
-abajo sale distinto, se anota como hallazgo o como "LE8", y hay que rehacerlo entero cuando el porte
-entre. Es cotejar dos veces, que es justo lo que la regla de oro de este documento prohíbe.
+**PORTADO el 2026-09-05, así que esto ya no bloquea.** El interruptor está encendido en Atlas (CA-8a y
+CA-8b del manifiesto, motor `anibise-1.3.0`), o sea que Atlas y su archivo coinciden y el cotejo NO va a
+ver ninguna diferencia por el LE8. La tabla de abajo se conserva como registro de qué movió el porte, y
+para saber dónde mirar si algo no cuadra.
 
-Lo que el interruptor mueve, y por tanto lo que hay que portar y volver a medir:
+Lo que el interruptor movió:
 
 | Qué | Por qué |
 | --- | --- |
@@ -58,6 +59,36 @@ Lo que el interruptor mueve, y por tanto lo que hay que portar y volver a medir:
 | **Rutas R4 y R5** | Se activan por esos dominios |
 
 Detalle del porte y lo que cuesta: `PENDIENTES_CIENTIFICOS.md` punto 1.
+---
+
+## d-ter) Los tres documentos van DESPUES del pase de diseño (Santiago, 2026-09-05)
+
+**No se saltan: van en otro momento, y por una razón que conviene tener escrita.**
+
+Son dos ejes distintos sobre los mismos píxeles:
+
+| | Qué mira | De quién es |
+| --- | --- | --- |
+| **El cotejo** | **QUÉ** se muestra: que esté el dato, con su rótulo, en su orden | De él. Su archivo manda |
+| **El pase de diseño** | **CÓMO** se muestra: paleta, tipografía, jerarquía, saltos de página | Nuestro. `BRAND.md` manda |
+
+**Lo que se hace ahora:** las pantallas **clínicas** (evaluación, diagnóstico, tratamiento). Ahí el
+cotejo vale y el pase de diseño no las va a mover.
+
+**Lo que espera:** el **plan del paciente**, la **HC imprimible** y el **reporte**. Los tres funcionan y
+**no han pasado por `BRAND.md`** (gate 4 de `LANZAMIENTO.md`). Cotejarlos ahora sería cotejar dos veces,
+y la segunda vez el riesgo no es repetir el esfuerzo: es que quede una mezcla de las dos versiones sin
+que nadie lo note, que es la razón por la que existe la regla de oro de este documento.
+
+**Y lo que no se debe hacer es cotejarlos sin decidir cuál de las dos cosas se está mirando.** Un
+hallazgo de forma en un documento que todavía va a rediseñarse no es un hallazgo: es ruido que después
+hay que separar del real.
+
+**Una cosa que puede mover el plan del paciente una vez más, y conviene saberla antes:** P-110. La lista
+de intercambio corta a ocho alimentos por subgrupo e imprime `nombre (gramos)` sin la medida, así que las
+doce filas de Leguminosas que son *el mismo alimento en dos tamaños de porción* se leen como repetidas.
+**Nuestro render es fiel al suyo**, así que no es defecto nuestro; él firma una de tres salidas en su
+próxima ronda. Si elige imprimir la medida o agrupar por nombre, ese documento cambia después.
 
 ---
 

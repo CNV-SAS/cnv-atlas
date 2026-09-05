@@ -105,8 +105,14 @@ su ICEC provisional, como antes.
 de 42 evaluaciones los dos dominios caen justo sobre los valores viejos, así que el ICEC no se mueve.
 **Eso es artefacto del seed, no una propiedad del cambio.**
 
-Apuntando `DATABASE_URL` a la nube, corre la medición (`src/tests/zz-medicion-le8.test.ts`, que está en
-el árbol de trabajo sin commitear) y pásame las cifras.
+Apuntando `DATABASE_URL` a la nube, corre la medición y pásame las cifras:
+
+```
+pnpm vitest run --project db src/tests/medicion-efecto-del-bump.test.ts --reporter=verbose
+```
+
+Busca la línea que empieza por `MEDICION_LE8`. Imprime solo agregados (conteos y promedios), nunca un
+dato de paciente.
 
 **Si allá sale algo distinto de lo que él anunció** (un cambio mayor a 8 años, o alguno que **suba** la
 edad en vez de bajarla), **para y avísame**: su cifra sale de su propia medición sobre registros reales,
@@ -116,16 +122,20 @@ así que una discrepancia grande significaría que algo no coincide.
 
 ## Y cuando pushees
 
-**La migración no se despliega sola.** Van dos ahora: la **0099** (encuesta v6) y la **0100** (los
-dieciséis campos que pasan a insumo del diagnóstico). Contra la nube:
+**La migración no se despliega sola.** Corrige lo que decía esta nota: anunciaba **dos** (0099 y 0100),
+y era cierto al escribirla. Para cuando Santiago corrió `db:check:cloud`, la **0099 ya estaba aplicada**
+del bump de la encuesta del día anterior, así que la nube solo pedía la **0100** (los dieciséis campos
+que pasan a insumo del diagnóstico). **Que apareciera una y no dos es correcto, no un hueco.** Contra la
+nube:
 
 ```
-pnpm db:check:cloud      # debe listar 0099 y 0100 pendientes
+pnpm db:check:cloud      # 101 en el repo; lo pendiente sale listado
 pnpm db:migrate
 pnpm db:types
 ```
 
-**Hasta que corras eso**, la nube sigue en v5 y sin la marca corregida.
+**Hasta que corras eso**, la nube corre sin la marca corregida. Al terminar, `db:check:cloud` tiene que
+decir **101 en el repo y 101 aplicadas**.
 
 ---
 
