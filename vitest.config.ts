@@ -9,6 +9,10 @@ import { defineConfig } from "vitest/config";
 // Al agregar un test nuevo que toque la BD (usa DATABASE_URL/HAS_DB), AGREGARLO a esta lista o volvera a
 // ser flaky. Verificacion: `grep -rl DATABASE_URL src/tests` debe estar contenido aqui.
 const DB_TESTS = [
+  // NO es un candado: es la MEDICION del efecto de un bump de motor (imprime cifras, asegura que
+  // hubo algo que recomputar). Vive en la suite de BD porque necesita datos reales; en la de unit haria
+  // que `pnpm verify` dependiera de la base.
+  "src/tests/medicion-efecto-del-bump.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",
