@@ -132,23 +132,23 @@ describe("3 · los cuatro cambios de contenido, que son SUYOS", () => {
   });
 
   it("P43: se queda 'Otra' en singular, que es divergencia DECLARADA", () => {
-    // No es un olvido: es DIV-11. Su archivo dice "Otras"; se queda "Otra" porque las opciones de esa
+    // No es un olvido: es DIV-14. Su archivo dice "Otras"; se queda "Otra" porque las opciones de esa
     // pregunta son alimentos en singular, porque las otras ocho preguntas ya llevan "Otra", y porque en
     // la nube hay cinco respuestas "Otra: ..." con su texto libre.
     //
     // Y LO QUE SE PROTEGE NO ES LA PALABRA: es que la divergencia siga DECLARADA. Lo que estaba mal antes
     // no era decir "Otra", era que el comentario del seed afirmaba haberlo portado verbatim.
     const div = readFileSync("docs/DIVERGENCIAS.md", "utf8");
-    expect(div, "DIV-11 tiene que existir mientras la divergencia exista").toContain("DIV-11");
+    expect(div, "DIV-14 tiene que existir mientras la divergencia exista").toContain("DIV-14");
     expect(div).toContain('la P43 (alergias) dice "Otra"');
-    expect(seed(), "el seed tiene que remitir a la divergencia").toContain("DIVERGENCIAS.md (DIV-11)");
+    expect(seed(), "el seed tiene que remitir a la divergencia").toContain("DIVERGENCIAS.md (DIV-14)");
   });
 
   it("y la P29 conserva sus extremos, que es la otra divergencia declarada", () => {
     // No se retira: una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor
-    // alimenta el motor. Lo que faltaba era declararla (DIV-12).
+    // alimenta el motor. Lo que faltaba era declararla (DIV-15).
     expect(sql()).toContain("(1 = sin estrés, 10 = máximo)");
-    expect(readFileSync("docs/DIVERGENCIAS.md", "utf8")).toContain("DIV-12");
+    expect(readFileSync("docs/DIVERGENCIAS.md", "utf8")).toContain("DIV-15");
   });
 });
 
