@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { sinComentarios } from "./helpers/sin-comentarios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // CANDADO DEL ATAJO "APLICAR TODAS" (2026-08-31).
@@ -126,7 +127,7 @@ describe("el aviso llega: ni fallo silencioso ni salto al inicio", () => {
   const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
   // Los comentarios NOMBRAN las dos cosas prohibidas para explicar por que lo estan; un candado que caza
   // su propia documentacion es ruido, y el ruido es como mueren los candados.
-  const sinComentarios = (s: string) => s.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  // (El helper compartido vive en `helpers/sin-comentarios`; esta copia inline se retiró el 2026-09-05.)
 
   it("ninguna acción del tratamiento revalida: el revalidate era el que arrastraba al inicio", () => {
     expect(

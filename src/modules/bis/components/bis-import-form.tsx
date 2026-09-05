@@ -71,8 +71,12 @@ export function BisImportForm({
       <CardContent className="flex flex-col gap-4">
         {done ? (
           <div className="flex flex-col gap-1">
-            <Badge variant="outline" className="w-fit bg-clinical-optimal-bg text-clinical-optimal">
-              Medicion BIS importada
+            {/* NEUTRO, NO VERDE CLINICO (2026-09-05). Decia "importada" en `clinical-optimal`, y ese verde
+                significa un veredicto OPTIMO SOBRE EL PACIENTE, no que un archivo se cargo. Es la misma
+                confusion de capas que venimos cerrando en otras pantallas; aqui llevaba desde que se
+                escribio y el candado de capa clinica no lo veia porque no barre `modules/bis`. */}
+            <Badge variant="outline" className="w-fit">
+              Medición BIS importada
             </Badge>
             {state.valueCount !== null ? (
               <span className="text-xs text-muted-foreground">
@@ -102,8 +106,9 @@ export function BisImportForm({
                   que en un formulario cualquiera: importar el archivo del paciente equivocado no se corrige,
                   obliga a cerrar la evaluacion y rehacerla. */}
               {archivo ? (
-                <p className="text-sm text-clinical-optimal">
-                  Archivo seleccionado: <span className="font-semibold">{archivo}</span>
+                <p className="text-sm text-muted-foreground">
+                  Archivo seleccionado:{" "}
+                  <span className="font-semibold text-foreground">{archivo}</span>
                 </p>
               ) : null}
             </div>
