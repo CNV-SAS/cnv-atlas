@@ -604,29 +604,34 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 
 ## Mensaje corto pendiente de enviar (2026-09-05)
 
-**Dos cosas, y ninguna es una ronda.** Santiago se las manda juntas.
+**Dos cosas, y ninguna es una pregunta.** Santiago se las manda juntas cuando cierre el cotejo.
 
-### 1 · Las doce medias porciones de Leguminosas (P-110)
+### 1 · Las doce medias porciones: elegimos la (a), y te decimos por que
 
-> Gildardo: quedamos esperando tu firma sobre las doce filas repetidas de Leguminosas, que nos
-> explicaste que no son duplicados sino el mismo alimento en dos tamaños de porción. Dijiste que
-> firmabas una de tres en la próxima ronda, y como no vamos a abrir otra, te la dejamos aquí para que
-> respondas en una línea:
+> Gildardo: sobre las doce filas repetidas de Leguminosas, que nos explicaste que no son duplicados sino
+> el mismo alimento en dos tamanos de porcion. Dijiste que firmarias una de las tres salidas en la
+> proxima ronda. **No te lo preguntamos: es presentacion y no ciencia, asi que lo decidimos y te lo
+> declaramos**, para no dejarte una pregunta abierta que frene el cotejo.
 >
-> **(a)** el render imprime también la medida ("1 cucharón colmado" / "½ cucharón"), y la repetición
-> deja de parecerlo;
-> **(b)** el render agrupa por nombre y muestra los dos tamaños en una sola línea;
-> **(c)** se retiran las doce medias porciones de la tabla.
+> **Elegimos la (a): el render imprime tambien la medida.** La lista del paciente pasa de
+> *"Frijol cargamanto blanco con platano verde (110 g)"* a *"(110 g, 1 cucharon colmado)"*, y la media
+> porcion sale como *"(60 g, 1/2 cucharon)"*. Los dos cortes tuyos siguen igual: ocho por subgrupo y
+> "entre otros".
 >
-> Te lo preguntamos ahora y no después porque vamos a cotejar el plan del paciente contra tu archivo
-> esta semana, y cualquiera de las tres cambia esa página. Si contestas antes, se coteja una sola vez.
-
-### 2 · El comentario que sigue encima del interruptor
-
-> Y una cosa que no te pide nada, solo para que no vuelva a pasar: **el comentario que está justo encima
-> de `LE8_MAPEO_CORREGIDO` sigue diciendo que la bandera "se queda en `false`"**, y debajo el valor es
-> `true`. Ya entendimos con tu respuesta que manda la decisión del 2 de septiembre y que la nota del 30
-> quedó superada; el interruptor ya está encendido en Atlas.
+> **La razon: es la unica de las tres que no pierde informacion.** Agrupar por nombre esconde que son dos
+> tamanos distintos, y retirar las doce medias porciones le quita al nutricionista media escala de
+> reparto. Ademas el dato ya estaba en tu tabla: las 350 filas traen la medida, y hasta hoy no se
+> mostraba en ninguna pantalla.
 >
-> Lo decimos porque **ese comentario nos frenó dos veces** y le va a pasar igual a la próxima persona
-> que abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.
+> **Si prefieres la (b) o la (c), se cambia**: es una linea. Queda declarado como divergencia nuestra
+> (DIV-13).
+
+### 2 · El comentario que sigue encima del interruptor (aviso, no pregunta)
+
+> Y una cosa que no te pide nada. **El comentario que esta justo encima de `LE8_MAPEO_CORREGIDO` sigue
+> diciendo que la bandera "se queda en `false`"**, y debajo el valor es `true`. Ya entendimos con tu
+> respuesta que manda la decision del 2 de septiembre y que la nota del 30 quedo superada; el interruptor
+> ya esta encendido en Atlas.
+>
+> Lo decimos porque **ese comentario nos freno dos veces** y le va a pasar igual a la proxima persona que
+> abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.

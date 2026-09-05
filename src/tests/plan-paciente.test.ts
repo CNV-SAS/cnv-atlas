@@ -107,6 +107,22 @@ describe("el séptimo bloque ya está: la lista de intercambio recortada por reg
     expect(DOC).toContain("entre otros");
     expect(DOC_PLAN).toContain("entre otros");
   });
+
+  it("cada alimento sale con su MEDIDA, no solo con los gramos (P-110)", () => {
+    // POR QUE ESTO ES UN CANDADO Y NO UNA PREFERENCIA. Su tabla tiene doce alimentos repetidos en
+    // Leguminosas que NO son duplicados: son el mismo alimento en dos tamaños de porción (1 cucharón
+    // colmado 110 g y medio cucharón 60 g). Sin la medida, las dos filas se leen como el mismo fríjol
+    // repetido, y el corte a ocho hace que las medias porciones ocupen puestos y le quiten variedad real
+    // al paciente. Si alguien vuelve a `(${"$"}{x.g} g)` a secas, el defecto vuelve sin dar error.
+    expect(READER).toContain("${x.g} g, ${x.med}");
+    // Y el control: que la tabla siga trayendo la medida en TODAS sus filas. Un `med` vacío imprimiría
+    // "(110 g, )", que es peor que no ponerla.
+    const TABLA = readFileSync("src/clinical-engine/intercambio-alimentos.ts", "utf8");
+    const filas = (TABLA.match(/\{sub:"/g) ?? []).length;
+    const conMedida = (TABLA.match(/med:"[^"]+"\}/g) ?? []).length;
+    expect(filas, "la tabla dejó de tener 350 filas").toBe(350);
+    expect(conMedida, "hay filas sin medida, y saldrían con el paréntesis a medias").toBe(filas);
+  });
 });
 
 describe("los DOS canales son el mismo documento, no dos documentos", () => {
