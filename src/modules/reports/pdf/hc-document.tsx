@@ -241,6 +241,16 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             {hc.plan.sodioMax != null ? (
               <Dato etiqueta="Sodio" valor={`< ${hc.plan.sodioMax.toLocaleString("es-CO")} mg/día`} />
             ) : null}
+            {/* CONSTANCIA DE LAS CIFRAS FUERA DE LA REFERENCIA (P-109). La MISMA lista que la pantalla,
+                que es la razón por la que se compone en `hc-composicion` y no en cada documento: una
+                historia impresa que no registrara la desviación diría algo distinto del archivo. */}
+            {hc.desviaciones.map((d) => (
+              <Dato
+                key={d.macro}
+                etiqueta={`Decisión del profesional · ${d.macro}`}
+                valor={`${d.cifra}: ${d.texto}.`}
+              />
+            ))}
           </Seccion>
         ) : null}
 

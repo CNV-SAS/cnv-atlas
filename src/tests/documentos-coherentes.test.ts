@@ -135,3 +135,54 @@ describe("ya no hay dos proteínas del mismo paciente: la prescribe el motor", (
     expect(PANEL).toContain("protKgVigente: prescripcion?.protKg ?? null");
   });
 });
+
+describe("la constancia de cifras fuera de la referencia (P-109) llega a los DOS documentos", () => {
+  const HC_PDF = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
+  const HC_READER = readFileSync("src/modules/reports/data/hc-documento-reader.ts", "utf8");
+
+  // SU INSTRUCCION, punto 3 del 3-sep: "lo que se escriba fuera del rango queda en la historia clinica
+  // con el rango, la condicion y la razon. No bloquea y no alarma: deja constancia de que fue una
+  // decision." Portamos el panel y NO esto, que es la otra mitad. Su propia advertencia: "si portaron la
+  // retirada sin portar el panel, lo que quedo en Atlas es media instruccion, y es la mitad peor".
+
+  it("la comparación se hace UNA vez, contra el efectivo que la historia imprime", () => {
+    // EL DEFECTO QUE ESTO CIERRA no es que la comparación esté mal: es que se haga DOS veces. Si cada
+    // documento llamara a `asesoriaFuera` por su cuenta, uno podría compararla contra la base del motor
+    // y el otro contra lo prescrito, y la historia registraría una desviación sobre un número distinto
+    // del que muestra. Su propio código lo corrigió antes por lo mismo ("antes leía m.protKg/m.fatPct,
+    // que son siempre 0,8 y 30: si el profesional los cambiaba, la historia seguía diciendo la base").
+    expect(COMP).toContain("asesoriaFuera(efectivo.protGKg, e.asesoria.prot)");
+    expect(COMP).toContain("asesoriaFuera(efectivo.fatPct, e.asesoria.grasa)");
+    // Y el control: que NINGÚN documento la calcule por su lado.
+    expect(HC, "la pantalla compara por su cuenta").not.toMatch(/asesoriaFuera\s*\(/);
+    expect(HC_PDF, "el PDF compara por su cuenta").not.toMatch(/asesoriaFuera\s*\(/);
+  });
+
+  it("los dos documentos RECIBEN la asesoría, que es donde estaría la omisión", () => {
+    // Candado sobre el SITIO DE LLAMADA: probar que el composer sabe comparar no cubre que alguien no le
+    // pase la asesoría. Ahí el bloque simplemente no saldría, sin error y sin rojo.
+    expect(PAGE, "la pantalla no le pasa la asesoría al composer").toContain("asesoria: asesoriaMacros");
+    expect(HC_READER, "el PDF no pide la asesoría").toContain("await getAsesoriaMacros(");
+    expect(HC_READER, "el PDF no se la pasa al composer").toMatch(/\n\s*asesoria,/);
+  });
+
+  it("y los dos la PINTAN, no solo la reciben", () => {
+    expect(PAGE, "la pantalla no le pasa las desviaciones al bloque").toContain(
+      "desviaciones={hcCompuesta.desviaciones}",
+    );
+    expect(HC, "el bloque de pantalla no las pinta").toContain("Decisión del profesional");
+    expect(HC_PDF, "el PDF no las pinta").toContain("hc.desviaciones.map(");
+  });
+
+  it("y NO alarman: van en el eje operativo, no en la capa clínica", () => {
+    // Una cifra fuera de lo sugerido no es un veredicto sobre el paciente: es una decisión registrada del
+    // profesional. Pintarla con `clinical-critical` diría que la prescripción está mal, y no lo está.
+    // Mismo criterio que el panel de asesoría y que el aviso de ciencia anterior.
+    const bloque = HC.slice(HC.indexOf("Decisión del profesional") - 1200);
+    const sinComentarios = bloque.replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    expect(sinComentarios).toContain("border-attention");
+    expect(sinComentarios, "usa la capa clínica para algo que no es del paciente").not.toMatch(
+      /clinical-(critical|warning|danger)/,
+    );
+  });
+});

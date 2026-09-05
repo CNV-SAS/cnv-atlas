@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 process.loadEnvFile(".env.local");
@@ -28,6 +28,16 @@ process.loadEnvFile(".env.local");
 //      la reemision en pantalla. Ese delta MEZCLA el LE8 con los bumps anteriores (hay diagnosticos
 //      sellados con 1.0.0 y 1.1.0), asi que no sirve para contrastar su cifra, pero si para saber a
 //      cuantos pacientes hay que reemitir.
+
+// SE CIERRA EL POOL AL TERMINAR, y no es higiene de estilo: `postgres-js` abre hasta diez conexiones y
+// las deja vivas mientras el proceso exista. Esta medicion se corre VARIAS veces seguidas (local, nube,
+// otra vez con mas desglose), y cada corrida dejaba su pool: a la quinta se agotaron los slots de
+// Postgres y el sintoma NO fue este archivo, fueron 29 fallos en auth-flows y rls con "Database error
+// finding user". Un test que se corre en tanda tiene que devolver lo que toma.
+afterAll(async () => {
+  const { db } = await import("@/db");
+  await (db.$client as { end: () => Promise<void> }).end();
+});
 
 describe("medicion del encendido del LE8", () => {
   it("mide el efecto, aislado y contra lo sellado", async () => {

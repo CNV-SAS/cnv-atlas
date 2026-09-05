@@ -621,6 +621,10 @@ export default async function ResultadosEvaluacionPage({
       pesoMeta: protocol?.pesoMetaFijado ?? null,
     },
     sexoM,
+    // LA MISMA asesoria que alimenta el panel del nutricionista, no una segunda consulta: la historia
+    // registra la desviacion de la cifra PRESCRITA y el panel avisa sobre la que se esta escribiendo, pero
+    // los rangos y sus condiciones tienen que salir del mismo sitio (P-109).
+    asesoria: asesoriaMacros,
     sodioMax: prescripcionNutricional?.sodioMax ?? null,
     protKg: prescripcionNutricional?.protKg ?? null,
     protG: prescripcionNutricional?.protG ?? null,
@@ -968,7 +972,7 @@ export default async function ResultadosEvaluacionPage({
                 </section>
               ) : null}
               <HcObjetivoTratamiento texto={protocol?.objetivoTexto ?? null} />
-              <HcPlanNutricional plan={hcPlan} />
+              <HcPlanNutricional plan={hcPlan} desviaciones={hcCompuesta.desviaciones} />
               <HcRecomendaciones bloques={hcRecs} />
               <HcRemisiones
                 remisiones={hcRemisiones.map((r) => ({

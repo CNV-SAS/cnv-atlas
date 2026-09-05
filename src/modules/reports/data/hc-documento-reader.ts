@@ -11,7 +11,11 @@ import { composicionClasificada } from "@/modules/diagnoses/data/composition-cla
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
-import { getPrescripcionNutricional, getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
+import {
+  getAsesoriaMacros,
+  getPrescripcionNutricional,
+  getProtKgPrescrito,
+} from "@/modules/treatment/data/dieta-resumen-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
 
@@ -78,6 +82,22 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       ).catch(() => null)
     : null;
 
+  // LA ASESORIA POR DIAGNOSTICO, para la constancia de cifras fuera de la referencia (P-109). Se pide con
+  // las dos cifras en null: la comparacion la hace el composer contra el `efectivo` que el mismo calcula,
+  // que es la unica forma de que la historia no registre una desviacion sobre un numero distinto del que
+  // imprime. `.catch(() => null)` porque es una nota de constancia y no puede tumbar la emision de la
+  // historia; null no afirma que no hubiera desviaciones, hace que el bloque no salga.
+  const asesoria = engine
+    ? await getAsesoriaMacros(
+        evaluationId,
+        engine.sexo,
+        engine.indicators as unknown as Record<string, unknown>,
+        header.edad ?? null,
+        null,
+        null,
+      ).catch(() => null)
+    : null;
+
   const compuesta = componerHistoriaClinica({
     protKgVigente,
     snapshot: engine
@@ -97,6 +117,10 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       pesoMeta: protocol?.pesoMetaFijado ?? null,
     },
     sexoM,
+    // La asesoria por diagnostico, para la constancia de cifras fuera de la referencia (P-109). Va por el
+    // MISMO lector que la pantalla; si el PDF la calculara aparte, los dos documentos podrian registrar
+    // desviaciones distintas del mismo acto clinico.
+    asesoria,
     sodioMax: prescripcion?.sodioMax ?? null,
     protKg: prescripcion?.protKg ?? null,
     protG: prescripcion?.protG ?? null,
@@ -189,6 +213,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     })),
     objetivoTratamiento: protocol?.objetivoTexto ?? null,
     plan: compuesta.plan,
+    desviaciones: compuesta.desviaciones,
     recomendaciones: compuesta.recomendaciones,
     remisiones: remisiones.map((r) => ({
       profesion: r.referredToOther ?? r.referredTo,

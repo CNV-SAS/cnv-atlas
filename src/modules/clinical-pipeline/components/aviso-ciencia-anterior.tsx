@@ -30,6 +30,22 @@ export function AvisoCienciaAnterior({
 }) {
   if (vigencia.alDia) return null;
 
+  // LA PROCEDENCIA, en UNA sola pieza que usan los dos registros. Antes vivia solo en la rama gris, asi
+  // que cuando saltaba el ambar el profesional perdia con que version se emitio: justo en el caso donde
+  // SI cambio algo, que es lo contrario de lo que este aviso existe para hacer (Santiago, 2026-09-05, al
+  // cerrar el smoke del LE8). Se extrae en vez de copiarse porque dos listas de lo mismo divergen.
+  const procedencia = (tenue: boolean) => (
+    <ul className="mt-0.5 flex flex-col gap-0.5">
+      {vigencia.desfasadas.map((d) => (
+        <li key={d.clave} className={tenue ? "text-xs text-muted-foreground" : "text-xs text-foreground"}>
+          <span className="font-medium">{nombreDimension(d.clave)}:</span> se emitió con{" "}
+          <code className="rounded bg-muted px-1">{d.selladoCon}</code>, hoy rige{" "}
+          <code className="rounded bg-muted px-1">{d.vigenteHoy}</code>
+        </li>
+      ))}
+    </ul>
+  );
+
   // REEMISION OBLIGATORIA (§12b): "cuando el cambio es de calibracion poblacional y el paciente CAMBIA DE
   // BANDA... El criterio es el RESULTADO, no el tipo de cambio".
   //
@@ -57,6 +73,9 @@ export function AvisoCienciaAnterior({
               </li>
             ))}
           </ul>
+          {/* Y CON QUE SE EMITIO, que es lo que faltaba: sin esto el profesional ve que la banda cambio
+              y no puede decir respecto a que version. */}
+          {procedencia(false)}
         </div>
       </div>
     );
@@ -89,15 +108,7 @@ export function AvisoCienciaAnterior({
             versión de hoy: queda registrado en la historia y no hace falta reemitir.
           </p>
         ) : null}
-        <ul className="mt-0.5 flex flex-col gap-0.5">
-          {vigencia.desfasadas.map((d) => (
-            <li key={d.clave} className="text-xs text-muted-foreground">
-              <span className="font-medium">{nombreDimension(d.clave)}:</span> se emitió con{" "}
-              <code className="rounded bg-muted px-1">{d.selladoCon}</code>, hoy rige{" "}
-              <code className="rounded bg-muted px-1">{d.vigenteHoy}</code>
-            </li>
-          ))}
-        </ul>
+        {procedencia(true)}
       </div>
     </div>
   );

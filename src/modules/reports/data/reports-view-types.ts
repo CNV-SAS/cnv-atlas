@@ -127,6 +127,8 @@ export type HistoriaClinicaDoc = {
   antecedentes: { grupo: string; items: string[] }[];
   objetivoTratamiento: string | null;
   plan: HcPlanNutricionalDoc | null;
+  /** Cifras prescritas fuera de lo que sugiere el diagnostico (P-109). Vacio = no hubo o no se comparo. */
+  desviaciones: { macro: string; cifra: string; texto: string }[];
   recomendaciones: { titulo: string; items: string[]; pendiente?: boolean }[];
   remisiones: HcRemisionDoc[];
   observaciones: HcObservacionDoc[];

@@ -348,7 +348,18 @@ export type HcPlanNutricional = {
   actividadFisica: string | null;
 };
 
-export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) {
+export function HcPlanNutricional({
+  plan,
+  desviaciones = [],
+}: {
+  plan: HcPlanNutricional | null;
+  /**
+   * Cifras prescritas fuera de lo que sugiere el diagnostico (P-109). Vacio = no hubo, o no se pudo
+   * comparar. Por defecto vacio para que un llamador que no las pase no rompa, pero el candado del
+   * SITIO DE LLAMADA verifica que los dos documentos las pasen: el defecto aqui seria la omision.
+   */
+  desviaciones?: { macro: string; cifra: string; texto: string }[];
+}) {
   if (!plan) {
     return (
       <Tarjeta>
@@ -398,6 +409,31 @@ export function HcPlanNutricional({ plan }: { plan: HcPlanNutricional | null }) 
         />
         <Dato etiqueta="Actividad física" valor={plan.actividadFisica ?? SIN_DATO} />
       </div>
+      {/* CONSTANCIA DE LAS CIFRAS FUERA DE LA REFERENCIA (P-109, porte de su bloque de la HC).
+          Su punto 3 del 3-sep: "lo que se escriba fuera del rango queda en la historia clínica con el
+          rango, la condición y la razón. No bloquea y no alarma: deja constancia de que fue una decisión."
+
+          POR ESO VA EN `attention` Y NO EN LA CAPA CLINICA: el eje aquí es OPERATIVO, no un veredicto
+          sobre el paciente. Pintarlo de rojo clínico diría que la prescripción está mal, y no lo está:
+          la cifra la decide el profesional y esto solo registra que la decidió apartándose de lo
+          sugerido. Es el mismo criterio del panel de asesoría y del aviso de ciencia anterior. */}
+      {desviaciones.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-attention bg-attention-bg p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-attention">
+            Decisión del profesional: cifras fuera de la referencia
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1">
+            {desviaciones.map((d) => (
+              <li key={d.macro} className="text-xs text-foreground">
+                <span className="font-medium">
+                  {d.macro} {d.cifra}:
+                </span>{" "}
+                {d.texto}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Tarjeta>
   );
 }

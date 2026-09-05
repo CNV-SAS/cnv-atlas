@@ -3,6 +3,9 @@ import { indicatorSeverities } from "@/clinical-engine/severity";
 
 import { indicesAniAlterados, type IndiceAniResuelto } from "./hc-indices-ani";
 import { recomendacionesDe, type RecomendacionBloque } from "./hc-recomendaciones";
+import { asesoriaFuera } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
+import type { AsesoriaMacro } from "@/modules/treatment/data/treatment-view-types";
+
 import type { HcPlanNutricional } from "../components/historia-clinica";
 
 // LA COMPOSICION DE LA HISTORIA CLINICA, EN UN SOLO SITIO.
@@ -63,6 +66,30 @@ export type HcEntradas = {
   deficitEstrategia: number;
   /** Peso del paciente, SOLO para traducir la hidratacion a litros y vasos. null = se deja en mL/kg. */
   pesoKg: number | null;
+  /**
+   * La asesoria por diagnostico de los dos macros, para dejar CONSTANCIA en la historia de las cifras que
+   * el profesional prescribio fuera de lo sugerido (P-109). Su punto 3 del 3-sep, textual: "lo que se
+   * escriba fuera del rango queda en la historia clinica con el rango, la condicion y la razon".
+   *
+   * SE PASA LA ASESORIA Y NO EL AVISO YA CALCULADO, a proposito: la comparacion se hace AQUI, contra el
+   * mismo efectivo que este composer imprime. Si cada llamador comparara por su cuenta, la historia
+   * podria registrar una desviacion sobre una cifra distinta de la que muestra, que es el defecto de las
+   * dos fuentes del mismo dato. El campo `fuera` que traiga no se lee.
+   *
+   * null = no se pudo calcular (sin encuesta o sin composicion). Entonces el bloque no sale, que NO es lo
+   * mismo que decir "no hubo desviaciones": una ausencia no puede leerse como una afirmacion.
+   */
+  asesoria?: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
+};
+
+/** Una cifra prescrita fuera de lo que sugiere el diagnostico. Lo que la historia deja por escrito. */
+export type HcDesviacionMacro = {
+  /** "Proteína" o "Grasa". */
+  macro: string;
+  /** La cifra tal como se prescribio, con su unidad. */
+  cifra: string;
+  /** El texto de su `asesoriaFuera`: lleva el rango y las condiciones que lo pedian. */
+  texto: string;
 };
 
 export type HcCompuesta = {
@@ -72,6 +99,8 @@ export type HcCompuesta = {
   /** Diagnosticos declarados ya decodificados (la encuesta guarda multi-seleccion como JSON). */
   diagnosticos: string[];
   recomendaciones: RecomendacionBloque[];
+  /** Cifras prescritas fuera de lo sugerido. Vacio = no hubo (o no se pudo comparar; ver `asesoria`). */
+  desviaciones: HcDesviacionMacro[];
 };
 
 /**
@@ -145,6 +174,34 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
       }
     : null;
 
+  // CONSTANCIA DE LAS CIFRAS FUERA DE LA REFERENCIA (P-109, porte de su bloque de la HC, L15622-15648).
+  //
+  // Se compara contra `efectivo`, que es lo que el profesional PRESCRIBIO, no contra la base del motor:
+  // su propio codigo lo corrigio antes por lo mismo ("antes leia m.protKg/m.fatPct, que son siempre 0,8 y
+  // 30: si el profesional los cambiaba, la historia seguia diciendo la base").
+  //
+  // NO BLOQUEA Y NO ALARMA. Solo deja escrito que se decidio asi, que es lo unico compatible con su §5
+  // del 2026-08-27: ninguna cifra de la prescripcion lleva techo, piso, validacion ni advertencia.
+  const desviaciones: HcDesviacionMacro[] = [];
+  if (efectivo && e.asesoria) {
+    const fueraProt = asesoriaFuera(efectivo.protGKg, e.asesoria.prot) as string | null;
+    const fueraGrasa = asesoriaFuera(efectivo.fatPct, e.asesoria.grasa) as string | null;
+    if (fueraProt) {
+      desviaciones.push({
+        macro: "Proteína",
+        cifra: `${efectivo.protGKg} ${e.asesoria.prot.unidad}`,
+        texto: fueraProt,
+      });
+    }
+    if (fueraGrasa) {
+      desviaciones.push({
+        macro: "Grasa",
+        cifra: `${efectivo.fatPct} ${e.asesoria.grasa.unidad}`,
+        texto: fueraGrasa,
+      });
+    }
+  }
+
   const diagnosticos = decodificarMulti(e.d5_39);
 
   const recomendaciones = recomendacionesDe({
@@ -162,5 +219,5 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
     pesoKg: e.pesoKg,
   });
 
-  return { severidades, indices, plan, diagnosticos, recomendaciones };
+  return { severidades, indices, plan, diagnosticos, recomendaciones, desviaciones };
 }
