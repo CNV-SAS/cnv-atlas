@@ -524,6 +524,27 @@ function CadenaCaloricaSection({
   // final no es el resultado de los de arriba deja de ser una cuenta y pasa a ser una lista que miente.
   const objetivoDelModelo = Math.max(1000, Math.round(cal.get - deficitCadena));
   const objetivoLoFijoElProfesional = adj.kcalObj != null;
+
+  // DE DONDE SALE EL OBJETIVO, mirando la CASCADA ENTERA y no un solo campo.
+  //
+  // EL DEFECTO QUE CIERRA (cotejo 2026-09-05, puntos 22.1 y 22.2, que son UNO): esto miraba solo
+  // `adj.kcalObj`, asi que con el peso meta fijado la pantalla mostraba 2408 y lo rotulaba "sugerido por
+  // el modelo", mientras el campo de abajo decia correctamente "modelo: 2377". Dos cifras del mismo
+  // concepto en la misma pantalla, y una mintiendo sobre su procedencia.
+  //
+  // LAS CIFRAS ESTABAN BIEN, y eso es lo que costo ver: 1729 x 1,375 = 2377 es la cadena sobre el peso
+  // CALCULADO, y 1751 x 1,375 = 2408 la MISMA cadena sobre el peso META que fijo el profesional. No eran
+  // dos motores ni dos formulas, como con la proteina: era un rotulo.
+  //
+  // El objetivo se mueve con CINCO cosas, no con una: el objetivo mismo, el deficit, el PAL, el GEB y el
+  // PESO META (que arrastra al GEB). Con cualquiera puesta, esto ya no es lo que sugirio el modelo.
+  const hayAjusteAguasArriba =
+    adj.pesoMeta != null || adj.geb != null || adj.pal != null || adj.deficit != null;
+  const procedenciaObjetivo = objetivoLoFijoElProfesional
+    ? "fijado por ti"
+    : hayAjusteAguasArriba
+      ? "recalculado con tus ajustes"
+      : "sugerido por el modelo";
   const pisoMordio = !objetivoLoFijoElProfesional && Math.round(cal.get - deficitCadena) < 1000;
 
   return (
@@ -654,7 +675,11 @@ function CadenaCaloricaSection({
             <span className="font-semibold text-foreground">
               {d0(cal.kcalObj)} kcal
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {adj.kcalObj != null ? "fijado por ti" : "sugerido por el modelo"}
+                {procedenciaObjetivo}
+                {/* Y CUANDO NO COINCIDE CON EL DEL MODELO, se dice cual era. Es lo que cierra la pregunta
+                    que abria la pantalla: el campo de abajo lleva `modelo: 2377` de placeholder, y sin
+                    esta linea no habia forma de saber por que aqui pone otra cifra. */}
+                {cal.kcalObj !== base.kcalObj ? ` · el modelo sugirió ${d0(base.kcalObj)}` : ""}
               </span>
             </span>
           </p>
@@ -776,10 +801,19 @@ function CadenaCaloricaSection({
             {/* LA CUENTA, en el orden en que se hace: del peso sale el GEB, por el PAL da el GET, y de
                 ahi el objetivo. El peso NO lleva operador porque es el punto de partida, no un termino. */}
             <PrevRow label="Peso efectivo" value={`${d1(pesoEfectivo)} kg`} />
+            {/* EL GEB DICE TAMBIEN EL DEL MODELO CUANDO NO COINCIDE (cotejo 22.2). El campo de arriba
+                lleva `modelo: 1729` de placeholder y aqui salia 1751 sin explicacion. Las dos son
+                correctas: la del campo es la del peso CALCULADO y esta la del peso META que fijo el
+                profesional, porque el GEB de Mifflin se calcula sobre el peso de la cadena. Sin decirlo,
+                son dos cifras del mismo concepto en la misma pantalla. */}
             <PrevRow
               label="Gasto energético basal (GEB)"
               value={`${d0(cal.geb)} kcal`}
-              detail={`(${cal.formula})`}
+              detail={
+                cal.geb !== base.geb
+                  ? `(${cal.formula} · el modelo: ${d0(base.geb)})`
+                  : `(${cal.formula})`
+              }
             />
             <PrevRow
               op="×"
@@ -820,7 +854,11 @@ function CadenaCaloricaSection({
             <PrevRow
               op="="
               resultado={!objetivoLoFijoElProfesional}
-              label={objetivoLoFijoElProfesional ? "Objetivo del modelo" : "Objetivo calórico"}
+              // "DE LA CADENA" Y NO "DEL MODELO": esta cifra sale de `cal.get`, que ya lleva el peso meta
+              // y el PAL que puso el profesional, asi que llamarla del modelo era el mismo rotulo falso
+              // del bloque de arriba (cotejo 22.1). Lo que dice es a donde llega la cuenta antes de que el
+              // profesional la reemplace.
+              label={objetivoLoFijoElProfesional ? "Objetivo de la cadena" : "Objetivo calórico"}
               tag={objetivoLoFijoElProfesional ? undefined : "lo fijas arriba"}
               value={`${d0(objetivoDelModelo)} kcal`}
               detail={

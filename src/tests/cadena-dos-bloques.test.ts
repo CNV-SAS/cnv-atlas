@@ -108,8 +108,16 @@ describe("la cadena calórica va en DOS bloques, no en uno", () => {
   it("la distinción entre CALCULADO y AJUSTADO está visible en la meta", () => {
     // El otro beneficio concedido. Sin esto el profesional no sabe si el número que ve lo puso él o el
     // modelo, que es justo lo que le hace falta para decidir si moverlo.
-    expect(META()).toContain("fijado por ti");
-    expect(META()).toContain("sugerido por el modelo");
+    //
+    // ALCANCE AJUSTADO (2026-09-05), no la aserción: al arreglar el rótulo del cotejo 22.1, las tres
+    // procedencias salieron del JSX a una constante, porque decidirlas exige mirar cinco campos y no uno.
+    // Lo que este caso garantiza es lo mismo: que la meta DIGA de dónde sale la cifra. Así que se verifica
+    // que la meta pinte esa procedencia y que las tres existan, en vez de buscar dos cadenas literales
+    // dentro del bloque.
+    expect(META(), "la meta ya no dice de dónde sale la cifra").toContain("{procedenciaObjetivo}");
+    for (const t of ["fijado por ti", "sugerido por el modelo", "recalculado con tus ajustes"]) {
+      expect(PANEL, `falta la procedencia "${t}"`).toContain(t);
+    }
   });
 });
 
@@ -250,5 +258,48 @@ describe("el desliz del doble nombre del factor de actividad", () => {
     expect(codigo).not.toContain("(FA)");
     expect(codigo).toContain(">PAL (factor)<");
     expect(codigo).toContain("Nivel de actividad física (PAL)");
+  });
+});
+
+describe("de dónde sale el objetivo: el rótulo mira la CASCADA, no un solo campo (cotejo 22.1/22.2)", () => {
+  // EL DEFECTO QUE CIERRA, del cotejo final de Santiago. La pantalla mostraba "2408 kcal · sugerido por
+  // el modelo" y dos bloques mas abajo el campo decia "modelo: 2377". LAS DOS CIFRAS ESTABAN BIEN:
+  // 1729 x 1,375 = 2377 es la cadena sobre el peso CALCULADO y 1751 x 1,375 = 2408 la MISMA cadena sobre
+  // el peso META que fijo el profesional. Lo que mentia era el rotulo, que decidia mirando solo
+  // `adj.kcalObj` cuando el objetivo se mueve con cinco cosas.
+  //
+  // Es la familia de "dos cifras del mismo concepto en la misma pantalla", con una vuelta: aqui las dos
+  // eran correctas. Por eso el arreglo no es unificarlas, es DECIR CUAL ES CUAL.
+
+  it("el rótulo del objetivo cuenta las cinco entradas que lo mueven", () => {
+    expect(PANEL, "el peso meta arrastra al GEB y con él al objetivo").toContain("adj.pesoMeta != null");
+    for (const campo of ["adj.geb != null", "adj.pal != null", "adj.deficit != null"]) {
+      expect(PANEL, `falta ${campo} en la procedencia del objetivo`).toContain(campo);
+    }
+    expect(PANEL).toContain("recalculado con tus ajustes");
+    // Y el control: que ya NO decida con el campo solo, que era el defecto exacto.
+    expect(
+      PANEL,
+      'el rótulo volvió a decidirse con adj.kcalObj a secas: con el peso meta fijado vuelve a decir "sugerido por el modelo" sobre una cifra que el modelo no sugirió',
+    ).not.toContain('adj.kcalObj != null ? "fijado por ti" : "sugerido por el modelo"');
+  });
+
+  it("y cuando la cifra no es la del modelo, la pantalla dice cuál era", () => {
+    // Sin esto, el profesional ve dos números y no tiene cómo saber que uno es el suyo. Es lo que cierra
+    // la pregunta en vez de solo dejar de mentir.
+    expect(PANEL).toContain("cal.kcalObj !== base.kcalObj");
+    expect(PANEL).toContain("el modelo sugirió");
+    expect(PANEL, "el GEB tiene el mismo par de cifras y necesita la misma aclaración").toContain(
+      "cal.geb !== base.geb",
+    );
+  });
+
+  it("y la vista previa no llama «del modelo» a una cifra que lleva los ajustes", () => {
+    // `objetivoDelModelo` sale de `cal.get`, que ya trae el peso meta y el PAL del profesional. El rótulo
+    // decía "Objetivo del modelo" y es el mismo rótulo falso, un piso más abajo.
+    expect(PANEL).toContain('"Objetivo de la cadena"');
+    expect(PANEL, "volvió el rótulo que llamaba del modelo a la cadena efectiva").not.toContain(
+      '"Objetivo del modelo"',
+    );
   });
 });
