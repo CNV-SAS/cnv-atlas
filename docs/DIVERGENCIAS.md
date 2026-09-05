@@ -74,3 +74,36 @@
 - En el v8, un grupo que redondea a 0 porciones se muestra "0" plano en la tabla de intercambio y se FILTRA de la grilla de tiempos (`if(tot>0)`), sin ninguna señal. Atlas marca (`avisoSinPorcion`) cuando un grupo **nuclear** (harinas, frutas, lácteos, carnes, leguminosas) cae a 0, que solo pasa con un objetivo calórico implausiblemente bajo.
 - Por qué: es la lección del reparto de macros (mejor avisar que mostrar un 0 mudo que se lee como dato). Solo los nucleares: un discrecional en 0 (mecato, azúcares, bebidas) es un default sano y frecuente (mecato queda en 0 aun a 2200 kcal), marcarlo sería ruido. El QUÉ (las porciones) es fiel a PASO 3 byte a byte; la marca es del CÓMO nuestro. La distinción nuclear/discrecional es nuestra.
 - Cómo: `clinical-engine/intercambio.ts` (`GRUPOS_NUCLEARES` + `avisoSinPorcion`, la porción NO cambia). CP1.1, 2026-08-22.
+
+**DIV-11 · La opción de texto libre de la P43 (alergias) dice "Otra"; su archivo dice "Otras".**
+- Su `ATLAS_v8.html` ofrece `Ninguna · Leche · Huevo · Maní · Trigo · Soya · Pescado · Mariscos · Otras`.
+  Atlas ofrece lo mismo con **`Otra`** en singular.
+- **Esto se declara el 2026-09-04, y lo que se corrige NO es la palabra sino una afirmación falsa.** El
+  comentario de la v4 en `supabase/seed.ts` decía que la opción se portó "VERBATIM de su archivo (el token
+  es suyo)", y no era cierto. Un comentario que afirma fidelidad donde no la hay es peor que la divergencia,
+  porque el siguiente que lo lea no va a verificar.
+- Por qué se queda `Otra` (decisión de Santiago, 2026-09-04), con tres argumentos:
+  1. **El sentido.** La pregunta es "¿alergias alimentarias diagnosticadas?" y sus opciones son alimentos
+     en singular (Leche, Huevo, Maní). `Otra` concuerda; `Otras` no.
+  2. **Coherencia del instrumento.** Las otras ocho preguntas de opción múltiple ya llevan `Otra` por la
+     modificación autorizada del 13 de agosto. Portar `Otras` solo en esta dejaría la encuesta diciendo dos
+     cosas al mismo paciente.
+  3. **Ya está en uso.** Medido contra la nube: cinco respuestas guardadas son `"Otra: ..."` con su texto
+     libre (Apio, Penicilina, grasas).
+- **No tiene efecto en el motor.** El detector de opción libre reconoce las cuatro flexiones
+  (`/^otr[oa]s?$/i`, arreglado el 2026-09-02), así que `Otra` y `Otras` se procesan igual. Es una
+  divergencia de TEXTO, no de comportamiento.
+- Si él prefiere `Otras`, se cambia en el bump siguiente: es una cadena.
+
+**DIV-12 · El enunciado de la P29 (estrés) dice sus extremos; el de su archivo no.**
+- Suyo: *"Nivel de estrés en el último mes"*. Nuestro: *"Nivel de estrés en el último mes (1 = sin estrés,
+  10 = máximo)"*.
+- Por qué NO se retira: es una escala de 1 a 10 y sin sus extremos **no se puede responder bien**. Un
+  paciente que no sabe si 10 es "mucho estrés" o "muy tranquilo" contesta otra cosa, y ese dato alimenta el
+  motor. Retirar la aclaración empeoraría la pregunta, no la acercaría a su archivo.
+- **La diferencia con las demás divergencias es que esta no cambia lo que se pregunta, sino cómo se
+  entiende la escala.** No toca opciones, ni `field_key`, ni clasificación: el valor que llega al motor es
+  el mismo 1-10.
+- **Apareció el 2026-09-04 comparando los dos instrumentos por script**, no leyendo. Llevaba sin declarar
+  desde que se escribió, que es lo que este archivo existe para evitar.
+- Se le menciona cuando haya ocasión; no bloquea nada.

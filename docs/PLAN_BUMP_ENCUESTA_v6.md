@@ -1,12 +1,12 @@
 # Plan del bump de la encuesta a v6
 
-**Para Santiago. 2026-09-04. Es un plan, no está construido.**
+**Para Santiago. 2026-09-04. Aprobado y ejecutado.**
 
-Cambia el instrumento que responde el paciente y hay respuestas existentes, así que va con plan y
-aprobación antes de tocar nada.
+Cambia el instrumento que responde el paciente y hay respuestas existentes, así que se planeó antes de
+tocar nada. Este documento queda como el registro de por qué se hizo así.
 
-**Todas las cifras de este documento están medidas contra la base LOCAL.** La nube puede tener otras y hay
-que volver a medirlas el día que se ejecute: son justamente las que deciden.
+**Las cifras están medidas contra la NUBE**, no contra local, y esa distinción cambió una decisión: ver la
+sección (b). La medición local decía cero donde la nube decía cuatro.
 
 ---
 
@@ -18,7 +18,7 @@ que volver a medirlas el día que se ejecute: son justamente las que deciden.
 | 2 | **P24**: entra **"0 minutos a la semana"** al principio | Suyo, ya en su archivo | No |
 | 3 | **P23**: quitar el `(≥30 min)` del enunciado | Suyo, escrito palabra por palabra | **Sí, una línea** |
 | 4 | **P44**: `Lactosa (leche y lácteos)`, `Gluten (trigo, pan, pasta)`, `Fructosa (frutas, miel)` | Suyo, escrito palabra por palabra | **Sí, una línea** |
-| 5 | **P43**: `Otra` vuelve a **`Otras`** | Corrección nuestra | No |
+| 5 | **P43**: `Otra` se queda, y se DECLARA como divergencia | Decisión de Santiago | No |
 
 **Los cinco en un solo bump**, que es el punto de esperar: cada bump cuesta lo mismo (deja las
 evaluaciones anteriores sin corrección), así que hacer tres cuesta el triple sin comprar nada.
@@ -34,14 +34,27 @@ apliquemos nosotros. Es distinto de inventar contenido, y por eso no va como pre
 **Si no contesta, el bump se hace igual con 1, 2 y 5**, y el 3 y el 4 quedan para después. Pero conviene
 preguntar antes, porque es la diferencia entre un bump y dos.
 
-### El 5, que es una corrección nuestra
+### El 5, que no es la palabra sino la afirmación
 
 Su archivo dice **`Otras`** en las alergias (P43). Nuestro seed dice `Otra`. Y el comentario de nuestro
-propio seed afirma que se portó *"VERBATIM de su archivo (el token es suyo)"*, cuando no lo es.
+propio seed afirma que se portó *"VERBATIM de su archivo (el token es suyo)"*, **cuando no lo es**.
 
-Funcionalmente no rompe nada: el detector reconoce las cuatro flexiones desde el arreglo del 2026-09-02.
-Lo que estaba mal era la afirmación de que era verbatim. **Cero respuestas usan ese valor** (las 612 son
-`["Ninguna"]`), así que cambiarlo no deja nada huérfano.
+**Lo que había que corregir no era la palabra, era la afirmación falsa.** Se puede llegar ahí por dos
+caminos: portar `Otras` y que el comentario diga la verdad, o dejar `Otra` y declararla como divergencia
+nuestra con su razón.
+
+**Va la segunda**, por decisión de Santiago, y con dos argumentos detrás:
+
+1. **El sentido.** La pregunta es "¿alergias alimentarias diagnosticadas?" y las opciones son alimentos en
+   singular (Leche, Huevo, Maní). `Otra` concuerda; `Otras` no.
+2. **Ya hay ocho declaradas del mismo tipo.** Las otras ocho preguntas de opción múltiple llevan `Otra`
+   por la modificación autorizada del 13 de agosto. Portar `Otras` solo en esta dejaría el instrumento
+   diciendo dos cosas.
+
+Y hay un tercer argumento que apareció al medir la nube: **cinco pacientes ya respondieron `"Otra: ..."`**
+con su texto libre (Apio, Penicilina, grasas). El token no es teórico, está en uso.
+
+Funcionalmente da igual: el detector reconoce las cuatro flexiones desde el arreglo del 2026-09-02.
 
 ---
 
@@ -76,30 +89,40 @@ del push hay que correr `pnpm db:check:cloud` y `pnpm db:migrate` contra la nube
 
 ---
 
-## b) Quién ya respondió "0": nadie
+## b) Quién ya respondió "0": en la nube, cuatro personas
 
-**Esta era la pregunta con más filo, y la respuesta la desactiva.**
+**Esta sección se reescribió el 2026-09-04 después de medir contra la nube, y el cambio es la mejor
+defensa del paso 3 del plan.**
 
-El riesgo era real: la respuesta se guarda como **texto**, no como id de opción. Si alguien respondió `"0"`
-y la opción pasa a llamarse `"No hago ejercicio"`, ese valor deja de coincidir con ninguna opción: la
-pantalla no seleccionaría nada, pero `isAnswered` lo cuenta como respondido. **Dos partes de la pantalla
-diciendo lo contrario.**
+El riesgo es real y estructural: la respuesta se guarda como **texto**, no como id de opción. Si alguien
+respondió `"0"` y la opción pasa a llamarse `"No hago ejercicio"`, ese valor deja de coincidir con
+ninguna opción: la pantalla no seleccionaría nada, pero `isAnswered` lo cuenta como respondido. **Dos
+partes de la pantalla diciendo lo contrario.**
 
-Medido:
+### Lo que decía esta sección, y por qué estaba mal
 
-| Pregunta | Valores que existen hoy | Con el valor en riesgo |
+Medí contra la base **local** y salió cero en las tres preguntas. Escribí que ninguna respuesta quedaría
+huérfana "ni siquiera haciendo el cambio en sitio", y que hoy no hay huérfanos **por casualidad**.
+
+**La nube dice otra cosa:**
+
+| Pregunta (versión 5) | Respuestas en la nube | Con el valor en riesgo |
 | --- | --- | --- |
-| **P23** (días de ejercicio) | `"2"` (637) · `"3"` (1) | **cero** |
-| **P24** (duración) | `30–45 min` (635) · `15–30 min` (2) · `Más de 60 min` (1) | **cero** |
-| **P43** (alergias) | `["Ninguna"]` (612) | **cero** |
+| **P23** días de ejercicio | 60 | **4 responden `"0"`** |
+| **P24** duración | 57 | cero |
+| **P43** alergias | 59 | **5 responden `"Otra: ..."`** (Apio, Penicilina, grasas...) |
 
-**Ninguna respuesta quedaría huérfana**, ni siquiera haciendo el cambio en sitio.
+O sea que **el cambio en sitio habría dejado a cuatro pacientes reales con la pantalla en blanco** en una
+pregunta que el sistema cuenta como respondida. Y el token `"Otra"` de la P43 no es teórico: hay cinco
+respuestas con texto libre detrás.
 
-**Pero eso no convierte el cambio en sitio en la opción correcta**, y conviene decir por qué: hoy no hay
-respuestas con `"0"` **por casualidad**, no por diseño. Mañana un paciente responde "no hago ejercicio" y
-el problema aparece. El bump lo hace imposible por construcción en vez de por suerte.
+### Y por eso el bump es la opción correcta, no solo la ortodoxa
 
----
+Con el bump esas respuestas **no se tocan**: siguen colgando de la v5, cuyas opciones no cambian, así que
+siguen coincidiendo con su instrumento. El problema no se resuelve, **se vuelve imposible**.
+
+La lección para el resto del plan: **una medición local no vale para decidir sobre datos de la nube.** El
+paso 3 no es un trámite.
 
 ## c) Las evaluaciones viejas quedan sin corrección, y sí importa
 
@@ -112,17 +135,20 @@ encuesta de la evaluación con la vigente; si difieren, devuelve:
 No es un error al pulsar: el botón sale deshabilitado con esa razón. La superficie está bien hecha; lo que
 hay que decidir es a cuántos afecta.
 
-**Medido hoy:**
+**Medido contra la NUBE, que es donde están los datos que importan:**
 
-| | Cantidad |
-| --- | --- |
-| Respuestas colgando de la v5 | **64** |
-| Evaluaciones en curso (`in_progress`) | 76 |
-| Diagnósticos confirmados | **12** |
-| Tratamientos aprobados | **0** |
+| | Nube | Local |
+| --- | --- | --- |
+| Evaluaciones | **107** | 85 |
+| Respuestas de encuesta | **102** | 70 |
+| Diagnósticos confirmados | **14** | 12 |
+| Tratamientos aprobados | **0** | 0 |
 
-Así que el bump deja **12 diagnósticos confirmados sin camino de corrección**. Son de pruebas: no hay ni
-un tratamiento aprobado y no hay pacientes reales.
+Así que el bump deja **14 diagnósticos confirmados sin camino de corrección**. Ninguno tiene tratamiento
+aprobado, que es la señal de que son de prueba y no de un paciente en atención.
+
+**Cero tratamientos aprobados era la condición de parada del plan**, y se cumple: si hubiera aparecido
+alguno, esto se detenía aquí y se reportaba.
 
 **Y aquí está el argumento, que es el mismo que el del LE8:** este costo es hoy el más bajo que va a ser
 nunca. Cada paciente real que entre después del hito 2 suma una evaluación que perdería la corrección.
@@ -138,7 +164,7 @@ opción por opción, por script. De 32 preguntas comparables salieron 12 diferen
 - **Dos son el porte que falta** (P23 y P24): entran.
 - **Ocho son el `"Otra"` que agregamos nosotros** en preguntas de opción múltiple. Es la modificación
   autorizada del 13 de agosto, documentada. **No entran: no son un hueco.**
-- **Una es P43** (`Otra` vs `Otras`): entra, es la corrección de arriba.
+- **Una es P43** (`Otra` vs `Otras`): entra como DECLARACIÓN, no como cambio de texto (ver arriba).
 - **Una es P29**, el nivel de estrés: nuestro enunciado agrega *"(1 = sin estrés, 10 = máximo)"* y el suyo
   no lo lleva. **Es una divergencia nuestra que NO está declarada** en `DIVERGENCIAS.md`.
 

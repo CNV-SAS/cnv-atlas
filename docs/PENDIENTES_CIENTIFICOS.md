@@ -11,8 +11,8 @@ tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene
 | --- | --- | --- | --- |
 | 1 | El interruptor del LE8: su archivo dice una cosa y él dijo la contraria dos veces | **Pregunta**, y es la seria | No, si dejamos lo de hoy |
 | 2 | Tres colores dicen lo contrario que su etiqueta | **Pregunta**, y es barata | No |
-| 3 | Dos cosas que prometió "para la próxima entrega" y no llegaron | Recordatorio | No |
-| 4 | Portar a Atlas las opciones de ejercicio que él ya arregló | **Trabajo nuestro** | No, pero se ve |
+| ~~3~~ | ~~Dos cosas que prometió y no llegaron~~ | **CERRADO** el 2026-09-04 | — |
+| ~~4~~ | ~~Portar las opciones de ejercicio~~ | **CERRADO** el 2026-09-04 | — |
 | 5 | Dos cosas de su archivo que salieron de un barrido, las dos chicas | **Preguntas**, sin prisa | No |
 
 ---
@@ -166,59 +166,18 @@ pantalla. No arregla el problema, reduce la lectura equivocada.
 
 ---
 
-## 3 · Dos cosas que prometió "para la próxima entrega" y no llegaron
+## 3 y 4 · CERRADOS con el bump de la encuesta a v6 (2026-09-04)
 
-Verificado contra el archivo del 4 de septiembre: **ninguna de las dos está.**
+Los dos eran del instrumento y se cerraron juntos, en un solo bump:
 
-**a) Quitar el "(≥30 min)" de la pregunta 23.** Él mismo detectó la contradicción el 3 de septiembre:
+- **Las dos opciones de ejercicio** que él ya tenía en su archivo desde el 3 de septiembre ("No hago
+  ejercicio" en la P23, "0 minutos a la semana" en la P24), que era trabajo nuestro atrasado.
+- **Las dos correcciones que prometió "para la próxima entrega"** y no llegaron: quitar el "(≥30 min)" de
+  la P23 y poner el alimento al lado de la sustancia en la P44 ("Lactosa (leche y lácteos)"). Los dos
+  textos **los escribió él**, palabra por palabra, así que aplicarlos no es decidir contenido.
 
-> **Y hay una contradicción mía que hay que resolver de paso:** la P23 dice *"(≥30 min)"* y la P24 ofrece
-> "Menos de 15" y "15–30 min". Si la P23 solo cuenta días con sesiones de treinta minutos o más, esas dos
-> opciones de la P24 no pueden existir. **Se quita el "(≥30 min)" de la P23** y la duración la establece
-> la P24, que es para lo que está. Va en la próxima entrega.
-
-El rótulo sigue igual en el archivo del 4.
-
-**b) Aterrizar el lenguaje de la pregunta 44.** Sobre alergias e intolerancias ya contestó lo de fondo, y
-la respuesta fue que **siguen separadas**: *"Alergia e intolerancia no son lo mismo. ¿Por qué habrían de
-preguntarse juntas?"*. Lo único que quedó pendiente fue el lenguaje:
-
-> Sobre el lenguaje, Valentina tiene razón en un punto: la P44 pregunta por sustancias —lactosa, gluten,
-> fructosa— y el paciente responde con alimentos. Eso se aterriza sin tocar la clasificación, poniendo el
-> alimento al lado: *"Lactosa (leche y lácteos)"*, *"Gluten (trigo, pan, pasta)"*, *"Fructosa (frutas,
-> miel)"*. Va en la próxima entrega.
-
-Las opciones del archivo del 4 siguen siendo "Ninguna · Lactosa · Gluten · Fructosa", sin el alimento al
-lado.
-
-**Efecto:** el (a) deja una pregunta que se contradice con la siguiente. El (b) deja a un paciente
-respondiendo con alimentos a una pregunta que le habla de sustancias.
-
-**Qué podemos hacer:** las dos son de una línea y las dos están escritas por él, palabra por palabra, en
-la cita de arriba. **No hace falta que él escriba nada nuevo: basta que confirme que las apliquemos.**
-Es distinto de inventar contenido.
-
----
-
-## 4 · Portar las opciones de ejercicio, que él ya arregló
-
-**Esto no es una pregunta: es trabajo nuestro que está atrasado.**
-
-Él arregló la observación de Valentina en su entrega del 3 de septiembre, y **Atlas todavía no lo tiene**:
-
-| | Su archivo (desde el 3-sep) | Atlas hoy |
-| --- | --- | --- |
-| **P23** ¿Cuántos días/semana? | **"No hago ejercicio"** · 1 · 2 … 7 | "0" · 1 · 2 … 7 |
-| **P24** ¿Cuánto dura cada sesión? | **"0 minutos a la semana"** · Menos de 15 … | Menos de 15 … |
-
-**Efecto:** quien no hace ejercicio ya contestó 0 días, y a renglón seguido la encuesta le obliga a decir
-cuántos minutos hace. **Tiene que responder algo falso para poder avanzar**, porque no deja seguir con
-campos vacíos. Eso es lo que vio Valentina, y en su archivo ya está resuelto.
-
-**Qué hay que hacer, y por qué no lo hice ya:** cambiar las opciones de una pregunta **obliga a subir la
-versión de la encuesta**, y eso tiene consecuencias que hay que planear (las evaluaciones viejas siguen
-apuntando a la versión anterior). Es un bloque con su plan y su prueba, no un cambio de una línea.
-Conviene juntarlo con las dos correcciones del punto 3, para hacer un solo bump en vez de tres.
+Detalle, medición y plan: `docs/PLAN_BUMP_ENCUESTA_v6.md`. Recorrido de prueba:
+`docs/SMOKE_ENCUESTA_v6_2026-09-04.md`.
 
 ---
 
