@@ -101,11 +101,11 @@ const SURVEY_TEMPLATE_ID = "55555555-5555-5555-5555-555555555551";
 // v3 (2026-08-12): pase de instrumento (porte de contenido de Gildardo, ATLAS_v8.html). Bump de UUID a
 // proposito (no in-place): las evaluaciones existentes quedan en la v2 (55...552), completas y no
 // corregibles (gate de version, CP3). Ver el changelog en la creacion de la survey_version abajo.
-const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555555";
+const SURVEY_VERSION_ID = "55555555-5555-5555-5555-555555555556";
 // Numero de version legible. Fuente unica: lo usa el upsert de survey_versions Y el resumen final del seed,
 // para que el log NUNCA mienta sobre lo que se sembro (antes decia "v3" hardcodeado; el bump a v4 no se
 // notaba en la salida). Al hacer un bump, cambiar SURVEY_VERSION_ID arriba y este numero juntos.
-const SURVEY_VERSION_NUMBER = 5;
+const SURVEY_VERSION_NUMBER = 6;
 // La v2 (55...552) se preserva intacta (los ids llevan la version): no se toca al sembrar la v3.
 // UUID deterministico para las filas de la encuesta: mismo (tipo, clave) -> mismo id,
 // asi el seed es idempotente sin transcribir a mano ~240 UUIDs. Formato v5-like valido
@@ -245,8 +245,16 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d2_21", type: "opcion_multiple", text: "¿Qué métodos ha usado para cambiar su peso?", options: ["Dieta propia", "Profesional de salud", "Ayunos", "Saltar comidas", "Laxantes", "Vómito", "Ejercicio excesivo", "Ninguno", "Otra"], engine: true },
   { key: "d2_22", type: "opcion", text: "¿Con qué frecuencia pierde el control al comer?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], engine: true },
   // D3 · Habitos
-  { key: "d3_23", type: "opcion", text: "¿Cuántos días/semana hace actividad física (≥30 min)?", options: ["0", "1", "2", "3", "4", "5", "6", "7"], engine: true },
-  { key: "d3_24", type: "opcion", text: "¿Cuánto dura cada sesión?", options: ["Menos de 15", "15–30 min", "30–45 min", "45–60 min", "Más de 60 min"], engine: true },
+  // P23 (v6): la opcion "0" pasa a "No hago ejercicio" y SALE el "(≥30 min)" del enunciado. Las dos son
+  // suyas: la primera esta en su archivo desde el 3-sep; la segunda la escribio el mismo dia ("Se quita
+  // el (≥30 min) de la P23 y la duracion la establece la P24, que es para lo que esta"), y la razon
+  // tambien es suya: si la P23 solo contara dias de 30 min o mas, las opciones "Menos de 15" y "15-30" de
+  // la P24 no podrian existir.
+  { key: "d3_23", type: "opcion", text: "¿Cuántos días/semana hace actividad física?", options: ["No hago ejercicio", "1", "2", "3", "4", "5", "6", "7"], engine: true },
+  // P24 (v6): entra "0 minutos a la semana" al principio, verbatim de su archivo. Sin ella, quien ya
+  // contesto "no hago ejercicio" en la P23 tenia que declarar unos minutos que no hace para poder
+  // avanzar (la encuesta no permite campos vacios). Lo vio Valentina.
+  { key: "d3_24", type: "opcion", text: "¿Cuánto dura cada sesión?", options: ["0 minutos a la semana", "Menos de 15", "15–30 min", "30–45 min", "45–60 min", "Más de 60 min"], engine: true },
   { key: "d3_25", type: "opcion_multiple", text: "¿Qué tipo de actividad realiza?", options: ["Caminata", "Trote", "Bicicleta", "Pesas / gimnasio", "Yoga / pilates", "Deporte en equipo", "Ninguna", "Otra"], treatmentEngine: true },
   { key: "d3_26", type: "opcion", text: "¿Cuántas horas duerme por noche?", options: ["Menos de 5h", "5–6 horas", "6–7 horas", "7–8 horas", "Más de 8h"], engine: true },
   { key: "d3_27", type: "opcion", text: "¿Cómo califica la calidad de su sueño?", options: ["Muy mala", "Mala", "Regular", "Buena", "Muy buena"], treatmentEngine: true },
@@ -276,7 +284,11 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   { key: "d5_42", type: "opcion_multiple", text: "¿Exposición habitual a contaminantes?", options: ["Pesticidas / agroquímicos", "Metales pesados", "Contaminación del aire", "Ninguna", "Otra"], treatmentEngine: true },
   // D6 · Alergias y salud digestiva
   { key: "d6_43", type: "opcion_multiple", text: "¿Alergias alimentarias diagnosticadas?", options: ["Ninguna", "Leche", "Huevo", "Maní", "Trigo", "Soya", "Pescado", "Mariscos", "Otra"], treatmentEngine: true },
-  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa", "Gluten", "Fructosa", "Otra"], treatmentEngine: true },
+  // P44 (v6): cada sustancia lleva su alimento al lado, verbatim de su respuesta del 3-sep. Su motivo:
+  // "la P44 pregunta por sustancias (lactosa, gluten, fructosa) y el paciente responde con alimentos".
+  // NO se fusiona con la P43: el mismo dia dijo que alergia e intolerancia se quedan separadas ("una es
+  // inmune y la otra digestiva, y el manejo es distinto"). "Otra" es nuestra (modificacion autorizada).
+  { key: "d6_44", type: "opcion_multiple", text: "¿Intolerancias alimentarias?", options: ["Ninguna", "Lactosa (leche y lácteos)", "Gluten (trigo, pan, pasta)", "Fructosa (frutas, miel)", "Otra"], treatmentEngine: true },
   // d6_qx (cirugias) va AQUI, tras Intolerancias (orden del v8 al dia); antes quedaba tras los sintomas
   // digestivos (Nauseas), donde no tenia sentido (Santiago, cotejo punto l).
   { key: "d6_qx", type: "opcion_multiple", text: "¿Le han realizado alguna cirugía que afecte la digestión o el metabolismo?", sub: "Ej.: vesícula, bypass/manga gástrica, intestino", options: ["Ninguna", "Colecistectomía (vesícula)", "Cirugía bariátrica (bypass / manga)", "Resección intestinal", "Gastrectomía", "Apendicectomía", "Otra"], treatmentEngine: true },
@@ -537,6 +549,37 @@ async function main() {
     // /^otr(a|os)$/i, un no-match LATENTE del port verbatim de su token). Ahora las nueve disparan el texto
     // libre. En d5_38 y d6_44 ese texto ALIMENTA el motor (§4: mismo criterio que d5_39), ya cableado y con
     // candado (build-engine-input.test). En las otras 7 es solo REGISTRO. La v4 (id ...554) se PRESERVA intacta.
+    // version_number 6 (2026-09-04): CUATRO cambios de contenido, los CUATRO suyos, mas una divergencia
+    // nuestra que se DECLARA (no cambia nada, se escribe).
+    //
+    //   a) P23 (d3_23): la opcion "0" pasa a "No hago ejercicio". Esta en su archivo desde el 3-sep.
+    //   b) P23: SALE el "(>=30 min)" del enunciado. Lo escribio el 3-sep ("Se quita el (>=30 min) de la
+    //      P23 y la duracion la establece la P24") y prometio que iba "en la proxima entrega"; la del 4
+    //      llego sin ello y dijo que no habria mas cambios. Es SU texto, no una propuesta nuestra.
+    //   c) P24 (d3_24): entra "0 minutos a la semana". En su archivo desde el 3-sep.
+    //   d) P44 (d6_44): cada sustancia con su alimento al lado ("Lactosa (leche y lacteos)"). Mismo caso
+    //      que (b): texto suyo del 3-sep, prometido y no entregado. NO se fusiona con la P43, que el
+    //      mismo dia dijo que se quedan separadas.
+    //
+    // POR QUE UN BUMP Y NO UN CAMBIO EN SITIO, y esto se MIDIO contra la nube antes de decidirlo: la
+    // respuesta se guarda como TEXTO, no como id de opcion. En la nube hay CUATRO respuestas con "0" en
+    // la P23. Renombrar la opcion en sitio las habria dejado sin coincidencia: la pantalla no
+    // seleccionaria nada mientras el conteo de completitud las cuenta respondidas, que es la peor forma
+    // del defecto (dos partes de la pantalla diciendo lo contrario). Con el bump esas respuestas siguen
+    // colgando de la v5, cuyas opciones no cambian. La medicion LOCAL decia cero: no sirve para decidir
+    // sobre datos de la nube.
+    //
+    // COSTO ACEPTADO: las 102 respuestas de la nube y sus 14 diagnosticos confirmados quedan NO
+    // corregibles (gate de version). Se acepta porque hay CERO tratamientos aprobados, que era la
+    // condicion de parada: son evaluaciones de prueba. Y porque el costo solo crece con cada paciente.
+    //
+    // DIVERGENCIA NUESTRA DECLARADA (no es un cambio: es que estaba sin declarar). La opcion de texto
+    // libre de la P43 (alergias) dice "Otra" y SU archivo dice "Otras". El comentario de la v4 aqui
+    // abajo afirma que se porto "VERBATIM"; no es cierto, y esa AFIRMACION FALSA era el defecto, no la
+    // palabra. Se queda "Otra" por decision de Santiago: las opciones de esa pregunta son alimentos en
+    // singular (Leche, Huevo, Mani), las otras ocho preguntas ya llevan "Otra" por la modificacion
+    // autorizada del 13-ago, y en la nube hay cinco respuestas con "Otra: ..." y su texto libre.
+    // Ver DIVERGENCIAS.md (DIV-11).
     // ---- historico ----
     // version_number 4 (2026-08-14): bump PARCIAL, solo lo que Gildardo YA implemento en su archivo al dia
     // (gildardo-2026-08-13/ATLAS_v8.html), NO propuesta nuestra:
@@ -824,8 +867,52 @@ async function main() {
   );
   } // fin DATOS DEMO (SEED_DEMO)
 
-  // 11. Prompt de IA versionado: menu.generate v1 (active) = texto canonico en codigo. Se
-  // usa ignoreDuplicates para NO sobrescribir ediciones del admin (v2+) al recorrer el seed.
+  // 11. Prompts de IA versionados. El texto canonico vive en codigo; la base guarda las versiones.
+  //
+  // POR QUE HAY UN PASO DE DESACTIVAR, y no basta el upsert (2026-09-04). Hay un indice UNICO PARCIAL,
+  // `ai_prompts_one_active_idx`, que permite UNA SOLA fila active por prompt_key. Cuando el seed subio
+  // `criterio.generate` a v2, toda base que ya tuviera la v1 activa empezo a fallar al sembrar:
+  //
+  //   Seed fallido: ai_prompts: duplicate key value violates unique constraint "ai_prompts_one_active_idx"
+  //
+  // Y `ignoreDuplicates` NO lo evita, que es la parte que engaña: mira el conflicto de
+  // `(prompt_key, version)`, y el que revienta es OTRO indice. El upsert no colisiona con la v1 (es otra
+  // version), colisiona con su ESTADO.
+  //
+  // Lo encontro el bump de encuesta a v6: no tiene nada que ver con los prompts, pero el seed es el paso
+  // de verificacion del bump y no corria. Estaba roto en toda base sembrada antes del 2026-09-01.
+  //
+  // QUE HACE ESTE PASO, y por que respeta la intencion original ("no sobrescribir ediciones del admin"):
+  // desactiva la fila activa de esa clave SOLO si su version es MENOR que la que trae el seed. Si el
+  // admin tiene una v3 activa, el seed no la toca y su v2 entra como historica.
+  const PROMPTS_SEED = [
+    { prompt_key: "menu.adapt", version: 1 },
+    { prompt_key: "criterio.generate", version: 2 },
+    { prompt_key: "menu.generate", version: 1 },
+  ];
+  for (const { prompt_key, version } of PROMPTS_SEED) {
+    const activa = await supabase
+      .from("ai_prompts")
+      .select("version")
+      .eq("prompt_key", prompt_key)
+      .eq("status", "active")
+      .maybeSingle();
+    check(`ai_prompts activa ${prompt_key}`, activa.error);
+    if (activa.data && activa.data.version < version) {
+      check(
+        `ai_prompts desactivar ${prompt_key} v${activa.data.version}`,
+        (
+          await supabase
+            .from("ai_prompts")
+            .update({ status: "inactive" })
+            .eq("prompt_key", prompt_key)
+            .eq("status", "active")
+        ).error,
+      );
+    }
+  }
+
+  // Se usa ignoreDuplicates para NO sobrescribir ediciones del admin (v2+) al recorrer el seed.
   check(
     "ai_prompts",
     (

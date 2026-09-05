@@ -287,10 +287,13 @@ con su efecto están en `PENDIENTES_CIENTIFICOS.md`, punto 1.
 ("el color es contenido de esta Dirección y va firmado aparte"). Es la pregunta más barata que queda:
 son tres códigos de color. `PENDIENTES_CIENTIFICOS.md`, punto 2.
 
-**El resto está en `docs/PENDIENTES_CIENTIFICOS.md`, en lenguaje no técnico**, y son CUATRO cosas de las
-que solo dos son preguntas: el LE8, los tres colores, dos correcciones que él prometió "para la próxima
-entrega" y no llegaron (el "(≥30 min)" de la P23 y el lenguaje de la P44), y el porte pendiente de las
-opciones de ejercicio, que es trabajo NUESTRO y necesita bump de la encuesta.
+**El resto está en `docs/PENDIENTES_CIENTIFICOS.md`, en lenguaje no técnico.** Nació con nueve puntos y
+hoy son **DOS preguntas**: el LE8 y los tres colores. Los otros dos que quedaban se cerraron el mismo día
+con el **bump de la encuesta a v6** (`drizzle/0099_encuesta_v6.sql`), que porta las dos opciones de
+ejercicio que él ya tenía en su archivo y aplica las dos correcciones que escribió el 3 de septiembre y
+prometió "para la próxima entrega": el "(≥30 min)" de la P23 y el lenguaje de la P44. Son textos SUYOS,
+no propuestas nuestras. El estado lo sostiene `encuesta-v6-bump.test.ts`; el plan y sus mediciones están
+en `docs/PLAN_BUMP_ENCUESTA_v6.md`.
 
 **Ese documento nació con NUEVE puntos y seis ya estaban contestados**, algunos desde el 3 de septiembre;
 uno de ellos llevaba una recomendación que contradecía una instrucción directa suya. Es la quinta vez con
