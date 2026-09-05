@@ -726,7 +726,12 @@ function CadenaCaloricaSection({
                 label="Proteína (g/kg)"
                 value={protGkg}
                 onChange={setProtGkg}
-                placeholder={`modelo: ${base.protGKg}`}
+                // MISMA REGLA QUE EL OBJETIVO Y EL GEB (barrido del 2026-09-05): un placeholder solo se
+                // ve con el campo VACIO, y con el campo vacio lo que corre es `cal.*`. Leer el SELLADO
+                // aqui prometia 0,8 en los snapshots anteriores al 2026-09-03, que no traen `mtn`: en
+                // esos la cadena resuelve la proteina con el motor de HOY y podia dar otra cosa. Latente,
+                // no visible, y el arreglo es gratis.
+                placeholder={`modelo: ${cal.protGKg}`}
                 step="0.1"
               />
               {/* El valor que se le pasa es el ESCRITO, con la caida al del modelo cuando el campo esta
@@ -743,7 +748,7 @@ function CadenaCaloricaSection({
                 label="Grasa (%)"
                 value={fatPct}
                 onChange={setFatPct}
-                placeholder={`modelo: ${base.fatPct}`}
+                placeholder={`modelo: ${cal.fatPct}`}
                 step="1"
               />
               <AsesoriaMacroPanel

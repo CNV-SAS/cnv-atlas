@@ -306,6 +306,29 @@ describe("de dónde sale el objetivo: el rótulo mira la CASCADA, no un solo cam
     );
   });
 
+  it("y NINGÚN campo de la cadena ofrece el valor SELLADO como placeholder", () => {
+    // BARRIDO DE LA MISMA FORMA (2026-09-05). Al encontrarla en el objetivo se revisaron los seis campos
+    // de la cadena, porque un defecto que vive en un placeholder puede vivir en los otros. Aparecieron dos
+    // más, latentes: la proteína y la grasa leían `base.*`, y en los snapshots anteriores al 2026-09-03
+    // (los que no traen `mtn`) la cadena resuelve la proteína con el motor de HOY, así que el placeholder
+    // podía prometer una cifra y correr otra.
+    //
+    // LA REGLA, que es lo que este caso fija: un placeholder SOLO se ve con el campo vacío, y con el campo
+    // vacío lo que corre es `cal.*`. Así que el placeholder de un campo de la cadena se deriva de `cal`,
+    // nunca de `base`. Los dos que leen `snap` (el déficit) son correctos: ese valor no lo recalcula la
+    // cadena.
+    // Se extraen por LINEA y no con una regex sobre el template: la plantilla anida llaves y comillas
+    // invertidas, y una regex que las persiga se rompe al primer cambio de formato. La línea entera basta.
+    const placeholders = PANEL.split("\n").filter((l) => l.includes("placeholder={`"));
+    expect(placeholders.length, "el extractor no encontró los placeholders").toBeGreaterThan(4);
+    for (const linea of placeholders) {
+      expect(
+        linea.includes("base."),
+        `este placeholder ofrece el valor SELLADO, y con el campo vacío corre el de la cadena: ${linea.trim()}`,
+      ).toBe(false);
+    }
+  });
+
   it("y la vista previa no llama «del modelo» a una cifra que lleva los ajustes", () => {
     // `objetivoDelModelo` sale de `cal.get`, que ya trae el peso meta y el PAL del profesional. El rótulo
     // decía "Objetivo del modelo" y es el mismo rótulo falso, un piso más abajo.
