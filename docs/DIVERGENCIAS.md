@@ -13,9 +13,12 @@
 - Por qué: instrucción escrita de Gildardo (2026-08-03): no es examen de laboratorio estándar y citaba el propio modelo como referencia. Ver **D-012 / CA-1**.
 - Cómo: por el mecanismo de modificaciones autorizadas (el original queda byte-idéntico; el generado lo omite). El manifiesto `frozen/authorized-modifications.js` tiene la instrucción verbatim.
 
-**DIV-2 · El mapeo del índice contextual (ICEC) se mantiene APAGADO, pese a la instrucción de activarlo.**
-- El prototipo trae el interruptor apagado; su instrucción (2026-08-03) dice activarlo; Atlas lo mantiene apagado.
-- Por qué: su propio comentario en el archivo advierte "no poner en true sin resolver" la calibración μ/σ de la EB-BIS (excepción a la regla de autoridad: el archivo advierte contra su propia instrucción). Además hoy no se puede sin C9 (calcPatron) y la captura de d7_agua. Ver **D-006 / P-01**.
+**DIV-2 · El mapeo del índice contextual (ICEC) se mantiene APAGADO. DEJA DE SER DIVERGENCIA el 2026-09-05: pasa a PORTE PENDIENTE.**
+- Su archivo del 4 de septiembre trae el interruptor ENCENDIDO (`const LE8_MAPEO_CORREGIDO = true;`, L8104); Atlas lo mantiene apagado.
+- Por qué: su propio comentario, en la línea de arriba del interruptor, advierte que para ponerlo en `true` hacen falta las dos cosas a la vez, y que "mientras no exista [la recalibración de μ y σ], esta bandera se queda en false". Es la excepción a la regla de autoridad: el archivo advierte contra su propia línea. Ver **D-006 / P-01**.
+- **ACTUALIZADO 2026-09-05: las otras dos razones ya NO aplican.** Cuando se escribió esto, además faltaban C9 (`calcPatron`) y la captura de `d7_agua`; los dos existen hoy (`clinical-engine/patron.ts` y la pregunta de agua en la encuesta). **Así que la divergencia se sostiene sobre una sola pata: la recalibración de μ y σ, que es un cálculo sobre los registros de CNV y solo él puede autorizar.** Si contesta que se enciende, no hay nada más que construir antes.
+- **Alcance de lo que mueve el interruptor** (importa para el cotejo, ver `COTEJOS_VISUALES.md` d-bis): ICEC/LE8 total, EB-BIS, IAE, los dominios 3 y 5 del DFI con su severidad, y las rutas R4 y R5.
+- **CERRADA COMO DIVERGENCIA (2026-09-05).** Contestó que el ICEC *"se activa tal cual se envió"*: la nota del 30 de agosto era prudencial, se escribió sin analizar un caso, y quedó superada por la medición del 2 de septiembre. **Su `true` es la directriz vigente**, así que esto ya no es una decisión nuestra de apartarnos de su archivo: es trabajo nuestro sin hacer. Se queda escrito aquí, y no se borra, hasta que el porte entre. Lo que cuesta y por qué no es una línea: `PENDIENTES_CIENTIFICOS.md` punto 1.
 
 ## Presentación y permisos
 

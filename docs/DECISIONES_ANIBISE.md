@@ -1060,3 +1060,73 @@ completo y con sus colores. `grep -c` = 1 en su archivo: solo la declaracion. Es
 `calcConsumo` y `TCAC`, que el declaro piezas muertas ("quedan marcadas para borrarse, no para
 conectarse"), **con la diferencia de que esta nunca la ha mencionado**. No se porta: se le pregunta si es
 resto o si es algo que piensa conectar.
+
+---
+
+## RESPUESTA DE GILDARDO 2026-09-05: el LE8 se enciende, y lo demas ya estaba portado
+
+Su documento del 5 es **el del 4 con tres anadidos**, verificado por diff. Nada mas cambio, y decirlo
+importa: el resto de los ocho puntos se cerro con la entrega del 4 y no hay que releerlos.
+
+Los tres anadidos: (1) la respuesta del LE8, que es la que faltaba; (2) la revision ortografica completa
+de los 350 nombres, que en el documento del 4 anunciaba "se envia en la proxima entrega" y **ya venia en
+el archivo del 4** (verificado: los dieciseis nombres corregidos estan ahi, y nuestra tabla los tiene,
+porque se re-porto entera); (3) el analisis de las doce filas repetidas de Leguminosas.
+
+**P-108 · EL LE8 SE ENCIENDE. Es la unica pieza abierta de lo cientifico, y NO es voltear una linea.**
+Textual: *"El ICEC se activa tal cual se envio. Esa es la directriz vigente y con ella se cierra el
+punto."* Resuelve la contradiccion por FECHA y por METODO: *"esa nota [la del 30] se escribio sin haber
+analizado un solo caso... Una advertencia escrita sin datos no gobierna sobre una decision tomada con
+datos."* El 2 de septiembre midio el efecto perfil por perfil sobre los registros reales. **Su archivo no
+lo contradice: el `true` es su decision.** El desfasado es su propio comentario, que sigue diciendo "esta
+bandera se queda en `false`" encima del `true`; eso nos freno dos veces y se le dice aunque no lo cambie.
+Mu y sigma **se quedan** (58,578 / 13,332): no estan pendientes de firma, estan bloqueadas por ausencia
+de dato (ninguna fuente trae ICEC porque el ICEC sale de la encuesta). El reconoce que tampoco tienen
+origen documentado y que la v5 necesita su documento tecnico. **Lo que cuesta el porte, verificado:**
+`calcPatron` no esta en el ambito de `engine.dfi` (el flip solo PARECERIA aplicado, la rama cae al catch
+y devuelve 30); `calcPatron` consume el ordinal 0-4 y Atlas guarda el TEXTO, asi que hay que cablear el
+adaptador de `patron.ts` y no pasarle el enc crudo; `d7_agua` fluye (es contador) pero esta declarada
+`treatmentEngine`, asi que su `used_in_diagnosis` queda mintiendo al encender; y el flip va por el
+mecanismo de modificaciones autorizadas porque la constante esta dentro de la region de `DIFF-dfi`. Los
+dos requisitos que faltaban cuando se escribio esa advertencia (calcPatron portado, d7_agua capturada) ya
+existen. Mueve ICEC/LE8, EB-BIS, IAE, los dominios 3 y 5 del DFI y las rutas R4/R5, para todos. **Se hace
+ANTES del cotejo**, o el cotejo se hace dos veces. Ver `PENDIENTES_CIENTIFICOS.md` punto 1.
+
+**P-109 · Del punto 3 falta portar el bloque de la HC, no el panel.** El panel de referencia ya esta
+(`asesoria-macro-panel.tsx`), sale siempre y no solo en conflicto, y el conflicto se ve distinto. Lo que
+NO se porto es la segunda mitad de su frase: *"lo que se escriba fuera del rango queda en la historia
+clinica con el rango, la condicion y la razon"*. Su archivo lo hace en la HC (L15622-15648): arma `_desv`
+con `asesoriaFuera` sobre la proteina y la grasa PRESCRITAS y, si hay algo, pinta el bloque **"DECISION
+DEL PROFESIONAL - CIFRAS FUERA DE LA REFERENCIA"**. En Atlas ese bloque no existe: el aviso vive solo en
+la pantalla de tratamiento y no deja rastro. Es exactamente su advertencia (*"si portaron la retirada sin
+portar el panel, lo que quedo en Atlas es media instruccion"*), un escalon mas abajo: portamos el panel y
+no la constancia. La retirada de la proteina en si SI esta completa (P-99 cerrada, `protKg = 0.8` plano,
+los 56 alineados).
+
+**P-110 · Las doce filas repetidas de Leguminosas NO son duplicados, y el defecto es de NUESTRO render
+tambien.** Son el mismo alimento en dos tamanos de porcion (1 cucharon colmado 110 g / medio cucharon
+60 g). No se retiro ninguna y la tabla se queda en 350 filas. **El defecto esta en el render**, que
+imprime `nombre (gramos)` sin la medida, asi que las dos filas se leen como el mismo frijol repetido; y
+peor, el corte a los primeros ocho de cada subgrupo hace que las medias porciones **le quiten variedad
+real al paciente** (Medellin: 11 filas, 6 nombres, se imprimen 8 con repeticiones aparentes). El firma
+una de tres salidas en la proxima ronda (imprimir la medida, agrupar por nombre, o retirar las doce). **No
+se toca nada hasta que firme**, pero hay que verificar si nuestro render tiene el mismo corte a ocho.
+
+**P-111 · Repite el reclamo de la atribucion de mu/sigma, y ya estaba retirado.** Pide retirar
+mu=54,306 / sigma=12,845 / 1.847 pacientes, y senala que su unica aparicion es la linea 120 de nuestra
+ronda del 4. **Esa linea ES la retirada** (`RONDA_GILDARDO_2026-09-04.md:120`: "RETIRADA LA ATRIBUCION
+DE..."), escrita el 4 antes de enviar. Su documento del 5 arrastra el reclamo del 4 sin haber leido esa
+seccion. Se le confirma en una linea, sin rehacer nada. El fallo de metodo nuestro ya esta registrado en
+P-92.
+
+**P-112 · Tres entradas mal clasificadas en Leche semidescremada, senaladas por el y sin tocar.** *Avena
+liquida con leche de vaca descremada*, *Yogurt de leche entera - Yox* y *Yogurt de leche entera
+cuchareable* estan en el subgrupo de semidescremada y su propio nombre dice otra cosa. El las deja
+senaladas sin corregir. No se toca; queda anotado para la proxima ronda.
+
+**Lo que su respuesta CIERRA sin trabajo nuestro, verificado uno por uno contra el codigo:** punto 1 (los
+seis rotulos ya estan portados y en Atlas no hay juego duplicado), punto 4 (`generarAlertas` no se borra
+y su sitio es la apertura de la encuesta: en Atlas las alertas salen en `evaluacion={...}` en los dos
+caminos de la pagina y NUNCA en `diagnostico={...}`, asi que ya estaba bien), punto 5 (`getDX` cae campo
+por campo, portado), punto 6 (Tumaco en `pacifica`, Cartago en `andina_antioquia`), punto 7 (nucleo de 66)
+y punto 8 (los dieciseis nombres, en nuestra tabla).

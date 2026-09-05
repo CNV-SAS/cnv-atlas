@@ -27,6 +27,37 @@
 | **Mapeo del ICEC / textos que el prototipo trae desactualizados** | Cuando el prototipo difiere de la ciencia vigente, el desactualizado es el prototipo | `DECISIONES_ANIBISE.md` (ICEC) |
 
 **Cuando dudes si algo es hallazgo o decisión: NO lo anotes como hallazgo; pregúntalo.** Una lista larga sin prioridad es peor que una corta y cierta.
+---
+
+## d-bis) El paciente del cotejo, y las diferencias que NO son hallazgos (2026-09-05)
+
+**El paciente es "Nico Smoke Final", CC 122333.** Santiago lo creó en los tres sitios (local, nube y el
+HTML de Gildardo) con **la misma encuesta**, que es lo que hace comparable el cotejo. Cualquier otro
+paciente obliga a re-verificar que los insumos coinciden antes de mirar una sola pantalla.
+
+**Y hay un grupo de diferencias que van a aparecer, y que NO son una divergencia nuestra: las del
+interruptor del LE8.** Son un porte pendiente.
+
+**Actualizado el 2026-09-05, con su respuesta en la mano.** Antes esto decía "su archivo dice `true` y
+nosotros `false`, y es divergencia declarada". **Ya no.** Él contestó que el ICEC *"se activa tal cual
+se envió"*, que la nota del 30 de agosto era prudencial y quedó superada por la medición del 2 de
+septiembre. Así que el `true` de su archivo **es su decisión vigente** y el `false` de Atlas es
+simplemente lo que falta portar.
+
+**Consecuencia para el cotejo: no se hace antes de portarlo.** Si se hace ahora, todo lo de la tabla de
+abajo sale distinto, se anota como hallazgo o como "LE8", y hay que rehacerlo entero cuando el porte
+entre. Es cotejar dos veces, que es justo lo que la regla de oro de este documento prohíbe.
+
+Lo que el interruptor mueve, y por tanto lo que hay que portar y volver a medir:
+
+| Qué | Por qué |
+| --- | --- |
+| **ICEC / LE8 total** | Con `true`, el dominio de agua lee `d7_agua` (capturado) en vez de un campo histórico que siempre da 0, y el de alimentación lee `calcPatron` en vez de una regla simple |
+| **EB-BIS e IAE** | Se estandarizan contra el ICEC |
+| **DFI: dominios 3 y 5, y su severidad** | Cuelgan del ICEC |
+| **Rutas R4 y R5** | Se activan por esos dominios |
+
+Detalle del porte y lo que cuesta: `PENDIENTES_CIENTIFICOS.md` punto 1.
 
 ---
 
