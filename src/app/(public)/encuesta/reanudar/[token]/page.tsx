@@ -10,9 +10,14 @@ import {
 export const metadata = { title: "Retomar encuesta - Atlas" };
 
 // Contenedor de la superficie publica (sin shell de la app), igual que la pagina de la encuesta.
+// EL `items-start` NO ES DECORACION (cotejo 2026-09-05, punto 1). Sin el, `main` es un flex en fila con
+// `min-h-svh`, asi que `align-items: stretch` estiraba la tarjeta a la altura de la pantalla: un mensaje de
+// dos lineas salia dentro de un recuadro vacio de mil pixeles. Con el formulario largo no se notaba porque
+// el contenido ya llenaba la altura; solo se veia en los estados cortos, que son los que ve un paciente que
+// vuelve al enlace.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-svh justify-center bg-muted/30 px-4 py-10">
+    <main className="flex min-h-svh items-start justify-center bg-muted/30 px-4 py-10">
       <div className="flex w-full max-w-2xl flex-col gap-8 rounded-2xl border border-border bg-background p-6 shadow-sm sm:p-8">
         <div className="flex items-center gap-2 self-start">
           <Image

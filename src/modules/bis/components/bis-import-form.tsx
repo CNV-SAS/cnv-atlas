@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDate } from "@/lib/format/date";
@@ -43,6 +43,8 @@ export function BisImportForm({
   disabledReason?: string | null;
 }) {
   const [state, action, pending] = useActionState(importBisAction, initialState);
+  /** Nombre del archivo elegido, solo para confirmarlo en pantalla. El que viaja es el del FormData. */
+  const [archivo, setArchivo] = useState<string | null>(null);
   // Toast de exito/error (el detalle por variable se sigue mostrando inline).
   useFormToast(state);
 
@@ -92,7 +94,18 @@ export function BisImportForm({
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 required
                 disabled={pending || blocked}
+                onChange={(e) => setArchivo(e.target.files?.[0]?.name ?? null)}
               />
+              {/* CONFIRMACION DE LO ELEGIDO (cotejo 2026-09-05, punto 7). El control nativo pone el nombre
+                  del archivo pegado al boton y con el mismo peso, asi que no se distingue de la etiqueta.
+                  Esta linea dice, aparte y con todas las letras, QUE archivo se va a importar. Importa mas
+                  que en un formulario cualquiera: importar el archivo del paciente equivocado no se corrige,
+                  obliga a cerrar la evaluacion y rehacerla. */}
+              {archivo ? (
+                <p className="text-sm text-clinical-optimal">
+                  Archivo seleccionado: <span className="font-semibold">{archivo}</span>
+                </p>
+              ) : null}
             </div>
 
             {disabledReason ? (

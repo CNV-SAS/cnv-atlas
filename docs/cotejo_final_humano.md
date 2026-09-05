@@ -7,7 +7,8 @@ b. Los puntos ##URGENTE son para corregir primero, máxima prioridad. También t
 
 **Evaluación**: 
 - Observaciones externas:
-1. Encuesta: Una vez completo la encuesta y quiero devolverme al enlace para retomarla, te adjunto la imagen de lo que aparece: "retomar-encuesta-habiendola-completado". Basicamente es un contenedor muy grande, para el mensaje pequeño que solo ocupa la parte superior.
+1. **CERRADO (2026-09-05)**   ·   Era `align-items: stretch`: el `main` es un flex en fila con `min-h-svh`, así que la tarjeta se estiraba a la altura de la pantalla. Con el formulario largo no se notaba; solo en los mensajes cortos. Arreglado con `items-start` **en las dos páginas públicas de encuesta**, no solo en la que tenía captura. Candado en `survey-completeness.test.ts`.
+   Encuesta: Una vez completo la encuesta y quiero devolverme al enlace para retomarla, te adjunto la imagen de lo que aparece: "retomar-encuesta-habiendola-completado". Basicamente es un contenedor muy grande, para el mensaje pequeño que solo ocupa la parte superior.
 2. Que pasa si un paciente se equivoca diligenciando los datos personales, nombre, celular, ciudad u otros datos como ascendencia, estrato, motivo de consulta, etc.? a dia de hoy no hay forma de corregir esto, se tiene que volver a llenar la enceusta para volver a mandarlos. Solo tenemos habilitado de momento para corregir las preguntas de los dominios de la encuesta.
 3. ## URGENTE   ·   **CERRADO (2026-09-05)**: el default de la pestaña deja de estar clavado en el componente y lo decide la página, que es quien sabe si hay diagnóstico. Sin diagnóstico abre en Evaluación; con diagnóstico, en Diagnóstico. Y de paso salió una trampa: el parseo excluía `diagnostico` de la lista válida y lo dejaba caer al default, que casualmente era el mismo, así que con el default configurable `?etapa=diagnostico` habría aterrizado en Evaluación. Candado en `evaluation-tabs.test.ts` y `preservar-scroll.test.ts`.
 
@@ -21,7 +22,8 @@ Al darle click en "importar la medición en Antropometría y BIS" que aparece ap
 
 - Subpestaña antropometría y bis:
 6. A día de hoy no hay forma de corregir o volver a subir otro BIS xlsx por si el profesional se equivoca de import (por ejemplo el de otro paciente). Del mismo modo, apenas genero el diagnostico no hay forma de corregir las condiciones bis, ni peso meta, ni peso, ni estatura, etc. Lo que si tenemos es regenerar una nueva evaluación por si requeria modificar la encuesta, pero entonces para el resto de variables hacemos lo mismo?
-7. ## URGENTE 
+7. ## URGENTE   ·   **CERRADO (2026-09-05)**: el botón nativo era `bg-transparent` y sin borde por el default de shadcn, así que "Seleccionar archivo" y el nombre se leían como un texto corrido. Ahora se ve como botón (secundario, para no competir con el de enviar) y cambia el cursor. Y debajo sale **"Archivo seleccionado: <nombre>"**, aparte y en verde. **Arreglado en el primitivo `Input`**, no en este formulario: el otro input de archivo de la app (el RUT del profesional) tenía el mismo defecto y nadie lo había reportado. Candado en `bis-import.test.ts`.
+
 A pesar de ser una mejora de estilo, es crítica en este momento ya que ha confundido a Gildado. Mirar imagen "archivo-seleccionado". Como ves, no se entiende casi el botón de seleccionar archivo para importar BIS. Deberia aparecer de otro color y al hacer hover que cambie el icono del mouse. Luego una vez que lo suba, que diga "archivo seleccionado" o "archivo que vas a subir". Para que se sepa que ya se escogió uno, y el nombre del archivo que se escogió hacerlo mas evidente, ya que ahi como está se lee casi como si todo fuera un texto de corrido.
 8. Te dejo la vista completa de la tabla de wang y lo de Sarcopenia para que cotejes contra el html esta subpestaña.
 
