@@ -277,7 +277,10 @@ export default async function ResultadosEvaluacionPage({
           <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
         ) : null}
         <CorrectionHistory evaluationId={id} />
+        {/* SIN DIAGNOSTICO SE ABRE EN EVALUACION (cotejo 2026-09-05, punto 3): aqui todavia hay trabajo
+            por hacer, y Diagnostico no tiene nada que mostrar. */}
         <EvaluationTabs
+        porDefecto="evaluacion"
         evaluacion={
           <div className="flex flex-col gap-6">
             {/* Las alertas van ARRIBA de la entrada: una bandera de conducta alimentaria manda derivar
@@ -717,7 +720,10 @@ export default async function ResultadosEvaluacionPage({
         <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
       ) : null}
       <CorrectionHistory evaluationId={id} />
+      {/* CON DIAGNOSTICO SE ABRE EN DIAGNOSTICO: es lo que se viene a ver. Explicito y no por el default
+          del componente, para que los dos caminos digan cual abren (cotejo 2026-09-05, punto 3). */}
       <EvaluationTabs
+      porDefecto="diagnostico"
       evaluacion={
         <div className="flex flex-col gap-6">
         <AlertasClinicas

@@ -9,12 +9,14 @@ b. Los puntos ##URGENTE son para corregir primero, máxima prioridad. También t
 - Observaciones externas:
 1. Encuesta: Una vez completo la encuesta y quiero devolverme al enlace para retomarla, te adjunto la imagen de lo que aparece: "retomar-encuesta-habiendola-completado". Basicamente es un contenedor muy grande, para el mensaje pequeño que solo ocupa la parte superior.
 2. Que pasa si un paciente se equivoca diligenciando los datos personales, nombre, celular, ciudad u otros datos como ascendencia, estrato, motivo de consulta, etc.? a dia de hoy no hay forma de corregir esto, se tiene que volver a llenar la enceusta para volver a mandarlos. Solo tenemos habilitado de momento para corregir las preguntas de los dominios de la encuesta.
-3. ## URGENTE 
+3. ## URGENTE   ·   **CERRADO (2026-09-05)**: el default de la pestaña deja de estar clavado en el componente y lo decide la página, que es quien sabe si hay diagnóstico. Sin diagnóstico abre en Evaluación; con diagnóstico, en Diagnóstico. Y de paso salió una trampa: el parseo excluía `diagnostico` de la lista válida y lo dejaba caer al default, que casualmente era el mismo, así que con el default configurable `?etapa=diagnostico` habría aterrizado en Evaluación. Candado en `evaluation-tabs.test.ts` y `preservar-scroll.test.ts`.
+
 Cuando estoy en /pacientes/(id) y en la tabla de evaluaciones le doy a "Ver resultados" me lleva a /evaluaciones/(id) y siempre me abre en la pestaña diagnostico. Mi sugerencia seria que si el paciente no tiene diagnostico generado que me lleve siempre primero a la pestaña "Evaluación", pero que si ya está generado el diagnóstico, que me lleve siempre primero a la pestaña "Diagnóstico" como lo tenemos.
 
 - Subpestaña encuesta:
 4. Como puedes observar en "vista-completa-2" al final de las condiciones se toman el peso meta del paciente y la fuerza prensil. Pero en el html esto pasa en la subpestaña Antropometria y Bis. La pregunta es, las dejamos acá o en la otra subpestaña?
-5. ## URGENTE 
+5. ## URGENTE   ·   **CERRADO (2026-09-05)**: era el 3, como sospechabas. El enlace ponía `?ev=antropometria` y **no** `?etapa`, así que la página caía a su default y aterrizabas en Diagnóstico con la subpestaña correcta seleccionada donde no podías verla. Ahora lleva `?etapa=evaluacion&ev=antropometria`, explícito aunque el default ya esté bien: un enlace que depende de un default se rompe en silencio la próxima vez que alguien lo mueva. Barrido: no hay más enlaces con esa forma.
+
 Al darle click en "importar la medición en Antropometría y BIS" que aparece apenas guardo las condiciones de la toma BIS como observar en la captura "vista-completa-2" de esta subpestaña, en vez de llevarme a la otra subpestaña antropometria y bis, me lleva a la pestaña de diagnostico. Me imagino que está relacionado con el compartamiento del punto 3.
 
 - Subpestaña antropometría y bis:

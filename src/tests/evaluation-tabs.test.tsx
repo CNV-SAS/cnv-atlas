@@ -45,8 +45,18 @@ describe("navegacion por etapas de la evaluacion", () => {
     }
   });
 
-  it("el default sigue siendo Diagnostico: abrir en la ultima etapa seria empezar por el final", () => {
-    expect(SRC).toMatch(/:\s*"diagnostico";/);
+  it("el default lo decide la pagina, y nunca es una etapa del final", () => {
+    // ALCANCE AJUSTADO (cotejo 2026-09-05, punto 3), no la asercion. Este caso fijaba la cadena
+    // "diagnostico" como default del componente, y Santiago cambio la regla: sin diagnostico se abre en
+    // Evaluacion, con diagnostico en Diagnostico. Lo que el caso GARANTIZA sigue igual y es lo que dice su
+    // titulo: no se abre por el final. Eso ahora se verifica donde vive la decision, que es la pagina.
+    expect(SRC, "el default volvio a estar clavado en el componente").toContain("porDefecto");
+    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+    const defaults = [...PAGE.matchAll(/porDefecto="([a-z]+)"/g)].map((m) => m[1]);
+    expect(defaults.length, "algun camino de la pagina no declara su etapa de entrada").toBe(2);
+    for (const d of defaults) {
+      expect(["evaluacion", "diagnostico"], `abrir en "${d}" es empezar por el final`).toContain(d);
+    }
   });
 
   it("el parametro propio es ?etapa y se copian los demas (las subpestañas no se pisan)", () => {
