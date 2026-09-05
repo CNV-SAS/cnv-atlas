@@ -100,8 +100,12 @@ cambio de tarifa reescribiría la historia.
 
 ## Preguntas que quedaban, y cuáles contestó el contable
 
-1. **El eslabón de arriba: ¿se modela?** ¿Registramos "el consignante nos entregó 60 unidades", o ese
-   tramo vive fuera de Atlas y el sistema arranca en la remesa al integrante?
+1. ~~El eslabón de arriba: ¿se modela?~~ **CONTESTADA por Santiago (2026-09-05): el inventario vivo está
+   en Atlas, así que la entrega del consignante SÍ se registra ahí.** Era la que decidía si hace falta un
+   tipo de movimiento nuevo, y hace falta: los tipos actuales (`remesa` = CNV envía al integrante,
+   `recepcion` = el integrante reconoce) no tienen el eslabón de arriba. Con eso desbloqueado, el saldo
+   por lote del punto 5 se puede construir: entra el evento del consignante y la cifra que se concilia
+   (recibidas − vendidas − devueltas − faltantes) tiene contra qué calcularse.
 2. ~~El faltante de un producto ajeno: ¿contra quién?~~ **CONTESTADA:** las dos, y no es doble cobro. Son
    dos custodias encadenadas. Ver el punto 6.
 3. ~~¿La factura del consignante la emite Atlas?~~ **CONTESTADA:** no. CNV no le emite documento fiscal;
@@ -239,7 +243,10 @@ pleitos generan en consignación:
 Por eso el `consignor_id` va en el catálogo y no un caso especial para LUVIA: **la estructura tiene que
 contemplar N consignantes desde el principio**, aunque hoy haya uno.
 
-## Y una cosa aparte: el alérgeno de LUVIA
+## Y una cosa aparte: el alérgeno de LUVIA. CERRADA, y esta nota estaba mal
 
-El asesor legal contradice la instrucción de Gildardo, y **eso no lo resolvemos nosotros**: va a la
-ronda nueva. Ver `RONDA_GILDARDO_2026-08-28.md`.
+Decía que la contradicción entre el asesor legal y Gildardo iba a la ronda del 28. **No fue:** la
+pregunta se cayó antes de enviarse, porque su punto 0 del 27 la contestó (nada de tablas de alérgenos ni
+cruces; solo mostrar lo que la encuesta capturó). La propia ronda del 28 lo dice: *"Con eso se cae
+también la pregunta que traíamos sobre el alérgeno de LUVIA"*. **LUVIA entra con ese criterio y no hay
+nada abierto ahí.**

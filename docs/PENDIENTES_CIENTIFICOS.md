@@ -1,6 +1,6 @@
 # Lo que queda sin resolver del lado científico
 
-**Para Santiago. 2026-09-04.** Este documento no va para Gildardo. Está escrito para que sepas, sin
+**Para Santiago. 2026-09-04, actualizado el 05.** Este documento no va para Gildardo. Está escrito para que sepas, sin
 tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene cada cosa.
 
 ---
@@ -9,8 +9,8 @@ tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene
 
 | # | Qué es | ¿Pregunta o trabajo nuestro? | ¿Bloquea el hito 2? |
 | --- | --- | --- | --- |
-| 1 | El interruptor del LE8: su archivo dice una cosa y él dijo la contraria dos veces | **Pregunta**, y es la seria | No, si dejamos lo de hoy |
-| 2 | Tres colores dicen lo contrario que su etiqueta | **Pregunta**, y es barata | No |
+| 1 | El interruptor del LE8 | **CONTESTADO** el 2026-09-05: se queda ENCENDIDO. Pasa a ser **trabajo nuestro**, y no es una línea | **Sí**: hay que portarlo antes del cotejo |
+| ~~2~~ | ~~Tres colores dicen lo contrario que su etiqueta~~ | **CERRADO** el 2026-09-05: el color se deriva del orden de riesgo; esos hexadecimales no los lee nadie | — |
 | ~~3~~ | ~~Dos cosas que prometió y no llegaron~~ | **CERRADO** el 2026-09-04 | — |
 | ~~4~~ | ~~Portar las opciones de ejercicio~~ | **CERRADO** el 2026-09-04 | — |
 | 5 | Dos cosas de su archivo que salieron de un barrido, las dos chicas | **Preguntas**, sin prisa | No |
@@ -108,7 +108,7 @@ encenderse nunca**. Y sin embargo está encendido.
 - **Apagado (lo de hoy):** dos de los ocho componentes del LE8 corren clavados en el mismo valor para
   todo el mundo, midiera lo que midiera la persona.
 
-**No lo tocamos.** Atlas sigue en `false`.
+**Atlas sigue hoy en `false`, y eso es lo que hay que cambiar.** Ver abajo.
 
 ### El dato que hacía falta: qué pasa con los diagnósticos ya emitidos
 
@@ -132,37 +132,99 @@ decisión, **hoy no cuesta nada**. Después del hito 2 sí, y crece con cada pac
 *(Ese conteo se midió antes en esta sesión. Vale la pena repetirlo el día que se decida, porque es
 justamente el número que cambia.)*
 
-### Mi recomendación
+### CONTESTADO el 2026-09-05: se queda ENCENDIDO
 
-**Preguntárselo en una línea**, no en una ronda: *"tu archivo lo tiene encendido y el 30 de agosto nos
-dijiste que se quedaba apagado hasta recalibrar, que hoy es imposible. ¿Cuál mandamos?"*.
+**Su respuesta, textual:**
 
-Y si contesta que encendido, **el momento de hacerlo es AHORA**, antes del hito 2, precisamente porque no
-hay pacientes a quienes reemitir. Cada semana que pase lo encarece.
+> **El ICEC se activa tal cual se envió. Esa es la directriz vigente y con ella se cierra el punto.**
+>
+> **Esa nota [la del 30 de agosto] se escribió sin haber analizado un solo caso, porque entonces no los
+> teníamos.** Era una advertencia prudencial, no una medición.
+>
+> El 2 de septiembre sí se analizaron: se extrajeron los registros reales de ATLAS, se midió el efecto
+> del mapeo perfil por perfil, y **los ICA-BIS calculados coincidieron exactamente con los guardados en
+> el sistema**. Con eso a la vista se tomó la decisión de encenderlo.
+>
+> **Una advertencia escrita sin datos no gobierna sobre una decisión tomada con datos.** El orden
+> correcto de lectura es ese, y la nota del interruptor queda superada por el acto que la resolvió.
+
+Así que la contradicción se resuelve por FECHA y por MÉTODO: la nota del 30 es anterior y prudencial, la
+decisión del 2 es posterior y medida. **Su archivo no lo contradice: el interruptor está en `true` y ahí
+tiene que quedarse.** El que quedó desfasado es el comentario de la nota, que sigue diciendo "esta
+bandera se queda en `false`" justo encima de un `true`. Es lo que nos frenó dos veces, y conviene
+decírselo aunque él no lo cambie.
+
+**Y μ y σ se quedan como están** (58,578 y 13,332), por una razón que él da con todas las letras: no
+están pendientes de firma, están **bloqueadas por ausencia de dato**. El ICEC se calcula desde la
+encuesta y ninguna fuente disponible la trae, así que se recalibra cuando haya una masa de pacientes con
+encuesta completa. Él mismo añade que esas dos constantes tampoco tienen origen documentado y que **la
+v5 necesita su documento técnico**, trabajo suyo.
+
+**Entonces el riesgo residual, dicho claro:** encendemos por instrucción suya, medida por él, y
+estandarizamos contra dos constantes que él marca como no documentadas. No es ambiguo qué hacer. Sí
+conviene que quede escrito con sus palabras, y por eso está aquí.
+
+### Lo que cuesta encenderlo, que NO es voltear una línea
+
+La cabecera de nuestro propio `engine.dfi.js` ya lo advertía, y al verificarlo resultó exacta:
+
+1. **`calcPatron` no está en el ámbito de `engine.dfi`.** El archivo solo importa del núcleo. Con el
+   interruptor en `true`, la rama de Alimentación cae al `catch` y devuelve 30 igual que antes: el flip
+   solo **parecería** aplicado.
+2. **Y `calcPatron` necesita el `enc` ADAPTADO, no el crudo.** Consume el ordinal 0-4 de cada grupo;
+   Atlas guarda el TEXTO de la opción. Pasarle el crudo da el mismo 30 mudo. El adaptador ya existe
+   (`clinical-engine/patron.ts`) y hay que cablearlo, no reescribirlo.
+3. **`d7_agua` sí fluye** (es `contador`, así que `Number()` lo lee), pero está declarada
+   `treatmentEngine`, no `engine`, así que su `used_in_diagnosis` es `false`. Al encender el
+   interruptor pasa a alimentar el diagnóstico y esa marca queda mintiendo.
+4. **El flip va por el mecanismo de modificaciones autorizadas.** La constante está dentro de la región
+   que compara `DIFF-dfi`; tocarla a mano pone el candado en rojo, y con razón.
+
+Los dos requisitos que faltaban cuando se escribió esa advertencia (`calcPatron` portado y `d7_agua`
+capturada) **ya existen**. Lo que queda es el cableado, la marca y el flip, con su medición.
+
+**Y mueve números para todos:** ICEC/LE8, EB-BIS, IAE, los dominios 3 y 5 del DFI con su severidad, y
+las rutas R4 y R5. Hoy no hay tratamiento aprobado ni paciente real, así que la reemisión que él exige
+(*"reemisión obligatoria si el paciente cambia de banda"*) **no cuesta nada todavía**. Después del hito
+2 sí.
 
 ---
 
-## 2 · Tres colores dicen lo contrario que su etiqueta
+## 2 · Los tres colores: VERIFICADO el 2026-09-05, y no hay nada que preguntar
 
-Atlas clasifica al paciente en nueve casillas que cruzan qué tan bien funciona su célula con cuánta
-inflamación tiene. Cada casilla tiene un nombre y un color.
+**Lo que él señaló es cierto, y no llega a la pantalla.** La pregunta que decidía era de dónde sale hoy
+el color de cada casilla. Ya está verificado.
 
-En su entrega arregló los **nombres**. Los **colores** no los movió, y él mismo lo señala al final:
+### Lo que él dijo
 
 > **Una cosa que queda señalada y sin tocar:** los colores de `FYR_LABELS` no se movieron, y con los
 > rótulos nuevos hay tres que ya no acompañan. `3_3` "Función normal con riesgo" sigue en cian, `2_2`
 > "Función sin riesgo" sigue en ámbar y `1_2` "Disfunción sin riesgo" sigue en rojo. **El color es
 > contenido de esta Dirección y va firmado aparte**, no inferido de la nueva redacción.
 
-**Efecto:** el color es lo primero que lee un profesional apurado. Hoy hay un paciente **con** riesgo
-pintado de celeste (color de tranquilidad) y uno **sin** riesgo pintado de rojo (color de alarma). El
-semáforo está al revés en tres de las nueve casillas.
+### Y lo que se verificó
 
-**Qué podemos hacer:** nada por nuestra cuenta, los colores son suyos. Pero es la pregunta más barata que
-queda: **son tres códigos de color.** Vale pedírselos por mensaje.
+Esos nueve colores están **declarados y no los lee nadie**, ni en Atlas ni en su propio archivo.
 
-Mientras tanto sí podemos, sin tocar su ciencia, **hacer que el nombre pese más que el color** en la
-pantalla. No arregla el problema, reduce la lectura equivocada.
+- En Atlas, `FYR_LABELS` se usa **solo para el nombre** (`.l`). El campo del color (`.c`) no se lee en
+  ningún sitio, y el cian de `3_3` (`#22d3ee`) no aparece en ninguna otra línea del repositorio.
+- En su archivo del 4 de septiembre pasa lo mismo: `getFyR()` devuelve el objeto entero, y las dos veces
+  que se llama se toma únicamente `.l`.
+
+**El color que sí se ve sale de otro lado, y se deriva solo.** Las nueve casillas se pintan en la Diana,
+y el color lo calcula un degradado verde a rojo sobre el **orden de riesgo** de las nueve combinaciones
+(su `rc()`, portado en `riskColor`). Su propio comentario lo dice: *"Orden sectores igual al HTML de
+referencia (rk 1..9 define color)"*.
+
+Ese orden deja `2_2` en la posición 4 de 9 (ámbar, que es lo que corresponde a esa posición) y `1_2` en
+la 8 de 9 (rojo, que también corresponde). **Así que en pantalla no hay semáforo invertido.** El único de
+los tres que desentonaría, si alguien llegara a leer el campo, es el cian de `3_3`.
+
+### Lo que queda
+
+**Nada que preguntarle y nada que arreglar.** Los tres hexadecimales son una declaración muerta que
+sobrevive en el archivo. Queda anotado por si algún día alguien va a usarlos: **antes de leer
+`FYR_LABELS.c` hay que pedirle los tres**, porque hoy no acompañan a sus rótulos.
 
 ---
 
