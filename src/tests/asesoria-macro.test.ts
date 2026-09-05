@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { sinComentarios } from "./helpers/sin-comentarios";
 
 import { describe, expect, it } from "vitest";
 
@@ -233,7 +234,9 @@ describe("6 · el panel LLEGA A LA PANTALLA, que es lo que faltaba", () => {
     // SE MIRA EL CODIGO, NO LOS COMENTARIOS, y el primer intento de este caso salio rojo por su propia
     // prosa: el bloque que EXPLICA por que no se usa la capa clinica menciona `--clinical-*`. Una
     // asercion sobre el texto crudo del archivo confunde lo que el componente HACE con lo que dice.
-    const codigo = COMPONENTE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    // Con el helper compartido, que además quita los comentarios JSX y los de FINAL DE LÍNEA; esta copia
+    // solo quitaba las líneas enteras, así que un `// ...` al final de una línea de código se le escapaba.
+    const codigo = sinComentarios(COMPONENTE);
     expect(codigo).not.toMatch(/--clinical-|text-clinical-/);
   });
 

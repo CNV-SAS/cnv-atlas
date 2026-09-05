@@ -149,12 +149,33 @@ describe("el selector de archivo se ve y confirma lo elegido (cotejo 7)", () => 
     expect(codigo, "sin cursor no hay nada que diga que eso se pulsa").toContain(
       "file:cursor-pointer",
     );
-    expect(codigo).toContain("file:bg-secondary");
+    // El estilo concreto puede cambiar; lo que no puede es volver a ser invisible. Se exige que el botón
+    // tenga FONDO y BORDE propios, que es lo que lo separa del texto de al lado.
+    expect(codigo, "sin fondo propio vuelve a leerse como texto corrido").toMatch(
+      /file:bg-[^\s"]+/,
+    );
+    expect(codigo, "sin borde propio no se distingue del campo").toMatch(
+      /file:border-[^\s"]+/,
+    );
   });
 
   it("y la pantalla dice QUÉ archivo se va a importar", () => {
     expect(FORM).toContain("Archivo seleccionado:");
     // Del `onChange`, no de un estado que alguien tenga que sincronizar: el nombre sale del propio input.
     expect(FORM).toContain("e.target.files?.[0]?.name");
+  });
+
+  it("y NINGUN estado de proceso de esta pantalla usa la capa clínica", () => {
+    // El verde de `clinical-optimal` significa un veredicto ÓPTIMO SOBRE EL PACIENTE. Que un archivo se
+    // haya cargado no dice nada del paciente, así que pintarlo de verde clínico afirma de más: es la misma
+    // confusión de capas que ya cerramos en el radar, en la capacitancia y en el aviso de ciencia
+    // anterior. Aquí había DOS ("Medición BIS importada" y la confirmación del archivo).
+    //
+    // El candado general (`capa-clinica-solo-veredictos`) no lo veía porque solo barre los módulos
+    // operativos, y `modules/bis` no está en su lista: tiene pantallas que SÍ son clínicas (las
+    // contraindicaciones de la toma). Por eso se vigila aquí, que es donde se sabe cuál es cuál.
+    expect(sinComentarios(FORM), "un estado de proceso pintado con la escala clínica").not.toMatch(
+      /clinical-/,
+    );
   });
 });
