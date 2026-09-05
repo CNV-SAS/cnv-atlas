@@ -112,3 +112,24 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
 - **Apareció el 2026-09-04 comparando los dos instrumentos por script**, no leyendo. Llevaba sin declarar
   desde que se escribió, que es lo que este archivo existe para evitar.
 - Se le menciona cuando haya ocasión; no bloquea nada.
+
+**DIV-13 · La lista de intercambio del paciente imprime la MEDIDA además de los gramos; su archivo no.**
+- Suyo (L18248): `nombre (gramos)`, ocho por subgrupo y ", entre otros". Nuestro: `nombre (gramos,
+  medida)`, con los mismos dos cortes. Ejemplo: *"Fríjol cargamanto blanco con plátano verde (110 g,
+  1 cucharón colmado)"* en vez de *"(110 g)"*.
+- **Qué la motiva, y es suyo:** él mismo señaló el 5 de septiembre que las doce filas repetidas de
+  Leguminosas **no son duplicados**, sino el mismo alimento en dos tamaños de porción (1 cucharón colmado
+  110 g y medio cucharón 60 g), y que *"el defecto está en el render, no en la tabla"*. Planteó tres
+  salidas y dijo que firmaría una en su próxima ronda.
+- **Por qué se eligió esta de las tres:** es la única que no pierde información. Agrupar por nombre
+  esconde que son dos tamaños distintos; retirar las doce medias porciones le quita al nutricionista
+  media escala de reparto. Y el dato ya estaba en su propia tabla: las 350 filas traen `med`, que hasta
+  hoy no se mostraba en ninguna pantalla.
+- **Por qué se decidió y no se preguntó:** es presentación, no ciencia (Santiago, 2026-09-05). Su tabla,
+  sus gramos y sus dos cortes se quedan intactos; lo único que cambia es que se imprime un campo suyo que
+  ya existía. Y se hizo ahora porque el cotejo del plan del paciente es esta semana: sin decidirlo, esa
+  página podía moverse **después** de cotejada.
+- **LA PREGUNTA, que es lo que hace que esto sea una divergencia declarada y no un hecho consumado:** se
+  le dice cuál se eligió y por qué, y **si prefiere la (b) o la (c) se cambia**. Revertir es una línea.
+- Cómo: `plan-paciente-reader.ts` (`armarListaIntercambio`). Candado en `plan-paciente.test.ts`, con su
+  control de que las 350 filas siguen trayendo `med` no vacío.

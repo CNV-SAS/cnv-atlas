@@ -63,7 +63,23 @@ sobre ocho dominios son **10 puntos** de ICEC.
 
 **Este es el que verifica el mecanismo, no el cálculo.** Y tiene DOS desenlaces, los dos buenos.
 
-### El aviso gris, que NO es un defecto
+### El ámbar REEMPLAZA al gris, no se pierde ninguno
+
+**Verificado el 2026-09-05, porque la duda era buena:** si fueran dos avisos distintos y uno no saliera,
+sería defecto. No lo son. `AvisoCienciaAnterior` es **un solo componente con dos registros visuales** y
+un `return` temprano: cuando el veredicto es `reemision-obligatoria` sale el ámbar y no llega al gris.
+Está escrito así a propósito, y su comentario lo dice: *"un aviso gris para una obligación se lee como
+opcional"*.
+
+Así que ver el ámbar **sin** el gris es correcto. Lo que sí sería defecto es lo contrario: el gris en una
+evaluación donde una banda cambió.
+
+**Y una cosa que se pierde y no debería, anotada como mejora chica:** el gris lista con qué versión se
+emitió cada dimensión y cuál rige hoy ("se emitió con `anibise-1.2.0`, hoy rige `anibise-1.3.0`"). El
+ámbar no lo lleva, así que justo en el caso donde algo cambió, el profesional pierde la procedencia. Es
+una línea de arreglo; no bloquea el smoke.
+
+### El aviso gris, que tampoco es un defecto
 
 Si el paciente **no cambió de banda**, sale el aviso de que el diagnóstico se emitió con una versión
 anterior **y que la clasificación no cambia**, sin lista. **Ese es el desenlace correcto**, y es su regla

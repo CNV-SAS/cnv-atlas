@@ -94,7 +94,18 @@ function armarListaIntercambio(ciudad: string | null): ListaIntercambioPlan {
           const foods = zona.filter((x) => x.sub === r.sub);
           return {
             sub: r.sub,
-            alimentos: foods.slice(0, 8).map((x) => `${x.al} (${x.g} g)`),
+            // CON LA MEDIDA, no solo los gramos (P-110, decision de Santiago 2026-09-05, declarada a
+            // Direccion Cientifica). Su tabla tiene doce alimentos repetidos en Leguminosas que NO son
+            // duplicados: son el mismo alimento en dos tamanos de porcion (1 cucharon colmado 110 g y
+            // medio cucharon 60 g). Imprimiendo solo `nombre (gramos)` las dos filas se leian como el
+            // mismo frijol repetido, y peor: el corte a ocho hacia que las medias porciones ocuparan
+            // puestos y le quitaran variedad real al paciente.
+            //
+            // De las tres salidas que el planteo, esta es la que NO PIERDE INFORMACION: agrupar por
+            // nombre esconde que son dos tamanos distintos, y retirar las medias porciones le quita al
+            // nutricionista media escala de reparto. Las 350 filas traen `med` no vacio (verificado), asi
+            // que no hay caso sin medida.
+            alimentos: foods.slice(0, 8).map((x) => `${x.al} (${x.g} g, ${x.med})`),
             hayMas: foods.length > 8,
           };
         }),
