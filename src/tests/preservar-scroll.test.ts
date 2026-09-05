@@ -258,8 +258,8 @@ describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () =
     // SE ASIERTA SOBRE EL CODIGO SIN COMENTARIOS, y no es un detalle de estilo: el comentario que explica
     // por que se quito esa linea la NOMBRA, asi que la asercion se cazaba a si misma. Ya nos paso con
     // `--clinical-*` en el panel de asesoria; es la misma forma.
-    const sinComentarios = TABS.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    expect(sinComentarios, "volvió la exclusión que rompía ?etapa=diagnostico").not.toContain(
+    const codigo = sinComentarios(TABS);
+    expect(codigo, "volvió la exclusión que rompía ?etapa=diagnostico").not.toContain(
       'raw !== "diagnostico"',
     );
   });

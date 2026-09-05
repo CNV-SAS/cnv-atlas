@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { sinComentarios } from "./helpers/sin-comentarios";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -127,5 +129,32 @@ describe("importBisMeasurement (orquestacion)", () => {
     if (res.ok) return;
     expect(res.error.code).toBe("conflict");
     expect(writer.logBisImportFailure).not.toHaveBeenCalled();
+  });
+});
+
+describe("el selector de archivo se ve y confirma lo elegido (cotejo 7)", () => {
+  const INPUT = readFileSync("src/components/ui/input.tsx", "utf8");
+  const FORM = readFileSync("src/modules/bis/components/bis-import-form.tsx", "utf8");
+
+  // POR QUE ESTO ES UN CANDADO Y NO UNA PREFERENCIA. El default de shadcn deja el botón nativo
+  // `bg-transparent` y sin borde, así que "Seleccionar archivo" y el nombre del archivo se leían como un
+  // solo texto corrido. Gildardo no encontró dónde pulsar, y es la pantalla por la que entra la medición:
+  // importar el archivo del paciente equivocado NO se corrige, obliga a cerrar la evaluación y rehacerla.
+
+  it("el botón nativo se ve como botón y avisa que se pulsa", () => {
+    const codigo = sinComentarios(INPUT);
+    expect(codigo, "el botón de archivo volvió a ser transparente").not.toContain(
+      "file:bg-transparent",
+    );
+    expect(codigo, "sin cursor no hay nada que diga que eso se pulsa").toContain(
+      "file:cursor-pointer",
+    );
+    expect(codigo).toContain("file:bg-secondary");
+  });
+
+  it("y la pantalla dice QUÉ archivo se va a importar", () => {
+    expect(FORM).toContain("Archivo seleccionado:");
+    // Del `onChange`, no de un estado que alguien tenga que sincronizar: el nombre sale del propio input.
+    expect(FORM).toContain("e.target.files?.[0]?.name");
   });
 });

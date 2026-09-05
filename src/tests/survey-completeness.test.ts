@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { sinComentarios } from "./helpers/sin-comentarios";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -89,5 +91,36 @@ describe("survey-completeness", () => {
     expect(formatIncompleteSurveyMessage(gaps, "regenerar")).toContain("antes de regenerar el diagnóstico");
     // Singular.
     expect(formatIncompleteSurveyMessage([{ section: "Hidratación", missing: 1 }])).toContain("falta 1 respuesta");
+  });
+});
+
+describe("las dos pantallas públicas de encuesta no estiran su tarjeta (cotejo 1)", () => {
+  // EL DEFECTO: `main` es un flex en fila con `min-h-svh`, así que `align-items: stretch` estiraba la
+  // tarjeta a la altura de la pantalla. Con el formulario largo no se notaba, porque el contenido ya
+  // llenaba la altura; solo se veía en los estados CORTOS ("Encuesta completada", "Enlace no válido",
+  // "Retiraste tu autorización"), que son justo los que ve un paciente que vuelve al enlace: dos líneas
+  // dentro de un recuadro vacío de mil píxeles.
+  //
+  // Se vigilan las DOS páginas, no la que se reportó: la misma shell estaba copiada en las dos y solo una
+  // tenía captura.
+  const PAGINAS = [
+    "src/app/(public)/encuesta/[token]/page.tsx",
+    "src/app/(public)/encuesta/reanudar/[token]/page.tsx",
+  ];
+
+  it("cada `main` con min-h-svh declara su alineación en el eje transversal", () => {
+    for (const p of PAGINAS) {
+      // SIN COMENTARIOS: el comentario que explica este defecto NOMBRA `min-h-svh`, así que el candado se
+      // cazaba a sí mismo. Es la quinta vez de esa forma, y por eso el helper existe desde hace tiempo.
+      const src = sinComentarios(readFileSync(p, "utf8"));
+      const mains = src.split("\n").filter((l) => l.includes("min-h-svh"));
+      expect(mains.length, `no encontré el contenedor en ${p}`).toBeGreaterThan(0);
+      for (const linea of mains) {
+        expect(
+          /items-(start|center|end)/.test(linea),
+          `sin alineación, la tarjeta se estira a la pantalla y un mensaje corto sale en un recuadro vacío: ${p}`,
+        ).toBe(true);
+      }
+    }
   });
 });
