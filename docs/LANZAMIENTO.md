@@ -275,25 +275,38 @@ grupo prescrito se queda sin lista" sobre diez regiones y cinco objetivos calór
 `efr-81-estados.test.ts` (los 405 campos contra su archivo, cero diferencias) y `asesoria-macro.test.ts`
 (20 casos, seis de ellos sobre el SITIO DE LLAMADA del panel).
 
-**QUEDA UNA COSA ABIERTA Y ES LA MÁS SERIA: el interruptor del LE8 (P-92).** Su archivo lo tiene
-encendido y **el comentario que él mismo escribió tres líneas más arriba dice que debe quedar apagado**
-hasta recalibrar dos constantes; su respuesta del 4 confirma que esa recalibración **hoy es imposible**
-por ausencia de dato. Portarlo encendido baja la edad bioeléctrica de todos los pacientes entre 1 y 8
-años (sus palabras) con constantes que él mismo dice que no tienen origen documentado; dejarlo apagado
-mantiene dos de los ocho dominios del LE8 clavados para todo el mundo. **No se tocó**, y las dos opciones
-con su efecto están en `PENDIENTES_CIENTIFICOS.md`, punto 1.
+**LO CIENTÍFICO QUEDÓ CERRADO el 2026-09-05.** Las dos preguntas que estaban abiertas se contestaron el
+mismo día, y las dos en una dirección que no esperábamos.
 
-**Y los tres colores de los sectores siguen contradiciendo su etiqueta.** Él los dejó así a propósito
-("el color es contenido de esta Dirección y va firmado aparte"). Es la pregunta más barata que queda:
-son tres códigos de color. `PENDIENTES_CIENTIFICOS.md`, punto 2.
+**El interruptor del LE8 (P-92): CONTESTADO Y PORTADO.** Su respuesta del 5 de septiembre: *"El ICEC se
+activa tal cual se envió. Esa es la directriz vigente y con ella se cierra el punto."* La nota que nos
+frenó, la del 30 de agosto, era prudencial y *"se escribió sin haber analizado un solo caso"*; el 2 de
+septiembre midió el efecto sobre registros reales y decidió encenderlo. Portado el mismo día por el
+mecanismo de modificaciones autorizadas (CA-8a/CA-8b), con la migración **0100** (dieciséis campos pasan
+a insumo del diagnóstico) y el motor a **`anibise-1.3.0`**. Medido en local, aislando el efecto: la
+EB-BIS baja entre **0,6 y 5,4 años**, siempre hacia abajo, dentro del rango que él anunció. **Falta la
+medición contra la nube**, que es la que decide, porque los datos locales están sembrados: en 35 de 42
+los dos dominios caen justo sobre las constantes viejas. El estado lo sostienen `le8-encendido.test.ts`
+(18 casos, incluida la invariante de que el ICEC del dominio 5 sea igual al de `calcLE8`) y
+`docs/PLAN_LE8_ENCENDIDO.md` con las cifras.
+
+**Los tres colores: CERRADO por verificación, y no había nada que preguntar.** Los nueve hexadecimales
+de `FYR_LABELS` están **declarados y no los lee nadie**, ni Atlas ni su propio archivo (`getFyR()` se
+llama dos veces y las dos toman solo `.l`). El color que sí se ve en las nueve casillas **se deriva** de
+un degradado sobre el orden de riesgo, igual en los dos. `PENDIENTES_CIENTIFICOS.md`, punto 2.
 
 **El resto está en `docs/PENDIENTES_CIENTIFICOS.md`, en lenguaje no técnico.** Nació con nueve puntos y
-hoy son **DOS preguntas**: el LE8 y los tres colores. Los otros dos que quedaban se cerraron el mismo día
-con el **bump de la encuesta a v6** (`drizzle/0099_encuesta_v6.sql`), que porta las dos opciones de
-ejercicio que él ya tenía en su archivo y aplica las dos correcciones que escribió el 3 de septiembre y
-prometió "para la próxima entrega": el "(≥30 min)" de la P23 y el lenguaje de la P44. Son textos SUYOS,
-no propuestas nuestras. El estado lo sostiene `encuesta-v6-bump.test.ts`; el plan y sus mediciones están
-en `docs/PLAN_BUMP_ENCUESTA_v6.md`.
+hoy **no queda ninguna pregunta abierta con él**. Los otros dos se cerraron el 4 con el **bump de la
+encuesta a v6** (`drizzle/0099_encuesta_v6.sql`), que porta las dos opciones de ejercicio que él ya
+tenía en su archivo y aplica las dos correcciones que escribió el 3 de septiembre y prometió "para la
+próxima entrega": el "(≥30 min)" de la P23 y el lenguaje de la P44. Son textos SUYOS, no propuestas
+nuestras. El estado lo sostiene `encuesta-v6-bump.test.ts`; el plan y sus mediciones están en
+`docs/PLAN_BUMP_ENCUESTA_v6.md`.
+
+**Lo que queda de su lado son tres cosas menores, ninguna bloqueante:** P-110 (las doce medias porciones
+de Leguminosas, donde él firma una de tres salidas en la próxima ronda), P-111 (confirmarle en una línea
+que la atribución de μ/σ ya estaba retirada) y P-112 (tres entradas mal clasificadas que él mismo dejó
+señaladas sin tocar). Ver `DECISIONES_ANIBISE.md`.
 
 **Ese documento nació con NUEVE puntos y seis ya estaban contestados**, algunos desde el 3 de septiembre;
 uno de ellos llevaba una recomendación que contradecía una instrucción directa suya. Es la quinta vez con
