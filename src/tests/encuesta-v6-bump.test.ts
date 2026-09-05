@@ -18,16 +18,65 @@ import { describe, expect, it } from "vitest";
 const MIGRACION = "drizzle/0099_encuesta_v6.sql";
 const sql = () => readFileSync(MIGRACION, "utf8").replace(/\r\n/g, "\n");
 const seed = () => readFileSync("supabase/seed.ts", "utf8").replace(/\r\n/g, "\n");
+const lee0100 = () =>
+  readFileSync("drizzle/0100_le8_insumos_diagnostico.sql", "utf8").replace(/\r\n/g, "\n");
 
 describe("1 · la migración no se desincroniza del seed", () => {
-  it("regenerarla produce EXACTAMENTE el archivo committeado", () => {
-    // Si esto falla: alguien toco el seed y no regenero, o edito el .sql a mano. Se arregla corriendo
-    //   node scripts/gen-survey-migration.mjs > drizzle/0099_encuesta_v6.sql
+  it("regenerarla reproduce el archivo, salvo la marca que corrige la 0100", () => {
+    // Si esto falla por algo que NO sea used_in_diagnosis: alguien toco el seed y no regenero, o edito
+    // el .sql a mano.
+    //
+    // POR QUE YA NO ES UNA IGUALDAD BYTE A BYTE, y esto es un ajuste de ALCANCE, no de asercion. El seed
+    // avanzo legitimamente el 2026-09-05: al encender el LE8, los quince grupos del patron y d7_agua
+    // pasaron a ser insumo del diagnostico. La 0099 esta APLICADA y es forward-only, asi que no se toca;
+    // la correccion viaja en la 0100. La invariante que se conserva es mas fuerte que "son iguales": la
+    // UNICA diferencia permitida es la columna que la 0100 actualiza, y solo en esos dieciseis campos.
     const generada = execFileSync("node", ["scripts/gen-survey-migration.mjs"], {
       encoding: "utf8",
       maxBuffer: 32 * 1024 * 1024,
     }).replace(/\r\n/g, "\n");
-    expect(generada).toBe(sql());
+
+    const CAMPOS_0100 = [
+      ...Array.from({ length: 15 }, (_, i) => `d1_${i + 1}_i`),
+      "d7_agua",
+    ];
+    const viejas = sql().split("\n");
+    const nuevas = generada.split("\n");
+    expect(nuevas.length, "la migracion cambio de tamaño: eso no lo explica la 0100").toBe(viejas.length);
+
+    const distintas: string[] = [];
+    for (let i = 0; i < viejas.length; i++) {
+      if (viejas[i] === nuevas[i]) continue;
+      distintas.push(viejas[i]);
+      // La unica diferencia admitida: el booleano final pasa de false a true.
+      expect(
+        viejas[i].replace(/, false\)(,?)$/, ", true)$1"),
+        `linea ${i + 1} difiere en algo que no es used_in_diagnosis`,
+      ).toBe(nuevas[i]);
+      expect(
+        CAMPOS_0100.some((k) => viejas[i].includes(`'${k}'`)),
+        `la linea ${i + 1} cambio y su field_key no es de los dieciseis que corrige la 0100`,
+      ).toBe(true);
+    }
+    expect(distintas.length, "cambiaron mas o menos de 16 filas").toBe(16);
+  });
+
+  it("y la 0100 actualiza exactamente esos dieciseis campos de la v6, sin tocar nada mas", () => {
+    const m = lee0100();
+    expect(m).toContain("UPDATE survey_questions");
+    expect(m).toContain("SET used_in_diagnosis = true");
+    // Acotada a la version vigente: el alcance es una decision explicita, no un efecto del filtro.
+    expect(m, "sin acotar la version reescribiria la marca de evaluaciones viejas").toContain(
+      "WHERE survey_version_id = '55555555-5555-5555-5555-555555555556'",
+    );
+    for (const k of [...Array.from({ length: 15 }, (_, i) => `d1_${i + 1}_i`), "d7_agua"]) {
+      expect(m, `falta ${k}`).toContain(`'${k}'`);
+    }
+    // Y NO toca respuestas ni el contenido del instrumento.
+    const sinComentarios = m.replace(/^--.*$/gm, "");
+    for (const prohibido of [/\bDELETE\b/i, /\bINSERT\b/i, /\bDROP\b/i, /survey_answers/, /option_text/, /question_text/]) {
+      expect(sinComentarios, `la 0100 contiene ${prohibido}`).not.toMatch(prohibido);
+    }
   });
 
   it("y el seed apunta a la v6, no a la v5", () => {

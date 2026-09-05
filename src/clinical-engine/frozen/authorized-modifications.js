@@ -336,6 +336,53 @@ const AUTHORIZED_MODIFICATIONS = [
     oldSlice: "    iaeCl: { l: (() => { const x = cIAE(iae || 0).l; return x === \"Desacelerado\" ? \"Enlentecido\" : x; })() },",
     newSlice: "    iaeCl: !_presente(\"IAE\", \"iae\") ? null : { l: (() => { const x = cIAE(iae).l; return x === \"Desacelerado\" ? \"Enlentecido\" : x; })() },",
   },
+  {
+    caId: "CA-8a",
+    decision: "D-006",
+    date: "2026-09-05",
+    targetFile: "engine.dfi.js",
+    // Instruccion verbatim de Gildardo (respuesta 2026-09-05, punto 2): "El ICEC se activa tal cual se
+    // envio. Esa es la directriz vigente y con ella se cierra el punto. El interruptor esta en `true` por
+    // decision de esta Direccion, tomada el 2 de septiembre y reafirmada ese mismo dia."
+    //
+    // Y SOBRE LA NOTA QUE NOS FRENO, que es lo que hace vigente esta modificacion frente al comentario
+    // que sigue INTACTO encima del interruptor en su propio archivo: "Esa nota se escribio sin haber
+    // analizado un solo caso, porque entonces no los teniamos. Era una advertencia prudencial, no una
+    // medicion. El 2 de septiembre si se analizaron: se extrajeron los registros reales de ATLAS, se
+    // midio el efecto del mapeo perfil por perfil, y los ICA-BIS calculados coincidieron exactamente con
+    // los guardados en el sistema. Una advertencia escrita sin datos no gobierna sobre una decision
+    // tomada con datos."
+    //
+    // MU Y SIGMA NO SE MUEVEN (58,578 / 13,332), y es decision suya con su razon: "La recalibracion no
+    // esta pendiente de una firma. Esta bloqueada por ausencia de dato." El ICEC se calcula desde la
+    // encuesta y ninguna fuente disponible la trae. Se recalibra cuando haya masa de pacientes con
+    // encuesta completa.
+    instruction:
+      "Encender LE8_MAPEO_CORREGIDO: el ICEC se activa tal cual se envio (Gildardo 2026-09-05, decision del 2026-09-02). Con el apagado, Alimentacion e Hidratacion leian campos que solo existen en el objeto DEMO y quedaban clavadas en 30 y en 20 para todo paciente real.",
+    oldSlice: "const LE8_MAPEO_CORREGIDO = false;",
+    newSlice: "const LE8_MAPEO_CORREGIDO = true;",
+  },
+  {
+    caId: "CA-8b",
+    decision: "D-006",
+    date: "2026-09-05",
+    targetFile: "engine.dfi.js",
+    // ESTA NO ES UNA MODIFICACION CLINICA, y se declara asi a proposito. Es reparacion de AMBITO: en su
+    // archivo todo vive en un solo scope, asi que `calcPatron` esta disponible dentro de `calcLE8`; en
+    // Atlas son modulos y `engine.dfi` solo importaba del nucleo. Sin esta linea, encender CA-8a NO
+    // ENCIENDE NADA: la rama de Alimentacion lanza ReferenceError, cae al catch y devuelve 30, o sea el
+    // mismo valor que estaba clavado. El porte pareceria hecho y no lo estaria.
+    //
+    // No cambia ninguna cifra por si sola: solo pone en el ambito la funcion que el propio calcLE8 ya
+    // nombra en su rama encendida.
+    instruction:
+      "Poner calcPatron en el ambito de engine.dfi (reparacion de ambito, no ciencia): su archivo es un solo scope y el nuestro son modulos. Sin esto, CA-8a cae al catch y la Alimentacion se queda en 30.",
+    oldSlice:
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');",
+    newSlice:
+      "const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');" +
+      "\nconst { calcPatron } = require('./engine.patron.js');",
+  },
 ];
 
 // Aplica las modificaciones sobre el texto original. Todas se ubican en el ORIGINAL (no en el texto

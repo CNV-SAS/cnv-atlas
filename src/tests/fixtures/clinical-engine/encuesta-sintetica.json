@@ -2,9 +2,6 @@
   "_meta": "FIXTURE SINTÉTICO para golden del DFI — respuestas de ejemplo (NO paciente real). Revisar coherencia clínica con Gildardo. Perfil: hombre 54a, IMC 27.5, sobrepeso leve, sedentario moderado, sin TCA, 1 antecedente familiar.",
   "sexo": "M",
   "edad": 54.628,
-  "d1_9": 2,
-  "d1_10": 1,
-  "d1_16": 6,
   "d2_19": "Sobrepeso",
   "d2_20": "Insatisfecho/a",
   "d2_21": [],
@@ -16,8 +13,26 @@
   "d3_30": "Nunca he fumado",
   "d3_31": "Ocasional",
   "d5_36": "No",
-  "d5_38": ["Diabetes tipo 2"],
+  "d5_38": [
+    "Diabetes tipo 2"
+  ],
   "d5_39": [],
   "d8_61": "Sí, siempre",
-  "d8_62": "No, nunca"
+  "d8_62": "No, nunca",
+  "d1_1_i": "5–6 días",
+  "d1_2_i": "5–6 días",
+  "d1_3_i": "5–6 días",
+  "d1_4_i": "5–6 días",
+  "d1_5_i": "5–6 días",
+  "d1_6_i": "5–6 días",
+  "d1_7_i": "5–6 días",
+  "d1_8_i": "3–4 días",
+  "d1_9_i": "3–4 días",
+  "d1_10_i": "3–4 días",
+  "d1_15_i": "3–4 días",
+  "d1_11_i": "Todos los días",
+  "d1_12_i": "Nunca",
+  "d1_13_i": "Nunca",
+  "d1_14_i": "Nunca",
+  "d7_agua": "6"
 }

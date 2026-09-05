@@ -93,8 +93,17 @@ describe("las versiones subieron: sin eso, la reemisión del 12b no puede dispar
     // Es el mecanismo entero: si la version no sube, `vigencia.alDia` da true para los diagnosticos
     // viejos, no se recomputa nada, y la comparacion de bandas NUNCA se ejecuta. El arreglo quedaria
     // aplicado solo para los pacientes nuevos, en silencio.
-    expect(VERSION).toContain('export const ENGINE_VERSION = "anibise-1.2.0"');
-    expect(VERSION).not.toContain('ENGINE_VERSION = "anibise-1.1.0"');
+    //
+    // ASERCION DERIVADA (2026-09-05), por la misma razon que su hermana de abajo y con un dia de
+    // diferencia: fijaba "1.2.0" a mano, asi que el bump legitimo del LE8 la puso roja. Lo que este test
+    // afirma no es "la version es esta", es "la version SUBIO respecto de la que habia cuando se conecto
+    // la dinamometria". Eso es lo unico que no envejece.
+    const PREVIA_A_LA_DINAMOMETRIA = "anibise-1.1.0";
+    const m = /export const ENGINE_VERSION = "([^"]+)"/.exec(VERSION);
+    expect(m, "no se encuentra ENGINE_VERSION").not.toBeNull();
+    expect(m![1]).not.toBe(PREVIA_A_LA_DINAMOMETRIA);
+    // Y que siga siendo una version del motor, no cualquier cadena.
+    expect(m![1]).toMatch(/^anibise-\d+\.\d+\.\d+$/);
   });
 
   it("y el conjunto de protocolo también, porque el fenotipo alimenta la prescripción", () => {

@@ -701,6 +701,13 @@
       "when": 1788567386099,
       "tag": "0099_encuesta_v6",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1788653786099,
+      "tag": "0100_le8_insumos_diagnostico",
+      "breakpoints": true
     }
   ]
 }

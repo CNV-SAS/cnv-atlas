@@ -22,6 +22,7 @@ import type { DFIResult } from "./frozen/engine.dfi";
 import * as dfi from "./frozen/engine.dfi.authorized.js";
 import * as ix from "./frozen/engine.indices.js";
 import { type BiodyImport, parseBiodyRow } from "./edge/biody-import";
+import { ordinalesPatron } from "./patron";
 import { normalizeSexo, type SexoCanonico } from "./edge/normalize";
 
 /** Contexto de encuesta necesario SOLO para EB-BIS/IAE (opcional). */
@@ -148,7 +149,13 @@ export function analizarDFI(
       ? ix.computeIEHH({ Re: imp.Re, Rinf: imp.Rinf, C: imp.C, FFW: imp.raw.FFW })
       : 0;
 
-  const le8 = dfi.calcLE8(enc);
+  // EL ENC ADAPTADO SE ARMA UNA VEZ Y VIAJA A LOS DOS CONSUMIDORES, y esto no es estilo: hay DOS
+  // puertas al LE8 y la segunda esta DENTRO del frozen. `computeDFIFromData` vuelve a llamar a
+  // `calcLE8(d)` por su cuenta para el Dominio 5, asi que adaptar solo la llamada de arriba dejaba el
+  // DFI corriendo sobre un ICEC a medias: la misma pantalla mostraria un ICEC y el dominio 5 estaria
+  // calculado con otro. Lo destapo el golden (d5 se movio de 0 a 1 con el total intacto en 80).
+  const encLe8 = { ...enc, ...ordinalesPatron(enc) };
+  const le8 = dfi.calcLE8(encLe8);
   const EB_BIS = le8.total != null ? ix.computeEBBIS(IFC, PABU, le8.total) : null;
   const IAE = ix.computeIAE(EB_BIS, (enc.edad as number) ?? null);
 
@@ -170,14 +177,29 @@ export function analizarDFI(
     FFMI: imp.FFMI,
   };
 
-  const out = dfi.computeDFIFromData(enc, bis);
+  const out = dfi.computeDFIFromData(encLe8, bis);
   if (!out) {
     throw new Error("analizarDFI: computeDFIFromData no produjo resultado (sin BIS).");
   }
   return { ...out, le8 };
 }
 
-export { calcLE8 } from "./frozen/engine.dfi.authorized.js";
+/**
+ * LA UNICA PUERTA AL LE8. Antes esto era un re-export directo del frozen; ahora envuelve, y la envoltura
+ * es lo que hace que el interruptor `LE8_MAPEO_CORREGIDO` este de verdad aplicado.
+ *
+ * POR QUE: con el interruptor encendido, el dominio de Alimentacion lee `calcPatron(enc).score`, y
+ * `calcPatron` espera el ORDINAL 0-4 de cada grupo de frecuencia. Atlas guarda el TEXTO. Pasarle el enc
+ * crudo no da error: saca 10 para todo el mundo, en silencio. Ver `ordinalesPatron` y
+ * `docs/PLAN_LE8_ENCENDIDO.md`.
+ *
+ * SE ENVUELVE EN VEZ DE MODIFICAR `calcLE8`: la ciencia no cambia, cambia la FORMA en que se le entrega
+ * el dato. Y va aqui, en una sola puerta, porque el defecto que esto evita es una OMISION (llamar al
+ * frozen sin adaptar); el candado `le8-encendido.test.ts` vigila que nadie abra una segunda.
+ */
+export function calcLE8(enc: Record<string, unknown>): ReturnType<typeof dfi.calcLE8> {
+  return dfi.calcLE8({ ...enc, ...ordinalesPatron(enc) });
+}
 export { parseBiodyRow, assertEngineInputs } from "./edge/biody-import";
 export {
   normalizeSexo,
