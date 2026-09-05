@@ -592,7 +592,11 @@ function CadenaCaloricaSection({
               label="Objetivo (kcal)"
               value={kcalObj}
               onChange={setKcalObj}
-              placeholder={`modelo: ${d0(base.kcalObj)}`}
+              // EL PLACEHOLDER DICE LO QUE PASA SI SE DEJA VACIO, no lo que se sello al diagnosticar.
+              // Antes ponia `base.kcalObj` (2377), y dejando el campo en blanco salia 2408: un placeholder
+              // que promete una cifra y entrega otra. Era la raiz de la confusion del cotejo 22.1, y el
+              // primer arreglo la TAPO (anadiendo "el modelo sugirio 2377") en vez de cerrarla.
+              placeholder={`modelo: ${d0(objetivoDelModelo)}`}
               step="1"
             />
             {/* LOS CUATRO CAMPOS JUNTOS, como su pantalla los agrupa (cotejo 2026-09-01, punto a). El PAL
@@ -675,11 +679,12 @@ function CadenaCaloricaSection({
             <span className="font-semibold text-foreground">
               {d0(cal.kcalObj)} kcal
               <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {/* SOLO LA PROCEDENCIA, sin una segunda cifra. Aqui llego a decir "el modelo sugirio
+                    2377" para explicar por que el campo de arriba ponia otra cosa; con el placeholder
+                    arreglado ese numero desaparecio de la pantalla y explicarlo sobra. La procedencia si
+                    se queda: es lo que distingue una cifra del modelo de una que puso el profesional, y
+                    no cuesta un segundo numero. */}
                 {procedenciaObjetivo}
-                {/* Y CUANDO NO COINCIDE CON EL DEL MODELO, se dice cual era. Es lo que cierra la pregunta
-                    que abria la pantalla: el campo de abajo lleva `modelo: 2377` de placeholder, y sin
-                    esta linea no habia forma de saber por que aqui pone otra cifra. */}
-                {cal.kcalObj !== base.kcalObj ? ` · el modelo sugirió ${d0(base.kcalObj)}` : ""}
               </span>
             </span>
           </p>
@@ -698,7 +703,9 @@ function CadenaCaloricaSection({
               label="GEB (kcal)"
               value={geb}
               onChange={setGeb}
-              placeholder={`modelo: ${d0(base.geb)}`}
+              // Mismo caso que el objetivo: `base.geb` era el sellado (1729) y lo que corre al dejarlo
+              // vacio es el GEB sobre el peso de la cadena (1751). `gebAuto` ES ese valor.
+              placeholder={`modelo: ${d0(cal.gebAuto)}`}
               step="1"
             />
             {/* PAL COMO DESPLEGABLE, no campo libre (cotejo 2026-08-31, decisión de Santiago). Un campo
@@ -809,11 +816,7 @@ function CadenaCaloricaSection({
             <PrevRow
               label="Gasto energético basal (GEB)"
               value={`${d0(cal.geb)} kcal`}
-              detail={
-                cal.geb !== base.geb
-                  ? `(${cal.formula} · el modelo: ${d0(base.geb)})`
-                  : `(${cal.formula})`
-              }
+              detail={`(${cal.formula})`}
             />
             <PrevRow
               op="×"
