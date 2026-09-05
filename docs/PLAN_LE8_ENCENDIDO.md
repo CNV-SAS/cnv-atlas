@@ -1,6 +1,7 @@
 # Plan: encender el LE8 (`LE8_MAPEO_CORREGIDO`)
 
-**Para Santiago. 2026-09-05. PROPUESTA: no se ha tocado nada.**
+**Para Santiago. 2026-09-05. APLICADO en local, salvo la medicion de la nube y P-109.** Las tres piezas
+estan portadas, el candado esta verde y la version subio a `anibise-1.3.0`. Lo que falta va marcado.
 
 Su instrucción del 5 de septiembre: *"El ICEC se activa tal cual se envió. Esa es la directriz vigente y
 con ella se cierra el punto."* La nota del 30 de agosto que nos frenó era prudencial, escrita sin
@@ -140,29 +141,83 @@ vigente)... esos dos dominios corren en default SIEMPRE"*. Deja de ser cierto en
 
 ---
 
-## 3 · La medición del efecto
+## 3 · La medición del efecto: HECHA en local el 2026-09-05
 
-**Antes de aplicar nada a la nube**, y con la lección de la última vez: **una medición local no decide
-sobre datos de la nube.** Se mide en las dos, y manda la nube.
+**Falta la de la nube, y es la que manda.** Ver el final de esta sección.
 
-El método, que no requiere adivinar: `simularConCienciaDeHoy` ya recomputa una evaluación con el motor
-actual. Con el porte en el árbol de trabajo y sin desplegar, se recorre cada evaluación con diagnóstico
-y se compara sellado contra recomputado:
+Se midió de DOS formas, y hacen falta las dos:
 
-| Qué se mide | Por qué |
+- **Aislada:** se calcula el LE8 de hoy y se reconstruye por aritmética exacta el ICEC que habría dado
+  con el interruptor apagado (los dos dominios afectados vuelven a sus constantes, 30 y 20; los otros
+  seis no los toca el interruptor). Así el delta es del LE8 y de nada más.
+- **Contra lo sellado:** snapshot contra recomputado de hoy, que es lo que de verdad dispara la
+  reemisión. Ese delta **mezcla** el LE8 con los bumps anteriores (hay diagnósticos sellados con 1.0.0 y
+  1.1.0), así que no sirve para contrastar su cifra.
+
+### Lo aislado, que es lo que se contrasta con su anuncio
+
+| | |
 | --- | --- |
-| **Cuántos pacientes cambian de banda de EB-BIS**, y de cuántos años | Es su cifra ("entre 1 y 8"). Conviene el número real |
-| **Cuántos cambian de banda de IAE** | Es la que dispara la reemisión (ver punto 4) |
-| **Cuántos cambian severidad en los dominios 3 y 5** | La otra vía de disparo |
-| **Cuántos cambian de riesgo integrado** | La tercera |
-| **Cuántos ganan o pierden las rutas R4 y R5** | Cambia lo que se le propone al profesional |
+| Evaluaciones comparables | 42 |
+| Se les mueve el ICEC | **7** |
+| La EB-BIS baja | entre **0,6 y 5,4 años** (media 1,46) |
+| Dirección | **siempre hacia abajo**, en las siete |
+| Cruzan banda de IAE por el LE8 solo | **0** |
 
-El resultado se escribe en este documento antes de aplicar. **Si sale algo que no esperamos, se para y
-se reporta**, no se sigue.
+**Coincide con lo que él anunció** ("baja entre 1 y 8 años, más cuanto más sano esté el paciente"):
+siempre baja, y el máximo (5,4) queda dentro de su rango. **No hay discrepancia, así que no hay que
+parar.**
 
-**Referencia local de hoy** (no decide, solo dimensiona): 61 diagnósticos, **13 confirmados**, repartidos
-en tres versiones de motor (23 en 1.0.0, 18 en 1.1.0, 20 en 1.2.0). O sea que **43 ya arrastran desfase
-de versión** por bumps anteriores.
+### Y por qué solo 7 de 42, que es lo importante de esta medición
+
+No es que el cambio sea pequeño. Es que **los datos locales están sembrados**. La distribución de los
+dos dominios nuevos, sobre las 42:
+
+| Alimentación / Hidratación | Casos |
+| --- | --- |
+| **30 / 20** | **35** |
+| 42 / 20 | 4 |
+| 15 / 50 | 2 |
+| 45 / 75 | 1 |
+
+En 35 de 42 los dos dominios caen **exactamente sobre las constantes viejas**, porque el sembrado
+responde la matriz con un patrón fijo que puntúa 30 y deja el agua en el tramo de 20. En esos casos el
+ICEC no se mueve, y eso es un artefacto del seed, **no una propiedad del cambio**.
+
+**En pacientes reales, con dietas e hidrataciones distintas, se va a mover mucho más.** Por eso la
+medición de la nube no es una confirmación de trámite: es la que decide.
+
+### Contra lo sellado (lo que va a disparar en pantalla)
+
+| | |
+| --- | --- |
+| Diagnósticos | 61 (13 confirmados) |
+| Recomputables | 45 |
+| Cambia la banda de IAE | 3 |
+| Cambia la severidad del dominio 3 | 3 |
+| Cambia la severidad del dominio 5 | **7** |
+| Cambia el riesgo integrado | 6 |
+| Cambian las rutas | 3 |
+| **Veredicto `reemision-obligatoria`** | **12** |
+| ...de ellos, en diagnósticos **confirmados** | **5** |
+
+**El mecanismo dispara**, que era la verificación obligatoria. Y dispara por donde el plan predijo: no
+por la EB-BIS (que no tiene clasificación), sino por el IAE, por los dominios 3 y 5 y por el riesgo.
+
+Una coincidencia que vale la pena mirar: **los 7 a los que se les mueve el ICEC son 7, y 7 son los que
+cambian severidad en el dominio 5.** Es la cascada funcionando, aunque las dos cifras salen de
+mediciones distintas y no se puede afirmar que sean los mismos siete sin cruzarlos uno a uno.
+
+### PENDIENTE: la medición de la nube
+
+No se pudo hacer desde aquí: no hay cadena de conexión a la nube en el entorno local, y tampoco debe
+haberla. **La corre Santiago**, apuntando `DATABASE_URL` a la nube y volviendo a ejecutar la medición
+(el archivo temporal `src/tests/zz-medicion-le8.test.ts` está en el árbol de trabajo, sin commitear, y se
+borra cuando la medición esté hecha).
+
+**Y si allá sale algo distinto de lo que él anunció** (un cambio mayor a 8 años, o alguno que SUBA la
+edad en vez de bajarla), **se para y se reporta**: su cifra sale de su propia medición sobre registros
+reales, así que una discrepancia grande significaría que algo no coincide.
 
 ---
 

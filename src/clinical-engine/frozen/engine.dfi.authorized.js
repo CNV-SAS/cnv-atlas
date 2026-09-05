@@ -5,6 +5,7 @@
  * El original (atlas-protocolo.js) queda intacto como referencia byte-identica a Gildardo.
  */
 const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE } = require('./engine.core.js');
+const { calcPatron } = require('./engine.patron.js');
 
 // ─── MAPEO DEL LE8 A LOS CAMPOS QUE LA ENCUESTA SÍ CAPTURA ──────────────────
 // Los campos d1_9, d1_10 y d1_16 que lee calcLE8 NO existen en la encuesta: solo
@@ -26,7 +27,7 @@ const { calcIFC, calcIRC, calcPABU, cPABU, cIFC, cIRC, cFMI, cFFMI, cIEHH, cIAE 
 //     y las edades biológicas emitidas hasta hoy estaban infladas;
 //   · si se calcularon sobre el ICEC ya roto  → μ y σ incorporan el sesgo y hay que
 //     recalibrarlas ANTES, o todos quedarán con edad biológica demasiado joven.
-const LE8_MAPEO_CORREGIDO = false;
+const LE8_MAPEO_CORREGIDO = true;
 
 // Diagnóstico LE8 simplificado
 const calcLE8 = enc => {

@@ -92,3 +92,34 @@ export function resolvePatron(
   if (respondidos === 0) return { status: "sin_respuestas" };
   return { status: "ok", patron: calcPatron(enc), respondidos, grupos };
 }
+
+/**
+ * Los campos del patrón resueltos a su ORDINAL, para el `enc` que consume `calcPatron`.
+ *
+ * POR QUE EXISTE, y es el defecto que cierra: al encender `LE8_MAPEO_CORREGIDO`, el dominio de
+ * Alimentación del LE8 pasa a leer `calcPatron(enc).score`. Y `calcPatron` espera el ordinal 0-4 de cada
+ * grupo, mientras Atlas guarda el TEXTO de la opción. Pasarle el enc crudo NO da error: ninguna
+ * comparación `v >= 3` se cumple, el score sale 10 para todo el mundo, y un 10 se lee en pantalla como
+ * "dieta deficiente" y no como "el porte está mal". Ver `docs/PLAN_LE8_ENCENDIDO.md` §1 (estado C).
+ *
+ * La resolución es la MISMA que la del reader de display: contra los textos canónicos del frozen
+ * (`CANON`, derivado de `FREQ_OPC`/`FREQ_SUP`), no contra el orden de la base.
+ *
+ * UN VALOR QUE NO SE RECONOCE SE OMITE, no se inventa: `calcPatron` lee la ausencia como -1, que no
+ * puntúa. Quien lo REPORTA como defecto es `resolvePatron` (estado `ilegible`), que corre sobre la misma
+ * evaluación. Así una respuesta ilegible se ve en el panel del patrón y no fabrica un ICEC en silencio,
+ * que es lo que su CA-3 mandó evitar.
+ *
+ * Cubre los 18 campos que `calcPatron` lee (15 grupos + 3 horarios), no solo los que hoy puntúan: si
+ * algún día los horarios entran al score, ya llegan en la forma correcta.
+ */
+export function ordinalesPatron(enc: Record<string, unknown>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const k of PATRON_KEYS) {
+    const v = enc[k];
+    if (typeof v !== "string" || v === "") continue;
+    const ordinal = CANON[k].indexOf(v);
+    if (ordinal !== -1) out[k] = ordinal;
+  }
+  return out;
+}

@@ -43,15 +43,44 @@ const ENGINE_ANSWERS: SurveyFieldAnswer[] = [
   { fieldKey: "d5_36", type: "opcion", value: "Sí" },
   { fieldKey: "d5_39", type: "opcion_multiple", value: JSON.stringify(["Diabetes tipo 2"]) },
   { fieldKey: "d2_21", type: "opcion_multiple", value: JSON.stringify(["Vómito"]) },
+  // LA MATRIZ DE FRECUENCIA Y EL AGUA, desde el encendido del LE8 (2026-09-05). Antes no estaban aqui
+  // porque el motor no las leia: los dominios de Alimentacion e Hidratacion corrian sobre d1_9/d1_10/
+  // d1_16, campos que solo existen en el objeto DEMO de su prototipo. Ahora Alimentacion sale de
+  // `calcPatron` sobre estos quince y la Hidratacion de `d7_agua`, asi que sus cadenas entran al
+  // acoplamiento: si una option_text del seed deja de coincidir con FREQ_OPC, el ordinal no se resuelve y
+  // el grupo desaparece del score EN SILENCIO. Es exactamente el riesgo que este candado existe para ver.
+  ...[1, 2, 3, 4, 5, 6, 7].map((n) => ({
+    fieldKey: `d1_${n}_i`,
+    type: "opcion" as const,
+    value: "Todos los días",
+  })),
+  ...[8, 9, 10, 15].map((n) => ({
+    fieldKey: `d1_${n}_i`,
+    type: "opcion" as const,
+    value: "Nunca",
+  })),
+  ...[11, 12, 13, 14].map((n) => ({
+    fieldKey: `d1_${n}_i`,
+    type: "opcion" as const,
+    value: "Nunca",
+  })),
+  { fieldKey: "d7_agua", type: "contador", value: "8" },
 ];
 
-// Los 13 field_key que alimentan el motor (contrato estable con el seed). d3_31 (alcohol) se
+// Los field_key que alimentan el DIAGNOSTICO (contrato estable con el seed). d3_31 (alcohol) se
 // quito: es registro clinico, no alimenta el motor (Q6, resuelto por Gildardo).
+//
+// PASARON DE 13 A 29 el 2026-09-05, con el encendido del LE8: los quince grupos del patron y `d7_agua`
+// dejaron de ser solo display/tratamiento y pasaron a ser insumo del diagnostico. La marca la corrige la
+// migracion 0100 y el seed ya nace alineado. Esta lista es el contrato: si alguien encendiera el
+// interruptor sin mover la marca, la mitad de BD de este candado lo dice.
 const EXPECTED_FIELD_KEYS = [
   "d2_19", "d2_20", "d2_21", "d2_22",
   "d3_23", "d3_24", "d3_26", "d3_30",
   "d5_36", "d5_38", "d5_39",
   "d8_61", "d8_62",
+  ...Array.from({ length: 15 }, (_, i) => `d1_${i + 1}_i`),
+  "d7_agua",
 ].sort();
 
 // bisRaw como lo guarda B8 (header normalizado -> valor) desde la fila anonimizada del
@@ -74,23 +103,31 @@ describe("acoplamiento encuesta <-> motor (contrato de cadenas)", () => {
     );
     const out = runEngine(input);
 
-    // ENGINE_ANSWERS responde 7 de los 13 field_key declarados: el DFI corre sobre lo presente
+    // ENGINE_ANSWERS responde 23 de los 29 field_key declarados: el DFI corre sobre lo presente
     // (LE8/veto/rutas siguen validos) pero se marca INCOMPLETO (dfi.complete, definicion por
     // version, regla 7). Antes bastaba "algun d-field" para marcar completo (bug corregido).
     expect(out.dfi.complete).toBe(false);
     expect(out.dfi.degradedReason).not.toBeNull();
     expect(out.dfi.missingFieldKeys).toContain("d8_61");
 
-    // LE8 total sensible a 5 dominios string-exact: AF 100 ("Mas de 60 min" x 5 dias),
-    // Tabaco 100 ("Nunca he fumado"), Sueno 100 ("7-8 horas" en-dash), Glucosa 20
-    // ("Diabetes tipo 2"), Presion 30 ("Si"). Alimentacion 30 e Hidratacion 20 degradados
-    // (Q3: sin d1_9/d1_10/d1_16). round((100+30+100+100+20+100+30+20)/8) = 63. Si una
-    // cadena no coincide, el dominio cae a su default y el total cambia -> el test truena.
+    // LE8 total sensible a los OCHO dominios string-exact, desde el encendido del LE8: AF 100
+    // ("Mas de 60 min" x 5 dias), Alimentacion 70, Tabaco 100 ("Nunca he fumado"), Sueno 100
+    // ("7-8 horas" en-dash), Glucosa 20 ("Diabetes tipo 2"), Colesterol 100, Presion 30 ("Si"),
+    // Hidratacion 100 (d7_agua = 8 vasos).
+    //
+    // LOS 70 DE ALIMENTACION, DERIVADOS A MANO de la tabla de calcPatron (solo puntuan los SEIS primeros
+    // protectores): 6 x (+10) = 60 protectores a diario · riesgo en "Nunca" = 0 · neutros en "Nunca" no
+    // llegan a 2 = 0 · +10 de base = 70.
+    //
+    // round((100+70+100+100+20+100+30+100)/8) = round(77,5) = 78. Si una cadena no coincide, el dominio
+    // cae a su default y el total cambia -> el test truena. Antes de encender el LE8 este numero era 63,
+    // con Alimentacion e Hidratacion degradadas a 30 y 20 sobre d1_9/d1_10/d1_16, que solo existen en el
+    // objeto DEMO de su prototipo.
     // La coupling se verifica en el DESGLOSE de dominios (dom5, NO suspendido): con encuesta
     // incompleta el top-level le8Total se SUSPENDE (Q28), pero el frozen sigue calculando el
     // ICEC y lo expone en dom5 (info provisional del profesional bajo el aviso).
     const dom5 = out.dfi.domains.find((d) => d.id === "d5");
-    expect(dom5?.items?.[0]).toContain("63");
+    expect(dom5?.items?.[0]).toContain("78");
     // SUSPENSION por incompleta (Q28): ICEC (le8Total) NO se emite, y R3 (ruta de encuesta) se suspende.
     expect(out.dfi.le8Total).toBeNull();
     expect(out.dfi.rutas.some((r) => r.startsWith("R3"))).toBe(false);
@@ -167,7 +204,7 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
     }
   });
 
-  it("el seed expone exactamente los 13 field_key esperados", () => {
+  it("el seed expone exactamente los 29 field_key esperados", () => {
     expect(seeded.map((r) => r.fieldKey).sort()).toEqual(EXPECTED_FIELD_KEYS);
   });
 
@@ -175,6 +212,10 @@ describe.skipIf(!HAS_DB)("acoplamiento con el seed (BD real)", () => {
     for (const a of ENGINE_ANSWERS) {
       const row = seeded.find((r) => r.fieldKey === a.fieldKey);
       expect(row, `field_key ${a.fieldKey} presente en el seed`).toBeDefined();
+      // Un `contador` (d7_agua) no tiene opciones: su valor es la cifra que escribe el paciente, asi que
+      // no hay cadena que acoplar. Lo que SI hay que verificar de el es que la pregunta exista y sea
+      // insumo del diagnostico, y eso lo cubre la asercion de arriba (los 29 field_key).
+      if (a.type === "contador") continue;
       const values =
         a.type === "opcion_multiple" ? (JSON.parse(a.value) as string[]) : [a.value];
       for (const v of values) {

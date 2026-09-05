@@ -23,7 +23,23 @@
 //    bandas del §12b pueda dispararse y proponer la reemision donde corresponda.
 //    Incluye tambien CA-6/CA-7 (el dominio sin dato no puntua; el adaptador deja de clasificar ceros
 //    fabricados), que cambian severidades y el riesgo integrado por la misma via.
-export const ENGINE_VERSION = "anibise-1.2.0";
+//  · 1.3.0 (2026-09-05): SE ENCIENDE EL LE8 (`LE8_MAPEO_CORREGIDO`, CA-8a/CA-8b). Instruccion de
+//    Direccion Cientifica del 5 de septiembre, decision suya del 2: "el ICEC se activa tal cual se
+//    envio". Hasta aqui DOS de los ocho dominios del LE8 leian campos que solo existen en el objeto DEMO
+//    de su prototipo (d1_9/d1_10 y d1_16), asi que corrian CLAVADOS para todo paciente real:
+//    Alimentacion en 30 e Hidratacion en 20, midiera lo que midiera la persona. Ahora Alimentacion sale
+//    de `calcPatron` sobre los quince grupos de frecuencia e Hidratacion de `d7_agua`.
+//    LAS CIFRAS QUE SE MUEVEN, y por eso NO se folda: el ICEC, y con el la EB-BIS, el IAE, los dominios
+//    3 y 5 del DFI con su severidad, el riesgo integrado y las rutas R4/R5. Medido antes de aplicarlo
+//    sobre la base local, aislando el efecto del interruptor: en los pacientes cuyos dos dominios se
+//    apartan de las constantes viejas, la EB-BIS BAJA entre 0,6 y 5,4 anos (media 1,46), siempre hacia
+//    abajo, dentro del rango que el anuncio ("entre 1 y 8"). Ver PLAN_LE8_ENCENDIDO.md §3.
+//    Y SUBE PARA QUE LA COMPARACION DE BANDAS DE SU §12b PUEDA DISPARARSE: sin desfase de version,
+//    `veredictoDeReemision` no corre y el cambio pasaria invisible en los diagnosticos ya emitidos.
+//    Incluye la migracion 0100: los quince grupos y `d7_agua` pasan a `used_in_diagnosis = true`, porque
+//    dejaron de ser display/tratamiento y son insumo del diagnostico. Sin eso, `dfi.complete` diria que
+//    los insumos estan completos sobre respuestas que el paciente no dio.
+export const ENGINE_VERSION = "anibise-1.3.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada

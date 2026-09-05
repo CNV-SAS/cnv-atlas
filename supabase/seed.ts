@@ -219,23 +219,29 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // prueba fidelidad. El candado de correspondencia (`freq-groups-orden.test.ts`) lo fija ahora.
   //
   // Todos con
-  // patternEngine: field_key = key, used_in_diagnosis=false, para alimentar el DISPLAY calcPatron
+  // patternEngine + engine (2026-09-05, con el encendido del LE8): los 15 grupos siguen alimentando el
+  // DISPLAY del patron, y ADEMAS entran al diagnostico. Con `LE8_MAPEO_CORREGIDO` en true el dominio de
+  // Alimentacion del LE8 lee `calcPatron(enc).score`, asi que estos campos pasaron a ser insumo del
+  // DIAGNOSTICO y tienen que contar para `dfi.complete`. Dejarlos en used_in_diagnosis=false habria
+  // permitido emitir un ICEC sobre respuestas que el paciente no dio, que es justo lo que su CA-3 mando
+  // evitar. Los 3 horarios (d1f_*) NO se marcan: calcPatron los devuelve pero no puntuan.
+  // patternEngine: field_key = key, para alimentar el DISPLAY calcPatron
   // (no el diagnostico). calcPatron lee el ORDINAL de la opcion (FREQ_OPC), no el texto.
-  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", sub: "espinaca, acelga, brócoli, tomate, zanahoria, ahuyama, remolacha, pepino (frescas, de hoja verde y fuente de vitamina A) · Un puño cerrado", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", sub: "banano, mango, papaya, guayaba, naranja, lulo, tomate de árbol (enteras, no en jugo) · 1 fruta mediana o un pocillo", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", sub: "fríjol, lenteja, garbanzo, arveja, habas · Un pocillo arriero cocido", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", sub: "atún, sardina, bocachico, tilapia, salmón, camarón (frescos, refrigerados o congelados) · Tamaño de su celular", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", sub: "aguacate, aceite de oliva (preferiblemente extra virgen), maní, nueces, almendras, semillas, coco · ¼ aguacate, 1 cucharadita de aceite o un puñado de frutos secos", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_6_i", type: "opcion", text: "Lácteos y fermentados (frecuencia de consumo)", sub: "leche, yogur natural, kumis, kéfir, queso fresco · 1 vaso o 2 cucharadas de queso", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", sub: "huevo entero · 1 unidad", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_8_i", type: "opcion", text: "Cereales integrales y otros (frecuencia de consumo)", sub: "avena, quinua, maíz, arroz integral, cebada, cuchuco, pan integral · ½ pocillo cocido o 1 tajada", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_9_i", type: "opcion", text: "Raíces, tubérculos y plátanos (frecuencia de consumo)", sub: "papa, yuca, plátano, arracacha, ñame, batata · 1 papa mediana o ½ plátano", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", sub: "pollo, pavo, aves sin piel · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro) · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas blancas (frecuencia de consumo)", sub: "pan blanco, arroz blanco, pasta blanca, galletas, arepa de harina refinada · ½ pocillo o 1 unidad", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", sub: "salchicha, chorizo, jamón, tocineta, mortadela, enlatados · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_13_i", type: "opcion", text: "Azúcares añadidos y bebidas azucaradas (frecuencia de consumo)", sub: "gaseosas, jugos de caja, dulces, chocolatinas, postres, exceso de panela o azúcar · 1 vaso o 1 unidad", options: FREQ_OPC, patternEngine: true },
-  { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", sub: "productos de paquete, papas fritas, comidas rápidas, hamburguesa, pizza, perro, sopas de sobre, caldos concentrados y sazonadores industriales · 1 paquete o 1 porción", options: FREQ_OPC, patternEngine: true },
+  { key: "d1_1_i", type: "opcion", text: "Verduras y hortalizas (frecuencia de consumo)", sub: "espinaca, acelga, brócoli, tomate, zanahoria, ahuyama, remolacha, pepino (frescas, de hoja verde y fuente de vitamina A) · Un puño cerrado", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_2_i", type: "opcion", text: "Frutas enteras (frecuencia de consumo)", sub: "banano, mango, papaya, guayaba, naranja, lulo, tomate de árbol (enteras, no en jugo) · 1 fruta mediana o un pocillo", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_3_i", type: "opcion", text: "Leguminosas (frecuencia de consumo)", sub: "fríjol, lenteja, garbanzo, arveja, habas · Un pocillo arriero cocido", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_4_i", type: "opcion", text: "Pescado y mariscos (frecuencia de consumo)", sub: "atún, sardina, bocachico, tilapia, salmón, camarón (frescos, refrigerados o congelados) · Tamaño de su celular", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_5_i", type: "opcion", text: "Grasas saludables (frecuencia de consumo)", sub: "aguacate, aceite de oliva (preferiblemente extra virgen), maní, nueces, almendras, semillas, coco · ¼ aguacate, 1 cucharadita de aceite o un puñado de frutos secos", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_6_i", type: "opcion", text: "Lácteos y fermentados (frecuencia de consumo)", sub: "leche, yogur natural, kumis, kéfir, queso fresco · 1 vaso o 2 cucharadas de queso", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_7_i", type: "opcion", text: "Huevos (frecuencia de consumo)", sub: "huevo entero · 1 unidad", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_8_i", type: "opcion", text: "Cereales integrales y otros (frecuencia de consumo)", sub: "avena, quinua, maíz, arroz integral, cebada, cuchuco, pan integral · ½ pocillo cocido o 1 tajada", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_9_i", type: "opcion", text: "Raíces, tubérculos y plátanos (frecuencia de consumo)", sub: "papa, yuca, plátano, arracacha, ñame, batata · 1 papa mediana o ½ plátano", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_10_i", type: "opcion", text: "Carnes blancas (frecuencia de consumo)", sub: "pollo, pavo, aves sin piel · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_15_i", type: "opcion", text: "Carnes rojas (frecuencia de consumo)", sub: "res, cerdo magro, cordero (frescas); vísceras 1 vez por semana (hierro) · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_11_i", type: "opcion", text: "Cereales refinados y harinas blancas (frecuencia de consumo)", sub: "pan blanco, arroz blanco, pasta blanca, galletas, arepa de harina refinada · ½ pocillo o 1 unidad", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_12_i", type: "opcion", text: "Carnes procesadas y embutidos (frecuencia de consumo)", sub: "salchicha, chorizo, jamón, tocineta, mortadela, enlatados · Tamaño de su celular (~90 g)", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_13_i", type: "opcion", text: "Azúcares añadidos y bebidas azucaradas (frecuencia de consumo)", sub: "gaseosas, jugos de caja, dulces, chocolatinas, postres, exceso de panela o azúcar · 1 vaso o 1 unidad", options: FREQ_OPC, patternEngine: true, engine: true },
+  { key: "d1_14_i", type: "opcion", text: "Ultraprocesados (PCBU) (frecuencia de consumo)", sub: "productos de paquete, papas fritas, comidas rápidas, hamburguesa, pizza, perro, sopas de sobre, caldos concentrados y sazonadores industriales · 1 paquete o 1 porción", options: FREQ_OPC, patternEngine: true, engine: true },
   { key: "d1f_sal_i", type: "opcion", text: "¿Con qué frecuencia añade sal extra a la comida ya servida?", options: ["Nunca", "Rara vez", "Con frecuencia", "Siempre"], patternEngine: true },
   { key: "d1f_des_i", type: "opcion", text: "¿Desayuna regularmente (antes de las 10 am)?", options: ["Sí, todos los días", "A veces (3–4 días)", "Rara vez o nunca"], patternEngine: true },
   { key: "d1f_noche_i", type: "opcion", text: "¿A qué hora suele cenar?", options: ["Antes de las 7 pm", "Entre 7 y 8 pm", "Entre 8 y 9 pm", "Después de las 9 pm"], patternEngine: true },
@@ -310,7 +316,7 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
   // alimentar el motor -> CAMBIO DE DIAGNOSTICO (baja la EB-BIS 1-8 años, su propio comentario L6520-6528). El
   // field_key ya existe: el dato fluira al voltear el switch, sin tocar el seed. Ver DECISIONES_ANIBISE P-01.
   { key: "d7_55", type: "contador", text: "Gaseosas (vasos por día)", treatmentEngine: true },
-  { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)", treatmentEngine: true },
+  { key: "d7_agua", type: "contador", text: "Agua (vasos de 200 ml por día)", treatmentEngine: true, engine: true },
   { key: "d7_56", type: "contador", text: "Bebidas energéticas (latas por día)", treatmentEngine: true },
   { key: "d7_57", type: "opcion", text: "¿Siente sed con frecuencia?", options: ["Nunca", "Rara vez", "A veces", "Frecuentemente", "Siempre"], treatmentEngine: true },
   { key: "d7_58", type: "opcion", text: "¿Color de su orina habitualmente?", options: ["Transparente", "Amarillo claro", "Amarillo", "Oscuro (naranja / marrón)"], treatmentEngine: true },
