@@ -231,3 +231,44 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
     expect(w.scrollTo).toHaveBeenCalledWith({ top: 200, behavior: "instant" });
   });
 });
+
+describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () => {
+  const TABS = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx", "utf8");
+  const PAGE_SRC = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+  const BIS = readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8");
+
+  // SU REGLA (Santiago, cotejo 2026-09-05): sin diagnóstico se abre en Evaluación, que es donde hay
+  // trabajo por hacer; con diagnóstico se abre en Diagnóstico, que es lo que se viene a ver. Antes el
+  // default era fijo y entrar a una evaluación sin diagnóstico abría una pestaña vacía.
+
+  it("la decide la PÁGINA, que es quien sabe si hay diagnóstico", () => {
+    expect(TABS, "el default volvió a estar clavado en el componente").toContain(
+      "function parseTab(raw: string | null, porDefecto: TabId)",
+    );
+    // Los DOS caminos de la página lo declaran. Es el sitio de llamada: un camino que no lo pase cae al
+    // default del componente y nadie se entera.
+    expect(PAGE_SRC).toContain('porDefecto="evaluacion"');
+    expect(PAGE_SRC).toContain('porDefecto="diagnostico"');
+  });
+
+  it("y `?etapa=diagnostico` sigue llegando a Diagnóstico", () => {
+    // LA TRAMPA QUE HABIA: el parseo excluía "diagnostico" de la lista válida y lo dejaba caer al default,
+    // que casualmente era el mismo. Con el default configurable, esa línea habría mandado
+    // `?etapa=diagnostico` a Evaluación. Se quitó, y esto lo fija.
+    // SE ASIERTA SOBRE EL CODIGO SIN COMENTARIOS, y no es un detalle de estilo: el comentario que explica
+    // por que se quito esa linea la NOMBRA, asi que la asercion se cazaba a si misma. Ya nos paso con
+    // `--clinical-*` en el panel de asesoria; es la misma forma.
+    const sinComentarios = TABS.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(sinComentarios, "volvió la exclusión que rompía ?etapa=diagnostico").not.toContain(
+      'raw !== "diagnostico"',
+    );
+  });
+
+  it("el enlace de importar la medición lleva la ETAPA, no solo la subpestaña", () => {
+    // El punto 5 era el 3: el enlace ponía `?ev=antropometria` sin `?etapa`, así que la página caía a su
+    // default y el profesional aterrizaba en Diagnóstico con la subpestaña correcta donde no la veía.
+    // Va explícito aunque el default ya esté bien: un enlace que depende de un default se rompe en
+    // silencio la próxima vez que alguien mueva el default.
+    expect(BIS).toContain("?etapa=evaluacion&ev=antropometria");
+  });
+});

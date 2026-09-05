@@ -16,15 +16,16 @@ import { type ReactNode } from "react";
 // profesional; y las subpestañas (?sub/?ev/?trat) quedaban en la URL pero nunca se llegaba a su etapa para
 // usarlas (bug del smoke 2026-08-21). PARAMETRO PROPIO (?etapa), distinto de los tres de subpestaña: al
 // conmutar se COPIAN todos los params y solo se fija el propio, asi las cuatro conviven sin pisarse y cada
-// etapa recuerda su subpestaña al volver. Default: Diagnostico (lo mas mirado); sin ?etapa abre ahi, como hoy.
+// etapa recuerda su subpestaña al volver. El DEFAULT lo decide la pagina (`porDefecto`): sin diagnostico
+// abre en Evaluacion, con diagnostico en Diagnostico (cotejo 2026-09-05, punto 3).
 
 // QUINTA ETAPA (2026-08-24): "Reporte / HC", donde vive lo que se le ENTREGA al paciente y el cierre de la
 // consulta. Nace por dos razones que ya estaban registradas: el reporte se habia quedado en Tratamiento
 // PORQUE NO HABIA PESTAÑA DESTINO (no fue decision de diseño, fue la unica opcion), y el prototipo de
 // Gildardo tiene una historia clinica de once secciones que no teniamos dimensionada.
 //
-// Va AL FINAL y en ese orden a proposito: es la ultima etapa de la consulta, la que cierra. El default
-// sigue siendo Diagnostico, que es lo mas mirado; abrir en la quinta al entrar seria empezar por el final.
+// Va AL FINAL y en ese orden a proposito: es la ultima etapa de la consulta, la que cierra. Nunca es el
+// default: abrir en la quinta al entrar seria empezar por el final.
 type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento" | "reporte";
 
 const TABS: { id: TabId; label: string }[] = [
@@ -37,11 +38,19 @@ const TABS: { id: TabId; label: string }[] = [
 
 const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
 
-// Un ?etapa desconocido cae a Diagnostico, igual que antes. Se valida contra la LISTA y no contra una
-// cadena de comparaciones: agregar una etapa y olvidar el parseo daria un tab al que la URL nunca llega,
-// que es el defecto silencioso que este cambio podia introducir.
-function parseTab(raw: string | null): TabId {
-  return raw && TAB_IDS.has(raw) && raw !== "diagnostico" ? (raw as TabId) : "diagnostico";
+// Un ?etapa desconocido cae a la etapa POR DEFECTO. Se valida contra la LISTA y no contra una cadena de
+// comparaciones: agregar una etapa y olvidar el parseo daria un tab al que la URL nunca llega.
+//
+// EL DEFAULT DEJA DE SER FIJO (cotejo 2026-09-05, punto 3). Antes era siempre "diagnostico", asi que
+// entrar a una evaluacion SIN diagnostico abria una pestaña que no tenia nada que mostrar todavia. Su
+// regla, y es la correcta: sin diagnostico se abre en Evaluacion, que es donde hay trabajo por hacer; con
+// diagnostico se abre en Diagnostico, que es lo que se viene a ver.
+//
+// Y SE QUITA EL `raw !== "diagnostico"`, que era una trampa esperando: excluia "diagnostico" de la lista
+// valida y lo dejaba caer al default, que casualmente era el mismo. Con el default configurable,
+// `?etapa=diagnostico` habria aterrizado en Evaluacion.
+function parseTab(raw: string | null, porDefecto: TabId): TabId {
+  return raw && TAB_IDS.has(raw) ? (raw as TabId) : porDefecto;
 }
 
 export function EvaluationTabs({
@@ -50,16 +59,25 @@ export function EvaluationTabs({
   tratamiento,
   seguimiento,
   reporte,
+  porDefecto = "diagnostico",
 }: {
   evaluacion: ReactNode;
   diagnostico: ReactNode;
   tratamiento: ReactNode;
   seguimiento: ReactNode;
   reporte: ReactNode;
+  /**
+   * Etapa que se abre cuando la URL no trae `?etapa`. La decide la PAGINA, que es quien sabe si hay
+   * diagnostico; el componente no puede saberlo sin recibirlo.
+   *
+   * El default del default es "diagnostico" para no cambiar la conducta de ningun llamador que no lo
+   * pase, pero el candado verifica que los dos caminos de la pagina lo pasen explicitamente.
+   */
+  porDefecto?: TabId;
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const active = parseTab(searchParams.get("etapa"));
+  const active = parseTab(searchParams.get("etapa"), porDefecto);
   const content: Record<TabId, ReactNode> = { evaluacion, diagnostico, tratamiento, seguimiento, reporte };
 
   function select(id: TabId) {
