@@ -284,13 +284,25 @@ describe("de dónde sale el objetivo: el rótulo mira la CASCADA, no un solo cam
     ).not.toContain('adj.kcalObj != null ? "fijado por ti" : "sugerido por el modelo"');
   });
 
-  it("y cuando la cifra no es la del modelo, la pantalla dice cuál era", () => {
-    // Sin esto, el profesional ve dos números y no tiene cómo saber que uno es el suyo. Es lo que cierra
-    // la pregunta en vez de solo dejar de mentir.
-    expect(PANEL).toContain("cal.kcalObj !== base.kcalObj");
-    expect(PANEL).toContain("el modelo sugirió");
-    expect(PANEL, "el GEB tiene el mismo par de cifras y necesita la misma aclaración").toContain(
-      "cal.geb !== base.geb",
+  it("EL PLACEHOLDER DICE LO QUE PASA SI SE DEJA VACÍO, no lo que se selló", () => {
+    // ESTE ES EL FONDO DEL 22.1, y el primer arreglo lo TAPÓ en vez de cerrarlo. El campo del objetivo
+    // estaba vacío con placeholder `modelo: 2377`, y dejándolo vacío salía 2408: un placeholder que
+    // promete una cifra y entrega otra. Un placeholder en un campo vacío significa "esto es lo que se usa
+    // si no escribes nada", y eso era falso en cuanto el profesional movía el peso meta.
+    //
+    // Con esto la pantalla vuelve a tener UNA cifra por concepto, como su archivo, sin perder la
+    // distinción calculado/ajustado (DIV-12), que vive en el rótulo y no en un segundo número.
+    expect(PANEL, "el objetivo volvió al valor sellado").not.toContain("modelo: ${d0(base.kcalObj)}");
+    expect(PANEL, "el GEB volvió al valor sellado").not.toContain("modelo: ${d0(base.geb)}");
+    expect(PANEL, "el objetivo no ofrece el valor que de verdad se usa").toContain(
+      "modelo: ${d0(objetivoDelModelo)}",
+    );
+    // `gebAuto` ES el GEB que corre cuando nadie fija el campo: la salida de la cadena lo expone aparte
+    // justo para esto.
+    expect(PANEL, "el GEB no ofrece el valor que de verdad se usa").toContain("modelo: ${d0(cal.gebAuto)}");
+    // Y el control: no vuelve la segunda cifra, que era el parche.
+    expect(PANEL, "volvió la segunda cifra en vez del placeholder correcto").not.toContain(
+      "el modelo sugirió",
     );
   });
 
