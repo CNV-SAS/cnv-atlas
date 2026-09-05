@@ -1,5 +1,12 @@
 # Divergencias: qué hace Atlas distinto del prototipo de Gildardo, y por qué
 
+> **Numeración corregida el 2026-09-05.** Las tres divergencias del INSTRUMENTO nacieron reusando ids
+> que el bloque de tratamiento ya tenía: había DOS `DIV-11`, DOS `DIV-12` y DOS `DIV-13`, y un id que
+> nombra dos cosas deja de identificar. Se renumeraron las del instrumento, que son las nuevas y las que
+> menos sitios citan: **la P43 pasó de DIV-11 a DIV-14**, **la P29 de DIV-12 a DIV-15** y **la medida de
+> la lista de intercambio de DIV-13 a DIV-16**. Las de tratamiento no se tocan: las citan doce sitios del
+> código. Apareció al armar la lista que se le envía a Gildardo, que iba a citar ids ambiguos.
+
 **Qué es.** La lista única de los puntos donde Atlas se aparta DELIBERADAMENTE del archivo prototipo de Gildardo (`ATLAS_v7.html` vigente). Responde la pregunta que se hace muchas veces: "¿por qué Atlas hace esto distinto de su prototipo?". Cada divergencia es intencional y autorizada (por su instrucción escrita o por una regla del proyecto), NO un error de port. Los errores de port se corrigen; las divergencias se conservan y se justifican aquí.
 
 **Cómo se relaciona con el resto.** Cada divergencia apunta a la decisión que la autoriza (`D-NNN` en `DECISIONES_ANIBISE.md`) o a la regla de arquitectura. Este documento es una VISTA (junta lo que en el consolidado vive como campo "Divergencia" por decisión); la autoridad está en la decisión, aquí está la lista para encontrarlas.
@@ -80,7 +87,7 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
 - Por qué: es la lección del reparto de macros (mejor avisar que mostrar un 0 mudo que se lee como dato). Solo los nucleares: un discrecional en 0 (mecato, azúcares, bebidas) es un default sano y frecuente (mecato queda en 0 aun a 2200 kcal), marcarlo sería ruido. El QUÉ (las porciones) es fiel a PASO 3 byte a byte; la marca es del CÓMO nuestro. La distinción nuclear/discrecional es nuestra.
 - Cómo: `clinical-engine/intercambio.ts` (`GRUPOS_NUCLEARES` + `avisoSinPorcion`, la porción NO cambia). CP1.1, 2026-08-22.
 
-**DIV-11 · La opción de texto libre de la P43 (alergias) dice "Otra"; su archivo dice "Otras".**
+**DIV-14 · La opción de texto libre de la P43 (alergias) dice "Otra"; su archivo dice "Otras".**
 - Su `ATLAS_v8.html` ofrece `Ninguna · Leche · Huevo · Maní · Trigo · Soya · Pescado · Mariscos · Otras`.
   Atlas ofrece lo mismo con **`Otra`** en singular.
 - **Esto se declara el 2026-09-04, y lo que se corrige NO es la palabra sino una afirmación falsa.** El
@@ -100,7 +107,7 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
   divergencia de TEXTO, no de comportamiento.
 - Si él prefiere `Otras`, se cambia en el bump siguiente: es una cadena.
 
-**DIV-12 · El enunciado de la P29 (estrés) dice sus extremos; el de su archivo no.**
+**DIV-15 · El enunciado de la P29 (estrés) dice sus extremos; el de su archivo no.**
 - Suyo: *"Nivel de estrés en el último mes"*. Nuestro: *"Nivel de estrés en el último mes (1 = sin estrés,
   10 = máximo)"*.
 - Por qué NO se retira: es una escala de 1 a 10 y sin sus extremos **no se puede responder bien**. Un
@@ -113,7 +120,7 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
   desde que se escribió, que es lo que este archivo existe para evitar.
 - Se le menciona cuando haya ocasión; no bloquea nada.
 
-**DIV-13 · La lista de intercambio del paciente imprime la MEDIDA además de los gramos; su archivo no.**
+**DIV-16 · La lista de intercambio del paciente imprime la MEDIDA además de los gramos; su archivo no.**
 - Suyo (L18248): `nombre (gramos)`, ocho por subgrupo y ", entre otros". Nuestro: `nombre (gramos,
   medida)`, con los mismos dos cortes. Ejemplo: *"Fríjol cargamanto blanco con plátano verde (110 g,
   1 cucharón colmado)"* en vez de *"(110 g)"*.

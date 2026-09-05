@@ -585,7 +585,7 @@ async function main() {
     // palabra. Se queda "Otra" por decision de Santiago: las opciones de esa pregunta son alimentos en
     // singular (Leche, Huevo, Mani), las otras ocho preguntas ya llevan "Otra" por la modificacion
     // autorizada del 13-ago, y en la nube hay cinco respuestas con "Otra: ..." y su texto libre.
-    // Ver DIVERGENCIAS.md (DIV-11).
+    // Ver DIVERGENCIAS.md (DIV-14).
     // ---- historico ----
     // version_number 4 (2026-08-14): bump PARCIAL, solo lo que Gildardo YA implemento en su archivo al dia
     // (gildardo-2026-08-13/ATLAS_v8.html), NO propuesta nuestra:

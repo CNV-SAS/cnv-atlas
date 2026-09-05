@@ -624,7 +624,7 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 > mostraba en ninguna pantalla.
 >
 > **Si prefieres la (b) o la (c), se cambia**: es una linea. Queda declarado como divergencia nuestra
-> (DIV-13).
+> (DIV-16).
 
 ### 2 · El comentario que sigue encima del interruptor (aviso, no pregunta)
 
@@ -635,3 +635,48 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 >
 > Lo decimos porque **ese comentario nos freno dos veces** y le va a pasar igual a la proxima persona que
 > abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.
+
+---
+
+## Lo que se le DECLARA (no se le pregunta), en un solo sitio
+
+**Para que Santiago se lo mande junto al cerrar.** Son las divergencias que tomamos por nuestra cuenta y
+que él todavía no ha visto. Cada una lleva su razón y su puerta de salida: **si prefiere otra cosa, se
+cambia.**
+
+Las de la CIENCIA congelada (DIV-1, DIV-2) ya están cerradas con él y no van aquí.
+
+### Del INSTRUMENTO, que es lo suyo y por eso van primero
+
+| # | Qué hicimos | Por qué | Revertir cuesta |
+| --- | --- | --- | --- |
+| **DIV-14** | La P43 (alergias) dice **"Otra"**; su archivo dice "Otras" | Las opciones de esa pregunta son alimentos en singular, las otras ocho preguntas ya dicen "Otra", y en la nube hay cinco respuestas *"Otra: ..."* con su texto libre | Un bump de encuesta. **No es gratis** |
+| **DIV-15** | La P29 (estrés) añade **"(1 = sin estrés, 10 = máximo)"** | Una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor alimenta el motor. No cambia lo que se pregunta, solo cómo se entiende la escala | Un bump de encuesta |
+| **DIV-16** | La lista de intercambio imprime **la medida** además de los gramos | Es la (a) de las tres salidas que él planteó para las doce medias porciones de Leguminosas, y la única que no pierde información. El dato ya estaba en su tabla | **Una línea** |
+
+### De la PRESENTACIÓN, que es nuestra, pero conviene que las sepa
+
+| # | Qué hicimos |
+| --- | --- |
+| **DIV-3** | El administrador no ve las cuatro pestañas de tratamiento por profesión |
+| **DIV-4** | El diagnóstico de encuesta usa colapsables, no sub-pestañas |
+| **DIV-5** | El patrón alimentario no muestra el puntaje ni el nivel |
+| **DIV-6** | El radar usa cuatro colores con ancla azul, no su paleta |
+| **DIV-7** | El diagnóstico abre en Funcional, con franja de veredicto persistente |
+| **DIV-8** | La tabla de composición junta lo bioeléctrico crudo en un bloque |
+| **DIV-9** | La tabla conserva GEB y GET, que su HTML no lista |
+
+### Donde Atlas va POR DELANTE de su archivo
+
+| # | Qué hicimos | Por qué |
+| --- | --- | --- |
+| **DIV-10** | Señalamos cuando un grupo nuclear queda en 0 porciones | Su HTML lo muestra en 0 sin avisar |
+| **DIV-11** | No recalculamos-y-pisamos la lista guardada al cambiar el objetivo; avisamos | En su HTML las porciones viven en el navegador y pisarlas es inofensivo; **nosotros las persistimos**, así que copiarlo borraría el trabajo del profesional en silencio |
+| **DIV-12** | La cadena calórica cuadra macros, distingue calculado de ajustado, avisa el borde y lleva candado de concurrencia | Cuatro cosas que su HTML no hace y que no tocan la ciencia del reparto |
+| **DIV-13** | La distribución por tiempos exige al menos un tiempo activo | Su HTML permite dejarlos todos apagados, y eso reparte cero |
+
+### Y el aviso que no pide nada
+
+**El comentario que sigue encima del interruptor del LE8** dice que la bandera *"se queda en `false`"*, y
+debajo el valor es `true`. Ya está resuelto (manda su decisión del 2 de septiembre), pero **nos frenó dos
+veces** y le va a pasar igual a quien abra el archivo después. No hace falta que lo cambie.
