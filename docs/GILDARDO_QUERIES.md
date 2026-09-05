@@ -599,3 +599,34 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 - **Salvaguarda TCA (mecánica).** Si hay riesgo TCA (d2_21 con vómito/laxante/ayuno/excesivo, O el tcaFlag del psicólogo) Y hay déficit>0, el nutricional pone `deficit=0`, vuelve la dieta normocalórica y marca "remitir". No bloquea toda la prescripción, quita la restricción hipocalórica. El nutricional detecta TCA por su cuenta (d2_21) además de recibir el flag del psicólogo (definición más amplia: scoff O control+insatisfacción). **Consecuencia:** la cadena calórica, cuando se construya, DEBE traer la salvaguarda; y portar la cadena sin el motor de psicología pierde la detección amplia. Hoy Atlas no tiene la salvaguarda (la cadena está en pausa; no hay objetivo hipocalórico que pausar, riesgo latente no activo).
 - **Mapa de acoplamientos (los cuatro motores).** Solo DOS, ambos hacia el nutricional: `ejercicio.faRec → nutri` (factor de actividad) y `psico.tcaFlag → nutri` (salvaguarda). El MÉDICO es independiente (produce metas/monitoreo/remisión/interacciones fármaco-nutriente; nadie consume su salida). El nutricional también lee d2_21 directo, así que la salvaguarda funciona parcial sin el psicólogo.
 - **"Cita agendada" = campo de fecha.** En su prototipo la cita es un `input type=date` (+ frecuencia como texto libre), guardado en localStorage; sin calendario, recordatorios ni estado. Idéntico a nuestro `proxima_cita`. El requisito "empeoró solo con cita agendada" se satisface con el campo lleno; a confirmar con él.
+
+---
+
+## Mensaje corto pendiente de enviar (2026-09-05)
+
+**Dos cosas, y ninguna es una ronda.** Santiago se las manda juntas.
+
+### 1 · Las doce medias porciones de Leguminosas (P-110)
+
+> Gildardo: quedamos esperando tu firma sobre las doce filas repetidas de Leguminosas, que nos
+> explicaste que no son duplicados sino el mismo alimento en dos tamaños de porción. Dijiste que
+> firmabas una de tres en la próxima ronda, y como no vamos a abrir otra, te la dejamos aquí para que
+> respondas en una línea:
+>
+> **(a)** el render imprime también la medida ("1 cucharón colmado" / "½ cucharón"), y la repetición
+> deja de parecerlo;
+> **(b)** el render agrupa por nombre y muestra los dos tamaños en una sola línea;
+> **(c)** se retiran las doce medias porciones de la tabla.
+>
+> Te lo preguntamos ahora y no después porque vamos a cotejar el plan del paciente contra tu archivo
+> esta semana, y cualquiera de las tres cambia esa página. Si contestas antes, se coteja una sola vez.
+
+### 2 · El comentario que sigue encima del interruptor
+
+> Y una cosa que no te pide nada, solo para que no vuelva a pasar: **el comentario que está justo encima
+> de `LE8_MAPEO_CORREGIDO` sigue diciendo que la bandera "se queda en `false`"**, y debajo el valor es
+> `true`. Ya entendimos con tu respuesta que manda la decisión del 2 de septiembre y que la nota del 30
+> quedó superada; el interruptor ya está encendido en Atlas.
+>
+> Lo decimos porque **ese comentario nos frenó dos veces** y le va a pasar igual a la próxima persona
+> que abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.

@@ -61,23 +61,44 @@ sobre ocho dominios son **10 puntos** de ICEC.
 
 ## Recorrido 3 · La reemisión, que es lo que protege a los pacientes ya atendidos
 
-**Este es el que verifica el mecanismo, no el cálculo.** Localmente hay **12 evaluaciones** que deberían
-pedirla, **5 de ellas con diagnóstico confirmado**.
+**Este es el que verifica el mecanismo, no el cálculo.** Y tiene DOS desenlaces, los dos buenos.
 
-1. Abre una evaluación con **diagnóstico ya confirmado**, de las que existían antes de hoy.
-2. Mira el aviso de vigencia del diagnóstico.
+### El aviso gris, que NO es un defecto
 
-**Qué tienes que ver:**
+Si el paciente **no cambió de banda**, sale el aviso de que el diagnóstico se emitió con una versión
+anterior **y que la clasificación no cambia**, sin lista. **Ese es el desenlace correcto**, y es su regla
+del §12c en pantalla: *"no se alarma a nadie por un decimal"*. Un cambio de versión que no mueve ninguna
+banda se registra y no se reemite.
 
-- Un aviso de que el diagnóstico se emitió con una **versión anterior del motor** (`anibise-1.2.0` o
-  antes; hoy rige `anibise-1.3.0`).
-- Y donde **cambió una banda**, la lista de qué cambió: **antes y ahora**, por indicador o por dominio.
+Así que ver el gris cierra media verificación. Falta la otra mitad.
+
+### El ámbar con la lista, y en cuál mirarlo
+
+Sin decir cuál abrir, este recorrido no se puede cerrar: hay que buscar a ciegas. **En la base local, de
+los doce que piden reemisión, el más completo es:**
+
+```
+a0000000-0000-4000-8000-0000000000c4     (confirmado)
+```
+
+Cambian siete cosas: **AF, IAE, IR, PABU, Riesgo integrado, Envejecimiento (dominio 3) y
+Epigenético-Contextual (dominio 5)**.
+
+Otros dos confirmados que también sirven: `...0000000000a3` y `...0000000000a2` (este último mueve solo
+AF, IR y PABU, sin IAE ni dominios).
+
+**Para sacar la lista en la nube**, o si estos ya se movieron, corre la medición: imprime `cuales` con el
+id de cada evaluación que pide reemisión y qué le cambia.
+
+**Qué tienes que ver en el ámbar:**
+
+- La lista de qué cambió, **antes y ahora**, por indicador o por dominio.
 
 **Sería defecto si:**
 
-- No sale ningún aviso. Sin el aviso, el cambio pasa invisible en los diagnósticos ya emitidos, que es
-  exactamente lo que su regla del §12b existe para evitar.
-- El aviso sale pero **la lista de cambios está vacía** en una evaluación donde el ICEC sí se movió.
+- **No sale ningún aviso** en una evaluación vieja. Sin el aviso, el cambio pasa invisible en los
+  diagnósticos ya emitidos, que es lo que su regla del §12b existe para evitar.
+- Sale el aviso pero **la lista está vacía en una de las de arriba**, donde sabemos que sí cambió.
 
 **Y una cosa que conviene saber para no leerlo mal:** la **EB-BIS no dispara la reemisión por sí sola**,
 porque no lleva clasificación en el snapshot (es decisión vieja, D-010/D-011: no se rotula como edad
@@ -88,11 +109,29 @@ puedes ver una edad biológica que se movió sin que eso, solo, pida reemisión.
 
 ## Recorrido 4 · Que no se rompió lo que ya funcionaba
 
-1. Abre una evaluación con la **encuesta incompleta**.
+**CORREGIDO el 2026-09-05: como estaba escrito, este recorrido no se podía hacer.** Decía "abre una
+evaluación con la encuesta incompleta", y eso hoy **no existe como camino**: desde el 2026-08-13 el
+sistema **bloquea generar un diagnóstico con la encuesta incompleta** (gate 2bis-b), así que una
+evaluación incompleta no tiene diagnóstico, y sin diagnóstico no hay pantalla donde mirar el ICEC.
 
-**Qué tienes que ver:** sigue saliendo el aviso de suspensión y **el ICEC arriba sigue sin emitirse**
-(Q28: lo que depende de la encuesta no se emite si está incompleta). El desglose del dominio 5 sí muestra
-su ICEC provisional, como antes.
+El estado de suspensión Q28 **sigue existiendo**, pero solo en snapshots **sellados antes de ese gate**.
+En la base local hay **cuatro**:
+
+```
+a0000000-0000-4000-8000-0000000000d5      (faltan 10 campos)
+a0000000-0000-4000-8000-0000000000d3      (faltan 10)
+1e7c2f74-1b89-4b60-bdb9-0ed925862966      (faltan 10)
+b039e751-2402-490c-9b96-f7248950e8b0      (faltan 12)
+```
+
+1. Abre **una de esas cuatro**.
+
+**Qué tienes que ver:** sigue el aviso de suspensión y **el ICEC de arriba sigue sin emitirse** (Q28: lo
+que depende de la encuesta no se emite si está incompleta). El desglose del dominio 5 sí muestra su ICEC
+provisional, como antes.
+
+**Sería defecto si:** el ICEC de arriba **empieza a emitirse** en una de esas cuatro. El interruptor no
+toca la suspensión.
 
 2. Y en una evaluación normal, que **el resto del diagnóstico no se movió**: IFC, IRC, PABU, el fenotipo
    estructural y el sector FyR salen igual que ayer. El interruptor solo toca la cadena del ICEC.
