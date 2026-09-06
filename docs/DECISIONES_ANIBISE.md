@@ -1161,3 +1161,35 @@ En **Diagnostico -> Composicion Corporal** (L14623) usa `dICA`, que gradua la ma
 divergencia es deliberada (la HC resume y la pantalla detalla) o si la nota de la HC iba a aplicarse
 tambien a la tabla de Composicion y quedo a medias. **De paso: el escalon "Desviación leve" de `dICA` va
 en ambar (#f59e0b) en su archivo y nosotros lo teniamos en verde. Corregido de nuestro lado.**
+
+**P-113 · RETIRADO DEL MENSAJE A GILDARDO el 2026-09-06, y la razon corrige mi propio hallazgo.** Lo
+anote como "su tabla usa el corte historico del IFC que su propio prompt prohibe". Santiago lo devolvio
+("si el nos habia dicho que lo hicieramos de una forma actualizada que no tiene el html, entonces nosotros
+estamos mejor que el html... ¿para que volverle a avisar?") y al verificarlo resulto MAS claro de lo que
+yo lo habia planteado: **su propio `cIFC` congelado YA trae los cortes por sexo** (H 4,12/6,68 · M
+2,08/3,28), y Atlas lo que hace es llamarlo. El 3,5-6,0 solo vive en su tabla de DISPLAY, que no llama a
+su propio clasificador. Asi que ni es divergencia nuestra ni es una instruccion que el nos diera aparte:
+es su archivo llamando a dos sitios distintos. No se le reporta. **Queda anotado para que el proximo
+barrido no lo vuelva a levantar.**
+
+**P-114 y P-115 se mantienen** en el mensaje (la etiqueta local del PABU y las dos reglas de la fila
+ICA-BIS por superficie), mas dos nuevos: el punto 0 del mensaje (el ejemplo de su prompt con el nombre de
+una persona) y el guion de ANI-BIS-E.
+
+**P-116 · DATOS PERSONALES EN SU PROMPT, Y TAMBIEN EN NUESTRO REPOSITORIO (2026-09-06). Es lo primero del
+mensaje.** El EJEMPLO de tono que vive dentro de su prompt de sistema del Analisis IA lleva el nombre y
+los dos apellidos de una persona junto a su cuadro clinico entero (diagnostico personal de insuficiencia
+renal, antecedentes familiares, estrato, estado civil, habitos, composicion y valores bioelectricos). Va
+en el mensaje de SISTEMA, asi que **viaja al proveedor de IA en cada llamada, para todos los pacientes**.
+- **No se sabe si es una persona real**, y por eso se le pregunta en vez de afirmarlo. Si lo es, son datos
+  de salud de alguien que no es el paciente atendido, saliendo hacia un tercero sin su autorizacion.
+- **Nosotros no lo portamos**: el ejemplo de Atlas es equivalente y sin identidad (lo que el ejemplo
+  enseña es el TONO y el nivel de detalle, no quien es la persona).
+- **Y hay una segunda mitad que es nuestra:** ese texto esta en **once entregas suyas archivadas** en
+  `docs/entregas/`, versionadas en git. O sea que si el caso es real, tambien lo custodiamos nosotros.
+  **Decision pendiente de Santiago**, y no la tomo yo: el precedente del PIN dice que la entrega archivada
+  queda verbatim y solo se scrubbean las claves que facturan, pero ese precedente se fijo sobre un PIN de
+  prototipo, no sobre el nombre de una persona con su historia clinica. Las opciones son (a) dejarlo y
+  documentarlo, (b) reemplazar el nombre por un marcador en las once copias dejando el resto verbatim, o
+  (c) esperar su respuesta y actuar segun sea real o de prueba. **Mi recomendacion: (c), y si es real,
+  (b).** Reemplazar solo el nombre no toca ninguna cifra ni ningun texto que usemos para cotejar.

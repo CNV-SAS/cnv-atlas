@@ -670,3 +670,101 @@ seguimiento"** (editable) y **"Observaciones"**. Son **dos columnas nuevas** en 
 ya migrada, así que no las hago sin tu visto bueno. **La pregunta:** ¿la frecuencia editable **reemplaza**
 a la de la ruta para ese paciente, o es solo una nota? Si reemplaza, hay que decidir si la fecha sugerida
 se recalcula con ella.
+
+---
+
+# REAPERTURAS DEL SMOKE DE DIAGNÓSTICO (2026-09-06)
+
+## 9 · Las cinco letras
+
+**(a) El carácter de φ:** hecho, la referencia del PABU dice **φ = 1,618**.
+
+**(b) y 17 · ¿"leve" es siempre ámbar? No, y la respuesta importa.** El color **no lo elige Atlas: sale
+del hexadecimal que Gildardo escribió** en cada clasificador, y se traduce a la escala clínica por el
+mismo camino para los quince. Así que depende del clasificador:
+
+| Dónde | Qué dice | Color |
+| --- | --- | --- |
+| **ICA-BIS**, escalón *"Desviación leve"* | `#f59e0b` en su archivo | **Ámbar** |
+| **IEHH**, escalón *"Leve"* | ámbar en su archivo | **Ámbar** |
+| Cualquier escalón *"Zona φ"*, *"Normal"*, *"Óptimo"* | verde | **Verde** |
+
+**La regla, que es la que hay que recordar: "leve" no es una palabra con color propio.** Un escalón se
+pinta por el hex que él le puso, no por su etiqueta. Por eso el defecto del 17 era grave: nuestro
+"Desviación leve" llevaba severidad **0** escrita a mano (verde), o sea que alguien había elegido el
+color en vez de leerlo. Ahora sale del hex y no se puede volver a elegir.
+
+**(c) Los decimales: tienes razón, revertido.** Volví a **dos**, y tu argumento es el bueno: su archivo
+no tiene una regla de decimales, tiene la que quedó en cada sitio (2 en unos, 3 en otros, 4 en otros), y
+copiarla importa su desorden. **Lo que sí era un defecto real y sigue cerrado** es que el mismo renglón
+dijera 0,42 en el valor y 0,4157 en la Δ: se resolvió por el otro lado, bajando también la Δ a dos.
+**Y te dejo lo que queda a la vista:** el IR y el IEHH tienen su Δ en **tres** decimales, y son
+anteriores a este cotejo. No los toqué porque bajar el IR a dos convierte su Δ de 0,018 en **0,02**
+contra un corte de 0,78, y eso es una decisión de display sobre una cifra clínica. **¿Los unifico?**
+
+**(d) El corte por sexo: tienes razón y es más fuerte de lo que parecía.** No es que él nos autorizara a
+divergir: **su propio clasificador congelado `cIFC` YA trae los cortes por sexo** (H 4,12/6,68 · M
+2,08/3,28), y Atlas lo que hace es llamarlo. El 3,5-6,0 solo vive en su **tabla de display**, que no
+llama a su propio clasificador. Así que **no hay divergencia nuestra** y el aviso sale del mensaje.
+
+**Y el barrido que pediste está hecho: son SIETE, y el patrón es uno solo.** Está en `DIVERGENCIAS.md`,
+sección *"NO SON DIVERGENCIAS"*. El patrón: **su archivo va por detrás de sus propias instrucciones.**
+Tu memoria era buena, era la **hidratación**: su pantalla dice 73 y su instrucción del 17 de agosto dice
+**73,2**, *"cítenlas como reparto de Wang"*, que no es redondeable porque el conjunto tiene que cerrar en
+99,4 %. Los otros seis: el SMM/W de mujeres (22 y no 24, error de transcripción suyo), el FFW y el IEHH
+(un defecto de su archivo que él corrigió y donde nuestros valores eran los buenos), el cPABU direccional,
+la salvaguarda de TCA (su archivo todavía BLOQUEA y su instrucción dice avisar) y el interruptor del LE8.
+**La señal para la próxima: cuando Atlas y el HTML no coincidan, la primera pregunta no es "¿en qué
+divergimos?" sino "¿nos dijo él algo sobre esto?".**
+
+**(e) El FFW: NO es un error portado, y lo verifiqué corriéndolo.** Candado nuevo
+(`ffw-referencia-del-equipo.test.ts`) con los dos casos:
+· **Con la columna del equipo** (`FFW_dif`, que el Biody sí exporta), la fila **sigue trayendo su
+referencia medida**: en el donante de prueba, 47,125. Esa cifra es del equipo, no nuestra, y no se tocó.
+· **Sin esa columna**, la celda queda vacía. **Lo que se retiró es la reserva que la rellenaba con la
+referencia del AGUA CORPORAL TOTAL**, que es otra cantidad: para Nico daba 48,55 contra un FFW de 41,95,
+o sea un déficit de **-6,60 que nadie mide**.
+**O sea: la celda vacía no es una copia de su pantalla, es lo que queda cuando dejamos de escribir un
+número que no existía.** Nico no trae esa columna; un paciente que la traiga verá su referencia.
+
+## 10 · Por qué estaba pendiente, y qué hice ahora
+
+**Estaba pendiente porque no sabía la causa**, y escribir un arreglo sin causa habría sido adivinar. Lo
+que sí sabía: el formulario **sí** usa el helper (lo verifiqué), así que no era un cable que faltara.
+
+**Ahora encontré algo concreto y lo cambié: el guard cancelaba con CUALQUIER tecla.** Se arma al guardar
+y vigila tres segundos; en esos tres segundos cancelaba si el profesional pulsaba una tecla cualquiera.
+**Y los dos formularios que siguen saltando son justo los dos donde se escribe justo después de
+guardar.** Ahora solo cancelan las teclas que **mueven la página** (PageUp/PageDown, Home/End, flechas,
+espacio) y solo con el foco **fuera** de un campo: escribir ya no desarma nada.
+
+**Lo digo como es: es una hipótesis aplicada, no una causa confirmada.** Este defecto solo se ve en un
+navegador real. Si tras esto sigue saltando, la causa es otra y el cambio se queda igual, porque
+cancelar por teclear nunca fue lo que se quería. Candado en `preservar-scroll.test.ts`, con su control.
+
+## 11 · ANI-BIS-E
+
+**Hecho, en las siete superficies de Atlas.** Las que quedan están **dentro de las cadenas de su código
+congelado** (el resumen clínico del protocolo y dos textos del motor nutricional), que no editamos por
+la regla 16. Van en el mensaje que se le manda, como punto aparte.
+
+## 13 · a) Manda el último criterio
+
+**Hecho.** El último se rotula **"Criterio vigente"** en vez de deducirse de una lista numerada, y los
+anteriores quedan **plegados** en un desplegable. **No los borré, y es la misma razón del punto 26:** son
+append-only porque son registro clínico, y quien escribió uno tiene que poder releerlo. Lo que se decide
+es cuál **manda**, no cuál **existe**.
+
+## 15 · La Diana
+
+**Encontré por qué "seguía casi igual", y no era el tamaño que puse.** La figura vivía dentro de un
+contenedor centrado (`items-center`), y eso, en una columna, deja a los hijos **con el ancho de su
+contenido**, no el del padre. Con la figura encogida, el límite de ancho del gráfico **no llegaba a
+mandar nunca**: por eso subirlo de 44 a 60rem apenas movió nada. Arreglado en la figura y sus dos
+contenedores, y **el límite sube a 76rem**. Ahora sí crece.
+
+**Y el solape de tu captura:** el rótulo iba **centrado** en su punto, así que su mitad interior se metía
+encima del anillo exterior, y peor en los sectores casi horizontales (E3 y E7), que son los de texto más
+ancho. Ahora **crece hacia afuera**: a la derecha se ancla por la izquierda, a la izquierda por la
+derecha, y arriba y abajo se queda centrado. El margen del lienzo sube para darle sitio. La geometría no
+se toca. Candado sobre la **regla** (crecer hacia afuera), no sobre una distancia.

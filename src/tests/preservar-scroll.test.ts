@@ -158,6 +158,32 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     tick(w);
     expect(w.scrollTo).not.toHaveBeenCalled();
   });
+
+  // ESCRIBIR NO ES MOVERSE (cotejo 2026-09-06, punto 10). El guard cancelaba con CUALQUIER tecla durante
+  // los tres segundos siguientes al guardado, y hay dos formularios donde el profesional escribe justo
+  // despues de guardar: ahi se desarmaba antes de que llegara el salto. Ahora solo cancelan las teclas
+  // que MUEVEN la pagina, y solo con el foco fuera de un campo.
+  it("teclear NO cancela: una letra no es una peticion de scroll", () => {
+    const w = entorno(1200);
+    preservarScroll();
+    const porTecla = w.addEventListener.mock.calls.find((c) => c[0] === "keydown")?.[1];
+    expect(porTecla, "no se registro el listener de teclado").toBeTypeOf("function");
+    (porTecla as (e: { key: string }) => void)({ key: "a" });
+    w.scrollY = 0;
+    tick(w);
+    expect(w.scrollTo, "deberia haber deshecho el salto igual").toHaveBeenCalled();
+  });
+
+  it("pero una tecla que SI mueve la pagina cancela", () => {
+    // El control de la asercion de arriba: sin el, "no cancela nunca" tambien pasaria verde.
+    const w = entorno(1200);
+    preservarScroll();
+    const porTecla = w.addEventListener.mock.calls.find((c) => c[0] === "keydown")?.[1];
+    (porTecla as (e: { key: string }) => void)({ key: "PageDown" });
+    w.scrollY = 0;
+    tick(w);
+    expect(w.scrollTo).not.toHaveBeenCalled();
+  });
 });
 
 describe("por qué es imperceptible: corrige en el evento, no sondeando", () => {

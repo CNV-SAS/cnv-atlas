@@ -175,3 +175,33 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
   deshabilitados, que se leen como "esto debería poder tocarse"). Decisión de Santiago, 2026-09-05.
 - **La pregunta, si prefiere lo otro:** si quiere que sean editables en Antropometría, se hace, y el
   precio es el segundo guardado.
+
+---
+
+## NO SON DIVERGENCIAS: donde Atlas difiere del HTML porque sigue una INSTRUCCION SUYA
+
+**Barrido pedido por Santiago el 2026-09-06**, y la razon que lo motivo vale mas que la lista: en el
+cotejo visual del 5 marque como hallazgo que su tabla de indices usa el corte historico del IFC (3,5-6,0)
+cuando su propio prompt lo prohibe. Santiago lo devolvio: *"si el nos habia dicho que lo hicieramos de una
+forma actualizada que no tiene el html, entonces nosotros estamos mejor que el html... hay que buscar que
+divergencias autorizo Gildardo y que realmente no tienen el html"*.
+
+**El patron es uno solo y conviene nombrarlo: SU ARCHIVO VA POR DETRAS DE SUS PROPIAS INSTRUCCIONES.**
+Cuando Atlas y el HTML no coinciden, la primera pregunta no es "en que divergimos", es **"¿nos dijo el
+algo sobre esto?"**. Siete veces la respuesta ha sido que si.
+
+| Que se ve distinto en el cotejo | Su instruccion | Donde va por detras su archivo |
+| --- | --- | --- |
+| **Cortes del IFC por sexo** (H > 6,68) frente a su tabla, que muestra 3,5-6,0 | Su propio prompt de IA: *"Esta prohibido usar los cortes historicos unicos (IFC 3,5/6,0 · IRC 2,0/3,4 · PABU con k=0,9): fueron reemplazados porque desplazaban sistematicamente la lectura de las mujeres"*. Y **su propio `cIFC` congelado ya los trae** (4,12/6,68 · 2,08/3,28) | Solo su **tabla de display** (`dIFC`), que no llama a su clasificador |
+| **Hidratacion sin grasa 73,2 %** frente al 73 de su pantalla | RESPUESTA 2026-08-17: *"la hidratacion de 73,2 %... 73,2 + 19,4 + 5,6 + 1,2 = 99,4 %. Citenlas como reparto de Wang, no como constantes independientes"*. El 73,2 no es redondeable: pertenece a un conjunto que tiene que cerrar | Su pantalla mostraba 73 |
+| **SMM/W mujeres 22 %** frente al 24 de su tabla | RONDA 2026-08-19 §3: el 24 de su §2 *"era error de transcripcion suyo (lo copio del display desactualizado, no de cSMM)"* | Su tabla del §2 |
+| **FFW e IEHH** con nuestros valores (41,95 y 0,81) frente a los suyos (44,66 y 0,885) | RESPUESTA 2026-08-15 §0: era un **defecto de su archivo** (una aproximacion adelantandose a la formula canonica). Regla que dejo: *"ninguna aproximacion debe adelantarse a una formula del modelo"* | Corregido de su lado el 15; el arrastre al IEHH venia del mismo sitio |
+| **cPABU direccional**, tres estados y sin rojo | 2026-08-17: *"cPABU: portenlo tal cual, y no lo graduen. Es un marcador direccional... el 'cuanto' ya lo da el ICA-BIS"* | Aqui el que iba por detras eramos NOSOTROS (reteniamos el rojo); se porto el 19 |
+| **Salvaguarda TCA que AVISA en vez de bloquear** | D-002, 2026-08-09: alerta, no bloqueo | **Su archivo del 18 todavia trae el texto que BLOQUEA** (L15675). Nuestra correccion (CA-2) manda por su instruccion escrita, no por su archivo |
+| **ICEC/LE8 encendido** (`LE8_MAPEO_CORREGIDO = true`) | Decision del 2026-09-02, confirmada el 05: *"el ICEC se activa tal cual se envio"* | **El comentario que sigue encima del interruptor dice que la bandera "se queda en `false`"**, y debajo el valor es `true` |
+
+**Como se usa esta tabla.** Antes de anotar una diferencia del cotejo visual como divergencia nuestra, o
+como hallazgo para reportarle, **barrer sus respuestas**. Si hay instruccion, no hay divergencia: hay un
+archivo suyo desactualizado, y eso no siempre merece un aviso (Santiago, 2026-09-06: *"¿para que volverle
+a avisar?"*). Es la misma señal de [[buscar-sus-terminos-no-los-nuestros]]: cuando algo diga "nosotros
+hacemos X y el hace Y", ir a buscar si lo dijo.
