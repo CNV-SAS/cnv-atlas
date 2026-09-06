@@ -109,7 +109,16 @@ describe("A. cada clasificador de la tabla de Wang expone Referencia + Diagnosti
     ["asmi", 6, true, 7.0], ["asmi", 5, false, 5.5],
     ["smmW", 26, true, 27], ["smmW", 23, false, 22], // mujer 22 (Gildardo §3 2026-08-18; NO 24)
     ["ECW_pct", 42, true, 40], ["ICW_pct", 60, true, 65],
-    ["ei", 0.42, true, 0.4], ["act_mlg", 76, true, 74], ["hidSG", 70, true, 73],
+    ["ei", 0.42, true, 0.4], ["act_mlg", 76, true, 74],
+    // hidSG PASA DE 73 A 73,2 (cotejo 2026-09-05, punto 8). Este candado fijaba 73 citando "§2/§3", y su
+    // respuesta del 2026-08-17 lo corrige: "la hidratacion de 73,2 % que ya esta referenciada... 73,2 +
+    // 19,4 + 5,6 + 1,2 = 99,4 %. Citenlas como reparto de Wang, no como constantes independientes". O sea
+    // que el 73,2 no es redondeable: pertenece a un conjunto que TIENE que cerrar.
+    //
+    // Se veia en el cotejo: su archivo muestra la referencia 73.20 y el delta -2,87; el nuestro decia
+    // -2,67. Y teniamos las DOS cifras en casa: `hidSG_ref = 73.2` en el dato derivado y `cut: 73` en el
+    // display. La que llegaba a pantalla era la nuestra.
+    ["hidSG", 70, true, 73.2],
   ];
   for (const [key, value, sexoM, cut] of BORDES) {
     it(`borde ${key} (${sexoM ? "H" : "M"}): cut = ${cut} (Gildardo §2/§3)`, () => {
