@@ -558,9 +558,9 @@ export default async function ResultadosEvaluacionPage({
         id,
         results.snapshot.sexo,
         results.snapshot.indicators as unknown as Record<string, unknown>,
-        // LA EDAD EN LA FECHA DE CONSULTA, no la de hoy: es la que corresponde al acto clinico que se
-        // esta mirando. Sin ella su rama de "65 años o mas" no se alcanza nunca (ver el lector).
-        hcHeader?.edad ?? null,
+        // LA EDAD YA NO VIAJA DESDE AQUI (2026-09-06): la resuelve `buildEnc` dentro del lector, que es
+        // el mismo `enc` que usan los otros dos lectores del archivo y que tampoco la tenian. Pasarla
+        // desde el caller arreglaba solo este panel.
         null,
         null,
       )

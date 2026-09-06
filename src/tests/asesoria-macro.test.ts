@@ -382,18 +382,25 @@ describe("8 · la rama de la EDAD, que estaba muerta y en silencio", () => {
     expect(a.rango).toBeNull();
   });
 
-  it("y el CABLE existe: el lector la pide y la página se la pasa", () => {
-    // EL CANDADO VA SOBRE EL SITIO DE LLAMADA, no sobre la función: los dos casos de arriba pasaban
+  it("y el CABLE existe: la edad entra al enc, y de ahi a los TRES motores", () => {
+    // EL CANDADO VA SOBRE EL SITIO DE LLAMADA, no sobre la funcion: los dos casos de arriba pasaban
     // verdes mientras nadie le pasaba la edad. Que su motor sepa usarla no sirve de nada si no llega.
+    //
+    // CAMBIA EL MECANISMO, NO LA ASERCION (2026-09-06). La edad era un PARAMETRO de este lector y la
+    // pasaba la pagina. Se movio a `buildEnc`, el constructor unico del `enc`, por una razon que salio
+    // del barrido: los otros dos lectores del mismo archivo la necesitaban igual y no la tenian, asi que
+    // `motorTratNutri` calculaba el gasto basal de todos los pacientes con 30 anos. De los cinco callers
+    // de esos lectores, TRES no tienen una edad a mano. Pedirsela al caller arreglaba UNO de tres.
+    //
+    // Lo que este test afirma sigue siendo lo mismo: que la edad LLEGA. Lo que cambia es por donde.
     const READER = readFileSync("src/modules/treatment/data/dieta-resumen-reader.ts", "utf8");
+    const enc = READER.slice(READER.indexOf("async function buildEnc"), READER.indexOf("conPesoYTalla"));
+    expect(enc, "el enc tiene que resolver la edad del paciente").toContain("edadEnFecha(");
+    expect(enc, "y tiene que ser la de la fecha de la consulta").toContain("ev.created_at");
+    expect(enc, "y tiene que entrar al enc").toContain("{ sexo, edad }");
+    // Y que ya NO viaje por dos caminos: dos fuentes del mismo dato es como se cuelan las divergencias.
     const bloque = READER.slice(READER.indexOf("export async function getAsesoriaMacros"));
-    expect(bloque, "el lector tiene que pedirla en su firma").toContain("edad: number | null");
-    expect(bloque, "y tiene que meterla en el bis que le pasa a su motor").toContain(
-      "edad != null && edad > 0 ? { ...base, edad } : base",
-    );
-    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
-    const llamada = PAGE.slice(PAGE.indexOf("await getAsesoriaMacros("));
-    expect(llamada.slice(0, 700), "la página tiene que pasarla").toContain("hcHeader?.edad ?? null");
+    expect(bloque, "la edad ya no se pide dos veces").not.toContain("edad: number | null");
   });
 
   it("sin fecha de nacimiento NO se supone una edad, y el resto sigue saliendo", () => {
