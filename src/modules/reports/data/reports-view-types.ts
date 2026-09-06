@@ -125,6 +125,12 @@ export type HistoriaClinicaDoc = {
   profesional: string;
   motivos: string[];
   antecedentes: { grupo: string; items: string[] }[];
+  /**
+   * La linea que calcula el motor ("Dieta normocalórica de 2408 kcal/día"). Es la prescripcion, no un
+   * texto libre, y por eso va aunque el profesional no escriba nada: su documento encabeza asi el bloque.
+   */
+  objetivoModelo: string | null;
+  /** Lo que el profesional ESCRIBIO sobre el objetivo. Puede no haber escrito nada. */
   objetivoTratamiento: string | null;
   plan: HcPlanNutricionalDoc | null;
   /** Cifras prescritas fuera de lo que sugiere el diagnostico (P-109). Vacio = no hubo o no se comparo. */

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { computeProtocoloEfectivo } from "@/clinical-engine";
 import { dfiNarrativeFromOutput } from "@/clinical-engine/dfi-narrative";
 import { indicatorSeverities } from "@/clinical-engine/severity";
 import { getPatientConsents } from "@/modules/consent/data/consent-reader";
@@ -53,17 +54,38 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const preguntas = (answers ?? []).flatMap((d) => d.questions);
   const snapshot = protocol?.protocolSuggested ?? null;
 
+  // LA CADENA EFECTIVA de esta consulta, la misma que muestra el panel: es la que da el objetivo y el
+  // PAL que gobiernan, y sin ellos el motor calcula sobre su objetivo INTERNO.
+  const efectivoHc = snapshot
+    ? computeProtocoloEfectivo(snapshot, {
+        geb: protocol?.adjGeb ?? null,
+        pal: protocol?.adjPal ?? null,
+        kcalObj: protocol?.adjKcalObj ?? null,
+        protGkg: protocol?.adjProtGkg ?? null,
+        fatPct: protocol?.adjFatPct ?? null,
+        deficit: protocol?.adjDeficit ?? null,
+        pesoMeta: protocol?.pesoMetaFijado ?? null,
+      })
+    : null;
+
   // La prescripcion del motor que GOBIERNA, para el sodio y la proteina de las recomendaciones. Misma
   // llamada que hace la pagina; si la evaluacion no tiene encuesta legible viaja null y los bloques que la
   // citan vuelven a marcarse como pendientes, nunca con una cifra por defecto.
+  //
+  // EL OBJETIVO Y EL PAL EFECTIVOS SE LE PASAN (cotejo punto 29, 2026-09-06). Iban en `null, null`, y eso
+  // es EXACTAMENTE el defecto que el propio lector documenta y que se cerro en el panel el 2026-09-01:
+  // `tipoEnergia` sale de comparar el objetivo contra el GET, y su motor lo recalcula DESPUES de aplicar
+  // `edit.kcal_obj`. Sin pasarselo, el tipo se computa con el objetivo interno y queda clavado. El panel
+  // se arreglo; la HISTORIA CLINICA se quedo con los dos nulls, asi que el documento probatorio podia
+  // decir un tipo de dieta distinto del que el profesional tenia en pantalla.
   const prescripcion = snapshot
     ? await getPrescripcionNutricional(
         evaluationId,
         header.sexo ?? "",
         {},
         protocol?.pesoMetaFijado ?? snapshot.pesoCalculo,
-        null,
-        null,
+        efectivoHc ? Math.round(efectivoHc.calorico.kcalObj) : null,
+        efectivoHc ? efectivoHc.calorico.pal : null,
       ).catch(() => null)
     : null;
 
@@ -211,6 +233,18 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
         .filter((f) => f.valores.length > 0)
         .map((f) => `${f.etiqueta}: ${f.valores.join(", ")}`),
     })),
+    // EL OBJETIVO DEL TRATAMIENTO, EN DOS PIEZAS (cotejo punto 29). Aqui iba SOLO el texto libre del
+    // profesional, asi que si no escribia nada la historia clinica decia "No se registró" en el bloque
+    // que su documento encabeza con "Dieta Normocalórica de 2408 kcal/día". Y ese renglon no es texto
+    // libre: lo calcula el motor y ya sale en el panel de tratamiento, encima del campo.
+    //
+    // Van los DOS, como en el panel: la linea del modelo SIEMPRE (es la prescripcion, y existe desde que
+    // hay cadena) y debajo lo que el profesional escribio, si escribio. Un documento probatorio no puede
+    // decir que no se registro un objetivo que el sistema calculo y mostro.
+    objetivoModelo:
+      prescripcion && efectivoHc
+        ? `Dieta ${prescripcion.tipoEnergia.toLowerCase()} de ${Math.round(efectivoHc.calorico.kcalObj)} kcal/día`
+        : null,
     objetivoTratamiento: protocol?.objetivoTexto ?? null,
     plan: compuesta.plan,
     desviaciones: compuesta.desviaciones,

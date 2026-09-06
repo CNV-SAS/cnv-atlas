@@ -212,13 +212,19 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             Y en un documento probatorio la diferencia importa: un bloque AUSENTE se lee como que no se
             evaluo, mientras que uno que dice "no se registró" dice que se miro y no habia. */}
         <Seccion titulo="Objetivo del tratamiento">
+          {/* DOS PIEZAS, como en la pantalla (cotejo punto 29): la linea que calcula el motor (la
+              prescripcion) y debajo lo que el profesional escribio. Antes solo iba el texto libre, asi
+              que el documento decia "No se registró" donde el suyo encabeza con la dieta y sus kcal. */}
+          {hc.objetivoModelo ? <Text>{hc.objetivoModelo}</Text> : null}
           {hc.objetivoTratamiento && hc.objetivoTratamiento.trim() !== "" ? (
             <Text>{hc.objetivoTratamiento}</Text>
-          ) : (
+          ) : null}
+          {!hc.objetivoModelo && (!hc.objetivoTratamiento || hc.objetivoTratamiento.trim() === "") ? (
             // "No se registró" y no "no aplica": el objetivo SIEMPRE deberia estar en una consulta con
-            // prescripcion; si falta, falta de verdad. Mismo texto que la pantalla.
+            // prescripcion; si falta, falta de verdad. Mismo texto que la pantalla, y ahora igual que
+            // ella solo cuando faltan LOS DOS.
             <Text style={styles.vacio}>No se registró</Text>
-          )}
+          ) : null}
         </Seccion>
 
         {hc.plan ? (
