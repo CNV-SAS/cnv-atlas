@@ -717,6 +717,26 @@ hallazgos menores de su archivo y una pregunta.
 
 ---
 
+### 7 · Tu HISTORIA CLÍNICA y tu tabla de composición clasifican el % de grasa con cortes distintos
+
+> Gildardo: cotejando la pestaña de Reporte/HC salió una diferencia que **no es entre tu archivo y
+> Atlas, sino entre dos sitios de tu propio archivo**, y por eso te la traemos en vez de elegir.
+>
+> **En la tabla de la historia clínica**, la fila *% Grasa* lleva la referencia **H: 8-19,9 % / M:
+> 21-32,9 %** y la clasifica con un criterio escrito ahí mismo (déficit < 8, normal < 20, límite < 25,
+> obesidad ≥ 25 en hombres). Con nuestro paciente de prueba, 22,4 % sale **"Límite"**.
+>
+> **En la tabla de composición** el mismo dato se lee contra **10-22 %** (borde superior 22 en hombres,
+> 32 en mujeres, que es el que nos confirmaste el 18 de agosto) y sale **"Sobrepeso adiposo"**.
+>
+> Mismo paciente, mismo número, dos veredictos. Atlas usa hoy el segundo, que es el que tu instrucción
+> del 18 fijó.
+>
+> **La pregunta:** ¿cuál manda en la historia clínica? Si es el de tu tabla de la HC, lo portamos tal
+> cual; si es el que nos diste en agosto, tu HC es la que quedó con el criterio viejo.
+
+---
+
 ## Lo que se le DECLARA (no se le pregunta), en un solo sitio
 
 **Para que Santiago se lo mande junto al cerrar.** Son las divergencias que tomamos por nuestra cuenta y

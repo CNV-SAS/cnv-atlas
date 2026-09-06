@@ -1014,3 +1014,97 @@ El resto son filas cuyo corte tiene menos decimales que el valor (cintura 94, FF
 %grasa 22, ACT/MLG 71-74, AEC% 35-40), pero ahí bajar a la resolución del corte perdería información real
 (un FFMI sin decimales no sirve). **La regla del corte pone un techo, no un objetivo**, y conviene decirlo
 así en `BRAND.md` antes de aplicarla en bloque. No toqué ninguna: va como pregunta.
+
+---
+
+# El recorrido del smoke de Reporte/HC (2026-09-06)
+
+**Una evaluación con diagnóstico confirmado y tratamiento guardado, pestaña Reporte / HC.**
+
+### A · El orden de los bloques, que es lo que cambió
+
+Baja de arriba abajo y comprueba que van **en este orden**, que es el de su historia clínica:
+
+1. Datos del paciente
+2. Motivo de consulta
+3. Antecedentes personales
+4. **Composición corporal · índices alterados** ← subió: antes iba después de la meta
+5. Resumen diagnóstico · Nutricionista
+6. Diagnóstico funcional integrado (DFI)
+7. Meta terapéutica
+8. Objetivo del tratamiento
+9. **Rutas de intervención activadas** ← subió: antes iba al final, tras las remisiones
+10. Tratamiento · Plan nutricional
+11. Recomendaciones
+12. Remisiones y derivaciones
+13. Observaciones del profesional · Próxima consulta · Autorizaciones · Firma
+
+**Sería defecto si:** la composición sigue debajo de la meta, o las rutas siguen después de las remisiones.
+
+### B · Las remisiones, que es lo grave que se cerró
+
+En **Remisiones y derivaciones** tienen que salir **dos bloques rotulados**:
+
+- **"Lo que el modelo exigió"**, con una tarjeta por destinatario, su **urgencia verbatim** (la
+  *OBLIGATORIA* resaltada) y un estado **Registrada** o **Sin registrar**.
+- **"Lo que el profesional registró"**, con las tarjetas de siempre (fecha y retorno).
+
+**Comprueba el cruce:** registra una remisión al **médico** desde Diagnóstico y vuelve. La tarjeta del
+médico tiene que pasar a **Registrada** y la del entrenador **seguir en Sin registrar**.
+
+**Sería defecto si:** dice *"No se registraron remisiones ni derivaciones"* con una ruta activa que remite,
+o si al registrar una se marcan todas.
+
+### C · Los tres arreglos del cotejo
+
+- **Actividad física** dice el **nombre del nivel** (*"Ligera (1.375)"*), no *"PAL 1.375"*.
+- **Sodio**, cuando el paciente no tiene HTA ni ERC ni alteración hídrica, dice **"No aplica"** y **no**
+  *"No se registró"*.
+- **Antecedentes** cierran con **Alergias e intolerancias** (después de quirúrgicos y contaminantes).
+
+### D · Los decimales
+
+- **IMC** con **un** decimal (25,7), no dos.
+- **AF** con **un** decimal, **IR** con **tres**, en la tabla de composición **y** en la de índices ANI.
+  Los dos sitios tienen que decir lo mismo.
+
+### E · El PDF, que es la otra mitad
+
+Pulsa **"Imprimir o guardar PDF"** y comprueba **sobre el PDF**, no sobre la pantalla:
+
+- El **mismo orden** de A.
+- Las **dos listas** de remisiones de B.
+- **Sodio: No aplica** (antes la fila desaparecía entera).
+
+**Sería defecto si:** el PDF y la pantalla difieren en cualquiera de los tres. Es el defecto que ya nos
+pasó tres veces en este documento.
+
+---
+
+# Estado del cotejo completo (30 puntos, cierre 2026-09-06)
+
+## CERRADO · 24
+
+1, 3, 5, 7, 9 (a-e), 11, 13, 14, 15, 16, 17, 18, 19, 21, 22.1, 22.2, 22.3, 22.4, 23, 24, 26, 27, 29, 30.
+
+Y **cerrados en parte, con la mitad que falta declarada**: **6** (se puede reimportar antes del
+diagnóstico; corregir *después* sigue abierto), **25** (el botón se movió; unir los dos bloques no se hizo
+y la razón está escrita), **28** (la tarjeta de capacitancia ya sale con una medición; el radar espera la
+segunda, que es correcto).
+
+## PENDIENTE · 5, y ninguno es un hueco del cotejo
+
+| # | Qué falta | Por qué no se hizo |
+| --- | --- | --- |
+| **2** | Corregir los datos personales del paciente | No hay camino y no es un formulario: toca resolución de identidad, auditoría y consentimiento. Hay que decidir **quién corrige qué** y **qué queda del valor anterior** |
+| **6** (2ª mitad) | Corregir medición o condiciones **después** de generar | La salida diseñada es el reinicio de la evaluación, medido y sin construir |
+| **10** | El scroll que salta | **Necesita navegador.** Verificado que el formulario SÍ usa el helper, y apareció un segundo caso igual: es un hueco del guard, no un cable que falte |
+| **12** | El borrador de IA largo | **Respondido, no construido.** Tiene razón el HTML. Va con su tanda, y depende de la respuesta de Gildardo sobre cómo abrir sin el nombre |
+| **20** | LUVIA y otros productos | **Construcción diferida declarada antes de este cotejo** (`LANZAMIENTO.md`, `PLAN_CONSIGNACION_TERCEROS.md`) |
+
+## A GILDARDO · 8
+
+El **punto 0** (el nombre de una persona en el ejemplo de su prompt, que viaja al proveedor de IA en cada
+llamada) más siete preguntas. Todas redactadas en `GILDARDO_QUERIES.md`, sección *"Mensaje pendiente de
+enviar"*, y en la tabla de `PENDIENTES_CIENTIFICOS.md` §6. La que salió del punto 30 es la **7**: su
+historia clínica y su tabla de composición clasifican el **% de grasa** con cortes distintos.

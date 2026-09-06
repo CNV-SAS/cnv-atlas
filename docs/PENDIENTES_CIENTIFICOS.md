@@ -306,7 +306,7 @@ preguntarle si es un resto o algo que piensa usar.
 
 ## 6 · Lo que salió del cotejo visual (5 y 6 de septiembre)
 
-**Son seis, y ninguna bloquea el hito salvo la primera, que no es una pregunta clínica sino un aviso de
+**Son siete, y ninguna bloquea el hito salvo la primera, que no es una pregunta clínica sino un aviso de
 datos personales.** Todas están redactadas para él en `GILDARDO_QUERIES.md`, sección *"Mensaje pendiente
 de enviar"*, en este mismo orden.
 
@@ -319,6 +319,7 @@ de enviar"*, en este mismo orden.
 | 4 | La fila **PABU** de su tabla usa un clasificador local (*"PABU bajo"*) y nosotros el congelado (*"Desviación por exceso"*). **Mismo color, distinta palabra** | Cotejo del 5 | ¿Prefiere el rótulo de su tabla? Se cambia en una línea |
 | 5 | La fila **ICA-BIS** tiene **dos reglas en su archivo, una por superficie**: gradúa en la pantalla de Composición y toma la del PABU en la historia clínica | Cotejo del 5 | ¿Es deliberado, o la nota de la historia iba a aplicarse también a la tabla? |
 | 6 | El nombre del modelo aparece como *"ANI BIS-E"* en unos sitios y *"ANI-BIS-E"* en otros | Punto **11** | Nada: se lo decimos. Atlas quedó unificado en **ANI-BIS-E** |
+| **7** | **Su HISTORIA CLÍNICA y su tabla de composición clasifican el % de grasa con cortes distintos** (8-19,9 con criterio local contra 10-22 del borde que él confirmó): mismo paciente, dos veredictos | Punto **30** | ¿Cuál manda en la historia clínica? Atlas usa hoy el de agosto |
 
 ### Lo que NO entra aquí, y por qué
 
