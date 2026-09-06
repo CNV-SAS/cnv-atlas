@@ -1,4 +1,5 @@
 import { BIODY_COLUMNS } from "@/clinical-engine";
+import { decimalesDe, esIndicadorAni } from "./indicator-ranges";
 import {
   MEASURED_HIPS_HEADER,
   MEASURED_WAIST_HEADER,
@@ -111,6 +112,13 @@ type RowOpts = {
 };
 type LevelRow = [string, string, string | null, string, RowOpts?];
 const bio: RowOpts = { bioelectric: true };
+
+/** Decimales de una fila: lo que declare, y si no, lo que fije la tabla de los indicadores ANI cuando la
+ *  clave sea uno de ellos. `null` = que el render use su default (dos). */
+function decimalesDeLaFila(clave: string, opts?: RowOpts): number | null {
+  if (opts?.decimals != null) return opts.decimals;
+  return esIndicadorAni(clave) ? decimalesDe(clave) : null;
+}
 
 // ── EVALUACION: lo MEDIDO y lo CRUDO. Sin indicadores clasificados. Bioelectrico repartido en su nivel. ──
 const EVAL_LEVELS: { title: string; rows: LevelRow[] }[] = [
@@ -343,7 +351,13 @@ export function buildComposition(
       unit,
       refKey,
       ...(opts?.bioelectric ? { bioelectric: true } : {}),
-      ...(opts?.decimals != null ? { decimals: opts.decimals } : {}),
+      // LOS DECIMALES: los de la fila si los declara, y si la fila es uno de los DOCE INDICADORES ANI,
+      // los que fija `indicator-ranges`, que es su fuente unica (2026-09-06). Sin este enganche esta
+      // tabla era una CUARTA capa de display con su propio numero: el AF salia aqui con dos decimales
+      // y alli con uno, que es instruccion suya (D-016), y el IR con dos aqui y tres alli.
+      ...(decimalesDeLaFila(valueKey, opts) != null
+        ? { decimals: decimalesDeLaFila(valueKey, opts) as number }
+        : {}),
     };
   };
   const buildLevels = (defs: { title: string; rows: LevelRow[] }[]): CompositionLevel[] =>

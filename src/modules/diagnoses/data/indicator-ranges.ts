@@ -72,6 +72,38 @@ export function decimalesDe(codigo: string): number {
   return DECIMALES_INDICADOR[codigo] ?? DECIMALES_POR_DEFECTO;
 }
 
+// LOS CODIGOS DE LOS INDICADORES ANI, para que OTRA capa de display pueda preguntar si una fila suya es
+// uno de ellos (2026-09-06). No es una lista decorativa: es el enganche que impide que se repita lo que
+// acaba de pasar.
+//
+// EL COMENTARIO DE ARRIBA DECIA "eran TRES sitios" (el valor en Diagnostico, la Δ aqui, la historia
+// clinica) "y con una tabla no hay dos numeros que puedan discrepar". Habia un CUARTO: la tabla de
+// composicion de Wang, que es otra capa de display y NO consultaba esta tabla. Resultado: el AF salia
+// con dos decimales ahi y con uno aqui, y el uno es instruccion suya (D-016). El IR, con dos ahi y
+// tres aqui.
+//
+// AHORA LA TABLA DE COMPOSICION LA CONSULTA, asi que las dos capas no pueden discrepar por
+// construccion, que es mas fuerte que acordarse. El candado `decimales-las-dos-capas` lo comprueba.
+export const CODIGOS_ANI = [
+  "IFC",
+  "IRC",
+  "PABU",
+  "ICA-BIS",
+  "ISCM",
+  "IEHH",
+  "IAE",
+  "EB",
+  "FMI",
+  "FFMI",
+  "AF",
+  "IR",
+] as const;
+
+/** Si una clave de fila de OTRA tabla de display es uno de los doce indicadores ANI. */
+export function esIndicadorAni(clave: string): boolean {
+  return (CODIGOS_ANI as readonly string[]).includes(clave);
+}
+
 // LA FILA ICA-BIS: SU ARCHIVO TIENE DOS REGLAS, UNA POR SUPERFICIE. No es una, y confundirlas ya me
 // costo una entrega (2026-09-05, cotejo punto 17, corregido el mismo dia con sus capturas al lado).
 //
