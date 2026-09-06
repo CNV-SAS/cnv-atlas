@@ -125,9 +125,15 @@ Desviación leve" Ahi pone desviación leve con color verde, mientras que la PAB
 18. De las pestañas que mas trabajo nos costó, adjunto las capturas del recorrido completo de ambas subpestañas para que cotejes contra el html de forma completa y profunda.
 
 - Subpestaña rutas de atención
-19. Solo para confirmar, nosotros tenemos "Resumen del diagnóstico" aquí porque fue una mejora de nosotros o de Gildardo?
+19. **CONTESTADO (2026-09-06): es NUESTRO.** Verifiqué su subpestaña completa. Su "Rutas de atención derivadas del DFI" tiene **tres secciones y ninguna es un resumen del diagnóstico**: SECCIÓN 1 Rutas de atención activadas, SECCIÓN 2 Vitacellebis recomendado (con "Otros productos" al final) y SECCIÓN 3 Remisiones.
+    **Lo que sí tiene es "A — RESUMEN CLÍNICO", pero en la OTRA subpestaña** (Nutricionista), encabezándola, y ahí Atlas también lo tiene. Así que en rutas es una adición nuestra. **No la retiro por iniciativa propia**: a diferencia de las guías dietarias, aquí el profesional llega desde otra pestaña y el resumen le ahorra volver. Queda declarado por si prefieres quitarlo; es retirar un componente.
+19b. Tu pregunta original: nosotros tenemos "Resumen del diagnóstico" aquí porque fue una mejora de nosotros o de Gildardo?
 
-20. Nos falta el bloque de OTROS productos (LUVIA)
+20. **NO ES UN HUECO DEL COTEJO: es construcción diferida, y estaba declarado así antes de este cotejo** (`LANZAMIENTO.md`: *"Lo que NO es parte de este gate: LUVIA y los otros productos"*, y el plan completo en `PLAN_CONSIGNACION_TERCEROS.md`).
+    **Cómo se ve en su archivo**, para que sepamos qué es lo que falta: bajo SECCIÓN 2, después de "Registrar despacho", un bloque **OTROS PRODUCTOS** con la nota *"No se indican por diagnóstico: el profesional los ofrece por criterio clínico. Se despachan con el mismo registro"*, y una tarjeta de LUVIA con casilla, dosis (*"1 scoop (15 g) en un vaso con agua · Polvo · 600 g"*), descripción, **alérgenos** (*"Contiene avena (gluten)"*) y su registro INVIMA y laboratorio.
+    **Por qué no lo porto como display y ya:** la casilla participa del **despacho**, y ahí deja de ser pantalla. LUVIA viene **en consignación de un tercero** (Centro de Nutrición Integral Katherine Ruiz, 60 unidades, PVP 90.000), no de CNV. Despachar un producto ajeno sin el modelo de consignación crea inventario que **no concilia con el consignante**, y el reparto de la venta hoy se calcula UNA VEZ POR TRANSACCIÓN, no por producto. Además el contable exige **inventario por LOTE con vencimiento** (LUVIA lleva probióticos).
+    **Es dinero y son tres partes**, todas en `PLAN_CONSIGNACION_TERCEROS.md`. Si quieres el bloque **solo informativo, sin casilla y sin despacho**, eso sí es chico y lo hago cuando digas: pero entonces hay que decidir de dónde sale la ficha del producto (hoy no hay catálogo donde ponerla).
+20b. Tu reporte original: Nos falta el bloque de OTROS productos (LUVIA)
 
 - Subpestaña Nutricionista
 21. ## URGENTE   ·   **CERRADO (2026-09-06). Tenías razón, y la razón que diste es la buena.**
@@ -226,7 +232,12 @@ Del mismo modo, me parece mucho mas facil de entender como lo presenta el html (
 
 **Seguimiento**: 
 
-27. Nosotros en la primera evaluación solo tenemos esto: "Próximo control
+27. **VERIFICADO Y PROPUESTO, NO CONSTRUIDO (2026-09-06). Dos cosas, y la primera era la que me preocupaba.**
+    **(a) La FECHA no es una divergencia: es el mismo cálculo.** Comparé los dos: él hace *"última medición + días de la frecuencia"*, y nosotros exactamente igual. La diferencia de las capturas es del dato, no de la fórmula: su Nico tiene la medición del **2026-09-04** (04/09 + 90 = 03/12, y muestra 04/12 por su zona horaria) y el nuestro la tiene del **2026-07-13** (13/07 + 90 = **11/10**). **Nuestro número es correcto.**
+    Lo que sí quedó anotado de paso: si el profesional importa una medición tomada semanas antes, la fecha sugerida sale contada desde la toma y puede quedar **demasiado pronto**. Es de él y de nosotros por igual, y no lo cambio por mi cuenta: va a la ronda.
+    **(b) Lo que SÍ nos falta son dos campos suyos, y son un cambio de esquema.** Su bloque tiene, además de la fecha: **"Frecuencia de seguimiento"** (texto editable, prellenado con la de la ruta) y **"Observaciones"** (textarea). Los dos se **persisten** en su lado (`frecuencia_seguimiento`, `notas_profesional`). En Atlas la frecuencia se **muestra** pero no se edita, y observaciones no existe.
+    **No lo construyo sin tu visto bueno porque es una migración** sobre `treatments`, que es tabla ya migrada, y eso es un punto de parada del proceso. **Lo que costaría:** dos columnas nullables, dos campos en el bloque de próximo control y el guardado que ya existe para la fecha. **La pregunta que va contigo:** ¿la frecuencia editable **reemplaza** a la de la ruta para el paciente, o es solo una nota? Si reemplaza, hay que decidir si la fecha sugerida se recalcula con ella.
+27b. Tu reporte original: Nosotros en la primera evaluación solo tenemos esto: "Próximo control
 Ruta primaria activa: R4 · Desaceleración del Envejecimiento. Frecuencia recomendada: Cada 90 días.
 Criterio de egreso (DFI): IAE < 5 años y FFMI en rango normal sostenido
 
@@ -245,7 +256,12 @@ Frecuencia de seguimiento
 Cada 90 días
 Observaciones".
 
-28. El html a pesar de ser la primera evaluación muestra un mapa de capacitancia y un radar y 2 mapas de adicionales. Nosotros solo mostramos esos mapas cuando hay otra evaluación. Algo para rescatar del html es este parrafo inicial que explica por qué tenerlo incluso en la primera evaluación: "⚡ Capacitancia de membrana (C) — parámetro de seguimiento
+28. **HECHO EN PARTE, y separé lo que se podía de lo que no (2026-09-06).**
+    **La tarjeta de capacitancia ahora aparece con UNA sola medición**, y tu párrafo es el argumento: **esa tarjeta no vive de la trayectoria, vive de la comparación contra la referencia poblacional** por sexo y década. Con una medición ya dice dónde está el paciente. Estaba escondida detrás del mismo gate que el radar, y eso era el defecto contrario al que solemos vigilar: no mostrar media información, sino no mostrar ninguna teniendo una lectura completa.
+    **Y ahora escribe la fila entera, como la suya**: *"Referencia hombres 18-29 (n=503): P25 2,06 · mediana 2,40 · P75 2,82 nF. Última medición: 2,960 nF · Alta (P75-P95)"*. Antes solo decía la mediana; la mediana dice hacia dónde, los percentiles dicen cuánto margen hay, y el **n** es lo que separa una referencia de una cifra afirmada.
+    **Lo que NO se muestra con una sola medición, y es correcto: la gráfica.** Una línea de un punto no traza nada. Se dice, en vez de dibujar un gráfico vacío.
+    **Y el radar inicial-vs-última sigue esperando la segunda.** Su archivo lo dibuja igual, pero ahí compara la medición **contra sí misma**: el polígono sale idéntico en las dos capas y no informa de nada. Ese sí es un caso donde su pantalla muestra algo que no dice nada, y prefiero decir que falta la segunda. Queda declarado. Candado en `capacitancia.test.ts`.
+28b. Tu reporte original: El html a pesar de ser la primera evaluación muestra un mapa de capacitancia y un radar y 2 mapas de adicionales. Nosotros solo mostramos esos mapas cuando hay otra evaluación. Algo para rescatar del html es este parrafo inicial que explica por qué tenerlo incluso en la primera evaluación: "⚡ Capacitancia de membrana (C) — parámetro de seguimiento
 Según protocolo, C es el parámetro a seguir. Mejorar es ACERCARSE a la mediana de su grupo por sexo y edad; alejarse, en cualquiera de las dos direcciones, no lo es. Verde = se acerca · rojo = se aleja. Por encima del P95, seguir subiendo es una señal, no una mejoría: la capacitancia también sube con el IMC.
 Referencia hombres 18-29 anos (n=503): P25 2.06 · mediana 2.40 · P75 2.82 nF
 Ultima medicion: 2.960 nF — Alta (P75-P95)"

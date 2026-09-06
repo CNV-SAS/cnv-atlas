@@ -122,6 +122,10 @@ export async function getSerieSeguimiento(evaluationId: string): Promise<SerieSe
       const cl = clasificarCapacitancia(ultimo.c, sexo, edad);
       refC = {
         mediana: r.p50,
+        p25: r.p25,
+        p75: r.p75,
+        n: r.n,
+        valor: Number(ultimo.c),
         etiqueta: cl.l,
         banda: cl.banda,
         grupo: `${r.sexo === "M" ? "Hombres" : "Mujeres"} ${r.d[0]}-${r.d[1]}`,

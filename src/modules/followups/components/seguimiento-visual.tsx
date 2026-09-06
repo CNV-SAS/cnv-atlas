@@ -16,14 +16,107 @@ function Aviso({ children }: { children: React.ReactNode }) {
 // medicion contra si misma y las series pintan un punto suelto. Aqui se dice lo que pasa Y CUANDO
 // correspondería la siguiente, con la frecuencia de la ruta que ya calcula el bloque de proximo control.
 // Convierte un vacio en informacion, que es lo que el profesional necesita en la primera consulta.
+// LA TARJETA DE CAPACITANCIA, QUE APARECE TAMBIEN CON UNA SOLA MEDICION (cotejo 2026-09-05, punto 28).
+//
+// POR QUE CAMBIA. Todo el bloque de seguimiento estaba detras de "hay dos mediciones", y para el radar y
+// las series eso es correcto: con un punto compararian la medicion contra si misma. Pero ESTA tarjeta no
+// vive de la trayectoria: vive de la comparacion contra la REFERENCIA POBLACIONAL por sexo y decada. Con
+// una sola medicion ya dice donde esta el paciente, que es exactamente lo que su archivo escribe en la
+// primera consulta: "Referencia hombres 18-29 años (n=503): P25 2.06 · mediana 2.40 · P75 2.82 nF.
+// Ultima medicion: 2.960 nF - Alta (P75-P95)".
+//
+// Esconderla era el defecto contrario al que solemos vigilar: no mostrar media informacion, sino no
+// mostrar ninguna teniendo una lectura completa. La GRAFICA si sigue esperando la segunda: una linea de
+// un punto no traza nada, y se dice en vez de dibujar un grafico vacio.
+//
+// SE ESCRIBEN LOS PERCENTILES Y EL n, no solo la mediana: la mediana dice hacia donde, los percentiles
+// dicen cuanto margen hay, y el n es lo que separa una referencia de una cifra afirmada.
+function CapacitanciaCard({
+  refC,
+  puntos,
+}: {
+  refC: SerieSeguimiento["refC"];
+  puntos: { fecha: string; valor: number }[];
+}) {
+  if (puntos.length === 0) return null;
+  const hayTrayectoria = puntos.length >= 2;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Capacitancia de membrana (C)</CardTitle>
+        {/* TEXTO CORREGIDO (Gildardo 2026-08-27 §9). Decia "Mayor C indica mejor integridad de la
+            membrana celular: verde si mejora...", y su articulo de referencia dice lo contrario: la
+            capacitancia discrimina masa muscular baja POR ABAJO y obesidad POR ARRIBA (AUC 0,734 por
+            IMC), y sube con el IMC. Un paciente que pasa de 2,40 a 4,00 nF puede estar ganando
+            adiposidad, no integridad de membrana. */}
+        <span className="text-xs text-muted-foreground">
+          Según protocolo, C es el parámetro a seguir. Mejorar es acercarse a la mediana de su grupo de
+          edad y sexo, no subir: alejarse, en cualquier dirección, no es mejoría.
+        </span>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {refC ? (
+          <p className="text-sm text-foreground">
+            <span className="text-muted-foreground">
+              Referencia {refC.grupo.toLowerCase()} (n={refC.n}): P25 {refC.p25.toFixed(2)} · mediana{" "}
+              {refC.mediana.toFixed(2)} · P75 {refC.p75.toFixed(2)} nF.
+            </span>{" "}
+            Última medición: <strong>{refC.valor.toFixed(3)} nF</strong> ·{" "}
+            <strong>{refC.etiqueta}</strong>
+            {refC.banda ? ` (${refC.banda})` : ""}.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No se puede comparar con su grupo porque falta el sexo o la fecha de nacimiento del paciente,
+            así que la medición se muestra sin calificarla.
+          </p>
+        )}
+        {hayTrayectoria ? (
+          <SerieLinea
+            puntos={puntos}
+            // Con referencia, `SerieLinea` ya calcula la mejora como ACERCARSE, que es su regla; sin ella
+            // no hay criterio de direccion. NUNCA `true`: pintar de verde el tramo que sube afirmaria
+            // justo lo que Gildardo retiro (la capacitancia sube con el IMC, asi que subir puede ser
+            // adiposidad y no integridad de membrana).
+            {...(refC
+              ? { referencia: refC.mediana, referenciaLabel: `Mediana ${refC.grupo}` }
+              : {})}
+            subirEsMejor={null}
+            ariaLabel={`Capacitancia de membrana: ${puntos
+              .map((p) => `${formatDateOnlyShort(p.fecha)} ${p.valor.toFixed(3)}`)
+              .join(", ")}.`}
+          />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            La trayectoria se dibuja con la segunda medición. Con una sola, lo que se puede leer es la
+            posición frente a su grupo, que es la línea de arriba.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SeguimientoSinPrevia({
   fechaSugerida,
   frecuencia,
+  serie,
 }: {
   fechaSugerida: string | null;
   frecuencia: string | null;
+  /** La serie, para poder mostrar la capacitancia contra su referencia ya en la primera consulta. */
+  serie: SerieSeguimiento;
 }) {
+  const puntosC = serie.puntos
+    .filter((p) => p.c != null)
+    .map((p) => ({ fecha: p.fecha, valor: p.c as number }));
+
   return (
+    <div className="flex flex-col gap-4">
+      {/* LA CAPACITANCIA VA PRIMERO, y con una sola medicion ES lo unico que hay que leer: dice donde
+          esta el paciente frente a su grupo. El aviso de que falta la segunda va debajo. */}
+      <CapacitanciaCard refC={serie.refC} puntos={puntosC} />
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Seguimiento funcional</CardTitle>
@@ -42,6 +135,7 @@ export function SeguimientoSinPrevia({
         </Aviso>
       </CardContent>
     </Card>
+    </div>
   );
 }
 
@@ -73,58 +167,7 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
         </p>
       ) : null}
 
-      {puntosC.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Capacitancia de membrana (C)</CardTitle>
-            {/* TEXTO CORREGIDO (Gildardo 2026-08-27 §9). Decia "Mayor C indica mejor integridad de la
-                membrana celular: verde si mejora...", y su artículo de referencia dice lo contrario:
-                la capacitancia discrimina masa muscular baja POR ABAJO y obesidad POR ARRIBA (AUC 0,734
-                por IMC), y sube con el IMC. Un paciente que pasa de 2,40 a 4,00 nF puede estar ganando
-                adiposidad, no integridad de membrana. */}
-            {/* LA REFERENCIA YA SE MUESTRA (cableada el 2026-09-01). Decía "aún no se muestra aquí", y era
-                cierto: la tabla de percentiles estaba portada verbatim con su candado desde el 26 de
-                agosto y nadie la había conectado. El texto era honesto sobre la ausencia, y por eso esto
-                no fue un fallo silencioso; pero seguía siendo una pieza sin su último cable. */}
-            <span className="text-xs text-muted-foreground">
-              Según protocolo, C es el parámetro a seguir. Mejorar es acercarse a la mediana de su grupo
-              de edad y sexo, no subir: alejarse, en cualquier dirección, no es mejoría.
-              {serie.refC ? (
-                <>
-                  {" "}
-                  La línea marca la mediana de {serie.refC.grupo} ({serie.refC.mediana.toFixed(2)} nF). Su
-                  última medición es{" "}
-                  <strong>{serie.refC.etiqueta.toLowerCase()}</strong>
-                  {serie.refC.banda ? ` (${serie.refC.banda})` : ""}.
-                </>
-              ) : (
-                <>
-                  {" "}
-                  No se puede comparar con su grupo porque falta el sexo o la fecha de nacimiento del
-                  paciente, así que el gráfico traza la trayectoria sin calificarla.
-                </>
-              )}
-            </span>
-          </CardHeader>
-          <CardContent>
-            <SerieLinea
-              puntos={puntosC}
-              // Con referencia, `SerieLinea` ya calcula la mejora como ACERCARSE, que es su regla; sin ella
-              // no hay criterio de direccion. NUNCA `true`: pintar de verde el tramo que sube afirmaria
-              // justo lo que Gildardo retiro (la capacitancia sube con el IMC, asi que subir puede ser
-              // adiposidad y no integridad de membrana).
-              {...(serie.refC
-                ? { referencia: serie.refC.mediana, referenciaLabel: `Mediana ${serie.refC.grupo}` }
-                : {})}
-              subirEsMejor={null}
-              ariaLabel={`Capacitancia de membrana: ${puntosC
-                .map((p) => `${formatDateOnlyShort(p.fecha)} ${p.valor.toFixed(3)}`)
-                .join(", ")}.`}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-
+      <CapacitanciaCard refC={serie.refC} puntos={puntosC} />
       {inicial && ultima ? (
         <Card>
           <CardHeader>

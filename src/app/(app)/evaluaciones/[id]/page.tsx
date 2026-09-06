@@ -876,14 +876,19 @@ export default async function ResultadosEvaluacionPage({
         // PRIMERA consulta es justo cuando hace falta agendar. Antes de esto la unica via de fijar la cita
         // era confirmar un "empeoro", que exige una segunda medicion: un paciente que mejoro no tenia donde.
         <section className="flex flex-col gap-4">
-          {/* Con UNA sola medicion su pantalla dibuja igual (el radar compara la medicion contra si misma).
-              Aqui se dice que falta la segunda Y cuando corresponderia, con la frecuencia de la ruta. */}
+          {/* CON UNA SOLA MEDICION NO SE DIBUJA NADA... SALVO LA CAPACITANCIA (cotejo 2026-09-05, punto
+              28). El radar y las series necesitan dos puntos: con uno compararian la medicion contra si
+              misma, y su pantalla lo hace pero no dice nada. La tarjeta de capacitancia es distinta:
+              vive de la comparacion contra la REFERENCIA POBLACIONAL, asi que con una medicion ya tiene
+              lectura completa, y es justo lo que su archivo escribe en la primera consulta. Va dentro de
+              `SeguimientoSinPrevia`, con el aviso de que falta la segunda debajo. */}
           {serie.puntos.length >= 2 ? (
             <SeguimientoVisual serie={serie} />
           ) : (
             <SeguimientoSinPrevia
               fechaSugerida={proximoControl?.citaSugerida ?? null}
               frecuencia={proximoControl?.ruta?.frecuencia ?? null}
+              serie={serie}
             />
           )}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
