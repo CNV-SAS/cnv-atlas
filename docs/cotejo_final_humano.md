@@ -606,3 +606,67 @@ cuando ya hay diagnóstico, que es cuando aparece este bloque).
 importada. El aviso **"Medición BIS importada"** tiene que verse **neutro** (gris), no verde: que un
 archivo se haya importado es un estado de proceso, y el verde clínico significa un veredicto sobre el
 paciente.
+
+---
+
+# ETAPA TRATAMIENTO · CERRADA (2026-09-06)
+
+Cerrados: **18**, **19**, **20**, **21**, **22.3**, **22.4**, **23**, **24**, **25**, **26**, **28**.
+**27 queda propuesto**: son dos columnas nuevas y una pregunta tuya (abajo).
+
+## El recorrido del smoke de esta etapa
+
+**Recorrido A · El orden de la pantalla del nutricionista (21 y 23).** Tratamiento → subpestaña de tu
+profesión. De arriba abajo tiene que quedar así:
+
+1. Resumen clínico y meta terapéutica.
+2. **Objetivo del tratamiento nutricional.**
+3. **"Objetivo del plan"** con los cuatro campos: peso meta, objetivo (kcal), PAL y déficit.
+4. **"Validación del plan · % de cubrimiento e ICN"** (la tabla).
+5. **"Fórmula sintética"**, y debajo del título, en negrita, *"Cómo se llega a ese objetivo"*.
+
+**Sería defecto si:** la tabla de validación sigue **encima** de los cuatro campos, o si el bloque sigue
+llamándose "Cómo se llega a ese objetivo" como título.
+
+**Recorrido B · Que el guardado siga siendo uno (21).** Cambia el objetivo y el PAL, baja hasta el final
+de la fórmula sintética y pulsa **"Guardar ajustes"**. **Tiene que guardar los dos**, aunque la tabla de
+validación esté en medio. Es lo único que me preocupaba de mover el orden.
+
+**Recorrido C · Las referencias de proteína y grasa (22.3).** En la fórmula sintética, debajo de la
+*"Cadena efectiva (vista previa)"*, tienen que salir **dos paneles de ancho completo**: "PROTEÍNA ·
+referencia según el diagnóstico" y "GRASA · ...", cada uno con **"prescrito: X"** y una insignia
+**"sugerido A–B"** en la misma línea, y cada condición en su renglón con su porqué y su fuente. Los
+campos de arriba tienen que decir *"Tu decisión; la referencia va abajo"*.
+
+**Recorrido D · La tabla de intercambio (24).** Fila **TOTAL**: tiene que traer **el total de porciones**
+(la columna que editas) y los macros **sin decimales**. Las filas de arriba **sí** conservan su decimal. Y
+el botón **"Distribuir porciones desde el objetivo"** tiene que verse como botón, con su icono.
+
+**Recorrido E · El botón de adaptar (25).** En **"Restricciones alimentarias del profesional"**, debajo
+del botón de guardar, tiene que estar **"Adaptar el menú a estas restricciones con IA"**.
+1. Escribe una restricción y **no la guardes**: el botón tiene que quedar **apagado**, con el aviso
+   *"Guarda las restricciones primero: la IA lee las guardadas"*.
+2. Guarda: el botón se enciende.
+3. Las **propuestas** siguen saliendo más abajo, en **"Propuestas de la IA para el menú"**.
+
+**Sería defecto si:** el botón se puede pulsar con cambios sin guardar (la adaptación ignoraría lo que
+acabas de escribir, sin decirlo).
+
+**Recorrido F · Las notas del tratamiento (26).** En un paciente **sin** notas, el bloque **no debe
+aparecer**. En uno **con** notas (si lo hay), tiene que salir **"Notas del tratamiento (histórico)"**, con
+lo escrito visible y **sin campo** para agregar.
+
+**Recorrido G · La capacitancia en la primera consulta (28).** Un paciente con **una sola medición** →
+pestaña Seguimiento. Ahora tiene que salir la tarjeta **"Capacitancia de membrana (C)"** con la línea
+*"Referencia hombres 18-29 (n=503): P25 ... · mediana ... · P75 ... nF. Última medición: ... nF · ..."*,
+**sin gráfica**, y debajo el aviso de que la comparación aparece con la segunda medición.
+
+**Sería defecto si:** la tarjeta sigue sin aparecer, o si aparece una gráfica de un solo punto.
+
+## Lo que necesito de ti para cerrar el 27
+
+Su bloque de próximo control tiene **dos campos que no tenemos** y que él persiste: **"Frecuencia de
+seguimiento"** (editable) y **"Observaciones"**. Son **dos columnas nuevas** en `treatments`, que es tabla
+ya migrada, así que no las hago sin tu visto bueno. **La pregunta:** ¿la frecuencia editable **reemplaza**
+a la de la ruta para ese paciente, o es solo una nota? Si reemplaza, hay que decidir si la fecha sugerida
+se recalcula con ella.
