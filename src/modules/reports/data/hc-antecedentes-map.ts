@@ -46,13 +46,6 @@ export const HC_ANTECEDENTES: HcAntecedenteGrupo[] = [
     filas: [{ id: "medicamentos", etiqueta: "Medicamentos actuales", fieldKey: "d5_40", comoLista: true }],
   },
   {
-    titulo: "Alergias e intolerancias",
-    filas: [
-      { id: "alergias", etiqueta: "Alergias alimentarias", patron: /alergias alimentarias/i },
-      { id: "intolerancias", etiqueta: "Intolerancias", patron: /intolerancias alimentarias/i },
-    ],
-  },
-  {
     // PORTE de su seccion "ANTECEDENTES QUIRURGICOS" (v8 L14991). Es CONDICIONAL en su archivo, no
     // ausente: creimos que no la tenia porque la captura era de un paciente sin cirugias.
     titulo: "Antecedentes quirúrgicos",
@@ -77,6 +70,16 @@ export const HC_ANTECEDENTES: HcAntecedenteGrupo[] = [
         comoLista: true,
         ocultarSiNinguna: true,
       },
+    ],
+  },
+  {
+    // EL ULTIMO, COMO EN SU ARCHIVO (cotejo punto 30, 2026-09-06). Iba tercero, antes de quirurgicos y
+    // de contaminantes; el suyo cierra los antecedentes con alergias e intolerancias. No cambia ningun
+    // dato: cambia el orden en que se leen, y el orden de un documento clinico es parte del documento.
+    titulo: "Alergias e intolerancias",
+    filas: [
+      { id: "alergias", etiqueta: "Alergias alimentarias", patron: /alergias alimentarias/i },
+      { id: "intolerancias", etiqueta: "Intolerancias", patron: /intolerancias alimentarias/i },
     ],
   },
 ];

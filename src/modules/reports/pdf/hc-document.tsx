@@ -244,9 +244,19 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
               }
             />
             <Dato etiqueta="Actividad física" valor={noRegistrado(hc.plan.actividadFisica)} />
-            {hc.plan.sodioMax != null ? (
-              <Dato etiqueta="Sodio" valor={`< ${hc.plan.sodioMax.toLocaleString("es-CO")} mg/día`} />
-            ) : null}
+            {/* EL SODIO SALE SIEMPRE, y con "No aplica" cuando no hay limite (cotejo punto 30). Aqui la
+                fila DESAPARECIA y en la pantalla salia con texto: los dos documentos del mismo acto
+                decian cosas distintas, que es el defecto que este archivo ya documenta haber tenido en
+                otros dos bloques. Y "no aplica" no es "no se registró": el motor solo prescribe limite
+                de sodio cuando hay condicion que lo pida (HTA, ERC, alteracion hidrica). */}
+            <Dato
+              etiqueta="Sodio"
+              valor={
+                hc.plan.sodioMax == null
+                  ? "No aplica"
+                  : `< ${hc.plan.sodioMax.toLocaleString("es-CO")} mg/día`
+              }
+            />
             {/* CONSTANCIA DE LAS CIFRAS FUERA DE LA REFERENCIA (P-109). La MISMA lista que la pantalla,
                 que es la razón por la que se compone en `hc-composicion` y no en cada documento: una
                 historia impresa que no registrara la desviación diría algo distinto del archivo. */}

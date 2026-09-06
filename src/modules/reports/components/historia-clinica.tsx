@@ -41,6 +41,12 @@ export type HcDatosPaciente = {
 };
 
 const SIN_DATO = "No se registró";
+// DISTINTO DE `SIN_DATO`, y la diferencia importa en un documento probatorio (cotejo punto 30): "no se
+// registró" dice que faltó registrar algo, y "no aplica" dice que el modelo no lo emite para este
+// paciente. El sodio salia con el primero, y no era cierto: el motor solo prescribe limite de sodio
+// cuando hay condicion que lo pida (HTA, ERC, alteracion hidrica). Su archivo pone un guion ahi; se usa
+// la palabra en vez del guion porque un guion en una historia clinica se lee como dato perdido.
+const NO_APLICA = "No aplica";
 
 export function HcDatosDelPaciente({ datos }: { datos: HcDatosPaciente }) {
   const edadSexo = [
@@ -420,11 +426,13 @@ export function HcPlanNutricional({
             2026-08-31, cuando ese motor se conecto. Nadie volvio a esta linea: la misma forma que el
             congelamiento vencido de P-50, y la razon por la que un texto que AFIRMA UN ESTADO tiene que
             derivarlo y no declararlo.
-            Sin valor sale el guion de "no aplica", como el resto: el motor solo prescribe limite de sodio
-            cuando hay condicion que lo pida (HTA, ERC, alteracion hidrica). */}
+            Sin valor va NO_APLICA y no SIN_DATO: el motor solo prescribe limite de sodio cuando hay
+            condicion que lo pida (HTA, ERC, alteracion hidrica), asi que su ausencia no es un olvido.
+            El comentario ya decia "el guion de no aplica" mientras la linea ponia "No se registró":
+            corregir el comentario y dejar la pantalla diciendo lo viejo son DOS sitios, no uno. */}
         <Dato
           etiqueta="Sodio"
-          valor={plan.sodioMax == null ? SIN_DATO : `< ${plan.sodioMax.toLocaleString("es-CO")} mg/día`}
+          valor={plan.sodioMax == null ? NO_APLICA : `< ${plan.sodioMax.toLocaleString("es-CO")} mg/día`}
         />
         <Dato etiqueta="Actividad física" valor={plan.actividadFisica ?? SIN_DATO} />
       </div>
@@ -496,7 +504,21 @@ export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
 }
 
 // Bloque 12: REMISIONES Y DERIVACIONES. Las de ESTA consulta. Los examenes solicitados NO son seccion
-// aparte: viajan dentro del texto de la remision ("Estudios sugeridos: ..."), como en su HC.
+// aparte: viajan dentro del texto de la remision ("Estudios sugeridos: ...").
+//
+// LA RAZON DE ARRIBA ERA MEDIA VERDAD, y el cotejo del punto 30 saco la otra mitad. Su HC tiene LAS DOS
+// COSAS: los estudios dentro de la frase de la remision (12b) Y un bloque aparte "EXAMENES SOLICITADOS"
+// (12c) alimentado por una seleccion del profesional. Concluir "no hay seccion" de la primera era un
+// argumento que se sentia como verificacion.
+//
+// LO QUE SI CIERRA LA PREGUNTA: ese bloque suyo NUNCA SE DIBUJA. Su fuente es
+// `localStorage['atlas:examenes_sel:<doc>']`, que su archivo LEE en una sola linea (v8 L15242) y no
+// ESCRIBE en ninguna. El objeto sale siempre vacio, `totalExamenesSelec` siempre 0 y la guarda
+// `> 0` nunca pasa. Es codigo vivo sobre un dato muerto, como su lista `plan-print-only`.
+//
+// Asi que no falta nada, pero por otro motivo del que estaba escrito: no es que el bloque no exista en
+// su archivo, es que no se renderiza nunca. Si algun dia manda la pantalla que lo alimenta, esto es una
+// seccion nueva y no un renglon.
 export type HcRemision = {
   id: string;
   destino: string;

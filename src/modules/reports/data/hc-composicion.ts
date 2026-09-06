@@ -1,4 +1,5 @@
 import { computeProtocoloEfectivo, type ProtocoloSnapshot } from "@/clinical-engine";
+import { nivelFaLabel } from "@/modules/treatment/data/treatment-view-types";
 import { indicatorSeverities } from "@/clinical-engine/severity";
 import { conClaseIcaBis } from "@/modules/diagnoses/data/indicator-ranges";
 
@@ -172,7 +173,11 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
         // gramos salen de el. Un documento clinico que registra la consecuencia y no la decision no deja
         // reconstruir la prescripcion.
         grasasPct: efectivo.fatPct,
-        actividadFisica: `PAL ${efectivo.pal}`,
+        // EL NOMBRE DEL NIVEL, no el factor crudo (cotejo punto 30, 2026-09-06). Decia "PAL 1.375";
+        // su historia clinica dice "FA ligera" y el panel donde el profesional lo ELIGE dice
+        // "Ligera (1.375)". El documento probatorio tiene que registrar la decision con las palabras
+        // con las que se tomo: un factor sin su nombre obliga al lector a traducir una escala.
+        actividadFisica: nivelFaLabel(efectivo.pal),
         // EL SODIO YA SE CALCULA: el motor de prescripcion lleva conectado desde el 2026-08-31. Este bloque
         // decia "se emitira cuando se incorpore el motor", que era cierto al escribirlo y dejo de serlo sin
         // que nadie volviera a esa linea.
