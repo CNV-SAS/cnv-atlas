@@ -204,16 +204,33 @@ describe("la referencia está CABLEADA, no solo portada", () => {
   });
 
   it("la tarjeta aparece con UNA sola medición: no vive de la trayectoria", () => {
-    // El punto 28 del cotejo. El radar y las series necesitan dos puntos (con uno compararían la
-    // medición contra sí misma), pero ESTA tarjeta vive de la comparación contra la referencia
-    // poblacional: con una medición ya tiene lectura completa. Estaba escondida detrás del mismo gate
-    // que las otras dos.
+    // El punto 28 del cotejo. El RADAR necesita dos puntos (con uno compararía la medición contra sí
+    // misma), pero esta tarjeta vive de la comparación contra la referencia poblacional: con una
+    // medición ya tiene lectura completa. Estaba escondida detrás del mismo gate que el radar.
     expect(TARJETA).toContain("if (puntos.length === 0) return null;");
-    // Y la GRÁFICA sí espera la segunda: una línea de un punto no traza nada.
-    expect(TARJETA).toContain("const hayTrayectoria = puntos.length >= 2;");
-    // Se renderiza en los DOS caminos, con previa y sin ella. Si solo estuviera en uno, el defecto
-    // vuelve por el otro lado.
-    expect((TARJETA.match(/<CapacitanciaCard /g) ?? []).length).toBe(2);
+  });
+
+  it("y su GRÁFICA también se dibuja desde la primera, porque lleva línea de referencia", () => {
+    // CORRIGE LO QUE ESCRIBÍ EL 05 (tercer smoke, 2026-09-06): entonces la escondía con un punto,
+    // razonando que "una línea de un punto no traza nada". Es verdad de una línea SUELTA y falso en
+    // cuanto hay una REFERENCIA: el punto contra la mediana de su grupo dice dónde está el paciente,
+    // que es justo lo que la tarjeta viene a decir. Su archivo la dibuja igual.
+    //
+    // LA REGLA, que vale para las tres gráficas de esa pantalla: con línea de referencia se dibuja
+    // desde la primera medición; el radar no, porque allí la referencia es la OTRA medición.
+    expect(TARJETA, "ya no hay un gate de trayectoria").not.toContain("hayTrayectoria");
+    expect(TARJETA).toContain("{puntos.length > 0 ? (");
+    // Y se sigue diciendo que con una sola no hay trayectoria, para que el punto solo no se lea como una.
+    expect(TARJETA).toContain("la trayectoria aparece con la segunda");
+  });
+
+  it("y el bloque de seguimiento entero se muestra desde la primera medición", () => {
+    // Aserción sobre el SITIO DE LLAMADA: la tarjeta puede estar perfecta y no renderizarse nunca si la
+    // página la deja detrás del gate de dos mediciones, que es como estaba.
+    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+    expect(PAGE).toContain("{serie.puntos.length > 0 ? <SeguimientoVisual serie={serie} /> : null}");
+    // Y el aviso de que falta la segunda va DEBAJO, no en lugar del bloque.
+    expect(PAGE).toContain("{serie.puntos.length < 2 ? (");
   });
 
   it("y escribe los percentiles y el n, no solo la mediana", () => {

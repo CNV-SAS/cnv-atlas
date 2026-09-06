@@ -845,3 +845,56 @@ eslabón..."*), y así no es un subtítulo, es una frase más. Va **encima** del
 
 **D · Las notas.** Tratamiento: el bloque de notas **no debe aparecer** (ya no hay ninguna, ni local ni
 en la nube).
+
+---
+
+# ETAPA SEGUIMIENTO · CERRADA (2026-09-06)
+
+Sus dos puntos (**27** y **28**) ya estaban resueltos arriba. Lo que quedaba era el **cotejo bloque por
+bloque de la pestaña**, y salió una cosa: **el bloque entero estaba escondido hasta la segunda medición**,
+y no todo lo que contiene necesita dos.
+
+## El cotejo, bloque por bloque
+
+| Su bloque | Atlas |
+| --- | --- |
+| Capacitancia de membrana (C), con su referencia y su gráfica | **Está**, y ahora **desde la primera medición** |
+| Diagnóstico Funcional · Inicial vs Última (radar) | Está, **con dos o más** (correcto, ver abajo) |
+| φ Convergencia bioeléctrica · PABU e ICA-BIS | **Estaba construido y no se veía**: escondido tras el mismo gate |
+| Próximo control, con criterio de egreso y fecha | Está. Le faltan sus dos campos (punto 27) |
+
+## La regla que salió de aquí, y corrige lo que yo mismo escribí el 05
+
+**Un gráfico con LÍNEA DE REFERENCIA dice algo con un solo punto: dónde está el paciente respecto del
+objetivo. El radar no, porque allí la referencia es la OTRA medición y con una sola se compara consigo
+misma.**
+
+El 5 de septiembre escondí la gráfica de capacitancia con un punto, razonando que *"una línea de un punto
+no traza nada"*. **Es verdad de una línea suelta y falso en cuanto hay una referencia**: el punto contra
+la mediana de su grupo es exactamente lo que la tarjeta viene a decir. Su archivo la dibuja igual.
+
+**Las tres gráficas de esa pantalla llevan referencia** (la capacitancia contra la mediana de su grupo,
+la PABU contra φ = 1,618 y el ICA-BIS contra 0), así que **las tres se dibujan desde la primera
+consulta**. El radar sigue esperando la segunda. Y el aviso de que falta la segunda va **debajo** del
+bloque, no en su lugar.
+
+**Lo que esto destapa, y es lo de fondo:** el bloque de convergencia estaba **construido, portado y
+probado**, y en una primera consulta **no se veía nunca**. Es la familia de la pieza a la que le falta el
+último cable, con la diferencia de que aquí el cable estaba puesto y lo tapaba una condición de más.
+
+## El recorrido del smoke de esta etapa
+
+**Un paciente con UNA sola medición** → pestaña Seguimiento. Tienen que salir, en este orden:
+1. **Capacitancia de membrana (C)**: el párrafo del protocolo, la línea *"Referencia hombres 18-29
+   (n=503): P25 ... · mediana ... · P75 ... nF. Última medición: ... nF · ..."*, **la gráfica con su
+   punto y la línea de la mediana**, y debajo *"con una sola medición lo que se lee es la posición"*.
+2. **Convergencia bioeléctrica**: los dos gráficos, PABU con su línea en φ = 1,618 e ICA-BIS con la suya
+   en 0, cada uno con su punto.
+3. **NO** el radar inicial-vs-última.
+4. El aviso de que falta la segunda medición, **debajo**, con la fecha que correspondería.
+5. **Próximo control**.
+
+**Sería defecto si:** el bloque de convergencia sigue sin aparecer, o si sale el radar comparando la
+medición contra sí misma.
+
+**Con DOS o más mediciones** todo lo anterior sigue igual, aparece el radar, y desaparece el aviso.
