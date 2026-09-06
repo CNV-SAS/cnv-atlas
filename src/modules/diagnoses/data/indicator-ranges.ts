@@ -35,19 +35,35 @@ export type IndicatorRange = { reference: string; delta: string | null };
 // los decimales y el signo quedan exactamente como estaban.
 const f = (n: number, d: number) => n.toFixed(d).replace(".", ",");
 
-// Clasificacion de la DESVIACION del ICA-BIS (PABU − φ), PORTADA VERBATIM de la rama de desviacion del
-// clasificador del PABU en el frozen (engine.core.derived.js:73-77, `d = Math.abs(raw)`): la misma que su
-// tabla llama "Desviación leve", no una escala nuestra. El motor sella la clasificacion del PABU con la
-// rama "Reserva superior" cuando IFC>6, asi que ICA-BIS quedaba sin clasificacion (N/D); esta reusa la rama
-// de desviacion para la fila ICA-BIS. sev via el color del frozen (verde 0 / ambar 2 / rojo 3), como colorSev.
-export function clasificarIcaBis(icaBis: number | null): { label: string; sev: number } | null {
-  if (icaBis == null) return null;
-  const d = Math.abs(icaBis);
-  if (d <= 0.15) return { label: "Zona φ — Homeostasis óptima", sev: 0 };
-  if (d <= 0.5) return { label: "Desviación leve", sev: 0 };
-  if (d <= 1.5) return { label: "Desviación moderada", sev: 2 };
-  if (d <= 3.0) return { label: "Desviación severa", sev: 3 };
-  return { label: "Zona crítica", sev: 3 };
+// LA FILA ICA-BIS TOMA LA CLASIFICACION DEL PABU. No tiene una propia, y no la tiene A PROPOSITO.
+//
+// AQUI VIVIA `clasificarIcaBis`, RETIRADA el 2026-09-05 (cotejo, punto 17). Graduaba la desviacion en
+// leve/moderada/severa/critica, y era exactamente lo que Gildardo habia BORRADO de su archivo: su fila
+// hace `icaBisClf = cPABU(t_pabu)` y al lado dejo la nota "cICABIS eliminado — usar cPABU global". Su
+// comentario del PABU lo dice ademas de frente: "La MAGNITUD del deterioro no se gradua aqui... Duplicar
+// esa graduacion en la PABU añadiria bandas sin aportar informacion nueva".
+//
+// Y NO ERA SOLO UN COLOR: el escalon "Desviación leve" traia severidad 0, o sea que un ICA-BIS desviado
+// se pintaba VERDE, con el rotulo diciendo que hay desviacion. El contenedor afirmaba lo contrario del
+// texto.
+//
+// La razon que la sostenia ("cPABU corta a Reserva superior con IFC>6") ya no existe: esa rama se fue con
+// el swap del 18 de agosto y el comentario se quedo citandola. El cPABU vigente es direccional.
+//
+// POR QUE ES UNA FUNCION Y NO UN `if` EN LA TABLA: la fila ICA-BIS se arma en DOS sitios (la pantalla de
+// Diagnostico y el bloque de indices de la historia clinica), y una regla que vive en dos sitios diverge.
+// En la historia clinica ademas estaba MUDA: el snapshot sella `classifications["ICA-BIS"] = null` y
+// `indicatorSeverities` no emite la clave, asi que la fila no podia aparecer nunca, ni desviada ni no.
+export const CODIGO_CLASE_ICA_BIS = "PABU";
+
+/**
+ * El mismo mapa por codigo, con la entrada ICA-BIS resuelta a la del PABU.
+ *
+ * Se aplica AL MOSTRAR (no al sellar) a proposito, igual que las severidades de AF/IR: asi la fila queda
+ * clasificada tambien en los diagnosticos ya emitidos, que llevan `"ICA-BIS": null` en su snapshot.
+ */
+export function conClaseIcaBis<T>(porCodigo: Record<string, T>): Record<string, T> {
+  return { ...porCodigo, "ICA-BIS": porCodigo[CODIGO_CLASE_ICA_BIS] };
 }
 
 // Rango de referencia del FMI, del CLASIFICADOR DEL MOTOR (cFMI, banda media sana): H 3-6, M 5-9. Se
