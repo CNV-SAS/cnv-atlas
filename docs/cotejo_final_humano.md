@@ -458,3 +458,60 @@ aterrizando en Diagnóstico.
    archivo.
 
 **Sería defecto si:** sigue diciendo 73 o -2,67.
+
+---
+
+# ETAPA DIAGNÓSTICO · CERRADA (2026-09-05)
+
+Cerrados: **17** (en dos pasadas, la primera estaba mal), **15**, **16**, **11**, **13**, **14**, **9**.
+Contestado sin construir: **12** (te queda una decisión). Sigue **PENDIENTE**: **10** (necesita navegador).
+
+## El recorrido del smoke de esta etapa
+
+**Recorrido A · La fila ICA-BIS (17).** Diagnóstico → Composición Corporal → tabla "Indicadores
+ANI-BIS-E", fila **ICA-BIS**. El punto de color tiene que ser **ámbar**, no verde, y la etiqueta seguir
+diciendo "Desviación leve". La fila **PABU** de arriba, también ámbar. **Sería defecto si** el punto de
+ICA-BIS sigue verde, o si la etiqueta desapareció.
+
+**Recorrido B · Los decimales y el signo (9).**
+1. En esa misma tabla, **PABU** tiene que decir **1,2023** y **ICA-BIS 0,4157** (cuatro decimales, como
+   su tabla). Antes decían 1,20 y 0,42.
+2. Sube a Diagnóstico Funcional, tarjeta **Celular-Eléctrico**, chip del PABU. Tiene que decir
+   **"desviación de φ +0,42"**, con signo **más**. Antes decía −0,42, contradiciendo a la tabla de abajo.
+3. Al pie de la pantalla, la constelación tiene que decir **Motor anibise-1.3.1**.
+
+**Sería defecto si:** el chip y la fila siguen diciendo signos distintos, o el motor sigue en 1.3.0.
+
+**Recorrido C · La Diana (15).**
+1. Diagnóstico Funcional → bloque "Diana EFR BIS y detalle del estado". El gráfico tiene que verse
+   **notablemente más grande** y los rótulos de sector (E1..E9) legibles: **"FMI Normal" y "FFMI Normal"
+   en dos renglones separados**, no pegados.
+2. Debajo del gráfico: escala de riesgo, "Lectura de la Diana" y la card **"Estado del paciente"**. Esa
+   card tiene que traer el **#4**, los ejes y la **tabla de siete filas**, y **ya no** los párrafos de
+   mecanismos, biomarcadores, riesgos ni nutracéuticos (esos están abajo, en las tarjetas).
+3. Pulsa **"Explorar otros estados"** y haz clic en una celda. El panel de **referencia** que abre al lado
+   **sí** tiene que traer esos párrafos: de esa celda no hay tarjetas.
+4. Ya no debe aparecer la rejilla de tres líneas con "Estado EFR 4 de 81" y "Estado funcional
+   bioeléctrico": eso ya está en la tabla de siete. **Sí** se queda el fenotipo MCCB.
+
+**Recorrido D · Las seis tarjetas (16).** Debajo, las seis tarjetas tienen que verse **numeradas del 1 al
+6**, cada una con **su propio icono**, y la sexta ("Abordaje por profesión") sobre **fondo apagado con
+borde discontinuo**: es la única que no habla del paciente sino de lo que haces tú.
+
+**Recorrido E · El criterio del profesional (11 y 13).**
+1. Baja al bloque del criterio. Arriba, en pequeño, tiene que decir **"DIAGNÓSTICO INTEGRADO ANI BIS-E"**,
+   debajo el título **"Criterio del profesional"** y a la derecha la insignia **"Lo escribes tú"**. Ya no
+   tiene borde punteado.
+2. Si ya hay criterios registrados, tienen que salir numerados (**"Criterio 1 de 2"**) con su fecha.
+3. Junto al botón **"Agregar criterio"** tiene que leerse: *"Queda registrado y no se puede borrar. Si te
+   equivocas, agrega uno nuevo: el último es el vigente."*
+
+**Recorrido F · La entrada a corregir (14).** Al final de Diagnóstico Funcional, card "Cierre del
+diagnóstico". El bloque "¿Un dato de la encuesta quedó mal?" tiene que tener **dos líneas y el botón**,
+no tres párrafos, y **ya no** debe decir que la medición se puede reimportar (ese camino está cerrado
+cuando ya hay diagnóstico, que es cuando aparece este bloque).
+
+**Recorrido G · El aviso verde de la medición.** Evaluación → Antropometría y BIS, con medición
+importada. El aviso **"Medición BIS importada"** tiene que verse **neutro** (gris), no verde: que un
+archivo se haya importado es un estado de proceso, y el verde clínico significa un veredicto sobre el
+paciente.
