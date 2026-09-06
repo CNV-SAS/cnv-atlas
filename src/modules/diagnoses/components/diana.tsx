@@ -21,6 +21,12 @@ const SECTORS = 9;
 const RINGS = 9;
 const SECTOR_DEG = 360 / SECTORS;
 const BAND = (R - HOLE) / RINGS;
+// MARGEN DEL LIENZO, no de la geometria (cotejo 2026-09-05, punto 15). Los rotulos de sector son tres
+// lineas apiladas fuera del radio R, y a ras del borde no cabian: quedaban apretadas unas contra otras y
+// se leian borrosas. El PAD ensancha el viewBox por los cuatro lados SIN mover el sistema de coordenadas
+// (el origen del dibujo sigue en 0,0), asi que ninguna celda ni el marcador del paciente cambian de sitio.
+const PAD = 16;
+const VIEWBOX = [-PAD, -PAD, SIZE + PAD * 2, SIZE + PAD * 2].join(" ");
 
 // Paradas del gradiente de riesgo, VERBATIM del prototipo (ATLAS_v7.html, rc() ~L4517). Verde
 // (bajo riesgo) -> rojo oscuro (alto). El color es SEMANTICA de riesgo, no decoracion.
@@ -142,21 +148,24 @@ export function Diana({
   return (
     <figure className="flex flex-col items-center gap-3">
       <svg
-        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        viewBox={VIEWBOX}
         role="img"
         aria-label={label}
         // Escala a su columna SIN tocar la geometria: el viewBox conserva el sistema de coordenadas
-        // (0..320), asi que la celda del paciente cae en la MISMA posicion relativa; solo cambia el tamaño
-        // de render. Antes tenia width/height fijos en px (320x320, con max-w-full que solo encogia), que
-        // no dejaban al radar reclamar su mitad. Candado de la posicion en diana-geometry.test.
-        // MAS GRANDE (2026-09-03), y no es preferencia: los rotulos de sector llevan DEBAJO del codigo
-        // el par de bandas ("FMI Alto / FFMI Bajo"), en 6 unidades del viewBox. A 22rem eso renderiza a
-        // ~7px y no se lee, asi que el rotulo estaba portado y era ilegible: la Diana volvia a ser un
-        // codigo opaco, que es justo lo que el par vino a resolver. A 44rem el mismo texto sale a ~14px.
+        // (el dibujo sigue en 0..320), asi que la celda del paciente cae en la MISMA posicion relativa;
+        // solo cambia el tamaño de render. Antes tenia width/height fijos en px (320x320, con max-w-full
+        // que solo encogia), que no dejaban al radar reclamar su mitad. Candado en diana-geometry.test.
         //
-        // No se toca la geometria ni el tamaño de fuente: el viewBox conserva el sistema de coordenadas y
-        // el navegador escala. Subir la fuente en unidades habria desalineado los rotulos con su celda.
-        className="h-auto w-full max-w-[44rem]"
+        // EL ANCHO, EN DOS PASOS Y NUNCA POR GUSTO. Los rotulos de sector llevan DEBAJO del codigo el par
+        // de bandas ("FMI Alto / FFMI Bajo"), asi que su legibilidad depende del ancho de render: a 22rem
+        // salian a ~7px y el rotulo estaba portado pero ilegible (2026-09-03, se subio a 44rem). En el
+        // cotejo del 05-sep seguian pequeños y borrosos, y su archivo le da mucho mas espacio al grafico:
+        // 60rem, con el cuerpo del par subido de 6 a 8 unidades y el PAD del lienzo dandole el margen que
+        // le faltaba. A 60rem esas 8 unidades salen a ~24px.
+        //
+        // La geometria NO se toca: el navegador escala el viewBox. Cambiar SIZE/R/HOLE si habria movido
+        // los rotulos respecto de su celda.
+        className="h-auto w-full max-w-[60rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -183,7 +192,7 @@ export function Diana({
             (efrSectorBands), la misma fuente que decide la posicion y el color de la celda, asi que
             rotulo y posicion no se pueden desincronizar. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
-          const [lx, ly] = polar(R + 13, sc * SECTOR_DEG + SECTOR_DEG / 2);
+          const [lx, ly] = polar(R + 16, sc * SECTOR_DEG + SECTOR_DEG / 2);
           const bandas = efrSectorBands(sc);
           return (
             <text
@@ -192,20 +201,24 @@ export function Diana({
               y={ly}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={8}
+              fontSize={10}
               className="fill-muted-foreground"
             >
+              {/* TRES LINEAS CON AIRE (2026-09-05). Iban a 6 unidades de cuerpo con 6 de salto, o sea sin
+                  interlineado: las dos bandas se tocaban y el conjunto se leia como una sola palabra
+                  ("FMI BajoFFMI Bajo"). Ahora el salto es mayor que el cuerpo, que es lo que separa una
+                  linea de la siguiente. El espacio extra sale del PAD del lienzo, no de la geometria. */}
               {bandas ? (
                 <>
-                  <tspan x={lx} dy={-7} fontSize={6}>
+                  <tspan x={lx} dy={-11} fontSize={8}>
                     FMI {bandToWord(bandas.fmi)}
                   </tspan>
-                  <tspan x={lx} dy={6} fontSize={6}>
+                  <tspan x={lx} dy={9} fontSize={8}>
                     FFMI {bandToWord(bandas.ffmi)}
                   </tspan>
                 </>
               ) : null}
-              <tspan x={lx} dy={bandas ? 8 : 0} fontWeight={700}>
+              <tspan x={lx} dy={bandas ? 11 : 0} fontWeight={700}>
                 E{sc + 1}
               </tspan>
             </text>
@@ -263,9 +276,9 @@ export function Diana({
       </svg>
       {/* Escala de riesgo con palabras (fiel al HTML :11174): del optimo (centro) al riesgo maximo
           (periferia), no solo degradado. */}
-      {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 44rem quedaba
+      {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 60rem quedaba
           como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
-      <div className="flex w-full max-w-[44rem] flex-col gap-1">
+      <div className="flex w-full max-w-[60rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
@@ -277,9 +290,9 @@ export function Diana({
           <span>Riesgo máximo</span>
         </div>
       </div>
-      {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 44rem quedaba estrecho
+      {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 60rem quedaba estrecho
           y partia sus dos lineas en cuatro. */}
-      <figcaption className="flex max-w-[44rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[60rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados

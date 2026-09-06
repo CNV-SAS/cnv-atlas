@@ -24,6 +24,16 @@ const SECTORS = 9;
 const RINGS = 9;
 const SECTOR_DEG = 360 / SECTORS;
 const BAND = (R - HOLE) / RINGS;
+// MARGEN DEL LIENZO (2026-09-05). El viewBox dejo de ser "0 0 320 320" para ganar sitio para los tres
+// renglones del rotulo de sector, que a ras del borde salian apretados e ilegibles.
+//
+// SE AJUSTA EL ALCANCE, NO LA ASERCION, y la diferencia es la que hace que este candado siga sirviendo:
+// lo que protege es que la celda del paciente NO se mueva, y eso lo mide el segundo caso comparando
+// coordenadas ABSOLUTAS contra la formula. Ensanchar el lienzo por los cuatro lados no toca el sistema
+// de coordenadas (el dibujo sigue en 0..320), asi que esas coordenadas no cambian: el segundo caso pasa
+// SIN tocarlo, que es la prueba de que el cambio fue de encuadre y no de geometria. Aqui solo se
+// actualiza el encuadre esperado, y se anade que el origen del dibujo siga en 0,0.
+const PAD = 16;
 
 function polar(r: number, angleDeg: number): [number, number] {
   const a = ((angleDeg - 90) * Math.PI) / 180;
@@ -52,9 +62,17 @@ function render(bands: { ifc: number; irc: number; ffmi: number; fmi: number }, 
 }
 
 describe("Diana: la geometria no se movio al pasar el SVG a escalable (care 2026-08-18)", () => {
-  it("el SVG conserva el viewBox y ya NO fija width/height en px (fluido)", () => {
+  it("el SVG conserva el sistema de coordenadas y ya NO fija width/height en px (fluido)", () => {
     const html = render({ ifc: 2, irc: 2, ffmi: 2, fmi: 2 }, 41);
-    expect(html).toContain('viewBox="0 0 320 320"');
+    const vb = html.match(/viewBox="([^"]+)"/);
+    expect(vb, "el SVG tiene viewBox").not.toBeNull();
+    const [minX, minY, w, h] = vb![1].split(" ").map(Number);
+    // El encuadre es simetrico y el DIBUJO sigue ocupando 0..SIZE dentro de el: el origen del sistema
+    // de coordenadas no se movio, solo hay margen alrededor.
+    expect(minX).toBe(-PAD);
+    expect(minY).toBe(-PAD);
+    expect(w).toBe(SIZE + PAD * 2);
+    expect(h).toBe(SIZE + PAD * 2);
     // Fluido: sin atributos width=/height= en el <svg> (antes 320x320). El marcador SI lleva r="11".
     const svgTag = html.slice(html.indexOf("<svg"), html.indexOf(">", html.indexOf("<svg")) + 1);
     expect(svgTag).not.toMatch(/\swidth="/);
