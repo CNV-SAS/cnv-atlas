@@ -96,7 +96,19 @@ export function clasificarAecMca(v: number | null): { label: string; sev: number
 // el listado de Santiago; el rotulo puede diferir entre tablas (misma clave, dos marcos: p. ej. la
 // circunferencia de cintura es "Cintura" cruda en Evaluacion y "Circunferencia de cintura" clasificada en
 // Diagnostico). `bioelectric` marca los crudos que llevan icono (solo en Evaluacion).
-type RowOpts = { bioelectric?: boolean };
+type RowOpts = {
+  bioelectric?: boolean;
+  /**
+   * Decimales de display de la fila. Default 2 (`DECIMALES_POR_DEFECTO`).
+   *
+   * SE FIJA CUANDO EL CORTE LO PIDE, que es la regla de BRAND.md ("los decimales los fija el CORTE",
+   * Santiago, 2026-09-05): una cifra no puede tener mas resolucion que el umbral contra el que se lee.
+   * Vivia solo en `indicator-ranges` (los doce indicadores ANI) y esta tabla, que es la OTRA capa de
+   * display, no la aplicaba: el IMC salia con 25,66 al lado de una referencia 18,5-24,9 (cotejo punto
+   * 30). Es la familia de "barrer todos los sitios aplica a una REGLA, no solo a un umbral".
+   */
+  decimals?: number;
+};
 type LevelRow = [string, string, string | null, string, RowOpts?];
 const bio: RowOpts = { bioelectric: true };
 
@@ -173,7 +185,9 @@ const DIAG_LEVELS: { title: string; rows: LevelRow[] }[] = [
   {
     title: "Nivel V · Cuerpo entero",
     rows: [
-      ["IMC", "imc", null, "kg/m²"],
+      // UN DECIMAL: su corte es 18,5-24,9, y con dos la cifra afirmaba mas resolucion que el umbral
+      // contra el que se lee. Su HC tambien lo imprime con uno.
+      ["IMC", "imc", null, "kg/m²", { decimals: 1 }],
       ["Circunferencia de cintura", "cintura", null, "cm"],
       // NHLBI: clasificacion combinada IMC + cintura (capa de display, clasifNHLBI). Sin valor numerico
       // propio (la clasificacion va en la columna Diagnostico); referencia sexo-dependiente en la seccion.
@@ -329,6 +343,7 @@ export function buildComposition(
       unit,
       refKey,
       ...(opts?.bioelectric ? { bioelectric: true } : {}),
+      ...(opts?.decimals != null ? { decimals: opts.decimals } : {}),
     };
   };
   const buildLevels = (defs: { title: string; rows: LevelRow[] }[]): CompositionLevel[] =>

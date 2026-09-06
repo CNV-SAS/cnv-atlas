@@ -115,6 +115,18 @@ export type HistoriaClinicaDoc = {
   indices: HcIndiceDoc[];
   /** Rutas de atencion activadas por el diagnostico. */
   rutas: { label: string; activacion: string | null }[];
+  /**
+   * Las remisiones que el MODELO exigió, derivadas de las rutas activas, con si el profesional las
+   * registró. Van APARTE de `remisiones` (lo que registró) a propósito: son dos niveles distintos de
+   * bloque, derivado y registro, y un documento probatorio tiene que poder decir "había que remitir y
+   * no consta que se hiciera".
+   */
+  remisionesExigidas: {
+    destino: string;
+    urgencia: string;
+    indicaciones: string[];
+    registrada: boolean;
+  }[];
   /** Composicion corporal del equipo, con su clasificacion. Peso y talla van arriba, en los datos. */
   composicion: { etiqueta: string; valor: string; clasificacion: string | null }[];
   edad: number | null;

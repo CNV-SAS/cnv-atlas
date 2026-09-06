@@ -182,7 +182,11 @@ describe("los quince bloques van SIEMPRE, con o sin dato", () => {
   // vacíos; en el PDF se omitían, así que el documento enviado tenía menos bloques que el impreso.
   it.each([
     ["Objetivo del tratamiento", "No se registró"],
-    ["Remisiones", "No se remitió a otro profesional"],
+    // EL TEXTO DE VACIO CAMBIO, NO LA ASERCION (cotejo punto 30, 2026-09-06): el bloque ahora dice
+    // las DOS cosas (lo que el modelo exigio y lo que el profesional registro), asi que la frase de
+    // vacio tiene que afirmar las dos. Antes decia solo "no se remitio", que era cierto sobre el
+    // registro y mudo sobre la exigencia.
+    ["Remisiones", "El modelo no exigió remisiones"],
     ["Rutas de atención activadas", "no activó rutas"],
     ["Composición corporal", "no tiene medición de composición"],
     ["Índices ANI-BIS-E alterados", "quedó fuera de su rango"],

@@ -20,7 +20,7 @@ import {
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
 
-import { componerHistoriaClinica } from "./hc-composicion";
+import { componerHistoriaClinica, remisionesExigidas } from "./hc-composicion";
 import { resolverAntecedentes } from "./hc-antecedentes-map";
 import { getHcHeaderForEvaluation } from "./hc-header-reader";
 import type { HistoriaClinicaDoc } from "./reports-view-types";
@@ -271,6 +271,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     plan: compuesta.plan,
     desviaciones: compuesta.desviaciones,
     recomendaciones: compuesta.recomendaciones,
+    // LO QUE EL MODELO EXIGIÓ, por el MISMO helper que usa la pantalla (cotejo punto 30): el PDF y la
+    // pantalla no pueden decir cosas distintas sobre si hubo que remitir.
+    remisionesExigidas: remisionesExigidas(results?.rutasContent ?? [], remisiones),
     remisiones: remisiones.map((r) => ({
       profesion: r.referredToOther ?? r.referredTo,
       motivo: r.reason,

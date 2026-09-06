@@ -178,6 +178,30 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
 
 ---
 
+### El estado PBI: su HC lo imprime y Atlas lo retiró en B11
+
+**Qué hace su archivo.** La cabecera de su tabla de la historia clínica imprime, junto al fenotipo MCCB,
+una segunda línea: *"PBI: Riesgo celular"* (`motorHC.estadoPBI`). Sigue ahí en la entrega del 4 de
+septiembre.
+
+**Qué hace Atlas.** No lo calcula ni lo muestra. `estadoPBI` sólo sobrevive en un fixture de la era stub
+(`engine-output-guard.test.ts`), que es justamente el snapshot de formato antiguo contra el que se prueba
+la degradación.
+
+**Por qué, y la decisión sigue vigente (verificado el 2026-09-06).** Está en tres documentos y es de B11:
+la **taxonomía real** del prototipo (81 EFR / 9 estructural / 9 FyR / DFI de 5 dominios) tiene autoridad
+sobre `F1-F12/PBI/EIEC`, que son de una versión anterior del modelo (`CLINICAL_ENGINE.md`,
+`DATABASE.md`, `registry-data.ts:4`, `types.ts:4`).
+
+**Y hay una segunda razón, independiente, medida el 2026-08-02** (`BACKLOG.md`): su `estadoPBI` es AF×IR
+y usa un **tercer umbral de AF** (`nivelAF` 6,80 / 6,30) que **contradice el `cAF` (6,5)** que Atlas ya
+muestra en Diagnóstico. Portarlo pondría dos cortes distintos del mismo ángulo de fase en la misma
+pantalla. Dos razones, la misma conclusión.
+
+**La pregunta, si quiere lo contrario:** si el PBI vuelve a ser parte del modelo vigente, hay que decidir
+primero cuál de los dos umbrales de AF manda, porque no pueden convivir.
+
+---
 ## NO SON DIVERGENCIAS: donde Atlas difiere del HTML porque sigue una INSTRUCCION SUYA
 
 **Barrido pedido por Santiago el 2026-09-06**, y la razon que lo motivo vale mas que la lista: en el

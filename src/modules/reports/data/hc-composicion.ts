@@ -3,12 +3,18 @@ import { nivelFaLabel } from "@/modules/treatment/data/treatment-view-types";
 import { indicatorSeverities } from "@/clinical-engine/severity";
 import { conClaseIcaBis } from "@/modules/diagnoses/data/indicator-ranges";
 
+import {
+  buildRemisiones,
+  consolidateRemisiones,
+  type RutaContent,
+} from "@/clinical-engine/rutas-content";
+
 import { indicesAniAlterados, type IndiceAniResuelto } from "./hc-indices-ani";
 import { recomendacionesDe, type RecomendacionBloque } from "./hc-recomendaciones";
 import { asesoriaFuera } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
 import type { AsesoriaMacro } from "@/modules/treatment/data/treatment-view-types";
 
-import type { HcPlanNutricional } from "../components/historia-clinica";
+import type { HcPlanNutricional, HcRemisionExigida } from "../components/historia-clinica";
 
 // LA COMPOSICION DE LA HISTORIA CLINICA, EN UN SOLO SITIO.
 //
@@ -231,4 +237,41 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
   });
 
   return { severidades, indices, plan, diagnosticos, recomendaciones, desviaciones };
+}
+
+// ─── LAS REMISIONES QUE EL MODELO EXIGIO ───────────────────────────────────────────────────────────
+//
+// EL DEFECTO QUE CIERRA (cotejo punto 30, 2026-09-06). La historia clinica leia SOLO
+// `listReferralsForTreatment`, o sea lo que el profesional registro. Su archivo hace lo contrario: las
+// DERIVA de las rutas activas. Con el mismo paciente y la ruta R4 activa, su HC mostraba dos remisiones
+// (una marcada OBLIGATORIA) y la nuestra decia "No se registraron remisiones ni derivaciones en esta
+// consulta".
+//
+// Y ESO ES PEOR QUE UN DOCUMENTO INCOMPLETO: no omite la derivacion, AFIRMA QUE NO LA HUBO. Textual de
+// Santiago al aprobarlo.
+//
+// VAN LAS DOS COSAS, Y SE DISTINGUEN, que es la doctrina de los tres niveles de bloque:
+//   · DERIVADO  lo que el modelo exigio, de las rutas activas. No lo decidio nadie: sale del
+//               diagnostico, y por eso consta aunque el profesional no haya hecho nada.
+//   · REGISTRO  lo que el profesional registro, con su fecha y su retorno.
+// Y cada exigida dice si esta registrada o no, que es lo que de verdad se lee en un documento
+// probatorio: no "habia que remitir", sino "habia que remitir y no consta que se hiciera".
+//
+// EL CRUCE ES POR DESTINATARIO (`referralTarget` contra `referredTo`) y no por texto, porque asi esta
+// construido el registro D-009: guarda a QUIEN se remite, no de que ruta salio. Un cruce por la frase se
+// desincronizaria en cuanto una indicacion cambiara de redaccion.
+//
+// PURO: no lee BD. Lo llaman la pantalla y el lector del PDF con lo que cada uno ya tiene.
+
+export function remisionesExigidas(
+  rutas: RutaContent[],
+  registradas: { referredTo: string }[],
+): HcRemisionExigida[] {
+  const hechas = new Set(registradas.map((r) => r.referredTo));
+  return consolidateRemisiones(buildRemisiones(rutas)).map((r) => ({
+    destino: r.profesional,
+    urgencia: r.urgencia,
+    indicaciones: r.indicaciones,
+    registrada: hechas.has(r.referralTarget),
+  }));
 }
