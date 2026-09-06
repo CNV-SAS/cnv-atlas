@@ -41,13 +41,20 @@ describe("el segundo bloque se llama como en su archivo (cotejo 2026-09-05, punt
     expect(RENDER).toContain("Fórmula sintética");
   });
 
-  it("y el nuestro NO se pierde: baja a subtítulo", () => {
+  it("y el nuestro NO se pierde: se queda como RÓTULO, no de corrido", () => {
     // "Cómo se llega a ese objetivo" describe lo que el bloque hace, que el nombre propio no dice.
     // Adoptar el suyo no es motivo para tirar el nuestro: van los dos, cada uno en su nivel.
+    //
+    // CAMBIO DE SITIO, NO DE ASERCIÓN (2026-09-06, segundo smoke): iba pegado a la explicación en el
+    // mismo párrafo, y así no es un subtítulo, es una frase más. Ahora va ENCIMA del título y en
+    // versalitas, que es como esta pantalla marca lo que rotula frente a lo que explica. Lo que este
+    // caso protege sigue siendo lo mismo: que los dos nombres estén y que se distingan.
     const i = RENDER.indexOf("Fórmula sintética");
     const j = RENDER.indexOf("Cómo se llega a ese objetivo");
-    expect(j).toBeGreaterThan(-1);
-    expect(j, "el subtítulo va DESPUÉS del título").toBeGreaterThan(i);
+    expect(i, "el título está").toBeGreaterThan(-1);
+    expect(j, "el rótulo está").toBeGreaterThan(-1);
+    // Y no van pegados en el mismo párrafo: entre los dos hay marcado.
+    expect(RENDER.slice(Math.min(i, j), Math.max(i, j))).toContain("</p>");
   });
 });
 

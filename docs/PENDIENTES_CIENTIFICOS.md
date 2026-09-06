@@ -1,7 +1,21 @@
 # Lo que queda sin resolver del lado científico
 
-**Para Santiago. 2026-09-04, actualizado el 05.** Este documento no va para Gildardo. Está escrito para que sepas, sin
+**Para Santiago. 2026-09-04, actualizado el 06.** Este documento no va para Gildardo. Está escrito para que sepas, sin
 tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene cada cosa.
+
+> ## ⇒ ESTE ES EL DOCUMENTO DE PENDIENTES CIENTÍFICOS. Se llama `docs/PENDIENTES_CIENTIFICOS.md`.
+>
+> Santiago preguntó dos veces dónde estaban, así que queda dicho de una vez. **Son tres documentos con
+> tres papeles distintos, y este es el que responde "¿qué queda abierto?":**
+>
+> | Documento | Para quién | Qué contiene |
+> | --- | --- | --- |
+> | **`PENDIENTES_CIENTIFICOS.md`** (este) | **Santiago** | **Qué queda abierto del lado científico, en lenguaje llano.** El índice de todo |
+> | `DECISIONES_ANIBISE.md` | Interno | La cola viva numerada (`P-NNN`), con el detalle técnico y la trazabilidad |
+> | `GILDARDO_QUERIES.md` | **Gildardo** | El mensaje que se le manda, redactado para él |
+>
+> Añadir algo a la cola interna **no lo mete** en el mensaje que él recibe: son documentos distintos y hay
+> que cotejarlos antes de cerrar una ronda. La sección 6 de abajo es ese cotejo.
 
 ---
 
@@ -14,6 +28,7 @@ tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene
 | ~~3~~ | ~~Dos cosas que prometió y no llegaron~~ | **CERRADO** el 2026-09-04 | — |
 | ~~4~~ | ~~Portar las opciones de ejercicio~~ | **CERRADO** el 2026-09-04 | — |
 | 5 | Dos cosas de su archivo que salieron de un barrido, las dos chicas | **Preguntas**, sin prisa | No |
+| **6** | **Lo que salió del cotejo visual del 5 y 6 de septiembre** (seis cosas) | **Cinco preguntas y un aviso de datos** | No, salvo el aviso |
 
 ---
 
@@ -283,6 +298,40 @@ borrarse, no para conectarse"*), **con una diferencia: esta nunca la ha menciona
 **No lo portamos**, y no por pereza: conectar una pieza que su propio archivo no conecta sería estrenar
 una clasificación clínica por nuestra cuenta, que es justo lo que la Regla 0 prohíbe. Lo que cabe es
 preguntarle si es un resto o algo que piensa usar.
+
+---
+
+
+---
+
+## 6 · Lo que salió del cotejo visual (5 y 6 de septiembre)
+
+**Son seis, y ninguna bloquea el hito salvo la primera, que no es una pregunta clínica sino un aviso de
+datos personales.** Todas están redactadas para él en `GILDARDO_QUERIES.md`, sección *"Mensaje pendiente
+de enviar"*, en este mismo orden.
+
+| # | Qué es | De dónde salió | Qué se le pide |
+| --- | --- | --- | --- |
+| **0** | **El ejemplo de tono de su prompt lleva el nombre y apellidos de una persona con su cuadro clínico, y va en el mensaje de SISTEMA: viaja al proveedor de IA en cada llamada, para todos los pacientes** | Punto 12 | **Que confirme si es una persona real. Si lo es, hay que retirarlo.** Y decidimos qué hacemos con las once copias archivadas en nuestro repositorio |
+| 1 | El borrador de IA: su prompt produce el informe largo por dominios y el nuestro un párrafo. **Tiene razón él y lo estamos portando**, sin el nombre del paciente | Punto **12** | Sin nombre, ¿cómo quiere que abra el párrafo? Su instrucción dice *"identifica al paciente"* |
+| 2 | **El criterio del profesional no va a ninguna parte**: ni al reporte, ni al PDF, ni a la historia clínica. Hoy es interno de la evaluación | Punto **13b** | ¿Debe ir a la historia clínica? Es el único texto que el profesional escribe sobre el diagnóstico |
+| 3 | **La fórmula sintética: sus doce campos están todos, pero él los presenta como lista plana y nosotros como una cuenta** | Punto **22.4** | Que revise las dos disposiciones y diga cuál quiere. Ninguna cifra cambia; es la forma |
+| 4 | La fila **PABU** de su tabla usa un clasificador local (*"PABU bajo"*) y nosotros el congelado (*"Desviación por exceso"*). **Mismo color, distinta palabra** | Cotejo del 5 | ¿Prefiere el rótulo de su tabla? Se cambia en una línea |
+| 5 | La fila **ICA-BIS** tiene **dos reglas en su archivo, una por superficie**: gradúa en la pantalla de Composición y toma la del PABU en la historia clínica | Cotejo del 5 | ¿Es deliberado, o la nota de la historia iba a aplicarse también a la tabla? |
+| 6 | El nombre del modelo aparece como *"ANI BIS-E"* en unos sitios y *"ANI-BIS-E"* en otros | Punto **11** | Nada: se lo decimos. Atlas quedó unificado en **ANI-BIS-E** |
+
+### Lo que NO entra aquí, y por qué
+
+- **El corte del IFC** (su tabla usa el histórico 3,5-6,0). **Se retiró del mensaje el 2026-09-06**: al
+  verificarlo resultó que **su propio clasificador congelado ya trae los cortes por sexo** y Atlas lo
+  llama. No es divergencia nuestra ni instrucción aparte: es su tabla de display no llamando a su propio
+  clasificador. Decisión de Santiago: *"¿para qué volverle a avisar?"*.
+- **LUVIA / otros productos** (punto 20). **No es científico ni depende de él**: es el modelo de
+  consignación de terceros, con su plan aparte (`PLAN_CONSIGNACION_TERCEROS.md`). Va al final del cotejo.
+- **Las notas globales** (punto 26) y **el diseño de las tarjetas del estado** (punto 16): son nuestras,
+  van al backlog de producto.
+- **Los dos campos del próximo control** (punto 27, frecuencia editable y observaciones): es una
+  migración nuestra, no una pregunta para él. Espera tu decisión, no la suya.
 
 ---
 
