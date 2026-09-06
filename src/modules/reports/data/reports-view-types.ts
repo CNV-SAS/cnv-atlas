@@ -111,7 +111,7 @@ export type HistoriaClinicaDoc = {
   /** POR QUE no se pudieron emitir los tres de arriba. Un bloque ausente sin explicacion, en un documento
    *  probatorio, se lee como que no se evaluo. */
   motivoSinNarrativa: string | null;
-  /** Indices ANI BIS-E alterados, con su referencia y su severidad. */
+  /** Indices ANI-BIS-E alterados, con su referencia y su severidad. */
   indices: HcIndiceDoc[];
   /** Rutas de atencion activadas por el diagnostico. */
   rutas: { label: string; activacion: string | null }[];

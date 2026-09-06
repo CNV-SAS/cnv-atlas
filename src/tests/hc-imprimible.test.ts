@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 // paciente por defecto) se respeta entero: esto no la envia, la hace imprimible.
 //
 // Y AQUI SI VAN LOS INDICES, al reves que en el reporte del paciente. Es el documento tecnico: la tabla de
-// Wang, los indices ANI BIS-E, el DFI con sus severidades. Los dos candados dicen cosas opuestas sobre los
+// Wang, los indices ANI-BIS-E, el DFI con sus severidades. Los dos candados dicen cosas opuestas sobre los
 // mismos datos, y esa oposicion es el punto: `report-render` prohibe lo que este exige.
 
 const GLOBALS = readFileSync("src/app/globals.css", "utf8");
@@ -96,7 +96,7 @@ describe("el sello de consentimiento: bajo qué autorizaciones se recogió", () 
 });
 
 describe("la historia clínica SÍ lleva lo técnico (al revés que el reporte del paciente)", () => {
-  it("lleva los índices ANI BIS-E y la tabla de indicadores alterados", () => {
+  it("lleva los índices ANI-BIS-E y la tabla de indicadores alterados", () => {
     // CONTROL de que este candado y el del reporte del paciente no se confundan: lo que alli esta
     // prohibido, aqui es obligatorio. Si algun dia alguien "limpiara" la historia con el criterio del
     // reporte, este test lo dice.

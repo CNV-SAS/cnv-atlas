@@ -168,10 +168,10 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           )}
         </Seccion>
 
-        {/* LOS ÍNDICES ANI BIS-E. Aquí SÍ van, al revés que en el reporte del paciente: este es el
+        {/* LOS ÍNDICES ANI-BIS-E. Aquí SÍ van, al revés que en el reporte del paciente: este es el
             documento técnico. Su §7.1 prohíbe los índices en lo que el paciente recibe COMO reporte; la
             historia que él mismo pide es otra cosa, es su registro clínico. */}
-        <Seccion titulo="Índices ANI BIS-E alterados">
+        <Seccion titulo="Índices ANI-BIS-E alterados">
           {hc.indices.length === 0 ? (
             <Text style={styles.vacio}>Ningún índice quedó fuera de su rango de referencia.</Text>
           ) : null}

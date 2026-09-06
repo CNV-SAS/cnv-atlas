@@ -1,4 +1,4 @@
-// Indices ANI BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
+// Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
 //
 // Su HC los muestra como un nivel mas de la tabla de Wang, con REFERENCIA textual fija por fila (verbatim
 // de su archivo). Se portan las OCHO filas de su bloque y se filtran igual que el resto de la tabla: solo
@@ -62,7 +62,7 @@ export type IndiceAniResuelto = {
 };
 
 /**
- * Filas ALTERADAS del bloque ANI BIS-E. Mismos dos filtros que el resto de la tabla de la HC:
+ * Filas ALTERADAS del bloque ANI-BIS-E. Mismos dos filtros que el resto de la tabla de la HC:
  * sev >= 1 (0 es el unico nivel optimo) y nada sin valor. El codigo EB no tiene clasificador en su tabla
  * (su referencia es "= Edad cronologica" y no lleva clasificacion), asi que solo entra si algo le da una.
  */

@@ -175,7 +175,7 @@ describe("la IA solo entra si hay restricciones (su §13)", () => {
       protKg: 1,
       protG: 70,
       sodioMax: null,
-      filas: [{ nombre: "Proteína", valor: "1 g/kg", ref: "ANI BIS-E" }],
+      filas: [{ nombre: "Proteína", valor: "1 g/kg", ref: "ANI-BIS-E" }],
       limites: [],
       atributos: [],
       notas: [],

@@ -587,7 +587,7 @@ export default async function ResultadosEvaluacionPage({
   // historia clinica no recalcula, junta. Cuando no se pueden emitir, viaja el MOTIVO.
   // CIERRE de la consulta: los pendientes se DERIVAN del estado real en cada render, no se guardan, asi
   // que un pendiente resuelto despues del cierre deja de aparecer solo.
-  // Bloque ANI BIS-E de la tabla de la HC: su historia clinica los muestra dentro de la tabla de Wang y
+  // Bloque ANI-BIS-E de la tabla de la HC: su historia clinica los muestra dentro de la tabla de Wang y
   // Atlas los tiene en la tabla de indices del Diagnostico. Se anaden SOLO aqui para no duplicarlos alli.
 
   // Bloque 12: las remisiones de ESTA consulta (ancladas al tratamiento, no al paciente).

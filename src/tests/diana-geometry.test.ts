@@ -31,9 +31,13 @@ const BAND = (R - HOLE) / RINGS;
 // lo que protege es que la celda del paciente NO se mueva, y eso lo mide el segundo caso comparando
 // coordenadas ABSOLUTAS contra la formula. Ensanchar el lienzo por los cuatro lados no toca el sistema
 // de coordenadas (el dibujo sigue en 0..320), asi que esas coordenadas no cambian: el segundo caso pasa
-// SIN tocarlo, que es la prueba de que el cambio fue de encuadre y no de geometria. Aqui solo se
-// actualiza el encuadre esperado, y se anade que el origen del dibujo siga en 0,0.
-const PAD = 16;
+// SIN tocarlo, que es la prueba de que el cambio fue de encuadre y no de geometria.
+//
+// Y EL PAD YA NO SE ESPEJA (2026-09-06). Lo tenia copiado como constante y tuvo que actualizarse a mano
+// la primera vez que crecio (16 -> 44, al anclar los rotulos hacia afuera), que es un candado que se
+// rompe por un cambio legitimo y no aporta: el margen del lienzo es una decision VISUAL. Lo que si es
+// invariante y se afirma abajo es que el encuadre sea SIMETRICO y que el dibujo siga cabiendo entero
+// dentro de el. Las de SIZE/R/HOLE si se espejan, porque de esas sale la formula del marcador.
 
 function polar(r: number, angleDeg: number): [number, number] {
   const a = ((angleDeg - 90) * Math.PI) / 180;
@@ -67,12 +71,14 @@ describe("Diana: la geometria no se movio al pasar el SVG a escalable (care 2026
     const vb = html.match(/viewBox="([^"]+)"/);
     expect(vb, "el SVG tiene viewBox").not.toBeNull();
     const [minX, minY, w, h] = vb![1].split(" ").map(Number);
-    // El encuadre es simetrico y el DIBUJO sigue ocupando 0..SIZE dentro de el: el origen del sistema
-    // de coordenadas no se movio, solo hay margen alrededor.
-    expect(minX).toBe(-PAD);
-    expect(minY).toBe(-PAD);
-    expect(w).toBe(SIZE + PAD * 2);
-    expect(h).toBe(SIZE + PAD * 2);
+    // El encuadre es SIMETRICO y el DIBUJO sigue cabiendo entero dentro de el: el origen del sistema de
+    // coordenadas no se movio, solo hay margen alrededor. Se deriva el margen del propio viewBox en vez
+    // de espejarlo: cuanto margen se deja es una decision visual, que quepa el dibujo no.
+    const pad = -minX;
+    expect(pad, "el lienzo deja margen alrededor del dibujo").toBeGreaterThan(0);
+    expect(minY, "el margen es simetrico").toBe(minX);
+    expect(w).toBe(SIZE + pad * 2);
+    expect(h).toBe(w);
     // Fluido: sin atributos width=/height= en el <svg> (antes 320x320). El marcador SI lleva r="11".
     const svgTag = html.slice(html.indexOf("<svg"), html.indexOf(">", html.indexOf("<svg")) + 1);
     expect(svgTag).not.toMatch(/\swidth="/);
