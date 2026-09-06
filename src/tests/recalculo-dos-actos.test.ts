@@ -16,9 +16,13 @@ import { describe, expect, it } from "vitest";
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
 
 describe("son DOS actos, con DOS botones", () => {
-  it("existen los dos y dicen desde dónde recalculan", () => {
-    expect(PANEL).toContain('etiqueta="Recalcular desde el objetivo"');
-    expect(PANEL).toContain('etiqueta="Recalcular desde el intercambio"');
+  it("existen los dos, dicen QUÉ hacen y desde dónde", () => {
+    // CAMBIÓ LA ETIQUETA, NO LA ASERCIÓN (2026-09-06, cotejo punto 18). Decían "Recalcular desde X",
+    // que describe el MECANISMO; sus botones se llaman "Distribuir porciones" y "Sugerir distribución",
+    // que dicen qué pasa. Se adoptan los suyos CONSERVANDO el "desde X", que es lo que este caso
+    // protege: sin él, dos botones que recalculan cosas distintas se leen igual.
+    expect(PANEL).toContain('etiqueta="Distribuir porciones desde el objetivo"');
+    expect(PANEL).toContain('etiqueta="Sugerir la distribución desde el intercambio"');
   });
 
   it("los dos pasan por el MISMO mecanismo de confirmación", () => {
