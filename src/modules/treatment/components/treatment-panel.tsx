@@ -415,6 +415,7 @@ function CadenaCaloricaSection({
     ajustes: ProtocoloAjustes,
     opciones: { protKgVigente: number | null },
     sinGuardar: boolean,
+    guardando: boolean,
   ) => ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
@@ -738,7 +739,7 @@ function CadenaCaloricaSection({
 
           Se le pasan los ajustes VIVOS y las MISMAS opciones que usa la cadena, para que se recalcule
           al teclear (21b) y para que las dos cuentas no puedan salir de fuentes distintas. */}
-      {validacion(adj, opciones, hayCambiosSinGuardar)}
+      {validacion(adj, opciones, hayCambiosSinGuardar, pending)}
 
       <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
@@ -1224,12 +1225,13 @@ export function TreatmentPanel({
           locked={locked}
           prescripcion={prescripcion}
           asesoria={asesoria}
-          validacion={(ajustes, opcionesCadena, sinGuardar) => (
+          validacion={(ajustes, opcionesCadena, sinGuardar, guardando) => (
             <ValidacionSection
               protocol={protocol}
               ajustes={ajustes}
               opciones={opcionesCadena}
               sinGuardar={sinGuardar}
+              guardando={guardando}
             />
           )}
         />
@@ -2822,6 +2824,7 @@ function ValidacionSection({
   ajustes,
   opciones,
   sinGuardar = false,
+  guardando = false,
 }: {
   protocol: TreatmentProtocol;
   /** Los ajustes VIVOS de la cadena. Sin ellos (uso fuera del panel) manda lo guardado. */
@@ -2837,6 +2840,8 @@ function ValidacionSection({
   opciones?: { protKgVigente: number | null };
   /** Hay cambios en los campos de arriba todavia sin guardar. */
   sinGuardar?: boolean;
+  /** La cadena esta guardando: apaga el boton del aviso, que envia ESE mismo formulario. */
+  guardando?: boolean;
 }) {
   const snap = protocol.protocolSuggested;
   if (!snap || protocol.pesoCalculo == null) return null;
@@ -2926,10 +2931,35 @@ function ValidacionSection({
           guardar, creyendo que el plan validado es el que queda. Va en la capa de ATENCION (operativo:
           "te falta hacer algo"), no en la clinica, que significa un veredicto sobre el paciente. */}
       {sinGuardar ? (
-        <p className="max-w-prose rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
-          Esta tabla se está recalculando con los valores que acabas de escribir arriba,{" "}
-          <strong>todavía sin guardar</strong>. Guarda los ajustes para dejarlos fijos.
-        </p>
+        <div className="flex max-w-prose flex-col gap-2 rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
+          <p>
+            Esta tabla se está recalculando con los valores que acabas de escribir arriba,{" "}
+            <strong>todavía sin guardar</strong>.
+          </p>
+          {/* EL BOTON, AQUI MISMO (tercer smoke). El aviso decia "guarda los ajustes" y el boton de
+              guardar queda despues de TODA la fórmula sintética: pedirle al profesional que baje media
+              pantalla para hacer lo que el aviso le acaba de pedir es lo mismo que no decírselo.
+
+              Y NO PARTE EL FORMULARIO, que es lo que habiamos decidido no hacer: este bloque se
+              renderiza DENTRO del `<form>` de la cadena (entre sus dos fieldsets), asi que un
+              `type="submit"` aqui envia ESE formulario, con sus seis ajustes de golpe y su misma firma
+              de concurrencia. Es un segundo disparador del mismo acto, no un guardado propio.
+
+              LA `key` ES DISTINTA de la del botón de abajo, y no es decoración: dos botones de envío en
+              un mismo formulario con la misma key son el hazard del wizard, donde React reutiliza el
+              nodo y el clic aterriza en el que no era. */}
+          <div>
+            <Button
+              key="guardar-desde-validacion"
+              type="submit"
+              variant="outline"
+              size="sm"
+              disabled={guardando}
+            >
+              {guardando ? "Guardando..." : "Guardar ajustes"}
+            </Button>
+          </div>
+        </div>
       ) : null}
       {!algunaPorcion ? (
         <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">

@@ -265,8 +265,24 @@ describe("se partió la PRESENTACIÓN, no el guardado", () => {
       bloque("function CadenaCaloricaSection", "export function TreatmentPanel"),
     );
     expect((seccion.match(/<form /g) ?? []).length).toBe(1);
-    expect((seccion.match(/type="submit"/g) ?? []).length).toBe(1);
     expect((seccion.match(/name="baseSignature"/g) ?? []).length).toBe(1);
+  });
+
+  it("hay DOS disparadores del mismo envío, y con `key` distintas", () => {
+    // EL SEGUNDO ES DEL 2026-09-06 (tercer smoke): el aviso de "sin guardar" que sale sobre la tabla de
+    // validación decía "guarda los ajustes" con el botón media pantalla más abajo, después de toda la
+    // fórmula. Ahora lleva el suyo.
+    //
+    // NO PARTE EL GUARDADO, que es lo que este archivo protege: los dos son `type="submit"` del MISMO
+    // formulario (el aviso se renderiza dentro de él, entre sus dos fieldsets), así que los seis ajustes
+    // siguen viajando de golpe con una sola firma. Es un segundo disparador del mismo acto.
+    const PANEL_CRUDO = readFileSync(
+      "src/modules/treatment/components/treatment-panel.tsx",
+      "utf8",
+    );
+    // LAS KEYS DISTINTAS son el hazard del wizard: con la misma, React reutiliza el nodo y el clic
+    // aterriza en el botón que no era. Solo se ve en un navegador real, así que se fija aquí.
+    expect(PANEL_CRUDO).toContain('key="guardar-desde-validacion"');
   });
 
   it("los seis ajustes siguen viajando juntos en ese único formulario", () => {

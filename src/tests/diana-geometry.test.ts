@@ -71,14 +71,20 @@ describe("Diana: la geometria no se movio al pasar el SVG a escalable (care 2026
     const vb = html.match(/viewBox="([^"]+)"/);
     expect(vb, "el SVG tiene viewBox").not.toBeNull();
     const [minX, minY, w, h] = vb![1].split(" ").map(Number);
-    // El encuadre es SIMETRICO y el DIBUJO sigue cabiendo entero dentro de el: el origen del sistema de
-    // coordenadas no se movio, solo hay margen alrededor. Se deriva el margen del propio viewBox en vez
-    // de espejarlo: cuanto margen se deja es una decision visual, que quepa el dibujo no.
-    const pad = -minX;
-    expect(pad, "el lienzo deja margen alrededor del dibujo").toBeGreaterThan(0);
-    expect(minY, "el margen es simetrico").toBe(minX);
-    expect(w).toBe(SIZE + pad * 2);
-    expect(h).toBe(w);
+    // EL DIBUJO SIGUE CABIENDO ENTERO Y EN SU SITIO: el origen del sistema de coordenadas no se movio,
+    // solo hay margen alrededor. Los margenes se DERIVAN del propio viewBox en vez de espejarlos: cuanto
+    // margen se deja es una decision visual, que quepa el dibujo no.
+    //
+    // Y DEJO DE SER CUADRADO EL 2026-09-06, a proposito: los rotulos son ANCHOS, no altos (los de E3 y
+    // E7 piden 44 unidades a los lados; arriba y abajo bastan 30). Con margen cuadrado, esas 28 unidades
+    // de mas quedaban como franjas vacias que estiraban el panel. Lo que se sigue exigiendo es que haya
+    // margen por los cuatro lados y que el dibujo entero quepa dentro, que es lo que protege la posicion.
+    const padX = -minX;
+    const padY = -minY;
+    expect(padX, "margen horizontal").toBeGreaterThan(0);
+    expect(padY, "margen vertical").toBeGreaterThan(0);
+    expect(w).toBe(SIZE + padX * 2);
+    expect(h).toBe(SIZE + padY * 2);
     // Fluido: sin atributos width=/height= en el <svg> (antes 320x320). El marcador SI lleva r="11".
     const svgTag = html.slice(html.indexOf("<svg"), html.indexOf(">", html.indexOf("<svg")) + 1);
     expect(svgTag).not.toMatch(/\swidth="/);
