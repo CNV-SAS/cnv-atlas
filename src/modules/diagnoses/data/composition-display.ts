@@ -457,7 +457,12 @@ export function wangRowDx(
       const p = pscAFxIR(ctx.af, ctx.ir, sexoM);
       return { dx: p.dx, referenceLabel: "—", cut: null, valueText: p.valueText };
     }
-    case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73% (normohidrat.)", cut: 73 };
+    // EL CORTE ES 73,2 Y NO 73 (cotejo 2026-09-05, punto 8). Aqui vivia un 73 redondeado mientras el
+    // dato derivado usa `hidSG_ref = 73.2`, que es SU cifra (§9, "hidratacion 73,2%") y la que su archivo
+    // muestra. Dos referencias nuestras del mismo umbral, y la que llegaba a pantalla era la nuestra: el
+    // delta salia -2,67 donde el suyo dice -2,87. El rotulo se deja en "≥73%" porque es el umbral
+    // CLINICO redondeado que se lee, pero la RESTA se hace contra su cifra.
+    case "hidSG": return { dx: dHidDef(value), referenceLabel: "≥73,2% (normohidrat.)", cut: 73.2 };
     case "act_mlg": return { dx: dACTMLG(value), referenceLabel: "71–74%", cut: 74 }; // borde superior (Gildardo §2)
     // FM_pct (grasa %): borde SUPERIOR H22/M32 (Gildardo §1, 2026-08-18: el lado del riesgo, el limite que
     // decide el paso a "Sobrepeso adiposo"). Δ contra ese borde, como el resto de la tabla.

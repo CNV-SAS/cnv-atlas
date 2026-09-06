@@ -289,3 +289,130 @@ sostenido por una cita vencida. **Lo subiría a urgente y lo pondría en la etap
 **Tratamiento:** **22.1/22.2 primero de todos**, luego 21, luego 29.
 
 **Después, y juntos:** 22.3, 22.4 y 23, como una sola decisión de forma.
+
+---
+
+# ETAPA EVALUACIÓN · CERRADA (2026-09-05)
+
+## Lo que quedó construido
+
+| # | Qué se hizo |
+| --- | --- |
+| **3 + 5** | Eran uno. El default de pestaña lo decide la página: sin diagnóstico abre en Evaluación, con diagnóstico en Diagnóstico. Y el enlace de importar lleva `?etapa=evaluacion&ev=antropometria` explícito |
+| **7** | El botón de archivo se ve (perfilado en azul de marca, con cursor) y debajo sale **"Archivo seleccionado: nombre"**. Arreglado en el primitivo `Input`: el otro input de archivo de la app tenía el mismo defecto |
+| **1** | El contenedor gigante era `align-items: stretch`. Arreglado en las dos páginas públicas de encuesta |
+| **8 · hidratación** | El corte pasa de 73 a **73,2**, que es su cifra. Ver abajo |
+
+## Lo que NO se construyó, y por qué
+
+### 2 · Corregir los datos personales del paciente
+
+**Verificado: no existe el camino, tienes razón.** La caracterización (ascendencia, estrato, motivo) se
+escribe **solo** por `intake-writer`, o sea únicamente cuando el paciente envía la encuesta. Y no hay
+formulario de edición del paciente: `modules/patients/components` solo tiene la lista.
+
+**No lo construyo ahora y no es por tamaño.** Corregir identidad (nombre, documento, celular) toca la
+resolución de identidad, la auditoría clínica y, si cambia el documento, la relación con el
+consentimiento firmado. Es un bloque con su propia decisión, no un formulario. **Va al backlog con esa
+nota**, y conviene decidir dos cosas antes de construirlo: quién puede corregir qué, y qué queda
+registrado del valor anterior.
+
+### 4 · El peso meta y la fuerza prensil: SU archivo los tiene en Antropometría
+
+**Verificado en su código, y lo dice él mismo:**
+
+> *"Lo que el profesional escribe a mano en **Antropometría** (cintura, cadera, **dinamometría y peso
+> meta**) se guarda por paciente en cuanto lo teclea."*
+
+Y `pesoMeta` vive dentro de su `ModAntropometria`. Así que la respuesta a tu pregunta es: **allá**, con
+la cintura y la cadera, que en Atlas ya están en esa subpestaña.
+
+**Y nuestro propio comentario dejó la decisión para este momento:** *"dónde vive el campo en la interfaz
+se decide en el cotejo visual, con su pantalla al lado"*.
+
+**No es un movimiento gratis, y por eso no lo hice de paso.** Los dos campos comparten formulario y
+**camino de guardado** con las condiciones de la toma (`bis-intake`). Moverlos exige un segundo escritor
+contra la misma fila, con el cuidado de concurrencia que eso pide. Es del tamaño de una tanda, no de un
+rato, y hacerlo a medias es justo el hazard documentado: **un campo que deja de viajar**.
+
+**Mi recomendación: hacerlo, en su propia tanda.** Su sitio natural es Antropometría y él ya lo decidió.
+
+### 6 · Re-subir el BIS o corregir las condiciones tras generar
+
+**El criterio ya está decidido y es suyo:** el Biody del paciente equivocado **se cierra y se rehace**,
+no se corrige. La pantalla ya lo dice con todas las letras y remite a soporte, y está en el BACKLOG como
+bloque propio.
+
+**Lo que sí queda abierto y no es lo mismo** es tu segunda mitad: corregir **peso, estatura o
+condiciones** después de generar, que no implica un archivo equivocado sino un dato mal tecleado. Hoy la
+única salida es la misma (cerrar y rehacer), y para un decimal de la cintura eso es desproporcionado.
+**Va al backlog junto con el 2**: son la misma pregunta (qué se puede corregir después de sellar) sobre
+dos datos distintos.
+
+### 8 · El cotejo de Wang y Sarcopenia
+
+**Los datos coinciden byte a byte.** Comparé las dos capturas fila por fila: ACT 44,66 · FFW 41,95 ·
+hidratación 70,33 · proteína total 14,06 · PMA 11,85 · CMO 2,90 · mineral no óseo 0,61 · Re 627,30 ·
+Ri 1306,40 · R inf 423,80 · C 2,96 · Fo 27,84 · Z5 594 · Z50 501 · Z200 451. **Todos idénticos.**
+
+Tres diferencias, y las tres importan:
+
+**(a) La hidratación tenía DOS referencias nuestras, y la de pantalla no era la suya. ARREGLADO.**
+Su archivo muestra `73.20` con delta `-2.87`; el nuestro decía `73%` con delta `-2.67`. Y las dos cifras
+estaban en casa: `hidSG_ref = 73.2` en el dato derivado y `cut: 73` en el display. Su respuesta del
+17 de agosto lo cierra: *"la hidratación de 73,2 %... 73,2 + 19,4 + 5,6 + 1,2 = 99,4 %. Cítenlas como
+reparto de Wang, no como constantes independientes"*. **El 73,2 no es redondeable: pertenece a un
+conjunto que tiene que cerrar.** Un candado fijaba el 73 citando "§2/§3"; se corrigió con su fuente al
+lado, no se relajó.
+
+**(b) FALTA EL VEREDICTO DE SARCOPENIA, y es lo más serio de este punto.**
+Su archivo cierra el bloque con un banner: **"Sin sarcopenia · Fuerza y masa muscular normales."**
+Atlas muestra las tres tarjetas (fuerza prensil, ASMI, ángulo de fase) con sus etiquetas y **no muestra
+la conclusión**. Es el criterio de "lo que él tiene y nosotros no": el profesional ve tres datos y tiene
+que concluir él. **Lo subiría a la etapa de Diagnóstico como accionable.**
+
+**(c) Le ponemos referencia al FFW y él no.**
+Nosotros mostramos `48,55` con delta `-6,60`; su archivo pone un guion. Y esa referencia es **la misma
+del ACT**, reutilizada (`FFW_ref = tbwR`). Puede ser defendible fisiológicamente, pero es nuestra y
+produce un déficit de -6,60 que su archivo no afirma. Es "lo que tenemos y él no": **se defiende o se
+retira**, y como es clínico, no lo decido yo.
+
+---
+
+## El recorrido del smoke de esta etapa
+
+**Recorrido A · La pestaña que abre (3 y 5).**
+
+1. Entra a un paciente **sin diagnóstico** desde `/pacientes/(id)` con "Ver resultados". **Tiene que
+   abrir en Evaluación.**
+2. Entra a uno **con diagnóstico**. **Tiene que abrir en Diagnóstico.**
+3. Con `?etapa=diagnostico` en la URL, tiene que ir a Diagnóstico (esta es la trampa que apareció).
+4. Guarda las condiciones del BIS y pulsa **"importar la medición en Antropometría y BIS"**. **Tiene que
+   llevarte a Evaluación, subpestaña Antropometría y BIS**, no a Diagnóstico.
+
+**Sería defecto si:** abre en Diagnóstico un paciente sin diagnóstico, o el enlace de importar sigue
+aterrizando en Diagnóstico.
+
+**Recorrido B · El selector de archivo (7).**
+
+1. Ve a Antropometría y BIS de una evaluación sin medición.
+2. Mira el botón **antes** de pulsarlo: tiene que verse como un botón (perfilado azul) y **cambiar el
+   cursor** al pasar por encima.
+3. Elige un archivo. Debajo tiene que salir **"Archivo seleccionado: nombre"**, con el nombre en negrita.
+
+**Sería defecto si:** el botón sigue leyéndose como texto corrido, o el nombre no se distingue.
+
+**Recorrido C · El mensaje corto de la encuesta (1).**
+
+1. Completa una encuesta y **vuelve a abrir el mismo enlace**.
+2. Tiene que salir "Encuesta completada" en una tarjeta **del tamaño del mensaje**, no en un recuadro
+   vacío de una pantalla de alto.
+3. Y con un enlace inválido, lo mismo.
+
+**Recorrido D · La hidratación (8a).**
+
+1. Antropometría y BIS, tabla de Wang, fila **"Hidratación sin grasa"**.
+2. La referencia tiene que decir **73,2** y el delta **-2,87** para Nico (valor 70,33), igual que su
+   archivo.
+
+**Sería defecto si:** sigue diciendo 73 o -2,67.
