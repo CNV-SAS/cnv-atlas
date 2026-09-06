@@ -3,7 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { bisImportLogs, bisMeasurements, bisRawValues } from "@/db/schema";
+import { bisImportLogs, bisMeasurements, bisRawValues, diagnoses } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 import type { DerivedValue } from "../services/derive-composition";
@@ -48,14 +48,31 @@ export type BisWriteResult = {
 
 export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWriteResult> {
   return db.transaction(async (tx) => {
-    // Guard de reimport dentro de la transaccion (evita TOCTOU): una evaluacion tiene
-    // como mucho una medicion en el MVP.
-    const existing = await tx
-      .select({ id: bisMeasurements.id })
-      .from(bisMeasurements)
-      .where(eq(bisMeasurements.evaluationId, input.evaluationId))
+    // EL PORTON PASA DE "¿YA HAY MEDICION?" A "¿YA HAY DIAGNOSTICO?" (cotejo 2026-09-05, punto 6).
+    //
+    // LA INCONSISTENCIA QUE CIERRA, y la encontro Santiago: si el xlsx no parsea o no valida, no se
+    // persiste nada y el profesional puede elegir otro archivo. Si parsea, queda bloqueado para siempre.
+    // O sea que el sistema dejaba reintentar cuando el archivo era INSERVIBLE y bloqueaba cuando era
+    // SERVIBLE PERO DEL PACIENTE EQUIVOCADO, que es el caso que de verdad importa. El porton preguntaba
+    // "¿parseo?" cuando lo que decide es "¿ya se emitio algo sobre esto?".
+    //
+    // DESPUES DEL DIAGNOSTICO SIGUE BLOQUEADO, y eso no cambia: ahi hay un snapshot sellado, un
+    // tratamiento y puede haber un reporte enviado. Ese caso se resuelve reiniciando la evaluacion
+    // (bloque aparte, BACKLOG), no pisando la medicion por debajo de un diagnostico ya emitido.
+    const [diagnostico] = await tx
+      .select({ id: diagnoses.id })
+      .from(diagnoses)
+      .where(eq(diagnoses.evaluationId, input.evaluationId))
       .limit(1);
-    if (existing.length > 0) throw new BisAlreadyImportedError(input.evaluationId);
+    if (diagnostico) throw new BisAlreadyImportedError(input.evaluationId);
+
+    // Y LA VIEJA SE REEMPLAZA DE VERDAD: se borra ANTES de insertar, en la misma transaccion. Dejarla
+    // convertiria "una medicion por evaluacion" en dos, y todo lo que lee la medicion elige "la primera"
+    // o "la ultima" sin que nadie lo haya decidido. El borrado arrastra sus valores por la FK en cascada.
+    const previas = await tx
+      .delete(bisMeasurements)
+      .where(eq(bisMeasurements.evaluationId, input.evaluationId))
+      .returning({ id: bisMeasurements.id });
 
     const [measurement] = await tx
       .insert(bisMeasurements)
@@ -110,6 +127,9 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
         evaluation_id: input.evaluationId,
         variable_count: input.values.length,
         derived_count: input.derivedValues.length,
+        // QUE FUE UN REEMPLAZO Y SOBRE CUAL, que es lo que hace auditable el porton nuevo: sin esto, un
+        // reimport se ve igual que un import y no hay forma de saber que hubo una medicion antes.
+        replaced_measurement_ids: previas.map((m) => m.id),
       },
       ip: input.ip,
     });

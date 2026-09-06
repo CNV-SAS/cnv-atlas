@@ -1739,3 +1739,40 @@ misma intensidad**, que es un rol distinto de acción (azul), atención (ámbar)
 
 **Y el límite que ya fijó Santiago, para cuando llegue:** el amarillo de la píldora de Gildardo es de SU
 paleta. Los nuestros son los nuestros.
+
+---
+
+## Reiniciar la evaluación, y qué NO cierra (medido el 2026-09-05, cotejo punto 6 y 2)
+
+**Nace del cotejo final.** El portón del reimport ya se movió (pasa a preguntar por el diagnóstico, no
+por la medición), así que **el caso frecuente está cubierto**: archivo del paciente equivocado detectado
+ANTES de diagnosticar. Lo que queda es el otro: detectado **después**.
+
+**La propuesta (Santiago):** un botón de reiniciar la evaluación, con confirmación, que resetea
+condiciones, BIS y diagnóstico **conservando las respuestas de la encuesta**.
+
+**Verificado que es viable, con un cuidado de diseño.** El mecanismo de reemplazo que ya existe
+(`correct-evaluation`) hace seis pasos: crea la evaluación nueva, copia las condiciones, copia la
+medición, copia las respuestas, escribe el pipeline y encadena vieja→nueva. El reinicio es el mismo
+esqueleto **quitando las dos copias y el pipeline**.
+
+**Pero NO se hace metiéndole un modo a ese servicio.** Tiene invariantes que asumen que hay BIS, incluida
+una verificación en tiempo de ejecución que **aborta si la copia de la medición no es idéntica al
+origen**. Añadirle una bifurcación a un servicio que sella registros clínicos es donde viven los defectos
+silenciosos. **Diseño: escritor propio que reúsa las piezas compartidas** (copiar respuestas, encadenar
+la supersesión, el audit inline), sin tocar el camino de corrección.
+
+**El diagnóstico sellado no se borra:** la evaluación vieja queda marcada como reemplazada, igual que hoy.
+
+### Y NO cierra el punto 2, que es lo que había que verificar antes de construir
+
+| Dato | Dónde vive | ¿Lo re-pide una evaluación nueva? |
+| --- | --- | --- |
+| Estrato, ascendencia, ocupación, estado civil, educación | `patient_profiles` **y** `evaluations` | **No**: vienen en el mismo envío de la encuesta, que el reinicio conserva |
+| Motivo de consulta | `evaluations` | **No**, por lo mismo |
+| **Nombre, documento, celular, ciudad** | **El registro del paciente** | **No.** No pasan por la encuesta y ninguna evaluación nueva los toca |
+
+**Así que el 2 se queda entero**, y es un bloque distinto: corregir identidad toca la resolución de
+identidad, la auditoría clínica y, si cambia el documento, la relación con el consentimiento firmado.
+Antes de construirlo hay que decidir dos cosas: **quién puede corregir qué**, y **qué queda registrado
+del valor anterior**.
