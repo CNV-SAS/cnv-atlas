@@ -23,6 +23,9 @@ const COMPOSITOR = sinComentarios(
 const PANEL = sinComentarios(
   readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8"),
 );
+const PANTALLA_PAGE = sinComentarios(
+  readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"),
+);
 
 describe("la actividad física se registra con el nombre con el que se eligió", () => {
   it("el compositor usa el rótulo del nivel, no el factor crudo", () => {
@@ -73,5 +76,60 @@ describe("los antecedentes cierran con alergias, como su archivo", () => {
       "Exposición a contaminantes",
       "Alergias e intolerancias",
     ]);
+  });
+});
+
+describe("los bloques van en el orden de su historia clínica", () => {
+  // Se afirma el ORDEN, que no tiene una cifra que aflojar cuando estorbe. Los dos movimientos son solo
+  // mover: ninguno de estos bloques depende de otro, todos se computan antes del render.
+  //
+  //   · La COMPOSICIÓN va antes de los tres párrafos: el dato objetivo primero, su interpretación después.
+  //   · Las RUTAS van justo después del objetivo y antes del plan: la ruta es lo que justifica el plan.
+  //     Iban al final, tras las remisiones, donde quedaban huérfanas.
+  const orden = (src: string, marcas: string[]) => marcas.map((m) => src.indexOf(m));
+  const creciente = (xs: number[]) => xs.every((x, i) => x > 0 && (i === 0 || x > xs[i - 1]));
+
+  it("en la pantalla", () => {
+    const ix = orden(PANTALLA_PAGE, [
+      "<HcAntecedentes",
+      "<CompositionSection",
+      "<HcResumenDiagnostico",
+      "<HcMetaTerapeutica",
+      "<HcObjetivoTratamiento",
+      "<HcRutasActivadas",
+      "<HcPlanNutricional",
+      "<HcRecomendaciones",
+      "<HcRemisiones",
+    ]);
+    expect(ix.every((i) => i > 0), "falta uno de los bloques").toBe(true);
+    expect(creciente(ix), `orden roto: ${ix.join(" ")}`).toBe(true);
+  });
+
+  it("y en el PDF, el mismo", () => {
+    const ix = orden(PDF, [
+      'titulo="Antecedentes"',
+      'titulo="Composición corporal"',
+      'titulo="Índices ANI-BIS-E alterados"',
+      'titulo="Resumen del diagnóstico"',
+      'titulo="Objetivo del tratamiento"',
+      'titulo="Rutas de atención activadas"',
+      'titulo="Plan nutricional"',
+      'titulo="Recomendaciones"',
+      'titulo="Remisiones"',
+    ]);
+    expect(ix.every((i) => i > 0), "falta una de las secciones").toBe(true);
+    expect(creciente(ix), `orden roto: ${ix.join(" ")}`).toBe(true);
+  });
+});
+
+describe("los decimales los fija el corte, también en la tabla de composición", () => {
+  it("el IMC va a UN decimal, que es la resolución de su corte 18,5-24,9", () => {
+    // La regla vivía en `indicator-ranges` (los doce indicadores ANI) y esta tabla, que es la OTRA capa
+    // de display, no la aplicaba: salía 25,66 al lado de una referencia 18,5-24,9. Familia de "barrer
+    // todos los sitios aplica a una REGLA, no solo a un umbral".
+    const MAPA = readFileSync("src/modules/diagnoses/data/composition-map.ts", "utf8");
+    expect(MAPA).toContain('["IMC", "imc", null, "kg/m²", { decimals: 1 }]');
+    // Y que el mecanismo llegue a la fila: sin esto el `decimals` se declara y no viaja.
+    expect(sinComentarios(MAPA)).toContain("opts?.decimals != null ? { decimals: opts.decimals }");
   });
 });

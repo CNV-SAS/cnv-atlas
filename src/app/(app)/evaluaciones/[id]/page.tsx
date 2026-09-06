@@ -114,7 +114,7 @@ import { HcImprimir } from "@/modules/reports/components/hc-imprimir";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
 import { getUltimaEntregaHc } from "@/modules/reports/data/hc-entregas-writer";
 import { HcEntregar } from "@/modules/reports/components/hc-entregar";
-import { componerHistoriaClinica } from "@/modules/reports/data/hc-composicion";
+import { componerHistoriaClinica, remisionesExigidas } from "@/modules/reports/data/hc-composicion";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -947,19 +947,11 @@ export default async function ResultadosEvaluacionPage({
               />
               <HcMotivoDeConsulta motivos={hcHeader.motivos} />
               <HcAntecedentes grupos={hcAntecedentes} />
-              <HcResumenDiagnostico
-                profesionLabel={profesionLabel}
-                texto={hcEsNutricionista ? hcNarrativa.parrafoDieta : hcAbordaje}
-                motivo={
-                  hcEsNutricionista
-                    ? hcNarrativa.motivo
-                    : (hcAbordaje
-                        ? null
-                        : "El modelo tiene contenido para esta disciplina; su resumen todavía no se ha portado.")
-                }
-              />
-              <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />
-              <HcMetaTerapeutica texto={hcNarrativa.meta} motivo={hcNarrativa.motivo} />
+              {/* LA COMPOSICION VA ANTES DE LOS TRES PARRAFOS (cotejo punto 30, 2026-09-06). Iba
+                  despues de la meta terapeutica; en su HC va CUARTA, justo tras los antecedentes, y el
+                  orden tiene una logica de lectura: el dato objetivo primero y su interpretacion
+                  despues. Es solo mover: ninguno de estos bloques depende de otro, todos se computan
+                  arriba. */}
               {/* Bloque 4: la MISMA tabla de Wang del Diagnostico, filtrada a lo alterado. No es una tabla
                   mas corta: es la regla de su HC (la historia muestra lo que esta mal, el diagnostico
                   muestra todo). Los VALORES son los sellados; los RANGOS son los del modelo vigente, y eso
@@ -985,6 +977,19 @@ export default async function ResultadosEvaluacionPage({
                   </p>
                 </section>
               ) : null}
+              <HcResumenDiagnostico
+                profesionLabel={profesionLabel}
+                texto={hcEsNutricionista ? hcNarrativa.parrafoDieta : hcAbordaje}
+                motivo={
+                  hcEsNutricionista
+                    ? hcNarrativa.motivo
+                    : (hcAbordaje
+                        ? null
+                        : "El modelo tiene contenido para esta disciplina; su resumen todavía no se ha portado.")
+                }
+              />
+              <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />
+              <HcMetaTerapeutica texto={hcNarrativa.meta} motivo={hcNarrativa.motivo} />
               {/* LA LINEA DEL MODELO Y EL TEXTO DEL PROFESIONAL, las dos (cotejo punto 29). La primera
                   sale de la MISMA cadena efectiva y la MISMA prescripcion que usa el panel de arriba,
                   asi que la historia clinica y el panel no pueden decir dietas distintas. */}
@@ -996,9 +1001,19 @@ export default async function ResultadosEvaluacionPage({
                 }
                 texto={protocol?.objetivoTexto ?? null}
               />
+              {/* LAS RUTAS, JUSTO DESPUES DEL OBJETIVO (cotejo punto 30). Iban al final, tras las
+                  remisiones, donde quedaban huerfanas: la ruta es lo que JUSTIFICA el plan, asi que se
+                  lee antes de el, como en su HC. Tambien es solo mover. */}
+              <HcRutasActivadas
+                rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
+              />
               <HcPlanNutricional plan={hcPlan} desviaciones={hcCompuesta.desviaciones} />
               <HcRecomendaciones bloques={hcRecs} />
               <HcRemisiones
+                // LO QUE EL MODELO EXIGIO, ademas de lo registrado (cotejo punto 30). Sale de las rutas
+                // activas por el mismo camino que la seccion de Diagnostico donde se registran, asi que
+                // las dos pantallas no pueden decir cosas distintas sobre la misma consulta.
+                exigidas={remisionesExigidas(rutas, hcRemisiones)}
                 remisiones={hcRemisiones.map((r) => ({
                   id: r.id,
                   destino:
@@ -1009,9 +1024,6 @@ export default async function ResultadosEvaluacionPage({
                   fecha: formatDateOnly(r.referredAt),
                   retorno: r.returnedAt ? formatDateOnly(r.returnedAt) : null,
                 }))}
-              />
-              <HcRutasActivadas
-                rutas={rutas.map((r) => ({ id: r.id, label: r.label, activacion: r.activacion }))}
               />
               {/* OBSERVACIONES (§8.3): "deben aparecer en la historia, y POR CONSULTA, no por paciente".
                   Cuelgan del tratamiento de ESTA evaluacion, asi que lo de "por consulta" se cumple por

@@ -122,36 +122,9 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           )}
         </Seccion>
 
-        {/* LOS TRES PÁRRAFOS DEL DIAGNÓSTICO. Faltaban los SIETE bloques que dependen del snapshot, y
-            todos por la misma razón: el lector no lo cargaba. Una historia clínica sin el diagnóstico
-            funcional ni la composición corporal no es la historia clínica, es un resumen, y el paciente
-            que la pide tiene derecho a la completa. */}
-        {hc.motivoSinNarrativa ? (
-          <Seccion titulo="Resumen del diagnóstico">
-            {/* SE DICE POR QUÉ NO ESTÁ. Un bloque ausente sin explicación, en un documento probatorio, se
-                lee como que no se evaluó. */}
-            <Text style={styles.vacio}>{hc.motivoSinNarrativa}</Text>
-          </Seccion>
-        ) : (
-          <>
-            {hc.resumenProfesional ? (
-              <Seccion titulo="Resumen diagnóstico · Nutricionista">
-                <Text>{hc.resumenProfesional}</Text>
-              </Seccion>
-            ) : null}
-            {hc.dfiParrafo ? (
-              <Seccion titulo="Diagnóstico funcional">
-                <Text>{hc.dfiParrafo}</Text>
-              </Seccion>
-            ) : null}
-            {hc.metaTerapeutica ? (
-              <Seccion titulo="Meta terapéutica">
-                <Text>{hc.metaTerapeutica}</Text>
-              </Seccion>
-            ) : null}
-          </>
-        )}
-
+        {/* LA COMPOSICIÓN VA ANTES DE LOS TRES PÁRRAFOS (cotejo punto 30, 2026-09-06), igual que en la
+            pantalla y que en su HC: el dato objetivo primero y su interpretación después. Iba después
+            de la meta terapéutica. */}
         {/* LA COMPOSICIÓN CORPORAL. Peso y talla ya van arriba; aquí van las medidas del equipo que
             sostienen el diagnóstico, con su clasificación. */}
         <Seccion titulo="Composición corporal">
@@ -193,18 +166,35 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
           ))}
         </Seccion>
 
-        <Seccion titulo="Rutas de atención activadas">
-          {hc.rutas.length > 0 ? (
-            hc.rutas.map((r) => (
-              <Text key={r.label} style={styles.item}>
-                {r.label}
-                {r.activacion ? ` · ${r.activacion}` : ""}
-              </Text>
-            ))
-          ) : (
-            <Text style={styles.vacio}>El diagnóstico no activó rutas de atención.</Text>
-          )}
-        </Seccion>
+        {/* LOS TRES PÁRRAFOS DEL DIAGNÓSTICO. Faltaban los SIETE bloques que dependen del snapshot, y
+            todos por la misma razón: el lector no lo cargaba. Una historia clínica sin el diagnóstico
+            funcional ni la composición corporal no es la historia clínica, es un resumen, y el paciente
+            que la pide tiene derecho a la completa. */}
+        {hc.motivoSinNarrativa ? (
+          <Seccion titulo="Resumen del diagnóstico">
+            {/* SE DICE POR QUÉ NO ESTÁ. Un bloque ausente sin explicación, en un documento probatorio, se
+                lee como que no se evaluó. */}
+            <Text style={styles.vacio}>{hc.motivoSinNarrativa}</Text>
+          </Seccion>
+        ) : (
+          <>
+            {hc.resumenProfesional ? (
+              <Seccion titulo="Resumen diagnóstico · Nutricionista">
+                <Text>{hc.resumenProfesional}</Text>
+              </Seccion>
+            ) : null}
+            {hc.dfiParrafo ? (
+              <Seccion titulo="Diagnóstico funcional">
+                <Text>{hc.dfiParrafo}</Text>
+              </Seccion>
+            ) : null}
+            {hc.metaTerapeutica ? (
+              <Seccion titulo="Meta terapéutica">
+                <Text>{hc.metaTerapeutica}</Text>
+              </Seccion>
+            ) : null}
+          </>
+        )}
 
         {/* EL BLOQUE VA SIEMPRE, aunque este vacio (smoke de Santiago, 2026-09-02). En la pantalla estos
             dos bloques SI aparecen cuando no hay dato, diciendo "No se registró" y "Sin remisiones"; en el
@@ -225,6 +215,21 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             // ella solo cuando faltan LOS DOS.
             <Text style={styles.vacio}>No se registró</Text>
           ) : null}
+        </Seccion>
+
+        {/* LAS RUTAS, JUSTO DESPUÉS DEL OBJETIVO (cotejo punto 30): la ruta es lo que justifica el
+            plan, así que se lee antes de él. Iban antes del objetivo, y en su HC van después. */}
+        <Seccion titulo="Rutas de atención activadas">
+          {hc.rutas.length > 0 ? (
+            hc.rutas.map((r) => (
+              <Text key={r.label} style={styles.item}>
+                {r.label}
+                {r.activacion ? ` · ${r.activacion}` : ""}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.vacio}>El diagnóstico no activó rutas de atención.</Text>
+          )}
         </Seccion>
 
         {hc.plan ? (
@@ -294,16 +299,39 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
         </Seccion>
 
         <Seccion titulo="Remisiones">
+          {/* LAS DOS COSAS, COMO EN LA PANTALLA (cotejo punto 30): lo que el modelo EXIGIÓ, que sale de
+              las rutas activas, y lo que el profesional REGISTRÓ. Antes solo iba lo registrado, así que
+              en un paciente con una remisión OBLIGATORIA activa el documento probatorio afirmaba que no
+              se remitió a nadie. No omitía la derivación: decía que no la hubo. */}
+          {hc.remisionesExigidas.length > 0 ? (
+            <>
+              <Text style={styles.etiqueta}>Lo que el modelo exigió</Text>
+              {hc.remisionesExigidas.map((r) => (
+                <Text key={r.destino} style={styles.item}>
+                  {r.destino} · {r.urgencia} · {r.registrada ? "Registrada" : "Sin registrar"}
+                  {r.indicaciones.length > 0 ? ` · ${r.indicaciones.join("; ")}` : ""}
+                </Text>
+              ))}
+            </>
+          ) : null}
           {hc.remisiones.length > 0 ? (
-            hc.remisiones.map((r, i) => (
-              <Text key={`${r.profesion}-${i}`} style={styles.item}>
-                {r.fecha} · {r.profesion} · {r.estado}
-                {r.motivo ? ` · ${r.motivo}` : ""}
-              </Text>
-            ))
-          ) : (
-            <Text style={styles.vacio}>No se remitió a otro profesional en esta consulta.</Text>
-          )}
+            <>
+              {hc.remisionesExigidas.length > 0 ? (
+                <Text style={styles.etiqueta}>Lo que el profesional registró</Text>
+              ) : null}
+              {hc.remisiones.map((r, i) => (
+                <Text key={`${r.profesion}-${i}`} style={styles.item}>
+                  {r.fecha} · {r.profesion} · {r.estado}
+                  {r.motivo ? ` · ${r.motivo}` : ""}
+                </Text>
+              ))}
+            </>
+          ) : null}
+          {hc.remisionesExigidas.length === 0 && hc.remisiones.length === 0 ? (
+            <Text style={styles.vacio}>
+              El modelo no exigió remisiones y el profesional no registró ninguna en esta consulta.
+            </Text>
+          ) : null}
         </Seccion>
 
         <Seccion titulo="Observaciones del profesional">

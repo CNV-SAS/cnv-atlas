@@ -519,6 +519,19 @@ export function HcRecomendaciones({ bloques }: { bloques: HcRecomendacion[] }) {
 // Asi que no falta nada, pero por otro motivo del que estaba escrito: no es que el bloque no exista en
 // su archivo, es que no se renderiza nunca. Si algun dia manda la pantalla que lo alimenta, esto es una
 // seccion nueva y no un renglon.
+/** Remision que el MODELO exigio (de las rutas activas), con si el profesional la registro o no. La
+ *  compone `remisionesExigidas` en `hc-composicion`; el tipo vive aqui, con el resto de los tipos de
+ *  bloque, igual que `HcPlanNutricional`. */
+export type HcRemisionExigida = {
+  /** Rotulo del destinatario, el de las rutas ("Médico", "Educador físico, entrenador, deportólogo"). */
+  destino: string;
+  /** Urgencia VERBATIM de la ruta; la mas alta si varias rutas remiten al mismo destino. */
+  urgencia: string;
+  indicaciones: string[];
+  /** true si hay un registro del profesional hacia ESE destinatario en esta consulta. */
+  registrada: boolean;
+};
+
 export type HcRemision = {
   id: string;
   destino: string;
@@ -527,12 +540,72 @@ export type HcRemision = {
   retorno: string | null;
 };
 
-export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
+export function HcRemisiones({
+  exigidas,
+  remisiones,
+}: {
+  exigidas: HcRemisionExigida[];
+  remisiones: HcRemision[];
+}) {
   return (
     <Tarjeta>
       <TituloSeccion>Remisiones y derivaciones</TituloSeccion>
+
+      {/* LO QUE EL MODELO EXIGIO (bloque DERIVADO). Va primero porque no lo decidio nadie: sale del
+          diagnostico, y consta aunque el profesional no haya hecho nada. Hasta el 2026-09-06 esto no
+          estaba, y la historia clinica de un paciente con una remision OBLIGATORIA activa decia que no
+          se habia registrado ninguna: no omitia la derivacion, afirmaba que no la hubo. */}
+      {exigidas.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            Lo que el modelo exigió
+          </p>
+          {exigidas.map((r) => (
+            <div key={r.destino} className="rounded-md border border-border bg-muted/40 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground">{r.destino}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  {/* La urgencia va VERBATIM como la escribe la ruta: es texto clinico, no una etiqueta
+                      nuestra. Se resalta la obligatoria, que es la que cambia lo que hay que hacer. */}
+                  <span
+                    className={
+                      /obligatoria/i.test(r.urgencia)
+                        ? "rounded-full bg-attention/15 px-2 py-0.5 text-xs font-semibold text-attention-foreground"
+                        : "text-xs text-muted-foreground"
+                    }
+                  >
+                    {r.urgencia}
+                  </span>
+                  {/* EL ESTADO ES LO QUE DE VERDAD SE LEE: no "habia que remitir", sino "habia que
+                      remitir y no consta que se hiciera". Se DERIVA del registro por destinatario, no
+                      es un flag aparte que pueda desincronizarse. */}
+                  <span className="text-xs text-muted-foreground">
+                    {r.registrada ? "Registrada" : "Sin registrar"}
+                  </span>
+                </span>
+              </div>
+              {r.indicaciones.length > 0 ? (
+                <ul className="mt-1 list-disc pl-5">
+                  {r.indicaciones.map((ind: string) => (
+                    <li key={ind} className="text-sm leading-relaxed text-foreground">
+                      {ind}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* LO QUE EL PROFESIONAL REGISTRO (bloque REGISTRO), con su fecha y su retorno. */}
       {remisiones.length > 0 ? (
         <div className="flex flex-col gap-2">
+          {exigidas.length > 0 ? (
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Lo que el profesional registró
+            </p>
+          ) : null}
           {remisiones.map((r) => (
             <div key={r.id} className="rounded-md border border-border bg-muted/40 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -546,16 +619,18 @@ export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
             </div>
           ))}
         </div>
-      ) : (
-        // "No aplica", no "no se registró": no remitir es una decisión clínica válida y frecuente.
+      ) : null}
+
+      {/* SOLO CUANDO NO HAY NI LO UNO NI LO OTRO, y ahora la frase puede afirmar las dos cosas porque
+          las dos se miraron. Antes decia lo mismo sin haber mirado la primera. */}
+      {exigidas.length === 0 && remisiones.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No se registraron remisiones ni derivaciones en esta consulta.
+          El modelo no exigió remisiones y el profesional no registró ninguna en esta consulta.
         </p>
-      )}
+      ) : null}
     </Tarjeta>
   );
 }
-
 // Bloque ANI-BIS-E de la tabla de la historia clinica (porte 2026-08-24). Su HC los pone DENTRO de la
 // tabla de Wang, como un nivel mas; en Atlas viven en la tabla de indices del Diagnostico, que es una
 // tabla aparte. Portarlos al mapa de composicion los DUPLICARIA en Diagnostico, asi que se anaden solo
