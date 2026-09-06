@@ -8,11 +8,22 @@ import type { CorrectionAvailability } from "../data/correction-availability-rea
 // (confirmar diagnóstico, aprobar protocolo, aprobar reporte): esos son primarios/rellenos y avanzan;
 // corregir es lo opuesto (rehace una emisión ya sellada). Por eso vive en un recuadro tenue aparte, con
 // botón de contorno (no relleno) y una pregunta que invita a pensarlo, no un CTA que empuja a hacerlo.
-// Aparece al pie de las tres pestañas donde el profesional PODRÍA notar el error (Evaluación,
-// Diagnóstico, Tratamiento). Solo cuando ya hay un diagnóstico: sin emisión sellada no hay nada que
-// rehacer (antes del diagnóstico se edita la entrada directamente).
+// DONDE VIVE, y el comentario decia otra cosa: aparece en UN sitio, la card "Cierre del diagnóstico" al
+// pie de Diagnóstico Funcional, emparejado con confirmar ("dos caminos: confirmar o corregir"). Decia
+// "al pie de las tres pestañas", que fue cierto y dejo de serlo. Solo con diagnóstico ya emitido: sin
+// emisión sellada no hay nada que rehacer (antes se edita la entrada directamente).
 //
-// availability lo resuelve la página una vez (no tres); CP3: si la evaluación es de una versión anterior
+// HAY UN SEGUNDO CAMINO Y NO SOBRA (cotejo 2026-09-05, punto 14): la subpestaña de la encuesta lleva el
+// mismo botón. Son dos MOMENTOS distintos, no una repetición: allá el profesional está mirando las
+// respuestas y ve la equivocada; aquí está leyendo el diagnóstico y se da cuenta de que un dato no
+// cuadra. Quitar este obligaría a ir a buscarlo justo cuando surge la necesidad.
+//
+// LO QUE SI SOBRABA ERA EL TEXTO. Iban tres párrafos, y dos eran la explicación del ALCANCE, que está
+// verbatim en la pantalla de corrección, que es adonde lleva el botón. Peor: uno de ellos explicaba que
+// la medición se puede volver a importar "mientras no haya diagnóstico", y este bloque SOLO se muestra
+// cuando ya lo hay, así que describía un camino cerrado en el momento de leerlo.
+//
+// availability lo resuelve la página; CP3: si la evaluación es de una versión anterior
 // de la encuesta, el botón se muestra DESHABILITADO con la razón (estado, no un error al pulsar).
 export function CorrectionEntry({
   evaluationId,
@@ -28,16 +39,9 @@ export function CorrectionEntry({
         Corrige la respuesta equivocada. Se genera una versión nueva del diagnóstico, el tratamiento y el
         reporte con el dato corregido; la versión actual no se borra, queda registrada como reemplazada.
       </p>
-      {/* Alcance honesto (CP3), ACTUALIZADO el 2026-09-05: aquí solo se corrige la encuesta, y la
-          identidad no se corrige aquí. Lo que cambió es la medición: desde el cotejo, el import se puede
-          repetir MIENTRAS NO HAYA DIAGNOSTICO, y este texto decía que había que escribir a soporte en
-          todos los casos. Era la familia de siempre: se cambia el mecanismo y el texto se queda. */}
       <p className="max-w-prose text-xs text-muted-foreground">
-                Aquí corriges las respuestas de la encuesta. La identidad del paciente no se corrige aquí.
-        <strong className="font-medium"> La medición del equipo sí se puede volver a importar mientras la
-        evaluación no tenga diagnóstico</strong>: vuelve a Evaluación, subpestaña Antropometría y BIS, y
-        sube el archivo correcto; el anterior se reemplaza. Con el diagnóstico ya generado, la evaluación
-        debe cerrarse y hacerse de nuevo, y esa opción todavía no está disponible: escríbele a soporte.
+        Aquí solo se corrige la encuesta. Con el diagnóstico ya generado, la medición del equipo y la
+        identidad del paciente no se corrigen: escríbele a soporte.
       </p>
       {availability.available ? (
         <div>
