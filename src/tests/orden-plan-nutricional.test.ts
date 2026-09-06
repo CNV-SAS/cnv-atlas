@@ -34,7 +34,7 @@ describe("orden del plan alimentario", () => {
     // renderizarse ENTRE los dos bloques de la cadena. La aserción es la misma; lo que cambió es dónde
     // hay que mirarla. Con la comparación vieja habría bastado con invertir el `toBeLessThan` para
     // ponerlo verde, y eso habría fijado exactamente lo contrario de lo que se quiere.
-    const dentro = pos("{validacion}");
+    const dentro = pos("{validacion(adj, opciones, hayCambiosSinGuardar)}");
     expect(dentro, "la validación se renderiza dentro de la cadena").toBeLessThan(
       pos("Fórmula sintética"),
     );
@@ -44,16 +44,31 @@ describe("orden del plan alimentario", () => {
     // El contenido del punto 21: el objetivo, la actividad, el déficit y el peso meta cambian la tabla
     // en vivo. Con la tabla arriba y los campos abajo no se lee que una cosa mueve a la otra.
     const meta = pos('<h3 className={tituloBloqueCls("decision")}>Objetivo del plan');
-    expect(meta).toBeLessThan(pos("{validacion}"));
+    expect(meta).toBeLessThan(pos("{validacion(adj, opciones, hayCambiosSinGuardar)}"));
     for (const campo of ['name="pesoMeta"', 'name="adjKcalObj"', 'name="adjDeficit"']) {
       expect(pos(campo), `${campo} tiene que quedar ARRIBA de la validación`).toBeLessThan(
-        pos("{validacion}"),
+        pos("{validacion(adj, opciones, hayCambiosSinGuardar)}"),
       );
     }
   });
 
   it("y todo eso después del objetivo del tratamiento: primero se fija la meta", () => {
     expect(pos("<ObjetivoSection")).toBeLessThan(pos("<CadenaCaloricaSection"));
+  });
+
+  it("y se recalcula EN VIVO con esos campos, no con lo guardado (punto 21b)", () => {
+    // El contenido del 21b: los cuatro campos existen para ver como cambia esta tabla. Con los ajustes
+    // GUARDADOS, la tabla solo se movia despues de bajar a la formula y guardar.
+    expect(PANEL).toContain("{validacion(adj, opciones, hayCambiosSinGuardar)}");
+    expect(PANEL, "la tabla usa los ajustes que le llegan, no los de la fila").toContain(
+      "computeProtocoloEfectivo(snap, ajustes ?? adjGuardados, opciones ?? {})",
+    );
+  });
+
+  it("y DICE que esta validando cifras sin guardar", () => {
+    // Una previsualizacion tiene que decir que lo es: sin esto, un profesional lee una validacion
+    // correcta y se va sin guardar creyendo que el plan validado es el que queda.
+    expect(PANEL).toContain("todavía sin guardar");
   });
 
   it("la cadena va antes del intercambio, que consume su objetivo", () => {

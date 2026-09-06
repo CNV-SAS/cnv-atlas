@@ -175,7 +175,7 @@ export function Diana({
         //
         // La geometria NO se toca: el navegador escala el viewBox. Cambiar SIZE/R/HOLE si habria movido
         // los rotulos respecto de su celda.
-        className="h-auto w-full max-w-[60rem]"
+        className="h-auto w-full max-w-[52rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -225,13 +225,17 @@ export function Diana({
           const tx = lx + (derecha ? 4 : izquierda ? -4 : 0);
           const bandas = efrSectorBands(sc);
           return (
+            /* MAS PEQUEÑOS (segundo smoke, punto 15c): "tienen que leerse, no resaltar". Su archivo los
+               pone a 9,5 y 5,8 sobre un lienzo de 660 unidades; el nuestro mide 408, asi que en
+               proporcion los nuestros iban al doble. 8 y 6,5 los deja legibles sin competir con el
+               dibujo, que es lo que se mira primero. */
             <text
               key={`sl${sc}`}
               x={tx}
               y={ly}
               textAnchor={anchor}
               dominantBaseline="central"
-              fontSize={10}
+              fontSize={8}
               className="fill-muted-foreground"
             >
               {/* TRES LINEAS CON AIRE (2026-09-05). Iban a 6 unidades de cuerpo con 6 de salto, o sea sin
@@ -240,30 +244,40 @@ export function Diana({
                   linea de la siguiente. El espacio extra sale del PAD del lienzo, no de la geometria. */}
               {bandas ? (
                 <>
-                  <tspan x={tx} dy={-11} fontSize={8}>
+                  <tspan x={tx} dy={-9} fontSize={6.5}>
                     FMI {bandToWord(bandas.fmi)}
                   </tspan>
-                  <tspan x={tx} dy={9} fontSize={8}>
+                  <tspan x={tx} dy={7.5} fontSize={6.5}>
                     FFMI {bandToWord(bandas.ffmi)}
                   </tspan>
                 </>
               ) : null}
-              <tspan x={tx} dy={bandas ? 11 : 0} fontWeight={700}>
+              <tspan x={tx} dy={bandas ? 9 : 0} fontWeight={700}>
                 E{sc + 1}
               </tspan>
             </text>
           );
         })}
+        {/* LOS ROTULOS DE ANILLO (A1..A9) VAN A LA IZQUIERDA DEL EJE VERTICAL, o sea dentro de E9, y no
+            en E1 como los teniamos (segundo smoke, punto 15b).
+
+            VERIFICADO EN SU CODIGO ANTES DE MOVERLOS, no en la captura: su v8 los dibuja con
+              x = CX - 4 · y = CY - rr · text-anchor="end"
+            o sea pegados al eje vertical por su lado IZQUIERDO y creciendo hacia afuera. Nosotros los
+            poniamos en el centro del primer sector (20 grados), que cae a la DERECHA del eje.
+
+            El halo blanco es tambien suyo (`stroke` blanco con `paint-order`): son rotulos sobre celdas
+            de cualquier color, y sin el se pierden sobre el rojo oscuro del exterior. */}
         {Array.from({ length: RINGS }, (_, rg) => {
-          const [lx, ly] = polar(HOLE + rg * BAND + BAND / 2, SECTOR_DEG / 2);
+          const r = HOLE + rg * BAND + BAND / 2;
           return (
             <text
               key={`rl${rg}`}
-              x={lx}
-              y={ly}
-              textAnchor="middle"
+              x={C - 4}
+              y={C - r}
+              textAnchor="end"
               dominantBaseline="central"
-              fontSize={7}
+              fontSize={6}
               fontWeight={700}
               fill="white"
               stroke="#0f172a"
@@ -308,7 +322,7 @@ export function Diana({
           (periferia), no solo degradado. */}
       {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 60rem quedaba
           como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
-      <div className="flex w-full max-w-[60rem] flex-col gap-1">
+      <div className="flex w-full max-w-[52rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
@@ -322,7 +336,7 @@ export function Diana({
       </div>
       {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 60rem quedaba estrecho
           y partia sus dos lineas en cuatro. */}
-      <figcaption className="flex max-w-[60rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[52rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados

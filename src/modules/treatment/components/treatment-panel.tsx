@@ -406,8 +406,16 @@ function CadenaCaloricaSection({
    * sobre las mismas columnas y un guardado parcial dejaria que la cadena de un profesional pisara la
    * meta de otro. Lo que se intercala es una tabla de SOLO LECTURA, sin inputs ni botones: no hay
    * formulario anidado (que seria HTML invalido) ni un boton que herede `type="submit"`.
+   *
+   * ES UNA FUNCION Y NO UN NODO (2026-09-06, punto 21b): la tabla se recalcula EN VIVO con los cuatro
+   * campos de arriba, y esos viven en el estado de ESTA seccion. El padre no los tiene. Mismo patron
+   * que `adaptar` en el bloque de restricciones.
    */
-  validacion: ReactNode;
+  validacion: (
+    ajustes: ProtocoloAjustes,
+    opciones: { protKgVigente: number | null },
+    sinGuardar: boolean,
+  ) => ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
   // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
@@ -443,6 +451,17 @@ function CadenaCaloricaSection({
   // pagina ya la trae aqui dentro de `prescripcion`, asi que no hace falta leer nada mas. Los sellados
   // desde esa fecha la ignoran: manda `snap.mtn.protKg`, que es lo reproducible.
   const opciones = { protKgVigente: prescripcion?.protKg ?? null };
+  // LO DE PANTALLA FRENTE A LO GUARDADO. Se compara campo a campo sobre los seis ajustes, que son los
+  // que la tabla consume; asi el aviso aparece exactamente cuando la tabla esta mostrando algo que
+  // todavia no esta en la base, y desaparece solo al guardar (la seccion se remonta por su key).
+  const hayCambiosSinGuardar =
+    adj.geb !== protocol.adjGeb ||
+    adj.pal !== protocol.adjPal ||
+    adj.kcalObj !== protocol.adjKcalObj ||
+    adj.protGkg !== protocol.adjProtGkg ||
+    adj.fatPct !== protocol.adjFatPct ||
+    adj.deficit !== protocol.adjDeficit ||
+    adj.pesoMeta !== protocol.pesoMetaFijado;
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
   const efectivo = computeProtocoloEfectivo(snap, adj, opciones);
   const cal = efectivo.calorico;
@@ -715,8 +734,11 @@ function CadenaCaloricaSection({
 
       {/* LA VALIDACION, ENTRE LOS DOS BLOQUES (cotejo punto 21). Va FUERA del fieldset a proposito:
           es lectura, no edicion, y un `fieldset:disabled` alrededor de una tabla de resultados la
-          apagaria visualmente al sellar la prescripcion, que es justo cuando mas se consulta. */}
-      {validacion}
+          apagaria visualmente al sellar la prescripcion, que es justo cuando mas se consulta.
+
+          Se le pasan los ajustes VIVOS y las MISMAS opciones que usa la cadena, para que se recalcule
+          al teclear (21b) y para que las dos cuentas no puedan salir de fuentes distintas. */}
+      {validacion(adj, opciones, hayCambiosSinGuardar)}
 
       <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
@@ -1202,7 +1224,14 @@ export function TreatmentPanel({
           locked={locked}
           prescripcion={prescripcion}
           asesoria={asesoria}
-          validacion={<ValidacionSection protocol={protocol} />}
+          validacion={(ajustes, opcionesCadena, sinGuardar) => (
+            <ValidacionSection
+              protocol={protocol}
+              ajustes={ajustes}
+              opciones={opcionesCadena}
+              sinGuardar={sinGuardar}
+            />
+          )}
         />
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
             guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}
@@ -2774,7 +2803,41 @@ function TiemposSection({
 // Validacion nutricional (CP3.2): tabla de 16 nutrientes (obtenido/requerido/% cubrimiento/ICN) DERIVADA en
 // vivo del intercambio (CP1) + los macros de la cadena + sexo/edad. Solo lectura: NO se guarda, NO se edita,
 // asi que no puede desfasarse (se recalcula sola). El sodio se LIMITA (menos es mejor), el resto se cubre.
-function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
+// LA VALIDACION SE RECALCULA EN VIVO CON LOS CUATRO CAMPOS DE ARRIBA (cotejo 2026-09-06, punto 21).
+//
+// POR QUE. Esos cuatro campos existen para ver como cambia esta tabla; su archivo la recalcula al
+// teclear y el nuestro exigia bajar hasta el final de la formula sintetica y guardar. Textual de
+// Santiago: "no hace sentido ir tan abajo y los profesionales no van a saber".
+//
+// Y SE PUDO SIN PARTIR EL GUARDADO, que es lo que ya habiamos decidido no hacer: esta tabla NO
+// PERSISTE NADA, se deriva. Asi que basta con darle los ajustes que hay EN PANTALLA en vez de los
+// guardados. Es una prop; no hay escritor, ni firma, ni columna nueva.
+//
+// LA DISTINCION CON EL BOTON DEL PUNTO 25, que parece la contraria y no lo es: alli el boton se APAGA
+// mientras haya cambios sin guardar, y aqui la tabla SI muestra lo no guardado. La diferencia es que
+// aquel ACTUA (manda las restricciones guardadas a la IA, y con las de pantalla mentiria) y esta
+// PREVISUALIZA. Lo que una previsualizacion debe es DECIR que lo es, y eso hace el aviso de abajo.
+function ValidacionSection({
+  protocol,
+  ajustes,
+  opciones,
+  sinGuardar = false,
+}: {
+  protocol: TreatmentProtocol;
+  /** Los ajustes VIVOS de la cadena. Sin ellos (uso fuera del panel) manda lo guardado. */
+  ajustes?: ProtocoloAjustes;
+  /**
+   * Las MISMAS opciones que usa la cadena, y esto cerraba un hueco que nadie habia mirado: la tabla
+   * llamaba a `computeProtocoloEfectivo` SIN `protKgVigente` y la cadena CON el. En los snapshots
+   * anteriores al 2026-09-03 (que no sellan `mtn.protKg`) esa opcion es la que decide si la proteina
+   * sale del MOTOR o del minimo poblacional, asi que la tabla podia estar validando el plan contra una
+   * proteina que el profesional no prescribio. Medido el 2026-09-06: 21 de 26 tratamientos de la nube
+   * caen en esa ventana, 19 de ellos sin ajuste manual.
+   */
+  opciones?: { protKgVigente: number | null };
+  /** Hay cambios en los campos de arriba todavia sin guardar. */
+  sinGuardar?: boolean;
+}) {
   const snap = protocol.protocolSuggested;
   if (!snap || protocol.pesoCalculo == null) return null;
 
@@ -2787,7 +2850,7 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
     deficit: protocol.adjDeficit,
     pesoMeta: protocol.pesoMetaFijado,
   };
-  const ef = computeProtocoloEfectivo(snap, adjGuardados);
+  const ef = computeProtocoloEfectivo(snap, ajustes ?? adjGuardados, opciones ?? {});
   const objetivoEfectivo = Math.round(ef.calorico.kcalObj);
   const defaults = computeIntercambio(objetivoEfectivo);
   const savedInter = protocol.intercambioPorciones;
@@ -2858,6 +2921,16 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
         Cubrimiento de nutrientes contra los requerimientos por sexo y edad. El sodio se{" "}
         <strong>limita</strong> (menos es mejor); el resto se cubre.
       </p>
+      {/* UNA PREVISUALIZACION TIENE QUE DECIR QUE LO ES. La tabla se recalcula con lo que hay escrito
+          arriba, asi que sin este aviso un profesional podria leer una validacion correcta e irse sin
+          guardar, creyendo que el plan validado es el que queda. Va en la capa de ATENCION (operativo:
+          "te falta hacer algo"), no en la clinica, que significa un veredicto sobre el paciente. */}
+      {sinGuardar ? (
+        <p className="max-w-prose rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
+          Esta tabla se está recalculando con los valores que acabas de escribir arriba,{" "}
+          <strong>todavía sin guardar</strong>. Guarda los ajustes para dejarlos fijos.
+        </p>
+      ) : null}
       {!algunaPorcion ? (
         <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           La validación aparece cuando hay porciones en la lista de intercambio.

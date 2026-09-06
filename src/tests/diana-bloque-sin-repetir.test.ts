@@ -104,7 +104,9 @@ describe("rotulos de sector de la Diana: legibles (cotejo punto 15)", () => {
       }),
     );
     // El segundo renglon del par ("FFMI ..."): su dy es el salto desde el primero.
-    const m = html.match(/<tspan[^>]*dy="(\d+)"[^>]*font-size="(\d+)"[^>]*>FFMI/);
+    // Los cuerpos y los saltos pueden ser fraccionarios (6,5 y 7,5): el patron acepta decimales. Si
+    // solo aceptara enteros, bajar el cuerpo a 6,5 lo pondria rojo por el PARSEO y no por la regla.
+    const m = html.match(/<tspan[^>]*dy="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>FFMI/);
     expect(m, "el segundo renglon del par de bandas").not.toBeNull();
     const salto = Number(m![1]);
     const cuerpo = Number(m![2]);
@@ -145,6 +147,47 @@ describe("rotulos de sector de la Diana: legibles (cotejo punto 15)", () => {
       const esperado = t.x > C ? "start" : "end";
       expect(t.anchor, `el rotulo en x=${t.x} tiene que crecer hacia afuera`).toBe(esperado);
     }
+  });
+
+  // LOS ROTULOS DE ANILLO (A1..A9) VAN A LA IZQUIERDA DEL EJE VERTICAL, o sea dentro de E9 (segundo
+  // smoke, punto 15b). Los teniamos en el centro del primer sector (20 grados), que cae a la DERECHA.
+  //
+  // SE VERIFICO EN SU CODIGO ANTES DE MOVERLOS, no en su captura, que es lo que Santiago pidio. Su v8
+  // los dibuja con `x = CX - 4`, `y = CY - rr` y `text-anchor="end"`: pegados al eje por su lado
+  // izquierdo y creciendo hacia afuera.
+  it("los rotulos de anillo van a la IZQUIERDA del eje vertical, como en su archivo", () => {
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    const C = 160;
+    const anillos = [...html.matchAll(/<text\b[^>]*>A(\d)<\/text>/g)];
+    expect(anillos.length, "los nueve rotulos de anillo").toBe(9);
+    for (const m of anillos) {
+      const tag = m[0];
+      const x = Number(tag.match(/\bx="([\d.-]+)"/)![1]);
+      expect(x, `A${m[1]} tiene que quedar a la izquierda del eje`).toBeLessThan(C);
+      expect(tag, `A${m[1]} crece hacia afuera`).toContain('text-anchor="end"');
+    }
+  });
+
+  it("y siguen apilados en vertical, uno por anillo", () => {
+    // Control: si todos cayeran en la misma y, estarian encimados y el caso de arriba pasaria igual.
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    const ys = [...html.matchAll(/<text\b[^>]*>A\d<\/text>/g)]
+      .map((m) => Number(m[0].match(/\by="([\d.-]+)"/)![1]));
+    expect(new Set(ys).size, "cada anillo en su propia altura").toBe(9);
   });
 
   it("el lienzo deja margen alrededor del dibujo para que el rotulo no quede a ras del borde", () => {
