@@ -38,6 +38,15 @@ const SIN_PANTALLA_A_PROPOSITO = new Map([
       "proteccion. Si algun dia se cablea, se borra esta linea.",
   ],
   [
+    "addNoteAction",
+    "Cotejo del 2026-09-05, punto 26: Santiago retiro el CAMPO de notas del tratamiento (\"el html no " +
+      "lo tiene... de momento yo quitaria este bloque\"). Verificado que esas notas no viajan al reporte " +
+      "ni a la historia clinica. La action, el servicio y la tabla NO se tocan a proposito: las notas ya " +
+      "escritas se siguen MOSTRANDO en solo lectura, y devolver el campo es volver a montar un " +
+      "formulario. Misma disciplina con la que se retiraron las guias dietarias. Si vuelve el campo, o " +
+      "si se construye el bloque de notas globales que Santiago propone, se borra esta linea.",
+  ],
+  [
     "registerUsageAction",
     "MVP.md, tabla de modulos: el modulo nutraceuticals es 'Importante' y NO entra al MVP; el 'registro " +
       "de uso/recomendacion' es parte de su alcance futuro. La action se escribio adelantada a su " +

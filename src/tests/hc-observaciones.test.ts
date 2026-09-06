@@ -83,15 +83,26 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     return dirs.filter((f) => readFileSync(f, "utf8").includes('name="note"'));
   };
 
-  it("las cuatro superficies de nota siguen siendo cuatro", () => {
-    // Si aparece una quinta sin pasar por aquí, la clasificación A/B deja de estar completa y este archivo
-    // dejaría de describir el sistema. Es la lección del candado que se cree completo.
-    expect(surfaces()).toHaveLength(4);
+  it("las superficies de nota siguen siendo TRES", () => {
+    // ERAN CUATRO HASTA EL 2026-09-06 (cotejo, punto 26): el campo de notas del tratamiento se retiró
+    // porque su archivo no lo tiene y esas notas no viajaban a ningún documento. Las ya escritas se
+    // siguen mostrando en solo lectura, así que la tabla y su lector no se tocaron; lo que desapareció
+    // es el `name="note"` de esa superficie.
+    //
+    // SE AJUSTA EL NÚMERO, NO LA ASERCIÓN: lo que este caso protege es que una superficie nueva no
+    // aparezca sin pasar por aquí, y para eso el conteo tiene que ser EXACTO. Cambiarlo a
+    // `toBeLessThanOrEqual` habría dejado entrar la quinta en silencio, que es justo lo que vigila.
+    expect(surfaces()).toHaveLength(3);
   });
 
-  it("la de CLASE B (observación libre del tratamiento) es la que llega a la historia", () => {
+  it("la de CLASE B ya no admite notas nuevas, pero lo escrito se sigue leyendo", () => {
+    // El campo se retiró (punto 26). Lo que NO se puede perder es lo ya escrito: un profesional que
+    // anotó aquí dejaría de ver su propio texto, y solo sería alcanzable por un grant de administrador.
+    // Es la lección del almacén que se elige por la propiedad que resuelve lo de delante y se olvida la
+    // de LECTURA.
     const panel = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
-    expect(panel).toContain("Notas del tratamiento");
+    expect(panel).toContain("Notas del tratamiento (histórico)");
+    expect(panel, "el campo ya no existe").not.toContain("Guardar nota");
     expect(PAGE).toContain("protocol?.notes");
   });
 

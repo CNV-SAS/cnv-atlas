@@ -21,6 +21,18 @@ const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx
 const PLANO = PANEL.replace(/\s+/g, " ");
 const frasePlana = (f: string) => f.replace(/\s+/g, " ");
 
+// LA GARANTIA DE IRREVERSIBILIDAD SALIO DE ESTA LISTA, y no porque se podara (2026-09-06, cotejo punto
+// 26). Decia "no se editan ni se borran" en las notas del tratamiento, y ese CAMPO se retiro: Santiago
+// lo pidio ("el html no lo tiene... de momento yo quitaria este bloque") y las notas ya escritas quedan
+// en solo lectura. Un aviso de "piensalo antes de escribir" sobre un sitio donde ya no se escribe no
+// protege nada.
+//
+// PERO LA GARANTIA SIGUE VIVA, en el otro sitio append-only que si tiene campo: el criterio del
+// profesional. Ahi se afirma abajo, en su propio caso, y ADEMAS junto al boton, que es donde el cotejo
+// del 5 de septiembre (punto 13) demostro que hacia falta. Mover la asercion de archivo NO es relajarla:
+// lo que se sigue exigiendo es que un acto irreversible se anuncie antes de cometerlo.
+const CRITERIO = readFileSync("src/modules/diagnoses/components/professional-criterion.tsx", "utf8");
+
 const GARANTIAS: [string, string, string][] = [
   [
     "dos gastos, no uno",
@@ -93,11 +105,7 @@ const GARANTIAS: [string, string, string][] = [
     "envíale el reporte",
     "Consecuencias de un acto que sale del sistema y llega al paciente. Nunca se poda un texto que anuncia eso.",
   ],
-  [
-    "las notas no se editan ni se borran",
-    "no se editan ni se borran",
-    "Irreversibilidad. El profesional tiene derecho a saberlo ANTES de escribir.",
-  ],
+
   [
     "por qué el menú parte de un ciclo",
     "criterio clínico",
@@ -138,3 +146,18 @@ describe("y lo que se podó no volvió", () => {
     expect(PANEL).not.toContain("La cadena calórica y su desarrollo: intercambio, restricciones y menú");
   });
 });
+
+describe("la irreversibilidad se anuncia donde todavía se escribe", () => {
+  it("el criterio del profesional dice que no se puede borrar, y lo dice JUNTO AL BOTÓN", () => {
+    const plano = frasePlana(CRITERIO);
+    expect(plano).toContain("no se puede borrar");
+    const i = CRITERIO.indexOf('type="submit"');
+    expect(i).toBeGreaterThan(-1);
+    // La ventana es el bloque del botón: si la frase estuviera solo en el párrafo de arriba, este caso
+    // no la encontraría. Es la lección del punto 13: la pregunta de Santiago ("¿y si se equivocó?") fue
+    // la prueba de que a media pantalla del botón no se lee.
+    const cerca = frasePlana(CRITERIO.slice(i - 400, i + 600));
+    expect(cerca).toContain("no se puede borrar");
+  });
+});
+

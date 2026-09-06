@@ -2,6 +2,7 @@
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useActionState, useId, useState, type ReactNode } from "react";
+import { RotateCcw } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -38,7 +39,6 @@ import {
 } from "@/components/shared/use-form-toast";
 
 import {
-  addNoteAction,
   aplicarCambioMenuAction,
   approveProtocolAction,
   aplicarCambiosMenuAction,
@@ -251,9 +251,14 @@ function BotonRecalcular({
 }) {
   const [confirmando, setConfirmando] = useState(false);
 
+  // SE VE COMO UN BOTON (cotejo 2026-09-05, punto 24: "se ve raro"). Iba en `ghost`, o sea sin borde ni
+  // fondo, al lado de un "Guardar" con contorno: se leia como texto suelto, que es el MISMO defecto del
+  // selector de archivo del punto 7. Va con contorno, como todos los guardados del panel, y lo que lo
+  // distingue es el ICONO, no la ausencia de forma.
   if (!hayAjustes) {
     return (
-      <Button type="button" variant="ghost" disabled={disabled} onClick={onRecalcular}>
+      <Button type="button" variant="outline" disabled={disabled} onClick={onRecalcular}>
+        <RotateCcw className="size-4" aria-hidden />
         {etiqueta}
       </Button>
     );
@@ -274,6 +279,7 @@ function BotonRecalcular({
           onRecalcular();
         }}
       >
+        <RotateCcw className="size-4" aria-hidden />
         Sí, recalcular
       </Button>
       <Button
@@ -1256,7 +1262,7 @@ export function TreatmentPanel({
           locked={locked}
           patronAlimentario={patronAlimentario}
         />
-        <NotesSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        <NotesSection protocol={protocol} />
         {/* APROBAR VA AL FINAL, y no es estetico: es el acto que CIERRA la consulta. Todo lo de arriba se
             edita; esto lo sella. Un boton de sellar arriba invita a pulsarlo antes de leer lo que sella. */}
         {!protocol.approved && !diagnosisPending ? (
@@ -1955,6 +1961,10 @@ function IntercambioSection({
   const totalProt = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.prot, 0);
   const totalCho = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.cho, 0);
   const totalGras = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0) * a.gras, 0);
+  // EL TOTAL DE PORCIONES, que faltaba (cotejo 2026-09-05, punto 24). Su tabla lo trae y es el numero
+  // que dice de un vistazo el TAMAÑO del plan: 30 porciones repartidas. Sin el, la columna que el
+  // profesional edita es la unica sin suma.
+  const totalPorciones = defaults.reduce((s, a) => s + (porciones[a.sub] ?? 0), 0);
   const setP = (sub: string, v: number) => setPorciones((p) => ({ ...p, [sub]: Math.max(0, v) }));
   // Hay algo que perder si alguna porcion en pantalla difiere de la que calcula el objetivo actual. Se
   // compara contra los DEFAULTS vivos y no contra lo guardado: si el objetivo cambio, lo guardado tambien
@@ -2094,9 +2104,12 @@ function IntercambioSection({
                   return filas;
                 })}
                 <tr className="border-t-2 border-border font-semibold text-foreground">
-                  <td className="py-2" colSpan={3}>
+                  <td className="py-2" colSpan={2}>
                     Total
                   </td>
+                  {/* LA COLUMNA QUE SE EDITA TAMBIEN SUMA (punto 24). Iba dentro del colSpan, o sea que la
+                      unica columna sin total era justo la que el profesional toca. */}
+                  <td className="py-2 pr-3 text-right tabular-nums">{totalPorciones}</td>
                   {/* El total de kcal dice contra QUE se compara (objetivo): las porciones enteras lo aproximan,
                       no lo igualan, asi que los dos numeros conviven sin confundir. Los macros NO llevan su
                       objetivo al lado a proposito: su adecuacion es la tabla de validacion, que ademas la
@@ -2107,9 +2120,12 @@ function IntercambioSection({
                       objetivo {objetivoEfectivo}
                     </span>
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{totalProt.toFixed(1)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{totalCho.toFixed(1)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{totalGras.toFixed(1)}</td>
+                  {/* SIN DECIMALES EN LA FILA DE TOTALES, como su tabla (punto 24). Las FILAS conservan
+                      su decimal, que es donde el reparto de un alimento se aprecia; el total es una cifra
+                      de conjunto y el decimal ahi solo suma ruido a una suma de veinte terminos. */}
+                  <td className="py-2 pr-3 text-right tabular-nums">{Math.round(totalProt)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{Math.round(totalCho)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{Math.round(totalGras)}</td>
                   <td />
                 </tr>
               </tbody>
@@ -2817,79 +2833,54 @@ function ValidacionSection({ protocol }: { protocol: TreatmentProtocol }) {
   );
 }
 
-function NotesSection({
-  evaluationId,
-  protocol,
-  locked,
-}: {
-  evaluationId: string;
-  protocol: TreatmentProtocol;
-  locked: boolean;
-}) {
-  const [state, formAction, pending] = useActionState(addNoteAction, EMPTY);
-  // Mismo motivo que en el menu: addNoteAction dejo de revalidar, asi que el refresco va aqui, tras el aviso.
-  useFormToastAndRefresh(state);
-  const [note, setNote] = useState("");
-  // Append-only: limpiar el campo tras un guardado exitoso. Si no, el texto recien enviado
-  // queda visible como si fuera una nota nueva por agregar, y el profesional podria darle a
-  // "Agregar" otra vez y crear un duplicado permanente (la nota no se puede editar ni borrar).
-  // Se ajusta en render al cambiar el estado de la accion (patron oficial de React de "ajustar
-  // estado en render", guardando el estado previo en estado; sin efecto ni mutacion de ref).
-  const [seenState, setSeenState] = useState(state);
-  if (seenState !== state) {
-    setSeenState(state);
-    if (state.success && note !== "") setNote("");
-  }
+// NOTAS DEL TRATAMIENTO: SE RETIRA EL CAMPO, NO LO YA ESCRITO (cotejo 2026-09-05, punto 26).
+//
+// Decision de Santiago: "el html no lo tiene, y pienso que no sirve mucho... de momento yo quitaria este
+// bloque". Verificado: su archivo no tiene notas de tratamiento, y en Atlas estas notas NO viajan al
+// reporte ni a la historia clinica; solo las leen esta pantalla y los lectores de auditoria.
+//
+// PERO NO SE BORRA LA LECTURA, y esa es la diferencia con quitar el bloque entero. Hay profesionales que
+// ya escribieron notas aqui; si se retira la seccion completa, ese texto deja de existir para quien lo
+// escribio y solo queda alcanzable por un grant de administrador. Es la leccion del almacen que se elige
+// por la propiedad que resuelve lo de delante y se olvida la de LECTURA. Asi que:
+//   · con notas guardadas, el bloque aparece en SOLO LECTURA y dice que ya no se agregan;
+//   · sin notas (el caso normal y el que Santiago va a ver), no aparece nada.
+//
+// LO QUE NO SE TOCA: la tabla `treatment_notes`, el servicio, la accion y el aviso de correccion que
+// cuenta cuantas notas se pierden al corregir. Devolver el campo es volver a montar un formulario. Es la
+// misma disciplina con la que se retiraron las guias dietarias.
+//
+// Y LA IDEA GRANDE DE SANTIAGO (notas globales que se clasifiquen por la pestaña donde se escriben, y
+// que en el reporte se elija cuales enviar) NO se construye aqui: es un bloque propio, va al backlog.
+function NotesSection({ protocol }: { protocol: TreatmentProtocol }) {
+  if (!protocol.notes.length) return null;
 
   return (
     <div className={bloqueCls("registro")}>
-      <h3 className={tituloBloqueCls("registro")}>Notas del tratamiento</h3>
+      <h3 className={tituloBloqueCls("registro")}>Notas del tratamiento (histórico)</h3>
       <p className="text-xs text-muted-foreground">
-        Notas internas del protocolo de tratamiento. Se agregan al historial (no se editan ni se
-        borran) y no se envían al paciente. Distintas del criterio del diagnóstico y de las notas
-        del reporte.
+        Este bloque ya no admite notas nuevas. Se conserva para que no se pierda lo que se escribió antes;
+        nunca se envió al paciente ni salió en el reporte.
       </p>
       {/* UNA NOTA POR PROFESIÓN (Gildardo 2026-08-30 §8: "cada rol escribe lo suyo y no se pisan").
-          Se AGRUPAN, no se ocultan: el médico necesita leer lo que anotó la nutricionista. Lo que su
-          instrucción excluye es compartir el campo, no compartir la información. Y como las notas son
-          append-only, nadie puede editar la de otro ni por accidente. */}
-      {protocol.notes.length ? (
-        <div className="flex flex-col gap-3">
-          {agruparNotasPorProfesion(protocol.notes).map(([prof, notas]) => (
-            <div key={prof} className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {PROFESION_NOTA[prof] ?? prof}
-              </p>
-              <ul className="flex flex-col gap-2">
-                {notas.map((n) => (
-                  <li key={n.id} className="rounded-lg border border-border p-3 text-sm text-foreground">
-                    <p>{n.note}</p>
-                    <p className="pt-1 text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Sin notas.</p>
-      )}
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <Textarea
-          name="note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Agrega una nota desde tu profesión"
-          rows={2}
-          disabled={locked}
-        />
-        <div>
-          <Button type="submit" variant="outline" disabled={locked || pending || note.trim() === ""}>
-            {pending ? "Agregando..." : "Agregar nota"}
-          </Button>
-        </div>
-      </form>
+          Se AGRUPAN, no se ocultan: el médico necesita leer lo que anotó la nutricionista. */}
+      <div className="flex flex-col gap-3">
+        {agruparNotasPorProfesion(protocol.notes).map(([prof, notas]) => (
+          <div key={prof} className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {PROFESION_NOTA[prof] ?? prof}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {notas.map((n) => (
+                <li key={n.id} className="rounded-lg border border-border p-3 text-sm text-foreground">
+                  <p>{n.note}</p>
+                  <p className="pt-1 text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
