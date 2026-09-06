@@ -11,7 +11,7 @@ import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
-import { clasificarIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
+import { conClaseIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -221,7 +221,10 @@ export function EvaluationResults({
   // poblacional, los diagnosticos nuevos dejan de marcarse solos. Primer uso real de emission_versions.
   const ebIaeProvisional = isProvisionalCalibration(results.emissionVersions);
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
-  const sevByCode = indicatorSeverities(snapshot);
+  // `conClaseIcaBis` resuelve la fila ICA-BIS a la del PABU (ver indicator-ranges: es la regla que su
+  // archivo aplica con `icaBisClf = cPABU(t_pabu)`, y la misma que usa el bloque de indices de la HC).
+  const sevByCode = conClaseIcaBis(indicatorSeverities(snapshot));
+  const clasesPorCodigo = conClaseIcaBis(classifications);
   // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
   // para la celda propia durante la exploracion; nunca del registry).
   const patientContent = {
@@ -272,16 +275,11 @@ export function EvaluationResults({
                     : "-"
                   : (range?.delta ?? "-");
                 // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
-                // ICA-BIS: su clasificacion es la DESVIACION (rama del clasificador del PABU, verbatim del
-                // frozen), que el motor no sella para ICA-BIS (queda N/D) porque cPABU corta a "Reserva
-                // superior" con IFC>6. clasificarIcaBis reusa esa rama de desviacion ("Desviación leve").
-                const isIca = code === "ICA-BIS";
-                const icaCls = isIca ? clasificarIcaBis(indicators.icaBis) : null;
+                // ICA-BIS toma las del PABU, ya resueltas arriba por `conClaseIcaBis` (el porque, con la
+                // cita de su archivo y lo que se retiro, esta en indicator-ranges).
                 const classCode = isEb ? "IAE" : code;
-                const sev = isIca ? (icaCls?.sev ?? null) : sevByCode[classCode];
-                const classLabel = isIca
-                  ? (icaCls?.label ?? "N/D")
-                  : (classifications[classCode]?.label ?? "N/D");
+                const sev = sevByCode[classCode];
+                const classLabel = clasesPorCodigo[classCode]?.label ?? "N/D";
                 return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">

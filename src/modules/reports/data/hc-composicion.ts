@@ -1,5 +1,6 @@
 import { computeProtocoloEfectivo, type ProtocoloSnapshot } from "@/clinical-engine";
 import { indicatorSeverities } from "@/clinical-engine/severity";
+import { conClaseIcaBis } from "@/modules/diagnoses/data/indicator-ranges";
 
 import { indicesAniAlterados, type IndiceAniResuelto } from "./hc-indices-ani";
 import { recomendacionesDe, type RecomendacionBloque } from "./hc-recomendaciones";
@@ -124,8 +125,13 @@ function decodificarMulti(raw: string | null): string[] {
 
 /** Arma los seis bloques de la historia que antes se componian sueltos en la pagina. */
 export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
+  // LA FILA ICA-BIS TOMA LA DEL PABU, la misma regla y la MISMA funcion que la pantalla de Diagnostico
+  // (cotejo 2026-09-05, punto 17). Sin esto el bloque de indices de la historia clinica no podia mostrar
+  // nunca la fila: el snapshot sella `classifications["ICA-BIS"] = null` y `indicatorSeverities` no emite
+  // esa clave, asi que los dos filtros de `indicesAniAlterados` (sin severidad y sin clasificacion) la
+  // descartaban en silencio, desviada o no. El porque clinico esta en indicator-ranges.
   const severidades = e.snapshot
-    ? (indicatorSeverities(e.snapshot as never) as Record<string, number>)
+    ? conClaseIcaBis(indicatorSeverities(e.snapshot as never) as Record<string, number>)
     : {};
 
   const indices = e.snapshot
@@ -140,7 +146,7 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
           PABU: e.snapshot.indicators.pabu ?? null,
           "ICA-BIS": e.snapshot.indicators.icaBis ?? null,
         },
-        e.snapshot.classifications as never,
+        conClaseIcaBis(e.snapshot.classifications as Record<string, { label?: string | null } | null>),
         severidades,
         e.sexoM,
       )
