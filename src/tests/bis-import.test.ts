@@ -221,10 +221,26 @@ describe("el portón del reimport pregunta por el DIAGNÓSTICO, no por la medici
     // APLANADO: el JSX parte las frases en varias lineas, asi que una asercion sobre el texto crudo falla
     // por un salto de linea y no por el contenido. Mismo aplanado que usa `ayudas-que-son-garantias`.
     const plano = (t: string) => t.replace(/\s+/g, " ");
-    for (const [nombre, src] of [["la entrada", ENTRADA], ["el formulario", FORM]] as const) {
+    for (const [nombre, src] of [["el formulario", FORM]] as const) {
       expect(plano(src), `${nombre} sigue diciendo que no se puede reimportar`).toContain(
         "mientras la evaluación no tenga diagnóstico",
       );
     }
+
+    // ALCANCE AJUSTADO, NO ASERCION RELAJADA (2026-09-05, cotejo punto 14). `correction-entry` estaba en
+    // esta lista y ya no describe la regla del reimport: se le quito ese parrafo porque ese bloque SOLO
+    // se muestra cuando YA hay diagnostico, o sea que explicaba un camino cerrado en el momento de
+    // leerlo. La asercion sigue siendo la misma (la superficie que describa la regla dice la version
+    // nueva); lo que cambio es que esa superficie dejo de describirla.
+    //
+    // Y PARA QUE SACARLO NO SEA LA PUERTA DE ATRAS: se afirma que tampoco dice la version VIEJA. Sin
+    // esto, quitar un archivo de la lista seria la forma barata de pasar el candado dejando dentro el
+    // texto stale.
+    expect(plano(ENTRADA), "la entrada volvio a traer el texto viejo").not.toContain(
+      "esa opción todavía no está disponible",
+    );
+    expect(plano(ENTRADA), "la entrada volvio a describir el reimport").not.toContain(
+      "vuelve a Evaluación, subpestaña Antropometría y BIS",
+    );
   });
 });
