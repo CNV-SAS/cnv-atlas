@@ -211,7 +211,18 @@ export function EntradaEvaluacion({
               evaluationId={evaluationId}
               pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
               fuerzaPrensilKg={sarcopeniaFuerza}
+              sellada={diagnosticoGenerado}
             />
+            {/* LA SUPERFICIE DEL REEMPLAZO (smoke de Santiago, 2026-09-05). El porton ya lo permitia
+                mientras no hubiera diagnostico, pero este panel ocultaba el formulario en cuanto habia
+                medicion, asi que nadie podia llegar. Va PLEGADA a proposito: el profesional que importo
+                bien no tiene que ver un formulario de reemplazo, y el que se equivoco lo encuentra por su
+                nombre. Y desaparece con el diagnostico, que es donde el porton cierra. */}
+            {!diagnosticoGenerado && bisImportEval ? (
+              <DetailsSection title="¿Importaste el archivo equivocado?">
+                <BisImportForm evaluation={bisImportEval} modoReemplazo />
+              </DetailsSection>
+            ) : null}
             <DetailsSection title="Composición corporal (Niveles de Wang)">
               <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
             </DetailsSection>
