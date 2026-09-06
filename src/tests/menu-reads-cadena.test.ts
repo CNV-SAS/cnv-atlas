@@ -66,6 +66,11 @@ vi.mock("@/modules/treatment/data/dieta-resumen-reader", () => ({
     notas: [],
     referencias: ["OMS; DASH/NHLBI; AHA/ACC 2025"],
   })),
+  // LA PROTEINA DEL MOTOR, que la cadena del menu ahora consume (barrido del 2026-09-06). Devuelve null,
+  // que es el caso de un snapshot ya sellado: ahi manda `sug.mtn.protKg` y la opcion no cambia nada. Lo
+  // que arregla el cableado es el caso contrario (snapshot anterior al sellado), que estos tests no
+  // montan; el candado que lo cubre es `motor-con-los-mismos-argumentos-que-el-panel`.
+  getProtKgPrescrito: vi.fn(async () => null),
 }));
 vi.mock("@/modules/diagnoses/data/results-reader", () => ({ getEvaluationResults: vi.fn() }));
 
