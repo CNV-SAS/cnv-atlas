@@ -39,7 +39,6 @@ function CapacitanciaCard({
   puntos: { fecha: string; valor: number }[];
 }) {
   if (puntos.length === 0) return null;
-  const hayTrayectoria = puntos.length >= 2;
 
   return (
     <Card>
@@ -72,7 +71,14 @@ function CapacitanciaCard({
             así que la medición se muestra sin calificarla.
           </p>
         )}
-        {hayTrayectoria ? (
+        {/* LA GRAFICA SE DIBUJA DESDE LA PRIMERA MEDICION, y esto corrige lo que yo mismo escribi el
+            05: entonces la escondia con un punto ("una linea de un punto no traza nada"). Es verdad de
+            una linea SUELTA, y falso en cuanto hay una REFERENCIA: el punto contra la mediana de su
+            grupo dice donde esta el paciente, que es justo lo que la tarjeta viene a decir. Su archivo
+            la dibuja igual. La regla que queda, y vale para las tres graficas de esta pantalla: con
+            linea de referencia se dibuja desde la primera; el RADAR no, porque ahi la referencia es la
+            otra medicion y con una sola se compara consigo misma. */}
+        {puntos.length > 0 ? (
           <SerieLinea
             puntos={puntos}
             // Con referencia, `SerieLinea` ya calcula la mejora como ACERCARSE, que es su regla; sin ella
@@ -87,36 +93,30 @@ function CapacitanciaCard({
               .map((p) => `${formatDateOnlyShort(p.fecha)} ${p.valor.toFixed(3)}`)
               .join(", ")}.`}
           />
-        ) : (
+        ) : null}
+        {puntos.length < 2 ? (
           <p className="text-xs text-muted-foreground">
-            La trayectoria se dibuja con la segunda medición. Con una sola, lo que se puede leer es la
-            posición frente a su grupo, que es la línea de arriba.
+            Con una sola medición lo que se lee es la <strong>posición</strong> frente a su grupo; la
+            trayectoria aparece con la segunda.
           </p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
+// EL AVISO DE QUE FALTA LA SEGUNDA MEDICION. Ya NO trae la tarjeta de capacitancia: desde el tercer
+// smoke el bloque visual entero se muestra tambien con una sola medicion (las tres graficas llevan
+// linea de referencia, asi que dicen POSICION aunque no haya trayectoria), y lo unico que este aviso
+// tiene que hacer es decir que falta la segunda y cuando corresponderia.
 export function SeguimientoSinPrevia({
   fechaSugerida,
   frecuencia,
-  serie,
 }: {
   fechaSugerida: string | null;
   frecuencia: string | null;
-  /** La serie, para poder mostrar la capacitancia contra su referencia ya en la primera consulta. */
-  serie: SerieSeguimiento;
 }) {
-  const puntosC = serie.puntos
-    .filter((p) => p.c != null)
-    .map((p) => ({ fecha: p.fecha, valor: p.c as number }));
-
   return (
-    <div className="flex flex-col gap-4">
-      {/* LA CAPACITANCIA VA PRIMERO, y con una sola medicion ES lo unico que hay que leer: dice donde
-          esta el paciente frente a su grupo. El aviso de que falta la segunda va debajo. */}
-      <CapacitanciaCard refC={serie.refC} puntos={puntosC} />
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Seguimiento funcional</CardTitle>
@@ -135,10 +135,8 @@ export function SeguimientoSinPrevia({
         </Aviso>
       </CardContent>
     </Card>
-    </div>
   );
 }
-
 export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
   const puntosC = serie.puntos
     .filter((p) => p.c != null)
@@ -198,6 +196,9 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
             <span className="text-xs text-muted-foreground">
               PABU debe acercarse a φ = 1,618 (línea punteada). ICA-BIS es la distancia a φ: el objetivo es
               que tienda a 0.
+              {serie.puntos.length < 2
+                ? " Con una sola medición se ve la posición frente al objetivo; la trayectoria aparece con la segunda."
+                : ""}
             </span>
           </CardHeader>
           {/* Dos gráficos separados, como en su pantalla: tienen escalas y objetivos distintos, y juntarlos

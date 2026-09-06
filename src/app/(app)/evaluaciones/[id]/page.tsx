@@ -876,21 +876,24 @@ export default async function ResultadosEvaluacionPage({
         // PRIMERA consulta es justo cuando hace falta agendar. Antes de esto la unica via de fijar la cita
         // era confirmar un "empeoro", que exige una segunda medicion: un paciente que mejoro no tenia donde.
         <section className="flex flex-col gap-4">
-          {/* CON UNA SOLA MEDICION NO SE DIBUJA NADA... SALVO LA CAPACITANCIA (cotejo 2026-09-05, punto
-              28). El radar y las series necesitan dos puntos: con uno compararian la medicion contra si
-              misma, y su pantalla lo hace pero no dice nada. La tarjeta de capacitancia es distinta:
-              vive de la comparacion contra la REFERENCIA POBLACIONAL, asi que con una medicion ya tiene
-              lectura completa, y es justo lo que su archivo escribe en la primera consulta. Va dentro de
-              `SeguimientoSinPrevia`, con el aviso de que falta la segunda debajo. */}
-          {serie.puntos.length >= 2 ? (
-            <SeguimientoVisual serie={serie} />
-          ) : (
+          {/* EL BLOQUE VISUAL SE MUESTRA DESDE LA PRIMERA MEDICION (tercer smoke, 2026-09-06), y la
+              regla es una: UN GRAFICO CON LINEA DE REFERENCIA DICE ALGO CON UN SOLO PUNTO (donde esta
+              el paciente respecto del objetivo), y el RADAR no, porque alli la referencia es la OTRA
+              medicion y con una sola se compara consigo misma.
+
+              Las tres graficas de esta pantalla llevan referencia: la capacitancia contra la mediana de
+              su grupo, la PABU contra φ y el ICA-BIS contra 0. Su archivo las dibuja las tres desde la
+              primera consulta. El radar (inicial vs ultima) sigue esperando la segunda, y eso lo decide
+              el propio componente.
+
+              El aviso de que falta la segunda va DEBAJO, no en lugar del bloque. */}
+          {serie.puntos.length > 0 ? <SeguimientoVisual serie={serie} /> : null}
+          {serie.puntos.length < 2 ? (
             <SeguimientoSinPrevia
               fechaSugerida={proximoControl?.citaSugerida ?? null}
               frecuencia={proximoControl?.ruta?.frecuencia ?? null}
-              serie={serie}
             />
-          )}
+          ) : null}
           {comparison ? <FollowupComparison comparison={comparison} /> : null}
           {proximoControl ? (
             <ProximoControl evaluationId={id} vista={proximoControl} />
