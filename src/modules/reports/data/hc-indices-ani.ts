@@ -1,3 +1,5 @@
+import { decimalesDe } from "@/modules/diagnoses/data/indicator-ranges";
+
 // Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
 //
 // Su HC los muestra como un nivel mas de la tabla de Wang, con REFERENCIA textual fija por fila (verbatim
@@ -24,32 +26,42 @@ export type IndiceAniFila = {
   /** Nombre completo del propio archivo de Gildardo. null cuando el no le da uno (ver nota arriba). */
   nombre: string | null;
   referencia: (sexoM: boolean) => string;
-  /** Formato del valor, verbatim del suyo (decimales y sufijo). */
+  /**
+   * Formato del valor. EL SUFIJO es suyo (" a" para los años, el signo del IAE); LOS DECIMALES salen de
+   * `decimalesDe`, la misma tabla que usa la pantalla y que calcula las Δ (2026-09-06).
+   *
+   * ANTES ERAN LOS SUYOS VERBATIM, y eran justo el desorden que Santiago devolvio: 2 en cuatro filas,
+   * 1 en dos, 3 en el PABU y 4 en el ICA-BIS, sin regla detras. Con la tabla, la HC y la pantalla no
+   * pueden mostrar la misma cifra con distinta precision.
+   */
   formato: (v: number) => string;
 };
 
+/** El valor con los decimales de su indicador, en español. Misma tabla que la pantalla y las Δ. */
+const dec = (v: number, codigo: string) => v.toFixed(decimalesDe(codigo)).replace(".", ",");
+
 // Orden y referencias EXACTOS de su tabla (v8 L15087-15095).
 export const INDICES_ANI: IndiceAniFila[] = [
-  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => v.toFixed(2) },
+  { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => dec(v, "IFC") },
   {
     codigo: "IRC", nombre: "Riesgo Celular",
     referencia: (m) => (m ? "<1,68 bajo riesgo" : "<2,27 bajo riesgo"),
-    formato: (v) => v.toFixed(2),
+    formato: (v) => dec(v, "IRC"),
   },
-  { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => v.toFixed(2) },
-  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "≤0.0 óptimo", formato: (v) => v.toFixed(2) },
-  { codigo: "EB", nombre: null, referencia: () => "= Edad cronológica", formato: (v) => `${v.toFixed(1)} a` },
+  { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => dec(v, "ISCM") },
+  { codigo: "IEHH", nombre: "Hidro-Homeostasis", referencia: () => "≤0.0 óptimo", formato: (v) => dec(v, "IEHH") },
+  { codigo: "EB", nombre: null, referencia: () => "= Edad cronológica", formato: (v) => `${dec(v, "EB")} a` },
   {
     codigo: "IAE", nombre: "Aceleración del Envejecimiento",
     referencia: () => "−5 a +5 años",
-    formato: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)} a`,
+    formato: (v) => `${v > 0 ? "+" : ""}${dec(v, "IAE")} a`,
   },
   {
     codigo: "PABU", nombre: null,
     referencia: (m) => (m ? "φ = 1,618 (k=0,78)" : "φ = 1,618 (k=0,46)"),
-    formato: (v) => v.toFixed(3),
+    formato: (v) => dec(v, "PABU"),
   },
-  { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: () => "0.00–0.15 Zona φ", formato: (v) => v.toFixed(4) },
+  { codigo: "ICA-BIS", nombre: "Desviación de φ", referencia: () => "0.00–0.15 Zona φ", formato: (v) => dec(v, "ICA-BIS") },
 ];
 
 export type IndiceAniResuelto = {

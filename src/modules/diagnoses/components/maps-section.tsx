@@ -212,7 +212,7 @@ function LecturaDiana() {
     { t: "Periferia #81", f: "Riesgo máximo", d: "Disfunción / estructura comprometida" },
   ];
   return (
-    <div className="w-full max-w-[76rem]">
+    <div className="w-full max-w-[60rem]">
       <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Lectura de la Diana
       </p>

@@ -123,8 +123,10 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     // Esta preguntado. Si se unifica, este caso se actualiza con la razon.
     expect(indicatorRange("IR", ind, true)?.delta).toBe("0,018");
     expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0,37");
-    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,37");
-    expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,500");
+    // El PABU pasa a TRES el 2026-09-06: su corte es φ = 1,618 y una Δ con dos decimales no alcanza a
+    // distinguir del corte contra el que se mide. El IEHH baja a DOS: su corte es 0, un entero.
+    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,374");
+    expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,50");
   });
 
   it("IAE (dos colas): Δ = distancia al límite cruzado, 0 dentro del rango (Gildardo §5, 2026-09-01)", () => {

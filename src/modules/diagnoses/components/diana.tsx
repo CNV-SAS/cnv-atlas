@@ -175,7 +175,7 @@ export function Diana({
         //
         // La geometria NO se toca: el navegador escala el viewBox. Cambiar SIZE/R/HOLE si habria movido
         // los rotulos respecto de su celda.
-        className="h-auto w-full max-w-[76rem]"
+        className="h-auto w-full max-w-[60rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -203,7 +203,6 @@ export function Diana({
             rotulo y posicion no se pueden desincronizar. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
           const ang = sc * SECTOR_DEG + SECTOR_DEG / 2;
-          const [lx, ly] = polar(R + 14, ang);
           // EL ROTULO CRECE HACIA AFUERA, NO CRUZANDO EL DISCO (cotejo 2026-09-06, punto 15).
           //
           // Con `textAnchor="middle"` el texto se reparte a los dos lados del punto, asi que en los
@@ -217,6 +216,12 @@ export function Diana({
           const derecha = cos > 0.34;
           const izquierda = cos < -0.34;
           const anchor = derecha ? "start" : izquierda ? "end" : "middle";
+          // AIRE EXTRA PARA LOS TRES VERTICALES (E1, E5 y E9), del segundo smoke: el rotulo de E5 quedaba
+          // pegado al anillo. Los laterales crecen hacia los lados y el disco se les curva de encima, asi
+          // que 14 unidades les bastan; los de arriba y abajo son texto HORIZONTAL contra una tangente
+          // HORIZONTAL, o sea el peor caso, y ademas su primera linea sube 11 unidades desde el ancla.
+          // Con 14 quedaba a 3 unidades del borde. Se les da radio propio.
+          const [lx, ly] = polar(R + (anchor === "middle" ? 28 : 14), ang);
           const tx = lx + (derecha ? 4 : izquierda ? -4 : 0);
           const bandas = efrSectorBands(sc);
           return (
@@ -303,7 +308,7 @@ export function Diana({
           (periferia), no solo degradado. */}
       {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 60rem quedaba
           como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
-      <div className="flex w-full max-w-[76rem] flex-col gap-1">
+      <div className="flex w-full max-w-[60rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
@@ -317,7 +322,7 @@ export function Diana({
       </div>
       {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 60rem quedaba estrecho
           y partia sus dos lineas en cuatro. */}
-      <figcaption className="flex max-w-[76rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[60rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados

@@ -35,6 +35,43 @@ export type IndicatorRange = { reference: string; delta: string | null };
 // los decimales y el signo quedan exactamente como estaban.
 const f = (n: number, d: number) => n.toFixed(d).replace(".", ",");
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// DECIMALES POR INDICADOR. FUENTE UNICA del VALOR y de su Δ.
+//
+// LA REGLA, fijada por Santiago el 2026-09-06: LOS DECIMALES LOS FIJA EL CORTE, NO EL GUSTO. La
+// precision mostrada tiene que ALCANZAR PARA DISTINGUIR DEL CORTE. Su ejemplo: el IR se compara contra
+// 0,78 y su Δ es 0,018; a dos decimales eso se aplasta a 0,02 y se pierde la distancia.
+//
+// DE AHI SALEN DOS CRITERIOS, y del barrido de los doce indicadores solo DOS los activan:
+//   · el CORTE lleva tres decimales  -> el indicador lleva tres. Solo PABU (φ = 1,618).
+//   · el indicador vive en un rango MENOR A UNA UNIDAD -> lleva tres. Solo IR (0,70-0,90): a dos
+//     decimales toda su escala clinica cabe en veinte pasos.
+// El resto va a DOS, que es el estandar de Atlas. El barrido completo esta en BRAND.md.
+//
+// TRES EXCEPCIONES QUE NO SALEN DEL CORTE y por eso van nombradas una a una:
+//   · AF: UN decimal por instruccion suya (D-016), "dos sugieren una exactitud que el equipo no tiene".
+//   · EB e IAE: UN decimal porque estan en AÑOS. Es convencion de unidad, no precision de corte.
+//
+// POR QUE ES UNA SOLA TABLA Y NO UN NUMERO EN CADA SITIO: el VALOR se formatea en la pantalla de
+// Diagnostico, la Δ aqui, y la historia clinica tiene su propia tabla. Eran TRES sitios, y por eso el
+// mismo renglon llego a decir 0,42 en el valor y 0,4157 en la Δ, que es la MISMA cifra. Con una tabla,
+// que coincidan no es disciplina: es que no hay dos numeros que puedan discrepar.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+export const DECIMALES_POR_DEFECTO = 2;
+
+const DECIMALES_INDICADOR: Record<string, number> = {
+  PABU: 3, // su corte es φ = 1,618: tres decimales
+  IR: 3, // vive entre 0,70 y 0,90: menos de una unidad de recorrido
+  AF: 1, // D-016, instruccion suya
+  EB: 1, // años
+  IAE: 1, // años
+};
+
+/** Decimales con los que se muestra un indicador y su Δ. Ver la regla arriba. */
+export function decimalesDe(codigo: string): number {
+  return DECIMALES_INDICADOR[codigo] ?? DECIMALES_POR_DEFECTO;
+}
+
 // LA FILA ICA-BIS: SU ARCHIVO TIENE DOS REGLAS, UNA POR SUPERFICIE. No es una, y confundirlas ya me
 // costo una entrega (2026-09-05, cotejo punto 17, corregido el mismo dia con sus capturas al lado).
 //
@@ -162,41 +199,39 @@ export function indicatorRange(
       // cIFC: sano = optima (> hi). Umbral = hi (M 6.68, F 3.28). Δ = valor − hi (corte unico).
       if (ind.ifc == null) return null;
       const hi = sexM ? 6.68 : 3.28;
-      return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, 2) };
+      return { reference: `> ${fmtDec(hi)}`, delta: f(ind.ifc - hi, decimalesDe("IFC")) };
     }
     case "IRC": {
       // cIRC: sano = bajo riesgo (< lo). Umbral = lo (M 1.7, F 2.3). Δ = valor − lo (corte unico).
       if (ind.irc == null) return null;
       const lo = sexM ? 1.7 : 2.3;
-      return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, 2) };
+      return { reference: `< ${fmtDec(lo)}`, delta: f(ind.irc - lo, decimalesDe("IRC")) };
     }
     case "FMI": {
       // cFMI: sano = Normal (M 3-6, F 5-9). Gildardo §2 (2026-08-17): Δ contra el BORDE SUPERIOR (M 6 / F 9),
       // el limite que decide (exceder grasa es el riesgo), no el punto medio.
       if (ind.FMI == null) return null;
       const ref = sexM ? 6 : 9;
-      return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - ref, 2) };
+      return { reference: fmiReferenceLabel(sexM), delta: f(ind.FMI - ref, decimalesDe("FMI")) };
     }
     case "PABU":
       // CA-2: referencia de punto φ = 1.618. Δ = valor − 1.618.
-      // DOS DECIMALES (2026-09-06). Iba en CUATRO, copiado de su tabla, y Santiago fijo el criterio: su
-      // archivo no tiene una regla de decimales (2 en unos sitios, 3 en otros, 4 en otros), asi que
-      // copiarlo importa su desorden. El estandar de Atlas es 2, y ademas es lo que hace que el VALOR y
-      // la Δ de la misma fila digan la misma cifra.
-      return ind.pabu != null ? { reference: "φ = 1,618", delta: f(ind.pabu - 1.618, 2) } : null;
+      // TRES DECIMALES, y no por copiar su tabla: los pide SU CORTE. φ = 1,618 lleva tres, asi que una Δ
+      // con dos no alcanza a distinguir del corte contra el que se mide. Ver la regla arriba.
+      return ind.pabu != null ? { reference: "φ = 1,618", delta: f(ind.pabu - 1.618, decimalesDe("PABU")) } : null;
     case "ICA-BIS":
       // ICA-BIS = PABU − φ: su referencia de normalidad es 0 (coherencia perfecta), NO φ. Δ = valor − 0
       // = el valor mismo. La etiqueta de referencia decia "φ = 1.618" (copiada de PABU): era inconsistente
       // con el delta (contra 0) y, como icaBis = pabu − φ por definicion, su Δ coincide con la de PABU,
       // lo que en pantalla se leia como que ICA-BIS copiaba el delta de PABU. Referencia correcta: 0.
-      return ind.icaBis != null ? { reference: "0 (coherencia)", delta: f(ind.icaBis - 0, 2) } : null;
+      return ind.icaBis != null ? { reference: "0 (coherencia)", delta: f(ind.icaBis - 0, decimalesDe("ICA-BIS")) } : null;
     case "ISCM":
       // CA-2: corte unico −1 (de "≤−1"); la referencia ES el corte. Δ = valor − (−1). ANTES el HTML
       // mostraba el valor crudo (referencia implicita 0); ahora es contra el corte.
-      return ind.iscm != null ? { reference: "≤−1", delta: f(ind.iscm - -1, 2) } : null;
+      return ind.iscm != null ? { reference: "≤−1", delta: f(ind.iscm - -1, decimalesDe("ISCM")) } : null;
     case "IEHH":
       // CA-2: corte unico 0 (de "≤0"). Δ = valor − 0 = valor (sin cambio).
-      return ind.iehh != null ? { reference: "≤0", delta: f(ind.iehh - 0, 3) } : null;
+      return ind.iehh != null ? { reference: "≤0", delta: f(ind.iehh - 0, decimalesDe("IEHH")) } : null;
     case "IAE":
       // IAE: unico clasificador de DOS COLAS del sistema (<−5 desacelerado · −5..+5 concordante · >+5
       // acelerado; Gildardo §2, 2026-08-18). El Delta se deja en "—" (delta: null) por decision de Santiago
@@ -220,7 +255,7 @@ export function indicatorRange(
         ? {
             reference: "−5 a +5 años",
             // Dentro del rango, CERO y no null: cero dice "no ha cruzado", null diría "no se puede saber".
-            delta: f(ind.iae > 5 ? ind.iae - 5 : ind.iae < -5 ? ind.iae + 5 : 0, 1),
+            delta: f(ind.iae > 5 ? ind.iae - 5 : ind.iae < -5 ? ind.iae + 5 : 0, decimalesDe("IAE")),
           }
         : null;
     case "EB":
@@ -235,20 +270,20 @@ export function indicatorRange(
       if (ind.FFMI == null) return null;
       // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 17 / F 15), no el punto medio del rango.
       const ref = sexM ? 17 : 15;
-      return { reference: sexM ? "17–25" : "15–23", delta: f(ind.FFMI - ref, 2) };
+      return { reference: sexM ? "17–25" : "15–23", delta: f(ind.FFMI - ref, decimalesDe("FFMI")) };
     }
     case "AF": {
       if (!(ind.AF > 0)) return null;
       // Gildardo §2 (2026-08-17): Δ contra el BORDE inferior (M 6.5 / F 6.0), no el punto medio del rango.
       const ref = sexM ? 6.5 : 6.0;
       // D-016: el AF (y su delta) siempre con 1 decimal.
-      return { reference: sexM ? "6,5–7,0°" : "6,0–6,5°", delta: f(ind.AF - ref, 1) };
+      return { reference: sexM ? "6,5–7,0°" : "6,0–6,5°", delta: f(ind.AF - ref, decimalesDe("AF")) };
     }
     case "IR": {
       if (!(ind.IR > 0)) return null;
       // CA-2: corte unico (M 0.78; F 0.82); la referencia ES el corte. Δ = valor − corte (sin cambio).
       const ref = sexM ? 0.78 : 0.82;
-      return { reference: sexM ? "<0,78" : "<0,82", delta: f(ind.IR - ref, 3) };
+      return { reference: sexM ? "<0,78" : "<0,82", delta: f(ind.IR - ref, decimalesDe("IR")) };
     }
     default:
       return null;
