@@ -350,6 +350,23 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     expect(ENTRADA, "la superficie no está acotada a antes del diagnóstico").toContain(
       "!diagnosticoGenerado && bisImportEval",
     );
+    // Y VA PEGADA AL AVISO DE "MEDICION IMPORTADA", no como sección propia abajo: importar el archivo
+    // equivocado es un caso RARO, no una parte del flujo. La primera versión fue una sección y era
+    // desproporcionada.
+    //
+    // SE VERIFICA POR ORDEN Y NO POR DISTANCIA: un umbral de caracteres se afina al valor de hoy y
+    // enseña a subirlo cuando estorba. Lo que de verdad se pide es que el desplegable vaya JUSTO DESPUÉS
+    // del aviso y ANTES de las medidas, o sea dentro del mismo bloque.
+    const jsx = sinComentarios(ENTRADA);
+    const iAviso = jsx.indexOf("Medición BIS importada");
+    const iReemplazo = jsx.indexOf("¿Importaste el archivo equivocado?");
+    const iMedidas = jsx.indexOf("<AntropometriaEditable");
+    expect(iReemplazo, "el desplegable de reemplazo desapareció").toBeGreaterThan(-1);
+    expect(iReemplazo, "el reemplazo quedó ANTES del aviso de que hay medición").toBeGreaterThan(iAviso);
+    expect(
+      iReemplazo,
+      "el reemplazo se fue debajo de las medidas: vuelve a leerse como una sección del flujo",
+    ).toBeLessThan(iMedidas);
     // Y el formulario tiene que RENDERIZARSE aunque ya haya medición cuando está en ese modo.
     expect(FORM).toContain("&& !modoReemplazo");
   });

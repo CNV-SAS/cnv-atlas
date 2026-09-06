@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode } from "react";
 
@@ -191,6 +191,23 @@ export function EntradaEvaluacion({
                 .
               </span>
             </div>
+            {/* EL REEMPLAZO, PEGADO AL AVISO Y COMO ENLACE (smoke de Santiago, 2026-09-05, segunda pasada).
+                La primera version fue una seccion propia abajo, y era desproporcionada: importar el archivo
+                equivocado es un caso RARO, no una parte del flujo. Aqui es un texto pulsable que abre el
+                aviso y el selector EN SU SITIO, sin mover al profesional de donde esta.
+                `details` nativo y no estado de cliente: este panel es de servidor, y un desplegable que no
+                guarda nada no necesita hidratacion. */}
+            {!diagnosticoGenerado && bisImportEval ? (
+              <details className="group -mt-1">
+                <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline [&::-webkit-details-marker]:hidden">
+                  <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
+                  ¿Importaste el archivo equivocado?
+                </summary>
+                <div className="pt-2">
+                  <BisImportForm evaluation={bisImportEval} modoReemplazo />
+                </div>
+              </details>
+            ) : null}
             {/* Las medidas van ANTES de la tabla: se corrigen y despues se lee lo que sale de ellas.
                 Al reves, el profesional lee una tabla calculada sobre un valor que aun no ha revisado. */}
             <AntropometriaEditable
@@ -213,16 +230,6 @@ export function EntradaEvaluacion({
               fuerzaPrensilKg={sarcopeniaFuerza}
               sellada={diagnosticoGenerado}
             />
-            {/* LA SUPERFICIE DEL REEMPLAZO (smoke de Santiago, 2026-09-05). El porton ya lo permitia
-                mientras no hubiera diagnostico, pero este panel ocultaba el formulario en cuanto habia
-                medicion, asi que nadie podia llegar. Va PLEGADA a proposito: el profesional que importo
-                bien no tiene que ver un formulario de reemplazo, y el que se equivoco lo encuentra por su
-                nombre. Y desaparece con el diagnostico, que es donde el porton cierra. */}
-            {!diagnosticoGenerado && bisImportEval ? (
-              <DetailsSection title="¿Importaste el archivo equivocado?">
-                <BisImportForm evaluation={bisImportEval} modoReemplazo />
-              </DetailsSection>
-            ) : null}
             <DetailsSection title="Composición corporal (Niveles de Wang)">
               <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
             </DetailsSection>
