@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { sinComentarios } from "./helpers/sin-comentarios";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -281,5 +283,48 @@ describe("evaluateBisImportGate (orden + seguridad del import)", () => {
 
   it("con condiciones respondidas y sin contraindicacion habilita el import", () => {
     expect(evaluateBisImportGate(intake({})).allowed).toBe(true);
+  });
+});
+
+describe("las medidas del profesional se muestran donde él las pone (DIV-18, cotejo 4)", () => {
+  const RESUMEN = readFileSync(
+    "src/modules/bis-intake/components/medidas-del-profesional-resumen.tsx",
+    "utf8",
+  );
+  const CAPTURA = readFileSync(
+    "src/modules/bis-intake/components/bis-conditions-capture.tsx",
+    "utf8",
+  );
+  const ENTRADA = readFileSync(
+    "src/modules/evaluations/components/entrada-evaluacion.tsx",
+    "utf8",
+  );
+  const READER = readFileSync("src/modules/bis-intake/data/bis-conditions-reader.ts", "utf8");
+
+  it("el enlace cae en el BLOQUE, no en la subpestaña entera", () => {
+    // Su cuidado (a). Un enlace a la subpestaña deja al profesional buscando los dos campos entre las
+    // condiciones. Y lleva la ETAPA explícita, que es la lección del punto 5 de este mismo cotejo: sin
+    // ella la página cae a su default.
+    expect(RESUMEN).toContain("?etapa=evaluacion&ev=encuesta#medidas-del-profesional");
+    expect(CAPTURA, "el ancla de destino desapareció del bloque").toContain(
+      'id="medidas-del-profesional"',
+    );
+  });
+
+  it("y se ve que aquí son de solo lectura, sin campos deshabilitados", () => {
+    // Su cuidado (b). Un input deshabilitado se lee como "esto debería poder tocarse"; una lista de
+    // datos con su enlace dice dónde se editan. Por eso el resumen no monta inputs.
+    expect(RESUMEN).toContain("Aquí solo se consultan");
+    expect(sinComentarios(RESUMEN), "el resumen montó campos: se leería como editable").not.toMatch(
+      /<(input|Input|textarea|Textarea)\b/,
+    );
+  });
+
+  it("y el peso meta llega TAMBIÉN en la vista sellada", () => {
+    // La mitad silenciosa del mismo dato: la vista de solo lectura (después del diagnóstico) traía la
+    // prensil y no el peso meta, así que el resumen habría dicho "Sin registrar" sobre un valor que
+    // existe. Es el campo que deja de viajar, en el camino que menos se mira.
+    expect(READER).toContain("weightGoalKg: intake.weightGoalKg");
+    expect(ENTRADA).toContain("bisReadonly?.weightGoalKg");
   });
 });

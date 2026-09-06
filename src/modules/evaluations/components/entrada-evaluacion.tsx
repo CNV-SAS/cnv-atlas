@@ -12,6 +12,7 @@ import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modul
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { AntropometriaEditable } from "@/modules/bis-intake/components/antropometria-editable";
+import { MedidasDelProfesionalResumen } from "@/modules/bis-intake/components/medidas-del-profesional-resumen";
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
@@ -202,6 +203,14 @@ export function EntradaEvaluacion({
               }}
               corrections={composition.corrections}
               sellada={diagnosticoGenerado}
+            />
+            {/* LAS DOS MEDIDAS DEL PROFESIONAL, junto a cintura y cadera, que es donde su archivo las pone
+                (cotejo 2026-09-05, punto 4). Se MUESTRAN aqui y se EDITAN en las condiciones, que es donde
+                se llenan en un solo guardado. DIV-18. */}
+            <MedidasDelProfesionalResumen
+              evaluationId={evaluationId}
+              pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
+              fuerzaPrensilKg={sarcopeniaFuerza}
             />
             <DetailsSection title="Composición corporal (Niveles de Wang)">
               <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />

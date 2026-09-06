@@ -326,7 +326,11 @@ export function BisConditionsCapture({
             consulta, no porque sean lo mismo, y el rótulo es lo que impide que se lean como tales.
             Dónde vive el campo en la interfaz (aquí o en la subpestaña Antropometría) se decide en el
             cotejo visual, con su pantalla al lado. */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
+        {/* EL ID ES EL DESTINO DEL ENLACE de Antropometria (cotejo 2026-09-05, punto 4): alli estas dos
+            medidas se MUESTRAN, porque es donde su archivo las pone, y se editan AQUI, que es donde se
+            llenan junto con las condiciones en un solo guardado. El enlace tiene que caer en el bloque,
+            no en la subpestaña entera. Si se renombra el id, el candado lo dice. */}
+        <div id="medidas-del-profesional" className="flex flex-col gap-3 border-t border-border pt-4 scroll-mt-24">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Medidas del profesional
           </span>

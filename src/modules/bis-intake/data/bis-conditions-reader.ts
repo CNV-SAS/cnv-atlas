@@ -114,6 +114,14 @@ export type BisConditionsReadonly = {
   // Fuerza prensil sellada (dinamometria): para la card de sarcopenia en la vista de solo lectura tras el
   // diagnostico. Se lee del mismo intake (Gildardo 2026-08-17 §6).
   gripStrengthKg: number | null;
+  /**
+   * Peso meta sellado, para el resumen de "medidas del profesional" en Antropometria (DIV-18).
+   *
+   * FALTABA, y es la mitad silenciosa del mismo dato: la vista de solo lectura (la de despues del
+   * diagnostico) traia la prensil y NO el peso meta, asi que el resumen habria dicho "Sin registrar"
+   * sobre un valor que existe. Sale del mismo `intake`, que ya lo lee de `evaluations.weight_goal_kg`.
+   */
+  weightGoalKg: number | null;
 };
 export async function getBisConditionsReadonly(
   evaluationId: string,
@@ -131,6 +139,7 @@ export async function getBisConditionsReadonly(
     conditions: (rows ?? []).map(mapConditionRow),
     answers: intake.answers,
     gripStrengthKg: intake.gripStrengthKg,
+    weightGoalKg: intake.weightGoalKg,
   };
 }
 
