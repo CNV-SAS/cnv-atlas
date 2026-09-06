@@ -212,7 +212,7 @@ function LecturaDiana() {
     { t: "Periferia #81", f: "Riesgo máximo", d: "Disfunción / estructura comprometida" },
   ];
   return (
-    <div className="w-full max-w-[60rem]">
+    <div className="w-full max-w-[76rem]">
       <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Lectura de la Diana
       </p>
@@ -241,7 +241,7 @@ export function RadarPanel({
   dfiComplete: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex w-full flex-col items-center gap-3">
       {dfiComplete ? (
         <DfiRadar domains={radarDomains} />
       ) : (
@@ -293,7 +293,7 @@ export function DianaExplorer({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex w-full flex-col items-center gap-3">
         <div className="flex w-full items-center justify-between gap-3">
           {/* Encabezado fiel al HTML ("Diana EFR BIS — 81 Estados"); "·" en vez de em-dash. */}
           <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>

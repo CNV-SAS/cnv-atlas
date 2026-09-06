@@ -7,7 +7,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // de Diagnóstico Funcional.
 //
 // 11 · El bloque del criterio se llamaba solo "Criterio del profesional" y su archivo titula la sección
-//      "Diagnóstico Integrado ANI BIS-E". Van los DOS: el suyo de antetítulo (es el nombre de la sección
+//      "Diagnóstico Integrado ANI-BIS-E". Van los DOS: el suyo de antetítulo (es el nombre de la sección
 //      en su modelo) y el nuestro de título (aquí escribe el profesional, y en SU archivo ese panel es de
 //      solo lectura con el texto de la IA, sin campo para escribir). Poner solo el suyo diría que lo
 //      redactó la máquina.
@@ -30,7 +30,7 @@ const plano = (t: string) => t.replace(/\s+/g, " ");
 
 describe("bloque del criterio del profesional (cotejo punto 11)", () => {
   it("lleva el nombre de la sección de SU archivo como antetítulo", () => {
-    expect(CRITERIO).toContain("Diagnóstico Integrado ANI BIS-E");
+    expect(CRITERIO).toContain("Diagnóstico Integrado ANI-BIS-E");
   });
 
   it("y conserva el título propio: aquí escribe el profesional, no la máquina", () => {
@@ -55,7 +55,25 @@ describe("el criterio es append-only y lo dice donde se pulsa (cotejo punto 13)"
     // La ventana es el bloque del botón: si la frase estuviera solo arriba, aquí no aparecería.
     const cerca = plano(CRITERIO.slice(i - 400, i + 600));
     expect(cerca).toContain("no se puede borrar");
-    expect(cerca).toContain("el último es el vigente");
+    // CAMBIO LA FRASE, NO LA GARANTIA (2026-09-06, punto 13a). Decia "el último es el vigente", que era
+    // una DEDUCCION que el profesional tenia que hacer sobre una lista numerada. Ahora la pantalla lo
+    // rotula ("Criterio vigente") y el aviso dice lo que pasa al agregar otro.
+    expect(cerca).toContain("pasa a ser el vigente");
+  });
+});
+
+describe("manda el ÚLTIMO criterio, y los anteriores no se pierden (cotejo punto 13a)", () => {
+  it("el vigente se rotula como tal: no hay que deducirlo de una lista", () => {
+    expect(CRITERIO).toContain("Criterio vigente");
+  });
+
+  it("y los anteriores quedan PLEGADOS, no borrados", () => {
+    // Misma razón que el punto 26: son append-only porque son registro clínico, y quien escribió uno
+    // tiene que poder releerlo. Lo que se decide aquí es cuál MANDA, no cuál existe.
+    expect(CRITERIO).toContain("<details");
+    expect(CRITERIO).toContain("criterios anteriores");
+    expect(CRITERIO).toContain("notes.slice(0, -1)");
+    expect(CRITERIO).toContain("notes[notes.length - 1]");
   });
 });
 

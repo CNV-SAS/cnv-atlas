@@ -155,7 +155,7 @@ describe("el PDF lleva TODO lo que lleva la pantalla, no un extracto", () => {
     // CONTROL de que este candado y el de `report-render` no se confundan: lo que allí está prohibido,
     // aquí es obligatorio. Su §7.1 prohíbe los índices en lo que el paciente recibe COMO reporte; la
     // historia que él mismo pide es su registro clínico.
-    expect(DOC).toContain("Índices ANI BIS-E");
+    expect(DOC).toContain("Índices ANI-BIS-E");
   });
 
   it("y la composición lleva su VEREDICTO, del clasificador compartido", () => {
@@ -185,7 +185,7 @@ describe("los quince bloques van SIEMPRE, con o sin dato", () => {
     ["Remisiones", "No se remitió a otro profesional"],
     ["Rutas de atención activadas", "no activó rutas"],
     ["Composición corporal", "no tiene medición de composición"],
-    ["Índices ANI BIS-E alterados", "quedó fuera de su rango"],
+    ["Índices ANI-BIS-E alterados", "quedó fuera de su rango"],
   ])("%s se imprime aunque esté vacío", (titulo, vacio) => {
     expect(DOC, `falta el bloque ${titulo}`).toContain(titulo);
     expect(DOC, `${titulo} desaparece cuando no hay dato`).toContain(vacio);
@@ -204,7 +204,7 @@ describe("los quince bloques van SIEMPRE, con o sin dato", () => {
       "Remisiones",
       "Rutas de atención activadas",
       "Composición corporal",
-      "Índices ANI BIS-E alterados",
+      "Índices ANI-BIS-E alterados",
       "Observaciones del profesional",
       "Recomendaciones",
     ]) {

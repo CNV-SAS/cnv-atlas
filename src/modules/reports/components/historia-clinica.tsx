@@ -515,7 +515,7 @@ export function HcRemisiones({ remisiones }: { remisiones: HcRemision[] }) {
   );
 }
 
-// Bloque ANI BIS-E de la tabla de la historia clinica (porte 2026-08-24). Su HC los pone DENTRO de la
+// Bloque ANI-BIS-E de la tabla de la historia clinica (porte 2026-08-24). Su HC los pone DENTRO de la
 // tabla de Wang, como un nivel mas; en Atlas viven en la tabla de indices del Diagnostico, que es una
 // tabla aparte. Portarlos al mapa de composicion los DUPLICARIA en Diagnostico, asi que se anaden solo
 // aqui: en el documento clinico van juntos, en la pantalla de trabajo siguen separados.
@@ -541,7 +541,7 @@ export function HcIndicesAniBise({ indices }: { indices: HcIndiceAni[] }) {
               colSpan={4}
               className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
             >
-              ANI BIS-E
+              ANI-BIS-E
             </td>
           </tr>
         </thead>

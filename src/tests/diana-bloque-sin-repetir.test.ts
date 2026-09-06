@@ -111,6 +111,42 @@ describe("rotulos de sector de la Diana: legibles (cotejo punto 15)", () => {
     expect(salto).toBeGreaterThan(cuerpo);
   });
 
+  // EL SOLAPE, que es lo que Santiago fotografio el 06-sep (captura `bug-diana`). Con el texto CENTRADO
+  // en su punto, la mitad interior de cada rotulo se metia encima del anillo exterior, y peor en los
+  // sectores casi horizontales (E3 a la derecha, E7 a la izquierda), que son los de texto mas ancho.
+  //
+  // NO SE FIJA UNA DISTANCIA, que seria una magnitud arbitraria y se aflojaria el dia que estorbe: se
+  // fija la REGLA que lo evita, que el rotulo crezca hacia AFUERA. Un rotulo a la derecha del centro se
+  // ancla al inicio y uno a la izquierda al final; los de arriba y abajo se quedan centrados, que ahi el
+  // texto horizontal no cruza el disco.
+  it("los rotulos laterales crecen HACIA AFUERA, no cruzando el disco", () => {
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    // Cada rotulo de sector es un <text> con su ancla y su x. Se comprueba la relacion: a la derecha del
+    // centro (x > C) el ancla es "start"; a la izquierda, "end".
+    const C = 160;
+    // Se extrae cada atributo por separado y no en un solo patron: React emite los atributos en el orden
+    // del JSX, y anclar el candado a ese orden lo convertiria en un detector de reordenamientos.
+    const laterales = [...html.matchAll(/<text\b[^>]*>/g)]
+      .map((m) => m[0])
+      .map((tag) => ({
+        anchor: tag.match(/text-anchor="([a-z]+)"/)?.[1] ?? null,
+        x: Number(tag.match(/\bx="([\d.-]+)"/)?.[1] ?? NaN),
+      }))
+      .filter((t) => t.anchor != null && Number.isFinite(t.x) && Math.abs(t.x - C) > 60);
+    expect(laterales.length, "hay rotulos laterales que comprobar").toBeGreaterThan(0);
+    for (const t of laterales) {
+      const esperado = t.x > C ? "start" : "end";
+      expect(t.anchor, `el rotulo en x=${t.x} tiene que crecer hacia afuera`).toBe(esperado);
+    }
+  });
+
   it("el lienzo deja margen alrededor del dibujo para que el rotulo no quede a ras del borde", () => {
     const html = renderToStaticMarkup(
       createElement(Diana, {

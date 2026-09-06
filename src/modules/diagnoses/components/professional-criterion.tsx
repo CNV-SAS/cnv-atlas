@@ -80,7 +80,7 @@ export function ProfessionalCriterion({
     // necesaria, pero se dice CON PALABRAS y con una franja de encabezado, no con un borde que en el
     // resto de la app significa "aqui no hay nada todavia".
     //
-    // EL ROTULO DE ARRIBA ES SUYO. Su archivo titula esta seccion "Diagnóstico Integrado ANI BIS-E", y
+    // EL ROTULO DE ARRIBA ES SUYO. Su archivo titula esta seccion "Diagnóstico Integrado ANI-BIS-E", y
     // Santiago propuso adoptarlo. Va de ANTETITULO y no en lugar del nuestro, y la razon importa: en su
     // archivo ese titulo encabeza un panel de SOLO LECTURA con el texto que escribe la IA, sin campo
     // para el profesional. Aqui el profesional ESCRIBE. Poner su titulo solo diria que lo redacto la
@@ -90,7 +90,7 @@ export function ProfessionalCriterion({
       <div className="flex flex-col gap-2 border-b border-primary/30 bg-primary/5 px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Diagnóstico Integrado ANI BIS-E
+            Diagnóstico Integrado ANI-BIS-E
           </span>
           <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
             Lo escribes tú
@@ -108,30 +108,70 @@ export function ProfessionalCriterion({
         </p>
       </div>
       <div className="flex flex-col gap-4 px-5 py-5">
-        {/* EL HISTORIAL, NUMERADO. La numeracion no es adorno: dice que esto es una SECUENCIA que se
-            agrega, no una lista de notas sueltas, y por tanto que el criterio mas alto es el ultimo. Es
-            lo que contesta sin leer nada la pregunta de "y si me equivoque": se agrega el corregido, y
-            se ve cual vino despues. */}
+        {/* MANDA EL ULTIMO, y los anteriores quedan plegados (cotejo 2026-09-06, punto 13a). Santiago:
+            "que solo el ultimo criterio puesto quede como el criterio que se muestra y el criterio que
+            manda". La lista numerada anterior ponia los N al mismo nivel, y con dos o tres el profesional
+            tenia que deducir cual vale.
+
+            LOS ANTERIORES NO SE BORRAN DE LA PANTALLA, SE PLIEGAN, y es la misma razon del punto 26: son
+            append-only porque son registro clinico, y quien escribio uno tiene que poder releerlo. Lo que
+            se decide aqui es cual MANDA, no cual existe. Plegados no compiten; borrados harian falta el
+            dia que alguien pregunte que se dijo antes. */}
         {notes.length ? (
-          <ol className="flex flex-col gap-3">
-            {notes.map((n, i) => (
-              <li key={n.id} className="rounded-lg border border-border bg-muted/20 p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2 pb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Criterio {i + 1} de {notes.length}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{n.note}</p>
-              </li>
-            ))}
-          </ol>
+          <div className="flex flex-col gap-3">
+            {(() => {
+              const vigente = notes[notes.length - 1];
+              const anteriores = notes.slice(0, -1);
+              return (
+                <>
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 pb-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                        Criterio vigente
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(vigente.createdAt)}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                      {vigente.note}
+                    </p>
+                  </div>
+                  {anteriores.length ? (
+                    <details className="rounded-lg border border-dashed border-border">
+                      <summary className="cursor-pointer px-4 py-2 text-xs text-muted-foreground">
+                        {anteriores.length === 1
+                          ? "Ver el criterio anterior"
+                          : `Ver los ${anteriores.length} criterios anteriores`}
+                      </summary>
+                      <ol className="flex flex-col gap-3 border-t border-border p-4">
+                        {anteriores.map((n, k) => (
+                          <li key={n.id} className="rounded-lg border border-border p-3">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Criterio {k + 1} de {notes.length}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDateTime(n.createdAt)}
+                              </span>
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                              {n.note}
+                            </p>
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                  ) : null}
+                </>
+              );
+            })()}
+          </div>
         ) : (
           <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm italic text-muted-foreground">
             Aún no has registrado tu criterio para esta evaluación.
           </p>
         )}
-
         {/* EL COMPOSITOR, separado del historial por una linea: arriba lo que YA quedo registrado,
             abajo lo que se esta escribiendo. Sin la separacion, el campo vacio parecia una entrada mas
             de la lista. */}
@@ -184,8 +224,8 @@ export function ProfessionalCriterion({
               {pending ? "Agregando..." : "Agregar criterio"}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Queda registrado y no se puede borrar. Si te equivocas, agrega uno nuevo: el último es el
-              vigente.
+              Queda registrado y no se puede borrar. Si te equivocas, agrega uno nuevo: pasa a ser el
+              vigente y el anterior queda plegado abajo.
             </span>
           </div>
         </form>

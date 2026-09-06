@@ -63,7 +63,10 @@ describe("indicatorRange (referencia verbatim + Δ contra el borde, Gildardo §2
   });
 
   it("ICA-BIS: referencia de coherencia 0 (NO φ), Δ = el valor mismo", () => {
-    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0,3745" });
+    // DOS DECIMALES desde el 2026-09-06. La ASERCION es la misma (la referencia es 0, no φ, y la Δ es el
+    // valor mismo); lo que cambio es el FORMATO, por el criterio de Santiago: su archivo no tiene una
+    // regla de decimales, tiene la que quedo en cada sitio, y el estandar de Atlas es 2.
+    expect(indicatorRange("ICA-BIS", ind, true)).toEqual({ reference: "0 (coherencia)", delta: "0,37" });
   });
 
   it("EB: referencia '—' (edad no sellada) → Δ TAMBIEN oculta (no se muestra una diferencia sin referencia)", () => {
@@ -109,10 +112,18 @@ describe("regresion Δ sobre el donante golden (antes punto medio → despues bo
     expect(indicatorRange("FFMI", ind, true)).toEqual({ reference: "17–25", delta: "4,10" });
   });
 
-  it("sin cambio: IR 0.018, ICA-BIS 0.3745, PABU 0.3745, IEHH 0.500", () => {
+  it("sin cambio de CRITERIO: IR, ICA-BIS, PABU e IEHH siguen midiendo contra lo mismo", () => {
+    // Este caso es de CA-2 (Δ contra el borde) y lo que fija es que a estos cuatro no les cambio el
+    // criterio. Los DECIMALES son otra cosa y se movieron el 2026-09-06: PABU e ICA-BIS pasaron de 4 a 2
+    // por el estandar de Atlas (ver el comentario en indicator-ranges).
+    //
+    // Y QUEDA A LA VISTA LO QUE FALTA POR DECIDIR: IR sigue en 3 decimales e IEHH en 3. No se tocan
+    // aqui porque son anteriores a este cotejo y bajarlos es una decision de display sobre cifras
+    // clinicas (el IR se compara contra un corte de 0,78: a dos decimales su Δ pasa de 0,018 a 0,02).
+    // Esta preguntado. Si se unifica, este caso se actualiza con la razon.
     expect(indicatorRange("IR", ind, true)?.delta).toBe("0,018");
-    expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0,3745");
-    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,3745");
+    expect(indicatorRange("ICA-BIS", ind, true)?.delta).toBe("0,37");
+    expect(indicatorRange("PABU", ind, true)?.delta).toBe("0,37");
     expect(indicatorRange("IEHH", ind, true)?.delta).toBe("0,500");
   });
 

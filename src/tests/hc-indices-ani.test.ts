@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indices-ani";
 
-// CANDADO DEL BLOQUE ANI BIS-E DE LA HISTORIA CLINICA (2026-08-24).
+// CANDADO DEL BLOQUE ANI-BIS-E DE LA HISTORIA CLINICA (2026-08-24).
 //
 // Hallazgo que lo motiva: su HC muestra IEHH e IAE y la nuestra no mostraba NINGUNO de los ocho, porque en
 // Atlas viven en una tabla aparte del Diagnostico. Por la regla del cotejo, un indicador que el muestra y
@@ -10,7 +10,7 @@ import { INDICES_ANI, indicesAniAlterados } from "@/modules/reports/data/hc-indi
 
 const clas = { IEHH: { label: "Leve" }, IAE: { label: "Acelerado" }, IFC: { label: "Función óptima" } };
 
-describe("indices ANI BIS-E de la historia clinica", () => {
+describe("indices ANI-BIS-E de la historia clinica", () => {
   it("porta las OCHO filas de su tabla, en su orden", () => {
     expect(INDICES_ANI.map((f) => f.codigo)).toEqual([
       "IFC",

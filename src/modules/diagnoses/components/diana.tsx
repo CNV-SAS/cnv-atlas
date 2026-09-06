@@ -21,11 +21,16 @@ const SECTORS = 9;
 const RINGS = 9;
 const SECTOR_DEG = 360 / SECTORS;
 const BAND = (R - HOLE) / RINGS;
-// MARGEN DEL LIENZO, no de la geometria (cotejo 2026-09-05, punto 15). Los rotulos de sector son tres
-// lineas apiladas fuera del radio R, y a ras del borde no cabian: quedaban apretadas unas contra otras y
-// se leian borrosas. El PAD ensancha el viewBox por los cuatro lados SIN mover el sistema de coordenadas
-// (el origen del dibujo sigue en 0,0), asi que ninguna celda ni el marcador del paciente cambian de sitio.
-const PAD = 16;
+// MARGEN DEL LIENZO, no de la geometria. Los rotulos de sector son tres lineas apiladas fuera del radio
+// R; a ras del borde quedaban apretadas y se leian borrosas (punto 15, 05-sep). El PAD ensancha el
+// viewBox por los cuatro lados SIN mover el sistema de coordenadas (el dibujo sigue en 0..320), asi que
+// ninguna celda ni el marcador del paciente cambian de sitio.
+//
+// SUBIO DE 16 A 44 el 06-sep, y no es holgura por gusto: los rotulos pasaron a crecer HACIA AFUERA
+// (ver el anclaje por lado, abajo), y en los sectores casi horizontales (E3 y E7) una etiqueta como
+// "FFMI Normal" mide unas 38 unidades. Sin ese margen, o se sale del lienzo o vuelve a montarse encima
+// del disco, que es justo lo que Santiago fotografio.
+const PAD = 44;
 const VIEWBOX = [-PAD, -PAD, SIZE + PAD * 2, SIZE + PAD * 2].join(" ");
 
 // Paradas del gradiente de riesgo, VERBATIM del prototipo (ATLAS_v7.html, rc() ~L4517). Verde
@@ -146,7 +151,12 @@ export function Diana({
   const label = `Diana EFR: estado ${stateNumber} de 81, resaltado sobre el gradiente de riesgo (menor al centro, mayor en el exterior). Anillo (IFC x IRC) ${frSectorName}, sector (FFMI x FMI) ${structuralName}.`;
 
   return (
-    <figure className="flex flex-col items-center gap-3">
+    // `w-full` EN LA FIGURA, y esto es lo que faltaba (cotejo 2026-09-06, punto 15). El contenedor la
+    // centra con `items-center`, que en una columna flex deja a los hijos con el ancho de SU CONTENIDO,
+    // no el del padre. Con la figura encogida al contenido, el `max-w` del SVG no podia mandar nunca:
+    // subirlo de 44 a 60rem apenas movio nada, y por eso Santiago vio la Diana casi igual. El limite
+    // real lo pone ahora el `max-w` de abajo, que es donde se lee.
+    <figure className="flex w-full flex-col items-center gap-3">
       <svg
         viewBox={VIEWBOX}
         role="img"
@@ -165,7 +175,7 @@ export function Diana({
         //
         // La geometria NO se toca: el navegador escala el viewBox. Cambiar SIZE/R/HOLE si habria movido
         // los rotulos respecto de su celda.
-        className="h-auto w-full max-w-[60rem]"
+        className="h-auto w-full max-w-[76rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -192,14 +202,29 @@ export function Diana({
             (efrSectorBands), la misma fuente que decide la posicion y el color de la celda, asi que
             rotulo y posicion no se pueden desincronizar. */}
         {Array.from({ length: SECTORS }, (_, sc) => {
-          const [lx, ly] = polar(R + 16, sc * SECTOR_DEG + SECTOR_DEG / 2);
+          const ang = sc * SECTOR_DEG + SECTOR_DEG / 2;
+          const [lx, ly] = polar(R + 14, ang);
+          // EL ROTULO CRECE HACIA AFUERA, NO CRUZANDO EL DISCO (cotejo 2026-09-06, punto 15).
+          //
+          // Con `textAnchor="middle"` el texto se reparte a los dos lados del punto, asi que en los
+          // sectores casi horizontales (E3 a la derecha, E7 a la izquierda) y en los diagonales la mitad
+          // interior se metia ENCIMA del anillo exterior. Es el solape que Santiago fotografio.
+          //
+          // El coseno del angulo dice de que lado esta el rotulo: a la derecha se ancla al inicio (crece
+          // hacia la derecha), a la izquierda al final (crece hacia la izquierda), y arriba y abajo se
+          // queda centrado, que ahi no estorba porque el texto es horizontal y el disco no.
+          const cos = Math.cos(((ang - 90) * Math.PI) / 180);
+          const derecha = cos > 0.34;
+          const izquierda = cos < -0.34;
+          const anchor = derecha ? "start" : izquierda ? "end" : "middle";
+          const tx = lx + (derecha ? 4 : izquierda ? -4 : 0);
           const bandas = efrSectorBands(sc);
           return (
             <text
               key={`sl${sc}`}
-              x={lx}
+              x={tx}
               y={ly}
-              textAnchor="middle"
+              textAnchor={anchor}
               dominantBaseline="central"
               fontSize={10}
               className="fill-muted-foreground"
@@ -210,15 +235,15 @@ export function Diana({
                   linea de la siguiente. El espacio extra sale del PAD del lienzo, no de la geometria. */}
               {bandas ? (
                 <>
-                  <tspan x={lx} dy={-11} fontSize={8}>
+                  <tspan x={tx} dy={-11} fontSize={8}>
                     FMI {bandToWord(bandas.fmi)}
                   </tspan>
-                  <tspan x={lx} dy={9} fontSize={8}>
+                  <tspan x={tx} dy={9} fontSize={8}>
                     FFMI {bandToWord(bandas.ffmi)}
                   </tspan>
                 </>
               ) : null}
-              <tspan x={lx} dy={bandas ? 11 : 0} fontWeight={700}>
+              <tspan x={tx} dy={bandas ? 11 : 0} fontWeight={700}>
                 E{sc + 1}
               </tspan>
             </text>
@@ -278,7 +303,7 @@ export function Diana({
           (periferia), no solo degradado. */}
       {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 60rem quedaba
           como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
-      <div className="flex w-full max-w-[60rem] flex-col gap-1">
+      <div className="flex w-full max-w-[76rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
@@ -292,7 +317,7 @@ export function Diana({
       </div>
       {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 60rem quedaba estrecho
           y partia sus dos lineas en cuatro. */}
-      <figcaption className="flex max-w-[60rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[76rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados
