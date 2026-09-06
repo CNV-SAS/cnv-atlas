@@ -28,14 +28,16 @@ export function CorrectionEntry({
         Corrige la respuesta equivocada. Se genera una versión nueva del diagnóstico, el tratamiento y el
         reporte con el dato corregido; la versión actual no se borra, queda registrada como reemplazada.
       </p>
-      {/* Alcance honesto (CP3): aquí solo se corrige la encuesta. La medición del equipo y la identidad
-          no se corrigen aquí, y el Biody equivocado se resuelve cerrando la evaluación (vía aún no
-          construida): sin este aviso el profesional busca, no encuentra y cree que no se permite. */}
+      {/* Alcance honesto (CP3), ACTUALIZADO el 2026-09-05: aquí solo se corrige la encuesta, y la
+          identidad no se corrige aquí. Lo que cambió es la medición: desde el cotejo, el import se puede
+          repetir MIENTRAS NO HAYA DIAGNOSTICO, y este texto decía que había que escribir a soporte en
+          todos los casos. Era la familia de siempre: se cambia el mecanismo y el texto se queda. */}
       <p className="max-w-prose text-xs text-muted-foreground">
-        Aquí corriges las respuestas de la encuesta. La medición del equipo (Biody) y la identidad del
-        paciente no se corrigen aquí. Si importaste la medición del paciente equivocado, esa evaluación
-        debe cerrarse y hacerse de nuevo con el archivo correcto; esa opción todavía no está disponible,
-        escríbele a soporte.
+                Aquí corriges las respuestas de la encuesta. La identidad del paciente no se corrige aquí.
+        <strong className="font-medium"> La medición del equipo sí se puede volver a importar mientras la
+        evaluación no tenga diagnóstico</strong>: vuelve a Evaluación, subpestaña Antropometría y BIS, y
+        sube el archivo correcto; el anterior se reemplaza. Con el diagnóstico ya generado, la evaluación
+        debe cerrarse y hacerse de nuevo, y esa opción todavía no está disponible: escríbele a soporte.
       </p>
       {availability.available ? (
         <div>

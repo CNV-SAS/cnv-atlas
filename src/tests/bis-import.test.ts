@@ -179,3 +179,52 @@ describe("el selector de archivo se ve y confirma lo elegido (cotejo 7)", () => 
     );
   });
 });
+
+describe("el portón del reimport pregunta por el DIAGNÓSTICO, no por la medición (cotejo 6)", () => {
+  const WRITER = sinComentarios(readFileSync("src/modules/bis/data/bis-writer.ts", "utf8"));
+  const SERVICIO = readFileSync("src/modules/bis/services/bis-import.ts", "utf8");
+  const ENTRADA = readFileSync("src/modules/corrections/components/correction-entry.tsx", "utf8");
+  const FORM = readFileSync("src/modules/corrections/components/correct-evaluation-form.tsx", "utf8");
+
+  // LA INCONSISTENCIA QUE CIERRA, y la encontró Santiago: si el xlsx no parsea ni valida, no se persiste
+  // nada y se puede elegir otro archivo. Si parsea, quedaba bloqueado para siempre. O sea que el sistema
+  // dejaba reintentar cuando el archivo era INSERVIBLE y bloqueaba cuando era SERVIBLE PERO DEL PACIENTE
+  // EQUIVOCADO. El portón preguntaba "¿parseó?" cuando lo que decide es "¿ya se emitió algo sobre esto?".
+
+  it("el guard mira `diagnoses`, no `bisMeasurements`", () => {
+    expect(WRITER, "el portón volvió a preguntar si ya hay medición").not.toMatch(
+      /from\(bisMeasurements\)[\s\S]{0,200}BisAlreadyImportedError/,
+    );
+    expect(WRITER).toContain("from(diagnoses)");
+  });
+
+  it("y la medición vieja se BORRA antes de insertar, para que no queden dos", () => {
+    // Dejarla convertiría "una medición por evaluación" en dos, y todo lo que la lee elegiría "la primera"
+    // o "la última" sin que nadie lo haya decidido. El borrado arrastra sus valores por la FK en cascada.
+    expect(WRITER).toContain("delete(bisMeasurements)");
+    const iBorrado = WRITER.indexOf("delete(bisMeasurements)");
+    const iInsert = WRITER.indexOf("insert(bisMeasurements)");
+    expect(iBorrado, "el borrado tiene que ir ANTES del insert").toBeLessThan(iInsert);
+  });
+
+  it("y queda rastro de que fue un reemplazo, sobre cuál", () => {
+    // El audit `bis.imported` ya llevaba actor, correo, ids y conteos. Sin esto, un reimport se ve igual
+    // que un import y no hay forma de saber que hubo una medición antes.
+    expect(WRITER).toContain("replaced_measurement_ids");
+  });
+
+  it("y los textos dicen el motivo NUEVO, no el viejo", () => {
+    // La familia que ya nos mordió: cambiar el mecanismo y dejar el texto. El rechazo ya no es "ya tiene
+    // una medición", es "ya tiene un diagnóstico"; y la pantalla decía que había que escribir a soporte,
+    // que pasa a ser falso mientras no haya diagnóstico.
+    expect(SERVICIO, "el conflicto sigue dando el motivo viejo").toContain("ya tiene un diagnóstico");
+    // APLANADO: el JSX parte las frases en varias lineas, asi que una asercion sobre el texto crudo falla
+    // por un salto de linea y no por el contenido. Mismo aplanado que usa `ayudas-que-son-garantias`.
+    const plano = (t: string) => t.replace(/\s+/g, " ");
+    for (const [nombre, src] of [["la entrada", ENTRADA], ["el formulario", FORM]] as const) {
+      expect(plano(src), `${nombre} sigue diciendo que no se puede reimportar`).toContain(
+        "mientras la evaluación no tenga diagnóstico",
+      );
+    }
+  });
+});

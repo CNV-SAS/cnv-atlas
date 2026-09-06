@@ -115,7 +115,14 @@ export async function importBisMeasurement(
   } catch (e) {
     if (e instanceof BisAlreadyImportedError) {
       return err(
-        appError("conflict", "Esta evaluación ya tiene una medición BIS importada."),
+        // EL MOTIVO CAMBIO CON EL PORTON (2026-09-05): ya no se rechaza por tener medicion, se rechaza por
+        // tener DIAGNOSTICO. El texto viejo decia "ya tiene una medicion importada" y habria quedado
+        // afirmando el motivo equivocado justo cuando el profesional necesita saber por que no puede.
+        appError(
+          "conflict",
+          "Esta evaluación ya tiene un diagnóstico generado, así que su medición no se puede reemplazar. " +
+            "Si importaste el archivo del paciente equivocado, la evaluación debe cerrarse y hacerse de nuevo.",
+        ),
       );
     }
     throw e; // error inesperado: que suba (lo captura el action / Sentry)

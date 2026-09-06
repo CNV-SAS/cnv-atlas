@@ -214,10 +214,14 @@ export function CorrectEvaluationForm({
           construida, va por soporte). Sin este aviso el profesional busca, no encuentra y cree que no
           se permite. */}
       <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Aquí corriges las respuestas de la encuesta. La medición del equipo (Biody) y la identidad del
-        paciente no se corrigen aquí. Si importaste la medición del paciente equivocado, esa evaluación
-        debe cerrarse y hacerse de nuevo con el archivo correcto; esa opción todavía no está disponible,
-        escríbele a soporte.
+        Aquí corriges las respuestas de la encuesta. La identidad del paciente no se corrige aquí.{" "}
+        <strong className="font-medium">
+          La medición del equipo sí se puede volver a importar mientras la evaluación no tenga
+          diagnóstico
+        </strong>
+        : vuelve a Evaluación, subpestaña Antropometría y BIS, y sube el archivo correcto; el anterior se
+        reemplaza. Con el diagnóstico ya generado, la evaluación debe cerrarse y hacerse de nuevo, y esa
+        opción todavía no está disponible: escríbele a soporte.
       </div>
 
       {totalMissing > 0 ? (
