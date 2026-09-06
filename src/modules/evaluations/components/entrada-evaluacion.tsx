@@ -181,9 +181,13 @@ export function EntradaEvaluacion({
         <h3 className="text-base font-semibold text-foreground">Medición BIS</h3>
         {composition ? (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2">
-              <CheckCircle2 className="size-4 shrink-0 text-clinical-optimal" aria-hidden />
-              <span className="text-sm font-medium text-clinical-optimal">
+            {/* NEUTRO, NO VERDE CLINICO (2026-09-05). Que la medicion se haya importado es un estado de
+                PROCESO; el verde de `clinical-optimal` significa un veredicto optimo SOBRE EL PACIENTE.
+                Ya se corrigio dentro del formulario del import, y dejarlo aqui seria tener el criterio
+                aplicado a medias en la misma pantalla. */}
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+              <CheckCircle2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="text-sm font-medium text-foreground">
                 Medición BIS importada
                 {composition.measurementDate
                   ? ` · tomada el ${formatDateLong(composition.measurementDate)}`
