@@ -166,13 +166,33 @@ documento **imprimible y probatorio**, con dos caras deliberadas (lo que va a pa
 papel, con sus `no-print` y `print-only`), y su aspecto se cotejó contra el documento de referencia.
 Uniformarla con las pantallas de trabajo rompería ese cotejo.
 
-## Decimales de una cifra clínica: los fija el CORTE, no el gusto
+## Decimales de una cifra clínica: el CORTE pone un techo, no un objetivo
 
-**Regla (Santiago, 2026-09-06):** la precisión con la que se muestra un indicador tiene que **alcanzar
-para distinguirlo de su corte**. Si el corte del IR es 0,78 y la distancia del paciente es 0,018, dos
-decimales convierten ese 0,018 en 0,02 y borran justo lo que la cifra venía a decir.
+**Regla (Santiago, 2026-09-06; matizada el mismo día tras el barrido del punto 30).** Tiene **dos
+mitades, y hacen falta las dos**:
 
-**De ahí salen dos criterios, y sólo dos:**
+> **1. Nunca menos precisión de la que el corte exige.**
+> **2. Y nunca menos de la que el valor necesita para ser útil.**
+
+**La primera mitad** es de donde nació la regla: la precisión mostrada tiene que **alcanzar para
+distinguir del corte**. Si el corte del IR es 0,78 y la distancia del paciente es 0,018, dos decimales
+convierten ese 0,018 en 0,02 y borran justo lo que la cifra venía a decir.
+
+**Su ejemplo es el AF.** Va a **un** decimal por instrucción de Gildardo (D-016), y eso manda sobre
+cualquier razonamiento nuestro. Cuando las dos capas de display discreparon sobre él (una con uno, otra
+con dos), no había discusión posible: la que decía dos estaba mal.
+
+**La segunda mitad se añadió porque la primera, sola, se lee al revés.** *El corte pone un techo, no un
+objetivo.* Que un corte sea entero **no** significa que el valor deba mostrarse entero: el corte del
+FFMI es 17, y un **FFMI sin decimales no sirve** (17 y 17,9 son pacientes distintos y la banda entera se
+aplastaría a nueve pasos). Lo mismo con la cintura (94), el SMM/W (27), el % de grasa (22) o el ACT/MLG
+(71-74): sus cortes son enteros y sus valores siguen yendo a dos decimales.
+
+**Cómo se aplica, entonces:** la primera mitad SUBE decimales cuando el corte los pide; la segunda
+impide que se BAJEN por debajo de lo que el dato necesita. El default de Atlas (dos) es el suelo, no el
+punto de partida de una negociación.
+
+**De la primera mitad salen dos criterios para SUBIR, y sólo dos:**
 
 1. **El corte lleva tres decimales → el indicador lleva tres.**
 2. **El indicador vive en un rango menor a una unidad → lleva tres.** A dos decimales, toda su escala
@@ -205,11 +225,25 @@ El defecto que originó la regla no fue elegir mal un número. Fue que **el valo
 clínica tenían cada uno el suyo**, y por eso el mismo renglón llegó a decir **0,42** en la columna del
 valor y **0,4157** en la de la Δ, que son la misma cifra.
 
-Los decimales viven en **`decimalesDe()`** (`modules/diagnoses/data/indicator-ranges.ts`) y los tres
+Los decimales viven en **`decimalesDe()`** (`modules/diagnoses/data/indicator-ranges.ts`) y sus
 consumidores la llaman. **Ninguna superficie escribe un número de decimales a mano.** Con una tabla, que
 coincidan no es disciplina: es que no hay dos números que puedan discrepar. Candado:
 `decimales-los-fija-el-corte.test.ts`, que además comprueba fila por fila que el valor y su Δ traen los
 mismos decimales.
+
+**Y eran CUATRO capas, no tres (cotejo punto 30, 2026-09-06).** El párrafo de arriba decía "los tres
+consumidores" y contaba el valor de Diagnóstico, la Δ y la historia clínica. Faltaba la **tabla de
+composición de Wang** (`composition-map.ts`), que es otra capa de display y no consultaba la tabla: el
+**AF** salía ahí con **dos** decimales y aquí con **uno**, y el **IR** con **dos** allí y **tres** aquí.
+No era una diferencia con su archivo: eran **nuestras dos capas discrepando sobre una instrucción suya**.
+
+Arreglado **por construcción y no por acuerdo**: `composition-map` pregunta `esIndicadorAni(clave)` y, si
+lo es, toma `decimalesDe(clave)`. Una fila nueva cuya clave sea uno de los doce hereda el número correcto
+sin que nadie se acuerde. Candado: `decimales-las-dos-capas.test.ts`, que compara las dos tablas.
+
+**El IMC no es indicador ANI y lleva su decimal declarado en la fila** (`{ decimals: 1 }`): su corte es
+18,5-24,9 y con dos salía 25,66 al lado de esa referencia. Esa vía queda para las filas de composición
+que no son indicadores; las que sí lo son no la usan.
 
 **Y la coma decimal es de la misma familia:** todo lo que ve un profesional va con **coma**, incluida la
 historia clínica. Hasta el 2026-09-06 su tabla de índices mostraba la referencia con coma (nuestra) y el

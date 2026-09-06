@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { buildComposition } from "@/modules/diagnoses/data/composition-map";
 import { HC_ANTECEDENTES } from "@/modules/reports/data/hc-antecedentes-map";
 import { nivelFaLabel } from "@/modules/treatment/data/treatment-view-types";
 
@@ -127,9 +128,15 @@ describe("los decimales los fija el corte, también en la tabla de composición"
     // La regla vivía en `indicator-ranges` (los doce indicadores ANI) y esta tabla, que es la OTRA capa
     // de display, no la aplicaba: salía 25,66 al lado de una referencia 18,5-24,9. Familia de "barrer
     // todos los sitios aplica a una REGLA, no solo a un umbral".
-    const MAPA = readFileSync("src/modules/diagnoses/data/composition-map.ts", "utf8");
-    expect(MAPA).toContain('["IMC", "imc", null, "kg/m²", { decimals: 1 }]');
-    // Y que el mecanismo llegue a la fila: sin esto el `decimals` se declara y no viaja.
-    expect(sinComentarios(MAPA)).toContain("opts?.decimals != null ? { decimals: opts.decimals }");
+    // SE AFIRMA POR EL RESULTADO, no por el texto del mecanismo: la primera version de este candado
+    // pegaba la linea que propaga `decimals` y se puso roja al cambiarla por el enganche con la tabla
+    // unica, sin que el IMC dejara de salir con un decimal. Un candado que se cae al mover una linea
+    // se pone rojo por el parseo, no por la regla.
+    const comp = buildComposition({ peso: 80.4, talla: 177, FM: 18, FFM: 62.4 }, null);
+    const imc = [...comp.eval, ...comp.diag]
+      .flatMap((n) => n.rows)
+      .find((r) => r.key === "imc");
+    expect(imc, "el control: la fila del IMC tiene que existir").toBeTruthy();
+    expect(imc?.decimals, "el IMC va a un decimal, la resolucion de su corte").toBe(1);
   });
 });
