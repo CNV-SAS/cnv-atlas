@@ -1,3 +1,4 @@
+import { sinComentarios } from "./helpers/sin-comentarios";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -183,5 +184,35 @@ describe("B. pipeline real: ninguna fila con clasificador y datos queda sin las 
       if (!deltaDerivable(w)) holes.push(`${r.key}: valor+referencia pero sin Δ`);
     }
     expect(holes, `celdas derivables vacias: ${holes.join(" · ")}`).toEqual([]);
+  });
+});
+
+describe("el cotejo del bloque de Wang y sarcopenia (punto 8)", () => {
+  const DISPLAY = readFileSync("src/modules/diagnoses/data/composition-display.ts", "utf8");
+  const CARD = readFileSync("src/modules/diagnoses/components/sarcopenia-card.tsx", "utf8");
+
+  it("el FFW NO lleva referencia: la que teníamos era la del ACT reutilizada", () => {
+    // Su archivo pone un guion en esa celda. La nuestra afirmaba un déficit de -6,60 contra una referencia
+    // que no existe en su modelo, y ACT y FFW son cantidades distintas (44,66 y 41,95 en el mismo
+    // paciente). No es una referencia mal elegida: es una que él no define. DIV-17, retirada.
+    expect(
+      sinComentarios(DISPLAY),
+      "volvió la referencia inventada del FFW (era la del ACT reutilizada)",
+    ).not.toContain('put("FFW_ref"');
+  });
+
+  it("y el bloque de sarcopenia CIERRA con el veredicto, no solo con las tres tarjetas", () => {
+    // Lo que él tiene y nosotros no: su archivo cierra con "Sin sarcopenia · Fuerza y masa muscular
+    // normales". Sin eso, el profesional ve tres datos y tiene que concluir él.
+    //
+    // Y SALE DE SU CLASIFICADOR, no de una regla nuestra: `dxSarcopenia` es el MISMO que alimenta el
+    // fenotipo del protocolo, así que la tarjeta y la prescripción no pueden decir cosas distintas.
+    expect(CARD, "el veredicto no sale del clasificador").toContain("dxSarcopenia(");
+    expect(CARD).toContain("veredicto.l");
+    expect(CARD).toContain("veredicto.detalle");
+    // La severidad se toma de su `k`, no de su hexadecimal: es la regla que aprendimos con el azul del
+    // frozen, que pintaba a un desnutrido como óptimo.
+    expect(CARD, "el color se está infiriendo del hex y no de la banda").toContain("BANDA_SARCO[veredicto.k]");
+    expect(sinComentarios(CARD), "un hex del frozen colándose a la vista").not.toMatch(/#[0-9a-f]{6}/i);
   });
 });

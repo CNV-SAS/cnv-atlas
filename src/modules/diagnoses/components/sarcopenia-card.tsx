@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { dxSarcopenia } from "@/clinical-engine/protocolo-fenotipo";
 
 import { clasificarASMI, type DisplayDx, dAF } from "../data/composition-display";
 import { SEV_CLS } from "./risk-severity";
@@ -47,6 +48,15 @@ function Metric({
   );
 }
 
+// LA BANDA POR `k`, no por su hexadecimal. Es un veredicto sobre el PACIENTE, asi que aqui la capa
+// clinica es la correcta (a diferencia de los estados de proceso, que van en el eje operativo).
+const BANDA_SARCO: Record<number, string> = {
+  0: "border-clinical-optimal/40 bg-clinical-optimal-bg text-clinical-optimal",
+  1: "border-clinical-warning/40 bg-clinical-warning-bg text-clinical-warning",
+  2: "border-clinical-critical/40 bg-clinical-critical-bg text-clinical-critical",
+  3: "border-clinical-critical/60 bg-clinical-critical-bg text-clinical-critical",
+};
+
 export function SarcopeniaCard({
   asmi,
   af,
@@ -59,6 +69,14 @@ export function SarcopeniaCard({
   sexoM: boolean;
   fuerzaPrensil?: number | null;
 }) {
+  // EL VEREDICTO sale de SU clasificador, el mismo que alimenta el fenotipo del protocolo. Con la fuerza
+  // sin registrar devuelve "Ingrese fuerza prensil", que ya lo dice el aviso de abajo, asi que ahi no se
+  // pinta: seria decir dos veces lo mismo.
+  const veredicto =
+    fuerzaPrensil == null || asmi == null || af == null
+      ? null
+      : dxSarcopenia(fuerzaPrensil, asmi, af, sexoM);
+
   const fuerzaCut = sexoM ? 27 : 16; // EWGSOP2 Kgf
   const asmiCut = sexoM ? "7.0" : "5.5";
   const afCut = sexoM ? "6.5" : "6.0";
@@ -95,6 +113,22 @@ export function SarcopeniaCard({
           dx={dAF(af, sexoM)}
         />
       </div>
+      {/* EL VEREDICTO, que es lo que faltaba (cotejo 2026-09-05, punto 8b). Su archivo cierra este bloque
+          con la conclusion ("Sin sarcopenia · Fuerza y masa muscular normales") y Atlas mostraba las tres
+          tarjetas SIN ella: el profesional veia tres datos y tenia que concluir el. Es el criterio de "lo
+          que el tiene y nosotros no".
+          SALE DE SU CLASIFICADOR, no de una regla nuestra: `dxSarcopenia` es el mismo que ya alimenta el
+          fenotipo del protocolo, asi que la tarjeta y la prescripcion no pueden decir cosas distintas.
+          Y LA SEVERIDAD SE TOMA DE SU `k`, no de su hex: el color se deriva del clasificador (misma regla
+          que aprendimos con el azul del frozen, que pintaba un desnutrido como optimo). */}
+      {veredicto != null ? (
+        <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${BANDA_SARCO[veredicto.k] ?? BANDA_SARCO[0]}`}>
+          <span className="flex flex-col gap-0.5">
+            <span className="font-semibold">{veredicto.l}</span>
+            <span className="text-xs opacity-90">{veredicto.detalle}</span>
+          </span>
+        </div>
+      ) : null}
       {fuerzaPrensil == null ? (
         <div className="flex items-start gap-2 rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />

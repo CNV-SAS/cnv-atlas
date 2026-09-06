@@ -356,7 +356,17 @@ export function computeRefPob(
     put("ICW_sg_ref", out["ICW_ref"]?.value ?? existing("ICW_ref"), true);
     put("ECW_sg_pct_ref", 42, true);
     put("ICW_sg_pct_ref", 58, true);
-    put("FFW_ref", tbwR, false); // = TBW_ref (de hidratFFM validada) -> sin marca
+    // FFW SIN REFERENCIA (retirada en el cotejo 2026-09-05, punto 8c). Aqui vivia
+    // `put("FFW_ref", tbwR, false)`, o sea la referencia del AGUA CORPORAL TOTAL reutilizada para el AGUA
+    // LIBRE DE GRASA, que son cantidades distintas: en el paciente del cotejo daban 44,66 y 41,95.
+    //
+    // POR QUE SE RETIRA Y NO SE CORRIGE: su archivo NO define referencia para el FFW (muestra un guion), y
+    // la nuestra afirmaba un deficit de -6,60 que el no afirma. No es una referencia mal elegida, es una
+    // referencia que no existe en su modelo, y una fila de la tabla de Wang es un veredicto sobre el
+    // paciente. Ver DIVERGENCIAS.md (DIV-17, retirada).
+    //
+    // El valor MEDIDO del FFW se sigue mostrando; lo que desaparece es la columna de referencia y su
+    // delta, exactamente como en su pantalla.
   }
   // composicion de la MLG. Gildardo CONFIRMO (RESPUESTA 2026-08-17 §5) tres como REPARTO DE WANG, sin marca:
   // proteina total 19,4%, CMO 5,6%, mineral no oseo 1,2% (cierran con la hidratacion 73,2%: 73,2+19,4+5,6+1,2
