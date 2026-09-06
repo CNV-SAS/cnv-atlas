@@ -60,6 +60,8 @@ export type ProximoControlView = {
   citaGuardada: string | null;
   /** La que propone el modelo. Se MUESTRA; no se guarda hasta que el profesional confirme. */
   citaSugerida: string | null;
+  /** Fecha de la CONSULTA (created_at de la evaluacion): el ancla desde la que se cuenta la sugerencia. */
+  fechaConsulta: string | null;
   fechaMedicion: string | null;
   /** Sin tratamiento no hay donde guardar la cita (el diagnostico todavia no se generó). */
   puedeGuardar: boolean;

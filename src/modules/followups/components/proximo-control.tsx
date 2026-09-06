@@ -38,8 +38,7 @@ export function ProximoControl({
         <CardTitle className="text-base">Próximo control</CardTitle>
         {vista.ruta ? (
           <span className="text-xs text-muted-foreground">
-            Ruta primaria activa: {vista.ruta.id} · {vista.ruta.label}. Frecuencia recomendada:{" "}
-            {vista.ruta.frecuencia}.
+            Ruta primaria activa: {vista.ruta.id} · {vista.ruta.label}.
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">
@@ -62,6 +61,21 @@ export function ProximoControl({
           </p>
         ) : null}
 
+        {/* LA FRECUENCIA DEL MODELO, VISIBLE (cuarto smoke, 27b). Iba dentro del parrafo gris de la
+            cabecera, junto a la ruta, y es el dato que explica de donde sale la fecha de abajo. Santiago:
+            "habria que poner mas llamativo la frecuencia que recomienda el modelo".
+
+            NO SE HACE EDITABLE, y en eso Santiago tiene razon: ya hacemos mas que su archivo. El pone un
+            campo de texto libre para la frecuencia; nosotros ponemos la que el MODELO deriva de la ruta y
+            dejamos que el profesional cambie la FECHA, que es la decision que de verdad toma. Un campo de
+            frecuencia editable ademas abriria la pregunta de si recalcula la fecha, y no la abre nadie. */}
+        {vista.ruta ? (
+          <p className="flex flex-wrap items-baseline gap-2 text-sm">
+            <span className="text-muted-foreground">Frecuencia recomendada por el modelo:</span>
+            <strong className="text-foreground">{vista.ruta.frecuencia}</strong>
+          </p>
+        ) : null}
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -75,7 +89,9 @@ export function ProximoControl({
           <div className="flex flex-col gap-1">
             <label htmlFor={`cita-${evaluationId}`} className="text-xs text-muted-foreground">
               Fecha del próximo control
-              {vista.citaSugerida ? " (el modelo sugiere una según la frecuencia de la ruta)" : ""}
+              {vista.citaSugerida
+                ? " (el modelo sugiere una: la frecuencia de la ruta contada desde esta consulta)"
+                : ""}
             </label>
             <input
               id={`cita-${evaluationId}`}
@@ -94,13 +110,23 @@ export function ProximoControl({
           {sinConfirmar && vista.citaSugerida ? (
             <p className="text-xs text-muted-foreground">
               Esta fecha todavía es una sugerencia: <strong>el paciente aún no tiene cita agendada</strong>{" "}
-              hasta que la confirmes.
+              hasta que la confirmes, y <strong>puedes poner otra</strong>: la del modelo es una
+              recomendación, no un límite.
             </p>
           ) : null}
+          {/* A DONDE VA ESTA FECHA, verificado antes de escribirlo (cuarto smoke, 27b), porque el texto
+              anterior decia de mas: afirmaba que cambia "en el reporte del paciente", y eso solo es
+              cierto en UN caso. Lo que se comprobo:
+                · HISTORIA CLINICA: SIEMPRE. `hc-header-reader` la lee y sale en el documento y en su PDF.
+                · REPORTE DEL PACIENTE: solo cuando se confirma un empeoramiento (su Q33, §6), que es la
+                  unica rama que imprime "Tu proxima cita esta agendada para el...".
+              Un texto que promete lo segundo en todos los casos es de la familia del que afirma un estado
+              sin derivarlo. */}
           {!sinConfirmar ? (
             <p className="text-xs text-muted-foreground">
-              Es la cita del tratamiento de esta consulta. Si la cambias aquí, cambia también en el reporte
-              del paciente.
+              Es la cita del tratamiento de esta consulta y queda en la{" "}
+              <strong>historia clínica</strong>. Al paciente solo se le comunica en su reporte cuando se
+              confirma un cambio desfavorable.
             </p>
           ) : null}
 

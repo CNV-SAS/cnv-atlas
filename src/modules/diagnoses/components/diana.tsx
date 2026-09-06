@@ -279,14 +279,18 @@ export function Diana({
           return (
             /* TEXTO OSCURO CON HALO BLANCO, que es como los pone el (fill #475569, stroke blanco). Los
                teniamos al reves (blanco sobre halo oscuro) y sobre los anillos verdes del centro se
-               leian como fichas negras: pesaban mas que el dibujo. */
+               leian como fichas negras: pesaban mas que el dibujo.
+
+               Y UN PUNTO MAS PEQUEÑOS QUE LOS DE SECTOR (cuarto smoke): a igual cuerpo se ven mas
+               grandes, porque van en NEGRITA sobre un halo y encima de celdas de color. El peso visual
+               no es solo el cuerpo. */
             <text
               key={`rl${rg}`}
               x={C - 4}
               y={C - r}
               textAnchor="end"
               dominantBaseline="central"
-              fontSize={6}
+              fontSize={5}
               fontWeight={700}
               fill="#475569"
               stroke="white"

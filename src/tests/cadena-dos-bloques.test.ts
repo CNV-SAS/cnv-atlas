@@ -269,20 +269,29 @@ describe("se partió la PRESENTACIÓN, no el guardado", () => {
   });
 
   it("hay DOS disparadores del mismo envío, y con `key` distintas", () => {
-    // EL SEGUNDO ES DEL 2026-09-06 (tercer smoke): el aviso de "sin guardar" que sale sobre la tabla de
-    // validación decía "guarda los ajustes" con el botón media pantalla más abajo, después de toda la
-    // fórmula. Ahora lleva el suyo.
+    // EL SEGUNDO ES DEL 2026-09-06, y CAMBIO DE SITIO EL MISMO DIA. Nacio dentro del aviso de "sin
+    // guardar" que sale sobre la tabla de validación; en el smoke siguiente Santiago señalo que en PC se
+    // ven los dos bloques a la vez pero en MOVIL el aviso cae fuera de pantalla, o sea que había que
+    // bajar para guardar cuatro campos que están arriba. Ahora está en "Objetivo del plan", junto a los
+    // campos que se editan, y el aviso dice dónde está.
     //
     // NO PARTE EL GUARDADO, que es lo que este archivo protege: los dos son `type="submit"` del MISMO
-    // formulario (el aviso se renderiza dentro de él, entre sus dos fieldsets), así que los seis ajustes
-    // siguen viajando de golpe con una sola firma. Es un segundo disparador del mismo acto.
+    // formulario, así que los seis ajustes siguen viajando de golpe con una sola firma. Es un segundo
+    // disparador del mismo acto.
     const PANEL_CRUDO = readFileSync(
       "src/modules/treatment/components/treatment-panel.tsx",
       "utf8",
     );
     // LAS KEYS DISTINTAS son el hazard del wizard: con la misma, React reutiliza el nodo y el clic
     // aterriza en el botón que no era. Solo se ve en un navegador real, así que se fija aquí.
-    expect(PANEL_CRUDO).toContain('key="guardar-desde-validacion"');
+    expect(PANEL_CRUDO).toContain('key="guardar-desde-meta"');
+    // Y en la CADENA sigue habiendo solo dos: tres disparadores del mismo acto es ruido. Se cuenta sobre
+    // la seccion, no sobre el archivo (que tiene ocho formularios mas), y sin comentarios, que citan el
+    // marcador al explicarlo.
+    const seccion = sinComentarios(
+      bloque("function CadenaCaloricaSection", "export function TreatmentPanel"),
+    );
+    expect((seccion.match(/type="submit"/g) ?? []).length).toBe(2);
   });
 
   it("los seis ajustes siguen viajando juntos en ese único formulario", () => {

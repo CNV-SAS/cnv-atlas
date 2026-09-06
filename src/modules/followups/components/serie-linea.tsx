@@ -27,6 +27,8 @@ export function SerieLinea({
   puntos,
   referencia,
   referenciaLabel,
+  banda,
+  bandaLabel,
   /**
    * Direccion de la mejora cuando NO hay `referencia`: true = subir mejora, false = bajar mejora.
    * `null` = NO SE SABE, y entonces ningun tramo se colorea (todo neutro).
@@ -42,6 +44,23 @@ export function SerieLinea({
   puntos: PuntoLinea[];
   referencia?: number;
   referenciaLabel?: string;
+  /**
+   * BANDA DE REFERENCIA `[inferior, superior]`, sombreada detras de la serie (2026-09-06).
+   *
+   * POR QUE EXISTE. Con UNA sola medicion el grafico dibujaba el punto y la mediana, y el eje se
+   * estiraba entre los dos: la mediana caia casi en el suelo y el punto arriba del todo. Santiago lo
+   * describio como "se ve raro", y no estaba mal dibujado; lo que faltaba era ESCALA. El texto decia
+   * "Alta (P75-P95)" y el grafico no tenia forma de mostrar donde esta P75.
+   *
+   * VERIFICADO ANTES DE INVENTAR: su archivo, con una sola medicion, dibuja exactamente lo mismo que
+   * teniamos (mismo eje, mismo punto suelto, misma linea de mediana). Asi que no hay porte posible y
+   * esto es nuestro, declarado.
+   *
+   * La banda es la forma estandar de decir "donde cae respecto de su grupo", sirve con un punto y con
+   * veinte, y no estrena color clinico: va en el gris de superficie.
+   */
+  banda?: [number, number];
+  bandaLabel?: string;
   subirEsMejor?: boolean | null;
   ariaLabel: string;
 }) {
@@ -53,6 +72,11 @@ export function SerieLinea({
   if (referencia != null) {
     minV = Math.min(minV, referencia);
     maxV = Math.max(maxV, referencia);
+  }
+  // El eje ABARCA la banda: sin esto se dibujaria recortada y diria menos que nada.
+  if (banda) {
+    minV = Math.min(minV, banda[0]);
+    maxV = Math.max(maxV, banda[1]);
   }
   const span = maxV - minV || 1;
   minV -= span * 0.15;
@@ -100,6 +124,29 @@ export function SerieLinea({
             </text>
           </g>
         ))}
+
+        {/* LA BANDA VA DEBAJO DE TODO: es fondo, no dato. */}
+        {banda ? (
+          <>
+            <rect
+              x={PAD_L}
+              y={yOf(banda[1])}
+              width={IW}
+              height={Math.max(1, yOf(banda[0]) - yOf(banda[1]))}
+              className="fill-muted-foreground/15"
+            />
+            {bandaLabel ? (
+              <text
+                x={PAD_L + 4}
+                y={yOf(banda[1]) + 10}
+                className="fill-muted-foreground"
+                fontSize={9}
+              >
+                {bandaLabel}
+              </text>
+            ) : null}
+          </>
+        ) : null}
 
         {referencia != null ? (
           <>
