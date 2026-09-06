@@ -14,7 +14,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getTreatmentProtocol } from "../data/treatment-reader";
 import { recordMenuSuggestion, type MenuSuggestionStatus } from "../data/menu-writer";
 import { requireNutricionista } from "./require-profession";
-import { getPrescripcionNutricional } from "../data/dieta-resumen-reader";
+import { getPrescripcionNutricional, getProtKgPrescrito } from "../data/dieta-resumen-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { patronDeclarado } from "./patron-declarado";
 
@@ -81,6 +81,32 @@ export async function generateMenu(
       appError("conflict", "El protocolo aún no se ha calculado; no se puede generar el menú."),
     );
   }
+  // El menu se arma desde el snapshot; si es de una era anterior del motor no tiene la forma
+  // esperada (fenotipo/sector/rutas). Se bloquea con un mensaje claro en vez de tronar.
+  //
+  // SUBIO AQUI (barrido del 2026-09-06): estaba DESPUES de la cadena, y la cadena ahora necesita los
+  // indicadores del snapshot para resolver la proteina del motor. El orden es el mismo que tiene la
+  // pagina: primero se comprueba que el diagnostico sirve, despues se calcula sobre el.
+  if (!isEngineOutput(results.snapshot)) {
+    return err(
+      appError(
+        "conflict",
+        "El diagnóstico de esta evaluación tiene un formato anterior. Realiza una nueva evaluación para generar el menu.",
+      ),
+    );
+  }
+
+  // LA PROTEINA DEL MOTOR, para los snapshots anteriores al sellado del 2026-09-03 (barrido del
+  // 2026-09-06). Faltaba, y a diferencia de los otros dos sitios del mismo barrido aqui SI mueve una
+  // cifra que viaja: `efectivo.calorico.protG` es el objetivo de proteina que se le manda al modelo en
+  // `proteinaGramos`. Sin esta opcion la cadena cae a `protMin` y el menu se armaba contra un gramaje
+  // distinto del que el nutricionista tiene delante y del que el paciente recibe en su plan.
+  const protKgVigente = await getProtKgPrescrito(
+    evaluationId,
+    results.snapshot.sexo,
+    results.snapshot.indicators as unknown as Record<string, unknown>,
+  );
+
   const efectivo = computeProtocoloEfectivo(protocol.protocolSuggested, {
     geb: protocol.adjGeb,
     pal: protocol.adjPal,
@@ -91,17 +117,7 @@ export async function generateMenu(
     // El peso meta que gobierna, de su sitio unico (migracion 0095): el menu se arma sobre las mismas
     // calorias y los mismos gramos de proteina que ve el nutricionista.
     pesoMeta: protocol.pesoMetaFijado,
-  });
-  // El menu se arma desde el snapshot; si es de una era anterior del motor no tiene la forma
-  // esperada (fenotipo/sector/rutas). Se bloquea con un mensaje claro en vez de tronar.
-  if (!isEngineOutput(results.snapshot)) {
-    return err(
-      appError(
-        "conflict",
-        "El diagnóstico de esta evaluación tiene un formato anterior. Realiza una nueva evaluación para generar el menu.",
-      ),
-    );
-  }
+  }, { protKgVigente });
 
   // Prompt de sistema: prefiere la version activa en BD (editable por admin, B14); si no hay,
   // cae al texto canonico en codigo. La procedencia guardada refleja la version usada.

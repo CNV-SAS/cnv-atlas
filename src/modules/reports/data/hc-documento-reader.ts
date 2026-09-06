@@ -54,41 +54,6 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const preguntas = (answers ?? []).flatMap((d) => d.questions);
   const snapshot = protocol?.protocolSuggested ?? null;
 
-  // LA CADENA EFECTIVA de esta consulta, la misma que muestra el panel: es la que da el objetivo y el
-  // PAL que gobiernan, y sin ellos el motor calcula sobre su objetivo INTERNO.
-  const efectivoHc = snapshot
-    ? computeProtocoloEfectivo(snapshot, {
-        geb: protocol?.adjGeb ?? null,
-        pal: protocol?.adjPal ?? null,
-        kcalObj: protocol?.adjKcalObj ?? null,
-        protGkg: protocol?.adjProtGkg ?? null,
-        fatPct: protocol?.adjFatPct ?? null,
-        deficit: protocol?.adjDeficit ?? null,
-        pesoMeta: protocol?.pesoMetaFijado ?? null,
-      })
-    : null;
-
-  // La prescripcion del motor que GOBIERNA, para el sodio y la proteina de las recomendaciones. Misma
-  // llamada que hace la pagina; si la evaluacion no tiene encuesta legible viaja null y los bloques que la
-  // citan vuelven a marcarse como pendientes, nunca con una cifra por defecto.
-  //
-  // EL OBJETIVO Y EL PAL EFECTIVOS SE LE PASAN (cotejo punto 29, 2026-09-06). Iban en `null, null`, y eso
-  // es EXACTAMENTE el defecto que el propio lector documenta y que se cerro en el panel el 2026-09-01:
-  // `tipoEnergia` sale de comparar el objetivo contra el GET, y su motor lo recalcula DESPUES de aplicar
-  // `edit.kcal_obj`. Sin pasarselo, el tipo se computa con el objetivo interno y queda clavado. El panel
-  // se arreglo; la HISTORIA CLINICA se quedo con los dos nulls, asi que el documento probatorio podia
-  // decir un tipo de dieta distinto del que el profesional tenia en pantalla.
-  const prescripcion = snapshot
-    ? await getPrescripcionNutricional(
-        evaluationId,
-        header.sexo ?? "",
-        {},
-        protocol?.pesoMetaFijado ?? snapshot.pesoCalculo,
-        efectivoHc ? Math.round(efectivoHc.calorico.kcalObj) : null,
-        efectivoHc ? efectivoHc.calorico.pal : null,
-      ).catch(() => null)
-    : null;
-
   // `getEvaluationResults` devuelve null si la evaluacion no tiene diagnostico: ahi no hay snapshot y los
   // bloques que dependen de el salen con su motivo, no vacios.
   const engine = results && results.compatible ? results.snapshot : null;
@@ -96,11 +61,69 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
 
   // La proteina del motor para los snapshots anteriores al sellado. El PDF y la pantalla tienen que
   // registrar la misma cifra: si el documento clinico dijera otra, el que vale es el que se archiva.
+  // Va ANTES de la cadena porque la cadena la consume, que es el mismo orden que tiene la pagina.
   const protKgVigente = engine
     ? await getProtKgPrescrito(
         evaluationId,
         engine.sexo,
         engine.indicators as unknown as Record<string, unknown>,
+      ).catch(() => null)
+    : null;
+
+  // LA CADENA EFECTIVA de esta consulta, la misma que muestra el panel: es la que da el peso, el objetivo
+  // y el PAL que gobiernan. CON `protKgVigente`, como la pagina y como el plan del paciente: sin el, en un
+  // snapshot anterior al sellado la proteina cae a `protMin` y la cadena de la historia clinica no es la
+  // que el profesional aprobo.
+  const efectivoHc = snapshot
+    ? computeProtocoloEfectivo(
+        snapshot,
+        {
+          geb: protocol?.adjGeb ?? null,
+          pal: protocol?.adjPal ?? null,
+          kcalObj: protocol?.adjKcalObj ?? null,
+          protGkg: protocol?.adjProtGkg ?? null,
+          fatPct: protocol?.adjFatPct ?? null,
+          deficit: protocol?.adjDeficit ?? null,
+          pesoMeta: protocol?.pesoMetaFijado ?? null,
+        },
+        { protKgVigente },
+      )
+    : null;
+
+  // La prescripcion del motor que GOBIERNA, para el sodio y la proteina de las recomendaciones.
+  //
+  // LOS INDICADORES SE LE PASAN (barrido del 2026-09-06). Aqui iba `{}`, un objeto vacio, y el comentario
+  // decia "misma llamada que hace la pagina" cuando la pagina pasa `snapshot.indicators`. `motorTratNutri`
+  // no falla sin ellos: `conPesoYTalla` le completa peso y talla desde la composicion y el motor contesta
+  // con normalidad, solo que leyendo FMI, FFMI, ASMI, IEHH, AEC y ACT en CERO. Y sus propias guardas estan
+  // escritas para el caso "no hay bioimpedancia":
+  //     desnutricion = FFMI > 0 && ...      -> SIEMPRE falsa en la historia clinica
+  //     sarcopenia   = ASMI > 0 && ...      -> SIEMPRE falsa
+  //     obesidad     = imc>=30 || FMI>6/9   -> solo por IMC, nunca por composicion
+  //     hidratacion  = IEHH>1 || AEC/ACT>44 -> solo por la sed declarada en la encuesta
+  // O sea que el documento probatorio calculaba la prescripcion COMO SI NO SE HUBIERA MEDIDO NADA, en un
+  // paciente al que si se le midio. El sodio de 2.000 mg de la rama de hidratacion no salia nunca, y las
+  // notas de realimentacion y de fuerza tampoco. Es el mismo defecto del punto 29 (llamar al motor con
+  // menos argumentos que el panel), tercera vez en este archivo.
+  //
+  // Y CAMBIA LA GUARDA, de `snapshot` a `engine`: sin diagnostico compatible no hay indicadores que pasar,
+  // y la eleccion no es entre una cifra buena y una mala sino entre "pendiente" y una cifra calculada
+  // sobre una medicion vacia. Este archivo ya lo dice para el caso de la encuesta ilegible: null viaja y
+  // los bloques se marcan pendientes, nunca con una cifra por defecto.
+  const prescripcion = engine
+    ? await getPrescripcionNutricional(
+        evaluationId,
+        engine.sexo,
+        engine.indicators as unknown as Record<string, unknown>,
+        // El peso EFECTIVO de la cadena, no una copia a mano de su regla. Da lo mismo hoy
+        // (`adj.pesoMeta ?? sug.pesoCalculo` es exactamente lo que habia escrito aqui), y deja de darlo
+        // el dia que la cadena cambie de criterio en un solo sitio.
+        efectivoHc?.pesoEfectivo ?? null,
+        // EL OBJETIVO Y EL PAL EFECTIVOS (cotejo punto 29, 2026-09-06). Iban en `null, null`, que es el
+        // defecto que se cerro en el panel el 2026-09-01: `tipoEnergia` sale de comparar el objetivo
+        // contra el GET, y su motor lo recalcula DESPUES de aplicar `edit.kcal_obj`.
+        efectivoHc ? Math.round(efectivoHc.calorico.kcalObj) : null,
+        efectivoHc?.calorico.pal ?? null,
       ).catch(() => null)
     : null;
 

@@ -41,8 +41,17 @@ describe("el objetivo del tratamiento son DOS piezas, no una", () => {
   });
 
   it("EL SEGUNDO DEFECTO: el motor recibe el objetivo y el PAL efectivos, ya no dos nulls", () => {
-    expect(READER).toContain("efectivoHc ? Math.round(efectivoHc.calorico.kcalObj) : null");
-    expect(READER).toContain("efectivoHc ? efectivoHc.calorico.pal : null");
+    // SE AFIRMA QUE LOS DOS VIAJAN, no la forma de escribirlos. La version anterior de este candado
+    // pegaba el ternario literal (`efectivoHc ? ... : null`) y se puso rojo el 2026-09-06 cuando el
+    // barrido lo reescribio como `efectivoHc?.calorico.pal ?? null`: mismo comportamiento, otra sintaxis.
+    // Un candado que se cae al cambiar de operador se pone rojo por el PARSEO y no por la regla.
+    const args = READER.slice(READER.indexOf("getPrescripcionNutricional("));
+    const llamada = args.slice(0, args.indexOf(").catch"));
+    expect(llamada).toContain("efectivoHc");
+    expect(llamada).toContain("calorico.kcalObj");
+    expect(llamada).toContain("calorico.pal");
+    // Y el control de la asercion negativa: que ya no queden los dos nulls sueltos que habia.
+    expect(llamada.replace(/s/g, "")).not.toContain("null,null,");
   });
 });
 
