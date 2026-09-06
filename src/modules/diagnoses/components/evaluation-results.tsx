@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type EngineIndicators, indicatorSeverities, isBisDerivedDomain } from "@/clinical-engine";
+import { veredictoSev } from "@/clinical-engine/severity";
 
 import { DetailsSection } from "./details-section";
 import { RadarPanel, DianaExplorer } from "./maps-section";
@@ -23,7 +24,7 @@ import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
-import { conClaseIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
+import { clasificarIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -119,14 +120,18 @@ function ContentCard({
   label,
   value,
   icon: Icon,
+  n,
 }: {
   label: string;
   value: string | null;
   icon: LucideIcon;
+  /** Numero de orden, como en su panel (1 a 6). Dice en que orden se leen, que es informacion. */
+  n: number;
 }) {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">{n}.</span>
         <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
@@ -155,6 +160,7 @@ function AbordajeCard({ abordaje }: { abordaje: AbordajeCardData }) {
     // lo que el profesional hace con el. Fondo apagado y borde discontinuo, NO color clinico.
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-4">
       <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">6.</span>
         <Stethoscope className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Abordaje por profesión
@@ -259,10 +265,21 @@ export function EvaluationResults({
   // poblacional, los diagnosticos nuevos dejan de marcarse solos. Primer uso real de emission_versions.
   const ebIaeProvisional = isProvisionalCalibration(results.emissionVersions);
   // Severidad por indicador (recomputada del snapshot) para el punto de color de la clasificacion.
-  // `conClaseIcaBis` resuelve la fila ICA-BIS a la del PABU (ver indicator-ranges: es la regla que su
-  // archivo aplica con `icaBisClf = cPABU(t_pabu)`, y la misma que usa el bloque de indices de la HC).
-  const sevByCode = conClaseIcaBis(indicatorSeverities(snapshot));
-  const clasesPorCodigo = conClaseIcaBis(classifications);
+  //
+  // LA FILA ICA-BIS SE RESUELVE APARTE, con `clasificarIcaBis`, que es el porte de SU `dICA`: en ESTA
+  // tabla su archivo gradua la magnitud (la regla de la HC, tomar la del PABU, es de la OTRA superficie;
+  // el porque completo esta en indicator-ranges). La severidad sale del hex por `veredictoSev`, el mismo
+  // camino que los quince clasificadores congelados, asi que "Desviación leve" (#f59e0b) es AMBAR y no
+  // se puede volver a elegir a mano: ese verde era el defecto del cotejo.
+  const claseIca = clasificarIcaBis(indicators.icaBis);
+  const sevByCode: Record<string, number | null> = {
+    ...indicatorSeverities(snapshot),
+    "ICA-BIS": veredictoSev(claseIca),
+  };
+  const clasesPorCodigo: Record<string, { label: string } | null> = {
+    ...classifications,
+    "ICA-BIS": claseIca ? { label: claseIca.l } : null,
+  };
   // Contenido del estado del paciente, SIEMPRE del snapshot inmutable (para el panel permanente y
   // para la celda propia durante la exploracion; nunca del registry).
   const patientContent = {
@@ -313,8 +330,7 @@ export function EvaluationResults({
                     : "-"
                   : (range?.delta ?? "-");
                 // EB toma la severidad y la etiqueta del IAE (comparten el veredicto de envejecimiento).
-                // ICA-BIS toma las del PABU, ya resueltas arriba por `conClaseIcaBis` (el porque, con la
-                // cita de su archivo y lo que se retiro, esta en indicator-ranges).
+                // ICA-BIS trae las suyas, resueltas arriba con el porte de su `dICA` de ESTA tabla.
                 const classCode = isEb ? "IAE" : code;
                 const sev = sevByCode[classCode];
                 const classLabel = clasesPorCodigo[classCode]?.label ?? "N/D";
@@ -688,24 +704,33 @@ export function EvaluationResults({
           ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ContentCard
+              n={1}
               icon={HeartPulse}
               label="Enfermedades / Complicaciones probables"
               value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
             />
             <ContentCard
+              n={2}
               icon={Dna}
               label="Mecanismos bioquímicos / Disfunción celular"
               value={efrState?.mechanism ?? null}
             />
             <ContentCard
+              n={3}
               icon={FlaskConical}
               label="Biomarcadores clave"
               value={efrState?.biomarkers ?? null}
             />
-            <ContentCard icon={TriangleAlert} label="Riesgos clínicos" value={efrState?.risks ?? null} />
+            <ContentCard
+              n={4}
+              icon={TriangleAlert}
+              label="Riesgos clínicos"
+              value={efrState?.risks ?? null}
+            />
             {/* Excepcion de negocio: "Nutracéuticos sugeridos", no "Vitacellebis" del HTML; a
                 futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
             <ContentCard
+              n={5}
               icon={Pill}
               label="Nutracéuticos sugeridos"
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
