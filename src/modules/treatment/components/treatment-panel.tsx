@@ -2213,8 +2213,12 @@ function IntercambioSection({
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar intercambio"}
             </Button>
+            {/* LA ETIQUETA DICE QUE PASA, no de donde sale la cuenta (cotejo 2026-09-05, punto 18). Su
+                boton se llama "Distribuir porciones"; el nuestro decia "Recalcular desde el objetivo",
+                que describe el MECANISMO. Se conserva el "desde el objetivo" porque distingue este boton
+                del de la distribucion por tiempos, que tambien recalcula y desde otra cosa. */}
             <BotonRecalcular
-              etiqueta="Recalcular desde el objetivo"
+              etiqueta="Distribuir porciones desde el objetivo"
               hayAjustes={hayAjustesIntercambio}
               disabled={pending}
               onRecalcular={() =>
@@ -2746,8 +2750,10 @@ function TiemposSection({
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Guardando..." : "Guardar distribución"}
             </Button>
+            {/* Igual que el de arriba (punto 18): su boton se llama "Sugerir distribución". "Recalcular
+                desde el intercambio" no dice que lo que se rellena es la rejilla de tiempos de comida. */}
             <BotonRecalcular
-              etiqueta="Recalcular desde el intercambio"
+              etiqueta="Sugerir la distribución desde el intercambio"
               hayAjustes={Object.keys(celdas).length > 0}
               disabled={pending}
               onRecalcular={() => setCeldas({})}

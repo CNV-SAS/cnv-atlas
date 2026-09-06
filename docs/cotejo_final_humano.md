@@ -122,7 +122,40 @@ Desviación leve" Ahi pone desviación leve con color verde, mientras que la PAB
 
 **Tratamiento**: 
 
-18. De las pestañas que mas trabajo nos costó, adjunto las capturas del recorrido completo de ambas subpestañas para que cotejes contra el html de forma completa y profunda.
+18. **HECHO (2026-09-06). Cotejo bloque por bloque de las dos subpestañas contra sus capturas.** De aquí salieron los puntos 21, 22.3, 23, 24 y 25, que ya están cerrados arriba. Lo que queda es el inventario, para que sepas qué está y qué no.
+
+    **Subpestaña "Rutas de atención derivadas del DFI" · su archivo tiene TRES secciones:**
+
+    | Su bloque | Atlas |
+    | --- | --- |
+    | SECCIÓN 1 · Rutas de atención activadas (con Nutricional / Ejercicio / Seguimiento por ruta) | Está |
+    | SECCIÓN 2 · Vitacellebis recomendado, con "Registrar despacho" | Está |
+    | SECCIÓN 2b · **OTROS PRODUCTOS (LUVIA)** | **No está** (punto 20: construcción diferida, no hueco) |
+    | SECCIÓN 3 · Remisiones, con su chip de obligatoria/recomendada | Está |
+    | *(no lo tiene)* | **Resumen del diagnóstico**, que es nuestro (punto 19) |
+
+    **Subpestaña Nutricionista · su archivo, en orden:**
+
+    | Su bloque | Atlas |
+    | --- | --- |
+    | A · Resumen clínico | Está |
+    | Meta terapéutica | Está |
+    | Objetivo del tratamiento nutricional **+ los 4 campos** | Está, y los 4 campos **subieron aquí** (punto 21) |
+    | Validación del plan · % cubrimiento e ICN | Está, **entre el objetivo y la fórmula**, como el suyo |
+    | D · **Fórmula sintética** (12 campos) | Está, con su nombre (punto 23) y **los doce campos** (punto 22.4) |
+    | Paneles de referencia de proteína y grasa | Está, con su forma (punto 22.3) |
+    | Lista de intercambio U de A · ICBF 2025, con "Distribuir porciones" | Está, con su TOTAL completo (punto 24) |
+    | Distribución por tiempos, con "Sugerir distribución" y el cuadre por fila | Está, con la columna de cuadre |
+    | Tiempos de comida activos (6, con Merienda) | Está, los seis |
+    | F · Menú semanal (opcional), con "Generar menú con IA" | Está la rejilla; **la IA hace otra cosa a propósito** (ver abajo) |
+
+    **Lo que cambié de paso:** los dos botones de recálculo se llamaban *"Recalcular desde el objetivo"* y *"Recalcular desde el intercambio"*, que describen el **mecanismo**. Los suyos se llaman *"Distribuir porciones"* y *"Sugerir distribución"*, que dicen **qué pasa**. Adopto los suyos **conservando el "desde X"**, porque sin eso dos botones que recalculan cosas distintas se leen igual.
+
+    **Las tres divergencias vivas, todas ya declaradas y ninguna nueva:**
+    · **La IA del menú.** Él tiene *"Generar menú con IA"* (compone la semana); nosotros *"Proponer otra semana"* (determinista, del ciclo) + *"Adaptar a las restricciones"* (IA). **Es su propio cambio de contrato del 29 de agosto**: *"la IA ya no COMPONE menús, ADAPTA el ciclo"*. Lo nuestro sigue esa instrucción, no la contradice.
+    · **Los tiempos activos van ANTES de la distribución**; él los pone después. Gobiernan el reparto, así que ponerlos después obliga a subir a corregir. Ya declarada.
+    · **El "Resumen del diagnóstico" de rutas es nuestro** (punto 19).
+18b. Tu petición original: De las pestañas que mas trabajo nos costó, adjunto las capturas del recorrido completo de ambas subpestañas.
 
 - Subpestaña rutas de atención
 19. **CONTESTADO (2026-09-06): es NUESTRO.** Verifiqué su subpestaña completa. Su "Rutas de atención derivadas del DFI" tiene **tres secciones y ninguna es un resumen del diagnóstico**: SECCIÓN 1 Rutas de atención activadas, SECCIÓN 2 Vitacellebis recomendado (con "Otros productos" al final) y SECCIÓN 3 Remisiones.
