@@ -602,9 +602,14 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 
 ---
 
-## Mensaje corto pendiente de enviar (2026-09-05)
+## Mensaje corto pendiente de enviar (2026-09-05, ampliado el 06)
 
-**Dos cosas, y ninguna es una pregunta.** Santiago se las manda juntas cuando cierre el cotejo.
+**Santiago se lo manda todo junto al cerrar el cotejo.** Van SEIS cosas: dos declaraciones (1 y 2), tres
+hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
+
+> **Ninguna de las tres del cotejo visual bloquea nada.** Las tres salieron de comparar sus capturas
+> contra las nuestras, fila por fila, el 5 de septiembre. Atlas ya está en el estado correcto en las
+> tres; se las decimos porque son suyas y porque una de ellas se le va a repetir.
 
 ### 1 · Las doce medias porciones: elegimos la (a), y te decimos por que
 
@@ -636,6 +641,79 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 > Lo decimos porque **ese comentario nos freno dos veces** y le va a pasar igual a la proxima persona que
 > abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.
 
+### 3 · La referencia del IFC de tu tabla de índices usa el corte que tu propio archivo prohíbe
+
+> Gildardo: en tu subpestaña **Composición Corporal**, la fila **IFC** muestra referencia **3,5-6,0** y
+> Δ **3,48** para un IFC de 6,98 (paciente Nico, hombre).
+>
+> **Y en el mismo archivo, tu prompt de IA lo prohíbe con todas las letras:** *"IFC, IRC y PABU tienen
+> puntos de corte ESPECÍFICOS POR SEXO, derivados en la cohorte de 6.063 adultos... Está prohibido usar
+> los cortes históricos únicos (IFC 3,5/6,0 · IRC 2,0/3,4 · PABU con k=0,9): fueron reemplazados porque
+> desplazaban sistemáticamente la lectura de las mujeres."*
+>
+> **Atlas usa el corte por sexo** (> 6,68 en hombres, Δ 0,30), que es lo que tú mandas. **No cambiamos
+> nada de nuestro lado**: te lo decimos para que corrijas esa tabla del tuyo, porque el efecto que
+> describes (desplazar la lectura de las mujeres) es exactamente lo que hace hoy.
+>
+> Es el mismo tipo de cosa que el FFW de agosto: una parte de tu archivo que se quedó atrás de otra
+> parte del mismo archivo.
+
+### 4 · La fila PABU de esa tabla usa un clasificador distinto del congelado (solo te lo declaramos)
+
+> En esa misma tabla, la fila **PABU** rotula **"PABU bajo"**, que viene de un clasificador local de la
+> tabla, no de `cPABU`. Nosotros usamos `cPABU` (**"Desviación por exceso"**), porque es el clasificador
+> del motor y tu instrucción del 17 de agosto fue literal: *"cPABU: pórtenlo tal cual, y no lo
+> gradúen"*.
+>
+> **El color coincide** (ámbar los dos), así que en pantalla se lee igual. Solo cambia la palabra. **Si
+> prefieres el rótulo de la tabla, se cambia en una línea.**
+
+### 5 · La fila ICA-BIS tiene DOS reglas en tu archivo, una por superficie. ¿Es a propósito?
+
+> **En Diagnóstico → Composición Corporal** la fila ICA-BIS usa un clasificador que **gradúa la
+> magnitud** en cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).
+>
+> **En Reporte / Historia Clínica** haces `icaBisClf = cPABU(t_pabu)`, y dejaste la nota al lado:
+> *"cICABIS eliminado, usar cPABU global"*.
+>
+> **Atlas porta las dos, cada una en su superficie**, porque las dos son tuyas. **La pregunta es si la
+> diferencia es deliberada** (la historia resume y la pantalla detalla) **o si esa nota de la historia
+> iba a aplicarse también a la tabla de Composición y quedó a medias.**
+>
+> Y de paso, algo que sí era nuestro y ya corregimos: el escalón **"Desviación leve"** va en **ámbar**
+> en tu archivo y nosotros lo teníamos en **verde**. Un ICA-BIS desviado se pintaba como si estuviera
+> bien. Corregido.
+
+### 6 · El borrador de IA: portamos tu prompt, SIN el nombre del paciente. Y hay algo que debes saber
+
+> Gildardo: tu **"Análisis IA"** produce un diagnóstico integral estructurado por los cinco dominios del
+> DFI, y el nuestro produce un párrafo. **Comparamos los dos prompts: tienes razón tú, y lo estamos
+> portando** (el esqueleto del DFI, los cortes por sexo, las reglas de la PABU y del IFC frente al
+> ángulo de fase, y el formato en prosa).
+>
+> **Con una diferencia que no podemos evitar y que te declaramos: el NOMBRE del paciente no viaja al
+> modelo.** Tu bloque abre con `Nombre: ...`; el nuestro no lo lleva. No es preferencia nuestra: la Ley
+> 1581 y el consentimiento que el paciente firma dicen que los sistemas automatizados trabajan *"a
+> partir de variables clínicas seudonimizadas, sin sus datos de identificación"*. Sí viajan edad, sexo,
+> ocupación, estado civil y estrato, que son los determinantes del dominio Epigenético-Contextual.
+>
+> **Y aquí va lo que conviene que sepas, porque afecta a tu archivo y no al nuestro.** El EJEMPLO de tono
+> que está dentro de tu propio prompt de sistema **lleva el nombre completo de una persona junto a su
+> cuadro clínico entero**: diagnóstico personal (insuficiencia renal), antecedentes familiares, estrato,
+> estado civil, hábitos y composición corporal. **Ese texto va en el mensaje de sistema, así que viaja al
+> proveedor de IA en CADA llamada, para todos los pacientes.** No sabemos si es una persona real o una
+> ficha de prueba, y por eso te lo preguntamos en vez de darlo por hecho: **si es real, es el dato de
+> alguien que no es el paciente que se está atendiendo, saliendo sin su autorización.**
+>
+> **Nosotros no portamos ese ejemplo**: lo reemplazamos por uno equivalente sin identidad, que sirve
+> igual (lo que el ejemplo enseña es el TONO y el nivel de detalle, no quién es la persona). En tu
+> archivo sigue vivo.
+>
+> **La pregunta, que es una sola:** tu instrucción de apertura dice *"identifica al paciente y enmarca
+> todo con el riesgo funcional integrado"*. **Sin nombre, ¿cómo quieres que abra?** Nuestra propuesta es
+> *"El paciente, un hombre de 22 años..."*, o sea la misma frase sin el nombre. Si prefieres otra cosa,
+> dínosla y la ponemos textual.
+
 ---
 
 ## Lo que se le DECLARA (no se le pregunta), en un solo sitio
@@ -665,6 +743,7 @@ Las de la CIENCIA congelada (DIV-1, DIV-2) ya están cerradas con él y no van a
 | **DIV-7** | El diagnóstico abre en Funcional, con franja de veredicto persistente |
 | **DIV-8** | La tabla de composición junta lo bioeléctrico crudo en un bloque |
 | **DIV-9** | La tabla conserva GEB y GET, que su HTML no lista |
+| **DIV-18** | El peso meta y la fuerza prensil se MUESTRAN en Antropometría, donde él los tiene, y se EDITAN en las condiciones de la toma, donde se llenan (en Atlas son un formulario con su propio guardado, y partirlo en dos haría que el valor se perdiera en silencio). El enlace cae en el bloque exacto y se retira cuando el diagnóstico ya los selló |
 
 ### Donde Atlas va POR DELANTE de su archivo
 
