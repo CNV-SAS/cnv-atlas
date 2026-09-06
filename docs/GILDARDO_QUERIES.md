@@ -602,14 +602,33 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 
 ---
 
-## Mensaje corto pendiente de enviar (2026-09-05, ampliado el 06)
+## Mensaje pendiente de enviar (2026-09-05, reordenado el 06)
 
-**Santiago se lo manda todo junto al cerrar el cotejo.** Van SEIS cosas: dos declaraciones (1 y 2), tres
-hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
+**Lo PRIMERO es un asunto de datos personales, y por eso encabeza.** Detrás van dos declaraciones, dos
+hallazgos menores de su archivo y una pregunta.
 
-> **Ninguna de las tres del cotejo visual bloquea nada.** Las tres salieron de comparar sus capturas
-> contra las nuestras, fila por fila, el 5 de septiembre. Atlas ya está en el estado correcto en las
-> tres; se las decimos porque son suyas y porque una de ellas se le va a repetir.
+### 0 · URGENTE · El ejemplo de su prompt lleva el nombre de una persona, y viaja al proveedor de IA en
+### cada llamada
+
+> Gildardo: dentro de tu **prompt de sistema** del Análisis IA hay un EJEMPLO de tono que empieza así:
+> *"El paciente, [nombre y apellidos completos], un hombre de 61.2 años, con antecedentes familiares de
+> Cáncer, Obesidad, HTA y Enfermedad de tiroides, con diagnóstico personal de insuficiencia renal..."*, y
+> sigue con estrato, estado civil, hábitos, composición corporal y valores bioeléctricos. Es una historia
+> clínica corta, con nombre y apellidos.
+>
+> **Va en el mensaje de sistema.** Eso significa que **se envía al proveedor de IA en CADA llamada del
+> Análisis IA, para todos los pacientes**, no una vez ni en pruebas.
+>
+> **La pregunta es una: ¿es una persona real?** Si lo es, son datos de salud de alguien que no es el
+> paciente que se está atendiendo, saliendo hacia un tercero sin su autorización, y **hay que retirarlo
+> del archivo**. El ejemplo sirve igual sin identidad: lo que enseña es el TONO y el nivel de detalle,
+> no quién es la persona. Nosotros ya lo portamos así.
+>
+> **Y lo decimos también por nosotros:** ese archivo está guardado en nuestro repositorio (once entregas
+> tuyas archivadas lo contienen), así que si el caso es real, también lo estamos custodiando nosotros y
+> tenemos que decidir qué hacemos con esas copias.
+
+> Lo que sigue no bloquea nada.
 
 ### 1 · Las doce medias porciones: elegimos la (a), y te decimos por que
 
@@ -641,24 +660,7 @@ hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
 > Lo decimos porque **ese comentario nos freno dos veces** y le va a pasar igual a la proxima persona que
 > abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.
 
-### 3 · La referencia del IFC de tu tabla de índices usa el corte que tu propio archivo prohíbe
-
-> Gildardo: en tu subpestaña **Composición Corporal**, la fila **IFC** muestra referencia **3,5-6,0** y
-> Δ **3,48** para un IFC de 6,98 (paciente Nico, hombre).
->
-> **Y en el mismo archivo, tu prompt de IA lo prohíbe con todas las letras:** *"IFC, IRC y PABU tienen
-> puntos de corte ESPECÍFICOS POR SEXO, derivados en la cohorte de 6.063 adultos... Está prohibido usar
-> los cortes históricos únicos (IFC 3,5/6,0 · IRC 2,0/3,4 · PABU con k=0,9): fueron reemplazados porque
-> desplazaban sistemáticamente la lectura de las mujeres."*
->
-> **Atlas usa el corte por sexo** (> 6,68 en hombres, Δ 0,30), que es lo que tú mandas. **No cambiamos
-> nada de nuestro lado**: te lo decimos para que corrijas esa tabla del tuyo, porque el efecto que
-> describes (desplazar la lectura de las mujeres) es exactamente lo que hace hoy.
->
-> Es el mismo tipo de cosa que el FFW de agosto: una parte de tu archivo que se quedó atrás de otra
-> parte del mismo archivo.
-
-### 4 · La fila PABU de esa tabla usa un clasificador distinto del congelado (solo te lo declaramos)
+### 3 · La fila PABU de esa tabla usa un clasificador distinto del congelado (solo te lo declaramos)
 
 > En esa misma tabla, la fila **PABU** rotula **"PABU bajo"**, que viene de un clasificador local de la
 > tabla, no de `cPABU`. Nosotros usamos `cPABU` (**"Desviación por exceso"**), porque es el clasificador
@@ -668,7 +670,7 @@ hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
 > **El color coincide** (ámbar los dos), así que en pantalla se lee igual. Solo cambia la palabra. **Si
 > prefieres el rótulo de la tabla, se cambia en una línea.**
 
-### 5 · La fila ICA-BIS tiene DOS reglas en tu archivo, una por superficie. ¿Es a propósito?
+### 4 · La fila ICA-BIS tiene DOS reglas en tu archivo, una por superficie. ¿Es a propósito?
 
 > **En Diagnóstico → Composición Corporal** la fila ICA-BIS usa un clasificador que **gradúa la
 > magnitud** en cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).
@@ -684,7 +686,15 @@ hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
 > en tu archivo y nosotros lo teníamos en **verde**. Un ICA-BIS desviado se pintaba como si estuviera
 > bien. Corregido.
 
-### 6 · El borrador de IA: portamos tu prompt, SIN el nombre del paciente. Y hay algo que debes saber
+### 5 · El nombre del modelo lleva DOS guiones: ANI-BIS-E
+
+> Cosa menor, pero se repite: en varios sitios de tu archivo el modelo aparece como *"ANI BIS-E"*, sin
+> el primer guión, y en otros como *"ANI-BIS-E"*. Unificamos Atlas en **ANI-BIS-E** en todas las
+> pantallas. Quedan sin cambiar las cadenas que están DENTRO de tu código congelado (el resumen clínico
+> del protocolo y dos textos del motor nutricional), porque esas no las editamos por regla. Si quieres,
+> las cambias tú en la próxima entrega y las tomamos con ella.
+
+### 6 · El borrador de IA: portamos tu prompt, SIN el nombre del paciente
 
 > Gildardo: tu **"Análisis IA"** produce un diagnóstico integral estructurado por los cinco dominios del
 > DFI, y el nuestro produce un párrafo. **Comparamos los dos prompts: tienes razón tú, y lo estamos
@@ -697,17 +707,8 @@ hallazgos de su archivo que no bloquean (3, 4 y 5) y **una sola pregunta** (6).
 > partir de variables clínicas seudonimizadas, sin sus datos de identificación"*. Sí viajan edad, sexo,
 > ocupación, estado civil y estrato, que son los determinantes del dominio Epigenético-Contextual.
 >
-> **Y aquí va lo que conviene que sepas, porque afecta a tu archivo y no al nuestro.** El EJEMPLO de tono
-> que está dentro de tu propio prompt de sistema **lleva el nombre completo de una persona junto a su
-> cuadro clínico entero**: diagnóstico personal (insuficiencia renal), antecedentes familiares, estrato,
-> estado civil, hábitos y composición corporal. **Ese texto va en el mensaje de sistema, así que viaja al
-> proveedor de IA en CADA llamada, para todos los pacientes.** No sabemos si es una persona real o una
-> ficha de prueba, y por eso te lo preguntamos en vez de darlo por hecho: **si es real, es el dato de
-> alguien que no es el paciente que se está atendiendo, saliendo sin su autorización.**
->
-> **Nosotros no portamos ese ejemplo**: lo reemplazamos por uno equivalente sin identidad, que sirve
-> igual (lo que el ejemplo enseña es el TONO y el nivel de detalle, no quién es la persona). En tu
-> archivo sigue vivo.
+> **Sobre el ejemplo de tono de tu prompt, que lleva el nombre de una persona: va arriba, en el punto 0.**
+> Aquí solo lo mencionamos porque es la razón por la que nuestro ejemplo es otro.
 >
 > **La pregunta, que es una sola:** tu instrucción de apertura dice *"identifica al paciente y enmarca
 > todo con el riesgo funcional integrado"*. **Sin nombre, ¿cómo quieres que abra?** Nuestra propuesta es

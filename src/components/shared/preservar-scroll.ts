@@ -29,7 +29,8 @@
 // LO QUE ESTO HACE, y es deliberadamente poco: no "restaura una posicion", DESHACE UN SCROLL QUE NADIE
 // PIDIO. Por eso solo actua si se cumplen todas:
 //   - la ruta no cambio (un redirect legitimo se respeta),
-//   - el usuario no toco nada (rueda, dedo o teclado cancelan),
+//   - el usuario no MOVIO la pagina (rueda, dedo, arrastre de barra, o una tecla de scroll con el
+//     foco fuera de un campo: escribir NO cuenta, ver abajo),
 //   - y la posicion se movio de verdad.
 // Y se acota a una ventana corta: pasada esa, cualquier movimiento ya es del usuario o de la pagina.
 //
@@ -73,13 +74,49 @@ export function preservarScroll(): void {
     terminado = true;
     window.removeEventListener("scroll", revisar);
     for (const e of CANCELAN) window.removeEventListener(e, cancelar);
+    window.removeEventListener("keydown", cancelarPorTecla);
     window.clearTimeout(fin);
   };
 
   // El usuario manda: si se mueve el solo, no se le pelea la pagina. Estos eventos llegan ANTES del
   // `scroll` que provocan, asi que cancelan a tiempo.
-  const CANCELAN = ["wheel", "touchstart", "keydown", "mousedown"] as const;
+  //
+  // EL `keydown` ERA DEMASIADO ANCHO (cotejo 2026-09-06, punto 10). Cancelaba con CUALQUIER tecla
+  // durante los tres segundos siguientes al guardado, y hay dos formularios donde el profesional
+  // ESCRIBE justo despues de guardar: el criterio del profesional y el de la reimportacion. Ahi el
+  // guard se desarmaba antes de que llegara el salto, que es exactamente el sintoma que Santiago
+  // reporto en los dos (y solo en esos dos).
+  //
+  // Ahora solo cancelan las teclas que MUEVEN LA PAGINA. Escribir no es moverse: una letra en un campo
+  // no es una peticion de scroll, y tratarla como tal es lo que dejaba el salto sin deshacer.
+  //
+  // ESTO ES UNA HIPOTESIS APLICADA, no una causa confirmada, y se dice para que nadie lo lea como
+  // cerrado: el defecto solo se ve en un navegador real (familia de los hazards de formulario de
+  // CLAUDE.md), asi que lo confirma el smoke. Si tras esto sigue saltando, la causa es otra y este
+  // cambio se queda igual porque es correcto por si mismo: cancelar por teclear nunca fue lo que se
+  // queria.
+  const TECLAS_QUE_MUEVEN = new Set([
+    "PageUp",
+    "PageDown",
+    "Home",
+    "End",
+    "ArrowUp",
+    "ArrowDown",
+    " ",
+    "Spacebar",
+  ]);
+  const CANCELAN = ["wheel", "touchstart", "mousedown"] as const;
   const cancelar = () => quitar();
+  // Las flechas y el espacio SOLO mueven la pagina si el foco no esta en un campo: dentro de un input
+  // mueven el cursor. Sin esta distincion, escribir un espacio en el criterio volveria a desarmarlo.
+  // Se mira el TARGET del evento y no `document.activeElement`: es el mismo elemento para un `keydown`
+  // y no obliga a este modulo a tocar `document`, que es lo unico que lo ataba a un entorno de navegador.
+  const cancelarPorTecla = (e: KeyboardEvent) => {
+    const el = e.target as { tagName?: string; isContentEditable?: boolean } | null;
+    const t = el?.tagName;
+    if (t === "INPUT" || t === "TEXTAREA" || el?.isContentEditable) return;
+    if (TECLAS_QUE_MUEVEN.has(e.key)) quitar();
+  };
 
   function revisar(): void {
     if (terminado) return;
@@ -122,6 +159,8 @@ export function preservarScroll(): void {
 
   window.addEventListener("scroll", revisar, { passive: true });
   for (const e of CANCELAN) window.addEventListener(e, cancelar, { passive: true, once: true });
+  // SIN `once`: una tecla que no mueve la pagina no desarma, asi que hay que seguir escuchando.
+  window.addEventListener("keydown", cancelarPorTecla, { passive: true });
 
   // RESPALDO. El evento `scroll` es lo que corrige a tiempo; esto solo cubre que el navegador lo agrupe o
   // que el salto llegue sin evento. Se para en cuanto `revisar` corrige o se acaba la ventana.
