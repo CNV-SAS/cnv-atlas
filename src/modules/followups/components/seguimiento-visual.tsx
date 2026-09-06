@@ -85,8 +85,17 @@ function CapacitanciaCard({
             // no hay criterio de direccion. NUNCA `true`: pintar de verde el tramo que sube afirmaria
             // justo lo que Gildardo retiro (la capacitancia sube con el IMC, asi que subir puede ser
             // adiposidad y no integridad de membrana).
+            // LA BANDA P25-P75 ES LO QUE DA ESCALA (cuarto smoke). Con solo la mediana, el eje se
+            // estiraba entre el punto y ella, y "Alta (P75-P95)" se leia en el texto pero no se veia en
+            // el grafico: no habia donde mirar P75. Con la banda sombreada, que el punto quede por
+            // encima de ella ES el diagnostico, sin leer nada.
             {...(refC
-              ? { referencia: refC.mediana, referenciaLabel: `Mediana ${refC.grupo}` }
+              ? {
+                  referencia: refC.mediana,
+                  referenciaLabel: `Mediana ${refC.grupo}`,
+                  banda: [refC.p25, refC.p75] as [number, number],
+                  bandaLabel: `Rango normal de su grupo (P25-P75)`,
+                }
               : {})}
             subirEsMejor={null}
             ariaLabel={`Capacitancia de membrana: ${puntos

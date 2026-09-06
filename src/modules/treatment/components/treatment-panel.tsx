@@ -415,7 +415,6 @@ function CadenaCaloricaSection({
     ajustes: ProtocoloAjustes,
     opciones: { protKgVigente: number | null },
     sinGuardar: boolean,
-    guardando: boolean,
   ) => ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
@@ -715,6 +714,29 @@ function CadenaCaloricaSection({
               Usar el calculado ({pesoCalcDisp} kg)
             </button>
           </div>
+          {/* EL BOTON DE GUARDAR, JUNTO A LOS CAMPOS QUE SE EDITAN (cuarto smoke, 2026-09-06).
+
+              POR QUE SE MOVIO. El 06 lo puse dentro del aviso de la tabla de validacion, que queda
+              DEBAJO de este bloque. En PC se ven los dos a la vez y funcionaba; en MOVIL el aviso cae
+              fuera de pantalla y hay que bajar para guardar cuatro campos que estan arriba. Lo dijo
+              Santiago: "esto no hace sentido".
+
+              NO PARTE EL GUARDADO, igual que el anterior: este bloque esta DENTRO del `<form>` de la
+              cadena, asi que es un `type="submit"` del MISMO formulario, con sus seis ajustes de golpe
+              y su misma firma de concurrencia. Sigue habiendo UN acto de guardado con dos disparadores
+              (este y el del final de la formula), y por eso llevan `key` distintas.
+
+              NO SE DEJA TAMBIEN EN EL AVISO: tres disparadores del mismo acto en una pantalla es ruido,
+              y el aviso ya dice donde esta el boton. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+            <Button key="guardar-desde-meta" type="submit" variant="outline" size="sm" disabled={pending}>
+              {pending ? "Guardando..." : "Guardar ajustes"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Guarda los cuatro campos y la fórmula de abajo: es un solo guardado.
+            </span>
+          </div>
+
           {/* La distincion CALCULADO vs AJUSTADO, que es el segundo de los tres beneficios que concedio. */}
           <p className="flex items-baseline justify-between gap-4 border-t border-border pt-2 text-sm">
             <span className="text-muted-foreground">Objetivo calórico del plan</span>
@@ -739,7 +761,7 @@ function CadenaCaloricaSection({
 
           Se le pasan los ajustes VIVOS y las MISMAS opciones que usa la cadena, para que se recalcule
           al teclear (21b) y para que las dos cuentas no puedan salir de fuentes distintas. */}
-      {validacion(adj, opciones, hayCambiosSinGuardar, pending)}
+      {validacion(adj, opciones, hayCambiosSinGuardar)}
 
       <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
@@ -1225,13 +1247,12 @@ export function TreatmentPanel({
           locked={locked}
           prescripcion={prescripcion}
           asesoria={asesoria}
-          validacion={(ajustes, opcionesCadena, sinGuardar, guardando) => (
+          validacion={(ajustes, opcionesCadena, sinGuardar) => (
             <ValidacionSection
               protocol={protocol}
               ajustes={ajustes}
               opciones={opcionesCadena}
               sinGuardar={sinGuardar}
-              guardando={guardando}
             />
           )}
         />
@@ -2824,7 +2845,6 @@ function ValidacionSection({
   ajustes,
   opciones,
   sinGuardar = false,
-  guardando = false,
 }: {
   protocol: TreatmentProtocol;
   /** Los ajustes VIVOS de la cadena. Sin ellos (uso fuera del panel) manda lo guardado. */
@@ -2840,8 +2860,6 @@ function ValidacionSection({
   opciones?: { protKgVigente: number | null };
   /** Hay cambios en los campos de arriba todavia sin guardar. */
   sinGuardar?: boolean;
-  /** La cadena esta guardando: apaga el boton del aviso, que envia ESE mismo formulario. */
-  guardando?: boolean;
 }) {
   const snap = protocol.protocolSuggested;
   if (!snap || protocol.pesoCalculo == null) return null;
@@ -2934,31 +2952,9 @@ function ValidacionSection({
         <div className="flex max-w-prose flex-col gap-2 rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
           <p>
             Esta tabla se está recalculando con los valores que acabas de escribir arriba,{" "}
-            <strong>todavía sin guardar</strong>.
+            <strong>todavía sin guardar</strong>. El botón para guardarlos está en{" "}
+            <strong>Objetivo del plan</strong>, junto a los campos.
           </p>
-          {/* EL BOTON, AQUI MISMO (tercer smoke). El aviso decia "guarda los ajustes" y el boton de
-              guardar queda despues de TODA la fórmula sintética: pedirle al profesional que baje media
-              pantalla para hacer lo que el aviso le acaba de pedir es lo mismo que no decírselo.
-
-              Y NO PARTE EL FORMULARIO, que es lo que habiamos decidido no hacer: este bloque se
-              renderiza DENTRO del `<form>` de la cadena (entre sus dos fieldsets), asi que un
-              `type="submit"` aqui envia ESE formulario, con sus seis ajustes de golpe y su misma firma
-              de concurrencia. Es un segundo disparador del mismo acto, no un guardado propio.
-
-              LA `key` ES DISTINTA de la del botón de abajo, y no es decoración: dos botones de envío en
-              un mismo formulario con la misma key son el hazard del wizard, donde React reutiliza el
-              nodo y el clic aterriza en el que no era. */}
-          <div>
-            <Button
-              key="guardar-desde-validacion"
-              type="submit"
-              variant="outline"
-              size="sm"
-              disabled={guardando}
-            >
-              {guardando ? "Guardando..." : "Guardar ajustes"}
-            </Button>
-          </div>
         </div>
       ) : null}
       {!algunaPorcion ? (
