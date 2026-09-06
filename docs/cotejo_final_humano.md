@@ -973,3 +973,44 @@ alarga bastante el documento. Es puro layout.
 consentimiento con su versión: es la mitad legal del derecho de acceso) y **Cerrar la consulta** (que es
 operativo, no historia clínica). Y donde su archivo imprime `Otro` a secas, nosotros resolvemos el texto
 libre (`Otro: Test Atlas`, `Otra: Mantequilla`), que dice más.
+
+## 30 · Resolución de las seis abiertas (Santiago, 2026-09-06)
+
+**Tres van, tres no.** Commit `b9a6962`.
+
+**1 · Remisiones · CERRADO.** La HC dice ahora **las dos cosas**: *"Lo que el modelo exigió"* (derivado de
+las rutas activas, con su urgencia verbatim y un estado **Registrada / Sin registrar**) y *"Lo que el
+profesional registró"*. El cruce es **por destinatario** (`referralTarget` contra `referredTo`), que es
+como está construido el registro D-009; un cruce por la frase se desincronizaría en cuanto una indicación
+cambiara de redacción. Un solo helper puro (`remisionesExigidas`) para la pantalla y el PDF.
+
+**2 · Decimales del IMC · CERRADO.** `RowOpts` gana `decimals` y el IMC declara **1**, que es la
+resolución de su corte 18,5-24,9. La regla vivía en `indicator-ranges` (los doce ANI) y esta tabla es la
+**otra** capa de display, que no la aplicaba.
+
+**3 · Orden de bloques · CERRADO, y era solo mover.** Ninguno depende de otro: todos se computan antes del
+render. La **composición** sube a antes de los tres párrafos; las **rutas** suben a justo después del
+objetivo. En la pantalla **y** en el PDF, que además diferían entre sí en las rutas.
+
+**4 · Referencia del % de grasa · a la ronda de Gildardo.** Es su cifra.
+
+**5 · PBI · se queda retirado, y la decisión sigue vigente.** Verificado: está en `CLINICAL_ENGINE.md`,
+`DATABASE.md`, `registry-data.ts` y `types.ts`, y `estadoPBI` sólo sobrevive en un fixture de la era stub.
+Y hay una **segunda razón independiente**, medida el 2026-08-02: su `estadoPBI` es AF×IR con un **tercer
+umbral de AF** (6,80 / 6,30) que **contradice el `cAF` (6,5)** que Atlas ya muestra en Diagnóstico.
+**La divergencia no estaba anotada**; queda en `DIVERGENCIAS.md` con las dos razones y con la pregunta de
+cuál umbral mandaría si volviera.
+
+**6 · Antecedentes en dos columnas · al pase de diseño de los documentos.**
+
+### Y lo que salió al aplicar la regla de los decimales
+
+Al arreglar el IMC barrí la tabla entera contra sus cortes. **Hay un caso que no es cosmético:** el **AF**
+se muestra con **dos** decimales en la tabla de composición, y `indicator-ranges` dice **uno**
+(`DECIMALES_INDICADOR.AF = 1`, instrucción suya D-016). Son **nuestras dos capas de display discrepando
+sobre el mismo indicador**, no una diferencia con su archivo.
+
+El resto son filas cuyo corte tiene menos decimales que el valor (cintura 94, FFMI 17-25, SMM/W 27,
+%grasa 22, ACT/MLG 71-74, AEC% 35-40), pero ahí bajar a la resolución del corte perdería información real
+(un FFMI sin decimales no sirve). **La regla del corte pone un techo, no un objetivo**, y conviene decirlo
+así en `BRAND.md` antes de aplicarla en bloque. No toqué ninguna: va como pregunta.
