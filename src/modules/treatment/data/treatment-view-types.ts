@@ -269,3 +269,25 @@ export type AsesoriaMacro = Omit<AsesoriaMacroCruda, "macro"> & {
   /** Aviso de que la cifra escrita quedo fuera del rango. `null` = dentro, o sin cifra escrita. */
   fuera: string | null;
 };
+
+// LOS CINCO NIVELES DE ACTIVIDAD de su desplegable, VERBATIM (el `FA_MAP` de `motorTratNutri` y el
+// select de su pantalla). Lista cerrada a proposito: el factor de actividad no es un numero libre.
+//
+// VIVEN AQUI, EN EL MODULO NEUTRO, y no en el panel (cotejo punto 30, 2026-09-06). Los necesitan los
+// dos lados: el panel es cliente y el compositor de la historia clinica es servidor. Un modulo
+// `"use client"` no puede exportarle una FUNCION al servidor sin romper en produccion (frontera RSC
+// direccion B), asi que lo que comparten vive en un modulo sin bandera.
+export const NIVELES_FA = [
+  { valor: "1.2", label: "Sedentario (1.2)" },
+  { valor: "1.375", label: "Ligera (1.375)" },
+  { valor: "1.55", label: "Moderada (1.55)" },
+  { valor: "1.725", label: "Alta (1.725)" },
+  { valor: "1.9", label: "Muy alta (1.9)" },
+] as const;
+
+/** El nivel con su NOMBRE, no el numero solo: "Ligera (1.375)". Si el modelo devolviera un factor que
+ *  no esta en su escala (no deberia: es la misma lista), se muestra el numero antes que inventar un
+ *  nombre. */
+export function nivelFaLabel(valor: number): string {
+  return NIVELES_FA.find((n) => Number(n.valor) === valor)?.label ?? String(valor);
+}

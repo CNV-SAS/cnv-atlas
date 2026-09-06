@@ -5,6 +5,7 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
+import { NIVELES_FA, nivelFaLabel } from "../data/treatment-view-types";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import {
@@ -103,21 +104,9 @@ const d0 = (n: number): string => String(Math.round(n));
 
 // Un campo numerico de ajuste. Controlado (no lo resetea la prop `action` de React 19), con el valor del
 // modelo como placeholder para que el profesional sepa sobre que esta ajustando.
-// Los cinco niveles de actividad de su desplegable, VERBATIM (FA_MAP de `motorTratNutri` y el select de su
-// pantalla). Lista cerrada a proposito: el factor de actividad no es un numero libre.
-const NIVELES_FA = [
-  { valor: "1.2", label: "Sedentario (1.2)" },
-  { valor: "1.375", label: "Ligera (1.375)" },
-  { valor: "1.55", label: "Moderada (1.55)" },
-  { valor: "1.725", label: "Alta (1.725)" },
-  { valor: "1.9", label: "Muy alta (1.9)" },
-] as const;
-
-/** El nivel con su nombre, no el numero solo: "Ligera (1.375)". Si el modelo devolviera un factor que no
- *  esta en su escala (no deberia: es la misma lista), se muestra el numero antes que inventar un nombre. */
-function nivelFaLabel(valor: number): string {
-  return NIVELES_FA.find((n) => Number(n.valor) === valor)?.label ?? String(valor);
-}
+// Los cinco niveles de actividad viven en `treatment-view-types` (modulo NEUTRO): los comparte con el
+// compositor de la historia clinica, que es servidor y hasta el 2026-09-06 imprimia "PAL 1.375" donde
+// esta pantalla dice "Ligera (1.375)".
 
 // UN DATO, DOS SUPERFICIES, DENTRO DEL MISMO FORMULARIO. El `name` es opcional a proposito: los cuatro
 // campos de la cadena se ven arriba (donde se decide) y abajo (dentro de la cuenta), pero SOLO UNA de las
