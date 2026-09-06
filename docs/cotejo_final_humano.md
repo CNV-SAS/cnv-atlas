@@ -768,3 +768,80 @@ encima del anillo exterior, y peor en los sectores casi horizontales (E3 y E7), 
 ancho. Ahora **crece hacia afuera**: a la derecha se ancla por la izquierda, a la izquierda por la
 derecha, y arriba y abajo se queda centrado. El margen del lienzo sube para darle sitio. La geometría no
 se toca. Candado sobre la **regla** (crecer hacia afuera), no sobre una distancia.
+
+---
+
+# SEGUNDO SMOKE (2026-09-06): lo que se reabrió y quedó cerrado
+
+## 21b · La validación se recalcula EN VIVO
+
+**Se hizo la (b), y no hizo falta partir el guardado.** La tabla de validación **no persiste nada**: se
+deriva. Así que basta con darle los ajustes que hay **en pantalla** en vez de los guardados. Es una prop.
+Sin escritor, sin firma, sin columna nueva, y el formulario sigue siendo uno con un solo botón.
+
+**Y la tabla dice que está validando cifras sin guardar**, en un aviso de la capa de atención. La
+distinción con el botón del punto 25 es la que dijiste: **aquel ACTÚA** (manda las restricciones
+guardadas a la IA, y con las de pantalla mentiría) **y ésta PREVISUALIZA**. Lo que una previsualización
+debe es decir que lo es.
+
+### El hallazgo de `protKgVigente`: el número
+
+**Importa hoy, y bastante.** La tabla llamaba al cálculo **sin** `protKgVigente` y la cadena **con** él.
+Esa opción es la que decide, en los snapshots que **no** sellan `mtn.protKg` (anteriores al 3 de
+septiembre), si la proteína sale **del motor** o **del mínimo poblacional**.
+
+| Base | Tratamientos con snapshot | Sin `mtn.protKg` (la ventana) | De esos, sin ajuste manual |
+| --- | --- | --- | --- |
+| **Nube** | 26 | **21** | **19** |
+| Local | 60 | 58 | 58 |
+
+**O sea: en 19 de los 26 tratamientos de la nube, la tabla podía estar validando el plan contra una
+proteína que el profesional no prescribió** (el mínimo poblacional en vez de la del motor). Es la misma
+familia del aviso que la cadena ya trae para `protFuente === protMin`, pero silenciosa. Arreglado en el
+mismo cambio: la tabla recibe las **mismas** opciones que la cadena, así que las dos cuentas ya no
+pueden salir de fuentes distintas.
+
+## 15 · La Diana, los tres ajustes
+
+**(a)** De 60rem a **52rem**.
+
+**(b) Los rótulos de anillo (A1-A9) se mudan a E9**, y lo **verifiqué en su código antes de moverlos**,
+no en la captura: su v8 los dibuja con `x = CX − 4`, `y = CY − rr` y `text-anchor="end"`, o sea pegados
+al eje vertical **por su lado izquierdo** y creciendo hacia afuera. Nosotros los poníamos en el centro
+del primer sector (20°), que cae a la **derecha**. Tenías razón.
+
+**(c) Los rótulos de sector, más pequeños.** Su archivo los pone a 9,5 y 5,8 sobre un lienzo de **660**
+unidades; el nuestro mide **408**, así que en proporción los nuestros iban al doble. Bajan a 8 y 6,5:
+legibles sin competir con el dibujo, que es lo que se mira primero.
+
+## 26 · Las notas de prueba, borradas
+
+**Seis en local y tres en la nube.** Las tres de la nube se listaron antes de tocarlas y se borraron una
+a una, con verificación de que quedaba cero. Ninguna era real.
+
+## 23 · El subtítulo, como rótulo
+
+Iba pegado a la explicación en el mismo párrafo (*"Cómo se llega a ese objetivo. Ajusta cualquier
+eslabón..."*), y así no es un subtítulo, es una frase más. Va **encima** del título, en versalitas.
+
+## El recorrido del smoke de esta tanda
+
+**A · La validación en vivo (21b).** Tratamiento → subpestaña de tu profesión.
+1. Cambia el **objetivo (kcal)** en "Objetivo del plan". **La tabla de validación de abajo tiene que
+   moverse al instante**, sin bajar a guardar.
+2. Y encima de la tabla tiene que salir el aviso ámbar: *"se está recalculando con los valores que
+   acabas de escribir, todavía sin guardar"*.
+3. Pulsa **Guardar ajustes**: el aviso desaparece y los números se quedan.
+**Sería defecto si:** la tabla no se mueve hasta guardar, o si se mueve **sin** avisar.
+
+**B · La Diana (15).** Diagnóstico Funcional → bloque de la Diana.
+1. Tiene que verse **más pequeña** que en tu última captura.
+2. Los **A1-A9** tienen que estar a la **izquierda** del eje vertical (en E9), no a la derecha.
+3. Los rótulos de sector, **más discretos**, y **E5** con aire respecto del anillo.
+
+**C · Los decimales.** Diagnóstico → Composición Corporal, tabla de índices: **PABU con tres** decimales
+(1,202), **ICA-BIS con dos** (0,42), **IEHH con dos**. Y en la **historia clínica**, los valores con
+**coma**, no con punto.
+
+**D · Las notas.** Tratamiento: el bloque de notas **no debe aparecer** (ya no hay ninguna, ni local ni
+en la nube).
