@@ -1,5 +1,17 @@
 import { type ReactNode } from "react";
-import { Ban, Brain, Dna, HeartPulse, Hourglass, type LucideIcon, Zap } from "lucide-react";
+import {
+  Ban,
+  Brain,
+  Dna,
+  FlaskConical,
+  HeartPulse,
+  Hourglass,
+  type LucideIcon,
+  Pill,
+  Stethoscope,
+  TriangleAlert,
+  Zap,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,22 +99,43 @@ function Line({ label, value }: { label: string; value: string | null }) {
 // NINGUNO de los cinco sitios de llamada lo pasaba, asi que ese texto era inalcanzable. Una promesa que
 // nadie puede leer no es inofensiva: es la que alguien cablea dentro de seis meses sin mirar que promete,
 // y entonces envejece como envejecieron las otras tres de este barrido.
+// LAS SEIS TARJETAS DEL ESTADO (rediseño del cotejo 2026-09-05, punto 16). Antes eran seis cajas
+// IDENTICAS: mismo borde, mismo rotulo en versalitas, mismo cuerpo. Seis objetos iguales en rejilla no
+// tienen jerarquia, asi que se leian como una lista larga y no como cinco lecturas del estado mas una
+// orientacion para el profesional.
+//
+// LO QUE CAMBIA, y cada cosa dice algo verdadero (no es adorno):
+//  · Un ICONO por tarjeta, distinto en cada una: la rejilla se vuelve escaneable y cada bloque se
+//    reconoce sin leer el rotulo entero.
+//  · El rotulo y el icono comparten una fila propia, separada del cuerpo por AIRE y no por un borde:
+//    el borde ya lo pone la tarjeta, y anidar bordes es lo que hace que una caja signifique 'es una
+//    caja'.
+//  · Interlineado suelto en el cuerpo: son parrafos clinicos de varias lineas, no etiquetas.
+//  · El vacio va en cursiva y apagado, para que 'sin dato' no compita con el texto que si hay.
+//  · La sexta (Abordaje) va en OTRA superficie: es la unica de las seis que no describe al paciente
+//    sino lo que el profesional hace con el. Superficie apagada, NO color clinico: es operativo, y el
+//    color clinico significa un veredicto sobre una persona.
 function ContentCard({
   label,
   value,
+  icon: Icon,
 }: {
   label: string;
   value: string | null;
+  icon: LucideIcon;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+      </div>
       {value ? (
-        <p className="text-sm text-foreground">{value}</p>
+        <p className="text-sm leading-relaxed text-foreground">{value}</p>
       ) : (
-        <span className="text-sm text-muted-foreground">Sin dato para este estado.</span>
+        <span className="text-sm italic text-muted-foreground">Sin dato para este estado.</span>
       )}
     </div>
   );
@@ -118,16 +151,21 @@ export type AbordajeCardData =
 
 function AbordajeCard({ abordaje }: { abordaje: AbordajeCardData }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border p-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Abordaje por profesión
-      </span>
+    // OTRA SUPERFICIE que las otras cinco (2026-09-05): es la unica que no describe al paciente sino
+    // lo que el profesional hace con el. Fondo apagado y borde discontinuo, NO color clinico.
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-4">
+      <div className="flex items-center gap-2">
+        <Stethoscope className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Abordaje por profesión
+        </span>
+      </div>
       {abordaje.kind === "text" ? (
         <>
           {/* Rotulo de la profesion que el sistema cree que es la tuya: hace visible una mala
               configuracion (un deportologo mal puesto como medico veria orientacion medica). */}
           <span className="text-xs text-muted-foreground">Abordaje para: {abordaje.professionLabel}</span>
-          <p className="text-sm text-foreground">{abordaje.text}</p>
+          <p className="text-sm leading-relaxed text-foreground">{abordaje.text}</p>
           <span className="text-xs italic text-muted-foreground">
             Orientación para ti; no se imprime en el reporte del paciente.
           </span>
@@ -589,19 +627,18 @@ export function EvaluationResults({
             patientContent={patientContent}
             statesContent={efrStates}
           />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Line
-              label="Estado EFR"
-              value={`${efrPhenotype.stateNumber} de 81`}
-            />
-            {/* Fenotipo estructural = MCCB (F1-F12), rotulo de Gildardo (Q19). Los diagnosticos
-                viejos no traen el MCCB en el snapshot: caen a la de nueve estados (el dato que si
-                tenian sellado), para no mostrar vacio. */}
+          {/* SOLO EL FENOTIPO MCCB (cotejo 2026-09-05, punto 15). Aqui iban TRES lineas y dos de ellas
+              ya estaban en la tabla de siete del panel de arriba, en la misma card: "Estado EFR N de 81"
+              es su fila "Estado EFR", y "Estado funcional bioeléctrico (IFC × IRC)" es su fila "Anillo
+              (función-riesgo)". El MCCB (F1-F12) SI se queda: responde otra pregunta y no esta en la
+              tabla, que lleva la clasificacion de nueve estados, no esta.
+              Los diagnosticos viejos no traen el MCCB en el snapshot: caen a la de nueve estados (el dato
+              que si tenian sellado), para no mostrar vacio. */}
+          <div className="grid grid-cols-1 gap-2">
             <Line
               label="Fenotipo estructural (FMI × FFMI)"
               value={fenotipoMCCB ? `${fenotipoMCCB.id} · ${fenotipoMCCB.nombre}` : structural.nombre}
             />
-            <Line label="Estado funcional bioeléctrico (IFC × IRC)" value={frSector.nombre} />
           </div>
           {/* Los 4 indicadores que DEFINEN el estado, con su clasificacion y semaforo (MISMA fuente unica que
               la tabla de indices: sevByCode + OPTIMO_DOT). Orden: primero lo FUNCIONAL (IFC, IRC), despues lo
@@ -635,31 +672,41 @@ export function EvaluationResults({
             )}
           </div>
           {/* La clasificacion de nueve estados (FFMI x FMI) NO es un cuarto fenotipo: es el componente
-              estructural con que se compone el estado EFR (su mitad FFMI x FMI; la otra es el sector
-              funcional). Se muestra subordinada, rotulada por lo que es, para no competir con el MCCB
-              (que responde otra pregunta) y porque es lo que quedo sellado en phenotype_id de todos los
-              diagnosticos emitidos: si desapareciera de pantalla, habria un dato en el registro que
-              nadie podria ver. */}
+              estructural con que se compone el estado EFR. Se muestra subordinada y rotulada por lo que
+              es, para no competir con el MCCB (que responde otra pregunta), y se muestra PORQUE es lo
+              que quedo sellado en phenotype_id de todos los diagnosticos emitidos: si desapareciera de
+              pantalla, habria un dato en el registro que nadie podria ver.
+              LA FRASE SE ACORTO (cotejo 2026-09-05, punto 15): explicaba ademas que el estado combina
+              el sector funcional y el estructural, que es exactamente lo que dicen las dos primeras
+              filas de "Lectura de la Diana" a media pantalla de aqui. Queda el dato sellado, que es lo
+              unico que no esta en ningun otro sitio. */}
           {fenotipoMCCB ? (
             <p className="text-xs text-muted-foreground">
-              El estado EFR combina el sector funcional (IFC × IRC) y el componente estructural
-              (FFMI × FMI): <span className="font-medium text-foreground">{structural.nombre}</span>.
+              Componente estructural sellado en este diagnóstico:{" "}
+              <span className="font-medium text-foreground">{structural.nombre}</span>.
             </p>
           ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ContentCard
+              icon={HeartPulse}
               label="Enfermedades / Complicaciones probables"
               value={efrState?.diagnosisName ?? efrPhenotype.diagnostico ?? null}
             />
             <ContentCard
+              icon={Dna}
               label="Mecanismos bioquímicos / Disfunción celular"
               value={efrState?.mechanism ?? null}
             />
-            <ContentCard label="Biomarcadores clave" value={efrState?.biomarkers ?? null} />
-            <ContentCard label="Riesgos clínicos" value={efrState?.risks ?? null} />
+            <ContentCard
+              icon={FlaskConical}
+              label="Biomarcadores clave"
+              value={efrState?.biomarkers ?? null}
+            />
+            <ContentCard icon={TriangleAlert} label="Riesgos clínicos" value={efrState?.risks ?? null} />
             {/* Excepcion de negocio: "Nutracéuticos sugeridos", no "Vitacellebis" del HTML; a
                 futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
             <ContentCard
+              icon={Pill}
               label="Nutracéuticos sugeridos"
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
             />

@@ -174,13 +174,23 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
         </dl>
       ) : null}
 
+      {/* LA NARRATIVA VA SOLO EN LA REFERENCIA (cotejo 2026-09-05, punto 15). Del paciente, estos cinco
+          textos ya estan dos centimetros mas abajo, en las seis tarjetas de contenido de la misma card:
+          repetirlos aqui era la mitad de la saturacion que reporto Santiago. De la celda EXPLORADA no hay
+          otro sitio donde leerlos, asi que ahi si van, y ademas es lo que se compara al explorar.
+          El panel del paciente queda con lo que NO esta abajo: el numero, los dos ejes y la tabla de
+          siete, que es la DEFINICION del estado (derivable para cualquier celda) frente al CONTENIDO. */}
       <p className="text-sm font-medium text-foreground">
         {detail.diagnosisName ?? "Sin dato para este estado."}
       </p>
-      <Field label="Mecanismos bioquímicos / Disfunción celular" value={detail.mechanism} />
-      <Field label="Biomarcadores clave" value={detail.biomarkers} />
-      <Field label="Riesgos clínicos" value={detail.risks} />
-      <Field label="Nutracéuticos sugeridos" value={detail.suggestedNutraceuticals} />
+      {isPatient ? null : (
+        <>
+          <Field label="Mecanismos bioquímicos / Disfunción celular" value={detail.mechanism} />
+          <Field label="Biomarcadores clave" value={detail.biomarkers} />
+          <Field label="Riesgos clínicos" value={detail.risks} />
+          <Field label="Nutracéuticos sugeridos" value={detail.suggestedNutraceuticals} />
+        </>
+      )}
     </div>
   );
 }
@@ -202,7 +212,7 @@ function LecturaDiana() {
     { t: "Periferia #81", f: "Riesgo máximo", d: "Disfunción / estructura comprometida" },
   ];
   return (
-    <div className="w-full max-w-[44rem]">
+    <div className="w-full max-w-[60rem]">
       <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Lectura de la Diana
       </p>

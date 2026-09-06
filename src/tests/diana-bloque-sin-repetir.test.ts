@@ -1,0 +1,130 @@
+import { readFileSync } from "node:fs";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
+
+import { describe, expect, it } from "vitest";
+
+import { Diana } from "@/modules/diagnoses/components/diana";
+import { DianaExplorer } from "@/modules/diagnoses/components/maps-section";
+
+import { sinComentarios } from "./helpers/sin-comentarios";
+
+// CANDADO DEL PUNTO 15 DEL COTEJO (2026-09-05): el bloque de la Diana no repite el contenido del estado.
+//
+// Santiago: "veo ese bloque de la Diana muy saturado de información, revisa qué información de esa se
+// repite". Y se repetia: dentro de la MISMA card, el panel del estado del paciente traia los cinco textos
+// del estado (enfermedades, mecanismos, biomarcadores, riesgos, nutraceuticos) y dos centimetros mas abajo
+// estaban otra vez, en las seis tarjetas de contenido.
+//
+// EL REPARTO QUE QUEDA, y es el que este candado fija: el PANEL lleva la DEFINICION del estado (numero,
+// ejes y la tabla de siete, todo derivable para cualquier celda) y las TARJETAS llevan el CONTENIDO. La
+// narrativa vuelve al panel solo cuando es una REFERENCIA explorada, porque de esa celda no hay tarjetas.
+
+const PANEL = "src/modules/diagnoses/components/maps-section.tsx";
+
+const CONTENIDO = {
+  diagnosisName: "DIAGNOSTICO-MARCA",
+  mechanism: "MECANISMO-MARCA",
+  biomarkers: "BIOMARCADOR-MARCA",
+  risks: "RIESGO-MARCA",
+  suggestedNutraceuticals: "NUTRACEUTICO-MARCA",
+};
+
+function render() {
+  return renderToStaticMarkup(
+    createElement(DianaExplorer, {
+      bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+      stateNumber: 41,
+      frSectorName: "Reserva",
+      structuralName: "Equilibrado",
+      patientContent: CONTENIDO,
+      statesContent: {},
+    }),
+  );
+}
+
+describe("el bloque de la Diana no repite el contenido del estado (cotejo punto 15)", () => {
+  it("el panel del paciente NO trae los cuatro textos que ya estan en las tarjetas", () => {
+    const html = render();
+    for (const marca of [
+      CONTENIDO.mechanism,
+      CONTENIDO.biomarkers,
+      CONTENIDO.risks,
+      CONTENIDO.suggestedNutraceuticals,
+    ]) {
+      expect(html, marca).not.toContain(marca);
+    }
+  });
+
+  it("el nombre del estado SI se queda: es lo que identifica al panel, no contenido de tarjeta", () => {
+    // Control de que la asercion de arriba compara algo: si el panel no renderizara nada, tambien
+    // pasaria. Este caso demuestra que el panel si esta y si escribe lo suyo.
+    expect(render()).toContain(CONTENIDO.diagnosisName);
+  });
+
+  it("la narrativa sigue existiendo para la celda EXPLORADA (ahi no hay tarjetas)", () => {
+    // Se afirma sobre la fuente porque llegar a ese panel exige dos clics (explorar y elegir celda).
+    const src = sinComentarios(readFileSync(PANEL, "utf8"));
+    const i = src.indexOf("isPatient ? null : (");
+    expect(i, "la narrativa esta condicionada a la referencia").toBeGreaterThan(-1);
+    const rama = src.slice(i, i + 700);
+    for (const etiqueta of [
+      "Mecanismos bioquímicos / Disfunción celular",
+      "Biomarcadores clave",
+      "Riesgos clínicos",
+      "Nutracéuticos sugeridos",
+    ]) {
+      expect(rama, etiqueta).toContain(etiqueta);
+    }
+  });
+
+  it("las dos lineas que ya estaban en la tabla de siete no se repiten en la rejilla de abajo", () => {
+    // "Estado EFR N de 81" es la fila "Estado EFR" de la tabla, y "Estado funcional bioeléctrico
+    // (IFC × IRC)" es su fila "Anillo (función-riesgo)". El fenotipo MCCB si se queda: no esta en la tabla.
+    const res = sinComentarios(
+      readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8"),
+    );
+    expect(res).not.toContain('label="Estado funcional bioeléctrico (IFC × IRC)"');
+    expect(res).toContain('label="Fenotipo estructural (FMI × FFMI)"');
+  });
+});
+
+describe("rotulos de sector de la Diana: legibles (cotejo punto 15)", () => {
+  // NO se fija el ancho en rem: seria una magnitud arbitraria, y una magnitud arbitraria se afloja el dia
+  // que estorbe. Lo que se fija es la RELACION que estaba rota: el salto entre renglones tiene que ser
+  // MAYOR que el cuerpo de la letra. Con salto 6 y cuerpo 6 los dos renglones se tocaban, y eso es lo que
+  // Santiago vio como "FMI BajoFFMI Bajo" difuminado.
+  it("el salto entre los renglones del rotulo supera el cuerpo de la letra", () => {
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    // El segundo renglon del par ("FFMI ..."): su dy es el salto desde el primero.
+    const m = html.match(/<tspan[^>]*dy="(\d+)"[^>]*font-size="(\d+)"[^>]*>FFMI/);
+    expect(m, "el segundo renglon del par de bandas").not.toBeNull();
+    const salto = Number(m![1]);
+    const cuerpo = Number(m![2]);
+    expect(salto).toBeGreaterThan(cuerpo);
+  });
+
+  it("el lienzo deja margen alrededor del dibujo para que el rotulo no quede a ras del borde", () => {
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    const [minX, , w] = html
+      .match(/viewBox="([^"]+)"/)![1]
+      .split(" ")
+      .map(Number);
+    expect(minX).toBeLessThan(0);
+    expect(w).toBeGreaterThan(320);
+  });
+});
