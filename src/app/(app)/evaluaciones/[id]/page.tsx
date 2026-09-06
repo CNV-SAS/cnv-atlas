@@ -985,7 +985,17 @@ export default async function ResultadosEvaluacionPage({
                   </p>
                 </section>
               ) : null}
-              <HcObjetivoTratamiento texto={protocol?.objetivoTexto ?? null} />
+              {/* LA LINEA DEL MODELO Y EL TEXTO DEL PROFESIONAL, las dos (cotejo punto 29). La primera
+                  sale de la MISMA cadena efectiva y la MISMA prescripcion que usa el panel de arriba,
+                  asi que la historia clinica y el panel no pueden decir dietas distintas. */}
+              <HcObjetivoTratamiento
+                modelo={
+                  prescripcionNutricional && cadenaEfectiva
+                    ? `Dieta ${prescripcionNutricional.tipoEnergia.toLowerCase()} de ${Math.round(cadenaEfectiva.calorico.kcalObj)} kcal/día`
+                    : null
+                }
+                texto={protocol?.objetivoTexto ?? null}
+              />
               <HcPlanNutricional plan={hcPlan} desviaciones={hcCompuesta.desviaciones} />
               <HcRecomendaciones bloques={hcRecs} />
               <HcRemisiones

@@ -220,17 +220,36 @@ export function HcMetaTerapeutica({ texto, motivo }: { texto: string | null; mot
 
 // Bloques 8, 9, 13 y 14. Los cuatro salen de datos ya sellados o ya leidos; ninguno recalcula.
 
-export function HcObjetivoTratamiento({ texto }: { texto: string | null }) {
+// EL OBJETIVO DEL TRATAMIENTO SON DOS PIEZAS, no una (cotejo punto 29, 2026-09-06).
+//
+// Hasta aqui este bloque mostraba SOLO el texto libre del profesional, asi que en una consulta donde no
+// escribio nada la historia clinica decia "No se registró" justo donde su documento encabeza con
+// "Dieta Normocalórica de 2408 kcal/día". Y ese renglon no es texto libre: lo calcula el motor, ya sale
+// en el panel de tratamiento encima del campo, y es LA PRESCRIPCION. Un documento probatorio no puede
+// decir que no se registro un objetivo que el sistema calculo y mostro.
+//
+// Van los dos, en el orden en que se leen: primero lo que se prescribio, despues lo que el profesional
+// añadio. Y "No se registró" queda para el caso en que no hay NINGUNO de los dos, que es cuando de
+// verdad falta.
+export function HcObjetivoTratamiento({
+  modelo,
+  texto,
+}: {
+  modelo: string | null;
+  texto: string | null;
+}) {
   return (
     <Tarjeta>
       <TituloSeccion>Objetivo del tratamiento</TituloSeccion>
+      {modelo ? <p className="text-base font-semibold text-primary">{modelo}</p> : null}
       {texto && texto.trim() !== "" ? (
-        <p className="text-base font-semibold text-primary">{texto}</p>
-      ) : (
+        <p className="text-sm leading-relaxed text-foreground">{texto}</p>
+      ) : null}
+      {!modelo && (!texto || texto.trim() === "") ? (
         // "No se registró" y no "no aplica": el objetivo SIEMPRE deberia estar en una consulta con
-        // prescripcion; si falta, falta de verdad.
+        // prescripcion; si falta, falta de verdad. Ahora solo aparece cuando faltan LOS DOS.
         <p className="text-sm text-muted-foreground">{SIN_DATO}</p>
-      )}
+      ) : null}
     </Tarjeta>
   );
 }
