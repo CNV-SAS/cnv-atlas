@@ -1132,3 +1132,32 @@ y su sitio es la apertura de la encuesta: en Atlas las alertas salen en `evaluac
 caminos de la pagina y NUNCA en `diagnostico={...}`, asi que ya estaba bien), punto 5 (`getDX` cae campo
 por campo, portado), punto 6 (Tumaco en `pacifica`, Cartago en `andina_antioquia`), punto 7 (nucleo de 66)
 y punto 8 (los dieciseis nombres, en nuestra tabla).
+
+**P-113 · La referencia del IFC de su tabla de indices usa el corte HISTORICO que su propio prompt
+prohibe (cotejo visual 2026-09-05, punto 9). NO bloquea; estamos bien nosotros.** En su captura de
+Diagnostico -> Composicion Corporal, la fila IFC muestra referencia **3.5-6.0** y Δ **3.48** para un IFC
+de 6.98. Su propio prompt de la IA, en el mismo archivo, lo prohibe con todas las letras: *"IFC, IRC y
+PABU tienen puntos de corte ESPECIFICOS POR SEXO, derivados en la cohorte de 6.063 adultos... Esta
+prohibido usar los cortes historicos unicos (IFC 3,5/6,0 · IRC 2,0/3,4 · PABU con k=0,9): fueron
+reemplazados porque desplazaban sistematicamente la lectura de las mujeres"*. **Atlas usa el corte por
+sexo del clasificador** (`> 6,68` en hombres, Δ 0,30), que es lo que el manda. **No cambiamos nada:** se
+le reporta que esa tabla de su archivo quedo stale respecto de su propia instruccion, con el numero, para
+que la corrija de su lado. Del mismo tipo que el FFW del P-23a: una parte de su archivo que se quedo
+atras de otra parte del mismo archivo.
+
+**P-114 · La etiqueta de la fila PABU: su tabla de Composicion usa un clasificador LOCAL, no el
+congelado. Declarado, no cambiado.** Su `dPABU` (ATLAS_v8 L14442) rotula "PABU bajo" / "PABU elevado" /
+"Homeostasis optima"; el congelado `cPABU` rotula "Desviación por déficit" / "Desviación por exceso" /
+"Zona φ — Homeostasis". **El COLOR coincide** (ambar los dos en un paciente desviado), asi que lo que
+Santiago vio en pantalla es correcto. Mantenemos `cPABU` porque es el clasificador del MOTOR y su
+instruccion del 2026-08-17 fue literal: *"cPABU: portenlo tal cual, y no lo graduen"*. Queda declarado
+por si prefiere el rotulo de la tabla.
+
+**P-115 · La fila ICA-BIS tiene DOS reglas en su archivo, una por superficie, y conviene que lo sepa.**
+En **Diagnostico -> Composicion Corporal** (L14623) usa `dICA`, que gradua la magnitud en cinco escalones
+("Zona φ" / "Desviación leve" / moderada / severa / "Zona crítica"). En **Reporte / Historia Clinica**
+(L15425) hace `icaBisClf = cPABU(t_pabu)` y deja la nota *"cICABIS eliminado - usar cPABU global"*.
+**Atlas porta las dos, cada una en su superficie**, porque las dos son suyas. Se le pregunta si la
+divergencia es deliberada (la HC resume y la pantalla detalla) o si la nota de la HC iba a aplicarse
+tambien a la tabla de Composicion y quedo a medias. **De paso: el escalon "Desviación leve" de `dICA` va
+en ambar (#f59e0b) en su archivo y nosotros lo teniamos en verde. Corregido de nuestro lado.**
