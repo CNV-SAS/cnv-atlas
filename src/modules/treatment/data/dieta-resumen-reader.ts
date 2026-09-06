@@ -3,6 +3,8 @@ import "server-only";
 import { asesoriaFuera, asesoriaMacro } from "@/clinical-engine/frozen/atlas-asesoria-macro.js";
 import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri.js";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
+import { allCompositionRows, type Composition } from "@/modules/diagnoses/data/composition-map";
+import { edadEnFecha } from "@/lib/format/edad";
 import { decodeSurveyValue } from "@/modules/clinical-pipeline/services/build-engine-input";
 import { FREQ_OPC, FREQ_SUP } from "@/clinical-engine/frozen/engine.patron.js";
 import { resumenDietaParrafo } from "@/clinical-engine/resumen-dieta";
@@ -59,7 +61,41 @@ async function buildEnc(
     .eq("response_id", response.id);
   if (aErr) throw new Error(`dieta-resumen-reader: survey_answers: ${aErr.message}`);
 
-  const enc: Record<string, unknown> = { sexo };
+  // LA EDAD, EN EL CONSTRUCTOR UNICO DEL `enc` (2026-09-06). Los tres motores que corren sobre este
+  // `enc` la leen como `Number(e.edad || b.edad) || 30`, y hasta aqui NO llegaba por ningun lado: la
+  // encuesta no pregunta la edad (sale de la fecha de nacimiento del paciente) y `snapshot.indicators`
+  // tampoco la trae. O sea que `motorTratNutri` calculaba el gasto basal DE TODOS LOS PACIENTES COMO SI
+  // TUVIERAN 30 AÑOS.
+  //
+  // LO QUE ESO MOVIA, y no es pequeño: `geb = 10*pesoMeta + 6,25*talla - 5*edad + 5`. En un paciente de
+  // 60 son 150 kcal de GEB y ~206 de GET con FA 1,375. Y el GET es contra lo que se decide el TIPO de
+  // dieta (`kcalObjetivo > get ? Hipercalorica : ...`), asi que la etiqueta podia salir invertida en
+  // cualquiera cuya edad se alejara de 30, tanto en el panel como en la historia clinica.
+  //
+  // SE RESUELVE AQUI Y NO EN LOS CALLERS, que es lo contrario de lo que hizo el panel de referencia el
+  // 2026-09-04 (parametro explicito `edad`). El motivo es concreto: de los cinco callers de estos
+  // lectores, TRES no tienen una edad a mano (el plan del paciente, el servicio de tratamiento y el
+  // generador de menus) y habria que abrirles a cada uno su propia consulta. Un dato que el lector puede
+  // resolver solo desde el `evaluationId`, igual que ya resuelve el peso y la talla, no se le pide al
+  // caller: pedirselo es justo lo que deja la rama muerta cuando uno se olvida.
+  //
+  // ES LA EDAD EN LA FECHA DE LA CONSULTA, no la de hoy, y por el mismo `edadEnFecha` que usa la
+  // cabecera de la historia clinica: la edad que corresponde al acto clinico que se esta mirando.
+  const { data: ev } = await supabase
+    .from("evaluations")
+    .select("created_at, patients!inner(patient_profiles!inner(birth_date))")
+    .eq("id", evaluationId)
+    .maybeSingle();
+  const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+  const perfil = uno(
+    uno(ev?.patients as unknown as { patient_profiles: unknown } | { patient_profiles: unknown }[] | null)
+      ?.patient_profiles as unknown as { birth_date: string | null } | { birth_date: string | null }[] | null,
+  );
+  const edad = ev?.created_at ? edadEnFecha(perfil?.birth_date ?? null, ev.created_at as string) : null;
+
+  // `edad` solo se pone si se conoce: sin fecha de nacimiento el motor cae a su propio default y el
+  // resto sigue funcionando, que es preferible a suponerle una edad al paciente.
+  const enc: Record<string, unknown> = edad != null && edad > 0 ? { sexo, edad } : { sexo };
   for (const r of rows ?? []) {
     const q = r.survey_questions as unknown as {
       field_key: string | null;
@@ -189,12 +225,49 @@ const FA_NIVEL_POR_FACTOR: Record<string, string> = {
  */
 function conPesoYTalla(
   bis: Record<string, unknown>,
-  comp: { peso: number | null; talla: number | null } | null,
+  comp: Composition | null,
 ): Record<string, unknown> | null {
   const peso = Number(bis.peso ?? comp?.peso ?? 0);
   const talla = Number(bis.talla ?? comp?.talla ?? 0);
   if (!(peso > 0) || !(talla > 0)) return null;
-  return { ...bis, peso, talla };
+
+  // ASMI, AEC Y ACT, QUE EL MOTOR LEE Y `snapshot.indicators` NO TRAE (2026-09-06).
+  //
+  // El barrido salio de comparar la lista COMPLETA de campos que leen los tres motores de tratamiento
+  // (`b.ACT b.AEC b.ASMI b.edad b.FFMI b.FMI b.iehh b.peso b.pesoMeta b.sexo b.talla`) contra lo que este
+  // constructor entregaba. Los indicadores sellados traen doce claves y ninguna es ASMI, AEC ni ACT.
+  //
+  // QUE APAGABA CADA UNO:
+  //   · ASMI -> `sarcopenia = ASMI > 0 && (sexoM ? ASMI < 7 : ASMI < 5,5)` era SIEMPRE falsa. Se caia la
+  //     rama de sarcopenia de `motorTratNutri`, su nota de fuerza en la obesidad sarcopenica, y la fila
+  //     "ASMI bajo, sarcopenia" (1,2-1,5 g/kg) del panel de referencia por diagnostico. Ese panel es el
+  //     que Gildardo mando construir el 3-sep como la otra mitad de la retirada de la proteina.
+  //   · AEC y ACT -> la rama de hidratacion solo se alcanzaba por IEHH o por la sed declarada; el
+  //     criterio de AEC/ACT > 44 % no se evaluaba nunca, y con el el sodio maximo de 2.000 mg.
+  //
+  // SALEN DE LA COMPOSICION Y NO DEL SNAPSHOT, por la misma razon por la que ya salen de ahi el peso y la
+  // talla: la composicion es la medicion VIGENTE, con las correcciones del profesional ya aplicadas
+  // (0090). Una prescripcion que se calcula hoy se calcula sobre el dato corregido, no sobre el que se
+  // sello al diagnosticar. (El engine sella ademas `snapshot.asmi` en primer nivel, fuera de
+  // `indicators`, y de ahi lo toma el lector de medico/ejercicio; es la misma cifra a dos decimales.)
+  //
+  // Cada uno se pone SOLO si se conoce. Un cero explicito no es lo mismo que ausente: las guardas del
+  // motor estan escritas como `ASMI > 0`, asi que un cero se lee como "no hay bioimpedancia" y es el
+  // comportamiento correcto cuando de verdad no la hay.
+  const filas = comp ? allCompositionRows(comp) : [];
+  const valor = (clave: string): number | null => {
+    const v = filas.find((f) => f.key === clave)?.value ?? null;
+    return v != null && Number.isFinite(v) && v > 0 ? v : null;
+  };
+  const extra: Record<string, number> = {};
+  const asmi = valor("asmi");
+  if (asmi != null) extra.ASMI = asmi;
+  const aec = valor("ECW");
+  if (aec != null) extra.AEC = aec;
+  const act = valor("TBW");
+  if (act != null) extra.ACT = act;
+
+  return { ...bis, ...extra, peso, talla };
 }
 
 /**
@@ -355,24 +428,17 @@ export async function getAsesoriaMacros(
   evaluationId: string,
   sexo: string,
   bis: Record<string, unknown>,
-  /**
-   * LA EDAD, EXPLICITA, y no es un parametro de adorno: sin ella una rama entera de su asesoria queda
-   * MUERTA y en silencio.
-   *
-   * Su `asesoriaMacro` lee `e.edad || b.edad` y con edad >= 65 agrega "65 años o más" (1,0-1,2 g/kg,
-   * resistencia anabolica de la edad). Pero `buildEnc` arma el `enc` SOLO con las respuestas de la
-   * encuesta mas `sexo`, y `bis` son los indicadores del snapshot, que tampoco la traen. Medido: un
-   * paciente de 70 con ERC salia con UN solo item y sin conflicto; con la edad salen DOS y el conflicto
-   * aparece. O sea que al profesional se le ocultaba justo la mitad que tira en sentido contrario.
-   *
-   * Es la familia de "un porte que lee la encuesta falla en silencio por la FORMA del enc": nada da
-   * error, la rama simplemente no se alcanza. Va explicita y no metida dentro de `bis` para que se vea
-   * en la firma que este panel la necesita.
-   *
-   * `null` cuando la evaluacion no tiene fecha de nacimiento: ahi la rama no debe correr (no se supone
-   * una edad), y el resto de la asesoria sigue funcionando.
-   */
-  edad: number | null,
+  // LA EDAD YA NO ES UN PARAMETRO (2026-09-06). Estaba aqui desde el 2026-09-04, con su razon escrita:
+  // sin ella la rama de "65 años o mas" de su asesoria quedaba muerta y en silencio. La razon sigue
+  // siendo cierta; lo que cambio es DONDE se resuelve.
+  //
+  // Ahora la pone `buildEnc`, que es el constructor unico del `enc` y la comparte con los otros dos
+  // lectores de este archivo, que la necesitaban igual y no la tenian: `motorTratNutri` calculaba el
+  // gasto basal de todos los pacientes con 30 años. Pedirsela al caller resolvia UNO de los tres sitios,
+  // y de los cinco callers tres no tienen una edad a mano.
+  //
+  // Dos fuentes del mismo dato sin nada que las compare es como se cuelan las divergencias silenciosas,
+  // asi que se deja UNA.
   /** Lo que el profesional tiene escrito hoy, para decir si quedo fuera. `null` = sin escribir. */
   protGKg: number | null,
   fatPct: number | null,
@@ -381,7 +447,7 @@ export async function getAsesoriaMacros(
   if (!enc) return null;
   const base = conPesoYTalla(bis, await getCompositionForEvaluation(evaluationId));
   if (!base) return null;
-  const bisCompleto = edad != null && edad > 0 ? { ...base, edad } : base;
+  const bisCompleto = base;
 
   const arma = (macro: "prot" | "grasa", valor: number | null): AsesoriaMacro => {
     const a = asesoriaMacro(enc, bisCompleto, macro) as AsesoriaMacroCruda;

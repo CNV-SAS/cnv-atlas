@@ -137,7 +137,6 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
         evaluationId,
         engine.sexo,
         engine.indicators as unknown as Record<string, unknown>,
-        header.edad ?? null,
         null,
         null,
       ).catch(() => null)
