@@ -125,7 +125,18 @@ export function SerieLinea({
           </g>
         ))}
 
-        {/* LA BANDA VA DEBAJO DE TODO: es fondo, no dato. */}
+        {/* LA BANDA VA DEBAJO DE TODO: es fondo, no dato.
+
+            EN AZUL DE MARCA AL 10 %, no en gris (Santiago, 2026-09-06: el gris "se lee como algo
+            seleccionado"). Y no compite con la linea de la mediana aunque las dos vayan en azul: es que
+            DICEN LO MISMO. La banda es P25-P75 del grupo y la linea es la mediana del grupo; que
+            compartan familia de color es lo que hace que se lean como una sola cosa (el contexto
+            poblacional) y no como dos referencias distintas. Se separan por peso: la banda es un lavado
+            al 10 %, la linea es trazo punteado a opacidad plena.
+
+            Lo que SI competia era otra cosa, y estaba antes de la banda: el punto del paciente iba
+            tambien en `fill-primary`. Ahi el azul nombraba dos cosas opuestas (el grupo y la persona).
+            Corregido abajo. */}
         {banda ? (
           <>
             <rect
@@ -133,13 +144,13 @@ export function SerieLinea({
               y={yOf(banda[1])}
               width={IW}
               height={Math.max(1, yOf(banda[0]) - yOf(banda[1]))}
-              className="fill-muted-foreground/15"
+              className="fill-primary/10"
             />
             {bandaLabel ? (
               <text
                 x={PAD_L + 4}
                 y={yOf(banda[1]) + 10}
-                className="fill-muted-foreground"
+                className="fill-primary"
                 fontSize={9}
               >
                 {bandaLabel}
@@ -212,7 +223,13 @@ export function SerieLinea({
 
         {puntos.map((p, i) => (
           <g key={`p${p.fecha}`}>
-            <circle cx={xOf(i)} cy={yOf(p.valor)} r={4} className="fill-primary" />
+            {/* EL PUNTO DEL PACIENTE VA EN TINTA, no en el azul de marca. El azul de este grafico nombra
+                al GRUPO (la banda P25-P75 y la mediana); el paciente ya tiene su propio eje de color en
+                los segmentos, que van en `clinical-*` segun mejore o empeore. Con el punto en azul, el
+                mismo tono decia "tu grupo" y "tu", que son justo las dos cosas que el grafico existe
+                para separar. La cifra encima del punto ya iba en `fill-foreground`: ahora el punto y su
+                cifra son la misma tinta. */}
+            <circle cx={xOf(i)} cy={yOf(p.valor)} r={4} className="fill-foreground" />
             <text
               x={xOf(i) + dxDe(i)}
               y={yOf(p.valor) - 10}
