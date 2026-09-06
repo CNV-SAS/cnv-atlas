@@ -725,11 +725,17 @@ function CadenaCaloricaSection({
             Santiago pidio adoptarlo. "Cómo se llega a ese objetivo" era nuestro y describia bien lo que
             hace, asi que no se pierde: baja a subtitulo. El nombre propio arriba, la explicacion debajo. */}
         <section className={bloqueCls("derivado")}>
+          {/* EL SUBTITULO, COMO ROTULO Y NO DE CORRIDO (segundo smoke, punto 23). Iba pegado a la
+              explicacion en el mismo parrafo ("Cómo se llega a ese objetivo. Ajusta cualquier eslabón:
+              la vista previa..."), y asi no es un subtitulo: es una frase mas. Va en su propia linea, en
+              versalitas, que es como esta pantalla marca lo que rotula frente a lo que explica. */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cómo se llega a ese objetivo
+          </p>
           <h3 className={tituloBloqueCls("derivado")}>Fórmula sintética</h3>
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Cómo se llega a ese objetivo.</span> Ajusta
-            cualquier eslabón: la vista previa se recalcula en vivo con la misma fórmula que se sella al
-            aprobar.
+            Ajusta cualquier eslabón: la vista previa se recalcula en vivo con la misma fórmula que se
+            sella al aprobar.
           </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
