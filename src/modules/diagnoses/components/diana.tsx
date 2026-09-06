@@ -30,8 +30,13 @@ const BAND = (R - HOLE) / RINGS;
 // (ver el anclaje por lado, abajo), y en los sectores casi horizontales (E3 y E7) una etiqueta como
 // "FFMI Normal" mide unas 38 unidades. Sin ese margen, o se sale del lienzo o vuelve a montarse encima
 // del disco, que es justo lo que Santiago fotografio.
-const PAD = 44;
-const VIEWBOX = [-PAD, -PAD, SIZE + PAD * 2, SIZE + PAD * 2].join(" ");
+// EL MARGEN ES ASIMETRICO, y la razon es que los rotulos lo son: el texto es ANCHO, no alto. Los de
+// E3 y E7 (los casi horizontales) piden 44 unidades a los lados; arriba y abajo bastan 30. Con un
+// margen cuadrado, esas 28 unidades de mas quedaban como franjas vacias que estiraban el panel entero,
+// que es lo que Santiago vio como "alargado" (2026-09-06).
+const PAD_X = 44;
+const PAD_Y = 30;
+const VIEWBOX = [-PAD_X, -PAD_Y, SIZE + PAD_X * 2, SIZE + PAD_Y * 2].join(" ");
 
 // Paradas del gradiente de riesgo, VERBATIM del prototipo (ATLAS_v7.html, rc() ~L4517). Verde
 // (bajo riesgo) -> rojo oscuro (alto). El color es SEMANTICA de riesgo, no decoracion.
@@ -175,7 +180,7 @@ export function Diana({
         //
         // La geometria NO se toca: el navegador escala el viewBox. Cambiar SIZE/R/HOLE si habria movido
         // los rotulos respecto de su celda.
-        className="h-auto w-full max-w-[52rem]"
+        className="h-auto w-full max-w-[50rem]"
       >
         {/* Las 81 celdas pintadas por su nivel de riesgo. Separadores blancos semitranslucidos
             (visibles sobre cualquier celda en ambos temas). */}
@@ -225,17 +230,18 @@ export function Diana({
           const tx = lx + (derecha ? 4 : izquierda ? -4 : 0);
           const bandas = efrSectorBands(sc);
           return (
-            /* MAS PEQUEÑOS (segundo smoke, punto 15c): "tienen que leerse, no resaltar". Su archivo los
-               pone a 9,5 y 5,8 sobre un lienzo de 660 unidades; el nuestro mide 408, asi que en
-               proporcion los nuestros iban al doble. 8 y 6,5 los deja legibles sin competir con el
-               dibujo, que es lo que se mira primero. */
+            /* AL MISMO CUERPO QUE LOS DE ANILLO (tercer smoke): "siguen leyendose mas grandes". Los dos
+               juegos de rotulos son EJES del mismo mapa, asi que no hay razon para que uno pese mas que
+               el otro; el que tiene que resaltar es el dibujo. Antes iban a 8 y 6,5 contra los 6 del
+               anillo. Ahora los tres a 6, con el codigo en negrita, que es lo que lo distingue del par
+               de bandas sin agrandarlo. */
             <text
               key={`sl${sc}`}
               x={tx}
               y={ly}
               textAnchor={anchor}
               dominantBaseline="central"
-              fontSize={8}
+              fontSize={6}
               className="fill-muted-foreground"
             >
               {/* TRES LINEAS CON AIRE (2026-09-05). Iban a 6 unidades de cuerpo con 6 de salto, o sea sin
@@ -244,15 +250,15 @@ export function Diana({
                   linea de la siguiente. El espacio extra sale del PAD del lienzo, no de la geometria. */}
               {bandas ? (
                 <>
-                  <tspan x={tx} dy={-9} fontSize={6.5}>
+                  <tspan x={tx} dy={-7.5} fontSize={6}>
                     FMI {bandToWord(bandas.fmi)}
                   </tspan>
-                  <tspan x={tx} dy={7.5} fontSize={6.5}>
+                  <tspan x={tx} dy={7} fontSize={6}>
                     FFMI {bandToWord(bandas.ffmi)}
                   </tspan>
                 </>
               ) : null}
-              <tspan x={tx} dy={bandas ? 9 : 0} fontWeight={700}>
+              <tspan x={tx} dy={bandas ? 7.5 : 0} fontWeight={700}>
                 E{sc + 1}
               </tspan>
             </text>
@@ -271,6 +277,9 @@ export function Diana({
         {Array.from({ length: RINGS }, (_, rg) => {
           const r = HOLE + rg * BAND + BAND / 2;
           return (
+            /* TEXTO OSCURO CON HALO BLANCO, que es como los pone el (fill #475569, stroke blanco). Los
+               teniamos al reves (blanco sobre halo oscuro) y sobre los anillos verdes del centro se
+               leian como fichas negras: pesaban mas que el dibujo. */
             <text
               key={`rl${rg}`}
               x={C - 4}
@@ -279,24 +288,45 @@ export function Diana({
               dominantBaseline="central"
               fontSize={6}
               fontWeight={700}
-              fill="white"
-              stroke="#0f172a"
-              strokeWidth={0.5}
+              fill="#475569"
+              stroke="white"
+              strokeWidth={1.6}
               style={{ paintOrder: "stroke" }}
             >
               A{rg + 1}
             </text>
           );
         })}
+        {/* EL CENTRO, PORTADO DE SU ARCHIVO (tercer smoke, punto 15c). Verificado en su codigo antes de
+            ponerlo, no en la captura: su v8 dibuja
+              <text x=CX y=CY-10 font-size=10 font-weight=700 fill="#16a34a">EFR</text>
+              <text x=CX y=CY+3  font-size=7.5              fill="#888">#1 centro</text>
+            o sea la sigla en VERDE y debajo, en gris y mas pequeño, que el centro es el estado #1.
+            Nosotros teniamos solo la sigla, y en gris: el centro no decia lo que significa.
+
+            EL VERDE VA POR TOKEN y no por su hex: `clinical-optimal` ES el verde que en Atlas significa
+            optimo, que es exactamente lo que dice ese rotulo, y ademas responde al tema oscuro. Las
+            celdas si llevan su gradiente crudo, porque ahi el color es la escala. */}
         <text
           x={C}
-          y={C}
+          y={C - 5}
           textAnchor="middle"
           dominantBaseline="central"
           fontSize={7}
-          className="fill-muted-foreground"
+          fontWeight={700}
+          className="fill-clinical-optimal"
         >
           EFR
+        </text>
+        <text
+          x={C}
+          y={C + 4}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={5}
+          className="fill-muted-foreground"
+        >
+          #1 centro
         </text>
         {/* Celda explorada (V2): contorno punteado de acento, distinto del paciente. */}
         {selectedD ? (
@@ -320,9 +350,10 @@ export function Diana({
       </svg>
       {/* Escala de riesgo con palabras (fiel al HTML :11174): del optimo (centro) al riesgo maximo
           (periferia), no solo degradado. */}
-      {/* La escala acompana a la Diana, asi que crece con ella: a 280px bajo una Diana de 60rem quedaba
-          como un resto. Se acota al mismo ancho, que es el del dibujo que explica. */}
-      <div className="flex w-full max-w-[52rem] flex-col gap-1">
+      {/* LA ESCALA ES UNA LEYENDA, NO UN GRAFICO (tercer smoke). Iba al MISMO ancho que la Diana, y una
+          barra de 50rem para tres palabras estira el panel sin decir nada mas. Se acota a la mitad y
+          queda centrada: sigue leyendose entera y deja de competir con el dibujo. */}
+      <div className="flex w-full max-w-[26rem] flex-col gap-1">
         <div
           className="h-2 w-full rounded-full"
           style={{ background: `linear-gradient(to right, ${SCALE_GRADIENT})` }}
@@ -336,7 +367,7 @@ export function Diana({
       </div>
       {/* El pie acompana al dibujo, asi que crece con el: a 22rem bajo una Diana de 60rem quedaba estrecho
           y partia sus dos lineas en cuatro. */}
-      <figcaption className="flex max-w-[52rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+      <figcaption className="flex max-w-[50rem] flex-col items-center gap-1 text-center text-xs text-muted-foreground">
         {/* Nombre completo del mapa (porte del HTML al dia): el eje que resume la Diana. */}
         <span className="font-medium text-foreground">
           Mapa Estructura-Función-Riesgo Celular · 81 estados

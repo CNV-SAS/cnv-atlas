@@ -212,16 +212,20 @@ function LecturaDiana() {
     { t: "Periferia #81", f: "Riesgo máximo", d: "Disfunción / estructura comprometida" },
   ];
   return (
-    <div className="w-full max-w-[52rem]">
+    // COMPACTA, NO ESTIRADA (tercer smoke, 2026-09-06). Iba en dos columnas a 52rem, o sea cuatro
+    // bloques de tres lineas cortas repartidos por medio metro de pantalla: mucho aire entre ellos y el
+    // panel entero mas alto. Ahora son CUATRO columnas en pantalla ancha y se acota a 44rem, que es lo
+    // que mide una leyenda. La Diana puede ser la pieza grande; lo que la acompaña no.
+    <div className="w-full max-w-[44rem]">
       <p className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Lectura de la Diana
       </p>
-      <div className="grid grid-cols-1 gap-x-6 divide-y divide-border/60 border-y border-border/60 sm:grid-cols-2 sm:divide-y-0">
+      <div className="grid grid-cols-2 gap-x-5 divide-y divide-border/60 border-y border-border/60 sm:divide-y-0 lg:grid-cols-4">
         {filas.map((r) => (
-          <div key={r.t} className="flex flex-col py-2">
-            <span className="text-sm font-semibold text-foreground">{r.t}</span>
+          <div key={r.t} className="flex flex-col py-1.5">
+            <span className="text-xs font-semibold text-foreground">{r.t}</span>
             <span className="text-xs font-medium text-foreground">{r.f}</span>
-            <span className="text-xs text-muted-foreground">{r.d}</span>
+            <span className="text-[11px] leading-snug text-muted-foreground">{r.d}</span>
           </div>
         ))}
       </div>

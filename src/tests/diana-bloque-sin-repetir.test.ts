@@ -190,6 +190,25 @@ describe("rotulos de sector de la Diana: legibles (cotejo punto 15)", () => {
     expect(new Set(ys).size, "cada anillo en su propia altura").toBe(9);
   });
 
+  it("el centro dice lo que significa: EFR en verde y #1 centro debajo", () => {
+    // PORTADO DE SU ARCHIVO (tercer smoke), verificado en su codigo antes de ponerlo: su v8 dibuja
+    // "EFR" en verde (#16a34a, font-weight 700) y debajo "#1 centro" en gris. Nosotros teniamos solo la
+    // sigla, y en gris: el centro no decia lo que significa, que es donde empieza la escala.
+    const html = renderToStaticMarkup(
+      createElement(Diana, {
+        bands: { ifc: 2, irc: 2, ffmi: 2, fmi: 2 },
+        stateNumber: 41,
+        frSectorName: "Reserva",
+        structuralName: "Equilibrado",
+      }),
+    );
+    expect(html).toContain(">EFR</text>");
+    expect(html).toContain("#1 centro");
+    // El verde va por TOKEN y no por su hex: `clinical-optimal` ES el verde que en Atlas significa
+    // optimo, que es lo que ese rotulo dice, y ademas responde al tema oscuro.
+    expect(html).toContain("fill-clinical-optimal");
+  });
+
   it("el lienzo deja margen alrededor del dibujo para que el rotulo no quede a ras del borde", () => {
     const html = renderToStaticMarkup(
       createElement(Diana, {
