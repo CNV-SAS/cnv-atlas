@@ -129,6 +129,9 @@ export async function writeBisMeasurement(input: BisWriteInput): Promise<BisWrit
         derived_count: input.derivedValues.length,
         // QUE FUE UN REEMPLAZO Y SOBRE CUAL, que es lo que hace auditable el porton nuevo: sin esto, un
         // reimport se ve igual que un import y no hay forma de saber que hubo una medicion antes.
+        // Y NO VA EL NOMBRE DEL ARCHIVO (decision de Santiago, 2026-09-05). El rastro de QUE medicion se
+        // reemplazo ya identifica el acto, y el nombre del xlsx suele traer el nombre del paciente: seria
+        // meter PII en un log de auditoria que se conserva y se consulta por otras razones.
         replaced_measurement_ids: previas.map((m) => m.id),
       },
       ip: input.ip,

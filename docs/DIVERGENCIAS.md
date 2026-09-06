@@ -154,3 +154,24 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
   quince valores coincidían byte a byte y la diferencia estaba en una columna que solo nosotros llenábamos.
 - Queda aquí, aunque esté retirada, porque la entrada es el registro de que existió: sin ella, alguien
   puede volver a "completar" esa celda creyendo que falta.
+
+**DIV-18 · El peso meta y la fuerza prensil se MUESTRAN en Antropometría y se EDITAN en las condiciones de la toma.**
+- En su archivo los dos campos son **editables en Antropometría**, con la cintura y la cadera. Lo dice su
+  propio comentario: *"lo que el profesional escribe a mano en Antropometría (cintura, cadera,
+  dinamometría y peso meta) se guarda por paciente en cuanto lo teclea"*.
+- En Atlas se **muestran** ahí, junto a cintura y cadera, y el enlace lleva al bloque exacto donde se
+  editan (`#medidas-del-profesional`, en las condiciones de la toma).
+- **Por qué no se mueven, y no es por tamaño:** en SU archivo están en Antropometría **porque las
+  condiciones de la toma no son un formulario aparte con su gate**. En Atlas sí lo son, y hoy el
+  profesional llena las condiciones, la prensil y el peso meta **en un solo guardado, en un solo momento
+  de la consulta**. Moverlos partiría eso en dos guardados en dos subpestañas: copiar la ubicación sin
+  copiar la estructura empeora el flujo.
+- **Y hay un motivo técnico que apunta al mismo lado:** la fila de condiciones tiene
+  `bis_condition_version_id` y `condition_answers` NOT NULL, y su writer hace un upsert de la fila
+  entera. Un update parcial desde otra pantalla, con la fila aún sin crear, afectaría **cero filas** y el
+  valor se perdería en silencio.
+- **Lo que el cotejo señalaba sí se resuelve:** que no se veían donde se esperan. Ahora se ven ahí.
+- **Cómo:** `medidas-del-profesional-resumen.tsx`, en solo lectura y diciéndolo (no son inputs
+  deshabilitados, que se leen como "esto debería poder tocarse"). Decisión de Santiago, 2026-09-05.
+- **La pregunta, si prefiere lo otro:** si quiere que sean editables en Antropometría, se hace, y el
+  precio es el segundo guardado.
