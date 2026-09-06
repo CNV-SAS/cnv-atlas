@@ -2,7 +2,7 @@
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import { useActionState, useId, useState, type ReactNode } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -1255,13 +1255,17 @@ export function TreatmentPanel({
           evaluationId={evaluationId}
           protocol={protocol}
           locked={locked}
+          adaptar={(sinGuardar) => (
+            <AdaptarMenuBoton
+              evaluationId={evaluationId}
+              protocol={protocol}
+              locked={locked}
+              patronAlimentario={patronAlimentario}
+              sinGuardar={sinGuardar}
+            />
+          )}
         />
-        <MenuSection
-          evaluationId={evaluationId}
-          protocol={protocol}
-          locked={locked}
-          patronAlimentario={patronAlimentario}
-        />
+        <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
         <NotesSection protocol={protocol} />
         {/* APROBAR VA AL FINAL, y no es estetico: es el acto que CIERRA la consulta. Todo lo de arriba se
             edita; esto lo sella. Un boton de sellar arriba invita a pulsarlo antes de leer lo que sella. */}
@@ -1333,16 +1337,22 @@ const MENU_STATUS: Record<string, { label: string; cls: string }> = {
   parse_failed: { label: "Respuesta inválida", cls: "bg-clinical-critical-bg text-clinical-critical" },
 };
 
-function MenuSection({
+// EL BOTON DE ADAPTAR, extraido de `MenuSection` para que viva JUNTO A LAS RESTRICCIONES (cotejo
+// 2026-09-05, punto 25). La accion es sobre lo que el profesional acaba de escribir, asi que ahi
+// pertenece; las PROPUESTAS se quedan abajo, al lado de la grilla que modifican.
+function AdaptarMenuBoton({
   evaluationId,
   protocol,
   locked,
   patronAlimentario,
+  sinGuardar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
   patronAlimentario: string[];
+  /** Hay restricciones escritas y todavia no guardadas. */
+  sinGuardar: boolean;
 }) {
   const [state, formAction, pending] = useActionState(generateMenuAction, EMPTY);
   // AndRefresh, no useFormToast a secas: la accion ya no revalida (el revalidatePath era el que arrastraba
@@ -1350,19 +1360,63 @@ function MenuSection({
   // El refresco lo dispara el hook DESPUES del aviso, para que la propuesta aparezca sin mover el scroll.
   useFormToastAndRefresh(state);
 
-  // El menu se genera contra el objetivo de la CADENA CALORICA (fuente unica; el input manual de objetivo
-  // se retiro en el checkpoint 2). Basta con que el protocolo este calculado (snapshot sellado); sin el no
-  // hay cadena que computar.
+  // El menu se genera contra el objetivo de la CADENA CALORICA (fuente unica). Basta con que el protocolo
+  // este calculado (snapshot sellado); sin el no hay cadena que computar.
   const cadenaLista = protocol.protocolSuggested != null;
-  // SIN RESTRICCIONES LA IA NO ENTRA (su §13, "solo lo adapta CUANDO HAY RESTRICCIONES"). El servicio ya lo
+  // SIN RESTRICCIONES LA IA NO ENTRA (su 13, "solo lo adapta CUANDO HAY RESTRICCIONES"). El servicio ya lo
   // corta, pero la pantalla tiene que DECIRLO: un boton que se puede pulsar y no hace nada se lee como que
   // el sistema esta roto. Las tres fuentes son las mismas que viajan en el prompt.
   const hayRestricciones =
     (protocol.protocolSuggested?.restricciones?.length ?? 0) > 0 ||
     protocol.restricciones.length > 0 ||
     patronAlimentario.length > 0;
-  const disabled = locked || pending || !cadenaLista || !hayRestricciones;
+  const disabled = locked || pending || !cadenaLista || !hayRestricciones || sinGuardar;
 
+  return (
+    <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2 border-t border-border pt-3">
+      <input type="hidden" name="evaluationId" value={evaluationId} />
+      <div>
+        <Button type="submit" variant="outline" disabled={disabled}>
+          <Sparkles className="size-4" aria-hidden />
+          {pending ? "Adaptando..." : "Adaptar el menú a estas restricciones con IA"}
+        </Button>
+      </div>
+      {/* EL HAZARD QUE ABRE ACERCAR EL BOTON, cerrado aqui mismo: `generateMenuAction` lee las
+          restricciones de la BASE, no de este formulario. Escribir una y pulsar adaptar produciria una
+          adaptacion que IGNORA lo recien escrito, sin decirlo. A media pantalla la distancia hacia de
+          guarda; pegado al campo, hace falta decirlo. */}
+      {sinGuardar && !locked ? (
+        <p className="max-w-prose text-xs text-attention">
+          Guarda las restricciones primero: la IA lee las guardadas, no lo que está escrito en el campo.
+        </p>
+      ) : !cadenaLista && !locked ? (
+        <p className="text-xs text-muted-foreground">
+          El protocolo aún no está calculado; no se puede adaptar el menú.
+        </p>
+      ) : !hayRestricciones && !locked ? (
+        <p className="max-w-prose text-xs text-muted-foreground">
+          Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas, ni patrón
+          alimentario declarado), así que no hay nada que adaptar: el menú del ciclo es el que aplica.
+        </p>
+      ) : (
+        <p className="max-w-prose text-xs text-muted-foreground">
+          Revisa la semana de arriba y propone sustituir solo lo que incumple una restricción. Las
+          propuestas salen más abajo y las aceptas una por una.
+        </p>
+      )}
+    </form>
+  );
+}
+
+function MenuSection({
+  evaluationId,
+  protocol,
+  locked,
+}: {
+  evaluationId: string;
+  protocol: TreatmentProtocol;
+  locked: boolean;
+}) {
   // QUE CAMBIOS YA SE APLICARON. No se guarda una marca aparte: se DERIVA de la grilla, comparando el
   // reemplazo propuesto con lo que la celda tiene guardado. Una marca aparte seria un segundo estado que
   // puede desincronizarse del real (el profesional puede editar la celda a mano despues de aplicar).
@@ -1376,7 +1430,10 @@ function MenuSection({
 
   return (
     <div className={bloqueCls("derivado")}>
-      <h3 className={tituloBloqueCls("derivado")}>Adaptar el menú a las restricciones (IA)</h3>
+      {/* EL BOTON SUBIO AL BLOQUE DE RESTRICCIONES (cotejo punto 25); aqui queda lo DERIVADO: la
+          explicacion de que hace la IA y sus propuestas, que es lo que se lee al lado de la grilla que
+          modifican. El titulo lo dice: esto ya no es la accion, son sus resultados. */}
+      <h3 className={tituloBloqueCls("derivado")}>Propuestas de la IA para el menú</h3>
       {/* QUE MIRA LA IA: se escribe lo que el contrato del prompt REALMENTE lleva (menu.v4.ts), no lo que
           suena bien. Si el contrato cambia, este texto cambia con el: un texto que describe mal el motor
           es un defecto de seguridad. */}
@@ -1388,24 +1445,9 @@ function MenuSection({
       </p>
       <p className="max-w-prose text-sm text-muted-foreground">
         Cada propuesta viene con el motivo, y las aceptas <strong>una por una</strong>. Si falla o no
-        responde, la grilla se queda con el ciclo.
+        responde, la grilla se queda con el ciclo. El botón para pedirlas está arriba, junto a tus
+        restricciones.
       </p>
-      <form onSubmit={enviarSinReset(formAction)}>
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <Button type="submit" variant="outline" disabled={disabled}>
-          {pending ? "Adaptando..." : "Adaptar a las restricciones"}
-        </Button>
-        {!cadenaLista && !locked ? (
-          <p className="pt-2 text-xs text-muted-foreground">
-            El protocolo aún no está calculado; no se puede adaptar el menú.
-          </p>
-        ) : !hayRestricciones && !locked ? (
-          <p className="max-w-prose pt-2 text-xs text-muted-foreground">
-            Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas, ni patrón
-            alimentario declarado), así que no hay nada que adaptar: el menú del ciclo es el que aplica.
-          </p>
-        ) : null}
-      </form>
 
       {protocol.menuSuggestions.length ? (
         <ul className="flex flex-col gap-3">
@@ -1419,7 +1461,11 @@ function MenuSection({
             />
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="max-w-prose text-sm italic text-muted-foreground">
+          Todavía no has pedido ninguna adaptación.
+        </p>
+      )}
     </div>
   );
 }
@@ -1715,14 +1761,33 @@ function AplicarTodasMenu({
 
 // Restricciones alimentarias (checkpoint 2.4): seccion propia, JUNTO al menu (son su insumo). Guardado
 // propio con candado y firma de remonte (saveRestriccionesAction), como la cadena/nutraceuticos.
+//
+// EL BOTON DE ADAPTAR VIVE AQUI (cotejo 2026-09-05, punto 25). Santiago: "un boton al lado que diga
+// adaptar las restricciones al menu con ayuda de IA". Tiene razon en que la accion pertenece a este
+// bloque: se actua SOBRE las restricciones que se acaban de escribir.
+//
+// LO QUE NO SE FUNDE, Y POR QUE: la LISTA de propuestas se queda abajo, en su bloque `derivado`. Este
+// bloque es `decision` (lo que el profesional escribe) y aquel es `derivado` (lo que el sistema
+// produce), y son los dos niveles con los que toda la app dice quien decidio que. Meterlos en una caja
+// haria que esa caja significara las dos cosas, que es justo lo que los niveles vinieron a evitar. Se
+// une la ACCION con su insumo; se deja el RESULTADO donde se lee al lado de la grilla que modifica.
+//
+// Y ACERCAR EL BOTON ABRE UN HAZARD QUE HAY QUE CERRAR AQUI MISMO: `generateMenuAction` lee las
+// restricciones de la BASE, no del formulario. Con el boton a media pantalla, la distancia hacia de
+// guarda; pegado al campo, escribir "sin lactosa" y pulsar adaptar produciria una adaptacion que IGNORA
+// lo recien escrito, sin decirlo. Es la familia de "dos partes de la pantalla que leen fuentes
+// distintas". Por eso el boton se apaga mientras haya cambios sin guardar, y dice por que.
 function RestriccionesSection({
   evaluationId,
   protocol,
   locked,
+  adaptar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   locked: boolean;
+  /** El boton de adaptar el menu, que se renderiza junto al de guardar. Recibe si hay cambios sin guardar. */
+  adaptar: (sinGuardar: boolean) => ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(saveRestriccionesAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -1737,6 +1802,10 @@ function RestriccionesSection({
     treatmentId: protocol.treatmentId,
     restricciones: protocol.restricciones,
   });
+  // Lo que hay en pantalla frente a lo que hay en la base. El orden cuenta como cambio a proposito: es
+  // barato y ser conservador aqui solo cuesta un guardado de mas.
+  const sinGuardar =
+    JSON.stringify(restricciones) !== JSON.stringify(protocol.restricciones) || restrInput.trim() !== "";
 
   return (
     <section className={bloqueCls("decision")}>
@@ -1797,6 +1866,9 @@ function RestriccionesSection({
           </div>
         </fieldset>
       </form>
+      {/* HERMANO DEL FORMULARIO, NO ANIDADO: son dos acciones distintas (guardar y adaptar) y un
+          formulario dentro de otro es HTML invalido. */}
+      {adaptar(sinGuardar)}
     </section>
   );
 }
