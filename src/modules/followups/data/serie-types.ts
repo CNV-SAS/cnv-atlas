@@ -35,6 +35,19 @@ export type PuntoSerie = {
  */
 export type RefCapacitancia = {
   mediana: number;
+  /**
+   * LOS BORDES DE LA BANDA NORMAL Y EL TAMAÑO DE LA MUESTRA (cotejo 2026-09-05, punto 28).
+   *
+   * Su tarjeta escribe la fila entera: "Referencia hombres 18-29 años (n=503): P25 2.06 · mediana 2.40
+   * · P75 2.82 nF". Con la mediana sola no se puede saber si 2,96 esta cerca o lejos: la mediana dice
+   * hacia donde, y los percentiles dicen cuanto margen hay. Y el `n` es lo que separa una referencia de
+   * una cifra afirmada: 503 personas se lee distinto de 73.
+   */
+  p25: number;
+  p75: number;
+  n: number;
+  /** La medicion que se clasifico (la ultima), para poder decirla al lado de su banda. */
+  valor: number;
   /** Donde cae la ultima medicion: "Normal", "Baja", "Muy baja", "Alta". */
   etiqueta: string;
   /** El percentil donde cae ("P25-P75"), para que la pantalla diga mas que la etiqueta. */

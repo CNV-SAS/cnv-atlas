@@ -195,8 +195,35 @@ describe("la referencia está CABLEADA, no solo portada", () => {
   });
 
   it("y la tarjeta la dibuja como línea de referencia", () => {
-    expect(TARJETA).toContain("referencia: serie.refC.mediana");
+    // CAMBIO EL MARCADOR, NO LA ASERCION (2026-09-06, cotejo punto 28): la tarjeta se extrajo a su
+    // propio componente para poder mostrarla también con UNA sola medición, así que la referencia se
+    // lee de `refC` y ya no de `serie.refC`. Lo que se sigue exigiendo es lo mismo: que la mediana del
+    // grupo se dibuje como línea, y con su rótulo.
+    expect(TARJETA).toContain("referencia: refC.mediana");
     expect(TARJETA).toContain("referenciaLabel");
+  });
+
+  it("la tarjeta aparece con UNA sola medición: no vive de la trayectoria", () => {
+    // El punto 28 del cotejo. El radar y las series necesitan dos puntos (con uno compararían la
+    // medición contra sí misma), pero ESTA tarjeta vive de la comparación contra la referencia
+    // poblacional: con una medición ya tiene lectura completa. Estaba escondida detrás del mismo gate
+    // que las otras dos.
+    expect(TARJETA).toContain("if (puntos.length === 0) return null;");
+    // Y la GRÁFICA sí espera la segunda: una línea de un punto no traza nada.
+    expect(TARJETA).toContain("const hayTrayectoria = puntos.length >= 2;");
+    // Se renderiza en los DOS caminos, con previa y sin ella. Si solo estuviera en uno, el defecto
+    // vuelve por el otro lado.
+    expect((TARJETA.match(/<CapacitanciaCard /g) ?? []).length).toBe(2);
+  });
+
+  it("y escribe los percentiles y el n, no solo la mediana", () => {
+    // Su tarjeta: "Referencia hombres 18-29 años (n=503): P25 2.06 · mediana 2.40 · P75 2.82 nF". La
+    // mediana dice hacia dónde; los percentiles dicen cuánto margen hay; el n es lo que separa una
+    // referencia de una cifra afirmada.
+    expect(TARJETA).toContain("refC.p25.toFixed(2)");
+    expect(TARJETA).toContain("refC.p75.toFixed(2)");
+    expect(TARJETA).toContain("n={refC.n}");
+    expect(TARJETA).toContain("refC.valor.toFixed(3)");
   });
 
   it("`subirEsMejor` NUNCA es true: subir puede ser adiposidad, no mejoría", () => {
