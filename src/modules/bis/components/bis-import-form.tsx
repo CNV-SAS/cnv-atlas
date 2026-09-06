@@ -35,8 +35,20 @@ const initialState: ImportBisState = {
 export function BisImportForm({
   evaluation,
   disabledReason = null,
+  modoReemplazo = false,
 }: {
   evaluation: BisImportEvaluationView;
+  /**
+   * REEMPLAZAR la medicion existente en vez de importar la primera.
+   *
+   * POR QUE HACE FALTA (smoke de Santiago, 2026-09-05): el porton del reimport se movio a "¿ya hay
+   * diagnostico?", pero este formulario se OCULTA en cuanto hay medicion, que era correcto cuando
+   * reimportar era imposible. El guard quedo construido y sin superficie que llegara a el: la pieza sin
+   * su ultimo cable, esta vez en lo recien hecho.
+   *
+   * Cambia los TEXTOS, no el camino: la accion es la misma y el writer decide si puede.
+   */
+  modoReemplazo?: boolean;
   // Motivo por el que el import esta deshabilitado (p. ej. condiciones sin responder). Si no es
   // null, el boton y el archivo quedan deshabilitados con la explicacion en gris (ensena que falta,
   // en vez de esconder la seccion). null = habilitado.
@@ -49,7 +61,7 @@ export function BisImportForm({
   useFormToast(state);
 
   // Ya importado (en la carga de la pagina o tras un envio exitoso): no se reimporta.
-  const done = evaluation.alreadyImported || state.imported;
+  const done = (evaluation.alreadyImported || state.imported) && !modoReemplazo;
   const blocked = Boolean(disabledReason);
 
   return (
@@ -87,6 +99,16 @@ export function BisImportForm({
         ) : (
           <form onSubmit={enviarSinReset(action)} className="flex flex-col gap-3">
             <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
+            {modoReemplazo ? (
+              /* QUE REEMPLAZA, DICHO ANTES DE ELEGIR EL ARCHIVO. Sin esto el profesional puede creer que
+                 se suma una segunda medicion, que es justo lo que el writer impide: la anterior se borra
+                 en la misma transaccion. */
+              <p className="rounded-md border border-attention bg-attention-bg px-3 py-2 text-sm text-foreground">
+                <span className="font-semibold text-attention">Esto reemplaza la medición actual.</span>{" "}
+                La anterior se elimina y el diagnóstico se calculará sobre el archivo nuevo. Solo se puede
+                mientras la evaluación no tenga diagnóstico generado.
+              </p>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`file-${evaluation.evaluationId}`} className="text-sm font-medium">
                 Archivo XLSX exportado de Biody Manager
@@ -133,7 +155,13 @@ export function BisImportForm({
             ) : null}
 
             <Button type="submit" disabled={pending || blocked} className="w-fit">
-              {pending ? "Importando..." : "Importar medición BIS"}
+              {pending
+                ? modoReemplazo
+                  ? "Reemplazando..."
+                  : "Importando..."
+                : modoReemplazo
+                  ? "Reemplazar la medición"
+                  : "Importar medición BIS"}
             </Button>
           </form>
         )}

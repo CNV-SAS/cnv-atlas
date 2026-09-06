@@ -328,3 +328,44 @@ describe("las medidas del profesional se muestran donde él las pone (DIV-18, co
     expect(ENTRADA).toContain("bisReadonly?.weightGoalKg");
   });
 });
+
+describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
+  const ENTRADA = readFileSync(
+    "src/modules/evaluations/components/entrada-evaluacion.tsx",
+    "utf8",
+  );
+  const FORM = readFileSync("src/modules/bis/components/bis-import-form.tsx", "utf8");
+  const RESUMEN = readFileSync(
+    "src/modules/bis-intake/components/medidas-del-profesional-resumen.tsx",
+    "utf8",
+  );
+
+  it("con medición y SIN diagnóstico hay por dónde reemplazar el archivo", () => {
+    // EL DEFECTO: el portón del reimport se movió a "¿ya hay diagnóstico?" y este panel seguía ocultando
+    // el formulario en cuanto había medición, que era correcto cuando reimportar era imposible. El guard
+    // quedó construido y sin superficie que llegara a él. Es la pieza sin su último cable, y esta vez en
+    // lo recién hecho: un guard que nadie puede ejercitar no es un guard, es código muerto que además
+    // hace creer que el caso está cubierto.
+    expect(ENTRADA, "no hay superficie de reemplazo").toContain("modoReemplazo");
+    expect(ENTRADA, "la superficie no está acotada a antes del diagnóstico").toContain(
+      "!diagnosticoGenerado && bisImportEval",
+    );
+    // Y el formulario tiene que RENDERIZARSE aunque ya haya medición cuando está en ese modo.
+    expect(FORM).toContain("&& !modoReemplazo");
+  });
+
+  it("y el texto dice que REEMPLAZA, no que añade", () => {
+    // Sin esto el profesional puede creer que se suma una segunda medición, que es lo que el writer
+    // impide: la anterior se borra en la misma transacción.
+    expect(FORM).toContain("Esto reemplaza la medición actual");
+    expect(FORM).toContain("Reemplazar la medición");
+  });
+
+  it("y el enlace de editar desaparece cuando los valores están sellados", () => {
+    // Un enlace que promete editar y no deja editar es peor que no tenerlo: manda al profesional a buscar
+    // un campo que no existe y a concluir que el sistema está roto.
+    expect(RESUMEN).toContain("sellada ? null : (");
+    expect(RESUMEN).toContain("Quedaron selladas con el diagnóstico");
+    expect(ENTRADA).toContain("sellada={diagnosticoGenerado}");
+  });
+});

@@ -30,16 +30,25 @@ export function MedidasDelProfesionalResumen({
   evaluationId,
   pesoMetaKg,
   fuerzaPrensilKg,
+  sellada = false,
 }: {
   evaluationId: string;
   pesoMetaKg: number | null;
   fuerzaPrensilKg: number | null;
+  /**
+   * Con el diagnostico generado los dos valores estan SELLADOS y el enlace se retira.
+   *
+   * POR QUE (smoke de Santiago, 2026-09-05): el enlace llevaba a las condiciones, donde con diagnostico
+   * ya no se puede editar nada. Un enlace que promete editar y no deja editar es peor que no tenerlo:
+   * manda al profesional a buscar un campo que no existe y a concluir que el sistema esta roto.
+   */
+  sellada?: boolean;
 }) {
   const dato = (v: number | null, unidad: string) =>
     v == null ? "Sin registrar" : `${v} ${unidad}`;
 
   return (
-    <section className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
+    <section className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Medidas del profesional
@@ -47,16 +56,20 @@ export function MedidasDelProfesionalResumen({
         {/* EL ENLACE VA AL BLOQUE, no a la subpestaña: `?etapa` y `?ev` colocan la pantalla y el `#` cae en
             el sitio donde estan los dos campos. Sin la etapa explicita, la pagina caeria a su default (la
             leccion del punto 5 de este mismo cotejo). */}
-        <Link
-          href={`/evaluaciones/${evaluationId}?etapa=evaluacion&ev=encuesta#medidas-del-profesional`}
-          className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
-        >
-          <Pencil className="size-3" aria-hidden />
-          Editar en las condiciones de la toma
-        </Link>
+        {sellada ? null : (
+          <Link
+            href={`/evaluaciones/${evaluationId}?etapa=evaluacion&ev=encuesta#medidas-del-profesional`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            <Pencil className="size-3" aria-hidden />
+            Editar en las condiciones de la toma
+          </Link>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Se registran junto con las condiciones de la toma, en un solo guardado. Aquí solo se consultan.
+        {sellada
+          ? "Quedaron selladas con el diagnóstico: ya no se pueden editar."
+          : "Se registran junto con las condiciones de la toma, en un solo guardado. Aquí solo se consultan."}
       </p>
       <dl className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col">
