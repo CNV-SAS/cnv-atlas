@@ -35,33 +35,61 @@ export type IndicatorRange = { reference: string; delta: string | null };
 // los decimales y el signo quedan exactamente como estaban.
 const f = (n: number, d: number) => n.toFixed(d).replace(".", ",");
 
-// LA FILA ICA-BIS TOMA LA CLASIFICACION DEL PABU. No tiene una propia, y no la tiene A PROPOSITO.
+// LA FILA ICA-BIS: SU ARCHIVO TIENE DOS REGLAS, UNA POR SUPERFICIE. No es una, y confundirlas ya me
+// costo una entrega (2026-09-05, cotejo punto 17, corregido el mismo dia con sus capturas al lado).
 //
-// AQUI VIVIA `clasificarIcaBis`, RETIRADA el 2026-09-05 (cotejo, punto 17). Graduaba la desviacion en
-// leve/moderada/severa/critica, y era exactamente lo que Gildardo habia BORRADO de su archivo: su fila
-// hace `icaBisClf = cPABU(t_pabu)` y al lado dejo la nota "cICABIS eliminado — usar cPABU global". Su
-// comentario del PABU lo dice ademas de frente: "La MAGNITUD del deterioro no se gradua aqui... Duplicar
-// esa graduacion en la PABU añadiria bandas sin aportar informacion nueva".
+//  · DIAGNOSTICO -> COMPOSICION CORPORAL (ATLAS_v8 L14623): la fila usa `dICA`, un clasificador de
+//    MAGNITUD propio de esa tabla, con sus cinco escalones. "Desviación leve" existe ahi y va en
+//    AMBAR (#f59e0b). Al lado, la fila PABU usa `dPABU` ("PABU bajo", tambien ambar).
+//  · REPORTE / HISTORIA CLINICA (ATLAS_v8 L15425): ahi si hace `icaBisClf = cPABU(t_pabu)`, con la
+//    nota "cICABIS eliminado — usar cPABU global" al lado.
 //
-// Y NO ERA SOLO UN COLOR: el escalon "Desviación leve" traia severidad 0, o sea que un ICA-BIS desviado
-// se pintaba VERDE, con el rotulo diciendo que hay desviacion. El contenedor afirmaba lo contrario del
-// texto.
+// LO QUE PASO, y queda escrito porque es la trampa: encontre la linea de la HC y la nota, las lei como
+// "retiro el clasificador" y aplique la regla de la HC a la PANTALLA, que es justo la superficie que
+// Santiago estaba mirando y donde su archivo SI gradua. Un hallazgo solido en el archivo equivocado se
+// siente igual que uno correcto.
 //
-// La razon que la sostenia ("cPABU corta a Reserva superior con IFC>6") ya no existe: esa rama se fue con
-// el swap del 18 de agosto y el comentario se quedo citandola. El cPABU vigente es direccional.
+// EL DEFECTO REAL QUE EL REPORTO ERA EL COLOR, no la graduacion: nuestro escalon "Desviación leve"
+// llevaba severidad 0, o sea VERDE, y el suyo es AMBAR. Textual: "ahi pone desviación leve con color
+// verde, mientras que la PABU es color amarillo... además el html lo pinta amarillo".
 //
-// POR QUE ES UNA FUNCION Y NO UN `if` EN LA TABLA: la fila ICA-BIS se arma en DOS sitios (la pantalla de
-// Diagnostico y el bloque de indices de la historia clinica), y una regla que vive en dos sitios diverge.
-// En la historia clinica ademas estaba MUDA: el snapshot sella `classifications["ICA-BIS"] = null` y
-// `indicatorSeverities` no emite la clave, asi que la fila no podia aparecer nunca, ni desviada ni no.
-export const CODIGO_CLASE_ICA_BIS = "PABU";
+// POR ESO ESTO DEVUELVE {l, c} COMO LOS CLASIFICADORES DEL FROZEN, y no una severidad: la severidad la
+// saca `veredictoSev` del hex, que es el mismo camino que usan los quince clasificadores congelados. Si
+// el color viene de su archivo, la severidad no se puede elegir a mano.
+export type ClaseIcaBis = { l: string; c: string };
 
 /**
- * El mismo mapa por codigo, con la entrada ICA-BIS resuelta a la del PABU.
+ * Clasificacion de la fila ICA-BIS de la tabla de indices del DIAGNOSTICO.
  *
- * Se aplica AL MOSTRAR (no al sellar) a proposito, igual que las severidades de AF/IR: asi la fila queda
- * clasificada tambien en los diagnosticos ya emitidos, que llevan `"ICA-BIS": null` en su snapshot.
+ * PORTE VERBATIM de `dICA` (ATLAS_v8 L14443), las dos ramas y los cinco hexadecimales. La rama negativa
+ * ("Reserva bioeléctrica") no se alcanza hoy porque el motor sella `icaBis` como |PABU - phi|, igual que
+ * su tabla, que muestra 0,4157 para un PABU de 1,2023. Se porta igual: retirarla seria decidir por el.
  */
+export function clasificarIcaBis(icaBis: number | null): ClaseIcaBis | null {
+  if (icaBis == null) return null;
+  if (icaBis < 0) {
+    if (icaBis > -0.15) return { l: "Reserva bioeléctrica leve", c: "#16a34a" };
+    if (icaBis > -0.5) return { l: "Reserva bioeléctrica moderada", c: "#3b82f6" };
+    return { l: "Reserva bioeléctrica superior", c: "#0891b2" };
+  }
+  if (icaBis <= 0.15) return { l: "Zona φ — Homeostasis óptima", c: "#16a34a" };
+  if (icaBis <= 0.5) return { l: "Desviación leve", c: "#f59e0b" };
+  if (icaBis <= 1.5) return { l: "Desviación moderada", c: "#f97316" };
+  if (icaBis <= 3.0) return { l: "Desviación severa", c: "#ef4444" };
+  return { l: "Zona crítica", c: "#7f1d1d" };
+}
+
+// LA REGLA DE LA HISTORIA CLINICA, que es la OTRA (ATLAS_v8 L15425): ahi la fila ICA-BIS toma la
+// clasificacion del PABU, y el lo dejo anotado ("cICABIS eliminado — usar cPABU global"). No se aplica a
+// la pantalla de Diagnostico: son dos superficies con dos reglas suyas.
+//
+// Se aplica AL MOSTRAR (no al sellar), igual que las severidades de AF/IR, para que la fila quede
+// clasificada tambien en los diagnosticos ya emitidos, que llevan `"ICA-BIS": null` en su snapshot. Sin
+// esto la fila no podia aparecer NUNCA en la HC: `indicatorSeverities` no emite esa clave y los dos
+// filtros de `indicesAniAlterados` la descartaban en silencio, desviada o no.
+export const CODIGO_CLASE_ICA_BIS = "PABU";
+
+/** El mismo mapa por codigo, con la entrada ICA-BIS resuelta a la del PABU. SOLO para la HC. */
 export function conClaseIcaBis<T>(porCodigo: Record<string, T>): Record<string, T> {
   return { ...porCodigo, "ICA-BIS": porCodigo[CODIGO_CLASE_ICA_BIS] };
 }

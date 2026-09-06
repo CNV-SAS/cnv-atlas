@@ -175,6 +175,25 @@ export function analizarDFI(
     EB_BIS,
     FMI: imp.FMI,
     FFMI: imp.FFMI,
+    // ICA_BIS FALTABA, y su ausencia se veia en pantalla (cotejo 2026-09-05, punto 9).
+    //
+    // `computeDFIFromData` hace `num("ICA_BIS","icaBis") || (pabu ? pabu - 1.618 : null)`: si el dato
+    // no viene en la fila, lo RECALCULA CON SIGNO. En su aplicacion la fila si lo trae (calculado como
+    // valor absoluto), asi que su chip dice "+0,42"; en la nuestra no venia, caia al calculo con signo
+    // y decia "-0,42". Misma pantalla, dos signos para el mismo concepto: la fila ICA-BIS de la tabla
+    // sale de `indicators.icaBis` (absoluto) y el chip del PABU salia de la reserva (con signo).
+    //
+    // NO SE TOCA SU MATEMATICA: se le entrega el insumo que su codigo lee y que su aplicacion si llena.
+    // El valor es EL MISMO que sella el motor (|PABU - phi|, ATLAS_v7 L5721), que es ademas lo que dice
+    // la referencia de la fila ("0.00-0.15 Zona φ": un rango que empieza en cero solo tiene sentido para
+    // una magnitud) y lo que hace su propio cPABU (`Math.abs(raw) <= 0.15`).
+    //
+    // Y ASI QUEDA COHERENTE CON SU REGLA: la DIRECCION la dice la etiqueta ("Desviación por exceso" =
+    // por debajo de phi) y la MAGNITUD el numero. Su tarjeta se leia contradiciendose sola.
+    //
+    // Alcance: `icaBis` NO entra en ningun puntaje del DFI. Se usa en UN sitio, el texto del chip
+    // (engine.dfi.js:146). No mueve severidades, ni riesgo integrado, ni rutas.
+    ICA_BIS: Math.abs(PABU - 1.618),
   };
 
   const out = dfi.computeDFIFromData(encLe8, bis);

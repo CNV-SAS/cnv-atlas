@@ -39,7 +39,21 @@
 //    Incluye la migracion 0100: los quince grupos y `d7_agua` pasan a `used_in_diagnosis = true`, porque
 //    dejaron de ser display/tratamiento y son insumo del diagnostico. Sin eso, `dfi.complete` diria que
 //    los insumos estan completos sobre respuestas que el paciente no dio.
-export const ENGINE_VERSION = "anibise-1.3.0";
+//  · 1.3.1 (2026-09-05): PATCH, sin ciencia. El chip del PABU del Dominio 1 del DFI decia la
+//    desviacion de φ CON SIGNO, y la fila ICA-BIS de la tabla la dice en MAGNITUD: la misma pantalla
+//    con dos signos para el mismo concepto. La causa era una omision nuestra, no su matematica:
+//    `computeDFIFromData` hace `num("ICA_BIS","icaBis") || (pabu - 1.618)` y la fila que le pasabamos
+//    no traia el campo, asi que caia a la reserva con signo. Su aplicacion si lo llena (con el valor
+//    absoluto) y por eso su pantalla dice "+0,42" donde la nuestra decia "-0,42".
+//    SE LE ENTREGA EL INSUMO, no se le cambia la formula, y es el MISMO valor que el motor ya sella
+//    (|PABU - phi|, ATLAS_v7 L5721), coherente con la referencia de la fila ("0.00-0.15 Zona φ", un
+//    rango que empieza en cero solo tiene sentido para una magnitud) y con su cPABU (`Math.abs(raw)`).
+//    QUE SE MUEVE: un TEXTO sellado en `dfi.domains[0].items`, solo en pacientes por DEBAJO de φ.
+//    NINGUNA cifra, severidad, riesgo integrado ni ruta: `icaBis` se usa en UN sitio del DFI, ese
+//    texto (engine.dfi.js:146). Por eso es patch y no minor. El golden no lo vio porque su donante
+//    tiene PABU 1,9925, por encima de φ, donde los dos calculos coinciden; el candado nuevo
+//    (`ica-bis-signo-del-chip.test.ts`) cubre justo el caso que al golden le falta.
+export const ENGINE_VERSION = "anibise-1.3.1";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
