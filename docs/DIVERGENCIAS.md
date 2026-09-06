@@ -140,3 +140,17 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
   le dice cuál se eligió y por qué, y **si prefiere la (b) o la (c) se cambia**. Revertir es una línea.
 - Cómo: `plan-paciente-reader.ts` (`armarListaIntercambio`). Candado en `plan-paciente.test.ts`, con su
   control de que las 350 filas siguen trayendo `med` no vacío.
+
+**DIV-17 · RETIRADA el 2026-09-05, el mismo día que se declaró: le poníamos referencia al FFW y su archivo no.**
+- Qué había: la tabla de Wang mostraba para el **FFW (agua libre de grasa)** la referencia `48,55` con un
+  déficit de `−6,60`. Esa cifra era **la referencia del ACT (agua corporal total) reutilizada**
+  (`FFW_ref = tbwR`), y ACT y FFW son cantidades distintas: en el paciente del cotejo, 44,66 y 41,95.
+- Su archivo pone un guion: **no define referencia para el FFW.**
+- Por qué se retira y no se ajusta: no es una referencia mal elegida, es **una referencia que no existe en
+  su modelo**. Una fila de la tabla de Wang es un veredicto sobre el paciente, y la nuestra afirmaba un
+  déficit que él no afirma. Regla 0: el archivo se representa, no se completa.
+- Se conserva el valor MEDIDO del FFW; desaparecen la columna de referencia y su delta.
+- **Apareció en el cotejo visual comparando las dos capturas fila por fila**, no leyendo código: los
+  quince valores coincidían byte a byte y la diferencia estaba en una columna que solo nosotros llenábamos.
+- Queda aquí, aunque esté retirada, porque la entrada es el registro de que existió: sin ella, alguien
+  puede volver a "completar" esa celda creyendo que falta.
