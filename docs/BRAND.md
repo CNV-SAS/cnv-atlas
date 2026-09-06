@@ -166,6 +166,55 @@ documento **imprimible y probatorio**, con dos caras deliberadas (lo que va a pa
 papel, con sus `no-print` y `print-only`), y su aspecto se cotejó contra el documento de referencia.
 Uniformarla con las pantallas de trabajo rompería ese cotejo.
 
+## Decimales de una cifra clínica: los fija el CORTE, no el gusto
+
+**Regla (Santiago, 2026-09-06):** la precisión con la que se muestra un indicador tiene que **alcanzar
+para distinguirlo de su corte**. Si el corte del IR es 0,78 y la distancia del paciente es 0,018, dos
+decimales convierten ese 0,018 en 0,02 y borran justo lo que la cifra venía a decir.
+
+**De ahí salen dos criterios, y sólo dos:**
+
+1. **El corte lleva tres decimales → el indicador lleva tres.**
+2. **El indicador vive en un rango menor a una unidad → lleva tres.** A dos decimales, toda su escala
+   clínica cabría en veinte pasos.
+
+**Todo lo demás va a DOS, que es el estándar.** No se decide caso por caso y no se copia del HTML: su
+archivo no tiene una regla de decimales, tiene la que quedó en cada sitio (2 en unos, 3 en otros, 4 en
+otros), y copiarla importa su desorden.
+
+### El barrido de los doce indicadores (2026-09-06)
+
+| Indicador | Su corte | Decimales | Por qué |
+| --- | --- | --- | --- |
+| **PABU** | φ = **1,618** | **3** | El corte tiene tres. Con dos, la Δ no distingue del corte |
+| **IR** | 0,78 / 0,82 | **3** | Recorre 0,70-0,90: **menos de una unidad** |
+| IFC | 6,68 / 3,28 | 2 | |
+| IRC | 1,70 / 2,30 | 2 | |
+| FMI | 6 / 9 | 2 | |
+| FFMI | 17 / 15 | 2 | |
+| ICA-BIS | 0 (zona φ ≤ 0,15) | 2 | |
+| ISCM | −1 | 2 | |
+| IEHH | 0 | 2 | Bajó de 3: su corte es un entero |
+| **AF** | 6,5 / 6,0 | **1** | **Instrucción suya** (D-016): *"dos sugieren una exactitud que el equipo no tiene"* |
+| **EB** | edad cronológica | **1** | Está en **años**: convención de unidad, no precisión de corte |
+| **IAE** | −5 a +5 | **1** | Está en **años** |
+
+### Y la parte que no es la tabla: UNA sola fuente
+
+El defecto que originó la regla no fue elegir mal un número. Fue que **el valor, su Δ y la historia
+clínica tenían cada uno el suyo**, y por eso el mismo renglón llegó a decir **0,42** en la columna del
+valor y **0,4157** en la de la Δ, que son la misma cifra.
+
+Los decimales viven en **`decimalesDe()`** (`modules/diagnoses/data/indicator-ranges.ts`) y los tres
+consumidores la llaman. **Ninguna superficie escribe un número de decimales a mano.** Con una tabla, que
+coincidan no es disciplina: es que no hay dos números que puedan discrepar. Candado:
+`decimales-los-fija-el-corte.test.ts`, que además comprueba fila por fila que el valor y su Δ traen los
+mismos decimales.
+
+**Y la coma decimal es de la misma familia:** todo lo que ve un profesional va con **coma**, incluida la
+historia clínica. Hasta el 2026-09-06 su tabla de índices mostraba la referencia con coma (nuestra) y el
+valor con punto (formato suyo copiado), en la misma fila.
+
 ## Responsive y accesibilidad
 - Target principal desktop, pero usable en móvil: sidebar a hamburguesa en `<lg`, formularios apilados en `<md`, tablas con scroll horizontal.
 

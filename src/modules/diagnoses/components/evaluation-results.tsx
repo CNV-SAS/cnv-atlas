@@ -24,7 +24,13 @@ import type { EvaluationResults as Results } from "../data/results-reader";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
-import { clasificarIcaBis, indicatorBands, indicatorRange } from "../data/indicator-ranges";
+import {
+  clasificarIcaBis,
+  DECIMALES_POR_DEFECTO,
+  decimalesDe,
+  indicatorBands,
+  indicatorRange,
+} from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
 import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
@@ -64,24 +70,14 @@ const DOMAIN_ICON: Record<string, LucideIcon> = {
   d5: Dna, // Epigenetico-Contextual
 };
 
+// EL VALOR SE FORMATEA CON LA MISMA TABLA QUE SU Δ (`decimalesDe`, en indicator-ranges). Eran dos sitios
+// con su propio numero, y por eso el mismo renglon llego a decir 0,42 en el valor y 0,4157 en la Δ. La
+// regla (los decimales los fija el corte) y el barrido de los doce indicadores viven alli y en BRAND.
 function fmtNum(v: number | null, code?: string): string {
   if (v == null) return "N/D";
-  // D-016: el angulo de fase SIEMPRE con 1 decimal (2 sugieren una exactitud que el equipo no tiene).
-  // Solo el AF; el resto de indicadores conserva su formato (2 decimales / entero).
-  // Coma decimal (lib/format/decimal): las tarjetas del DFI de esta misma pantalla traen las cadenas
-  // del motor, que ya vienen en español ("IFC 6,98"). Con toFixed crudo el mismo renglon mezclaba
-  // 6,98 y 6.68. Solo cambia el separador; los decimales quedan igual.
-  if (code === "AF") return fmtDec(v, 1);
-  // DOS DECIMALES, Y ESTO SE REVIRTIO (2026-09-06). El 05 los puse en CUATRO para PABU e ICA-BIS porque
-  // su tabla los trae asi, y Santiago lo devolvio con la razon: "el hecho de que el html tenga mas no
-  // significa que este bien... en algunos muestra 2 decimales, en otros 3, en otros 4. Nosotros habiamos
-  // puesto de estandar 2". Tiene razon: su archivo no tiene una regla de decimales, tiene la que quedo en
-  // cada sitio, y copiar eso importa su desorden. El estandar de Atlas es DOS.
-  //
-  // LO QUE SI ERA UN DEFECTO Y SIGUE ARREGLADO: que el mismo renglon dijera 0,42 en el valor y 0,4157 en
-  // la Δ. Se resolvio por el otro lado, llevando la Δ tambien a dos (indicator-ranges), asi que las dos
-  // celdas dicen la misma cifra sin importar su desorden.
-  return fmtDec(v, 2);
+  // Coma decimal (lib/format/decimal): las tarjetas del DFI de esta misma pantalla traen las cadenas del
+  // motor, que ya vienen en español ("IFC 6,98"). Con toFixed crudo el mismo renglon mezclaba 6,98 y 6.68.
+  return fmtDec(v, code ? decimalesDe(code) : DECIMALES_POR_DEFECTO);
 }
 
 // Cortes inline de un item de dominio del DFI (hibrido aprobado): detecta el codigo del indicador al inicio
