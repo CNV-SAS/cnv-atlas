@@ -1,339 +1,296 @@
-# Lo que queda sin resolver del lado científico
+# Lo que queda abierto contigo, Gildardo
 
-**Para Santiago. 2026-09-04, actualizado el 06.** Este documento no va para Gildardo. Está escrito para que sepas, sin
-tecnicismos, qué queda abierto después de su entrega final y qué efecto tiene cada cosa.
+**Connected Nutrition Ventures · Atlas · 2026-09-06.**
 
-> ## ⇒ ESTE ES EL DOCUMENTO DE PENDIENTES CIENTÍFICOS. Se llama `docs/PENDIENTES_CIENTIFICOS.md`.
->
-> Santiago preguntó dos veces dónde estaban, así que queda dicho de una vez. **Son tres documentos con
-> tres papeles distintos, y este es el que responde "¿qué queda abierto?":**
->
-> | Documento | Para quién | Qué contiene |
-> | --- | --- | --- |
-> | **`PENDIENTES_CIENTIFICOS.md`** (este) | **Santiago** | **Qué queda abierto del lado científico, en lenguaje llano.** El índice de todo |
-> | `DECISIONES_ANIBISE.md` | Interno | La cola viva numerada (`P-NNN`), con el detalle técnico y la trazabilidad |
-> | `GILDARDO_QUERIES.md` | **Gildardo** | El mensaje que se le manda, redactado para él |
->
-> Añadir algo a la cola interna **no lo mete** en el mensaje que él recibe: son documentos distintos y hay
-> que cotejarlos antes de cerrar una ronda. La sección 6 de abajo es ese cotejo.
+Este es **el documento único**: todo lo que quedó abierto de tu lado después del cotejo visual completo de
+Atlas contra tu HTML. Antes estaba repartido en dos sitios y eso hacía que algo se quedara sin llegarte;
+ahora es uno solo.
 
----
+**Está ordenado por lo que te cuesta responder:**
 
-## Resumen
+| | Qué es | Cuántas |
+| --- | --- | --- |
+| **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
+| **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 7 |
+| **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos. No pide nada | 15 |
 
-| # | Qué es | ¿Pregunta o trabajo nuestro? | ¿Bloquea el hito 2? |
-| --- | --- | --- | --- |
-| 1 | El interruptor del LE8 | **CONTESTADO** el 2026-09-05: se queda ENCENDIDO. Pasa a ser **trabajo nuestro**, y no es una línea | **Sí**: hay que portarlo antes del cotejo |
-| ~~2~~ | ~~Tres colores dicen lo contrario que su etiqueta~~ | **CERRADO** el 2026-09-05: el color se deriva del orden de riesgo; esos hexadecimales no los lee nadie | — |
-| ~~3~~ | ~~Dos cosas que prometió y no llegaron~~ | **CERRADO** el 2026-09-04 | — |
-| ~~4~~ | ~~Portar las opciones de ejercicio~~ | **CERRADO** el 2026-09-04 | — |
-| 5 | Dos cosas de su archivo que salieron de un barrido, las dos chicas | **Preguntas**, sin prisa | No |
-| **6** | **Lo que salió del cotejo visual del 5 y 6 de septiembre** (seis cosas) | **Cinco preguntas y un aviso de datos** | No, salvo el aviso |
+**Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
+caso; lo que te preguntamos es si la decisión fue la que tú habrías tomado. Donde dice *"se cambia en una
+línea"* es literal.
 
 ---
 
-## 1 · El interruptor del LE8
+# PRIMERO · El ejemplo de tu prompt lleva el nombre de una persona, y viaja al proveedor de IA en cada llamada
 
-**Es lo único serio que queda, y necesitas sus palabras para decidirlo. Van las tres, textuales.**
+Dentro de tu **prompt de sistema** del Análisis IA hay un EJEMPLO de tono que empieza así:
 
-### Qué decide este interruptor
+> *"El paciente, [nombre y dos apellidos], un hombre de 61.2 años, con antecedentes familiares de Cáncer,
+> Obesidad, HTA y Enfermedad de tiroides, con diagnóstico personal de insuficiencia renal..."*
 
-Cómo se calcula la **edad biológica** (él la llama EB-BIS): el número que le dice a una persona de 45
-años que su cuerpo está como el de una de 52.
+y sigue con estrato, estado civil, hábitos, composición corporal y valores bioeléctricos. **Es una
+historia clínica corta, con nombre y apellidos.**
 
-### Cita 1 · El comentario que él escribió al lado del interruptor, en el archivo del 4 de septiembre
+**Va en el mensaje de SISTEMA.** Eso significa que se envía al proveedor de IA **en cada llamada del
+Análisis IA, para todos los pacientes**: no una vez, no en pruebas.
 
-> ```
-> ── CONDICIÓN DE ACTIVACIÓN (Dirección Científica, 9-ago-2026) ──────
-> Resuelto el punto 13 del paquete: el ICEC es el componente contextual que
-> afecta la edad bioeléctrica, y por tanto NO puede activarse el mapeo dejando
-> intactas la media y la desviación con que se estandariza. Se recalibran en el
-> MISMO acto, nunca por separado.
->
-> Para poner esto en `true` hacen falta las dos cosas a la vez:
->   1. Recalcular μ y σ del ICEC sobre la base de datos con el mapeo YA
->      corregido (hoy: μ = 58,578 · σ = 13,332, en la ecuación EB-BIS v5).
->   2. Sustituir esos dos números en la llamada a _zBis del término contextual.
->
-> Recalcular μ y σ es un cálculo sobre nuestros propios registros, no una
-> decisión de diseño: mientras no exista, esta bandera se queda en `false` y
-> D-006 sigue vigente. Activarla sola bajaría la edad bioeléctrica de TODOS los
-> pacientes entre 1 y 8 años, más cuanto más sano esté el paciente.
-> ```
->
-> **Y la línea siguiente, en el mismo archivo:**
-> ```
-> const LE8_MAPEO_CORREGIDO = true;
-> ```
+**La pregunta es una: ¿es una persona real?**
 
-### Cita 2 · Lo que dijo el 30 de agosto sobre μ y σ
+Si lo es, son datos de salud de alguien que no es el paciente que se está atendiendo, saliendo hacia un
+tercero sin su autorización, y **hay que retirarlo del archivo**. El ejemplo sirve igual sin identidad: lo
+que enseña es el **tono** y el nivel de detalle, no quién es la persona. Nosotros ya lo portamos así.
 
-> **Hicieron bien en no encenderlo, y la nota que los frenó es mía.**
->
-> La media 58,578 y la desviación 13,332 del ICEC **no están establecidas**, y por eso escribí esa
-> advertencia al lado del interruptor. **Encender el mapeo sin la recalibración movería la edad biológica
-> de todos los pacientes entre uno y ocho años contra dos constantes que yo mismo marqué como no
-> verificadas.** Eso no se hace.
->
-> **La recalibración va por mi lado y llega con el dato, no con una instrucción.** Hasta entonces el
-> interruptor se queda en `false`. **No lo enciendan por partes ni por su cuenta.**
-
-### Cita 3 · Lo que dijo el 4 de septiembre sobre por qué la recalibración es imposible hoy
-
-> **El interruptor está en `true` por decisión de esta Dirección, tomada el 2 de septiembre y reafirmada
-> ese mismo día.** No es un descuido, no es un estado intermedio y no es la segunda vez que se les pasa:
-> es la segunda vez que **no se les dijo**.
->
-> [...] con el mapeo apagado, **dos de los ocho dominios del LE8 —Alimentación e Hidratación— leían
-> campos que solo existen en el objeto `DEMO`**. En paciente real daban cero, y esos dos dominios
-> quedaban clavados en 30 y en 20 **para todo el mundo, midiera lo que midiera la persona**.
->
-> Eso sí era un defecto, y de los que no se ven: el LE8 parecía funcionar porque se probaba con el caso
-> demo.
->
-> **La recalibración no está pendiente de una firma. Está bloqueada por ausencia de dato.**
->
-> μ y σ del ICEC se calculan sobre una población con ICEC medido. **Ninguna fuente disponible lo trae**
-> [...] La razón es estructural, no logística: **el ICEC se calcula desde la encuesta**, y ninguna de
-> esas fuentes la trae. [...] **es que hoy no existe la tercera cosa que ambas requieren.** Se recalibra
-> cuando haya una masa de pacientes con encuesta completa.
->
-> Y sobre las mismas constantes, en la misma respuesta:
->
-> **μ = 58,578 y σ = 13,332 tampoco tienen origen documentado.** No aparecen en ninguno de los dos
-> documentos técnicos de la EB-BIS [...] **la v5 necesita su documento técnico.**
-
-### Lo que las tres dicen juntas
-
-Puestas en orden, el cuadro es este:
-
-1. Su comentario y su mensaje del 30 dicen lo mismo: **el interruptor se queda apagado hasta recalibrar**,
-   y no se enciende "por partes ni por su cuenta".
-2. Su respuesta del 4 dice que **la recalibración es imposible hoy** y que las dos constantes **no tienen
-   origen documentado**.
-3. **Y su archivo lo tiene encendido.**
-
-Por su propia regla del 30 de agosto, con la condición 1 imposible de cumplir, el interruptor **no podría
-encenderse nunca**. Y sin embargo está encendido.
-
-**Las dos opciones tienen un problema escrito por él:**
-
-- **Encendido:** la edad biológica de todos baja entre 1 y 8 años, contra dos constantes que él mismo
-  marcó como no verificadas y que ahora dice que no tienen origen documentado.
-- **Apagado (lo de hoy):** dos de los ocho componentes del LE8 corren clavados en el mismo valor para
-  todo el mundo, midiera lo que midiera la persona.
-
-**Atlas sigue hoy en `false`, y eso es lo que hay que cambiar.** Ver abajo.
-
-### El dato que hacía falta: qué pasa con los diagnósticos ya emitidos
-
-**Esto también lo contestó él**, el 30 de agosto, en el mismo párrafo de la cita 2:
-
-> **Y sí: la conducta de reemisión aplica igual a la EB-BIS.** Es la misma regla del 12b, y con más razón
-> aquí, porque una recalibración poblacional mueve a todos por definición: **reemisión obligatoria si el
-> paciente cambia de banda, y aviso cuando le cambie el tratamiento.**
-
-O sea que si se enciende:
-
-- Los diagnósticos ya emitidos **no se marcan como desfasados en bloque**. La regla es por paciente.
-- **Hay que reemitir a todo paciente que cambie de banda** de edad biológica. Como el cambio baja la edad
-  entre 1 y 8 años, muchos cruzarían una banda.
-- **Se le avisa a cada uno cuyo tratamiento cambie** como consecuencia.
-
-**Y aquí está lo que vuelve la decisión fácil:** medido hoy sobre la base, **no hay ningún tratamiento
-aprobado y no hay pacientes reales todavía**. Así que la reemisión obligatoria, que es lo caro de esta
-decisión, **hoy no cuesta nada**. Después del hito 2 sí, y crece con cada paciente que entre.
-
-*(Ese conteo se midió antes en esta sesión. Vale la pena repetirlo el día que se decida, porque es
-justamente el número que cambia.)*
-
-### CONTESTADO el 2026-09-05: se queda ENCENDIDO
-
-**Su respuesta, textual:**
-
-> **El ICEC se activa tal cual se envió. Esa es la directriz vigente y con ella se cierra el punto.**
->
-> **Esa nota [la del 30 de agosto] se escribió sin haber analizado un solo caso, porque entonces no los
-> teníamos.** Era una advertencia prudencial, no una medición.
->
-> El 2 de septiembre sí se analizaron: se extrajeron los registros reales de ATLAS, se midió el efecto
-> del mapeo perfil por perfil, y **los ICA-BIS calculados coincidieron exactamente con los guardados en
-> el sistema**. Con eso a la vista se tomó la decisión de encenderlo.
->
-> **Una advertencia escrita sin datos no gobierna sobre una decisión tomada con datos.** El orden
-> correcto de lectura es ese, y la nota del interruptor queda superada por el acto que la resolvió.
-
-Así que la contradicción se resuelve por FECHA y por MÉTODO: la nota del 30 es anterior y prudencial, la
-decisión del 2 es posterior y medida. **Su archivo no lo contradice: el interruptor está en `true` y ahí
-tiene que quedarse.** El que quedó desfasado es el comentario de la nota, que sigue diciendo "esta
-bandera se queda en `false`" justo encima de un `true`. Es lo que nos frenó dos veces, y conviene
-decírselo aunque él no lo cambie.
-
-**Y μ y σ se quedan como están** (58,578 y 13,332), por una razón que él da con todas las letras: no
-están pendientes de firma, están **bloqueadas por ausencia de dato**. El ICEC se calcula desde la
-encuesta y ninguna fuente disponible la trae, así que se recalibra cuando haya una masa de pacientes con
-encuesta completa. Él mismo añade que esas dos constantes tampoco tienen origen documentado y que **la
-v5 necesita su documento técnico**, trabajo suyo.
-
-**Entonces el riesgo residual, dicho claro:** encendemos por instrucción suya, medida por él, y
-estandarizamos contra dos constantes que él marca como no documentadas. No es ambiguo qué hacer. Sí
-conviene que quede escrito con sus palabras, y por eso está aquí.
-
-### Lo que cuesta encenderlo, que NO es voltear una línea
-
-La cabecera de nuestro propio `engine.dfi.js` ya lo advertía, y al verificarlo resultó exacta:
-
-1. **`calcPatron` no está en el ámbito de `engine.dfi`.** El archivo solo importa del núcleo. Con el
-   interruptor en `true`, la rama de Alimentación cae al `catch` y devuelve 30 igual que antes: el flip
-   solo **parecería** aplicado.
-2. **Y `calcPatron` necesita el `enc` ADAPTADO, no el crudo.** Consume el ordinal 0-4 de cada grupo;
-   Atlas guarda el TEXTO de la opción. Pasarle el crudo da el mismo 30 mudo. El adaptador ya existe
-   (`clinical-engine/patron.ts`) y hay que cablearlo, no reescribirlo.
-3. **`d7_agua` sí fluye** (es `contador`, así que `Number()` lo lee), pero está declarada
-   `treatmentEngine`, no `engine`, así que su `used_in_diagnosis` es `false`. Al encender el
-   interruptor pasa a alimentar el diagnóstico y esa marca queda mintiendo.
-4. **El flip va por el mecanismo de modificaciones autorizadas.** La constante está dentro de la región
-   que compara `DIFF-dfi`; tocarla a mano pone el candado en rojo, y con razón.
-
-Los dos requisitos que faltaban cuando se escribió esa advertencia (`calcPatron` portado y `d7_agua`
-capturada) **ya existen**. Lo que queda es el cableado, la marca y el flip, con su medición.
-
-**Y mueve números para todos:** ICEC/LE8, EB-BIS, IAE, los dominios 3 y 5 del DFI con su severidad, y
-las rutas R4 y R5. Hoy no hay tratamiento aprobado ni paciente real, así que la reemisión que él exige
-(*"reemisión obligatoria si el paciente cambia de banda"*) **no cuesta nada todavía**. Después del hito
-2 sí.
+**Y lo decimos también por nosotros:** ese archivo está guardado en nuestro repositorio (**once entregas
+tuyas archivadas lo contienen**), así que si el caso es real también lo estamos custodiando nosotros, y
+tenemos que decidir juntos qué hacemos con esas copias.
 
 ---
 
-## 2 · Los tres colores: VERIFICADO el 2026-09-05, y no hay nada que preguntar
+# DESPUÉS · Lo que se responde en una línea
 
-**Lo que él señaló es cierto, y no llega a la pantalla.** La pregunta que decidía era de dónde sale hoy
-el color de cada casilla. Ya está verificado.
+## 1 · ¿Cómo quieres que abra el párrafo de IA, sin el nombre?
 
-### Lo que él dijo
+Tu **"Análisis IA"** produce un diagnóstico integral estructurado por los cinco dominios del DFI, y el
+nuestro producía un párrafo corto. **Comparamos los dos prompts: tienes razón tú, y lo estamos portando**
+(el esqueleto del DFI, los cortes por sexo, las reglas de la PABU y del IFC frente al ángulo de fase, y el
+formato en prosa).
 
-> **Una cosa que queda señalada y sin tocar:** los colores de `FYR_LABELS` no se movieron, y con los
-> rótulos nuevos hay tres que ya no acompañan. `3_3` "Función normal con riesgo" sigue en cian, `2_2`
-> "Función sin riesgo" sigue en ámbar y `1_2` "Disfunción sin riesgo" sigue en rojo. **El color es
-> contenido de esta Dirección y va firmado aparte**, no inferido de la nueva redacción.
+**Con una diferencia que no podemos evitar: el NOMBRE del paciente no viaja al modelo.** Tu bloque abre
+con `Nombre: ...`; el nuestro no lo lleva. No es preferencia: la Ley 1581 y el consentimiento que el
+paciente firma dicen que los sistemas automatizados trabajan *"a partir de variables clínicas
+seudonimizadas, sin sus datos de identificación"*. Sí viajan edad, sexo, ocupación, estado civil y
+estrato, que son los determinantes del dominio Epigenético-Contextual.
 
-### Y lo que se verificó
+**Tu instrucción de apertura dice** *"identifica al paciente y enmarca todo con el riesgo funcional
+integrado"*. **Sin nombre, ¿cómo quieres que abra?** Nuestra propuesta es *"El paciente, un hombre de 22
+años..."*, o sea tu misma frase sin el nombre. Si prefieres otra, dínosla y la ponemos textual.
 
-Esos nueve colores están **declarados y no los lee nadie**, ni en Atlas ni en su propio archivo.
+## 2 · ¿El criterio del profesional debe ir a la historia clínica?
 
-- En Atlas, `FYR_LABELS` se usa **solo para el nombre** (`.l`). El campo del color (`.c`) no se lee en
-  ningún sitio, y el cian de `3_3` (`#22d3ee`) no aparece en ninguna otra línea del repositorio.
-- En su archivo del 4 de septiembre pasa lo mismo: `getFyR()` devuelve el objeto entero, y las dos veces
-  que se llama se toma únicamente `.l`.
+En Atlas el profesional escribe un **criterio propio** sobre el diagnóstico, en el bloque que tu archivo
+encabeza como *"Diagnóstico Integrado ANI BIS-E"* (en el tuyo ese panel es de solo lectura, con el texto
+que escribe la IA; el nuestro es donde el profesional escribe).
 
-**El color que sí se ve sale de otro lado, y se deriva solo.** Las nueve casillas se pintan en la Diana,
-y el color lo calcula un degradado verde a rojo sobre el **orden de riesgo** de las nueve combinaciones
-(su `rc()`, portado en `riskColor`). Su propio comentario lo dice: *"Orden sectores igual al HTML de
-referencia (rk 1..9 define color)"*.
+**Hoy ese texto no va a ninguna parte**: ni al reporte del paciente, ni al PDF, ni a la historia clínica.
+Es interno de la evaluación.
 
-Ese orden deja `2_2` en la posición 4 de 9 (ámbar, que es lo que corresponde a esa posición) y `1_2` en
-la 8 de 9 (rojo, que también corresponde). **Así que en pantalla no hay semáforo invertido.** El único de
-los tres que desentonaría, si alguien llegara a leer el campo, es el cian de `3_3`.
+**Es el único texto que el profesional escribe sobre el diagnóstico.** ¿Debe constar en la historia
+clínica?
 
-### Lo que queda
+## 3 · La fila PABU de tu tabla usa un clasificador distinto del congelado
 
-**Nada que preguntarle y nada que arreglar.** Los tres hexadecimales son una declaración muerta que
-sobrevive en el archivo. Queda anotado por si algún día alguien va a usarlos: **antes de leer
-`FYR_LABELS.c` hay que pedirle los tres**, porque hoy no acompañan a sus rótulos.
+En tu tabla de Composición, la fila **PABU** rotula **"PABU bajo"**, que viene de un clasificador local de
+la tabla y no de `cPABU`. Nosotros usamos `cPABU` (**"Desviación por exceso"**), porque es el del motor y
+tu instrucción del 17 de agosto fue literal: *"cPABU: pórtenlo tal cual, y no lo gradúen"*.
+
+**El color coincide** (ámbar los dos), así que en pantalla se lee igual. Solo cambia la palabra. **Si
+prefieres el rótulo de tu tabla, se cambia en una línea.**
+
+## 4 · Tres entradas mal clasificadas en Leche semidescremada
+
+*Avena líquida con leche de vaca descremada*, *Yogurt de leche entera - Yox* y *Yogurt de leche entera
+cuchareable* están en el subgrupo de **semidescremada** y su propio nombre dice otra cosa. Las dejaste
+señaladas sin corregir.
+
+**No las tocamos**, por lo mismo de siempre: es tu tabla, y corregirla por nuestra cuenta abre la puerta a
+"corregirte" cosas que no son errores. **Con un "corríjanlas" se corrigen y quedan con candado.**
+
+## 5 · ¿Hacemos la revisión ortográfica completa de la tabla de intercambio?
+
+Cuando encontramos las cuatro erratas que ya corregiste (*instántaneo*, *azticar*, *panels*), el alcance
+fue honesto y limitado: salieron de la lista de **un** paciente, o sea **80 de los 350 alimentos**. **No
+se revisaron los otros 270.**
+
+**Te lo ofrecimos y quedó sin respuesta:** podemos hacer la revisión completa de una vez, en vez de que
+vayan apareciendo por goteo en el PDF de cada paciente. **Dinos si la hacemos y te la mandamos como
+lista**, para que corrijas tú y nosotros re-portemos.
+
+## 6 · Dos cambios de la encuesta que prometiste y no llegaron en la entrega del 4
+
+Los dos verificados en tu archivo del 4 de septiembre, uno por uno, antes de escribirlos.
+
+**(a) La P23 sigue diciendo `(≥30 min)`.** Su texto es *"¿Cuántos días/semana hace actividad física
+(≥30 min)?"*, y **contradice lo que tú mismo añadiste**: la opción *"No hago ejercicio"* en esa misma
+pregunta y *"0 minutos a la semana"* en la P24. Si la duración se pregunta aparte en la P24, el `≥30 min`
+de la P23 sobra y confunde. Dijiste que lo quitabas *"para la próxima entrega"*.
+
+**(b) Las opciones de la P44 (intolerancias) siguen desnudas.** Hoy son `Ninguna · Lactosa · Gluten ·
+Fructosa`, y dijiste que las acompañabas con el alimento, del tipo *"Lactosa (leche y lácteos)"*.
+
+**Los dos necesitan un bump de versión de la encuesta de nuestro lado**, así que conviene que entren
+juntos y no de a uno. **Dinos si van y los tomamos con la próxima entrega.**
+
+## 7 · El nombre del modelo lleva DOS guiones: ANI-BIS-E
+
+Cosa menor, pero se repite: en varios sitios de tu archivo el modelo aparece como *"ANI BIS-E"*, sin el
+primer guión, y en otros como *"ANI-BIS-E"*.
+
+**Unificamos Atlas en `ANI-BIS-E`** en todas las pantallas. Quedan sin cambiar las cadenas que están
+DENTRO de tu código congelado (el resumen clínico del protocolo y dos textos del motor nutricional),
+porque esas no las editamos por regla. Si quieres, las cambias tú en la próxima entrega y las tomamos con
+ella. **No pide respuesta.**
+
+## Y un aviso que no pide nada: el comentario encima del interruptor del LE8
+
+El comentario que está justo encima de `LE8_MAPEO_CORREGIDO` **sigue diciendo que la bandera "se queda en
+`false`"**, y debajo el valor es `true`. Ya entendimos con tu respuesta que manda la decisión del 2 de
+septiembre y que la nota del 30 quedó superada; el interruptor ya está encendido en Atlas y el ICEC
+coincide con tu archivo.
+
+Lo decimos porque **ese comentario nos frenó dos veces** y le va a pasar igual a la próxima persona que
+abra el archivo. No hace falta que lo cambies: queda dicho.
 
 ---
 
-## 3 y 4 · CERRADOS con el bump de la encuesta a v6 (2026-09-04)
+# AL FINAL · Lo que necesita que mires tu archivo
 
-Los dos eran del instrumento y se cerraron juntos, en un solo bump:
+## 8 · La fila ICA-BIS tiene DOS reglas en tu archivo, una por superficie. ¿Es a propósito?
 
-- **Las dos opciones de ejercicio** que él ya tenía en su archivo desde el 3 de septiembre ("No hago
-  ejercicio" en la P23, "0 minutos a la semana" en la P24), que era trabajo nuestro atrasado.
-- **Las dos correcciones que prometió "para la próxima entrega"** y no llegaron: quitar el "(≥30 min)" de
-  la P23 y poner el alimento al lado de la sustancia en la P44 ("Lactosa (leche y lácteos)"). Los dos
-  textos **los escribió él**, palabra por palabra, así que aplicarlos no es decidir contenido.
+**En Diagnóstico → Composición Corporal**, la fila ICA-BIS usa un clasificador que **gradúa la magnitud**
+en cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).
 
-Detalle, medición y plan: `docs/PLAN_BUMP_ENCUESTA_v6.md`. Recorrido de prueba:
-`docs/SMOKE_ENCUESTA_v6_2026-09-04.md`.
+**En Reporte / Historia Clínica** haces `icaBisClf = cPABU(t_pabu)`, y dejaste la nota al lado:
+*"cICABIS eliminado, usar cPABU global"*.
 
----
+**Atlas porta las dos, cada una en su superficie**, porque las dos son tuyas. **La pregunta es si la
+diferencia es deliberada** (la historia resume y la pantalla detalla) **o si esa nota de la historia iba a
+aplicarse también a la tabla de Composición y quedó a medias.**
 
-## 5 · Dos cosas que salieron de barrer su archivo al revés
+Y de paso, algo que sí era nuestro y ya corregimos: el escalón **"Desviación leve"** va en **ámbar** en tu
+archivo y nosotros lo teníamos en **verde**. Un ICA-BIS desviado se pintaba como si estuviera bien.
 
-Las dos aparecieron mirando **qué tiene su archivo que nosotros no**, que es la dirección que ningún
-candado nuestro vigila (los candados prueban que lo nuestro sigue estando en el suyo, no al revés).
+## 9 · Tu historia clínica y tu tabla de composición clasifican el % de grasa con cortes distintos
 
-**Las dos son chicas y ninguna corre prisa.** Van aquí y no en una ronda: el ciclo con él está cerrado.
+Esta salió del cotejo de la pestaña Reporte/HC, y **no es una diferencia entre tu archivo y Atlas, sino
+entre dos sitios de tu propio archivo**.
 
-### a) Su archivo tiene dos clasificadores del índice cintura-cadera, con etiquetas distintas
+| Dónde | Referencia | Con 22,4 % en un hombre |
+| --- | --- | --- |
+| **Tabla de la historia clínica** | H: 8-19,9 % / M: 21-32,9 %, con un criterio escrito ahí mismo (déficit < 8 · normal < 20 · límite < 25 · obesidad ≥ 25) | **"Límite"** |
+| **Tabla de composición** | 10-22 % (borde superior 22 en hombres, 32 en mujeres) | **"Sobrepeso adiposo"** |
 
-El índice cintura-cadera se clasifica en su archivo en **dos sitios**, con los mismos cortes (0,90 en
-hombre, 0,85 en mujer) y **distinta redacción**:
+Mismo paciente, mismo número, dos veredictos. **Atlas usa hoy el segundo**, porque es el borde que nos
+confirmaste el 18 de agosto.
+
+**¿Cuál manda en la historia clínica?** Si es el de tu tabla de la HC, lo portamos tal cual; si es el que
+nos diste en agosto, tu HC es la que quedó con el criterio viejo.
+
+## 10 · Tienes dos clasificadores del índice cintura-cadera, con etiquetas distintas
+
+Los mismos cortes (0,90 en hombre, 0,85 en mujer) y **distinta redacción**:
 
 | Dónde | Debajo del corte | Encima |
 | --- | --- | --- |
 | `dICC` | "Normal" | "Riesgo cardiovascular" |
 | `clasifICC` | "Riesgo bajo" | "Riesgo alto — distribución central" |
 
-Es la **misma forma** del problema que él acaba de arreglar en los nueve sectores: dos sitios de su archivo
-nombrando lo mismo de dos maneras.
+Es la **misma forma** del problema que arreglaste en los nueve sectores: dos sitios de tu archivo nombrando
+lo mismo de dos maneras. **En Atlas no tiene consecuencia visible:** portamos solo `dICC`, byte a byte, y
+el índice se pinta en un único sitio.
 
-**Verificado: no tiene consecuencia visible en Atlas.** Nosotros portamos solo `dICC`, byte a byte, y el
-índice se pinta en **un único sitio**. Un profesional nunca ve las dos etiquetas para el mismo paciente.
-El problema vive en su prototipo, no en nuestro porte.
+**¿Cuál manda?** La segunda dice más (*"distribución central"* explica **por qué** es riesgo), así que
+puede que la nuestra se quede corta.
 
-**Lo que se le preguntaría, cuando haya ocasión:** cuál de las dos manda. La suya viva dice más
-("distribución central" explica *por qué* es riesgo), así que puede que la nuestra se quede corta.
+## 11 · `clasifLancet` está declarado en tu archivo y nadie lo llama, ni tú
 
-### b) Tiene un clasificador completo que nadie llama, ni él
+Es un clasificador de cuatro niveles que cruza IMC con masa grasa y masa magra, rotulado *"Propuesta The
+Lancet 2025"*. Está completo, con sus etiquetas y sus colores. **Y en tu archivo aparece una sola vez: la
+declaración.**
 
-`clasifLancet` es un clasificador de cuatro niveles que cruza IMC con masa grasa y masa magra, rotulado
-*"Propuesta The Lancet 2025"*. Está completo, con sus etiquetas y sus colores.
+Es la misma situación de las tres piezas que declaraste muertas en septiembre (*"quedan marcadas para
+borrarse, no para conectarse"*), **con una diferencia: esta nunca la has mencionado.**
 
-**Y en su propio archivo aparece una sola vez: la declaración.** Nadie lo invoca.
+**No lo portamos**, y no por pereza: conectar una pieza que tu propio archivo no conecta sería estrenar una
+clasificación clínica por nuestra cuenta. **¿Es un resto, o algo que piensas usar?**
 
-Es la misma situación de las tres piezas que él declaró muertas en septiembre (*"quedan marcadas para
-borrarse, no para conectarse"*), **con una diferencia: esta nunca la ha mencionado.**
+## 12 · La fórmula sintética: tus doce campos están todos, pero la disposición es otra
 
-**No lo portamos**, y no por pereza: conectar una pieza que su propio archivo no conecta sería estrenar
-una clasificación clínica por nuestra cuenta, que es justo lo que la Regla 0 prohíbe. Lo que cabe es
-preguntarle si es un resto o algo que piensa usar.
+Los cotejamos uno por uno: **los doce campos de tu fórmula sintética están en Atlas, ninguna cifra
+cambia.** Lo que cambia es la forma:
+
+- **Tú** los presentas como **lista plana**, todos al mismo nivel.
+- **Nosotros** como **una cuenta**: GEB × PAL = GET, menos el déficit, igual al objetivo, y de ahí el
+  reparto de macros.
+
+**Que revises las dos disposiciones y digas cuál quieres.** La tuya se lee de un vistazo; la nuestra
+enseña de dónde sale cada número, que es lo que el nutricionista necesita cuando ajusta uno.
+
+## 13 · El estado PBI: tu HC lo imprime y nosotros lo retiramos
+
+La cabecera de tu tabla de la historia clínica imprime, junto al fenotipo MCCB, una segunda línea:
+**"PBI: Riesgo celular"**.
+
+**Atlas no lo calcula ni lo muestra**, y hay dos razones independientes:
+
+1. Cuando reconciliamos la taxonomía con tu prototipo, la real (81 estados EFR / 9 estructural / 9 sectores
+   FyR / DFI de 5 dominios) tomó autoridad sobre `F1-F12 / PBI / EIEC`, que son de una **versión anterior
+   del modelo**.
+2. Y al medirlo: tu `estadoPBI` es AF × IR y usa **un tercer umbral de ángulo de fase** (6,80 / 6,30) que
+   **contradice el `cAF` (6,5)** que Atlas ya muestra en la misma pantalla. Portarlo pondría dos cortes del
+   mismo ángulo de fase a la vista al mismo tiempo.
+
+**Si el PBI vuelve a ser parte del modelo vigente, la pregunta previa es cuál de los dos umbrales de AF
+manda**, porque no pueden convivir.
+
+## 14 · ¿Qué MÁS debería alimentar al generador de menús?
+
+Buscando otra cosa encontramos **cuatro** insumos que el menú debería considerar y no consideraba: las
+restricciones del modelo, las alergias e intolerancias, el contexto de acceso e inseguridad alimentaria,
+y la distribución por tiempos. **Los cuatro ya están cableados.**
+
+**Que aparecieran cuatro buscando otra cosa sugiere que hay más**, y eso no lo podemos decidir nosotros:
+qué entra al prompt es criterio clínico.
+
+**Lo que HOY viaja al modelo:** objetivo calórico, proteína objetivo, restricciones del modelo y del
+profesional, patrón alimentario declarado, fenotipo estructural, sector funcional y rutas activas.
+**Nunca viajan datos de identificación.**
+
+**¿Qué falta de esa lista?**
 
 ---
 
+# Y APARTE · Lo que decidimos nosotros y solo te declaramos
+
+**No pide nada.** Son las divergencias que tomamos por nuestra cuenta para no dejarte preguntas abiertas
+que frenaran el cotejo. Cada una lleva su razón y **su puerta de salida: si prefieres otra cosa, se
+cambia.**
+
+## Del INSTRUMENTO, que es tuyo y por eso va primero
+
+| Qué hicimos | Por qué | Revertir cuesta |
+| --- | --- | --- |
+| La **P43 (alergias)** dice **"Otra"**; tu archivo dice "Otras" | Las opciones de esa pregunta son alimentos en singular, las otras ocho preguntas ya dicen "Otra", y en la base hay cinco respuestas *"Otra: ..."* con su texto libre | Un bump de encuesta. **No es gratis** |
+| La **P29 (estrés)** añade **"(1 = sin estrés, 10 = máximo)"** | Una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor alimenta el motor. No cambia lo que se pregunta, solo cómo se entiende la escala | Un bump de encuesta |
+| La **lista de intercambio imprime la medida** además de los gramos | Es la **(a)** de las tres salidas que planteaste para las doce medias porciones de Leguminosas, y la única que **no pierde información**: agrupar por nombre esconde que son dos tamaños, y retirarlas le quita al nutricionista media escala de reparto. El dato ya estaba en tu tabla | **Una línea** |
+
+## De la PRESENTACIÓN, que es nuestra, pero conviene que la sepas
+
+| Qué hicimos |
+| --- |
+| El administrador no ve las cuatro pestañas de tratamiento por profesión |
+| El diagnóstico de encuesta usa colapsables, no sub-pestañas |
+| El patrón alimentario no muestra el puntaje ni el nivel |
+| El radar usa cuatro colores con ancla azul, no tu paleta |
+| El diagnóstico abre en Funcional, con franja de veredicto persistente |
+| La tabla de composición junta lo bioeléctrico crudo en un bloque |
+| La tabla conserva GEB y GET, que tu HTML no lista |
+| El **peso meta** y la **fuerza prensil** se MUESTRAN en Antropometría, donde tú los tienes, y se EDITAN en las condiciones de la toma, donde se llenan (en Atlas son un formulario con su propio guardado, y partirlo en dos haría que el valor se perdiera en silencio) |
+
+## Donde Atlas va POR DELANTE de tu archivo
+
+| Qué hicimos | Por qué |
+| --- | --- |
+| Señalamos cuando un **grupo nuclear queda en 0 porciones** | Tu HTML lo muestra en 0 sin avisar |
+| **No pisamos** la lista guardada al cambiar el objetivo: avisamos | En tu HTML las porciones viven en el navegador y pisarlas es inofensivo; **nosotros las persistimos**, así que copiarlo borraría el trabajo del profesional en silencio |
+| La cadena calórica **cuadra macros**, distingue calculado de ajustado, avisa el borde y lleva candado de concurrencia | Cuatro cosas que tu HTML no hace y que no tocan la ciencia del reparto |
+| La distribución por tiempos **exige al menos un tiempo activo** | Tu HTML permite dejarlos todos apagados, y eso reparte cero |
 
 ---
 
-## 6 · Lo que salió del cotejo visual (5 y 6 de septiembre)
+## Lo que ya está cerrado contigo y no vuelve a aparecer aquí
 
-**Son siete, y ninguna bloquea el hito salvo la primera, que no es una pregunta clínica sino un aviso de
-datos personales.** Todas están redactadas para él en `GILDARDO_QUERIES.md`, sección *"Mensaje pendiente
-de enviar"*, en este mismo orden.
-
-| # | Qué es | De dónde salió | Qué se le pide |
-| --- | --- | --- | --- |
-| **0** | **El ejemplo de tono de su prompt lleva el nombre y apellidos de una persona con su cuadro clínico, y va en el mensaje de SISTEMA: viaja al proveedor de IA en cada llamada, para todos los pacientes** | Punto 12 | **Que confirme si es una persona real. Si lo es, hay que retirarlo.** Y decidimos qué hacemos con las once copias archivadas en nuestro repositorio |
-| 1 | El borrador de IA: su prompt produce el informe largo por dominios y el nuestro un párrafo. **Tiene razón él y lo estamos portando**, sin el nombre del paciente | Punto **12** | Sin nombre, ¿cómo quiere que abra el párrafo? Su instrucción dice *"identifica al paciente"* |
-| 2 | **El criterio del profesional no va a ninguna parte**: ni al reporte, ni al PDF, ni a la historia clínica. Hoy es interno de la evaluación | Punto **13b** | ¿Debe ir a la historia clínica? Es el único texto que el profesional escribe sobre el diagnóstico |
-| 3 | **La fórmula sintética: sus doce campos están todos, pero él los presenta como lista plana y nosotros como una cuenta** | Punto **22.4** | Que revise las dos disposiciones y diga cuál quiere. Ninguna cifra cambia; es la forma |
-| 4 | La fila **PABU** de su tabla usa un clasificador local (*"PABU bajo"*) y nosotros el congelado (*"Desviación por exceso"*). **Mismo color, distinta palabra** | Cotejo del 5 | ¿Prefiere el rótulo de su tabla? Se cambia en una línea |
-| 5 | La fila **ICA-BIS** tiene **dos reglas en su archivo, una por superficie**: gradúa en la pantalla de Composición y toma la del PABU en la historia clínica | Cotejo del 5 | ¿Es deliberado, o la nota de la historia iba a aplicarse también a la tabla? |
-| 6 | El nombre del modelo aparece como *"ANI BIS-E"* en unos sitios y *"ANI-BIS-E"* en otros | Punto **11** | Nada: se lo decimos. Atlas quedó unificado en **ANI-BIS-E** |
-| **7** | **Su HISTORIA CLÍNICA y su tabla de composición clasifican el % de grasa con cortes distintos** (8-19,9 con criterio local contra 10-22 del borde que él confirmó): mismo paciente, dos veredictos | Punto **30** | ¿Cuál manda en la historia clínica? Atlas usa hoy el de agosto |
-
-### Lo que NO entra aquí, y por qué
-
-- **El corte del IFC** (su tabla usa el histórico 3,5-6,0). **Se retiró del mensaje el 2026-09-06**: al
-  verificarlo resultó que **su propio clasificador congelado ya trae los cortes por sexo** y Atlas lo
-  llama. No es divergencia nuestra ni instrucción aparte: es su tabla de display no llamando a su propio
-  clasificador. Decisión de Santiago: *"¿para qué volverle a avisar?"*.
-- **LUVIA / otros productos** (punto 20). **No es científico ni depende de él**: es el modelo de
-  consignación de terceros, con su plan aparte (`PLAN_CONSIGNACION_TERCEROS.md`). Va al final del cotejo.
-- **Las notas globales** (punto 26) y **el diseño de las tarjetas del estado** (punto 16): son nuestras,
-  van al backlog de producto.
-- **Los dos campos del próximo control** (punto 27, frecuencia editable y observaciones): es una
-  migración nuestra, no una pregunta para él. Espera tu decisión, no la suya.
-
----
-
-© Connected Nutrition Ventures SAS, 2026. Documento interno.
+Para que no lo busques: **el interruptor del LE8** (encendido, el ICEC coincide con tu archivo), **los tres
+colores de los clasificadores**, **las opciones de ejercicio**, **las cuatro erratas de la tabla de
+intercambio**, **los seis rótulos de los sectores**, **Tumaco y Cartago**, **el núcleo de 66 alimentos**,
+**la caída campo por campo de `getDX`** y **la referencia del IFC** (revisada: ya nos habías dicho que
+corrigiéramos tus alertas cuando estuvieran desactualizadas, así que se corrigió y no se pregunta).

@@ -1,8 +1,25 @@
 # DECISIONES ANI-BIS-E — documento consolidado (borrador para firma de Gildardo)
 
-> **Gildardo:** este documento reemplaza las rondas de preguntas. Contiene todo lo decidido hasta hoy, numerado, para tu firma. Las preguntas abiertas están al final y ninguna nos bloquea; respóndelas cuando puedas. De aquí en adelante, antes de preguntarte algo revisamos si ya está aquí.
+> **DONDE VIVE CADA COSA, desde el 2026-09-06.** Este archivo es **la cola interna**: las entradas `P-NNN`
+> con su detalle tecnico y su trazabilidad. **No es lo que Gildardo recibe.**
+>
+> **Lo que el recibe es `PENDIENTES_CIENTIFICOS.md`**, que desde el cierre del cotejo es el DOCUMENTO
+> UNICO: el aviso del nombre en su prompt, las catorce preguntas ordenadas por lo que le cuesta
+> responder, y las quince divergencias que solo se le declaran. `GILDARDO_QUERIES.md` queda como archivo
+> historico de las rondas ya respondidas.
+>
+> **Agregar una entrada aqui NO la mete en el documento que el recibe.** Es la razon por la que se
+> unificaron: preguntas que vivian solo en esta cola (el criterio del profesional, las tres entradas de
+> Leche semidescremada, `clasifLancet`, los dos clasificadores del ICC, que mas alimenta el menu) nunca
+> habian llegado a un mensaje. Al cerrar una ronda se cotejan los dos.
 
-> **MÉTODO ACORDADO (2026-08-04, a pedido de Gildardo): un solo documento, no más rondas.** Gildardo pidió que NO le mandemos más rondas de preguntas sueltas. Toda duda (las consultas sin responder de rondas anteriores, las que salgan del v8, y lo que surja) se acumula en la sección **Preguntas abiertas** de ESTE documento, numerada `P-NNN`, y **no se le envía nada hasta que el trabajo lo exija** (un bloqueo real sin alternativa). Él responde todo al final, de una vez. Su instrucción explícita: "avancen lo más que puedan con el HTML nuevo y con Atlas; si no hay nada bloqueante, sigan hasta donde puedan". Así que el modo por defecto es AVANZAR con lo construible (ver `BACKLOG.md`), acumulando preguntas aquí, sin interrumpirlo.
+> ~~**Gildardo:** este documento reemplaza las rondas de preguntas...~~ **SUPERADO EN LA FORMA, NO EN EL
+> FONDO (2026-09-06).** Su acuerdo del 4 de agosto sigue vigente: **un solo documento y no mas rondas**.
+> Lo que cambio es CUAL: la cola numerada resulto ilegible para el (son mas de cien entradas con detalle
+> tecnico nuestro), asi que el documento unico que recibe es `PENDIENTES_CIENTIFICOS.md`, escrito en su
+> lenguaje y ordenado por lo que le cuesta responder. **Esta cola conserva su papel: la trazabilidad.**
+
+> **MÉTODO ACORDADO (2026-08-04, a pedido de Gildardo): un solo documento, no más rondas.** *(Sigue rigiendo; desde el 2026-09-06 ese documento es `PENDIENTES_CIENTIFICOS.md`, no esta cola. Ver la nota de arriba.)* Gildardo pidió que NO le mandemos más rondas de preguntas sueltas. Toda duda (las consultas sin responder de rondas anteriores, las que salgan del v8, y lo que surja) se acumula en la sección **Preguntas abiertas** de ESTE documento, numerada `P-NNN`, y **no se le envía nada hasta que el trabajo lo exija** (un bloqueo real sin alternativa). Él responde todo al final, de una vez. Su instrucción explícita: "avancen lo más que puedan con el HTML nuevo y con Atlas; si no hay nada bloqueante, sigan hasta donde puedan". Así que el modo por defecto es AVANZAR con lo construible (ver `BACKLOG.md`), acumulando preguntas aquí, sin interrumpirlo.
 
 
 **Qué es.** La fuente normativa única de las decisiones clínicas del modelo ANI-BIS-E. Firmado por la Dirección Científica (Gildardo), mantenido por el equipo de Atlas. Por la regla de autoridad, este documento manda sobre el archivo prototipo: donde discrepen, manda el documento, y la divergencia queda anotada aquí.

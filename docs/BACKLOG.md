@@ -15,6 +15,50 @@
 > **Y el corolario para leer esta lista: "pendiente" se trata como "verificar primero", no como verdad.**
 > Antes de construir un ítem que aparezca abierto, cotéjalo contra el código.
 
+---
+
+## LO QUE QUEDA NUESTRO AL CERRAR EL COTEJO (2026-09-06)
+
+**El cotejo visual de los 30 puntos está cerrado y pusheado.** De los cinco pendientes que quedaron,
+**tres son nuestros y sin bloqueo**, uno espera a un smoke y uno depende de Gildardo. Esto es el estado,
+para no tener que releer el documento del cotejo.
+
+| # del cotejo | Qué es | Estado | Qué hace falta para arrancarlo |
+| --- | --- | --- | --- |
+| **2** | **Corregir los datos personales del paciente** (nombre, documento, celular, ciudad) | Nuestro, sin bloqueo técnico | **Una decisión de producto, no un diseño técnico:** quién puede corregir qué, y qué queda registrado del valor anterior. Toca resolución de identidad, auditoría clínica y, si cambia el documento, el consentimiento firmado |
+| **6** (2ª mitad) | **Corregir medición, condiciones, peso o estatura DESPUÉS de generar el diagnóstico** | Nuestro, sin bloqueo, medido | La salida diseñada es el **reinicio de la evaluación** (escritor propio, ~medio día). La fila que puede crecer es qué pasa con el tratamiento y el reporte de la evaluación vieja |
+| **20** | **LUVIA y los otros productos** | **Espera decisión de Santiago**, no es hueco del cotejo | Estaba declarado como construcción diferida ANTES del cotejo (`LANZAMIENTO.md`, `PLAN_CONSIGNACION_TERCEROS.md`). Es modelo de negocio con terceros, no ciencia |
+| **10** | **El scroll que salta al enviar un formulario** | **Espera al smoke de Santiago** | Verificado que el formulario SÍ usa el helper, y apareció un segundo caso igual: es un hueco del guard, no un cable que falte. **Necesita navegador real para diagnosticarse**; si no vuelve a aparecer, se cierra |
+| **12** | **El borrador de IA largo, por dominios** | **Depende de Gildardo** | Tiene razón su archivo y se está portando. Falta su respuesta sobre cómo abre el párrafo sin el nombre del paciente (pregunta 1 de `PENDIENTES_CIENTIFICOS.md`) |
+
+### Y lo que viene después del cotejo
+
+1. **El pase de diseño de los tres documentos** (historia clínica, reporte del paciente, plan imprimible).
+   Ahí entra lo que se dejó fuera del cotejo por ser forma y no contenido: los **antecedentes en dos
+   columnas** (punto 30.6), y en general que los tres documentos se lean como documentos y no como
+   volcados de pantalla.
+2. **El layout general.**
+3. **LUVIA**, cuando Santiago decida.
+
+### Un hallazgo suelto que salió al cerrar, y no se tocó a propósito
+
+**Tres comentarios describen el interruptor del LE8 como apagado, y está encendido.** Están en
+`frozen/authorized-modifications.js` (dos: la prosa del manifiesto y el `newSlice`) y en el generado
+`engine.dfi.authorized.js`. Dicen *"con `LE8_MAPEO_CORREGIDO=false` (estado vigente, P-04 cerrada)"* y
+que alimentación e hidratación *"corren en default SIEMPRE"*, cuando desde el 2026-09-05 la bandera es
+`true` y esos dos dominios leen campos que la encuesta sí captura (`d1_N_i` y `d7_agua`).
+
+**NO se corrigió, y la razón es la regla:** ese comentario vive DENTRO del `newSlice`, o sea dentro del
+código generado. Cambiarlo mueve el SHA del artefacto sin cambiar una sola cifra, y la disciplina dice
+que el generado solo cambia cuando cambia el código que corre. **Es una decisión, no un descuido.**
+
+**Y hay una pregunta de fondo detrás, que sí vale la pena:** la guarda de `calcLE8` exige SEIS insumos
+(`d3_23`, `d3_24`, `d3_30`, `d3_26`, `d5_39`, `d5_36`) y el propio comentario avisaba que *"si algún día
+se activa el mapeo, esta lista debe revisarse"*. **Se activó y no se revisó.** Hoy, si falta `d7_agua`,
+hidratación puntúa 0 en vez de frenar la emisión. No es grave (el gate de completitud de la encuesta lo
+hace improbable) pero es exactamente lo que el comentario pedía mirar. **Decidir si la guarda pasa de seis
+a ocho insumos**, que sí es un cambio del código que corre y lleva su bump.
+
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 

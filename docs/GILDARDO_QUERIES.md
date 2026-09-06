@@ -602,181 +602,37 @@ Fuente verbatim: `docs/entregas/gildardo-2026-08-03/RESPUESTA_GILDARDO.md`. **A 
 
 ---
 
-## Mensaje pendiente de enviar (2026-09-05, reordenado el 06)
+## LO VIVO SE MUDÓ · `PENDIENTES_CIENTIFICOS.md` (2026-09-06)
 
-**Lo PRIMERO es un asunto de datos personales, y por eso encabeza.** Detrás van dos declaraciones, dos
-hallazgos menores de su archivo y una pregunta.
+**Santiago pidió UN SOLO documento que mandarle y cerrar**, porque tener el mensaje aquí y el índice de
+pendientes allá hacía que algo se quedara sin llegarle. Ya pasó: preguntas que estaban en la cola interna
+no entraban en el mensaje que él recibía.
 
-### 0 · URGENTE · El ejemplo de su prompt lleva el nombre de una persona, y viaja al proveedor de IA en
-### cada llamada
+**Todo lo que estaba vivo en este archivo está ahora en `docs/PENDIENTES_CIENTIFICOS.md`**, reescrito para
+él (sin notas internas, sin los `P-NNN`, y sin lo que ya no aplica) y **ordenado por lo que le cuesta
+responder**: primero el aviso del nombre en su prompt, después lo que se responde en una línea, y al final
+lo que necesita que mire su archivo. Las divergencias declaradas van al final, aparte, porque no piden
+nada.
 
-> Gildardo: dentro de tu **prompt de sistema** del Análisis IA hay un EJEMPLO de tono que empieza así:
-> *"El paciente, [nombre y apellidos completos], un hombre de 61.2 años, con antecedentes familiares de
-> Cáncer, Obesidad, HTA y Enfermedad de tiroides, con diagnóstico personal de insuficiencia renal..."*, y
-> sigue con estrato, estado civil, hábitos, composición corporal y valores bioeléctricos. Es una historia
-> clínica corta, con nombre y apellidos.
->
-> **Va en el mensaje de sistema.** Eso significa que **se envía al proveedor de IA en CADA llamada del
-> Análisis IA, para todos los pacientes**, no una vez ni en pruebas.
->
-> **La pregunta es una: ¿es una persona real?** Si lo es, son datos de salud de alguien que no es el
-> paciente que se está atendiendo, saliendo hacia un tercero sin su autorización, y **hay que retirarlo
-> del archivo**. El ejemplo sirve igual sin identidad: lo que enseña es el TONO y el nivel de detalle,
-> no quién es la persona. Nosotros ya lo portamos así.
->
-> **Y lo decimos también por nosotros:** ese archivo está guardado en nuestro repositorio (once entregas
-> tuyas archivadas lo contienen), así que si el caso es real, también lo estamos custodiando nosotros y
-> tenemos que decidir qué hacemos con esas copias.
+**Lo que se movió, para que se pueda cotejar que no se perdió nada:**
 
-> Lo que sigue no bloquea nada.
-
-### 1 · Las doce medias porciones: elegimos la (a), y te decimos por que
-
-> Gildardo: sobre las doce filas repetidas de Leguminosas, que nos explicaste que no son duplicados sino
-> el mismo alimento en dos tamanos de porcion. Dijiste que firmarias una de las tres salidas en la
-> proxima ronda. **No te lo preguntamos: es presentacion y no ciencia, asi que lo decidimos y te lo
-> declaramos**, para no dejarte una pregunta abierta que frene el cotejo.
->
-> **Elegimos la (a): el render imprime tambien la medida.** La lista del paciente pasa de
-> *"Frijol cargamanto blanco con platano verde (110 g)"* a *"(110 g, 1 cucharon colmado)"*, y la media
-> porcion sale como *"(60 g, 1/2 cucharon)"*. Los dos cortes tuyos siguen igual: ocho por subgrupo y
-> "entre otros".
->
-> **La razon: es la unica de las tres que no pierde informacion.** Agrupar por nombre esconde que son dos
-> tamanos distintos, y retirar las doce medias porciones le quita al nutricionista media escala de
-> reparto. Ademas el dato ya estaba en tu tabla: las 350 filas traen la medida, y hasta hoy no se
-> mostraba en ninguna pantalla.
->
-> **Si prefieres la (b) o la (c), se cambia**: es una linea. Queda declarado como divergencia nuestra
-> (DIV-16).
-
-### 2 · El comentario que sigue encima del interruptor (aviso, no pregunta)
-
-> Y una cosa que no te pide nada. **El comentario que esta justo encima de `LE8_MAPEO_CORREGIDO` sigue
-> diciendo que la bandera "se queda en `false`"**, y debajo el valor es `true`. Ya entendimos con tu
-> respuesta que manda la decision del 2 de septiembre y que la nota del 30 quedo superada; el interruptor
-> ya esta encendido en Atlas.
->
-> Lo decimos porque **ese comentario nos freno dos veces** y le va a pasar igual a la proxima persona que
-> abra el archivo. No hace falta que lo cambies si no quieres: queda dicho.
-
-### 3 · La fila PABU de esa tabla usa un clasificador distinto del congelado (solo te lo declaramos)
-
-> En esa misma tabla, la fila **PABU** rotula **"PABU bajo"**, que viene de un clasificador local de la
-> tabla, no de `cPABU`. Nosotros usamos `cPABU` (**"Desviación por exceso"**), porque es el clasificador
-> del motor y tu instrucción del 17 de agosto fue literal: *"cPABU: pórtenlo tal cual, y no lo
-> gradúen"*.
->
-> **El color coincide** (ámbar los dos), así que en pantalla se lee igual. Solo cambia la palabra. **Si
-> prefieres el rótulo de la tabla, se cambia en una línea.**
-
-### 4 · La fila ICA-BIS tiene DOS reglas en tu archivo, una por superficie. ¿Es a propósito?
-
-> **En Diagnóstico → Composición Corporal** la fila ICA-BIS usa un clasificador que **gradúa la
-> magnitud** en cinco escalones (Zona φ / Desviación leve / moderada / severa / Zona crítica).
->
-> **En Reporte / Historia Clínica** haces `icaBisClf = cPABU(t_pabu)`, y dejaste la nota al lado:
-> *"cICABIS eliminado, usar cPABU global"*.
->
-> **Atlas porta las dos, cada una en su superficie**, porque las dos son tuyas. **La pregunta es si la
-> diferencia es deliberada** (la historia resume y la pantalla detalla) **o si esa nota de la historia
-> iba a aplicarse también a la tabla de Composición y quedó a medias.**
->
-> Y de paso, algo que sí era nuestro y ya corregimos: el escalón **"Desviación leve"** va en **ámbar**
-> en tu archivo y nosotros lo teníamos en **verde**. Un ICA-BIS desviado se pintaba como si estuviera
-> bien. Corregido.
-
-### 5 · El nombre del modelo lleva DOS guiones: ANI-BIS-E
-
-> Cosa menor, pero se repite: en varios sitios de tu archivo el modelo aparece como *"ANI BIS-E"*, sin
-> el primer guión, y en otros como *"ANI-BIS-E"*. Unificamos Atlas en **ANI-BIS-E** en todas las
-> pantallas. Quedan sin cambiar las cadenas que están DENTRO de tu código congelado (el resumen clínico
-> del protocolo y dos textos del motor nutricional), porque esas no las editamos por regla. Si quieres,
-> las cambias tú en la próxima entrega y las tomamos con ella.
-
-### 6 · El borrador de IA: portamos tu prompt, SIN el nombre del paciente
-
-> Gildardo: tu **"Análisis IA"** produce un diagnóstico integral estructurado por los cinco dominios del
-> DFI, y el nuestro produce un párrafo. **Comparamos los dos prompts: tienes razón tú, y lo estamos
-> portando** (el esqueleto del DFI, los cortes por sexo, las reglas de la PABU y del IFC frente al
-> ángulo de fase, y el formato en prosa).
->
-> **Con una diferencia que no podemos evitar y que te declaramos: el NOMBRE del paciente no viaja al
-> modelo.** Tu bloque abre con `Nombre: ...`; el nuestro no lo lleva. No es preferencia nuestra: la Ley
-> 1581 y el consentimiento que el paciente firma dicen que los sistemas automatizados trabajan *"a
-> partir de variables clínicas seudonimizadas, sin sus datos de identificación"*. Sí viajan edad, sexo,
-> ocupación, estado civil y estrato, que son los determinantes del dominio Epigenético-Contextual.
->
-> **Sobre el ejemplo de tono de tu prompt, que lleva el nombre de una persona: va arriba, en el punto 0.**
-> Aquí solo lo mencionamos porque es la razón por la que nuestro ejemplo es otro.
->
-> **La pregunta, que es una sola:** tu instrucción de apertura dice *"identifica al paciente y enmarca
-> todo con el riesgo funcional integrado"*. **Sin nombre, ¿cómo quieres que abra?** Nuestra propuesta es
-> *"El paciente, un hombre de 22 años..."*, o sea la misma frase sin el nombre. Si prefieres otra cosa,
-> dínosla y la ponemos textual.
-
----
-
-### 7 · Tu HISTORIA CLÍNICA y tu tabla de composición clasifican el % de grasa con cortes distintos
-
-> Gildardo: cotejando la pestaña de Reporte/HC salió una diferencia que **no es entre tu archivo y
-> Atlas, sino entre dos sitios de tu propio archivo**, y por eso te la traemos en vez de elegir.
->
-> **En la tabla de la historia clínica**, la fila *% Grasa* lleva la referencia **H: 8-19,9 % / M:
-> 21-32,9 %** y la clasifica con un criterio escrito ahí mismo (déficit < 8, normal < 20, límite < 25,
-> obesidad ≥ 25 en hombres). Con nuestro paciente de prueba, 22,4 % sale **"Límite"**.
->
-> **En la tabla de composición** el mismo dato se lee contra **10-22 %** (borde superior 22 en hombres,
-> 32 en mujeres, que es el que nos confirmaste el 18 de agosto) y sale **"Sobrepeso adiposo"**.
->
-> Mismo paciente, mismo número, dos veredictos. Atlas usa hoy el segundo, que es el que tu instrucción
-> del 18 fijó.
->
-> **La pregunta:** ¿cuál manda en la historia clínica? Si es el de tu tabla de la HC, lo portamos tal
-> cual; si es el que nos diste en agosto, tu HC es la que quedó con el criterio viejo.
-
----
-
-## Lo que se le DECLARA (no se le pregunta), en un solo sitio
-
-**Para que Santiago se lo mande junto al cerrar.** Son las divergencias que tomamos por nuestra cuenta y
-que él todavía no ha visto. Cada una lleva su razón y su puerta de salida: **si prefiere otra cosa, se
-cambia.**
-
-Las de la CIENCIA congelada (DIV-1, DIV-2) ya están cerradas con él y no van aquí.
-
-### Del INSTRUMENTO, que es lo suyo y por eso van primero
-
-| # | Qué hicimos | Por qué | Revertir cuesta |
-| --- | --- | --- | --- |
-| **DIV-14** | La P43 (alergias) dice **"Otra"**; su archivo dice "Otras" | Las opciones de esa pregunta son alimentos en singular, las otras ocho preguntas ya dicen "Otra", y en la nube hay cinco respuestas *"Otra: ..."* con su texto libre | Un bump de encuesta. **No es gratis** |
-| **DIV-15** | La P29 (estrés) añade **"(1 = sin estrés, 10 = máximo)"** | Una escala de 1 a 10 sin sus extremos no se puede responder bien, y ese valor alimenta el motor. No cambia lo que se pregunta, solo cómo se entiende la escala | Un bump de encuesta |
-| **DIV-16** | La lista de intercambio imprime **la medida** además de los gramos | Es la (a) de las tres salidas que él planteó para las doce medias porciones de Leguminosas, y la única que no pierde información. El dato ya estaba en su tabla | **Una línea** |
-
-### De la PRESENTACIÓN, que es nuestra, pero conviene que las sepa
-
-| # | Qué hicimos |
+| Estaba aquí como | Está allá como |
 | --- | --- |
-| **DIV-3** | El administrador no ve las cuatro pestañas de tratamiento por profesión |
-| **DIV-4** | El diagnóstico de encuesta usa colapsables, no sub-pestañas |
-| **DIV-5** | El patrón alimentario no muestra el puntaje ni el nivel |
-| **DIV-6** | El radar usa cuatro colores con ancla azul, no su paleta |
-| **DIV-7** | El diagnóstico abre en Funcional, con franja de veredicto persistente |
-| **DIV-8** | La tabla de composición junta lo bioeléctrico crudo en un bloque |
-| **DIV-9** | La tabla conserva GEB y GET, que su HTML no lista |
-| **DIV-18** | El peso meta y la fuerza prensil se MUESTRAN en Antropometría, donde él los tiene, y se EDITAN en las condiciones de la toma, donde se llenan (en Atlas son un formulario con su propio guardado, y partirlo en dos haría que el valor se perdiera en silencio). El enlace cae en el bloque exacto y se retira cuando el diagnóstico ya los selló |
+| 0 · El nombre en el ejemplo de su prompt | **PRIMERO** |
+| 1 · Las doce medias porciones (declaración) | Divergencias declaradas, INSTRUMENTO |
+| 2 · El comentario encima del interruptor del LE8 | El aviso al final del bloque de una línea |
+| 3 · La fila PABU | **3** |
+| 4 · La fila ICA-BIS | **7** |
+| 5 · El nombre del modelo (ANI-BIS-E) | **6** |
+| 6 · El borrador de IA sin el nombre | **1** |
+| "Lo que se le DECLARA" (las quince) | Divergencias declaradas, en sus tres grupos |
 
-### Donde Atlas va POR DELANTE de su archivo
+**Y lo que se AÑADIÓ al unificar**, porque vivía solo en la cola interna o salió del cotejo de Reporte/HC
+y nunca había llegado a un mensaje: el **criterio del profesional** (¿va a la historia clínica?), las
+**tres entradas de Leche semidescremada**, la **revisión ortográfica** de los 270 alimentos que no se
+revisaron, el **% de grasa con dos cortes**, los **dos clasificadores del índice cintura-cadera**,
+**`clasifLancet`** declarado y sin llamar, la **fórmula sintética** (lista plana contra cuenta) y el
+**PBI**.
 
-| # | Qué hicimos | Por qué |
-| --- | --- | --- |
-| **DIV-10** | Señalamos cuando un grupo nuclear queda en 0 porciones | Su HTML lo muestra en 0 sin avisar |
-| **DIV-11** | No recalculamos-y-pisamos la lista guardada al cambiar el objetivo; avisamos | En su HTML las porciones viven en el navegador y pisarlas es inofensivo; **nosotros las persistimos**, así que copiarlo borraría el trabajo del profesional en silencio |
-| **DIV-12** | La cadena calórica cuadra macros, distingue calculado de ajustado, avisa el borde y lleva candado de concurrencia | Cuatro cosas que su HTML no hace y que no tocan la ciencia del reparto |
-| **DIV-13** | La distribución por tiempos exige al menos un tiempo activo | Su HTML permite dejarlos todos apagados, y eso reparte cero |
-
-### Y el aviso que no pide nada
-
-**El comentario que sigue encima del interruptor del LE8** dice que la bandera *"se queda en `false`"*, y
-debajo el valor es `true`. Ya está resuelto (manda su decisión del 2 de septiembre), pero **nos frenó dos
-veces** y le va a pasar igual a quien abra el archivo después. No hace falta que lo cambie.
+**Lo de arriba de esta línea se conserva como HISTORIA**: son las rondas ya respondidas por él, con sus
+citas. No se edita ni se le vuelve a enviar.

@@ -1108,3 +1108,18 @@ El **punto 0** (el nombre de una persona en el ejemplo de su prompt, que viaja a
 llamada) más siete preguntas. Todas redactadas en `GILDARDO_QUERIES.md`, sección *"Mensaje pendiente de
 enviar"*, y en la tabla de `PENDIENTES_CIENTIFICOS.md` §6. La que salió del punto 30 es la **7**: su
 historia clínica y su tabla de composición clasifican el **% de grasa** con cortes distintos.
+
+---
+
+# El cotejo queda CERRADO (2026-09-06)
+
+Smoke pasado y push hecho.
+
+**Lo que sigue vivo se mudó, para no releer este documento:**
+
+| Qué | Dónde |
+| --- | --- |
+| Lo que queda **nuestro** (los puntos 2, 6-2ª mitad, 10, 12 y 20) y lo que viene después | `BACKLOG.md`, sección *"Lo que queda nuestro al cerrar el cotejo"* |
+| Lo que va **a Gildardo** (el aviso del nombre, catorce preguntas y quince divergencias declaradas) | `PENDIENTES_CIENTIFICOS.md`, que ahora es **el documento único** que él recibe |
+
+**Este archivo queda como registro**: los 30 puntos con lo que se encontró, lo que se decidió y por qué. No se le añade nada nuevo.
