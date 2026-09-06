@@ -898,3 +898,78 @@ probado**, y en una primera consulta **no se veía nunca**. Es la familia de la 
 medición contra sí misma.
 
 **Con DOS o más mediciones** todo lo anterior sigue igual, aparece el radar, y desaparece el aviso.
+
+---
+
+# 30 · El cotejo bloque por bloque de Reporte/HC (2026-09-06)
+
+**Método:** las cuatro capturas de su HTML contra las seis de Atlas, y cada divergencia verificada en su
+archivo antes de escribirla. Lo que salió se parte en dos: lo que **cerré** (porte o defecto nuestro, sin
+decisión que tomar) y lo que **queda abierto** (cambia el significado del documento, o es pregunta para
+Gildardo).
+
+## CERRADO · tres cosas, commit `4d3db95`
+
+**a) La actividad física iba como factor crudo.** Decíamos *"PAL 1.375"*; su HC dice *"FA ligera"* y el
+panel donde el profesional lo **elige** dice *"Ligera (1.375)"*. Un documento probatorio registra la
+decisión con las palabras con las que se tomó. La escala de cinco niveles pasa del panel al módulo
+**neutro**, porque la necesitan el cliente y el servidor.
+
+**b) El sodio ausente decía "No se registró", y no es eso.** El motor solo prescribe límite de sodio
+cuando hay condición que lo pida (HTA, ERC, alteración hídrica). *"No se registró"* acusa al profesional
+de un olvido que no hubo. Ahora dice **"No aplica"**. Y el **PDF omitía la fila entera** cuando no había
+límite: los dos documentos del mismo acto decían cosas distintas.
+
+**c) Los antecedentes cierran con alergias**, como en su archivo. Iban terceras.
+
+**Y una razón escrita que era media verdad.** El comentario del bloque de remisiones decía que los
+exámenes solicitados no son sección aparte porque viajan dentro de la frase de la remisión, *"como en su
+HC"*. Su HC tiene **las dos cosas**: los estudios en la frase (12b) y un bloque *"EXÁMENES SOLICITADOS"*
+aparte (12c). Lo que sí cierra la pregunta es otra cosa: **ese bloque suyo nunca se dibuja.** Su fuente es
+`localStorage['atlas:examenes_sel:<doc>']`, que su archivo **lee** en una línea (v8 L15242) y **no escribe
+en ninguna**, así que la guarda `> 0` nunca pasa. No falta nada, pero por un motivo distinto del escrito.
+
+## ABIERTO · seis, sin construir
+
+**1 · El orden de los bloques.** En su HC la **composición corporal va cuarta**, justo tras los
+antecedentes y **antes** de los tres párrafos interpretativos; y las **rutas activadas van justo después
+del objetivo del tratamiento**, antes del plan. En Atlas la composición va séptima (después de la meta) y
+las rutas van al final, tras las remisiones. Su orden tiene una lógica de lectura: el dato objetivo antes
+de su interpretación, y la ruta antes del plan que la ruta justifica.
+
+**2 · Las remisiones de la HC salen de sitios distintos, y esta es la importante.** En su archivo se
+**derivan de las rutas activas** (`rutasActivas` → `componentes.{medico,psicologico,ejercicio}.remision`),
+con su urgencia y sus indicaciones redactadas en una frase. En Atlas la HC lee solo
+`listReferralsForTreatment`, o sea **lo que el profesional registró**. Mismo paciente, misma ruta R4
+activa: su HC muestra dos remisiones (una marcada **OBLIGATORIA**) y la nuestra dice *"No se registraron
+remisiones ni derivaciones en esta consulta"*.
+
+Atlas **sí tiene** la derivación (`buildRemisiones` + `consolidateRemisiones`), pero renderizada en la
+pestaña de **Diagnóstico**, que es donde el profesional las registra. Lo que falta es que la historia
+clínica diga las dos: **lo que el modelo exigió** (derivado) y **lo que el profesional registró**
+(registro). Es justo la doctrina de los tres niveles de bloque. No lo construyo sin tu go porque cambia el
+contenido de un documento probatorio.
+
+**3 · La referencia del % de grasa no coincide, y es clínico.** Su tabla de la HC:
+`% Grasa · H:8-19.9% / M:21-32.9% · 22.4% · **Límite**`. La nuestra:
+`Grasa corporal total - Lípidos Wang (%) · 22,44 · **10-22%** · **Sobrepeso adiposo**`. Mismo valor, otra
+referencia y otro veredicto. Su tabla de la HC clasifica con un clasificador **inline** (déficit <8,
+normal <20, límite <25, obesidad ≥25 en hombres), no con `cFMI`. Va a la ronda de Gildardo: cuál manda.
+
+**4 · Los decimales del IMC.** Él 25.7 (uno), nosotros 25,66 (dos), contra una referencia escrita
+`18,5-24,9`. Por nuestra propia regla (*"los decimales los fija el CORTE"*, BRAND.md) el IMC debería ir a
+uno. Hay que revisar que la regla alcance también a la capa de display de la composición, que es otra.
+
+**5 · El PBI.** Su HC imprime, junto al fenotipo, *"PBI: Riesgo celular"*. En Atlas declaramos en B11 que
+`F1-F12/PBI/EIEC` son de una versión anterior del modelo y que la taxonomía real manda. Su archivo del 4
+de septiembre lo sigue imprimiendo. Pregunta para él, no cosa nuestra.
+
+**6 · Los antecedentes en dos columnas.** Su bloque va en rejilla de dos; el nuestro en una sola, lo que
+alarga bastante el documento. Es puro layout.
+
+## Lo que Atlas tiene y él no, y está bien
+
+**Observaciones del profesional**, **autorizaciones bajo las que se recogió la información** (el sello de
+consentimiento con su versión: es la mitad legal del derecho de acceso) y **Cerrar la consulta** (que es
+operativo, no historia clínica). Y donde su archivo imprime `Otro` a secas, nosotros resolvemos el texto
+libre (`Otro: Test Atlas`, `Otra: Mantequilla`), que dice más.
