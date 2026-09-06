@@ -28,11 +28,32 @@ const pos = (t: string) => {
 
 describe("orden del plan alimentario", () => {
   it("la validación va ANTES de la fórmula, como en su pantalla", () => {
-    expect(pos("<ValidacionSection")).toBeLessThan(pos("<CadenaCaloricaSection"));
+    // SE MIDE DONDE SE RENDERIZA, NO DONDE SE LLAMA (2026-09-06, cotejo punto 21). Este caso comparaba
+    // la posición de `<ValidacionSection>` y `<CadenaCaloricaSection>` como hermanos del padre, y eso
+    // dejó de medir el orden de la pantalla en cuanto la validación pasó a entrar por prop para
+    // renderizarse ENTRE los dos bloques de la cadena. La aserción es la misma; lo que cambió es dónde
+    // hay que mirarla. Con la comparación vieja habría bastado con invertir el `toBeLessThan` para
+    // ponerlo verde, y eso habría fijado exactamente lo contrario de lo que se quiere.
+    const dentro = pos("{validacion}");
+    expect(dentro, "la validación se renderiza dentro de la cadena").toBeLessThan(
+      pos("Fórmula sintética"),
+    );
   });
 
-  it("y después del objetivo: primero se fija la meta", () => {
-    expect(pos("<ObjetivoSection")).toBeLessThan(pos("<ValidacionSection"));
+  it("y DESPUÉS de los cuatro campos de la meta: son ellos los que la mueven", () => {
+    // El contenido del punto 21: el objetivo, la actividad, el déficit y el peso meta cambian la tabla
+    // en vivo. Con la tabla arriba y los campos abajo no se lee que una cosa mueve a la otra.
+    const meta = pos('<h3 className={tituloBloqueCls("decision")}>Objetivo del plan');
+    expect(meta).toBeLessThan(pos("{validacion}"));
+    for (const campo of ['name="pesoMeta"', 'name="adjKcalObj"', 'name="adjDeficit"']) {
+      expect(pos(campo), `${campo} tiene que quedar ARRIBA de la validación`).toBeLessThan(
+        pos("{validacion}"),
+      );
+    }
+  });
+
+  it("y todo eso después del objetivo del tratamiento: primero se fija la meta", () => {
+    expect(pos("<ObjetivoSection")).toBeLessThan(pos("<CadenaCaloricaSection"));
   });
 
   it("la cadena va antes del intercambio, que consume su objetivo", () => {

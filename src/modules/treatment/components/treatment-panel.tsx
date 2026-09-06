@@ -1,7 +1,7 @@
 "use client";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
-import { useActionState, useId, useState } from "react";
+import { useActionState, useId, useState, type ReactNode } from "react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
@@ -378,6 +378,7 @@ function CadenaCaloricaSection({
   locked,
   prescripcion,
   asesoria,
+  validacion,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
@@ -386,6 +387,21 @@ function CadenaCaloricaSection({
   prescripcion: PrescripcionNutricional | null;
   /** Los rangos que su ciencia SUGIERE para proteina y grasa. Muestran, no validan. */
   asesoria: { prot: AsesoriaMacro; grasa: AsesoriaMacro } | null;
+  /**
+   * LA TABLA DE VALIDACION, RENDERIZADA ENTRE LOS DOS BLOQUES (cotejo 2026-09-05, punto 21).
+   *
+   * Viene como prop en vez de estar en el padre porque su pantalla la pone JUSTO AHI: el bloque del
+   * objetivo con sus cuatro campos, la validacion, y despues la formula. Y la razon de Santiago es la
+   * buena: esos cuatro campos cambian la tabla en vivo, y con la tabla arriba y los campos abajo se
+   * ignora que una cosa mueve a la otra.
+   *
+   * NO SE PARTE EL FORMULARIO. Los seis ajustes son una sola unidad clinica (`saveAdjustments` los
+   * escribe de golpe y `adjustmentSignature` cubre los seis), asi que partirlo obligaria a dos firmas
+   * sobre las mismas columnas y un guardado parcial dejaria que la cadena de un profesional pisara la
+   * meta de otro. Lo que se intercala es una tabla de SOLO LECTURA, sin inputs ni botones: no hay
+   * formulario anidado (que seria HTML invalido) ni un boton que herede `type="submit"`.
+   */
+  validacion: ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
   // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
@@ -689,13 +705,25 @@ function CadenaCaloricaSection({
             </span>
           </p>
         </section>
+      </fieldset>
 
-        {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META. */}
+      {/* LA VALIDACION, ENTRE LOS DOS BLOQUES (cotejo punto 21). Va FUERA del fieldset a proposito:
+          es lectura, no edicion, y un `fieldset:disabled` alrededor de una tabla de resultados la
+          apagaria visualmente al sellar la prescripcion, que es justo cuando mas se consulta. */}
+      {validacion}
+
+      <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
+        {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
+
+            EL TITULO ES EL SUYO (cotejo punto 23): su archivo lo llama "D — FÓRMULA SINTÉTICA", y
+            Santiago pidio adoptarlo. "Cómo se llega a ese objetivo" era nuestro y describia bien lo que
+            hace, asi que no se pierde: baja a subtitulo. El nombre propio arriba, la explicacion debajo. */}
         <section className={bloqueCls("derivado")}>
-          <h3 className={tituloBloqueCls("derivado")}>Cómo se llega a ese objetivo</h3>
+          <h3 className={tituloBloqueCls("derivado")}>Fórmula sintética</h3>
           <p className="text-sm text-muted-foreground">
-            Ajusta cualquier eslabón: la vista previa se recalcula en vivo con la misma fórmula que se
-            sella al aprobar.
+            <span className="font-medium text-foreground">Cómo se llega a ese objetivo.</span> Ajusta
+            cualquier eslabón: la vista previa se recalcula en vivo con la misma fórmula que se sella al
+            aprobar.
           </p>
           <div className="flex flex-wrap gap-3">
             <AdjInput
@@ -717,10 +745,15 @@ function CadenaCaloricaSection({
                 prescrita (FA)» y «Factor actividad (PAL)» son el mismo factor con dos nombres, y nos mandó
                 "unifíquenlo en el suyo", que es PAL. Al portar su desplegable estuve a punto de traerme
                 también su rótulo, que es justo el desliz que él pidió no copiar. Lo atrapó el candado. */}
-            {/* PROTEINA Y GRASA LLEVAN SU PANEL DE REFERENCIA DEBAJO (Gildardo, 2026-09-03), y los otros
-                campos no: son los dos macros para los que su ciencia tiene un rango por diagnostico. El
-                panel MUESTRA, no valida: sin techo, sin piso y sin bloquear el guardado. */}
-            <div>
+            {/* PROTEINA Y GRASA SON LOS DOS UNICOS CON REFERENCIA POR DIAGNOSTICO (Gildardo, 2026-09-03):
+                son los dos macros para los que su ciencia tiene un rango por condicion. El panel MUESTRA,
+                no valida: sin techo, sin piso y sin bloquear el guardado.
+
+                EL PANEL BAJO A ANCHO COMPLETO, DEBAJO DE LA VISTA PREVIA (cotejo 2026-09-05, 22.3 y 23).
+                Aqui, pegado a un campo de un cuarto de ancho, el porque y la fuente no cabian y se leian
+                apretados. El cable entre el campo y su panel lo dice el subtitulo, que es lo que hace su
+                archivo ("Su decisión — referencia según el diagnóstico abajo"). */}
+            <div className="flex flex-col gap-1">
               <AdjInput
                 name="adjProtGkg"
                 label="Proteína (g/kg)"
@@ -729,20 +762,13 @@ function CadenaCaloricaSection({
                 // MISMA REGLA QUE EL OBJETIVO Y EL GEB (barrido del 2026-09-05): un placeholder solo se
                 // ve con el campo VACIO, y con el campo vacio lo que corre es `cal.*`. Leer el SELLADO
                 // aqui prometia 0,8 en los snapshots anteriores al 2026-09-03, que no traen `mtn`: en
-                // esos la cadena resuelve la proteina con el motor de HOY y podia dar otra cosa. Latente,
-                // no visible, y el arreglo es gratis.
+                // esos la cadena resuelve la proteina con el motor de HOY y podia dar otra cosa.
                 placeholder={`modelo: ${cal.protGKg}`}
                 step="0.1"
               />
-              {/* El valor que se le pasa es el ESCRITO, con la caida al del modelo cuando el campo esta
-                  vacio: es la cifra que de verdad se va a prescribir, y es sobre esa que hay que decir si
-                  quedo fuera de rango. Con el campo vacio manda el modelo, no "sin dato". */}
-              <AsesoriaMacroPanel
-                asesoria={asesoria?.prot ?? null}
-                valor={protGkg.trim() === "" ? String(base.protGKg ?? "") : protGkg}
-              />
+              <span className="text-xs text-muted-foreground">Tu decisión; la referencia va abajo.</span>
             </div>
-            <div>
+            <div className="flex flex-col gap-1">
               <AdjInput
                 name="adjFatPct"
                 label="Grasa (%)"
@@ -751,10 +777,7 @@ function CadenaCaloricaSection({
                 placeholder={`modelo: ${cal.fatPct}`}
                 step="1"
               />
-              <AsesoriaMacroPanel
-                asesoria={asesoria?.grasa ?? null}
-                valor={fatPct.trim() === "" ? String(base.fatPct ?? "") : fatPct}
-              />
+              <span className="text-xs text-muted-foreground">Tu decisión; la referencia va abajo.</span>
             </div>
           </div>
           {/* LA CADENA SE SELLO CON UNA CIENCIA ANTERIOR, y hay que decirlo donde se ve la cifra.
@@ -947,6 +970,26 @@ function CadenaCaloricaSection({
               </p>
             )}
           </div>
+
+          {/* LAS DOS REFERENCIAS POR DIAGNOSTICO, A ANCHO COMPLETO Y DEBAJO DE LA CUENTA, como en su
+              archivo (cotejo 2026-09-05, 22.3 y 23). Van DESPUES de la vista previa y no antes: primero
+              se ve que se esta prescribiendo, y luego contra que se compara. Cada panel dice lo prescrito
+              y lo sugerido en la misma linea, que es la comparacion que el profesional viene a hacer. */}
+          <div className="flex flex-col gap-3">
+            <AsesoriaMacroPanel
+              titulo="Proteína"
+              asesoria={asesoria?.prot ?? null}
+              // El valor que se le pasa es el ESCRITO, con la caida al del modelo cuando el campo esta
+              // vacio: es la cifra que de verdad se va a prescribir, y es sobre esa que hay que decir si
+              // quedo fuera de rango. Con el campo vacio manda el modelo, no "sin dato".
+              valor={protGkg.trim() === "" ? String(base.protGKg ?? "") : protGkg}
+            />
+            <AsesoriaMacroPanel
+              titulo="Grasa"
+              asesoria={asesoria?.grasa ?? null}
+              valor={fatPct.trim() === "" ? String(base.fatPct ?? "") : fatPct}
+            />
+          </div>
         </section>
 
         {/* Un solo boton para los dos bloques: el guardado es atomico sobre las seis columnas. */}
@@ -1111,11 +1154,17 @@ export function TreatmentPanel({
           </div>
         ) : null}
 
-        {/* ORDEN DE GILDARDO (2026-08-24): la validacion va ARRIBA, antes de la formula. Su logica es fijar
-            la meta, ver si el plan la cumple, ajustar y repartir; en un SEGUIMIENTO, que va a ser el caso
-            frecuente, responde la primera pregunta del profesional. DERIVADA en vivo, solo lectura, no
-            persiste (no puede desfasarse), asi que subirla no mueve ninguna firma ni ningun candado. */}
-        <ValidacionSection protocol={protocol} />
+        {/* ORDEN DE GILDARDO (2026-08-24), AFINADO CON SU PANTALLA AL LADO (cotejo 2026-09-05, punto 21).
+
+            Su logica es fijar la meta, ver si el plan la cumple, ajustar y repartir. Lo que faltaba es que
+            en SU pantalla los cuatro campos de la meta (objetivo, actividad, deficit y peso meta) estan
+            DENTRO del bloque del objetivo, o sea JUSTO ENCIMA de la validacion, y en Atlas quedaban debajo
+            de ella. Textual de Santiago: "estos 4 campos cambian inmediatamente la tabla de abajo... si los
+            dejamos donde estan, se ignora casi por completo que esto afecta la funcionalidad de la tabla".
+
+            Asi que la validacion ya no va suelta aqui: se le pasa a la cadena, que la renderiza ENTRE sus
+            dos bloques. Queda el orden de su archivo: objetivo con sus cuatro campos, validacion, formula
+            sintetica. Y sin partir el formulario, que sigue siendo uno con un solo boton. */}
         {/* key = firma de los seis ajustes: un cambio del servidor remonta la seccion (no queda pegada). */}
         <CadenaCaloricaSection
           key={sectionKey(
@@ -1141,6 +1190,7 @@ export function TreatmentPanel({
           locked={locked}
           prescripcion={prescripcion}
           asesoria={asesoria}
+          validacion={<ValidacionSection protocol={protocol} />}
         />
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
             guardado: un cambio del servidor remonta y re-deriva las porciones (no queda pegado). */}

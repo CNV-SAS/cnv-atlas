@@ -30,6 +30,27 @@ function bloque(desde: string, hasta: string): string {
 const META = () => bloque("<h3 className={tituloBloqueCls(\"decision\")}>Objetivo del plan", "BLOQUE 2");
 const FORMULA = () => bloque("BLOQUE 2", "Un solo boton para los dos bloques");
 
+describe("el segundo bloque se llama como en su archivo (cotejo 2026-09-05, punto 23)", () => {
+  // SIN COMENTARIOS: el comentario que explica el cambio de titulo tiene que nombrar los DOS titulos,
+  // asi que sobre el texto crudo el candado se caza a si mismo (misma familia que el conteo de abajo).
+  const RENDER = sinComentarios(PANEL);
+
+  it("el TITULO es el suyo, Fórmula sintética", () => {
+    // Su archivo lo llama "D — FÓRMULA SINTÉTICA". Santiago pidio adoptarlo, y es el nombre por el que
+    // el profesional lo va a buscar cuando lea el archivo de Gildardo al lado de la pantalla.
+    expect(RENDER).toContain("Fórmula sintética");
+  });
+
+  it("y el nuestro NO se pierde: baja a subtítulo", () => {
+    // "Cómo se llega a ese objetivo" describe lo que el bloque hace, que el nombre propio no dice.
+    // Adoptar el suyo no es motivo para tirar el nuestro: van los dos, cada uno en su nivel.
+    const i = RENDER.indexOf("Fórmula sintética");
+    const j = RENDER.indexOf("Cómo se llega a ese objetivo");
+    expect(j).toBeGreaterThan(-1);
+    expect(j, "el subtítulo va DESPUÉS del título").toBeGreaterThan(i);
+  });
+});
+
 describe("la cadena calórica va en DOS bloques, no en uno", () => {
   it("existen los dos, y en el orden que él fijó: primero la meta", () => {
     const meta = PANEL.indexOf("Objetivo del plan");
@@ -228,7 +249,14 @@ describe("se partió la PRESENTACIÓN, no el guardado", () => {
     // golpe y `adjustmentSignature` cubre las seis. Partir el guardado obligaría a dos firmas sobre las
     // mismas columnas, y un guardado parcial dejaría que la cadena de un profesional pisara la meta de
     // otro. Si alguien parte el form, esto truena antes de que ese defecto llegue a un paciente.
-    const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
+    // SIN COMENTARIOS PARA CONTAR, y es la quinta vez de esta familia: el comentario que explica POR QUE
+    // no se parte el formulario tiene que CITAR `type="submit"`, asi que el candado se cazaba a si mismo
+    // (2026-09-06). Se ajusta el ALCANCE de lo que se cuenta, no la asercion: sigue exigiendo UNO.
+    // No se puede quitar los comentarios de `PANEL` entero porque "BLOQUE 2" es un comentario y se usa
+    // de marcador.
+    const seccion = sinComentarios(
+      bloque("function CadenaCaloricaSection", "export function TreatmentPanel"),
+    );
     expect((seccion.match(/<form /g) ?? []).length).toBe(1);
     expect((seccion.match(/type="submit"/g) ?? []).length).toBe(1);
     expect((seccion.match(/name="baseSignature"/g) ?? []).length).toBe(1);

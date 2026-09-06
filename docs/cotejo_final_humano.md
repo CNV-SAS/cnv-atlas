@@ -130,16 +130,42 @@ Desviación leve" Ahi pone desviación leve con color verde, mientras que la PAB
 20. Nos falta el bloque de OTROS productos (LUVIA)
 
 - Subpestaña Nutricionista
-21. ## URGENTE
-Divergencia importante por parte de nosotros en Atlas:
+21. ## URGENTE   ·   **CERRADO (2026-09-06). Tenías razón, y la razón que diste es la buena.**
+    Verifiqué su pantalla: los cuatro campos (objetivo, actividad, déficit y peso meta) están **dentro** del bloque "Objetivo del tratamiento nutricional", o sea **justo encima** de la validación, y en Atlas quedaban debajo de ella. Tu frase lo dice exacto: *"estos 4 campos cambian inmediatamente la tabla de abajo... si los dejamos donde están, se ignora casi por completo que esto afecta la funcionalidad de la tabla"*.
+    **Y no hizo falta el botón de guardado aparte que ofreciste.** El problema no era el guardado, era el orden de la página: la tabla de validación **es de solo lectura** (se deriva en vivo, no persiste), así que se le pasa a la cadena y se renderiza **entre sus dos bloques**. Queda el orden de su archivo (objetivo con sus cuatro campos → validación → fórmula sintética) y **el formulario sigue siendo uno, con un solo botón**, que es lo que protege que los seis ajustes se escriban de golpe.
+    Un cuidado que sí revisé: la tabla va **fuera** del `fieldset`, no dentro. Si fuera dentro, al sellar la prescripción se apagaría visualmente justo cuando más se consulta.
+    Candados en `orden-plan-nutricional.test.ts` (ahora mide dónde se RENDERIZA, no dónde se llama) y `cadena-dos-bloques.test.ts`.
+21b. Tu reporte original: Divergencia importante por parte de nosotros en Atlas:
 Por qué no metemos el bloque "objetivo del plan" con los 4 campos: "Peso meta (kg), objetivo (kcal), PAL (factor) y Deficit (kcal) en el mismo bloque o junto a "Objetivo del tratamiento nutricional" asi como lo hace el html? asi tengamos que ponerle un botón de guardado solo para estos 4 campos, pero ese fue el orden que le dio Gildardo en el html, y la verdad hace mucho sentido, ya que estos 4 campos cambian inmediatamente la tabla de abajo que se llama: "Validación del plan · % de cubrimiento e ICN (meta ICN ≈ 1)". Ya que si dejamos "objetivo del plan" con los 4 campos donde está, se ignora casi por completo que esto afecta la funcionalidad de la tabla.
 
 22. ## URGENTE   ·   **22.1 y 22.2 CERRADOS (2026-09-05, en dos pasadas)**: eran UNO, y el fondo no era el rótulo sino el PLACEHOLDER. El campo del objetivo estaba vacío diciendo `modelo: 2377` y, dejándolo vacío, salía 2408: prometía una cifra y entregaba otra. Ahora el placeholder dice lo que de verdad se usa (2408 y 1751), la pantalla vuelve a tener UNA cifra por concepto como el HTML, y la distinción calculado/ajustado se conserva en el rótulo (*"recalculado con tus ajustes"* / *"fijado por ti"*), que no cuesta un segundo número. Candado en `cadena-dos-bloques.test.ts`. Detalle: El objetivo ahora dice de dónde sale mirando las cinco entradas que lo mueven (objetivo, déficit, PAL, GEB y peso meta), y cuando no coincide con el del modelo dice cuál era: *"2408 kcal · recalculado con tus ajustes · el modelo sugirió 2.377"*. Igual el GEB: *"1751 kcal (Mifflin · el modelo: 1729)"*. Y la vista previa deja de llamar "Objetivo del modelo" a una cifra que lleva los ajustes. Candado en `cadena-dos-bloques.test.ts`. **22.3 y 22.4 siguen abiertos**, van al final con el 23.
 Diferencias que noté en cálculos/formas:
 22. 1.  En el bloque "objetivo del plan" aparece esto: "2408 kcal sugeridos por el modelo" basciamente es lo mismo que aparece en el html. Pero lo que me causa intigra es por qué en campo "objetivo (kcal)" aparece como placeholder: "modelo: 2377", no deberia aparecer "modelo: 2408"?
 22. 2. El GEB de Atlas segun el modelo es de: 1729 y del html: 1751 . Yo creo que es el mismo error del campo que pasó con kcal, ya que en el campo editable dice 1729 en Atlas, pero en la vista previa si dice 1751 como el html.
-22. 3. El html marca las referencias de proteina y grasa mucho mejor que atlas (el html las pone mas completas y bonitas)
-22. 4. La formula sintetica del html tiene estos campos (algunos editables y otros de visualización):
+22. 3. **CERRADO (2026-09-06).** Tenías razón, y las dos formas en que lo dijiste (*"más completas y bonitas"* aquí, *"se ven como raras abajo"* en el 23) son **la misma queja**: el contenido no cabía. Iba como una cajita apretada debajo de un campo de un cuarto de ancho, con el porqué y la fuente exprimidos.
+    **Ahora es el panel suyo**: ancho completo, con el nombre del macro, **lo prescrito junto a lo sugerido en la misma línea** (*"prescrito: 0.8 g/kg · sugerido 0.8–0.8 g/kg"*, que es la comparación que se viene a hacer y antes había que hacer de memoria), y cada condición en su renglón con su porqué y su fuente legibles.
+    **Dos cosas suyas que NO porté, y las declaro:** (a) él pinta la proteína de morado y la grasa de verde azulado; dos tonos elegidos por macro es color decorativo en una pantalla clínica, donde el color significa un veredicto, así que los dos usan el acento de marca; (b) conservo **nuestro** aviso de "la cifra escrita queda fuera del rango", que su panel no tiene: informa sin corregir, que es lo único que su §5 del 27 de agosto permite.
+22. 3b. Tu reporte original: El html marca las referencias de proteina y grasa mucho mejor que atlas
+22. 4. **CERRADO SIN CONSTRUIR (2026-09-06): los doce campos suyos YA ESTÁN, todos. Lo que cambia es la disposición, no el contenido.** Los cotejé uno por uno:
+
+    | Su campo | Dónde está en Atlas |
+    | --- | --- |
+    | GEB (kcal/día) | Campo editable "GEB (kcal)" + fila *Gasto energético basal (GEB)* |
+    | Factor actividad (PAL) | Desplegable, arriba y en la fila *× Nivel de actividad física (PAL)* |
+    | GET (kcal/día) | Fila *= Gasto energético total (GET)* |
+    | Objetivo calórico (kcal/día) | Campo "Objetivo (kcal)" + fila *= Objetivo calórico* |
+    | Peso de cálculo (kg) | Fila *Peso efectivo* (mismo dato, otro rótulo) |
+    | Proteína g/kg | Campo "Proteína (g/kg)" + detalle de la fila de proteína |
+    | Proteína total (g/día) | Fila *+ Proteína · N g* |
+    | Proteína (kcal) | Detalle de esa fila |
+    | Grasas (%) | Campo "Grasa (%)" + detalle |
+    | Grasas (g/día) | Fila *+ Grasa · N g* |
+    | CHO por diferencia (g/día) | Fila *+ Carbohidratos · N g*, con la etiqueta "calculado (residuo)" |
+    | CHO (kcal) | Detalle de esa fila |
+
+    **No falta ninguno. Y tenemos cuatro cosas que su lista no tiene:** el déficit como eslabón visible de la cuenta, la distinción entre el objetivo de la cadena y el que fija el profesional, la suma de los tres macros contra el objetivo (el cuadre), y el aviso cuando proteína y grasa se comen el objetivo entero.
+    **Así que no adoptamos su lista: adoptamos su NOMBRE (punto 23) y conservamos nuestra disposición**, que es la que tú mismo dijiste que te parecía "muy brutal". Su tabla es una lista plana de doce filas; la nuestra es la misma información leída como una cuenta (peso → GEB → × PAL → = GET → − déficit → = objetivo → reparto → suma). La única diferencia real es "Peso de cálculo" vs "Peso efectivo", y ahí me quedo con el nuestro porque en Atlas ese peso puede ser el meta que fijó el profesional, y "de cálculo" sugiere que lo calculó el sistema.
+22. 4b. Tu reporte original: La formula sintetica del html tiene estos campos (algunos editables y otros de visualización):
 
 GEB (kcal/día)
 Factor actividad (PAL)	
@@ -171,8 +197,11 @@ Objetivo del plan
 Hay que revisar por que diferimos y si mejor adoptamos los del html o nos quedamos con los nuestros o una combinación de ambos.
 
 
-23. ## URGENTE
-El bloque que se llama: "Cómo se llega a ese objetivo" Pienso que es mejor ponerle de titulo "Formula sintetica" como el html. Y el "como se llega a ese objetivo" que quede como subtitulo o rotulo marcado asi como el diseño de contratik tiene algunas cosas. 
+23. ## URGENTE   ·   **CERRADO (2026-09-06). Las tres cosas que pediste, y una no hizo falta construirla.**
+    **(a) El título es el suyo.** El bloque se llama **"Fórmula sintética"**, como en el HTML, y *"Cómo se llega a ese objetivo"* baja a subtítulo en negrita. No se pierde: el nombre propio dice qué es, el subtítulo dice qué hace.
+    **(b) "Adoptar los dos diseños": ya estaban los dos.** La *Cadena efectiva (vista previa)* **ES** su secuencia (GEB → × PAL → = GET → − déficit → = objetivo → reparto), leída como una cuenta en vez de como una lista. Lo verifiqué campo por campo en el 22.4: **sus doce campos están todos ahí**. Así que no había dos diseños que combinar, había uno con su nombre puesto.
+    **(c) Las referencias de proteína y grasa: van abajo, no al lado, y te explico por qué no te hago caso en eso.** El porqué y la fuente de cada condición son dos líneas de texto; al lado de un campo numérico estrecho vuelven a no caber, que es exactamente el problema del que veníamos (*"se ven como raras abajo"* era el síntoma de que estaban apretadas, no de que estuvieran abajo). **Su archivo también las pone abajo, a ancho completo**, y ahí sí respiran. El cable entre el campo y su referencia deja de ser la cercanía y pasa a ser una frase debajo del campo: *"Tu decisión; la referencia va abajo"*, que es lo que hace su archivo. **Si al verlo prefieres el lado, se cambia**: es mover un componente.
+23b. Tu reporte original: El bloque que se llama: "Cómo se llega a ese objetivo" Pienso que es mejor ponerle de titulo "Formula sintetica" como el html. Y el "como se llega a ese objetivo" que quede como subtitulo o rotulo marcado asi como el diseño de contratik tiene algunas cosas. 
 Del mismo modo, me parece mucho mas facil de entender como lo presenta el html (GEB, PAL,GET, etc.), pero tambien me gustaria conservar "Cadena efectiva (vista previa)" como lo tiene Atlas, me parece muy brutal el diseño de previsualización de la calculadora. Hay forma de adoptar ambos diseños? inclusive de poner al lado de proteina y grasa las referencias? ya que se ven como raras abajo.
 
 24. En la tabla: "Lista de intercambio U de A · ICBF 2025" el html pone los totales sin decimales y pone el total tambien de la columna "porciones". Del mismo modo, decoremos el botón "recalcular desde el objetivo" que se ve raro.

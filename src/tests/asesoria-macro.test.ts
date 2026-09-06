@@ -207,9 +207,55 @@ describe("6 · el panel LLEGA A LA PANTALLA, que es lo que faltaba", () => {
     );
   });
 
-  it("y se pinta junto a los DOS campos, no solo junto al de proteína", () => {
+  it("se pinta para los DOS macros, no solo para la proteína", () => {
     expect(PANEL).toContain("asesoria={asesoria?.prot ?? null}");
     expect(PANEL).toContain("asesoria={asesoria?.grasa ?? null}");
+  });
+
+  // LA FORMA DEL PANEL, del cotejo del 2026-09-05 (puntos 22.3 y 23). Iba como una cajita apretada bajo
+  // un campo de un cuarto de ancho: "el html las pone mas completas y bonitas" y "se ven como raras
+  // abajo" son la misma queja, el contenido no cabia. Ahora es de ancho completo y va DEBAJO de la vista
+  // previa, como en su archivo.
+  it("cada panel se identifica solo: lleva el nombre del macro", () => {
+    // Sin el título, un panel que ya no está pegado a su campo no dice de qué macro habla.
+    expect(PANEL).toContain('titulo="Proteína"');
+    expect(PANEL).toContain('titulo="Grasa"');
+  });
+
+  it("y dice lo PRESCRITO junto a lo SUGERIDO, que es la comparación que se viene a hacer", () => {
+    const COMP = sinComentarios(
+      readFileSync("src/modules/treatment/components/asesoria-macro-panel.tsx", "utf8"),
+    );
+    expect(COMP).toContain("prescrito:");
+    expect(COMP).toContain("sugerido ");
+    // Y cada condición conserva su porqué y su fuente, que es lo que lo hace una referencia y no una orden.
+    expect(COMP).toContain("{i.porque}");
+    expect(COMP).toContain("{i.fuente}");
+  });
+
+  it("el conflicto NO se confunde con la ausencia de rango: tiene su propia insignia", () => {
+    // Un rango vacío y dos condiciones que no se solapan se ven igual si se tratan los dos como "sin
+    // dato", y no son lo mismo: el segundo es una decisión que le toca al profesional.
+    const COMP = sinComentarios(
+      readFileSync("src/modules/treatment/components/asesoria-macro-panel.tsx", "utf8"),
+    );
+    expect(COMP).toContain("asesoria.conflicto");
+    expect(COMP).toContain("Dos condiciones piden rangos que no coinciden");
+  });
+
+  it("el panel se fue del lado del campo, y el campo lo DICE", () => {
+    // El cable entre el campo y su referencia deja de ser la proximidad y pasa a ser una frase, que es
+    // lo que hace su archivo ("Su decisión — referencia según el diagnóstico abajo"). Sin ella, el panel
+    // queda huérfano y el campo parece no tener referencia.
+    const SIN = sinComentarios(PANEL);
+    expect((SIN.match(/Tu decisión; la referencia va abajo./g) ?? []).length).toBe(2);
+  });
+
+  it("y va DEBAJO de la vista previa: primero qué se prescribe, después contra qué se compara", () => {
+    const SIN = sinComentarios(PANEL);
+    expect(SIN.indexOf("Cadena efectiva (vista previa)")).toBeLessThan(
+      SIN.indexOf('titulo="Proteína"'),
+    );
   });
 
   it("el aviso de fuera de rango se calcula en el CLIENTE, contra lo que se está escribiendo", () => {
