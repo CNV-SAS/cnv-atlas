@@ -136,9 +136,36 @@ Su narrativa la imprime: *"Biomarcadores clave a tener en cuenta: ..."*, bajo el
 
 **Y leyendo su frase entera, no está pidiendo borrarlo.** Dice: *"aparece **en la mitad** del nivel II, **entre** los datos de composición corporal y el modelo ani bis e"*. **Verificado que ese es exactamente nuestro orden de render:** tabla de Wang → Nivel III Salud celular → Indicadores ANI-BIS-E. **Está describiendo dónde queda, no que exista.** Lo que le estorba es que el bloque parta en dos la lectura de composición.
 
-**Qué proponemos:** moverlo **debajo** de los indicadores ANI-BIS-E, que cierra el bloque en vez de partirlo, y preguntárselo. Borrarlo deshace su P-28 y elimina su contenido del único sitio donde vive hoy.
+### CORREGIDO · el dato de Santiago cambió este veredicto, y el bloque se RETIRÓ
 
-**Qué cuesta:** mover una línea. Lo caro sería borrarlo y tener que reponerlo.
+Lo de arriba decía "se mueve, no se borra". Santiago aportó que para el mismo paciente la tabla de Wang
+dice *"Hidratación celular adecuada"* en tres filas mientras la badge decía *"Hidratación celular
+deficiente"*, y que en su archivo esa badge no aparece. Verificado lo uno y lo otro:
+
+**(a) ¿Se contradicen sobre el mismo paciente?** En pantalla sí, en cálculo no. Son **dos indicadores
+distintos con nombres que chocan en español**: las tres filas son el AIC como porcentaje (referencia
+60-65%) y la badge es la hidratación de la masa libre de grasa (referencia 73,2%). La badge **no
+contradecía a su fuente**: la misma tabla de Wang tiene su propia fila de esa hidratación y las dos
+coinciden. **La badge era un duplicado de esa fila**, puesto al lado de tres que hablan de otra cosa.
+
+**(b) ¿Su archivo lo pinta?** **No.** `celBadges` aparece **cinco** veces en su v8 del 4 de septiembre: la
+declaración y los cuatro `push`. **Ningún render la lee.** Lo mismo `alimentBadges`. **Control de que no
+es otra forma de pintarlas:** `condBadges`, en el mismo archivo, **sí** se pinta. Portamos una pieza que
+su software calcula y descarta.
+
+**(c) ¿De dónde sale cada uno?** La badge de `hidSG` contra `hidSG_ref`, su condición verbatim. Las filas,
+de `dAICpct`. No son dos fuentes de una cosa: son dos cosas.
+
+**Así que se retiró, y NO deshace su P-28.** Lo que esa instrucción nombra (hidratación celular, ángulo de
+fase, masa celular activa) sigue en Diagnóstico: son **tres filas** de la tabla de Wang con sus
+clasificadores, verificado una por una. Se fue el duplicado, no el tema.
+
+**Lo que sí se pierde y va declarado:** el **ECM/BCM > 1,4** era el único de los cuatro **sin fila propia**,
+así que desaparece de la pantalla. Su archivo tampoco lo muestra. Va como pregunta 17 del documento.
+
+**Y mi lectura de arriba estaba mal por lo mismo que aciertan los controles:** leí su frase (*"aparece en
+la mitad, entre..."*) y concluí que describía una posición, sin ir a mirar si su archivo lo pintaba. La
+frase sí describe una posición. Lo que no verifiqué es que la pieza no debía estar ahí en absoluto.
 
 11. El resumen del diagnóstico generado por IA es aparte, no va dentro de ninguno d ellos 3 que tienen, y va de ultimo INSISTO, DEBE IR IGUAL A COMO ESTA EN el HTML.
 // Santiago: El bloque del criterio del profesional, se mueve a la subpestaña nueva que creamos "resumen del diagnostico". Ya que el manda aquí.
@@ -225,3 +252,31 @@ Nuestra capa de color no escribe severidades a mano: las **lee** del hex que emi
 
 **Qué cuesta:** una cadena. Y de acuerdo con Santiago en que de momento se queda.
 
+---
+
+# ESTADO · qué quedó corregido el 2026-09-07
+
+**Nueve puntos cerrados en código.** `pnpm verify` verde: 2139 pruebas unitarias, 189 contra base real,
+fronteras RSC limpias, 100 server actions todas con pantalla.
+
+| # | Qué se hizo | Commit |
+| --- | --- | --- |
+| **3** | Las dos preguntas fuera, en una **v2 del catálogo** (la v1 queda intacta: las evaluaciones emitidas la tienen sellada). La amputación se queda, declarada | `4dbcb92` |
+| **10** | Las badges de salud celular retiradas: su archivo las calcula y no las pinta | `4dbcb92` |
+| **9** | Los biomarcadores dejan de viajar al modelo, con candado por CONTENIDO (no por nombre de campo) | `fb46677` |
+| **14** | **Nada que tocar**: el ámbar sale de su `cIAE`. Va a la consulta, con el cian de `FYR_LABELS` | (documento) |
+| **4** | Peso meta y prensil **editables en Antropometría**. Cierra DIV-18 | `c3dfe1c` |
+| **6** | La tabla de Wang nace **abierta** | `1c1b11c` |
+| **7** y **11** | **Cuatro subpestañas en su orden**, y el criterio a la cuarta | `1c1b11c` |
+| **13** | La Diana se dibuja **con una sola medición** | `470d845` |
+
+**Queda el 8**, que es tanda propia: portar su prompt de cinco dominios. Ya tiene su respuesta
+(*"todo lo del prompt completo que tiene el html... pero NO enviar el nombre"*), y el candado del punto 9
+es lo que se pondrá rojo si ese porte vuelve a colar un marcador de laboratorio.
+
+**Y esperan la reunión:** el **1** y el **5** (las seis pestañas), el **2** (el filtro de `/evaluaciones`,
+que Santiago deja para después), el **12** (falta que diga qué elementos parametrizó), y el **15** y el
+**16**, que no van y se explican.
+
+**Una acción operativa antes de probar:** las dos preguntas salen de una versión nueva del catálogo, así
+que hay que correr `pnpm db:seed:bis` para publicarla. Sin eso la pantalla sigue mostrando las catorce.
