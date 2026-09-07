@@ -45,6 +45,7 @@ tuyas archivadas lo contienen**), así que si el caso es real también lo estamo
 tenemos que decidir juntos qué hacemos con esas copias.
 
 ---
+// Respuesta: No envien el nombre del paciente, y si hay datos de identificación como cedula o similarestTampoco los envien. En caso de ser posible, traten de enviar edad, diagnostico, todo lo del prompt completo que tiene el html, para que no pierda la sustancia, pero NO enviar el nombre.
 
 # DESPUÉS · Lo que se responde en una línea
 
@@ -65,6 +66,8 @@ estrato, que son los determinantes del dominio Epigenético-Contextual.
 integrado"*. **Sin nombre, ¿cómo quieres que abra?** Nuestra propuesta es *"El paciente, un hombre de 22
 años..."*, o sea tu misma frase sin el nombre. Si prefieres otra, dínosla y la ponemos textual.
 
+// Respuesta: Elijan como abre el parrafo de la IA. Puede ser algo tan simple como "el paciente" como ustedes dicen. Lo importante es que sea igual al html pero sin el nombre del paciente.
+
 ## 2 · ¿El criterio del profesional debe ir a la historia clínica?
 
 En Atlas el profesional escribe un **criterio propio** sobre el diagnóstico, en el bloque que tu archivo
@@ -77,6 +80,8 @@ Es interno de la evaluación.
 **Es el único texto que el profesional escribe sobre el diagnóstico.** ¿Debe constar en la historia
 clínica?
 
+// Respuesta: de momento no, puede cambiar a futuro.
+
 ## 3 · La fila PABU de tu tabla usa un clasificador distinto del congelado
 
 En tu tabla de Composición, la fila **PABU** rotula **"PABU bajo"**, que viene de un clasificador local de
@@ -85,6 +90,8 @@ tu instrucción del 17 de agosto fue literal: *"cPABU: pórtenlo tal cual, y no 
 
 **El color coincide** (ámbar los dos), así que en pantalla se lee igual. Solo cambia la palabra. **Si
 prefieres el rótulo de tu tabla, se cambia en una línea.**
+
+// Respuesta: Ya revisé ATLAS y está bien como lo tienen.
 
 ## 4 · Tres entradas mal clasificadas en Leche semidescremada
 
@@ -120,6 +127,8 @@ Fructosa`, y dijiste que las acompañabas con el alimento, del tipo *"Lactosa (l
 **Los dos necesitan un bump de versión de la encuesta de nuestro lado**, así que conviene que entren
 juntos y no de a uno. **Dinos si van y los tomamos con la próxima entrega.**
 
+// Respuesta: No importa. Ya lo tienen bien en Atlas.
+
 ## 7 · El nombre del modelo lleva DOS guiones: ANI-BIS-E
 
 Cosa menor, pero se repite: en varios sitios de tu archivo el modelo aparece como *"ANI BIS-E"*, sin el
@@ -139,6 +148,8 @@ coincide con tu archivo.
 
 Lo decimos porque **ese comentario nos frenó dos veces** y le va a pasar igual a la próxima persona que
 abra el archivo. No hace falta que lo cambies: queda dicho.
+
+// Respuesta: Mis respuestas son las que importan. Ya les di una instruccion, dejenla exactamente como les dije. Y ANI-BIS-E es correcto.
 
 ---
 
