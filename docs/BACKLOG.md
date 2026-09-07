@@ -40,25 +40,30 @@ para no tener que releer el documento del cotejo.
 2. **El layout general.**
 3. **LUVIA**, cuando Santiago decida.
 
-### Un hallazgo suelto que salió al cerrar, y no se tocó a propósito
+### CERRADO el mismo día: la guarda del LE8 pasó de seis insumos a ocho (motor `anibise-1.4.0`)
 
-**Tres comentarios describen el interruptor del LE8 como apagado, y está encendido.** Están en
-`frozen/authorized-modifications.js` (dos: la prosa del manifiesto y el `newSlice`) y en el generado
-`engine.dfi.authorized.js`. Dicen *"con `LE8_MAPEO_CORREGIDO=false` (estado vigente, P-04 cerrada)"* y
-que alimentación e hidratación *"corren en default SIEMPRE"*, cuando desde el 2026-09-05 la bandera es
-`true` y esos dos dominios leen campos que la encuesta sí captura (`d1_N_i` y `d7_agua`).
+Estaba anotado aquí como hallazgo suelto y Santiago mandó hacerlo. **Su propia nota lo pedía**: *"si
+algún día se activa el mapeo, esta lista debe revisarse ahí"*. El mapeo se activó con 1.3.0 y la lista se
+quedó en seis, así que el motor leía ocho campos y la guarda exigía seis.
 
-**NO se corrigió, y la razón es la regla:** ese comentario vive DENTRO del `newSlice`, o sea dentro del
-código generado. Cambiarlo mueve el SHA del artefacto sin cambiar una sola cifra, y la disciplina dice
-que el generado solo cambia cuando cambia el código que corre. **Es una decisión, no un descuido.**
+**Sin `d7_agua`, hidratación puntuaba cero** (el peor valor posible: un paciente que no contestó quedaba
+registrado como uno que no bebe agua). **Sin la matriz de frecuencia, alimentación caía a la base de 10**,
+y con la matriz a medias bajaba en silencio.
 
-**Y hay una pregunta de fondo detrás, que sí vale la pena:** la guarda de `calcLE8` exige SEIS insumos
-(`d3_23`, `d3_24`, `d3_30`, `d3_26`, `d5_39`, `d5_36`) y el propio comentario avisaba que *"si algún día
-se activa el mapeo, esta lista debe revisarse"*. **Se activó y no se revisó.** Hoy, si falta `d7_agua`,
-hidratación puntúa 0 en vez de frenar la emisión. No es grave (el gate de completitud de la encuesta lo
-hace improbable) pero es exactamente lo que el comentario pedía mirar. **Decidir si la guarda pasa de seis
-a ocho insumos**, que sí es un cambio del código que corre y lleva su bump.
+**Medido antes de aplicarlo, nube en solo lectura: de 120 respuestas, once pasan los seis de hoy y las
+once pasan también los ocho. Cero evaluaciones cambian de comportamiento.** El golden sigue dando LE8 = 80.
 
+**Y los tres comentarios que describían el interruptor como apagado se corrigieron solos al regenerar**,
+que es justo lo que decía la disciplina: viven dentro del `newSlice`, así que se rehacen cuando cambia el
+código que corre. No se tocaron el día anterior porque moverlos solos habría cambiado el SHA sin cambiar
+una cifra.
+
+Commit `b9d8c55`. Candado: `le8-guarda-ocho-insumos.test.ts`.
+
+**Y destapó un rojo legítimo:** `clinical-engine.test.ts` declaraba trece `field_key` como *encuesta
+COMPLETA* y no se actualizó cuando 1.3.0 sumó el agua y los quince grupos (la migración 0100 sí los había
+marcado `used_in_diagnosis`). La prueba de "encuesta completa" pasaba verde sobre una encuesta a la que le
+faltaban dieciséis campos que el motor lee. Ampliada.
 **Versión:** 1.0
 **Propósito:** registrar lo que deliberadamente NO va en el MVP, para que no se pierda ni se cuele. Cada vez que decimos "esto no va ahora", queda aquí.
 
