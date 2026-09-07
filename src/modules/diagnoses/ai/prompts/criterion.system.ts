@@ -1,4 +1,4 @@
-import promptV2 from "./criterion.system.v2.json";
+import promptV3 from "./criterion.system.v3.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -19,7 +19,21 @@ import promptV2 from "./criterion.system.v2.json";
 // prompt versionado que se edita en su sitio borra con que se genero cada texto. Es la misma disciplina
 // que las versiones de motor.
 //
+// V3 (2026-09-08): PORTE DE SU SYSPROMPT (punto 8 de su cotejo). Su instruccion gobierna el alcance:
+// "todo lo del prompt completo que tiene el html... pero NO enviar el nombre". Entra la estructura
+// obligatoria de los cinco dominios del DFI, sus reglas de los parametros propios (cortes por sexo,
+// direccion de la PABU frente a phi, el IFC prevalece sobre el angulo de fase) y su bloque de formato.
+//
+// Y ENTRA UNA REGLA QUE SU PROMPT NO LLEVA: la prohibicion explicita de nombrar un resultado de
+// laboratorio. No es ciencia nuestra: es la IMPLEMENTACION DE SU PUNTO 9 ("eso no se puede poner porque
+// nos pone en riesgo, sin haber hecho pruebas de laboratorio"). Su prompt no la necesita porque el suyo
+// no manda el campo `bio`; el nuestro manda diagnosticos y medicamentos en texto, asi que si. Va
+// declarada en PENDIENTES_CIENTIFICOS.
+//
+// LA v2 NO SE RETIRA: los borradores generados entre el 2026-09-01 y hoy se hicieron con ella y su
+// registro de procedencia apunta a esa version. Misma disciplina que las versiones de motor.
+//
 // Y ESTE ES SOLO UNO DE LOS DOS LADOS. El otro es el filtro de salida (`limpiarMarcadores`), y hacen
 // falta los dos: un prompt baja la frecuencia con la que el modelo mete markdown, no la lleva a cero.
 // Textual suyo: "por si el modelo desobedece, que es lo que hacen".
-export const CRITERION_SYSTEM_PROMPT: string = promptV2.system;
+export const CRITERION_SYSTEM_PROMPT: string = promptV3.system;

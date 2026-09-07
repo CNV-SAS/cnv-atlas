@@ -2,7 +2,7 @@ import "server-only";
 
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
-import { type IndicatorClass, isEngineOutput } from "@/clinical-engine";
+import { isEngineOutput } from "@/clinical-engine";
 import { resolveAiConfig } from "@/lib/ai/config";
 import { getActivePrompt } from "@/lib/ai/prompts";
 import { limpiarMarcadores, traiaMarcadores } from "@/lib/ai/limpiar-marcadores";
@@ -19,12 +19,19 @@ import {
   buildCriterionPrompt,
   CRITERION_PROMPT_KEY,
   CRITERION_PROMPT_VERSION,
-  type CriterionPromptInput,
-} from "../ai/prompts/criterion.v1";
+} from "../ai/prompts/criterion.v2";
+import { buildCriterionInput } from "../data/criterion-input-reader";
 
-// Generacion del BORRADOR de criterio por IA (h). Arma el contrato CriterionPromptInput SOLO con
-// variables clinicas del snapshot (barrera PII, regla 15): estado EFR, fenotipos, indicadores y dominios;
-// jamas nombre, documento ni contacto (esos ni siquiera viajan en el EngineOutput). Devuelve el TEXTO al
+// Generacion del BORRADOR de criterio por IA. Desde el 2026-09-08 es el PORTE DEL PASO 4 de su Analisis
+// IA (punto 8 de su cotejo): el diagnostico integral estructurado por los cinco dominios del DFI, con los
+// datos crudos del paciente como evidencia de respaldo.
+//
+// EL INSUMO YA NO SALE SOLO DEL SNAPSHOT. Su prompt manda tambien las respuestas de la encuesta y la
+// composicion corporal, que el EngineOutput sellado no lleva; `buildCriterionInput` las reune.
+//
+// LA BARRERA PII SIGUE SIENDO ESTRUCTURAL, y ahora esta en un solo sitio: el builder lee UNICAMENTE las
+// claves de su lista blanca (`CAMPOS` en criterion.v2.ts). El reader trae la encuesta entera a proposito,
+// para que el unico lugar donde se decide que viaja sea esa lista. Devuelve el TEXTO al
 // cliente para que caiga en el campo editable; NO se aplica solo. Persiste SIEMPRE una fila de
 // procedencia (exito o fallo). No exige diagnostico confirmado: el criterio se forma al revisar.
 
@@ -33,21 +40,6 @@ type Actor = { actorId: string; actorEmail: string; ip: string | null };
 function classifyFailure(e: unknown): CriterionSuggestionStatus {
   const msg = e instanceof Error ? `${e.name} ${e.message}` : String(e);
   return /timeout|timed out|abort/i.test(msg) ? "timeout" : "provider_error";
-}
-
-// Indicadores a DESTACAR: los que el clasificador dejo fuera de la banda normal (k !== 2). El nivel es la
-// etiqueta del propio clasificador (lleva la direccion: "superior", "bajo", etc.). k ausente se incluye
-// (mejor sobre-mostrar que ocultar). Clave del mapa = codigo del registry (mismo que indicatorNames).
-function alteredIndicators(
-  classifications: Record<string, IndicatorClass>,
-  names: Record<string, string>,
-): { nombre: string; nivel: string }[] {
-  const out: { nombre: string; nivel: string }[] = [];
-  for (const [code, cls] of Object.entries(classifications)) {
-    if (!cls || cls.k === 2) continue;
-    out.push({ nombre: names[code] ?? code, nivel: cls.label });
-  }
-  return out;
 }
 
 export async function generateCriterion(
@@ -70,22 +62,15 @@ export async function generateCriterion(
     );
   }
 
-  const snap = results.snapshot;
-  const efr = results.efrState;
-  // Contrato PII-free: solo variables clinicas del snapshot. Nunca patientName ni documentLabel (que
-  // viven aparte, fuera del EngineOutput).
-  const input: CriterionPromptInput = {
-    estadoEfr: efr?.diagnosisName ?? snap.efrPhenotype.diagnostico,
-    mecanismo: efr?.mechanism ?? null,
-    // `efr.biomarkers` se lee para la PANTALLA, no para el modelo (punto 9, ver criterion.v1.ts).
-    riesgos: efr?.risks ?? null,
-    fenotipoEstructural: snap.structural.nombre,
-    sectorFuncional: snap.frSector.nombre,
-    indicadoresAlterados: alteredIndicators(snap.classifications, results.indicatorNames),
-    dominios: snap.dfi.domains.map((d) => ({ nombre: d.nombre, nivel: d.clasif })),
-    riesgoIntegrado: `${snap.dfi.riesgo.nivel} (score ${snap.dfi.riesgo.score})`,
-    rutas: snap.dfi.rutas,
-  };
+  const input = await buildCriterionInput(
+    evaluationId,
+    results.snapshot,
+    results.indicatorNames,
+    results.efrState ?? null,
+  );
+  if (!input) {
+    return err(appError("conflict", "El diagnóstico de esta evaluación no tiene el formato actual."));
+  }
 
   // Prompt de sistema: prefiere la version activa en BD (editable por admin); si no, el texto canonico.
   const activePrompt = await getActivePrompt(CRITERION_PROMPT_KEY);
