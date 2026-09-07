@@ -374,6 +374,67 @@ describe("las dos medidas del profesional se editan en Antropometría (punto 4)"
   });
 });
 
+// CANDADO DE LA NOTA DEL FORMULARIO DE CONDICIONES (smoke de Santiago, 2026-09-07).
+//
+// EL DEFECTO: encima del boton salia siempre *"Responde todas las condiciones (Sí o No) para poder
+// guardar. La semana del ciclo es opcional."*, tambien con un paciente HOMBRE, a quien esa pregunta ni se
+// le muestra: `visible` la filtra por `scope` y el bloque femenino solo se pinta si `patientIsFemale`.
+//
+// Una cadena fija describiendo un estado que no habia mirado. Misma familia que el titulo de la Diana
+// ("inicial y última" con una sola medicion) y que la salida del seed ("Sembradas 12" sin decir donde).
+//
+// Y AL BARRER LA MISMA PANTALLA aparecio dos veces mas: el aviso del reconocimiento decia "el embarazo" a
+// mano (la CONDICION se derivaba, el TEXTO no; acertaba porque hoy es la unica advertencia del catalogo),
+// y el comentario del gate nombraba tambien la semana del ciclo. Tres sitios describiendo a mano lo que
+// el catalogo ya dice.
+//
+// LO QUE SE FIJA: que las dos notas se DERIVEN del catalogo visible, no que digan una frase concreta. Por
+// eso se afirma sobre el codigo que las arma, no sobre el texto: fijar el texto seria escribir la cuarta
+// copia a mano.
+describe("las notas del formulario de condiciones se derivan de lo que se pinta", () => {
+  const CAPTURA = readFileSync(
+    "src/modules/bis-intake/components/bis-conditions-capture.tsx",
+    "utf8",
+  );
+  const limpio = sinComentarios(CAPTURA);
+
+  it("la nota ya NO nombra la semana del ciclo a mano", () => {
+    expect(
+      limpio,
+      "volvió la frase fija: se la enseña a un hombre, que no ve esa pregunta",
+    ).not.toContain("La semana del ciclo es opcional");
+  });
+
+  it("las opcionales salen del catálogo VISIBLE, que es el que ya filtra por sexo", () => {
+    // `visible` es el mismo arreglo del que sale `missingRequired`. Derivarlas de otro sitio (del
+    // catálogo entero, por ejemplo) volvería a nombrar la del ciclo con un paciente hombre.
+    expect(limpio).toContain("const opcionales = visible.filter((c) => c.inputType !== \"boolean\")");
+    expect(limpio).toContain("opcionales.map((c) => c.label)");
+  });
+
+  it("y son EXACTAMENTE el complemento de las obligatorias", () => {
+    // Las dos definiciones tienen que partir el mismo conjunto: obligatoria = boolean, opcional = lo
+    // demás. Si una de las dos cambia sola, quedan condiciones que no son ni una cosa ni la otra.
+    expect(limpio).toContain('c.inputType === "boolean" && answers[c.key].bool === null');
+    expect(limpio).toContain('c.inputType !== "boolean"');
+  });
+
+  it("el aviso del reconocimiento nombra la advertencia real, no \"el embarazo\"", () => {
+    expect(limpio, "volvió a nombrar el embarazo a mano").not.toContain(
+      "Marca el reconocimiento del embarazo",
+    );
+    expect(limpio).toContain("activeAdvertencias");
+    expect(limpio).toContain("!answers[c.key].acknowledged");
+  });
+
+  it("el control: el bloque femenino SIGUE oculto para un hombre", () => {
+    // Sin esto, las aserciones de arriba pasarían igual si alguien mostrara todas las preguntas a todos,
+    // que es la otra forma de "arreglar" la contradicción y sería mucho peor.
+    expect(limpio).toContain('c.scope === "general" || patientIsFemale');
+    expect(limpio).toContain("{patientIsFemale && female.length > 0 ?");
+  });
+});
+
 describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
   const ENTRADA = readFileSync(
     "src/modules/evaluations/components/entrada-evaluacion.tsx",

@@ -83,11 +83,22 @@ export function BisConditionsCapture({
     (c) => c.kind === "advertencia" && answers[c.key]?.bool === true,
   );
   const missingAck = activeAdvertencias.some((c) => !answers[c.key].acknowledged);
-  // Todas las si/no en alcance son OBLIGATORIAS (la numerica semana del ciclo es opcional): un
-  // checklist a medias no cumple, y "sin responder" no es "no" para una compuerta de seguridad.
+  // Todas las si/no en alcance son OBLIGATORIAS: un checklist a medias no cumple, y "sin responder" no
+  // es "no" para una compuerta de seguridad. Lo que NO es si/no es opcional, y cuales son eso lo dice el
+  // catalogo, no este comentario (antes nombraba aqui la semana del ciclo, y la pantalla la nombraba
+  // otra vez: dos sitios describiendo a mano lo mismo).
   const missingRequired = visible.some(
     (c) => c.inputType === "boolean" && answers[c.key].bool === null,
   );
+  // LAS OPCIONALES, DERIVADAS DEL MISMO SITIO QUE LAS OBLIGATORIAS. La linea de arriba define "obligatoria"
+  // como si/no en alcance; opcional es exactamente su complemento. Sacarlas del mismo `visible` es lo que
+  // garantiza que la nota no pueda nombrar algo que no esta en pantalla.
+  //
+  // EL DEFECTO QUE CIERRA (smoke de Santiago, 2026-09-07): la nota decia "La semana del ciclo es opcional"
+  // SIEMPRE, tambien con un paciente hombre, a quien esa pregunta ni se le muestra (`visible` la filtra
+  // por scope y el bloque femenino solo se pinta si `patientIsFemale`). Era una cadena fija describiendo
+  // un estado que no habia mirado: la misma familia que el titulo de la Diana o el log del seed.
+  const opcionales = visible.filter((c) => c.inputType !== "boolean");
 
   const setBool = (key: string, val: boolean) =>
     setAnswers((s) => ({ ...s, [key]: { ...s[key], bool: val } }));
@@ -325,13 +336,29 @@ export function BisConditionsCapture({
         <div className="flex flex-col gap-2">
           {missingRequired ? (
             <span className="text-xs font-medium text-muted-foreground">
-              Responde todas las condiciones (Sí o No) para poder guardar. La semana del ciclo es
-              opcional.
+              Responde todas las condiciones (Sí o No) para poder guardar.
+              {/* LA EXCEPCION SE NOMBRA DESDE EL CATALOGO, no se escribe: asi no puede nombrar una
+                  pregunta que no esta en pantalla, y una opcional NUEVA aparece aquí sola en vez de
+                  quedarse fuera de una frase escrita a mano. */}
+              {opcionales.length > 0 ? (
+                <>
+                  {" "}
+                  {opcionales.length === 1 ? "Esta no hace falta" : "Estas no hacen falta"}:{" "}
+                  {opcionales.map((c) => c.label).join(" · ")}
+                </>
+              ) : null}
             </span>
           ) : null}
           {missingAck ? (
             <span className="text-xs font-medium text-clinical-warning">
-              Marca el reconocimiento del embarazo para poder guardar.
+              {/* LA CONDICION YA SE DERIVABA (`activeAdvertencias`) y el TEXTO no: decia "el embarazo"
+                  a mano. Acertaba porque hoy es la unica advertencia del catalogo, y ese "hoy" es lo que
+                  envejece. Se nombra la que de verdad falta por reconocer. */}
+              Marca el reconocimiento para poder guardar:{" "}
+              {activeAdvertencias
+                .filter((c) => !answers[c.key].acknowledged)
+                .map((c) => c.label)
+                .join(" · ")}
             </span>
           ) : null}
           <Button
