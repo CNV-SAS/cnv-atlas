@@ -65,24 +65,50 @@ const AUTHORIZED_MODIFICATIONS = [
     // dia el bloqueo falla o alguien llega por otra ruta, el sistema no emitira una edad bioelectrica
     // inventada." Guarda: sin los insumos del LE8, total = null. Un 0 respondido (0 dias, "Nunca"=0) SI
     // cuenta; d5_39=[] ("sin diagnosticos") es respuesta valida y cuenta; solo la AUSENCIA frena.
-    // ALCANCE: con LE8_MAPEO_CORREGIDO=false (estado vigente, P-04 cerrada), calcLE8 lee para alimentacion
-    // d1_9/d1_10 y para hidratacion d1_16, campos que la encuesta NO captura (Q3): esos dos dominios corren
-    // en default SIEMPRE (no es ausencia del paciente, es un hueco del modelo de datos). Los insumos que
-    // calcLE8 lee Y la encuesta captura son SEIS: d3_23/d3_24 (actividad), d3_30 (tabaco), d3_26 (sueno),
-    // d5_39 (glucosa/colesterol/presion), d5_36 (presion). La guarda exige esos. Si algun dia se activa el
-    // mapeo (flag true), calcLE8 pasa a leer d1_N_i (calcPatron) y d7_agua: esta lista debe revisarse ahi.
+    // ALCANCE, ACTUALIZADO EL 2026-09-06 PORQUE EL MAPEO YA SE ACTIVO. La version anterior de esta nota
+    // describia el estado con LE8_MAPEO_CORREGIDO=false y terminaba diciendo: "si algun dia se activa el
+    // mapeo, calcLE8 pasa a leer d1_N_i (calcPatron) y d7_agua: esta lista debe revisarse ahi". Se activo
+    // el 2026-09-05 y NADIE REVISO LA LISTA, asi que la guarda siguio exigiendo seis insumos mientras el
+    // motor leia ocho.
+    //
+    // QUE HACIA CON LOS DOS QUE NO EXIGIA, y es exactamente lo que esta guarda vino a impedir:
+    //   · hidratacion  `Number(enc.d7_agua) || 0`  -> sin respuesta puntua CERO, que es el peor valor
+    //     posible. Un paciente que no contesto quedaba registrado como uno que no bebe agua.
+    //   · alimentacion `calcPatron(enc).score`     -> sin la matriz de frecuencia el score cae a 10 (la
+    //     base) y con la matriz a medias baja en silencio, proporcional a cuantos grupos falten.
+    // Un dato que falta entrando al calculo como si fuera una respuesta, que es la misma familia que
+    // llevamos dias cerrando.
+    //
+    // LA GUARDA EXIGE OCHO: los seis de siempre (d3_23/d3_24 actividad, d3_30 tabaco, d3_26 sueno,
+    // d5_39 glucosa/colesterol/presion, d5_36 presion), mas d7_agua y la MATRIZ COMPLETA de frecuencia
+    // (d1_1_i .. d1_15_i). La matriz se exige entera y no en parte: `calcPatron` suma y resta por grupo,
+    // asi que un grupo ausente no da error, baja el score.
+    //
+    // Y FRENA EL LE8 ENTERO, no el dominio: el total es un compuesto, y emitirlo con un dominio en su
+    // default sesgaria el ICEC y con el la EB-BIS. Sin los ocho, total = null y EB/ICEC no salen.
+    //
+    // MEDIDO ANTES DE APLICARLO, sobre la nube en solo lectura: de 120 respuestas, once pasan los seis
+    // de hoy y LAS ONCE pasan tambien los ocho. Cero evaluaciones cambian de comportamiento. El gate de
+    // completitud de la encuesta es lo que lo hace improbable; la guarda cierra el hueco que se abriria
+    // el dia que alguien conteste los seis y se salte el agua.
     instruction:
-      "Guarda en calcLE8: sin los 6 insumos capturados del LE8 (d3_23/d3_24/d3_30/d3_26/d5_39/d5_36) no se emite total (null); un 0 respondido cuenta, la ausencia no. Alimentacion/hidratacion corren en default por hueco de datos (Q3), no son ausencia (§1, 2026-08-13).",
+      "Guarda en calcLE8: sin los 8 insumos que el motor LEE (d3_23/d3_24/d3_30/d3_26/d5_39/d5_36, d7_agua y la matriz d1_1_i..d1_15_i completa) no se emite total (null); un 0 respondido cuenta, la ausencia no (§1, 2026-08-13; ampliada a ocho el 2026-09-06 al activarse LE8_MAPEO_CORREGIDO, como pedia la propia nota).",
     oldSlice: "const calcLE8 = enc => {\n  const scores = [];",
     newSlice: `const calcLE8 = enc => {
   // Guarda (Gildardo 2026-08-13 §1): no se calcula el LE8 sobre AUSENCIAS. Un 0 respondido (0 dias,
   // "Nunca"=0) SI cuenta; el campo NO respondido no. d5_39 es arreglo ([] = "sin diagnosticos" = respuesta
-  // valida). Los insumos que calcLE8 LEE y la encuesta CAPTURA son 6 (con LE8_MAPEO_CORREGIDO=false, P-04):
-  // alimentacion (d1_9/d1_10) e hidratacion (d1_16) NO se capturan (Q3), corren en default SIEMPRE, no son
-  // ausencia del paciente. Sin los 6 capturados, total = null (EB/ICEC no salen sobre respuestas inventadas).
-  var _le8Req = ["d3_23","d3_24","d3_30","d3_26","d5_39","d5_36"];
+  // valida).
+  //
+  // OCHO INSUMOS desde el 2026-09-06, no seis. Al encender LE8_MAPEO_CORREGIDO el motor paso a leer
+  // d7_agua y la matriz de frecuencia, y la guarda se quedo en los seis de antes: sin agua, hidratacion
+  // puntuaba CERO (el peor valor) en vez de frenar, y sin la matriz alimentacion caia a la base de 10.
+  // La matriz se exige ENTERA porque calcPatron suma y resta por grupo: uno ausente no da error, baja
+  // el score. Sin los ocho, total = null y EB/ICEC no salen sobre respuestas inventadas.
+  var _le8Req = ["d3_23","d3_24","d3_30","d3_26","d5_39","d5_36","d7_agua"];
   var _le8Pres = function (k) { return k === "d5_39" ? Array.isArray(enc.d5_39) : (enc[k] != null && String(enc[k]) !== ""); };
-  if (!_le8Req.every(_le8Pres)) return { scores: [], total: null };
+  var _le8Matriz = true;
+  for (var _le8i = 1; _le8i <= 15; _le8i++) { if (!_le8Pres("d1_" + _le8i + "_i")) _le8Matriz = false; }
+  if (!_le8Matriz || !_le8Req.every(_le8Pres)) return { scores: [], total: null };
   const scores = [];`,
   },
   {

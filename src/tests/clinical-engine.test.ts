@@ -8,13 +8,25 @@ import biody from "./fixtures/clinical-engine/biody-juan-esteban-anon.json";
 // EngineOutput, determinismo y el flag de degradacion del DFI. La paridad numerica con
 // el HTML la cubre clinical-engine-golden.test.ts (regla 6).
 
-// Los 13 field_key que declara la version (regla 7): la lista contra la que se mide
-// dfi.complete. La encuesta esta completa solo si TODOS estan respondidos.
+// Los field_key que declara la version (regla 7): la lista contra la que se mide dfi.complete. La
+// encuesta esta completa solo si TODOS estan respondidos.
+//
+// SE AMPLIO CON EL AGUA Y LA MATRIZ DE FRECUENCIA (2026-09-06, motor 1.4.0), y el rojo que lo destapo
+// fue legitimo: esta lista se quedo en trece cuando el motor 1.3.0 encendio `LE8_MAPEO_CORREGIDO` y
+// paso a leer `d7_agua` y los quince grupos. La migracion 0100 ya los habia marcado
+// `used_in_diagnosis = true` por esa misma razon; la que no se actualizo fue esta.
+//
+// Mientras tanto el fixture se llamaba FULL_SURVEY y no lo era: los dominios de alimentacion e
+// hidratacion corrian en su default dentro de este test, o sea que la prueba de "encuesta COMPLETA"
+// pasaba verde sobre una encuesta a la que le faltaban dieciseis campos que el motor lee.
 const CANON = [
   "d2_19", "d2_20", "d2_21", "d2_22",
   "d3_23", "d3_24", "d3_26", "d3_30",
   "d5_36", "d5_38", "d5_39",
   "d8_61", "d8_62",
+  // Hidratacion y los quince grupos de frecuencia: insumos del LE8 desde 1.3.0.
+  "d7_agua",
+  ...Array.from({ length: 15 }, (_, i) => `d1_${i + 1}_i`),
 ];
 // Encuesta que responde los 13 (valores minimos: el motor no crashea con strings arbitrarios,
 // solo importa que esten respondidos para la completitud).

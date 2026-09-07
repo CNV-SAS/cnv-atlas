@@ -569,7 +569,7 @@ ICA-BIS sigue verde, o si la etiqueta desapareció.
    su tabla). Antes decían 1,20 y 0,42.
 2. Sube a Diagnóstico Funcional, tarjeta **Celular-Eléctrico**, chip del PABU. Tiene que decir
    **"desviación de φ +0,42"**, con signo **más**. Antes decía −0,42, contradiciendo a la tabla de abajo.
-3. Al pie de la pantalla, la constelación tiene que decir **Motor anibise-1.3.1**.
+3. Al pie de la pantalla, la constelación tiene que decir **Motor anibise-1.3.1**. *(Era la versión de ese día; desde el 2026-09-06 el motor es `anibise-1.4.0`. Este recorrido queda como registro de un smoke ya pasado, no para repetirlo con la cifra vieja.)*
 
 **Sería defecto si:** el chip y la fila siguen diciendo signos distintos, o el motor sigue en 1.3.0.
 

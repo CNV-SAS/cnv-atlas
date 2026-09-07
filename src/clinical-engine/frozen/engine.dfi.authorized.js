@@ -33,12 +33,18 @@ const LE8_MAPEO_CORREGIDO = true;
 const calcLE8 = enc => {
   // Guarda (Gildardo 2026-08-13 §1): no se calcula el LE8 sobre AUSENCIAS. Un 0 respondido (0 dias,
   // "Nunca"=0) SI cuenta; el campo NO respondido no. d5_39 es arreglo ([] = "sin diagnosticos" = respuesta
-  // valida). Los insumos que calcLE8 LEE y la encuesta CAPTURA son 6 (con LE8_MAPEO_CORREGIDO=false, P-04):
-  // alimentacion (d1_9/d1_10) e hidratacion (d1_16) NO se capturan (Q3), corren en default SIEMPRE, no son
-  // ausencia del paciente. Sin los 6 capturados, total = null (EB/ICEC no salen sobre respuestas inventadas).
-  var _le8Req = ["d3_23","d3_24","d3_30","d3_26","d5_39","d5_36"];
+  // valida).
+  //
+  // OCHO INSUMOS desde el 2026-09-06, no seis. Al encender LE8_MAPEO_CORREGIDO el motor paso a leer
+  // d7_agua y la matriz de frecuencia, y la guarda se quedo en los seis de antes: sin agua, hidratacion
+  // puntuaba CERO (el peor valor) en vez de frenar, y sin la matriz alimentacion caia a la base de 10.
+  // La matriz se exige ENTERA porque calcPatron suma y resta por grupo: uno ausente no da error, baja
+  // el score. Sin los ocho, total = null y EB/ICEC no salen sobre respuestas inventadas.
+  var _le8Req = ["d3_23","d3_24","d3_30","d3_26","d5_39","d5_36","d7_agua"];
   var _le8Pres = function (k) { return k === "d5_39" ? Array.isArray(enc.d5_39) : (enc[k] != null && String(enc[k]) !== ""); };
-  if (!_le8Req.every(_le8Pres)) return { scores: [], total: null };
+  var _le8Matriz = true;
+  for (var _le8i = 1; _le8i <= 15; _le8i++) { if (!_le8Pres("d1_" + _le8i + "_i")) _le8Matriz = false; }
+  if (!_le8Matriz || !_le8Req.every(_le8Pres)) return { scores: [], total: null };
   const scores = [];
   const dx = Array.isArray(enc.d5_39) ? enc.d5_39 : [];
   const dias = parseInt(enc.d3_23) || 0;

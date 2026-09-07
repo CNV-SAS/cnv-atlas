@@ -53,7 +53,30 @@
 //    texto (engine.dfi.js:146). Por eso es patch y no minor. El golden no lo vio porque su donante
 //    tiene PABU 1,9925, por encima de φ, donde los dos calculos coinciden; el candado nuevo
 //    (`ica-bis-signo-del-chip.test.ts`) cubre justo el caso que al golden le falta.
-export const ENGINE_VERSION = "anibise-1.3.1";
+//  · 1.4.0 (2026-09-06): MINOR. LA GUARDA DEL LE8 PASA DE SEIS INSUMOS A OCHO, que es lo que su propia
+//    nota pedia y nadie hizo. El texto decia: "si algun dia se activa el mapeo, calcLE8 pasa a leer
+//    d1_N_i (calcPatron) y d7_agua: esta lista debe revisarse ahi". El mapeo se activo con 1.3.0 y la
+//    lista se quedo en seis, asi que el motor leia ocho campos y la guarda exigia seis.
+//    LO QUE HACIA CON LOS DOS QUE NO EXIGIA: sin `d7_agua`, hidratacion puntuaba CERO (el peor valor
+//    posible: un paciente que no contesto quedaba registrado como uno que no bebe agua); sin la matriz
+//    de frecuencia, alimentacion caia a la base de 10, y con la matriz a medias bajaba en silencio
+//    proporcional a cuantos grupos faltaran. Un dato ausente entrando al calculo como una respuesta,
+//    que es justo lo que la guarda de 2026-08-13 vino a impedir para los otros seis.
+//    QUE EXIGE AHORA: los seis de siempre, mas `d7_agua` y la matriz `d1_1_i..d1_15_i` COMPLETA (entera
+//    y no en parte: `calcPatron` suma y resta por grupo, asi que un grupo ausente no da error, baja el
+//    score). Y frena el LE8 ENTERO, no el dominio: el total es un compuesto y emitirlo con un dominio
+//    en su default sesgaria el ICEC y con el la EB-BIS.
+//    POR QUE MINOR Y NO PATCH: no se mueve ninguna cifra de lo ya emitido (medido abajo), pero cambia
+//    lo que el motor PUEDE devolver: ahora se niega a emitir donde antes contestaba. Eso es
+//    comportamiento sellado, no un texto.
+//    MEDIDO ANTES DE APLICARLO, sobre la nube en solo lectura: de 120 respuestas, ONCE pasan los seis
+//    de hoy y LAS ONCE pasan tambien los ocho. CERO evaluaciones cambian de comportamiento. El gate de
+//    completitud de la encuesta es lo que lo hace improbable; la guarda cierra el hueco que se abriria
+//    el dia que alguien conteste los seis y se salte el agua.
+//    Y AL REGENERAR se corrigieron solos los TRES comentarios que describian el interruptor como
+//    apagado: viven dentro del `newSlice`, asi que se rehacen cuando cambia el codigo que corre. Antes
+//    no se tocaron a proposito, porque moverlos solos habria cambiado el SHA sin cambiar una cifra.
+export const ENGINE_VERSION = "anibise-1.4.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
