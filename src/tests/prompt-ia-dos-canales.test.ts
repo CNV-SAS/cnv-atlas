@@ -1,0 +1,109 @@
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+// CANDADO DE LOS DOS CANALES DEL PROMPT DE IA (2026-09-08).
+//
+// EL DEFECTO, y es el unico de los tres catalogos que estaba desincronizado DE VERDAD y no en potencia:
+//
+//   LOCAL   criterio.generate v1 inactive · v2 ACTIVE
+//   NUBE    criterio.generate v1 ACTIVE
+//
+// La v2 (el bloque de formato que Gildardo pidio en su §8 del 2026-09-01, el que prohibe markdown) nunca
+// llego a produccion. `ai_prompts` solo lo publicaba `supabase/seed.ts`, el seed DESTRUCTIVO que no se
+// corre contra la nube.
+//
+// Y ES PEOR QUE UNA FILA AUSENTE. `getActivePrompt` hace que la fila de BASE GANE sobre el texto canonico
+// del codigo: con la v1 activa, la nube NO caia al texto del repositorio, corria el viejo. Una fila
+// ausente si cae al canonico, y eso es deliberado (`menu.adapt` se diseño asi a proposito).
+//
+// LA SEVERIDAD, CALIBRADA: el filtro de salida (`limpiarMarcadores`) corre igual, asi que el markdown se
+// limpiaba de todos modos. Su §8 pidio las DOS mitades ("por si el modelo desobedece, que es lo que
+// hacen"); en la nube habia una. No estaba roto: faltaba una de dos guardas que creiamos tener.
+//
+// LO QUE SE FIJA: que el .sql commiteado sea EL QUE EL GENERADOR PRODUCE HOY desde el seed, y que el seed
+// y el JSON canonico sigan siendo la misma fuente. No se compara contra una copia escrita aqui, que seria
+// la cuarta copia del mismo parrafo.
+
+const MIGRACION = "drizzle/0102_prompt_criterio_v2.sql";
+const SEED = readFileSync("supabase/seed.ts", "utf8");
+
+function generado(): string {
+  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0102", "criterio.generate"], {
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+  });
+}
+
+const norm = (s: string) => s.replace(/\r\n/g, "\n").trimEnd();
+
+describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
+  it("el control: el generador produce las tres sentencias", () => {
+    // Sin control, un generador que devolviera vacio pasaria la comparacion si el fichero tambien lo
+    // estuviera. Y las TRES importan: retirar, insertar y (en re-aplicacion) activar.
+    const sql = generado();
+    expect(sql).toContain("UPDATE ai_prompts SET status = 'inactive'");
+    expect(sql).toContain("INSERT INTO ai_prompts");
+    expect(sql).toContain("UPDATE ai_prompts SET status = 'active'");
+    expect(sql.length).toBeGreaterThan(1500);
+  });
+
+  it("el .sql commiteado es EXACTAMENTE lo que el generador produce hoy", () => {
+    expect(
+      norm(readFileSync(MIGRACION, "utf8")),
+      "el prompt canónico y la migración divergieron: regenera con " +
+        "`node scripts/gen-ai-prompt-migration.mjs 0102 criterio.generate > " + MIGRACION + "`",
+    ).toBe(norm(generado()));
+  });
+
+  it("y lleva el texto ÍNTEGRO del JSON canónico, no un resumen", () => {
+    // Se DERIVA del JSON, no se escribe la longitud aqui. Un texto truncado en el SQL publicaria un
+    // prompt a medias, que es peor que no publicarlo: el modelo obedece lo que lee.
+    const canonico = JSON.parse(
+      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v2.json", "utf8"),
+    ).system as string;
+    const sql = generado();
+    // El SQL duplica las comillas simples; se deshace para comparar el texto real.
+    expect(sql.replace(/''/g, "'")).toContain(canonico.slice(0, 400));
+    expect(sql.replace(/''/g, "'")).toContain(canonico.slice(-300));
+  });
+
+  it("respeta el índice de UNA SOLA activa: desactiva ANTES de insertar", () => {
+    // Es donde ya nos estrellamos una vez: el upsert del seed no chocaba con la otra version, chocaba con
+    // su ESTADO (`ai_prompts_one_active_idx`). El orden de las sentencias es la garantía.
+    const sql = generado();
+    const iRetirar = sql.indexOf("SET status = 'inactive'");
+    const iInsertar = sql.indexOf("INSERT INTO ai_prompts");
+    expect(iRetirar).toBeGreaterThan(-1);
+    expect(iRetirar, "insertar antes de retirar violaría el índice parcial").toBeLessThan(iInsertar);
+  });
+
+  it("y NO pisa una edición del admin", () => {
+    // Mismo criterio que el seed: solo se retira lo ANTERIOR (`version <`), y la insercion se activa solo
+    // si no quedo ninguna activa. Verificado contra Postgres real en los cuatro escenarios, con rollback.
+    const sql = generado();
+    expect(sql).toContain("AND version < 2");
+    expect(sql).toContain("THEN 'inactive' ELSE 'active' END");
+  });
+
+  it("la migración está registrada en el journal, o no la aplica nadie", () => {
+    const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
+      entries: { tag: string }[];
+    };
+    expect(journal.entries.map((e) => e.tag)).toContain("0102_prompt_criterio_v2");
+  });
+});
+
+describe("la versión que publica la migración es la que el seed declara", () => {
+  it("sale de PROMPTS_SEED, no de un número escrito en el generador", () => {
+    // Si se escribiera a mano, el seed podria subir a v3 y la migracion seguir publicando la v2 sin que
+    // nada diera error: las dos bases coherentes consigo mismas y distintas entre si.
+    const GEN = readFileSync("scripts/gen-ai-prompt-migration.mjs", "utf8");
+    expect(GEN).toContain("const PROMPTS_SEED");
+    expect(GEN, "el generador dejó de leer el seed").toContain("supabase/seed.ts");
+    // Y la version que el seed declara HOY para esta clave aparece en el SQL.
+    const bloque = /const PROMPTS_SEED = \[([\s\S]*?)\];/.exec(SEED)![1];
+    const v = /prompt_key:\s*"criterio\.generate",\s*version:\s*(\d+)/.exec(bloque)![1];
+    expect(generado()).toContain(`'criterio.generate', ${v},`);
+  });
+});
