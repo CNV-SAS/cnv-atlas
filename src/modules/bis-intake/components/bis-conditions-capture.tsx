@@ -60,12 +60,6 @@ export function BisConditionsCapture({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [answers, setAnswers] = useState(() => initState(catalog, intake));
-  const [weightGoal, setWeightGoal] = useState(
-    intake?.weightGoalKg != null ? String(intake.weightGoalKg) : "",
-  );
-  const [gripStrength, setGripStrength] = useState(
-    intake?.gripStrengthKg != null ? String(intake.gripStrengthKg) : "",
-  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(intake != null);
 
@@ -141,8 +135,6 @@ export function BisConditionsCapture({
       const res = await saveBisConditionsAction({
         evaluationId,
         answers: buildPayload(),
-        weightGoalKg: weightGoal.trim() === "" ? null : Number(weightGoal),
-        gripStrengthKg: gripStrength.trim() === "" ? null : Number(gripStrength),
       });
       if (!res.ok) {
         setFieldErrors(res.error.fields ?? {});
@@ -319,69 +311,16 @@ export function BisConditionsCapture({
           </div>
         ) : null}
 
-        {/* NO SON CONDICIONES DE LA TOMA, y por eso llevan su propio rótulo (Gildardo, 2026-08-30 §6a:
-            "nunca la puse en las condiciones del BIS"). Ni la fuerza prensil ni la meta de peso son
-            preparación ni contraindicación: son un dato que el profesional MIDE y una decisión clínica
-            que TOMA. Comparten formulario con las condiciones porque se llenan en el mismo momento de la
-            consulta, no porque sean lo mismo, y el rótulo es lo que impide que se lean como tales.
-            Dónde vive el campo en la interfaz (aquí o en la subpestaña Antropometría) se decide en el
-            cotejo visual, con su pantalla al lado. */}
-        {/* EL ID ES EL DESTINO DEL ENLACE de Antropometria (cotejo 2026-09-05, punto 4): alli estas dos
-            medidas se MUESTRAN, porque es donde su archivo las pone, y se editan AQUI, que es donde se
-            llenan junto con las condiciones en un solo guardado. El enlace tiene que caer en el bloque,
-            no en la subpestaña entera. Si se renombra el id, el candado lo dice. */}
-        <div id="medidas-del-profesional" className="flex flex-col gap-3 border-t border-border pt-4 scroll-mt-24">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Medidas del profesional
-          </span>
-          <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="weight-goal" className="text-sm">
-              Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
-            </Label>
-            <Input
-              id="weight-goal"
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={weightGoal}
-              onChange={(e) => setWeightGoal(e.target.value)}
-              disabled={pending}
-              placeholder="Ej. 70"
-            />
-            {/* QUE HACE EL CAMPO, junto al campo. Es "la palanca" en sus palabras (2026-08-26), y hasta el
-                2026-08-31 este input se GUARDABA y no lo leia nadie: el profesional lo fijaba y la
-                prescripcion no se movia. Decir a donde va es lo que impide volver a dejarlo suelto. */}
-            <p className="text-xs text-muted-foreground">
-              Es la base del cálculo: el gasto y los gramos de proteína del plan salen de este peso, no del
-              medido. Si lo dejas vacío, el modelo usa un peso calculado. El nutricionista puede ajustarlo
-              en Tratamiento, pero es el mismo dato, no otro.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="grip-strength" className="text-sm">
-              Fuerza prensil (Kgf) <span className="text-muted-foreground">(opcional)</span>
-            </Label>
-            <Input
-              id="grip-strength"
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={gripStrength}
-              onChange={(e) => setGripStrength(e.target.value)}
-              disabled={pending}
-              placeholder="Ej. 35.4"
-            />
-            {/* Protocolo EWGSOP2 como texto de ayuda junto al campo (Gildardo 2026-08-17 §6): un numero de
-                dinamometro sin protocolo no es comparable entre consultas. */}
-            <p className="text-xs text-muted-foreground">
-              La mide el profesional en consulta, después de cintura y cadera y antes del BIS: mano
-              dominante, sentado, codo a 90°, mejor de tres intentos con descanso. Se registra el mejor,
-              no el promedio, en Kgf con un decimal.
-            </p>
-          </div>
-          </div>
-        </div>
+        {/* AQUI IBAN EL PESO META Y LA FUERZA PRENSIL, y se fueron a Antropometría el 2026-09-07
+            (punto 4 de su cotejo). Gildardo lo devolvió dos veces: el 2026-08-30 §6a ("nunca la puse en
+            las condiciones del BIS") y ahora con la razón que faltaba, que no es de ubicación sino de
+            SECUENCIA: "el peso meta se establece al revisar al paciente y sus datos; si lo ponen antes el
+            profesional NO tiene cómo acordarse del contexto del paciente".
+
+            Estas condiciones se responden ANTES de medir. Esas dos se deciden DESPUÉS de ver la
+            composición. Compartían formulario porque se llenaban en el mismo momento, y ese momento
+            resultó ser el equivocado. Cierra DIV-18: el precio, escrito allí desde el principio, es el
+            segundo guardado. */}
 
         <div className="flex flex-col gap-2">
           {missingRequired ? (

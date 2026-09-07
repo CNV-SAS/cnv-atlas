@@ -17,6 +17,7 @@ import {
   clearBisCorrection,
   correctBisValue,
 } from "./data/bis-correction-writer";
+import { writeMedidasDelProfesional } from "./data/medidas-profesional-writer";
 import { CORREGIBLES } from "./services/medidas-corregibles";
 import { writeBisConditionsIntake } from "./data/bis-intake-writer";
 import { canCaptureBisConditions } from "./policies/can-capture-bis-conditions";
@@ -80,8 +81,6 @@ export async function saveBisConditionsAction(
     versionId: catalog.versionId,
     answers: validated.value.answers,
     contraindicated: validated.value.contraindicated,
-    weightGoalKg: input.weightGoalKg ?? null,
-    gripStrengthKg: input.gripStrengthKg ?? null,
     actorId: user.id,
     actorEmail: user.email,
     ip: ip === "unknown" ? null : ip,
@@ -182,4 +181,64 @@ export async function clearBisCorrectionAction(
   }
   revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
   return { error: null, success: "Se restauró el valor del equipo.", warning: null };
+}
+
+
+// LAS DOS MEDIDAS DEL PROFESIONAL, GUARDADAS DESDE ANTROPOMETRIA (2026-09-07, punto 4 de su cotejo).
+//
+// Guardado propio y SEPARADO del de las condiciones, que es el precio que DIV-18 ya tenia escrito. El
+// porque completo esta en `medidas-profesional-writer.ts`; aqui solo la forma: estado de formulario (no
+// `Result`) porque lo consume un formulario de la pantalla de evaluacion, como el resto del bloque.
+//
+// LOS DOS CAMPOS VIAJAN JUNTOS Y SE DISTINGUE VACIO DE AUSENTE: el formulario manda siempre los dos, y
+// una cadena vacia significa "borrar este valor" (que es una decision del profesional), no "no lo toques".
+const medidasProfesionalSchema = z.object({
+  evaluationId: z.guid(),
+  // Se acepta coma decimal, que es como se escribe aqui. Los topes atrapan el dedo gordo: un peso meta de
+  // 700 o una prensil de 400 no son medidas, son errores de tecleo.
+  weightGoalKg: z.union([z.literal(""), z.coerce.number().positive().max(400)]),
+  gripStrengthKg: z.union([z.literal(""), z.coerce.number().positive().max(200)]),
+});
+
+export async function saveMedidasProfesionalAction(
+  _prev: BisCorrectionState,
+  form: FormData,
+): Promise<BisCorrectionState> {
+  const user = await requireUser();
+  if (!canCaptureBisConditions(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const parsed = medidasProfesionalSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    weightGoalKg: String(form.get("weightGoalKg") ?? "").trim().replace(",", "."),
+    gripStrengthKg: String(form.get("gripStrengthKg") ?? "").trim().replace(",", "."),
+  });
+  if (!parsed.success) {
+    return {
+      error: "Revisa los valores: el peso meta va en kg y la fuerza prensil en Kgf, ambos mayores que cero.",
+      success: null,
+      warning: null,
+    };
+  }
+
+  const ownership = await getEvaluationOwnership(parsed.data.evaluationId);
+  if (!ownership) return { error: "Evaluación no encontrada.", success: null, warning: null };
+
+  try {
+    const ip = await getClientIp();
+    await writeMedidasDelProfesional({
+      evaluationId: parsed.data.evaluationId,
+      weightGoalKg: parsed.data.weightGoalKg === "" ? null : parsed.data.weightGoalKg,
+      gripStrengthKg: parsed.data.gripStrengthKg === "" ? null : parsed.data.gripStrengthKg,
+      actorId: user.id,
+      actorEmail: user.email,
+      ip: ip === "unknown" ? null : ip,
+    });
+    // La prensil entra al motor (fenotipo de sarcopenia) y el peso meta gobierna la cadena calorica: las
+    // dos cambian lo que se ve en Diagnostico y en Tratamiento, no solo este bloque.
+    revalidatePath("/evaluaciones/[id]", "page");
+    return { error: null, success: "Medidas guardadas.", warning: null };
+  } catch (e) {
+    if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
+    throw e;
+  }
 }

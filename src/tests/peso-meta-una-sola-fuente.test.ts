@@ -37,7 +37,11 @@ const READER = readFileSync("src/modules/treatment/data/treatment-reader.ts", "u
 const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
 const INTAKE_WRITER = readFileSync("src/modules/bis-intake/data/bis-intake-writer.ts", "utf8");
 const MENU = readFileSync("src/modules/treatment/services/generate-menu.ts", "utf8");
-const CAPTURA = readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8");
+// LA SUPERFICIE DE ENTRADA DEL PESO META CAMBIO DE ARCHIVO el 2026-09-07 (punto 4 de su cotejo): de las
+// condiciones de la toma a Antropometria. Se mueve el ALCANCE, no la asercion: el campo tiene que seguir
+// diciendo a donde va el numero, esté donde esté.
+const CAPTURA = readFileSync("src/modules/bis-intake/components/antropometria-editable.tsx", "utf8");
+const MEDIDAS_WRITER = readFileSync("src/modules/bis-intake/data/medidas-profesional-writer.ts", "utf8");
 const MIGRACION = readFileSync("drizzle/0095_peso_meta_una_sola_fuente.sql", "utf8");
 const MUDANZA = readFileSync("drizzle/0096_peso_meta_en_la_evaluacion.sql", "utf8");
 const CORRECCION = readFileSync("src/modules/corrections/services/correct-evaluation.ts", "utf8");
@@ -187,8 +191,14 @@ describe("no se perdió quién lo fijó", () => {
     // decidio el peso del paciente.
     expect(WRITER).toContain("const cambio = anterior !== input.pesoMetaFijado");
     expect(WRITER).toContain("evalLocked?.origen");
-    expect(INTAKE_WRITER).toContain("const pesoMetaCambio = pesoMetaAnterior !== input.weightGoalKg");
-    expect(INTAKE_WRITER).toContain("previo?.origen");
+    // La segunda superficie ES OTRA DESDE EL 2026-09-07: la escritura del peso meta salio del writer de
+    // condiciones y vive en el suyo propio. La regla no cambia, cambia donde se comprueba.
+    expect(MEDIDAS_WRITER).toContain("anterior !== input.weightGoalKg");
+    expect(MEDIDAS_WRITER).toContain("previo.origen");
+    expect(
+      sinComentarios(INTAKE_WRITER),
+      "si el writer de condiciones vuelve a escribir el peso meta, hay dos reglas de procedencia",
+    ).not.toContain("weightGoalKg");
   });
 });
 

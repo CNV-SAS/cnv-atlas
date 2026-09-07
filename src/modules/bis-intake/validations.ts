@@ -28,8 +28,10 @@ const answerInput = z.object({
 export const saveBisConditionsSchema = z.object({
   evaluationId: z.guid(),
   answers: z.record(z.string(), answerInput),
-  weightGoalKg: z.number().positive().max(500).nullable().optional(),
-  gripStrengthKg: z.number().positive().max(200).nullable().optional(),
+  // El peso meta y la fuerza prensil SALIERON de este schema el 2026-09-07 (punto 4 de su cotejo): se
+  // capturan en Antropometria, con su propio schema en `medidasProfesionalSchema`. No se dejan opcionales
+  // "por si acaso": un campo que el formulario ya no manda pero el contrato sigue aceptando es la puerta
+  // por la que vuelve a escribirse un null encima de lo que el profesional guardo en la otra pantalla.
 });
 
 export type SaveBisConditionsInput = z.infer<typeof saveBisConditionsSchema>;
