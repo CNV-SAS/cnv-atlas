@@ -6,6 +6,26 @@ import { CRITERION_SYSTEM_PROMPT } from "./criterion.system";
 // criterion.system.ts (fuente unica). Desde /admin/ia el admin lo edita en BD; generate-criterion pasa
 // esa version por systemText.
 //
+// LOS BIOMARCADORES NO VIAJAN AL MODELO (punto 9 de su cotejo, 2026-09-07). El campo `bio` de su tabla
+// de estados EFR ("PCR↑, HOMA-IR↑, ferritina↑...") es una HIPOTESIS: que laboratorios pedir para ese
+// fenotipo. Se lo mandabamos al modelo como `Biomarcadores asociados: ...`, sin ningun marco, y el
+// modelo hizo lo previsible: escribio "hay evidencia de PCR elevada" sobre un paciente al que nadie le
+// habia sacado sangre.
+//
+// EL CONTENIDO ES SUYO, el defecto era nuestro. Su propio archivo trae la frase literal
+// (`bioP.push("PCR elevada, signos de sobrehidratacion")`) y la imprime en su resumen como
+// "Biomarcadores clave A TENER EN CUENTA", que es el marco que la mantiene como hipotesis. Pero SU IA
+// nunca recibe ese campo: su prompt manda el bloque DFI (los cinco dominios con severidad y evidencia)
+// y los datos crudos. Textual suyo: el diagnostico por IA "estaba dirigido SOLO a la evidencia de los 5
+// dominios del Diagnostico funcional".
+//
+// LA PANTALLA NO SE TOCA: la tarjeta "Biomarcadores clave" es porte fiel de su rotulo renderizado
+// ("3. 🧪 Biomarcadores clave"). El profesional la lee sabiendo lo que es; el modelo no.
+//
+// AL PORTAR SU PROMPT DE CINCO DOMINIOS (punto 8), esta prohibicion tiene que ir DENTRO del texto de
+// sistema: ese prompt manda datos crudos, y sin la regla escrita el modelo puede volver a nombrar un
+// laboratorio. El candado de abajo (ai-criterion-prompt.test.ts) es lo que lo va a poner rojo.
+//
 // BARRERA PII (regla dura 15 / DATA_GOVERNANCE): el contrato CriterionPromptInput solo admite variables
 // clinicas del snapshot (estado EFR, fenotipos, indicadores, dominios). NO tiene campos de nombre,
 // documento, fecha ni contacto: es imposible por construccion filtrar PII al LLM. Solo el bloque de
@@ -19,7 +39,8 @@ export { CRITERION_SYSTEM_PROMPT };
 export type CriterionPromptInput = {
   estadoEfr: string;
   mecanismo: string | null;
-  biomarcadores: string | null;
+  // NO HAY `biomarcadores`, y su ausencia es el arreglo del punto 9 de su cotejo (2026-09-07). Ver la
+  // nota de arriba: el campo existe en el snapshot y se muestra en pantalla, pero NO viaja al modelo.
   riesgos: string | null;
   fenotipoEstructural: string;
   sectorFuncional: string;
@@ -47,7 +68,6 @@ export function buildCriterionPrompt(
     `Estado EFR: ${input.estadoEfr}.`,
     `Fenotipo estructural: ${input.fenotipoEstructural}. Sector funcional: ${input.sectorFuncional}.`,
     `Mecanismo del estado: ${input.mecanismo ?? "no disponible"}`,
-    `Biomarcadores asociados: ${input.biomarcadores ?? "no disponible"}`,
     `Riesgos del estado: ${input.riesgos ?? "no disponible"}`,
     `Indicadores alterados: ${inds}.`,
     `Dominios de riesgo (encuesta): ${doms}.`,

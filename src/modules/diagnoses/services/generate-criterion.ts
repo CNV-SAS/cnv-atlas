@@ -77,7 +77,7 @@ export async function generateCriterion(
   const input: CriterionPromptInput = {
     estadoEfr: efr?.diagnosisName ?? snap.efrPhenotype.diagnostico,
     mecanismo: efr?.mechanism ?? null,
-    biomarcadores: efr?.biomarkers ?? null,
+    // `efr.biomarkers` se lee para la PANTALLA, no para el modelo (punto 9, ver criterion.v1.ts).
     riesgos: efr?.risks ?? null,
     fenotipoEstructural: snap.structural.nombre,
     sectorFuncional: snap.frSector.nombre,
