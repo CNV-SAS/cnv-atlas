@@ -4,7 +4,18 @@
 // mas. Vive aparte a proposito, para no acoplar este catalogo al seed destructivo de la encuesta
 // (BACKLOG.md, "El seed principal es destructivo con las respuestas de encuesta").
 //
-// Como se corre:  pnpm db:seed:bis   (node --env-file=.env.local supabase/seed-bis-conditions.ts)
+// Como se corre:
+//   Local:  pnpm db:seed:bis   (lleva --env-file=.env.local escrito dentro)
+//   Nube:   node --env-file=.env.production.local supabase/seed-bis-conditions.ts   (Santiago)
+//
+// EL ATAJO `pnpm db:seed:bis` NO SIRVE PARA LA NUBE: el --env-file esta en el script de package.json y no
+// se puede sobrescribir desde fuera. Y ojo, medido el 2026-09-07: `--env-file` NO pisa una variable ya
+// puesta en el entorno (gana el entorno), asi que exportar las dos variables tambien funciona; lo que no
+// funciona es exportar solo una. Por eso el camino documentado es el otro fichero de entorno, entero.
+//
+// PARA DESPLEGAR UN CAMBIO DE CATALOGO, el camino es la MIGRACION generada
+// (scripts/gen-bis-conditions-migration.mjs), no correr esto a mano contra la nube: una migracion la
+// aplica el despliegue y queda registrada; un comando manual depende de que alguien se acuerde.
 // Idempotente: UUIDs derivados de la clave + upsert por (version, key). Recorrerlo no duplica.
 //
 // La lista es fiel al HTML de Gildardo (ATLAS.html L10444-10480): 8 generales + 3 femeninas.
@@ -17,11 +28,18 @@ import { createHash } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en .env.local.");
+import { anunciarBase } from "../scripts/lib/base-anunciada.mjs";
+
+// El mensaje NO nombra .env.local: este seed se puede apuntar a la nube con otro fichero de entorno, y
+// decir "en .env.local" mandaria a buscar el fallo en el sitio equivocado.
+function requerido(nombre: string, valor: string | undefined): string {
+  if (!valor || valor.trim() === "") {
+    throw new Error(`Falta ${nombre}. Pasa el fichero de entorno con --env-file (o ponla en el entorno).`);
+  }
+  return valor;
 }
+const SUPABASE_URL = requerido("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
+const SERVICE_ROLE_KEY = requerido("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Service role: bypass RLS para sembrar el catalogo (mismo criterio que supabase/seed.ts).
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -91,6 +109,9 @@ const CONDS: Cond[] = [
 ];
 
 async function main() {
+  // ANTES DE ESCRIBIR NADA: contra que base. Ver scripts/lib/base-anunciada.mjs para el porque.
+  const host = anunciarBase(SUPABASE_URL, "Siembra el catalogo de condiciones de la toma BIS.");
+
   // 1. Version del catalogo (activa = la de mayor published_at; en v1 hay una sola).
   const v = await supabase.from("bis_condition_versions").upsert(
     {
@@ -126,18 +147,34 @@ async function main() {
     .delete()
     .eq("bis_condition_version_id", VERSION_ID);
   if (del.error) throw del.error;
-  const r = await supabase.from("bis_conditions").insert(rows);
+  // `.select()` NO es decorativo: sin el, supabase-js devuelve `data: null` y el unico numero que
+  // podriamos imprimir seria `rows.length`, que es el ARREGLO QUE MANDAMOS, no lo que la base acepto.
+  // Un mensaje que cuenta la intencion y no el resultado es exactamente el defecto que este seed tuvo.
+  const r = await supabase.from("bis_conditions").insert(rows).select("key");
   if (r.error) throw r.error;
 
-  console.log(`Sembradas ${rows.length} condiciones BIS (version ${VERSION_NUMBER}).`);
+  const insertadas = r.data?.length ?? 0;
+  if (insertadas !== rows.length) {
+    throw new Error(
+      `se mandaron ${rows.length} condiciones y la base acepto ${insertadas}: no se declara sembrado a medias`,
+    );
+  }
+  console.log(`Sembradas ${insertadas} condiciones BIS (version ${VERSION_NUMBER}) en ${host}.`);
 }
 
-// NOTA: en Windows, al salir puede aparecer una assertion de libuv (teardown del socket keep-alive
-// de supabase-js). Es benigna: ocurre DESPUES de que "Sembradas N" imprime y el delete+insert ya
-// commitearon (verificable con una consulta aparte). No afecta el contenido sembrado.
-main()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+// SIN `process.exit(0)`, y esto se midio antes de quitarlo (2026-09-07).
+//
+// EL DEFECTO: `process.exit(0)` disparaba mientras un socket keep-alive estaba a medio cerrar, y libuv
+// abortaba con `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`. El proceso moria con el codigo
+// de aborto de Windows (3221226505 = 0xC0000409) DESPUES de haber sembrado bien. El comentario que habia
+// aqui lo llamaba "benigna", y lo era PARA EL DATO; no para el codigo de salida, que es lo que mira
+// cualquier despliegue automatizado.
+//
+// MEDIDO, mismo script cambiando una linea:  con exit(0) -> assertion y salida 3221226505 contra la base
+// local, salida 0 contra la nube (la assertion es del socket a localhost).  Sin exit(0) -> salida 0 en
+// las dos, y NO se cuelga: 0,2 s contra local y 0,7 s contra la nube. El miedo que justificaba el
+// `exit(0)` (que el keep-alive dejara el bucle abierto) no se materializa.
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

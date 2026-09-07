@@ -194,7 +194,11 @@ Crear en Bitwarden (plan Free) una colección para las credenciales de Biody Man
 ## Datos de desarrollo local (seed)
 Contra la BD local (`DATABASE_URL` en `.env.local`). **Hay TRES scripts de seed, y el principal NO llama a los otros dos** (ver el detalle abajo). Para un entorno funcional se necesitan el 1 y el **1bis** (obligatorio: sin él no se puede importar una medición); el 2 es demo.
 
-**1bis. `pnpm db:seed:bis` (OBLIGATORIO, seed APARTE):** siembra el catálogo de las 14 condiciones de la toma BIS (`supabase/seed-bis-conditions.ts`). Vive aparte a propósito (no acoplar al seed destructivo de la encuesta) y **el seed principal no lo corre**. Sin él, la pantalla de condiciones de la evaluación no aparece y **el import queda deshabilitado** (se habilita solo tras guardar las condiciones). Idempotente y no destructivo. Para la nube, ver `DEPLOY_GUIA_NUBE.md` Paso 3.2b.
+**1bis. `pnpm db:seed:bis` (OBLIGATORIO, seed APARTE):** siembra el catálogo de condiciones de la toma BIS (`supabase/seed-bis-conditions.ts`; **12** en la versión activa, que es la v2 desde el 2026-09-07). Vive aparte a propósito (no acoplar al seed destructivo de la encuesta) y **el seed principal no lo corre**. Sin él, la pantalla de condiciones de la evaluación no aparece y **el import queda deshabilitado** (se habilita solo tras guardar las condiciones). Idempotente y no destructivo.
+
+- **El atajo `pnpm db:seed:bis` es SOLO PARA LOCAL:** lleva `--env-file=.env.local` escrito dentro del script de `package.json` y no se puede apuntar a otro fichero desde fuera. Para la nube: `node --env-file=.env.production.local supabase/seed-bis-conditions.ts`, o exportando las **dos** variables (medido el 2026-09-07: el entorno gana sobre `--env-file`).
+- **Para publicar una versión NUEVA del catálogo en una nube que ya funciona, el camino es la migración generada** (`scripts/gen-bis-conditions-migration.mjs`), no correr el seed a mano. Ver `DEPLOY_GUIA_NUBE.md` pasos 3.2b y 3.2c.
+- **Todos los seeds y scripts de catálogo anuncian el HOST de la base antes de escribir.** Si la primera línea dice `BASE LOCAL: 127.0.0.1` cuando esperabas la nube, las variables no llegaron.
 
 1. `pnpm db:seed` (node): siembra lo base (organización, usuarios de prueba, catálogos del
    model-registry incluidos los 81 estados EFR, encuesta v1, devices, nutracéuticos, y una

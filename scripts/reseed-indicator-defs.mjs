@@ -1,6 +1,15 @@
 // Reseed DIRIGIDO de indicator_definitions (y nada mas).
 //
-// Como se corre:  node --env-file=.env.local scripts/reseed-indicator-defs.mjs
+// Como se corre:
+//   Local:  node --env-file=.env.local            scripts/reseed-indicator-defs.mjs
+//   Nube:   node --env-file=.env.production.local scripts/reseed-indicator-defs.mjs   (Santiago)
+//
+// SIN MIGRACION, y a diferencia del catalogo de condiciones BIS esto NO se puede generar igual: aqui no
+// hay tabla de versiones propia. Las definiciones cuelgan de un `model_version_id` fijo y se actualizan
+// EN SITIO por `(model_version_id, code)`, asi que desplegar un cambio de nombre exige un UPDATE, no un
+// INSERT aditivo. Un generador como el de la encuesta o el de las condiciones no sirve para esta forma.
+// Verificado el 2026-09-07 que hoy NO hay desincronizacion: los doce indicadores coinciden en local, en
+// la nube y con el registry del repositorio. Es riesgo latente, no divergencia viva. Anotado en BACKLOG.
 //
 // Por que existe: `pnpm db:seed` (el seed completo) BORRA y re-siembra las respuestas de
 // encuesta (survey_answers/responses de la version, ver supabase/seed.ts L482-489). Correr el
@@ -15,6 +24,8 @@
 import { readFileSync } from "node:fs";
 
 import { createClient } from "@supabase/supabase-js";
+
+import { anunciarBase } from "./lib/base-anunciada.mjs";
 
 // Mismo UUID fijo que supabase/seed.ts (MODEL_VERSION_ID).
 const MODEL_VERSION_ID = "44444444-4444-4444-4444-444444444444";
@@ -42,6 +53,9 @@ async function main() {
     ),
   );
 
+  // ANTES DE ESCRIBIR NADA: contra que base. Ver scripts/lib/base-anunciada.mjs.
+  const host = anunciarBase(url, "Reseed dirigido de indicator_definitions (upsert por code, sin borrar).");
+
   const supabase = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -53,12 +67,19 @@ async function main() {
     unit: d.unit,
   }));
 
-  const { error } = await supabase
+  // `.select()` para que el numero salga de lo que la BASE acepto y no del arreglo que mandamos, que
+  // es la misma correccion que el seed de condiciones.
+  const { data, error } = await supabase
     .from("indicator_definitions")
-    .upsert(rows, { onConflict: "model_version_id,code" });
+    .upsert(rows, { onConflict: "model_version_id,code" })
+    .select("code");
   if (error) throw new Error(`indicator_definitions: ${error.message}`);
 
-  console.log(`indicator_definitions actualizado (${rows.length} indicadores, upsert por code, sin borrar nada).`);
+  const escritos = data?.length ?? 0;
+  if (escritos !== rows.length) {
+    throw new Error(`se mandaron ${rows.length} indicadores y la base acepto ${escritos}`);
+  }
+  console.log(`indicator_definitions actualizado en ${host} (${escritos} indicadores, upsert por code, sin borrar nada).`);
   for (const r of rows) console.log(`  ${r.code} -> ${r.name}`);
 }
 
