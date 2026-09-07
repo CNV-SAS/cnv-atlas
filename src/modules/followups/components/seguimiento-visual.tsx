@@ -158,8 +158,23 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
     .map((p) => ({ fecha: p.fecha, valor: p.icaBis as number }));
 
   const conDominios = serie.puntos.filter((p) => p.dominios && p.dominios.length > 0);
-  const inicial = conDominios[0] ?? null;
-  const ultima = conDominios.length > 1 ? conDominios[conDominios.length - 1] : null;
+  // LA DIANA SALE CON UNA SOLA MEDICION desde el 2026-09-07 (punto 13 de su cotejo). Antes exigia dos y
+  // con una no se dibujaba nada. Textual suyo: *"en mod seguimiento se debe poner la diana del DFI, ¿por
+  // qué la quitaron?"*
+  //
+  // LA DECISION DE EXIGIR DOS ERA NUESTRA Y ERA LA EQUIVOCADA, y el motivo por el que se ve ahora es mas
+  // fuerte que el de la capacitancia: alli hacia falta una REFERENCIA (la mediana del grupo) para que un
+  // punto suelto significara algo. Aqui la escala YA es la referencia. Los cinco ejes van de Optimo a
+  // Critico, que son niveles absolutos, no relativos a otra medicion. Un poligono solo se lee.
+  //
+  // Y ES LO QUE EL PARAMETRIZO: "que quede de fondo la inicial y sobre esa se muestra la diana nueva
+  // superpuesta". El fondo es el segundo poligono. Con una medicion no hay fondo todavia; con la segunda
+  // aparece, sin que la primera consulta se quede sin nada que ensenar.
+  const ultima = conDominios[conDominios.length - 1] ?? null;
+  // El INICIAL solo cuenta como comparacion si NO es el mismo punto que la ultima. Con una medicion los
+  // dos serian el mismo, y dibujar un poligono punteado exactamente encima del solido diria "no ha
+  // cambiado nada" sobre algo que ni siquiera se ha medido dos veces.
+  const inicial = conDominios.length > 1 ? conDominios[0] : null;
   // Las mediciones del MEDIO no se dibujan en el radar: compara inicial contra última, como el suyo. Se
   // dice cuántas quedan fuera en vez de callarlo; su trayectoria punto a punto está en las series de
   // arriba, que sí muestran todos los puntos.
@@ -175,23 +190,40 @@ export function SeguimientoVisual({ serie }: { serie: SerieSeguimiento }) {
       ) : null}
 
       <CapacitanciaCard refC={serie.refC} puntos={puntosC} />
-      {inicial && ultima ? (
+      {ultima ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Diagnóstico funcional: inicial y última</CardTitle>
+            {/* EL TITULO Y EL TEXTO DERIVAN DE SI HAY COMPARACION, no son una cadena fija. Decir "inicial
+                y última" con una sola medición sería afirmar una comparación que no hubo, que es el
+                defecto que ya nos costó en otras superficies. */}
+            <CardTitle className="text-base">
+              {inicial ? "Diagnóstico funcional: inicial y última" : "Diagnóstico funcional"}
+            </CardTitle>
             <span className="text-xs text-muted-foreground">
-              Estado de los cinco dominios en la primera medición ({formatDateOnlyShort(inicial.fecha)}) y en
-              la última ({formatDateOnlyShort(ultima.fecha)}). A menor polígono, mejor estado funcional.
-              {intermedias > 0
-                ? ` ${intermedias === 1 ? "Una medición intermedia" : `${intermedias} mediciones intermedias`} no se dibujan aquí; su trayectoria está en las series.`
-                : ""}
+              {inicial ? (
+                <>
+                  Estado de los cinco dominios en la primera medición (
+                  {formatDateOnlyShort(inicial.fecha)}) y en la última ({formatDateOnlyShort(ultima.fecha)}
+                  ). A menor polígono, mejor estado funcional.
+                  {intermedias > 0
+                    ? ` ${intermedias === 1 ? "Una medición intermedia" : `${intermedias} mediciones intermedias`} no se dibujan aquí; su trayectoria está en las series.`
+                    : ""}
+                </>
+              ) : (
+                <>
+                  Estado de los cinco dominios en la medición del{" "}
+                  {formatDateOnlyShort(ultima.fecha)}. A menor polígono, mejor estado funcional. Con la
+                  siguiente consulta esta figura queda de fondo y encima se dibuja la nueva, para ver el
+                  cambio.
+                </>
+              )}
             </span>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-2">
             <DfiRadar
               domains={ultima.dominios!}
-              comparar={inicial.dominios!}
-              fechaComparar={formatDateOnlyShort(inicial.fecha)}
+              comparar={inicial?.dominios ?? undefined}
+              fechaComparar={inicial ? formatDateOnlyShort(inicial.fecha) : undefined}
               fechaActual={formatDateOnlyShort(ultima.fecha)}
             />
           </CardContent>

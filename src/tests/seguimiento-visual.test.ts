@@ -75,9 +75,43 @@ describe("la evaluación reemplazada no es un punto de la trayectoria", () => {
 
 describe("el estado de una sola consulta", () => {
   it("dice que falta la segunda Y cuándo correspondería", () => {
-    // Su pantalla dibuja igual con una medicion: el radar compara la medicion contra si misma.
     expect(VISUAL).toContain("Este paciente tiene una sola medición");
     expect(VISUAL).toContain("correspondería alrededor del");
+  });
+
+  // LA DIANA SALE CON UNA SOLA MEDICION (punto 13 de su cotejo, 2026-09-07): *"en mod seguimiento se debe
+  // poner la diana del DFI, ¿por qué la quitaron?"*
+  //
+  // Y ESTO YA ESTABA ESCRITO AQUI SIN APLICARSE. El comentario de la prueba de arriba decia, desde el
+  // 2026-08-25, "su pantalla dibuja igual con una medicion". Lo sabiamos, quedo anotado en un comentario
+  // de test, y el codigo siguio exigiendo dos. Un hecho documentado en el sitio donde nadie va a
+  // aplicarlo es un hecho que no esta.
+  //
+  // POR QUE UNA SOLA SIRVE, y es mas fuerte que el caso de la capacitancia: alli hacia falta una
+  // REFERENCIA para que un punto significara algo. Aqui la escala YA es la referencia (los cinco ejes van
+  // de Optimo a Critico, que son niveles absolutos, no relativos a otra medicion). Un poligono solo se lee.
+  it("la Diana ya NO exige dos mediciones", () => {
+    expect(
+      VISUAL,
+      "volvió el portón que exigía dos: con una consulta no se dibujaría nada",
+    ).not.toContain("conDominios.length > 1 ? conDominios[conDominios.length - 1] : null");
+    expect(VISUAL).toContain("const ultima = conDominios[conDominios.length - 1] ?? null");
+    // El bloque entero se pinta con que haya ULTIMA, no con que haya las dos.
+    expect(VISUAL).toContain("{ultima ? (");
+  });
+
+  it("y con una sola NO se dibuja el polígono de fondo contra sí mismo", () => {
+    // Dibujar el punteado exactamente encima del sólido diría "no ha cambiado nada" sobre algo que ni
+    // siquiera se ha medido dos veces. Es lo que él parametrizó al reves: el fondo aparece con la segunda.
+    expect(VISUAL).toContain("const inicial = conDominios.length > 1 ? conDominios[0] : null");
+    expect(VISUAL).toContain("comparar={inicial?.dominios ?? undefined}");
+  });
+
+  it("y el TÍTULO deriva de si hay comparación, no es una cadena fija", () => {
+    // Decir "inicial y última" con una sola medición sería afirmar una comparación que no hubo: el texto
+    // que afirma un estado sin derivarlo, en la superficie que él acaba de pedir.
+    expect(VISUAL).toContain("{inicial ? \"Diagnóstico funcional: inicial y última\" : \"Diagnóstico funcional\"}");
+    expect(VISUAL).toContain("esta figura queda de fondo");
   });
 });
 
