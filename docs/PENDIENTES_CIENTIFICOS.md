@@ -12,7 +12,7 @@ ahora es uno solo.
 | --- | --- | --- |
 | **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
 | **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
-| **Al final** | Lo que necesita que **mires tu archivo** | 10 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 12 |
 | **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos | 15 |
 
 **Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
@@ -243,6 +243,12 @@ La cabecera de tu tabla de la historia clínica imprime, junto al fenotipo MCCB,
 **Si el PBI vuelve a ser parte del modelo vigente, la pregunta previa es cuál de los dos umbrales de AF
 manda**, porque no pueden convivir.
 
+**Y ahora tiene una consecuencia que antes no tenía, y por eso vuelve a aparecer:** al portar tu prompt de
+diagnóstico (tu punto 8) vimos que **tu propio bloque de datos crudos manda el estado PBI al modelo**
+(`Estado PBI: ${motor.estadoPBI?.nombre}`). Nosotros no lo calculamos, así que **esa línea no la podemos
+enviar**. Es el único dato de tu prompt que nos falta por decisión declarada, no por descuido. Si el PBI
+vuelve, vuelve también ahí.
+
 ## 14 · ¿Qué MÁS debería alimentar al generador de menús?
 
 Buscando otra cosa encontramos **cuatro** insumos que el menú debería considerar y no consideraba: las
@@ -323,6 +329,43 @@ clasificador. Lo que se fue era el duplicado.
 badges **sin fila propia** en la tabla, así que ya no se ve en ninguna parte. Tu archivo tampoco lo muestra.
 
 **¿El ECM/BCM debe verse? Si sí, ¿con qué corte y en qué fila?**
+
+## 18 · Tu prompt manda el texto libre de "otros medicamentos" y el nuestro no tiene ese campo
+
+Al portar tu prompt (punto 8) cotejamos **campo por campo** los 58 de encuesta que envías. **Los tenemos
+todos menos uno**, y la diferencia es de forma nuestra, no tuya:
+
+- **Tú** mandas `d5_40_otro`: el texto libre de la opción "Otros" de medicamentos, aparte de la pregunta.
+- **Nosotros** guardamos `d5_40` como una sola pregunta de opción múltiple con "Otros" entre las opciones,
+  y el texto libre viaja **dentro** de la respuesta, no en un campo aparte.
+
+**No es que falte el dato:** es que en Atlas vive en otro sitio. Lo enviaremos igual, dentro de la lista de
+medicamentos, y así el modelo lee lo mismo que en el tuyo. **Te lo decimos por si prefieres que vaya como
+línea propia**, que también se puede.
+
+## 19 · Tus pasos 1 a 3 del Análisis IA no llegan al paso 4
+
+**Esto probablemente no lo sabes, y por eso te lo decimos antes de portar nada.**
+
+Tu Análisis IA hace **cuatro** llamadas al modelo: patrones, hipótesis causal, validación y síntesis. Al
+trazarlas para portarlas encontramos que la cadena **se corta**:
+
+| paso | qué produce | quién lo lee |
+| --- | --- | --- |
+| 1 · patrones | JSON | los pasos 2 y 3 |
+| 2 · hipótesis causal | JSON | el paso 3 |
+| 3 · validación | JSON | **nadie** |
+| 4 · síntesis (el texto que sale) | el diagnóstico | es lo que se muestra |
+
+**Y el paso 4 no recibe ninguno de los tres.** Su mensaje lleva sólo tus instrucciones, el bloque DFI y los
+datos crudos del paciente. Los patrones, la hipótesis y la validación **se calculan y se descartan**: son
+tres llamadas al modelo cuyo resultado no llega a ninguna parte.
+
+**Qué hacemos, y por qué:** portamos **el paso 4**, que es donde viven la estructura de los cinco dominios
+y los datos. Portar los otros tres sería copiar el corte y pagarlo tres veces en coste y en espera.
+
+**Si los tres primeros debían alimentar al cuarto, dínoslo y lo cableamos.** Es tu diseño y puede que la
+intención fuera que la validación entrara en la síntesis; hoy no entra.
 
 # Y APARTE · Lo que decidimos nosotros y solo te declaramos
 
