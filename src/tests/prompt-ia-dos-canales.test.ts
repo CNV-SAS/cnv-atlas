@@ -25,11 +25,19 @@ import { describe, expect, it } from "vitest";
 // y el JSON canonico sigan siendo la misma fuente. No se compara contra una copia escrita aqui, que seria
 // la cuarta copia del mismo parrafo.
 
-const MIGRACION = "drizzle/0102_prompt_criterio_v2.sql";
+// LA MIGRACION VIGENTE, no la primera. Este candado se puso rojo el mismo dia que se escribio, al subir
+// el prompt a v3: estaba anclado a la 0102 (que publica la v2) y el generador produce SIEMPRE la version
+// que el seed declara. Fue un rojo LEGITIMO y el alcance es lo que estaba mal, no la asercion.
+//
+// LA 0102 NO SE REGENERA NUNCA MAS: esta aplicada, y una migracion aplicada no se modifica (forward-only).
+// Publico la v2 y ese es su trabajo, hecho. Al subir a v4 esta constante pasa a la 0104 y la 0103 queda
+// congelada igual.
+const MIGRACION = "drizzle/0103_prompt_criterio_v3.sql";
+const MIGRACIONES_HISTORICAS = ["drizzle/0102_prompt_criterio_v2.sql"];
 const SEED = readFileSync("supabase/seed.ts", "utf8");
 
 function generado(): string {
-  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0102", "criterio.generate"], {
+  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0103", "criterio.generate"], {
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -52,7 +60,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     expect(
       norm(readFileSync(MIGRACION, "utf8")),
       "el prompt canónico y la migración divergieron: regenera con " +
-        "`node scripts/gen-ai-prompt-migration.mjs 0102 criterio.generate > " + MIGRACION + "`",
+        "`node scripts/gen-ai-prompt-migration.mjs 0103 criterio.generate > " + MIGRACION + "`",
     ).toBe(norm(generado()));
   });
 
@@ -60,7 +68,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Se DERIVA del JSON, no se escribe la longitud aqui. Un texto truncado en el SQL publicaria un
     // prompt a medias, que es peor que no publicarlo: el modelo obedece lo que lee.
     const canonico = JSON.parse(
-      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v2.json", "utf8"),
+      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v3.json", "utf8"),
     ).system as string;
     const sql = generado();
     // El SQL duplica las comillas simples; se deshace para comparar el texto real.
@@ -82,15 +90,35 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Mismo criterio que el seed: solo se retira lo ANTERIOR (`version <`), y la insercion se activa solo
     // si no quedo ninguna activa. Verificado contra Postgres real en los cuatro escenarios, con rollback.
     const sql = generado();
-    expect(sql).toContain("AND version < 2");
+    expect(sql).toContain("AND version < 3");
     expect(sql).toContain("THEN 'inactive' ELSE 'active' END");
+  });
+
+  it("las migraciones ANTERIORES no se regeneran: están aplicadas", () => {
+    // Forward-only. Una migracion aplicada no se modifica; si el prompt sube de version se escribe otra.
+    // Este caso existe para que el dia que alguien "actualice" la 0102 con el texto nuevo, se ponga rojo.
+    const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
+      entries: { tag: string }[];
+    };
+    for (const ruta of MIGRACIONES_HISTORICAS) {
+      const tag = ruta.replace("drizzle/", "").replace(".sql", "");
+      expect(journal.entries.map((e) => e.tag), `${tag} desapareció del journal`).toContain(tag);
+      // La v2 publica la v2: si alguien le mete el texto de otra version, esto lo dice.
+      expect(readFileSync(ruta, "utf8")).toContain("'criterio.generate', 2,");
+    }
   });
 
   it("la migración está registrada en el journal, o no la aplica nadie", () => {
     const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
       entries: { tag: string }[];
     };
-    expect(journal.entries.map((e) => e.tag)).toContain("0102_prompt_criterio_v2");
+    // El tag se DERIVA de la ruta. Escribirlo a mano ya me lo desincronizo una vez en este mismo
+        // archivo: un reemplazo global me dejo el sufijo v2 en el tag de la migracion v3.
+        const tag = MIGRACION.replace("drizzle/", "").replace(".sql", "");
+        expect(
+          journal.entries.map((e) => e.tag),
+          `${tag} no está en el journal: no la aplica nadie`,
+        ).toContain(tag);
   });
 });
 
