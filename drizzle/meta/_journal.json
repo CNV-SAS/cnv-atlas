@@ -715,6 +715,13 @@
       "when": 1788740186099,
       "tag": "0101_condiciones_bis_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1788826586099,
+      "tag": "0102_prompt_criterio_v2",
+      "breakpoints": true
     }
   ]
 }

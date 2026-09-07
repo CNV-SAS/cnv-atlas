@@ -29,7 +29,21 @@ la nube siguieron catorce, y **el seed imprimía la misma línea en los dos caso
 aplica un despliegue. Verificado que los dos canales producen **los mismos ids** cotejando la migración
 generada contra lo que el seed dejó en la base.
 
-**[ABIERTO] `indicator_definitions`, el tercer catálogo.** Tampoco tenía camino a la nube, y **el
+**[HECHO] Los prompts de IA (`ai_prompts`), y era el unico DESINCRONIZADO de verdad.** Local tenia la
+v2 de `criterio.generate` activa y la nube la v1: el bloque de formato que Gildardo pidio en su §8 del
+2026-09-01 nunca llego a produccion. Y es **peor que una fila ausente**, porque `getActivePrompt` hace que
+la fila de base GANE sobre el texto canonico: la nube no caia al v2 del repositorio, corria el viejo.
+
+- **Severidad calibrada:** el filtro de salida (`limpiarMarcadores`) corre igual, asi que el markdown se
+  limpiaba de todos modos. Faltaba una de las dos guardas que Gildardo pidio, no la garantia entera.
+- **Resuelto** con `scripts/gen-ai-prompt-migration.mjs` y `drizzle/0102_prompt_criterio_v2.sql`.
+  Verificado contra Postgres real, en transacciones revertidas, los cuatro escenarios: como esta la nube,
+  como esta local, con una edicion mas nueva del admin (que NO se pisa), y una base sin sembrar. Aplicada
+  dos veces en cada uno: siempre queda exactamente una activa.
+- **`menu.adapt` ausente en la nube NO es un defecto:** es el diseño. Su clave se eligio nueva justamente
+  para que cayera al texto canonico del codigo, que es byte por byte el mismo JSON que sembraria el seed.
+
+**[ABIERTO] `indicator_definitions`, el cuarto catálogo.** Tampoco tenía camino a la nube, y **el
 generador nuevo no le sirve**: no tiene tabla de versiones propia. Las definiciones cuelgan de un
 `model_version_id` fijo y se actualizan **en sitio** por `(model_version_id, code)`, así que desplegar un
 cambio de nombre exige un `UPDATE`, no un `INSERT` aditivo. Es una forma distinta, no una variante.
