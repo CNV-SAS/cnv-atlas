@@ -7,7 +7,7 @@
 // Como se corre:  pnpm db:seed:bis   (node --env-file=.env.local supabase/seed-bis-conditions.ts)
 // Idempotente: UUIDs derivados de la clave + upsert por (version, key). Recorrerlo no duplica.
 //
-// La lista v1 es fiel al HTML de Gildardo (ATLAS.html L10444-10480): 8 generales + 3 femeninas.
+// La lista es fiel al HTML de Gildardo (ATLAS.html L10444-10480): 8 generales + 3 femeninas.
 // Divergencias documentadas (INVENTARIO.md punto 3a): embarazo agrega "mes de gestacion" (mejora
 // nuestra, informativa, no altera calculos); menstruacion captura "dia del periodo"; semana_ciclo
 // es numerico 1-6 siempre visible (sin Si/No). El ciclo menstrual NO alimenta el motor (registro
@@ -35,7 +35,12 @@ const uuidFromKey = (key: string): string => {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 };
 
-const VERSION_NUMBER = 1;
+// VERSION 2 (2026-09-07). NO se editan las filas de la v1 en sitio: las respuestas de una evaluacion
+// viven en `condition_answers` (JSONB por clave) SELLADAS contra su version, y la vista de solo lectura
+// saca los rotulos del catalogo de esa version. Borrar en sitio dejaria a las evaluaciones ya emitidas
+// mostrando respuestas sin su pregunta. El catalogo activo es el de mayor `published_at`
+// (`getActiveBisConditionCatalog`), asi que publicar la v2 basta y la v1 queda intacta para lo viejo.
+const VERSION_NUMBER = 2;
 const VERSION_ID = uuidFromKey(`version:${VERSION_NUMBER}`);
 
 type FieldType = "boolean" | "number" | "text";
@@ -65,11 +70,15 @@ const CONDS: Cond[] = [
   { key: "ejercicio_intenso_4h", label: "¿Hizo ejercicio intenso hace menos de 4 horas?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null },
   { key: "diuretico", label: "¿Consume algún medicamento diurético?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cuál?", detailType: "text" },
   { key: "accesorios_metalicos_retirados", label: "¿Se retiraron los accesorios metálicos en contacto con la piel antes de la BIA?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null },
-  // ── 3 de VALIDEZ (generales): la medicion es SEGURA pero el RESULTADO no es confiable. NO bloquea
-  // ni exige reconocimiento; se mide "con la reserva correspondiente" y se sella un caveat. ──
+  // ── VALIDEZ (general): la medicion es SEGURA pero el RESULTADO no es confiable. NO bloquea ni exige
+  // reconocimiento; se mide "con la reserva correspondiente" y se sella un caveat.
+  //
+  // ERAN TRES Y QUEDA UNA (v2, 2026-09-07). Gildardo, cotejo punto 3: *"quitar estas preguntas que no se
+  // porque se pusieron, si yo nunca dije que estuvieran alli"*. Verificado: ni "anasarca" ni "febril"
+  // existen en su HTML; las tres las anadimos nosotros como "tabla ampliada de contraindicaciones". El
+  // nombro DOS y se quitan DOS: la amputacion se queda y va DECLARADA como divergencia (DIVERGENCIAS.md),
+  // porque retirarla sin que la senale seria decidir por el en el otro sentido. ──
   { key: "amputacion", label: "¿Tiene amputación de algún segmento corporal?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
-  { key: "edema_anasarca", label: "¿Presenta edema severo o anasarca?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
-  { key: "febril_deshidratacion", label: "¿Está en estado febril agudo o con deshidratación marcada?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
   // ── 3 femeninas (solo mujeres) ──
   // Embarazo: advertencia (NO bloquea; alerta seria + reconocimiento del permiso del comite de etica).
   // Ademas COMPROMETE la validez (el modelo no esta validado en gestacion) -> sella caveat en el dx.
@@ -87,7 +96,7 @@ async function main() {
     {
       id: VERSION_ID,
       version_number: VERSION_NUMBER,
-      notes: "v1: HTML de Gildardo (ATLAS.html L10444-10480) + tabla ampliada de contraindicaciones (validez). 8 generales + 3 validez + 3 femeninas. Contenido REEMPLAZADO en sitio pre-produccion (ver ARCHITECTURE.md).",
+      notes: "v2 (2026-09-07): se retiran las dos condiciones de validez que Gildardo senalo en el cotejo (edema_anasarca, febril_deshidratacion). No estaban en su HTML. Quedan 8 generales + 1 validez (amputacion, declarada como divergencia) + 3 femeninas. La v1 se conserva intacta: las evaluaciones ya emitidas la tienen sellada.",
     },
     { onConflict: "id" },
   );

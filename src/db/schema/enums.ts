@@ -254,8 +254,10 @@ export const bisConditionScope = pgEnum("bis_condition_scope", ["general", "muje
 //     profesional. El embarazo (permiso del comite de etica). La medicion procede.
 //   - validez: la medicion es SEGURA para el paciente pero el RESULTADO no es confiable (el
 //     modelo no esta validado, o los fluidos estan distorsionados). NO bloquea ni exige
-//     reconocimiento; Gildardo permite medir "con la reserva correspondiente". Amputacion,
-//     edema/anasarca, estado febril/deshidratacion.
+//     reconocimiento; Gildardo permite medir "con la reserva correspondiente".
+//     EN LA v2 DEL CATALOGO QUEDA UNA SOLA: la amputacion. El edema/anasarca y el estado
+//     febril/deshidratacion se retiraron el 2026-09-07 (cotejo punto 3): no estaban en su HTML.
+//     El enum se conserva: sigue habiendo una condicion de este tipo y la v1 sellada las lleva.
 export const bisConditionKind = pgEnum("bis_condition_kind", [
   "calidad",
   "contraindicacion",
