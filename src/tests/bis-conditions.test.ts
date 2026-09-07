@@ -419,6 +419,17 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     expect(FORM).toContain("&& !modoReemplazo");
   });
 
+  it("la tabla de Wang nace ABIERTA (punto 6 de su cotejo)", () => {
+    // EL DEFECTO: escribio "no estan los datos antropometricos por nivel de Wang, por que". Y si estaban:
+    // estaban plegados. Que la pieza exista no basta si no se ve. Se afirma por la PROP, que es lo que
+    // decide el estado inicial, y junto al titulo para que no pueda quedar en otro desplegable.
+    const jsx = sinComentarios(ENTRADA);
+    const i = jsx.indexOf("Composición corporal (Niveles de Wang)");
+    expect(i, "desapareció la tabla de Wang de Antropometría").toBeGreaterThan(-1);
+    const apertura = jsx.slice(i, jsx.indexOf(">", i) + 1);
+    expect(apertura, "la tabla de Wang volvió a nacer plegada").toContain("defaultOpen");
+  });
+
   it("y el texto dice que REEMPLAZA, no que añade", () => {
     // Sin esto el profesional puede creer que se suma una segunda medición, que es lo que el writer
     // impide: la anterior se borra en la misma transacción.

@@ -226,7 +226,16 @@ export function EntradaEvaluacion({
               fuerzaPrensilKg={sarcopeniaFuerza}
               sellada={diagnosticoGenerado}
             />
-            <DetailsSection title="Composición corporal (Niveles de Wang)">
+            {/* ABIERTA POR DEFECTO desde el 2026-09-07 (punto 6 de su cotejo). Gildardo escribio "no estan
+                los datos antropometricos por nivel de Wang, por que" y la tabla SI estaba: estaba
+                plegada. Que la pieza exista no basta si no se ve, que es la misma leccion del porte del
+                plan del paciente (estaba en el codigo y era print-only).
+
+                SE CONSERVA EL DESPLEGABLE, y no es tibieza: son unas treinta filas por encima del bloque
+                de sarcopenia, asi que quitarlo obliga a recorrerla entera cada vez que se vuelve a la
+                pantalla. Abierta de entrada resuelve la causa real (no verla la primera vez) y deja
+                plegarla despues. */}
+            <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
               <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
             </DetailsSection>
           </div>

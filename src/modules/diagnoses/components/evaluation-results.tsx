@@ -455,7 +455,8 @@ export function EvaluationResults({
           NO invalida el diagnóstico (ver el componente). */}
       <AvisoCienciaAnterior vigencia={results.vigencia} veredicto={results.veredictoReemision} />
 
-      {/* Tres subpestañas (QUE de Gildardo, COMO nuestro). Default Funcional (DIV-7). */}
+      {/* Cuatro subpestañas, en el orden de su archivo (puntos 7 y 11). Default Funcional (DIV-7, que no
+          cambia con el reorden: cambió cuál va primero en la fila, no cuál se abre). */}
       <DiagnosisSubtabs
         funcional={
           <div className="flex flex-col gap-8">
@@ -746,9 +747,15 @@ export function EvaluationResults({
       </Card>
 
 
-            {/* Criterio del profesional (+ IA) y el par confirmar/corregir: la lectura y el cierre, en
-                Funcional, sin ir y volver a otra pestaña. */}
-            {criterio}
+            {/* EL CRITERIO DEL PROFESIONAL SE FUE A "Resumen del Diagnóstico" (punto 11, 2026-09-07):
+                *"el resumen del diagnóstico generado por IA es aparte, no va dentro de ninguno de los 3
+                que tienen, y va de último"*. Aquí quedaba porque era la lectura y el cierre sin cambiar
+                de pestaña, y ese argumento sigue siendo bueno; el suyo manda.
+
+                EL PAR CONFIRMAR/CORREGIR SE QUEDA EN FUNCIONAL, y la distinción importa: confirmar o
+                corregir es un acto sobre la EVIDENCIA del modelo, que es lo que esta pestaña muestra. El
+                criterio es lo que el profesional ESCRIBE encima. Mandarlos juntos a la cuarta habría
+                dejado a Funcional siendo una lectura sin salida. */}
             {confirmCorrect}
           </div>
         }
@@ -765,6 +772,20 @@ export function EvaluationResults({
           </div>
         }
         encuesta={surveyDiagnosis}
+        resumen={
+          <div className="flex flex-col gap-8">
+            {/* CUARTA SUBPESTAÑA (puntos 7 y 11). En su archivo se llama "Resumen del Diagnóstico" y
+                lleva el texto que escribe la IA; el nuestro es donde el PROFESIONAL escribe el suyo,
+                partiendo del borrador. Los dos viven en este bloque, que es lo que se le declara: no le
+                cambiamos su panel, le añadimos encima la capa que su archivo no tiene porque en su
+                prototipo nadie firma nada. */}
+            {criterio ?? (
+              <p className="w-fit rounded-md border border-dashed border-border px-3 py-1 text-sm italic text-muted-foreground">
+                El criterio del profesional aparece aquí cuando la evaluación tiene diagnóstico.
+              </p>
+            )}
+          </div>
+        }
       />
 
       {/* Composicion ya NO va colapsable: ahora es una pestaña (colapsar dentro de un contenedor que ya
