@@ -40,7 +40,7 @@ Verificado el 2026-07-27: esta secuencia deja el entorno como debe quedar.
 
 - **`supabase db reset` NO aplica las migraciones del proyecto.** Las migraciones viven en `drizzle/`, no en `supabase/migrations/` (que está vacía). El reset solo vacía; el paso 2 (`pnpm db:migrate`) es el que construye el esquema. Ver `ARCHITECTURE.md`, sección Datos.
 - **`pnpm db:seed` es destructivo con la encuesta.** Borra `survey_answers`, `survey_responses` y `survey_questions` antes de reinsertar. En una base nueva da igual; en una base con datos, borra respuestas. No corras `db:seed` para "actualizar contenido" sobre una base con trabajo dentro. (Deuda registrada en `BACKLOG.md`: falta un camino de siembra no destructivo por UPSERT.)
-- **`pnpm db:seed:bis` crashea al salir**, con un error de Node en Windows ("Assertion failed ... UV_HANDLE_CLOSING", código `0xC0000409`). Es un problema de cierre del proceso (la conexión no cierra limpia), NO de la siembra: la data (14 condiciones) SÍ queda. Consecuencia práctica: **no se puede encadenar con `&&`** después de este paso, porque el código de salida distinto de cero rompería la cadena.
+- **[RESUELTO 2026-09-07] `pnpm db:seed:bis` crasheaba al salir**, con un error de Node en Windows ("Assertion failed ... UV_HANDLE_CLOSING", código `0xC0000409`). **La causa era `process.exit(0)`**, que disparaba mientras un socket keep-alive estaba a medio cerrar; se quitó y ahora sale con 0 sin colgarse (medido: 0,2 s contra local, 0,7 s contra la nube). Ya **se puede encadenar con `&&`**. El seed además imprime contra qué base escribe, con el host, antes de escribir.
 
 ## Sobre un script único (`pnpm env:reset`)
 

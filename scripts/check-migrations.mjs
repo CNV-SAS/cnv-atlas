@@ -22,6 +22,11 @@ if (!DATABASE_URL || DATABASE_URL.trim() === "") {
   process.exit(2);
 }
 
+// CONTRA QUE BASE. Es el script donde mas falta hacia: su trabajo ENTERO es comparar el repo contra una
+// base de datos, y hasta hoy no decia cual. "La BD esta AL DIA" es una afirmacion sobre una base sin
+// nombre. Se deriva del host de la propia DATABASE_URL, nunca de la credencial.
+console.log(`Base: ${new URL(DATABASE_URL).host}`);
+
 const journal = JSON.parse(
   readFileSync(new URL("../drizzle/meta/_journal.json", import.meta.url), "utf8"),
 );

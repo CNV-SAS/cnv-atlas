@@ -22,6 +22,8 @@ import { readFileSync } from "node:fs";
 
 import { createClient } from "@supabase/supabase-js";
 
+import { anunciarBase } from "../scripts/lib/base-anunciada.mjs";
+
 // Datos del model-registry DERIVADOS de la ciencia congelada, generados por
 // registry-data.ts (canonico, testeado) y materializados en un JSON committeado. El
 // seed lo LEE con fs (no importa modulos TS de src/: node no resuelve sus imports sin
@@ -332,6 +334,11 @@ const SURVEY_QUESTIONS: SurveyQ[] = [
 async function main() {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL);
   const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY", SERVICE_ROLE_KEY);
+
+  // ANTES DE ESCRIBIR NADA: contra que base. En ESTE seed importa mas que en ninguno, porque BORRA y
+  // re-inserta las respuestas de encuesta de la version vigente: correrlo contra la nube por descuido se
+  // lleva datos reales. Su cabecera ya lo advierte; esta linea lo pone delante de los ojos en el momento.
+  anunciarBase(url, "Seed COMPLETO. Borra y re-inserta preguntas, opciones y RESPUESTAS de la encuesta vigente.");
   const adminPassword = requireEnv("SEED_ADMIN_PASSWORD", ADMIN_PASSWORD);
   const professionalPassword = requireEnv("SEED_PROFESSIONAL_PASSWORD", PROFESSIONAL_PASSWORD);
   // Internos de prueba: password propia si se define, si no la del profesional.

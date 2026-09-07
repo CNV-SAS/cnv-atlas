@@ -148,16 +148,36 @@ Regla: **todas van en los TRES ambientes.** La única que NO se pone a mano es `
 - **Qué verás:** "Seed completo (MINIMO, sin datos demo)". Guarda la `SEED_ADMIN_PASSWORD` en Bitwarden: es con la que entrarás como admin.
 - **RE-SEED (segunda vez en adelante, p. ej. para subir una versión nueva de encuesta): la `SEED_ADMIN_PASSWORD` que pongas se IGNORA.** El seed crea el usuario admin solo si NO existe (`ensureUser`: si ya existe, lo reutiliza sin tocar la clave). Así que en un re-seed su valor NO cambia tu contraseña de admin; solo tiene que estar presente y no vacía (o el seed falla en `requireEnv`). Pon cualquier valor no vacío; tu login de admin sigue siendo el del primer seed. **NO es la contraseña de la base de datos** (la de `DATABASE_URL`): son dos cosas distintas (esta es la del USUARIO admin de Atlas, `sau.idk001@gmail.com`; la otra es la de conexión a Postgres).
 
-3.2b **Sembrar el catálogo de condiciones de la toma BIS (SEED APARTE, OBLIGATORIO).**
-- **Por qué existe este paso:** el catálogo de las 14 condiciones de la toma vive en su PROPIO script (`supabase/seed-bis-conditions.ts`), independiente del seed principal a propósito (para no acoplarlo al seed destructivo de la encuesta). **El seed principal NO lo llama.** Sin este paso, la pantalla "Condiciones de la toma BIS" de la evaluación **no aparece** (el catálogo está vacío) y **no se puede importar ninguna medición** (el import se habilita solo tras guardar las condiciones): la nube queda sin poder atender a nadie. (Fue el bloqueante encontrado 2026-08-09.)
-- Es idempotente y NO destructivo (solo hace upsert del catálogo). Con las variables de la nube en ESTA ventana:
+3.2b **Sembrar el catálogo de condiciones de la toma BIS (SEED APARTE, OBLIGATORIO EN EL PRIMER ARRANQUE).**
+- **Por qué existe este paso:** el catálogo de las condiciones de la toma vive en su PROPIO script (`supabase/seed-bis-conditions.ts`), independiente del seed principal a propósito (para no acoplarlo al seed destructivo de la encuesta). **El seed principal NO lo llama.** Sin este paso, la pantalla "Condiciones de la toma BIS" de la evaluación **no aparece** (el catálogo está vacío) y **no se puede importar ninguna medición** (el import se habilita solo tras guardar las condiciones): la nube queda sin poder atender a nadie. (Fue el bloqueante encontrado 2026-08-09.)
+- **Y OJO CON LA DIFERENCIA (2026-09-07):** esto es para el PRIMER arranque de una base vacía. **Para publicar una VERSIÓN NUEVA del catálogo en una nube que ya funciona, el camino es la MIGRACIÓN**, no este seed. Ver 3.2c.
+- Es idempotente y NO destructivo (su `delete` está acotado a su propia versión). Dos formas, y la segunda es la recomendada porque no depende de acordarse de limpiar el entorno después:
   ```powershell
+  # (a) Con el fichero de entorno de la nube, entero. Es el patrón que ya usan los demás scripts.
+  node --env-file=.env.production.local supabase/seed-bis-conditions.ts
+
+  # (b) O con las variables del shell (gana el entorno sobre el --env-file del script, MEDIDO el 2026-09-07).
   $env:NEXT_PUBLIC_SUPABASE_URL = "https://...tu-proyecto.supabase.co"
   $env:SUPABASE_SERVICE_ROLE_KEY = "...tu-service-role-key..."
   pnpm db:seed:bis
   Remove-Item Env:\NEXT_PUBLIC_SUPABASE_URL, Env:\SUPABASE_SERVICE_ROLE_KEY
   ```
-  (Las variables del shell ganan sobre el `--env-file=.env.local` del script, así que apunta a la nube, no a local.)
+- **CON (b) HAY QUE PONER LAS DOS VARIABLES.** Poner solo la URL deja la service-role key de local, que contra otro proyecto no autentica. Y `pnpm db:seed:bis` lleva `--env-file=.env.local` escrito dentro del script de `package.json`, así que **no se puede apuntar a otro fichero desde fuera**: por eso (a) llama a `node` directamente.
+- **LO PRIMERO QUE IMPRIME EL SEED ES CONTRA QUÉ BASE VA A ESCRIBIR**, con el host:
+  ```
+    Siembra el catalogo de condiciones de la toma BIS.
+    BASE REMOTA: xxxxx.supabase.co
+  ```
+  Si ahí dice `BASE LOCAL: 127.0.0.1`, las variables no llegaron y **estás sembrando local otra vez**. Se añadió el 2026-09-07 porque pasó exactamente eso: el seed decía "Sembradas 12 condiciones" en las dos, y no había forma de distinguirlo desde la salida.
+
+3.2c **Publicar una VERSIÓN NUEVA del catálogo de condiciones (nube que ya funciona).**
+- **Se hace con una migración, no con el seed.** El seed es seguro, pero un comando manual no es un despliegue: depende de que alguien se acuerde, y no queda registrado. La migración la aplica `pnpm db:migrate` y queda en la tabla de migraciones.
+- La migración se **genera** desde el seed, que es la fuente única del contenido:
+  ```
+  node scripts/gen-bis-conditions-migration.mjs 0101 > drizzle/0101_condiciones_bis_v2.sql
+  ```
+  y se añade su entrada al `drizzle/meta/_journal.json` (como las demás migraciones escritas a mano, que desde la 0083 no llevan snapshot).
+- Es el mismo patrón que `gen-survey-migration.mjs` y por el mismo motivo: si los dos canales (seed local, migración nube) se escriben por separado, divergen y la divergencia no da error.
 - **Otros seeds:** `pnpm seed:golden` siembra datos DEMO (paciente GoldenPath + trayectoria); en la nube sin demo NO se corre. `scripts/reseed-indicator-defs.mjs` es un helper puntual (los indicadores ya vienen en el seed principal). El único seed aparte OBLIGATORIO es este (`db:seed:bis`).
 
 3.3 **Verificar (una sola consulta, en Supabase → SQL Editor).** Contar a ojo en el Table editor no sirve; esta consulta da cuatro números exactos:
@@ -169,7 +189,8 @@ Regla: **todas van en los TRES ambientes.** La única que NO se pone a mano es `
     (select count(*) from patients) as pacientes;
   ```
 - **Debe dar EXACTAMENTE:** `tablas = 67`, `con_rls = 67` (las 67 con RLS activo), `policies = 147`, `pacientes = 0`.
-- **Y el catálogo de condiciones (Paso 3.2b):** `select count(*) from bis_conditions;` = **14** y `select count(*) from bis_condition_versions;` = **1**. Si dan 0, faltó el `db:seed:bis`: la evaluación no mostrará las condiciones y no se podrá importar.
+- **Y el catálogo de condiciones (Paso 3.2b):** `select count(*) from bis_condition_versions;` **≥ 1** y `select count(*) from bis_conditions where bis_condition_version_id = (select id from bis_condition_versions order by published_at desc limit 1);` = **las de la versión activa** (hoy **12**; eran 14 hasta la v2 del 2026-09-07). Si el primero da 0, faltó el paso 3.2b: la evaluación no mostrará las condiciones y no se podrá importar.
+- **Se cuenta la versión ACTIVA, no la tabla entera**, porque las versiones anteriores se conservan a propósito (las evaluaciones ya emitidas guardan su respuesta sellada contra la suya). Un total de `bis_conditions` crece con cada versión y no dice nada por sí solo: era una cifra escrita a mano que envejeció en cuanto hubo una segunda versión.
 - **Cómo leer cada número:** `tablas` distinto de 67 → faltaron migraciones (páralo, revisa el log de 3.1). `con_rls` menor que `tablas` → alguna tabla quedó sin RLS (una migración de policy se saltó). `policies` distinto de 147 → lo mismo, faltan policies. **`pacientes` distinto de 0 → el seed corrió con demo o sembró tu base local: se limpia la nube antes de seguir, no se deja pasar.** (Si quieres, de paso: `select count(*) from nutraceuticals;` = 10 y `select count(*) from roles;` = 5.)
 
 ---

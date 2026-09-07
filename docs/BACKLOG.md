@@ -17,6 +17,39 @@
 
 ---
 
+## Los catálogos y la nube (2026-09-07)
+
+**Un seed de catálogo que no puede apuntar a la nube significa que ningún cambio de catálogo se puede
+desplegar.** Salió al intentar publicar la v2 de las condiciones de la toma: en local bajaron a doce, en
+la nube siguieron catorce, y **el seed imprimía la misma línea en los dos casos**.
+
+**[HECHO] Las condiciones de la toma BIS.** Ya tienen los dos caminos: el seed apuntable con
+`--env-file=.env.production.local`, y sobre todo la **migración generada**
+(`scripts/gen-bis-conditions-migration.mjs` → `drizzle/0101_condiciones_bis_v2.sql`), que es lo que
+aplica un despliegue. Verificado que los dos canales producen **los mismos ids** cotejando la migración
+generada contra lo que el seed dejó en la base.
+
+**[ABIERTO] `indicator_definitions`, el tercer catálogo.** Tampoco tenía camino a la nube, y **el
+generador nuevo no le sirve**: no tiene tabla de versiones propia. Las definiciones cuelgan de un
+`model_version_id` fijo y se actualizan **en sitio** por `(model_version_id, code)`, así que desplegar un
+cambio de nombre exige un `UPDATE`, no un `INSERT` aditivo. Es una forma distinta, no una variante.
+
+- **Verificado el 2026-09-07 que HOY NO hay desincronización:** los doce indicadores coinciden en local,
+  en la nube y con el registry del repositorio. **Es riesgo latente, no divergencia viva.**
+- **Qué haría falta:** decidir si las definiciones se versionan (y entonces sirve el patrón aditivo) o si
+  se acepta una migración con `ON CONFLICT DO UPDATE`, que muta filas ya emitidas y por eso no es
+  automática: cambiar el nombre de un indicador en una fila que ya referencian diagnósticos sellados es
+  una decisión, no un despliegue.
+- Mientras tanto el script ya **anuncia el host** y documenta el camino a la nube, así que el riesgo es
+  visible aunque no esté resuelto.
+
+**Y el barrido de los seis scripts que hablan con la base:** ninguno decía contra cuál. Ya lo dicen los
+cuatro que escriben o comparan (`seed.ts`, `seed-bis-conditions.ts`, `reseed-indicator-defs.mjs`,
+`check-migrations.mjs`). Dos de ellos además **contaban sobre el arreglo local** en vez de sobre lo que la
+base aceptó; ahora el número sale del `.select()` de la escritura.
+
+---
+
 ## LO QUE QUEDA NUESTRO AL CERRAR EL COTEJO (2026-09-06)
 
 **El cotejo visual de los 30 puntos está cerrado y pusheado.** De los cinco pendientes que quedaron,
@@ -1124,7 +1157,10 @@ Distinto del resto del BACKLOG (que es diferido post-MVP): esto es **trabajo pri
 - **[ACOPLAMIENTO] La ciencia congelada lee TEXTO de encuesta MUTABLE (verificado 2026-07-29).** `motorProtocolo`, `calcLE8` y `computeDFI` matchean respuestas por substring/igualdad sobre `survey_options.option_text` (p. ej. "Insuficiencia renal" → `tieneIRC` → proteína 1.2→0.6 g/kg; "Cáncer (activo)" → +300 kcal; d5_36="Sí" → restricción sodio). Ese texto vive en la BD y solo cambia por siembra (no hay superficie de edición, verificado), pero un cambio silencioso apaga un flag clínico **sin error**. Es la familia del bug de cintura, peor: contenido que un humano edita sin tocar código. Mitigación PARCIAL en su sitio (2026-07-29): `frozen-survey-texts.ts` (fuente única) + `survey-engine-coupling.test.ts` anclan los flags de PROTOCOLO (IRC/cáncer/DM/HTA) contra la semilla char-by-char, y el golden del orquestador los ejercita con los textos exactos. **FALTA** ampliar el candado a TODAS las ramas por texto (d2_19/d2_20/d3_24/d3_26/d3_30/d5_38; "Prediabetes"/"Dislipidemia (colesterol alto)"...), hoy cubiertas solo por el camino feliz de la coupling. La solución de FONDO (que el motor lea códigos estables en vez de texto) NO se construye: sería editar la ciencia congelada; el candado es la mitigación correcta.
 - **Nombres de FK truncados a 63 caracteres (riesgo de colisión, menor).** Al aplicar la cadena de cero (2026-07-27), Postgres emite NOTICEs (código 42622) truncando nombres de FK de más de 63 chars (p. ej. `professional_revenue_professional_id_professional_profiles_id_fk`). Hoy es cosmético (la cadena aplicó limpia). El riesgo a anotar: **si dos nombres largos truncan a la MISMA cadena de 63, el segundo colisiona** y la migración fallaría. No pasa hoy; una FK nueva sobre una tabla de nombre largo podría chocar. No urgente; nombrar FKs más cortas o vigilar al agregar tablas de nombre largo.
 - **Coherencia de `onDelete` en los FK a `profiles` (pendiente, menor, registrado 2026-07-28).** `treatments.created_by` y varios FK a `profiles` no declaran `onDelete` explícito, así que caen a `NO ACTION` de Postgres. La regla 14 (cuentas clínicas no se reciclan ni se borran) **ya se cumple**: en Postgres `NO ACTION` y `RESTRICT` **ambos impiden el borrado**; la única diferencia es cuándo se verifica (inmediato vs fin de transacción), no si protege. Los FK nuevos de A2 (`approved_by`, `restrictions_ack_by`) se declaran `RESTRICT` explícito. Coherencia pendiente: hacer explícito el `onDelete` de los FK viejos (requiere `DROP`+`ADD` del constraint, **no aditivo**, por eso NO va en A2, que debe ser puramente de adición). No urgente.
-- **`db:seed:bis` crashea al SALIR (teardown de libuv en Windows).** Siembra bien las 14 condiciones y luego el proceso de Node revienta al cerrar ("Assertion failed ... UV_HANDLE_CLOSING", exit `0xC0000409`). La data queda; el crash es de cierre del proceso (la conexión `postgres` no cierra limpia), ajeno a las migraciones. Consecuencia: **un script no se puede encadenar con `&&` después de este paso** (el exit distinto de cero rompe la cadena), y **en CI el pipeline fallaría** aunque el trabajo esté hecho. Arreglar el cierre (asegurar `sql.end()` y/o `process.exit(0)` explícito tras sembrar) antes de meterlo a un script único o a CI. Ligado al `env:reset` propuesto en `ENTORNO.md`.
+- **[HECHO 2026-09-07] `db:seed:bis` crasheaba al SALIR (teardown de libuv en Windows).** Sembraba bien y luego el proceso reventaba al cerrar ("Assertion failed ... UV_HANDLE_CLOSING", exit `0xC0000409`). **La causa era `process.exit(0)`**, que disparaba mientras un socket keep-alive estaba a medio cerrar. Se quitó.
+  - **Y la hipótesis que estaba anotada aquí era la contraria, lo cual vale más que el arreglo:** decía *"asegurar `sql.end()` y/o `process.exit(0)` explícito tras sembrar"*. El `process.exit(0)` ya estaba, y era el que abortaba. Escrita sin medir, la nota apuntaba a añadir justo lo que había que quitar.
+  - **Medido antes de tocar nada**, mismo script cambiando una línea: con `exit(0)` → assertion y salida `3221226505` contra la base local, salida 0 contra la nube (la assertion es del socket a localhost, no de supabase-js). Sin `exit(0)` → salida 0 en las dos, y **no se cuelga**: 0,2 s local, 0,7 s nube. El miedo que justificaba el `exit(0)` (que el keep-alive dejara el bucle abierto) no se materializa.
+  - Lo que Santiago señaló sigue siendo la razón por la que importaba: el contenido quedaba bien, pero **un código de salida distinto de cero rompe cualquier `&&` y falla cualquier pipeline**. El comentario del propio archivo llamaba a la assertion "benigna", y lo era para el DATO, no para el código de salida.
 - **Ruido de log en sesión vencida o inválida (registrado 2026-07-27).** `proxy.ts:36` llama `supabase.auth.getUser()` en cada request y **descarta el `error`** (solo toma `data.user`). Con un refresh token viejo o inválido (p. ej. tras un `db reset`, con la cookie vieja en el navegador), el cliente `@supabase/ssr` intenta refrescar, falla y **loguea crudo** `AuthApiError: Invalid Refresh Token: refresh_token_not_found`. El COMPORTAMIENTO es correcto: `getUser()` devuelve `user: null` y el proxy redirige a `/login` limpiamente (verificado: al usuario NO le llega un error crudo, va a login). El problema es solo de log: una condición ESPERADA (sesión vencida) se registra como error no manejado, y en producción el ruido esperado esconde los errores de verdad. Arreglo (diferido): capturar el `error` de `getUser()` y silenciar los esperados (`refresh_token_not_found`, `AuthSessionMissingError`). No urgente; no es defecto de experiencia (verificado el punto b: no llega al usuario).
 - **Nombres de evento de `clinical_audit_log` son literales sueltos (deuda, verificado 2026-07-29).** La columna `event` es `text` libre y cada `recordAudit` pasa el nombre como string literal (`"diagnosis.created"`, `"treatment.created"`, `"protocol.compute_failed"`, ~20 en total, todos con el estilo `dominio.accion`). Riesgo: un typo (`protocol.compute_faild`) queda invisible para siempre (nadie lo encuentra buscando el nombre correcto), y no hay una lista de qué eventos existen. Centralizar en una constante/enum compartido (`AUDIT_EVENTS`) evita el typo y documenta el catálogo. No se hace ahora (toca ~20 sitios); al construirlo, migrar todos de una para no dejar mezcla. Ligado a la observabilidad del Hito 2.
 - **Pruebas de carga y estrés**, fuzzing.

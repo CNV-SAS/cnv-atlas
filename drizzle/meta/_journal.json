@@ -708,6 +708,13 @@
       "when": 1788653786099,
       "tag": "0100_le8_insumos_diagnostico",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1788740186099,
+      "tag": "0101_condiciones_bis_v2",
+      "breakpoints": true
     }
   ]
 }
