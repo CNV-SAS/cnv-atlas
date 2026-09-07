@@ -60,6 +60,35 @@ una cifra.
 
 Commit `b9d8c55`. Candado: `le8-guarda-ocho-insumos.test.ts`.
 
+### El paciente demo se siembra con el agua en el peor valor (dato de prueba, no del motor)
+
+**Salió del barrido del LE8 y hasta hoy vivía sólo en el mensaje de un commit** (`880f87e`), que por
+nuestra propia regla no cuenta como registrado: un hallazgo dentro de un commit no lo encuentra nadie.
+
+**Qué es, y qué NO es.** No es del motor ni de la guarda, y no toca datos de producción: es del
+FIXTURE de *encuesta completa* con el que siembran los tests y el seed de realimentación
+(`src/tests/fixtures/clinical-engine/dfi-complete-answers.ts`). Su `defaultAnswerFor` devuelve `"0"` para
+toda pregunta de tipo contador, y `d7_agua` no tiene respuesta propia en el fixture. Desde que el agua
+alimenta el LE8, **el perfil sembrado queda con cero vasos sin que nadie lo decidiera**, y eso arrastra su
+ICEC y su EB-BIS.
+
+**Por qué no lo dice nadie:** cero es una respuesta válida. No rompe nada, no da error, y la guarda
+endurecida tampoco lo atrapa (el campo está presente). Lo único que pasa es que **el perfil sembrado ya no
+es el que su docstring describe**.
+
+**Sólo importa si alguien mide algo sobre ese perfil.** Es dato de prueba: no toca a ningún paciente real,
+ni a la nube, ni a lo emitido. El riesgo es de segundo orden y es el de siempre: usar el demo como caso de
+referencia para juzgar una cifra, y estar juzgándola contra una hidratación en su peor valor que nadie
+eligió.
+
+**Qué haría falta:** que `resolveAnswerValue` acepte valores crudos para los contadores, de modo que el
+sembrador pueda dar un número real en vez de caer al default. Es media hora. **No está agendado**: se hace
+cuando toque el sembrador o cuando alguien vaya a medir sobre el demo, lo que ocurra primero.
+
+Familia de [[migracion-anade-campos-y-las-listas-a-mano-envejecen]] (la trampa del default) y de
+[[texto-afirma-estado-sin-derivarlo]] (el docstring que sigue describiendo el perfil viejo).
+
+
 **Y destapó un rojo legítimo:** `clinical-engine.test.ts` declaraba trece `field_key` como *encuesta
 COMPLETA* y no se actualizó cuando 1.3.0 sumó el agua y los quince grupos (la migración 0100 sí los había
 marcado `used_in_diagnosis`). La prueba de "encuesta completa" pasaba verde sobre una encuesta a la que le
