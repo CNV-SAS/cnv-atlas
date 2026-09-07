@@ -155,28 +155,31 @@ Se conserva el texto porque explica por qué estuvo apagado cinco semanas y qué
 - Queda aquí, aunque esté retirada, porque la entrada es el registro de que existió: sin ella, alguien
   puede volver a "completar" esa celda creyendo que falta.
 
-**DIV-18 · El peso meta y la fuerza prensil se MUESTRAN en Antropometría y se EDITAN en las condiciones de la toma.**
-- En su archivo los dos campos son **editables en Antropometría**, con la cintura y la cadera. Lo dice su
-  propio comentario: *"lo que el profesional escribe a mano en Antropometría (cintura, cadera,
-  dinamometría y peso meta) se guarda por paciente en cuanto lo teclea"*.
-- En Atlas se **muestran** ahí, junto a cintura y cadera, y el enlace lleva al bloque exacto donde se
-  editan (`#medidas-del-profesional`, en las condiciones de la toma).
-- **Por qué no se mueven, y no es por tamaño:** en SU archivo están en Antropometría **porque las
-  condiciones de la toma no son un formulario aparte con su gate**. En Atlas sí lo son, y hoy el
-  profesional llena las condiciones, la prensil y el peso meta **en un solo guardado, en un solo momento
-  de la consulta**. Moverlos partiría eso en dos guardados en dos subpestañas: copiar la ubicación sin
-  copiar la estructura empeora el flujo.
-- **Y hay un motivo técnico que apunta al mismo lado:** la fila de condiciones tiene
-  `bis_condition_version_id` y `condition_answers` NOT NULL, y su writer hace un upsert de la fila
-  entera. Un update parcial desde otra pantalla, con la fila aún sin crear, afectaría **cero filas** y el
-  valor se perdería en silencio.
-- **Lo que el cotejo señalaba sí se resuelve:** que no se veían donde se esperan. Ahora se ven ahí.
-- **Cómo:** `medidas-del-profesional-resumen.tsx`, en solo lectura y diciéndolo (no son inputs
-  deshabilitados, que se leen como "esto debería poder tocarse"). Decisión de Santiago, 2026-09-05.
-- **La pregunta, si prefiere lo otro:** si quiere que sean editables en Antropometría, se hace, y el
-  precio es el segundo guardado.
+**DIV-18 · CERRADA el 2026-09-07. Él contestó, y el peso meta y la fuerza prensil se editan en
+Antropometría.**
 
----
+- **Qué decía esta divergencia:** que los dos campos se **mostraban** en Antropometría y se **editaban** en
+  las condiciones de la toma, porque en Atlas las condiciones son un formulario con su propio gate y
+  partirlo habría significado dos guardados en dos subpestañas.
+- **Llevaba su pregunta escrita al lado**, y es lo que hizo que esto se cerrara bien: *"si quiere que sean
+  editables en Antropometría, se hace, y el precio es el segundo guardado"*.
+- **Su respuesta (cotejo, punto 4):** *"El peso meta y la fuerza prensil no tienen nada que hacer debajo de
+  procesos de calidad de la medida... Una razón para que lo entiendan es que el peso meta se establece al
+  revisar al paciente y sus datos; si lo ponen antes el profesional NO tiene cómo acordarse del contexto
+  del paciente. NO puede ir ahí."*
+- **Y su razón es de SECUENCIA, no de ubicación**, que es la mitad que nos faltaba: las condiciones se
+  responden **antes** de medir; el peso meta se decide **después** de leer la composición. Compartían
+  formulario porque se llenaban en el mismo momento, y ese momento era el equivocado.
+- **Era la SEGUNDA vez que lo decía.** El 2026-08-30 §6a ya había escrito *"nunca la puse en las
+  condiciones del BIS"*; entonces le pusimos un rótulo propio al bloque y lo dejamos donde estaba.
+- **El motivo TÉCNICO de esta divergencia no sobrevivió a la verificación.** Decía que un update parcial
+  desde otra pantalla podía afectar cero filas y perder el valor en silencio. Dos cosas: **el peso meta no
+  vive en esa tabla** (vive en `evaluations`, migración 0096, cuya fila siempre existe), y **la prensil
+  está detrás de un orden que la app impone** (sin condiciones guardadas no se habilita el import, y
+  Antropometría vive detrás del import). Aun así el writer nuevo lo comprueba y **falla en voz alta**.
+- **Y hubo que mover los DOS lados a la vez**, que es lo que se podía olvidar: quitar los campos del
+  formulario sin quitarlos del writer de condiciones habría hecho que cada re-guardado de condiciones los
+  pusiera en null, **borrando en silencio** lo escrito en Antropometría.
 
 ### El estado PBI: su HC lo imprime y Atlas lo retiró en B11
 

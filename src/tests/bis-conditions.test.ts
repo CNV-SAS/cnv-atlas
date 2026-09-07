@@ -292,9 +292,26 @@ describe("evaluateBisImportGate (orden + seguridad del import)", () => {
   });
 });
 
-describe("las medidas del profesional se muestran donde él las pone (DIV-18, cotejo 4)", () => {
-  const RESUMEN = readFileSync(
-    "src/modules/bis-intake/components/medidas-del-profesional-resumen.tsx",
+// DIV-18 SE CERRO AL REVES DE COMO ESTABA (2026-09-07, punto 4 de su cotejo), y por eso este bloque se
+// reescribio entero en vez de ajustarse.
+//
+// Lo que decia antes: el peso meta y la fuerza prensil se MUESTRAN en Antropometria y se EDITAN en las
+// condiciones de la toma, porque en Atlas las condiciones son un formulario con su propio gate y partirlo
+// en dos guardados empeoraba el flujo. Ese razonamiento tenia su pregunta abierta escrita al lado: "si
+// quiere que sean editables en Antropometria, se hace, y el precio es el segundo guardado".
+//
+// Gildardo la contesto, y con una razon que no habiamos oido y que no es de ubicacion sino de SECUENCIA:
+// *"el peso meta se establece al revisar al paciente y sus datos; si lo ponen antes el profesional NO
+// tiene como acordarse del contexto del paciente. NO puede ir ahi."* Se decide DESPUES de ver la
+// composicion. Las condiciones se responden ANTES de medir.
+//
+// Y EL MOTIVO TECNICO DE DIV-18 NO SOBREVIVIO A LA VERIFICACION: decia que un update parcial desde otra
+// pantalla podia afectar cero filas. El peso meta no vive en esa tabla (vive en `evaluations`, cuya fila
+// siempre existe) y la prensil esta detras de un orden que la app impone. Aun asi el writer lo comprueba
+// y falla en voz alta, que es lo que fija el ultimo caso de aqui.
+describe("las dos medidas del profesional se editan en Antropometría (punto 4)", () => {
+  const ANTRO = readFileSync(
+    "src/modules/bis-intake/components/antropometria-editable.tsx",
     "utf8",
   );
   const CAPTURA = readFileSync(
@@ -306,30 +323,52 @@ describe("las medidas del profesional se muestran donde él las pone (DIV-18, co
     "utf8",
   );
   const READER = readFileSync("src/modules/bis-intake/data/bis-conditions-reader.ts", "utf8");
+  const MEDIDAS_WRITER = readFileSync(
+    "src/modules/bis-intake/data/medidas-profesional-writer.ts",
+    "utf8",
+  );
+  const INTAKE_WRITER = readFileSync("src/modules/bis-intake/data/bis-intake-writer.ts", "utf8");
 
-  it("el enlace cae en el BLOQUE, no en la subpestaña entera", () => {
-    // Su cuidado (a). Un enlace a la subpestaña deja al profesional buscando los dos campos entre las
-    // condiciones. Y lleva la ETAPA explícita, que es la lección del punto 5 de este mismo cotejo: sin
-    // ella la página cae a su default.
-    expect(RESUMEN).toContain("?etapa=evaluacion&ev=encuesta#medidas-del-profesional");
-    expect(CAPTURA, "el ancla de destino desapareció del bloque").toContain(
-      'id="medidas-del-profesional"',
-    );
+  it("los dos campos son EDITABLES en Antropometría", () => {
+    expect(ANTRO).toContain('name="weightGoalKg"');
+    expect(ANTRO).toContain('name="gripStrengthKg"');
+    expect(ANTRO).toContain("saveMedidasProfesionalAction");
   });
 
-  it("y se ve que aquí son de solo lectura, sin campos deshabilitados", () => {
-    // Su cuidado (b). Un input deshabilitado se lee como "esto debería poder tocarse"; una lista de
-    // datos con su enlace dice dónde se editan. Por eso el resumen no monta inputs.
-    expect(RESUMEN).toContain("Aquí solo se consultan");
-    expect(sinComentarios(RESUMEN), "el resumen montó campos: se leería como editable").not.toMatch(
-      /<(input|Input|textarea|Textarea)\b/,
-    );
+  it("y ya no están en las condiciones de la toma", () => {
+    const limpio = sinComentarios(CAPTURA);
+    expect(limpio, "el peso meta volvió a las condiciones").not.toContain("weightGoalKg");
+    expect(limpio, "la prensil volvió a las condiciones").not.toContain("gripStrengthKg");
+    expect(limpio).not.toContain('id="medidas-del-profesional"');
   });
 
-  it("y el peso meta llega TAMBIÉN en la vista sellada", () => {
+  it("EL WRITER DE LAS CONDICIONES NO LOS TOCA, que es la otra mitad del arreglo", () => {
+    // Y es la que se podia olvidar: si el formulario deja de mandarlos pero el writer los sigue
+    // escribiendo, cada re-guardado de condiciones los pone en null y BORRA en silencio lo que el
+    // profesional acaba de escribir en la otra subpestaña. El hazard del campo que deja de viajar, por
+    // el extremo del que deja de recibirse.
+    const limpio = sinComentarios(INTAKE_WRITER);
+    expect(limpio, "el writer de condiciones volvería a pisar el peso meta").not.toContain("weightGoalKg");
+    expect(limpio, "el writer de condiciones volvería a pisar la prensil").not.toContain("gripStrengthKg");
+  });
+
+  it("el guardado propio falla EN VOZ ALTA si la fila de condiciones no existe", () => {
+    // La prensil vive en `evaluation_bis_intake`, que es opcional. Un update sobre una fila que no está
+    // afecta cero filas y no da error: el valor desaparecería sin decirlo. Se comprueba antes.
+    expect(MEDIDAS_WRITER).toContain("Primero guarda las condiciones de la toma");
+    expect(MEDIDAS_WRITER).toContain("evaluationBisIntake.evaluationId");
+  });
+
+  it("y el gate del diagnóstico vive DENTRO de la transacción, no en la pantalla", () => {
+    // Un botón oculto no es un candado. Mismo criterio que la corrección de medidas.
+    expect(MEDIDAS_WRITER).toContain("El diagnóstico ya se generó");
+    expect(MEDIDAS_WRITER).toContain(".from(diagnoses)");
+  });
+
+  it("el peso meta llega TAMBIÉN en la vista sellada", () => {
     // La mitad silenciosa del mismo dato: la vista de solo lectura (después del diagnóstico) traía la
-    // prensil y no el peso meta, así que el resumen habría dicho "Sin registrar" sobre un valor que
-    // existe. Es el campo que deja de viajar, en el camino que menos se mira.
+    // prensil y no el peso meta, así que habría dicho "Sin registrar" sobre un valor que existe. Es el
+    // campo que deja de viajar, en el camino que menos se mira. Sigue valiendo con la edición movida.
     expect(READER).toContain("weightGoalKg: intake.weightGoalKg");
     expect(ENTRADA).toContain("bisReadonly?.weightGoalKg");
   });
@@ -341,8 +380,11 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     "utf8",
   );
   const FORM = readFileSync("src/modules/bis/components/bis-import-form.tsx", "utf8");
-  const RESUMEN = readFileSync(
-    "src/modules/bis-intake/components/medidas-del-profesional-resumen.tsx",
+  // ERA `medidas-del-profesional-resumen.tsx`, que se retiro el 2026-09-07 al pasar la EDICION de las dos
+  // medidas a Antropometria (punto 4): el resumen existia porque se editaban en otra pantalla. La
+  // asercion no cambia, cambia el archivo donde vive el estado sellado.
+  const ANTRO = readFileSync(
+    "src/modules/bis-intake/components/antropometria-editable.tsx",
     "utf8",
   );
 
@@ -384,11 +426,14 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     expect(FORM).toContain("Reemplazar la medición");
   });
 
-  it("y el enlace de editar desaparece cuando los valores están sellados", () => {
-    // Un enlace que promete editar y no deja editar es peor que no tenerlo: manda al profesional a buscar
-    // un campo que no existe y a concluir que el sistema está roto.
-    expect(RESUMEN).toContain("sellada ? null : (");
-    expect(RESUMEN).toContain("Quedaron selladas con el diagnóstico");
+  it("y los campos desaparecen cuando los valores están sellados", () => {
+    // Antes esto miraba un ENLACE de "editar en las condiciones": prometer editar y no dejar manda al
+    // profesional a buscar un campo que no existe. Con la edicion ya aqui, lo que no puede aparecer es el
+    // campo mismo. Se afirma por las DOS ramas para que el verde signifique algo: sellada pinta una lista
+    // de datos, no sellada pinta el formulario.
+    expect(ANTRO).toContain("Quedaron selladas con el diagnóstico");
+    expect(ANTRO, "la rama sellada tiene que pintar datos, no campos").toContain("<dl");
+    expect(ANTRO).toContain("Guardar medidas del profesional");
     expect(ENTRADA).toContain("sellada={diagnosticoGenerado}");
   });
 });

@@ -1,6 +1,6 @@
 # Lo que queda abierto contigo, Gildardo
 
-**Connected Nutrition Ventures · Atlas · 2026-09-06.**
+**Connected Nutrition Ventures · Atlas · 2026-09-06, actualizado el 2026-09-07** con lo que salió de tu revisión de Atlas.
 
 Este es **el documento único**: todo lo que quedó abierto de tu lado después del cotejo visual completo de
 Atlas contra tu HTML. Antes estaba repartido en dos sitios y eso hacía que algo se quedara sin llegarte;
@@ -12,8 +12,8 @@ ahora es uno solo.
 | --- | --- | --- |
 | **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
 | **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
-| **Al final** | Lo que necesita que **mires tu archivo** | 7 |
-| **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos. No pide nada | 15 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 10 |
+| **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos | 15 |
 
 **Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
 caso; lo que te preguntamos es si la decisión fue la que tú habrías tomado. Donde dice *"se cambia en una
@@ -260,6 +260,70 @@ profesional, patrón alimentario declarado, fenotipo estructural, sector funcion
 
 ---
 
+## 15 · Tu clasificador del IAE pinta "Concordante" en ámbar, y lo bueno está en el medio
+
+**Lo preguntaste tú**, en el punto 14 de tu revisión: *"si es concordante, ¿no debería estar en verde?"*
+
+**Sí, y el ámbar sale de tu archivo, no de nuestra interpretación.** Tu `cIAE` es así:
+
+| Valor | Etiqueta | Color |
+| --- | --- | --- |
+| < −5 | Desacelerado | `#10b981` verde |
+| −5 a +5 | **Concordante** | `#f59e0b` **ámbar** |
+| > +5 | Acelerado | `#ef4444` rojo |
+
+Atlas no escribe severidades a mano: **lee el color que emite tu clasificador**. El ámbar entra como
+"alerta" porque tú lo pusiste ahí.
+
+**Por qué pasó, y es una trampa que no tiene nada de descuido:** el IAE es tu **único clasificador de dos
+colas**. Lo bueno está en el CENTRO, no en un extremo. Sobre una rampa de tres pasos verde-ámbar-rojo, el
+verde se lo llevó "Desacelerado" y al centro le tocó el color de en medio.
+
+**No lo tocamos nosotros** (tu archivo manda en lo clínico). **Es una línea tuya.**
+
+**Y de paso, la otra mitad de tu pregunta:** la fila IAE **sí** muestra 4,4 como su valor. Su Δ sale 0,0
+porque **tú lo definiste así** el 1 de septiembre (§5): *"el IAE da la distancia al límite del rango que se
+cruzó, y cero mientras esté dentro de −5 a +5"*. El **+4,4** que viste está en la fila **EB**, donde la
+referencia es la edad cronológica y el Δ **es** el IAE. Las dos filas dicen lo mismo con números distintos.
+**Si esa repetición confunde, dinos y la quitamos de una de las dos.**
+
+## 16 · Y hay una casilla más de tu matriz IFC×IRC con el mismo problema de color
+
+Barriendo tus quince clasificadores por lo del punto anterior, apareció esta. En `FYR_LABELS`, la casilla
+**3_3** (IFC alto, IRC alto) se llama **"Función normal con riesgo"** y lleva el color `#22d3ee`, un cian.
+
+**Nuestra regla lo lee como ÓPTIMO.** Es la peor casilla de esa fila con el color de la mejor.
+
+**Hoy no tiene consecuencia en Atlas:** el motor se queda con la etiqueta y descarta ese color, así que
+nada se pinta mal. Te lo decimos porque **en tu archivo sí es el color que se ve**, y es la misma forma que
+el ámbar del IAE. Un barrido nuestro de agosto no lo encontró porque buscaba azules y el cian no es azul.
+
+**¿Lo cambias, o el cian significa algo que no estamos leyendo?**
+
+## 17 · Retiramos tus badges de "Nivel III · Salud celular" porque tu archivo las calcula y no las pinta
+
+**Lo pediste tú**, en el punto 10 de tu revisión, y al ir a moverlas encontramos esto:
+
+**Tu `celBadges` se llena y nunca se muestra.** En tu entrega del 4 de septiembre aparece cinco veces: la
+declaración y los cuatro `push`. Ningún render la lee. Lo mismo `alimentBadges`. (Y no es que las badges
+se pinten de otro modo: `condBadges`, en el mismo archivo, **sí** se pinta.) **Es la misma situación que el
+`clasifLancet` del punto 11.**
+
+**Nosotros la habíamos portado y sí la mostrábamos**, y ahí salió lo que a ti te chirrió: para el mismo
+paciente, tu tabla de Wang decía *"Hidratación celular adecuada"* en tres filas y la badge decía
+*"Hidratación celular deficiente"*. **No es un error de cálculo: son dos indicadores tuyos distintos con
+nombres que chocan.** Las filas son el AIC como porcentaje (referencia 60-65%) y la badge es la hidratación
+de la masa libre de grasa (referencia 73,2%), que además ya tiene **su propia fila** en la misma tabla.
+
+**Está retirado.** Y esto **no toca tu instrucción del 23 de agosto** (*"salud celular va en Diagnóstico"*):
+la hidratación, el ángulo de fase y la masa celular activa siguen en Diagnóstico, cada uno con su fila y su
+clasificador. Lo que se fue era el duplicado.
+
+**Lo que sí se pierde, y por eso te lo preguntamos:** el **ECM/BCM > 1,4** era el único de las cuatro
+badges **sin fila propia** en la tabla, así que ya no se ve en ninguna parte. Tu archivo tampoco lo muestra.
+
+**¿El ECM/BCM debe verse? Si sí, ¿con qué corte y en qué fila?**
+
 # Y APARTE · Lo que decidimos nosotros y solo te declaramos
 
 **No pide nada.** Son las divergencias que tomamos por nuestra cuenta para no dejarte preguntas abiertas
@@ -267,6 +331,14 @@ que frenaran el cotejo. Cada una lleva su razón y **su puerta de salida: si pre
 cambia.**
 
 ## Del INSTRUMENTO, que es tuyo y por eso va primero
+
+**La pregunta de amputación se queda, y tú no la nombraste.** En el punto 3 nos dijiste que quitáramos las
+preguntas que no habías puesto, y nombraste dos: el edema/anasarca y el estado febril. **Las dos están
+fuera.** Pero entraron en el mismo lote de tres, y la tercera es *"¿Tiene amputación de algún segmento
+corporal?"*, que tampoco está en tu archivo. **La dejamos, porque retirarla sin que la señales sería tratar
+tu silencio como una instrucción.** Y hay una razón para separarla de las otras dos: el edema y la fiebre
+son **transitorios** (la medición se repite otro día), y una amputación es **permanente**: lo que compromete
+no es el estado del paciente, es la ecuación, que estima sobre un cuerpo completo. **¿La retiramos también?**
 
 | Qué hicimos | Por qué | Revertir cuesta |
 | --- | --- | --- |
@@ -285,7 +357,6 @@ cambia.**
 | El diagnóstico abre en Funcional, con franja de veredicto persistente |
 | La tabla de composición junta lo bioeléctrico crudo en un bloque |
 | La tabla conserva GEB y GET, que tu HTML no lista |
-| El **peso meta** y la **fuerza prensil** se MUESTRAN en Antropometría, donde tú los tienes, y se EDITAN en las condiciones de la toma, donde se llenan (en Atlas son un formulario con su propio guardado, y partirlo en dos haría que el valor se perdiera en silencio) |
 
 ## Donde Atlas va POR DELANTE de tu archivo
 

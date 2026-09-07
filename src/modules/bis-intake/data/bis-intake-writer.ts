@@ -3,7 +3,7 @@ import "server-only";
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { bisMeasurements, evaluationBisIntake, evaluations } from "@/db/schema";
+import { bisMeasurements, evaluationBisIntake } from "@/db/schema";
 import { recordAudit } from "@/modules/audit/log";
 
 import type { BisConditionAnswers } from "../types";
@@ -17,8 +17,6 @@ export type WriteBisIntakeInput = {
   versionId: string;
   answers: BisConditionAnswers; // ya validadas y selladas (con acknowledgedAt)
   contraindicated: boolean;
-  weightGoalKg: number | null;
-  gripStrengthKg: number | null;
   actorId: string;
   actorEmail: string;
   ip: string | null;
@@ -42,34 +40,19 @@ export async function writeBisConditionsIntake(
       .limit(1);
     const hasMeasurement = existing.length > 0;
 
-    // PESO META: NO va en esta tabla. Vive en `evaluations` (migracion 0096) porque es un dato de la
-    // consulta y su fila siempre existe; esta es opcional. Comparte formulario con las condiciones porque
-    // se llenan en el mismo momento, no porque sean lo mismo, y esa distincion ahora tambien esta en la
-    // base. La escritura va abajo, en la misma transaccion.
-    const [previo] = await tx
-      .select({ pesoMeta: evaluations.weightGoalKg, origen: evaluations.weightGoalSetIn })
-      .from(evaluations)
-      .where(eq(evaluations.id, input.evaluationId))
-      .limit(1);
-    const pesoMetaAnterior = previo?.pesoMeta != null ? Number(previo.pesoMeta) : null;
-    // La PROCEDENCIA solo cambia si cambia el VALOR: este formulario se re-guarda para corregir las
-    // condiciones de la toma, y marcar "entrada" en ese caso borraria el rastro de que lo habia fijado el
-    // nutricionista. Un guardado que no toco el dato no puede afirmar quien lo decidio.
-    const pesoMetaCambio = pesoMetaAnterior !== input.weightGoalKg;
-    const weightGoalSetIn =
-      input.weightGoalKg == null
-        ? null
-        : pesoMetaCambio
-          ? "entrada"
-          : (previo?.origen ?? "entrada");
+    // EL PESO META Y LA FUERZA PRENSIL YA NO SE ESCRIBEN AQUI (2026-09-07, punto 4 de su cotejo). Se
+    // editan en Antropometria, con su propio guardado (`medidas-profesional-writer.ts`).
+    //
+    // Y NO BASTABA CON QUITARLOS DEL FORMULARIO: mientras este writer siguiera poniendolos, cada
+    // re-guardado de las condiciones los habria puesto en null y habria BORRADO en silencio lo que el
+    // profesional acababa de escribir en la otra subpestaña. Es el hazard del campo que deja de viajar,
+    // por el otro extremo: el que deja de recibirse se sobreescribe. Los dos lados se movieron juntos.
 
     const values = {
       evaluationId: input.evaluationId,
       bisConditionVersionId: input.versionId,
       conditionAnswers: input.answers,
       contraindicated: input.contraindicated,
-
-      gripStrengthKg: input.gripStrengthKg == null ? null : String(input.gripStrengthKg),
     };
 
     // Una captura por evaluacion (unique en evaluation_id): re-guardar actualiza el sello.
@@ -82,21 +65,9 @@ export async function writeBisConditionsIntake(
           bisConditionVersionId: values.bisConditionVersionId,
           conditionAnswers: values.conditionAnswers,
           contraindicated: values.contraindicated,
-
-          gripStrengthKg: values.gripStrengthKg,
           updatedAt: sql`now()`,
         },
       });
-
-    // El peso meta, a la EVALUACION. En la MISMA transaccion que las condiciones: se capturan juntos en la
-    // pantalla, asi que un guardado a medias dejaria al profesional sin saber que se grabo.
-    await tx
-      .update(evaluations)
-      .set({
-        weightGoalKg: input.weightGoalKg == null ? null : String(input.weightGoalKg),
-        weightGoalSetIn,
-      })
-      .where(eq(evaluations.id, input.evaluationId));
 
     // Audit inline (regla dura 8). Sin PII: ids, version, el flag de contraindicacion y las claves
     // de advertencias reconocidas (no la persona ni el detalle).
