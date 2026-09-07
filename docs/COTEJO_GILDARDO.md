@@ -254,29 +254,76 @@ Nuestra capa de color no escribe severidades a mano: las **lee** del hex que emi
 
 ---
 
-# ESTADO · qué quedó corregido el 2026-09-07
+# ESTADO · dónde está cada uno de los dieciséis (2026-09-08)
 
-**Nueve puntos cerrados en código.** `pnpm verify` verde: 2139 pruebas unitarias, 189 contra base real,
-fronteras RSC limpias, 100 server actions todas con pantalla.
+**`pnpm verify` verde: 2144 pruebas unitarias, 189 contra base real, fronteras RSC limpias.**
+**Smoke completo pasado por Santiago: los ocho recorridos.**
+
+## a · Corregidos en código: OCHO
 
 | # | Qué se hizo | Commit |
 | --- | --- | --- |
-| **3** | Las dos preguntas fuera, en una **v2 del catálogo** (la v1 queda intacta: las evaluaciones emitidas la tienen sellada). La amputación se queda, declarada | `4dbcb92` |
-| **10** | Las badges de salud celular retiradas: su archivo las calcula y no las pinta | `4dbcb92` |
-| **9** | Los biomarcadores dejan de viajar al modelo, con candado por CONTENIDO (no por nombre de campo) | `fb46677` |
-| **14** | **Nada que tocar**: el ámbar sale de su `cIAE`. Va a la consulta, con el cian de `FYR_LABELS` | (documento) |
+| **3** | Las dos preguntas fuera, en una **v2 del catálogo**. La v1 queda intacta: las evaluaciones emitidas la tienen sellada | `4dbcb92` |
 | **4** | Peso meta y prensil **editables en Antropometría**. Cierra DIV-18 | `c3dfe1c` |
 | **6** | La tabla de Wang nace **abierta** | `1c1b11c` |
-| **7** y **11** | **Cuatro subpestañas en su orden**, y el criterio a la cuarta | `1c1b11c` |
+| **7** | **Cuatro subpestañas en su orden** | `1c1b11c` |
+| **9** | Los biomarcadores dejan de viajar al modelo | `fb46677` |
+| **10** | Las badges de salud celular retiradas: su archivo las calcula y no las pinta | `4dbcb92` |
+| **11** | El criterio del profesional a la cuarta subpestaña | `1c1b11c` |
 | **13** | La Diana se dibuja **con una sola medición** | `470d845` |
 
-**Queda el 8**, que es tanda propia: portar su prompt de cinco dominios. Ya tiene su respuesta
-(*"todo lo del prompt completo que tiene el html... pero NO enviar el nombre"*), y el candado del punto 9
-es lo que se pondrá rojo si ese porte vuelve a colar un marcador de laboratorio.
+## b · Cerrado sin tocar código, porque no es nuestro: UNO
 
-**Y esperan la reunión:** el **1** y el **5** (las seis pestañas), el **2** (el filtro de `/evaluaciones`,
-que Santiago deja para después), el **12** (falta que diga qué elementos parametrizó), y el **15** y el
-**16**, que no van y se explican.
+**El 14.** Verificado que el ámbar de *"Concordante"* sale de su propio `cIAE` (`#f59e0b`), que Atlas
+**lee** en vez de escribir a mano. **No es nuestro y no se toca**: es una línea suya. Va como pregunta 15
+del documento, junto al cian de `FYR_LABELS` que salió al barrer sus quince clasificadores.
 
-**Una acción operativa antes de probar:** las dos preguntas salen de una versión nueva del catálogo, así
-que hay que correr `pnpm db:seed:bis` para publicarla. Sin eso la pantalla sigue mostrando las catorce.
+**No cuenta como "corregido"**, y la distinción importa: de nuestro lado está cerrado, pero el defecto
+sigue en pie hasta que él cambie su archivo.
+
+## c · Nuestros y pendientes: DOS
+
+- **El 8**, el borrador de IA por los cinco dominios. **Ya tiene su respuesta** (*"todo lo del prompt
+  completo que tiene el html... pero NO enviar el nombre"*), así que está desbloqueado. Tanda propia.
+- **El 12**, la impresión del plan. Es el pase de diseño de los tres documentos. **Después del 8.**
+  Y arrastra una pregunta que la cola no cubre: *"NO TIENE TODOS los elementos que parametricé"*. Esa
+  lista hace falta antes de empezar, o el pase se hace sobre un plan incompleto.
+
+## d · En espera de la reunión: CUATRO
+
+- **El 1 y el 5**, las seis pestañas. Es una decisión suya, y el cambio es más pequeño de lo que parece:
+  partir Evaluación en dos y renombrar una.
+- **El 15 y el 16**, que **no van**: ninguna de las dos pantallas está repetida. No esperan una decisión,
+  esperan una explicación.
+
+## e · Y uno que es mitad y mitad: el 2
+
+**No cabe entero en ninguna categoría, así que va aparte en vez de forzarlo.**
+
+- **La mitad del filtro YA ESTABA HECHA**: `/pacientes` busca por nombre y por documento desde antes del
+  cotejo. Lo que no existe es el filtro en `/evaluaciones`, que es la pantalla de la que él habla.
+- **Esa mitad la aplazó Santiago**, no la reunión: *"/evaluaciones se queda como está, el filtro se revisa
+  después"*. Es nuestra y está diferida por decisión propia.
+- **Lo de "pacientes primero o evaluaciones primero" no es un conflicto**: Atlas tiene las dos pantallas.
+
+---
+
+## Lo que cambió el 2026-09-08
+
+**El 3 pasó de "corregido" a "corregido Y DESPLEGABLE", que no era lo mismo.** Estaba hecho en código el
+día 7, pero **no había forma de llevarlo a la nube**: el atajo `pnpm db:seed:bis` lleva
+`--env-file=.env.local` escrito dentro. En local bajó a doce y la nube siguió en catorce, y el seed
+imprimía la misma línea en los dos casos.
+
+Ahora existe la migración generada (`drizzle/0101_condiciones_bis_v2.sql`), verificado que produce los
+mismos ids que el seed. **Falta que Santiago la aplique en la nube.**
+
+**Y el smoke sacó un defecto que no es de su cotejo:** la nota del formulario de condiciones decía *"La
+semana del ciclo es opcional"* también con un paciente hombre, a quien esa pregunta ni se le muestra.
+Corregido derivándola del catálogo visible, y al barrer la misma pantalla apareció dos veces más (el aviso
+del reconocimiento nombraba "el embarazo" a mano, y el comentario del gate nombraba la semana del ciclo).
+
+**Y confirmado en el smoke**: la evaluación anterior conserva la **v1** del catálogo, con sus catorce
+preguntas. Es el comportamiento correcto y es el mismo que un bump de encuesta: las respuestas viven
+selladas contra la versión que se respondió, y la vista de solo lectura saca los rótulos de **esa**
+versión. Si la v1 se hubiera editado en sitio, esa evaluación mostraría respuestas sin su pregunta.
