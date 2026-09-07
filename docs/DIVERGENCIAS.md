@@ -202,6 +202,80 @@ pantalla. Dos razones, la misma conclusión.
 primero cuál de los dos umbrales de AF manda, porque no pueden convivir.
 
 ---
+
+### Las badges de "Nivel III · Salud celular" se retiran: su archivo las calcula y nunca las pinta
+
+**Qué hacía Atlas.** Un bloque en Diagnóstico, debajo de la tabla de Wang, con hasta cuatro badges:
+*AF bajo*, *MCA reducida*, *Hidratación celular deficiente* y *ECM/BCM elevado*, cada una con su
+recomendación. Porte verbatim de `celBadges`.
+
+**Qué hace su archivo, y esto es lo que no habíamos verificado.** Lo **calcula y lo descarta**. En el v8
+del 4 de septiembre, `celBadges` aparece **cinco** veces: la declaración y los cuatro `push`.
+**Ningún render la lee.** Igual `alimentBadges`. **Control de que no es otra forma de pintarlas:**
+`condBadges`, en el mismo archivo, **sí** se pinta (`condBadges.map(...)`, línea 17880). Así que el
+patrón existe y estas dos quedaron fuera de él.
+
+**Lo trajo su punto 10** (*"una cosa del nivel II que no entiendo porque está ahí"*), y el dato que lo
+cerró lo puso Santiago: para el mismo paciente, la tabla de Wang dice **"Hidratación celular adecuada"**
+en tres filas y la badge decía **"Hidratación celular deficiente"**.
+
+**Y esa contradicción es de PALABRAS, no de cálculo.** Son dos indicadores distintos con nombres que
+chocan en español:
+
+| | Qué mide | Referencia | Veredicto |
+| --- | --- | --- | --- |
+| Las tres filas que él vio (`dAICpct`) | AIC como % de ACT y como % de MLG | 60-65% | "Hidratación celular adecuada" |
+| La badge (`hidSG`) | ACT sobre MLG (hidratación de la masa libre de grasa) | ≥73,2% | "Hidratación celular deficiente" |
+
+La badge **no contradecía a su fuente**: la tabla de Wang tiene su propia fila `hidSG`
+("Hidratación sin grasa - deshidratación") y las dos dicen lo mismo. **La badge era un duplicado de esa
+fila**, puesto al lado de tres filas que hablan de otra cosa con casi el mismo nombre.
+
+**Por qué esto NO deshace su P-28 del 2026-08-23** (*"salud celular va en Diagnóstico, no es negociable"*):
+lo que esa instrucción nombra (hidratación celular, ángulo de fase, masa celular activa) **sigue en
+Diagnóstico**, como tres filas de la tabla de Wang con sus clasificadores. Se retira el duplicado, no el
+tema. Verificado fila por fila: `AF`, `MCA` y `hidSG` están las tres en `composition-map`.
+
+**Lo que sí se pierde, y va declarado porque es una decisión y no un accidente:** el **ECM/BCM > 1,4** era
+el único de los cuatro **sin fila propia** en Wang, así que desaparece de la pantalla. Su archivo tampoco
+lo muestra, así que quedamos donde él está. **Si lo quiere visible, el sitio es una fila de Wang con su
+clasificador, no una badge suelta.**
+
+**Cómo queda el código:** el porte (`celular-badges.ts`) y su candado se **conservan**, descablados y con
+la razón escrita en los tres sitios. Re-cablearlo es una línea si él lo pide.
+
+**La pregunta:** ¿el ECM/BCM debe verse, y con qué corte? Y si quiere las badges de vuelta, ¿son además de
+las filas de Wang, o en lugar de ellas?
+
+---
+
+### La pregunta de amputación se queda, y él no la señaló
+
+**Qué hace su archivo.** Su `BIAQualityCheck` tiene **ocho** condiciones de calidad de la toma, todas
+las nuestras. **No tiene ninguna de validez**: ni amputación, ni edema/anasarca, ni estado febril.
+
+**Qué hace Atlas.** Añadimos las tres como "tabla ampliada de contraindicaciones" en la v1 del catálogo,
+con un tipo propio (`validez`): la medición es segura pero el resultado no es confiable, así que no
+bloquea nada y sella un caveat en el diagnóstico.
+
+**Qué pasó el 2026-09-07.** En el cotejo, punto 3, escribió: *"quitar estas preguntas que no sé porque se
+pusieron, si yo nunca dije que estuvieran allí"*, y nombró **dos**: el edema/anasarca y el estado febril.
+**Las dos se retiraron** (v2 del catálogo). **La amputación entró en el mismo lote, es del mismo tipo y
+tampoco está en su archivo, y no la nombró.**
+
+**Por qué se queda, y la decisión es de Santiago (2026-09-07).** El precedente de la Regla 0 (las tablas
+de alérgenos, 2026-08-27 §10) dice que lo nuestro que su archivo no tiene se retira. Pero él revisó la
+pantalla y nombró dos de tres: **retirar la tercera sería tratar su silencio como una instrucción**, que
+es justo lo que la disciplina de divergencias existe para evitar. Si él la quiere fuera, sale en una línea.
+
+**Y hay una razón clínica que hace que no sea simétrica con las otras dos.** El edema y el estado febril
+son **transitorios**: distorsionan los fluidos ese día y la medición se repite otro día. Una amputación es
+**permanente**, y lo que compromete no es el estado del paciente sino la ecuación: el modelo estima sobre
+un cuerpo completo. Es el único de los tres que no se resuelve volviendo la semana que viene.
+
+**La pregunta:** ¿la retiramos también, o se queda? Si se queda, ¿con ese mismo enunciado?
+
+---
 ## NO SON DIVERGENCIAS: donde Atlas difiere del HTML porque sigue una INSTRUCCION SUYA
 
 **Barrido pedido por Santiago el 2026-09-06**, y la razon que lo motivo vale mas que la lista: en el

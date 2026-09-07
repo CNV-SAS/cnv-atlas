@@ -5,6 +5,12 @@ import { BIODY_COLUMNS } from "@/clinical-engine";
 import { cAF } from "@/clinical-engine/frozen/engine.core.derived.js";
 import { normalizeHeader } from "@/modules/bis/services/header-map";
 
+// DESCABLEADO A PROPOSITO desde el 2026-09-07 (cotejo punto 10). NADIE RENDERIZA ESTO, y no es un olvido:
+// su propio archivo calcula `celBadges` y no la pinta nunca (v8 del 4 de septiembre, cinco ocurrencias:
+// la declaracion y los cuatro push; el control es `condBadges`, que en el mismo archivo SI se pinta).
+// El porte se conserva porque es ciencia verificada y con candado, y porque volver a cablearlo es una
+// linea si el lo pide. NO se re-cablea sin su respuesta: ver DIVERGENCIAS.md.
+//
 // Badges de "Nivel III · Salud celular" del panel de Tratamiento (PORTADO del vigente,
 // ATLAS_v7.html:15702-15706, bloque `celBadges`). PURO y testeable (candado del mapeo + de los
 // umbrales). Solo display/guia: no toca snapshot ni prescripcion.

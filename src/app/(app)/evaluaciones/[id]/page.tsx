@@ -34,8 +34,6 @@ import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { formatDate, formatDateOnly, formatDateTime } from "@/lib/format/date";
 import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
-import { CelularSection } from "@/modules/diagnoses/components/celular-section";
-import { getCelularBadgesForEvaluation } from "@/modules/diagnoses/data/celular-badges-reader";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { REFERRAL_TARGET_LABEL } from "@/modules/referrals/components/patient-referrals-section";
 import { getPendingReferralHints, listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
@@ -1094,11 +1092,24 @@ export default async function ResultadosEvaluacionPage({
                   references={wangRefs}
                   fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
                 />
-                {/* Nivel III · Salud celular. Estaba en Tratamiento (portada de donde el la tenia: su
-                    subpestaña del nutricionista) y la movio Gildardo a Diagnostico el 2026-08-23: son
-                    HALLAZGOS, no conducta. Va junto a la composicion, que es su vecina natural: las dos
-                    leen los crudos del BIS por niveles de Wang. */}
-                <CelularSection celular={await getCelularBadgesForEvaluation(id)} />
+                {/* AQUI IBA "Nivel III · Salud celular" (las badges `celBadges`), retirado el 2026-09-07
+                    por el punto 10 de su cotejo. La razon completa esta en DIVERGENCIAS.md; lo que hay que
+                    saber para no volver a cablearlo:
+
+                    SU ARCHIVO CONSTRUYE ESAS BADGES Y NUNCA LAS PINTA. En el v8 del 4 de septiembre
+                    `celBadges` aparece cinco veces: la declaracion y los cuatro push. Nadie la lee. Lo
+                    mismo `alimentBadges`. El control de que no es una forma distinta de renderizar:
+                    `condBadges`, en el mismo archivo, SI se pinta (`condBadges.map(...)`). Portamos una
+                    pieza que su software calcula y descarta.
+
+                    Y NO DESHACE SU P-28 del 2026-08-23 ("salud celular va en Diagnostico"). Lo que esa
+                    instruccion nombra (hidratacion celular, angulo de fase, masa celular activa) sigue en
+                    Diagnostico: son tres FILAS de la tabla de Wang, con sus clasificadores. Lo que se
+                    retira es el duplicado en forma de badge.
+
+                    LO QUE SE PIERDE, y va declarado: el ECM/BCM > 1,4 era el unico de los cuatro sin fila
+                    propia en Wang. Su archivo tampoco lo muestra. Si Gildardo lo quiere visible, el sitio
+                    es una fila de Wang, no una badge suelta. */}
               </>
             ) : null
           }

@@ -14,12 +14,18 @@ import {
   validateBisConditionsCapture,
 } from "@/modules/bis-intake/validations";
 
-// Catalogo de prueba fiel a la v1 (subconjunto suficiente): generales + validez + femeninas.
+// Catalogo de prueba fiel al vigente (subconjunto suficiente): generales + validez + femeninas.
+//
+// EL EJEMPLO DE "validez" ERA `edema_anasarca` Y PASO A SER `amputacion` (2026-09-07). No es un
+// arreglo de un rojo: este catalogo es SINTETICO y prueba el MECANISMO (validez -> caveat que no
+// bloquea), asi que habria seguido verde con una clave que la v2 del catalogo ya no tiene. Y eso es
+// justo la trampa de las listas escritas a mano: verde describiendo un mundo que cambio. Se cambia a
+// la unica condicion de validez que queda de verdad.
 const CONDS: BisCondition[] = [
   { key: "placas_metalicas", label: "Placas", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 1 },
   { key: "marcapasos", label: "Marcapasos", scope: "general", kind: "contraindicacion", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 2 },
   { key: "diuretico", label: "Diuretico", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cual?", detailType: "text", compromisesValidity: false, orderIndex: 3 },
-  { key: "edema_anasarca", label: "Edema o anasarca", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true, orderIndex: 4 },
+  { key: "amputacion", label: "Amputacion de un segmento", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true, orderIndex: 4 },
   { key: "embarazo", label: "Embarazo", scope: "mujeres", kind: "advertencia", inputType: "boolean", requiresDetail: true, detailLabel: "Mes de gestacion", detailType: "number", compromisesValidity: true, orderIndex: 5 },
   { key: "menstruacion", label: "Menstruacion", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "Dia del periodo", detailType: "number", compromisesValidity: false, orderIndex: 6 },
   { key: "semana_ciclo", label: "Semana del ciclo", scope: "mujeres", kind: "calidad", inputType: "number", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: false, orderIndex: 7 },
@@ -33,7 +39,7 @@ function generalAnswers(marcapasos: boolean): SaveBisConditionsInput["answers"] 
     placas_metalicas: { value: false },
     marcapasos: { value: marcapasos },
     diuretico: { value: false },
-    edema_anasarca: { value: false },
+    amputacion: { value: false },
   };
 }
 
@@ -229,14 +235,14 @@ describe("validateBisConditionsCapture", () => {
 
 describe("validez (no bloquea, no exige reconocimiento, sella caveat)", () => {
   it("una condicion validez respondida si NO dispara la contraindicacion", () => {
-    // edema_anasarca es kind='validez'; aunque sea true, no bloquea el import.
-    expect(computeContraindicated(CONDS, { edema_anasarca: { value: true } })).toBe(false);
+    // amputacion es kind='validez'; aunque sea true, no bloquea el import.
+    expect(computeContraindicated(CONDS, { amputacion: { value: true } })).toBe(false);
   });
 
   it("validez NO exige reconocimiento (a diferencia del embarazo)", () => {
     const res = validateBisConditionsCapture(
       CATALOG,
-      { evaluationId: "e", answers: { ...generalAnswers(false), edema_anasarca: { value: true } } },
+      { evaluationId: "e", answers: { ...generalAnswers(false), amputacion: { value: true } } },
       NOW,
       false,
     );
@@ -245,12 +251,12 @@ describe("validez (no bloquea, no exige reconocimiento, sella caveat)", () => {
 
   it("buildValidityCaveats sella las que comprometen validez respondidas si (validez + embarazo)", () => {
     const caveats = buildValidityCaveats(CONDS, {
-      edema_anasarca: { value: true },
+      amputacion: { value: true },
       embarazo: { value: true, detail: 5, acknowledgedAt: NOW },
       marcapasos: { value: true }, // contraindicacion, no compromete validez -> no entra
       placas_metalicas: { value: true }, // calidad -> no entra
     });
-    expect(caveats.map((c) => c.key).sort()).toEqual(["edema_anasarca", "embarazo"]);
+    expect(caveats.map((c) => c.key).sort()).toEqual(["amputacion", "embarazo"]);
   });
 
   it("sin condiciones que comprometan validez, no hay caveats", () => {
