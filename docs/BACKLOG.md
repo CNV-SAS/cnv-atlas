@@ -64,7 +64,55 @@ base aceptó; ahora el número sale del `.select()` de la escritura.
 
 ---
 
-## El paciente creado por el profesional (2026-09-08) · ESPERA RESPUESTA LEGAL
+## El paciente presencial (2026-09-08) · DESBLOQUEADO, en construccion
+
+**Llego el dictamen legal** y desbloquea el consentimiento presencial. Lo esencial: no hace falta SMS, el
+ORDEN es lo unico que importa (consentimiento primero, encuesta despues), y la identificacion minima es
+parte del acto de consentimiento, no tratamiento anticipado.
+
+**EL HUECO QUE LLENA, medido:** hoy un paciente sin correo entra hasta la mitad y se queda ahi. El schema
+de identidad acepta `email` nulo, pero la firma verifica SIEMPRE el OTP y el OTP solo va a un correo.
+
+### Las tres modalidades, en orden POR FUERZA PROBATORIA
+
+No por esfuerzo: la 1 es firma electronica con OTP, que es la que el dictamen respalda. Tenerlas las tres
+a la vez invita a elegir la comoda.
+
+| | que es | estado |
+| --- | --- | --- |
+| **1 · con correo** | lee y marca en la pantalla del profesional, confirma con el codigo | **base construida** (0105 + declaracion + sellado) |
+| **2 · sin correo, con telefono** | QR en la pantalla del profesional, consiente en SU dispositivo | pendiente, ~1 dia |
+| **3 · papel** | impreso, firma a mano, el profesional sube la foto | pendiente, ~1,5 dias + bucket y RLS |
+
+### Lo que hay que respetar en las tres
+
+- **La casilla del profesional NO sustituye al gate.** Marcarla no crea autorizaciones: el gate de la
+  regla dura 15 sigue leyendo `patient_consents` dentro de la transaccion. Con candado.
+- **Las casillas las marca EL PACIENTE y el codigo lo digita EL PACIENTE**, y la pantalla lo dice donde
+  ocurre cada cosa. Es la mitad probatoria: si cualquiera de las dos la hace el profesional, la firma deja
+  de probar que fue el.
+- **En la 3, la foto se sube ANTES de marcar las autorizaciones vigentes.** Al reves queda una evaluacion
+  habilitada cuyo respaldo no existe, y nadie se entera hasta que alguien lo pida.
+- **La conservacion ya tiene marco:** `DATA_GOVERNANCE.md` (custodia) dice que los 15 años son obligacion
+  del Integrante y CNV es Encargado. La foto cae ahi, con la regla del PDF del reporte (bucket privado,
+  URL firmada, RLS por profesional).
+
+### Y UN HUECO QUE SALIO AL VERIFICAR, y no estaba en el plan
+
+**El paciente duplicado lo impide la base** (`patients_org_document_unique` sobre organizacion, tipo y
+numero de documento). **La EVALUACION pendiente duplicada NO.** Nada impide dos evaluaciones en
+`awaiting_survey` para el mismo paciente.
+
+**Consecuencia concreta:** si al paciente ya se le mando el enlace por correo y el profesional lo crea en
+consulta, el paciente puede llenar la encuesta A desde su casa mientras el profesional lleno la B. Dos
+juegos de respuestas, y quien diagnostique elige una sin saber que existe la otra.
+
+**Lo que hay que hacer al construir la pantalla:** resolver identidad primero (regla 18: nunca se
+auto-decide, el profesional confirma), y si hay una evaluacion pendiente, REUSARLA en vez de crear otra.
+
+---
+
+## El paciente creado por el profesional (2026-09-08) · RESUELTO, ver arriba
 
 **Lo que Gildardo llama "nuevo paciente":** crearlo en consulta y llenarle la encuesta, sin mandarle el
 enlace.

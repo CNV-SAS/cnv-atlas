@@ -89,6 +89,11 @@ async function writePatientConsentsAndGate(
     consents: IntakeConsent[];
     signature?: IntakeSignature;
     ipAddress: string | null;
+    presencial?: {
+      canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
+      declaradoPor: string;
+      declaracionVersion: string;
+    };
   },
 ): Promise<{ patientId: string; consentVersion: string }> {
   // 1. Paciente. Orden de insercion (restriccion de B1): primero patients, luego la relacion (la RLS
@@ -194,12 +199,22 @@ async function writePatientConsentsAndGate(
           inArray(patientConsents.consentType, grantedTypes),
         ),
       );
+    // COMO SE OBTUVO, sellado en la propia autorizacion (2026-09-08). No es un metadato: dos
+    // autorizaciones obtenidas por caminos distintos tienen FUERZA PROBATORIA distinta, y el dia que
+    // alguien discuta una hay que poder decir cual fue.
+    //
+    // Y LA DECLARACION DEL PROFESIONAL VA CON SU VERSION, no como booleano: es una afirmacion suya con
+    // consecuencias, y si mañana cambia su redaccion lo declarado antes tiene que seguir diciendo lo que
+    // decia. El CHECK de la 0105 exige que canal y declaracion vayan juntos o no vayan.
     await tx.insert(patientConsents).values(
       input.consents.map((c) => ({
         patientId,
         consentType: c.type,
         consentVersion: c.consentVersion,
         documentHash: c.documentHash,
+        signatureChannel: input.presencial ? input.presencial.canal : "remoto_otp",
+        declaredBy: input.presencial?.declaradoPor ?? null,
+        declarationVersion: input.presencial?.declaracionVersion ?? null,
         legalRepresentativeName: c.legalRepresentative?.name ?? null,
         legalRepresentativeDocument: c.legalRepresentative?.document ?? null,
         legalRepresentativeRelationship: c.legalRepresentative?.relationship ?? null,
@@ -295,6 +310,18 @@ export type SignIntakeInput = {
   // Conflicto de identidad (documento coincide, nombre difiere): se marca en el shell y se guarda el
   // nombre DECLARADO para que el profesional resuelva declarado-vs-registrado antes de usar la evaluacion.
   identityConflict?: boolean;
+  /**
+   * CONSENTIMIENTO PRESENCIAL (dictamen 2026-09-08). Ausente = el paciente firmo solo, desde su enlace.
+   *
+   * NO OTORGA NADA: el gate de la regla dura 15 sigue leyendo `patient_consents` en esta misma
+   * transaccion. Esto dice COMO se obtuvo el permiso, no lo crea. Es justo el atajo que alguien podria
+   * tomar, y por eso queda escrito aqui, donde se escribe.
+   */
+  presencial?: {
+    canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
+    declaradoPor: string;
+    declaracionVersion: string;
+  };
 };
 
 export type SignIntakeResult = { evaluationId: string; patientId: string; resumeToken: string };
