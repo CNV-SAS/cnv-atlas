@@ -277,6 +277,7 @@ export async function signSurveyAction(
     fields,
     resumeToken: null,
     ethnicityAuthorized: false,
+    reanudar: false,
   });
 
   const token = str(form, "token");
@@ -329,7 +330,7 @@ export async function signSurveyAction(
   after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
 
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
-  return { error: null, fields: null, resumeToken, ethnicityAuthorized };
+  return { error: null, fields: null, resumeToken, ethnicityAuthorized, reanudar: result.value.reused };
 }
 
 // ── FIRMA PRESENCIAL · MODALIDAD 1 (dictamen legal 2026-09-08) ──────────────────────────────────────
@@ -360,6 +361,7 @@ export async function firmarPresencialAction(
     fields,
     resumeToken: null,
     ethnicityAuthorized: false,
+    reanudar: false,
   });
 
   const user = await requireUser();
@@ -450,6 +452,7 @@ export async function firmarPresencialAction(
     fields: null,
     resumeToken,
     ethnicityAuthorized: consent.investigacion === true,
+    reanudar: result.value.reused,
   };
 }
 
@@ -474,7 +477,7 @@ export async function enlaceEncuestaPendienteAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -484,7 +487,7 @@ export async function enlaceEncuestaPendienteAction(
   // AUSENTE Y VACIA NO SON LO MISMO aguas abajo, pero aqui se dicen igual a proposito: "no es tuya" y "ya
   // no esta pendiente" son ambos "no hay enlace que dar", y distinguirlos en pantalla contaria de mas.
   if (!resumeToken) return fail("Esa encuesta ya no está pendiente.");
-  return { error: null, resumeToken, revoked: false };
+  return { error: null, resumeToken, revoked: false, reanudar: true };
 }
 
 // Abrir una evaluacion nueva a un paciente que ya consintio, sin enlace y sin volver a firmar.
@@ -492,7 +495,7 @@ export async function abrirEvaluacionEnConsultaAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -513,11 +516,11 @@ export async function abrirEvaluacionEnConsultaAction(
       ipAddress: ip === "unknown" ? null : ip,
     });
     revalidatePath("/pacientes");
-    return { error: null, resumeToken: result.resumeToken, revoked: false };
+    return { error: null, resumeToken: result.resumeToken, revoked: false, reanudar: result.reused };
   } catch (e) {
     // Autorizacion necesaria revocada: el gate corrio ANTES de crear nada. No es fallo tecnico, y en esta
     // pantalla el profesional TIENE al paciente delante: puede volver a pedirle el consentimiento.
-    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true };
+    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true, reanudar: false };
     throw e;
   }
 }
@@ -530,7 +533,7 @@ export async function startFollowupAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
 
   const token = str(form, "token");
   if (!token) return fail("Link inválido.");
@@ -552,12 +555,12 @@ export async function startFollowupAction(
       linkId: link.id,
       ipAddress: ip === "unknown" ? null : ip,
     });
-    return { error: null, resumeToken: result.resumeToken, revoked: false };
+    return { error: null, resumeToken: result.resumeToken, revoked: false, reanudar: result.reused };
   } catch (e) {
     // Autorizacion necesaria revocada: el gate (regla 15) corrio ANTES de crear nada. No es un error tecnico;
     // se muestra el aviso de acudir al profesional (redaccion aprobada 2026-08-20).
     if (e instanceof ConsentGateError) {
-      return { error: null, resumeToken: null, revoked: true };
+      return { error: null, resumeToken: null, revoked: true, reanudar: false };
     }
     throw e;
   }

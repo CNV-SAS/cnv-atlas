@@ -171,6 +171,14 @@ export type SignSurveyState = {
   error: string | null;
   fields: Record<string, string> | null;
   resumeToken: string | null;
+  /**
+   * SE RETOMO una evaluacion que ya existia (el paciente ya habia empezado la encuesta).
+   *
+   * NO ES INFORMATIVO: obliga a llevarlo a la pagina de reanudacion, que carga lo que ya respondio. La
+   * pantalla de despues de firmar arranca EN BLANCO, y el guardado manda el snapshot COMPLETO: enviarla
+   * vacia borraria lo que llevaba. Esto es lo que Santiago vio como "la encuesta empieza desde cero".
+   */
+  reanudar: boolean;
   // Otorgo la autorizacion de investigacion (consent v1.0): la fase 2 muestra el campo de etnia.
   ethnicityAuthorized: boolean;
 };
@@ -182,6 +190,8 @@ export type StartFollowupState = {
   error: string | null;
   resumeToken: string | null;
   revoked: boolean;
+  /** Misma senal que en SignSurveyState: se retomo una evaluacion que ya tenia respuestas. */
+  reanudar: boolean;
 };
 
 // Estado del guardado a medida (as-you-go) de la fase 2. saved marca el ultimo guardado exitoso; error

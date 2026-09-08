@@ -46,6 +46,7 @@ const inicialSeguimiento: StartFollowupState = {
   error: null,
   resumeToken: null,
   revoked: false,
+  reanudar: false,
 };
 
 const DOCUMENT_TYPES: { value: string; label: string }[] = [

@@ -324,7 +324,20 @@ export type SignIntakeInput = {
   };
 };
 
-export type SignIntakeResult = { evaluationId: string; patientId: string; resumeToken: string };
+export type SignIntakeResult = {
+  evaluationId: string;
+  patientId: string;
+  resumeToken: string;
+  /**
+   * SE RETOMO una evaluacion que ya existia, en vez de crear una.
+   *
+   * NO ES UN DATO DE TELEMETRIA: quien recibe esto TIENE que llevar al paciente a la pantalla de
+   * reanudacion, que carga lo que ya habia respondido. La de despues de firmar arranca en blanco, y el
+   * contrato del guardado es SNAPSHOT COMPLETO: si el paciente envia el formulario vacio, borra lo que
+   * llevaba. Reusar la evaluacion sin reusar sus respuestas es peor que no reusarla.
+   */
+  reused: boolean;
+};
 
 // LA PENDIENTE QUE YA TIENE, si la tiene. Se REUSA en vez de crear otra.
 //
@@ -378,7 +391,12 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
         ip: input.ipAddress,
       });
       await consumeLink(tx, input.linkId);
-      return { evaluationId: yaPendiente.id, patientId, resumeToken: yaPendiente.resumeToken };
+      return {
+        evaluationId: yaPendiente.id,
+        patientId,
+        resumeToken: yaPendiente.resumeToken,
+        reused: true,
+      };
     }
 
     const resumeToken = generateResumeToken();
@@ -422,7 +440,7 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
 
     await consumeLink(tx, input.linkId);
 
-    return { evaluationId: evaluation.id, patientId, resumeToken };
+    return { evaluationId: evaluation.id, patientId, resumeToken, reused: false };
   });
 }
 
@@ -480,6 +498,7 @@ export async function startFollowupWithoutSignature(
         evaluationId: yaPendiente.id,
         patientId: input.patientId,
         resumeToken: yaPendiente.resumeToken,
+        reused: true,
       };
     }
 
@@ -516,7 +535,7 @@ export async function startFollowupWithoutSignature(
 
     await consumeLink(tx, input.linkId);
 
-    return { evaluationId: evaluation.id, patientId: input.patientId, resumeToken };
+    return { evaluationId: evaluation.id, patientId: input.patientId, resumeToken, reused: false };
   });
 }
 

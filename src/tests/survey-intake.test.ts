@@ -114,6 +114,7 @@ beforeEach(() => {
     evaluationId: "ev-1",
     patientId: "pat-1",
     resumeToken: "resume-abc",
+    reused: false,
   });
 });
 
@@ -361,7 +362,7 @@ describe("el codigo sobrevive a un fallo posterior a la verificacion", () => {
     const orden: string[] = [];
     vi.mocked(writer.signIntakeEvaluation).mockImplementation(async () => {
       orden.push("persistir");
-      return { evaluationId: "e1", patientId: "p1", resumeToken: "t1" };
+      return { evaluationId: "e1", patientId: "p1", resumeToken: "t1", reused: false };
     });
     vi.mocked(otp.consumeOtp).mockImplementation(async () => {
       orden.push("consumir");

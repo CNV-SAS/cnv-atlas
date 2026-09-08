@@ -32,7 +32,7 @@ import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 // para no reusar el nodo y auto-enviar; (2) accion por onSubmit + startTransition, NUNCA prop `action`
 // (auto-reset de React 19); (3) el codigo OTP se pide al FINAL de esta fase (vence en 10 min).
 
-const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null, ethnicityAuthorized: false };
+const initialSign: SignSurveyState = { error: null, fields: null, resumeToken: null, ethnicityAuthorized: false, reanudar: false };
 const initialOtpCheck = { error: null, valid: null, retryable: false };
 const initialOtp: OtpSendState = { error: null, sent: false, maskedDestination: null, remaining: null };
 
@@ -79,7 +79,7 @@ export type SignPhaseFormProps = {
   professional: { fullName: string; profession: string; license: string | null };
   // Se invoca al firmar con exito, con el resume_token y si otorgo investigacion (para el campo de etnia de
   // la fase 2). El orquestador pasa a la encuesta.
-  onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
+  onSigned: (resumeToken: string, ethnicityAuthorized: boolean, reanudar: boolean) => void;
   // Seguimiento con cambio SUSTANTIVO de version: se avisa por que se pide firmar de nuevo (dictamen §3).
   substantiveBump?: boolean;
   /**
@@ -207,8 +207,8 @@ export function SignPhaseForm({
   // Al firmar con exito el servidor devuelve el resume_token: se lo pasamos al orquestador (que pasa a la
   // encuesta). El componente se desmonta ahi; el efecto no se dispara dos veces.
   useEffect(() => {
-    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized);
-  }, [state.resumeToken, state.ethnicityAuthorized, onSigned]);
+    if (state.resumeToken) onSigned(state.resumeToken, state.ethnicityAuthorized, state.reanudar);
+  }, [state.resumeToken, state.ethnicityAuthorized, state.reanudar, onSigned]);
 
   const isMinor = ageBranch === "menor";
   const minorAge = isMinor ? ageFromISO(minorBirthDate) : null;
