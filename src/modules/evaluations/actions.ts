@@ -9,7 +9,6 @@ import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
 import {
-  limitConsentOtpByEmail,
   limitConsentOtpByToken,
   limitSurveyByIp,
   limitSurveyByToken,
@@ -64,10 +63,7 @@ import {
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
 import { enviarCodigoDeFirma } from "./services/enviar-codigo-firma";
 import { getPendingResumeToken } from "./data/pending-resume-reader";
-import { DECLARACION_PRESENCIAL_VERSION } from "@/modules/consent/text/declaracion-presencial";
-import { buscarPorDocumento } from "@/modules/patients/data/buscar-por-documento";
 import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
-import { DOCUMENTO_AJENO_AL_FIRMAR } from "@/modules/patients/text/documento-ajeno";
 import type {
   AbandonEvaluationState,
   BaseSurveyLinkState,
@@ -333,129 +329,6 @@ export async function signSurveyAction(
   return { error: null, fields: null, resumeToken, ethnicityAuthorized, reanudar: result.value.reused };
 }
 
-// ── FIRMA PRESENCIAL · MODALIDAD 1 (dictamen legal 2026-09-08) ──────────────────────────────────────
-//
-// EL MISMO ACTO, POR OTRO CANAL. El paciente lee, marca y digita el codigo, igual que desde su enlace;
-// lo unico que cambia es que lo hace en el dispositivo del profesional, delante de el, y que el
-// profesional declara aparte lo que vio. Por eso reusa `signSurveyIntake` entero (identidad, gate de la
-// regla 15, OTP, copia del consentimiento) en vez de tener un camino propio que envejeceria distinto.
-//
-// LAS TRES DIFERENCIAS CON EL CAMINO PUBLICO, y las tres son de seguridad:
-//
-//   1. EXIGE SESION. `signSurveyAction` es publica; esta no. De ahi sale `declaredBy`: quien declara es
-//      el profesional AUTENTICADO, nunca un campo del formulario. Una declaracion que el propio
-//      formulario pudiera afirmar no declara nada.
-//   2. NO RECIBE TOKEN. El link base se resuelve en servidor desde la sesion, asi que el token del
-//      consultorio ni siquiera viaja a esta pantalla.
-//   3. RECHAZA EL DOCUMENTO AJENO. En el enlace publico, un paciente de otro profesional que decide
-//      atenderse con este firma y se le crea el seguimiento: lo eligio el. Aqui lo estaria eligiendo el
-//      profesional, que es exactamente lo que la reasignacion formal existe para impedir. Se vuelve a
-//      preguntar EN SERVIDOR (el veredicto que el cliente traiga no vale) y de paso queda auditado el
-//      intento.
-export async function firmarPresencialAction(
-  _prev: SignSurveyState,
-  form: FormData,
-): Promise<SignSurveyState> {
-  const fail = (error: string, fields: Record<string, string> | null = null): SignSurveyState => ({
-    error,
-    fields,
-    resumeToken: null,
-    ethnicityAuthorized: false,
-    reanudar: false,
-  });
-
-  const user = await requireUser();
-  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
-  const professionalId = await getProfessionalProfileIdByUser(user.id);
-  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
-
-  // LA DECLARACION ES REQUISITO, no un extra: sin ella la fila quedaria con canal presencial y sin quien
-  // responda por el acto, y el CHECK de la 0105 la rechazaria de todos modos. Se para antes, con un
-  // mensaje que dice que falta.
-  if (!checkbox(form, "declaracionPresencial")) {
-    return fail("Marca la declaración del profesional para poder firmar.");
-  }
-
-  const ip = await getClientIp();
-  const identity = readIdentityFromForm(form);
-
-  // EL VEREDICTO SE VUELVE A PEDIR AQUI. El de la pantalla es informativo: entre la busqueda y la firma
-  // pudo cambiar (otro profesional lo creo en ese rato) y, sobre todo, el cliente pudo mandar otro
-  // documento. Esta es la lectura que gobierna.
-  const veredicto = await buscarPorDocumento({
-    organizationId: user.organizationId,
-    documentType: identity.documentType,
-    documentNumber: identity.documentNumber,
-    actorId: user.id,
-    actorEmail: user.email,
-    ip: ip === "unknown" ? null : ip,
-  });
-  if (veredicto.estado === "ajeno") {
-    return fail(DOCUMENTO_AJENO_AL_FIRMAR);
-  }
-
-  // El link base del consultorio, resuelto en SERVIDOR desde la sesion. Es el mismo link estable del QR
-  // (get-or-create), asi que no se crea uno nuevo por cada paciente presencial.
-  const base = await getOrCreateBaseSurveyLink({
-    organizationId: user.organizationId,
-    professionalId,
-    createdBy: user.id,
-  });
-  const link = base ? await resolveSurveyLinkByToken(base.token) : null;
-  if (!link) return fail("No se pudo preparar la evaluación. Intenta de nuevo.");
-
-  const sessionId = str(form, "otpSessionId");
-  const otpCode = str(form, "otpCode");
-  if (!sessionId || !otpCode) {
-    return fail("El paciente debe ingresar el código de verificación para firmar.");
-  }
-
-  const consent = readConsentFromForm(form);
-  const result = await signSurveyIntake({
-    link,
-    consent,
-    identity,
-    otp: { sessionId, code: otpCode },
-    ipAddress: ip === "unknown" ? null : ip,
-    presencial: {
-      canal: "presencial_otp",
-      // LA PERSONA, NO SU FICHA PROFESIONAL, y la distincion no es teorica: `declared_by` referencia
-      // `profiles(id)`. Aqui iba `professionalId` (un `professional_profiles.id`), que es otro uuid,
-      // tambien existente y tambien llamado "del profesional": la FK lo rechazaba y la firma entera se caia
-      // con el mensaje generico. tsc no puede ver la diferencia entre dos uuid.
-      //
-      // Y ES EL ANCLA CORRECTA ademas de la que compila: la declaracion es una afirmacion personal sobre
-      // un acto que ocurrio delante de quien la hace. Eso lo responde una PERSONA. La ficha profesional
-      // (licencia, profesion) es lo que atribuye la evaluacion, que es otra cosa y va en otra columna.
-      declaradoPorProfileId: user.id,
-      declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
-    },
-  });
-  if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
-
-  // De aqui en adelante, IGUAL que el camino publico: el shell ya existe y nada de lo que sigue puede
-  // tumbarlo. La copia del consentimiento se envia tambien en presencial, y es justo donde mas importa:
-  // el paciente firmo en una pantalla que no es suya y se lleva la constancia a su correo.
-  const { patientId, resumeToken } = result.value;
-  const acceptedAt = Date.now();
-  let resumeUrl: string | null = null;
-  try {
-    resumeUrl = await resumeUrlFrom(resumeToken);
-  } catch (e) {
-    Sentry.captureException(e, { tags: { area: "firmar-presencial", op: "resume-url" } });
-  }
-  after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
-
-  revalidatePath("/pacientes");
-  return {
-    error: null,
-    fields: null,
-    resumeToken,
-    ethnicityAuthorized: consent.investigacion === true,
-    reanudar: result.value.reused,
-  };
-}
-
 // ── EN CONSULTA: RETOMAR LA PENDIENTE, O ABRIR UNA NUEVA ────────────────────────────────────────────
 //
 // LAS DOS SALIDAS del paciente que YA es suyo, y son excluyentes a proposito. Un paciente que llega a
@@ -654,47 +527,6 @@ export async function sendConsentOtpAction(
     destino: ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email"),
     // ANCLA DEL LIMITE EN EL TOKEN: es lo unico que identifica a quien pide en una superficie sin sesion.
     limitar: () => limitConsentOtpByToken(token),
-  });
-  if (!r.ok) return fail(r.error);
-  return {
-    error: null,
-    sent: true,
-    maskedDestination: r.maskedDestination,
-    remaining: r.remaining,
-  };
-}
-
-// EL MISMO CODIGO, EN CONSULTA. Existe porque la action de arriba arranca exigiendo el token del enlace
-// y en presencial NO HAY ENLACE: el profesional esta creando al paciente en su propia pantalla. Devolvia
-// "Link invalido" y bloqueaba la firma entera (sin codigo no se firma).
-//
-// LO QUE **NO** SE AFLOJA, que es la pregunta que importa. El codigo sigue yendo AL CORREO DEL PACIENTE
-// (nunca al del profesional: el destino sale del campo de identidad del paciente, igual que en el enlace),
-// se sigue guardando con la hora del SERVIDOR, y se sigue CONSUMIENDO al persistir la firma y no al
-// verificarlo. Nada de eso vive aqui: vive en enviarCodigoDeFirma() y en signSurveyIntake(),, compartidos
-// con el camino publico. Lo unico propio de esta action es quien autoriza (sesion, no token) y sobre que
-// cuenta el limite (el correo destino, no el token).
-export async function enviarCodigoPresencialAction(
-  _prev: OtpSendState,
-  form: FormData,
-): Promise<OtpSendState> {
-  const fail = (error: string): OtpSendState => ({
-    error,
-    sent: false,
-    maskedDestination: null,
-    remaining: null,
-  });
-
-  const user = await requireUser();
-  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
-
-  const ageBranch = str(form, "ageBranch") === "menor" ? "menor" : "mayor";
-  const destino = ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email");
-  const r = await enviarCodigoDeFirma({
-    sessionId: str(form, "sessionId"),
-    ageBranch,
-    destino,
-    limitar: () => limitConsentOtpByEmail(destino),
   });
   if (!r.ok) return fail(r.error);
   return {

@@ -16,10 +16,9 @@
 export const DOCUMENTO_AJENO =
   "Ese documento ya está registrado en la organización y no está bajo tu cuidado. No podemos darte más detalles. Si el paciente viene a tu consulta, escribe a soporte para tramitar el cambio de profesional: requiere una autorización nueva del paciente.";
 
-// La misma noticia, en el momento de FIRMAR. Cambia la consecuencia (no se crea la evaluación), no lo que
-// se cuenta: exactamente lo mismo y nada más.
-export const DOCUMENTO_AJENO_AL_FIRMAR =
-  "Ese documento ya está registrado en la organización y no está bajo tu cuidado. No podemos crear la evaluación: escribe a soporte para tramitar el cambio de profesional.";
+// LO QUE SE RETIRO AQUI (2026-09-09): habia un segundo texto, para el momento de FIRMAR en la pantalla
+// del profesional. Murio con la modalidad 1: ya no hay una firma que ocurra en esa pantalla. El de la
+// BUSQUEDA se queda, porque el chequeo del documento es del camino compartido y lo usan las dos vias.
 
 // EL CODIGO, PEGADO AL MENSAJE. Cada audiencia lo recibe con su motivo:
 //
