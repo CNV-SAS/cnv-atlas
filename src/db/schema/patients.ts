@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   date,
   index,
+  inet,
   pgTable,
   text,
   timestamp,
@@ -148,4 +150,57 @@ export const patientProfessionalRelationships = pgTable(
     unique("ppr_patient_professional_unique").on(t.patientId, t.professionalId),
     index("ppr_professional_idx").on(t.professionalId),
   ],
+);
+
+// SESION DE CONSENTIMIENTO PRESENCIAL · MODALIDAD 2 (QR, dictamen 2026-09-09).
+//
+// LO QUE ESTA MODALIDAD ES Y LO QUE NO, repetido aqui a proposito: produce una AUTORIZACION VALIDA, pero
+// NO una firma electronica con presuncion de confiabilidad, que es lo que si da el OTP. Si alguien la
+// discute, la carga de probar recae en NOSOTROS, y lo unico que se puede aportar son estas columnas: la
+// sesion atada a la consulta, el dispositivo distinto, la declaracion del profesional y los tiempos.
+//
+// LA COLUMNAS SE DECLARAN AQUI Y NO SOLO EN EL SQL: `values()` con claves que el schema no declara compila
+// verde y NO ESCRIBE NADA. Ya paso una vez con el sellado del consentimiento presencial.
+export const presencialConsentSessions = pgTable(
+  "presencial_consent_sessions",
+  {
+    id: pk(),
+    token: text("token").notNull().unique(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    // La FICHA atribuye la evaluacion...
+    professionalId: uuid("professional_id")
+      .notNull()
+      .references(() => professionalProfiles.id),
+    // ...y la PERSONA declara. Es el mismo par que en patient_consents.declared_by, y confundirlos ya
+    // costo un smoke entero.
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => profiles.id),
+    /** El profesional AFIRMA que el paciente no tiene correo. No impide el atajo: lo vuelve atribuible. */
+    sinCorreoDeclarado: boolean("sin_correo_declarado").notNull().default(true),
+    declaracionVersion: text("declaracion_version").notNull(),
+    documentType: documentType("document_type").notNull(),
+    documentNumber: text("document_number").notNull(),
+    // Lo que el PACIENTE escribio en SU dispositivo, tal cual, para poder compararlo.
+    declaradoNombres: text("declarado_nombres"),
+    declaradoApellidos: text("declarado_apellidos"),
+    declaradoDocumentType: documentType("declarado_document_type"),
+    declaradoDocumentNumber: text("declarado_document_number"),
+    // Dos marcas, no una: lo que importa es la DISTANCIA. "Un consentimiento aceptado cuatro segundos
+    // despues de abrirse es dificil de defender como informado" (dictamen).
+    openedAt: timestamp("opened_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    declaredAt: timestamp("declared_at", { withTimezone: true }),
+    // "Sin esto, la afirmacion de que fueron dispositivos distintos es solo una etiqueta que puso el
+    // sistema" (dictamen). Misma politica que en clinical_audit_log: tecnico/auditoria, solo admin.
+    patientIp: inet("patient_ip"),
+    patientUserAgent: text("patient_user_agent"),
+    estado: text("estado").notNull().default("emitida"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    patientId: uuid("patient_id").references(() => patients.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("presencial_sessions_prof_idx").on(t.professionalId, t.createdAt.desc())],
 );

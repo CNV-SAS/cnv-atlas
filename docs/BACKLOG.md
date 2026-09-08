@@ -81,9 +81,19 @@ a la vez invita a elegir la comoda.
 | | que es | estado |
 | --- | --- | --- |
 | **1 · con correo** | lee y marca en la pantalla del profesional, confirma con el codigo | **base construida** (0105 + declaracion + sellado) |
-| **2 · sin correo, con telefono** | QR en la pantalla del profesional, consiente en SU dispositivo | pendiente, ~1 dia |
+| **2 · sin correo, con telefono** | QR en la pantalla del profesional, consiente en SU dispositivo | **en construccion** (0108 aplicada) |
 | **3 · papel** | impreso, firma a mano, el profesional sube la foto | pendiente, ~1,5 dias + bucket y RLS |
 
+### LO QUE LA MODALIDAD 2 ES, Y LO QUE NO (dictamen legal 2026-09-09)
+Produce una **AUTORIZACION VALIDA**. **NO** produce una firma electronica con presuncion de
+confiabilidad, que es lo que si da el OTP (art. 4 Decreto 2364).
+**La consecuencia:** si alguien la discute, **la carga de probar recae en nosotros**, apoyandonos en la
+sesion atada a la consulta, el dispositivo distinto, la declaracion del profesional y los tiempos. Por eso
+la 1 (con correo) es la via por defecto y la 2 solo aparece cuando no hay correo.
+**El gate NO se puede imponer tecnicamente y esta dicho:** un profesional que quiera la via rapida puede
+dejar el campo de correo vacio. Lo que hay es que hacerlo sea una AFIRMACION con nombre y fecha
+( + ), no un descuido; y que el reparto de canales por profesional
+sea contable.
 ### Lo que hay que respetar en las tres
 
 - **La casilla del profesional NO sustituye al gate.** Marcarla no crea autorizaciones: el gate de la

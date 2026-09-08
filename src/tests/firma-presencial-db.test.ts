@@ -399,3 +399,75 @@ describe.skipIf(!HAS_DB)("una segunda encuesta pendiente no se crea: se retoma (
     expect(segunda.evaluationId).not.toBe(primera.evaluationId);
   });
 });
+
+// ── MODALIDAD 2 · LA SESION DEL QR (2026-09-09) ────────────────────────────────────────────────────
+//
+// EL CANDADO QUE FALTABA LA VEZ ANTERIOR: una migracion aplicada NO garantiza que el codigo escriba en
+// las columnas nuevas. `values()` con claves que el schema de Drizzle no declara compila verde y no
+// escribe nada. Aqui se comprueba contra la base REAL que el nombre y el TIPO de cada columna coinciden,
+// que es lo que ni tsc ni lint pueden ver.
+describe.skipIf(!HAS_DB)("la sesión del QR: schema y garantías (BD real)", () => {
+  it("cada columna declarada en Drizzle existe en la base, con su tipo", async () => {
+    const { db } = await import("@/db");
+    const cols = await db.execute(sql`
+      select column_name, data_type
+      from information_schema.columns
+      where table_name = 'presencial_consent_sessions'`);
+    const tipos = new Map(cols.map((c) => [String(c.column_name), String(c.data_type)]));
+
+    // Las que el dictamen exige, una por una, con el tipo que hace que signifiquen algo.
+    expect(tipos.get("sin_correo_declarado"), "el gate del correo").toBe("boolean");
+    expect(tipos.get("opened_at"), "cuándo abrió").toContain("timestamp");
+    expect(tipos.get("confirmed_at"), "cuándo confirmó").toContain("timestamp");
+    expect(tipos.get("patient_ip"), "el dispositivo del paciente").toBe("inet");
+    expect(tipos.get("patient_user_agent")).toBe("text");
+    expect(tipos.get("declarado_nombres"), "lo que el paciente escribió, tal cual").toBe("text");
+    expect(tipos.get("declarado_document_number")).toBe("text");
+  });
+
+  it("la base rechaza tiempos incoherentes: confirmar sin haber abierto", async () => {
+    // Es lo que hace que la DISTANCIA entre marcas signifique algo. Sin el CHECK, un confirmed_at suelto
+    // se podria presentar como prueba de un acto que nunca se abrió.
+    const { db } = await import("@/db");
+    let rechazado = false;
+    let motivo = "";
+    try {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`
+          insert into presencial_consent_sessions
+            (token, organization_id, professional_id, created_by, declaracion_version,
+             document_type, document_number, expires_at, confirmed_at)
+          select 'tok-test-incoherente', pr.organization_id, pp.id, pp.profile_id, '1.0',
+                 'CC', 'X', now() + interval '15 min', now()
+          from professional_profiles pp join profiles pr on pr.id = pp.profile_id limit 1`);
+      });
+      motivo = "el insert paso: el CHECK no lo paro";
+    } catch (e) {
+      // El mensaje puede venir en `message` o en `cause` segun por donde pase el error del driver, asi
+      // que se miran los dos: afirmar sobre uno solo hace que el candado dependa del envoltorio y no de
+      // la regla. La primera version miraba solo `String(e)` y salio roja con el CHECK funcionando.
+      const err = e as { message?: string; cause?: unknown };
+      motivo = [err.message, String(err.cause ?? ""), String(e)].join(" | ");
+      rechazado = motivo.includes("tiempos_coherentes");
+    }
+    expect(rechazado, motivo).toBe(true);
+  });
+
+  it("y solo el profesional dueño ve sus sesiones (la regla se escribe una vez)", async () => {
+    const { db } = await import("@/db");
+    const def = await db.execute(
+      sql`select prosrc from pg_proc where proname = 'es_mi_ficha_profesional'`,
+    );
+    expect(String(def[0]?.prosrc ?? ""), "falta el helper de propiedad de la ficha").toContain(
+      "professional_profiles",
+    );
+    const pol = await db.execute(sql`
+      select policyname, qual::text, with_check::text
+      from pg_policies where tablename = 'presencial_consent_sessions'`);
+    expect(pol.length, "las tres policies: select, insert y update").toBe(3);
+    for (const p of pol) {
+      const regla = `${p.qual ?? ""}${p.with_check ?? ""}`;
+      expect(regla, `${p.policyname} no usa el helper`).toContain("es_mi_ficha_profesional");
+    }
+  });
+});
