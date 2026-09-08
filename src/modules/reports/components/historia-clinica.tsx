@@ -302,7 +302,23 @@ export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
 // POR CONSULTA se cumple por construccion: cuelgan del tratamiento de ESTA evaluacion, no del paciente.
 export type HcObservacion = { id: string; note: string; fecha: string };
 
+// VAN TODAS, Y LA ULTIMA SE MARCA COMO VIGENTE (2026-09-08). Es la decision que separa la PANTALLA del
+// DOCUMENTO, y las dos mitades tienen su razon:
+//
+//   · EN PANTALLA manda la ultima y las anteriores se pliegan. Es una ayuda para el profesional que
+//     escribe: le deja corregirse sin que el registro pierda nada.
+//   · EN EL DOCUMENTO salen TODAS. La historia clinica es probatoria, y `treatment_notes` es append-only
+//     POR DECISION DE GILDARDO (§8, 2026-08-30) justamente para que no se pierda lo escrito. Enseñar solo
+//     la ultima deshace esa garantia en el sitio donde mas importa: una auditoria que pregunte "que dijo
+//     el profesional" veria la version corregida sin rastro de que hubo correccion.
+//
+// Y SE MARCA LA VIGENTE para que el lector no tenga que deducirla del orden: sin la marca, dos parrafos
+// parecidos se leen como dos observaciones distintas en vez de como una y su correccion.
+//
+// PENDIENTE DE EL: su archivo no dice nada, porque su `notas_profesional` es un campo unico que solo
+// guarda la ultima y que ademas no lee nadie. Va como pregunta en PENDIENTES_CIENTIFICOS.
 export function HcObservaciones({ observaciones }: { observaciones: HcObservacion[] }) {
+  const ultima = observaciones.length ? observaciones[observaciones.length - 1] : null;
   return (
     <Tarjeta>
       <TituloSeccion>Observaciones del profesional</TituloSeccion>
@@ -311,7 +327,10 @@ export function HcObservaciones({ observaciones }: { observaciones: HcObservacio
           {observaciones.map((o) => (
             <li key={o.id} className="border-l-2 border-border pl-3">
               <p className="whitespace-pre-line text-sm text-foreground">{o.note}</p>
-              <p className="pt-1 text-xs text-muted-foreground">{o.fecha}</p>
+              <p className="pt-1 text-xs text-muted-foreground">
+                {o.fecha}
+                {observaciones.length > 1 && o.id === ultima?.id ? " · vigente" : ""}
+              </p>
             </li>
           ))}
         </ul>

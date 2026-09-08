@@ -12,7 +12,7 @@ ahora es uno solo.
 | --- | --- | --- |
 | **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
 | **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
-| **Al final** | Lo que necesita que **mires tu archivo** | 12 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 13 |
 | **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos | 15 |
 
 **Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
@@ -366,6 +366,30 @@ y los datos. Portar los otros tres sería copiar el corte y pagarlo tres veces e
 
 **Si los tres primeros debían alimentar al cuarto, dínoslo y lo cableamos.** Es tu diseño y puede que la
 intención fuera que la validación entrara en la síntesis; hoy no entra.
+
+## 20 · En la historia clínica, ¿van TODAS las observaciones o solo la vigente?
+
+**Contexto, en dos líneas.** Tú pediste que las observaciones del profesional aparezcan en la historia
+clínica y **por consulta** (§8.3, 26 de agosto), y que cada profesión escriba la suya sin pisar la de otra
+(§8, 30 de agosto). Las dos cosas están hechas: se guardan sin poder borrarse ni editarse, agrupadas por
+profesión, y salen en la historia.
+
+**Lo que apareció al usarlas:** un profesional que se corrige escribe una segunda observación, y como no
+se puede borrar la primera, **quedan las dos**.
+
+**Lo que hicimos:** en la PANTALLA la última se marca como *vigente* y las anteriores quedan plegadas, para
+que el profesional sepa cuál manda. **En el DOCUMENTO salen todas**, con la última marcada como vigente.
+
+**Por qué todas en el documento, y aquí es donde queremos tu criterio:** la historia clínica es un
+documento probatorio, y el hecho de que las observaciones no se puedan borrar existe precisamente para que
+no se pierda lo que se escribió. Si el documento mostrara solo la última, escondería que hubo una
+corrección, que es justo lo que alguien querría ver en una auditoría.
+
+**La objeción, dicha por nosotros mismos:** una corrección de una palabra deja dos párrafos casi iguales en
+la historia del paciente.
+
+**¿Van todas, o solo la vigente?** Tu archivo no lo resuelve: tu campo de observaciones guarda una sola
+(cada control sobrescribe la anterior) y no se muestra en ningún documento.
 
 # Y APARTE · Lo que decidimos nosotros y solo te declaramos
 
