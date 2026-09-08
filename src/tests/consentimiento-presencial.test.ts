@@ -8,6 +8,11 @@ import {
   DECLARACION_PRESENCIAL_VERSION,
 } from "@/modules/consent/text/declaracion-presencial";
 
+import {
+  DOCUMENTO_AJENO,
+  DOCUMENTO_AJENO_AL_FIRMAR,
+} from "@/modules/patients/text/documento-ajeno";
+
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DEL CONSENTIMIENTO PRESENCIAL · MODALIDAD 1 (dictamen legal 2026-09-08).
@@ -117,5 +122,124 @@ describe("las dos frases probatorias dicen quién hace qué", () => {
     expect(TEXTO).toContain("Va JUNTO a las casillas");
     expect(TEXTO).toContain("Va JUNTO al campo del codigo");
     expect(TEXTO, "no pueden ser un aviso previo que se cierra").toContain("no son un aviso previo");
+  });
+});
+
+// ── LA MODALIDAD 1, YA CONSTRUIDA (2026-09-08) ─────────────────────────────────────────────────────
+//
+// Lo de arriba protege el ALMACEN (que la fila quede sellada y coherente). Esto protege la PANTALLA y la
+// ACCION, que es donde la mitad probatoria se puede perder sin que nada truene: un aviso que se escribe
+// pero no se renderiza no dice nada, y una declaracion que el formulario pueda afirmar no declara nada.
+
+const FORM = readFileSync("src/modules/evaluations/components/sign-phase-form.tsx", "utf8");
+const ACTIONS = readFileSync("src/modules/evaluations/actions.ts", "utf8");
+const BUSQUEDA = readFileSync("src/modules/patients/actions.ts", "utf8");
+
+describe("las dos frases se RENDERIZAN donde ocurre cada cosa", () => {
+  it("el aviso de las casillas va DENTRO del bloque de autorizaciones necesarias", () => {
+    // No basta con que el texto exista (la leccion del bloque que se porto y resulto ser print-only). Lo
+    // que importa es DONDE queda: entre el rotulo del bloque y la primera casilla, que es lo que el
+    // profesional lee justo antes de pasar el dispositivo.
+    const iLegend = FORM.indexOf("Autorizaciones necesarias para el servicio");
+    const iAviso = FORM.indexOf("{AVISO_CASILLAS}");
+    const iPrimera = FORM.indexOf('name="servicio"');
+    expect(iAviso, "el aviso de las casillas no se renderiza").toBeGreaterThan(-1);
+    expect(iAviso).toBeGreaterThan(iLegend);
+    expect(iAviso, "el aviso quedó DESPUÉS de las casillas: ahí ya se marcaron").toBeLessThan(iPrimera);
+  });
+
+  it("el aviso del código va JUNTO al campo del código", () => {
+    const iAviso = FORM.indexOf("{AVISO_CODIGO}");
+    const iCampo = FORM.indexOf('name="otpCode"');
+    expect(iAviso, "el aviso del código no se renderiza").toBeGreaterThan(-1);
+    expect(iAviso).toBeLessThan(iCampo);
+    // Y PEGADO, no a media pantalla: el bloque de firma entero cabe en menos de eso.
+    expect(iCampo - iAviso).toBeLessThan(1500);
+  });
+
+  it("y solo en presencial: el paciente que firma solo no tiene a quién pasarle el dispositivo", () => {
+    // Las dos frases hablan de un profesional que esta al lado. En el enlace publico no hay nadie al lado,
+    // y decirlas ahi confundiria sobre quien tiene que hacer que.
+    for (const aviso of ["{AVISO_CASILLAS}", "{AVISO_CODIGO}"]) {
+      const i = FORM.indexOf(aviso);
+      const antes = FORM.slice(Math.max(0, i - 300), i);
+      expect(antes, `${aviso} no está condicionado a presencial`).toContain("presencial ?");
+    }
+  });
+});
+
+describe("la declaración no se puede saltar", () => {
+  it("el botón de firmar la exige en cliente", () => {
+    const limpio = sinComentarios(FORM);
+    const iBoton = limpio.indexOf('key="nav-submit"');
+    const bloque = limpio.slice(iBoton, iBoton + 500);
+    expect(bloque).toContain("presencial && !declarado");
+  });
+
+  it("y el SERVIDOR la vuelve a exigir, que es lo que de verdad la hace requisito", () => {
+    // El cliente solo evita que el profesional descubra el requisito con un error. Si la exigencia viviera
+    // solo ahi, bastaria con enviar el formulario por otra via.
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function firmarPresencialAction");
+    const cuerpo = limpio.slice(i, i + 3000);
+    expect(cuerpo).toContain('checkbox(form, "declaracionPresencial")');
+  });
+});
+
+describe("quién declara sale de la SESIÓN, nunca del formulario", () => {
+  it("declaradoPor es el profesional autenticado", () => {
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function firmarPresencialAction");
+    const cuerpo = limpio.slice(i, i + 3000);
+    expect(cuerpo).toContain("const professionalId = await getProfessionalProfileIdByUser(user.id)");
+    expect(cuerpo).toContain("declaradoPor: professionalId");
+    expect(cuerpo, "un id de profesional leído del formulario sería una declaración autofirmada").not.toContain(
+      'str(form, "declaradoPor")',
+    );
+  });
+
+  it("y la acción PÚBLICA no puede declararse presencial", () => {
+    // `signSurveyAction` no tiene sesion: si aceptara el bloque presencial, cualquiera podria marcar una
+    // autorizacion como obtenida en consultorio y atribuirsela a un profesional.
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function signSurveyAction");
+    const cuerpo = limpio.slice(i, limpio.indexOf("export async function firmarPresencialAction"));
+    expect(cuerpo.includes("presencial")).toBe(false);
+  });
+});
+
+describe("el documento ajeno no se puede firmar en consulta", () => {
+  it("la acción vuelve a pedir el veredicto EN SERVIDOR antes de escribir", () => {
+    // El veredicto que traiga el cliente no vale: entre la busqueda y la firma pudo cambiar, y el
+    // documento enviado pudo ser otro. Esta lectura es la que gobierna, y de paso audita el intento.
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function firmarPresencialAction");
+    const cuerpo = limpio.slice(i, i + 3000);
+    const iBusqueda = cuerpo.indexOf("await buscarPorDocumento(");
+    const iFirma = cuerpo.indexOf("await signSurveyIntake(");
+    expect(iBusqueda, "no se vuelve a verificar el documento").toBeGreaterThan(-1);
+    expect(iBusqueda, "se verifica DESPUÉS de firmar: ya sería tarde").toBeLessThan(iFirma);
+    expect(cuerpo).toContain('veredicto.estado === "ajeno"');
+  });
+
+  it("y el mensaje del ajeno no dice de quién es ni cómo se llama", () => {
+    // Es el camino que Santiago pidio ver: el que no puede decir de mas. Dice que existe (cosa que el
+    // error del unique ya revelaba), que no es suyo, y que no hay mas que decir.
+    //
+    // SE LEE ARMADO, no del codigo fuente: partido en literales concatenados, una asercion sobre el
+    // fuente puede fallar (o pasar) por donde cae el corte de linea, que no es lo que se quiere probar.
+    for (const mensaje of [DOCUMENTO_AJENO, DOCUMENTO_AJENO_AL_FIRMAR]) {
+      expect(mensaje).toContain("no está bajo tu cuidado");
+      expect(mensaje).toContain("escribe a soporte");
+      for (const prohibido of ["nombre", "profesional a cargo", "desde", "creado", "@"]) {
+        expect(mensaje.toLowerCase(), `el mensaje menciona ${prohibido}`).not.toContain(prohibido);
+      }
+    }
+    // Y el de la búsqueda además dice EXPLÍCITAMENTE que no hay más que contar: sin esa frase, el
+    // profesional interpreta el silencio y vuelve a preguntar por otra vía.
+    expect(DOCUMENTO_AJENO).toContain("No podemos darte más detalles");
+    // Los dos textos van al MISMO sitio de la pantalla, así que se leen seguidos: el segundo no puede
+    // contar algo que el primero calló.
+    expect(BUSQUEDA).toContain("DOCUMENTO_AJENO");
   });
 });

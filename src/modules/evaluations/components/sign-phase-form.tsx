@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ConsentDocumentCollapsible } from "@/modules/consent/components/consent-document-collapsible";
 import {
+  AVISO_CASILLAS,
+  AVISO_CODIGO,
+  DECLARACION_PRESENCIAL,
+} from "@/modules/consent/text/declaracion-presencial";
+import {
   buildConsentInstance,
   type ConsentInstanceData,
 } from "@/modules/consent/consent-instance";
@@ -77,6 +82,23 @@ export type SignPhaseFormProps = {
   onSigned: (resumeToken: string, ethnicityAuthorized: boolean) => void;
   // Seguimiento con cambio SUSTANTIVO de version: se avisa por que se pide firmar de nuevo (dictamen §3).
   substantiveBump?: boolean;
+  /**
+   * PRESENCIAL, modalidad 1 (dictamen 2026-09-08). El paciente lee, marca y digita el codigo en la
+   * pantalla del profesional, delante de el.
+   *
+   * ES EL MISMO FORMULARIO A PROPOSITO. Un formulario paralelo para el consultorio envejeceria distinto
+   * del publico, y lo que divergiria son las validaciones del consentimiento: exactamente lo que no
+   * puede divergir. Lo presencial AÑADE tres cosas, no cambia ninguna:
+   *   1. quien marca las casillas, dicho junto a las casillas;
+   *   2. quien digita el codigo, dicho junto al campo del codigo;
+   *   3. la declaracion del profesional, que es requisito para firmar.
+   */
+  presencial?: boolean;
+  /**
+   * Accion de firma. Por defecto la PUBLICA (sin sesion). La presencial exige sesion y de ahi saca quien
+   * declara: por eso se inyecta desde la pantalla del profesional en vez de leerse de un campo.
+   */
+  firmarAction?: (prev: SignSurveyState, form: FormData) => Promise<SignSurveyState>;
 };
 
 export function SignPhaseForm({
@@ -86,8 +108,14 @@ export function SignPhaseForm({
   professional,
   onSigned,
   substantiveBump = false,
+  presencial = false,
+  firmarAction,
 }: SignPhaseFormProps) {
-  const [state, action, pending] = useActionState(signSurveyAction, initialSign);
+  const [state, action, pending] = useActionState(firmarAction ?? signSurveyAction, initialSign);
+  // La declaracion del profesional (solo presencial). Requisito para firmar, no un extra: el CHECK de la
+  // 0105 rechaza una fila con canal presencial y sin declaracion, asi que sin ella el envio fallaria en
+  // la base. Se exige aqui para que no llegue a eso.
+  const [declarado, setDeclarado] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   // Firma electronica (B7). sessionId: nonce opaco de ESTE intento, generado una sola vez; ancla el
@@ -515,6 +543,14 @@ export function SignPhaseForm({
           <legend className="px-1 text-xs font-medium text-muted-foreground">
             Autorizaciones necesarias para el servicio
           </legend>
+          {/* MITAD PROBATORIA, no ayuda al usuario: si las casillas las marca el profesional, la firma
+              deja de probar que fue el paciente. Va AQUI y no en un aviso al principio, porque un aviso a
+              media pantalla del sitio donde se actua no se lee. */}
+          {presencial ? (
+            <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground">
+              {AVISO_CASILLAS}
+            </p>
+          ) : null}
           {isMinor ? (
             <p className="text-xs text-muted-foreground">
               El representante legal las autoriza en nombre del menor.
@@ -827,6 +863,11 @@ export function SignPhaseForm({
                 <p className="text-xs text-muted-foreground">
                   Si pides otro código, el anterior deja de servir: escribe el último que te llegó.
                 </p>
+                {presencial ? (
+                  <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground">
+                    {AVISO_CODIGO}
+                  </p>
+                ) : null}
                 <Field label="Código de verificación (6 dígitos)">
                   <Input
                     name="otpCode"
@@ -894,6 +935,22 @@ export function SignPhaseForm({
                 {otpState.error}
               </p>
             ) : null}
+
+            {/* LA DECLARACION DEL PROFESIONAL. Va al FINAL y no al principio: afirma lo que ya ocurrio
+                (que el paciente leyo, que fue el quien marco, que se verifico el documento), y al
+                principio seria una promesa. Se guarda CON SU VERSION, no como booleano. */}
+            {presencial ? (
+              <label className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  name="declaracionPresencial"
+                  className={checkboxClass}
+                  checked={declarado}
+                  onChange={(e) => setDeclarado(e.target.checked)}
+                />
+                <span>{DECLARACION_PRESENCIAL}</span>
+              </label>
+            ) : null}
           </div>
         ) : null}
 
@@ -912,7 +969,16 @@ export function SignPhaseForm({
               type="submit"
               // El codigo ya se COMPROBO antes de llegar aqui, asi que firmar deja de ser el sitio donde
               // se descubre que no servia. Se exige comprobado, no solo escrito.
-              disabled={!consentOk || !identityOk || !otpState.sent || !otpValidado || pending}
+              disabled={
+                !consentOk ||
+                !identityOk ||
+                !otpState.sent ||
+                !otpValidado ||
+                pending ||
+                // Presencial: sin la declaracion no se firma. El servidor la vuelve a exigir; esto solo
+                // evita que el profesional descubra el requisito con un error.
+                (presencial && !declarado)
+              }
             >
               {pending ? "Firmando..." : "Firmar y continuar"}
             </Button>

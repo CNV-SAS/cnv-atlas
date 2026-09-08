@@ -1,6 +1,8 @@
 import { ClipboardList, UserRoundX, Users } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { hasAnyRole } from "@/modules/auth/roles";
@@ -8,6 +10,7 @@ import { requireUser } from "@/modules/auth/session";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
 import { ListaPacientes } from "@/modules/patients/components/lista-pacientes";
+import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
 export const metadata = { title: "Pacientes - Atlas" };
@@ -44,6 +47,15 @@ export default async function PacientesPage() {
       <TituloPantalla
         titulo="Pacientes"
         descripcion="Tus pacientes y el acceso a su historia clínica."
+        acciones={
+          // EL BOTON SOLO PARA QUIEN PUEDE CREAR (misma policy que gatea la ruta y la accion): un boton
+          // que lleva a /no-autorizado es peor que no tenerlo.
+          canCreatePatientPresencial(user) ? (
+            <Button asChild>
+              <Link href="/pacientes/nuevo">Nuevo paciente en consulta</Link>
+            </Button>
+          ) : null
+        }
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

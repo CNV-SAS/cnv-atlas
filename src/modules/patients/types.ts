@@ -101,3 +101,20 @@ export type PatientDetail = {
   phone: string | null;
   evaluations: PatientEvaluationItem[];
 };
+
+// Estado de la busqueda por documento antes de crear un paciente en consulta (useActionState). Modulo
+// NEUTRO a proposito: lo produce una action de servidor y lo consume la pantalla del profesional, que es
+// cliente. El tipo VeredictoDocumento vive en el reader `server-only` y NO puede cruzar esta frontera.
+//
+// LO QUE VIAJA, y es todo lo que puede viajar: el veredicto. En 'ajeno' no hay ni un dato mas, ni el
+// nombre ni de quien es (el candado `buscar-por-documento.test.ts` lo sostiene). En 'propio' viaja el id
+// del paciente y el de su evaluacion pendiente, que la RLS ya le dejaba leer.
+export type VerificarDocumentoState = {
+  error: string | null;
+  veredicto: "libre" | "propio" | "ajeno" | null;
+  /** Eco de lo consultado, para que la pantalla siga adelante con el mismo documento sin re-teclearlo. */
+  documentType: string | null;
+  documentNumber: string | null;
+  patientId: string | null;
+  evaluacionPendienteId: string | null;
+};

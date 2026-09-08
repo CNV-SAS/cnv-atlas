@@ -63,7 +63,14 @@ describe("mientras comprueba se ve, y al validar se cierra", () => {
   });
 
   it("firmar exige código COMPROBADO, no solo escrito", () => {
-    expect(FORM).toContain("!otpState.sent || !otpValidado || pending");
+    // LA ASERCION NO CAMBIO, SU ALCANCE SI (2026-09-08). Antes fijaba la LINEA literal
+    // (`"!otpState.sent || !otpValidado || pending"`) y se puso roja al añadir la condición de la
+    // declaración presencial al mismo botón: el requisito seguía intacto y el candado hablaba del formato.
+    // Ahora mira la condición del BOTON DE FIRMAR y exige que las dos sigan ahí, en el orden que sea.
+    const iBoton = FORM.indexOf('key="nav-submit"');
+    const disabled = FORM.slice(iBoton, FORM.indexOf(">", FORM.indexOf("disabled={", iBoton) + 400));
+    expect(disabled, "el código tiene que estar ENVIADO").toContain("!otpState.sent");
+    expect(disabled, "y COMPROBADO, no solo escrito").toContain("!otpValidado");
   });
 });
 
