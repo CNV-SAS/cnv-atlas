@@ -69,7 +69,7 @@ describe("la modalidad y la declaración quedan selladas en la autorización", (
   it("el writer las escribe, y el remoto queda marcado como tal", () => {
     // El camino de siempre tambien se sella: sin eso, "sin canal" significaria dos cosas (viejo o remoto).
     expect(WRITER).toContain('signatureChannel: input.presencial ? input.presencial.canal : "remoto_otp"');
-    expect(WRITER).toContain("declaredBy: input.presencial?.declaradoPor ?? null");
+    expect(WRITER).toContain("declaredBy: input.presencial?.declaradoPorProfileId ?? null");
     expect(WRITER).toContain("declarationVersion: input.presencial?.declaracionVersion ?? null");
   });
 
@@ -187,13 +187,18 @@ describe("la declaración no se puede saltar", () => {
 });
 
 describe("quién declara sale de la SESIÓN, nunca del formulario", () => {
-  it("declaradoPor es el profesional autenticado", () => {
+  it("quien declara es la PERSONA autenticada, no su ficha profesional", () => {
     const limpio = sinComentarios(ACTIONS);
     const i = limpio.indexOf("export async function firmarPresencialAction");
     const cuerpo = limpio.slice(i, i + 3000);
-    expect(cuerpo).toContain("const professionalId = await getProfessionalProfileIdByUser(user.id)");
-    expect(cuerpo).toContain("declaradoPor: professionalId");
-    expect(cuerpo, "un id de profesional leído del formulario sería una declaración autofirmada").not.toContain(
+    // EL DEFECTO QUE ESTO FIJA (smoke, 2026-09-08): aqui iba el `professional_profiles.id`, y
+    // `declared_by` referencia `profiles(id)`. Dos uuid, los dos existentes, los dos "del profesional".
+    // La FK lo rechazaba y la firma se caia entera con el mensaje generico.
+    expect(cuerpo).toContain("declaradoPorProfileId: user.id");
+    expect(cuerpo, "el professional_profiles.id no es un profile").not.toContain(
+      "declaradoPorProfileId: professionalId",
+    );
+    expect(cuerpo, "un id leído del formulario sería una declaración autofirmada").not.toContain(
       'str(form, "declaradoPor")',
     );
   });

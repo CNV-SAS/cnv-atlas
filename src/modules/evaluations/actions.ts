@@ -417,7 +417,15 @@ export async function firmarPresencialAction(
     ipAddress: ip === "unknown" ? null : ip,
     presencial: {
       canal: "presencial_otp",
-      declaradoPor: professionalId,
+      // LA PERSONA, NO SU FICHA PROFESIONAL, y la distincion no es teorica: `declared_by` referencia
+      // `profiles(id)`. Aqui iba `professionalId` (un `professional_profiles.id`), que es otro uuid,
+      // tambien existente y tambien llamado "del profesional": la FK lo rechazaba y la firma entera se caia
+      // con el mensaje generico. tsc no puede ver la diferencia entre dos uuid.
+      //
+      // Y ES EL ANCLA CORRECTA ademas de la que compila: la declaracion es una afirmacion personal sobre
+      // un acto que ocurrio delante de quien la hace. Eso lo responde una PERSONA. La ficha profesional
+      // (licencia, profesion) es lo que atribuye la evaluacion, que es otra cosa y va en otra columna.
+      declaradoPorProfileId: user.id,
       declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
     },
   });

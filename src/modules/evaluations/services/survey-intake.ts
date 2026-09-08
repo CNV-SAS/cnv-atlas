@@ -187,12 +187,12 @@ export type SignSurveyIntakeInput = {
   ipAddress: string | null;
   /**
    * PRESENCIAL (dictamen 2026-09-08). Ausente = el paciente firmo solo desde su enlace, que es el camino
-   * publico. Lo pone SOLO la action con sesion: `declaradoPor` sale del profesional autenticado y NUNCA
+   * publico. Lo pone SOLO la action con sesion: `declaradoPorProfileId` sale del profesional autenticado y NUNCA
    * del formulario, porque una declaracion que el propio formulario pudiera afirmar no declara nada.
    */
   presencial?: {
     canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
-    declaradoPor: string;
+    declaradoPorProfileId: string;
     declaracionVersion: string;
   };
 };

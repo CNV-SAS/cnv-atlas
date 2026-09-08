@@ -91,7 +91,7 @@ async function writePatientConsentsAndGate(
     ipAddress: string | null;
     presencial?: {
       canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
-      declaradoPor: string;
+      declaradoPorProfileId: string;
       declaracionVersion: string;
     };
   },
@@ -213,7 +213,7 @@ async function writePatientConsentsAndGate(
         consentVersion: c.consentVersion,
         documentHash: c.documentHash,
         signatureChannel: input.presencial ? input.presencial.canal : "remoto_otp",
-        declaredBy: input.presencial?.declaradoPor ?? null,
+        declaredBy: input.presencial?.declaradoPorProfileId ?? null,
         declarationVersion: input.presencial?.declaracionVersion ?? null,
         legalRepresentativeName: c.legalRepresentative?.name ?? null,
         legalRepresentativeDocument: c.legalRepresentative?.document ?? null,
@@ -319,7 +319,7 @@ export type SignIntakeInput = {
    */
   presencial?: {
     canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
-    declaradoPor: string;
+    declaradoPorProfileId: string;
     declaracionVersion: string;
   };
 };
