@@ -671,23 +671,54 @@ export function SignPhaseForm({
           opcional.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Tipo de documento">
-            <select name="documentType" className={selectClass} defaultValue={prefill?.documentType ?? "CC"}>
-              {DOCUMENT_TYPES.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Número de documento" required>
-            <Input
-              name="documentNumber"
-              className="h-9"
-              value={documentNumber}
-              onChange={(e) => setDocumentNumber(e.target.value)}
-            />
-          </Field>
+          {/* EL DOCUMENTO YA SE VERIFICO EN EL PASO 1 (presencial): sale en LECTURA, no editable.
+              Repetirlo editable invita a corregir aqui lo que ya se comprobo, y entonces la pantalla estaria
+              enseñando el veredicto de un documento y firmando otro. El servidor lo vuelve a verificar de
+              todos modos; esto evita que el profesional llegue a ese error.
+
+              EL TIPO VIAJA EN UN HIDDEN, no en un select deshabilitado: un campo `disabled` NO SE ENVIA en
+              el FormData (defecto ya visto en el codigo OTP). El numero usa readOnly, que bloquea la edicion
+              y sigue enviando. */}
+          {presencial ? (
+            <>
+              <Field label="Tipo de documento">
+                <input type="hidden" name="documentType" value={prefill?.documentType ?? "CC"} />
+                <p className="flex h-9 items-center text-sm text-muted-foreground">
+                  {DOCUMENT_TYPES.find((d) => d.value === (prefill?.documentType ?? "CC"))?.label ??
+                    prefill?.documentType}
+                </p>
+              </Field>
+              <Field label="Número de documento" required>
+                <Input
+                  name="documentNumber"
+                  className="h-9 bg-muted text-muted-foreground"
+                  value={documentNumber}
+                  readOnly
+                  aria-readonly
+                />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Tipo de documento">
+                <select name="documentType" className={selectClass} defaultValue={prefill?.documentType ?? "CC"}>
+                  {DOCUMENT_TYPES.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Número de documento" required>
+                <Input
+                  name="documentNumber"
+                  className="h-9"
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                />
+              </Field>
+            </>
+          )}
           <Field label="Nombres" required>
             <Input name="firstName" className="h-9" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </Field>

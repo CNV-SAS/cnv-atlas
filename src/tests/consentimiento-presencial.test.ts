@@ -302,3 +302,37 @@ describe("el envío del código en presencial no afloja nada", () => {
     expect(limpio.slice(iPresencial, iPresencial + 3000)).toContain("await signSurveyIntake(");
   });
 });
+
+describe("el documento ya verificado no se puede reeditar (smoke, 2026-09-08)", () => {
+  it("en presencial sale en LECTURA, y el tipo viaja en un hidden", () => {
+    // Repetirlo editable invita a corregir aqui lo que ya se comprobo en el paso 1: la pantalla estaria
+    // enseñando el veredicto de un documento y firmando otro.
+    // Se ancla en el CAMPO, no en `{presencial ? (`: ese condicional aparece varias veces (los dos
+    // avisos probatorios lo usan tambien) y el indexOf cogia el primero.
+    const i = FORM.indexOf('<Field label="Tipo de documento">');
+    const bloque = FORM.slice(i, i + 1200);
+    expect(bloque).toContain('<input type="hidden" name="documentType"');
+    expect(bloque).toContain("readOnly");
+    expect(bloque).toContain("aria-readonly");
+  });
+
+  it("y NUNCA con disabled: un campo deshabilitado no viaja en el FormData", () => {
+    // Es el defecto del codigo OTP del 2026-08-26, que costo un smoke entero: `disabled` bloquea la
+    // edicion Y deja de enviar, asi que el servidor recibiria el documento vacio.
+    // Se ancla en el CAMPO, no en `{presencial ? (`: ese condicional aparece varias veces (los dos
+    // avisos probatorios lo usan tambien) y el indexOf cogia el primero.
+    const i = FORM.indexOf('<Field label="Tipo de documento">');
+    const bloque = FORM.slice(i, i + 1200);
+    expect(bloque, "el documento tiene que seguir viajando").not.toContain("disabled");
+  });
+
+  it("pero el enlace público los deja editables: ahí nadie verificó nada antes", () => {
+    // CONTROL de la aserción de arriba: sin esto, un candado que solo mira el bloque presencial pasaria
+    // verde aunque alguien bloqueara los campos tambien en el camino publico, donde el paciente TIENE que
+    // poder escribir su documento.
+    const i = FORM.indexOf('<Field label="Tipo de documento">');
+    const publico = FORM.slice(i, i + 2600);
+    expect(publico).toContain("onChange={(e) => setDocumentNumber(e.target.value)}");
+    expect(publico).toContain('<select name="documentType"');
+  });
+});
