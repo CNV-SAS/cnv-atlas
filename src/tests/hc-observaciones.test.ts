@@ -136,7 +136,7 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     // La mitad que no se puede perder al retirar una superficie: hay 3 filas en producción, escritas y
     // asumidas por un profesional. Migrarlas sería reescribir el acto de otro; borrarlas, peor.
     const resumen = readFileSync("src/modules/diagnoses/components/resumen-diagnostico.tsx", "utf8");
-    expect(resumen).toContain("Criterios que registraste antes");
+    expect(resumen).toContain("Criterios del profesional, registrados antes");
     expect(resumen, "si vuelve un campo aquí, el resumen deja de ser del modelo").not.toContain(
       'name="note"',
     );

@@ -74,7 +74,11 @@ describe("los criterios ya escritos no se pierden", () => {
     // Hay 3 filas en produccion, escritas y ASUMIDAS por un profesional. Migrarlas seria reescribir el
     // acto de otro; borrarlas, peor. La leccion del almacen que se elige por la propiedad que resuelve
     // lo de delante y se olvida la de LECTURA.
-    expect(RESUMEN).toContain("Criterios que registraste antes");
+    expect(RESUMEN).toContain("Criterios del profesional, registrados antes");
+    // Y DICE QUIEN LOS ESCRIBIO: debajo del resumen del modelo, un desplegable de notas sin autor deja
+    // al profesional nuevo sin saber cual de los dos textos es de quien (smoke de Santiago).
+    expect(RESUMEN).toContain("Los escribió un profesional");
+    expect(RESUMEN, "y donde se escribe ahora").toContain("Observaciones de la consulta");
     expect(PAGE).toContain("criteriosPrevios");
   });
 
