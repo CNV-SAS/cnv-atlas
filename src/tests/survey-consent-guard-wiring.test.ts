@@ -42,7 +42,15 @@ describe("guard de revocacion a media sesion: los dos sitios de llamada", () => 
     completeSurvey.mockResolvedValue({ evaluationId: "ev-1" });
   });
 
-  it("GUARDAR PROGRESO pregunta ANTES de escribir, y si revoco no escribe nada nuevo", async () => {
+  // TIMEOUT EXPLICITO, y la razon NO es contencion de base de datos: este archivo MOCKEA, no conecta.
+  // Lo que tarda es el `await import(...)` del servicio, que arrastra la cadena entera (writer, drizzle,
+  // schema). Aislado carga en 1,5 s; en la corrida combinada de `pnpm verify`, con los demas archivos
+  // compitiendo, pasa de los 5 s por defecto y el caso falla por tiempo aunque su asercion sea correcta.
+  //
+  // Se reprodujo dos veces con el mismo nombre antes de tocarlo. Y la primera vez lo di por contencion de
+  // BD sin mirarlo: el archivo no toca la base, asi que moverlo al proyecto `db` habria sido arreglar el
+  // sintoma en el sitio equivocado.
+  it("GUARDAR PROGRESO pregunta ANTES de escribir, y si revoco no escribe nada nuevo", { timeout: 20000 }, async () => {
     const { saveProgress, CONSENT_REVOKED_DURING_SURVEY } = await import(
       "@/modules/evaluations/services/survey-intake"
     );
@@ -56,7 +64,7 @@ describe("guard de revocacion a media sesion: los dos sitios de llamada", () => 
     expect(!r.ok && r.error.message).toBe(CONSENT_REVOKED_DURING_SURVEY);
   });
 
-  it("COMPLETAR pregunta ANTES de escribir, y si revoco no completa", async () => {
+  it("COMPLETAR pregunta ANTES de escribir, y si revoco no completa", { timeout: 20000 }, async () => {
     const { submitSurveyAnswers, CONSENT_REVOKED_DURING_SURVEY } = await import(
       "@/modules/evaluations/services/survey-intake"
     );
@@ -70,7 +78,7 @@ describe("guard de revocacion a media sesion: los dos sitios de llamada", () => 
     expect(!r.ok && r.error.message).toBe(CONSENT_REVOKED_DURING_SURVEY);
   });
 
-  it("SIN revocacion no estorba: los dos siguen escribiendo como siempre", async () => {
+  it("SIN revocacion no estorba: los dos siguen escribiendo como siempre", { timeout: 20000 }, async () => {
     const { saveProgress, submitSurveyAnswers } = await import(
       "@/modules/evaluations/services/survey-intake"
     );
@@ -84,7 +92,7 @@ describe("guard de revocacion a media sesion: los dos sitios de llamada", () => 
 });
 
 describe("el mensaje al paciente", () => {
-  it("lleva las TRES piezas: reconoce el acto, explica la consecuencia y da la salida", async () => {
+  it("lleva las TRES piezas: reconoce el acto, explica la consecuencia y da la salida", { timeout: 20000 }, async () => {
     const { CONSENT_REVOKED_DURING_SURVEY: m } = await import(
       "@/modules/evaluations/services/survey-intake"
     );

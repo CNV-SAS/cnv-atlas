@@ -27,6 +27,7 @@ const OBS = readFileSync("src/modules/followups/components/observaciones-consult
 const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
 const PDF = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
 const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
+const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
 
 describe("en pantalla manda la ULTIMA y las anteriores se pliegan", () => {
   it("hay una vigente rotulada, no una lista donde haya que deducirla", () => {
@@ -67,27 +68,49 @@ describe("en pantalla manda la ULTIMA y las anteriores se pliegan", () => {
   });
 });
 
-describe("en el documento salen TODAS, con la vigente marcada", () => {
-  it("la historia clínica no filtra: mapea la lista entera", () => {
-    // Si algún día esto se convirtiera en "solo la última", el documento escondería la corrección.
-    expect(HC).toContain("observaciones.map");
-    expect(HC, "el documento no puede quedarse con una sola").not.toContain(
-      "observaciones[observaciones.length - 1]]",
+describe("en el DOCUMENTO sale solo la vigente, con su línea de rastro", () => {
+  // CAMBIO DE DECISION (Santiago, 2026-09-08), y el candado la sigue con su razon: yo habia puesto TODAS
+  // porque un documento probatorio que enseña solo la version corregida esconde que hubo correccion.
+  // Santiago prefirio la vigente, con el historico en Seguimiento, y NO descarto el argumento: lo
+  // resolvio con una LINEA. Se ajusta lo que se afirma porque cambio la decision, no porque estorbara.
+  it("las dos superficies usan LA MISMA reducción, no una cada una", () => {
+    // Es lo unico que impide que el mismo acto clinico se lea distinto segun por donde se mire.
+    expect(HC).toContain("observacionesVigentes(");
+    expect(PDF).toContain("observacionesVigentes(");
+    expect(HC).toContain("lineaDeReemplazo(");
+    expect(PDF).toContain("lineaDeReemplazo(");
+  });
+
+  it("y la línea dice CUANTAS, DESDE CUANDO y DONDE están", () => {
+    // Sin las tres cosas el rastro no sirve: "hubo mas" sin decir cuantas ni donde deja al lector sabiendo
+    // que le falta algo y sin poder ir a buscarlo.
+    const M = readFileSync("src/modules/reports/data/observaciones-vigentes.ts", "utf8");
+    expect(M).toContain("Esta observación reemplaza a");
+    expect(M).toContain("desde el");
+    expect(M).toContain("registradas en el seguimiento");
+    expect(M, "y que el original no se borra, que es lo que sostiene el rastro").toContain(
+      "no se borran",
     );
-    expect(HC).toContain("· vigente");
   });
 
-  it("y el PDF dice lo mismo que la pantalla del documento", () => {
-    // Dos superficies del MISMO documento: si una marca la vigente y la otra no, el mismo acto clínico
-    // se lee distinto según por dónde se mire. Ya nos pasó con los dos canales del plan.
-    expect(PDF).toContain("hc.observaciones.map");
-    expect(PDF).toContain("· vigente");
+  it("la línea NO aparece cuando no hay anteriores", () => {
+    // Con una sola observacion no hay nada que rastrear, y la frase seria ruido en un documento clinico.
+    const M = readFileSync("src/modules/reports/data/observaciones-vigentes.ts", "utf8");
+    expect(M).toContain("if (o.reemplaza === 0) return null;");
   });
 
-  it("la marca solo aparece cuando hay MAS DE UNA", () => {
-    // Con una sola observación, "vigente" no distingue nada y solo añade ruido a un documento clínico.
-    expect(HC).toContain("observaciones.length > 1");
-    expect(PDF).toContain("hc.observaciones.length > 1");
+  it("la vigente es POR PROFESION también en el documento", () => {
+    // Su §8: la vigente del medico no la reemplaza la nutricionista. Reducir sobre la lista entera taparia
+    // la de un rol con la del otro.
+    const M = readFileSync("src/modules/reports/data/observaciones-vigentes.ts", "utf8");
+    expect(M).toContain("o.profesion ?? \"sin-profesion\"");
+  });
+
+  it("y la PROFESION llega también a la pantalla del documento, no solo al PDF", () => {
+    // Estaba en el PDF y faltaba en la pantalla: una divergencia entre dos superficies del mismo
+    // documento que se veia sola en cuanto la vigente paso a ser por profesion.
+    expect(HC).toContain("profesion: string | null");
+    expect(PAGE).toContain("profesion: n.profession ? PROFESION_NOTA[n.profession] : null");
   });
 });
 

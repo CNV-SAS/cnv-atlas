@@ -75,6 +75,7 @@ import {
 } from "@/modules/evaluations/data/characterization-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
 import { ObservacionesConsulta } from "@/modules/followups/components/observaciones-consulta";
+import { PROFESION_NOTA } from "@/modules/treatment/data/treatment-view-types";
 import { ProximoControl } from "@/modules/followups/components/proximo-control";
 import { getProximoControl } from "@/modules/followups/data/proximo-control-reader";
 import {
@@ -1050,6 +1051,9 @@ export default async function ResultadosEvaluacionPage({
                   id: n.id,
                   note: n.note,
                   fecha: formatDateTime(n.createdAt),
+                  // LA PROFESION VIAJA AL DOCUMENTO, como ya hacia el PDF: es la condicion clinica con la
+                  // que se escribio (su §8), y sin ella no se sabe de quien es la vigente.
+                  profesion: n.profession ? PROFESION_NOTA[n.profession] : null,
                 }))}
               />
               <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDateOnly(hcHeader.proximaCita) : null} />
