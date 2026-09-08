@@ -9,6 +9,7 @@ import {
   consentSchema,
   grantedConsentTypes,
 } from "@/modules/consent/validations";
+import { esPacienteDelEnlace } from "@/modules/patients/data/paciente-del-enlace";
 import {
   findDuplicateCandidates,
   findPatientByDocument,
@@ -178,6 +179,19 @@ async function resolveSignedIntake(input: {
   return ok({ consents, signature, resolution, identity: identity.data });
 }
 
+// EL MENSAJE CUANDO EL DOCUMENTO NO ES DE ESTE ENLACE. Aqui lee el PACIENTE, no el profesional, y eso
+// cambia todo lo que se puede decir:
+//
+//   · NO puede decir que el documento este bajo otro profesional. No sabemos si quien teclea es el
+//     titular, y aunque lo fuera, esa frase revela una relacion con un tercero.
+//   · NO puede sonar a fallo tecnico: nada se rompio, y el paciente no hizo nada mal.
+//   · Y tiene que dar una salida REAL, que es la persona que tiene delante. Ese profesional, desde su
+//     pantalla, busca el documento y recibe el mensaje que si puede recibir (escribir a soporte).
+//
+// Aprobado por Santiago, 2026-09-08.
+export const INTAKE_ENLACE_QUE_NO_CORRESPONDE =
+  "No podemos continuar con este enlace. Habla con el profesional que te atiende para que lo resuelva contigo.";
+
 // ── FASE 1: FIRMAR ────────────────────────────────────────────────────────────────────────────────
 export type SignSurveyIntakeInput = {
   link: SurveyLinkView;
@@ -219,6 +233,30 @@ export async function signSurveyIntake(
     const mode = isFollowupLink ? ("seguimiento" as const) : resolution.mode;
     const patientId = isFollowupLink ? input.link.patientId : resolution.matchedPatientId;
     const linkId = input.link.type === "seguimiento" ? input.link.id : null;
+
+    // GUARDA DEL DOCUMENTO AJENO (2026-09-08). Solo aplica cuando el paciente lo resolvio EL DOCUMENTO
+    // (enlace base de consultorio, que es publico): un enlace de SEGUIMIENTO ya es del paciente, lo emitio
+    // su propio profesional y es de un solo uso, asi que ahi no hay nada que verificar.
+    //
+    // VA DESPUES DE VERIFICAR EL CODIGO, y es deliberado: preguntarlo antes convertiria el QR del
+    // consultorio en un oraculo gratuito de "¿existe esta cedula?", porque bastaria con enviar el
+    // formulario. Despues del codigo, probar exige controlar un correo y recibir el OTP. Al paciente
+    // legitimo no le cuesta nada, porque no iba a poder continuar de ningun modo.
+    //
+    // Y VA ANTES DE ESCRIBIR: lo que se esta impidiendo no es una atribucion equivocada, es que el writer
+    // inserte la relacion paciente-profesional y le abra al profesional del enlace la historia clinica
+    // completa de un paciente que no es suyo.
+    if (!isFollowupLink && mode === "seguimiento" && patientId) {
+      const suyo = await esPacienteDelEnlace({
+        patientId,
+        professionalId: input.link.professionalId,
+        documentType: identity.documentType,
+        documentNumber: identity.documentNumber,
+        ip: input.ipAddress,
+      });
+      if (!suyo) return err(appError("forbidden", INTAKE_ENLACE_QUE_NO_CORRESPONDE));
+    }
+
     const signed = await signIntakeEvaluation({
       organizationId: input.link.organizationId,
       professionalId: input.link.professionalId,
