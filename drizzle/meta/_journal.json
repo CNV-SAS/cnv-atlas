@@ -743,6 +743,20 @@
       "when": 1789085786099,
       "tag": "0105_consentimiento_presencial",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1789172186099,
+      "tag": "0106_es_de_este_profesional",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1789258586099,
+      "tag": "0107_is_patient_of_solo_service_role",
+      "breakpoints": true
     }
   ]
 }

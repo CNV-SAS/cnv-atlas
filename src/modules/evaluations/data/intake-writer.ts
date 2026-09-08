@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -326,9 +326,60 @@ export type SignIntakeInput = {
 
 export type SignIntakeResult = { evaluationId: string; patientId: string; resumeToken: string };
 
+// LA PENDIENTE QUE YA TIENE, si la tiene. Se REUSA en vez de crear otra.
+//
+// LO QUE IMPIDE, medido: la base bloquea pacientes duplicados (patients_org_document_unique) pero NO
+// evaluaciones pendientes duplicadas. Nada impedia dos 'awaiting_survey' del mismo paciente, y el
+// escenario es corriente: se le mando el enlace por correo, el paciente empieza la encuesta desde su
+// casa, y despues entra otra vez (por el QR del consultorio, o el profesional se la abre en consulta).
+// Quedaban DOS juegos de respuestas del mismo paciente y quien diagnostique elige uno sin saber del otro.
+//
+// SE REUSA LA MAS RECIENTE, no la primera: si por lo que sea hubiera varias (las creadas antes de este
+// arreglo), la util es la ultima. Y se ordena por `created_at`, no por la posicion que devuelva la
+// consulta: anclar en una posicion es como se colo el defecto de la observacion vigente.
+//
+// Y ACOTADA AL MISMO PROFESIONAL, que no es un detalle: la evaluacion conserva su `professional_id`, asi
+// que reusar la pendiente de un colega atribuiria a EL las respuestas que se estan recogiendo aqui. Un
+// paciente atendido por dos profesionales tiene derecho a una evaluacion de cada uno; lo que no puede
+// tener son dos del mismo, que es el caso que produce dos juegos de respuestas indistinguibles.
+async function pendienteDe(tx: Tx, patientId: string, professionalId: string) {
+  const [pendiente] = await tx
+    .select({ id: evaluations.id, resumeToken: evaluations.resumeToken })
+    .from(evaluations)
+    .where(
+      and(
+        eq(evaluations.patientId, patientId),
+        eq(evaluations.professionalId, professionalId),
+        eq(evaluations.status, "awaiting_survey"),
+        isNull(evaluations.supersededAt),
+      ),
+    )
+    .orderBy(desc(evaluations.createdAt))
+    .limit(1);
+  return pendiente ?? null;
+}
+
 export async function signIntakeEvaluation(input: SignIntakeInput): Promise<SignIntakeResult> {
   return db.transaction(async (tx) => {
     const { patientId, consentVersion } = await writePatientConsentsAndGate(tx, input);
+
+    // SI YA TIENE UNA ENCUESTA A MEDIAS, se continua esa. El consentimiento SI se vuelve a escribir (es
+    // el acto que acaba de ocurrir y ya paso por su propio guard de "sin cambios"); lo que no se duplica
+    // es la evaluacion.
+    const yaPendiente = await pendienteDe(tx, patientId, input.professionalId);
+    if (yaPendiente?.resumeToken) {
+      await recordAudit(tx, {
+        event: "evaluation.pending_reused",
+        actorId: null,
+        actorEmail: null,
+        entityType: "evaluation",
+        entityId: yaPendiente.id,
+        payload: { patient_id: patientId, mode: input.mode, reason: "ya tenia una encuesta pendiente" },
+        ip: input.ipAddress,
+      });
+      await consumeLink(tx, input.linkId);
+      return { evaluationId: yaPendiente.id, patientId, resumeToken: yaPendiente.resumeToken };
+    }
 
     const resumeToken = generateResumeToken();
     const conflict = input.identityConflict === true;
@@ -407,6 +458,30 @@ export async function startFollowupWithoutSignature(
     // La version que el paciente TIENE (la del `servicio` vigente): es la que se sella (cuidado a).
     const heldVersion =
       active.find((r) => r.type === "servicio")?.version ?? active[0]?.version ?? CONSENT_VERSION;
+
+    // Mismo criterio que en la firma: si ya tiene una a medias, se continua esa.
+    const yaPendiente = await pendienteDe(tx, input.patientId, input.professionalId);
+    if (yaPendiente?.resumeToken) {
+      await recordAudit(tx, {
+        event: "evaluation.pending_reused",
+        actorId: null,
+        actorEmail: null,
+        entityType: "evaluation",
+        entityId: yaPendiente.id,
+        payload: {
+          patient_id: input.patientId,
+          mode: "seguimiento",
+          reason: "ya tenia una encuesta pendiente",
+        },
+        ip: input.ipAddress,
+      });
+      await consumeLink(tx, input.linkId);
+      return {
+        evaluationId: yaPendiente.id,
+        patientId: input.patientId,
+        resumeToken: yaPendiente.resumeToken,
+      };
+    }
 
     const resumeToken = generateResumeToken();
     const [evaluation] = await tx

@@ -189,6 +189,17 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
       .where(eq(schema.patientConsents.patientId, first.patientId));
     const activeCountBefore = activeBefore.length;
 
+    // LA PREPARACION SE CORRIGE, no la asercion (2026-09-08). Estos tests dejaban la inicial en
+    // 'awaiting_survey' y pedian un seguimiento encima, que es EXACTAMENTE el caso que ahora se colapsa:
+    // dos encuestas pendientes del mismo paciente y del mismo profesional ya no se crean, se retoma la
+    // que hay. Un seguimiento real ocurre sobre una inicial ya respondida, asi que el montaje pasa a ser
+    // el realista. Lo que cada test afirma (el guard de consentimiento §3 y el sellado de version) no
+    // cambia ni una letra.
+    await db
+      .update(schema.evaluations)
+      .set({ status: "draft" })
+      .where(eq(schema.evaluations.id, first.evaluationId));
+
     // 2. Seguimiento re-firmado con los MISMOS consentimientos + mismo contacto: el guard NO debe crear
     //    consentimiento nuevo, pero SI debe crear el shell y devolver el resume_token (Santiago 2026-08-20:
     //    "que no cree nada no significa que no siga").
@@ -237,6 +248,17 @@ describe.skipIf(!HAS_DB)("intake-writer split (BD real)", () => {
     });
     createdEvals.push(first.evaluationId);
     createdPatients.push(first.patientId);
+
+    // LA PREPARACION SE CORRIGE, no la asercion (2026-09-08). Estos tests dejaban la inicial en
+    // 'awaiting_survey' y pedian un seguimiento encima, que es EXACTAMENTE el caso que ahora se colapsa:
+    // dos encuestas pendientes del mismo paciente y del mismo profesional ya no se crean, se retoma la
+    // que hay. Un seguimiento real ocurre sobre una inicial ya respondida, asi que el montaje pasa a ser
+    // el realista. Lo que cada test afirma (el guard de consentimiento §3 y el sellado de version) no
+    // cambia ni una letra.
+    await db
+      .update(schema.evaluations)
+      .set({ status: "draft" })
+      .where(eq(schema.evaluations.id, first.evaluationId));
 
     // 2. Seguimiento SIN firma: verifica la vigencia (gate) y crea el shell sin re-consentir.
     const started = await writer.startFollowupWithoutSignature({

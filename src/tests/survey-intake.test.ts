@@ -29,6 +29,12 @@ vi.mock("@/modules/evaluations/data/intake-writer", () => {
 
 // Firma electronica (B7): el servicio verifica el codigo antes de crear nada. Se mockea el servicio
 // OTP (server-only + Redis) para probar la orquestacion sin Upstash; por defecto devuelve 'ok'.
+// La guarda del documento ajeno lee la base (RPC + auditoria); aqui se mockea para probar la DECISION.
+// Que la funcion SQL conteste bien y que solo el service_role pueda ejecutarla lo prueba
+// firma-presencial-db.test.ts, contra Postgres real.
+vi.mock("@/modules/patients/data/paciente-del-enlace", () => ({
+  esPacienteDelEnlace: vi.fn(),
+}));
 vi.mock("@/modules/consent/otp/otp-service", () => ({
   verifyOtp: vi.fn(),
   consumeOtp: vi.fn(),
@@ -37,7 +43,11 @@ vi.mock("@/modules/consent/otp/otp-service", () => ({
 import * as intakeReads from "@/modules/patients/data/patients-intake";
 import * as writer from "@/modules/evaluations/data/intake-writer";
 import * as otp from "@/modules/consent/otp/otp-service";
-import { signSurveyIntake } from "@/modules/evaluations/services/survey-intake";
+import * as enlace from "@/modules/patients/data/paciente-del-enlace";
+import {
+  INTAKE_ENLACE_QUE_NO_CORRESPONDE,
+  signSurveyIntake,
+} from "@/modules/evaluations/services/survey-intake";
 import type { SurveyLinkView } from "@/modules/evaluations/types";
 
 const okOtp = {
@@ -97,6 +107,8 @@ beforeEach(() => {
   vi.mocked(otp.verifyOtp).mockResolvedValue(okOtp);
   vi.mocked(otp.consumeOtp).mockReset();
   vi.mocked(otp.consumeOtp).mockResolvedValue(true);
+  vi.mocked(enlace.esPacienteDelEnlace).mockReset();
+  vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue(true);
   vi.mocked(intakeReads.findDuplicateCandidates).mockResolvedValue([]);
   vi.mocked(writer.signIntakeEvaluation).mockResolvedValue({
     evaluationId: "ev-1",
@@ -429,5 +441,63 @@ describe("presencial: el sello del canal viaja hasta el writer", () => {
     // pasara con `presencial` presente, el pass-through estaria hardcodeado.
     await signSurveyIntake(input());
     expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].presencial).toBeUndefined();
+  });
+});
+
+
+// ── EL DOCUMENTO AJENO EN EL ENLACE PUBLICO (cerrado el 2026-09-08) ─────────────────────────────────
+//
+// Lo verifico Santiago en el navegador: desde el enlace de consultorio se podia teclear la cedula de un
+// paciente de otro profesional. Y lo que pasaba no era una atribucion equivocada: el writer inserta la
+// relacion paciente-profesional, que es lo que lee `is_patient_professional`, que es lo que gobierna las
+// policies de datos de paciente. El profesional del enlace quedaba con acceso permanente a esa historia.
+describe("el enlace publico no puede adoptar a un paciente ajeno", () => {
+  it("si no es del profesional del enlace, NO se escribe nada", async () => {
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({
+      id: "pat-ajeno",
+      firstName: "Maria",
+      lastName: "Gomez",
+    });
+    vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue(false);
+
+    const r = await signSurveyIntake(input());
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.message).toBe(INTAKE_ENLACE_QUE_NO_CORRESPONDE);
+    // LO QUE IMPORTA: el writer no llega a correr, asi que la relacion nunca se inserta.
+    expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
+  });
+
+  it("y el mensaje NO le dice al paciente que su documento esta bajo otro profesional", () => {
+    // Aqui lee el PACIENTE. No sabemos si quien teclea es el titular, y aunque lo fuera, nombrar a un
+    // tercero revela una relacion que no nos toca revelar.
+    const m = INTAKE_ENLACE_QUE_NO_CORRESPONDE.toLowerCase();
+    for (const prohibido of ["otro profesional", "ya está registrado", "ya existe", "otro médico"]) {
+      expect(m, `el mensaje al paciente menciona "${prohibido}"`).not.toContain(prohibido);
+    }
+    // Y da una salida real: la persona que tiene delante.
+    expect(INTAKE_ENLACE_QUE_NO_CORRESPONDE).toContain("Habla con el profesional que te atiende");
+  });
+
+  it("se pregunta DESPUES de verificar el codigo, no antes", async () => {
+    // Preguntarlo antes convertiria el QR del consultorio en un oraculo gratuito de "¿existe esta
+    // cedula?": bastaria con enviar el formulario. Despues del codigo, probar exige controlar un correo.
+    vi.mocked(otp.verifyOtp).mockResolvedValue({ status: "invalid" });
+    const r = await signSurveyIntake(input());
+    expect(r.ok).toBe(false);
+    expect(enlace.esPacienteDelEnlace, "con el codigo malo no se llega a preguntar").not.toHaveBeenCalled();
+  });
+
+  it("y un enlace de SEGUIMIENTO no pasa por la guarda: ya es del paciente", async () => {
+    // Es patient-specific, de un solo uso y lo emitio su propio profesional. Preguntarlo ahi seria
+    // ruido, y el modo no sale de la resolucion por documento.
+    vi.mocked(intakeReads.findPatientByDocument).mockResolvedValue({
+      id: "pat-x",
+      firstName: "Maria",
+      lastName: "Gomez",
+    });
+    const followLink = { ...initialLink, type: "seguimiento" as const, patientId: "pat-x" };
+    const r = await signSurveyIntake(input({ link: followLink }));
+    expect(r.ok).toBe(true);
+    expect(enlace.esPacienteDelEnlace).not.toHaveBeenCalled();
   });
 });

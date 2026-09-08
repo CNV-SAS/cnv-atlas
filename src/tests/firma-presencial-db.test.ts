@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 // CAMINO ENTERO DE LA FIRMA PRESENCIAL, CONTRA LA BASE REAL (2026-09-08).
 //
@@ -238,5 +238,164 @@ describe.skipIf(!HAS_DB)("el enlace base del consultorio resuelve (BD real)", ()
     expect(vista!.patientId, "el base no está atado a un paciente").toBeNull();
     expect(vista!.professionalId).toBe(pro.professionalProfileId);
     expect(vista!.organizationId).toBe(pro.organizationId);
+  });
+});
+
+// ── EL HUECO DEL ENLACE PUBLICO (verificado por Santiago, cerrado el 2026-09-08) ────────────────────
+//
+// Desde el enlace de consultorio, que es PUBLICO y esta pensado para imprimirse y pegarse en la sala, se
+// podia teclear la cedula de un paciente de otro profesional de la organizacion. La resolucion por
+// documento devolvia 'seguimiento' y el writer insertaba la relacion paciente-profesional, que es la que
+// lee `is_patient_professional`, que es la que gobierna TODAS las policies de datos de paciente.
+//
+// O sea: no era atribucion equivocada, era acceso permanente a la historia clinica completa de un
+// paciente ajeno. Y el gate de la regla 15 no lo paraba, porque el paciente ya tenia sus autorizaciones.
+describe.skipIf(!HAS_DB)("la regla de propiedad tiene UNA sola definición (BD real)", () => {
+  it("is_patient_of contesta bien, y is_patient_professional delega en ella", async () => {
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+
+    const [rel] = await db
+      .select({
+        patientId: schema.patientProfessionalRelationships.patientId,
+        professionalId: schema.patientProfessionalRelationships.professionalId,
+      })
+      .from(schema.patientProfessionalRelationships)
+      .limit(1);
+    expect(rel, "el seed deja al menos una relación paciente-profesional").toBeDefined();
+
+    const suyo = await db.execute(
+      sql`select public.is_patient_of(${rel.patientId}::uuid, ${rel.professionalId}::uuid) as r`,
+    );
+    expect(suyo[0]?.r).toBe(true);
+
+    // CONTROL: con otro profesional tiene que decir que no. Sin esto, un `select true` constante pasaría.
+    const ajeno = await db.execute(
+      sql`select public.is_patient_of(${rel.patientId}::uuid, gen_random_uuid()) as r`,
+    );
+    expect(ajeno[0]?.r).toBe(false);
+
+    // Y el helper de siempre la LLAMA: es lo que garantiza que no haya dos definiciones que puedan
+    // divergir. Se lee del catálogo, no del archivo .sql, porque lo que importa es lo que la base tiene.
+    const def = await db.execute(
+      sql`select prosrc from pg_proc where proname = 'is_patient_professional'`,
+    );
+    const cuerpo = String(def[0]?.prosrc ?? "");
+    expect(cuerpo, "el helper tiene que delegar, no reimplementar la regla").toContain(
+      "is_patient_of",
+    );
+    expect(cuerpo, "si vuelve a hacer el join él mismo, hay dos definiciones otra vez").not.toContain(
+      "patient_professional_relationships",
+    );
+  });
+
+  it("y solo el service_role puede ejecutarla", async () => {
+    const { db } = await import("@/db");
+    const r = await db.execute(sql`
+      select
+        has_function_privilege('service_role', 'public.is_patient_of(uuid,uuid)', 'EXECUTE') as service,
+        has_function_privilege('anon', 'public.is_patient_of(uuid,uuid)', 'EXECUTE') as anon,
+        has_function_privilege('authenticated', 'public.is_patient_of(uuid,uuid)', 'EXECUTE') as auth`);
+    const fila = r[0] as Record<string, boolean>;
+    expect(fila.service, "el intake público la necesita").toBe(true);
+    // Postgres concede EXECUTE a PUBLIC por defecto: si alguien recrea la función sin el revoke de la
+    // 0107, esto vuelve a ponerse en true y truena.
+    expect(fila.anon, "una función que contesta de quién es un paciente no va abierta a anon").toBe(false);
+    expect(fila.auth).toBe(false);
+  });
+});
+
+// ── LA PENDIENTE DUPLICADA (misma tanda, 2026-09-08) ────────────────────────────────────────────────
+//
+// La base bloquea pacientes duplicados (patients_org_document_unique) pero NO evaluaciones pendientes
+// duplicadas. El escenario es corriente: al paciente se le mando el enlace por correo, empieza la
+// encuesta en casa, y despues entra otra vez (por el QR del consultorio, o el profesional se la abre en
+// consulta). Quedaban DOS juegos de respuestas del mismo paciente, y quien diagnostique elige uno sin
+// saber que existe el otro.
+describe.skipIf(!HAS_DB)("una segunda encuesta pendiente no se crea: se retoma (BD real)", () => {
+  it("el seguimiento sin firma devuelve la MISMA evaluación, no una nueva", async () => {
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { signIntakeEvaluation, startFollowupWithoutSignature } = await import(
+      "@/modules/evaluations/data/intake-writer"
+    );
+    const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import(
+      "@/modules/consent/consent-hash"
+    );
+
+    const pro = await profesionalDemo();
+    // Un paciente nuevo con su primera evaluación, que queda en 'awaiting_survey'.
+    const primera = await signIntakeEvaluation({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalProfileId,
+      mode: "inicial",
+      patientId: null,
+      identity: { ...identidad(), documentNumber: `${DOCUMENTO}-PEND` },
+      consents: consentimientos(CONSENT_VERSION, CONSENT_DOCUMENT_HASH),
+      linkId: null,
+      ipAddress: null,
+    });
+    creado = primera.patientId;
+
+    // Y ahora se le intenta abrir otra en consulta, que es justo lo que pasaba.
+    const segunda = await startFollowupWithoutSignature({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalProfileId,
+      patientId: primera.patientId,
+      linkId: null,
+      ipAddress: null,
+    });
+
+    expect(segunda.evaluationId, "tiene que ser la misma, no una nueva").toBe(primera.evaluationId);
+    expect(segunda.resumeToken, "y el mismo enlace, para que continúe donde iba").toBe(
+      primera.resumeToken,
+    );
+
+    const todas = await db
+      .select({ id: schema.evaluations.id })
+      .from(schema.evaluations)
+      .where(eq(schema.evaluations.patientId, primera.patientId));
+    expect(todas, "el paciente no puede acabar con dos juegos de respuestas").toHaveLength(1);
+  });
+
+  it("pero si la pendiente ya no está pendiente, SÍ se crea una nueva", async () => {
+    // EL CONTROL. Sin el, "devuelve la misma" pasaría verde también con un writer que nunca cree nada, y
+    // el seguimiento normal (paciente que vuelve a los tres meses) es el caso mayoritario.
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { signIntakeEvaluation, startFollowupWithoutSignature } = await import(
+      "@/modules/evaluations/data/intake-writer"
+    );
+    const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import(
+      "@/modules/consent/consent-hash"
+    );
+
+    const pro = await profesionalDemo();
+    const primera = await signIntakeEvaluation({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalProfileId,
+      mode: "inicial",
+      patientId: null,
+      identity: { ...identidad(), documentNumber: `${DOCUMENTO}-CTRL` },
+      consents: consentimientos(CONSENT_VERSION, CONSENT_DOCUMENT_HASH),
+      linkId: null,
+      ipAddress: null,
+    });
+    creado = primera.patientId;
+
+    // La primera se completa (deja de estar pendiente).
+    await db
+      .update(schema.evaluations)
+      .set({ status: "draft" })
+      .where(eq(schema.evaluations.id, primera.evaluationId));
+
+    const segunda = await startFollowupWithoutSignature({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalProfileId,
+      patientId: primera.patientId,
+      linkId: null,
+      ipAddress: null,
+    });
+    expect(segunda.evaluationId).not.toBe(primera.evaluationId);
   });
 });
