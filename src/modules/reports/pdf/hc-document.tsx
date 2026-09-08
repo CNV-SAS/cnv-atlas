@@ -341,11 +341,15 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             // Mismo texto que la pantalla.
             <Text style={styles.vacio}>El profesional no registró observaciones en esta consulta.</Text>
           ) : null}
+          {/* VAN TODAS Y SE MARCA LA VIGENTE, igual que en pantalla y por la misma razon: el PDF es el
+              documento probatorio, y enseñar solo la ultima esconderia que hubo correccion. La marca evita
+              que dos parrafos parecidos se lean como dos observaciones distintas. */}
           {hc.observaciones.map((o, i) => (
             <View key={`${o.fecha}-${i}`} style={{ marginBottom: 3 }} wrap={false}>
               <Text style={{ color: "#6b7280", fontSize: 9 }}>
                 {o.fecha}
                 {o.profesion ? ` · ${o.profesion}` : ""}
+                {hc.observaciones.length > 1 && i === hc.observaciones.length - 1 ? " · vigente" : ""}
               </Text>
               <Text>{o.texto}</Text>
             </View>
