@@ -37,6 +37,14 @@ export const diagnoses = pgTable(
     phenotypeId: uuid("phenotype_id").references(() => phenotypes.id), // STRUCT de 9 (FFMI x FMI)
     frSectorId: uuid("fr_sector_id").references(() => frSectors.id), // sector FyR de 9 (IFC x IRC)
     diagnosisName: text("diagnosis_name").notNull(),
+    // RESUMEN DEL DIAGNOSTICO generado por IA (porte del paso 4 de su Analisis IA, 2026-09-08). Lo
+    // escribe el modelo y el profesional NO lo edita; regenerar lo REEMPLAZA. Es lo que hace su archivo:
+    // se pinta en un div, no en un textarea, y se persiste (`onUpdate({ analisisIA })`).
+    //
+    // NO ES `diagnosis_notes`, y la distincion es la que estaba fundida y salto con el limite de 2.000
+    // caracteres: aquello es el CRITERIO que un profesional escribe y ASUME (append-only, no se toca);
+    // esto es la salida de una herramienta. Sin limite de longitud: no es una nota, es un documento.
+    aiSummary: text("ai_summary"),
     // Constelacion de versiones:
     engineVersion: text("engine_version").notNull(),
     modelVersionId: uuid("model_version_id")

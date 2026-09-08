@@ -1,79 +1,93 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { sinComentarios } from "./helpers/sin-comentarios";
-
-// CANDADOS DE LOS PUNTOS 11, 13 Y 14 DEL COTEJO (2026-09-05), que son tres cosas del mismo tramo final
-// de Diagnóstico Funcional.
+// CANDADO DE LA CUARTA SUBPESTAÑA · RESUMEN DEL DIAGNOSTICO.
 //
-// 11 · El bloque del criterio se llamaba solo "Criterio del profesional" y su archivo titula la sección
-//      "Diagnóstico Integrado ANI-BIS-E". Van los DOS: el suyo de antetítulo (es el nombre de la sección
-//      en su modelo) y el nuestro de título (aquí escribe el profesional, y en SU archivo ese panel es de
-//      solo lectura con el texto de la IA, sin campo para escribir). Poner solo el suyo diría que lo
-//      redactó la máquina.
-// 13 · Que el criterio sea append-only estaba dicho a media pantalla del botón, y Santiago preguntó justo
-//      eso ("¿qué pasa si se equivocó?"). Un acto irreversible dice lo que hace DONDE se pulsa.
-// 14 · La entrada a corregir se queda (son dos momentos, no una repetición), pero sin los dos párrafos de
-//      alcance que ya están verbatim en la pantalla a la que lleva.
+// ESTE ARCHIVO SE REESCRIBIO EL 2026-09-08 y conviene decir por que, porque casi todas sus aserciones
+// anteriores describian un bloque que ya no existe.
+//
+// Lo que habia: un campo donde el profesional escribia su CRITERIO, con un boton "Agregar criterio",
+// append-only, y un boton para generar un borrador con IA que caia en ese mismo campo.
+//
+// Lo que lo rompio: al portar el paso 4 de su Analisis IA, ese campo empezo a recibir un resumen de
+// cinco parrafos y salto su limite de 2.000 caracteres. El limite no era el defecto: era la SEÑAL de que
+// un campo hacia DOS trabajos.
+//
+// Verificado en su archivo (v8 del 4 de septiembre): su "Resumen del Diagnostico" se pinta en un <div>,
+// no en un textarea, y SE GUARDA. El profesional no lo edita. Y lo que el escribe son las
+// OBSERVACIONES, que en Atlas ya existian: `treatment_notes`, por consulta, append-only, con la
+// profesion sellada, y en la historia clinica desde su §8.3 del 2026-08-26.
+//
+// LO QUE SE CONSERVA DE ESTE ARCHIVO: que los criterios ya escritos no se pierdan, y el punto 14 (la
+// entrada a corregir), que no dependia del campo.
 
-const CRITERIO = sinComentarios(
-  readFileSync("src/modules/diagnoses/components/professional-criterion.tsx", "utf8"),
+const RESUMEN = readFileSync(
+  "src/modules/diagnoses/components/resumen-diagnostico.tsx",
+  "utf8",
 );
-const ENTRADA = sinComentarios(
-  readFileSync("src/modules/corrections/components/correction-entry.tsx", "utf8"),
+const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+// La entrada a corregir vive en su propio componente, no en la pantalla de entrada: el archivo viejo
+// leia otro y por eso este candado apuntaba mal al reescribirlo.
+const ENTRADA = readFileSync("src/modules/corrections/components/correction-entry.tsx", "utf8");
+const FORM = readFileSync(
+  "src/modules/corrections/components/correct-evaluation-form.tsx",
+  "utf8",
 );
-const FORM = sinComentarios(
-  readFileSync("src/modules/corrections/components/correct-evaluation-form.tsx", "utf8"),
-);
+const plano = (s: string) => s.replace(/\s+/g, " ");
 
-const plano = (t: string) => t.replace(/\s+/g, " ");
-
-describe("bloque del criterio del profesional (cotejo punto 11)", () => {
-  it("lleva el nombre de la sección de SU archivo como antetítulo", () => {
-    expect(CRITERIO).toContain("Diagnóstico Integrado ANI-BIS-E");
+describe("el resumen lo escribe el modelo y el profesional NO lo edita", () => {
+  it("no hay campo de texto: es un bloque de lectura", () => {
+    // La asercion central de la separacion. Si vuelve un textarea aqui, vuelve el defecto: un campo
+    // recibiendo un documento.
+    expect(RESUMEN, "volvio un campo editable al resumen").not.toMatch(
+      /<(Textarea|textarea|input)\b/,
+    );
+    expect(RESUMEN).toContain("whitespace-pre-wrap");
   });
 
-  it("y conserva el título propio: aquí escribe el profesional, no la máquina", () => {
-    // Control del par: si un día alguien reemplaza el nuestro por el suyo, la pantalla diría que el
-    // texto lo redactó el sistema, que es lo contrario de para lo que existe el bloque.
-    expect(CRITERIO).toContain("Criterio del profesional");
+  it("y dice QUIEN lo escribe, donde se lee", () => {
+    // Un texto clinico sin procedencia se lee como si lo hubiera escrito el profesional, y este no.
+    expect(plano(RESUMEN)).toContain("Lo redacta el sistema");
+    expect(plano(RESUMEN)).toContain("No es editable");
   });
 
-  it("ya no se dibuja con borde discontinuo, que en la app significa 'aquí no hay nada todavía'", () => {
-    // Lo que Santiago llamó "muy simple y extraño". La distinción respecto de la evidencia del motor se
-    // dice con palabras (el antetítulo y la insignia), no con un borde que significa otra cosa.
-    const seccion = CRITERIO.slice(CRITERIO.indexOf("<section"), CRITERIO.indexOf(">", CRITERIO.indexOf("<section")));
-    expect(seccion).not.toContain("border-dashed");
-    expect(CRITERIO).toContain("Lo escribes tú");
+  it("y manda a Seguimiento para lo que SI escribe el profesional", () => {
+    // Sin esta linea, el profesional se queda sin saber donde escribir lo suyo, que es como se leyo el
+    // error de longitud en el smoke.
+    expect(plano(RESUMEN)).toContain("observaciones de la consulta van en Seguimiento");
+  });
+
+  it("se GUARDA, no se regenera al volver a la pantalla", () => {
+    // Es lo que hace su archivo (`onUpdate({ analisisIA })`), y lo que evita pagarle al proveedor cada
+    // vez que alguien abre la pestaña.
+    expect(PAGE).toContain("resumen={results.aiSummary}");
+    const writer = readFileSync("src/modules/diagnoses/data/ai-summary-writer.ts", "utf8");
+    expect(writer).toContain("update(diagnoses)");
+    expect(writer, "si no se escribio ninguna fila hay que fallar, no seguir").toContain(
+      "el diagnóstico no existe",
+    );
   });
 });
 
-describe("el criterio es append-only y lo dice donde se pulsa (cotejo punto 13)", () => {
-  it("la advertencia vive junto al botón de agregar, no solo en el párrafo de arriba", () => {
-    const i = CRITERIO.indexOf('type="submit"');
-    expect(i, "el botón de agregar").toBeGreaterThan(-1);
-    // La ventana es el bloque del botón: si la frase estuviera solo arriba, aquí no aparecería.
-    const cerca = plano(CRITERIO.slice(i - 400, i + 600));
-    expect(cerca).toContain("no se puede borrar");
-    // CAMBIO LA FRASE, NO LA GARANTIA (2026-09-06, punto 13a). Decia "el último es el vigente", que era
-    // una DEDUCCION que el profesional tenia que hacer sobre una lista numerada. Ahora la pantalla lo
-    // rotula ("Criterio vigente") y el aviso dice lo que pasa al agregar otro.
-    expect(cerca).toContain("pasa a ser el vigente");
-  });
-});
-
-describe("manda el ÚLTIMO criterio, y los anteriores no se pierden (cotejo punto 13a)", () => {
-  it("el vigente se rotula como tal: no hay que deducirlo de una lista", () => {
-    expect(CRITERIO).toContain("Criterio vigente");
+describe("los criterios ya escritos no se pierden", () => {
+  it("se muestran, en solo lectura y rotulados como lo que son", () => {
+    // Hay 3 filas en produccion, escritas y ASUMIDAS por un profesional. Migrarlas seria reescribir el
+    // acto de otro; borrarlas, peor. La leccion del almacen que se elige por la propiedad que resuelve
+    // lo de delante y se olvida la de LECTURA.
+    expect(RESUMEN).toContain("Criterios que registraste antes");
+    expect(PAGE).toContain("criteriosPrevios");
   });
 
-  it("y los anteriores quedan PLEGADOS, no borrados", () => {
-    // Misma razón que el punto 26: son append-only porque son registro clínico, y quien escribió uno
-    // tiene que poder releerlo. Lo que se decide aquí es cuál MANDA, no cuál existe.
-    expect(CRITERIO).toContain("<details");
-    expect(CRITERIO).toContain("criterios anteriores");
-    expect(CRITERIO).toContain("notes.slice(0, -1)");
-    expect(CRITERIO).toContain("notes[notes.length - 1]");
+  it("y ya no se pueden escribir mas: la action se retiro", () => {
+    // Una server action es un endpoint POST: dejarla viva sin boton no la vuelve inofensiva, la vuelve
+    // una via de escritura que nadie ve. Lo encontro `pnpm check:cables`.
+    const actions = readFileSync("src/modules/diagnoses/actions.ts", "utf8");
+    // Se afirma sobre la DECLARACION, no sobre el nombre: la nota que explica por que se fue lo menciona,
+    // y una asercion sobre el nombre suelto se pondria roja por su propia explicacion.
+    expect(actions, "volvio el writer del criterio").not.toContain(
+      "export async function addDiagnosisNoteAction",
+    );
+    expect(actions, "y con su razon escrita").toContain("AQUI VIVIA");
   });
 });
 
@@ -84,8 +98,6 @@ describe("la entrada a corregir: se queda, pero sin repetir el alcance (cotejo p
   });
 
   it("y la explicación del alcance vive en la pantalla a la que lleva, no repetida aquí", () => {
-    // El texto largo (qué se corrige y qué no, con el detalle de la medición) es del formulario de
-    // corrección. Aquí queda una línea. Si el largo vuelve a las dos partes, esto se pone rojo.
     expect(plano(FORM), "el alcance completo vive en el formulario").toContain(
       "La medición del equipo sí se puede volver a importar",
     );

@@ -75,7 +75,12 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
   // superficie más.
   const surfaces = () => {
     const dirs = [
-      "src/modules/diagnoses/components/professional-criterion.tsx",
+      // `professional-criterion.tsx` SALIO de esta lista el 2026-09-08, y no por refactor: el profesional
+      // ya no escribe criterios en Diagnostico. Al portar su paso 4, ese campo quedo recibiendo un
+      // resumen del modelo y salto su limite de 2.000 caracteres; el limite no era el defecto, era la
+      // señal de que un campo hacia dos trabajos. El resumen es del modelo y no se edita
+      // (`resumen-diagnostico.tsx`); lo que el profesional escribe son las OBSERVACIONES, que ya existian
+      // y viven en `treatment_notes`.
       "src/modules/treatment/components/nutra-decision-section.tsx",
       "src/modules/treatment/components/treatment-panel.tsx",
       "src/modules/nutraceuticals/components/mi-conteo-form.tsx",
@@ -83,7 +88,7 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     return dirs.filter((f) => readFileSync(f, "utf8").includes('name="note"'));
   };
 
-  it("las superficies de nota siguen siendo TRES", () => {
+  it("las superficies de nota siguen siendo DOS", () => {
     // ERAN CUATRO HASTA EL 2026-09-06 (cotejo, punto 26): el campo de notas del tratamiento se retiró
     // porque su archivo no lo tiene y esas notas no viajaban a ningún documento. Las ya escritas se
     // siguen mostrando en solo lectura, así que la tabla y su lector no se tocaron; lo que desapareció
@@ -91,8 +96,17 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
     //
     // SE AJUSTA EL NÚMERO, NO LA ASERCIÓN: lo que este caso protege es que una superficie nueva no
     // aparezca sin pasar por aquí, y para eso el conteo tiene que ser EXACTO. Cambiarlo a
-    // `toBeLessThanOrEqual` habría dejado entrar la quinta en silencio, que es justo lo que vigila.
-    expect(surfaces()).toHaveLength(3);
+    // `toBeLessThanOrEqual` habría dejado entrar la siguiente en silencio, que es justo lo que vigila.
+    //
+    // ERAN CUATRO (hasta el 2026-09-06, punto 26), luego TRES, y desde el 2026-09-08 son DOS: el criterio
+    // del profesional dejó de ser una superficie de escritura. Cada bajada tiene su razón escrita arriba.
+    //
+    // Y ESTE CANDADO HIZO SU TRABAJO EL MISMO DÍA: al separar el resumen del criterio empecé a construir
+    // una columna `treatments.observaciones` que habría sido una superficie NUEVA de nota libre. Este
+    // conteo, y el resto del archivo, enseñaron que las observaciones YA EXISTEN (`treatment_notes`,
+    // append-only, por consulta, con la profesión sellada) y que Gildardo las había pedido en la historia
+    // clínica en su §8.3. La columna se retiró antes de existir.
+    expect(surfaces()).toHaveLength(2);
   });
 
   it("la de CLASE B ya no admite notas nuevas, pero lo escrito se sigue leyendo", () => {
@@ -107,11 +121,25 @@ describe("clase A y clase B: cuáles son las notas y dónde vive cada una", () =
   });
 
   it("las de CLASE A siguen pegadas a su decisión, no se unifican", () => {
-    // El criterio del diagnóstico explica UN diagnóstico; el motivo del nutracéutico explica UNA decisión
-    // de prescripción. Sacarlas a un cajón común las volvería anotaciones sueltas.
-    const criterio = readFileSync("src/modules/diagnoses/components/professional-criterion.tsx", "utf8");
+    // El motivo del nutracéutico explica UNA decisión de prescripción, y el conteo explica UN ajuste de
+    // inventario. Sacarlas a un cajón común las volvería anotaciones sueltas.
+    //
+    // EL CRITERIO DEL DIAGNÓSTICO YA NO ESTÁ AQUÍ (2026-09-08): dejó de ser una superficie de escritura.
+    // Lo escrito no se perdió, se muestra en solo lectura en la cuarta subpestaña.
     const nutra = readFileSync("src/modules/treatment/components/nutra-decision-section.tsx", "utf8");
-    expect(criterio).toContain('name="note"');
+    const conteo = readFileSync("src/modules/nutraceuticals/components/mi-conteo-form.tsx", "utf8");
     expect(nutra).toContain('name="note"');
+    expect(conteo).toContain('name="note"');
+  });
+
+  it("y los criterios ya escritos se siguen viendo, en solo lectura", () => {
+    // La mitad que no se puede perder al retirar una superficie: hay 3 filas en producción, escritas y
+    // asumidas por un profesional. Migrarlas sería reescribir el acto de otro; borrarlas, peor.
+    const resumen = readFileSync("src/modules/diagnoses/components/resumen-diagnostico.tsx", "utf8");
+    expect(resumen).toContain("Criterios que registraste antes");
+    expect(resumen, "si vuelve un campo aquí, el resumen deja de ser del modelo").not.toContain(
+      'name="note"',
+    );
+    expect(PAGE).toContain("criteriosPrevios");
   });
 });

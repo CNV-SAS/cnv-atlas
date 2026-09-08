@@ -20,6 +20,7 @@ import {
   CRITERION_PROMPT_KEY,
   CRITERION_PROMPT_VERSION,
 } from "../ai/prompts/criterion.v2";
+import { saveAiSummary } from "../data/ai-summary-writer";
 import { buildCriterionInput } from "../data/criterion-input-reader";
 
 // Generacion del BORRADOR de criterio por IA. Desde el 2026-09-08 es el PORTE DEL PASO 4 de su Analisis
@@ -110,6 +111,10 @@ export async function generateCriterion(
       latencyMs: completion.latencyMs,
       ...actor,
     });
+    // SE GUARDA, no se devuelve para que el cliente lo edite: el resumen del diagnostico lo escribe el
+    // modelo y el profesional NO lo edita (su archivo lo pinta en un div, no en un textarea). Regenerar
+    // reemplaza. El texto se devuelve igual para que la pantalla lo muestre sin recargar.
+    await saveAiSummary({ diagnosisId: criterion.diagnosisId, text: limpio, ...actor });
     return ok({ text: limpio });
   } catch (e) {
     const status = classifyFailure(e);

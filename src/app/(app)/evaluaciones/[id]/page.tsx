@@ -32,7 +32,7 @@ import {
 } from "@/modules/diagnoses/components/evaluation-results";
 import { EvaluationTabs } from "@/modules/diagnoses/components/evaluation-tabs";
 import { formatDate, formatDateOnly, formatDateTime } from "@/lib/format/date";
-import { ProfessionalCriterion } from "@/modules/diagnoses/components/professional-criterion";
+import { ResumenDiagnostico } from "@/modules/diagnoses/components/resumen-diagnostico";
 import { RemisionesSection } from "@/modules/diagnoses/components/remisiones-section";
 import { RutasSection } from "@/modules/diagnoses/components/rutas-section";
 import { REFERRAL_TARGET_LABEL } from "@/modules/referrals/components/patient-referrals-section";
@@ -1124,7 +1124,20 @@ export default async function ResultadosEvaluacionPage({
           }
           // Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot).
           criterio={
-            criterion ? <ProfessionalCriterion evaluationId={id} notes={criterion.notes} /> : null
+            criterion ? (
+              // LA CUARTA SUBPESTAÑA: el resumen lo escribe el modelo y NO se edita (2026-09-08). Lo
+              // que escribe el profesional se fue a Seguimiento, "Observaciones", como en su archivo.
+              // Los criterios que ya habia registrado siguen aqui en solo lectura: los asumio al
+              // guardarlos, y migrarlos seria reescribir el acto de otro.
+              <ResumenDiagnostico
+                evaluationId={id}
+                resumen={results.aiSummary}
+                criteriosPrevios={criterion.notes.map((n) => ({
+                  texto: n.note,
+                  fecha: formatDate(n.createdAt),
+                }))}
+              />
+            ) : null
           }
           // Cierre del diagnostico: confirmar (gate de estado) y corregir (versiona) UNIFICADOS bajo una
           // sola tarjeta (Santiago 2026-08-15: son los dos caminos para cerrar, van juntos), conservando la
