@@ -409,3 +409,25 @@ describe("el codigo sobrevive a un fallo posterior a la verificacion", () => {
     expect(r.error.message).toBe("Revisa los datos de identificación.");
   });
 });
+
+// ── EL BLOQUE PRESENCIAL LLEGA AL WRITER (2026-09-08) ────────────────────────────────────────────────
+//
+// Es un pass-through de una linea, y por eso mismo: una linea que nadie mira es una linea que se puede
+// perder en un refactor sin que nada truene. Sin ella la firma en consulta se guardaria como REMOTA, que
+// es una fila que dice algo falso sobre como se obtuvo la autorizacion.
+describe("presencial: el sello del canal viaja hasta el writer", () => {
+  it("llega tal cual, y el camino publico NO lo lleva", async () => {
+    const presencial = {
+      canal: "presencial_otp" as const,
+      declaradoPorProfileId: "11111111-1111-4111-8111-111111111111",
+      declaracionVersion: "1.0",
+    };
+    await signSurveyIntake({ ...input(), presencial });
+    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[0][0].presencial).toEqual(presencial);
+
+    // CONTROL: sin el bloque, el writer no recibe nada y sella la fila como remota. Si esta aserción
+    // pasara con `presencial` presente, el pass-through estaria hardcodeado.
+    await signSurveyIntake(input());
+    expect(vi.mocked(writer.signIntakeEvaluation).mock.calls[1][0].presencial).toBeUndefined();
+  });
+});
