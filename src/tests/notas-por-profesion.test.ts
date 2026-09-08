@@ -95,8 +95,13 @@ describe("la pantalla agrupa, no oculta", () => {
     // paciente saldrian con nombres de rol distintos segun donde se miren.
     expect(PANEL).toContain("PROFESION_NOTA");
     expect(OBSERVACIONES).toContain("PROFESION_NOTA");
-    expect(OBSERVACIONES, "la clave del sin-profesion tiene que ser la del mapa").toContain(
+    // LA CLAVE SE MUDO AL REDUCTOR COMPARTIDO (2026-09-08), cuando la pantalla de Seguimiento dejo de
+    // agrupar por su cuenta: la agrupacion vive ahora en un solo sitio para que el documento y la
+    // pantalla no puedan elegir distinto. Se mueve el ALCANCE de la lectura, no la asercion.
+    const REDUCTOR = readFileSync("src/modules/reports/data/observaciones-vigentes.ts", "utf8");
+    expect(REDUCTOR, "la clave del sin-profesion tiene que ser la del mapa").toContain(
       String.fromCharCode(34) + "sin-profesion" + String.fromCharCode(34),
     );
+    expect(OBSERVACIONES, "y la pantalla la rotula con el mapa").toContain("PROFESION_NOTA[");
   });
 });

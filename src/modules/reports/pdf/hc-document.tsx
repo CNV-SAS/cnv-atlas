@@ -357,6 +357,7 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
               id: String(i),
               note: o.texto,
               fecha: o.fecha,
+              creadaEn: o.creadaEn,
               profesion: o.profesion,
             })),
           ).map((o) => {

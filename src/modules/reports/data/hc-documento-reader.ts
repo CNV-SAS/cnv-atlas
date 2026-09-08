@@ -289,6 +289,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       autor: null,
       profesion: n.profession ?? null,
       fecha: formatDate(n.createdAt),
+      creadaEn: n.createdAt,
     })),
     proximaCita: header.proximaCita ? formatDateOnly(header.proximaCita) : null,
     consentVersion: header.consentVersion,

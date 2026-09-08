@@ -25,7 +25,15 @@
 export type ObservacionCruda = {
   id: string;
   note: string;
+  /** Fecha YA FORMATEADA, para mostrar. NO se usa para ordenar: dos formatos distintos ordenan distinto. */
   fecha: string;
+  /**
+   * El instante REAL (ISO), para decidir cual es la vigente.
+   *
+   * VA APARTE DE `fecha` A PROPOSITO: la fecha de pantalla llega ya formateada ("8 de septiembre de
+   * 2026"), y ordenar por esa cadena da un orden alfabetico que no tiene nada que ver con el tiempo.
+   */
+  creadaEn: string;
   profesion: string | null;
 };
 
@@ -34,6 +42,15 @@ export type ObservacionVigente = ObservacionCruda & {
   reemplaza: number;
   /** Fecha de la mas antigua que reemplaza, para acotar el periodo. null si no reemplaza ninguna. */
   desde: string | null;
+  /**
+   * Las anteriores, de la mas antigua a la mas reciente.
+   *
+   * LAS DEVUELVE ESTE MODULO Y NO LAS CALCULA CADA PANTALLA, que es como nacio el defecto del 8 de
+   * septiembre: la pantalla de Seguimiento tenia su propia reduccion, tomaba la ultima POSICION, y con el
+   * reader devolviendo `ascending: false` marcaba como vigente la mas ANTIGUA. El documento hacia lo
+   * mismo. Con una sola definicion, cual es la vigente se decide en un sitio.
+   */
+  anteriores: ObservacionCruda[];
 };
 
 /**
@@ -49,12 +66,25 @@ export function observacionesVigentes(todas: ObservacionCruda[]): ObservacionVig
     porProfesion.set(k, [...(porProfesion.get(k) ?? []), o]);
   }
   return [...porProfesion.values()].map((lista) => {
-    const vigente = lista[lista.length - 1];
-    const anteriores = lista.slice(0, -1);
+    // SE ORDENA AQUI, POR FECHA, EN VEZ DE CONFIAR EN COMO LLEGO LA LISTA.
+    //
+    // EL DEFECTO QUE CIERRA (smoke de Santiago, 2026-09-08): esto tomaba `lista[lista.length - 1]` como
+    // vigente, o sea la ULTIMA POSICION. Y el reader trae las notas con `ascending: false`, asi que la
+    // ultima posicion es la MAS ANTIGUA. Al agregar una observacion nueva salia la primera de la lista y
+    // se marcaba como vigente la vieja.
+    //
+    // ANCLAR EN UNA POSICION ES EL DEFECTO, no el orden del reader: una posicion se desincroniza en
+    // cuanto alguien cambia un `order by` en otro archivo, y nada da error. "Vigente" significa "la mas
+    // reciente", asi que se calcula con lo que ESO significa. Cualquier llamador puede pasar la lista en
+    // el orden que quiera.
+    const cronologica = [...lista].sort((a, b) => a.creadaEn.localeCompare(b.creadaEn));
+    const vigente = cronologica[cronologica.length - 1];
+    const anteriores = cronologica.slice(0, -1);
     return {
       ...vigente,
       reemplaza: anteriores.length,
       desde: anteriores.length ? anteriores[0].fecha : null,
+      anteriores,
     };
   });
 }

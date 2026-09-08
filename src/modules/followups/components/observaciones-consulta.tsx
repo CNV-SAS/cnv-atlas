@@ -8,6 +8,10 @@ import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { addNoteAction } from "@/modules/treatment/actions";
+import {
+  observacionesVigentes,
+  type ObservacionCruda,
+} from "@/modules/reports/data/observaciones-vigentes";
 import { PROFESION_NOTA } from "@/modules/treatment/data/treatment-view-types";
 
 // OBSERVACIONES DE LA CONSULTA · EN SEGUIMIENTO, QUE ES DONDE SU ARCHIVO LAS TIENE (2026-09-08).
@@ -28,7 +32,15 @@ import { PROFESION_NOTA } from "@/modules/treatment/data/treatment-view-types";
 // pisando al anterior). Se escribe en `treatment_notes`, que ya es POR CONSULTA, APPEND-ONLY y con la
 // PROFESION sellada en el acto (su §8 del 2026-08-30: "cada rol escribe lo suyo y no se pisan").
 
-type Nota = { id: string; note: string; createdAt: string; profession: string | null };
+type Nota = {
+  id: string;
+  note: string;
+  /** Fecha ya formateada, para mostrar. */
+  createdAt: string;
+  /** El instante real (ISO). Es lo que decide cual es la vigente. */
+  creadaEn: string;
+  profession: string | null;
+};
 
 export function ObservacionesConsulta({
   evaluationId,
@@ -47,19 +59,30 @@ export function ObservacionesConsulta({
   });
   useFormToastAndRefresh(state);
 
-  // MANDA LA ULTIMA Y LAS ANTERIORES QUEDAN PLEGADAS. Es el patron con el que quedo el criterio del
+  // MANDA LA MAS RECIENTE Y LAS ANTERIORES QUEDAN PLEGADAS. Es el patron con el que quedo el criterio del
   // profesional (cotejo 2026-09-06, punto 13a), y se trae tal cual porque el problema es el mismo:
   // Santiago pidio poder CORREGIRSE, y `treatment_notes` es append-only por decision de Gildardo (§8).
-  // Pisar o borrar iria contra eso; marcar cual VIGE no toca el registro. Lo que se decide aqui es cual
-  // MANDA, no cual existe.
+  // Pisar o borrar iria contra eso; marcar cual VIGE no toca el registro.
   //
-  // POR PROFESION, que es la otra mitad de su §8: cada rol tiene SU vigente. La ultima nota del medico no
-  // deja de valer porque la nutricionista escriba despues.
-  const porProfesion = new Map<string, Nota[]>();
-  for (const n of notas) {
-    const k = n.profession ?? "sin-profesion";
-    porProfesion.set(k, [...(porProfesion.get(k) ?? []), n]);
-  }
+  // LA REDUCCION VIENE DEL MISMO MODULO QUE USA EL DOCUMENTO, y esto es la correccion de un defecto real
+  // (smoke de Santiago, 2026-09-08): esta pantalla tenia su propia reduccion, tomaba la ULTIMA POSICION,
+  // y como el reader trae las notas `ascending: false`, la ultima posicion es la MAS ANTIGUA. Al agregar
+  // una observacion nueva salia numerada la primera y se marcaba vigente la vieja.
+  //
+  // Con una sola definicion compartida, la pantalla y el documento no pueden elegir distinto. Y la
+  // eleccion ya no depende de como venga ordenada la lista: se ordena por FECHA, que es lo que "vigente"
+  // significa.
+  const vigentes = observacionesVigentes(
+    notas.map(
+      (n): ObservacionCruda => ({
+        id: n.id,
+        note: n.note,
+        fecha: n.createdAt,
+        creadaEn: n.creadaEn,
+        profesion: n.profession,
+      }),
+    ),
+  );
 
   return (
     // EL MISMO TRATAMIENTO VISUAL QUE TENIA EL CRITERIO DEL PROFESIONAL EN DIAGNOSTICO: es la misma pieza
@@ -91,20 +114,21 @@ export function ObservacionesConsulta({
       <div className="flex flex-col gap-4 px-5 py-5">
         {notas.length > 0 ? (
           <div className="flex flex-col gap-4">
-            {[...porProfesion.entries()].map(([prof, lista]) => {
-              const vigente = lista[lista.length - 1];
-              const anteriores = lista.slice(0, -1);
+            {vigentes.map((vigente) => {
+              const anteriores = vigente.anteriores;
               return (
-                <div key={prof} className="flex flex-col gap-2">
+                <div key={vigente.id} className="flex flex-col gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {PROFESION_NOTA[prof] ?? "Sin profesión registrada"}
+                    {vigente.profesion
+                      ? (PROFESION_NOTA[vigente.profesion] ?? vigente.profesion)
+                      : "Sin profesión registrada"}
                   </p>
                   <div className="rounded-lg border border-border bg-muted/20 p-4">
                     <div className="flex flex-wrap items-baseline justify-between gap-2 pb-2">
                       <span className="text-xs font-semibold uppercase tracking-wide text-primary">
                         Observación vigente
                       </span>
-                      <span className="text-xs text-muted-foreground">{vigente.createdAt}</span>
+                      <span className="text-xs text-muted-foreground">{vigente.fecha}</span>
                     </div>
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                       {vigente.note}
@@ -122,9 +146,9 @@ export function ObservacionesConsulta({
                           <li key={n.id} className="rounded-lg border border-border p-3">
                             <div className="flex flex-wrap items-baseline justify-between gap-2 pb-1">
                               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                Observación {k + 1} de {lista.length}
+                                Observación {k + 1} de {anteriores.length + 1}
                               </span>
-                              <span className="text-xs text-muted-foreground">{n.createdAt}</span>
+                              <span className="text-xs text-muted-foreground">{n.fecha}</span>
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                               {n.note}

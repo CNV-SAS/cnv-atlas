@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
+import {
+  lineaDeReemplazo,
+  observacionesVigentes,
+} from "@/modules/reports/data/observaciones-vigentes";
+
 // CANDADO DE LAS OBSERVACIONES · VIGENTE EN PANTALLA, TODAS EN EL DOCUMENTO (2026-09-08).
 //
 // EL PROBLEMA QUE RESUELVE. Santiago pidio que una observacion nueva "reemplace" a la anterior, para que
@@ -29,11 +34,85 @@ const PDF = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
 const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
 const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
 
+// EL DEFECTO QUE ESTOS CASOS CIERRAN (smoke de Santiago, 2026-09-08): la vigente se tomaba por POSICION
+// (`lista[lista.length - 1]`), y el reader trae las notas con `ascending: false`. La ultima posicion era
+// la MAS ANTIGUA: al agregar una observacion nueva salia numerada la primera y se marcaba vigente la
+// vieja. La pantalla y el documento hacian lo mismo, asi que coincidian... en el error.
+//
+// ANCLAR EN UNA POSICION ES LO QUE FALLA, no el orden del reader: una posicion se desincroniza en cuanto
+// alguien toca un `order by` en otro archivo, y nada da error. Estos casos prueban el COMPORTAMIENTO con
+// las dos ordenaciones, que es lo unico que no se puede satisfacer volviendo a la posicion.
+describe("la vigente es la MAS RECIENTE, venga la lista como venga", () => {
+  const nota = (id: string, creadaEn: string, profesion: string | null = "medico") => ({
+    id,
+    note: `nota ${id}`,
+    fecha: creadaEn.slice(0, 10),
+    creadaEn,
+    profesion,
+  });
+  const vieja = nota("vieja", "2026-09-01T10:00:00.000Z");
+  const media = nota("media", "2026-09-03T10:00:00.000Z");
+  const nueva = nota("nueva", "2026-09-05T10:00:00.000Z");
+
+  it("con la lista MAS RECIENTE PRIMERO, que es como la trae el reader", () => {
+    const [v] = observacionesVigentes([nueva, media, vieja]);
+    expect(v.id, "eligió la más antigua: es el defecto que cerró esto").toBe("nueva");
+    expect(v.reemplaza).toBe(2);
+    expect(v.desde).toBe("2026-09-01");
+  });
+
+  it("y con la lista MAS ANTIGUA PRIMERO da lo mismo", () => {
+    const [v] = observacionesVigentes([vieja, media, nueva]);
+    expect(v.id).toBe("nueva");
+    expect(v.reemplaza).toBe(2);
+  });
+
+  it("y en orden arbitrario también", () => {
+    // El control de que no se acertó por casualidad con dos ordenaciones simétricas.
+    const [v] = observacionesVigentes([media, nueva, vieja]);
+    expect(v.id).toBe("nueva");
+  });
+
+  it("las anteriores salen de la MAS ANTIGUA a la MAS RECIENTE, no como llegaron", () => {
+    const [v] = observacionesVigentes([nueva, media, vieja]);
+    expect(v.anteriores.map((a) => a.id)).toEqual(["vieja", "media"]);
+  });
+
+  it("cada PROFESION tiene su vigente, y una no tapa a la otra", () => {
+    // Su §8: la última nota del médico no deja de valer porque la nutricionista escriba después.
+    const nutri = nota("nutri", "2026-09-09T10:00:00.000Z", "nutricionista");
+    const r = observacionesVigentes([nutri, nueva, vieja]);
+    expect(r).toHaveLength(2);
+    expect(r.find((x) => x.profesion === "medico")?.id).toBe("nueva");
+    expect(r.find((x) => x.profesion === "nutricionista")?.id).toBe("nutri");
+  });
+
+  it("con una sola no hay rastro que dejar", () => {
+    const [v] = observacionesVigentes([nueva]);
+    expect(v.reemplaza).toBe(0);
+    expect(lineaDeReemplazo(v)).toBeNull();
+  });
+
+  it("y NINGUNA pantalla vuelve a reducir por su cuenta", () => {
+    // Las dos superficies del documento Y la de Seguimiento usan el MISMO módulo. Que cada una tuviera su
+    // reducción es exactamente cómo nació el defecto: coincidían en el error.
+    for (const [nombre, src] of [["HC", HC], ["PDF", PDF], ["Seguimiento", OBS]] as const) {
+      expect(src, `${nombre} dejó de usar la reducción compartida`).toContain("observacionesVigentes(");
+      expect(
+        sinComentarios(src),
+        `${nombre} volvió a elegir la vigente por posición`,
+      ).not.toContain("[lista.length - 1]");
+    }
+  });
+});
+
 describe("en pantalla manda la ULTIMA y las anteriores se pliegan", () => {
   it("hay una vigente rotulada, no una lista donde haya que deducirla", () => {
+    // YA NO SE AFIRMA SOBRE LA IMPLEMENTACION (antes fijaba `lista[lista.length - 1]`), y por eso este
+    // candado no atrapo el defecto: fijaba EXACTAMENTE la linea que estaba mal. Lo que se prueba ahora es
+    // el COMPORTAMIENTO, arriba, con la lista en tres ordenaciones. Aqui solo queda el rotulo.
     expect(OBS).toContain("Observación vigente");
-    expect(OBS).toContain("lista[lista.length - 1]");
-    expect(OBS).toContain("lista.slice(0, -1)");
+    expect(OBS).toContain("vigentes.map(");
   });
 
   it("las anteriores se PLIEGAN, no desaparecen", () => {
@@ -42,14 +121,12 @@ describe("en pantalla manda la ULTIMA y las anteriores se pliegan", () => {
     expect(OBS).toMatch(/observaci[oó]n(es)? anterior(es)?/i);
   });
 
-  it("y la vigente es POR PROFESION, que es la otra mitad de su §8", () => {
-    // "Cada rol escribe lo suyo y no se pisan": la ultima nota del medico no deja de valer porque la
-    // nutricionista escriba despues. Si la vigente se calculara sobre la lista entera, la de un rol
-    // taparia la del otro.
-    const i = OBS.indexOf("porProfesion.entries()");
-    const j = OBS.indexOf("lista[lista.length - 1]");
-    expect(i, "desapareció la agrupación por profesión").toBeGreaterThan(-1);
-    expect(j, "la vigente se calcula fuera del grupo de profesión").toBeGreaterThan(i);
+  it("la pantalla rotula la profesión de cada vigente", () => {
+    // Que la vigente sea POR PROFESION ya se prueba arriba, sobre el reductor y con datos. Aqui queda lo
+    // que es de la pantalla: que se vea de QUIEN es cada una, porque sin el rótulo "vigente" no dice de
+    // quién.
+    expect(OBS).toContain("PROFESION_NOTA[vigente.profesion]");
+    expect(OBS).toContain("Sin profesión registrada");
   });
 
   it("y NADA de esto toca el registro: sigue siendo append-only", () => {
