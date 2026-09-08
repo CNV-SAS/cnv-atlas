@@ -67,6 +67,11 @@ import {
   canManageBaseSurveyLink,
 } from "./policies/can-manage-evaluations";
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
+import { getPendingResumeToken } from "./data/pending-resume-reader";
+import { DECLARACION_PRESENCIAL_VERSION } from "@/modules/consent/text/declaracion-presencial";
+import { buscarPorDocumento } from "@/modules/patients/data/buscar-por-documento";
+import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
+import { DOCUMENTO_AJENO_AL_FIRMAR } from "@/modules/patients/text/documento-ajeno";
 import { otpSendSchema } from "./validations";
 import type {
   AbandonEvaluationState,
@@ -330,6 +335,188 @@ export async function signSurveyAction(
 
   // El formulario recibe el resume_token y pasa a la fase 2 (la encuesta). No redirige: sigue en la pagina.
   return { error: null, fields: null, resumeToken, ethnicityAuthorized };
+}
+
+// ── FIRMA PRESENCIAL · MODALIDAD 1 (dictamen legal 2026-09-08) ──────────────────────────────────────
+//
+// EL MISMO ACTO, POR OTRO CANAL. El paciente lee, marca y digita el codigo, igual que desde su enlace;
+// lo unico que cambia es que lo hace en el dispositivo del profesional, delante de el, y que el
+// profesional declara aparte lo que vio. Por eso reusa `signSurveyIntake` entero (identidad, gate de la
+// regla 15, OTP, copia del consentimiento) en vez de tener un camino propio que envejeceria distinto.
+//
+// LAS TRES DIFERENCIAS CON EL CAMINO PUBLICO, y las tres son de seguridad:
+//
+//   1. EXIGE SESION. `signSurveyAction` es publica; esta no. De ahi sale `declaredBy`: quien declara es
+//      el profesional AUTENTICADO, nunca un campo del formulario. Una declaracion que el propio
+//      formulario pudiera afirmar no declara nada.
+//   2. NO RECIBE TOKEN. El link base se resuelve en servidor desde la sesion, asi que el token del
+//      consultorio ni siquiera viaja a esta pantalla.
+//   3. RECHAZA EL DOCUMENTO AJENO. En el enlace publico, un paciente de otro profesional que decide
+//      atenderse con este firma y se le crea el seguimiento: lo eligio el. Aqui lo estaria eligiendo el
+//      profesional, que es exactamente lo que la reasignacion formal existe para impedir. Se vuelve a
+//      preguntar EN SERVIDOR (el veredicto que el cliente traiga no vale) y de paso queda auditado el
+//      intento.
+export async function firmarPresencialAction(
+  _prev: SignSurveyState,
+  form: FormData,
+): Promise<SignSurveyState> {
+  const fail = (error: string, fields: Record<string, string> | null = null): SignSurveyState => ({
+    error,
+    fields,
+    resumeToken: null,
+    ethnicityAuthorized: false,
+  });
+
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
+
+  // LA DECLARACION ES REQUISITO, no un extra: sin ella la fila quedaria con canal presencial y sin quien
+  // responda por el acto, y el CHECK de la 0105 la rechazaria de todos modos. Se para antes, con un
+  // mensaje que dice que falta.
+  if (!checkbox(form, "declaracionPresencial")) {
+    return fail("Marca la declaración del profesional para poder firmar.");
+  }
+
+  const ip = await getClientIp();
+  const identity = readIdentityFromForm(form);
+
+  // EL VEREDICTO SE VUELVE A PEDIR AQUI. El de la pantalla es informativo: entre la busqueda y la firma
+  // pudo cambiar (otro profesional lo creo en ese rato) y, sobre todo, el cliente pudo mandar otro
+  // documento. Esta es la lectura que gobierna.
+  const veredicto = await buscarPorDocumento({
+    organizationId: user.organizationId,
+    documentType: identity.documentType,
+    documentNumber: identity.documentNumber,
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  if (veredicto.estado === "ajeno") {
+    return fail(DOCUMENTO_AJENO_AL_FIRMAR);
+  }
+
+  // El link base del consultorio, resuelto en SERVIDOR desde la sesion. Es el mismo link estable del QR
+  // (get-or-create), asi que no se crea uno nuevo por cada paciente presencial.
+  const base = await getOrCreateBaseSurveyLink({
+    organizationId: user.organizationId,
+    professionalId,
+    createdBy: user.id,
+  });
+  const link = base ? await resolveSurveyLinkByToken(base.token) : null;
+  if (!link) return fail("No se pudo preparar la evaluación. Intenta de nuevo.");
+
+  const sessionId = str(form, "otpSessionId");
+  const otpCode = str(form, "otpCode");
+  if (!sessionId || !otpCode) {
+    return fail("El paciente debe ingresar el código de verificación para firmar.");
+  }
+
+  const consent = readConsentFromForm(form);
+  const result = await signSurveyIntake({
+    link,
+    consent,
+    identity,
+    otp: { sessionId, code: otpCode },
+    ipAddress: ip === "unknown" ? null : ip,
+    presencial: {
+      canal: "presencial_otp",
+      declaradoPor: professionalId,
+      declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+    },
+  });
+  if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
+
+  // De aqui en adelante, IGUAL que el camino publico: el shell ya existe y nada de lo que sigue puede
+  // tumbarlo. La copia del consentimiento se envia tambien en presencial, y es justo donde mas importa:
+  // el paciente firmo en una pantalla que no es suya y se lleva la constancia a su correo.
+  const { patientId, resumeToken } = result.value;
+  const acceptedAt = Date.now();
+  let resumeUrl: string | null = null;
+  try {
+    resumeUrl = await resumeUrlFrom(resumeToken);
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: "firmar-presencial", op: "resume-url" } });
+  }
+  after(() => dispatchConsentCopy({ link, consent, identity, patientId, acceptedAt, resumeUrl }));
+
+  revalidatePath("/pacientes");
+  return {
+    error: null,
+    fields: null,
+    resumeToken,
+    ethnicityAuthorized: consent.investigacion === true,
+  };
+}
+
+// ── EN CONSULTA: RETOMAR LA PENDIENTE, O ABRIR UNA NUEVA ────────────────────────────────────────────
+//
+// LAS DOS SALIDAS del paciente que YA es suyo, y son excluyentes a proposito. Un paciente que llega a
+// consulta o tiene una encuesta a medias o no la tiene:
+//
+//   - SI LA TIENE, se RETOMA. Crear otra dejaria dos evaluaciones en 'awaiting_survey' del mismo
+//     paciente, que la base NO impide (el unique cubre pacientes duplicados, no evaluaciones pendientes).
+//     El escenario concreto: se le mando el enlace por correo, el paciente responde desde casa mientras
+//     el profesional llena la otra en consulta, y quien diagnostique elige una sin saber que existe la
+//     otra.
+//   - SI NO LA TIENE, se abre una nueva SIN FIRMA, que es el camino que el dictamen del 2026-08-20 ya
+//     habilito para el seguimiento: el paciente ya consintio y su autorizacion sigue vigente. El gate de
+//     la regla 15 corre igual, dentro de la transaccion.
+//
+// NINGUNA DE LAS DOS DECIDE POR EL PROFESIONAL (regla 18): la pantalla le muestra cual aplica y el pulsa.
+
+// Enlace de la encuesta pendiente para dárselo al paciente. Lee POR RLS: si no es suyo, no sale nada.
+export async function enlaceEncuestaPendienteAction(
+  _prev: StartFollowupState,
+  form: FormData,
+): Promise<StartFollowupState> {
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+
+  const evaluationId = str(form, "evaluationId");
+  if (!evaluationId) return fail("Falta la evaluación.");
+  const resumeToken = await getPendingResumeToken(evaluationId);
+  // AUSENTE Y VACIA NO SON LO MISMO aguas abajo, pero aqui se dicen igual a proposito: "no es tuya" y "ya
+  // no esta pendiente" son ambos "no hay enlace que dar", y distinguirlos en pantalla contaria de mas.
+  if (!resumeToken) return fail("Esa encuesta ya no está pendiente.");
+  return { error: null, resumeToken, revoked: false };
+}
+
+// Abrir una evaluacion nueva a un paciente que ya consintio, sin enlace y sin volver a firmar.
+export async function abrirEvaluacionEnConsultaAction(
+  _prev: StartFollowupState,
+  form: FormData,
+): Promise<StartFollowupState> {
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false });
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+
+  const patientId = str(form, "patientId");
+  if (!patientId) return fail("Falta el paciente.");
+  // LA ATRIBUCION SALE DE LA RELACION, no de la sesion ni del formulario: mismo criterio que el link de
+  // seguimiento. La lectura va por RLS, asi que un paciente que no es suyo devuelve null aqui.
+  const professionalId = await getProfessionalIdForPatient(patientId);
+  if (!professionalId) return fail("Ese paciente no está a tu cargo.");
+
+  const ip = await getClientIp();
+  try {
+    const result = await startFollowupWithoutSignature({
+      organizationId: user.organizationId,
+      professionalId,
+      patientId,
+      linkId: null,
+      ipAddress: ip === "unknown" ? null : ip,
+    });
+    revalidatePath("/pacientes");
+    return { error: null, resumeToken: result.resumeToken, revoked: false };
+  } catch (e) {
+    // Autorizacion necesaria revocada: el gate corrio ANTES de crear nada. No es fallo tecnico, y en esta
+    // pantalla el profesional TIENE al paciente delante: puede volver a pedirle el consentimiento.
+    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true };
+    throw e;
+  }
 }
 
 // ── SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3) ────────────────────────────────────────────

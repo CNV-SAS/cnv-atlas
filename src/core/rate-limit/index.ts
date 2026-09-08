@@ -315,3 +315,43 @@ export async function limitAccessRequestByUser(userId: string): Promise<LimitRes
   }
   return memoryAccessRequest.check(userId);
 }
+
+// ---- Busqueda de paciente por documento (presencial, 2026-09-08) ---------
+// ACOTA EL BARRIDO, no el uso. La busqueda usa service role para poder distinguir "no existe" de "existe
+// y no es tuyo", asi que un profesional preguntando documentos uno por uno podria mapear la organizacion.
+// 60/h es holgado para crear pacientes en consulta (una busqueda por paciente) e inservible para barrer.
+//
+// LA AUDITORIA ES EL CONTROL DE VERDAD (queda quien pregunto por que documento y que se respondio); esto
+// es solo el freno. Por eso falla ABIERTO como las demas superficies autenticadas: con Upstash caido
+// preferimos no impedir crear un paciente que esta enfrente, sabiendo que el rastro se sigue escribiendo.
+const DOCUMENT_LOOKUP_LIMIT = 60;
+const DOCUMENT_LOOKUP_WINDOW = "1 h" as const;
+const DOCUMENT_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+
+const memoryDocumentLookup = new MemoryFixedWindow(DOCUMENT_LOOKUP_LIMIT, DOCUMENT_LOOKUP_WINDOW_MS);
+
+let upstashDocumentLookup: Ratelimit | null = null;
+function getUpstashDocumentLookup(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashDocumentLookup ??= new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.fixedWindow(DOCUMENT_LOOKUP_LIMIT, DOCUMENT_LOOKUP_WINDOW),
+    prefix: "atlas:document-lookup",
+  });
+  return upstashDocumentLookup;
+}
+
+export async function limitDocumentLookupByUser(userId: string): Promise<LimitResult> {
+  const upstash = getUpstashDocumentLookup();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(userId);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: true, remaining: DOCUMENT_LOOKUP_LIMIT };
+    }
+  }
+  return memoryDocumentLookup.check(userId);
+}

@@ -185,6 +185,16 @@ export type SignSurveyIntakeInput = {
   identity: unknown;
   otp: { sessionId: string; code: string };
   ipAddress: string | null;
+  /**
+   * PRESENCIAL (dictamen 2026-09-08). Ausente = el paciente firmo solo desde su enlace, que es el camino
+   * publico. Lo pone SOLO la action con sesion: `declaradoPor` sale del profesional autenticado y NUNCA
+   * del formulario, porque una declaracion que el propio formulario pudiera afirmar no declara nada.
+   */
+  presencial?: {
+    canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
+    declaradoPor: string;
+    declaracionVersion: string;
+  };
 };
 
 export type SignSurveyResult = SurveyIntakeResult & { resumeToken: string };
@@ -220,6 +230,7 @@ export async function signSurveyIntake(
       ipAddress: input.ipAddress,
       signature,
       identityConflict: resolution.identityConflict,
+      presencial: input.presencial,
     });
     // CONSUMO del codigo, ya con la firma PERSISTIDA. No puede ir dentro de la transaccion de BD porque el
     // codigo vive en otro almacen (Redis), asi que va inmediatamente despues de que la transaccion
