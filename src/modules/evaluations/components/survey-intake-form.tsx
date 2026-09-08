@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import type { SignIdentityPrefill } from "../types";
@@ -47,11 +48,35 @@ export function SurveyIntakeForm({
   // El paciente eligio el camino de EXCEPCION (cambiar autorizaciones/contacto): pasa al camino con firma.
   const [manualSign, setManualSign] = useState(false);
 
-  const handleStarted = useCallback((tokenValue: string) => setResumeToken(tokenValue), []);
-  const handleSigned = useCallback((tokenValue: string, ethAuth: boolean) => {
-    setResumeToken(tokenValue);
-    setEthnicityAuthorized(ethAuth);
-  }, []);
+  const router = useRouter();
+
+  // SI SE RETOMO una evaluacion que ya existia, el paciente NO puede caer en la encuesta de despues de
+  // firmar: esa arranca en blanco, y el guardado manda el SNAPSHOT COMPLETO, asi que enviarla vacia
+  // borraria lo que ya llevaba respondido. Se le lleva a la pagina de reanudacion, que es la que carga su
+  // avance (y ya existe, con su manejo de revocacion y de token vencido).
+  //
+  // Es el defecto que Santiago vio como "la encuesta empieza desde cero": el reuso ocurria de verdad en la
+  // base (el audit lo registro) y la PANTALLA no lo acompañaba. Reusar la evaluacion sin reusar sus
+  // respuestas es peor que no reusarla.
+  const continuar = useCallback(
+    (tokenValue: string, reanudar: boolean) => {
+      if (reanudar) router.replace(`/encuesta/reanudar/${tokenValue}`);
+      else setResumeToken(tokenValue);
+    },
+    [router],
+  );
+
+  const handleStarted = useCallback(
+    (tokenValue: string, reanudar: boolean) => continuar(tokenValue, reanudar),
+    [continuar],
+  );
+  const handleSigned = useCallback(
+    (tokenValue: string, ethAuth: boolean, reanudar: boolean) => {
+      setEthnicityAuthorized(ethAuth);
+      continuar(tokenValue, reanudar);
+    },
+    [continuar],
+  );
   const handleException = useCallback(() => setManualSign(true), []);
 
   if (resumeToken) {

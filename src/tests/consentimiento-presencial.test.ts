@@ -336,3 +336,35 @@ describe("el documento ya verificado no se puede reeditar (smoke, 2026-09-08)", 
     expect(publico).toContain('<select name="documentType"');
   });
 });
+
+// ── EL CABLE QUE FALTABA (smoke del camino publico, 2026-09-08) ────────────────────────────────────
+//
+// El reuso de la pendiente ocurria en la base y la PANTALLA no lo acompañaba: el paciente caia en la
+// encuesta de despues de firmar, que arranca en blanco. Es la tercera vez en esta pieza que algo esta
+// construido y le falta el ultimo cable, asi que el candado va sobre el SITIO DE LLAMADA.
+describe("al retomar, la pantalla lleva a donde están las respuestas", () => {
+  const ORQ = readFileSync("src/modules/evaluations/components/survey-intake-form.tsx", "utf8");
+
+  it("el orquestador navega a la reanudación cuando se retomó", () => {
+    const limpio = sinComentarios(ORQ);
+    expect(limpio).toContain("router.replace(`/encuesta/reanudar/${tokenValue}`)");
+  });
+
+  it("y NO cae en la encuesta en blanco: son ramas excluyentes", () => {
+    // Si las dos pudieran ocurrir, el paciente veria un parpadeo y, peor, el formulario en blanco podria
+    // enviarse. El guardado manda el snapshot COMPLETO: eso le borraria lo que llevaba.
+    const limpio = sinComentarios(ORQ);
+    const i = limpio.indexOf("if (reanudar)");
+    const bloque = limpio.slice(i, i + 200);
+    expect(bloque).toContain("else setResumeToken(tokenValue)");
+  });
+
+  it("los DOS caminos que crean evaluación pasan la señal, no solo el de firma", () => {
+    // El seguimiento sin firma tambien retoma, y con el mismo defecto. Cubrir uno solo dejaria el hueco
+    // abierto en el camino que mas se usa.
+    const limpio = sinComentarios(ORQ);
+    expect(limpio).toContain("onSigned={handleSigned}");
+    expect(limpio).toContain("onStarted={handleStarted}");
+    expect(limpio).toContain("(tokenValue: string, reanudar: boolean) => continuar(tokenValue, reanudar)");
+  });
+});

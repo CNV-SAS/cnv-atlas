@@ -211,7 +211,7 @@ export type SignSurveyIntakeInput = {
   };
 };
 
-export type SignSurveyResult = SurveyIntakeResult & { resumeToken: string };
+export type SignSurveyResult = SurveyIntakeResult & { resumeToken: string; reused: boolean };
 
 export async function signSurveyIntake(
   input: SignSurveyIntakeInput,
@@ -284,6 +284,7 @@ export async function signSurveyIntake(
       evaluationId: signed.evaluationId,
       patientId: signed.patientId,
       resumeToken: signed.resumeToken,
+      reused: signed.reused,
       mode,
       duplicateCandidates: resolution.duplicateCandidates,
     });

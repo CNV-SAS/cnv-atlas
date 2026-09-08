@@ -8,7 +8,7 @@ import { startFollowupAction } from "../actions";
 import type { StartFollowupState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
-const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false };
+const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false, reanudar: false };
 
 // Pantalla de inicio del SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3): el paciente ya esta verificado
 // y su consentimiento vigente cubre el seguimiento (numeral 4), asi que NO se re-firma ni se pide codigo. Un
@@ -20,14 +20,14 @@ export function FollowupStartScreen({
   onException,
 }: {
   token: string;
-  onStarted: (resumeToken: string) => void;
+  onStarted: (resumeToken: string, reanudar: boolean) => void;
   onException: () => void;
 }) {
   const [state, action, pending] = useActionState(startFollowupAction, initialState);
 
   useEffect(() => {
-    if (state.resumeToken) onStarted(state.resumeToken);
-  }, [state.resumeToken, onStarted]);
+    if (state.resumeToken) onStarted(state.resumeToken, state.reanudar);
+  }, [state.resumeToken, state.reanudar, onStarted]);
 
   // Autorizacion necesaria no vigente (revocada): no se creo nada; se avisa sin culpar y se remite al
   // profesional (redaccion aprobada 2026-08-20).
