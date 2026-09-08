@@ -1,0 +1,180 @@
+"use server";
+
+import { headers } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
+
+import { getClientIp } from "@/core/http/client-ip";
+import { requireUser } from "@/modules/auth/session";
+import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
+
+import {
+  abandonarSesion,
+  abrirSesionPresencial,
+  confirmarSesionPresencial,
+  crearSesionPresencial,
+  leerEstadoSesion,
+  type EstadoSesion,
+} from "./data/sesion-presencial";
+import { DECLARACION_PRESENCIAL_VERSION } from "./text/declaracion-presencial";
+
+// ACCIONES DE LA MODALIDAD 2 (QR). Dos superficies muy distintas conviven aqui:
+//
+//   · las del PROFESIONAL exigen sesion y su policy;
+//   · las del PACIENTE no tienen sesion: se autentican con el token del QR, que es de un solo uso, vive
+//     poco y solo existio en la pantalla de esa consulta.
+//
+// Estan en el mismo archivo a proposito, para que la asimetria se vea de un vistazo y nadie añada una del
+// paciente copiando la guarda de las del profesional (o al reves, que es peor).
+
+export type SesionQrState = {
+  error: string | null;
+  token: string | null;
+  sessionId: string | null;
+};
+
+// ── PROFESIONAL: emitir el QR ─────────────────────────────────────────────────────────────────────
+export async function emitirSesionQrAction(
+  _prev: SesionQrState,
+  form: FormData,
+): Promise<SesionQrState> {
+  const fail = (error: string): SesionQrState => ({ error, token: null, sessionId: null });
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+
+  const { getProfessionalProfileIdByUser } = await import(
+    "@/modules/payments/data/payments-repository"
+  );
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
+
+  const documentType = String(form.get("documentType") ?? "").trim();
+  const documentNumber = String(form.get("documentNumber") ?? "").trim();
+  if (!documentType || documentNumber.length < 3) return fail("Falta el documento verificado.");
+
+  const ip = await getClientIp();
+  const s = await crearSesionPresencial({
+    organizationId: user.organizationId,
+    professionalId,
+    createdBy: user.id,
+    documentType,
+    documentNumber,
+    declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+    ip: ip === "unknown" ? null : ip,
+  });
+  return { error: null, token: s.token, sessionId: s.id };
+}
+
+// ── PROFESIONAL: mirar si el paciente ya termino ──────────────────────────────────────────────────
+//
+// SONDEO Y NO TIEMPO REAL, y es una decision, no una limitacion: el evento que se espera ocurre UNA vez
+// por consulta y la pantalla ya esta abierta delante de una persona. Una suscripcion en vivo (Realtime)
+// traeria una dependencia nueva, una conexion que mantener y un modo de fallo silencioso (se cae y la
+// pantalla se queda muda para siempre) a cambio de ahorrar unos segundos.
+//
+// El sondeo falla RUIDOSO: si no responde, la pantalla lo dice. Y se DETIENE solo (ver el componente):
+// en cuanto el estado es terminal o la ventana de lectura vencio, deja de preguntar. Una pantalla que
+// sondea para siempre porque el paciente se fue es el defecto que hay que evitar, no la latencia.
+export async function estadoSesionQrAction(sessionId: string): Promise<EstadoSesion | null> {
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return null;
+  // La lectura va por RLS: si la sesion no es suya, no sale nada.
+  return leerEstadoSesion(sessionId);
+}
+
+export async function abandonarSesionQrAction(sessionId: string): Promise<{ error: string | null }> {
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return { error: "No autorizado." };
+  await abandonarSesion(sessionId, user.id);
+  return { error: null };
+}
+
+// ── PACIENTE: abrir el QR en su telefono ──────────────────────────────────────────────────────────
+//
+// Sin sesion. Se llama desde la pagina publica al montarse, y es lo que sella la primera marca de tiempo
+// y el dispositivo. Devuelve solo si la sesion sirve: nada del paciente ni del profesional.
+export async function abrirSesionQrAction(token: string): Promise<{ ok: boolean }> {
+  try {
+    const h = await headers();
+    const ip = await getClientIp();
+    const abierta = await abrirSesionPresencial({
+      token,
+      ip: ip === "unknown" ? null : ip,
+      userAgent: h.get("user-agent"),
+    });
+    return { ok: abierta !== null };
+  } catch (e) {
+    Sentry.captureException(e, { tags: { area: "sesion-qr", op: "abrir" } });
+    return { ok: false };
+  }
+}
+
+export type ConfirmacionQrState = {
+  error: string | null;
+  estado: "pendiente" | "confirmada" | "discrepancia" | "no_disponible";
+  /** En discrepancia, lo que el paciente escribio. Lo del profesional NO viaja aqui (ver abajo). */
+  declarado: string | null;
+};
+
+// ── PACIENTE: escribir su identidad y confirmar ───────────────────────────────────────────────────
+export async function confirmarSesionQrAction(
+  _prev: ConfirmacionQrState,
+  form: FormData,
+): Promise<ConfirmacionQrState> {
+  const s = (n: string) => String(form.get(n) ?? "").trim();
+  const token = s("token");
+  const nombres = s("firstName");
+  const apellidos = s("lastName");
+  const documentNumber = s("documentNumber");
+  const documentType = s("documentType");
+  if (!token || !nombres || !apellidos || documentNumber.length < 3 || !documentType) {
+    return { error: "Completa tu nombre y tu documento.", estado: "pendiente", declarado: null };
+  }
+
+  // Las tres necesarias tienen que estar marcadas para poder continuar. Es el mismo gate del camino
+  // normal: sin ellas no hay autorizacion que otorgar.
+  const marcada = (n: string) => form.get(n) === "on";
+  if (!marcada("servicio") || !marcada("datos_sensibles") || !marcada("aceptacion_medio_electronico")) {
+    return {
+      error: "Marca las tres autorizaciones necesarias para continuar.",
+      estado: "pendiente",
+      declarado: null,
+    };
+  }
+  const autorizaciones = [
+    "servicio",
+    "datos_sensibles",
+    "aceptacion_medio_electronico",
+    ...(["investigacion", "comunicaciones_continuidad", "comunicaciones_comerciales"] as const).filter(
+      marcada,
+    ),
+  ];
+
+  const r = await confirmarSesionPresencial({
+    token,
+    nombres,
+    apellidos,
+    documentType,
+    documentNumber,
+    autorizaciones,
+  });
+
+  if (r.estado === "no_disponible") {
+    return {
+      error:
+        "Este código ya no está disponible: se usó o venció. Pídele a tu profesional que te muestre uno nuevo.",
+      estado: "no_disponible",
+      declarado: null,
+    };
+  }
+  if (r.estado === "discrepancia") {
+    // LO QUE NO SE HACE AQUI: enseñarle al paciente el documento que escribio el profesional. Seria
+    // decirle la respuesta, y entonces "coinciden" dejaria de significar nada: bastaria con copiarla. La
+    // pantalla dice QUE no coincide y los manda a mirarlo juntos con la cedula delante.
+    return {
+      error: null,
+      estado: "discrepancia",
+      declarado: `${documentType} ${documentNumber}`,
+    };
+  }
+  return { error: null, estado: "confirmada", declarado: null };
+}

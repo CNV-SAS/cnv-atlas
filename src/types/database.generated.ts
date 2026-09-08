@@ -2396,6 +2396,7 @@ export type Database = {
           created_by: string
           declaracion_version: string
           declarado_apellidos: string | null
+          declarado_autorizaciones: Json | null
           declarado_document_number: string | null
           declarado_document_type:
             | Database["public"]["Enums"]["document_type"]
@@ -2407,6 +2408,7 @@ export type Database = {
           estado: string
           expires_at: string
           id: string
+          lectura_hasta: string | null
           opened_at: string | null
           organization_id: string
           patient_id: string | null
@@ -2422,6 +2424,7 @@ export type Database = {
           created_by: string
           declaracion_version: string
           declarado_apellidos?: string | null
+          declarado_autorizaciones?: Json | null
           declarado_document_number?: string | null
           declarado_document_type?:
             | Database["public"]["Enums"]["document_type"]
@@ -2433,6 +2436,7 @@ export type Database = {
           estado?: string
           expires_at: string
           id?: string
+          lectura_hasta?: string | null
           opened_at?: string | null
           organization_id: string
           patient_id?: string | null
@@ -2448,6 +2452,7 @@ export type Database = {
           created_by?: string
           declaracion_version?: string
           declarado_apellidos?: string | null
+          declarado_autorizaciones?: Json | null
           declarado_document_number?: string | null
           declarado_document_type?:
             | Database["public"]["Enums"]["document_type"]
@@ -2459,6 +2464,7 @@ export type Database = {
           estado?: string
           expires_at?: string
           id?: string
+          lectura_hasta?: string | null
           opened_at?: string | null
           organization_id?: string
           patient_id?: string | null
