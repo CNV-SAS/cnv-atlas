@@ -3,6 +3,10 @@
 // donde ocurren.
 
 import type { HcAntecedenteResuelto } from "../data/hc-antecedentes-map";
+import {
+  lineaDeReemplazo,
+  observacionesVigentes,
+} from "@/modules/reports/data/observaciones-vigentes";
 
 // Encabezado de seccion: mayusculas espaciadas, como en su HC.
 function TituloSeccion({ children }: { children: React.ReactNode }) {
@@ -300,39 +304,52 @@ export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
 // probatorio. La otra mitad de su defecto, la del onConflict, nunca la tuvimos.
 //
 // POR CONSULTA se cumple por construccion: cuelgan del tratamiento de ESTA evaluacion, no del paciente.
-export type HcObservacion = { id: string; note: string; fecha: string };
+export type HcObservacion = {
+  id: string;
+  note: string;
+  fecha: string;
+  // LA PROFESION FALTABA EN LA PANTALLA Y ESTABA EN EL PDF, que es una divergencia entre dos superficies
+  // del MISMO documento: el PDF decia con que rol se escribio y la pantalla no. Y desde que la vigente es
+  // POR PROFESION (su §8), sin ella "vigente" no significa nada: no se sabe vigente de quien.
+  profesion: string | null;
+};
 
-// VAN TODAS, Y LA ULTIMA SE MARCA COMO VIGENTE (2026-09-08). Es la decision que separa la PANTALLA del
-// DOCUMENTO, y las dos mitades tienen su razon:
+// SOLO LA VIGENTE DE CADA PROFESION, CON UNA LINEA DE RASTRO (Santiago, 2026-09-08).
 //
-//   · EN PANTALLA manda la ultima y las anteriores se pliegan. Es una ayuda para el profesional que
-//     escribe: le deja corregirse sin que el registro pierda nada.
-//   · EN EL DOCUMENTO salen TODAS. La historia clinica es probatoria, y `treatment_notes` es append-only
-//     POR DECISION DE GILDARDO (§8, 2026-08-30) justamente para que no se pierda lo escrito. Enseñar solo
-//     la ultima deshace esa garantia en el sitio donde mas importa: una auditoria que pregunte "que dijo
-//     el profesional" veria la version corregida sin rastro de que hubo correccion.
+// LA DECISION Y SU CONTRAPESO. Yo habia puesto TODAS, porque un documento probatorio que enseña solo la
+// version corregida esconde que hubo correccion. Santiago prefirio la vigente, con el historico en
+// Seguimiento, y resolvio mi objecion con una linea en vez de descartarla.
 //
-// Y SE MARCA LA VIGENTE para que el lector no tenga que deducirla del orden: sin la marca, dos parrafos
-// parecidos se leen como dos observaciones distintas en vez de como una y su correccion.
+// LA LINEA ES LO QUE HACE QUE EL DOCUMENTO NO MIENTA. Sin ella, un solo parrafo bajo "Observaciones del
+// profesional" AFIRMA que eso fue todo lo que se escribio. Con ella, el documento dice que hubo mas,
+// cuantas, desde cuando y donde estan, y apunta a un almacen APPEND-ONLY que nadie puede editar despues.
 //
-// PENDIENTE DE EL: su archivo no dice nada, porque su `notas_profesional` es un campo unico que solo
-// guarda la ultima y que ademas no lee nadie. Va como pregunta en PENDIENTES_CIENTIFICOS.
+// LA REDUCCION NO SE HACE AQUI: viene de `observacionesVigentes`, el mismo modulo que usa el PDF. Dos
+// superficies del mismo documento no pueden decidir por separado cual es la vigente.
 export function HcObservaciones({ observaciones }: { observaciones: HcObservacion[] }) {
-  const ultima = observaciones.length ? observaciones[observaciones.length - 1] : null;
+  const vigentes = observacionesVigentes(
+    observaciones.map((o) => ({ id: o.id, note: o.note, fecha: o.fecha, profesion: o.profesion })),
+  );
   return (
     <Tarjeta>
       <TituloSeccion>Observaciones del profesional</TituloSeccion>
-      {observaciones.length > 0 ? (
+      {vigentes.length > 0 ? (
         <ul className="flex flex-col gap-3">
-          {observaciones.map((o) => (
-            <li key={o.id} className="border-l-2 border-border pl-3">
-              <p className="whitespace-pre-line text-sm text-foreground">{o.note}</p>
-              <p className="pt-1 text-xs text-muted-foreground">
-                {o.fecha}
-                {observaciones.length > 1 && o.id === ultima?.id ? " · vigente" : ""}
-              </p>
-            </li>
-          ))}
+          {vigentes.map((o) => {
+            const rastro = lineaDeReemplazo(o);
+            return (
+              <li key={o.id} className="border-l-2 border-border pl-3">
+                <p className="whitespace-pre-line text-sm text-foreground">{o.note}</p>
+                <p className="pt-1 text-xs text-muted-foreground">
+                  {o.fecha}
+                  {o.profesion ? ` · ${o.profesion}` : ""}
+                </p>
+                {/* EL RASTRO, en el propio documento y no en una nota al pie: quien lea esta observacion
+                    tiene que enterarse ahi mismo de que hubo anteriores. */}
+                {rastro ? <p className="pt-1 text-xs italic text-muted-foreground">{rastro}</p> : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         // No dice "sin observaciones" a secas: en un documento probatorio, un bloque vacio sin explicar
@@ -344,6 +361,7 @@ export function HcObservaciones({ observaciones }: { observaciones: HcObservacio
     </Tarjeta>
   );
 }
+
 
 export function HcProximaConsulta({ fecha }: { fecha: string | null }) {
   return (

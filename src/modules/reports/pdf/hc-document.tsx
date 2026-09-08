@@ -1,4 +1,8 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import {
+  lineaDeReemplazo,
+  observacionesVigentes,
+} from "@/modules/reports/data/observaciones-vigentes";
 
 import type { HistoriaClinicaDoc } from "../data/reports-view-types";
 
@@ -341,19 +345,35 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             // Mismo texto que la pantalla.
             <Text style={styles.vacio}>El profesional no registró observaciones en esta consulta.</Text>
           ) : null}
-          {/* VAN TODAS Y SE MARCA LA VIGENTE, igual que en pantalla y por la misma razon: el PDF es el
-              documento probatorio, y enseñar solo la ultima esconderia que hubo correccion. La marca evita
-              que dos parrafos parecidos se lean como dos observaciones distintas. */}
-          {hc.observaciones.map((o, i) => (
-            <View key={`${o.fecha}-${i}`} style={{ marginBottom: 3 }} wrap={false}>
-              <Text style={{ color: "#6b7280", fontSize: 9 }}>
-                {o.fecha}
-                {o.profesion ? ` · ${o.profesion}` : ""}
-                {hc.observaciones.length > 1 && i === hc.observaciones.length - 1 ? " · vigente" : ""}
-              </Text>
-              <Text>{o.texto}</Text>
-            </View>
-          ))}
+          {/* SOLO LA VIGENTE DE CADA PROFESION, CON SU LINEA DE RASTRO (Santiago, 2026-09-08). La
+              reduccion viene de `observacionesVigentes`, EL MISMO modulo que usa la pantalla del
+              documento: si cada superficie decidiera cual es la vigente, el mismo acto clinico se leeria
+              distinto segun por donde se mire.
+
+              LA LINEA ES LO QUE HACE QUE EL PDF NO MIENTA: un solo parrafo bajo este titulo afirmaria que
+              eso fue todo lo que se escribio. */}
+          {observacionesVigentes(
+            hc.observaciones.map((o, i) => ({
+              id: String(i),
+              note: o.texto,
+              fecha: o.fecha,
+              profesion: o.profesion,
+            })),
+          ).map((o) => {
+            const rastro = lineaDeReemplazo(o);
+            return (
+              <View key={o.id} style={{ marginBottom: 3 }} wrap={false}>
+                <Text style={{ color: "#6b7280", fontSize: 9 }}>
+                  {o.fecha}
+                  {o.profesion ? ` · ${o.profesion}` : ""}
+                </Text>
+                <Text>{o.note}</Text>
+                {rastro ? (
+                  <Text style={{ color: "#6b7280", fontSize: 8, fontStyle: "italic" }}>{rastro}</Text>
+                ) : null}
+              </View>
+            );
+          })}
         </Seccion>
 
         <Seccion titulo="Próxima consulta">
