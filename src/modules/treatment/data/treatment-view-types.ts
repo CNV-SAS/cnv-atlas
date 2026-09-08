@@ -46,6 +46,25 @@ export type MenuSemanalSaved = {
 // La PROFESION con la que se escribio la nota (Gildardo 2026-08-30 §8). `null` = nota anterior a la
 // separacion, cuando el campo era uno solo y compartido: la pantalla lo dice, no lo adivina.
 export type ProfesionNota = "medico" | "psicologo" | "deportologo" | "nutricionista";
+
+/**
+ * Rotulo humano de la profesion con la que se escribio una nota.
+ *
+ * VIVE AQUI, en el modulo NEUTRO, y no en el panel: desde el 2026-09-08 lo necesitan DOS pantallas
+ * cliente (el historico del panel de Tratamiento y las Observaciones de Seguimiento). Un valor
+ * compartido dentro de un modulo `"use client"` es el hazard de frontera RSC por el lado B; el sitio
+ * correcto es un modulo sin `"use client"` ni `server-only`, que es este.
+ *
+ * Lleva `sin-profesion` porque hay notas anteriores al sello de profesion (§8 del 2026-08-30): no se les
+ * inventa un rol, se dice que no lo tienen.
+ */
+export const PROFESION_NOTA: Record<string, string> = {
+  nutricionista: "Nutricionista",
+  medico: "Médico",
+  psicologo: "Psicólogo",
+  deportologo: "Deportólogo",
+  "sin-profesion": "Sin profesión registrada",
+};
 export type TreatmentNote = {
   id: string;
   note: string;

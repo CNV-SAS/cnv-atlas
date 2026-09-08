@@ -5,7 +5,7 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
-import { NIVELES_FA, nivelFaLabel } from "../data/treatment-view-types";
+import { NIVELES_FA, nivelFaLabel, PROFESION_NOTA } from "../data/treatment-view-types";
 import { computeIntercambio, grupoSinPorcion } from "@/clinical-engine/intercambio";
 import { DIAS_DEL_CICLO, diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import {
@@ -1688,13 +1688,6 @@ function ProtocoloAprobado({
 // Rótulo de cada profesión, y el de las notas SIN profesión: son las anteriores a la separación del §8,
 // cuando el campo era uno solo y compartido. No se les inventa un rol: decirlo es más honesto que
 // repartirlas por lo que parezca.
-const PROFESION_NOTA: Record<string, string> = {
-  nutricionista: "Nutricionista",
-  medico: "Médico",
-  psicologo: "Psicólogo",
-  deportologo: "Deportólogo",
-  "sin-profesion": "Sin profesión registrada",
-};
 
 /** Agrupa por profesión conservando el orden de llegada dentro de cada grupo. */
 function agruparNotasPorProfesion(notas: TreatmentNote[]): [string, TreatmentNote[]][] {
@@ -3030,9 +3023,13 @@ function NotesSection({ protocol }: { protocol: TreatmentProtocol }) {
   return (
     <div className={bloqueCls("registro")}>
       <h3 className={tituloBloqueCls("registro")}>Notas del tratamiento (histórico)</h3>
+      {/* EL TEXTO DECIA "nunca se envió al paciente ni salió en el reporte" Y ERA FALSO: estas notas
+          SALEN en la historia clínica desde su §8.3 (2026-08-26). Es un texto que afirmaba un estado sin
+          derivarlo, y en la pantalla donde el profesional decide cómo redactar: creer que una nota es
+          privada cambia lo que se escribe en ella. */}
       <p className="text-xs text-muted-foreground">
-        Este bloque ya no admite notas nuevas. Se conserva para que no se pierda lo que se escribió antes;
-        nunca se envió al paciente ni salió en el reporte.
+        Aquí ya no se escriben notas nuevas: van en <strong>Seguimiento</strong>, con el próximo control.
+        Se conserva lo escrito antes, y <strong>sale en la historia clínica</strong> igual que lo nuevo.
       </p>
       {/* UNA NOTA POR PROFESIÓN (Gildardo 2026-08-30 §8: "cada rol escribe lo suyo y no se pisan").
           Se AGRUPAN, no se ocultan: el médico necesita leer lo que anotó la nutricionista. */}

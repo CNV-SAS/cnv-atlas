@@ -23,6 +23,15 @@ const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "u
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
 const SCHEMA = readFileSync("src/db/schema/treatments.ts", "utf8");
 const VALIDACIONES = readFileSync("src/modules/treatment/validations.ts", "utf8");
+// EL ROTULO DE PROFESION SE MUDO al modulo NEUTRO el 2026-09-08: desde que las Observaciones tienen
+// pantalla en Seguimiento, lo necesitan DOS componentes cliente, y un valor compartido dentro de un
+// modulo "use client" es el hazard de frontera RSC por el lado B. Se mueve el ALCANCE de la lectura, no
+// la asercion: lo que se fija sigue siendo que la nota sin profesion se ROTULE en vez de repartirse.
+const ROTULOS = readFileSync("src/modules/treatment/data/treatment-view-types.ts", "utf8");
+const OBSERVACIONES = readFileSync(
+  "src/modules/followups/components/observaciones-consulta.tsx",
+  "utf8",
+);
 
 /** El cuerpo de una funcion exportada, para no cazar coincidencias de otra. */
 function cuerpo(src: string, nombre: string): string {
@@ -81,6 +90,13 @@ describe("la pantalla agrupa, no oculta", () => {
   });
 
   it("las notas sin profesión se rotulan, no se reparten", () => {
-    expect(PANEL).toContain("Sin profesión registrada");
+    expect(ROTULOS).toContain("Sin profesión registrada");
+    // Y LAS DOS PANTALLAS usan el MISMO mapa: si una se escribiera sus rotulos, las notas del mismo
+    // paciente saldrian con nombres de rol distintos segun donde se miren.
+    expect(PANEL).toContain("PROFESION_NOTA");
+    expect(OBSERVACIONES).toContain("PROFESION_NOTA");
+    expect(OBSERVACIONES, "la clave del sin-profesion tiene que ser la del mapa").toContain(
+      String.fromCharCode(34) + "sin-profesion" + String.fromCharCode(34),
+    );
   });
 });

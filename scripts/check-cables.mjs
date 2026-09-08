@@ -29,6 +29,11 @@ import path from "node:path";
 const RAICES = ["src", "supabase", "scripts"];
 
 // EXCEPCIONES, cada una con su razon y su fuente. Una excepcion sin razon escrita es un agujero.
+// `addNoteAction` ESTUVO AQUI y salio el 2026-09-08, cuando las Observaciones ganaron su pantalla en
+// Seguimiento. Su declaracion decia, ademas, algo que era FALSO: "verificado que esas notas no viajan al
+// reporte ni a la historia clinica". Si viajan a la historia clinica, y desde antes de escribirse esa
+// linea (Gildardo §8.3, 2026-08-26; `HcObservaciones`). Una excepcion se justifica con una razon, y una
+// razon equivocada mantiene abierto lo que dice cerrar: con esa frase, retirar las notas parecia gratis.
 const SIN_PANTALLA_A_PROPOSITO = new Map([
   [
     "acknowledgeRestrictionsAction",
@@ -36,15 +41,6 @@ const SIN_PANTALLA_A_PROPOSITO = new Map([
       "'maquinaria construida y sin cablear, a proposito y no por olvido'. Desde menu.v2 las " +
       "restricciones del modelo ya llegan al prompt, asi que el reconocimiento seria constancia, no " +
       "proteccion. Si algun dia se cablea, se borra esta linea.",
-  ],
-  [
-    "addNoteAction",
-    "Cotejo del 2026-09-05, punto 26: Santiago retiro el CAMPO de notas del tratamiento (\"el html no " +
-      "lo tiene... de momento yo quitaria este bloque\"). Verificado que esas notas no viajan al reporte " +
-      "ni a la historia clinica. La action, el servicio y la tabla NO se tocan a proposito: las notas ya " +
-      "escritas se siguen MOSTRANDO en solo lectura, y devolver el campo es volver a montar un " +
-      "formulario. Misma disciplina con la que se retiraron las guias dietarias. Si vuelve el campo, o " +
-      "si se construye el bloque de notas globales que Santiago propone, se borra esta linea.",
   ],
   [
     "registerUsageAction",

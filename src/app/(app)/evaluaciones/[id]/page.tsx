@@ -74,6 +74,7 @@ import {
   getPatientProfileHasCharacterization,
 } from "@/modules/evaluations/data/characterization-reader";
 import { FollowupComparison } from "@/modules/followups/components/followup-comparison";
+import { ObservacionesConsulta } from "@/modules/followups/components/observaciones-consulta";
 import { ProximoControl } from "@/modules/followups/components/proximo-control";
 import { getProximoControl } from "@/modules/followups/data/proximo-control-reader";
 import {
@@ -896,6 +897,23 @@ export default async function ResultadosEvaluacionPage({
           {proximoControl ? (
             <ProximoControl evaluationId={id} vista={proximoControl} />
           ) : null}
+          {/* OBSERVACIONES DE LA CONSULTA, en Seguimiento y junto al proximo control, que es donde su
+              archivo las tiene (su ModSeguimiento: fecha, frecuencia, criterio de egreso y
+              observaciones, en el mismo formulario).
+
+              ESTA ES LA MITAD QUE FALTABA. Las notas ya salian en la historia clinica desde su §8.3, y el
+              cotejo del 5 retiro el CAMPO del panel de Tratamiento (con razon: su archivo no las tiene
+              ahi). Quedaron con lector y sin escritor. */}
+          <ObservacionesConsulta
+            evaluationId={id}
+            notas={(protocol?.notes ?? []).map((n) => ({
+              id: n.id,
+              note: n.note,
+              createdAt: formatDateTime(n.createdAt),
+              profession: n.profession ?? null,
+            }))}
+            puedeEscribir={Boolean(protocol)}
+          />
         </section>
       }
       reporte={

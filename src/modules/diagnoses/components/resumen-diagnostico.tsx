@@ -94,14 +94,19 @@ export function ResumenDiagnostico({
       {criteriosPrevios.length > 0 ? (
         <details className="rounded-xl border border-border bg-card">
           <summary className="cursor-pointer list-none px-6 py-4 text-sm font-medium text-foreground">
-            Criterios que registraste antes ({criteriosPrevios.length})
+            Criterios del profesional, registrados antes ({criteriosPrevios.length}) · ya no se
+            escriben aquí
           </summary>
           <div className="flex flex-col gap-4 border-t border-border px-6 py-4">
             {/* POR QUE SIGUEN AQUI Y NO SE MIGRARON: los escribio y los asumio un profesional. Se
                 conservan tal cual, y se dice de cuando son para que no se lean como el resumen de hoy. */}
+            {/* QUIEN LOS ESCRIBIO Y CUANDO, en la primera linea. Sin eso, un profesional nuevo abre el
+                desplegable debajo del resumen del modelo y no sabe cual de los dos textos es de quien,
+                que es justo lo que Santiago señalo en el smoke. */}
             <p className="text-xs text-muted-foreground">
-              Los escribiste cuando este bloque era un campo de texto. Se conservan como quedaron; lo
-              nuevo va en las observaciones de Seguimiento.
+              <strong>Los escribió un profesional</strong>, no el sistema, cuando este bloque era un campo
+              de texto. Se conservan como quedaron y no se pueden editar. Lo que escribas ahora va en{" "}
+              <strong>Seguimiento, Observaciones de la consulta</strong>, y sale en la historia clínica.
             </p>
             {criteriosPrevios.map((c, i) => (
               <div key={i} className="flex flex-col gap-1">
