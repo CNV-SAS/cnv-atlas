@@ -2,38 +2,35 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  AVISO_CASILLAS,
-  AVISO_CODIGO,
   DECLARACION_PRESENCIAL,
   DECLARACION_PRESENCIAL_VERSION,
 } from "@/modules/consent/text/declaracion-presencial";
 
-import {
-  DOCUMENTO_AJENO,
-  DOCUMENTO_AJENO_AL_FIRMAR,
-} from "@/modules/patients/text/documento-ajeno";
+import { DOCUMENTO_AJENO } from "@/modules/patients/text/documento-ajeno";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
-// CANDADO DEL CONSENTIMIENTO PRESENCIAL · MODALIDAD 1 (dictamen legal 2026-09-08).
+// CANDADO DEL CONSENTIMIENTO PRESENCIAL (dictamen legal 2026-09-08, modalidad 1 retirada el 09-09).
 //
 // EL HUECO QUE CIERRA, medido antes de construir: un paciente SIN CORREO entraba hasta la mitad y se
 // quedaba ahi. El schema de identidad acepta `email` nulo, pero la firma verifica SIEMPRE el OTP (art. 4
 // Decreto 2364) y el OTP solo va a un correo. Sin firma no hay evaluacion.
 //
-// LO QUE ESTE CANDADO PROTEGE es la MITAD PROBATORIA, que es lo unico que hace valida la modalidad:
+// LO QUE ESTE CANDADO PROTEGE, despues de retirar la modalidad 1 (ver el bloque de abajo):
 //
-//   1. que la casilla del profesional NO sustituya al gate;
-//   2. que la declaracion vaya CON SU VERSION, no como booleano;
-//   3. y que las dos frases que dicen quien marca y quien digita esten pegadas a donde ocurre cada cosa.
+//   1. que la declaracion del profesional NO sustituya al gate de la regla dura 15;
+//   2. que el canal y la declaracion queden SELLADOS en la autorizacion, y que la base rechace una fila
+//      incoherente (canal presencial sin declaracion, o al reves);
+//   3. que la declaracion vaya CON SU VERSION, no como booleano;
+//   4. y que lo del CAMINO COMPARTIDO siga en pie: la busqueda por documento, el codigo de soporte y el
+//      envio del OTP, que no eran de la modalidad 1 aunque se construyeran con ella.
 //
-// La 3 no es ayuda al usuario: si las casillas las marca el profesional o el codigo lo digita el, la firma
-// electronica deja de probar que fue el paciente, y la modalidad pierde su valor.
+// Los puntos 1 a 3 gobiernan las modalidades que quedan (QR y papel), que es donde la declaracion carga
+// peso de verdad: ahi no hay OTP.
 
 const MIGRACION = readFileSync("drizzle/0105_consentimiento_presencial.sql", "utf8");
 const WRITER = readFileSync("src/modules/evaluations/data/intake-writer.ts", "utf8");
 const SCHEMA = readFileSync("src/db/schema/patients.ts", "utf8");
-const TEXTO = readFileSync("src/modules/consent/text/declaracion-presencial.ts", "utf8");
 
 describe("la casilla del profesional NO sustituye al gate", () => {
   it("el gate sigue leyendo patient_consents DENTRO de la transacción", () => {
@@ -103,248 +100,68 @@ describe("la declaración se versiona, no es un booleano", () => {
   });
 });
 
-describe("las dos frases probatorias dicen quién hace qué", () => {
-  it("las casillas las marca el PACIENTE, y lo dice", () => {
-    expect(AVISO_CASILLAS).toContain("Pásale el dispositivo al paciente");
-    expect(AVISO_CASILLAS, "y la consecuencia, no solo la instrucción").toContain("invalida el consentimiento");
-  });
-
-  it("el código lo digita el PACIENTE, y dice por qué", () => {
-    // "Es lo unico que prueba que fue el" es la razon, y sin ella la instruccion se lee como formalismo y
-    // se salta. Con ella, saltarsela es una decision.
-    expect(AVISO_CODIGO).toContain("El código lo digita el paciente");
-    expect(AVISO_CODIGO).toContain("es lo único que prueba que fue él");
-  });
-
-  it("y las dos van PEGADAS a donde ocurre cada cosa, no en un aviso al principio", () => {
-    // Es la leccion del punto 13 del cotejo: un aviso a media pantalla del sitio donde se actua no se lee.
-    // Santiago lo probo preguntando justo lo que el parrafo de arriba ya explicaba.
-    expect(TEXTO).toContain("Va JUNTO a las casillas");
-    expect(TEXTO).toContain("Va JUNTO al campo del codigo");
-    expect(TEXTO, "no pueden ser un aviso previo que se cierra").toContain("no son un aviso previo");
-  });
-});
-
-// ── LA MODALIDAD 1, YA CONSTRUIDA (2026-09-08) ─────────────────────────────────────────────────────
+// ── LO QUE SOBREVIVE A LA MODALIDAD 1 (retirada el 2026-09-09) ─────────────────────────────────────
 //
-// Lo de arriba protege el ALMACEN (que la fila quede sellada y coherente). Esto protege la PANTALLA y la
-// ACCION, que es donde la mitad probatoria se puede perder sin que nada truene: un aviso que se escribe
-// pero no se renderiza no dice nada, y una declaracion que el formulario pueda afirmar no declara nada.
-
+// La modalidad 1 (el paciente marcaba y digitaba su codigo en la pantalla del profesional) se retiro: no
+// aportaba nada que el enlace del consultorio no diera, porque la cadena probatoria es la MISMA y el sello
+// de canal registraba DONDE estaba el paciente, que no forma parte de esa cadena.
+//
+// CON ELLA SE FUERON sus candados: los dos avisos probatorios, la casilla de declaracion en el formulario
+// de firma, el documento en solo lectura y la accion de firma presencial. No se relajaron: dejo de existir
+// lo que afirmaban.
+//
+// LO QUE NO SE VA es lo del CAMINO COMPARTIDO, y estos tres candados son los que lo sostienen.
 const FORM = readFileSync("src/modules/evaluations/components/sign-phase-form.tsx", "utf8");
 const ACTIONS = readFileSync("src/modules/evaluations/actions.ts", "utf8");
 const BUSQUEDA = readFileSync("src/modules/patients/actions.ts", "utf8");
 
-describe("las dos frases se RENDERIZAN donde ocurre cada cosa", () => {
-  it("el aviso de las casillas va DENTRO del bloque de autorizaciones necesarias", () => {
-    // No basta con que el texto exista (la leccion del bloque que se porto y resulto ser print-only). Lo
-    // que importa es DONDE queda: entre el rotulo del bloque y la primera casilla, que es lo que el
-    // profesional lee justo antes de pasar el dispositivo.
-    const iLegend = FORM.indexOf("Autorizaciones necesarias para el servicio");
-    const iAviso = FORM.indexOf("{AVISO_CASILLAS}");
-    const iPrimera = FORM.indexOf('name="servicio"');
-    expect(iAviso, "el aviso de las casillas no se renderiza").toBeGreaterThan(-1);
-    expect(iAviso).toBeGreaterThan(iLegend);
-    expect(iAviso, "el aviso quedó DESPUÉS de las casillas: ahí ya se marcaron").toBeLessThan(iPrimera);
-  });
-
-  it("el aviso del código va JUNTO al campo del código", () => {
-    const iAviso = FORM.indexOf("{AVISO_CODIGO}");
-    const iCampo = FORM.indexOf('name="otpCode"');
-    expect(iAviso, "el aviso del código no se renderiza").toBeGreaterThan(-1);
-    expect(iAviso).toBeLessThan(iCampo);
-    // Y PEGADO, no a media pantalla: el bloque de firma entero cabe en menos de eso.
-    expect(iCampo - iAviso).toBeLessThan(1500);
-  });
-
-  it("y solo en presencial: el paciente que firma solo no tiene a quién pasarle el dispositivo", () => {
-    // Las dos frases hablan de un profesional que esta al lado. En el enlace publico no hay nadie al lado,
-    // y decirlas ahi confundiria sobre quien tiene que hacer que.
-    for (const aviso of ["{AVISO_CASILLAS}", "{AVISO_CODIGO}"]) {
-      const i = FORM.indexOf(aviso);
-      const antes = FORM.slice(Math.max(0, i - 300), i);
-      expect(antes, `${aviso} no está condicionado a presencial`).toContain("presencial ?");
-    }
-  });
-});
-
-describe("la declaración no se puede saltar", () => {
-  it("el botón de firmar la exige en cliente", () => {
-    const limpio = sinComentarios(FORM);
-    const iBoton = limpio.indexOf('key="nav-submit"');
-    const bloque = limpio.slice(iBoton, iBoton + 500);
-    expect(bloque).toContain("presencial && !declarado");
-  });
-
-  it("y el SERVIDOR la vuelve a exigir, que es lo que de verdad la hace requisito", () => {
-    // El cliente solo evita que el profesional descubra el requisito con un error. Si la exigencia viviera
-    // solo ahi, bastaria con enviar el formulario por otra via.
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function firmarPresencialAction");
-    const cuerpo = limpio.slice(i, i + 3000);
-    expect(cuerpo).toContain('checkbox(form, "declaracionPresencial")');
-  });
-});
-
-describe("quién declara sale de la SESIÓN, nunca del formulario", () => {
-  it("quien declara es la PERSONA autenticada, no su ficha profesional", () => {
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function firmarPresencialAction");
-    const cuerpo = limpio.slice(i, i + 3000);
-    // EL DEFECTO QUE ESTO FIJA (smoke, 2026-09-08): aqui iba el `professional_profiles.id`, y
-    // `declared_by` referencia `profiles(id)`. Dos uuid, los dos existentes, los dos "del profesional".
-    // La FK lo rechazaba y la firma se caia entera con el mensaje generico.
-    expect(cuerpo).toContain("declaradoPorProfileId: user.id");
-    expect(cuerpo, "el professional_profiles.id no es un profile").not.toContain(
-      "declaradoPorProfileId: professionalId",
-    );
-    expect(cuerpo, "un id leído del formulario sería una declaración autofirmada").not.toContain(
-      'str(form, "declaradoPor")',
-    );
-  });
-
-  it("y la acción PÚBLICA no puede declararse presencial", () => {
-    // `signSurveyAction` no tiene sesion: si aceptara el bloque presencial, cualquiera podria marcar una
-    // autorizacion como obtenida en consultorio y atribuirsela a un profesional.
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function signSurveyAction");
-    const cuerpo = limpio.slice(i, limpio.indexOf("export async function firmarPresencialAction"));
-    expect(cuerpo.includes("presencial")).toBe(false);
-  });
-});
-
-describe("el documento ajeno no se puede firmar en consulta", () => {
-  it("la acción vuelve a pedir el veredicto EN SERVIDOR antes de escribir", () => {
-    // El veredicto que traiga el cliente no vale: entre la busqueda y la firma pudo cambiar, y el
-    // documento enviado pudo ser otro. Esta lectura es la que gobierna, y de paso audita el intento.
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function firmarPresencialAction");
-    const cuerpo = limpio.slice(i, i + 3000);
-    const iBusqueda = cuerpo.indexOf("await buscarPorDocumento(");
-    const iFirma = cuerpo.indexOf("await signSurveyIntake(");
-    expect(iBusqueda, "no se vuelve a verificar el documento").toBeGreaterThan(-1);
-    expect(iBusqueda, "se verifica DESPUÉS de firmar: ya sería tarde").toBeLessThan(iFirma);
-    expect(cuerpo).toContain('veredicto.estado === "ajeno"');
-  });
-
-  it("y el mensaje del ajeno no dice de quién es ni cómo se llama", () => {
-    // Es el camino que Santiago pidio ver: el que no puede decir de mas. Dice que existe (cosa que el
-    // error del unique ya revelaba), que no es suyo, y que no hay mas que decir.
-    //
-    // SE LEE ARMADO, no del codigo fuente: partido en literales concatenados, una asercion sobre el
-    // fuente puede fallar (o pasar) por donde cae el corte de linea, que no es lo que se quiere probar.
-    for (const mensaje of [DOCUMENTO_AJENO, DOCUMENTO_AJENO_AL_FIRMAR]) {
-      expect(mensaje).toContain("no está bajo tu cuidado");
-      expect(mensaje).toContain("escribe a soporte");
-      for (const prohibido of ["nombre", "profesional a cargo", "desde", "creado", "@"]) {
-        expect(mensaje.toLowerCase(), `el mensaje menciona ${prohibido}`).not.toContain(prohibido);
-      }
-    }
-    // Y el de la búsqueda además dice EXPLÍCITAMENTE que no hay más que contar: sin esa frase, el
-    // profesional interpreta el silencio y vuelve a preguntar por otra vía.
-    expect(DOCUMENTO_AJENO).toContain("No podemos darte más detalles");
-    // Los dos textos van al MISMO sitio de la pantalla, así que se leen seguidos: el segundo no puede
-    // contar algo que el primero calló. La acción tiene que tomarlos del módulo compartido y no escribir
-    // el suyo. (Alcance ajustado el 2026-09-08: el mensaje pasó a llevar el código de referencia, así que
-    // la acción llama a la función en vez de a la constante. Lo que se afirma es lo mismo.)
+describe("el camino compartido sigue en pie", () => {
+  it("la búsqueda por documento conserva sus TRES veredictos", () => {
+    // Es del camino compartido, no de la modalidad 1: la usan la pantalla del profesional y (por su
+    // gemela del intake) el enlace publico.
+    const SRC = readFileSync("src/modules/patients/data/buscar-por-documento.ts", "utf8");
+    const estados = [...SRC.matchAll(/estado: "([a-z]+)"/g)].map((m) => m[1]);
+    expect(new Set(estados)).toEqual(new Set(["libre", "propio", "ajeno"]));
     expect(BUSQUEDA).toContain("documentoAjenoParaProfesional(veredicto.codigo)");
-    expect(BUSQUEDA, "el texto no se reescribe en la acción").not.toContain("no está bajo tu cuidado");
   });
-});
 
-// ── EL CODIGO DE FIRMA EN CONSULTA (defecto del smoke A, 2026-09-08) ───────────────────────────────
-//
-// EL DEFECTO: al pedir el codigo salia "Link invalido" y bloqueaba la firma entera. `sendConsentOtpAction`
-// arranca exigiendo el token del enlace, y en presencial no hay enlace. La comprobacion automatica del
-// codigo NO lo pedia, asi que esa mitad ya funcionaba: era solo el envio.
-describe("el envío del código en presencial no afloja nada", () => {
-  it("la acción presencial NO exige token, y la pública SIGUE exigiéndolo", () => {
+  it("y el código de referencia para soporte sigue vivo, con su razón", () => {
+    // Su motivo no era la modalidad 1 sino la PII: sin codigo, lo primero que soporte pide es la cedula.
+    const COD = readFileSync("src/modules/patients/codigo-soporte.ts", "utf8");
+    expect(sinComentarios(COD)).toContain("randomBytes");
+    expect(DOCUMENTO_AJENO).toContain("No podemos darte más detalles");
+  });
+
+  it("el envío del código sigue compartido, y el camino público sigue exigiendo su token", () => {
+    // El servicio se extrajo para que dos superficies no divergieran. Al retirarse una, la que queda es la
+    // publica, y lo que hay que fijar es que NO perdio su guarda en el camino.
     const limpio = sinComentarios(ACTIONS);
-    const iPresencial = limpio.indexOf("export async function enviarCodigoPresencialAction");
-    const presencial = limpio.slice(iPresencial, iPresencial + 1500);
-    expect(presencial, "en presencial no hay enlace que resolver").not.toContain(
-      "resolveSurveyLinkByToken",
+    const i = limpio.indexOf("export async function sendConsentOtpAction");
+    const cuerpo = limpio.slice(i, i + 1600);
+    expect(cuerpo).toContain('const token = str(form, "token")');
+    expect(cuerpo).toContain("await resolveSurveyLinkByToken(token)");
+    expect(cuerpo).toContain("await enviarCodigoDeFirma(");
+  });
+
+  it("y NINGUNA acción pública puede declararse presencial", () => {
+    // Sin sesion no hay quien declare. Si una accion publica aceptara el bloque presencial, cualquiera
+    // podria marcar una autorizacion como obtenida en consultorio y atribuirsela a un profesional.
+    const limpio = sinComentarios(ACTIONS);
+    expect(limpio, "ninguna acción de este archivo debe sellar canal presencial").not.toContain(
+      "presencial_otp",
     );
-
-    // Y el control: la publica no puede haber perdido su guarda al compartir el envio.
-    const iPublica = limpio.indexOf("export async function sendConsentOtpAction");
-    const publica = limpio.slice(iPublica, iPresencial);
-    expect(publica).toContain('const token = str(form, "token")');
-    expect(publica).toContain("await resolveSurveyLinkByToken(token)");
   });
 
-  it("lo que reemplaza al token es la SESIÓN, no la ausencia de guarda", () => {
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function enviarCodigoPresencialAction");
-    const cuerpo = limpio.slice(i, i + 1500);
-    expect(cuerpo).toContain("const user = await requireUser()");
-    expect(cuerpo).toContain("canCreatePatientPresencial(user)");
-  });
-
-  it("el destino sale del campo del PACIENTE, nunca de la sesión del profesional", () => {
-    // Si saliera de la sesión, el código llegaría a la bandeja del profesional y la firma dejaría de
-    // probar que fue el paciente. El comportamiento está probado en `enviar-codigo-firma.test.ts`; aquí
-    // se fija que esta acción no le pase otra cosa.
-    const limpio = sinComentarios(ACTIONS);
-    const i = limpio.indexOf("export async function enviarCodigoPresencialAction");
-    const cuerpo = limpio.slice(i, i + 1500);
-    expect(cuerpo).toContain(
-      'const destino = ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email")',
-    );
-    expect(cuerpo, "el correo del profesional no es un destino válido").not.toContain("user.email");
-  });
-
-  it("y las DOS pasan por el mismo servicio, que es lo que impide que diverjan", () => {
-    // La garantía de que el código se consume AL PERSISTIR vive en `survey-intake.test.ts`, sobre
-    // `signSurveyIntake`. Cubre presencial porque presencial pasa por ahí: si algún día tuviera camino
-    // propio, esa garantía dejaría de aplicarle sin que ningún test se pusiera rojo.
-    const limpio = sinComentarios(ACTIONS);
-    const usos = [...limpio.matchAll(/await enviarCodigoDeFirma\(/g)].length;
-    expect(usos, "hay un camino de envío que no pasa por el servicio compartido").toBe(2);
-    const iPresencial = limpio.indexOf("export async function firmarPresencialAction");
-    expect(limpio.slice(iPresencial, iPresencial + 3000)).toContain("await signSurveyIntake(");
+  it("el formulario de firma quedó SIN modo presencial", () => {
+    // Se retira, no se deja apagado: un modo muerto detras de una bandera invita a reactivarlo sin volver
+    // a preguntarse si aporta algo.
+    const limpio = sinComentarios(FORM);
+    for (const resto of ["presencial", "declaracionPresencial", "AVISO_CASILLAS", "AVISO_CODIGO"]) {
+      expect(limpio, `quedó ${resto} en el formulario de firma`).not.toContain(resto);
+    }
   });
 });
 
-describe("el documento ya verificado no se puede reeditar (smoke, 2026-09-08)", () => {
-  it("en presencial sale en LECTURA, y el tipo viaja en un hidden", () => {
-    // Repetirlo editable invita a corregir aqui lo que ya se comprobo en el paso 1: la pantalla estaria
-    // enseñando el veredicto de un documento y firmando otro.
-    // Se ancla en el CAMPO, no en `{presencial ? (`: ese condicional aparece varias veces (los dos
-    // avisos probatorios lo usan tambien) y el indexOf cogia el primero.
-    const i = FORM.indexOf('<Field label="Tipo de documento">');
-    const bloque = FORM.slice(i, i + 1200);
-    expect(bloque).toContain('<input type="hidden" name="documentType"');
-    expect(bloque).toContain("readOnly");
-    expect(bloque).toContain("aria-readonly");
-  });
-
-  it("y NUNCA con disabled: un campo deshabilitado no viaja en el FormData", () => {
-    // Es el defecto del codigo OTP del 2026-08-26, que costo un smoke entero: `disabled` bloquea la
-    // edicion Y deja de enviar, asi que el servidor recibiria el documento vacio.
-    // Se ancla en el CAMPO, no en `{presencial ? (`: ese condicional aparece varias veces (los dos
-    // avisos probatorios lo usan tambien) y el indexOf cogia el primero.
-    const i = FORM.indexOf('<Field label="Tipo de documento">');
-    const bloque = FORM.slice(i, i + 1200);
-    expect(bloque, "el documento tiene que seguir viajando").not.toContain("disabled");
-  });
-
-  it("pero el enlace público los deja editables: ahí nadie verificó nada antes", () => {
-    // CONTROL de la aserción de arriba: sin esto, un candado que solo mira el bloque presencial pasaria
-    // verde aunque alguien bloqueara los campos tambien en el camino publico, donde el paciente TIENE que
-    // poder escribir su documento.
-    const i = FORM.indexOf('<Field label="Tipo de documento">');
-    const publico = FORM.slice(i, i + 2600);
-    expect(publico).toContain("onChange={(e) => setDocumentNumber(e.target.value)}");
-    expect(publico).toContain('<select name="documentType"');
-  });
-});
-
-// ── EL CABLE QUE FALTABA (smoke del camino publico, 2026-09-08) ────────────────────────────────────
-//
-// El reuso de la pendiente ocurria en la base y la PANTALLA no lo acompañaba: el paciente caia en la
-// encuesta de despues de firmar, que arranca en blanco. Es la tercera vez en esta pieza que algo esta
-// construido y le falta el ultimo cable, asi que el candado va sobre el SITIO DE LLAMADA.
 describe("al retomar, la pantalla lleva a donde están las respuestas", () => {
   const ORQ = readFileSync("src/modules/evaluations/components/survey-intake-form.tsx", "utf8");
 

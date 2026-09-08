@@ -19,22 +19,10 @@ export const DECLARACION_PRESENCIAL =
   "Declaro que presenté el consentimiento al paciente, que tuvo oportunidad de leerlo, que fue él quien " +
   "marcó las autorizaciones, y que verifiqué su identidad contra su documento.";
 
-// LAS DOS FRASES DE LA PANTALLA, y son la MITAD PROBATORIA del flujo, no ayuda al usuario.
+// LO QUE SE RETIRO AQUI (2026-09-09): dos frases que decian quien marca las casillas y quien digita el
+// codigo. Eran de la MODALIDAD 1, donde el paciente actuaba en el dispositivo del profesional. Esa
+// modalidad se retiro porque no aportaba nada sobre el enlace del consultorio, y con ella se van sus
+// frases: en la modalidad 2 el paciente usa SU telefono, asi que no hay dispositivo que pasar.
 //
-// El valor legal de la modalidad 1 descansa en dos hechos: que las casillas las marco EL PACIENTE y que
-// el codigo lo digito EL PACIENTE. Si cualquiera de los dos lo hace el profesional, la firma electronica
-// deja de probar que fue el. Por eso la pantalla lo dice DONDE OCURRE cada uno, y no en un parrafo de
-// instrucciones al principio que nadie relee.
-//
-// Y POR ESO NO SE PUEDEN SALTAR: no son un aviso previo que se cierra. Estan pegadas a la casilla y al
-// campo del codigo, y siguen ahi mientras se usan.
-
-/** Va JUNTO a las casillas de autorizacion, no encima del formulario. */
-export const AVISO_CASILLAS =
-  "Pásale el dispositivo al paciente para que marque él las autorizaciones. Marcarlas por él invalida el " +
-  "consentimiento.";
-
-/** Va JUNTO al campo del codigo. */
-export const AVISO_CODIGO =
-  "El código lo digita el paciente: es lo único que prueba que fue él. Pásale el dispositivo, o que lo " +
-  "lea en su teléfono y te lo dicte solo si no puede escribir.";
+// LA DECLARACION DE ARRIBA SE QUEDA: la usan la modalidad 2 (QR) y la 3 (papel), que es donde de verdad
+// carga peso, porque ahi no hay OTP.

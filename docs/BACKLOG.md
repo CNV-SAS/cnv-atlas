@@ -2012,3 +2012,36 @@ la supersesión, el audit inline), sin tocar el camino de corrección.
 identidad, la auditoría clínica y, si cambia el documento, la relación con el consentimiento firmado.
 Antes de construirlo hay que decidir dos cosas: **quién puede corregir qué**, y **qué queda registrado
 del valor anterior**.
+
+---
+
+## Un paciente con DOS profesionales de profesiones distintas (2026-09-09) · ABIERTO
+
+**Hoy no se puede, y el bloqueo es correcto a medias.** La guarda del intake publico impide que un
+paciente de otro profesional entre por el enlace de un segundo (cierra una escalada de privilegios real:
+esa relacion abre la historia clinica entera). Pero bloquea por igual dos casos que no son el mismo:
+
+- **Dos de la MISMA profesion** (dos nutricionistas): el bloqueo es correcto. Es el caso de la
+  reasignacion, y esa tiene procedimiento propio (consentimiento fresco + traspaso de custodia).
+- **Dos de profesiones DISTINTAS** (un nutricionista y un medico): probablemente NO deberia bloquear. Es
+  atencion complementaria, no un cambio de custodio, y hoy el paciente no puede tener encuesta con los
+  dos. El modelo ya distingue profesion (`professional_profiles.profession`, lista cerrada) y ya la usa
+  para gobernar la subpestaña de Tratamiento y el abordaje del diagnostico.
+
+**Lo que hay que decidir antes de construir**, y no es tecnico: si dos profesiones distintas comparten
+UNA historia clinica o si cada una lleva la suya. De eso depende si el cambio es en la guarda (dejar pasar
+cuando la profesion difiere) o en el modelo de datos. **Va a Gildardo**, no lo decidimos nosotros.
+
+## Reasignacion de pacientes cuando un profesional deja la red (2026-09-09) · ABIERTO
+
+`DATA_GOVERNANCE.md` ya fija el marco (consentimiento FRESCO del paciente hacia el profesional entrante y
+traspaso formal de custodia) y la regla dura 14 dice que una cuenta clinica no se recicla: offboarding es
+desactivar y reasignar. **Lo que no existe es el "y reasignar".**
+
+Hoy la unica salida es escribir a soporte, y soporte no tiene pantalla: tocaria SQL. Con el detalle de que
+un `delete` del vinculo viejo sin crear el nuevo deja al paciente sin profesional, que es peor que el
+problema.
+
+**Piezas que necesita:** una pantalla de admin, el registro del consentimiento nuevo del paciente hacia el
+profesional entrante, el evento de auditoria del traspaso, y decidir que pasa con las evaluaciones ya
+firmadas (se quedan atribuidas a quien las hizo, casi seguro). Sin dimensionar.

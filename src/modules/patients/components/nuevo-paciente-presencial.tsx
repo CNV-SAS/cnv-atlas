@@ -9,13 +9,11 @@ import { buildResumeUrl } from "@/modules/evaluations/resume-url";
 import {
   abrirEvaluacionEnConsultaAction,
   enlaceEncuestaPendienteAction,
-  enviarCodigoPresencialAction,
-  firmarPresencialAction,
 } from "@/modules/evaluations/actions";
-import { SignPhaseForm } from "@/modules/evaluations/components/sign-phase-form";
-import type { SignIdentityPrefill } from "@/modules/evaluations/types";
+import { ConsultorioLink } from "@/modules/evaluations/components/consultorio-link";
 import type { StartFollowupState } from "@/modules/evaluations/validations";
 
+import { PaseQrPresencial } from "./pase-qr-presencial";
 import { verificarDocumentoAction } from "../actions";
 import type { VerificarDocumentoState } from "../types";
 
@@ -57,19 +55,7 @@ const DOCUMENT_TYPES: { value: string; label: string }[] = [
   { value: "NIT", label: "NIT" },
 ];
 
-export type NuevoPacientePresencialProps = {
-  consentText: string;
-  professional: {
-    fullName: string;
-    profession: string;
-    license: string | null;
-  };
-};
-
-export function NuevoPacientePresencial({
-  consentText,
-  professional,
-}: NuevoPacientePresencialProps) {
+export function NuevoPacientePresencial() {
   const [documento, verificar, verificando] = useActionState(
     verificarDocumentoAction,
     inicialDocumento,
@@ -82,20 +68,17 @@ export function NuevoPacientePresencial({
     return <ParaElPaciente resumeToken={resumeToken} />;
   }
 
-  // Camino del paciente NUEVO: el documento esta libre, se pasa al consentimiento.
+  // ── EL DOCUMENTO ESTA LIBRE: UNA SOLA VIA, Y UNA SALIDA ──────────────────────────────────────────
+  //
+  // LA MODALIDAD 1 SE RETIRA (2026-09-09). Consistia en que el paciente marcara y digitara su codigo en
+  // la pantalla del profesional. Lo verificamos y no aporta nada que el enlace del consultorio no de: la
+  // cadena probatoria es la MISMA (el codigo llega a su correo y lo digita el), y el sello de canal
+  // registraba DONDE estaba, que no forma parte de esa cadena y que ademas no puede registrar lo unico
+  // que importaria, que es quien tenia el dispositivo.
+  //
+  // ASI QUE ESTA PANTALLA QUEDA PARA UN SOLO CASO: el paciente SIN correo. Y el que si tiene correo no se
+  // queda en un callejon: se le dice que use el enlace del consultorio y se le da ahi mismo.
   if (documento.veredicto === "libre" && documento.documentNumber) {
-    const prefill: SignIdentityPrefill = {
-      documentType: documento.documentType,
-      documentNumber: documento.documentNumber,
-      firstName: null,
-      lastName: null,
-      birthDate: null,
-      sex: null,
-      country: null,
-      city: null,
-      email: null,
-      phone: null,
-    };
     return (
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-5">
@@ -103,34 +86,45 @@ export function NuevoPacientePresencial({
             Documento libre: {documento.documentType} {documento.documentNumber}
           </p>
           <p className="text-sm text-muted-foreground">
-            Llena los datos del paciente y pásale el dispositivo para que lea,
-            marque las autorizaciones y confirme con el código que le llega a su
-            correo.
-          </p>
-          {/* EL LIMITE DE ESTA VIA, DICHO ANTES DE EMPEZAR y no cuando el botón ya no se deja pulsar.
-              Esta modalidad se apoya en el código que llega al correo, así que sin correo no hay firma:
-              decirlo aquí evita llenar doce campos para descubrirlo al final. Las otras dos vías (QR al
-              teléfono y papel firmado a mano) están dimensionadas y todavía no construidas, así que la
-              respuesta honesta hoy es que no hay alternativa, no "usa otra". */}
-          <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
-            Esta vía necesita el correo del paciente: el código de verificación
-            llega ahí y es lo que prueba que firmó él. Si no tiene correo, hace
-            falta otra vía (código por su teléfono, o el consentimiento en
-            papel) y todavía no está disponible.
+            Nadie con ese documento está registrado en la organización, así que se puede crear.
           </p>
         </section>
-        {/* EL TOKEN VA VACIO A PROPOSITO: la accion presencial resuelve el enlace del consultorio en
-            servidor, desde la sesion, asi que el token no viaja a esta pantalla. */}
-        <section className="rounded-xl border border-border bg-card p-5">
-          <SignPhaseForm
-            token=""
-            prefill={prefill}
-            consentText={consentText}
-            professional={professional}
-            presencial
-            firmarAction={firmarPresencialAction}
-            enviarCodigoAction={enviarCodigoPresencialAction}
-            onSigned={(t) => setResumeToken(t)}
+
+        {/* LA SALIDA DEL QUE SI TIENE CORREO, con el enlace a mano. Antes esta pantalla lo mandaba a un
+            aviso sin salida; y peor, ese aviso acabo tapando la via nueva. Aqui la via normal es la
+            primera que se ofrece, porque es la que mas fuerza probatoria tiene. */}
+        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">Si el paciente tiene correo</h2>
+            <p className="text-sm text-muted-foreground">
+              Usa el enlace de consultorio, como siempre. Es la vía con más respaldo: el código le llega a
+              su correo y lo digita él, y eso es lo que prueba que fue él quien autorizó. Ábrelo en otra
+              pestaña y pásale el dispositivo, o pásale el enlace.
+            </p>
+          </div>
+          <ConsultorioLink />
+        </section>
+
+        {/* Y LA VIA NUEVA, SOLO PARA QUIEN NO TIENE CORREO. El aviso del telefono no es un detalle: sin un
+            dispositivo propio esta via tampoco sirve, y descubrirlo a mitad del acto es peor que saberlo
+            antes. */}
+        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">Si el paciente no tiene correo</h2>
+            <p className="text-sm text-muted-foreground">
+              Puede autorizar desde su propio teléfono, escaneando un código de tu pantalla.
+            </p>
+            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
+              Necesita un teléfono propio con datos móviles. Que lo haga desde su dispositivo es lo que
+              sostiene esta vía: si lo haces tú desde esta pantalla, deja de probar que fue él. Si no
+              tiene teléfono, hoy no hay otra forma; el consentimiento en papel está dimensionado y aún no
+              construido.
+            </p>
+          </div>
+          <PaseQrPresencial
+            documentType={documento.documentType ?? "CC"}
+            documentNumber={documento.documentNumber}
+            onConfirmado={() => undefined}
           />
         </section>
       </div>
