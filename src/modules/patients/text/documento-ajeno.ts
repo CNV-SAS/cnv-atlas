@@ -20,3 +20,17 @@ export const DOCUMENTO_AJENO =
 // se cuenta: exactamente lo mismo y nada más.
 export const DOCUMENTO_AJENO_AL_FIRMAR =
   "Ese documento ya está registrado en la organización y no está bajo tu cuidado. No podemos crear la evaluación: escribe a soporte para tramitar el cambio de profesional.";
+
+// EL CODIGO, PEGADO AL MENSAJE. Cada audiencia lo recibe con su motivo:
+//
+//   · AL PROFESIONAL se le dice PARA QUE sirve. Sin el motivo, "menciona el codigo" se lee como
+//     burocracia y se ignora; con el, se entiende que evita mandar una cedula por correo.
+//   · AL PACIENTE no se le explica nada: el no va a escribir a soporte. Es un numero de referencia que le
+//     enseña al profesional que tiene delante, y sobrecargarlo de explicacion solo lo alarma.
+export function documentoAjenoParaProfesional(codigo: string): string {
+  return `${DOCUMENTO_AJENO} Si escribes a soporte, menciona el código ${codigo}: con eso encuentran el caso sin que tengas que enviarles el documento.`;
+}
+
+export function enlaceQueNoCorrespondeParaPaciente(base: string, codigo: string): string {
+  return `${base} Código de referencia: ${codigo}.`;
+}

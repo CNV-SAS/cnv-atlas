@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { generarCodigoSoporte } from "../codigo-soporte";
 import { recordAudit } from "@/modules/audit/log";
 import { db } from "@/db";
 
@@ -33,7 +34,7 @@ export async function esPacienteDelEnlace(input: {
   documentType: string;
   documentNumber: string;
   ip: string | null;
-}): Promise<boolean> {
+}): Promise<{ suyo: true } | { suyo: false; codigo: string }> {
   // SERVICE ROLE: superficie publica sin sesion (SECURITY.md). La funcion es `security definer` y solo
   // devuelve un booleano; no hay fila que se pueda filtrar por aqui.
   const admin = createSupabaseAdminClient();
@@ -42,7 +43,11 @@ export async function esPacienteDelEnlace(input: {
     p_professional_id: input.professionalId,
   });
   if (error) throw new Error(`paciente-del-enlace: ${error.message}`);
-  if (data === true) return true;
+  if (data === true) return { suyo: true };
+
+  // El codigo se genera AQUI, junto al registro, y no en la pantalla: asi no hay forma de enseñar uno que
+  // no este guardado, que seria peor que no darlo (soporte no encontraria nada).
+  const codigo = generarCodigoSoporte();
 
   // NO SE BLOQUEA EN SILENCIO. Un intento asi puede ser un paciente que cambio de profesional (legitimo,
   // y se resuelve por el procedimiento de reasignacion) o un profesional buscandose acceso. El registro
@@ -58,9 +63,10 @@ export async function esPacienteDelEnlace(input: {
         professional_id: input.professionalId,
         document_type: input.documentType,
         document_number: input.documentNumber,
+        codigo,
       },
       ip: input.ip,
     }),
   );
-  return false;
+  return { suyo: false, codigo };
 }

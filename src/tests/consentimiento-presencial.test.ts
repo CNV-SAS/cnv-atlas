@@ -244,8 +244,11 @@ describe("el documento ajeno no se puede firmar en consulta", () => {
     // profesional interpreta el silencio y vuelve a preguntar por otra vía.
     expect(DOCUMENTO_AJENO).toContain("No podemos darte más detalles");
     // Los dos textos van al MISMO sitio de la pantalla, así que se leen seguidos: el segundo no puede
-    // contar algo que el primero calló.
-    expect(BUSQUEDA).toContain("DOCUMENTO_AJENO");
+    // contar algo que el primero calló. La acción tiene que tomarlos del módulo compartido y no escribir
+    // el suyo. (Alcance ajustado el 2026-09-08: el mensaje pasó a llevar el código de referencia, así que
+    // la acción llama a la función en vez de a la constante. Lo que se afirma es lo mismo.)
+    expect(BUSQUEDA).toContain("documentoAjenoParaProfesional(veredicto.codigo)");
+    expect(BUSQUEDA, "el texto no se reescribe en la acción").not.toContain("no está bajo tu cuidado");
   });
 });
 

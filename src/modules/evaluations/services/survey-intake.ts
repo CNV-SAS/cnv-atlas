@@ -10,6 +10,7 @@ import {
   grantedConsentTypes,
 } from "@/modules/consent/validations";
 import { esPacienteDelEnlace } from "@/modules/patients/data/paciente-del-enlace";
+import { enlaceQueNoCorrespondeParaPaciente } from "@/modules/patients/text/documento-ajeno";
 import {
   findDuplicateCandidates,
   findPatientByDocument,
@@ -254,7 +255,14 @@ export async function signSurveyIntake(
         documentNumber: identity.documentNumber,
         ip: input.ipAddress,
       });
-      if (!suyo) return err(appError("forbidden", INTAKE_ENLACE_QUE_NO_CORRESPONDE));
+      if (!suyo.suyo) {
+        return err(
+          appError(
+            "forbidden",
+            enlaceQueNoCorrespondeParaPaciente(INTAKE_ENLACE_QUE_NO_CORRESPONDE, suyo.codigo),
+          ),
+        );
+      }
     }
 
     const signed = await signIntakeEvaluation({

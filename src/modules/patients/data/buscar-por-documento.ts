@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordAudit } from "@/modules/audit/log";
 import { db } from "@/db";
+import { generarCodigoSoporte } from "../codigo-soporte";
 
 // BUSQUEDA DE UN PACIENTE POR DOCUMENTO, ANTES DE CREARLO EN CONSULTA.
 //
@@ -37,7 +38,7 @@ export type VeredictoDocumento =
    * paciente hacia el profesional entrante y transferencia formal de custodia), asi que no es algo que
    * esta pantalla pueda resolver: por eso manda a soporte y no ofrece un boton.
    */
-  | { estado: "ajeno" };
+  | { estado: "ajeno"; codigo: string };
 
 export async function buscarPorDocumento(input: {
   organizationId: string;
@@ -67,11 +68,15 @@ export async function buscarPorDocumento(input: {
   //
   // EL DOCUMENTO VA EN EL AUDIT, y es deliberado: sin el, el registro no sirve para lo que existe. El
   // audit log es admin-only para lectura (RLS), asi que no amplia quien puede verlo.
+  // Codigo de referencia SOLO para el caso ajeno: es el unico en el que el profesional se queda sin poder
+  // seguir y tiene que escribir a soporte. Aleatorio y nuevo en cada intento (ver `codigo-soporte.ts`):
+  // no se deriva del documento ni del paciente, asi que no filtra por otra via lo que el mensaje calla.
   const veredicto: VeredictoDocumento["estado"] = !paciente
     ? "libre"
     : (await esDeEsteProfesional(paciente.id))
       ? "propio"
       : "ajeno";
+  const codigo = veredicto === "ajeno" ? generarCodigoSoporte() : null;
 
   // EN SU PROPIA TRANSACCION: `recordAudit` escribe INLINE (regla dura 8) y espera un tx. Aqui no hay
   // nada mas que escribir, asi que la transaccion envuelve solo el audit; lo que importa es que NO pase
@@ -88,13 +93,14 @@ export async function buscarPorDocumento(input: {
         document_type: input.documentType,
         document_number: input.documentNumber,
         veredicto,
+        ...(veredicto === "ajeno" ? { codigo } : {}),
       },
       ip: input.ip,
     }),
   );
 
   if (veredicto === "libre") return { estado: "libre" };
-  if (veredicto === "ajeno") return { estado: "ajeno" };
+  if (veredicto === "ajeno") return { estado: "ajeno", codigo: codigo! };
 
   // Solo en el caso PROPIO se lee algo mas, y se lee POR RLS (no con service role): si la RLS no lo deja
   // ver, es que no era propio, y el veredicto se habria equivocado.

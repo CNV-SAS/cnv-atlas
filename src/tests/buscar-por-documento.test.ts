@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { generarCodigoSoporte } from "@/modules/patients/codigo-soporte";
+
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DE LA BUSQUEDA POR DOCUMENTO · UNA EXCEPCION A LA RLS, ACOTADA POR EL TIPO.
@@ -30,10 +32,35 @@ describe("solo sale el veredicto, nunca la fila", () => {
   it("el caso AJENO no lleva ningún dato del paciente", () => {
     // Es el que importa: el profesional se entera de que existe y de NADA mas. Ni nombre, ni de quien es,
     // ni desde cuando. Si mañana alguien le añade un campo "para ayudar", esto truena.
-    const i = SRC.indexOf('| { estado: "ajeno" }');
+    //
+    // LA ASERCION NO SE RELAJO, SE PRECISO (2026-09-08). Antes exigia el objeto pelado; ahora el caso
+    // ajeno lleva un `codigo`, y hay que decir por que eso NO es una excepcion a la regla: es ALEATORIO y
+    // nuevo en cada intento, no se deriva del documento ni del paciente (ver `codigo-soporte.ts`), asi
+    // que no es un dato del paciente por ninguna via. Lo que sigue prohibido
+    // es exactamente lo mismo que antes, y el control de abajo lo demuestra.
+    const i = SRC.indexOf('| { estado: "ajeno"; codigo: string }');
     expect(i, "cambió la forma del caso ajeno").toBeGreaterThan(-1);
-    // Y en el cuerpo, el retorno del ajeno es el objeto pelado.
-    expect(LIMPIO).toContain('if (veredicto === "ajeno") return { estado: "ajeno" };');
+    const tipo = SRC.slice(SRC.indexOf("export type VeredictoDocumento"), SRC.indexOf("export async function buscarPorDocumento"));
+    for (const prohibido of ["firstName", "lastName", "nombre", "documentNumber", "professionalId", "createdAt"]) {
+      expect(tipo, ["el veredicto ganó el campo", prohibido].join(" ")).not.toContain(prohibido);
+    }
+    expect(LIMPIO).toContain('if (veredicto === "ajeno") return { estado: "ajeno", codigo: codigo! };');
+  });
+
+  it("y el código de soporte NO se deriva del documento ni del paciente", () => {
+    // Si se derivara, filtraria por otra via lo que el mensaje calla: una cedula colombiana son ocho a
+    // diez digitos, asi que un hash aunque sea recortado se revierte offline probando el espacio entero.
+    const COD = readFileSync("src/modules/patients/codigo-soporte.ts", "utf8");
+    const limpio = sinComentarios(COD);
+    expect(limpio).toContain("randomBytes");
+    for (const derivado of ["documentNumber", "patientId", "createHash", "hmac", "createHmac"]) {
+      expect(limpio, ["el código se deriva de", derivado].join(" ")).not.toContain(derivado);
+    }
+    // Y NUEVO EN CADA INTENTO: con uno estable, dos personas comparando codigos descubririan que
+    // apuntaron al mismo documento. Se comprueba generando, no leyendo.
+    const distintos = new Set(Array.from({ length: 50 }, () => generarCodigoSoporte()));
+    expect(distintos.size, "el código se repite: sería estable por documento").toBe(50);
+    for (const c of distintos) expect(c).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/);
   });
 
   it("la consulta con service role pide SOLO el id, no la fila", () => {
