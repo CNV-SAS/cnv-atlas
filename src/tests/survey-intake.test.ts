@@ -108,7 +108,7 @@ beforeEach(() => {
   vi.mocked(otp.consumeOtp).mockReset();
   vi.mocked(otp.consumeOtp).mockResolvedValue(true);
   vi.mocked(enlace.esPacienteDelEnlace).mockReset();
-  vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue(true);
+  vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue({ suyo: true });
   vi.mocked(intakeReads.findDuplicateCandidates).mockResolvedValue([]);
   vi.mocked(writer.signIntakeEvaluation).mockResolvedValue({
     evaluationId: "ev-1",
@@ -459,11 +459,14 @@ describe("el enlace publico no puede adoptar a un paciente ajeno", () => {
       firstName: "Maria",
       lastName: "Gomez",
     });
-    vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue(false);
+    vi.mocked(enlace.esPacienteDelEnlace).mockResolvedValue({ suyo: false, codigo: "ABC234" });
 
     const r = await signSurveyIntake(input());
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.message).toBe(INTAKE_ENLACE_QUE_NO_CORRESPONDE);
+    // El cuerpo del mensaje NO cambia por llevar el codigo: se comprueba que sigue diciendo lo mismo y
+    // que el codigo va pegado al final.
+    if (!r.ok) expect(r.error.message).toContain(INTAKE_ENLACE_QUE_NO_CORRESPONDE);
+    if (!r.ok) expect(r.error.message).toContain("Código de referencia: ABC234.");
     // LO QUE IMPORTA: el writer no llega a correr, asi que la relacion nunca se inserta.
     expect(writer.signIntakeEvaluation).not.toHaveBeenCalled();
   });

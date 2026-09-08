@@ -160,7 +160,12 @@ describe.skipIf(!HAS_DB)("intake público por el enlace de consultorio (BD real)
     const intento = await signSurveyIntake(entrada(enlaceBase(b), doc));
     expect(intento.ok, "no puede pasar").toBe(false);
     if (intento.ok) return;
-    expect(intento.error.message).toBe(INTAKE_ENLACE_QUE_NO_CORRESPONDE);
+    // El cuerpo sigue diciendo lo mismo, y ahora lleva pegado el código de referencia (2026-09-08). Se
+    // comprueba el FORMATO del código, no su valor: es aleatorio en cada intento a propósito.
+    expect(intento.error.message).toContain(INTAKE_ENLACE_QUE_NO_CORRESPONDE);
+    expect(intento.error.message).toMatch(
+      /Código de referencia: [ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}\.$/,
+    );
 
     // LO QUE DE VERDAD IMPORTA: la relación no existe. Es la fila que abre la historia clínica entera.
     const rel = await db

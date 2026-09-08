@@ -6,7 +6,7 @@ import { requireUser } from "@/modules/auth/session";
 
 import { buscarPorDocumento } from "./data/buscar-por-documento";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
-import { DOCUMENTO_AJENO } from "./text/documento-ajeno";
+import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
 import type { VerificarDocumentoState } from "./types";
 import { documentoSchema } from "./validations";
 
@@ -65,7 +65,7 @@ export async function verificarDocumentoAction(
   };
 
   if (veredicto.estado === "ajeno") {
-    return { ...vacio(DOCUMENTO_AJENO), ...eco, veredicto: "ajeno" };
+    return { ...vacio(documentoAjenoParaProfesional(veredicto.codigo)), ...eco, veredicto: "ajeno" };
   }
   if (veredicto.estado === "libre") {
     return { ...vacio(null), ...eco, veredicto: "libre" };
