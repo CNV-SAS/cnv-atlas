@@ -99,6 +99,12 @@ export type SignPhaseFormProps = {
    * declara: por eso se inyecta desde la pantalla del profesional en vez de leerse de un campo.
    */
   firmarAction?: (prev: SignSurveyState, form: FormData) => Promise<SignSurveyState>;
+  /**
+   * Accion de ENVIO DEL CODIGO. Se inyecta por el mismo motivo, y no es un detalle: la publica arranca
+   * exigiendo el token del enlace, y en presencial no hay enlace. Sin esto la pantalla devolvia "Link
+   * invalido" al pedir el codigo y la firma quedaba bloqueada entera.
+   */
+  enviarCodigoAction?: (prev: OtpSendState, form: FormData) => Promise<OtpSendState>;
 };
 
 export function SignPhaseForm({
@@ -110,6 +116,7 @@ export function SignPhaseForm({
   substantiveBump = false,
   presencial = false,
   firmarAction,
+  enviarCodigoAction,
 }: SignPhaseFormProps) {
   const [state, action, pending] = useActionState(firmarAction ?? signSurveyAction, initialSign);
   // La declaracion del profesional (solo presencial). Requisito para firmar, no un extra: el CHECK de la
@@ -122,7 +129,10 @@ export function SignPhaseForm({
   // codigo a este navegador y viaja al enviar y al validar. El envio del codigo se invoca IMPERATIVAMENTE
   // (no como action del form) para no disparar el auto-reset de React 19 sobre el resto de campos.
   const [sessionId] = useState(() => crypto.randomUUID());
-  const [otpState, sendOtp, otpPending] = useActionState(sendConsentOtpAction, initialOtp);
+  const [otpState, sendOtp, otpPending] = useActionState(
+    enviarCodigoAction ?? sendConsentOtpAction,
+    initialOtp,
+  );
   const [email, setEmail] = useState(prefill?.email ?? "");
   const [otpCode, setOtpCode] = useState("");
   // COMPROBACION AUTOMATICA del codigo (2026-08-26). El paciente sabe que su codigo sirve mientras escribe,
