@@ -283,6 +283,28 @@ El control sin riesgo es el **paso manual + `db:check:cloud`**: el comando ya co
 - **Cambiar variables de entorno:** Vercel → Settings → Environment Variables (los 3 scopes) → redeploy.
 - **Limpiar data clínica de prueba antes del lanzamiento:** vía service role, eliminar pacientes/evaluaciones de prueba; el `clinical_audit_log` es append-only (no se borra).
 
+### El SQL Editor de Supabase NO sostiene una transacción entre ejecuciones (2026-09-09)
+
+Un script con `begin; ... ` ejecutado sin su `commit`, confirmado después en **otra** ejecución, **no
+confirma nada**: cada ejecución es su propia sesión y al cerrarse Postgres revierte. Y el `commit` suelto
+responde **"success, no rows returned"**, exactamente igual que si hubiera funcionado, así que el fallo es
+silencioso.
+
+Pasó al limpiar los pacientes de la cuenta de pruebas: los conteos salieron correctos, el `commit` dijo
+"success", y `select count(*) from patients` seguía devolviendo lo mismo.
+
+**Cómo se trabaja entonces, con cualquier bloque que tenga que ser atómico:**
+
+- **Se ejecuta ENTERO, con su `commit`, de una sola vez.** Partirlo pierde la transacción.
+- **Y como ya no hay un paso humano en medio, la revisión va DENTRO del bloque**: un `do $$ ... raise
+  exception ... $$` que compruebe las invariantes que impiden el daño y aborte si no se cumplen. Eso
+  sustituye al "mira el conteo y luego confirma", que en este editor no existe.
+- Comprobar **invariantes, no magnitudes**: "estos borrados no pueden tocar un paciente de otro
+  profesional" se sostiene; "deberían ser unos 48" se afloja solo en cuanto estorba.
+- **Alternativa cuando hace falta control real:** `psql` (o un script con `postgres.js`) desde la máquina,
+  con `DATABASE_URL` apuntando a la nube. Ahí la sesión es una sola y la transacción sí abarca todo. Es la
+  vía obligada si el bloque necesita revisión humana entre el cálculo y el borrado.
+
 ## Límites de plan (MVP)
 - **Supabase Free:** suficiente para piloto; subir a Pro antes de datos clínicos reales (backups/PITR, más capacidad).
 - **Vercel Hobby:** suficiente para piloto; revisar límites de funciones serverless para tareas largas (PDFs, sync Alegra → background post-MVP).
