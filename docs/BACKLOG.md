@@ -92,8 +92,10 @@ sesion atada a la consulta, el dispositivo distinto, la declaracion del profesio
 la 1 (con correo) es la via por defecto y la 2 solo aparece cuando no hay correo.
 **El gate NO se puede imponer tecnicamente y esta dicho:** un profesional que quiera la via rapida puede
 dejar el campo de correo vacio. Lo que hay es que hacerlo sea una AFIRMACION con nombre y fecha
-( + ), no un descuido; y que el reparto de canales por profesional
-sea contable.
+(`sin_correo_declarado` + `created_by`), no un descuido, y que el reparto de canales por profesional sea
+contable: `patient_consents.signature_channel` ya permite medir que porcentaje de un profesional entra
+por QR, que es la senal que el dictamen teme.
+
 ### Lo que hay que respetar en las tres
 
 - **La casilla del profesional NO sustituye al gate.** Marcarla no crea autorizaciones: el gate de la

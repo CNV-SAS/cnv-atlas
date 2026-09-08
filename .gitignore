@@ -60,3 +60,6 @@ docs/entregas/gildardo-2026-08-04/Biody BIS - male export.xlsx
 docs/entregas/cotejo-visual/**/*.png
 docs/entregas/cotejo-visual/**/*.jpg
 docs/entregas/cotejo-visual/**/*.jpeg
+
+# Script de limpieza puntual de la nube (no se versiona: lleva un id de produccion)
+limpieza-demo.sql
