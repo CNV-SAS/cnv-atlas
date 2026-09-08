@@ -9,19 +9,14 @@ import QRCode from "qrcode";
 
 import { getClientIp } from "@/core/http/client-ip";
 import {
+  limitConsentOtpByEmail,
   limitConsentOtpByToken,
   limitSurveyByIp,
   limitSurveyByToken,
 } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 import { saveSurveyEdit } from "./data/survey-edit-writer";
-import {
-  generateOtpCode,
-  maskEmail,
-  storeOtp,
-  verifyOtp,
-} from "@/modules/consent/otp/otp-service";
-import { sendConsentOtpEmail } from "@/lib/email/resend";
+import { verifyOtp } from "@/modules/consent/otp/otp-service";
 import {
   sendConsentCopy,
   type ConsentCopyRecipient,
@@ -67,12 +62,12 @@ import {
   canManageBaseSurveyLink,
 } from "./policies/can-manage-evaluations";
 import { getOrCreateBaseSurveyLink } from "./services/base-survey-link";
+import { enviarCodigoDeFirma } from "./services/enviar-codigo-firma";
 import { getPendingResumeToken } from "./data/pending-resume-reader";
 import { DECLARACION_PRESENCIAL_VERSION } from "@/modules/consent/text/declaracion-presencial";
 import { buscarPorDocumento } from "@/modules/patients/data/buscar-por-documento";
 import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
 import { DOCUMENTO_AJENO_AL_FIRMAR } from "@/modules/patients/text/documento-ajeno";
-import { otpSendSchema } from "./validations";
 import type {
   AbandonEvaluationState,
   BaseSurveyLinkState,
@@ -642,52 +637,60 @@ export async function sendConsentOtpAction(
 
   // El correo destino sale de la rama: menor -> representante; mayor -> paciente.
   const ageBranch = str(form, "ageBranch") === "menor" ? "menor" : "mayor";
-  const destination =
-    ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email");
-
-  const parsed = otpSendSchema.safeParse({
+  const r = await enviarCodigoDeFirma({
     sessionId: str(form, "sessionId"),
-    email: destination,
+    ageBranch,
+    destino: ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email"),
+    // ANCLA DEL LIMITE EN EL TOKEN: es lo unico que identifica a quien pide en una superficie sin sesion.
+    limitar: () => limitConsentOtpByToken(token),
   });
-  if (!parsed.success) {
-    return fail(
-      ageBranch === "menor"
-        ? "Necesitamos el correo del representante para enviar el código de verificación."
-        : "Necesitamos tu correo para enviarte el código de verificación.",
-    );
-  }
-
-  // Rate limit por token: frena el email-bombing hacia el correo del paciente/representante.
-  const limit = await limitConsentOtpByToken(token);
-  if (!limit.success) {
-    return fail("Enviaste demasiados códigos. Espera unos minutos e intenta de nuevo.");
-  }
-
-  const code = generateOtpCode();
-  const masked = maskEmail(parsed.data.email);
-  const stored = await storeOtp(parsed.data.sessionId, code, {
-    channel: "email",
-    maskedDestination: masked,
-    // Hora del SERVIDOR (epoch-ms), no del cliente: es prueba del envio y no puede falsearse.
-    sentAt: Date.now(),
-  });
-  if (!stored) {
-    // Sin almacen (Upstash ausente o caido) no hay OTP: no se debe dejar pasar la firma en silencio.
-    // Mensaje que aclara que NO es culpa del paciente y que avise al profesional (el servicio de
-    // verificacion es una dependencia externa; si cae, bloquea el registro entero).
-    return fail(
-      "La verificación no está disponible en este momento. No es un problema de tus datos: intenta de nuevo en unos minutos y, si continúa, avisa a tu profesional.",
-    );
-  }
-
-  const sent = await sendConsentOtpEmail(parsed.data.email, code);
-  if (!sent.ok) return fail("No pudimos enviar el código. Revisa el correo e intenta de nuevo.");
-
+  if (!r.ok) return fail(r.error);
   return {
     error: null,
     sent: true,
-    maskedDestination: masked,
-    remaining: limit.remaining,
+    maskedDestination: r.maskedDestination,
+    remaining: r.remaining,
+  };
+}
+
+// EL MISMO CODIGO, EN CONSULTA. Existe porque la action de arriba arranca exigiendo el token del enlace
+// y en presencial NO HAY ENLACE: el profesional esta creando al paciente en su propia pantalla. Devolvia
+// "Link invalido" y bloqueaba la firma entera (sin codigo no se firma).
+//
+// LO QUE **NO** SE AFLOJA, que es la pregunta que importa. El codigo sigue yendo AL CORREO DEL PACIENTE
+// (nunca al del profesional: el destino sale del campo de identidad del paciente, igual que en el enlace),
+// se sigue guardando con la hora del SERVIDOR, y se sigue CONSUMIENDO al persistir la firma y no al
+// verificarlo. Nada de eso vive aqui: vive en enviarCodigoDeFirma() y en signSurveyIntake(),, compartidos
+// con el camino publico. Lo unico propio de esta action es quien autoriza (sesion, no token) y sobre que
+// cuenta el limite (el correo destino, no el token).
+export async function enviarCodigoPresencialAction(
+  _prev: OtpSendState,
+  form: FormData,
+): Promise<OtpSendState> {
+  const fail = (error: string): OtpSendState => ({
+    error,
+    sent: false,
+    maskedDestination: null,
+    remaining: null,
+  });
+
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+
+  const ageBranch = str(form, "ageBranch") === "menor" ? "menor" : "mayor";
+  const destino = ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email");
+  const r = await enviarCodigoDeFirma({
+    sessionId: str(form, "sessionId"),
+    ageBranch,
+    destino,
+    limitar: () => limitConsentOtpByEmail(destino),
+  });
+  if (!r.ok) return fail(r.error);
+  return {
+    error: null,
+    sent: true,
+    maskedDestination: r.maskedDestination,
+    remaining: r.remaining,
   };
 }
 

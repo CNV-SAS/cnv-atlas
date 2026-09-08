@@ -243,3 +243,57 @@ describe("el documento ajeno no se puede firmar en consulta", () => {
     expect(BUSQUEDA).toContain("DOCUMENTO_AJENO");
   });
 });
+
+// ── EL CODIGO DE FIRMA EN CONSULTA (defecto del smoke A, 2026-09-08) ───────────────────────────────
+//
+// EL DEFECTO: al pedir el codigo salia "Link invalido" y bloqueaba la firma entera. `sendConsentOtpAction`
+// arranca exigiendo el token del enlace, y en presencial no hay enlace. La comprobacion automatica del
+// codigo NO lo pedia, asi que esa mitad ya funcionaba: era solo el envio.
+describe("el envío del código en presencial no afloja nada", () => {
+  it("la acción presencial NO exige token, y la pública SIGUE exigiéndolo", () => {
+    const limpio = sinComentarios(ACTIONS);
+    const iPresencial = limpio.indexOf("export async function enviarCodigoPresencialAction");
+    const presencial = limpio.slice(iPresencial, iPresencial + 1500);
+    expect(presencial, "en presencial no hay enlace que resolver").not.toContain(
+      "resolveSurveyLinkByToken",
+    );
+
+    // Y el control: la publica no puede haber perdido su guarda al compartir el envio.
+    const iPublica = limpio.indexOf("export async function sendConsentOtpAction");
+    const publica = limpio.slice(iPublica, iPresencial);
+    expect(publica).toContain('const token = str(form, "token")');
+    expect(publica).toContain("await resolveSurveyLinkByToken(token)");
+  });
+
+  it("lo que reemplaza al token es la SESIÓN, no la ausencia de guarda", () => {
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function enviarCodigoPresencialAction");
+    const cuerpo = limpio.slice(i, i + 1500);
+    expect(cuerpo).toContain("const user = await requireUser()");
+    expect(cuerpo).toContain("canCreatePatientPresencial(user)");
+  });
+
+  it("el destino sale del campo del PACIENTE, nunca de la sesión del profesional", () => {
+    // Si saliera de la sesión, el código llegaría a la bandeja del profesional y la firma dejaría de
+    // probar que fue el paciente. El comportamiento está probado en `enviar-codigo-firma.test.ts`; aquí
+    // se fija que esta acción no le pase otra cosa.
+    const limpio = sinComentarios(ACTIONS);
+    const i = limpio.indexOf("export async function enviarCodigoPresencialAction");
+    const cuerpo = limpio.slice(i, i + 1500);
+    expect(cuerpo).toContain(
+      'const destino = ageBranch === "menor" ? str(form, "legalRepresentativeEmail") : str(form, "email")',
+    );
+    expect(cuerpo, "el correo del profesional no es un destino válido").not.toContain("user.email");
+  });
+
+  it("y las DOS pasan por el mismo servicio, que es lo que impide que diverjan", () => {
+    // La garantía de que el código se consume AL PERSISTIR vive en `survey-intake.test.ts`, sobre
+    // `signSurveyIntake`. Cubre presencial porque presencial pasa por ahí: si algún día tuviera camino
+    // propio, esa garantía dejaría de aplicarle sin que ningún test se pusiera rojo.
+    const limpio = sinComentarios(ACTIONS);
+    const usos = [...limpio.matchAll(/await enviarCodigoDeFirma\(/g)].length;
+    expect(usos, "hay un camino de envío que no pasa por el servicio compartido").toBe(2);
+    const iPresencial = limpio.indexOf("export async function firmarPresencialAction");
+    expect(limpio.slice(iPresencial, iPresencial + 3000)).toContain("await signSurveyIntake(");
+  });
+});

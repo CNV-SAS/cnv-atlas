@@ -9,6 +9,7 @@ import { buildResumeUrl } from "@/modules/evaluations/resume-url";
 import {
   abrirEvaluacionEnConsultaAction,
   enlaceEncuestaPendienteAction,
+  enviarCodigoPresencialAction,
   firmarPresencialAction,
 } from "@/modules/evaluations/actions";
 import { SignPhaseForm } from "@/modules/evaluations/components/sign-phase-form";
@@ -41,7 +42,11 @@ const inicialDocumento: VerificarDocumentoState = {
   evaluacionPendienteId: null,
 };
 
-const inicialSeguimiento: StartFollowupState = { error: null, resumeToken: null, revoked: false };
+const inicialSeguimiento: StartFollowupState = {
+  error: null,
+  resumeToken: null,
+  revoked: false,
+};
 
 const DOCUMENT_TYPES: { value: string; label: string }[] = [
   { value: "CC", label: "Cédula de ciudadanía" },
@@ -53,10 +58,17 @@ const DOCUMENT_TYPES: { value: string; label: string }[] = [
 
 export type NuevoPacientePresencialProps = {
   consentText: string;
-  professional: { fullName: string; profession: string; license: string | null };
+  professional: {
+    fullName: string;
+    profession: string;
+    license: string | null;
+  };
 };
 
-export function NuevoPacientePresencial({ consentText, professional }: NuevoPacientePresencialProps) {
+export function NuevoPacientePresencial({
+  consentText,
+  professional,
+}: NuevoPacientePresencialProps) {
   const [documento, verificar, verificando] = useActionState(
     verificarDocumentoAction,
     inicialDocumento,
@@ -85,69 +97,104 @@ export function NuevoPacientePresencial({ consentText, professional }: NuevoPaci
     };
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-lg border border-border bg-muted/40 p-4">
+        <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-5">
           <p className="text-sm font-medium text-foreground">
             Documento libre: {documento.documentType} {documento.documentNumber}
           </p>
           <p className="text-sm text-muted-foreground">
-            Llena los datos del paciente y pásale el dispositivo para que lea, marque las autorizaciones y
-            confirme con el código que le llega a su correo.
+            Llena los datos del paciente y pásale el dispositivo para que lea,
+            marque las autorizaciones y confirme con el código que le llega a su
+            correo.
           </p>
-        </div>
+          {/* EL LIMITE DE ESTA VIA, DICHO ANTES DE EMPEZAR y no cuando el botón ya no se deja pulsar.
+              Esta modalidad se apoya en el código que llega al correo, así que sin correo no hay firma:
+              decirlo aquí evita llenar doce campos para descubrirlo al final. Las otras dos vías (QR al
+              teléfono y papel firmado a mano) están dimensionadas y todavía no construidas, así que la
+              respuesta honesta hoy es que no hay alternativa, no "usa otra". */}
+          <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
+            Esta vía necesita el correo del paciente: el código de verificación
+            llega ahí y es lo que prueba que firmó él. Si no tiene correo, hace
+            falta otra vía (código por su teléfono, o el consentimiento en
+            papel) y todavía no está disponible.
+          </p>
+        </section>
         {/* EL TOKEN VA VACIO A PROPOSITO: la accion presencial resuelve el enlace del consultorio en
             servidor, desde la sesion, asi que el token no viaja a esta pantalla. */}
-        <SignPhaseForm
-          token=""
-          prefill={prefill}
-          consentText={consentText}
-          professional={professional}
-          presencial
-          firmarAction={firmarPresencialAction}
-          onSigned={(t) => setResumeToken(t)}
-        />
+        <section className="rounded-xl border border-border bg-card p-5">
+          <SignPhaseForm
+            token=""
+            prefill={prefill}
+            consentText={consentText}
+            professional={professional}
+            presencial
+            firmarAction={firmarPresencialAction}
+            enviarCodigoAction={enviarCodigoPresencialAction}
+            onSigned={(t) => setResumeToken(t)}
+          />
+        </section>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={enviarSinReset(verificar)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-end">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-muted-foreground">Tipo de documento</span>
-            <select
-              name="documentType"
-              defaultValue="CC"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {DOCUMENT_TYPES.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            <span className="text-xs font-medium text-muted-foreground">Número de documento</span>
-            <Input name="documentNumber" className="h-9" inputMode="numeric" autoComplete="off" />
-          </label>
-          <Button type="submit" disabled={verificando}>
-            {verificando ? "Verificando..." : "Verificar documento"}
-          </Button>
-        </div>
-      </form>
+      <form onSubmit={enviarSinReset(verificar)}>
+        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">
+              Documento del paciente
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Se verifica primero para saber si ya está registrado. Sin esto, un
+              documento que ya existe termina en un error de la base al guardar.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                Tipo de documento
+              </span>
+              <select
+                name="documentType"
+                defaultValue="CC"
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {DOCUMENT_TYPES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                Número de documento
+              </span>
+              <Input
+                name="documentNumber"
+                className="h-9"
+                inputMode="numeric"
+                autoComplete="off"
+              />
+            </label>
+            <Button type="submit" disabled={verificando}>
+              {verificando ? "Verificando..." : "Verificar documento"}
+            </Button>
+          </div>
 
-      {/* EL DOCUMENTO AJENO. Caja NEUTRA, no destructiva: no se rompió nada y el profesional no hizo nada
-          mal. Una caja roja diría "error" sobre un resultado que es correcto. */}
-      {documento.veredicto === "ajeno" ? (
-        <p className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground">
-          {documento.error}
-        </p>
-      ) : documento.error ? (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {documento.error}
-        </p>
-      ) : null}
+          {/* EL DOCUMENTO AJENO. Caja NEUTRA, no destructiva: no se rompió nada y el profesional no hizo
+              nada mal. Una caja roja diría "error" sobre un resultado que es correcto. */}
+          {documento.veredicto === "ajeno" ? (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              {documento.error}
+            </p>
+          ) : documento.error ? (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {documento.error}
+            </p>
+          ) : null}
+        </section>
+      </form>
 
       {documento.veredicto === "propio" && documento.patientId ? (
         <PacientePropio
@@ -191,9 +238,11 @@ function PacientePropio({
   if (resumeToken) return null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-foreground">Ya es tu paciente</p>
+        <h2 className="text-sm font-semibold text-foreground">
+          Ya es tu paciente
+        </h2>
         <p className="text-sm text-muted-foreground">
           {evaluacionPendienteId
             ? "Tiene una encuesta pendiente de responder. Se retoma esa: crear otra dejaría dos juegos de respuestas del mismo paciente."
@@ -203,7 +252,11 @@ function PacientePropio({
 
       {evaluacionPendienteId ? (
         <form onSubmit={enviarSinReset(pedirEnlace)}>
-          <input type="hidden" name="evaluationId" value={evaluacionPendienteId} />
+          <input
+            type="hidden"
+            name="evaluationId"
+            value={evaluacionPendienteId}
+          />
           <Button type="submit" disabled={pidiendo}>
             {pidiendo ? "Abriendo..." : "Retomar su encuesta pendiente"}
           </Button>
@@ -221,8 +274,9 @@ function PacientePropio({
           tecnico, y aqui el profesional TIENE al paciente delante, asi que la salida es concreta. */}
       {estado.revoked ? (
         <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
-          Este paciente retiró alguna de las autorizaciones necesarias, así que no se le pueden crear
-          evaluaciones. Si quiere continuar, tiene que autorizarlas de nuevo desde su ficha.
+          Este paciente retiró alguna de las autorizaciones necesarias, así que
+          no se le pueden crear evaluaciones. Si quiere continuar, tiene que
+          autorizarlas de nuevo desde su ficha.
         </p>
       ) : null}
       {estado.error ? (
@@ -230,7 +284,7 @@ function PacientePropio({
           {estado.error}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -239,7 +293,10 @@ function PacientePropio({
 // dentro de la app autenticada, el dispositivo en manos del paciente es la sesion del profesional.
 function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
   const [url] = useState(() =>
-    buildResumeUrl(resumeToken, typeof window !== "undefined" ? window.location.origin : null),
+    buildResumeUrl(
+      resumeToken,
+      typeof window !== "undefined" ? window.location.origin : null,
+    ),
   );
   const [copiado, setCopiado] = useState(false);
 
@@ -255,12 +312,15 @@ function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+    <section className="flex flex-col gap-4 rounded-xl border border-primary/30 bg-card p-5">
       <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold text-foreground">Listo. Ahora la encuesta</h2>
+        <h2 className="text-sm font-semibold text-foreground">
+          Listo. Ahora la encuesta
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Abre la encuesta y pásale el dispositivo al paciente. Si prefiere responderla en su casa, cópiale
-          el enlace: también le llegó por correo, y guarda el avance.
+          Abre la encuesta y pásale el dispositivo al paciente. Si prefiere
+          responderla en su casa, cópiale el enlace: también le llegó por
+          correo, y guarda el avance.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -269,7 +329,12 @@ function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
             Abrir la encuesta
           </a>
         </Button>
-        <Button type="button" variant="outline" onClick={copiar} disabled={!url}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={copiar}
+          disabled={!url}
+        >
           {copiado ? "Copiado" : "Copiar enlace"}
         </Button>
       </div>
@@ -279,6 +344,6 @@ function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
         onFocus={(e) => e.currentTarget.select()}
         className="h-9 font-mono text-xs"
       />
-    </div>
+    </section>
   );
 }

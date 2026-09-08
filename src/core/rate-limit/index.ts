@@ -355,3 +355,28 @@ export async function limitDocumentLookupByUser(userId: string): Promise<LimitRe
   }
   return memoryDocumentLookup.check(userId);
 }
+
+// ---- Codigo de firma en PRESENCIAL (2026-09-08) --------------------------
+// MISMA CUOTA que el envio por enlace (5 cada 15 min) y MISMO fallo CERRADO, pero anclada en el CORREO
+// DESTINO en vez del token del enlace.
+//
+// POR QUE EL DESTINO Y NO EL PROFESIONAL. Lo que el limite protege es la bandeja de entrada del paciente,
+// y esa es la que hay que contar. Anclarlo en el profesional castigaria lo legitimo (tres pacientes
+// seguidos en la misma hora gastan la cuota entre todos) sin proteger mejor nada: la superficie ya exige
+// sesion, la busqueda del documento queda auditada y quien envia es rastreable.
+//
+// Y FALLA CERRADO como el del enlace, que aqui no cuesta nada: el almacen del codigo es el MISMO Upstash,
+// asi que si esta caido tampoco habria codigo que guardar. Dejarlo pasar solo mandaria correos sin OTP.
+export async function limitConsentOtpByEmail(email: string): Promise<LimitResult> {
+  const clave = `email:${email.trim().toLowerCase()}`;
+  const upstash = getUpstashOtpSend();
+  if (upstash) {
+    try {
+      const r = await upstash.limit(clave);
+      return { success: r.success, remaining: r.remaining };
+    } catch {
+      return { success: false, remaining: 0 };
+    }
+  }
+  return memoryOtpSend.check(clave);
+}
