@@ -23,8 +23,16 @@ import { generateOpaqueToken } from "@/modules/evaluations/services/survey-link-
 //   · IP y agente del dispositivo del paciente, porque "sin eso, la afirmacion de que fueron dispositivos
 //     distintos es solo una etiqueta que puso el sistema".
 
-/** Quince minutos: la sesion existe mientras dura la consulta, no mas. */
+// DOS VENTANAS, no una, y cada una acota una cosa distinta:
+//
+//   · SESION_TTL_MIN acota el QR SIN ESCANEAR. Corta a proposito: un token visible en una pantalla no
+//     debe vivir mucho rato.
+//   · LECTURA_MIN acota a quien YA lo abrio en su telefono. Larga a proposito: quince minutos para leer
+//     un consentimiento entero es poco, y castigar al que lee despacio es castigar exactamente la
+//     conducta que hace informado al consentimiento. El que lee rapido pasaria y el que lee con calma
+//     perderia el trabajo: el incentivo al reves.
 export const SESION_TTL_MIN = 15;
+export const LECTURA_MIN = 45;
 
 export type SesionAbierta = {
   id: string;
@@ -96,6 +104,8 @@ export async function abrirSesionPresencial(input: {
       openedAt: sql`coalesce(${presencialConsentSessions.openedAt}, now())`,
       patientIp: sql`coalesce(${presencialConsentSessions.patientIp}, ${input.ip}::inet)`,
       patientUserAgent: sql`coalesce(${presencialConsentSessions.patientUserAgent}, ${input.userAgent})`,
+      // GREATEST y no una asignacion directa: reabrir la sesion no puede ACORTARLE la ventana a nadie.
+      lecturaHasta: sql`greatest(coalesce(${presencialConsentSessions.lecturaHasta}, now()), now() + interval '${sql.raw(String(LECTURA_MIN))} minutes')`,
     })
     .where(
       and(
@@ -127,6 +137,8 @@ export async function confirmarSesionPresencial(input: {
   apellidos: string;
   documentType: string;
   documentNumber: string;
+  /** Lo que marco en SU dispositivo. Espera aqui hasta que el profesional declare. */
+  autorizaciones: string[];
 }): Promise<ResultadoConfirmacion> {
   return db.transaction(async (tx) => {
     const [fila] = await tx
@@ -141,7 +153,10 @@ export async function confirmarSesionPresencial(input: {
         and(
           eq(presencialConsentSessions.token, input.token),
           isNull(presencialConsentSessions.confirmedAt),
-          sql`${presencialConsentSessions.expiresAt} > now()`,
+          // LA VENTANA DE LECTURA, no la del QR: quien ya abrio tiene su tiempo para leer. Si nunca
+          // abrio, `lectura_hasta` es nulo y cae a la ventana corta, que es la correcta para un token
+          // que sigue en pantalla sin escanear.
+          sql`coalesce(${presencialConsentSessions.lecturaHasta}, ${presencialConsentSessions.expiresAt}) > now()`,
         ),
       );
     if (!fila) return { estado: "no_disponible" };
@@ -161,6 +176,7 @@ export async function confirmarSesionPresencial(input: {
         declaradoApellidos: input.apellidos,
         declaradoDocumentType: input.documentType as never,
         declaradoDocumentNumber: input.documentNumber,
+        declaradoAutorizaciones: input.autorizaciones,
         ...(coincide
           ? { estado: "confirmada", confirmedAt: sql`now()` }
           : { estado: "discrepancia" }),
@@ -255,4 +271,35 @@ export async function abandonarSesion(sessionId: string, actorId: string): Promi
       entityId: sessionId,
     });
   });
+}
+
+// ── LECTURA SIN EFECTOS, para pintar la pagina publica ────────────────────────────────────────────
+//
+// La pagina NO puede sellar la apertura: un componente de servidor se re-renderiza y el sello tiene que
+// ocurrir UNA vez, cuando el paciente de verdad la abre en su telefono. Por eso se parte: la pagina LEE
+// (esto) y el cliente SELLA al montarse (`abrirSesionQrAction`). Devuelve lo justo para pintar el
+// documento de consentimiento, que necesita saber de que profesional es.
+export async function resolverSesionPorToken(token: string): Promise<{
+  professionalId: string;
+  estado: string;
+  vigente: boolean;
+} | null> {
+  if (!token) return null;
+  const [fila] = await db
+    .select({
+      professionalId: presencialConsentSessions.professionalId,
+      estado: presencialConsentSessions.estado,
+      expiresAt: presencialConsentSessions.expiresAt,
+      lecturaHasta: presencialConsentSessions.lecturaHasta,
+      confirmedAt: presencialConsentSessions.confirmedAt,
+    })
+    .from(presencialConsentSessions)
+    .where(eq(presencialConsentSessions.token, token));
+  if (!fila) return null;
+  const limite = fila.lecturaHasta ?? fila.expiresAt;
+  return {
+    professionalId: fila.professionalId,
+    estado: fila.estado,
+    vigente: fila.confirmedAt === null && limite.getTime() > Date.now(),
+  };
 }

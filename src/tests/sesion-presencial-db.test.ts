@@ -21,6 +21,10 @@ HAS_DB = Boolean(process.env.DATABASE_URL);
 
 const creadas: string[] = [];
 
+// Las tres necesarias. El CHECK de la 0109 exige que una confirmacion diga QUE se autorizo: una
+// confirmacion sin autorizaciones seria una fila que dice que el paciente acepto sin decir que acepto.
+const AUTORIZACIONES = ["servicio", "datos_sensibles", "aceptacion_medio_electronico"];
+
 afterEach(async () => {
   if (!HAS_DB || creadas.length === 0) return;
   const { db } = await import("@/db");
@@ -127,6 +131,7 @@ describe.skipIf(!HAS_DB)("modalidad 2: la sesión del QR de punta a punta (BD re
       apellidos: "Pérez",
       documentType: "CC",
       documentNumber: "OTRO-DISTINTO",
+      autorizaciones: AUTORIZACIONES,
     });
     expect(r.estado).toBe("discrepancia");
 
@@ -155,6 +160,7 @@ describe.skipIf(!HAS_DB)("modalidad 2: la sesión del QR de punta a punta (BD re
       apellidos: "Pérez Gómez",
       documentType: "CC",
       documentNumber: "1.098.765.432",
+      autorizaciones: AUTORIZACIONES,
     });
     expect(r.estado).toBe("confirmada");
 
@@ -182,6 +188,7 @@ describe.skipIf(!HAS_DB)("modalidad 2: la sesión del QR de punta a punta (BD re
       apellidos: "Pérez",
       documentType: "CC",
       documentNumber: "1098765432",
+      autorizaciones: AUTORIZACIONES,
     });
     expect(await abrirSesionPresencial({ token: s.token, ip: "1.2.3.4", userAgent: "X" })).toBeNull();
     const otra = await confirmarSesionPresencial({
@@ -190,6 +197,7 @@ describe.skipIf(!HAS_DB)("modalidad 2: la sesión del QR de punta a punta (BD re
       apellidos: "Nombre",
       documentType: "CC",
       documentNumber: "1098765432",
+      autorizaciones: AUTORIZACIONES,
     });
     expect(otra.estado, "un solo uso: ya se consumió").toBe("no_disponible");
   });
@@ -214,6 +222,7 @@ describe.skipIf(!HAS_DB)("el intento se registra SIN datos del paciente (BD real
       apellidos: "Pérez",
       documentType: "CC",
       documentNumber: "NO-COINCIDE",
+      autorizaciones: AUTORIZACIONES,
     });
 
     const eventos = await db

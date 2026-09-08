@@ -436,9 +436,12 @@ describe.skipIf(!HAS_DB)("la sesión del QR: schema y garantías (BD real)", () 
         await tx.execute(sql`
           insert into presencial_consent_sessions
             (token, organization_id, professional_id, created_by, declaracion_version,
-             document_type, document_number, expires_at, confirmed_at)
+             document_type, document_number, expires_at, confirmed_at, declarado_autorizaciones)
+          -- LA PREPARACION SE CORRIGE, no la asercion (2026-09-09): la 0109 añadio un CHECK que exige que
+          -- una confirmacion diga QUE se autorizo, y salta ANTES que el de los tiempos. Lo que este test
+          -- afirma es lo de los tiempos, asi que el montaje tiene que dejarlo llegar hasta ahi.
           select 'tok-test-incoherente', pr.organization_id, pp.id, pp.profile_id, '1.0',
-                 'CC', 'X', now() + interval '15 min', now()
+                 'CC', 'X', now() + interval '15 min', now(), '["servicio"]'::jsonb
           from professional_profiles pp join profiles pr on pr.id = pp.profile_id limit 1`);
       });
       motivo = "el insert paso: el CHECK no lo paro";

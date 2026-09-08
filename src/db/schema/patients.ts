@@ -4,6 +4,7 @@ import {
   date,
   index,
   inet,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -198,7 +199,12 @@ export const presencialConsentSessions = pgTable(
     patientIp: inet("patient_ip"),
     patientUserAgent: text("patient_user_agent"),
     estado: text("estado").notNull().default("emitida"),
+    /** Acota el QR SIN ESCANEAR. Corta a proposito: un token visible en pantalla no debe vivir mucho. */
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Acota la LECTURA de quien ya lo abrio. Larga a proposito: leer despacio es lo que queremos. */
+    lecturaHasta: timestamp("lectura_hasta", { withTimezone: true }),
+    /** Lo que el paciente marco, esperando a que el profesional declare. NO es una autorizacion otorgada. */
+    declaradoAutorizaciones: jsonb("declarado_autorizaciones").$type<string[]>(),
     patientId: uuid("patient_id").references(() => patients.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
