@@ -793,6 +793,7 @@ export type Database = {
       }
       diagnoses: {
         Row: {
+          ai_summary: string | null
           confirmed_at: string | null
           confirmed_by: string | null
           confirmed_profession:
@@ -812,6 +813,7 @@ export type Database = {
           survey_version_id: string | null
         }
         Insert: {
+          ai_summary?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           confirmed_profession?:
@@ -831,6 +833,7 @@ export type Database = {
           survey_version_id?: string | null
         }
         Update: {
+          ai_summary?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           confirmed_profession?:

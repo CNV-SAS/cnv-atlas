@@ -31,7 +31,6 @@ const frasePlana = (f: string) => f.replace(/\s+/g, " ");
 // profesional. Ahi se afirma abajo, en su propio caso, y ADEMAS junto al boton, que es donde el cotejo
 // del 5 de septiembre (punto 13) demostro que hacia falta. Mover la asercion de archivo NO es relajarla:
 // lo que se sigue exigiendo es que un acto irreversible se anuncie antes de cometerlo.
-const CRITERIO = readFileSync("src/modules/diagnoses/components/professional-criterion.tsx", "utf8");
 
 const GARANTIAS: [string, string, string][] = [
   [
@@ -147,17 +146,15 @@ describe("y lo que se podó no volvió", () => {
   });
 });
 
-describe("la irreversibilidad se anuncia donde todavía se escribe", () => {
-  it("el criterio del profesional dice que no se puede borrar, y lo dice JUNTO AL BOTÓN", () => {
-    const plano = frasePlana(CRITERIO);
-    expect(plano).toContain("no se puede borrar");
-    const i = CRITERIO.indexOf('type="submit"');
-    expect(i).toBeGreaterThan(-1);
-    // La ventana es el bloque del botón: si la frase estuviera solo en el párrafo de arriba, este caso
-    // no la encontraría. Es la lección del punto 13: la pregunta de Santiago ("¿y si se equivocó?") fue
-    // la prueba de que a media pantalla del botón no se lee.
-    const cerca = frasePlana(CRITERIO.slice(i - 400, i + 600));
-    expect(cerca).toContain("no se puede borrar");
-  });
-});
+// RETIRADO EL 2026-09-08, y no por relajarlo: LA SUPERFICIE QUE PROTEGIA YA NO EXISTE.
+//
+// El caso decia "el criterio del profesional dice que no se puede borrar, y lo dice JUNTO AL BOTON", y
+// nacio de la pregunta de Santiago en el cotejo ("¿y si se equivoco?"), que fue la prueba de que a media
+// pantalla del boton no se lee. Al separar el resumen del criterio, el profesional dejo de escribir
+// criterios en Diagnostico: no hay boton, asi que no hay nada que anunciar junto a el.
+//
+// LA REGLA SIGUE VIVA aunque el caso se vaya: un acto irreversible dice lo que hace EN EL SITIO DONDE SE
+// PULSA, no en un parrafo de arriba. Vuelve a hacer falta el dia que aparezca otra escritura sin vuelta
+// atras. Hoy la unica que queda con esa forma es la decision del nutraceutico, que no borra nada.
+//
 

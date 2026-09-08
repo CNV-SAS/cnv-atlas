@@ -729,6 +729,13 @@
       "when": 1788912986099,
       "tag": "0103_prompt_criterio_v3",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1788999386099,
+      "tag": "0104_resumen_ia",
+      "breakpoints": true
     }
   ]
 }

@@ -60,6 +60,8 @@ export type EvaluationResults = {
   confirmed: boolean;
   confirmedAt: string | null;
   confirmedByName: string | null; // full_name del profesional que confirmo (quien, decision 6)
+  /** Resumen del diagnostico generado por IA, YA GUARDADO. null = todavia no se ha generado. */
+  aiSummary: string | null;
   reportStatus: ReportStatus;
   patientName: string;
   documentLabel: string;
@@ -206,6 +208,9 @@ export async function getEvaluationResults(
       confirmed: false,
       confirmedAt: null,
       confirmedByName: null,
+      // Camino degradado (snapshot de una era anterior del motor): no se lee el resumen. Un snapshot
+      // viejo no puede generar uno nuevo, asi que null es el estado correcto y no una perdida.
+      aiSummary: null,
       reportStatus: dispatch.status,
       patientName: dispatch.patientName,
       documentLabel: dispatch.documentLabel,
@@ -234,7 +239,7 @@ export async function getEvaluationResults(
   const supabase = await createSupabaseServerClient();
   const { data: diag, error: dErr } = await supabase
     .from("diagnoses")
-    .select("model_version_id, confirmed_at, confirmed_by")
+    .select("model_version_id, confirmed_at, confirmed_by, ai_summary")
     .eq("evaluation_id", evaluationId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -276,6 +281,7 @@ export async function getEvaluationResults(
     confirmed: Boolean(diag?.confirmed_at),
     confirmedAt: diag?.confirmed_at ?? null,
     confirmedByName,
+    aiSummary: (diag?.ai_summary as string | null) ?? null,
     reportStatus: dispatch.status,
     patientName: dispatch.patientName,
     documentLabel: dispatch.documentLabel,
