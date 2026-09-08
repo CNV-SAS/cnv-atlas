@@ -89,6 +89,8 @@ export type HcObservacionDoc = {
   autor: string | null;
   profesion: string | null;
   fecha: string;
+  /** El instante real (ISO). Decide cual es la vigente; `fecha` solo se muestra. */
+  creadaEn: string;
 };
 
 export type HcIndiceDoc = {

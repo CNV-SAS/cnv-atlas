@@ -64,6 +64,54 @@ base aceptó; ahora el número sale del `.select()` de la escritura.
 
 ---
 
+## El paciente creado por el profesional (2026-09-08) · ESPERA RESPUESTA LEGAL
+
+**Lo que Gildardo llama "nuevo paciente":** crearlo en consulta y llenarle la encuesta, sin mandarle el
+enlace.
+
+**El nudo NO es tecnico.** Hoy el paciente nace SOLO desde el intake, cuando la persona firma. El gate de
+la regla dura 15 (no hay evaluacion sin autorizaciones vigentes) se verifica en la policy, y la Ley 1581
+exige autorizacion PREVIA a la recoleccion: escribir respuestas de salud antes de la firma es recoger dato
+sensible sin base legal.
+
+**Y la confirmacion por codigo NO lo resuelve:** dice QUIEN ES, no QUE AUTORIZO. Son dos cosas distintas y
+el gate mira la segunda.
+
+**Santiago consulta al abogado.** Hasta que responda, no se dimensiona mas.
+
+### Las tres piezas que SI se pueden construir, para arrancar cuando conteste
+
+| pieza | tamaño | bloqueo |
+| --- | --- | --- |
+| Crear paciente + perfil + contacto desde `/pacientes` | medio dia | ninguno |
+| Marcar la evaluacion "no verificada", sin que bloquee nada | medio dia | ninguno |
+| Confirmacion por codigo al correo | un dia | ninguno: el OTP ya existe en el intake |
+
+**Y la pieza que ya existe y sirve de patron:** `startFollowupWithoutSignature` crea una evaluacion SIN
+firma nueva, reusando el consentimiento vigente. Exige que el paciente ya exista y ya haya consentido, que
+es justo el eslabon que falta.
+
+**Cuidado al arrancar:** las tres se pueden construir y aun asi crean pacientes que no llegan a
+diagnostico, porque el gate los para. Sin la respuesta legal, construirlas es dejar tres piezas sin su
+ultimo cable.
+
+## El % de completitud de la encuesta en el roster de pacientes (2026-09-08)
+
+**Lo pide Gildardo** junto al filtro. **De las cuatro cosas de ese punto, dos YA ESTAN:** el orden
+alfabetico (`localeCompare` por apellido y nombre) y el estado del consentimiento (`sinAutorizacionVigente`,
+con su chip "Sin autorizacion vigente"). La barra de busqueda por nombre Y documento tambien.
+
+**Lo que falta de verdad es el porcentaje, y NO es una columna: es media jornada.** La lista trae perfiles,
+consentimientos y evaluaciones; **no toca `survey_answers`**. El calculo existe (`answered / total` sobre
+los dominios) pero es POR EVALUACION y se hace al abrirla. Llevarlo al roster exige contar respuestas de
+todos los pacientes en una consulta, y **el total depende de la VERSION de encuesta de cada uno**: un
+conteo agregado seria barato y estaria mal, porque mediria contra un total que no es el suyo.
+
+**Y falta el conmutador de orden por fecha reciente**, que si es chico: `lastEvaluationDate` ya se calcula
+y ya se pinta.
+
+---
+
 ## LO QUE QUEDA NUESTRO AL CERRAR EL COTEJO (2026-09-06)
 
 **El cotejo visual de los 30 puntos está cerrado y pusheado.** De los cinco pendientes que quedaron,

@@ -910,7 +910,11 @@ export default async function ResultadosEvaluacionPage({
             notas={(protocol?.notes ?? []).map((n) => ({
               id: n.id,
               note: n.note,
+              // LA PANTALLA DE TRABAJO SI LLEVA HORA, y el documento no: dos notas del mismo dia hay que
+              // poder distinguirlas mientras se trabaja. La hora se quito de la HISTORIA CLINICA, que es
+              // un documento clinico y no un registro de sistema.
               createdAt: formatDateTime(n.createdAt),
+              creadaEn: n.createdAt,
               profession: n.profession ?? null,
             }))}
             puedeEscribir={Boolean(protocol)}
@@ -1050,7 +1054,13 @@ export default async function ResultadosEvaluacionPage({
                 observaciones={(protocol?.notes ?? []).map((n) => ({
                   id: n.id,
                   note: n.note,
-                  fecha: formatDateTime(n.createdAt),
+                  // SOLO LA FECHA, SIN HORA (Santiago, 2026-09-08): la historia clinica es un documento
+                  // clinico, no un registro de sistema. La hora exacta de escritura vive en la auditoria,
+                  // que es donde importa.
+                  fecha: formatDateOnly(n.createdAt),
+                  // Y el instante crudo viaja aparte, porque es lo que decide cual es la vigente: al
+                  // quitar la hora, ordenar por la fecha MOSTRADA dejaria empatadas dos del mismo dia.
+                  creadaEn: n.createdAt,
                   // LA PROFESION VIAJA AL DOCUMENTO, como ya hacia el PDF: es la condicion clinica con la
                   // que se escribio (su §8), y sin ella no se sabe de quien es la vigente.
                   profesion: n.profession ? PROFESION_NOTA[n.profession] : null,

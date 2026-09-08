@@ -307,7 +307,10 @@ export function HcRutasActivadas({ rutas }: { rutas: HcRuta[] }) {
 export type HcObservacion = {
   id: string;
   note: string;
+  /** Fecha ya formateada, para mostrar. La hora NO va: es un documento clinico, no un log. */
   fecha: string;
+  /** El instante real (ISO). Decide cual es la vigente; `fecha` solo se muestra. */
+  creadaEn: string;
   // LA PROFESION FALTABA EN LA PANTALLA Y ESTABA EN EL PDF, que es una divergencia entre dos superficies
   // del MISMO documento: el PDF decia con que rol se escribio y la pantalla no. Y desde que la vigente es
   // POR PROFESION (su §8), sin ella "vigente" no significa nada: no se sabe vigente de quien.
@@ -328,7 +331,13 @@ export type HcObservacion = {
 // superficies del mismo documento no pueden decidir por separado cual es la vigente.
 export function HcObservaciones({ observaciones }: { observaciones: HcObservacion[] }) {
   const vigentes = observacionesVigentes(
-    observaciones.map((o) => ({ id: o.id, note: o.note, fecha: o.fecha, profesion: o.profesion })),
+    observaciones.map((o) => ({
+      id: o.id,
+      note: o.note,
+      fecha: o.fecha,
+      creadaEn: o.creadaEn,
+      profesion: o.profesion,
+    })),
   );
   return (
     <Tarjeta>
