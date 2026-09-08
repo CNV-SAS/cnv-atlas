@@ -24,6 +24,7 @@ const DB_TESTS = [
   "src/tests/diet-field-keys-in-used-versions.test.ts",
   "src/tests/firma-presencial-db.test.ts",
   "src/tests/intake-publico-db.test.ts",
+  "src/tests/sesion-presencial-db.test.ts",
   "src/tests/diagnosis-confirmation-immutability.test.ts",
   "src/tests/hc-antecedentes-encuesta.test.ts",
   "src/tests/faltante-case.test.ts",
