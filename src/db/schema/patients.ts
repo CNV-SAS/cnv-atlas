@@ -12,7 +12,7 @@ import {
 
 import { createdAt, pk, updatedAt } from "./_columns";
 import { consentType, documentType, patientStatus } from "./enums";
-import { organizations, professionalProfiles } from "./organizations";
+import { organizations, professionalProfiles, profiles } from "./organizations";
 
 // Grupo 2: pacientes (seudonimizacion). La data clinica cuelga de patient_id; la
 // PII vive en tablas aparte con RLS estricto (principio 2).
@@ -107,6 +107,17 @@ export const patientConsents = pgTable(
     legalRepresentativeDocument: text("legal_representative_document"),
     legalRepresentativeRelationship: text("legal_representative_relationship"),
     legalRepresentativeEmail: text("legal_representative_email"),
+    // COMO SE OBTUVO ESTA AUTORIZACION (0105, dictamen 2026-09-08). No es un metadato: dos
+    // autorizaciones obtenidas por caminos distintos tienen FUERZA PROBATORIA distinta.
+    // NULL en las anteriores al presencial: todas eran remotas por construccion, era el unico camino.
+    // Valores cerrados por CHECK en la migracion (remoto_otp / presencial_otp / presencial_qr /
+    // presencial_papel), no por enum: los cierra el dictamen, no una lista que crezca.
+    signatureChannel: text("signature_channel"),
+    // LA DECLARACION DEL PROFESIONAL, solo en las presenciales. Va CON SU VERSION y no como booleano: es
+    // una afirmacion suya con consecuencias, y si cambia su redaccion lo declarado antes tiene que seguir
+    // diciendo lo que decia. El CHECK exige que canal y declaracion vayan juntos o no vayan.
+    declaredBy: uuid("declared_by").references(() => profiles.id),
+    declarationVersion: text("declaration_version"),
   },
   (t) => [
     index("patient_consents_patient_idx").on(t.patientId),

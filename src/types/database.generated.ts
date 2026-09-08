@@ -2045,6 +2045,8 @@ export type Database = {
         Row: {
           consent_type: Database["public"]["Enums"]["consent_type_enum"]
           consent_version: string
+          declaration_version: string | null
+          declared_by: string | null
           document_hash: string
           id: string
           legal_representative_document: string | null
@@ -2053,11 +2055,14 @@ export type Database = {
           legal_representative_relationship: string | null
           patient_id: string
           revoked_at: string | null
+          signature_channel: string | null
           signed_at: string
         }
         Insert: {
           consent_type: Database["public"]["Enums"]["consent_type_enum"]
           consent_version: string
+          declaration_version?: string | null
+          declared_by?: string | null
           document_hash: string
           id?: string
           legal_representative_document?: string | null
@@ -2066,11 +2071,14 @@ export type Database = {
           legal_representative_relationship?: string | null
           patient_id: string
           revoked_at?: string | null
+          signature_channel?: string | null
           signed_at?: string
         }
         Update: {
           consent_type?: Database["public"]["Enums"]["consent_type_enum"]
           consent_version?: string
+          declaration_version?: string | null
+          declared_by?: string | null
           document_hash?: string
           id?: string
           legal_representative_document?: string | null
@@ -2079,9 +2087,17 @@ export type Database = {
           legal_representative_relationship?: string | null
           patient_id?: string
           revoked_at?: string | null
+          signature_channel?: string | null
           signed_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "patient_consents_declared_by_fkey"
+            columns: ["declared_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patient_consents_patient_id_patients_id_fk"
             columns: ["patient_id"]
