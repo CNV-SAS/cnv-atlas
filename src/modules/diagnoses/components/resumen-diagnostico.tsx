@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,10 +45,20 @@ export function ResumenDiagnostico({
     error: null,
     text: null,
   });
+  const router = useRouter();
   // El texto recien generado gana sobre el que llego del servidor, para que la pantalla no espere a un
   // refresco. El servidor ya lo guardo: esto es solo lo que se ve mientras tanto.
   const visible = state.text ?? texto;
   if (state.text && state.text !== texto) setTexto(state.text);
+
+  // Y SE REFRESCA EL ARBOL DE SERVIDOR (2026-09-10). El resumen SI se guardaba y SI se releia; lo que
+  // fallaba es que las subpestañas cambian con history.replaceState, sin volver a pedir el RSC. Al
+  // cambiar de pestaña este componente se desmonta y pierde su estado local, y al volver se monta con la
+  // prop del render ORIGINAL, de cuando el resumen todavia no existia.  vuelve a pedir
+  // el arbol, asi que la prop llega con lo que ya esta guardado.
+  useEffect(() => {
+    if (state.text) router.refresh();
+  }, [state.text, router]);
 
   return (
     <section className="flex flex-col gap-4">
