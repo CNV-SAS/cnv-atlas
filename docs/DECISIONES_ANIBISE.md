@@ -1210,3 +1210,45 @@ en el mensaje de SISTEMA, asi que **viaja al proveedor de IA en cada llamada, pa
   documentarlo, (b) reemplazar el nombre por un marcador en las once copias dejando el resto verbatim, o
   (c) esperar su respuesta y actuar segun sea real o de prueba. **Mi recomendacion: (c), y si es real,
   (b).** Reemplazar solo el nombre no toca ninguna cifra ni ningun texto que usemos para cotejar.
+
+---
+
+## Ronda del 2026-09-09 · lo que sale del hueco de los catalogos
+
+Tres cosas que van a Gildardo. Las tres nacen del mismo hallazgo (los catalogos del registro no tenian
+canal a la nube, cerrado con la migracion 0113), pero **solo la primera y la segunda son contenido suyo**;
+la tercera es una decision nuestra que conviene que sepa para no leerla como un porte incompleto.
+
+**P-117 · SUS NOMBRES DE SECTOR FUNCIONAL ESTUVIERON DICIENDO LO CONTRARIO EN LA NUBE (2026-09-09).**
+El catalogo `fr_sectors` (los 9 sectores IFC x IRC) llevaba en produccion los nombres de una version
+anterior de su motor, y **6 de los 9 no eran un matiz, eran lo opuesto**: su `1_1` decia *"Alto desempeño,
+riesgo oculto"* donde el motor de hoy dice *"Disfuncion con bajo riesgo"*.
+- **No engaño a nadie**, y esto es lo que hay que decirle primero: el nombre de sector que se muestra en
+  pantalla sale del SNAPSHOT sellado, no del catalogo. El catalogo solo resuelve `codigo -> id` para la
+  clave foranea del diagnostico. Ninguna pantalla lo leyo nunca.
+- **Ya esta alineado** (migracion 0113, verificado por lectura contra el motor: 0 diferencias).
+- **Se le cuenta porque es SU contenido**, no porque haya que decidir nada. Si alguna vez esos nombres
+  tuvieron que ser los otros, esta es la ocasion de decirlo.
+
+**P-118 · UN DIAGNOSTICO YA EMITIDO CONSERVA LA RAYA, Y ES CORRECTO (2026-09-09).**
+Mientras el catalogo de la nube estuvo desincronizado, 21 de los 81 estados de la Diana salian con "—" en
+*Mecanismos bioquimicos* y *Biomarcadores clave*. Tres diagnosticos cayeron en uno de esos estados; dos son
+de pacientes de prueba y **uno es de una paciente real (Adriana Maria Rivera, evaluacion del 2026-08-27)**.
+- **Ese diagnostico conserva la raya y no se va a rellenar solo.** El contenido del estado se SELLA en el
+  snapshot al diagnosticar, y el snapshot es inmutable a proposito: corregir un catalogo no puede
+  reescribir lo que un profesional ya leyo y firmo.
+- **La unica via para verlo completo es CORREGIR la evaluacion**, que vuelve a leer el catalogo y re-sella.
+  Es una decision clinica, no tecnica: la toma quien atiende.
+- Los diagnosticos NUEVOS ya salen con los seis campos completos (verificado tras aplicar la 0113).
+
+**P-119 · LOS EMOJIS DE SUS SEIS TITULOS NO SE PORTAN, Y ES DECISION NUESTRA (2026-09-09).**
+Su ficha del estado EFR rotula los seis campos con emoji (🔬 ⚙️ 🧪 ⚠️ 💊 🧭) y Atlas no los lleva.
+- **No es un porte incompleto:** es la regla de interfaz de `BRAND.md` (sin emojis en UI), y la interfaz es
+  la capa donde mandamos nosotros (Regla 0: su archivo manda en lo CLINICO). Los seis campos van numerados
+  y con su titulo, que es lo que el emoji marcaba.
+- **Lo que SI se porto de esa ficha** en esta ronda es el rotulo del quinto campo, que era nuestro y ahora
+  es el suyo: *"VITACELLEBIS: Nutraceuticos indicados para este estado"*, en vez de "Nutraceuticos
+  sugeridos". La razon es del contenido: no es un producto que se venda por vender, es parte del
+  tratamiento derivado del estado.
+- Se le dice para que la ausencia no se lea como un olvido. Si los quiere, se discute como decision de
+  interfaz.

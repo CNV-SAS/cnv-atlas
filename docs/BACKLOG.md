@@ -43,19 +43,26 @@ la fila de base GANE sobre el texto canonico: la nube no caia al v2 del reposito
 - **`menu.adapt` ausente en la nube NO es un defecto:** es el diseño. Su clave se eligio nueva justamente
   para que cayera al texto canonico del codigo, que es byte por byte el mismo JSON que sembraria el seed.
 
-**[ABIERTO] `indicator_definitions`, el cuarto catálogo.** Tampoco tenía camino a la nube, y **el
-generador nuevo no le sirve**: no tiene tabla de versiones propia. Las definiciones cuelgan de un
-`model_version_id` fijo y se actualizan **en sitio** por `(model_version_id, code)`, así que desplegar un
-cambio de nombre exige un `UPDATE`, no un `INSERT` aditivo. Es una forma distinta, no una variante.
+**[HECHO 2026-09-09] `indicator_definitions` y los otros TRES del registro del motor.** Esta entrada
+decía "el cuarto catálogo" y se quedó corta: eran **cuatro**, y son **la misma pieza**. `phenotypes`,
+`fr_sectors` y `efr_states` cuelgan igual de un `model_version_id` fijo, se generan del motor congelado
+y tampoco tenían camino a la nube. La señal que lo habría delatado antes: `buildRegistryData()` **solo lo
+consumían los tests**.
 
-- **Verificado el 2026-09-07 que HOY NO hay desincronización:** los doce indicadores coinciden en local,
-  en la nube y con el registry del repositorio. **Es riesgo latente, no divergencia viva.**
-- **Qué haría falta:** decidir si las definiciones se versionan (y entonces sirve el patrón aditivo) o si
-  se acepta una migración con `ON CONFLICT DO UPDATE`, que muta filas ya emitidas y por eso no es
-  automática: cambiar el nombre de un indicador en una fila que ya referencian diagnósticos sellados es
-  una decisión, no un despliegue.
-- Mientras tanto el script ya **anuncia el host** y documenta el camino a la nube, así que el riesgo es
-  visible aunque no esté resuelto.
+- **Y ya NO era riesgo latente.** La nota del 07-sep verificó los doce indicadores y se detuvo ahí. Al
+  mirar los cuatro (09-sep): `efr_states` con **17 estados sin mecanismo y 20 sin biomarcadores** en la
+  nube contra 0 en local, y `fr_sectors` con **6 de 9 nombres diciendo lo contrario** que el motor. El de
+  `efr_states` era divergencia VIVA: ese texto se sella en el snapshot al diagnosticar, así que cada
+  diagnóstico nuevo heredaba el hueco.
+- **Resuelto** con `scripts/gen-registry-migration.mjs` + `drizzle/0113_registro_del_motor.sql` +
+  `src/tests/registro-dos-canales.test.ts`. Aplicada por Santiago el 2026-09-09; verificada después **por
+  lectura** contra el motor: los cuatro catálogos, 0 diferencias.
+- **La decisión que esta entrada dejaba abierta, tomada y con su razón:** sí se acepta el
+  `ON CONFLICT DO UPDATE`, porque **no muta nada que un diagnóstico sellado lea**. El upsert va por clave
+  natural, así que los `id` no cambian y las FK (`fr_sector_id`, `phenotype_id`) siguen apuntando a la
+  misma fila; los nombres de `fr_sectors`/`phenotypes` no se muestran (el que se ve sale del snapshot);
+  `efr_states` se relee solo AL diagnosticar; y `indicator_definitions` es rótulo de display. Lo que sí
+  seguiría siendo una decisión y no un despliegue es cambiar la CIENCIA, y eso no pasa por aquí.
 
 **Y el barrido de los seis scripts que hablan con la base:** ninguno decía contra cuál. Ya lo dicen los
 cuatro que escriben o comparan (`seed.ts`, `seed-bis-conditions.ts`, `reseed-indicator-defs.mjs`,
