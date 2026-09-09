@@ -85,10 +85,13 @@ function parseImports(src) {
 
 const hazardsA = []; // cliente -> server-only
 const hazardsB = []; // servidor -> valor de cliente
+const hazardsC = []; // servidor -> FUNCION como prop de un componente cliente
 
 for (const f of files) {
   const src = read(f);
   const client = isUseClient(src);
+  // Componentes CLIENTE que este archivo importa. Se junta primero y se usa despues, al barrer el JSX.
+  const componentesCliente = new Map();
   for (const imp of parseImports(src)) {
     const target = resolveImport(f, imp.spec);
     if (!target) continue;
@@ -106,6 +109,46 @@ for (const f of files) {
       if (nonComponents.length) {
         hazardsB.push({ from: f, spec: imp.spec, names: nonComponents.map((n) => n.name) });
       }
+      // Direccion C: el servidor pasa una FUNCION como prop a un componente cliente.
+      //
+      // POR QUE HACIA FALTA UNA TERCERA. Este barrido miraba solo los IMPORTS, y esta arista no esta en un
+      // import: esta en el JSX. Un componente cliente importado y renderizado es NORMAL (direccion B lo
+      // permite a proposito); lo que no cruza es una FUNCION entre sus props, porque React tiene que
+      // SERIALIZAR lo que manda al cliente. Rompio /ani-bis-e/[id] el 2026-09-09 con
+      // "Functions cannot be passed directly to Client Components", y ni tsc ni los 2291 tests lo vieron:
+      // ningun test hace un render RSC de esa pagina, que es el unico sitio donde la serializacion ocurre.
+      //
+      // SE MARCAN LAS FUNCIONES LITERALES, no cualquier identificador. Una Server Action ('use server') SI
+      // puede viajar como prop, y llega como identificador importado; una flecha escrita en el JSX no
+      // puede serlo nunca. Marcar identificadores daria falsos positivos justo sobre el caso legitimo.
+      for (const comp of valueNames.filter((n) => /^[A-Z]/.test(n.name)).map((n) => n.name)) {
+        componentesCliente.set(comp, imp.spec);
+      }
+    }
+  }
+
+  // El barrido del JSX va DESPUES de recoger los imports, y solo en archivos de SERVIDOR.
+  //
+  // SE BUSCA LA FUNCION Y SE RETROCEDE HASTA SU ETIQUETA, y no al reves. El primer intento acotaba la
+  // etiqueta con `<Comp[^>]*>` y no encontraba nada: el VALOR de la prop contiene `>` (en la flecha `=>` y
+  // en cualquier JSX de dentro), asi que el recorte terminaba antes de llegar a la funcion. Reintroducir
+  // el defecto real lo dejo en verde, que es como se descubrio. Buscar primero la funcion no tiene ese
+  // problema, porque no hay que delimitar nada.
+  if (!client && componentesCliente.size > 0) {
+    const FUNCION_COMO_PROP = /(\w+)=\{\s*(?:async\s+)?(?:\([^)]*\)|\w+)\s*=>|(\w+)=\{\s*function\b/g;
+    for (const m of src.matchAll(FUNCION_COMO_PROP)) {
+      const prop = m[1] ?? m[2];
+      // La etiqueta ABIERTA mas cercana hacia atras que sea un componente (PascalCase).
+      const antes = src.slice(0, m.index);
+      const etiqueta = [...antes.matchAll(/<([A-Z]\w*)/g)].pop();
+      if (!etiqueta) continue;
+      const comp = etiqueta[1];
+      if (!componentesCliente.has(comp)) continue;
+      // Si entre la etiqueta y la funcion se cerro la etiqueta (`>` o `/>`), la funcion esta en los HIJOS
+      // y no en las props: alli es codigo de servidor normal (un `.map` que produce nodos, por ejemplo).
+      const entre = antes.slice(etiqueta.index);
+      if (/\/?>/.test(entre.replace(/=>/g, "").replace(/<[A-Z]\w*/, ""))) continue;
+      hazardsC.push({ from: f, componente: comp, prop, spec: componentesCliente.get(comp) });
     }
   }
 }
@@ -117,6 +160,19 @@ if (hazardsA.length) {
   console.error("\nARISTA cliente -> server-only (el bundler puede volverlo referencia-cliente):");
   for (const h of hazardsA) console.error(fmt(h));
 }
+if (hazardsC.length) {
+  bad = true;
+  console.error(
+    "\nARISTA servidor -> FUNCION como prop de un componente cliente (React no puede serializarla):",
+  );
+  for (const h of hazardsC) {
+    console.error(`  ${h.from}\n    <${h.componente} ${h.prop}={...}>   -> ${h.prop} es una funcion`);
+  }
+  console.error(
+    "\n  Fix: pasa un DATO (cadena, numero) o un ReactNode YA RENDIDO, no una funcion que lo produzca.\n" +
+      "  Una funcion solo cruza si es una Server Action ('use server').",
+  );
+}
 if (hazardsB.length) {
   bad = true;
   console.error("\nARISTA servidor -> valor de cliente (invocar una funcion cliente desde el servidor tumba la pagina):");
@@ -127,4 +183,4 @@ if (bad) {
   console.error("\nFronteras RSC: HAY ARISTAS. Ver arriba.\n");
   process.exit(1);
 }
-console.log("Fronteras RSC: limpio (ninguna arista, las dos direcciones).");
+console.log("Fronteras RSC: limpio (ninguna arista, las TRES direcciones).");

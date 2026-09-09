@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
+import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import type { Composition, CompositionCorrections } from "@/modules/diagnoses/data/composition-map";
 
 import { AntropometriaEditable } from "./antropometria-editable";
@@ -31,7 +32,7 @@ export function MedidasConTabla({
   pesoMetaKg,
   fuerzaPrensilKg,
   sellada,
-  envoltorioTabla,
+  tituloTabla,
 }: {
   evaluationId: string;
   composition: Composition;
@@ -39,8 +40,17 @@ export function MedidasConTabla({
   pesoMetaKg: number | null;
   fuerzaPrensilKg: number | null;
   sellada: boolean;
-  /** El desplegable que titula la tabla. Lo pone la pagina; aqui solo se envuelve el contenido. */
-  envoltorioTabla: (tabla: ReactNode) => ReactNode;
+  /**
+   * Titulo del desplegable que envuelve la tabla.
+   *
+   * ES UNA CADENA, Y NO PUEDE SER OTRA COSA. La primera version recibia una FUNCION
+   * (`envoltorioTabla: (tabla) => ReactNode`) para que la pagina decidiera el envoltorio, y eso reventaba
+   * la ruta entera: **una funcion no cruza la frontera servidor -> cliente**. React no puede serializarla
+   * y lanza "Functions cannot be passed directly to Client Components". Lo monta un componente de
+   * SERVIDOR, asi que toda prop tiene que ser serializable. Un ReactNode ya rendido si cruza; una funcion
+   * que lo produce, no.
+   */
+  tituloTabla: string;
 }) {
   // EL VALOR VIVO, inicializado del guardado. Se re-deriva cuando el servidor cambia porque la pagina
   // remonta este arbol con la clave de los valores guardados (misma mecanica que el formulario de dentro).
@@ -64,15 +74,25 @@ export function MedidasConTabla({
         sellada={sellada}
         onMetaEnVivo={setMetaEnVivo}
       />
-      {envoltorioTabla(
+      {/* ABIERTA POR DEFECTO desde el 2026-09-07 (punto 6 de su cotejo). Gildardo escribio "no estan los
+          datos antropometricos por nivel de Wang, por que" y la tabla SI estaba: estaba plegada. Que la
+          pieza exista no basta si no se ve.
+
+          SE CONSERVA EL DESPLEGABLE, y no es tibieza: son unas treinta filas por encima del bloque de
+          sarcopenia, asi que quitarlo obliga a recorrerla entera cada vez que se vuelve. Abierta de
+          entrada resuelve la causa real y deja plegarla despues.
+
+          Y VIVE AQUI DENTRO, no en la pagina: envolverla desde fuera exigiria pasar una funcion a este
+          componente, que es lo que rompio la ruta. */}
+      <DetailsSection title={tituloTabla} defaultOpen>
         <CompositionSection
           composition={composition}
           showDiagnosis={false}
           showTitle={false}
           // LA META VIVA, no la guardada: es lo que hace que la fila de Peso se recalcule al teclear.
           pesoMetaKg={metaEnVivo}
-        />,
-      )}
+        />
+      </DetailsSection>
     </>
   );
 }
