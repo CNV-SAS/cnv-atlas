@@ -1,5 +1,6 @@
 "use client";
 
+import { Compass, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import type { DfiDomain } from "@/clinical-engine";
@@ -301,15 +302,6 @@ export function DianaExplorer({
         <div className="flex w-full items-center justify-between gap-3">
           {/* Encabezado fiel al HTML ("Diana EFR BIS — 81 Estados"); "·" en vez de em-dash. */}
           <h3 className="text-sm font-semibold text-foreground">Diana EFR BIS · 81 estados</h3>
-          {canExplore ? (
-            <button
-              type="button"
-              onClick={toggle}
-              className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/40"
-            >
-              {exploring ? "Volver al estado del paciente" : "Explorar otros estados"}
-            </button>
-          ) : null}
         </div>
         <Diana
           bands={bands}
@@ -321,6 +313,41 @@ export function DianaExplorer({
           onSelectCell={setSelected}
         />
         <LecturaDiana />
+
+        {/* EL BOTON DE EXPLORAR, DEBAJO DE LA LECTURA (2026-09-09). Gildardo no lo encontraba: estaba
+            arriba a la derecha, junto al titulo, y en una pantalla chica basta bajar un poco por la Diana
+            para que se salga de vista. Ademas se veia como cromo (borde fino, `text-xs`, pegado al borde
+            derecho), no como la accion que es.
+
+            AQUI Y NO ANTES DE LA LECTURA: es el paso que sigue a LEER la Diana, y queda justo encima del
+            estado del paciente, que es donde aparece la comparacion. El coste es que al activarlo hay que
+            subir un poco para pulsar una celda; son las dos filas de la lectura, y a cambio el boton se
+            encuentra sin buscarlo. Se midio contra la alternativa de ponerlo pegado a la figura.
+
+            Y LA PISTA VA CON EL, no treinta lineas mas abajo: un boton que se pulsa y no dice que hacer
+            despues manda a buscar otra vez. */}
+        {canExplore ? (
+          <div className="flex w-full max-w-[44rem] flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={toggle}
+              aria-pressed={exploring}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 sm:w-auto sm:self-start"
+            >
+              {exploring ? (
+                <Undo2 className="size-4 shrink-0" aria-hidden />
+              ) : (
+                <Compass className="size-4 shrink-0" aria-hidden />
+              )}
+              {exploring ? "Volver al estado del paciente" : "Explorar otros estados"}
+            </button>
+            {exploring ? (
+              <p className="text-xs text-muted-foreground">
+                Haz clic en una celda de la Diana, arriba. Explorar no cambia el diagnóstico.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* Exploracion como COMPARACION lado a lado (Santiago 2026-08-18 b): el estado del paciente queda en

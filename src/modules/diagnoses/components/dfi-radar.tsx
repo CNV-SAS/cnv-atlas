@@ -10,23 +10,32 @@ import { SEV_FILL } from "./risk-severity";
 // paleta clinica BRAND, reservado para severidad. Accesible: la severidad tambien va en texto
 // (etiqueta por eje, leyenda y aria-label), no solo en el color. Server component puro, theme-aware.
 
-const SIZE_W = 360;
-const SIZE_H = 300;
-const CX = 180;
-const CY = 140;
+// EL LIENZO CRECE CON EL `max-w`, EN LA MISMA PROPORCION (2026-09-09). Es lo que hace que los nombres
+// completos quepan sin que el poligono se encoja: 360x300 a 36rem daba escala 1,6, y 420x330 a 42rem da
+// exactamente la misma. Si solo se ensancha el viewBox, el dibujo se hace mas pequeño al mismo ancho
+// renderizado, que es justo lo contrario de lo que se pidio.
+const SIZE_W = 420;
+const SIZE_H = 330;
+const CX = 210;
+const CY = 150;
 const RMAX = 95;
 const BANDS = 4; // niveles de severidad del motor: 0 Optimo, 1 Leve, 2 Moderado, 3 Alto
 
-// Nombres cortos de los 5 ejes, EXACTOS del HTML de referencia (ATLAS_v7.html, _RAD_SHORT
-// ~L11550). No se usan los nombres largos del snapshot ("Metabolico-Estructural", etc.): el
-// radar del HTML rotula asi. Se resuelve por id (d1..d5), no por texto.
-const RADAR_LABEL: Record<string, string> = {
-  d1: "Celular",
-  d2: "Metabólico",
-  d3: "Enveje.",
-  d4: "Conductual",
-  d5: "Epigenét.",
-};
+// NOMBRES COMPLETOS DESDE EL 2026-09-09 (Santiago: "en vez de Enveje. que diga Envejecimiento").
+//
+// Antes se usaban los cortos de su `_RAD_SHORT` ("Enveje.", "Epigenét."). No se pierde nada suyo: los
+// largos son TAMBIEN suyos, salen del motor congelado (`engine.dfi.js`, `nombre` de cada dominio) y
+// llegan aqui en `d.nombre`. Lo que se retira es la ABREVIATURA, que existia porque su radar es pequeño;
+// con el nuestro a 42rem esa razon ya no aplica.
+//
+// SE PARTEN POR EL GUION, que es donde el nombre ya trae la juntura ("Celular-Eléctrico" ->
+// "Celular-" / "Eléctrico"). Sin partirlos, "Epigenético-Contextual" en el vertice izquierdo se sale del
+// lienzo, y ensanchar el lienzo para que quepan en una linea obligaria a un `max-w` mayor que el de la
+// Diana. "Envejecimiento" no lleva guion y se queda en una linea.
+function lineasDelNombre(nombre: string): string[] {
+  const i = nombre.indexOf("-");
+  return i < 0 ? [nombre] : [nombre.slice(0, i + 1), nombre.slice(i + 1)];
+}
 // Vocabulario de severidad del MOTOR: fuente unica compartida (severity-labels), la misma que usan
 // las tarjetas del DFI, para que no puedan divergir.
 // Anillos de fondo por severidad, SOLIDOS (no el fill claro -bg), replicando radar-antiguo.png: centro
@@ -116,11 +125,11 @@ export function DfiRadar({
   const cmpPoly = cmpPts?.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ") ?? null;
 
   const label = `Radar funcional: ${domains
-    .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
+    .map((d) => `${d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
     .join(", ")}.${
     cmpPts
       ? ` Comparado con el estado inicial: ${comparar!
-          .map((d) => `${RADAR_LABEL[d.id] ?? d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
+          .map((d) => `${d.nombre} ${d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}`)
           .join(", ")}.`
       : ""
   }`;
@@ -138,10 +147,10 @@ export function DfiRadar({
         aria-label={label}
         // Escala a su columna (el viewBox conserva la geometria); sin width/height fijos en px. max-w algo
         // mayor que la Diana por su aspecto mas ancho (360x300). Asi el radar reclama su mitad del grid.
-        // 36rem (antes 24): "se ve algo pequeño" en las dos pantallas donde vive, y las dos lo montan en
-        // una tarjeta a ancho completo, asi que habia sitio de sobra. Se queda por debajo de la Diana
-        // (50rem) a proposito: la Diana es una figura densa que se explora, el radar se lee de un vistazo.
-        className="h-auto w-full max-w-[36rem]"
+        // 42rem. Fueron 24 -> 36 ("se ve algo pequeño") y ahora 36 -> 42, que NO agranda el poligono: el
+        // viewBox crecio en la misma proporcion para alojar los nombres completos, asi que el dibujo
+        // conserva exactamente la escala que Santiago dio por buena. Sigue por debajo de la Diana (50rem).
+        className="h-auto w-full max-w-[42rem]"
       >
         {/* Zonas de fondo por severidad: pentagonos concentricos del exterior (peor) al centro (mejor),
             pintados en ese orden para que cada zona interior cubra a la de afuera. Cada banda lleva un
@@ -189,7 +198,11 @@ export function DfiRadar({
         ))}
         {/* Etiquetas de eje: nombre corto fiel del HTML + severidad (vocabulario del motor). */}
         {domains.map((d, i) => {
-          const [lx, ly] = axisPoint(i, n, RMAX + 14);
+          // MAS AIRE ENTRE EL POLIGONO Y EL ROTULO: eran 14 y "Celular / bajo" quedaba pegado al borde
+          // exterior del anillo (Santiago, con captura). Con 22 la etiqueta se lee como rotulo del eje y
+          // no como parte del dibujo.
+          const [lx, ly] = axisPoint(i, n, RMAX + 22);
+          const lineas = lineasDelNombre(d.nombre);
           const cos = Math.cos((-90 + (360 / n) * i) * (Math.PI / 180));
           const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
           return (
@@ -200,18 +213,22 @@ export function DfiRadar({
               textAnchor={anchor}
               dominantBaseline="middle"
               className="fill-foreground"
-              fontSize={10}
+              fontSize={12}
             >
-              <tspan x={lx}>{RADAR_LABEL[d.id] ?? d.nombre}</tspan>
+              {lineas.map((linea, j) => (
+                <tspan key={linea} x={lx} dy={j === 0 ? 0 : 13}>
+                  {linea}
+                </tspan>
+              ))}
               {/* El NIVEL del dominio va coloreado por severidad, como en su radar: asi el dominio malo
                   salta a la vista sin leer los cinco. Mismo semaforo que los badges de las tarjetas
                   (SEV_FILL sale de risk-severity, la misma fuente unica), NO la escala del radar: los
                   anillos son ESCALA de fondo y esto es CLASIFICACION, que es lo que el badge dice. */}
               <tspan
                 x={lx}
-                dy={12}
+                dy={14}
                 className={d.sev == null ? "fill-muted-foreground" : SEV_FILL[clampSev(d.sev)]}
-                fontSize={9}
+                fontSize={11}
                 fontWeight={700}
               >
                 {d.sev == null ? "sin dato" : SEV_LABEL[clampSev(d.sev)]}
@@ -226,30 +243,33 @@ export function DfiRadar({
       {cmpPoly ? (
         <figcaption className="flex flex-col items-center gap-1">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <span className="inline-block w-5 border-t-[3px] border-dashed border-muted-foreground" />
               Inicial{fechaComparar ? ` · ${fechaComparar}` : ""}
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <span className="inline-block w-5 border-t-[3px] border-solid border-foreground" />
               Actual{fechaActual ? ` · ${fechaActual}` : ""}
             </span>
           </div>
-          <span className="text-center text-xs text-muted-foreground">
+          <span className="text-center text-sm text-muted-foreground">
             A menor polígono, mejor estado funcional.
           </span>
         </figcaption>
       ) : null}
       {/* Leyenda de las 4 zonas de severidad con su color (vocabulario del motor). */}
-      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+      {/* LA ESCALA Y LAS NOTAS, UN ESCALON MAS GRANDES (Santiago, 2026-09-09): estaban en 10px y `text-xs`,
+          que con el radar pequeño pasaba y con el grande se leen como letra menuda al pie de una figura que
+          ya no lo es. La escala pasa a `text-xs` y las notas a `text-sm`, que es el tamaño del cuerpo. */}
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {SEV_LABEL.map((z, k) => (
           <span key={z} className="inline-flex items-center gap-1">
-            <span className={`size-2 rounded-[2px] ${SWATCH[k]}`} aria-hidden />
+            <span className={`size-2.5 rounded-[2px] ${SWATCH[k]}`} aria-hidden />
             {z}
           </span>
         ))}
       </div>
-      <figcaption className="text-center text-xs text-muted-foreground">
+      <figcaption className="text-center text-sm text-muted-foreground">
         A menor polígono, mejor estado.
       </figcaption>
     </figure>

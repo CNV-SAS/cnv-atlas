@@ -15,16 +15,23 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // LO QUE ESTE CANDADO AFIRMA hoy son dos cosas cerradas:
 //   1. AF e IR NO estan en esta tabla. Estan en el Nivel III de Wang, con su referencia, su Δ y su
 //      veredicto, exactamente como el los tiene. Estaban en las DOS por nuestra cuenta.
-//   2. La franja se rotula como el la rotula, y NO "Nivel II · Molecular": su Nivel II es una franja
-//      anterior con otras filas, y su comentario dice literalmente que estos indices no son componentes
-//      moleculares.
+//   2. La franja lleva DOS rotulos: "Nivel II · Molecular" arriba y la franja propia de los indices
+//      debajo. Los indices SI caen dentro del Nivel II.
 //
-// DOS PREGUNTAS ABIERTAS, CITADAS Y NO ASERTADAS (reporte del 2026-09-09, sin respuesta de Santiago):
-//   · IEHH. El lo tiene en el NIVEL II; nosotros solo aqui. No se retira: en nuestro Nivel II no existe,
-//     asi que quitarlo lo perderia. Falta decidir si se MUEVE.
-//   · EL ORDEN. El suyo cierra con EB-BIS -> IAE -> ISCM-BIS; el nuestro pone ISCM e IEHH antes.
-// Se dejan escritas aqui y no como asercion: un candado que fija lo que suponemos convierte la suposicion
-// en regla, y estas dos las tiene que contestar el.
+// ME EQUIVOQUE AQUI Y SE CORRIGE (2026-09-09). La primera version de este candado afirmaba lo contrario
+// (que los indices eran una seccion aparte) apoyandose en su comentario "indices compuestos, no
+// componentes moleculares". Ese comentario justifica la FRANJA PROPIA, no una salida del nivel: en su
+// tabla el Nivel II es la ultima franja de nivel y los indices van justo detras, sin ninguna franja que
+// los saque. Su HTML es PLANO (`NvH` es una fila mas del mismo `tbody`), asi que la estructura no
+// distingue las dos lecturas, y Gildardo pidio el encabezado porque se ve como un salto de tabla. Un
+// testimonio directo suyo manda sobre una inferencia nuestra.
+//
+// Y EL ORDEN YA NO ES UNA PREGUNTA ABIERTA: se adopto el suyo (punto 5e).
+//
+// QUEDA UNA SOLA ABIERTA, citada y no asertada: el IEHH. Su archivo lo tiene en las FILAS del Nivel II y
+// nosotros en esta franja, por pedido suyo. No se retira (en nuestro Nivel II no existe, asi que quitarlo
+// lo perderia); falta decidir si se mueve. Se deja escrita y sin asercion: un candado que fija lo que
+// suponemos convierte la suposicion en regla.
 
 const RESULTADOS = readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8");
 const MAPA = readFileSync("src/modules/diagnoses/data/composition-map.ts", "utf8");
@@ -79,18 +86,32 @@ describe("AF e IR viven en el Nivel III, no en la tabla de índices", () => {
 });
 
 describe("la franja se rotula como en su archivo", () => {
-  it("índices bioeléctricos integrados, NO Nivel II", () => {
-    // Rotularla "Nivel II · Molecular" (que fue lo que se pidió) diría dos cosas falsas: que estos índices
-    // son moleculares, y que el Nivel II aparece dos veces con contenidos distintos. Su comentario lo
-    // zanja: "índices compuestos, no componentes moleculares".
-    expect(RESULTADOS).toContain("Índices bioeléctricos integrados · ANI BIS-E");
-    // SIN COMENTARIOS: el comentario que explica por que NO se rotula "Nivel II · Molecular" contiene esa
-    // cadena, asi que la asercion se cazaba a si misma y se ponia roja por la prosa.
+  it("el nivel arriba y la franja propia debajo, en ese orden", () => {
+    // LAS DOS, y el orden importa: el nivel situa la tabla en la jerarquia de Wang y la franja propia
+    // diferencia los indices de los componentes moleculares que quedaron en la otra tabla.
     const limpio = sinComentarios(RESULTADOS);
     const bloque = limpio.slice(limpio.indexOf("Indicadores ANI-BIS-E"));
-    expect(bloque.slice(0, 1500), "la franja se rotuló como un nivel de Wang").not.toContain(
-      "Nivel II",
-    );
+    const iNivel = bloque.indexOf("Nivel II · Molecular");
+    const iFranja = bloque.indexOf("Índices bioeléctricos integrados · ANI BIS-E");
+    expect(iNivel, "falta el encabezado de nivel sobre la tabla de índices").toBeGreaterThan(-1);
+    expect(iFranja, "falta la franja propia de los índices").toBeGreaterThan(-1);
+    expect(iNivel, "la franja propia quedó por encima del nivel").toBeLessThan(iFranja);
+  });
+
+  it("y el orden de los índices es el de su archivo", () => {
+    // Se DERIVA de su franja, no se escribe aqui. El IEHH es nuestro (pedido suyo) y no esta en la suya:
+    // se descuenta para comparar, en vez de excluirlo con una lista escrita a mano que envejeceria.
+    const suyos = indicesDeSuArchivo().map((c) => (c === "EB-BIS" ? "EB" : c === "ISCM-BIS" ? "ISCM" : c));
+    const nuestros = nuestrosIndices().filter((c) => c !== "IEHH");
+    expect(nuestros, "el orden de los índices dejó de ser el de su archivo").toEqual(suyos);
+  });
+
+  it("y los rótulos EB-BIS e ISCM-BIS son de DISPLAY, no la clave del motor", () => {
+    // Si el renombre hubiera tocado `code`, `sevByCode` y `clasesPorCodigo` dejarian de encontrar la fila
+    // y saldria sin veredicto y sin punto, sin que nada fallara. Por eso el rotulo va aparte.
+    const limpio = sinComentarios(RESULTADOS);
+    expect(limpio).toContain('{ code: "EB", label: "EB-BIS", key: "eb" }');
+    expect(limpio).toContain('{ code: "ISCM", label: "ISCM-BIS", key: "iscm" }');
   });
 
   it("y su Nivel II sigue siendo el molecular, con sus propias filas", () => {

@@ -87,9 +87,14 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     } satisfies PatientListItem;
   });
 
-  // Orden alfabetico por apellido y nombre, para una lista estable y legible.
+  // Orden alfabetico POR EL NOMBRE COMO SE MUESTRA ("nombre apellido"), no por apellido (2026-09-09).
+  //
+  // Ordenaba por "apellido nombre" mientras la lista pinta "nombre apellido", asi que se veia desordenada:
+  // ordenaba por algo que no esta a la vista (lo cazo Santiago). La vista tiene ademas su propio orden
+  // (conmutador A-Z / evaluacion reciente); esto es la base estable con la que llega, y las dos tienen que
+  // decir lo mismo: dos ordenes distintos en dos capas es como se consigue que la lista salte al hidratar.
   items.sort((a, b) =>
-    `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "es"),
+    `${a.firstName} ${a.lastName}`.trim().localeCompare(`${b.firstName} ${b.lastName}`.trim(), "es"),
   );
   return items;
 }
