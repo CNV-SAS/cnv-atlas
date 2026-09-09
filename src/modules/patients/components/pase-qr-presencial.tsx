@@ -41,9 +41,16 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
   const [estado, setEstado] = useState<EstadoSesion | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
   const [agotado, setAgotado] = useState(false);
+  // EL PASE ANULADO, por token y no por booleano: asi un pase nuevo se distingue solo del anulado y no
+  // hace falta acordarse de limpiar la bandera. Antes el boton llamaba a la accion y no cambiaba nada en
+  // pantalla: el pase seguia ahi, el sondeo seguia corriendo, y como no habia respuesta visible se podia
+  // pulsar una y otra vez (en el smoke quedaron CUATRO eventos de anulacion del mismo pase).
+  const [tokenAnulado, setTokenAnulado] = useState<string | null>(null);
+  const [anulando, setAnulando] = useState(false);
   const [origen] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const desde = useRef<number>(0);
 
+  const anulado = sesion.token !== null && sesion.token === tokenAnulado;
   const url = sesion.token ? `${origen}/consentimiento/${sesion.token}` : null;
 
   const sondear = useCallback(async (sessionId: string) => {
@@ -75,7 +82,11 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
       setEstado(e);
       // ESTADOS TERMINALES: se deja de preguntar. Confirmada la recoge el padre; discrepancia y
       // abandonada no van a cambiar solas.
-      if (e.estado === "confirmada" || e.estado === "discrepancia" || e.estado === "abandonada") {
+      if (
+        e.estado === "confirmada" ||
+        e.estado === "discrepancia" ||
+        e.estado === "abandonada"
+      ) {
         clearInterval(id);
         if (e.estado === "confirmada") onConfirmado(sesion.sessionId!, e);
       }
@@ -86,7 +97,9 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
     };
   }, [sesion.sessionId, sondear, onConfirmado]);
 
-  if (!sesion.token) {
+  // Sin pase, o con el pase anulado: se vuelve a ofrecer el boton de emitir. El anulado deja su aviso
+  // encima, para que el profesional vea que la anulacion SI ocurrio.
+  if (!sesion.token || anulado) {
     return (
       <form onSubmit={enviarSinReset(emitir)}>
         <input type="hidden" name="documentType" value={documentType} />
@@ -100,6 +113,11 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
               lo hagas tú desde este dispositivo.
             </p>
           </div>
+          {anulado ? (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              Ese pase quedó anulado: el código anterior ya no sirve. Genera uno nuevo cuando quieras.
+            </p>
+          ) : null}
           {sesion.error ? (
             <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {sesion.error}
@@ -138,9 +156,19 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
         <Button
           type="button"
           variant="outline"
-          onClick={() => sesion.sessionId && void abandonarSesionQrAction(sesion.sessionId)}
+          disabled={anulando}
+          onClick={async () => {
+            if (!sesion.sessionId || !sesion.token) return;
+            setAnulando(true);
+            // SE ESPERA LA RESPUESTA antes de dar el pase por anulado. Marcarlo en pantalla sin esperar
+            // diria que el codigo ya no sirve cuando podria seguir sirviendo, que es peor que no decir
+            // nada: el profesional se iria creyendo que lo cerro.
+            const r = await abandonarSesionQrAction(sesion.sessionId);
+            setAnulando(false);
+            if (!r.error) setTokenAnulado(sesion.token);
+          }}
         >
-          Cancelar este pase
+          {anulando ? "Anulando..." : "Anular este pase"}
         </Button>
       </div>
     </section>
