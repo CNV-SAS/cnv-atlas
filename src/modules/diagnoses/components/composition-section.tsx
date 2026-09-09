@@ -72,8 +72,15 @@ export function CompositionSection({
   // esto salia dos veces, casi con el mismo texto. En Diagnostico se usa suelto, asi que ahi si va.
   showTitle = true,
   soloAlterados = false,
+  pesoMetaKg = null,
 }: {
   composition: Composition;
+  /**
+   * Meta de peso acordada (kg). Enciende la columna "A peso meta", que es una SIMULACION:
+   * se calcula al leer, NO se escribe en ninguna parte y NO viaja al snapshot ni al PDF.
+   * null (lo normal) = la columna no existe. Ver el bloque de abajo.
+   */
+  pesoMetaKg?: number | null;
   sexoM?: boolean;
   classifications?: Classifications;
   // Severidad por codigo (del motor) para colorear el semaforo de FFMI/AF/FMI/IR en la columna Diagnostico.
@@ -89,7 +96,36 @@ export function CompositionSection({
   /** Historia clinica: muestra SOLO las filas con clasificacion alterada (sev >= 1). */
   soloAlterados?: boolean;
 }) {
-  const colCount = showDiagnosis ? 5 : 4;
+  // ═══ LA COLUMNA "A PESO META" (reunion con Gildardo, 2026-09-10) ═══
+  //
+  // QUE ES: lo que el peso seria si se alcanzara la meta, y cuanto falta. SU ARCHIVO LA TIENE en esta
+  // misma fila (v8 del 13 de agosto, linea 7482): un input de meta en la columna de Referencia y, en la Δ,
+  // `difCell(pesoActual, pesoMeta, true)`.
+  //
+  // QUE SE PORTA Y QUE NO. Se porta el NUMERO y su convencion de signo. NO se porta el input: en su
+  // archivo la meta se teclea DENTRO de la tabla, y eso mete un dato de ENTRADA en una tabla de
+  // RESULTADOS. En Atlas la meta se fija en Antropometria y aqui solo se LEE.
+  //
+  // EL SIGNO ES EL SUYO, verificado en su `difCell` (linea 7153): `d = valor - ref`, la MISMA convencion
+  // que las demas deltas de la tabla. Un paciente de 80,4 con meta 75 da **+5,4**, no -5,4. Su archivo
+  // resuelve la ambiguedad con el COLOR (invierte el semaforo en esta fila, positivo = rojo); nosotros no
+  // podemos, porque el color clinico esta reservado para lo emitido y esta columna es una simulacion. Lo
+  // resuelve el rotulo.
+  //
+  // NO SE ESCRIBE NUNCA. El snapshot es inmutable y sus referencias se sellaron con el peso MEDIDO;
+  // recalcular con el peso meta es computar FUERA del snapshot, como `simularConCienciaDeHoy`. Por eso va
+  // separada por un hairline y con el encabezado en cursiva: si se ve igual que las selladas, se lee
+  // igual, y el profesional daria por emitido algo que no lo es.
+  // El peso MEDIDO sale del mismo mapa que la tabla, no de una segunda fuente: se lee de las DOS
+  // disposiciones porque la fila de Peso vive en la de evaluacion y esta columna se pinta en las dos.
+  const pesoActual =
+    [...composition.diag, ...composition.eval]
+      .flatMap((l) => l.rows)
+      .find((r) => r.key === "peso")?.value ?? null;
+  // SOLO SI HAY META **Y** HAY PESO: sin uno de los dos la columna sale vacia, y una columna vacia invita
+  // a preguntarse que falta.
+  const conMeta = pesoMetaKg != null && pesoMetaKg > 0 && pesoActual != null;
+  const colCount = (showDiagnosis ? 5 : 4) + (conMeta ? 1 : 0);
   // Disposicion segun el proposito de la tabla: Diagnostico muestra lo clasificado; Evaluacion lo medido y
   // crudo (con el bioelectrico repartido en su nivel). Las dos vienen listas del mapa, sin filtrar aqui.
   const activeLevels = showDiagnosis ? composition.diag : composition.eval;
@@ -185,6 +221,17 @@ export function CompositionSection({
   // FUENTE UNICA por fila: Referencia + Δ + Diagnostico salen de wangRowDx (capa de display), NO se escriben
   // a mano al lado del clasificador (ese desajuste dejaba celdas vacias, ver leccion). UNICA excepcion: FMI,
   // que manda el MOTOR (rango 3-6, no el 6-9 del display): su ref/Δ/clase vienen de `references`/`classifications`.
+  // LA DIFERENCIA, CON SU CONVENCION: `valor - referencia`, igual que `difCell` en su archivo y que las
+  // demas deltas de esta tabla. Por encima de la meta da POSITIVO. Es contraintuitivo leido como "lo que
+  // hay que bajar", y aun asi es lo correcto: dos signos distintos en la misma tabla es peor que uno que
+  // el rotulo explica.
+  function diferenciaAMeta(actual: number | null | undefined, meta: number | null): string {
+    if (actual == null || meta == null) return "—";
+    const d = Math.round((actual - meta) * 10) / 10;
+    if (Math.abs(d) < 0.05) return "en la meta";
+    return `${d > 0 ? "+" : ""}${fmt(d, 1)}`;
+  }
+
   function renderRow(r: CompositionRow) {
     const dec = r.decimals ?? 2;
     const isFmi = r.key === "FMI";
@@ -264,6 +311,24 @@ export function CompositionSection({
           ) : null}
         </td>
         <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">{deltaText}</td>
+        {/* SIN PUNTO DE COLOR, a diferencia de su archivo: el color clinico es de lo emitido, y ponerselo
+            a una simulacion es exactamente confundirlas. En la fila de Peso lleva la meta y la distancia;
+            en las demas, una raya: la columna existe para UNA fila y dejar el resto en blanco haria dudar
+            de si falta el dato. */}
+        {conMeta ? (
+          <td className="border-l border-border py-1.5 pl-4 pr-4 text-right tabular-nums text-muted-foreground">
+            {r.key === "peso" ? (
+              <>
+                {fmt(pesoMetaKg, 1)}{" "}
+                <span className="text-foreground">
+                  ({diferenciaAMeta(pesoActual, pesoMetaKg)})
+                </span>
+              </>
+            ) : (
+              "—"
+            )}
+          </td>
+        ) : null}
         {showDiagnosis ? <td className="py-1.5">{dxNode}</td> : null}
       </tr>
     );
@@ -288,6 +353,15 @@ export function CompositionSection({
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
                 <th className="py-2 pr-4 text-right font-medium">Δ</th>
+                {/* HAIRLINE + CURSIVA: la separacion dice "esto es otra cosa", que es lo que el rotulo
+                    solo no consigue. El texto del encabezado lleva el signo explicado, porque sin eso un
+                    "+5,4" se lee como "le sobran" o "le faltan" segun quien mire. */}
+                {conMeta ? (
+                  <th className="border-l border-border py-2 pl-4 pr-4 text-right font-medium italic normal-case tracking-normal">
+                    A peso meta{" "}
+                    <span className="font-normal">(+ = por encima)</span>
+                  </th>
+                ) : null}
                 {showDiagnosis ? <th className="py-2 font-medium">Diagnóstico</th> : null}
               </tr>
             </thead>
