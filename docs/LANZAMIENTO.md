@@ -37,23 +37,52 @@ IMPIDEN atender y pasaron a ser **exposición viva**, porque ya se está atendie
 3 tienen diagnóstico**. Los otros 54 no tienen nada sellado. Todavía no ha salido **ningún** reporte al
 paciente. La ventana para cerrar gates sin daño acumulado sigue abierta, pero no por mucho.
 
-### Lo urgente, por orden
+### ⛔ BLOQUE "ANTES DEL PRIMER INTEGRANTE" · las tres van juntas
 
-1. **MFA · FECHA LIMITE: SE ENCIENDE ANTES DE DAR EL PRIMER ACCESO A UN INTEGRANTE.**
-   Esa es la condicion, y esta escrita aqui para que no dependa de que alguien se acuerde. Santiago lo
-   aplaza porque hoy nadie externo tiene acceso, y eso es cierto y razonable. **Lo que NO puede aplazarlo
-   es el MFA por correo**: es una mejora, y mientras se construye habria 59 pacientes reales sin segundo
-   factor. Si el correo llega a tiempo, se encienden juntos; si no, se enciende el TOTP y el correo entra
-   despues. Ver el dimensionamiento en `BACKLOG.md`. La relajación
-   (`src/modules/auth/mfa-relaxation.ts`) se diseñó para ser inerte en producción, y su garantía era, en
-   sus palabras: *"PRODUCCION -que apunta a OTRA base de Supabase- NUNCA coincide"*. **Esa premisa la
-   invalidó la junta**: al saltarse el Hito 2 no hay dos proyectos, y la nube que era pruebas es
-   producción. Se activa si `ATLAS_MFA_RELAXED` (en Vercel) es igual a `NEXT_PUBLIC_SUPABASE_URL`.
-   **Comprobarlo y borrar la variable.** La relajación solo PAUSA: al quitarla, todas las cuentas caen al
-   enrolamiento en el siguiente login, ninguna quedó exenta.
-2. **Gate 15 · Supabase Pro con PITR y backups externos.** Sin PITR, un `UPDATE` mal hecho sobre datos
-   clínicos reales no se recupera. Ver la nota del gate: **Pro y PITR no son la misma compra.**
-3. **Gates 17 y 18 · legales.** Eran los que IMPEDÍAN atender. Ya se atiende, así que ahora son exposición
+**La condición, y está escrita aquí para que no dependa de que alguien se acuerde: estas tres se cierran
+ANTES de dar el primer acceso a un Integrante.** Santiago las aplaza hasta ese momento y es defendible:
+hoy nadie externo entra. Lo que no es defendible es dar un acceso con alguna de las tres abierta.
+
+| | Qué | Estado |
+|---|---|---|
+| 1 | **MFA encendido** (TOTP) | Es borrar una variable de Vercel |
+| 2 | **Supabase Pro contratado** | 25 USD/mes |
+| 3 | **Dump externo funcionando** y con una restauración probada | Unas horas de trabajo |
+
+**1 · MFA.** La relajación (`src/modules/auth/mfa-relaxation.ts`) se diseñó para ser inerte en producción,
+y su garantía era, textual: *"PRODUCCION -que apunta a OTRA base de Supabase- NUNCA coincide"*. **Esa
+premisa la invalidó la junta** al saltarse el Hito 2: no hay dos proyectos, y la nube que era pruebas es
+producción. Se activa si `ATLAS_MFA_RELAXED` (en Vercel) es igual a `NEXT_PUBLIC_SUPABASE_URL`;
+**comprobarlo y borrar la variable, y redesplegar** (las variables no se recargan solas). La relajación
+solo PAUSA: al quitarla, todas las cuentas caen al enrolamiento en el siguiente login, ninguna quedó
+exenta.
+**El TOTP va primero y el MFA por correo entra DESPUÉS**, como alternativa y no como método por defecto:
+esperar al correo dejaría a los pacientes reales sin segundo factor durante todo el desarrollo. Tamaño y
+la razón de seguridad, en `BACKLOG.md`.
+
+**2 y 3 · Backups. LAS CIFRAS, VERIFICADAS el 2026-09-09, para que la decisión no haya que rehacerla:**
+
+- **Pro: 25 USD/mes.** Incluye backups **diarios con 7 días** de retención.
+- **PITR: 100 USD/mes por cada 7 días** de ventana, **más un add-on de cómputo Small obligatorio**. Unos
+  **130 USD/mes** en total.
+- **Al activar PITR, Supabase DEJA DE HACER los backups diarios. No se suman, se reemplazan.**
+- **PITR está EXCLUIDO del spend cap: cobra aunque el tope esté activado.** Es la que más fácil se
+  redescubre por la vía cara.
+
+**LA DECISIÓN: Pro sí, PITR NO por ahora.** Y la condición que la cambia, escrita para no relitigarla:
+
+> **PITR entra cuando perder una jornada de trabajo clínico cueste más que su precio.**
+
+Hoy no lo cuesta: hay 6 diagnósticos y ningún reporte enviado. El día que haya consulta diaria, sí.
+
+**El dump externo va igual, con PITR o sin él**, porque cubre lo único que **ni el backup nativo ni el
+PITR** cubren: perder el proyecto o la cuenta. Los dos viven **dentro** de Supabase. Detalle y tamaño en
+`BACKLOG.md`; su existencia entra además en `DATA_GOVERNANCE.md`, porque es una copia de datos de salud
+fuera del procesador declarado.
+
+### Lo demás, por orden
+
+1. **Gates 17 y 18 · legales.** Eran los que IMPEDÍAN atender. Ya se atiende, así que ahora son exposición
    abierta. Arrancan en paralelo, no dependen de escribir código.
 
 ### Lo que cambió de naturaleza
@@ -238,9 +267,14 @@ paciente. La ventana para cerrar gates sin daño acumulado sigue abierta, pero n
 14. **P0 — presentación de la edad biológica** (Gildardo decidió, 2026-08-01). Verificación concreta, no una intención: **el reporte del paciente NO contiene la cifra de EB-BIS, ni la de IAE, ni la expresión "edad biológica".** Parte 1 HECHA (EB/IAE fuera del reporte + marca de calibración provisional para el profesional), con test que lo ancla (`report-render.test.ts`). Resta la Parte 2 (cambio en tres bandas desde la 2ª medición). `GILDARDO_QUERIES.md`.
 15. **Supabase Pro + PITR** y backups externos. **URGENTE desde el 2026-09-09: ya hay datos clínicos
     reales.** `BACKLOG.md` / `DEPLOY.md`.
-    - **Pro y PITR NO son la misma compra, y este documento lo daba a entender.** El plan Pro incluye
-      backups **diarios con 7 días** de retención; el **PITR es un añadido que se cobra aparte** y exige
-      estar en Pro. Confirmar precios vigentes en la página de Supabase antes de presupuestar: cambian.
+    - **Pro y PITR NO son la misma compra, y este documento lo daba a entender.** Cifras VERIFICADAS el
+      2026-09-09: Pro **25 USD/mes** con backups diarios y 7 días de retención; **PITR 100 USD/mes por
+      cada 7 días** de ventana **más un add-on de cómputo Small obligatorio** (unos 130 en total).
+      **Dos cosas que no sabíamos y que conviene no redescubrir:** al activar PITR, Supabase **deja de
+      hacer los backups diarios** (se reemplazan, no se suman), y **PITR está excluido del spend cap**,
+      así que cobra aunque el tope esté activado.
+    - **Decidido el 2026-09-09: Pro sí, PITR no por ahora.** La condición que lo cambia:
+      **PITR entra cuando perder una jornada de trabajo clínico cueste más que su precio.**
     - **Qué cubre cada cosa:** el backup diario recupera hasta el día anterior, o sea que se pierde hasta
       una jornada de trabajo clínico, y solo hay 7 días de historia (una corrupción que se nota al octavo
       día ya no se puede deshacer). El **PITR** recupera a cualquier segundo dentro de su ventana, que es

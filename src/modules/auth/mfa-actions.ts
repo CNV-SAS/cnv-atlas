@@ -8,6 +8,23 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { mfaCodeSchema, type AuthFormState } from "./validations";
 
+// ═══ SI ALGUN DIA SE AÑADE EL SEGUNDO FACTOR POR CORREO, LEER ESTO PRIMERO (2026-09-09) ═══
+//
+// Esta decidido que el correo entra como ALTERNATIVA, no como metodo por defecto, y la razon no es de
+// comodidad: **un segundo factor por correo es MAS DEBIL que un autenticador, porque el correo suele ser
+// TAMBIEN el canal de recuperacion de la contraseña.** Quien controla el correo puede pedir el
+// restablecimiento Y recibir el codigo: el segundo factor deja de ser un segundo factor y se convierte en
+// una segunda copia del primero.
+//
+// De ahi el orden acordado: el TOTP se enciende primero (ver LANZAMIENTO.md, bloque "antes del primer
+// Integrante") y el correo se ofrece despues, para quien no pueda usar un autenticador.
+//
+// Y UN DETALLE TECNICO QUE HAY QUE RESOLVER ANTES DE ESCRIBIR CODIGO: Supabase NO ofrece "correo" como
+// tipo de factor (su API acepta `totp` y `phone`; el correo con codigo de GoTrue es un metodo de INICIO
+// DE SESION, no un segundo factor sobre una sesion ya autenticada). Asi que la sesion no puede subir a
+// `aal2` por esa via, y hay que decidir DONDE se registra que el segundo factor se supero, de forma que
+// no se pueda falsificar desde el cliente. Eso toca SECURITY.md. El dimensionamiento vive en BACKLOG.md.
+//
 // Inicia el registro de un factor TOTP. El factor nace en estado 'unverified';
 // solo se activa cuando verifyMfaEnrollAction confirma un codigo. Limpia factores
 // TOTP sin verificar previos para que un enroll abandonado no bloquee el siguiente.

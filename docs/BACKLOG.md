@@ -85,11 +85,19 @@ autenticador, no como el metodo por defecto.
 
 **El gate 15 vive en `LANZAMIENTO.md`; esto es el detalle del trabajo.**
 
-**Lo verificado:** Supabase Pro incluye backups **diarios con 7 dias** de retencion. El **PITR es un
-add-on que se cobra aparte** y exige estar en Pro; se factura por ventana de retencion (a mayor ventana,
-mayor precio), y la ventana mas corta es la mas barata. **Los precios cambian: confirmarlos en su pagina
-antes de decidir.** No los escribo aqui porque una cifra escrita a mano en un doc envejece sin avisar, y
-esta es de las que se citan en una decision de presupuesto.
+**Lo verificado (cifras confirmadas por Santiago el 2026-09-09):** Pro **25 USD/mes**, con backups
+**diarios y 7 dias** de retencion. **PITR: 100 USD/mes por cada 7 dias** de ventana, **mas un add-on de
+computo Small obligatorio**; unos **130 USD/mes** en total.
+
+**Y DOS COSAS QUE NO SABIAMOS, que son las que cambian el analisis:**
+- **Al activar PITR, Supabase DEJA DE HACER los backups diarios.** No se suman: se reemplazan. Asi que
+  contratar PITR no es "lo de antes mas esto", es cambiar un mecanismo por otro.
+- **PITR esta EXCLUIDO del spend cap.** Cobra aunque el tope de gasto este activado. Es la que mas facil
+  se redescubre por la via cara.
+
+**DECIDIDO: Pro si, PITR no por ahora**, y la condicion que lo cambia queda escrita para no relitigarla:
+**PITR entra cuando perder una jornada de trabajo clinico cueste mas que su precio.** Hoy no lo cuesta
+(6 diagnosticos, ningun reporte enviado); el dia que haya consulta diaria, si.
 
 **La diferencia concreta, que es lo que hay que poner delante de la decision:**
 - Con backup diario, **un error a las 3 de la tarde cuesta TODA la jornada clinica**: se restaura al
