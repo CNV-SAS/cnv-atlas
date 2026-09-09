@@ -13,6 +13,7 @@ import {
   confirmarSesionPresencial,
   crearSesionPresencial,
   leerEstadoSesion,
+  sesionEnCursoDelProfesional,
   type EstadoSesion,
 } from "./data/sesion-presencial";
 import { DECLARACION_PRESENCIAL_VERSION } from "./text/declaracion-presencial";
@@ -79,6 +80,14 @@ export async function estadoSesionQrAction(sessionId: string): Promise<EstadoSes
   if (!canCreatePatientPresencial(user)) return null;
   // La lectura va por RLS: si la sesion no es suya, no sale nada.
   return leerEstadoSesion(sessionId);
+}
+
+// RECUPERA la sesion en curso tras una recarga. Sin esto, el profesional que recarga pierde de vista un
+// consentimiento YA confirmado y tendria que repetirlo con el paciente delante.
+export async function sesionEnCursoAction(): Promise<EstadoSesion | null> {
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return null;
+  return sesionEnCursoDelProfesional();
 }
 
 export async function abandonarSesionQrAction(sessionId: string): Promise<{ error: string | null }> {

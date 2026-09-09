@@ -198,6 +198,10 @@ export const presencialConsentSessions = pgTable(
     // sistema" (dictamen). Misma politica que en clinical_audit_log: tecnico/auditoria, solo admin.
     patientIp: inet("patient_ip"),
     patientUserAgent: text("patient_user_agent"),
+    /** IP desde la que el profesional EMITIO el pase, para poder contrastarla con la del paciente. */
+    professionalIp: inet("professional_ip"),
+    /** Las dos IP coincidieron. SEÑAL para revisar, nunca bloqueo: una clinica con wifi las iguala. */
+    mismoOrigen: boolean("mismo_origen"),
     estado: text("estado").notNull().default("emitida"),
     /** Acota el QR SIN ESCANEAR. Corta a proposito: un token visible en pantalla no debe vivir mucho. */
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),

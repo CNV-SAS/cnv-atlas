@@ -8,6 +8,7 @@ import {
   abandonarSesionQrAction,
   emitirSesionQrAction,
   estadoSesionQrAction,
+  sesionEnCursoAction,
   type SesionQrState,
 } from "@/modules/consent/actions.qr";
 import type { EstadoSesion } from "@/modules/consent/data/sesion-presencial";
@@ -47,10 +48,31 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
   // pulsar una y otra vez (en el smoke quedaron CUATRO eventos de anulacion del mismo pase).
   const [tokenAnulado, setTokenAnulado] = useState<string | null>(null);
   const [anulando, setAnulando] = useState(false);
+  // RECUPERADA DEL SERVIDOR tras una recarga. El id de la sesion vivia SOLO aqui, asi que recargar lo
+  // borraba y la pantalla volvia a pedir un documento. Con el paciente ya confirmado eso significa perder
+  // un consentimiento que YA se dio y repetirlo con la persona delante, que es lo peor de esta pieza.
+  const [recuperada, setRecuperada] = useState<EstadoSesion | null>(null);
+  const [buscandoEnCurso, setBuscandoEnCurso] = useState(true);
   const [origen] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const desde = useRef<number>(0);
 
+  useEffect(() => {
+    let vivo = true;
+    void sesionEnCursoAction()
+      .then((e) => {
+        if (vivo && e) setRecuperada(e);
+      })
+      .finally(() => {
+        if (vivo) setBuscandoEnCurso(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
   const anulado = sesion.token !== null && sesion.token === tokenAnulado;
+  // Lo que se muestra: el sondeo si esta activo, y si no lo recuperado del servidor.
+  const visible = estado ?? recuperada;
   const url = sesion.token ? `${origen}/consentimiento/${sesion.token}` : null;
 
   const sondear = useCallback(async (sessionId: string) => {
@@ -99,6 +121,26 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
 
   // Sin pase, o con el pase anulado: se vuelve a ofrecer el boton de emitir. El anulado deja su aviso
   // encima, para que el profesional vea que la anulacion SI ocurrio.
+  // Una sesion recuperada manda sobre la pantalla de emitir: si hay algo en curso, lo primero es
+  // enseñarlo, no ofrecer empezar otro pase encima.
+  if (!sesion.token && (buscandoEnCurso || recuperada)) {
+    return (
+      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
+        {buscandoEnCurso ? (
+          <p className="text-sm text-muted-foreground">Buscando si tienes un pase en curso...</p>
+        ) : (
+          <>
+            <h2 className="text-sm font-semibold text-foreground">Tienes un pase en curso</h2>
+            <Espera estado={recuperada} fallo={null} agotado={false} />
+            <Button type="button" variant="outline" onClick={() => setRecuperada(null)} className="self-start">
+              Descartar y empezar otro
+            </Button>
+          </>
+        )}
+      </section>
+    );
+  }
+
   if (!sesion.token || anulado) {
     return (
       <form onSubmit={enviarSinReset(emitir)}>
@@ -150,7 +192,7 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
         <code className="break-all text-xs text-foreground">{url}</code>
       </div>
 
-      <Espera estado={estado} fallo={fallo} agotado={agotado} />
+      <Espera estado={visible} fallo={fallo} agotado={agotado} />
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -210,6 +252,32 @@ function Espera({
       </div>
     );
   }
+  if (estado?.estado === "confirmada") {
+    // LA RAMA QUE FALTABA. El sondeo detectaba el estado, pero `confirmada` no tenia pantalla: como
+    // `openedAt` ya estaba puesto, caia en "esperando a que lea y confirme" y no cambiaba NADA. El
+    // paciente veia "listo" en su telefono y el profesional seguia leyendo "esperando".
+    return (
+      <div className="flex flex-col gap-2 rounded-md border border-clinical-optimal/50 bg-clinical-optimal/10 px-3 py-3 text-sm">
+        <p className="font-medium text-foreground">El paciente autorizó</p>
+        <p className="text-foreground">
+          {estado.declaradoNombres} {estado.declaradoApellidos} · {estado.declaradoDocumentNumber}
+        </p>
+        {/* LA DISTANCIA ENTRE ABRIR Y CONFIRMAR, a la vista y no enterrada en la base: es lo que el
+            dictamen pide poder mirar ("un consentimiento aceptado cuatro segundos despues de abrirse es
+            dificil de defender como informado"). Se enseña el dato, sin veredicto: quien juzga si fue
+            poco es una persona, no la pantalla. */}
+        {estado.segundosDeLectura !== null ? (
+          <p className="text-muted-foreground">
+            Estuvo {formatoDuracion(estado.segundosDeLectura)} entre abrir el documento y autorizar.
+          </p>
+        ) : null}
+        <p className="text-muted-foreground">
+          Falta tu declaración para crear el paciente y la evaluación. Ese paso todavía no está
+          construido: no cierres esta pantalla.
+        </p>
+      </div>
+    );
+  }
   if (estado?.openedAt) {
     return (
       <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
@@ -224,4 +292,15 @@ function Espera({
       {fallo ? <span className="block text-xs">{fallo}</span> : null}
     </p>
   );
+}
+
+// Segundos a algo legible. Se dice el dato, no un juicio: "2 minutos" o "8 segundos", y quien decide si
+// eso basta para llamarlo informado es una persona.
+function formatoDuracion(segundos: number): string {
+  if (segundos < 60) return `${segundos} segundo${segundos === 1 ? "" : "s"}`;
+  const min = Math.floor(segundos / 60);
+  const resto = segundos % 60;
+  return resto === 0
+    ? `${min} minuto${min === 1 ? "" : "s"}`
+    : `${min} minuto${min === 1 ? "" : "s"} y ${resto} segundo${resto === 1 ? "" : "s"}`;
 }
