@@ -236,7 +236,17 @@ export function EntradaEvaluacion({
                 pantalla. Abierta de entrada resuelve la causa real (no verla la primera vez) y deja
                 plegarla despues. */}
             <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
-              <CompositionSection composition={composition} showDiagnosis={false} showTitle={false} />
+              {/* LA COLUMNA "A peso meta" TAMBIEN AQUI, y aqui es donde su razon aplica de verdad: el
+                  peso meta se FIJA en esta pantalla, dos bloques mas abajo, y lo que el pidio es no tener
+                  que recordar de que peso parte. En Diagnostico se LEE el resultado; aqui se DECIDE.
+                  Es el mismo componente, asi que son las mismas garantias: se calcula al leer, no escribe
+                  nada, no lleva color clinico y no viaja al documento. */}
+              <CompositionSection
+                composition={composition}
+                showDiagnosis={false}
+                showTitle={false}
+                pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
+              />
             </DetailsSection>
           </div>
         ) : !identityConfirmed || !bisImportEval ? (

@@ -5,7 +5,7 @@ import { startTransition, useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useFormToast } from "@/components/shared/use-form-toast";
+import { useFormToast, useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import type { CompositionCorrections } from "@/modules/diagnoses/data/composition-map";
 
 import {
@@ -197,7 +197,9 @@ function MedidasDelProfesional({
   sellada: boolean;
 }) {
   const [state, guardar, pending] = useActionState(saveMedidasProfesionalAction, EMPTY);
-  useFormToast(state);
+  // POR LOS DOS LADOS, como en el resumen de IA: la accion revalida y la pantalla pide el arbol. Con uno
+  // solo, el arreglo se nota en la siguiente navegacion y no al guardar, que es cuando se mira.
+  useFormToastAndRefresh(state);
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
