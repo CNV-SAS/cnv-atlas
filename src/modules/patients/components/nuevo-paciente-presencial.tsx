@@ -127,12 +127,34 @@ export function NuevoPacientePresencial() {
               tu pantalla.
             </p>
             <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
-              Necesita un teléfono propio con datos móviles. Que lo haga desde
-              su dispositivo es lo que sostiene esta vía: si lo haces tú desde
-              esta pantalla, deja de probar que fue él. Si no tiene teléfono,
-              hoy no hay otra forma; el consentimiento en papel está
-              dimensionado y aún no construido.
+              Necesita un teléfono con datos móviles. Que lo haga desde ese dispositivo es lo que
+              sostiene esta vía: si lo haces tú desde esta pantalla, deja de probar que fue él.
             </p>
+            {/* QUE HACER CUANDO NO HAY NINGUNA VIA. Antes decia que el papel "esta dimensionado y aun no
+                construido": honesto, y completamente inaccionable. Lo que el profesional necesita saber es
+                que puede hacer HOY, con el paciente delante. Y las dos salidas son reales: el telefono no
+                tiene que ser suyo, y si de verdad no hay ninguno, lo que NO puede hacer es seguir. */}
+            <details className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-medium text-foreground">
+                ¿Y si no tiene teléfono?
+              </summary>
+              <div className="mt-2 flex flex-col gap-2 text-muted-foreground">
+                <p>
+                  <strong className="text-foreground">Sirve el de un acompañante.</strong> No tiene que
+                  ser suyo: lo que importa es que no sea este dispositivo. Que lo escanee el familiar y
+                  que <strong className="text-foreground">escriba y marque el paciente</strong>, en ese
+                  teléfono.
+                </p>
+                <p>
+                  <strong className="text-foreground">
+                    Y si no hay ninguno, no se puede continuar hoy.
+                  </strong>{" "}
+                  No hay forma de tomar el consentimiento en esta pantalla sin invalidarlo. Cítalo con un
+                  correo, o con alguien que lo acompañe. El consentimiento en papel está previsto y
+                  todavía no existe, así que no es una alternativa que puedas usar ahora.
+                </p>
+              </div>
+            </details>
           </div>
           <PaseQrPresencial
             documentType={documento.documentType ?? "CC"}
