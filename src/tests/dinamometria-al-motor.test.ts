@@ -102,8 +102,11 @@ describe("las versiones subieron: sin eso, la reemisión del 12b no puede dispar
     const m = /export const ENGINE_VERSION = "([^"]+)"/.exec(VERSION);
     expect(m, "no se encuentra ENGINE_VERSION").not.toBeNull();
     expect(m![1]).not.toBe(PREVIA_A_LA_DINAMOMETRIA);
-    // Y que siga siendo una version del motor, no cualquier cadena.
-    expect(m![1]).toMatch(/^anibise-\d+\.\d+\.\d+$/);
+    // FORMATO AJUSTADO (2026-09-09), no la asercion: el motor se renombro a semver de TRES SIN PREFIJO
+    // ("anibise-1.4.0" -> "1.0.0"), asi que el patron con `anibise-` se puso rojo por la FORMA y no por la
+    // regla. Lo que el caso afirma (que la version subio respecto de la de la dinamometria, y que sigue
+    // siendo una version y no cualquier cadena) es exactamente lo mismo. Ver `docs/VERSIONES.md`.
+    expect(m![1]).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it("y el conjunto de protocolo también, porque el fenotipo alimenta la prescripción", () => {
@@ -118,7 +121,8 @@ describe("las versiones subieron: sin eso, la reemisión del 12b no puede dispar
     const m = /PROTOCOL_ENGINE_VERSION = "([^"]+)"/.exec(VERSION);
     expect(m, "no se encuentra PROTOCOL_ENGINE_VERSION").not.toBeNull();
     expect(m![1]).not.toBe(PREVIA_A_LA_DINAMOMETRIA);
-    // Y que siga siendo una version de protocolo, no cualquier cadena.
-    expect(m![1]).toMatch(/^anibise-protocolo-/);
+    // Mismo ajuste de FORMATO que el del motor (2026-09-09): el conjunto de protocolo dejo de fecharse y
+    // pasa a semver de tres. La asercion no cambia.
+    expect(m![1]).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });

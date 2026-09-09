@@ -76,7 +76,25 @@
 //    Y AL REGENERAR se corrigieron solos los TRES comentarios que describian el interruptor como
 //    apagado: viven dentro del `newSlice`, asi que se rehacen cuando cambia el codigo que corre. Antes
 //    no se tocaron a proposito, porque moverlos solos habria cambiado el SHA sin cambiar una cifra.
-export const ENGINE_VERSION = "anibise-1.4.0";
+// ═══ 1.0.0: LA PRIMERA VERSION OFICIAL (2026-09-09) ═══
+//
+// QUE ES ESTE CAMBIO Y QUE NO ES. Es un RENOMBRE de frontera, no un cambio de ciencia: no se movio una
+// sola cifra al hacerlo. Lo que hasta hoy se llamo `anibise-1.4.0` se llama `1.0.0` de aqui en adelante.
+// El historial de arriba NO se borra: cada bump que trajo el motor hasta aqui sigue escrito, y la
+// correspondencia entre los nombres viejos y este vive en `docs/VERSIONES.md`.
+//
+// POR QUE AHORA: la junta se salto el Hito 2 y hay pacientes reales en produccion. Gildardo pidio que
+// todo quedara en la primera version oficial.
+//
+// LO QUE NO SE PUEDE HACER, y por eso esto es un renombre HACIA ADELANTE y no una reescritura: el sello
+// dice CON QUE SE CALCULO. Los diagnosticos ya emitidos conservan `anibise-1.4.0` en su snapshot, y tiene
+// que ser asi: reetiquetarlos haria que un diagnostico de agosto afirme que salio del motor de hoy.
+//
+// EL FORMATO, y por que se retira el prefijo: el campo ya se llama `engine_version`, asi que `anibise-`
+// dentro del VALOR solo obligaba a parsear para comparar. Tres numeros (no dos ni cuatro): con dos no se
+// puede corregir un decimal sin anunciar cambio de ciencia. Y nunca fechas: `2026-09-04` no ordena contra
+// `1.4.0` y no dice si el cambio fue de fondo o de forma.
+export const ENGINE_VERSION = "1.0.0";
 
 // Version del CONJUNTO DE PROTOCOLO (motorProtocolo + cadena calorica + clasificador de fenotipo).
 // Versiona aparte de ENGINE_VERSION porque es un conjunto de artefactos distinto. Se sella en cada
@@ -111,7 +129,12 @@ export const ENGINE_VERSION = "anibise-1.4.0";
 //     actual) y el piso pasa a aplicar a todos.
 //   · DESNUTRICION y SARCOPENIA separadas, por FFMI y ASMI en vez de por IMC y un OR.
 // Todo el contenido sellado en protocol_suggested cambia; por eso sube.
-export const PROTOCOL_ENGINE_VERSION = "anibise-protocolo-2026-09-04";
+// 1.0.0 (2026-09-09): el MISMO renombre de frontera que `ENGINE_VERSION` (ver alli el porque completo).
+// Lo que hasta hoy se llamo `anibise-protocolo-2026-09-04` se llama `1.0.0`. NO cambia ningun artefacto:
+// los SHA de abajo son los mismos, y el candado de version lo comprueba. Aqui el cambio de formato tiene
+// ademas una razon propia: la fecha no ordena, asi que "esta version es posterior a aquella" no se podia
+// responder comparando las dos cadenas.
+export const PROTOCOL_ENGINE_VERSION = "1.0.0";
 
 // Candado de version: SHA-256 POR ARCHIVO de los artefactos que producen el protocolo. Un test
 // (protocol-version-lock.test.ts) recomputa y compara; si alguno cambia, FALLA y NOMBRA cual, para
