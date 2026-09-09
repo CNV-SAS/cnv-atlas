@@ -589,7 +589,23 @@ export async function reopenProtocolAction(
   };
 }
 
-export async function approveProtocolAction(
+/**
+ * "ENTREGADO EN CONSULTA": el acto que sella la prescripcion cuando el plan se entrega EN MANO
+ * (2026-09-09).
+ *
+ * POR QUE HACE FALTA UNA SEGUNDA VIA. Al mover el sello al envio, quedaba un hueco real y verificado: el
+ * plan imprimible se arma del protocolo COMPUTADO, no del aprobado (`getPlanPaciente` pide
+ * `protocolSuggested`), asi que hoy se puede imprimir y entregar un plan sin que nadie lo haya sellado. Si
+ * el profesional nunca envia el reporte, el paciente se fue con un papel que nadie asumio.
+ *
+ * Y POR QUE UN BOTON Y NO LA IMPRESION. Imprimir es LEER: se imprime para revisar, y se imprime dos veces
+ * porque salio torcida. Convertir una lectura en una firma es lo contrario de lo que un acto clinico debe
+ * ser. Entregar SI es un acto, y por eso se declara.
+ *
+ * SELLA EXACTAMENTE LO MISMO QUE EL ENVIO, con la via registrada: `entrega_en_consulta` frente a `envio`.
+ * Las dos no son lo mismo si alguien pregunta despues.
+ */
+export async function marcarEntregadoEnConsultaAction(
   _prev: TreatmentActionState,
   form: FormData,
 ): Promise<TreatmentActionState> {
@@ -599,21 +615,27 @@ export async function approveProtocolAction(
   const parsed = approveProtocolSchema.safeParse({
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
   });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
-  }
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
 
-  const result = await approveProtocol(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
+  const result = await approveProtocol(
+    parsed.data,
+    { actorId: user.id, actorEmail: user.email, ...(await actor()) },
+    "entrega_en_consulta",
+  );
   if (!result.ok) return fail(result.error.message);
 
-  // NO REVALIDA: el refresco lo hace el cliente tras disparar el aviso (useFormToastAndRefresh). Un
-  // revalidate aqui arrastra la pagina al inicio y desmonta el form antes de que el aviso se vea.
-  return { error: null, success: "Protocolo aprobado.", warning: null };
+  return {
+    error: null,
+    success: "Entrega registrada. La prescripción queda sellada tal como está.",
+    warning: null,
+  };
 }
+
+// `approveProtocolAction` SE RETIRO (2026-09-09). Era la accion del boton "Aprobar la prescripcion", y ya
+// no existe un acto suelto de aprobar: la prescripcion se sella al EMITIR. Las dos vias son
+// `marcarEntregadoEnConsultaAction` (de aqui arriba) y el envio del reporte, que llama a `approveProtocol`
+// directamente en su servicio. Se retira en vez de dejarla: una accion sin pantalla es la tercera forma de
+// cable suelto, y `check:cables` la habria marcado.
 
 // Genera el menu por IA desde los objetivos guardados del protocolo (barrera PII en el
 // service). Rate limit por usuario: cada generacion es una llamada externa paga.

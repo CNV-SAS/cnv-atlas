@@ -5,6 +5,7 @@ import { sendReportEmail } from "@/lib/email/resend";
 
 import { formatDate } from "@/lib/format/date";
 import { getProtocolApprovalState } from "@/modules/treatment/data/treatment-reader";
+import { approveProtocol } from "@/modules/treatment/services/treatment-service";
 
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
@@ -64,16 +65,32 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
   // EL REENVIO NO PASA POR AQUI, a proposito: `resendReport` reenvia el archivo que ya salio de la
   // clinica. Un paciente que ya tiene su plan no puede quedarse sin poder recibirlo otra vez porque hoy
   // pidamos una firma que cuando se emitio no existia.
+  // EL ENVIO ES LA APROBACION (2026-09-09, propuesta de Santiago). Antes esto EXIGIA la aprobacion previa
+  // y mandaba al profesional a otra pestaña a pulsar un boton; ahora la hace aqui, en el mismo acto.
+  //
+  // POR QUE ES EL SITIO CORRECTO Y NO UN ATAJO: la razon de la regla no cambia, y sigue escrita arriba
+  // (un plan emitido desde el borrador no es RECONSTRUIBLE, porque los `adj_*` se pueden mover despues y
+  // nadie sabra que recibio el paciente). Lo que cambia es QUIEN dispara el sello: aprobar dejaba de ser
+  // un acto y era un tramite previo, y enviar SI es un acto (a partir de aqui el paciente tiene el plan).
+  // Al unirlos, emitir sin prescripcion sellada pasa de estar desaconsejado a ser IMPOSIBLE.
+  //
+  // SE APRUEBA ANTES DE ARMAR EL PLAN, y el orden importa: el plan se lee EN VIVO del protocolo, asi que
+  // tiene que leerse del ya congelado. Si fallara la aprobacion, no se envia nada.
   const protocolo = await getProtocolApprovalState(dispatch.evaluationId);
   if (protocolo && !protocolo.approved) {
-    return err(
-      appError(
-        "conflict",
-        "Antes de enviarlo hay que aprobar la prescripción: el paciente recibe su plan en este reporte, y " +
-          "una prescripción en borrador se puede seguir editando después de que él la reciba. Ve a la " +
-          "pestaña Tratamiento, subpestaña Nutricionista, y usa “Aprobar la prescripción” al final.",
-      ),
+    const aprobado = await approveProtocol(
+      { evaluationId: dispatch.evaluationId },
+      { actorId: input.actorId, actorEmail: input.actorEmail, ip: input.ip },
+      "envio",
     );
+    if (!aprobado.ok) {
+      return err(
+        appError(
+          "conflict",
+          `No se pudo sellar la prescripción, así que el reporte no se envió: ${aprobado.error.message}`,
+        ),
+      );
+    }
   }
 
   // EL PLAN DEL PACIENTE (Gildardo §7.1: "el paciente recibe el plan completo"). Se arma AQUI, no se

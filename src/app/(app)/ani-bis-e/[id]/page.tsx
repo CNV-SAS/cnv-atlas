@@ -711,7 +711,11 @@ export default async function ResultadosEvaluacionPage({
   // inventario. locked = diagnostico sin confirmar o protocolo aprobado (inmutable).
   const canPrescribeNutraceuticals =
     actorProfession.isProfessional && actorProfession.profession === "nutricionista";
-  const nutraLocked = !protocol?.diagnosisConfirmed || Boolean(protocol?.approved);
+  // SOLO LA APROBACION CIERRA (2026-09-09). Decia `!diagnosisConfirmed || approved`, y ese OR se habria
+  // vuelto SIEMPRE cierto al mover la confirmacion al momento de emitir: la ventana entre confirmar y
+  // aprobar pasa a durar cero, asi que la decision de nutraceuticos habria quedado bloqueada para siempre
+  // sin que nada diera error. Es el mismo hallazgo que en la seccion de despacho.
+  const nutraLocked = Boolean(protocol?.approved);
 
   // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
@@ -877,6 +881,8 @@ export default async function ResultadosEvaluacionPage({
                       plan={planPaciente}
                       paciente={hcHeader?.paciente ?? "Paciente"}
                       fecha={formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString())}
+                      evaluationId={id}
+                      aprobada={Boolean(protocol?.approved)}
                     />
                   ) : null
                 }

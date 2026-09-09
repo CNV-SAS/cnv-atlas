@@ -19,6 +19,10 @@ vi.mock("@/modules/reports/data/plan-paciente-reader", () => ({
 // EL GATE DE EMISION (2026-09-01): el protocolo tiene que estar aprobado para que el reporte salga. Se
 // mockea aprobado por defecto, y hay un caso propio abajo para el borrador: si no se mockeara, TODOS los
 // casos de orquestacion se caerian por el gate y el test diria que el orden de los pasos esta mal.
+// EL SERVICIO DE TRATAMIENTO, mockeado desde el 2026-09-09: enviar ya no EXIGE la aprobacion, la HACE.
+vi.mock("@/modules/treatment/services/treatment-service", () => ({
+  approveProtocol: vi.fn(async () => ({ ok: true, value: undefined })),
+}));
 vi.mock("@/modules/treatment/data/treatment-reader", () => ({
   getProtocolApprovalState: vi.fn(async () => ({ approved: true })),
 }));
@@ -38,6 +42,7 @@ const storage = await import("@/modules/reports/data/report-storage");
 const email = await import("@/lib/email/resend");
 const writer = await import("@/modules/reports/data/reports-writer");
 const treatmentReader = await import("@/modules/treatment/data/treatment-reader");
+const treatmentService = await import("@/modules/treatment/services/treatment-service");
 const { sendReport, resendReport } = await import("@/modules/reports/services/send-report");
 
 function dispatch(over: Partial<ReportDispatch> = {}): ReportDispatch {
@@ -178,18 +183,33 @@ describe("gate de emision: el protocolo aprobado", () => {
       .mockResolvedValue({ approved: true });
   });
 
-  it("con la prescripcion en BORRADOR no se envia, y NO se toca nada externo", async () => {
-    // Lo que mas importa del caso: no basta con que devuelva error. Si el PDF se hubiera subido o el
-    // correo hubiera salido, el gate llegaria tarde.
+  it("con la prescripcion en BORRADOR, ENVIAR LA APRUEBA, y por la via 'envio'", async () => {
+    // ALCANCE INVERTIDO (2026-09-09), y la regla que protege es la MISMA. Antes esto exigia la aprobacion
+    // previa y mandaba al profesional a otra pestaña; ahora el envio la hace. Lo que se blinda sigue
+    // siendo que NO SE EMITE UN PLAN SIN SELLAR: antes por rechazo, ahora porque es imposible que salga
+    // sin que el sello ocurra primero.
     vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValueOnce({ approved: false });
     const r = await sendReport(baseInput());
+    expect(r.ok).toBe(true);
+    expect(treatmentService.approveProtocol).toHaveBeenCalledWith(
+      expect.objectContaining({ evaluationId: expect.any(String) }),
+      expect.anything(),
+      "envio",
+    );
+  });
+
+  it("y si el sellado FALLA, no se envia nada", async () => {
+    // Es la mitad que hace segura la inversion: si aprobar fallara y el envio siguiera, el paciente
+    // recibiria un plan armado de una prescripcion todavia editable. No basta con devolver error: hay que
+    // comprobar que no se toco nada externo.
+    vi.mocked(treatmentReader.getProtocolApprovalState).mockResolvedValueOnce({ approved: false });
+    vi.mocked(treatmentService.approveProtocol).mockResolvedValueOnce({
+      ok: false,
+      error: { code: "conflict", message: "no se pudo" },
+    } as Awaited<ReturnType<typeof treatmentService.approveProtocol>>);
+    const r = await sendReport(baseInput());
     expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.error.code).toBe("conflict");
-      // EL MENSAJE TIENE QUE SER UTIL: que hacer y donde, no un error generico.
-      expect(r.error.message).toContain("aprobar la prescripción");
-      expect(r.error.message).toContain("Tratamiento");
-    }
+    if (!r.ok) expect(r.error.code).toBe("conflict");
     expect(storage.uploadReportPdf).not.toHaveBeenCalled();
     expect(email.sendReportEmail).not.toHaveBeenCalled();
     expect(writer.markReportSent).not.toHaveBeenCalled();

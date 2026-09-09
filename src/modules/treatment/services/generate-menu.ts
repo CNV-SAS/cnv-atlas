@@ -65,11 +65,8 @@ export async function generateMenu(
   // menu persiste una sugerencia). Ver require-profession.ts.
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(
-      appError("conflict", "El diagnóstico debe estar confirmado antes de generar el menu."),
-    );
-  }
+  // SIN GATE DE CONFIRMACION (2026-09-09), igual que el resto de la prescripcion: que `protocol` exista
+  // significa que hay diagnostico.
   // El objetivo YA NO es un input manual (checkpoint 2, colapso de los dos objetivos): sale de la CADENA
   // CALORICA, fuente unica. Se recomputa el efectivo con los ajustes del profesional sobre el snapshot
   // sellado, la MISMA funcion que sella la aprobacion. La cadena SIEMPRE produce un objetivo (kcalObj =

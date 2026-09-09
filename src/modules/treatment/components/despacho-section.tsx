@@ -28,9 +28,16 @@ export async function DespachoSection({
   evaluationId: string;
   protocol: TreatmentProtocol;
 }) {
-  // La entrega es un acto posterior a la prescripcion, que exige diagnostico confirmado (regla de las
-  // escrituras de tratamiento). Antes de eso no hay nada que entregar.
-  if (!protocol.diagnosisConfirmed) return null;
+  // LA ENTREGA CUELGA DE LA APROBACION, no de la confirmacion del diagnostico (2026-09-09).
+  //
+  // Y ESTE ES EL SITIO DONDE EL CAMBIO HABRIA ROTO ALGO EN SILENCIO. Antes: se confirmaba a mano, y entre
+  // la confirmacion y la aprobacion habia una ventana donde se entregaba. Ahora la confirmacion ocurre AL
+  // EMITIR, o sea en el mismo acto que la aprobacion: esa ventana tiene duracion CERO, asi que un gate
+  // por `diagnosisConfirmed` habria dejado la entrega inalcanzable para siempre, sin dar ningun error.
+  //
+  // El gate correcto es el que dice la propia frase de antes: la entrega es un acto POSTERIOR a la
+  // prescripcion. Se entrega lo que se prescribio, y lo prescrito es lo aprobado.
+  if (!protocol.approved) return null;
 
   // Entregables = prescritos que son en_consultorio, sin duplicados por producto.
   const availById = new Map(protocol.catalog.map((c) => [c.id, c.commercialAvailability]));

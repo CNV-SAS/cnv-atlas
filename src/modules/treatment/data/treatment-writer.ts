@@ -123,7 +123,7 @@ export type SaveRestriccionesWrite = {
 // sobreescritura produce un plan que ignora una alergia. Lock de la fila + recompute de la firma bajo lock.
 export async function saveRestricciones(input: SaveRestriccionesWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ restr: treatments.restricciones })
@@ -179,7 +179,7 @@ export type SaveObjetivoWrite = {
 // Camino propio con candado, como las demas secciones editables.
 export async function saveObjetivo(input: SaveObjetivoWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ obj: treatments.objetivoTexto })
@@ -221,7 +221,7 @@ export type SaveIntercambioWrite = {
 // candado (rechaza si otro profesional lo cambio). El baseSignature "" corresponde a null (nunca guardado).
 export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ inter: treatments.intercambioPorciones })
@@ -284,7 +284,7 @@ export type SaveNutraDecisionWrite = {
 // audit log; no hay trabajo que se pueda perder.
 export async function saveNutraDecision(input: SaveNutraDecisionWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx
       .update(treatments)
       .set({
@@ -339,7 +339,7 @@ export type SaveTiemposActivosWrite = {
 // panel lo detecta comparando estos activos contra `tiempos.base.activos` (el aviso de desfase).
 export async function saveTiemposActivos(input: SaveTiemposActivosWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ a: treatments.tiemposActivos })
@@ -384,7 +384,7 @@ export type SaveMenuSemanalWrite = {
 // de render (si no, el menu cambiaria al recargar).
 export async function saveMenuSemanal(input: SaveMenuSemanalWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ m: treatments.menuSemanal })
@@ -431,7 +431,7 @@ export type SaveTiemposWrite = {
 // demas; REEMPLAZA EN BLOQUE. baseSignature "" corresponde a null (nunca guardado).
 export async function saveTiempos(input: SaveTiemposWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ t: treatments.tiempos })
@@ -474,7 +474,7 @@ export type SaveNutraceuticalsWrite = {
 // fila + recompute de la firma bajo el lock + rechazo si difiere).
 export async function saveNutraceuticals(input: SaveNutraceuticalsWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     await tx.execute(sql`set local lock_timeout = '3s'`);
     const [locked] = await tx
       .select({ id: treatments.id })
@@ -536,7 +536,7 @@ export type AddNoteWrite = {
 // Agrega una nota clinica al tratamiento (append-only) con audit inline.
 export async function addTreatmentNote(input: AddNoteWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertConfirmedDiagnosis(tx, input.treatmentId);
+    await assertDiagnosisExists(tx, input.treatmentId);
     const [note] = await tx
       .insert(treatmentNotes)
       .values({ treatmentId: input.treatmentId, note: input.note, profession: input.profession })
@@ -899,22 +899,29 @@ async function assertDraft(
   }
 }
 
-// Gate clinico compartido: el protocolo solo se edita sobre un diagnostico confirmado.
-// Une treatment -> diagnosis y verifica confirmed_at. Lanza si falta o no esta confirmado.
-async function assertConfirmedDiagnosis(
+// Gate clinico compartido: el protocolo solo se edita sobre un diagnostico que EXISTE.
+//
+// ANTES EXIGIA `confirmed_at` (2026-09-09, cambio pedido por Gildardo y razonado por Santiago). El
+// argumento que lo sostiene: **el diagnostico es del MODELO, no del profesional.** Nadie firma el
+// resultado del motor; lo que si se firma es haber prescrito sobre el. Exigir una confirmacion manual
+// antes de dejar prescribir ponia una firma en el sitio equivocado y bloqueaba el trabajo.
+//
+// LA CONFIRMACION NO DESAPARECE: se recoge donde hay un acto de verdad, al emitir (enviar el reporte o
+// declarar la entrega en consulta). Ver `reports-writer.ts`, que ya la sellaba asi desde antes para quien
+// no la hubiera hecho a mano.
+//
+// EL GATE QUE QUEDA SIGUE SIENDO REAL: sin diagnostico no hay protocolo que editar, y el join lo
+// comprueba. Un tratamiento huerfano no existe (el pipeline los crea juntos), pero el dia que algo lo
+// intente, esto lo para.
+async function assertDiagnosisExists(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   treatmentId: string,
 ): Promise<void> {
   const [row] = await tx
-    .select({ confirmedAt: diagnoses.confirmedAt })
+    .select({ id: diagnoses.id })
     .from(treatments)
     .innerJoin(diagnoses, eq(treatments.diagnosisId, diagnoses.id))
     .where(eq(treatments.id, treatmentId))
     .limit(1);
   if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
-  if (!row.confirmedAt) {
-    throw new TreatmentStateError(
-      "El diagnóstico debe estar confirmado (aprueba el reporte) antes de editar el protocolo.",
-    );
-  }
 }

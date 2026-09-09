@@ -41,7 +41,6 @@ import {
 
 import {
   aplicarCambioMenuAction,
-  approveProtocolAction,
   aplicarCambiosMenuAction,
   reopenProtocolAction,
   generateMenuAction,
@@ -1073,8 +1072,9 @@ export function TreatmentPanel({
   // Bloqueado para editar si el diagnostico no esta confirmado O si el protocolo YA se aprobo (la
   // prescripcion aprobada es inmutable: el trigger de BD la congela; sin este candado el campo se veria
   // editable y el guardado chocaria contra el trigger). Se distinguen para dar el mensaje correcto.
-  const diagnosisPending = !protocol.diagnosisConfirmed;
-  const locked = diagnosisPending || protocol.approved;
+  // SIN BLOQUEO POR DIAGNOSTICO SIN CONFIRMAR (2026-09-09). Lo unico que cierra el protocolo es que la
+  // prescripcion este APROBADA, que es cuando se emitio. Ver `treatment-writer.ts`.
+  const locked = protocol.approved;
   // Restricciones del MODELO (salida del motor, selladas write-once). Un tratamiento anterior al snapshot
   // no las tiene: lista vacia, no aviso.
   const snapRestricciones = protocol.protocolSuggested?.restricciones ?? [];
@@ -1101,13 +1101,9 @@ export function TreatmentPanel({
         <CardTitle>Protocolo de tratamiento</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {diagnosisPending ? (
-          <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-            El protocolo esta bloqueado porque el diagnostico aun no esta confirmado. Confirmalo en la
-            pestana Diagnostico (el boton de confirmar esta al final de esa pagina); al confirmarlo se
-            habilita editar y aprobar el tratamiento.
-          </p>
-        ) : protocol.approved ? (
+        {/* SE RETIRA EL AVISO DE "diagnostico sin confirmar" (2026-09-09): el protocolo ya no se bloquea
+            por eso. Ver `treatment-writer.ts` para el porque. */}
+        {protocol.approved ? (
           <ProtocoloAprobado evaluationId={evaluationId} protocol={protocol} />
         ) : null}
 
@@ -1314,10 +1310,16 @@ export function TreatmentPanel({
         />
         <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
         <NotesSection protocol={protocol} />
-        {/* APROBAR VA AL FINAL, y no es estetico: es el acto que CIERRA la consulta. Todo lo de arriba se
-            edita; esto lo sella. Un boton de sellar arriba invita a pulsarlo antes de leer lo que sella. */}
-        {!protocol.approved && !diagnosisPending ? (
-          <AprobarProtocolo evaluationId={evaluationId} protocol={protocol} />
+        {/* EL BOTON DE APROBAR SE RETIRA (2026-09-09, peticion de Gildardo). La prescripcion se sella
+            cuando se EMITE, que es donde hay un acto de verdad: al enviar el reporte al paciente o al
+            declarar que se entrego en consulta. Los dos sellan lo mismo y registran POR CUAL VIA.
+            Aqui queda el aviso de que todavia no se emitio, que es informacion y no un mando. */}
+        {!protocol.approved ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+            La prescripción está en borrador. Se sella al emitirla, desde{" "}
+            <span className="font-medium text-foreground">Reporte / HC</span>: al enviársela al paciente o
+            al registrar que se la entregaste en consulta.
+          </p>
         ) : null}
       </CardContent>
     </Card>
@@ -1338,43 +1340,10 @@ export function TreatmentPanel({
 // "¿seguro?" pide una confirmacion, no una razon. Aqui la salvaguarda no es un paso mas, es que el acto
 // se puede DESHACER (reabrir, con motivo, que queda en la historia). Lo que si lleva es decir ANTES de
 // pulsar que es lo que va a pasar.
-function AprobarProtocolo({
-  evaluationId,
-  protocol,
-}: {
-  evaluationId: string;
-  protocol: TreatmentProtocol;
-}) {
-  const [state, formAction, pending] = useActionState(approveProtocolAction, EMPTY);
-  useFormToastAndRefresh(state);
-  // Sin sugerido no hay nada que sellar, y el servicio lo rechaza. Se dice aqui para que el profesional
-  // no descubra el gate con un error: un guard correcto mal expuesto se siente como defecto.
-  const sinSugerido = !protocol.protocolSuggested;
-
-  return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted px-3 py-3">
-      <h3 className="text-sm font-medium">Aprobar la prescripción</h3>
-      <p className="text-sm text-muted-foreground">
-        Al aprobar, la prescripción queda sellada tal como está y deja de ser editable. Es la que se
-        registra en la historia clínica y la que recibe el paciente en su plan. Si después necesitas
-        cambiarla, puedes reabrirla escribiendo el motivo.
-      </p>
-      {sinSugerido ? (
-        <p className="text-sm text-clinical-warning">
-          Todavía no se puede aprobar: esta evaluación no tiene la prescripción del modelo calculada, y no
-          se sella lo que nunca se computó.
-        </p>
-      ) : (
-        <form onSubmit={enviarSinReset(formAction)}>
-          <input type="hidden" name="evaluationId" value={evaluationId} />
-          <Button type="submit" size="sm" disabled={pending}>
-            {pending ? "Aprobando..." : "Aprobar la prescripción"}
-          </Button>
-        </form>
-      )}
-    </div>
-  );
-}
+// EL COMPONENTE `AprobarProtocolo` SE RETIRO (2026-09-09). Era el boton "Aprobar la prescripcion", y la
+// prescripcion ya no se sella con un boton propio: se sella al EMITIR, que es donde hay un acto de verdad.
+// Las dos vias son enviar el reporte al paciente y declarar la entrega en consulta, y las dos registran
+// por cual se aprobo. Ver `send-report.ts` y `entregado-en-consulta.tsx`.
 
 // Etiqueta y color del estado de una sugerencia de IA (accesible: etiqueta ademas de color).
 const MENU_STATUS: Record<string, { label: string; cls: string }> = {
