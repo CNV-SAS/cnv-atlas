@@ -177,7 +177,7 @@ export default async function HistoriaPacientePage({
                         <span className="text-xs text-muted-foreground">Cerrada</span>
                       ) : (
                         <Link
-                          href={`/evaluaciones/${e.evaluationId}`}
+                          href={`/ani-bis-e/${e.evaluationId}`}
                           className="font-semibold text-primary underline-offset-4 hover:underline"
                         >
                           Ver resultados

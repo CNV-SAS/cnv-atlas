@@ -87,7 +87,7 @@ export function CierreConsulta({
                   </span>
                   {p.etapa ? (
                     <a
-                      href={`/evaluaciones/${evaluationId}?etapa=${p.etapa}`}
+                      href={`/ani-bis-e/${evaluationId}?etapa=${p.etapa}`}
                       className="text-xs font-medium text-primary underline-offset-4 hover:underline"
                     >
                       Ir a resolverlo

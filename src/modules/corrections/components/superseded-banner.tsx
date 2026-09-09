@@ -12,7 +12,7 @@ export function SupersededBanner({ newEvaluationId }: { newEvaluationId: string 
         {newEvaluationId ? (
           <>
             {" "}
-            <Link href={`/evaluaciones/${newEvaluationId}`} className="font-semibold underline underline-offset-4">
+            <Link href={`/ani-bis-e/${newEvaluationId}`} className="font-semibold underline underline-offset-4">
               Ver la versión vigente
             </Link>
             .

@@ -45,23 +45,23 @@ const EVAL_ID = "a0000000-0000-4000-8000-0000000000a2";
 // BIS): caso de prueba de la pestana Evaluacion, rama sin diagnostico (el uso principal: revisar la
 // entrada antes de generar). Es de tipo SEGUIMIENTO, como la resolveria el flujo real por documento
 // (resolveIdentity: match de documento -> seguimiento); no dos "inicial" para el mismo paciente.
-// URL: /evaluaciones/a0000000-0000-4000-8000-0000000000a3
+// URL: /ani-bis-e/a0000000-0000-4000-8000-0000000000a3
 const EVAL_ID_NODIAG = "a0000000-0000-4000-8000-0000000000a3";
 // Paciente MUJER demo + evaluacion inicial in_progress SIN BIS: para el smoke del bloque femenino de
 // la captura BIS (embarazo/menstruacion/semana del ciclo) y del flujo de import limpio (aun sin
-// medicion). URL: /evaluaciones/a0000000-0000-4000-8000-0000000000c2
+// medicion). URL: /ani-bis-e/a0000000-0000-4000-8000-0000000000c2
 const FEMALE_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c1";
 const FEMALE_EVAL_ID = "a0000000-0000-4000-8000-0000000000c2";
 const FEMALE_DOC = "GOLDEN-FEM-01";
 const FEMALE_BIRTH = "1990-03-08";
 // Segunda mujer demo, LIMPIA para el smoke de A/B/C desde cero: inicial in_progress, SIN condiciones
-// guardadas, SIN BIS, SIN diagnostico. URL: /evaluaciones/a0000000-0000-4000-8000-0000000000c4
+// guardadas, SIN BIS, SIN diagnostico. URL: /ani-bis-e/a0000000-0000-4000-8000-0000000000c4
 const FEMALE2_PATIENT_ID = "a0000000-0000-4000-8000-0000000000c3";
 const FEMALE2_EVAL_ID = "a0000000-0000-4000-8000-0000000000c4";
 const FEMALE2_DOC = "GOLDEN-FEM-02";
 const FEMALE2_BIRTH = "1992-05-20";
 // Mujer COMPLETA con BIS ZM3 real + diagnostico: el primer caso femenino que corre por el PIPELINE
-// (ejercita los clasificadores sexo-especificos). Reusa la paciente c1. URL: /evaluaciones/...-c5
+// (ejercita los clasificadores sexo-especificos). Reusa la paciente c1. URL: /ani-bis-e/...-c5
 const FEMALE_COMPLETE_EVAL_ID = "a0000000-0000-4000-8000-0000000000c5";
 const DOC_NUMBER = "GOLDEN-0001";
 // DOB del donante real del BIS gold (~54 años): la edad alimenta EB-BIS/IAE, asi que debe

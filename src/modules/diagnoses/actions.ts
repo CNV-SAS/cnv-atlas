@@ -62,7 +62,7 @@ export async function confirmDiagnosisAction(
   });
   if (!result.ok) return fail(result.error.message);
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
   return { error: null, success: "Diagnóstico confirmado.", warning: null };
 }
 

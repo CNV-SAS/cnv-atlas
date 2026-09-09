@@ -232,7 +232,7 @@ export function EvaluationResults({
             Resultados de la evaluación
           </h2>
         {/* LA LINEA DE IDENTIDAD SE RETIRO (2026-09-03). Decia "nombre · documento · fecha", y la banda
-            de /evaluaciones/[id] -bajo la que se monta esta vista- ya dice los tres. Verificado dato por
+            de /ani-bis-e/[id] -bajo la que se monta esta vista- ya dice los tres. Verificado dato por
             dato antes de quitarla, que era la condicion: el nombre es el TITULO de la banda, el documento
             es uno de sus datos de cabecera, y la fecha resuelve igual en los dos (la de MEDICION, con
             caida a `created_at`), asi que en esta pantalla no puede diferir. */}

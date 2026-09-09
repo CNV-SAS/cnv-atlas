@@ -46,7 +46,7 @@ describe("formato de fechas puras", () => {
 // convierte zona. Se blinda para que nadie lo "unifique" con el helper de zona y le meta el defecto a un
 // documento que SALE DE LA CLINICA.
 const REPO = readFileSync("src/modules/reports/data/reports-repository.ts", "utf8");
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 
 describe("los consumidores de fechas puras", () => {
   it("el PDF del paciente NO convierte zona al fechar la cita", () => {

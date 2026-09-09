@@ -2,7 +2,7 @@ import { Panel } from "@/components/shared/panel";
 import type { CelularBadges } from "../data/celular-badges";
 
 // SIN RENDERIZAR desde el 2026-09-07 (cotejo punto 10): la pagina ya no lo monta. El porque y lo que se
-// pierde estan en el sitio donde iba (`evaluaciones/[id]/page.tsx`) y en DIVERGENCIAS.md. Se conserva el
+// pierde estan en el sitio donde iba (`ani-bis-e/[id]/page.tsx`) y en DIVERGENCIAS.md. Se conserva el
 // componente para que re-cablearlo sea una linea si Gildardo lo pide, no porque haya quedado suelto.
 //
 // Nivel III · Salud celular. VIVE EN DIAGNOSTICO desde 2026-08-23, por decision de Gildardo: hidratacion

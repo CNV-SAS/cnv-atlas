@@ -87,6 +87,26 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // PRIMERA REDIRECCION DEL PROYECTO (2026-09-10). `/evaluaciones` paso a llamarse `/ani-bis-e` cuando el
+  // item del sidebar dejo de ser "Evaluaciones" y paso a ser "Modelo ANI-BIS-E".
+  //
+  // POR QUE HACE FALTA aunque la ruta sea INTERNA (nada de lo que se comparte con un paciente pasaba por
+  // aqui: el QR y el enlace de reanudar van a `/encuesta/...`): los profesionales guardan marcadores y
+  // pegan enlaces de una evaluacion concreta en sus notas y en sus correos. Sin esto, todos esos enlaces
+  // dan 404, que es la forma cara de descubrir que una direccion cambio.
+  //
+  // LAS DOS FORMAS, y la segunda es la que se olvida: la ruta CON sufijo (`/evaluaciones/<id>?etapa=...`,
+  // que es la que de verdad se comparte) y la ruta PELADA (`/evaluaciones`, la bandeja, que es la que
+  // esta en los marcadores). `/:path*` NO cubre la pelada, asi que van las dos entradas.
+  //
+  // PERMANENTE (308): la direccion vieja no vuelve. Un 307 le diria al navegador y a los buscadores que
+  // esto es temporal y que sigan usando la vieja.
+  async redirects() {
+    return [
+      { source: "/evaluaciones", destination: "/ani-bis-e", permanent: true },
+      { source: "/evaluaciones/:path*", destination: "/ani-bis-e/:path*", permanent: true },
+    ];
+  },
   // Solo dev: localhost y 127.0.0.1 son ORIGENES DISTINTOS para el navegador; los enlaces de correo
   // (Mailpit) abren 127.0.0.1:3000 mientras el dev server suele visitarse por localhost, y Next bloquea
   // el HMR cruzado entre ambos ("Blocked cross-origin request ... /_next/webpack-hmr"). Permitir los dos

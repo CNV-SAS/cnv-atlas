@@ -3,6 +3,12 @@
 **Propósito:** mapa, a nivel de código, de todo lo que ve y opera el profesional, para pulir
 sobre estado real y decidir con evidencia qué ocultar/consolidar. Fecha: 2026-07-17.
 
+> **Renombres del 2026-09-10.** El item del sidebar "Evaluaciones" pasa a ser **"Modelo ANI-BIS-E"** y su
+> ruta pasa de `/evaluaciones` a `/ani-bis-e` (con redirección permanente desde la vieja, en
+> `next.config.ts`). "Pacientes" pasa a ser **"Administrador de Pacientes"**, conservando `/pacientes`.
+> En este documento las rutas ya están actualizadas; los documentos con fecha (los SMOKE_* y las entradas
+> históricas del BACKLOG) conservan la dirección que tenían el día que se escribieron.
+
 **Método:** el sidebar se arma en `src/components/layout/nav-config.ts` filtrando `NAV_ITEMS`
 por rol. Los items visibles para `professional` son exactamente seis (más las rutas de detalle
 que cuelgan de ellos). Cada fila se verificó leyendo la página y sus readers/policies.
@@ -12,10 +18,10 @@ que cuelgan de ellos). Cada fila se verificó leyendo la página y sus readers/p
 | Ruta | Estado | Cableado | Pendiente | Archivo |
 |---|---|---|---|---|
 | `/dashboard` (Tablero) | **Parcial** | Saludo con el nombre; landing del shell | Sin contenido real (widgets, pendientes, atajos) | `app/(app)/dashboard/page.tsx` |
-| `/pacientes` (Pacientes) | **Real** | Roster del profesional (RLS), edad, # evaluaciones, enlace a historia | — | `app/(app)/pacientes/page.tsx` |
+| `/pacientes` (Administrador de Pacientes) | **Real** | Roster del profesional (RLS), edad, # evaluaciones, enlace a historia | — | `app/(app)/pacientes/page.tsx` |
 | `/pacientes/[patientId]` | **Real** | Identidad, contacto, línea de tiempo de evaluaciones → resultados | — | `app/(app)/pacientes/[patientId]/page.tsx` |
-| `/evaluaciones` (Evaluaciones) | **Real** | Panel de trabajo: confirmar identidad, importar BIS, generar diagnóstico, aprobar/enviar reporte | — | `app/(app)/evaluaciones/page.tsx` |
-| `/evaluaciones/[id]` | **Real** | Vista de resultados (indicadores, DFI, Diana), tratamiento, comparación de seguimiento | — | `app/(app)/evaluaciones/[id]/page.tsx` |
+| `/ani-bis-e` (Modelo ANI-BIS-E) | **Real** | Panel de trabajo: confirmar identidad, importar BIS, generar diagnóstico, aprobar/enviar reporte | — | `app/(app)/ani-bis-e/page.tsx` |
+| `/ani-bis-e/[id]` | **Real** | Vista de resultados (indicadores, DFI, Diana), tratamiento, comparación de seguimiento | — | `app/(app)/ani-bis-e/[id]/page.tsx` |
 | `/reportes` (Reportes) | **Real** | Listado de reportes (RLS); aprobar/enviar/preview desde la tarjeta | — | `app/(app)/reportes/page.tsx` |
 | `/pagos` (Pagos) | **Real** | Crear checkout de nutracéuticos (link Wompi 24h) + historial de transacciones (RLS: las suyas) | — | `app/(app)/pagos/page.tsx` |
 | `/consentimiento` (Consentimiento vigente) | **Real** | Texto vigente de solo lectura (v1.5) | — | `app/(app)/consentimiento/page.tsx` |
@@ -41,8 +47,8 @@ una decisión de las superficies de **admin/dirección**, fuera del alcance de e
 - **`/dashboard` (Parcial):** es la única superficie del profesional sin contenido real. Candidata
   a enriquecer (pendientes del día, atajos a evaluaciones por confirmar, últimos pacientes). Es
   el rediseño de dashboard, explícitamente fuera de alcance de este bloque; se deja anotado.
-- **Solapamiento menor `/evaluaciones` ↔ `/reportes`:** los reportes con acción pendiente
-  aparecen tanto en el panel de `/evaluaciones` (como paso del flujo) como en `/reportes` (listado
+- **Solapamiento menor `/ani-bis-e` ↔ `/reportes`:** los reportes con acción pendiente
+  aparecen tanto en el panel de `/ani-bis-e` (como paso del flujo) como en `/reportes` (listado
   completo). Es intencional (contexto de trabajo vs. archivo), pero conviene tenerlo presente si
   a futuro se consolida la experiencia. No es duplicación de código.
 
@@ -56,13 +62,13 @@ para alimentar el motor**. El caso golden-path usa los valores reales anonimizad
 
 ---
 
-# Pestañas internas de `/evaluaciones/[id]` (inventario 2026-07-20)
+# Pestañas internas de `/ani-bis-e/[id]` (inventario 2026-07-20)
 
 **Propósito:** estado real de las otras tres pestañas de la vista de resultados, para planear el
-siguiente bloque sobre estado real. La fila `/evaluaciones/[id]` de arriba (Real) se refiere a la
+siguiente bloque sobre estado real. La fila `/ani-bis-e/[id]` de arriba (Real) se refiere a la
 vista como un todo; aquí se desglosan sus 4 pestañas internas (`EvaluationTabs`). **Diagnóstico**
 ya se cableó y se pulió (fidelidad visual, bloque cerrado); faltan **Evaluación, Tratamiento,
-Seguimiento**. Raíz: `src/app/(app)/evaluaciones/[id]/page.tsx`.
+Seguimiento**. Raíz: `src/app/(app)/ani-bis-e/[id]/page.tsx`.
 
 | Pestaña | Estado | Cableado | Falta / pendiente |
 |---|---|---|---|
@@ -70,18 +76,18 @@ Seguimiento**. Raíz: `src/app/(app)/evaluaciones/[id]/page.tsx`.
 | **Tratamiento** | **Real** (punta a punta, con gate) | `RutasSection` + `TreatmentPanel` + `ReportCard` | Pulido de ubicación/UX; el menú IA es borrador por diseño |
 | **Seguimiento** | **Parcial / condicional** | `FollowupComparison` (real) o `StagePlaceholder` si no hay previa | Placeholder en toda evaluación inicial; sin acciones propias; sin vista longitudinal rica |
 
-## Evaluación — placeholder; el trabajo real vive en `/evaluaciones` (panel sin id)
+## Evaluación — placeholder; el trabajo real vive en `/ani-bis-e` (panel sin id)
 
 - En `[id]/page.tsx` la prop `evaluacion` es SIEMPRE `StagePlaceholder` (`:64` sin diagnóstico,
   `:125` con diagnóstico). La vista `[id]` es de RESULTADOS (metadata "Resultados - Atlas", `:29`);
-  el estado vacío sin diagnóstico incluso enlaza a `/evaluaciones` para hacer el trabajo (`:82-91`).
+  el estado vacío sin diagnóstico incluso enlaza a `/ani-bis-e` para hacer el trabajo (`:82-91`).
 - El trabajo REAL de evaluación está cableado punta a punta en **otra ruta**,
-  `src/app/(app)/evaluaciones/page.tsx` (panel sin `[id]`), con 4 secciones: confirmar identidad
+  `src/app/(app)/ani-bis-e/page.tsx` (panel sin `[id]`), con 4 secciones: confirmar identidad
   (`identity-confirmation.tsx`, reader `listPendingIdentityChecks`, policy `canConfirmIdentity`),
   importar BIS (`BisImportForm`, `listEvaluationsForBisImport`), generar diagnóstico
   (`PipelineRunner`, `listEvaluationsForDiagnosis`, corre el motor real) y aprobar/enviar reportes
   (`ReportCard`, `listReports`).
-- **Relación:** `/evaluaciones` (panel) es el PRODUCTOR del flujo; `/evaluaciones/[id]` es el
+- **Relación:** `/ani-bis-e` (panel) es el PRODUCTOR del flujo; `/ani-bis-e/[id]` es el
   CONSUMIDOR de resultados. La pestaña Evaluación dentro de `[id]` es hoy 100% placeholder; la
   intención documentada (comentarios `page.tsx:31-32,119-120`) es "reubicar" el trabajo aquí en un
   bloque futuro.
@@ -102,7 +108,7 @@ Seguimiento**. Raíz: `src/app/(app)/evaluaciones/[id]/page.tsx`.
 - **Persiste:** guardar protocolo (`saveProtocolAction` → service → writer, revalida la ruta),
   notas append-only (`addNoteAction`), menú IA (`generateMenuAction`: rate-limit + barrera PII +
   `ai_menu_suggestions` inmutable, borrador informativo que NO se aplica al protocolo por diseño),
-  aprobar/enviar reporte (`reports/actions.ts`, revalida `/evaluaciones/[id]`). Policies
+  aprobar/enviar reporte (`reports/actions.ts`, revalida `/ani-bis-e/[id]`). Policies
   `canManageTreatment` / `canManageReports`.
 - **Falta:** poco funcional; pulido de ubicación/UX. Snapshots de era anterior del motor bloquean la
   generación de menú.
@@ -118,7 +124,7 @@ Seguimiento**. Raíz: `src/app/(app)/evaluaciones/[id]/page.tsx`.
   común), falta reporte/snapshot en alguna de las dos, o algún snapshot es de era anterior del motor
   (`!isEngineOutput`).
 - **Falta:** es solo lectura; emitir el link de una nueva evaluación de seguimiento vive en
-  `/evaluaciones` (`canEmitFollowupLink`), no aquí. La visualización longitudinal rica ya está en
+  `/ani-bis-e` (`canEmitFollowupLink`), no aquí. La visualización longitudinal rica ya está en
   `BACKLOG.md`. Para evaluaciones iniciales la pestaña es siempre placeholder.
 
 ## Lectura para planear el siguiente bloque

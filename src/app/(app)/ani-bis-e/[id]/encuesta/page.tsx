@@ -43,12 +43,12 @@ export default async function EncuestaEvaluacionPage({
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
-      {/* AL REVES QUE EN /evaluaciones/[id], y a proposito: alli el titulo es el PACIENTE porque se llega
+      {/* AL REVES QUE EN /ani-bis-e/[id], y a proposito: alli el titulo es el PACIENTE porque se llega
           desde el roster y lo primero que hay que confirmar es de quien es. Aqui se llega DESDE la
           evaluacion, con eso ya resuelto, asi que el titulo es lo que estas haciendo y el paciente baja a
           la descripcion, como confirmacion. */}
       <TituloPantalla
-        volver={<VolverA href={`/evaluaciones/${id}`}>Volver a la evaluación</VolverA>}
+        volver={<VolverA href={`/ani-bis-e/${id}`}>Volver a la evaluación</VolverA>}
         titulo="Encuesta del paciente"
         descripcion={`${header.patientName} · ${header.documentLabel} · ${formatDate(header.evaluationDate)}`}
       />
@@ -61,7 +61,7 @@ export default async function EncuestaEvaluacionPage({
               responder, complétalo en consulta).
             </p>
             <Link
-              href={`/evaluaciones/${id}/encuesta/editar`}
+              href={`/ani-bis-e/${id}/encuesta/editar`}
               className="inline-flex w-fit items-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
             >
               Editar respuestas
@@ -78,7 +78,7 @@ export default async function EncuestaEvaluacionPage({
             </p>
             {correctionAvailability.available ? (
               <Button asChild variant="outline" size="sm" className="w-fit">
-                <Link href={`/evaluaciones/${id}/corregir`}>Corregir la evaluación</Link>
+                <Link href={`/ani-bis-e/${id}/corregir`}>Corregir la evaluación</Link>
               </Button>
             ) : (
               <div className="flex flex-col gap-1">

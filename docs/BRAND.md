@@ -278,7 +278,7 @@ No es preferencia: **se deriva de qué hace el profesional con esa lista.**
 | **Compara** entre filas, N acotado | **Tabla densa** | Las columnas alineadas son lo que deja ver una trayectoria. Una línea concatenada la pierde |
 
 Clasificación actual: `/pacientes` **busca** (dos líneas); `/pacientes/[id]` **compara** (tabla, 2-20
-evaluaciones por paciente); `/evaluaciones` **busca**, y ya son filas agrupadas por estado.
+evaluaciones por paciente); `/ani-bis-e` **busca**, y ya son filas agrupadas por estado.
 
 **Corrección del 2026-08-28: "busca" no significa dos líneas SIEMPRE, significa dos líneas EN ESTRECHO.**
 La fila de dos líneas resuelve el teléfono, pero en 1900 píxeles deja la mitad derecha vacía y la lista se

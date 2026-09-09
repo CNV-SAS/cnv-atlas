@@ -46,7 +46,7 @@ export function CorrectionEntry({
       {availability.available ? (
         <div>
           <Button asChild variant="outline" size="sm">
-            <Link href={`/evaluaciones/${evaluationId}/corregir`}>Corregir la evaluación</Link>
+            <Link href={`/ani-bis-e/${evaluationId}/corregir`}>Corregir la evaluación</Link>
           </Button>
         </div>
       ) : (

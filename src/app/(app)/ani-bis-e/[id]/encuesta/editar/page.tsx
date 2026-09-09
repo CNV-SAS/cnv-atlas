@@ -28,9 +28,9 @@ export default async function EditarEncuestaPage({ params }: { params: Promise<{
   ]);
   if (!header) notFound();
   // Ya diagnosticada: no se edita directo, se corrige (version nueva).
-  if (results) redirect(`/evaluaciones/${id}/corregir`);
+  if (results) redirect(`/ani-bis-e/${id}/corregir`);
 
-  const backHref = `/evaluaciones/${id}/encuesta`;
+  const backHref = `/ani-bis-e/${id}/encuesta`;
 
   return (
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">

@@ -63,8 +63,8 @@ describe("B14: item de nav activo (gana el prefijo mas largo)", () => {
   });
 
   it("conserva el resaltado de la seccion en rutas de detalle sin item propio", () => {
-    // /evaluaciones/123 no tiene item propio: se resalta la seccion /evaluaciones.
-    expect(isNavItemActive("/evaluaciones", "/evaluaciones/123", items)).toBe(true);
+    // /ani-bis-e/123 no tiene item propio: se resalta la seccion /ani-bis-e.
+    expect(isNavItemActive("/ani-bis-e", "/ani-bis-e/123", items)).toBe(true);
   });
 });
 

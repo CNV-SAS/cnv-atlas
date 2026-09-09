@@ -216,7 +216,7 @@ export async function recordDespachoFormAction(
   if (!res.ok) return { error: res.message ?? "No se pudo registrar la entrega.", success: null, warning: null };
 
   const evaluationId = optStr(formData, "evaluationId");
-  if (evaluationId) revalidatePath(`/evaluaciones/${evaluationId}`);
+  if (evaluationId) revalidatePath(`/ani-bis-e/${evaluationId}`);
   revalidatePath("/mi-inventario");
 
   // Saldo negativo = discrepancia visible: nunca se calla. El aviso confirma la entrega Y la diferencia.

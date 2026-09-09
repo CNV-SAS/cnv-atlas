@@ -15,7 +15,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const HOJA = readFileSync("src/modules/reports/components/plan-imprimible.tsx", "utf8");
 const CODIGO = sinComentarios(HOJA);
-const PAGE = sinComentarios(readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"));
+const PAGE = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"));
 const CSS = readFileSync("src/app/globals.css", "utf8");
 
 describe("la hoja sale del MISMO lector que el PDF", () => {

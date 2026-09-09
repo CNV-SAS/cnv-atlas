@@ -25,7 +25,7 @@ const PANTALLA = sinComentarios(
   readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8"),
 );
 const PDF = sinComentarios(readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8"));
-const PAGE = sinComentarios(readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"));
+const PAGE = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"));
 
 describe("el objetivo del tratamiento son DOS piezas, no una", () => {
   it("el lector arma la línea del modelo, además del texto del profesional", () => {

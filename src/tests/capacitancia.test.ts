@@ -227,7 +227,7 @@ describe("la referencia está CABLEADA, no solo portada", () => {
   it("y el bloque de seguimiento entero se muestra desde la primera medición", () => {
     // Aserción sobre el SITIO DE LLAMADA: la tarjeta puede estar perfecta y no renderizarse nunca si la
     // página la deja detrás del gate de dos mediciones, que es como estaba.
-    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+    const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
     expect(PAGE).toContain("{serie.puntos.length > 0 ? <SeguimientoVisual serie={serie} /> : null}");
     // Y el aviso de que falta la segunda va DEBAJO, no en lugar del bloque.
     expect(PAGE).toContain("{serie.puntos.length < 2 ? (");

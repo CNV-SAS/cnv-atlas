@@ -106,10 +106,10 @@ export async function importBisAction(
 
   if (!result.ok) return fail(result.error.message, result.error.fields ?? null);
 
-  revalidatePath("/evaluaciones");
+  revalidatePath("/ani-bis-e");
   // Tambien la vista de la evaluacion: al importar desde la pestana Evaluacion, la composicion
   // (que lee de bis_raw_values) debe aparecer sin recargar a mano.
-  revalidatePath("/evaluaciones/[id]", "page");
+  revalidatePath("/ani-bis-e/[id]", "page");
   return {
     error: null,
     success: `Medicion BIS importada (${result.value.valueCount} variables).`,

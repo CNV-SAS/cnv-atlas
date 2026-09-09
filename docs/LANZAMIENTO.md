@@ -160,7 +160,7 @@
    alertas de consumo) y el ICEC.
 
    **Queda:** la tabla de intercambio (ya desbloqueada), las superficies de LISTA (/pacientes,
-   /pacientes/[id], /evaluaciones/[id]), y la barra lateral, los componentes y el layout general, que van
+   /pacientes/[id], /ani-bis-e/[id]), y la barra lateral, los componentes y el layout general, que van
    al final a propósito: si se rediseñan antes, se vuelven a tocar cuando cambie el contenido. **La historia
    clínica queda fuera** por ser documento imprimible con su cotejo propio (`BRAND.md`).
 

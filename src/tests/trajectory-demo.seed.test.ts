@@ -171,7 +171,7 @@ describe.skipIf(!RUN)("seed demo de trayectoria de EB-BIS (via pipeline real)", 
     expect((r?.band as { band?: string } | null)?.band).toBe("empeoro");
     expect(r?.status).toBe("draft");
     expect(r?.com).toBeNull();
-    console.log(`[seed] caso EMPEORO vigente: /evaluaciones/${usable.e2}?etapa=reporte`);
+    console.log(`[seed] caso EMPEORO vigente: /ani-bis-e/${usable.e2}?etapa=reporte`);
   });
 
   it("MEJORO: inicial degradada (4 meses) + seguimiento completo hoy -> banda mejoro", async () => {

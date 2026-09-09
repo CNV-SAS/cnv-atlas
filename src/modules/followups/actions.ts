@@ -59,6 +59,6 @@ export async function saveProximoControlAction(
     throw e;
   }
 
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
   return { error: null, success: "Próxima cita agendada.", warning: null };
 }

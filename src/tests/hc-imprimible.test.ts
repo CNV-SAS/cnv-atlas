@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 // mismos datos, y esa oposicion es el punto: `report-render` prohibe lo que este exige.
 
 const GLOBALS = readFileSync("src/app/globals.css", "utf8");
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 const SELLO = readFileSync("src/modules/reports/components/hc-consentimiento.tsx", "utf8");
 const BOTON = readFileSync("src/modules/reports/components/hc-imprimir.tsx", "utf8");
 

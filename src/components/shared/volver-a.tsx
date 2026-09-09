@@ -8,7 +8,7 @@ import Link from "next/link";
 // mil lineas) eso se paga en cada consulta.
 //
 // POR QUE COMPARTIDO Y NO SUELTO. Ya existia en /pacientes/[id] escrito a mano; al ponerlo tambien en
-// /evaluaciones/[id] serian dos copias, y a la tercera pantalla habria tres aspectos distintos de la
+// /ani-bis-e/[id] serian dos copias, y a la tercera pantalla habria tres aspectos distintos de la
 // misma idea. Es el mismo problema que acabamos de resolver con los bloques: cuatro dialectos para
 // decir lo mismo.
 //

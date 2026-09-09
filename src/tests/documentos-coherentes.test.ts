@@ -18,7 +18,7 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // Un documento clínico no puede registrar una cifra que nadie prescribió, y dos documentos de la misma
 // consulta no pueden contradecirse.
 
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 const COMP = readFileSync("src/modules/reports/data/hc-composicion.ts", "utf8");
 const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
 const PLAN = readFileSync("src/modules/reports/data/plan-paciente-reader.ts", "utf8");
