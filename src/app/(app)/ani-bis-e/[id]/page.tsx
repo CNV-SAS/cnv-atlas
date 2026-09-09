@@ -270,6 +270,23 @@ export default async function ResultadosEvaluacionPage({
     ) : (
       <IdentityConfirmation evaluation={pendingIdentity} duplicateCandidates={identityDups} />
     );
+    // LOS DOS PANELES RECIBEN LO MISMO, y por eso los datos se arman UNA vez. Encuesta y Antrop. & BIS son
+    // pestañas separadas desde el 2026-09-10, pero comparten insumos y guardas (el gate del import depende
+    // de las condiciones capturadas en Encuesta): repetir la lista en los dos sitios de llamada es como se
+    // consigue que una pestaña reciba un dato y la otra no.
+    const entradaSinDiagnostico = {
+      evaluationId: id,
+      diagnosticoGenerado: false,
+      consentStatus: entryConsent,
+      surveyDomains: entrySurvey,
+      composition: entryComposition,
+      bisImportEval: entryBisImport,
+      bisCatalog: entryCatalog,
+      bisIntake: entryIntake,
+      patientIsFemale: entrySex === "F",
+      bisReadonly: null,
+      identityConfirmationSlot: identityNode,
+    };
     return (
       <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-4">
         <CabeceraEvaluacion header={header} />
@@ -277,35 +294,27 @@ export default async function ResultadosEvaluacionPage({
           <SupersededBanner newEvaluationId={supersession.newEvaluationId} />
         ) : null}
         <CorrectionHistory evaluationId={id} />
-        {/* SIN DIAGNOSTICO SE ABRE EN EVALUACION (cotejo 2026-09-05, punto 3): aqui todavia hay trabajo
-            por hacer, y Diagnostico no tiene nada que mostrar. */}
+        {/* SIN DIAGNOSTICO SE ABRE EN ENCUESTA (cotejo 2026-09-05, punto 3; era "evaluacion" hasta que
+            esa etapa se partio en dos): aqui todavia hay trabajo por hacer, y Diagnostico no tiene nada
+            que mostrar. Encuesta y no Antrop. & BIS porque es lo PRIMERO de la secuencia, y la segunda
+            depende de ella (sin condiciones capturadas el import ni se habilita). */}
         <EvaluationTabs
-        porDefecto="evaluacion"
-        evaluacion={
+        porDefecto="encuesta"
+        encuesta={
           <div className="flex flex-col gap-6">
             {/* Las alertas van ARRIBA de la entrada: una bandera de conducta alimentaria manda derivar
                 antes de seguir revisando, no despues. Se computan sobre las respuestas YA leidas, sin
-                consulta nueva, igual que los antecedentes de la HC. */}
+                consulta nueva, igual que los antecedentes de la HC. Van en ENCUESTA porque salen de las
+                respuestas del paciente, que es lo que esta pestaña muestra. */}
             <AlertasClinicas
               alertas={alertasDisponibles(
                 encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
               )}
             />
-          <EntradaEvaluacion
-            evaluationId={id}
-            diagnosticoGenerado={false}
-            consentStatus={entryConsent}
-            surveyDomains={entrySurvey}
-            composition={entryComposition}
-            bisImportEval={entryBisImport}
-            bisCatalog={entryCatalog}
-            bisIntake={entryIntake}
-            patientIsFemale={entrySex === "F"}
-            bisReadonly={null}
-            identityConfirmationSlot={identityNode}
-          />
+            <EntradaEvaluacion panel="encuesta" {...entradaSinDiagnostico} />
           </div>
         }
+        antro={<EntradaEvaluacion panel="antropometria" {...entradaSinDiagnostico} />}
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
         reporte={
@@ -335,8 +344,6 @@ export default async function ResultadosEvaluacionPage({
   // la primera del paciente).
   const [
     protocol,
-    // Solo para la columna de simulacion "A peso meta" del Diagnostico: NO entra al snapshot ni al PDF.
-    intakeParaMeta,
     comparison,
     composition,
     criterion,
@@ -355,7 +362,6 @@ export default async function ResultadosEvaluacionPage({
     serie,
   ] = await Promise.all([
     getTreatmentProtocol(id),
-    getBisIntakeForEvaluation(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
     getDiagnosisCriterion(id),
@@ -711,6 +717,21 @@ export default async function ResultadosEvaluacionPage({
   const patientState = results.compatible
     ? { sector: results.snapshot.frSector, fenotipo: results.snapshot.structural }
     : null;
+  // Mismo motivo que en el camino sin diagnostico: los dos paneles reciben lo mismo y se arma una vez.
+  // Aqui siempre hay medicion BIS (el pipeline la exige para diagnosticar), asi que el import ya no aplica
+  // (`bisImportEval` null) y las condiciones van en solo lectura.
+  const entradaConDiagnostico = {
+    evaluationId: id,
+    consentStatus: entryConsent,
+    surveyDomains: entrySurvey,
+    composition,
+    bisImportEval: null,
+    bisCatalog: null,
+    bisIntake: null,
+    patientIsFemale: false,
+    bisReadonly: entryReadonly,
+    diagnosticoGenerado: Boolean(results),
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -727,32 +748,20 @@ export default async function ResultadosEvaluacionPage({
           del componente, para que los dos caminos digan cual abren (cotejo 2026-09-05, punto 3). */}
       <EvaluationTabs
       porDefecto="diagnostico"
-      evaluacion={
+      encuesta={
         <div className="flex flex-col gap-6">
-        <AlertasClinicas
-          alertas={alertasDisponibles(
-            encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
-          )}
-        />
-        {/* Con diagnostico siempre hay medicion BIS (el pipeline la exige): se muestra la
-            composicion y el import BIS no aplica (bisImportEval null).
-            La correccion YA NO vive en Evaluacion (Santiago 2026-08-15, b): en Evaluacion el profesional
-            REVISA la encuesta, no decide sobre un diagnostico. La via de correccion versionada se movio a
-            la pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. */}
-        <EntradaEvaluacion
-          evaluationId={id}
-          consentStatus={entryConsent}
-          surveyDomains={entrySurvey}
-          composition={composition}
-          bisImportEval={null}
-          bisCatalog={null}
-          bisIntake={null}
-          patientIsFemale={false}
-          bisReadonly={entryReadonly}
-          diagnosticoGenerado={Boolean(results)}
-        />
+          <AlertasClinicas
+            alertas={alertasDisponibles(
+              encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
+            )}
+          />
+          {/* La correccion YA NO vive aqui (Santiago 2026-08-15, b): en Encuesta el profesional REVISA lo
+              que respondio el paciente, no decide sobre un diagnostico. La via versionada se movio a la
+              pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. */}
+          <EntradaEvaluacion panel="encuesta" {...entradaConDiagnostico} />
         </div>
       }
+      antro={<EntradaEvaluacion panel="antropometria" {...entradaConDiagnostico} />}
       tratamiento={
         <div className="flex flex-col gap-8">
           {/* Estado del paciente (sector EFR + fenotipo): contexto de una linea que hace legible el
@@ -927,7 +936,7 @@ export default async function ResultadosEvaluacionPage({
       reporte={
         // QUINTA ETAPA, pieza 2 (2026-08-24): el reporte vive aqui, con su aprobacion, sus tres modos de
         // envio y su historial. Se MOVIO entero, sin partirlo: el flujo lo gobierna la propia ReportCard y
-        // sus acciones revalidan la PAGINA (revalidatePath "/evaluaciones/[id]"), no una pestaña, asi que
+        // sus acciones revalidan la PAGINA (revalidatePath "/ani-bis-e/[id]"), no una pestaña, asi que
         // cambiar de etapa no toca nada del acto. La proxima cita se va con el: se captura DENTRO de la
         // ReportCard (en la confirmacion de trayectoria desfavorable), no como un paso aparte.
         <section className="flex flex-col gap-4">
@@ -1120,10 +1129,10 @@ export default async function ResultadosEvaluacionPage({
                 <CompositionSection
                   composition={composition}
                   sexoM={sexoM}
-                  // LA COLUMNA DE SIMULACION VA SOLO AQUI, en Diagnostico. NO en la Historia Clinica ni
-                  // en el PDF: se calcula al leer, y un documento que la llevara la presentaria como
-                  // parte de lo emitido. Ver composition-section.
-                  pesoMetaKg={intakeParaMeta?.weightGoalKg ?? null}
+                  // LA META DE PESO NO VA AQUI. Su tabla de Diagnostico no tiene fila de Peso (su Nivel V
+                  // es IMC, cintura, NHLBI, ICC, ICT), asi que aqui la meta no tendria donde ponerse: la
+                  // primera version pasaba `pesoMetaKg` y solo conseguia una columna de rayas. La meta vive
+                  // en Antropometria, que es donde su archivo la tiene y donde se fija.
                   classifications={results.snapshot.classifications}
                   sevByCode={
                     isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}

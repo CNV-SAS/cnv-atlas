@@ -58,15 +58,15 @@ export async function runPipelineAction(
   if (!result.ok) {
     // Encuesta incompleta: se ofrece la via de completar (la pagina de editar resalta las que faltan).
     const completeHref = result.error.fields?.incompleteSurvey
-      ? `/evaluaciones/${evaluationId}/encuesta/editar`
+      ? `/ani-bis-e/${evaluationId}/encuesta/editar`
       : null;
     return fail(result.error.message, completeHref);
   }
 
-  revalidatePath("/evaluaciones");
+  revalidatePath("/ani-bis-e");
   // Tambien la evaluacion: si se genero desde su pestana Diagnostico, la pagina re-renderiza a la rama de
   // resultados (el diagnostico ya existe), en vez de quedarse en el panel de generar.
-  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath(`/ani-bis-e/${evaluationId}`);
   return {
     error: null,
     success: `Diagnostico generado (${result.value.indicatorCount} indicadores).`,

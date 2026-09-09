@@ -34,7 +34,7 @@ describe("isPublicPath: rutas accesibles sin sesion", () => {
       "/pacientes",
       "/faltantes",
       "/mi-inventario",
-      "/evaluaciones/x",
+      "/ani-bis-e/x",
       // El RUT (documento de identidad tributaria) y el PDF del reporte se sirven por rutas protegidas: el
       // acceso sin sesion tiene que fallar (rebote a login). Nunca por URL firmada compartible.
       "/rut/abc",

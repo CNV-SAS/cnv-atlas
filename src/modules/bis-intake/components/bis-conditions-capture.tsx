@@ -377,14 +377,14 @@ export function BisConditionsCapture({
               <span>
                 Condiciones guardadas. Ya puedes{" "}
                 <Link
-                  // CON LA ETAPA EXPLICITA, no solo la subpestaña (cotejo 2026-09-05, punto 5). Este
-                  // enlace ponia `?ev=antropometria` y nada mas, asi que `?etapa` faltaba y la pagina caia
-                  // a su default: el profesional guardaba las condiciones, pulsaba "importar" y aterrizaba
-                  // en Diagnostico, con la subpestaña correcta seleccionada donde no podia verla.
+                  // UNA SOLA ETAPA desde que Antrop. & BIS es pestaña propia (2026-09-10). Antes eran
+                  // dos parametros (`?etapa=evaluacion&ev=antropometria`) porque era una subpestaña dentro
+                  // de Evaluacion, y en su momento faltaba el `?etapa`: la pagina caia a su default y el
+                  // profesional guardaba las condiciones, pulsaba "importar" y aterrizaba en Diagnostico.
                   //
-                  // Va explicito aunque el default ya se arreglo: un enlace que depende de un default se
-                  // rompe en silencio la proxima vez que alguien mueva el default.
-                  href={`/evaluaciones/${evaluationId}?etapa=evaluacion&ev=antropometria`}
+                  // Va explicito y no confiado al default: un enlace que depende de un default se rompe en
+                  // silencio la proxima vez que alguien mueva el default.
+                  href={`/ani-bis-e/${evaluationId}?etapa=antro`}
                   className="font-semibold underline underline-offset-2 hover:no-underline"
                 >
                   importar la medición en Antropometría y BIS

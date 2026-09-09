@@ -185,7 +185,7 @@ describe("6 · el panel LLEGA A LA PANTALLA, que es lo que faltaba", () => {
   // hay import sin usar, porque no hay import), y `check:cables` solo cubre server actions.
   //
   // La señal para reconocerla: **si no sabes QUIÉN LO LEE, es que nadie lo lee.**
-  const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+  const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
   const SECCION = readFileSync(
     "src/modules/treatment/components/profession-treatment-section.tsx",
     "utf8",

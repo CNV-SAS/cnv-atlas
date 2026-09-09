@@ -82,15 +82,23 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // Pacientes es una vista clinica: por RLS solo la ven el profesional dueno, admin y
     // soporte. Direccion y obbia no acceden a datos de paciente (sus tableros son agregados),
     // por eso no aparece para ellos aunque el link exista.
-    label: "Pacientes",
+    // "Administrador de Pacientes" y no "Pacientes" (Santiago, 2026-09-10): la pantalla no es una lista
+    // de personas, es donde se administran (crear, buscar, vincular, entrar a su historia). La RUTA no
+    // cambia: renombrar una direccion que nadie pidio cambiar rompe marcadores a cambio de nada.
+    label: "Administrador de Pacientes",
     href: "/pacientes",
     icon: "clinica",
     roles: ["admin", "professional"],
     group: "clinica",
   },
   {
-    label: "Evaluaciones",
-    href: "/evaluaciones",
+    // "Modelo ANI-BIS-E" (Santiago, 2026-09-10). Lo que se abre desde aqui no es una lista de registros
+    // administrativos: es la aplicacion del modelo, que es lo que este software ES (Regla 0). Aqui la RUTA
+    // SI cambia (`/evaluaciones` -> `/ani-bis-e`), porque la direccion vieja describia lo mismo que la
+    // etiqueta vieja. Los enlaces guardados los cubre la redireccion permanente de `next.config.ts`, y
+    // ninguno de los que se comparten con pacientes pasaba por aqui (esos van a `/encuesta/...`).
+    label: "Modelo ANI-BIS-E",
+    href: "/ani-bis-e",
     icon: "evaluaciones",
     roles: ["admin", "professional"],
     group: "clinica",
@@ -253,7 +261,7 @@ export function pathMatches(href: string, pathname: string): boolean {
 
 // Item activo = gana el prefijo mas largo. Evita que /admin (Usuarios) se marque activo en
 // /admin/ia o /admin/auditoria, porque esos tienen un href mas largo que tambien coincide; a
-// la vez conserva el resaltado de la seccion en rutas de detalle como /evaluaciones/[id],
+// la vez conserva el resaltado de la seccion en rutas de detalle como /ani-bis-e/[id],
 // donde no existe un item mas especifico.
 export function isNavItemActive(href: string, pathname: string, items: NavItem[]): boolean {
   if (!pathMatches(href, pathname)) return false;

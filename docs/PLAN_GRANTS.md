@@ -27,7 +27,7 @@ Matices:
 
 | Superficie | Tablas | Efecto |
 |---|---|---|
-| `/evaluaciones` + `/evaluaciones/[id]` + tabs `/clinica` | evaluación completa (evaluations, survey, bis, indicadores, diagnoses, treatments, reports, followups) | **Rompe** (god-view más rico: lista vacía, detalle 404) |
+| `/ani-bis-e` + `/ani-bis-e/[id]` + tabs `/clinica` | evaluación completa (evaluations, survey, bis, indicadores, diagnoses, treatments, reports, followups) | **Rompe** (god-view más rico: lista vacía, detalle 404) |
 | `/reportes` + `/reportes/[id]` + PDF | reports (incl. professional_notes) | **Rompe** (admin no ve/aprueba/envía reportes) |
 | `/pacientes` | patients, patient_profiles | **Degrada** (roster admin vacío; el nav sigue) |
 | `/pagos` (selector de paciente del checkout) | patients | **Degrada** (dropdown vacío; la lista de transacciones sigue) |

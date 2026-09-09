@@ -20,7 +20,6 @@ import type { Composition } from "@/modules/diagnoses/data/composition-reader";
 import { isAnswered } from "@/modules/clinical-pipeline/services/survey-completeness";
 
 import { ConsentStatusCard } from "./consent-status-card";
-import { EvaluationSubtabs } from "./evaluation-subtabs";
 import type { ConsentStatus } from "../data/consent-status-reader";
 import type { SurveyDomain } from "../data/survey-answers-reader";
 
@@ -31,6 +30,7 @@ import type { SurveyDomain } from "../data/survey-answers-reader";
 // es materia de Diagnostico. Lee de bis_raw_values (crudo). Presentacion pura desde readers RLS. Las
 // condiciones de la toma BIS, la fuerza prensil y la meta de peso van en el sub-bloque B (Gildardo).
 export function EntradaEvaluacion({
+  panel,
   evaluationId,
   consentStatus,
   surveyDomains,
@@ -43,6 +43,14 @@ export function EntradaEvaluacion({
   diagnosticoGenerado,
   identityConfirmationSlot = null,
 }: {
+  /**
+   * Cual de los DOS paneles se rinde. Desde el 2026-09-10 Encuesta y Antropometria & BIS son PESTAÑAS
+   * propias (como en su archivo), no subpestañas de una etapa "Evaluacion": cada una se monta por su
+   * lado y este componente sigue siendo el que sabe armarlas. Los dos paneles comparten datos y guardas
+   * (el gate del import depende de las condiciones capturadas en Encuesta), por eso siguen viviendo
+   * juntos aqui en vez de partirse en dos componentes que tendrian que volver a recibir lo mismo.
+   */
+  panel: "encuesta" | "antropometria";
   evaluationId: string;
   // ¿Ya se genero el diagnostico? Es lo que SELLA las medidas: despues de diagnosticar, cambiarlas no
   // es editar, es corregir, y va por el flujo que versiona. No se deriva de bisReadonly porque ese es
@@ -117,7 +125,7 @@ export function EntradaEvaluacion({
           {/* "Ver o editar" (no solo "ver"): la pantalla deja editar (pre-diagnostico) o corregir versionado
               (con diagnostico). El boton decia "ver" cuando tambien edita (Santiago 2026-08-15, b). */}
           <Link
-            href={`/evaluaciones/${evaluationId}/encuesta`}
+            href={`/ani-bis-e/${evaluationId}/encuesta`}
             className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
           >
             Ver o editar encuesta
@@ -236,11 +244,11 @@ export function EntradaEvaluacion({
                 pantalla. Abierta de entrada resuelve la causa real (no verla la primera vez) y deja
                 plegarla despues. */}
             <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
-              {/* LA COLUMNA "A peso meta" TAMBIEN AQUI, y aqui es donde su razon aplica de verdad: el
-                  peso meta se FIJA en esta pantalla, dos bloques mas abajo, y lo que el pidio es no tener
-                  que recordar de que peso parte. En Diagnostico se LEE el resultado; aqui se DECIDE.
-                  Es el mismo componente, asi que son las mismas garantias: se calcula al leer, no escribe
-                  nada, no lleva color clinico y no viaja al documento. */}
+              {/* LA META DE PESO, Y SOLO AQUI. Es la REFERENCIA de la fila de Peso, como en su archivo
+                  (entrega del 4 de septiembre, linea 7721): no crea columna. Aqui y no en Diagnostico
+                  porque su tabla de Diagnostico no tiene fila de Peso, asi que alli no tendria donde ir.
+                  Se pinta, no se escribe: el dato vive en `evaluations.weight_goal_kg` y lo fija el campo
+                  de abajo. Al documento (HC y PDF) no llega. */}
               <CompositionSection
                 composition={composition}
                 showDiagnosis={false}
@@ -285,21 +293,18 @@ export function EntradaEvaluacion({
     </div>
   );
 
+  // SIN TITULO PROPIO desde que son pestañas (2026-09-10). El `h2 "Entrada de la evaluacion"` existia
+  // porque la pestaña de arriba decia "Evaluacion" y hacia falta decir que habia dentro. Ahora la pestaña
+  // dice "Encuesta" o "Antrop. & BIS": repetirlo debajo es el mismo rotulo dos veces. Queda la linea que
+  // SI aporta, que es la que dice para que sirve el panel.
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        {/* ESCALA DEL SISTEMA (2026-09-03): era `text-2xl font-bold`, el mismo tamaño al que baja el
-            titulo de PANTALLA, y dos niveles de jerarquia con el mismo peso no son dos niveles. Es la
-            escala que `TituloSeccion` retiro y que a esta vista no le habia llegado. */}
-        <h2 className="text-seccion font-semibold tracking-tight text-foreground">
-          Entrada de la evaluación
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Lo que entró y se verificó antes del diagnóstico: consentimiento, encuesta y medición.
-        </p>
-      </header>
-
-      <EvaluationSubtabs encuesta={encuestaPanel} antropometria={antropometriaPanel} />
+      <p className="text-sm text-muted-foreground">
+        {panel === "encuesta"
+          ? "Lo que entró antes de medir: consentimiento, encuesta del paciente y condiciones de la toma."
+          : "La medición y lo que sale de ella: medidas del profesional, importación BIS y composición corporal."}
+      </p>
+      {panel === "encuesta" ? encuestaPanel : antropometriaPanel}
     </div>
   );
 }

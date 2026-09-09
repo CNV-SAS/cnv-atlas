@@ -94,7 +94,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
       <CardContent className="flex flex-col items-start gap-3">
         <div className="flex flex-wrap items-center gap-4">
           <a
-            href={`/evaluaciones/${report.evaluationId}`}
+            href={`/ani-bis-e/${report.evaluationId}`}
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
             Ver resultados
@@ -138,7 +138,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
                 Este paciente <strong>no tiene próxima cita agendada</strong>, y un cambio desfavorable no
                 se comunica sin ella.{" "}
                 <a
-                  href={`/evaluaciones/${report.evaluationId}?etapa=seguimiento`}
+                  href={`/ani-bis-e/${report.evaluationId}?etapa=seguimiento`}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
                   Agéndala en Seguimiento

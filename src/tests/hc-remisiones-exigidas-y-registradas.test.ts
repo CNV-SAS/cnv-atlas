@@ -22,7 +22,7 @@ const PANTALLA = sinComentarios(
   readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8"),
 );
 const PDF = sinComentarios(readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8"));
-const PAGE = sinComentarios(readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"));
+const PAGE = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"));
 const READER = sinComentarios(
   readFileSync("src/modules/reports/data/hc-documento-reader.ts", "utf8"),
 );

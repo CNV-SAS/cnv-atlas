@@ -32,7 +32,7 @@ const OBS = readFileSync("src/modules/followups/components/observaciones-consult
 const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
 const PDF = readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8");
 const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 
 // EL DEFECTO QUE ESTOS CASOS CIERRAN (smoke de Santiago, 2026-09-08): la vigente se tomaba por POSICION
 // (`lista[lista.length - 1]`), y el reader trae las notas con `ascending: false`. La ultima posicion era

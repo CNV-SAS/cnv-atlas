@@ -34,7 +34,7 @@ export default async function CorregirEvaluacionPage({
     getCorrectionWarnings(id),
   ]);
 
-  const backHref = `/evaluaciones/${id}`;
+  const backHref = `/ani-bis-e/${id}`;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 py-6">

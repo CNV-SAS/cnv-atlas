@@ -25,7 +25,7 @@ const RESUMEN = readFileSync(
   "src/modules/diagnoses/components/resumen-diagnostico.tsx",
   "utf8",
 );
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 // La entrada a corregir vive en su propio componente, no en la pantalla de entrada: el archivo viejo
 // leia otro y por eso este candado apuntaba mal al reescribirlo.
 const ENTRADA = readFileSync("src/modules/corrections/components/correction-entry.tsx", "utf8");

@@ -66,7 +66,7 @@ export type PatientListItem = {
 };
 
 // Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la
-// vista de resultados que ya existe (/evaluaciones/[id]).
+// vista de resultados que ya existe (/ani-bis-e/[id]).
 export type PatientEvaluationItem = {
   evaluationId: string;
   type: EvaluationType;

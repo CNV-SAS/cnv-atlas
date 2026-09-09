@@ -38,7 +38,7 @@ export async function CorrectionHistory({ evaluationId }: { evaluationId: string
           <p className="text-muted-foreground">
             Estás viendo una versión reemplazada.{" "}
             <Link
-              href={`/evaluaciones/${currentVigenteId}`}
+              href={`/ani-bis-e/${currentVigenteId}`}
               className="font-medium text-primary underline underline-offset-4"
             >
               Ir a la versión vigente
@@ -73,7 +73,7 @@ export async function CorrectionHistory({ evaluationId }: { evaluationId: string
                 )}
                 {!isCurrent ? (
                   <Link
-                    href={`/evaluaciones/${versionId}`}
+                    href={`/ani-bis-e/${versionId}`}
                     className="text-xs text-primary underline underline-offset-4"
                   >
                     Ver esta versión

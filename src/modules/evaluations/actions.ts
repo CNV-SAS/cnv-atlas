@@ -606,8 +606,8 @@ export async function confirmIdentityAction(
   // Revalida la LISTA (sale de la cola) Y la EVALUACION (c: el confirmar vive dentro de la evaluacion; tras
   // confirmar, la pagina se re-renderiza con la identidad ya confirmada -> aparecen condiciones e import,
   // sin volver a la lista).
-  revalidatePath("/evaluaciones");
-  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath("/ani-bis-e");
+  revalidatePath(`/ani-bis-e/${evaluationId}`);
   return { error: null, confirmed: true };
 }
 
@@ -646,7 +646,7 @@ export async function abandonEvaluationAction(
 
   // Refresca la ficha (la fila pasa a "Abandonada") y el panel (sale de la cola de firmados-sin-responder).
   revalidatePath(`/pacientes/${ownership.patientId}`);
-  revalidatePath("/evaluaciones");
+  revalidatePath("/ani-bis-e");
   return { error: null, closed: true };
 }
 
@@ -684,8 +684,8 @@ export async function resolveIdentityConflictAction(
   });
   if (!resolved) return { error: "No se pudo resolver.", resolved: false };
 
-  revalidatePath("/evaluaciones");
-  revalidatePath(`/evaluaciones/${evaluationId}`); // c: la resolucion tambien vive en la evaluacion
+  revalidatePath("/ani-bis-e");
+  revalidatePath(`/ani-bis-e/${evaluationId}`); // c: la resolucion tambien vive en la evaluacion
   revalidatePath(`/pacientes/${ownership.patientId}`);
   return { error: null, resolved: true };
 }
@@ -810,8 +810,8 @@ export async function saveSurveyEditAction(input: {
   });
   if (!result.ok) return { error: SURVEY_EDIT_ERROR[result.reason] ?? "No se pudo guardar.", success: false };
 
-  revalidatePath(`/evaluaciones/${input.evaluationId}`);
-  revalidatePath(`/evaluaciones/${input.evaluationId}/encuesta`);
+  revalidatePath(`/ani-bis-e/${input.evaluationId}`);
+  revalidatePath(`/ani-bis-e/${input.evaluationId}/encuesta`);
   return { error: null, success: true };
 }
 
@@ -843,8 +843,8 @@ export async function closeEvaluationAction(
     ip: ip === "unknown" ? null : ip,
   });
   if (!closed) return { error: "No se pudo cerrar la consulta.", success: null, warning: null };
-  revalidatePath("/evaluaciones");
-  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath("/ani-bis-e");
+  revalidatePath(`/ani-bis-e/${evaluationId}`);
   revalidatePath("/pacientes");
   return { error: null, success: "Consulta cerrada.", warning: null };
 }
@@ -870,8 +870,8 @@ export async function reopenEvaluationAction(
     ip: ip === "unknown" ? null : ip,
   });
   if (!reopened) return { error: "No se pudo reabrir la consulta.", success: null, warning: null };
-  revalidatePath("/evaluaciones");
-  revalidatePath(`/evaluaciones/${evaluationId}`);
+  revalidatePath("/ani-bis-e");
+  revalidatePath(`/ani-bis-e/${evaluationId}`);
   revalidatePath("/pacientes");
   return { error: null, success: "Consulta reabierta. Vuelve a estar en curso.", warning: null };
 }

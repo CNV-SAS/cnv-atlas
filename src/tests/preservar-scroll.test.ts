@@ -41,7 +41,7 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     const w = {
       scrollY,
       innerHeight: 800,
-      location: { pathname: "/evaluaciones/e1" },
+      location: { pathname: "/ani-bis-e/e1" },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       requestAnimationFrame: vi.fn(),
@@ -196,7 +196,7 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
     const w = {
       scrollY: 900,
       innerHeight: 800,
-      location: { pathname: "/evaluaciones/e1" },
+      location: { pathname: "/ani-bis-e/e1" },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       requestAnimationFrame: vi.fn(),
@@ -260,7 +260,7 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
 
 describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () => {
   const TABS = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx", "utf8");
-  const PAGE_SRC = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+  const PAGE_SRC = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
   const BIS = readFileSync("src/modules/bis-intake/components/bis-conditions-capture.tsx", "utf8");
 
   // SU REGLA (Santiago, cotejo 2026-09-05): sin diagnóstico se abre en Evaluación, que es donde hay
@@ -268,12 +268,18 @@ describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () =
   // default era fijo y entrar a una evaluación sin diagnóstico abría una pestaña vacía.
 
   it("la decide la PÁGINA, que es quien sabe si hay diagnóstico", () => {
-    expect(TABS, "el default volvió a estar clavado en el componente").toContain(
-      "function parseTab(raw: string | null, porDefecto: TabId)",
+    // ALCANCE AJUSTADO (2026-09-10), no la asercion. Se fijaba la FIRMA literal de `parseTab`, y al
+    // añadirle el parametro que traduce los enlaces de la etapa vieja se puso roja por la firma y no por
+    // la regla. Lo que importa es que el default ENTRE por parametro, no que la firma tenga dos huecos.
+    expect(TABS, "el default volvió a estar clavado en el componente").toMatch(
+      /function parseTab([^)]*porDefecto: TabId)/,
     );
     // Los DOS caminos de la página lo declaran. Es el sitio de llamada: un camino que no lo pase cae al
     // default del componente y nadie se entera.
-    expect(PAGE_SRC).toContain('porDefecto="evaluacion"');
+    //
+    // Y el camino SIN diagnostico abre en "encuesta" desde que Evaluacion se partio en dos: es la misma
+    // regla de antes (empezar por donde hay trabajo), aplicada a la primera de las dos mitades.
+    expect(PAGE_SRC).toContain('porDefecto="encuesta"');
     expect(PAGE_SRC).toContain('porDefecto="diagnostico"');
   });
 
@@ -290,11 +296,15 @@ describe("la etapa que se abre al entrar a una evaluación (cotejo 3 y 5)", () =
     );
   });
 
-  it("el enlace de importar la medición lleva la ETAPA, no solo la subpestaña", () => {
+  it("el enlace de importar la medición lleva la ETAPA explícita", () => {
     // El punto 5 era el 3: el enlace ponía `?ev=antropometria` sin `?etapa`, así que la página caía a su
     // default y el profesional aterrizaba en Diagnóstico con la subpestaña correcta donde no la veía.
     // Va explícito aunque el default ya esté bien: un enlace que depende de un default se rompe en
     // silencio la próxima vez que alguien mueva el default.
-    expect(BIS).toContain("?etapa=evaluacion&ev=antropometria");
+    //
+    // ALCANCE AJUSTADO (2026-09-10): la dirección son ahora DOS caracteres menos porque Antrop. & BIS es
+    // pestaña propia (`?etapa=antro` en vez de `?etapa=evaluacion&ev=antropometria`). La asercion es la
+    // misma: el enlace nombra su destino en vez de confiarlo al default.
+    expect(sinComentarios(BIS)).toContain("?etapa=antro");
   });
 });

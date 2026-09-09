@@ -142,7 +142,7 @@ export function CorrectEvaluationForm({
       if (res.error) setError(res.error);
       // Va a la evaluación NUEVA (la vigente), no a la vieja (ahora reemplazada): quedarse en la vieja
       // dejaría al profesional leyendo datos obsoletos sin saberlo.
-      else if (res.newEvaluationId) window.location.href = `/evaluaciones/${res.newEvaluationId}`;
+      else if (res.newEvaluationId) window.location.href = `/ani-bis-e/${res.newEvaluationId}`;
       else window.location.href = backHref; // defensivo: sin id nuevo, al menos refresca la vista
     });
   }

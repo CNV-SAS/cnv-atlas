@@ -87,7 +87,7 @@ export async function saveBisConditionsAction(
   });
 
   // La composicion y el gate del import viven en la vista de la evaluacion: refrescar.
-  revalidatePath("/evaluaciones/[id]", "page");
+  revalidatePath("/ani-bis-e/[id]", "page");
   return ok({
     contraindicated: validated.value.contraindicated,
     warnings: validated.value.warnings,
@@ -136,7 +136,7 @@ export async function correctBisValueAction(
       actorEmail: user.email,
       ip: await getClientIp(),
     });
-    revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+    revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
     return {
       error: null,
       success:
@@ -179,7 +179,7 @@ export async function clearBisCorrectionAction(
     if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
     throw e;
   }
-  revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+  revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
   return { error: null, success: "Se restauró el valor del equipo.", warning: null };
 }
 
@@ -236,11 +236,11 @@ export async function saveMedidasProfesionalAction(
     // La prensil entra al motor (fenotipo de sarcopenia) y el peso meta gobierna la cadena calorica: las
     // dos cambian lo que se ve en Diagnostico y en Tratamiento, no solo este bloque.
     //
-    // RUTA CONCRETA, NO EL PATRON (2026-09-10). Esto decia `revalidatePath("/evaluaciones/[id]", "page")`
+    // RUTA CONCRETA, NO EL PATRON (2026-09-10). Esto decia `revalidatePath("/ani-bis-e/[id]", "page")`
     // y la tabla NO se actualizaba al guardar la meta, mientras que al corregir el PESO si: esa otra
     // accion usa la ruta concreta. La diferencia se midio en pantalla, no se razono. La forma concreta es
     // la que devuelve el arbol nuevo con la respuesta de la accion.
-    revalidatePath(`/evaluaciones/${parsed.data.evaluationId}`);
+    revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
     return { error: null, success: "Medidas guardadas.", warning: null };
   } catch (e) {
     if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };

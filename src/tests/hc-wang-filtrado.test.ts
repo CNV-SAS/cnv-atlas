@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 // puedan divergir: si manana se agrega una fila al Diagnostico, la historia clinica la hereda.
 
 const SRC = readFileSync("src/modules/diagnoses/components/composition-section.tsx", "utf8");
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 
 describe("tabla de Wang de la historia clinica", () => {
   it("es el MISMO componente con una prop, no una tabla aparte", () => {

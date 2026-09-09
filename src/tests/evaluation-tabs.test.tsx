@@ -18,14 +18,19 @@ const SRC = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx",
 const idsDeLaBarra = [...SRC.matchAll(/\{ id: "([a-z]+)", label:/g)].map((m) => m[1]);
 
 describe("navegacion por etapas de la evaluacion", () => {
-  it("la barra declara las CINCO etapas, en orden", () => {
-    expect(idsDeLaBarra).toEqual([
-      "evaluacion",
-      "diagnostico",
-      "tratamiento",
-      "seguimiento",
-      "reporte",
-    ]);
+  it("la barra declara las etapas de su archivo, ni una menos", () => {
+    // ALCANCE AJUSTADO (2026-09-10), no la asercion. Este caso escribia las cinco etapas a mano, y al
+    // partir Evaluacion en Encuesta + Antrop. & BIS (peticion de Gildardo, y es lo que su archivo tiene)
+    // se puso rojo por la LISTA COPIADA, no por la regla.
+    //
+    // La lista deja de vivir aqui: quien afirma cuales y en que orden es
+    // `etapas-en-su-orden.test.ts`, que las DERIVA de su HTML vigente. Una copia mas en este archivo seria
+    // una tercera fuente que envejece sola, que es justo lo que ese candado vino a cerrar.
+    //
+    // Lo que este caso conserva es lo SUYO: que la barra no se quede vacia ni pierda etapas por un cambio
+    // de forma, que es el control que hace significativo todo lo de abajo.
+    expect(idsDeLaBarra.length, "no se leyeron las etapas de la barra").toBeGreaterThan(4);
+    expect(new Set(idsDeLaBarra).size, "hay una etapa repetida en la barra").toBe(idsDeLaBarra.length);
   });
 
   it("el parseo valida contra la LISTA, no contra una cadena de comparaciones", () => {
@@ -51,11 +56,17 @@ describe("navegacion por etapas de la evaluacion", () => {
     // Evaluacion, con diagnostico en Diagnostico. Lo que el caso GARANTIZA sigue igual y es lo que dice su
     // titulo: no se abre por el final. Eso ahora se verifica donde vive la decision, que es la pagina.
     expect(SRC, "el default volvio a estar clavado en el componente").toContain("porDefecto");
-    const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+    const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
     const defaults = [...PAGE.matchAll(/porDefecto="([a-z]+)"/g)].map((m) => m[1]);
     expect(defaults.length, "algun camino de la pagina no declara su etapa de entrada").toBe(2);
     for (const d of defaults) {
-      expect(["evaluacion", "diagnostico"], `abrir en "${d}" es empezar por el final`).toContain(d);
+      // ALCANCE AJUSTADO (2026-09-10): "evaluacion" se partio en dos y el camino sin diagnostico abre
+      // ahora en "encuesta", que es lo PRIMERO de la secuencia. La asercion no cambia: sigue prohibiendo
+      // abrir por el final. Se declara por LO QUE NO PUEDE SER, que no depende de cuantas etapas haya.
+      expect(
+        ["seguimiento", "reporte"],
+        `abrir en "${d}" es empezar por el final de la consulta`,
+      ).not.toContain(d);
     }
   });
 

@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 // sobrescriben), pero NO SE MOSTRABAN fuera del panel de tratamiento. No se perdian; simplemente no
 // llegaban al documento probatorio. La mitad del onConflict nunca la tuvimos.
 
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 const HC = readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8");
 const SCHEMA = readFileSync("src/db/schema/treatments.ts", "utf8");
 

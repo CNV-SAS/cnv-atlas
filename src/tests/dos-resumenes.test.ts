@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 // NO redaccion libre de IA)". Por eso el candado exige el parrafo del DFI en Rutas, no una lista nuestra
 // de dominios alterados.
 
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 const SECCION = readFileSync(
   "src/modules/treatment/components/profession-treatment-section.tsx",
   "utf8",

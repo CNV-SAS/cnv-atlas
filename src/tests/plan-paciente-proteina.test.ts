@@ -92,7 +92,7 @@ describe("la proteína del plan del paciente sale de la cadena EFECTIVA", () => 
     // CONTROL DE ALCANCE: sin esto, alguien podria arreglar el lector y dejar otro camino leyendo el motor.
     // Si aparece un quinto consumidor, este caso obliga a mirarlo.
     const consumidores = [
-      "src/app/(app)/evaluaciones/[id]/page.tsx",
+      "src/app/(app)/ani-bis-e/[id]/page.tsx",
       "src/app/(app)/reportes/[id]/pdf/route.ts",
       "src/modules/reports/services/send-report.ts",
     ];

@@ -38,6 +38,6 @@ export async function correctEvaluationAction(input: {
   if (!result.ok) return { error: result.error.message, newEvaluationId: null };
 
   // La versión vieja quedó reemplazada y la nueva es la vigente; refrescar donde se ve la evaluación.
-  revalidatePath("/evaluaciones");
+  revalidatePath("/ani-bis-e");
   return { error: null, newEvaluationId: result.value.newEvaluationId };
 }

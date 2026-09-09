@@ -25,7 +25,7 @@ const PANEL = sinComentarios(
   readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8"),
 );
 const PANTALLA_PAGE = sinComentarios(
-  readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"),
+  readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"),
 );
 
 describe("la actividad física se registra con el nombre con el que se eligió", () => {

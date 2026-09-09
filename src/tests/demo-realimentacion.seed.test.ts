@@ -26,7 +26,7 @@ import { fillSurveyComplete } from "./fixtures/survey-fill";
 // abriera. Ahora se busca la nutricionista de forma determinista y, si no hay ninguna, el seed FALLA
 // con un mensaje claro en vez de sembrar algo que nadie puede abrir.
 //
-// Donde mirar: /evaluaciones/<id> -> subpestaña del Nutricionista. La realimentacion sale DOS veces,
+// Donde mirar: /ani-bis-e/<id> -> subpestaña del Nutricionista. La realimentacion sale DOS veces,
 // a proposito y con redacciones distintas (el resumen informa, encima de la cadena instruye las 10
 // kcal/kg/dia, ASPEN 2023). Las restricciones del modelo salen una vez, encima de la cadena.
 

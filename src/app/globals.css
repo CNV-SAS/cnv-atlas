@@ -31,6 +31,8 @@
   --color-nav-accent: var(--nav-accent);
   --color-attention: var(--attention);
   --color-attention-bg: var(--attention-bg);
+  --color-delta-favorable: var(--delta-favorable);
+  --color-delta-adversa: var(--delta-adversa);
   /*
    * ESCALA TIPOGRAFICA de interfaz. Inter se queda (la familia no era el problema); lo que cambia es la
    * DENSIDAD. Un `text-3xl font-extrabold` de pagina de marketing en una herramienta de trabajo grita y
@@ -168,6 +170,23 @@
    */
   --attention: #d97706;
   --attention-bg: #fffbeb;
+
+  /*
+   * DIRECCION DE UNA Δ: "este valor esta por el lado bueno o por el malo de su referencia".
+   *
+   * TERCER EJE, y nace por la misma razon que `--attention` nacio del `--clinical-warning`. Su archivo
+   * colorea la columna Δ de Antropometria con `difCell` (verde si el valor cae del lado favorable de la
+   * referencia, rojo si del adverso), y su rojo es `#dc2626`, que es EXACTAMENTE nuestro
+   * `--clinical-critical`. Portarlo literal gastaria el rojo del VEREDICTO en algo que no lo es: una Δ
+   * direccional no dice "este paciente esta critico", dice "esta cifra va hacia el lado que no queremos".
+   *
+   * Por eso el par es propio y los tonos son deliberadamente mas profundos que los clinicos (red-700 y
+   * emerald-700 frente a #dc2626 y #10b981): en pantalla no se confunden con un badge de veredicto.
+   *
+   * Y el color NUNCA va solo: el signo (+/-) ya dice la direccion, esto solo la refuerza.
+   */
+  --delta-favorable: #047857;
+  --delta-adversa: #b91c1c;
 
   /* Sidebar de shadcn: cromo claro, como el resto de la barra. */
   --sidebar: #ffffff;

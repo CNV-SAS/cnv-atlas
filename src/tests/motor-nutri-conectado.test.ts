@@ -25,7 +25,7 @@ import { motorTratNutri } from "@/clinical-engine/frozen/atlas-tratamiento-nutri
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
 const MENU = readFileSync("src/modules/treatment/services/generate-menu.ts", "utf8");
 const READER = readFileSync("src/modules/treatment/data/dieta-resumen-reader.ts", "utf8");
-const PAGE = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
+const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
 
 /** Paciente hipertenso: el caso que hacia visible el defecto. */
 const HIPERTENSO = { d5_39: ["Hipertensión arterial"], edad: 50, sexo: "Masculino" };

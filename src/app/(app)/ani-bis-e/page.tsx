@@ -79,7 +79,7 @@ export default async function EvaluacionesPage() {
               // identidad se marca aqui, pero se resuelve alla (con los dos nombres a la vista).
               <Link
                 key={e.evaluationId}
-                href={`/evaluaciones/${e.evaluationId}`}
+                href={`/ani-bis-e/${e.evaluationId}`}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
               >
                 <div className="flex flex-col">

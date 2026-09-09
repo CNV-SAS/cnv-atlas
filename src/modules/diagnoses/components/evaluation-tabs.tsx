@@ -3,13 +3,17 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode } from "react";
 
-// Shell de pestañas de una evaluacion (/evaluaciones/[id]). Adopta las 4 etapas reales de la ruta
-// ANI-BIS-E como tabs internas (es la estructura real de la ruta clinica, no "familiaridad de
-// formacion": los profesionales se forman en Atlas, no en el HTML); el sidebar sigue navegando entre
-// entidades. Encuesta y Antrop & BIS no son etapas propias: son las dos entradas de datos de la
-// evaluacion, viven como secciones dentro de Evaluacion. El contenido de cada etapa se computa en
-// el servidor y llega como prop (ReactNode), asi el cambio de tab es client-side sin refetch ni
+// Shell de pestañas de una evaluacion. Adopta las etapas reales de la ruta ANI-BIS-E como tabs internas
+// (es la estructura real de la ruta clinica, no "familiaridad de formacion": los profesionales se forman
+// en Atlas, no en el HTML); el sidebar sigue navegando entre entidades. El contenido de cada etapa se
+// computa en el servidor y llega como prop (ReactNode), asi el cambio de tab es client-side sin refetch ni
 // perder la RLS del server.
+//
+// ENCUESTA Y ANTROP. & BIS SON PESTAÑAS PROPIAS desde el 2026-09-10 (Gildardo, reunion). Este comentario
+// decia justo lo contrario ("no son etapas propias: son las dos entradas de datos de la evaluacion, viven
+// como secciones dentro de Evaluacion"), y era una decision NUESTRA: su archivo las tiene como dos de sus
+// seis modulos de arriba, y de ahi sale tambien el ORDEN. Se reescribe en vez de dejarlo, porque un
+// comentario que afirma lo contrario de lo que hace el codigo es peor que ninguno.
 //
 // La ETAPA activa vive en la URL (?etapa=...), NO en useState (mismo patron que las subpestañas): sin esto,
 // recargar o compartir un enlace SIEMPRE abria en el default (Diagnostico), sin importar donde estaba el
@@ -26,10 +30,16 @@ import { type ReactNode } from "react";
 //
 // Va AL FINAL y en ese orden a proposito: es la ultima etapa de la consulta, la que cierra. Nunca es el
 // default: abrir en la quinta al entrar seria empezar por el final.
-type TabId = "evaluacion" | "diagnostico" | "tratamiento" | "seguimiento" | "reporte";
+type TabId = "encuesta" | "antro" | "diagnostico" | "tratamiento" | "seguimiento" | "reporte";
 
+// EL ORDEN SALE DE SU ARCHIVO (`MODS_CLINICA`, entrega vigente del 4 de septiembre), y el candado
+// `etapas-en-su-orden.test.ts` lo DERIVA de ahi y lo compara. Nuestras ETIQUETAS no son sus etiquetas:
+// "Tratamiento" se queda (Gildardo lo reviso y dijo que asi lo dejaramos), y ademas esa pestaña contiene
+// las rutas Y el panel del profesional, asi que describe mejor lo que hay dentro que "Rutas de atencion".
+// Lo que se fija es el ORDEN y CUANTAS son, que es lo que el pidio.
 const TABS: { id: TabId; label: string }[] = [
-  { id: "evaluacion", label: "Evaluación" },
+  { id: "encuesta", label: "Encuesta" },
+  { id: "antro", label: "Antrop. & BIS" },
   { id: "diagnostico", label: "Diagnóstico" },
   { id: "tratamiento", label: "Tratamiento" },
   { id: "seguimiento", label: "Seguimiento" },
@@ -49,19 +59,30 @@ const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
 // Y SE QUITA EL `raw !== "diagnostico"`, que era una trampa esperando: excluia "diagnostico" de la lista
 // valida y lo dejaba caer al default, que casualmente era el mismo. Con el default configurable,
 // `?etapa=diagnostico` habria aterrizado en Evaluacion.
-function parseTab(raw: string | null, porDefecto: TabId): TabId {
+// ENLACES VIEJOS: `?etapa=evaluacion` existio hasta el 2026-09-10 y se repartio en dos. Un enlace guardado
+// (o el de un correo, o el que alguien dejo en una nota) caeria al default sin decir nada, que es la forma
+// silenciosa de romper una direccion. Se traduce: si venia con `?ev=antropometria` iba a la segunda, y si
+// no, a la primera. Se conserva la subpestaña que traiga porque es exactamente lo que la persona miraba.
+function traducirEtapaVieja(raw: string, ev: string | null): TabId {
+  return ev === "antropometria" ? "antro" : "encuesta";
+}
+
+function parseTab(raw: string | null, ev: string | null, porDefecto: TabId): TabId {
+  if (raw === "evaluacion") return traducirEtapaVieja(raw, ev);
   return raw && TAB_IDS.has(raw) ? (raw as TabId) : porDefecto;
 }
 
 export function EvaluationTabs({
-  evaluacion,
+  encuesta,
+  antro,
   diagnostico,
   tratamiento,
   seguimiento,
   reporte,
   porDefecto = "diagnostico",
 }: {
-  evaluacion: ReactNode;
+  encuesta: ReactNode;
+  antro: ReactNode;
   diagnostico: ReactNode;
   tratamiento: ReactNode;
   seguimiento: ReactNode;
@@ -77,11 +98,18 @@ export function EvaluationTabs({
 }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const active = parseTab(searchParams.get("etapa"), porDefecto);
-  const content: Record<TabId, ReactNode> = { evaluacion, diagnostico, tratamiento, seguimiento, reporte };
+  const active = parseTab(searchParams.get("etapa"), searchParams.get("ev"), porDefecto);
+  const content: Record<TabId, ReactNode> = {
+    encuesta,
+    antro,
+    diagnostico,
+    tratamiento,
+    seguimiento,
+    reporte,
+  };
 
   function select(id: TabId) {
-    // Copia TODOS los params (conserva ?sub/?ev/?trat de las subpestañas) y fija solo el propio; ninguno
+    // Copia TODOS los params (conserva ?sub/?trat de las subpestañas) y fija solo el propio; ninguno
     // pisa al otro. replaceState, no router.replace: el contenido de las 4 etapas ya llego del servidor, asi
     // que conmutar es instantaneo (sin refetch). La URL persiste (recargar/compartir/volver abre la correcta).
     const params = new URLSearchParams(searchParams.toString());

@@ -19,7 +19,7 @@ const READER = readFileSync("src/modules/reports/data/hc-documento-reader.ts", "
 const SERVICIO = readFileSync("src/modules/reports/services/entregar-hc.ts", "utf8");
 const WRITER = readFileSync("src/modules/reports/data/hc-entregas-writer.ts", "utf8");
 const MIGRACION = readFileSync("drizzle/0098_hc_entregas.sql", "utf8");
-const PAGE = sinComentarios(readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8"));
+const PAGE = sinComentarios(readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8"));
 
 describe("el PDF no compone: recibe lo que compone el lector de la pantalla", () => {
   it("el documento solo recibe un `HistoriaClinicaDoc`", () => {

@@ -67,7 +67,7 @@ const KEYS_VACIAS: Record<string, string> = {
 // la lista de la verdad se DERIVA del codigo y lo escrito a mano se compara contra ella.
 const FUENTES = [
   "src/modules/treatment/components/treatment-panel.tsx",
-  "src/app/(app)/evaluaciones/[id]/page.tsx",
+  "src/app/(app)/ani-bis-e/[id]/page.tsx",
 ];
 const SECCIONES_REALES = new Set(
   FUENTES.flatMap((f) => [...readFileSync(f, "utf8").matchAll(/sectionKey\(\s*"([a-z-]+)"/g)].map((m) => m[1])),
@@ -126,7 +126,7 @@ describe("keys de las secciones del panel de tratamiento", () => {
 describe("los sitios que keyean por firma usan sectionKey", () => {
   const FUENTES = [
     "src/modules/treatment/components/treatment-panel.tsx",
-    "src/app/(app)/evaluaciones/[id]/page.tsx",
+    "src/app/(app)/ani-bis-e/[id]/page.tsx",
   ];
 
   it("ningun key={...Signature(...)} queda sin prefijo de seccion", () => {
