@@ -60,6 +60,24 @@ El acceso al **contenido clínico narrativo** (notas de evaluación, diagnóstic
 ## MFA
 TOTP (Supabase Auth nativo) obligatorio para admin, internos **y profesionales** (gate Hito 2). Es la pieza que sostiene el no-repudio: aunque CNV controle algún buzón, el segundo factor en el teléfono bloquea la suplantación. La MFA del profesional no es opcional porque su cuenta da acceso a las historias clínicas de todos sus pacientes, y una MFA opcional casi nadie la activa. El set de roles forzados es `MFA_REQUIRED_ROLES` (internos + `professional`); un usuario sin rol requerido no se fuerza. Enforcement en la policy pura `mfaRequirement` y en el gate de `(app)/layout.tsx`.
 
+### Un segundo factor por CORREO sería más débil, y por eso es alternativa y no el método (2026-09-09)
+
+Santiago pidió ofrecer MFA por correo, con Resend, para quien no pueda usar un autenticador. Se hará, y
+**se ofrecerá como alternativa, nunca como método por defecto.** La razón está una sección más abajo y es
+la misma que sostiene el procedimiento de recuperación: **el correo suele ser también el canal de
+recuperación de la contraseña.** Quien controla el buzón puede pedir el restablecimiento **y** recibir el
+código: el segundo factor deja de serlo y se convierte en una segunda copia del primero. Con TOTP no pasa,
+porque el factor vive en el teléfono y no en el buzón, que es exactamente lo que dice la sección de arriba
+("aunque CNV controle algún buzón, el segundo factor en el teléfono bloquea la suplantación").
+
+**Y hay un detalle técnico sin resolver, anotado aquí porque es decisión de seguridad y no de código:**
+Supabase no ofrece "correo" como tipo de factor (su API acepta `totp` y `phone`; el correo con código de
+GoTrue es un método de **inicio de sesión**, no un segundo factor sobre una sesión ya autenticada). Así
+que esa vía no puede subir la sesión a `aal2`, y hay que decidir **dónde se registra que el segundo factor
+se superó**, de forma que no se pueda falsificar desde el cliente. Sin esa decisión no se escribe el
+código. Dimensionamiento en `BACKLOG.md`; el orden acordado (TOTP primero, correo después) en
+`LANZAMIENTO.md`.
+
 ### Recuperación del segundo factor y reinicio de clave (procedimiento, no código)
 `resetUserMfa` (reinicia el segundo factor de un profesional que perdió el teléfono) y `forcePasswordReset` (fuerza el cambio de clave) son la vía legítima de recuperación, pero también la vía por la que se toman cuentas: alguien escribe diciendo que perdió el acceso, y la cuenta da entrada a historias clínicas.
 
