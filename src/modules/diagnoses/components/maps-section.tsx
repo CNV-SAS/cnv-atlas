@@ -32,6 +32,7 @@ import { ComparisonLayout } from "@/components/ui/comparison-layout";
 
 import { Diana, riskColor } from "./diana";
 import { DfiRadar } from "./dfi-radar";
+import { ROTULO_NUTRACEUTICOS } from "../data/efr-states-types";
 import type { EfrStateRef } from "../data/efr-states-types";
 
 // Mapas del estado (radar + Diana) con la exploracion de estados (V2). Reorg 2026-08-19 (Gildardo, replica
@@ -189,7 +190,10 @@ function StateDetailPanel({ detail, kind }: { detail: StateDetail; kind: "pacien
           <Field label="Mecanismos bioquímicos / Disfunción celular" value={detail.mechanism} />
           <Field label="Biomarcadores clave" value={detail.biomarkers} />
           <Field label="Riesgos clínicos" value={detail.risks} />
-          <Field label="Nutracéuticos sugeridos" value={detail.suggestedNutraceuticals} />
+          {/* MISMO ROTULO QUE LA FICHA DEL PACIENTE: este panel es el estado EXPLORADO, y se compara al
+              lado del suyo. Dos nombres para el mismo campo en dos columnas que se leen juntas es como se
+              consigue que parezcan dos cosas distintas. */}
+          <Field label={ROTULO_NUTRACEUTICOS} value={detail.suggestedNutraceuticals} />
         </>
       )}
     </div>

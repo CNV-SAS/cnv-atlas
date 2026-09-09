@@ -9,3 +9,18 @@ export type EfrStateRef = {
   risks: string | null;
   suggestedNutraceuticals: string | null;
 };
+
+/**
+ * Rotulo del quinto campo clinico del estado EFR, PORTADO de su archivo (2026-09-09).
+ *
+ * VIVE AQUI, en el modulo neutro, porque lo pintan DOS superficies que se leen juntas: la ficha del
+ * paciente y el panel del estado explorado, lado a lado al comparar. Escrito dos veces es como se
+ * consigue que el mismo campo parezca dos cosas distintas en dos columnas contiguas. Y el candado
+ * `diana-bloque-sin-repetir` lo lee de aqui en vez de llevar una tercera copia.
+ *
+ * ANTES DECIA "Nutracéuticos sugeridos", por una excepcion de negocio nuestra ("a futuro puede haber
+ * otras lineas"). Santiago la revierte con una razon que es del CONTENIDO y no de la marca: no es un
+ * producto que se venda por vender, es parte del TRATAMIENTO derivado del estado, y "sugeridos" lo dejaba
+ * sonando a recomendacion suelta.
+ */
+export const ROTULO_NUTRACEUTICOS = "VITACELLEBIS — Nutracéuticos indicados para este estado";
