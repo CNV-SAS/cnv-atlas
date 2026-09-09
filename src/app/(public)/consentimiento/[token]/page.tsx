@@ -69,13 +69,19 @@ export default async function ConsentimientoQrPage({
 
   return (
     <Shell>
+      {/* EL TONO. La intencion se conserva (invitar a leer sin prisa es correcto y es lo que hace INFORMADO
+          al consentimiento), pero la redaccion es la de un documento legal y no la de un mensaje de
+          aplicacion: "tienes tiempo de sobra y nadie te esta esperando" sonaba a conversacion.
+          Se dice lo mismo con la forma que corresponde: que es una decision suya, que el tiempo esta
+          previsto, y que puede preguntar. */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Tu autorización</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
+          Autorización de tratamiento de datos
+        </h1>
         <p className="text-sm text-muted-foreground">
-          {profesional.fullName
-            ? `Estás en la consulta de ${profesional.fullName}. `
-            : ""}
-          Léelo con calma: tienes tiempo de sobra y nadie te está esperando para esto.
+          {profesional.fullName ? `Consulta con ${profesional.fullName}. ` : ""}
+          Lee el documento completo antes de autorizar. Dispones del tiempo que necesites, y puedes
+          preguntarle a tu profesional cualquier punto que no te quede claro.
         </p>
       </div>
       <ConsentimientoQr token={token} consentText={CONSENT_TEXT_V1_0} />
