@@ -323,7 +323,7 @@ function Declaracion({
   documentNumber: string;
   onCreado: (resumeToken: string) => void;
 }) {
-  const inicialDecl: DeclararQrState = { error: null, resumeToken: null };
+  const inicialDecl: DeclararQrState = { error: null, resumeToken: null, tieneCorreo: false };
   const [res, declarar, enviando] = useActionState(declararYCrearQrAction, inicialDecl);
   const [pais, setPais] = useState(DEFAULT_COUNTRY);
   const [declarado, setDeclarado] = useState(false);

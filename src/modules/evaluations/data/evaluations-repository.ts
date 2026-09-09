@@ -202,3 +202,16 @@ export async function getPatientPrefill(
     phone: contact?.phone ?? null,
   };
 }
+
+// ¿El paciente tiene correo registrado? Lo usa la pantalla que entrega el enlace de la encuesta, para
+// DECIR LA VERDAD sobre si ese enlace tambien le llego por correo. Por RLS: es su paciente.
+export async function pacienteTieneCorreo(patientId: string): Promise<boolean | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("patient_contacts")
+    .select("email")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (error) return null;
+  return Boolean(data?.email);
+}

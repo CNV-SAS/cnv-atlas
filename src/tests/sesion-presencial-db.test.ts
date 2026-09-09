@@ -66,6 +66,7 @@ async function emitir(documento: string) {
     declaracionVersion: "1.0",
     ip: null,
   });
+  if ("yaHayUna" in s) throw new Error(`ya habia un pase en curso: ${s.documento}`);
   creadas.push(s.id);
   return { ...s, pro };
 }
@@ -265,6 +266,7 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
         declaracionVersion: "1.0",
         ip: ipProfesional,
       });
+      if ("yaHayUna" in s) throw new Error(`ya habia un pase en curso: ${s.documento}`);
       creadas.push(s.id);
       return s;
     };
@@ -272,6 +274,12 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
     const igual = await crear("192.0.2.10");
     await abrirSesionPresencial({ token: igual.token, ip: "192.0.2.10", userAgent: "A" });
     expect((await fila(igual.id)).mismoOrigen, "misma IP: se marca").toBe(true);
+
+    // LA PREPARACION SE CORRIGE, no la asercion (2026-09-10): desde la 0111 solo hay UN pase por
+    // profesional a la vez, asi que para probar el segundo caso hay que cerrar el primero. Es lo mismo
+    // que tendria que hacer el profesional, y por eso el montaje realista es este.
+    const { abandonarSesion } = await import("@/modules/consent/data/sesion-presencial");
+    await abandonarSesion(igual.id, pro.profileId);
 
     const distinta = await crear("192.0.2.10");
     await abrirSesionPresencial({ token: distinta.token, ip: "198.51.100.4", userAgent: "A" });
@@ -294,6 +302,7 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
       declaracionVersion: "1.0",
       ip: null,
     });
+    if ("yaHayUna" in s) throw new Error(`ya habia un pase en curso: ${s.documento}`);
     creadas.push(s.id);
     await abrirSesionPresencial({ token: s.token, ip: null, userAgent: "A" });
     expect((await fila(s.id)).mismoOrigen).toBeNull();
@@ -452,5 +461,85 @@ describe("a declaradoPorProfileId va un profiles.id, siempre", () => {
         expect(valor, `${f} le pasa la ficha profesional`).not.toMatch(/professionalId|professionalProfileId/);
       }
     }
+  });
+});
+
+// ── UN PASE A LA VEZ (0111, 2026-09-10) ────────────────────────────────────────────────────────────
+//
+// Antes la tabla admitia VARIOS y la pantalla enseñaba UNO: un segundo pase volvia INVISIBLE al primero,
+// que seguia vivo y confirmable. Un consentimiento confirmado que no aparece en ninguna pantalla es peor
+// que no haber podido emitirlo.
+describe.skipIf(!HAS_DB)("un solo pase por profesional (BD real)", () => {
+  it("el segundo se rechaza CON PALABRAS, nombrando el documento del que está en curso", async () => {
+    const { crearSesionPresencial } = await import("@/modules/consent/data/sesion-presencial");
+    const pro = await profesional();
+    const doc = `UNICO-${Date.now()}`;
+    const primero = await emitir(doc);
+    expect(primero.id).toBeTruthy();
+
+    const segundo = await crearSesionPresencial({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalId,
+      createdBy: pro.profileId,
+      documentType: "CC",
+      documentNumber: `OTRO-${Date.now()}`,
+      declaracionVersion: "1.0",
+      ip: null,
+    });
+    expect("yaHayUna" in segundo, "el segundo pase no puede crearse").toBe(true);
+    if ("yaHayUna" in segundo) {
+      // Con el documento concreto: sin el, el profesional no sabe cuál está en curso ni a quién buscar.
+      expect(segundo.documento).toBe(doc);
+    }
+  });
+
+  it("y ANULAR siempre desbloquea: nadie se queda sin poder emitir", async () => {
+    // Es la contrapartida del límite. Si anular no funcionara, un pase olvidado dejaría al profesional
+    // bloqueado hasta que venciera.
+    const { abandonarSesion, crearSesionPresencial } = await import(
+      "@/modules/consent/data/sesion-presencial"
+    );
+    const pro = await profesional();
+    const primero = await emitir(`ANUL-${Date.now()}`);
+    await abandonarSesion(primero.id, pro.profileId);
+
+    const segundo = await crearSesionPresencial({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalId,
+      createdBy: pro.profileId,
+      documentType: "CC",
+      documentNumber: `ANUL2-${Date.now()}`,
+      declaracionVersion: "1.0",
+      ip: null,
+    });
+    expect("yaHayUna" in segundo, "tras anular, emitir tiene que volver a funcionar").toBe(false);
+    if (!("yaHayUna" in segundo)) creadas.push(segundo.id);
+  });
+
+  it("y una sesión VENCIDA deja de ocupar: nadie queda bloqueado para siempre", async () => {
+    // Sin esto, la primera sesión que venciera bloquearía al profesional de forma PERMANENTE, que es un
+    // defecto peor que el que el índice cierra. No puede vivir en el índice (now() no es inmutable).
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { crearSesionPresencial } = await import("@/modules/consent/data/sesion-presencial");
+    const pro = await profesional();
+    const vieja = await emitir(`VENC-${Date.now()}`);
+    await db
+      .update(schema.presencialConsentSessions)
+      .set({ expiresAt: new Date(Date.now() - 60_000), lecturaHasta: null })
+      .where(eq(schema.presencialConsentSessions.id, vieja.id));
+
+    const nueva = await crearSesionPresencial({
+      organizationId: pro.organizationId,
+      professionalId: pro.professionalId,
+      createdBy: pro.profileId,
+      documentType: "CC",
+      documentNumber: `VENC2-${Date.now()}`,
+      declaracionVersion: "1.0",
+      ip: null,
+    });
+    expect("yaHayUna" in nueva, "una vencida no puede seguir ocupando").toBe(false);
+    if (!("yaHayUna" in nueva)) creadas.push(nueva.id);
+    expect((await fila(vieja.id)).estado, "la vieja queda marcada como vencida").toBe("vencida");
   });
 });

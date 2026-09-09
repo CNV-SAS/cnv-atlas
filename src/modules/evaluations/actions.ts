@@ -31,6 +31,7 @@ import {
 import {
   getEvaluationOwnership,
   getPatientPrefill,
+  pacienteTieneCorreo,
 } from "./data/evaluations-repository";
 import { ConsentGateError, startFollowupWithoutSignature } from "./data/intake-writer";
 import {
@@ -350,7 +351,7 @@ export async function enlaceEncuestaPendienteAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -360,7 +361,14 @@ export async function enlaceEncuestaPendienteAction(
   // AUSENTE Y VACIA NO SON LO MISMO aguas abajo, pero aqui se dicen igual a proposito: "no es tuya" y "ya
   // no esta pendiente" son ambos "no hay enlace que dar", y distinguirlos en pantalla contaria de mas.
   if (!resumeToken) return fail("Esa encuesta ya no está pendiente.");
-  return { error: null, resumeToken, revoked: false, reanudar: true };
+  const dueño = await getEvaluationOwnership(evaluationId);
+  return {
+    error: null,
+    resumeToken,
+    revoked: false,
+    reanudar: true,
+    tieneCorreo: dueño ? await pacienteTieneCorreo(dueño.patientId) : null,
+  };
 }
 
 // Abrir una evaluacion nueva a un paciente que ya consintio, sin enlace y sin volver a firmar.
@@ -368,7 +376,7 @@ export async function abrirEvaluacionEnConsultaAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -389,11 +397,17 @@ export async function abrirEvaluacionEnConsultaAction(
       ipAddress: ip === "unknown" ? null : ip,
     });
     revalidatePath("/pacientes");
-    return { error: null, resumeToken: result.resumeToken, revoked: false, reanudar: result.reused };
+    return {
+      error: null,
+      resumeToken: result.resumeToken,
+      revoked: false,
+      reanudar: result.reused,
+      tieneCorreo: await pacienteTieneCorreo(patientId),
+    };
   } catch (e) {
     // Autorizacion necesaria revocada: el gate corrio ANTES de crear nada. No es fallo tecnico, y en esta
     // pantalla el profesional TIENE al paciente delante: puede volver a pedirle el consentimiento.
-    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true, reanudar: false };
+    if (e instanceof ConsentGateError) return { error: null, resumeToken: null, revoked: true, reanudar: false, tieneCorreo: null };
     throw e;
   }
 }
@@ -406,7 +420,7 @@ export async function startFollowupAction(
   _prev: StartFollowupState,
   form: FormData,
 ): Promise<StartFollowupState> {
-  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false });
+  const fail = (error: string): StartFollowupState => ({ error, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null });
 
   const token = str(form, "token");
   if (!token) return fail("Link inválido.");
@@ -428,12 +442,18 @@ export async function startFollowupAction(
       linkId: link.id,
       ipAddress: ip === "unknown" ? null : ip,
     });
-    return { error: null, resumeToken: result.resumeToken, revoked: false, reanudar: result.reused };
+    return {
+      error: null,
+      resumeToken: result.resumeToken,
+      revoked: false,
+      reanudar: result.reused,
+      tieneCorreo: await pacienteTieneCorreo(link.patientId),
+    };
   } catch (e) {
     // Autorizacion necesaria revocada: el gate (regla 15) corrio ANTES de crear nada. No es un error tecnico;
     // se muestra el aviso de acudir al profesional (redaccion aprobada 2026-08-20).
     if (e instanceof ConsentGateError) {
-      return { error: null, resumeToken: null, revoked: true, reanudar: false };
+      return { error: null, resumeToken: null, revoked: true, reanudar: false, tieneCorreo: null };
     }
     throw e;
   }

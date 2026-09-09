@@ -64,6 +64,14 @@ export async function emitirSesionQrAction(
     declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
     ip: ip === "unknown" ? null : ip,
   });
+  if ("yaHayUna" in s) {
+    // EL LIMITE, DICHO CON PALABRAS y con el documento concreto, en vez de un error de base de datos. Y
+    // con la salida: anular siempre es posible mientras no se haya declarado, asi que nadie queda
+    // bloqueado.
+    return fail(
+      `Ya tienes un pase en curso con el documento ${s.documento}. Termínalo o anúlalo antes de empezar otro.`,
+    );
+  }
   return { error: null, token: s.token, sessionId: s.id };
 }
 
@@ -193,6 +201,11 @@ export async function confirmarSesionQrAction(
 export type DeclararQrState = {
   error: string | null;
   resumeToken: string | null;
+  /**
+   * Siempre false en esta via, y por construccion: la modalidad 2 existe porque el paciente NO tiene
+   * correo. Viaja igual, en vez de darse por supuesto en la pantalla, para que el texto lo DERIVE.
+   */
+  tieneCorreo: boolean;
 };
 
 // ── PROFESIONAL: DECLARAR Y CREAR (el paso final de la modalidad 2) ───────────────────────────────
@@ -213,7 +226,11 @@ export async function declararYCrearQrAction(
   _prev: DeclararQrState,
   form: FormData,
 ): Promise<DeclararQrState> {
-  const fail = (error: string): DeclararQrState => ({ error, resumeToken: null });
+  const fail = (error: string): DeclararQrState => ({
+    error,
+    resumeToken: null,
+    tieneCorreo: false,
+  });
   const user = await requireUser();
   if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
 
@@ -283,7 +300,7 @@ export async function declararYCrearQrAction(
       },
     });
     revalidatePath("/pacientes");
-    return { error: null, resumeToken: r.resumeToken };
+    return { error: null, resumeToken: r.resumeToken, tieneCorreo: false };
   } catch (e) {
     if (e instanceof ConsentGateError) {
       return fail("Faltan autorizaciones necesarias: no se puede crear la evaluación.");

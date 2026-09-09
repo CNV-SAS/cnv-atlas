@@ -8,7 +8,7 @@ import { startFollowupAction } from "../actions";
 import type { StartFollowupState } from "../validations";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
-const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false, reanudar: false };
+const initialState: StartFollowupState = { error: null, resumeToken: null, revoked: false, reanudar: false, tieneCorreo: null };
 
 // Pantalla de inicio del SEGUIMIENTO SIN FIRMA (dictamen legal 2026-08-20 §3): el paciente ya esta verificado
 // y su consentimiento vigente cubre el seguimiento (numeral 4), asi que NO se re-firma ni se pide codigo. Un
