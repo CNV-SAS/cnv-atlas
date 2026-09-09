@@ -148,6 +148,59 @@ export function clasificarIcaBis(icaBis: number | null): ClaseIcaBis | null {
   return { l: "Zona crítica", c: "#7f1d1d" };
 }
 
+// ═══ LOS ROTULOS DE LA TABLA DE INDICES SON LOS DE SU CAPA DE DISPLAY (2026-09-09) ═══
+//
+// EL DEFECTO, y lo vio Santiago con Gildardo delante: su tabla dice "Envejecimiento acelerado" y la
+// nuestra "Acelerado". Al ir a mirar no era UNA etiqueta, era una FAMILIA.
+//
+// SU ARCHIVO TIENE DOS JUEGOS DE CLASIFICADORES y su tabla de Diagnostico usa el segundo:
+//   · los CIENTIFICOS (`cIFC`, `cPABU`, `cIAE`, `cIEHH`...), que viven en el motor congelado y son los
+//     que nosotros sellamos en el snapshot;
+//   · los de DISPLAY (`dIFC`, `dPABU`, `dIAE`, `dIEHH`... ATLAS_v8 L14436-14446), que son los que su
+//     tabla PINTA, con rotulos mas explicitos.
+// Ya lo sabiamos por el ICA-BIS (arriba): esa fila se porto de `dICA` justamente por esto. Lo que no se
+// hizo entonces fue barrer las demas, asi que quedaron cuatro con el rotulo del clasificador cientifico.
+//
+// SOLO EL ROTULO. La severidad (el color) sigue saliendo del clasificador SELLADO, y no se toca: en el
+// IAE, por ejemplo, su display pinta "Concordante" en AZUL y nuestro sellado en AMBAR, y el azul de su
+// paleta no es un significado que podamos leer (ya nos costo tres defectos). El color es una decision
+// clinica suya y se pregunta, no se deduce de un hexadecimal.
+//
+// SE COMPUTA AL MOSTRAR, desde el valor SELLADO, igual que `clasificarIcaBis` y que las severidades de
+// AF/IR: asi el rotulo correcto aparece tambien en los diagnosticos ya emitidos.
+const ROTULOS_DISPLAY: Record<string, (v: number) => string> = {
+  // dIFC (L14436): solo cambia el escalon malo, "Disfunción celular" -> "Disfunción celular establecida".
+  IFC: (v) => (v < 3.5 ? "Disfunción celular establecida" : v <= 6.0 ? "Alerta funcional" : "Función óptima"),
+  // dPABU (L14440): aqui NO es que se acortara, es que dice OTRA cosa. Su tabla nombra la direccion por
+  // el indicador ("PABU bajo"/"PABU elevado") y el clasificador cientifico la nombra por el mecanismo
+  // ("Desviación por déficit"/"por exceso"). Se porta el suyo porque es la tabla que el enseña.
+  PABU: (v) => (v < 1.618 ? "PABU bajo" : v > 1.618 ? "PABU elevado" : "Homeostasis óptima"),
+  // dIAE (L14444): es el que reporto Santiago. Dos de los tres escalones llevan la palabra que faltaba.
+  IAE: (v) => (v < -5 ? "Envejecimiento desacelerado" : v <= 5 ? "Concordante" : "Envejecimiento acelerado"),
+  // dIEHH (L14445): los cuatro escalones. "Óptimo/Leve/Moderado/Severo" no dice de QUE, y en una tabla
+  // donde la fila de al lado tambien gradua, un "Leve" suelto no se sabe leve de que.
+  IEHH: (v) =>
+    v <= 0
+      ? "Equilibrio hídrico óptimo"
+      : v <= 1
+        ? "Desequilibrio leve"
+        : v <= 2
+          ? "Desequilibrio moderado"
+          : "Desequilibrio severo",
+};
+
+/**
+ * Rotulo de la fila en la TABLA DE INDICES del Diagnostico, si su capa de display usa otro distinto del
+ * que sellamos. `null` = no hay diferencia y manda el sellado.
+ *
+ * NO cubre ICA-BIS, que ya se resuelve entero por `clasificarIcaBis` (label y color), ni IRC/ISCM, cuyos
+ * rotulos de display coinciden con los nuestros (su `dIRC` delega literalmente en `cIRC`).
+ */
+export function rotuloDisplayDeIndice(codigo: string, valor: number | null): string | null {
+  if (valor == null) return null;
+  return ROTULOS_DISPLAY[codigo]?.(valor) ?? null;
+}
+
 // LA REGLA DE LA HISTORIA CLINICA, que es la OTRA (ATLAS_v8 L15425): ahi la fila ICA-BIS toma la
 // clasificacion del PABU, y el lo dejo anotado ("cICABIS eliminado — usar cPABU global"). No se aplica a
 // la pantalla de Diagnostico: son dos superficies con dos reglas suyas.

@@ -15,16 +15,19 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // LO QUE ESTE CANDADO AFIRMA hoy son dos cosas cerradas:
 //   1. AF e IR NO estan en esta tabla. Estan en el Nivel III de Wang, con su referencia, su Δ y su
 //      veredicto, exactamente como el los tiene. Estaban en las DOS por nuestra cuenta.
-//   2. La franja lleva DOS rotulos: "Nivel II · Molecular" arriba y la franja propia de los indices
-//      debajo. Los indices SI caen dentro del Nivel II.
+//   2. El NIVEL se nombra en el TITULO DESPLEGABLE ("Nivel II · Molecular - Indicadores ANI-BIS-E"), y
+//      dentro de la tabla no hay ninguna franja de seccion.
 //
-// ME EQUIVOQUE AQUI Y SE CORRIGE (2026-09-09). La primera version de este candado afirmaba lo contrario
-// (que los indices eran una seccion aparte) apoyandose en su comentario "indices compuestos, no
-// componentes moleculares". Ese comentario justifica la FRANJA PROPIA, no una salida del nivel: en su
-// tabla el Nivel II es la ultima franja de nivel y los indices van justo detras, sin ninguna franja que
-// los saque. Su HTML es PLANO (`NvH` es una fila mas del mismo `tbody`), asi que la estructura no
-// distingue las dos lecturas, y Gildardo pidio el encabezado porque se ve como un salto de tabla. Un
-// testimonio directo suyo manda sobre una inferencia nuestra.
+// TRES VUELTAS PARA LLEGAR AQUI, y se escribe entero porque el recorrido es la leccion:
+//   · Primero puse una franja propia ("Índices bioeléctricos integrados · ANI BIS-E") argumentando que
+//     los indices NO eran del Nivel II. Me apoye en su comentario ("indices compuestos, no componentes
+//     moleculares"), que justifica la franja pero no dice que salgan del nivel: le atribui un alcance que
+//     la frase no tiene. Su HTML es ademas PLANO (`NvH` es una fila mas del mismo `tbody`), asi que la
+//     estructura no distingue las dos lecturas y la cita no zanjaba nada.
+//   · Despues, con la correccion de Santiago, puse DOS franjas apiladas dentro de la tabla.
+//   · Y lo que Gildardo pedia era mas simple que las dos cosas: que el TITULO diga de que nivel es.
+// La moraleja que queda fijada aqui: cuando la pieza es un ROTULO, la respuesta suele ser mover el
+// rotulo, no añadir estructura.
 //
 // Y EL ORDEN YA NO ES UNA PREGUNTA ABIERTA: se adopto el suyo (punto 5e).
 //
@@ -86,16 +89,23 @@ describe("AF e IR viven en el Nivel III, no en la tabla de índices", () => {
 });
 
 describe("la franja se rotula como en su archivo", () => {
-  it("el nivel arriba y la franja propia debajo, en ese orden", () => {
-    // LAS DOS, y el orden importa: el nivel situa la tabla en la jerarquia de Wang y la franja propia
-    // diferencia los indices de los componentes moleculares que quedaron en la otra tabla.
+  it("el nivel va en el título desplegable", () => {
+    expect(sinComentarios(RESULTADOS)).toContain(
+      'title="Nivel II · Molecular - Indicadores ANI-BIS-E"',
+    );
+  });
+
+  it("y NO hay franjas de sección dentro de la tabla", () => {
+    // Las dos versiones anteriores metian un `th colSpan` de banda encima del encabezado de columnas. Es
+    // una segunda cabecera compitiendo con la que ya hay, y ademas no era lo que se pedia.
     const limpio = sinComentarios(RESULTADOS);
-    const bloque = limpio.slice(limpio.indexOf("Indicadores ANI-BIS-E"));
-    const iNivel = bloque.indexOf("Nivel II · Molecular");
-    const iFranja = bloque.indexOf("Índices bioeléctricos integrados · ANI BIS-E");
-    expect(iNivel, "falta el encabezado de nivel sobre la tabla de índices").toBeGreaterThan(-1);
-    expect(iFranja, "falta la franja propia de los índices").toBeGreaterThan(-1);
-    expect(iNivel, "la franja propia quedó por encima del nivel").toBeLessThan(iFranja);
+    const bloque = limpio.slice(limpio.indexOf("Nivel II · Molecular - Indicadores"));
+    expect(bloque.slice(0, 2000), "volvió la franja retirada").not.toContain(
+      "Índices bioeléctricos integrados",
+    );
+    expect(bloque.slice(0, 2000), "volvió una franja de sección dentro de la tabla").not.toContain(
+      "colSpan={5}",
+    );
   });
 
   it("y el orden de los índices es el de su archivo", () => {

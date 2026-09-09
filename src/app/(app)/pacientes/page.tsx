@@ -13,7 +13,7 @@ import { ListaPacientes } from "@/modules/patients/components/lista-pacientes";
 import { canCreatePatientPresencial } from "@/modules/patients/policies/can-create-patient";
 import { canViewPatients } from "@/modules/patients/policies/can-view-patients";
 
-export const metadata = { title: "Pacientes - Atlas" };
+export const metadata = { title: "Lista de pacientes - Atlas" };
 
 // Roster de pacientes del profesional. Autorizacion de ruta por policy (regla 3); el
 // alcance de datos (solo los propios, o todos para admin) lo impone RLS.
@@ -44,8 +44,11 @@ export default async function PacientesPage() {
     // nombre y el documento en extremos lejanos, y el ojo pierde la fila al cruzarla. El ancho de lectura
     // es propiedad del CONTENIDO, igual que ya decidimos para el texto: aqui la pantalla elige el suyo.
     <div className="mx-auto flex w-full max-w-[80rem] flex-col gap-4">
+      {/* "LISTA DE PACIENTES" y no "Pacientes" a secas (Santiago, 2026-09-09): "Pacientes" solo se
+          confunde con "Atlas Pacientes", que es la superficie del PACIENTE (la encuesta). El titulo dice
+          ademas lo que la pantalla ES, que es una lista, y no una seccion generica. */}
       <TituloPantalla
-        titulo="Pacientes"
+        titulo="Lista de pacientes"
         descripcion="Tus pacientes y el acceso a su historia clínica."
         acciones={
           // EL BOTON SOLO PARA QUIEN PUEDE CREAR (misma policy que gatea la ruta y la accion): un boton
