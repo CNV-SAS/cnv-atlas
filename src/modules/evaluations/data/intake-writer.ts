@@ -11,6 +11,7 @@ import {
   patientContacts,
   patientProfessionalRelationships,
   patientProfiles,
+  presencialConsentSessions,
   patients,
   surveyAnswers,
   surveyLinks,
@@ -321,6 +322,13 @@ export type SignIntakeInput = {
     canal: "presencial_otp" | "presencial_qr" | "presencial_papel";
     declaradoPorProfileId: string;
     declaracionVersion: string;
+    /**
+     * Sesion del QR (modalidad 2). Se cierra DENTRO de esta misma transaccion, y no despues, porque si
+     * no lo que queda es un paciente creado con la sesion todavia `confirmada`: la pantalla la ofreceria
+     * otra vez y el profesional declararia dos veces sobre el mismo acto. Aqui o pasan las dos cosas o
+     * no pasa ninguna.
+     */
+    sessionId?: string;
   };
 };
 
@@ -439,6 +447,14 @@ export async function signIntakeEvaluation(input: SignIntakeInput): Promise<Sign
     });
 
     await consumeLink(tx, input.linkId);
+
+    // La sesion del QR se cierra aqui: queda DECLARADA y apuntando al paciente que produjo.
+    if (input.presencial?.sessionId) {
+      await tx
+        .update(presencialConsentSessions)
+        .set({ estado: "declarada", declaredAt: sql`now()`, patientId })
+        .where(eq(presencialConsentSessions.id, input.presencial.sessionId));
+    }
 
     return { evaluationId: evaluation.id, patientId, resumeToken, reused: false };
   });

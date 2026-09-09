@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import * as Sentry from "@sentry/nextjs";
 
@@ -13,6 +14,7 @@ import {
   confirmarSesionPresencial,
   crearSesionPresencial,
   leerEstadoSesion,
+  leerSesionParaDeclarar,
   sesionEnCursoDelProfesional,
   type EstadoSesion,
 } from "./data/sesion-presencial";
@@ -186,4 +188,112 @@ export async function confirmarSesionQrAction(
     };
   }
   return { error: null, estado: "confirmada", declarado: null };
+}
+
+export type DeclararQrState = {
+  error: string | null;
+  resumeToken: string | null;
+};
+
+// ── PROFESIONAL: DECLARAR Y CREAR (el paso final de la modalidad 2) ───────────────────────────────
+//
+// VA DESPUES DE QUE EL PACIENTE CONFIRME, y no antes, porque la declaracion afirma lo que YA ocurrio:
+// que se le presento el consentimiento, que tuvo oportunidad de leerlo, que fue EL quien marco, y que se
+// verifico su identidad contra el documento. Marcarla antes seria una promesa, no una declaracion.
+//
+// LA IDENTIDAD SE ARMA DE DOS FUENTES, y cada una aporta lo que le toca:
+//   · NOMBRE Y DOCUMENTO salen de lo que el PACIENTE escribio en su telefono. Es su manifestacion, y es
+//     lo que el dictamen pide que sea suyo. No se sobrescribe con lo que escribio el profesional.
+//   · FECHA, SEXO, PAIS Y CIUDAD salen de la pantalla del profesional, que ya los tenia. Pedirselos al
+//     paciente en su telefono alargaria el acto sin añadir nada a lo que se esta probando.
+//
+// Y NO HAY COPIA POR CORREO, a diferencia del camino normal: esta modalidad existe precisamente porque el
+// paciente no tiene correo. La constancia que se lleva es la que su profesional le entregue.
+export async function declararYCrearQrAction(
+  _prev: DeclararQrState,
+  form: FormData,
+): Promise<DeclararQrState> {
+  const fail = (error: string): DeclararQrState => ({ error, resumeToken: null });
+  const user = await requireUser();
+  if (!canCreatePatientPresencial(user)) return fail("No autorizado.");
+
+  const s = (n: string) => String(form.get(n) ?? "").trim();
+  const sessionId = s("sessionId");
+  if (!sessionId) return fail("Falta la sesión.");
+  if (form.get("declaracion") !== "on") {
+    return fail("Marca la declaración para poder crear el paciente.");
+  }
+
+  const { getProfessionalProfileIdByUser } = await import(
+    "@/modules/payments/data/payments-repository"
+  );
+  const professionalId = await getProfessionalProfileIdByUser(user.id);
+  if (!professionalId) return fail("Tu cuenta no tiene un perfil profesional.");
+
+  // LA SESION SE RELEE EN SERVIDOR, por RLS: lo que traiga el formulario no gobierna. Y tiene que estar
+  // CONFIRMADA: declarar sobre una que el paciente no confirmo seria afirmar un acto que no ocurrio.
+  const sesion = await leerSesionParaDeclarar(sessionId);
+  if (!sesion) return fail("Esa sesión ya no está disponible.");
+  if (sesion.estado !== "confirmada") {
+    return fail("El paciente todavía no ha confirmado su autorización.");
+  }
+
+  const ip = await getClientIp();
+  const { signIntakeEvaluation, ConsentGateError } = await import(
+    "@/modules/evaluations/data/intake-writer"
+  );
+  const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import("@/modules/consent/consent-hash");
+
+  try {
+    const r = await signIntakeEvaluation({
+      organizationId: user.organizationId,
+      professionalId,
+      mode: "inicial",
+      patientId: null,
+      identity: {
+        // Del PACIENTE, tal como lo escribio en su telefono.
+        documentType: sesion.declaradoDocumentType as never,
+        documentNumber: sesion.declaradoDocumentNumber ?? "",
+        firstName: sesion.declaradoNombres ?? "",
+        lastName: sesion.declaradoApellidos ?? "",
+        // Del profesional, que ya los tenia.
+        birthDate: s("birthDate") || null,
+        sex: s("sex"),
+        country: s("country") || null,
+        city: s("city") || null,
+        email: null,
+        phone: s("phone") || null,
+      },
+      consents: (sesion.autorizaciones ?? []).map((type) => ({
+        type: type as never,
+        consentVersion: CONSENT_VERSION,
+        documentHash: CONSENT_DOCUMENT_HASH,
+      })),
+      linkId: null,
+      ipAddress: ip === "unknown" ? null : ip,
+      presencial: {
+        canal: "presencial_qr",
+        // LA PERSONA, no su ficha profesional: `declared_by` referencia `profiles(id)`. Pasar aqui el
+        // `professional_profiles.id` (que esta a mano, dos lineas arriba) es el defecto que ya rompio un
+        // smoke entero, y compila igual de verde porque los dos son uuid.
+        declaradoPorProfileId: user.id,
+        declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+        // La sesion se cierra dentro de la MISMA transaccion que crea al paciente.
+        sessionId,
+      },
+    });
+    revalidatePath("/pacientes");
+    return { error: null, resumeToken: r.resumeToken };
+  } catch (e) {
+    if (e instanceof ConsentGateError) {
+      return fail("Faltan autorizaciones necesarias: no se puede crear la evaluación.");
+    }
+    // El documento pudo dejar de estar libre entre la verificacion y ahora (otro profesional lo creo en
+    // ese rato). El unique de la base lo impide; aqui se dice con palabras.
+    if (String((e as { message?: string }).message ?? "").includes("patients_org_document_unique")) {
+      return fail("Ese documento ya está registrado. Verifícalo de nuevo antes de continuar.");
+    }
+    Sentry.captureException(e, { tags: { area: "sesion-qr", op: "declarar" } });
+    return fail("No pudimos crear el paciente en este momento. Intenta de nuevo.");
+  }
 }

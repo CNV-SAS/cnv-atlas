@@ -359,3 +359,37 @@ export async function sesionEnCursoDelProfesional(): Promise<EstadoSesion | null
     declaradoDocumentNumber: data.declarado_document_number,
   };
 }
+
+// ── LO QUE HACE FALTA PARA DECLARAR ───────────────────────────────────────────────────────────────
+//
+// Se relee EN SERVIDOR y POR RLS: lo que traiga el formulario del profesional no gobierna nada. Devuelve
+// lo que el PACIENTE escribio (que es lo que va a ser su identidad) y lo que marco.
+export type SesionParaDeclarar = {
+  estado: string;
+  declaradoNombres: string | null;
+  declaradoApellidos: string | null;
+  declaradoDocumentType: string | null;
+  declaradoDocumentNumber: string | null;
+  autorizaciones: string[] | null;
+};
+
+export async function leerSesionParaDeclarar(sessionId: string): Promise<SesionParaDeclarar | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("presencial_consent_sessions")
+    .select(
+      "estado, declarado_nombres, declarado_apellidos, declarado_document_type, declarado_document_number, declarado_autorizaciones",
+    )
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (error) throw new Error(`sesion-presencial: para declarar: ${error.message}`);
+  if (!data) return null;
+  return {
+    estado: data.estado,
+    declaradoNombres: data.declarado_nombres,
+    declaradoApellidos: data.declarado_apellidos,
+    declaradoDocumentType: data.declarado_document_type,
+    declaradoDocumentNumber: data.declarado_document_number,
+    autorizaciones: (data.declarado_autorizaciones as string[] | null) ?? null,
+  };
+}

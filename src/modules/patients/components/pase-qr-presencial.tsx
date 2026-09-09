@@ -6,11 +6,17 @@ import { Button } from "@/components/ui/button";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 import {
   abandonarSesionQrAction,
+  declararYCrearQrAction,
   emitirSesionQrAction,
   estadoSesionQrAction,
   sesionEnCursoAction,
+  type DeclararQrState,
   type SesionQrState,
 } from "@/modules/consent/actions.qr";
+import { Input } from "@/components/ui/input";
+import { DECLARACION_PRESENCIAL } from "@/modules/consent/text/declaracion-presencial";
+import { checkboxClass } from "@/modules/evaluations/components/survey-form-shared";
+import { citiesForCountry, COUNTRIES, DEFAULT_COUNTRY } from "@/modules/evaluations/data/geo";
 import type { EstadoSesion } from "@/modules/consent/data/sesion-presencial";
 
 // EL PASE POR QR EN LA PANTALLA DEL PROFESIONAL · MODALIDAD 2.
@@ -31,13 +37,13 @@ const HASTA_MIN = 50; // algo mas que la ventana de lectura: si vencio, ya no va
 export type PaseQrProps = {
   documentType: string;
   documentNumber: string;
-  /** Se llama cuando el paciente confirmo: el profesional pasa a declarar y a crear. */
-  onConfirmado: (sessionId: string, estado: EstadoSesion) => void;
+  /** Se llama cuando el paciente YA quedo creado: el padre pasa a entregar el enlace de la encuesta. */
+  onCreado: (resumeToken: string) => void;
 };
 
 const inicial: SesionQrState = { error: null, token: null, sessionId: null };
 
-export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }: PaseQrProps) {
+export function PaseQrPresencial({ documentType, documentNumber, onCreado }: PaseQrProps) {
   const [sesion, emitir, emitiendo] = useActionState(emitirSesionQrAction, inicial);
   const [estado, setEstado] = useState<EstadoSesion | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -110,14 +116,13 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
         e.estado === "abandonada"
       ) {
         clearInterval(id);
-        if (e.estado === "confirmada") onConfirmado(sesion.sessionId!, e);
       }
     }, CADA_MS);
     return () => {
       vivo = false;
       clearInterval(id);
     };
-  }, [sesion.sessionId, sondear, onConfirmado]);
+  }, [sesion.sessionId, sondear]);
 
   // Sin pase, o con el pase anulado: se vuelve a ofrecer el boton de emitir. El anulado deja su aviso
   // encima, para que el profesional vea que la anulacion SI ocurrio.
@@ -131,7 +136,16 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
         ) : (
           <>
             <h2 className="text-sm font-semibold text-foreground">Tienes un pase en curso</h2>
-            <Espera estado={recuperada} fallo={null} agotado={false} />
+            {recuperada?.estado === "confirmada" ? (
+              <Declaracion
+                sessionId={recuperada.id}
+                estado={recuperada}
+                documentNumber={documentNumber}
+                onCreado={onCreado}
+              />
+            ) : (
+              <Espera estado={recuperada} fallo={null} agotado={false} />
+            )}
             <Button type="button" variant="outline" onClick={() => setRecuperada(null)} className="self-start">
               Descartar y empezar otro
             </Button>
@@ -192,7 +206,16 @@ export function PaseQrPresencial({ documentType, documentNumber, onConfirmado }:
         <code className="break-all text-xs text-foreground">{url}</code>
       </div>
 
-      <Espera estado={visible} fallo={fallo} agotado={agotado} />
+      {visible?.estado === "confirmada" ? (
+        <Declaracion
+          sessionId={visible.id}
+          estado={visible}
+          documentNumber={documentNumber}
+          onCreado={onCreado}
+        />
+      ) : (
+        <Espera estado={visible} fallo={fallo} agotado={agotado} />
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -252,32 +275,6 @@ function Espera({
       </div>
     );
   }
-  if (estado?.estado === "confirmada") {
-    // LA RAMA QUE FALTABA. El sondeo detectaba el estado, pero `confirmada` no tenia pantalla: como
-    // `openedAt` ya estaba puesto, caia en "esperando a que lea y confirme" y no cambiaba NADA. El
-    // paciente veia "listo" en su telefono y el profesional seguia leyendo "esperando".
-    return (
-      <div className="flex flex-col gap-2 rounded-md border border-clinical-optimal/50 bg-clinical-optimal/10 px-3 py-3 text-sm">
-        <p className="font-medium text-foreground">El paciente autorizó</p>
-        <p className="text-foreground">
-          {estado.declaradoNombres} {estado.declaradoApellidos} · {estado.declaradoDocumentNumber}
-        </p>
-        {/* LA DISTANCIA ENTRE ABRIR Y CONFIRMAR, a la vista y no enterrada en la base: es lo que el
-            dictamen pide poder mirar ("un consentimiento aceptado cuatro segundos despues de abrirse es
-            dificil de defender como informado"). Se enseña el dato, sin veredicto: quien juzga si fue
-            poco es una persona, no la pantalla. */}
-        {estado.segundosDeLectura !== null ? (
-          <p className="text-muted-foreground">
-            Estuvo {formatoDuracion(estado.segundosDeLectura)} entre abrir el documento y autorizar.
-          </p>
-        ) : null}
-        <p className="text-muted-foreground">
-          Falta tu declaración para crear el paciente y la evaluación. Ese paso todavía no está
-          construido: no cierres esta pantalla.
-        </p>
-      </div>
-    );
-  }
   if (estado?.openedAt) {
     return (
       <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
@@ -303,4 +300,139 @@ function formatoDuracion(segundos: number): string {
   return resto === 0
     ? `${min} minuto${min === 1 ? "" : "s"}`
     : `${min} minuto${min === 1 ? "" : "s"} y ${resto} segundo${resto === 1 ? "" : "s"}`;
+}
+
+// EL PASO FINAL: el profesional DECLARA y con eso se crea el paciente.
+//
+// VA DESPUES de que el paciente confirme, no antes: la declaracion afirma lo que YA ocurrio (que se le
+// presento el documento, que tuvo oportunidad de leerlo, que fue EL quien marco, y que se verifico su
+// identidad contra el documento). Marcarla antes seria una promesa, no una declaracion.
+//
+// LOS CAMPOS QUE FALTAN los pone el profesional, y son exactamente los que el paciente NO escribio en su
+// telefono: fecha, sexo, pais y ciudad. Su nombre y su documento NO se piden aqui: ya los escribio el, y
+// sobrescribirlos convertiria su manifestacion en un dato que otro registro, que es justo lo que esta
+// modalidad existe para evitar.
+function Declaracion({
+  sessionId,
+  estado,
+  documentNumber,
+  onCreado,
+}: {
+  sessionId: string;
+  estado: EstadoSesion;
+  documentNumber: string;
+  onCreado: (resumeToken: string) => void;
+}) {
+  const inicialDecl: DeclararQrState = { error: null, resumeToken: null };
+  const [res, declarar, enviando] = useActionState(declararYCrearQrAction, inicialDecl);
+  const [pais, setPais] = useState(DEFAULT_COUNTRY);
+  const [declarado, setDeclarado] = useState(false);
+  const ciudades = citiesForCountry(pais);
+
+  useEffect(() => {
+    if (res.resumeToken) onCreado(res.resumeToken);
+  }, [res.resumeToken, onCreado]);
+
+  return (
+    <form onSubmit={enviarSinReset(declarar)} className="flex flex-col gap-4">
+      <input type="hidden" name="sessionId" value={sessionId} />
+      <div className="flex flex-col gap-2 rounded-md border border-clinical-optimal/50 bg-clinical-optimal/10 px-3 py-3 text-sm">
+        <p className="font-medium text-foreground">El paciente autorizó</p>
+        <p className="text-foreground">
+          {estado.declaradoNombres} {estado.declaradoApellidos} · {estado.declaradoDocumentNumber}
+        </p>
+        {/* LA DISTANCIA ENTRE ABRIR Y CONFIRMAR, a la vista y sin veredicto: quien juzga si fue poco es
+            una persona, no la pantalla. */}
+        {estado.segundosDeLectura !== null ? (
+          <p className="text-muted-foreground">
+            Estuvo {formatoDuracion(estado.segundosDeLectura)} entre abrir el documento y autorizar.
+          </p>
+        ) : null}
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Falta completar los datos que el paciente no escribió en su teléfono. Su nombre y su documento no
+        se piden aquí: ya los escribió él.
+      </p>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">Fecha de nacimiento</span>
+          <Input type="date" name="birthDate" className="h-9" required />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">Sexo</span>
+          <select
+            name="sex"
+            required
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Selecciona</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">País</span>
+          <select
+            name="country"
+            value={pais}
+            onChange={(e) => setPais(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-xs font-medium text-muted-foreground">Ciudad</span>
+          {ciudades ? (
+            <select
+              name="city"
+              required
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Selecciona</option>
+              {ciudades.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input name="city" className="h-9" required />
+          )}
+        </label>
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-xs font-medium text-muted-foreground">Teléfono (opcional)</span>
+          <Input name="phone" className="h-9" />
+        </label>
+      </div>
+
+      <label className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+        <input
+          type="checkbox"
+          name="declaracion"
+          className={checkboxClass}
+          checked={declarado}
+          onChange={(e) => setDeclarado(e.target.checked)}
+        />
+        <span>{DECLARACION_PRESENCIAL}</span>
+      </label>
+
+      {res.error ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {res.error}
+        </p>
+      ) : null}
+
+      <Button type="submit" disabled={!declarado || enviando} className="self-start">
+        {enviando ? "Creando..." : "Declarar y crear el paciente"}
+      </Button>
+      <p className="text-xs text-muted-foreground">Documento verificado: {documentNumber}</p>
+    </form>
+  );
 }
