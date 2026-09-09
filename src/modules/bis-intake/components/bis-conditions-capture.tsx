@@ -375,6 +375,10 @@ export function BisConditionsCapture({
             <div className="flex items-start gap-2 rounded-lg border border-clinical-optimal/40 bg-clinical-optimal-bg px-3 py-2 text-sm text-clinical-optimal">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
+                {/* "ir al modulo" y no "importar la medicion" (Santiago, 2026-09-09): ahora que Antrop. &
+                    BIS es pestaña propia, el enlace lleva a un SITIO, y describirlo por el paso que se hace
+                    alli dentro (importar) es nombrar otra cosa. Ademas importar no siempre es lo que toca:
+                    el archivo puede estar ya cargado y venirse a corregir medidas. */}
                 Condiciones guardadas. Ya puedes{" "}
                 <Link
                   // UNA SOLA ETAPA desde que Antrop. & BIS es pestaña propia (2026-09-10). Antes eran
@@ -387,7 +391,7 @@ export function BisConditionsCapture({
                   href={`/ani-bis-e/${evaluationId}?etapa=antro`}
                   className="font-semibold underline underline-offset-2 hover:no-underline"
                 >
-                  importar la medición en Antropometría y BIS
+                  ir al módulo de Antropometría y BIS
                 </Link>
                 .
               </span>

@@ -30,8 +30,13 @@ export type CompositionRow = {
   decimals?: number; // decimales de display (default 2); AEC/MCA usa 3 (ratio)
   referenceLabel?: string; // etiqueta de referencia si NO es el valor numerico (p. ej. "<0.45")
   refKey?: string | null; // clave del *_ref del equipo (para que la seccion aplique REF_POB donde falte)
-  // Parametro bioelectrico CRUDO (resistencia, reactancia, Fo, impedancia): lleva un icono (rayo) para
-  // distinguirse cuando queda entre filas de composicion en su nivel (care Santiago b). Solo en `eval`.
+  // DE ORIGEN BIOELECTRICO: lleva un icono (rayo) para distinguirse cuando queda entre filas de
+  // composicion en su nivel (care Santiago b).
+  //
+  // EL SIGNIFICADO SE AMPLIO el 2026-09-09: era "parametro CRUDO" (resistencia, reactancia, Fo,
+  // impedancia) y ahora marca todo lo que sale de la medicion bioelectrica en vez de una masa calculada,
+  // que incluye AF e IR en el Nivel III de Diagnostico. La distincion util para el profesional no es
+  // crudo-vs-derivado, es de-donde-viene-el-numero.
   bioelectric?: boolean;
 };
 export type CompositionLevel = { title: string; rows: CompositionRow[] };
@@ -96,7 +101,7 @@ export function clasificarAecMca(v: number | null): { label: string; sev: number
 // claves son de BIODY_COLUMNS (o computadas). El QUE se muestra y en QUE tabla es de Gildardo (su HTML) +
 // el listado de Santiago; el rotulo puede diferir entre tablas (misma clave, dos marcos: p. ej. la
 // circunferencia de cintura es "Cintura" cruda en Evaluacion y "Circunferencia de cintura" clasificada en
-// Diagnostico). `bioelectric` marca los crudos que llevan icono (solo en Evaluacion).
+// Diagnostico). `bioelectric` marca las filas de origen bioelectrico que llevan icono.
 type RowOpts = {
   bioelectric?: boolean;
   /**
@@ -242,8 +247,11 @@ const DIAG_LEVELS: { title: string; rows: LevelRow[] }[] = [
       ["Extracelular/intracelular con grasa (E/I)", "ei", null, ""],
       ["Extracelular/intracelular sin grasa (E/I)", "ei_sg", null, ""],
       // AF e IR en Nivel III (celular), donde Gildardo los tiene. DESPUES de los dos E/I (smoke l).
-      ["AF - Ángulo de fase", "AF", null, "°"],
-      ["IR - Radio de impedancia", "IR", null, ""],
+      // CON RAYO (Santiago, 2026-09-09), como los crudos de Antropometria. AF e IR no son crudos (son
+      // indices con clasificador), pero SI salen de la medicion bioelectrica y no de una masa calculada,
+      // que es lo que el rayo distingue de un vistazo en medio de un nivel de composicion.
+      ["AF - Ángulo de fase", "AF", null, "°", bio],
+      ["IR - Radio de impedancia", "IR", null, "", bio],
       // Mapa AFxIR (PSC): no tiene valor numerico; su lectura sale de AF e IR, por eso va al final.
       ["Mapa AFxIR (PSC)", "psc", null, ""],
     ],
