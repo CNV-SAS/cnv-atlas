@@ -301,17 +301,22 @@ export function Counter({ id, defaultValue = null }: { id: string; defaultValue?
 export function Scale({ id, defaultValue }: { id: string; defaultValue?: number }) {
   const [value, setValue] = useState<number | null>(defaultValue ?? null);
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground">1</span>
-      {/* Sin responder hasta que el paciente lo toque: el pulgar arranca en el centro pero ATENUADO (no
-          es un valor preseleccionado), y el numero muestra "-". Cualquier interaccion (arrastrar o clic en
-          la pista) fija el valor. El input oculto solo se emite con valor, asi el gate lo distingue. */}
+      {/* SIN RESPONDER HASTA QUE LO TOQUE, y el pulgar arranca A LA IZQUIERDA (2026-09-10). Antes
+          arrancaba en el CENTRO, atenuado: la atenuacion no bastaba y la gente creia que ya habia
+          respondido. Un pulgar en medio con la pista medio llena se lee como una eleccion; a la izquierda
+          la pista queda vacia, que es la convencion de "sin empezar".
+          LO QUE NO CAMBIA es la garantia: el input oculto SOLO se emite con valor, asi que "no respondida"
+          y "respondio 1" siguen siendo cosas distintas para el gate de completitud. Mover el pulgar a la
+          izquierda es presentacion; si ademas emitiera un 1, seria un defecto peor que el que arregla. */}
       <input
         type="range"
         min={1}
         max={10}
         step={1}
-        value={value ?? 5}
+        value={value ?? 1}
         onChange={(e) => setValue(Number(e.target.value))}
         aria-label="Nivel en escala de 1 a 10"
         aria-valuetext={value == null ? "Sin responder" : String(value)}
@@ -340,6 +345,13 @@ export function Scale({ id, defaultValue }: { id: string; defaultValue?: number 
         {value ?? "–"}
       </span>
       {value !== null ? <input type="hidden" name={`answer_${id}`} value={String(value)} /> : null}
+      </div>
+      {/* EL ESTADO, DICHO CON PALABRAS. Con el pulgar a la izquierda, "sin responder" y "respondi 1" se
+          ven casi igual: el disco muestra "–" frente a "1", que es poca diferencia para algo que decide si
+          la encuesta esta completa. El texto lo hace explicito y no depende de leer la posicion. */}
+      <span className={`text-xs ${value == null ? "text-muted-foreground" : "text-foreground"}`}>
+        {value == null ? "Sin responder" : `Nivel de estrés ${value}`}
+      </span>
     </div>
   );
 }

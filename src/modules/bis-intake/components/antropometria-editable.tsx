@@ -165,6 +165,7 @@ export function AntropometriaEditable({
       <MedidasDelProfesional
         evaluationId={evaluationId}
         pesoMetaKg={pesoMetaKg}
+        pesoActualKg={valores.peso ?? null}
         fuerzaPrensilKg={fuerzaPrensilKg}
         sellada={sellada}
       />
@@ -184,11 +185,14 @@ export function AntropometriaEditable({
 function MedidasDelProfesional({
   evaluationId,
   pesoMetaKg,
+  pesoActualKg,
   fuerzaPrensilKg,
   sellada,
 }: {
   evaluationId: string;
   pesoMetaKg: number | null;
+  /** El peso MEDIDO. Va aqui para que la meta se fije con el dato de partida a la vista. */
+  pesoActualKg: number | null;
   fuerzaPrensilKg: number | null;
   sellada: boolean;
 }) {
@@ -213,6 +217,10 @@ function MedidasDelProfesional({
             <dd className="text-sm font-semibold text-foreground">
               {pesoMetaKg == null ? "Sin registrar" : `${fmt(pesoMetaKg)} kg`}
             </dd>
+            {/* Tambien sellada: una meta sin el peso del que partio no dice cuanto se pedia bajar. */}
+            {pesoMetaKg != null && pesoActualKg != null ? (
+              <dd className="text-xs text-muted-foreground">desde {fmt(pesoActualKg)} kg</dd>
+            ) : null}
           </div>
           <div className="flex flex-col">
             <dt className="text-xs text-muted-foreground">Fuerza prensil</dt>
@@ -240,6 +248,18 @@ function MedidasDelProfesional({
               <label htmlFor="peso-meta" className="text-xs font-medium text-foreground">
                 Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
               </label>
+              {/* EL PESO ACTUAL, JUNTO AL CAMPO (reunion con Gildardo, 2026-09-10).
+                  SU PETICION fue ponerlo en la columna de referencia del nivel V de Wang, y su RAZON es
+                  real: al fijar la meta no recuerda de que peso parte. Pero esa ubicacion mete un dato de
+                  ENTRADA en una tabla de RESULTADOS, y esa tabla es lo que el motor produjo: mezclarlas
+                  hace que dejen de leerse como lo que son.
+                  Se resuelve el problema, no la ubicacion: el dato que le falta, donde le falta. Sale de
+                  `pesoActualKg`, que este componente ya tiene; no hace falta traer nada. */}
+              {pesoActualKg != null ? (
+                <p className="text-xs text-muted-foreground">
+                  Peso actual: <span className="font-medium text-foreground">{fmt(pesoActualKg)} kg</span>
+                </p>
+              ) : null}
               <Input
                 id="peso-meta"
                 name="weightGoalKg"

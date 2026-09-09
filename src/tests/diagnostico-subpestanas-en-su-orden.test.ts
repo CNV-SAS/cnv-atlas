@@ -104,3 +104,37 @@ describe("el criterio del profesional vive en la cuarta, no en Funcional (punto 
     expect(iConfirm, "el par confirmar/corregir se salió de Funcional").toBeLessThan(iComposicion);
   });
 });
+
+// ── CUAL ABRE PRIMERO (reunion con Gildardo, 2026-09-10) ───────────────────────────────────────────
+//
+// Hasta hoy abria en Funcional, declarado como divergencia nuestra (DIV-7): nuestro argumento era que
+// abrir en Encuesta esconde el DFI, que es lo que mas se mira. El argumento sigue siendo cierto y no
+// basta: **es su modelo**, y cual capa se mira primero es una decision clinica suya.
+//
+// Y POR ESO PASA A TENER CANDADO. Mientras fue divergencia nuestra, nadie la fijaba: se podia cambiar sin
+// que nada se pusiera rojo. Ahora que es suya, cambiarla tiene que costar una decision.
+describe("abre en la primera subpestaña, que es la suya", () => {
+  const SUBTABS = readFileSync(
+    "src/modules/diagnoses/components/diagnosis-subtabs.tsx",
+    "utf8",
+  );
+
+  it("sin ?sub en la URL, la activa es Diagnóstico Encuesta", () => {
+    const limpio = sinComentarios(SUBTABS);
+    const i = limpio.indexOf("function parseSub");
+    const cuerpo = limpio.slice(i, i + 300);
+    // El default es el valor del `: ` final, el que cae cuando el parametro no es ninguno de los otros.
+    expect(cuerpo).toMatch(/:\s*"encuesta";/);
+    expect(cuerpo, "el default no puede seguir siendo funcional").not.toMatch(/:\s*"funcional";/);
+  });
+
+  it("y el default coincide con la PRIMERA del arreglo, no con otra cualquiera", () => {
+    // Es lo que hace que la regla se sostenga si mañana el orden cambia: lo que se afirma es "abre en la
+    // primera", no "abre en encuesta". Si el reordena, el default lo sigue.
+    const limpio = sinComentarios(SUBTABS);
+    const primera = /const SUBTABS[\s\S]*?\{\s*id:\s*"(\w+)"/.exec(limpio)?.[1];
+    expect(primera, "no se pudo leer la primera subpestaña").toBeTruthy();
+    const cuerpo = limpio.slice(limpio.indexOf("function parseSub"));
+    expect(cuerpo.slice(0, 300)).toContain(`: "${primera}";`);
+  });
+});

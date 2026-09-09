@@ -15,8 +15,7 @@ import { type ReactNode } from "react";
 //
 // LOS DOS PUNTOS SON UN SOLO TRABAJO: la cuarta subpestaña no existe para tener una cuarta, existe porque
 // el criterio del profesional tenia que salir de Funcional.
-//  - default FUNCIONAL, no Encuesta (su HTML abre en Encuesta y esconderia el DFI, que es lo que mas se
-//    mira; DIVERGENCIA deliberada, DIV-7).
+//  - default ENCUESTA, la primera, como en su archivo. DIV-7 RETIRADA (reunion 2026-09-10).
 //  - la subpestaña activa vive en la URL (?sub=...), NO en useState: el tab externo remonta este arbol al
 //    volver de Tratamiento, y un useState se reiniciaria a la primera. Con la URL se conserva, y ademas
 //    recargar o compartir el enlace abre la correcta.
@@ -31,11 +30,17 @@ const SUBTABS: { id: SubId; label: string }[] = [
   { id: "resumen", label: "Resumen del Diagnóstico" },
 ];
 
-// EL DEFAULT SIGUE SIENDO FUNCIONAL, y eso es DIV-7, que no cambia con el reorden. Su HTML abre en
-// Encuesta; abrir ahi esconderia el DFI, que es lo que mas se mira. Cambio el ORDEN, que es lo que el
-// pidio; cual se abre primero sigue declarado como divergencia nuestra.
+// EL DEFAULT ES LA PRIMERA, Y ESO RETIRA LA DIV-7 (reunion con Gildardo, 2026-09-10).
+//
+// Nuestro argumento era que abrir en Encuesta esconde el DFI, que es lo que mas se mira. Sigue siendo
+// cierto y no basta: **es su modelo**, y cual capa se mira primero es una decision clinica suya, no una de
+// experiencia de uso nuestra. La Regla 0 dice que el software representa su archivo literalmente, y su
+// archivo abre en Encuesta.
+//
+// Y lo que nuestro argumento describia sigue resuelto sin la divergencia: la subpestaña activa vive en la
+// URL, asi que quien mira el DFI a diario llega con ?sub=funcional y no vuelve a pasar por Encuesta.
 function parseSub(raw: string | null): SubId {
-  return raw === "composicion" || raw === "encuesta" || raw === "resumen" ? raw : "funcional";
+  return raw === "composicion" || raw === "funcional" || raw === "resumen" ? raw : "encuesta";
 }
 
 export function DiagnosisSubtabs({
