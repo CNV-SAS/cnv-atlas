@@ -505,7 +505,15 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     // de datos, no sellada pinta el formulario.
     expect(ANTRO).toContain("Quedaron selladas con el diagnóstico");
     expect(ANTRO, "la rama sellada tiene que pintar datos, no campos").toContain("<dl");
-    expect(ANTRO).toContain("Guardar medidas del profesional");
+    // ALCANCE AJUSTADO (2026-09-09), no la asercion: el boton "Guardar medidas del profesional" SE
+    // RETIRO, porque esos dos campos pasan a guardarse al salir del campo (peticion de Gildardo). Este
+    // caso lo citaba como prueba de que la rama NO sellada pinta el formulario, y ese es el punto que se
+    // conserva: se afirma por los CAMPOS, que es lo que de verdad distingue las dos ramas y no depende
+    // de que exista un boton.
+    expect(ANTRO, "la rama no sellada tiene que pintar los campos editables").toContain(
+      'name="weightGoalKg"',
+    );
+    expect(ANTRO).toContain('name="gripStrengthKg"');
     expect(ENTRADA).toContain("sellada={diagnosticoGenerado}");
   });
 });

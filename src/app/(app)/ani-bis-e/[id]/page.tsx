@@ -56,6 +56,7 @@ import {
 import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
 import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
+import { IdentidadAutomatica } from "@/modules/evaluations/components/identidad-automatica";
 import {
   IdentityConfirmation,
   type DuplicateCandidateView,
@@ -261,14 +262,24 @@ export default async function ResultadosEvaluacionPage({
             pendingIdentity.patientId,
           )
         : [];
+    // EL BLOQUE DE IDENTIDAD SOLO APARECE CUANDO HAY ALGO QUE DECIDIR (2026-09-09). Antes salia siempre y
+    // el profesional tenia que pulsar "Confirmar identidad" para poder seguir, tambien cuando no habia
+    // nada que contrastar. Ahora son tres casos y no uno:
+    //   · CONFLICTO declarado vs registrado -> la pantalla de resolucion, como siempre.
+    //   · CANDIDATOS A DUPLICADO -> el bloque completo. Es el caso que describio Santiago (mismo documento,
+    //     otro nombre) y es una decision humana: nadie mas puede decir si son la misma persona.
+    //   · NADA QUE DECIDIR -> se confirma sola al abrir. El acto y sus cuatro efectos se conservan (ver
+    //     `identidad-automatica.tsx`); lo que desaparece es el clic.
     const identityNode = !pendingIdentity ? null : pendingIdentity.identityConflict ? (
       <IdentityConflictResolution
         evaluationId={pendingIdentity.evaluationId}
         registeredName={`${pendingIdentity.firstName} ${pendingIdentity.lastName}`.trim()}
         declaredName={`${pendingIdentity.declaredFirstName ?? ""} ${pendingIdentity.declaredLastName ?? ""}`.trim()}
       />
-    ) : (
+    ) : identityDups.length > 0 ? (
       <IdentityConfirmation evaluation={pendingIdentity} duplicateCandidates={identityDups} />
+    ) : (
+      <IdentidadAutomatica evaluationId={pendingIdentity.evaluationId} />
     );
     // LOS DOS PANELES RECIBEN LO MISMO, y por eso los datos se arman UNA vez. Encuesta y Antrop. & BIS son
     // pestañas separadas desde el 2026-09-10, pero comparten insumos y guardas (el gate del import depende
