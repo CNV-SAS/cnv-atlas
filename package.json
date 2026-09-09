@@ -20,6 +20,7 @@
     "db:check": "node --env-file=.env.local scripts/check-migrations.mjs",
     "db:check:cloud": "node scripts/check-migrations.mjs",
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed.ts",
+    "db:gen:registro": "node scripts/gen-registry-migration.mjs",
     "db:seed:bis": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed-bis-conditions.ts",
     "seed:golden": "node scripts/seed-golden.mjs",
     "db:types": "pnpm dlx supabase gen types typescript --local > src/types/database.generated.ts",

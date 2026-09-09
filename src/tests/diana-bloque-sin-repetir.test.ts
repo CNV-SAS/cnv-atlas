@@ -84,7 +84,7 @@ describe("el bloque de la Diana no repite el contenido del estado (cotejo punto 
       "label={ROTULO_NUTRACEUTICOS}",
     );
     expect(ROTULO_NUTRACEUTICOS, "el rótulo dejó de ser el de su archivo").toBe(
-      "VITACELLEBIS — Nutracéuticos indicados para este estado",
+      "VITACELLEBIS: Nutracéuticos indicados para este estado",
     );
   });
 
