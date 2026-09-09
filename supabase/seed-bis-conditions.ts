@@ -20,6 +20,13 @@
 //
 // La lista es fiel al HTML de Gildardo (ATLAS.html L10444-10480): 8 generales + 3 femeninas.
 // Divergencias documentadas (INVENTARIO.md punto 3a): embarazo agrega "mes de gestacion" (mejora
+// v3 (2026-09-10, reunion con Gildardo): +discapacidad (general, con "cual"), +anticonceptivo (con
+// "cual") y +menopausia, las dos ultimas debajo de la semana del ciclo, que es donde las pidio.
+//
+// EL BUMP NO ES OPCIONAL: los ids son deterministas sobre la version (uuidFromKey(`${VERSION_NUMBER}:...`)),
+// asi que añadir condiciones sin subir la version reescribiria las filas de la v2 en vez de crear una v3.
+// Y las tomas ya registradas apuntan a las condiciones de SU version, que siguen existiendo.
+//
 // nuestra, informativa, no altera calculos); menstruacion captura "dia del periodo"; semana_ciclo
 // es numerico 1-6 siempre visible (sin Si/No). El ciclo menstrual NO alimenta el motor (registro
 // clinico, verificado en INVENTARIO.md punto 4).
@@ -58,7 +65,7 @@ const uuidFromKey = (key: string): string => {
 // saca los rotulos del catalogo de esa version. Borrar en sitio dejaria a las evaluaciones ya emitidas
 // mostrando respuestas sin su pregunta. El catalogo activo es el de mayor `published_at`
 // (`getActiveBisConditionCatalog`), asi que publicar la v2 basta y la v1 queda intacta para lo viejo.
-const VERSION_NUMBER = 2;
+const VERSION_NUMBER = 3;
 const VERSION_ID = uuidFromKey(`version:${VERSION_NUMBER}`);
 
 type FieldType = "boolean" | "number" | "text";
@@ -97,7 +104,15 @@ const CONDS: Cond[] = [
   // nombro DOS y se quitan DOS: la amputacion se queda y va DECLARADA como divergencia (DIVERGENCIAS.md),
   // porque retirarla sin que la senale seria decidir por el en el otro sentido. ──
   { key: "amputacion", label: "¿Tiene amputación de algún segmento corporal?", scope: "general", kind: "validez", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null, compromisesValidity: true },
-  // ── 3 femeninas (solo mujeres) ──
+  // ── DISCAPACIDAD (reunion con Gildardo, 2026-09-10) ──
+  // General, no femenina. Con "cual" porque el tipo cambia lo que la toma significa: una amputacion ya
+  // tiene su condicion propia y COMPROMETE la validez; una discapacidad sensorial o cognitiva no toca la
+  // medida pero si el acompañamiento. Sin el detalle, la respuesta no dice ninguna de las dos cosas.
+  //
+  // NO marca `compromisesValidity`: no todas la comprometen, y marcarlas todas sellaria un caveat falso
+  // en diagnosticos donde no aplica. Lo que compromete la validez ya esta capturado aparte (amputacion).
+  { key: "discapacidad", label: "¿Tiene alguna discapacidad diagnosticada?", scope: "general", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cuál?", detailType: "text" },
+  // ── 5 femeninas (solo mujeres) ──
   // Embarazo: advertencia (NO bloquea; alerta seria + reconocimiento del permiso del comite de etica).
   // Ademas COMPROMETE la validez (el modelo no esta validado en gestacion) -> sella caveat en el dx.
   // "Mes de gestacion" es mejora nuestra sobre el HTML: informativa, no altera calculos.
@@ -106,6 +121,15 @@ const CONDS: Cond[] = [
   // Semana del ciclo: numero directo 1-6, siempre visible, sin Si/No. Solo registro clinico. OPCIONAL
   // (el dato puede no estar disponible, a diferencia de las si/no que siempre se pueden responder).
   { key: "semana_ciclo", label: "¿En qué semana de su ciclo se encuentra?", scope: "mujeres", kind: "calidad", inputType: "number", requiresDetail: false, detailLabel: null, detailType: null },
+  // ── Las dos que pidio DEBAJO de la semana del ciclo (reunion 2026-09-10). El orden es suyo: van juntas
+  // porque las tres describen el estado hormonal del momento de la toma, que es lo que puede mover agua.
+  //
+  // ANTICONCEPTIVOS con "cual": el dispositivo importa. Uno hormonal y uno de cobre no hacen lo mismo, y
+  // la respuesta si/no sola no distingue entre los dos.
+  { key: "anticonceptivo", label: "¿Usa algún dispositivo anticonceptivo?", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: true, detailLabel: "¿Cuál?", detailType: "text" },
+  // MENOPAUSIA sin detalle: es un estado, no un dispositivo. El "desde cuando" no lo pidio y añadirlo
+  // seria construir contenido que su archivo no tiene (Regla 0).
+  { key: "menopausia", label: "¿Está en menopausia?", scope: "mujeres", kind: "calidad", inputType: "boolean", requiresDetail: false, detailLabel: null, detailType: null },
 ];
 
 async function main() {
