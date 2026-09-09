@@ -45,6 +45,7 @@ const inicialSeguimiento: StartFollowupState = {
   resumeToken: null,
   revoked: false,
   reanudar: false,
+  tieneCorreo: null,
 };
 
 const DOCUMENT_TYPES: { value: string; label: string }[] = [
@@ -63,9 +64,13 @@ export function NuevoPacientePresencial() {
   // El paciente firmo aqui mismo, o se retomo/abrio una evaluacion de un paciente que ya era suyo. En los
   // tres casos lo que queda por hacer es lo mismo: pasarle el enlace de la encuesta.
   const [resumeToken, setResumeToken] = useState<string | null>(null);
+  // Acompaña al token: es lo que hace que el texto final pueda decir la verdad sobre el correo.
+  const [tieneCorreo, setTieneCorreo] = useState<boolean | null>(null);
 
   if (resumeToken) {
-    return <ParaElPaciente resumeToken={resumeToken} />;
+    return (
+      <ParaElPaciente resumeToken={resumeToken} tieneCorreo={tieneCorreo} />
+    );
   }
 
   // ── EL DOCUMENTO ESTA LIBRE: UNA SOLA VIA, Y UNA SALIDA ──────────────────────────────────────────
@@ -86,7 +91,8 @@ export function NuevoPacientePresencial() {
             Documento libre: {documento.documentType} {documento.documentNumber}
           </p>
           <p className="text-sm text-muted-foreground">
-            Nadie con ese documento está registrado en la organización, así que se puede crear.
+            Nadie con ese documento está registrado en la organización, así que
+            se puede crear.
           </p>
         </section>
 
@@ -95,11 +101,14 @@ export function NuevoPacientePresencial() {
             primera que se ofrece, porque es la que mas fuerza probatoria tiene. */}
         <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
           <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold text-foreground">Si el paciente tiene correo</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              Si el paciente tiene correo
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Usa el enlace de consultorio, como siempre. Es la vía con más respaldo: el código le llega a
-              su correo y lo digita él, y eso es lo que prueba que fue él quien autorizó. Ábrelo en otra
-              pestaña y pásale el dispositivo, o pásale el enlace.
+              Usa el enlace de consultorio, como siempre. Es la vía con más
+              respaldo: el código le llega a su correo y lo digita él, y eso es
+              lo que prueba que fue él quien autorizó. Ábrelo en otra pestaña y
+              pásale el dispositivo, o pásale el enlace.
             </p>
           </div>
           <ConsultorioLink />
@@ -110,21 +119,29 @@ export function NuevoPacientePresencial() {
             antes. */}
         <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
           <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold text-foreground">Si el paciente no tiene correo</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              Si el paciente no tiene correo
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Puede autorizar desde su propio teléfono, escaneando un código de tu pantalla.
+              Puede autorizar desde su propio teléfono, escaneando un código de
+              tu pantalla.
             </p>
             <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning/10 px-3 py-2 text-sm text-foreground">
-              Necesita un teléfono propio con datos móviles. Que lo haga desde su dispositivo es lo que
-              sostiene esta vía: si lo haces tú desde esta pantalla, deja de probar que fue él. Si no
-              tiene teléfono, hoy no hay otra forma; el consentimiento en papel está dimensionado y aún no
-              construido.
+              Necesita un teléfono propio con datos móviles. Que lo haga desde
+              su dispositivo es lo que sostiene esta vía: si lo haces tú desde
+              esta pantalla, deja de probar que fue él. Si no tiene teléfono,
+              hoy no hay otra forma; el consentimiento en papel está
+              dimensionado y aún no construido.
             </p>
           </div>
           <PaseQrPresencial
             documentType={documento.documentType ?? "CC"}
             documentNumber={documento.documentNumber}
-            onCreado={setResumeToken}
+            onCreado={(t) => {
+              // La vía del QR: por construcción no hay correo.
+              setTieneCorreo(false);
+              setResumeToken(t);
+            }}
           />
         </section>
       </div>
@@ -195,7 +212,10 @@ export function NuevoPacientePresencial() {
         <PacientePropio
           patientId={documento.patientId}
           evaluacionPendienteId={documento.evaluacionPendienteId}
-          onListo={setResumeToken}
+          onListo={(t, correo) => {
+            setTieneCorreo(correo);
+            setResumeToken(t);
+          }}
         />
       ) : null}
     </div>
@@ -213,7 +233,7 @@ function PacientePropio({
 }: {
   patientId: string;
   evaluacionPendienteId: string | null;
-  onListo: (resumeToken: string) => void;
+  onListo: (resumeToken: string, tieneCorreo: boolean | null) => void;
 }) {
   const [pendiente, pedirEnlace, pidiendo] = useActionState(
     enlaceEncuestaPendienteAction,
@@ -228,8 +248,8 @@ function PacientePropio({
   // setState de otro componente a mitad de render. Mismo patron que SignPhaseForm al firmar.
   const resumeToken = estado.resumeToken;
   useEffect(() => {
-    if (resumeToken) onListo(resumeToken);
-  }, [resumeToken, onListo]);
+    if (resumeToken) onListo(resumeToken, estado.tieneCorreo);
+  }, [resumeToken, estado.tieneCorreo, onListo]);
   if (resumeToken) return null;
 
   return (
@@ -286,7 +306,14 @@ function PacientePropio({
 // LO QUE QUEDA POR HACER, y es una sola cosa: pasarle el dispositivo al paciente con SU encuesta abierta.
 // El enlace es el publico de reanudacion, el mismo que va por correo. Se abre en otra pestaña a proposito:
 // dentro de la app autenticada, el dispositivo en manos del paciente es la sesion del profesional.
-function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
+function ParaElPaciente({
+  resumeToken,
+  tieneCorreo,
+}: {
+  resumeToken: string;
+  /** true: tiene correo. false: no tiene. null: no se pudo saber. Las TRES dicen cosas distintas. */
+  tieneCorreo: boolean | null;
+}) {
   const [url] = useState(() =>
     buildResumeUrl(
       resumeToken,
@@ -313,9 +340,16 @@ function ParaElPaciente({ resumeToken }: { resumeToken: string }) {
           Listo. Ahora la encuesta
         </h2>
         <p className="text-sm text-muted-foreground">
-          Abre la encuesta y pásale el dispositivo al paciente. Si prefiere
-          responderla en su casa, cópiale el enlace: también le llegó por
-          correo, y guarda el avance.
+          Abre la encuesta y pásale el dispositivo al paciente.{" "}
+          {/* EL TEXTO DERIVA, no afirma. Decía "también le llegó por correo" SIEMPRE, y en la vía del QR
+              el paciente no tiene correo: nunca le llegó nada, y el profesional se iba creyendo que
+              había una segunda vía. Es la familia de "un texto que afirma un estado sin derivarlo".
+              Y son TRES casos, no dos: "no se pudo saber" no es lo mismo que "no tiene". */}
+          {tieneCorreo === true
+            ? "Si prefiere responderla en su casa, cópiale el enlace: también le llegó a su correo, y guarda el avance."
+            : tieneCorreo === false
+              ? "Este enlace es la única vía: el paciente no tiene correo registrado, así que no le llegó ninguna copia. Cópiaselo o guárdalo tú si va a responder después. El avance se guarda solo."
+              : "Si va a responder después, cópiale el enlace y guárdalo: el avance se guarda solo."}
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">

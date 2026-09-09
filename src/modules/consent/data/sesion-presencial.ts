@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -51,9 +51,44 @@ export async function crearSesionPresencial(input: {
   documentNumber: string;
   declaracionVersion: string;
   ip: string | null;
-}): Promise<{ token: string; id: string }> {
+}): Promise<{ token: string; id: string } | { yaHayUna: true; documento: string }> {
   const token = generateOpaqueToken();
   return db.transaction(async (tx) => {
+    // LAS VENCIDAS DEJAN DE OCUPAR, y va ANTES del insert. Una sesion que nadie confirmo se queda en
+    // 'emitida' para siempre; sin esto, la primera que venciera bloquearia al profesional de forma
+    // PERMANENTE, que es peor que el problema que el indice unico cierra. No puede vivir en el indice
+    // (una condicion con now() no es inmutable), asi que vive aqui.
+    await tx
+      .update(presencialConsentSessions)
+      .set({ estado: "vencida" })
+      .where(
+        and(
+          eq(presencialConsentSessions.professionalId, input.professionalId),
+          inArray(presencialConsentSessions.estado, ["emitida", "abierta"]),
+          sql`coalesce(${presencialConsentSessions.lecturaHasta}, ${presencialConsentSessions.expiresAt}) < now()`,
+        ),
+      );
+
+    // ¿QUEDA ALGUNA VIVA? Se pregunta ANTES de insertar para poder decirlo con palabras y con el
+    // documento concreto. El indice unico de la 0111 es el que de verdad lo impide; esto es para que el
+    // profesional no descubra el limite con un error de base de datos.
+    const [viva] = await tx
+      .select({ documento: presencialConsentSessions.documentNumber })
+      .from(presencialConsentSessions)
+      .where(
+        and(
+          eq(presencialConsentSessions.professionalId, input.professionalId),
+          inArray(presencialConsentSessions.estado, [
+            "emitida",
+            "abierta",
+            "confirmada",
+            "discrepancia",
+          ]),
+        ),
+      )
+      .limit(1);
+    if (viva) return { yaHayUna: true as const, documento: viva.documento };
+
     const [fila] = await tx
       .insert(presencialConsentSessions)
       .values({

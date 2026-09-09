@@ -192,6 +192,15 @@ export type StartFollowupState = {
   revoked: boolean;
   /** Misma senal que en SignSurveyState: se retomo una evaluacion que ya tenia respuestas. */
   reanudar: boolean;
+  /**
+   * El paciente tiene correo registrado. null = no se pudo saber.
+   *
+   * NO ES COSMETICO: la pantalla final decia "el enlace tambien le llego por correo", y en la via del QR
+   * el paciente NO TIENE correo, asi que nunca le llego nada. Un texto que afirma un estado sin
+   * derivarlo miente en cuanto el estado cambia, y aqui hacia que el profesional se fuera creyendo que
+   * el paciente tenia una segunda via.
+   */
+  tieneCorreo: boolean | null;
 };
 
 // Estado del guardado a medida (as-you-go) de la fase 2. saved marca el ultimo guardado exitoso; error
