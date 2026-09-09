@@ -157,7 +157,10 @@ runInContext(
 for (const nombre of ["bandToLetter", "efrRiskRank", "efrStateNumber"]) {
   runInContext(funcionSinTipos(TIPOS, nombre), ctx);
 }
-const { INDICATOR_NAMES, bandToLetter, efrStateNumber } = ctx;
+// `bandToLetter` NO se saca del contexto aunque se cargue: la clave de letras (`A_N_B_N`) ya no viaja al
+// SQL (la fila se identifica por `state_number` y las cuatro bandas). Se sigue cargando porque el contexto
+// tiene que ser el mismo que el del motor, no porque se use aqui.
+const { INDICATOR_NAMES, efrStateNumber } = ctx;
 
 // ── Los cuatro catalogos, del motor de HOY ──────────────────────────────────────────────────────────
 const indicadores = Object.entries(INDICATOR_NAMES).map(([code, v]) => ({ code, name: v.name, unit: v.unit }));

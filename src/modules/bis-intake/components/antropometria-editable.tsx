@@ -1,7 +1,7 @@
 "use client";
 
 import { Panel } from "@/components/shared/panel";
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,6 +201,25 @@ function MedidasDelProfesional({
   // solo, el arreglo se nota en la siguiente navegacion y no al guardar, que es cuando se mira.
   useFormToastAndRefresh(state);
 
+  // GUARDADO AL SALIR DEL CAMPO (2026-09-09). Ver la nota junto al pie del formulario para el porque.
+  const formRef = useRef<HTMLFormElement>(null);
+  // SOLO SI CAMBIO, y esto es lo que evita el ruido: sin la comparacion, pasar por los dos campos con el
+  // tabulador sin tocar nada dispararia dos escrituras y dos entradas de auditoria por cada visita a la
+  // pantalla. `bis.medidas_profesional.recorded` dejaria de significar "el profesional registro algo".
+  const ultimoGuardado = useRef({
+    weightGoalKg: fmt(pesoMetaKg),
+    gripStrengthKg: fmt(fuerzaPrensilKg),
+  });
+  function guardarSiCambio(e: React.FocusEvent<HTMLInputElement>) {
+    const campo = e.currentTarget.name as "weightGoalKg" | "gripStrengthKg";
+    const valor = e.currentTarget.value.trim();
+    if (valor === ultimoGuardado.current[campo]) return;
+    ultimoGuardado.current[campo] = valor;
+    const form = formRef.current;
+    if (!form) return;
+    startTransition(() => guardar(new FormData(form)));
+  }
+
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
       <div className="flex flex-col gap-1">
@@ -243,6 +262,7 @@ function MedidasDelProfesional({
             startTransition(() => guardar(datos));
           }}
           className="flex flex-col gap-3"
+          ref={formRef}
         >
           <input type="hidden" name="evaluationId" value={evaluationId} />
           <div className="grid gap-3 sm:grid-cols-2">
@@ -271,6 +291,8 @@ function MedidasDelProfesional({
                 inputMode="decimal"
                 placeholder="Ej. 70"
                 className="h-9"
+                disabled={pending}
+                onBlur={guardarSiCambio}
               />
               {/* QUE HACE EL CAMPO, junto al campo. Es "la palanca" en sus palabras (2026-08-26), y hasta
                   el 2026-08-31 se GUARDABA y no lo leia nadie: el profesional lo fijaba y la prescripcion
@@ -296,6 +318,8 @@ function MedidasDelProfesional({
                 inputMode="decimal"
                 placeholder="Ej. 35,4"
                 className="h-9"
+                disabled={pending}
+                onBlur={guardarSiCambio}
               />
               {/* Protocolo EWGSOP2 como texto de ayuda junto al campo (Gildardo 2026-08-17 §6): un numero
                   de dinamometro sin protocolo no es comparable entre consultas. */}
@@ -306,11 +330,23 @@ function MedidasDelProfesional({
               </p>
             </div>
           </div>
-          <div>
-            <Button type="submit" variant="outline" size="sm" disabled={pending}>
-              Guardar medidas del profesional
-            </Button>
-          </div>
+          {/* SIN BOTON DE GUARDAR (2026-09-09, peticion de Gildardo via Santiago). Los dos campos se
+              guardan AL SALIR del campo, y no en cada tecla: en cada tecla escribiria un "7" mientras se
+              teclea "70", y esos valores intermedios son los que alimentan la cadena calorica.
+
+              POR QUE ESTOS DOS Y NO LOS CUATRO DE ARRIBA, que es la distincion de Santiago y es correcta:
+              peso, talla, cintura y cadera CONTRADICEN al equipo (el XLSX dice una cosa y el profesional
+              otra), asi que corregirlos es una decision y lleva su boton. La meta de peso y la prensil no
+              contradicen nada: son datos que solo existen si el profesional los escribe.
+
+              VERIFICADO QUE NO CHOCA CON LA SARCOPENIA: la prensil entra al motor, pero se LEE en el
+              momento de generar el diagnostico, desde la fila del intake. No hay ningun calculo colgando
+              del guardado, asi que guardar antes o despues no cambia el resultado. Lo unico que habia que
+              cuidar es que el guardado haya LLEGADO antes de generar, y de eso se encarga el `pending`,
+              que deshabilita los campos mientras la escritura viaja. */}
+          <p aria-live="polite" className="text-xs text-muted-foreground">
+            {pending ? "Guardando..." : "Se guarda solo al salir del campo."}
+          </p>
         </form>
       )}
     </div>
