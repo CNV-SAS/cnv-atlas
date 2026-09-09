@@ -2045,3 +2045,37 @@ problema.
 **Piezas que necesita:** una pantalla de admin, el registro del consentimiento nuevo del paciente hacia el
 profesional entrante, el evento de auditoria del traspaso, y decidir que pasa con las evaluaciones ya
 firmadas (se quedan atribuidas a quien las hizo, casi seguro). Sin dimensionar.
+
+---
+
+## Modalidad 3 (consentimiento en papel) · AL BACKLOG, no ahora (2026-09-10)
+
+**El caso que quedaría** es "sin correo Y sin teléfono", y se reduce mucho: el teléfono no tiene que ser
+del paciente (sirve el de un acompañante) y el QR se abre en cualquier navegador. Lo que sí hace falta es
+que **no sea el dispositivo del profesional**, que es lo que sostiene la vía.
+
+**Las tres razones para no construirla ahora:**
+
+- **Es la más cara y la más frágil.** Bucket privado, RLS propia, subida de imagen desde el consultorio y
+  retención de 15 años sobre un archivo. La estimación de 1,5 días es optimista.
+- **Tiene un riesgo de orden que las otras no:** la foto debe subirse ANTES de marcar las autorizaciones
+  vigentes. Al revés queda una evaluación habilitada cuyo respaldo no existe, y nadie se entera hasta que
+  alguien lo pida.
+- **Y es la de menos fuerza probatoria**, así que tenerla disponible invita a usarla cuando no toca. El
+  mismo argumento del dictamen para esconder el QR detrás del "sin correo" aplica más fuerte aquí.
+
+**Se construye cuando aparezca el primer caso real.** Mientras tanto, la pantalla ya dice qué hacer
+cuando no hay ninguna vía, en vez de dejar al profesional sin salida.
+
+## Constancia impresa del consentimiento · AL BACKLOG (2026-09-10)
+
+**El hueco:** en la vía del QR el paciente **no se queda con nada** de lo que autorizó. En las otras vías
+el correo hace de constancia, y esta vía existe precisamente porque no hay correo.
+
+**Medido:** NO se puede reusar un PDF existente. Los tres que hay (reporte, HC, imprimir HC) viven en
+`modules/reports` y se construyen sobre el snapshot de una evaluación. El consentimiento solo existe como
+**correo** (`consent-copy-service`, HTML desde `consent-instance`).
+
+**Lo que sí se reusa** es el contenido: `buildConsentInstance` ya arma la instancia con el bloque del
+profesional, la rama de edad y las autorizaciones otorgadas. Falta el renderizador y el botón.
+**Media tanda.**

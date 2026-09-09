@@ -23,7 +23,9 @@
     "db:seed:bis": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local supabase/seed-bis-conditions.ts",
     "seed:golden": "node scripts/seed-golden.mjs",
     "db:types": "pnpm dlx supabase gen types typescript --local > src/types/database.generated.ts",
-    "check:cables": "node scripts/check-cables.mjs"
+    "check:cables": "node scripts/check-cables.mjs",
+    "db:probar": "node --env-file=.env.local scripts/aplicar-migracion.mjs",
+    "db:probar:cloud": "node scripts/aplicar-migracion.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "0.24.1",
