@@ -11,8 +11,7 @@ import { BisConditionsReadonly } from "@/modules/bis-intake/components/bis-condi
 import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modules/bis-intake/data/bis-conditions-reader";
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
-import { AntropometriaEditable } from "@/modules/bis-intake/components/antropometria-editable";
-import { CompositionSection } from "@/modules/diagnoses/components/composition-section";
+import { MedidasConTabla } from "@/modules/bis-intake/components/medidas-con-tabla";
 import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
@@ -219,43 +218,30 @@ export function EntradaEvaluacion({
                 </div>
               </details>
             ) : null}
-            {/* Las medidas van ANTES de la tabla: se corrigen y despues se lee lo que sale de ellas.
-                Al reves, el profesional lee una tabla calculada sobre un valor que aun no ha revisado. */}
-            <AntropometriaEditable
+            {/* LAS MEDIDAS Y LA TABLA VAN JUNTAS desde el 2026-09-09, para que la tabla se recalcule
+                MIENTRAS se escribe la meta y no al salir del campo. Los dos son componentes cliente pero
+                los montaba este archivo, que es de SERVIDOR, asi que no tenian estado en comun. Ver
+                `medidas-con-tabla.tsx`: es lo unico que los une, y el guardado no cambia. */}
+            <MedidasConTabla
               evaluationId={evaluationId}
-              valores={{
-                peso: composition.peso,
-                talla: composition.talla,
-                cintura: composition.cintura,
-                cadera: composition.cadera,
-              }}
-              corrections={composition.corrections}
+              composition={composition}
+              corrections={composition.corrections ?? {}}
               pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
               fuerzaPrensilKg={sarcopeniaFuerza}
               sellada={diagnosticoGenerado}
-            />
-            {/* ABIERTA POR DEFECTO desde el 2026-09-07 (punto 6 de su cotejo). Gildardo escribio "no estan
-                los datos antropometricos por nivel de Wang, por que" y la tabla SI estaba: estaba
-                plegada. Que la pieza exista no basta si no se ve, que es la misma leccion del porte del
-                plan del paciente (estaba en el codigo y era print-only).
+              envoltorioTabla={(tabla) => (
+                /* ABIERTA POR DEFECTO desde el 2026-09-07 (punto 6 de su cotejo). Gildardo escribio "no
+                   estan los datos antropometricos por nivel de Wang, por que" y la tabla SI estaba:
+                   estaba plegada. Que la pieza exista no basta si no se ve.
 
-                SE CONSERVA EL DESPLEGABLE, y no es tibieza: son unas treinta filas por encima del bloque
-                de sarcopenia, asi que quitarlo obliga a recorrerla entera cada vez que se vuelve a la
-                pantalla. Abierta de entrada resuelve la causa real (no verla la primera vez) y deja
-                plegarla despues. */}
-            <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
-              {/* LA META DE PESO, Y SOLO AQUI. Es la REFERENCIA de la fila de Peso, como en su archivo
-                  (entrega del 4 de septiembre, linea 7721): no crea columna. Aqui y no en Diagnostico
-                  porque su tabla de Diagnostico no tiene fila de Peso, asi que alli no tendria donde ir.
-                  Se pinta, no se escribe: el dato vive en `evaluations.weight_goal_kg` y lo fija el campo
-                  de abajo. Al documento (HC y PDF) no llega. */}
-              <CompositionSection
-                composition={composition}
-                showDiagnosis={false}
-                showTitle={false}
-                pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
-              />
-            </DetailsSection>
+                   SE CONSERVA EL DESPLEGABLE, y no es tibieza: son unas treinta filas por encima del
+                   bloque de sarcopenia, asi que quitarlo obliga a recorrerla entera cada vez que se
+                   vuelve. Abierta de entrada resuelve la causa real y deja plegarla despues. */
+                <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
+                  {tabla}
+                </DetailsSection>
+              )}
+            />
           </div>
         ) : !identityConfirmed || !bisImportEval ? (
           <p className="text-sm text-muted-foreground">

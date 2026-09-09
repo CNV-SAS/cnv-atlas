@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
+import { etiquetaDeEtapa } from "@/modules/diagnoses/etapas";
+
 import { runPipelineAction, type RunPipelineState } from "../actions";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
@@ -67,18 +69,26 @@ export function GenerateDiagnosisPanel({
   }, [state.done, router]);
 
   if (!ready) {
-    // Lo que falta, en el orden del flujo. Los dos pasos viven en la pestana Evaluacion de esta misma pagina
-    // (visible arriba); se nombra, no se enlaza, porque las pestanas no son deep-linkables.
-    const missing: string[] = [];
-    if (!identityConfirmed) missing.push("confirmar la identidad del paciente");
-    if (!bisImported) missing.push("importar la medición BIS");
-    const falta = missing.length === 1 ? missing[0] : `${missing[0]} y ${missing[1]}`;
+    // LO QUE FALTA, Y DONDE VIVE. Cada paso se nombra CON SU PESTAÑA, y la etiqueta sale del mapa de
+    // etapas, no escrita aqui: este texto mandaba a "la pestaña Evaluación" y esa pestaña dejo de existir
+    // al partirla en Encuesta + Antrop. & BIS. Sobrevivio semanas porque una cadena no sabe que su premisa
+    // cambio. Derivarla es lo unico que hace que se renombre sola.
+    //
+    // Y LA IDENTIDAD YA NO ES UN PASO QUE SE PULSA (2026-09-09): se confirma sola al abrir. Que siga sin
+    // confirmar significa que ALGO LA IMPIDIO (tipicamente la rama de consentimiento incoherente con la
+    // fecha de nacimiento), asi que el aviso dice eso y no "ve a pulsar un boton que ya no existe".
+    const falta: string[] = [];
+    if (!identityConfirmed) {
+      falta.push(
+        `la identidad no se pudo confirmar; el aviso con el motivo está en ${etiquetaDeEtapa("encuesta")}`,
+      );
+    }
+    if (!bisImported) falta.push(`importar la medición BIS, en ${etiquetaDeEtapa("antro")}`);
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-8 text-center">
         <p className="text-sm text-foreground">Esta evaluación aún no tiene un diagnóstico generado.</p>
         <p className="max-w-prose text-sm text-muted-foreground">
-          Para generarlo falta {falta}. {missing.length === 1 ? "Ese paso vive" : "Esos pasos viven"} en la
-          pestaña <span className="font-medium text-foreground">Evaluación</span> de esta página.
+          Falta {falta.length === 1 ? falta[0] : `${falta[0]}, y ${falta[1]}`}.
         </p>
       </div>
     );

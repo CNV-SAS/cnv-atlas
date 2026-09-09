@@ -13,9 +13,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const SRC = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx", "utf8");
+// LA LISTA VIVE EN UN MODULO NEUTRO desde el 2026-09-09 (`etapas.ts`), porque los avisos que NOMBRAN una
+// pestaña se rinden desde el SERVIDOR y no podian leerla de un componente "use client". La barra la
+// CONSUME, así que los ids se leen de la lista y el consumo se comprueba contra la barra.
+const ETAPAS_SRC = readFileSync("src/modules/diagnoses/etapas.ts", "utf8");
 
 // Ids declarados en TABS.
-const idsDeLaBarra = [...SRC.matchAll(/\{ id: "([a-z]+)", label:/g)].map((m) => m[1]);
+const idsDeLaBarra = [...ETAPAS_SRC.matchAll(/\{ id: "([a-z]+)", label:/g)].map((m) => m[1]);
 
 describe("navegacion por etapas de la evaluacion", () => {
   it("la barra declara las etapas de su archivo, ni una menos", () => {
@@ -36,9 +40,11 @@ describe("navegacion por etapas de la evaluacion", () => {
   it("el parseo valida contra la LISTA, no contra una cadena de comparaciones", () => {
     // Si vuelve a ser `raw === "a" || raw === "b" ...`, agregar una etapa y olvidar esa linea la deja
     // inalcanzable por URL sin que nada falle. Validar contra la lista hace imposible ese olvido.
-    expect(SRC).toContain("TAB_IDS");
-    expect(SRC).toMatch(/TAB_IDS\s*=\s*new Set<string>\(TABS\.map/);
-    expect(SRC).toContain("TAB_IDS.has(raw)");
+    // El conjunto vive con la lista (módulo neutro) y el parseo lo consume desde la barra: la regla no
+    // cambia, solo se reparte en dos archivos desde el 2026-09-09.
+    expect(ETAPAS_SRC).toContain("ETAPA_IDS");
+    expect(ETAPAS_SRC).toMatch(/ETAPA_IDS\s*=\s*new Set<string>\(ETAPAS\.map/);
+    expect(SRC).toContain("ETAPA_IDS.has(raw)");
   });
 
   it("cada etapa de la barra tiene su slot en el mapa de contenidos", () => {

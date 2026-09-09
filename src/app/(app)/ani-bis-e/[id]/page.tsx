@@ -55,6 +55,7 @@ import {
 } from "@/modules/diagnoses/data/results-reader";
 import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
 import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
+import { etiquetaDeEtapa } from "@/modules/diagnoses/etapas";
 import { EntradaEvaluacion } from "@/modules/evaluations/components/entrada-evaluacion";
 import { IdentidadAutomatica } from "@/modules/evaluations/components/identidad-automatica";
 import {
@@ -195,12 +196,25 @@ function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
   );
 }
 
+// AVISO DE ETAPA TODAVIA SIN CONTENIDO. Decia "Esta etapa se construye en un bloque posterior" y llevaba
+// MESES mintiendo: las tres etapas que lo usan (Tratamiento, Seguimiento y Reporte/HC) estan construidas
+// desde hace semanas. Lo que pasa no es que falte construirlas, es que **sin diagnostico no hay nada que
+// mostrar en ellas**, que es otra cosa y ademas se puede resolver.
+//
+// LA DIFERENCIA IMPORTA para quien lee: "se construye despues" dice que el sistema esta incompleto y no
+// hay nada que hacer; "se abre al generar el diagnostico" dice que falta un paso y donde darlo. Es la
+// familia de los textos que sobreviven a que su premisa deje de ser cierta, y este es el mas viejo que
+// hemos encontrado.
+//
+// EL NOMBRE DE LA PESTAÑA SALE DEL MAPA, no escrito aqui: ver `etapas.ts`.
 function StagePlaceholder({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border p-10 text-center">
       <p className="text-sm font-medium text-foreground">{label}</p>
       <p className="max-w-prose text-sm text-muted-foreground">
-        Esta etapa se construye en un bloque posterior.
+        Esta etapa se abre cuando el diagnóstico esté generado. Se genera solo en la pestaña{" "}
+        <span className="font-medium text-foreground">{etiquetaDeEtapa("diagnostico")}</span>, en cuanto la
+        encuesta esté completa y la medición BIS importada.
       </p>
     </div>
   );
@@ -1032,12 +1046,20 @@ export default async function ResultadosEvaluacionPage({
               <HcResumenDiagnostico
                 profesionLabel={profesionLabel}
                 texto={hcEsNutricionista ? hcNarrativa.parrafoDieta : hcAbordaje}
+                // EL MOTIVO SE DERIVA DEL ESTADO, no se escribe (2026-09-09). Decia "su resumen
+                // todavía no se ha portado", y esa premisa termino cuando se porto `resumen-profesion.ts`
+                // (los cuatro resumenes por profesion estan). Ademas nunca fue la causa real: `hcAbordaje`
+                // es null cuando quien mira NO es profesional, cuando su perfil no tiene profesion, o
+                // cuando la clave EFR viene malformada. Tres causas distintas, y el texto nombraba una
+                // cuarta que no existia. Ahora cada una dice la suya, leyendo `abordaje.kind`.
                 motivo={
                   hcEsNutricionista
                     ? hcNarrativa.motivo
-                    : (hcAbordaje
-                        ? null
-                        : "El modelo tiene contenido para esta disciplina; su resumen todavía no se ha portado.")
+                    : hcAbordaje
+                      ? null
+                      : abordaje.kind === "not-professional"
+                        ? "Este resumen es del profesional que atiende al paciente; tu rol no tiene uno."
+                        : "Tu perfil no tiene una profesión configurada, así que no hay abordaje que mostrar."
                 }
               />
               <HcDiagnosticoFuncional texto={hcNarrativa.parrafo} motivo={hcNarrativa.motivo} />

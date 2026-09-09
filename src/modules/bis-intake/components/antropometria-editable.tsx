@@ -48,6 +48,14 @@ const CAMPOS = [
 
 const EMPTY: BisCorrectionState = { error: null, success: null, warning: null };
 
+// De lo que hay ESCRITO en el campo al numero que la tabla pinta. Acepta la coma, que es como se escribe
+// aqui, y devuelve null para lo vacio o lo que todavia no es un numero (un "7," a medio teclear): la tabla
+// se queda sin referencia en vez de pintar una cifra falsa mientras se escribe.
+const aNumero = (v: string): number | null => {
+  const n = Number(v.trim().replace(",", "."));
+  return v.trim() === "" || !Number.isFinite(n) || n <= 0 ? null : n;
+};
+
 const fmt = (n: number | null | undefined) =>
   n == null || !Number.isFinite(n) ? "" : String(Math.round(n * 100) / 100).replace(".", ",");
 
@@ -58,10 +66,17 @@ export function AntropometriaEditable({
   pesoMetaKg,
   fuerzaPrensilKg,
   sellada,
+  onMetaEnVivo,
 }: {
   evaluationId: string;
   valores: Partial<Record<(typeof CAMPOS)[number]["key"], number | null>>;
   corrections?: CompositionCorrections;
+  /**
+   * Avisa del valor de la meta MIENTRAS se escribe, para que la tabla de Wang se recalcule en vivo
+   * (2026-09-09). No sustituye al guardado: eso sigue ocurriendo al salir del campo, con su accion y sus
+   * guardas. Esto solo adelanta el DIBUJO.
+   */
+  onMetaEnVivo?: (kg: number | null) => void;
   /** Peso meta (kg). Vive en `evaluations`, no en la medicion: es una decision, no una medida. */
   pesoMetaKg: number | null;
   /** Fuerza prensil (Kgf). Entra al motor como criterio primario del fenotipo de sarcopenia. */
@@ -168,6 +183,7 @@ export function AntropometriaEditable({
         pesoActualKg={valores.peso ?? null}
         fuerzaPrensilKg={fuerzaPrensilKg}
         sellada={sellada}
+        onMetaEnVivo={onMetaEnVivo}
       />
     </Panel>
   );
@@ -188,7 +204,9 @@ function MedidasDelProfesional({
   pesoActualKg,
   fuerzaPrensilKg,
   sellada,
+  onMetaEnVivo,
 }: {
+  onMetaEnVivo?: (kg: number | null) => void;
   evaluationId: string;
   pesoMetaKg: number | null;
   /** El peso MEDIDO. Va aqui para que la meta se fije con el dato de partida a la vista. */
@@ -293,6 +311,10 @@ function MedidasDelProfesional({
                 className="h-9"
                 disabled={pending}
                 onBlur={guardarSiCambio}
+                // EN VIVO MIENTRAS SE ESCRIBE: la tabla de Wang de arriba recalcula la fila de Peso con
+                // este valor. El GUARDADO sigue siendo al salir del campo (`onBlur`), que es un acto
+                // aparte. Es el mismo patron de la tabla de validacion del nutricionista.
+                onChange={(e) => onMetaEnVivo?.(aNumero(e.currentTarget.value))}
               />
               {/* QUE HACE EL CAMPO, junto al campo. Es "la palanca" en sus palabras (2026-08-26), y hasta
                   el 2026-08-31 se GUARDABA y no lo leia nadie: el profesional lo fijaba y la prescripcion

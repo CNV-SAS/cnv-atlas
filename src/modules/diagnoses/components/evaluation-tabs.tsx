@@ -1,6 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+
+import { ETAPA_IDS, ETAPAS, type TabId } from "../etapas";
 import { type ReactNode } from "react";
 
 // Shell de pestañas de una evaluacion. Adopta las etapas reales de la ruta ANI-BIS-E como tabs internas
@@ -30,23 +32,10 @@ import { type ReactNode } from "react";
 //
 // Va AL FINAL y en ese orden a proposito: es la ultima etapa de la consulta, la que cierra. Nunca es el
 // default: abrir en la quinta al entrar seria empezar por el final.
-type TabId = "encuesta" | "antro" | "diagnostico" | "tratamiento" | "seguimiento" | "reporte";
-
-// EL ORDEN SALE DE SU ARCHIVO (`MODS_CLINICA`, entrega vigente del 4 de septiembre), y el candado
-// `etapas-en-su-orden.test.ts` lo DERIVA de ahi y lo compara. Nuestras ETIQUETAS no son sus etiquetas:
-// "Tratamiento" se queda (Gildardo lo reviso y dijo que asi lo dejaramos), y ademas esa pestaña contiene
-// las rutas Y el panel del profesional, asi que describe mejor lo que hay dentro que "Rutas de atencion".
-// Lo que se fija es el ORDEN y CUANTAS son, que es lo que el pidio.
-const TABS: { id: TabId; label: string }[] = [
-  { id: "encuesta", label: "Encuesta" },
-  { id: "antro", label: "Antrop. & BIS" },
-  { id: "diagnostico", label: "Diagnóstico" },
-  { id: "tratamiento", label: "Tratamiento" },
-  { id: "seguimiento", label: "Seguimiento" },
-  { id: "reporte", label: "Reporte / HC" },
-];
-
-const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
+// LA LISTA SE MUDO A `../etapas` (modulo NEUTRO, 2026-09-09) y aqui solo se consume. La razon no es
+// orden: hay avisos que nombran una pestaña ("ese paso vive en X") y se rinden desde el SERVIDOR, asi que
+// no pueden leer la lista de un modulo `"use client"` sin caer en el hazard B. Vivia aqui y por eso el
+// aviso de Diagnostico seguia mandando a "la pestaña Evaluación" despues de partirla en dos.
 
 // Un ?etapa desconocido cae a la etapa POR DEFECTO. Se valida contra la LISTA y no contra una cadena de
 // comparaciones: agregar una etapa y olvidar el parseo daria un tab al que la URL nunca llega.
@@ -69,7 +58,7 @@ function traducirEtapaVieja(raw: string, ev: string | null): TabId {
 
 function parseTab(raw: string | null, ev: string | null, porDefecto: TabId): TabId {
   if (raw === "evaluacion") return traducirEtapaVieja(raw, ev);
-  return raw && TAB_IDS.has(raw) ? (raw as TabId) : porDefecto;
+  return raw && ETAPA_IDS.has(raw) ? (raw as TabId) : porDefecto;
 }
 
 export function EvaluationTabs({
@@ -124,7 +113,7 @@ export function EvaluationTabs({
         aria-label="Etapas de la evaluación"
         className="flex flex-wrap gap-1 overflow-x-auto border-b border-border"
       >
-        {TABS.map((t) => {
+        {ETAPAS.map((t) => {
           const selected = t.id === active;
           return (
             <button
