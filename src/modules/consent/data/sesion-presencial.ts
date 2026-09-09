@@ -64,6 +64,9 @@ export async function crearSesionPresencial(input: {
         documentType: input.documentType as never,
         documentNumber: input.documentNumber,
         declaracionVersion: input.declaracionVersion,
+        // La IP de QUIEN EMITE, para poder contrastarla despues con la del paciente. No se compara aqui:
+        // en este instante todavia no hay con que.
+        professionalIp: input.ip,
         expiresAt: new Date(Date.now() + SESION_TTL_MIN * 60_000),
       })
       .returning({ id: presencialConsentSessions.id });
@@ -106,6 +109,19 @@ export async function abrirSesionPresencial(input: {
       patientUserAgent: sql`coalesce(${presencialConsentSessions.patientUserAgent}, ${input.userAgent})`,
       // GREATEST y no una asignacion directa: reabrir la sesion no puede ACORTARLE la ventana a nadie.
       lecturaHasta: sql`greatest(coalesce(${presencialConsentSessions.lecturaHasta}, now()), now() + interval '${sql.raw(String(LECTURA_MIN))} minutes')`,
+      // LA MARCA DE MISMO ORIGEN se calcula AQUI, en el unico instante en que existen las dos IP, y con el
+      // mismo `coalesce` que las demas: la del PRIMER acceso es la que vale. No bloquea nada (una clinica
+      // con wifi las hace coincidir siempre); es una señal para que una persona la lea agregada.
+      // DOS NULOS NO SON EL MISMO ORIGEN. `is not distinct from` los daria por iguales, y en desarrollo
+      // (o detras de un proxy que no reenvie la IP) las dos son nulas: la sesion saldria marcada sin que
+      // nadie haya compartido red. Sin las dos IP la marca queda NULA, que es lo que significa "no se
+      // pudo saber", y es distinto de "no coincidieron".
+      mismoOrigen: sql`coalesce(
+        ${presencialConsentSessions.mismoOrigen},
+        case
+          when ${presencialConsentSessions.professionalIp} is null or ${input.ip}::inet is null then null
+          else ${presencialConsentSessions.professionalIp} = ${input.ip}::inet
+        end)`,
     })
     .where(
       and(
@@ -301,5 +317,45 @@ export async function resolverSesionPorToken(token: string): Promise<{
     professionalId: fila.professionalId,
     estado: fila.estado,
     vigente: fila.confirmedAt === null && limite.getTime() > Date.now(),
+  };
+}
+
+// ── LA SESION EN CURSO DEL PROFESIONAL, para sobrevivir a una recarga ─────────────────────────────
+//
+// EL DEFECTO QUE CIERRA: el id de la sesion vivia SOLO en el estado del componente. Una recarga (o un
+// toque accidental) lo borraba, y la pantalla volvia al principio a pedir un documento. Con el paciente
+// ya confirmado, eso significa perder un consentimiento que YA se dio y tener que repetirlo con la
+// persona delante, que es lo peor que puede pasar en esta pieza.
+//
+// SE RECUPERA DEL SERVIDOR, que es donde el acto de verdad ocurrio. Por RLS: solo salen las suyas.
+//
+// LA MAS RECIENTE NO TERMINAL: `declarada`, `abandonada` y `vencida` ya no tienen nada pendiente, y
+// `discrepancia` SI la tiene (hay que resolverla con el paciente), asi que cuenta como en curso.
+export async function sesionEnCursoDelProfesional(): Promise<EstadoSesion | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("presencial_consent_sessions")
+    .select(
+      "id, estado, opened_at, confirmed_at, declarado_nombres, declarado_apellidos, declarado_document_number",
+    )
+    .in("estado", ["emitida", "abierta", "confirmada", "discrepancia"])
+    .gt("lectura_hasta", new Date(Date.now() - 5 * 60_000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`sesion-presencial: en curso: ${error.message}`);
+  if (!data) return null;
+  const abierta = data.opened_at ? new Date(data.opened_at).getTime() : null;
+  const confirmada = data.confirmed_at ? new Date(data.confirmed_at).getTime() : null;
+  return {
+    id: data.id,
+    estado: data.estado,
+    openedAt: data.opened_at,
+    confirmedAt: data.confirmed_at,
+    segundosDeLectura:
+      abierta !== null && confirmada !== null ? Math.round((confirmada - abierta) / 1000) : null,
+    declaradoNombres: data.declarado_nombres,
+    declaradoApellidos: data.declarado_apellidos,
+    declaradoDocumentNumber: data.declarado_document_number,
   };
 }

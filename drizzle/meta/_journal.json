@@ -771,6 +771,13 @@
       "when": 1789431386099,
       "tag": "0109_sesion_qr_lectura_y_autorizaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1789517786099,
+      "tag": "0110_sesion_qr_mismo_origen",
+      "breakpoints": true
     }
   ]
 }

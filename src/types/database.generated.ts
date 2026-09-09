@@ -2409,12 +2409,14 @@ export type Database = {
           expires_at: string
           id: string
           lectura_hasta: string | null
+          mismo_origen: boolean | null
           opened_at: string | null
           organization_id: string
           patient_id: string | null
           patient_ip: unknown
           patient_user_agent: string | null
           professional_id: string
+          professional_ip: unknown
           sin_correo_declarado: boolean
           token: string
         }
@@ -2437,12 +2439,14 @@ export type Database = {
           expires_at: string
           id?: string
           lectura_hasta?: string | null
+          mismo_origen?: boolean | null
           opened_at?: string | null
           organization_id: string
           patient_id?: string | null
           patient_ip?: unknown
           patient_user_agent?: string | null
           professional_id: string
+          professional_ip?: unknown
           sin_correo_declarado?: boolean
           token: string
         }
@@ -2465,12 +2469,14 @@ export type Database = {
           expires_at?: string
           id?: string
           lectura_hasta?: string | null
+          mismo_origen?: boolean | null
           opened_at?: string | null
           organization_id?: string
           patient_id?: string | null
           patient_ip?: unknown
           patient_user_agent?: string | null
           professional_id?: string
+          professional_ip?: unknown
           sin_correo_declarado?: boolean
           token?: string
         }
