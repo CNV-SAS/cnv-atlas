@@ -469,7 +469,11 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     const jsx = sinComentarios(ENTRADA);
     const iAviso = jsx.indexOf("Medición BIS importada");
     const iReemplazo = jsx.indexOf("¿Importaste el archivo equivocado?");
-    const iMedidas = jsx.indexOf("<AntropometriaEditable");
+    // EL ANCLA DE "las medidas" SE MUDO (2026-09-09): `AntropometriaEditable` ya no lo monta esta pagina
+    // directamente, sino `MedidasConTabla`, el envoltorio cliente que une el campo con la tabla para que
+    // recalcule al escribir. La asercion es la misma (el reemplazo va ANTES de las medidas); lo que cambia
+    // es como se nombra el bloque de medidas.
+    const iMedidas = jsx.indexOf("<MedidasConTabla");
     expect(iReemplazo, "el desplegable de reemplazo desapareció").toBeGreaterThan(-1);
     expect(iReemplazo, "el reemplazo quedó ANTES del aviso de que hay medición").toBeGreaterThan(iAviso);
     expect(

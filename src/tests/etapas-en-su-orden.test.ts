@@ -19,7 +19,12 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 // SE DERIVA DE SU ARCHIVO, NO SE ESCRIBE A MANO. Su lista es `MODS_CLINICA`, que es la que pinta la barra
 // de arriba (hay otras listas de modulos en su HTML; esta se desambigua por CONTENIDO, no por posicion).
 
-const NUESTRO = sinComentarios(
+// LA LISTA SE MUDO A UN MODULO NEUTRO (2026-09-09) y este candado la sigue. El traslado sale de este
+// mismo barrido: hay avisos que NOMBRAN una pestaña y se rinden desde el SERVIDOR, asi que no podian leer
+// la lista de un componente "use client". El componente sigue siendo quien la PINTA, y por eso hay dos
+// fuentes: la lista (NUESTRO) y la barra que la consume (BARRA).
+const NUESTRO = sinComentarios(readFileSync("src/modules/diagnoses/etapas.ts", "utf8"));
+const BARRA = sinComentarios(
   readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx", "utf8"),
 );
 
@@ -35,8 +40,8 @@ function etapasDeSuArchivo(): string[] {
 /** Los ids de NUESTRA barra, leidos del arreglo que la pinta. */
 function nuestrasEtapas(): string[] {
   const bloque = NUESTRO.slice(
-    NUESTRO.indexOf("const TABS"),
-    NUESTRO.indexOf("];", NUESTRO.indexOf("const TABS")),
+    NUESTRO.indexOf("export const ETAPAS"),
+    NUESTRO.indexOf("];", NUESTRO.indexOf("export const ETAPAS")),
   );
   return [...bloque.matchAll(/id:\s*"([a-z]+)"/g)].map((m) => m[1]);
 }
@@ -60,7 +65,7 @@ describe("las etapas salen de su archivo", () => {
   it("y cada una tiene su slot de contenido: ninguna pestaña vacía", () => {
     // Una pestaña que existe y no muestra nada cumple el cotejo por fuera y no por dentro.
     for (const id of nuestrasEtapas()) {
-      expect(NUESTRO, `la etapa ${id} no tiene slot`).toContain(`${id}: ReactNode;`);
+      expect(BARRA, `la etapa ${id} no tiene slot`).toContain(`${id}: ReactNode;`);
     }
   });
 });
@@ -79,11 +84,11 @@ describe("los enlaces con la etapa vieja siguen llegando", () => {
   it("`?etapa=evaluacion` se traduce en vez de caer al default", () => {
     // Un enlace guardado que cae al default no da error: abre otra pantalla y ya. Es la forma silenciosa
     // de romper una direccion, y por eso se traduce explicitamente.
-    expect(NUESTRO).toContain('if (raw === "evaluacion") return traducirEtapaVieja(raw, ev);');
+    expect(BARRA).toContain('if (raw === "evaluacion") return traducirEtapaVieja(raw, ev);');
   });
 
   it("y conserva la subpestaña que traían: `?ev=antropometria` va a Antrop. & BIS", () => {
-    expect(NUESTRO).toContain('return ev === "antropometria" ? "antro" : "encuesta";');
+    expect(BARRA).toContain('return ev === "antropometria" ? "antro" : "encuesta";');
   });
 
   it("ningún enlace del repositorio apunta ya a la etapa vieja", () => {

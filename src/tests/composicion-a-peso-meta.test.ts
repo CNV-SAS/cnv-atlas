@@ -98,10 +98,13 @@ describe("y NO llega al documento", () => {
   it("la pasa SOLO Antropometría", () => {
     // Antropometria es donde su archivo la tiene y donde la meta se fija. Diagnostico no tiene fila de
     // Peso, y la Historia Clinica es el documento.
+    // EL SITIO SE MUDO (2026-09-09): la tabla y el campo viven ahora bajo el mismo envoltorio cliente,
+    // para que la fila de Peso se recalcule MIENTRAS se escribe la meta. La asercion no cambia (hay UN
+    // solo sitio que pasa la meta, y no es ni Diagnostico ni la HC); cambia cual es.
     expect(
       conMeta().map((s) => s.archivo),
       "un sitio nuevo pasa la meta, o Antropometría dejó de pasarla",
-    ).toEqual(["src/modules/evaluations/components/entrada-evaluacion.tsx"]);
+    ).toEqual(["src/modules/bis-intake/components/medidas-con-tabla.tsx"]);
   });
 
   it("y nunca dentro del bloque de la Historia Clínica", () => {
