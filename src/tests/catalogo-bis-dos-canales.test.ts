@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // CANDADO DE LOS DOS CANALES DEL CATALOGO DE CONDICIONES BIS (2026-09-07).
@@ -21,11 +21,25 @@ import { describe, expect, it } from "vitest";
 // implementaciones de un id determinista es como se generan filas que nadie cruza: la nube quedaria con
 // una version duplicada y las capturas selladas apuntando a la otra.
 
-const MIGRACION = "drizzle/0101_condiciones_bis_v2.sql";
 const SEED = readFileSync("supabase/seed-bis-conditions.ts", "utf8");
 
+// EL ALCANCE SE DERIVA, NO SE FIJA (2026-09-10). Este candado apuntaba a `0101_condiciones_bis_v2.sql`
+// escrito a mano, y al subir el catalogo a v3 se puso rojo por el ANCLA y no por la regla: el generador
+// producia la v3 y se comparaba contra el archivo de la v2. La ASERCION no cambia ("el .sql commiteado es
+// exactamente lo que el generador produce"); lo que cambia es que la migracion se busca por la VERSION que
+// el seed declara HOY, asi que el siguiente bump no vuelve a ponerlo rojo por el sitio equivocado.
+//
+// Es la familia del candado anclado a una entrega superada: uno que mira un archivo fijo certifica esa
+// foto, no la regla.
+const VERSION_DEL_SEED = Number(/const VERSION_NUMBER = (\d+);/.exec(SEED)?.[1]);
+const ARCHIVO_MIGRACION = readdirSync("drizzle").find((f) =>
+  f.endsWith(`_condiciones_bis_v${VERSION_DEL_SEED}.sql`),
+);
+const MIGRACION = `drizzle/${ARCHIVO_MIGRACION ?? "(no-existe)"}`;
+const NUMERO_MIGRACION = (ARCHIVO_MIGRACION ?? "").split("_")[0];
+
 function generado(): string {
-  return execFileSync("node", ["scripts/gen-bis-conditions-migration.mjs", "0101"], {
+  return execFileSync("node", ["scripts/gen-bis-conditions-migration.mjs", NUMERO_MIGRACION], {
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -47,8 +61,7 @@ describe("la migración del catálogo se DERIVA del seed, no se escribe", () => 
   it("el .sql commiteado es EXACTAMENTE lo que el generador produce hoy", () => {
     expect(
       norm(readFileSync(MIGRACION, "utf8")),
-      "el seed y la migración divergieron: regenera con `node scripts/gen-bis-conditions-migration.mjs 0101 > " +
-        MIGRACION + "`",
+      `el seed y la migración divergieron: regenera con \`node scripts/gen-bis-conditions-migration.mjs ${NUMERO_MIGRACION} > ${MIGRACION}\``,
     ).toBe(norm(generado()));
   });
 
@@ -67,7 +80,8 @@ describe("la migración del catálogo se DERIVA del seed, no se escribe", () => 
     const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
       entries: { tag: string }[];
     };
-    expect(journal.entries.map((e) => e.tag)).toContain("0101_condiciones_bis_v2");
+    expect(ARCHIVO_MIGRACION, `falta la migracion de la version ${VERSION_DEL_SEED} del catalogo`).toBeTruthy();
+    expect(journal.entries.map((e) => e.tag)).toContain(MIGRACION.replace("drizzle/", "").replace(".sql", ""));
   });
 });
 
