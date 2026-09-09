@@ -124,7 +124,7 @@ export function NuevoPacientePresencial() {
           <PaseQrPresencial
             documentType={documento.documentType ?? "CC"}
             documentNumber={documento.documentNumber}
-            onConfirmado={() => undefined}
+            onCreado={setResumeToken}
           />
         </section>
       </div>

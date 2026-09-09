@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { eq } from "drizzle-orm";
 
@@ -308,5 +308,149 @@ describe.skipIf(!HAS_DB)("la marca de mismo origen (BD real)", () => {
     );
     expect(PANTALLA).not.toContain("mismoOrigen");
     expect(PANTALLA).not.toContain("mismo origen");
+  });
+});
+
+// ── EL PASO FINAL: DECLARAR Y CREAR (2026-09-10) ───────────────────────────────────────────────────
+describe.skipIf(!HAS_DB)("declarar cierra la sesión y crea al paciente, atómicamente (BD real)", () => {
+  it("el paciente nace con lo que ÉL escribió, sellado presencial_qr, y la sesión queda declarada", async () => {
+    const { db } = await import("@/db");
+    const schema = await import("@/db/schema");
+    const { abrirSesionPresencial, confirmarSesionPresencial } = await import(
+      "@/modules/consent/data/sesion-presencial"
+    );
+    const { signIntakeEvaluation } = await import("@/modules/evaluations/data/intake-writer");
+    const { CONSENT_DOCUMENT_HASH, CONSENT_VERSION } = await import(
+      "@/modules/consent/consent-hash"
+    );
+    const { DECLARACION_PRESENCIAL_VERSION } = await import(
+      "@/modules/consent/text/declaracion-presencial"
+    );
+
+    const doc = `QRFIN-${Date.now()}`;
+    const s = await emitir(doc);
+    await abrirSesionPresencial({ token: s.token, ip: "192.0.2.10", userAgent: "Android" });
+    await confirmarSesionPresencial({
+      token: s.token,
+      nombres: "Ana María",
+      apellidos: "Pérez",
+      documentType: "CC",
+      documentNumber: doc,
+      autorizaciones: AUTORIZACIONES,
+    });
+
+    const r = await signIntakeEvaluation({
+      organizationId: s.pro.organizationId,
+      professionalId: s.pro.professionalId,
+      mode: "inicial",
+      patientId: null,
+      identity: {
+        documentType: "CC",
+        documentNumber: doc,
+        firstName: "Ana María",
+        lastName: "Pérez",
+        birthDate: "1990-05-05",
+        sex: "F",
+        country: "Colombia",
+        city: "Medellín",
+        email: null,
+        phone: null,
+      },
+      consents: AUTORIZACIONES.map((type) => ({
+        type: type as never,
+        consentVersion: CONSENT_VERSION,
+        documentHash: CONSENT_DOCUMENT_HASH,
+      })),
+      linkId: null,
+      ipAddress: null,
+      presencial: {
+        canal: "presencial_qr",
+        // LA PERSONA, no la ficha. Los dos uuid están a mano en el mismo objeto (`s.pro`), que es
+        // exactamente la trampa que ya rompió un smoke.
+        declaradoPorProfileId: s.pro.profileId,
+        declaracionVersion: DECLARACION_PRESENCIAL_VERSION,
+        sessionId: s.id,
+      },
+    });
+
+    // Limpieza al final del test: el paciente creado cuelga fuera de `creadas`.
+    try {
+      const consents = await db
+        .select({
+          canal: schema.patientConsents.signatureChannel,
+          declaradoPor: schema.patientConsents.declaredBy,
+          version: schema.patientConsents.declarationVersion,
+        })
+        .from(schema.patientConsents)
+        .where(eq(schema.patientConsents.patientId, r.patientId));
+      expect(consents.length).toBe(AUTORIZACIONES.length);
+      for (const c of consents) {
+        expect(c.canal, "el canal tiene que decir QR, no remoto").toBe("presencial_qr");
+        expect(c.declaradoPor, "declared_by es el profiles.id, no el de la ficha").toBe(
+          s.pro.profileId,
+        );
+        expect(c.version).toBe(DECLARACION_PRESENCIAL_VERSION);
+      }
+
+      const [perfil] = await db
+        .select({ nombres: schema.patientProfiles.firstName })
+        .from(schema.patientProfiles)
+        .where(eq(schema.patientProfiles.patientId, r.patientId));
+      expect(perfil.nombres, "el nombre es el que escribió el paciente").toBe("Ana María");
+
+      // Y LA SESION SE CERRO EN LA MISMA TRANSACCION: si quedara `confirmada`, la pantalla la ofrecería
+      // otra vez y el profesional declararía dos veces sobre el mismo acto.
+      const f = await fila(s.id);
+      expect(f.estado).toBe("declarada");
+      expect(f.declaredAt).not.toBeNull();
+      expect(f.patientId).toBe(r.patientId);
+    } finally {
+      await db.delete(schema.evaluations).where(eq(schema.evaluations.patientId, r.patientId));
+      await db.delete(schema.patientConsents).where(eq(schema.patientConsents.patientId, r.patientId));
+      await db.delete(schema.patientContacts).where(eq(schema.patientContacts.patientId, r.patientId));
+      await db.delete(schema.patientProfiles).where(eq(schema.patientProfiles.patientId, r.patientId));
+      await db
+        .delete(schema.patientProfessionalRelationships)
+        .where(eq(schema.patientProfessionalRelationships.patientId, r.patientId));
+      await db
+        .update(schema.presencialConsentSessions)
+        .set({ patientId: null })
+        .where(eq(schema.presencialConsentSessions.id, s.id));
+      await db.delete(schema.patients).where(eq(schema.patients.id, r.patientId));
+    }
+  });
+});
+
+// ── LA REGLA, NO EL SITIO DE LLAMADA ───────────────────────────────────────────────────────────────
+//
+// El candado anterior apuntaba al camino que arregle, y por eso el mismo defecto sobrevivio en otro. La
+// regla es: **a `declaradoPorProfileId` va un `profiles.id`, nunca un `professional_profiles.id`**. Esto
+// la fija sobre TODOS los productores, incluidos los que no existen todavia.
+describe("a declaradoPorProfileId va un profiles.id, siempre", () => {
+  it("ningún productor le pasa el id de la ficha profesional", () => {
+    const raiz = "src/modules";
+    const archivos: string[] = [];
+    const recorrer = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = `${dir}/${e.name}`;
+        if (e.isDirectory()) recorrer(p);
+        else if (p.endsWith(".ts") || p.endsWith(".tsx")) archivos.push(p);
+      }
+    };
+    recorrer(raiz);
+
+    const productores = archivos
+      .map((f) => ({ f, t: readFileSync(f, "utf8") }))
+      .filter(({ t }) => t.includes("declaradoPorProfileId:"));
+    expect(productores.length, "no hay productores: el candado no estaría mirando nada").toBeGreaterThan(0);
+
+    for (const { f, t } of productores) {
+      for (const m of t.matchAll(/declaradoPorProfileId:\s*([^,\n]+)/g)) {
+        const valor = m[1].trim();
+        // `professionalId` es el nombre que tiene el `professional_profiles.id` en TODO el repo, y es la
+        // variable que suele estar a mano dos lineas arriba. Ese es el error exacto que ocurrio.
+        expect(valor, `${f} le pasa la ficha profesional`).not.toMatch(/professionalId|professionalProfileId/);
+      }
+    }
   });
 });
