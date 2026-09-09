@@ -39,7 +39,12 @@ paciente. La ventana para cerrar gates sin daño acumulado sigue abierta, pero n
 
 ### Lo urgente, por orden
 
-1. **MFA · el segundo factor puede estar apagado sobre datos reales. HOY.** La relajación
+1. **MFA · FECHA LIMITE: SE ENCIENDE ANTES DE DAR EL PRIMER ACCESO A UN INTEGRANTE.**
+   Esa es la condicion, y esta escrita aqui para que no dependa de que alguien se acuerde. Santiago lo
+   aplaza porque hoy nadie externo tiene acceso, y eso es cierto y razonable. **Lo que NO puede aplazarlo
+   es el MFA por correo**: es una mejora, y mientras se construye habria 59 pacientes reales sin segundo
+   factor. Si el correo llega a tiempo, se encienden juntos; si no, se enciende el TOTP y el correo entra
+   despues. Ver el dimensionamiento en `BACKLOG.md`. La relajación
    (`src/modules/auth/mfa-relaxation.ts`) se diseñó para ser inerte en producción, y su garantía era, en
    sus palabras: *"PRODUCCION -que apunta a OTRA base de Supabase- NUNCA coincide"*. **Esa premisa la
    invalidó la junta**: al saltarse el Hito 2 no hay dos proyectos, y la nube que era pruebas es

@@ -43,6 +43,80 @@ la fila de base GANE sobre el texto canonico: la nube no caia al v2 del reposito
 - **`menu.adapt` ausente en la nube NO es un defecto:** es el diseño. Su clave se eligio nueva justamente
   para que cayera al texto canonico del codigo, que es byte por byte el mismo JSON que sembraria el seed.
 
+## MFA por correo, como segundo factor alternativo al autenticador (2026-09-09)
+
+**Por que existe esta entrada.** Santiago condiciona encender el MFA obligatorio a tener tambien MFA por
+correo, ademas del autenticador. La condicion es razonable como producto y **no debe bloquear**: mientras
+se construye habria 59 pacientes reales sin segundo factor. Ver la fecha limite en `LANZAMIENTO.md`
+(se enciende antes del primer acceso de un Integrante).
+
+**Verificado en el codigo, no supuesto:**
+- Lo que hay hoy es **TOTP y solo TOTP**: `supabase.auth.mfa.enroll({ factorType: "totp" })`
+  (`src/modules/auth/mfa-actions.ts`), y el reto lee `factors.totp[0]` (`src/modules/auth/actions.ts`).
+- **Supabase no ofrece "correo" como tipo de factor MFA.** Su API de MFA acepta `totp` y `phone`. El
+  correo con codigo que ofrece GoTrue es un metodo de INICIO DE SESION (magic link / OTP de acceso), no un
+  segundo factor sobre una sesion ya autenticada. **Confirmar contra su documentacion vigente antes de
+  construir**, porque esto cambia entre versiones.
+- **Pero la pieza ya la tenemos construida y probada.** El OTP por correo del consentimiento
+  (`src/modules/consent/otp/otp-service.ts`: `generateOtpCode`, `storeOtp`, `consumeOtp`, con caducidad,
+  limite de intentos y enmascarado del destino) mas el envio por Resend (`src/lib/email/resend.ts`). Es el
+  mismo mecanismo que ya usa un paciente para firmar.
+
+**Tamaño estimado: entre medio dia y un dia.** No es medio dia limpio, y la diferencia esta en una cosa:
+- **Lo barato** (unas horas): reusar el OTP existente para emitir y verificar un codigo al correo del
+  profesional en la pantalla de reto, y aceptar ese factor como valido para la sesion.
+- **Lo que lo alarga**: el segundo factor no puede vivir en la sesion de Supabase (`aal2`) si no es un
+  factor suyo, asi que hay que decidir DONDE se registra que la sesion supero el segundo factor, y que
+  ese estado no se pueda falsificar desde el cliente. Esa decision es arquitectonica y toca
+  `SECURITY.md`; no es codigo de una tarde.
+
+**Recomendacion:** **encender el TOTP ya** (es borrar una variable de Vercel) y construir el correo
+despues, sin prisa y con la decision de arriba tomada por escrito. La alternativa (esperar al correo)
+deja los 59 pacientes reales sin segundo factor durante todo el desarrollo, a cambio de una comodidad.
+
+**Y una nota de seguridad que conviene decir en voz alta:** un segundo factor por correo es MAS DEBIL que
+un autenticador, porque el correo suele ser tambien el canal de recuperacion de la contraseña. Si el
+correo se compromete, se compromete el factor. Sirve como alternativa para quien no puede usar
+autenticador, no como el metodo por defecto.
+
+---
+
+## Backups y PITR: el costo, y la alternativa si no cuadra (2026-09-09)
+
+**El gate 15 vive en `LANZAMIENTO.md`; esto es el detalle del trabajo.**
+
+**Lo verificado:** Supabase Pro incluye backups **diarios con 7 dias** de retencion. El **PITR es un
+add-on que se cobra aparte** y exige estar en Pro; se factura por ventana de retencion (a mayor ventana,
+mayor precio), y la ventana mas corta es la mas barata. **Los precios cambian: confirmarlos en su pagina
+antes de decidir.** No los escribo aqui porque una cifra escrita a mano en un doc envejece sin avisar, y
+esta es de las que se citan en una decision de presupuesto.
+
+**La diferencia concreta, que es lo que hay que poner delante de la decision:**
+- Con backup diario, **un error a las 3 de la tarde cuesta TODA la jornada clinica**: se restaura al
+  corte de la noche anterior.
+- Con 7 dias de retencion, **una corrupcion que se nota al octavo dia ya no se deshace**.
+- El PITR no elimina el riesgo: lo acota a segundos.
+
+**PITR no es obligatorio.** Es la mejor cobertura para el error puntual, y hay una alternativa que cubre
+lo otro:
+
+**ALTERNATIVA · dump diario propio fuera de Supabase.** Un `pg_dump` programado que deje el volcado en
+almacenamiento ajeno a Supabase (y con retencion mas larga que 7 dias).
+- **Que cubre:** el desastre total (perder el proyecto o la cuenta), que es lo unico que NI el backup
+  nativo NI el PITR cubren, porque los dos viven dentro de Supabase.
+- **Que NO cubre:** el error puntual. Un dump diario tiene la misma perdida de hasta una jornada.
+- **Tamaño: unas horas.** Un job programado, credenciales de solo lectura y un destino. Lo que hay que
+  cuidar no es el script: es que el volcado lleva **PII clinica en claro**, asi que va cifrado, con
+  acceso restringido, y su existencia entra en `DATA_GOVERNANCE.md` (es una copia de datos de salud
+  fuera del procesador declarado, y eso es materia de los gates legales 17 y 18).
+- **Y no existe hasta que se restaura con exito**, que ya estaba escrito en `DEPLOY.md`.
+
+**Recomendacion:** el dump externo va SI O SI, con PITR o sin el, porque cubre lo que el PITR no cubre.
+El PITR se decide con el precio delante: si cuadra, la ventana corta ya da el salto grande (de perder una
+jornada a perder segundos).
+
+---
+
 **[HECHO 2026-09-09] `indicator_definitions` y los otros TRES del registro del motor.** Esta entrada
 decía "el cuarto catálogo" y se quedó corta: eran **cuatro**, y son **la misma pieza**. `phenotypes`,
 `fr_sectors` y `efr_states` cuelgan igual de un `model_version_id` fijo, se generan del motor congelado
