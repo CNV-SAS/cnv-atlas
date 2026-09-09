@@ -335,6 +335,8 @@ export default async function ResultadosEvaluacionPage({
   // la primera del paciente).
   const [
     protocol,
+    // Solo para la columna de simulacion "A peso meta" del Diagnostico: NO entra al snapshot ni al PDF.
+    intakeParaMeta,
     comparison,
     composition,
     criterion,
@@ -353,6 +355,7 @@ export default async function ResultadosEvaluacionPage({
     serie,
   ] = await Promise.all([
     getTreatmentProtocol(id),
+    getBisIntakeForEvaluation(id),
     getFollowupComparison(id),
     getCompositionForEvaluation(id),
     getDiagnosisCriterion(id),
@@ -1117,6 +1120,10 @@ export default async function ResultadosEvaluacionPage({
                 <CompositionSection
                   composition={composition}
                   sexoM={sexoM}
+                  // LA COLUMNA DE SIMULACION VA SOLO AQUI, en Diagnostico. NO en la Historia Clinica ni
+                  // en el PDF: se calcula al leer, y un documento que la llevara la presentaria como
+                  // parte de lo emitido. Ver composition-section.
+                  pesoMetaKg={intakeParaMeta?.weightGoalKg ?? null}
                   classifications={results.snapshot.classifications}
                   sevByCode={
                     isEngineOutput(results.snapshot) ? indicatorSeverities(results.snapshot) : {}

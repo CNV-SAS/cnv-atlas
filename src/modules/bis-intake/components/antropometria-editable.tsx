@@ -245,21 +245,23 @@ function MedidasDelProfesional({
           <input type="hidden" name="evaluationId" value={evaluationId} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <label htmlFor="peso-meta" className="text-xs font-medium text-foreground">
-                Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
-              </label>
-              {/* EL PESO ACTUAL, JUNTO AL CAMPO (reunion con Gildardo, 2026-09-10).
-                  SU PETICION fue ponerlo en la columna de referencia del nivel V de Wang, y su RAZON es
-                  real: al fijar la meta no recuerda de que peso parte. Pero esa ubicacion mete un dato de
-                  ENTRADA en una tabla de RESULTADOS, y esa tabla es lo que el motor produjo: mezclarlas
-                  hace que dejen de leerse como lo que son.
-                  Se resuelve el problema, no la ubicacion: el dato que le falta, donde le falta. Sale de
-                  `pesoActualKg`, que este componente ya tiene; no hace falta traer nada. */}
-              {pesoActualKg != null ? (
-                <p className="text-xs text-muted-foreground">
-                  Peso actual: <span className="font-medium text-foreground">{fmt(pesoActualKg)} kg</span>
-                </p>
-              ) : null}
+              {/* EL PESO ACTUAL, EN LA MISMA FILA QUE LA ETIQUETA (corrección del smoke, 2026-09-10).
+                  Estaba ENTRE la etiqueta y el input: ocupaba una línea propia, empujaba el campo hacia
+                  abajo, y los dos de la rejilla dejaban de alinearse. Y en tinta atenuada y tamaño mínimo
+                  pasaba desapercibido, que es exactamente lo que se venía a evitar.
+                  Ahora va a la derecha de la etiqueta, con el número en el tamaño del cuerpo y en negrita:
+                  se ve, y no compite con el campo porque no ocupa línea propia ni lleva caja. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <label htmlFor="peso-meta" className="text-xs font-medium text-foreground">
+                  Meta de peso (kg) <span className="text-muted-foreground">(opcional)</span>
+                </label>
+                {pesoActualKg != null ? (
+                  <span className="text-sm text-muted-foreground">
+                    actual{" "}
+                    <span className="font-semibold text-foreground">{fmt(pesoActualKg)} kg</span>
+                  </span>
+                ) : null}
+              </div>
               <Input
                 id="peso-meta"
                 name="weightGoalKg"
@@ -278,9 +280,13 @@ function MedidasDelProfesional({
               </p>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="fuerza-prensil" className="text-xs font-medium text-foreground">
-                Fuerza prensil (Kgf) <span className="text-muted-foreground">(opcional)</span>
-              </label>
+              {/* Mismo envoltorio aunque no lleve dato a la derecha: sin el, esta etiqueta ocupa
+                  una altura distinta de la de al lado y los dos inputs vuelven a desalinearse. */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <label htmlFor="fuerza-prensil" className="text-xs font-medium text-foreground">
+                  Fuerza prensil (Kgf) <span className="text-muted-foreground">(opcional)</span>
+                </label>
+              </div>
               <Input
                 id="fuerza-prensil"
                 name="gripStrengthKg"
