@@ -82,17 +82,25 @@ function initials(name: string): string {
 function AtlasLogo() {
   // Con la barra CLARA el logo actual funciona tal cual: no hace falta la version en blanco ni la placa
   // provisional que hizo falta con la barra navy. El obstaculo desaparecio con la disposicion invertida.
+  //
+  // "ATLAS CNV" (Santiago, 2026-09-09), mismo patron que el "Pacientes" de la encuesta: logo + rotulo al
+  // lado, no una imagen nueva. Las dos superficies quedan nombradas y se distinguen entre si, que es lo
+  // que faltaba: quien ve una captura sabe si esta mirando la app del profesional o la del paciente.
+  //
+  // EL ROTULO NO ENTRA EN EL `aria-label`: el enlace ya se anuncia como "Atlas CNV, inicio" leyendo el
+  // texto, y repetirlo lo haria decirlo dos veces.
   return (
-    <Link href="/dashboard" className="flex items-center" aria-label="Atlas, inicio">
+    <Link href="/dashboard" className="flex items-center gap-2" aria-label="Atlas CNV, inicio">
       <Image
         src="/brand/logo-horizontal.svg"
-        alt="Atlas"
+        alt=""
         width={140}
         height={28}
         priority
         unoptimized
         className="h-7 w-auto"
       />
+      <span className="text-lg font-semibold tracking-tight text-muted-foreground">CNV</span>
     </Link>
   );
 }

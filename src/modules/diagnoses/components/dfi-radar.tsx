@@ -126,14 +126,22 @@ export function DfiRadar({
   }`;
 
   return (
-    <figure className="flex flex-col items-center gap-2">
+    // `w-full` EN LA FIGURA, y esto es lo que de verdad limitaba el tamaño (2026-09-09). Es EXACTAMENTE
+    // lo que le paso a la Diana en el cotejo del 6: los dos contenedores del radar son
+    // `flex flex-col items-center`, y `items-center` hace que el hijo se encoja a su CONTENIDO en vez de
+    // estirarse. Con la figura encogida, el `max-w` del SVG no podia mandar nunca: subir la cifra sola no
+    // habria hecho nada visible. Primero el `w-full`, y entonces el ancho real lo pone el `max-w` de abajo.
+    <figure className="flex w-full flex-col items-center gap-2">
       <svg
         viewBox={`0 0 ${SIZE_W} ${SIZE_H}`}
         role="img"
         aria-label={label}
         // Escala a su columna (el viewBox conserva la geometria); sin width/height fijos en px. max-w algo
         // mayor que la Diana por su aspecto mas ancho (360x300). Asi el radar reclama su mitad del grid.
-        className="h-auto w-full max-w-[24rem]"
+        // 36rem (antes 24): "se ve algo pequeño" en las dos pantallas donde vive, y las dos lo montan en
+        // una tarjeta a ancho completo, asi que habia sitio de sobra. Se queda por debajo de la Diana
+        // (50rem) a proposito: la Diana es una figura densa que se explora, el radar se lee de un vistazo.
+        className="h-auto w-full max-w-[36rem]"
       >
         {/* Zonas de fondo por severidad: pentagonos concentricos del exterior (peor) al centro (mejor),
             pintados en ese orden para que cada zona interior cubra a la de afuera. Cada banda lleva un

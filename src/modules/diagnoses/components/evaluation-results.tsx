@@ -32,7 +32,7 @@ import {
   indicatorRange,
 } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
-import { OPTIMO_DOT, RISK_SEV, SEV_CLS } from "./risk-severity";
+import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
@@ -54,8 +54,16 @@ const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
   { code: "IEHH", key: "iehh" },
   { code: "IAE", key: "iae" },
   { code: "EB", key: "eb" },
-  { code: "AF", key: "AF" },
-  { code: "IR", key: "IR" },
+  // AF E IR NO ESTAN AQUI (Santiago, 2026-09-09, verificado contra su archivo antes de quitarlos).
+  //
+  // SU ARCHIVO los tiene SOLO en el Nivel III de la tabla de Wang, con su referencia, su Δ y su
+  // veredicto ("Normal" y "Óptimo" en la captura de Diagnostico), y su franja de indices bioelectricos
+  // integrados lleva siete filas sin ellos. Estaban en las DOS por nuestra cuenta.
+  //
+  // Y NO SE PIERDE NADA, que era el riesgo: la referencia y la Δ de las dos tablas salian de la MISMA
+  // funcion (`indicatorRange`), asi que el numero es identico. El veredicto no: en Wang se computa al
+  // mostrar (`dAF`/`dIR`, siempre presente) y aqui se leia la etiqueta SELLADA, que en los diagnosticos
+  // anteriores a que AF/IR se sellaran sale como "N/D". Se retira el mas debil de los dos, no el mejor.
 ];
 
 // Severidad de dominio DFI (0-3): la etiqueta (SEV_LABEL) viene de severity-labels; el color, de
@@ -304,6 +312,24 @@ export function EvaluationResults({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
+              {/* LA FRANJA DE SECCION, con el mismo aspecto que las de nivel de la tabla de Wang, para que
+                  esta tabla se lea como continuacion de aquella y no como algo suelto (Santiago, 2026-09-09).
+                  En su archivo las dos son UNA sola tabla continua y esta franja es la ultima.
+
+                  DICE LO QUE DICE SU ARCHIVO, y no "Nivel II · Molecular", que fue lo que se pidio. En su
+                  captura de Diagnostico el Nivel II molecular es una franja ANTERIOR, con sus propias filas
+                  (ACT, FFW, hidratacion, IEHH, grasa corporal, CMO, masa proteica), y los indices van
+                  DESPUES bajo una franja propia. Rotular esto como Nivel II diria dos cosas falsas: que
+                  estos indices son moleculares, y que el Nivel II aparece dos veces con contenidos
+                  distintos. Ver el reporte del 2026-09-09. */}
+              <tr>
+                <th
+                  colSpan={5}
+                  className="bg-muted px-3 py-1.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  Índices bioeléctricos integrados · ANI BIS-E
+                </th>
+              </tr>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4 font-medium">Indicador</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
@@ -342,6 +368,16 @@ export function EvaluationResults({
                 return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">
+                      {/* EL MISMO RAYO que marca las filas de origen bioelectrico en la tabla de Wang
+                          (Santiago, 2026-09-09). Aqui va en TODAS: los doce indices ANI salen de la
+                          medicion bioelectrica, asi que el icono no distingue unas filas de otras dentro
+                          de esta tabla, distingue esta TABLA. Mismo tamaño, mismo color y mismo
+                          `aria-label` que alli: dos iconos iguales que se anuncian distinto son dos cosas
+                          para quien usa lector de pantalla. */}
+                      <Zap
+                        className="mr-1.5 inline-block size-3.5 shrink-0 -translate-y-px text-primary"
+                        aria-label="Parámetro bioeléctrico"
+                      />
                       <span className="font-medium text-foreground">{code}</span>
                       {results.indicatorNames[code] ? (
                         <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
@@ -372,7 +408,15 @@ export function EvaluationResults({
                             aria-hidden
                           />
                         ) : null}
-                        <span>{classLabel}</span>
+                        {/* LA LETRA EN EL COLOR DEL PUNTO (Santiago, 2026-09-09), como el veredicto de la
+                            tabla de Wang. Sin severidad se queda en la tinta apagada heredada: pintar
+                            "N/D" de un color seria darle un veredicto que no tiene. El color NUNCA va
+                            solo, la etiqueta sigue siendo el señalizador (BRAND). */}
+                        <span
+                          className={sev != null ? `font-medium ${OPTIMO_TEXT[sev as number]}` : undefined}
+                        >
+                          {classLabel}
+                        </span>
                       </span>
                     </td>
                   </tr>

@@ -56,3 +56,17 @@ export const OPTIMO_DOT = [
   "bg-clinical-warning",
   "bg-clinical-critical",
 ];
+
+// LA MISMA ESCALA EN `text-*`, para la ETIQUETA de clasificacion de la tabla de indicadores ANI-BIS-E
+// (Santiago, 2026-09-09: "el mismo color del circulo"). No es una escala nueva: es `OPTIMO_DOT` con el
+// prefijo que necesita el texto, igual que `SEV_FILL` es `DOT_CLS` con el prefijo del SVG. Se escribe
+// literal y no se deriva partiendo cadenas porque Tailwind necesita ver la clase entera en el fuente.
+//
+// SIN FONDO, a diferencia de `OPTIMO_CLS`: alli el par bg+text hace una pastilla, y en una tabla de diez
+// filas diez pastillas compiten con los numeros. Aqui el punto ya marca, y el color de la letra refuerza.
+export const OPTIMO_TEXT = [
+  "text-clinical-optimal",
+  "text-clinical-optimal",
+  "text-clinical-warning",
+  "text-clinical-critical",
+];
