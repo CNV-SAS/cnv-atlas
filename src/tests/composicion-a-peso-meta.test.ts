@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
@@ -15,7 +16,6 @@ const SECCION = readFileSync(
   "src/modules/diagnoses/components/composition-section.tsx",
   "utf8",
 );
-const PAGINA = readFileSync("src/app/(app)/evaluaciones/[id]/page.tsx", "utf8");
 
 describe("la columna se calcula al leer y no se escribe", () => {
   it("no hay writer, ni action, ni columna nueva detrás de ella", () => {
@@ -32,14 +32,73 @@ describe("la columna se calcula al leer y no se escribe", () => {
   });
 });
 
-describe("y NO viaja al documento", () => {
-  it("solo se pasa en Diagnóstico, nunca en la Historia Clínica", () => {
-    // La HC y el PDF son el documento: una simulación ahí se presentaría como parte de lo emitido.
-    const usos = [...PAGINA.matchAll(/pesoMetaKg=\{/g)].length;
-    expect(usos, "la columna se pasa en más de un sitio: uno de ellos es el documento").toBe(1);
-    const i = PAGINA.indexOf("pesoMetaKg={");
-    const bloque = PAGINA.slice(Math.max(0, i - 1200), i);
-    expect(bloque, "el único uso no está en el bloque de Diagnóstico").not.toContain("soloAlterados");
+// EL ALCANCE SE BARRE, NO SE FIJA (2026-09-10, segunda version). La primera contaba `pesoMetaKg={`
+// DENTRO de `page.tsx` y afirmaba "exactamente uno". Al añadir la columna en Antropometria, el segundo
+// sitio de llamada quedo FUERA de lo que el candado miraba y paso verde sin haberlo visto: contar dentro
+// de un archivo no dice nada de los demas archivos.
+//
+// Ahora se barren TODOS los `<CompositionSection ...>` del repositorio y se listan por sitio. La lista de
+// permitidos esta escrita aqui con su razon, asi que un cuarto sitio (o mover uno) se pone rojo aunque
+// nadie se acuerde de esta regla.
+function tsxDelRepo(dir: string, salida: string[] = []): string[] {
+  for (const entrada of readdirSync(dir)) {
+    const ruta = join(dir, entrada);
+    if (statSync(ruta).isDirectory()) tsxDelRepo(ruta, salida);
+    else if (entrada.endsWith(".tsx")) salida.push(ruta.split(sep).join("/"));
+  }
+  return salida;
+}
+
+/** Cada `<CompositionSection ... />` del repo, con sus props: archivo y cuerpo de la etiqueta. */
+function sitiosDeLlamada() {
+  const sitios: { archivo: string; etiqueta: string }[] = [];
+  for (const archivo of tsxDelRepo("src")) {
+    const src = readFileSync(archivo, "utf8");
+    let i = src.indexOf("<CompositionSection");
+    while (i !== -1) {
+      const cierre = src.indexOf("/>", i);
+      sitios.push({ archivo, etiqueta: src.slice(i, cierre === -1 ? i + 800 : cierre) });
+      i = src.indexOf("<CompositionSection", i + 1);
+    }
+  }
+  return sitios;
+}
+
+const conColumna = () => sitiosDeLlamada().filter((s) => s.etiqueta.includes("pesoMetaKg="));
+
+describe("solo la miran los DOS sitios donde se decide y se lee", () => {
+  it("el control: la tabla se renderiza en más de un sitio", () => {
+    // Sin esto, un barrido que no encontrara nada haria pasar en verde todo lo de abajo.
+    expect(sitiosDeLlamada().length).toBeGreaterThan(1);
+  });
+
+  it("la pasan Antropometría y Diagnóstico, y nadie más", () => {
+    // ANTROPOMETRIA: es donde la meta se FIJA, y es la razon literal que dio Gildardo (no recordar de que
+    // peso se parte). DIAGNOSTICO: es donde se LEE el resultado. En los dos es el mismo componente, asi
+    // que son las mismas garantias.
+    const permitidos = [
+      "src/modules/evaluations/components/entrada-evaluacion.tsx",
+      "src/app/(app)/evaluaciones/[id]/page.tsx",
+    ];
+    expect(
+      conColumna().map((s) => s.archivo).sort(),
+      "un sitio nuevo pasa la simulación, o uno de los dos dejó de pasarla",
+    ).toEqual(permitidos.sort());
+  });
+
+  it("y NUNCA en el bloque de la Historia Clínica", () => {
+    // La HC es el DOCUMENTO: una simulacion ahi se presentaria como parte de lo emitido. El bloque se
+    // reconoce por `soloAlterados`, que es la vista resumida que SOLO la HC usa.
+    //
+    // Se mira la ETIQUETA, no el contexto de arriba (2026-09-10): la primera version leia los 1400
+    // caracteres previos, y en la HC real `soloAlterados` va DESPUES del nombre del componente, asi que la
+    // asercion nunca llegaba a evaluarse. Verde por el sitio equivocado, que es lo mismo que no tenerla.
+    for (const sitio of conColumna()) {
+      expect(
+        sitio.etiqueta,
+        `la simulación cayó en el bloque de la Historia Clínica (${sitio.archivo})`,
+      ).not.toContain("soloAlterados");
+    }
   });
 
   it("y el PDF no la conoce", () => {
