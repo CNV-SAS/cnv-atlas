@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { Diana } from "@/modules/diagnoses/components/diana";
 import { DianaExplorer } from "@/modules/diagnoses/components/maps-section";
 
+import { ROTULO_NUTRACEUTICOS } from "@/modules/diagnoses/data/efr-states-types";
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DEL PUNTO 15 DEL COTEJO (2026-09-05): el bloque de la Diana no repite el contenido del estado.
@@ -72,10 +73,19 @@ describe("el bloque de la Diana no repite el contenido del estado (cotejo punto 
       "Mecanismos bioquímicos / Disfunción celular",
       "Biomarcadores clave",
       "Riesgos clínicos",
-      "Nutracéuticos sugeridos",
     ]) {
       expect(rama, etiqueta).toContain(etiqueta);
     }
+    // EL QUINTO CAMPO SE AFIRMA POR LA CONSTANTE, no por su texto (2026-09-09). Su rotulo se porto del
+    // archivo de Gildardo y lo pintan DOS superficies que se leen lado a lado al comparar; el texto vive
+    // en `ROTULO_NUTRACEUTICOS` para que no puedan divergir. Copiarlo aqui seria la tercera fuente, que es
+    // justo lo que este ajuste vino a cerrar: la lista de arriba lo llevaba copiado y se quedo atras.
+    expect(rama, "el quinto campo dejó de usar el rótulo compartido").toContain(
+      "label={ROTULO_NUTRACEUTICOS}",
+    );
+    expect(ROTULO_NUTRACEUTICOS, "el rótulo dejó de ser el de su archivo").toBe(
+      "VITACELLEBIS — Nutracéuticos indicados para este estado",
+    );
   });
 
   it("las dos lineas que ya estaban en la tabla de siete no se repiten en la rejilla de abajo", () => {

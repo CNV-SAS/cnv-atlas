@@ -21,6 +21,7 @@ import { veredictoSev } from "@/clinical-engine/severity";
 import { DetailsSection } from "./details-section";
 import { RadarPanel, DianaExplorer } from "./maps-section";
 import type { EvaluationResults as Results } from "../data/results-reader";
+import { ROTULO_NUTRACEUTICOS } from "../data/efr-states-types";
 import type { EfrStateRef } from "../data/efr-states-reader";
 import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-versions";
 
@@ -783,12 +784,16 @@ export function EvaluationResults({
               label="Riesgos clínicos"
               value={efrState?.risks ?? null}
             />
-            {/* Excepcion de negocio: "Nutracéuticos sugeridos", no "Vitacellebis" del HTML; a
-                futuro puede haber otras lineas. El resto de los titulos son fieles al HTML. */}
+            {/* SU ROTULO, RETIRANDO LA EXCEPCION (2026-09-09). Aqui decia "Nutracéuticos sugeridos" por
+                una excepcion de negocio nuestra ("a futuro puede haber otras lineas"), y Santiago la
+                revierte con una razon que es del contenido y no de la marca: no es un producto que se
+                venda por vender, es PARTE DEL TRATAMIENTO derivado del estado, y "sugeridos" lo deja
+                sonando a recomendacion suelta. Se porta el suyo, que dice exactamente eso.
+                El dia que haya otra linea, se decide entonces con el caso delante. */}
             <ContentCard
               n={5}
               icon={Pill}
-              label="Nutracéuticos sugeridos"
+              label={ROTULO_NUTRACEUTICOS}
               value={efrState?.suggestedNutraceuticals ?? efrPhenotype.nutraceuticos ?? null}
             />
             <AbordajeCard abordaje={abordaje} />
