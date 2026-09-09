@@ -91,8 +91,13 @@ function DiagnosisReadingBlock({
             calórica.
           </RealimentacionAlert>
         ) : null}
+        {/* SIN `max-w-prose` (Santiago, 2026-09-09). El tope de 65 caracteres es la medida de lectura
+            comoda, pero aqui el bloque vive en una tarjeta que ocupa el ancho de la pagina, asi que el
+            texto llegaba a menos de la mitad y el resto del cuadro blanco quedaba vacio: se leia como algo
+            roto, no como una columna de lectura. Los tres resumenes son parrafos cortos, asi que el coste
+            de la linea larga es pequeño; si en un monitor muy ancho se hace incomodo, es un token. */}
         {narrative.parrafoProfesion ? (
-          <p className="max-w-prose text-sm leading-relaxed text-foreground">
+          <p className="text-sm leading-relaxed text-foreground">
             {narrative.parrafoProfesion}
           </p>
         ) : (
@@ -121,7 +126,8 @@ function ReadingCard({
   return (
     <section className={bloqueCls("derivado")}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</h3>
-      <p className="max-w-prose text-sm leading-relaxed text-foreground">{children}</p>
+      {/* A LINEA COMPLETA, misma razon que el resumen clinico: la tarjeta ocupa el ancho de la pagina. */}
+      <p className="text-sm leading-relaxed text-foreground">{children}</p>
       <p className="text-xs text-muted-foreground">{caption}</p>
     </section>
   );

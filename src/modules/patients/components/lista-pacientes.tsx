@@ -137,7 +137,11 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   // sin nombre solo se anuncia como "cuadro de busqueda" y el placeholder no lo sustituye (se borra al
   // escribir y algunos lectores no lo leen).
   const buscador = (
-    <div className="relative sm:max-w-md">
+    // ANCHO SUFICIENTE PARA SU PROPIO PLACEHOLDER (Santiago, 2026-09-09). Estaba en `sm:max-w-md` (28rem)
+    // y el texto "Buscar por nombre o número de documento" no cabia entero, asi que el campo anunciaba a
+    // medias lo que hace, que es peor que no anunciarlo. Con 24rem de minimo y 34rem de tope cabe completo
+    // y sigue sin comerse la fila del conmutador. `flex-1` para que ceda el sobrante en pantallas medias.
+    <div className="relative w-full min-w-0 flex-1 sm:min-w-[24rem] sm:max-w-[34rem]">
       <Search
         aria-hidden
         className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"

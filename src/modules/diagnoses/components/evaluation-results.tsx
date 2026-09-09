@@ -26,6 +26,7 @@ import { isProvisionalCalibration } from "@/modules/clinical-pipeline/emission-v
 
 import {
   clasificarIcaBis,
+  rotuloDisplayDeIndice,
   DECIMALES_POR_DEFECTO,
   decimalesDe,
   indicatorBands,
@@ -319,41 +320,16 @@ export function EvaluationResults({
   // de Wang, no en su capa funcional; en Funcional quedan los indices representativos INLINE por dominio,
   // en las tarjetas del DFI). Se define como const y se referencia en el slot composicion.
   const indicatorsSection = (
-    <DetailsSection title="Indicadores ANI-BIS-E" defaultOpen>
+    // EL NIVEL VA EN EL TITULO DESPLEGABLE, y no en franjas dentro de la tabla (2026-09-09, corregido con
+    // Santiago). Fueron dos vueltas: primero puse una franja propia argumentando que los indices no eran
+    // del Nivel II (me equivoque), despues DOS franjas apiladas. Lo que Gildardo pedia era mas simple que
+    // las dos cosas: que el titulo diga de que nivel es. Un encabezado dentro de la tabla, encima del de
+    // columnas, era ademas una segunda cabecera compitiendo con la que ya hay.
+    <DetailsSection title="Nivel II · Molecular - Indicadores ANI-BIS-E" defaultOpen>
       <div className="flex flex-col gap-3">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
-              {/* DOS FRANJAS, Y LA DE ARRIBA ES EL NIVEL (corregido el 2026-09-09).
-                  
-                  ME EQUIVOQUE AL LEER SU ARCHIVO. Argumente que los indices eran una seccion APARTE del
-                  Nivel II, apoyandome en su comentario ("indices compuestos, no componentes moleculares").
-                  Ese comentario dice por que necesitan FRANJA PROPIA, no que salgan del nivel: en su tabla
-                  el Nivel II es la ULTIMA franja de nivel y los indices van justo detras, sin ninguna
-                  franja de nivel que los saque de ahi. La estructura de su HTML es PLANA (`NvH` es una
-                  fila mas del mismo `tbody`, no un contenedor), asi que no distingue las dos lecturas.
-                  Y Gildardo pidio ese encabezado precisamente porque se ve como un salto de tabla: es
-                  testimonio directo, y manda sobre mi inferencia.
-
-                  POR ESO VAN LAS DOS: el NIVEL primero, con el aspecto de los niveles de Wang, y debajo la
-                  franja propia de los indices. Nuestra tabla esta separada de la de Wang, asi que el nivel
-                  hay que repetirlo aqui para que se sepa donde cae. */}
-              <tr>
-                <th
-                  colSpan={5}
-                  className="bg-muted px-3 py-1.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  Nivel II · Molecular
-                </th>
-              </tr>
-              <tr>
-                <th
-                  colSpan={5}
-                  className="px-3 pb-1.5 pt-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary"
-                >
-                  Índices bioeléctricos integrados · ANI BIS-E
-                </th>
-              </tr>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4 font-medium">Indicador</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
@@ -388,7 +364,13 @@ export function EvaluationResults({
                 // ICA-BIS trae las suyas, resueltas arriba con el porte de su `dICA` de ESTA tabla.
                 const classCode = isEb ? "IAE" : code;
                 const sev = sevByCode[classCode];
-                const classLabel = clasesPorCodigo[classCode]?.label ?? "N/D";
+                // EL ROTULO ES EL DE SU CAPA DE DISPLAY donde difiere del sellado (ver
+                // `rotuloDisplayDeIndice`): su tabla dice "Envejecimiento acelerado" y el clasificador
+                // cientifico "Acelerado". El COLOR sigue siendo el sellado; solo cambia el texto.
+                const classLabel =
+                  rotuloDisplayDeIndice(classCode, indicators[isEb ? "iae" : key] as number | null) ??
+                  clasesPorCodigo[classCode]?.label ??
+                  "N/D";
                 return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                     <td className="py-2 pr-4">

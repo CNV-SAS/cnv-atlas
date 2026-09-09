@@ -327,12 +327,17 @@ export function DianaExplorer({
             Y LA PISTA VA CON EL, no treinta lineas mas abajo: un boton que se pulsa y no dice que hacer
             despues manda a buscar otra vez. */}
         {canExplore ? (
-          <div className="flex w-full max-w-[44rem] flex-col gap-1.5">
+          <div className="flex w-full max-w-[44rem] flex-col items-center gap-1.5">
+            {/* CENTRADO Y EN AZUL DE MARCA (2026-09-09, segunda vuelta: Gildardo tampoco lo encontro).
+                Estaba alineado a la izquierda mientras la Diana y la escala van centradas, asi que quedaba
+                descolgado del eje que la vista ya tiene; y con borde fino sobre la tarjeta seguia leyendose
+                como cromo. El azul es el de ACCION (`--primary`, la capa de interfaz), no la escala
+                clinica: aqui no se comunica ningun estado del paciente, se ofrece una accion. */}
             <button
               type="button"
               onClick={toggle}
               aria-pressed={exploring}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 sm:w-auto sm:self-start"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 sm:w-auto"
             >
               {exploring ? (
                 <Undo2 className="size-4 shrink-0" aria-hidden />
@@ -342,7 +347,7 @@ export function DianaExplorer({
               {exploring ? "Volver al estado del paciente" : "Explorar otros estados"}
             </button>
             {exploring ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 Haz clic en una celda de la Diana, arriba. Explorar no cambia el diagnóstico.
               </p>
             ) : null}

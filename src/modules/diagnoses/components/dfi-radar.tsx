@@ -18,8 +18,15 @@ const SIZE_W = 420;
 const SIZE_H = 330;
 const CX = 210;
 const CY = 150;
-const RMAX = 95;
+// EL POLIGONO, UN POCO MAS PEQUEÑO (95 -> 85, 2026-09-09). No se toca el `max-w`, que escalaria tambien
+// los rotulos: encoger el RADIO deja el mismo lienzo y la misma letra, y libera el aire que faltaba entre
+// la figura y los nombres, que es lo que se pidio.
+const RMAX = 85;
 const BANDS = 4; // niveles de severidad del motor: 0 Optimo, 1 Leve, 2 Moderado, 3 Alto
+// Alto de linea del rotulo de eje, en unidades del viewBox. Una constante y no un numero suelto porque el
+// anclaje del bloque de texto se CALCULA con ella: si se cambia en un sitio y no en el otro, el bloque se
+// descoloca sin que nada falle.
+const ALTO_LINEA = 13;
 
 // NOMBRES COMPLETOS DESDE EL 2026-09-09 (Santiago: "en vez de Enveje. que diga Envejecimiento").
 //
@@ -198,11 +205,23 @@ export function DfiRadar({
         ))}
         {/* Etiquetas de eje: nombre corto fiel del HTML + severidad (vocabulario del motor). */}
         {domains.map((d, i) => {
-          // MAS AIRE ENTRE EL POLIGONO Y EL ROTULO: eran 14 y "Celular / bajo" quedaba pegado al borde
-          // exterior del anillo (Santiago, con captura). Con 22 la etiqueta se lee como rotulo del eje y
-          // no como parte del dibujo.
           const [lx, ly] = axisPoint(i, n, RMAX + 22);
           const lineas = lineasDelNombre(d.nombre);
+          // EL BLOQUE DE TEXTO SE ANCLA POR EL LADO QUE MIRA AL CENTRO, y esto es lo que de verdad
+          // arreglaba el solape (2026-09-09, segunda vuelta).
+          //
+          // `dominantBaseline="middle"` centra la PRIMERA linea en el punto del eje y las demas crecen
+          // HACIA ABAJO. Con el nombre corto eran dos lineas y colaba; con el nombre completo partido por
+          // el guion son TRES, y en el vertice de arriba las dos ultimas caian dentro del dibujo. Por eso
+          // "Celular-Eléctrico / Bajo" quedo mas montado que antes justo al alargar los nombres: no era el
+          // aire, era la direccion en la que crece el bloque.
+          //
+          // Arriba se sube el bloque entero para que su ULTIMA linea quede en el punto del eje; abajo se
+          // deja crecer hacia abajo, que es hacia afuera; a los lados se centra.
+          const seno = Math.sin((-90 + (360 / n) * i) * (Math.PI / 180));
+          const nLineas = lineas.length + 1; // las del nombre + la de severidad
+          const desplazamiento =
+            seno < -0.3 ? -(nLineas - 1) * ALTO_LINEA : seno > 0.3 ? 0 : -((nLineas - 1) * ALTO_LINEA) / 2;
           const cos = Math.cos((-90 + (360 / n) * i) * (Math.PI / 180));
           const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
           return (
@@ -216,7 +235,7 @@ export function DfiRadar({
               fontSize={12}
             >
               {lineas.map((linea, j) => (
-                <tspan key={linea} x={lx} dy={j === 0 ? 0 : 13}>
+                <tspan key={linea} x={lx} dy={j === 0 ? desplazamiento : ALTO_LINEA}>
                   {linea}
                 </tspan>
               ))}
@@ -224,9 +243,11 @@ export function DfiRadar({
                   salta a la vista sin leer los cinco. Mismo semaforo que los badges de las tarjetas
                   (SEV_FILL sale de risk-severity, la misma fuente unica), NO la escala del radar: los
                   anillos son ESCALA de fondo y esto es CLASIFICACION, que es lo que el badge dice. */}
+              {/* UN PELO MAS DE HUECO que entre las lineas del nombre: sin el, la severidad se lee como
+                  una tercera linea del nombre ("Celular-Eléctrico Bajo" de corrido). */}
               <tspan
                 x={lx}
-                dy={14}
+                dy={ALTO_LINEA + 3}
                 className={d.sev == null ? "fill-muted-foreground" : SEV_FILL[clampSev(d.sev)]}
                 fontSize={11}
                 fontWeight={700}
@@ -261,7 +282,7 @@ export function DfiRadar({
       {/* LA ESCALA Y LAS NOTAS, UN ESCALON MAS GRANDES (Santiago, 2026-09-09): estaban en 10px y `text-xs`,
           que con el radar pequeño pasaba y con el grande se leen como letra menuda al pie de una figura que
           ya no lo es. La escala pasa a `text-xs` y las notas a `text-sm`, que es el tamaño del cuerpo. */}
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
         {SEV_LABEL.map((z, k) => (
           <span key={z} className="inline-flex items-center gap-1">
             <span className={`size-2.5 rounded-[2px] ${SWATCH[k]}`} aria-hidden />

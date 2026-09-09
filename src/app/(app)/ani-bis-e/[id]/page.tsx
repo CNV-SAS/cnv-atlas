@@ -793,7 +793,9 @@ export default async function ResultadosEvaluacionPage({
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Resumen del diagnóstico
                     </h3>
-                    <p className="max-w-prose text-sm leading-relaxed text-foreground">
+                    {/* A LINEA COMPLETA (Santiago, 2026-09-09): con el tope de lectura el parrafo llegaba
+                        a menos de la mitad de la tarjeta y el resto quedaba en blanco. */}
+                    <p className="text-sm leading-relaxed text-foreground">
                       {treatmentNarrative.parrafo}
                     </p>
                     <p className="text-xs text-muted-foreground">
