@@ -45,15 +45,27 @@ import { fmtDec } from "@/lib/format/decimal";
 // FMI y FFMI NO van aca: son composicion, viven en la tabla de Wang (Nivel IV), como en el HTML de
 // Gildardo. El reporte al paciente y el seguimiento tienen sus propias listas (no se afectan). Restructure
 // Santiago 2026-08-15.
-const INDICATORS: { code: string; key: keyof EngineIndicators }[] = [
+const INDICATORS: { code: string; label?: string; key: keyof EngineIndicators }[] = [
+  // EL ORDEN ES EL SUYO (2026-09-09, punto 5e). Lo destapo el cotejo de la franja: el suyo cierra
+  // EB-BIS -> IAE -> ISCM-BIS y el nuestro ponia ISCM e IEHH antes, sin ninguna razon registrada. No es
+  // cosmetico: su orden cuenta una historia (funcion celular -> riesgo -> proporcion -> envejecimiento ->
+  // susceptibilidad), y el nuestro la rompia metiendo el score de susceptibilidad en la mitad.
   { code: "IFC", key: "ifc" },
   { code: "IRC", key: "irc" },
   { code: "PABU", key: "pabu" },
   { code: "ICA-BIS", key: "icaBis" },
-  { code: "ISCM", key: "iscm" },
+  // IEHH ES NUESTRO, por pedido de Gildardo, y su archivo no lo tiene en esta franja (lo tiene en las
+  // filas del Nivel II). Va AQUI y no al final: es el ultimo de los indices de estado del medio interno,
+  // asi que encaja antes del bloque de envejecimiento sin partir su secuencia. Ponerlo al final lo dejaria
+  // detras del score de susceptibilidad, que es el cierre.
   { code: "IEHH", key: "iehh" },
+  // `code` es la CLAVE con la que el motor sella severidades y clasificaciones; `label` es lo que se
+  // pinta. Se separan porque el renombre a "EB-BIS"/"ISCM-BIS" es de ROTULO (Santiago, como su archivo) y
+  // tocar `code` habria roto en silencio `sevByCode` y `clasesPorCodigo`, que buscan por la clave del
+  // motor: la fila habria salido sin veredicto y sin punto, sin que nada fallara.
+  { code: "EB", label: "EB-BIS", key: "eb" },
   { code: "IAE", key: "iae" },
-  { code: "EB", key: "eb" },
+  { code: "ISCM", label: "ISCM-BIS", key: "iscm" },
   // AF E IR NO ESTAN AQUI (Santiago, 2026-09-09, verificado contra su archivo antes de quitarlos).
   //
   // SU ARCHIVO los tiene SOLO en el Nivel III de la tabla de Wang, con su referencia, su Δ y su
@@ -312,20 +324,32 @@ export function EvaluationResults({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
-              {/* LA FRANJA DE SECCION, con el mismo aspecto que las de nivel de la tabla de Wang, para que
-                  esta tabla se lea como continuacion de aquella y no como algo suelto (Santiago, 2026-09-09).
-                  En su archivo las dos son UNA sola tabla continua y esta franja es la ultima.
+              {/* DOS FRANJAS, Y LA DE ARRIBA ES EL NIVEL (corregido el 2026-09-09).
+                  
+                  ME EQUIVOQUE AL LEER SU ARCHIVO. Argumente que los indices eran una seccion APARTE del
+                  Nivel II, apoyandome en su comentario ("indices compuestos, no componentes moleculares").
+                  Ese comentario dice por que necesitan FRANJA PROPIA, no que salgan del nivel: en su tabla
+                  el Nivel II es la ULTIMA franja de nivel y los indices van justo detras, sin ninguna
+                  franja de nivel que los saque de ahi. La estructura de su HTML es PLANA (`NvH` es una
+                  fila mas del mismo `tbody`, no un contenedor), asi que no distingue las dos lecturas.
+                  Y Gildardo pidio ese encabezado precisamente porque se ve como un salto de tabla: es
+                  testimonio directo, y manda sobre mi inferencia.
 
-                  DICE LO QUE DICE SU ARCHIVO, y no "Nivel II · Molecular", que fue lo que se pidio. En su
-                  captura de Diagnostico el Nivel II molecular es una franja ANTERIOR, con sus propias filas
-                  (ACT, FFW, hidratacion, IEHH, grasa corporal, CMO, masa proteica), y los indices van
-                  DESPUES bajo una franja propia. Rotular esto como Nivel II diria dos cosas falsas: que
-                  estos indices son moleculares, y que el Nivel II aparece dos veces con contenidos
-                  distintos. Ver el reporte del 2026-09-09. */}
+                  POR ESO VAN LAS DOS: el NIVEL primero, con el aspecto de los niveles de Wang, y debajo la
+                  franja propia de los indices. Nuestra tabla esta separada de la de Wang, asi que el nivel
+                  hay que repetirlo aqui para que se sepa donde cae. */}
               <tr>
                 <th
                   colSpan={5}
                   className="bg-muted px-3 py-1.5 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  Nivel II · Molecular
+                </th>
+              </tr>
+              <tr>
+                <th
+                  colSpan={5}
+                  className="px-3 pb-1.5 pt-3 text-left text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary"
                 >
                   Índices bioeléctricos integrados · ANI BIS-E
                 </th>
@@ -339,7 +363,7 @@ export function EvaluationResults({
               </tr>
             </thead>
             <tbody>
-              {INDICATORS.map(({ code, key }) => {
+              {INDICATORS.map(({ code, label, key }) => {
                 // EB-BIS no tiene clasificador propio en el frozen (a proposito). Su veredicto de
                 // envejecimiento ES el del IAE (IAE = EB - edad cronologica), y el HTML lo muestra asi:
                 // referencia = edad cronologica (= EB - IAE), Δ = IAE, clasificacion = la del IAE. No toca
@@ -378,7 +402,7 @@ export function EvaluationResults({
                         className="mr-1.5 inline-block size-3.5 shrink-0 -translate-y-px text-primary"
                         aria-label="Parámetro bioeléctrico"
                       />
-                      <span className="font-medium text-foreground">{code}</span>
+                      <span className="font-medium text-foreground">{label ?? code}</span>
                       {results.indicatorNames[code] ? (
                         <span className="text-muted-foreground"> · {results.indicatorNames[code]}</span>
                       ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { PillEstado } from "@/components/shared/pill-estado";
@@ -58,19 +58,79 @@ export const COLUMNAS_PACIENTES: readonly ColumnaLista[] = [
   { rotulo: "Documento", ancho: "11rem", numerico: true },
 ];
 
+// VEINTE POR PAGINA. La cifra no es redonda por gusto: una fila es de UNA linea en pantalla ancha, asi que
+// veinte caben en una pantalla de portatil sin tener que bajar hasta perder de vista el pie, que es
+// exactamente el problema que la paginacion viene a resolver (la tabla crecia hacia abajo sin fin). Con
+// diez se paginaria demasiado pronto (el roster de hoy son 58 pacientes, seis paginas para nada), y con
+// cincuenta la pagina vuelve a ser un scroll largo y la paginacion no cambia nada.
+const POR_PAGINA = 20;
+
+// EL NOMBRE SE ORDENA COMO SE MUESTRA (Santiago, 2026-09-09). Se ordenaba por "apellido nombre" y la fila
+// pinta "nombre apellido": la lista se veia desordenada, porque ordenaba por algo que no esta a la vista.
+//
+// SE ARREGLA EL ORDEN Y NO LA PANTALLA. La otra salida era mostrar "Apellido, Nombre", que es lo habitual
+// en un listado clinico y haria visible el orden viejo; se descarta porque cambia como se NOMBRA a cada
+// paciente en una pantalla que el equipo ya lee, y a cambio de un orden que el buscador vuelve secundario
+// (busca dentro del nombre completo, asi que encontrar por apellido sigue funcionando igual).
+const nombreVisible = (p: PatientListItem) => `${p.firstName} ${p.lastName}`.trim();
+
+type Orden = "alfabetico" | "reciente";
+
 export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) {
   const [busqueda, setBusqueda] = useState("");
+  const [orden, setOrden] = useState<Orden>("alfabetico");
+  const [pagina, setPagina] = useState(1);
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (q === "") return pacientes;
-    // Por NOMBRE o por DOCUMENTO, que son las dos formas en que un profesional busca a alguien: se
-    // acuerda del nombre, o tiene la cedula delante.
-    return pacientes.filter((p) => {
-      const nombre = `${p.firstName} ${p.lastName}`.toLowerCase();
-      return nombre.includes(q) || p.documentNumber.toLowerCase().includes(q);
-    });
-  }, [pacientes, busqueda]);
+    const base =
+      q === ""
+        ? pacientes
+        : // Por NOMBRE o por DOCUMENTO, que son las dos formas en que un profesional busca a alguien: se
+          // acuerda del nombre, o tiene la cedula delante.
+          pacientes.filter((p) => {
+            const nombre = nombreVisible(p).toLowerCase();
+            return nombre.includes(q) || p.documentNumber.toLowerCase().includes(q);
+          });
+    // SIN MUTAR: `sort` ordena en sitio, y `pacientes` es la prop. Ordenarla ahi cambiaria el arreglo del
+    // padre y el orden dependeria de cuantas veces se ha renderizado.
+    const orden_ = [...base];
+    if (orden === "alfabetico") {
+      orden_.sort((a, b) => nombreVisible(a).localeCompare(nombreVisible(b), "es"));
+    } else {
+      // MAS RECIENTE PRIMERO, y los que no tienen ninguna evaluacion AL FINAL: un paciente sin medir no es
+      // "el mas antiguo", es otra cosa, y colarlo entre las fechas haria leer una antiguedad que no existe.
+      orden_.sort((a, b) => {
+        if (a.lastEvaluationDate === b.lastEvaluationDate) {
+          return nombreVisible(a).localeCompare(nombreVisible(b), "es");
+        }
+        if (!a.lastEvaluationDate) return 1;
+        if (!b.lastEvaluationDate) return -1;
+        return b.lastEvaluationDate.localeCompare(a.lastEvaluationDate);
+      });
+    }
+    return orden_;
+  }, [pacientes, busqueda, orden]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
+
+  // AL BUSCAR O REORDENAR SE VUELVE A LA PRIMERA. Sin esto, escribir en el buscador estando en la pagina 3
+  // deja una pagina vacia y parece que la busqueda no encontro nada.
+  //
+  // SE AJUSTA DURANTE EL RENDER, NO EN UN EFECTO. Con `useEffect` el reseteo ocurre DESPUES de pintar, asi
+  // que hay un fotograma con la pagina vieja sobre la lista nueva; y ademas `react-hooks/set-state-in-effect`
+  // lo prohibe, con razon. Este es el patron documentado de React para ajustar estado cuando cambia lo que
+  // lo condiciona: se compara contra lo ultimo visto y se corrige antes de pintar.
+  const claveVista = `${busqueda.trim()}|${orden}`;
+  const [claveAnterior, setClaveAnterior] = useState(claveVista);
+  if (claveAnterior !== claveVista) {
+    setClaveAnterior(claveVista);
+    setPagina(1);
+  }
+  // Y SE ACOTA ADEMAS AL PINTAR: si la lista se acorta por otra via (menos pacientes del servidor), la
+  // pagina guardada puede quedar fuera de rango sin que la clave cambie.
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const visibles = filtrados.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
 
   // BUSCADOR SIN ROTULO VISIBLE: el placeholder ya dice que hace, asi que el rotulo encima repetia lo
   // mismo y gastaba una linea. Pero el nombre accesible NO desaparece: va en `aria-label`, porque un campo
@@ -99,15 +159,52 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
       {/* EL BUSCADOR VA FUERA DE LA TARJETA (prueba pedida por Santiago, 2026-08-28). Mi lectura al verlo
           va en el reporte: el argumento para meterlo dentro sigue siendo que buscar y mirar el resultado
           es un solo gesto, pero fuera gana aire y la tarjeta empieza directamente por los datos. */}
-      {buscador}
+      {/* BUSCADOR Y ORDEN EN LA MISMA FILA: son los dos mandos de la lista, y separarlos en dos lineas los
+          haria parecer dos cosas distintas. En estrecho se apilan. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {buscador}
+        {/* DOS BOTONES Y NO UN DESPLEGABLE: son dos opciones, y un desplegable de dos obliga a abrirlo
+            para ver que hay dentro. Asi las dos estan a la vista y el estado se lee sin tocar nada.
+            `aria-pressed` y no `role="radiogroup"`: son dos conmutadores de vista, no un formulario. */}
+        <div className="flex shrink-0 items-center gap-1 rounded-full border border-input p-0.5">
+          {(
+            [
+              ["alfabetico", "A-Z"],
+              ["reciente", "Evaluación reciente"],
+            ] as const
+          ).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={orden === id}
+              onClick={() => setOrden(id)}
+              className={
+                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors " +
+                (orden === id
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      </div>
       <ListaFilas
       columnas={COLUMNAS_PACIENTES}
       // EL PIE SOLO CUANDO HAY FILTRO. Sin filtro repetia la tarjeta de metrica de arriba, que ya dice
       // cuantos pacientes hay; dos sitios con la misma cifra no informan mas, solo hacen dudar de si son
       // lo mismo. Pero con el buscador activo NO es la misma cifra: dice cuantos quedaron FUERA de la
       // vista, que es justo lo que la tarjeta no puede decir. Se quita donde repite y se queda donde avisa.
+      // EL PIE AHORA TAMBIEN CUENTA CUANDO HAY VARIAS PAGINAS. La razon de que solo saliera con el
+      // buscador sigue en pie (sin filtro repetia la tarjeta de metrica de arriba), pero con paginacion
+      // deja de repetirla: ya no dice cuantos hay, dice cuales se estan viendo, que la tarjeta no sabe.
       pie={
-        busqueda.trim() ? `${filtrados.length} de ${pacientes.length} pacientes` : null
+        busqueda.trim()
+          ? `${filtrados.length} de ${pacientes.length} pacientes`
+          : totalPaginas > 1
+            ? `${(paginaActual - 1) * POR_PAGINA + 1}-${Math.min(paginaActual * POR_PAGINA, filtrados.length)} de ${filtrados.length} pacientes`
+            : null
       }
       // DOS VACIOS DISTINTOS: "no encontré lo que buscas" y "no tienes pacientes" son situaciones
       // opuestas, y decirle "no hay pacientes" a quien acaba de escribir mal un apellido lo manda a buscar
@@ -122,7 +219,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
         ) : null
       }
     >
-      {filtrados.map((p) => {
+      {visibles.map((p) => {
         const anos = edadEnAnios(p.birthDate);
         // Un valor por columna, en el mismo orden. `null` deja la celda VACIA en columnas (para no correr
         // las de al lado) y se omite en la linea concatenada, donde un hueco no dice nada.
@@ -137,7 +234,9 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
           <FilaLista
             key={p.patientId}
             href={`/pacientes/${p.patientId}`}
-            titulo={`${p.firstName} ${p.lastName}`.trim() || "Sin nombre"}
+            // UNA SOLA FUENTE del nombre visible: la fila lo PINTA y los dos ordenes lo COMPARAN.
+            // Escrito dos veces es como se consigue que ordenar y mostrar se separen otra vez.
+            titulo={nombreVisible(p) || "Sin nombre"}
             columnas={COLUMNAS_PACIENTES}
             valores={valores}
             // CHIP SOLO SI ES EXCEPCIONAL (BRAND): lo normal no lleva distintivo; gastar ancho en lo que
@@ -164,6 +263,46 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
         );
       })}
       </ListaFilas>
+      {/* PAGINACION AL PIE (Santiago, 2026-09-09): la tabla crecia hacia abajo sin fin y el pie quedaba a
+          varias pantallas de distancia.
+
+          SOLO CUANDO HAY MAS DE UNA PAGINA. Un paginador con "Página 1 de 1" y las dos flechas apagadas es
+          un mando que no hace nada: ocupa sitio y hace dudar de si falta algo.
+
+          LAS FLECHAS SE DESHABILITAN EN LOS EXTREMOS en vez de desaparecer: un control que se va cambia la
+          posicion del otro, y se acaba pulsando el que no era. */}
+      {totalPaginas > 1 ? (
+        <nav
+          aria-label="Paginación de la lista de pacientes"
+          className="flex items-center justify-center gap-4"
+        >
+          <button
+            type="button"
+            onClick={() => setPagina(paginaActual - 1)}
+            disabled={paginaActual === 1}
+            aria-label="Página anterior"
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            Anterior
+          </button>
+          {/* `aria-live` para que el lector de pantalla anuncie el cambio de pagina: al pulsar la flecha el
+              foco se queda en el boton y sin esto nada dice que la lista cambio. */}
+          <span aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
+            Página {paginaActual} de {totalPaginas}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPagina(paginaActual + 1)}
+            disabled={paginaActual === totalPaginas}
+            aria-label="Página siguiente"
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-40"
+          >
+            Siguiente
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+        </nav>
+      ) : null}
     </div>
   );
 }

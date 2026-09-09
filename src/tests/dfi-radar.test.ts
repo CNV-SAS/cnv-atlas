@@ -31,16 +31,23 @@ describe("DfiRadar", () => {
     expect(pts.length).toBe(5);
   });
 
-  it("rotula los 5 ejes con los nombres cortos fieles del HTML (por id, no por d.nombre)", () => {
+  it("rotula los 5 ejes con el nombre COMPLETO del dominio, sin abreviar", () => {
+    // ALCANCE AJUSTADO (2026-09-09), no la asercion. Este caso fijaba los nombres CORTOS de su `_RAD_SHORT`
+    // ("Enveje.", "Epigenét.") y se puso rojo por la lista copiada: Santiago pidio los completos ahora que
+    // el radar es grande, y los completos son tambien suyos (salen del motor congelado, en `d.nombre`).
+    //
+    // Lo que el caso GARANTIZA sigue siendo lo mismo y es lo que dice su titulo: que los cinco ejes se
+    // rotulan, y desde los datos del dominio. Ahora ademas prohibe la abreviatura, que es lo que se vino a
+    // quitar. Se comprueba por PARTES porque los nombres con guion se parten en dos lineas.
     const markup = render();
-    const SHORT: Record<string, string> = {
-      d1: "Celular",
-      d2: "Metabólico",
-      d3: "Enveje.",
-      d4: "Conductual",
-      d5: "Epigenét.",
-    };
-    for (const d of DOMAINS) expect(markup).toContain(SHORT[d.id]);
+    for (const d of DOMAINS) {
+      for (const parte of d.nombre.split("-")) {
+        expect(markup, `falta el rótulo del eje ${d.id}`).toContain(parte);
+      }
+    }
+    expect(markup, "quedó una abreviatura en los rótulos de los ejes").not.toMatch(
+      /[a-zé]\.<\/tspan>/,
+    );
     expect(markup).toContain("Bajo");
     expect(markup).toContain("Alto");
   });
