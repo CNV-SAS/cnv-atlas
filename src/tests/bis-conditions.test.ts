@@ -488,11 +488,20 @@ describe("las superficies que el smoke encontró faltando (2026-09-05)", () => {
     // EL DEFECTO: escribio "no estan los datos antropometricos por nivel de Wang, por que". Y si estaban:
     // estaban plegados. Que la pieza exista no basta si no se ve. Se afirma por la PROP, que es lo que
     // decide el estado inicial, y junto al titulo para que no pueda quedar en otro desplegable.
-    const jsx = sinComentarios(ENTRADA);
-    const i = jsx.indexOf("Composición corporal (Niveles de Wang)");
-    expect(i, "desapareció la tabla de Wang de Antropometría").toBeGreaterThan(-1);
-    const apertura = jsx.slice(i, jsx.indexOf(">", i) + 1);
-    expect(apertura, "la tabla de Wang volvió a nacer plegada").toContain("defaultOpen");
+    // EL DESPLEGABLE SE MUDO (2026-09-09): estaba en `entrada-evaluacion` envolviendo la tabla, y paso a
+    // `medidas-con-tabla`, donde vive el estado que la recalcula al escribir. Lo intentamos primero con el
+    // envoltorio pasado desde fuera y ESO ROMPIO LA RUTA: una funcion no cruza la frontera servidor ->
+    // cliente. La asercion no cambia (la tabla nace abierta); cambia el archivo donde mirar. El TITULO
+    // sigue viniendo de la pagina, asi que se comprueba en los dos sitios.
+    expect(sinComentarios(ENTRADA), "la página dejó de titular la tabla de Wang").toContain(
+      'tituloTabla="Composición corporal (Niveles de Wang)"',
+    );
+    const TABLA = sinComentarios(
+      readFileSync("src/modules/bis-intake/components/medidas-con-tabla.tsx", "utf8"),
+    );
+    expect(TABLA, "la tabla de Wang volvió a nacer plegada").toContain(
+      "<DetailsSection title={tituloTabla} defaultOpen>",
+    );
   });
 
   it("y el texto dice que REEMPLAZA, no que añade", () => {

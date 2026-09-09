@@ -12,7 +12,6 @@ import type { BisConditionsReadonly as BisConditionsReadonlyData } from "@/modul
 import { evaluateBisImportGate } from "@/modules/bis-intake/services/import-gate";
 import type { BisConditionCatalog, BisIntakeRecord } from "@/modules/bis-intake/types";
 import { MedidasConTabla } from "@/modules/bis-intake/components/medidas-con-tabla";
-import { DetailsSection } from "@/modules/diagnoses/components/details-section";
 import { SarcopeniaCard } from "@/modules/diagnoses/components/sarcopenia-card";
 import { allCompositionRows } from "@/modules/diagnoses/data/composition-map";
 import type { Composition } from "@/modules/diagnoses/data/composition-reader";
@@ -229,18 +228,7 @@ export function EntradaEvaluacion({
               pesoMetaKg={bisIntake?.weightGoalKg ?? bisReadonly?.weightGoalKg ?? null}
               fuerzaPrensilKg={sarcopeniaFuerza}
               sellada={diagnosticoGenerado}
-              envoltorioTabla={(tabla) => (
-                /* ABIERTA POR DEFECTO desde el 2026-09-07 (punto 6 de su cotejo). Gildardo escribio "no
-                   estan los datos antropometricos por nivel de Wang, por que" y la tabla SI estaba:
-                   estaba plegada. Que la pieza exista no basta si no se ve.
-
-                   SE CONSERVA EL DESPLEGABLE, y no es tibieza: son unas treinta filas por encima del
-                   bloque de sarcopenia, asi que quitarlo obliga a recorrerla entera cada vez que se
-                   vuelve. Abierta de entrada resuelve la causa real y deja plegarla despues. */
-                <DetailsSection title="Composición corporal (Niveles de Wang)" defaultOpen>
-                  {tabla}
-                </DetailsSection>
-              )}
+              tituloTabla="Composición corporal (Niveles de Wang)"
             />
           </div>
         ) : !identityConfirmed || !bisImportEval ? (
