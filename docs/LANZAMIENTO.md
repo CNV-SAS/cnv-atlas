@@ -9,10 +9,61 @@
 | Hito | Qué es | Estado |
 |---|---|---|
 | **Hito 1** | Producto completo y pulido para el Integrante (sandbox de pagos, **sin pacientes reales**) | EN CURSO |
-| **Hito 2** | Revisión de Integrantes (prueban en la nube, dan visto bueno) | pendiente |
-| **Hito 3** | Operación con **pacientes reales** | pendiente |
+| **Hito 2** | Revisión de Integrantes (prueban en la nube, dan visto bueno) | **SALTADO** (decisión de la junta, 2026-09-09) |
+| **Hito 3** | Operación con **pacientes reales** | **EN CURSO, con gates abiertos** |
 
 > Regla: **cada gate se cierra antes de pasar su hito.** Un gate abierto en el Hito 3 significa que NO se puede atender al primer paciente real.
+
+---
+
+## ⚠ LA REGLA SE ROMPIÓ: estamos en el Hito 3 con gates abiertos (2026-09-09)
+
+**La junta se saltó el Hito 2 y hoy hay PII clínica real en producción.** Esto no es un cambio de plan que
+se absorba: **invierte la naturaleza de los gates abiertos del Hito 3**. Dejaron de ser condiciones que
+IMPIDEN atender y pasaron a ser **exposición viva**, porque ya se está atendiendo.
+
+**Los números, leídos de producción el 2026-09-09** (no afirmados: se leyeron por la API, en solo lectura):
+
+| | |
+|---|---|
+| Pacientes | **64** · 59 sin marca de prueba, 5 de prueba |
+| Evaluaciones | 74 · 52 en borrador, 12 esperando encuesta, 10 en curso |
+| Diagnósticos sellados | **6** (4 confirmados) |
+| Reportes | 6, **todos en borrador, ninguno enviado** |
+| Prescripciones aprobadas | 2 |
+| Encuestas | 51 respuestas en v5, 19 en v6 |
+
+**Lo que esos números dicen, y conviene leerlo antes de decidir nada:** de los 59 pacientes reales, **solo
+3 tienen diagnóstico**. Los otros 54 no tienen nada sellado. Todavía no ha salido **ningún** reporte al
+paciente. La ventana para cerrar gates sin daño acumulado sigue abierta, pero no por mucho.
+
+### Lo urgente, por orden
+
+1. **MFA · el segundo factor puede estar apagado sobre datos reales. HOY.** La relajación
+   (`src/modules/auth/mfa-relaxation.ts`) se diseñó para ser inerte en producción, y su garantía era, en
+   sus palabras: *"PRODUCCION -que apunta a OTRA base de Supabase- NUNCA coincide"*. **Esa premisa la
+   invalidó la junta**: al saltarse el Hito 2 no hay dos proyectos, y la nube que era pruebas es
+   producción. Se activa si `ATLAS_MFA_RELAXED` (en Vercel) es igual a `NEXT_PUBLIC_SUPABASE_URL`.
+   **Comprobarlo y borrar la variable.** La relajación solo PAUSA: al quitarla, todas las cuentas caen al
+   enrolamiento en el siguiente login, ninguna quedó exenta.
+2. **Gate 15 · Supabase Pro con PITR y backups externos.** Sin PITR, un `UPDATE` mal hecho sobre datos
+   clínicos reales no se recupera. Ver la nota del gate: **Pro y PITR no son la misma compra.**
+3. **Gates 17 y 18 · legales.** Eran los que IMPEDÍAN atender. Ya se atiende, así que ahora son exposición
+   abierta. Arrancan en paralelo, no dependen de escribir código.
+
+### Lo que cambió de naturaleza
+
+- **Gate 20 (reseteo de versiones al limpiar staging): CADUCADO.** No hay limpieza que hacer, porque no
+  hubo separación: producción nació con estos datos. Lo reemplaza el plan de versionado 1.0.0 (abajo).
+- **Los 5 pacientes de prueba ya no se pueden limpiar borrando la base**, porque al lado hay 59 reales.
+  Conviven de forma permanente: hay que marcarlos, no borrarlos.
+- **El versionado no se puede reescribir.** Gildardo pidió poner todo en 1.0.0 porque hay pacientes reales
+  con versiones "de prueba". No se puede: el sello dice **con qué se calculó**, y reetiquetarlo haría que
+  un diagnóstico de agosto afirme que salió del motor de hoy. Lo que sí se hace: numerar 1.0.0 **de aquí en
+  adelante** y publicar una **tabla de equivalencias** que diga a qué corresponden las versiones previas.
+  Y **no hay que forzar a nadie a repetir la encuesta**: v5 es el instrumento que Gildardo aprobó el
+  2026-08-19, las 51 respuestas son válidas, y el mecanismo de vigencia ya marca las viejas como
+  desfasadas.
 
 ---
 
@@ -180,7 +231,20 @@
 12. **Q8 — firma del modelo de índices** (Gildardo confirma que la EB-BIS v5 vigente es la definitiva). `GILDARDO_QUERIES.md`. **CERRADA** (respondió), pendiente solo su OK formal.
 13. **Q14 — modelo calórico vigente** (el tercero: peso meta + estrategia por condición + fórmula P1). `GILDARDO_QUERIES.md`. **CERRADA** en decisión; el re-port depende de P1.
 14. **P0 — presentación de la edad biológica** (Gildardo decidió, 2026-08-01). Verificación concreta, no una intención: **el reporte del paciente NO contiene la cifra de EB-BIS, ni la de IAE, ni la expresión "edad biológica".** Parte 1 HECHA (EB/IAE fuera del reporte + marca de calibración provisional para el profesional), con test que lo ancla (`report-render.test.ts`). Resta la Parte 2 (cambio en tres bandas desde la 2ª medición). `GILDARDO_QUERIES.md`.
-15. **Supabase Pro + PITR** y backups externos (antes de datos clínicos reales). `BACKLOG.md` / `DEPLOY.md`.
+15. **Supabase Pro + PITR** y backups externos. **URGENTE desde el 2026-09-09: ya hay datos clínicos
+    reales.** `BACKLOG.md` / `DEPLOY.md`.
+    - **Pro y PITR NO son la misma compra, y este documento lo daba a entender.** El plan Pro incluye
+      backups **diarios con 7 días** de retención; el **PITR es un añadido que se cobra aparte** y exige
+      estar en Pro. Confirmar precios vigentes en la página de Supabase antes de presupuestar: cambian.
+    - **Qué cubre cada cosa:** el backup diario recupera hasta el día anterior, o sea que se pierde hasta
+      una jornada de trabajo clínico, y solo hay 7 días de historia (una corrupción que se nota al octavo
+      día ya no se puede deshacer). El **PITR** recupera a cualquier segundo dentro de su ventana, que es
+      lo que cubre el caso real: un `UPDATE` mal hecho a las 3 de la tarde.
+    - **Y ninguno de los dos es un backup EXTERNO:** los dos viven dentro de Supabase. Si se pierde el
+      proyecto o la cuenta, se pierden los dos. Por eso el gate dice "y backups externos", en plural.
+    - **Ninguno es archivo tampoco.** La historia clínica se conserva por años; 7 días de backup y una
+      ventana de PITR son recuperación ante desastre, no retención documental. Esa parte pertenece a los
+      gates legales 17 y 18, no a este.
 16. **Separación operativo/clínico completa** (cerrar el `admin`-amplio sobre todo el contenido clínico identificado, mecanismo de grants). `BACKLOG.md` / `SECURITY.md` / `DATA_GOVERNANCE.md`.
 17. **Cierre legal de `SECURITY.md` y `DATA_GOVERNANCE.md`** (consentimiento, retención, residencia, plazos SIC). `BACKLOG.md`.
 18. **Verificación de residencia / DPA de Supabase** frente a la regulación colombiana de dato de salud. `BACKLOG.md`.
@@ -215,15 +279,17 @@ de sus ocho gates **solo dos son construcción**.
 
 | Naturaleza | Gates | Estado |
 |---|---|---|
-| **Legal** | 17 (cierre de `SECURITY.md` y `DATA_GOVERNANCE.md`) · 18 (residencia y DPA de Supabase frente a la regulación colombiana de dato de salud) | **No empezados**, y no dependen de escribir código |
-| **Infraestructura** | 15 (Supabase Pro + PITR y backups externos) | No empezado. Es presupuesto y una tarde |
-| **Operativo** | 20 (reseteo de versiones al limpiar staging → producción) | Definido; se ejecuta en la limpieza |
+| **Legal** | 17 (cierre de `SECURITY.md` y `DATA_GOVERNANCE.md`) · 18 (residencia y DPA de Supabase frente a la regulación colombiana de dato de salud) | **No empezados.** Desde el 2026-09-09 ya no impiden: son exposición viva |
+| **Infraestructura** | 15 (Supabase Pro + PITR y backups externos) | No empezado. **Urgente**: hay datos reales sin PITR |
+| **Seguridad** | **MFA obligatorio** (la relajación de pruebas pudo quedar activa sobre producción) | **Abierto y urgente.** Es borrar una variable de Vercel |
+| **Operativo** | ~~20 (reseteo de versiones al limpiar staging → producción)~~ | **CADUCADO**: no hubo separación de entornos. Lo reemplaza el versionado 1.0.0 |
 | **Código** | 16 (separación operativo/clínico completa) · 19 (lectura funcional de los indicadores en el reporte) | Abiertos |
 | **De Gildardo** | 12 y 13 cerradas en decisión · 14 con la Parte 1 hecha | Casi |
 
-**Lo que IMPIDE atender: los dos gates legales y el de infraestructura.** Ninguno de los tres es
-construcción, y ninguno ha empezado. Conviene arrancarlos en paralelo: lo que queda de código cabe en el
-tiempo que ellos tomen.
+**Lo que IMPEDÍA atender: los dos gates legales y el de infraestructura.** Ninguno de los tres es
+construcción, y ninguno ha empezado. **Y el 2026-09-09 dejaron de impedir por la peor via: la junta se
+salto el Hito 2 y se empezo a atender con ellos abiertos.** Ver el bloque del principio de este documento:
+lo que era una compuerta ahora es exposicion viva, y el orden pasa a ser MFA -> PITR -> legales.
 
 **Lo que es MEJORA** (no impide atender a nadie; hace que el producto esté pulido para el Integrante, que
 es el Hito 1): el cotejo de Rutas, el diseño gráfico, el pase de diseño de los tres documentos
