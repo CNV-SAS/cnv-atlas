@@ -84,9 +84,8 @@ export async function saveRestricciones(
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar las restricciones."));
-  }
+  // SIN GATE DE CONFIRMACION (2026-09-09): el diagnostico es del modelo, no del profesional, y prescribir
+  // ya no la exige. Que `protocol` exista significa que hay diagnostico, que es el gate que queda.
   if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeRestricciones({
@@ -576,9 +575,19 @@ export async function acknowledgeRestrictions(
 // Sella protocol_approved con el set efectivo (adj_* sobre los inputs sellados del sugerido), LAS DOS
 // VERSIONES del motor (la de ahora y la del sugerido) + versionMismatch, y LAS DOS FECHAS (aprobacion
 // y medicion BIS), para que la traza no se rompa si el motor subio entre el diagnostico y la aprobacion.
+/**
+ * POR CUAL VIA SE APROBO. Se sella con el resto porque "entregar en mano" y "enviar por correo" no son lo
+ * mismo si alguien pregunta despues: en un caso el paciente se llevo un papel de la consulta y en el otro
+ * recibio un PDF por correo, con acuse y fecha distintos.
+ *
+ * `manual` queda para lo ya aprobado antes del 2026-09-09, cuando habia un boton propio. No se usa mas.
+ */
+export type ViaDeAprobacion = "envio" | "entrega_en_consulta" | "manual";
+
 export async function approveProtocol(
   input: ApproveProtocolInput,
   actor: Actor,
+  via: ViaDeAprobacion = "manual",
 ): Promise<Result<void>> {
   const t = await getTreatmentForApproval(input.evaluationId);
   if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
@@ -623,6 +632,9 @@ export async function approveProtocol(
   const versionSuggested = suggested.protocolEngineVersion;
 
   const protocolApproved = {
+    // LA VIA, sellada en el acto por la misma razon que la profesion: un acto clinico registra las
+    // condiciones bajo las que se ejecuto, y `protocol_approved` es write-once (no se puede añadir luego).
+    aprobadoVia: via,
     protocolEngineVersionApproved: versionApproved,
     protocolEngineVersionSuggested: versionSuggested,
     versionMismatch: versionApproved !== versionSuggested,

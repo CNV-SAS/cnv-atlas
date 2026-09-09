@@ -99,7 +99,18 @@ describe("el mecanismo de envío es UNO, no uno por formulario", () => {
     // como si este test importara un modulo cliente. El checker mira el TEXTO, no el arbol, asi que una
     // cadena que se parece a un import le basta. (Anotado en BACKLOG: tambien podria fallar al reves.)
     expect(panel).toContain("enviarSinReset } from " + '"@/components/shared/enviar-sin-reset"');
-    expect((panel.match(/onSubmit=\{enviarSinReset\(/g) ?? []).length).toBeGreaterThanOrEqual(12);
+    // SIN CIFRA (2026-09-09). Esto exigia "al menos 12", y al retirar el formulario de aprobar quedaron 11
+    // y se puso rojo sin que nada estuviera mal. Un candado sobre una MAGNITUD arbitraria se afloja solo:
+    // la salida facil es bajar el numero, y ninguno de los dos significa nada.
+    //
+    // LA REGLA NO TIENE NUMERO: **todos** los `onSubmit` del panel pasan por `enviarSinReset`. Se afirma
+    // asi, con su control de que hay formularios que mirar.
+    const submits = panel.match(/onSubmit=\{/g) ?? [];
+    const conHelper = panel.match(/onSubmit=\{enviarSinReset\(/g) ?? [];
+    expect(submits.length, "el panel se quedó sin formularios que comprobar").toBeGreaterThan(5);
+    expect(conHelper.length, "algún onSubmit del panel no pasa por enviarSinReset").toBe(
+      submits.length,
+    );
     // Y nadie se escribe el suyo a mano dentro del módulo.
     for (const f of tsx(TRATAMIENTO)) {
       const src = readFileSync(f, "utf8");
