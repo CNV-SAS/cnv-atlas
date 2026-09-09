@@ -48,6 +48,17 @@ const mv = /^const MODEL_VERSION_ID = "([0-9a-f-]{36})";$/m.exec(S);
 if (!mv) throw new Error(`no encuentro MODEL_VERSION_ID en ${SEED}`);
 const MODEL_VERSION_ID = mv[1];
 
+// LA FILA DEL MODELO TAMBIEN SALE DEL SEED (2026-09-09). Era el QUINTO catalogo sin canal a la nube, y
+// aparecio justo al ir a cambiarlo: el renombre a 1.0.0 toca `version_name` y `rules_version`, que son
+// columnas de ESTA fila, no constantes de codigo. Sin esto, el renombre se habria quedado en local igual
+// que se quedaron los otros cuatro.
+const filaModelo =
+  /\{ id: MODEL_VERSION_ID, version_name: "([^"]*)", rules_version: "([^"]*)", description: "([^"]*)", status: "([^"]*)" \}/.exec(
+    S,
+  );
+if (!filaModelo) throw new Error(`no encuentro la fila de model_versions en ${SEED}`);
+const [, VERSION_NAME, RULES_VERSION, MODEL_DESC, MODEL_STATUS] = filaModelo;
+
 // La raya que su motor pone donde no hay texto. Se declara una vez y viaja al SQL: contarla es lo que
 // permite decir en el ANTES y el DESPUES cuantos estados cambian de verdad.
 const RAYA = "—";
@@ -197,10 +208,11 @@ const conteos = (rotulo, extra) => {
   p(`  v_estados int; v_sin_mec int; v_sin_bio int; v_indic int; v_feno int; v_sect int;`);
   p(`BEGIN`);
   if (rotulo === "ANTES") {
+    // AQUI HABIA UN `RAISE EXCEPTION` si no existia la fila del modelo, y se RETIRA (2026-09-09): desde
+    // que la migracion tambien la SIEMBRA, exigir que exista antes bloquearia una base nueva. Se conserva
+    // como aviso, que es lo que de verdad sirve: dice si la fila se va a crear o a actualizar.
     p(`  IF NOT EXISTS (SELECT 1 FROM model_versions WHERE id = v_modelo) THEN`);
-    p(
-      `    RAISE EXCEPTION 'No existe la version del modelo %. Esta migracion actualiza SU registro; sin ella no hay nada que actualizar.', v_modelo;`,
-    );
+    p(`    RAISE NOTICE 'ANTES · la version del modelo % no existe todavia: esta migracion la crea.', v_modelo;`);
     p(`  END IF;`);
   }
   p(`  SELECT count(*) INTO v_estados FROM efr_states WHERE model_version_id = v_modelo;`);
@@ -243,6 +255,18 @@ p();
 p(`-- ═══ ANTES ═══ Sale como NOTICE: visible en el editor SQL de Supabase (pestaña "Notices") y en psql.`);
 p(`-- Es contenido clinico, asi que hay que poder decir que habia y que quedo.`);
 conteos("ANTES");
+p();
+
+p(`-- ── 0. model_versions (1): la fila de la que cuelgan los cuatro catalogos. ──`);
+p(`-- SE ACTUALIZA EN SITIO, y es seguro: los tres nombres de version (motor, modelo, reglas) se COPIAN al`);
+p(`-- snapshot al diagnosticar, asi que cambiar esta fila NO reescribe ningun diagnostico ya emitido.`);
+p(`INSERT INTO model_versions (id, version_name, rules_version, description, status) VALUES`);
+p(
+  `  ('${MODEL_VERSION_ID}', ${esc(VERSION_NAME)}, ${esc(RULES_VERSION)}, ${esc(MODEL_DESC)}, ${esc(MODEL_STATUS)})`,
+);
+p(
+  `ON CONFLICT (id) DO UPDATE SET version_name = EXCLUDED.version_name, rules_version = EXCLUDED.rules_version, description = EXCLUDED.description, status = EXCLUDED.status;`,
+);
 p();
 
 p(`-- ── 1. indicator_definitions (12): los nombres que Gildardo fijo, uno por indicador. ──`);

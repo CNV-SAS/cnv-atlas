@@ -467,7 +467,11 @@ async function main() {
     "model_versions",
     (
       await supabase.from("model_versions").upsert(
-        { id: MODEL_VERSION_ID, version_name: "ANI-BIS-E 1.0", rules_version: "1.0", description: "Modelo ANI-BIS-E portado del prototipo final de Gildardo (B11). Ciencia congelada en src/clinical-engine/frozen; los cortes viven en el motor.", status: "active" },
+        // 1.0.0 (2026-09-09): renombre de frontera, no cambio de ciencia. Ver `src/clinical-engine/version.ts`
+        // y la tabla de equivalencias en `docs/VERSIONES.md`. Lo ya sellado conserva "ANI-BIS-E 1.0" / "1.0":
+        // los tres nombres de version se COPIAN al snapshot al diagnosticar, asi que tocar esta fila no
+        // reescribe ningun diagnostico emitido.
+        { id: MODEL_VERSION_ID, version_name: "1.0.0", rules_version: "1.0.0", description: "Modelo ANI-BIS-E portado del prototipo final de Gildardo (B11). Ciencia congelada en src/clinical-engine/frozen; los cortes viven en el motor.", status: "active" },
         { onConflict: "id" },
       )
     ).error,

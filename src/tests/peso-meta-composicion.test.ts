@@ -75,10 +75,22 @@ describe("el porte es VERBATIM del archivo vigente", () => {
     // editar la asercion en cada bump, y un candado que se edita de rutina deja de leerse. Lo que este
     // caso afirma es que el bump del GEB OCURRIO y no se ha revertido; las versiones son cadenas
     // ordenadas por fecha, asi que la comparacion sirve.
-    expect(PROTOCOL_ENGINE_VERSION >= "anibise-protocolo-2026-09-02").toBe(true);
-    // CONTROL: sin esto, la comparacion de arriba pasaria verde con CUALQUIER cadena posterior en el
-    // alfabeto, incluida una que no fuera una version del protocolo.
-    expect(PROTOCOL_ENGINE_VERSION).toMatch(/^anibise-protocolo-\d{4}-\d{2}-\d{2}[a-z]?$/);
+    //
+    // Y ESTE CASO ES EL QUE DEMUESTRA POR QUE LAS FECHAS NO SERVIAN (2026-09-09). La comparacion era
+    // `PROTOCOL_ENGINE_VERSION >= "anibise-protocolo-2026-09-02"`, o sea ORDEN ALFABETICO de cadenas, y
+    // solo funcionaba mientras TODAS las versiones fueran fechas con el mismo prefijo. Al renombrar a
+    // semver, `"1.0.0" >= "anibise-..."` es FALSO, porque los digitos van antes que las letras en el
+    // alfabeto. La ASERCION no cambia (el bump del GEB ocurrio y no se ha revertido); lo que cambia es que
+    // ahora se compara por NUMERO, que es lo unico que se puede sostener. Ver `docs/VERSIONES.md`.
+    const [mayor, menor, parche] = PROTOCOL_ENGINE_VERSION.split(".").map(Number);
+    expect(
+      [mayor, menor, parche].every(Number.isInteger),
+      "la version del protocolo dejo de ser semver de tres",
+    ).toBe(true);
+    expect(
+      mayor >= 1,
+      "la version del protocolo es anterior al renombre a 1.0.0, que ya incluia el bump del GEB",
+    ).toBe(true);
   });
 });
 

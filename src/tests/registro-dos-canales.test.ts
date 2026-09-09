@@ -23,7 +23,14 @@ import { buildRegistryData } from "@/clinical-engine/registry-data";
 //      Sin esto, el candado solo probaria que el generador coincide consigo mismo: los dos canales
 //      podrian estar de acuerdo entre ellos y en desacuerdo con el motor.
 
-const ARCHIVO = readdirSync("drizzle").find((f) => /^\d+_registro_del_motor\.sql$/.test(f));
+// LA ULTIMA, no la primera (2026-09-09). Cuando llego la segunda (`0114`, el renombre a 1.0.0), `find`
+// devolvia la `0113` y el candado comparaba una migracion YA APLICADA contra el generador de hoy: rojo
+// garantizado, y por el sitio equivocado. Las migraciones son forward-only, asi que la aplicada es
+// historia inmutable; lo que tiene que coincidir con el generador es la ULTIMA.
+const ARCHIVO = readdirSync("drizzle")
+  .filter((f) => /^\d+_registro_del_motor\.sql$/.test(f))
+  .sort()
+  .pop();
 const RUTA = `drizzle/${ARCHIVO ?? "(no-existe)"}`;
 const NUMERO = (ARCHIVO ?? "").split("_")[0];
 
@@ -98,8 +105,14 @@ describe("y su contenido es el MISMO que siembra el seed", () => {
     // pasaria las dos aserciones de arriba.
     const sql = SQL();
     const filas = [...sql.matchAll(/^ {2}\('[0-9a-f-]{36}', /gm)].length;
-    expect(filas, "el número de filas del SQL no es 12 + 9 + 9 + 81").toBe(
-      registro.indicators.length + registro.phenotypes.length + registro.frSectors.length + registro.efrStates.length,
+    // El +1 es la fila de `model_versions`, que no sale de `buildRegistryData` (es la fila de la que los
+    // cuatro catalogos CUELGAN). Se suma explicita para que el numero siga derivandose y no se escriba.
+    expect(filas, "el número de filas del SQL no es 1 + 12 + 9 + 9 + 81").toBe(
+      1 +
+        registro.indicators.length +
+        registro.phenotypes.length +
+        registro.frSectors.length +
+        registro.efrStates.length,
     );
   });
 });
@@ -110,7 +123,8 @@ describe("la migración es segura de aplicar dos veces", () => {
     // sitio por su clave natural. Un DELETE aqui seria una operacion destructiva sobre contenido clinico
     // en produccion, y no hace falta.
     const sql = SQL();
-    expect((sql.match(/ON CONFLICT \([a-z_, ]+\) DO UPDATE SET/g) ?? []).length).toBe(4);
+    // CINCO desde el 2026-09-09: los cuatro catalogos mas la fila del modelo.
+    expect((sql.match(/ON CONFLICT \([a-z_, ]+\) DO UPDATE SET/g) ?? []).length).toBe(5);
     expect(sql, "la migración del registro borra filas").not.toMatch(/\bDELETE\b/);
     expect(sql, "la migración del registro trunca").not.toMatch(/\bTRUNCATE\b/);
   });
