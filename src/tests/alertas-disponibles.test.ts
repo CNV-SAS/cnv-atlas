@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { alertasDisponibles } from "@/clinical-engine/alertas-disponibles";
 import { constFlechaDelHtml } from "./fixtures/html-vigente";
+import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DE `generarAlertas`, en tres niveles:
 //   1. TRANSCRIPCION: el frozen es byte a byte su funcion. Se coteja, no se cree.
@@ -182,5 +183,84 @@ describe("las positivas se separan por SU nivel, no por una lista nuestra", () =
     // Si alguna dejara de estar marcada como positiva, se iria al bloque de las criticas sin ruido.
     const FROZEN = readFileSync("src/clinical-engine/frozen/atlas-alertas.js", "utf8");
     expect((FROZEN.match(/niv: "positivo"/g) ?? []).length).toBe(3);
+  });
+});
+
+
+// ═══ DONDE APARECEN: CUATRO SUPERFICIES, Y LA PESTAÑA "ENCUESTA" NO ES UNA (2026-09-10) ═══
+//
+// SU INSTRUCCION DEL 2026-08-28 (11a): "Esas alertas aparecen al inicio, cuando el profesional abre la
+// informacion de la encuesta del paciente. Son lo que le dice que mirar ANTES de evaluar, no una
+// conclusion del diagnostico".
+//
+// SE APLICO A LA PESTAÑA "Encuesta", Y ESE ERA EL ERROR DE LECTURA. Lo precisa Santiago el 2026-09-10:
+// "abrir la informacion de la encuesta" es la PANTALLA de ver/editar la encuesta. Asi que su instruccion
+// no se revierte, se cumple donde el la queria, y se suman las tres que pidio despues.
+
+describe("las alertas viven en las cuatro superficies donde se decide", () => {
+  const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
+  const ENCUESTA = readFileSync("src/app/(app)/ani-bis-e/[id]/encuesta/page.tsx", "utf8");
+
+  it("en la pantalla de ver/editar la encuesta, que es donde él las pidió", () => {
+    expect(ENCUESTA).toContain("<AlertasClinicas");
+    expect(ENCUESTA).toContain("alertasDisponibles(");
+  });
+
+  it("y NO en la pestaña Encuesta, que es el único sitio donde dijo que no van", () => {
+    // CONTROL de lo de arriba: sin esto, "ponerlas en todas partes" también pasaría verde.
+    for (const marca of ['encuesta={<EntradaEvaluacion panel="encuesta"', '{/* La correccion YA NO vive aqui']) {
+      const i = PAGE.indexOf(marca);
+      expect(i, `no se encontró la pestaña Encuesta (${marca})`).toBeGreaterThan(-1);
+    }
+    // La pestaña Encuesta de la rama CON diagnóstico: entre su apertura y la siguiente pestaña.
+    const iEnc = PAGE.indexOf("      encuesta={");
+    const iAntro = PAGE.indexOf("      antro={", iEnc);
+    expect(
+      PAGE.slice(iEnc, iAntro),
+      "las alertas volvieron a la pestaña Encuesta",
+    ).not.toContain("alertasNode");
+  });
+
+  it("se arman UNA vez y se reusan en las tres pestañas", () => {
+    // Repetir la llamada en cada sitio es como se consigue que una pestaña reciba un dato y la otra no.
+    // Es el mismo motivo por el que `entrada*Diagnostico` se arma una vez.
+    expect(PAGE).toContain("const alertasNode = (");
+    // Diagnóstico (las dos ramas), la subpestaña del profesional en Tratamiento, y Reporte/HC.
+    expect((PAGE.match(/\{alertasNode\}/g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("y son las MISMAS en los cuatro: una función, sin filtro por profesión", () => {
+    // No se filtra a propósito: el psicólogo necesita ver el riesgo glucémico igual que la nutricionista
+    // necesita ver el TCA. Si algún día alguien filtra, dos profesionales verían banderas distintas del
+    // mismo paciente y ninguno sabría cuál es la lista completa.
+    const COMP = readFileSync("src/modules/diagnoses/components/alertas-clinicas.tsx", "utf8");
+    // SOBRE EL CODIGO SIN COMENTARIOS: el comentario que explica por que NO se filtra nombra las dos
+    // profesiones, asi que la asercion se cazaba a si misma. Es la misma forma de siempre.
+    expect(
+      sinComentarios(COMP),
+      "el componente empezó a filtrar por profesión",
+    ).not.toMatch(/profesion|profession/i);
+  });
+});
+
+describe("el pie no promete lo que Gildardo cerró", () => {
+  const COMP = readFileSync("src/modules/diagnoses/components/alertas-clinicas.tsx", "utf8");
+
+  it("decía \"que aún no se calcula\", y eso afirma que va a llegar", () => {
+    // EL PUENTE ESTA CERRADO POR EL, dos veces: P-70 (2026-08-30, "no hay puente que construir": la
+    // frecuencia es un patrón, no una cuantificación) y P-83 (2026-09-03, sobre las porciones por grupo
+    // de la TCAC: "No va, y no es que falte: es que no debe existir"). Prometer en un pie de pantalla una
+    // vía que él cerró es afirmar más de lo que sabemos.
+    expect(sinComentarios(COMP), "volvió la promesa de que el cálculo llega").not.toContain(
+      "que aún no se calcula",
+    );
+    expect(COMP).toContain("la\n        encuesta no captura");
+  });
+
+  it("pero el pie SIGUE, porque su razón no cambió", () => {
+    // Sin él, "ninguna alerta" se lee como "el paciente está bien" cuando significa "de lo nutricional no
+    // estamos evaluando nada". Que la causa sea permanente lo hace más necesario, no menos.
+    expect(COMP).toContain("ALERTAS_NO_DISPONIBLES.porConsumo");
+    expect(COMP).toContain("La ausencia de avisos no equivale a ausencia de riesgo.");
   });
 });

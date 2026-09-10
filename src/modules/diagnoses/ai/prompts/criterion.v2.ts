@@ -33,6 +33,17 @@ import { CRITERION_SYSTEM_PROMPT } from "./criterion.system";
 
 export const CRITERION_PROMPT_KEY = "criterio.generate";
 export const CRITERION_PROMPT_VERSION = 2;
+
+/**
+ * UNA ALERTA CLINICA tal como viaja al modelo: SU nivel, SU titulo y SU dominio. NADA MAS.
+ *
+ * NO VIAJA EL TEXTO (`txt`), y es deliberado: los textos de sus reglas llevan la conducta dentro
+ * ("Derivacion urgente a psicologia/psiquiatria"), y el bloque de sistema le prohibe prescribir. Darle la
+ * instruccion y prohibirle repetirla es pedirle dos cosas contrarias.
+ *
+ * Y NO LLEVA PII: son un nivel, un titulo del catalogo de Gildardo y un codigo de dominio.
+ */
+export type AlertaDelPrompt = { nivel: string; titulo: string; dominio: string };
 export { CRITERION_SYSTEM_PROMPT };
 
 /**
@@ -157,6 +168,10 @@ export type CriterionPromptInput = {
   // ── La encuesta ENTERA. El builder lee solo lo que esta en CAMPOS. ──
   encuesta: RespuestaEncuesta[];
 
+  // ── Las alertas clinicas que HOY se pueden evaluar (v4). Vacio = no hay ninguna, y entonces el modelo
+  //    se salta ese parrafo en vez de escribir que no hay. ──
+  alertas: AlertaDelPrompt[];
+
   // ── Composicion corporal y bioelectrica, ya formateadas por su capa de display (etiqueta + valor con
   //    sus unidades y decimales), que es lo que el profesional ve en pantalla. ──
   composicion: { etiqueta: string; valor: string }[];
@@ -219,6 +234,25 @@ export function buildCriterionPrompt(
     L.push("VETO CONDUCTUAL ACTIVO: prioridad psicológica; excluir intervención nutricional restrictiva.");
   }
   L.push(`Rutas de Atención derivadas: ${input.rutas.length ? input.rutas.join(" · ") : "ninguna"}`);
+
+  // ═══ LAS ALERTAS, JUSTO DESPUES DEL DFI Y ANTES DE LOS DATOS CRUDOS (v4, 2026-09-10) ═══
+  //
+  // VA AQUI Y NO ENTRE LOS DATOS CRUDOS porque no es un dato crudo: es una salida del motor sobre esos
+  // datos, del mismo rango que el bloque DFI. Y el orden del mensaje es la primera señal de importancia
+  // que el modelo lee.
+  //
+  // EL BLOQUE SE ESCRIBE SIEMPRE, tambien vacio, y esa es la parte que importa: sin la linea que dice que
+  // no hay ninguna, el modelo no puede distinguir "no hay alertas" de "no me las mandaron", y ante la duda
+  // las inventa a partir de los datos crudos, que son los mismos insumos de las reglas.
+  if (input.alertas.length > 0) {
+    L.push(
+      "",
+      "ALERTAS CLÍNICAS DE LA ENCUESTA (menciónalas en el párrafo inmediatamente posterior a la presentación):",
+      ...input.alertas.map((a) => `[${a.nivel}] ${a.titulo} (dominio ${a.dominio})`),
+    );
+  } else {
+    L.push("", "ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna. No escribas ese párrafo ni comentes su ausencia.");
+  }
 
   L.push("", "=== DATOS CRUDOS DEL PACIENTE (evidencia de respaldo) ===", "");
   // IDENTIFICACION CLINICA. El rotulo dice "clínica" a proposito: es lo que queda del bloque de

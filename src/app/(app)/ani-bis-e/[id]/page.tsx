@@ -302,6 +302,30 @@ export default async function ResultadosEvaluacionPage({
     // pestañas separadas desde el 2026-09-10, pero comparten insumos y guardas (el gate del import depende
     // de las condiciones capturadas en Encuesta): repetir la lista en los dos sitios de llamada es como se
     // consigue que una pestaña reciba un dato y la otra no.
+    // ═══ LAS ALERTAS CLINICAS, EN LAS CUATRO SUPERFICIES DONDE SE DECIDE (2026-09-10) ═══
+    //
+    // DONDE VAN, y son cuatro: Diagnostico, la subpestaña del profesional en Tratamiento, Reporte/HC y la
+    // pantalla "Ver o editar encuesta" (`/ani-bis-e/[id]/encuesta`). NO en la pestaña Encuesta, que es de
+    // donde salen.
+    //
+    // Y ESTO NO REVIERTE SU INSTRUCCION DEL 2026-08-28 (11a): *"Esas alertas aparecen al inicio, cuando el
+    // profesional abre la informacion de la encuesta del paciente"*. Lo que precisa Santiago es que "abrir
+    // la informacion de la encuesta" es la PANTALLA de ver/editar la encuesta, no la pestaña. Asi que la
+    // instruccion se cumple donde el la queria, y se suman las tres superficies que pidio despues.
+    //
+    // SON LAS MISMAS EN LOS CUATRO SITIOS, y no por decision sino por construccion: salen de una funcion
+    // sobre las respuestas de ESTA evaluacion, sin filtro por profesion. Y no se filtra: el psicologo
+    // necesita ver el riesgo glucemico igual que la nutricionista necesita ver el TCA.
+    //
+    // SE ARMA UNA VEZ Y SE REUSA. Repetir la llamada en cada sitio es como se consigue que una pestaña
+    // reciba un dato y la otra no (mismo motivo que `entrada*Diagnostico`).
+    const alertasNode = (
+      <AlertasClinicas
+        alertas={alertasDisponibles(
+          encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
+        )}
+      />
+    );
     const entradaSinDiagnostico = {
       evaluationId: id,
       diagnosticoGenerado: false,
@@ -328,20 +352,7 @@ export default async function ResultadosEvaluacionPage({
             depende de ella (sin condiciones capturadas el import ni se habilita). */}
         <EvaluationTabs
         porDefecto="encuesta"
-        encuesta={
-          <div className="flex flex-col gap-6">
-            {/* Las alertas van ARRIBA de la entrada: una bandera de conducta alimentaria manda derivar
-                antes de seguir revisando, no despues. Se computan sobre las respuestas YA leidas, sin
-                consulta nueva, igual que los antecedentes de la HC. Van en ENCUESTA porque salen de las
-                respuestas del paciente, que es lo que esta pestaña muestra. */}
-            <AlertasClinicas
-              alertas={alertasDisponibles(
-                encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
-              )}
-            />
-            <EntradaEvaluacion panel="encuesta" {...entradaSinDiagnostico} />
-          </div>
-        }
+        encuesta={<EntradaEvaluacion panel="encuesta" {...entradaSinDiagnostico} />}
         antro={<EntradaEvaluacion panel="antropometria" {...entradaSinDiagnostico} />}
         tratamiento={<StagePlaceholder label="Tratamiento" />}
         seguimiento={<StagePlaceholder label="Seguimiento" />}
@@ -351,6 +362,7 @@ export default async function ResultadosEvaluacionPage({
         }
         diagnostico={
           <div className="flex flex-col gap-6">
+            {alertasNode}
             {/* SIN REPETIR AL PACIENTE: el nombre, el documento y la fecha viven ahora en la cabecera
                 de la PAGINA, visible desde las cinco etapas. Aqui solo queda el nombre de la etapa. */}
             <TituloSeccion>Resultados de la evaluación</TituloSeccion>
@@ -782,6 +794,12 @@ export default async function ResultadosEvaluacionPage({
   // Mismo motivo que en el camino sin diagnostico: los dos paneles reciben lo mismo y se arma una vez.
   // Aqui siempre hay medicion BIS (el pipeline la exige para diagnosticar), asi que el import ya no aplica
   // (`bisImportEval` null) y las condiciones van en solo lectura.
+  // Las cuatro superficies: ver el bloque de la rama sin diagnostico.
+  const alertasNode = (
+    <AlertasClinicas
+      alertas={alertasDisponibles(encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []))}
+    />
+  );
   const entradaConDiagnostico = {
     evaluationId: id,
     consentStatus: entryConsent,
@@ -812,11 +830,6 @@ export default async function ResultadosEvaluacionPage({
       porDefecto="diagnostico"
       encuesta={
         <div className="flex flex-col gap-6">
-          <AlertasClinicas
-            alertas={alertasDisponibles(
-              encDesdeRespuestas(entrySurvey?.flatMap((d) => d.questions) ?? []),
-            )}
-          />
           {/* La correccion YA NO vive aqui (Santiago 2026-08-15, b): en Encuesta el profesional REVISA lo
               que respondio el paciente, no decide sobre un diagnostico. La via versionada se movio a la
               pantalla "Ver o editar encuesta" (encuesta/page.tsx) y sigue en Diagnostico. */}
@@ -907,6 +920,8 @@ export default async function ResultadosEvaluacionPage({
               </div>
             }
             profesion={
+              <div className="flex flex-col gap-6">
+              {alertasNode}
               <ProfessionTreatmentSection
                 evaluationId={id}
                 actor={actorProfession}
@@ -932,6 +947,7 @@ export default async function ResultadosEvaluacionPage({
                   ) : null
                 }
               />
+              </div>
             }
           />
           {/* EL REPORTE SE MOVIO A LA QUINTA ETAPA (2026-08-24). Aqui vivia por la decision del 2026-08-21,
@@ -1004,6 +1020,7 @@ export default async function ResultadosEvaluacionPage({
         // cambiar de etapa no toca nada del acto. La proxima cita se va con el: se captura DENTRO de la
         // ReportCard (en la confirmacion de trayectoria desfavorable), no como un paso aparte.
         <section className="flex flex-col gap-4">
+          {alertasNode}
           {reportCard ? (
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
@@ -1196,6 +1213,8 @@ export default async function ResultadosEvaluacionPage({
         // subpestañas. La pagina le pasa como slots lo que ella arma (composicion, read-out D1-D8,
         // criterio, confirmar/corregir) y la vista los coloca en su pestaña. Un solo contenedor: sin
         // pila suelta que compita con las subpestañas.
+        <div className="flex flex-col gap-6">
+        {alertasNode}
         <EvaluationResults
           results={results}
           efrStates={efrStates}
@@ -1293,6 +1312,7 @@ export default async function ResultadosEvaluacionPage({
             </Card>
           }
         />
+        </div>
       }
       />
     </div>

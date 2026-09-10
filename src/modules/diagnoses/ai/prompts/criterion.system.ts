@@ -1,4 +1,4 @@
-import promptV3 from "./criterion.system.v3.json";
+import promptV4 from "./criterion.system.v4.json";
 
 // Texto CANONICO de las instrucciones de sistema del borrador de criterio (criterio.generate v1). La
 // fuente unica es el JSON committeado: lo importa el builder (via este modulo) y el seed lo lee por fs
@@ -33,7 +33,23 @@ import promptV3 from "./criterion.system.v3.json";
 // LA v2 NO SE RETIRA: los borradores generados entre el 2026-09-01 y hoy se hicieron con ella y su
 // registro de procedencia apunta a esa version. Misma disciplina que las versiones de motor.
 //
+// V4 (2026-09-10): LAS ALERTAS CLINICAS ENTRAN AL RESUMEN. Instruccion de Gildardo: que el resumen de IA
+// las mencione en el parrafo INMEDIATO despues de la presentacion del paciente. Entra un paso 2 en la
+// estructura obligatoria (los dominios pasan a 3 y el cierre a 4) y dos reglas que lo acotan.
+//
+// LO QUE VIAJA SON NIVEL, TITULO Y DOMINIO, NO EL TEXTO DE LA ALERTA, y esa parte es decision nuestra: los
+// textos de sus reglas llevan la CONDUCTA dentro ("Derivacion urgente a psicologia/psiquiatria"), y este
+// mismo prompt le prohibe prescribir. Mandarle la instruccion e impedirle repetirla es pedir dos cosas
+// contrarias; mandarle el hallazgo y prohibirle la conducta, no. Por eso ademas se le dice explicitamente
+// que no indique que hacer con una alerta.
+//
+// Y SE LE PROHIBE INVENTARLAS. Los datos crudos que ya viajaban (item 21, diagnosticos, azucares, agua,
+// estres) son los MISMOS insumos de sus reglas, asi que el modelo podria "deducir" una alerta que la regla
+// no emitio. Las alertas son un hallazgo del motor, no una conclusion suya.
+//
+// LA V3 NO SE RETIRA: los borradores generados con ella apuntan a esa version en su procedencia.
+//
 // Y ESTE ES SOLO UNO DE LOS DOS LADOS. El otro es el filtro de salida (`limpiarMarcadores`), y hacen
 // falta los dos: un prompt baja la frecuencia con la que el modelo mete markdown, no la lleva a cero.
 // Textual suyo: "por si el modelo desobedece, que es lo que hacen".
-export const CRITERION_SYSTEM_PROMPT: string = promptV3.system;
+export const CRITERION_SYSTEM_PROMPT: string = promptV4.system;
