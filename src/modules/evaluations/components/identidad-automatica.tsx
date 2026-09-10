@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+import { useEtapaActiva } from "@/modules/diagnoses/components/etapa-activa";
+
 import { confirmIdentityAction } from "../actions";
 import type { ConfirmIdentityState } from "../validations";
 
@@ -41,13 +43,28 @@ export function IdentidadAutomatica({ evaluationId }: { evaluationId: string }) 
   // pero dejaria un intento de mas en el log del servidor.
   const disparado = useRef(false);
 
+  // ═══ SOLO DESDE LA PESTAÑA QUE SE ESTA VIENDO (2026-09-10) ═══
+  //
+  // LO ENCONTRO EL BARRIDO del disparo del diagnostico, no un smoke, y es la misma forma con otra
+  // consecuencia. Este bloque vive dentro de `EntradaEvaluacion`, que se renderiza en DOS pestañas
+  // (Encuesta y Antrop. & BIS). Mientras cambiar de pestaña desmontaba la anterior, solo existia UNA
+  // instancia a la vez; desde que una etapa visitada no se desmonta, pueden existir LAS DOS.
+  //
+  // QUE PASARIA SIN ESTA GUARDA: dos instancias, dos efectos, dos confirmaciones. La segunda la rechaza el
+  // guard de estado del servidor con "ya fue confirmada", y este componente pinta el error en un recuadro
+  // de advertencia. O sea que el profesional veria "No se pudo confirmar la identidad automáticamente"
+  // sobre una identidad que SI se confirmo. Un aviso falso sobre un acto clinico.
+  //
+  // Y NO CAMBIA LA CONDUCTA QUERIDA ("se confirma sola al abrir"): sin diagnostico la pestaña que se abre
+  // es Encuesta, asi que su instancia esta activa al cargar y dispara igual que antes.
+  const activa = useEtapaActiva();
   useEffect(() => {
-    if (disparado.current) return;
+    if (!activa || disparado.current) return;
     disparado.current = true;
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
     action(datos);
-  }, [action, evaluationId]);
+  }, [activa, action, evaluationId]);
 
   // AL CONFIRMAR SE REFRESCA, y hace falta: la pagina se rindio con la evaluacion en `draft`, asi que las
   // condiciones de la toma y el import BIS llegaron apagados. Sin esto el profesional veria una pantalla
