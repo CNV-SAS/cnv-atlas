@@ -93,15 +93,31 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState<Orden>("alfabetico");
   const [pagina, setPagina] = useState(1);
+  // ═══ LOS ARCHIVADOS NO SALEN, SALVO QUE SE PIDAN (Santiago, 2026-09-10) ═══
+  //
+  // OCULTOS POR DEFECTO porque archivar existe justo para eso: si siguieran en la lista, el boton no
+  // serviria de nada. Y CON FILTRO, no escondidos del todo: un paciente que desaparece sin dejar forma de
+  // encontrarlo es indistinguible de uno borrado, y archivar deja de dar confianza.
+  const [verArchivados, setVerArchivados] = useState(false);
+
+  const archivados = useMemo(
+    () => pacientes.filter((p) => p.status === "inactive").length,
+    [pacientes],
+  );
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
+    // EL ARCHIVO SE APLICA ANTES QUE LA BUSQUEDA: buscar un archivado con el filtro apagado no lo saca,
+    // que es lo coherente con "no salen salvo que se pidan". Encenderlo es un clic.
+    const activos = verArchivados
+      ? pacientes
+      : pacientes.filter((p) => p.status !== "inactive");
     const base =
       q === ""
-        ? pacientes
+        ? activos
         : // Por NOMBRE o por DOCUMENTO, que son las dos formas en que un profesional busca a alguien: se
           // acuerda del nombre, o tiene la cedula delante.
-          pacientes.filter((p) => {
+          activos.filter((p) => {
             const nombre = nombreVisible(p).toLowerCase();
             return nombre.includes(q) || p.documentNumber.toLowerCase().includes(q);
           });
@@ -123,7 +139,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
       });
     }
     return orden_;
-  }, [pacientes, busqueda, orden]);
+  }, [pacientes, busqueda, orden, verArchivados]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
 
@@ -134,7 +150,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   // que hay un fotograma con la pagina vieja sobre la lista nueva; y ademas `react-hooks/set-state-in-effect`
   // lo prohibe, con razon. Este es el patron documentado de React para ajustar estado cuando cambia lo que
   // lo condiciona: se compara contra lo ultimo visto y se corrige antes de pintar.
-  const claveVista = `${busqueda.trim()}|${orden}`;
+  const claveVista = `${busqueda.trim()}|${orden}|${verArchivados}`;
   const [claveAnterior, setClaveAnterior] = useState(claveVista);
   if (claveAnterior !== claveVista) {
     setClaveAnterior(claveVista);
@@ -206,6 +222,24 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
             </button>
           ))}
         </div>
+
+        {/* EL FILTRO DE ARCHIVADOS, solo cuando hay alguno: un interruptor que siempre vale cero es un
+            mando que no hace nada, y ademas insinua que hay algo escondido cuando no lo hay. */}
+        {archivados > 0 ? (
+          <button
+            type="button"
+            aria-pressed={verArchivados}
+            onClick={() => setVerArchivados((v) => !v)}
+            className={
+              "rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors " +
+              (verArchivados
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {verArchivados ? "Ocultar archivados" : `Ver archivados (${archivados})`}
+          </button>
+        ) : null}
       </div>
       <ListaFilas
       columnas={COLUMNAS_PACIENTES}
@@ -270,7 +304,14 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
             // paciente que ejercio su derecho no esta en riesgo. El texto habla de la AUTORIZACION, no de
             // la persona: "Revocado" sonaria a que el revocado es el paciente.
             chip={
-              p.sinAutorizacionVigente ? (
+              // ARCHIVADO MANDA SOBRE EL OTRO CHIP: si esta fuera de la lista de trabajo, eso es lo
+              // primero que hay que saber de la fila; que ademas le falte una autorizacion es
+              // informacion de segundo orden mientras este archivado.
+              p.status === "inactive" ? (
+                <PillEstado tono="neutro" title="Archivado: no aparece en la lista por defecto.">
+                  Archivado
+                </PillEstado>
+              ) : p.sinAutorizacionVigente ? (
                 <PillEstado
                   tono="atencion"
                   title="Le falta alguna autorización necesaria vigente. No se le pueden crear evaluaciones nuevas."
