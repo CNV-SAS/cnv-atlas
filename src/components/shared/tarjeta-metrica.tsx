@@ -1,4 +1,5 @@
-import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 // TARJETA DE METRICA: la cifra de cabecera de una pantalla.
@@ -21,6 +22,7 @@ export function TarjetaMetrica({
   detalle,
   icono: Icono,
   acento = false,
+  href,
 }: {
   rotulo: string;
   valor: number | string;
@@ -33,9 +35,16 @@ export function TarjetaMetrica({
    * anunciando "0 pendientes" entrena a ignorar el color, que es como se pierde una señal.
    */
   acento?: boolean;
+  /**
+   * A DONDE LLEVA LA CIFRA. Es lo que separa una metrica accionable de un numero con urgencia: si el
+   * profesional lee "16 reportes por aprobar" y no tiene donde pulsar, la tarjeta le da el problema y no
+   * la salida (Santiago, 2026-09-10: "que cada bloque arriba sea pulsable y lleve a su lista; si uno no
+   * tiene destino, entonces va abajo").
+   */
+  href?: string;
 }) {
   const encendida = acento && valor !== 0 && valor !== "0";
-  return (
+  const cuerpo = (
     // DISPOSICION VERTICAL (2026-09-03): el icono arriba, y debajo rotulo, cifra y alcance. Antes el icono
     // iba al lado y le robaba ancho a la cifra, que es lo unico que se lee a distancia. En vertical la
     // cifra manda y el icono queda como ancla, que es su papel.
@@ -80,6 +89,27 @@ export function TarjetaMetrica({
             desambiguar. */}
         {detalle ? <span className="text-xs text-muted-foreground">{detalle}</span> : null}
       </div>
+      {/* LA FLECHA SOLO SI HAY A DONDE IR. Sin ella, una tarjeta pulsable y una que no lo es se ven
+          iguales, y se descubre pulsando. */}
+      {href ? (
+        <span
+          aria-hidden
+          className="flex items-center gap-1 text-xs font-medium text-primary"
+        >
+          Ver la lista
+          <ArrowRight className="size-3.5" />
+        </span>
+      ) : null}
     </div>
+  );
+
+  // ENVUELTA EN EL ENLACE, no con un `onClick`: es navegacion, asi que tiene que poder abrirse en otra
+  // pestaña, copiarse y recorrerse con el teclado. Un div pulsable no hace ninguna de las tres.
+  return href ? (
+    <Link href={href} className="rounded-2xl transition-colors hover:brightness-[0.98]">
+      {cuerpo}
+    </Link>
+  ) : (
+    cuerpo
   );
 }
