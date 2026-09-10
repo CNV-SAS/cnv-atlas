@@ -745,10 +745,12 @@ export function HcRemisiones({
     </Tarjeta>
   );
 }
-// Bloque ANI-BIS-E de la tabla de la historia clinica (porte 2026-08-24). Su HC los pone DENTRO de la
-// tabla de Wang, como un nivel mas; en Atlas viven en la tabla de indices del Diagnostico, que es una
-// tabla aparte. Portarlos al mapa de composicion los DUPLICARIA en Diagnostico, asi que se anaden solo
-// aqui: en el documento clinico van juntos, en la pantalla de trabajo siguen separados.
+// EL TIPO SE QUEDA, EL COMPONENTE SE FUE (Santiago, 2026-09-10). `HcIndicesAniBise` pintaba estos indices
+// en una TABLA APARTE debajo de la de Wang, con su propia banda gris y sin padding: se leian como dos
+// tablas apiladas que no se parecen. Ahora entran DENTRO de la tabla de Wang como un nivel mas, que es
+// como los tiene el archivo de Gildardo, via la prop `bloqueFinal` de `CompositionSection`.
+//
+// El tipo sigue vivo porque lo produce el reader y lo consume la pagina para armar ese bloque.
 //
 // Se aplican los MISMOS dos filtros que el resto de la tabla: solo lo alterado (sev >= 1) y nada sin valor.
 export type HcIndiceAni = {
@@ -760,48 +762,3 @@ export type HcIndiceAni = {
   sev: number;
 };
 
-export function HcIndicesAniBise({ indices }: { indices: HcIndiceAni[] }) {
-  if (indices.length === 0) return null;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-y border-border bg-muted">
-            <td
-              colSpan={4}
-              className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
-            >
-              ANI-BIS-E
-            </td>
-          </tr>
-        </thead>
-        <tbody>
-          {indices.map((i) => (
-            <tr key={i.codigo} className="border-b border-border/40">
-              {/* Nombre arriba y sigla debajo, en la MISMA celda: otro profesional lee el nombre, y la
-                  columna no se ensancha (que era el riesgo de ponerlos en linea). Cuando su archivo no le
-                  da nombre al indice, va la sigla sola: no se inventa uno para un documento clinico. */}
-              <td className="py-1.5 pr-4">
-                {i.nombre ? (
-                  <span className="flex flex-col">
-                    <span className="font-medium text-foreground">{i.nombre}</span>
-                    <span className="text-[11px] text-muted-foreground">{i.codigo}</span>
-                  </span>
-                ) : (
-                  <span className="font-medium text-foreground">{i.codigo}</span>
-                )}
-              </td>
-              <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{i.valor}</td>
-              <td className="py-1.5 pr-4 text-right text-muted-foreground">{i.referencia}</td>
-              <td className="py-1.5">
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                  {i.clasificacion}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}

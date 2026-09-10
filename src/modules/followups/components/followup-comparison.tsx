@@ -94,12 +94,16 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Indicador</th>
-                <th className="py-2 pr-4 font-medium">Previo</th>
-                <th className="py-2 pr-4 font-medium">Actual</th>
-                <th className="py-2 pr-4 font-medium">Cambio</th>
-                <th className="py-2 font-medium">Lectura</th>
+              {/* LA REGLA DE `components/shared/tabla.tsx` (2026-09-10): el encabezado que lleva NOMBRES DE
+                  COLUMNA va sin fondo y en negrita, y con su padding a los dos lados. Esta tabla escribia
+                  sus clases a mano y se quedo fuera del barrido del 2026-09-03 por no importar nada de
+                  ahi, igual que la de composicion. */}
+              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
+                <th className="py-2 pl-3 pr-4">Indicador</th>
+                <th className="py-2 pr-4">Previo</th>
+                <th className="py-2 pr-4">Actual</th>
+                <th className="py-2 pr-4">Cambio</th>
+                <th className="py-2 pr-3">Lectura</th>
               </tr>
             </thead>
             <tbody>

@@ -171,10 +171,14 @@ export function PlanImprimible({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr>
-                    <th className="pb-1 pr-3 font-medium">Grupo</th>
+                  {/* LA REGLA DE `components/shared/tabla.tsx` (2026-09-10): el encabezado con nombres de
+                      columna va sin fondo y en negrita. Aqui es MAS pequeño que en pantalla a proposito:
+                      esto se imprime y el paciente lo lee en papel, asi que la escala es la del documento,
+                      no la de la interfaz. Lo que se porta es la regla, no el tamaño. */}
+                  <tr className="border-b border-border text-[0.6875rem] font-bold uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-1 pl-1 pr-3">Grupo</th>
                     {plan.tiemposActivos.map((t) => (
-                      <th key={t} className="pb-1 pr-3 font-medium">
+                      <th key={t} className="pb-1 pr-3">
                         {t}
                       </th>
                     ))}

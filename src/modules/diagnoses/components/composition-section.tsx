@@ -67,6 +67,17 @@ function colorDeDelta(d: number | null, rowKey: string): string {
 
 type Classifications = Record<string, { label?: string } | null>;
 
+/** Una fila del bloque final (ver `bloqueFinal`). Trae ya lo que se pinta, no numeros que clasificar. */
+export type FilaBloqueFinal = {
+  id: string;
+  etiqueta: string;
+  /** Sigla debajo del nombre, cuando el indice tiene las dos cosas. */
+  sigla?: string | null;
+  valor: string;
+  referencia: string;
+  clasificacion: string;
+};
+
 // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: SEV_CLS y no
 // OPTIMO_CLS: los clasificadores de display SI emiten sev 1 (Sobrepeso, Riesgo CV aumentado), y OPTIMO_CLS
 // colapsaba 0 y 1 en verde -> "Sobrepeso" salia VERDE (defecto). SEV_CLS[1] es ambar, como el HTML.
@@ -100,6 +111,7 @@ export function CompositionSection({
   showTitle = true,
   soloAlterados = false,
   pesoMetaKg = null,
+  bloqueFinal = null,
 }: {
   composition: Composition;
   /**
@@ -122,6 +134,20 @@ export function CompositionSection({
   showTitle?: boolean;
   /** Historia clinica: muestra SOLO las filas con clasificacion alterada (sev >= 1). */
   soloAlterados?: boolean;
+  /**
+   * UN NIVEL MAS AL FINAL DE LA TABLA. Hoy solo lo usa la historia clinica, para los indices ANI-BIS-E.
+   *
+   * ═══ POR QUE ESTO EXISTE (Santiago, 2026-09-10, y es fiel al archivo de Gildardo) ═══
+   *
+   * SU HC LOS PONE DENTRO DE LA TABLA DE WANG, como un nivel mas. En Atlas vivian debajo, en una tabla
+   * aparte con su propia banda gris y sin padding: se veian como dos tablas apiladas que no se parecen.
+   *
+   * Y POR QUE NO ESTABAN YA DENTRO, que es lo que habia que verificar antes de moverlos: meterlos en el
+   * MAPA de composicion los DUPLICARIA en Diagnostico, donde ya existe la tabla de indicadores en la
+   * subpestaña de composicion. Por eso entran como un bloque que solo pasa la HC, y no como filas del
+   * mapa: el documento clinico los muestra juntos y la pantalla de trabajo los sigue teniendo separados.
+   */
+  bloqueFinal?: { titulo: string; filas: FilaBloqueFinal[] } | null;
 }) {
   // ═══ LA META DE PESO ES LA REFERENCIA DE LA FILA DE PESO (2026-09-10, correccion del porte) ═══
   //
@@ -378,7 +404,7 @@ export function CompositionSection({
 
                   Y ADEMAS LA ACERCA A SU VECINA: la tabla de indicadores ANI-BIS-E, que vive en esta misma
                   subpestaña, ya tenia la cabecera sin fondo. Eran las dos las que no se parecian. */}
-              <tr className="border-b border-border text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
                 <th className="py-2 pl-3 pr-4 font-medium">Variable</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
@@ -400,10 +426,10 @@ export function CompositionSection({
                       Y LA CABECERA DE COLUMNAS SE QUEDA GRIS, a proposito: si las dos van en color, la
                       franja deja de separar niveles y la tabla se lee como un solo bloque. El azul marca
                       donde EMPIEZA cada nivel de Wang; el gris solo rotula columnas. */}
-                  <tr className="border-y border-primary/30 bg-primary/10">
+                  <tr className="border-y border-primary/20 bg-primary/5">
                     <td
                       colSpan={colCount}
-                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-primary"
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       {lvl.title}
                     </td>
@@ -423,9 +449,53 @@ export function CompositionSection({
                   ) : null}
                 </Fragment>
               ))}
+              {/* EL BLOQUE FINAL, como un nivel mas (ver `bloqueFinal`). Usa las MISMAS clases que el
+                  resto de la tabla, que es todo el punto: antes era otra tabla debajo, con su propia banda
+                  y sin padding, y se leia como dos tablas apiladas que no se parecen. */}
+              {bloqueFinal && bloqueFinal.filas.length > 0 ? (
+                <Fragment key={bloqueFinal.titulo}>
+                  <tr className="border-y border-primary/20 bg-primary/5">
+                    <td
+                      colSpan={colCount}
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {bloqueFinal.titulo}
+                    </td>
+                  </tr>
+                  {bloqueFinal.filas.map((f) => (
+                    <tr key={f.id} className="border-b border-border/40">
+                      {/* Nombre arriba y sigla debajo, en la MISMA celda: otro profesional lee el nombre y
+                          la columna no se ensancha. Sin nombre va la sigla sola: no se inventa uno para un
+                          documento clinico. */}
+                      <td className="py-1.5 pl-3 pr-4 text-foreground">
+                        {f.sigla ? (
+                          <span className="flex flex-col">
+                            <span className="font-medium text-foreground">{f.etiqueta}</span>
+                            <span className="text-[11px] text-muted-foreground">{f.sigla}</span>
+                          </span>
+                        ) : (
+                          <span className="font-medium text-foreground">{f.etiqueta}</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{f.valor}</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">{f.referencia}</td>
+                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                      {showDiagnosis ? (
+                        <td className="py-1.5 pr-3">
+                          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                            {f.clasificacion}
+                          </span>
+                        </td>
+                      ) : null}
+                    </tr>
+                  ))}
+                </Fragment>
+              ) : null}
               {/* Como en su HC: si NADA esta alterado se dice, en vez de dejar la tabla vacia (una tabla
                   vacia se lee como dato faltante, no como "todo en rango"). */}
-              {soloAlterados && levelsToRender.length === 0 ? (
+              {soloAlterados &&
+              levelsToRender.length === 0 &&
+              (bloqueFinal?.filas.length ?? 0) === 0 ? (
                 <tr>
                   <td colSpan={colCount} className="px-3 py-3 text-sm italic text-muted-foreground">
                     Sin índices alterados: todos los valores medidos están en rango normal.
