@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
 
+import { useEtapaActiva } from "@/modules/diagnoses/components/etapa-activa";
 import { etiquetaDeEtapa } from "@/modules/diagnoses/etapas";
 
 import { runPipelineAction, type RunPipelineState } from "../actions";
@@ -53,14 +54,36 @@ export function GenerateDiagnosisPanel({
   // Y EL FALLO SE VE, que es el cuidado que pidio Santiago y el que de verdad importa aqui: sin boton, un
   // diagnostico que no corre porque faltan tres preguntas tiene que DECIRLO. El error y el enlace a
   // completar la encuesta se rinden abajo igual que antes; lo unico que desaparece es el boton.
+  //
+  // ═══ "AL ENTRAR" ES ESTAR A LA VISTA, NO ESTAR MONTADO (2026-09-10) ═══
+  //
+  // EL DEFECTO, del smoke: Santiago entro a Diagnostico SIN el BIS importado y vio el bloqueo correcto. Se
+  // fue a Antrop. & BIS, importo el xlsx, y **el diagnostico se genero solo**, sin volver a esta pestaña y
+  // sin que hubiera puesto el peso meta ni la fuerza prensil. Es justo lo que este disparador existe para
+  // no hacer: diagnosticar sobre datos que el profesional todavia va a tocar.
+  //
+  // FUERON LAS DOS COSAS A LA VEZ, y ninguna bastaba sola:
+  //   · El efecto quedo ARMADO. Hasta el 2026-09-09 cambiar de pestaña desmontaba esta, asi que el efecto
+  //     solo podia correr estando aqui. Al hacer que una etapa visitada NO se desmonte (para no perder el
+  //     borrador del tratamiento) el panel siguio vivo en segundo plano.
+  //   · Y el REFRESCO del import reevaluo la condicion: `bisImported` volteo a true, `ready` con el, y el
+  //     efecto corrio sin que hubiera navegacion ninguna.
+  //
+  // POR ESO CUELGA DE `activa` Y NO SOLO DE `ready`: el disparo ocurre al ENTRAR a la pestaña. Con la
+  // condicion cumplida desde otra, no pasa nada hasta que el profesional llega aqui.
+  //
+  // Y NO VUELVE A CORRER AL ENTRAR, SALIR Y VOLVER: `disparado` es un ref y el panel no se desmonta. Si
+  // ademas la pagina se recarga entera, este panel solo se rinde cuando NO hay diagnostico, asi que
+  // tampoco hay segundo intento. La guarda de base (`PipelineAlreadyRunError`) sigue detras de las dos.
+  const activa = useEtapaActiva();
   const disparado = useRef(false);
   useEffect(() => {
-    if (!ready || disparado.current) return;
+    if (!activa || !ready || disparado.current) return;
     disparado.current = true;
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
     action(datos);
-  }, [ready, action, evaluationId]);
+  }, [activa, ready, action, evaluationId]);
 
   // Al generar, la pagina tiene que re-renderizar a la rama de resultados: se rindio SIN diagnostico, asi
   // que sin esto el profesional se queda mirando el panel de "generando" con el diagnostico ya hecho.

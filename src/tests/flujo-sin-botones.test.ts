@@ -49,7 +49,12 @@ describe("identidad: se quita el clic, no el acto", () => {
   it("la confirmación automática se dispara UNA vez", () => {
     // Sin la guarda, React monta dos veces en desarrollo y la accion viaja dos veces. La segunda seria
     // inocua (el guard de estado la rechaza) pero ensucia el log del servidor.
-    expect(sinComentarios(IDENTIDAD)).toContain("if (disparado.current) return;");
+    //
+    // ALCANCE AMPLIADO (2026-09-10), no la asercion: a la guarda se le sumo `activa`. Este bloque vive en
+    // DOS pestañas (Encuesta y Antrop. & BIS) y, desde que una etapa visitada no se desmonta, pueden
+    // existir las DOS instancias: sin `activa` serian dos confirmaciones, y la segunda pintaria "No se
+    // pudo confirmar la identidad automáticamente" sobre una identidad que SI se confirmo.
+    expect(sinComentarios(IDENTIDAD)).toContain("if (!activa || disparado.current) return;");
     expect(sinComentarios(IDENTIDAD)).toContain("disparado.current = true;");
   });
 

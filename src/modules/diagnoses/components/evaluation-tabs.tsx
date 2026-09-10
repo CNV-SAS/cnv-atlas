@@ -3,6 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { ETAPA_IDS, ETAPAS, type TabId } from "../etapas";
+import { EtapaActiva } from "./etapa-activa";
 import { useState, type ReactNode } from "react";
 
 // Shell de pestañas de una evaluacion. Adopta las etapas reales de la ruta ANI-BIS-E como tabs internas
@@ -169,7 +170,10 @@ export function EvaluationTabs({
           aria-labelledby={`tab-${id}`}
           hidden={id !== active}
         >
-          {content[id]}
+          {/* QUE ESTA ETAPA ESTE MONTADA YA NO SIGNIFICA QUE SE VEA (2026-09-10). Desde que una etapa
+              visitada no se desmonta, hay que decirlo explicito: lo que dispara un acto clinico al ENTRAR
+              tiene que colgar de esto y no del montaje. Ver `etapa-activa.tsx`. */}
+          <EtapaActiva activa={id === active}>{content[id]}</EtapaActiva>
         </div>
       ))}
     </div>
