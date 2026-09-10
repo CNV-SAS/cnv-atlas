@@ -75,16 +75,29 @@ describe("el render distingue las dos formas, no castea a ciegas", () => {
     // cada sustitucion es ahora su propio componente (necesita su useActionState) y hay ademas un boton
     // global. Lo que se comprueba sigue siendo lo mismo: que aplicar se ofrezca en la rama v4 y en ninguna
     // otra. Se miran los DOS botones, para que retirar uno no deje la asercion en pie por el otro.
+    //
+    // Y EL ANCLA VOLVIO A MOVERSE (2026-09-10), otra vez sin que cambie lo que se afirma: al agrupar las
+    // propuestas por celda, los dos botones pasaron a vivir un nivel mas abajo, dentro de `ListaDeCambios`.
+    // Asi que la rama v4 se comprueba por el componente que los CONTIENE, y los dos botones se comprueban
+    // dentro de el. La rama de comidas se sigue mirando igual: ahi no puede haber ninguno de los tres.
     const ramaCambios = PANEL.slice(
       PANEL.indexOf("esMenuCambios(json)"),
       PANEL.indexOf("esMenuComidas(json)"),
     );
-    expect(ramaCambios).toContain("<CambioMenu");
-    expect(ramaCambios).toContain("<AplicarTodasMenu");
+    expect(ramaCambios).toContain("<ListaDeCambios");
+    const lista = PANEL.slice(
+      PANEL.indexOf("function ListaDeCambios"),
+      PANEL.indexOf("type CambioPropuestoView") > 0
+        ? PANEL.indexOf("type CambioPropuestoView")
+        : PANEL.indexOf("function CambioMenu"),
+    );
+    expect(lista).toContain("<CambioMenu");
+    expect(lista).toContain("<AplicarTodasMenu");
     const ramaComidas = PANEL.slice(
       PANEL.indexOf("esMenuComidas(json)"),
       PANEL.indexOf("m.generatedText ?"),
     );
+    expect(ramaComidas).not.toContain("<ListaDeCambios");
     expect(ramaComidas).not.toContain("<CambioMenu");
     expect(ramaComidas).not.toContain("<AplicarTodasMenu");
   });

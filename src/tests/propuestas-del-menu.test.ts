@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { verificarCita } from "@/modules/treatment/ai/prompts/menu.v4";
+import { agruparCambiosPorCelda, verificarCita } from "@/modules/treatment/ai/prompts/menu.v4";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
 
@@ -61,6 +61,103 @@ describe("una propuesta que la grilla YA cumple no se sigue ofreciendo", () => {
   });
 });
 
+describe("una celda sale UNA vez, con sus motivos juntos", () => {
+  // EL DEFECTO DEL SMOKE (Santiago, 2026-09-10): "cada celda sale dos veces". Con el dato de produccion
+  // delante: de 24 propuestas, 16 eran celdas distintas y ocho estaban duplicadas, con el MISMO reemplazo
+  // y un motivo cada una ("sin gluten" en una, "sin lactosa" en la otra).
+  //
+  // LO QUE SE VERIFICO ANTES DE TOCAR NADA, porque el arreglo habria sido el equivocado: `parseCambiosMenu`
+  // NO separa nada, toma el arreglo tal cual. Es el MODELO el que devuelve una entrada por restriccion
+  // incumplida. Asi que se agrupa al presentar, y ni el contrato ni lo guardado cambian.
+
+  const cambio = (dia: number, tiempo: string, reemplazo: string, motivo: string) => ({
+    dia,
+    tiempo,
+    reemplazo,
+    motivo,
+  });
+
+  it("dos entradas de la misma celda con el mismo texto son UNA sugerencia", () => {
+    const salida = agruparCambiosPorCelda([
+      cambio(3, "desayuno", "Arepa de maíz con huevo", "sin gluten"),
+      cambio(3, "desayuno", "Arepa de maíz con huevo", "sin lactosa"),
+    ]);
+    expect(salida).toHaveLength(1);
+    expect(salida[0].motivos).toEqual(["sin gluten", "sin lactosa"]);
+  });
+
+  it("y las celdas distintas siguen siendo distintas", () => {
+    // CONTROL: sin esto, "colapsarlo todo en una" también pasaría verde.
+    const salida = agruparCambiosPorCelda([
+      cambio(3, "desayuno", "Arepa", "sin gluten"),
+      cambio(3, "almuerzo", "Arroz con pollo", "sin gluten"),
+    ]);
+    expect(salida).toHaveLength(2);
+  });
+
+  it("un motivo repetido no se repite en la lista", () => {
+    const salida = agruparCambiosPorCelda([
+      cambio(0, "cena", "Sopa de verduras", "sin lácteos"),
+      cambio(0, "cena", "Sopa de verduras", "sin lácteos"),
+    ]);
+    expect(salida[0].motivos).toEqual(["sin lácteos"]);
+  });
+
+  it("DOS TEXTOS distintos para la misma celda NO se juntan: son alternativas", () => {
+    // Juntarlos escribiría uno encima del otro. Elegir entre dos preparaciones es contenido clínico, así
+    // que se marcan y el profesional decide.
+    const salida = agruparCambiosPorCelda([
+      cambio(1, "almuerzo", "Pollo a la plancha", "sin gluten"),
+      cambio(1, "almuerzo", "Pescado al horno", "sin gluten"),
+    ]);
+    expect(salida).toHaveLength(2);
+    expect(salida.every((c) => c.alternativas)).toBe(true);
+  });
+
+  it("y esas quedan FUERA del botón de aplicar todas", () => {
+    // El daño concreto: el atajo aplicaría las dos, quedaría la última, y el profesional vería una sola
+    // sin saber que hubo otra.
+    expect(PANEL).toContain("!c.alternativas && estadoDelCambio(c)");
+  });
+
+  it("la key de React distingue las alternativas", () => {
+    // Era `${dia}_${tiempo}`, que las dos entradas de una celda compartían.
+    expect(PANEL).toContain("_${c.reemplazo}`}");
+  });
+});
+
+describe("el aviso de la cita dice lo que sabe, no un veredicto", () => {
+  // EL CASO DEL SMOKE: el profesional registró "sin gluten y sin lácteos" y el modelo citó "sin lactosa".
+  //
+  // Y EL COTEJO NO ESTÁ EQUIVOCADO: lactosa y lácteos no son la misma restricción (una intolerancia no es
+  // una dieta sin lácteos). Unirlas pediría una tabla de sinónimos clínicos, que es contenido clínico y no
+  // nos toca inventarlo; hacerlo por prefijo uniría "gluten" con "glutamato". Lo que estaba mal era la
+  // FRASE, que convertía "no reconozco estas palabras" en "esto no corresponde a nada".
+
+  it("el caso sigue sin verificarse, y eso es correcto", () => {
+    expect(verificarCita("sin lactosa", ["sin gluten y sin lacteos"])).toBe(false);
+  });
+
+  it("pero ya no se afirma que no corresponda a nada", () => {
+    expect(sinComentarios(PANEL), "volvió el veredicto que afirmaba de más").not.toContain(
+      "no corresponde a ninguna restricción registrada",
+    );
+    expect(PANEL).toContain("de tus restricciones registradas");
+  });
+
+  it("y NO se retira: sigue marcando el motivo que nadie pidió atender", () => {
+    // Es para lo que existe. Retirarlo dejaría pasar en silencio una cita inventada.
+    expect(verificarCita("sin mariscos", ["sin gluten y sin lacteos"])).toBe(false);
+    expect(PANEL).toContain("sinRespaldo");
+  });
+
+  it("se coteja motivo por motivo, no la celda entera", () => {
+    // Una celda puede citar dos restricciones y solo una estar registrada. Cotejar la celda entera diría
+    // "está bien" sobre una mitad inventada, o marcaría la mitad correcta.
+    expect(PANEL).toContain("c.motivos.filter((m) => !verificarCita(m, restriccionesVigentes))");
+  });
+});
+
 describe("la cita de una propuesta se coteja por TERMINOS, no por contencion", () => {
   // EL DEFECTO, con el dato de produccion delante: el profesional registro UNA restriccion compuesta,
   // "sin gluten ni lacteos". La IA cita por celda la mitad que aplica ("sin lacteos") y la pantalla decia
@@ -98,7 +195,7 @@ describe("la cita de una propuesta se coteja por TERMINOS, no por contencion", (
     // vuelve una foto. Si el cotejo tenía un defecto (lo tenía) o si las restricciones cambiaron después,
     // la pantalla seguiría mostrando el veredicto viejo. El aviso habla en presente, así que se recalcula
     // en presente. Lo guardado se conserva como procedencia.
-    expect(PANEL).toContain("citaVerificada={verificarCita(c.motivo, restriccionesVigentes)}");
+    expect(PANEL).toContain("verificarCita(m, restriccionesVigentes)");
     expect(sinComentarios(PANEL), "volvió a leerse el veredicto guardado").not.toContain(
       "c.citaVerificada",
     );

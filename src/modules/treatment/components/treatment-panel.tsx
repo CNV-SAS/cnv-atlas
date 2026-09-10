@@ -63,7 +63,7 @@ import {
   type Publicado,
   type SeccionId,
 } from "../data/borrador-protocolo";
-import { verificarCita } from "../ai/prompts/menu.v4";
+import { agruparCambiosPorCelda, type CambioAgrupado, verificarCita } from "../ai/prompts/menu.v4";
 import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
@@ -79,7 +79,6 @@ import {
   esMenuCambios,
   esMenuComidas,
   type IntercambioSaved,
-  type MenuCambios,
   type MenuSemanalSaved,
   type AsesoriaMacro,
   type PrescripcionNutricional,
@@ -1748,7 +1747,7 @@ function MenuSection({
     "";
   // TRES ESTADOS Y NO DOS, porque "ya esta" tiene dos motivos distintos y decir "aplicado" en el segundo
   // seria atribuirle al profesional un acto que no hizo.
-  const estadoDelCambio = (c: CambioPropuestoView): "aplicado" | "ya-coincide" | "pendiente" => {
+  const estadoDelCambio = (c: CeldaPropuesta): "aplicado" | "ya-coincide" | "pendiente" => {
     if (textoEfectivo(c.dia, c.tiempo) !== c.reemplazo) return "pendiente";
     return celdasGuardadas[`${c.dia}_${c.tiempo}`] === c.reemplazo ? "aplicado" : "ya-coincide";
   };
@@ -1806,7 +1805,7 @@ function MenuCard({
   suggestion: MenuSuggestion;
   evaluationId: string;
   /** Si la grilla ya dice lo que la propuesta dice, y por que. Ver `estadoDelCambio` en `MenuSection`. */
-  estadoDelCambio: (c: CambioPropuestoView) => "aplicado" | "ya-coincide" | "pendiente";
+  estadoDelCambio: (c: CeldaPropuesta) => "aplicado" | "ya-coincide" | "pendiente";
   restriccionesVigentes: string[];
   /** El menu semanal tiene cambios sin guardar: aplicar los pisaria. */
   menuSinGuardar: boolean;
@@ -1834,25 +1833,17 @@ function MenuCard({
             cumple las restricciones de este paciente.
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
-            <ul className="flex flex-col gap-2">
-              {json.cambios.map((c) => (
-                <CambioMenu
-                  key={`${c.dia}_${c.tiempo}`}
-                  cambio={c}
-                  evaluationId={evaluationId}
-                  estado={estadoDelCambio(c)}
-                  citaVerificada={verificarCita(c.motivo, restriccionesVigentes)}
-                  menuSinGuardar={menuSinGuardar}
-                />
-              ))}
-            </ul>
-            <AplicarTodasMenu
-              evaluationId={evaluationId}
-              pendientes={json.cambios.filter((c) => estadoDelCambio(c) === "pendiente")}
-              menuSinGuardar={menuSinGuardar}
-            />
-          </div>
+          // UNA SUGERENCIA POR CELDA, con sus motivos juntos (Santiago, 2026-09-10). El modelo devuelve
+          // una entrada por restriccion incumplida, asi que una celda que rompe dos salia dos veces, con
+          // el mismo reemplazo y la misma key de React. Se agrupa al presentar; el contrato y lo guardado
+          // se quedan como estan. Ver `agruparCambiosPorCelda`.
+          <ListaDeCambios
+            cambios={agruparCambiosPorCelda(json.cambios)}
+            evaluationId={evaluationId}
+            estadoDelCambio={estadoDelCambio}
+            restriccionesVigentes={restriccionesVigentes}
+            menuSinGuardar={menuSinGuardar}
+          />
         )
       ) : esMenuComidas(json) ? (
         // FORMA v3, HISTORICA: cuando la IA componia un menu de un dia. Sus filas siguen en BD porque
@@ -1974,7 +1965,47 @@ function agruparNotasPorProfesion(notas: TreatmentNote[]): [string, TreatmentNot
   return [...grupos.entries()];
 }
 
-type CambioPropuestoView = MenuCambios["cambios"][number];
+/** Lo minimo que hace falta para saber si una propuesta ya esta en la grilla: la celda y su texto. */
+type CeldaPropuesta = { dia: number; tiempo: string; reemplazo: string };
+
+function ListaDeCambios({
+  cambios,
+  evaluationId,
+  estadoDelCambio,
+  restriccionesVigentes,
+  menuSinGuardar,
+}: {
+  cambios: CambioAgrupado[];
+  evaluationId: string;
+  estadoDelCambio: (c: CeldaPropuesta) => "aplicado" | "ya-coincide" | "pendiente";
+  restriccionesVigentes: string[];
+  menuSinGuardar: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2">
+        {cambios.map((c) => (
+          <CambioMenu
+            key={`${c.dia}_${c.tiempo}_${c.reemplazo}`}
+            cambio={c}
+            evaluationId={evaluationId}
+            estado={estadoDelCambio(c)}
+            restriccionesVigentes={restriccionesVigentes}
+            menuSinGuardar={menuSinGuardar}
+          />
+        ))}
+      </ul>
+      {/* LAS ALTERNATIVAS SE QUEDAN FUERA DEL ATAJO. Si el modelo propuso DOS textos distintos para la
+          misma celda, aplicarlas todas escribiria una encima de la otra y el profesional veria solo la
+          ultima, sin saber que hubo otra. Elegir entre las dos es suyo. */}
+      <AplicarTodasMenu
+        evaluationId={evaluationId}
+        pendientes={cambios.filter((c) => !c.alternativas && estadoDelCambio(c) === "pendiente")}
+        menuSinGuardar={menuSinGuardar}
+      />
+    </div>
+  );
+}
 
 // UNA sustitución propuesta, con su botón. Es componente propio y no JSX suelto dentro del `.map` porque
 // necesita su propio `useActionState`: los hooks no se pueden llamar dentro de un bucle.
@@ -1986,21 +2017,24 @@ function CambioMenu({
   cambio: c,
   evaluationId,
   estado,
-  citaVerificada,
+  restriccionesVigentes,
   menuSinGuardar,
 }: {
-  cambio: CambioPropuestoView;
+  cambio: CambioAgrupado;
   evaluationId: string;
   /** `aplicado` = se guardó al aplicarlo. `ya-coincide` = la grilla ya decía esto (el ciclo lo propone). */
   estado: "aplicado" | "ya-coincide" | "pendiente";
-  /** Recomputado con las restricciones de HOY, no el que quedo guardado al generar. */
-  citaVerificada: boolean;
+  /** Recomputadas al LEER, no el veredicto que quedó guardado al generar. Ver `MenuSection`. */
+  restriccionesVigentes: string[];
   menuSinGuardar: boolean;
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambioMenuAction, EMPTY);
   // AndRefresh, no useFormToast: la acción ya no revalida (revalidar arrastraba la página al inicio en cada
   // clic), así que el refresco lo dispara el hook DESPUÉS del aviso, que es lo que lo hace visible.
   useFormToastAndRefresh(state);
+  // Los motivos de ESTA celda que no repiten ninguna restricción registrada. Se coteja uno por uno: una
+  // celda puede citar dos y solo una de ellas estar en la lista del profesional.
+  const sinRespaldo = c.motivos.filter((m) => !verificarCita(m, restriccionesVigentes));
 
   return (
     <li className="rounded-md border border-border bg-muted/30 p-2">
@@ -2009,13 +2043,37 @@ function CambioMenu({
       </p>
       <p className="pt-0.5 text-sm text-foreground">{c.reemplazo}</p>
       <p className="pt-0.5 text-xs text-muted-foreground">
-        Motivo: {c.motivo}
-        {!citaVerificada ? (
-          // EL CAMBIO QUE PUEDE NO CORRESPONDER. No se bloquea (juzgarlo es clínico), pero el
-          // profesional ve cuál cita una restricción que nadie le pidió atender.
-          <span className="ml-2 text-attention">· no corresponde a ninguna restricción registrada</span>
+        {c.motivos.length === 1 ? "Motivo: " : "Motivos: "}
+        {c.motivos.join(" · ")}
+        {sinRespaldo.length > 0 ? (
+          /* ═══ EL AVISO DICE LO QUE SABE, NO UN VEREDICTO (Santiago, 2026-09-10) ═══
+
+             DECIA "no corresponde a ninguna restricción registrada", y con el caso del smoke delante eso
+             es afirmar de más: el profesional registró "sin gluten y sin lácteos" y el modelo citó "sin
+             lactosa". Lactosa y lácteos NO son la misma restricción (una intolerancia no es una dieta sin
+             lácteos), así que el cotejo no está equivocado: lo que estaba mal es la frase, que convierte
+             "no reconozco estas palabras" en "esto no corresponde a nada".
+
+             Y NO SE PUEDE ARREGLAR COMPARANDO MEJOR. Unir "lactosa" con "lácteo" pide una tabla de
+             sinónimos clínicos, que es contenido clínico y no nos toca inventarlo; hacerlo por prefijo
+             uniría también "gluten" con "glutamato", que sí son cosas distintas.
+
+             POR QUÉ NO SE RETIRA: sigue atrapando lo que existe para atrapar, un motivo que nadie pidió
+             atender ("sin mariscos" sobre un paciente sin esa restricción). Lo que se corrige es el peso:
+             de veredicto en color de alerta a nota que dice a cuál mirar. */
+          <span className="ml-2 text-muted-foreground">
+            · {sinRespaldo.join(" y ")}: no {sinRespaldo.length === 1 ? "repite" : "repiten"} ninguna
+            de tus restricciones registradas
+          </span>
         ) : null}
       </p>
+      {c.alternativas ? (
+        // DOS TEXTOS DISTINTOS PARA LA MISMA CELDA. Aplicar los dos dejaría el último y en silencio, así
+        // que se dice: son alternativas y la elección es del profesional.
+        <p className="pt-0.5 text-xs text-attention">
+          Hay otra propuesta para esta misma casilla: elige una.
+        </p>
+      ) : null}
       {/* CAMBIO POR CAMBIO: una sustitución puede ser buena y la de al lado no. El botón global de abajo
           es un atajo sobre estos, no un reemplazo de ellos. */}
       <form onSubmit={enviarSinReset(formAction)} className="pt-1.5">
@@ -2064,7 +2122,7 @@ function AplicarTodasMenu({
   menuSinGuardar,
 }: {
   evaluationId: string;
-  pendientes: CambioPropuestoView[];
+  pendientes: CeldaPropuesta[];
   menuSinGuardar: boolean;
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambiosMenuAction, EMPTY);
