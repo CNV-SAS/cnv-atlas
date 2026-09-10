@@ -240,11 +240,14 @@ export async function saveMedidasProfesionalAction(
     // TAMBIEN saltaba. Eso descarta la otra hipotesis (que el segundo clic desarmara el guard por el
     // `mousedown`) y deja esta.
     //
-    // POR QUE DOS CICLOS DERROTAN AL GUARD, que es lo que faltaba entender: `preservarScroll` se
-    // DESARMA en cuanto restaura la posicion entera (`quitar()` en `revisar`). Con revalidate + refresh
-    // hay DOS renders que montan segmentos, o sea DOS saltos separados en el tiempo: el guard deshace el
-    // primero, se desarma, y el segundo llega sin nadie mirando. Es justo el sintoma reportado, "como un
-    // segundo despues" del toast.
+    // POR QUE DOS CICLOS DERROTABAN AL GUARD: `preservarScroll` se DESARMABA en cuanto restauraba la
+    // posicion entera. Con revalidate + refresh hay DOS renders que montan segmentos, o sea DOS saltos
+    // separados en el tiempo: el guard deshacia el primero, se desarmaba, y el segundo llegaba sin nadie
+    // mirando. Es justo el sintoma reportado, "como un segundo despues" del toast.
+    //
+    // ESO YA NO ES ASI desde el 2026-09-10: el guard sigue armado mientras la pagina se mueva. Pero esta
+    // accion sigue sin revalidar, y por la razon original del helper: dos ciclos pueden desmontar el
+    // formulario antes de que se vea el toast. Un salto que se deshace sigue siendo un salto evitable.
     //
     // Y ES EL MISMO HALLAZGO DEL PANEL DE TRATAMIENTO (smoke del 2026-08-31), donde el revalidate ya se
     // habia retirado por esto y quedo con candado. Aqui volvio a entrar el 2026-09-08 arreglando otra
