@@ -46,8 +46,37 @@
 // sin "use client" invocando un valor de un modulo cliente). Neutro lo importan los dos lados sin mentir,
 // que es justo lo que ARCHITECTURE pide para un valor que cruza la frontera.
 
-/** Cuanto se vigila el salto. El scroll llega al montar los segmentos: 1-2 s medidos, 3 da margen. */
+// ═══ POR QUE LA VENTANA ES DE SILENCIO Y NO DE RELOJ (smoke Santiago, 2026-09-10) ═══
+//
+// EL SINTOMA: el salto volvia en "generar con IA" y en "guardar cambios" de la subpestaña Nutricionista,
+// y SOLO ahi. Los dos botones YA pasaban por el guard (los tres hooks lo llaman), asi que no era un sitio
+// sin cubrir: era el guard PERDIENDO. Por eso el barrido por sitios no encontraba nada.
+//
+// POR QUE PERDIA, y son DOS movimientos, no uno:
+//   1. Invocar la accion navega y Next scrollea al montar los segmentos. El guard lo deshace.
+//   2. Y DESPUES `useFormToast*AndRefresh` hace `router.refresh()`. Ese refresco NO scrollea (usa
+//      NoScroll), pero el panel de tratamiento se REMONTA por su key: el documento encoge un instante y
+//      el navegador ACOTA la posicion. La pagina se va sola por SEGUNDA vez.
+// El guard se desarmaba al completar la PRIMERA restauracion, asi que para el segundo movimiento ya no
+// quedaba nadie mirando. En los formularios ligeros los dos movimientos caben en el mismo cuadro y no se
+// nota; en el panel pesado hay segundos de por medio, que es justo por que se veia ahi y no en el resto.
+//
+// EL ARREGLO ES DE RAIZ porque vive en el mecanismo unico y no en los dos botones donde se noto: el guard
+// NO se desarma al corregir. Sigue mirando mientras la pagina se siga moviendo, y la ventana se reinicia
+// con cada correccion y con cada cambio de alto del documento (que es la señal de que todavia se esta
+// recomponiendo). Se retira sola cuando la pagina lleva VENTANA_MS quieta, y nunca pasa de TOPE_MS.
+//
+// LO QUE NO CAMBIA, y es lo que hace que alargar la vigilancia sea seguro: el usuario sigue mandando. Una
+// rueda, un dedo, un clic o una tecla de scroll la desarman en el acto, pase el tiempo que pase.
+
+/** Cuanto tiene que llevar QUIETA la pagina para dejar de vigilar. El salto llega 1-2 s medidos. */
 const VENTANA_MS = 3000;
+
+/** Tope absoluto. Sin el, una pagina que cambiara de alto sola dejaria el guard armado indefinidamente. */
+const TOPE_MS = 12000;
+
+/** Cada cuanto se mira el alto del documento. Leer `scrollHeight` fuerza layout: no se hace por cuadro. */
+const SONDEO_MS = 150;
 
 /** Menos de esto no es el salto al inicio, es el ajuste normal de un layout que respira. */
 const MINIMO_PX = 24;
@@ -55,8 +84,9 @@ const MINIMO_PX = 24;
 /**
  * Vigila un salto de scroll no pedido y lo deshace.
  *
- * DEJA DE VIGILAR EN CUANTO RESTAURA LA POSICION ENTERA. Lo unico que puede corregir dos veces es el caso
- * del documento encogido: ahi la primera correccion es provisional y se sigue mirando (ver `revisar`).
+ * VIGILA MIENTRAS LA PAGINA SE MUEVA, no una sola vez: un guardado puede provocar DOS movimientos (la
+ * navegacion de la accion y el remonte del refresco), y desarmarse tras el primero dejaba el segundo sin
+ * deshacer. Ver el bloque de arriba.
  *
  * Se llama al recibir el resultado de la accion (que es cuando sale el toast): en ese momento la pagina
  * todavia esta donde el profesional la dejo, y el salto viene despues.
@@ -70,12 +100,31 @@ export function preservarScroll(): void {
   /** A donde se corrigio la ultima vez, para no reentrar mientras el documento no de para mas. */
   let corregidoA: number | null = null;
 
+  const nacimiento = Date.now();
+  /** El temporizador de la ventana de silencio. Se reprograma, asi que no es constante. */
+  let fin = 0;
+
   const quitar = () => {
     terminado = true;
     window.removeEventListener("scroll", revisar);
     for (const e of CANCELAN) window.removeEventListener(e, cancelar);
     window.removeEventListener("keydown", cancelarPorTecla);
     window.clearTimeout(fin);
+  };
+
+  /**
+   * Reinicia la ventana de silencio. La llaman la correccion y el cambio de alto del documento: las dos
+   * dicen lo mismo, que la pagina todavia se esta recomponiendo y hay que seguir mirando.
+   */
+  const reprogramar = () => {
+    if (terminado) return;
+    const restante = TOPE_MS - (Date.now() - nacimiento);
+    if (restante <= 0) {
+      quitar();
+      return;
+    }
+    window.clearTimeout(fin);
+    fin = window.setTimeout(quitar, Math.min(VENTANA_MS, restante));
   };
 
   // El usuario manda: si se mueve el solo, no se le pelea la pagina. Estos eventos llegan ANTES del
@@ -138,9 +187,16 @@ export function preservarScroll(): void {
     if (corregidoA === destino && Math.abs(window.scrollY - destino) < MINIMO_PX) return;
     corregidoA = destino;
 
-    // SOLO SE DA POR TERMINADO SI SE PUDO RESTAURAR LA POSICION ENTERA, y ese es el arreglo del defecto
-    // del 2026-09-04 (Santiago: "salta y se queda arriba"; con la version que sondeaba cada 100 ms
-    // "saltaba y me bajaba donde estaba").
+    // YA NO SE DESARMA AL CORREGIR (arreglo del 2026-09-10, ver el bloque de la cabecera): tras la
+    // correccion puede venir un SEGUNDO movimiento, el del remonte por key del refresco. Lo que se hace en
+    // su lugar es reiniciar la ventana de silencio, asi que el guard sigue en pie mientras la pagina siga
+    // moviendose y se retira sola cuando se queda quieta.
+    //
+    // EL FRENO DE LA REENTRADA YA NO ES DESARMARSE, es `corregidoA` (arriba) junto con la guarda del
+    // minimo: el eco de nuestro propio `scrollTo` llega con la posicion ya buena y sale por ahi.
+    //
+    // Y ESTO CONVIVE CON EL ARREGLO DEL 2026-09-04 (Santiago: "salta y se queda arriba"; con la version
+    // que sondeaba cada 100 ms "saltaba y me bajaba donde estaba").
     //
     // EL DEFECTO: el panel de tratamiento se REMONTA por su key al guardar. Mientras remonta, el
     // documento encoge un instante y el navegador ACOTA el scroll, o sea que la posicion baja sola sin
@@ -153,8 +209,8 @@ export function preservarScroll(): void {
     // Por eso una correccion ACOTADA es provisional: se aplica (mejor cerca que arriba del todo) pero se
     // sigue vigilando, y cuando el documento recupera su alto se corrige entero. Si nunca lo recupera, la
     // ventana se acaba y queda la acotada, que es lo que ya se queria.
-    if (destino === desde) quitar();
     window.scrollTo({ top: destino, behavior: "instant" as ScrollBehavior });
+    reprogramar();
   }
 
   window.addEventListener("scroll", revisar, { passive: true });
@@ -162,14 +218,26 @@ export function preservarScroll(): void {
   // SIN `once`: una tecla que no mueve la pagina no desarma, asi que hay que seguir escuchando.
   window.addEventListener("keydown", cancelarPorTecla, { passive: true });
 
-  // RESPALDO. El evento `scroll` es lo que corrige a tiempo; esto solo cubre que el navegador lo agrupe o
-  // que el salto llegue sin evento. Se para en cuanto `revisar` corrige o se acaba la ventana.
-  const siguienteCuadro = () => {
+  // RESPALDO, y desde hoy tambien el SENSOR DE QUE LA PAGINA SIGUE RECOMPONIENDOSE. El evento `scroll` es
+  // lo que corrige a tiempo; esto cubre que el navegador lo agrupe o que el salto llegue sin evento, y
+  // ademas vigila el alto del documento: mientras cambie, la ventana se reinicia. Un remonte que encoge y
+  // vuelve a crecer se ve aqui aunque no dispare ningun `scroll`.
+  let altoVisto = document.documentElement.scrollHeight;
+  let ultimoSondeo = 0;
+  const siguienteCuadro = (t: number) => {
     if (terminado) return;
     revisar();
+    if (!terminado && t - ultimoSondeo >= SONDEO_MS) {
+      ultimoSondeo = t;
+      const alto = document.documentElement.scrollHeight;
+      if (alto !== altoVisto) {
+        altoVisto = alto;
+        reprogramar();
+      }
+    }
     if (!terminado) window.requestAnimationFrame(siguienteCuadro);
   };
   window.requestAnimationFrame(siguienteCuadro);
 
-  const fin = window.setTimeout(quitar, VENTANA_MS);
+  reprogramar();
 }

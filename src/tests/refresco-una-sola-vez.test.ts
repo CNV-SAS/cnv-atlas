@@ -17,10 +17,16 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 //
 //   2. Y EL SALTO AL INICIO, que es lo que trajo este candado (smoke de Santiago, 2026-09-09). Invocar
 //      una server action navega con `ScrollBehavior.Default`, que scrollea al montar los segmentos
-//      nuevos; `preservarScroll` lo deshace, pero se DESARMA en cuanto restaura la posicion entera. Con
-//      revalidate + refresh hay DOS renders que montan segmentos, o sea DOS saltos separados en el
-//      tiempo: el guard deshace el primero, se desarma, y el segundo llega sin nadie mirando. El sintoma
-//      es exactamente el reportado, "me hizo scroll hacia arriba como un segundo despues".
+//      nuevos. Con revalidate + refresh hay DOS renders que montan segmentos, o sea DOS saltos separados
+//      en el tiempo, y el sintoma es exactamente el reportado: "me hizo scroll hacia arriba como un
+//      segundo despues".
+//
+//      DESDE EL 2026-09-10 `preservarScroll` YA SOBREVIVE al segundo salto (su ventana se reinicia
+//      mientras la pagina se mueva, en vez de desarmarse al primer arreglo), asi que esta regla dejo de
+//      ser lo unico que separa al profesional del defecto. **Se queda igual, y por su primera razon**:
+//      dos ciclos siguen pudiendo desmontar el formulario antes de que se vea el toast, y un salto que se
+//      deshace sigue siendo un salto que no tenia que ocurrir. Ahora hay dos capas donde habia una, que
+//      es el orden correcto: la regla evita el movimiento, el guard cubre el que no se puede evitar.
 //
 // EL DATO QUE SEPARO LAS HIPOTESIS: saliendo del campo con TAB, sin tocar el raton, TAMBIEN saltaba. Eso
 // descarta que el `mousedown` del guardado al salir del campo desarmara el guard, y deja el doble ciclo.
@@ -125,10 +131,10 @@ describe("un guardado refresca UNA vez: o la accion revalida, o la pantalla refr
     }
     expect(
       culpables,
-      "Estas acciones revalidan Y su pantalla refresca. Los dos ciclos montan segmentos dos veces, y " +
-        "`preservarScroll` solo deshace el primero: la pagina salta al inicio un segundo despues del " +
-        "toast. Ademas el formulario puede desmontarse antes de que se vea el toast. Deja el refresco en " +
-        "la pantalla y quita el `revalidatePath` de la accion.",
+      "Estas acciones revalidan Y su pantalla refresca. Los dos ciclos montan segmentos dos veces, o " +
+        "sea que la pagina salta al inicio dos veces. Y el formulario puede desmontarse antes de que se " +
+        "vea el toast, que es la razon original del helper. Deja el refresco en la pantalla y quita el " +
+        "`revalidatePath` de la accion.",
     ).toEqual([]);
   });
 

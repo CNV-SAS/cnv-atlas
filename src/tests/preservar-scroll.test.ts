@@ -38,7 +38,17 @@ describe("el mecanismo unico lo aplica, y en los TRES hooks", () => {
 
 describe("deshace el salto, pero solo el que nadie pidio", () => {
   const entorno = (scrollY: number, alto = 4000) => {
-    const w = {
+    const w: {
+      scrollY: number;
+      innerHeight: number;
+      location: { pathname: string };
+      addEventListener: ReturnType<typeof vi.fn>;
+      removeEventListener: ReturnType<typeof vi.fn>;
+      requestAnimationFrame: ReturnType<typeof vi.fn>;
+      setTimeout: ReturnType<typeof vi.fn>;
+      clearTimeout: ReturnType<typeof vi.fn>;
+      scrollTo: ReturnType<typeof vi.fn>;
+    } = {
       scrollY,
       innerHeight: 800,
       location: { pathname: "/ani-bis-e/e1" },
@@ -47,7 +57,13 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
       requestAnimationFrame: vi.fn(),
       setTimeout: vi.fn(() => 2),
       clearTimeout: vi.fn(),
-      scrollTo: vi.fn(),
+      // `scrollTo` MUEVE LA PAGINA, como en un navegador de verdad. Con un espia mudo, `window.scrollY`
+      // se quedaba donde estaba y el freno de reentrada del corrector (que compara la posicion actual
+      // con la ultima corregida) no podia actuar: el entorno no reproducia la unica cosa que el
+      // corrector observa. Se arregla el ENTORNO, no la asercion.
+      scrollTo: vi.fn(({ top }: { top: number }) => {
+        w.scrollY = top;
+      }),
     };
     vi.stubGlobal("window", w);
     vi.stubGlobal("document", { documentElement: { scrollHeight: alto } });
@@ -147,6 +163,54 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     );
   });
 
+  it("EL SEGUNDO MOVIMIENTO TAMBIÉN SE DESHACE: un guardado mueve la página dos veces", () => {
+    // EL DEFECTO DEL SMOKE DEL 2026-09-10 (Santiago): el salto volvía en "generar con IA" y en "guardar
+    // cambios" de la subpestaña Nutricionista, y solo ahí. Los dos botones YA pasaban por el guard, así
+    // que no era un sitio sin cubrir: era el guard perdiendo.
+    //
+    // UN GUARDADO MUEVE LA PÁGINA DOS VECES. Primero la navegación de la server action (Next scrollea al
+    // montar los segmentos). Y después `router.refresh()`, que no scrollea pero remonta el panel por su
+    // key: el documento encoge un instante y el navegador acota la posición. El guard se desarmaba al
+    // completar la PRIMERA restauración, así que el segundo movimiento quedaba sin deshacer.
+    //
+    // En los formularios ligeros los dos caben en el mismo cuadro y no se nota. En el panel pesado hay
+    // segundos de por medio, que es por qué se veía ahí y en ningún otro sitio.
+    const w = entorno(1200, 4000);
+    preservarScroll();
+
+    // 1) La navegación de la acción: salta al inicio. El guard lo deshace.
+    w.scrollY = 0;
+    tick(w);
+    expect(w.scrollTo).toHaveBeenLastCalledWith({ top: 1200, behavior: "instant" });
+
+    // 2) El remonte del refresco, un rato después: el documento encoge y la posición se va sola.
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 1000 } });
+    w.scrollY = 200;
+    tick(w);
+    vi.stubGlobal("document", { documentElement: { scrollHeight: 4000 } });
+    tick(w);
+
+    const ultima = w.scrollTo.mock.calls.at(-1)?.[0] as { top: number } | undefined;
+    expect(
+      ultima?.top,
+      "el guard se desarmó tras el primer movimiento y el segundo quedó sin deshacer",
+    ).toBe(1200);
+  });
+
+  it("y aun así se retira sola: la ventana de silencio se reinicia, no se elimina", () => {
+    // CONTROL de lo de arriba. Sin esto, "no desarmarse nunca" también pasaría verde, y un guard que se
+    // queda armado indefinidamente le pelea la página al profesional cada vez que la mueve algo.
+    const w = entorno(1200, 4000);
+    preservarScroll();
+    const programado = w.setTimeout.mock.calls.at(-1);
+    expect(programado?.[1], "la ventana dejó de acotarse").toBeLessThanOrEqual(3000);
+    // Y cuando vence, deja de escuchar: es el mismo `quitar` de siempre.
+    (programado?.[0] as () => void)();
+    w.scrollY = 0;
+    tick(w);
+    expect(w.scrollTo, "siguió corrigiendo con la ventana vencida").not.toHaveBeenCalled();
+  });
+
   it("y el usuario manda: si se movió él, se cancela", () => {
     const w = entorno(1200);
     preservarScroll();
@@ -193,7 +257,17 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
   // despacha en el mismo ciclo de renderizado, ANTES de pintar: corrigiendo ahí, el navegador no llega a
   // pintar la posición equivocada. Sondear garantizaba al menos un fotograma malo.
   const entorno = () => {
-    const w = {
+    const w: {
+      scrollY: number;
+      innerHeight: number;
+      location: { pathname: string };
+      addEventListener: ReturnType<typeof vi.fn>;
+      removeEventListener: ReturnType<typeof vi.fn>;
+      requestAnimationFrame: ReturnType<typeof vi.fn>;
+      setTimeout: ReturnType<typeof vi.fn>;
+      clearTimeout: ReturnType<typeof vi.fn>;
+      scrollTo: ReturnType<typeof vi.fn>;
+    } = {
       scrollY: 900,
       innerHeight: 800,
       location: { pathname: "/ani-bis-e/e1" },
@@ -202,7 +276,10 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
       requestAnimationFrame: vi.fn(),
       setTimeout: vi.fn(() => 2),
       clearTimeout: vi.fn(),
-      scrollTo: vi.fn(),
+      // Igual que en el otro entorno: mover de verdad es lo que deja probar el freno de reentrada.
+      scrollTo: vi.fn(({ top }: { top: number }) => {
+        w.scrollY = top;
+      }),
     };
     vi.stubGlobal("window", w);
     vi.stubGlobal("document", { documentElement: { scrollHeight: 4000 } });
@@ -225,7 +302,9 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
 
   it("no se reentra con su propio scroll: corrige UNA vez", () => {
     // `scrollTo` dispara otro evento `scroll`, y sin freno se volvería a evaluar con la posición ya buena.
-    // Cuando la restauración es ENTERA el freno sigue siendo desmontarse antes de corregir.
+    // DESDE EL 2026-09-10 el freno NO es desmontarse (el corrector sigue armado a propósito, para el
+    // segundo movimiento): es que el eco llega con la página ya en su sitio y sale por la guarda del
+    // mínimo. Por eso el entorno tiene que mover de verdad la página al hacer `scrollTo`.
     const w = entorno();
     preservarScroll();
     const revisar = w.addEventListener.mock.calls.find((c) => c[0] === "scroll")?.[1] as () => void;
