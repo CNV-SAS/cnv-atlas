@@ -47,8 +47,11 @@ export const tabla = "w-full border-collapse text-sm";
 /** La fila del encabezado de columnas: sin fondo, solo su linea debajo. */
 export const theadTr = "border-b border-border text-left";
 
-/** Celda de encabezado de columna. En NEGRITA y un punto mas grande: es lo que la separa del dato. */
-export const th = "px-3 py-2 text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground";
+/**
+ * Celda de encabezado de columna. En NEGRITA, un punto mas grande y en tinta NORMAL, no gris (Santiago,
+ * 2026-09-10): sin fondo que lo sostenga, el gris lo dejaba mas apagado que los datos que rotula.
+ */
+export const th = "px-3 py-2 text-[0.8125rem] font-bold uppercase tracking-wide text-foreground";
 
 /** Encabezado de una columna numerica: mismo estilo, alineado con su columna. */
 export const thNum = `${th} text-right`;

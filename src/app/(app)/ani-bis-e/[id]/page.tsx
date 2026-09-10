@@ -1104,7 +1104,9 @@ export default async function ResultadosEvaluacionPage({
                         sigla: i.nombre ? i.codigo : null,
                         valor: i.valor,
                         referencia: i.referencia,
+                        delta: i.delta,
                         clasificacion: i.clasificacion,
+                        sev: i.sev,
                       })),
                     }}
                   />

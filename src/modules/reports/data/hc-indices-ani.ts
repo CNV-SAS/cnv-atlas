@@ -1,4 +1,5 @@
-import { decimalesDe } from "@/modules/diagnoses/data/indicator-ranges";
+import { indicatorRange, decimalesDe } from "@/modules/diagnoses/data/indicator-ranges";
+import type { EngineIndicators } from "@/clinical-engine/types";
 
 // Indices ANI-BIS-E para la tabla de la historia clinica (porte 2026-08-24). Modulo NEUTRO y PURO.
 //
@@ -71,6 +72,16 @@ export type IndiceAniResuelto = {
   valor: string;
   clasificacion: string;
   sev: number;
+  /**
+   * La Δ contra el corte, de `indicatorRange`: la MISMA funcion que la calcula en la tabla de indices del
+   * Diagnostico (Santiago, 2026-09-10).
+   *
+   * ANTES SALIA VACIA, y no era un olvido: el bloque ANI-BIS-E de su HC no tiene columna de Δ (sus filas
+   * son idx/ref/val/clf). Mientras vivio en una tabla aparte eso era coherente. Al entrar DENTRO de la
+   * tabla de Wang, que si la tiene, una columna en blanco se lee como dato que falta y no como columna que
+   * ese bloque no usa. Se calcula con la misma fuente que la pantalla de trabajo, no con una segunda.
+   */
+  delta: string;
 };
 
 /**
@@ -83,6 +94,8 @@ export function indicesAniAlterados(
   clasificaciones: Record<string, { label?: string | null } | null | undefined>,
   severidades: Record<string, number | null | undefined>,
   sexoM: boolean,
+  /** Los indicadores del snapshot, para la Δ. Sin ellos la columna queda en raya, como estaba. */
+  indicadores?: EngineIndicators | null,
 ): IndiceAniResuelto[] {
   const out: IndiceAniResuelto[] = [];
   for (const fila of INDICES_ANI) {
@@ -99,6 +112,10 @@ export function indicesAniAlterados(
       valor: fila.formato(v),
       clasificacion: label,
       sev,
+      // LA MISMA FUENTE QUE EL DIAGNOSTICO. El EB no la tiene (su fila toma el veredicto del IAE y su
+      // referencia es la edad cronologica), asi que ahi la raya es correcta.
+      delta:
+        (indicadores ? indicatorRange(fila.codigo, indicadores, sexoM)?.delta : null) ?? "—",
     });
   }
   return out;

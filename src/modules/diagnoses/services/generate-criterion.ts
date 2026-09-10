@@ -1,5 +1,6 @@
 import "server-only";
 
+import { ColaDelProveedorError } from "@/lib/ai/reintento-tope";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { isEngineOutput } from "@/clinical-engine";
@@ -129,10 +130,17 @@ export async function generateCriterion(
       latencyMs: null,
       ...actor,
     });
+    // UNA COLA NO ES UN FALLO DE CONFIGURACION, y decirla asi manda a mirar donde no es (Santiago,
+    // 2026-09-10: "El proveedor configurado (groq) fallo", y a la segunda funciono). Ver
+    // `ColaDelProveedorError`.
     const message =
-      config.source === "db"
-        ? `El proveedor de IA configurado (${config.provider}) fallo al generar el borrador. Avisa al administrador.`
-        : "No se pudo generar el borrador. Escribe tu criterio a mano.";
+      e instanceof ColaDelProveedorError
+        ? `El proveedor de IA está en cola por límite de uso${
+            e.segundos != null ? ` (pide ${Math.ceil(e.segundos)} s)` : ""
+          }. Vuelve a intentarlo en unos segundos; no hay nada que configurar.`
+        : config.source === "db"
+          ? `El proveedor de IA configurado (${config.provider}) fallo al generar el borrador. Avisa al administrador.`
+          : "No se pudo generar el borrador. Escribe tu criterio a mano.";
     return err(appError("internal", message));
   }
 }

@@ -75,7 +75,14 @@ export type FilaBloqueFinal = {
   sigla?: string | null;
   valor: string;
   referencia: string;
+  delta: string;
   clasificacion: string;
+  /**
+   * Severidad de SU clasificacion (0 optimo .. 3 critico). Sin ella el veredicto salia en un chip gris
+   * mientras los de las filas de al lado iban en color, en la misma tabla y sobre el mismo paciente
+   * (Santiago, 2026-09-10). Un veredicto sin color no es mas neutro: es uno que parece no clasificado.
+   */
+  sev: number;
 };
 
 // Semaforo de 4 niveles (verde/ambar/naranja/rojo), igual que los badges del DFI. IMPORTANTE: SEV_CLS y no
@@ -404,7 +411,7 @@ export function CompositionSection({
 
                   Y ADEMAS LA ACERCA A SU VECINA: la tabla de indicadores ANI-BIS-E, que vive en esta misma
                   subpestaña, ya tenia la cabecera sin fondo. Eran las dos las que no se parecian. */}
-              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-foreground">
                 <th className="py-2 pl-3 pr-4 font-medium">Variable</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
@@ -468,8 +475,17 @@ export function CompositionSection({
                           la columna no se ensancha. Sin nombre va la sigla sola: no se inventa uno para un
                           documento clinico. */}
                       <td className="py-1.5 pl-3 pr-4 text-foreground">
+                        {/* EL MISMO RAYO que en la tabla de indices del Diagnostico, y por el mismo motivo:
+                            los indices ANI salen enteros de la medicion bioelectrica. Aqui, ademas, el
+                            bloque convive con filas que NO lo son, asi que el icono si distingue. Mismo
+                            tamaño, color y `aria-label` que arriba: dos iconos iguales que se anuncian
+                            distinto son dos cosas para quien usa lector de pantalla. */}
+                        <Zap
+                          className="mr-1.5 inline-block size-3.5 shrink-0 -translate-y-px text-primary"
+                          aria-label="Parámetro bioeléctrico"
+                        />
                         {f.sigla ? (
-                          <span className="flex flex-col">
+                          <span className="inline-flex flex-col align-middle">
                             <span className="font-medium text-foreground">{f.etiqueta}</span>
                             <span className="text-[11px] text-muted-foreground">{f.sigla}</span>
                           </span>
@@ -479,12 +495,13 @@ export function CompositionSection({
                       </td>
                       <td className="py-1.5 pr-4 text-right tabular-nums text-foreground">{f.valor}</td>
                       <td className="py-1.5 pr-4 text-right text-muted-foreground">{f.referencia}</td>
-                      <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
+                      <td className="py-1.5 pr-4 text-right tabular-nums text-muted-foreground">
+                        {f.delta}
+                      </td>
                       {showDiagnosis ? (
                         <td className="py-1.5 pr-3">
-                          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
-                            {f.clasificacion}
-                          </span>
+                          {/* EL MISMO SEMAFORO que el resto de la tabla (`SEV_CLS`), no un chip gris. */}
+                          <DxBadge dx={{ label: f.clasificacion, sev: f.sev }} />
                         </td>
                       ) : null}
                     </tr>

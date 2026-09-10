@@ -1,4 +1,5 @@
 import { computeProtocoloEfectivo, type ProtocoloSnapshot } from "@/clinical-engine";
+import type { EngineIndicators } from "@/clinical-engine/types";
 import { nivelFaLabel } from "@/modules/treatment/data/treatment-view-types";
 import { indicatorSeverities } from "@/clinical-engine/severity";
 import { conClaseIcaBis } from "@/modules/diagnoses/data/indicator-ranges";
@@ -156,6 +157,8 @@ export function componerHistoriaClinica(e: HcEntradas): HcCompuesta {
         conClaseIcaBis(e.snapshot.classifications as Record<string, { label?: string | null } | null>),
         severidades,
         e.sexoM,
+        // El snapshot los trae con su tipo laxo (viene de un jsonb); `indicatorRange` los lee por clave.
+        e.snapshot.indicators as unknown as EngineIndicators,
       )
     : [];
 

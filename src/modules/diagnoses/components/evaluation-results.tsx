@@ -331,7 +331,7 @@ export function EvaluationResults({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-foreground">
                 {/* MISMO PADDING QUE SU VECINA (Santiago, 2026-09-10). Esta tabla se quedo fuera del
                     barrido del dia anterior por lo mismo que la de Wang: escribe sus clases a mano y nunca
                     adopto `components/shared/tabla.tsx`. La cabecera ya iba sin fondo, asi que de la
