@@ -50,6 +50,25 @@ const SIN_AUTORIZACION: AccionPendiente = {
 };
 
 /**
+ * EL PACIENTE QUE NO TIENE NINGUNA EVALUACION.
+ *
+ * ═══ EL HUECO QUE ESTO CIERRA (2026-09-10) ═══
+ *
+ * La primera version derivaba la accion de las evaluaciones, asi que un paciente registrado y nunca
+ * evaluado salia con la celda VACIA: la unica fila de la lista que de verdad no tiene nada empezado se
+ * leia como si estuviera al dia. Es el caso mas facil de perder, porque no aparece en ninguna cola: no
+ * tiene evaluacion que este parada en ningun escalon.
+ *
+ * ES EL ESCALON CERO de la secuencia, y por eso va con orden 1 (detras de la autorizacion, que sin ella
+ * no se puede ni empezar).
+ */
+const SIN_EVALUACIONES: AccionPendiente = {
+  texto: "Iniciar la primera evaluación",
+  de: "profesional",
+  orden: 1,
+};
+
+/**
  * Que le falta a UNA evaluacion. `null` = nada (esta cerrada o al dia).
  *
  * `awaiting_survey` y `abandoned` NO son pasos del profesional: el primero espera al paciente y el
@@ -61,15 +80,15 @@ export function accionDeEvaluacion(e: EvaluacionPendiente): AccionPendiente | nu
   if (e.status === "awaiting_survey") {
     // NO ES UNA ACCION SUYA y por eso lo dice: el paciente firmo y todavia no respondio. Escribir aqui
     // "Responder encuesta" en imperativo le atribuiria al profesional un trabajo que no es suyo.
-    return { texto: "Esperando al paciente", de: "paciente", orden: 1 };
+    return { texto: "Esperando al paciente", de: "paciente", orden: 2 };
   }
-  if (!e.tieneBis) return { texto: "Montar BIS", de: "profesional", orden: 2 };
-  if (!e.tieneDiagnostico) return { texto: "Generar diagnóstico", de: "profesional", orden: 3 };
+  if (!e.tieneBis) return { texto: "Montar BIS", de: "profesional", orden: 3 };
+  if (!e.tieneDiagnostico) return { texto: "Generar diagnóstico", de: "profesional", orden: 4 };
   if (e.reporte == null || e.reporte === "draft") {
-    return { texto: "Aprobar y enviar el reporte", de: "profesional", orden: 4 };
+    return { texto: "Aprobar y enviar el reporte", de: "profesional", orden: 5 };
   }
   // Con el reporte enviado, lo unico que queda es cerrar la consulta.
-  return { texto: "Cerrar la consulta", de: "profesional", orden: 5 };
+  return { texto: "Cerrar la consulta", de: "profesional", orden: 6 };
 }
 
 export type PendienteDelPaciente = {
@@ -94,6 +113,15 @@ export function pendienteDelPaciente(
     .map(accionDeEvaluacion)
     .filter((a): a is AccionPendiente => a != null)
     .sort((a, b) => a.orden - b.orden);
+
+  // NI UNA SOLA EVALUACION: no es que no haya nada pendiente, es que no ha empezado. Ver
+  // `SIN_EVALUACIONES`. Se mira sobre la lista ENTERA, no sobre las acciones: un paciente cuya unica
+  // evaluacion se abandono tampoco ha empezado nada, y ahi la lista de acciones tambien queda vacia.
+  if (evaluaciones.length === 0) {
+    return sinAutorizacionVigente
+      ? { principal: SIN_AUTORIZACION, otras: 1 }
+      : { principal: SIN_EVALUACIONES, otras: 0 };
+  }
 
   // SIN AUTORIZACION VIGENTE MANDA SOBRE TODO, pero solo si hay algo que hacer con este paciente: a un
   // paciente cerrado y al dia no hay que renovarle nada para seguir, porque no hay nada que seguir.

@@ -97,7 +97,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // SI cambia (`/evaluaciones` -> `/ani-bis-e`), porque la direccion vieja describia lo mismo que la
     // etiqueta vieja. Los enlaces guardados los cubre la redireccion permanente de `next.config.ts`, y
     // ninguno de los que se comparten con pacientes pasaba por aqui (esos van a `/encuesta/...`).
-    label: "Modelo ANI-BIS-E",
+    // "Modelo ANI-BIS-E" se leia como "la lista de evaluaciones", que es justo lo que hoy es /pacientes
+    // con su columna de pendientes. Esta pantalla ya no lista evaluaciones: es lo que se hace POR LOTE
+    // (importar el BIS, generar diagnosticos, las encuestas sin responder). El rotulo lo dice.
+    label: "Bandeja de trabajo",
     href: "/ani-bis-e",
     icon: "evaluaciones",
     roles: ["admin", "professional"],

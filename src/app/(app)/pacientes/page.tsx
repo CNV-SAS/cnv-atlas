@@ -1,4 +1,4 @@
-import { ClipboardList, UserRoundX, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -36,8 +36,6 @@ export default async function PacientesPage() {
   // LAS TRES METRICAS SALEN DEL MISMO ARREGLO QUE YA SE TRAE: CERO CONSULTAS NUEVAS. El reader ya devuelve
   // el conteo de evaluaciones y el estado de autorizaciones por paciente, asi que esto es aritmetica sobre
   // datos que la pagina ya tenia en memoria.
-  const totalEvaluaciones = pacientes.reduce((n, p) => n + p.evaluationCount, 0);
-  const sinEvaluaciones = pacientes.filter((p) => p.evaluationCount === 0).length;
 
   return (
     // ANCHO PROPIO DE ESTA PANTALLA, menor que el de la pagina. El techo global subio a 1600px por las
@@ -84,26 +82,17 @@ export default async function PacientesPage() {
           valor={pacientes.length}
           detalle={esAdmin ? "Todos los del sistema" : "Asignados a ti"}
         />
-        {/* AQUI SI HAY ALGO QUE EL NUMERO NO DICE: el PERIODO. Una cifra en una tarjeta de cabecera se lee
-            por defecto como "este mes", y esta es acumulada desde siempre. Sustituye a la nota anterior
-            ("sin contar las reemplazadas"), que hablaba de un concepto interno del flujo de correccion:
-            quien no lo conozca quedaba peor que sin la nota. */}
-        <TarjetaMetrica
-          icono={ClipboardList}
-          rotulo="Evaluaciones"
-          valor={totalEvaluaciones}
-          detalle="Acumuladas desde el inicio"
-        />
-        {/* LA TERCERA ES ACCIONABLE, que era el criterio: nombra una lista de personas a las que hay que
-            hacerles algo. Un paciente registrado sin ninguna evaluacion es un hueco operativo real, y no
-            necesita ningun umbral clinico para definirse. Se apaga sola cuando esta en 0. */}
-        <TarjetaMetrica
-          icono={UserRoundX}
-          rotulo="Sin evaluaciones"
-          valor={sinEvaluaciones}
-          detalle="Registrados pero nunca evaluados"
-          acento
-        />
+        {/* ═══ SE RETIRAN DOS DE LAS TRES, POR EL MISMO CORTE DEL TABLERO (2026-09-10) ═══
+
+            · "EVALUACIONES ACUMULADAS DESDE EL INICIO": un contador que solo sube. Nadie actua sobre el, y
+              gasta un tercio de la cabecera de la pantalla que mas se usa.
+            · "SIN EVALUACIONES": era la accionable de las tres, y por eso se retira AHORA y no antes: la
+              columna de pendientes ya lo dice paciente por paciente, con su nombre delante y con el
+              destino a un clic. Una cifra que nombra una lista es peor que la lista, cuando la lista ya
+              esta ahi abajo.
+
+            SE QUEDA "Pacientes" porque no es lo mismo: no nombra un trabajo, dice el TAMAÑO de lo que
+            estas mirando, y eso es contexto de la lista que tiene debajo. */}
       </section>
 
       {/* Filas de dos lineas con buscador, no tabla: esta lista se BUSCA (BRAND, "si busca, densidad; si
