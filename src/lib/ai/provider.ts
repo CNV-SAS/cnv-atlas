@@ -17,7 +17,16 @@ export type AiCompletion = {
   provider: AiProvider;
   model: string;
   latencyMs: number;
+  /**
+   * El proveedor CORTO la respuesta por el tope de salida (`finish_reason: "length"` en Groq,
+   * `MAX_TOKENS` en Gemini). Distinguirlo importa: un texto cortado no es un texto MALO, y decir
+   * "respuesta invalida" sobre una respuesta que venia bien y no cupo manda a buscar donde no es.
+   */
+  truncado: boolean;
 };
+
+/** Lo que devuelve una llamada al proveedor: el texto y si vino cortado. */
+type RespuestaProveedor = { text: string; truncado: boolean };
 
 export class AiError extends Error {
   constructor(message: string) {
@@ -32,10 +41,40 @@ export class AiError extends Error {
 // picos. Nota: en Vercel, el tope de duracion de la funcion serverless tambien aplica.
 const AI_TIMEOUT_MS = 45_000;
 
-type GroqResponse = { choices?: { message?: { content?: string } }[] };
-type GeminiResponse = { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+type GroqResponse = {
+  choices?: { message?: { content?: string }; finish_reason?: string }[];
+};
+type GeminiResponse = {
+  candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+};
 
-async function callGroq(messages: AiMessage[], model: string): Promise<string> {
+/**
+ * Tope de salida por defecto. Lo puede subir quien llama, por llamada.
+ *
+ * ═══ POR QUE ES POR LLAMADA Y NO UNA CONSTANTE COMPARTIDA (smoke Santiago, 2026-09-10) ═══
+ *
+ * EL DEFECTO: con DOS restricciones registradas, el menu fallaba con "Respuesta invalida". El JSON del
+ * modelo se veia bien formado en pantalla, y lo estaba: **llegaba CORTADO**. Verificado contra la fila de
+ * produccion, no razonado: el texto termina a media cadena ("...\"mot"), 29 llaves abiertas contra 27
+ * cerradas, y `JSON.parse` falla con "Unterminated string at position 4037".
+ *
+ * Y LA SERIE LO CONFIRMA: una restriccion daba 8 entradas y 1.371 caracteres; una compuesta, 14 y 3.683;
+ * dos restricciones, 28-30 entradas y ~4.000-4.900. El trabajo crece con las restricciones y el tope no.
+ *
+ * NO ES DETERMINISTA, y por eso pasaba desapercibido: los modelos de razonamiento gastan del MISMO
+ * presupuesto en pensar antes de escribir, asi que dos llamadas del mismo tamaño caben o no segun cuanto
+ * razone cada una. Una generacion de 4.949 caracteres paso y otra de 4.037 se corto.
+ *
+ * Un tope unico para todas las llamadas obliga a elegir entre el borrador de criterio (parrafos) y el
+ * menu (una semana entera de sustituciones), que no tienen nada que ver. Se acota por llamada.
+ */
+const MAX_TOKENS_POR_DEFECTO = 4096;
+
+async function callGroq(
+  messages: AiMessage[],
+  model: string,
+  maxTokens: number,
+): Promise<RespuestaProveedor> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new AiError("GROQ_API_KEY ausente");
   // Los modelos de razonamiento de Groq (familia gpt-oss) gastan el presupuesto de salida en
@@ -53,7 +92,7 @@ async function callGroq(messages: AiMessage[], model: string): Promise<string> {
         model,
         messages,
         temperature: 0.4,
-        max_completion_tokens: 4096,
+        max_completion_tokens: maxTokens,
         ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
       },
       timeoutMs: AI_TIMEOUT_MS,
@@ -64,10 +103,14 @@ async function callGroq(messages: AiMessage[], model: string): Promise<string> {
   const res = await conReintentoAnteTope(pedir);
   const text = res.choices?.[0]?.message?.content;
   if (!text) throw new AiError("Groq: respuesta vacía");
-  return text;
+  return { text, truncado: res.choices?.[0]?.finish_reason === "length" };
 }
 
-async function callGemini(messages: AiMessage[], model: string): Promise<string> {
+async function callGemini(
+  messages: AiMessage[],
+  model: string,
+  maxTokens: number,
+): Promise<RespuestaProveedor> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AiError("GEMINI_API_KEY ausente");
   // Gemini separa la instruccion de sistema del turno de usuario.
@@ -89,18 +132,25 @@ async function callGemini(messages: AiMessage[], model: string): Promise<string>
         // Desactiva el "thinking" de Gemini 2.5 (thinkingBudget:0): para un menu no aporta y
         // dispara la latencia (~9s con thinking vs ~2s sin el; picos >20s). Los modelos sin
         // thinking (ej. 2.0-flash) aceptan el formato y lo ignoran, asi que es seguro enviarlo.
-        generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: maxTokens },
       },
       timeoutMs: AI_TIMEOUT_MS,
     },
   );
   const text = res.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new AiError("Gemini: respuesta vacía");
-  return text;
+  return { text, truncado: res.candidates?.[0]?.finishReason === "MAX_TOKENS" };
 }
 
-function callProvider(provider: AiProvider, messages: AiMessage[], model: string): Promise<string> {
-  return provider === "groq" ? callGroq(messages, model) : callGemini(messages, model);
+function callProvider(
+  provider: AiProvider,
+  messages: AiMessage[],
+  model: string,
+  maxTokens: number,
+): Promise<RespuestaProveedor> {
+  return provider === "groq"
+    ? callGroq(messages, model, maxTokens)
+    : callGemini(messages, model, maxTokens);
 }
 
 export type AiConfig = {
@@ -117,18 +167,31 @@ export type AiConfig = {
 export async function generateText(
   messages: AiMessage[],
   config: AiConfig,
+  /** Tope de salida de ESTA llamada. Ver `MAX_TOKENS_POR_DEFECTO`. */
+  opciones?: { maxTokens?: number },
 ): Promise<AiCompletion> {
   const started = Date.now();
+  const maxTokens = opciones?.maxTokens ?? MAX_TOKENS_POR_DEFECTO;
   try {
-    const text = await callProvider(config.provider, messages, config.model);
-    return { text, provider: config.provider, model: config.model, latencyMs: Date.now() - started };
+    const r = await callProvider(config.provider, messages, config.model, maxTokens);
+    return {
+      ...r,
+      provider: config.provider,
+      model: config.model,
+      latencyMs: Date.now() - started,
+    };
   } catch (primaryError) {
     if (!config.fallback) {
       throw primaryError instanceof AiError ? primaryError : new AiError(String(primaryError));
     }
-    const text = await callProvider(config.fallback.provider, messages, config.fallback.model);
+    const r = await callProvider(
+      config.fallback.provider,
+      messages,
+      config.fallback.model,
+      maxTokens,
+    );
     return {
-      text,
+      ...r,
       provider: config.fallback.provider,
       model: config.fallback.model,
       latencyMs: Date.now() - started,

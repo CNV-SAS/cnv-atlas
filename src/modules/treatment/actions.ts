@@ -366,6 +366,17 @@ export async function generateMenuAction(
         "Este paciente no tiene restricciones registradas, así que no hay nada que adaptar: el menú del ciclo es el que aplica.",
     };
   }
+  // LA RESPUESTA SE CORTO, que no es lo mismo que vino mal. Se dice distinto y se dice qué hacer:
+  // reintentar sirve (el tamaño depende de cuánto razone el modelo en esa llamada), y quitar una
+  // restricción también, porque el trabajo crece con ellas.
+  if (result.value.status === "truncado") {
+    return {
+      error: null,
+      success: null,
+      warning:
+        "La propuesta llegó incompleta: el modelo se quedó sin espacio antes de terminar la semana. Vuelve a intentarlo. La grilla se queda con el menú del ciclo, que sigue siendo válido.",
+    };
+  }
   if (result.value.status !== "success") {
     return {
       error: null,
