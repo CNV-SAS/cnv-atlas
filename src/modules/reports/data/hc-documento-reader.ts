@@ -11,6 +11,7 @@ import { CONSENT_TYPE_LABELS } from "@/modules/consent/labels";
 import { composicionClasificada } from "@/modules/diagnoses/data/composition-clasificada";
 import { getCompositionForEvaluation } from "@/modules/diagnoses/data/composition-reader";
 import { listReferralsForTreatment } from "@/modules/referrals/data/referrals-reader";
+import { listEmisiones } from "@/modules/treatment/data/emisiones-reader";
 import { getTreatmentProtocol } from "@/modules/treatment/data/treatment-reader";
 import {
   getAsesoriaMacros,
@@ -20,6 +21,7 @@ import {
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
 
+import { ajustesDelDocumento } from "./ajustes-del-documento";
 import { componerHistoriaClinica, remisionesExigidas } from "./hc-composicion";
 import { resolverAntecedentes } from "./hc-antecedentes-map";
 import { getHcHeaderForEvaluation } from "./hc-header-reader";
@@ -39,7 +41,7 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   const header = await getHcHeaderForEvaluation(evaluationId);
   if (!header) return null;
 
-  const [composition, protocol, answers, results] = await Promise.all([
+  const [composition, protocol, answers, results, emisiones] = await Promise.all([
     getCompositionForEvaluation(evaluationId),
     getTreatmentProtocol(evaluationId),
     getSurveyAnswersForEvaluation(evaluationId),
@@ -49,6 +51,10 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     // clinica sin el diagnostico funcional ni la composicion corporal no es la historia clinica: es un
     // resumen, y es exactamente lo que el legal dijo que no se puede entregar.
     getEvaluationResults(evaluationId),
+    // QUE SALIO HACIA EL PACIENTE. Este documento tiene que decir lo que se ENTREGO, no lo que los
+    // ajustes digan hoy: sin esto, una historia clinica de agosto cambia cada vez que alguien mueve una
+    // cifra. Ver `ajustes-del-documento`.
+    listEmisiones(evaluationId),
   ]);
 
   const preguntas = (answers ?? []).flatMap((d) => d.questions);
@@ -74,20 +80,23 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
   // y el PAL que gobiernan. CON `protKgVigente`, como la pagina y como el plan del paciente: sin el, en un
   // snapshot anterior al sellado la proteina cae a `protMin` y la cadena de la historia clinica no es la
   // que el profesional aprobo.
+  // LAS CIFRAS QUE GOBIERNAN ESTE DOCUMENTO: las SELLADAS en la ultima emision si esta consulta entrego
+  // algo, y las vivas si no entrego nada (y entonces el documento lo declara, ver `prescripcionSinEmitir`).
+  // La eleccion vive en `ajustes-del-documento` y no aqui, porque la historia clinica se compone en DOS
+  // sitios (la pantalla y este lector) y dos elecciones separadas es como el papel y la pantalla acaban
+  // diciendo cosas distintas del mismo acto clinico.
+  const documento = ajustesDelDocumento(emisiones[0] ?? null, {
+    geb: protocol?.adjGeb ?? null,
+    pal: protocol?.adjPal ?? null,
+    kcalObj: protocol?.adjKcalObj ?? null,
+    protGkg: protocol?.adjProtGkg ?? null,
+    fatPct: protocol?.adjFatPct ?? null,
+    deficit: protocol?.adjDeficit ?? null,
+    pesoMeta: protocol?.pesoMetaFijado ?? null,
+  });
+
   const efectivoHc = snapshot
-    ? computeProtocoloEfectivo(
-        snapshot,
-        {
-          geb: protocol?.adjGeb ?? null,
-          pal: protocol?.adjPal ?? null,
-          kcalObj: protocol?.adjKcalObj ?? null,
-          protGkg: protocol?.adjProtGkg ?? null,
-          fatPct: protocol?.adjFatPct ?? null,
-          deficit: protocol?.adjDeficit ?? null,
-          pesoMeta: protocol?.pesoMetaFijado ?? null,
-        },
-        { protKgVigente },
-      )
+    ? computeProtocoloEfectivo(snapshot, documento.ajustes, { protKgVigente })
     : null;
 
   // La prescripcion del motor que GOBIERNA, para el sodio y la proteina de las recomendaciones.
@@ -151,15 +160,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
         }
       : null,
     suggested: snapshot,
-    ajustes: {
-      geb: protocol?.adjGeb ?? null,
-      pal: protocol?.adjPal ?? null,
-      kcalObj: protocol?.adjKcalObj ?? null,
-      protGkg: protocol?.adjProtGkg ?? null,
-      fatPct: protocol?.adjFatPct ?? null,
-      deficit: protocol?.adjDeficit ?? null,
-      pesoMeta: protocol?.pesoMetaFijado ?? null,
-    },
+    // LOS MISMOS que la cadena de arriba, no una segunda lectura: si el composer recompusiera con los
+    // ajustes vivos, el bloque del plan diria una cifra y la cabecera otra dentro del MISMO documento.
+    ajustes: documento.ajustes,
     sexoM,
     // La asesoria por diagnostico, para la constancia de cifras fuera de la referencia (P-109). Va por el
     // MISMO lector que la pantalla; si el PDF la calculara aparte, los dos documentos podrian registrar
@@ -171,7 +174,9 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     d5_39: preguntas.find((q) => q.fieldKey === "d5_39")?.answerValue ?? null,
     flags: { tieneHTA: snapshot?.flags.tieneHTA ?? false, tieneIRC: snapshot?.flags.tieneIRC ?? false },
     deficitEstrategia: snapshot?.estrategia.deficit ?? 0,
-    pesoKg: protocol?.pesoMetaFijado ?? snapshot?.pesoCalculo ?? null,
+    // EL PESO EFECTIVO DE LA CADENA, no una copia a mano de su regla: da lo mismo hoy y deja de darlo el
+    // dia que la cadena cambie de criterio. Y ademas sigue al sello, como el resto del documento.
+    pesoKg: efectivoHc?.pesoEfectivo ?? null,
   });
 
   const remisiones = protocol?.treatmentId
@@ -292,6 +297,17 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
       creadaEn: n.createdAt,
     })),
     proximaCita: header.proximaCita ? formatDateOnly(header.proximaCita) : null,
+    // QUE SE LE ENTREGO AL PACIENTE Y CUANDO (Santiago, 2026-09-09). Es la pregunta que el candado de
+    // aprobar intentaba contestar bloqueando, y que ahora contesta el registro.
+    //
+    // `emitted_at` es un timestamptz, asi que se formatea con `formatDate` (zona de Colombia) y NO con
+    // `formatDateOnly`, que es para las columnas `date` puras: convertir una fecha pura la retrocede un dia.
+    entregas: emisiones.map((e) => ({ fecha: formatDate(e.emittedAt), via: e.via })),
+    // CUIDADO (c) DE SANTIAGO: "verifica que pasa si nunca se emitio: la HC de una consulta sin documento
+    // entregado tiene que decir algo, no quedar vacia". Sin esto, el documento saldria con las cifras de
+    // hoy y sin nada que avisara de que nadie las entrego, que es peor que un hueco: es una afirmacion
+    // falsa con formato de documento clinico.
+    prescripcionSinEmitir: !documento.sellados,
     consentVersion: header.consentVersion,
     // REVOCADA y NUNCA OTORGADA no son lo mismo en un documento probatorio: una dice que el permiso
     // existio y se retiro, la otra que nunca lo hubo. Se conservan separadas, como en la pantalla.

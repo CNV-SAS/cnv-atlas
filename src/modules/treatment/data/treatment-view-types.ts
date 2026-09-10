@@ -137,15 +137,17 @@ export type MenuSuggestion = {
 export type TreatmentProtocol = {
   treatmentId: string;
   diagnosisConfirmed: boolean;
-  // true si el protocolo ya se aprobó (status='approved'): la prescripción es INMUTABLE (el trigger
-  // de BD la congela). La UI lo usa para bloquear la edición y no dejar que un guardado choque contra
-  // el trigger (se veria editable pero fallaria). Se corrige por versión nueva, no editando.
-  approved: boolean;
-  // REAPERTURA (§6c): sellos de la ultima, y cuantas prescripciones estuvieron aprobadas antes. El
-  // conteo > 0 es lo que hace de este un tratamiento REEMITIDO, con su aviso obligatorio al paciente.
-  reopenedAt: string | null;
-  reopenReason: string | null;
-  aprobacionesPrevias: number;
+  /**
+   * QUE SE LE HA ENTREGADO AL PACIENTE, de lo mas reciente a lo mas antiguo (2026-09-09).
+   *
+   * SUSTITUYE A `approved` Y A LOS SELLOS DE REAPERTURA. La prescripcion ya no se bloquea al sellarse:
+   * esta SIEMPRE abierta, y lo que queda registrado es cada salida. Asi que el panel no necesita saber
+   * si algo esta cerrado (nada lo esta), necesita saber si el paciente YA TIENE una version anterior,
+   * que es lo que obliga a avisarle cuando cambia lo que come (Gildardo §12c).
+   *
+   * Vacio = esta consulta no ha entregado nada todavia.
+   */
+  emisiones: { fecha: string; via: string }[];
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
   // Peso meta (cadena calórica, pieza 1 — HECHO VISIBLE, nota 3 de Gildardo). pesoCalculo es el peso

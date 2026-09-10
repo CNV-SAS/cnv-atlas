@@ -27,11 +27,15 @@ export function canAcknowledgeRestrictions(user: CurrentUser): boolean {
   return hasRole(user, "professional");
 }
 
-// Aprobar el protocolo: convierte la sugerencia del modelo en una prescripcion de calorias y
-// proteina para una persona. El acto mas cargado, profesional-solo. Se implementa en A3 (el
-// approve sella el set efectivo, que necesita el motor). El alcance fino NO se apoya en un
-// efecto lateral del read path (ajuste de seguridad): el approve writer verificara de forma
-// EXPLICITA que el profesional este asignado al paciente, no solo por RLS al leer.
-export function canApproveProtocol(user: CurrentUser): boolean {
+// EMITIR la prescripcion: registrar que este plan de calorias y proteina SALIO hacia una persona. El acto
+// mas cargado, profesional-solo.
+//
+// SE LLAMABA `canApproveProtocol` (2026-09-09). Se renombra y no se conserva el nombre viejo porque ya no
+// hay aprobacion: aprobar sellaba Y CERRABA, y emitir solo sella. Un nombre que describe un acto retirado
+// hace que el proximo lector busque el acto.
+//
+// El alcance fino NO se apoya en un efecto lateral del read path (ajuste de seguridad): el servicio
+// verifica de forma EXPLICITA que el profesional este asignado al paciente, no solo por RLS al leer.
+export function canEmitirPrescripcion(user: CurrentUser): boolean {
   return hasRole(user, "professional");
 }

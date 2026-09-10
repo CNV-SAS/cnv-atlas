@@ -1252,3 +1252,44 @@ Su ficha del estado EFR rotula los seis campos con emoji (🔬 ⚙️ 🧪 ⚠�
   tratamiento derivado del estado.
 - Se le dice para que la ausencia no se lea como un olvido. Si los quiere, se discute como decision de
   interfaz.
+
+---
+
+## Ronda del 2026-09-09 (tarde) · emitir deja de cerrar
+
+**P-120 · LA PRESCRIPCION QUEDA SIEMPRE ABIERTA, Y LO QUE SE REGISTRA ES CADA ENTREGA (2026-09-09).**
+Santiago reporto que el acto de sellar CONFUNDE: *"No me pareció buena la funcionalidad... Me parece
+mejor que revertamos... ¿No seria posible simplemente que siempre esté abierto?"*. Antes de revertir se
+verificaron sus dos preguntas, y la respuesta obligo a un diseño distinto del que el pedia y del que
+habia.
+
+- **QUE SE IMPRIME Y QUE DICE LA HISTORIA CLINICA.** Los tres documentos (el plan impreso, el plan que
+  viaja al correo y la historia clinica) se arman de `protocol_suggested` **mas los `adj_*` de hoy**,
+  recomputados en el momento de leer. **Ninguno lee `protocol_approved`.** O sea que eran estables SOLO
+  porque el trigger 0026 congelaba los ajustes al aprobar: sin ese congelado, **una historia clinica de
+  agosto diria lo que los ajustes digan hoy**. Un documento clinico que cambia retroactivamente.
+- **Por eso "siempre abierta" a secas no era viable**, y por eso tampoco lo era seguir congelando: el
+  congelado era un efecto lateral, no un diseño, y su precio eran tres cosas que el profesional sufre (un
+  boton que parece un tramite, la prescripcion bloqueada y una reapertura con motivo para corregir una
+  coma).
+- **LA SEPARACION.** Aprobar hacia dos cosas pegadas: **sellar** y **cerrar**. Se parten. La prescripcion
+  queda siempre abierta, y cada vez que se EMITE (se imprime para entregarla, o se envia con el reporte)
+  se guarda una **copia inmutable** de lo que salio, con su fecha, su via y quien la emitio. La historia
+  clinica lee esas copias, no el estado vivo.
+- **ESTO CUMPLE MEJOR SU §6c, no la contradice.** Su palabra: *"EL SELLADO NO ES UN CANDADO: ES UNA
+  CONSECUENCIA REGISTRADA. Un profesional que necesita corregir un plan aprobado tiene que poder hacerlo;
+  lo que no puede es que el cambio no deje rastro ni le llegue al paciente que ya se lo llevo."* Con
+  emisiones, corregir no necesita permiso y el rastro no se puede omitir.
+- **LO QUE SE CONSERVA DE §12c:** si el paciente ya recibio una version y el profesional cambia lo que
+  come, hay que decirselo. Ese aviso no dependia del candado, dependia de que alguien hubiera recibido
+  algo; ahora cuelga de las emisiones, que es su condicion real.
+- **LO QUE SE RETIRA:** el boton "Aprobar la prescripcion", el boton "Entregado en consulta", la
+  reapertura con motivo, el bloqueo de edicion del panel, la banda de BORRADOR del papel (distinguia dos
+  estados que ya no existen) y las dos ramas del trigger que las sostenian. `protocol_suggested` sigue
+  siendo write-once: es la salida del MOTOR (regla dura 7), no una decision del profesional.
+- **CUIDADO (c) DE SANTIAGO, resuelto:** una consulta sin ninguna entrega **lo dice** en la pantalla y en
+  el PDF ("No consta que se haya entregado ningún plan en esta consulta", y que las cifras son las
+  vigentes hoy). Un bloque vacio en un documento probatorio se lee como que no habia nada que decir.
+- **Migraciones 0115 (el almacen + el backfill de lo ya aprobado) y 0116 (retirar las ramas del trigger y
+  soltar las filas).** El orden no es intercambiable y la 0116 lo comprueba: si encuentra un tratamiento
+  aprobado sin emision copiada, aborta.

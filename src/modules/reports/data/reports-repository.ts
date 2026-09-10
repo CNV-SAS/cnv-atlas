@@ -2,7 +2,6 @@ import "server-only";
 
 import type { EngineOutput } from "@/clinical-engine";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getProtocolApprovalState } from "@/modules/treatment/data/treatment-reader";
 import { BAND_TEXT, type EbBand } from "@/modules/followups/services/eb-trajectory";
 
 // TrajectoryConfirmation (usado en anotaciones del reader) vive en el modulo neutro; ver reexport abajo.
@@ -137,7 +136,6 @@ export type ReportCardData = ReportListItem & {
    * consulta por card). Ahi el boton no se explica de antemano, pero el servidor sigue frenando el envio
    * con un mensaje que dice que hacer y donde. `null` = la evaluacion no tiene tratamiento todavia.
    */
-  protocoloAprobado?: boolean | null;
   // Cuantas veces salio el MISMO documento despues del primer envio. 0 = solo el envio original.
   resentCount: number;
 };
@@ -192,10 +190,10 @@ export async function getReportCardForEvaluation(
     };
   }
 
-  // Estado de la prescripcion, para que el boton de enviar DIGA por que no se puede todavia en vez de
-  // que el profesional lo descubra con un error. Es el mismo criterio que ya usa la confirmacion de
-  // "empeoro": un guard correcto mal expuesto se siente como defecto de la pantalla.
-  const protocolo = await getProtocolApprovalState(row.evaluation_id);
+  // SE RETIRO LA LECTURA DEL ESTADO DE LA PRESCRIPCION (2026-09-09). Servia para que el boton de enviar
+  // dijera "falta aprobar la prescripcion" en vez de fallar; ya no hay nada que aprobar y enviar no se
+  // bloquea por eso. Un aviso sobre un requisito que no existe es peor que ninguno: manda al profesional
+  // a buscar un boton retirado.
 
   return {
     reportId: row.id,
@@ -207,7 +205,6 @@ export async function getReportCardForEvaluation(
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     trajectory,
     resentCount: (row.resent_count as number | null) ?? 0,
-    protocoloAprobado: protocolo ? protocolo.approved : null,
   };
 }
 

@@ -2,7 +2,6 @@ import type { PlanPaciente } from "../data/reports-view-types";
 
 import { bloqueCls } from "@/components/shared/bloque";
 
-import { EntregadoEnConsulta } from "./entregado-en-consulta";
 import { PlanImprimirBoton } from "./plan-imprimir-boton";
 
 // EL PLAN DEL PACIENTE, EN PAPEL. La hoja que se lleva de la consulta, ahora mismo, sin esperar a que le
@@ -48,17 +47,11 @@ export function PlanImprimible({
   paciente,
   fecha,
   evaluationId,
-  aprobada,
 }: {
   plan: PlanPaciente;
   paciente: string;
   fecha: string;
   evaluationId: string;
-  /**
-   * ¿La prescripcion ya esta sellada? Gobierna DOS cosas: la banda de borrador que sale en el PAPEL, y si
-   * se ofrece el acto de "entregado en consulta". Las dos desaparecen al aprobar.
-   */
-  aprobada: boolean;
 }) {
   const hayMeta = plan.objetivoTexto || plan.kcalObjetivo != null || plan.pesoMeta != null;
 
@@ -77,11 +70,11 @@ export function PlanImprimible({
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <PlanImprimirBoton />
-          {/* "ENTREGADO EN CONSULTA": el acto, junto a la impresion pero SEPARADO de ella. Imprimir es
-              LEER (se imprime para revisar, y dos veces si salio torcida); entregar es un acto y se
-              declara. Solo aparece mientras la prescripcion NO esta sellada. */}
-          {!aprobada ? <EntregadoEnConsulta evaluationId={evaluationId} /> : null}
+          {/* IMPRIMIR REGISTRA LA ENTREGA (2026-09-09). Aqui habia DOS botones: este y "Entregado en
+              consulta", que sellaba la prescripcion y la cerraba. Santiago lo reporto como confuso y
+              tenia razon: eran dos gestos para un solo acto, y el segundo ademas bloqueaba. Ahora el
+              registro va donde ya estaba el gesto. */}
+          <PlanImprimirBoton evaluationId={evaluationId} />
         </div>
       </div>
 
@@ -94,16 +87,14 @@ export function PlanImprimible({
           </p>
         </div>
 
-        {/* LA BANDA DE BORRADOR VA EN EL PAPEL, NO EN LA PANTALLA (2026-09-09). Lo que importa es lo que
-            el paciente SE LLEVA: un aviso en pantalla lo ve el profesional y desaparece, y la hoja sigue
-            saliendo indistinguible de una definitiva. Aqui esta dentro de `solo-impresion`, asi que solo
-            existe en el papel, y solo mientras la prescripcion no se ha sellado.
-            Se retira sola en cuanto se aprueba: no hay que acordarse de quitarla. */}
-        {!aprobada ? (
-          <p className="border-2 border-foreground px-3 py-2 text-sm font-bold uppercase tracking-wide">
-            Borrador · esta prescripción todavía no está aprobada y puede cambiar
-          </p>
-        ) : null}
+        {/* LA BANDA DE BORRADOR SE RETIRO (2026-09-09), y se explica aqui porque la pidio Santiago hace
+            dos rondas y no se quita en silencio.
+            Decia "esta prescripción todavía no está aprobada y puede cambiar", y distinguia DOS estados:
+            aprobada y borrador. Ese par ya no existe: la prescripcion esta SIEMPRE abierta, asi que la
+            banda pasaria de ser una advertencia a ser una verdad universal impresa en todas las hojas,
+            que es ruido. Lo que la banda protegia (que el paciente no se lleve un papel que nadie asume)
+            lo resuelve mejor la EMISION: imprimir registra la entrega, y la historia clinica dice que
+            salio y cuando. */}
 
         {hayMeta ? (
           <Bloque titulo="Tu meta">

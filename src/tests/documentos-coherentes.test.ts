@@ -74,7 +74,19 @@ describe("el sodio de la historia clínica ya no promete algo que ya está hecho
   });
 
   it("y el valor viene del motor que gobierna", () => {
-    expect(PAGE).toContain("sodioMax: prescripcionNutricional?.sodioMax ?? null");
+    // ALCANCE AJUSTADO (2026-09-09), no la asercion. Se fijaba el NOMBRE de la variable
+    // (`prescripcionNutricional`), y al separar las cifras del PANEL de las del DOCUMENTO la historia
+    // clinica pasó a leer `prescripcionDocumento`: las del panel son las vivas (lo que el profesional
+    // esta editando) y las del documento son las de la emision (lo que se entrego). El candado se puso
+    // rojo por el nombre, no por la regla.
+    //
+    // LA REGLA, que no cambia: el sodio de la historia sale del MOTOR de prescripcion, no de una segunda
+    // fuente. Por eso se afirma la FORMA (una variable de prescripcion) y, aparte, que esa variable
+    // salga del lector del motor.
+    expect(PAGE).toMatch(/sodioMax: prescripcion\w*\?\.sodioMax \?\? null/);
+    expect(PAGE, "el sodio dejo de salir del motor de prescripcion").toContain(
+      "getPrescripcionNutricional(",
+    );
     expect(HC).toContain("plan.sodioMax");
   });
 });

@@ -2389,6 +2389,70 @@ export type Database = {
           },
         ]
       }
+      prescription_emissions: {
+        Row: {
+          created_at: string
+          emitted_at: string
+          emitted_by: string | null
+          emitted_by_email: string | null
+          evaluation_id: string
+          id: string
+          kcal_objetivo: number | null
+          prescripcion: Json
+          proteina_g: number | null
+          treatment_id: string
+          via: string
+        }
+        Insert: {
+          created_at?: string
+          emitted_at?: string
+          emitted_by?: string | null
+          emitted_by_email?: string | null
+          evaluation_id: string
+          id?: string
+          kcal_objetivo?: number | null
+          prescripcion: Json
+          proteina_g?: number | null
+          treatment_id: string
+          via: string
+        }
+        Update: {
+          created_at?: string
+          emitted_at?: string
+          emitted_by?: string | null
+          emitted_by_email?: string | null
+          evaluation_id?: string
+          id?: string
+          kcal_objetivo?: number | null
+          prescripcion?: Json
+          proteina_g?: number | null
+          treatment_id?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_emissions_emitted_by_fkey"
+            columns: ["emitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_emissions_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_emissions_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presencial_consent_sessions: {
         Row: {
           confirmed_at: string | null
@@ -2507,70 +2571,6 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prescription_emissions: {
-        Row: {
-          created_at: string
-          emitted_at: string
-          emitted_by: string | null
-          emitted_by_email: string | null
-          evaluation_id: string
-          id: string
-          kcal_objetivo: number | null
-          prescripcion: Json
-          proteina_g: number | null
-          treatment_id: string
-          via: string
-        }
-        Insert: {
-          created_at?: string
-          emitted_at?: string
-          emitted_by?: string | null
-          emitted_by_email?: string | null
-          evaluation_id: string
-          id?: string
-          kcal_objetivo?: number | null
-          prescripcion: Json
-          proteina_g?: number | null
-          treatment_id: string
-          via: string
-        }
-        Update: {
-          created_at?: string
-          emitted_at?: string
-          emitted_by?: string | null
-          emitted_by_email?: string | null
-          evaluation_id?: string
-          id?: string
-          kcal_objetivo?: number | null
-          prescripcion?: Json
-          proteina_g?: number | null
-          treatment_id?: string
-          via?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prescription_emissions_emitted_by_fkey"
-            columns: ["emitted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prescription_emissions_evaluation_id_fkey"
-            columns: ["evaluation_id"]
-            isOneToOne: false
-            referencedRelation: "evaluations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prescription_emissions_treatment_id_fkey"
-            columns: ["treatment_id"]
-            isOneToOne: false
-            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]

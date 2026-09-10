@@ -193,26 +193,27 @@ export async function getTreatmentProtocol(
   // descarte vive aparte. Descartar es decir "lo mire y esta bien", no "no paso nada".
 
 
-  // Cuantas prescripciones de este tratamiento estuvieron aprobadas antes. Solo el CONTEO: el contenido
-  // de cada una se lee cuando el profesional lo pide, no en cada carga del panel. Por RLS, como todo lo
+  // QUE SE LE HA ENTREGADO AL PACIENTE. Sustituye al conteo de aprobaciones previas: lo que el panel
+  // necesita saber no es si algo esta cerrado (ya nada lo esta) sino si la persona YA TIENE una version,
+  // que es lo que obliga a avisarle cuando cambia lo que come (Gildardo §12c). Por RLS, como todo lo
   // demas de este reader: si la evaluacion no es suya, no hay filas.
-  const previas = await supabase
-    .from("treatment_approvals")
-    .select("id", { count: "exact", head: true })
-    .eq("treatment_id", treatmentId);
-  if (previas.error) throw new Error(`treatment-reader: approvals: ${previas.error.message}`);
+  const emitidas = await supabase
+    .from("prescription_emissions")
+    .select("emitted_at, via")
+    .eq("treatment_id", treatmentId)
+    .order("emitted_at", { ascending: false });
+  if (emitidas.error) throw new Error(`treatment-reader: emisiones: ${emitidas.error.message}`);
 
   return {
     treatmentId,
     diagnosisConfirmed: Boolean(diag.confirmed_at),
-    approved: treatment.status === "approved",
-    // REAPERTURA (§6c). `aprobacionesPrevias` se DERIVA de la historia, no de un flag: una prescripcion
-    // que ya estuvo aprobada y se reabrio es un tratamiento REEMITIDO, y eso obliga a avisarle al
-    // paciente cuando se apruebe la nueva ("porque cambia lo que la persona come", §12c). Un flag aparte
-    // seria un segundo estado que puede desincronizarse del real.
-    reopenedAt: treatment.reopened_at,
-    reopenReason: treatment.reopen_reason,
-    aprobacionesPrevias: previas.count ?? 0,
+    // SE DERIVA DE LA HISTORIA, no de un flag: un flag aparte seria un segundo estado que puede
+    // desincronizarse del real. Es la misma razon por la que `aprobacionesPrevias` se contaba y no se
+    // guardaba, aplicada a lo que ahora importa.
+    emisiones: (emitidas.data ?? []).map((e) => ({
+      fecha: e.emitted_at as string,
+      via: e.via as string,
+    })),
     kcalObjetivo: treatment.kcal_objetivo,
     proteinaGramos: treatment.proteina_g,
     // Peso meta VISIBLE (pieza 1): pesoCalculo/label salen del snapshot sugerido sellado; adjPesoMeta es
@@ -399,42 +400,7 @@ export async function getTreatmentForApproval(
   };
 }
 
-/**
- * ¿El protocolo de esta evaluacion esta APROBADO? Lectura minima (una consulta), para el gate de emision
- * del reporte.
- *
- * POR QUE EXISTE, y no se reusa `getTreatmentProtocol`: ese lee el protocolo entero (menu, intercambio,
- * tiempos, notas, nutraceuticos, aprobaciones previas) y aqui solo hace falta un estado. El gate corre
- * antes de renderizar el PDF, asi que pagar esa lectura completa para mirar una columna seria caro por
- * nada.
- *
- * Devuelve `null` si la evaluacion no tiene diagnostico o no tiene tratamiento: es distinto de "existe y
- * esta en borrador", y aguas arriba se dicen cosas distintas (ausencia contra fila vacia).
- */
-export async function getProtocolApprovalState(
-  evaluationId: string,
-): Promise<{ approved: boolean } | null> {
-  const supabase = await createSupabaseServerClient();
-
-  const { data: diag, error: dErr } = await supabase
-    .from("diagnoses")
-    .select("id")
-    .eq("evaluation_id", evaluationId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (dErr) throw new Error(`treatment-reader(approval-state): diagnoses: ${dErr.message}`);
-  if (!diag) return null;
-
-  const { data: t, error: tErr } = await supabase
-    .from("treatments")
-    .select("status")
-    .eq("diagnosis_id", diag.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (tErr) throw new Error(`treatment-reader(approval-state): treatments: ${tErr.message}`);
-  if (!t) return null;
-
-  return { approved: t.status === "approved" };
-}
+// `getProtocolApprovalState` SE RETIRO (2026-09-09). Solo existia para el gate de envio ("el protocolo
+// tiene que estar aprobado para emitir"), y ese gate desaparecio con la aprobacion: enviar ES entregar y
+// deja su propia constancia. Se retira en vez de dejarlo: un lector sin consumidores es la tercera forma
+// de cable suelto.

@@ -8,10 +8,10 @@
 //   BLOQUEADO    -> esta en la lista, diciendo QUE lo desbloquea. No se puede hacer hoy, pero va a poder.
 //   IMPOSIBLE    -> NO aparece. No es que falte: es que en esta evaluacion no puede existir.
 //
-// El tercero usa la MISMA condicion con la que el sistema ya rechaza el acto (un protocolo sin
-// `protocol_suggested` nunca se puede aprobar: treatment-writer lanza "No se puede aprobar un protocolo
-// que nunca se computo"). Listarlo para siempre seria pedirle al profesional algo que el sistema le
-// prohibe, en cada consulta, hasta el fin de los tiempos.
+// El tercero usa la MISMA condicion con la que el sistema ya rechaza el acto (sin `protocol_suggested` no
+// hay prescripcion que emitir: el writer de emisiones lanza "No se puede emitir una prescripción que nunca
+// se computó"). Listarlo para siempre seria pedirle al profesional algo que el sistema le prohibe, en cada
+// consulta, hasta el fin de los tiempos.
 //
 // Y el TONO importa: el profesional puede cerrar con pendientes A PROPOSITO (el paciente se lo piensa, la
 // remision depende de otro). La lista informa, no reprocha; por eso ningun texto dice "falta" ni "debes".
@@ -28,9 +28,10 @@ export type PendienteCierre = {
 export type EstadoConsulta = {
   encuestaCompleta: boolean;
   diagnosticoConfirmado: boolean;
-  /** El protocolo se pudo computar (protocol_suggested). Si es false, aprobarlo es IMPOSIBLE, no pendiente. */
+  /** El protocolo se pudo computar (protocol_suggested). Si es false, entregarlo es IMPOSIBLE, no pendiente. */
   protocoloComputado: boolean;
-  protocoloAprobado: boolean;
+  /** ¿Se le entregó el plan al paciente (impreso o por correo)? Sustituye a `protocoloAprobado`. */
+  protocoloEmitido: boolean;
   /** null = la evaluacion no llego a generar reporte. */
   reporteEstado: "draft" | "approved" | "sent" | null;
   /** Decision sobre nutraceuticos: null = nunca se pregunto. */
@@ -63,25 +64,25 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
     });
   }
 
-  // IMPOSIBLE: sin protocol_suggested nunca se va a poder aprobar. Fuera de la lista.
-  if (e.protocoloComputado && !e.protocoloAprobado) {
-    out.push(
-      e.diagnosticoConfirmado
-        ? {
-            id: "protocolo",
-            titulo: "El tratamiento no se aprobó",
-            detalle: "El plan queda como borrador y no se sella.",
-            etapa: "tratamiento",
-            bloqueadoPor: null,
-          }
-        : {
-            id: "protocolo",
-            titulo: "El tratamiento no se aprobó",
-            detalle: "Se puede aprobar en cuanto se confirme el diagnóstico.",
-            etapa: null,
-            bloqueadoPor: "confirmar el diagnóstico",
-          },
-    );
+  // EL PENDIENTE CAMBIO DE HECHO (2026-09-09): antes era "el tratamiento no se aprobó" y ahora es "el
+  // plan no se le entregó al paciente".
+  //
+  // POR QUE NO ES EL MISMO PENDIENTE CON OTRO NOMBRE. Aprobar era un tramite interno: el paciente no se
+  // enteraba de que ocurriera. Entregar es el hecho que le importa a la persona, y ademas es el que
+  // sostiene la historia clinica (sin emision, el documento sale con las cifras de hoy). Cerrar una
+  // consulta sin haber entregado nada es lo que de verdad merece aparecer en la lista.
+  //
+  // IMPOSIBLE: sin protocol_suggested no hay plan que entregar. Fuera de la lista.
+  if (e.protocoloComputado && !e.protocoloEmitido) {
+    out.push({
+      id: "protocolo",
+      titulo: "El plan no se le entregó al paciente",
+      // NI GATE NI REPROCHE: se puede cerrar una consulta sin entregar el plan a proposito (el paciente
+      // se lo piensa, se le envia despues). La lista informa, que es el tono de todo este bloque.
+      detalle: "No consta que se haya impreso ni enviado. La historia clínica lo dirá así.",
+      etapa: "tratamiento",
+      bloqueadoPor: null,
+    });
   }
 
   if (e.reporteEstado === "draft") {

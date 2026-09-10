@@ -93,6 +93,7 @@ import {
   HcAntecedentes,
   HcDatosDelPaciente,
   HcDiagnosticoFuncional,
+  HcEntregas,
   HcFirmaYFecha,
   HcMetaTerapeutica,
   HcObjetivoTratamiento,
@@ -116,7 +117,9 @@ import { HcImprimir } from "@/modules/reports/components/hc-imprimir";
 import { getHcHeaderForEvaluation } from "@/modules/reports/data/hc-header-reader";
 import { getUltimaEntregaHc } from "@/modules/reports/data/hc-entregas-writer";
 import { HcEntregar } from "@/modules/reports/components/hc-entregar";
+import { ajustesDelDocumento } from "@/modules/reports/data/ajustes-del-documento";
 import { componerHistoriaClinica, remisionesExigidas } from "@/modules/reports/data/hc-composicion";
+import { listEmisiones } from "@/modules/treatment/data/emisiones-reader";
 import { ReportCard } from "@/modules/reports/components/report-card";
 import { getReportCardForEvaluation } from "@/modules/reports/data/reports-repository";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -637,6 +640,44 @@ export default async function ResultadosEvaluacionPage({
   // remisiones, autorizaciones) nunca fueron el riesgo, porque el PDF puede llamar al mismo lector; el
   // riesgo eran estos seis, que no tenian nombre en ninguna parte y un segundo sitio los habria armado a
   // su manera.
+  // LAS CIFRAS QUE GOBIERNAN LA HISTORIA CLINICA, que NO son las mismas que las del panel de tratamiento.
+  //
+  // El panel muestra lo VIVO, que es lo que el profesional esta editando. La historia clinica muestra lo
+  // que se ENTREGO, y solo cae a lo vivo si esta consulta no entrego nada (y entonces lo declara). Sin
+  // esta distincion, una historia clinica de agosto diria lo que los ajustes digan hoy.
+  //
+  // Y LA ELECCION VIVE EN `ajustes-del-documento`, compartida con `hc-documento-reader`: la historia se
+  // compone en DOS sitios, y dos elecciones separadas es como el papel y la pantalla acaban diciendo
+  // cosas distintas del mismo acto clinico.
+  const emisiones = await listEmisiones(id);
+  const documentoHc = ajustesDelDocumento(emisiones[0] ?? null, {
+    geb: protocol?.adjGeb ?? null,
+    pal: protocol?.adjPal ?? null,
+    kcalObj: protocol?.adjKcalObj ?? null,
+    protGkg: protocol?.adjProtGkg ?? null,
+    fatPct: protocol?.adjFatPct ?? null,
+    deficit: protocol?.adjDeficit ?? null,
+    pesoMeta: protocol?.pesoMetaFijado ?? null,
+  });
+  const cadenaDocumento =
+    !documentoHc.sellados || protocol?.protocolSuggested == null
+      ? cadenaEfectiva
+      : computeProtocoloEfectivo(protocol.protocolSuggested, documentoHc.ajustes, { protKgVigente });
+  // El motor de prescripcion CONSUME la cadena (el tipo energetico sale de comparar el objetivo contra el
+  // GET), asi que con cifras selladas hay que volver a pedirlo con ellas. Sin emision es exactamente la
+  // misma llamada que ya se hizo, y no se paga dos veces.
+  const prescripcionDocumento =
+    !documentoHc.sellados || !isEngineOutput(results.snapshot)
+      ? prescripcionNutricional
+      : await getPrescripcionNutricional(
+          id,
+          results.snapshot.sexo,
+          results.snapshot.indicators as unknown as Record<string, unknown>,
+          cadenaDocumento?.pesoEfectivo ?? null,
+          cadenaDocumento != null ? Math.round(cadenaDocumento.calorico.kcalObj) : null,
+          cadenaDocumento?.calorico.pal ?? null,
+        );
+
   const hcCompuesta = componerHistoriaClinica({
     protKgVigente,
     snapshot: isEngineOutput(results.snapshot)
@@ -648,30 +689,23 @@ export default async function ResultadosEvaluacionPage({
         }
       : null,
     suggested: ps,
-    ajustes: {
-      geb: protocol?.adjGeb ?? null,
-      pal: protocol?.adjPal ?? null,
-      kcalObj: protocol?.adjKcalObj ?? null,
-      protGkg: protocol?.adjProtGkg ?? null,
-      fatPct: protocol?.adjFatPct ?? null,
-      deficit: protocol?.adjDeficit ?? null,
-      pesoMeta: protocol?.pesoMetaFijado ?? null,
-    },
+    // LOS DEL DOCUMENTO, no los del panel: la historia clinica registra lo que se entrego.
+    ajustes: documentoHc.ajustes,
     sexoM,
     // LA MISMA asesoria que alimenta el panel del nutricionista, no una segunda consulta: la historia
     // registra la desviacion de la cifra PRESCRITA y el panel avisa sobre la que se esta escribiendo, pero
     // los rangos y sus condiciones tienen que salir del mismo sitio (P-109).
     asesoria: asesoriaMacros,
-    sodioMax: prescripcionNutricional?.sodioMax ?? null,
-    protKg: prescripcionNutricional?.protKg ?? null,
-    protG: prescripcionNutricional?.protG ?? null,
+    sodioMax: prescripcionDocumento?.sodioMax ?? null,
+    protKg: prescripcionDocumento?.protKg ?? null,
+    protG: prescripcionDocumento?.protG ?? null,
     d5_39:
       (entrySurvey ?? []).flatMap((d) => d.questions).find((q) => q.fieldKey === "d5_39")?.answerValue ??
       null,
     flags: { tieneHTA: ps?.flags.tieneHTA ?? false, tieneIRC: ps?.flags.tieneIRC ?? false },
     deficitEstrategia: ps?.estrategia.deficit ?? 0,
     // El peso EFECTIVO (el que gobierna la prescripcion), para traducir la hidratacion a litros y vasos.
-    pesoKg: cadenaEfectiva?.pesoEfectivo ?? null,
+    pesoKg: cadenaDocumento?.pesoEfectivo ?? null,
   });
   const hcSev = hcCompuesta.severidades;
   const hcAni = hcCompuesta.indices;
@@ -725,11 +759,10 @@ export default async function ResultadosEvaluacionPage({
   // inventario. locked = diagnostico sin confirmar o protocolo aprobado (inmutable).
   const canPrescribeNutraceuticals =
     actorProfession.isProfessional && actorProfession.profession === "nutricionista";
-  // SOLO LA APROBACION CIERRA (2026-09-09). Decia `!diagnosisConfirmed || approved`, y ese OR se habria
-  // vuelto SIEMPRE cierto al mover la confirmacion al momento de emitir: la ventana entre confirmar y
-  // aprobar pasa a durar cero, asi que la decision de nutraceuticos habria quedado bloqueada para siempre
-  // sin que nada diera error. Es el mismo hallazgo que en la seccion de despacho.
-  const nutraLocked = Boolean(protocol?.approved);
+  // YA NADA CIERRA LA PRESCRIPCION DE NUTRACEUTICOS (2026-09-09). Esto era `Boolean(protocol.approved)`,
+  // y antes de eso `!diagnosisConfirmed || approved`, un OR que se habria vuelto SIEMPRE cierto al mover
+  // la confirmacion al momento de emitir. Los dos estados que lo alimentaban desaparecieron: la
+  // prescripcion esta siempre abierta, y lo que consta es cada entrega, no un candado.
 
   // Reparto por etapa (ST7 A2): Diagnostico conserva la evidencia del modelo + composicion +
   // criterio (se reordena en Parte B). Tratamiento recibe las rutas (salida del DFI) y el
@@ -844,7 +877,6 @@ export default async function ResultadosEvaluacionPage({
                     evaluationId={id}
                     protocol={protocol}
                     canPrescribe={canPrescribeNutraceuticals}
-                    locked={nutraLocked}
                   />
                 ) : null}
                 {/* LA DECISION VA ANTES DE LA ENTREGA, y ese orden es el diseño: antes se entregaba sin
@@ -855,7 +887,7 @@ export default async function ResultadosEvaluacionPage({
                     es lo mismo que prescribir y que el paciente NO los compre; lo segundo es una
                     indicacion que no se cumple, y por eso la opcion "no" sigue existiendo aqui. */}
                 {protocol && actorProfession.isProfessional && protocol.nutraceuticals.length > 0 ? (
-                  <NutraDecisionSection evaluationId={id} protocol={protocol} locked={nutraLocked} />
+                  <NutraDecisionSection evaluationId={id} protocol={protocol} />
                 ) : null}
                 {/* La entrega SOLO si la respuesta fue que si. Un aviso, no un formulario deshabilitado: un
                     bloque en gris invita a buscar como habilitarlo; una frase dice que falta. */}
@@ -896,7 +928,6 @@ export default async function ResultadosEvaluacionPage({
                       paciente={hcHeader?.paciente ?? "Paciente"}
                       fecha={formatDate(hcHeader?.fechaConsulta ?? new Date().toISOString())}
                       evaluationId={id}
-                      aprobada={Boolean(protocol?.approved)}
                     />
                   ) : null
                 }
@@ -1122,6 +1153,12 @@ export default async function ResultadosEvaluacionPage({
               <HcProximaConsulta fecha={hcHeader.proximaCita ? formatDateOnly(hcHeader.proximaCita) : null} />
               {/* EL SELLO DE CONSENTIMIENTO va ANTES de la firma, que es donde cierra el documento: la
                   firma del profesional queda abajo del todo, como en cualquier documento clinico. */}
+              {/* QUE SE LE ENTREGO AL PACIENTE. Va junto al sello de consentimiento porque son la misma
+                  clase de bloque: constancia de lo que ocurrio alrededor del acto clinico. */}
+              <HcEntregas
+                entregas={emisiones.map((e) => ({ fecha: formatDate(e.emittedAt), via: e.via }))}
+                sinEmitir={!documentoHc.sellados}
+              />
               <HcConsentimiento
                 autorizaciones={hcAutorizaciones}
                 versionDeLaConsulta={hcHeader.consentVersion}
@@ -1139,7 +1176,7 @@ export default async function ResultadosEvaluacionPage({
                 encuestaCompleta: results.compatible ? results.snapshot.dfi.complete : true,
                 diagnosticoConfirmado: Boolean(protocol?.diagnosisConfirmed),
                 protocoloComputado: protocol?.protocolSuggested != null,
-                protocoloAprobado: Boolean(protocol?.approved),
+                protocoloEmitido: emisiones.length > 0,
                 reporteEstado: reportCard?.status ?? null,
                 nutraceuticosDecision: protocol?.nutraceuticalDecision?.decision ?? null,
                 proximaCita: hcHeader.proximaCita,

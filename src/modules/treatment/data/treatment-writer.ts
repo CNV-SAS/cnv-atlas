@@ -7,7 +7,6 @@ import {
   diagnoses,
   evaluations,
   patientContraindications,
-  treatmentApprovals,
   treatmentNotes,
   treatmentNutraceuticals,
   treatments,
@@ -573,12 +572,14 @@ export type SaveAdjustmentsWrite = {
   ip: string | null;
 };
 
-// Guarda los ajustes del profesional sobre el protocolo sugerido, SOLO en borrador. Owner
-// client + audit inline. Si el protocolo ya esta aprobado, el trigger de inmutabilidad lo
-// congela; aqui se ataja antes con un error limpio. Los numeric van como string a Drizzle.
+// Guarda los ajustes del profesional sobre el protocolo sugerido. Owner client + audit inline. Los
+// numeric van como string a Drizzle.
+//
+// YA NO HAY GATE DE BORRADOR (2026-09-09): la prescripcion esta siempre abierta. Existia porque aprobar
+// congelaba la fila y el trigger habria rechazado la escritura; sin congelado, atajar aqui seria prohibir
+// sin motivo. Lo que conserva la constancia de lo entregado es la copia de cada emision, no el bloqueo.
 export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void> {
   await db.transaction(async (tx) => {
-    await assertDraft(tx, input.treatmentId);
 
     // Candado de concurrencia (misma razon que en saveProtocol): saveAdjustments ESCRIBE LAS SEIS
     // columnas adj_* de golpe, asi que dos guardados del mismo tratamiento se pisan (el ultimo gana) y el
@@ -728,176 +729,18 @@ export async function acknowledgeRestrictions(
   });
 }
 
-// --- T2 A3: aprobacion del protocolo (sella el set efectivo) ---
-
-export type ApproveProtocolWrite = {
-  treatmentId: string;
-  protocolApproved: unknown; // jsonb efectivo (lo arma el service; incluye las dos versiones y fechas)
-  kcalObjetivo: number;
-  proteinaGramos: number;
-  approvedAt: Date;
-  versionApproved: string;
-  versionSuggested: string;
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-};
-
-// Sella la prescripcion EFECTIVA en la transicion draft -> approved. Owner client + audit inline.
-// Re-chequea DENTRO de la transaccion (TOCTOU) el borrador y que exista el sugerido: no se aprueba
-// lo que ya se aprobo ni lo que nunca se computo. El UPDATE dispara el trigger 0026, pero como
-// OLD.status='draft' la rama de congelado no aplica y protocol_suggested no cambia: pasa. A partir de
-// aqui (OLD.status='approved') el trigger congela la prescripcion.
-export async function writeApproveProtocol(input: ApproveProtocolWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ status: treatments.status, suggested: treatments.protocolSuggested })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .limit(1);
-    if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
-    if (row.status !== "draft") {
-      throw new TreatmentStateError(
-        "El protocolo ya fue aprobado; para cambiarlo se genera una corrección (versión nueva).",
-      );
-    }
-    if (row.suggested == null) {
-      throw new TreatmentStateError(
-        "No se puede aprobar un protocolo que nunca se computo (protocol_suggested nulo).",
-      );
-    }
-    await tx
-      .update(treatments)
-      .set({
-        status: "approved",
-        protocolApproved: input.protocolApproved,
-        approvedBy: input.actorId,
-        approvedAt: input.approvedAt,
-        kcalObjetivo: input.kcalObjetivo,
-        proteinaGramos: input.proteinaGramos,
-      })
-      .where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "protocol.approved",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: {
-        kcal_objetivo: input.kcalObjetivo,
-        proteina_g: input.proteinaGramos,
-        version_approved: input.versionApproved,
-        version_suggested: input.versionSuggested,
-        version_mismatch: input.versionApproved !== input.versionSuggested,
-      },
-      ip: input.ip,
-    });
-  });
-}
-
-export type ReopenProtocolWrite = {
-  treatmentId: string;
-  reason: string;
-  actorId: string;
-  actorEmail: string;
-  ip: string | null;
-};
-
-// REABRE una prescripcion aprobada (Gildardo 2026-08-30 §6c). Owner client + audit inline.
+// `writeApproveProtocol` Y `writeReopenProtocol` SE RETIRARON (2026-09-09).
 //
-// EL ORDEN IMPORTA Y NO ES INTERCAMBIABLE: primero se COPIA la aprobacion vigente a la historia, y solo
-// despues se limpia la fila. Al reves, un fallo entre los dos pasos perderia la prescripcion que el
-// paciente tiene en la mano. Van en la misma transaccion, asi que o quedan las dos cosas o ninguna.
+// El primero ponia `status = 'approved'`, y a partir de ese momento el trigger 0026 congelaba la
+// prescripcion entera; el segundo existia solo para deshacerlo. Los dos desaparecen juntos porque los dos
+// pertenecen al mismo mecanismo: sellar CERRANDO.
 //
-// El trigger 0093 exige los tres sellos (quien, cuando, por que) y que la aprobacion salga de la fila:
-// si este writer se equivocara, la base rechaza, no queda a medias.
-export async function writeReopenProtocol(input: ReopenProtocolWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        status: treatments.status,
-        approved: treatments.protocolApproved,
-        approvedBy: treatments.approvedBy,
-        approvedAt: treatments.approvedAt,
-        kcalObjetivo: treatments.kcalObjetivo,
-        proteinaGramos: treatments.proteinaGramos,
-      })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .limit(1);
-    if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
-    if (row.status !== "approved") {
-      throw new TreatmentStateError("Solo se reabre una prescripción aprobada.");
-    }
-    if (row.approved == null || row.approvedAt == null) {
-      // No deberia pasar (aprobar sella las dos), pero reabrir SIN historia perderia el documento.
-      throw new TreatmentStateError(
-        "La prescripción aprobada no tiene contenido sellado; no se reabre para no perder el registro.",
-      );
-    }
-
-    const reopenedAt = new Date();
-    await tx.insert(treatmentApprovals).values({
-      treatmentId: input.treatmentId,
-      protocolApproved: row.approved,
-      approvedBy: row.approvedBy,
-      approvedAt: row.approvedAt,
-      kcalObjetivo: row.kcalObjetivo,
-      proteinaG: row.proteinaGramos,
-      reopenedBy: input.actorId,
-      reopenedAt,
-      reopenReason: input.reason,
-    });
-
-    await tx
-      .update(treatments)
-      .set({
-        status: "draft",
-        protocolApproved: null,
-        approvedBy: null,
-        approvedAt: null,
-        reopenedAt,
-        reopenedBy: input.actorId,
-        reopenReason: input.reason,
-      })
-      .where(eq(treatments.id, input.treatmentId));
-
-    // Inline en la transaccion, nunca por el bus (regla dura 8): reabrir una prescripcion es un evento
-    // clinico critico, y su rastro no puede depender de que otro proceso lo recoja.
-    await recordAudit(tx, {
-      event: "protocol.reopened",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: {
-        reason: input.reason,
-        approved_at: row.approvedAt.toISOString(),
-        kcal_objetivo: row.kcalObjetivo,
-        proteina_g: row.proteinaGramos,
-      },
-      ip: input.ip,
-    });
-  });
-}
-
-// Gate de estado: los ajustes solo se editan en borrador. Un protocolo aprobado es inmutable.
-async function assertDraft(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  treatmentId: string,
-): Promise<void> {
-  const [row] = await tx
-    .select({ status: treatments.status })
-    .from(treatments)
-    .where(eq(treatments.id, treatmentId))
-    .limit(1);
-  if (!row) throw new TreatmentStateError("Tratamiento no encontrado.");
-  if (row.status !== "draft") {
-    throw new TreatmentStateError(
-      "El protocolo ya fue aprobado; para cambiarlo se genera una corrección (versión nueva).",
-    );
-  }
-}
+// LO QUE SELLA AHORA: `emisiones-writer.ts`, que guarda una copia inmutable de lo que salio hacia el
+// paciente y NO toca el estado del tratamiento. La garantia es mas fuerte, no mas debil: el congelado
+// protegia solo mientras nadie reabriera, y la copia protege siempre.
+//
+// `treatment_approvals` se conserva con las aprobaciones del modelo viejo, y la migracion 0115 las copia a
+// `prescription_emissions`: ninguna prescripcion que un paciente recibio desaparece del sistema.
 
 // Gate clinico compartido: el protocolo solo se edita sobre un diagnostico que EXISTE.
 //

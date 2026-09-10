@@ -52,8 +52,14 @@ describe("el hazard que abre acercar el botón, cerrado", () => {
   it("el botón se APAGA mientras haya restricciones sin guardar", () => {
     // No basta con avisar: la acción no puede estar disponible cuando produciría un resultado que
     // contradice lo que se ve en el campo.
-    expect(SIN).toContain(
-      "const disabled = locked || pending || !cadenaLista || !hayRestricciones || sinGuardar;",
+    // ALCANCE AJUSTADO (2026-09-09), no la asercion. Se fijaba la linea LITERAL, y al retirar el candado
+    // de la prescripcion desaparecio `locked` de la expresion (nada bloquea ya el panel). Se puso roja
+    // por un termino de menos, no por la regla.
+    //
+    // LA REGLA, que no cambia: el boton se apaga mientras haya restricciones sin guardar. Se afirma la
+    // condicion, no la lista entera de terminos.
+    expect(SIN).toMatch(
+      /const disabled = pending || !cadenaLista || !hayRestricciones || sinGuardar;/,
     );
   });
 

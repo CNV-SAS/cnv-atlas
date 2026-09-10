@@ -36,14 +36,11 @@ import {
   StaleTiemposError,
   StaleRestriccionesError,
   TreatmentStateError,
-  writeApproveProtocol,
-  writeReopenProtocol,
 } from "../data/treatment-writer";
 import type {
   AcknowledgeRestrictionsInput,
   AddNoteInput,
-  ApproveProtocolInput,
-  ReopenProtocolInput,
+  EmitirPrescripcionInput,
   SaveAdjustmentsInput,
   SaveNutraceuticalsInput,
   SaveObjetivoInput,
@@ -63,17 +60,22 @@ import type {
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
-// Guard de servidor contra editar un protocolo YA APROBADO (2026-08-22). Antes solo lo bloqueaba la UI
-// (fieldset disabled), pero las actions son invocables directo: con DOS PESTAÑAS (una sin aprobar, otra que
-// aprueba) el guardado de la vieja pisaba un plan aprobado sin querer, y el candado de firma NO lo atrapaba
-// (aprobar no cambia los datos de la seccion). Se aplica a las SEIS escrituras de seccion; NO a
-// acknowledgeRestrictions (el reconocimiento de restricciones ES un paso legitimo post-aprobacion; no
-// gatea el menu, ver su nota abajo) ni a addNote (documentacion). La pregunta CLINICA -si el plan debe congelarse o seguir editable- sigue
-// para Gildardo (BACKLOG); si dice editable, se relaja aqui Y en la UI. Hoy la UI ya lo bloquea; el servidor
-// lo respalda.
-const PROTOCOL_APPROVED_MSG =
-  "El protocolo ya fue aprobado, por eso no se puede editar. Su prescripción es inmutable: para cambiarla se " +
-  "corrige la evaluación (una versión nueva de toda la cadena), no se edita aquí.";
+// SE RETIRO EL GUARD DE "PROTOCOLO YA APROBADO" (2026-09-09), y con el las OCHO comprobaciones que lo
+// invocaban en las escrituras de seccion.
+//
+// POR QUE EXISTIA: aprobar CERRABA la prescripcion (trigger 0026), asi que un guardado posterior chocaba
+// contra la base y la pantalla se veia editable mientras el servidor rechazaba. El guard adelantaba ese
+// rechazo con un mensaje legible.
+//
+// POR QUE YA NO: la prescripcion no se cierra nunca. Emitir REGISTRA una copia de lo que salio y sigue
+// permitiendo editar, que es la peticion de Santiago y ademas es lo que Gildardo escribio en su §6c ("el
+// sellado no es un candado: es una consecuencia registrada"). Un guard que protege un estado que ya no
+// existe no es prudencia: es una prohibicion sin motivo, y el profesional la vive como un sistema que le
+// impide corregir.
+//
+// LO QUE SUSTITUYE A LA GARANTIA: la copia inmutable de cada emision. Antes, lo que el paciente recibio
+// se conservaba porque nadie podia tocar la fila; ahora se conserva porque esta copiado aparte. Es mas
+// fuerte, no mas debil: el congelado protegia solo mientras nadie reabriera.
 
 // Checkpoint 2.4: restricciones alimentarias, su propio camino de guardado. Solo nutricionista; ownership
 // por lectura RLS del treatmentId via evaluationId. La lista alimenta el menu (una restriccion perdida por
@@ -88,7 +90,6 @@ export async function saveRestricciones(
   if (!prof.ok) return err(prof.error);
   // SIN GATE DE CONFIRMACION (2026-09-09): el diagnostico es del modelo, no del profesional, y prescribir
   // ya no la exige. Que `protocol` exista significa que hay diagnostico, que es el gate que queda.
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeRestricciones({
       treatmentId: protocol.treatmentId,
@@ -132,7 +133,6 @@ export async function saveObjetivo(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el objetivo del tratamiento."));
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeObjetivo({
       treatmentId: protocol.treatmentId,
@@ -176,7 +176,6 @@ export async function saveIntercambio(
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la lista de intercambio."));
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeIntercambio({
       treatmentId: protocol.treatmentId,
@@ -217,7 +216,6 @@ export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promis
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la distribución por tiempos."));
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeTiempos({
       treatmentId: protocol.treatmentId,
@@ -290,7 +288,6 @@ export async function saveTiemposActivos(input: SaveTiemposActivosInput, actor: 
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar los tiempos de comida."));
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeTiemposActivos({
       treatmentId: protocol.treatmentId,
@@ -331,7 +328,6 @@ export async function saveMenuSemanal(input: SaveMenuSemanalInput, actor: Actor)
   if (!protocol.diagnosisConfirmed) {
     return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el menú semanal."));
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeMenuSemanal({
       treatmentId: protocol.treatmentId,
@@ -453,7 +449,6 @@ export async function saveNutraceuticals(
       ),
     );
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeNutraceuticals({
       treatmentId: protocol.treatmentId,
@@ -503,7 +498,6 @@ export async function saveAdjustments(
       appError("conflict", "El diagnóstico debe estar confirmado antes de ajustar el protocolo."),
     );
   }
-  if (protocol.approved) return err(appError("conflict", PROTOCOL_APPROVED_MSG));
   try {
     await writeAdjustments({
       treatmentId: protocol.treatmentId,
@@ -568,23 +562,10 @@ export async function acknowledgeRestrictions(
   return ok(undefined);
 }
 
-// T2 A3: aprobar el protocolo = sellar la prescripcion EFECTIVA (el acto mas cargado). Gates, y solo
-// estos (ver la precondicion de T2b en BACKLOG sobre por que NO se gatea en diagnostico confirmado):
-//   - canApproveProtocol (rol profesional; admin NO) -> lo verifica la action.
-//   - Asignacion EXPLICITA: el profesional que aprueba es el asignado a la evaluacion (no solo RLS).
-//   - status == 'draft' (no re-aprobar).
-//   - protocol_suggested no nulo (no se aprueba lo que nunca se computo).
-// Sella protocol_approved con el set efectivo (adj_* sobre los inputs sellados del sugerido), LAS DOS
-// VERSIONES del motor (la de ahora y la del sugerido) + versionMismatch, y LAS DOS FECHAS (aprobacion
-// y medicion BIS), para que la traza no se rompa si el motor subio entre el diagnostico y la aprobacion.
-/**
- * POR CUAL VIA SE APROBO. Se sella con el resto porque "entregar en mano" y "enviar por correo" no son lo
- * mismo si alguien pregunta despues: en un caso el paciente se llevo un papel de la consulta y en el otro
- * recibio un PDF por correo, con acuse y fecha distintos.
- *
- * `manual` queda para lo ya aprobado antes del 2026-09-09, cuando habia un boton propio. No se usa mas.
- */
-export type ViaDeAprobacion = "envio" | "entrega_en_consulta" | "manual";
+// `ViaDeAprobacion` SE RETIRO con la aprobacion (2026-09-09). Sus tres valores ("envio",
+// "entrega_en_consulta", "manual") describian por que via se habia CERRADO la prescripcion. La via sigue
+// registrandose, pero de la EMISION y con los nombres de lo que de verdad ocurre: "impresa" o "correo".
+// Ver `emitirPrescripcion` mas abajo y la columna `via` de `prescription_emissions`.
 
 /**
  * LA PRESCRIPCION EFECTIVA, ARMADA UNA SOLA VEZ.
@@ -681,7 +662,7 @@ async function construirPrescripcionEfectiva(args: {
  * emitida": eso volveria a ser un candado.
  */
 export async function emitirPrescripcion(
-  input: ApproveProtocolInput,
+  input: EmitirPrescripcionInput,
   actor: Actor,
   via: "impresa" | "correo",
 ): Promise<Result<void>> {
@@ -725,110 +706,19 @@ export async function emitirPrescripcion(
   return ok(undefined);
 }
 
-export async function approveProtocol(
-  input: ApproveProtocolInput,
-  actor: Actor,
-  via: ViaDeAprobacion = "manual",
-): Promise<Result<void>> {
-  const t = await getTreatmentForApproval(input.evaluationId);
-  if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
-
-  // Chequeo EXPLICITO de asignacion (defensa en profundidad, no solo el read RLS): el
-  // professional_profiles.id del actor debe ser el asignado a la evaluacion.
-  const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
-  if (!professionalId || professionalId !== t.evaluationProfessionalId) {
-    return err(appError("forbidden", "No estas asignado a este paciente."));
-  }
-  // Guard interino de ambito de practica: sin profesion configurada no se prescribe (aprobar es
-  // el acto mas cargado). Va tras la asignacion para no filtrar existencia (ver require-profession.ts).
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (t.status !== "draft") {
-    return err(appError("conflict", "El protocolo ya fue aprobado."));
-  }
-  if (!t.protocolSuggested) {
-    return err(
-      appError("conflict", "No se puede aprobar un protocolo que nunca se computo (sin sugerido)."),
-    );
-  }
-
-  const approvedAt = new Date();
-  // LA MISMA CONSTRUCCION QUE LA EMISION, en un solo sitio: dos copias del mismo objeto es como se separan
-  // dos versiones del mismo documento. Lo unico propio de este acto es la via, que aqui se llama
-  // `aprobadoVia` (un acto clinico registra las condiciones bajo las que se ejecuto).
-  const sellada = await construirPrescripcionEfectiva({
-    evaluationId: input.evaluationId,
-    suggested: t.protocolSuggested,
-    adjustments: t.adjustments,
-    bisMeasurementDate: t.bisMeasurementDate,
-    profession: prof.value.profession,
-    fecha: approvedAt,
-  });
-  const protocolApproved = { aprobadoVia: via, ...sellada.payload };
-  const versionApproved = sellada.versionApproved;
-  const versionSuggested = sellada.versionSuggested;
-
-  try {
-    await writeApproveProtocol({
-      treatmentId: t.treatmentId,
-      protocolApproved,
-      kcalObjetivo: sellada.kcalObjetivo,
-      proteinaGramos: sellada.proteinaGramos,
-      approvedAt,
-      versionApproved,
-      versionSuggested,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c).
+// `approveProtocol` y `reopenProtocol` SE RETIRARON (2026-09-09), y las dos por la misma razon.
 //
-// SU FORMULACION, que es la que gobierna el diseño: "El sellado no es un candado: es una consecuencia
-// registrada. Un profesional que necesita corregir un plan aprobado tiene que poder hacerlo; lo que no
-// puede es que el cambio no deje rastro ni le llegue al paciente que ya se lo llevo."
+// APROBAR hacia DOS cosas pegadas: sellaba la prescripcion efectiva Y la cerraba (a partir de ahi el
+// trigger 0026 la congelaba entera). Solo la primera mitad hacia falta, y ahora la hace `emitirPrescripcion`
+// de aqui arriba, que guarda la copia sin cerrar nada.
 //
-// De ahi salen las tres condiciones, y ninguna es opcional: (1) SE PUEDE, contra el candado anterior;
-// (2) DEJA RASTRO, por eso el motivo es obligatorio y la aprobacion anterior se conserva entera en
-// `treatment_approvals`; (3) LE LLEGA AL PACIENTE, que es lo que resuelve `avisarAlPaciente`: un
-// tratamiento reemitido se avisa SIEMPRE, "porque cambia lo que la persona come".
+// REABRIR existia SOLO para deshacer ese cierre. Sin cierre no hay nada que reabrir, asi que desaparece
+// con el, y con ella el motivo obligatorio que Santiago vivia como un tramite para corregir una coma.
 //
-// MISMOS GUARDS QUE APROBAR, y no por simetria: reabrir es el acto que DESHACE una prescripcion, asi que
-// no puede exigir menos que hacerla. Asignacion explicita + profesion, en ese orden (la asignacion va
-// primero para no filtrar existencia).
-export async function reopenProtocol(
-  input: ReopenProtocolInput,
-  actor: Actor,
-): Promise<Result<void>> {
-  const t = await getTreatmentForApproval(input.evaluationId);
-  if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
-
-  const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
-  if (!professionalId || professionalId !== t.evaluationProfessionalId) {
-    return err(appError("forbidden", "No estas asignado a este paciente."));
-  }
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (t.status !== "approved") {
-    return err(appError("conflict", "Esta prescripción no está aprobada: no hay nada que reabrir."));
-  }
-
-  try {
-    await writeReopenProtocol({
-      treatmentId: t.treatmentId,
-      reason: input.reason,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
+// LO QUE NO SE PIERDE, que es lo que habia que verificar antes de tocar esto: `treatment_approvals` sigue
+// existiendo con las aprobaciones anteriores del modelo viejo, y la migracion 0115 las copia a
+// `prescription_emissions`. Ninguna prescripcion que un paciente recibio desaparece del sistema, que es
+// justo el daño que Gildardo nombra al autorizar la reapertura en su §6c.
 
 // Nota clinica del tratamiento: es DOCUMENTACION, no prescripcion. A proposito NO lleva el guard de
 // profesion (a diferencia de las otras cinco escrituras): un profesional asignado al paciente puede

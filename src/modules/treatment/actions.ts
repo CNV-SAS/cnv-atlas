@@ -7,7 +7,7 @@ import { requireUser } from "@/modules/auth/session";
 import { generateMenu } from "./services/generate-menu";
 import {
   canAcknowledgeRestrictions,
-  canApproveProtocol,
+  canEmitirPrescripcion,
   canEditProtocolDraft,
 } from "./policies/can-edit-protocol";
 import { canManageTreatment } from "./policies/can-manage-treatment";
@@ -16,8 +16,7 @@ import {
   addNote,
   aplicarCambioMenu,
   aplicarCambiosMenu,
-  approveProtocol,
-  reopenProtocol,
+  emitirPrescripcion,
   saveAdjustments,
   saveNutraceuticals,
   saveObjetivo,
@@ -33,8 +32,7 @@ import {
   addNoteSchema,
   aplicarCambioMenuSchema,
   aplicarCambiosMenuSchema,
-  approveProtocolSchema,
-  reopenProtocolSchema,
+  emitirPrescripcionSchema,
   saveAdjustmentsSchema,
   saveNutraceuticalsSchema,
   saveObjetivoSchema,
@@ -546,96 +544,68 @@ export async function acknowledgeRestrictionsAction(
   return { error: null, success: "Restricciones reconocidas.", warning: null };
 }
 
-// T2 A3: aprueba el protocolo (sella la prescripcion efectiva). PROFESIONAL-SOLO (admin no); la
-// asignacion explicita y los gates de estado los verifica el service.
-// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c). Misma policy que aprobar, y no por
-// simetria: reabrir es el acto que DESHACE una prescripcion, asi que no puede exigir menos que hacerla.
-export async function reopenProtocolAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canApproveProtocol(user)) return fail("No autorizado.");
-
-  const parsed = reopenProtocolSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    reason: (form.get("reason") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "No se pudo reabrir la prescripción.");
-  }
-
-  const result = await reopenProtocol(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) return fail(result.error.message);
-
-  // WARNING, no success, y la diferencia importa: reabrir NO es un logro, es un acto con consecuencia.
-  // El mensaje dice las dos que su §6c/§12c fijan: queda registrado, y al paciente hay que avisarle.
-  //
-  // DECIA "al aprobar la nueva se avisará al paciente", y se CONTRADECIA con el bloque de la pantalla, que
-  // dice "el sistema no se lo avisa solo" (lo cazo Santiago en el smoke del 2026-09-02, preguntando cual de
-  // los dos era). El bloque tenia razon: aprobar escribe el evento en la auditoria y nada mas. Este toast
-  // se quedo con la redaccion vieja porque al corregir los textos se barrio la PANTALLA y no las acciones.
-  // Su §12c exige que al paciente se le diga; lo que no existe es el automatismo.
-  return {
-    error: null,
-    success: null,
-    warning:
-      "Prescripción reabierta. Queda registrada en la historia con tu motivo. Cuando apruebes la nueva, " +
-      "envíale el reporte: cambia lo que come y el sistema no se lo avisa solo.",
-  };
-}
+// `reopenProtocolAction` SE RETIRO (2026-09-09). Existia para deshacer el cierre que provocaba aprobar, y
+// ya no hay cierre: la prescripcion esta siempre abierta. El motivo obligatorio que exigia era el precio
+// de ese cierre, no una garantia por si mismo; lo que si era una garantia (que no se pierda lo que el
+// paciente recibio) lo sostiene ahora la copia inmutable de cada emision.
 
 /**
- * "ENTREGADO EN CONSULTA": el acto que sella la prescripcion cuando el plan se entrega EN MANO
- * (2026-09-09).
+ * IMPRIMIR EL PLAN REGISTRA LA ENTREGA (Santiago, 2026-09-09).
  *
- * POR QUE HACE FALTA UNA SEGUNDA VIA. Al mover el sello al envio, quedaba un hueco real y verificado: el
- * plan imprimible se arma del protocolo COMPUTADO, no del aprobado (`getPlanPaciente` pide
- * `protocolSuggested`), asi que hoy se puede imprimir y entregar un plan sin que nadie lo haya sellado. Si
- * el profesional nunca envia el reporte, el paciente se fue con un papel que nadie asumio.
+ * QUE SUSTITUYE. Habia un boton aparte, "Entregado en consulta", que SELLABA la prescripcion: a partir de
+ * ahi quedaba bloqueada y corregir una coma exigia reabrirla con un motivo escrito. Santiago lo reporto
+ * como confuso, y tenia razon: eran tres cosas que el profesional sufre (un boton que parece un tramite,
+ * una prescripcion cerrada y una reapertura con motivo) para conseguir UNA que si importa, saber que
+ * recibio el paciente.
  *
- * Y POR QUE UN BOTON Y NO LA IMPRESION. Imprimir es LEER: se imprime para revisar, y se imprime dos veces
- * porque salio torcida. Convertir una lectura en una firma es lo contrario de lo que un acto clinico debe
- * ser. Entregar SI es un acto, y por eso se declara.
+ * POR QUE AHORA SI LO HACE LA IMPRESION, cuando antes se argumento lo contrario. El argumento de entonces
+ * era: "imprimir es LEER; se imprime para revisar, y dos veces si salio torcida; convertir una lectura en
+ * una firma es lo contrario de lo que un acto clinico debe ser". Ese argumento era correcto MIENTRAS
+ * emitir CERRARA. Ahora emitir solo REGISTRA: la prescripcion sigue abierta, y dos impresiones dejan dos
+ * lineas que dicen la verdad ("se imprimio dos veces"). La objecion se disuelve justamente porque la
+ * pieza que la causaba ya no esta.
  *
- * SELLA EXACTAMENTE LO MISMO QUE EL ENVIO, con la via registrada: `entrega_en_consulta` frente a `envio`.
- * Las dos no son lo mismo si alguien pregunta despues.
+ * LO QUE NO SE PUEDE SABER, y se dice para que nadie lo lea como mas de lo que es: `window.print()` no
+ * informa de si el profesional acabo imprimiendo o cancelo el dialogo. Asi que esto registra que el plan
+ * SE MANDO A IMPRIMIR. Es la afirmacion que el sistema puede sostener, y por eso es la que se escribe.
  */
-export async function marcarEntregadoEnConsultaAction(
+export async function registrarPlanImpresoAction(
   _prev: TreatmentActionState,
   form: FormData,
 ): Promise<TreatmentActionState> {
   const user = await requireUser();
-  if (!canApproveProtocol(user)) return fail("No autorizado.");
+  if (!canEmitirPrescripcion(user)) return fail("No autorizado.");
 
-  const parsed = approveProtocolSchema.safeParse({
+  const parsed = emitirPrescripcionSchema.safeParse({
     evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
   });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
 
-  const result = await approveProtocol(
+  const result = await emitirPrescripcion(
     parsed.data,
     { actorId: user.id, actorEmail: user.email, ...(await actor()) },
-    "entrega_en_consulta",
+    "impresa",
   );
-  if (!result.ok) return fail(result.error.message);
+  if (!result.ok) {
+    // EL MENSAJE DICE COMO REINTENTAR. No hay boton propio para esto (ese era el que confundia), asi que
+    // la via de reintento es volver a imprimir, y el texto tiene que nombrarla o el profesional se queda
+    // sin saber que hacer con el aviso.
+    return fail(`El plan se imprimió, pero no se pudo registrar la entrega: ${result.error.message} Vuelve a imprimirlo para que quede constancia.`);
+  }
 
   return {
     error: null,
-    success: "Entrega registrada. La prescripción queda sellada tal como está.",
+    success: "Entrega registrada. La prescripción sigue abierta: puedes seguir ajustándola.",
     warning: null,
   };
 }
 
-// `approveProtocolAction` SE RETIRO (2026-09-09). Era la accion del boton "Aprobar la prescripcion", y ya
-// no existe un acto suelto de aprobar: la prescripcion se sella al EMITIR. Las dos vias son
-// `marcarEntregadoEnConsultaAction` (de aqui arriba) y el envio del reporte, que llama a `approveProtocol`
-// directamente en su servicio. Se retira en vez de dejarla: una accion sin pantalla es la tercera forma de
-// cable suelto, y `check:cables` la habria marcado.
+// `approveProtocolAction` y `marcarEntregadoEnConsultaAction` SE RETIRARON (2026-09-09). La primera era el
+// boton "Aprobar la prescripcion" y la segunda "Entregado en consulta"; ninguna de las dos tiene ya
+// sentido, porque no existe un acto suelto de sellar. Las DOS vias de emision son actos que el profesional
+// hace de todos modos: IMPRIMIR el plan (aqui arriba) y ENVIAR el reporte (que llama a `emitirPrescripcion`
+// en su servicio). Se retiran en vez de dejarlas: una accion sin pantalla es la tercera forma de cable
+// suelto, y `check:cables` la habria marcado.
 
 // Genera el menu por IA desde los objetivos guardados del protocolo (barrera PII en el
 // service). Rate limit por usuario: cada generacion es una llamada externa paga.

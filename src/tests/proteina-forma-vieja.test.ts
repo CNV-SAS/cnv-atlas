@@ -36,11 +36,11 @@ const VIEJO = {
 let viejoId: string;
 let profileId: string;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let writeApproveProtocol: any;
+let writeEmisionPrescripcion: any;
 
 beforeAll(async () => {
-  const mod = await import("@/modules/treatment/data/treatment-writer");
-  writeApproveProtocol = mod.writeApproveProtocol;
+  const mod = await import("@/modules/treatment/data/emisiones-writer");
+  writeEmisionPrescripcion = mod.writeEmisionPrescripcion;
 
   const [d] = await sql<{ id: string }[]>`SELECT id FROM diagnoses LIMIT 1`;
   const [p] = await sql<{ id: string }[]>`SELECT id FROM profiles LIMIT 1`;
@@ -54,6 +54,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await sql.begin(async (tx) => {
     await tx`SET LOCAL session_replication_role = replica`;
+    await tx`DELETE FROM prescription_emissions WHERE treatment_id = ${viejoId}`;
     await tx`DELETE FROM treatments WHERE id = ${viejoId}`;
   });
   await sql.end();
@@ -96,27 +97,30 @@ describe("un snapshot de la forma VIEJA se lee y se SELLA con la proteína del m
   it("EL WRITER corre sobre la forma vieja y sella la proteína del motor", async () => {
     // ESTE es el caso que el 500 nos enseño a escribir: no basta con que el lector tolere, tiene que
     // GUARDAR. Se sella lo que la cadena efectiva resolvio, que es lo que el profesional tenia delante.
+    //
+    // EL WRITER CAMBIO DE NOMBRE Y DE ALCANCE (2026-09-09), la garantia no: era `writeApproveProtocol`,
+    // que sellaba Y cerraba, y ahora es `writeEmisionPrescripcion`, que solo guarda la copia de lo que
+    // salio. Lo que este caso afirma sigue siendo lo mismo: que sobre un snapshot de la forma VIEJA se
+    // guarda la proteina del MOTOR (104 g) y no el minimo poblacional (64 g).
     const leido = await sql<{ ps: ProtocoloSnapshot }[]>`
       SELECT protocol_suggested AS ps FROM treatments WHERE id = ${viejoId}`;
     const ef = computeProtocoloEfectivo(leido[0].ps, SIN_AJUSTES, { protKgVigente: 1.3 });
 
-    await writeApproveProtocol({
+    await writeEmisionPrescripcion({
       treatmentId: viejoId,
-      protocolApproved: { calorico: ef.calorico, protFuente: ef.protFuente },
+      prescripcion: { calorico: ef.calorico, protFuente: ef.protFuente },
       kcalObjetivo: Math.round(ef.calorico.kcalObj),
       proteinaGramos: Math.round(ef.calorico.protG),
-      approvedAt: new Date("2026-09-03T12:00:00Z"),
-      versionApproved: "anibise-protocolo-2026-09-03",
-      versionSuggested: leido[0].ps.protocolEngineVersion,
+      via: "impresa",
       actorId: profileId,
       actorEmail: "pro@cnv",
       ip: null,
     });
 
-    const [row] = await sql<{ status: string; prot: number; pa: Record<string, unknown> }[]>`
-      SELECT status, proteina_g AS prot, protocol_approved AS pa FROM treatments WHERE id = ${viejoId}`;
-    expect(row.status).toBe("approved");
-    // 104 g, no 64: lo sellado es la prescripcion del motor, no el minimo poblacional.
+    const [row] = await sql<{ prot: number; pa: Record<string, unknown> }[]>`
+      SELECT proteina_g AS prot, prescripcion AS pa FROM prescription_emissions
+      WHERE treatment_id = ${viejoId}`;
+    // 104 g, no 64: lo que se entrego es la prescripcion del motor, no el minimo poblacional.
     expect(row.prot).toBe(104);
     expect(row.pa.protFuente).toBe("motor");
   });

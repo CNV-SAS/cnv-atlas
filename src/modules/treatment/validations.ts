@@ -242,29 +242,18 @@ export const acknowledgeRestrictionsSchema = z.object({
 
 export type AcknowledgeRestrictionsInput = z.infer<typeof acknowledgeRestrictionsSchema>;
 
-// Aprobar el protocolo (T2 A3): convierte el sugerido + ajustes en la prescripcion efectiva y la
-// sella. No lleva mas payload que la evaluacion: los adj_* ya estan guardados (saveAdjustments) y el
-// set efectivo se recomputa en el service; el profesional nunca escribe el efectivo directo.
-export const approveProtocolSchema = z.object({
+// EMITIR la prescripcion: registrar que el sugerido + ajustes salio hacia el paciente. No lleva mas
+// payload que la evaluacion: los adj_* ya estan guardados (saveAdjustments) y el set efectivo se recomputa
+// en el service; el profesional nunca escribe el efectivo directo.
+export const emitirPrescripcionSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
 });
 
-export type ApproveProtocolInput = z.infer<typeof approveProtocolSchema>;
+export type EmitirPrescripcionInput = z.infer<typeof emitirPrescripcionSchema>;
 
-// REABRIR una prescripcion aprobada (Gildardo 2026-08-30 §6c). El MOTIVO es obligatorio y tiene minimo
-// util (no un caracter): "el sellado no es un candado, es una consecuencia REGISTRADA", y una razon
-// vacia o de una letra no registra nada. El mismo minimo lo exige el trigger de la base, para que el
-// rastro no dependa de que la validacion corra.
-export const reopenProtocolSchema = z.object({
-  evaluationId: z.guid("Evaluación inválida."),
-  reason: z
-    .string()
-    .trim()
-    .min(10, "Escribe por qué reabres la prescripción: queda en la historia del paciente.")
-    .max(500, "El motivo es demasiado largo."),
-});
-
-export type ReopenProtocolInput = z.infer<typeof reopenProtocolSchema>;
+// `reopenProtocolSchema` SE RETIRO (2026-09-09) junto con la reapertura. Exigia un motivo de diez
+// caracteres, y ese minimo era el precio del CIERRE: sin cierre no hay nada que reabrir. La constancia que
+// el motivo aportaba la da ahora la copia de cada emision, que no depende de que nadie escriba nada.
 
 // Nota clinica del tratamiento: append-only (treatment_notes lleva su timestamp).
 export const addNoteSchema = z.object({

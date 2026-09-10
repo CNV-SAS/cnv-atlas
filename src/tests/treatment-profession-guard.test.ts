@@ -233,31 +233,20 @@ describe("guard de profesion: escrituras de tratamiento", () => {
 // legitimos post-aprobacion; se cubren en sus propios casos.)
 // Eran SIETE en la tabla aunque el titulo dijera seis; al retirar las guias dietarias (2026-09-01) quedan
 // las seis reales, asi que el titulo y la tabla por fin dicen lo mismo.
-describe("guard de aprobado: las seis escrituras de seccion rechazan si el protocolo ya fue aprobado", () => {
-  const APPROVED = { treatmentId: "T1", diagnosisConfirmed: true, approved: true } as unknown as TreatmentProtocol;
-  beforeEach(() => {
-    vi.clearAllMocks();
-    readProtocol.mockResolvedValue(APPROVED);
-    profOf.mockResolvedValue(PRO("nutricionista")); // pasa el guard de profesion; lo frena el de aprobado
-  });
-
-  const casos: [string, () => Promise<{ ok: boolean; error?: { code: string } }>, unknown][] = [
-    ["saveRestricciones", () => saveRestricciones(RESTR_INPUT, actor), writeRestricciones],
-    ["saveObjetivo", () => saveObjetivo(OBJ_INPUT, actor), writeObjetivo],
-    ["saveIntercambio", () => saveIntercambio(INTER_INPUT, actor), writeIntercambio],
-    ["saveTiempos", () => saveTiempos(TIEMPOS_INPUT, actor), writeTiempos],
-    ["saveNutraceuticals", () => saveNutraceuticals(NUTRA_INPUT, actor), writeNutraceuticals],
-    ["saveAdjustments", () => saveAdjustments(ADJ_INPUT, actor), writeAdjustments],
-  ];
-  for (const [name, call, writer] of casos) {
-    it(`${name}: protocolo aprobado -> conflict y NO escribe`, async () => {
-      const r = await call();
-      expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error?.code).toBe("conflict");
-      expect(writer).not.toHaveBeenCalled();
-    });
-  }
-});
+// EL GUARD DE "PROTOCOLO YA APROBADO" SE RETIRO (2026-09-09), y con el las seis comprobaciones que este
+// bloque afirmaba. No es que se relajara un candado: es que el estado que gateaba dejo de existir.
+//
+// POR QUE EXISTIA: aprobar CERRABA la prescripcion (el trigger congelaba la fila), asi que un guardado
+// posterior chocaba contra la base y la pantalla se veia editable mientras el servidor rechazaba. El guard
+// adelantaba ese rechazo con un mensaje legible. Servia para que la pantalla y el servidor no se
+// contradijeran, no para proteger un dato.
+//
+// POR QUE YA NO: la prescripcion esta SIEMPRE abierta. Lo que conserva la constancia de lo entregado es la
+// copia inmutable de cada emision (`prescription_emissions`), que no depende de que nadie deje de editar,
+// y eso lo prueban `emitir-prescripcion-writer` y `treatment-immutability` contra base real.
+//
+// Y EL BLOQUE NO SE SUSTITUYE POR OTRO AQUI: lo que ahora hay que afirmar es que editar DESPUES de
+// entregar SE PUEDE, y eso se comprueba contra la base (en `treatment-immutability`), no con mocks.
 
 describe("guard de profesion: generateMenu", () => {
   beforeEach(() => {
