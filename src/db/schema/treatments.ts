@@ -3,6 +3,7 @@ import { date, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "d
 
 import { createdAt, pk } from "./_columns";
 import { diagnoses } from "./diagnoses";
+import { evaluations } from "./evaluations";
 import {
   nutraceuticalDecision,
   nutraceuticalDecisionReason,
@@ -237,5 +238,46 @@ export const treatmentApprovals = pgTable("treatment_approvals", {
   reopenedBy: uuid("reopened_by").references(() => profiles.id, { onDelete: "restrict" }),
   reopenedAt: timestamp("reopened_at", { withTimezone: true }).notNull().defaultNow(),
   reopenReason: text("reopen_reason").notNull(),
+  createdAt: createdAt(),
+});
+
+// EMISIONES DE LA PRESCRIPCION: la copia inmutable de cada plan que SALIO hacia el paciente.
+//
+// SEPARA EMITIR DE BLOQUEAR (Santiago, 2026-09-09). Aprobar hacia dos cosas pegadas, sellar y cerrar, y
+// por eso hacia falta un boton que parecia un tramite, la prescripcion quedaba bloqueada y corregir una
+// coma exigia reabrir con motivo. Ahora la prescripcion esta SIEMPRE ABIERTA y cada salida deja su copia.
+//
+// LO QUE ESTO CONSERVA, que es lo unico que importaba: saber que recibio el paciente. Y lo conserva MEJOR
+// que el candado, porque el candado protegia por accidente: el plan impreso, el del correo y la historia
+// clinica se arman los tres del protocolo VIVO (`protocol_suggested` + los `adj_*` de hoy), asi que solo
+// eran estables porque el trigger 0026 congelaba los ajustes al aprobar. Sin emisiones, una historia
+// clinica de agosto diria lo que los ajustes digan hoy.
+//
+// APPEND-ONLY POR TRIGGER (migracion 0115), no por convencion: una fila editable no prueba nada.
+export const prescriptionEmissions = pgTable("prescription_emissions", {
+  id: pk(),
+  treatmentId: uuid("treatment_id")
+    .notNull()
+    .references(() => treatments.id, { onDelete: "cascade" }),
+  // Tambien la evaluacion: los documentos clinicos se leen POR EVALUACION, y encadenar
+  // treatments -> diagnoses -> evaluations en cada lectura es donde un join de mas se vuelve un bloque
+  // que falta.
+  evaluationId: uuid("evaluation_id")
+    .notNull()
+    .references(() => evaluations.id, { onDelete: "cascade" }),
+  // Que salio, con la misma forma que `treatments.protocol_approved`. Es una COPIA, no una referencia: el
+  // sentido entero de la tabla es que lo emitido no dependa de nada que se pueda mover despues.
+  prescripcion: jsonb("prescripcion").notNull(),
+  // MISMOS tipos que en `treatments` (integer los dos): copiar no puede convertir.
+  kcalObjetivo: integer("kcal_objetivo"),
+  proteinaG: integer("proteina_g"),
+  // 'impresa' | 'correo' | 'anterior'. La ultima son las aprobadas antes de que existieran las emisiones:
+  // se migraron con su fecha, pero su via no se registro y no se inventa.
+  via: text("via").notNull(),
+  // Nullable a proposito: el backfill trae filas sin `approved_by`. Para toda emision nueva el writer los
+  // exige. RESTRICT (regla 14): una cuenta clinica no se recicla ni se borra.
+  emittedBy: uuid("emitted_by").references(() => profiles.id, { onDelete: "restrict" }),
+  emittedByEmail: text("emitted_by_email"),
+  emittedAt: timestamp("emitted_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: createdAt(),
 });
