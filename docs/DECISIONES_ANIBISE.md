@@ -1418,3 +1418,26 @@ se retira: que la causa sea permanente lo hace mas necesario, no menos.
 empezara a responder ese documento, asi que puede no haberlo visto): si se queda asi con el aviso
 permanente, si las diez se retiran del modelo, o si la encuesta pasa a capturar porciones. Ninguna la
 podemos tomar nosotros: la segunda borra reglas suyas y la tercera toca el instrumento congelado.
+
+---
+
+## P-127 · El PABU con dos veredictos, uno por superficie, y los dos suyos (2026-09-10)
+
+**Lo vio Santiago en el smoke:** la HC dice "Desviacion por exceso" y la tabla de indices del
+Diagnostico "PABU bajo", del mismo paciente y la misma consulta.
+
+**VERIFICADO CONTRA SU ARCHIVO, linea por linea, antes de tocar nada:**
+- Su HC (L15473): `clf: cPABU(t_pabu)`.
+- Su tabla de indices (L14622): `dPABU(pabu_d)`.
+
+Atlas es FIEL a las dos. No es un defecto nuestro y no se unifica por nuestra cuenta (regla 0). Es la
+misma forma que el ICA-BIS, que el ya habia resuelto asi por escrito.
+
+**LAS DOS SON COHERENTES POR SEPARADO:** `cPABU` nombra el MECANISMO (bajo φ = exceso de adiposidad,
+sobre φ = deficit estructural, lo mismo que dice su sysprompt) y `dPABU` la DIRECCION del numero. El
+riesgo es de LECTURA: "bajo" y "exceso" se contradicen en lenguaje corriente aunque no en el modelo.
+
+**BARRIDO DE LOS DEMAS:** ningun otro indice discrepa. `rotuloDisplayDeIndice` solo reetiqueta PABU, IAE
+e IEHH, y de esos tres solo el PABU aparece en el bloque ANI-BIS-E de la HC.
+
+**PREGUNTADO** en el punto 22 de PENDIENTES_CIENTIFICOS, con tres salidas y sin tomar ninguna.
