@@ -1,7 +1,17 @@
 "use client";
 
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
-import { useActionState, useId, useState, type ReactNode } from "react";
+import { useSyncExternalStore } from "react";
+import {
+  createContext,
+  useActionState,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 
 import { computeProtocoloEfectivo, type ProtocoloAjustes } from "@/clinical-engine";
@@ -44,13 +54,7 @@ import {
   aplicarCambioMenuAction,
   aplicarCambiosMenuAction,
   generateMenuAction,
-  saveAdjustmentsAction,
-  saveIntercambioAction,
-  saveMenuSemanalAction,
-  saveTiemposAction,
-  saveTiemposActivosAction,
-  saveObjetivoAction,
-  saveRestriccionesAction,
+  guardarProtocoloAction,
   type TreatmentActionState,
 } from "../actions";
 import { RealimentacionAlert } from "./realimentacion-alert";
@@ -69,6 +73,7 @@ import {
   esMenuComidas,
   type IntercambioSaved,
   type MenuCambios,
+  type MenuSemanalSaved,
   type AsesoriaMacro,
   type PrescripcionNutricional,
   type TreatmentNote,
@@ -79,12 +84,118 @@ import {
 
 const EMPTY: TreatmentActionState = { error: null, success: null, warning: null };
 
+// ═══ UN SOLO GUARDADO PARA TODO EL PROTOCOLO (Santiago, 2026-09-09) ═══
+//
+// LO QUE PIDIO, textual: *"quitar todos esos botones de guardar ajustes por bloques y que cada cambio sea
+// en vivo... que aparezca un toast o notificación sticky... y un botón que diga Guardar cambios. Así
+// pasamos de 8 botones a solo 1 botón."*
+//
+// COMO SE HIZO, Y POR QUE ASI. Cada seccion CONSERVA su estado y su logica de derivacion (la lista de
+// intercambio recalcula sus porciones, la distribucion su reparto, la cadena su vista previa): eso ya
+// funcionaba y reescribirlo para subirlo al padre habria sido cambiar mil quinientas lineas que nadie
+// pidio cambiar. Lo que hacen ahora es PUBLICAR su borrador hacia arriba, y el padre reune los siete,
+// dibuja el aviso pegajoso y manda UN guardado.
+//
+// EL GUARD CONTRA EL BUCLE es la FIRMA: una seccion publica en cada render, y el padre solo cambia de
+// estado si la firma llego distinta. Sin eso, publicar provocaria un render que volveria a publicar.
+//
+// Y LA FIRMA NO ES DECORACION: es exactamente la misma que el servidor recomputa bajo lock para el candado
+// de concurrencia. Que sirva de dos cosas no es un atajo, es la razon de que el aviso de "sin guardar"
+// diga la verdad: se enciende cuando lo de pantalla difiere de lo que hay en la base, ni antes ni despues.
+
+/** Las siete secciones que se guardan juntas. Los nutraceuticos NO entran: ver `protocolo-writer.ts`. */
+type SeccionId =
+  | "ajustes"
+  | "objetivo"
+  | "restricciones"
+  | "intercambio"
+  | "tiemposActivos"
+  | "tiempos"
+  | "menuSemanal";
+
+type Publicado = { valor: unknown; firma: string };
+
+/**
+ * EL ALMACEN DEL BORRADOR, fuera de React a proposito.
+ *
+ * POR QUE NO ES `useState` DEL PADRE. Una seccion publica desde un efecto, y llamar al `setState` del
+ * padre dentro del efecto de un hijo encadena renders (es lo que señala la regla `set-state-in-effect`, y
+ * con razon: siete secciones publicando en cascada). Un almacen externo es justo el caso que React
+ * documenta para esto: el hijo ACTUALIZA UN SISTEMA EXTERNO, y el padre se SUSCRIBE con
+ * `useSyncExternalStore`. Un solo re-render del padre por cambio real, y ninguno por publicar lo mismo.
+ *
+ * EL GUARD CONTRA EL BUCLE sigue siendo la FIRMA: publicar lo mismo no notifica a nadie.
+ */
+type AlmacenBorrador = {
+  publicar: (seccion: SeccionId, valor: unknown, firma: string) => void;
+  leer: () => Partial<Record<SeccionId, Publicado>>;
+  suscribir: (oyente: () => void) => () => void;
+};
+
+function crearAlmacenBorrador(): AlmacenBorrador {
+  let estado: Partial<Record<SeccionId, Publicado>> = {};
+  const oyentes = new Set<() => void>();
+  return {
+    publicar(seccion, valor, firma) {
+      if (estado[seccion]?.firma === firma) return;
+      // Objeto NUEVO en cada cambio: `useSyncExternalStore` compara por identidad, y mutar el mismo dejaria
+      // al padre sin enterarse.
+      estado = { ...estado, [seccion]: { valor, firma } };
+      for (const o of oyentes) o();
+    },
+    leer: () => estado,
+    suscribir(oyente) {
+      oyentes.add(oyente);
+      return () => oyentes.delete(oyente);
+    },
+  };
+}
+
+type BorradorCtx = {
+  almacen: AlmacenBorrador;
+  /** Hay un guardado en vuelo: los campos se apagan para que no se pierda lo que se escriba encima. */
+  guardando: boolean;
+};
+
+const BorradorContexto = createContext<BorradorCtx | null>(null);
+
+function useBorrador(): BorradorCtx {
+  const ctx = useContext(BorradorContexto);
+  // No se cae con undefined en produccion: una seccion fuera del panel es un error de programacion, y el
+  // mensaje tiene que decir cual es en vez de reventar en un `publicar of undefined`.
+  if (!ctx) throw new Error("Una sección del protocolo se renderizó fuera del panel de tratamiento.");
+  return ctx;
+}
+
+/**
+ * Publica el borrador de una seccion cada vez que su firma cambia.
+ *
+ * SE PUBLICA EN UN EFECTO Y NO EN EL RENDER porque cambiar el estado del padre durante el render del hijo
+ * es justo lo que React prohibe. El efecto corre despues de pintar, asi que el aviso pegajoso aparece un
+ * ciclo despues de teclear, que es imperceptible y es el precio de no reescribir las siete secciones.
+ */
+function usePublicar(seccion: SeccionId, valor: unknown, firma: string | null): void {
+  const { almacen } = useBorrador();
+  useEffect(() => {
+    // FIRMA NULA = LA SECCION NO APLICA (un tratamiento sin snapshot sellado no tiene cadena ni lista de
+    // intercambio que publicar). Se llama al hook igual, sin condicion, porque el orden de los hooks no
+    // puede depender de los datos; lo que se salta es la publicacion.
+    if (firma == null) return;
+    almacen.publicar(seccion, valor, firma);
+    // `valor` se omite a proposito: la FIRMA es lo que decide si algo cambio, y el valor puede ser un
+    // objeto nuevo en cada render (un `.map`, un literal) sin que nada haya cambiado de verdad. Con el
+    // valor en las dependencias, el efecto correria en cada render y el guard del padre seria lo unico
+    // que impediria el bucle; con la firma, ni siquiera se llega ahi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [almacen, seccion, firma]);
+}
+
 // Panel del protocolo de tratamiento (B13), vista interna del profesional. Edita objetivos,
 // nutraceuticos y guias, y agrega notas. Si el diagnostico no esta confirmado, la edicion
 // se bloquea (gate de B13: el protocolo se autoriza tras aprobar el reporte).
 // Peso meta (cadena calórica, pieza 1: HECHO VISIBLE — nota 3 de Gildardo). Hoy el peso sobre el que se
 // calcula la prescripción sale del snapshot (pesoCalculo) y, si nadie lo fija, se usa sin decirlo. Aquí se
-// MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, vía saveAdjustmentsAction). No
+// MUESTRA con su fórmula (pesoCalculoLabel) y se deja FIJAR (adj_peso_meta, con el guardado único). No
 // cambia el modelo del cálculo (eso es pieza 2, el re-port): solo lo hace visible y editable, honesto sobre
 // lo que hay. La key en el call-site (incluye el peso meta y su procedencia) remonta al guardar, para
 // que "fijado" se vea.
@@ -367,13 +478,11 @@ function PrevRow({
 // acordarse de pasar sigue siendo mas fragil que no tener dos fuentes.
 
 function CadenaCaloricaSection({
-  evaluationId,
   protocol,
   prescripcion,
   asesoria,
   validacion,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
   /** La prescripcion del motor que gobierna, para AVISAR si su proteina difiere de la de la cadena. */
   prescripcion: PrescripcionNutricional | null;
@@ -403,11 +512,9 @@ function CadenaCaloricaSection({
     sinGuardar: boolean,
   ) => ReactNode;
 }) {
-  const [state, formAction, pending] = useActionState(saveAdjustmentsAction, EMPTY);
-  // RefreshOnSuccess (no useFormToast): esta seccion se REMONTA por su key (adjustmentSignature) al guardar;
-  // con useFormToast + revalidate en la accion, el remonte corria contra el efecto y el aviso de exito se
-  // perdia. Aqui el toast se dispara y LUEGO el refresh. En warning (stale) NO refresca: preserva la edicion.
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
   // useState-once desde la prop; el remonte (key del padre) re-deriva cuando el servidor cambia algo.
   const [pesoMeta, setPesoMeta] = useState(numToInput(protocol.pesoMetaFijado));
   const [geb, setGeb] = useState(numToInput(protocol.adjGeb));
@@ -418,10 +525,12 @@ function CadenaCaloricaSection({
   const [deficit, setDeficit] = useState(numToInput(protocol.adjDeficit));
 
   const snap = protocol.protocolSuggested;
-  // Sin snapshot sellado (o sin cadena, o sin peso de calculo) no hay que ajustar: tratamiento pre-snapshot.
-  if (!snap || protocol.pesoCalculo == null) return null;
 
   // Ajustes vivos (lo que hay en pantalla ahora) = exactamente lo que se guardara.
+  //
+  // SE CALCULAN ANTES DE LA GUARDA de "sin snapshot", y no por gusto: publicar el borrador es un HOOK, y
+  // un hook no puede quedar detras de un `return` temprano. Los ajustes solo dependen del estado de esta
+  // seccion, asi que calcularlos antes no cuesta nada.
   const adj: ProtocoloAjustes = {
     geb: inputToNum(geb),
     pal: inputToNum(pal),
@@ -436,6 +545,30 @@ function CadenaCaloricaSection({
   // LA PROTEINA DEL MOTOR para los snapshots ANTERIORES al 2026-09-03, que no la traen sellada. La
   // pagina ya la trae aqui dentro de `prescripcion`, asi que no hace falta leer nada mas. Los sellados
   // desde esa fecha la ignoran: manda `snap.mtn.protKg`, que es lo reproducible.
+  // LO QUE HAY EN PANTALLA, HACIA ARRIBA. La firma se calcula sobre los ajustes VIVOS: es la misma funcion
+  // que el servidor recomputa bajo lock, asi que el aviso de "sin guardar" se enciende exactamente cuando
+  // lo de pantalla difiere de lo que hay en la base.
+  usePublicar(
+    "ajustes",
+    adj,
+    // Sin snapshot sellado no hay cadena que publicar: la seccion no se rinde y no aporta al borrador.
+    snap && protocol.pesoCalculo != null
+      ? adjustmentSignature({
+          treatmentId: protocol.treatmentId,
+          adjGeb: adj.geb,
+          adjPal: adj.pal,
+          adjKcalObj: adj.kcalObj,
+          adjProtGkg: adj.protGkg,
+          adjFatPct: adj.fatPct,
+          adjDeficit: adj.deficit,
+          pesoMetaFijado: adj.pesoMeta,
+        })
+      : null,
+  );
+
+  // Sin snapshot sellado (o sin cadena, o sin peso de calculo) no hay que ajustar: tratamiento pre-snapshot.
+  if (!snap || protocol.pesoCalculo == null) return null;
+
   const opciones = { protKgVigente: prescripcion?.protKg ?? null };
   // LO DE PANTALLA FRENTE A LO GUARDADO. Se compara campo a campo sobre los seis ajustes, que son los
   // que la tabla consume; asi el aviso aparece exactamente cuando la tabla esta mostrando algo que
@@ -510,18 +643,10 @@ function CadenaCaloricaSection({
   // paciente en la consulta que uno ajustado despues, aqui, al armar el plan.
   const origenPeso: "tratamiento" | "entrada" | "calculado" = protocol.pesoMetaOrigen ?? "calculado";
 
-  // Firma de los ajustes GUARDADOS (de la prop, invariante mientras se edita): es lo que el cliente cargó y
-  // contra lo que el servidor compara bajo lock. NO la de lo que se esta editando.
-  const baseSignature = adjustmentSignature({
-    treatmentId: protocol.treatmentId,
-    adjGeb: protocol.adjGeb,
-    adjPal: protocol.adjPal,
-    adjKcalObj: protocol.adjKcalObj,
-    adjProtGkg: protocol.adjProtGkg,
-    adjFatPct: protocol.adjFatPct,
-    adjDeficit: protocol.adjDeficit,
-    pesoMetaFijado: protocol.pesoMetaFijado,
-  });
+  // LA FIRMA DE LO GUARDADO YA NO SE CALCULA AQUI (2026-09-09): el candado de concurrencia lo manda el
+  // panel, con las SIETE firmas de golpe, para poder rechazar el conjunto si otro profesional movio
+  // cualquiera de las secciones. Lo que esta seccion publica es la firma de lo que hay EN PANTALLA.
+
 
   const pesoCalcDisp = d1(protocol.pesoCalculo);
 
@@ -587,16 +712,15 @@ function CadenaCaloricaSection({
     // dos) queda EDITABLE EN UNO Y EN LECTURA EN EL OTRO.
     //
     // LO QUE NO SE PARTE ES EL GUARDADO, y es deliberado: los seis ajustes son una columna cada uno pero
-    // UNA SOLA unidad clinica, `saveAdjustments` las escribe de golpe y `adjustmentSignature` cubre las
-    // seis. Partir el guardado obligaria a dos firmas sobre las mismas columnas, y un guardado parcial
-    // dejaria que la cadena de un profesional pisara la meta de otro. Se parte la PRESENTACION; el
-    // formulario y su boton siguen siendo uno.
-    <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-4">
-      <input type="hidden" name="evaluationId" value={evaluationId} />
-      {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
-          lo detecta bajo lock y rechaza sin pisar. */}
-      <input type="hidden" name="baseSignature" value={baseSignature} />
-      <fieldset className="flex min-w-0 flex-col gap-4">
+    // UNA SOLA unidad clinica, se escriben de golpe y `adjustmentSignature` cubre las seis. Partir el
+    // guardado obligaria a dos firmas sobre las mismas columnas, y un guardado parcial dejaria que la
+    // cadena de un profesional pisara la meta de otro. Se parte la PRESENTACION.
+    //
+    // YA NO ES UN `<form>`: desde el 2026-09-09 el guardado es UNO para todo el protocolo, al pie del
+    // panel. Los campos siguen siendo los mismos y el estado sigue viviendo aqui; lo que desaparecio es el
+    // acto de guardar por bloque.
+    <div className="flex flex-col gap-4">
+      <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 1 · LA META. Lo que el profesional DECIDE. */}
         <section className={bloqueCls("decision")}>
           <h3 className={tituloBloqueCls("decision")}>Objetivo del plan</h3>
@@ -698,29 +822,11 @@ function CadenaCaloricaSection({
               Usar el calculado ({pesoCalcDisp} kg)
             </button>
           </div>
-          {/* EL BOTON DE GUARDAR, JUNTO A LOS CAMPOS QUE SE EDITAN (cuarto smoke, 2026-09-06).
-
-              POR QUE SE MOVIO. El 06 lo puse dentro del aviso de la tabla de validacion, que queda
-              DEBAJO de este bloque. En PC se ven los dos a la vez y funcionaba; en MOVIL el aviso cae
-              fuera de pantalla y hay que bajar para guardar cuatro campos que estan arriba. Lo dijo
-              Santiago: "esto no hace sentido".
-
-              NO PARTE EL GUARDADO, igual que el anterior: este bloque esta DENTRO del `<form>` de la
-              cadena, asi que es un `type="submit"` del MISMO formulario, con sus seis ajustes de golpe
-              y su misma firma de concurrencia. Sigue habiendo UN acto de guardado con dos disparadores
-              (este y el del final de la formula), y por eso llevan `key` distintas.
-
-              NO SE DEJA TAMBIEN EN EL AVISO: tres disparadores del mismo acto en una pantalla es ruido,
-              y el aviso ya dice donde esta el boton. */}
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
-            <Button key="guardar-desde-meta" type="submit" variant="outline" size="sm" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar ajustes"}
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              Guarda los cuatro campos y la fórmula de abajo: es un solo guardado.
-            </span>
-          </div>
-
+          {/* EL BOTON DE GUARDAR DE ESTA SECCION SE RETIRO (2026-09-09), y con el su gemelo del pie de la
+              formula. Habia DOS disparadores del mismo acto porque en movil el de abajo caia fuera de
+              pantalla; ahora el guardado es UNO para todo el protocolo y vive en una barra PEGAJOSA al
+              pie del panel, que se ve desde cualquier punto del scroll. El problema que motivo el
+              segundo boton lo resuelve la barra, y de paso desaparecen los otros seis. */}
           {/* La distincion CALCULADO vs AJUSTADO, que es el segundo de los tres beneficios que concedio. */}
           <p className="flex items-baseline justify-between gap-4 border-t border-border pt-2 text-sm">
             <span className="text-muted-foreground">Objetivo calórico del plan</span>
@@ -1033,14 +1139,8 @@ function CadenaCaloricaSection({
           </div>
         </section>
 
-        {/* Un solo boton para los dos bloques: el guardado es atomico sobre las seis columnas. */}
-        <div>
-          <Button type="submit" variant="outline" disabled={pending}>
-            {pending ? "Guardando..." : "Guardar ajustes"}
-          </Button>
-        </div>
-      </fieldset>
-    </form>
+        </fieldset>
+    </div>
   );
 }
 
@@ -1089,9 +1189,145 @@ export function TreatmentPanel({
       )
     : null;
 
+  // ═══ EL BORRADOR DE LAS SIETE SECCIONES, Y UN SOLO GUARDADO ═══
+  //
+  // Las secciones publican lo que tienen en pantalla; aqui se reune, se compara contra lo guardado y se
+  // manda entero. Ver la nota larga arriba, junto a `BorradorContexto`.
+  const almacen = useMemo(() => crearAlmacenBorrador(), []);
+  const publicado = useSyncExternalStore(almacen.suscribir, almacen.leer, almacen.leer);
+  const [estadoGuardado, guardar, guardando] = useActionState(guardarProtocoloAction, EMPTY);
+  // RefreshOnSuccess: al guardar, el servidor devuelve el protocolo nuevo, las firmas cambian y el aviso
+  // se apaga solo. En WARNING (concurrencia) NO refresca, y esa es la mitad que protege el trabajo: traer
+  // la version del otro profesional descartaria lo que este acaba de escribir, que es justo lo que el
+  // rechazo preserva para que lo pueda reaplicar.
+  useFormToastRefreshOnSuccess(estadoGuardado);
+
+  // LAS FIRMAS DE LO GUARDADO. Son las MISMAS que el servidor recomputa bajo lock: el aviso de "sin
+  // guardar" y el candado de concurrencia miran exactamente lo mismo, asi que no pueden discrepar.
+  const firmasGuardadas: Record<SeccionId, string> = useMemo(
+    () => ({
+      ajustes: adjustmentSignature({
+        treatmentId: protocol.treatmentId,
+        adjGeb: protocol.adjGeb,
+        adjPal: protocol.adjPal,
+        adjKcalObj: protocol.adjKcalObj,
+        adjProtGkg: protocol.adjProtGkg,
+        adjFatPct: protocol.adjFatPct,
+        adjDeficit: protocol.adjDeficit,
+        pesoMetaFijado: protocol.pesoMetaFijado,
+      }),
+      objetivo: objetivoSignature({
+        treatmentId: protocol.treatmentId,
+        objetivo: protocol.objetivoTexto,
+      }),
+      restricciones: restriccionesSignature({
+        treatmentId: protocol.treatmentId,
+        restricciones: protocol.restricciones,
+      }),
+      intercambio: intercambioSignature({
+        treatmentId: protocol.treatmentId,
+        intercambio: protocol.intercambioPorciones,
+      }),
+      tiemposActivos: tiemposActivosSignature({
+        treatmentId: protocol.treatmentId,
+        activos: protocol.tiemposActivos,
+      }),
+      tiempos: tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos }),
+      menuSemanal: menuSemanalSignature({
+        treatmentId: protocol.treatmentId,
+        menu: protocol.menuSemanal,
+      }),
+    }),
+    [protocol],
+  );
+
+  // QUE HAY SIN GUARDAR. Una seccion que todavia no publico NO cuenta como sucia: al montar, el aviso
+  // saldria antes de que nadie tocara nada.
+  const sucias = (Object.keys(firmasGuardadas) as SeccionId[]).filter(
+    (k) => publicado[k] != null && publicado[k]!.firma !== firmasGuardadas[k],
+  );
+  const haySinGuardar = sucias.length > 0;
+
+  // AVISO DEL NAVEGADOR AL CERRAR O RECARGAR con trabajo sin guardar. No cubre cambiar de pestaña dentro
+  // de la aplicacion (eso lo resuelve que las etapas visitadas ya no se desmonten, ver `evaluation-tabs`),
+  // pero si el cierre accidental, que es la otra forma de perder una consulta entera.
+  useEffect(() => {
+    if (!haySinGuardar) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [haySinGuardar]);
+
+  // EL PAYLOAD. Cada seccion aporta lo que publico; si no publico (no llego a montar), va lo GUARDADO, que
+  // es lo unico que no puede borrar nada. La cadena calorica se convierte de texto a numero aqui, que es
+  // donde el borrador deja de ser lo que se escribe y pasa a ser lo que se guarda.
+  const valor = <T,>(k: SeccionId, porDefecto: T): T =>
+    publicado[k] != null ? (publicado[k]!.valor as T) : porDefecto;
+
+  const payload = () =>
+    JSON.stringify({
+      editable: {
+        ajustes: valor<ProtocoloAjustes>("ajustes", {
+          geb: protocol.adjGeb,
+          pal: protocol.adjPal,
+          kcalObj: protocol.adjKcalObj,
+          protGkg: protocol.adjProtGkg,
+          fatPct: protocol.adjFatPct,
+          deficit: protocol.adjDeficit,
+          pesoMeta: protocol.pesoMetaFijado,
+        }),
+        objetivo: valor<string | null>("objetivo", protocol.objetivoTexto),
+        restricciones: valor<string[]>("restricciones", protocol.restricciones),
+        intercambio: valor<IntercambioSaved | null>("intercambio", protocol.intercambioPorciones),
+        tiemposActivos: valor<Record<string, boolean> | null>("tiemposActivos", protocol.tiemposActivos),
+        tiempos: valor<TiemposSaved | null>("tiempos", protocol.tiempos),
+        menuSemanal: valor<MenuSemanalSaved | null>("menuSemanal", protocol.menuSemanal),
+      },
+      firmas: firmasGuardadas,
+    });
+
+  // LOS AJUSTES VIAJAN CON LOS NOMBRES DE LA BASE, no con los del motor: el schema del servidor los espera
+  // asi. Se traduce en un solo sitio para que no haya dos mapas del mismo objeto.
+  const conNombresDeColumna = (a: ProtocoloAjustes) => ({
+    adjGeb: a.geb,
+    adjPal: a.pal,
+    adjKcalObj: a.kcalObj,
+    adjProtGkg: a.protGkg,
+    adjFatPct: a.fatPct,
+    adjDeficit: a.deficit,
+    pesoMetaFijado: a.pesoMeta,
+  });
+
+  // EL CUERPO QUE VIAJA, ya con los nombres de las columnas. Va en un input oculto y el envio pasa por
+  // `enviarSinReset`, como los demas formularios del modulo: escribirse un submit a mano es como se
+  // pierde uno de los cuidados que ese helper concentra (React 19 resetea los select y los checkbox
+  // controlados al ejecutar la accion de un `<form action={...}>`).
+  const cuerpo = () => {
+    const e = JSON.parse(payload()) as {
+      editable: { ajustes: ProtocoloAjustes } & Record<string, unknown>;
+      firmas: Record<string, string>;
+    };
+    return JSON.stringify({
+      editable: { ...e.editable, ajustes: conNombresDeColumna(e.editable.ajustes) },
+      firmas: e.firmas,
+    });
+  };
+
+  // LOS VALORES VIVOS QUE GOBIERNAN OTRAS SECCIONES. Es la otra mitad de lo que pidio Santiago: que cada
+  // cambio se vea EN VIVO. Los tiempos de comida mandan sobre la distribucion y sobre el menu, y hasta hoy
+  // habia que APLICARLOS (un guardado) para que las dos tablas de abajo se enteraran; el aviso que lo
+  // explicaba era la prueba de que el flujo estaba al reves.
+  const activosEnVivo = valor<Record<string, boolean> | null>("tiemposActivos", protocol.tiemposActivos);
+  const intercambioEnVivo = valor<IntercambioSaved | null>("intercambio", protocol.intercambioPorciones);
+
+  // Objeto NUEVO por render, y da igual: lo que consumen las secciones es `almacen`, que es estable, y
+  // `guardando`, que tiene que cambiar para que los campos se apaguen.
+  const ctx: BorradorCtx = { almacen, guardando };
+
 
   return (
-    <Card>
+    <BorradorContexto.Provider value={ctx}>
+      <Card>
       <CardHeader>
         <CardTitle>Protocolo de tratamiento</CardTitle>
       </CardHeader>
@@ -1204,7 +1440,6 @@ export function TreatmentPanel({
               pesoMetaFijado: protocol.pesoMetaFijado,
             }) + `§origen:${protocol.pesoMetaOrigen ?? ""}`,
           )}
-          evaluationId={evaluationId}
           protocol={protocol}
           prescripcion={prescripcion}
           asesoria={asesoria}
@@ -1224,7 +1459,6 @@ export function TreatmentPanel({
             "intercambio",
             intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: protocol.intercambioPorciones }),
           )}
-          evaluationId={evaluationId}
           protocol={protocol}
         />
         {/* Tiempos de comida (CP2.3): seccion propia, MANDAN sobre la distribucion y sobre el menu. Va antes
@@ -1236,14 +1470,14 @@ export function TreatmentPanel({
             "tiempos-activos",
             tiemposActivosSignature({ treatmentId: protocol.treatmentId, activos: protocol.tiemposActivos }),
           )}
-          evaluationId={evaluationId}
           protocol={protocol}
         />
         {/* Distribucion (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
         <TiemposSection
           key={sectionKey("tiempos", tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos }))}
-          evaluationId={evaluationId}
           protocol={protocol}
+          activosEnVivo={activosEnVivo}
+          intercambioEnVivo={intercambioEnVivo}
         />
         {/* LA LISTA DEL PACIENTE SE RETIRO DE AQUI (2026-09-03), y era una divergencia nuestra que se cierra.
             En su archivo esa lista es `plan-print-only`: NO se ve en pantalla, solo al imprimir. La
@@ -1254,8 +1488,8 @@ export function TreatmentPanel({
         {/* Menu semanal (CP4). key = firma del menu guardado (remonte, como las demas secciones). */}
         <MenuSemanalSection
           key={sectionKey("menu-semanal", menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal }))}
-          evaluationId={evaluationId}
           protocol={protocol}
+          activosEnVivo={activosEnVivo}
         />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
@@ -1267,7 +1501,6 @@ export function TreatmentPanel({
               restricciones: protocol.restricciones,
             }),
           )}
-          evaluationId={evaluationId}
           protocol={protocol}
           adaptar={(sinGuardar) => (
             <AdaptarMenuBoton
@@ -1293,8 +1526,54 @@ export function TreatmentPanel({
         ) : null}
       </CardContent>
     </Card>
+
+    {/* ═══ EL AVISO PEGAJOSO Y EL UNICO BOTON ═══
+
+        VA FUERA DE LA TARJETA Y FIJO ABAJO, y es lo que hace SEGURO haber quitado los siete botones: con
+        un guardado por bloque, lo escrito ya estaba en la base y no se podia perder; con uno solo al
+        final, lo unico que impide perderlo es que se vea SIEMPRE, sin importar por donde vaya el scroll.
+
+        SOLO APARECE CUANDO HAY ALGO QUE GUARDAR. Una barra permanente con un boton que casi nunca hace
+        nada se lee como parte del marco y deja de mirarse, que es como se pierde un aviso.
+
+        Y DICE QUE SECCIONES CAMBIARON, no "hay cambios": en una pantalla de este tamaño, saber que algo
+        cambio sin saber que obliga a recorrerla entera para encontrarlo. */}
+    {haySinGuardar ? (
+      <form
+        onSubmit={enviarSinReset(guardar)}
+        className="sticky bottom-0 z-20 -mx-1 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-t-lg border border-attention/40 bg-attention-bg px-4 py-3 shadow-lg"
+      >
+        <input type="hidden" name="evaluationId" value={evaluationId} />
+        <input type="hidden" name="protocolo" value={cuerpo()} />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-sm font-medium text-attention">
+            {sucias.length === 1
+              ? "Tienes un cambio sin guardar."
+              : `Tienes ${sucias.length} secciones con cambios sin guardar.`}
+          </span>
+          <span className="text-xs text-foreground/90">
+            {sucias.map((s) => ROTULO_SECCION[s]).join(", ")}.
+          </span>
+        </div>
+        <Button type="submit" disabled={guardando}>
+          {guardando ? "Guardando..." : "Guardar cambios"}
+        </Button>
+      </form>
+    ) : null}
+    </BorradorContexto.Provider>
   );
 }
+
+/** Como se nombra cada seccion en el aviso. Mismos rotulos que usa el servidor al rechazar por concurrencia. */
+const ROTULO_SECCION: Record<SeccionId, string> = {
+  ajustes: "la cadena calórica",
+  objetivo: "el objetivo del tratamiento",
+  restricciones: "las restricciones",
+  intercambio: "la lista de intercambio",
+  tiemposActivos: "los tiempos de comida",
+  tiempos: "la distribución por tiempos",
+  menuSemanal: "el menú semanal",
+};
 
 // TODA LA VERTICAL DE APROBAR SE RETIRO (2026-09-09): el boton, la accion, el servicio, el writer y las
 // dos ramas del trigger 0026 (ver la migracion 0116).
@@ -1680,7 +1959,7 @@ function AplicarTodasMenu({
 }
 
 // Restricciones alimentarias (checkpoint 2.4): seccion propia, JUNTO al menu (son su insumo). Guardado
-// propio con candado y firma de remonte (saveRestriccionesAction), como la cadena/nutraceuticos.
+// propio con firma de remonte, y desde el 2026-09-09 se guarda con el resto del protocolo.
 //
 // EL BOTON DE ADAPTAR VIVE AQUI (cotejo 2026-09-05, punto 25). Santiago: "un boton al lado que diga
 // adaptar las restricciones al menu con ayuda de IA". Tiene razon en que la accion pertenece a este
@@ -1698,17 +1977,16 @@ function AplicarTodasMenu({
 // lo recien escrito, sin decirlo. Es la familia de "dos partes de la pantalla que leen fuentes
 // distintas". Por eso el boton se apaga mientras haya cambios sin guardar, y dice por que.
 function RestriccionesSection({
-  evaluationId,
   protocol,
   adaptar,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
   /** El boton de adaptar el menu, que se renderiza junto al de guardar. Recibe si hay cambios sin guardar. */
   adaptar: (sinGuardar: boolean) => ReactNode;
 }) {
-  const [state, formAction, pending] = useActionState(saveRestriccionesAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
   const [restricciones, setRestricciones] = useState<string[]>(protocol.restricciones);
   const [restrInput, setRestrInput] = useState("");
   const addRestriccion = () => {
@@ -1716,10 +1994,11 @@ function RestriccionesSection({
     if (v && !restricciones.includes(v)) setRestricciones([...restricciones, v]);
     setRestrInput("");
   };
-  const baseSignature = restriccionesSignature({
-    treatmentId: protocol.treatmentId,
-    restricciones: protocol.restricciones,
-  });
+  usePublicar(
+    "restricciones",
+    restricciones,
+    restriccionesSignature({ treatmentId: protocol.treatmentId, restricciones }),
+  );
   // Lo que hay en pantalla frente a lo que hay en la base. El orden cuenta como cambio a proposito: es
   // barato y ser conservador aqui solo cuesta un guardado de mas.
   const sinGuardar =
@@ -1739,11 +2018,8 @@ function RestriccionesSection({
         Son <strong>adicionales</strong> a las restricciones del modelo (las de arriba, por comorbilidad y
         fenotipo): esas no se editan y ya condicionan el menú por su cuenta.
       </p>
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
-        <fieldset className="flex min-w-0 flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap gap-2">
             <Input
               value={restrInput}
@@ -1777,14 +2053,9 @@ function RestriccionesSection({
               ))}
             </div>
           ) : null}
-          <div>
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar restricciones"}
-            </Button>
-          </div>
         </fieldset>
-      </form>
-      {/* HERMANO DEL FORMULARIO, NO ANIDADO: son dos acciones distintas (guardar y adaptar) y un
+      </div>
+      {/* HERMANO, NO ANIDADO: adaptar el menu sigue siendo su propia accion con su propio formulario, y un
           formulario dentro de otro es HTML invalido. */}
       {adaptar(sinGuardar)}
     </section>
@@ -1804,7 +2075,6 @@ function RestriccionesSection({
 // EL TITULO NO ES DECORATIVO: es la unica linea de la pantalla que dice, de un vistazo, QUE dieta es esta.
 // Sin el, el profesional tiene que leer las cifras para saberlo.
 function ObjetivoSection({
-  evaluationId,
   protocol,
   prescripcion,
   kcalObjetivo,
@@ -1815,13 +2085,19 @@ function ObjetivoSection({
   /** El objetivo EFECTIVO de la cadena (el que el profesional ve abajo), para que el título no diga otro. */
   kcalObjetivo: number | null;
 }) {
-  const [state, formAction, pending] = useActionState(saveObjetivoAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
   const [objetivo, setObjetivo] = useState(protocol.objetivoTexto ?? "");
-  const baseSignature = objetivoSignature({
-    treatmentId: protocol.treatmentId,
-    objetivo: protocol.objetivoTexto,
-  });
+  // VACIO ES null, no cadena vacia: es lo que distingue "no escribio objetivo" de "escribio y lo borro",
+  // y la firma del servidor se calcula sobre null. Sin esto, abrir el panel con el campo vacio marcaria la
+  // seccion como cambiada sin que nadie la tocara.
+  const objetivoValor = objetivo.trim() === "" ? null : objetivo;
+  usePublicar(
+    "objetivo",
+    objetivoValor,
+    objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: objetivoValor }),
+  );
 
   return (
     <section className={bloqueCls("decision")}>
@@ -1834,10 +2110,8 @@ function ObjetivoSection({
           Dieta {prescripcion.tipoEnergia.toLowerCase()} de {kcalObjetivo} kcal/día
         </p>
       ) : null}
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <fieldset className="flex min-w-0 flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-2">
           <Textarea
             name="objetivo"
             value={objetivo}
@@ -1846,13 +2120,8 @@ function ObjetivoSection({
             rows={3}
             maxLength={4000}
           />
-          <div>
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar objetivo"}
-            </Button>
-          </div>
         </fieldset>
-      </form>
+      </div>
 
       {/* LO QUE PRESCRIBE EL MODELO, junto al objetivo y no suelto abajo (cotejo 2026-08-31, punto h): es
           la misma información que su chip y sus atributos, y leerla aquí es leerla donde se decide. */}
@@ -1903,14 +2172,13 @@ function ObjetivoSection({
 // (DIV-11) aviso de desfase cuando el objetivo cambio desde que se guardaron. El desplegable de alimento es
 // de solo lectura por ahora (muestra el alimento por defecto del grupo; cambiarlo se cabla despues).
 function IntercambioSection({
-  evaluationId,
   protocol,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
 }) {
-  const [state, formAction, pending] = useActionState(saveIntercambioAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
 
   const snap = protocol.protocolSuggested;
   const adjGuardados: ProtocoloAjustes = {
@@ -1935,6 +2203,26 @@ function IntercambioSection({
     return init;
   });
 
+  // LO QUE HAY EN PANTALLA, HACIA ARRIBA. Va ANTES de la guarda porque publicar es un HOOK y un hook no
+  // puede quedar detras de un `return` temprano; con el objetivo en null la seccion no se rinde y no
+  // aporta nada al borrador (firma nula).
+  const borradorIntercambio: IntercambioSaved | null =
+    objetivoEfectivo != null
+      ? {
+          // Las porciones POR ALIMENTO en pantalla + el objetivo con el que se calcularon (objetivoBase,
+          // DIV-11). Se serializan los 21 alimentos: contexto completo del desfase.
+          objetivoBase: objetivoEfectivo,
+          porciones: Object.fromEntries(defaults.map((a) => [a.sub, porciones[a.sub] ?? 0])),
+        }
+      : null;
+  usePublicar(
+    "intercambio",
+    borradorIntercambio,
+    borradorIntercambio
+      ? intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: borradorIntercambio })
+      : null,
+  );
+
   if (!snap || protocol.pesoCalculo == null || objetivoEfectivo == null) return null;
 
   const desfase = saved != null && saved.objetivoBase !== objetivoEfectivo;
@@ -1957,14 +2245,6 @@ function IntercambioSection({
   // es "ajuste" frente a lo que el recalculo va a poner.
   const hayAjustesIntercambio = defaults.some((a) => (porciones[a.sub] ?? 0) !== a.porciones);
 
-  // Lo que se guarda: las porciones POR ALIMENTO en pantalla + el objetivo con el que se calcularon
-  // (objetivoBase, DIV-11). Se serializan los 21 alimentos (contexto completo del desfase).
-  const payload: IntercambioSaved = {
-    objetivoBase: objetivoEfectivo,
-    porciones: Object.fromEntries(defaults.map((a) => [a.sub, porciones[a.sub] ?? 0])),
-  };
-  const baseSignature = intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: saved });
-
   return (
     <section className={bloqueCls("decision")}>
       <h3 className={tituloBloqueCls("decision")}>Lista de intercambio U de A · ICBF 2025</h3>
@@ -1982,11 +2262,8 @@ function IntercambioSection({
         </div>
       ) : null}
 
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
-        <fieldset className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-3">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-3">
           {/* QUE ES UN INTERCAMBIO, en una linea. Es la frase de su archivo, y sin ella la tabla es una
               lista de numeros sin decir para que sirve. La unidad de los macros va AQUI y no en tres
               encabezados: repetir "(g)" tres veces cuesta el ancho que necesitan los numeros. */}
@@ -2124,9 +2401,6 @@ function IntercambioSection({
             adecuación real por nutriente se ve en la validación, más abajo.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar intercambio"}
-            </Button>
             {/* LA ETIQUETA DICE QUE PASA, no de donde sale la cuenta (cotejo 2026-09-05, punto 18). Su
                 boton se llama "Distribuir porciones"; el nuestro decia "Recalcular desde el objetivo",
                 que describe el MECANISMO. Se conserva el "desde el objetivo" porque distingue este boton
@@ -2134,14 +2408,14 @@ function IntercambioSection({
             <BotonRecalcular
               etiqueta="Distribuir porciones desde el objetivo"
               hayAjustes={hayAjustesIntercambio}
-              disabled={pending}
+              disabled={guardando}
               onRecalcular={() =>
                 setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])))
               }
             />
           </div>
         </fieldset>
-      </form>
+      </div>
     </section>
   );
 }
@@ -2159,21 +2433,24 @@ function IntercambioSection({
 const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 function MenuSemanalSection({
-  evaluationId,
   protocol,
+  activosEnVivo,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
+  /** Los tiempos activos QUE HAY EN PANTALLA: las columnas de esta grilla se mueven al marcarlos. */
+  activosEnVivo: Record<string, boolean> | null;
 }) {
-  const [state, formAction, pending] = useActionState(saveMenuSemanalAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
 
   const saved = protocol.menuSemanal;
   const [diaInicio, setDiaInicio] = useState<number>(() => saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId));
   const [celdas, setCeldas] = useState<Record<string, string>>(() => saved?.celdas ?? {});
 
-  // Los tiempos ACTIVOS son los GUARDADOS, los mismos que manda la seccion de tiempos: el plan es uno solo.
-  const activos = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  // Los tiempos ACTIVOS son los QUE HAY EN PANTALLA, los mismos que consume la tabla de distribucion: el
+  // plan es uno solo, y desde el 2026-09-09 las dos superficies siguen la casilla en vivo.
+  const activos = activosEnVivo ?? TIEMPOS_ACTIVOS_DEFAULT;
   const vivos = TIEMPOS_DEF.filter((t) => activos[t.id]);
 
   // Texto de una celda: lo que el profesional escribio, o la precarga del ciclo. El ciclo NO trae merienda:
@@ -2199,7 +2476,7 @@ function MenuSemanalSection({
       }),
     ),
   };
-  const baseSignature = menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal });
+  usePublicar("menuSemanal", payload, menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: payload }));
   // Una celda esta EDITADA si difiere de lo que propone el ciclo. Es la misma comparacion que decide que se
   // guarda, asi que no puede desincronizarse del payload.
   const editada = (dia: number, tiempo: string) => valor(dia, tiempo) !== precarga(dia, tiempo);
@@ -2236,11 +2513,8 @@ function MenuSemanalSection({
           vacía y la escribes tú.
         </p>
       ) : null}
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="menu" value={JSON.stringify(payload)} />
-        <fieldset className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-3">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className={`${tabla} min-w-[42rem]`}>
@@ -2285,13 +2559,10 @@ function MenuSemanalSection({
             </table>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar menú"}
-            </Button>
             <Button
               type="button"
               variant="ghost"
-              disabled={pending}
+              disabled={guardando}
               onClick={() => {
                 // Azar en una ACCION del profesional: el resultado se guarda, asi que deja de ser azaroso.
                 // Se avanza a un dia DISTINTO del actual para que el boton siempre haga algo visible.
@@ -2301,7 +2572,7 @@ function MenuSemanalSection({
               Proponer otra semana
             </Button>
             {hayEdiciones ? (
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => setCeldas({})}>
+              <Button type="button" variant="ghost" disabled={guardando} onClick={() => setCeldas({})}>
                 Descartar mis ediciones
               </Button>
             ) : null}
@@ -2327,7 +2598,7 @@ function MenuSemanalSection({
             </p>
           ) : null}
         </fieldset>
-      </form>
+      </div>
     </section>
   );
 }
@@ -2338,25 +2609,26 @@ function MenuSemanalSection({
 // jsonb, no el modelo. Y en el prototipo de Gildardo ya viven aparte (`atlas:plan`, junto al menu semanal;
 // la distribucion vive en `atlas:plan_inter`), asi que partirlas es MAS fiel, no menos.
 //
-// NO reaccionan en vivo: son una decision CLINICA (definen la estructura del dia del paciente) y mandan
-// sobre la tabla Y sobre el menu. Con reaccion en vivo, tantear marcando reconstruiria las dos en cada clic.
+// REACCIONAN EN VIVO desde el 2026-09-09 (Santiago). Esta linea decia lo contrario: "no reaccionan en
+// vivo... con reaccion en vivo, tantear marcando reconstruiria las dos en cada clic". El precio de esa
+// decision era un boton de "aplicar" que era un guardado disfrazado, y un aviso que explicaba por que las
+// dos tablas de abajo mostraban lo anterior mientras tanto.
 function TiemposActivosSection({
-  evaluationId,
   protocol,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
 }) {
-  const [state, formAction, pending] = useActionState(saveTiemposActivosAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
 
   const guardados = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
   const [activos, setActivos] = useState<Record<string, boolean>>(() => guardados);
-  const sinAplicar = TIEMPOS_DEF.some((t) => Boolean(activos[t.id]) !== Boolean(guardados[t.id]));
-  const baseSignature = tiemposActivosSignature({
-    treatmentId: protocol.treatmentId,
-    activos: protocol.tiemposActivos,
-  });
+  usePublicar(
+    "tiemposActivos",
+    activos,
+    tiemposActivosSignature({ treatmentId: protocol.treatmentId, activos }),
+  );
 
   // DIV-13: al menos uno activo. Se impide en el cliente y lo revalida el schema.
   const toggle = (mid: string) =>
@@ -2376,14 +2648,15 @@ function TiemposActivosSection({
           parrafos que decian lo mismo; se conservo el que ademas explica el paso propio de "aplicar". */}
       <p className="max-w-prose text-sm text-muted-foreground">
         Qué comidas hace el paciente. Mandan sobre las dos tablas de abajo: la distribución reparte dentro
-        de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como columnas. Por eso
-        se aplican con un paso propio y no cambian mientras marcas.
+        de los tiempos que dejes activos, y el menú semanal usa esos mismos tiempos como columnas. Al
+        marcarlas, las dos se mueven al instante.
       </p>
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="activos" value={JSON.stringify(activos)} />
-        <fieldset className="flex min-w-0 flex-col gap-3">
+      {/* EL PARRAFO DECIA LO CONTRARIO hasta el 2026-09-09 ("por eso se aplican con un paso propio y no
+          cambian mientras marcas"), y era cierto: las dos tablas leian lo GUARDADO. Al pasar a leer lo que
+          hay en pantalla, esa frase habria quedado describiendo un comportamiento retirado, que es la
+          familia de texto que llevamos toda la semana barriendo. */}
+      <div className="flex flex-col gap-3">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             {TIEMPOS_DEF.map((t) => (
               <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
@@ -2392,19 +2665,16 @@ function TiemposActivosSection({
               </label>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="outline" size="sm" disabled={pending}>
-              {pending ? "Aplicando..." : "Aplicar tiempos de comida"}
-            </Button>
-            {sinAplicar ? (
-              <span className="text-xs text-clinical-warning">
-                Cambiaste los tiempos y aún no los has aplicado: la distribución y el menú siguen mostrando
-                los anteriores.
-              </span>
-            ) : null}
-          </div>
+          {/* SE RETIRO "APLICAR TIEMPOS DE COMIDA" Y SU AVISO (2026-09-09), y las dos cosas por la misma
+              razon. El boton era un guardado disfrazado de otra cosa, y el aviso ("cambiaste los tiempos y
+              aun no los has aplicado: la distribucion y el menu siguen mostrando los anteriores") existia
+              porque las dos tablas de abajo leian lo GUARDADO. Ahora leen lo que hay en pantalla, asi que
+              marcar una casilla las mueve al instante y no hay nada que aplicar.
+
+              Es exactamente lo que pidio Santiago: que cada cambio se vea en vivo. El aviso era la prueba
+              de que el flujo estaba al reves. */}
         </fieldset>
-      </form>
+      </div>
     </section>
   );
 }
@@ -2429,14 +2699,26 @@ const serMap = (m: Record<string, number | boolean>) =>
     .join(",");
 
 function TiemposSection({
-  evaluationId,
   protocol,
+  activosEnVivo,
+  intercambioEnVivo,
 }: {
-  evaluationId: string;
   protocol: TreatmentProtocol;
+  /**
+   * Los tiempos activos QUE HAY EN PANTALLA, no los guardados (2026-09-09).
+   *
+   * ES LA MITAD DE LO QUE PIDIO SANTIAGO: que cada cambio se vea en vivo. Hasta hoy esta tabla leia
+   * `protocol.tiemposActivos` (lo guardado), asi que marcar una casilla arriba no movia nada hasta
+   * "aplicar", y habia un aviso explicando que las dos tablas seguian mostrando lo anterior. Ese aviso era
+   * la prueba de que el flujo estaba al reves.
+   */
+  activosEnVivo: Record<string, boolean> | null;
+  /** Las porciones QUE HAY EN PANTALLA en la lista de intercambio, por la misma razon. */
+  intercambioEnVivo: IntercambioSaved | null;
 }) {
-  const [state, formAction, pending] = useActionState(saveTiemposAction, EMPTY);
-  useFormToastRefreshOnSuccess(state);
+  // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
+  // del panel. Ver la nota de `BorradorContexto`.
+  const { guardando } = useBorrador();
 
   const snap = protocol.protocolSuggested;
   const adjGuardados: ProtocoloAjustes = {
@@ -2450,7 +2732,7 @@ function TiemposSection({
   };
   const objetivoEfectivo = snap ? Math.round(computeProtocoloEfectivo(snap, adjGuardados).calorico.kcalObj) : null;
   const defaults = objetivoEfectivo != null ? computeIntercambio(objetivoEfectivo) : [];
-  const savedInter = protocol.intercambioPorciones;
+  const savedInter = intercambioEnVivo;
   const savedTiempos = protocol.tiempos;
 
   // Porciones actuales POR ALIMENTO (del intercambio guardado o el default) + kcal por porcion de cada alimento.
@@ -2463,15 +2745,36 @@ function TiemposSection({
 
   const [celdas, setCeldas] = useState<Record<string, Record<string, number>>>(() => savedTiempos?.celdas ?? {});
 
+  // LO QUE HAY EN PANTALLA, HACIA ARRIBA. Va ANTES de la guarda porque publicar es un hook, y un hook no
+  // puede quedar detras de un `return` temprano. Se conservan TODOS los overrides, incluidos los de
+  // comidas apagadas: no se muestran, pero apagar una comida suele ser exploratorio y borrarlos
+  // convertiria un tanteo en una perdida.
+  const borradorTiempos: TiemposSaved | null =
+    objetivoEfectivo != null
+      ? { celdas, base: { porciones: porcionesActuales, activos: activosEnVivo ?? TIEMPOS_ACTIVOS_DEFAULT } }
+      : null;
+  usePublicar(
+    "tiempos",
+    borradorTiempos,
+    borradorTiempos ? tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: borradorTiempos }) : null,
+  );
+
   if (!snap || objetivoEfectivo == null) return null;
 
-  // LAS DOS TABLAS (esta y el menu semanal) LEEN LOS TIEMPOS GUARDADOS, no la edicion en vivo. Los tiempos
-  // activos son una decision CLINICA (definen la estructura del dia del paciente), no un ajuste visual: se
-  // toman una vez y se aplican con un boton. Con reaccion en vivo, tantear marcando y desmarcando
-  // reconstruiria la tabla Y el menu en cada clic, lo que distrae en vez de ayudar. Y asi las dos superficies
-  // cuentan lo mismo SIN compartir estado entre secciones hermanas, que habria exigido subir el estado al
-  // panel y poner en riesgo el remonte por firma (el arreglo del estado pegado).
-  const activosGuardados = protocol.tiemposActivos ?? TIEMPOS_ACTIVOS_DEFAULT;
+  // LAS DOS TABLAS (esta y el menu semanal) LEEN LOS TIEMPOS EN VIVO desde el 2026-09-09.
+  //
+  // ESTE COMENTARIO DECIA LO CONTRARIO, y la razon que daba se cayo sola. Decia: "los tiempos activos son
+  // una decision CLINICA, no un ajuste visual: se toman una vez y se aplican con un boton; con reaccion en
+  // vivo, tantear marcando y desmarcando reconstruiria la tabla y el menu en cada clic, lo que distrae en
+  // vez de ayudar. Y asi las dos superficies cuentan lo mismo SIN compartir estado entre secciones
+  // hermanas, que habria exigido subir el estado al panel".
+  //
+  // Santiago lo pidio al reves y tiene razon: el precio de no compartir estado era un boton de "aplicar"
+  // que es un guardado disfrazado, y un aviso que explicaba por que las tablas mentian mientras tanto.
+  // Ahora el estado SI sube al panel (por publicacion, sin reescribir las secciones) y las dos tablas se
+  // mueven al marcar. Y lo que se temia, que reconstruir en cada clic distraiga, resulto ser justo lo que
+  // se queria ver: cual es el efecto de apagar una comida.
+  const activosGuardados = activosEnVivo ?? TIEMPOS_ACTIVOS_DEFAULT;
 
   const vivos = TIEMPOS_DEF.filter((t) => activosGuardados[t.id]);
   const alimentosConPorciones = defaults.filter((a) => porcionesActuales[a.sub] > 0);
@@ -2520,11 +2823,6 @@ function TiemposSection({
 
   const setCelda = (gid: string, mid: string, v: number) =>
     setCeldas((c) => ({ ...c, [gid]: { ...(c[gid] ?? {}), [mid]: Math.max(0, v) } }));
-  const payload: TiemposSaved = {
-    celdas, // se conservan TODOS, incluidos los de comidas apagadas (no se muestran, no se borran)
-    base: { porciones: porcionesActuales, activos: activosGuardados },
-  };
-  const baseSignature = tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: savedTiempos });
 
   return (
     <section className={bloqueCls("derivado")}>
@@ -2545,11 +2843,8 @@ function TiemposSection({
         </div>
       ) : null}
 
-      <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
-        <input type="hidden" name="evaluationId" value={evaluationId} />
-        <input type="hidden" name="baseSignature" value={baseSignature} />
-        <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
-        <fieldset className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-3">
+        <fieldset disabled={guardando} className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className={`${tabla} min-w-[38rem]`}>
@@ -2655,20 +2950,17 @@ function TiemposSection({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="outline" disabled={pending}>
-              {pending ? "Guardando..." : "Guardar distribución"}
-            </Button>
             {/* Igual que el de arriba (punto 18): su boton se llama "Sugerir distribución". "Recalcular
                 desde el intercambio" no dice que lo que se rellena es la rejilla de tiempos de comida. */}
             <BotonRecalcular
               etiqueta="Sugerir la distribución desde el intercambio"
               hayAjustes={Object.keys(celdas).length > 0}
-              disabled={pending}
+              disabled={guardando}
               onRecalcular={() => setCeldas({})}
             />
           </div>
         </fieldset>
-      </form>
+      </div>
     </section>
   );
 }

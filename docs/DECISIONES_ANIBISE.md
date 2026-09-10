@@ -1293,3 +1293,33 @@ habia.
 - **Migraciones 0115 (el almacen + el backfill de lo ya aprobado) y 0116 (retirar las ramas del trigger y
   soltar las filas).** El orden no es intercambiable y la 0116 lo comprueba: si encuentra un tratamiento
   aprobado sin emision copiada, aborta.
+
+**P-121 · UN SOLO GUARDADO PARA TODO EL PROTOCOLO, Y EN VIVO (2026-09-09).**
+Santiago: *"quitar todos esos botones de guardar ajustes por bloques y que cada cambio sea en vivo... y un
+botón que diga Guardar cambios. Así pasamos de 8 botones a solo 1 botón. Que piensas? es esto posible de
+implementar?"*. Lo verificado antes de construir, y lo que salió de ahí:
+
+- **NO eran el mismo formulario**, y eso decide el diseño: eran siete formularios, siete acciones, siete
+  writers y siete errores de concurrencia distintos, cada uno con su firma validada bajo
+  `SELECT ... FOR UPDATE`. Encadenarlos daría el peor resultado posible: si el quinto falla, quedan cuatro
+  secciones guardadas y tres no, **y el profesional no sabe cuáles**. Peor que los siete botones.
+- **Por eso el guardado es TRANSACCIONAL**: una transacción, un lock, y o se guarda el conjunto o no se
+  guarda nada. Y las **siete firmas se validan ANTES de escribir ninguna**, lo que es MÁS estricto que
+  antes (hoy se podían guardar seis bloques aunque el séptimo estuviera desfasado) y es correcto: si otro
+  profesional tocó el tratamiento, no quieres guardar la mitad de tu versión sobre la suya. El rechazo
+  **nombra las secciones**.
+- **El aviso pegajoso no es adorno, es la pieza que lo hace seguro.** Con guardado por bloque, lo escrito
+  ya estaba en la base; con uno solo al final, lo único que impide perderlo es verlo siempre.
+- **Y hubo que arreglar algo que nadie había pedido**: las pestañas rendían SOLO la activa, así que irse a
+  Diagnóstico un momento habría **borrado el borrador en silencio**. Ahora una etapa visitada no se
+  desmonta (y solo se monta al visitarla, para no disparar antes de tiempo el pipeline del diagnóstico).
+- **Lo EN VIVO**: los tiempos de comida mandan sobre la distribución y sobre el menú, y hasta hoy había
+  que APLICARLOS (un guardado disfrazado) para que las dos tablas se enteraran; había incluso un aviso
+  explicando que seguían mostrando lo anterior. Ese aviso era la prueba de que el flujo estaba al revés.
+- **DE 8 A 2, NO A 1, y se dice claro:** los **nutracéuticos conservan su guardado propio**. No son la
+  misma clase de dato (escriben una tabla HIJA, `treatment_nutraceuticals`, no columnas de `treatments`) y
+  su sección vive en otro árbol de componentes. Juntarlos exigiría un proveedor de estado por encima de
+  dos hermanos que renderiza el servidor. Es viable; queda propuesto, no hecho.
+- **SMOKE HUMANO OBLIGATORIO.** Es una superficie de formulario grande y la clase de defecto que solo se
+  ve en un navegador real (CLAUDE.md). El build de producción y los 2.526 tests pasan; eso no sustituye
+  abrir la pantalla.

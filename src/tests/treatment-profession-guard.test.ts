@@ -39,6 +39,13 @@ vi.mock("@/modules/treatment/data/treatment-writer", () => ({
 vi.mock("@/modules/diagnoses/data/results-reader", () => ({
   getEvaluationResults: vi.fn(),
 }));
+// EL MOCK CONSERVA LOS ERRORES REALES (`importOriginal`): el servicio hace `e instanceof StaleProtocoloError`
+// para traducir el rechazo de concurrencia, y con la clase mockeada esa rama revienta. Solo se sustituye la
+// funcion que escribe.
+vi.mock("@/modules/treatment/data/protocolo-writer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/treatment/data/protocolo-writer")>()),
+  guardarProtocolo: vi.fn(async () => ({ guardadas: [] })),
+}));
 vi.mock("@/modules/treatment/data/menu-writer", () => ({
   recordMenuSuggestion: vi.fn(),
 }));
@@ -53,23 +60,15 @@ import {
 import {
   addTreatmentNote,
   acknowledgeRestrictions as writeAcknowledge,
-  saveAdjustments as writeAdjustments,
-  saveIntercambio as writeIntercambio,
-  saveTiempos as writeTiempos,
   saveNutraceuticals as writeNutraceuticals,
-  saveObjetivo as writeObjetivo,
-  saveRestricciones as writeRestricciones,
 } from "@/modules/treatment/data/treatment-writer";
+import { guardarProtocolo as writeGuardarProtocolo } from "@/modules/treatment/data/protocolo-writer";
 import { generateMenu } from "@/modules/treatment/services/generate-menu";
 import {
   acknowledgeRestrictions,
   addNote,
-  saveAdjustments,
-  saveIntercambio,
-  saveTiempos,
+  guardarProtocolo,
   saveNutraceuticals,
-  saveObjetivo,
-  saveRestricciones,
 } from "@/modules/treatment/services/treatment-service";
 
 const profOf = vi.mocked(getActorProfession);
@@ -84,21 +83,40 @@ const actor = { actorId: "user-x", actorEmail: "x@cnv", ip: null };
 // El servicio solo lee treatmentId + diagnosisConfirmed en estas ops; el resto no se toca.
 const CONFIRMED = { treatmentId: "T1", diagnosisConfirmed: true } as unknown as TreatmentProtocol;
 
-const RESTR_INPUT = { evaluationId: "E1", restricciones: [], baseSignature: "" };
-const OBJ_INPUT = { evaluationId: "E1", objetivo: "x", baseSignature: "" };
-const INTER_INPUT = { evaluationId: "E1", intercambio: { objetivoBase: 2000, porciones: {} }, baseSignature: "" };
-const TIEMPOS_INPUT = { evaluationId: "E1", tiempos: { activos: { desayuno: true }, celdas: {}, base: { porciones: {}, activos: {} } }, baseSignature: "" };
 const NUTRA_INPUT = { evaluationId: "E1", nutraceuticals: [], baseSignature: "" };
-const ADJ_INPUT = {
+
+// EL GUARDADO UNICO SUSTITUYE A LAS SEIS ESCRITURAS DE SECCION (2026-09-09). Antes cada una tenia su
+// propio servicio y su propio caso aqui; ahora las siete viajan juntas, asi que el guard de profesion se
+// comprueba UNA vez sobre el acto que existe. La garantia es la misma y mas estricta: si el guard fallara,
+// fallaria para las siete a la vez y este caso lo ve.
+const PROTOCOLO_INPUT = {
   evaluationId: "E1",
-  adjGeb: null,
-  adjPal: null,
-  adjKcalObj: null,
-  adjProtGkg: null,
-  adjFatPct: null,
-  adjDeficit: null,
-  pesoMeta: null,
-  baseSignature: "",
+  editable: {
+    ajustes: {
+      adjGeb: null,
+      adjPal: null,
+      adjKcalObj: null,
+      adjProtGkg: null,
+      adjFatPct: null,
+      adjDeficit: null,
+      pesoMetaFijado: null,
+    },
+    objetivo: null,
+    restricciones: [],
+    intercambio: null,
+    tiemposActivos: null,
+    tiempos: null,
+    menuSemanal: null,
+  },
+  firmas: {
+    ajustes: "",
+    objetivo: "",
+    restricciones: "",
+    intercambio: "",
+    tiemposActivos: "",
+    tiempos: "",
+    menuSemanal: "",
+  },
 };
 
 describe("guard de profesion: escrituras de tratamiento", () => {
@@ -112,67 +130,41 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     profOf.mockResolvedValue(NOT_PRO);
   });
 
-  it("saveRestricciones: profesional sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {
+  it("guardarProtocolo: profesional sin profesión -> forbidden y no escribe NINGUNA sección", async () => {
+    // LA GARANTIA QUE ESTE ARCHIVO PROTEGE, aplicada al acto que existe desde el 2026-09-09. Antes habia
+    // seis casos, uno por seccion; ahora las siete viajan juntas y el guard se comprueba una vez. Es mas
+    // estricto, no menos: si el guard fallara, fallaria para las siete a la vez.
     profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await saveRestricciones(RESTR_INPUT, actor);
+    let r = await guardarProtocolo(PROTOCOLO_INPUT, actor);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeRestricciones).not.toHaveBeenCalled();
+    expect(writeGuardarProtocolo).not.toHaveBeenCalled();
 
     profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveRestricciones(RESTR_INPUT, actor);
+    r = await guardarProtocolo(PROTOCOLO_INPUT, actor);
     expect(r.ok).toBe(true);
-    expect(writeRestricciones).toHaveBeenCalledTimes(1);
+    expect(writeGuardarProtocolo).toHaveBeenCalledTimes(1);
   });
 
-  it("saveRestricciones: un NO-profesional (admin, sin perfil) NO cae en el guard y escribe", async () => {
-    // El guard es de ambito de practica del profesional; admin queda gobernado por su policy, no
-    // por este guard (no le cambia lo que ya podia hacer via canManageTreatment).
+  it("guardarProtocolo: un NO-nutricionista (médico) tampoco escribe", async () => {
+    // Q17: solo el nutricionista edita el protocolo nutricional. El medico tiene su propia vista, de
+    // lectura, y sus propias notas.
+    profOf.mockResolvedValueOnce(PRO("medico"));
+    const r = await guardarProtocolo(PROTOCOLO_INPUT, actor);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe("forbidden");
+    expect(writeGuardarProtocolo).not.toHaveBeenCalled();
+  });
+
+  it("guardarProtocolo: un NO-profesional (admin, sin perfil) NO cae en el guard y escribe", async () => {
+    // El guard es de ambito de practica del PROFESIONAL; admin queda gobernado por su policy, no por
+    // este guard (no le cambia lo que ya podia hacer via canManageTreatment).
     profOf.mockResolvedValueOnce(NOT_PRO);
-    const r = await saveRestricciones(RESTR_INPUT, actor);
+    const r = await guardarProtocolo(PROTOCOLO_INPUT, actor);
     expect(r.ok).toBe(true);
-    expect(writeRestricciones).toHaveBeenCalledTimes(1);
+    expect(writeGuardarProtocolo).toHaveBeenCalledTimes(1);
   });
 
-
-  it("saveObjetivo: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await saveObjetivo(OBJ_INPUT, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeObjetivo).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveObjetivo(OBJ_INPUT, actor);
-    expect(r.ok).toBe(true);
-    expect(writeObjetivo).toHaveBeenCalledTimes(1);
-  });
-
-  it("saveAdjustments: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO("medico")); // Q17: solo nutricionista aprueba/edita el protocolo nutricional
-    let r = await saveAdjustments(ADJ_INPUT, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeAdjustments).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveAdjustments(ADJ_INPUT, actor);
-    expect(r.ok).toBe(true);
-    expect(writeAdjustments).toHaveBeenCalledTimes(1);
-  });
-
-  it("saveTiempos: profesional sin profesion -> forbidden; con profesion -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO_NULL);
-    let r = await saveTiempos(TIEMPOS_INPUT, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeTiempos).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveTiempos(TIEMPOS_INPUT, actor);
-    expect(r.ok).toBe(true);
-    expect(writeTiempos).toHaveBeenCalledTimes(1);
-  });
 
   it("saveNutraceuticals: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
     profOf.mockResolvedValueOnce(PRO("medico")); // solo el nutricionista prescribe nutraceuticos
@@ -185,19 +177,6 @@ describe("guard de profesion: escrituras de tratamiento", () => {
     r = await saveNutraceuticals(NUTRA_INPUT, actor);
     expect(r.ok).toBe(true);
     expect(writeNutraceuticals).toHaveBeenCalledTimes(1);
-  });
-
-  it("saveIntercambio: NO-nutricionista (medico) -> forbidden y no escribe; nutricionista -> escribe", async () => {
-    profOf.mockResolvedValueOnce(PRO("medico")); // solo el nutricionista edita el plan nutricional
-    let r = await saveIntercambio(INTER_INPUT, actor);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error.code).toBe("forbidden");
-    expect(writeIntercambio).not.toHaveBeenCalled();
-
-    profOf.mockResolvedValueOnce(PRO("nutricionista"));
-    r = await saveIntercambio(INTER_INPUT, actor);
-    expect(r.ok).toBe(true);
-    expect(writeIntercambio).toHaveBeenCalledTimes(1);
   });
 
   it("acknowledgeRestrictions: sin profesion -> forbidden y no escribe; con profesion -> escribe", async () => {

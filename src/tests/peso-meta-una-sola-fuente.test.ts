@@ -34,7 +34,14 @@ import type { ProtocoloSnapshot } from "@/clinical-engine/protocolo";
 
 const PANEL = readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8");
 const READER = readFileSync("src/modules/treatment/data/treatment-reader.ts", "utf8");
-const WRITER = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
+// EL WRITER DEL PESO META CAMBIO DE ARCHIVO el 2026-09-09: los seis ajustes de la cadena (y con ellos el
+// peso meta) dejaron de tener guardado propio y pasaron al guardado UNICO del protocolo. Se mueve el
+// ALCANCE, no la asercion: el peso meta tiene que seguir viviendo en `evaluations`, seguir leyendose bajo
+// lock en un orden sin deadlock, y seguir conservando su procedencia, esté el codigo donde esté.
+const WRITER = readFileSync("src/modules/treatment/data/protocolo-writer.ts", "utf8");
+// El writer VIEJO se sigue mirando para lo unico que le queda de esto: que no vuelva a tocar la columna
+// supersedida ni a colgar el dato de la fila opcional.
+const WRITER_VIEJO = readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8");
 const INTAKE_WRITER = readFileSync("src/modules/bis-intake/data/bis-intake-writer.ts", "utf8");
 const MENU = readFileSync("src/modules/treatment/services/generate-menu.ts", "utf8");
 // LA SUPERFICIE DE ENTRADA DEL PESO META CAMBIO DE ARCHIVO el 2026-09-07 (punto 4 de su cotejo): de las
@@ -56,6 +63,7 @@ describe("hay UN solo sitio de guardado, y es el del paciente", () => {
     const fuentes: [string, string][] = [
       ["reader", READER],
       ["writer", WRITER],
+      ["writer viejo", WRITER_VIEJO],
       ["panel", PANEL],
       ["menú", MENU],
     ];
@@ -126,6 +134,7 @@ describe("vive donde la fila SIEMPRE existe (migración 0096)", () => {
     // La guarda era correcta mientras el dato colgara de una fila opcional. Con el dato en su sitio, la
     // guarda sobra: si volviera a hacer falta, es que el peso meta volvio a colgar de algo opcional.
     expect(sinComentarios(WRITER)).not.toContain("no tiene registradas las condiciones de la toma");
+    expect(sinComentarios(WRITER_VIEJO)).not.toContain("no tiene registradas las condiciones de la toma");
   });
 
   it("es POR EVALUACION y no por paciente, y la base lo explica", () => {
@@ -189,8 +198,12 @@ describe("no se perdió quién lo fijó", () => {
     // peso meta (el de la cadena para mover el PAL; el de la entrada para corregir una condicion).
     // Reescribir la procedencia ahi convertiria un guardado cualquiera en una afirmacion falsa sobre quien
     // decidio el peso del paciente.
-    expect(WRITER).toContain("const cambio = anterior !== input.pesoMetaFijado");
-    expect(WRITER).toContain("evalLocked?.origen");
+    // ALCANCE AJUSTADO (2026-09-09), no la asercion: al mover el guardado al writer unico, la comparacion
+    // se escribe con `e.ajustes.pesoMetaFijado` y la procedencia ya no necesita releerse (se decide por el
+    // VALOR anterior, que es lo que la regla dice). La regla no cambia: la procedencia solo se toca si el
+    // valor cambio.
+    expect(WRITER).toContain("if (anterior !== e.ajustes.pesoMetaFijado)");
+    expect(WRITER).toContain("weightGoalSetIn");
     // La segunda superficie ES OTRA DESDE EL 2026-09-07: la escritura del peso meta salio del writer de
     // condiciones y vive en el suyo propio. La regla no cambia, cambia donde se comprueba.
     expect(MEDIDAS_WRITER).toContain("anterior !== input.weightGoalKg");
@@ -216,7 +229,7 @@ describe("el candado de concurrencia sigue cubriendo el peso meta, ahora en dos 
     // `evaluations` no tocan `treatments`, asi que no hay ciclo posible.
     expect(WRITER).toContain(".from(evaluations)");
     expect(WRITER).toContain('.for("update", { of: [treatments] })');
-    expect(WRITER).toContain("no hay ciclo posible entre ellas y no hay deadlock");
+    expect(WRITER).toContain("no hay ciclo posible y no hay");
   });
 });
 

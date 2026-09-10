@@ -8,7 +8,6 @@ import { generateMenu } from "./services/generate-menu";
 import {
   canAcknowledgeRestrictions,
   canEmitirPrescripcion,
-  canEditProtocolDraft,
 } from "./policies/can-edit-protocol";
 import { canManageTreatment } from "./policies/can-manage-treatment";
 import {
@@ -17,15 +16,9 @@ import {
   aplicarCambioMenu,
   aplicarCambiosMenu,
   emitirPrescripcion,
-  saveAdjustments,
+  guardarProtocolo,
   saveNutraceuticals,
-  saveObjetivo,
-  saveIntercambio,
-  saveMenuSemanal,
   saveNutraDecision,
-  saveTiempos,
-  saveTiemposActivos,
-  saveRestricciones,
 } from "./services/treatment-service";
 import {
   acknowledgeRestrictionsSchema,
@@ -33,15 +26,9 @@ import {
   aplicarCambioMenuSchema,
   aplicarCambiosMenuSchema,
   emitirPrescripcionSchema,
-  saveAdjustmentsSchema,
+  guardarProtocoloSchema,
   saveNutraceuticalsSchema,
-  saveObjetivoSchema,
-  saveIntercambioSchema,
-  saveMenuSemanalSchema,
   saveNutraDecisionSchema,
-  saveTiemposActivosSchema,
-  saveTiemposSchema,
-  saveRestriccionesSchema,
 } from "./validations";
 
 // Actions del protocolo de tratamiento (B13). Thin (regla 2): autorizan por policy,
@@ -65,156 +52,10 @@ function parseJsonArray(raw: FormDataEntryValue | null): unknown {
   }
 }
 
-// Vacio -> null (para que Zod no coaccione "" a 0); string -> lo coacciona Zod a numero.
-function strOrNull(raw: FormDataEntryValue | null): string | null {
-  const s = typeof raw === "string" ? raw.trim() : "";
-  return s === "" ? null : s;
-}
 
 async function actor() {
   const ip = await getClientIp();
   return { ip: ip === "unknown" ? null : ip };
-}
-
-// Checkpoint 2.4: restricciones alimentarias, su propia accion (partida de saveProtocolAction, que se
-// retiro). Mismo patron que los ajustes/nutraceuticos: candado, firma de remonte, stale_write como aviso.
-export async function saveRestriccionesAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  const parsed = saveRestriccionesSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    restricciones: parseJsonArray(form.get("restricciones")),
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Restricciones inválidas.");
-  }
-
-  const result = await saveRestricciones(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  // NO se revalida: la seccion se remonta por su `key` (restriccionesSignature); el refresh lo dispara el
-  // hook useFormToastRefreshOnSuccess DESPUES del toast (mismo motivo que en la cadena/nutraceuticos).
-  return { error: null, success: "Restricciones guardadas.", warning: null };
-}
-
-// Checkpoint 2.4 (pieza 1): objetivo del tratamiento nutricional, su propia accion.
-export async function saveObjetivoAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  const parsed = saveObjetivoSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    objetivo: strOrNull(form.get("objetivo")),
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Objetivo inválido.");
-  }
-
-  const result = await saveObjetivo(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Objetivo del tratamiento guardado.", warning: null };
-}
-
-// CP1.2: guarda la lista de intercambio. Primer campo ESTRUCTURADO: llega como JSON en el FormData, se parsea y
-// pasa por saveIntercambioSchema (rechaza forma incorrecta). El resto del patron es identico a las demas.
-export async function saveIntercambioAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  let intercambio: unknown;
-  try {
-    intercambio = JSON.parse((form.get("intercambio") as string | null) ?? "");
-  } catch {
-    return fail("Lista de intercambio inválida.");
-  }
-  const parsed = saveIntercambioSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    intercambio,
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Lista de intercambio inválida.");
-  }
-
-  const result = await saveIntercambio(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Lista de intercambio guardada.", warning: null };
-}
-
-// CP2.2: guarda la distribucion por tiempos. jsonb estructurado (activos + celdas + base) via JSON, validado
-// por saveTiemposSchema (rechaza forma incorrecta, exige al menos un tiempo activo).
-export async function saveTiemposAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  let tiempos: unknown;
-  try {
-    tiempos = JSON.parse((form.get("tiempos") as string | null) ?? "");
-  } catch {
-    return fail("Distribución por tiempos inválida.");
-  }
-  const parsed = saveTiemposSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    tiempos,
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Distribución por tiempos inválida.");
-  }
-
-  const result = await saveTiempos(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Distribución por tiempos guardada.", warning: null };
 }
 
 // CP-N1: la decision sobre los nutraceuticos, su propia accion.
@@ -248,80 +89,6 @@ export async function saveNutraDecisionAction(
   // scroll). El sintoma "la primera vez salta y la segunda no" es que salta SIEMPRE: la segunda vez ya
   // se esta arriba. Verificado sobre esta accion, que es una de las cuatro que hacian las dos cosas.
   return { error: null, success: "Decisión registrada.", warning: null };
-}
-
-// CP2.3: tiempos de comida activos, su propia accion.
-export async function saveTiemposActivosAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  let activos: unknown;
-  try {
-    activos = JSON.parse((form.get("activos") as string | null) ?? "");
-  } catch {
-    return fail("Tiempos de comida inválidos.");
-  }
-  const parsed = saveTiemposActivosSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    activos,
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Tiempos de comida inválidos.");
-  }
-
-  const result = await saveTiemposActivos(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Tiempos de comida aplicados.", warning: null };
-}
-
-// CP4: menu semanal, su propia accion.
-export async function saveMenuSemanalAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canManageTreatment(user)) return fail("No autorizado.");
-
-  let menu: unknown;
-  try {
-    menu = JSON.parse((form.get("menu") as string | null) ?? "");
-  } catch {
-    return fail("Menú semanal inválido.");
-  }
-  const parsed = saveMenuSemanalSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    menu,
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Menú semanal inválido.");
-  }
-
-  const result = await saveMenuSemanal(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-  return { error: null, success: "Menú semanal guardado.", warning: null };
 }
 
 // Aplica UN cambio propuesto por la IA a la grilla. Cambio por cambio; el global es aparte.
@@ -474,49 +241,6 @@ export async function addNoteAction(
   return { error: null, success: "Nota agregada.", warning: null };
 }
 
-// T2 A2: guarda los ajustes del profesional sobre el sugerido. PROFESIONAL-SOLO (admin no):
-// los adj_* son inputs clinicos de la prescripcion (ver can-edit-protocol).
-export async function saveAdjustmentsAction(
-  _prev: TreatmentActionState,
-  form: FormData,
-): Promise<TreatmentActionState> {
-  const user = await requireUser();
-  if (!canEditProtocolDraft(user)) return fail("No autorizado.");
-
-  const parsed = saveAdjustmentsSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-    adjGeb: strOrNull(form.get("adjGeb")),
-    adjPal: strOrNull(form.get("adjPal")),
-    adjKcalObj: strOrNull(form.get("adjKcalObj")),
-    adjProtGkg: strOrNull(form.get("adjProtGkg")),
-    adjFatPct: strOrNull(form.get("adjFatPct")),
-    adjDeficit: strOrNull(form.get("adjDeficit")),
-    pesoMeta: strOrNull(form.get("pesoMeta")),
-    baseSignature: (form.get("baseSignature") as string | null) ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Ajustes inválidos.");
-  }
-
-  const result = await saveAdjustments(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ...(await actor()),
-  });
-  if (!result.ok) {
-    // Rechazo por concurrencia: aviso (amber), no error. Igual que saveProtocolAction. NO se revalida (el
-    // dato no cambio) y el estado del formulario se preserva, asi que el profesional no pierde lo que escribio.
-    if (result.error.code === "stale_write") {
-      return { error: null, success: null, warning: result.error.message };
-    }
-    return fail(result.error.message);
-  }
-
-  // NO se revalida aqui: el form se remonta por su `key` (adjustmentSignature) y el refresh lo dispara el
-  // hook useFormToastRefreshOnSuccess DESPUES del toast, para que el aviso de exito no se pierda en la carrera.
-  return { error: null, success: "Ajustes guardados.", warning: null };
-}
-
 // T2 A2: reconocimiento de las restricciones del modelo. PROFESIONAL-SOLO (acto clinico).
 export async function acknowledgeRestrictionsAction(
   _prev: TreatmentActionState,
@@ -652,3 +376,63 @@ export async function generateMenuAction(
   return { error: null, success: "Revisa las sustituciones propuestas y aplica las que apruebes.", warning: null };
 }
 
+
+// ═══ UN SOLO GUARDADO PARA TODO EL PROTOCOLO (Santiago, 2026-09-09) ═══
+//
+// SUSTITUYE A SIETE ACCIONES, y el payload viaja como UN json en vez de siete campos sueltos: la pantalla
+// ya tiene el borrador entero en memoria, asi que serializarlo entero es una linea y no siete.
+//
+// EL PARSEO ES TOLERANTE CON LA FORMA Y ESTRICTO CON EL CONTENIDO: si el json no llega o no parsea, se
+// rechaza con un mensaje legible en vez de reventar; lo que valida las reglas clinicas (los 21 alimentos,
+// al menos un tiempo activo, los topes de texto) es el schema, que reusa los de cada seccion.
+export async function guardarProtocoloAction(
+  _prev: TreatmentActionState,
+  form: FormData,
+): Promise<TreatmentActionState> {
+  const user = await requireUser();
+  if (!canManageTreatment(user)) return fail("No autorizado.");
+
+  let cuerpo: unknown;
+  try {
+    cuerpo = JSON.parse(String(form.get("protocolo") ?? "null"));
+  } catch {
+    return fail("No se pudo leer lo que hay en pantalla. Recarga e inténtalo de nuevo.");
+  }
+
+  const parsed = guardarProtocoloSchema.safeParse({
+    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
+    ...(cuerpo as Record<string, unknown>),
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Hay un valor inválido en el protocolo.");
+  }
+
+  const result = await guardarProtocolo(parsed.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ...(await actor()),
+  });
+  if (!result.ok) {
+    // stale_write como AVISO y no como error: preserva la edicion en pantalla para que se pueda reaplicar.
+    if (result.error.code === "stale_write") {
+      return { error: null, success: null, warning: result.error.message };
+    }
+    return fail(result.error.message);
+  }
+
+  // EL MENSAJE DERIVA DE LO QUE SE ESCRIBIO, no de que la accion no fallara. Decir "guardado" cuando no
+  // cambio nada le haria creer al profesional que dejo un registro que no existe, y ademas le quitaria la
+  // unica pista de que su cambio no llego (por ejemplo, si el borrador se remonto y perdio lo escrito).
+  const n = result.value.guardadas.length;
+  if (n === 0) {
+    return { error: null, success: "No había cambios que guardar.", warning: null };
+  }
+  return {
+    error: null,
+    success:
+      n === 1
+        ? `Se guardó ${result.value.guardadas[0]}.`
+        : `Se guardaron ${n} secciones: ${result.value.guardadas.join(", ")}.`,
+    warning: null,
+  };
+}

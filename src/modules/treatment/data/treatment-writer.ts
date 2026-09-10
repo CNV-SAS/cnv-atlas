@@ -5,7 +5,6 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   diagnoses,
-  evaluations,
   patientContraindications,
   treatmentNotes,
   treatmentNutraceuticals,
@@ -14,14 +13,8 @@ import {
 import { recordAudit } from "@/modules/audit/log";
 
 import {
-  adjustmentSignature,
-  intercambioSignature,
   menuSemanalSignature,
   nutraceuticalsSignature,
-  objetivoSignature,
-  restriccionesSignature,
-  tiemposActivosSignature,
-  tiemposSignature,
 } from "./protocol-signature";
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved } from "./treatment-view-types";
 
@@ -117,41 +110,6 @@ export type SaveRestriccionesWrite = {
   ip: string | null;
 };
 
-// Restricciones alimentarias (checkpoint 2.4): reemplaza el arreglo treatments.restricciones. Camino propio
-// con candado, como saveNutraceuticals: la lista ALIMENTA EL MENU, y una restriccion que se pierda por
-// sobreescritura produce un plan que ignora una alergia. Lock de la fila + recompute de la firma bajo lock.
-export async function saveRestricciones(input: SaveRestriccionesWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ restr: treatments.restricciones })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const current = restriccionesSignature({
-      treatmentId: input.treatmentId,
-      restricciones: locked.restr ?? [],
-    });
-    if (current !== input.baseSignature) throw new StaleRestriccionesError();
-    await tx
-      .update(treatments)
-      .set({ restricciones: input.restricciones })
-      .where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "treatment.restricciones_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: { restricciones_count: input.restricciones.length },
-      ip: input.ip,
-    });
-  });
-}
-
 export type SaveGuidelinesWrite = {
   treatmentId: string;
   guidelines: string[];
@@ -174,37 +132,6 @@ export type SaveObjetivoWrite = {
   ip: string | null;
 };
 
-// Objetivo del tratamiento nutricional (checkpoint 2.4, pieza 1): texto libre en treatments.objetivo_texto.
-// Camino propio con candado, como las demas secciones editables.
-export async function saveObjetivo(input: SaveObjetivoWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ obj: treatments.objetivoTexto })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const current = objetivoSignature({ treatmentId: input.treatmentId, objetivo: locked.obj });
-    if (current !== input.baseSignature) throw new StaleObjetivoError();
-    await tx
-      .update(treatments)
-      .set({ objetivoTexto: input.objetivo })
-      .where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "treatment.objetivo_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: { objetivo_len: (input.objetivo ?? "").length },
-      ip: input.ip,
-    });
-  });
-}
-
 export type SaveIntercambioWrite = {
   treatmentId: string;
   intercambio: IntercambioSaved;
@@ -214,44 +141,6 @@ export type SaveIntercambioWrite = {
   actorEmail: string;
   ip: string | null;
 };
-
-// Guarda la lista de intercambio (CP1.2): jsonb en treatments.intercambio_porciones. Camino propio con candado
-// como las demas secciones editables; REEMPLAZA EN BLOQUE, asi que la firma que carga el cliente es la base del
-// candado (rechaza si otro profesional lo cambio). El baseSignature "" corresponde a null (nunca guardado).
-export async function saveIntercambio(input: SaveIntercambioWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ inter: treatments.intercambioPorciones })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const current = intercambioSignature({
-      treatmentId: input.treatmentId,
-      intercambio: (locked.inter as IntercambioSaved | null) ?? null,
-    });
-    if (current !== input.baseSignature) throw new StaleIntercambioError();
-    await tx
-      .update(treatments)
-      .set({ intercambioPorciones: input.intercambio })
-      .where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "treatment.intercambio_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: {
-        objetivo_base: input.intercambio.objetivoBase,
-        alimentos_con_porcion: Object.values(input.intercambio.porciones).filter((n) => n > 0).length,
-      },
-      ip: input.ip,
-    });
-  });
-}
 
 export class StaleTiemposActivosError extends Error {
   constructor() {
@@ -332,43 +221,6 @@ export type SaveTiemposActivosWrite = {
   ip: string | null;
 };
 
-// Guarda los tiempos de comida ACTIVOS (CP2.3): columna propia `tiempos_activos`. Escritura INDEPENDIENTE
-// de la distribucion, con su propio candado: guardar las casillas no se rechaza porque otro haya tocado la
-// tabla. Los overrides de la distribucion NO se tocan aqui; si quedan calculados contra otros tiempos, el
-// panel lo detecta comparando estos activos contra `tiempos.base.activos` (el aviso de desfase).
-export async function saveTiemposActivos(input: SaveTiemposActivosWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ a: treatments.tiemposActivos })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const current = tiemposActivosSignature({
-      treatmentId: input.treatmentId,
-      activos: (locked.a as Record<string, boolean> | null) ?? null,
-    });
-    if (current !== input.baseSignature) throw new StaleTiemposActivosError();
-    await tx
-      .update(treatments)
-      .set({ tiemposActivos: input.activos })
-      .where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "treatment.tiempos_activos_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      // Se audita QUE tiempos quedaron activos: definen la estructura del dia del paciente.
-      payload: { activos: Object.entries(input.activos).filter(([, v]) => v).map(([k]) => k) },
-      ip: input.ip,
-    });
-  });
-}
-
 export type SaveMenuSemanalWrite = {
   treatmentId: string;
   menu: MenuSemanalSaved;
@@ -425,37 +277,6 @@ export type SaveTiemposWrite = {
   actorEmail: string;
   ip: string | null;
 };
-
-// Guarda la distribucion por tiempos (CP2.2): jsonb en treatments.tiempos. Mismo patron con candado que las
-// demas; REEMPLAZA EN BLOQUE. baseSignature "" corresponde a null (nunca guardado).
-export async function saveTiempos(input: SaveTiemposWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-    await assertDiagnosisExists(tx, input.treatmentId);
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({ t: treatments.tiempos })
-      .from(treatments)
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update")
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-    const current = tiemposSignature({
-      treatmentId: input.treatmentId,
-      tiempos: (locked.t as TiemposSaved | null) ?? null,
-    });
-    if (current !== input.baseSignature) throw new StaleTiemposError();
-    await tx.update(treatments).set({ tiempos: input.tiempos }).where(eq(treatments.id, input.treatmentId));
-    await recordAudit(tx, {
-      event: "treatment.tiempos_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: { overrides: Object.keys(input.tiempos.celdas).length },
-      ip: input.ip,
-    });
-  });
-}
 
 export type SaveNutraceuticalsWrite = {
   treatmentId: string;
@@ -571,118 +392,6 @@ export type SaveAdjustmentsWrite = {
   actorEmail: string;
   ip: string | null;
 };
-
-// Guarda los ajustes del profesional sobre el protocolo sugerido. Owner client + audit inline. Los
-// numeric van como string a Drizzle.
-//
-// YA NO HAY GATE DE BORRADOR (2026-09-09): la prescripcion esta siempre abierta. Existia porque aprobar
-// congelaba la fila y el trigger habria rechazado la escritura; sin congelado, atajar aqui seria prohibir
-// sin motivo. Lo que conserva la constancia de lo entregado es la copia de cada emision, no el bloqueo.
-export async function saveAdjustments(input: SaveAdjustmentsWrite): Promise<void> {
-  await db.transaction(async (tx) => {
-
-    // Candado de concurrencia (misma razon que en saveProtocol): saveAdjustments ESCRIBE LAS SEIS
-    // columnas adj_* de golpe, asi que dos guardados del mismo tratamiento se pisan (el ultimo gana) y el
-    // ajuste que otro profesional acaba de fijar se pierde sin rastro. Se lockea la fila (FOR UPDATE), se
-    // recomputa la firma actual bajo el lock y, si difiere de la que trajo el cliente, se rechaza sin pisar.
-    await tx.execute(sql`set local lock_timeout = '3s'`);
-    const [locked] = await tx
-      .select({
-        geb: treatments.adjGeb,
-        pal: treatments.adjPal,
-        kcalObj: treatments.adjKcalObj,
-        protGkg: treatments.adjProtGkg,
-        fatPct: treatments.adjFatPct,
-        deficit: treatments.adjDeficit,
-        evaluationId: diagnoses.evaluationId,
-      })
-      .from(treatments)
-      .innerJoin(diagnoses, eq(diagnoses.id, treatments.diagnosisId))
-      .where(eq(treatments.id, input.treatmentId))
-      .for("update", { of: [treatments] })
-      .limit(1);
-    if (!locked) throw new TreatmentStateError("Tratamiento no encontrado.");
-
-    // EL PESO META SE LOCKEA APARTE, porque vive en la EVALUACION desde la 0096. El orden importa y es
-    // siempre este (tratamiento y luego evaluacion): las otras escrituras de `evaluations` no tocan
-    // `treatments`, asi que no hay ciclo posible entre ellas y no hay deadlock.
-    //
-    // NO HAY GUARDA DE "y si no existe la fila": la de la evaluacion SIEMPRE existe, que es exactamente la
-    // razon por la que el peso meta se movio aqui. La version anterior colgaba de `evaluation_bis_intake`,
-    // cuya fila es OPCIONAL, y el panel quedo bloqueado en el primer smoke con un error que era correcto
-    // pero describia un problema que no tenia por que existir.
-    const [evalLocked] = await tx
-      .select({
-        pesoMeta: evaluations.weightGoalKg,
-        origen: evaluations.weightGoalSetIn,
-      })
-      .from(evaluations)
-      .where(eq(evaluations.id, locked.evaluationId))
-      .for("update")
-      .limit(1);
-    // Number() en TODO (los numeric vuelven string, los integer numero): misma normalizacion que el reader,
-    // sin la cual la firma divergiria por scale y rechazaria guardados legitimos.
-    const current = adjustmentSignature({
-      treatmentId: input.treatmentId,
-      adjGeb: locked.geb != null ? Number(locked.geb) : null,
-      adjPal: locked.pal != null ? Number(locked.pal) : null,
-      adjKcalObj: locked.kcalObj != null ? Number(locked.kcalObj) : null,
-      adjProtGkg: locked.protGkg != null ? Number(locked.protGkg) : null,
-      adjFatPct: locked.fatPct != null ? Number(locked.fatPct) : null,
-      adjDeficit: locked.deficit != null ? Number(locked.deficit) : null,
-      pesoMetaFijado: evalLocked?.pesoMeta != null ? Number(evalLocked.pesoMeta) : null,
-    });
-    if (current !== input.baseSignature) throw new StaleAdjustmentsError();
-
-    await tx
-      .update(treatments)
-      .set({
-        adjGeb: input.adjGeb,
-        adjPal: input.adjPal != null ? String(input.adjPal) : null,
-        adjKcalObj: input.adjKcalObj,
-        adjProtGkg: input.adjProtGkg != null ? String(input.adjProtGkg) : null,
-        adjFatPct: input.adjFatPct,
-        adjDeficit: input.adjDeficit,
-      })
-      .where(eq(treatments.id, input.treatmentId));
-
-    // El peso meta, a su tabla. Se marca la PROCEDENCIA: lo fijo el nutricionista desde el tratamiento.
-    // Es informacion clinica, no metadato (no es lo mismo el peso acordado en la consulta que uno ajustado
-    // despues al armar el plan), y el CHECK de la 0096 exige que valor y procedencia viajen juntos.
-    const anterior = evalLocked?.pesoMeta != null ? Number(evalLocked.pesoMeta) : null;
-    // LA PROCEDENCIA SOLO CAMBIA SI CAMBIA EL VALOR. El formulario de la cadena manda las seis columnas
-    // de golpe, asi que se guarda tambien cuando el profesional vino a mover el PAL y ni toco el peso
-    // meta. Reescribir la procedencia en ese caso diria que el peso lo fijo el nutricionista cuando lo
-    // habia acordado el que hizo la entrada: convertiria un guardado cualquiera en una afirmacion falsa
-    // sobre quien decidio.
-    const cambio = anterior !== input.pesoMetaFijado;
-    await tx
-      .update(evaluations)
-      .set({
-        weightGoalKg: input.pesoMetaFijado != null ? String(input.pesoMetaFijado) : null,
-        weightGoalSetIn:
-          input.pesoMetaFijado == null ? null : cambio ? "tratamiento" : (evalLocked?.origen ?? "tratamiento"),
-      })
-      .where(eq(evaluations.id, locked.evaluationId));
-    await recordAudit(tx, {
-      event: "treatment.adjustments_updated",
-      actorId: input.actorId,
-      actorEmail: input.actorEmail,
-      entityType: "treatment",
-      entityId: input.treatmentId,
-      payload: {
-        adj_geb: input.adjGeb,
-        adj_pal: input.adjPal,
-        adj_kcal_obj: input.adjKcalObj,
-        adj_prot_gkg: input.adjProtGkg,
-        adj_fat_pct: input.adjFatPct,
-        adj_deficit: input.adjDeficit,
-        peso_meta: input.pesoMetaFijado,
-      },
-      ip: input.ip,
-    });
-  });
-}
 
 export type AcknowledgeRestrictionsWrite = {
   treatmentId: string;

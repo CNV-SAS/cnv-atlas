@@ -3,7 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { ETAPA_IDS, ETAPAS, type TabId } from "../etapas";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 // Shell de pestañas de una evaluacion. Adopta las etapas reales de la ruta ANI-BIS-E como tabs internas
 // (es la estructura real de la ruta clinica, no "familiaridad de formacion": los profesionales se forman
@@ -88,6 +88,30 @@ export function EvaluationTabs({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const active = parseTab(searchParams.get("etapa"), searchParams.get("ev"), porDefecto);
+
+  // ═══ UNA ETAPA VISITADA NO SE DESMONTA (2026-09-09) ═══
+  //
+  // EL DEFECTO QUE ESTO CIERRA, y aparecio al unificar los siete guardados del tratamiento en uno: hasta
+  // hoy se rendia SOLO la etapa activa, asi que cambiar de pestaña DESMONTABA la anterior y se perdia su
+  // estado. Con un boton de guardar por bloque eso no se notaba (lo escrito ya estaba en la base); con un
+  // solo guardado al final, irse a Diagnostico un momento BORRARIA EL TRABAJO EN SILENCIO, que es la peor
+  // forma de perder algo.
+  //
+  // POR QUE "VISITADAS" Y NO "TODAS". Rendirlas todas de entrada cambiaria la conducta de la pantalla: el
+  // panel de diagnostico DISPARA el pipeline al montar (peticion de Gildardo: se genera solo al entrar),
+  // asi que montarlo sin que nadie haya abierto esa pestaña lo dispararia antes de tiempo y sus avisos
+  // saldrian sobre una pestaña que el profesional no esta mirando. Montando en la PRIMERA visita, lo que
+  // ocurre es exactamente lo de hoy; lo unico que cambia es que despues ya no se desmonta.
+  //
+  // `hidden` y no desmontar: el DOM se queda, React conserva el estado, y el lector de pantalla solo ve la
+  // activa.
+  // SE AJUSTA DURANTE EL RENDER, no en un efecto: React admite `setState` del PROPIO componente mientras
+  // rinde (re-rinde antes de pintar, sin ciclo visible) y es lo correcto para un estado que se DERIVA de
+  // una prop. En un efecto correria despues de pintar y ademas encadenaria renders, que es lo que la regla
+  // `set-state-in-effect` señala.
+  const [visitadas, setVisitadas] = useState<TabId[]>([active]);
+  if (!visitadas.includes(active)) setVisitadas([...visitadas, active]);
+
   const content: Record<TabId, ReactNode> = {
     encuesta,
     antro,
@@ -137,9 +161,17 @@ export function EvaluationTabs({
         })}
       </div>
 
-      <div role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`}>
-        {content[active]}
-      </div>
+      {visitadas.map((id) => (
+        <div
+          key={id}
+          role="tabpanel"
+          id={`panel-${id}`}
+          aria-labelledby={`tab-${id}`}
+          hidden={id !== active}
+        >
+          {content[id]}
+        </div>
+      ))}
     </div>
   );
 }

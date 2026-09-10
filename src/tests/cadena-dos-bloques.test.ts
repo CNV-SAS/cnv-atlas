@@ -28,7 +28,10 @@ function bloque(desde: string, hasta: string): string {
 }
 
 const META = () => bloque("<h3 className={tituloBloqueCls(\"decision\")}>Objetivo del plan", "BLOQUE 2");
-const FORMULA = () => bloque("BLOQUE 2", "Un solo boton para los dos bloques");
+// EL DELIMITADOR CAMBIO, NO EL ALCANCE (2026-09-09). Era el comentario del boton de guardar de la cadena
+// ("Un solo boton para los dos bloques"), y ese boton se retiro al unificar los siete guardados del panel
+// en uno. El bloque de la formula es lo ultimo de la seccion, asi que se delimita con el inicio del panel.
+const FORMULA = () => bloque("BLOQUE 2", "export function TreatmentPanel");
 
 describe("el segundo bloque se llama como en su archivo (cotejo 2026-09-05, punto 23)", () => {
   // SIN COMENTARIOS: el comentario que explica el cambio de titulo tiene que nombrar los DOS titulos,
@@ -250,51 +253,41 @@ describe("el desplegable del PAL nunca muestra un nivel que no es", () => {
   });
 });
 
-describe("se partió la PRESENTACIÓN, no el guardado", () => {
-  it("hay UN solo formulario y UN solo botón para los dos bloques", () => {
-    // Los seis ajustes son una columna cada uno pero UNA unidad clínica: `saveAdjustments` las escribe de
-    // golpe y `adjustmentSignature` cubre las seis. Partir el guardado obligaría a dos firmas sobre las
-    // mismas columnas, y un guardado parcial dejaría que la cadena de un profesional pisara la meta de
-    // otro. Si alguien parte el form, esto truena antes de que ese defecto llegue a un paciente.
-    // SIN COMENTARIOS PARA CONTAR, y es la quinta vez de esta familia: el comentario que explica POR QUE
-    // no se parte el formulario tiene que CITAR `type="submit"`, asi que el candado se cazaba a si mismo
-    // (2026-09-06). Se ajusta el ALCANCE de lo que se cuenta, no la asercion: sigue exigiendo UNO.
-    // No se puede quitar los comentarios de `PANEL` entero porque "BLOQUE 2" es un comentario y se usa
-    // de marcador.
-    const seccion = sinComentarios(
-      bloque("function CadenaCaloricaSection", "export function TreatmentPanel"),
-    );
-    expect((seccion.match(/<form /g) ?? []).length).toBe(1);
-    expect((seccion.match(/name="baseSignature"/g) ?? []).length).toBe(1);
-  });
-
-  it("hay DOS disparadores del mismo envío, y con `key` distintas", () => {
-    // EL SEGUNDO ES DEL 2026-09-06, y CAMBIO DE SITIO EL MISMO DIA. Nacio dentro del aviso de "sin
-    // guardar" que sale sobre la tabla de validación; en el smoke siguiente Santiago señalo que en PC se
-    // ven los dos bloques a la vez pero en MOVIL el aviso cae fuera de pantalla, o sea que había que
-    // bajar para guardar cuatro campos que están arriba. Ahora está en "Objetivo del plan", junto a los
-    // campos que se editan, y el aviso dice dónde está.
+describe("se partió la PRESENTACIÓN, y ahora tampoco hay guardado propio", () => {
+  it("la cadena NO tiene su propio guardado: publica, y lo guarda el botón único", () => {
+    // ALCANCE REESCRITO, LA REGLA NO (2026-09-09). Este caso exigia UN formulario y UN boton, y protegia
+    // esto: los seis ajustes son una columna cada uno pero UNA unidad clinica, asi que partir el guardado
+    // dejaria que la cadena de un profesional pisara la meta de otro.
     //
-    // NO PARTE EL GUARDADO, que es lo que este archivo protege: los dos son `type="submit"` del MISMO
-    // formulario, así que los seis ajustes siguen viajando de golpe con una sola firma. Es un segundo
-    // disparador del mismo acto.
-    const PANEL_CRUDO = readFileSync(
-      "src/modules/treatment/components/treatment-panel.tsx",
-      "utf8",
-    );
-    // LAS KEYS DISTINTAS son el hazard del wizard: con la misma, React reutiliza el nodo y el clic
-    // aterriza en el botón que no era. Solo se ve en un navegador real, así que se fija aquí.
-    expect(PANEL_CRUDO).toContain('key="guardar-desde-meta"');
-    // Y en la CADENA sigue habiendo solo dos: tres disparadores del mismo acto es ruido. Se cuenta sobre
-    // la seccion, no sobre el archivo (que tiene ocho formularios mas), y sin comentarios, que citan el
-    // marcador al explicarlo.
+    // Al unificar los siete guardados del panel en uno (peticion de Santiago), esa garantia se cumple mas
+    // fuerte: no hay UN formulario para la cadena, hay CERO, y las siete secciones viajan en una sola
+    // transaccion con sus siete firmas validadas antes de escribir ninguna. Lo que este caso vigila ahora
+    // es que a nadie se le ocurra devolverle a la cadena un guardado propio.
     const seccion = sinComentarios(
       bloque("function CadenaCaloricaSection", "export function TreatmentPanel"),
     );
-    expect((seccion.match(/type="submit"/g) ?? []).length).toBe(2);
+    expect((seccion.match(/<form /g) ?? []).length, "volvió un formulario propio a la cadena").toBe(0);
+    expect((seccion.match(/type="submit"/g) ?? []).length, "volvió un botón de guardar a la cadena").toBe(0);
+    expect((seccion.match(/name="baseSignature"/g) ?? []).length, "volvió una firma propia").toBe(0);
+    // Y lo que SÍ tiene que haber: la publicación del borrador hacia el panel.
+    expect(seccion, "la cadena dejó de publicar su borrador").toMatch(/usePublicar\(\s*"ajustes"/);
   });
 
-  it("los seis ajustes siguen viajando juntos en ese único formulario", () => {
+  it("y el guardado del panel es UNO, y PEGAJOSO", () => {
+    // LOS DOS DISPARADORES SE RETIRARON. Había dos botones de guardar en la cadena porque en móvil el de
+    // abajo caía fuera de pantalla y había que bajar para guardar cuatro campos que estaban arriba. El
+    // problema era la POSICIÓN, no el número: una barra pegajosa se ve desde cualquier punto del scroll,
+    // así que un solo botón basta y además resuelve lo mismo para las otras seis secciones.
+    expect(PANEL, "el guardado dejó de ser pegajoso").toContain("sticky bottom-0");
+    expect(PANEL).toContain("Guardar cambios");
+    // UNO, no dos: tres disparadores del mismo acto en una pantalla es ruido.
+    const panel = sinComentarios(bloque("export function TreatmentPanel", "const ROTULO_SECCION"));
+    expect((panel.match(/type="submit"/g) ?? []).length, "hay más de un botón de guardar").toBe(1);
+  });
+
+  it("los seis ajustes siguen viajando juntos, ahora en el borrador", () => {
+    // Los `name` se conservan aunque ya no haya FormData por seccion: son lo que hace que cada campo
+    // aparezca UNA sola vez (el espejo del PAL y el del deficit no lo llevan), y ese hazard sigue vivo.
     const seccion = bloque("function CadenaCaloricaSection", "export function TreatmentPanel");
     for (const n of ["pesoMeta", "adjGeb", "adjPal", "adjKcalObj", "adjProtGkg", "adjFatPct"]) {
       expect(seccion, `falta ${n} en el formulario de la cadena`).toContain(`name="${n}"`);

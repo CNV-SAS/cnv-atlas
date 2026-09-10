@@ -10,6 +10,11 @@ import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments
 import { getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
 
 import { writeEmisionPrescripcion } from "../data/emisiones-writer";
+import {
+  guardarProtocolo as writeGuardarProtocolo,
+  rotuloDeSeccion,
+  StaleProtocoloError,
+} from "../data/protocolo-writer";
 import { menuSemanalSignature } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import { getActorProfession } from "../data/actor-profession-reader";
@@ -18,38 +23,21 @@ import { requireNutricionista } from "./require-profession";
 import {
   acknowledgeRestrictions as writeAcknowledge,
   addTreatmentNote,
-  saveAdjustments as writeAdjustments,
   saveNutraceuticals as writeNutraceuticals,
-  saveObjetivo as writeObjetivo,
-  saveIntercambio as writeIntercambio,
   saveMenuSemanal as writeMenuSemanal,
   saveNutraDecision as writeNutraDecision,
-  saveTiemposActivos as writeTiemposActivos,
-  saveTiempos as writeTiempos,
-  saveRestricciones as writeRestricciones,
-  StaleAdjustmentsError,
   StaleNutraceuticalsError,
-  StaleObjetivoError,
-  StaleIntercambioError,
   StaleMenuSemanalError,
-  StaleTiemposActivosError,
-  StaleTiemposError,
-  StaleRestriccionesError,
   TreatmentStateError,
 } from "../data/treatment-writer";
 import type {
   AcknowledgeRestrictionsInput,
   AddNoteInput,
   EmitirPrescripcionInput,
-  SaveAdjustmentsInput,
+  GuardarProtocoloInput,
   SaveNutraceuticalsInput,
-  SaveObjetivoInput,
-  SaveIntercambioInput,
   SaveMenuSemanalInput,
   SaveNutraDecisionInput,
-  SaveTiemposActivosInput,
-  SaveTiemposInput,
-  SaveRestriccionesInput,
 } from "../validations";
 
 // Servicio del protocolo de tratamiento (la logica vive aqui; las actions son thin,
@@ -77,176 +65,6 @@ type Actor = { actorId: string; actorEmail: string; ip: string | null };
 // se conservaba porque nadie podia tocar la fila; ahora se conserva porque esta copiado aparte. Es mas
 // fuerte, no mas debil: el congelado protegia solo mientras nadie reabriera.
 
-// Checkpoint 2.4: restricciones alimentarias, su propio camino de guardado. Solo nutricionista; ownership
-// por lectura RLS del treatmentId via evaluationId. La lista alimenta el menu (una restriccion perdida por
-// sobreescritura produce un plan que ignora una alergia): por eso el candado, como en nutraceuticos.
-export async function saveRestricciones(
-  input: SaveRestriccionesInput,
-  actor: Actor,
-): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  // SIN GATE DE CONFIRMACION (2026-09-09): el diagnostico es del modelo, no del profesional, y prescribir
-  // ya no la exige. Que `protocol` exista significa que hay diagnostico, que es el gate que queda.
-  try {
-    await writeRestricciones({
-      treatmentId: protocol.treatmentId,
-      restricciones: input.restricciones,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof StaleRestriccionesError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió las restricciones en otra sesión (otra pestaña o dispositivo). Para no " +
-            "borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
-        ),
-      );
-    }
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "Las restricciones están bloqueadas por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// Checkpoint 2.4 (pieza 1): objetivo del tratamiento nutricional, su propio camino de guardado.
-export async function saveObjetivo(
-  input: SaveObjetivoInput,
-  actor: Actor,
-): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el objetivo del tratamiento."));
-  }
-  try {
-    await writeObjetivo({
-      treatmentId: protocol.treatmentId,
-      objetivo: input.objetivo,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof StaleObjetivoError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió el objetivo del tratamiento en otra sesión (otra pestaña o dispositivo). " +
-            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
-        ),
-      );
-    }
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "El objetivo está bloqueado por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// CP1.2: lista de intercambio, su propio camino de guardado. Solo el nutricionista (edita el plan nutricional).
-export async function saveIntercambio(
-  input: SaveIntercambioInput,
-  actor: Actor,
-): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la lista de intercambio."));
-  }
-  try {
-    await writeIntercambio({
-      treatmentId: protocol.treatmentId,
-      intercambio: input.intercambio,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof StaleIntercambioError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió la lista de intercambio en otra sesión (otra pestaña o dispositivo). " +
-            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
-        ),
-      );
-    }
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "La lista de intercambio está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// CP2.2: distribucion por tiempos, su propio camino de guardado. Solo el nutricionista.
-export async function saveTiempos(input: SaveTiemposInput, actor: Actor): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar la distribución por tiempos."));
-  }
-  try {
-    await writeTiempos({
-      treatmentId: protocol.treatmentId,
-      tiempos: input.tiempos,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof StaleTiemposError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió la distribución por tiempos en otra sesión (otra pestaña o dispositivo). " +
-            "Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
-        ),
-      );
-    }
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "La distribución por tiempos está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
 // CP-N1: la decision sobre los nutraceuticos. Se pregunta SIEMPRE, y "pendiente" es respuesta valida.
 export async function saveNutraDecision(input: SaveNutraDecisionInput, actor: Actor): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
@@ -272,47 +90,6 @@ export async function saveNutraDecision(input: SaveNutraDecisionInput, actor: Ac
       ...actor,
     });
   } catch (e) {
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// CP2.3: tiempos de comida activos, su propio camino de guardado (partido de la distribucion el
-// 2026-08-23). Mismos gates; candado independiente.
-export async function saveTiemposActivos(input: SaveTiemposActivosInput, actor: Actor): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar los tiempos de comida."));
-  }
-  try {
-    await writeTiemposActivos({
-      treatmentId: protocol.treatmentId,
-      activos: input.activos,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    if (e instanceof StaleTiemposActivosError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió los tiempos de comida en otra sesión (otra pestaña o dispositivo). Para no " +
-            "borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión actual y vuelve a aplicarlo.",
-        ),
-      );
-    }
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "Los tiempos de comida están bloqueados por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
     if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
     throw e;
   }
@@ -474,62 +251,6 @@ export async function saveNutraceuticals(
         appError(
           "stale_write",
           "La prescripción está bloqueada por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
-        ),
-      );
-    }
-    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
-    throw e;
-  }
-  return ok(undefined);
-}
-
-// T2 A2: ajustes del profesional sobre el sugerido. Ownership por lectura RLS (derivamos el
-// treatmentId de la evaluacion; si no es del profesional, el reader devuelve null).
-export async function saveAdjustments(
-  input: SaveAdjustmentsInput,
-  actor: Actor,
-): Promise<Result<void>> {
-  const protocol = await getTreatmentProtocol(input.evaluationId);
-  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  const prof = await requireNutricionista(actor.actorId);
-  if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(
-      appError("conflict", "El diagnóstico debe estar confirmado antes de ajustar el protocolo."),
-    );
-  }
-  try {
-    await writeAdjustments({
-      treatmentId: protocol.treatmentId,
-      adjGeb: input.adjGeb,
-      adjPal: input.adjPal,
-      adjKcalObj: input.adjKcalObj,
-      adjProtGkg: input.adjProtGkg,
-      adjFatPct: input.adjFatPct,
-      adjDeficit: input.adjDeficit,
-      pesoMetaFijado: input.pesoMeta,
-      baseSignature: input.baseSignature,
-      ...actor,
-    });
-  } catch (e) {
-    // Rechazo por concurrencia: otro profesional cambió la cadena calórica. Va como stale_write (aviso, no
-    // error): no se pisó su cambio y el trabajo del profesional sigue en pantalla para reaplicar.
-    if (e instanceof StaleAdjustmentsError) {
-      return err(
-        appError(
-          "stale_write",
-          "Otro profesional cambió los ajustes de la cadena calórica en otra sesión (otra pestaña o " +
-            "dispositivo). Para no borrar ese cambio no se guardó lo que hiciste. Recarga para ver la versión " +
-            "actual y vuelve a aplicar tus ajustes.",
-        ),
-      );
-    }
-    // lock_timeout (55P03): otra sesión tiene la fila bloqueada. No se guardó; reintentar en unos segundos.
-    if ((e as { code?: string })?.code === "55P03") {
-      return err(
-        appError(
-          "stale_write",
-          "Los ajustes están bloqueados por otra sesión en este momento. No se guardó; espera unos segundos e intenta de nuevo.",
         ),
       );
     }
@@ -749,4 +470,61 @@ export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result
     throw e;
   }
   return ok(undefined);
+}
+
+// ═══ UN SOLO GUARDADO PARA TODO EL PROTOCOLO (Santiago, 2026-09-09) ═══
+//
+// MISMOS GUARDS QUE LAS SIETE ESCRITURAS QUE SUSTITUYE, ni uno mas ni uno menos: lectura RLS por
+// evaluationId (si la evaluacion no es del profesional, el reader devuelve null) y el guard de profesion.
+// El gate clinico (que exista diagnostico) se re-chequea DENTRO de la transaccion del writer, porque una
+// guarda que solo vive en el servicio se puede saltar invocando la accion directamente.
+//
+// EL TODO-O-NADA VIVE EN EL WRITER, no aqui: una transaccion. Si la quinta seccion falla, no se guarda
+// ninguna. Encadenar los siete servicios habria dado el peor resultado posible, cuatro guardadas y tres
+// no, y el profesional sin saber cuales.
+export async function guardarProtocolo(
+  input: GuardarProtocoloInput,
+  actor: Actor,
+): Promise<Result<{ guardadas: string[] }>> {
+  const protocol = await getTreatmentProtocol(input.evaluationId);
+  if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+
+  try {
+    const { guardadas } = await writeGuardarProtocolo({
+      treatmentId: protocol.treatmentId,
+      editable: input.editable,
+      firmas: input.firmas,
+      ...actor,
+    });
+    return ok({ guardadas: guardadas.map(rotuloDeSeccion) });
+  } catch (e) {
+    if (e instanceof StaleProtocoloError) {
+      // EL AVISO NOMBRA LAS SECCIONES, y por eso el error las trae en vez de solo decir que algo cambio:
+      // "recarga" sin decir QUE cambio obliga a comparar la pantalla entera contra lo que uno recuerda.
+      //
+      // Y NO SE REFRESCA LA PANTALLA con este aviso (`useFormToastRefreshOnSuccess` no refresca en
+      // warning): traeria el cambio del otro profesional y DESCARTARIA lo que este escribio, que es justo
+      // lo que el rechazo preserva para que lo pueda reaplicar.
+      return err(
+        appError(
+          "stale_write",
+          `Otro profesional cambió ${e.secciones.join(", ")} en otra sesión (otra pestaña o dispositivo). ` +
+            "Para no borrar ese cambio no se guardó NADA de lo que hiciste. Recarga para ver la versión " +
+            "actual y vuelve a aplicarlo.",
+        ),
+      );
+    }
+    if ((e as { code?: string })?.code === "55P03") {
+      return err(
+        appError(
+          "stale_write",
+          "El tratamiento está bloqueado por otra sesión en este momento. No se guardó nada; espera unos segundos e intenta de nuevo.",
+        ),
+      );
+    }
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
 }

@@ -107,7 +107,17 @@ describe("el mecanismo de envío es UNO, no uno por formulario", () => {
     // asi, con su control de que hay formularios que mirar.
     const submits = panel.match(/onSubmit=\{/g) ?? [];
     const conHelper = panel.match(/onSubmit=\{enviarSinReset\(/g) ?? [];
-    expect(submits.length, "el panel se quedó sin formularios que comprobar").toBeGreaterThan(5);
+    // SEGUNDA VEZ QUE LA CIFRA SE AFLOJA SOLA (2026-09-09), y esta vez se quita del todo. El control decía
+    // "más de 5" y quedaron CUATRO al unificar los siete guardados por bloque en uno: se puso rojo sin que
+    // nada estuviera mal, otra vez. La lección ya estaba escrita tres líneas más arriba y aun así quedaba
+    // una magnitud en el control.
+    //
+    // EL CONTROL SIN NÚMERO: hay formularios que mirar, y el que de verdad importa (el guardado único del
+    // protocolo) está entre ellos. Eso no envejece cuando alguien añade o quita una sección.
+    expect(submits.length, "el panel se quedó sin formularios que comprobar").toBeGreaterThan(0);
+    expect(panel, "el guardado único del protocolo no pasa por el helper").toContain(
+      "onSubmit={enviarSinReset(guardar)}",
+    );
     expect(conHelper.length, "algún onSubmit del panel no pasa por enviarSinReset").toBe(
       submits.length,
     );
