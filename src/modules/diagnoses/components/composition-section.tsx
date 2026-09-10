@@ -231,8 +231,16 @@ export function CompositionSection({
     }
   const hayEnValidacion = starKeys.size > 0;
 
-  // FILTRO "SOLO ALTERADOS" (bloque 4 de la historia clinica, 2026-08-24). Es la MISMA tabla, no otra mas
-  // corta: su HC pinta las mismas filas y oculta las normales y las sin clasificar. La regla, con sus
+  // FILTRO "SOLO ALTERADOS" (bloque 4 de la historia clinica, 2026-08-24).
+  //
+  // EL FILTRO ES SUYO; EL INVENTARIO DE FILAS ES NUESTRO, y esta linea decia lo contrario ("su HC pinta
+  // las mismas filas"). Corregido el 2026-09-10, tras la pregunta de Santiago de por que mostramos mas
+  // indicadores que su HC: la suya tiene VEINTE indices concretos (doce de composicion mas los ocho
+  // ANI-BIS-E) y la nuestra parte de las ~30 filas del mapa de Wang. Aplicamos SU regla de filtrado sobre
+  // NUESTRA tabla, asi que un indice alterado que su HC no lista puede salir en la nuestra.
+  //
+  // No se recorta a sus veinte: son datos medidos con su clasificador, y quitarlos de un documento clinico
+  // seria esconder algo que el profesional midio. Va declarado en PENDIENTES_CIENTIFICOS. La regla, con sus
   // palabras: "mostrar items alterados (naranja=riesgo, rojo=alto, azul=deficit); ocultar solo los normales
   // (verde) y sin clasificacion". Traducida a nuestra escala: se muestra sev >= 1 (0 es el unico optimo).
   //

@@ -125,7 +125,14 @@ export async function generateCriterion(
       model: config.model,
       promptVersion,
       generatedText: null,
-      rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
+      rawResponse: {
+        error: e instanceof AiError ? e.message : String(e),
+        source: config.source,
+        // Ver el mismo bloque en `generate-menu.ts`: la cola se registra como cola.
+        ...(e instanceof ColaDelProveedorError
+          ? { cola: true, espera_pedida_s: e.segundos }
+          : {}),
+      },
       status,
       latencyMs: null,
       ...actor,

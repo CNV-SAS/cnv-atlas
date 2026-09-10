@@ -177,6 +177,8 @@ export const metadata = { title: "Resultados - Atlas" };
 // Diagnostico para no cambiar en silencio la cronologia; queda anotado que la ficha del paciente usa la
 // fecha de MEDICION para lo mismo, asi que las dos pantallas pueden mostrar dias distintos de la misma
 // evaluacion. Es una discrepancia real y se reporta, no se resuelve aqui.
+import { PROFESSION_LABELS, type Profession } from "@/modules/auth/admin-validations";
+
 const TIPO_EVALUACION: Record<string, string> = { inicial: "Inicial", seguimiento: "Seguimiento" };
 
 function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
@@ -193,6 +195,33 @@ function CabeceraEvaluacion({ header }: { header: EvaluationHeader }) {
         { rotulo: "Tipo", valor: tipo },
         { rotulo: "Documento", valor: header.documentLabel },
         { rotulo: "Fecha", valor: formatDate(header.evaluationDate) },
+        // ═══ QUIEN ATIENDE (Santiago, 2026-09-10) ═══
+        //
+        // VA COMO UN SOLO PAR y no como dos, y va el ULTIMO: la identidad del paciente es lo principal de
+        // esta cabecera (es el titulo, en grande) y el profesional es contexto del acto. Dos pares mas,
+        // uno para el nombre y otro para la profesion, le habrian dado la mitad de la fila a quien no es
+        // el sujeto de la pantalla.
+        //
+        // LA ORGANIZACION NO VA, y se verifico antes de descartarla: en produccion hay UNA
+        // ("Connected Nutrition Ventures"), asi que seria un rotulo que nunca cambia, y un dato que nunca
+        // cambia deja de leerse y le quita sitio a los que si.
+        //
+        // Y TAMPOCO LA LICENCIA: es material de DOCUMENTO (la HC ya identifica al profesional para eso),
+        // no de una pantalla de trabajo. Ademas hoy solo uno de los cuatro profesionales la tiene.
+        ...(header.profesional
+          ? [
+              {
+                rotulo: "Profesional",
+                // La ETIQUETA sale del mismo mapa que las demas pantallas (`PROFESSION_LABELS`), no de
+                // capitalizar la cadena de la base: en la base dice "nutricionista" y en pantalla se lee
+                // "Nutricionista", y el dia que haya una profesion con tilde o con dos palabras el mapa ya
+                // la tiene resuelta.
+                valor: header.profesion
+                  ? `${header.profesional} · ${PROFESSION_LABELS[header.profesion as Profession] ?? header.profesion}`
+                  : header.profesional,
+              },
+            ]
+          : []),
       ]}
     />
   );

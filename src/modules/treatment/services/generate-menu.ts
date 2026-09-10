@@ -1,5 +1,6 @@
 import "server-only";
 
+import { ColaDelProveedorError } from "@/lib/ai/reintento-tope";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
 import { computeProtocoloEfectivo, isEngineOutput } from "@/clinical-engine";
@@ -286,17 +287,34 @@ export async function generateMenu(
       promptVersion,
       generatedText: null,
       menuJson: null,
-      rawResponse: { error: e instanceof AiError ? e.message : String(e), source: config.source },
+      rawResponse: {
+        error: e instanceof AiError ? e.message : String(e),
+        source: config.source,
+        // LA COLA SE REGISTRA COMO COLA. En la BD el estado sigue siendo `provider_error` (es un enum de
+        // Postgres), pero sin este dato la fila no distingue "el proveedor esta saturado" de "el proveedor
+        // esta roto", que son dos cosas muy distintas cuando alguien mira el historial.
+        ...(e instanceof ColaDelProveedorError
+          ? { cola: true, espera_pedida_s: e.segundos }
+          : {}),
+      },
       status,
       latencyMs: null,
       ...actor,
     });
-    // Con config explicita del admin (source "db") no hay fallback: el fallo del proveedor
-    // elegido se refleja tal cual, nombrandolo, para que quede claro que su config esta rota.
+    // UNA COLA NO ES UN FALLO DE CONFIGURACION (Santiago, 2026-09-10). El arreglo se hizo en el borrador
+    // de criterio y ESTE CAMINO SE QUEDO CON EL TEXTO VIEJO, que es por lo que Santiago volvio a verlo:
+    // los dos servicios llaman al mismo proveedor y cada uno redacta su propio mensaje.
+    //
+    // Con config explicita del admin (source "db") no hay fallback: el fallo del proveedor elegido se
+    // refleja tal cual, nombrandolo, para que quede claro que su config esta rota. Pero una cola no lo es.
     const message =
-      config.source === "db"
-        ? `El proveedor de IA configurado (${config.provider}) fallo al generar el menu. Avisa al administrador para revisar la configuracion.`
-        : "No se pudo generar el menu. Intenta de nuevo.";
+      e instanceof ColaDelProveedorError
+        ? `El proveedor de IA está en cola por límite de uso${
+            e.segundos != null ? ` (pide ${Math.ceil(e.segundos)} s)` : ""
+          }. Vuelve a intentarlo en unos segundos; no hay nada que configurar. La grilla se queda con el menú del ciclo.`
+        : config.source === "db"
+          ? `El proveedor de IA configurado (${config.provider}) fallo al generar el menu. Avisa al administrador para revisar la configuracion.`
+          : "No se pudo generar el menu. Intenta de nuevo.";
     return err(appError("internal", message));
   }
 }

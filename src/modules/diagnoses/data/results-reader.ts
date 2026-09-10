@@ -93,6 +93,19 @@ export type EvaluationHeader = {
   evaluationDate: string;
   /** inicial | seguimiento. Ubica la evaluacion sin abrir ninguna etapa. */
   evaluationType: string;
+  /**
+   * QUIEN ATIENDE, no quien mira. Es el profesional de la EVALUACION, no el de la sesion: en un documento
+   * clinico y en la pantalla que lo produce, la pregunta es de quien es este acto.
+   */
+  profesional: string | null;
+  /**
+   * Su profesion, si la tiene. Se rinde solo cuando existe, para que la cabecera no muestre un rotulo
+   * vacio; hoy los cuatro profesionales de produccion la tienen ("nutricionista"), asi que aparece.
+   *
+   * (El comentario de `actor-profession-reader` decia que "HOY todo profesional real nace null porque el
+   * onboarding no la captura". Verificado contra produccion el 2026-09-10: ya no es cierto.)
+   */
+  profesion: string | null;
 };
 
 // Cabecera minima de una evaluacion por RLS (existe y es del profesional?). Distingue
@@ -106,7 +119,10 @@ export async function getEvaluationHeaderForSession(
     .from("evaluations")
     .select(
       // `type` y la MEDICION se suman a la MISMA consulta: cero consultas nuevas.
-      "created_at, type, patient_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name))",
+      // EL PROFESIONAL entra en la MISMA consulta: cero consultas nuevas, igual que `type` y la medicion.
+      // El hint `profiles!profile_id` es obligatorio: hay TRES relaciones de professional_profiles hacia
+      // profiles y sin el PostgREST no sabe por cual resolver el embed (ver la nota de ARCHITECTURE).
+      "created_at, type, patient_id, bis_measurements(measurement_date), patients!inner(document_type, document_number, patient_profiles!inner(first_name, last_name)), professional_profiles(profession, profiles!profile_id(full_name))",
     )
     .eq("id", evaluationId)
     .maybeSingle();
@@ -125,7 +141,18 @@ export async function getEvaluationHeaderForSession(
       | { first_name: string; last_name: string }[]
       | null,
   );
+  const prof = one(
+    data.professional_profiles as
+      | { profession: string | null; profiles: unknown }
+      | { profession: string | null; profiles: unknown }[]
+      | null,
+  );
+  const profPerfil = one(
+    (prof?.profiles ?? null) as { full_name: string | null } | { full_name: string | null }[] | null,
+  );
   return {
+    profesional: profPerfil?.full_name ?? null,
+    profesion: prof?.profession ?? null,
     patientId: data.patient_id,
     patientName: `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim(),
     documentLabel: `${patient?.document_type ?? ""} ${patient?.document_number ?? ""}`.trim(),
