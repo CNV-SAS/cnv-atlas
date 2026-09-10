@@ -98,7 +98,7 @@ export function FollowupComparison({ comparison }: { comparison: Comparison }) {
                   COLUMNA va sin fondo y en negrita, y con su padding a los dos lados. Esta tabla escribia
                   sus clases a mano y se quedo fuera del barrido del 2026-09-03 por no importar nada de
                   ahi, igual que la de composicion. */}
-              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-foreground">
                 <th className="py-2 pl-3 pr-4">Indicador</th>
                 <th className="py-2 pr-4">Previo</th>
                 <th className="py-2 pr-4">Actual</th>

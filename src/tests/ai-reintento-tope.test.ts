@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import { HttpError } from "@/core/http/http-error";
+import { ColaDelProveedorError } from "@/lib/ai/reintento-tope";
 import {
   ESPERA_DEFECTO_MS,
-  ESPERA_MAX_MS,
   conReintentoAnteTope,
   esTopePorMinuto,
   segundosDeEspera,
@@ -51,9 +51,13 @@ describe("el tope se espera y se reintenta UNA vez", () => {
   it("y si tras esperar SIGUE tocado, el error sube: ahí es donde corresponde el fallback", async () => {
     // Un solo reintento, no una cadena: si el tope sigue tocado después de esperar lo que el propio
     // proveedor pidió, el problema ya no es la cola.
+    //
+    // EL ANCLA CAMBIA DE CLASE, NO LA ASERCIÓN (2026-09-10): el error que sube ya no es el HttpError crudo
+    // sino `ColaDelProveedorError`, que dice QUÉ es. Lo que este caso afirma sigue siendo lo mismo: que
+    // hay un solo reintento y que el error sube.
     const pedir = vi.fn<() => Promise<string>>().mockRejectedValue(tope(0.02));
 
-    await expect(conReintentoAnteTope(pedir)).rejects.toBeInstanceOf(HttpError);
+    await expect(conReintentoAnteTope(pedir)).rejects.toBeInstanceOf(ColaDelProveedorError);
     expect(pedir).toHaveBeenCalledTimes(2);
   });
 
@@ -108,15 +112,33 @@ describe("los segundos salen de la prosa, y el defecto cubre cuando no salen", (
     expect(segundosDeEspera(body)).toBeNull();
   });
 
-  it("el techo acota lo que un proveedor pueda pedir", async () => {
-    // Groq puede pedir minutos cuando el tope es diario. Un profesional con el paciente delante no espera
-    // eso: se deja subir el error y que decida el fallback.
+  it("si pide MÁS que el techo, no se gasta el reintento: se dice que es una cola", async () => {
+    // ═══ EL CASO DE SANTIAGO (2026-09-10) ═══
+    //
+    // Al regenerar el borrador salió "El proveedor configurado (groq) falló", y a la segunda funcionó. En
+    // producción quedó registrado el 429, y su reintento a mano llegó VEINTIÚN segundos después: Groq
+    // pedía más que nuestro techo de diez.
+    //
+    // LO QUE HACÍAMOS: esperar diez, reintentar, volver a chocar, y dejar subir el 429 como si fuera un
+    // fallo del proveedor. Gastar el único reintento en una espera que ya sabemos insuficiente no ayuda a
+    // nadie, y el mensaje mandaba a mirar una configuración que estaba bien.
+    //
+    // AHORA: se dice que es una cola y cuánto pide, sin gastar el intento. El caso anterior (que sí
+    // reintenta cuando la espera cabe) es el control de este.
     const pedir = vi.fn<() => Promise<string>>().mockRejectedValue(tope(600));
     const t0 = Date.now();
 
-    await expect(conReintentoAnteTope(pedir)).rejects.toBeInstanceOf(HttpError);
-    expect(Date.now() - t0).toBeLessThanOrEqual(ESPERA_MAX_MS + 2_000);
-  }, 20_000);
+    await expect(conReintentoAnteTope(pedir)).rejects.toBeInstanceOf(ColaDelProveedorError);
+    expect(pedir, "se gastó el reintento en una espera que no alcanzaba").toHaveBeenCalledTimes(1);
+    expect(Date.now() - t0, "esperó igual").toBeLessThan(1_000);
+  });
+
+  it("y el error dice CUÁNTOS segundos pide, que es lo que el profesional necesita saber", async () => {
+    // Sin el número, "está en cola" no dice si son dos segundos o dos minutos, y entonces no se puede
+    // decidir si esperar o escribir el criterio a mano.
+    const pedir = vi.fn<() => Promise<string>>().mockRejectedValue(tope(21.5));
+    await expect(conReintentoAnteTope(pedir)).rejects.toMatchObject({ segundos: 21.5 });
+  });
 });
 
 describe("el SITIO DE LLAMADA: el reintento va antes del fallback", () => {

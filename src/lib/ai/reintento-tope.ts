@@ -41,9 +41,39 @@ export function esTopePorMinuto(e: unknown): e is HttpError {
 }
 
 /**
+ * ES UNA COLA, NO UN FALLO, y hay que poder decirlo aguas arriba.
+ *
+ * ═══ EL CASO QUE LA TRAJO (Santiago, 2026-09-10) ═══
+ *
+ * Al regenerar el borrador salio "El proveedor configurado (groq) fallo", y a la segunda funciono. En el
+ * registro de produccion: `HTTP 429 en POST .../chat/completions`, y su reintento a mano llego VEINTIUN
+ * segundos despues. O sea que Groq pedia esperar mas que nuestro techo de diez, el reintento salio
+ * demasiado pronto, se gasto, y el 429 subio como si fuera un fallo del proveedor.
+ *
+ * DOS COSAS MAL, Y LA SEGUNDA ES LA QUE IMPORTA:
+ *   1. Gastar el unico reintento en una espera que sabemos insuficiente no ayuda a nadie.
+ *   2. Y el mensaje mandaba a mirar la configuracion, que estaba bien. Una cola dicha como fallo hace
+ *      buscar donde no es, que es la forma mas cara de perder el tiempo de un profesional.
+ */
+export class ColaDelProveedorError extends Error {
+  constructor(readonly segundos: number | null) {
+    super(
+      segundos != null
+        ? `El proveedor pide esperar ${segundos}s (tope por minuto)`
+        : "El proveedor esta en cola por tope por minuto",
+    );
+    this.name = "ColaDelProveedorError";
+  }
+}
+
+/**
  * Corre `pedir`; si el proveedor responde con el tope por minuto, espera lo que pide y lo intenta UNA
  * vez mas. Un solo reintento, no una cadena: si el tope sigue tocado despues de esperar lo que el propio
  * proveedor pidio, el problema ya no es la cola y ahi si corresponde el fallback.
+ *
+ * Y SI PIDE MAS DE LO QUE PODEMOS ESPERAR, no se reintenta: se dice que es una cola y cuanto pide. El
+ * techo existe porque el profesional tiene al paciente delante; esperar la mitad de lo que hace falta no
+ * respeta el techo Y desperdicia el intento.
  */
 export async function conReintentoAnteTope<T>(
   pedir: () => Promise<T>,
@@ -53,11 +83,18 @@ export async function conReintentoAnteTope<T>(
   } catch (e) {
     if (!esTopePorMinuto(e)) throw e;
     const seg = segundosDeEspera(e.body);
+    if (seg != null && seg * 1000 > ESPERA_MAX_MS) throw new ColaDelProveedorError(seg);
     const espera = Math.min(
       seg != null ? seg * 1000 : ESPERA_DEFECTO_MS,
       ESPERA_MAX_MS,
     );
     await new Promise((r) => setTimeout(r, espera));
-    return pedir();
+    try {
+      return await pedir();
+    } catch (e2) {
+      // Sigue en cola despues de esperar lo que el mismo pidio: se sigue diciendo lo que es.
+      if (esTopePorMinuto(e2)) throw new ColaDelProveedorError(segundosDeEspera(e2.body));
+      throw e2;
+    }
   }
 }
