@@ -5,17 +5,29 @@ import {
   adjustmentSignature,
   intercambioSignature,
   tiemposSignature,
+  tiemposActivosSignature,
+  menuSemanalSignature,
   nutraceuticalsSignature,
   objetivoSignature,
   restriccionesSignature,
 } from "@/modules/treatment/data/protocol-signature";
 import type { IntercambioSaved, TiemposSaved } from "@/modules/treatment/data/treatment-view-types";
 
-// Candado de concurrencia de las secciones editables del tratamiento (BD real): restricciones, guias,
-// nutraceuticos, ajustes de la cadena. Cada una tiene su propia accion que REEMPLAZA su set EN BLOQUE, con
-// su candado (checkpoint 2.4/2.5: el "Protocolo de tratamiento" y su firma por secciones se desarmaron).
-// Verifica, por cada seccion: camino feliz (firma base == actual -> escribe) y carrera (firma base != actual
-// -> RECHAZA sin pisar, con su Stale*Error; el dato queda INTACTO). Se auto-salta sin DATABASE_URL.
+// Candado de concurrencia del tratamiento, contra BD real.
+//
+// ESTE ARCHIVO SE PODO EL 2026-09-09, y lo que queda es deliberado. Tenia diez casos de "camino feliz /
+// carrera", uno por seccion, porque cada seccion tenia su propia accion, su propio writer y su propio
+// Stale*Error. Al unificar los siete guardados del panel en uno (peticion de Santiago), esa matriz la
+// cubre `guardar-protocolo-transaccional.test.ts`, y ademas MEJOR: alli se comprueba que un rechazo no
+// deja NINGUNA seccion escrita, que es la propiedad nueva y la que de verdad importa.
+//
+// LO QUE SE QUEDA AQUI son las dos garantias que NO son la matriz, y que se habrian perdido al podar:
+//   · La PROCEDENCIA del peso meta, que no se reescribe cuando un guardado no lo toco.
+//   · Una fila guardada con la FORMA VIEJA del intercambio, que el writer sobrescribe sin reventar. Es el
+//     camino real de un 500 del 2026-08-22.
+// Mas los nutraceuticos, que conservan su guardado propio (escriben una tabla HIJA, no columnas).
+//
+// Se auto-salta sin DATABASE_URL.
 
 vi.mock("server-only", () => ({}));
 
@@ -31,18 +43,9 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let db: any;
   let schema: any;
-  let saveAdjustments: any;
-  let StaleAdjustmentsError: any;
+  let guardarProtocolo: any;
   let saveNutraceuticals: any;
   let StaleNutraceuticalsError: any;
-  let saveRestricciones: any;
-  let StaleRestriccionesError: any;
-  let saveObjetivo: any;
-  let StaleObjetivoError: any;
-  let saveIntercambio: any;
-  let StaleIntercambioError: any;
-  let saveTiempos: any;
-  let StaleTiemposError: any;
   let treatmentId: string;
   let diagnosisId: string;
   let evaluationId: string;
@@ -50,16 +53,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   let nutraA: string;
   let nutraB: string;
   const actor = { actorId: "", actorEmail: "concurrency@test", ip: null };
-
-  // Firmas actuales de cada seccion editable (base de su candado). El "Protocolo de tratamiento" se desarmo
-  // (checkpoint 2.4/2.5): cada una tiene su propia accion/candado/firma, no una firma por secciones.
-  async function currentRestriccionesSignature(): Promise<string> {
-    const [t] = await db
-      .select({ restr: schema.treatments.restricciones })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    return restriccionesSignature({ treatmentId, restricciones: t.restr ?? [] });
-  }
 
   // Firma actual de la PRESCRIPCION de nutraceuticos (base del candado de saveNutraceuticals).
   async function currentNutraSignature(): Promise<string> {
@@ -78,20 +71,10 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
-    ({
-      saveAdjustments,
-      StaleAdjustmentsError,
-      saveNutraceuticals,
-      StaleNutraceuticalsError,
-      saveRestricciones,
-      StaleRestriccionesError,
-      saveObjetivo,
-      StaleObjetivoError,
-      saveIntercambio,
-      StaleIntercambioError,
-      saveTiempos,
-      StaleTiemposError,
-    } = await import("@/modules/treatment/data/treatment-writer"));
+    ({ saveNutraceuticals, StaleNutraceuticalsError } = await import(
+      "@/modules/treatment/data/treatment-writer"
+    ));
+    ({ guardarProtocolo } = await import("@/modules/treatment/data/protocolo-writer"));
 
     const [org] = await db.select({ id: schema.organizations.id }).from(schema.organizations).limit(1);
     const [prof] = await db.select({ id: schema.professionalProfiles.id, profileId: schema.professionalProfiles.profileId }).from(schema.professionalProfiles).limit(1);
@@ -138,57 +121,6 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     await db.execute(dsql`set session_replication_role = default`);
   });
 
-  // Checkpoint 2.4: candado de saveRestricciones (reemplaza el arreglo treatments.restricciones EN BLOQUE).
-  // El seed arranca con ["sin gluten"].
-  it("restricciones camino feliz: firma base == actual -> escribe", async () => {
-    const base = await currentRestriccionesSignature();
-    await saveRestricciones({ treatmentId, restricciones: ["sin gluten", "sin lactosa"], baseSignature: base, ...actor });
-    const [t] = await db.select({ restr: schema.treatments.restricciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.restr).toEqual(["sin gluten", "sin lactosa"]);
-  });
-
-  it("restricciones carrera: firma base != actual -> rechaza sin pisar (StaleRestriccionesError)", async () => {
-    // Sin candado, este guardado ciego borraria una restriccion que otro acaba de fijar -> un plan que
-    // ignora una alergia. La firma vieja no coincide -> rechaza.
-    await expect(
-      saveRestricciones({ treatmentId, restricciones: [], baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
-    ).rejects.toBeInstanceOf(StaleRestriccionesError);
-    const [t] = await db.select({ restr: schema.treatments.restricciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.restr).toEqual(["sin gluten", "sin lactosa"]); // no se borro
-  });
-
-
-  // Tratamiento sub-tarea 2: candado de saveAdjustments (BD real). saveAdjustments ESCRIBE LAS SEIS columnas
-  // adj_* de golpe; sin candado, dos guardados se pisan (el peso meta que otro profesional fijo se pierde).
-  // Firma de los seis ajustes GUARDADOS = lo que el cliente cargo; el servidor la recomputa bajo lock.
-  // EL PESO META SE LEE DE OTRA TABLA (migracion 0095), y por eso esta funcion consulta dos: la firma
-  // tiene que recomponerse EXACTAMENTE como la recompone el servidor bajo lock, o el candado rechazaria
-  // guardados legitimos. Es la mitad que se rompe en silencio si alguien mueve el peso meta y se olvida
-  // de este lado.
-  async function currentAdjSignature(): Promise<string> {
-    const [t] = await db
-      .select({
-        geb: schema.treatments.adjGeb,
-        pal: schema.treatments.adjPal,
-        kcalObj: schema.treatments.adjKcalObj,
-        protGkg: schema.treatments.adjProtGkg,
-        fatPct: schema.treatments.adjFatPct,
-        deficit: schema.treatments.adjDeficit,
-      })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    const pesoMeta = await pesoMetaGuardado();
-    return adjustmentSignature({
-      treatmentId,
-      adjGeb: t.geb != null ? Number(t.geb) : null,
-      adjPal: t.pal != null ? Number(t.pal) : null,
-      adjKcalObj: t.kcalObj != null ? Number(t.kcalObj) : null,
-      adjProtGkg: t.protGkg != null ? Number(t.protGkg) : null,
-      adjFatPct: t.fatPct != null ? Number(t.fatPct) : null,
-      adjDeficit: t.deficit != null ? Number(t.deficit) : null,
-      pesoMetaFijado: pesoMeta,
-    });
-  }
 
   /** El peso meta GUARDADO, de su sitio unico: la EVALUACION (migracion 0096). */
   async function pesoMetaGuardado(): Promise<number | null> {
@@ -208,65 +140,95 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     return e?.origen ?? null;
   }
 
-  it("adjustments camino feliz: firma base == actual -> escribe los seis", async () => {
-    const base = await currentAdjSignature();
-    await saveAdjustments({
-      treatmentId,
-      adjGeb: 1950,
-      adjPal: null,
-      adjKcalObj: null,
-      adjProtGkg: null,
-      adjFatPct: null,
-      adjDeficit: null,
-      pesoMetaFijado: 72.5,
-      baseSignature: base,
-      ...actor,
-    });
+  /**
+   * LAS SIETE FIRMAS VIGENTES, que es lo que el guardado unico exige.
+   *
+   * Se recomponen EXACTAMENTE como las recompone el servidor bajo lock, o el candado rechazaria guardados
+   * legitimos. Es la mitad que se rompe en silencio si alguien mueve una columna y se olvida de este lado.
+   */
+  async function firmasVigentes(): Promise<Record<string, string>> {
     const [t] = await db
-      .select({ geb: schema.treatments.adjGeb })
+      .select({
+        geb: schema.treatments.adjGeb,
+        pal: schema.treatments.adjPal,
+        kcalObj: schema.treatments.adjKcalObj,
+        protGkg: schema.treatments.adjProtGkg,
+        fatPct: schema.treatments.adjFatPct,
+        deficit: schema.treatments.adjDeficit,
+        objetivo: schema.treatments.objetivoTexto,
+        restricciones: schema.treatments.restricciones,
+        intercambio: schema.treatments.intercambioPorciones,
+        activos: schema.treatments.tiemposActivos,
+        tiempos: schema.treatments.tiempos,
+        menu: schema.treatments.menuSemanal,
+      })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
-    expect(Number(t.geb)).toBe(1950);
-    // El peso meta se guardo en SU tabla, no en la del tratamiento, y con su procedencia: lo fijo el
-    // nutricionista desde el panel. Sin la procedencia, el dato queda a medias (CHECK de la 0095).
-    expect(await pesoMetaGuardado()).toBe(72.5);
-    expect(await origenPesoMeta()).toBe("tratamiento");
-    const [viejo] = await db
-      .select({ pesoMeta: schema.treatments.adjPesoMeta })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    expect(viejo.pesoMeta, "la columna supersedida volvió a escribirse").toBeNull();
-  });
-
-  it("adjustments carrera: firma base != actual -> rechaza sin pisar (StaleAdjustmentsError)", async () => {
-    // Simula que otro profesional cambio la cadena desde que el cliente la cargo: la firma que trae ya no
-    // coincide con la de BD. Sin candado, este guardado pisaria el adjGeb=1950 y borraria el peso meta.
-    await expect(
-      saveAdjustments({
+    const n = (v: unknown) => (v == null ? null : Number(v));
+    return {
+      ajustes: adjustmentSignature({
         treatmentId,
-        adjGeb: 3000, // lo que se ESCRIBIRIA si pisara
-        adjPal: null,
-        adjKcalObj: null,
-        adjProtGkg: null,
-        adjFatPct: null,
-      adjDeficit: null,
-        pesoMetaFijado: null, // un guardado ciego aqui BORRARIA el peso meta fijado
-        baseSignature: "STALE-DE-OTRA-SESION",
-        ...actor,
+        adjGeb: n(t.geb),
+        adjPal: n(t.pal),
+        adjKcalObj: n(t.kcalObj),
+        adjProtGkg: n(t.protGkg),
+        adjFatPct: n(t.fatPct),
+        adjDeficit: n(t.deficit),
+        pesoMetaFijado: await pesoMetaGuardado(),
       }),
-    ).rejects.toBeInstanceOf(StaleAdjustmentsError);
+      objetivo: objetivoSignature({ treatmentId, objetivo: t.objetivo }),
+      restricciones: restriccionesSignature({ treatmentId, restricciones: t.restricciones ?? [] }),
+      intercambio: intercambioSignature({
+        treatmentId,
+        intercambio: (t.intercambio as IntercambioSaved | null) ?? null,
+      }),
+      tiemposActivos: tiemposActivosSignature({
+        treatmentId,
+        activos: (t.activos as Record<string, boolean> | null) ?? null,
+      }),
+      tiempos: tiemposSignature({ treatmentId, tiempos: (t.tiempos as TiemposSaved | null) ?? null }),
+      menuSemanal: menuSemanalSignature({ treatmentId, menu: (t.menu as never) ?? null }),
+    };
+  }
 
-    // El dato quedo INTACTO: ni el GEB se piso ni el peso meta se borro. Y el peso meta importa doble
-    // aqui, porque ahora vive en OTRA TABLA: un rechazo que revirtiera solo la del tratamiento dejaria las
-    // dos escrituras desparejas, que es peor que no tener candado.
+  /** Lo editable, tal como esta guardado, para mandar solo lo que un caso quiere cambiar. */
+  async function editableVigente() {
     const [t] = await db
-      .select({ geb: schema.treatments.adjGeb })
+      .select({
+        geb: schema.treatments.adjGeb,
+        pal: schema.treatments.adjPal,
+        kcalObj: schema.treatments.adjKcalObj,
+        protGkg: schema.treatments.adjProtGkg,
+        fatPct: schema.treatments.adjFatPct,
+        deficit: schema.treatments.adjDeficit,
+        objetivo: schema.treatments.objetivoTexto,
+        restricciones: schema.treatments.restricciones,
+        intercambio: schema.treatments.intercambioPorciones,
+        activos: schema.treatments.tiemposActivos,
+        tiempos: schema.treatments.tiempos,
+        menu: schema.treatments.menuSemanal,
+      })
       .from(schema.treatments)
       .where(eq(schema.treatments.id, treatmentId));
-    expect(Number(t.geb)).toBe(1950); // el del camino feliz, no 3000
-    expect(await pesoMetaGuardado()).toBe(72.5); // no se borro
-    expect(await origenPesoMeta()).toBe("tratamiento");
-  });
+    const n = (v: unknown) => (v == null ? null : Number(v));
+    return {
+      ajustes: {
+        adjGeb: n(t.geb),
+        adjPal: n(t.pal),
+        adjKcalObj: n(t.kcalObj),
+        adjProtGkg: n(t.protGkg),
+        adjFatPct: n(t.fatPct),
+        adjDeficit: n(t.deficit),
+        pesoMetaFijado: await pesoMetaGuardado(),
+      },
+      objetivo: t.objetivo,
+      restricciones: t.restricciones ?? [],
+      intercambio: t.intercambio ?? null,
+      tiemposActivos: t.activos ?? null,
+      tiempos: t.tiempos ?? null,
+      menuSemanal: t.menu ?? null,
+    };
+  }
 
   it("guardar la cadena SIN tocar el peso meta no reescribe quién lo fijó", async () => {
     // El formulario de la cadena manda las seis columnas de golpe, asi que se guarda tambien cuando el
@@ -279,16 +241,17 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       .set({ weightGoalKg: "72.5", weightGoalSetIn: "entrada" })
       .where(eq(schema.evaluations.id, evaluationId));
 
-    await saveAdjustments({
+    // EL WRITER CAMBIO, LA GARANTIA NO (2026-09-09): era `saveAdjustments` y ahora es `guardarProtocolo`,
+    // que escribe las siete secciones en una transaccion. La regla de la procedencia se porto con el, y
+    // este caso es lo que lo comprueba: si al portarla se hubiera perdido, aqui sale rojo.
+    let editable = await editableVigente();
+    await guardarProtocolo({
       treatmentId,
-      adjGeb: 1950,
-      adjPal: 1.55, // lo unico que cambia
-      adjKcalObj: null,
-      adjProtGkg: null,
-      adjFatPct: null,
-      adjDeficit: null,
-      pesoMetaFijado: 72.5, // el MISMO que ya estaba
-      baseSignature: await currentAdjSignature(),
+      editable: {
+        ...editable,
+        ajustes: { ...editable.ajustes, adjGeb: 1950, adjPal: 1.55, pesoMetaFijado: 72.5 },
+      },
+      firmas: await firmasVigentes(),
       ...actor,
     });
 
@@ -299,16 +262,11 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
 
     // Y CAMBIARLO SI la cambia: sin esta mitad, el test de arriba pasaria verde tambien con la procedencia
     // congelada para siempre, que es el otro modo de mentir sobre quien decidio.
-    await saveAdjustments({
+    editable = await editableVigente();
+    await guardarProtocolo({
       treatmentId,
-      adjGeb: 1950,
-      adjPal: 1.55,
-      adjKcalObj: null,
-      adjProtGkg: null,
-      adjFatPct: null,
-      adjDeficit: null,
-      pesoMetaFijado: 70,
-      baseSignature: await currentAdjSignature(),
+      editable: { ...editable, ajustes: { ...editable.ajustes, pesoMetaFijado: 70 } },
+      firmas: await firmasVigentes(),
       ...actor,
     });
     expect(await pesoMetaGuardado()).toBe(70);
@@ -344,56 +302,7 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
     ).rejects.toBeInstanceOf(StaleNutraceuticalsError);
     expect(await nutraCount()).toBe(antes); // no se borro la prescripcion
   });
-
-  // Pieza 1 (checkpoint 2.4): candado de saveObjetivo (columna treatments.objetivo_texto). El seed arranca
-  // con objetivo_texto NULL.
-  async function currentObjetivoSignature(): Promise<string> {
-    const [t] = await db
-      .select({ obj: schema.treatments.objetivoTexto })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    return objetivoSignature({ treatmentId, objetivo: t.obj });
-  }
-
-  it("objetivo camino feliz: firma base == actual -> escribe", async () => {
-    const base = await currentObjetivoSignature();
-    await saveObjetivo({ treatmentId, objetivo: "Dieta antiinflamatoria", baseSignature: base, ...actor });
-    const [t] = await db.select({ obj: schema.treatments.objetivoTexto }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.obj).toBe("Dieta antiinflamatoria");
-  });
-
-  it("objetivo carrera: firma base != actual -> rechaza sin pisar (StaleObjetivoError)", async () => {
-    await expect(
-      saveObjetivo({ treatmentId, objetivo: "PISADO", baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
-    ).rejects.toBeInstanceOf(StaleObjetivoError);
-    const [t] = await db.select({ obj: schema.treatments.objetivoTexto }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(t.obj).toBe("Dieta antiinflamatoria"); // el del camino feliz, no PISADO
-  });
-
-  // CP1.2: candado de saveIntercambio (columna jsonb intercambio_porciones). Arranca NULL (firma base "§none").
-  async function currentIntercambioSignature(): Promise<string> {
-    const [t] = await db
-      .select({ inter: schema.treatments.intercambioPorciones })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    return intercambioSignature({ treatmentId, intercambio: (t.inter as IntercambioSaved | null) ?? null });
-  }
   const INTER: IntercambioSaved = { objetivoBase: 2000, porciones: { Cereales: 3 } };
-
-  it("intercambio camino feliz: firma base == actual -> escribe el jsonb", async () => {
-    const base = await currentIntercambioSignature();
-    await saveIntercambio({ treatmentId, intercambio: INTER, baseSignature: base, ...actor });
-    const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000);
-  });
-
-  it("intercambio carrera: firma base != actual -> rechaza sin pisar (StaleIntercambioError)", async () => {
-    await expect(
-      saveIntercambio({ treatmentId, intercambio: { objetivoBase: 9999, grupos: {} }, baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
-    ).rejects.toBeInstanceOf(StaleIntercambioError);
-    const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000); // el del camino feliz, no 9999
-  });
 
   // CAMINO REAL del 500 (2026-08-22): una fila guardada con la FORMA VIEJA (por-grupo, {grupos}) de las pruebas
   // de CP1 antes del cambio a por-alimento. El writer la RELEE cruda y calculaba Object.keys(undefined) -> 500.
@@ -405,41 +314,14 @@ describe.skipIf(!HAS_DB)("candado de concurrencia de las secciones del tratamien
       .update(schema.treatments)
       .set({ intercambioPorciones: { objetivoBase: 1800, grupos: { G1: { porciones: 3, sub: "Cereales" } } } as never })
       .where(eq(schema.treatments.id, treatmentId));
-    // El cliente ve la fila normalizada a null, asi que su baseSignature es §none (no la firma de la forma vieja).
-    const baseComoCliente = `${treatmentId}§none`;
+    // El cliente ve la fila normalizada a null, asi que su firma es §none (no la de la forma vieja).
+    const editable = await editableVigente();
+    const firmas = { ...(await firmasVigentes()), intercambio: `${treatmentId}§none` };
     await expect(
-      saveIntercambio({ treatmentId, intercambio: INTER, baseSignature: baseComoCliente, ...actor }),
-    ).resolves.toBeUndefined();
+      guardarProtocolo({ treatmentId, editable: { ...editable, intercambio: INTER }, firmas, ...actor }),
+    ).resolves.toBeDefined();
     const [t] = await db.select({ inter: schema.treatments.intercambioPorciones }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
     expect((t.inter as IntercambioSaved).porciones).toBeDefined();
     expect((t.inter as IntercambioSaved).objetivoBase).toBe(2000);
-  });
-
-  // CP2.2: candado de saveTiempos (columna jsonb tiempos). Arranca NULL.
-  async function currentTiemposSignature(): Promise<string> {
-    const [t] = await db
-      .select({ t: schema.treatments.tiempos })
-      .from(schema.treatments)
-      .where(eq(schema.treatments.id, treatmentId));
-    return tiemposSignature({ treatmentId, tiempos: (t.t as TiemposSaved | null) ?? null });
-  }
-  const TIEMPOS: TiemposSaved = {
-    celdas: { G1: { desayuno: 3 } },
-    base: { porciones: { G1: 8 }, activos: { desayuno: true, almuerzo: true, cena: true } },
-  };
-
-  it("tiempos camino feliz: firma base == actual -> escribe el jsonb", async () => {
-    const base = await currentTiemposSignature();
-    await saveTiempos({ treatmentId, tiempos: TIEMPOS, baseSignature: base, ...actor });
-    const [t] = await db.select({ t: schema.treatments.tiempos }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(Object.keys((t.t as TiemposSaved).celdas)).toEqual(["G1"]);
-  });
-
-  it("tiempos carrera: firma base != actual -> rechaza sin pisar (StaleTiemposError)", async () => {
-    await expect(
-      saveTiempos({ treatmentId, tiempos: { ...TIEMPOS, celdas: {} }, baseSignature: "STALE-DE-OTRA-SESION", ...actor }),
-    ).rejects.toBeInstanceOf(StaleTiemposError);
-    const [t] = await db.select({ t: schema.treatments.tiempos }).from(schema.treatments).where(eq(schema.treatments.id, treatmentId));
-    expect(Object.keys((t.t as TiemposSaved).celdas)).toEqual(["G1"]); // el del camino feliz, no vacio
   });
 });

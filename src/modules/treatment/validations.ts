@@ -327,3 +327,54 @@ export const aplicarCambiosMenuSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
   cambios: z.array(cambioMenuSchema).min(1, "No hay cambios que aplicar.").max(42),
 });
+
+// ═══ UN SOLO GUARDADO PARA TODO EL PROTOCOLO (Santiago, 2026-09-09) ═══
+//
+// LAS REGLAS DE CADA SECCION SE REUSAN, NO SE REESCRIBEN. Cada `.shape.<campo>` viene del schema que ya
+// validaba esa seccion, con sus refinamientos (los 21 alimentos del intercambio, al menos un tiempo
+// activo, el tope por celda del menu, el deficit que admite negativos porque un deficit negativo es un
+// superavit). Copiarlas aqui seria un SEGUNDO constructor del mismo insumo, que es exactamente el defecto
+// que nos costo las comorbilidades del motor: la copia hereda los huecos que la original ya habia tapado.
+//
+// LAS SIETE FIRMAS VIAJAN SIEMPRE, incluso las de las secciones que el profesional no toco: la firma de
+// una seccion intacta es lo que detecta que OTRO la movio. Si solo viajaran las modificadas, el guardado
+// pasaria por encima del trabajo ajeno sin enterarse.
+//
+// LOS AJUSTES VIENEN YA COERCIONADOS del formulario viejo (`z.coerce`), asi que se reusan sus campos uno a
+// uno en vez de la forma entera: el schema de la cadena lleva ademas `evaluationId` y `baseSignature`, que
+// aqui viven fuera.
+const firmaSchema = z.string().max(8000).default("");
+
+export const guardarProtocoloSchema = z.object({
+  evaluationId: z.guid("Evaluación inválida."),
+  editable: z.object({
+    ajustes: z.object({
+      adjGeb: saveAdjustmentsSchema.shape.adjGeb,
+      adjPal: saveAdjustmentsSchema.shape.adjPal,
+      adjKcalObj: saveAdjustmentsSchema.shape.adjKcalObj,
+      adjProtGkg: saveAdjustmentsSchema.shape.adjProtGkg,
+      adjFatPct: saveAdjustmentsSchema.shape.adjFatPct,
+      adjDeficit: saveAdjustmentsSchema.shape.adjDeficit,
+      pesoMetaFijado: saveAdjustmentsSchema.shape.pesoMeta,
+    }),
+    objetivo: saveObjetivoSchema.shape.objetivo,
+    restricciones: saveRestriccionesSchema.shape.restricciones,
+    // NULL ES UN VALOR VALIDO en las cuatro de abajo, y no es laxitud: significa "nunca se guardo". El
+    // panel puede abrirse con la lista de intercambio sin tocar, y entonces no hay nada que escribir.
+    intercambio: saveIntercambioSchema.shape.intercambio.nullable().default(null),
+    tiemposActivos: saveTiemposActivosSchema.shape.activos.nullable().default(null),
+    tiempos: saveTiemposSchema.shape.tiempos.nullable().default(null),
+    menuSemanal: saveMenuSemanalSchema.shape.menu.nullable().default(null),
+  }),
+  firmas: z.object({
+    ajustes: firmaSchema,
+    objetivo: firmaSchema,
+    restricciones: firmaSchema,
+    intercambio: firmaSchema,
+    tiemposActivos: firmaSchema,
+    tiempos: firmaSchema,
+    menuSemanal: firmaSchema,
+  }),
+});
+
+export type GuardarProtocoloInput = z.infer<typeof guardarProtocoloSchema>;
