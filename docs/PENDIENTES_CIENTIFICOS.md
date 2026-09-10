@@ -12,7 +12,7 @@ ahora es uno solo.
 | --- | --- | --- |
 | **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
 | **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
-| **Al final** | Lo que necesita que **mires tu archivo** | 14 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 15 |
 | **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos | 15 |
 
 **Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
@@ -438,6 +438,43 @@ por nuestra cuenta:
 
 Nosotros no podemos elegir: la opción 2 borra reglas tuyas y la 3 toca el instrumento, que está congelado y
 es tuyo.
+
+---
+
+## 22 · El PABU sale con dos veredictos distintos según dónde se lea, y los dos son tuyos
+
+**AÑADIDO EL 2026-09-10**, después de que empezaras a responder este documento.
+
+Un profesional vio esto en el mismo paciente, en la misma consulta:
+
+| Dónde | Qué dice | Con qué función |
+| --- | --- | --- |
+| Historia clínica | *Desviación por exceso* | `cPABU` (L15473 de tu archivo) |
+| Tabla de índices del diagnóstico | *PABU bajo* | `dPABU` (L14622) |
+
+**Atlas es fiel a las dos**: cada superficie usa la función que tú usas en esa superficie. Lo mismo pasa
+con el ICA-BIS, donde tu HC toma la clasificación del PABU y lo dejaste anotado (*"cICABIS eliminado, usar
+cPABU global"*).
+
+**Y las dos son coherentes por separado.** `cPABU` nombra el **mecanismo** (por debajo de φ hay exceso de
+adiposidad, por encima déficit estructural, que es lo que dice tu propio prompt); `dPABU` nombra la
+**dirección del número** (bajo o elevado respecto de φ).
+
+**El problema no es cuál está bien: es que el profesional no tiene cómo saber que son el mismo hallazgo
+dicho de dos maneras.** Lee "PABU bajo" en la pantalla de trabajo y "Desviación por exceso" en el
+documento que firma y archiva, y las dos palabras se contradicen en la lectura corriente ("bajo" contra
+"exceso"), aunque no en el modelo.
+
+**No lo unificamos por nuestra cuenta:** son dos clasificadores clínicos tuyos y elegir cuál manda es
+contenido clínico. **¿Qué prefieres?**
+
+1. **Se quedan las dos**, como están hoy, y nosotros añadimos una línea que explique la equivalencia donde
+   convivan.
+2. **Manda `cPABU`** (el mecanismo) en las dos superficies.
+3. **Manda `dPABU`** (la dirección) en las dos superficies.
+
+Y si eliges 2 o 3, dinos también qué pasa con el ICA-BIS, que hoy hereda la clasificación del PABU solo en
+la historia clínica.
 
 ---
 
