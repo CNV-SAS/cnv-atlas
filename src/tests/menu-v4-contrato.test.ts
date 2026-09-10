@@ -61,7 +61,10 @@ describe("el prompt manda ADAPTAR, no componer", () => {
 
   it("y no queda rastro del contrato viejo de generación", () => {
     expect(user.content).not.toContain("Genera un menu de un dia");
-    expect(MENU_PROMPT_VERSION).toBe(4);
+    // LA VERSION SUBE CON EL CONTRATO (u4 -> u5 el 2026-09-10, al pedirle UNA entrada por celda y el
+    // reemplazo COMPLETO). No es un numero decorativo: cada sugerencia guarda con que contrato se
+    // genero, y dos contratos distintos bajo el mismo numero vuelven ilegible el registro.
+    expect(MENU_PROMPT_VERSION).toBe(5);
   });
 
   it("las restricciones siguen viajando, y son la razón de que la IA entre", () => {
