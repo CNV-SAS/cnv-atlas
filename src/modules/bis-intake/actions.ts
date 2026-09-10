@@ -233,14 +233,24 @@ export async function saveMedidasProfesionalAction(
       actorEmail: user.email,
       ip: ip === "unknown" ? null : ip,
     });
-    // La prensil entra al motor (fenotipo de sarcopenia) y el peso meta gobierna la cadena calorica: las
-    // dos cambian lo que se ve en Diagnostico y en Tratamiento, no solo este bloque.
+    // ESTA ACCION NO REVALIDA, Y ES DELIBERADO. El refresco lo hace la pantalla con
+    // `useFormToastAndRefresh`, DESPUES del toast. Los dos a la vez es lo que hacia saltar la pagina.
     //
-    // RUTA CONCRETA, NO EL PATRON (2026-09-10). Esto decia `revalidatePath("/ani-bis-e/[id]", "page")`
-    // y la tabla NO se actualizaba al guardar la meta, mientras que al corregir el PESO si: esa otra
-    // accion usa la ruta concreta. La diferencia se midio en pantalla, no se razono. La forma concreta es
-    // la que devuelve el arbol nuevo con la respuesta de la accion.
-    revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
+    // EL DATO QUE LO DECIDIO (Santiago, 2026-09-09): saliendo del campo con TAB, sin tocar el raton,
+    // TAMBIEN saltaba. Eso descarta la otra hipotesis (que el segundo clic desarmara el guard por el
+    // `mousedown`) y deja esta.
+    //
+    // POR QUE DOS CICLOS DERROTAN AL GUARD, que es lo que faltaba entender: `preservarScroll` se
+    // DESARMA en cuanto restaura la posicion entera (`quitar()` en `revisar`). Con revalidate + refresh
+    // hay DOS renders que montan segmentos, o sea DOS saltos separados en el tiempo: el guard deshace el
+    // primero, se desarma, y el segundo llega sin nadie mirando. Es justo el sintoma reportado, "como un
+    // segundo despues" del toast.
+    //
+    // Y ES EL MISMO HALLAZGO DEL PANEL DE TRATAMIENTO (smoke del 2026-08-31), donde el revalidate ya se
+    // habia retirado por esto y quedo con candado. Aqui volvio a entrar el 2026-09-08 arreglando otra
+    // cosa: la tabla que no se actualizaba. Aquel arreglo se hizo "por los dos lados" a la vez y nunca
+    // se separo cual de los dos hacia el trabajo; lo hace el hook, que es lo unico que vuelve a pedir el
+    // arbol cuando la subpestaña cambio por replaceState.
     return { error: null, success: "Medidas guardadas.", warning: null };
   } catch (e) {
     if (e instanceof BisCorrectionError) return { error: e.message, success: null, warning: null };
