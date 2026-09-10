@@ -512,6 +512,8 @@ no es el estado del paciente, es la ecuación, que estima sobre un cuerpo comple
 | La tabla de composición junta lo bioeléctrico crudo en un bloque |
 | La tabla conserva GEB y GET, que tu HTML no lista |
 
+| La tabla de la historia clínica muestra **más índices que la tuya** | Tu HC lista **veinte** índices concretos (doce de composición y los ocho ANI-BIS-E). La nuestra parte de las ~30 filas de la tabla de Wang y les aplica **tu** regla de filtrado (mostrar lo alterado, ocultar lo normal y lo sin clasificar), así que puede salir un índice alterado que la tuya no lista. **El filtro es tuyo; el inventario de filas es nuestro.** No lo recortamos a tus veinte porque son datos medidos con tu clasificador, y quitarlos de un documento clínico sería esconder algo que el profesional midió. **Solo te lo declaramos; si prefieres las veinte exactas, se acota** |
+
 ## Donde Atlas va POR DELANTE de tu archivo
 
 | Qué hicimos | Por qué |

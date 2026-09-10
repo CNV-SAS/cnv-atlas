@@ -34,7 +34,7 @@ import {
   indicatorRange,
 } from "../data/indicator-ranges";
 import { SEV_LABEL } from "../severity-labels";
-import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_CLS } from "./risk-severity";
+import { OPTIMO_DOT, OPTIMO_TEXT, RISK_SEV, SEV_BORDE, SEV_CLS } from "./risk-severity";
 import { VerdictStrip } from "./verdict-strip";
 import { AvisoCienciaAnterior } from "@/modules/clinical-pipeline/components/aviso-ciencia-anterior";
 import { DiagnosisSubtabs } from "./diagnosis-subtabs";
@@ -613,8 +613,17 @@ export function EvaluationResults({
               // sobre defaults (d3/d5 salen de EB-BIS/ICEC, las mismas salidas suspendidas; mostrar su badge
               // contradiria el "no se emitieron"). d1/d2 salen de la medicion (BIS) y se muestran igual.
               const noEvaluable = !dfi.complete && !isBisDerivedDomain(d.id);
+              // El borde izquierdo toma el color de SU severidad, como las tarjetas de ruta. Sin
+              // severidad (sin dato o no evaluable) se queda neutro: ver `SEV_BORDE`.
+              const borde =
+                noEvaluable || d.sev == null
+                  ? "border-l-border"
+                  : SEV_BORDE[Math.min(3, Math.max(0, d.sev))];
               return (
-              <div key={d.id} className="flex flex-col gap-1 rounded-lg border border-border p-3">
+              <div
+                key={d.id}
+                className={`flex flex-col gap-1 rounded-lg border border-border border-l-4 p-3 ${borde}`}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2 font-medium text-foreground">
                     {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}

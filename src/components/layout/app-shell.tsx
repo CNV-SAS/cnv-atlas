@@ -15,6 +15,8 @@ import {
   LogOut,
   type LucideIcon,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   MonitorSmartphone,
   Pill,
   Receipt,
@@ -43,6 +45,7 @@ import {
   type NavIconKey,
   type NavItem,
 } from "@/components/layout/nav-config";
+import { alternarNavColapsada, useNavColapsada } from "@/components/layout/usar-nav-colapsada";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/modules/auth/actions";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
@@ -79,7 +82,7 @@ function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-function AtlasLogo() {
+function AtlasLogo({ compacto = false }: { compacto?: boolean }) {
   // Con la barra CLARA el logo actual funciona tal cual: no hace falta la version en blanco ni la placa
   // provisional que hizo falta con la barra navy. El obstaculo desaparecio con la disposicion invertida.
   //
@@ -91,6 +94,9 @@ function AtlasLogo() {
   // texto, y repetirlo lo haria decirlo dos veces.
   return (
     <Link href="/dashboard" className="flex items-center gap-2" aria-label="Atlas CNV, inicio">
+      {/* COLAPSADA, EL LOGO SE RECORTA A SU MARCA. Con 64 px de ancho no cabe el horizontal, y dejarlo
+          entrar lo aplastaria: se ancla a la izquierda y se recorta, que conserva el simbolo. El rotulo
+          "CNV" sale, porque a ese tamaño seria una silaba suelta. */}
       <Image
         src="/brand/logo-horizontal.svg"
         alt=""
@@ -98,9 +104,11 @@ function AtlasLogo() {
         height={28}
         priority
         unoptimized
-        className="h-7 w-auto"
+        className={compacto ? "h-7 w-8 max-w-none object-cover object-left" : "h-7 w-auto"}
       />
-      <span className="text-lg font-semibold tracking-tight text-muted-foreground">CNV</span>
+      {compacto ? null : (
+        <span className="text-lg font-semibold tracking-tight text-muted-foreground">CNV</span>
+      )}
     </Link>
   );
 }
@@ -109,10 +117,12 @@ function NavGrupos({
   grupos,
   pathname,
   onNavigate,
+  colapsada = false,
 }: {
   grupos: NavGrupoVisible[];
   pathname: string;
   onNavigate?: () => void;
+  colapsada?: boolean;
 }) {
   const todos = grupos.flatMap((g) => g.items);
   return (
@@ -123,15 +133,28 @@ function NavGrupos({
               en la lista de ocho de un profesional los rotulos son ruido; en la de dieciseis de un admin
               la lista plana es la que cuesta. `aria-hidden` porque el grupo no es un destino ni un
               control: con lector de pantalla la lista de enlaces ya se recorre bien sin el. */}
+          {/* COLAPSADA, EL ROTULO DEL GRUPO SE VUELVE UNA LINEA. No cabe, y abreviarlo seria inventar
+              siglas; la linea conserva lo unico que el rotulo aportaba ahi, que es que el grupo empieza.
+              No va en el primero, que no separa de nada. */}
           {g.label ? (
-            <span
-              aria-hidden
-              className="px-3 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground/70"
-            >
-              {g.label}
-            </span>
+            colapsada ? (
+              <span aria-hidden className="mx-3 my-2 border-t border-border" />
+            ) : (
+              <span
+                aria-hidden
+                className="px-3 pb-1 pt-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground/70"
+              >
+                {g.label}
+              </span>
+            )
           ) : null}
-          <NavLinks items={g.items} todos={todos} pathname={pathname} onNavigate={onNavigate} />
+          <NavLinks
+            items={g.items}
+            todos={todos}
+            pathname={pathname}
+            onNavigate={onNavigate}
+            colapsada={colapsada}
+          />
         </div>
       ))}
     </>
@@ -143,6 +166,7 @@ function NavLinks({
   todos,
   pathname,
   onNavigate,
+  colapsada = false,
 }: {
   items: NavItem[];
   /** TODOS los items visibles, no solo los del grupo: `isNavItemActive` desempata por prefijo mas largo
@@ -150,6 +174,8 @@ function NavLinks({
   todos: NavItem[];
   pathname: string;
   onNavigate?: () => void;
+  /** Barra a iconos: el rotulo sale del renglon y aparece flotando al pasar por encima. */
+  colapsada?: boolean;
 }) {
   return (
     <>
@@ -162,8 +188,10 @@ function NavLinks({
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
+            title={colapsada ? item.label : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              colapsada && "justify-center px-0",
               // EL ACTIVO VA RELLENO EN EL AZUL DE MARCA. La muesca gris que probamos antes se leia plana:
               // marcaba por pertenencia, que es correcto, pero en una barra clara sobre superficie clara la
               // diferencia era demasiado poca para encontrarla de un vistazo. Blanco sobre #205dfd da
@@ -181,7 +209,24 @@ function NavLinks({
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
-            {item.label}
+            {/* ═══ EL ROTULO FLOTANTE (Santiago, 2026-09-10, como en Biody) ═══
+
+                COLAPSADA, EL ROTULO NO DESAPARECE: sale del renglon y aparece al lado al pasar por encima.
+                Una barra de solo iconos obliga a aprenderse doce simbolos, y el que no se acuerda tiene
+                que entrar a mirar; con el rotulo al lado se reconoce sin abrir nada.
+
+                Y APARECE TAMBIEN CON EL FOCO (`group-focus-within`), no solo con el raton: quien navega
+                con el teclado necesita lo mismo que quien pasa el cursor. El texto sigue en el DOM en los
+                dos casos, asi que el lector de pantalla lo anuncia igual y el enlace nunca queda sin
+                nombre accesible (por eso no se usa `sr-only` con un `title` suelto). */}
+            <span
+              className={cn(
+                colapsada &&
+                  "pointer-events-none absolute left-full z-30 ml-2 hidden whitespace-nowrap rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground shadow-md group-hover:block group-focus-within:block",
+              )}
+            >
+              {item.label}
+            </span>
           </Link>
         );
       })}
@@ -290,6 +335,8 @@ export function AppShell({
   const itemActivo = itemsVisibles.find((i) => isNavItemActive(i.href, pathname, itemsVisibles));
   const IconoSeccion = itemActivo ? ICONS[itemActivo.icon] : null;
   const [open, setOpen] = useState(false);
+  // La preferencia de barra colapsada, recordada entre pantallas. Ver `usar-nav-colapsada`.
+  const colapsada = useNavColapsada();
 
 
   return (
@@ -299,12 +346,46 @@ export function AppShell({
           cambiar de seccion habia que subir hasta arriba primero.
           `overflow-y-auto` en el propio aside y no en el nav: si la lista de items crece mas que la
           pantalla (roles con muchos accesos), tiene que poder desplazarse sola sin arrastrar la pagina. */}
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-background lg:flex">
-        <div className="flex h-14 items-center px-4">
-          <AtlasLogo />
+      {/* COLAPSABLE A ICONOS (Santiago, 2026-09-10). `overflow-y-auto` se cambia por `overflow-x-visible`
+          cuando esta colapsada: con el recorte horizontal, el rotulo flotante quedaria cortado justo al
+          salir del aside, que es donde tiene que verse. `overflow-y` sigue haciendo falta para las listas
+          largas, asi que van los dos ejes por separado. */}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-svh shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200 lg:flex",
+          colapsada ? "w-16 overflow-y-auto overflow-x-visible" : "w-60 overflow-y-auto",
+        )}
+      >
+        <div
+          className={cn(
+            "flex h-14 items-center gap-1",
+            colapsada ? "flex-col justify-center px-0 py-1" : "justify-between px-4",
+          )}
+        >
+          <AtlasLogo compacto={colapsada} />
+          {/* LA HAMBURGUESA VIVE EN LA BARRA, no en el header. Es el mando DE la barra, y ponerlo donde
+              esta lo que gobierna evita que se confunda con el de la navegacion movil, que abre otra cosa
+              (el panel deslizante) y ya vive arriba. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={colapsada ? "size-7" : "size-8"}
+            onClick={alternarNavColapsada}
+            aria-label={colapsada ? "Expandir navegación" : "Colapsar navegación"}
+            aria-pressed={colapsada}
+          >
+            {colapsada ? (
+              <PanelLeftOpen className="size-4" aria-hidden />
+            ) : (
+              <PanelLeftClose className="size-4" aria-hidden />
+            )}
+          </Button>
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-          <NavGrupos grupos={grupos} pathname={pathname} />
+        <nav
+          className={cn("flex flex-1 flex-col gap-0.5 py-2", colapsada ? "px-2" : "px-3")}
+        >
+          <NavGrupos grupos={grupos} pathname={pathname} colapsada={colapsada} />
         </nav>
       </aside>
 

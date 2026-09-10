@@ -15,6 +15,23 @@ export const SEV_CLS = [
   "bg-clinical-critical-bg text-clinical-critical",
 ];
 
+// EL MISMO SEMAFORO EN `border-l-*`, para el borde izquierdo de las cinco tarjetas de dominio del DFI
+// (Santiago, 2026-09-10: "como las rutas"). No es una escala nueva: es `DOT_CLS` con el prefijo que
+// necesita el borde, igual que `SEV_FILL` lo es con el del SVG y `OPTIMO_TEXT` con el del texto. Se
+// escribe literal y no se deriva partiendo cadenas porque Tailwind necesita ver la clase entera en el
+// fuente (un valor que Tailwind no parsea no da error: no pinta nada).
+//
+// EL BORDE NO SUSTITUYE AL BADGE. La etiqueta sigue siendo el señalizador principal: el color de un borde
+// no se lee si no se sabe que codifica, y hay quien no lo distingue. Refuerza lo que el badge ya dice, y
+// por eso mismo el dominio "sin dato" o "no evaluable" NO lleva color: no hay severidad que reforzar, y
+// pintarlo de verde seria la lectura favorable de un vacio que su punto 4 prohibe.
+export const SEV_BORDE = [
+  "border-l-clinical-optimal",
+  "border-l-clinical-warning",
+  "border-l-clinical-moderate",
+  "border-l-clinical-critical",
+];
+
 // Nivel de riesgo integrado del DFI -> indice de la capa clinica (color + etiqueta). Coincide con los NIV
 // del HTML: BAJO verde, MEDIO ambar, ALTO naranja, CRITICO rojo.
 export const RISK_SEV: Record<string, number> = { BAJO: 0, MEDIO: 1, ALTO: 2, "CRÍTICO": 3 };
