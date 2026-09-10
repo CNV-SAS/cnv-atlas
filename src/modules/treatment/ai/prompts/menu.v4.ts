@@ -199,6 +199,63 @@ export function parseCambiosMenu(
 }
 
 /**
+ * Una celda con TODAS las razones por las que el modelo la quiere sustituir.
+ *
+ * ═══ POR QUE ESTO EXISTE: CADA CELDA SALIA DOS VECES (Santiago, 2026-09-10) ═══
+ *
+ * EL DATO DE PRODUCCION: de 24 propuestas, 16 eran celdas distintas; ocho aparecian DUPLICADAS, con el
+ * MISMO reemplazo y un motivo cada una ("sin gluten" en una, "sin lactosa" en la otra). O sea que el
+ * modelo devuelve UNA ENTRADA POR RESTRICCION INCUMPLIDA, no una por celda, y el paciente tenia dos.
+ *
+ * NO ERA EL PARSEO: `parseCambiosMenu` no separa nada, toma el arreglo tal cual viene. Se verifico antes
+ * de tocar nada, porque el arreglo habria sido el equivocado.
+ *
+ * Y NO SE ARREGLA EN EL PROMPT. Pedirle "una sola entrada por celda" es pedirle que agrupe, y agrupar es
+ * exactamente lo que un modelo hace mal y nosotros hacemos bien: aqui es determinista y ahi es una
+ * probabilidad. El contrato se queda como esta y la pantalla presenta lo que recibio.
+ *
+ * ADEMAS ERA UN DEFECTO DE VERDAD Y NO SOLO RUIDO: la lista usaba `${dia}_${tiempo}` como key de React,
+ * asi que las dos entradas de una misma celda compartian key.
+ */
+export type CambioAgrupado = {
+  dia: number;
+  tiempo: string;
+  reemplazo: string;
+  /** Los motivos del modelo para esta celda, en el orden en que los dio y sin repetir. */
+  motivos: string[];
+  /**
+   * La celda tiene MAS de un reemplazo distinto propuesto. No es agrupable: son alternativas, y elegir
+   * por el profesional seria decidir contenido clinico. Se dice en pantalla y se deja fuera del boton
+   * de aplicar todas, que si no escribiria una encima de la otra sin avisar.
+   */
+  alternativas: boolean;
+};
+
+/** Agrupa las propuestas por celda y reemplazo, juntando los motivos. Ver `CambioAgrupado`. */
+export function agruparCambiosPorCelda(cambios: CambioPropuesto[]): CambioAgrupado[] {
+  const porTexto = new Map<string, CambioAgrupado>();
+  const reemplazosPorCelda = new Map<string, Set<string>>();
+  for (const c of cambios) {
+    const celda = `${c.dia}_${c.tiempo}`;
+    const clave = `${celda}\u0000${c.reemplazo}`;
+    let g = porTexto.get(clave);
+    if (g == null) {
+      g = { dia: c.dia, tiempo: c.tiempo, reemplazo: c.reemplazo, motivos: [], alternativas: false };
+      porTexto.set(clave, g);
+    }
+    if (!g.motivos.includes(c.motivo)) g.motivos.push(c.motivo);
+    const vistos = reemplazosPorCelda.get(celda) ?? new Set<string>();
+    vistos.add(c.reemplazo);
+    reemplazosPorCelda.set(celda, vistos);
+  }
+  const salida = [...porTexto.values()];
+  for (const g of salida) {
+    g.alternativas = (reemplazosPorCelda.get(`${g.dia}_${g.tiempo}`)?.size ?? 1) > 1;
+  }
+  return salida;
+}
+
+/**
  * ¿El motivo que cita este cambio corresponde a una restricción que de verdad se le envió?
  *
  * NO BLOQUEA, y esa es la decisión: juzgar si una preparación incumple una restricción es contenido
