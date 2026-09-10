@@ -1,5 +1,4 @@
 import type { AlertaClinica } from "@/clinical-engine/alertas-disponibles";
-import { ALERTAS_NO_DISPONIBLES } from "@/clinical-engine/alertas-disponibles";
 import { Bloque } from "@/components/shared/bloque";
 
 // ALERTAS CLINICAS de la encuesta.
@@ -29,16 +28,17 @@ import { Bloque } from "@/components/shared/bloque";
 // junto a las restricciones del menu: no son restricciones, no alimentan el filtro de alergenos ni viajan
 // al prompt del menu, y ponerlas ahi haria creer que el menu las esta atendiendo.
 //
-// LA NOTA DE ABAJO NO ES UN DESCARGO, ES LA PIEZA PRINCIPAL. De sus quince reglas corren cinco: las diez
-// restantes necesitan el consumo de nutrientes EN PORCIONES, que la encuesta no captura. Sin decirlo,
-// "ninguna alerta" se lee como "el paciente esta bien", cuando significa "de lo nutricional no estamos
-// evaluando nada". El silencio de un sistema que el profesional cree completo pesa mas que un aviso.
+// ═══ SIN ALERTAS, NO HAY BLOQUE (Santiago, 2026-09-10) ═══
 //
-// Y NO DICE "todavia", que es lo que decia antes. El puente frecuencia -> porciones esta CERRADO POR EL,
-// dos veces: P-70 (2026-08-30, "no hay puente que construir": la frecuencia es un patron, no una
-// cuantificacion) y P-83 (2026-09-03, sobre las porciones por grupo de la TCAC: "No va, y no es que falte:
-// es que no debe existir"). Asi que hoy no hay via, y prometer una en un pie de pantalla seria afirmar mas
-// de lo que sabemos. Declarado en PENDIENTES_CIENTIFICOS.
+// Habia un pie que decia que de las quince reglas del modelo diez necesitan el consumo de nutrientes. Es
+// verdad, pero es informacion NUESTRA: le habla al que construye Atlas, no al profesional que atiende. Y
+// era larga, y salia en cada pantalla. Vive donde le toca, en PENDIENTES_CIENTIFICOS (punto 21), esperando
+// la decision de Gildardo: el puente frecuencia -> porciones lo cerro el mismo dos veces (P-70 y P-83).
+//
+// Y SIN NADA QUE MOSTRAR, EL BLOQUE NO SALE. La alternativa era dejarlo diciendo "sin banderas", y eso es
+// una AFIRMACION sobre el paciente en cuatro pantallas. La ausencia no afirma nada, que es lo correcto
+// cuando lo que se evalua es un tercio del modelo. El profesional sabe que existen porque las ve en los
+// pacientes que las tienen.
 
 const ESTILO: Record<string, { caja: string; texto: string }> = {
   crítico: {
@@ -65,6 +65,9 @@ function Alerta({ a }: { a: AlertaClinica }) {
 }
 
 export function AlertasClinicas({ alertas }: { alertas: AlertaClinica[] }) {
+  // NADA QUE DECIR, NADA QUE PINTAR. Un bloque vacio en cuatro pantallas es ruido, y uno que dice "sin
+  // banderas" afirma mas de lo que hoy se evalua.
+  if (alertas.length === 0) return null;
   // LAS POSITIVAS VAN APARTE, y es instrucción suya (2026-08-30, punto 5): "Una hidratación adecuada y un
   // TCA activo no pueden compartir lista ni peso visual. Lo que la alerta hace es dirigir la mirada del
   // profesional, y mezclarlas gasta esa atención en lo que ya está bien."
@@ -76,9 +79,9 @@ export function AlertasClinicas({ alertas }: { alertas: AlertaClinica[] }) {
   return (
     <Bloque nivel="decision" titulo="Alertas clínicas de la encuesta">
       {aAtender.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Sin banderas en las respuestas que hoy se evalúan.
-        </p>
+        // Hay positivas pero nada que atender. Se dice en corto: aqui el bloque SI existe (lo abre la
+        // positiva), asi que callarse dejaria un titulo sin explicacion.
+        <p className="text-sm text-muted-foreground">Sin banderas que atender.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {aAtender.map((a) => (
@@ -102,11 +105,6 @@ export function AlertasClinicas({ alertas }: { alertas: AlertaClinica[] }) {
           </ul>
         </div>
       ) : null}
-      <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-        El cuadro nutricional no se evalúa. De las quince alertas del modelo,{" "}
-        {ALERTAS_NO_DISPONIBLES.porConsumo} necesitan el consumo de nutrientes en porciones, que la
-        encuesta no captura. La ausencia de avisos no equivale a ausencia de riesgo.
-      </p>
     </Bloque>
   );
 }

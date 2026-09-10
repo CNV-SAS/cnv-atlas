@@ -197,45 +197,67 @@ describe("las positivas se separan por SU nivel, no por una lista nuestra", () =
 // "abrir la informacion de la encuesta" es la PANTALLA de ver/editar la encuesta. Asi que su instruccion
 // no se revierte, se cumple donde el la queria, y se suman las tres que pidio despues.
 
-describe("las alertas viven en las cuatro superficies donde se decide", () => {
+describe("dónde aparecen las alertas, y dónde NO", () => {
   const PAGE = readFileSync("src/app/(app)/ani-bis-e/[id]/page.tsx", "utf8");
   const ENCUESTA = readFileSync("src/app/(app)/ani-bis-e/[id]/encuesta/page.tsx", "utf8");
+
+  // TRES SITIOS, tras la segunda ronda del 2026-09-10:
+  //   · la pantalla de ver/editar la encuesta, que es donde Gildardo las pidió;
+  //   · la SUBPESTAÑA de encuesta de Diagnóstico (no las cuatro);
+  //   · la subpestaña del profesional en Tratamiento.
+  // Y fuera de dos: la pestaña Encuesta y Reporte/HC.
 
   it("en la pantalla de ver/editar la encuesta, que es donde él las pidió", () => {
     expect(ENCUESTA).toContain("<AlertasClinicas");
     expect(ENCUESTA).toContain("alertasDisponibles(");
   });
 
-  it("y NO en la pestaña Encuesta, que es el único sitio donde dijo que no van", () => {
-    // CONTROL de lo de arriba: sin esto, "ponerlas en todas partes" también pasaría verde.
-    for (const marca of ['encuesta={<EntradaEvaluacion panel="encuesta"', '{/* La correccion YA NO vive aqui']) {
-      const i = PAGE.indexOf(marca);
-      expect(i, `no se encontró la pestaña Encuesta (${marca})`).toBeGreaterThan(-1);
-    }
-    // La pestaña Encuesta de la rama CON diagnóstico: entre su apertura y la siguiente pestaña.
+  it("NO en la pestaña Encuesta, que es el único sitio donde dijo que no van", () => {
     const iEnc = PAGE.indexOf("      encuesta={");
     const iAntro = PAGE.indexOf("      antro={", iEnc);
-    expect(
-      PAGE.slice(iEnc, iAntro),
-      "las alertas volvieron a la pestaña Encuesta",
-    ).not.toContain("alertasNode");
+    expect(iEnc, "no se encontró la pestaña Encuesta").toBeGreaterThan(-1);
+    expect(PAGE.slice(iEnc, iAntro), "volvieron a la pestaña Encuesta").not.toContain("alertasNode");
   });
 
-  it("se arman UNA vez y se reusan en las tres pestañas", () => {
-    // Repetir la llamada en cada sitio es como se consigue que una pestaña reciba un dato y la otra no.
-    // Es el mismo motivo por el que `entrada*Diagnostico` se arma una vez.
+  it("en Diagnóstico, SOLO en la subpestaña de encuesta", () => {
+    // Estaban encima de las subpestañas, o sea en las cuatro. Quien abre Funcional viene a leer el DFI, y
+    // una bandera de la encuesta ahí es ruido de la pestaña de al lado.
+    const i = PAGE.indexOf("surveyDiagnosis={");
+    const j = PAGE.indexOf("criterio={", i);
+    expect(PAGE.slice(i, j), "las alertas salieron de la subpestaña de encuesta").toContain(
+      "alertasNode",
+    );
+    // Y NO encima del orquestador, que es donde las veían las cuatro.
+    const k = PAGE.indexOf("<EvaluationResults");
+    expect(PAGE.slice(k - 400, k), "volvieron a estar encima de las cuatro subpestañas").not.toContain(
+      "{alertasNode}",
+    );
+  });
+
+  it("y FUERA de Reporte/HC: ese documento se le entrega al paciente", () => {
+    // SU RAZÓN (Santiago): la HC se le envía al paciente por su derecho de la Resolución 1995, y leer
+    // "riesgo glucémico crítico" puede sesgar lo que responda en la próxima encuesta, que es de donde
+    // salen las alertas.
+    //
+    // LO QUE SE VERIFICÓ: hoy NO viajarían (lo que se imprime y se entrega es solo lo de dentro de
+    // `.imprimible`, y el bloque quedaba fuera). Se retira igual: un bloque pegado a un documento que el
+    // paciente recibe está a un descuido de acabar dentro. Esperando lo que diga Gildardo.
+    const i = PAGE.indexOf("      reporte={");
+    const j = PAGE.indexOf("      diagnostico={", i);
+    expect(i, "no se encontró la pestaña Reporte").toBeGreaterThan(-1);
+    expect(PAGE.slice(i, j > i ? j : undefined).slice(0, 4000)).not.toContain("{alertasNode}");
+  });
+
+  it("se arman UNA vez y se reusan, no una llamada por sitio", () => {
+    // Repetir la llamada en cada sitio es como se consigue que una pantalla reciba un dato y la otra no.
     expect(PAGE).toContain("const alertasNode = (");
-    // Diagnóstico (las dos ramas), la subpestaña del profesional en Tratamiento, y Reporte/HC.
-    expect((PAGE.match(/\{alertasNode\}/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect((PAGE.match(/\{alertasNode\}/g) ?? []).length).toBe(3);
   });
 
-  it("y son las MISMAS en los cuatro: una función, sin filtro por profesión", () => {
+  it("y son las MISMAS en todas: una función, sin filtro por profesión", () => {
     // No se filtra a propósito: el psicólogo necesita ver el riesgo glucémico igual que la nutricionista
-    // necesita ver el TCA. Si algún día alguien filtra, dos profesionales verían banderas distintas del
-    // mismo paciente y ninguno sabría cuál es la lista completa.
+    // necesita ver el TCA.
     const COMP = readFileSync("src/modules/diagnoses/components/alertas-clinicas.tsx", "utf8");
-    // SOBRE EL CODIGO SIN COMENTARIOS: el comentario que explica por que NO se filtra nombra las dos
-    // profesiones, asi que la asercion se cazaba a si misma. Es la misma forma de siempre.
     expect(
       sinComentarios(COMP),
       "el componente empezó a filtrar por profesión",
@@ -243,24 +265,36 @@ describe("las alertas viven en las cuatro superficies donde se decide", () => {
   });
 });
 
-describe("el pie no promete lo que Gildardo cerró", () => {
+describe("sin alertas no hay bloque, y el pie interno se fue de la pantalla", () => {
   const COMP = readFileSync("src/modules/diagnoses/components/alertas-clinicas.tsx", "utf8");
 
-  it("decía \"que aún no se calcula\", y eso afirma que va a llegar", () => {
-    // EL PUENTE ESTA CERRADO POR EL, dos veces: P-70 (2026-08-30, "no hay puente que construir": la
-    // frecuencia es un patrón, no una cuantificación) y P-83 (2026-09-03, sobre las porciones por grupo
-    // de la TCAC: "No va, y no es que falte: es que no debe existir"). Prometer en un pie de pantalla una
-    // vía que él cerró es afirmar más de lo que sabemos.
-    expect(sinComentarios(COMP), "volvió la promesa de que el cálculo llega").not.toContain(
-      "que aún no se calcula",
+  it("el pie de \"faltan diez\" ya no está: era información nuestra, no del profesional", () => {
+    // Era verdad y sigue siéndolo, pero le habla al que construye Atlas. Vive en PENDIENTES_CIENTIFICOS
+    // (punto 21), esperando la decisión de Gildardo: el puente frecuencia -> porciones lo cerró él dos
+    // veces (P-70 el 2026-08-30 y P-83 el 2026-09-03).
+    expect(sinComentarios(COMP), "volvió el pie de las diez que faltan").not.toContain(
+      "necesitan el consumo de nutrientes",
     );
-    expect(COMP).toContain("la\n        encuesta no captura");
+    expect(sinComentarios(COMP)).not.toContain("ALERTAS_NO_DISPONIBLES");
   });
 
-  it("pero el pie SIGUE, porque su razón no cambió", () => {
-    // Sin él, "ninguna alerta" se lee como "el paciente está bien" cuando significa "de lo nutricional no
-    // estamos evaluando nada". Que la causa sea permanente lo hace más necesario, no menos.
-    expect(COMP).toContain("ALERTAS_NO_DISPONIBLES.porConsumo");
-    expect(COMP).toContain("La ausencia de avisos no equivale a ausencia de riesgo.");
+  it("y sin nada que mostrar, el bloque no se pinta", () => {
+    // Dejarlo diciendo "sin banderas" es una AFIRMACIÓN sobre el paciente, repetida en cada pantalla,
+    // sobre un modelo del que hoy corre un tercio. La ausencia no afirma nada, que es lo correcto.
+    expect(COMP).toContain("if (alertas.length === 0) return null;");
+  });
+
+  it("pero con solo positivas el bloque SÍ sale, y dice por qué no hay nada que atender", () => {
+    // CONTROL de lo de arriba: si se ocultara también aquí, "el paciente ya hace bien X" desaparecería.
+    // Y si el bloque existe, callar el primer apartado dejaría un título sin explicación.
+    expect(COMP).toContain("Sin banderas que atender.");
+  });
+
+  it("la razón por la que faltan diez sigue escrita, pero donde le toca", () => {
+    // Que salga de la pantalla no puede significar que se pierda: es lo único que explica por qué el
+    // modelo evalúa cinco de quince.
+    const DOC = readFileSync("docs/PENDIENTES_CIENTIFICOS.md", "utf8");
+    expect(DOC).toContain("no pueden salir nunca");
+    expect(DOC).toContain("debe existir");
   });
 });

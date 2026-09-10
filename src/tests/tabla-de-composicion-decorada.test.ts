@@ -36,21 +36,41 @@ describe("un componente, tres tablas", () => {
   });
 });
 
-describe("la franja de nivel va en color de marca; la cabecera de columnas, gris", () => {
-  // LO QUE PIDIO SANTIAGO, textual: "Las franjas de nivel en color de marca, no gris. La cabecera de
-  // columnas se queda gris."
+describe("la franja de nivel va en color de marca; la cabecera, sin fondo", () => {
+  // PRIMERA VUELTA (mañana): "Las franjas de nivel en color de marca, no gris. La cabecera de columnas se
+  // queda gris." SEGUNDA VUELTA (tarde, variante (c)): el gris y el azul chocaban pegados, asi que la
+  // cabecera pierde el fondo y queda UNA sola superficie pintada. Ver el caso de abajo.
 
   it("la franja de nivel lleva el azul de marca", () => {
     expect(CODIGO, "la franja de nivel volvió a gris").toContain("bg-primary/10");
     expect(CODIGO).toContain("text-primary");
   });
 
-  it("y la cabecera de columnas SIGUE gris, que es lo que hace que la franja separe", () => {
-    // CONTROL, y no es cosmético: si las dos van en color, la franja deja de marcar dónde empieza cada
-    // nivel de Wang y la tabla se lee como un solo bloque.
+  it("y la cabecera de columnas NO lleva fondo: una sola superficie pintada", () => {
+    // ═══ SEGUNDA VUELTA (Santiago, 2026-09-10, variante (c)) ═══
+    //
+    // Este caso decía que la cabecera "sigue gris", y por la tarde eso dejó de ser lo correcto. Su
+    // reporte: el gris de la cabecera y el azul de la franja son dos familias y chocan pegados.
+    //
+    // LO QUE SE CORRIGE NO ES LA ARMONÍA DE LOS DOS COLORES, ES QUE HAYA DOS RELLENOS. La cabecera pierde
+    // el fondo; la franja conserva el azul. Queda UNA superficie pintada, y es la que dice dónde empieza
+    // cada nivel de Wang, que es lo único que aquí debe separar.
+    //
+    // La aserción es la misma de antes con el signo cambiado por una decisión suya, no por un rojo que
+    // estorbaba: sigue afirmando que la cabecera y la franja NO compiten.
     const thead = CODIGO.slice(CODIGO.indexOf("<thead>"), CODIGO.indexOf("</thead>"));
-    expect(thead, "la cabecera de columnas también se pintó de marca").toContain("bg-muted");
-    expect(thead).not.toContain("bg-primary");
+    expect(thead, "la cabecera de columnas volvió a llevar fondo").not.toContain("bg-muted");
+    expect(thead, "la cabecera de columnas se pintó de marca").not.toContain("bg-primary");
+  });
+
+  it("y la tabla de indicadores ANI-BIS-E, su vecina, quedó igual", () => {
+    // LA QUE FALTABA (Santiago, 2026-09-10): vive en la misma subpestaña y en Reporte/HC, y se quedó fuera
+    // del barrido del día anterior por lo mismo que la de Wang (escribe sus clases a mano y nunca adoptó
+    // `tabla.tsx`). Su cabecera ya iba sin fondo, así que de la variante (c) solo le faltaba el aire.
+    const IND = readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8");
+    expect(IND).toContain('<th className="py-2 pl-3 pr-4 font-medium">Indicador</th>');
+    expect(IND).toContain('<th className="py-2 pr-3 font-medium">Clasificación</th>');
+    expect(IND).toContain('<td className="py-2 pl-3 pr-4">');
   });
 
   it("NUNCA con color de riesgo: esa reserva es clínica, no de gusto", () => {
