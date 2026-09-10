@@ -16,7 +16,7 @@ const completa: EstadoConsulta = {
   encuestaCompleta: true,
   diagnosticoConfirmado: true,
   protocoloComputado: true,
-  protocoloAprobado: true,
+  protocoloEmitido: true,
   reporteEstado: "sent",
   nutraceuticosDecision: "si",
   proximaCita: "2026-11-22",
@@ -36,23 +36,26 @@ describe("pendientes del cierre", () => {
     expect(p?.bloqueadoPor).toBeNull();
   });
 
-  it("BLOQUEADO POR OTRA COSA: va en la lista, SIN enlace, diciendo qué lo desbloquea", () => {
-    // El tratamiento sin aprobar con el diagnostico sin confirmar: no se puede hacer hoy, pero va a poder.
-    const p = con({ diagnosticoConfirmado: false, protocoloAprobado: false }).find((x) => x.id === "protocolo");
-    expect(p?.etapa).toBeNull();
-    expect(p?.bloqueadoPor).toBe("confirmar el diagnóstico");
-  });
-
-  it("el MISMO pendiente pasa a accionable cuando se desbloquea", () => {
-    const p = con({ protocoloAprobado: false }).find((x) => x.id === "protocolo");
+  // EL PENDIENTE DEL PROTOCOLO YA NO SE BLOQUEA POR NADA (2026-09-09). Era "el tratamiento no se aprobó",
+  // y con el diagnostico sin confirmar quedaba bloqueado hasta confirmarlo. Ahora es "el plan no se le
+  // entregó al paciente", y entregar no depende de confirmar nada: se imprime o se envia. El caso de
+  // BLOQUEADO lo cubre el pendiente del diagnostico, que sigue arriba con su propio caso.
+  it("el pendiente del protocolo es accionable en cuanto hay plan que entregar", () => {
+    const p = con({ protocoloEmitido: false }).find((x) => x.id === "protocolo");
+    expect(p?.titulo).toBe("El plan no se le entregó al paciente");
     expect(p?.etapa).toBe("tratamiento");
     expect(p?.bloqueadoPor).toBeNull();
   });
 
+  it("y desaparece cuando ya se entrego", () => {
+    // CONTROL: sin esto, un pendiente que se listara SIEMPRE tambien pasaria verde arriba.
+    expect(ids({ protocoloEmitido: true })).not.toContain("protocolo");
+  });
+
   it("NO ACCIONABLE NUNCA: un protocolo que jamás se computó NO aparece", () => {
-    // Misma condicion con la que el sistema ya rechaza el acto ("No se puede aprobar un protocolo que
-    // nunca se computo"). Listarlo seria pedir algo que el propio sistema prohibe, para siempre.
-    expect(ids({ protocoloComputado: false, protocoloAprobado: false })).not.toContain("protocolo");
+    // Misma condicion con la que el sistema ya rechaza el acto ("No se puede emitir una prescripción que
+    // nunca se computó"). Listarlo seria pedir algo que el propio sistema prohibe, para siempre.
+    expect(ids({ protocoloComputado: false, protocoloEmitido: false })).not.toContain("protocolo");
     expect(imposiblesDeLaConsulta({ ...completa, protocoloComputado: false })).toContain("protocolo");
   });
 
@@ -77,7 +80,7 @@ describe("pendientes del cierre", () => {
       encuestaCompleta: false,
       diagnosticoConfirmado: false,
       protocoloComputado: true,
-      protocoloAprobado: false,
+      protocoloEmitido: false,
       reporteEstado: "draft",
       nutraceuticosDecision: null,
       proximaCita: null,

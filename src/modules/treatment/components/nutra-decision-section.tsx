@@ -52,11 +52,9 @@ function fecha(iso: string): string {
 export function NutraDecisionSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveNutraDecisionAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -87,7 +85,7 @@ export function NutraDecisionSection({
 
       <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-3">
         <input type="hidden" name="evaluationId" value={evaluationId} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
+        <fieldset className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-4">
             {(["si", "no", "pendiente"] as const).map((v) => (
               <label key={v} className="flex items-center gap-1.5 text-sm text-foreground">

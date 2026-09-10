@@ -3,6 +3,7 @@
 // donde ocurren.
 
 import type { HcAntecedenteResuelto } from "../data/hc-antecedentes-map";
+import { etiquetaDeVia } from "../vias-de-entrega";
 import {
   lineaDeReemplazo,
   observacionesVigentes,
@@ -381,6 +382,51 @@ export function HcProximaConsulta({ fecha }: { fecha: string | null }) {
       ) : (
         <p className="text-sm text-muted-foreground">Sin fecha registrada</p>
       )}
+    </Tarjeta>
+  );
+}
+
+/**
+ * QUE SE LE ENTREGO AL PACIENTE Y CUANDO (2026-09-09).
+ *
+ * ES LA PREGUNTA QUE EL CANDADO CONTESTABA MAL. Antes, la prescripcion se bloqueaba al aprobar y eso
+ * hacia de constancia por accidente; el precio eran un boton que parecia un tramite, una prescripcion
+ * cerrada y una reapertura con motivo para corregir una coma. Ahora la prescripcion sigue abierta y lo
+ * que queda registrado es cada SALIDA, que es lo unico que de verdad importaba.
+ *
+ * Y EL CASO SIN ENTREGA SE DECLARA, no se calla: sin emision, las cifras del documento son las de HOY y
+ * pueden cambiar mañana. Un bloque vacio en un documento probatorio se lee como que no habia nada que
+ * decir.
+ */
+export function HcEntregas({
+  entregas,
+  sinEmitir,
+}: {
+  entregas: { fecha: string; via: string }[];
+  sinEmitir: boolean;
+}) {
+  return (
+    <Tarjeta>
+      <TituloSeccion>Documentos entregados al paciente</TituloSeccion>
+      {entregas.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {entregas.map((e) => (
+            <li key={e.fecha + e.via} className="text-sm text-foreground">
+              <span className="tabular-nums">{e.fecha}</span> · {etiquetaDeVia(e.via)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No consta que se haya entregado ningún plan en esta consulta.
+        </p>
+      )}
+      {sinEmitir ? (
+        <p className="text-xs text-muted-foreground">
+          Las cifras de esta historia son las vigentes hoy, no las de una entrega: el plan aún no se ha
+          entregado y puede cambiar.
+        </p>
+      ) : null}
     </Tarjeta>
   );
 }

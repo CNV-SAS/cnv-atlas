@@ -1,4 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+
+import { etiquetaDeVia } from "../vias-de-entrega";
 import {
   lineaDeReemplazo,
   observacionesVigentes,
@@ -379,6 +381,33 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
 
         <Seccion titulo="Próxima consulta">
           <Text>{hc.proximaCita ?? "No agendada"}</Text>
+        </Seccion>
+
+        {/* QUE SE LE ENTREGO AL PACIENTE Y CUANDO (2026-09-09). Es la pregunta que el sellado intentaba
+            contestar BLOQUEANDO la prescripcion, y que ahora contesta el registro de emisiones: la
+            prescripcion sigue abierta y cada salida deja su copia inmutable.
+
+            Y EL CASO SIN ENTREGA SE DECLARA, no se calla (cuidado (c) de Santiago). Sin emision, las
+            cifras de este documento son las de HOY y pueden cambiar mañana; presentarlas sin decirlo
+            seria una afirmacion falsa con formato de documento clinico. */}
+        <Seccion titulo="Documentos entregados al paciente">
+          {hc.entregas.length > 0 ? (
+            hc.entregas.map((e) => (
+              <Text key={e.fecha + e.via} style={styles.item}>
+                {e.fecha} · {etiquetaDeVia(e.via)}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.vacio}>
+              No consta que se haya entregado ningún plan en esta consulta.
+            </Text>
+          )}
+          {hc.prescripcionSinEmitir ? (
+            <Text style={styles.vacio}>
+              Las cifras de este documento son las vigentes hoy, no las de una entrega: el plan aún no se
+              ha entregado y puede cambiar.
+            </Text>
+          ) : null}
         </Seccion>
 
         {/* EL SELLO DE CONSENTIMIENTO: la mitad legal del derecho de acceso. Dice bajo qué autorizaciones se

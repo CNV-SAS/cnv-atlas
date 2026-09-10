@@ -36,12 +36,10 @@ export function NutraceuticalsSection({
   evaluationId,
   protocol,
   canPrescribe,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
   canPrescribe: boolean; // el actor es nutricionista
-  locked: boolean; // diagnostico sin confirmar o protocolo aprobado (inmutable)
 }) {
   const [state, formAction, pending] = useActionState(saveNutraceuticalsAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -135,7 +133,7 @@ export function NutraceuticalsSection({
     );
   }
 
-  // --- VISTA DEL NUTRICIONISTA (editable; deshabilitada si locked) ---
+  // --- VISTA DEL NUTRICIONISTA (editable) ---
   return (
     <section className={bloqueCls("derivado")}>
       <h3 className="text-base font-semibold text-foreground">Nutracéuticos</h3>
@@ -153,7 +151,7 @@ export function NutraceuticalsSection({
             servidor lo detecta bajo lock y rechaza sin pisar. */}
         <input type="hidden" name="baseSignature" value={prescriptionSignature(protocol)} />
         <input type="hidden" name="nutraceuticals" value={nutrasPayload} />
-        <fieldset disabled={locked} className="flex flex-col gap-3">
+        <fieldset className="flex flex-col gap-3">
           <RecommendedList recommended={recommended} isAdded={isAdded} onAdd={addProduct} />
           <p className="text-xs text-muted-foreground">
             Abajo agregas los que prescribes; son tu decisión, distinta de la recomendación del modelo.

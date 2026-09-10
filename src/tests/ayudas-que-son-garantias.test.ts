@@ -94,14 +94,16 @@ const GARANTIAS: [string, string, string][] = [
     "Sin esto, no poder editar las del modelo se lee como campo bloqueado por error.",
   ],
   [
-    "aprobar congela, reabrir queda registrado",
-    // CAMBIO EL FRAGMENTO, NO LA GARANTIA (2026-09-01). Decia "nueva se le avisa, porque cambia lo que
-    // come", y ese texto era FALSO: aprobar escribe el evento en la auditoria y nada mas, no notifica a
-    // nadie. La garantia que este candado protege ("nunca se poda un texto que anuncia una consecuencia
-    // que llega al paciente") sigue igual y por eso la fila se queda; lo que cambio es que ahora el texto
-    // dice lo que el profesional TIENE QUE HACER en vez de prometer un automatismo que no existe.
-    // No se relajo el candado: se corrigio el texto que vigilaba.
-    "envíale el reporte",
+    "si cambias un plan que el paciente ya tiene, hay que volver a entregárselo",
+    // TERCERA VEZ QUE CAMBIA EL FRAGMENTO Y NINGUNA LA GARANTIA, que es justo lo que esta fila existe
+    // para sostener:
+    //   · 2026-09-01: decia "nueva se le avisa, porque cambia lo que come", y era FALSO (aprobar escribia
+    //     el evento en la auditoria y nada mas). Paso a decir lo que el profesional TIENE QUE HACER.
+    //   · 2026-09-09: se retiro la aprobacion entera. El texto ya no cuelga de aprobar sino de que el
+    //     paciente HAYA RECIBIDO algo, que es la condicion real de la §12c y ademas la que siempre fue.
+    // La garantia ("nunca se poda un texto que anuncia una consecuencia que llega al paciente") esta
+    // intacta; lo que se movio es de que estado cuelga.
+    "vuelve a entregársela",
     "Consecuencias de un acto que sale del sistema y llega al paciente. Nunca se poda un texto que anuncia eso.",
   ],
 

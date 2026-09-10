@@ -29,7 +29,8 @@ import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDateTime } from "@/lib/format/date";
+import { formatDate, formatDateTime } from "@/lib/format/date";
+import { etiquetaDeVia } from "@/modules/reports/vias-de-entrega";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,7 +43,6 @@ import {
 import {
   aplicarCambioMenuAction,
   aplicarCambiosMenuAction,
-  reopenProtocolAction,
   generateMenuAction,
   saveAdjustmentsAction,
   saveIntercambioAction,
@@ -369,14 +369,12 @@ function PrevRow({
 function CadenaCaloricaSection({
   evaluationId,
   protocol,
-  locked,
   prescripcion,
   asesoria,
   validacion,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
   /** La prescripcion del motor que gobierna, para AVISAR si su proteina difiere de la de la cadena. */
   prescripcion: PrescripcionNutricional | null;
   /** Los rangos que su ciencia SUGIERE para proteina y grasa. Muestran, no validan. */
@@ -598,7 +596,7 @@ function CadenaCaloricaSection({
       {/* Firma de concurrencia: lo que el cliente cargó. Si otro profesional cambió la cadena, el servidor
           lo detecta bajo lock y rechaza sin pisar. */}
       <input type="hidden" name="baseSignature" value={baseSignature} />
-      <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
+      <fieldset className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 1 · LA META. Lo que el profesional DECIDE. */}
         <section className={bloqueCls("decision")}>
           <h3 className={tituloBloqueCls("decision")}>Objetivo del plan</h3>
@@ -659,7 +657,6 @@ function CadenaCaloricaSection({
                 type="button"
                 className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
                 onClick={() => setPal("")}
-                disabled={locked}
                 title="Deja el nivel que recomienda el modelo, sin registrarlo como decisión tuya"
               >
                 Usar la recomendación del modelo ({nivelFaLabel(base.pal)})
@@ -696,7 +693,6 @@ function CadenaCaloricaSection({
               type="button"
               className="font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
               onClick={() => setPesoMeta("")}
-              disabled={locked}
               title="Vacía el campo; guarda para volver al peso calculado"
             >
               Usar el calculado ({pesoCalcDisp} kg)
@@ -751,7 +747,7 @@ function CadenaCaloricaSection({
           al teclear (21b) y para que las dos cuentas no puedan salir de fuentes distintas. */}
       {validacion(adj, opciones, hayCambiosSinGuardar)}
 
-      <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
+      <fieldset className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
 
             EL TITULO ES EL SUYO (cotejo punto 23): su archivo lo llama "D — FÓRMULA SINTÉTICA", y
@@ -1074,7 +1070,6 @@ export function TreatmentPanel({
   // editable y el guardado chocaria contra el trigger). Se distinguen para dar el mensaje correcto.
   // SIN BLOQUEO POR DIAGNOSTICO SIN CONFIRMAR (2026-09-09). Lo unico que cierra el protocolo es que la
   // prescripcion este APROBADA, que es cuando se emitio. Ver `treatment-writer.ts`.
-  const locked = protocol.approved;
   // Restricciones del MODELO (salida del motor, selladas write-once). Un tratamiento anterior al snapshot
   // no las tiene: lista vacia, no aviso.
   const snapRestricciones = protocol.protocolSuggested?.restricciones ?? [];
@@ -1101,33 +1096,16 @@ export function TreatmentPanel({
         <CardTitle>Protocolo de tratamiento</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {/* SE RETIRA EL AVISO DE "diagnostico sin confirmar" (2026-09-09): el protocolo ya no se bloquea
-            por eso. Ver `treatment-writer.ts` para el porque. */}
-        {protocol.approved ? (
-          <ProtocoloAprobado evaluationId={evaluationId} protocol={protocol} />
-        ) : null}
+        {/* SE RETIRO EL AVISO DE "diagnostico sin confirmar" (2026-09-09): el protocolo ya no se bloquea
+            por eso. Ver `treatment-writer.ts` para el porque.
 
-        {/* ESTA PRESCRIPCIÓN REEMPLAZA A OTRA. Va aunque el protocolo esté en borrador: es justo mientras
-            se rehace cuando el profesional necesita saber que hay una anterior que el paciente ya tiene. */}
-        {!protocol.approved && protocol.aprobacionesPrevias > 0 ? (
-          <div className="rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
-            <p className="font-medium">Esta prescripción reemplaza a otra que el paciente ya recibió.</p>
-            <p className="pt-1 text-foreground/90">
-              {protocol.aprobacionesPrevias === 1
-                ? "Hay una prescripción anterior aprobada"
-                : `Hay ${protocol.aprobacionesPrevias} prescripciones anteriores aprobadas`}
-              , guardada{protocol.aprobacionesPrevias === 1 ? "" : "s"} en la historia del paciente.
-              {protocol.reopenReason ? ` Motivo de la última reapertura: "${protocol.reopenReason}".` : ""}{" "}
-              {/* DECIA "Al aprobar la nueva se le avisará". NO ES ASI: aprobar sella la prescripción y
-                  escribe el evento en la auditoría, y nada más; el paciente se entera cuando le envías el
-                  reporte, que es un acto tuyo aparte. Un texto que le dice al profesional que el sistema
-                  avisa por él hace que NO avise. Su §12c exige que se le diga; lo que no existe es el
-                  automatismo, y eso va preguntado, no inventado. */}
-              Cuando apruebes la nueva, envíale el reporte: cambia lo que come y hoy el sistema no se lo
-              avisa solo.
-            </p>
-          </div>
-        ) : null}
+            Y SE RETIRARON LOS DOS BLOQUES DE APROBACION. Uno decia que la prescripcion estaba congelada y
+            ofrecia reabrirla con un motivo; el otro avisaba de que reemplazaba a una anterior. Los dos
+            colgaban de un estado que ya no existe: la prescripcion esta SIEMPRE abierta.
+            Lo que si importaba clinicamente (que el paciente ya tiene una version y hay que avisarle si
+            cambia lo que come, §12c) no dependia del candado, sino de que alguien hubiera recibido algo.
+            Eso es lo que dice ahora `EntregasRegistradas`. */}
+        <EntregasRegistradas emisiones={protocol.emisiones} />
         {/* AGRUPACION (2026-08-22): dos bloques SEGUIDOS, sin nivel de navegacion nuevo (el orden natural es
             leer el caso y bajar a construir; no son dos modos alternativos, son dos momentos). Arriba LECTURA
             del diagnostico (resumen + meta, que rendriza el Panel server, + objetivo + guias + salud celular);
@@ -1136,7 +1114,6 @@ export function TreatmentPanel({
           key={sectionKey("objetivo", objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto }))}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
           prescripcion={prescripcion}
           kcalObjetivo={objetivoEfectivoPanel}
         />
@@ -1229,7 +1206,6 @@ export function TreatmentPanel({
           )}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
           prescripcion={prescripcion}
           asesoria={asesoria}
           validacion={(ajustes, opcionesCadena, sinGuardar) => (
@@ -1250,7 +1226,6 @@ export function TreatmentPanel({
           )}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
         />
         {/* Tiempos de comida (CP2.3): seccion propia, MANDAN sobre la distribucion y sobre el menu. Va antes
             de las dos, que es el orden en que se decide. key = su propia firma.
@@ -1263,14 +1238,12 @@ export function TreatmentPanel({
           )}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
         />
         {/* Distribucion (CP2.2b): despues del intercambio, que le da las porciones. key = firma de tiempos (remonta). */}
         <TiemposSection
           key={sectionKey("tiempos", tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: protocol.tiempos }))}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
         />
         {/* LA LISTA DEL PACIENTE SE RETIRO DE AQUI (2026-09-03), y era una divergencia nuestra que se cierra.
             En su archivo esa lista es `plan-print-only`: NO se ve en pantalla, solo al imprimir. La
@@ -1283,7 +1256,6 @@ export function TreatmentPanel({
           key={sectionKey("menu-semanal", menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: protocol.menuSemanal }))}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
         />
         {/* Restricciones JUNTO al menu (checkpoint 2.4): son su insumo; que se lea que lo que se marca aqui
             cambia lo que genera el menu. key = firma de las restricciones (remonte). */}
@@ -1297,28 +1269,26 @@ export function TreatmentPanel({
           )}
           evaluationId={evaluationId}
           protocol={protocol}
-          locked={locked}
           adaptar={(sinGuardar) => (
             <AdaptarMenuBoton
               evaluationId={evaluationId}
               protocol={protocol}
-              locked={locked}
               patronAlimentario={patronAlimentario}
               sinGuardar={sinGuardar}
             />
           )}
         />
-        <MenuSection evaluationId={evaluationId} protocol={protocol} locked={locked} />
+        <MenuSection evaluationId={evaluationId} protocol={protocol} />
         <NotesSection protocol={protocol} />
-        {/* EL BOTON DE APROBAR SE RETIRA (2026-09-09, peticion de Gildardo). La prescripcion se sella
-            cuando se EMITE, que es donde hay un acto de verdad: al enviar el reporte al paciente o al
-            declarar que se entrego en consulta. Los dos sellan lo mismo y registran POR CUAL VIA.
-            Aqui queda el aviso de que todavia no se emitio, que es informacion y no un mando. */}
-        {!protocol.approved ? (
+        {/* MIENTRAS NO SE HA ENTREGADO NADA, SE DICE. Es informacion y no un mando: no hay boton que
+            pulsar, porque emitir ocurre al imprimir el plan o al enviar el reporte, que son actos que el
+            profesional hace de todos modos. Sin esta linea, una prescripcion que nadie ha entregado se
+            lee igual que una entregada. */}
+        {protocol.emisiones.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
-            La prescripción está en borrador. Se sella al emitirla, desde{" "}
-            <span className="font-medium text-foreground">Reporte / HC</span>: al enviársela al paciente o
-            al registrar que se la entregaste en consulta.
+            Todavía no le has entregado este plan al paciente. Queda registrado cuando lo imprimes desde{" "}
+            <span className="font-medium text-foreground">Reporte / HC</span> o cuando le envías el
+            reporte. Puedes seguir ajustándolo antes y después.
           </p>
         ) : null}
       </CardContent>
@@ -1326,24 +1296,21 @@ export function TreatmentPanel({
   );
 }
 
-// EL ACTO QUE FALTABA. La vertical de aprobar estaba construida entera (policy `canApproveProtocol`,
-// servicio con sus cuatro gates, writer transaccional con audit inline, trigger 0026 de inmutabilidad y
-// dos suites de tests) y NINGUNA PANTALLA INVOCABA LA ACTION. Lo encontro el barrido del 2026-09-01
-// comparando las 99 server actions contra quien las nombra.
+// TODA LA VERTICAL DE APROBAR SE RETIRO (2026-09-09): el boton, la accion, el servicio, el writer y las
+// dos ramas del trigger 0026 (ver la migracion 0116).
 //
-// LO QUE ARRASTRABA, y por eso no era un boton de menos: con `approved` clavado en false, nunca se
-// activaba el bloqueo de edicion, nunca se veia el aviso de que la prescripcion reemplaza a otra, y la
-// REAPERTURA era inalcanzable porque vive dentro del bloque de aprobado. Y sobre todo: **todo plan que
-// le llegaba a un paciente salia de una prescripcion en borrador**.
+// SU HISTORIA, EN DOS PASOS, porque explica por que el disenio actual no es un descuido:
+//   1. El 2026-09-01 un barrido encontro que la vertical estaba construida entera y NINGUNA PANTALLA
+//      invocaba la accion: todo plan que le llegaba a un paciente salia de una prescripcion en borrador.
+//      Se cableo el boton.
+//   2. El 2026-09-09, con el boton ya en pantalla, Santiago reporto que el acto CONFUNDE. Y el hallazgo
+//      que decidio: el plan impreso, el del correo y la historia clinica se arman los tres del protocolo
+//      VIVO, asi que la aprobacion no los protegia por diseño sino por efecto lateral (congelaba los
+//      `adj_*`).
 //
-// NO LLEVA DIALOGO DE CONFIRMACION, y es la misma razon que ya esta escrita en `ProtocoloAprobado`: un
-// "¿seguro?" pide una confirmacion, no una razon. Aqui la salvaguarda no es un paso mas, es que el acto
-// se puede DESHACER (reabrir, con motivo, que queda en la historia). Lo que si lleva es decir ANTES de
-// pulsar que es lo que va a pasar.
-// EL COMPONENTE `AprobarProtocolo` SE RETIRO (2026-09-09). Era el boton "Aprobar la prescripcion", y la
-// prescripcion ya no se sella con un boton propio: se sella al EMITIR, que es donde hay un acto de verdad.
-// Las dos vias son enviar el reporte al paciente y declarar la entrega en consulta, y las dos registran
-// por cual se aprobo. Ver `send-report.ts` y `entregado-en-consulta.tsx`.
+// LO QUE SUSTITUYE A LAS DOS COSAS QUE HACIA. Sellar lo hace la EMISION, que guarda una copia inmutable de
+// lo que salio; cerrar no lo hace nadie, porque no hacia falta. Las dos vias de emision son actos que el
+// profesional hace de todos modos: imprimir el plan y enviar el reporte.
 
 // Etiqueta y color del estado de una sugerencia de IA (accesible: etiqueta ademas de color).
 const MENU_STATUS: Record<string, { label: string; cls: string }> = {
@@ -1359,13 +1326,11 @@ const MENU_STATUS: Record<string, { label: string; cls: string }> = {
 function AdaptarMenuBoton({
   evaluationId,
   protocol,
-  locked,
   patronAlimentario,
   sinGuardar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
   patronAlimentario: string[];
   /** Hay restricciones escritas y todavia no guardadas. */
   sinGuardar: boolean;
@@ -1386,7 +1351,7 @@ function AdaptarMenuBoton({
     (protocol.protocolSuggested?.restricciones?.length ?? 0) > 0 ||
     protocol.restricciones.length > 0 ||
     patronAlimentario.length > 0;
-  const disabled = locked || pending || !cadenaLista || !hayRestricciones || sinGuardar;
+  const disabled = pending || !cadenaLista || !hayRestricciones || sinGuardar;
 
   return (
     <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2 border-t border-border pt-3">
@@ -1401,15 +1366,15 @@ function AdaptarMenuBoton({
           restricciones de la BASE, no de este formulario. Escribir una y pulsar adaptar produciria una
           adaptacion que IGNORA lo recien escrito, sin decirlo. A media pantalla la distancia hacia de
           guarda; pegado al campo, hace falta decirlo. */}
-      {sinGuardar && !locked ? (
+      {sinGuardar ? (
         <p className="max-w-prose text-xs text-attention">
           Guarda las restricciones primero: la IA lee las guardadas, no lo que está escrito en el campo.
         </p>
-      ) : !cadenaLista && !locked ? (
+      ) : !cadenaLista ? (
         <p className="text-xs text-muted-foreground">
           El protocolo aún no está calculado; no se puede adaptar el menú.
         </p>
-      ) : !hayRestricciones && !locked ? (
+      ) : !hayRestricciones ? (
         <p className="max-w-prose text-xs text-muted-foreground">
           Este paciente no tiene restricciones registradas (ni del modelo, ni tuyas, ni patrón
           alimentario declarado), así que no hay nada que adaptar: el menú del ciclo es el que aplica.
@@ -1427,11 +1392,9 @@ function AdaptarMenuBoton({
 function MenuSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   // QUE CAMBIOS YA SE APLICARON. No se guarda una marca aparte: se DERIVA de la grilla, comparando el
   // reemplazo propuesto con lo que la celda tiene guardado. Una marca aparte seria un segundo estado que
@@ -1472,7 +1435,6 @@ function MenuSection({
               key={m.id}
               suggestion={m}
               evaluationId={evaluationId}
-              locked={locked}
               aplicados={aplicados}
             />
           ))}
@@ -1489,12 +1451,10 @@ function MenuSection({
 function MenuCard({
   suggestion: m,
   evaluationId,
-  locked,
   aplicados,
 }: {
   suggestion: MenuSuggestion;
   evaluationId: string;
-  locked: boolean;
   /** Claves `dia_tiempo` que el profesional ya aceptó: su celda ya trae el reemplazo. */
   aplicados: Set<string>;
 }) {
@@ -1528,14 +1488,12 @@ function MenuCard({
                   key={`${c.dia}_${c.tiempo}`}
                   cambio={c}
                   evaluationId={evaluationId}
-                  locked={locked}
                   yaEsta={aplicados.has(`${c.dia}_${c.tiempo}`)}
                 />
               ))}
             </ul>
             <AplicarTodasMenu
               evaluationId={evaluationId}
-              locked={locked}
               pendientes={json.cambios.filter((c) => !aplicados.has(`${c.dia}_${c.tiempo}`))}
             />
           </div>
@@ -1574,82 +1532,39 @@ function MenuCard({
   );
 }
 
-// LA PRESCRIPCIÓN APROBADA, con su salida (Gildardo 2026-08-30 §6c).
+// LO QUE YA SE LE ENTREGO AL PACIENTE (2026-09-09).
 //
-// EL TEXTO CAMBIÓ, y el cambio es la instrucción: decía "para cambiarla se corrige la evaluación (versión
-// nueva de toda la cadena), no se edita aquí", y eso ya no es cierto ni es lo que él quiere. Su palabra:
-// "el sellado no es un candado: es una consecuencia registrada. Un profesional que necesita corregir un
-// plan aprobado tiene que poder hacerlo". Un texto que describe mal lo que el sistema hace es un defecto
-// de seguridad, no de redacción: le decía al profesional que su única salida era rehacer la evaluación.
+// SUSTITUYE A `ProtocoloAprobado`, que era el bloque de "esta prescripcion esta congelada, reabrela con un
+// motivo". Ese bloque existia porque aprobar CERRABA; ahora emitir solo REGISTRA y no hay nada que
+// reabrir, asi que el bloque deja de ser un mando y pasa a ser informacion.
 //
-// EL MOTIVO NO ES OPCIONAL Y NO SE ESCONDE detrás de una confirmación: se escribe ANTES de poder pulsar,
-// porque es lo que queda en la historia. Un diálogo de "¿seguro?" pide una confirmación; esto pide una
-// razón, que es otra cosa.
-function ProtocoloAprobado({
-  evaluationId,
-  protocol,
-}: {
-  evaluationId: string;
-  protocol: TreatmentProtocol;
-}) {
-  const [state, formAction, pending] = useActionState(reopenProtocolAction, EMPTY);
-  useFormToastAndRefresh(state);
-  const [motivo, setMotivo] = useState("");
-  const [abierto, setAbierto] = useState(false);
-
+// LO QUE SI SE CONSERVA, Y ES LO QUE IMPORTA CLINICAMENTE: el aviso de §12c. Si el paciente ya tiene una
+// version en la mano y el profesional cambia lo que come, hay que decirselo, y el sistema no lo hace
+// solo. Ese requisito no dependia del candado; dependia de que alguien hubiera recibido algo, que es
+// justo lo que esta lista dice.
+function EntregasRegistradas({ emisiones }: { emisiones: { fecha: string; via: string }[] }) {
+  if (emisiones.length === 0) return null;
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted px-3 py-3">
-      <p className="text-sm text-muted-foreground">
-        Este protocolo ya fue aprobado, así que la prescripción está congelada: para editarla hay que
-        reabrirla. Reabrir queda registrado en la historia del paciente con tu motivo, y cuando apruebes la
-        nueva tendrás que enviarle el reporte: cambia lo que come y el sistema no se lo avisa solo.
-        {protocol.aprobacionesPrevias > 0
-          ? " Esta prescripción ya reemplazó a otra anterior."
-          : ""}
+    <div className="flex flex-col gap-2 rounded-md border border-attention/40 bg-attention-bg px-3 py-3 text-sm">
+      <p className="font-medium text-attention">
+        {emisiones.length === 1
+          ? "El paciente ya tiene este plan."
+          : `El paciente ya recibió este plan ${emisiones.length} veces.`}
       </p>
-      {abierto ? (
-        <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
-          <input type="hidden" name="evaluationId" value={evaluationId} />
-          <Label htmlFor="reopen-reason" className="text-sm">
-            ¿Por qué la reabres?
-          </Label>
-          <Textarea
-            id="reopen-reason"
-            name="reason"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            rows={2}
-            maxLength={500}
-            placeholder="Ej. El paciente reportó una intolerancia que no estaba registrada al aprobar."
-            disabled={pending}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="outline" size="sm" disabled={pending || motivo.trim().length < 10}>
-              {pending ? "Reabriendo..." : "Reabrir la prescripción"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setAbierto(false)}
-              disabled={pending}
-            >
-              Cancelar
-            </Button>
-          </div>
-          {motivo.trim().length > 0 && motivo.trim().length < 10 ? (
-            <p className="text-xs text-muted-foreground">
-              Escribe un motivo un poco más largo: queda en la historia del paciente.
-            </p>
-          ) : null}
-        </form>
-      ) : (
-        <div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setAbierto(true)}>
-            Reabrir la prescripción
-          </Button>
-        </div>
-      )}
+      <ul className="flex flex-col gap-0.5 text-foreground/90">
+        {emisiones.map((e) => (
+          <li key={e.fecha + e.via} className="tabular-nums">
+            {formatDate(e.fecha)} · {etiquetaDeVia(e.via)}
+          </li>
+        ))}
+      </ul>
+      {/* NO PROMETE UN AVISO QUE EL SISTEMA NO MANDA. Emitir registra la salida y nada mas; al paciente
+          se le dice enviandole el reporte o entregandole la hoja otra vez, que son actos del profesional.
+          Un texto que diga que el sistema avisa por el hace que NO avise. */}
+      <p className="text-foreground/90">
+        Puedes seguir ajustando la prescripción. Si la cambias, vuelve a entregársela: cambia lo que come
+        y el sistema no se lo avisa solo.
+      </p>
     </div>
   );
 }
@@ -1681,12 +1596,10 @@ type CambioPropuestoView = MenuCambios["cambios"][number];
 function CambioMenu({
   cambio: c,
   evaluationId,
-  locked,
   yaEsta,
 }: {
   cambio: CambioPropuestoView;
   evaluationId: string;
-  locked: boolean;
   yaEsta: boolean;
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambioMenuAction, EMPTY);
@@ -1718,7 +1631,7 @@ function CambioMenu({
         {yaEsta ? (
           <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
         ) : (
-          <Button type="submit" variant="outline" size="sm" disabled={locked || pending}>
+          <Button type="submit" variant="outline" size="sm" disabled={pending}>
             {pending ? "Aplicando..." : "Aplicar a la grilla"}
           </Button>
         )}
@@ -1740,11 +1653,9 @@ function CambioMenu({
 // NO APARECE con una sola pendiente: un "aplicar todas" que aplica una es ruido al lado de su propio botón.
 function AplicarTodasMenu({
   evaluationId,
-  locked,
   pendientes,
 }: {
   evaluationId: string;
-  locked: boolean;
   pendientes: CambioPropuestoView[];
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambiosMenuAction, EMPTY);
@@ -1761,7 +1672,7 @@ function AplicarTodasMenu({
           pendientes.map((c) => ({ dia: c.dia, tiempo: c.tiempo, reemplazo: c.reemplazo })),
         )}
       />
-      <Button type="submit" variant="outline" size="sm" disabled={locked || pending}>
+      <Button type="submit" variant="outline" size="sm" disabled={pending}>
         {pending ? "Aplicando..." : `Aplicar las ${pendientes.length} a la grilla`}
       </Button>
     </form>
@@ -1789,12 +1700,10 @@ function AplicarTodasMenu({
 function RestriccionesSection({
   evaluationId,
   protocol,
-  locked,
   adaptar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
   /** El boton de adaptar el menu, que se renderiza junto al de guardar. Recibe si hay cambios sin guardar. */
   adaptar: (sinGuardar: boolean) => ReactNode;
 }) {
@@ -1834,7 +1743,7 @@ function RestriccionesSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="restricciones" value={JSON.stringify(restricciones)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
+        <fieldset className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap gap-2">
             <Input
               value={restrInput}
@@ -1897,13 +1806,11 @@ function RestriccionesSection({
 function ObjetivoSection({
   evaluationId,
   protocol,
-  locked,
   prescripcion,
   kcalObjetivo,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
   prescripcion: PrescripcionNutricional | null;
   /** El objetivo EFECTIVO de la cadena (el que el profesional ve abajo), para que el título no diga otro. */
   kcalObjetivo: number | null;
@@ -1930,7 +1837,7 @@ function ObjetivoSection({
       <form onSubmit={enviarSinReset(formAction)} className="flex flex-col gap-2">
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-2">
+        <fieldset className="flex min-w-0 flex-col gap-2">
           <Textarea
             name="objetivo"
             value={objetivo}
@@ -1998,11 +1905,9 @@ function ObjetivoSection({
 function IntercambioSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveIntercambioAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -2081,7 +1986,7 @@ function IntercambioSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="intercambio" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           {/* QUE ES UN INTERCAMBIO, en una linea. Es la frase de su archivo, y sin ella la tabla es una
               lista de numeros sin decir para que sirve. La unidad de los macros va AQUI y no en tres
               encabezados: repetir "(g)" tres veces cuesta el ancho que necesitan los numeros. */}
@@ -2256,11 +2161,9 @@ const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sáb
 function MenuSemanalSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveMenuSemanalAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -2337,7 +2240,7 @@ function MenuSemanalSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="menu" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className={`${tabla} min-w-[42rem]`}>
@@ -2440,11 +2343,9 @@ function MenuSemanalSection({
 function TiemposActivosSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveTiemposActivosAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -2482,7 +2383,7 @@ function TiemposActivosSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="activos" value={JSON.stringify(activos)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             {TIEMPOS_DEF.map((t) => (
               <label key={t.id} className="flex items-center gap-1.5 text-sm text-foreground">
@@ -2530,11 +2431,9 @@ const serMap = (m: Record<string, number | boolean>) =>
 function TiemposSection({
   evaluationId,
   protocol,
-  locked,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
-  locked: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveTiemposAction, EMPTY);
   useFormToastRefreshOnSuccess(state);
@@ -2650,7 +2549,7 @@ function TiemposSection({
         <input type="hidden" name="evaluationId" value={evaluationId} />
         <input type="hidden" name="baseSignature" value={baseSignature} />
         <input type="hidden" name="tiempos" value={JSON.stringify(payload)} />
-        <fieldset disabled={locked} className="flex min-w-0 flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <div className="min-w-0 overflow-x-auto">
             {/* Ancho minimo por la misma razon que la tabla de intercambio: sin el, en pantalla estrecha las columnas se aprietan y los numeros se parten, y el desplazamiento lateral nunca se activa. */}
             <table className={`${tabla} min-w-[38rem]`}>

@@ -4,8 +4,7 @@ import { appError, err, ok, type Result } from "@/core/errors";
 import { sendReportEmail } from "@/lib/email/resend";
 
 import { formatDate } from "@/lib/format/date";
-import { getProtocolApprovalState } from "@/modules/treatment/data/treatment-reader";
-import { approveProtocol } from "@/modules/treatment/services/treatment-service";
+import { emitirPrescripcion } from "@/modules/treatment/services/treatment-service";
 
 import { getReportDispatch } from "../data/reports-repository";
 import { uploadReportPdf } from "../data/report-storage";
@@ -51,52 +50,51 @@ export async function sendReport(input: SendReportInput): Promise<Result<{ email
     );
   }
 
-  // EL PROTOCOLO TIENE QUE ESTAR APROBADO PARA EMITIR (decision de Santiago, 2026-09-01).
+  // ENVIAR ES EMITIR (2026-09-09). A partir de aqui el paciente tiene el plan, asi que este es el acto
+  // que deja constancia de QUE recibio.
   //
-  // LA RAZON QUE DECIDE, y no es la simetria con el reporte: un plan emitido desde el BORRADOR no es
-  // RECONSTRUIBLE. Los `adj_*` se pueden mover despues de enviarlo y nadie sabra que recibio el paciente.
-  // Con el protocolo aprobado, el trigger 0026 lo congela y la prescripcion enviada queda fija; ademas la
-  // profesion con que se prescribio se sella en el acto, asi que consta bajo que ambito salio.
+  // COMO LLEGO ESTO AQUI, en dos pasos. Primero exigia la aprobacion previa y mandaba al profesional a
+  // otra pestaña a pulsar un boton; despues la HACIA aqui, en el mismo acto. Ahora ya no aprueba: emite.
+  // La diferencia es que aprobar SELLABA Y CERRABA (a partir de ahi el trigger congelaba la prescripcion
+  // entera y corregir una coma exigia reabrir con motivo), y emitir solo SELLA.
   //
-  // Y ESTO NO ES UNA REGLA NUEVA: el comentario de aqui abajo ya AFIRMABA que "el tratamiento ya esta
-  // aprobado cuando el reporte se envia (el gate de arriba lo exige)", y era falso. El gate de arriba mira
-  // el estado del REPORTE, no el del tratamiento. El codigo ya suponia lo que ahora se comprueba.
+  // Y LA RAZON DE LA REGLA NO CAMBIA, que es lo que hay que mirar al mover una garantia de sitio: un plan
+  // emitido sin dejar copia no es RECONSTRUIBLE, porque los `adj_*` se pueden mover despues y nadie sabra
+  // que recibio el paciente. Eso lo resolvia el congelado por accidente y ahora lo resuelve la copia, que
+  // es mas fuerte: el congelado protegia SOLO mientras nadie reabriera.
   //
-  // EL REENVIO NO PASA POR AQUI, a proposito: `resendReport` reenvia el archivo que ya salio de la
-  // clinica. Un paciente que ya tiene su plan no puede quedarse sin poder recibirlo otra vez porque hoy
-  // pidamos una firma que cuando se emitio no existia.
-  // EL ENVIO ES LA APROBACION (2026-09-09, propuesta de Santiago). Antes esto EXIGIA la aprobacion previa
-  // y mandaba al profesional a otra pestaña a pulsar un boton; ahora la hace aqui, en el mismo acto.
+  // SE EMITE ANTES DE ARMAR EL PLAN, y el orden importa por lo mismo que antes: si el sello falla, no se
+  // envia nada. Un correo que sale sin constancia es justo lo que esto existe para impedir.
   //
-  // POR QUE ES EL SITIO CORRECTO Y NO UN ATAJO: la razon de la regla no cambia, y sigue escrita arriba
-  // (un plan emitido desde el borrador no es RECONSTRUIBLE, porque los `adj_*` se pueden mover despues y
-  // nadie sabra que recibio el paciente). Lo que cambia es QUIEN dispara el sello: aprobar dejaba de ser
-  // un acto y era un tramite previo, y enviar SI es un acto (a partir de aqui el paciente tiene el plan).
-  // Al unirlos, emitir sin prescripcion sellada pasa de estar desaconsejado a ser IMPOSIBLE.
+  // NO HAY GATE DE "YA EMITIDA": cada envio es una salida distinta y deja su propia copia. Ponerlo seria
+  // volver a poner el candado con otro nombre.
   //
-  // SE APRUEBA ANTES DE ARMAR EL PLAN, y el orden importa: el plan se lee EN VIVO del protocolo, asi que
-  // tiene que leerse del ya congelado. Si fallara la aprobacion, no se envia nada.
-  const protocolo = await getProtocolApprovalState(dispatch.evaluationId);
-  if (protocolo && !protocolo.approved) {
-    const aprobado = await approveProtocol(
-      { evaluationId: dispatch.evaluationId },
-      { actorId: input.actorId, actorEmail: input.actorEmail, ip: input.ip },
-      "envio",
+  // EL REENVIO NO PASA POR AQUI, a proposito: `resendReport` reenvia el archivo que YA salio, con su
+  // emision ya registrada. No es una salida nueva, es la misma otra vez.
+  const emitido = await emitirPrescripcion(
+    { evaluationId: dispatch.evaluationId },
+    { actorId: input.actorId, actorEmail: input.actorEmail, ip: input.ip },
+    "correo",
+  );
+  if (!emitido.ok) {
+    return err(
+      appError(
+        "conflict",
+        `No se pudo registrar la entrega, así que el reporte no se envió: ${emitido.error.message}`,
+      ),
     );
-    if (!aprobado.ok) {
-      return err(
-        appError(
-          "conflict",
-          `No se pudo sellar la prescripción, así que el reporte no se envió: ${aprobado.error.message}`,
-        ),
-      );
-    }
   }
 
-  // EL PLAN DEL PACIENTE (Gildardo §7.1: "el paciente recibe el plan completo"). Se arma AQUI, no se
-  // sella: el tratamiento esta APROBADO cuando el reporte se envia (el gate de arriba lo exige) y un
-  // protocolo aprobado esta congelado por su trigger. Asi que leerlo en vivo es reproducible, y sellar una
-  // segunda copia crearia otra vez dos fuentes de lo mismo.
+  // EL PLAN DEL PACIENTE (Gildardo §7.1: "el paciente recibe el plan completo"). Se arma AQUI, en vivo, y
+  // no se vuelve a sellar: la copia de lo que sale acaba de escribirse arriba, dos lineas antes y en el
+  // mismo request. Sellarlo otra vez crearia dos fuentes de lo mismo, que es lo que llevamos una semana
+  // evitando.
+  //
+  // ESTE COMENTARIO DECIA OTRA COSA HASTA EL 2026-09-09, y decia una falsedad: "el tratamiento esta
+  // APROBADO cuando el reporte se envia y un protocolo aprobado esta congelado por su trigger". Ya no hay
+  // aprobacion ni congelado; lo que sostiene la reproducibilidad es la emision. Se corrige aqui porque un
+  // comentario que explica una garantia con el mecanismo VIEJO es como el proximo la desmonta creyendo
+  // que sobra.
   //
   // Si la evaluacion no tiene tratamiento con protocolo, viaja null y el PDF omite el plan entero: es
   // preferible a mandar un plan a medias.

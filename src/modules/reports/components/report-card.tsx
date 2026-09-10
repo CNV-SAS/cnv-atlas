@@ -36,7 +36,6 @@ export type ReportCardView = {
   trajectory?: TrajectoryConfirmation | null;
   // ¿La prescripcion esta aprobada? undefined = no se consulto (las listas no lo traen); null = la
   // evaluacion no tiene tratamiento. Solo se explica el bloqueo cuando se sabe que esta en borrador.
-  protocoloAprobado?: boolean | null;
 };
 
 const initialState: ReportActionState = { error: null, success: null, warning: null };
@@ -194,16 +193,10 @@ export function ReportCard({ report }: { report: ReportCardView }) {
 
         {report.status === "approved" ? (
           <form onSubmit={enviarSinReset(send)} className="flex w-full flex-col gap-2">
-            {/* EL BOTON NO QUEDA MUERTO: dice por que no se puede todavia y DONDE se resuelve. Mismo
-                criterio que la confirmacion de "empeoro" de arriba. Solo aparece cuando se SABE que la
-                prescripcion esta en borrador (`false`); con undefined (listas) no se afirma nada. */}
-            {report.protocoloAprobado === false ? (
-              <span className="text-xs text-clinical-warning">
-                Falta aprobar la prescripción. El paciente recibe su plan en este reporte, y una
-                prescripción en borrador se puede seguir editando después de que él la reciba. Está en la
-                pestaña Tratamiento, subpestaña Nutricionista, al final: “Aprobar la prescripción”.
-              </span>
-            ) : null}
+            {/* SE RETIRO EL AVISO DE "falta aprobar la prescripción" (2026-09-09). Mandaba al profesional a
+                un boton que ya no existe, y ademas afirmaba un requisito retirado: enviar no exige
+                aprobar, porque enviar ES entregar y deja su propia constancia. Un aviso sobre un
+                requisito inexistente es peor que ninguno. */}
             <input type="hidden" name="reportId" value={report.reportId} />
             <fieldset className="flex flex-col gap-1">
               <legend className="text-xs text-muted-foreground">Modo de envio al paciente</legend>
@@ -221,12 +214,12 @@ export function ReportCard({ report }: { report: ReportCardView }) {
               </label>
             </fieldset>
             <span className="text-xs text-muted-foreground">
-              Los modos con notas requieren que las hayas escrito al aprobar.
+              Los modos con notas requieren que las hayas escrito al aprobar el reporte.
             </span>
             <Button
               type="submit"
               size="sm"
-              disabled={sending || report.protocoloAprobado === false}
+              disabled={sending}
               className="self-start"
             >
               {sending ? "Enviando..." : "Enviar al paciente"}
