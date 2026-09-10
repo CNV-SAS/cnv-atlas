@@ -19,7 +19,7 @@ import {
   getProtKgPrescrito,
 } from "@/modules/treatment/data/dieta-resumen-reader";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
-import { formatDate, formatDateOnly } from "@/lib/format/date";
+import { formatDate, formatDateOnly, formatDateTime } from "@/lib/format/date";
 
 import { ajustesDelDocumento } from "./ajustes-del-documento";
 import { componerHistoriaClinica, remisionesExigidas } from "./hc-composicion";
@@ -302,7 +302,14 @@ export async function getHistoriaClinicaDoc(evaluationId: string): Promise<Histo
     //
     // `emitted_at` es un timestamptz, asi que se formatea con `formatDate` (zona de Colombia) y NO con
     // `formatDateOnly`, que es para las columnas `date` puras: convertir una fecha pura la retrocede un dia.
-    entregas: emisiones.map((e) => ({ fecha: formatDate(e.emittedAt), via: e.via })),
+    entregas: emisiones.map((e) => ({
+      // CON HORA, no solo la fecha: dos entregas del MISMO DIA se distinguen por la hora y por las cifras.
+      // Sin eso, el registro sale como dos lineas identicas y no contesta que recibio el paciente.
+      fecha: formatDateTime(e.emittedAt),
+      via: e.via,
+      kcal: e.kcalObjetivo,
+      proteina: e.proteinaG,
+    })),
     // CUIDADO (c) DE SANTIAGO: "verifica que pasa si nunca se emitio: la HC de una consulta sin documento
     // entregado tiene que decir algo, no quedar vacia". Sin esto, el documento saldria con las cifras de
     // hoy y sin nada que avisara de que nadie las entrego, que es peor que un hueco: es una afirmacion

@@ -27,7 +27,6 @@ export type PendienteCierre = {
 
 export type EstadoConsulta = {
   encuestaCompleta: boolean;
-  diagnosticoConfirmado: boolean;
   /** El protocolo se pudo computar (protocol_suggested). Si es false, entregarlo es IMPOSIBLE, no pendiente. */
   protocoloComputado: boolean;
   /** ¿Se le entregó el plan al paciente (impreso o por correo)? Sustituye a `protocoloAprobado`. */
@@ -54,15 +53,14 @@ export function pendientesDeLaConsulta(e: EstadoConsulta): PendienteCierre[] {
     });
   }
 
-  if (!e.diagnosticoConfirmado) {
-    out.push({
-      id: "diagnostico",
-      titulo: "El diagnóstico no se confirmó",
-      detalle: "Confirmarlo es lo que habilita la prescripción del tratamiento.",
-      etapa: "diagnostico",
-      bloqueadoPor: null,
-    });
-  }
+  // EL PENDIENTE DE "EL DIAGNOSTICO NO SE CONFIRMO" SE RETIRO (2026-09-10).
+  //
+  // Apuntaba a un acto que ya no existe: confirmar dejo de ser un boton, y la firma clinica se sella sola
+  // al aprobar el reporte. Dejarlo listaria para siempre algo que el profesional no puede hacer, que es
+  // justo lo que el tercer estado de este archivo (IMPOSIBLE) existe para evitar.
+  //
+  // Y NO SE PIERDE NADA: `confirmed_at` se llena exactamente al aprobar el reporte, asi que este pendiente
+  // coincidia siempre con el de abajo ("El reporte no se aprobó ni se envió"), que si nombra un acto suyo.
 
   // EL PENDIENTE CAMBIO DE HECHO (2026-09-09): antes era "el tratamiento no se aprobó" y ahora es "el
   // plan no se le entregó al paciente".

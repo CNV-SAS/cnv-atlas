@@ -48,6 +48,27 @@ import type {
 
 type Actor = { actorId: string; actorEmail: string; ip: string | null };
 
+// ═══ EL GATE DE "DIAGNOSTICO CONFIRMADO" SE RETIRO DE ESTE ARCHIVO (2026-09-10) ═══
+//
+// ERA LA MISMA REGLA QUE YA SE HABIA RETIRADO EL 2026-09-09, y sobrevivio porque aquel barrido fue del
+// WRITER y estas cinco comprobaciones viven en el SERVICIO. Dos capas, una barrida: el writer cambio
+// `assertConfirmedDiagnosis` por `assertDiagnosisExists` en sus nueve sitios de llamada, y aqui quedaron
+// cinco `if (!protocol.diagnosisConfirmed)` que nadie miro. Lo destapo el smoke: aplicar un cambio de la IA
+// al menu contestaba "El diagnóstico debe estar confirmado antes de editar el menú semanal".
+//
+// EL ARGUMENTO QUE LO RETIRA (Gildardo via Santiago, 2026-09-09): **el diagnostico es del MODELO, no del
+// profesional.** Nadie firma el resultado del motor; lo que si se firma es haber prescrito sobre el. Exigir
+// una confirmacion manual antes de dejar prescribir ponia una firma en el sitio equivocado y bloqueaba el
+// trabajo.
+//
+// EL GATE QUE QUEDA SIGUE SIENDO REAL, y es el que importa: sin diagnostico no hay protocolo que editar.
+// Lo impone `getTreatmentProtocol` (que devuelve null si no hay) y lo RE-COMPRUEBA el writer dentro de la
+// transaccion con su join, porque una guarda que solo vive en el servicio se salta invocando la accion.
+//
+// LAS CINCO ERAN: la decision de nutraceuticos, el menu semanal, la prescripcion de nutraceuticos, el
+// reconocimiento de restricciones y las notas clinicas. La ultima era ademas la mas dificil de defender:
+// bloquear una NOTA clinica por una confirmacion administrativa es un gate de mas sobre documentacion.
+
 // SE RETIRO EL GUARD DE "PROTOCOLO YA APROBADO" (2026-09-09), y con el las OCHO comprobaciones que lo
 // invocaban en las escrituras de seccion.
 //
@@ -71,9 +92,6 @@ export async function saveNutraDecision(input: SaveNutraDecisionInput, actor: Ac
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de registrar la decisión."));
-  }
   // NO se bloquea tras aprobar: la decision del paciente puede llegar despues de aprobar el protocolo (de
   // hecho es lo normal), y es justo el caso que el "pendiente" contempla.
   if (!protocol.patientId) {
@@ -102,9 +120,6 @@ export async function saveMenuSemanal(input: SaveMenuSemanalInput, actor: Actor)
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de editar el menú semanal."));
-  }
   try {
     await writeMenuSemanal({
       treatmentId: protocol.treatmentId,
@@ -218,14 +233,6 @@ export async function saveNutraceuticals(
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(
-      appError(
-        "conflict",
-        "El diagnóstico debe estar confirmado (aprueba el reporte) antes de prescribir nutracéuticos.",
-      ),
-    );
-  }
   try {
     await writeNutraceuticals({
       treatmentId: protocol.treatmentId,
@@ -271,9 +278,6 @@ export async function acknowledgeRestrictions(
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
   const prof = await requireNutricionista(actor.actorId);
   if (!prof.ok) return err(prof.error);
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado."));
-  }
   try {
     await writeAcknowledge({ treatmentId: protocol.treatmentId, ...actor });
   } catch (e) {
@@ -449,9 +453,6 @@ export async function emitirPrescripcion(
 export async function addNote(input: AddNoteInput, actor: Actor): Promise<Result<void>> {
   const protocol = await getTreatmentProtocol(input.evaluationId);
   if (!protocol) return err(appError("not_found", "Tratamiento no encontrado."));
-  if (!protocol.diagnosisConfirmed) {
-    return err(appError("conflict", "El diagnóstico debe estar confirmado antes de agregar notas."));
-  }
   // LA PROFESION SE LEE, NO SE PIDE (§8: "cada rol escribe lo suyo"). Viene del perfil del actor, no de un
   // campo del formulario: si viajara en el FormData, un profesional podria firmar la nota de otro rol. Y NO
   // se exige (a diferencia de las escrituras de prescripcion): esto es DOCUMENTACION, y bloquear una nota

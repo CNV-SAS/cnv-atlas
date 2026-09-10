@@ -398,11 +398,23 @@ export function HcProximaConsulta({ fecha }: { fecha: string | null }) {
  * pueden cambiar mañana. Un bloque vacio en un documento probatorio se lee como que no habia nada que
  * decir.
  */
+/**
+ * LAS CIFRAS SELLADAS EN UNA ENTREGA, para distinguirla de otra del mismo dia.
+ *
+ * NO SE AFIRMA QUE DOS SEAN IGUALES aunque coincidan: el menu, las restricciones o el reparto pudieron
+ * cambiar sin mover el objetivo calorico. Se muestran los datos; la conclusion la saca quien lee.
+ */
+function cifrasDeLaEntrega(e: { kcal: number | null; proteina: number | null }): string {
+  return [e.kcal != null ? `${e.kcal} kcal` : null, e.proteina != null ? `${e.proteina} g de proteína` : null]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function HcEntregas({
   entregas,
   sinEmitir,
 }: {
-  entregas: { fecha: string; via: string }[];
+  entregas: { fecha: string; via: string; kcal: number | null; proteina: number | null }[];
   sinEmitir: boolean;
 }) {
   return (
@@ -410,9 +422,19 @@ export function HcEntregas({
       <TituloSeccion>Documentos entregados al paciente</TituloSeccion>
       {entregas.length > 0 ? (
         <ul className="flex flex-col gap-1">
-          {entregas.map((e) => (
-            <li key={e.fecha + e.via} className="text-sm text-foreground">
-              <span className="tabular-nums">{e.fecha}</span> · {etiquetaDeVia(e.via)}
+          {/* CON HORA Y CON LAS CIFRAS DE ESA SALIDA (2026-09-10). Dos entregas del mismo dia salian como
+              dos lineas identicas, y este bloque existe justamente para contestar QUE recibio el paciente.
+              La mas reciente va primera y se marca: es la que tiene en la mano. */}
+          {entregas.map((e, i) => (
+            <li key={e.fecha + e.via} className="flex flex-wrap items-baseline gap-x-2 text-sm text-foreground">
+              <span className="tabular-nums">{e.fecha}</span>
+              <span>· {etiquetaDeVia(e.via)}</span>
+              {cifrasDeLaEntrega(e) ? (
+                <span className="tabular-nums text-muted-foreground">· {cifrasDeLaEntrega(e)}</span>
+              ) : null}
+              {i === 0 && entregas.length > 1 ? (
+                <span className="text-xs font-medium text-foreground">(la última entregada)</span>
+              ) : null}
             </li>
           ))}
         </ul>

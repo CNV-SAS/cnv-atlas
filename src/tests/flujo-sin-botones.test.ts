@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { sinComentarios } from "./helpers/sin-comentarios";
@@ -92,5 +92,87 @@ describe("medidas: se guardan al salir del campo, no en cada tecla", () => {
     // Se afirma por el BOTON DE ENVIO del formulario de cada campo, que es lo que la rama no sellada
     // pinta; el rotulo suelto "Guardar" cabe en varias formas y el candado estaria mirando texto.
     expect(ANTRO).toContain('<Button type="submit" variant="outline" size="sm" disabled={pending}>');
+  });
+});
+
+// ═══ CONFIRMAR EL DIAGNOSTICO DEJO DE SER UN ACTO (2026-09-10) ═══
+//
+// TERCERA VEZ QUE LA MISMA REGLA HAY QUE RETIRAR, y por eso esto es un BARRIDO y no una asercion sobre un
+// archivo. El 2026-09-09 se cambio `assertConfirmedDiagnosis` por `assertDiagnosisExists` en los nueve
+// sitios del WRITER; el smoke del 10 encontro que el SERVICIO tenia CINCO comprobaciones propias que aquel
+// barrido no toco (el menu semanal, los nutraceuticos y su decision, el reconocimiento de restricciones y
+// las notas). Dos capas, una barrida.
+//
+// EL ARGUMENTO (Gildardo via Santiago): **el diagnostico es del MODELO, no del profesional.** Nadie firma
+// el resultado del motor; lo que si se firma es haber prescrito sobre el.
+//
+// LO QUE SE CONSERVA: `confirmed_by`, `confirmed_at` y `confirmed_profession` se siguen sellando al
+// aprobar el reporte. La firma clinica no desaparece, cambia de sitio.
+describe("prescribir no depende de confirmar", () => {
+  const SERVICIO = sinComentarios(
+    readFileSync("src/modules/treatment/services/treatment-service.ts", "utf8"),
+  );
+  const WRITER = sinComentarios(
+    readFileSync("src/modules/treatment/data/treatment-writer.ts", "utf8"),
+  );
+
+  it("ningún servicio del tratamiento gatea por `diagnosisConfirmed`", () => {
+    expect(
+      SERVICIO,
+      "volvió un gate de confirmación al servicio del tratamiento: se puede prescribir sin confirmar",
+    ).not.toContain("diagnosisConfirmed");
+  });
+
+  it("ni el writer", () => {
+    // La otra capa, la que se barrió primero. Las dos, o la regla vuelve por la que quede sin mirar.
+    expect(WRITER).not.toContain("assertConfirmedDiagnosis");
+    expect(WRITER, "el gate que queda es que EXISTA diagnóstico, no que esté confirmado").toContain(
+      "assertDiagnosisExists",
+    );
+  });
+
+  it("y no queda ningún texto de pantalla que lo exija", () => {
+    // El defecto se vio como un MENSAJE: "El diagnóstico debe estar confirmado antes de editar el menú
+    // semanal". Si vuelve, vuelve como texto.
+    const TRAT = readFileSync("src/modules/treatment/services/treatment-service.ts", "utf8");
+    expect(sinComentarios(TRAT)).not.toMatch(/diagnóstico debe estar confirmado/i);
+  });
+
+  it("el ACTO se retiró entero: no queda acción, servicio, writer ni policy", () => {
+    // Una vertical muerta pasa verde con el hueco abierto. Y una server action sin pantalla es un endpoint
+    // POST que nadie ve.
+    const ACCIONES = readFileSync("src/modules/diagnoses/actions.ts", "utf8");
+    expect(sinComentarios(ACCIONES)).not.toContain("confirmDiagnosisAction");
+    for (const f of [
+      "src/modules/diagnoses/services/diagnosis-confirm-service.ts",
+      "src/modules/diagnoses/data/diagnosis-confirm-writer.ts",
+      "src/modules/diagnoses/policies/can-confirm-diagnosis.ts",
+    ]) {
+      expect(existsSync(f), `${f} volvió: el acto de confirmar estaba retirado`).toBe(false);
+    }
+  });
+
+  it("pero la FIRMA CLINICA se sigue sellando al aprobar el reporte", () => {
+    // ES LA MITAD QUE NO SE PUEDE PERDER. Sin esto, retirar el acto habría dejado los diagnósticos sin
+    // constancia de quién los asumió, que es lo contrario de lo que se quería.
+    const REPORTES = readFileSync("src/modules/reports/data/reports-writer.ts", "utf8");
+    expect(REPORTES).toContain("confirmedAt: sql`now()`");
+    expect(REPORTES).toContain("confirmedProfession");
+    expect(REPORTES).toContain('event: "diagnosis.confirmed_via_report"');
+  });
+
+  it("y el bloque de pantalla rinde el HECHO, sin ofrecer el acto", () => {
+    const PANEL = readFileSync(
+      "src/modules/diagnoses/components/confirm-diagnosis-panel.tsx",
+      "utf8",
+    );
+    const codigo = sinComentarios(PANEL);
+    expect(codigo, "volvió el botón de confirmar").not.toContain("Confirmar diagnóstico");
+    expect(codigo, "volvió la promesa falsa de que confirmar habilita prescribir").not.toMatch(
+      /habilita prescribir/,
+    );
+    // Y sin confirmar no pinta nada: un bloque que solo dijera "todavía no" sería un reproche sobre algo
+    // que el profesional no puede hacer directamente.
+    expect(codigo).toContain("if (!confirmed) return null;");
   });
 });

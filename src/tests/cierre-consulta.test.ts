@@ -14,7 +14,6 @@ import {
 
 const completa: EstadoConsulta = {
   encuestaCompleta: true,
-  diagnosticoConfirmado: true,
   protocoloComputado: true,
   protocoloEmitido: true,
   reporteEstado: "sent",
@@ -31,8 +30,12 @@ describe("pendientes del cierre", () => {
   });
 
   it("ACCIONABLE: va en la lista con su etapa para ir a resolverlo", () => {
-    const p = con({ diagnosticoConfirmado: false }).find((x) => x.id === "diagnostico");
-    expect(p?.etapa).toBe("diagnostico");
+    // EL EJEMPLO CAMBIO, NO LA CATEGORIA (2026-09-10). Era "el diagnóstico no se confirmó", y ese
+    // pendiente se retiro con el acto de confirmar: apuntaba a un boton que ya no existe. La categoria que
+    // este caso protege (accionable = va en la lista, con su etapa, sin nada que lo bloquee) se afirma
+    // ahora sobre el pendiente de la encuesta, que es accionable por la misma razon.
+    const p = con({ encuestaCompleta: false }).find((x) => x.id === "encuesta");
+    expect(p?.etapa).toBe("evaluacion");
     expect(p?.bloqueadoPor).toBeNull();
   });
 
@@ -78,7 +81,6 @@ describe("pendientes del cierre", () => {
     // El profesional puede cerrar con pendientes a proposito; la lista es informacion, no reproche.
     const todos = pendientesDeLaConsulta({
       encuestaCompleta: false,
-      diagnosticoConfirmado: false,
       protocoloComputado: true,
       protocoloEmitido: false,
       reporteEstado: "draft",

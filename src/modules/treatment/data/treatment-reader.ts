@@ -199,7 +199,7 @@ export async function getTreatmentProtocol(
   // demas de este reader: si la evaluacion no es suya, no hay filas.
   const emitidas = await supabase
     .from("prescription_emissions")
-    .select("emitted_at, via")
+    .select("emitted_at, via, kcal_objetivo, proteina_g")
     .eq("treatment_id", treatmentId)
     .order("emitted_at", { ascending: false });
   if (emitidas.error) throw new Error(`treatment-reader: emisiones: ${emitidas.error.message}`);
@@ -213,6 +213,8 @@ export async function getTreatmentProtocol(
     emisiones: (emitidas.data ?? []).map((e) => ({
       fecha: e.emitted_at as string,
       via: e.via as string,
+      kcal: (e.kcal_objetivo as number | null) ?? null,
+      proteina: (e.proteina_g as number | null) ?? null,
     })),
     kcalObjetivo: treatment.kcal_objetivo,
     proteinaGramos: treatment.proteina_g,

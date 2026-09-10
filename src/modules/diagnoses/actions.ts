@@ -1,16 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { getClientIp } from "@/core/http/client-ip";
 import { requireUser } from "@/modules/auth/session";
 
 import { canAddDiagnosisNote } from "./policies/can-add-diagnosis-note";
-import { canConfirmDiagnosis } from "./policies/can-confirm-diagnosis";
-import { confirmDiagnosis } from "./services/diagnosis-confirm-service";
 import { generateCriterion } from "./services/generate-criterion";
 import {
-  confirmDiagnosisSchema,
   generateCriterionSchema,
 } from "./validations";
 
@@ -22,8 +17,10 @@ export type DiagnosisActionState = {
   warning: string | null;
 };
 
-const fail = (error: string): DiagnosisActionState => ({ error, success: null, warning: null });
-
+// AQUI VIVIO TAMBIEN `confirmDiagnosisAction`, retirada el 2026-09-10 con toda su vertical (policy,
+// servicio, writer y lector). Confirmar habia dejado de habilitar nada, y ademas no debia: el diagnostico
+// es del MODELO. La firma clinica se sella al aprobar el reporte. Ver `confirm-diagnosis-panel.tsx`.
+//
 // AQUI VIVIA `addDiagnosisNoteAction`, retirada el 2026-09-08 al separar el resumen del criterio.
 //
 // POR QUE SE BORRA Y NO SE DECLARA "sin pantalla a proposito": era el UNICO writer de `diagnosis_notes`,
@@ -37,34 +34,6 @@ const fail = (error: string): DiagnosisActionState => ({ error, success: null, w
 // capacidad de escribir MAS, que es lo que la separacion decidio.
 //
 // Lo encontro `pnpm check:cables`, que para esto existe.
-
-// Confirma el diagnostico (mini-bloque): la firma clinica que habilita prescribir. PROFESIONAL-SOLO
-// (admin no); la asignacion explicita y el estado los verifica el service.
-export async function confirmDiagnosisAction(
-  _prev: DiagnosisActionState,
-  form: FormData,
-): Promise<DiagnosisActionState> {
-  const user = await requireUser();
-  if (!canConfirmDiagnosis(user)) return fail("No autorizado.");
-
-  const parsed = confirmDiagnosisSchema.safeParse({
-    evaluationId: (form.get("evaluationId") as string | null)?.trim() ?? "",
-  });
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Evaluación inválida.");
-  }
-
-  const ip = await getClientIp();
-  const result = await confirmDiagnosis(parsed.data, {
-    actorId: user.id,
-    actorEmail: user.email,
-    ip: ip === "unknown" ? null : ip,
-  });
-  if (!result.ok) return fail(result.error.message);
-
-  revalidatePath(`/ani-bis-e/${parsed.data.evaluationId}`);
-  return { error: null, success: "Diagnóstico confirmado.", warning: null };
-}
 
 // Genera el BORRADOR de criterio por IA (h). Thin (regla 2): autoriza por la MISMA policy que agregar
 // criterio, valida y delega en el service. Devuelve el TEXTO para que el cliente lo ponga en el campo

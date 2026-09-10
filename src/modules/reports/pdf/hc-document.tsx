@@ -392,9 +392,12 @@ export function HistoriaClinicaDocument({ hc }: { hc: HistoriaClinicaDoc }) {
             seria una afirmacion falsa con formato de documento clinico. */}
         <Seccion titulo="Documentos entregados al paciente">
           {hc.entregas.length > 0 ? (
-            hc.entregas.map((e) => (
+            hc.entregas.map((e, i) => (
               <Text key={e.fecha + e.via} style={styles.item}>
                 {e.fecha} · {etiquetaDeVia(e.via)}
+                {e.kcal != null ? ` · ${e.kcal} kcal` : ""}
+                {e.proteina != null ? ` · ${e.proteina} g de proteína` : ""}
+                {i === 0 && hc.entregas.length > 1 ? " (la última entregada)" : ""}
               </Text>
             ))
           ) : (
