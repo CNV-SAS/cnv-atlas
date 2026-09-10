@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 
@@ -9,6 +10,10 @@ import type { AiConfigView } from "../data/ai-config-types";
 
 const initial: AiAdminActionState = { error: null, success: null, warning: null };
 
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function AiConfigForm({ view }: { view: AiConfigView }) {
   const [state, action, pending] = useActionState(saveAiConfigAction, initial);
   useFormToast(state);
@@ -39,7 +44,7 @@ export function AiConfigForm({ view }: { view: AiConfigView }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    startTransition(() => action(formData));
+    ejecutarAccion(action, formData);
   }
 
   return (

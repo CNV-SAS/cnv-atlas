@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
@@ -12,6 +12,12 @@ import { etiquetaDeEtapa } from "@/modules/diagnoses/etapas";
 
 import { runPipelineAction, type RunPipelineState } from "../actions";
 import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { preservarScroll } from "@/components/shared/preservar-scroll";
+
+// Cuanto se espera a que la pagina traiga los resultados antes de decir que no llegaron. El pipeline
+// completo contra base son ~600-830 ms medidos; el `router.refresh()` de una pagina de este tamaño contra
+// la nube son segundos. Doce da margen de sobra sin dejar al profesional mirando una pantalla muda.
+const ESPERA_RESULTADOS_MS = 12_000;
 
 const initialState: RunPipelineState = {
   error: null,
@@ -80,6 +86,15 @@ export function GenerateDiagnosisPanel({
   useEffect(() => {
     if (!activa || !ready || disparado.current) return;
     disparado.current = true;
+    // ═══ EL GUARD DEL SCROLL, TAMBIEN AQUI (Santiago, 2026-09-10, quinta ronda) ═══
+    //
+    // ESTE CAMINO NO PASABA POR NINGUNA PUERTA. El boton de reintentar de abajo si (va por
+    // `enviarSinReset`), pero el disparo automatico invoca la accion a pelo, y el barrido del dia lo
+    // conto como cubierto porque miraba el ARCHIVO: el archivo tiene guard, esta LLAMADA no lo tenia.
+    //
+    // Es el mismo defecto de detector que ya nos mordio con el candado del refresco: un archivo puede
+    // tener cuatro formularios y solo tres cubiertos. El barrido ahora mira cada invocacion.
+    preservarScroll();
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
     action(datos);
@@ -90,6 +105,36 @@ export function GenerateDiagnosisPanel({
   useEffect(() => {
     if (state.done) router.refresh();
   }, [state.done, router]);
+
+  // ═══ Y SI EL REFRESCO NO TRAE LOS RESULTADOS, SE DICE (Santiago, 2026-09-10) ═══
+  //
+  // LO QUE LE PASO: el diagnostico se genero y la pantalla se quedo en "Cargando los resultados...". Tuvo
+  // que recargar a mano. Y con el disparo automatico no hay boton que volver a pulsar: el panel se queda
+  // ahi indefinidamente.
+  //
+  // POR QUE PASA. Este panel solo desaparece cuando la PAGINA vuelve a rendirse con `results` no nulo, y
+  // eso depende de que el `router.refresh()` complete y de que la lectura ya vea lo escrito. Si el refresco
+  // se pierde (pestaña en segundo plano, red que se cae, una lectura que llega antes de que la escritura
+  // sea visible), nadie reintenta.
+  //
+  // LO QUE SI SABEMOS, y por eso el mensaje no dice "recarga por si acaso": `state.done` significa que el
+  // pipeline TERMINO en el servidor. El diagnostico esta hecho; lo que no llego es la pantalla. Se dice
+  // exactamente eso y se ofrece volver a pedirlo, que es lo que la recarga hacia a mano.
+  const [cargaLenta, setCargaLenta] = useState(false);
+  // EL REINICIO SE AJUSTA DURANTE EL RENDER, no en el efecto: `react-hooks/set-state-in-effect" prohibe
+  // llamar a setState sincronamente dentro de un efecto, y este es el patron que React documenta para un
+  // estado que deriva de otro (el anterior vive en ESTADO, no en un ref, porque leer un ref durante el
+  // render tambien esta prohibido).
+  const [doneVisto, setDoneVisto] = useState(state.done);
+  if (doneVisto !== state.done) {
+    setDoneVisto(state.done);
+    setCargaLenta(false);
+  }
+  useEffect(() => {
+    if (!state.done) return;
+    const t = window.setTimeout(() => setCargaLenta(true), ESPERA_RESULTADOS_MS);
+    return () => window.clearTimeout(t);
+  }, [state.done]);
 
   if (!ready) {
     // LO QUE FALTA, Y DONDE VIVE. Cada paso se nombra CON SU PESTAÑA, y la etiqueta sale del mapa de
@@ -164,6 +209,26 @@ export function GenerateDiagnosisPanel({
                 : "Preparando el diagnóstico..."}
           </p>
         )}
+        {/* NO ES UN ERROR Y NO SE PINTA COMO TAL: el diagnóstico está hecho. Lo que falló es traerlo a la
+            pantalla, y eso se reintenta sin volver a generar nada. */}
+        {cargaLenta && state.done ? (
+          <div className="flex flex-col items-center gap-2">
+            <p className="max-w-prose text-sm text-attention">
+              El diagnóstico ya está generado, pero la pantalla no terminó de cargarlo.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCargaLenta(false);
+                router.refresh();
+              }}
+            >
+              Cargar los resultados
+            </Button>
+          </div>
+        ) : null}
         <p className="max-w-prose text-xs text-muted-foreground">
           Genera los indicadores, el diagnóstico, el tratamiento y el reporte con el motor clínico. Se
           genera una sola vez: volver a entrar no lo recalcula.

@@ -1,7 +1,8 @@
 "use client";
 
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { Printer } from "lucide-react";
-import { startTransition, useActionState } from "react";
+import { useActionState } from "react";
 
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,10 @@ const VACIO: TreatmentActionState = { error: null, success: null, warning: null 
 // EL ORDEN: se imprime YA y el registro viaja en paralelo. Al reves, el profesional esperaria a la nube
 // para ver el dialogo de impresion, que es la peor forma de pagar una constancia. Si el registro falla,
 // el aviso lo dice y nombra la via de reintento (volver a imprimir), porque ya no hay boton propio.
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function PlanImprimirBoton({ evaluationId }: { evaluationId: string }) {
   const [state, registrar, registrando] = useActionState(registrarPlanImpresoAction, VACIO);
   useFormToastAndRefresh(state);
@@ -36,7 +41,7 @@ export function PlanImprimirBoton({ evaluationId }: { evaluationId: string }) {
   const imprimir = () => {
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
-    startTransition(() => registrar(datos));
+    ejecutarAccion(registrar, datos);
     window.print();
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { Panel } from "@/components/shared/panel";
-import { startTransition, useActionState, useRef } from "react";
+import { useActionState, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,10 @@ const aNumero = (v: string): number | null => {
 const fmt = (n: number | null | undefined) =>
   n == null || !Number.isFinite(n) ? "" : String(Math.round(n * 100) / 100).replace(".", ",");
 
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function AntropometriaEditable({
   evaluationId,
   valores,
@@ -127,7 +132,7 @@ export function AntropometriaEditable({
                   onSubmit={(e) => {
                     e.preventDefault();
                     const datos = new FormData(e.currentTarget);
-                    startTransition(() => corregir(datos));
+                    ejecutarAccion(corregir, datos);
                   }}
                   className="flex items-center gap-2"
                 >
@@ -162,7 +167,7 @@ export function AntropometriaEditable({
                           const datos = new FormData();
                           datos.set("evaluationId", evaluationId);
                           datos.set("variableName", c.key);
-                          startTransition(() => limpiar(datos));
+                          ejecutarAccion(limpiar, datos);
                         }}
                         className="underline"
                       >
@@ -235,7 +240,7 @@ function MedidasDelProfesional({
     ultimoGuardado.current[campo] = valor;
     const form = formRef.current;
     if (!form) return;
-    startTransition(() => guardar(new FormData(form)));
+    ejecutarAccion(guardar, new FormData(form));
   }
 
   return (
@@ -277,7 +282,7 @@ function MedidasDelProfesional({
           onSubmit={(e) => {
             e.preventDefault();
             const datos = new FormData(e.currentTarget);
-            startTransition(() => guardar(datos));
+            ejecutarAccion(guardar, datos);
           }}
           className="flex flex-col gap-3"
           ref={formRef}

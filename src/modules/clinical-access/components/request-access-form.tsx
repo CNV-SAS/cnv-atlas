@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 
@@ -11,6 +12,10 @@ const initial: AccessActionState = { error: null, success: null, warning: null }
 // Formulario de solicitud de acceso a las notas. Despacha por onSubmit + startTransition
 // (no por el prop `action`) para evitar el auto-reset de <form action> en React 19. El
 // nivel identificado muestra los campos de documento del paciente.
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function RequestAccessForm() {
   const [state, action, pending] = useActionState(requestAccessAction, initial);
   useFormToast(state);
@@ -21,7 +26,7 @@ export function RequestAccessForm() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    startTransition(() => action(formData));
+    ejecutarAccion(action, formData);
   }
 
   return (
