@@ -1,6 +1,8 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -60,7 +62,7 @@ export function RegisterCashSaleForm({
     fd.set("quantity", quantity);
     fd.set("idempotencyKey", keyRef.current);
     if (confirmDuplicate) fd.set("confirmDuplicate", "true");
-    startTransition(() => action(fd));
+    ejecutarAccion(action, fd);
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

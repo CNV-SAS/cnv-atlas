@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -80,7 +82,11 @@ export function ResumenDiagnostico({
           onClick={() => {
             const fd = new FormData();
             fd.set("evaluationId", evaluationId);
-            startTransition(() => action(fd));
+            // POR AQUI SE ARMA EL GUARD DEL SCROLL, que es lo que le faltaba a este boton (smoke
+            // 2026-09-10). No tiene `<form>`, asi que no pasaba por `enviarSinReset`, y su estado no es
+            // el de los hooks del toast (`{error, text}`, no `{error, success, warning}`), asi que
+            // tampoco pasaba por ahi. Quedaba fuera de todo.
+            ejecutarAccion(action, fd);
           }}
         >
           <Sparkles className="size-4" aria-hidden />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+
+import { preservarScroll } from "@/components/shared/preservar-scroll";
 import { useRouter } from "next/navigation";
 
 import { useEtapaActiva } from "@/modules/diagnoses/components/etapa-activa";
@@ -63,6 +65,10 @@ export function IdentidadAutomatica({ evaluationId }: { evaluationId: string }) 
     disparado.current = true;
     const datos = new FormData();
     datos.set("evaluationId", evaluationId);
+    // AQUI NO HAY CLIC, pero la pagina si esta donde el profesional la dejo: esta accion se dispara
+    // sola al entrar a la etapa. Sin el guard, un salto al inicio ocurriria sin que el hubiera pulsado
+    // nada, que es la version mas desconcertante del mismo defecto.
+    preservarScroll();
     action(datos);
   }, [activa, action, evaluationId]);
 

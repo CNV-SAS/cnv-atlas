@@ -20,6 +20,19 @@ import { sinComentarios } from "./helpers/sin-comentarios";
 
 const TOAST = sinComentarios(readFileSync("src/components/shared/use-form-toast.ts", "utf8"));
 
+// El guard es UNICO POR PAGINA desde el 2026-09-10: mientras uno siga vivo, una segunda llamada le alarga
+// la ventana en vez de armar otro (el primero se armó en el clic y tiene el `desde` bueno). Eso es estado
+// de módulo, y en un navegador se limpia solo porque su temporizador vence. Aquí el temporizador es un
+// espía que no dispara, así que se dispara a mano al terminar cada caso.
+let ultimo: { setTimeout: ReturnType<typeof vi.fn> } | null = null;
+function retirarGuard(): void {
+  for (const [fn] of ultimo?.setTimeout.mock.calls ?? []) {
+    if (typeof fn === "function") (fn as () => void)();
+  }
+  ultimo = null;
+}
+
+
 describe("el mecanismo unico lo aplica, y en los TRES hooks", () => {
   it("`use-form-toast` importa y llama a `preservarScroll`", () => {
     // EL SITIO DE LLAMADA, que es donde estaria el hueco: la funcion puede estar perfecta y no servir de
@@ -67,6 +80,7 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     };
     vi.stubGlobal("window", w);
     vi.stubGlobal("document", { documentElement: { scrollHeight: alto } });
+    ultimo = w;
     return w;
   };
   // El corrector reacciona al evento `scroll`, que es lo que lo hace imperceptible: Next scrollea dentro
@@ -78,7 +92,10 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     (fn as () => void)();
   };
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    retirarGuard();
+    vi.unstubAllGlobals();
+  });
 
   it("si la página salta al inicio, la devuelve donde estaba", () => {
     const w = entorno(1200);
@@ -203,7 +220,11 @@ describe("deshace el salto, pero solo el que nadie pidio", () => {
     const w = entorno(1200, 4000);
     preservarScroll();
     const programado = w.setTimeout.mock.calls.at(-1);
-    expect(programado?.[1], "la ventana dejó de acotarse").toBeLessThanOrEqual(3000);
+    // EL ALCANCE SE AJUSTA, NO LA ASERCION (2026-09-10): la PRIMERA espera pasó de tres segundos al tope,
+    // porque desde hoy el guard se arma en el CLIC y entre el clic y el salto está el viaje al servidor.
+    // Lo que este caso afirma es lo mismo de antes: que la ventana está ACOTADA y que al vencer se retira.
+    // Un guard sin tope le pelearía la página al profesional cada vez que algo la mueva.
+    expect(programado?.[1], "la ventana dejó de acotarse").toBeLessThanOrEqual(12000);
     // Y cuando vence, deja de escuchar: es el mismo `quitar` de siempre.
     (programado?.[0] as () => void)();
     w.scrollY = 0;
@@ -283,10 +304,14 @@ describe("por qué es imperceptible: corrige en el evento, no sondeando", () => 
     };
     vi.stubGlobal("window", w);
     vi.stubGlobal("document", { documentElement: { scrollHeight: 4000 } });
+    ultimo = w;
     return w;
   };
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    retirarGuard();
+    vi.unstubAllGlobals();
+  });
 
   it("escucha `scroll`, que es lo que llega a tiempo", () => {
     const w = entorno();

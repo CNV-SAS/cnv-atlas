@@ -16,10 +16,23 @@ export type FormToastState = {
 
 // Dispara el toast correcto cuando cambia el estado. Ignora el estado inicial
 // (todo nulo) y compara por referencia para no repetir el toast en cada render.
-// EL SALTO AL INICIO EN LA PRIMERA ACCION DE CADA RUTA. Los tres hooks lo deshacen, incluido este que ni
-// refresca: la causa es INVOCAR la server action (navega con ScrollBehavior.Default), no el refresco, que
-// usa NoScroll. Por eso el arreglo va aqui, en el mecanismo unico por donde pasan los 78 formularios, y no
-// en el panel donde se noto. Ver el porque completo en `preservar-scroll.ts`.
+// EL SALTO AL INICIO EN LA PRIMERA ACCION DE CADA RUTA. Los tres hooks arman el guard, incluido este que
+// ni refresca: la causa es INVOCAR la server action (navega con ScrollBehavior.Default), no el refresco,
+// que usa NoScroll. Ver el porque completo en `preservar-scroll.ts`.
+//
+// ═══ Y AQUI DECIA UNA COSA FALSA QUE COSTO TRES RONDAS (corregido el 2026-09-10) ═══
+//
+// Decia que este era "el mecanismo unico por donde pasan los 78 formularios". NO LO ES: estos hooks los
+// usan 29 archivos de los 59 que invocan una server action. Los otros 30 usan `useActionState` a pelo, y
+// uno de ellos era el boton que Santiago llevaba tres rondas reportando (el resumen del diagnostico), cuyo
+// estado ni siquiera tiene esta forma (`{error, text}`).
+//
+// EL MECANISMO QUE SI ES UNICO ES EL ENVIO (`enviarSinReset` / `ejecutarAccion`), y ahi vive ahora el
+// guard. Estas llamadas se quedan por si algun formulario llega por otra puerta: la segunda no pisa a la
+// primera, le alarga la ventana.
+//
+// La leccion, para que no vuelva: un comentario que AFIRMA una cobertura la vuelve regla, y nadie la
+// cuenta. Se cuenta en `ningun-formulario-sin-guard.test.ts`.
 export function useFormToast(state: FormToastState) {
   const last = useRef(state);
   useEffect(() => {
