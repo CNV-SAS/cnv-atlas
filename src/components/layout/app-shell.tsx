@@ -15,8 +15,8 @@ import {
   LogOut,
   type LucideIcon,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   MonitorSmartphone,
   Pill,
   Receipt,
@@ -39,6 +39,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   isNavItemActive,
   type NavGrupoVisible,
@@ -182,13 +188,12 @@ function NavLinks({
       {items.map((item) => {
         const Icon = ICONS[item.icon];
         const active = isNavItemActive(item.href, pathname, todos);
-        return (
+        const enlace = (
           <Link
             key={item.href}
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
-            title={colapsada ? item.label : undefined}
             className={cn(
               "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               colapsada && "justify-center px-0",
@@ -209,25 +214,27 @@ function NavLinks({
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
-            {/* ═══ EL ROTULO FLOTANTE (Santiago, 2026-09-10, como en Biody) ═══
+            {/* ═══ EL ROTULO (Santiago, 2026-09-10, como en Biody) ═══
 
-                COLAPSADA, EL ROTULO NO DESAPARECE: sale del renglon y aparece al lado al pasar por encima.
-                Una barra de solo iconos obliga a aprenderse doce simbolos, y el que no se acuerda tiene
-                que entrar a mirar; con el rotulo al lado se reconoce sin abrir nada.
+                COLAPSADA, EL ROTULO NO DESAPARECE: sale del renglon y aparece al lado. Una barra de solo
+                iconos obliga a aprenderse doce simbolos, y el que no se acuerda tiene que entrar a mirar.
 
-                Y APARECE TAMBIEN CON EL FOCO (`group-focus-within`), no solo con el raton: quien navega
-                con el teclado necesita lo mismo que quien pasa el cursor. El texto sigue en el DOM en los
-                dos casos, asi que el lector de pantalla lo anuncia igual y el enlace nunca queda sin
-                nombre accesible (por eso no se usa `sr-only` con un `title` suelto). */}
-            <span
-              className={cn(
-                colapsada &&
-                  "pointer-events-none absolute left-full z-30 ml-2 hidden whitespace-nowrap rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground shadow-md group-hover:block group-focus-within:block",
-              )}
-            >
-              {item.label}
-            </span>
+                Y EL TEXTO SIGUE EN EL DOM tambien colapsada, en `sr-only`: asi el enlace nunca queda sin
+                nombre accesible, y el tooltip es una ayuda VISUAL encima, no el unico sitio donde vive el
+                rotulo. */}
+            <span className={cn(colapsada && "sr-only")}>{item.label}</span>
           </Link>
+        );
+        // EL ROTULO VA EN UN TOOLTIP CON PORTAL, no en un `absolute` dentro del enlace: la barra necesita
+        // `overflow-y: auto` para no perder items en una pantalla corta, y CSS recorta tambien el eje
+        // horizontal en cuanto uno de los dos recorta. Ver `components/ui/tooltip.tsx`.
+        return colapsada ? (
+          <Tooltip key={item.href}>
+            <TooltipTrigger asChild>{enlace}</TooltipTrigger>
+            <TooltipContent side="right">{item.label}</TooltipContent>
+          </Tooltip>
+        ) : (
+          enlace
         );
       })}
     </>
@@ -340,6 +347,7 @@ export function AppShell({
 
 
   return (
+    <TooltipProvider>
     <div className="flex min-h-svh">
       {/* Sidebar desktop. FIJA (`sticky top-0`, alto de viewport): en una pantalla larga, perder la
           navegacion al bajar es real, y el panel del nutricionista pasa de las mil lineas. Sin esto, para
@@ -350,44 +358,56 @@ export function AppShell({
           cuando esta colapsada: con el recorte horizontal, el rotulo flotante quedaria cortado justo al
           salir del aside, que es donde tiene que verse. `overflow-y` sigue haciendo falta para las listas
           largas, asi que van los dos ejes por separado. */}
-      <aside
-        className={cn(
-          "sticky top-0 hidden h-svh shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200 lg:flex",
-          colapsada ? "w-16 overflow-y-auto overflow-x-visible" : "w-60 overflow-y-auto",
-        )}
-      >
-        <div
+      {/* ═══ EL ENVOLTORIO NO RECORTA; LA BARRA DE DENTRO SI (2026-09-10) ═══
+
+          Son dos elementos y no uno a proposito: el aside necesita `overflow-y: auto` (una lista mas larga
+          que la pantalla no puede dejar items inalcanzables), y eso recorta tambien lo que sobresale por el
+          lado. El tirador va MEDIO FUERA, asi que vive en el envoltorio, que no recorta nada. */}
+      <div className="sticky top-0 hidden h-svh shrink-0 lg:block">
+        <aside
           className={cn(
-            "flex h-14 items-center gap-1",
-            colapsada ? "flex-col justify-center px-0 py-1" : "justify-between px-4",
+            "flex h-full flex-col overflow-y-auto border-r border-border bg-background transition-[width] duration-200",
+            colapsada ? "w-16" : "w-60",
           )}
         >
-          <AtlasLogo compacto={colapsada} />
-          {/* LA HAMBURGUESA VIVE EN LA BARRA, no en el header. Es el mando DE la barra, y ponerlo donde
-              esta lo que gobierna evita que se confunda con el de la navegacion movil, que abre otra cosa
-              (el panel deslizante) y ya vive arriba. */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={colapsada ? "size-7" : "size-8"}
-            onClick={alternarNavColapsada}
-            aria-label={colapsada ? "Expandir navegación" : "Colapsar navegación"}
-            aria-pressed={colapsada}
-          >
-            {colapsada ? (
-              <PanelLeftOpen className="size-4" aria-hidden />
-            ) : (
-              <PanelLeftClose className="size-4" aria-hidden />
+          <div
+            className={cn(
+              "flex h-14 items-center",
+              colapsada ? "justify-center px-0" : "px-4",
             )}
-          </Button>
-        </div>
-        <nav
-          className={cn("flex flex-1 flex-col gap-0.5 py-2", colapsada ? "px-2" : "px-3")}
+          >
+            <AtlasLogo compacto={colapsada} />
+          </div>
+          <nav className={cn("flex flex-1 flex-col gap-0.5 py-2", colapsada ? "px-2" : "px-3")}>
+            <NavGrupos grupos={grupos} pathname={pathname} colapsada={colapsada} />
+          </nav>
+        </aside>
+
+        {/* ═══ EL TIRADOR, EN EL BORDE Y MEDIO FUERA (Santiago, 2026-09-10, ref. "sidebar-colapsar") ═══
+
+            ESTABA JUNTO AL LOGO y daba dos problemas suyos: abierto quedaba pegado a "CNV", y colapsado
+            parecia un item mas de la lista. En el borde no es ninguna de las dos cosas: no compite con la
+            marca y no se confunde con la navegacion, porque no esta DENTRO de ella.
+
+            Y ES REDONDO Y MEDIO SALIDO por lo mismo que en la referencia: montado sobre la linea que
+            separa, se lee como el mando DE esa linea. La flecha apunta a donde va a ir la barra, no a
+            donde esta. */}
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={alternarNavColapsada}
+          aria-label={colapsada ? "Expandir navegación" : "Colapsar navegación"}
+          aria-pressed={colapsada}
+          className="absolute -right-3 top-[3.25rem] z-30 size-6 rounded-full border-border bg-background p-0 shadow-sm hover:bg-muted"
         >
-          <NavGrupos grupos={grupos} pathname={pathname} colapsada={colapsada} />
-        </nav>
-      </aside>
+          {colapsada ? (
+            <ChevronRight className="size-3.5" aria-hidden />
+          ) : (
+            <ChevronLeft className="size-3.5" aria-hidden />
+          )}
+        </Button>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
@@ -489,5 +509,6 @@ export function AppShell({
         </main>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

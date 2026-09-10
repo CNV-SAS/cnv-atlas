@@ -177,10 +177,14 @@ describe("rotulos de columna: un adjetivo solo no nombra un dato", () => {
   it("y el rotulo dice lo que el dato ES: la fecha viene de EVALUACIONES, no de consultas", () => {
     // No es un matiz: la fecha sale del MISMO filtro que produce la columna "Evaluaciones". Llamar
     // "consulta" a lo que la columna de al lado llama "evaluacion" sugeriria que son dos cosas distintas.
-    const fecha = COLUMNAS_PACIENTES[0].rotulo;
+    // EL ANCLA PASA DE LA POSICION AL ROTULO (2026-09-10), y el rojo que lo obligo fue legitimo: al
+    // añadir la columna "Pendiente" delante, `[0]` dejo de ser la fecha y el candado acuso a quien no era.
+    // Lo que este caso afirma no depende del ORDEN de las columnas, asi que no debia leerlo por indice.
+    const fecha = COLUMNAS_PACIENTES.find((c) => c.rotulo.startsWith("Última"))?.rotulo ?? "";
+    expect(fecha, "desapareció la columna de la última evaluación").not.toBe("");
     expect(fecha).toContain("evaluación");
     expect(fecha).not.toContain("consulta");
-    expect(COLUMNAS_PACIENTES[1].rotulo).toBe("Evaluaciones");
+    expect(COLUMNAS_PACIENTES.some((c) => c.rotulo === "Evaluaciones")).toBe(true);
   });
 });
 

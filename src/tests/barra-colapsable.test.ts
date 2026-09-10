@@ -40,41 +40,50 @@ describe("la preferencia sobrevive a la navegación", () => {
 });
 
 describe("colapsada, los rótulos no desaparecen: flotan", () => {
-  it("cada enlace lleva su rótulo al lado al pasar por encima", () => {
-    // Una barra de solo iconos obliga a aprenderse doce símbolos, y quien no se acuerda tiene que entrar
-    // a mirar. Con el rótulo al lado se reconoce sin abrir nada.
-    expect(SHELL).toContain("group-hover:block");
+  it("el rótulo va en un tooltip con PORTAL, no dentro del enlace", () => {
+    // ═══ POR QUE PORTAL (2026-09-10) ═══
+    //
+    // La primera versión lo pintaba con `absolute` dentro del enlace y quedaba RECORTADO: la barra
+    // necesita `overflow-y: auto` (una lista más larga que la pantalla no puede dejar items
+    // inalcanzables) y CSS recorta también el eje horizontal en cuanto uno de los dos recorta. No había
+    // forma de sacar el rótulo sin renunciar al desplazamiento, y renunciar a él es peor.
+    //
+    // El portal además trae de serie el foco de teclado y el cierre con Escape.
+    expect(SHELL).toContain("<TooltipTrigger asChild>");
+    expect(SHELL).toContain("<TooltipContent side=");
   });
 
-  it("y también con el FOCO, no solo con el ratón", () => {
-    // Quien navega con teclado necesita lo mismo que quien pasa el cursor.
-    expect(SHELL).toContain("group-focus-within:block");
+  it("y la barra sigue pudiendo desplazarse: no se cambió una cosa por la otra", () => {
+    const aside = SHELL.slice(SHELL.indexOf("<aside"), SHELL.indexOf("</aside>"));
+    expect(aside, "la barra dejó de poder desplazarse").toContain("overflow-y-auto");
   });
 
   it("el texto sigue en el DOM: el enlace nunca queda sin nombre accesible", () => {
-    // Con `sr-only` + `title` el enlace se anunciaría distinto según el estado de la barra. Aquí el
-    // rótulo está siempre; lo que cambia es dónde se pinta.
+    // Colapsada el rótulo pasa a lectura de pantalla, no desaparece: el tooltip es una ayuda VISUAL
+    // encima, no el único sitio donde vive el nombre del enlace.
     const bloque = SHELL.slice(SHELL.indexOf("function NavLinks"), SHELL.indexOf("// ROTULO DE SECCION"));
     expect(sinComentarios(bloque), "el rótulo dejó de estar en el DOM").toContain("{item.label}");
-    expect(sinComentarios(bloque)).not.toContain("sr-only");
-  });
-
-  it("y el rótulo flotante no se corta contra el borde de la barra", () => {
-    // `overflow-x: auto` en el aside recortaría el rótulo justo donde tiene que verse. Los dos ejes van
-    // por separado: el vertical sigue haciendo falta para las listas largas.
-    expect(SHELL).toContain("overflow-x-visible");
   });
 });
 
-describe("el mando vive en la barra y dice lo que hace", () => {
-  it("la hamburguesa está en el aside, no en el header", () => {
-    // El header ya tiene la suya, y abre otra cosa (el panel deslizante de móvil). Dos mandos parecidos
-    // en la misma fila haciendo cosas distintas es como se aprende a no fiarse de ninguno.
-    const aside = SHELL.slice(SHELL.indexOf("<aside"), SHELL.indexOf("</aside>"));
-    expect(aside).toContain("alternarNavColapsada");
+describe("el tirador va en el borde, y dice lo que hace", () => {
+  it("NO junto al logo", () => {
+    // Junto al logo daba dos problemas de Santiago: abierto quedaba pegado a "CNV", y colapsado parecía
+    // un item más de la lista. En el borde no es ninguna de las dos: no compite con la marca y no está
+    // dentro de la navegación.
+    const cabecera = SHELL.slice(SHELL.indexOf("<AtlasLogo compacto"), SHELL.indexOf("</nav>"));
+    expect(cabecera, "el tirador volvió junto al logo").not.toContain("alternarNavColapsada");
+    expect(SHELL).toContain("alternarNavColapsada");
   });
 
-  it("y su etiqueta cambia con el estado", () => {
+  it("y medio fuera, en un envoltorio que NO recorta", () => {
+    // Dentro del aside, que sí recorta para poder desplazarse, quedaría cortado por la mitad. Por eso son
+    // dos elementos y no uno.
+    const i = SHELL.indexOf("</aside>");
+    expect(SHELL.slice(i), "el tirador volvió a estar dentro de la barra").toContain("-right-3");
+  });
+
+  it("su etiqueta cambia con el estado", () => {
     expect(SHELL).toContain('aria-label={colapsada ? "Expandir navegación" : "Colapsar navegación"}');
     expect(SHELL).toContain("aria-pressed={colapsada}");
   });

@@ -1,3 +1,5 @@
+import type { PendienteDelPaciente } from "./pendientes";
+
 import type { Database } from "@/types/database.generated";
 
 // Tipos de dominio de pacientes (grupo 2), derivados de la Database generada.
@@ -63,6 +65,12 @@ export type PatientListItem = {
    * Se calcula con la MISMA policy que gatea la creacion, para que la lista y el gate no discrepen.
    */
   sinAutorizacionVigente: boolean;
+  /**
+   * QUE LE FALTA, dicho como accion ("Montar BIS", "Generar diagnostico"), y cuantas evaluaciones mas
+   * suyas estan paradas. Instruccion de Santiago (2026-09-10): la columna dice la ACCION, no el estado.
+   * La regla vive en `pendientes.ts`, que es puro.
+   */
+  pendiente: PendienteDelPaciente;
 };
 
 // Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la
