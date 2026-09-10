@@ -54,11 +54,11 @@ export function HcConsentimiento({
       ) : (
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="py-1 pr-3 font-medium">Autorización</th>
-              <th className="py-1 pr-3 font-medium">Estado</th>
-              <th className="py-1 pr-3 font-medium">Versión</th>
-              <th className="py-1 font-medium">Fecha</th>
+            <tr className="border-b border-border text-left text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground">
+              <th className="py-1 pl-3 pr-3">Autorización</th>
+              <th className="py-1 pr-3">Estado</th>
+              <th className="py-1 pr-3">Versión</th>
+              <th className="py-1 pr-3">Fecha</th>
             </tr>
           </thead>
           <tbody>

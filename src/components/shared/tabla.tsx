@@ -26,11 +26,29 @@
 /** La tabla. `border-collapse` para que las lineas finas no se dupliquen entre celdas. */
 export const tabla = "w-full border-collapse text-sm";
 
-/** La fila del encabezado: fondo tenue y una sola linea debajo. */
-export const theadTr = "border-b border-border bg-muted/50 text-left";
+// ═══ DOS ENCABEZADOS, DOS TRATAMIENTOS (Santiago, 2026-09-10) ═══
+//
+// EL DEFECTO QUE LO TRAJO: en la tabla de composicion, la cabecera de columnas iba en gris y la franja de
+// nivel en azul, una pegada a la otra. Textual suyo: "chocan en diseño". Y el arreglo no era armonizar los
+// dos colores, era que no hubiera DOS RELLENOS seguidos.
+//
+// LA REGLA QUE SALE DE AHI, y vale para toda tabla de Atlas:
+//
+//   · SI EL ENCABEZADO LLEVA NOMBRES DE COLUMNA (Variable, Valor, Referencia...) va SIN FONDO y en
+//     NEGRITA. No necesita superficie: lo que lo distingue del dato es que nombra, y la negrita basta.
+//   · SI DEBAJO VA OTRO ENCABEZADO que agrupa filas (los niveles de Wang, los grupos de la lista de
+//     intercambio), ESE lleva la superficie: un tinte muy leve del azul de marca.
+//   · Y SI LA TABLA NO TIENE NOMBRES DE COLUMNA y arranca directamente en un rotulo de grupo, ese rotulo
+//     usa el tratamiento de grupo, que es el que sale del segundo punto.
+//
+// El azul es capa de INTERFAZ y no insinua severidad: la reserva del verde/ambar/rojo para los veredictos
+// clinicos (BRAND.md) queda intacta.
 
-/** Celda de encabezado. Mayusculas pequenas con tracking: se leen como rotulo y no como dato. */
-export const th = "px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+/** La fila del encabezado de columnas: sin fondo, solo su linea debajo. */
+export const theadTr = "border-b border-border text-left";
+
+/** Celda de encabezado de columna. En NEGRITA y un punto mas grande: es lo que la separa del dato. */
+export const th = "px-3 py-2 text-[0.8125rem] font-bold uppercase tracking-wide text-muted-foreground";
 
 /** Encabezado de una columna numerica: mismo estilo, alineado con su columna. */
 export const thNum = `${th} text-right`;
@@ -49,6 +67,13 @@ export const tdFuerteNum = `${tdNum} font-semibold`;
 export const tdApagado = `${td} text-muted-foreground`;
 export const tdApagadoNum = `${tdNum} text-muted-foreground`;
 
-/** Fila de agrupacion (un grupo que encabeza a sus filas). Ni encabezado ni dato: separa. */
-export const trGrupo = "border-b border-border bg-muted/30";
-export const tdGrupo = "px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground";
+/**
+ * Fila de agrupacion (un grupo que encabeza a sus filas). Ni encabezado ni dato: separa.
+ *
+ * ES LA QUE LLEVA SUPERFICIE, y por eso la cabecera de columnas no la lleva. Un tinte muy leve del azul de
+ * marca: se ve que empieza otra cosa sin que la fila compita con los veredictos de la ultima columna, que
+ * es lo unico que en una tabla clinica debe reclamar la mirada.
+ */
+export const trGrupo = "border-y border-primary/20 bg-primary/5";
+export const tdGrupo =
+  "px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";

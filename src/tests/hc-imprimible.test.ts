@@ -100,7 +100,11 @@ describe("la historia clínica SÍ lleva lo técnico (al revés que el reporte d
     // CONTROL de que este candado y el del reporte del paciente no se confundan: lo que alli esta
     // prohibido, aqui es obligatorio. Si algun dia alguien "limpiara" la historia con el criterio del
     // reporte, este test lo dice.
-    expect(PAGE).toContain("<HcIndicesAniBise");
+    // EL ANCLA SE MUEVE, NO LA ASERCION (Santiago, 2026-09-10): los índices ANI-BIS-E dejaron de ser una
+    // TABLA APARTE debajo de la de Wang y entraron DENTRO, como un nivel más, que es como los tiene el
+    // archivo de Gildardo. Lo que este caso afirma es lo mismo: que la HC los lleva.
+    expect(PAGE).toContain('titulo: "ANI-BIS-E"');
+    expect(PAGE).toContain("bloqueFinal={{");
     expect(PAGE).toContain("<HcResumenDiagnostico");
     expect(PAGE).toContain("<HcPlanNutricional");
     expect(PAGE).toContain("<HcObservaciones");

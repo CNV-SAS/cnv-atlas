@@ -41,9 +41,15 @@ describe("la franja de nivel va en color de marca; la cabecera, sin fondo", () =
   // queda gris." SEGUNDA VUELTA (tarde, variante (c)): el gris y el azul chocaban pegados, asi que la
   // cabecera pierde el fondo y queda UNA sola superficie pintada. Ver el caso de abajo.
 
-  it("la franja de nivel lleva el azul de marca", () => {
-    expect(CODIGO, "la franja de nivel volvió a gris").toContain("bg-primary/10");
-    expect(CODIGO).toContain("text-primary");
+  it("la franja de nivel lleva el azul de marca, y muy leve", () => {
+    // TERCERA VUELTA DEL TONO (Santiago, 2026-09-10). Fue gris, luego bg-primary/10 con el rótulo en azul,
+    // y su lectura final: "no que quede en gris ni con ese azul eléctrico". El tinte baja a /5 y el rótulo
+    // vuelve al gris de texto: se ve que empieza otra cosa sin competir con los chips de veredicto, que es
+    // lo único que en esta tabla debe reclamar la mirada.
+    //
+    // La aserción no cambia (lleva marca, no lleva riesgo); se ajusta la intensidad, que es decisión suya.
+    expect(CODIGO, "la franja de nivel volvió a gris").toContain("bg-primary/5");
+    expect(CODIGO).toContain("border-primary/20");
   });
 
   it("y la cabecera de columnas NO lleva fondo: una sola superficie pintada", () => {

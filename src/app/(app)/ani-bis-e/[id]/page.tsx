@@ -100,7 +100,6 @@ import {
   HcPlanNutricional,
   HcProximaConsulta,
   HcRecomendaciones,
-  HcIndicesAniBise,
   HcRemisiones,
   HcRutasActivadas,
   HcMotivoDeConsulta,
@@ -1092,8 +1091,23 @@ export default async function ResultadosEvaluacionPage({
                     references={wangRefs}
                     fenotipoMccb={results.snapshot.fenotipoMCCB ?? null}
                     soloAlterados
+                    // LOS INDICES ANI-BIS-E, COMO UN NIVEL MAS DE LA TABLA (Santiago, 2026-09-10), que es
+                    // como los tiene el archivo de Gildardo. Vivian debajo, en una tabla aparte con su
+                    // propia banda gris y sin padding: se leian como dos tablas apiladas que no se
+                    // parecen. Van SOLO aqui: en Diagnostico ya existen en su propia subpestaña, y
+                    // meterlos en el mapa de composicion los duplicaria.
+                    bloqueFinal={{
+                      titulo: "ANI-BIS-E",
+                      filas: hcAni.map((i) => ({
+                        id: i.codigo,
+                        etiqueta: i.nombre ?? i.codigo,
+                        sigla: i.nombre ? i.codigo : null,
+                        valor: i.valor,
+                        referencia: i.referencia,
+                        clasificacion: i.clasificacion,
+                      })),
+                    }}
                   />
-                  <HcIndicesAniBise indices={hcAni} />
                   <p className="text-xs text-muted-foreground">
                     Los valores son los de esta evaluación. Los rangos de referencia son los del modelo
                     vigente hoy, no los del día de la consulta.

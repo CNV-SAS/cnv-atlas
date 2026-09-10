@@ -2771,7 +2771,6 @@ function MenuSemanalSection({
   const hayEdiciones = DIAS_SEMANA.some((_, d) => vivos.some((t) => editada(d, t.id)));
   // La semana propuesta aun no esta guardada: si recarga, vuelve la anterior. Se avisa (Santiago perdio el
   // menu varias veces por esto).
-  const semanaSinGuardar = diaInicio !== (saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId));
   // Devuelve una celda al ciclo: se BORRA el override, no se escribe el texto del ciclo. Asi la celda vuelve
   // a seguir el ciclo tambien cuando se proponga otra semana; escribir el texto la dejaria fija otra vez.
   const volverAlCiclo = (dia: number, tiempo: string) =>
@@ -2879,12 +2878,18 @@ function MenuSemanalSection({
               </p>
             ) : null}
           </div>
-          {semanaSinGuardar ? (
-            <p className="rounded-md border border-clinical-warning/40 bg-clinical-warning-bg px-3 py-2 text-sm text-clinical-warning">
-              Semana nueva propuesta, sin guardar todavía. Si recargas, vuelve la anterior: pulsa
-              &quot;Guardar menú&quot; para dejarla fija.
-            </p>
-          ) : null}
+          {/* AQUI HABIA UN AVISO DE "sin guardar" Y SE RETIRA ENTERO (Santiago, 2026-09-10).
+              Decia: "Semana nueva propuesta, sin guardar todavía. Si recargas, vuelve la anterior: pulsa
+              'Guardar menú' para dejarla fija."
+
+              DOS COSAS MAL, Y LA SEGUNDA ES LA QUE DECIDE:
+                1. Mandaba a "Guardar menú", que dejo de existir cuando los siete guardados por bloque se
+                   volvieron uno solo al pie. Un aviso que nombra un boton inexistente es peor que ninguno.
+                2. Y LO QUE DECIA YA LO DICE LA BARRA PEGAJOSA, que nombra las secciones con cambios sin
+                   guardar (esta entre ellas) y lleva el boton. Corregir solo el nombre del boton habria
+                   dejado dos avisos del mismo hecho, que es como uno de los dos vuelve a envejecer.
+
+              Es el mismo caso que la validacion que se retiro por lo mismo. */}
         </fieldset>
       </div>
     </section>
