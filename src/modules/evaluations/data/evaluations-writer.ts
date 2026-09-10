@@ -29,6 +29,14 @@ export type ConfirmIdentityInput = {
   actorId: string;
   actorEmail: string;
   ip: string | null;
+  /**
+   * LOS POSIBLES DUPLICADOS QUE EL PROFESIONAL DESCARTO al continuar (2026-09-10).
+   *
+   * Vacio o ausente = no habia ninguno que mirar. Cuando los hay, decir "no es la misma persona" es una
+   * DECISION DE IDENTIDAD, y una decision de identidad sin rastro es una que nadie puede revisar despues:
+   * si mañana resulta que si era la misma, lo primero que se pregunta es quien miro y cuando.
+   */
+  duplicadosDescartados?: { patientId: string; score: number }[];
 };
 
 // Pasa la evaluacion de draft a in_progress y audita evaluation.identity_confirmed.
@@ -82,6 +90,29 @@ export async function confirmEvaluationIdentity(
       payload: { patient_id: input.patientId },
       ip: input.ip,
     });
+
+    // EL DESCARTE VA APARTE Y EN LA MISMA TRANSACCION (regla dura 8). Aparte porque son dos hechos
+    // distintos: uno es "esta evaluacion sigue", el otro es "mire estos candidatos y NO es la misma
+    // persona". Fundirlos en un payload haria que el segundo solo se pudiera encontrar leyendo el primero.
+    if (input.duplicadosDescartados && input.duplicadosDescartados.length > 0) {
+      await recordAudit(tx, {
+        event: "evaluation.duplicate_dismissed",
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        entityType: "evaluation",
+        entityId: input.evaluationId,
+        payload: {
+          patient_id: input.patientId,
+          // QUE se descarto y con cuanta similitud: sin el score, dentro de un año nadie sabe si la
+          // coincidencia era del 55% o del 95%, que es lo que dice si la decision fue facil o dificil.
+          candidatos: input.duplicadosDescartados.map((d) => ({
+            patient_id: d.patientId,
+            score: d.score,
+          })),
+        },
+        ip: input.ip,
+      });
+    }
     return { confirmed: true };
   });
 }

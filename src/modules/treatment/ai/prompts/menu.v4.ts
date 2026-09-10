@@ -210,21 +210,57 @@ export function parseCambiosMenu(
  * verificados casi todos los cambios legítimos, y un aviso que salta siempre se aprende a ignorar.
  */
 export function verificarCita(motivo: string, restricciones: string[]): boolean {
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "") // marcas combinantes: escritas con escape, no con el caracter
-      .replace(/[^a-z0-9 ]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  const m = norm(motivo);
-  if (m === "") return false;
+  const mios = terminosDeRestriccion(motivo);
+  if (mios.size === 0) return false;
   return restricciones.some((r) => {
-    const n = norm(r);
-    // Palabras muy cortas ("sal") darian falsos positivos dentro de otras ("ensalada"): se exige que la
-    // coincidencia caiga en limite de palabra.
-    if (n === "") return false;
-    return new RegExp(`(^| )${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( |$)`).test(m) || m.includes(n);
+    const suyos = terminosDeRestriccion(r);
+    for (const t of mios) if (suyos.has(t)) return true;
+    return false;
   });
+}
+
+/**
+ * LOS TERMINOS SIGNIFICATIVOS de una restriccion o de un motivo.
+ *
+ * ═══ POR QUE SE COMPARA POR TERMINOS Y NO POR CONTENCION (Santiago, 2026-09-10) ═══
+ *
+ * EL DEFECTO, con el dato de produccion delante: el profesional registro UNA restriccion compuesta,
+ * `"sin gluten ni lacteos"`. La IA, correctamente, cita por celda la mitad que aplica: para una que solo
+ * rompia la de lacteos escribio `"sin lacteos"`. El cotejo anterior preguntaba si la RESTRICCION cabia
+ * dentro del MOTIVO, y "sin gluten ni lacteos" no cabe dentro de "sin lacteos": salia
+ * `citaVerificada: false` sobre una cita perfectamente correcta.
+ *
+ * No era el acento (la normalizacion los quita bien) ni que las restricciones no llegaran (llegaban): era
+ * la DIRECCION de la contencion, que supone que el motivo repite la restriccion entera.
+ *
+ * LA REGLA NUEVA es simetrica y no depende de como este redactada ninguna de las dos: comparten al menos
+ * un termino significativo. "sin lacteos" y "sin gluten ni lacteos" comparten `lacteo`; "sin mariscos" no
+ * comparte nada con ellas y se sigue marcando, que es para lo que existe el aviso.
+ *
+ * SU LIMITE, declarado: un motivo que nombre el alimento en vez de la restriccion ("contiene leche" contra
+ * "sin lacteos") no comparte termino y saldra marcado. Se prefiere ese error al contrario: este aviso NO
+ * bloquea y solo sirve para decir a cual mirar primero, asi que uno que salta sobre citas legitimas se
+ * aprende a ignorar y deja de servir para nada.
+ */
+function terminosDeRestriccion(texto: string): Set<string> {
+  // Palabras que no distinguen una restriccion de otra. Sin quitarlas, "sin gluten" y "sin lacteos"
+  // compartirian `sin` y todo quedaria verificado siempre.
+  const VACIAS = new Set([
+    "sin", "ni", "y", "e", "o", "u", "de", "del", "la", "el", "los", "las", "con", "para", "por",
+    "a", "al", "en", "un", "una", "no", "que", "se", "su", "mas", "menos", "bajo", "alto", "dieta",
+    "contiene", "lleva", "evitar", "restriccion", "paciente",
+  ]);
+  const salida = new Set<string>();
+  for (const palabra of texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // marcas combinantes (acentos), por punto de codigo
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(/\s+/)) {
+    if (palabra.length < 3 || VACIAS.has(palabra)) continue;
+    // Singular y plural cuentan como el mismo termino: la lista dice "lacteos" y el motivo puede decir
+    // "lacteo". Es un recorte crudo a proposito; no hace falta un lematizador para esto.
+    salida.add(palabra.replace(/es$/, "").replace(/s$/, ""));
+  }
+  return salida;
 }

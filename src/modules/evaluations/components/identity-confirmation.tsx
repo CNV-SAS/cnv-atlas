@@ -43,8 +43,8 @@ function DuplicateAlert({ candidates }: { candidates: DuplicateCandidateView[] }
         Posible duplicado: revisa antes de confirmar
       </span>
       <p className="text-xs text-muted-foreground">
-        Encontramos pacientes con datos parecidos. Confirma solo si es la misma
-        persona; no se fusionan automaticamente.
+        Encontramos pacientes con datos parecidos. Míralos antes de seguir: Atlas resuelve la identidad
+        por documento, así que estos tienen uno <strong>distinto</strong>.
       </p>
       <ul className="flex flex-col gap-2">
         {candidates.map((c) => (
@@ -118,20 +118,67 @@ export function IdentityConfirmation({
           <p className="text-sm text-destructive">{confirmState.error}</p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3">
-          {done ? (
-            <Badge variant="outline" className="bg-clinical-optimal-bg text-clinical-optimal">
-              Identidad confirmada
-            </Badge>
-          ) : (
-            <form onSubmit={enviarSinReset(confirmAction)}>
+        {/* ═══ LA SALIDA QUE FALTABA (Santiago, 2026-09-10) ═══
+
+            EL DEFECTO: había un solo botón, "Confirmar identidad", y el texto de arriba decía "confirma
+            solo si es la misma persona". Cuando NO lo era, el profesional se quedaba sin salida: sin
+            confirmar, la evaluación sigue en borrador y las condiciones BIS no aparecen.
+
+            Y LO QUE SE VERIFICÓ ANTES DE CONSTRUIR NADA cambia el diseño: **confirmar no fusiona nada.**
+            El writer hace tres cosas (el muro del consentimiento, draft -> in_progress y auditar) y NO
+            toca a los candidatos. O sea que el botón nunca significó "es la misma persona": significaba
+            "sigo con esta evaluación", y el texto le atribuía una consecuencia que no tiene.
+
+            POR ESO LA SALIDA NO ES UN BOTÓN NUEVO CON OTRA ACCIÓN, es decir la verdad: seguir es seguir
+            como paciente nuevo, y lo que faltaba era DEJAR CONSTANCIA de que alguien miró y decidió. */}
+        {done ? (
+          <Badge variant="outline" className="bg-clinical-optimal-bg text-clinical-optimal">
+            Identidad confirmada
+          </Badge>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <form onSubmit={enviarSinReset(confirmAction)} className="flex flex-col gap-2">
               <input type="hidden" name="evaluationId" value={evaluation.evaluationId} />
-              <Button type="submit" disabled={confirming}>
-                {confirming ? "Confirmando..." : "Confirmar identidad"}
+              {/* QUÉ se descartó y con cuánta similitud: dentro de un año, saber si la coincidencia era
+                  del 55% o del 95% es lo que dice si la decisión fue fácil o difícil. */}
+              <input
+                type="hidden"
+                name="descartados"
+                value={JSON.stringify(
+                  duplicateCandidates.map((c) => ({ patientId: c.patientId, score: c.score })),
+                )}
+              />
+              <Button type="submit" disabled={confirming} className="self-start">
+                {confirming
+                  ? "Continuando..."
+                  : duplicateCandidates.length > 0
+                    ? "No es la misma persona · continuar"
+                    : "Confirmar identidad"}
               </Button>
+              {duplicateCandidates.length > 0 ? (
+                <span className="text-xs text-muted-foreground">
+                  Queda registrado que revisaste{" "}
+                  {duplicateCandidates.length === 1
+                    ? "la coincidencia"
+                    : `las ${duplicateCandidates.length} coincidencias`}{" "}
+                  y que no es la misma persona.
+                </span>
+              ) : null}
             </form>
-          )}
-        </div>
+
+            {duplicateCandidates.length > 0 ? (
+              // EL OTRO CASO, DICHO COMO ES. Atlas no fusiona pacientes: si de verdad es la misma persona,
+              // quedó registrada dos veces con documentos distintos, y esta evaluación colgaría del
+              // duplicado. No se ofrece un botón que finja resolverlo; se dice qué pasa y qué no hacer.
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <strong className="text-foreground">¿Sí es la misma persona?</strong> Entonces está
+                registrada dos veces, con documentos distintos. Atlas todavía no puede unir dos pacientes:
+                no continúes con esta evaluación y repórtalo, o esta consulta quedará colgada del paciente
+                duplicado.
+              </div>
+            ) : null}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

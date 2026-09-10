@@ -34,7 +34,7 @@ describe("orden del plan alimentario", () => {
     // renderizarse ENTRE los dos bloques de la cadena. La aserción es la misma; lo que cambió es dónde
     // hay que mirarla. Con la comparación vieja habría bastado con invertir el `toBeLessThan` para
     // ponerlo verde, y eso habría fijado exactamente lo contrario de lo que se quiere.
-    const dentro = pos("{validacion(adj, opciones, hayCambiosSinGuardar)}");
+    const dentro = pos("{validacion(adj, opciones)}");
     expect(dentro, "la validación se renderiza dentro de la cadena").toBeLessThan(
       pos("Fórmula sintética"),
     );
@@ -44,10 +44,10 @@ describe("orden del plan alimentario", () => {
     // El contenido del punto 21: el objetivo, la actividad, el déficit y el peso meta cambian la tabla
     // en vivo. Con la tabla arriba y los campos abajo no se lee que una cosa mueve a la otra.
     const meta = pos('<h3 className={tituloBloqueCls("decision")}>Objetivo del plan');
-    expect(meta).toBeLessThan(pos("{validacion(adj, opciones, hayCambiosSinGuardar)}"));
+    expect(meta).toBeLessThan(pos("{validacion(adj, opciones)}"));
     for (const campo of ['name="pesoMeta"', 'name="adjKcalObj"', 'name="adjDeficit"']) {
       expect(pos(campo), `${campo} tiene que quedar ARRIBA de la validación`).toBeLessThan(
-        pos("{validacion(adj, opciones, hayCambiosSinGuardar)}"),
+        pos("{validacion(adj, opciones)}"),
       );
     }
   });
@@ -59,16 +59,27 @@ describe("orden del plan alimentario", () => {
   it("y se recalcula EN VIVO con esos campos, no con lo guardado (punto 21b)", () => {
     // El contenido del 21b: los cuatro campos existen para ver como cambia esta tabla. Con los ajustes
     // GUARDADOS, la tabla solo se movia despues de bajar a la formula y guardar.
-    expect(PANEL).toContain("{validacion(adj, opciones, hayCambiosSinGuardar)}");
+    expect(PANEL).toContain("{validacion(adj, opciones)}");
     expect(PANEL, "la tabla usa los ajustes que le llegan, no los de la fila").toContain(
       "computeProtocoloEfectivo(snap, ajustes ?? adjGuardados, opciones ?? {})",
     );
   });
 
-  it("y DICE que esta validando cifras sin guardar", () => {
-    // Una previsualizacion tiene que decir que lo es: sin esto, un profesional lee una validacion
-    // correcta y se va sin guardar creyendo que el plan validado es el que queda.
-    expect(PANEL).toContain("todavía sin guardar");
+  it("y quien DICE que hay cifras sin guardar es la barra pegajosa, no esta tabla", () => {
+    // ALCANCE MOVIDO, NO RETIRADO (2026-09-10). Este caso exigia un aviso DENTRO de la validacion
+    // ("todavía sin guardar"), y ese aviso ademas mandaba a un boton que ya no existe ("está en Objetivo
+    // del plan, junto a los campos").
+    //
+    // LA GARANTIA ES LA MISMA y por eso el caso se queda: una previsualizacion tiene que decir que lo es,
+    // o el profesional lee una validacion correcta y se va sin guardar. Lo que cambia es QUIEN lo dice: la
+    // barra pegajosa del pie, que esta SIEMPRE a la vista, nombra las secciones que cambiaron y trae el
+    // boton. Dos avisos del mismo hecho en dos sitios es ruido, y el de arriba no se ve cuando se esta
+    // leyendo la tabla de abajo.
+    expect(PANEL, "el aviso volvió a la validación, y allí manda a un botón que no existe").not.toContain(
+      "todavía sin guardar",
+    );
+    expect(PANEL, "el aviso pegajoso dejó de existir").toContain("sticky bottom-0");
+    expect(PANEL).toContain("Guardar cambios");
   });
 
   it("la cadena va antes del intercambio, que consume su objetivo", () => {
