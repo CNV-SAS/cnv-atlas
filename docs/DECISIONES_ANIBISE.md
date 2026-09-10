@@ -1394,3 +1394,27 @@ preguntaba si la restricción cabía dentro del motivo, y la compuesta no cabe d
 - **Y el aviso se recomputa al LEER.** `citaVerificada` se guardaba dentro de `menu_json`, que es
   inmutable: era una foto. El aviso habla en presente ("no corresponde a ninguna restricción
   **registrada**"), así que se calcula en presente; lo guardado queda como procedencia.
+
+---
+
+## P-126 · Diez alertas suyas sin insumo posible, y es consecuencia de P-70 y P-83 (2026-09-10)
+
+**No es una pregunta nueva: es una consecuencia que quiza no estaba a la vista al responder las dos que
+la cierran.** De sus quince reglas de `generarAlertas` corren CINCO. Las diez restantes leen `cons`
+(consumo de nutrientes por porciones/dia), y ese dato no lo captura ninguna encuesta.
+
+**LAS DOS RESPUESTAS QUE CIERRAN LA VIA, las dos suyas:**
+- **P-70 (2026-08-30):** "no hay puente que construir". La frecuencia NO se convierte en porciones
+  porque es un patron, no una cuantificacion; los tres instrumentos no se traducen entre si.
+- **P-83 (2026-09-03):** las porciones por grupo de la TCAC, "No va, y no es que falte: es que no debe
+  existir". Y anadio el dato que lo vuelve leccion: "es la tercera vez que la pregunta vuelve con otro
+  traje".
+
+**LO QUE SE HIZO SIN PREGUNTARLE:** el pie de la pantalla decia que el consumo "aun no se calcula", que
+promete una via que el cerro. Ahora dice que la encuesta no lo captura, que es lo que sabemos. El pie NO
+se retira: que la causa sea permanente lo hace mas necesario, no menos.
+
+**LO QUE SE LE PREGUNTA** (punto 21 de PENDIENTES_CIENTIFICOS, añadido el 2026-09-10 DESPUES de que
+empezara a responder ese documento, asi que puede no haberlo visto): si se queda asi con el aviso
+permanente, si las diez se retiran del modelo, o si la encuesta pasa a capturar porciones. Ninguna la
+podemos tomar nosotros: la segunda borra reglas suyas y la tercera toca el instrumento congelado.

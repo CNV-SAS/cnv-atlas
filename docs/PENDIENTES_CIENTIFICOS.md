@@ -12,7 +12,7 @@ ahora es uno solo.
 | --- | --- | --- |
 | **Primero** | Un aviso de **datos personales** que no podíamos guardarnos | 1 |
 | **Después** | Lo que se responde **en una línea**, sin abrir tu archivo | 7 |
-| **Al final** | Lo que necesita que **mires tu archivo** | 13 |
+| **Al final** | Lo que necesita que **mires tu archivo** | 14 |
 | **Y aparte** | Lo que **decidimos nosotros** y solo te declaramos | 15 |
 
 **Nada de esto frena a Atlas.** Todo está construido y funcionando con la decisión que tomamos en cada
@@ -390,6 +390,56 @@ la historia del paciente.
 
 **¿Van todas, o solo la vigente?** Tu archivo no lo resuelve: tu campo de observaciones guarda una sola
 (cada control sobrescribe la anterior) y no se muestra en ningún documento.
+
+## 21 · Diez de tus quince alertas clínicas no pueden salir nunca, y es consecuencia de dos respuestas tuyas
+
+**AÑADIDO EL 2026-09-10**, después de que empezaras a responder este documento. Si ya habías pasado por
+aquí, este punto no lo has visto.
+
+Tu `generarAlertas` tiene **quince reglas**. En Atlas corren **cinco**:
+
+| Alerta | Nivel | Dominio |
+| --- | --- | --- |
+| TCA activo detectado | crítico | D2 |
+| Riesgo glucémico crítico | crítico | D1+D5 |
+| Deshidratación probable | alto | D1+D7 |
+| Estrés alto + azúcares elevados | moderado | D3+D1 |
+| Hidratación adecuada | positivo | D1+D7 |
+
+**Las otras diez leen `cons`**, el consumo de nutrientes por porciones al día (sodio, kcal, fibra, hierro,
+calcio, proteína, omega-3). Y ese dato **no lo captura ninguna encuesta**, ni la tuya ni la nuestra: los
+campos `d1_1`..`d1_18` que `calcConsumo` lee viven solo en tu objeto demo.
+
+**Y aquí está lo que te queremos decir, que no es una pregunta nueva sino una consecuencia de dos que ya
+respondiste:**
+
+- **2026-08-30:** *"Ninguno es la traducción de otro"*. La frecuencia de consumo, la tabla de composición y
+  la lista de intercambio son tres instrumentos distintos, y la frecuencia no se convierte en porciones
+  **porque es un patrón, no una cuantificación**.
+- **2026-09-03:** sobre dónde se capturan las porciones por grupo, *"No va, y no es que falte: **es que no
+  debe existir**"*.
+
+Las dos respuestas son claras y las aplicamos. **Lo que quizá no estaba a la vista al responderlas es que
+entre las dos dejan diez de tus propias alertas sin insumo posible.** No es que falte desarrollo nuestro:
+hoy no hay vía.
+
+**Mientras tanto, Atlas lo dice en pantalla**, debajo de las alertas: *"De las quince alertas del modelo,
+10 necesitan el consumo de nutrientes en porciones, que la encuesta no captura. La ausencia de avisos no
+equivale a ausencia de riesgo."* Sin esa línea, "ninguna alerta" se lee como "el paciente está bien" cuando
+significa "de lo nutricional no estamos evaluando nada".
+
+**Lo que te preguntamos es solo esto: ¿lo dejamos así?** Las tres salidas que vemos, y ninguna la tomamos
+por nuestra cuenta:
+
+1. **Se queda como está**, con el aviso permanente. Es lo que hay hoy.
+2. **Las diez se retiran** del modelo, y entonces el aviso desaparece porque las alertas del modelo pasan a
+   ser cinco.
+3. **La encuesta captura porciones** (un instrumento nuevo, tuyo), y las diez se encienden.
+
+Nosotros no podemos elegir: la opción 2 borra reglas tuyas y la 3 toca el instrumento, que está congelado y
+es tuyo.
+
+---
 
 # Y APARTE · Lo que decidimos nosotros y solo te declaramos
 
