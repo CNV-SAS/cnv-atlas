@@ -147,7 +147,18 @@ export type TreatmentProtocol = {
    *
    * Vacio = esta consulta no ha entregado nada todavia.
    */
-  emisiones: { fecha: string; via: string }[];
+  emisiones: {
+    fecha: string;
+    via: string;
+    /**
+     * LA CADENA SELLADA EN ESA SALIDA. Sin ella, dos entregas del mismo dia salen como dos lineas
+     * identicas y el registro deja de contestar lo unico que existe para contestar: QUE recibio el
+     * paciente. La copia completa se guarda en `prescription_emissions.prescripcion`; aqui suben las dos
+     * cifras que el profesional compara de un vistazo.
+     */
+    kcal: number | null;
+    proteina: number | null;
+  }[];
   kcalObjetivo: number | null;
   proteinaGramos: number | null;
   // Peso meta (cadena calórica, pieza 1 — HECHO VISIBLE, nota 3 de Gildardo). pesoCalculo es el peso

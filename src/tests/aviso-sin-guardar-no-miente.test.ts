@@ -218,3 +218,93 @@ describe("lo que no se tocó, no se guarda", () => {
     expect(PANEL).toContain("const intercambioEnVivo = enPantalla<");
   });
 });
+
+describe("y tampoco miente DESPUES de guardar", () => {
+  const PANEL = sinComentarios(
+    readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8"),
+  );
+
+  it("la lista de intercambio re-deriva sus porciones cuando el objetivo se mueve", () => {
+    // EL DEFECTO, un paso más adelante (Santiago, 2026-09-10): guardar la cadena calórica y que el aviso
+    // volviera a salir por la lista de intercambio.
+    //
+    // LA CAUSA: la `key` de esa sección depende del intercambio GUARDADO. Al cambiar solo la cadena, ese
+    // no cambia, la sección NO se remonta, y su estado se queda con las porciones derivadas del objetivo
+    // ANTERIOR mientras los defaults ya se recalcularon con el nuevo. Y no era solo un aviso falso: la
+    // tabla mostraba porciones calculadas para un objetivo que ya no era.
+    expect(PANEL, "la lista de intercambio dejó de seguir al objetivo").toContain(
+      "if (objetivoSembrado !== objetivoEfectivo) {",
+    );
+    expect(PANEL).toContain("setObjetivoSembrado(objetivoEfectivo);");
+  });
+
+  it("pero NO si el profesional las tocó, ni si ya hay una lista guardada", () => {
+    // Las dos mitades del límite, y las dos protegen algo distinto:
+    //  · TOCADAS: re-derivar borraría el ajuste manual, que es justo lo que el aviso de desfase (DIV-11)
+    //    existe para no hacer.
+    //  · GUARDADA: seguir al objetivo volvería MENTIROSO ese aviso ("estas porciones se calcularon para X
+    //    kcal, pero el objetivo ahora es Y"), que es el mecanismo diseñado para ese caso.
+    expect(PANEL).toContain("if (saved == null && sinTocar) {");
+    expect(PANEL).toContain("anteriores.every((a) => (porciones[a.sub] ?? 0) === a.porciones)");
+    // Y el aviso de desfase sigue existiendo: es la otra mitad del par.
+    expect(PANEL).toContain("saved.objetivoBase !== objetivoEfectivo");
+  });
+
+  it("y se ajusta en el RENDER, no en un efecto", () => {
+    // Es el patrón que React documenta para un estado derivado de una prop: re-rinde antes de pintar. En
+    // un efecto correría después de pintar y encadenaría renders, que es lo que la regla
+    // `set-state-in-effect` señala. Y el valor previo va en ESTADO, no en un ref: leer un ref durante el
+    // render está prohibido por `react-hooks/refs`.
+    expect(PANEL).toContain("const [objetivoSembrado, setObjetivoSembrado] = useState(objetivoEfectivo);");
+  });
+});
+
+describe("las entregas se distinguen entre sí", () => {
+  const PANEL = sinComentarios(
+    readFileSync("src/modules/treatment/components/treatment-panel.tsx", "utf8"),
+  );
+  const HC = sinComentarios(
+    readFileSync("src/modules/reports/components/historia-clinica.tsx", "utf8"),
+  );
+  const PDF = sinComentarios(readFileSync("src/modules/reports/pdf/hc-document.tsx", "utf8"));
+
+  it("con HORA, no solo la fecha", () => {
+    // Dos impresiones el mismo día salían como dos líneas idénticas, y el registro existe para saber QUÉ
+    // recibió el paciente: dos entradas iguales no contestan eso.
+    expect(PANEL).toContain("formatDateTime(e.fecha)");
+    expect(
+      sinComentarios(readFileSync("src/modules/reports/data/hc-documento-reader.ts", "utf8")),
+    ).toContain("formatDateTime(e.emittedAt)");
+  });
+
+  it("con las CIFRAS selladas en esa salida", () => {
+    // Es lo que de verdad diferencia una entrega de otra, y ya se guardaba: la copia completa vive en
+    // `prescription_emissions.prescripcion` y su cadena efectiva en columnas.
+    for (const [nombre, src] of [
+      ["el panel", PANEL],
+      ["la historia en pantalla", HC],
+      ["el PDF", PDF],
+    ] as const) {
+      expect(src, `${nombre} no muestra las cifras de cada entrega`).toMatch(/kcal/);
+      expect(src, `${nombre} no muestra la proteína de cada entrega`).toMatch(/g de proteína/);
+    }
+  });
+
+  it("y marcando cuál es la que el paciente tiene ahora", () => {
+    // Sin marcarla, la lista es un historial sin presente. Se marca por POSICIÓN (el lector ordena
+    // `emitted_at desc`): dos del mismo minuto no se podrían desempatar comparando cadenas.
+    expect(PANEL).toContain("la que tiene ahora");
+    expect(HC).toContain("(la última entregada)");
+    expect(PDF).toContain("(la última entregada)");
+  });
+
+  it("y NO se afirma que dos entregas sean iguales", () => {
+    // Las dos cifras que se muestran no sostienen esa conclusión: el menú, las restricciones o el reparto
+    // pudieron cambiar sin mover el objetivo calórico. Se muestran los datos; la conclusión la saca quien
+    // lee.
+    for (const src of [PANEL, HC, PDF]) {
+      expect(src).not.toMatch(/sin cambios/i);
+      expect(src).not.toMatch(/idéntic/i);
+    }
+  });
+});

@@ -1323,3 +1323,26 @@ implementar?"*. Lo verificado antes de construir, y lo que salió de ahí:
 - **SMOKE HUMANO OBLIGATORIO.** Es una superficie de formulario grande y la clase de defecto que solo se
   ve en un navegador real (CLAUDE.md). El build de producción y los 2.526 tests pasan; eso no sustituye
   abrir la pantalla.
+
+**P-122 · CONFIRMAR EL DIAGNOSTICO DEJA DE SER UN ACTO (2026-09-10).**
+El bloque "Confirmar el diagnóstico" seguía en pantalla con su diálogo de dos pasos, diciendo de sí mismo
+que era irreversible y que era *"lo que habilita prescribir"*. Las dos cosas habían dejado de ser ciertas.
+
+- **YA NO HABILITABA NADA.** El gate de "diagnóstico confirmado" se había retirado el 2026-09-09 del
+  WRITER (nueve sitios), pero el SERVICIO tenía **cinco comprobaciones propias** que aquel barrido no tocó:
+  el menú semanal, los nutracéuticos, su decisión, el reconocimiento de restricciones y las notas clínicas.
+  Dos capas, una barrida. Lo destapó el smoke: aplicar un cambio de la IA al menú contestaba *"El
+  diagnóstico debe estar confirmado antes de editar el menú semanal"*.
+- **Y NO DEBÍA HABILITAR NADA**, que es la instrucción de fondo: *el diagnóstico es del MODELO, no del
+  profesional*. Nadie firma el resultado del motor; lo que sí se firma es haber prescrito sobre él. Es la
+  misma razón por la que se retiró el botón de aprobar la prescripción (P-120).
+- **Un acto irreversible que no cambia nada es una trampa:** cuesta una decisión, avisa de que no se puede
+  deshacer, y no compra nada.
+- **LO QUE NO SE PIERDE:** `confirmed_by`, `confirmed_at` y `confirmed_profession` **se siguen sellando**,
+  al aprobar el reporte (`diagnosis.confirmed_via_report`). La firma clínica no desaparece, cambia de
+  sitio: queda donde el plan sale hacia el paciente. El bloque de pantalla pasa a **rendir ese hecho**, y
+  sin confirmar no pinta nada.
+- **LO QUE CAMBIA Y HAY QUE DECIRLO:** quien aprueba el reporte puede ser un admin (su policy lo permite), y
+  entonces `confirmed_profession` queda en null. Ya se guardaba así, honestamente. Antes existía la vía de
+  que el profesional lo sellara ANTES con la suya. **Si eso importa clínicamente, la salida no es devolver
+  el botón: es que aprobar el reporte exija profesional.** Queda propuesto, no hecho.

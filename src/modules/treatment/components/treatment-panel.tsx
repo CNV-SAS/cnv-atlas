@@ -39,7 +39,7 @@ import { bloqueCls, tituloBloqueCls } from "@/components/shared/bloque";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate, formatDateTime } from "@/lib/format/date";
+import { formatDateTime } from "@/lib/format/date";
 import { etiquetaDeVia } from "@/modules/reports/vias-de-entrega";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1852,8 +1852,31 @@ function MenuCard({
 // version en la mano y el profesional cambia lo que come, hay que decirselo, y el sistema no lo hace
 // solo. Ese requisito no dependia del candado; dependia de que alguien hubiera recibido algo, que es
 // justo lo que esta lista dice.
-function EntregasRegistradas({ emisiones }: { emisiones: { fecha: string; via: string }[] }) {
+// ═══ Y CADA ENTREGA SE DISTINGUE DE LA ANTERIOR (Santiago, 2026-09-10) ═══
+//
+// EL DEFECTO: dos impresiones el mismo dia salian como dos lineas identicas. El registro existe para saber
+// QUE recibio el paciente, y dos entradas iguales no contestan eso.
+//
+// LAS TRES COSAS QUE LO ARREGLAN, y las tres salen de lo que YA se guarda (la copia completa vive en
+// `prescription_emissions.prescripcion`, con su cadena efectiva en columnas):
+//   · LA HORA. Dos del mismo dia se distinguen por ella, y solo salia la fecha.
+//   · LAS CIFRAS de esa salida. Es lo que de verdad diferencia una entrega de otra.
+//   · CUAL ES LA VIGENTE. La ultima es la que el paciente tiene en la mano; sin marcarla, la lista es un
+//     historial sin presente.
+//
+// NO SE AFIRMA QUE DOS SEAN IGUALES aunque coincidan las dos cifras: el menu, las restricciones o el
+// reparto pudieron cambiar sin mover el objetivo calorico. Se muestran los datos y el profesional lee; una
+// etiqueta de "sin cambios" seria una conclusion que estas dos columnas no sostienen.
+function EntregasRegistradas({
+  emisiones,
+}: {
+  emisiones: { fecha: string; via: string; kcal: number | null; proteina: number | null }[];
+}) {
   if (emisiones.length === 0) return null;
+  const cifras = (e: { kcal: number | null; proteina: number | null }) =>
+    [e.kcal != null ? `${e.kcal} kcal` : null, e.proteina != null ? `${e.proteina} g de proteína` : null]
+      .filter(Boolean)
+      .join(" · ");
   return (
     <div className="flex flex-col gap-2 rounded-md border border-attention/40 bg-attention-bg px-3 py-3 text-sm">
       <p className="font-medium text-attention">
@@ -1861,10 +1884,20 @@ function EntregasRegistradas({ emisiones }: { emisiones: { fecha: string; via: s
           ? "El paciente ya tiene este plan."
           : `El paciente ya recibió este plan ${emisiones.length} veces.`}
       </p>
-      <ul className="flex flex-col gap-0.5 text-foreground/90">
-        {emisiones.map((e) => (
-          <li key={e.fecha + e.via} className="tabular-nums">
-            {formatDate(e.fecha)} · {etiquetaDeVia(e.via)}
+      <ul className="flex flex-col gap-1 text-foreground/90">
+        {/* LA LISTA LLEGA DE LA MAS RECIENTE A LA MAS ANTIGUA (el lector ordena `emitted_at desc`), asi que
+            la vigente es la primera. Se marca por POSICION y no por fecha: dos del mismo minuto no se
+            podrian desempatar comparando cadenas. */}
+        {emisiones.map((e, i) => (
+          <li key={e.fecha + e.via} className="flex flex-wrap items-baseline gap-x-2">
+            <span className="tabular-nums">{formatDateTime(e.fecha)}</span>
+            <span>· {etiquetaDeVia(e.via)}</span>
+            {cifras(e) ? <span className="tabular-nums text-muted-foreground">· {cifras(e)}</span> : null}
+            {i === 0 ? (
+              <span className="rounded-full border border-attention/50 px-2 py-0.5 text-xs font-medium text-attention">
+                la que tiene ahora
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -2235,11 +2268,45 @@ function IntercambioSection({
 
   // useState-once (POR ALIMENTO): porciones guardadas por sub si existen, si no las calculadas. El remonte (key
   // del padre) re-deriva. Se inicializan los 21 alimentos (el que no tiene default arranca en 0).
+  //
   const [porciones, setPorciones] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
     for (const a of defaults) init[a.sub] = saved?.porciones[a.sub] ?? a.porciones;
     return init;
   });
+
+  // ═══ Y SE RE-DERIVAN SI EL OBJETIVO SE MUEVE Y NADIE LAS TOCO (2026-09-10) ═══
+  //
+  // EL DEFECTO, del smoke: guardar la cadena calorica y que el aviso volviera a salir diciendo que la
+  // lista de intercambio tiene cambios sin guardar. La causa es que la `key` de esta seccion depende del
+  // intercambio GUARDADO, y al cambiar solo la cadena ese no cambia: la seccion NO se remonta y su estado
+  // se queda con las porciones derivadas del objetivo ANTERIOR, mientras `defaults` ya se recalculo con el
+  // nuevo. Lo de pantalla dejaba de coincidir con lo que la seccion presentaria sin tocarla.
+  //
+  // Y NO ERA SOLO UN AVISO FALSO: la tabla mostraba porciones calculadas para un objetivo que ya no es.
+  // Eso ya pasaba antes de unificar los guardados; lo que hizo el aviso fue destaparlo.
+  //
+  // POR QUE "Y NADIE LAS TOCO": re-derivar siempre borraria el ajuste manual del profesional, que es justo
+  // lo que el aviso de desfase (DIV-11) existe para NO hacer. Si las porciones en pantalla son las que
+  // salian del objetivo anterior, no hay nada que perder y se siguen al nuevo; si las movio, se conservan
+  // y manda el desfase, con su boton de redistribuir.
+  // EL OBJETIVO CON EL QUE SE SEMBRARON, en ESTADO y no en un ref: se lee durante el render (para decidir
+  // si hay que re-derivar) y React prohibe leer un ref ahi. Es el patron documentado de "ajustar el estado
+  // cuando cambia una prop": re-rinde antes de pintar, sin el ciclo extra de un efecto.
+  const [objetivoSembrado, setObjetivoSembrado] = useState(objetivoEfectivo);
+  if (objetivoSembrado !== objetivoEfectivo) {
+    const anteriores = objetivoSembrado != null ? computeIntercambio(objetivoSembrado) : [];
+    const sinTocar =
+      anteriores.length > 0 && anteriores.every((a) => (porciones[a.sub] ?? 0) === a.porciones);
+    setObjetivoSembrado(objetivoEfectivo);
+    // SOLO SI NO HAY NADA GUARDADO, y el limite importa: con una lista guardada, seguir al objetivo
+    // volveria MENTIROSO el aviso de desfase de aqui abajo ("estas porciones se calcularon para X kcal,
+    // pero el objetivo ahora es Y"), que es justo el mecanismo que su DIV-11 diseño para este caso, con su
+    // boton de redistribuir. Sin nada guardado no hay decision que conservar ni desfase que avisar.
+    if (saved == null && sinTocar) {
+      setPorciones(Object.fromEntries(defaults.map((a) => [a.sub, a.porciones])));
+    }
+  }
 
   // LO QUE HAY EN PANTALLA, HACIA ARRIBA. Va ANTES de la guarda porque publicar es un HOOK y un hook no
   // puede quedar detras de un `return` temprano; con el objetivo en null la seccion no se rinde y no

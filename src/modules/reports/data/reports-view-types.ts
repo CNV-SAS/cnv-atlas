@@ -157,7 +157,7 @@ export type HistoriaClinicaDoc = {
    * QUE SALIO HACIA EL PACIENTE EN ESTA CONSULTA, de lo mas reciente a lo mas antiguo. Vacio = no consta
    * ninguna entrega, que NO es lo mismo que no haberla habido: es lo que el sistema puede afirmar.
    */
-  entregas: { fecha: string; via: string }[];
+  entregas: { fecha: string; via: string; kcal: number | null; proteina: number | null }[];
   /**
    * ¿Las cifras de este documento son las VIVAS y no las de una emision? `true` obliga a decirlo: sin
    * emision, lo que se imprime es el estado de hoy y puede cambiar mañana. Un documento probatorio no

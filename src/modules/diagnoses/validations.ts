@@ -24,11 +24,6 @@ export const generateCriterionSchema = z.object({
   evaluationId: z.guid("Evaluación inválida."),
 });
 
-// Confirmar el diagnostico (mini-bloque): la firma clinica del analisis, que habilita prescribir. No
-// lleva payload mas alla de la evaluacion (el que confirma es el profesional asignado, resuelto en el
-// service; no hay dato del formulario que confiar).
-export const confirmDiagnosisSchema = z.object({
-  evaluationId: z.guid("Evaluación inválida."),
-});
-
-export type ConfirmDiagnosisInput = z.infer<typeof confirmDiagnosisSchema>;
+// `confirmDiagnosisSchema` SE RETIRO (2026-09-10) con el acto de confirmar. La firma clinica se sella
+// ahora al aprobar el reporte (`reports-writer.ts`, evento `diagnosis.confirmed_via_report`), que es donde
+// Gildardo dijo que debia quedar: nadie firma el resultado del motor, se firma haber prescrito sobre el.

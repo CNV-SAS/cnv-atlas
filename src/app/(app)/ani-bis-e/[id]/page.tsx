@@ -1156,7 +1156,13 @@ export default async function ResultadosEvaluacionPage({
               {/* QUE SE LE ENTREGO AL PACIENTE. Va junto al sello de consentimiento porque son la misma
                   clase de bloque: constancia de lo que ocurrio alrededor del acto clinico. */}
               <HcEntregas
-                entregas={emisiones.map((e) => ({ fecha: formatDate(e.emittedAt), via: e.via }))}
+                entregas={emisiones.map((e) => ({
+                  // CON HORA: dos entregas del mismo dia se distinguen por ella y por las cifras.
+                  fecha: formatDateTime(e.emittedAt),
+                  via: e.via,
+                  kcal: e.kcalObjetivo,
+                  proteina: e.proteinaG,
+                }))}
                 sinEmitir={!documentoHc.sellados}
               />
               <HcConsentimiento
@@ -1174,7 +1180,6 @@ export default async function ResultadosEvaluacionPage({
               cerradaEl={hcHeader.cerradaEl ? formatDate(hcHeader.cerradaEl) : null}
               pendientes={pendientesDeLaConsulta({
                 encuestaCompleta: results.compatible ? results.snapshot.dfi.complete : true,
-                diagnosticoConfirmado: Boolean(protocol?.diagnosisConfirmed),
                 protocoloComputado: protocol?.protocolSuggested != null,
                 protocoloEmitido: emisiones.length > 0,
                 reporteEstado: reportCard?.status ?? null,
@@ -1265,22 +1270,20 @@ export default async function ResultadosEvaluacionPage({
               />
             ) : null
           }
-          // Cierre del diagnostico: confirmar (gate de estado) y corregir (versiona) UNIFICADOS bajo una
-          // sola tarjeta (Santiago 2026-08-15: son los dos caminos para cerrar, van juntos), conservando la
-          // distincion visual INTERNA (consecuencias muy diferentes: una cierra, otra crea version nueva). El
-          // criterio del profesional queda APARTE (su propio slot): es la lectura clinica, no el cierre.
+          // Cierre del diagnostico. ERAN DOS CAMINOS Y QUEDA UNO (2026-09-10): confirmar dejo de ser un
+          // acto (ver `confirm-diagnosis-panel.tsx`), asi que aqui solo queda CORREGIR, que si versiona.
+          // El bloque de confirmado se conserva porque RINDE UN HECHO: cuando el reporte se aprueba, la
+          // firma clinica queda sellada y esta tarjeta la muestra. Sin confirmar no pinta nada.
           confirmCorrect={
             <Card>
               <CardHeader>
                 <CardTitle>Cierre del diagnóstico</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Dos caminos: confirmar el diagnóstico (lo cierra y habilita prescribir) o corregirlo
-                  (crea una versión nueva).
+                  Si el diagnóstico tiene un error, corregirlo crea una versión nueva de toda la cadena.
                 </p>
               </CardHeader>
               <CardContent className="flex flex-col gap-6">
                 <ConfirmDiagnosisPanel
-                  evaluationId={results.evaluationId}
                   confirmed={results.confirmed}
                   confirmedAt={results.confirmedAt}
                   confirmedByName={results.confirmedByName}
