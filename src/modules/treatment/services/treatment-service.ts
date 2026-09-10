@@ -1,6 +1,7 @@
 import "server-only";
 
 import { computeProtocoloEfectivo, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
+import type { ProtocoloAjustes, ProtocoloSnapshot } from "@/clinical-engine";
 import { diaDelCiclo, diaInicioDerivado } from "@/clinical-engine/menu-ciclo";
 import { appError } from "@/core/errors/app-error";
 import { err, ok, type Result } from "@/core/errors/result";
@@ -8,6 +9,7 @@ import { getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { getProfessionalProfileIdByUser } from "@/modules/payments/data/payments-repository";
 import { getProtKgPrescrito } from "@/modules/treatment/data/dieta-resumen-reader";
 
+import { writeEmisionPrescripcion } from "../data/emisiones-writer";
 import { menuSemanalSignature } from "../data/protocol-signature";
 import { getTreatmentForApproval, getTreatmentProtocol } from "../data/treatment-reader";
 import { getActorProfession } from "../data/actor-profession-reader";
@@ -584,6 +586,145 @@ export async function acknowledgeRestrictions(
  */
 export type ViaDeAprobacion = "envio" | "entrega_en_consulta" | "manual";
 
+/**
+ * LA PRESCRIPCION EFECTIVA, ARMADA UNA SOLA VEZ.
+ *
+ * Existe porque hay DOS actos que sellan exactamente lo mismo (aprobar, que se esta retirando, y EMITIR,
+ * que es el que queda) y armar el objeto dos veces es como se separan dos copias del mismo documento. Es
+ * la misma leccion que ya nos costo el plan del paciente: una sola forma, dos presentaciones.
+ *
+ * NO INCLUYE LA VIA: cada acto la nombra a su manera (`aprobadoVia` en la aprobacion, `via` en la
+ * emision) y la añade al objeto que devuelve esto. Meterla aqui obligaria a que las dos se llamaran
+ * igual, que es una coincidencia y no un requisito.
+ */
+async function construirPrescripcionEfectiva(args: {
+  evaluationId: string;
+  suggested: ProtocoloSnapshot;
+  adjustments: ProtocoloAjustes;
+  bisMeasurementDate: string | null;
+  /** `null` si el actor no tiene perfil profesional: se sella lo que hay, no se inventa. */
+  profession: string | null;
+  fecha: Date;
+}): Promise<{
+  payload: Record<string, unknown>;
+  kcalObjetivo: number;
+  proteinaGramos: number;
+  versionApproved: string;
+  versionSuggested: string;
+}> {
+  // LA PROTEINA DEL MOTOR TAMBIEN AQUI, y es donde mas importa: lo que se sella ES la prescripcion, y
+  // tiene que ser la misma cifra que el profesional tenia delante. Un snapshot anterior al 2026-09-03 no
+  // la trae sellada, asi que se resuelve en vivo con el mismo helper que usa la pantalla; los posteriores
+  // la ignoran, porque manda lo sellado. Sin encuesta legible queda null y la cascada cae al minimo
+  // poblacional, declarandolo en protFuente.
+  const resultados = await getEvaluationResults(args.evaluationId);
+  const protKgVigente = resultados
+    ? await getProtKgPrescrito(
+        args.evaluationId,
+        resultados.snapshot.sexo,
+        resultados.snapshot.indicators as unknown as Record<string, unknown>,
+      )
+    : null;
+  const efectivo = computeProtocoloEfectivo(args.suggested, args.adjustments, { protKgVigente });
+  const versionApproved = PROTOCOL_ENGINE_VERSION;
+  const versionSuggested = args.suggested.protocolEngineVersion;
+
+  return {
+    kcalObjetivo: efectivo.calorico.kcalObj,
+    proteinaGramos: efectivo.calorico.protG,
+    versionApproved,
+    versionSuggested,
+    payload: {
+      protocolEngineVersionApproved: versionApproved,
+      protocolEngineVersionSuggested: versionSuggested,
+      versionMismatch: versionApproved !== versionSuggested,
+      approvedAt: args.fecha.toISOString(),
+      // La PROFESION con que se prescribio, SELLADA en el acto (no solo quien). Es la condicion que
+      // AUTORIZA la prescripcion nutricional; un acto clinico registra todas las condiciones bajo las que
+      // se ejecuto. Se lee, no se asume: si mañana la profesion del perfil cambia, este valor conserva la
+      // del acto, y el momento de cerrarlo es AHORA porque la copia es inmutable.
+      approvedProfession: args.profession,
+      bisMeasurementDate: args.bisMeasurementDate,
+      fenotipo: args.suggested.fenotipo,
+      estrategia: args.suggested.estrategia,
+      protMin: args.suggested.protMin,
+      protMax: args.suggested.protMax,
+      protRef: args.suggested.protRef,
+      restricciones: args.suggested.restricciones,
+      examenes: args.suggested.examenes,
+      suplementacion: args.suggested.suplementacion,
+      pesoEfectivo: efectivo.pesoEfectivo,
+      ajustes: args.adjustments,
+      calorico: efectivo.calorico,
+    },
+  };
+}
+
+/**
+ * EMITIR: registrar que esta prescripcion SALIO hacia el paciente (Santiago, 2026-09-09).
+ *
+ * QUE LO DIFERENCIA DE APROBAR, que es todo. Aprobar hacia dos cosas pegadas: sellaba Y cerraba. Emitir
+ * solo SELLA: guarda una copia inmutable de lo que salio, con su fecha y su via, y la prescripcion sigue
+ * abierta. Sin bloqueo, sin reapertura con motivo, sin un boton que parezca un tramite.
+ *
+ * Y CONSERVA LO UNICO QUE EL CANDADO PROTEGIA. El plan impreso, el del correo y la historia clinica se
+ * arman los tres del protocolo VIVO, asi que solo eran estables porque el trigger congelaba los ajustes al
+ * aprobar. Con la copia, esos documentos dejan de depender del estado vivo, que es la garantia de verdad:
+ * saber que recibio el paciente.
+ *
+ * MISMOS GUARDS QUE APROBAR, y no por simetria: emitir es el acto por el que un plan sale de la clinica
+ * hacia una persona. Asignacion explicita + profesion, en ese orden (la asignacion va primero para no
+ * filtrar existencia).
+ *
+ * SE PUEDE EMITIR VARIAS VECES, a proposito: se imprime, se corrige, se vuelve a imprimir, se envia. Cada
+ * salida es un hecho distinto y el paciente puede acabar con dos papeles. Por eso NO hay gate de "ya
+ * emitida": eso volveria a ser un candado.
+ */
+export async function emitirPrescripcion(
+  input: ApproveProtocolInput,
+  actor: Actor,
+  via: "impresa" | "correo",
+): Promise<Result<void>> {
+  const t = await getTreatmentForApproval(input.evaluationId);
+  if (!t) return err(appError("not_found", "Tratamiento no encontrado."));
+
+  const professionalId = await getProfessionalProfileIdByUser(actor.actorId);
+  if (!professionalId || professionalId !== t.evaluationProfessionalId) {
+    return err(appError("forbidden", "No estas asignado a este paciente."));
+  }
+  const prof = await requireNutricionista(actor.actorId);
+  if (!prof.ok) return err(prof.error);
+  if (!t.protocolSuggested) {
+    return err(
+      appError("conflict", "No se puede emitir una prescripción que nunca se computó (sin sugerido)."),
+    );
+  }
+
+  const sellada = await construirPrescripcionEfectiva({
+    evaluationId: input.evaluationId,
+    suggested: t.protocolSuggested,
+    adjustments: t.adjustments,
+    bisMeasurementDate: t.bisMeasurementDate,
+    profession: prof.value.profession,
+    fecha: new Date(),
+  });
+
+  try {
+    await writeEmisionPrescripcion({
+      treatmentId: t.treatmentId,
+      prescripcion: { ...sellada.payload, via },
+      kcalObjetivo: sellada.kcalObjetivo,
+      proteinaGramos: sellada.proteinaGramos,
+      via,
+      ...actor,
+    });
+  } catch (e) {
+    if (e instanceof TreatmentStateError) return err(appError("conflict", e.message));
+    throw e;
+  }
+  return ok(undefined);
+}
+
 export async function approveProtocol(
   input: ApproveProtocolInput,
   actor: Actor,
@@ -611,60 +752,28 @@ export async function approveProtocol(
     );
   }
 
-  const suggested = t.protocolSuggested;
-
-  // LA PROTEINA DEL MOTOR TAMBIEN AL APROBAR, y aqui es donde mas importa: lo que se sella en
-  // `protocol_approved` ES la prescripcion, y tiene que ser la misma cifra que el profesional tenia
-  // delante al aprobar. Un snapshot anterior al 2026-09-03 no la trae sellada, asi que se resuelve en
-  // vivo con el mismo helper que usa la pantalla; los posteriores la ignoran, porque manda lo sellado.
-  // Sin encuesta legible queda null y la cascada cae al minimo poblacional, declarandolo en protFuente.
-  const resultados = await getEvaluationResults(input.evaluationId);
-  const protKgVigente = resultados
-    ? await getProtKgPrescrito(
-        input.evaluationId,
-        resultados.snapshot.sexo,
-        resultados.snapshot.indicators as unknown as Record<string, unknown>,
-      )
-    : null;
-  const efectivo = computeProtocoloEfectivo(suggested, t.adjustments, { protKgVigente });
   const approvedAt = new Date();
-  const versionApproved = PROTOCOL_ENGINE_VERSION;
-  const versionSuggested = suggested.protocolEngineVersion;
-
-  const protocolApproved = {
-    // LA VIA, sellada en el acto por la misma razon que la profesion: un acto clinico registra las
-    // condiciones bajo las que se ejecuto, y `protocol_approved` es write-once (no se puede añadir luego).
-    aprobadoVia: via,
-    protocolEngineVersionApproved: versionApproved,
-    protocolEngineVersionSuggested: versionSuggested,
-    versionMismatch: versionApproved !== versionSuggested,
-    approvedAt: approvedAt.toISOString(),
-    // La PROFESION con que se aprobo, SELLADA en el acto (no solo approved_by = quien). Es la condicion
-    // que AUTORIZA la prescripcion nutricional (guard nutricionista); un acto clinico registra todas
-    // las condiciones bajo las que se ejecuto (familia de emission_versions). Se lee, no se asume: si
-    // manana la profesion del perfil cambia, este valor conserva la de la aprobacion (el momento de
-    // cerrarlo es AHORA: protocol_approved es write-once, no se puede agregar despues).
-    approvedProfession: prof.value.profession,
+  // LA MISMA CONSTRUCCION QUE LA EMISION, en un solo sitio: dos copias del mismo objeto es como se separan
+  // dos versiones del mismo documento. Lo unico propio de este acto es la via, que aqui se llama
+  // `aprobadoVia` (un acto clinico registra las condiciones bajo las que se ejecuto).
+  const sellada = await construirPrescripcionEfectiva({
+    evaluationId: input.evaluationId,
+    suggested: t.protocolSuggested,
+    adjustments: t.adjustments,
     bisMeasurementDate: t.bisMeasurementDate,
-    fenotipo: suggested.fenotipo,
-    estrategia: suggested.estrategia,
-    protMin: suggested.protMin,
-    protMax: suggested.protMax,
-    protRef: suggested.protRef,
-    restricciones: suggested.restricciones,
-    examenes: suggested.examenes,
-    suplementacion: suggested.suplementacion,
-    pesoEfectivo: efectivo.pesoEfectivo,
-    ajustes: t.adjustments,
-    calorico: efectivo.calorico,
-  };
+    profession: prof.value.profession,
+    fecha: approvedAt,
+  });
+  const protocolApproved = { aprobadoVia: via, ...sellada.payload };
+  const versionApproved = sellada.versionApproved;
+  const versionSuggested = sellada.versionSuggested;
 
   try {
     await writeApproveProtocol({
       treatmentId: t.treatmentId,
       protocolApproved,
-      kcalObjetivo: efectivo.calorico.kcalObj,
-      proteinaGramos: efectivo.calorico.protG,
+      kcalObjetivo: sellada.kcalObjetivo,
+      proteinaGramos: sellada.proteinaGramos,
       approvedAt,
       versionApproved,
       versionSuggested,
