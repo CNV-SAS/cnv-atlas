@@ -45,7 +45,11 @@ describe("no queda nada apuntando a la ruta vieja", () => {
     );
     expect(conRutaNueva.length, "no aparece la ruta nueva en ninguna parte").toBeGreaterThan(5);
     expect(sinComentarios(NAV)).toContain('href: "/ani-bis-e"');
-    expect(sinComentarios(NAV)).toContain('label: "Modelo ANI-BIS-E"');
+    // EL ROTULO CAMBIO, NO LA RUTA (2026-09-10): "Modelo ANI-BIS-E" se leía como "la lista de
+    // evaluaciones", que es justo lo que hoy es /pacientes con su columna de pendientes. Esta pantalla ya
+    // no lista evaluaciones: es lo que se hace POR LOTE. Lo que este caso controla es que la entrada del
+    // sidebar exista y apunte a la ruta, no cómo se llama.
+    expect(sinComentarios(NAV)).toContain('label: "Bandeja de trabajo"');
   });
 
   it("y Pacientes se renombró SIN tocar su ruta", () => {

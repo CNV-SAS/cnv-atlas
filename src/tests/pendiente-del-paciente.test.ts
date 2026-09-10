@@ -90,6 +90,18 @@ describe("un paciente con varias evaluaciones paradas", () => {
   it("sin nada pendiente, la celda queda vacía", () => {
     expect(pendienteDelPaciente([{ ...base, status: "completed" }], false).principal).toBeNull();
   });
+
+  it("pero SIN NINGUNA evaluación no está al día: no ha empezado", () => {
+    // EL HUECO QUE ESTO CIERRA (2026-09-10): la primera versión derivaba la acción de las evaluaciones, así
+    // que un paciente registrado y nunca evaluado salía con la celda vacía. La única fila que de verdad no
+    // tiene nada empezado se leía como si estuviera al día, y es la más fácil de perder: no aparece en
+    // ninguna cola, porque no tiene evaluación parada en ningún escalón.
+    expect(pendienteDelPaciente([], false).principal?.texto).toBe("Iniciar la primera evaluación");
+  });
+
+  it("y ahí la autorización sigue mandando: sin ella no se puede ni empezar", () => {
+    expect(pendienteDelPaciente([], true).principal?.texto).toBe("Renovar autorización");
+  });
 });
 
 describe("la autorización manda sobre todo, pero solo si hay algo que hacer", () => {

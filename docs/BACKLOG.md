@@ -17,6 +17,70 @@
 
 ---
 
+## Los documentos del profesional: firmar y verificar (2026-09-10)
+
+**Lo trajo el corte del tablero.** Al ir a construir la tarjeta de "documentos por firmar" apareció que no
+es ninguna de las dos cosas que suponíamos.
+
+### Qué hay hoy, verificado
+
+| Pieza | Estado |
+| --- | --- |
+| Tabla `professional_document_signatures` | **Existe** (migración 0017), con RLS y test |
+| Versión vigente | **Existe**: `ANEXO3_CURRENT_VERSION = "1.0"`, y el helper SQL de la 0018 compara contra ella |
+| Escritor | **No existe** |
+| Pantalla para firmar | **No existe** |
+| Firmas en producción | **0** |
+
+**Las cero firmas no significan "nadie ha firmado todavía": significan "nadie puede firmar desde Atlas".**
+Hoy una firma solo entraría a mano contra la base.
+
+### Por qué importa, y no es cosmético
+
+Esa firma es la **precondición del Nivel (b)** de auditoría seudonimizada (Cláusula 17 del Anexo 3): la
+auditoría de ese nivel solo cubre a los pacientes cuyo profesional firmó la versión vigente. Con cero
+firmas, **ese nivel está bloqueado por una superficie que no se construyó**, no por una decisión.
+
+Y por eso la tarjeta del tablero **no se puso**: tendría cuenta pero no destino, y un aviso de "te falta
+firmar" sin sitio a donde ir es una alarma sin salida.
+
+### Son DOS superficies, no una (añadido de Santiago)
+
+1. **La del profesional**: leer la versión vigente, firmarla, y subir el documento si lo hay.
+2. **La del admin**: ver la cola de lo subido y **verificarlo**, como ya se hace con el RUT.
+
+### El RUT sirve de patrón, y casi entero
+
+Está completo y es el mismo problema con otro documento:
+
+| Pieza del RUT | Dónde vive |
+| --- | --- |
+| El profesional llena y sube | `tax-status-form.tsx` |
+| El recordatorio que bloquea | `tax-status-banner.tsx` (en el tablero) |
+| La cola del verificador | `/verificaciones`, gateada por `canVerifyTaxStatus` |
+| Una fila por verificar, con aprobar y rechazar | `tax-verification-row.tsx` |
+| Servir el documento subido | `/rut/[professionalId]/route.ts` |
+| El registro de quién verificó | `tax-verification-writer.ts` |
+
+**Con una diferencia que hay que resolver antes de copiarlo, y es de esquema:**
+`professional_document_signatures` solo tiene `signed_version` y `signed_at`. **No tiene ni archivo ni
+verificador**, mientras que `professional_profiles` sí los tiene para el RUT (`rut_path`,
+`rut_verified_by`, `rut_verified_at`, `rut_rejected_*`). Así que la mitad del admin **necesita migración**,
+no solo pantallas.
+
+**Y una decisión de fondo que hay que tomar primero:** el RUT es un documento que el profesional **sube**;
+el Anexo 3 es uno que CNV **publica** y el profesional **firma**. Si basta con firmar la versión (aceptar
+un texto), la mitad del admin puede no hacer falta y la tabla sirve como está. Si además hay que subir un
+PDF firmado, entran las columnas y la cola de verificación. **Eso lo decide Santiago antes de construir.**
+
+### Y cuando exista, mirar cómo convive con el banner tributario
+
+Hoy el tablero tiene **un solo** bloque de "te falta completar algo" (el del RUT), que además lleva a su
+pantalla y bloquea el cobro. Con el Anexo 3 habría dos del mismo género, y conviene decidir si son un
+bloque o dos claramente distintos, para que no compitan.
+
+---
+
 ## Los catálogos y la nube (2026-09-07)
 
 **Un seed de catálogo que no puede apuntar a la nube significa que ningún cambio de catálogo se puede
