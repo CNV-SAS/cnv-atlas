@@ -7,6 +7,7 @@ import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
+import { QrConsultorioBoton } from "@/modules/evaluations/components/qr-consultorio-boton";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
 import { ListaPacientes } from "@/modules/patients/components/lista-pacientes";
@@ -54,9 +55,18 @@ export default async function PacientesPage() {
           // EL BOTON SOLO PARA QUIEN PUEDE CREAR (misma policy que gatea la ruta y la accion): un boton
           // que lleva a /no-autorizado es peor que no tenerlo.
           canCreatePatientPresencial(user) ? (
-            <Button asChild>
-              <Link href="/pacientes/nuevo">Nuevo paciente en consulta</Link>
-            </Button>
+            // ═══ LAS DOS FORMAS DE EMPEZAR, JUNTAS (Santiago, 2026-09-10) ═══
+            //
+            // El QR y "nuevo paciente en consulta" son las dos maneras de que entre alguien, y estaban en
+            // pantallas distintas: quien buscaba una no encontraba la otra. El QR va PRIMERO en el orden
+            // de lectura pero como boton secundario, porque es el camino de todos los dias y el otro es
+            // el excepcional (el paciente sin correo).
+            <div className="flex flex-wrap items-center gap-2">
+              <QrConsultorioBoton />
+              <Button asChild>
+                <Link href="/pacientes/nuevo">Nuevo paciente en consulta</Link>
+              </Button>
+            </div>
           ) : null
         }
       />

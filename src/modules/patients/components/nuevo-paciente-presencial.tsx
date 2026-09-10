@@ -173,11 +173,40 @@ export function NuevoPacientePresencial() {
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={enviarSinReset(verificar)}>
+        {/* ═══ EL ENLACE VA ARRIBA DEL DOCUMENTO, Y EL ORDEN SE INVIERTE (Santiago, 2026-09-10) ═══
+
+            EL CAMINO RARO ESTABA PRIMERO. Esta pantalla empezaba pidiendo un documento, que es el paso del
+            caso EXCEPCIONAL: el paciente sin correo, que necesita que le creemos la ficha aqui. El caso de
+            todos los dias es mas corto que eso, y no llega a tocar el formulario: se le pasa el enlace y
+            el resto ocurre solo.
+
+            Asi que el enlace abre la pantalla, y el documento queda para quien de verdad lo necesita.
+            Quien entro por costumbre a "nuevo paciente en consulta" se encuentra primero con la via que
+            probablemente buscaba. */}
+        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">Si el paciente tiene correo</h2>
+            <p className="text-sm text-muted-foreground">
+              Pásale el enlace de consultorio y ya está: no hace falta crearlo aquí. Es la vía con más
+              respaldo, porque el código le llega a su correo y lo digita él, y eso es lo que prueba que
+              fue él quien autorizó.
+            </p>
+          </div>
+          <ConsultorioLink />
+        </section>
+
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-semibold text-foreground">
-              Documento del paciente
+              Si el paciente no tiene correo electrónico
             </h2>
+            <p className="text-sm text-muted-foreground">
+              Entonces sí hay que crearlo aquí y tomarle el consentimiento en la consulta. Empieza por su
+              documento.
+            </p>
+            <h3 className="pt-2 text-sm font-semibold text-foreground">
+              Documento del paciente
+            </h3>
             <p className="text-sm text-muted-foreground">
               Se verifica primero para saber si ya está registrado. Sin esto, un
               documento que ya existe termina en un error de la base al guardar.
