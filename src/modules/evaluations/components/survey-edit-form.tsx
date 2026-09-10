@@ -1,5 +1,6 @@
 "use client";
 
+import { preservarScroll } from "@/components/shared/preservar-scroll";
 import { useRouter } from "next/navigation";
 import { Fragment, useTransition } from "react";
 import { toast } from "sonner";
@@ -63,6 +64,10 @@ export function SurveyEditForm({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const answers = collectAnswers(new FormData(e.currentTarget), domains);
+    // El guard del scroll: invocar una server action navega con ScrollBehavior.Default. Ver
+    // `preservar-scroll.ts`. Aqui la accion se llama DIRECTO, sin `useActionState`, asi que no pasa por
+    // `enviarSinReset` ni por `ejecutarAccion`.
+    preservarScroll();
     startTransition(async () => {
       const res = await saveSurveyEditAction({ evaluationId, answers });
       if (res.error) {

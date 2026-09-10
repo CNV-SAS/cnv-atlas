@@ -1,5 +1,6 @@
 "use client";
 
+import { preservarScroll } from "@/components/shared/preservar-scroll";
 import { useState, useTransition } from "react";
 import { Check, Copy, Link2, QrCode } from "lucide-react";
 
@@ -29,6 +30,10 @@ export function ConsultorioLink() {
   const fullLink = linkPath ? `${origin}${linkPath}` : null;
 
   function loadLink() {
+    // El guard del scroll: invocar una server action navega con ScrollBehavior.Default. Ver
+    // `preservar-scroll.ts`. Aqui la accion se llama DIRECTO, sin `useActionState`, asi que no pasa por
+    // `enviarSinReset` ni por `ejecutarAccion`.
+    preservarScroll();
     startLink(async () => {
       const r = await getOrCreateBaseSurveyLinkAction();
       setLinkError(r.error);
@@ -37,6 +42,10 @@ export function ConsultorioLink() {
   }
 
   function loadQr() {
+    // El guard del scroll: invocar una server action navega con ScrollBehavior.Default. Ver
+    // `preservar-scroll.ts`. Aqui la accion se llama DIRECTO, sin `useActionState`, asi que no pasa por
+    // `enviarSinReset` ni por `ejecutarAccion`.
+    preservarScroll();
     startQr(async () => {
       const r = await generateBaseSurveyQrAction();
       setQrError(r.error);

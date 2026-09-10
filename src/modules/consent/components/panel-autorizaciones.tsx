@@ -1,5 +1,6 @@
 "use client";
 
+import { preservarScroll } from "@/components/shared/preservar-scroll";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -50,6 +51,10 @@ export function PanelAutorizaciones({
 
   function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // El guard del scroll: invocar una server action navega con ScrollBehavior.Default. Ver
+    // `preservar-scroll.ts`. Aqui la accion se llama DIRECTO, sin `useActionState`, asi que no pasa por
+    // `enviarSinReset` ni por `ejecutarAccion`.
+    preservarScroll();
     startTransition(async () => {
       const r = await revokeConsentAction({ patientId, types: seleccion, motivo, canal });
       if (r.error) {

@@ -25,6 +25,17 @@ function sinComentariosPorLinea(src: string): string {
 //
 // Es el mismo defecto que el primer candado del refresco, que tambien miraba el archivo entero y acusaba a
 // quien no era. La forma correcta es la misma: emparejar cada USO con su guarda.
+//
+// ═══ Y HAY DOS FORMAS DE INVOCAR, NO UNA (Santiago, 2026-09-10, sexta ronda) ═══
+//
+// La primera version de esto solo miraba `useActionState`, y con eso no vio `bis-conditions-capture.tsx`,
+// que llama a la accion DIRECTO dentro de un `useTransition`. Justo el formulario que Santiago reporto
+// despues. Un detector con un hueco es peor que ninguno: da por barrido lo que no miro.
+//
+// Asi que se buscan las DOS:
+//   1. El segundo elemento de `useActionState`, que es lo que invoca la accion del formulario.
+//   2. Y las llamadas a cualquier `*Action` importada de un modulo `actions`, que es como se nombran
+//      todas en Atlas (lo comprueba `check-cables`, que cuenta 101 por ese mismo criterio).
 
 export type Invocacion = {
   archivo: string;
@@ -61,16 +72,19 @@ export function invocacionesDeAccion(): Invocacion[] {
     // dicen "no hay nada que guardar (guardarlo la congelaria...)" y "guardar(" ahi parece una llamada.
     // Se conservan las lineas (se sustituye por vacio, no se colapsa) para que el numero siga sirviendo.
     const src = sinComentariosPorLinea(readFileSync(f, "utf8"));
-    if (!src.includes("useActionState(")) continue;
-
     // `const [estado, INVOCAR, pendiente] = useActionState(...)`
     const nombres = [...src.matchAll(/const\s*\[[^,\]]*,\s*(\w+)[,\]][^=]*=\s*useActionState\(/g)].map(
       (m) => m[1],
     );
-    if (nombres.length === 0) continue;
 
     const lineas = src.split("\n");
-    for (const nombre of nombres) {
+    // Las acciones importadas y llamadas directo (`await saveBisConditionsAction(...)`).
+    const importadas = [...src.matchAll(/import \{([^}]*)\} from "[^"]*actions"/g)]
+      .flatMap((m) => m[1].split(","))
+      .map((x) => x.trim().split(" as ").pop()!.trim())
+      .filter((x) => /Action$/.test(x));
+
+    for (const nombre of [...nombres, ...importadas]) {
       for (let i = 0; i < lineas.length; i++) {
         const l = lineas[i];
         // La DECLARACION no es una invocacion.

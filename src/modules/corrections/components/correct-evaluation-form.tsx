@@ -1,5 +1,6 @@
 "use client";
 
+import { preservarScroll } from "@/components/shared/preservar-scroll";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -137,6 +138,10 @@ export function CorrectEvaluationForm({
         ? c.after // ya es JSON de las opciones nuevas
         : ((fdSnapshot.get(`answer_${c.questionId}`) as string | null) ?? ""),
     }));
+    // El guard del scroll: invocar una server action navega con ScrollBehavior.Default. Ver
+    // `preservar-scroll.ts`. Aqui la accion se llama DIRECTO, sin `useActionState`, asi que no pasa por
+    // `enviarSinReset` ni por `ejecutarAccion`.
+    preservarScroll();
     startTransition(async () => {
       const res = await correctEvaluationAction({ evaluationId, correctedAnswers, reason: reason.trim() });
       if (res.error) setError(res.error);

@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { preservarScroll } from "@/components/shared/preservar-scroll";
+
 import { saveBisConditionsAction } from "../actions";
 import { computeContraindicated } from "../services/contraindication";
 import type {
@@ -142,6 +144,11 @@ export function BisConditionsCapture({
 
   function onSubmit() {
     setFieldErrors({});
+    // EL GUARD DEL SCROLL (Santiago, 2026-09-10, sexta ronda). Esta pantalla invoca la accion DIRECTO, con
+    // `useTransition` en vez de `useActionState`, asi que no pasaba por ninguna de las dos puertas Y el
+    // detector tampoco la veia: buscaba `useActionState`. Se arma aqui, que es donde la pagina todavia
+    // esta donde el profesional la dejo. El detector ahora tambien busca las llamadas a `*Action`.
+    preservarScroll();
     startTransition(async () => {
       const res = await saveBisConditionsAction({
         evaluationId,
