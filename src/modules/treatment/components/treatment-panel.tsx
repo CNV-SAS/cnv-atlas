@@ -1867,13 +1867,28 @@ function MenuCard({
             </div>
           ))}
         </div>
-      ) : m.generatedText ? (
+      ) : m.status === "success" && m.generatedText ? (
         // Sugerencias de la v2: prosa. Se siguen mostrando como estaban.
         <div className="text-sm text-foreground">
           <Markdown text={m.generatedText} />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Sin contenido (el intento falló).</p>
+        // ═══ EL JSON CRUDO NO SE LE ENSEÑA AL PROFESIONAL (Santiago, 2026-09-10) ═══
+        //
+        // EL DEFECTO: cuando el parseo fallaba, `menuJson` quedaba en null y el texto crudo caía en la
+        // rama de prosa de la v2, así que la pantalla clínica mostraba el JSON del modelo entero. Eso es
+        // depuración, y además invita a leerlo y aplicarlo a mano: lo que hay ahí es una propuesta que el
+        // sistema NO pudo validar.
+        //
+        // La rama de prosa ahora exige `success`, que es lo único que la v2 fue: un intento que salió
+        // bien. Todo lo demás dice qué pasó y qué queda en pie, que es lo que el profesional necesita.
+        <p className="text-sm text-muted-foreground">
+          {m.status === "parse_failed"
+            ? "La respuesta del modelo no se pudo leer, así que no hay propuestas que revisar. La grilla se queda con el menú del ciclo."
+            : m.status === "timeout"
+              ? "El modelo no respondió a tiempo. La grilla se queda con el menú del ciclo."
+              : "El intento falló. La grilla se queda con el menú del ciclo."}
+        </p>
       )}
     </li>
   );

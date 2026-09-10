@@ -50,7 +50,26 @@ function classifyFailure(e: unknown): MenuSuggestionStatus {
 
 // `sin_restricciones` NO es un estado de sugerencia (no hubo intento, no hay fila que registrar): es una
 // respuesta del servicio. Por eso el Result lo lleva aparte del enum de la tabla.
-export type ResultadoAdaptacion = MenuSuggestionStatus | "sin_restricciones";
+export type ResultadoAdaptacion = MenuSuggestionStatus | "sin_restricciones" | "truncado";
+
+/**
+ * TOPE DE SALIDA DE ESTA LLAMADA, y es propio porque el trabajo tambien lo es.
+ *
+ * EL DEFECTO (smoke Santiago, 2026-09-10): con DOS restricciones el menu fallaba con "Respuesta
+ * invalida" y el JSON se veia bien formado. Lo estaba: llegaba CORTADO. Verificado en la fila de
+ * produccion (texto que termina a media cadena, 29 llaves abiertas contra 27 cerradas, `JSON.parse`
+ * rompiendo en la posicion 4037), no razonado.
+ *
+ * ESTA LLAMADA ES LA MAS LARGA DE ATLAS: una semana entera de sustituciones, y su tamaño crece con las
+ * restricciones del paciente (1 restriccion -> 8 entradas; una compuesta -> 14; dos -> 28-30). El
+ * borrador de criterio, que comparte el proveedor, escribe parrafos y no se acerca. Un tope unico
+ * obligaba a elegir entre los dos.
+ *
+ * EL DOBLE DEL PEOR CASO MEDIDO, a proposito: el modelo devuelve UNA ENTRADA POR RESTRICCION
+ * INCUMPLIDA (por eso una celda que rompe dos sale dos veces), asi que el trabajo se multiplica por el
+ * numero de restricciones y no por el de celdas.
+ */
+const MAX_TOKENS_MENU = 8192;
 
 export async function generateMenu(
   evaluationId: string,
@@ -208,7 +227,7 @@ export async function generateMenu(
   }
 
   try {
-    const completion = await generateText(messages, config);
+    const completion = await generateText(messages, config, { maxTokens: MAX_TOKENS_MENU });
 
     // Se parsea a la forma del contrato v4: una lista de CAMBIOS, no un menu. Si no parsea, la
     // sugerencia queda `parse_failed` y LA GRILLA SE QUEDA CON EL CICLO, que es la conducta correcta:
@@ -242,13 +261,20 @@ export async function generateMenu(
         provider: completion.provider,
         model: completion.model,
         latency_ms: completion.latencyMs,
+        // La procedencia dice si el proveedor la corto. En la BD el estado sigue siendo
+        // `parse_failed` (es un enum de Postgres y ampliarlo pide migracion); el matiz vive aqui y en
+        // lo que se le dice al profesional.
+        truncado: completion.truncado,
       },
       menuJson,
       status: menuJson ? "success" : "parse_failed",
       latencyMs: completion.latencyMs,
       ...actor,
     });
-    return ok({ status: menuJson ? "success" : "parse_failed" });
+    // TRES DESENLACES Y NO DOS: un texto CORTADO no es un texto malo. Decirlos igual manda a buscar un
+    // defecto de formato donde lo que hubo fue falta de espacio.
+    if (menuJson) return ok({ status: "success" as const });
+    return ok({ status: completion.truncado ? ("truncado" as const) : ("parse_failed" as const) });
   } catch (e) {
     // Persistir el fallo tambien (procedencia). El proveedor/modelo del intento primario;
     // el mensaje de error nunca contiene PII (el prompt no la lleva).
