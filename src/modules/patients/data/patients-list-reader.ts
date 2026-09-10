@@ -6,6 +6,7 @@ import type { ConsentType } from "@/modules/consent/validations";
 import { canCreateEvaluation } from "@/modules/evaluations/policies/can-create-evaluation";
 
 import { NON_COUNTING_EVALUATION_STATUSES } from "../labels";
+import { pendienteDelPaciente } from "../pendientes";
 import type { DocumentType, PatientListItem } from "../types";
 
 // Roster de pacientes para la UI autenticada (regla 1). Cliente anon + RLS:
@@ -31,7 +32,10 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // superseded_at por evaluacion (no `evaluations(count)`): el conteo debe excluir las
       // reemplazadas por correccion (contarlas infla el numero de consultas del paciente). Se cuentan
       // las vigentes del lado del cliente; el volumen por paciente es chico y va gateado por RLS.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date))",
+      // EL DIAGNOSTICO Y EL REPORTE entran en la MISMA consulta, para la columna de pendientes: sin
+      // ellos no se puede decir si lo que falta es generar el diagnostico o enviar el reporte. Es un
+      // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -51,6 +55,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
             status: string;
             created_at: string;
             bis_measurements: { measurement_date: string | null }[] | null;
+            diagnoses: { id: string }[] | null;
+            reports: { status: string }[] | null;
           }[]
         | null) ?? [];
     // Las que CUENTAN: vigentes y que sean una evaluacion hecha. La misma condicion sirve para el
@@ -84,6 +90,21 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       evaluationCount: reales.length,
       lastEvaluationDate: fechas.length ? fechas[fechas.length - 1] : null,
       sinAutorizacionVigente: !canCreateEvaluation(vigentes).ok,
+      // QUE LE FALTA, dicho como accion. La regla vive en un modulo puro (`pendientes.ts`) para que se
+      // pueda probar corriendola; aqui solo se le pasan los hechos. Se mira sobre las evaluaciones
+      // VIGENTES (no supersedidas), no sobre `reales`: una que espera la encuesta no cuenta como consulta
+      // hecha pero SI es algo pendiente, que es justo lo que esta columna busca.
+      pendiente: pendienteDelPaciente(
+        evals
+          .filter((e) => e.superseded_at == null)
+          .map((e) => ({
+            status: e.status,
+            tieneBis: (e.bis_measurements ?? []).length > 0,
+            tieneDiagnostico: (e.diagnoses ?? []).length > 0,
+            reporte: e.reports?.[0]?.status ?? null,
+          })),
+        !canCreateEvaluation(vigentes).ok,
+      ),
     } satisfies PatientListItem;
   });
 

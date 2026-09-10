@@ -46,6 +46,19 @@ import type { PatientListItem } from "../types";
 // EXPORTADA para que el candado de rotulos mire ESTAS columnas y no una copia suya: un test que compara
 // dos copias pasa verde aunque la de produccion este mal.
 export const COLUMNAS_PACIENTES: readonly ColumnaLista[] = [
+  // ═══ QUE HAY QUE HACER, Y VA PRIMERO (Santiago, 2026-09-10) ═══
+  //
+  // DICE LA ACCION, NO EL ESTADO, y esa es toda la diferencia: "in_progress" obliga a traducir
+  // mentalmente que toca, y esa traduccion es el trabajo que la columna existe para ahorrar.
+  //
+  // ABRE LA FILA porque es lo unico de esta lista que pide algo. La regla de la lista es "lo mas mirado
+  // primero", y quien entra a /pacientes por la mañana entra a ver que le falta, no a mirar fechas.
+  //
+  // SEIS ACCIONES DISTINTAS SALEN, pero solo UNA aplica por evaluacion: son los pasos de una secuencia,
+  // asi que la columna es un puntero al escalon donde esta parada, no una lista de casillas. Lo que si
+  // pasa es que un paciente tenga varias evaluaciones paradas, y para eso esta el "+N". Ver
+  // `pendientes.ts`.
+  { rotulo: "Pendiente", ancho: "13rem", rotularEnEstrecho: true },
   // "Última" a secas era un ADJETIVO SIN SUSTANTIVO: no decia si era la ultima consulta, la ultima cita o
   // la ultima evaluacion. Y el dato es lo ultimo: la fecha de medicion de la evaluacion mas reciente,
   // filtrada por la MISMA condicion que produce la columna "Evaluaciones". Por eso NO es "Última consulta":
@@ -227,7 +240,10 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
         const anos = edadEnAnios(p.birthDate);
         // Un valor por columna, en el mismo orden. `null` deja la celda VACIA en columnas (para no correr
         // las de al lado) y se omite en la linea concatenada, donde un hueco no dice nada.
+        // "+N" SOLO CUANDO LO HAY. Un "+0" es ruido, y un pendiente sin numero se lee mejor.
+        const pend = p.pendiente.principal;
         const valores = [
+          pend ? `${pend.texto}${p.pendiente.otras > 0 ? ` +${p.pendiente.otras}` : ""}` : null,
           p.lastEvaluationDate ? formatDateOnlyShort(p.lastEvaluationDate) : null,
           String(p.evaluationCount),
           anos !== null ? String(anos) : null,
