@@ -57,6 +57,12 @@ import {
   guardarProtocoloAction,
   type TreatmentActionState,
 } from "../actions";
+import {
+  ROTULO_SECCION,
+  seccionesSucias,
+  type Publicado,
+  type SeccionId,
+} from "../data/borrador-protocolo";
 import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
@@ -99,21 +105,12 @@ const EMPTY: TreatmentActionState = { error: null, success: null, warning: null 
 // EL GUARD CONTRA EL BUCLE es la FIRMA: una seccion publica en cada render, y el padre solo cambia de
 // estado si la firma llego distinta. Sin eso, publicar provocaria un render que volveria a publicar.
 //
-// Y LA FIRMA NO ES DECORACION: es exactamente la misma que el servidor recomputa bajo lock para el candado
-// de concurrencia. Que sirva de dos cosas no es un atajo, es la razon de que el aviso de "sin guardar"
-// diga la verdad: se enciende cuando lo de pantalla difiere de lo que hay en la base, ni antes ni despues.
-
-/** Las siete secciones que se guardan juntas. Los nutraceuticos NO entran: ver `protocolo-writer.ts`. */
-type SeccionId =
-  | "ajustes"
-  | "objetivo"
-  | "restricciones"
-  | "intercambio"
-  | "tiemposActivos"
-  | "tiempos"
-  | "menuSemanal";
-
-type Publicado = { valor: unknown; firma: string };
+// CADA SECCION PUBLICA **DOS** FIRMAS, y esa segunda es el arreglo del 2026-09-10: la de lo que hay en
+// pantalla, y la de lo que ELLA MISMA presentaria sin tocarla. La diferencia entre las dos es la unica
+// definicion de "cambiado" que no miente. Ver el porque completo en `data/borrador-protocolo.ts`.
+//
+// Y NINGUNA DE LAS DOS ES LA DEL CANDADO DE CONCURRENCIA, que se calcula sobre lo GUARDADO porque el
+// servidor la recomputa bajo lock. Conflarlas fue justo el defecto.
 
 /**
  * EL ALMACEN DEL BORRADOR, fuera de React a proposito.
@@ -127,7 +124,7 @@ type Publicado = { valor: unknown; firma: string };
  * EL GUARD CONTRA EL BUCLE sigue siendo la FIRMA: publicar lo mismo no notifica a nadie.
  */
 type AlmacenBorrador = {
-  publicar: (seccion: SeccionId, valor: unknown, firma: string) => void;
+  publicar: (seccion: SeccionId, valor: unknown, firma: string, firmaBase: string) => void;
   leer: () => Partial<Record<SeccionId, Publicado>>;
   suscribir: (oyente: () => void) => () => void;
 };
@@ -136,11 +133,14 @@ function crearAlmacenBorrador(): AlmacenBorrador {
   let estado: Partial<Record<SeccionId, Publicado>> = {};
   const oyentes = new Set<() => void>();
   return {
-    publicar(seccion, valor, firma) {
-      if (estado[seccion]?.firma === firma) return;
+    publicar(seccion, valor, firma, firmaBase) {
+      const previo = estado[seccion];
+      // LAS DOS entran en el guard: la base tambien se mueve (los tiempos activos en vivo cambian el
+      // contexto de la distribucion), y comparar solo la de pantalla dejaria al padre sin enterarse.
+      if (previo?.firma === firma && previo?.firmaBase === firmaBase) return;
       // Objeto NUEVO en cada cambio: `useSyncExternalStore` compara por identidad, y mutar el mismo dejaria
       // al padre sin enterarse.
-      estado = { ...estado, [seccion]: { valor, firma } };
+      estado = { ...estado, [seccion]: { valor, firma, firmaBase } };
       for (const o of oyentes) o();
     },
     leer: () => estado,
@@ -174,20 +174,26 @@ function useBorrador(): BorradorCtx {
  * es justo lo que React prohibe. El efecto corre despues de pintar, asi que el aviso pegajoso aparece un
  * ciclo despues de teclear, que es imperceptible y es el precio de no reescribir las siete secciones.
  */
-function usePublicar(seccion: SeccionId, valor: unknown, firma: string | null): void {
+function usePublicar(
+  seccion: SeccionId,
+  valor: unknown,
+  firma: string | null,
+  /** La firma de lo que esta seccion presentaria SIN TOCARLA. Es contra lo que se decide si hay cambios. */
+  firmaBase: string | null,
+): void {
   const { almacen } = useBorrador();
   useEffect(() => {
     // FIRMA NULA = LA SECCION NO APLICA (un tratamiento sin snapshot sellado no tiene cadena ni lista de
     // intercambio que publicar). Se llama al hook igual, sin condicion, porque el orden de los hooks no
     // puede depender de los datos; lo que se salta es la publicacion.
-    if (firma == null) return;
-    almacen.publicar(seccion, valor, firma);
+    if (firma == null || firmaBase == null) return;
+    almacen.publicar(seccion, valor, firma, firmaBase);
     // `valor` se omite a proposito: la FIRMA es lo que decide si algo cambio, y el valor puede ser un
     // objeto nuevo en cada render (un `.map`, un literal) sin que nada haya cambiado de verdad. Con el
     // valor en las dependencias, el efecto correria en cada render y el guard del padre seria lo unico
     // que impediria el bucle; con la firma, ni siquiera se llega ahi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [almacen, seccion, firma]);
+  }, [almacen, seccion, firma, firmaBase]);
 }
 
 // Panel del protocolo de tratamiento (B13), vista interna del profesional. Edita objetivos,
@@ -564,6 +570,18 @@ function CadenaCaloricaSection({
           pesoMetaFijado: adj.pesoMeta,
         })
       : null,
+    // SIN TOCAR presenta exactamente lo guardado: los campos se inicializan de la prop y la ida y vuelta
+    // texto/numero es exacta. Por eso esta seccion nunca salio en el aviso falso.
+    adjustmentSignature({
+      treatmentId: protocol.treatmentId,
+      adjGeb: protocol.adjGeb,
+      adjPal: protocol.adjPal,
+      adjKcalObj: protocol.adjKcalObj,
+      adjProtGkg: protocol.adjProtGkg,
+      adjFatPct: protocol.adjFatPct,
+      adjDeficit: protocol.adjDeficit,
+      pesoMetaFijado: protocol.pesoMetaFijado,
+    }),
   );
 
   // Sin snapshot sellado (o sin cadena, o sin peso de calculo) no hay que ajustar: tratamiento pre-snapshot.
@@ -1241,11 +1259,16 @@ export function TreatmentPanel({
     [protocol],
   );
 
-  // QUE HAY SIN GUARDAR. Una seccion que todavia no publico NO cuenta como sucia: al montar, el aviso
-  // saldria antes de que nadie tocara nada.
-  const sucias = (Object.keys(firmasGuardadas) as SeccionId[]).filter(
-    (k) => publicado[k] != null && publicado[k]!.firma !== firmasGuardadas[k],
-  );
+  // QUE HAY SIN GUARDAR. Se compara lo de pantalla contra lo que la MISMA seccion presentaria sin
+  // tocarla, NO contra lo guardado.
+  //
+  // EL DEFECTO QUE ESTO CIERRA (Santiago, 2026-09-10): comparando contra lo guardado, entrar a la
+  // pestaña sin tocar nada avisaba de CUATRO secciones con cambios. Son justo las cuatro que pueden estar
+  // guardadas como `null` y DERIVAN un valor al montar (la lista de intercambio calcula sus porciones,
+  // los tiempos caen a su juego por defecto, la distribucion arma su contexto, el menu deriva su dia de
+  // arranque). Un aviso que sale siempre se aprende a ignorar, y entonces el dia que haya cambios de
+  // verdad nadie lo lee. Ver `data/borrador-protocolo.ts`.
+  const sucias = seccionesSucias(publicado);
   const haySinGuardar = sucias.length > 0;
 
   // AVISO DEL NAVEGADOR AL CERRAR O RECARGAR con trabajo sin guardar. No cubre cambiar de pestaña dentro
@@ -1261,8 +1284,15 @@ export function TreatmentPanel({
   // EL PAYLOAD. Cada seccion aporta lo que publico; si no publico (no llego a montar), va lo GUARDADO, que
   // es lo unico que no puede borrar nada. La cadena calorica se convierte de texto a numero aqui, que es
   // donde el borrador deja de ser lo que se escribe y pasa a ser lo que se guarda.
-  const valor = <T,>(k: SeccionId, porDefecto: T): T =>
-    publicado[k] != null ? (publicado[k]!.valor as T) : porDefecto;
+  // LO QUE VIAJA POR CADA SECCION.
+  //
+  // SOLO LAS TOCADAS MANDAN SU BORRADOR; las demas mandan lo GUARDADO, para que el writer no vea cambio y
+  // no las escriba. No es una optimizacion: guardar la lista de intercambio DERIVADA porque el
+  // profesional edito el objetivo sellaria un `objetivoBase` que nadie decidio, y a partir de ahi el aviso
+  // de desfase empezaria a dispararse sobre una lista que nunca se toco.
+  const sucia = (k: SeccionId) => publicado[k] != null && publicado[k]!.firma !== publicado[k]!.firmaBase;
+  const valor = <T,>(k: SeccionId, guardado: T): T =>
+    sucia(k) ? (publicado[k]!.valor as T) : guardado;
 
   const payload = () =>
     JSON.stringify({
@@ -1317,8 +1347,19 @@ export function TreatmentPanel({
   // cambio se vea EN VIVO. Los tiempos de comida mandan sobre la distribucion y sobre el menu, y hasta hoy
   // habia que APLICARLOS (un guardado) para que las dos tablas de abajo se enteraran; el aviso que lo
   // explicaba era la prueba de que el flujo estaba al reves.
-  const activosEnVivo = valor<Record<string, boolean> | null>("tiemposActivos", protocol.tiemposActivos);
-  const intercambioEnVivo = valor<IntercambioSaved | null>("intercambio", protocol.intercambioPorciones);
+  // OJO: estos NO pasan por `valor()`. Lo que gobierna a otra seccion es siempre lo que hay EN PANTALLA,
+  // se haya tocado o no: la distribucion tiene que repartir sobre las porciones que se ven, aunque sean
+  // las calculadas por defecto y nadie las haya movido. `valor()` decide que se GUARDA, que es otra cosa.
+  const enPantalla = <T,>(k: SeccionId, guardado: T): T =>
+    publicado[k] != null ? (publicado[k]!.valor as T) : guardado;
+  const activosEnVivo = enPantalla<Record<string, boolean> | null>(
+    "tiemposActivos",
+    protocol.tiemposActivos,
+  );
+  const intercambioEnVivo = enPantalla<IntercambioSaved | null>(
+    "intercambio",
+    protocol.intercambioPorciones,
+  );
 
   // Objeto NUEVO por render, y da igual: lo que consumen las secciones es `almacen`, que es estable, y
   // `guardando`, que tiene que cambiar para que los campos se apaguen.
@@ -1564,16 +1605,6 @@ export function TreatmentPanel({
   );
 }
 
-/** Como se nombra cada seccion en el aviso. Mismos rotulos que usa el servidor al rechazar por concurrencia. */
-const ROTULO_SECCION: Record<SeccionId, string> = {
-  ajustes: "la cadena calórica",
-  objetivo: "el objetivo del tratamiento",
-  restricciones: "las restricciones",
-  intercambio: "la lista de intercambio",
-  tiemposActivos: "los tiempos de comida",
-  tiempos: "la distribución por tiempos",
-  menuSemanal: "el menú semanal",
-};
 
 // TODA LA VERTICAL DE APROBAR SE RETIRO (2026-09-09): el boton, la accion, el servicio, el writer y las
 // dos ramas del trigger 0026 (ver la migracion 0116).
@@ -1998,6 +2029,11 @@ function RestriccionesSection({
     "restricciones",
     restricciones,
     restriccionesSignature({ treatmentId: protocol.treatmentId, restricciones }),
+    // Sin tocar, la lista es la guardada.
+    restriccionesSignature({
+      treatmentId: protocol.treatmentId,
+      restricciones: protocol.restricciones,
+    }),
   );
   // Lo que hay en pantalla frente a lo que hay en la base. El orden cuenta como cambio a proposito: es
   // barato y ser conservador aqui solo cuesta un guardado de mas.
@@ -2097,6 +2133,8 @@ function ObjetivoSection({
     "objetivo",
     objetivoValor,
     objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: objetivoValor }),
+    // Sin tocar, el textarea trae lo guardado (y el vacio ya se normaliza a null arriba).
+    objetivoSignature({ treatmentId: protocol.treatmentId, objetivo: protocol.objetivoTexto }),
   );
 
   return (
@@ -2215,11 +2253,26 @@ function IntercambioSection({
           porciones: Object.fromEntries(defaults.map((a) => [a.sub, porciones[a.sub] ?? 0])),
         }
       : null;
+  // LO QUE ESTA SECCION PRESENTA SIN TOCARLA: las porciones GUARDADAS si las hay, y si no las calculadas
+  // desde el objetivo. Es la misma derivacion con la que se inicializa el estado, y por eso no puede
+  // divergir de ella. Comparar contra el `null` de la base marcaba la seccion como cambiada al montar.
+  const intercambioSinTocar: IntercambioSaved | null =
+    objetivoEfectivo != null
+      ? {
+          objetivoBase: objetivoEfectivo,
+          porciones: Object.fromEntries(
+            defaults.map((a) => [a.sub, saved?.porciones[a.sub] ?? a.porciones]),
+          ),
+        }
+      : null;
   usePublicar(
     "intercambio",
     borradorIntercambio,
     borradorIntercambio
       ? intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: borradorIntercambio })
+      : null,
+    intercambioSinTocar
+      ? intercambioSignature({ treatmentId: protocol.treatmentId, intercambio: intercambioSinTocar })
       : null,
   );
 
@@ -2476,7 +2529,18 @@ function MenuSemanalSection({
       }),
     ),
   };
-  usePublicar("menuSemanal", payload, menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: payload }));
+  // SIN TOCAR: el menu guardado si lo hay, y si no el dia de arranque DERIVADO con las celdas vacias (lo
+  // que el ciclo propone no se guarda: solo se guarda lo que difiere de la precarga).
+  const menuSinTocar = {
+    diaInicio: saved?.diaInicio ?? diaInicioDerivado(protocol.treatmentId),
+    celdas: saved?.celdas ?? {},
+  };
+  usePublicar(
+    "menuSemanal",
+    payload,
+    menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: payload }),
+    menuSemanalSignature({ treatmentId: protocol.treatmentId, menu: menuSinTocar }),
+  );
   // Una celda esta EDITADA si difiere de lo que propone el ciclo. Es la misma comparacion que decide que se
   // guarda, asi que no puede desincronizarse del payload.
   const editada = (dia: number, tiempo: string) => valor(dia, tiempo) !== precarga(dia, tiempo);
@@ -2628,6 +2692,9 @@ function TiemposActivosSection({
     "tiemposActivos",
     activos,
     tiemposActivosSignature({ treatmentId: protocol.treatmentId, activos }),
+    // SIN TOCAR: los guardados, y si nunca se guardaron, el juego por defecto. Es con lo que se inicializa
+    // el estado (`guardados`), asi que las casillas recien pintadas nunca cuentan como un cambio.
+    tiemposActivosSignature({ treatmentId: protocol.treatmentId, activos: guardados }),
   );
 
   // DIV-13: al menos uno activo. Se impide en el cliente y lo revalida el schema.
@@ -2753,10 +2820,20 @@ function TiemposSection({
     objetivoEfectivo != null
       ? { celdas, base: { porciones: porcionesActuales, activos: activosEnVivo ?? TIEMPOS_ACTIVOS_DEFAULT } }
       : null;
+  const tiemposSinTocar: TiemposSaved | null =
+    objetivoEfectivo != null
+      ? {
+          celdas: savedTiempos?.celdas ?? {},
+          base: { porciones: porcionesActuales, activos: activosEnVivo ?? TIEMPOS_ACTIVOS_DEFAULT },
+        }
+      : null;
   usePublicar(
     "tiempos",
     borradorTiempos,
     borradorTiempos ? tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: borradorTiempos }) : null,
+    tiemposSinTocar
+      ? tiemposSignature({ treatmentId: protocol.treatmentId, tiempos: tiemposSinTocar })
+      : null,
   );
 
   if (!snap || objetivoEfectivo == null) return null;

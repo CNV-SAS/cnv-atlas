@@ -15,6 +15,7 @@ import {
   tiemposActivosSignature,
   tiemposSignature,
 } from "./protocol-signature";
+import { ROTULO_SECCION, type SeccionId } from "./borrador-protocolo";
 import { TreatmentStateError } from "./treatment-writer";
 import type { IntercambioSaved, MenuSemanalSaved, TiemposSaved } from "./treatment-view-types";
 
@@ -88,15 +89,9 @@ export type ProtocoloEditable = {
   menuSemanal: MenuSemanalSaved | null;
 };
 
-export type FirmasBase = {
-  ajustes: string;
-  objetivo: string;
-  restricciones: string;
-  intercambio: string;
-  tiemposActivos: string;
-  tiempos: string;
-  menuSemanal: string;
-};
+// LAS CLAVES SON LAS SECCIONES, del modulo neutro: la pantalla, el writer y el test hablan de las mismas
+// siete. Repetir la lista aqui es como acaban siendo seis en un sitio y siete en otro.
+export type FirmasBase = Record<SeccionId, string>;
 
 export type GuardarProtocoloWrite = {
   treatmentId: string;
@@ -107,16 +102,6 @@ export type GuardarProtocoloWrite = {
   ip: string | null;
 };
 
-/** Nombre de cada seccion en el idioma de la PANTALLA: el aviso de rechazo lo lee un profesional. */
-const ROTULO: Record<keyof FirmasBase, string> = {
-  ajustes: "la cadena calórica",
-  objetivo: "el objetivo del tratamiento",
-  restricciones: "las restricciones",
-  intercambio: "la lista de intercambio",
-  tiemposActivos: "los tiempos de comida",
-  tiempos: "la distribución por tiempos",
-  menuSemanal: "el menú semanal",
-};
 
 export async function guardarProtocolo(
   input: GuardarProtocoloWrite,
@@ -206,7 +191,7 @@ export async function guardarProtocolo(
     const desfasadas = (Object.keys(vigentes) as (keyof FirmasBase)[]).filter(
       (k) => vigentes[k] !== input.firmas[k],
     );
-    if (desfasadas.length > 0) throw new StaleProtocoloError(desfasadas.map((k) => ROTULO[k]));
+    if (desfasadas.length > 0) throw new StaleProtocoloError(desfasadas.map((k) => ROTULO_SECCION[k]));
 
     // ═══ SEGUNDA PASADA: SE ESCRIBE SOLO LO QUE DE VERDAD CAMBIO ═══
     //
@@ -411,7 +396,7 @@ export async function guardarProtocolo(
   });
 }
 
-/** El rotulo de una seccion, para que el servicio y la pantalla no escriban dos listas distintas. */
-export function rotuloDeSeccion(k: keyof FirmasBase): string {
-  return ROTULO[k];
+/** El rotulo de una seccion. La lista vive en `borrador-protocolo`, compartida con la pantalla. */
+export function rotuloDeSeccion(k: SeccionId): string {
+  return ROTULO_SECCION[k];
 }
