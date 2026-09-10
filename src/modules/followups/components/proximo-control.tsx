@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
+import { useActionState, useState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,10 @@ const initial: ProximoControlState = { error: null, success: null, warning: null
 //    sin efecto su propia regla: un "empeoro" solo se comunica CON cita agendada, y si el sistema la agenda
 //    solo, la condicion siempre esta cumplida.
 // 2. R6 no tiene egreso, tiene PERMANENCIA. La pantalla lo llama por lo que es.
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function ProximoControl({
   evaluationId,
   vista,
@@ -80,7 +85,7 @@ export function ProximoControl({
           onSubmit={(e) => {
             e.preventDefault();
             const data = new FormData(e.currentTarget);
-            startTransition(() => save(data));
+            ejecutarAccion(save, data);
           }}
           className="flex flex-col gap-3"
         >

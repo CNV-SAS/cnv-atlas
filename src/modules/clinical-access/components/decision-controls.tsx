@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
+import { useActionState } from "react";
 
 import { useFormToastAndRefresh } from "@/components/shared/use-form-toast";
 
@@ -12,6 +13,10 @@ const initial: AccessActionState = { error: null, success: null, warning: null }
 // el boton pulsado fija la decision (via submitter). Al aprobar, la duracion es opcional:
 // vacia usa el default del nivel; el service la acota por el tope duro. Se despacha por
 // onSubmit + startTransition (patron React 19).
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function DecisionControls({ grantId, defaultHours }: { grantId: string; defaultHours: number }) {
   const [state, action, pending] = useActionState(decideAccessAction, initial);
   useFormToastAndRefresh(state);
@@ -22,7 +27,7 @@ export function DecisionControls({ grantId, defaultHours }: { grantId: string; d
     const formData = new FormData(e.currentTarget);
     formData.set("grantId", grantId);
     formData.set("decision", submitter?.value === "approve" ? "approve" : "deny");
-    startTransition(() => action(formData));
+    ejecutarAccion(action, formData);
   }
 
   return (

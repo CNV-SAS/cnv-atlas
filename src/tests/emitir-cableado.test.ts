@@ -68,9 +68,12 @@ describe("un plan no sale hacia el paciente sin dejar constancia", () => {
   it("y el boton imprime YA, sin esperar al registro", () => {
     // Al reves, el profesional esperaria a la nube para ver el dialogo de impresion, que es la peor forma
     // de pagar una constancia. El registro viaja en paralelo.
-    expect(BOTON).toContain("startTransition(");
+    // EL ANCLA SE MUEVE, NO LA ASERCION (2026-09-10): la invocacion pasó por `ejecutarAccion`, que hace el
+    // `startTransition` ademas de armar el guard del scroll. Lo que se afirma sigue siendo lo mismo: que
+    // la accion se lanza en una transicion y no bloquea.
+    expect(BOTON).toContain("ejecutarAccion(");
     expect(BOTON, "el registro dejo de ir en paralelo con la impresion").toMatch(
-      /startTransition\([\s\S]{0,80}\);\s*window\.print\(\);/,
+      /ejecutarAccion\([\s\S]{0,80}\);\s*window\.print\(\);/,
     );
   });
 

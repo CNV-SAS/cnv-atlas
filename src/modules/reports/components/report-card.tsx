@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { useActionState } from "react";
 
 import { useFormToast } from "@/components/shared/use-form-toast";
 import { formatDate, formatDateOnly } from "@/lib/format/date";
@@ -18,7 +18,7 @@ import {
   sendReportAction,
 } from "../actions";
 import type { TrajectoryConfirmation } from "../data/reports-view-types";
-import { enviarSinReset } from "@/components/shared/enviar-sin-reset";
+import { ejecutarAccion, enviarSinReset } from "@/components/shared/enviar-sin-reset";
 
 export type ReportCardView = {
   reportId: string;
@@ -46,6 +46,10 @@ const STATUS_LABEL: Record<ReportCardView["status"], string> = {
   sent: "Enviado",
 };
 
+// EL GUARD DEL SCROLL VIENE POR `ejecutarAccion` (2026-09-10). Estos formularios escribian a mano lo que
+// el helper ya hace (`preventDefault` + FormData + `startTransition`), y al hacerlo se quedaban fuera del
+// unico sitio donde se arma el guard. Invocar una server action navega con ScrollBehavior.Default: sin
+// guard, la pagina salta al inicio.
 export function ReportCard({ report }: { report: ReportCardView }) {
   const [approveState, approve, approving] = useActionState(approveReportAction, initialState);
   const [sendState, send, sending] = useActionState(sendReportAction, initialState);
@@ -239,7 +243,7 @@ export function ReportCard({ report }: { report: ReportCardView }) {
             onSubmit={(e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
-              startTransition(() => resend(data));
+              ejecutarAccion(resend, data);
             }}
             className="flex w-full flex-col gap-2 rounded-md border border-border bg-muted/30 p-3"
           >

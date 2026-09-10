@@ -71,7 +71,10 @@ describe("reenvio del reporte", () => {
   it("el envio por onSubmit, no por la prop action (si no, un error borra el motivo escrito)", () => {
     // Hazard de React 19 registrado en CLAUDE.md: la prop `action` resetea los inputs no controlados.
     expect(bloqueReenvio).toContain("onSubmit");
-    expect(bloqueReenvio).toContain("startTransition");
+    // EL ANCLA SE MUEVE, NO LA ASERCION (2026-09-10): la invocacion pasó por `ejecutarAccion`, que hace
+    // el `startTransition` ademas de armar el guard del scroll. Se afirma lo mismo: onSubmit, no la prop
+    // `action`, para que un error no borre el motivo escrito.
+    expect(bloqueReenvio).toContain("ejecutarAccion(");
     expect(bloqueReenvio).not.toContain("action={resend}");
   });
 });
