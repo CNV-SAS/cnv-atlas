@@ -126,7 +126,19 @@ export function GenerateDiagnosisPanel({
           </form>
         ) : (
           <p aria-live="polite" className="text-sm text-muted-foreground">
-            {pending ? "Generando el diagnóstico..." : "Preparando el diagnóstico..."}
+            {/* TRES ESTADOS, NO DOS (Santiago, 2026-09-09: "es necesario esperar segundos?").
+                El motor NO es lo lento: el pipeline completo contra base de datos son ~600-830 ms
+                medidos (`pipeline-propagation.test.ts`). Los segundos son el `router.refresh()` de
+                arriba, que vuelve a rendir la pagina entera contra la nube.
+                Y en ESE tramo, que es el largo, el texto decia "Preparando el diagnóstico...", porque
+                `pending` ya es false: afirmaba estar preparando algo que ya habia terminado. Es la
+                misma familia de los dos textos que se barrieron el 2026-09-09, y el arreglo es el
+                mismo: derivar del estado real en vez de leer una sola bandera. */}
+            {state.done
+              ? "Diagnóstico generado. Cargando los resultados..."
+              : pending
+                ? "Generando el diagnóstico..."
+                : "Preparando el diagnóstico..."}
           </p>
         )}
         <p className="max-w-prose text-xs text-muted-foreground">
