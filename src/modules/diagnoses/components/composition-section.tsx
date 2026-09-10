@@ -366,7 +366,19 @@ export function CompositionSection({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[38rem] text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              {/* ═══ VARIANTE (c) DE SANTIAGO (2026-09-10) ═══
+
+                  EL CHOQUE que reporto: el gris de la cabecera y el azul de la franja son dos familias, y
+                  al ir una pegada a la otra la tabla parecia tener DOS encabezados.
+
+                  LO QUE SE CORRIGE NO ES LA ARMONIA DE LOS DOS COLORES, ES QUE HAYA DOS RELLENOS. La
+                  cabecera pierde el fondo y se queda con su linea inferior; la franja conserva el azul. Asi
+                  queda UNA sola superficie pintada, y es la que dice donde empieza cada nivel de Wang, que
+                  es lo unico que aqui tiene que separar.
+
+                  Y ADEMAS LA ACERCA A SU VECINA: la tabla de indicadores ANI-BIS-E, que vive en esta misma
+                  subpestaña, ya tenia la cabecera sin fondo. Eran las dos las que no se parecian. */}
+              <tr className="border-b border-border text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 <th className="py-2 pl-3 pr-4 font-medium">Variable</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>

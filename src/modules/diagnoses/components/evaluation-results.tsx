@@ -332,11 +332,15 @@ export function EvaluationResults({
           <table className="w-full min-w-[32rem] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Indicador</th>
+                {/* MISMO PADDING QUE SU VECINA (Santiago, 2026-09-10). Esta tabla se quedo fuera del
+                    barrido del dia anterior por lo mismo que la de Wang: escribe sus clases a mano y nunca
+                    adopto `components/shared/tabla.tsx`. La cabecera ya iba sin fondo, asi que de la
+                    variante (c) solo le faltaba el aire a los lados. */}
+                <th className="py-2 pl-3 pr-4 font-medium">Indicador</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
                 <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                <th className="py-2 font-medium">Clasificación</th>
+                <th className="py-2 pr-3 font-medium">Clasificación</th>
               </tr>
             </thead>
             <tbody>
@@ -374,7 +378,7 @@ export function EvaluationResults({
                   "N/D";
                 return (
                   <tr key={code} className="border-b border-border/60 transition-colors hover:bg-muted/30">
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pl-3 pr-4">
                       {/* EL MISMO RAYO que marca las filas de origen bioelectrico en la tabla de Wang
                           (Santiago, 2026-09-09). Aqui va en TODAS: los doce indices ANI salen de la
                           medicion bioelectrica, asi que el icono no distingue unas filas de otras dentro
@@ -407,7 +411,7 @@ export function EvaluationResults({
                     <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
                       {deltaText}
                     </td>
-                    <td className="py-2 text-muted-foreground">
+                    <td className="py-2 pr-3 text-muted-foreground">
                       <span className="inline-flex items-center gap-2">
                         {sev != null ? (
                           <span

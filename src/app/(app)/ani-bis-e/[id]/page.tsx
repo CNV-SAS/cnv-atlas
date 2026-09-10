@@ -1019,8 +1019,17 @@ export default async function ResultadosEvaluacionPage({
         // sus acciones revalidan la PAGINA (revalidatePath "/ani-bis-e/[id]"), no una pestaña, asi que
         // cambiar de etapa no toca nada del acto. La proxima cita se va con el: se captura DENTRO de la
         // ReportCard (en la confirmacion de trayectoria desfavorable), no como un paso aparte.
+        //
+        // LAS ALERTAS NO VAN AQUI (Santiago, 2026-09-10), aunque Gildardo las pidio en esta etapa. SU
+        // RAZON: la historia clinica se le ENTREGA al paciente (`HcEntregar`, por su derecho de la
+        // Resolucion 1995), y que lea "riesgo glucemico critico" puede sesgar lo que responda en la
+        // proxima encuesta, que es justo de donde salen las alertas.
+        //
+        // LO QUE SE VERIFICO: hoy NO viajarian. Lo que se imprime y se entrega es solo lo que esta dentro
+        // de `.imprimible`, y este bloque quedaba fuera. Aun asi se retira: un bloque pegado a un
+        // documento que el paciente recibe esta a un descuido de acabar dentro, y si va o no es una
+        // decision clinica. Queda esperando lo que diga Gildardo.
         <section className="flex flex-col gap-4">
-          {alertasNode}
           {reportCard ? (
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-semibold text-foreground">Reporte</h2>
@@ -1213,8 +1222,6 @@ export default async function ResultadosEvaluacionPage({
         // subpestañas. La pagina le pasa como slots lo que ella arma (composicion, read-out D1-D8,
         // criterio, confirmar/corregir) y la vista los coloca en su pestaña. Un solo contenedor: sin
         // pila suelta que compita con las subpestañas.
-        <div className="flex flex-col gap-6">
-        {alertasNode}
         <EvaluationResults
           results={results}
           efrStates={efrStates}
@@ -1265,12 +1272,19 @@ export default async function ResultadosEvaluacionPage({
           }
           // Encuesta (D1-D8): D1 = patron; D2-D8 = read-out por dominio.
           surveyDiagnosis={
+            <div className="flex flex-col gap-6">
+            {/* EN LA SUBPESTAÑA DE ENCUESTA Y NO EN LAS CUATRO (Santiago, 2026-09-10). Estaban encima de
+                las subpestañas, o sea en todas. Van donde estan las respuestas de las que salen: quien
+                abre Funcional viene a leer el DFI, y una bandera de la encuesta ahi es ruido en la
+                pestaña de al lado. */}
+            {alertasNode}
             <SurveyDiagnosisSection
               patron={patron}
               surveyDomains={entrySurvey}
               characterization={characterization}
               profileHasCharacterization={profileHasCharacterization}
             />
+            </div>
           }
           // Capa del profesional, separada de la evidencia del modelo (disciplina de snapshot).
           criterio={
@@ -1312,7 +1326,6 @@ export default async function ResultadosEvaluacionPage({
             </Card>
           }
         />
-        </div>
       }
       />
     </div>
