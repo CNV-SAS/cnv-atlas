@@ -103,21 +103,40 @@ describe("una celda sale UNA vez, con sus motivos juntos", () => {
     expect(salida[0].motivos).toEqual(["sin lácteos"]);
   });
 
-  it("DOS TEXTOS distintos para la misma celda NO se juntan: son alternativas", () => {
-    // Juntarlos escribiría uno encima del otro. Elegir entre dos preparaciones es contenido clínico, así
-    // que se marcan y el profesional decide.
+  it("DOS TEXTOS distintos para la misma celda: el modelo PARTIÓ la casilla", () => {
+    // ═══ EL CASO REAL, con los textos de producción ═══
+    //
+    // Celda base del lunes/desayuno: "Kumis (1 pocillo), 2 tortillas de maíz (1 unidad cada una) con
+    // mantequilla y 1 huevo cocido". El paciente tiene DOS restricciones y el modelo devolvió dos
+    // entradas para esa misma celda, cada una reescribiendo su parte y tirando el resto.
+    //
+    // POR LA MAÑANA ESTO SE ETIQUETÓ COMO "alternativas" y el dato de la tarde lo desmintió: no son dos
+    // opciones entre las que elegir, son las DOS MITADES de un mismo desayuno.
     const salida = agruparCambiosPorCelda([
-      cambio(1, "almuerzo", "Pollo a la plancha", "sin gluten"),
-      cambio(1, "almuerzo", "Pescado al horno", "sin gluten"),
+      cambio(0, "desayuno", "Kumis de leche sin lactosa", "sin lactosa"),
+      cambio(0, "desayuno", "2 tortillas de maíz con mantequilla y 1 huevo cocido", "sin gluten"),
     ]);
     expect(salida).toHaveLength(2);
-    expect(salida.every((c) => c.alternativas)).toBe(true);
+    expect(salida.every((c) => c.celdaPartida)).toBe(true);
   });
 
-  it("y esas quedan FUERA del botón de aplicar todas", () => {
-    // El daño concreto: el atajo aplicaría las dos, quedaría la última, y el profesional vería una sola
-    // sin saber que hubo otra.
-    expect(PANEL).toContain("!c.alternativas && estadoDelCambio(c)");
+  it("y NO se ofrece aplicar ninguna de las dos: aplicar una borra la otra mitad", () => {
+    // El daño concreto no es que quede la última: es que aplicar "Kumis de leche sin lactosa" deja el
+    // desayuno en un kumis y se pierden las tortillas y el huevo. En silencio y sobre un plan clínico.
+    expect(PANEL).toContain("!c.celdaPartida && estadoDelCambio(c)");
+    expect(PANEL, "volvió a ofrecerse el botón en una casilla partida").toContain(
+      "{c.celdaPartida ? null : estado ===",
+    );
+  });
+
+  it("y el contrato pide UNA entrada por celda, con el reemplazo COMPLETO", () => {
+    // El arreglo de fondo es pedirlo bien: juntar dos mitades es decidir qué come el paciente, y eso es
+    // contenido clínico. La pantalla se queda como red por si el modelo desobedece, que es lo que hacen.
+    const V4 = readFileSync("src/modules/treatment/ai/prompts/menu.v4.ts", "utf8");
+    expect(V4).toContain("UNA SOLA ENTRADA POR CELDA");
+    expect(V4).toContain("EL REEMPLAZO ES LA CELDA COMPLETA");
+    // Y la versión sube, o los registros no distinguen con qué contrato se generó cada sugerencia.
+    expect(V4).toContain("export const MENU_PROMPT_VERSION = 5;");
   });
 
   it("la key de React distingue las alternativas", () => {

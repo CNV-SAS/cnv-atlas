@@ -39,7 +39,7 @@ export const MENU_ADAPT_SYSTEM_PROMPT: string = adaptSystem.system;
 export const MENU_PROMPT_KEY = "menu.adapt";
 // Versión del CONTRATO en código, independiente de la del texto de sistema editable en BD. Sube a 4
 // porque cambian LAS DOS PUNTAS: entra la semana base y sale una lista de cambios, no un menú.
-export const MENU_PROMPT_VERSION = 4;
+export const MENU_PROMPT_VERSION = 5;
 
 export type RestriccionModelo = { nombre: string; valor: string; ref: string };
 
@@ -71,7 +71,7 @@ export type CambioPropuesto = {
 // La forma exacta que se le pide. Se declara aquí y se valida al parsear.
 export const MENU_CAMBIOS_SHAPE = `{
   "cambios": [
-    { "dia": 0, "tiempo": "desayuno", "reemplazo": "Arepa de maiz asada con queso", "motivo": "sin gluten" }
+    { "dia": 0, "tiempo": "desayuno", "reemplazo": "Arepa de maiz asada con queso sin lactosa y 1 huevo cocido", "motivo": "sin gluten, sin lactosa" }
   ]
 }`;
 
@@ -136,6 +136,26 @@ export function buildMenuAdaptarPrompt(
       "porcion a lo que sustituye. No cambies un almuerzo por una ensalada.",
     "- En \"motivo\" escribe LA RESTRICCION CONCRETA que estas atendiendo, copiada de las listas de " +
       "arriba. No escribas justificaciones generales como \"mas saludable\" ni \"mejor opcion\".",
+    // ═══ LAS DOS REGLAS QUE ENTRAN EN LA u5 (smoke Santiago, 2026-09-10) ═══
+    //
+    // EL CASO, con el dato de produccion delante. Celda base del lunes/desayuno:
+    //   "Kumis (1 pocillo), 2 tortillas de maiz (1 unidad cada una) con mantequilla y 1 huevo cocido"
+    // El paciente tiene DOS restricciones, y el modelo devolvio DOS entradas para esa misma celda:
+    //   "sin lactosa" -> "Kumis de leche sin lactosa"
+    //   "sin gluten"  -> "2 tortillas de maiz con mantequilla y 1 huevo cocido"
+    //
+    // CADA UNA REESCRIBE LA PARTE QUE LE TOCA Y TIRA EL RESTO. Aplicar la primera dejaria el desayuno en
+    // un kumis: se pierden las tortillas y el huevo. Aplicar la segunda pierde el kumis. Y no son
+    // alternativas entre las que elegir: son dos MITADES de la misma celda.
+    //
+    // Decidir si dos propuestas se suman o se sustituyen es contenido clinico (¿el desayuno lleva las
+    // dos cosas, o una sustituye a la otra?), asi que no se resuelve juntando cadenas. Se pide bien.
+    "- UNA SOLA ENTRADA POR CELDA. Si una celda incumple VARIAS restricciones, devuelve UN unico " +
+      "reemplazo que las atienda TODAS a la vez, y en \"motivo\" escribelas juntas separadas por coma. " +
+      "NUNCA devuelvas dos entradas con el mismo \"dia\" y el mismo \"tiempo\".",
+    "- EL REEMPLAZO ES LA CELDA COMPLETA, no la parte que falla. Si la celda base tiene tres alimentos y " +
+      "solo uno incumple, tu reemplazo lleva LOS TRES, con ese uno sustituido. Lo que no escribas se " +
+      "pierde, porque tu texto reemplaza la celda entera.",
     "- Si ninguna celda incumple nada, devuelve la lista vacia.",
     "",
     "FORMATO DE RESPUESTA. Responde SOLO con un objeto JSON con esta forma exacta:",
@@ -224,11 +244,19 @@ export type CambioAgrupado = {
   /** Los motivos del modelo para esta celda, en el orden en que los dio y sin repetir. */
   motivos: string[];
   /**
-   * La celda tiene MAS de un reemplazo distinto propuesto. No es agrupable: son alternativas, y elegir
-   * por el profesional seria decidir contenido clinico. Se dice en pantalla y se deja fuera del boton
-   * de aplicar todas, que si no escribiria una encima de la otra sin avisar.
+   * EL MODELO PARTIO LA CELDA: devolvio mas de un reemplazo distinto para ella, uno por restriccion, y
+   * cada uno reescribe su parte y tira el resto.
+   *
+   * NO SON ALTERNATIVAS (asi se etiquetaron el 2026-09-10 por la mañana, y el dato de produccion lo
+   * desmintio por la tarde): son MITADES. Con la celda base "Kumis, 2 tortillas de maiz con mantequilla
+   * y 1 huevo cocido", el modelo devolvio "Kumis de leche sin lactosa" por un lado y "2 tortillas de
+   * maiz con mantequilla y 1 huevo cocido" por el otro. Aplicar cualquiera de las dos BORRA la otra
+   * mitad del desayuno.
+   *
+   * Por eso no se ofrece aplicarlas, ni sueltas ni en el boton de todas: juntarlas es decidir que come
+   * el paciente, y eso es del profesional.
    */
-  alternativas: boolean;
+  celdaPartida: boolean;
 };
 
 /** Agrupa las propuestas por celda y reemplazo, juntando los motivos. Ver `CambioAgrupado`. */
@@ -240,7 +268,7 @@ export function agruparCambiosPorCelda(cambios: CambioPropuesto[]): CambioAgrupa
     const clave = `${celda}\u0000${c.reemplazo}`;
     let g = porTexto.get(clave);
     if (g == null) {
-      g = { dia: c.dia, tiempo: c.tiempo, reemplazo: c.reemplazo, motivos: [], alternativas: false };
+      g = { dia: c.dia, tiempo: c.tiempo, reemplazo: c.reemplazo, motivos: [], celdaPartida: false };
       porTexto.set(clave, g);
     }
     if (!g.motivos.includes(c.motivo)) g.motivos.push(c.motivo);
@@ -250,7 +278,7 @@ export function agruparCambiosPorCelda(cambios: CambioPropuesto[]): CambioAgrupa
   }
   const salida = [...porTexto.values()];
   for (const g of salida) {
-    g.alternativas = (reemplazosPorCelda.get(`${g.dia}_${g.tiempo}`)?.size ?? 1) > 1;
+    g.celdaPartida = (reemplazosPorCelda.get(`${g.dia}_${g.tiempo}`)?.size ?? 1) > 1;
   }
   return salida;
 }

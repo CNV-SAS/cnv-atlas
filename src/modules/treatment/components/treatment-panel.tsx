@@ -2010,12 +2010,11 @@ function ListaDeCambios({
           />
         ))}
       </ul>
-      {/* LAS ALTERNATIVAS SE QUEDAN FUERA DEL ATAJO. Si el modelo propuso DOS textos distintos para la
-          misma celda, aplicarlas todas escribiria una encima de la otra y el profesional veria solo la
-          ultima, sin saber que hubo otra. Elegir entre las dos es suyo. */}
+      {/* LAS CELDAS PARTIDAS SE QUEDAN FUERA DEL ATAJO, y no por prudencia: aplicar una de las dos
+          mitades BORRA la otra. Ver `celdaPartida`. */}
       <AplicarTodasMenu
         evaluationId={evaluationId}
-        pendientes={cambios.filter((c) => !c.alternativas && estadoDelCambio(c) === "pendiente")}
+        pendientes={cambios.filter((c) => !c.celdaPartida && estadoDelCambio(c) === "pendiente")}
         menuSinGuardar={menuSinGuardar}
       />
     </div>
@@ -2082,11 +2081,21 @@ function CambioMenu({
           </span>
         ) : null}
       </p>
-      {c.alternativas ? (
-        // DOS TEXTOS DISTINTOS PARA LA MISMA CELDA. Aplicar los dos dejaría el último y en silencio, así
-        // que se dice: son alternativas y la elección es del profesional.
+      {c.celdaPartida ? (
+        // ═══ EL MODELO PARTIÓ LA CASILLA (Santiago, 2026-09-10, segunda ronda del mismo día) ═══
+        //
+        // POR LA MAÑANA ESTO DECÍA "hay otra propuesta para esta misma casilla: elige una", y el dato de
+        // producción lo desmintió: la casilla base del lunes decía "Kumis (1 pocillo), 2 tortillas de maíz
+        // (1 unidad cada una) con mantequilla y 1 huevo cocido", y el modelo devolvió "Kumis de leche sin
+        // lactosa" por la lactosa y "2 tortillas de maíz con mantequilla y 1 huevo cocido" por el gluten.
+        // No son dos opciones: son las DOS MITADES de un mismo desayuno.
+        //
+        // Así que elegir una no es elegir: es borrar la otra mitad de la comida, en silencio y sobre un
+        // plan clínico. No se ofrece el botón, y se dice por qué.
         <p className="pt-0.5 text-xs text-attention">
-          Hay otra propuesta para esta misma casilla: elige una.
+          El modelo partió esta casilla: propuso un cambio por restricción y ninguno incluye el resto de
+          la comida. Aplicar cualquiera de los dos borraría lo demás, así que Atlas no lo ofrece. Si
+          quieres cambiarla, edítala en la grilla.
         </p>
       ) : null}
       {/* CAMBIO POR CAMBIO: una sustitución puede ser buena y la de al lado no. El botón global de abajo
@@ -2096,7 +2105,7 @@ function CambioMenu({
         <input type="hidden" name="dia" value={c.dia} />
         <input type="hidden" name="tiempo" value={c.tiempo} />
         <input type="hidden" name="reemplazo" value={c.reemplazo} />
-        {estado === "aplicado" ? (
+        {c.celdaPartida ? null : estado === "aplicado" ? (
           <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
         ) : estado === "ya-coincide" ? (
           // NO SE DICE "APLICADO" AQUI, y la distincion no es de estilo: nadie lo aplicó. La celda ya
