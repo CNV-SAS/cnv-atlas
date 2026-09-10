@@ -78,6 +78,35 @@ const TOPE_MS = 12000;
 /** Cada cuanto se mira el alto del documento. Leer `scrollHeight` fuerza layout: no se hace por cuadro. */
 const SONDEO_MS = 150;
 
+// ═══ SE ARMA EN EL CLIC, NO AL LLEGAR EL RESULTADO (smoke Santiago, 2026-09-10, cuarta ronda) ═══
+//
+// LAS TRES RONDAS ANTERIORES arreglaron CUANTO vigila el guard (el doble ciclo, el encogimiento pasajero,
+// la ventana de silencio). Ninguna cerro el sintoma, y eso ya dice que el problema no era la duracion.
+//
+// LO QUE SE VERIFICO ESTA VEZ, contando archivos en vez de razonando: de los 59 archivos con formularios
+// de accion, TREINTA no llamaban a `preservarScroll` por ningun camino. El comentario de `use-form-toast`
+// decia "el mecanismo unico por donde pasan los 78 formularios" y eso ERA FALSO: los hooks del toast los
+// usan 29 archivos; los otros 30 invocan la accion con `useActionState` a pelo. Uno de ellos es
+// `resumen-diagnostico.tsx`, o sea el boton de generar el borrador de IA que Santiago reporta.
+//
+// EL MECANISMO QUE SI ES UNICO ES EL ENVIO: `enviarSinReset` lo usan 47 archivos, y los cinco que quedaban
+// fuera invocan la accion desde un `onClick` con `startTransition` (sin `<form>`), que ahora pasa por
+// `ejecutarAccion` en el mismo modulo.
+//
+// Y ARMARLO EN EL CLIC ARREGLA ALGO MAS, que es lo que lo vuelve un arreglo y no un parche: hasta hoy
+// `desde` se capturaba CUANDO LLEGABA EL RESULTADO. Si el salto de Next ocurre en el MISMO commit que la
+// actualizacion del estado de la accion, el scroll lo hace `componentDidMount` de `ScrollAndFocusHandler`
+// (verificado en `layout-router.js` del Next instalado, lineas 116-120), que es un efecto de LAYOUT, y
+// React los corre SIEMPRE antes que los efectos pasivos. O sea que `preservarScroll` capturaba `desde`
+// DESPUES del salto: cero, y entonces no habia nada que deshacer. En el clic la pagina esta donde el
+// profesional la dejo, pase lo que pase despues.
+//
+// NO SE AFIRMA QUE ESE SEA EL ORDEN, porque eso solo se ve en un navegador real. Se dice que capturar en el
+// clic es correcto CON LOS DOS ORDENES, que es distinto.
+
+/** Guard vivo, para no armar dos sobre la misma pagina. El primero tiene el `desde` bueno. */
+let vivo: { ruta: string; extender: () => void } | null = null;
+
 /** Menos de esto no es el salto al inicio, es el ajuste normal de un layout que respira. */
 const MINIMO_PX = 24;
 
@@ -94,6 +123,14 @@ const MINIMO_PX = 24;
 export function preservarScroll(): void {
   if (typeof window === "undefined") return;
 
+  // YA HAY UNO VIGILANDO ESTA PAGINA: se le alarga la ventana y se sale. El primero se armo en el clic,
+  // asi que su `desde` es el bueno; el segundo (el del hook del toast, que llega despues) capturaria una
+  // posicion que puede estar ya saltada y "restauraria" al sitio equivocado.
+  if (vivo != null && vivo.ruta === window.location.pathname) {
+    vivo.extender();
+    return;
+  }
+
   const desde = window.scrollY;
   const ruta = window.location.pathname;
   let terminado = false;
@@ -106,6 +143,7 @@ export function preservarScroll(): void {
 
   const quitar = () => {
     terminado = true;
+    if (vivo?.ruta === ruta) vivo = null;
     window.removeEventListener("scroll", revisar);
     for (const e of CANCELAN) window.removeEventListener(e, cancelar);
     window.removeEventListener("keydown", cancelarPorTecla);
@@ -116,7 +154,7 @@ export function preservarScroll(): void {
    * Reinicia la ventana de silencio. La llaman la correccion y el cambio de alto del documento: las dos
    * dicen lo mismo, que la pagina todavia se esta recomponiendo y hay que seguir mirando.
    */
-  const reprogramar = () => {
+  const reprogramar = (primera = false) => {
     if (terminado) return;
     const restante = TOPE_MS - (Date.now() - nacimiento);
     if (restante <= 0) {
@@ -124,7 +162,10 @@ export function preservarScroll(): void {
       return;
     }
     window.clearTimeout(fin);
-    fin = window.setTimeout(quitar, Math.min(VENTANA_MS, restante));
+    // LA PRIMERA ESPERA VA HASTA EL TOPE, y no son tres segundos: entre el clic y el salto esta el viaje
+    // al servidor, que en el panel pesado son varios segundos. Una vez que la pagina se mueve, manda la
+    // ventana de silencio.
+    fin = window.setTimeout(quitar, primera ? restante : Math.min(VENTANA_MS, restante));
   };
 
   // El usuario manda: si se mueve el solo, no se le pelea la pagina. Estos eventos llegan ANTES del
@@ -239,5 +280,6 @@ export function preservarScroll(): void {
   };
   window.requestAnimationFrame(siguienteCuadro);
 
-  reprogramar();
+  vivo = { ruta, extender: () => reprogramar(true) };
+  reprogramar(true);
 }

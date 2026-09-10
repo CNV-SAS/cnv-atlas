@@ -2,6 +2,8 @@
 
 import { startTransition } from "react";
 
+import { preservarScroll } from "./preservar-scroll";
+
 // ENVIAR UN FORMULARIO SIN QUE REACT LO RESETEE.
 //
 // EL DEFECTO, verificado en el react-dom instalado (19.2.4), no razonado: cuando un `<form>` lleva la prop
@@ -36,9 +38,34 @@ import { startTransition } from "react";
 //
 // NO ES UN HOOK (no usa ninguno): se llama en el JSX, y el prefijo `use` activaria las reglas de hooks de
 // eslint sin motivo.
+// ═══ Y AQUI SE ARMA EL GUARD DEL SCROLL (2026-09-10) ═══
+//
+// POR QUE AQUI Y NO EN LOS HOOKS DEL TOAST, que es donde estaba: por las dos razones a la vez.
+//
+//   1. ALCANCE. Los hooks del toast los usan 29 archivos de los 59 que tienen formularios de accion. Este
+//      helper lo usan 47. El comentario que decia "el mecanismo unico por donde pasan los 78 formularios"
+//      describia a los hooks, y era falso: treinta archivos no pasaban por ninguno.
+//   2. MOMENTO. Aqui la pagina esta DONDE EL PROFESIONAL LA DEJO. Los hooks corren al llegar el resultado,
+//      que es despues del viaje al servidor y (posiblemente) despues del salto.
+//
+// El detalle completo, en `preservar-scroll.ts`.
 export function enviarSinReset(action: (fd: FormData) => void) {
   return (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    preservarScroll();
     startTransition(() => action(new FormData(e.currentTarget)));
   };
+}
+
+/**
+ * Lo mismo para un boton SIN formulario: invoca la accion en una transicion y arma el guard del scroll.
+ *
+ * EXISTE PORQUE HAY CINCO SITIOS ASI (generar el resumen del diagnostico, resolver un conflicto de
+ * identidad, la fase de encuesta, la venta en efectivo y la identidad automatica): no tienen `<form>`,
+ * llaman a la accion desde un `onClick`, y por eso quedaban fuera de todo. No se pide que se conviertan
+ * en formularios: se les da la misma puerta.
+ */
+export function ejecutarAccion(action: (fd: FormData) => void, fd: FormData): void {
+  preservarScroll();
+  startTransition(() => action(fd));
 }

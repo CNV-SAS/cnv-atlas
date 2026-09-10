@@ -1,6 +1,8 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { useActionState, useState } from "react";
+
+import { ejecutarAccion } from "@/components/shared/enviar-sin-reset";
 
 import { Button } from "@/components/ui/button";
 
@@ -32,7 +34,7 @@ export function IdentityConflictResolution({
     const fd = new FormData();
     fd.set("evaluationId", evaluationId);
     fd.set("decision", decision);
-    startTransition(() => action(fd));
+    ejecutarAccion(action, fd);
   };
 
   return (
