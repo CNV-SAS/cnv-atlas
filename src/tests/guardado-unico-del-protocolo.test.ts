@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { SECCIONES } from "@/modules/treatment/data/borrador-protocolo";
+
 import { sinComentarios } from "./helpers/sin-comentarios";
 
 // CANDADO DEL GUARDADO UNICO DEL PROTOCOLO (Santiago, 2026-09-09).
@@ -28,16 +30,9 @@ const TABS = readFileSync("src/modules/diagnoses/components/evaluation-tabs.tsx"
 const ACTIONS = readFileSync("src/modules/treatment/actions.ts", "utf8");
 const SERVICIO = readFileSync("src/modules/treatment/services/treatment-service.ts", "utf8");
 
-/** Las siete secciones que se guardan juntas. Los nutraceuticos NO entran: escriben una tabla HIJA. */
-const SECCIONES = [
-  "ajustes",
-  "objetivo",
-  "restricciones",
-  "intercambio",
-  "tiemposActivos",
-  "tiempos",
-  "menuSemanal",
-] as const;
+// LA LISTA SE IMPORTA, no se copia: si alguien añade una octava seccion y este archivo tuviera la suya,
+// el candado seguiria verde sin mirarla. Es la misma razon por la que los rotulos dejaron de estar dos
+// veces (2026-09-10).
 
 describe("las SIETE secciones publican su borrador", () => {
   it.each(SECCIONES)("%s se publica hacia el panel", (seccion) => {
@@ -85,8 +80,11 @@ describe("el aviso pegajoso, que es lo que hace seguro quitar los siete botones"
 
   it("y DICE qué secciones cambiaron, no solo que hay cambios", () => {
     // En una pantalla de este tamaño, saber que algo cambió sin saber QUÉ obliga a recorrerla entera.
+    // ALCANCE AJUSTADO (2026-09-10), no la asercion: los rotulos salieron del panel a `borrador-protocolo`
+    // para dejar de estar escritos DOS veces (aqui y en el writer). Lo que se afirma es lo mismo: que el
+    // aviso NOMBRE las secciones en vez de decir solo que hay cambios.
     expect(PANEL).toContain("sucias.map((s) => ROTULO_SECCION[s])");
-    expect(PANEL).toContain("const ROTULO_SECCION: Record<SeccionId, string>");
+    expect(PANEL).toContain(`from "../data/borrador-protocolo"`);
   });
 
   it("y avisa también si se cierra la pestaña del navegador", () => {
@@ -97,8 +95,13 @@ describe("el aviso pegajoso, que es lo que hace seguro quitar los siete botones"
 
   it("hay UN solo botón de guardar en el panel", () => {
     // Tres disparadores del mismo acto en una pantalla es ruido, y siete es lo que Santiago reportó.
+    // EL DELIMITADOR CAMBIO, NO EL ALCANCE (2026-09-10): el mapa de rotulos que cerraba el corte se mudo
+    // al modulo neutro. Se corta con el comentario que sigue al panel.
     const panel = sinComentarios(
-      PANEL.slice(PANEL.indexOf("export function TreatmentPanel"), PANEL.indexOf("const ROTULO_SECCION")),
+      PANEL.slice(
+        PANEL.indexOf("export function TreatmentPanel"),
+        PANEL.indexOf("// TODA LA VERTICAL DE APROBAR"),
+      ),
     );
     expect((panel.match(/type="submit"/g) ?? []).length, "hay más de un botón de guardar").toBe(1);
     expect(panel).toContain("Guardar cambios");

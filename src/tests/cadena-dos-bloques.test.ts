@@ -281,7 +281,10 @@ describe("se partió la PRESENTACIÓN, y ahora tampoco hay guardado propio", () 
     expect(PANEL, "el guardado dejó de ser pegajoso").toContain("sticky bottom-0");
     expect(PANEL).toContain("Guardar cambios");
     // UNO, no dos: tres disparadores del mismo acto en una pantalla es ruido.
-    const panel = sinComentarios(bloque("export function TreatmentPanel", "const ROTULO_SECCION"));
+    // El delimitador cambio (los rotulos se mudaron al modulo neutro), no el alcance.
+    const panel = sinComentarios(
+      bloque("export function TreatmentPanel", "// TODA LA VERTICAL DE APROBAR"),
+    );
     expect((panel.match(/type="submit"/g) ?? []).length, "hay más de un botón de guardar").toBe(1);
   });
 
