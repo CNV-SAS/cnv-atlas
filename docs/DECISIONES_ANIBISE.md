@@ -1346,3 +1346,51 @@ que era irreversible y que era *"lo que habilita prescribir"*. Las dos cosas hab
   entonces `confirmed_profession` queda en null. Ya se guardaba así, honestamente. Antes existía la vía de
   que el profesional lo sellara ANTES con la suya. **Si eso importa clínicamente, la salida no es devolver
   el botón: es que aprobar el reporte exija profesional.** Queda propuesto, no hecho.
+
+**P-123 · EL POSIBLE DUPLICADO NECESITA SALIDA, Y CONFIRMAR NUNCA FUE UNA FUSIÓN (2026-09-10).**
+Santiago creó un paciente parecido a otro, salió el bloque con su 80% de similitud, y no había forma de
+decir *"no es la misma persona"*. Sin confirmar, la evaluación se queda en borrador: las condiciones BIS no
+aparecen. Con una coincidencia falsa, el flujo no tenía salida.
+
+- **VERIFICADO ANTES DE CONSTRUIR, y cambió el diseño:** `confirmEvaluationIdentity` hace TRES cosas (el
+  muro del consentimiento, `draft -> in_progress` y auditar) y **no toca a los candidatos**. O sea que el
+  botón nunca significó "es la misma persona": significaba "sigo con esta evaluación". Lo que creaba el
+  callejón era el TEXTO (*"Confirma solo si es la misma persona"*), que le atribuía una consecuencia que
+  no tiene.
+- **Por eso la salida no es un botón con otra acción**, es decir la verdad: seguir es seguir como paciente
+  nuevo. Lo que faltaba era la **constancia**: quién revisó, cuándo, y qué candidatos con qué similitud.
+  Se audita como `evaluation.duplicate_dismissed`, inline en la misma transacción y **aparte** del
+  `identity_confirmed`, porque son dos hechos distintos.
+- **Y el caso contrario se dice, no se finge:** Atlas no fusiona pacientes. Si de verdad es la misma
+  persona, quedó registrada dos veces con documentos distintos, y la salida honesta es no continuar con
+  esa evaluación. Un botón que fingiera resolverlo sería peor que el callejón.
+- **Y "no vuelve a preguntar" ya estaba resuelto:** el bloque cuelga de `status = 'draft'`, así que al
+  continuar desaparece solo.
+
+**P-124 · UNA PROPUESTA QUE LA GRILLA YA CUMPLE NO SE SIGUE OFRECIENDO (2026-09-10).**
+De 14 cambios propuestos por la IA, 6 seguían diciendo "aplicar" después de aplicarse. Con el dato de
+producción delante: los 6 eran de **almuerzo** y su celda guardada estaba en `undefined`.
+
+- **La causa:** `aplicarCambiosMenu` guarda solo lo que difiere del ciclo y **borra** la celda cuando el
+  reemplazo coincide con lo que el ciclo ya propone (guardarlo la congelaría). En esos 6 la IA devolvió el
+  texto del ciclo tal cual. El servicio hizo lo correcto; la **pantalla** preguntaba lo que no era.
+- La regla correcta es la misma que usa la grilla para pintar: el **texto efectivo** de la celda (lo
+  guardado, y si no, el del ciclo). Y son **tres** estados, no dos: decir "aplicado" cuando el ciclo ya lo
+  decía sería atribuirle al profesional un acto que no hizo.
+- **Y un choque con el guardado único que se cierra de paso:** aplicar parte del menú GUARDADO, así que
+  con un borrador sin guardar perdería el trabajo en silencio. Ahora se dice, en vez de ofrecer un botón
+  que destruye.
+
+**P-125 · LA CITA DE LA IA SE COTEJA POR TÉRMINOS, NO POR CONTENCIÓN (2026-09-10).**
+Con la restricción registrada, una sugerencia decía *"Motivo: sin lacteos · no corresponde a ninguna
+restricción registrada"*. No era el acento ni el cableado: el profesional había registrado **una**
+restricción compuesta (`"sin gluten ni lacteos"`) y la IA cita por celda la **mitad** que aplica. El cotejo
+preguntaba si la restricción cabía dentro del motivo, y la compuesta no cabe dentro de la mitad.
+
+- La regla nueva es **simétrica**: comparten al menos un término significativo. Su límite va declarado: un
+  motivo que nombre el alimento en vez de la restricción ("contiene leche" contra "sin lácteos") seguirá
+  saliendo marcado. Se prefiere ese error al contrario, porque este aviso **no bloquea** y uno que salta
+  sobre citas legítimas se aprende a ignorar.
+- **Y el aviso se recomputa al LEER.** `citaVerificada` se guardaba dentro de `menu_json`, que es
+  inmutable: era una foto. El aviso habla en presente ("no corresponde a ninguna restricción
+  **registrada**"), así que se calcula en presente; lo guardado queda como procedencia.

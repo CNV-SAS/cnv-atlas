@@ -585,6 +585,29 @@ export async function confirmIdentityAction(
     return { error: "Esta evaluación ya fue confirmada.", confirmed: true };
   }
 
+  // LOS DUPLICADOS QUE EL PROFESIONAL DESCARTA al continuar. Viajan como json en el formulario porque son
+  // una lista; se parsean con tolerancia (una forma rara no puede impedir que la evaluacion siga) y se
+  // ACOTAN, porque todo lo que llega de fuera lleva limite (regla de validacion).
+  //
+  // NO SE CONFIA EN LO QUE MANDE EL CLIENTE mas alla de dejarlo en la auditoria: no gobierna ninguna
+  // decision del servidor, solo registra QUE se le mostro al profesional y el dijo que no era.
+  let duplicadosDescartados: { patientId: string; score: number }[] = [];
+  try {
+    const crudo = JSON.parse(String(form.get("descartados") ?? "[]")) as unknown;
+    if (Array.isArray(crudo)) {
+      duplicadosDescartados = crudo
+        .slice(0, 20)
+        .map((d) => d as { patientId?: unknown; score?: unknown })
+        .filter((d) => typeof d.patientId === "string")
+        .map((d) => ({
+          patientId: String(d.patientId),
+          score: typeof d.score === "number" && Number.isFinite(d.score) ? d.score : 0,
+        }));
+    }
+  } catch {
+    duplicadosDescartados = [];
+  }
+
   const ip = await getClientIp();
   try {
     const { confirmed } = await confirmEvaluationIdentity({
@@ -593,6 +616,7 @@ export async function confirmIdentityAction(
       actorId: user.id,
       actorEmail: user.email,
       ip: ip === "unknown" ? null : ip,
+      duplicadosDescartados,
     });
     if (!confirmed) return { error: "No se pudo confirmar.", confirmed: false };
   } catch (e) {

@@ -63,6 +63,7 @@ import {
   type Publicado,
   type SeccionId,
 } from "../data/borrador-protocolo";
+import { verificarCita } from "../ai/prompts/menu.v4";
 import { RealimentacionAlert } from "./realimentacion-alert";
 import {
   adjustmentSignature,
@@ -512,11 +513,7 @@ function CadenaCaloricaSection({
    * campos de arriba, y esos viven en el estado de ESTA seccion. El padre no los tiene. Mismo patron
    * que `adaptar` en el bloque de restricciones.
    */
-  validacion: (
-    ajustes: ProtocoloAjustes,
-    opciones: { protKgVigente: number | null },
-    sinGuardar: boolean,
-  ) => ReactNode;
+  validacion: (ajustes: ProtocoloAjustes, opciones: { protKgVigente: number | null }) => ReactNode;
 }) {
   // SIN GUARDADO PROPIO (2026-09-09): esta seccion PUBLICA su borrador y lo guarda el boton unico del pie
   // del panel. Ver la nota de `BorradorContexto`.
@@ -588,17 +585,10 @@ function CadenaCaloricaSection({
   if (!snap || protocol.pesoCalculo == null) return null;
 
   const opciones = { protKgVigente: prescripcion?.protKg ?? null };
-  // LO DE PANTALLA FRENTE A LO GUARDADO. Se compara campo a campo sobre los seis ajustes, que son los
-  // que la tabla consume; asi el aviso aparece exactamente cuando la tabla esta mostrando algo que
-  // todavia no esta en la base, y desaparece solo al guardar (la seccion se remonta por su key).
-  const hayCambiosSinGuardar =
-    adj.geb !== protocol.adjGeb ||
-    adj.pal !== protocol.adjPal ||
-    adj.kcalObj !== protocol.adjKcalObj ||
-    adj.protGkg !== protocol.adjProtGkg ||
-    adj.fatPct !== protocol.adjFatPct ||
-    adj.deficit !== protocol.adjDeficit ||
-    adj.pesoMeta !== protocol.pesoMetaFijado;
+  // SE RETIRO `hayCambiosSinGuardar` DE ESTA SECCION (2026-09-10). Existia para alimentar el aviso de la
+  // tabla de validacion, que se retiro con el: lo que hace ahora es la barra pegajosa del pie, que ademas
+  // mira las SIETE secciones y no solo esta. La comparacion campo a campo que vivia aqui era una tercera
+  // forma de decidir "sin guardar", y con tres formas una acaba diciendo algo distinto de las otras.
   // MISMA funcion que sella el servidor: la vista previa no puede diverger de lo que se guarda (cuidado b).
   const efectivo = computeProtocoloEfectivo(snap, adj, opciones);
   const cal = efectivo.calorico;
@@ -869,7 +859,7 @@ function CadenaCaloricaSection({
 
           Se le pasan los ajustes VIVOS y las MISMAS opciones que usa la cadena, para que se recalcule
           al teclear (21b) y para que las dos cuentas no puedan salir de fuentes distintas. */}
-      {validacion(adj, opciones, hayCambiosSinGuardar)}
+      {validacion(adj, opciones)}
 
       <fieldset className="flex min-w-0 flex-col gap-4">
         {/* BLOQUE 2 · LA CADENA QUE PRODUCE ESA META.
@@ -1484,13 +1474,8 @@ export function TreatmentPanel({
           protocol={protocol}
           prescripcion={prescripcion}
           asesoria={asesoria}
-          validacion={(ajustes, opcionesCadena, sinGuardar) => (
-            <ValidacionSection
-              protocol={protocol}
-              ajustes={ajustes}
-              opciones={opcionesCadena}
-              sinGuardar={sinGuardar}
-            />
+          validacion={(ajustes, opcionesCadena) => (
+            <ValidacionSection protocol={protocol} ajustes={ajustes} opciones={opcionesCadena} />
           )}
         />
         {/* Intercambio (CP1.2b): despues de la cadena, que le da el objetivo. key = firma del intercambio
@@ -1552,7 +1537,22 @@ export function TreatmentPanel({
             />
           )}
         />
-        <MenuSection evaluationId={evaluationId} protocol={protocol} />
+        <MenuSection
+          evaluationId={evaluationId}
+          protocol={protocol}
+          // LAS MISMAS TRES LISTAS QUE COTEJA `generateMenu`: las del motor que gobierna, las del profesional
+          // y el patron declarado por el paciente. Si aqui se mirara un subconjunto, una cita legitima
+          // saldria marcada, que es justo el defecto que esto viene a cerrar.
+          restriccionesVigentes={[
+            ...(prescripcion?.limites ?? protocol.protocolSuggested?.restricciones ?? []).map(
+              (r) => r.nombre,
+            ),
+            ...(prescripcion?.atributos ?? []),
+            ...protocol.restricciones,
+            ...patronAlimentario,
+          ]}
+          menuSinGuardar={sucias.includes("menuSemanal")}
+        />
         <NotesSection protocol={protocol} />
         {/* MIENTRAS NO SE HA ENTREGADO NADA, SE DICE. Es informacion y no un mando: no hay boton que
             pulsar, porque emitir ocurre al imprimir el plan o al enviar el reporte, que son actos que el
@@ -1702,20 +1702,56 @@ function AdaptarMenuBoton({
 function MenuSection({
   evaluationId,
   protocol,
+  restriccionesVigentes,
+  menuSinGuardar,
 }: {
   evaluationId: string;
   protocol: TreatmentProtocol;
+  /** El menu semanal tiene cambios sin guardar: aplicar una propuesta los pisaria. */
+  menuSinGuardar: boolean;
+  /**
+   * CON QUE SE COTEJAN LAS CITAS DE LA IA, recomputado al LEER y no leido del jsonb (2026-09-10).
+   *
+   * `citaVerificada` se calcula al generar y se guarda dentro de `menu_json`, que es inmutable. Eso lo
+   * vuelve una foto: si el cotejo tenia un defecto (lo tenia) o si las restricciones cambiaron despues, la
+   * pantalla sigue mostrando el veredicto viejo. Aqui se vuelve a calcular con las restricciones de HOY,
+   * que es lo que el aviso afirma ("no corresponde a NINGUNA restriccion registrada", en presente).
+   *
+   * Lo guardado se conserva como PROCEDENCIA de lo que era cierto al generar; lo que se muestra es esto.
+   */
+  restriccionesVigentes: string[];
 }) {
-  // QUE CAMBIOS YA SE APLICARON. No se guarda una marca aparte: se DERIVA de la grilla, comparando el
-  // reemplazo propuesto con lo que la celda tiene guardado. Una marca aparte seria un segundo estado que
-  // puede desincronizarse del real (el profesional puede editar la celda a mano despues de aplicar).
+  // QUE CAMBIOS YA SE APLICARON. No se guarda una marca aparte: se DERIVA de la grilla. Una marca aparte
+  // seria un segundo estado que puede desincronizarse del real (el profesional puede editar la celda a
+  // mano despues de aplicar).
+  //
+  // ═══ PERO SE COMPARA CONTRA EL TEXTO EFECTIVO, NO CONTRA LA CELDA GUARDADA (Santiago, 2026-09-10) ═══
+  //
+  // EL DEFECTO, con el dato de produccion delante: de 14 cambios propuestos, 6 seguian diciendo "aplicar"
+  // despues de aplicarse, y el boton global seguia ofreciendo aplicarlos. Los 6 eran todos de ALMUERZO y
+  // su celda guardada estaba en `undefined`.
+  //
+  // LA CAUSA: `aplicarCambiosMenu` guarda SOLO lo que difiere del ciclo, y BORRA la celda cuando el
+  // reemplazo coincide con lo que el ciclo ya propone (si no, la celda dejaria de seguir al ciclo el dia
+  // que se proponga otra semana). En esos 6, la IA devolvio el texto del ciclo tal cual. El servicio hizo
+  // lo correcto; la pantalla preguntaba lo que no era: exigia que la celda estuviera GUARDADA con el
+  // reemplazo, y una celda ausente que ya dice eso tambien lo cumple.
+  //
+  // Y NO ERA COSMETICO: volver a pulsar no cambiaba nada, asi que el boton quedaba en un bucle de no hacer
+  // nada. La regla correcta es la MISMA que usa la grilla para pintar y la que usa el servicio para
+  // decidir si guarda: el texto EFECTIVO de la celda (lo guardado, y si no, el del ciclo).
   const celdasGuardadas = protocol.menuSemanal?.celdas ?? {};
-  const aplicados = new Set(
-    protocol.menuSuggestions
-      .flatMap((m) => (esMenuCambios(m.menuJson) ? m.menuJson.cambios : []))
-      .filter((c) => celdasGuardadas[`${c.dia}_${c.tiempo}`] === c.reemplazo)
-      .map((c) => `${c.dia}_${c.tiempo}`),
-  );
+  const diaInicioGuardado = protocol.menuSemanal?.diaInicio ?? diaInicioDerivado(protocol.treatmentId);
+  const textoEfectivo = (dia: number, tiempo: string): string =>
+    celdasGuardadas[`${dia}_${tiempo}`] ??
+    (diaDelCiclo(diaInicioGuardado, dia) as unknown as Record<string, string | undefined>)[tiempo] ??
+    "";
+  // TRES ESTADOS Y NO DOS, porque "ya esta" tiene dos motivos distintos y decir "aplicado" en el segundo
+  // seria atribuirle al profesional un acto que no hizo.
+  const estadoDelCambio = (c: CambioPropuestoView): "aplicado" | "ya-coincide" | "pendiente" => {
+    if (textoEfectivo(c.dia, c.tiempo) !== c.reemplazo) return "pendiente";
+    return celdasGuardadas[`${c.dia}_${c.tiempo}`] === c.reemplazo ? "aplicado" : "ya-coincide";
+  };
 
   return (
     <div className={bloqueCls("derivado")}>
@@ -1745,7 +1781,9 @@ function MenuSection({
               key={m.id}
               suggestion={m}
               evaluationId={evaluationId}
-              aplicados={aplicados}
+              estadoDelCambio={estadoDelCambio}
+              restriccionesVigentes={restriccionesVigentes}
+              menuSinGuardar={menuSinGuardar}
             />
           ))}
         </ul>
@@ -1761,12 +1799,17 @@ function MenuSection({
 function MenuCard({
   suggestion: m,
   evaluationId,
-  aplicados,
+  estadoDelCambio,
+  restriccionesVigentes,
+  menuSinGuardar,
 }: {
   suggestion: MenuSuggestion;
   evaluationId: string;
-  /** Claves `dia_tiempo` que el profesional ya aceptó: su celda ya trae el reemplazo. */
-  aplicados: Set<string>;
+  /** Si la grilla ya dice lo que la propuesta dice, y por que. Ver `estadoDelCambio` en `MenuSection`. */
+  estadoDelCambio: (c: CambioPropuestoView) => "aplicado" | "ya-coincide" | "pendiente";
+  restriccionesVigentes: string[];
+  /** El menu semanal tiene cambios sin guardar: aplicar los pisaria. */
+  menuSinGuardar: boolean;
 }) {
   const status = MENU_STATUS[m.status] ?? { label: m.status, cls: "bg-muted text-muted-foreground" };
   // Constante local: el estrechamiento de un acceso a propiedad (`m.menuJson`) no sobrevive al ternario.
@@ -1798,13 +1841,16 @@ function MenuCard({
                   key={`${c.dia}_${c.tiempo}`}
                   cambio={c}
                   evaluationId={evaluationId}
-                  yaEsta={aplicados.has(`${c.dia}_${c.tiempo}`)}
+                  estado={estadoDelCambio(c)}
+                  citaVerificada={verificarCita(c.motivo, restriccionesVigentes)}
+                  menuSinGuardar={menuSinGuardar}
                 />
               ))}
             </ul>
             <AplicarTodasMenu
               evaluationId={evaluationId}
-              pendientes={json.cambios.filter((c) => !aplicados.has(`${c.dia}_${c.tiempo}`))}
+              pendientes={json.cambios.filter((c) => estadoDelCambio(c) === "pendiente")}
+              menuSinGuardar={menuSinGuardar}
             />
           </div>
         )
@@ -1939,11 +1985,17 @@ type CambioPropuestoView = MenuCambios["cambios"][number];
 function CambioMenu({
   cambio: c,
   evaluationId,
-  yaEsta,
+  estado,
+  citaVerificada,
+  menuSinGuardar,
 }: {
   cambio: CambioPropuestoView;
   evaluationId: string;
-  yaEsta: boolean;
+  /** `aplicado` = se guardó al aplicarlo. `ya-coincide` = la grilla ya decía esto (el ciclo lo propone). */
+  estado: "aplicado" | "ya-coincide" | "pendiente";
+  /** Recomputado con las restricciones de HOY, no el que quedo guardado al generar. */
+  citaVerificada: boolean;
+  menuSinGuardar: boolean;
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambioMenuAction, EMPTY);
   // AndRefresh, no useFormToast: la acción ya no revalida (revalidar arrastraba la página al inicio en cada
@@ -1958,7 +2010,7 @@ function CambioMenu({
       <p className="pt-0.5 text-sm text-foreground">{c.reemplazo}</p>
       <p className="pt-0.5 text-xs text-muted-foreground">
         Motivo: {c.motivo}
-        {c.citaVerificada === false ? (
+        {!citaVerificada ? (
           // EL CAMBIO QUE PUEDE NO CORRESPONDER. No se bloquea (juzgarlo es clínico), pero el
           // profesional ve cuál cita una restricción que nadie le pidió atender.
           <span className="ml-2 text-attention">· no corresponde a ninguna restricción registrada</span>
@@ -1971,8 +2023,20 @@ function CambioMenu({
         <input type="hidden" name="dia" value={c.dia} />
         <input type="hidden" name="tiempo" value={c.tiempo} />
         <input type="hidden" name="reemplazo" value={c.reemplazo} />
-        {yaEsta ? (
+        {estado === "aplicado" ? (
           <p className="text-xs text-clinical-optimal">Aplicado a la grilla.</p>
+        ) : estado === "ya-coincide" ? (
+          // NO SE DICE "APLICADO" AQUI, y la distincion no es de estilo: nadie lo aplicó. La celda ya
+          // decía esto porque es lo que el ciclo propone, así que no hay nada que guardar (guardarlo la
+          // congelaría: dejaría de seguir al ciclo si mañana se propone otra semana).
+          <p className="text-xs text-muted-foreground">La grilla ya dice esto.</p>
+        ) : menuSinGuardar ? (
+          // APLICAR ESCRIBE SOBRE EL MENU GUARDADO, no sobre el borrador: con cambios sin guardar en la
+          // grilla, aplicar los perderia sin decirlo. Mismo trato que el botón de adaptar con las
+          // restricciones sin guardar.
+          <p className="text-xs text-attention">
+            Guarda primero los cambios del menú semanal: aplicar escribe sobre lo guardado.
+          </p>
         ) : (
           <Button type="submit" variant="outline" size="sm" disabled={pending}>
             {pending ? "Aplicando..." : "Aplicar a la grilla"}
@@ -1997,13 +2061,24 @@ function CambioMenu({
 function AplicarTodasMenu({
   evaluationId,
   pendientes,
+  menuSinGuardar,
 }: {
   evaluationId: string;
   pendientes: CambioPropuestoView[];
+  menuSinGuardar: boolean;
 }) {
   const [state, formAction, pending] = useActionState(aplicarCambiosMenuAction, EMPTY);
   useFormToastAndRefresh(state);
   if (pendientes.length < 2) return null;
+  // Con el menu sin guardar, aplicar escribiria sobre lo guardado y perderia el borrador. Se dice en vez
+  // de ofrecer un boton que destruye trabajo.
+  if (menuSinGuardar) {
+    return (
+      <p className="text-xs text-attention">
+        Guarda primero los cambios del menú semanal: aplicar escribe sobre lo guardado.
+      </p>
+    );
+  }
 
   return (
     <form onSubmit={enviarSinReset(formAction)}>
@@ -3130,7 +3205,6 @@ function ValidacionSection({
   protocol,
   ajustes,
   opciones,
-  sinGuardar = false,
 }: {
   protocol: TreatmentProtocol;
   /** Los ajustes VIVOS de la cadena. Sin ellos (uso fuera del panel) manda lo guardado. */
@@ -3145,7 +3219,6 @@ function ValidacionSection({
    */
   opciones?: { protKgVigente: number | null };
   /** Hay cambios en los campos de arriba todavia sin guardar. */
-  sinGuardar?: boolean;
 }) {
   const snap = protocol.protocolSuggested;
   if (!snap || protocol.pesoCalculo == null) return null;
@@ -3230,19 +3303,13 @@ function ValidacionSection({
         Cubrimiento de nutrientes contra los requerimientos por sexo y edad. El sodio se{" "}
         <strong>limita</strong> (menos es mejor); el resto se cubre.
       </p>
-      {/* UNA PREVISUALIZACION TIENE QUE DECIR QUE LO ES. La tabla se recalcula con lo que hay escrito
-          arriba, asi que sin este aviso un profesional podria leer una validacion correcta e irse sin
-          guardar, creyendo que el plan validado es el que queda. Va en la capa de ATENCION (operativo:
-          "te falta hacer algo"), no en la clinica, que significa un veredicto sobre el paciente. */}
-      {sinGuardar ? (
-        <div className="flex max-w-prose flex-col gap-2 rounded-md border border-attention/40 bg-attention-bg px-3 py-2 text-sm text-attention">
-          <p>
-            Esta tabla se está recalculando con los valores que acabas de escribir arriba,{" "}
-            <strong>todavía sin guardar</strong>. El botón para guardarlos está en{" "}
-            <strong>Objetivo del plan</strong>, junto a los campos.
-          </p>
-        </div>
-      ) : null}
+      {/* EL AVISO DE "SIN GUARDAR" SE RETIRO DE AQUI (Santiago, 2026-09-10).
+          Decia que el boton para guardar estaba "en Objetivo del plan, junto a los campos", y ese boton no
+          existe: desde el guardado unico hay UNO al pie del panel.
+          Y NO ERA SOLO EL DESTINO. Lo que el aviso hacia (decir que la tabla previsualiza valores sin
+          guardar) lo hace mejor la barra pegajosa: esta SIEMPRE a la vista, nombra las secciones que
+          cambiaron y trae el boton. Dos avisos del mismo hecho, en dos colores y dos sitios, es ruido; y
+          el que se queda arriba no se ve cuando el profesional esta leyendo la tabla de abajo. */}
       {!algunaPorcion ? (
         <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           La validación aparece cuando hay porciones en la lista de intercambio.
