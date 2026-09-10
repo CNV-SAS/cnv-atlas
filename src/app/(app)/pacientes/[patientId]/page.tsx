@@ -7,6 +7,8 @@ import { VolverA } from "@/components/shared/volver-a";
 import { notFound, redirect } from "next/navigation";
 
 import { requireUser } from "@/modules/auth/session";
+import { ArchivarPaciente } from "@/modules/patients/components/archivar-paciente";
+import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
 import { AbandonEvaluation } from "@/modules/evaluations/components/abandon-evaluation";
 import { FollowupLinkEmitter } from "@/modules/evaluations/components/followup-link-emitter";
 import {
@@ -44,6 +46,7 @@ export default async function HistoriaPacientePage({
 }) {
   const { patientId } = await params;
   const user = await requireUser();
+  const puedeArchivar = canArchivePatient(user);
   if (!canViewPatients(user)) redirect("/no-autorizado");
 
   const paciente = await getPatientDetail(patientId);
@@ -100,6 +103,15 @@ export default async function HistoriaPacientePage({
         bajada="Historia clínica del paciente."
         datos={identidad}
       />
+
+      {/* ARCHIVAR / DESARCHIVAR (Santiago, 2026-09-10). Va AQUI y no en la fila de la lista: es una
+          decision sobre ESTE paciente y se toma con su ficha delante, no de pasada al recorrer un roster.
+          Y va DESPUES de la banda de identidad, para que quien lo pulse haya visto de quien es. */}
+      {puedeArchivar ? (
+        <div className="flex justify-end">
+          <ArchivarPaciente patientId={patientId} archivado={paciente.status === "inactive"} />
+        </div>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {datos.map((d) => (

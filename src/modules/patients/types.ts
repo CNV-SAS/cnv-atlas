@@ -126,3 +126,10 @@ export type VerificarDocumentoState = {
   patientId: string | null;
   evaluacionPendienteId: string | null;
 };
+
+/** Estado de la accion de archivar. Misma forma que el resto de formularios (`FormToastState`). */
+export type ArchivarPacienteState = {
+  error: string | null;
+  success: string | null;
+  warning: string | null;
+};

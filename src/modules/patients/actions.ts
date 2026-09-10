@@ -5,10 +5,12 @@ import { limitDocumentLookupByUser } from "@/core/rate-limit";
 import { requireUser } from "@/modules/auth/session";
 
 import { buscarPorDocumento } from "./data/buscar-por-documento";
+import { setPatientArchivado } from "./data/patients-archive-writer";
+import { canArchivePatient } from "./policies/can-archive-patient";
 import { canCreatePatientPresencial } from "./policies/can-create-patient";
 import { documentoAjenoParaProfesional } from "./text/documento-ajeno";
-import type { VerificarDocumentoState } from "./types";
-import { documentoSchema } from "./validations";
+import type { ArchivarPacienteState, VerificarDocumentoState } from "./types";
+import { archivarPacienteSchema, documentoSchema } from "./validations";
 
 // PRIMER PASO de crear un paciente en consulta: saber si ese documento ya esta en la organizacion.
 //
@@ -76,5 +78,52 @@ export async function verificarDocumentoAction(
     ...eco,
     patientId: veredicto.patientId,
     evaluacionPendienteId: veredicto.evaluacionPendienteId,
+  };
+}
+
+// ═══ ARCHIVAR Y DESARCHIVAR UN PACIENTE (Santiago, 2026-09-10) ═══
+//
+// UNA SOLA ACCION PARA LAS DOS, con el destino en el formulario, y no dos acciones simetricas: el boton
+// que se pinta depende del estado actual, asi que separarlas obligaria a la pantalla a elegir cual invocar
+// y a las dos a repetir la misma policy y el mismo actor. Lo que cambia es un booleano.
+//
+// NO ES BORRAR: mueve `patients.status` y no toca nada mas. Ver `patients-archive-writer`.
+export async function archivarPacienteAction(
+  _prev: ArchivarPacienteState,
+  form: FormData,
+): Promise<ArchivarPacienteState> {
+  const user = await requireUser();
+  if (!canArchivePatient(user)) return { error: "No autorizado.", success: null, warning: null };
+
+  const datos = archivarPacienteSchema.safeParse({
+    patientId: form.get("patientId"),
+    archivar: form.get("archivar") === "1",
+  });
+  if (!datos.success) return { error: "Datos inválidos.", success: null, warning: null };
+
+  const ip = await getClientIp();
+  const ok = await setPatientArchivado(datos.data, {
+    actorId: user.id,
+    actorEmail: user.email,
+    ip: ip === "unknown" ? null : ip,
+  });
+  // LA RLS YA DECIDIO: si no alcanzo la fila, para quien llama es lo mismo que no existir. No se
+  // distingue "no existe" de "no es tuyo", que seria decirle a un profesional que hay un paciente ajeno.
+  if (!ok) return { error: "No se encontró ese paciente.", success: null, warning: null };
+
+  // ═══ NO REVALIDA, Y EL CANDADO DEL DOBLE CICLO ME LO DIJO ═══
+  //
+  // La primera version llamaba a `revalidatePath` aqui Y la pantalla usa `useFormToastAndRefresh`. Eso es
+  // exactamente lo que `refresco-una-sola-vez` prohibe: dos ciclos que montan segmentos, o sea dos saltos
+  // al inicio, y el formulario desmontado antes de que se vea el aviso.
+  //
+  // EL REFRESCO LO HACE LA PANTALLA, despues del toast. Es la misma decision que ya esta tomada en el
+  // guardado de medidas y en el panel de tratamiento.
+  return {
+    error: null,
+    success: datos.data.archivar
+      ? "Paciente archivado. Sigue completo: se puede desarchivar cuando quieras."
+      : "Paciente desarchivado.",
+    warning: null,
   };
 }

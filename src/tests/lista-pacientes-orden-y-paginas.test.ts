@@ -53,7 +53,10 @@ describe("la paginación no deja la lista en una página vacía", () => {
     // Escribir en el buscador estando en la pagina 3 dejaba una pagina vacia, y eso se lee como "la
     // búsqueda no encontró nada", que es una conclusión falsa.
     expect(VISTA).toContain("setPagina(1);");
-    expect(VISTA).toContain("const claveVista = `${busqueda.trim()}|${orden}`;");
+    // EL ANCLA SE AMPLÍA, NO LA ASERCIÓN (2026-09-10): el filtro de archivados entra en la clave, porque
+    // encenderlo también cambia cuántas filas hay y deja la página 3 vacía igual que una búsqueda. Lo que
+    // se afirma sigue siendo lo mismo: que la clave incluye TODO lo que cambia el resultado.
+    expect(VISTA).toContain("const claveVista = `${busqueda.trim()}|${orden}|${verArchivados}`;");
   });
 
   it("y el reseteo NO va en un efecto", () => {

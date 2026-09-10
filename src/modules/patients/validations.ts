@@ -12,3 +12,10 @@ export const documentoSchema = z.object({
   documentType: z.enum(DOCUMENT_TYPES),
   documentNumber: z.string().trim().min(3).max(30),
 });
+
+// ARCHIVAR / DESARCHIVAR. El destino viaja como booleano y no como "accion": asi la action no tiene que
+// interpretar una cadena, y un valor raro cae en el mismo sitio que un id malo.
+export const archivarPacienteSchema = z.object({
+  patientId: z.guid(),
+  archivar: z.boolean(),
+});
