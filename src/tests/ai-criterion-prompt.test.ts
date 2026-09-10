@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +7,7 @@ import {
   CLAVES_PERMITIDAS,
   CRITERION_PROMPT_KEY,
   CRITERION_PROMPT_VERSION,
+  CRITERION_SYSTEM_PROMPT,
   NUNCA_VIAJAN,
   type CriterionPromptInput,
 } from "@/modules/diagnoses/ai/prompts/criterion.v2";
@@ -40,6 +41,12 @@ const ENCUESTA: CriterionPromptInput["encuesta"] = [
 
 const input: CriterionPromptInput = {
   sexo: "Masculino",
+  // Las que el motor emite para ESTE paciente (DM2 + bebidas azucaradas, y estrés alto + azúcares). Se
+  // escriben aquí como las devuelve `alertasDisponibles`: nivel, título y dominio, sin el texto.
+  alertas: [
+    { nivel: "crítico", titulo: "Riesgo glucémico crítico", dominio: "D1+D5" },
+    { nivel: "moderado", titulo: "Estrés alto + azúcares elevados", dominio: "D3+D1" },
+  ],
   edad: 61,
   ocupacion: "Docente",
   estadoCivil: "Separado",
@@ -260,14 +267,85 @@ describe("el porte del paso 4 llega entero", () => {
   });
 });
 
-describe("el texto de sistema canónico es el v3", () => {
+describe("el texto de sistema canónico es el v4", () => {
   it("y el seed publica esa misma versión", () => {
     // Los dos canales del prompt: el JSON que consume la app y la version que el seed (y su migracion)
     // publican. Si divergen, local y nube corren textos distintos sin que nada de error.
     const modulo = readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.ts", "utf8");
-    expect(modulo).toContain("criterion.system.v3.json");
+    expect(modulo).toContain("criterion.system.v4.json");
     const seed = readFileSync("supabase/seed.ts", "utf8");
-    expect(seed).toContain("criterion.system.v3.json");
-    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 3 },');
+    expect(seed).toContain("criterion.system.v4.json");
+    expect(seed).toContain('{ prompt_key: "criterio.generate", version: 4 },');
+  });
+
+  it("y las versiones anteriores NO se borran", () => {
+    // Los borradores ya generados apuntan a su version en la procedencia. Borrar el texto deja registros
+    // que dicen "generado con la v3" sin que exista la v3. Misma disciplina que las versiones de motor.
+    for (const v of ["v1", "v2", "v3"]) {
+      expect(
+        existsSync(`src/modules/diagnoses/ai/prompts/criterion.system.${v}.json`),
+        `se borró el texto de la ${v}`,
+      ).toBe(true);
+    }
+  });
+});
+
+describe("las alertas clínicas viajan al resumen (v4, instrucción de Gildardo 2026-09-10)", () => {
+  // SU INSTRUCCION: que el resumen de IA mencione las alertas "en el párrafo inmediato después de la
+  // presentación del paciente". Eso es el prompt, no mover un bloque: hasta la v3 las alertas NO viajaban.
+  //
+  // LO QUE SI VIAJABA son sus INSUMOS CRUDOS (ítem 21, diagnósticos, azúcares, agua, estrés), o sea que el
+  // modelo tenía los datos y no los veredictos. De ahí la regla de no inventarlas.
+
+  // El bloque de alertas va en el mensaje de USUARIO (es un dato del paciente), no en el de sistema.
+  const armar = (i: CriterionPromptInput) =>
+    buildCriterionPrompt(i)
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join("\n");
+  const texto = () => armar(input);
+
+  it("van con nivel, título y dominio", () => {
+    expect(texto()).toContain("[crítico] Riesgo glucémico crítico (dominio D1+D5)");
+  });
+
+  it("y NO viaja el texto de la alerta, que lleva la conducta dentro", () => {
+    // "Derivación urgente a psicología/psiquiatría" es una INDICACIÓN, y este mismo prompt le prohíbe
+    // prescribir. Mandarle la instrucción y prohibirle repetirla es pedirle dos cosas contrarias.
+    const conTca = armar({
+      ...input,
+      alertas: [{ nivel: "crítico", titulo: "TCA activo detectado", dominio: "D2" }],
+    });
+    expect(conTca).toContain("TCA activo detectado");
+    expect(conTca, "viajó la conducta dentro del texto de la alerta").not.toContain("Derivación urgente");
+  });
+
+  it("el bloque se escribe también cuando NO hay ninguna", () => {
+    // Sin la línea que lo dice, el modelo no distingue "no hay alertas" de "no me las mandaron", y ante la
+    // duda las deduce de los datos crudos, que son los mismos insumos de las reglas.
+    const sinAlertas = armar({ ...input, alertas: [] });
+    expect(sinAlertas).toContain("ALERTAS CLÍNICAS DE LA ENCUESTA: ninguna");
+    expect(sinAlertas).toContain("No escribas ese párrafo");
+  });
+
+  it("el bloque de sistema pide el párrafo donde él lo pidió, y acota qué puede hacer con él", () => {
+    expect(CRITERION_SYSTEM_PROMPT).toContain("INMEDIATAMENTE POSTERIOR a la presentación del paciente");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("No inventes alertas");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("NO INDIQUES QUÉ HACER CON UNA ALERTA");
+  });
+
+  it("y el resto de la estructura sigue en pie: los dominios y el cierre solo se renumeran", () => {
+    // CONTROL: si al insertar el paso nuevo se hubiera comido uno de los otros, el diagnóstico perdería su
+    // esqueleto y este candado sería el único que podría verlo.
+    expect(CRITERION_SYSTEM_PROMPT).toContain("3) Un párrafo por cada dominio funcional");
+    expect(CRITERION_SYSTEM_PROMPT).toContain("4) Cierre: las RUTAS DE ATENCIÓN");
+  });
+
+  it("las alertas son las MISMAS que ve el profesional: la misma función, sobre las mismas respuestas", () => {
+    // Dos fuentes del mismo dato sin nada que las compare es como el resumen acaba hablando de una alerta
+    // que la pantalla no muestra. Aquí no hay dos: hay una función y dos sitios de llamada.
+    const reader = readFileSync("src/modules/diagnoses/data/criterion-input-reader.ts", "utf8");
+    expect(reader).toContain("alertasDisponibles(");
+    expect(reader).toContain("encDesdeRespuestas(");
   });
 });

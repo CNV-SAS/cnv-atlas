@@ -70,7 +70,7 @@ const menuAdaptSystemPrompt: string = JSON.parse(
 // siembra como ai_prompts criterio.generate v1, para que el admin lo edite en /admin/ia como el del menu.
 const criterionSystemPrompt: string = JSON.parse(
   readFileSync(
-    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v3.json", import.meta.url),
+    new URL("../src/modules/diagnoses/ai/prompts/criterion.system.v4.json", import.meta.url),
     "utf8",
   ),
 ).system;
@@ -904,7 +904,7 @@ async function main() {
   // admin tiene una v3 activa, el seed no la toca y su v2 entra como historica.
   const PROMPTS_SEED = [
     { prompt_key: "menu.adapt", version: 1 },
-    { prompt_key: "criterio.generate", version: 3 },
+    { prompt_key: "criterio.generate", version: 4 },
     { prompt_key: "menu.generate", version: 1 },
   ];
   for (const { prompt_key, version } of PROMPTS_SEED) {
@@ -944,11 +944,12 @@ async function main() {
           },
           {
             prompt_key: "criterio.generate",
-            // v3 (2026-09-08): porte de su SYSPROMPT (punto 8 de su cotejo), con la estructura de los
-            // cinco dominios del DFI y la regla del laboratorio (implementacion de su punto 9). Las
-            // versiones anteriores no se retiran de la base: los borradores ya generados se hicieron con
-            // ellas y su registro de procedencia apunta a la suya.
-            version: 3,
+            // v4 (2026-09-10): las ALERTAS CLINICAS entran al resumen, en el parrafo inmediato despues
+            // de la presentacion del paciente (instruccion de Gildardo). Viajan nivel, titulo y dominio,
+            // no el texto de la alerta, que lleva la conducta dentro. La v3 porto su SYSPROMPT (los cinco
+            // dominios del DFI y la regla del laboratorio). Las versiones anteriores no se retiran de la
+            // base: los borradores ya generados se hicieron con ellas y su procedencia apunta a la suya.
+            version: 4,
             content: criterionSystemPrompt,
             status: "active",
             created_by: adminId,

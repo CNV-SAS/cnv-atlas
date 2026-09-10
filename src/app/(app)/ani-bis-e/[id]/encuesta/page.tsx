@@ -9,6 +9,8 @@ import { requireUser } from "@/modules/auth/session";
 import { getCorrectionAvailability } from "@/modules/corrections/data/correction-availability-reader";
 import { getEvaluationHeaderForSession, getEvaluationResults } from "@/modules/diagnoses/data/results-reader";
 import { formatDate } from "@/lib/format/date";
+import { alertasDisponibles, encDesdeRespuestas } from "@/clinical-engine/alertas-disponibles";
+import { AlertasClinicas } from "@/modules/diagnoses/components/alertas-clinicas";
 import { SurveyReadonly } from "@/modules/evaluations/components/survey-readonly";
 import { getSurveyAnswersForEvaluation } from "@/modules/evaluations/data/survey-answers-reader";
 import { canManageReports } from "@/modules/reports/policies/can-manage-reports";
@@ -93,6 +95,19 @@ export default async function EncuestaEvaluacionPage({
           </div>
         )}
       </Panel>
+
+      {/* AQUI ES DONDE GILDARDO LAS QUERIA (2026-08-28, 11a), precisado por Santiago el 2026-09-10.
+          Textual suyo: "Esas alertas aparecen al inicio, cuando el profesional abre la informacion de la
+          encuesta del paciente. Son lo que le dice que mirar ANTES de evaluar". Esta pantalla es "abrir la
+          informacion de la encuesta"; la pestaña Encuesta no lo era.
+
+          VAN ARRIBA DE LAS RESPUESTAS: una bandera de conducta alimentaria manda derivar antes de seguir
+          revisando, no despues. Se computan sobre las respuestas YA leidas, sin consulta nueva. */}
+      <AlertasClinicas
+        alertas={alertasDisponibles(
+          encDesdeRespuestas((domains ?? []).flatMap((d) => d.questions)),
+        )}
+      />
 
       <SurveyReadonly domains={domains ?? []} />
     </div>

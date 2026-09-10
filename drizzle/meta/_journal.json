@@ -820,6 +820,13 @@
       "when": 1790036186099,
       "tag": "0116_la_prescripcion_queda_abierta",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1790122586099,
+      "tag": "0117_prompt_criterio_v4",
+      "breakpoints": true
     }
   ]
 }

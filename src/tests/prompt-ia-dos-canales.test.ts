@@ -30,14 +30,20 @@ import { describe, expect, it } from "vitest";
 // que el seed declara. Fue un rojo LEGITIMO y el alcance es lo que estaba mal, no la asercion.
 //
 // LA 0102 NO SE REGENERA NUNCA MAS: esta aplicada, y una migracion aplicada no se modifica (forward-only).
-// Publico la v2 y ese es su trabajo, hecho. Al subir a v4 esta constante pasa a la 0104 y la 0103 queda
-// congelada igual.
-const MIGRACION = "drizzle/0103_prompt_criterio_v3.sql";
-const MIGRACIONES_HISTORICAS = ["drizzle/0102_prompt_criterio_v2.sql"];
+// Publico la v2 y ese es su trabajo, hecho.
+//
+// SEGUNDA VEZ, Y ESTABA PREVISTO (2026-09-10, al subir a la v4 con las alertas clinicas). El comentario de
+// arriba lo decia con todas sus letras: al subir de version, esta constante se mueve y la anterior queda
+// congelada. El ANCLA se mueve; la asercion es la misma.
+const MIGRACION = "drizzle/0117_prompt_criterio_v4.sql";
+const MIGRACIONES_HISTORICAS = [
+  "drizzle/0102_prompt_criterio_v2.sql",
+  "drizzle/0103_prompt_criterio_v3.sql",
+];
 const SEED = readFileSync("supabase/seed.ts", "utf8");
 
 function generado(): string {
-  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0103", "criterio.generate"], {
+  return execFileSync("node", ["scripts/gen-ai-prompt-migration.mjs", "0117", "criterio.generate"], {
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -60,7 +66,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     expect(
       norm(readFileSync(MIGRACION, "utf8")),
       "el prompt canónico y la migración divergieron: regenera con " +
-        "`node scripts/gen-ai-prompt-migration.mjs 0103 criterio.generate > " + MIGRACION + "`",
+        "`node scripts/gen-ai-prompt-migration.mjs 0117 criterio.generate > " + MIGRACION + "`",
     ).toBe(norm(generado()));
   });
 
@@ -68,7 +74,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Se DERIVA del JSON, no se escribe la longitud aqui. Un texto truncado en el SQL publicaria un
     // prompt a medias, que es peor que no publicarlo: el modelo obedece lo que lee.
     const canonico = JSON.parse(
-      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v3.json", "utf8"),
+      readFileSync("src/modules/diagnoses/ai/prompts/criterion.system.v4.json", "utf8"),
     ).system as string;
     const sql = generado();
     // El SQL duplica las comillas simples; se deshace para comparar el texto real.
@@ -90,7 +96,7 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     // Mismo criterio que el seed: solo se retira lo ANTERIOR (`version <`), y la insercion se activa solo
     // si no quedo ninguna activa. Verificado contra Postgres real en los cuatro escenarios, con rollback.
     const sql = generado();
-    expect(sql).toContain("AND version < 3");
+    expect(sql).toContain("AND version < 4");
     expect(sql).toContain("THEN 'inactive' ELSE 'active' END");
   });
 
@@ -103,8 +109,14 @@ describe("la migración del prompt se DERIVA del seed, no se escribe", () => {
     for (const ruta of MIGRACIONES_HISTORICAS) {
       const tag = ruta.replace("drizzle/", "").replace(".sql", "");
       expect(journal.entries.map((e) => e.tag), `${tag} desapareció del journal`).toContain(tag);
-      // La v2 publica la v2: si alguien le mete el texto de otra version, esto lo dice.
-      expect(readFileSync(ruta, "utf8")).toContain("'criterio.generate', 2,");
+      // LA VERSION SE DERIVA DEL NOMBRE, igual que el tag, y por el mismo motivo. Estaba escrita a mano
+      // ("...', 2,") porque cuando se escribió solo había UNA histórica; al aparecer la segunda, el caso
+      // exigía que la v3 publicara la v2. Es la misma lección que el comentario de abajo ya enseñaba, en
+      // la línea de al lado: un literal a mano se desincroniza en cuanto la lista crece.
+      const version = /_v(\d+)\.sql$/.exec(ruta)?.[1];
+      expect(version, `no se puede leer la versión de ${ruta}`).toBeTruthy();
+      // Cada migración publica SU versión: si alguien le mete el texto de otra, esto lo dice.
+      expect(readFileSync(ruta, "utf8")).toContain(`'criterio.generate', ${version},`);
     }
   });
 
