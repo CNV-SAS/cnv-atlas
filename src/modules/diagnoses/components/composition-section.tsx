@@ -310,7 +310,7 @@ export function CompositionSection({
 
     return (
       <tr key={r.key} className="border-b border-border/40 transition-colors hover:bg-muted/30">
-        <td className="py-1.5 pr-4 text-foreground">
+        <td className="py-1.5 pl-3 pr-4 text-foreground">
           {/* El icono de rayo distingue el parametro bioelectrico crudo cuando queda entre filas de
               composicion en su nivel (care Santiago b): viaja con la fila, no depende de la posicion. */}
           {r.bioelectric ? (
@@ -341,13 +341,13 @@ export function CompositionSection({
             direccional no es un veredicto sobre el paciente. El signo ya dice la direccion; el color la
             refuerza, no la sustituye. */}
         <td
-          className={`py-1.5 pr-4 text-right tabular-nums ${
+          className={`py-1.5 pr-4 text-right tabular-nums last:pr-3 ${
             showDiagnosis ? "text-muted-foreground" : `font-semibold ${colorDeDelta(deltaNum, r.key)}`
           }`}
         >
           {deltaText}
         </td>
-        {showDiagnosis ? <td className="py-1.5">{dxNode}</td> : null}
+        {showDiagnosis ? <td className="py-1.5 pr-3">{dxNode}</td> : null}
       </tr>
     );
   }
@@ -367,22 +367,31 @@ export function CompositionSection({
           <table className="w-full min-w-[38rem] text-sm">
             <thead>
               <tr className="border-b border-border bg-muted text-left text-[0.6875rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Variable</th>
+                <th className="py-2 pl-3 pr-4 font-medium">Variable</th>
                 <th className="py-2 pr-4 text-right font-medium">Valor</th>
                 <th className="py-2 pr-4 text-right font-medium">Referencia</th>
-                <th className="py-2 pr-4 text-right font-medium">Δ</th>
-                {showDiagnosis ? <th className="py-2 font-medium">Diagnóstico</th> : null}
+                <th className="py-2 pr-4 text-right font-medium last:pr-3">Δ</th>
+                {showDiagnosis ? <th className="py-2 pr-3 font-medium">Diagnóstico</th> : null}
               </tr>
             </thead>
             <tbody>
               {levelsToRender.map((lvl) => (
                 <Fragment key={lvl.title}>
-                  {/* Header de nivel: banda neutra ESTRUCTURAL (no color de riesgo; ver BRAND.md, matiz
-                      de reserva del color de riesgo). */}
-                  <tr className="border-y border-border bg-muted">
+                  {/* ═══ LA FRANJA DE NIVEL VA EN COLOR DE MARCA (Santiago, 2026-09-10) ═══
+
+                      LO QUE NO CAMBIA, y es la unica parte que BRAND.md protege: no lleva color de
+                      RIESGO. La reserva del verde/ambar/rojo para los veredictos clinicos sigue intacta;
+                      el azul de marca es capa de INTERFAZ y no insinua severidad ninguna. Textual de
+                      BRAND.md sobre lo demas: "hay libertad de paleta y se usan neutros o el azul de
+                      marca".
+
+                      Y LA CABECERA DE COLUMNAS SE QUEDA GRIS, a proposito: si las dos van en color, la
+                      franja deja de separar niveles y la tabla se lee como un solo bloque. El azul marca
+                      donde EMPIEZA cada nivel de Wang; el gris solo rotula columnas. */}
+                  <tr className="border-y border-primary/30 bg-primary/10">
                     <td
                       colSpan={colCount}
-                      className="py-2 text-xs font-semibold uppercase tracking-wider text-foreground"
+                      className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-primary"
                     >
                       {lvl.title}
                     </td>
@@ -393,11 +402,11 @@ export function CompositionSection({
                       numero), igual que el HTML. Solo en Diagnostico y si el snapshot lo trae. */}
                   {showDiagnosis && fenotipoMccb && lvl.title.includes("Tejidos") ? (
                     <tr className="border-b border-border/40">
-                      <td className="py-1.5 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
+                      <td className="py-1.5 pl-3 pr-4 text-foreground">Fenotipo MCCB (FFMI×FMI)</td>
                       <td className="py-1.5 pr-4 text-right text-foreground">{fenotipoMccb.nombre}</td>
                       <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
                       <td className="py-1.5 pr-4 text-right text-muted-foreground">—</td>
-                      <td className="py-1.5 text-foreground">{fenotipoMccb.nombre}</td>
+                      <td className="py-1.5 pr-3 text-foreground">{fenotipoMccb.nombre}</td>
                     </tr>
                   ) : null}
                 </Fragment>
@@ -406,7 +415,7 @@ export function CompositionSection({
                   vacia se lee como dato faltante, no como "todo en rango"). */}
               {soloAlterados && levelsToRender.length === 0 ? (
                 <tr>
-                  <td colSpan={colCount} className="py-3 text-sm italic text-muted-foreground">
+                  <td colSpan={colCount} className="px-3 py-3 text-sm italic text-muted-foreground">
                     Sin índices alterados: todos los valores medidos están en rango normal.
                   </td>
                 </tr>
