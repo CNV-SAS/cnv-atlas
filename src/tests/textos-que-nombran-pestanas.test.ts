@@ -86,6 +86,30 @@ describe("los textos que nombran una pestaña salen del mapa, no de una cadena",
     expect(etiquetaDeEtapa("diagnostico")).toBe("Diagnóstico");
   });
 
+  it("el aviso de espera distingue GENERANDO de CARGANDO: son dos tramos, no uno", () => {
+    // TERCER DEFECTO DE LA MISMA FAMILIA (Santiago, 2026-09-09): "es necesario esperar segundos para que
+    // se genere el diagnóstico?".
+    //
+    // LO MEDIDO: el pipeline entero contra base de datos son ~600-830 ms. Los segundos son el
+    // `router.refresh()` posterior, que vuelve a rendir la página entera contra la nube. O sea que el
+    // tramo largo NO es generar, es cargar.
+    //
+    // Y EL TEXTO MENTÍA JUSTO AHÍ: con `pending ? "Generando..." : "Preparando..."`, en cuanto la acción
+    // devolvía, `pending` volvía a false y la pantalla decía "Preparando el diagnóstico..." durante todo
+    // el refresco, o sea que anunciaba estar preparando algo que ya había terminado. Un texto que afirma
+    // un estado sin derivarlo, que es la forma que este archivo persigue.
+    const PANEL = sinComentarios(
+      readFileSync("src/modules/clinical-pipeline/components/generate-diagnosis-panel.tsx", "utf8"),
+    );
+    expect(
+      PANEL,
+      "el aviso de espera volvió a depender solo de `pending`: durante el refresco dirá que está " +
+        "preparando algo que ya se generó",
+    ).toContain("state.done");
+    // Y el texto del tercer tramo existe. Sin esto, un `state.done` usado para otra cosa pasaría verde.
+    expect(PANEL).toContain("Cargando los resultados");
+  });
+
   it("y los dos avisos que lo destaparon lo usan", () => {
     // Los dos casos concretos, para que un rojo futuro diga cuál se rompió.
     const PANEL = sinComentarios(
