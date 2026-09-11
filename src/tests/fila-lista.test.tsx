@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -115,8 +117,13 @@ describe("ListaFilas: la cabecera", () => {
     expect(markup).toContain("md:grid");
   });
 
-  it("las columnas se declaran UNA vez, en la variable que heredan las filas", () => {
-    expect(veces(markup, "--cols:minmax(0,1fr) 7rem 7rem 11rem")).toBe(1);
+  it("las columnas se declaran UNA vez, en las variables que heredan las filas", () => {
+    // TRES JUEGOS DE PISTAS, uno por escalon de ancho (ver `desde` en ColumnaLista). Sin columnas que
+    // esperen, los tres son iguales; lo que el candado afirma es que se declaran UNA vez cada uno y que
+    // la fila los lee de la herencia, no de una copia propia.
+    expect(veces(markup, "--cols-md:minmax(0,1fr) 7rem 7rem 11rem")).toBe(1);
+    expect(veces(markup, "--cols-lg:minmax(0,1fr) 7rem 7rem 11rem")).toBe(1);
+    expect(veces(markup, "--cols-xl:minmax(0,1fr) 7rem 7rem 11rem")).toBe(1);
   });
 
   it("la lista sigue siendo <ul> y solo contiene pacientes, no la cabecera", () => {
@@ -223,5 +230,105 @@ describe("el pie de la lista: solo cuando el filtro esconde algo", () => {
     // bajo la ultima fila.
     expect(veces(conPie, "border-t border-border")).toBe(1);
     expect(veces(sinPie, "border-t border-border")).toBe(0);
+  });
+});
+
+describe("los botones de fila no son una columna: la pista se RESERVA", () => {
+  // ═══ EL DEFECTO QUE ESTE CANDADO IMPIDE QUE VUELVA (Santiago, 2026-09-10) ═══
+  //
+  // Los dos botones caian a UNA SEGUNDA FILA debajo del nombre, y aguanto dos tandas porque se diagnostico
+  // como un problema de ANCHO: se fijo la columna "Acciones" en 6rem y no cambio nada, porque el ancho
+  // nunca fue la causa.
+  //
+  // LA CAUSA: la lista declaraba "Acciones" como una COLUMNA (con su celda vacia en cada fila) Y ademas
+  // pintaba el contenedor de botones como hermano. Siete pistas, ocho items de grid. El octavo cae a una
+  // fila IMPLICITA, y una fila implicita empieza en la columna 1: justo debajo del nombre.
+  //
+  // POR QUE ES INVISIBLE A tsc Y A ESTE ARCHIVO SIN EL CANDADO: las dos piezas son validas por separado y
+  // el conteo solo se rompe al juntarlas. Es la familia de "cada mitad esta bien y el total no".
+  it("declarar conAcciones Y una columna Acciones falla RUIDOSO", () => {
+    expect(() =>
+      renderToStaticMarkup(
+        h(ListaFilas, {
+          columnas: [...COLUMNAS, { rotulo: "Acciones", ancho: "6rem" }],
+          conAcciones: true,
+          children: h(FilaLista, {
+            href: "/p/1",
+            titulo: "X",
+            columnas: [...COLUMNAS, { rotulo: "Acciones", ancho: "6rem" }],
+            valores: ["12 ago", "3", "CC 1", null],
+          }),
+        }),
+      ),
+    ).toThrow(/conAcciones/);
+  });
+
+  it("la lista de pacientes reserva la pista y NO declara la columna", () => {
+    expect(COLUMNAS_PACIENTES.some((c) => c.rotulo === "Acciones")).toBe(false);
+    const LISTA = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
+    expect(LISTA).toContain("conAcciones");
+  });
+
+  it("con conAcciones la pista extra existe y la cabecera la rotula", () => {
+    const markup = renderToStaticMarkup(
+      h(ListaFilas, {
+        columnas: COLUMNAS,
+        conAcciones: true,
+        children: h(FilaLista, {
+          href: "/p/1",
+          titulo: "X",
+          columnas: COLUMNAS,
+          valores: ["12 ago", "3", "CC 1"],
+          acciones: h("button", { type: "button" }, "archivar"),
+        }),
+      }),
+    );
+    expect(markup).toContain("--cols-md:minmax(0,1fr) 7rem 7rem 11rem auto");
+    expect(veces(markup, "Acciones")).toBe(1);
+  });
+});
+
+describe("las columnas entran por escalones: nada se pierde, se aplaza", () => {
+  // ═══ EL DEFECTO (Santiago, 2026-09-10): "al cambiar el tamaño de la ventana todo se amontona" ═══
+  //
+  // Las pistas son anchos FIJOS en rem, y un grid cuyas pistas fijas suman mas que su contenedor NO las
+  // encoge: las DESBORDA. Entre 768 px y el ancho que la suma pide, las celdas de la derecha se salian de
+  // la tarjeta. No se amontonaba: se PERDIA, que es peor, porque nada indica que falte algo.
+  const CON_ESCALON: readonly ColumnaLista[] = [
+    { rotulo: "Pendiente", ancho: "13rem" },
+    { rotulo: "Última evaluación", ancho: "9rem", desde: "lg" },
+    { rotulo: "Evaluaciones", ancho: "6rem", desde: "xl" },
+  ];
+  const markup = renderToStaticMarkup(
+    h(ListaFilas, {
+      columnas: CON_ESCALON,
+      children: h(FilaLista, {
+        href: "/p/1",
+        titulo: "X",
+        columnas: CON_ESCALON,
+        valores: ["Montar BIS", "12 ago", "3"],
+      }),
+    }),
+  );
+
+  it("cada escalon declara solo las pistas que caben en el", () => {
+    expect(markup).toContain("--cols-md:minmax(0,1fr) 13rem");
+    expect(markup).toContain("--cols-lg:minmax(0,1fr) 13rem 9rem");
+    expect(markup).toContain("--cols-xl:minmax(0,1fr) 13rem 9rem 6rem");
+  });
+
+  it("la celda aplazada SIGUE en la linea concatenada del telefono", () => {
+    // Esto es lo que distingue aplazar de perder: por debajo de 768 px todas vuelven a la segunda linea.
+    // Si alguien "simplifica" a `hidden lg:block`, el dato desaparece tambien en el telefono, que es
+    // donde MENOS sitio hay para ir a buscarlo a otra pantalla.
+    expect(markup).toContain("md:hidden lg:block");
+    expect(markup).toContain("md:hidden xl:block");
+  });
+
+  it("lo que NO puede faltar no lleva escalon", () => {
+    // Su instruccion, literal: nombre, pendiente y acciones son las que no pueden faltar.
+    const pendiente = COLUMNAS_PACIENTES.find((c) => c.rotulo === "Pendiente");
+    expect(pendiente, "desapareció la columna de pendientes").toBeDefined();
+    expect(pendiente?.desde).toBeUndefined();
   });
 });

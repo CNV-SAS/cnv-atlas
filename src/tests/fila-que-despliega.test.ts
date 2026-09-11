@@ -161,13 +161,20 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
   // botones de accion), no nueve. Se gana el clic sin pagar la parada.
 
   it("la edad y el documento NO son enlaces propios: ya los cubre el título estirado", () => {
+    // RE-ANCLADO (2026-09-10): con la opcion B del artefacto, la edad y el documento dejaron de ser
+    // CELDAS y bajaron a la segunda linea bajo el nombre. Lo que el caso afirma no cambia (ninguno de
+    // los dos es un destino propio, porque el titulo estirado ya los cubre), pero el sitio donde vive
+    // la afirmacion si. Es la familia de "un candado anclado a una entrega superada pasa verde": si se
+    // hubiera dejado mirando `const valores`, seguiria pasando sin mirar nada.
     const LISTA_SRC = readFileSync("src/modules/patients/components/lista-pacientes.tsx", "utf8");
-    const i = LISTA_SRC.indexOf("const valores = [");
-    const j = LISTA_SRC.indexOf("];", i);
-    const bloque = LISTA_SRC.slice(i, j);
-    // Las dos ultimas celdas (edad y documento) van como cadena suelta, sin destino propio.
-    expect(bloque).toContain('anos !== null ? String(anos) : null');
-    expect(bloque).toContain('.trim() || null');
+    const i = LISTA_SRC.indexOf("const identificacion = [");
+    expect(i, "desapareció la segunda línea con documento y edad").toBeGreaterThan(-1);
+    const bloque = LISTA_SRC.slice(i, LISTA_SRC.indexOf(".join(", i));
+    expect(bloque).toContain(".trim() || null");
+    expect(bloque).toContain("anos !== null");
+    // Y lo que de verdad hay que impedir: que alguien les ponga destino propio y pague dos paradas mas.
+    expect(bloque).not.toContain("href");
+    expect(bloque).not.toContain("alPulsar");
   });
 
   it("y el título sigue estirado sobre la fila entera", () => {
@@ -178,6 +185,19 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
 
   it("las celdas con destino propio quedan POR ENCIMA del estirado", () => {
     // Sin la capa de arriba se pulsaria el enlace estirado y el destino propio no serviria de nada.
-    expect(FILA).toContain('className="relative z-10 rounded underline-offset-4');
+    expect(FILA).toContain("relative z-10 rounded underline-offset-4");
+  });
+
+  it("y el subrayado al pasar cuelga de la CELDA, no del enlace", () => {
+    // ═══ SANTIAGO, 2026-09-10: "en cada celda con destino, y tambien en el conteo" ═══
+    //
+    // EL DEFECTO ERA DE ALCANCE, no de ausencia: el subrayado estaba, pero colgaba del propio enlace, que
+    // solo cubre el TEXTO. Pasar por la celda no lo encendia, asi que el unico modo de descubrir que esa
+    // celda lleva a otro sitio que el resto de la fila era acertarle a las letras.
+    //
+    // COLGARLO DE LA CELDA vale ademas para el conteo, que es un BOTON y no cambia el cursor. Su regla:
+    // si responde al paso, tiene que decir que responde.
+    expect(FILA).toContain("group/celda");
+    expect(FILA).toContain("group-hover/celda:underline");
   });
 });

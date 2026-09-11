@@ -239,6 +239,11 @@ export function ListaPacientes({
       </div>
       <ListaFilas
       columnas={COLUMNAS_PACIENTES}
+      // RESERVA LA PISTA DE LOS BOTONES. Antes "Acciones" era una COLUMNA mas (con su celda vacia en cada
+      // fila) Y ademas los botones se pintaban como hermano: un item de grid mas que pistas, y el sobrante
+      // caia a una fila implicita que empieza en la columna 1, o sea justo debajo del nombre. Eso era lo
+      // que Santiago veia; el ancho de la columna nunca tuvo nada que ver.
+      conAcciones
       // EL PIE SOLO CUANDO HAY FILTRO. Sin filtro repetia la tarjeta de metrica de arriba, que ya dice
       // cuantos pacientes hay; dos sitios con la misma cifra no informan mas, solo hacen dudar de si son
       // lo mismo. Pero con el buscador activo NO es la misma cifra: dice cuantos quedaron FUERA de la
@@ -315,13 +320,18 @@ export function ListaPacientes({
                 alPulsar: abrir,
                 etiqueta: `Ver las evaluaciones de ${nombreVisible(p)}`,
               },
-          anos !== null ? String(anos) : null,
-          `${p.documentType} ${p.documentNumber}`.trim() || null,
-          // La celda de "Acciones" va vacia: sus botones se pintan por la prop `acciones`, que se coloca
-          // sobre el area pulsable de la fila. El valor existe para que los indices sigan alineados con
-          // las columnas, que es lo que `FilaLista` comprueba.
-          null,
         ];
+        // LA EDAD Y EL DOCUMENTO BAJAN BAJO EL NOMBRE (opcion B del artefacto). Los dos son identificacion,
+        // no trabajo: sirven para confirmar que este es el paciente que buscas, no para decidir que hacer.
+        // Como columnas pesaban lo mismo que el pendiente y gastaban ~15rem de pistas fijas.
+        // EL PUNTO MEDIO SEPARA sin inventar rotulos: el documento ya carga su tipo delante ("CC 1.020...")
+        // y la edad su unidad, asi que ninguno de los dos necesita que le digan lo que es.
+        const identificacion = [
+          `${p.documentType} ${p.documentNumber}`.trim() || null,
+          anos !== null ? `${anos} años` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
         return (
           <FilaLista
@@ -369,6 +379,7 @@ export function ListaPacientes({
             // UNA SOLA FUENTE del nombre visible: la fila lo PINTA y los dos ordenes lo COMPARAN.
             // Escrito dos veces es como se consigue que ordenar y mostrar se separen otra vez.
             titulo={nombreVisible(p) || "Sin nombre"}
+            subtitulo={identificacion || null}
             columnas={COLUMNAS_PACIENTES}
             valores={valores}
             // CHIP SOLO SI ES EXCEPCIONAL (BRAND): lo normal no lleva distintivo; gastar ancho en lo que

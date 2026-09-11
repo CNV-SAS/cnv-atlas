@@ -20,12 +20,17 @@ import { cn } from "@/lib/utils"
 // EL RETARDO Y EL SALTO ENTRE VECINOS (Santiago, 2026-09-10): "a veces si cambio rapido se le dificulta
 // para cambiar y queda mostrando el hover del icono del lado".
 //
-// SON DOS COSAS. La apertura sube a 250 ms: con 120 el tooltip salta al rozar un boton de paso, que es
-// como se acaba viendo el del vecino sobre el que ya no estas. Y `skipDelayDuration` baja a 0: por defecto
-// radix deja una ventana en la que el SIGUIENTE tooltip abre sin esperar, que es justo lo que encadena uno
-// con otro al recorrer una fila de botones. Con 0, cada uno espera su turno.
+// SON DOS COSAS, Y SOLO UNA ERA EL ARREGLO. Lo que encadenaba un tooltip con el del vecino era
+// `skipDelayDuration`: por defecto radix deja una ventana en la que el SIGUIENTE abre SIN esperar, asi que
+// al recorrer una fila de botones se veia el del boton que ya se dejo atras. Con 0 cada uno espera su
+// turno, y eso lo resuelve por si solo.
+//
+// SUBIR LA APERTURA A 250 ms FUE DE MAS (Santiago, 2026-09-10, tercera vuelta: "el tooltip sigue lento").
+// Se subio en la MISMA tanda que el `skipDelayDuration`, atribuyendole al retardo un defecto que era del
+// otro parametro, y el coste se paga en CADA hover: un cuarto de segundo antes de saber que hace un boton
+// de icono. Baja a 125 ms, la mitad. El del vecino no vuelve porque su causa sigue cerrada.
 function TooltipProvider({
-  delayDuration = 250,
+  delayDuration = 125,
   skipDelayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {

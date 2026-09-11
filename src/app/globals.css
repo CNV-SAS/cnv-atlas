@@ -276,6 +276,35 @@
     @apply font-sans;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   LAS COLUMNAS DE `ListaFilas` ENTRAN POR ESCALONES (Santiago, 2026-09-10)
+
+   EL DEFECTO: las pistas de esa lista son anchos FIJOS en rem, y un grid cuyas pistas fijas suman mas
+   que su contenedor NO las encoge, las DESBORDA. Entre 768 px (donde entra la disposicion de columnas)
+   y el ancho que la suma pide, las celdas de la derecha se salian de la tarjeta. No se "amontonaba":
+   se perdia, que es peor, porque nada indica que falte algo.
+
+   EL COMPONENTE publica tres juegos de pistas (`--cols-md/-lg/-xl`, uno por escalon) y esto elige cual
+   vale y lo deja en `--cols`, que es lo que heredan la cabecera y cada fila.
+
+   POR QUE AQUI Y NO CON VARIANTES DE TAILWIND: el valor lleva espacios, y un valor arbitrario que el
+   compilador no parsea NO da error, simplemente no emite la regla. El fallo seria mudo, que es la
+   familia que este proyecto repite. Los anchos son los de Tailwind (lg 64rem, xl 80rem).
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+.lista-filas {
+  --cols: var(--cols-md);
+}
+@media (min-width: 64rem) {
+  .lista-filas {
+    --cols: var(--cols-lg);
+  }
+}
+@media (min-width: 80rem) {
+  .lista-filas {
+    --cols: var(--cols-xl);
+  }
+}
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════════
    IMPRESION DE UN BLOQUE DE LA PANTALLA (2026-09-01; generalizado el 2026-09-02)
 
