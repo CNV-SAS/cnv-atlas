@@ -1,9 +1,7 @@
-import { Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
@@ -34,9 +32,14 @@ export default async function PacientesPage() {
   // lecturas esta mostrando para no rotular mal la cifra.
   const esAdmin = hasAnyRole(user, ["admin"]);
 
-  // LAS TRES METRICAS SALEN DEL MISMO ARREGLO QUE YA SE TRAE: CERO CONSULTAS NUEVAS. El reader ya devuelve
-  // el conteo de evaluaciones y el estado de autorizaciones por paciente, asi que esto es aritmetica sobre
-  // datos que la pagina ya tenia en memoria.
+  // LAS DOS CIFRAS SALEN DEL MISMO ARREGLO QUE YA SE TRAE: cero consultas nuevas, aritmetica sobre datos
+  // que la pagina ya tenia en memoria.
+  //
+  // ARCHIVADO SE DERIVA DE `status`, la MISMA fuente que usa el conmutador de la lista. Contarlo aparte
+  // (con una consulta propia o con otro criterio) seria la forma de que la cabecera y el conmutador
+  // acabaran diciendo cifras distintas de lo mismo.
+  const archivados = pacientes.filter((p) => p.status === "inactive").length;
+  const activos = pacientes.length - archivados;
 
   return (
     // ANCHO PROPIO DE ESTA PANTALLA, menor que el de la pagina. El techo global subio a 1600px por las
@@ -49,7 +52,32 @@ export default async function PacientesPage() {
           ademas lo que la pantalla ES, que es una lista, y no una seccion generica. */}
       <TituloPantalla
         titulo="Lista de pacientes"
-        descripcion="Tus pacientes y el acceso a su historia clínica."
+        // ═══ LAS CIFRAS BAJAN AL SUBTITULO (Santiago, 2026-09-11) ═══
+        //
+        // La tarjeta "Pacientes · 11 · Asignados a ti" sale de aqui para que la TABLA sea lo que manda en
+        // esta pantalla. Y NO se muda al tablero: de ahi ya se retiro con el corte, porque no cambia
+        // ninguna decision ni lleva a ningun sitio.
+        //
+        // Su propuesta es mejor que las dos: como texto pequeño junto al titulo dice lo mismo, no gasta
+        // un tercio de la cabecera, y ademas cabe una segunda cifra que la tarjeta no tenia.
+        //
+        // LA DESCRIPCION VIEJA SE VA CON ELLA. Decia "Tus pacientes y el acceso a su historia clinica",
+        // que es lo que el titulo ya dice: describia la pantalla en vez de decir algo de lo que hay
+        // dentro. Es el mismo corte que se le hizo al subtitulo de /pagos.
+        //
+        // EL ALCANCE DEPENDE DEL ROL porque el DATO depende del rol, y la pantalla ya sabe quien mira:
+        // "asignados a ti" es falso para un admin y "en el sistema" es falso para un profesional. Lo pone
+        // la RLS (`patients_select`), asi que la frase dice lo que ESE usuario esta viendo de verdad.
+        //
+        // Y LOS ARCHIVADOS SOLO SI HAY: misma regla que el conmutador de la lista, que tampoco aparece
+        // con cero. Un "0 archivados" ocupa sitio para decir que no hay nada que decir.
+        descripcion={
+          <>
+            {activos} {activos === 1 ? "paciente" : "pacientes"}{" "}
+            {esAdmin ? "en el sistema" : "asignados a ti"}
+            {archivados > 0 ? ` · ${archivados} ${archivados === 1 ? "archivado" : "archivados"}` : ""}
+          </>
+        }
         acciones={
           // EL BOTON SOLO PARA QUIEN PUEDE CREAR (misma policy que gatea la ruta y la accion): un boton
           // que lleva a /no-autorizado es peor que no tenerlo.
@@ -69,32 +97,6 @@ export default async function PacientesPage() {
           ) : null
         }
       />
-
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* EL TEXTO DEPENDE DEL ROL, porque el DATO depende del rol y la pantalla ya sabe quien mira.
-            Descartamos una frase fija porque cualquiera era mentira para alguien: "asignados a ti" es
-            falso para un admin y "totales en el sistema" es falso para un profesional. El alcance lo pone
-            la RLS (`patients_select`: el profesional ve los suyos, el admin todos), asi que la nota dice
-            lo que ese usuario esta viendo de verdad. La simetria no vale mas que la verdad, pero aqui no
-            hace falta elegir entre las dos. */}
-        <TarjetaMetrica
-          icono={Users}
-          rotulo="Pacientes"
-          valor={pacientes.length}
-          detalle={esAdmin ? "Todos los del sistema" : "Asignados a ti"}
-        />
-        {/* ═══ SE RETIRAN DOS DE LAS TRES, POR EL MISMO CORTE DEL TABLERO (2026-09-10) ═══
-
-            · "EVALUACIONES ACUMULADAS DESDE EL INICIO": un contador que solo sube. Nadie actua sobre el, y
-              gasta un tercio de la cabecera de la pantalla que mas se usa.
-            · "SIN EVALUACIONES": era la accionable de las tres, y por eso se retira AHORA y no antes: la
-              columna de pendientes ya lo dice paciente por paciente, con su nombre delante y con el
-              destino a un clic. Una cifra que nombra una lista es peor que la lista, cuando la lista ya
-              esta ahi abajo.
-
-            SE QUEDA "Pacientes" porque no es lo mismo: no nombra un trabajo, dice el TAMAÑO de lo que
-            estas mirando, y eso es contexto de la lista que tiene debajo. */}
-      </section>
 
       {/* Filas de dos lineas con buscador, no tabla: esta lista se BUSCA (BRAND, "si busca, densidad; si
           compara, columnas"). El buscador necesita estado, asi que la lista es un componente cliente; la
