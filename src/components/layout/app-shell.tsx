@@ -363,7 +363,23 @@ export function AppShell({
           Son dos elementos y no uno a proposito: el aside necesita `overflow-y: auto` (una lista mas larga
           que la pantalla no puede dejar items inalcanzables), y eso recorta tambien lo que sobresale por el
           lado. El tirador va MEDIO FUERA, asi que vive en el envoltorio, que no recorta nada. */}
-      <div className="sticky top-0 hidden h-svh shrink-0 lg:block">
+      {/* ═══ Z-30 EN EL ENVOLTORIO, Y LA RAZON NO ES EL NUMERO (Santiago, 2026-09-10) ═══
+
+          SU REPORTE: el encabezado pegajoso pasa por encima del tirador redondo y le corta un trozo.
+
+          POR QUE NO BASTABA EL `z-30` QUE EL TIRADOR YA TENIA: `position: sticky` CREA CONTEXTO DE
+          APILAMIENTO por si solo, sin necesidad de un z-index. Este envoltorio es sticky, asi que todo lo
+          que lleve dentro se apila DENTRO de el, y el z-index del tirador solo ordena contra sus hermanos.
+          Hacia fuera, el envoltorio entero valia lo que su propio z-index, que era `auto`; el encabezado
+          es otro sticky con `z-20`, o sea 20 contra 0. El tirador no podia ganar con ningun numero.
+
+          ES LA MISMA FAMILIA QUE EL DEL SUBRAYADO: el elemento que se ve mal no es el que hay que tocar,
+          es el contenedor que lo encierra.
+
+          Y NO TAPA NADA DEL ENCABEZADO (su condicion): la barra y el encabezado son columnas HERMANAS de
+          un flex, asi que no se solapan. Lo unico que asoma sobre el encabezado son los 12 px del tirador
+          que sobresalen por `-right-3`, que es justo lo que tiene que verse. */}
+      <div className="sticky top-0 z-30 hidden h-svh shrink-0 lg:block">
         <aside
           className={cn(
             "flex h-full flex-col overflow-y-auto border-r border-border bg-background transition-[width] duration-200",
