@@ -1,0 +1,450 @@
+# Inventario y ventas: plan de implementación por bloques
+
+**Estado:** aprobado por Santiago el 2026-09-11, con cinco decisiones cerradas por contabilidad.
+**Se actualiza bloque a bloque.** Cada bloque marca su estado aquí al cerrarse, en el mismo commit que lo
+cierra (regla de `CLAUDE.md`: un documento de estado que no se actualiza al terminar queda stale y hace
+que algo ya hecho se vuelva a planear).
+
+**Fuentes, en orden de autoridad:**
+
+1. `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` — reglas de negocio, contables y tributarias. Pasó revisión
+   contable y legal. **Si algo contradice el modelo, gana el modelo.**
+2. `PLAN_INVENTARIO_Y_VENTAS_ATLAS.md` — decisiones y fases.
+3. Este documento — cómo se construye, y el único sitio donde vive el estado de cada bloque.
+
+---
+
+## Estado de los bloques
+
+| Bloque | Estado | Cierra con |
+|---|---|---|
+| 0 · Purga y corte de arranque | **ENTREGADO, sin ejecutar** | El acta de la purga |
+| 1 · Cimientos | Pendiente | — |
+| 2 · Alegra de verdad | Pendiente | — |
+| 3 · La venta nace en Tratamiento | Pendiente | — |
+| 3b · Reversa | Pendiente | — |
+| 4 · Liquidaciones | Pendiente | — |
+| 5 · Distribución | Pendiente | — |
+| 6 · Domicilio | Pendiente | — |
+
+---
+
+## Una sola numeración
+
+El plan y el modelo llamaban "Fase 0" a cosas distintas (la purga y los cimientos). **De aquí en adelante
+solo hay bloques**, y la correspondencia con los dos documentos anteriores es esta:
+
+| Bloque | Modelo §11.2 | Plan §5 |
+|---|---|---|
+| 0 · Purga y corte | — | Fase 0 |
+| 1 · Cimientos | Fase 0 | — |
+| 2 · Alegra de verdad | parte de Fase 0 y Fase 1 | Fase 0 |
+| 3 · La venta nace en Tratamiento | Fase 1 | Fase 1 |
+| 3b · Reversa | — | — |
+| 4 · Liquidaciones | Fase 2 | Fase 2 |
+| 5 · Distribución | Fase 3 | Fase 3 |
+| 6 · Domicilio | Fase 4 | — |
+
+**Se parte de la Fase 0 del modelo** (cimientos). La purga no es una fase del modelo: es su precondición.
+
+---
+
+## Las cuatro objeciones técnicas, aceptadas
+
+Se levantaron antes de planear y Santiago las aceptó. Ninguna contradice el modelo: son **cómo cumplirlo**.
+
+**1. `treatment_id NOT NULL` rompe el inventario.** Esa columna vive en
+`nutraceutical_stock_movements`, que también guarda recepciones, remesas y conciliaciones, y ninguna tiene
+tratamiento. Un `NOT NULL` plano haría imposible recibir mercancía. Se resuelve con un **CHECK
+condicional** (Bloque 0) y, al aplicarse la Decisión 1, el vínculo correcto pasa a ser
+**movimiento → venta → tratamiento**.
+
+**2. Alegra no es un re-mapeo de identificadores: es una reescritura.** Hoy toda factura se emite contra
+`ALEGRA_DEFAULT_CLIENT_ID` (un cliente fijo para todos los pacientes), `ALEGRA_DEFAULT_ITEM_ID` (un ítem
+genérico para todos los productos) y un `ALEGRA_IVA_TAX_ID` forzado desde Atlas. El modelo exige lo
+contrario en los tres puntos. **Énfasis de contabilidad: una factura que no identifica al adquirente ni al
+producto no cumple los requisitos de la factura electrónica.** Cambiar los identificadores de sandbox a
+producción sobre este código emitiría facturas igual de incorrectas, solo que en producción.
+
+**3. El principio 8 del modelo ("todo movimiento contra un lote") choca con el esquema actual.** Hoy
+`lote` es texto libre que no gobierna el saldo, y `nutraceutical_inventory` está indexado por
+(profesional, producto) sin lote. Que el lote mande exige cambiar la llave del saldo y su proyección.
+
+**4. La Decisión 1 solo es barata porque la purga va primero.** Los movimientos son inmutables por
+trigger, así que los `despacho` históricos no se podrían reclasificar. Con la purga da igual. Queda
+escrito para que nadie reordene los dos bloques.
+
+---
+
+## Las cinco decisiones de contabilidad
+
+**D1. El alérgeno se dispara AL PRESCRIBIR, no al vender.** Si el profesional recomienda LUVIA a un
+celíaco y este lo compra en otro sitio, el daño es el mismo. El control va cuando se selecciona el
+nutracéutico en Tratamiento, **antes** de preguntar si lo adquiere. Consecuencia técnica: queda
+desacoplado de `sales` y se puede construir en cuanto exista el Bloque 1.
+
+**D2. El inventario se descuenta AL SELLAR LA VENTA, no al emitir la factura.** El hecho económico es la
+venta; la factura lo evidencia, no lo causa. Inventario movido sin documento es transitorio y aceptable;
+lo inaceptable es lo contrario. **Dos condiciones que lo hacen sostenible:** cola de reintento visible con
+alerta, y un **reporte de ventas sin documento fiscal que debe estar en cero al cierre de cada día**.
+
+**D3. El checkout pendiente RESERVA inventario, y al caducar lo libera.** Un enlace vivo es una unidad
+comprometida. Hoy esto no está escrito en ninguna parte y no existe.
+
+**D4. Entra un bloque de REVERSA (3b), inmediatamente después del de venta.** No es hipotético: CNV ya
+emitió una factura con cantidad equivocada y la corrigió con nota crédito.
+
+**D5. La tabla de alérgenos se construye pero NO se enciende en producción hasta que Gildardo firme las
+equivalencias.** Y mientras tanto **LUVIA no se habilita para venta**.
+
+---
+
+## Las cuatro adiciones
+
+**a) Contactos de Alegra.** Patrón buscar-por-documento-o-crear, con `alegra_contact_id` persistido en el
+paciente. Solo viajan **nombre, documento y correo** (principio 7 del modelo: a la contabilidad solo van
+datos de identificación).
+
+**b) La purga es SOLO de Atlas.** En Alegra producción hay facturas reales emitidas a mano (ventas en
+firme a dos Integrantes y sus notas crédito). **No se tocan**, y el inventario inicial del Bloque 1 tiene
+que partir de que **esas unidades ya salieron**.
+
+**c) `sale_lines` sella más que el reparto:** también la **tarifa de IVA** aplicada y la **modalidad
+vigente del Integrante** en el momento de la venta.
+
+**d) El acumulado anual de retención se reinicia por año calendario.**
+
+---
+
+## Bloque 0 · Purga y corte de arranque
+
+**Tamaño: chico.** **Estado: entregado, sin ejecutar.**
+
+### Qué construye
+
+Un script SQL de purga, la migración del CHECK condicional, y el acta que documenta el corte.
+
+**Al terminar:** la base queda sin ningún dato comercial de prueba, con los 73 pacientes y sus 85
+evaluaciones intactos, y con la garantía de que ninguna entrega futura puede quedar sin paciente.
+
+### Qué se purga
+
+| Tabla | Por qué |
+|---|---|
+| `transaction_items` | Línea de una venta de prueba |
+| `transactions` | 23 filas de prueba (13 pagadas, 10 pendientes) |
+| `professional_revenue`, `cnv_revenue` | Reparto de esas ventas |
+| `payment_webhook_events` | Eventos de la pasarela en sandbox |
+| `nutraceutical_stock_movements` | 13 movimientos de prueba |
+| `nutraceutical_inventory` | Saldo proyectado de esos movimientos, incluido el −1 |
+| `nutraceutical_count_lines`, `nutraceutical_count_sessions` | Conteos (0 filas hoy) |
+| `nutraceutical_faltante_transitions`, `nutraceutical_faltante_cases` | Faltantes (0 filas hoy) |
+
+### Qué NO se purga, y se verifica
+
+**Las nueve tablas clínicas deben salir con el MISMO conteo antes y después.** Si alguna cambia, el script
+aborta y se hace `rollback`.
+
+`patients` · `evaluations` · `diagnoses` · `treatments` · `reports` · `survey_responses` ·
+`survey_answers` · `prescription_emissions` · `nutraceutical_usage`
+
+**`nutraceutical_usage` está en esa lista a propósito**, aunque su nombre suene comercial: guarda lo que
+el tratamiento PRESCRIBIÓ (producto y cantidad por tratamiento). Es dato clínico. Hoy tiene 0 filas, y el
+guard existe igual: un conteo que hoy es cero seguirá siendo cero, y el día que no lo sea, protege.
+
+Tampoco se toca el **catálogo** (`nutraceuticals`, 10 productos): es contenido, no operación.
+
+### Modelo de datos
+
+Sin tablas nuevas. Una migración:
+
+```sql
+ALTER TABLE nutraceutical_stock_movements
+  ADD CONSTRAINT nutra_movement_despacho_exige_tratamiento
+  CHECK (type <> 'despacho' OR treatment_id IS NOT NULL);
+```
+
+**Condicional y no `NOT NULL`**, por la objeción 1: recepciones, remesas y conciliaciones no tienen
+tratamiento y un `NOT NULL` plano impediría recibir mercancía.
+
+El **script de purga no es una migración**: es operación. Se entrega en `scripts/purga-comercial.sql` y lo
+corre Santiago, como el de la limpieza de Demo.
+
+### Cómo está hecho el script
+
+Hereda el patrón de `limpieza-demo.sql`, y la herencia no es de estilo: **`nutraceutical_stock_movements`
+tiene un trigger append-only**, así que borrar obliga a desactivarlo y volverlo a activar. Eso, en
+Postgres, solo es seguro dentro de una transacción, porque el DDL es transaccional y un fallo a mitad
+devuelve los triggers solos.
+
+1. **Una sola transacción, con el `commit` incluido en el mismo bloque.** El SQL Editor de Supabase no
+   sostiene una transacción entre ejecuciones: partirlo la pierde en silencio.
+2. **Conteo ANTES** de las tablas comerciales y de las nueve clínicas.
+3. **Verificación que aborta** con `raise exception` si alguna tabla clínica cambiaría, o si el conjunto a
+   borrar toca algo que no es comercial.
+4. **Conteo DESPUÉS**, con el estado de los triggers listado.
+5. Es **idempotente**: correrlo dos veces es seguro.
+
+### Depende de / bloquea
+
+- **Depende de:** el conteo físico inicial (lo está haciendo Santiago). Ver "la fecha de corte" abajo.
+- **Bloquea a:** todos los demás bloques.
+
+### Criterio de aceptación
+
+Las cifras del ANTES están medidas contra la nube el 2026-09-11, en solo lectura. Si alguna difiere al
+correr el script, es que entró operación entre medias y **hay que mirarlo antes de confirmar**.
+
+| Tabla | ANTES (medido) | DESPUÉS (esperado) |
+|---|---|---|
+| `transactions` · `transaction_items` | 23 · 23 | **0 · 0** |
+| `professional_revenue` · `cnv_revenue` | 13 · 13 | **0 · 0** |
+| `payment_webhook_events` | 1 | **0** |
+| `nutraceutical_stock_movements` | 13 | **0** |
+| `nutraceutical_inventory` | 4 | **0** |
+| `count_sessions` · `count_lines` | 0 · 0 | **0 · 0** |
+| `faltante_cases` · `faltante_transitions` | 0 · 0 | **0 · 0** |
+| `patients` | 73 | **73** |
+| `evaluations` | 85 | **85** |
+| `diagnoses` · `treatments` · `reports` | 16 · 16 · 16 | **16 · 16 · 16** |
+| `survey_responses` · `survey_answers` | 81 · 4681 | **81 · 4681** |
+| `prescription_emissions` | 13 | **13** |
+| `nutraceutical_usage` | 0 | **0** |
+| `nutraceuticals` (catálogo) | 10 | **10** |
+
+Y además:
+
+1. Los triggers `nutra_movement_append_only_trg` y `nutra_faltante_transition_append_only_trg` quedan en
+   `O` (activos) en la fila DESPUÉS. Si un nombre de trigger estuviera mal escrito, el `disable` **falla y
+   aborta la transacción**, que es el comportamiento seguro.
+2. Un `INSERT` de un movimiento `despacho` **sin** `treatment_id` falla nombrando el CHECK.
+3. Un `INSERT` de un movimiento `recepcion` sin `treatment_id` **sigue funcionando**. Es la comprobación
+   que distingue el CHECK condicional de un `NOT NULL`, y sin ella el Bloque 1 no podría cargar el
+   inventario inicial.
+
+### La fecha de corte
+
+**Es el día en que se corre la purga.** No hay historia que separar. Con dos condiciones:
+
+- **La purga y la carga inicial van el mismo día**, idealmente en la misma sesión. Si Atlas queda en cero
+  tres semanas, una venta real no tendría contra qué descontar.
+- **Queda en un acta** con la fecha, quién la corrió y los conteos que el propio script produce.
+
+**Orden:** conteo físico listo → purga → carga inicial → esa fecha es el corte → acta.
+
+---
+
+## Bloque 1 · Cimientos
+
+**Tamaño: grande.** Corresponde a la Fase 0 del modelo.
+
+**Al terminar:** se puede registrar un producto de tercero con su reparto, recibirlo por lote en una
+bodega y consultar el saldo por ubicación.
+
+### Modelo de datos
+
+| Tabla | Notas |
+|---|---|
+| `suppliers` | Proveedor externo con perfil tributario (documento + DV, responsable de IVA, agente de retención) |
+| `nutraceuticals` (+) | `ownership` (`propio`/`tercero`), `brand_owner`, `supplier_id`, `alegra_item_id` |
+| `revenue_splits` | Reparto configurable **por producto y proveedor**, sobre base sin IVA. Ningún porcentaje en código (principio 2) |
+| `inventory_locations` | Bodega central + una por Integrante |
+| `lots` | Producto, número, vencimiento, titularidad |
+| `nutraceutical_inventory` (⚠ cambia) | La llave pasa a **(ubicación, producto, lote)** |
+| `professional_tax_profiles` | Los campos de §9 del modelo, con validaciones cruzadas |
+| `allergens`, `allergen_relations`, `nutraceutical_allergens`, `survey_option_allergens` | Ver el apartado de alérgenos |
+
+### La bandera de disponibilidad, verificada
+
+**Existe:** `nutraceuticals.commercial_availability` con `en_consultorio` / `solo_tienda` /
+`no_disponible`. Así que **LUVIA se puede cargar como `no_disponible` y no podrá entregarse**:
+`recordDespacho` lo bloquea explícitamente.
+
+**Pero tiene un hueco, y hay que cerrarlo en este bloque antes de cargar LUVIA:** el checkout de `/pagos`
+filtra el catálogo **solo por `unit_price != null`**, no por disponibilidad. Un producto marcado
+`no_disponible` con precio **se puede vender hoy desde esa pantalla**. La bandera gatea la entrega y no la
+venta.
+
+Y falta lo que el modelo §7.10 pide de verdad: **disponibilidad por modalidad y por canal**, para
+restringir un producto de tercero a modalidad Comisión y sin domicilio durante el piloto. El enum actual
+no lo expresa.
+
+### Criterio de aceptación
+
+Con LUVIA cargado como producto de tercero al 70/20/10 sobre base sin IVA, recibido por lote en la bodega
+de un Integrante: `saldo(ubicación, producto, lote)` devuelve la cifra correcta; `alergenosDe(LUVIA)`
+resuelve a `gluten` partiendo de `avena`; y **LUVIA no aparece como vendible en ninguna pantalla**.
+
+---
+
+## Bloque 2 · Alegra de verdad
+
+**Tamaño: medio-grande.** Es una **reescritura** del documento, no un re-mapeo (objeción 2).
+
+**Al terminar:** una venta emite **una** factura, al paciente, con el producto real, IVA heredado de
+Alegra, con su CUFE y su estado DIAN guardados; y si Alegra no responde, la venta se sella igual y la
+factura queda en una cola visible.
+
+### Modelo de datos
+
+| Tabla | Notas |
+|---|---|
+| `fiscal_documents` | Tipo (§10.2), venta, `alegra_id`, número, **CUFE**, estado DIAN, prefijo, intentos, último error |
+| `invoice_queue` | Pendientes de emisión, con reintentos y alerta |
+| `alegra_identifier_map` | Producto / impuesto / numeración / bodega / centro de costo → id de Alegra, **por ambiente** |
+| `patients` (+) | `alegra_contact_id` (adición a) |
+
+### Lo que cambia del código actual
+
+- **Cliente = el paciente.** Patrón buscar-por-documento-o-crear; se persiste `alegra_contact_id`. Solo
+  viajan nombre, documento y correo.
+- **Ítem = el producto**, con su código de identificación (evita la observación FAZ09 de la DIAN).
+- **Sin `taxes` forzado desde Atlas:** el IVA se hereda de la configuración del producto en Alegra.
+- **Prefijo propio**, distinto del de la facturación manual.
+- `paymentForm` según el medio de pago, no fijo en `CASH`.
+- **Idempotencia:** una venta, un documento, ante timeout, reintento o doble confirmación de la pasarela.
+- **Estados DIAN:** `"aprobada con observaciones"` es válida y **no se reintenta**; solo `"rechazada"`
+  obliga a corregir y reemitir.
+- **El consecutivo lo asigna Alegra.** Atlas nunca genera números.
+
+### Criterio de aceptación
+
+Una emisión de prueba en producción contra un contacto controlado sale validada por la DIAN con el
+adquirente y el producto identificados y su IVA correcto; un reintento del mismo pago **no** crea un
+segundo documento; con Alegra caída, la venta se sella y aparece en la cola con su alerta.
+
+---
+
+## Bloque 3 · La venta nace en Tratamiento
+
+**Tamaño: grande.** No se fragmenta.
+
+### Dónde vive dentro del flujo ANI-BIS-E
+
+**En la pestaña Tratamiento de la evaluación, después de los indicadores y de la prescripción**, como
+continuación del acto clínico. No es un módulo de ventas paralelo: es el paso siguiente a recomendar.
+`/pagos` se conserva **solo** para el paciente que vuelve a comprar sin evaluación en curso.
+
+Secuencia: seleccionar el nutracéutico → **control de alérgeno (D1)** → ¿lo adquiere? → forma de entrega →
+validación de inventario → QR en pantalla → venta que **descuenta inventario al sellarse (D2)** → entrega
+como estado de cumplimiento.
+
+### Modelo de datos
+
+| Tabla | Notas |
+|---|---|
+| `sales` | Reemplaza a `transactions` como raíz: tratamiento, paciente, Integrante, ubicación, canal, forma de entrega, **fecha de operación** (distinta de la de facturación), municipio |
+| `sale_lines` | Producto, **lote**, cantidad, precio base, **tarifa de IVA sellada**, reparto sellado, **modalidad vigente del Integrante** (adición c) |
+| `sale_fulfillment` | Estado: pendiente / entregado en consulta / despachado / entregado |
+| `inventory_reservations` | **D3:** el checkout pendiente reserva; al caducar, libera |
+| `nutraceutical_stock_movements` (+) | `sale_line_id`; el tipo `despacho` pasa a `venta` |
+
+### Producto de tercero
+
+La marca `ownership` gobierna aquí de verdad: identificación con el **titular de marca** en ficha, reporte
+y factura; inventario **sin valor contable propio**; y alerta diferenciada de faltante.
+
+### Criterio de aceptación
+
+Una venta descuenta el lote correcto de la ubicación correcta **al sellarse**; no existe camino para
+entregar sin venta; un checkout pendiente reserva la unidad y al caducar la libera; la entrega queda en
+`clinical_audit_log`; la factura muestra el titular de marca; y el **reporte de ventas sin documento
+fiscal** existe y se puede consultar por día.
+
+---
+
+## Bloque 3b · Reversa
+
+**Tamaño: medio.** Va **inmediatamente después** del Bloque 3 (D4).
+
+**Alcance mínimo:**
+
+- Anulación por error.
+- Devolución con **reingreso al lote de origen**.
+- **Nota crédito en Alegra enlazada a la factura original.**
+- **Reversión de la comisión**; si ya se liquidó, se descuenta en la siguiente liquidación.
+- Para **producto de tercero**, el reingreso va a la **consignación del proveedor**, no al inventario de
+  CNV (el producto nunca fue de CNV).
+
+**Fuera de alcance:** el retracto de venta a distancia, que depende de que existan domicilios (Bloque 6).
+
+**Criterio de aceptación:** una devolución de una unidad de producto de tercero reingresa al lote de
+origen en la consignación del proveedor, genera la nota crédito enlazada a la factura original, y revierte
+la comisión del Integrante.
+
+---
+
+## Bloques 4, 5 y 6
+
+**4 · Liquidaciones (grande).** `/comercial`, la pantalla de comisiones del Integrante, la liquidación con
+IVA y retención según perfil (**con acumulado anual que se reinicia por año calendario**, adición d), los
+faltantes con su máquina de estados, y la **conciliación Atlas ↔ Alegra**. El faltante nunca es una venta:
+no genera factura, ni IVA, ni comisión (principio 6).
+
+**5 · Distribución (medio)** y **6 · Domicilio (grande)** siguen el modelo §11.2 Fases 3 y 4. No arrancan
+sin decisiones que no son técnicas: Distribución depende del Anexo 2 actualizado y de al menos un
+Integrante habilitado; Domicilio, de las ciudades habilitadas y la tarifa de flete. Su modelo de datos se
+prepara en el Bloque 1 sin encender la operación.
+
+---
+
+## Los alérgenos
+
+### Lo que hay hoy, verificado
+
+- **P43 `d6_43`** — alergias diagnosticadas. Opciones: Ninguna, Leche, Huevo, Maní, **Trigo**, Soya,
+  Pescado, Mariscos, **Otra** (texto libre).
+- **P44 `d6_44`** — intolerancias. Opciones: Ninguna, **Lactosa (leche y lácteos)**, **Gluten (trigo, pan,
+  pasta)**, Fructosa (frutas, miel), **Otra** (texto libre).
+
+Se guardan como **arreglo de las etiquetas** y el motor las lee crudas. LUVIA declara **avena**. Ninguna
+cadena contiene a la otra: **cotejar cadenas no sirve**, y es el mismo fallo que "lactosa" contra
+"lácteos" en el menú, con una consecuencia peor.
+
+### El modelo de datos, con el matiz de la avena
+
+La primera propuesta era una equivalencia binaria (`avena → gluten`) y **no admite el matiz correcto**: la
+avena por sí sola no tiene gluten, pero arrastra contaminación cruzada con trigo salvo que esté
+certificada. Así que la relación no es una igualdad, es una **implicación condicionada**:
+
+| Tabla | Campos |
+|---|---|
+| `allergens` | El alérgeno canónico: `gluten`, `lactosa`, `mani`… |
+| `allergen_relations` | `origen`, `destino`, **`tipo`** ∈ (`directa`, `por_contaminacion_cruzada`), nota |
+| `nutraceutical_allergens` | Producto, alérgeno declarado **verbatim del fabricante**, y **`certificacion_ausencia`** (p. ej. "avena sin gluten certificada") |
+| `survey_option_allergens` | Opción de encuesta → alérgeno |
+
+**La regla de resolución:** una relación `directa` siempre implica el alérgeno destino. Una
+`por_contaminacion_cruzada` lo implica **salvo que el producto declare la certificación de ausencia**. Si
+la ficha de LUVIA no dice "avena sin gluten certificada", se trata como gluten.
+
+### Dos condiciones del diseño
+
+**Se ancla al id de la opción, con su versión de encuesta**, no a la etiqueta. Si Gildardo reescribe
+"Gluten (trigo, pan, pasta)", el bloqueo no puede apagarse en silencio.
+
+**"Otra" (texto libre) nunca se puede cotejar.** Si el paciente respondió "Otra" y el producto declara
+algún alérgeno, **se exige la misma confirmación que si hubiera coincidencia**. Un dato que no se puede
+descartar no es un dato favorable: es la conducta que Gildardo fijó en CA-7.
+
+### Se construye, no se enciende
+
+El mecanismo entero se construye y la tabla se propone, pero **nada se activa en producción hasta que
+Gildardo firme las equivalencias**. La razón es dura: si un celíaco recibe LUVIA porque la tabla decía que
+la avena no implica gluten, el problema es de CNV, que lo prescribió y lo facturó. **Mientras tanto LUVIA
+no se habilita para venta.**
+
+La consulta está en `docs/entregas/CONSULTA_GILDARDO_ALERGENOS.md`.
+
+---
+
+## Lo que bloquea desde fuera del equipo
+
+| Qué | Bloquea |
+|---|---|
+| Conteo físico inicial por producto, lote y ubicación | Bloque 0 (la fecha de corte) y Bloque 1 |
+| **La firma de Gildardo sobre las equivalencias** | Encender el bloqueo, y con él la venta de LUVIA |
+| Numeración de Atlas en Alegra (prefijo propio o compartido) | Bloque 2 |
+| Perfil tributario de cada Integrante | Bloque 4 |
+| ¿Existen muestras o cortesías? | Bloque 3 (si no existen, no se construye) |
+| Anexo 2 actualizado y un Integrante habilitado | Bloque 5 |

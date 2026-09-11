@@ -827,6 +827,13 @@
       "when": 1790122586099,
       "tag": "0117_prompt_criterio_v4",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1790208986099,
+      "tag": "0118_vinculo_entrega_paciente",
+      "breakpoints": true
     }
   ]
 }
