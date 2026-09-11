@@ -61,7 +61,22 @@ async function resolveSale(
     const n = byId.get(it.nutraceuticalId);
     if (!n) throw new CheckoutError("Uno de los nutracéuticos no existe.");
     if (n.unit_price == null) {
-      throw new CheckoutError(`El nutraceutico "${n.name}" no tiene precio configurado.`);
+      throw new CheckoutError(`El nutracéutico "${n.name}" no tiene precio configurado.`);
+    }
+    // ═══ LA DISPONIBILIDAD SE COMPRUEBA AQUI, NO SOLO EN LA PANTALLA (2026-09-11) ═══
+    //
+    // La pagina de /pagos ya filtra el catalogo, pero un filtro de formulario es una comodidad, no una
+    // garantia: la accion recibe ids y se puede invocar con cualquiera. La regla vive donde se decide la
+    // venta (regla 2: ninguna logica de negocio en pages).
+    //
+    // Y ES LA MISMA REGLA QUE YA APLICA LA ENTREGA (`recordDespacho`). Que existiera en un lado y no en el
+    // otro es como un producto marcado `no_disponible` podia venderse: la bandera gateaba media puerta.
+    if (n.commercial_availability !== "en_consultorio") {
+      throw new CheckoutError(
+        n.commercial_availability === "solo_tienda"
+          ? `"${n.name}" lo compra el paciente en la tienda, no se cobra aquí.`
+          : `"${n.name}" no está disponible para la venta.`,
+      );
     }
     const unitPrice = Number(n.unit_price);
     lines.push({ nutraceuticalId: n.id, quantity: it.quantity, unitPrice });
