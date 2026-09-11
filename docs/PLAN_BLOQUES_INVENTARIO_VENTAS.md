@@ -257,8 +257,8 @@ Recibido del laboratorio y repartido, verificado aritméticamente el 2026-09-11:
 se pierda entre la purga y el Bloque 1.
 
 Los **PVP ya están correctos en el catálogo** (107.100 y 166.600, IVA 19% incluido → base 90.000 y
-140.000, exactas). **LUVIA no tiene PVP declarado**; el modelo comercial usa 90.000 (base 75.630), a
-confirmar.
+140.000, exactas). **El de LUVIA es 90.000 con IVA** (base 75.630, IVA 14.370), confirmado por
+contabilidad con el proveedor: viene de redondear 89.990.
 
 ### Los siete Integrantes: falta crear seis
 
@@ -274,6 +274,44 @@ Verificado contra la nube. Atlas tiene cuatro perfiles profesionales y **solo un
 **Faltan seis:** Katherine, Diana, María Camila, Ángela, Camilo y Roberto Jarava. Se crean **por la
 aplicación**, no por SQL: un perfil profesional arrastra cuenta, rol y perfil tributario, y crearlo a mano
 deja las tres cosas a medias. **Bloquea la carga inicial más que el conteo físico, y no depende de él.**
+
+### Cómo se crean, verificado en el código
+
+**La pantalla es `/admin`.** Pide **correo**, **nombre completo** y **rol** (hay que elegir
+`professional`); al elegirlo aparecen **profesión** (obligatoria) y **tarjeta profesional** (opcional, se
+puede añadir después).
+
+**El correo automático SALE SIEMPRE, y no se puede evitar.** `createUser` usa
+`inviteUserByEmail`, que envía la invitación en el acto. La API de Supabase sí tiene un `createUser` que
+no manda nada, pero Atlas no la usa. **No existe "crear sin enviar el enlace".**
+
+**Crear ahora y dar acceso después SÍ es viable**, con esta secuencia: se crea, el correo sale, el enlace
+de invitación caduca si nadie lo usa, y la cuenta queda creada sin contraseña. Cuando llegue el momento de
+que entren, **"Forzar cambio de contraseña"** desde `/admin` manda un correo de recuperación, que es la
+puerta de entrada real. No hay acción de reenviar la invitación; la de recuperación cumple esa función.
+
+**El correo tiene que ser el real del Integrante desde el principio.** No es preferencia:
+`auth.users.email` y `profiles.email` son **dos copias del mismo dato**, y el audit `user.created` guarda
+el correo en su payload. Cambiarlo por SQL después desincroniza las dos copias y deja el rastro de
+auditoría apuntando a un correo que ya no existe.
+
+### Qué más hace falta, además del perfil
+
+| Pieza | Cómo queda al crear |
+|---|---|
+| **Rol** | Lo asigna el formulario, en la misma transacción |
+| **Perfil profesional** | Se crea solo, con la profesión |
+| **Comisión** | `professional_profiles.commission_rate` nace en 0,20. **Está por profesional, no por organización** |
+| **Perfil tributario** | **Lo llena el propio Integrante** al entrar, y luego admin verifica el RUT. Requiere que entre |
+| **Ubicación de inventario** | No existe todavía; hoy el inventario cuelga directo del profesional. Nada extra para la carga |
+
+**El perfil tributario es el único que exige que el Integrante entre**, y **no bloquea la carga de
+inventario**: bloquea el Bloque 4 (liquidaciones), porque sin él no se sabe qué documento emitir ni qué
+retención practicar.
+
+**Y una que conviene ver ahora, no en el Bloque 4:** `commission_rate` vive en el profesional y el reparto
+de LUVIA vive en el producto (20% Integrante / 10% CNV / 70% proveedor). `revenue_splits` tiene que poder
+convivir con ese campo sin que se contradigan, y decidir cuál manda. Hoy solo existe el del profesional.
 
 ### Y al crearlos, cerrar la declaración libre de recepciones
 
@@ -433,6 +471,30 @@ la comisión del Integrante.
 IVA y retención según perfil (**con acumulado anual que se reinicia por año calendario**, adición d), los
 faltantes con su máquina de estados, y la **conciliación Atlas ↔ Alegra**. El faltante nunca es una venta:
 no genera factura, ni IVA, ni comisión (principio 6).
+
+**Y el reporte del piloto, que es lo que permite renegociar el 10%.** Por producto de tercero y por
+período: unidades vendidas, margen bruto de CNV, comisión de pasarela pagada, fletes si los hubo, y margen
+neto. Se anota aquí porque cruza ventas, liquidación y costos de transacción, que es lo que este bloque
+arma. **Depende de un dato que hay que capturar antes:** la comisión que cobra la pasarela por
+transacción, que hoy Atlas no guarda. Sin ese campo el reporte sale incompleto y el margen neto no se
+puede calcular, así que el campo entra en el Bloque 3 aunque el reporte sea de este.
+
+### El reparto de LUVIA es de piloto, y eso cambia el modelo de datos
+
+Contabilidad acepta el **10% para CNV solo durante el piloto**, no como estructura permanente. Las tres
+condiciones quedan escritas:
+
+1. **Se renegocia antes de un segundo lote.**
+2. **No hay domicilio de LUVIA durante el piloto** (ya estaba en §11.3 del modelo).
+3. **Hay que medir el costo real de servirlo.**
+
+**Consecuencia para `revenue_splits` (Bloque 1): necesita VIGENCIA POR FECHA**, y cada venta **sella el
+reparto vigente en el momento en que ocurrió**.
+
+El principio de sellado ya lo permitía. Lo que cambia es que **este es el primer caso donde sabemos de
+antemano que el reparto va a moverse**, así que el modelo tiene que EXPRESARLO y no solo admitirlo: un
+`revenue_splits` sin vigencia obliga a editar la fila el día de la renegociación, y editarla reescribiría
+lo que ya se liquidó. Con vigencia, se añade una fila nueva y el pasado queda donde está.
 
 **5 · Distribución (medio)** y **6 · Domicilio (grande)** siguen el modelo §11.2 Fases 3 y 4. No arrancan
 sin decisiones que no son técnicas: Distribución depende del Anexo 2 actualizado y de al menos un

@@ -85,6 +85,7 @@ insert into carga_productos (clave, producto_id, codigo_alegra, lote, vence, rec
   ('CURCUMIN',   '77777777-7777-7777-7777-777777777703', 'NUT-003', '20526',    '2028-07-25', 426),
   ('D3K2',       '77777777-7777-7777-7777-777777777704', 'NUT-004', '19726',    '2028-07-17', 300),
   -- LUVIA no esta en el catalogo y NO tiene codigo en Alegra. Ver "LO QUE BLOQUEA", punto 4.
+  -- PVP 90.000 con IVA (base 75.630, IVA 14.370), confirmado por contabilidad: viene de redondear 89.990.
   ('LUVIA',      null,                                    null,     '04197232', '2028-07-10',  84);
 
 -- ── LO ENTREGADO A CADA INTEGRANTE ───────────────────────────────────────────────────────────────
@@ -214,9 +215,12 @@ commit;
 --    Es el principio 8 del modelo ("todo movimiento contra un lote") y entra en el Bloque 1.
 --
 -- 4. LUVIA NO ESTA EN EL CATALOGO, y crearlo hoy seria crearlo mal: faltan `ownership`, `brand_owner`,
---    `supplier_id` y su esquema de reparto, que son Bloque 1. Ademas NO TIENE PVP declarado en la
---    entrega del laboratorio; el modelo comercial usa 90.000 (base 75.630, IVA 14.370), que hay que
---    confirmar.
+--    `supplier_id` y su esquema de reparto, que son Bloque 1. El PVP ya no bloquea: contabilidad lo
+--    confirmo con el proveedor en 90.000 con IVA (base 75.630, IVA 14.370), redondeado desde 89.990.
+--
+--    Y SU REPARTO ES DE PILOTO, no permanente: el 10% para CNV se renegocia antes de un segundo lote.
+--    Por eso `revenue_splits` (Bloque 1) necesita VIGENCIA POR FECHA y cada venta sella el reparto
+--    vigente: el dia de la renegociacion se añade una fila, no se edita la que ya liquido ventas.
 --
 --    Y UNA CONDICION DE SEGURIDAD: el dia que LUVIA entre al catalogo, `no_disponible` NO basta para
 --    impedir que se venda. Esa bandera gatea la ENTREGA y no la VENTA: el checkout de /pagos filtra el
