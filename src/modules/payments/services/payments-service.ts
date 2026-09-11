@@ -244,11 +244,26 @@ export async function processWompiWebhook(event: WompiEventInput): Promise<Webho
   return { handled: true, duplicate: false, sealed: Boolean(sealed) };
 }
 
-// Factura en Alegra, best-effort y guardada por alegra_invoice_id null. No revienta
-// el webhook: el pago ya quedo sellado. Si falla, la factura se reintenta (Wompi
-// reenvia) o queda para un job post-MVP (BACKLOG: sync con Alegra). En B6 se usan
-// los IDs de cliente/item de prueba del sandbox; el mapeo real va en un bloque
-// posterior cuando el catalogo de Alegra este configurado.
+// Factura en Alegra, best-effort. No revienta el webhook: el pago ya quedo sellado.
+//
+// ═══ ESTE COMENTARIO DECIA DOS COSAS FALSAS Y SE CORRIGEN AQUI (2026-09-11) ═══
+//
+// Decia: "si falla, la factura se reintenta (Wompi reenvia) o queda para un job post-MVP".
+//
+//   · WOMPI NO REENVIA. Solo reintenta el webhook si NO le respondimos 200, y le respondemos 200 porque
+//     el pago SI se sello. La factura fallida no vuelve por ahi.
+//   · Y EL JOB NUNCA SE CONSTRUYO. No hay cola, no hay cron, y la ruta del webhook de Alegra
+//     (api/webhooks/alegra/) es una carpeta VACIA, asi que tampoco llega nada de vuelta de Alegra.
+//
+// CONSECUENCIA REAL HOY: un pago cobrado cuya factura falla se queda sin documento PARA SIEMPRE, y no lo
+// detecta nadie salvo que alguien mire Sentry. El estado ya se puede registrar (columnas de la 0129); lo
+// que falta es que esta funcion lo escriba y que algo barra la cola. Es el Bloque 2a.
+//
+// Y LO QUE MANDA HOY A ALEGRA TAMPOCO ES LO QUE SE VENDIO: el MISMO cliente por defecto para todo
+// paciente, UN item generico con cantidad 1 y el total como precio, y en BORRADOR (nunca se manda
+// status:'open', asi que nunca recibe consecutivo). La tabla transaction_items SI tiene las lineas de
+// verdad, con su producto, su cantidad y su precio unitario: el dato existe en Atlas y se descarta al
+// facturar.
 async function tryCreateAlegraInvoice(sealed: SealedTransaction): Promise<void> {
   const clientId = Number(process.env.ALEGRA_DEFAULT_CLIENT_ID ?? 0);
   const itemId = Number(process.env.ALEGRA_DEFAULT_ITEM_ID ?? 0);

@@ -1,5 +1,5 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
 import {
@@ -35,6 +35,22 @@ export const nutraceuticals = pgTable("nutraceuticals", {
   commercialAvailability: nutraceuticalAvailability("commercial_availability")
     .notNull()
     .default("no_disponible"),
+  // ── LAS SIETE QUE LLEGARON POR MIGRACION Y NO ESTABAN AQUI (0120, 0121, 0129) ──────────────────
+  //
+  // Se declaran el 2026-09-11, al notarlo construyendo el Bloque 2. La aplicacion lee este catalogo por
+  // PostgREST, que no mira este archivo, asi que las pantallas funcionaban; lo que no veia las columnas
+  // era el ORM, o sea cualquier escritura o join escrito con Drizzle. Una migracion aplicada no garantiza
+  // que el codigo sepa que existe la columna.
+  ownership: text("ownership"), // propio | tercero
+  brandOwner: text("brand_owner"), // titular de marca: se muestra al paciente (§7.7, fabricante aparente)
+  supplierId: uuid("supplier_id"),
+  vatRate: numeric("vat_rate"),
+  // Lo de PRUEBA tiene que poder distinguirse de lo real cuando convivan. Hoy en 0 productos.
+  isTest: boolean("is_test").notNull().default(false),
+  // El item en el catalogo de Alegra, y el AMBIENTE donde vive ese id: uno de sandbox no existe en
+  // produccion. Sin la segunda columna, el paso a produccion facturaria contra items inexistentes.
+  alegraItemId: text("alegra_item_id"),
+  alegraEnv: text("alegra_env"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

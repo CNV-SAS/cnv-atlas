@@ -31,6 +31,14 @@ export const patients = pgTable(
     documentType: documentType("document_type").notNull(),
     documentNumber: text("document_number").notNull(),
     status: patientStatus("status").notNull().default("active"),
+    // CONTACTO EN ALEGRA (0129). Va en el PACIENTE y no en la transaccion porque el contacto es de la
+    // persona, no de la venta: se crea una vez y se reusa, para que Alegra no acumule contactos
+    // duplicados con el mismo documento (limpiar eso despues es manual).
+    alegraContactId: text("alegra_contact_id"),
+    // Y EL AMBIENTE DONDE VIVE ESE ID. Un contacto de sandbox no existe en produccion; sin esto, el paso
+    // a produccion facturaria contra ids que alli no estan. Es el error que el modelo comercial llama la
+    // causa numero uno de facturas mal emitidas.
+    alegraEnv: text("alegra_env"),
     createdAt: createdAt(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },

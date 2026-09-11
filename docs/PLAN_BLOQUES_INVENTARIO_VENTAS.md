@@ -20,7 +20,9 @@ que algo ya hecho se vuelva a planear).
 |---|---|---|
 | 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | **HECHO (2026-09-11)** | La carga inicial corrió en la nube: 1.810 unidades en 8 ubicaciones, cotejadas |
-| 2 · Alegra de verdad | **SIGUIENTE** | Una venta emite factura real con consecutivo de Alegra |
+| **2a** · Alegra reescrito, en SANDBOX | **EN CURSO (2026-09-11)** | Una venta de punta a punta en sandbox: Wompi de prueba paga, se crea el contacto del paciente en Alegra, y sale la factura con sus líneas reales |
+| **2b** · Paso a producción | Pendiente | Credenciales, resolución de facturación y re-mapeo de identificadores. **No arranca hasta que 2a pase** |
+| **R** · Reconstrucción del Integrante que ya vendía | Pendiente, sin bloquear | Ver su apartado |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
 | 3b · Reversa | Pendiente | — |
 | 4 · Liquidaciones | Pendiente | — |
@@ -420,7 +422,80 @@ ni domicilio activo; se construye en el Bloque 5, que es donde nacen las dos cos
 
 ---
 
-## Bloque 2 · Alegra de verdad
+## Bloque 2a · Alegra reescrito, probado en sandbox
+
+**Decisión de Santiago, 2026-09-11: no se va a producción todavía.** Primero el flujo entero contra Alegra
+y Wompi de prueba. La razón es la que el propio modelo señala como **causa número uno de facturas mal
+emitidas: cambiar de ambiente sobre código que nunca facturó bien.**
+
+### Lo que hay hoy, verificado en el código antes de planear
+
+`tryCreateAlegraInvoice` manda a Alegra, para toda venta y todo producto:
+
+- el **mismo cliente** (`ALEGRA_DEFAULT_CLIENT_ID`), sea quien sea el paciente;
+- **un ítem genérico** (`ALEGRA_DEFAULT_ITEM_ID`) con `quantity: 1` y el total de la venta como precio;
+- y la deja en **borrador** a propósito: nunca manda `status: 'open'`, así que **nunca recibe consecutivo**.
+
+O sea: la factura no dice a quién se le vendió ni qué se le vendió, y no es un documento fiscal. Y
+`transaction_items` **sí** tiene las líneas de verdad, con producto, cantidad y precio unitario: **el dato
+existe en Atlas y se descarta al facturar.**
+
+### Y tres cosas que no estaban escritas en ninguna parte
+
+1. **Si Alegra falla, nada lo vuelve a intentar.** El `catch` manda el error a Sentry y sigue. El
+   comentario del servicio decía *"se reintenta (Wompi reenvía) o queda para un job post-MVP"*, y las dos
+   mitades son falsas: **Wompi solo reintenta si NO le respondimos 200**, y le respondemos 200 porque el
+   pago sí se selló; y **el job nunca se construyó**. Un pago cobrado sin documento se queda así para
+   siempre y no lo detecta nadie salvo que alguien mire Sentry.
+2. **`api/webhooks/alegra/` es una carpeta vacía.** Tampoco llega nada de vuelta: Atlas nunca se entera del
+   consecutivo, ni de si la DIAN la aceptó.
+3. **`alegra_invoice_id IS NULL` significa tres cosas a la vez** (nunca se intentó / se intentó y falló /
+   no aplica). Un nulo que responde tres preguntas no responde ninguna.
+
+### Modelo de datos · HECHO (migración 0129)
+
+| Dónde | Qué | Por qué |
+|---|---|---|
+| `transactions` | `alegra_invoice_state` (`pendiente`/`borrador`/`emitida`/`fallida`) | Separa las tres cosas que decía el nulo. **Borrador no es emitida**: sin consecutivo no es documento fiscal |
+| `transactions` | `alegra_invoice_number`, `alegra_emitted_at` | El **consecutivo** es lo que la DIAN reconoce y el paciente ve. `alegra_invoice_id` es el id interno: eran dos cosas guardadas como una |
+| `transactions` | `alegra_attempts`, `alegra_last_attempt_at`, `alegra_last_error` | Sin contador, un reintento automático contra un error permanente (un ítem que no existe) es un bucle silencioso |
+| índice parcial | `transactions_factura_pendiente_idx` | **La cola es una consulta, no una tabla.** Una tabla aparte sería una segunda fuente del mismo hecho, capaz de desincronizarse de la transacción que dice representar |
+| `patients` | `alegra_contact_id` + `alegra_env` | El contacto es de la **persona**, no de la venta: se crea una vez y se reusa, para que Alegra no acumule duplicados con el mismo documento |
+| `nutraceuticals` | `alegra_env` (junto al `alegra_item_id` de la 0120) | **Un id de sandbox no existe en producción.** Sin esta columna, el paso a 2b facturaría contra ítems y contactos inexistentes: exactamente el error que 2a viene a evitar |
+
+### Lo que falta construir en 2a
+
+1. **Contacto del paciente en Alegra**: buscar por documento o crear, guardar el id con su ambiente. Solo
+   viajan **nombre, documento y correo** (principio 7: a contabilidad solo van datos de identificación).
+2. **Las líneas de verdad**: una por `transaction_item`, con su ítem de Alegra, su cantidad y su precio
+   base sin IVA, en vez del ítem genérico con cantidad 1.
+3. **Emitir, no dejar en borrador**: `status: 'open'`, y guardar el **consecutivo** que devuelve Alegra.
+4. **La cola de reintento**, con su tope de intentos y el error de la última vez, más el reporte de
+   **ventas sin documento fiscal, que debe estar en cero al cierre del día** (decisión D2 de contabilidad).
+5. **Y que el ambiente sea explícito**: si un contacto o un ítem son de otro ambiente, no se usan.
+
+### Criterio de aceptación
+
+En sandbox, de punta a punta: se crea el checkout de un paciente en modalidad Comisión, **Wompi de prueba
+lo paga**, el webhook sella el pago, **se crea el contacto del paciente en Alegra** (o se reusa el suyo), y
+sale **una factura emitida con consecutivo**, cuyas líneas son los productos realmente vendidos con sus
+cantidades. Y una venta a la que se le fuerce un fallo de Alegra queda en `fallida` con su motivo, aparece
+en la cola, y el reintento la emite.
+
+---
+
+## Bloque 2b · Paso a producción
+
+**No arranca hasta que 2a pase el criterio de aceptación en sandbox.** Lo que hace falta, y lo consigue Santiago:
+
+1. **Credenciales de Alegra de producción** (`ALEGRA_EMAIL`, `ALEGRA_API_KEY`, `ALEGRA_BASE_URL`).
+2. **La resolución de facturación de CNV**: numeración autorizada, prefijo y vigencia. Es lo que decide si Alegra puede emitir a nombre de CNV.
+3. **El mapeo de los cuatro códigos a sus ítems**: NUT-001 a NUT-004, que están anotados en el script de carga. Y el **ítem de LUVIA, que no existe**: hoy se puede vender y no se podría facturar.
+4. **El re-mapeo de identificadores**: los contactos e ítems creados en sandbox NO valen en producción. La columna `alegra_env` (migración 0129) es lo que impide usarlos por error.
+
+**Y el contenido anterior de este bloque se conserva abajo**, porque su análisis sigue siendo válido; lo que cambió es que se parte en dos.
+
+### (análisis original del Bloque 2, escrito el 2026-09-10)
 
 **Tamaño: medio-grande.** Es una **reescritura** del documento, no un re-mapeo (objeción 2).
 
@@ -514,6 +589,50 @@ fiscal** existe y se puede consultar por día.
 **Criterio de aceptación:** una devolución de una unidad de producto de tercero reingresa al lote de
 origen en la consignación del proveedor, genera la nota crédito enlazada a la factura original, y revierte
 la comisión del Integrante.
+
+---
+
+## Bloque R · Reconstrucción del Integrante que ya vendía
+
+**Abierto el 2026-09-11.** Uno de los siete ya vendía con el HTML antes de que Atlas existiera para lo
+comercial, y esas ventas **se facturaron a mano, por fuera**. Su saldo cargado dice **lo que recibió**, no
+lo que tiene.
+
+### Lo que hace falta, y el orden importa
+
+1. **Importar sus pacientes desde el HTML.** Sin paciente no hay venta que registrar, y sin evaluación no
+   hay a qué colgarla. Es también resolución de identidad: alguno puede existir ya en Atlas.
+2. **Registrar las ventas retroactivas con su FECHA REAL**, no la de carga. Una venta con fecha de hoy
+   contradice la factura que ya se emitió con otra fecha, y ese desacuerdo es el que mira una auditoría.
+3. **Cuadrar contra las facturas emitidas a mano**, que es el punto que nadie más va a levantar: **esas
+   facturas existen en Alegra y Atlas no las conoce.** Si Atlas registra esas ventas y vuelve a facturar,
+   el mismo hecho queda con dos documentos. Así que el registro retroactivo tiene que poder decir *"esta
+   venta YA está facturada, con este número"* y no emitir nada. Hoy no existe esa forma: el flujo asume
+   que la factura la crea Atlas.
+
+### Lo que se decidió mientras tanto, con sus tres opciones evaluadas
+
+**El saldo NO se toca hasta tener las cifras.** Santiago ya le pidió que use solo la parte clínica y no
+mueva nada comercial ni de inventario.
+
+| Opción | Veredicto |
+|---|---|
+| **(a)** Marcar su inventario como *no conciliado* para que un conteo no abra faltantes | **No.** Sería construir una bandera nueva, y honrarla, dentro del camino que decide dinero (`recordCount`), para una persona y un estado temporal. El riesgo de tocar ese código supera al que evita |
+| **(b)** Un movimiento de ajuste con su razón, cuando haya cifras | **No como interino, y es el que parece más sensato.** Un ajuste ahora y la reconstrucción después **restarían dos veces** el mismo producto. El ajuste solo sería válido si la reconstrucción no registrara las ventas, y entonces se pierde la historia, que es justo lo que se quiere recuperar |
+| **(c)** No correr conteos hasta entonces | **Sí, y basta.** Ver abajo por qué la instrucción escrita es aquí un control completo y no una promesa |
+
+**Por qué la instrucción basta, verificado en el código y no supuesto:**
+
+- **Solo ella puede contar su propio inventario.** `recordCountFormAction` exige `canLoadOwnStock` y
+  `recordOwnCount` resuelve el profesional **desde la sesión**: no hay ruta de administrador, ni masiva,
+  ni de otro profesional. Nadie puede disparar un conteo en su nombre.
+- **Nada la empuja a contar.** No hay alerta, recordatorio ni tarea pendiente de conteo en ninguna
+  pantalla; es un formulario al que hay que ir a propósito, en `/mi-inventario`.
+
+**Y lo que pasaría si se corriera igual**, para que se sepa el tamaño: un conteo con físico menor que el
+saldo abre **un caso de faltante por producto**, con el **PVP sellado** al momento del conteo y un plazo
+en días hábiles. Es decir, una deuda a su nombre por producto que vendió legítimamente, y deshacerla es un
+procedimiento de dos personas, no un borrado.
 
 ---
 
