@@ -58,7 +58,11 @@ export type NavItem = {
 // Matriz nav por rol (confirmada para B3). Se afina cuando aterricen los modulos.
 export const NAV_ITEMS: readonly NavItem[] = [
   {
-    label: "Tablero",
+    // "INICIO" Y NO "TABLERO" (Santiago, 2026-09-10). Es la primera pantalla y la que se abre al entrar:
+    // "Tablero" nombra la FORMA (tarjetas con cifras) y "Inicio" nombra el SITIO, que es lo que un rotulo
+    // de navegacion tiene que decir. Y ademas deja de prometer un tablero cuando lo que mas se usa de ahi
+    // son los tres accesos de arriba.
+    label: "Inicio",
     href: "/dashboard",
     icon: "dashboard",
     roles: ["admin", "direccion", "soporte", "obbia", "professional"],
@@ -85,7 +89,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // "Administrador de Pacientes" y no "Pacientes" (Santiago, 2026-09-10): la pantalla no es una lista
     // de personas, es donde se administran (crear, buscar, vincular, entrar a su historia). La RUTA no
     // cambia: renombrar una direccion que nadie pidio cambiar rompe marcadores a cambio de nada.
-    label: "Administrador de Pacientes",
+    // "LISTA DE PACIENTES" (Santiago, 2026-09-10): la pantalla ya se llamaba asi por dentro y el rotulo
+    // decia otra cosa. "Administrador de" ademas suena a mantenimiento de un catalogo, y esto es la
+    // consulta de todos los dias.
+    label: "Lista de pacientes",
     href: "/pacientes",
     icon: "clinica",
     roles: ["admin", "professional"],
@@ -97,10 +104,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
     // SI cambia (`/evaluaciones` -> `/ani-bis-e`), porque la direccion vieja describia lo mismo que la
     // etiqueta vieja. Los enlaces guardados los cubre la redireccion permanente de `next.config.ts`, y
     // ninguno de los que se comparten con pacientes pasaba por aqui (esos van a `/encuesta/...`).
-    // "Modelo ANI-BIS-E" se leia como "la lista de evaluaciones", que es justo lo que hoy es /pacientes
-    // con su columna de pendientes. Esta pantalla ya no lista evaluaciones: es lo que se hace POR LOTE
-    // (importar el BIS, generar diagnosticos, las encuestas sin responder). El rotulo lo dice.
-    label: "Bandeja de trabajo",
+    // "MODELO ANI-BIS-E" SE QUEDA (Santiago lo revierte, 2026-09-10). Lo cambie a "Bandeja de trabajo"
+    // por lo que la pantalla HACE hoy, y el nombre no es de la pantalla: es del MODELO, y es como Gildardo
+    // y los profesionales lo llaman. Un rotulo de navegacion que renombra el vocabulario de la casa cuesta
+    // mas de lo que aclara.
+    label: "Modelo ANI-BIS-E",
     href: "/ani-bis-e",
     icon: "evaluaciones",
     roles: ["admin", "professional"],

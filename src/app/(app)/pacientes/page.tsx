@@ -7,6 +7,7 @@ import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloPantalla } from "@/components/shared/titulo-pantalla";
 import { hasAnyRole } from "@/modules/auth/roles";
 import { requireUser } from "@/modules/auth/session";
+import { canArchivePatient } from "@/modules/patients/policies/can-archive-patient";
 import { QrConsultorioBoton } from "@/modules/evaluations/components/qr-consultorio-boton";
 import { listPatientsForProfessional } from "@/modules/patients/data/patients-list-reader";
 
@@ -98,7 +99,7 @@ export default async function PacientesPage() {
       {/* Filas de dos lineas con buscador, no tabla: esta lista se BUSCA (BRAND, "si busca, densidad; si
           compara, columnas"). El buscador necesita estado, asi que la lista es un componente cliente; la
           pagina sigue siendo servidor y trae el roster bajo RLS. */}
-      <ListaPacientes pacientes={pacientes} />
+      <ListaPacientes pacientes={pacientes} puedeArchivar={canArchivePatient(user)} />
     </div>
   );
 }

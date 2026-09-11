@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
-import { COLUMNAS_PACIENTES } from "@/modules/patients/components/lista-pacientes";
+import { COLUMNAS_PACIENTES } from "@/modules/patients/columnas";
 
 // CANDADO DE "UN SOLO DOM, UN SOLO CONTENIDO, DOS DISPOSICIONES" (2026-08-28).
 //

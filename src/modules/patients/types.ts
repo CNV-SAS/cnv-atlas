@@ -1,5 +1,18 @@
 import type { PendienteDelPaciente } from "./pendientes";
 
+/**
+ * Una evaluacion en el desplegable de la fila. Lleva su ROTULO ya resuelto ("Inicial", "Seguimiento 2")
+ * porque la numeracion depende del ORDEN entre las del paciente, y eso se sabe donde estan todas juntas,
+ * no en la vista fila por fila.
+ */
+export type EvaluacionDeLaFila = {
+  evaluationId: string;
+  /** "Inicial", "Seguimiento 1", "Seguimiento 2"... */
+  rotulo: string;
+  /** Fecha de medicion, o la de creacion si aun no se midio. */
+  fecha: string;
+};
+
 import type { Database } from "@/types/database.generated";
 
 // Tipos de dominio de pacientes (grupo 2), derivados de la Database generada.
@@ -71,6 +84,17 @@ export type PatientListItem = {
    * La regla vive en `pendientes.ts`, que es puro.
    */
   pendiente: PendienteDelPaciente;
+  /**
+   * LAS TRES ULTIMAS EVALUACIONES, para el desplegable de la fila (Santiago, 2026-09-10).
+   *
+   * VIENEN EN LA MISMA CONSULTA que ya se hacia: el lector de la lista ya embebia las evaluaciones para
+   * contarlas y para la columna de pendientes; solo le faltaban el `id` y el `type`. Asi que desplegar
+   * NO pide nada al servidor: el dato ya esta en la pagina cuando se pinta la lista.
+   *
+   * TRES Y NO TODAS porque el desplegable es un atajo, no la ficha: quien quiera la historia entera tiene
+   * el boton del panel en la columna de acciones, que es donde vive ahora.
+   */
+  ultimasEvaluaciones: EvaluacionDeLaFila[];
 };
 
 // Una evaluacion en la linea de tiempo del paciente (/pacientes/[id]). Enlaza a la
