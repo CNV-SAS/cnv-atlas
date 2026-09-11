@@ -154,3 +154,69 @@ export const lots = pgTable("lots", {
   notes: text("notes"),
   createdAt: createdAt(),
 });
+
+// ═══ ALERGENOS (migracion 0123) ═══
+//
+// POR QUE UNA TABLA Y NO UN COTEJO DE CADENAS: LUVIA declara AVENA y el paciente declara "Gluten (trigo,
+// pan, pasta)" o "Trigo". Ninguna cadena contiene a la otra, asi que comparar textos deja pasar a un
+// celiaco. Es el mismo fallo que "lactosa" contra "lacteos" en el menu, con una consecuencia peor.
+//
+// SE CONSTRUYE Y NO SE ENCIENDE: el bloqueo solo considera relaciones FIRMADAS, y ninguna lo esta. Una
+// fila sin firma es una propuesta. La firma es dato de cada fila y no una bandera global que alguien
+// pueda voltear entera.
+
+export const allergens = pgTable("allergens", {
+  id: pk(),
+  /** Clave canonica en minusculas y sin tildes: 'gluten', 'lactosa', 'mani'. */
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  notes: text("notes"),
+  createdAt: createdAt(),
+});
+
+export const allergenRelations = pgTable("allergen_relations", {
+  id: pk(),
+  sourceId: uuid("source_id").notNull().references(() => allergens.id, { onDelete: "cascade" }),
+  targetId: uuid("target_id").notNull().references(() => allergens.id, { onDelete: "cascade" }),
+  /**
+   * 'directa' (trigo implica gluten, siempre) o 'por_contaminacion_cruzada' (avena implica gluten SALVO
+   * que el producto declare certificacion de ausencia).
+   *
+   * La segunda existe porque la equivalencia binaria no daba: la avena por si sola no tiene gluten, pero
+   * arrastra contaminacion cruzada con trigo salvo certificacion.
+   */
+  kind: text("kind").notNull(),
+  notes: text("notes"),
+  /** Sin firma, la relacion NO gobierna nada. Ver la nota de arriba. */
+  signedAt: timestamp("signed_at", { withTimezone: true }),
+  signedBy: uuid("signed_by").references(() => profiles.id),
+  createdAt: createdAt(),
+});
+
+export const nutraceuticalAllergens = pgTable("nutraceutical_allergens", {
+  id: pk(),
+  nutraceuticalId: uuid("nutraceutical_id")
+    .notNull()
+    .references(() => nutraceuticals.id, { onDelete: "cascade" }),
+  allergenId: uuid("allergen_id").notNull().references(() => allergens.id),
+  /** VERBATIM de la ficha del fabricante. Lo que el producto DICE, no lo que implica. */
+  declaredAs: text("declared_as").notNull(),
+  /** Certificacion de ausencia del alergeno destino. Nulo = no certificado. */
+  absenceCertifiedFor: uuid("absence_certified_for").references(() => allergens.id),
+  notes: text("notes"),
+  createdAt: createdAt(),
+});
+
+/**
+ * EL PUENTE CON LA ENCUESTA, anclado al ID DE LA OPCION y no a su etiqueta.
+ *
+ * Si Direccion Cientifica reescribe "Gluten (trigo, pan, pasta)", un cotejo por texto se apagaria en
+ * silencio. El id no cambia por una reescritura, y ya lleva su version de encuesta dentro (la opcion
+ * cuelga de la pregunta y la pregunta de la version).
+ */
+export const surveyOptionAllergens = pgTable("survey_option_allergens", {
+  id: pk(),
+  surveyOptionId: uuid("survey_option_id").notNull(),
+  allergenId: uuid("allergen_id").notNull().references(() => allergens.id),
+  createdAt: createdAt(),
+});
