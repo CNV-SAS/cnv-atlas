@@ -757,12 +757,13 @@ Conviene preverlos desde el diseño, porque reconstruirlos después es costoso:
 - Verificación de la titularidad del registro sanitario de LUVIA y de la relación del proveedor con el laboratorio maquilador.
 - Documentación del criterio de admisión de productos de terceros y del conflicto de interés cuando el proveedor es Integrante.
 
-**Bloqueantes antes de la primera venta de producto de tercero. ATENCIÓN: LUVIA quedó habilitada para venta el 2026-09-11 y estos dos siguen abiertos.** La habilitación resolvió el tercero de otra manera y no tocó los dos primeros, que no son clínicos y no los cierra Dirección Científica.
+**Bloqueantes antes de la primera venta de producto de tercero. LUVIA quedó habilitada para venta el 2026-09-11; estado real de cada uno a esa fecha.**
 
-- **ABIERTO ·** Verificación del registro sanitario de LUVIA y de su titularidad.
-- **ABIERTO ·** Acuerdo mínimo por escrito con el proveedor, según los seis puntos de la sección 7.8.
-- **RESUELTO ·** El alérgeno declarado está cargado en Atlas (`0124`) y **se muestra tal como lo dice la ficha**. El bloqueo activo **no se construye**: el asesor legal lo retiró él mismo el 2026-09-11 y lo reemplazó por la yuxtaposición de la §7.7, coincidiendo con Dirección Científica.
-- **Y UNA ACCIÓN DE CNV QUE NO ES DE SISTEMA ·** avisar por escrito a los siete Integrantes que ya tienen unidades que LUVIA contiene avena. Cierra la ventana de las 84 unidades ya repartidas sin esperar a nada de lo anterior.
+- **CERRADO ·** **Registro sanitario: INVIMA RSA-0019736-2022**, fabricante **Laboratorio Naturex S.A.S.** (código 7232). Estaba en el archivo de Dirección Científica desde el 26 de agosto y no lo habíamos leído; parecía ausente porque vivía en un documento y no en Atlas. Cargado en el catálogo (`0128`), junto con la posología y la composición de la misma ficha.
+- **ABIERTO, y es una pregunta distinta ·** **La TITULARIDAD del registro no consta.** Su archivo da el número y el fabricante, no a nombre de quién está el registro. Son tres partes que conviene no confundir: **fabricante** (Naturex, maquilador), **titular de marca** (Centro de Nutrición Integral Katherine Ruiz, ya cargado y visible al paciente por la §7.7) y **titular del registro** (sin dato). Si el registro está a nombre de Naturex y no de la proveedora, la proveedora revende producto registrado por otro, **y eso cambia quién responde frente al consumidor**. Se pregunta; no se supone.
+- **ABIERTO, y a propósito ·** Acuerdo por escrito con el proveedor (§7.8). **Se opera como piloto con pocas unidades, y piloto no es acuerdo.** Queda abierto mientras el volumen sea el de prueba; se cierra con el contrato, no con el tiempo.
+- **CERRADO ·** El alérgeno declarado está en Atlas (`0124`) y **se muestra tal como lo dice la ficha**. El bloqueo activo **no se construye**: el asesor legal lo retiró él mismo el 2026-09-11 y lo reemplazó por la yuxtaposición de la §7.7, coincidiendo con Dirección Científica.
+- **CERRADO ·** Los siete Integrantes que ya tienen unidades **conocen la composición de LUVIA**. Era la acción que cerraba la ventana de las 84 unidades ya repartidas sin depender de nada de lo anterior.
 
 ---
 
