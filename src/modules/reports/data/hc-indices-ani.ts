@@ -45,8 +45,25 @@ const dec = (v: number, codigo: string) => v.toFixed(decimalesDe(codigo)).replac
 export const INDICES_ANI: IndiceAniFila[] = [
   { codigo: "IFC", nombre: "Función Celular", referencia: (m) => (m ? "≥6,68 óptimo" : "≥3,28 óptimo"), formato: (v) => dec(v, "IFC") },
   {
+    // ═══ DESFASE NUESTRO, CORREGIDO EL 2026-09-10 ═══
+    //
+    // Decia "<1,68 bajo riesgo" / "<2,27 bajo riesgo", que son los cortes de ANTES del 2026-08-29. Ese dia
+    // se portaron los cortes del IRC por sexo (su respuesta del 28, punto 6): `cIRC` paso a 1,7/2,1 (H) y
+    // 2,3/2,8 (M), y con el subio `emission_versions.classification`. La referencia de ESTA fila se quedo
+    // en los viejos, asi que la HC imprimia un corte que su propio clasificador ya no usaba: para un
+    // hombre con IRC 1,69 la columna de clasificacion decia "Bajo riesgo" y la de al lado que el bajo
+    // riesgo empieza por debajo de 1,68. Un documento clinico contradiciendose consigo mismo.
+    //
+    // NO ES UNA DISCREPANCIA SUYA (que seria de las que se documentan y no se unifican, como el PABU de
+    // P-127): su entrega vigente YA dice "<1,7" y "<2,3". Es la nuestra la que se quedo atras, y es el
+    // barrido incompleto de siempre: se cambio el umbral en el clasificador y no en los sitios que lo
+    // CITAN. Las otras siete filas se cotejaron una a una contra su entrega vigente y coinciden.
+    //
+    // Y LA FORMA ES LA SUYA, no la nuestra: el escribe "1,7" y no "1,70". La regla de `fmtDec` que
+    // unifico los decimales vale para las bandas que redactamos NOSOTROS (`indicatorBands`); esta columna
+    // es transcripcion literal de su archivo, y ahi manda la Regla 0.
     codigo: "IRC", nombre: "Riesgo Celular",
-    referencia: (m) => (m ? "<1,68 bajo riesgo" : "<2,27 bajo riesgo"),
+    referencia: (m) => (m ? "<1,7 bajo riesgo" : "<2,3 bajo riesgo"),
     formato: (v) => dec(v, "IRC"),
   },
   { codigo: "ISCM", nombre: "Síndrome Celular", referencia: () => "ISCM-1 ≤ −1", formato: (v) => dec(v, "ISCM") },

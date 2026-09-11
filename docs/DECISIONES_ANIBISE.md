@@ -1441,3 +1441,35 @@ riesgo es de LECTURA: "bajo" y "exceso" se contradicen en lenguaje corriente aun
 e IEHH, y de esos tres solo el PABU aparece en el bloque ANI-BIS-E de la HC.
 
 **PREGUNTADO** en el punto 22 de PENDIENTES_CIENTIFICOS, con tres salidas y sin tomar ninguna.
+
+## P-128 · El IRC de la historia clinica citaba un corte que el motor ya no usaba (2026-09-10)
+
+**Lo saco el taller del modelo, al ponerlas juntas.** La pantalla nueva de `/ani-bis-e` muestra, para cada
+indicador, la REFERENCIA verbatim de su HC al lado de las BANDAS del clasificador que corre. Con las dos en
+la misma fila salto sola: la referencia decia `<1,68 bajo riesgo` y las bandas `bajo <1,70`.
+
+**NO ES UNA DISCREPANCIA SUYA**, que es lo primero que habia que descartar (seria la forma de P-127, que se
+documenta y no se unifica). Su entrega vigente ya dice `<1,7` y `<2,3`. El desfase era NUESTRO.
+
+**QUE PASO:** el 2026-08-29 se portaron sus cortes del IRC por sexo (su respuesta del 28, punto 6): `cIRC`
+paso de 1,68/2,11 (H) y 2,27/2,85 (M) a los publicados 1,7/2,1 y 2,3/2,8, y con ello subio
+`emission_versions.classification`. Se cambio el umbral en el CLASIFICADOR y no en los sitios que lo
+CITAN. Es el barrido incompleto de siempre.
+
+**EL ALCANCE, medido:** afecta a la columna de referencia del bloque ANI-BIS-E de la historia clinica, en
+la franja `[1,68, 1,70)` para hombres y `[2,27, 2,30)` para mujeres. Ahi el documento se contradecia
+consigo mismo: la clasificacion decia "Bajo riesgo" (calculada con 1,70) y la referencia de al lado que el
+bajo riesgo empieza por debajo de 1,68. **Ninguna cifra calculada se movio**, y ningun diagnostico sellado
+cambia: la referencia es texto de display, no entra al motor. Las otras siete filas del bloque se
+cotejaron una a una contra su entrega vigente y coinciden.
+
+**NO SE LE PREGUNTA**, por el precedente que el mismo fijo con la referencia del IFC: nos dijo que
+corrigieramos sus referencias cuando estuvieran desactualizadas. Aqui ni siquiera es suya: es nuestra
+transcripcion la que se quedo atras.
+
+**POR QUE EL CANDADO QUE HABIA NO LO VIO, que es la parte que importa:** `hc-indices-ani.test.ts` comparaba
+nuestras cadenas contra cadenas escritas a mano EN EL PROPIO TEST. Un candado que compara dos copias
+nuestras pasa verde mientras las dos digan lo mismo, aunque las dos digan algo distinto de lo que dice el.
+Se reemplazo por uno que lee la fila `idx:"..."` del bloque ANI-BIS-E en la entrega VIGENTE (derivada del
+directorio, nunca escrita a mano) y compara las dos referencias por sexo, para las ocho filas. Verificado
+con control negativo: con el valor viejo se pone rojo y NOMBRA la fila.
