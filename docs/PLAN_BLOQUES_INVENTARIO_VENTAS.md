@@ -224,13 +224,66 @@ Y además:
 
 ### La fecha de corte
 
-**Es el día en que se corre la purga.** No hay historia que separar. Con dos condiciones:
+**Es el día en que se corre la purga.** No hay historia que separar. Queda en un **acta** con la fecha,
+quién la corrió y la fila de conteos que el propio script produce (ANTES y DESPUÉS en pares, en una sola
+fila: el editor de Supabase muestra solo el último resultado).
 
-- **La purga y la carga inicial van el mismo día**, idealmente en la misma sesión. Si Atlas queda en cero
-  tres semanas, una venta real no tendría contra qué descontar.
-- **Queda en un acta** con la fecha, quién la corrió y los conteos que el propio script produce.
+**La condición de "purga y carga el mismo día" no se puede cumplir**, y conviene decirlo antes de
+correr nada: la carga completa necesita bodega central, lotes que gobiernen el saldo y LUVIA bien
+modelado, que son **Bloque 1**. Ver `scripts/carga-inventario-inicial.sql`.
 
-**Orden:** conteo físico listo → purga → carga inicial → esa fecha es el corte → acta.
+**Y el riesgo que esa condición quería evitar ya existe hoy**, que es lo que la desactiva: Atlas nunca
+reflejó la operación real (108 unidades de un profesional de pruebas contra 500 recibidas y 114
+entregadas entre siete Integrantes), y tampoco podría registrar hoy una venta correcta, porque no hay
+lote, ni bodega central, ni factura al paciente de verdad. **Quedar en cero no quita una capacidad que se
+tenga: quita una ficción.**
+
+**Orden real:** purga → migración 0118 → crear los seis Integrantes → Bloque 1 → carga inicial → acta.
+La fecha de corte sigue siendo la de la purga.
+
+### El inventario inicial, primera tanda
+
+Recibido del laboratorio y repartido, verificado aritméticamente el 2026-09-11:
+
+| Producto | Alegra | Lote | Vence | Recibido | A Integrantes | Queda central |
+|---|---|---|---|---|---|---|
+| MULTICELL BASE | NUT-001 | 19826 | 2028-07-18 | 500 | 114 | **386** |
+| OMEGA COMPLEX | NUT-002 | 20226 | 2028-07-22 | 500 | 114 | **386** |
+| CURCUMIN BIOACTIV | NUT-003 | 20526 | 2028-07-25 | 426 | 114 | **312** |
+| D3-K2 OSTEO | NUT-004 | 19726 | 2028-07-17 | 300 | 114 | **186** |
+| LUVIA (tercero) | — | 04197232 | 2028-07-10 | 84 | 70 | **14** |
+
+**1.284 unidades quedan en bodega central** y hoy no tienen dónde vivir. La cifra queda aquí para que no
+se pierda entre la purga y el Bloque 1.
+
+Los **PVP ya están correctos en el catálogo** (107.100 y 166.600, IVA 19% incluido → base 90.000 y
+140.000, exactas). **LUVIA no tiene PVP declarado**; el modelo comercial usa 90.000 (base 75.630), a
+confirmar.
+
+### Los siete Integrantes: falta crear seis
+
+Verificado contra la nube. Atlas tiene cuatro perfiles profesionales y **solo uno es de esta lista**:
+
+| Perfil en Atlas | Es Integrante de la lista |
+|---|---|
+| Valentina Ramírez Huertas | **Sí** |
+| Gildardo Uribe | No (Dirección Científica) |
+| Santi pruebas | No (prueba) |
+| Profesional Demo | No (prueba; es quien tiene el inventario ficticio) |
+
+**Faltan seis:** Katherine, Diana, María Camila, Ángela, Camilo y Roberto Jarava. Se crean **por la
+aplicación**, no por SQL: un perfil profesional arrastra cuenta, rol y perfil tributario, y crearlo a mano
+deja las tres cosas a medias. **Bloquea la carga inicial más que el conteo físico, y no depende de él.**
+
+### Y al crearlos, cerrar la declaración libre de recepciones
+
+Hoy un profesional puede declarar desde `/mi-inventario` que recibió N unidades **sin nada que lo
+respalde**. Con un solo perfil real eso era inocuo. Con siete, significa que siete personas pueden inventar
+existencias y el saldo de apertura deja de significar algo el mismo día que se carga.
+
+El mecanismo correcto ya existe: **CNV declara la remesa y el Integrante confirma cuánto llegó**, que puede
+diferir. La recepción sin remesa queda entonces como lo que es, una discrepancia que `/faltantes` lista.
+**Cerrar el camino libre va junto con crear los seis perfiles, no después.**
 
 ---
 
