@@ -132,6 +132,16 @@ export const transactionStatus = pgEnum("transaction_status", [
 // es la suma; el efectivo solo define cuanto custodia el integrante.
 export const paymentMethod = pgEnum("payment_method", ["wompi", "efectivo"]);
 
+// ESTADO DE LA FACTURA EN ALEGRA (0129). La distincion que importa es BORRADOR contra EMITIDA: un
+// borrador NO tiene consecutivo, y sin consecutivo no es un documento fiscal, aunque exista en Alegra y
+// se vea igual en su pantalla. Hasta hoy todo lo que Atlas creaba era borrador y nada lo decia.
+export const alegraInvoiceState = pgEnum("alegra_invoice_state", [
+  "pendiente",
+  "borrador",
+  "emitida",
+  "fallida",
+]);
+
 // Tipo de persona del integrante para su estado tributario (retencion en la fuente). Natural o juridica;
 // la tarifa de retencion depende de esto y de si es declarante (lo fija la contadora). Ver el bloque de
 // retencion en BACKLOG.

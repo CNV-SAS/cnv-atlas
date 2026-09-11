@@ -2172,6 +2172,7 @@ export type Database = {
       }
       nutraceuticals: {
         Row: {
+          alegra_env: string | null
           alegra_item_id: string | null
           brand_owner: string | null
           commercial_availability: Database["public"]["Enums"]["nutraceutical_availability"]
@@ -2194,6 +2195,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          alegra_env?: string | null
           alegra_item_id?: string | null
           brand_owner?: string | null
           commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
@@ -2216,6 +2218,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          alegra_env?: string | null
           alegra_item_id?: string | null
           brand_owner?: string | null
           commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
@@ -2537,6 +2540,8 @@ export type Database = {
       }
       patients: {
         Row: {
+          alegra_contact_id: string | null
+          alegra_env: string | null
           created_at: string
           deleted_at: string | null
           document_number: string
@@ -2546,6 +2551,8 @@ export type Database = {
           status: Database["public"]["Enums"]["patient_status"]
         }
         Insert: {
+          alegra_contact_id?: string | null
+          alegra_env?: string | null
           created_at?: string
           deleted_at?: string | null
           document_number: string
@@ -2555,6 +2562,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["patient_status"]
         }
         Update: {
+          alegra_contact_id?: string | null
+          alegra_env?: string | null
           created_at?: string
           deleted_at?: string | null
           document_number?: string
@@ -3820,7 +3829,15 @@ export type Database = {
       }
       transactions: {
         Row: {
+          alegra_attempts: number
+          alegra_emitted_at: string | null
           alegra_invoice_id: string | null
+          alegra_invoice_number: string | null
+          alegra_invoice_state:
+            | Database["public"]["Enums"]["alegra_invoice_state"]
+            | null
+          alegra_last_attempt_at: string | null
+          alegra_last_error: string | null
           amount: number
           created_at: string
           currency: string
@@ -3835,7 +3852,15 @@ export type Database = {
           wompi_transaction_id: string | null
         }
         Insert: {
+          alegra_attempts?: number
+          alegra_emitted_at?: string | null
           alegra_invoice_id?: string | null
+          alegra_invoice_number?: string | null
+          alegra_invoice_state?:
+            | Database["public"]["Enums"]["alegra_invoice_state"]
+            | null
+          alegra_last_attempt_at?: string | null
+          alegra_last_error?: string | null
           amount: number
           created_at?: string
           currency?: string
@@ -3850,7 +3875,15 @@ export type Database = {
           wompi_transaction_id?: string | null
         }
         Update: {
+          alegra_attempts?: number
+          alegra_emitted_at?: string | null
           alegra_invoice_id?: string | null
+          alegra_invoice_number?: string | null
+          alegra_invoice_state?:
+            | Database["public"]["Enums"]["alegra_invoice_state"]
+            | null
+          alegra_last_attempt_at?: string | null
+          alegra_last_error?: string | null
           amount?: number
           created_at?: string
           currency?: string
@@ -4320,6 +4353,7 @@ export type Database = {
         | "timeout"
         | "parse_failed"
         | "provider_error"
+      alegra_invoice_state: "pendiente" | "borrador" | "emitida" | "fallida"
       app_role: "admin" | "direccion" | "soporte" | "obbia" | "professional"
       assignment_status: "active" | "completed" | "breach"
       bank_account_type: "ahorros" | "corriente"
@@ -4557,6 +4591,7 @@ export const Constants = {
         "parse_failed",
         "provider_error",
       ],
+      alegra_invoice_state: ["pendiente", "borrador", "emitida", "fallida"],
       app_role: ["admin", "direccion", "soporte", "obbia", "professional"],
       assignment_status: ["active", "completed", "breach"],
       bank_account_type: ["ahorros", "corriente"],

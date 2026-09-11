@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { createdAt, pk, updatedAt } from "./_columns";
-import { paymentMethod, transactionStatus } from "./enums";
+import { alegraInvoiceState, paymentMethod, transactionStatus } from "./enums";
 import { nutraceuticals } from "./nutraceuticals";
 import { organizations, professionalProfiles } from "./organizations";
 import { patients } from "./patients";
@@ -38,7 +38,19 @@ export const transactions = pgTable(
     amount: numeric("amount").notNull(),
     currency: text("currency").notNull().default("COP"),
     wompiTransactionId: text("wompi_transaction_id"),
+    // Id INTERNO de Alegra. NO es el consecutivo: ese lo asigna Alegra al EMITIR y va en
+    // `alegraInvoiceNumber`. Se guardaban como una sola cosa y son dos.
     alegraInvoiceId: text("alegra_invoice_id"),
+    // ESTADO DE LA FACTURA (0129). Antes se inferia de `alegraInvoiceId IS NULL`, que significaba tres
+    // cosas a la vez: nunca se intento, se intento y fallo, o no aplica.
+    alegraInvoiceState: alegraInvoiceState("alegra_invoice_state"),
+    alegraInvoiceNumber: text("alegra_invoice_number"), // el consecutivo, el que ve la DIAN y el paciente
+    alegraEmittedAt: timestamp("alegra_emitted_at", { withTimezone: true }),
+    // La cola de reintento es una CONSULTA sobre estas columnas, no una tabla: una tabla aparte seria una
+    // segunda fuente del mismo hecho. El contador evita que un error permanente se vuelva un bucle.
+    alegraAttempts: integer("alegra_attempts").notNull().default(0),
+    alegraLastAttemptAt: timestamp("alegra_last_attempt_at", { withTimezone: true }),
+    alegraLastError: text("alegra_last_error"),
     idempotencyKey: text("idempotency_key").notNull().unique(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
