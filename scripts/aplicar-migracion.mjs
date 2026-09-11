@@ -15,7 +15,23 @@ import postgres from "postgres";
 // para aplicarla de forma oficial. Cuando el motivo este arreglado, se aplica con `pnpm db:migrate`, que
 // es lo unico que deja constancia en `drizzle.__drizzle_migrations`. Por eso, por defecto, REVIERTE.
 //
+// SIRVE TAMBIEN PARA LOS SCRIPTS DE OPERACION, no solo para migraciones (2026-09-11). La purga y la
+// carga de inventario son archivos que se corren UNA vez contra la nube y que, hasta ahora, no se podian
+// ensayar en ningun sitio: en local abortan porque los ids son de la nube. Un script que no se ha corrido
+// no esta verificado aunque se haya leido tres veces, y esa leccion ya costo un error de sintaxis que
+// llevaba semanas escrito en el script de carga.
+//
+// DOS AJUSTES PARA QUE PUEDA CON ELLOS:
+//
+//   · PROTOCOLO SIMPLE. El protocolo extendido de postgres.js interpreta el signo de dolar como marcador
+//     de parametro, asi que se atraganta con cualquier funcion plpgsql o bloque "do" con comillas de
+//     dolar. Con el protocolo simple, el archivo viaja tal cual.
+//   · SE QUITAN SU "begin;" Y SU "commit;". Un script de operacion trae los suyos porque se pega en el
+//     editor de Supabase; aqui la transaccion la pone esta herramienta, y anidarlos haria que el commit
+//     del archivo CONFIRMARA lo que el ensayo queria revertir. Es lo contrario de lo que promete.
+//
 // USO:
+//   node --env-file=.env.local scripts/aplicar-migracion.mjs scripts/carga-inventario-inicial.sql
 //   node --env-file=.env.local scripts/aplicar-migracion.mjs drizzle/0111_un_pase_qr_a_la_vez.sql
 //   (contra la nube: exportar DATABASE_URL de la nube y correrlo sin --env-file)
 //
@@ -42,7 +58,12 @@ console.log("");
 let salida = 0;
 try {
   await sql.begin(async (tx) => {
-    await tx.unsafe(readFileSync(archivo, "utf8"));
+    // El "begin;"/"commit;" propio del archivo se retira: la transaccion la pone esta herramienta, y
+    // dejar el commit del archivo confirmaria lo que el ensayo iba a revertir.
+    const contenido = readFileSync(archivo, "utf8")
+      .replace(/^[ 	]*begin[ 	]*;[ 	]*$/gim, "")
+      .replace(/^[ 	]*commit[ 	]*;[ 	]*$/gim, "");
+    await tx.unsafe(contenido).simple();
     console.log("La migracion corrio SIN ERRORES.");
     if (!confirmar) {
       console.log("Revirtiendo (ensayo). Para aplicarla de verdad: pnpm db:migrate");
