@@ -95,7 +95,11 @@ describe.skipIf(!HAS_DB)("sesion de conteo: deteccion y apertura de casos (BD re
   // Saldo FRESCO del producto justo antes de cada conteo: las aserciones se computan contra el saldo real
   // del momento, no contra el snapshot de beforeAll, para no depender de que nada mas lo haya movido.
   async function currentSaldo(): Promise<number> {
-    const [inv] = await db.select({ s: schema.nutraceuticalInventory.stockQuantity }).from(schema.nutraceuticalInventory).where(and(eq(schema.nutraceuticalInventory.professionalId, profId), eq(schema.nutraceuticalInventory.nutraceuticalId, nutraId)));
+    // SUMA DE TODOS LOS LOTES, la misma lectura que hace `recordCount` desde la migracion 0121. Tomar
+    // `[0]` devolvia el saldo de UN lote, asi que el test comparaba su diff contra una fraccion del saldo
+    // y abria faltantes que no existian. Las dos lecturas tienen que ser la misma o el test mide otra cosa.
+    const { sql: d } = await import("drizzle-orm");
+    const [inv] = await db.execute(d`select coalesce(sum(stock_quantity),0)::int as s from nutraceutical_inventory where professional_id = ${profId} and nutraceutical_id = ${nutraId}`);
     return inv ? Number(inv.s) : 0;
   }
 

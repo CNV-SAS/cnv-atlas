@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sum } from "drizzle-orm";
 
 import { addBusinessDays } from "@/core/dates/colombia-business-days";
 import { db } from "@/db";
@@ -14,6 +14,8 @@ import {
   nutraceuticals,
   professionalProfiles,
   profiles,
+  inventoryLocations,
+  lots,
 } from "@/db/schema";
 
 // Escritura del conteo fisico (T3b-3 ST2). TRANSACCIONAL (Drizzle owner, atomico): la sesion, sus lineas y
@@ -51,8 +53,14 @@ export async function recordCount(input: {
 
     for (const line of input.lines) {
       // Snapshot del saldo del sistema al momento del conteo.
+      //
+      // SUMA DE TODOS LOS LOTES desde la migracion 0121. Antes habia UNA fila por (profesional, producto)
+      // y `[0]` era el saldo; ahora hay una por lote, asi que tomar la primera daria el saldo de un lote
+      // cualquiera y el conteo fisico se compararia contra una fraccion de lo que hay en la vitrina.
+      // Eso abriria FALTANTES FALSOS, que es lo peor que puede hacer este codigo: un faltante tiene
+      // consecuencia economica para el Integrante.
       const [inv] = await tx
-        .select({ stock: nutraceuticalInventory.stockQuantity })
+        .select({ stock: sum(nutraceuticalInventory.stockQuantity) })
         .from(nutraceuticalInventory)
         .where(
           and(
@@ -60,7 +68,7 @@ export async function recordCount(input: {
             eq(nutraceuticalInventory.nutraceuticalId, line.nutraceuticalId),
           ),
         );
-      const systemQty = inv?.stock ?? 0;
+      const systemQty = Number(inv?.stock ?? 0);
 
       await tx.insert(nutraceuticalCountLines).values({
         sessionId: session.id,
@@ -188,8 +196,37 @@ export async function resolveSobrante(input: {
       .limit(1);
     if (already) return { ok: false, message: "Este sobrante ya se resolvió." };
 
+    // DESDE LA MIGRACION 0121 el movimiento va contra una UBICACION y un LOTE. El sobrante es producto
+    // que aparecio de mas en la vitrina del Integrante, asi que la ubicacion es la suya; el lote, el que
+    // la linea de conteo declaro, y si no, el que vence antes de ese producto ahi (FEFO, el mismo criterio
+    // con el que se entrega). Sin lote no se resuelve: un sobrante contra un lote inventado seria peor que
+    // un sobrante sin resolver.
+    const [loc] = await tx
+      .select({ id: inventoryLocations.id })
+      .from(inventoryLocations)
+      .where(eq(inventoryLocations.professionalId, line.professionalId))
+      .limit(1);
+    if (!loc) return { ok: false, message: "Ese Integrante no tiene ubicación de inventario." };
+
+    const codigo = (line.lote ?? "").trim();
+    const [lote] = codigo
+      ? await tx
+          .select({ id: lots.id })
+          .from(lots)
+          .where(and(eq(lots.nutraceuticalId, line.nutraceuticalId), eq(lots.code, codigo)))
+          .limit(1)
+      : await tx
+          .select({ id: lots.id })
+          .from(lots)
+          .where(eq(lots.nutraceuticalId, line.nutraceuticalId))
+          .orderBy(lots.expiresOn)
+          .limit(1);
+    if (!lote) return { ok: false, message: "No hay lote de ese producto contra el cual resolver el sobrante." };
+
     await tx.insert(nutraceuticalStockMovements).values({
       professionalId: line.professionalId,
+      locationId: loc.id,
+      lotId: lote.id,
       nutraceuticalId: line.nutraceuticalId,
       delta: extra, // positivo: sube el saldo
       type: "conciliacion",

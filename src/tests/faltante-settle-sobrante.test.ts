@@ -32,9 +32,14 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
   const sessions: string[] = [];
 
   async function saldo(): Promise<number> {
-    const [r] = await db.select({ s: schema.nutraceuticalInventory.stockQuantity }).from(schema.nutraceuticalInventory).where(and(eq(schema.nutraceuticalInventory.professionalId, profId), eq(schema.nutraceuticalInventory.nutraceuticalId, nutraId)));
+    // SUMA DE TODOS LOS LOTES. Desde la migracion 0121 hay una fila por lote, asi que `[0]` devolvia el
+    // saldo de UNO de ellos y no el del producto. El test no mide lotes, mide que el cierre ajuste.
+    const { sql: d } = await import("drizzle-orm");
+    const [r] = await db.execute(d`select coalesce(sum(stock_quantity),0)::int as s from nutraceutical_inventory where professional_id = ${profId} and nutraceutical_id = ${nutraId}`);
     return r ? Number(r.s) : 0;
   }
+
+
 
   beforeAll(async () => {
     ({ db } = await import("@/db"));
@@ -86,7 +91,8 @@ describe.skipIf(!HAS_DB)("faltante ST5: settle al cerrar y resolucion de sobrant
     }
     // Recompute EXCLUYENDO type='remesa' (E2): el trigger del saldo no cuenta la remesa CNV->integrante;
     // sumarla aqui corromperia el cache respecto del trigger (mismo fix que nutra-inventory.test).
-    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.professional_id = i.professional_id and m.nutraceutical_id = i.nutraceutical_id and m.type <> 'remesa'), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}`);
+    await db.execute(dsql`update nutraceutical_inventory i set stock_quantity = coalesce((select sum(m.delta) from nutraceutical_stock_movements m where m.location_id = i.location_id and m.nutraceutical_id = i.nutraceutical_id and m.lot_id = i.lot_id and m.type <> 'remesa'), 0) where i.professional_id = ${profId} and i.nutraceutical_id = ${nutraId}
+      and exists (select 1 from nutraceutical_stock_movements m2 where m2.location_id = i.location_id and m2.nutraceutical_id = i.nutraceutical_id and m2.lot_id = i.lot_id)`);
     await db.execute(dsql`set session_replication_role = default`);
   });
 

@@ -43,6 +43,8 @@ describe.skipIf(!HAS_DB)("faltante: gate de dos personas (BD real)", () => {
     return c;
   }
 
+
+
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");

@@ -848,6 +848,20 @@
       "when": 1790381786099,
       "tag": "0120_cimientos_del_portafolio",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1790468186099,
+      "tag": "0121_saldo_por_ubicacion_y_lote",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1790554586099,
+      "tag": "0122_faltante_settle_con_lote",
+      "breakpoints": true
     }
   ]
 }

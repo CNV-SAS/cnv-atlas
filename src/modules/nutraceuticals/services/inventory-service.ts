@@ -1,4 +1,9 @@
 import "server-only";
+import {
+  loteParaEntregar,
+  resolverLoteDeRecepcion,
+  ubicacionDelProfesional,
+} from "./ubicacion-y-lote";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -112,8 +117,22 @@ export async function recordReception(input: {
   const profId = await ownProfessionalId(supabase, input.userId);
   if (!profId) return { ok: false, message: "No tienes un perfil profesional." };
 
+  // DESDE LA MIGRACION 0121 el saldo va por (ubicacion, producto, lote), asi que una recepcion necesita
+  // las dos cosas. La ubicacion del Integrante es unica; el lote se resuelve del codigo que escribio (y se
+  // crea si no existia: esta reconociendo mercancia que TIENE, negarsela alejaria el saldo de la vitrina).
+  const locationId = await ubicacionDelProfesional(supabase, profId);
+  if (!locationId) return { ok: false, message: "No tienes una ubicación de inventario asignada." };
+  const { lotId, message: msgLote } = await resolverLoteDeRecepcion(
+    supabase,
+    input.nutraceuticalId,
+    input.lote,
+  );
+  if (!lotId) return { ok: false, message: msgLote ?? "No se pudo resolver el lote." };
+
   const { error } = await supabase.from("nutraceutical_stock_movements").insert({
     professional_id: profId,
+    location_id: locationId,
+    lot_id: lotId,
     nutraceutical_id: input.nutraceuticalId,
     delta: input.quantity, // recepcion: positivo
     type: "recepcion",
@@ -199,9 +218,37 @@ export async function recordDespacho(input: {
     return { ok: false, message: `"${prod.name}" no se entrega en consultorio (el paciente lo compra en la tienda).` };
   }
 
-  // Movimiento despacho: -N, ligado al tratamiento. El trigger descuenta el saldo (permite negativo).
+  // ═══ DE QUE LOTE SALE: EL QUE VENCE ANTES (FEFO) ═══
+  //
+  // Con el saldo por lote, entregar obliga a elegir uno, y NO se le pregunta al profesional: en un
+  // perecedero la respuesta correcta siempre es la misma, y preguntarla abre la puerta a que el producto
+  // viejo se quede en la vitrina hasta vencerse. Ver `ubicacion-y-lote`.
+  const locationId = await ubicacionDelProfesional(supabase, profId);
+  if (!locationId) return { ok: false, message: "No tienes una ubicación de inventario asignada." };
+  const { lotId, disponible } = await loteParaEntregar(
+    supabase,
+    locationId,
+    input.nutraceuticalId,
+    input.quantity,
+  );
+  if (!lotId) {
+    // SE AVISA EN VEZ DE REPARTIR EN SILENCIO. Si hay unidades pero en varios lotes, partir la entrega
+    // entre dos es otra decision (y otra fila), y tomarla sola aqui escondería que el saldo esta
+    // fragmentado, que es justo lo que hay que ver.
+    return {
+      ok: false,
+      message:
+        disponible >= input.quantity
+          ? `Tienes ${disponible} unidades pero repartidas en varios lotes, y ninguno alcanza para ${input.quantity}. Entrégalas por separado.`
+          : `No tienes existencias suficientes: quedan ${disponible}.`,
+    };
+  }
+
+  // Movimiento despacho: -N, ligado al tratamiento. El trigger descuenta el saldo.
   const { error } = await supabase.from("nutraceutical_stock_movements").insert({
     professional_id: profId,
+    location_id: locationId,
+    lot_id: lotId,
     nutraceutical_id: input.nutraceuticalId,
     delta: -input.quantity,
     type: "despacho",

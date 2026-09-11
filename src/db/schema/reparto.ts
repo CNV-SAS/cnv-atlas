@@ -1,4 +1,4 @@
-import { date, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 import { createdAt, pk } from "./_columns";
@@ -112,3 +112,45 @@ export const revenueSplits = pgTable(
       .where(sql`valid_to IS NULL`),
   ],
 );
+
+// ═══ UBICACIONES Y LOTES (migracion 0120/0121) ═══
+//
+// El saldo dejo de llevarse por (profesional, producto) y pasa a (UBICACION, producto, LOTE). La ubicacion
+// es la respuesta a "¿donde esta?" y la central no tiene dueño, que es lo que permite registrar las
+// unidades de CNV. El lote es el principio 8: sin el no hay trazabilidad hasta el paciente.
+
+export const suppliers = pgTable("suppliers", {
+  id: pk(),
+  name: text("name").notNull(),
+  taxIdType: text("tax_id_type"),
+  taxIdNumber: text("tax_id_number"),
+  taxIdDv: text("tax_id_dv"),
+  taxIsVatResponsible: boolean("tax_is_vat_responsible"),
+  taxIsWithholdingAgent: boolean("tax_is_withholding_agent"),
+  alegraContactId: text("alegra_contact_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: createdAt(),
+});
+
+export const inventoryLocations = pgTable("inventory_locations", {
+  id: pk(),
+  name: text("name").notNull(),
+  /** 'central' | 'integrante'. La central es la unica sin dueño (restriccion en la migracion). */
+  kind: text("kind").notNull(),
+  professionalId: uuid("professional_id").references(() => professionalProfiles.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const lots = pgTable("lots", {
+  id: pk(),
+  nutraceuticalId: uuid("nutraceutical_id")
+    .notNull()
+    .references(() => nutraceuticals.id),
+  code: text("code").notNull(),
+  expiresOn: date("expires_on").notNull(),
+  receivedOn: date("received_on"),
+  notes: text("notes"),
+  createdAt: createdAt(),
+});
