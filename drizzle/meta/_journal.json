@@ -897,6 +897,13 @@
       "when": 1790986586099,
       "tag": "0127_yuxtaposicion_y_retiro_de_equivalencias",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791072986099,
+      "tag": "0128_ficha_de_luvia",
+      "breakpoints": true
     }
   ]
 }
