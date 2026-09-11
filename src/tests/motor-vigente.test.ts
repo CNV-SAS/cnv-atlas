@@ -65,9 +65,37 @@ describe("las cuatro versiones salen de su fuente, no de un texto", () => {
     expect(m.desde, `falta la fecha de la versión ${ENGINE_VERSION}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("la marca de calibracion provisional se deriva del sello, no de una constante suelta", () => {
+  it("la calibracion provisional NO se declara aqui: vive donde se lee la cifra", () => {
+    // ═══ SANTIAGO, 2026-09-10: este aviso se va de esta pantalla ═══
+    //
+    // Ya sale en la tabla de composicion, junto a la EB y al IAE, que es donde el profesional lo necesita.
+    // Y ALLI ESTA MEJOR PUESTO, que es la razon de fondo: la tabla lo lee del campo SELLADO de ESE
+    // diagnostico, asi que dice la verdad de la cifra que tiene al lado. Aqui salia de una constante, o
+    // sea la calibracion de HOY, que para un diagnostico de agosto podria ser otra. Dos avisos del mismo
+    // hecho y el de aqui capaz de contradecir al de alla.
+    //
+    // ESTE CASO IMPIDE QUE VUELVA. Y comprueba el otro lado, que es lo que lo hace util: que el aviso
+    // siga EXISTIENDO donde si corresponde. Retirar de aqui y que se caiga de alla seria peor que
+    // tenerlo repetido.
+    const modulo = readFileSync("src/modules/model-registry/motor-vigente.ts", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(modulo).not.toContain("isProvisionalCalibration");
+    const tabla = readFileSync("src/modules/diagnoses/components/evaluation-results.tsx", "utf8");
+    expect(tabla, "el aviso de calibración provisional desapareció de la tabla").toContain(
+      "calibración provisional",
+    );
+  });
+
+  it("y la explicacion de la version se escribe para quien la lee, no para nosotros", () => {
+    // Decia "es un renombre de frontera, no un cambio de ciencia". Un profesional que lo lee se pregunta
+    // que renombre y por que se lo cuentan. La historia vive en `version.ts` y en docs/VERSIONES.md.
     const m = motorVigente(REGISTRO);
-    expect(m.calibracionProvisional).toBe(m.calibracion.endsWith("-provisional"));
+    for (const interno of ["renombre", "frontera", "anibise-"]) {
+      expect(m.queEs.toLowerCase(), `la explicación volvió a contar algo interno: ${interno}`).not.toContain(
+        interno,
+      );
+    }
   });
 });
 

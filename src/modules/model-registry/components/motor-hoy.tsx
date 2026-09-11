@@ -15,8 +15,12 @@ import { motorVigente } from "../motor-vigente";
 // consulta; el pie del diagnostico solo traza.
 //
 // NO LLEVA COLOR CLINICO. El verde, el ambar y el rojo codifican severidad del PACIENTE; una version de
-// motor no tiene severidad. La unica marca de atencion es la de calibracion provisional, y va en el tono
-// de atencion de la interfaz, no en el del semaforo.
+// motor no tiene severidad.
+//
+// Y NO REPITE EL AVISO DE CALIBRACION PROVISIONAL (Santiago, 2026-09-10): ya sale en la tabla de
+// composicion, junto a la EB y al IAE, que es donde el profesional lo necesita. Y alli esta MEJOR puesto,
+// porque lo lee del campo SELLADO de ese diagnostico; aqui salia de una constante, o sea la calibracion de
+// HOY, que para un diagnostico de agosto podria ser otra. Ver la nota en `motor-vigente.ts`.
 
 export async function MotorHoy() {
   const motor = motorVigente(await leerVersionDelModelo());
@@ -57,17 +61,6 @@ export async function MotorHoy() {
         <p className="border border-[var(--attention)]/40 bg-[var(--attention-bg)]/40 px-3 py-2 text-sm text-foreground">
           El registro del modelo no está sembrado en esta base. Hasta que lo esté, no se pueden sellar
           diagnósticos.
-        </p>
-      ) : null}
-
-      {motor.calibracionProvisional ? (
-        // LA CALIBRACION PROVISIONAL YA SE MARCA DENTRO DE UN DIAGNOSTICO, pero solo ahi: para saber si
-        // la EB-BIS que se esta emitiendo hoy sale de una calibracion definitiva habia que abrir un
-        // paciente. Es informacion del MOTOR, no de un paciente.
-        <p className="border border-[var(--attention)]/40 bg-[var(--attention-bg)]/40 px-3 py-2 text-sm text-foreground">
-          <span className="font-medium">La EB-BIS corre con una calibración provisional.</span> Se
-          recalibra cuando haya población suficiente; ese día los diagnósticos nuevos se sellan con la
-          calibración nueva y los ya emitidos conservan esta.
         </p>
       ) : null}
     </section>

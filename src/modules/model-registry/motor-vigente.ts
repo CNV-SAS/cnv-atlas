@@ -1,8 +1,4 @@
 import { ENGINE_VERSION, PROTOCOL_ENGINE_VERSION } from "@/clinical-engine";
-import {
-  buildEmissionVersions,
-  isProvisionalCalibration,
-} from "@/modules/clinical-pipeline/emission-versions";
 
 // ═══ CON QUE SE ESTA DIAGNOSTICANDO HOY (Santiago, 2026-09-10) ═══
 //
@@ -56,7 +52,14 @@ export type VersionDeclarada = {
   gobierna: string;
 };
 
-const CALIBRACION = buildEmissionVersions().calibration;
+// LA CALIBRACION PROVISIONAL NO SE DECLARA AQUI (Santiago, 2026-09-10). Se retira, y la razon es de
+// SITIO, no de importancia: ya sale en la tabla de composicion, junto a la EB y al IAE, que es donde el
+// profesional la necesita (al leer la cifra que esa calibracion produjo).
+//
+// Y ALLI ADEMAS ESTA MEJOR PUESTA: la tabla la lee del campo SELLADO de ESE diagnostico
+// (`emission_versions.calibration`), asi que dice la verdad de la cifra que tiene al lado. Aqui salia de
+// una constante, o sea la calibracion de HOY, que para un diagnostico de agosto podria ser otra. Dos
+// avisos del mismo hecho, y el de aqui capaz de contradecir al de alla.
 
 /**
  * QUE SIGNIFICA LA VERSION QUE CORRE HOY.
@@ -72,11 +75,12 @@ const CALIBRACION = buildEmissionVersions().calibration;
  * afirma un estado sin derivarlo miente el dia que el estado cambia; este no puede quedarse solo.
  */
 const QUE_ES_ESTA_VERSION: Record<string, { texto: string; fecha: string }> = {
-  "1.0.0": {
-    texto:
-      "Primera versión oficial del modelo. Es un renombre de frontera, no un cambio de ciencia: no se movió ninguna cifra al hacerlo.",
-    fecha: "2026-09-09",
-  },
+  // SE ESCRIBE PARA QUIEN LA LEE, NO PARA NOSOTROS (Santiago, 2026-09-10). Decia "es un renombre de
+  // frontera, no un cambio de ciencia", y eso es conversacion interna: un profesional que lo lee se
+  // pregunta que renombre y por que se lo cuentan. Lo que el necesita saber es si esta al dia y desde
+  // cuando. La historia del renombre no se pierde: vive en `version.ts` y en docs/VERSIONES.md, que es
+  // donde la busca quien mantiene el motor.
+  "1.0.0": { texto: "Primera versión oficial del modelo.", fecha: "2026-09-09" },
 };
 
 export type MotorVigente = {
@@ -84,8 +88,6 @@ export type MotorVigente = {
   queEs: string;
   /** Fecha de la versión vigente, en ISO. La pantalla la formatea. */
   desde: string;
-  calibracion: string;
-  calibracionProvisional: boolean;
   /** El registro del modelo no está sembrado: se dice, no se rellena con un número inventado. */
   sinRegistro: boolean;
 };
@@ -115,8 +117,6 @@ export function motorVigente(registro: { modelo: string; reglas: string } | null
     // version que corre. El candado es lo que impide que ese caso llegue a produccion.
     queEs: entrada?.texto ?? "",
     desde: entrada?.fecha ?? "",
-    calibracion: CALIBRACION,
-    calibracionProvisional: isProvisionalCalibration({ calibration: CALIBRACION }),
     sinRegistro: registro == null,
   };
 }
