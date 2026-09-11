@@ -587,35 +587,45 @@ carnes rojas), y el flip de `LE8_MAPEO_CORREGIDO` (pregunta 2, cambia diagnostic
 `docs/entregas/RONDA_GILDARDO_2026-08-28.md`. **Abierta porque la del 26 ya salio** (27-ago) y a un
 documento entregado no se le agrega.
 
-**P-66 · RETIRADA EL 2026-09-11, y la entrada se conserva porque el error es la leccion.**
+**P-66 · CERRADA EL 2026-09-11. La cita SI era del asesor legal; lo que fallo fue como se uso y como la
+buscamos. La entrada se conserva entera porque tiene DOS errores nuestros y ninguno es el que parecia.**
 
 Decia: *"El asesor legal CONTRADICE su instruccion del alergeno... el legal dice que mostrarlo NO basta
 porque el sistema ya tiene el dato (`un sistema que tenia el dato y no lo uso es mucho mas dificil de
 defender que uno que nunca lo tuvo`) y recomienda bloqueo activo con confirmacion afirmativa y registro."*
 
-**ESA OPINION DEL ASESOR LEGAL NO EXISTE, y lo verificamos cuando el lo señalo.** Barrido completo:
+**LA CITA ES REAL.** La escribio en la consulta sobre responsabilidad en la venta de producto de tercero,
+y ahi recomendo el bloqueo activo. La §7.7 del modelo comercial no se invento nada.
 
-- La frase entrecomillada aparece **en un solo sitio de todo el repositorio: aqui**. No tiene fuente.
-- **`DECISIONES_LEGALES.md`**, que es donde se registra lo que el legal decide, **no menciona alergenos
-  ni una sola vez** (ni "alergia", ni "gluten", ni "avena", ni "LUVIA").
-- Las **unicas tres consultas legales** que existen son acceso del paciente a su historia clinica, etnia
-  y categorias de etnia. Ninguna es esta.
-- Su ronda del 28 no contiene la pregunta: contiene **lo contrario**, que la de LUVIA se habia caido.
+**ERROR 1 (el del 2026-09-11, y es nuestro): dijimos que la opinion no existia.** Al pedirnos Gildardo que
+la buscaramos, barrimos `DECISIONES_LEGALES.md`, las tres `CONSULTA_LEGAL_*` y las rondas, no la
+encontramos, y **concluimos que no se habia dicho**. Por que fallo, en tres capas:
 
-**De donde salio de verdad la exigencia de bloqueo activo: de la §7.7 del modelo comercial**, un
-documento nuestro que si paso revision legal. Es una fuente real, pero **no es una opinion del asesor
-sobre el alergeno**, y llamarla asi convirtio un texto propio en un dictamen externo que nadie podia
-cotejar. Ese conflicto sigue vivo y va al legal por escrito
-(`docs/entregas/RESUMEN_LEGAL_ALERGENO_LUVIA.md`); lo que se retira es la ATRIBUCION, no el problema.
+- El indice legal cubria SOLO consultas de DATOS; esta era COMERCIAL y nunca se indexo. **Un indice
+  mantenido a mano no puede probar una negacion:** que algo no este dice "no esta indexado".
+- La respuesta del asesor **nunca se archivo como documento**. El grep de la frase solo podia demostrar
+  "este texto no esta en el repositorio", y lo leimos como "esto nunca se dijo".
+- **Y teniamos la prueba en la mano y la clasificamos mal.** La §7.7 ERA el registro de su respuesta.
+  Dijimos "es un documento nuestro", que es cierto del ARCHIVO y falso del CONTENIDO. **Un documento
+  nuestro puede llevar la respuesta de un tercero.** Esta es la capa que de verdad enseña.
 
-**LO QUE LA ENTRADA HIZO, que es el daño.** Se escribio como pendiente, paso a la lista de "sigue
-esperando" de la ronda del 1 de septiembre, y de ahi volvio a la consulta del 11 como si Gildardo
-debiera algo. Textual suyo: *"asi es como una pregunta cerrada vuelve a figurar como pendiente"*. Tres
-vueltas de la misma pieza cerrada, con un producto retenido detras las dos ultimas.
+El arreglo estructural quedo en `DECISIONES_LEGALES.md` (regla de completitud, tres reglas), no aqui.
 
-**Y el parrafo final de la entrada era falso tambien:** decia *"LUVIA no esta construida, asi que no hay
-nada que deshacer"*. Para el 11 de septiembre LUVIA estaba cargada y retenida por esta misma pregunta.
-Una nota que afirma un estado no envejece sola: envejece **callada**.
+**ERROR 2 (el original, de agosto, y sigue siendo real): la entrada se escribio como PENDIENTE DE
+GILDARDO.** No lo era. Lo que habia era un conflicto entre su instruccion clinica y un dictamen legal, o
+sea **una decision de CNV**, no una pregunta suya. Escrita como pendiente, paso a la lista de "sigue
+esperando" del 1 de septiembre y de ahi a la consulta del 11, y el recibio TRES veces una pieza que habia
+cerrado. Textual suyo: *"asi es como una pregunta cerrada vuelve a figurar como pendiente"*.
+
+**Y el parrafo final de la entrada era falso:** decia *"LUVIA no esta construida, asi que no hay nada que
+deshacer"*. Para el 11 de septiembre estaba cargada y retenida por esta misma pregunta. Una nota que
+afirma un estado no envejece sola: envejece **callada**.
+
+**COMO CERRO, y no gano ninguno de los dos.** El asesor rectifico el 11 de septiembre: su principio
+colapsaba **usar** el dato y **bloquear** con el dato. Bloquear exige una inferencia clinica, y un
+sistema que infiere clinicamente contradice el Anexo 3 y el consentimiento ya firmado. **Se construye la
+YUXTAPOSICION** (las dos declaraciones juntas, sin clasificar ni inferir), que cabe dentro de lo que
+Gildardo mando: el nego el cruce y la inferencia, no mostrar. Ver `MODELO_COMERCIAL...` §7.7.
 
 **P-67 · "Meta kg": divergencia visible con su archivo, y NO se porta.** Su tabla de composicion tiene
 un campo editable "Meta kg" en la fila de Peso; Atlas deja esa celda vacia. La razon: en Atlas el peso

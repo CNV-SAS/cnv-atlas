@@ -1,126 +1,106 @@
-# El alérgeno de LUVIA: dos criterios opuestos, y la decisión no es clínica
+# El alérgeno de LUVIA: consulta al asesor legal y su respuesta
 
-**De:** Equipo Atlas · **Para:** asesor legal de CNV, vía Santiago Uribe
-**Fecha:** 11 de septiembre de 2026
+**Consulta:** equipo Atlas, vía Santiago Uribe · **Respuesta:** asesor legal de CNV
+**Fecha:** 11 de septiembre de 2026 · **Estado: CERRADA.** Lo decidido está implementado.
 
----
-
-## Para qué es este documento
-
-Atlas tiene delante **dos instrucciones que se contradicen** sobre un mismo control, y las dos vienen de
-dentro de CNV. Una es de Dirección Científica y gobierna el contenido clínico. La otra está en un
-documento nuestro que pasó revisión legal.
-
-**No la estamos resolviendo nosotros, y queremos decir por qué:** lo que está en juego no es qué es
-correcto clínicamente, sino **hasta dónde responde CNV frente al consumidor** si un paciente con
-intolerancia declarada recibe un producto que contiene su alérgeno. Eso es tu terreno, no el nuestro.
-
-**Mientras tanto Atlas opera con el criterio de Dirección Científica**, que es la autoridad sobre el
-contenido clínico del modelo. Si tu respuesta va en el otro sentido, el cambio está acotado y lo decimos
-al final.
+**Este archivo existe porque su ausencia costó una acusación falsa.** La respuesta anterior del asesor
+sobre este mismo tema llegó, se destiló directamente en la §7.7 del modelo comercial y **nunca se archivó
+como documento**. Dos semanas después, al buscarla, no se encontró y se concluyó que no existía. La regla
+que sale de ahí vive en `DECISIONES_LEGALES.md`: **toda respuesta del asesor se archiva antes de
+destilarla en ningún otro lado.**
 
 ---
 
-## El hecho, en cuatro líneas
+## Lo que se consultó
 
-- **LUVIA** es un producto de tercero (Centro de Nutrición Integral Katherine Ruiz S.A.S.), en
-  consignación, ya en poder de siete Integrantes: **84 unidades**.
-- **Su ficha declara avena.**
-- **Atlas captura las alergias e intolerancias que el paciente declara**, en dos preguntas de la encuesta
-  (P43 alergias alimentarias, P44 intolerancias), firmadas con consentimiento e identidad verificada.
-- O sea: **el sistema tiene los dos datos** y hoy **no los cruza**.
+Atlas tenía delante dos instrucciones que se contradecían sobre un mismo control.
 
----
+**La §7.7 del modelo comercial**, redactada sobre un dictamen suyo anterior, exigía que Atlas **bloqueara
+activamente** la recomendación de un producto con alérgenos a un paciente con intolerancia declarada, con
+confirmación afirmativa del profesional y registro de quién la dio. El principio: *"ante un reclamo, un
+sistema que tenía el dato y no lo usó es mucho más difícil de defender que uno que nunca lo tuvo."*
 
-## Lo que dice el modelo comercial, y con qué razón
+**Dirección Científica instruyó lo contrario**, dos veces (27 de agosto y 11 de septiembre): sin bloqueo,
+sin confirmación y sin registro, porque traducir un ingrediente a una alergia es contenido clínico que su
+modelo no tiene, y porque *"un bloqueo que parece proteger y no protege no le quita la responsabilidad a
+CNV: la esconde detrás de una pantalla que el profesional aprende a creerle."*
 
-`MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md`, §7.7, documento que pasó revisión legal:
-
-> **Alérgenos.** LUVIA contiene avena, y por tanto gluten. Atlas ya captura las alergias declaradas del
-> paciente, de modo que existe un deber reforzado: no basta mostrar el alérgeno, el sistema debe
-> **bloquear activamente** la recomendación a un paciente con intolerancia declarada, exigiendo
-> confirmación afirmativa del profesional para continuar y registrando quién la dio. Este control debe
-> ser obligatorio para todo producto de tercero con alérgenos declarados.
-
-**La razón que lo sostiene** es la responsabilidad solidaria de la Ley 1480 en una cadena de cuatro
-eslabones, agravada por la doctrina del fabricante aparente: CNV entrega el producto, lo factura y lo
-presenta dentro de su propio plan de tratamiento. El argumento de fondo es que **un sistema que tenía el
-dato y no lo usó es más difícil de defender que uno que nunca lo tuvo**.
-
-**Una precisión honesta sobre esa frase, porque nos importa que llegue limpia:** durante dos semanas
-circuló internamente atribuida a ti, y **no la dijiste**. La verificamos a petición de Dirección
-Científica: no aparece en ninguna consulta legal ni en el registro de decisiones legales. Es un argumento
-**nuestro**, escrito en el modelo comercial. Te lo pasamos como lo que es, una tesis que te pedimos que
-confirmes o corrijas, no como algo que ya hubieras dicho.
+El hecho concreto: **LUVIA** es producto de tercero en consignación, su ficha declara **avena**, hay
+**84 unidades** ya repartidas entre siete Integrantes, y Atlas captura las alergias e intolerancias que el
+paciente declara en la P43 y la P44. **El sistema tiene los dos datos.**
 
 ---
 
-## Lo que dice Dirección Científica, y con qué razón
+## La respuesta: el principio confundía dos cosas
 
-Gildardo Uribe, respuesta del 11 de septiembre de 2026, ratificando su instrucción del 27 de agosto:
+El asesor **rectificó su propia recomendación**, y el argumento es el que decide:
 
-> **No se bloquea nada, no se exige confirmación y no se registra quién la dio.**
+> El principio colapsaba dos cosas distintas: **USAR el dato** y **BLOQUEAR con el dato.**
 
-Su criterio, en tres piezas:
+Bloquear obliga a Atlas a afirmar que la alergia del paciente y el alérgeno del producto son
+incompatibles. **Eso es una inferencia clínica.** Y un sistema que infiere clínicamente **contradice el
+Anexo 3 y el consentimiento que los pacientes ya firmaron**, donde Atlas declara que no diagnostica y que
+el profesional interpreta.
 
-1. **Traducir un ingrediente a una alergia es contenido clínico que su archivo no tiene.** «Avena implica
-   gluten» no es una regla del modelo ANI-BIS-E; sería una regla que nos inventamos nosotros.
-2. **El reparto de funciones es deliberado.** El sistema muestra las alergias tal como el paciente las
-   declaró; **el profesional indaga cuáles y decide cómo las trata**, y revisa el plan antes de
-   entregarlo, como cualquier documento que firma.
-3. **Y el argumento que hay que leer dos veces, porque es el bueno**, y es nuestro, de un análisis que
-   escribimos el 26 de agosto y que él nos devuelve:
+**Construir el bloqueo no cerraría un flanco: abriría uno nuevo contra documentos ya firmados.**
 
-> Un filtro así **no detecta un alimento que contiene el alérgeno sin nombrarlo**. Un bloqueo que parece
-> proteger y no protege no le quita la responsabilidad a CNV: **la esconde detrás de una pantalla que el
-> profesional aprende a creerle.**
+La yuxtaposición usa el dato sin inferir con él, que es lo que el principio original pedía de verdad.
 
-**Por qué esto no es una objeción menor.** El control que describe la §7.7 cruzaría el alérgeno
-**declarado en la ficha** contra la alergia **declarada por el paciente**. Es decir: funciona cuando el
-producto nombra el alérgeno, y no funciona cuando no lo nombra, que es precisamente el caso peligroso. Y
-un control que salta en muchas consultas se contesta en automático a los quince días. **La pregunta
-jurídica no es solo si el control existe, es si un control parcial mejora o empeora la posición de CNV
-frente a un juez.**
+### El texto que reemplaza a la §7.7, literal
 
----
+> **Alérgenos.** Cuando un producto declare alérgenos y el paciente haya declarado alergias o
+> intolerancias, Atlas presenta ambas declaraciones juntas en el momento de la recomendación, sin
+> clasificarlas ni inferir equivalencias entre ellas. La valoración de compatibilidad corresponde al
+> profesional tratante. Atlas no bloquea ni condiciona la recomendación.
 
-## Las tres preguntas concretas
+### Y una precisión suya que es la parte fina
 
-1. **¿Un cruce parcial mejora la posición de CNV, o la empeora?** Concreto: si Atlas bloquea cuando la
-   ficha nombra el alérgeno y no bloquea cuando no lo nombra, ¿esa diferencia protege a CNV o construye
-   la expectativa de un control que después no cumplió?
-
-2. **¿Basta la revisión del profesional?** Él revisa y firma el plan, con nombre, fecha y trazabilidad en
-   Atlas. ¿Ese acto profesional traslada la responsabilidad, o CNV responde igual como expendedor?
-
-3. **Si la respuesta es que el bloqueo es exigible, ¿sobre qué se construye la equivalencia?** Esta es la
-   que nos bloquea a nosotros. Dirección Científica no firma «avena implica gluten» porque no es contenido
-   de su modelo, y **nosotros no podemos inventar contenido clínico**. Si el bloqueo se exige, hace falta
-   una fuente de las equivalencias que no seamos ni nosotros ni él: norma técnica, ficha del fabricante
-   con certificación, o concepto externo. **Sin esa fuente, el control no se puede construir aunque se
-   decida construirlo.**
+**Se muestra la lista COMPLETA de lo que el producto declara**, no solo lo que coincide con lo del
+paciente: así el profesional ve ingredientes que un filtro nunca le habría mostrado.
 
 ---
 
-## Lo que Atlas hace hoy, y lo que costaría cambiarlo
+## Las dos autoridades coinciden, por caminos distintos
 
-**Hoy, aplicando el criterio de Dirección Científica:**
+Eso es lo que hace sólida la conclusión, y conviene dejarlo escrito porque no era el desenlace esperado.
+
+| | Por qué no se bloquea |
+| --- | --- |
+| **Asesor legal** | Bloquear exige inferir clínicamente, y eso contradice el consentimiento firmado |
+| **Dirección Científica** | Traducir un ingrediente a una alergia es contenido clínico que el modelo no tiene, y un cruce parcial esconde la responsabilidad |
+
+Y las dos coinciden también en lo que **sí** debe pasar: que el profesional vea lo que el paciente declaró
+y decida él.
+
+---
+
+## Lo que quedó implementado
 
 | | |
 | --- | --- |
-| Las alergias e intolerancias del paciente | Se muestran al profesional tal como las declaró |
-| El alérgeno de LUVIA | Se muestra como lo dice su ficha: **"Contiene avena"** |
-| El titular de marca del producto de tercero | Se muestra en ficha, reporte y factura (§7.7, **esto no está en disputa y sí se cumple**) |
-| El cruce entre los dos | **No existe.** Ni bloqueo, ni confirmación, ni registro |
-| LUVIA | **Habilitada para venta** desde hoy |
+| Alergias e intolerancias del paciente | Se muestran textuales, como las declaró |
+| Lo que el producto declara | Se muestra **completo**, no solo lo que coincide |
+| Las dos, juntas | En el momento de la recomendación |
+| Clasificación, equivalencias, inferencia | **Ninguna** |
+| Bloqueo, confirmación, registro de override | **Ninguno** |
+| Titular de marca del producto de tercero | En ficha, reporte y factura (§7.7, nunca estuvo en disputa) |
 
-**Si la respuesta es que el bloqueo es exigible**, el cambio es acotado y está a la mano: las tablas
-existen construidas y vacías de reglas (`allergens` con sus 13 nombres, `allergen_relations` sin filas y
-con campo de firma, y el puente que ya reconoce qué opción de la encuesta es qué alérgeno, en **todas**
-las versiones). Lo que faltaría es **quién firma las equivalencias**, que es la pregunta 3.
+**Una condición de diseño que no está en el texto y sin la cual se rompe:** el bloque aparece cuando el
+paciente declaró algo **y** el producto declara algo, **no cuando coinciden**. Si apareciera solo al
+coincidir, su sola presencia sería una clasificación, y el cruce volvería por la puerta de atrás: el
+profesional aprendería que "si sale el aviso, hay problema", que es exactamente la pantalla que el
+profesional aprende a creerle.
 
-**El riesgo de esperar es real y conviene decirlo:** las 84 unidades ya están repartidas y LUVIA se puede
-vender desde hoy. La ventana entre esta consulta y tu respuesta es una ventana con producto vendiéndose.
+---
+
+## Lo que sigue abierto, y no es del asesor
+
+Son de CNV, y con LUVIA ya vendiéndose:
+
+1. **Aviso por escrito a los siete Integrantes** de que LUVIA contiene avena. Cierra la ventana de las 84
+   unidades ya repartidas sin depender de nada más.
+2. **Registro sanitario de LUVIA y su titularidad**, sin verificar.
+3. **Acuerdo escrito con el proveedor**, inexistente (§7.8).
 
 ---
 

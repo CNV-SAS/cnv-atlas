@@ -11,6 +11,14 @@
 
 **Regla de no duplicación.** Si una entrada aquí y su fuente dicen lo mismo con palabras distintas, en seis meses divergen. Cada entrada apunta al detalle; no lo copia.
 
+**Regla de COMPLETITUD, añadida el 2026-09-11 después de que su ausencia costara una acusación falsa.** Este índice no cubría las consultas legales **comerciales** (responsabilidad frente al consumidor, contratos, producto de terceros): solo las de datos. Por eso, al buscar aquí una respuesta del asesor sobre el alérgeno de LUVIA, no se encontró, y se concluyó que **no existía**. Sí existía: había llegado, y su contenido vivía destilado en el modelo comercial sin que el documento de origen quedara archivado ni indexado.
+
+Tres reglas salen de ahí, y las tres son operativas:
+
+1. **Toda consulta legal se indexa aquí, sea de datos o no.** El título dice "sobre los datos de sus pacientes" y se queda corto: el alcance son las **obligaciones legales de CNV**, punto.
+2. **Toda respuesta del asesor se ARCHIVA como documento** en `docs/entregas/` antes de destilarla en ningún otro lado. Un párrafo destilado sin su fuente es indistinguible de un párrafo que escribimos nosotros.
+3. **Un índice mantenido a mano NO puede probar una negación.** Que algo no esté aquí significa "no está indexado", no "no existe". Para afirmar que alguien nunca dijo algo hace falta preguntarle, no barrer un archivo.
+
 ---
 
 ## AL FRENTE: lo que falta ratificar (esto es lo que el asesor externo debe leer)
@@ -107,6 +115,18 @@ Todo lo demás es contexto ya decidido. Esto es lo abierto.
 ## 12. Verificación de identidad antes de intervenir una cuenta
 
 - **Antes de reiniciarle el segundo factor o forzarle el cambio de clave a un profesional, se verifica su identidad por una vía distinta de la que usó para pedirlo.** Un correo no verifica a nadie. *Decidida (línea de proceso, 2026-08-05).* Detalle: `SECURITY.md`.
+
+---
+
+## 13. Responsabilidad frente al consumidor en la venta de producto de tercero
+
+**Categoría nueva el 2026-09-11.** Existía desde antes y no estaba indexada; esa omisión es lo que hizo posible concluir que una consulta contestada nunca se había hecho.
+
+- **CNV responde solidariamente frente al consumidor (Ley 1480), y la doctrina del fabricante aparente (art. 20) puede tratarla como productora si el producto de tercero no se distingue con claridad de la línea propia.** Por eso el titular de marca aparece en la ficha, el reporte y la factura. *Dictamen del asesor legal en la consulta sobre responsabilidad en la venta de producto de tercero.* **Implementada.** Detalle: `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §7.7.
+
+- **Alérgenos: Atlas YUXTAPONE las dos declaraciones, no las cruza ni las clasifica.** El asesor recomendó primero bloqueo activo, sobre el principio de que *"ante un reclamo, un sistema que tenía el dato y no lo usó es mucho más difícil de defender que uno que nunca lo tuvo"*. **Rectificó el 2026-09-11** al advertir que el principio colapsaba dos cosas distintas: **usar** el dato y **bloquear** con el dato. Bloquear exige una inferencia clínica ("avena implica gluten"), y un sistema que infiere clínicamente **contradice el Anexo 3 y el consentimiento ya firmado**, donde Atlas declara que no diagnostica y que el profesional interpreta. Construir el bloqueo no cerraría un flanco: abriría uno nuevo contra documentos firmados. *Dictamen rectificado 2026-09-11.* **Coincide con la instrucción de Dirección Científica**, por caminos distintos. Detalle: `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §7.7 y `docs/entregas/RESUMEN_LEGAL_ALERGENO_LUVIA.md`.
+
+- **PENDIENTE DE CNV, no del asesor:** el registro sanitario de LUVIA y su titularidad, y el acuerdo escrito con el proveedor. Los dos siguen abiertos con el producto ya vendiéndose. Detalle: `MODELO_COMERCIAL_NUTRACEUTICOS_ATLAS.md` §7.8.
 
 ---
 

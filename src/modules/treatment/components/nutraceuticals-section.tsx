@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFormToastRefreshOnSuccess } from "@/components/shared/use-form-toast";
+import { YuxtaposicionAlergenos } from "@/modules/nutraceuticals/components/yuxtaposicion-alergenos";
 
 import { saveNutraceuticalsAction, type TreatmentActionState } from "../actions";
 // prescriptionSignature vive en el modulo NEUTRO (no aqui): la llama tambien page.tsx (servidor), y una
@@ -55,6 +56,8 @@ export function NutraceuticalsSection({
 
   const recommended = resolveRecommendation(protocol.recommendedNutraceuticals, protocol.catalog);
   const isAdded = (id: string) => nutras.some((n) => n.nutraceuticalId === id);
+  // El producto del desplegable, para poner sus declaraciones junto a las del paciente mientras elige.
+  const seleccionado = protocol.catalog.find((c) => c.id === pickId) ?? null;
   const addProduct = (id: string) => {
     if (!id || isAdded(id)) return;
     const item = protocol.catalog.find((c) => c.id === id);
@@ -190,6 +193,19 @@ export function NutraceuticalsSection({
               Agregar
             </Button>
           </div>
+          {/* LAS DOS DECLARACIONES, JUNTAS, EN EL MOMENTO DE ELEGIR (§7.7 del modelo comercial, texto del
+              asesor legal del 2026-09-11). No compara nada y no bloquea nada: pone lo que declaró el
+              paciente al lado de lo que declara el producto, y la valoración es del profesional.
+              VA AQUI, sobre lo SELECCIONADO y no solo sobre lo ya agregado, porque el momento útil es
+              antes de agregarlo. Y sale con cualquier producto que declare algo, no solo cuando algo
+              coincide: si apareciera al coincidir, su presencia sería una clasificación. */}
+          {seleccionado && (
+            <YuxtaposicionAlergenos
+              paciente={protocol.declaracionesPaciente}
+              producto={{ alergenos: seleccionado.alergenosDeclarados }}
+              nombreProducto={seleccionado.name}
+            />
+          )}
           {nutras.length ? (
             <ul className="flex flex-col gap-2">
               {nutras.map((n, i) => (
@@ -223,6 +239,20 @@ export function NutraceuticalsSection({
                   >
                     Quitar
                   </Button>
+                  {/* Y TAMBIEN SOBRE LO YA PRESCRITO, no solo al elegir: quien abre esta pantalla puede
+                      ser otro profesional, o el mismo en una consulta posterior, y la declaración del
+                      paciente puede haber cambiado desde que el producto entró a la lista. */}
+                  <div className="w-full">
+                    <YuxtaposicionAlergenos
+                      paciente={protocol.declaracionesPaciente}
+                      producto={{
+                        alergenos:
+                          protocol.catalog.find((c) => c.id === n.nutraceuticalId)
+                            ?.alergenosDeclarados ?? [],
+                      }}
+                      nombreProducto={n.name}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

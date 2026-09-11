@@ -890,6 +890,13 @@
       "when": 1790900186099,
       "tag": "0126_luvia_habilitada_sin_regla_de_alergenos",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1790986586099,
+      "tag": "0127_yuxtaposicion_y_retiro_de_equivalencias",
+      "breakpoints": true
     }
   ]
 }

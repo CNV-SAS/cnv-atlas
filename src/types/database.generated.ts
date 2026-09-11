@@ -221,6 +221,30 @@ export type Database = {
           },
         ]
       }
+      allergens: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       bis_condition_versions: {
         Row: {
           id: string
@@ -1649,6 +1673,58 @@ export type Database = {
         }
         Relationships: []
       }
+      nutraceutical_allergens: {
+        Row: {
+          absence_certified_for: string | null
+          allergen_id: string
+          created_at: string
+          declared_as: string
+          id: string
+          notes: string | null
+          nutraceutical_id: string
+        }
+        Insert: {
+          absence_certified_for?: string | null
+          allergen_id: string
+          created_at?: string
+          declared_as: string
+          id?: string
+          notes?: string | null
+          nutraceutical_id: string
+        }
+        Update: {
+          absence_certified_for?: string | null
+          allergen_id?: string
+          created_at?: string
+          declared_as?: string
+          id?: string
+          notes?: string | null
+          nutraceutical_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutraceutical_allergens_absence_certified_for_fkey"
+            columns: ["absence_certified_for"]
+            isOneToOne: false
+            referencedRelation: "allergens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_allergens_allergen_id_fkey"
+            columns: ["allergen_id"]
+            isOneToOne: false
+            referencedRelation: "allergens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_allergens_nutraceutical_id_fkey"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nutraceutical_count_lines: {
         Row: {
           created_at: string
@@ -2892,6 +2968,7 @@ export type Database = {
           tax_id_type: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant: boolean | null
           tax_is_vat_responsible: boolean | null
+          tax_is_withholding_agent: boolean | null
           tax_must_invoice: boolean | null
           tax_person_type: Database["public"]["Enums"]["tax_person_type"] | null
           tax_status_completed_at: string | null
@@ -2925,6 +3002,7 @@ export type Database = {
           tax_id_type?: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
+          tax_is_withholding_agent?: boolean | null
           tax_must_invoice?: boolean | null
           tax_person_type?:
             | Database["public"]["Enums"]["tax_person_type"]
@@ -2960,6 +3038,7 @@ export type Database = {
           tax_id_type?: Database["public"]["Enums"]["document_type"] | null
           tax_is_income_declarant?: boolean | null
           tax_is_vat_responsible?: boolean | null
+          tax_is_withholding_agent?: boolean | null
           tax_must_invoice?: boolean | null
           tax_person_type?:
             | Database["public"]["Enums"]["tax_person_type"]
@@ -3492,6 +3571,42 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_option_allergens: {
+        Row: {
+          allergen_id: string
+          created_at: string
+          id: string
+          survey_option_id: string
+        }
+        Insert: {
+          allergen_id: string
+          created_at?: string
+          id?: string
+          survey_option_id: string
+        }
+        Update: {
+          allergen_id?: string
+          created_at?: string
+          id?: string
+          survey_option_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_option_allergens_allergen_id_fkey"
+            columns: ["allergen_id"]
+            isOneToOne: false
+            referencedRelation: "allergens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_option_allergens_survey_option_id_fkey"
+            columns: ["survey_option_id"]
+            isOneToOne: false
+            referencedRelation: "survey_options"
             referencedColumns: ["id"]
           },
         ]
