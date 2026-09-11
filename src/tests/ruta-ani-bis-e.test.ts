@@ -45,18 +45,18 @@ describe("no queda nada apuntando a la ruta vieja", () => {
     );
     expect(conRutaNueva.length, "no aparece la ruta nueva en ninguna parte").toBeGreaterThan(5);
     expect(sinComentarios(NAV)).toContain('href: "/ani-bis-e"');
-    // EL ROTULO CAMBIO, NO LA RUTA (2026-09-10): "Modelo ANI-BIS-E" se leía como "la lista de
-    // evaluaciones", que es justo lo que hoy es /pacientes con su columna de pendientes. Esta pantalla ya
-    // no lista evaluaciones: es lo que se hace POR LOTE. Lo que este caso controla es que la entrada del
-    // sidebar exista y apunte a la ruta, no cómo se llama.
-    expect(sinComentarios(NAV)).toContain('label: "Bandeja de trabajo"');
+    // EL ROTULO SE QUEDA (Santiago lo revierte el 2026-09-10, tras haberlo cambiado esa misma tarde): el
+    // nombre no es de la pantalla, es del MODELO, y es como Gildardo y los profesionales lo llaman.
+    expect(sinComentarios(NAV)).toContain('label: "Modelo ANI-BIS-E"');
   });
 
   it("y Pacientes se renombró SIN tocar su ruta", () => {
     // Las dos mitades importan: la etiqueta cambio, la direccion no. Si alguien "unifica" y le cambia la
     // ruta tambien, rompe marcadores sin que nadie lo haya pedido.
     const limpio = sinComentarios(NAV);
-    expect(limpio).toContain('label: "Administrador de Pacientes"');
+    // EL ROTULO CAMBIO A "Lista de pacientes" (Santiago, 2026-09-10) Y LA RUTA NO, que es justo lo que
+    // este caso vigila: la pantalla ya se llamaba asi por dentro y el rotulo decia otra cosa.
+    expect(limpio).toContain('label: "Lista de pacientes"');
     expect(limpio).toContain('href: "/pacientes"');
   });
 });

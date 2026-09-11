@@ -35,7 +35,7 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // EL DIAGNOSTICO Y EL REPORTE entran en la MISMA consulta, para la columna de pendientes: sin
       // ellos no se puede decir si lo que falta es generar el diagnostico o enviar el reporte. Es un
       // embed mas en la consulta que ya se hacia, no una consulta nueva por paciente.
-      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
+      "id, document_type, document_number, status, patient_profiles!inner(first_name, last_name, birth_date), patient_consents(consent_type, revoked_at), evaluations(id, type, superseded_at, status, created_at, bis_measurements(measurement_date), diagnoses(id), reports(status))",
     )
     .is("deleted_at", null);
   if (error) {
@@ -51,6 +51,8 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
     const evals =
       (row.evaluations as
         | {
+            id: string;
+            type: string;
             superseded_at: string | null;
             status: string;
             created_at: string;
@@ -94,6 +96,27 @@ export async function listPatientsForProfessional(): Promise<PatientListItem[]> 
       // pueda probar corriendola; aqui solo se le pasan los hechos. Se mira sobre las evaluaciones
       // VIGENTES (no supersedidas), no sobre `reales`: una que espera la encuesta no cuenta como consulta
       // hecha pero SI es algo pendiente, que es justo lo que esta columna busca.
+      // LAS TRES ULTIMAS, con su rotulo. La NUMERACION del seguimiento sale del orden entre las
+      // evaluaciones REALES del paciente (el primer seguimiento es el 1, no el numero de fila), asi que se
+      // calcula aqui, que es donde estan todas juntas. La vista solo pinta.
+      ultimasEvaluaciones: (() => {
+        const enOrden = [...reales].sort((a, b) =>
+          (a.bis_measurements?.[0]?.measurement_date ?? a.created_at).localeCompare(
+            b.bis_measurements?.[0]?.measurement_date ?? b.created_at,
+          ),
+        );
+        let n = 0;
+        const conRotulo = enOrden.map((e) => {
+          const rotulo = e.type === "inicial" ? "Inicial" : `Seguimiento ${++n}`;
+          return {
+            evaluationId: e.id,
+            rotulo,
+            fecha: e.bis_measurements?.[0]?.measurement_date ?? e.created_at,
+          };
+        });
+        // LAS ULTIMAS TRES, y de la mas reciente a la mas antigua: es el orden en que se buscan.
+        return conRotulo.slice(-3).reverse();
+      })(),
       pendiente: pendienteDelPaciente(
         evals
           .filter((e) => e.superseded_at == null)

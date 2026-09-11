@@ -6,6 +6,8 @@ import { TarjetaMetrica } from "@/components/shared/tarjeta-metrica";
 import { TituloSeccion } from "@/components/shared/titulo-pantalla";
 import { formatDate } from "@/lib/format/date";
 import { requireUser } from "@/modules/auth/session";
+import { navGroupsForRoles } from "@/components/layout/nav-config";
+import { Funcionalidades } from "@/modules/dashboard/components/funcionalidades";
 import { getTablero } from "@/modules/dashboard/data/tablero-reader";
 import { TaxStatusBanner } from "@/modules/professionals/components/tax-status-banner";
 
@@ -163,6 +165,10 @@ export default async function DashboardPage() {
           ))}
         </div>
       </section>
+
+      {/* QUE HAY DETRAS DE CADA ENTRADA DEL MENU (punto 1c). Va al FINAL: es material de la primera
+          semana, no del uso diario, y arriba le quitaria sitio a lo que si cambia todos los dias. */}
+      <Funcionalidades grupos={navGroupsForRoles(user.roles)} />
     </div>
   );
 }

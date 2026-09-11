@@ -1,9 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
-import { type ColumnaLista, FilaLista, ListaFilas } from "@/components/shared/fila-lista";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { formatDate } from "@/lib/format/date";
+
+import { AccionesPaciente } from "./acciones-paciente";
+import { COLUMNAS_PACIENTES } from "../columnas";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { FilaLista, ListaFilas } from "@/components/shared/fila-lista";
 import { PillEstado } from "@/components/shared/pill-estado";
 import { formatDateOnlyShort } from "@/lib/format/date";
 import { edadEnAnios } from "../format";
@@ -40,36 +46,6 @@ import type { PatientListItem } from "../types";
 // scroll propio dentro del scroll de la pagina se pelean en movil (el clasico "se mueve la de adentro
 // cuando querias mover la de afuera"). Y con buscador no hace falta: cuando escribes ya estas arriba.
 
-// EL ORDEN NO ES ARBITRARIO: lo mas mirado primero, tanto en columnas como en la linea concatenada. La
-// ULTIMA CONSULTA abre porque es lo que responde "a quien no veo hace meses"; el DOCUMENTO cierra porque es
-// por lo que se BUSCA (y de eso ya se encarga el buscador de arriba), no lo que se lee.
-// EXPORTADA para que el candado de rotulos mire ESTAS columnas y no una copia suya: un test que compara
-// dos copias pasa verde aunque la de produccion este mal.
-export const COLUMNAS_PACIENTES: readonly ColumnaLista[] = [
-  // ═══ QUE HAY QUE HACER, Y VA PRIMERO (Santiago, 2026-09-10) ═══
-  //
-  // DICE LA ACCION, NO EL ESTADO, y esa es toda la diferencia: "in_progress" obliga a traducir
-  // mentalmente que toca, y esa traduccion es el trabajo que la columna existe para ahorrar.
-  //
-  // ABRE LA FILA porque es lo unico de esta lista que pide algo. La regla de la lista es "lo mas mirado
-  // primero", y quien entra a /pacientes por la mañana entra a ver que le falta, no a mirar fechas.
-  //
-  // SEIS ACCIONES DISTINTAS SALEN, pero solo UNA aplica por evaluacion: son los pasos de una secuencia,
-  // asi que la columna es un puntero al escalon donde esta parada, no una lista de casillas. Lo que si
-  // pasa es que un paciente tenga varias evaluaciones paradas, y para eso esta el "+N". Ver
-  // `pendientes.ts`.
-  { rotulo: "Pendiente", ancho: "13rem", rotularEnEstrecho: true },
-  // "Última" a secas era un ADJETIVO SIN SUSTANTIVO: no decia si era la ultima consulta, la ultima cita o
-  // la ultima evaluacion. Y el dato es lo ultimo: la fecha de medicion de la evaluacion mas reciente,
-  // filtrada por la MISMA condicion que produce la columna "Evaluaciones". Por eso NO es "Última consulta":
-  // llamar consulta a lo que la columna de al lado llama evaluacion sugeriria que son dos cosas distintas,
-  // y ademas no toda evaluacion es una visita (la encuesta se responde en casa).
-  { rotulo: "Última evaluación", ancho: "9rem", numerico: true, rotularEnEstrecho: true },
-  { rotulo: "Evaluaciones", ancho: "7rem", numerico: true, rotularEnEstrecho: true },
-  { rotulo: "Edad", ancho: "4.5rem", numerico: true, rotularEnEstrecho: true },
-  // El documento ya carga su tipo delante ("CC 1.020..."), asi que en estrecho se explica solo.
-  { rotulo: "Documento", ancho: "11rem", numerico: true },
-];
 
 // VEINTE POR PAGINA. La cifra no es redonda por gusto: una fila es de UNA linea en pantalla ancha, asi que
 // veinte caben en una pantalla de portatil sin tener que bajar hasta perder de vista el pie, que es
@@ -89,7 +65,14 @@ const nombreVisible = (p: PatientListItem) => `${p.firstName} ${p.lastName}`.tri
 
 type Orden = "alfabetico" | "reciente";
 
-export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) {
+export function ListaPacientes({
+  pacientes,
+  puedeArchivar,
+}: {
+  pacientes: PatientListItem[];
+  /** Si el usuario puede archivar. La policy la resuelve la PAGINA; la vista solo pinta. */
+  puedeArchivar: boolean;
+}) {
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState<Orden>("alfabetico");
   const [pagina, setPagina] = useState(1);
@@ -99,6 +82,18 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   // serviria de nada. Y CON FILTRO, no escondidos del todo: un paciente que desaparece sin dejar forma de
   // encontrarlo es indistinguible de uno borrado, y archivar deja de dar confianza.
   const [verArchivados, setVerArchivados] = useState(false);
+  // ═══ LA FILA DESPLIEGA, NO NAVEGA (Santiago, 2026-09-10) ═══
+  //
+  // SU RAZON: pulsar una fila para ir a la ficha y desde ahi entrar a una evaluacion son dos saltos para
+  // llegar a lo que se buscaba. Con las ultimas tres a la vista, el camino habitual es UNO.
+  //
+  // Y NO CUESTA UNA CONSULTA: las evaluaciones ya venian en el embed de la lista (se usaban para contarlas
+  // y para la columna de pendientes); solo les faltaban el id y el tipo. Desplegar no pide nada al
+  // servidor, y por eso puede ser un desplegable y no una pagina.
+  //
+  // UNA SOLA ABIERTA A LA VEZ: con varias abiertas la lista deja de poder recorrerse, que es para lo que
+  // existe. Volver a pulsar la misma la cierra.
+  const [abierta, setAbierta] = useState<string | null>(null);
 
   const archivados = useMemo(
     () => pacientes.filter((p) => p.status === "inactive").length,
@@ -188,6 +183,7 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
   );
 
   return (
+    <TooltipProvider>
     <div className="flex flex-col gap-3">
       {/* EL BUSCADOR VA FUERA DE LA TARJETA (prueba pedida por Santiago, 2026-08-28). Mi lectura al verlo
           va en el reporte: el argumento para meterlo dentro sigue siendo que buscar y mirar el resultado
@@ -282,12 +278,52 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
           String(p.evaluationCount),
           anos !== null ? String(anos) : null,
           `${p.documentType} ${p.documentNumber}`.trim() || null,
+          // La celda de "Acciones" va vacia: sus botones se pintan por la prop `acciones`, que se coloca
+          // sobre el area pulsable de la fila. El valor existe para que los indices sigan alineados con
+          // las columnas, que es lo que `FilaLista` comprueba.
+          null,
         ];
 
         return (
           <FilaLista
             key={p.patientId}
-            href={`/pacientes/${p.patientId}`}
+            // SIN `href`: la fila despliega. Ver `abierta`.
+            alPulsar={() => setAbierta((a) => (a === p.patientId ? null : p.patientId))}
+            desplegado={abierta === p.patientId}
+            panel={
+              p.ultimasEvaluaciones.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Todavía no tiene evaluaciones. Empieza la primera desde su panel.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {p.ultimasEvaluaciones.map((e) => (
+                    <li key={e.evaluationId}>
+                      {/* LLEVA A LA PESTAÑA DE ENCUESTA, no a la raiz de la evaluacion: es lo que el
+                          profesional viene a mirar cuando abre una consulta pasada, y ahorra el clic de
+                          la pestaña. */}
+                      <Link
+                        href={`/ani-bis-e/${e.evaluationId}?etapa=encuesta`}
+                        className="flex flex-wrap items-baseline gap-x-3 rounded-md px-2 py-1.5 text-sm hover:bg-background"
+                      >
+                        <span className="font-medium text-foreground">{e.rotulo}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {formatDate(e.fecha)}
+                        </span>
+                        <span className="ml-auto font-medium text-primary">Ver resultados</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+            acciones={
+              <AccionesPaciente
+                patientId={p.patientId}
+                archivado={p.status === "inactive"}
+                puedeArchivar={puedeArchivar}
+              />
+            }
             // UNA SOLA FUENTE del nombre visible: la fila lo PINTA y los dos ordenes lo COMPARAN.
             // Escrito dos veces es como se consigue que ordenar y mostrar se separen otra vez.
             titulo={nombreVisible(p) || "Sin nombre"}
@@ -365,5 +401,6 @@ export function ListaPacientes({ pacientes }: { pacientes: PatientListItem[] }) 
         </nav>
       ) : null}
     </div>
+    </TooltipProvider>
   );
 }

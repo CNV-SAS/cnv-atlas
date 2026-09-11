@@ -120,9 +120,15 @@ export function FilaLista({
   valores,
   chip,
   acciones,
+  alPulsar,
+  desplegado = false,
+  panel,
 }: {
-  /** Destino de la fila entera. */
-  href: string;
+  /**
+   * Destino de la fila entera. Opcional desde el 2026-09-10: una fila puede DESPLEGAR en vez de navegar
+   * (ver `alPulsar`). Exactamente uno de los dos.
+   */
+  href?: string;
   /** Lo que identifica la fila. Es el texto del enlace. */
   titulo: string;
   /** Las MISMAS columnas que recibio `ListaFilas`, para saber como se pinta cada valor. */
@@ -133,7 +139,22 @@ export function FilaLista({
   chip?: ReactNode;
   /** Controles propios de la fila. Van con `relative z-10` para quedar sobre el enlace estirado. */
   acciones?: ReactNode;
+  /**
+   * LA FILA DESPLIEGA EN VEZ DE NAVEGAR (Santiago, 2026-09-10).
+   *
+   * POR QUE ES OTRO MODO Y NO UN ENLACE CON `preventDefault`: lo que la fila hace deja de ser navegacion,
+   * asi que el elemento tiene que dejar de ser un enlace. Un `<a>` que no lleva a ningun sitio se copia,
+   * se abre en otra pestaña y se anuncia como enlace, y ninguna de las tres cosas es cierta.
+   */
+  alPulsar?: () => void;
+  /** Si su panel esta abierto. Gobierna `aria-expanded` y el giro del chevron. */
+  desplegado?: boolean;
+  /** Lo que se pinta DEBAJO de la fila cuando esta desplegada. */
+  panel?: ReactNode;
 }) {
+  if ((href == null) === (alPulsar == null)) {
+    throw new Error("FilaLista: pasa `href` (navega) o `alPulsar` (despliega), exactamente uno.");
+  }
   // Un valor por columna: si esto se desalinea, las celdas quedan bajo la cabecera equivocada y NO se nota
   // (los valores se leen igual, solo que rotulados mal). Por eso falla ruidoso en vez de degradar.
   if (valores.length !== columnas.length) {
@@ -152,19 +173,29 @@ export function FilaLista({
   // cabecera que rotule y una celda vacia no dice nada.
   const primeroConDato = valores.findIndex((v) => v !== null);
 
+  // EL TITULO ES ENLACE O BOTON SEGUN LO QUE LA FILA HAGA. Las dos versiones se estiran igual sobre la
+  // fila (`after:absolute after:inset-0`), asi que el area pulsable no cambia; lo que cambia es lo que el
+  // elemento ES, y con ello como se anuncia y que hace el teclado.
+  const CLASES_TITULO =
+    "truncate text-left font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
+    <>
     <li
       className="relative flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-border/60 px-3 py-2.5 last:border-0 hover:bg-muted/40 focus-within:bg-muted/40 md:grid md:flex-nowrap md:gap-y-0"
       style={{ gridTemplateColumns: "var(--cols)" }}
     >
       <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
         {/* EL TITULO SI TRUNCA: es el ancla visual de la fila. Los valores no (ver abajo). */}
-        <Link
-          href={href}
-          className="truncate font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {titulo}
-        </Link>
+        {href != null ? (
+          <Link href={href} className={CLASES_TITULO}>
+            {titulo}
+          </Link>
+        ) : (
+          <button type="button" onClick={alPulsar} aria-expanded={desplegado} className={CLASES_TITULO}>
+            {titulo}
+          </button>
+        )}
         {chip}
       </div>
 
@@ -211,5 +242,12 @@ export function FilaLista({
 
       {acciones ? <div className="relative z-10 flex shrink-0 gap-2">{acciones}</div> : null}
     </li>
+    {/* EL PANEL VA FUERA DEL <li> DE LA FILA, como hermano: dentro seria una celda mas del grid de
+        columnas y ademas quedaria bajo el area pulsable estirada, asi que sus enlaces no se podrian
+        pulsar. */}
+    {desplegado && panel ? (
+      <li className="border-b border-border/60 bg-muted/30 px-3 py-2 last:border-0">{panel}</li>
+    ) : null}
+    </>
   );
 }
