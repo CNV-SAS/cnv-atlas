@@ -305,9 +305,17 @@ export function ListaPacientes({
                   etiqueta: `${pend?.texto}: ir a esa evaluación`,
                 }
               : textoPend,
-          // FECHA DE CREACION: texto suelto, sin destino propio. No lleva a ningun sitio porque no NOMBRA
-          // nada abrible: es un dato de la ficha, y la ficha ya se abre desde el boton de panel.
-          formatDateOnlyShort(p.createdAt),
+          // FECHA DE CREACION -> EL PANEL DEL PACIENTE (Santiago, 2026-09-10).
+          //
+          // La deje sin destino razonando que "no nombra nada abrible", y eso era mirar el dato en vez de
+          // la fila: es la fecha de la FICHA, asi que lo que nombra es la ficha. Y al retirar el enlace
+          // estirado, la fila dejo de tener un sitio al que llevar desde cualquier punto, asi que una
+          // celda sin destino paso de ser "ya cubierta" a ser "muerta". Lo que antes sobraba, ahora falta.
+          {
+            texto: formatDateOnlyShort(p.createdAt),
+            href: `/pacientes/${p.patientId}`,
+            etiqueta: `Abrir el panel de ${nombreVisible(p)}`,
+          },
           // EL CONTEO SIGUE DESPLEGANDO, aunque el nombre haga ya lo mismo: es el numero que resume lo
           // que hay dentro, asi que pulsarlo para verlo es el gesto natural. Con cero no despliega, que
           // seria abrir un panel vacio.

@@ -376,8 +376,26 @@ export function FilaLista({
   // Las clases de las que depende esta version se comprobaron una a una contra el CSS del build
   // (`md:block`, `md:w-full`, `md:truncate`, `hover:underline`): un valor que el compilador no parsea no
   // da error, simplemente no emite la regla.
+  // ── Y LO QUE CAMBIA EN LA CUARTA VUELTA, con el dato que dio Santiago ───────────────────────────────
+  //
+  // SU OBSERVACION, que es la que faltaba: en estas celdas el CURSOR SI se activa en toda la celda y el
+  // texto NO se subraya; en la del nombre pasa justo al reves (el cursor solo sobre el texto, y el texto
+  // se subraya). O sea que el elemento SI esta recibiendo el raton (el cursor lo demuestra: `cursor-pointer`
+  // es de ese mismo elemento) y aun asi el subrayado no se pinta.
+  //
+  // ESO DESCARTA que algo lo cubra, que era mi hipotesis anterior, y deja una sola familia de causas: el
+  // subrayado se pinta y no se VE. Aqui habia dos cosas que podian recortarlo, las dos duplicadas sin
+  // necesidad:
+  //   · `md:truncate` estaba en la celda Y en el enlace. `truncate` trae `overflow:hidden`, asi que el
+  //     enlace recortaba su propio contenido sin que nadie se lo pidiera: la celda ya truncaba.
+  //   · `underline-offset-4` empuja la linea 4 px hacia abajo. En una caja cuyo alto es exactamente el de
+  //     la linea de texto, 4 px la sacan del borde inferior, y `overflow:hidden` se la come. El nombre no
+  //     lo sufre porque su caja es mas alta (es un item de flex con dos lineas al lado).
+  //
+  // SE RETIRAN LOS DOS. No es una hipotesis mas: la duplicacion del truncado sobra por si sola (un
+  // concepto, un dueño), y el desplazamiento se alinea con el que usa el resto de Atlas.
   const CLASES_DESTINO =
-    "relative z-10 cursor-pointer rounded text-left underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:block md:w-full md:truncate";
+    "relative z-10 cursor-pointer rounded text-left underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:block md:w-full";
 
   return (
     <>

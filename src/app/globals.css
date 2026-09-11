@@ -29,6 +29,7 @@
    */
   --color-surface-sunken: var(--surface-sunken);
   --color-nav-accent: var(--nav-accent);
+  --color-marca-honda: var(--marca-honda);
   --color-attention: var(--attention);
   --color-attention-bg: var(--attention-bg);
   --color-delta-favorable: var(--delta-favorable);
@@ -99,6 +100,12 @@
   /* Accion primaria: azul de marca */
   --primary: #205dfd; /* blue-500, botones, focus */
   --primary-foreground: #ffffff;
+
+  /* EL AZUL HONDO DE LAS PORTADAS (2026-09-10, opcion A de /ani-bis-e sobre la referencia de Contratik).
+   * Es el extremo oscuro del degradado del bloque de marca; el claro es --primary.
+   * NO ES UN COLOR CLINICO y no puede usarse como tal: el semaforo vive en --clinical-*. Este solo
+   * aparece en superficies SIN dato de paciente, que es lo que permite que el azul pese ahi. */
+  --marca-honda: #071b4d;
 
   /* Secundario y neutros (ink derivado). "Info/secundario" NO es azul (chocaria). */
   --secondary: #f6f7f9; /* ink-50 */
@@ -261,6 +268,7 @@
    * no porque el modo oscuro este verificado. */
   --surface-sunken: oklch(0.205 0 0);
   --nav-accent: oklch(0.985 0 0);
+  --marca-honda: #050f2c;
   --attention: #fbbf24;
   --attention-bg: oklch(0.269 0 0);
 }

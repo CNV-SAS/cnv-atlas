@@ -219,7 +219,7 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
   });
 
   it("las celdas con destino propio siguen por encima de los fondos de la fila", () => {
-    expect(FILA).toContain("relative z-10 cursor-pointer rounded text-left underline-offset-4");
+    expect(FILA).toContain("relative z-10 cursor-pointer rounded text-left underline-offset-2");
   });
 
   it("el elemento con destino OCUPA su celda, y el subrayado cuelga de el mismo", () => {
@@ -236,6 +236,9 @@ describe("el reparto de clics no multiplica las paradas de teclado", () => {
     // un texto suelto dentro de la celda, el area pulsable se encoge al texto y el subrayado vuelve a
     // depender de acertarle a las letras.
     expect(FILA).toContain("md:block md:w-full");
+    // Y el enlace NO trunca por su cuenta: eso lo hace la celda. Duplicarlo le ponia un `overflow:hidden`
+    // propio, que es lo que podia estar recortando el subrayado.
+    expect(sinComentarios(FILA)).not.toContain("md:w-full md:truncate");
     expect(FILA).toContain("hover:underline");
     // Y NO vuelve el grupo: era el mecanismo que fallaba. Sobre el codigo sin comentarios, porque el
     // propio componente explica por que lo retiro y esa explicacion lo nombra.
