@@ -42,27 +42,26 @@ begin;
 
 -- ── LOS SIETE INTEGRANTES ────────────────────────────────────────────────────────────────────────
 --
--- ⚠ SEIS DE LOS SIETE NO EXISTEN TODAVIA EN LA NUBE. Atlas tiene cuatro perfiles profesionales y solo
--- UNO es de esta lista:
+-- LOS SIETE EXISTEN. Santiago creo los seis que faltaban el 2026-09-11, por la aplicacion (/admin), que
+-- es como tienen que crearse: un perfil profesional arrastra cuenta, rol y perfil profesional en una sola
+-- transaccion, y hacerlo por SQL deja las tres cosas a medias.
 --
---   a3256c41-38b3-4318-86c1-330967c87df7  Valentina Ramírez Huertas   <- REAL, Integrante de la lista
---   f94edfb4-9f22-4ce0-bc8a-cc69a8516508  Gildardo Uribe              <- real, pero no es Integrante
---   9c59bdac-426e-404d-8a66-2c114b126e7c  Santi pruebas               <- de prueba
---   320e7829-d3a4-4a57-a84b-b1a17deef553  Profesional Demo            <- de prueba
+-- IDS VERIFICADOS CONTRA LA NUBE el 2026-09-11, en solo lectura. La verificacion de mas abajo comprueba
+-- ademas que cada uno exista de verdad en `professional_profiles` antes de insertar nada, asi que un id
+-- mal pegado aborta el script en vez de cargar inventario a nombre de nadie.
 --
--- Los seis que faltan se crean POR LA APLICACION (alta de integrante), no por SQL: un perfil profesional
--- arrastra cuenta, rol y perfil tributario, y crearlo a mano deja las tres cosas a medias.
--- Al crearlos, se pegan aqui sus ids.
+-- NO ESTAN EN ESTA LISTA, y es correcto: Gildardo Uribe (Direccion Cientifica, no es Integrante) y las dos
+-- cuentas de prueba (Santi pruebas, Profesional Demo).
 drop table if exists carga_integrantes;
 create temp table carga_integrantes on commit drop (nombre text primary key, profesional_id uuid);
 insert into carga_integrantes (nombre, profesional_id) values
-  ('Katherine',      null),  -- ⚠ PENDIENTE de crear
-  ('Diana',          null),  -- ⚠ PENDIENTE de crear
-  ('Maria Camila',   null),  -- ⚠ PENDIENTE de crear
-  ('Valentina',      'a3256c41-38b3-4318-86c1-330967c87df7'),
-  ('Angela',         null),  -- ⚠ PENDIENTE de crear
-  ('Camilo',         null),  -- ⚠ PENDIENTE de crear
-  ('Roberto Jarava', null);  -- ⚠ PENDIENTE de crear
+  ('Katherine',      'cbe86871-ad02-4cc0-8310-ec6403eee5fd'),  -- Katherine Ruiz Velez
+  ('Diana',          'ea583fe5-25c1-469b-8c79-0c4b6d11d66d'),  -- Diana Marcela Restrepo Anchico
+  ('Maria Camila',   '9a22fefa-3f63-4990-9da6-46f56abbd732'),  -- Maria Camila Aristizábal Foronda
+  ('Valentina',      'a3256c41-38b3-4318-86c1-330967c87df7'),  -- Valentina Ramírez Huertas
+  ('Angela',         '9e06368a-37b3-4b36-8596-577d65ec9684'),  -- Angela Marin Ramirez
+  ('Camilo',         'cd7359ef-02ab-446a-8a4d-823e7170ec71'),  -- Camilo Alberto Camargo Puerto
+  ('Roberto Jarava', '03a93b95-ced7-4297-bc35-ca1bb06c98dd');  -- Roberto Carlos Jarava Brun
 
 -- ── LOS PRODUCTOS, SU LOTE Y LO RECIBIDO DEL LABORATORIO ─────────────────────────────────────────
 --
@@ -113,6 +112,15 @@ begin
   select string_agg(nombre, ', ') into faltan from carga_integrantes where profesional_id is null;
   if faltan is not null then
     raise exception 'ABORTADO: estos Integrantes no existen todavia en Atlas -> %. Crealos por la aplicacion y pega sus ids arriba.', faltan;
+  end if;
+
+  -- (a2) Y esos ids EXISTEN de verdad. Un uuid bien formado pero ajeno cargaria inventario a nombre de
+  -- nadie y el error no se veria hasta que alguien buscara su stock y no lo encontrara.
+  select string_agg(i.nombre, ', ') into faltan
+    from carga_integrantes i
+   where not exists (select 1 from professional_profiles pp where pp.id = i.profesional_id);
+  if faltan is not null then
+    raise exception 'ABORTADO: estos ids no existen en `professional_profiles` -> %.', faltan;
   end if;
 
   -- (b) Todos los productos existen en el catalogo.
@@ -203,9 +211,7 @@ commit;
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
 -- LO QUE BLOQUEA ESTE SCRIPT, en orden de lo que cuesta resolverlo
 --
--- 1. SEIS PERFILES DE INTEGRANTE NO EXISTEN (Katherine, Diana, Maria Camila, Angela, Camilo, Roberto
---    Jarava). Se crean por la aplicacion, no por SQL. Es el bloqueo mayor y no depende del conteo
---    fisico: se puede resolver hoy.
+-- 1. [RESUELTO 2026-09-11] Los seis perfiles que faltaban ya estan creados, y sus ids pegados arriba.
 --
 -- 2. NO HAY BODEGA CENTRAL. Las 1.284 unidades que quedan en CNV no tienen donde vivir hasta que exista
 --    `inventory_locations` (Bloque 1). El script las CUENTA y no las carga.

@@ -18,7 +18,7 @@ que algo ya hecho se vuelva a planear).
 
 | Bloque | Estado | Cierra con |
 |---|---|---|
-| 0 · Purga y corte de arranque | **ENTREGADO, sin ejecutar** | El acta de la purga |
+| 0 · Purga y corte de arranque | **HECHO (2026-09-11)** | Cerrado. Ver abajo |
 | 1 · Cimientos | Pendiente | — |
 | 2 · Alegra de verdad | Pendiente | — |
 | 3 · La venta nace en Tratamiento | Pendiente | — |
@@ -118,7 +118,18 @@ vigente del Integrante** en el momento de la venta.
 
 ## Bloque 0 · Purga y corte de arranque
 
-**Tamaño: chico.** **Estado: entregado, sin ejecutar.**
+**Tamaño: chico.** **Estado: HECHO el 2026-09-11.**
+
+**Verificado contra la nube en solo lectura tras correrlo:** las siete tablas comerciales en **0**
+(transacciones, items, comisiones, ingreso CNV, eventos de pasarela, movimientos y saldos), y las clínicas
+intactas: 73 pacientes, 85 evaluaciones, 16 diagnósticos, 16 tratamientos, 16 reportes, 13 emisiones.
+
+**Y los siete Integrantes existen.** Santiago creó los seis que faltaban el mismo día, por `/admin`. Sus
+ids están pegados en `scripts/carga-inventario-inicial.sql`, que además comprueba que cada uno exista de
+verdad antes de insertar: un uuid bien formado pero ajeno cargaría inventario a nombre de nadie, y eso no
+se vería hasta que alguien buscara su stock y no lo encontrara.
+
+**La fecha de corte es el 2026-09-11.**
 
 ### Qué construye
 
