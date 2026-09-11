@@ -6,11 +6,9 @@
 -- QUE CARGA: las unidades que los SIETE Integrantes ya tienen en su vitrina. Se corre DESPUES de
 -- `purga-comercial.sql` y de la migracion 0118.
 --
--- QUE NO CARGA, Y HAY QUE SABERLO: las 1.284 unidades que quedan en la BODEGA CENTRAL de CNV
--- (386 + 386 + 312 + 186 de producto propio, mas 14 de LUVIA). Hoy `nutraceutical_inventory` esta
--- indexado por (PROFESIONAL, producto) y no existe el concepto de bodega central, asi que ese saldo no
--- tiene donde vivir. Entra con `inventory_locations` en el Bloque 1. La cifra queda en el acta para que
--- no se pierda.
+-- CARGA TAMBIEN LA BODEGA CENTRAL, desde la migracion 0121: las 1.284 unidades que quedan en CNV
+-- (386 + 386 + 312 + 186 de producto propio, mas 14 de LUVIA). Antes no tenian donde vivir, porque el
+-- saldo iba por (profesional, producto) y un movimiento de la central no tiene profesional.
 --
 -- ── POR QUE LA CARGA NO ES UN AJUSTE ─────────────────────────────────────────────────────────────
 --
@@ -53,7 +51,7 @@ begin;
 -- NO ESTAN EN ESTA LISTA, y es correcto: Gildardo Uribe (Direccion Cientifica, no es Integrante) y las dos
 -- cuentas de prueba (Santi pruebas, Profesional Demo).
 drop table if exists carga_integrantes;
-create temp table carga_integrantes on commit drop (nombre text primary key, profesional_id uuid);
+create temp table carga_integrantes (nombre text primary key, profesional_id uuid) on commit drop;
 insert into carga_integrantes (nombre, profesional_id) values
   ('Katherine',      'cbe86871-ad02-4cc0-8310-ec6403eee5fd'),  -- Katherine Ruiz Velez
   ('Diana',          'ea583fe5-25c1-469b-8c79-0c4b6d11d66d'),  -- Diana Marcela Restrepo Anchico
@@ -74,10 +72,10 @@ insert into carga_integrantes (nombre, profesional_id) values
 -- `codigo_alegra` NO SE INSERTA: `nutraceuticals` todavia no tiene esa columna (entra en el Bloque 1).
 -- Se deja aqui para que el dato no se pierda y para el re-mapeo del Bloque 2.
 drop table if exists carga_productos;
-create temp table carga_productos on commit drop (
+create temp table carga_productos (
   clave text primary key, producto_id uuid, codigo_alegra text,
   lote text, vence date, recibido_lab integer
-);
+) on commit drop;
 insert into carga_productos (clave, producto_id, codigo_alegra, lote, vence, recibido_lab) values
   ('MULTICELL',  '77777777-7777-7777-7777-777777777702', 'NUT-001', '19826',    '2028-07-18', 500),
   ('OMEGA',      '77777777-7777-7777-7777-777777777701', 'NUT-002', '20226',    '2028-07-22', 500),
@@ -89,7 +87,7 @@ insert into carga_productos (clave, producto_id, codigo_alegra, lote, vence, rec
 
 -- ── LO ENTREGADO A CADA INTEGRANTE ───────────────────────────────────────────────────────────────
 drop table if exists carga_entregas;
-create temp table carga_entregas on commit drop (nombre text, clave text, unidades integer);
+create temp table carga_entregas (nombre text, clave text, unidades integer) on commit drop;
 insert into carga_entregas (nombre, clave, unidades) values
   ('Katherine','MULTICELL',24), ('Katherine','OMEGA',24), ('Katherine','CURCUMIN',24), ('Katherine','D3K2',24),
   ('Diana','MULTICELL',15), ('Diana','OMEGA',15), ('Diana','CURCUMIN',15), ('Diana','D3K2',15),
@@ -148,13 +146,36 @@ begin
       r.clave, r.recibido_lab, r.entregado, r.recibido_lab - r.entregado;
   end loop;
 
+  -- (c2) HAY UBICACION PARA TODOS, incluida la central. Sin ella, las 1.284 unidades de CNV se quedarian
+  -- fuera EN SILENCIO: el insert no encontraria fila y no insertaria nada, sin error.
+  if not exists (select 1 from inventory_locations where kind = 'central') then
+    raise exception 'ABORTADO: no existe la bodega central. La crea la migracion 0120.';
+  end if;
+  select string_agg(i.nombre, ', ') into faltan
+    from carga_integrantes i
+   where not exists (select 1 from inventory_locations l where l.professional_id = i.profesional_id);
+  if faltan is not null then
+    raise exception 'ABORTADO: estos Integrantes no tienen ubicación de inventario -> %.', faltan;
+  end if;
+
   -- (d) El inventario tiene que estar VACIO: este script carga la apertura, no ajusta un saldo previo.
   if (select count(*) from nutraceutical_stock_movements) <> 0 then
     raise exception 'ABORTADO: ya hay movimientos de inventario. Corre `purga-comercial.sql` primero.';
   end if;
 end $$;
 
--- ══ 3. LA CARGA ══════════════════════════════════════════════════════════════════════════════════
+-- ══ 3. LOS LOTES ═════════════════════════════════════════════════════════════════════════════════
+--
+-- Desde la migracion 0121 el lote es una FILA con vencimiento, no un texto libre, porque es lo que permite
+-- un retiro dirigido. Se crean antes de mover nada.
+insert into lots (nutraceutical_id, code, expires_on, received_on, notes)
+select p.producto_id, p.lote, p.vence, date '2026-08-26',
+       'Primera tanda del laboratorio, cargada en el arranque de la operacion'
+  from carga_productos p
+ where p.producto_id is not null
+on conflict (nutraceutical_id, code) do nothing;
+
+-- ══ 4. LA CARGA ══════════════════════════════════════════════════════════════════════════════════
 --
 -- Tipo `recepcion` (+N): es exactamente lo que significa, el Integrante reconoce que tiene en custodia
 -- esas unidades. `remesa_id` va nulo a proposito: no hubo remesa declarada en Atlas porque la entrega
@@ -164,19 +185,44 @@ end $$;
 -- El trigger `nutra_movement_apply_trg` proyecta el saldo solo; `nutraceutical_inventory` no se escribe
 -- a mano (lo impide el trigger de coherencia, y con razon).
 
--- Producto propio: las cuatro lineas por Integrante.
-insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, delta, type, reason, lote)
-select i.profesional_id, p.producto_id, e.unidades, 'recepcion',
+-- ── 4a. LO QUE ESTA EN LA VITRINA DE CADA INTEGRANTE ────────────────────────────────────────────
+insert into nutraceutical_stock_movements
+  (professional_id, location_id, lot_id, nutraceutical_id, delta, type, reason, lote)
+select i.profesional_id, loc.id, lo.id, p.producto_id, e.unidades, 'recepcion',
        'Carga inicial: primera tanda del laboratorio, entregada al Integrante antes del corte de arranque',
        p.lote
   from carga_entregas e
-  join carga_integrantes i on i.nombre = e.nombre
-  join carga_productos   p on p.clave  = e.clave
+  join carga_integrantes   i   on i.nombre = e.nombre
+  join carga_productos     p   on p.clave  = e.clave
+  join inventory_locations loc on loc.professional_id = i.profesional_id
+  join lots                lo  on lo.nutraceutical_id = p.producto_id and lo.code = p.lote
  where e.clave <> 'LUVIA';
 
--- LUVIA: DOS movimientos por Integrante, uno por cada recepcion del proveedor, en proporcion a lo que
--- cada recepcion aporto (60 de 84 y 24 de 84). Ver la nota de la cabecera sobre por que no se colapsan.
--- ⚠ Este bloque queda COMENTADO hasta que LUVIA exista en el catalogo (punto 4 de lo que bloquea).
+-- ── 4b. LO QUE QUEDA EN LA BODEGA CENTRAL ───────────────────────────────────────────────────────
+--
+-- `professional_id` VA NULO, y es lo correcto: la central no tiene dueño. Es exactamente lo que la
+-- migracion 0121 vino a permitir, y la razon por la que estas 1.284 unidades no se podian registrar.
+--
+-- SE CALCULA, NO SE ESCRIBE: lo recibido menos lo entregado. Escribir el 386 a mano seria una tercera
+-- cifra capaz de contradecir a las otras dos.
+insert into nutraceutical_stock_movements
+  (professional_id, location_id, lot_id, nutraceutical_id, delta, type, reason, lote)
+select null, cen.id, lo.id, p.producto_id,
+       p.recibido_lab - coalesce((select sum(e.unidades) from carga_entregas e where e.clave = p.clave), 0),
+       'recepcion',
+       'Carga inicial: saldo en bodega central tras la primera entrega a Integrantes',
+       p.lote
+  from carga_productos p
+  join lots lo on lo.nutraceutical_id = p.producto_id and lo.code = p.lote
+  cross join (select id from inventory_locations where kind = 'central') cen
+ where p.producto_id is not null
+   and p.recibido_lab - coalesce((select sum(e.unidades) from carga_entregas e where e.clave = p.clave), 0) > 0;
+
+-- ── 4c. LUVIA ──────────────────────────────────────────────────────────────────────────────────
+--
+-- ⚠ COMENTADO hasta que LUVIA exista en el catalogo con su `ownership`, su titular de marca y su
+-- proveedor. Y con una condicion de seguridad: se crea con `commercial_availability = 'no_disponible'`,
+-- que desde el 2026-09-11 SI impide venderlo (hasta entonces esa bandera solo gateaba la entrega).
 -- insert into nutraceutical_stock_movements (professional_id, nutraceutical_id, delta, type, reason, lote)
 -- select i.profesional_id, p.producto_id, e.unidades, 'recepcion',
 --        'Carga inicial LUVIA (producto de tercero): recepcion del proveedor del 2026-08-26, 60 unidades',
@@ -186,52 +232,53 @@ select i.profesional_id, p.producto_id, e.unidades, 'recepcion',
 --   join carga_productos   p on p.clave  = e.clave
 --  where e.clave = 'LUVIA';
 
--- ══ 4. CONTEO PARA EL ACTA ═══════════════════════════════════════════════════════════════════════
--- Una fila por producto: lo recibido del laboratorio, lo cargado a Integrantes, y lo que queda en la
--- bodega central SIN cargar (porque todavia no hay donde). Esta tabla va al acta.
+-- ══ 5. CONTEO PARA EL ACTA ═══════════════════════════════════════════════════════════════════════
+-- Una fila por producto, con las cifras que tienen que cuadrar entre si. Esta tabla va al acta.
 select p.clave,
        p.lote,
        p.vence,
-       p.recibido_lab                                            as recibido_del_laboratorio,
-       coalesce(sum(e.unidades), 0)                              as entregado_a_integrantes,
-       p.recibido_lab - coalesce(sum(e.unidades), 0)             as queda_en_bodega_central_sin_cargar,
+       p.recibido_lab                                   as recibido_del_laboratorio,
+       coalesce(sum(e.unidades), 0)                     as entregado_a_integrantes,
+       p.recibido_lab - coalesce(sum(e.unidades), 0)    as queda_en_bodega_central,
        coalesce((select sum(m.delta) from nutraceutical_stock_movements m
-                  where m.nutraceutical_id = p.producto_id), 0)  as cargado_en_atlas
+                  where m.nutraceutical_id = p.producto_id), 0) as cargado_en_atlas,
+       coalesce((select sum(i.stock_quantity) from nutraceutical_inventory i
+                  join inventory_locations l on l.id = i.location_id
+                 where i.nutraceutical_id = p.producto_id and l.kind = 'central'), 0)    as saldo_central,
+       coalesce((select sum(i.stock_quantity) from nutraceutical_inventory i
+                  join inventory_locations l on l.id = i.location_id
+                 where i.nutraceutical_id = p.producto_id and l.kind = 'integrante'), 0) as saldo_integrantes
   from carga_productos p
   left join carga_entregas e on e.clave = p.clave
  group by p.clave, p.lote, p.vence, p.recibido_lab, p.producto_id
  order by p.clave;
 
--- REVISA LA TABLA DE ARRIBA ANTES DE CONFIRMAR.
--- `entregado_a_integrantes` y `cargado_en_atlas` tienen que coincidir en los cuatro productos propios.
+-- REVISA LA TABLA DE ARRIBA ANTES DE CONFIRMAR. En los cuatro productos propios tienen que cumplirse LAS
+-- TRES a la vez:
+--   cargado_en_atlas  = recibido_del_laboratorio
+--   saldo_integrantes = entregado_a_integrantes
+--   saldo_central     = queda_en_bodega_central
+-- Si solo cuadran dos, el saldo y los movimientos estan diciendo cosas distintas, que es justo lo que este
+-- sistema no puede permitirse.
 -- Si cuadra:      commit;
 -- Si no cuadra:   rollback;
 commit;
 
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
--- LO QUE BLOQUEA ESTE SCRIPT, en orden de lo que cuesta resolverlo
+-- LO QUE BLOQUEA ESTE SCRIPT
 --
 -- 1. [RESUELTO 2026-09-11] Los seis perfiles que faltaban ya estan creados, y sus ids pegados arriba.
+-- 2. [RESUELTO, migraciones 0120/0121] La bodega central existe y el saldo va por (ubicacion, producto,
+--    lote), asi que las 1.284 unidades de CNV ya tienen donde vivir. Este script las carga.
+-- 3. [RESUELTO, migracion 0121] El lote gobierna el saldo. Los cinco se crean en el paso 3.
 --
--- 2. NO HAY BODEGA CENTRAL. Las 1.284 unidades que quedan en CNV no tienen donde vivir hasta que exista
---    `inventory_locations` (Bloque 1). El script las CUENTA y no las carga.
+-- 4. LUVIA SIGUE FUERA. Falta crearlo en el catalogo con `ownership='tercero'`, su titular de marca
+--    (Centro de Nutricion Integral Katherine Ruiz), su proveedor como entidad en `suppliers`, y su
+--    esquema de reparto en `revenue_splits` (proveedor 0,70 y umbral de aviso 0,10). El PVP ya no
+--    bloquea: 90.000 con IVA, confirmado por contabilidad.
 --
--- 3. EL LOTE NO GOBIERNA EL SALDO. Hoy `lote` es texto libre en el movimiento y el saldo se lleva por
---    (profesional, producto). Con un solo lote por producto da igual hoy; con la segunda tanda, no.
---    Es el principio 8 del modelo ("todo movimiento contra un lote") y entra en el Bloque 1.
+--    Y NO SE HABILITA PARA VENTA hasta que Direccion Cientifica firme las equivalencias de alergenos.
 --
--- 4. LUVIA NO ESTA EN EL CATALOGO, y crearlo hoy seria crearlo mal: faltan `ownership`, `brand_owner`,
---    `supplier_id` y su esquema de reparto, que son Bloque 1. El PVP ya no bloquea: contabilidad lo
---    confirmo con el proveedor en 90.000 con IVA (base 75.630, IVA 14.370), redondeado desde 89.990.
---
---    Y SU REPARTO ES DE PILOTO, no permanente: el 10% para CNV se renegocia antes de un segundo lote.
---    Por eso `revenue_splits` (Bloque 1) necesita VIGENCIA POR FECHA y cada venta sella el reparto
---    vigente: el dia de la renegociacion se añade una fila, no se edita la que ya liquido ventas.
---
---    Y UNA CONDICION DE SEGURIDAD: el dia que LUVIA entre al catalogo, `no_disponible` NO basta para
---    impedir que se venda. Esa bandera gatea la ENTREGA y no la VENTA: el checkout de /pagos filtra el
---    catalogo solo por "tiene precio". Hay que cerrar ese hueco ANTES de crear la fila de LUVIA.
---
--- 5. EL CODIGO DE ALEGRA (NUT-001..004) no tiene columna donde ir. Entra con `alegra_item_id` en el
---    Bloque 1 y se usa en el Bloque 2.
+-- 5. EL CODIGO DE ALEGRA ya tiene columna (`alegra_item_id`, migracion 0120) y se rellena en el
+--    Bloque 2. Los cuatro codigos estan arriba, en `carga_productos`, esperando ese momento.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════
