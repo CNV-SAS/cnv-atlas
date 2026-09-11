@@ -684,6 +684,35 @@ export type Database = {
           },
         ]
       }
+      commercial_config: {
+        Row: {
+          id: string
+          margen_aviso_default: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          margen_aviso_default?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          margen_aviso_default?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_assignments: {
         Row: {
           actual_return_date: string | null
@@ -1491,6 +1520,79 @@ export type Database = {
           },
         ]
       }
+      inventory_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          professional_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          professional_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          professional_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_locations_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lots: {
+        Row: {
+          code: string
+          created_at: string
+          expires_on: string
+          id: string
+          notes: string | null
+          nutraceutical_id: string
+          received_on: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_on: string
+          id?: string
+          notes?: string | null
+          nutraceutical_id: string
+          received_on?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_on?: string
+          id?: string
+          notes?: string | null
+          nutraceutical_id?: string
+          received_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lots_nutraceutical_id_fkey"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       model_variables: {
         Row: {
           description: string | null
@@ -1790,25 +1892,45 @@ export type Database = {
         Row: {
           id: string
           last_updated: string
+          location_id: string
+          lot_id: string
           nutraceutical_id: string
-          professional_id: string
+          professional_id: string | null
           stock_quantity: number
         }
         Insert: {
           id?: string
           last_updated?: string
+          location_id: string
+          lot_id: string
           nutraceutical_id: string
-          professional_id: string
+          professional_id?: string | null
           stock_quantity?: number
         }
         Update: {
           id?: string
           last_updated?: string
+          location_id?: string
+          lot_id?: string
           nutraceutical_id?: string
-          professional_id?: string
+          professional_id?: string | null
           stock_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "nutraceutical_inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_inventory_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "nutraceutical_inventory_nutraceutical_id_nutraceuticals_id_fk"
             columns: ["nutraceutical_id"]
@@ -1832,9 +1954,11 @@ export type Database = {
           created_by: string | null
           delta: number
           id: string
+          location_id: string
+          lot_id: string
           lote: string | null
           nutraceutical_id: string
-          professional_id: string
+          professional_id: string | null
           reason: string | null
           remesa_id: string | null
           reported_quantity: number | null
@@ -1847,9 +1971,11 @@ export type Database = {
           created_by?: string | null
           delta: number
           id?: string
+          location_id: string
+          lot_id: string
           lote?: string | null
           nutraceutical_id: string
-          professional_id: string
+          professional_id?: string | null
           reason?: string | null
           remesa_id?: string | null
           reported_quantity?: number | null
@@ -1862,9 +1988,11 @@ export type Database = {
           created_by?: string | null
           delta?: number
           id?: string
+          location_id?: string
+          lot_id?: string
           lote?: string | null
           nutraceutical_id?: string
-          professional_id?: string
+          professional_id?: string | null
           reason?: string | null
           remesa_id?: string | null
           reported_quantity?: number | null
@@ -1884,6 +2012,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceutical_stock_movements_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
           {
@@ -1954,52 +2096,70 @@ export type Database = {
       }
       nutraceuticals: {
         Row: {
+          alegra_item_id: string | null
+          brand_owner: string | null
           commercial_availability: Database["public"]["Enums"]["nutraceutical_availability"]
           composition: string | null
           created_at: string
           description: string | null
           id: string
           indication: string | null
+          is_test: boolean
           name: string
           organization_id: string
+          ownership: Database["public"]["Enums"]["nutraceutical_ownership"]
           presentation: string | null
           sanitary_registration: string | null
           serving_size: string | null
+          supplier_id: string | null
           unit: string | null
           unit_price: number | null
           updated_at: string
+          vat_rate: number
         }
         Insert: {
+          alegra_item_id?: string | null
+          brand_owner?: string | null
           commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
           composition?: string | null
           created_at?: string
           description?: string | null
           id?: string
           indication?: string | null
+          is_test?: boolean
           name: string
           organization_id: string
+          ownership?: Database["public"]["Enums"]["nutraceutical_ownership"]
           presentation?: string | null
           sanitary_registration?: string | null
           serving_size?: string | null
+          supplier_id?: string | null
           unit?: string | null
           unit_price?: number | null
           updated_at?: string
+          vat_rate?: number
         }
         Update: {
+          alegra_item_id?: string | null
+          brand_owner?: string | null
           commercial_availability?: Database["public"]["Enums"]["nutraceutical_availability"]
           composition?: string | null
           created_at?: string
           description?: string | null
           id?: string
           indication?: string | null
+          is_test?: boolean
           name?: string
           organization_id?: string
+          ownership?: Database["public"]["Enums"]["nutraceutical_ownership"]
           presentation?: string | null
           sanitary_registration?: string | null
           serving_size?: string | null
+          supplier_id?: string | null
           unit?: string | null
           unit_price?: number | null
           updated_at?: string
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -2007,6 +2167,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutraceuticals_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -2610,6 +2777,54 @@ export type Database = {
           },
         ]
       }
+      professional_commission_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          professional_id: string
+          rate: number
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          professional_id: string
+          rate: number
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          professional_id?: string
+          rate?: number
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_commission_rates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_commission_rates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_document_signatures: {
         Row: {
           created_at: string
@@ -3057,6 +3272,57 @@ export type Database = {
           },
         ]
       }
+      revenue_splits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          margen_aviso: number | null
+          note: string | null
+          nutraceutical_id: string
+          supplier_share: number
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          margen_aviso?: number | null
+          note?: string | null
+          nutraceutical_id: string
+          supplier_share: number
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          margen_aviso?: number | null
+          note?: string | null
+          nutraceutical_id?: string
+          supplier_share?: number
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_splits_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_splits_nutraceutical_id_fkey"
+            columns: ["nutraceutical_id"]
+            isOneToOne: false
+            referencedRelation: "nutraceuticals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roles: {
         Row: {
           description: string | null
@@ -3072,6 +3338,54 @@ export type Database = {
           description?: string | null
           id?: string
           name?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          alegra_contact_id: string | null
+          created_at: string
+          cut_days: number[]
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          tax_id_dv: string | null
+          tax_id_number: string | null
+          tax_id_type: string | null
+          tax_is_vat_responsible: boolean | null
+          tax_is_withholding_agent: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          alegra_contact_id?: string | null
+          created_at?: string
+          cut_days?: number[]
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          tax_id_dv?: string | null
+          tax_id_number?: string | null
+          tax_id_type?: string | null
+          tax_is_vat_responsible?: boolean | null
+          tax_is_withholding_agent?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          alegra_contact_id?: string | null
+          created_at?: string
+          cut_days?: number[]
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          tax_id_dv?: string | null
+          tax_id_number?: string | null
+          tax_id_type?: string | null
+          tax_is_vat_responsible?: boolean | null
+          tax_is_withholding_agent?: boolean | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3833,7 +4147,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      combinaciones_bajo_umbral: {
+        Row: {
+          integrante: string | null
+          participacion_proveedor: number | null
+          producto: string | null
+          residuo_cnv: number | null
+          tasa_integrante: number | null
+          umbral_aplicado: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_user_roles: {
@@ -3959,6 +4283,7 @@ export type Database = {
         | "despacho"
         | "conciliacion"
         | "devolucion"
+      nutraceutical_ownership: "propio" | "tercero"
       patient_status: "active" | "inactive"
       payment_method: "wompi" | "efectivo"
       professional_document_type: "anexo3"
@@ -4206,6 +4531,7 @@ export const Constants = {
         "conciliacion",
         "devolucion",
       ],
+      nutraceutical_ownership: ["propio", "tercero"],
       patient_status: ["active", "inactive"],
       payment_method: ["wompi", "efectivo"],
       professional_document_type: ["anexo3"],

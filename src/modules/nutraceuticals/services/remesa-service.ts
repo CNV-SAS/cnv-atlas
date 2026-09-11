@@ -1,4 +1,5 @@
 import "server-only";
+import { resolverLoteDeRecepcion, ubicacionDelProfesional } from "./ubicacion-y-lote";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -77,8 +78,22 @@ export async function declareRemesa(input: {
     return { ok: false, message: "La cantidad declarada debe ser un entero mayor que cero." };
   }
   const supabase = await createSupabaseServerClient();
+  // Desde la migracion 0121 todo movimiento va contra una ubicacion y un lote. La remesa se declara sobre
+  // la ubicacion del Integrante DESTINO (es a donde va la mercancia), y su lote se crea si CNV declara uno
+  // que todavia no existe, que es el caso normal: la remesa suele ser lo PRIMERO que se sabe de ese lote.
+  const locationId = await ubicacionDelProfesional(supabase, input.professionalId);
+  if (!locationId) return { ok: false, message: "Ese Integrante no tiene ubicación de inventario." };
+  const { lotId, message: msgLote } = await resolverLoteDeRecepcion(
+    supabase,
+    input.nutraceuticalId,
+    input.lote,
+  );
+  if (!lotId) return { ok: false, message: msgLote ?? "No se pudo resolver el lote." };
+
   const { error } = await supabase.from("nutraceutical_stock_movements").insert({
     professional_id: input.professionalId,
+    location_id: locationId,
+    lot_id: lotId,
     nutraceutical_id: input.nutraceuticalId,
     delta: input.quantity, // la remesa NO mueve el saldo (trigger la excluye); delta = lo declarado, para el cotejo
     type: "remesa",
@@ -167,8 +182,19 @@ export async function confirmRemesa(input: {
   // saldo sin que CNV lo reconozca; si es real, lo reconcilia el conteo/sobrante que ya existe). `delta` es el
   // efecto en el saldo (el min); `reported_quantity` guarda lo que dijo que llegó, para ver la dirección.
   const balanceDelta = Math.min(input.actualQuantity, remesa.delta);
+  // LA CONFIRMACION HEREDA LA UBICACION Y EL LOTE DE SU REMESA, no los resuelve de nuevo: es el MISMO
+  // envio, y resolverlos aparte abriria la puerta a que la recepcion cayera en otro lote que el declarado.
+  const { data: origen } = await supabase
+    .from("nutraceutical_stock_movements")
+    .select("location_id, lot_id")
+    .eq("id", input.remesaId)
+    .maybeSingle();
+  if (!origen) return { ok: false, message: "No se pudo leer la remesa de origen." };
+
   const { error } = await supabase.from("nutraceutical_stock_movements").insert({
     professional_id: profId,
+    location_id: origen.location_id,
+    lot_id: origen.lot_id,
     nutraceutical_id: remesa.nutraceutical_id,
     delta: balanceDelta,
     reported_quantity: input.actualQuantity,
@@ -251,9 +277,20 @@ export async function getRemesasForCnv(): Promise<CnvRemesa[]> {
   const reportedByRemesa = new Map(
     (recs ?? []).map((r) => [r.remesa_id as string, r.reported_quantity ?? r.delta]),
   );
-  const names = await professionalNames(supabase, [...new Set(remesas.map((r) => r.professional_id))]);
+  // `professional_id` es NULLABLE desde la 0121 (la bodega central no tiene dueño). Una remesa siempre va
+  // a un Integrante, asi que aqui no hay nulos, pero el tipo ya no lo garantiza y filtrarlos es mas honesto
+  // que afirmarlo con un cast.
+  const names = await professionalNames(
+    supabase,
+    [...new Set(remesas.map((r) => r.professional_id).filter((x): x is string => x !== null))],
+  );
 
-  return remesas.map((r) => {
+  // SE FILTRAN LAS QUE NO TENGAN PROFESIONAL en vez de castear. Desde la 0121 la columna es nullable
+  // (la bodega central no tiene dueño) y una remesa a la central no seria una remesa: seria un ingreso.
+  // Si alguna aparece, es un dato mal formado y no pertenece a esta lista.
+  return remesas
+    .filter((r): r is typeof r & { professional_id: string } => r.professional_id !== null)
+    .map((r) => {
     const reported = reportedByRemesa.has(r.id) ? (reportedByRemesa.get(r.id) as number) : null;
     const status: RemesaStatus =
       reported == null
@@ -291,8 +328,11 @@ export async function getUnbackedReceptionsForCnv(): Promise<UnbackedReception[]
     .order("created_at", { ascending: false });
   if (error) throw new Error(`remesa-service: no respaldadas: ${error.message}`);
   if (!data || data.length === 0) return [];
-  const names = await professionalNames(supabase, [...new Set(data.map((r) => r.professional_id))]);
-  return data.map((r) => ({
+  const conProfesional = data.filter(
+    (r): r is typeof r & { professional_id: string } => r.professional_id !== null,
+  );
+  const names = await professionalNames(supabase, [...new Set(conProfesional.map((r) => r.professional_id))]);
+  return conProfesional.map((r) => ({
     movementId: r.id,
     professionalId: r.professional_id,
     professionalName: names.get(r.professional_id) ?? "Integrante",

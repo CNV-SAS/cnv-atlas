@@ -50,6 +50,25 @@ describe.skipIf(!HAS_DB)("caso de faltante: estado, transiciones e inmutabilidad
     return c;
   }
 
+
+  // ═══ SEMILLA DEL LOTE (migracion 0121) ═══
+  //
+  // El cierre de un faltante concilia contra un LOTE desde que el saldo va por (ubicacion, producto,
+  // lote). No hace falta que haya SALDO (un faltante es precisamente que el producto no esta), pero si
+  // que el producto haya estado en esa ubicacion: conciliar contra un lote inventado seria peor que no
+  // conciliar. Esto siembra esa condicion minima.
+  async function sembrarLote(profesional: string, producto: string) {
+    const { sql: d } = await import("drizzle-orm");
+    await db.execute(d`insert into lots (nutraceutical_id, code, expires_on, notes)
+      values (${producto}, 'TEST-FALTANTE', date '2099-12-31', 'lote de prueba de los tests de faltante')
+      on conflict (nutraceutical_id, code) do nothing`);
+    const [loc] = await db.execute(d`select id from inventory_locations where professional_id = ${profesional} limit 1`);
+    const [lot] = await db.execute(d`select id from lots where nutraceutical_id = ${producto} and code = 'TEST-FALTANTE' limit 1`);
+    await db.execute(d`insert into nutraceutical_inventory (location_id, professional_id, nutraceutical_id, lot_id, stock_quantity)
+      values (${loc.id}, ${profesional}, ${producto}, ${lot.id}, 0)
+      on conflict (location_id, nutraceutical_id, lot_id) do nothing`);
+  }
+
   beforeAll(async () => {
     ({ db } = await import("@/db"));
     schema = await import("@/db/schema");
@@ -60,6 +79,7 @@ describe.skipIf(!HAS_DB)("caso de faltante: estado, transiciones e inmutabilidad
     // el saldo de MULTICELL (count-session usa OMEGA, faltante-settle D3-K2, nutra-inventory CURCUMIN), asi
     // que la mutacion no interfiere con nadie aunque corran en paralelo.
     nutraId = "77777777-7777-7777-7777-777777777702";
+    await sembrarLote(profId, nutraId);
     caseId = (
       await db
         .insert(schema.nutraceuticalFaltanteCases)

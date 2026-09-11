@@ -47,12 +47,14 @@ export const nutraceuticalInventory = pgTable(
   "nutraceutical_inventory",
   {
     id: pk(),
-    professionalId: uuid("professional_id")
-      .notNull()
-      .references(() => professionalProfiles.id),
+    professionalId: uuid("professional_id").references(() => professionalProfiles.id),
     nutraceuticalId: uuid("nutraceutical_id")
       .notNull()
       .references(() => nutraceuticals.id, { onDelete: "cascade" }),
+    // LA LLAVE ES (ubicacion, producto, lote) DESDE LA 0121. `professionalId` se queda como CACHE
+    // VERIFICADO del dueño de la ubicacion (un trigger obliga a que coincidan), no como segunda fuente.
+    locationId: uuid("location_id").notNull(),
+    lotId: uuid("lot_id").notNull(),
     stockQuantity: integer("stock_quantity").notNull().default(0), // saldo cacheado = suma de movimientos
     lastUpdated: timestamp("last_updated", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -67,12 +69,14 @@ export const nutraceuticalStockMovements = pgTable(
   "nutraceutical_stock_movements",
   {
     id: pk(),
-    professionalId: uuid("professional_id")
-      .notNull()
-      .references(() => professionalProfiles.id),
+    professionalId: uuid("professional_id").references(() => professionalProfiles.id),
     nutraceuticalId: uuid("nutraceutical_id")
       .notNull()
       .references(() => nutraceuticals.id),
+    // UBICACION Y LOTE, obligatorios desde la 0121. La ubicacion dice DONDE esta; el lote es el principio
+    // 8 del modelo comercial, sin el cual no hay retiro dirigido posible.
+    locationId: uuid("location_id").notNull(),
+    lotId: uuid("lot_id").notNull(),
     delta: integer("delta").notNull(), // con signo
     type: nutraceuticalMovementType("type").notNull(),
     reason: text("reason"),
