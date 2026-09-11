@@ -13,6 +13,7 @@ const DB_TESTS = [
   // hubo algo que recomputar). Vive en la suite de BD porque necesita datos reales; en la de unit haria
   // que `pnpm verify` dependiera de la base.
   "src/tests/medicion-efecto-del-bump.test.ts",
+  "src/tests/alergenos-cobertura.test.ts",
   "src/tests/auth-flows.test.ts",
   "src/tests/base-survey-link.test.ts",
   "src/tests/clinical-access.test.ts",
