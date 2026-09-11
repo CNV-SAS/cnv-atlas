@@ -417,7 +417,15 @@ Bajo la Ley 1480, el productor y el expendedor responden **solidariamente** fren
 
 **Indicaciones de uso.** El profesional debe seguir las indicaciones del fabricante del producto, no las del Reglamento Operativo del modelo, que está construido para la línea propia.
 
-**Alérgenos.** LUVIA contiene avena, y por tanto gluten. Atlas ya captura las alergias declaradas del paciente, de modo que existe un deber reforzado: no basta mostrar el alérgeno, el sistema debe **bloquear activamente** la recomendación a un paciente con intolerancia declarada, exigiendo confirmación afirmativa del profesional para continuar y registrando quién la dio. Este control debe ser obligatorio para todo producto de tercero con alérgenos declarados.
+**Alérgenos. EN CONFLICTO ABIERTO desde el 2026-09-11; este párrafo NO está implementado y no se implementa hasta que el asesor legal responda.** El texto original se conserva íntegro abajo porque es lo que pasó revisión; lo que cambió es su estado, no su contenido.
+
+> LUVIA contiene avena, y por tanto gluten. Atlas ya captura las alergias declaradas del paciente, de modo que existe un deber reforzado: no basta mostrar el alérgeno, el sistema debe **bloquear activamente** la recomendación a un paciente con intolerancia declarada, exigiendo confirmación afirmativa del profesional para continuar y registrando quién la dio. Este control debe ser obligatorio para todo producto de tercero con alérgenos declarados.
+
+**Dirección Científica instruyó lo contrario, dos veces** (27 de agosto y 11 de septiembre): sin bloqueo, sin confirmación y sin registro, porque traducir un ingrediente a una alergia es contenido clínico que su modelo no tiene, y porque un cruce que no detecta un alimento que lleva el alérgeno sin nombrarlo *"no le quita la responsabilidad a CNV: la esconde detrás de una pantalla que el profesional aprende a creerle"*.
+
+**No es una discrepancia clínica, es de responsabilidad frente al consumidor**, así que no la decide ninguno de los dos: va al asesor legal en **`docs/entregas/RESUMEN_LEGAL_ALERGENO_LUVIA.md`**, con las tres preguntas concretas y lo que costaría construirlo. **Mientras tanto manda su instrucción**, que es la autoridad sobre el contenido clínico, y **LUVIA está habilitada** (migración `0126`).
+
+**Lo que de esta misma §7.7 sí se cumple y no está en disputa:** el titular de marca del producto de tercero aparece en la ficha, el reporte y la factura.
 
 ### 7.8. Contrato con el proveedor externo
 
@@ -740,11 +748,11 @@ Conviene preverlos desde el diseño, porque reconstruirlos después es costoso:
 - Verificación de la titularidad del registro sanitario de LUVIA y de la relación del proveedor con el laboratorio maquilador.
 - Documentación del criterio de admisión de productos de terceros y del conflicto de interés cuando el proveedor es Integrante.
 
-**Bloqueantes antes de la primera venta de producto de tercero:**
+**Bloqueantes antes de la primera venta de producto de tercero. ATENCIÓN: LUVIA quedó habilitada para venta el 2026-09-11 y estos dos siguen abiertos.** La habilitación resolvió el tercero de otra manera y no tocó los dos primeros, que no son clínicos y no los cierra Dirección Científica.
 
-- Verificación del registro sanitario de LUVIA y de su titularidad.
-- Acuerdo mínimo por escrito con el proveedor, según los seis puntos de la sección 7.8.
-- Carga del alérgeno declarado del producto en Atlas, con el bloqueo activo funcionando.
+- **ABIERTO ·** Verificación del registro sanitario de LUVIA y de su titularidad.
+- **ABIERTO ·** Acuerdo mínimo por escrito con el proveedor, según los seis puntos de la sección 7.8.
+- **RESUELTO DE OTRA MANERA ·** El alérgeno declarado está cargado en Atlas (`0124`) y **se muestra tal como lo dice la ficha**; el bloqueo activo **no se construye**, por la instrucción de Dirección Científica del 27 de agosto y del 11 de septiembre. El conflicto con la §7.7 está en `docs/entregas/RESUMEN_LEGAL_ALERGENO_LUVIA.md`.
 
 ---
 

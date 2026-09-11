@@ -251,18 +251,26 @@ vuelve, vuelve también ahí.
 
 ## 14 · ¿Qué MÁS debería alimentar al generador de menús?
 
-Buscando otra cosa encontramos **cuatro** insumos que el menú debería considerar y no consideraba: las
-restricciones del modelo, las alergias e intolerancias, el contexto de acceso e inseguridad alimentaria,
-y la distribución por tiempos. **Los cuatro ya están cableados.**
+**Esta pregunta estaba mal escrita y la corregimos el 11 de septiembre.** Decía que cuatro insumos "ya
+están cableados", y nombraba entre ellos **las alergias e intolerancias**. No lo están, y no deben
+estarlo: ese cruce lo retiraste el 27 de agosto y lo ejecutamos el 28. El párrafo era anterior a tu
+instrucción y sobrevivió a la limpieza. Lo decimos aquí porque es el mismo defecto que nos señalaste con
+la tabla de alérgenos, encontrado al barrer por él.
 
-**Que aparecieran cuatro buscando otra cosa sugiere que hay más**, y eso no lo podemos decidir nosotros:
-qué entra al prompt es criterio clínico.
+**Lo que HOY viaja de verdad al modelo**, verificado línea por línea en el prompt:
 
-**Lo que HOY viaja al modelo:** objetivo calórico, proteína objetivo, restricciones del modelo y del
-profesional, patrón alimentario declarado, fenotipo estructural, sector funcional y rutas activas.
-**Nunca viajan datos de identificación.**
+| Viaja | No viaja |
+| --- | --- |
+| Objetivo calórico y proteína objetivo | **Alergias e intolerancias** (retiradas el 28-ago) |
+| Restricciones del modelo, con su referencia | Contexto de acceso e inseguridad alimentaria |
+| Restricciones del profesional | Distribución por tiempos de comida |
+| Patrón alimentario declarado (tu 3.2 del 26-ago) | **Datos de identificación**, nunca |
+| Fenotipo estructural, sector funcional, rutas activas | |
 
-**¿Qué falta de esa lista?**
+**Y la pregunta que queda, ya sin el error:** de lo de la derecha, ¿algo debería entrar? **El acceso y la
+distribución por tiempos son los dos candidatos**, y ninguno es un cruce de seguridad: el primero cambia
+qué alimentos son realistas, el segundo cómo se reparte el día. **Las alergias no están en la pregunta**,
+porque eso ya lo respondiste.
 
 ---
 
@@ -532,3 +540,24 @@ colores de los clasificadores**, **las opciones de ejercicio**, **las cuatro err
 intercambio**, **los seis rótulos de los sectores**, **Tumaco y Cartago**, **el núcleo de 66 alimentos**,
 **la caída campo por campo de `getDX`** y **la referencia del IFC** (revisada: ya nos habías dicho que
 corrigiéramos tus alertas cuando estuvieran desactualizadas, así que se corrigió y no se pregunta).
+
+**Y desde el 11 de septiembre, con su fecha y su número para que no vuelva: las ALERGIAS.** Lo decidiste
+el 27 de agosto, lo ejecutamos el 28, y aun así te llegó una tercera vez. Queda escrito así:
+
+| Qué | Desde | Estado en Atlas |
+| --- | --- | --- |
+| Tablas de alérgenos, equivalencias y filtros | 27-ago, §10 | Retiradas. Las cinco equivalencias borradas de la base el 11-sep (`0126`) |
+| «Avena implica gluten» | 11-sep, §2.1 | **No hay regla.** Ni directa ni con certificación |
+| Leche contra lactosa | 11-sep, §2.2 | Dos preguntas del paciente. No se cruzan con productos |
+| P43 y P44 | 11-sep, §2.3 | **Quedan como están** |
+| «Otra» con texto | 11-sep, §3 | Es un dato dado. Se muestra; **no va confirmación** |
+| LUVIA | 11-sep, §4 | **Habilitada**, con el alérgeno que declara su ficha |
+| Bloqueo activo con confirmación y registro | 27-ago / 11-sep | **No se construye** |
+
+**Y la referencia a una opinión del asesor legal sobre el alérgeno: retirada, porque tienes razón, no
+existe.** La buscamos como pediste. La frase que la citaba aparecía en **un solo sitio de todo nuestro
+repositorio y sin fuente**; el documento donde se registra lo que el legal decide no menciona alérgenos
+ni una vez, y las tres consultas legales que sí existen son de otra cosa. Lo que sí existe es una
+exigencia de bloqueo activo en un documento **nuestro** (el modelo comercial, §7.7), y llamarla "opinión
+del asesor" convirtió un texto propio en un dictamen externo que nadie podía cotejar. **Ese conflicto es
+de responsabilidad frente al consumidor, no clínico, y va al asesor legal por escrito; no vuelve a ti.**

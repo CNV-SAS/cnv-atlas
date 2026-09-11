@@ -587,21 +587,35 @@ carnes rojas), y el flip de `LE8_MAPEO_CORREGIDO` (pregunta 2, cambia diagnostic
 `docs/entregas/RONDA_GILDARDO_2026-08-28.md`. **Abierta porque la del 26 ya salio** (27-ago) y a un
 documento entregado no se le agrega.
 
-**P-66 · El asesor legal CONTRADICE su instruccion del alergeno, y hay que decirselo asi.** El dijo "el
-alergeno se avisa pero no se cruza"; el legal dice que mostrarlo NO basta porque el sistema ya tiene el
-dato ("un sistema que tenia el dato y no lo uso es mucho mas dificil de defender que uno que nunca lo
-tuvo") y recomienda bloqueo activo con confirmacion afirmativa y registro.
+**P-66 · RETIRADA EL 2026-09-11, y la entrada se conserva porque el error es la leccion.**
 
-**No es que dudemos de su instruccion: cambio la premisa.** Cuando la dio, las alergias NI SIQUIERA
-llegaban al motor (dos de las 25 sin field_key). Hoy el cruce existe, construido para el menu y con su
-patron ya aprobado por el: aviso arriba, confirmacion con motivo obligatorio, registro en auditoria, y
-el aviso NO se borra al descartarlo.
+Decia: *"El asesor legal CONTRADICE su instruccion del alergeno... el legal dice que mostrarlo NO basta
+porque el sistema ya tiene el dato (`un sistema que tenia el dato y no lo uso es mucho mas dificil de
+defender que uno que nunca lo tuvo`) y recomienda bloqueo activo con confirmacion afirmativa y registro."*
 
-Se le pregunta a EL y no se aplica el criterio legal directamente, porque el legal opina sobre
-exposicion y no sobre practica: un bloqueo que estorba en cada consulta se vuelve un clic automatico y
-deja de proteger. Eso es criterio clinico.
+**ESA OPINION DEL ASESOR LEGAL NO EXISTE, y lo verificamos cuando el lo señalo.** Barrido completo:
 
-**LUVIA no esta construida**, asi que no hay nada que deshacer: entra con el criterio que el diga.
+- La frase entrecomillada aparece **en un solo sitio de todo el repositorio: aqui**. No tiene fuente.
+- **`DECISIONES_LEGALES.md`**, que es donde se registra lo que el legal decide, **no menciona alergenos
+  ni una sola vez** (ni "alergia", ni "gluten", ni "avena", ni "LUVIA").
+- Las **unicas tres consultas legales** que existen son acceso del paciente a su historia clinica, etnia
+  y categorias de etnia. Ninguna es esta.
+- Su ronda del 28 no contiene la pregunta: contiene **lo contrario**, que la de LUVIA se habia caido.
+
+**De donde salio de verdad la exigencia de bloqueo activo: de la §7.7 del modelo comercial**, un
+documento nuestro que si paso revision legal. Es una fuente real, pero **no es una opinion del asesor
+sobre el alergeno**, y llamarla asi convirtio un texto propio en un dictamen externo que nadie podia
+cotejar. Ese conflicto sigue vivo y va al legal por escrito
+(`docs/entregas/RESUMEN_LEGAL_ALERGENO_LUVIA.md`); lo que se retira es la ATRIBUCION, no el problema.
+
+**LO QUE LA ENTRADA HIZO, que es el daño.** Se escribio como pendiente, paso a la lista de "sigue
+esperando" de la ronda del 1 de septiembre, y de ahi volvio a la consulta del 11 como si Gildardo
+debiera algo. Textual suyo: *"asi es como una pregunta cerrada vuelve a figurar como pendiente"*. Tres
+vueltas de la misma pieza cerrada, con un producto retenido detras las dos ultimas.
+
+**Y el parrafo final de la entrada era falso tambien:** decia *"LUVIA no esta construida, asi que no hay
+nada que deshacer"*. Para el 11 de septiembre LUVIA estaba cargada y retenida por esta misma pregunta.
+Una nota que afirma un estado no envejece sola: envejece **callada**.
 
 **P-67 · "Meta kg": divergencia visible con su archivo, y NO se porta.** Su tabla de composicion tiene
 un campo editable "Meta kg" en la fila de Peso; Atlas deja esa celda vacia. La razon: en Atlas el peso

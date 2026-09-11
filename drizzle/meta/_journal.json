@@ -883,6 +883,13 @@
       "when": 1790813786099,
       "tag": "0125_alergenos_versiones_viejas",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1790900186099,
+      "tag": "0126_luvia_habilitada_sin_regla_de_alergenos",
+      "breakpoints": true
     }
   ]
 }

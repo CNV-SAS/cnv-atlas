@@ -139,7 +139,19 @@ solo se registraba. Con consignación, la tabla `nutraceuticals` ya tiene **todo
 - **Un discriminador.** Sin él, LUVIA aparecería en el selector libre de prescripción, y no se prescribe
   por diagnóstico. Basta una columna (`indicado_por_diagnostico`, o un `tipo`) que la UI use para
   ponerla en OTROS PRODUCTOS en vez de en la lista de prescripción.
-- **El campo de alérgenos.** El aviso "Contiene avena (gluten)" no tiene dónde guardarse hoy.
+- **El campo de alérgenos.** El aviso va **"Contiene avena"**, sin el "(gluten)": es el texto corregido de su archivo del 11 de septiembre, porque el suyo sugería un cruce que nunca aprobó. El dato ya está en la base (`nutraceutical_allergens.declared_as`); lo que falta es la superficie que lo muestre.
+
+**Y los DOS textos exactos que se portan cuando se construya la tarjeta**, para que nadie los redacte de
+nuevo. Los corrigió él mismo el 11 de septiembre: *"el error era de mi archivo; el «(gluten)» y el
+«todavía» sugerían un cruce pendiente que nunca aprobé"*.
+
+| Dónde | Texto |
+| --- | --- |
+| Campo `alergenos` de la tarjeta | **"Contiene avena"** |
+| Nota del bloque OTROS PRODUCTOS | **"Contiene avena: el alérgeno se muestra en la tarjeta tal como lo declara la ficha. El sistema no lo cruza con las alergias de la encuesta"** |
+
+El **"todavía"** es lo que se retira, y no es un matiz: anunciaba como pendiente un cruce que está
+decidido que no se hace. Un texto así reabre solo la pregunta cada vez que alguien lo lee.
 
 **Una tabla aparte sería peor**, y no por gusto: obligaría a duplicar inventario, movimientos, despacho,
 faltantes y liquidación. Ver (b).
