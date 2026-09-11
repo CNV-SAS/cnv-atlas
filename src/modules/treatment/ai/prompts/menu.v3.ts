@@ -105,9 +105,11 @@ export function buildMenuPrompt(
  * Parsea la respuesta del modelo a la forma declarada. Devuelve null si no cumple, y el que llama
  * registra la sugerencia como `parse_failed`.
  *
- * Es DELIBERADAMENTE estricto: un menu que no se puede parsear es un menu que NO SE PUEDE CRUZAR
- * contra las alergias. Aceptar una forma "parecida" dejaria pasar un menu sin chequeo de alergenos,
- * que es peor que no generarlo. Ante la duda, falla.
+ * Es DELIBERADAMENTE estricto, y la razon CAMBIO cuando se retiro el cruce de alergenos (2026-08-27).
+ * Antes era "un menu que no se parsea no se puede cruzar"; ese cruce ya no existe. Lo que sostiene la
+ * estrictez hoy es lo otro que la forma habilita: un menu que no se parsea no se puede RENDERIZAR ni
+ * EDITAR por celda ni conectar con la lista de intercambio, asi que mostrarlo "parecido" entregaria al
+ * profesional algo que no puede trabajar. Ante la duda, falla.
  *
  * Lo unico que tolera es el envoltorio: algunos modelos devuelven el JSON dentro de un bloque de
  * codigo pese a que se les pide que no. Eso es ruido de formato, no una forma distinta.

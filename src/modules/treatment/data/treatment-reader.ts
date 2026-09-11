@@ -185,13 +185,11 @@ export async function getTreatmentProtocol(
       : null;
   const suggestedSnapshot = (treatment.protocol_suggested as ProtocoloSnapshot | null) ?? null;
 
-  // DESCARTES DEL AVISO DE ALERGENO. Se leen de su TABLA DE DOMINIO, no del audit log: el audit log es
-  // solo-admin para SELECT, asi que con la sesion del profesional devolvia vacio SIEMPRE y el descarte
-  // nunca se veia (defecto cazado en el smoke; ver 0088). La traza del mismo hecho sigue en el audit log.
-  //
-  // El aviso NO se borra al descartarlo: el hallazgo vive en ai_menu_suggestions, que es inmutable, y el
-  // descarte vive aparte. Descartar es decir "lo mire y esta bien", no "no paso nada".
-
+  // AQUI SE LEIAN LOS DESCARTES DEL AVISO DE ALERGENO, y ya no: el aviso entero se retiro el 2026-08-28
+  // por instruccion de Direccion Cientifica ("nada de tablas de alergenos, ni de equivalencias, ni de
+  // filtros"). El codigo se fue y el comentario se quedo seis lineas explicando una pieza que no existe,
+  // que es la forma silenciosa de que alguien la de por viva. La tabla `menu_allergen_dismissals` (0088)
+  // sigue en la base, vacia y sin lector, porque una migracion aplicada no se deshace.
 
   // QUE SE LE HA ENTREGADO AL PACIENTE. Sustituye al conteo de aprobaciones previas: lo que el panel
   // necesita saber no es si algo esta cerrado (ya nada lo esta) sino si la persona YA TIENE una version,

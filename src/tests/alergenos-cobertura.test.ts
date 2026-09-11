@@ -55,35 +55,21 @@ describe.skipIf(!HAS_DB)("cobertura del mapeo de alérgenos (BD real)", () => {
     ).toEqual([]);
   });
 
-  it("y el catálogo entra SIN FIRMAR: una relación sin firma es una propuesta", async () => {
-    // El bloqueo solo considerara relaciones firmadas. Que ninguna lo este es lo que hace cierto el
-    // "se construye y no se enciende", y lo hace fila a fila en vez de con una bandera global.
+  it("y NO hay equivalencias: ninguna regla traduce un ingrediente a una alergia", async () => {
+    // Lo negó dos veces, el 27 de agosto y el 11 de septiembre. La TABLA se queda (el día que exista una
+    // regla tendrá dónde vivir, con firma); las FILAS no, porque las cinco eran contenido clínico que
+    // escribimos nosotros y que su archivo no tiene.
     const { db } = await import("@/db");
-    const [r] = await db.execute<{ total: number; firmadas: number }>(dsql`
-      select count(*)::int as total, count(signed_at)::int as firmadas from allergen_relations`);
-    expect(Number(r.total)).toBeGreaterThan(0);
+    const [r] = await db.execute<{ n: number }>(dsql`select count(*)::int as n from allergen_relations`);
     expect(
-      Number(r.firmadas),
-      "alguien firmó equivalencias de alérgenos: verifica que sea Dirección Científica y no un seed",
+      Number(r.n),
+      "volvió a aparecer una equivalencia de alérgenos: sería la cuarta vez que esta pieza regresa",
     ).toBe(0);
   });
 
-  it("la avena implica gluten POR CONTAMINACION CRUZADA, no directamente", async () => {
-    // Fue la corrección de Santiago y es la razón por la que la firma no es un trámite: la avena por sí
-    // sola no contiene gluten, pero arrastra contaminación cruzada salvo que esté certificada.
-    const { db } = await import("@/db");
-    const [r] = await db.execute<{ kind: string }>(dsql`
-      select ar.kind from allergen_relations ar
-        join allergens o on o.id = ar.source_id
-        join allergens d on d.id = ar.target_id
-       where o.code = 'avena' and d.code = 'gluten'`);
-    expect(r?.kind).toBe("por_contaminacion_cruzada");
-  });
-
-  it("y LUVIA declara avena sin certificación de ausencia", async () => {
-    // Mientras `absence_certified_for` sea nulo, la relación por contaminación cruzada implica gluten,
-    // que es el tratamiento seguro. Si algún día la ficha trae la certificación, esto cambia y hay que
-    // verlo, no descubrirlo.
+  it("y LUVIA declara avena tal como lo dice su ficha, sin deducir nada", async () => {
+    // Lo que el producto DICE es avena. Lo que eso implique no lo decidimos nosotros, y hoy no lo decide
+    // nadie. `absence_certified_for` queda nulo porque ya no cuelga nada de él.
     const { db } = await import("@/db");
     const [r] = await db.execute<{ declared_as: string; absence_certified_for: string | null }>(dsql`
       select na.declared_as, na.absence_certified_for
@@ -92,5 +78,12 @@ describe.skipIf(!HAS_DB)("cobertura del mapeo de alérgenos (BD real)", () => {
        where n.name = 'LUVIA'`);
     expect(r?.declared_as).toBe("avena");
     expect(r?.absence_certified_for).toBeNull();
+  });
+
+  it("y LUVIA se puede vender: la retención colgaba de una firma que nadie había pedido", async () => {
+    const { db } = await import("@/db");
+    const [r] = await db.execute<{ commercial_availability: string }>(dsql`
+      select commercial_availability from nutraceuticals where name = 'LUVIA'`);
+    expect(r?.commercial_availability).toBe("en_consultorio");
   });
 });
